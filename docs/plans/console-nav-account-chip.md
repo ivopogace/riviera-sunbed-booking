@@ -66,7 +66,7 @@ stands in for `feature/console-nav-account-chip` (`riviera-sdlc` remote addendum
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a signed-in operator (non-admin) on either header, when the header's
+- [x] **AC-1:** Given a signed-in operator (non-admin) on either header, when the header's
   controls are read, then there is exactly one account control — a `<button>` whose accessible
   name is `Account: <username>` with `aria-expanded="false"` — and no element in the bar reads
   `Signed in as`; when the button is clicked, `aria-expanded` is `true` and the popover holds the
@@ -78,17 +78,17 @@ stands in for `feature/console-nav-account-chip` (`riviera-sdlc` remote addendum
   `operator-console.spec.ts` "renders the porcelain shell with the venue title + one account chip
   (#1008)", `operator-chrome.e2e.ts` "an admin on /admin gets the operator header + footer, not the
   tourist chrome".
-- [ ] **AC-2:** Given a signed-in admin, when the popover opens, then it holds `Admin console`
+- [x] **AC-2:** Given a signed-in admin, when the popover opens, then it holds `Admin console`
   (`/admin`) between `Create a venue` and `Change password`; on `/admin/email` that row carries
   `aria-current="page"`. *Seam:* the thin chrome's header · *Pinned by:* `operator-chrome.spec.ts`
   "adds the Admin console row for a platform-admin principal, current on the admin pages (#1008)".
-- [ ] **AC-3:** Given a signed-out visitor on `/admin`, when the thin chrome renders, then it
+- [x] **AC-3:** Given a signed-out visitor on `/admin`, when the thin chrome renders, then it
   shows the plain `Sign in` link whose href is
   `/account/sign-in?audience=operator&returnUrl=%2Fadmin` and no account chip. *Seam:* the thin
   chrome's header · *Pinned by:* `operator-chrome.spec.ts` "offers the operator sign-in (not
   session controls) when signed out" (unchanged) and `operator-chrome.e2e.ts` "a signed-out visitor
   on /admin is offered the operator sign-in from the header" (unchanged).
-- [ ] **AC-4:** Given the venue console with a loaded venue and 2 pending requests, when `Sign
+- [x] **AC-4:** Given the venue console with a loaded venue and 2 pending requests, when `Sign
   out` is activated from the chip, then focus is on the console's `<main>` before the session
   call resolves, the venue name/map, the requests store and the owned-venues cache are reset, and
   the router is asked for `/account/sign-in?audience=operator`; on the thin chrome, focus is parked
@@ -99,7 +99,7 @@ stands in for `feature/console-nav-account-chip` (`riviera-sdlc` remote addendum
   out and leaves for the operator sign-in", `app.spec.ts` "operator-chrome Sign out parks focus on
   main before the control unmounts (WCAG 2.4.3)" (both opening the chip first),
   `operator-console.e2e.ts` and `operator-chrome.e2e.ts` sign-out cases.
-- [ ] **AC-5:** Given the popover is open, when Escape is pressed, or the backdrop is clicked, or
+- [x] **AC-5:** Given the popover is open, when Escape is pressed, or the backdrop is clicked, or
   a row is activated, then the popover is gone and `document.activeElement` is the chip button;
   given the popover is open and a navigation ends that no row started (focus tabbed out), then
   the popover is gone and focus is untouched; on `/account/operator-password` the `Change
@@ -107,17 +107,17 @@ stands in for `feature/console-nav-account-chip` (`riviera-sdlc` remote addendum
   DOM under a real router · *Pinned by:* `operator-account-chip.spec.ts` "closes on Escape and
   returns focus to the chip", "closes on backdrop click and returns focus to the chip", "closes
   on row activation and returns focus to the chip", "closes when a navigation ends elsewhere,
-  leaving focus where it is", "marks Change password current on the password page — exact path,
-  query ignored"; `operator-password.e2e.ts` "operator changes its own password from the console,
+  leaving focus where it is", "closes on a click outside the header, leaving focus where it is",
+  "marks Change password current on the password page — exact path, query ignored"; `operator-password.e2e.ts` "operator changes its own password from the console,
   and the new credential replaces the old" (opening the page via the chip, asserting the row's
   `aria-current`).
-- [ ] **AC-6:** Given the touch-target sweeps at 390px, when they walk the venue console tabs and
+- [x] **AC-6:** Given the touch-target sweeps at 390px, when they walk the venue console tabs and
   the admin tabs, then the chip and — with the popover open — every row measures ≥ 44 × 44 px.
   *Seam:* `expectTouchTargets` over the rendered page · *Pinned by:* `touch-targets.e2e.ts`
   "operator console — daily view, account menu open (#1008)" and `touch-targets-admin.e2e.ts`
   "operators — the account menu open (#1008)" (the existing closed-menu sweeps also cover the
   chip).
-- [ ] **AC-7:** Given porcelain's four background stops under the header glass, when the chip's
+- [x] **AC-7:** Given porcelain's four background stops under the header glass, when the chip's
   avatar disc (`--riv-solid-fill-brand`) is composited against the glass, then it reaches ≥ 3:1
   at every stop, the chip's label ink on the chip tint reaches ≥ 4.5:1, and on the popover
   surface over every stop the row ink, the identity block's soft ink and the current row's accent
@@ -125,7 +125,7 @@ stands in for `feature/console-nav-account-chip` (`riviera-sdlc` remote addendum
   · *Pinned by:* `operator-account-chip.contrast.spec.ts` "porcelain: the avatar disc clears 3:1
   on the header glass", "porcelain: the chip label clears AA on the chip tint over the header
   glass", "porcelain: popover row inks clear AA on the pop surface over every stop".
-- [ ] **AC-8:** Given the venue console, the `/operator` landing and `/admin`, when the popover is
+- [x] **AC-8:** Given the venue console, the `/operator` landing and `/admin`, when the popover is
   open, then axe reports no serious or critical violation; given a 390px viewport on `/admin` and
   on `/operator/1/daily`, then the brand and the chip share one row (their boxes overlap
   vertically) and the header is not taller than 64px. *Seam:* the rendered page ·
@@ -171,13 +171,13 @@ venue console (`oc-*`).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `--riv-chip-border` (ink at 0.14) composites 1.3:1 on the header glass, so a literal "chip boundary ≥ 3:1" is unmeetable without changing a tourist token | high | med | the chip's identity is its label + the avatar disc (solid brand fill, 5.4–5.9:1 measured); the contrast spec pins the disc and the label, and `non-text-contrast.md` gains the row; ← confirm? in Open questions | session | open |
-| R-2 | `--riv-console-btn-border`/`-hover` become dead tokens, and `fixed-ink-tokens.contrast.spec.ts` reads `operator-actions.ts` by path (deleting the file fails the suite) | high | med | retire both tokens: `tailwind.css` (declarations + `@theme inline` rows), `glass-tokens.ts` constants, the `CONSOLE_FAMILY` entries and the three sign-out `it`s in the fixed-ink spec, the sign-out block in `fixed-ink-token-recut.e2e.ts`, the hover `it` in `operator-console.contrast.spec.ts`, the two `non-text-contrast.md` rows + the state paragraph, the audit note's status; ← confirm? | session | open |
-| R-3 | Seven e2e files and the page object click `oc-signout`/`opc-signout`/`oc-change-password` directly, and `expectSignedInAs` locates `Signed in as` text a closed popover does not render | high | high | a `openOperatorAccountMenu(page, prefix)` helper in `e2e/support/shell.ts`; the page object's `signedInCard` becomes the chip located by role + name, `signOut()` opens the chip first; every consumer listed in File structure is amended in phase 3 and run locally | session | open |
-| R-4 | A `fixed` backdrop inside a `backdrop-blur` header is contained by the header (filters establish a containing block), so a click on the page below may not close the popover | med | low | the tourist shell ships the same construction; the chip additionally closes on any `NavigationEnd` (AC-5), so a page click that navigates never leaves a stale popover; verified in the browser during phase 3 and recorded here | session | open |
-| R-5 | Row activation returns focus to the chip, but a console → `/account/operator-password` navigation unmounts the console and its chip | low | low | parity with today's header link (the console unmounted then too); the thin chrome's chip persists, so there the return is real; the password page itself focuses nothing on load | session | open |
-| R-6 | Hoisting the popover recipes out of `app.ts` touches the tourist chrome file | med | low | strings byte-identical, `app.ts` imports them into its `CLS` unchanged; `app.spec.ts`, `app.contrast.spec.ts`, `theme-shell.e2e.ts`, `touch-targets-tourist.e2e.ts` and the find-a-booking/customer-auth e2e are the pin | session | open |
-| R-7 | A document-level Escape listener on the chip fires while other console overlays (bottom sheet, dialogs) handle Escape | low | low | the handler is a no-op unless the popover is open; the popover and those overlays are never open together (the backdrop catches the click that would open one) | session | open |
+| R-1 | `--riv-chip-border` (ink at 0.14) composites 1.3:1 on the header glass, so a literal "chip boundary ≥ 3:1" is unmeetable without changing a tourist token | high | med | the chip's identity is its label + the avatar disc (solid brand fill, 5.4–5.9:1 measured); the contrast spec pins the disc and the label, and `non-text-contrast.md` gains the row; ← confirm? in Open questions | session | closed in code — `operator-account-chip.contrast.spec.ts` (phase 0), the docs row (phase 3); the token choice awaits the maintainer at review |
+| R-2 | `--riv-console-btn-border`/`-hover` become dead tokens, and `fixed-ink-tokens.contrast.spec.ts` reads `operator-actions.ts` by path (deleting the file fails the suite) | high | med | retire both tokens: `tailwind.css` (declarations + `@theme inline` rows), `glass-tokens.ts` constants, the `CONSOLE_FAMILY` entries and the three sign-out `it`s in the fixed-ink spec, the sign-out block in `fixed-ink-token-recut.e2e.ts`, the hover `it` in `operator-console.contrast.spec.ts`, the two `non-text-contrast.md` rows + the state paragraph, the audit note's status; ← confirm? | session | closed in code (phase 3) — the fixed-ink spec now pins that neither token is declared; the retirement awaits the maintainer at review |
+| R-3 | Seven e2e files and the page object click `oc-signout`/`opc-signout`/`oc-change-password` directly, and `expectSignedInAs` locates `Signed in as` text a closed popover does not render | high | high | a `openOperatorAccountMenu(page, prefix)` helper in `e2e/support/shell.ts`; the page object's `signedInCard` becomes the chip located by role + name, `signOut()` opens the chip first; every consumer listed in File structure is amended in phase 3 and run locally | session | closed — the eight amended files and the page object's other consumers (`admin-operator-suspension`, `operator-sign-in`) green locally, 32/32 (phase 3) |
+| R-4 | A `fixed` backdrop inside a `backdrop-blur` header is contained by the header (filters establish a containing block), so a click on the page below may not close the popover | med | low | the tourist shell ships the same construction; the chip additionally closes on any `NavigationEnd` (AC-5), so a page click that navigates never leaves a stale popover; verified in the browser during phase 3 and recorded here | session | closed — **confirmed in the browser** (the backdrop measured 68px tall, the header's box; a click on the daily view left the popover open), fixed by a document click listener that closes on any click outside the host without moving focus; pinned by `operator-account-chip.spec.ts` "closes on a click outside the header, leaving focus where it is" and the console e2e's page-click assertion. The tourist shell carries the same containment — recorded as a follow-up below, out of this slice's scope |
+| R-5 | Row activation returns focus to the chip, but a console → `/account/operator-password` navigation unmounts the console and its chip | low | low | parity with today's header link (the console unmounted then too); the thin chrome's chip persists, so there the return is real; the password page itself focuses nothing on load | session | closed — recorded in the parity ledger; the thin-chrome return is pinned by `operator-account-chip.spec.ts` |
+| R-6 | Hoisting the popover recipes out of `app.ts` touches the tourist chrome file | med | low | strings byte-identical, `app.ts` imports them into its `CLS` unchanged; `app.spec.ts`, `app.contrast.spec.ts`, `theme-shell.e2e.ts`, `touch-targets-tourist.e2e.ts` and the find-a-booking/customer-auth e2e are the pin | session | closed — `app.spec.ts`/`app.contrast.spec.ts` green in the full unit run; `theme-shell`, `touch-targets-tourist`, `customer-auth`, `find-a-booking` and `current-page-marker` e2e green locally (73/73 with the two sweeps) |
+| R-7 | A document-level Escape listener on the chip fires while other console overlays (bottom sheet, dialogs) handle Escape | low | low | the handler is a no-op unless the popover is open; the popover and those overlays are never open together (the backdrop catches the click that would open one) | session | closed — `operator-account-chip.spec.ts` "ignores Escape while closed — it never steals focus" (phase 0) |
 | R-8 | Sibling slices (#1009–#1013) edit the same two headers | low | low | no open PRs today; they are sequenced after this one in the epic | session | closed — no in-flight overlap |
 
 ## Open questions / Assumptions
@@ -198,6 +198,12 @@ venue console (`oc-*`).
 - **Assumption:** the venue console gains the focus-park on sign-out the issue describes as
   existing (it did not); the thin chrome already had it. ← confirm? — *Owner:* maintainer ·
   *Resolves by:* review.
+- **Follow-up (out of scope, for the maintainer):** the tourist header's account and theme
+  popovers share the R-4 construction — a `fixed` backdrop inside a `backdrop-filter` header is
+  contained by the header, so a click on page content below it does not close them. This slice
+  fixes the operator chip only (the epic keeps the tourist chrome out of scope); the same
+  document-click close would fix `app.ts`. — *Owner:* maintainer · *Resolves by:* a follow-up
+  issue if wanted.
 
 ## Availability & concurrency (invariant #2)
 
@@ -236,16 +242,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `PR — draft open, awaiting CI; then ready-for-review → review gate`
 
-**Next action:** phase 3 — delete `operator-actions.*`, retire the console-btn tokens, the e2e/page-object amendments, the AC-6/AC-8 e2e, docs; run the touched e2e locally.
+**Next action:** check the phase-3 push's CI run; merge latest `origin/main`, mark the PR ready for review and run the review gate (`references/pr-gates.md` §1).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the chip component + the hoisted popover skin (spec, contrast spec) | ✅ | `Add the operator account chip (#1008)` |
 | 1 — the thin chrome consumes the chip | ✅ | `Operator chrome: the account chip (#1008)` |
 | 2 — the venue console consumes the chip, parks focus on sign-out | ✅ | `Venue console: the account chip, focus parked on sign-out (#1008)` |
-| 3 — retire `OperatorActions` + the console-btn tokens; e2e, page object, docs, close-out | | |
+| 3 — retire `OperatorActions` + the console-btn tokens; e2e, page object, docs, close-out | ✅ | `Console nav: chip e2e, retired sign-out tokens, docs (#1008)` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -275,6 +281,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/operator-console.a11y.spec.ts` — TSDoc names the chip, not the pill tabs.
 - `frontend/src/app/operator/operator-console.contrast.spec.ts` — the sign-out hover `it` and the signed-in-as title go with the pill.
 - `frontend/src/app/shared/fixed-ink-tokens.contrast.spec.ts` — the `CONSOLE_FAMILY` shrinks to the card border; the three sign-out `it`s go.
+- `frontend/src/app/shared/cta-border-token.contrast.spec.ts` — its `OUT_OF_FAMILY` pin follows the chip highlight to `shared/popover-skin.ts`.
 - `frontend/src/testing/glass-tokens.ts` — `CONSOLE_BTN_BORDER`/`CONSOLE_BTN_HOVER` retired.
 - `frontend/src/tailwind.css` — the two console-btn declarations and their `@theme inline` rows retired.
 - `frontend/src/app/app.spec.ts` — the `opc-signout` focus test opens the chip first.
@@ -351,38 +358,43 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-07 | phase 3 (`fixed-ink-tokens.contrast.spec.ts` read `operator-actions.ts` by path; `cta-border-token.contrast.spec.ts` read `app.ts` for the chip highlight) | every spec that reads a source file this slice deleted or moved a recipe out of, by path | `grep -rn "readFileSync\|read('" frontend/src --include=*.spec.ts` then filtered on `app.ts`, `operator-actions`, `popover-skin` | `fixed-ink-tokens.contrast.spec.ts` (the deleted file), `cta-border-token.contrast.spec.ts` (the moved highlight) | the first drops the retired site and family, the second retargets its `OUT_OF_FAMILY` path to `shared/popover-skin.ts` |
+| 2026-09-07 | phase 3 (e2e that click the old header controls directly) | every e2e or page object that locates `*-signout`, `*-change-password`, `*-admin-link`, `*-create-venue`, `*-signed-in-as` or the `Signed in as` text | `grep -rln "signed-in-as\|oc-signout\|opc-signout\|change-password\|admin-link\|create-venue\|Signed in as" frontend/e2e` | 8 files + `operator-sign-in.page.ts` | each opens the chip first through `openOperatorAccountMenu`; the page object locates the chip by accessible name |
+| 2026-09-07 | phase 3 (R-4: the `fixed` backdrop contained by the `backdrop-filter` header) | every header popover whose backdrop sits inside a `backdrop-blur` header | `grep -rn "POP_BACKDROP\|inset-0 z-30" frontend/src/app --include=*.ts --include=*.html` | the chip (fixed here), the tourist shell's account/theme popovers (`app.ts`) | the tourist shell is out of the epic's scope — recorded as a follow-up in Open questions |
 | 2026-09-07 | phase 0 (the popover recipes hoisted into `shared/popover-skin.ts`) | every component holding a private copy of the popover-surface / chip-glass recipe strings | `grep -rln "riv-pop-surface\|riv-chip-bg" frontend/src/app --include=*.ts` | `app.ts` (the tourist shell) and `popover-skin.ts` paint them; `semantic-chip.ts` and four contrast specs only name the tokens in comments | `app.ts` imports the hoisted strings; nothing else paints them |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npx vitest run src/app/operator/operator-chrome src/app/operator/operator-console` → the chip cases pass; `operator-chrome.e2e.ts` green.
-- [ ] **AC-2:** `operator-chrome.spec.ts` admin case passes.
-- [ ] **AC-3:** `operator-chrome.spec.ts` signed-out cases + `operator-chrome.e2e.ts` signed-out case pass unchanged.
-- [ ] **AC-4:** the two host sign-out specs + `app.spec.ts` focus test + both e2e sign-out cases pass.
-- [ ] **AC-5:** `npx vitest run src/app/operator/operator-account-chip` → the five close/current cases pass; `operator-password.e2e.ts` green.
-- [ ] **AC-6:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/touch-targets.e2e.ts e2e/touch-targets-admin.e2e.ts` green.
-- [ ] **AC-7:** `npx vitest run src/app/operator/operator-account-chip.contrast` → 3 pass.
-- [ ] **AC-8:** `operator-chrome.e2e.ts` + `operator-console.e2e.ts` popover cases and `operator-chrome.a11y.spec.ts` pass.
+- [x] **AC-1:** `npx ng test --watch=false --include="src/app/operator/operator-chrome.spec.ts" --include="src/app/operator/operator-console.spec.ts"` → the chip cases pass; `operator-chrome.e2e.ts` green locally. Verified phases 1–3.
+- [x] **AC-2:** `operator-chrome.spec.ts` "adds the Admin console row …" passes; `operator-chrome.e2e.ts` asserts the row's `aria-current` on `/admin`. Verified phases 1 and 3.
+- [x] **AC-3:** the two signed-out cases pass unchanged. Verified phases 1 and 3.
+- [x] **AC-4:** the two host sign-out specs (console with the focus assertion) + `app.spec.ts` focus test + both e2e sign-out cases pass. Verified phases 1–3.
+- [x] **AC-5:** `npx ng test --watch=false --include="src/app/operator/operator-account-chip.spec.ts"` → 16 pass (the six close/current cases included); `operator-password.e2e.ts` asserts the row's `aria-current` on the page. Verified phases 0 and 3.
+- [x] **AC-6:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/touch-targets.e2e.ts e2e/touch-targets-admin.e2e.ts` → green, the two open-popover sweeps included. Verified phase 3.
+- [x] **AC-7:** `npx ng test --watch=false --include="src/app/operator/operator-account-chip.contrast.spec.ts"` → 3 pass. Verified phase 0.
+- [x] **AC-8:** `operator-chrome.e2e.ts` and `operator-console.e2e.ts` popover cases (axe clean, one row ≤ 80px at 390px) and `operator-chrome.a11y.spec.ts` "has no violations with the account popover open" pass. Verified phases 1 and 3.
+
+Full local runs at phase 3: `npm run lint`, `npm run format:check`, the three hook guards and `check-plan-file-structure.mjs` clean; `npm test` 2624/2624 after the `cta-border-token` retarget; 32 + 73 mocked e2e green across the amended files, the sweeps and the tourist-shell pins.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #) — the five ← confirm? assumptions and the tourist-shell follow-up are the maintainer's at review; each is a reversible choice recorded in the PR's scope notes.
 - [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 

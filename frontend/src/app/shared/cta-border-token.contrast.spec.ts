@@ -87,12 +87,15 @@ const RETIRED_POSITIONS: readonly string[] = [
 /**
  * The home of this value the slice deliberately leaves alone, asserted POSITIVELY — the
  * `OUT_OF_FAMILY` mechanism, the only thing able to show the sweep did not over-reach.
- * `app.ts`'s chip glass (the header's menu button and account chip) carries the value as the inner
- * highlight of a composite shadow: one member of a 0.4/0.5/0.7 ramp used in the same idiom
+ * `shared/popover-skin.ts`'s chip glass (the tourist header's menu button and both account chips)
+ * carries the value as the inner highlight of a composite shadow: one member of a 0.4/0.5/0.7 ramp used in the same idiom
  * tree-wide, so tokenising it alone would be the partial cut the audit ledger warns against. It
  * has its own ledger row instead.
  */
-const OUT_OF_FAMILY = { path: 'app.ts', literal: 'inset_0_1px_0_rgba(255,255,255,0.4)' } as const;
+const OUT_OF_FAMILY = {
+  path: 'shared/popover-skin.ts',
+  literal: 'inset_0_1px_0_rgba(255,255,255,0.4)',
+} as const;
 
 const APP_ROOT = join(process.cwd(), 'src/app');
 const SRC_ROOT = join(process.cwd(), 'src');

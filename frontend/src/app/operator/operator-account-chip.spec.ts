@@ -198,6 +198,30 @@ describe('OperatorAccountChip', () => {
     elsewhere.remove();
   });
 
+  it('closes on a click outside the header, leaving focus where it is', () => {
+    open();
+    const content = document.createElement('button');
+    document.body.append(content);
+
+    content.focus();
+    content.click();
+    fixture.detectChanges();
+
+    expect(menu()).toBeNull();
+    expect(chip().getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(content);
+    content.remove();
+  });
+
+  it('stays open on a click inside its own popover', () => {
+    open();
+
+    menu()!.querySelector<HTMLElement>('[data-testid="oc-account-identity"]')!.click();
+    fixture.detectChanges();
+
+    expect(menu()).not.toBeNull();
+  });
+
   it('marks Change password current on the password page — exact path, query ignored', async () => {
     await TestBed.inject(Router).navigateByUrl('/account/operator-password?x=1');
     await openSettled();

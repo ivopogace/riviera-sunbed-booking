@@ -13,16 +13,10 @@ import {
   BANNER_BODY_INK,
   BANNER_FILLS,
   BANNER_STRONG_INK,
-  CONSOLE_BTN_BORDER,
-  CONSOLE_BTN_HOVER,
   CONSOLE_CARD_BORDER,
   DARK_CARD_INK,
   Glass,
-  INK_DARK,
-  PORCELAIN_HEADER_GLASS,
-  PORCELAIN_STOPS,
   WHITE,
-  surfaceOver,
 } from '../../testing/glass-tokens';
 import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
@@ -50,11 +44,10 @@ const BANNER_FAMILY = {
   '--riv-banner-strong-ink': rgbToHex(BANNER_STRONG_INK),
 } as const;
 
-/** The console's two white-surface hairlines, and the sign-out button's hover fill (#887). */
+/** The console's white-surface hairline. Its siblings — the sign-out button's border and hover
+ *  fill — retired with that button when the account chip folded sign-out into a popover row. */
 const CONSOLE_FAMILY = {
   '--riv-console-card-border': cssValue(CONSOLE_CARD_BORDER),
-  '--riv-console-btn-border': cssValue(CONSOLE_BTN_BORDER),
-  '--riv-console-btn-hover': rgbToHex(CONSOLE_BTN_HOVER),
 } as const;
 
 /** The literals every migrated site must have stopped painting. */
@@ -103,134 +96,40 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
     });
   });
 
-  describe('the console border families', () => {
+  describe('the console border family', () => {
     /**
-     * Both hairlines bound an opaque white fill, so there is no compositing and no per-theme case:
-     * one plain pair each. Non-text chrome under WCAG 1.4.11 — measured rather than assumed
-     * exempt, `non-text-contrast.md`'s second condition.
+     * The hairline bounds an opaque white fill, so there is no compositing and no per-theme case:
+     * one plain pair. Non-text chrome under WCAG 1.4.11 — measured rather than assumed exempt,
+     * `non-text-contrast.md`'s second condition.
      */
-    it.each([
-      ['the card border', CONSOLE_CARD_BORDER, 1.21],
-      ['the button border', CONSOLE_BTN_BORDER, 1.32],
-    ] as const)('%s is measured against the white fill it bounds', (_name, border, expected) => {
-      expect(inkRatio(border, WHITE)).toBeCloseTo(expected, 2);
+    it('the card border is measured against the white fill it bounds', () => {
+      expect(inkRatio(CONSOLE_CARD_BORDER, WHITE)).toBeCloseTo(1.21, 2);
     });
 
     /**
-     * Both are far under 3:1, which is the whole reason they owe a recorded ground rather than an
-     * assumption. The sign-out button is a control whose own label carries the identity —
-     * `non-text-contrast.md` rule 2. The card border's one consumer since the console's tabs moved
-     * to the shared rail, the "Venue not found" card, is a `<div>`: outside 1.4.11 rather than
-     * exempt under it, since nothing about that card is identified by its hairline.
+     * Far under 3:1, which is the whole reason it owes a recorded ground rather than an assumption.
+     * Its one consumer, the "Venue not found" card, is a `<div>`: outside 1.4.11 rather than exempt
+     * under it, since nothing about that card is identified by its hairline.
      */
-    it('records that neither hairline reaches the 1.4.11 bar, so the exemption is load-bearing', () => {
+    it('records that the hairline does not reach the 1.4.11 bar, so the exemption is load-bearing', () => {
       expect(inkRatio(CONSOLE_CARD_BORDER, WHITE)).toBeLessThan(AA_LARGE);
-      expect(inkRatio(CONSOLE_BTN_BORDER, WHITE)).toBeLessThan(AA_LARGE);
     });
 
     /**
-     * The role objection, made mechanical. These two tokens must not BE the coincidental ones —
-     * if a later slice collapses them back onto `--riv-pop-divider` or `--riv-chip-border`, the
-     * console inherits the popover's and the tourist chip's theme overrides, which is the whole
-     * thing #849's re-cut refused.
+     * The role objection, made mechanical. This token must not BE the coincidental ones — if a
+     * later slice collapses it back onto `--riv-pop-divider` or `--riv-chip-border`, the console
+     * inherits the popover's and the tourist chip's theme overrides, which is the whole thing
+     * the re-cut refused (`docs/design/colour-literal-token-audit.md`, class R).
      */
-    it('keeps the coincidental tokens themed and separate, which is why these exist', () => {
+    it('keeps the coincidental tokens themed and separate, which is why this exists', () => {
       expect(declarationsOf('--riv-pop-divider')).toHaveLength(2);
       expect(declarationsOf('--riv-chip-border')).toHaveLength(3);
     });
-  });
 
-  describe('the console button hover fill (#887)', () => {
-    const HOVER = rgbToHex(CONSOLE_BTN_HOVER);
-
-    /**
-     * Condition 1 of `non-text-contrast.md` rule 2, on the fill the rule is being claimed for
-     * rather than on the resting one: the button's own label is what identifies it, so the two
-     * sub-3:1 boundaries below are decorative. Measured on the HOVERED fill because that is the
-     * state whose ground this slice is recording.
-     */
-    it('the label carries the identity at AA on the hovered fill', () => {
-      expect(contrastRatio(rgbToHex(INK_DARK), HOVER)).toBeGreaterThanOrEqual(AA_NORMAL);
-      expect(contrastRatio(rgbToHex(INK_DARK), HOVER)).toBeCloseTo(13.29, 2);
-    });
-
-    /**
-     * Condition 2, and the reason this slice exists rather than being a rename: a hover fill forms
-     * two boundaries — against the state it replaces and against the surface it sits on — and
-     * neither reaches 3:1. Pinned as measurements, so a later sweep reading them as a violation
-     * this slice introduced can see they were never anything else (#879's close-sales lesson).
-     */
-    it('records that the hover state does not reach the 1.4.11 bar, so the exemption is load-bearing', () => {
-      expect(contrastRatio(HOVER, rgbToHex(WHITE))).toBeCloseTo(1.14, 2);
-      expect(contrastRatio(HOVER, rgbToHex(WHITE))).toBeLessThan(AA_LARGE);
-
-      for (const stop of PORCELAIN_STOPS) {
-        const glass = rgbToHex(surfaceOver(PORCELAIN_HEADER_GLASS, stop));
-        const ratio = contrastRatio(HOVER, glass);
-
-        expect(ratio, `over ${glass}`).toBeLessThan(AA_LARGE);
-        expect(ratio, `over ${glass}`).toBeGreaterThanOrEqual(1.04);
-        expect(ratio, `over ${glass}`).toBeLessThanOrEqual(1.14);
-      }
-    });
-
-    /**
-     * The hover delta stated as a COMPARISON rather than a threshold, the shape the calendar's
-     * merged disabled alphas already use here: a bare "1.14:1" would be equally true of a value
-     * this skin should not have, and prose carrying it would go stale silently. Both sides are
-     * read from the stylesheet, so the claim `non-text-contrast.md` makes — that this state
-     * separates at least as well as the settled family one layer over — cannot drift from it.
-     */
-    it('separates from its resting fill at least as well as the settled solid-btn family does', () => {
-      const solidDelta = contrastRatio(
-        declarationsOf('--riv-solid-btn-fill')[0],
-        declarationsOf('--riv-solid-btn-hover')[0],
-      );
-
-      expect(contrastRatio(HOVER, rgbToHex(WHITE))).toBeGreaterThan(solidDelta);
-    });
-
-    /**
-     * The refusal, made mechanical — the same shape as "leaves the three candidate tokens exactly
-     * as it found them" above. `--riv-solid-btn-{fill,hover}` is the same skin one layer over, and
-     * collapsing onto it would be a REPAINT: its resting fill is not this button's, so the merge
-     * moves two positions rather than migrating one. Without this, "we gave the console button its
-     * own token" and "we quietly adopted the tourist pair" look identical in a diff.
-     */
-    it('refuses the solid-btn pair on its values, not on assertion', () => {
-      expect(declarationsOf('--riv-solid-btn-fill')).toEqual(['#f4f6f7']);
-      expect(declarationsOf('--riv-solid-btn-hover')).toEqual(['#e7ebec']);
-
-      expect(declarationsOf('--riv-solid-btn-fill')[0], 'the resting fills differ').not.toBe(
-        rgbToHex(WHITE),
-      );
-      expect(declarationsOf('--riv-solid-btn-hover')[0], 'the hover fills differ').not.toBe(HOVER);
-    });
-
-    /**
-     * The positive half, token-specific — and it needs to be here rather than left to `the sites`
-     * below, whose `%s paints its family` regex this site ALREADY satisfied through the
-     * `border-riv-console-btn-border` it carried before this slice. That test is a per-site check
-     * that some family is painted; it is structurally unable to say which, so on its own it gave
-     * this migration zero signal. Widening its alternation would not have helped: one matching
-     * branch satisfies the whole regex.
-     */
-    it('paints the hover fill through its named utility, not a literal', () => {
-      expect(read('operator/operator-actions.ts')).toContain('hover:bg-riv-console-btn-hover');
-    });
-
-    /**
-     * The other half of the role decision, asserted so the omission reads as one. The button's
-     * resting fill stays a Tailwind named colour: it is outside the ledger's population, it is the
-     * idiom of every other white surface in this console, and #849 — which tokenised the hairlines
-     * bounding exactly these fills — deliberately left the fills alone. A later slice that gives it
-     * `--riv-console-btn-fill` has to argue with this test rather than tidy past it.
-     */
-    it('leaves the resting fill as bg-white, the precedent of the surface it sits on', () => {
-      const source = read('operator/operator-actions.ts');
-
-      expect(source, 'the resting fill is still the named colour').toContain('bg-white');
-      expect(source, 'no fill token was invented for it').not.toContain('bg-riv-console-btn-fill');
+    /** The retired siblings stay retired: a re-declaration is a re-decision, argued here first. */
+    it('declares neither of the retired sign-out button tokens', () => {
+      expect(declarationsOf('--riv-console-btn-border')).toHaveLength(0);
+      expect(declarationsOf('--riv-console-btn-hover')).toHaveLength(0);
     });
   });
 
@@ -279,11 +178,7 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
   });
 
   describe('the sites', () => {
-    const SITES = [
-      'booking/booking-view.ts',
-      'operator/operator-console.html',
-      'operator/operator-actions.ts',
-    ];
+    const SITES = ['booking/booking-view.ts', 'operator/operator-console.html'];
 
     it.each(SITES)('%s paints no migrated literal', (path) => {
       const source = read(path).toLowerCase().replaceAll(' ', '');
@@ -299,7 +194,7 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
      */
     it.each(SITES)('%s paints its family', (path) => {
       expect(read(path), `${path} paints a re-cut family`).toMatch(
-        /-riv-(banner|console-card-border|console-btn-border)-?/,
+        /-riv-(banner|console-card-border)-?/,
       );
     });
   });

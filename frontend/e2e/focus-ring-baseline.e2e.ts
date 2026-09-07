@@ -83,18 +83,18 @@ test('a button with no focus utility paints the baseline ring (#890)', async ({ 
   await page.goto('/operator/1/beach-map');
   await signInAsOperator(page);
 
-  const signOut = page.getByTestId('oc-signout');
-  await expect(signOut).toBeVisible();
-  await expect(signOut).toHaveCSS('outline-style', 'none');
+  const chip = page.getByTestId('oc-account');
+  await expect(chip).toBeVisible();
+  await expect(chip).toHaveCSS('outline-style', 'none');
 
-  await signOut.focus();
+  await chip.focus();
   await page.keyboard.press('Tab');
   await page.keyboard.press('Shift+Tab');
-  await expect(signOut).toBeFocused();
-  await expect(signOut).toHaveCSS('outline-style', 'solid');
-  await expect(signOut).toHaveCSS('outline-width', '3px');
-  await expect(signOut).toHaveCSS('outline-color', ACCENT_INK);
-  await expect(signOut).toHaveCSS('outline-offset', '2px');
+  await expect(chip).toBeFocused();
+  await expect(chip).toHaveCSS('outline-style', 'solid');
+  await expect(chip).toHaveCSS('outline-width', '3px');
+  await expect(chip).toHaveCSS('outline-color', ACCENT_INK);
+  await expect(chip).toHaveCSS('outline-offset', '2px');
 });
 
 test('a site that names its own ring colour still wins — the utilities layer beats base (#890)', async ({

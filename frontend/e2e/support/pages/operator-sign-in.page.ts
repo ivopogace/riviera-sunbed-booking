@@ -19,7 +19,8 @@ export class OperatorSignInPage {
   readonly submit: Locator;
   /** The generic sign-in failure message (role=alert; the backend never says why — D-8). */
   readonly error: Locator;
-  readonly signedInCard: Locator;
+  /** The header's account chip, named `Account: <username>` — the one signed-in control in the bar. */
+  readonly accountChip: Locator;
   readonly signOutButton: Locator;
   /** The register tab's fields, and the proof-of-work control the fenced registration hosts. */
   readonly contactEmail: Locator;
@@ -33,7 +34,7 @@ export class OperatorSignInPage {
     this.password = page.getByLabel('Password', { exact: true });
     this.submit = page.getByRole('button', { name: /^Sign(ing)? in/ });
     this.error = page.getByRole('alert');
-    this.signedInCard = page.getByText(/^Signed in as/);
+    this.accountChip = page.getByRole('button', { name: /^Account: / });
     this.signOutButton = page.getByRole('button', { name: 'Sign out' });
     this.contactEmail = page.getByLabel('Contact email', { exact: true });
     this.registerSubmit = page.getByRole('button', { name: /^(Request account|Submitting)/ });
@@ -74,10 +75,13 @@ export class OperatorSignInPage {
   }
 
   async expectSignedInAs(username: string): Promise<void> {
-    await expect(this.signedInCard).toContainText(username);
+    await expect(this.accountChip).toHaveAccessibleName(`Account: ${username}`);
   }
 
+  /** Sign out lives in the account chip's popover on both operator headers. */
   async signOut(): Promise<void> {
+    await this.accountChip.click();
+    await expect(this.accountChip).toHaveAttribute('aria-expanded', 'true');
     await this.signOutButton.click();
   }
 }

@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 
-import { mockOperatorLifecycleApi } from './support/auth-mocks';
+import { mockOperatorLifecycleApi, mockOwnedVenues } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { settle } from './support/booking-dialog';
+import { openOperatorAccountMenu } from './support/shell';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
@@ -22,11 +24,23 @@ test('an admin on /admin gets the operator header + footer, not the tourist chro
   await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
   await expect(page).toHaveURL(/\/admin$/);
 
-  // The operator header: brand, session state, sign-out — and the Admin link, since this is an admin.
+  // The operator header: brand + the account chip, whose popover holds the rows (Admin console: admin).
   await expect(page.getByTestId('opc-header')).toBeVisible();
-  await expect(page.getByTestId('opc-signed-in-as')).toContainText(ADMIN.username);
-  await expect(page.getByTestId('opc-admin-link')).toBeVisible();
+  await expect(page.getByTestId('opc-account')).toHaveAccessibleName(`Account: ${ADMIN.username}`);
+  await expect(page.getByTestId('opc-header')).not.toContainText('Signed in as');
+  await openOperatorAccountMenu(page, 'opc');
+  await expect(page.getByTestId('opc-account-identity')).toContainText(
+    `Signed in as ${ADMIN.username}`,
+  );
+  await expect(page.getByTestId('opc-account-menu').getByRole('link')).toHaveText([
+    'Create a venue',
+    'Admin console',
+    'Change password',
+  ]);
+  await expect(page.getByTestId('opc-admin-link')).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('opc-signout')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('opc-account-menu')).toHaveCount(0);
 
   // The tourist chrome is gone: no tourist header, no customer "Register" link lying about the session.
   await expect(page.locator('.riv-header')).toHaveCount(0);
@@ -59,8 +73,9 @@ test('Sign out in the operator header ends the session and lands on the operator
   await mockOperatorLifecycleApi(page, { admin: ADMIN });
   await new OperatorSignInPage(page).goto('/admin');
   await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
-  await expect(page.getByTestId('opc-signout')).toBeVisible();
+  await expect(page.getByTestId('opc-account')).toBeVisible();
 
+  await openOperatorAccountMenu(page, 'opc');
   await page.getByTestId('opc-signout').click();
 
   await expect(page).toHaveURL(/\/account\/sign-in\?audience=operator/);
@@ -85,4 +100,42 @@ test('a signed-out visitor on /admin is offered the operator sign-in from the he
   );
 
   await expectNoSeriousAxeViolations(page, 'signed-out admin page under the operator chrome');
+});
+
+test('the account chip opens a popover on /admin and on the landing — axe clean, one header row on a phone (#1008)', async ({
+  page,
+}) => {
+  await mockOperatorLifecycleApi(page, { admin: ADMIN });
+  await mockOwnedVenues(page, [
+    { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
+    { id: 2, name: 'Sunset Lido', beach: 'Dhërmi' },
+  ]);
+  await page.setViewportSize({ width: 390, height: 780 });
+  await new OperatorSignInPage(page).goto('/admin');
+  await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
+  await expect(page).toHaveURL(/\/admin$/);
+
+  // One row: the brand and the chip share it.
+  const brand = (await page.getByTestId('opc-brand').boundingBox())!;
+  const chip = page.getByTestId('opc-account');
+  const chipBox = (await chip.boundingBox())!;
+  expect(chipBox.y).toBeLessThan(brand.y + brand.height);
+  expect(chipBox.y + chipBox.height).toBeGreaterThan(brand.y);
+  // A second row would add at least the chip's 44px floor; one row stays under 80.
+  const header = (await page.getByTestId('opc-header').boundingBox())!;
+  expect(header.height).toBeLessThanOrEqual(80);
+
+  await openOperatorAccountMenu(page, 'opc');
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'admin tab with the account popover open');
+
+  // The landing (the venue picker, two venues) wears the same chrome and the same chip.
+  await page.getByTestId('opc-account-backdrop').click();
+  await expect(page.getByTestId('opc-account-menu')).toHaveCount(0);
+  await expect(chip).toBeFocused();
+  await page.goto('/operator');
+  await expect(page.getByTestId('opc-header')).toBeVisible();
+  await openOperatorAccountMenu(page, 'opc');
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'operator landing with the account popover open');
 });

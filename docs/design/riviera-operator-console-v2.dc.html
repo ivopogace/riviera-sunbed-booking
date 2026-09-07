@@ -33,6 +33,7 @@
           <span style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(12,42,51,0.5);margin-top:4px;">{{ venueTitle }}</span>
         </span>
       </div>
+      <!-- Shipped chrome departs from this cluster by maintainer decision (epic #1006, slice #1008): the identity line and the session controls fold into one account chip whose popover holds them. -->
       <sc-if value="{{ signedIn }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;align-items:center;gap:14px;">
           <span style="font-size:13px;color:rgba(12,42,51,0.6);">Signed in as <strong style="color:#0a2a33;">{{ operatorName }}</strong></span>

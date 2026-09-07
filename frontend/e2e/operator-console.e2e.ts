@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import { openOperatorAccountMenu } from './support/shell';
 
 /**
  * Real-render CI-safe e2e for the operator console shell. Drives
@@ -148,6 +149,7 @@ test('signs in, renders the console, switches tabs, and signs out (+ axe)', asyn
   await expect(page.getByTestId('daily-view-tab')).toBeVisible();
 
   // Sign out → the console leaves for the unified auth card (the guard gates on activation).
+  await openOperatorAccountMenu(page, 'oc');
   await page.getByTestId('oc-signout').click();
   await expect(page).toHaveURL(/\/account\/sign-in\?audience=operator$/);
   await expect(page.getByTestId('auth-form')).toBeVisible();
@@ -256,4 +258,47 @@ test('renders porcelain over the tourist theme with a single scrolling tab row, 
 
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'operator console (narrow, single scrolling tab row)');
+});
+
+test('the account chip opens a popover on the console — axe clean, one header row on a phone (#1008)', async ({
+  page,
+}) => {
+  await mockConsole(page, 0);
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto('/operator/1/daily');
+  await signIn(page);
+  await expect(page.getByTestId('oc-header')).toBeVisible();
+
+  // One row: the brand and the chip share it, and nothing in the bar reads "Signed in as".
+  const brand = (await page.getByTestId('oc-venue-title').boundingBox())!;
+  const chip = page.getByTestId('oc-account');
+  const chipBox = (await chip.boundingBox())!;
+  expect(chipBox.y).toBeLessThan(brand.y + brand.height);
+  expect(chipBox.y + chipBox.height).toBeGreaterThan(brand.y);
+  // A second row would add at least the chip's 44px floor; one row with its padding stays under 80.
+  const header = (await page.getByTestId('oc-header').boundingBox())!;
+  expect(header.height).toBeLessThanOrEqual(80);
+  await expect(page.getByTestId('oc-header')).not.toContainText('Signed in as');
+  await expect(chip).toHaveAccessibleName('Account: operator');
+
+  await openOperatorAccountMenu(page, 'oc');
+  await expect(page.getByTestId('oc-account-identity')).toContainText('Signed in as operator');
+  await expect(page.getByTestId('oc-account-menu').getByRole('link')).toHaveText([
+    'Create a venue',
+    'Change password',
+  ]);
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'operator console with the account popover open');
+
+  // Escape closes it and hands focus back to the chip.
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('oc-account-menu')).toHaveCount(0);
+  await expect(chip).toHaveAttribute('aria-expanded', 'false');
+  await expect(chip).toBeFocused();
+
+  // A click on the page below the header closes it too — the backdrop covers the header only.
+  await openOperatorAccountMenu(page, 'oc');
+  await page.getByTestId('daily-view-tab').click({ position: { x: 8, y: 8 } });
+  await expect(page.getByTestId('oc-account-menu')).toHaveCount(0);
+  await expect(chip).toHaveAttribute('aria-expanded', 'false');
 });

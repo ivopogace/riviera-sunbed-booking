@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { ADMIN, mockWholeAdminConsole } from './support/admin-console.mocks';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
+import { openOperatorAccountMenu } from './support/shell';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
@@ -43,6 +44,14 @@ test.describe('44px touch targets on the admin console at a phone width', () => 
       await expectTouchTargets(page, surface.label);
     });
   }
+
+  test('operators — the account menu open (#1008)', async ({ page }) => {
+    await openAdmin(page, '/admin', 'admin-op-row');
+    await openOperatorAccountMenu(page, 'opc');
+    await expect(page.getByTestId('opc-signout')).toBeVisible();
+
+    await expectTouchTargets(page, 'admin operators with the account popover open');
+  });
 });
 
 // A sweep of the resting surface cannot see a control that exists only once an editor/confirm opens.

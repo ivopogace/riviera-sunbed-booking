@@ -186,8 +186,7 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
     const signOut = host().querySelector<HTMLButtonElement>('[data-testid="oc-signout"]')!;
     signOut.focus();
     signOut.click();
-    // The row unmounts with the popover, and the console itself leaves: focus is parked on the
-    // console's <main> before either happens (WCAG 2.4.3), never stranded on <body>.
+    // Focus is parked on the console's <main> before the row and the console unmount (WCAG 2.4.3).
     expect(document.activeElement).toBe(host().querySelector('main'));
     httpMock
       .expectOne(`${BASE}/api/auth/logout`)

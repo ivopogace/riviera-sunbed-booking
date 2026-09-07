@@ -172,8 +172,6 @@
   --color-riv-banner-body-ink: var(--riv-banner-body-ink);
   --color-riv-banner-strong-ink: var(--riv-banner-strong-ink);
   --color-riv-console-card-border: var(--riv-console-card-border);
-  --color-riv-console-btn-border: var(--riv-console-btn-border);
-  --color-riv-console-btn-hover: var(--riv-console-btn-hover);
 
   --shadow-riv-pop: var(--riv-pop-shadow);
   --shadow-riv-card-hover: var(--riv-card-hover-shadow);
@@ -827,28 +825,16 @@
   --riv-banner-body-ink: #334a52;
   --riv-banner-strong-ink: #0a2a33;
 
-  /** The operator console's two white-surface hairlines. Their own tokens, not the same-valued
-      --riv-pop-divider / --riv-chip-border, whose roles and theme overrides are different; two of
-      them because a surface boundary and a control's affordance boundary are different forms.
-      Declared once — every consumer sits under a porcelain-pinned host. Non-text chrome at
-      1.21:1 / 1.32:1 over their white fills, decorative under docs/design/non-text-contrast.md
-      rule 2; the "Venue not found" card's edge is outside 1.4.11 rather than exempt under it.
+  /** The operator console's white-surface hairline: the edge of the "Venue not found" card. Its
+      own token, not the same-valued --riv-pop-divider / --riv-chip-border, whose roles and theme
+      overrides are different. Declared once — every consumer sits under a porcelain-pinned host.
+      Non-text chrome at 1.21:1 over its white fill; the card's edge is outside 1.4.11 rather than
+      exempt under it (docs/design/non-text-contrast.md). Its sibling --riv-console-btn-border and
+      the hover fill --riv-console-btn-hover retired with the sign-out pill they bounded, when the
+      account chip folded that button into a popover row.
       Rationale: docs/design/colour-literal-token-audit.md (class R).
       Proof: shared/fixed-ink-tokens.contrast.spec.ts. */
   --riv-console-card-border: rgba(12, 42, 51, 0.1);
-  --riv-console-btn-border: rgba(12, 42, 51, 0.14);
-
-  /** The sign-out button's hover fill, the third member of the skin above. Deliberately not the
-      --riv-solid-btn-hover pair, which rests on #f4f6f7 where this button rests on #ffffff, so
-      adopting it would repaint rather than migrate. The resting fill stays `bg-white` and takes no
-      token of its own. Declared once — every consumer sits under a porcelain-pinned host, so a
-      dark branch is unreachable. Non-text chrome (WCAG 1.4.11) at 1.14:1 over that resting fill and
-      1.04–1.14:1 over the header glass, decorative under docs/design/non-text-contrast.md rule 2
-      (the button's own label carries the identity at 13.29:1 here), measured rather than assumed
-      exempt. Rationale: docs/design/colour-literal-token-audit.md (class R), issue #887.
-      Proof: shared/fixed-ink-tokens.contrast.spec.ts + e2e/fixed-ink-token-recut.e2e.ts (the
-      hovered box, the only place a `.hover\:bg-…:hover` rule can be seen). */
-  --riv-console-btn-hover: #eef1f2;
 }
 
 [data-riv-theme='riviera'] {

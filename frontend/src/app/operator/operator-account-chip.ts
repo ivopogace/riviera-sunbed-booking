@@ -41,12 +41,19 @@ import { TouchTarget } from '../shared/touch-target';
  *
  * <p>Focus is moved on every leg that unmounts the focused element (WCAG 2.4.3): Escape, the
  * backdrop and a row activation all return it to the chip. A navigation that ends while the
- * popover is open (focus tabbed out of it) closes the popover without touching focus.
+ * popover is open (focus tabbed out of it), or a click outside the header, closes the popover
+ * without touching focus. The outside click is a document listener, not the backdrop alone: the
+ * header's `backdrop-filter` makes it the containing block of the `fixed` backdrop, which
+ * therefore covers the header and nothing below it.
  */
 @Component({
   selector: 'app-operator-account-chip',
   imports: [RouterLink, RouterLinkActive, TouchTarget],
-  host: { class: 'relative flex items-center', '(document:keydown.escape)': 'dismiss()' },
+  host: {
+    class: 'relative flex items-center',
+    '(document:keydown.escape)': 'dismiss()',
+    '(document:click)': 'onDocumentClick($event)',
+  },
   template: `
     <button
       appTouchTarget
@@ -139,6 +146,7 @@ export class OperatorAccountChip {
   readonly signOut = output<void>();
 
   protected readonly operator = inject(OperatorAuth);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly chipButton = viewChild.required<ElementRef<HTMLButtonElement>>('chip');
 
   protected readonly open = signal(false);
@@ -195,6 +203,13 @@ export class OperatorAccountChip {
   protected dismiss(): void {
     if (this.open()) {
       this.activate();
+    }
+  }
+
+  /** A click below the header: close, leaving focus on whatever was clicked. */
+  protected onDocumentClick(event: Event): void {
+    if (this.open() && !this.host.nativeElement.contains(event.target as Node)) {
+      this.open.set(false);
     }
   }
 }
