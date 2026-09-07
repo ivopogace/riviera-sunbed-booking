@@ -139,15 +139,33 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
     await fixture.whenStable();
   }
 
-  it('renders the porcelain shell with the venue title + signed-in-as', async () => {
+  /** Opens the account chip and lets `routerLinkActive` mark the rows (a microtask after mount). */
+  async function openChip(): Promise<void> {
+    host().querySelector<HTMLButtonElement>('[data-testid="oc-account"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  it('renders the porcelain shell with the venue title + one account chip (#1008)', async () => {
     await createSignedIn('Miramar Beach Club');
     expect(host().querySelector('[data-testid="oc-header"]')).not.toBeNull();
     expect(host().querySelector('[data-testid="oc-venue-title"]')?.textContent).toContain(
       'Miramar Beach Club',
     );
-    expect(host().querySelector('[data-testid="oc-signed-in-as"]')?.textContent).toContain(
-      'operator',
+    const header = host().querySelector('[data-testid="oc-header"]')!;
+    const chip = header.querySelector<HTMLButtonElement>('[data-testid="oc-account"]')!;
+    expect(chip.getAttribute('aria-label')).toBe('Account: operator');
+    expect(chip.getAttribute('aria-expanded')).toBe('false');
+    // The five peers are gone from the bar: the chip is the header's one control.
+    expect(header.querySelectorAll('a, button')).toHaveLength(1);
+    expect(header.textContent).not.toContain('Signed in as');
+
+    await openChip();
+    expect(header.querySelector('[data-testid="oc-account-identity"]')?.textContent).toContain(
+      'Signed in as operator',
     );
+    expect(header.querySelector('[data-testid="oc-signout"]')).not.toBeNull();
     // The console shell carries its own footer — the shell chrome (and its footer) is suppressed here.
     expect(host().querySelector('[data-testid="oc-footer"]')).not.toBeNull();
   });
@@ -164,7 +182,13 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
     await createSignedIn('Miramar Beach Club', 2);
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
-    host().querySelector<HTMLButtonElement>('[data-testid="oc-signout"]')!.click();
+    await openChip();
+    const signOut = host().querySelector<HTMLButtonElement>('[data-testid="oc-signout"]')!;
+    signOut.focus();
+    signOut.click();
+    // The row unmounts with the popover, and the console itself leaves: focus is parked on the
+    // console's <main> before either happens (WCAG 2.4.3), never stranded on <body>.
+    expect(document.activeElement).toBe(host().querySelector('main'));
     httpMock
       .expectOne(`${BASE}/api/auth/logout`)
       .flush(null, { status: 204, statusText: 'No Content' });
@@ -284,6 +308,7 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
 
   it('exposes a reachable create-venue link to the operator-home create state (#278)', async () => {
     await createSignedIn();
+    await openChip();
     const link = host().querySelector<HTMLAnchorElement>('[data-testid="oc-create-venue"]');
     expect(link?.getAttribute('href')).toBe('/operator?create=1');
   });

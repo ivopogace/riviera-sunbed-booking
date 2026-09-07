@@ -1,5 +1,5 @@
-import { Component, effect, inject, signal, untracked } from '@angular/core';
-import { OperatorActions } from './operator-actions';
+import { Component, ElementRef, effect, inject, signal, untracked } from '@angular/core';
+import { OperatorAccountChip } from './operator-account-chip';
 import { LegalFooter } from '../shared/legal-footer';
 import {
   ActivatedRoute,
@@ -34,7 +34,7 @@ interface ConsoleTab {
 /**
  * Operator console shell. The porcelain-light glass chrome that
  * wraps the operator surface at `/operator/:venueId`: a sticky header (Operator wordmark, venue
- * title, signed-in-as, sign out) and the tab rail (`shared/tab-rail.ts`) with a live Requests
+ * title, the account chip) and the tab rail (`shared/tab-rail.ts`) with a live Requests
  * badge, hosting each tab as a child route. The app shell (`app.ts`) suppresses all of its own chrome for
  * `/operator/:venueId` (`data.operatorConsole`), so this component owns the full viewport — every
  * other operator surface wears the shared operator chrome instead (`data.operatorChrome`).
@@ -51,7 +51,7 @@ interface ConsoleTab {
 @Component({
   selector: 'app-operator-console',
   imports: [
-    OperatorActions,
+    OperatorAccountChip,
     LegalFooter,
     RouterOutlet,
     RouterLink,
@@ -76,6 +76,7 @@ export class OperatorConsole {
   private readonly console = inject(OperatorConsoleService);
   private readonly requests = inject(PendingRequestsStore);
   protected readonly operator = inject(OperatorAuth);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /** The venue this console manages — reactive to in-place `:venueId` changes: the router
    *  reuses this instance when only the param differs, so a snapshot read would pin the old venue. */
@@ -117,6 +118,8 @@ export class OperatorConsole {
   }
 
   protected async onSignOut(): Promise<void> {
+    // Park focus on the console's <main> before the chip unmounts (WCAG 2.4.3) — signOut() destroys it.
+    this.host.nativeElement.querySelector<HTMLElement>('main')?.focus();
     await this.operator.signOut();
     this.venueName.set(undefined);
     this.venue.set(undefined);

@@ -236,15 +236,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** phase 2 — the console spec's shell/create-venue/sign-out cases onto the chip (red), mount the chip, park focus on `oc-main`.
+**Next action:** phase 3 — delete `operator-actions.*`, retire the console-btn tokens, the e2e/page-object amendments, the AC-6/AC-8 e2e, docs; run the touched e2e locally.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the chip component + the hoisted popover skin (spec, contrast spec) | ✅ | `Add the operator account chip (#1008)` |
 | 1 — the thin chrome consumes the chip | ✅ | `Operator chrome: the account chip (#1008)` |
-| 2 — the venue console consumes the chip, parks focus on sign-out | | |
+| 2 — the venue console consumes the chip, parks focus on sign-out | ✅ | `Venue console: the account chip, focus parked on sign-out (#1008)` |
 | 3 — retire `OperatorActions` + the console-btn tokens; e2e, page object, docs, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

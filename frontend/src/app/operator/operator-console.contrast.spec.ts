@@ -1,6 +1,5 @@
 import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
-  CONSOLE_BTN_HOVER,
   INK_DARK,
   PORCELAIN_HEADER_GLASS,
   PORCELAIN_STOPS,
@@ -11,8 +10,9 @@ import {
 /**
  * WCAG-AA contrast guard for the operator console. The console is ALWAYS porcelain
  * (its host scopes `data-riv-theme="porcelain"`), so every pair is proven over the porcelain
- * background stops / header glass. Interactive chrome (venue-not-found card, Requests badge,
- * buttons) uses OPAQUE SOLID fills instead of translucent ones — the `css:S7924`
+ * background stops / header glass; the account chip's pairs are in
+ * `operator-account-chip.contrast.spec.ts`. Interactive chrome (venue-not-found card, Requests
+ * badge) uses OPAQUE SOLID fills instead of translucent ones — the `css:S7924`
  * treatment — so both the WCAG maths and the static analyzer compute contrast without gradient
  * compositing. These values mirror the Tailwind utilities in `operator-console.html`, the host
  * class in `operator-console.ts`, and the porcelain `--riv-*` tokens in `tailwind.css`; a colour
@@ -22,14 +22,13 @@ import {
 const WHITE = '#ffffff';
 const INK = '#0a2a33'; // --riv-ink (porcelain)
 const BADGE_FILL = rgbToHex(SOLID_FILL_BRAND);
-const SIGNOUT_HOVER_FILL = rgbToHex(CONSOLE_BTN_HOVER);
 
 describe('OperatorConsole porcelain contrast (WCAG AA, #170)', () => {
   it('header wordmark ink meets AA on the porcelain header glass', () => {
     expectAaOverStops(INK_DARK, 1, PORCELAIN_HEADER_GLASS, PORCELAIN_STOPS);
   });
 
-  it('header "Operator" + signed-in-as (ink 0.7) meet AA on the header glass', () => {
+  it('header "Operator" (ink 0.7) meets AA on the header glass', () => {
     expectAaOverStops(INK_DARK, 0.7, PORCELAIN_HEADER_GLASS, PORCELAIN_STOPS);
   });
 
@@ -37,7 +36,7 @@ describe('OperatorConsole porcelain contrast (WCAG AA, #170)', () => {
     expectAaOverStops(INK_DARK, 0.66, PORCELAIN_HEADER_GLASS, PORCELAIN_STOPS);
   });
 
-  it('not-found card / sign-out ink meet AA on the opaque white surface', () => {
+  it('not-found card ink meets AA on the opaque white surface', () => {
     expect(contrastRatio(INK, WHITE)).toBeGreaterThanOrEqual(AA_NORMAL);
     // ink-soft intro on the white card
     const inkSoft = composite(INK_DARK, 0.7, [255, 255, 255]);
@@ -46,10 +45,6 @@ describe('OperatorConsole porcelain contrast (WCAG AA, #170)', () => {
 
   it('Requests badge (white) meets AA on its solid teal fill', () => {
     expect(contrastRatio(WHITE, BADGE_FILL)).toBeGreaterThanOrEqual(AA_NORMAL);
-  });
-
-  it('sign-out ink meets AA on the hovered fill', () => {
-    expect(contrastRatio(INK, SIGNOUT_HOVER_FILL)).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
   it('resting tab label (ink 0.7) meets AA over every porcelain background stop', () => {

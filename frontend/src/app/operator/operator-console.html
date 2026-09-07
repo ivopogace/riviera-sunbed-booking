@@ -43,7 +43,7 @@
           >
         </div>
         <div class="oc-header-right flex flex-wrap items-center gap-3.5">
-          <app-operator-actions testIdPrefix="oc" (signOut)="onSignOut()" />
+          <app-operator-account-chip testIdPrefix="oc" (signOut)="onSignOut()" />
         </div>
       </div>
     </header>
@@ -81,7 +81,8 @@
     </nav>
 
     <!-- Wider than the 1120px header/tabs/footer so the beach-map tab's grid can fit-to-width (#709); every other tab's own narrower section max-width keeps it visually unchanged. -->
-    <main class="oc-main mx-auto w-full max-w-[1300px] flex-1 px-6 pt-5 pb-10">
+    <!-- tabindex=-1: sign-out parks keyboard/AT focus here before the chip unmounts, not on document.body. -->
+    <main tabindex="-1" class="oc-main mx-auto w-full max-w-[1300px] flex-1 px-6 pt-5 pb-10">
       <app-pending-approval-banner />
       <router-outlet />
     </main>
