@@ -233,15 +233,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** phase 2 — `shared/console-palette.ts`, red first at `console-palette.spec.ts`.
+**Next action:** phase 3 — the shell's search button, gate, `paletteRows` and mount, red first at `console-shell.spec.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 9b6713d7 |
-| 1 — the search glyph; the row, hint and badge recipes hoisted and consumed by the shell | ✅ | 8900b9f3 |
-| 2 — `shared/console-palette.ts`: the dialog, chords, filter, highlight, Enter, trap, focus legs, close on navigation; its spec, a11y and contrast specs | | |
+| 1 — the search glyph; the row, hint and badge recipes hoisted and consumed by the shell | ✅ | 6fda2f03 |
+| 2 — `shared/console-palette.ts`: the dialog, chords, filter, highlight, Enter, trap, focus legs, close on navigation; its spec, a11y and contrast specs | ✅ | (phase-2 commit) |
 | 3 — the shell: the search button, the gate, `paletteRows`, the mount; shell spec, a11y spec, `app.spec.ts` | | |
 | 4 — e2e: `console-shell.e2e.ts`, `operator-console.e2e.ts`, `admin-console-tabs.e2e.ts`, `support/shell.ts` | | |
 | 5 — contract: lint, format, unit, the mocked e2e; docs-freshness; #1012's plan retired; file-structure guard; push | | |
@@ -304,14 +304,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Create `frontend/src/app/shared/console-palette.ts`, `.spec.ts`, `.a11y.spec.ts`,
 `.contrast.spec.ts`.
 
-- [ ] **Step 1: Write the failing tests** — AC-3, AC-4, AC-5 cases over a host with a test router
+- [x] **Step 1: Write the failing tests** — AC-3, AC-4, AC-5 cases over a host with a test router
   and a fixed `rows` input; the a11y case; the contrast cases.
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/shared/console-palette` → FAIL (no module).
-- [ ] **Step 3: Minimal implementation** — the component.
-- [ ] **Step 4: Run it, verify it passes** — the three palette specs + `focus-ring-baseline.spec.ts` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: every modal that traps focus → `grep -rln "trapFocusWithin" frontend/src/app` — same trap, same `aria-modal`.
-- [ ] **Step 6: Commit** — `Add the Go to palette: chords, filter, Enter, focus legs (#1013)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include src/app/shared/console-palette.spec.ts …` → FAIL (TS2307: cannot find module).
+- [x] **Step 3: Minimal implementation** — the component.
+- [x] **Step 4: Run it, verify it passes** — the three palette specs + `focus-ring-baseline.spec.ts` → 19/19 PASS (the baseline sweep first flagged the suppression tokens *spelled* in a comment and a redundant assertion — both dropped; the sweep is the guard).
+- [x] **Step 5: Generalization-audit pass** — population: every modal that traps focus → `grep -rln "trapFocusWithin" frontend/src/app` — same trap, same `aria-modal`.
+- [x] **Step 6: Commit** — `Add the Go to palette: chords, filter, Enter, focus legs (#1013)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 3 — the shell
 
@@ -354,6 +354,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-07 | phase 1 | every copy of the badge or the sheet-row recipe outside its new home — the drift mechanism the hoist removes | `grep -rn "min-w-5 items-center justify-center rounded-full\|rounded-\[14px\] px-3.5 py-\[11px\]" frontend/src/app` | none outside `popover-skin.ts` / `tab-rail.ts` (the shell now reads both) | nothing else to hoist |
+| 2026-09-07 | phase 2 | every modal that traps focus — the mechanism the palette joins | `grep -rln "trapFocusWithin" frontend/src/app --include=*.ts \| grep -v spec` | `photo-lightbox.ts`, `payout-statement.ts`, `booking-dialog.ts`, `find-booking.ts`, `availability-calendar.ts`, the palette | the palette takes the same trap and `aria-modal`; `focus-trap.ts`'s doc names "four modals" — refreshed at close-out |
 
 ---
 
