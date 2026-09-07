@@ -171,7 +171,7 @@ Below `sm` the text rail retires into the phone rail; from `sm` up nothing chang
 | R-5 | The sheet's `fixed` box lands inside a filtered containing block and pins to the header instead of the viewport | low | med | the sheet renders in the rail box, a sibling of the header (the #1011 R-5 lesson); the e2e asserts the sheet's box sits above the viewport bottom and inside 344px | agent | open |
 | R-6 | The `fold` project runs the two touch-target files whole at 344px and an unrelated surface fails the floor there | med | med | first run both files under `fold`; a pre-existing failure outside the rail is scoped out with a project `grep` on the rail cases and recorded in the findings register, never fixed silently in this slice | agent | open |
 | R-7 | The More button's accessible name changes with the route (`More` → `Payouts`), so an e2e locating `getByRole('button', { name: 'More' })` breaks after a navigation | med | low | the e2e locate it by `oc-more` and assert the name; the class doc says the name is route-dependent | agent | open |
-| R-8 | A stale template literal in `@Component.template` built from a shared `const` fails AOT if the compiler cannot evaluate it | low | low | phase 1 runs `npm run build` once; fall back to literal attributes per glyph | agent | open |
+| R-8 | A stale template literal in `@Component.template` built from a shared `const` fails AOT if the compiler cannot evaluate it | low | low | phase 1 runs `npm run build` once; fall back to literal attributes per glyph | agent | closed — phase 1: the compiler and the build accepted `${SVG}`, angular-eslint's template parser did not (an unescaped `{`), so each glyph writes its `<svg>` attributes literally |
 | R-9 | `check-touch-target.mjs` TT-1 on the new `<button>` (More) | low | low | `appTouchTarget` on it; the hook runs on save | agent | open |
 
 ## Open questions / Assumptions
@@ -267,14 +267,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan written — implement (phase 1) next`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** phase 1 — write `console-glyphs.spec.ts` red, then the glyph set.
+**Next action:** phase 2 — the phone rail's failing cases in `console-shell.spec.ts` and `admin-console-tabs.spec.ts`, then the tables and the rail.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc | ✅ | |
-| 1 — the glyph set (`shared/console-glyphs.ts` + spec; a production build to prove the shared template attributes compile) | | |
+| 0 — plan doc | ✅ | a16ca12f |
+| 1 — the glyph set (`shared/console-glyphs.ts` + spec; a production build to prove the shared template attributes compile) | ✅ | the phase-1 commit |
 | 2 — the phone rail: the destination tables, the four slots, the current-aware More button, the badge, `Admin` `max-sm:hidden`; shell spec, contrast spec, a11y spec | | |
 | 3 — the More sheet: groups, rows, cross-console row, the focus legs, close on navigation; shell spec, a11y spec | | |
 | 4 — e2e: the two phone projects; the six stale seams rewritten; the new cases (AC-1…AC-6, AC-8, AC-9); the touched files run | | |
@@ -419,6 +419,7 @@ it('the Admin section link leaves the row below sm (#1012)', () => {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-07 | phase 1 | every hand-written inline `<svg>` in an app template that a shared glyph could replace | `grep -rln "<svg" frontend/src/app --include=*.ts --include=*.html \| grep -v spec` | `app.html` (the tourist tab bar's own three glyphs — the tourist chrome is a non-goal), `clock-icon.ts`, `console-glyphs.ts` | none to replace; the console templates hand-write no svg |
 
 ---
 
