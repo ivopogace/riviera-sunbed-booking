@@ -378,10 +378,6 @@ test("the console paints both hairlines, and the button's hover fill, from their
   await page.goto('/operator/1/beach-map');
   await signInAsOperator(page);
 
-  const activeTab = page.locator('a[aria-current="page"]');
-  await expect(activeTab).toBeVisible();
-  await expect(activeTab).toHaveCSS('border-color', 'rgba(12, 42, 51, 0.1)');
-
   const signOut = page.getByTestId('oc-signout');
   await expect(signOut).toBeVisible();
   await expect(signOut).toHaveCSS('border-color', 'rgba(12, 42, 51, 0.14)');
@@ -390,4 +386,10 @@ test("the console paints both hairlines, and the button's hover fill, from their
   await expect(signOut).toHaveCSS('background-color', 'rgb(255, 255, 255)');
   await signOut.hover();
   await expect(signOut).toHaveCSS('background-color', CONSOLE_BTN_HOVER);
+
+  // The card border's one consumer since the tabs moved to the shared rail: the "Venue not found" card.
+  await page.goto('/operator/not-a-venue');
+  const notFound = page.getByTestId('oc-invalid-venue');
+  await expect(notFound).toBeVisible();
+  await expect(notFound.locator('..')).toHaveCSS('border-color', 'rgba(12, 42, 51, 0.1)');
 });

@@ -231,6 +231,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (frontend job, run 34110694421) | three e2e pinned the old strips through the landmark: Commissions slot 2, Privacy's last-three, the active pill's card border | fixed-in-`d10e7a99` |
 
 ---
 
@@ -300,6 +301,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-07 | phase 0 (the rail carries scroll-into-view) | every routed link that scrolls itself into view via a consumer-side `viewChildren` + `effect` | `grep -rn "scrollIntoView" frontend/src/app --include=*.ts` | `admin-console-tabs.ts`, `operator-console.ts` (the two strips) | both migrated to `a[appTabRailTab]` in phases 1–2; the tourist header's links do not scroll (a non-scrolling row), no action |
+| 2026-09-07 | CI red on PR #1014 (three e2e pins missed) | every e2e that reads the strips through the LANDMARK rather than a test id — `getByRole('navigation', { name: '… console sections' })` and bare `a[aria-current="page"]` locators — the mechanism the phase-3 grep (test ids, classes) did not enumerate | `grep -rn "getByRole('navigation'\|aria-current=\"page\"\]" frontend/e2e/*.e2e.ts` | `admin-commissions.e2e.ts` (slot 2 pin), `admin-privacy.e2e.ts` (last-three pin), `fixed-ink-token-recut.e2e.ts` (card border read off the active pill); the other role-located readers only click tabs by name | the two slot pins amended to the contract; the recut spec reads the card border off the Venue-not-found card, its remaining consumer |
 | 2026-09-07 | phase 3 (an e2e pinned the admin tab's accent ink) | every spec or e2e that reads the old strips' markup: `riv-tab`, `oc-tab-label`, `admin-tab-*` colour, pill classes | `grep -rn "riv-tab\b\|oc-tab-label\|admin-tab-\|oc-tabs" frontend/e2e frontend/src` | 1 stale (`accent-token-inks.e2e.ts:108`), 20 files locating tabs by test id / role (unaffected) | the one stale assertion retargeted; the rest hold against the new markup (86 e2e green) |
 
 ---
