@@ -46,7 +46,7 @@
     </div>
   }
 
-  @if (shellChrome() === 'operator') {
+  @if (shellChrome() === 'operator' && consoleNavVariant() === 'current') {
     <app-operator-chrome />
   }
 
@@ -476,9 +476,17 @@
 
   <!-- tabindex=-1: closing the find modal on navigation lands keyboard/AT focus here, not document.body. -->
   <!-- Deliberately unpositioned: a stacking context here would trap page-level fixed modals below the sticky header. -->
-  <main #mainEl tabindex="-1" class="flex-1">
-    <router-outlet />
-  </main>
+  <ng-template #shellMain>
+    <main #mainEl tabindex="-1" class="flex-1">
+      <router-outlet />
+    </main>
+  </ng-template>
+  <!-- PROTOTYPE — a nav candidate wraps the plain operator pages (/operator landing, password); the admin console wraps itself. -->
+  @if (plainProtoChrome()) {
+    <app-prototype-console-nav [ctx]="plainNavCtx" [body]="shellMain" (signOut)="protoSignOut()" />
+  } @else {
+    <ng-container *ngTemplateOutlet="shellMain" />
+  }
 
   <!-- Shared by the tourist and operator chromes (tokens re-scope under the porcelain pin). -->
   @if (shellChrome() !== 'none') {
@@ -490,6 +498,10 @@
         class="riv-footer-inner mx-auto max-w-[1080px] px-6 py-4 text-[13px] text-riv-ink-soft"
       ></div>
     </footer>
+  }
+
+  @if (shellChrome() !== 'tourist') {
+    <app-prototype-switcher />
   }
 
   <!-- Find-a-booking glass modal: a shell-level, nav-triggered overlay. -->

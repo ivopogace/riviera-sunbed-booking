@@ -1,4 +1,13 @@
-import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import {
+  Component,
+  DOCUMENT,
+  ElementRef,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { LegalFooter } from './shared/legal-footer';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
@@ -16,7 +25,12 @@ import { FindBooking } from './booking/find-booking';
 import { CustomerAuth } from './core/customer-auth';
 import { SignOutNotice } from './core/sign-out-notice';
 import { ThemeId, ThemeService } from './core/theme';
+import { OperatorAuth } from './core/operator-auth';
 import { OperatorChrome } from './operator/operator-chrome';
+import { ConsoleNavContext } from './prototype-console-nav/console-nav-support';
+import { PrototypeConsoleNav } from './prototype-console-nav/prototype-console-nav';
+import { PrototypeConsoleNavVariant } from './prototype-console-nav/prototype-console-nav-variant';
+import { PrototypeSwitcher } from './prototype-console-nav/prototype-switcher';
 import { focusMover } from './shared/focus-after-render';
 import { TouchTarget } from './shared/touch-target';
 
@@ -130,6 +144,8 @@ interface RouteChrome {
   section: TouristSection | null;
   /** `false` when any route on the chain carries `data.tabBar: false`. */
   tabBar: boolean;
+  /** PROTOTYPE — the chain passes through the `admin` shell route, which draws its own candidate chrome. */
+  adminShell: boolean;
 }
 
 /** The chrome before the first navigation completes: the tourist header, footer and tab bar,
@@ -139,6 +155,7 @@ const PRE_NAVIGATION_CHROME: RouteChrome = {
   operatorChrome: false,
   section: null,
   tabBar: true,
+  adminShell: false,
 };
 
 /** Narrows an untyped `data.section` to a {@link TouristSection}; anything else is no section. */
@@ -162,6 +179,9 @@ function sectionOf(data: unknown): TouristSection | null {
     FindBooking,
     OperatorChrome,
     TouchTarget,
+    NgTemplateOutlet,
+    PrototypeConsoleNav,
+    PrototypeSwitcher,
   ],
   templateUrl: './app.html',
   host: {
@@ -175,6 +195,18 @@ export class App {
   protected readonly exactPath = EXACT_PATH;
 
   protected readonly themes = inject(ThemeService);
+  /** PROTOTYPE — which console-nav candidate renders on operator/admin routes; `current` is shipped. */
+  protected readonly consoleNavVariant = inject(PrototypeConsoleNavVariant).variant;
+  private readonly operatorAuth = inject(OperatorAuth);
+  private readonly document = inject(DOCUMENT);
+  /** PROTOTYPE — the plain operator pages (landing, password) wear the candidate instead of `app-operator-chrome`. */
+  protected readonly plainProtoChrome = computed(
+    () =>
+      this.shellChrome() === 'operator' &&
+      this.consoleNavVariant() !== 'current' &&
+      !this.routeChrome().adminShell,
+  );
+  protected readonly plainNavCtx: ConsoleNavContext = { surface: 'plain', requestsCount: 0 };
   /** Customer session state for the header: sign-in/register links ↔ signed-in + sign-out. */
   protected readonly customerAuth = inject(CustomerAuth);
   /**
@@ -259,14 +291,16 @@ export class App {
     let operatorChrome = route.data['operatorChrome'] === true;
     let section = sectionOf(route.data['section']);
     let tabBar = route.data['tabBar'] !== false;
+    let adminShell = route.routeConfig?.path === 'admin';
     while (route.firstChild) {
       route = route.firstChild;
       chromeless ||= route.data['operatorConsole'] === true;
       operatorChrome ||= route.data['operatorChrome'] === true;
       section = sectionOf(route.data['section']) ?? section;
       tabBar &&= route.data['tabBar'] !== false;
+      adminShell ||= route.routeConfig?.path === 'admin';
     }
-    return { chromeless, operatorChrome, section, tabBar };
+    return { chromeless, operatorChrome, section, tabBar, adminShell };
   });
 
   /** The bottom tab the active route belongs to, `null` outside every section (legal pages) and
@@ -486,5 +520,12 @@ export class App {
       this.accountOpen.set(false);
       (this.accountButton() ?? this.menuTrigger())?.nativeElement.focus();
     }
+  }
+
+  /** PROTOTYPE — sign out from a candidate's account menu on a plain operator page. */
+  protected async protoSignOut(): Promise<void> {
+    this.document.querySelector<HTMLElement>('main')?.focus();
+    await this.operatorAuth.signOut();
+    await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });
   }
 }

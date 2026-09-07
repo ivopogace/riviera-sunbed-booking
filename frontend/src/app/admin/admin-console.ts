@@ -1,10 +1,13 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, DOCUMENT, computed, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink, RouterOutlet } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { currentUrl } from '../shared/current-url';
 import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminForbidden } from './admin-forbidden';
+import { ConsoleNavContext } from '../prototype-console-nav/console-nav-support';
+import { PrototypeConsoleNav } from '../prototype-console-nav/prototype-console-nav';
+import { PrototypeConsoleNavVariant } from '../prototype-console-nav/prototype-console-nav-variant';
 
 /**
  * Per-tab copy and test ids the shell renders around whichever child route is active, carried on
@@ -54,42 +57,85 @@ const FALLBACK_TAB: AdminTabRouteData = {
  */
 @Component({
   selector: 'app-admin-console',
-  imports: [AdminForbidden, RouterLink, RouterOutlet, AdminConsoleTabs],
+  imports: [AdminForbidden, RouterLink, RouterOutlet, AdminConsoleTabs, PrototypeConsoleNav],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
-    <section
-      [class]="'mx-auto px-4 py-10 ' + tab().maxWidthClass"
-      [attr.aria-labelledby]="tab().titleId"
-    >
-      <h1 [id]="tab().titleId" class="text-[24px] font-semibold text-riv-ink">{{ tab().title }}</h1>
+    <!-- PROTOTYPE — the page body as a template so a nav candidate can wrap it; 'current' keeps the shipped section below. -->
+    <ng-template #adminBody>
+      <section
+        [class]="'mx-auto w-full px-4 py-6 ' + tab().maxWidthClass"
+        [attr.aria-labelledby]="tab().titleId"
+      >
+        <!-- prettier-ignore -->
+        <h1 [id]="tab().titleId" class="text-[24px] font-semibold text-riv-ink">{{ tab().title }}</h1>
+        @if (auth.restoring()) {
+          <p class="mt-4 text-[15px] text-riv-ink-soft" [attr.data-testid]="tab().restoringTestId">
+            Loading…
+          </p>
+        } @else if (!auth.signedIn()) {
+          <p class="mt-4 text-[15px] text-riv-ink-soft" [attr.data-testid]="tab().signedOutTestId">
+            {{ tab().signInCopy }}
+            <a
+              routerLink="/account/sign-in"
+              [queryParams]="{ audience: 'operator', returnUrl: currentUrl() }"
+              class="font-semibold underline"
+              >Sign in</a
+            >
+          </p>
+        } @else if (!auth.isAdmin()) {
+          <p appAdminForbidden [testId]="tab().forbiddenTestId"></p>
+        } @else {
+          <router-outlet />
+        }
+      </section>
+    </ng-template>
+    @if (navVariant() !== 'current') {
+      <app-prototype-console-nav [ctx]="navCtx()" [body]="adminBody" (signOut)="onSignOut()" />
+    } @else {
+      <section
+        [class]="'mx-auto px-4 py-10 ' + tab().maxWidthClass"
+        [attr.aria-labelledby]="tab().titleId"
+      >
+        <!-- prettier-ignore -->
+        <h1 [id]="tab().titleId" class="text-[24px] font-semibold text-riv-ink">{{ tab().title }}</h1>
 
-      @if (auth.restoring()) {
-        <p class="mt-4 text-[15px] text-riv-ink-soft" [attr.data-testid]="tab().restoringTestId">
-          Loading…
-        </p>
-      } @else if (!auth.signedIn()) {
-        <p class="mt-4 text-[15px] text-riv-ink-soft" [attr.data-testid]="tab().signedOutTestId">
-          {{ tab().signInCopy }}
-          <a
-            routerLink="/account/sign-in"
-            [queryParams]="{ audience: 'operator', returnUrl: currentUrl() }"
-            class="font-semibold underline"
-            >Sign in</a
-          >
-        </p>
-      } @else if (!auth.isAdmin()) {
-        <p appAdminForbidden [testId]="tab().forbiddenTestId"></p>
-      } @else {
-        <app-admin-console-tabs label="Admin console sections" />
-        <router-outlet />
-      }
-    </section>
+        @if (auth.restoring()) {
+          <p class="mt-4 text-[15px] text-riv-ink-soft" [attr.data-testid]="tab().restoringTestId">
+            Loading…
+          </p>
+        } @else if (!auth.signedIn()) {
+          <p class="mt-4 text-[15px] text-riv-ink-soft" [attr.data-testid]="tab().signedOutTestId">
+            {{ tab().signInCopy }}
+            <a
+              routerLink="/account/sign-in"
+              [queryParams]="{ audience: 'operator', returnUrl: currentUrl() }"
+              class="font-semibold underline"
+              >Sign in</a
+            >
+          </p>
+        } @else if (!auth.isAdmin()) {
+          <p appAdminForbidden [testId]="tab().forbiddenTestId"></p>
+        } @else {
+          <app-admin-console-tabs label="Admin console sections" />
+          <router-outlet />
+        }
+      </section>
+    }
   `,
 })
 export class AdminConsole {
   protected readonly auth = inject(OperatorAuth);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly document = inject(DOCUMENT);
+  /** PROTOTYPE — which nav candidate wraps the console; `current` renders the shipped section. */
+  protected readonly navVariant = inject(PrototypeConsoleNavVariant).variant;
+  /** PROTOTYPE — the strip must never render for a visitor who has not passed the gate. */
+  protected readonly navCtx = computed((): ConsoleNavContext => ({
+    surface: 'admin',
+    requestsCount: 0,
+    navHidden: !(this.auth.signedIn() && this.auth.isAdmin()),
+  }));
 
   /**
    * The active child's `data.adminTab`, or {@link FALLBACK_TAB}. Keyed on
@@ -113,5 +159,12 @@ export class AdminConsole {
       (this.route.snapshot.firstChild?.data['adminTab'] as AdminTabRouteData | undefined) ??
       FALLBACK_TAB
     );
+  }
+
+  /** PROTOTYPE — sign out from a candidate's account menu (the shipped chrome's own teardown). */
+  protected async onSignOut(): Promise<void> {
+    this.document.querySelector<HTMLElement>('main')?.focus();
+    await this.auth.signOut();
+    await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });
   }
 }

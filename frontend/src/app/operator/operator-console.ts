@@ -29,6 +29,9 @@ import { ConsoleVenueMap } from './console-venue-map';
 import { OperatorConsoleService } from './operator-console.service';
 import { PendingApprovalBanner } from './pending-approval-banner';
 import { PendingRequestsStore } from './pending-requests-store';
+import { ConsoleNavContext } from '../prototype-console-nav/console-nav-support';
+import { PrototypeConsoleNav } from '../prototype-console-nav/prototype-console-nav';
+import { PrototypeConsoleNavVariant } from '../prototype-console-nav/prototype-console-nav-variant';
 
 /** A console tab: its child-route path, its label, and whether it carries the live Requests badge. */
 interface ConsoleTab {
@@ -65,6 +68,7 @@ interface ConsoleTab {
     ConsoleStatsStrip,
     PendingApprovalBanner,
     TouchTarget,
+    PrototypeConsoleNav,
   ],
   templateUrl: './operator-console.html',
   host: {
@@ -79,6 +83,8 @@ export class OperatorConsole {
   private readonly console = inject(OperatorConsoleService);
   private readonly requests = inject(PendingRequestsStore);
   protected readonly operator = inject(OperatorAuth);
+  /** PROTOTYPE — which nav candidate wraps the console; `current` renders the shipped shell. */
+  protected readonly navVariant = inject(PrototypeConsoleNavVariant).variant;
 
   /** The venue this console manages — reactive to in-place `:venueId` changes: the router
    *  reuses this instance when only the param differs, so a snapshot read would pin the old venue. */
@@ -102,6 +108,13 @@ export class OperatorConsole {
    *  writes after every accept/decline, so the badge stays in sync with the queue. The shell
    *  seeds it from its own count read below; a failed read leaves it at 0 (no badge). */
   protected readonly requestsCount = this.requests.count;
+  /** PROTOTYPE — what a nav candidate needs to draw the venue console. */
+  protected readonly navCtx = computed((): ConsoleNavContext => ({
+    surface: 'operator',
+    venueId: this.venueId(),
+    venueName: this.venueName(),
+    requestsCount: this.requestsCount(),
+  }));
   /** Bumped per venue context: an identity guard — a venueId value check passes again
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
