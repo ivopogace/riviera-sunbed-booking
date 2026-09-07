@@ -233,14 +233,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** phase 1 — the search glyph and the hoisted recipes, red first at `console-glyphs.spec.ts`.
+**Next action:** phase 2 — `shared/console-palette.ts`, red first at `console-palette.spec.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc | ✅ | |
-| 1 — the search glyph; the row, hint and badge recipes hoisted and consumed by the shell | | |
+| 0 — plan doc | ✅ | 9b6713d7 |
+| 1 — the search glyph; the row, hint and badge recipes hoisted and consumed by the shell | ✅ | 8900b9f3 |
 | 2 — `shared/console-palette.ts`: the dialog, chords, filter, highlight, Enter, trap, focus legs, close on navigation; its spec, a11y and contrast specs | | |
 | 3 — the shell: the search button, the gate, `paletteRows`, the mount; shell spec, a11y spec, `app.spec.ts` | | |
 | 4 — e2e: `console-shell.e2e.ts`, `operator-console.e2e.ts`, `admin-console-tabs.e2e.ts`, `support/shell.ts` | | |
@@ -287,17 +287,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Modify `frontend/src/app/shared/console-glyphs.ts`, `console-glyphs.spec.ts`,
 `popover-skin.ts`, `tab-rail.ts`, `console-shell.ts`.
 
-- [ ] **Step 1: Write the failing test** — `console-glyphs.spec.ts`: the set's selector list gains
-  `app-search-glyph`; `draws Search as a lens: a circle and a handle`.
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/shared/console-glyphs.spec.ts` → FAIL.
-- [ ] **Step 3: Minimal implementation** — `SearchGlyph`; `POP_NAV_ROW` / `POP_NAV_HINT` in
+- [x] **Step 1: Write the failing test** — `console-glyphs.spec.ts`: the set's selector list gains
+  `app-search-glyph`; `draws Search as a lens — one circle and a handle`.
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include src/app/shared/console-glyphs.spec.ts` → FAIL (TS2305: no exported member `SearchGlyph`). A bare `npx vitest run` has no config here (`describe is not defined`); the builder command is the one.
+- [x] **Step 3: Minimal implementation** — `SearchGlyph`; `POP_NAV_ROW` / `POP_NAV_HINT` in
   `popover-skin.ts` and `TAB_RAIL_BADGE` in `tab-rail.ts`, the shell's `CLS.sheetRow`, `hint`,
   `badge` reading them (same strings, so no shell spec moves).
-- [ ] **Step 4: Run it, verify it passes** — the glyph spec + the shell's four specs → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: every copy of the badge or sheet-row
+- [x] **Step 4: Run it, verify it passes** — the glyph spec + the shell's three specs + `tab-rail.spec.ts` → 116/116 PASS.
+- [x] **Step 5: Generalization-audit pass** — population: every copy of the badge or sheet-row
   recipe → `grep -rn "min-w-5 items-center justify-center rounded-full\|rounded-\[14px\] px-3.5 py-\[11px\]" frontend/src/app`.
-- [ ] **Step 6: Commit** — `Add the search glyph and hoist the popover row and badge recipes (#1013)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `Add the search glyph and hoist the popover row and badge recipes (#1013)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 2 — the palette component
 
@@ -353,6 +353,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-07 | phase 1 | every copy of the badge or the sheet-row recipe outside its new home — the drift mechanism the hoist removes | `grep -rn "min-w-5 items-center justify-center rounded-full\|rounded-\[14px\] px-3.5 py-\[11px\]" frontend/src/app` | none outside `popover-skin.ts` / `tab-rail.ts` (the shell now reads both) | nothing else to hoist |
 
 ---
 

@@ -1,7 +1,7 @@
 import { Component, reflectComponentType, Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { CONSOLE_GLYPHS, DailyGlyph, MoreGlyph } from './console-glyphs';
+import { CONSOLE_GLYPHS, DailyGlyph, MoreGlyph, SearchGlyph } from './console-glyphs';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -15,7 +15,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 class HostSpec {}
 
 /**
- * The console's glyph set — one component per destination plus More, venues and admin — held to
+ * The console's glyph set — one component per destination plus More, venues, admin and search — held to
  * the `clock-icon.ts` contract (`riviera-tailwind` ICON-1..6): hidden from assistive tech at the
  * host and the svg, `display: contents`, geometry in the SVG namespace on `currentColor`, sized by
  * presentation attributes a call-site class outranks. Every case runs over the whole set, so a glyph
@@ -37,7 +37,7 @@ describe('console glyphs', () => {
     return reflectComponentType(glyph)!.selector;
   }
 
-  it('exposes one glyph per venue and admin destination plus More, venues and admin', () => {
+  it('exposes one glyph per venue and admin destination plus More, venues, admin and search', () => {
     expect(CONSOLE_GLYPHS.map(selectorOf).sort()).toEqual(
       [
         'app-admin-glyph',
@@ -55,6 +55,7 @@ describe('console glyphs', () => {
         'app-refunds-glyph',
         'app-requests-glyph',
         'app-reviews-glyph',
+        'app-search-glyph',
         'app-venue-glyph',
         'app-venues-glyph',
       ].sort(),
@@ -109,5 +110,11 @@ describe('console glyphs', () => {
   it('draws More as three dots, distinct from every destination glyph', () => {
     const more = svgOf(render(MoreGlyph));
     expect(more.querySelectorAll('circle')).toHaveLength(3);
+  });
+
+  it('draws Search as a lens — one circle and a handle — the palette trigger (#1013)', () => {
+    const search = svgOf(render(SearchGlyph));
+    expect(search.querySelectorAll('circle')).toHaveLength(1);
+    expect(search.querySelectorAll('path')).toHaveLength(1);
   });
 });

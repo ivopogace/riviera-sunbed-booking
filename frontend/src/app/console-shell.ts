@@ -38,8 +38,9 @@ import {
 } from './shared/console-glyphs';
 import { currentUrl } from './shared/current-url';
 import { focusMover } from './shared/focus-after-render';
-import { CURRENT_POP_ROW, POP_BACKDROP, POP_SKIN } from './shared/popover-skin';
+import { POP_BACKDROP, POP_NAV_HINT, POP_NAV_ROW, POP_SKIN } from './shared/popover-skin';
 import {
+  TAB_RAIL_BADGE,
   TAB_RAIL_MARKER,
   TAB_RAIL_MATCH,
   TabRail,
@@ -158,8 +159,7 @@ const CLS = {
     'inline-flex items-center text-[13px] font-semibold text-riv-ink no-underline hover:underline',
   railBox: 'mx-auto w-full max-w-[1120px] max-sm:hidden',
   rail: 'oc-tabs px-6 pt-3.5 scroll-px-6',
-  badge:
-    'oc-badge inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-riv-solid-fill-brand px-1.5 text-[11.5px] font-bold leading-none text-white',
+  badge: TAB_RAIL_BADGE,
   // Four equal slots on the header's glass; the marker sits on its bottom border, as on the row.
   phoneRail:
     'grid grid-cols-4 border-b border-riv-header-border bg-riv-header-glass px-1 sm:hidden',
@@ -171,9 +171,8 @@ const CLS = {
   sheet: `fixed inset-x-2.5 bottom-[calc(12px+env(safe-area-inset-bottom))] max-h-[calc(100dvh-24px)] overflow-y-auto p-2.5 sm:hidden ${POP_SKIN}`,
   groupLabel:
     'mt-3 mb-1 px-3.5 text-[10.5px] font-bold tracking-[0.16em] text-riv-pop-ink-soft uppercase first:mt-0',
-  // `flex`, so the 44px floor is live on the row; the current row is the popover's own recipe.
-  sheetRow: `flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3.5 py-[11px] text-left text-[15px] font-semibold text-riv-pop-ink no-underline [transition:background_0.12s_ease] hover:bg-riv-pop-hover [&_svg]:size-[18px] [&_svg]:shrink-0 ${CURRENT_POP_ROW}`,
-  hint: 'text-[12px] font-medium text-riv-pop-ink-soft',
+  sheetRow: POP_NAV_ROW,
+  hint: POP_NAV_HINT,
 } as const;
 
 /**
