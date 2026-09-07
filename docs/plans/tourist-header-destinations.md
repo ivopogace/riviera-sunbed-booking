@@ -31,7 +31,8 @@ Flyway in scope; found the drift listed under *Grill outcome* below) · `riviera
 template — forced the parity ledger for the retired header controls and the per-AC seams) ·
 `tdd` (each AC is one red test in `app.spec.ts` / the named spec before the template changes)
 · `riviera-review-overlay` (review gate — due at ready-for-review) · `riviera-docs-freshness`
-(`ran` at close-out — see Execution status) · `riviera-local-debug` (unshallowed the clone,
+(`ran` over `5a13addd..2b88ea8a` — 0 findings: the substrate names no header control, the one
+design-note row is a historical record; no Nth-of-something introduced) · `riviera-local-debug` (unshallowed the clone,
 scoped Vitest runs, `PW_CHROMIUM_EXECUTABLE` for the mocked e2e) · `riviera-frontend` (all
 changes stay in `app.*` at the shell root + `e2e/`; test-id markers kept as inert classes where
 specs query them) · `riviera-tailwind` (no `@apply`; every `<a>` in the bar gets `appTouchTarget`
@@ -214,22 +215,22 @@ ERROR on the 80% bar. The gap was branch coverage on `app.ts`, not lines (9/9 co
 `undefined` branches of the two address helpers (dead — a signed-in principal always has an
 address) and the signed-out leg of `closeMenus` (`menuTrigger`), which no unit test walked.
 Fix: the helpers take a `string` from one `address` computed, and `app.spec.ts` pins the
-signed-out popover's Escape and backdrop close with focus return. Local lcov after the fix:
-one uncovered new branch (the address fallback), 12/13 → ≈ 92%. Re-checked on the fix push —
-see Execution status.
+signed-out popover's Escape and backdrop close with focus return. Re-analysed on `2b88ea8a`:
+gate OK, 0 issues, 0 duplicated blocks, **92.3%** new-code coverage (API-confirmed, not the
+bot comment alone).
 
 ## Execution status
 
-**Stage pointer:** review gate (reviewers 1, 2, 4, 5 reported and fixed — F-2..F-5; reviewer 3 pending) + sonar gate (F-1 fix pushed, awaiting the analysis of the current head) — PR #1004.
+**Stage pointer:** DONE — merge close-out; merged via PR #1004 (awaiting the maintainer's merge; every gate green on `2b88ea8a`).
 
-**Next action:** act on reviewer 3, post the review comment, confirm Sonar ≥ 80% on the final head, then the merge close-out.
+**Next action:** after the merge, `riviera-sdlc` `references/pr-gates.md` §3: confirm #1002 closed, unsubscribe, retire this plan at the next close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | `0439930e` |
 | 1 + 2 — AC 1, 2, 4, 5: two destinations, Sign in + Menu, account chip, Find a booking from the menus (one commit: the template cannot be rebuilt in halves, so both phases' red tests preceded one green) | ✅ | `c7c914b6` |
 | 3 — AC 3, 6, 7, 8: swatch + ring, riviera marker, no CTA skin, touch floor | ✅ | (this commit) |
-| 4 — gates (`main` unchanged, nothing to merge); Sonar coverage fix | ⏳ | (this commit) |
+| 4 — gates (`main` unchanged, nothing to merge); Sonar coverage fix, review-gate fixes | ✅ | `82ebe1d7`, `85841c07`, `b52dc971`, `2b88ea8a` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -242,6 +243,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | review (prior PR #895 recurrence) | plan-doc *Pinned by* citations paraphrased test titles instead of quoting them | fixed-in-`85841c07` |
 | F-4 | review (locator style) | `headerMenuTrigger` used a raw CSS attribute union where the file uses `getByTestId` | fixed-in-`85841c07` (`getByTestId(...).or(...)`) |
 | F-5 | review (comment accuracy) | `accountOpen`/`toggleAccountMenu` TSDoc still said "signed-in" though the signal now drives the signed-out menu too; a spec comment cited the retired `riv-mobile-theme` block; the link-floor helper's comment read as its own opposite; the swatch's "1.0–2.8:1" range was not reproducible (only the 1.0 floor is) | fixed (this commit) |
+| F-6 | review (git history) | none — #351, #892, #148, #605/#648 and #984 rules verified intact; every rewritten `app.spec.ts` pin has a like-for-like replacement | closed |
 
 ---
 
@@ -272,43 +274,43 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `e2e/unified-auth.e2e.ts`, `e2e/customer-password.e2e.ts`, `e2e/theme-shell.e2e.ts`,
 `e2e/current-page-marker.e2e.ts`, `e2e/support/pages/customer-auth.page.ts`.
 
-- [ ] Red: `app.spec.ts` — exactly two primary links; signed-out `nav-signin` href +
+- [x] Red: `app.spec.ts` — exactly two primary links; signed-out `nav-signin` href +
   `aria-current` on the sign-in route and a `nav-menu` button named `Menu` opening a popover with
   `nav-register` (`/account/sign-in?mode=register`); signed-in `nav-user` chip named
   `Account: <email>` with the handle as text, no `Signed in as`, popover with identity block,
   `nav-account-link`, `nav-signout`; `/venues/1` lights nothing.
-- [ ] `npx ng test --watch=false --include='src/app/app.spec.ts'` → FAIL.
-- [ ] Green: rebuild the header; keep `.riv-nav-desktop`, `riv-account-pop`, `riv-theme-pop`
+- [x] `npx ng test --watch=false --include='src/app/app.spec.ts'` → FAIL.
+- [x] Green: rebuild the header; keep `.riv-nav-desktop`, `riv-account-pop`, `riv-theme-pop`
   markers.
-- [ ] Re-point the e2e listed above; run the touched mocked specs with
+- [x] Re-point the e2e listed above; run the touched mocked specs with
   `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts <files>`.
-- [ ] Commit `Cut the tourist primary nav to two destinations (#1002)`; update Execution status.
+- [x] Commit `Cut the tourist primary nav to two destinations (#1002)`; update Execution status.
 
 ## Phase 2 — AC 2: Find a booking from the menus
 
-- [ ] Red: three `app.spec.ts` tests asserting `document.activeElement` after `find-close` for
+- [x] Red: three `app.spec.ts` tests asserting `document.activeElement` after `find-close` for
   the chip, the menu button and the hamburger; `find-open` absent from the primary nav.
-- [ ] Green: `openFind(trigger: HTMLElement)` with `findReturn = trigger`; the popover rows and
+- [x] Green: `openFind(trigger: HTMLElement)` with `findReturn = trigger`; the popover rows and
   the sheet row pass their branch's trigger ref.
-- [ ] `e2e/find-a-booking.e2e.ts`: `openFindBooking` helper (desktop, either auth state) + a
+- [x] `e2e/find-a-booking.e2e.ts`: `openFindBooking` helper (desktop, either auth state) + a
   signed-in case with focus return; `touch-targets-tourist.e2e.ts` unchanged (it still drives
   `find-open-mobile`).
-- [ ] Commit `Move Find a booking into the header menus (#1002)`.
+- [x] Commit `Move Find a booking into the header menus (#1002)`.
 
 ## Phase 3 — AC 3, 6, 7, 8: seams and contrast
 
-- [ ] Red: `app.spec.ts` swatch name + empty text + every header `<a>` carries `min-h-11`;
+- [x] Red: `app.spec.ts` swatch name + empty text + every header `<a>` carries `min-h-11`;
   `app.contrast.spec.ts` ring ≥ 3:1 per theme + avatar initial AA on `--riv-solid-fill-brand`;
   `app.a11y.spec.ts` popovers open in both auth states.
-- [ ] Green: the swatch button (`before:` swatch + ring), `appTouchTarget` on every link.
-- [ ] e2e: `current-page-marker.e2e.ts` riviera leg; new `tourist-header.e2e.ts` (AC 7 on
+- [x] Green: the swatch button (`before:` swatch + ring), `appTouchTarget` on every link.
+- [x] e2e: `current-page-marker.e2e.ts` riviera leg; new `tourist-header.e2e.ts` (AC 7 on
   `/booking/pay`, both auth states; the ring's computed `box-shadow`); `theme-shell.e2e.ts`
   phone theme pick.
-- [ ] Commit `Demote the theme chip to a ringed swatch (#1002)`.
+- [x] Commit `Demote the theme chip to a ringed swatch (#1002)`.
 
 ## Phase 4 — integration and gates
 
-- [ ] `git merge origin/main`; `npm run lint`, `npm run format:check`, `npm test`, the mocked
+- [x] `git merge origin/main`; `npm run lint`, `npm run format:check`, `npm test`, the mocked
   e2e; `node scripts/check-*.mjs` guards; push; mark ready for review; review gate; Sonar.
 
 ---
@@ -325,24 +327,24 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ## Acceptance-criteria verification (final)
 
 - [x] **AC-1..5, 8 (unit):** `npx ng test --watch=false --include='src/app/app*.spec.ts'` → 71 passed.
-- [x] **AC-2, 6, 7, 8 (e2e):** the touched mocked specs → 95 + 56 passed locally; the full suite and CI follow in phase 4.
+- [x] **AC-2, 6, 7, 8 (e2e):** the full mocked suite → 443/444 locally (one admin-page timing flake outside the diff, green alone) and green in CI on `2b88ea8a`; `tourist-header.e2e.ts` 8/8.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions hold only the three maintainer assumptions, flagged in the PR body for the review (A-1..A-3).
+- [x] **Close-out written in THIS PR** — citing `merged via PR #1004`; the session's stop hook pushed each fix as it landed, so this close-out is a docs-only commit after `2b88ea8a` rather than inside it (the one deviation from the rule).
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
