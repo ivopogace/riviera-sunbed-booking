@@ -465,9 +465,9 @@
   --riv-console-tint: #0c2a33;
   /** The console's INSET base: the colour behind every `bg-…/α` fill the console paints
       on its card glass — fields, outline buttons, sub-panels, tool chips, the standard tile, the
-      legend key — and the opaque surfaces that used to be `bg-white` (the "Venue not found" card,
-      the payout statement). Rule B: the alpha stays at the call site. White here, byte-identical
-      to the retired `bg-white/α` literals; the tourist dark field fill's slate in dark, so an
+      legend key — and the two opaque surfaces (the "Venue not found" card, the payout statement).
+      Rule B: the alpha stays at the call site. White here, so porcelain paints what its
+      `bg-white/α` predecessors painted; the tourist dark field fill's slate in dark, so an
       inset sits BELOW its dark card and a hover at a higher alpha deepens rather than lightens. */
   --riv-console-inset: #ffffff;
   /** The account chip's avatar disc is the chip's non-text boundary, held to 3:1 on the header
@@ -499,11 +499,11 @@
   --riv-select-tint: #2bb8d4;
   --riv-select-edge: #0e8aa8;
 
-  /** The console's ALERT tint (class O, #852): the Requests tab's urgency chip and decline edge,
+  /** The console's ALERT tint (class O): the Requests tab's urgency chip and decline edge,
       the Daily view's and Payouts tab's alert borders, the set-editor's destructive panel.
 
       Its own token, though this value is already declared twice under other roles, because neither
-      is a tint: --riv-solid-fill-danger is a SOLID fill carrying fixed white ink (#854/#861), and
+      is a tint: --riv-solid-fill-danger is a SOLID fill carrying fixed white ink, and
       --riv-error-ink is an INK that themes -- it resolves #ffa9a1 in the dark theme, which as a
       hairline on the porcelain console's card glass would be a pale pink line where a red one is
       meant; the dark console's own value is the danger family's salmon, in the dark block. Same

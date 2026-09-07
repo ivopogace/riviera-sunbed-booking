@@ -32,8 +32,8 @@ import {
  * `--riv-card-ink`; the helper/availability text uses `--riv-card-ink-soft` (0.78); the "Date"
  * mini-label uses `--riv-card-ink-faint` (0.72); the write-failure notice + load-error use `--riv-error-ink`.
  * The arrival-code chip ink (`--riv-card-ink`) sits over `--riv-chip-bg` over the card glass.
- * Since #672 slice 2 the grid sits on the shared canvas's sea→sand wash (rail-chip inks proven in
- * `venue-map.contrast.spec.ts`); since #686 every tile's visible text is its *position number*.
+ * The grid sits on the shared canvas's sea→sand wash (rail-chip inks proven in
+ * `venue-map.contrast.spec.ts`); every tile's visible text is its *position number*.
  * The FREE tile's number is proven AA composited over the wash's worst-case stops; the locked
  * tile's number is proven over its striped fill's worst case, the darker stripe (the `●` beside it
  * stays `aria-hidden` decorative — state is carried by sr-only text); the filled STAFF_MARKED

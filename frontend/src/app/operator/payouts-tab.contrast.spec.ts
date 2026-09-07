@@ -31,13 +31,13 @@ import {
  * intro/dates/commission/empty sub-copy use `--riv-card-ink-soft` (0.78); the "Owed to you" label,
  * column headers and footnote use `--riv-card-ink-faint` (0.72). The owed figure + accrual net use the
  * console accent ink `--riv-console-accent-ink`; reversal net + the reason chip use the console's negative ink
- * `--riv-console-negative-ink` (the chip also over its own tint of that same value at 0.10, 0.12 before the ladder (#879) — the lowest
+ * `--riv-console-negative-ink` (the chip also over its own tint of that same value at 0.10 — the lowest
  * pair that ink lands in anywhere, which is why the measurement lives here; the tab's own lowest is the weather
  * button's white on `--riv-solid-fill-warn` at 4.99:1); the load-error uses the alert red `--riv-error-ink`.
  * Solid buttons put white on `--riv-solid-fill-brand`
  * (statement) and on `--riv-solid-fill-warn` (weather confirm).
  *
- * <p>Since #881 the weather confirm renders via `shared/confirm-panel`'s `warn` tone: the button
+ * <p>The weather confirm renders via `shared/confirm-panel`'s `warn` tone: the button
  * fill is the registered `--riv-solid-fill-warn` token (still the darkened amber `#9a6410` — white
  * passes AA where the design mock's `#d9861a`/`#f0aa2e` would not), and the confirm copy's ink is
  * the component's own `--riv-warn-ink` over `--riv-warn-fill`, the exact pairing #879 measured at

@@ -28,10 +28,10 @@ import { declarationsOf } from '../../testing/stylesheet-tokens';
  * WCAG-AA contrast guard for the layout editor. The editor wears the operator's console theme
  * (porcelain by default; the themed block at the foot proves both), its control panels use `appCardGlass` (`--riv-card-glass` = white @ 0.55), and its
  * primary buttons reuse the project's AA-safe `--riv-cta-grad` teal (NOT the design's brighter
- * `#2bb8d4/#0e8aa8`, which fails AA with white). Since #672 slice 2 the grid sits on the shared
+ * `#2bb8d4/#0e8aa8`, which fails AA with white). The grid sits on the shared
  * canvas's sea→sand wash, whose rail-chip inks are proven in `venue-map.contrast.spec.ts`. The
  * gap cell's identity is its dashed border alone, so that boundary is proven 3:1 (1.4.11)
- * composited over the wash's worst-case (sand) stop. Since #709 every non-gap cell also carries
+ * composited over the wash's worst-case (sand) stop. Every non-gap cell also carries
  * its position number — proven 4.5:1 (normal text) against each tile kind's own worst fill,
  * `beach-cell.ts`'s `CELL_CLASS`. Values mirror the template + `beach-cell.ts` + `tailwind.css`;
  * an edit there must re-pass here.

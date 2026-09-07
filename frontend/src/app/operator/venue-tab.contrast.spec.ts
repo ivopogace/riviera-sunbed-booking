@@ -29,7 +29,7 @@ import {
  * INACTIVE amenity chip use `--riv-card-ink-soft` (0.78) — an inactive chip sits on a lighter
  * `bg-white/50`, so `--riv-card-ink-soft` over the plain card glass is its worst case too. The
  * commission % + "Saved" notice use `--riv-console-accent-ink`; the save/load error uses `--riv-error-ink`;
- * the ACTIVE amenity chip reads both its ink and its tint from the `--riv-accent-*` registry (#835).
+ * the ACTIVE amenity chip reads both its ink and its tint from the `--riv-accent-*` registry.
  * Values mirror the template + `tailwind.css`; a token edit there must re-pass here.
  */
 

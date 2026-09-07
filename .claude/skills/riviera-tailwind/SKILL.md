@@ -158,9 +158,8 @@ section owns how a component styles across themes. In order of preference:
      the outline-button fill, fixed at `#f4f6f7`) would drift light-on-light if it switched;
    - a tint family that painted one literal in every theme before it was tokenised
      (`--riv-accent-*`) gains a silent restyle the day someone adds a dark override.
-   "Its whole population sits under the console's porcelain pin" is no longer a ground: the
-   console has its own two-way theme (porcelain | dark, `core/console-theme.ts`), so a
-   console-only token (`--riv-console-*`, `--riv-select-*`, `--riv-alert-tint`, …) declares in
+   The console is not a pinned-porcelain subtree: it has its own two-way theme (porcelain |
+   dark, `core/console-theme.ts`), so a console-only token (`--riv-console-*`, `--riv-select-*`, `--riv-alert-tint`, …) declares in
    the base block AND the `dark` block and nowhere else — never `riviera`, which the console
    never wears — and its guard holds it to exactly those two. A console position wanting a
    treatment in one console theme only takes a treatment-off token, as the hero scrim does
