@@ -64,7 +64,13 @@ import { AdminAuditEntryView } from './admin.model';
             No admin actions have been recorded yet.
           </p>
         } @else {
-          <div class="mt-3 overflow-x-auto">
+          <!-- A phone scrolls the table sideways: the region is focusable and named, so the keyboard can reach it too (WCAG 2.1.1). -->
+          <div
+            class="mt-3 overflow-x-auto"
+            role="region"
+            aria-labelledby="admin-audit-heading"
+            tabindex="0"
+          >
             <table
               class="w-full text-left text-[14px] text-riv-card-ink"
               aria-labelledby="admin-audit-heading"

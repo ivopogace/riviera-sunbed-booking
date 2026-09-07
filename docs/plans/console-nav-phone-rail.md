@@ -51,9 +51,10 @@ scoped `npx vitest run <files>`; `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromi
 e2e) · `riviera-frontend` (the glyph set is pure and presentational → `shared/`; the admin
 destination table stays in `admin/`, read by the root-level shell, which may import both features;
 the e2e is the mocked suite) · `riviera-tailwind` (ICON-1..6 for the glyph set; rule 3: the phone
-slot writes its own `after:` marker rather than composing `TAB_RAIL_MARKER` with a second
-`after:inset-x-*`, which would resolve by stylesheet order; rule 4: `appTouchTarget` on every slot
-and sheet row; rule 6: no `outline-*`; tokens only, the sheet on the `--riv-pop-*` family) ·
+slot composes `TAB_RAIL_MARKER` exactly as the section slot does — the same `after:-bottom-px`,
+never a second `after:inset-x-*`, which would resolve by stylesheet order; rule 4:
+`appTouchTarget` on every slot and sheet row; rule 6: no `outline-*`; tokens only, the sheet on
+the `--riv-pop-*` family) ·
 `angular-developer` + angular-cli MCP (`get_best_practices` v22; `NgComponentOutlet` verified on
 angular.dev — `<ng-container *ngComponentOutlet="type" />` — for picking a glyph component from a
 descriptor; `computed()` for the phone nav, `viewChild` for the More button, `focusMover()` for
@@ -165,14 +166,14 @@ Below `sm` the text rail retires into the phone rail; from `sm` up nothing chang
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Both rails in the DOM: `getByTestId('oc-requests-badge')` matches two elements (strict mode) and `nav[aria-label$="console sections"]` / `oc-tabs` readers pick the wrong one | high | med | phone-only elements get their own ids (`oc-phone-rail`, `oc-phone-requests-badge`, `oc-more`, `oc-more-sheet`); the phone nav's label ends in ` (phone)` so the `$="console sections"` readers keep matching the desktop rail only; `grep -rn "oc-requests-badge\|oc-tabs\|console sections" frontend/e2e frontend/src` at phase 4 | agent | closed — phase 2: the audit log's population row; every phone-only element has its own id |
-| R-2 | The phone-width e2e that read the desktop rail (eight files after the phase-2 audit — the six named under *Skills consulted* plus `admin-console-stats.e2e.ts` and `operator-daily.e2e.ts`'s helper) go red as soon as the rail is `max-sm:hidden` — `getByRole` excludes hidden elements | certain | med | rewritten in phase 4 against the phone rail (their intent kept: order, current, no overflow); the desktop-rail shape re-pinned at 640px/820px | agent | open |
-| R-3 | At 640px the eight admin tabs may fit without overflowing, so `admin-console-tabs.e2e.ts`'s "overflows horizontally" and "scrolls into view" cases lose their premise | med | low | measure at phase 4; if they fit, the two cases assert one row / no wrap and the on-load `aria-current`, and the overflow proof is recorded as dropped here | agent | open |
-| R-4 | `NgComponentOutlet` re-creates the glyph on every change-detection pass of the sticky header | low | low | the outlet only re-instantiates when the bound type changes; the descriptor tables are constants, `phoneNav` a `computed` | agent | open |
-| R-5 | The sheet's `fixed` box lands inside a filtered containing block and pins to the header instead of the viewport | low | med | the sheet renders in the rail box, a sibling of the header (the #1011 R-5 lesson); the e2e asserts the sheet's box sits above the viewport bottom and inside 344px | agent | open |
-| R-6 | The `fold` project runs the two touch-target files whole at 344px and an unrelated surface fails the floor there | med | med | first run both files under `fold`; a pre-existing failure outside the rail is scoped out with a project `grep` on the rail cases and recorded in the findings register, never fixed silently in this slice | agent | open |
-| R-7 | The More button's accessible name changes with the route (`More` → `Payouts`), so an e2e locating `getByRole('button', { name: 'More' })` breaks after a navigation | med | low | the e2e locate it by `oc-more` and assert the name; the class doc says the name is route-dependent | agent | open |
+| R-2 | The phone-width e2e that read the desktop rail (eight files after the phase-2 audit — the six named under *Skills consulted* plus `admin-console-stats.e2e.ts` and `operator-daily.e2e.ts`'s helper) go red as soon as the rail is `max-sm:hidden` — `getByRole` excludes hidden elements | certain | med | rewritten in phase 4 against the phone rail (their intent kept: order, current, no overflow); the desktop-rail shape re-pinned at 640px/820px | agent | closed — phase 4: the eight files rewritten, plus a ninth site the second audit row found (`admin-commissions.e2e.ts`'s away-and-back clicks on `admin-tab-audit`/`-commissions` at 360px, now through the More sheet); 126/126 across the touched files and the three projects |
+| R-3 | At 640px the eight admin tabs may fit without overflowing, so `admin-console-tabs.e2e.ts`'s "overflows horizontally" and "scrolls into view" cases lose their premise | med | low | measure at phase 4; if they fit, the two cases assert one row / no wrap and the on-load `aria-current`, and the overflow proof is recorded as dropped here | agent | closed — phase 4: measured at 640px, `scrollWidth` 796 against `clientWidth` 640, so the overflow proof stands as written |
+| R-4 | `NgComponentOutlet` re-creates the glyph on every change-detection pass of the sticky header | low | low | the outlet only re-instantiates when the bound type changes; the descriptor tables are constants, `phoneNav` a `computed` | agent | closed — phase 4: the scroll-hide e2e (`operator-console.e2e.ts`, 200 scroll frames) and the axe sweeps run with the rail mounted; no churn observed |
+| R-5 | The sheet's `fixed` box lands inside a filtered containing block and pins to the header instead of the viewport | low | med | the sheet renders in the rail box, a sibling of the header (the #1011 R-5 lesson); the e2e asserts the sheet's box sits above the viewport bottom and inside 344px | agent | closed — phase 4: `operator-console.e2e.ts` pins the sheet's box inside 390×780; the `fold` sweeps measure every row at 344px |
+| R-6 | The `fold` project runs the two touch-target files whole at 344px and an unrelated surface fails the floor there | med | med | first run both files under `fold`; a pre-existing failure outside the rail is scoped out with a project `grep` on the rail cases and recorded in the findings register, never fixed silently in this slice | agent | closed — phase 4: both files pass whole under `fold` (every console surface already met the floor at 344px), so no `grep` and nothing scoped out |
+| R-7 | The More button's accessible name changes with the route (`More` → `Payouts`), so an e2e locating `getByRole('button', { name: 'More' })` breaks after a navigation | med | low | the e2e locate it by `oc-more` and assert the name; the class doc says the name is route-dependent | agent | closed — phase 4: every e2e reaches it through `oc-more` (`openMoreSheet`) and asserts the name |
 | R-8 | A stale template literal in `@Component.template` built from a shared `const` fails AOT if the compiler cannot evaluate it | low | low | phase 1 runs `npm run build` once; fall back to literal attributes per glyph | agent | closed — phase 1: the compiler and the build accepted `${SVG}`, angular-eslint's template parser did not (an unescaped `{`), so each glyph writes its `<svg>` attributes literally |
-| R-9 | `check-touch-target.mjs` TT-1 on the new `<button>` (More) | low | low | `appTouchTarget` on it; the hook runs on save | agent | open |
+| R-9 | `check-touch-target.mjs` TT-1 on the new `<button>` (More) | low | low | `appTouchTarget` on it; the hook runs on save | agent | closed — phase 2: the guard passes on `console-shell.ts` |
 
 ## Open questions / Assumptions
 
@@ -267,17 +268,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5 — contract)`
 
-**Next action:** phase 4 — the two phone Playwright projects, then run `admin-console-tabs operator-console` to see the stale seams red, then rewrite the eight files and add the new cases.
+**Next action:** phase 5 — `npm run lint`, `npm run format:check`, `npm test`, the whole mocked e2e; docs-freshness; retire #1011's plan; the file-structure guard; push.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | a16ca12f |
 | 1 — the glyph set (`shared/console-glyphs.ts` + spec; a production build to prove the shared template attributes compile) | ✅ | 03342ac1 |
 | 2 — the phone rail: the destination tables, the four slots, the current-aware More button, the badge, `Admin` `max-sm:hidden`; shell spec, contrast spec (the a11y spec already mounts the rail closed; the open sheet is phase 3's) | ✅ | 3ab2a775 |
-| 3 — the More sheet: groups, rows, cross-console row, the focus legs, close on navigation; shell spec, a11y spec | ✅ | the phase-3 commit |
-| 4 — e2e: the two phone projects; the six stale seams rewritten; the new cases (AC-1…AC-6, AC-8, AC-9); the touched files run | | |
+| 3 — the More sheet: groups, rows, cross-console row, the focus legs, close on navigation; shell spec, a11y spec | ✅ | 19e2bd55 |
+| 4 — e2e: the two phone projects; the nine stale seams rewritten; the new cases (AC-1…AC-6, AC-8, AC-9); the touched files run under all three projects (126/126); F-1 fixed | ✅ | the phase-4 commit |
 | 5 — contract: lint, format, `npm test`, the whole mocked e2e; docs-freshness; #1011's plan retired; file-structure guard; push | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -286,6 +287,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | red e2e (the AC-8 axe runs at 390px and 344px on `/admin/audit`, phase 4) | The audit table's `overflow-x-auto` wrapper scrolls sideways on a phone but is not keyboard-reachable — axe `scrollable-region-focusable`, serious. Pre-existing: no e2e had run axe on that route below `sm` | fixed — the wrapper is a named `role="region"` with `tabindex="0"`; the same treatment on the two payout table wrappers the audit found (below) |
 
 ---
 
@@ -315,6 +317,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/admin-console-stats.e2e.ts` — the strip-under-the-rail case at 360px reads the phone rail.
 - `frontend/e2e/operator-daily.e2e.ts` — the sign-in helper opens Daily through whichever rail is visible.
 - `frontend/src/app/shared/console-destination.ts` — the destination descriptor both rails and the sheet read.
+- `frontend/src/app/admin/admin-audit.ts` · `frontend/src/app/operator/payouts-tab.html` · `frontend/src/app/operator/payout-statement.ts` — F-1: the sideways-scrolling table wrappers become named, focusable regions.
 - `frontend/e2e/support/shell.ts` — `openMoreSheet(page)`.
 
 ---
@@ -423,6 +426,8 @@ it('the Admin section link leaves the row below sm (#1012)', () => {
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-07 | phase 1 | every hand-written inline `<svg>` in an app template that a shared glyph could replace | `grep -rln "<svg" frontend/src/app --include=*.ts --include=*.html \| grep -v spec` | `app.html` (the tourist tab bar's own three glyphs — the tourist chrome is a non-goal), `clock-icon.ts`, `console-glyphs.ts` | none to replace; the console templates hand-write no svg |
+| 2026-09-07 | phase 4 (F-1) | every horizontally scrolling wrapper whose content a keyboard cannot reach — the mechanism is `overflow-x-auto` on a box with no focusable descendant | `grep -rn "overflow-x-auto" frontend/src/app --include=*.html --include=*.ts \| grep -v spec` | 4: `admin-audit.ts` (the table), `payouts-tab.html` (the ledger table), `payout-statement.ts` (the statement table), `beach-map-canvas.html` (the tile grid — its tiles are buttons, so it already passes the rule) | the three tables fixed alike; the canvas left as is |
+| 2026-09-07 | phase 4 (R-2) | every e2e that clicks or waits on a desktop tab id at a width below `sm` — a second mechanism the phase-2 row (label reads) did not cover | `grep -n "admin-tab-[a-z]*').click\|admin-tab-[a-z]*').waitFor" frontend/e2e/*.e2e.ts`, cross-checked against each file's viewport | `admin-commissions.e2e.ts:144-145` (360px — rewritten through the More sheet); `admin-reviews.e2e.ts:263` and `admin-venue-photos.e2e.ts:185` click at the default desktop width | one site rewritten; the two desktop-width clicks keep the desktop rail |
 | 2026-09-07 | phase 3 | every disclosure that closes itself on `NavigationEnd` — the mechanism the sheet joins | `grep -rln "NavigationEnd" frontend/src/app --include=*.ts \| grep -v spec` | `app.ts` (the tourist popovers and sheet), `operator-account-chip.ts`, `operator-venue-switch.ts`, `find-booking.ts`, `admin-console.ts`, `current-url.ts`, `console-shell.ts` | the sheet takes the chip's exact shape (`filter(NavigationEnd)` + `takeUntilDestroyed`, close without touching focus); nothing else changes — hoisting the three console disclosures' mechanics is a stated non-goal |
 | 2026-09-07 | phase 2 (R-1, R-2) | every e2e or spec that reads the rail's ids or landmark names, now that two rails share the DOM — and, of those, every one that does so at a width below `sm` | `grep -rln "oc-requests-badge\|oc-tabs\|console sections" frontend/e2e frontend/src` then per file `grep -oE "width: [0-9]+"` | 20 e2e files + 4 specs read them; 8 e2e files do so below 640px: `admin-console-tabs` (360), `admin-commissions` (360), `admin-privacy` (360), `admin-console-stats` (360: the strip sits under the rail, a click on `admin-tab-commissions`), `current-page-marker` (390 consoles block), `operator-console` (380 #710 case, 390 static pin), `console-shell` (390 `Admin` box), `operator-daily` (390: the sign-in helper clicks the rail's `Daily view`) | the 12 desktop-width readers keep matching the desktop rail (the phone rail's ids and label differ; `getByRole` excludes the CSS-hidden rail); the 8 phone-width readers are rewritten in phase 4 |
 

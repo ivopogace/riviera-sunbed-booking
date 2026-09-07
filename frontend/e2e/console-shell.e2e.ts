@@ -217,14 +217,13 @@ test('the account chip opens a popover on /admin — axe clean, one header row o
   await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
   await expect(page).toHaveURL(/\/admin$/);
 
-  // One row: the brand, Your venues, Admin and the chip share it.
+  // One row: the brand, Your venues and the chip share it; below sm Admin lives in the More sheet.
   const brand = (await page.getByTestId('oc-brand').boundingBox())!;
   const chip = page.getByTestId('oc-account');
   const chipBox = (await chip.boundingBox())!;
   expect(chipBox.y).toBeLessThan(brand.y + brand.height);
   expect(chipBox.y + chipBox.height).toBeGreaterThan(brand.y);
-  const admin = (await page.getByTestId('oc-section-admin').boundingBox())!;
-  expect(admin.y).toBeLessThan(brand.y + brand.height);
+  await expect(page.getByTestId('oc-section-admin')).toBeHidden();
   // A second row would add at least the chip's 44px floor; one row stays under 80.
   const header = (await page.getByTestId('oc-header').boundingBox())!;
   expect(header.height).toBeLessThanOrEqual(80);

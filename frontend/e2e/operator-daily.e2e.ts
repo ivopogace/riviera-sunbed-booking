@@ -188,7 +188,11 @@ async function signInAndOpenDaily(page: Page): Promise<void> {
   await page.getByLabel('Password', { exact: true }).fill('pw');
   await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
   await expect(page.getByTestId('oc-header')).toBeVisible();
-  await page.getByTestId('oc-tabs').getByRole('link', { name: 'Daily view' }).click();
+  // Whichever rail the viewport shows: the text rail's `Daily view` from sm up, the phone rail's `Daily` below.
+  await page
+    .getByRole('navigation', { name: /^Operator console sections/ })
+    .getByRole('link', { name: /^Daily/ })
+    .click();
   await expect(page).toHaveURL(/\/operator\/1\/daily/);
   await expect(page.getByTestId('daily-view-tab')).toBeVisible();
 }

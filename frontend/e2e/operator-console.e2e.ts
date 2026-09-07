@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { mockOwnedVenues } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
-import { openOperatorAccountMenu } from './support/shell';
+import { expectPhoneRailFits, openMoreSheet, openOperatorAccountMenu } from './support/shell';
 
 /**
  * Real-render CI-safe e2e for the operator console shell. Drives
@@ -231,67 +231,88 @@ test('keeps the operator signed in across a reload (session restored from /me)',
   await expect(page).toHaveURL(/\/operator\/1/);
 });
 
-test('renders porcelain over the tourist theme with a single scrolling tab row, no wrap (#710)', async ({
+/**
+ * Below `sm` the text rail gives way to the phone rail: Daily · Requests · Beach map and a More
+ * slot that names the current secondary and carries its `aria-current`, so the current page is
+ * never hidden inside a closed menu. The console stays porcelain over a dark tourist theme there
+ * too. From `sm` up the six-tab rail returns (its scrolling-row shape is pinned at 640px in
+ * `admin-console-tabs.e2e.ts`, the same rail primitive).
+ */
+test('below sm the phone rail replaces the tab rail: four slots on one row, More reads the current secondary (#1012)', async ({
   page,
 }) => {
-  await mockConsole(page);
+  await mockConsole(page, 2);
 
   // Establish the dark tourist theme first.
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
 
-  await page.setViewportSize({ width: 380, height: 800 });
-  await page.goto('/operator/1');
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto('/operator/1/daily');
   await signIn(page);
   await expect(page.getByTestId('oc-header')).toBeVisible();
+  await expect(page.getByTestId('daily-view-tab')).toBeVisible();
 
   // The console is always porcelain (the app shell pins its host); the document theme stays dark.
   await expect(page.locator('app-root')).toHaveAttribute('data-riv-theme', 'porcelain');
-  await expect(page.locator('app-operator-console')).not.toHaveAttribute('data-riv-theme');
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
 
-  // The tab row scrolls within itself, never wraps or pushes the page wider.
-  const pageOverflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(pageOverflow).toBeLessThanOrEqual(1);
-
-  // All six tabs share one `top` (one row) and the rail overflows horizontally — it scrolls.
-  const tabs = page.getByTestId('oc-tabs');
-  const links = tabs.getByRole('link');
-  const tops = await links.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
-  expect(new Set(tops.map((t) => Math.round(t))).size).toBe(1);
-  const [scrollWidth, clientWidth] = await tabs.evaluate((el) => [el.scrollWidth, el.clientWidth]);
-  expect(scrollWidth).toBeGreaterThan(clientWidth);
-
-  // No edge mask (the cut-off tab is the overflow cue); Today-first, grouped by two dividers.
-  await expect(tabs).toHaveCSS('mask-image', 'none');
-  await expect(tabs.locator(':scope > span[aria-hidden="true"]')).toHaveCount(2);
-  expect((await links.allTextContents()).map((text) => text.trim())).toEqual([
-    'Daily view',
-    'Requests',
-    'Beach map',
-    'Pricing',
-    'Venue & commodities',
-    'Payouts',
-  ]);
-
-  // Switching to a tab further along the row scrolls it into view automatically.
-  await links.filter({ hasText: 'Venue & commodities' }).click();
-  await expect(page).toHaveURL(/\/operator\/1\/venue/);
-  const active = links.filter({ hasText: 'Venue & commodities' });
-  await expect(active).toHaveAttribute('aria-current', 'page');
-  await expect(active).toBeInViewport();
-
-  // Reload on that off-screen tab proves the ON-LOAD path too, not just the click.
-  await page.reload();
-  await expect(page.getByTestId('oc-header')).toBeVisible();
-  const reloadedActive = tabs.getByRole('link').filter({ hasText: 'Venue & commodities' });
-  await expect(reloadedActive).toHaveAttribute('aria-current', 'page');
-  await expect(reloadedActive).toBeInViewport();
-
+  await expectPhoneRailFits(page, 'Operator console sections (phone)');
+  const rail = page.getByRole('navigation', { name: 'Operator console sections (phone)' });
+  await expect(page.getByTestId('oc-tabs')).toBeHidden();
+  await expect(rail.getByRole('link')).toHaveText([/^Daily$/, /^Requests/, /^Beach map$/]);
+  await expect(rail.getByRole('link', { name: 'Daily' })).toHaveAttribute('aria-current', 'page');
+  await expect(rail.getByRole('link', { name: /Requests/ })).toContainText('2');
+  await expect(page.getByTestId('oc-phone-requests-badge')).toHaveText('2');
+  const more = page.getByTestId('oc-more');
+  await expect(more).toHaveAccessibleName('More');
+  await expect(more).not.toHaveAttribute('aria-current', 'page');
+  await expect(more).toHaveCSS('position', 'relative');
   await settle(page);
-  await expectNoSeriousAxeViolations(page, 'operator console (narrow, single scrolling tab row)');
+  await expectNoSeriousAxeViolations(page, 'operator console with the phone rail');
+
+  // A secondary page: the fourth slot wears its glyph, label and the current mark.
+  await page.goto('/operator/1/payouts');
+  await expect(
+    page.getByTestId('statement-open').or(page.getByTestId('payouts-tab')),
+  ).toBeVisible();
+  await expect(more).toHaveAccessibleName('Payouts');
+  await expect(more).toHaveAttribute('aria-current', 'page');
+  await expect(rail.getByRole('link', { name: 'Daily' })).not.toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+
+  // The sheet: the secondaries grouped, the current row marked, no cross-console row for a non-admin.
+  await openMoreSheet(page);
+  const sheet = page.getByTestId('oc-more-sheet');
+  await expect(sheet.locator('p')).toHaveText(['Set-up', 'Money']);
+  await expect(sheet.getByRole('link')).toHaveCount(3);
+  await expect(sheet.getByRole('link', { name: /^Payouts/ })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  await expect(sheet.getByRole('link', { name: /Admin console/ })).toHaveCount(0);
+  await expect(sheet.getByRole('link').first()).toBeFocused();
+  const sheetBox = (await sheet.boundingBox())!;
+  expect(sheetBox.y + sheetBox.height).toBeLessThanOrEqual(780);
+  expect(sheetBox.x).toBeGreaterThanOrEqual(0);
+  expect(sheetBox.x + sheetBox.width).toBeLessThanOrEqual(390);
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'operator console with the More sheet open');
+  await page.keyboard.press('Escape');
+  await expect(sheet).toBeHidden();
+  await expect(more).toBeFocused();
+
+  // From sm up the reverse: the six-tab rail, no phone rail.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect(rail).toBeHidden();
+  await expect(page.getByTestId('oc-tabs')).toBeVisible();
+  await expect(page.getByTestId('oc-tabs').getByRole('link')).toHaveCount(6);
+  await expect(page.getByTestId('oc-tabs').getByRole('link', { name: 'Payouts' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
 });
 
 test('the account chip opens a popover on the console — axe clean, one header row on a phone (#1008)', async ({
@@ -355,7 +376,7 @@ test('only the section row is sticky; below sm it slides away on scroll-down and
   await expect(header).toHaveCSS('position', 'sticky');
   // The slide animates the `translate` property the utility sets — a transition on `transform` would never fire.
   await expect(header).toHaveCSS('transition-property', 'translate');
-  await expect(page.getByTestId('oc-tabs')).toHaveCSS('position', 'static');
+  await expect(page.getByTestId('oc-phone-rail')).toHaveCSS('position', 'static');
   await expect(page.getByTestId('oc-stats')).toHaveCSS('position', 'static');
 
   // A page tall enough to scroll, whatever the tab renders.

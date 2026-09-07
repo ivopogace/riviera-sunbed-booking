@@ -1,12 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { mockOwnedVenues } from './support/auth-mocks';
+import { expectNoSeriousAxeViolations } from './support/axe';
+import { settle } from './support/booking-dialog';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
-import { openOperatorAccountMenu } from './support/shell';
+import { expectPhoneRailFits, openMoreSheet, openOperatorAccountMenu } from './support/shell';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
- * The project's 44 px touch-target floor (#605), measured rather than asserted from class lists.
+ * The project's 44 px touch-target floor, measured rather than asserted from class lists.
  * One test per surface, each sweeping EVERY visible interactive control on it — so a control added
  * to a covered surface later is covered too, which is the drift this suite exists to stop.
  *
@@ -14,7 +16,8 @@ import { expectTouchTargets } from './support/touch-targets';
  * or error state has no controls to measure and would pass vacuously.
  *
  * <p>Surfaces are added here as each phase brings them to the floor; the phase that lands a surface
- * is the phase that un-skips it.
+ * is the phase that un-skips it. The viewport is the project's, not this file's: the mocked config
+ * runs it once per phone width (`phone` at 390px, `fold` at 344px).
  */
 /**
  * Asserts a grid that overflows its frame is SCROLLABLE rather than clipped. `app-beach-grid-frame`
@@ -36,13 +39,30 @@ async function expectNoClippedCells(page: Page, scrollerTestId: string): Promise
 test.describe('44px touch targets at a phone width', () => {
   test.beforeEach(async ({ page }) => {
     await mockWholeConsole(page);
-    await page.setViewportSize({ width: 390, height: 780 });
   });
 
   async function openConsoleTab(page: Page, path: string): Promise<void> {
     await page.goto(`/operator/1/${path}`);
     await signInAsOperator(page);
   }
+
+  test('operator console — the phone rail fits one row, every slot at the floor, the More sheet too (#1012)', async ({
+    page,
+  }) => {
+    const width = page.viewportSize()!.width;
+    await openConsoleTab(page, 'daily');
+    await expect(page.getByTestId('daily-view-tab')).toBeVisible();
+
+    await expectPhoneRailFits(page, 'Operator console sections (phone)');
+    await expectTouchTargets(page, `operator daily view with the phone rail at ${width}px`);
+    await settle(page);
+    await expectNoSeriousAxeViolations(page, `operator daily view at ${width}px`);
+
+    await openMoreSheet(page);
+    await expectTouchTargets(page, `operator console with the More sheet open at ${width}px`);
+    await settle(page);
+    await expectNoSeriousAxeViolations(page, `operator console, More sheet open, at ${width}px`);
+  });
 
   test('operator console — requests tab', async ({ page }) => {
     await openConsoleTab(page, 'requests');

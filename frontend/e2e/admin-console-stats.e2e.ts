@@ -3,6 +3,7 @@ import { expect, Page, test } from '@playwright/test';
 import { mockOperatorLifecycleApi } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
+import { openMoreSheet } from './support/shell';
 
 /**
  * Real-render behaviour + a11y audit of the admin console's stat strip, at **360px**
@@ -147,24 +148,34 @@ test("the console home's first content heading survives the strip at 360px", asy
 test('sits below the tab strip, so the pills never move between tabs', async ({ page }) => {
   await openConsole(page);
 
+  // At 360px the rail is the phone rail; Commissions is reached through its More sheet.
   const tabsBottom = await page.evaluate(() =>
     Math.round(
-      document.querySelector('nav[aria-label="Admin console sections"]')!.getBoundingClientRect()
-        .bottom,
+      document
+        .querySelector('nav[aria-label="Admin console sections (phone)"]')!
+        .getBoundingClientRect().bottom,
     ),
   );
   expect(await topOf(page, '[data-testid="admin-stats"]')).toBeGreaterThanOrEqual(tabsBottom);
 
-  const tabsTopOnHome = await topOf(page, '[data-testid="admin-tab-operators"]');
-  await page.getByTestId('admin-tab-commissions').click();
+  const railTopOnHome = await topOf(page, '[data-testid="oc-phone-rail"]');
+  await openMoreSheet(page);
+  await page
+    .getByTestId('oc-more-sheet')
+    .getByRole('link', { name: /^Commissions/ })
+    .click();
   await expect(page).toHaveURL(/\/admin\/commissions/);
-  expect(await topOf(page, '[data-testid="admin-tab-operators"]')).toBe(tabsTopOnHome);
+  expect(await topOf(page, '[data-testid="oc-phone-rail"]')).toBe(railTopOnHome);
 });
 
 test("the strip is the console home's, not every tab's", async ({ page }) => {
   await openConsole(page);
 
-  await page.getByTestId('admin-tab-commissions').click();
+  await openMoreSheet(page);
+  await page
+    .getByTestId('oc-more-sheet')
+    .getByRole('link', { name: /^Commissions/ })
+    .click();
   await expect(page).toHaveURL(/\/admin\/commissions/);
   await expect(page.getByTestId('admin-commissions-list')).toBeVisible();
   await expect(page.getByTestId('admin-stats')).toHaveCount(0);

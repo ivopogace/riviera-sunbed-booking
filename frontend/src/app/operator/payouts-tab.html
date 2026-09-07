@@ -190,7 +190,8 @@
       </div>
     } @else {
       <section appCardGlass class="mt-3.5 overflow-hidden rounded-[24px] px-1.5 py-1.5">
-        <div class="overflow-x-auto">
+        <!-- A phone scrolls the ledger sideways: the region is focusable and named, so the keyboard can reach it too (WCAG 2.1.1). -->
+        <div class="overflow-x-auto" role="region" aria-label="Payout ledger" tabindex="0">
           <table class="w-full border-collapse text-[13px]" data-testid="ledger-table">
             <caption class="sr-only">
               Payout ledger — accruals and refund reversals
