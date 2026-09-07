@@ -73,7 +73,7 @@
   </section>
 } @else if (loadError()) {
   <p
-    class="mx-auto mt-6 max-w-md rounded-[16px] border border-riv-alert-tint/30 bg-white/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
+    class="mx-auto mt-6 max-w-md rounded-[16px] border border-riv-alert-tint/30 bg-riv-console-inset/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
     role="alert"
     data-testid="daily-load-error"
   >
@@ -94,7 +94,7 @@
             [value]="selectedDate()"
             (change)="onDateChange($event)"
             appTouchTarget
-            class="rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
+            class="rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
           />
         </label>
         <!-- Only the CONTENT branches (#718): swapping the element rebuilds the live region, which announces unreliably. -->
@@ -128,7 +128,7 @@
           <button
             type="button"
             appTouchTarget
-            class="mt-3 cursor-pointer rounded-[12px] border border-riv-warn-edge/50 bg-white/60 px-[14px] py-[9px] text-[13.5px] font-bold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-white/85 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-65"
+            class="mt-3 cursor-pointer rounded-[12px] border border-riv-warn-edge/50 bg-riv-console-inset/60 px-[14px] py-[9px] text-[13.5px] font-bold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-riv-console-inset/85 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-65"
             data-testid="daily-close-sales"
             [appBusy]="closeSalesBusy()"
             (click)="onCloseSales()"
@@ -251,7 +251,7 @@
       >
         <li class="flex items-center gap-[7px]">
           <span
-            class="h-[13px] w-[13px] rounded-[4px] border border-riv-console-tint/15 bg-white/85"
+            class="h-[13px] w-[13px] rounded-[4px] border border-riv-console-tint/15 bg-riv-console-inset/85"
             aria-hidden="true"
           ></span>
           Free (tap to mark)
@@ -290,7 +290,7 @@
           <button
             type="button"
             appTouchTarget
-            class="cursor-pointer rounded-[12px] border border-riv-card-border bg-white/60 px-[14px] py-[9px] text-[13.5px] font-bold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-white/85 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-65"
+            class="cursor-pointer rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[14px] py-[9px] text-[13.5px] font-bold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-riv-console-inset/85 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-65"
             [appBusy]="checkInBusy()"
             (click)="toggleScan()"
             data-testid="checkin-scan-toggle"
@@ -306,7 +306,7 @@
             spellcheck="false"
             placeholder="Booking code"
             appTouchTarget
-            class="w-[170px] rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] font-mono text-[14px] tracking-[0.06em] text-riv-card-ink uppercase placeholder:font-sans placeholder:normal-case"
+            class="w-[170px] rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] font-mono text-[14px] tracking-[0.06em] text-riv-card-ink uppercase placeholder:font-sans placeholder:normal-case"
             (keydown.enter)="submitCode(checkinCode)"
             data-testid="checkin-code-input"
           />
@@ -344,7 +344,7 @@
         <ul class="flex list-none flex-col gap-1.5 p-0">
           @for (a of arrivals(); track a.setId) {
             <li
-              class="flex items-center justify-between rounded-[12px] border border-riv-card-border bg-white/45 px-3 py-2"
+              class="flex items-center justify-between rounded-[12px] border border-riv-card-border bg-riv-console-inset/45 px-3 py-2"
               data-testid="daily-arrival-row"
             >
               <span class="text-[13.5px] font-semibold text-riv-card-ink">{{ a.label }}</span>

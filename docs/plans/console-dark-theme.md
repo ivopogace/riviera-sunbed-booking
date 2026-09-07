@@ -224,6 +224,11 @@ the intake gate) and are each recorded so the maintainer can reverse them on the
   (`#d97706`/`#f59e0b` and `rgba(240,170,46,·)`) → `--riv-warn-edge` at the ladder alphas (`/55`,
   `/15`), the #879 merge finishing; the sea banner's `#0e7a89→#0c6675` gradient → one image token
   `--riv-sea-grad`, theme-invariant under its fixed white ink.
+- **Decided (phase 2, from the maths):** the dark premium cell is a dusk gold
+  (`linear-gradient(180deg, #6b5324, #4a3916)`) under a light numeral (`--riv-premium-ink` themes:
+  `#0a2a33` / `#f2d48c`), not the day gold deepened a shade: the light selection ring reads 1.14:1
+  over a bright gold, and no single ring colour clears 3:1 over both a bright tile and the night
+  sand. The tourist dark map made the same call (a dim gold glass, light gold ink).
 - **Decided:** `--riv-walkin-hatch` stays one declaration and themes through `--riv-console-tint`;
   a dark declaration is added only if R-3's proof needs a lighter band.
 - **Decided:** the residue AC-2 records: `text-white`/`outline-white` over solid fills and the CTA
@@ -288,16 +293,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** phase 2 — `testing/console-themes.ts`, the literal sweep spec and the six tabs' dark contrast rows (red), then the class strings.
+**Next action:** phase 3 — the shell, chip, switcher and palette contrast specs gain their dark rows off the shared table.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 69818edb |
-| 1 — tokens: the dark block, `--riv-console-inset` / `--riv-premium-ink` / `--riv-sea-grad`, the mirrors, the four guards flipped | ✅ | (this commit) |
-| 2 — the venue console restyle: literals → tokens across the six tabs, `beach-cell`, `set-editor`, the banners, the statement; `testing/console-themes.ts`; contrast specs in both themes; the literal sweep spec | | |
-| 3 — the admin console + shell restyle: the admin components, `console-shell`, chip, switch, palette contrast in both themes | | |
+| 1 — tokens: the dark block, `--riv-console-inset` / `--riv-premium-ink` / `--riv-sea-grad`, the mirrors, the four guards flipped | ✅ | d6c8b6a8 |
+| 2 — the console restyle (venue tabs AND the admin components, the sweep covers both): literals → tokens, `beach-cell`'s per-state ink, the banners, the statement; `testing/console-themes.ts`; the nine venue-console contrast specs in both themes; the literal sweep spec | ✅ | (this commit) |
+| 3 — the chrome in both themes: `console-shell`, chip, switcher and palette contrast specs | | |
 | 4 — `core/console-theme.ts` + the pin (`app.ts`, `app.spec.ts`) | | |
 | 5 — the chip's `Console theme` rows (spec, a11y, contrast) | | |
 | 6 — e2e: the `console-dark` project, the three tabs' cases, `theme-shell.e2e.ts`'s console cases | | |
@@ -373,13 +378,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `operator-console.html`, `operator-home.ts`, the two field components, `shared/beach-grid-frame.ts`;
 create `testing/console-themes.ts`, `operator/console-literal-sweep.spec.ts`; the tabs' contrast specs.
 
-- [ ] **Step 1: Write the failing tests** — the sweep (red on ~70 sites); each tab's contrast spec over `CONSOLE_THEMES` (red: the dark rows composite the inset over the dark card, the numerals over the hatch band and the gold).
-- [ ] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include 'src/app/operator/**/*.contrast.spec.ts' --include src/app/operator/console-literal-sweep.spec.ts` → FAIL.
-- [ ] **Step 3: Minimal implementation** — the class strings; `beach-cell`'s ink per state.
-- [ ] **Step 4: Run it, verify it passes** — the operator folder's specs.
-- [ ] **Step 5: Generalization-audit pass** — population: every `bg-white`/`border-white` position in `frontend/src/app` outside the console → `grep -rnoE '\b(bg|border)-(white|black)(/[0-9]+)?' frontend/src/app --include=*.ts --include=*.html | grep -v spec` — the tourist hits stay (out of scope, recorded).
-- [ ] **Step 6: Commit** — `Restyle the venue console onto themed tokens, proven in both themes (#1010)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Write the failing tests** — the sweep (`console-literal-sweep.spec.ts`) and the nine venue-console contrast specs' `describe.each(CONSOLE_THEMES)` rows.
+- [x] **Step 2: Run it, verify it fails** — the sweep: 61 unique literals (`expected [ …(61) ] to deeply equal []`); the maths: one real red — the light selection ring over the day gold reads 1.14:1 in dark, which retuned the dark premium gradient to a dusk gold with a themed light numeral (`--riv-premium-ink` now two declarations; recorded under *Open questions*).
+- [x] **Step 3: Minimal implementation** — the class strings across `operator/`, `admin/`, `shared/beach-grid-frame.ts`, `shared/confirm-with-reason.ts`; `beach-cell`'s ink per state; the sheet backdrop onto the scrim.
+- [x] **Step 4: Run it, verify it passes** — `src/app/operator/**`, `src/app/admin/**`, the class-O guard, the frame and canvas specs → 88 files / 1033 PASS.
+- [x] **Step 5: Generalization-audit pass** — the log's phase-2 row.
+- [x] **Step 6: Commit** — `Restyle the console onto themed tokens, proven in both themes (#1010)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 3 — the admin console and the shell
 
@@ -435,6 +440,7 @@ create `testing/console-themes.ts`, `operator/console-literal-sweep.spec.ts`; th
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-07 | phase 2 | every `bg-white`/`border-white` position in `frontend/src/app` outside the console sources — the same mechanism on tourist surfaces | `grep -rnoE '\b(bg\|border)-(white\|black)(/[0-9]+)?' frontend/src/app --include=*.ts --include=*.html \| grep -v spec \| grep -v "operator/\|admin/"` | `shared/photo-slideshow.ts`, `shared/photo-lightbox.ts`, `shared/photo-gallery-grid.ts` (photo chrome, fixed by design), `shared/retry-button.ts`, `shared/semantic-chip.ts`, `shared/tab-rail.ts`, `shared/popover-skin.ts` (`text-white` on solid fills) | none to migrate: photo surfaces and fixed inks; recorded in the ledger's class N |
 | 2026-09-07 | phase 1 | every stylesheet comment whose ground is the porcelain pin — the claim the dark console falsifies | `grep -n "pins porcelain\|porcelain pin\|porcelain-pinned\|Declared ONCE" frontend/src/tailwind.css` | 11 lines: the two console inks, the class-O header, the alert tint, the map palette (retold); the fixed-fill families, the subtree-host mechanism notes and `--riv-accent-*` (true as written) | five retold, six left true |
 | 2026-09-07 | intake | every colour position the console paints that has no dark branch — the grey-slab mechanism: a light literal or a base-only token under the pin | `grep -rnoE '\b(bg\|border\|text\|from\|to\|via\|ring\|outline\|shadow\|divide)-(white\|black)(/[0-9]+)?' frontend/src/app/{operator,admin,shared} frontend/src/app/console-shell.ts` + the ledger's population command + the once-declared token list from `tailwind.css` | ~90 `bg-white/NN`, 6 `border-white/NN`, 3 opaque `bg-white`, 1 `bg-black/80`; 4 hex inks/rings, 2 amber banners, 1 gradient; 12 base-only tokens under the pin | the plan's phases 1–3; the residue recorded in AC-2 |
 

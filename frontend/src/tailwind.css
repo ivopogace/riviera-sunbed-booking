@@ -554,9 +554,10 @@
       is the resulting --riv-walkin-hatch.) */
   --riv-premium-edge: #b47814;
   --riv-premium-grad: linear-gradient(180deg, #ffe3a3, #f4c05a);
-  /** The numeral over the premium gradient. Theme-invariant: the gold is a fixed tier
-      identity in both console themes (the dark block only deepens it), and a fixed fill pins its
-      ink — the themed card ink would go white on gold. Declared once. */
+  /** The numeral over the premium gradient — its own token because the card ink cannot serve
+      both themes here: the day gold wants a dark numeral, and the dark console's dusk gold (the
+      dark block, deep enough that the light selection ring still marks a picked premium cell at
+      3:1) wants a light one. */
   --riv-premium-ink: #0a2a33;
   /** The beach map's "Facing the sea" banner (shared/beach-grid-frame): a fixed teal under fixed
       white ink in every theme, one image token so no frame rebuilds it Declared once. */
@@ -1024,7 +1025,7 @@
       shell on every console route (core/console-theme.ts), never the document attribute. Every
       token whose only ground for staying single was "its consumers sit under the porcelain pin"
       declares its dark value here and nowhere else; the fixed-fill families (--riv-warn-*,
-      --riv-solid-*, --riv-premium-ink, --riv-sea-grad) stay declared once above. Each pair is
+      --riv-solid-*, --riv-sea-grad) stay declared once above. Each pair is
       AA-proven in both console themes by the console *.contrast.spec.ts files off
       testing/console-themes.ts, and the guards named at each base declaration hold the pair to
       exactly two blocks. */
@@ -1039,7 +1040,9 @@
   --riv-alert-tint: #ff8a7a;
   --riv-positive-tint: #7fd8ac;
   --riv-premium-edge: #c8ab62;
-  --riv-premium-grad: linear-gradient(180deg, #f2d48c, #d9a640);
+  /* Dusk gold, not the day gold darkened a shade: a bright tile under a light ring reads 1.1:1. */
+  --riv-premium-grad: linear-gradient(180deg, #6b5324, #4a3916);
+  --riv-premium-ink: #f2d48c;
 }
 
 /** The focus-indicator baseline. Preflight resets no outline, so a button without a

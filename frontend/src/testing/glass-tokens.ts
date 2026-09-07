@@ -191,13 +191,15 @@ export const DARK_CONSOLE_NEGATIVE_INK: Rgb = hexToRgb('ffa9a1');
 export const CONSOLE_INSET: Rgb = WHITE;
 export const DARK_CONSOLE_INSET: Rgb = hexToRgb('020a16');
 
-/** `--riv-premium-ink` — the numeral over the beach-map premium cell's gold gradient.
- *  Theme-invariant: the gold is a fixed tier identity in both themes, and a fixed fill pins its
- *  ink (the `--riv-solid-btn-*` rule) — the themed card ink would go white on gold in dark. */
+/** `--riv-premium-ink` — the numeral over the beach-map premium cell's gold gradient, per theme:
+ *  dark on the day gold, a light gold on the dusk gold. Its own token because the card ink cannot
+ *  serve both (white on the day gold would fail), and themed because the gradient is. */
 export const PREMIUM_INK: Rgb = hexToRgb('0a2a33');
-/** `--riv-premium-grad` stops per theme — the day gold and the deeper night gold. */
+export const DARK_PREMIUM_INK: Rgb = hexToRgb('f2d48c');
+/** `--riv-premium-grad` stops per theme — the day gold and the dusk gold, the latter deep enough
+ *  that the light selection ring still marks a picked premium cell at 3:1. */
 export const PREMIUM_GRAD_STOPS: readonly Rgb[] = ['ffe3a3', 'f4c05a'].map(hexToRgb);
-export const DARK_PREMIUM_GRAD_STOPS: readonly Rgb[] = ['f2d48c', 'd9a640'].map(hexToRgb);
+export const DARK_PREMIUM_GRAD_STOPS: readonly Rgb[] = ['6b5324', '4a3916'].map(hexToRgb);
 /** `--riv-sea-grad` — the beach map's "Facing the sea" banner, a fixed teal under fixed white
  *  ink in every theme (the fixed-fill rule again); one image token so the two frames cannot drift. */
 export const SEA_GRAD_STOPS: readonly Rgb[] = ['0e7a89', '0c6675'].map(hexToRgb);

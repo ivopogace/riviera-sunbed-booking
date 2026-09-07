@@ -12,7 +12,7 @@
          venue") copy — card-ink over the light panel is AA-proven, and a green success box would
          misread on a failure. -->
     <output
-      class="mt-3 block rounded-[12px] border border-riv-card-border bg-white/70 px-3.5 py-2.5 text-[13.5px] font-semibold text-riv-card-ink"
+      class="mt-3 block rounded-[12px] border border-riv-card-border bg-riv-console-inset/70 px-3.5 py-2.5 text-[13.5px] font-semibold text-riv-card-ink"
       aria-live="polite"
       data-testid="requests-notice"
       >{{ msg }}</output
@@ -79,7 +79,7 @@
     </div>
   } @else if (loadError()) {
     <p
-      class="mx-auto mt-6 max-w-md rounded-[16px] border border-riv-alert-tint/30 bg-white/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
+      class="mx-auto mt-6 max-w-md rounded-[16px] border border-riv-alert-tint/30 bg-riv-console-inset/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
       role="alert"
       data-testid="requests-load-error"
     >
@@ -87,7 +87,7 @@
     </p>
   } @else if (rows().length === 0) {
     <div
-      class="mt-3.5 rounded-[24px] border border-riv-card-border bg-white/50 px-[26px] py-[52px] text-center"
+      class="mt-3.5 rounded-[24px] border border-riv-card-border bg-riv-console-inset/50 px-[26px] py-[52px] text-center"
       data-testid="requests-empty"
     >
       <span
@@ -151,7 +151,7 @@
                 <button
                   type="button"
                   appTouchTarget
-                  class="rounded-[12px] border border-riv-card-border bg-white/70 px-4 py-2.5 text-[13px] font-semibold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-white motion-reduce:transition-none"
+                  class="rounded-[12px] border border-riv-card-border bg-riv-console-inset/70 px-4 py-2.5 text-[13px] font-semibold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-riv-console-inset motion-reduce:transition-none"
                   data-testid="dismiss-expired"
                   (click)="onDismissExpired(row)"
                 >
@@ -180,7 +180,7 @@
                   <button
                     type="button"
                     appTouchTarget
-                    class="rounded-[13px] border border-riv-card-border bg-white/60 px-5 py-[11px] text-[14px] font-semibold text-riv-card-ink"
+                    class="rounded-[13px] border border-riv-card-border bg-riv-console-inset/60 px-5 py-[11px] text-[14px] font-semibold text-riv-card-ink"
                     (click)="onCancelDecline(row)"
                   >
                     Keep it
@@ -202,7 +202,7 @@
                 <button
                   type="button"
                   appTouchTarget
-                  class="rounded-[13px] border border-riv-alert-tint/50 bg-white/50 px-5 py-[11px] text-[14px] font-semibold text-riv-error-ink aria-disabled:opacity-60"
+                  class="rounded-[13px] border border-riv-alert-tint/50 bg-riv-console-inset/50 px-5 py-[11px] text-[14px] font-semibold text-riv-error-ink aria-disabled:opacity-60"
                   [appBusy]="isDeciding(row.bookingId)"
                   [attr.aria-label]="declineLabel(row)"
                   (click)="onDecline(row)"

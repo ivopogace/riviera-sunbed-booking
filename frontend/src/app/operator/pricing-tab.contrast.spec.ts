@@ -11,6 +11,12 @@ import {
   expectAaOverStops,
   surfaceOver,
 } from '../../testing/glass-tokens';
+import {
+  CONSOLE_THEMES,
+  cardOver,
+  expectAaOnSurfaces,
+  insetOver,
+} from '../../testing/console-themes';
 
 /**
  * WCAG-AA contrast guard for the Pricing tab. The tab is always porcelain (console host),
@@ -66,3 +72,21 @@ describe('PricingTab porcelain contrast (WCAG AA, #174)', () => {
     }
   });
 });
+
+/** Both console themes off one table (`testing/console-themes.ts`); the porcelain rows above stay
+ *  as the parity proof. */
+describe.each(CONSOLE_THEMES)(
+  'PricingTab contrast in the $name console (WCAG AA, #1010)',
+  (theme) => {
+    it('heading, tier descriptions and the price field (card ink on the inset/60) meet AA', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, CARD_INK_SOFT_ALPHA, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.6, stop));
+    });
+
+    it('the projected figure and the Saved notice (--riv-console-accent-ink) and the reprice error meet AA', () => {
+      expectAaOnSurfaces(theme, theme.accentInk, 1, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.errorInk, 1, (stop) => cardOver(theme, stop));
+    });
+  },
+);

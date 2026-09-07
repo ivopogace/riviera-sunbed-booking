@@ -8,6 +8,12 @@ import {
   PORCELAIN_STOPS,
   expectAaOverStops,
 } from '../../testing/glass-tokens';
+import {
+  CONSOLE_THEMES,
+  cardOver,
+  expectAaOnSurfaces,
+  insetOver,
+} from '../../testing/console-themes';
 
 /**
  * WCAG-AA contrast guard for the create-venue card. The card renders only on the porcelain
@@ -48,3 +54,20 @@ describe('VenueCreateCard porcelain contrast (WCAG AA, #278)', () => {
     }
   });
 });
+
+/** Both console themes off one table (`testing/console-themes.ts`); the porcelain rows above stay
+ *  as the parity proof. */
+describe.each(CONSOLE_THEMES)(
+  'VenueCreateCard contrast in the $name console (WCAG AA, #1010)',
+  (theme) => {
+    it('heading, labels, sub-copy and the fields (card ink on the inset/60) meet AA', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, CARD_INK_SOFT_ALPHA, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.6, stop));
+    });
+
+    it('the field and create error ink (--riv-error-ink) meets AA on the card glass', () => {
+      expectAaOnSurfaces(theme, theme.errorInk, 1, (stop) => cardOver(theme, stop));
+    });
+  },
+);

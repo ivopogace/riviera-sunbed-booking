@@ -1,5 +1,6 @@
 import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import { INK_DARK } from '../../testing/glass-tokens';
+import { CONSOLE_THEMES } from '../../testing/console-themes';
 
 /**
  * WCAG-AA contrast guard for the venue console's page. The console is ALWAYS porcelain (the app
@@ -25,3 +26,17 @@ describe('OperatorConsole porcelain contrast (WCAG AA, #170)', () => {
     expect(contrastRatio(rgbToHex(inkSoft), WHITE)).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });
+
+/** Both console themes off one table (`testing/console-themes.ts`): the "Venue not found" card is
+ *  the opaque inset — white in porcelain, the slate in dark — under the document ink the pin
+ *  re-resolves. The porcelain row above stays as the parity proof. */
+describe.each(CONSOLE_THEMES)(
+  'OperatorConsole contrast in the $name console (WCAG AA, #1010)',
+  (theme) => {
+    it('the not-found card ink meets AA on the opaque inset', () => {
+      expect(contrastRatio(rgbToHex(theme.ink), rgbToHex(theme.inset))).toBeGreaterThanOrEqual(
+        AA_NORMAL,
+      );
+    });
+  },
+);

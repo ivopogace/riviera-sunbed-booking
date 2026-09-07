@@ -82,7 +82,7 @@ const TOOL_LABEL: Record<CellState, string> = {
  *  against the cell's 30%/12% until #879 gave both one `--riv-walkin-hatch` declaration. */
 const SWATCH_CLASS: Record<CellState, string> = {
   premium: 'bg-(image:--riv-premium-grad)',
-  standard: 'bg-white/85',
+  standard: 'bg-riv-console-inset/85',
   walkin: 'bg-(image:--riv-walkin-hatch)',
   gap: 'bg-transparent',
 };

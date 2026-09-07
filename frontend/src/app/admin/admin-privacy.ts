@@ -94,7 +94,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
               spellcheck="false"
               placeholder="guest@example.com"
               aria-describedby="admin-privacy-erase-intro"
-              class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[15px] text-riv-card-ink"
+              class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[15px] text-riv-card-ink"
               #emailControl
             />
 
@@ -113,7 +113,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
               appTouchTarget
               type="submit"
               data-testid="admin-privacy-review"
-              class="mt-4 w-full rounded-[12px] border border-riv-field-border bg-white/70 px-4 py-3 text-[14.5px] font-bold text-riv-card-ink"
+              class="mt-4 w-full rounded-[12px] border border-riv-field-border bg-riv-console-inset/70 px-4 py-3 text-[14.5px] font-bold text-riv-card-ink"
             >
               Review erasure request
             </button>
@@ -153,7 +153,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
               [disabled]="busy()"
               (input)="onReasonTyped($event)"
               placeholder="e.g. DSAR-2026-08-04"
-              class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[14px] text-riv-card-ink"
+              class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[14px] text-riv-card-ink"
             />
 
             <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -173,7 +173,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
                 data-testid="admin-privacy-cancel"
                 [appBusy]="busy()"
                 (click)="cancel()"
-                class="rounded-[12px] border border-riv-field-border bg-white/70 px-5 py-3 text-[13.5px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                class="rounded-[12px] border border-riv-field-border bg-riv-console-inset/70 px-5 py-3 text-[13.5px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -213,7 +213,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
               type="button"
               data-testid="admin-privacy-another"
               (click)="another()"
-              class="mt-3 rounded-[12px] border border-riv-field-border bg-white/70 px-5 py-3 text-[13.5px] font-semibold text-riv-card-ink"
+              class="mt-3 rounded-[12px] border border-riv-field-border bg-riv-console-inset/70 px-5 py-3 text-[13.5px] font-semibold text-riv-card-ink"
             >
               Erase another
             </button>

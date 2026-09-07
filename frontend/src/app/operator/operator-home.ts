@@ -104,7 +104,7 @@ import { VenueCreateCard } from './venue-create-card';
               <li>
                 <a
                   [routerLink]="['/operator', venue.id]"
-                  class="flex flex-col gap-0.5 rounded-[14px] border border-riv-field-border bg-riv-field-fill px-4 py-3 no-underline transition-colors hover:bg-white motion-reduce:transition-none"
+                  class="flex flex-col gap-0.5 rounded-[14px] border border-riv-field-border bg-riv-field-fill px-4 py-3 no-underline transition-colors hover:bg-riv-console-inset motion-reduce:transition-none"
                 >
                   <span class="text-[15px] font-semibold text-riv-card-ink">{{ venue.name }}</span>
                   <span class="text-[13px] text-riv-card-ink-faint">{{ venue.beach }}</span>

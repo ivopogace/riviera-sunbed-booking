@@ -11,7 +11,15 @@ import {
   PORCELAIN_STOPS,
   expectAaOverStops,
   surfaceOver,
+  WARN_EDGE,
 } from '../../testing/glass-tokens';
+import {
+  CONSOLE_THEMES,
+  cardOver,
+  expectAaOnSurfaces,
+  insetOver,
+  tintOver,
+} from '../../testing/console-themes';
 
 /**
  * WCAG-AA contrast guard for the Venue & commodities tab. The tab is always porcelain
@@ -85,3 +93,36 @@ describe('VenueTab porcelain contrast (WCAG AA, #177)', () => {
     }
   });
 });
+
+/** Both console themes off one table (`testing/console-themes.ts`); the porcelain rows above stay
+ *  as the parity proof. */
+describe.each(CONSOLE_THEMES)(
+  'VenueTab contrast in the $name console (WCAG AA, #1010)',
+  (theme) => {
+    it('headings, labels and the fields (card ink on the inset/60) meet AA', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, CARD_INK_SOFT_ALPHA, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.6, stop));
+    });
+
+    it('the commission % and the Saved notice (--riv-console-accent-ink) and the error ink meet AA on the card glass', () => {
+      expectAaOnSurfaces(theme, theme.accentInk, 1, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.errorInk, 1, (stop) => cardOver(theme, stop));
+    });
+
+    it('the photo Remove button (--riv-error-ink on the inset/50) and the caption buttons (card ink on the inset/70) meet AA', () => {
+      expectAaOnSurfaces(theme, theme.errorInk, 1, (stop) => insetOver(theme, 0.5, stop));
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.7, stop));
+    });
+
+    it('the active amenity chip (--riv-accent-ink over the accent chip tint) meets AA', () => {
+      expectAaOnSurfaces(theme, theme.accentRing, 1, (stop) =>
+        composite(ACCENT_CHIP_FILL.color, ACCENT_CHIP_FILL.alpha, cardOver(theme, stop)),
+      );
+    });
+
+    it('the stale-write banner ink (card ink over --riv-warn-edge/15) meets AA', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => tintOver(theme, WARN_EDGE, 0.15, stop));
+    });
+  },
+);

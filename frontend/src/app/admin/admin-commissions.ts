@@ -148,7 +148,7 @@ import { TouchTarget } from '../shared/touch-target';
                   [value]="draftPercent()"
                   [disabled]="busy()"
                   (input)="onPercentTyped($event)"
-                  class="mt-1 w-full max-w-[160px] rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[15px] text-riv-card-ink"
+                  class="mt-1 w-full max-w-[160px] rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[15px] text-riv-card-ink"
                   #percentInput
                 />
                 <p
@@ -189,7 +189,7 @@ import { TouchTarget } from '../shared/touch-target';
                   [disabled]="busy()"
                   (input)="onReasonTyped($event)"
                   placeholder="e.g. renegotiated for the 2026 season"
-                  class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[14px] text-riv-card-ink"
+                  class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[14px] text-riv-card-ink"
                 />
 
                 <p class="mt-3 text-[13px] text-riv-card-ink-soft">
@@ -206,7 +206,7 @@ import { TouchTarget } from '../shared/touch-target';
                     [attr.aria-label]="'Save rate for ' + venue.name"
                     [appBusy]="busy()"
                     (click)="saveRate(venue)"
-                    class="rounded-[10px] border border-riv-field-border bg-white/70 px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                    class="rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
                   >
                     Save rate
                   </button>

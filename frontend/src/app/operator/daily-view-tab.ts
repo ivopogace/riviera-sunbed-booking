@@ -612,7 +612,7 @@ export class DailyViewTab {
       case 'BOOKED_ONLINE':
         return 'border-riv-console-tint/15 bg-(image:--riv-walkin-hatch) text-riv-card-ink';
       default:
-        return 'border-riv-console-tint/15 bg-white/85 text-riv-card-ink';
+        return 'border-riv-console-tint/15 bg-riv-console-inset/85 text-riv-card-ink';
     }
   }
 

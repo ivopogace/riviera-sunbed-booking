@@ -18,6 +18,12 @@ import {
   WARN_FILL,
   WARN_INK,
 } from '../../testing/glass-tokens';
+import {
+  CONSOLE_THEMES,
+  cardOver,
+  expectAaOnSurfaces,
+  insetOver,
+} from '../../testing/console-themes';
 
 /**
  * WCAG-AA contrast guard for the Daily view tab. The tab is always porcelain (console
@@ -154,3 +160,57 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
     }
   });
 });
+
+/**
+ * Both console themes off one table (`testing/console-themes.ts`): the pairs the dark console had
+ * to gain — the date field and the arrival-code field on the inset, the sales-close trigger's label
+ * on the inset, the free and locked tile numerals on the night sand — beside the card inks, so a
+ * retuned token fails here in whichever theme it breaks. The porcelain rows above stay as the
+ * parity proof; these prove the same positions in dark.
+ */
+describe.each(CONSOLE_THEMES)(
+  'DailyViewTab contrast in the $name console (WCAG AA, #1010)',
+  (theme) => {
+    it('card ink, soft ink and the faint mini-label meet AA on the card glass', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, CARD_INK_SOFT_ALPHA, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, CARD_INK_FAINT_ALPHA, (stop) => cardOver(theme, stop));
+    });
+
+    it('the date field and the arrival-code field (--riv-card-ink on the inset/60) meet AA', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.6, stop));
+    });
+
+    it('the sales-close trigger label (--riv-card-ink on the inset/60) meets AA', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, TRIGGER_FILL_ALPHA, stop));
+    });
+
+    it('the FREE tile numeral (--riv-card-ink on the inset/85) meets AA over every wash stop', () => {
+      for (const stop of theme.washStops) {
+        const tile = composite(theme.inset, FREE_TILE_FILL.alpha, stop);
+        expect(
+          contrastRatio(rgbToHex(theme.ink), rgbToHex(tile)),
+          `${theme.name}: free tile over ${rgbToHex(stop)}`,
+        ).toBeGreaterThanOrEqual(AA_NORMAL);
+      }
+    });
+
+    it('the locked tile numeral meets AA over the hatch’s dense band (--riv-console-tint at 30%) on every wash stop', () => {
+      for (const stop of theme.washStops) {
+        const band = composite(theme.tint, LOCKED_STRIPE_FILL.alpha, stop);
+        expect(
+          contrastRatio(rgbToHex(theme.ink), rgbToHex(band)),
+          `${theme.name}: locked tile over ${rgbToHex(stop)}`,
+        ).toBeGreaterThanOrEqual(AA_NORMAL);
+      }
+    });
+
+    it('the write-failure notice (--riv-error-ink on the inset/70) meets AA', () => {
+      expectAaOnSurfaces(theme, theme.errorInk, 1, (stop) => insetOver(theme, 0.7, stop));
+    });
+
+    it('the legend key and the free tile share one inset, so the legend reads as the map does', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.85, stop));
+    });
+  },
+);

@@ -27,7 +27,7 @@ import { CardGlass } from './card-glass';
       [attr.aria-label]="label() || null"
     >
       <p
-        class="sea-banner -mx-[18px] mb-3.5 bg-[linear-gradient(180deg,#0e7a89,#0c6675)] px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-white"
+        class="sea-banner -mx-[18px] mb-3.5 bg-(image:--riv-sea-grad) px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-white"
       >
         <span aria-hidden="true">▲</span>&nbsp;&nbsp;Facing the sea
       </p>
