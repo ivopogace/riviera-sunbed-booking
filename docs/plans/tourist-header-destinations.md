@@ -127,7 +127,10 @@ ACs:
   pay page › signed out` and `… › signed in — the avatar included`.
 - [x] **AC-8:** Given every header control, links included, when the phone sweep runs, then each
   declares `appTouchTarget` and measures ≥ 44 × 44. *Seam:* the rendered boxes · *Pinned by:*
-  `e2e/touch-targets-tourist.e2e.ts` (existing sweep, the menu case re-pointed) +
+  `e2e/touch-targets-tourist.e2e.ts` (the phone sweep, unchanged: it lays out the swatch, the
+  hamburger and the sheet) + `e2e/tourist-header.e2e.ts` › `44px touch targets on the desktop
+  bar, which the phone sweeps never lay out › signed out — the bar, then the menu popover` /
+  `signed in — the bar, then the account popover` / `the theme picker open` +
   `app.spec.ts` › `every header link declares the touch floor, popovers and sheet open (signed
   in: %s) (#1002)` (class-list declaration for `<a>`, which `check-touch-target.mjs` never judges).
 
@@ -162,7 +165,7 @@ ACs:
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | An e2e that drove the retired controls (`find-open` in the nav, `nav-register` in the bar, `nav-user` text) goes red | high | med | each re-pointed in the same phase as the retirement; the mocked suite runs locally before push | this session | closed — every retired control re-pointed; full mocked suite 443/444 locally (the one failure an admin mail-delivery timing flake outside the diff, green alone), CI frontend job green on `fc4581c1` |
-| R-2 | The `<a>` links stay `display: inline`, so `appTouchTarget` is a silent no-op and the sweep fails | med | med | every bar link gets `inline-flex items-center`; the phone sweep (`touch-targets-tourist.e2e.ts`) is the proof | this session | closed — sweep green locally and in CI |
+| R-2 | The `<a>` links stay `display: inline`, so `appTouchTarget` is a silent no-op and the sweep fails | med | med | every bar link gets `inline-flex items-center`; the phone sweep (`touch-targets-tourist.e2e.ts`) plus the desktop sweep in `tourist-header.e2e.ts` are the proof | this session | closed — both sweeps green (the desktop one added at the review gate, F-2) |
 | R-3 | Two controls named `Menu` in the DOM (hamburger `sm:hidden`, desktop button `hidden sm:flex`) confuse a role locator | low | low | e2e locators key on test ids; `getByRole` skips CSS-hidden elements | this session | closed — no spec uses a `Menu` role locator; axe passes with both in the DOM |
 | R-4 | The swatch ring reads under 3:1 on some stop (the swatch alone is 1.0–2.8:1) | low | high | `app.contrast.spec.ts` composites ink-soft over the header glass over every stop | this session | closed — spec green in all three themes; rendered ring pinned in `tourist-header.e2e.ts` |
 | R-5 | Popover branches each declare a trigger ref; a ref used out of scope compiles to `undefined` and `openFind` records `null` | low | med | `app.spec.ts` asserts `document.activeElement` after dismiss in all three openers | this session | closed — the three focus-return tests and the e2e legs are green |
@@ -234,6 +237,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | sonar | new-code coverage 76.5% < 80% on `fc4581c1`: dead `undefined` branches in the address helpers, signed-out `closeMenus` leg untested | fixed-in-`82ebe1d7` (one `address` computed, string-only helpers; Escape/backdrop close test) |
+| F-2 | review (RV-FE-7) | the touch-target sweeps run at phone width only, so the desktop-only controls (swatch, Sign in, menu button, chip, popover rows) were never measured; the plan doc claimed the phone sweep was re-pointed | fixed — desktop-width sweep in `tourist-header.e2e.ts`, plan doc corrected (this commit) |
+| F-3 | review (prior PR #895 recurrence) | plan-doc *Pinned by* citations paraphrased test titles instead of quoting them | fixed-in-`85841c07` |
+| F-4 | review (locator style) | `headerMenuTrigger` used a raw CSS attribute union where the file uses `getByTestId` | fixed-in-`85841c07` (`getByTestId(...).or(...)`) |
 
 ---
 
@@ -245,11 +252,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/app.spec.ts` — AC 1, 2, 3, 4, 5, 8 unit pins; retired-control tests re-pointed
 - `frontend/src/app/app.a11y.spec.ts` — axe over the account/menu popovers in both auth states
 - `frontend/src/app/app.contrast.spec.ts` — the swatch ring and the avatar initial
-- `frontend/e2e/tourist-header.e2e.ts` — AC 7 on `/booking/pay`; the swatch ring's rendered box-shadow
+- `frontend/e2e/tourist-header.e2e.ts` — AC 7 on `/booking/pay`; the swatch ring's rendered box-shadow; the desktop-width touch-target sweep (AC 8)
 - `frontend/e2e/current-page-marker.e2e.ts` — AC 6 riviera leg; `Create an account` row
 - `frontend/e2e/find-a-booking.e2e.ts` — opens via the menu in both auth states, focus return
 - `frontend/e2e/theme-shell.e2e.ts` — phone theme pick from the bar swatch; identity block
-- `frontend/e2e/touch-targets-tourist.e2e.ts` — the menu/find case re-pointed
 - `frontend/e2e/customer-password.e2e.ts` — signed-in proof via the chip's accessible name
 - `frontend/e2e/unified-auth.e2e.ts` — register via the menu popover
 - `frontend/e2e/customer-auth.e2e.ts` — comments naming the retired Register link
@@ -284,7 +290,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [ ] Green: `openFind(trigger: HTMLElement)` with `findReturn = trigger`; the popover rows and
   the sheet row pass their branch's trigger ref.
 - [ ] `e2e/find-a-booking.e2e.ts`: `openFindBooking` helper (desktop, either auth state) + a
-  signed-in case with focus return; `touch-targets-tourist.e2e.ts` menu case re-pointed.
+  signed-in case with focus return; `touch-targets-tourist.e2e.ts` unchanged (it still drives
+  `find-open-mobile`).
 - [ ] Commit `Move Find a booking into the header menus (#1002)`.
 
 ## Phase 3 — AC 3, 6, 7, 8: seams and contrast

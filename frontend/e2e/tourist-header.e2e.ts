@@ -2,14 +2,17 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
-import { awaitRoutedPage } from './support/shell';
+import { awaitRoutedPage, openHeaderMenu } from './support/shell';
+import { expectTouchTargets } from './support/touch-targets';
 
 /**
- * The tourist header's two rendered-only rules: nothing in the bar wears the page's primary-button
- * skin — on `/booking/pay`, where `Pay €45` must be the one teal primary on screen — and the bare
- * theme swatch keeps its ring, the only WCAG 1.4.11 boundary a label-less control has. Both read
- * computed styles, which jsdom cannot paint; the maths behind the ring is `app.contrast.spec.ts`.
- * The API is mocked (`page.route`), so the spec is CI-safe like its siblings.
+ * The tourist header's rendered-only rules: nothing in the bar wears the page's primary-button
+ * skin — on `/booking/pay`, where `Pay €45` must be the one teal primary on screen — the bare
+ * theme swatch keeps its ring, the only WCAG 1.4.11 boundary a label-less control has, and the
+ * desktop-only controls (the swatch, the Sign in link, the round menu button, the account chip and
+ * the popover rows) meet the 44px floor, which the phone-width sweeps never lay out. All of it
+ * reads computed boxes and styles, which jsdom cannot paint; the maths behind the ring is
+ * `app.contrast.spec.ts`. The API is mocked (`page.route`), so the spec is CI-safe like its siblings.
  */
 
 const VENUE = {
@@ -165,5 +168,40 @@ test.describe('the theme swatch', () => {
       await page.getByTestId('theme-option-dark').click();
       await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
     });
+  });
+});
+
+test.describe('44px touch targets on the desktop bar, which the phone sweeps never lay out', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test('signed out — the bar, then the menu popover', async ({ page }) => {
+    await mockTourist(page, false);
+    await page.goto('/');
+    await expect(page.getByTestId('venue-card').first()).toBeVisible();
+    await expectTouchTargets(page, 'desktop bar, signed out');
+
+    await openHeaderMenu(page);
+    await expect(page.getByTestId('nav-register')).toBeVisible();
+    await expectTouchTargets(page, 'desktop menu popover');
+  });
+
+  test('signed in — the bar, then the account popover', async ({ page }) => {
+    await mockTourist(page, true);
+    await page.goto('/');
+    await expect(page.getByTestId('nav-user')).toBeVisible();
+    await expectTouchTargets(page, 'desktop bar, signed in');
+
+    await openHeaderMenu(page);
+    await expect(page.getByTestId('nav-signout')).toBeVisible();
+    await expectTouchTargets(page, 'desktop account popover');
+  });
+
+  test('the theme picker open', async ({ page }) => {
+    await mockTourist(page, false);
+    await page.goto('/');
+    await awaitRoutedPage(page);
+    await page.getByTestId('theme-toggle').click();
+    await expect(page.getByTestId('theme-option-riviera')).toBeVisible();
+    await expectTouchTargets(page, 'desktop theme picker');
   });
 });
