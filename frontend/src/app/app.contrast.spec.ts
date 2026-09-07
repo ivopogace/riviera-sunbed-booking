@@ -177,8 +177,8 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
 
   /**
    * The theme control is a bare swatch, so the swatch's ring is its only WCAG 1.4.11 boundary:
-   * the swatch itself sits at 1.0–2.8:1 against the bar it is on, and a white inset ring vanishes
-   * on porcelain. The ring is `--riv-ink-soft`, composited over the header glass like any ink.
+   * the swatch itself reaches 1.0:1 against the bar (its white end on porcelain), and a white
+   * inset ring vanishes there too. The ring is `--riv-ink-soft`, composited over the header glass like any ink.
    */
   it.each([
     {

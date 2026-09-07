@@ -220,9 +220,9 @@ see Execution status.
 
 ## Execution status
 
-**Stage pointer:** review gate (running) + sonar gate (fix pushed, awaiting re-analysis) — PR #1004.
+**Stage pointer:** review gate (reviewers 1, 2, 4, 5 reported and fixed — F-2..F-5; reviewer 3 pending) + sonar gate (F-1 fix pushed, awaiting the analysis of the current head) — PR #1004.
 
-**Next action:** score the review findings, fix what clears the bar, confirm Sonar ≥ 80% on the new head, then the merge close-out.
+**Next action:** act on reviewer 3, post the review comment, confirm Sonar ≥ 80% on the final head, then the merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -241,6 +241,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-2 | review (RV-FE-7) | the touch-target sweeps run at phone width only, so the desktop-only controls (swatch, Sign in, menu button, chip, popover rows) were never measured; the plan doc claimed the phone sweep was re-pointed | fixed — desktop-width sweep in `tourist-header.e2e.ts`, plan doc corrected (this commit) |
 | F-3 | review (prior PR #895 recurrence) | plan-doc *Pinned by* citations paraphrased test titles instead of quoting them | fixed-in-`85841c07` |
 | F-4 | review (locator style) | `headerMenuTrigger` used a raw CSS attribute union where the file uses `getByTestId` | fixed-in-`85841c07` (`getByTestId(...).or(...)`) |
+| F-5 | review (comment accuracy) | `accountOpen`/`toggleAccountMenu` TSDoc still said "signed-in" though the signal now drives the signed-out menu too; a spec comment cited the retired `riv-mobile-theme` block; the link-floor helper's comment read as its own opposite; the swatch's "1.0–2.8:1" range was not reproducible (only the 1.0 floor is) | fixed (this commit) |
 
 ---
 

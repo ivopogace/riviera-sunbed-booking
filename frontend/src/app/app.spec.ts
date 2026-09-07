@@ -401,7 +401,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(link?.getAttribute('href')).toBe('/account/password');
     expect(link?.textContent).toContain('Your account');
     expect(menu.querySelector('[data-testid="nav-signout-mobile"]')).not.toBeNull();
-    // Flat group, not a nested popover (the riv-mobile-theme precedent).
+    // Flat group, not a nested popover.
     expect(menu.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
   });
 
@@ -662,7 +662,8 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(swatch.getAttribute('aria-label')).toBe('Color theme: Dark');
   });
 
-  /** Every `<a>` in the bar, the popovers and the sheet: the guard judges buttons only. */
+  /** Every `<a>` in the bar, the popovers and the sheet: `check-touch-target.mjs` judges buttons
+   *  only, so a link's declaration is this test's to prove. */
   function headerLinksDeclareTheFloor(el: HTMLElement): void {
     const links = [...el.querySelectorAll<HTMLAnchorElement>('.riv-header a')];
     expect(links.length).toBeGreaterThan(0);

@@ -52,7 +52,7 @@ const CLS = {
   accountChip: `inline-flex items-center gap-2 py-1 pr-3 pl-1.5 font-semibold text-riv-ink ${CHIP}`,
   menuBtn: `inline-flex h-11 w-11 flex-col items-center justify-center gap-[4.5px] ${CHIP}`,
   menuBar: 'block h-0.5 w-[17px] rounded-[2px] bg-riv-ink',
-  // The 1.5px ink-soft ring is the swatch's WCAG 1.4.11 boundary (5.4 / 5.5 / 11.6:1 on the three bars): the swatch alone sits at 1.0–2.8:1 against the bar, and a white inset ring vanishes on porcelain.
+  // The 1.5px ink-soft ring is the swatch's WCAG 1.4.11 boundary (5.4 / 5.5 / 11.6:1 on the three bars): the swatch alone reaches 1.0:1 against the bar (its white end on porcelain), and a white inset ring vanishes there too.
   swatchBtn:
     'grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-full before:h-[22px] before:w-[22px] before:rounded-full before:bg-(image:--riv-swatch) before:shadow-[0_1px_3px_rgba(6,30,40,0.35)] before:ring-[1.5px] before:ring-riv-ink-soft before:[transition:scale_0.12s_ease] hover:before:scale-[1.12] motion-reduce:before:transition-none motion-reduce:hover:before:scale-100',
   // The solid-fill family, not the CTA gradient: nothing in the bar may outweigh the page's primary button.
@@ -141,7 +141,8 @@ export class App {
   protected readonly menuOpen = signal(false);
   protected readonly themeOpen = signal(false);
   /**
-   * The signed-in account menu — the tourist's entry point to `/account/password`.
+   * The header popover: the account menu signed in (the tourist's entry point to
+   * `/account/password`), the menu of Create an account + Find a booking signed out.
    *
    * <p><strong>A disclosure, deliberately not an ARIA `menu`.</strong> `role="menu"`/`menuitem`
    * would oblige roving `tabindex` + arrow-key navigation to be correct; the theme options were
@@ -331,7 +332,7 @@ export class App {
     this.themeOpen.update((open) => !open);
   }
 
-  /** Toggle the signed-in account menu; only one header popover is open at a time. */
+  /** Toggle the account/menu popover; only one header popover is open at a time. */
   protected toggleAccountMenu(): void {
     this.notePendingNavigation();
     this.menuOpen.set(false);
