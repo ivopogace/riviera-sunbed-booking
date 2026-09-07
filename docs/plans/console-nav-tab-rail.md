@@ -212,15 +212,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** phase 1 step 1 — amend `admin-console-tabs.spec.ts`'s pins (order, dividers, no pill, query string) and watch them fail.
+**Next action:** phase 2 step 1 — replace `operator-console.spec.ts`'s "renders the six pill tabs" with the order + dividers + no-pill spec and watch it fail.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the rail primitive (`shared/tab-rail.ts` + spec + contrast spec) | ✅ | phase-0 commit (see git log, `Add the shared tab-rail primitive`) |
-| 1 — admin console consumes the rail, amended order + dividers | ⏳ | |
-| 2 — venue console consumes the rail, Today-first order + dividers | | |
+| 1 — admin console consumes the rail, amended order + dividers | ✅ | `Admin console: the tab rail and the amended order` |
+| 2 — venue console consumes the rail, Today-first order + dividers | ⏳ | |
 | 3 — e2e (marker, no mask, accent-ink retarget), docs rows, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
