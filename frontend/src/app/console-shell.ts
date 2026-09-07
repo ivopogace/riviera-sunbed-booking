@@ -2,14 +2,18 @@ import { NgComponentOutlet } from '@angular/common';
 import {
   Component,
   DOCUMENT,
+  ElementRef,
   computed,
   effect,
   inject,
   input,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { filter } from 'rxjs';
 
 import { ADMIN_CONSOLE_TABS, AdminConsoleTabs } from './admin/admin-console-tabs';
 import { OperatorAuth } from './core/operator-auth';
@@ -31,6 +35,8 @@ import {
   VenuesGlyph,
 } from './shared/console-glyphs';
 import { currentUrl } from './shared/current-url';
+import { focusMover } from './shared/focus-after-render';
+import { CURRENT_POP_ROW, POP_BACKDROP, POP_SKIN } from './shared/popover-skin';
 import {
   TAB_RAIL_MARKER,
   TAB_RAIL_MATCH,
@@ -125,11 +131,10 @@ interface PhoneGroup {
 interface PhoneNav {
   readonly label: string;
   readonly primaries: readonly PhoneItem[];
+  /** The More sheet's groups: the secondaries by group, then the cross-console row's group. */
   readonly groups: readonly PhoneGroup[];
   /** The current destination when it sits under More — the slot then wears its glyph and label. */
   readonly moreCurrent: PhoneItem | undefined;
-  /** The row at the sheet's foot that crosses to the other console, if this operator has one. */
-  readonly crossConsole: PhoneGroup | undefined;
 }
 
 /** A section slot on the row: the rail's marker one level up, the bar over the header's border. */
@@ -159,6 +164,14 @@ const CLS = {
   // A glyph over an 11px label; `flex`, so the 44px floor is live on the links; the marker is the rail's.
   phoneSlot: `min-h-[58px] cursor-pointer flex-col justify-center gap-1 px-1 text-center text-[11px] leading-tight font-semibold text-riv-ink-soft no-underline after:-bottom-px [&_svg]:size-[21px] ${SLOT}`,
   phoneBadge: 'absolute top-1.5 right-[calc(50%-26px)]',
+  sheetBackdrop: `${POP_BACKDROP} sm:hidden`,
+  // Above the home indicator; capped to the viewport so nine admin rows still scroll inside the sheet on a short phone.
+  sheet: `fixed inset-x-2.5 bottom-[calc(12px+env(safe-area-inset-bottom))] max-h-[calc(100dvh-24px)] overflow-y-auto p-2.5 sm:hidden ${POP_SKIN}`,
+  groupLabel:
+    'mt-3 mb-1 px-3.5 text-[10.5px] font-bold tracking-[0.16em] text-riv-pop-ink-soft uppercase first:mt-0',
+  // `flex`, so the 44px floor is live on the row; the current row is the popover's own recipe.
+  sheetRow: `flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3.5 py-[11px] text-left text-[15px] font-semibold text-riv-pop-ink no-underline [transition:background_0.12s_ease] hover:bg-riv-pop-hover [&_svg]:size-[18px] [&_svg]:shrink-0 ${CURRENT_POP_ROW}`,
+  hint: 'text-[12px] font-medium text-riv-pop-ink-soft',
 } as const;
 
 /**
@@ -221,7 +234,11 @@ const CLS = {
     TabRailTab,
     TouchTarget,
   ],
-  host: { class: 'contents', '(window:scroll)': 'onScroll()' },
+  host: {
+    class: 'contents',
+    '(window:scroll)': 'onScroll()',
+    '(document:keydown.escape)': 'dismissSheet()',
+  },
   template: `
     <header
       [class]="cls.header"
@@ -338,6 +355,7 @@ const CLS = {
         }
         <button
           appTouchTarget
+          #more
           type="button"
           [class]="cls.phoneSlot"
           [attr.aria-current]="nav.moreCurrent ? 'page' : null"
@@ -351,6 +369,37 @@ const CLS = {
           }}</span>
         </button>
       </nav>
+      @if (sheetOpen()) {
+        <div
+          [class]="cls.sheetBackdrop"
+          data-testid="oc-more-backdrop"
+          (click)="dismissSheet()"
+          aria-hidden="true"
+        ></div>
+        <nav [class]="cls.sheet" aria-label="More (phone)" data-testid="oc-more-sheet">
+          @for (group of nav.groups; track group.name) {
+            <p [class]="cls.groupLabel">{{ group.name }}</p>
+            @for (item of group.items; track item.path) {
+              <a
+                appTouchTarget
+                [routerLink]="item.link"
+                routerLinkActive
+                [routerLinkActiveOptions]="match"
+                ariaCurrentWhenActive="page"
+                [class]="cls.sheetRow"
+                data-testid="oc-more-row"
+                (click)="activateRow()"
+              >
+                <ng-container *ngComponentOutlet="item.glyph" />
+                <span class="flex min-w-0 flex-1 flex-col leading-tight">
+                  <span>{{ item.label }}</span>
+                  <span [class]="cls.hint">{{ item.hint }}</span>
+                </span>
+              </a>
+            }
+          }
+        </nav>
+      }
     }
   `,
 })
@@ -367,6 +416,8 @@ export class ConsoleShell {
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
   private readonly url = currentUrl(this.router);
+  private readonly moreButton = viewChild<ElementRef<HTMLButtonElement>>('more');
+  private readonly focusAfterRender = focusMover();
 
   protected readonly cls = CLS;
   protected readonly tabs = VENUE_TABS;
@@ -466,6 +517,12 @@ export class ConsoleShell {
       const signedIn = this.operator.signedIn();
       untracked(() => this.loadName(signedIn ? id : undefined));
     });
+    this.router.events
+      .pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => this.sheetOpen.set(false));
   }
 
   protected onScroll(): void {
@@ -474,8 +531,27 @@ export class ConsoleShell {
     this.lastY = y;
   }
 
+  /** Open the sheet onto its first row, or close it back onto the More button. */
   protected toggleSheet(): void {
     this.sheetOpen.update((open) => !open);
+    if (this.sheetOpen()) {
+      this.focusAfterRender('oc-more-row', 'oc-more');
+    } else {
+      this.moreButton()?.nativeElement.focus();
+    }
+  }
+
+  /** A row was chosen: close, and hand focus back to the More button the row's unmount would strand it from. */
+  protected activateRow(): void {
+    this.sheetOpen.set(false);
+    this.moreButton()?.nativeElement.focus();
+  }
+
+  /** Escape or the backdrop: the same close, a no-op while closed so it never steals focus. */
+  protected dismissSheet(): void {
+    if (this.sheetOpen()) {
+      this.activateRow();
+    }
   }
 
   /** Sign out, then leave for the operator sign-in — see the class doc. */
@@ -487,7 +563,8 @@ export class ConsoleShell {
     await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });
   }
 
-  /** Split a console's destinations into the rail's slots and the sheet's groups. */
+  /** Split a console's destinations into the rail's slots and the sheet's groups, the
+   *  cross-console row's group at the foot. */
   private phoneNavOf(
     label: string,
     items: readonly PhoneItem[],
@@ -503,12 +580,14 @@ export class ConsoleShell {
         groups.push({ name: item.group, items: [item] });
       }
     }
+    if (crossConsole) {
+      groups.push(crossConsole);
+    }
     return {
       label,
       primaries,
       groups,
       moreCurrent: items.slice(PHONE_PRIMARIES).find((item) => item.current),
-      crossConsole,
     };
   }
 

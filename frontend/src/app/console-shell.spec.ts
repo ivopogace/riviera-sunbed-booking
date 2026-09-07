@@ -375,6 +375,118 @@ describe('ConsoleShell', () => {
     it('the Admin section link leaves the row below sm (#1012)', () => {
       expect(byId('oc-section-admin')!.classList).toContain('max-sm:hidden');
     });
+
+    describe('the More sheet', () => {
+      function sheet(): HTMLElement | null {
+        return byId('oc-more-sheet');
+      }
+
+      function rows(): HTMLAnchorElement[] {
+        return [...sheet()!.querySelectorAll('a')];
+      }
+
+      function headings(): string[] {
+        return [...sheet()!.querySelectorAll('p')].map((p) => p.textContent.trim());
+      }
+
+      async function open(): Promise<void> {
+        more().click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+      }
+
+      it('the More sheet lists the secondaries grouped with the current row marked, and the cross-console row per console', async () => {
+        await goTo('/operator/1/payouts');
+        expect(sheet()).toBeNull();
+        await open();
+
+        expect(sheet()!.getAttribute('aria-label')).toBe('More (phone)');
+        expect(more().getAttribute('aria-expanded')).toBe('true');
+        expect(headings()).toEqual(['Set-up', 'Money', 'Platform']);
+        expect(rows().map((a) => a.getAttribute('href'))).toEqual([
+          '/operator/1/pricing',
+          '/operator/1/venue',
+          '/operator/1/payouts',
+          '/admin',
+        ]);
+        expect(
+          rows().map((a) => a.querySelector('svg')!.parentElement!.tagName.toLowerCase()),
+        ).toEqual(['app-pricing-glyph', 'app-venue-glyph', 'app-payouts-glyph', 'app-admin-glyph']);
+        expect(rows()[1].textContent).toContain('Venue & commodities');
+        expect(rows()[1].textContent).toContain('Details, amenities, photos');
+        expect(rows()[3].textContent).toContain('Admin console');
+        expect(rows().map((a) => a.getAttribute('aria-current'))).toEqual([
+          null,
+          null,
+          'page',
+          null,
+        ]);
+        // Nothing in the sheet is a primary: those already have a slot.
+        expect(sheet()!.querySelector('a[href="/operator/1/daily"]')).toBeNull();
+
+        // A non-admin has no other console to cross to.
+        operatorAuth.isAdmin.set(false);
+        fixture.detectChanges();
+        expect(headings()).toEqual(['Set-up', 'Money']);
+        expect(sheet()!.querySelector('a[href="/admin"]')).toBeNull();
+        operatorAuth.isAdmin.set(true);
+
+        await setSection('admin');
+        await goTo('/admin/audit');
+        await open();
+        expect(headings()).toEqual(['Moderation', 'Money', 'Records', 'Operator']);
+        expect(rows().map((a) => a.getAttribute('href'))).toEqual([
+          '/admin/photos',
+          '/admin/reviews',
+          '/admin/commissions',
+          '/admin/privacy',
+          '/admin/audit',
+          '/operator',
+        ]);
+        expect(rows().at(-1)!.textContent).toContain('Your venues');
+        expect(rows()[4].getAttribute('aria-current')).toBe('page');
+        expect(rows()[3].getAttribute('aria-current')).toBeNull();
+      });
+
+      it('opening More focuses the first row; Escape, the backdrop and a row hand focus back to More', async () => {
+        await goTo('/operator/1/daily');
+        await open();
+        expect(document.activeElement).toBe(rows()[0]);
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        fixture.detectChanges();
+        expect(sheet()).toBeNull();
+        expect(more().getAttribute('aria-expanded')).toBe('false');
+        expect(document.activeElement).toBe(more());
+
+        await open();
+        byId('oc-more-backdrop')!.click();
+        fixture.detectChanges();
+        expect(sheet()).toBeNull();
+        expect(document.activeElement).toBe(more());
+
+        await open();
+        rows()[2].click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(TestBed.inject(Router).url).toBe('/operator/1/payouts');
+        expect(sheet()).toBeNull();
+        expect(document.activeElement).toBe(more());
+        expect(more().textContent.trim()).toBe('Payouts');
+      });
+
+      it('a navigation that ends while the sheet is open closes it without touching focus', async () => {
+        await goTo('/operator/1/daily');
+        await open();
+        const row = rows()[0];
+        expect(document.activeElement).toBe(row);
+
+        await goTo('/operator/1/pricing');
+        expect(sheet()).toBeNull();
+        expect(document.activeElement).not.toBe(more());
+      });
+    });
   });
 
   it('admin section, signed out: Sign in with returnUrl, no Admin link, no rail, no admin link anywhere', async () => {

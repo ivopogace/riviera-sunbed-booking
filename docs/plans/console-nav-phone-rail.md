@@ -267,16 +267,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** phase 3 — the More sheet's failing cases in `console-shell.spec.ts` (AC-4) and the a11y case, then the sheet.
+**Next action:** phase 4 — the two phone Playwright projects, then run `admin-console-tabs operator-console` to see the stale seams red, then rewrite the eight files and add the new cases.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | a16ca12f |
 | 1 — the glyph set (`shared/console-glyphs.ts` + spec; a production build to prove the shared template attributes compile) | ✅ | 03342ac1 |
-| 2 — the phone rail: the destination tables, the four slots, the current-aware More button, the badge, `Admin` `max-sm:hidden`; shell spec, contrast spec (the a11y spec already mounts the rail closed; the open sheet is phase 3's) | ✅ | the phase-2 commit |
-| 3 — the More sheet: groups, rows, cross-console row, the focus legs, close on navigation; shell spec, a11y spec | | |
+| 2 — the phone rail: the destination tables, the four slots, the current-aware More button, the badge, `Admin` `max-sm:hidden`; shell spec, contrast spec (the a11y spec already mounts the rail closed; the open sheet is phase 3's) | ✅ | 3ab2a775 |
+| 3 — the More sheet: groups, rows, cross-console row, the focus legs, close on navigation; shell spec, a11y spec | ✅ | the phase-3 commit |
 | 4 — e2e: the two phone projects; the six stale seams rewritten; the new cases (AC-1…AC-6, AC-8, AC-9); the touched files run | | |
 | 5 — contract: lint, format, `npm test`, the whole mocked e2e; docs-freshness; #1011's plan retired; file-structure guard; push | | |
 
@@ -423,6 +423,7 @@ it('the Admin section link leaves the row below sm (#1012)', () => {
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-07 | phase 1 | every hand-written inline `<svg>` in an app template that a shared glyph could replace | `grep -rln "<svg" frontend/src/app --include=*.ts --include=*.html \| grep -v spec` | `app.html` (the tourist tab bar's own three glyphs — the tourist chrome is a non-goal), `clock-icon.ts`, `console-glyphs.ts` | none to replace; the console templates hand-write no svg |
+| 2026-09-07 | phase 3 | every disclosure that closes itself on `NavigationEnd` — the mechanism the sheet joins | `grep -rln "NavigationEnd" frontend/src/app --include=*.ts \| grep -v spec` | `app.ts` (the tourist popovers and sheet), `operator-account-chip.ts`, `operator-venue-switch.ts`, `find-booking.ts`, `admin-console.ts`, `current-url.ts`, `console-shell.ts` | the sheet takes the chip's exact shape (`filter(NavigationEnd)` + `takeUntilDestroyed`, close without touching focus); nothing else changes — hoisting the three console disclosures' mechanics is a stated non-goal |
 | 2026-09-07 | phase 2 (R-1, R-2) | every e2e or spec that reads the rail's ids or landmark names, now that two rails share the DOM — and, of those, every one that does so at a width below `sm` | `grep -rln "oc-requests-badge\|oc-tabs\|console sections" frontend/e2e frontend/src` then per file `grep -oE "width: [0-9]+"` | 20 e2e files + 4 specs read them; 8 e2e files do so below 640px: `admin-console-tabs` (360), `admin-commissions` (360), `admin-privacy` (360), `admin-console-stats` (360: the strip sits under the rail, a click on `admin-tab-commissions`), `current-page-marker` (390 consoles block), `operator-console` (380 #710 case, 390 static pin), `console-shell` (390 `Admin` box), `operator-daily` (390: the sign-in helper clicks the rail's `Daily view`) | the 12 desktop-width readers keep matching the desktop rail (the phone rail's ids and label differ; `getByRole` excludes the CSS-hidden rail); the 8 phone-width readers are rewritten in phase 4 |
 
 ---
