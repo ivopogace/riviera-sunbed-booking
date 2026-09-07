@@ -25,7 +25,7 @@ import {
 } from '../../testing/console-themes';
 
 /**
- * WCAG-AA contrast guard for the Payouts tab. The tab is always porcelain (console host);
+ * WCAG-AA contrast guard for the Payouts tab. The tab wears the operator's console theme (porcelain by default; the themed block at the foot proves both);
  * surfaces use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text pairs: the heading, ledger ink
  * (`#<bookingId>` reference, gross), period-total label and statement ink use `--riv-card-ink`; the
  * intro/dates/commission/empty sub-copy use `--riv-card-ink-soft` (0.78); the "Owed to you" label,

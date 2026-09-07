@@ -22,8 +22,8 @@ import {
 } from '../../testing/console-themes';
 
 /**
- * WCAG-AA contrast guard for the Venue & commodities tab. The tab is always porcelain
- * (console host); its cards use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text pairs:
+ * WCAG-AA contrast guard for the Venue & commodities tab. The tab wears the operator's console
+ * theme (porcelain by default; the themed block at the foot proves both); its cards use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text pairs:
  * headings + field labels + input values use `--riv-card-ink`; sub-copy, soft labels and the
  * INACTIVE amenity chip use `--riv-card-ink-soft` (0.78) — an inactive chip sits on a lighter
  * `bg-white/50`, so `--riv-card-ink-soft` over the plain card glass is its worst case too. The

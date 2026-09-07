@@ -3,9 +3,9 @@ import { INK_DARK } from '../../testing/glass-tokens';
 import { CONSOLE_THEMES } from '../../testing/console-themes';
 
 /**
- * WCAG-AA contrast guard for the venue console's page. The console is ALWAYS porcelain (the app
- * shell pins `data-riv-theme="porcelain"` on every console route), so every pair is proven over
- * the porcelain surfaces; the section row, the rail and the badge are the console shell's
+ * WCAG-AA contrast guard for the venue console's page. The console wears the operator's console
+ * theme (the app shell pins it on every console route), porcelain by default and dark by choice:
+ * the porcelain row proves the default, the themed block at the foot proves both; the section row, the rail and the badge are the console shell's
  * (`console-shell.contrast.spec.ts`), the account chip's pairs are in
  * `operator-account-chip.contrast.spec.ts`, the venue switcher's popover in
  * `operator-venue-switch.contrast.spec.ts`. The venue-not-found card uses an OPAQUE SOLID fill

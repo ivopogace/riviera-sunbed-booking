@@ -25,8 +25,8 @@ import {
 import { declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
- * WCAG-AA contrast guard for the layout editor. The editor is always porcelain (console
- * host), its control panels use `appCardGlass` (`--riv-card-glass` = white @ 0.55), and its
+ * WCAG-AA contrast guard for the layout editor. The editor wears the operator's console theme
+ * (porcelain by default; the themed block at the foot proves both), its control panels use `appCardGlass` (`--riv-card-glass` = white @ 0.55), and its
  * primary buttons reuse the project's AA-safe `--riv-cta-grad` teal (NOT the design's brighter
  * `#2bb8d4/#0e8aa8`, which fails AA with white). Since #672 slice 2 the grid sits on the shared
  * canvas's sea→sand wash, whose rail-chip inks are proven in `venue-map.contrast.spec.ts`. The

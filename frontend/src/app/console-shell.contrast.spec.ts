@@ -1,4 +1,4 @@
-import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../testing/contrast';
+import { AA_LARGE, AA_NORMAL, composite, contrastRatio, rgbToHex } from '../testing/contrast';
 import {
   INK_DARK,
   POP_ACCENT,
@@ -11,11 +11,19 @@ import {
   SOLID_FILL_BRAND,
   surfaceOver,
 } from '../testing/glass-tokens';
+import {
+  CONSOLE_THEMES,
+  expectAaOnSurfaces,
+  glassOn,
+  headerOver,
+  popOver,
+} from '../testing/console-themes';
 
 /**
  * WCAG-AA contrast guard for the console shell's section row, both rails and the More sheet. The
- * shell is ALWAYS porcelain (the app shell pins `data-riv-theme="porcelain"` on every console
- * route), so every pair is proven over the porcelain header glass / background stops; the chip's
+ * shell wears the operator's console theme — porcelain by default, dark by choice, never
+ * `riviera` — so the porcelain rows below prove the default over the porcelain header glass /
+ * background stops and the themed block at the foot proves both; the chip's
  * pairs are in `operator-account-chip.contrast.spec.ts`, the venue switcher's popover in
  * `operator-venue-switch.contrast.spec.ts`, the rail's own hairline in `tab-rail.contrast.spec.ts`.
  * These values mirror the utilities in `console-shell.ts` and the porcelain `--riv-*` tokens in
@@ -76,3 +84,42 @@ describe('ConsoleShell phone rail and More sheet porcelain contrast (WCAG AA, #1
     }
   });
 });
+
+/**
+ * Both console themes off one table (`testing/console-themes.ts`): the section row's inks and the
+ * rail's marker on the dark header glass, the phone rail's slots, the More sheet's hint and current
+ * row on the dark popover — beside the porcelain rows above, which stay as the parity proof. The
+ * shell wears whichever console theme the operator chose; it never wears `riviera`.
+ */
+describe.each(CONSOLE_THEMES)(
+  'ConsoleShell contrast in the $name console (WCAG AA, #1010)',
+  (theme) => {
+    it('brand, venue name, the Sign in link and the current tab (full ink) meet AA on the header glass', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => headerOver(theme, stop));
+    });
+
+    it('the resting Admin link and the resting phone slots (ink 0.7) meet AA on the header glass', () => {
+      expectAaOnSurfaces(theme, theme.ink, 0.7, (stop) => headerOver(theme, stop));
+    });
+
+    it("the rail's marker (full ink) and its hairline (--riv-ink-faint) clear 3:1 on the header glass", () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => headerOver(theme, stop), AA_LARGE);
+      expectAaOnSurfaces(
+        theme,
+        theme.inkFaint.color,
+        theme.inkFaint.alpha,
+        (stop) => headerOver(theme, stop),
+        AA_LARGE,
+      );
+    });
+
+    it("the More sheet's hint ink and its current row (accent on the hover fill) meet AA on the popover", () => {
+      expectAaOnSurfaces(theme, theme.popInkSoft.color, theme.popInkSoft.alpha, (stop) =>
+        popOver(theme, stop),
+      );
+      expectAaOnSurfaces(theme, theme.popAccent, 1, (stop) =>
+        glassOn(theme.popHover, popOver(theme, stop)),
+      );
+    });
+  },
+);

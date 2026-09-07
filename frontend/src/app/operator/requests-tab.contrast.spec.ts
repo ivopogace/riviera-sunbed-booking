@@ -22,7 +22,7 @@ import {
 } from '../../testing/console-themes';
 
 /**
- * WCAG-AA contrast guard for the Requests tab. The tab is always porcelain (console host);
+ * WCAG-AA contrast guard for the Requests tab. The tab wears the operator's console theme (porcelain by default; the themed block at the foot proves both);
  * cards use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text pairs: the heading, guest name,
  * set-label + confirm/dismiss/keep-it copy use `--riv-card-ink`; the intro/meta/empty sub-copy use
  * `--riv-card-ink-soft` (0.78); "Respond by" uses `--riv-card-ink-faint` (0.72); the price value uses

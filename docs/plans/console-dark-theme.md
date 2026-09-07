@@ -229,6 +229,10 @@ the intake gate) and are each recorded so the maintainer can reverse them on the
   `#0a2a33` / `#f2d48c`), not the day gold deepened a shade: the light selection ring reads 1.14:1
   over a bright gold, and no single ring colour clears 3:1 over both a bright tile and the night
   sand. The tourist dark map made the same call (a dim gold glass, light gold ink).
+- **Decided (phase 3, from the maths):** the console chip's avatar disc keeps the fixed brand
+  fill and gains `ring-1 ring-riv-console-avatar-ring` — `transparent` in porcelain (byte-identical
+  paint), white at 0.55 in dark, where the disc alone reads 2.61:1 on the header glass and the
+  ring is the 3:1 boundary. Console-only: the tourist chrome's disc is decorative.
 - **Decided:** `--riv-walkin-hatch` stays one declaration and themes through `--riv-console-tint`;
   a dark declaration is added only if R-3's proof needs a lighter band.
 - **Decided:** the residue AC-2 records: `text-white`/`outline-white` over solid fills and the CTA
@@ -293,16 +297,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** phase 3 — the shell, chip, switcher and palette contrast specs gain their dark rows off the shared table.
+**Next action:** phase 4 — `core/console-theme.ts` (spec red first), then the app shell's pin reads it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 69818edb |
 | 1 — tokens: the dark block, `--riv-console-inset` / `--riv-premium-ink` / `--riv-sea-grad`, the mirrors, the four guards flipped | ✅ | d6c8b6a8 |
-| 2 — the console restyle (venue tabs AND the admin components, the sweep covers both): literals → tokens, `beach-cell`'s per-state ink, the banners, the statement; `testing/console-themes.ts`; the nine venue-console contrast specs in both themes; the literal sweep spec | ✅ | (this commit) |
-| 3 — the chrome in both themes: `console-shell`, chip, switcher and palette contrast specs | | |
+| 2 — the console restyle (venue tabs AND the admin components, the sweep covers both): literals → tokens, `beach-cell`'s per-state ink, the banners, the statement; `testing/console-themes.ts`; the nine venue-console contrast specs in both themes; the literal sweep spec | ✅ | 4f6a38be |
+| 3 — the chrome in both themes: `console-shell`, chip, switcher and palette contrast specs; the dark avatar ring | ✅ | (this commit) |
 | 4 — `core/console-theme.ts` + the pin (`app.ts`, `app.spec.ts`) | | |
 | 5 — the chip's `Console theme` rows (spec, a11y, contrast) | | |
 | 6 — e2e: the `console-dark` project, the three tabs' cases, `theme-shell.e2e.ts`'s console cases | | |
@@ -392,10 +396,10 @@ create `testing/console-themes.ts`, `operator/console-literal-sweep.spec.ts`; th
 `operator-account-chip.contrast.spec.ts`, `operator-venue-switch.contrast.spec.ts`,
 `console-palette.contrast.spec.ts`, `shared/confirm-with-reason.ts`.
 
-- [ ] **Steps 1–4** as phase 2, scoped to `src/app/admin/`, the shell's and the chrome's contrast specs; the sweep widens to `admin/`.
-- [ ] **Step 5: Generalization-audit pass** — population: every contrast spec whose header says "always porcelain" / "porcelain-pinned" → `grep -rln "always porcelain\|porcelain-pinned\|ALWAYS porcelain" frontend/src/app --include=*.contrast.spec.ts`.
-- [ ] **Step 6: Commit** — `Restyle the admin console and the shell chrome for the dark console (#1010)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Steps 1–4** — the four chrome specs' `describe.each(CONSOLE_THEMES)` rows (the admin components were rewritten in phase 2, under the same sweep). One real red: the chip's avatar disc — the fixed brand teal, the chip's 3:1 boundary since #1008 — reads 2.61:1 on the dark header glass. Fixed with `--riv-console-avatar-ring` (`transparent` in porcelain, white at 0.55 in dark, the `--riv-hero-scrim` treatment-off shape) on the console chip's disc only; the tourist chrome's disc is decorative and untouched. Then 21 files / 322 PASS.
+- [x] **Step 5: Generalization-audit pass** — population: every contrast spec whose header says "always porcelain" / "porcelain-pinned" → `grep -rln "always porcelain\|porcelain-pinned\|ALWAYS porcelain" frontend/src/app --include=*.contrast.spec.ts` — twelve files (the four chrome specs, six tab specs, the admin console, the two map specs); every header retold.
+- [x] **Step 6: Commit** — `Prove the console chrome in both themes; ring the dark avatar (#1010)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 4 — the service and the pin
 
@@ -440,7 +444,7 @@ create `testing/console-themes.ts`, `operator/console-literal-sweep.spec.ts`; th
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-09-07 | phase 2 | every `bg-white`/`border-white` position in `frontend/src/app` outside the console sources — the same mechanism on tourist surfaces | `grep -rnoE '\b(bg\|border)-(white\|black)(/[0-9]+)?' frontend/src/app --include=*.ts --include=*.html \| grep -v spec \| grep -v "operator/\|admin/"` | `shared/photo-slideshow.ts`, `shared/photo-lightbox.ts`, `shared/photo-gallery-grid.ts` (photo chrome, fixed by design), `shared/retry-button.ts`, `shared/semantic-chip.ts`, `shared/tab-rail.ts`, `shared/popover-skin.ts` (`text-white` on solid fills) | none to migrate: photo surfaces and fixed inks; recorded in the ledger's class N |
+| 2026-09-07 | phase 2 | every `bg-white`/`border-white` position in `frontend/src/app` outside the console sources — the same mechanism on tourist surfaces | `grep -rnoE '\b(bg\|border)-(white\|black)(/[0-9]+)?' frontend/src/app --include=*.ts --include=*.html \| grep -v spec \| grep -v "operator/\|admin/"` | `shared/photo-slideshow.ts` (4), `shared/photo-lightbox.ts` (3), `pages/home/home.html` (2), `booking/booking-qr.ts`, `booking/booking-dialog.ts`, `app.html` (1 each) — photo chrome, the QR's print-white, the tourist shell | none to migrate here: photo surfaces and the tourist chrome, out of this slice's scope; recorded in the ledger's class N |
 | 2026-09-07 | phase 1 | every stylesheet comment whose ground is the porcelain pin — the claim the dark console falsifies | `grep -n "pins porcelain\|porcelain pin\|porcelain-pinned\|Declared ONCE" frontend/src/tailwind.css` | 11 lines: the two console inks, the class-O header, the alert tint, the map palette (retold); the fixed-fill families, the subtree-host mechanism notes and `--riv-accent-*` (true as written) | five retold, six left true |
 | 2026-09-07 | intake | every colour position the console paints that has no dark branch — the grey-slab mechanism: a light literal or a base-only token under the pin | `grep -rnoE '\b(bg\|border\|text\|from\|to\|via\|ring\|outline\|shadow\|divide)-(white\|black)(/[0-9]+)?' frontend/src/app/{operator,admin,shared} frontend/src/app/console-shell.ts` + the ledger's population command + the once-declared token list from `tailwind.css` | ~90 `bg-white/NN`, 6 `border-white/NN`, 3 opaque `bg-white`, 1 `bg-black/80`; 4 hex inks/rings, 2 amber banners, 1 gradient; 12 base-only tokens under the pin | the plan's phases 1–3; the residue recorded in AC-2 |
 

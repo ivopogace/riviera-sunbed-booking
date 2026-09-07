@@ -26,10 +26,10 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the admin console. The console is ALWAYS porcelain (the app shell
- * pins `data-riv-theme="porcelain"` on every console route, app.ts), so the porcelain rows are the live
- * proof; the dark rows cover the danger token set and `shared/confirm-with-reason.ts`, which
- * are reachable from outside this console.
+ * WCAG-AA contrast guard for the admin console. The console wears the operator's console theme
+ * (the app shell pins it on every console route, app.ts) — porcelain by default, dark by choice —
+ * so both rows are live proof; the dark rows also cover the danger token set and
+ * `shared/confirm-with-reason.ts`, which are reachable from outside this console.
  *
  * <p>Two surfaces, not one: the tab bodies put error text directly on the page background
  * (`admin-commissions.ts` loading/error paragraphs use `text-riv-ink*`, the shell's ink),

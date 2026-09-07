@@ -83,6 +83,7 @@
   --color-riv-console-tint: var(--riv-console-tint);
   --color-riv-console-scrim: var(--riv-console-scrim);
   --color-riv-console-inset: var(--riv-console-inset);
+  --color-riv-console-avatar-ring: var(--riv-console-avatar-ring);
   --color-riv-select-tint: var(--riv-select-tint);
   --color-riv-select-edge: var(--riv-select-edge);
   --color-riv-alert-tint: var(--riv-alert-tint);
@@ -468,6 +469,13 @@
       to the retired `bg-white/α` literals; the tourist dark field fill's slate in dark, so an
       inset sits BELOW its dark card and a hover at a higher alpha deepens rather than lightens. */
   --riv-console-inset: #ffffff;
+  /** The account chip's avatar disc is the chip's non-text boundary, held to 3:1 on the header
+      glass (WCAG 1.4.11). The solid brand fill clears that on the porcelain glass by itself and
+      reads 2.6:1 on the dark one, so the dark console draws a ring round the disc and porcelain
+      draws none — a treatment-off value here, as --riv-hero-scrim holds `none` off the riviera
+      hero. The tourist chrome shares the disc recipe but not this ring: its disc is decorative.
+      Proof: operator/operator-account-chip.contrast.spec.ts. */
+  --riv-console-avatar-ring: transparent;
   /** The backdrop behind the console's modals — the payout statement and the set-editor's phone
       sheet. Its own colour, not --riv-console-tint's: a scrim darkens whichever theme it covers,
       a tint follows the ink. */
@@ -1035,6 +1043,7 @@
   --riv-console-inset: #020a16;
   --riv-console-scrim: #020a16;
   --riv-console-card-border: rgba(255, 255, 255, 0.16);
+  --riv-console-avatar-ring: rgba(255, 255, 255, 0.55);
   --riv-select-tint: #7cd7e8;
   --riv-select-edge: #9adde8;
   --riv-alert-tint: #ff8a7a;

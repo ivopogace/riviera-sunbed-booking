@@ -9,10 +9,12 @@ import {
   surfaceOver,
   WHITE,
 } from '../../testing/glass-tokens';
+import { CONSOLE_THEMES, expectAaOnSurfaces, glassOn, popOver } from '../../testing/console-themes';
 
 /**
- * WCAG-AA contrast guard for the ⌘K palette (`console-palette.ts`), which is always porcelain
- * (the app shell pins every console route): the field's query and placeholder inks over the field
+ * WCAG-AA contrast guard for the ⌘K palette (`console-palette.ts`), which wears the operator's
+ * console theme (the porcelain rows prove the default, the themed block at the foot proves both):
+ * the field's query and placeholder inks over the field
  * fill laid on the popover surface, the group tag (10.5px bold, held to 4.5:1) and the highlighted
  * hit (full ink on the hover fill) on that surface, each over the porcelain background stops. The
  * row and hint inks are `console-shell.contrast.spec.ts`'s (the More sheet shares the recipe).
@@ -63,3 +65,28 @@ describe('ConsolePalette porcelain contrast (WCAG AA, #1013)', () => {
     }
   });
 });
+
+/** Both console themes off one table (`testing/console-themes.ts`); the porcelain rows above stay
+ *  as the parity proof. The field is the themed `--riv-field-fill` on the popover surface. */
+describe.each(CONSOLE_THEMES)(
+  'ConsolePalette contrast in the $name console (WCAG AA, #1010)',
+  (theme) => {
+    it('the query and the placeholder meet AA on the field fill', () => {
+      expectAaOnSurfaces(theme, theme.popInk, 1, (stop) =>
+        glassOn(theme.fieldFill, popOver(theme, stop)),
+      );
+      expectAaOnSurfaces(theme, theme.popInkSoft.color, theme.popInkSoft.alpha, (stop) =>
+        glassOn(theme.fieldFill, popOver(theme, stop)),
+      );
+    });
+
+    it('the group tag meets AA on the popover surface and the highlighted hit on the hover fill', () => {
+      expectAaOnSurfaces(theme, theme.popInkSoft.color, theme.popInkSoft.alpha, (stop) =>
+        popOver(theme, stop),
+      );
+      expectAaOnSurfaces(theme, theme.popInk, 1, (stop) =>
+        glassOn(theme.popHover, popOver(theme, stop)),
+      );
+    });
+  },
+);

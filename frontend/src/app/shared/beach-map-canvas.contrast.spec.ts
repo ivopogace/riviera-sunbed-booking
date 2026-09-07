@@ -38,7 +38,7 @@ import {
  * would otherwise pin a themed ink wrong, not a fixed fill.
  *
  * Per-family shape borrowed from `venue-map.contrast.spec.ts`'s `MAP_FAMILIES`: daylight
- * (riviera, porcelain, every porcelain-pinned operator surface) and night (the dark theme).
+ * (riviera, porcelain, the porcelain console) and night (the dark theme).
  */
 
 interface ZoomState {

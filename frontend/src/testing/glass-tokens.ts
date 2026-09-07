@@ -191,6 +191,11 @@ export const DARK_CONSOLE_NEGATIVE_INK: Rgb = hexToRgb('ffa9a1');
 export const CONSOLE_INSET: Rgb = WHITE;
 export const DARK_CONSOLE_INSET: Rgb = hexToRgb('020a16');
 
+/** `--riv-console-avatar-ring` — the ring the dark console draws round the account chip's avatar
+ *  disc, the chip's 3:1 boundary on the dark header glass where the solid brand fill alone reads
+ *  2.6:1. Porcelain draws none (`transparent`), so it has no mirror row. */
+export const DARK_CONSOLE_AVATAR_RING: Glass = { color: WHITE, alpha: 0.55 };
+
 /** `--riv-premium-ink` — the numeral over the beach-map premium cell's gold gradient, per theme:
  *  dark on the day gold, a light gold on the dusk gold. Its own token because the card ink cannot
  *  serve both (white on the day gold would fail), and themed because the gradient is. */

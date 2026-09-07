@@ -26,8 +26,8 @@ import {
 } from '../../testing/console-themes';
 
 /**
- * WCAG-AA contrast guard for the Daily view tab. The tab is always porcelain (console
- * host); its date + arrivals panels use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text
+ * WCAG-AA contrast guard for the Daily view tab. The tab wears the operator's console theme
+ * (porcelain by default; the themed block at the foot proves both); its date + arrivals panels use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text
  * pairs: the headings, date labels, arrivals labels and the availability strong counts use
  * `--riv-card-ink`; the helper/availability text uses `--riv-card-ink-soft` (0.78); the "Date"
  * mini-label uses `--riv-card-ink-faint` (0.72); the write-failure notice + load-error use `--riv-error-ink`.
