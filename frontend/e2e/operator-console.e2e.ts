@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { mockOwnedVenues } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 import { openOperatorAccountMenu } from './support/shell';
@@ -46,6 +47,20 @@ const VENUE_MAP = {
     seat(4, 'TAKEN'),
     seat(5, 'TAKEN', 'WALK_IN'),
   ],
+};
+
+/** The operator's own venues as `GET /api/venues/mine` lists them: one by default, so the header
+ *  renders the name as plain text; two for the switcher cases. */
+const OWNED_ONE = [{ id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' }];
+const OWNED_TWO = [...OWNED_ONE, { id: 2, name: 'Sereno', beach: 'Jal' }];
+
+/** Venue 2 — 3 sets, 1 free — so every venue-scoped surface reads differently from venue 1. */
+const SECOND_VENUE_MAP = {
+  ...VENUE_MAP,
+  id: 2,
+  name: 'Sereno',
+  beach: 'Jal',
+  sets: [seat(1, 'FREE'), seat(2, 'TAKEN'), seat(3, 'TAKEN')],
 };
 
 // The daily online-takings figure the strip renders (gross + server-computed net after commission).
@@ -100,6 +115,24 @@ async function mockConsole(
   );
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({ json: heldStates }),
+  );
+  await mockOwnedVenues(page, OWNED_ONE);
+}
+
+/** Venue 2's five console reads, for the switch case: one pending request, nothing booked. */
+async function mockSecondVenue(page: import('@playwright/test').Page): Promise<void> {
+  await page.route(/\/api\/venues\/2(\?.*)?$/, (route) =>
+    route.fulfill({ json: SECOND_VENUE_MAP }),
+  );
+  await page.route(/\/api\/venues\/2\/booking-requests(\?.*)?$/, (route) =>
+    route.fulfill({ json: [{ bookingId: 21 }] }),
+  );
+  await page.route(/\/api\/venues\/2\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/2\/takings(\?.*)?$/, (route) =>
+    route.fulfill({ json: TAKINGS }),
+  );
+  await page.route(/\/api\/venues\/2\/availability(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
   );
 }
 
@@ -284,7 +317,6 @@ test('the account chip opens a popover on the console — axe clean, one header 
   await openOperatorAccountMenu(page, 'oc');
   await expect(page.getByTestId('oc-account-identity')).toContainText('Signed in as operator');
   await expect(page.getByTestId('oc-account-menu').getByRole('link')).toHaveText([
-    'Create a venue',
     'Change password',
   ]);
   await settle(page);
@@ -301,4 +333,100 @@ test('the account chip opens a popover on the console — axe clean, one header 
   await page.getByTestId('daily-view-tab').click({ position: { x: 8, y: 8 } });
   await expect(page.getByTestId('oc-account-menu')).toHaveCount(0);
   await expect(chip).toHaveAttribute('aria-expanded', 'false');
+});
+
+/**
+ * The venue switcher over the real routes: a deep-linked console loads the owned list
+ * itself (the landing is never visited, and the sign-in page skips the read when a `returnUrl` is
+ * set), the name is the control for a
+ * two-venue operator, a switch keeps the open tab and re-reads every venue-scoped surface for the
+ * new venue (invariant #13 — nothing of venue 1 stays on screen), the popover closes with focus
+ * back on the name, and at a Fold cover width the open popover never pushes the page wider.
+ */
+test('switches venue from the header, keeping the tab and leaving nothing of the old venue (#1009)', async ({
+  page,
+}) => {
+  await mockConsole(page, 3);
+  await mockOwnedVenues(page, OWNED_TWO);
+  await mockSecondVenue(page);
+
+  // Deep link: the guard's returnUrl round trip lands straight on the console.
+  await page.goto('/operator/1/daily');
+  await signIn(page);
+  await expect(page).toHaveURL(/\/operator\/1\/daily$/);
+  const name = page.getByTestId('oc-venue-title');
+  await expect(name).toHaveText(/Miramar Beach Club/);
+  await expect(name).toHaveAttribute('aria-haspopup', 'true');
+  await expect(name).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByTestId('oc-requests-badge')).toHaveText('3');
+  await expect(page.getByTestId('oc-stat-free')).toHaveText(/2\s*\/\s*5/);
+  await expect(page.getByTestId('daily-tile')).toHaveCount(5);
+
+  // The popover: Your venues, the current row marked, every row on the SAME tab, the foot row.
+  await name.click();
+  await expect(name).toHaveAttribute('aria-expanded', 'true');
+  const menu = page.getByTestId('oc-venue-menu');
+  await expect(menu).toContainText('Your venues');
+  const rows = menu.getByRole('link');
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0)).toHaveAttribute('href', '/operator/1/daily');
+  await expect(rows.nth(0)).toHaveAttribute('aria-current', 'page');
+  await expect(rows.nth(1)).toHaveAttribute('href', '/operator/2/daily');
+  await expect(rows.nth(1)).not.toHaveAttribute('aria-current', 'page');
+  await expect(rows.nth(1)).toContainText('Sereno');
+  await expect(rows.nth(1)).toContainText('Jal');
+  await expect(page.getByTestId('oc-venue-add')).toHaveAttribute('href', '/operator?create=1');
+  // Anchored to the header row: its left edge is the brand's, not the name's.
+  const brand = (await page.locator('.oc-wordmark').boundingBox())!;
+  const popover = (await menu.boundingBox())!;
+  expect(Math.abs(popover.x - brand.x)).toBeLessThanOrEqual(2);
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'operator console with the venue popover open');
+
+  // Escape closes it and hands focus back to the name.
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(name).toHaveAttribute('aria-expanded', 'false');
+  await expect(name).toBeFocused();
+
+  // Choose venue 2: same tab, the shell re-reads title, strip, badge and the tab's own grid.
+  await name.click();
+  await rows.nth(1).click();
+  await expect(page).toHaveURL(/\/operator\/2\/daily$/);
+  await expect(menu).toHaveCount(0);
+  await expect(name).toHaveText(/Sereno/);
+  await expect(name).toBeFocused();
+  await expect(page.getByTestId('oc-requests-badge')).toHaveText('1');
+  await expect(page.getByTestId('oc-stat-free')).toHaveText(/1\s*\/\s*3/);
+  await expect(page.getByTestId('daily-tile')).toHaveCount(3);
+  const tabs = page.getByTestId('oc-tabs');
+  await expect(tabs.getByRole('link', { name: 'Daily view' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  await expect(tabs.locator('a[href^="/operator/1/"]')).toHaveCount(0);
+  await expect(tabs.locator('a[href^="/operator/2/"]')).toHaveCount(6);
+  await name.click();
+  await expect(menu.locator('[aria-current="page"]')).toHaveAttribute('href', '/operator/2/daily');
+  await page.keyboard.press('Escape');
+
+  // A reload on the deep link: the restored session populates the switcher again.
+  await page.reload();
+  await expect(page.getByTestId('oc-header')).toBeVisible();
+  await expect(name).toHaveAttribute('aria-haspopup', 'true');
+  await name.click();
+  await expect(rows).toHaveCount(3);
+  await page.keyboard.press('Escape');
+
+  // Galaxy Z Fold 5 cover width: the open popover stays inside the viewport.
+  await page.setViewportSize({ width: 344, height: 780 });
+  await name.click();
+  await expect(menu).toBeVisible();
+  const narrow = (await menu.boundingBox())!;
+  expect(narrow.x).toBeGreaterThanOrEqual(0);
+  expect(narrow.x + narrow.width).toBeLessThanOrEqual(344);
+  const pageOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(pageOverflow).toBeLessThanOrEqual(1);
 });

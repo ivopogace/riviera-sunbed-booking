@@ -33,7 +33,6 @@ test('an admin on /admin gets the operator header + footer, not the tourist chro
     `Signed in as ${ADMIN.username}`,
   );
   await expect(page.getByTestId('opc-account-menu').getByRole('link')).toHaveText([
-    'Create a venue',
     'Admin console',
     'Change password',
   ]);

@@ -28,21 +28,25 @@
       class="oc-header sticky top-0 z-20 border-b border-b-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7]"
       data-testid="oc-header"
     >
+      <!-- relative: the venue switcher's popover anchors to this row, left-aligned with the brand. -->
       <div
-        class="oc-header-inner mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-4 px-6 py-3"
+        class="oc-header-inner relative mx-auto flex max-w-[1120px] items-center justify-between gap-4 px-6 py-3"
       >
-        <div class="oc-brand flex flex-col leading-[1.15]">
-          <span class="oc-wordmark text-[19px] font-bold tracking-[-0.01em] text-riv-ink"
-            >Riviera
-            <span class="oc-wordmark-op font-medium text-riv-ink-soft">Operator</span></span
-          >
+        <div class="oc-brand flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
           <span
-            class="oc-venue-title mt-1 text-[10px] font-semibold tracking-[0.2em] uppercase text-riv-ink-faint"
-            data-testid="oc-venue-title"
-            >{{ venueName() ?? 'Your venue' }}</span
+            class="oc-wordmark shrink-0 text-[19px] leading-[1.15] font-bold tracking-[-0.01em] text-riv-ink"
+            >Riviera
+            <span class="oc-wordmark-op font-medium text-riv-ink-soft max-sm:hidden"
+              >Operator</span
+            ></span
           >
+          <app-operator-venue-switch
+            [venueId]="venueId()!"
+            [venueName]="venueName()"
+            [section]="section()"
+          />
         </div>
-        <div class="oc-header-right flex flex-wrap items-center gap-3.5">
+        <div class="oc-header-right flex shrink-0 items-center gap-3.5">
           <app-operator-account-chip testIdPrefix="oc" (signOut)="onSignOut()" />
         </div>
       </div>

@@ -1,15 +1,17 @@
 import { IsActiveMatchOptions } from '@angular/router';
 
 /**
- * The header disclosure recipes the tourist shell (`app.ts`) and the operator account chip
- * (`operator/operator-account-chip.ts`) paint from one place, so the two popovers cannot drift
- * (`riviera-tailwind`, no visual drift). Class strings, not a directive: each consumer composes
- * them with its own position and width, the `cls` idiom.
+ * The header disclosure recipes the tourist shell (`app.ts`), the operator account chip
+ * (`operator/operator-account-chip.ts`) and the venue switcher (`operator/operator-venue-switch.ts`)
+ * paint from one place, so the popovers cannot drift (`riviera-tailwind`, no visual drift). Class
+ * strings, not a directive: each consumer composes them with its own position and width, the `cls`
+ * idiom.
  */
 
 /** The near-opaque popover surface (account menu, theme picker, the phone sheet) — themed via the
  *  `--riv-pop-*` family: light in porcelain/riviera, slate in the dark theme. Position-free: the
- *  header popovers are `absolute` under their trigger, the sheet `fixed` above the tab bar. */
+ *  header popovers are `absolute` under their trigger (the venue switcher's under its header row),
+ *  the sheet `fixed` above the tab bar. */
 export const POP_SKIN =
   'z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-riv-pop-border bg-riv-pop-surface text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none';
 

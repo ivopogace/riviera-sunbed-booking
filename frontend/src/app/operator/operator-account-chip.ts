@@ -28,8 +28,9 @@ import { TouchTarget } from '../shared/touch-target';
 
 /**
  * The signed-in operator's account chip, for every operator header: an avatar + handle button that
- * discloses the identity block (`Signed in as <username>`), `Create a venue`, `Admin console`
- * (admins only), `Change password` and `Sign out`. The same disclosure pattern as the tourist
+ * discloses the identity block (`Signed in as <username>`), `Admin console` (admins only),
+ * `Change password` and `Sign out` — account actions only: venue actions (`Add another venue`)
+ * live under the venue switcher. The same disclosure pattern as the tourist
  * header's account menu — a button with `aria-expanded` revealing plain links, a backdrop, Escape
  * — on the `--riv-pop-*` tokens, so it is theme-agnostic. Rendered only while signed in: the host
  * gates on the session and keeps its own signed-out control.
@@ -96,15 +97,6 @@ import { TouchTarget } from '../shared/touch-target';
             >
           </span>
         </div>
-        <a
-          appTouchTarget
-          routerLink="/operator"
-          [queryParams]="{ create: '1' }"
-          [class]="cls.item"
-          [attr.data-testid]="ids().createVenue"
-          (click)="activate()"
-          >Create a venue</a
-        >
         @if (operator.isAdmin()) {
           <a
             appTouchTarget
@@ -165,7 +157,7 @@ export class OperatorAccountChip {
   protected readonly initial = computed(() => initialOf(this.username()));
 
   /** Computed, not a method: these bind in a sticky header that re-runs change detection on
-   *  every navigation, and a method would re-allocate all eight strings each pass. */
+   *  every navigation, and a method would re-allocate all seven strings each pass. */
   protected readonly ids = computed(() => {
     const prefix = this.testIdPrefix();
     return {
@@ -173,7 +165,6 @@ export class OperatorAccountChip {
       menu: `${prefix}-account-menu`,
       backdrop: `${prefix}-account-backdrop`,
       identity: `${prefix}-account-identity`,
-      createVenue: `${prefix}-create-venue`,
       adminLink: `${prefix}-admin-link`,
       changePassword: `${prefix}-change-password`,
       signout: `${prefix}-signout`,
