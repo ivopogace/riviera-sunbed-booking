@@ -302,7 +302,7 @@ export const routes: Routes = [
     loadComponent: () => import('./admin/admin-console').then((m) => m.AdminConsole),
     title: 'Admin — Riviera',
     // Admin surface: the shared operator header/footer, never the tourist ones.
-    data: { operatorChrome: true },
+    data: { console: 'admin' } satisfies ConsoleRouteData,
     children: adminTabRoutes,
   },
   {

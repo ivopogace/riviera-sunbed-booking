@@ -74,7 +74,7 @@ describe('AdminConsole accessibility (axe)', () => {
     await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 
-  it('has no critical/serious violations once authorized, tab strip and child content shown', async () => {
+  it('has no critical/serious violations once authorized, title and child content shown', async () => {
     const fixture = await render(authStub());
     await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });

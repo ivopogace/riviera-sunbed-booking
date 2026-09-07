@@ -3,7 +3,6 @@ import { ActivatedRoute, Router, RouterLink, RouterOutlet } from '@angular/route
 
 import { OperatorAuth } from '../core/operator-auth';
 import { currentUrl } from '../shared/current-url';
-import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminForbidden } from './admin-forbidden';
 
 /**
@@ -33,29 +32,29 @@ const FALLBACK_TAB: AdminTabRouteData = {
 };
 
 /**
- * The admin console shell — the one persistent host for every `/admin/*` tab (Operators,
+ * The admin console's page — the one persistent host for every `/admin/*` tab (Operators,
  * Commissions, Email, Refunds, Photos, Privacy, Audit), each a child route. Owns what every tab
- * used to repeat identically: the self-gate on {@link OperatorAuth} (loading / signed-out /
- * forbidden — UX only, the backend `/api/admin/**` role gate does the actual enforcing) and
- * {@link AdminConsoleTabs}, both read once per navigation from the active child's
- * `data.adminTab` rather than duplicated per page.
+ * used to repeat identically: the per-tab title and the self-gate on {@link OperatorAuth}
+ * (loading / signed-out / forbidden — UX only, the backend `/api/admin/**` role gate does the
+ * actual enforcing), both read once per navigation from the active child's `data.adminTab`
+ * rather than duplicated per page. Its chrome — the section row with `Admin` current, the tab
+ * rail (`admin-console-tabs.ts`), the footer and the porcelain pin — is the console shell's
+ * (`console-shell.ts`), which the app shell wears for every route carrying `data.console`.
  *
- * <p><strong>Why a shell, not per-page duplication.</strong> Before this, every `/admin/*` route
- * was its own top-level page, so the tab strip was destroyed and recreated on every tab click —
- * losing its scroll position and resetting it from scratch each time. A shell wrapping child
- * routes is the operator console's own shape (`riviera-frontend`: "the one nested child-route
- * tree... follow that shape for further tabbed sub-apps"), so the tab strip now stays mounted
- * across the whole console and behaves exactly like the operator console's.
+ * <p><strong>Why a persistent host, not per-page duplication.</strong> Before this, every
+ * `/admin/*` route was its own top-level page, so the gate and title were rebuilt on every tab
+ * click. A host wrapping child routes is the venue console's own shape (`riviera-frontend`: "the
+ * one nested child-route tree... follow that shape for further tabbed sub-apps").
  *
  * <p>The gate stays here as an `@if` chain, not a route guard: unlike {@code operatorSessionGuard}
  * (which redirects), a signed-out visitor is allowed to LAND on any `/admin/*` URL — just not
- * shown what is behind it. The tab strip and the active child's `<router-outlet>` render only
- * past that gate, so a signed-out visitor is never told which admin surfaces exist.
+ * shown what is behind it. The active child's `<router-outlet>` renders only past that gate, and
+ * the shell applies the same gate to the rail, so a signed-out visitor is never told which admin
+ * surfaces exist.
  */
 @Component({
   selector: 'app-admin-console',
-  imports: [AdminForbidden, RouterLink, RouterOutlet, AdminConsoleTabs],
-  host: { 'data-riv-theme': 'porcelain' },
+  imports: [AdminForbidden, RouterLink, RouterOutlet],
   template: `
     <section
       [class]="'mx-auto px-4 py-10 ' + tab().maxWidthClass"
@@ -80,7 +79,6 @@ const FALLBACK_TAB: AdminTabRouteData = {
       } @else if (!auth.isAdmin()) {
         <p appAdminForbidden [testId]="tab().forbiddenTestId"></p>
       } @else {
-        <app-admin-console-tabs label="Admin console sections" />
         <router-outlet />
       }
     </section>

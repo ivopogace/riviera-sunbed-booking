@@ -70,6 +70,12 @@ const surfaceRoutes = () => [
   },
   { path: 'account/password', component: BlankPage, data: { section: 'account' } },
   { path: 'operator/:venueId/daily', component: BlankPage, data: { console: 'venue' } },
+  {
+    path: 'admin',
+    component: BlankPage,
+    data: { console: 'admin' },
+    children: [{ path: 'audit', component: BlankPage }],
+  },
   { path: 'operator-chrome', component: BlankPage, data: { operatorChrome: true } },
   // The operator chrome's sign-out navigates here; a resolvable target keeps that await clean.
   { path: 'account/sign-in', component: BlankPage },
@@ -1091,6 +1097,22 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(el.querySelector('[data-testid="oc-tabs"] a[href="/operator/7/daily"]')).not.toBeNull();
     // <main> stays the one landmark: the console page renders no header, rail or main of its own.
     expect(el.querySelectorAll('main')).toHaveLength(1);
+
+    // An admin tab: the same row, Admin current (the flag on the parent reaches the child), the admin rail.
+    operatorAuth.isAdmin.set(true);
+    await router.navigate(['/admin/audit']);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="oc-header"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="oc-section-admin"]')?.getAttribute('aria-current')).toBe(
+      'page',
+    );
+    expect(
+      el.querySelector('[data-testid="oc-section-venue"]')?.getAttribute('aria-current'),
+    ).toBeNull();
+    expect(
+      el.querySelector('nav[aria-label="Admin console sections"] a[href="/admin/audit"]'),
+    ).not.toBeNull();
+    expect(el.querySelector('[data-testid="oc-tabs"]')).toBeNull();
   });
 
   it('pins the shell porcelain on every console route and never on a tourist one (#1011)', async () => {
@@ -1197,12 +1219,19 @@ describe('app.routes chrome flags (issue #134)', () => {
   ];
 
   it('flags every non-console operator/admin surface with the shared operator chrome', () => {
-    for (const path of OPERATOR_SURFACE_PATHS.filter((p) => p !== 'operator/:venueId')) {
+    for (const path of OPERATOR_SURFACE_PATHS.filter(
+      (p) => p !== 'operator/:venueId' && p !== 'admin',
+    )) {
       const route = routes.find((r) => r.path === path);
       expect(route?.data?.['operatorChrome'], `route '${path}' operatorChrome flag`).toBe(true);
-      // The two flags are mutually exclusive — the console alone stays fully chromeless.
       expect(route?.data?.['operatorConsole'], `route '${path}' console flag`).toBeUndefined();
     }
+  });
+
+  it('names the console section on the admin console route (#1011)', () => {
+    const admin = routes.find((r) => r.path === 'admin');
+    expect(admin?.data?.['console']).toBe('admin');
+    expect(admin?.data?.['operatorChrome']).toBeUndefined();
   });
 
   it("admin's tab children inherit the shell's operator chrome rather than carrying their own", () => {
@@ -1214,10 +1243,7 @@ describe('app.routes chrome flags (issue #134)', () => {
         child?.data?.['operatorChrome'],
         `admin child '${path}' operatorChrome flag`,
       ).toBeUndefined();
-      expect(
-        child?.data?.['operatorConsole'],
-        `admin child '${path}' console flag`,
-      ).toBeUndefined();
+      expect(child?.data?.['console'], `admin child '${path}' console section`).toBeUndefined();
     }
   });
 

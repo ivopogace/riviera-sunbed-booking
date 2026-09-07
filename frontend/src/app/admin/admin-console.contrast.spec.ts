@@ -26,8 +26,8 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the admin console. The console is ALWAYS porcelain (its host
- * scopes `data-riv-theme="porcelain"`, admin-console.ts), so the porcelain rows are the live
+ * WCAG-AA contrast guard for the admin console. The console is ALWAYS porcelain (the app shell
+ * pins `data-riv-theme="porcelain"` on every console route, app.ts), so the porcelain rows are the live
  * proof; the dark rows cover the danger token set and `shared/confirm-with-reason.ts`, which
  * are reachable from outside this console.
  *
@@ -39,10 +39,9 @@ import {
  * boundaries below. Of those two, only the Erase button's border is asserted: it is the
  * boundary that reads as an affordance, and is held to 3:1 against the panel fill. The panel's
  * own edge (`--riv-danger-border`) is a decorative container edge whose meaning is already
- * carried by the fill and the heading, and is deliberately left unasserted — issue #834.
- * That citation is HISTORY, not a deferral: that issue raised the Erase button's border (PR #837)
- * and closed. The general sub-3:1 question it once accumulated lives at
- * docs/design/non-text-contrast.md, and this panel edge is exempt there under rule 2.
+ * carried by the fill and the heading, and is deliberately left unasserted: the general sub-3:1
+ * question lives at docs/design/non-text-contrast.md, and this panel edge is exempt there under
+ * rule 2.
  */
 
 const OUTGOING_ERROR_INK: Rgb = [0xb3, 0x26, 0x1e];

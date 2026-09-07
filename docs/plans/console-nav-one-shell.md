@@ -186,10 +186,10 @@ Three old surfaces retire into the shell: `app-operator-chrome`, the venue conso
 | R-3 | The section row no longer fits one line at 390px / 344px with brand + name + `Admin` + chip | med | med | brand `shrink-0`, name `min-w-0 truncate`, `Admin` `shrink-0`, chip handle hidden below `sm`; the #1008 one-row assertion (`header.height ≤ 80`) re-pinned in `console-shell.e2e.ts` at 390px | agent | open |
 | R-4 | `(window:scroll)` + a signal per event re-runs change detection on every scroll frame | low | low | the signal only changes value at a direction flip (`set` with an equal value is a no-op); the listener is on the shell alone | agent | open |
 | R-5 | The section slot's `relative` (for its marker) captures the switcher's `absolute` popover, so it anchors to the name and overhangs at 344px (the #1009 pin) | high | med | the popover is `fixed`: the header's `backdrop-filter` makes it the containing block, `left: max(1.5rem, 50% − 536px)` finds the centred row's content edge; the #1009 e2e pins x = brand.x and y under the row, and the 344px overhang case | agent | closed — phase 2, `operator-console.e2e.ts` green |
-| R-6 | The rail moving out of `AdminConsole` breaks `admin-console-tabs.e2e.ts`'s scrolling-row pins | med | low | the nav keeps `appTabRail` and its aria-label; only its inset classes change; run the file at phase 3 | agent | open |
+| R-6 | The rail moving out of `AdminConsole` breaks `admin-console-tabs.e2e.ts`'s scrolling-row pins | med | low | the nav keeps `appTabRail` and its aria-label; only its inset classes change; run the file at phase 3 | agent | closed — phase 3, `admin-console-tabs.e2e.ts` 6/6 green with the rail under the shell |
 | R-7 | Deleting `oc-footer` / the console `<main>` breaks e2e cases that locate them | med | low | `grep -rn "oc-footer\|oc-main\|locator('main"` (two hits: the console spec, `theme-shell.e2e.ts` reads App's main — unchanged) | agent | closed — phase 2, no e2e locates either |
-| R-8 | `AdminConsole`'s spec stubs `OperatorAuth` with four signals; the shell needs `username`, `restoring`, `isAdmin`, `signedIn` | low | low | the shell has its own spec with a fuller stub; the admin spec keeps its stub since the shell is not in its tree | agent | open |
-| R-9 | `app.routes.spec.ts` › `resolves all 32 loadComponent targets` counts change | low | low | no route added or removed; only `data` changes | agent | open |
+| R-8 | `AdminConsole`'s spec stubs `OperatorAuth` with four signals; the shell needs `username`, `restoring`, `isAdmin`, `signedIn` | low | low | the shell has its own spec with a fuller stub; the admin spec keeps its stub since the shell is not in its tree | agent | closed — phase 3, the admin spec's four-signal stub still suffices (no shell in its tree) |
+| R-9 | `app.routes.spec.ts` › `resolves all 32 loadComponent targets` counts change | low | low | no route added or removed; only `data` changes | agent | closed — phase 3, `app.routes.spec.ts` unchanged and green |
 
 ## Open questions / Assumptions
 
@@ -269,16 +269,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** phase 3 — the `admin` route carries `console: 'admin'`; `AdminConsole` sheds its strip and pin; the shell's admin rail; `console-shell.e2e.ts` from `operator-chrome.e2e.ts`.
+**Next action:** phase 4 — `/operator` and the password page carry `console: 'plain'`; `OperatorHome` sheds its pin; the landing/password/sweep cases in `console-shell.e2e.ts`; `theme-shell.e2e.ts` over the four routes.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | |
 | 1 — expand: `ConsoleShell` + its specs; the switcher's off-console form; the chip drops `Admin console` (the admin rail's inset moves to phase 3, with the rail) | ✅ | be84ef86 |
-| 2 — migrate the venue console: App reads `data.console`, mounts the shell for `venue`; the console sheds its chrome; the retired `operatorConsole` flag dropped with its last user; e2e (scroll-hide at 390px, the 1280px beach map) | ✅ | |
-| 3 — migrate the admin routes: the shell renders the admin rail past the gate; `AdminConsole` sheds its strip; e2e (`console-shell.e2e.ts` from `operator-chrome.e2e.ts`, signed-out `/admin/audit`) | | |
+| 2 — migrate the venue console: App reads `data.console`, mounts the shell for `venue`; the console sheds its chrome; the retired `operatorConsole` flag dropped with its last user; e2e (scroll-hide at 390px, the 1280px beach map) | ✅ | 47e9e60f |
+| 3 — migrate the admin routes: the shell renders the admin rail past the gate; `AdminConsole` sheds its strip; e2e (`console-shell.e2e.ts` from `operator-chrome.e2e.ts`, signed-out `/admin/audit`) | ✅ | |
 | 4 — migrate the plain pages: route data on `/operator` and the password page; `OperatorHome` sheds the pin; the theme e2e over the four routes | | |
 | 5 — contract: delete `operator-chrome.*` and the old flags; one e2e prefix; docs + the #1009 plan retired; docs-freshness; file-structure guard; full lint + unit; branch pushed for the maintainer's PR | | |
 
