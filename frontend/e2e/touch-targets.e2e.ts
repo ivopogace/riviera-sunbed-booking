@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { mockOwnedVenues } from './support/auth-mocks';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 import { openOperatorAccountMenu } from './support/shell';
 import { expectTouchTargets } from './support/touch-targets';
@@ -126,6 +127,21 @@ test.describe('44px touch targets at a phone width', () => {
     await expect(page.getByTestId('oc-signout')).toBeVisible();
 
     await expectTouchTargets(page, 'operator console with the account popover open');
+  });
+
+  test('operator console — daily view, venue switcher open (#1009)', async ({ page }) => {
+    // Two owned venues, so the name renders as the switcher; registered after the whole-console
+    // mock, so this handler wins.
+    await mockOwnedVenues(page, [
+      { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
+      { id: 2, name: 'Sereno', beach: 'Jal' },
+    ]);
+    await openConsoleTab(page, 'daily');
+    await expect(page.getByTestId('daily-view-tab')).toBeVisible();
+    await page.getByTestId('oc-venue-title').click();
+    await expect(page.getByTestId('oc-venue-add')).toBeVisible();
+
+    await expectTouchTargets(page, 'operator console with the venue popover open');
   });
 
   test('operator console — beach map, per-set mode', async ({ page }) => {
