@@ -12,7 +12,8 @@ class BlankPage {}
 /**
  * The shared operator/admin header the shell renders on `data.operatorChrome` routes. These specs
  * pin the three auth states (signed-in, signed-in admin, signed-out) and the sign-out flow —
- * the chrome-vs-route wiring itself is pinned in app.spec.ts.
+ * the chrome-vs-route wiring itself is pinned in app.spec.ts, the account chip's own contract in
+ * operator-account-chip.spec.ts.
  */
 const operatorAuth = {
   restoring: signal(false),
@@ -32,7 +33,10 @@ describe('OperatorChrome', () => {
     await TestBed.configureTestingModule({
       imports: [OperatorChrome],
       providers: [
-        provideRouter([{ path: 'operator/onboarding', component: BlankPage }]),
+        provideRouter([
+          { path: 'operator/onboarding', component: BlankPage },
+          { path: 'admin/email', component: BlankPage },
+        ]),
         { provide: OperatorAuth, useValue: operatorAuth },
       ],
     }).compileComponents();
@@ -44,11 +48,36 @@ describe('OperatorChrome', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('shows the operator links, the signed-in username and Sign out when signed in', () => {
-    const { el } = render();
+  /** Opens the account chip and lets `routerLinkActive` mark the rows (a microtask after mount). */
+  async function openChip(
+    fixture: ComponentFixture<OperatorChrome>,
+    el: HTMLElement,
+  ): Promise<void> {
+    el.querySelector<HTMLButtonElement>('[data-testid="opc-account"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  it('renders one account chip and, opened, the operator rows — no Admin console for a non-admin (#1008)', async () => {
+    const { fixture, el } = render();
     expect(
       el.querySelector<HTMLAnchorElement>('[data-testid="opc-brand"]')?.getAttribute('href'),
     ).toBe('/operator');
+    const chip = el.querySelector<HTMLButtonElement>('[data-testid="opc-account"]')!;
+    expect(chip.getAttribute('aria-label')).toBe('Account: maria');
+    expect(chip.getAttribute('aria-expanded')).toBe('false');
+    // The five peers are gone from the bar: the chip is the header's one session control.
+    const nav = el.querySelector('nav[aria-label="Operator"]')!;
+    expect(nav.querySelectorAll('a, button')).toHaveLength(1);
+    expect(nav.textContent).not.toContain('Signed in as');
+    expect(el.querySelector('[data-testid="opc-signin"]')).toBeNull();
+
+    await openChip(fixture, el);
+    expect(chip.getAttribute('aria-expanded')).toBe('true');
+    expect(el.querySelector('[data-testid="opc-account-identity"]')?.textContent).toContain(
+      'Signed in as maria',
+    );
     expect(
       el.querySelector<HTMLAnchorElement>('[data-testid="opc-create-venue"]')?.getAttribute('href'),
     ).toBe('/operator?create=1');
@@ -57,19 +86,22 @@ describe('OperatorChrome', () => {
         .querySelector<HTMLAnchorElement>('[data-testid="opc-change-password"]')
         ?.getAttribute('href'),
     ).toBe('/account/operator-password');
-    expect(el.querySelector('[data-testid="opc-signed-in-as"]')?.textContent).toContain('maria');
     expect(el.querySelector('[data-testid="opc-signout"]')).not.toBeNull();
-    expect(el.querySelector('[data-testid="opc-signin"]')).toBeNull();
     // A non-admin operator is not offered the platform-admin surface.
     expect(el.querySelector('[data-testid="opc-admin-link"]')).toBeNull();
   });
 
-  it('adds the Admin link for a platform-admin principal', () => {
+  it('adds the Admin console row for a platform-admin principal, current on the admin pages (#1008)', async () => {
     operatorAuth.isAdmin.set(true);
-    const { el } = render();
-    expect(
-      el.querySelector<HTMLAnchorElement>('[data-testid="opc-admin-link"]')?.getAttribute('href'),
-    ).toBe('/admin');
+    const { fixture, el } = render();
+    await TestBed.inject(Router).navigateByUrl('/admin/email');
+    fixture.detectChanges();
+
+    await openChip(fixture, el);
+    const admin = el.querySelector<HTMLAnchorElement>('[data-testid="opc-admin-link"]')!;
+    expect(admin.getAttribute('href')).toBe('/admin');
+    expect(admin.textContent?.trim()).toBe('Admin console');
+    expect(admin.getAttribute('aria-current')).toBe('page');
   });
 
   it('offers the operator sign-in (not session controls) when signed out', () => {
@@ -80,8 +112,8 @@ describe('OperatorChrome', () => {
     expect(
       el.querySelector<HTMLAnchorElement>('[data-testid="opc-signin"]')?.getAttribute('href'),
     ).toBe('/account/sign-in?audience=operator&returnUrl=%2F');
-    expect(el.querySelector('[data-testid="opc-signout"]')).toBeNull();
-    expect(el.querySelector('[data-testid="opc-signed-in-as"]')).toBeNull();
+    expect(el.querySelector('[data-testid="opc-account"]')).toBeNull();
+    expect(el.textContent).not.toContain('Signed in as');
   });
 
   it('follows a navigation: returnUrl is the page the operator is on (#982)', async () => {
@@ -101,7 +133,7 @@ describe('OperatorChrome', () => {
     operatorAuth.restoring.set(true);
     const { el } = render();
     expect(el.querySelector('[data-testid="opc-signin"]')).toBeNull();
-    expect(el.querySelector('[data-testid="opc-signout"]')).toBeNull();
+    expect(el.querySelector('[data-testid="opc-account"]')).toBeNull();
   });
 
   it('Sign out signs the session out and leaves for the operator sign-in', async () => {
@@ -109,6 +141,7 @@ describe('OperatorChrome', () => {
     const router = TestBed.inject(Router);
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
+    await openChip(fixture, el);
     el.querySelector<HTMLButtonElement>('[data-testid="opc-signout"]')!.click();
     await fixture.whenStable();
 

@@ -1086,6 +1086,8 @@ describe('App (Liquid Glass shell, issue #134)', () => {
 
     await router.navigate(['/operator-chrome']);
     fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>('[data-testid="opc-account"]')!.click();
+    fixture.detectChanges();
     const signOut = el.querySelector<HTMLButtonElement>('[data-testid="opc-signout"]')!;
     signOut.focus();
 

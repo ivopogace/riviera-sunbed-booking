@@ -236,14 +236,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** phase 1 — rewrite `operator-chrome.spec.ts`'s signed-in cases onto the chip (red), mount the chip.
+**Next action:** phase 2 — the console spec's shell/create-venue/sign-out cases onto the chip (red), mount the chip, park focus on `oc-main`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the chip component + the hoisted popover skin (spec, contrast spec) | ✅ | `Add the operator account chip (#1008)` |
-| 1 — the thin chrome consumes the chip | | |
+| 1 — the thin chrome consumes the chip | ✅ | `Operator chrome: the account chip (#1008)` |
 | 2 — the venue console consumes the chip, parks focus on sign-out | | |
 | 3 — retire `OperatorActions` + the console-btn tokens; e2e, page object, docs, close-out | | |
 
@@ -351,7 +351,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-09-07 | phase 0 (the popover recipes hoisted into `shared/popover-skin.ts`) | every component holding a private copy of the popover-surface / chip-glass recipe strings | `grep -rln "riv-pop-surface\|riv-chip-bg" frontend/src/app --include=*.ts` | `app.ts` (the tourist shell), `operator-account-chip.ts` (the new consumer) | `app.ts` imports the hoisted strings; nothing else paints them |
+| 2026-09-07 | phase 0 (the popover recipes hoisted into `shared/popover-skin.ts`) | every component holding a private copy of the popover-surface / chip-glass recipe strings | `grep -rln "riv-pop-surface\|riv-chip-bg" frontend/src/app --include=*.ts` | `app.ts` (the tourist shell) and `popover-skin.ts` paint them; `semantic-chip.ts` and four contrast specs only name the tokens in comments | `app.ts` imports the hoisted strings; nothing else paints them |
 
 ---
 
