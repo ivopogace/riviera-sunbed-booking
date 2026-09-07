@@ -212,16 +212,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** phase 2 step 1 — replace `operator-console.spec.ts`'s "renders the six pill tabs" with the order + dividers + no-pill spec and watch it fail.
+**Next action:** phase 3 — extend `current-page-marker.e2e.ts` to the two consoles, amend the two console e2e specs, retarget `accent-token-inks.e2e.ts`, run them with `PW_CHROMIUM_EXECUTABLE`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the rail primitive (`shared/tab-rail.ts` + spec + contrast spec) | ✅ | phase-0 commit (see git log, `Add the shared tab-rail primitive`) |
 | 1 — admin console consumes the rail, amended order + dividers | ✅ | `Admin console: the tab rail and the amended order` |
-| 2 — venue console consumes the rail, Today-first order + dividers | ⏳ | |
-| 3 — e2e (marker, no mask, accent-ink retarget), docs rows, close-out | | |
+| 2 — venue console consumes the rail, Today-first order + dividers | ✅ | `Venue console: the tab rail, Today-first` |
+| 3 — e2e (marker, no mask, accent-ink retarget), docs rows, close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

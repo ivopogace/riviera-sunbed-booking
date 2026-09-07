@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import {
   ActivatedRoute,
@@ -8,6 +9,7 @@ import {
   provideRouter,
   Router,
 } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { BehaviorSubject } from 'rxjs';
 import { Mock, vi } from 'vitest';
 
@@ -21,6 +23,9 @@ import { PendingRequestsStore } from './pending-requests-store';
 
 const BASE = environment.apiBaseUrl;
 const VENUE = 1;
+
+@Component({ template: '' })
+class Blank {}
 
 function venueMap(name: string, id = VENUE): VenueMapView {
   return {
@@ -190,22 +195,71 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
     expect(document.documentElement.getAttribute('data-riv-theme')).toBeNull();
   });
 
-  it('renders the six pill tabs linking to the tab routes (#170, AC-1)', async () => {
+  it('renders the six tabs linking to the tab routes (#170, AC-1)', async () => {
     await createSignedIn();
     const nav = host().querySelector('[data-testid="oc-tabs"]')!;
     expect(nav).not.toBeNull();
     const tabs: readonly [string, string][] = [
-      ['beach-map', 'Beach map'],
-      ['pricing', 'Pricing'],
       ['daily', 'Daily view'],
       ['requests', 'Requests'],
-      ['payouts', 'Payouts'],
+      ['beach-map', 'Beach map'],
+      ['pricing', 'Pricing'],
       ['venue', 'Venue & commodities'],
+      ['payouts', 'Payouts'],
     ];
     for (const [path, label] of tabs) {
       const link = nav.querySelector<HTMLAnchorElement>(`a[href="/operator/${VENUE}/${path}"]`);
       expect(link, `tab '${path}'`).not.toBeNull();
       expect(link?.textContent).toContain(label);
+    }
+  });
+
+  /**
+   * Today first, grouped (the console-nav spike's grill, answer 7): what a running venue opens
+   * every day, then set-up, then money — the groups separated by hairline dividers on the rail.
+   */
+  it('orders the tabs Today-first with dividers at the two group boundaries (#1007)', async () => {
+    await createSignedIn();
+    const nav = host().querySelector('[data-testid="oc-tabs"]')!;
+
+    const sequence = [...nav.querySelectorAll(':scope > *')].map((el) =>
+      el.tagName === 'A' ? (el as HTMLElement).textContent.trim() : '|',
+    );
+    expect(sequence).toEqual([
+      'Daily view',
+      'Requests',
+      '|',
+      'Beach map',
+      'Pricing',
+      'Venue & commodities',
+      '|',
+      'Payouts',
+    ]);
+    for (const divider of nav.querySelectorAll(':scope > span')) {
+      expect(divider.getAttribute('aria-hidden')).toBe('true');
+    }
+  });
+
+  /** The pill recipe is the read-only chips'; a routing control wears the rail's underline instead. */
+  it('renders underlined text tabs on one rail, no pill recipe (#1007)', async () => {
+    await createSignedIn();
+    const nav = host().querySelector('[data-testid="oc-tabs"]')!;
+
+    expect([...nav.classList].some((c) => c.includes('mask-image'))).toBe(false);
+    const links = nav.querySelectorAll('a');
+    expect(links.length).toBe(6);
+    for (const link of links) {
+      const classes = [...link.classList];
+      expect(classes, link.textContent).toContain('inline-flex');
+      expect(classes, link.textContent).not.toContain('rounded-full');
+      expect(
+        classes.some((c) => /^border(-|$)/.test(c)),
+        link.textContent,
+      ).toBe(false);
+      expect(
+        classes.some((c) => /^px-\[?\d/.test(c) && c !== 'px-0.5'),
+        link.textContent,
+      ).toBe(false);
     }
   });
 
@@ -369,30 +423,36 @@ describe('OperatorConsole — in-place venue param change (#180)', () => {
 });
 
 /**
- * The active tab pill is scrolled into the tab row's viewport on load and on every tab switch.
- * jsdom implements no `scrollIntoView` (the component optional-calls it), so one is installed
- * on the prototype for this block and removed after; the mock's `contexts` are the anchors
- * scrolled. The route stub's `snapshot.firstChild` stands in for the active child route.
+ * The active tab is scrolled into the rail's viewport on load and on every tab switch — the rail
+ * tab's own mechanism, proven here through the console's real template under a real router (the
+ * console's child routes, stubbed to blank components). jsdom implements no `scrollIntoView` (the
+ * tab optional-calls it), so one is installed on the prototype for this block and removed after;
+ * the mock's `contexts` are the anchors scrolled.
  */
 describe('OperatorConsole — active tab scroll-into-view (#710, #982)', () => {
-  let fixture: ComponentFixture<OperatorConsole>;
+  let harness: RouterTestingHarness;
   let httpMock: HttpTestingController;
-  let router: Router;
   let scrollIntoView: Mock<(options?: ScrollIntoViewOptions) => void>;
-  const firstChild = { routeConfig: { path: 'daily' } };
 
   beforeEach(async () => {
     document.documentElement.removeAttribute('data-riv-theme');
-    firstChild.routeConfig.path = 'daily';
     scrollIntoView = vi.fn();
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
-    const params$ = new BehaviorSubject(convertToParamMap({ venueId: String(VENUE) }));
     TestBed.configureTestingModule({
-      imports: [OperatorConsole],
-      providers: baseProviders({
-        snapshot: { paramMap: params$.value, firstChild },
-        paramMap: params$,
-      } as never),
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([
+          {
+            path: 'operator/:venueId',
+            component: OperatorConsole,
+            children: [
+              { path: 'daily', component: Blank },
+              { path: 'venue', component: Blank },
+            ],
+          },
+        ]),
+      ],
     });
     TestBed.inject(OperatorAuth);
     httpMock = TestBed.inject(HttpTestingController);
@@ -401,16 +461,13 @@ describe('OperatorConsole — active tab scroll-into-view (#710, #982)', () => {
       .flush({ username: 'operator', principalType: 'OPERATOR' });
     await Promise.resolve();
     await Promise.resolve();
-    router = TestBed.inject(Router);
 
-    // Constructed mid-navigation, as the router-outlet does; the effect runs after it completes.
-    fixture = TestBed.createComponent(OperatorConsole);
-    await router.navigateByUrl('/');
-    await fixture.whenStable();
+    harness = await RouterTestingHarness.create('/operator/1/daily');
+    await harness.fixture.whenStable();
     flushVenue(httpMock, 'Miramar Beach Club');
     flushRequests(httpMock, 0);
     flushStrip(httpMock);
-    await fixture.whenStable();
+    await harness.fixture.whenStable();
   });
 
   afterEach(() => {
@@ -427,9 +484,8 @@ describe('OperatorConsole — active tab scroll-into-view (#710, #982)', () => {
   });
 
   it('scrolls the newly active tab into view on a tab switch', async () => {
-    firstChild.routeConfig.path = 'venue';
-    await router.navigateByUrl('/?tab=venue');
-    await fixture.whenStable();
+    await harness.navigateByUrl('/operator/1/venue');
+    await harness.fixture.whenStable();
 
     expect(scrolledLabels()).toEqual(['Daily view', 'Venue & commodities']);
   });

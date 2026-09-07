@@ -1,13 +1,4 @@
-import {
-  Component,
-  ElementRef,
-  computed,
-  effect,
-  inject,
-  signal,
-  untracked,
-  viewChildren,
-} from '@angular/core';
+import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { OperatorActions } from './operator-actions';
 import { LegalFooter } from '../shared/legal-footer';
 import {
@@ -23,6 +14,7 @@ import { OperatorAuth } from '../core/operator-auth';
 import { todayBookingDate } from '../shared/booking-date';
 import { venueIdParam } from '../shared/parent-venue-id';
 import { VenueMapView } from '../shared/venue-views';
+import { TAB_RAIL_MATCH, TabRail, TabRailDivider, TabRailTab } from '../shared/tab-rail';
 import { TouchTarget } from '../shared/touch-target';
 import { ConsoleStatsStrip } from './console-stats-strip';
 import { ConsoleVenueMap } from './console-venue-map';
@@ -30,18 +22,20 @@ import { OperatorConsoleService } from './operator-console.service';
 import { PendingApprovalBanner } from './pending-approval-banner';
 import { PendingRequestsStore } from './pending-requests-store';
 
-/** A console tab: its child-route path, its label, and whether it carries the live Requests badge. */
+/** A console tab: its child-route path, its label, whether a group divider precedes it on the
+ *  rail, and whether it carries the live Requests badge. */
 interface ConsoleTab {
   readonly path: string;
   readonly label: string;
+  readonly dividerBefore?: boolean;
   readonly badge?: boolean;
 }
 
 /**
  * Operator console shell. The porcelain-light glass chrome that
  * wraps the operator surface at `/operator/:venueId`: a sticky header (Operator wordmark, venue
- * title, signed-in-as, sign out) and the pill tab nav with a live Requests badge, hosting each tab
- * as a child route. The app shell (`app.ts`) suppresses all of its own chrome for
+ * title, signed-in-as, sign out) and the tab rail (`shared/tab-rail.ts`) with a live Requests
+ * badge, hosting each tab as a child route. The app shell (`app.ts`) suppresses all of its own chrome for
  * `/operator/:venueId` (`data.operatorConsole`), so this component owns the full viewport — every
  * other operator surface wears the shared operator chrome instead (`data.operatorChrome`).
  *
@@ -64,6 +58,9 @@ interface ConsoleTab {
     RouterLinkActive,
     ConsoleStatsStrip,
     PendingApprovalBanner,
+    TabRail,
+    TabRailTab,
+    TabRailDivider,
     TouchTarget,
   ],
   templateUrl: './operator-console.html',
@@ -84,15 +81,18 @@ export class OperatorConsole {
    *  reuses this instance when only the param differs, so a snapshot read would pin the old venue. */
   protected readonly venueId = venueIdParam(this.route);
 
-  /** The six console sections, in design order; only Requests carries the live badge. */
+  /** The six console sections, Today first and grouped — what a running venue opens every day,
+   *  then set-up, then money (the console-nav spike's grill, answer 7); only Requests carries the
+   *  live badge. */
   protected readonly tabs: readonly ConsoleTab[] = [
-    { path: 'beach-map', label: 'Beach map' },
-    { path: 'pricing', label: 'Pricing' },
     { path: 'daily', label: 'Daily view' },
     { path: 'requests', label: 'Requests', badge: true },
-    { path: 'payouts', label: 'Payouts' },
+    { path: 'beach-map', label: 'Beach map', dividerBefore: true },
+    { path: 'pricing', label: 'Pricing' },
     { path: 'venue', label: 'Venue & commodities' },
+    { path: 'payouts', label: 'Payouts', dividerBefore: true },
   ];
+  protected readonly match = TAB_RAIL_MATCH;
 
   /** The venue name shown in the header, from the public venue read (best-effort). */
   protected readonly venueName = signal<string | undefined>(undefined);
@@ -106,25 +106,6 @@ export class OperatorConsole {
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
 
-  /** The pill anchors, in tab order — used to scroll the active one into the scrolling row's
-   *  viewport so it's visible without the operator having to scroll manually. */
-  private readonly tabLinks = viewChildren<ElementRef<HTMLAnchorElement>>('tabLink');
-  /**
-   * The active child route's path — the tab-nav counterpart of `routerLinkActive`, read here to
-   * drive the scroll-into-view rather than a CSS class. Keyed on
-   * `Router.lastSuccessfulNavigation()`: the `route.snapshot` it walks is not a signal, and
-   * reading it here is safe because the router assigns the new router state (on
-   * `BeforeActivateRoutes`) before it activates the routes and sets `lastSuccessfulNavigation` on
-   * the line before it emits `NavigationEnd`, so each completed navigation (a venue-only one
-   * included) re-reads the same settled snapshot a `NavigationEnd` subscriber would. `undefined`
-   * until the first navigation has completed.
-   */
-  private readonly currentTabPath = computed(() =>
-    this.router.lastSuccessfulNavigation() === null
-      ? undefined
-      : this.route.snapshot.firstChild?.routeConfig?.path,
-  );
-
   constructor() {
     // Load per session (the async /me restore resolves late) AND per venue param.
     effect(() => {
@@ -132,15 +113,6 @@ export class OperatorConsole {
       if (this.operator.signedIn() && id !== undefined) {
         untracked(() => this.load(id));
       }
-    });
-
-    // Scroll the active tab into view on load/switch — the row scrolls instead of wrapping (#710).
-    effect(() => {
-      const path = this.currentTabPath();
-      const links = this.tabLinks();
-      const index = this.tabs.findIndex((tab) => tab.path === path);
-      // Optional-called: jsdom doesn't implement it, and it's not worth failing a test over.
-      links[index]?.nativeElement.scrollIntoView?.({ inline: 'nearest', block: 'nearest' });
     });
   }
 

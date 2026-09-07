@@ -25,8 +25,9 @@ export const TAB_RAIL_MATCH: IsActiveMatchOptions = {
  * `bottom-0` covers its bottom pixel. `--riv-ink-faint` rather than the header's white border
  * because the line has to clear 1.4.11's 3:1 on the header glass (`tab-rail.contrast.spec.ts`).
  *
- * <p>Carries no padding, margin or radius of its own (`riviera-tailwind` rule 3): a consumer
- * sets its own inset outside the rail, never inside it, or the marker floats off the hairline.
+ * <p>Carries no padding, margin or radius of its own (`riviera-tailwind` rule 3). A consumer may
+ * add a horizontal inset (`px-6 scroll-px-6`) and top padding, never bottom padding — the tabs
+ * stretch to the rail's content edge, and bottom padding would float the marker off the hairline.
  */
 @Directive({
   selector: 'nav[appTabRail]',
