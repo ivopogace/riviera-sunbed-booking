@@ -170,6 +170,13 @@ The slice replaces the header's venue caption and moves one chip row.
   *Resolves by:* phase 2.
 - **Assumption:** the thin chrome offers no create-venue entry until slice 4 (the issue's "leaves the
   account chip in this slice"). *Owner:* agent · *Resolves by:* phase 0.
+- **Open question (product, surfaced by the review gate):** a **one-venue** operator now has no
+  in-app link to `/operator?create=1` at all — the switcher is plain text for one venue (AC-1, epic
+  story 9), the chip row is gone (AC-4), the console wordmark is not a link, and `/operator` forwards
+  a one-venue operator straight back to the console. Slice 4's `Your venues` control on the
+  landing/admin pages does not reach the console case either. Built as the issue specifies;
+  `← confirm?` whether the one-venue name should still disclose `Add another venue`, or the
+  landing/`?create=1` entry is enough. *Owner:* maintainer · *Resolves by:* review.
 
 ### Resolved
 
