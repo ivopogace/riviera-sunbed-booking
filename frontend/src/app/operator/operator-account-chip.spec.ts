@@ -10,7 +10,7 @@ class BlankPage {}
 
 /**
  * The account chip both operator headers mount. These specs pin the disclosure's contract
- * — the chip's name and `aria-expanded`, the row set per principal, the four ways it closes and
+ * — the chip's name and `aria-expanded`, the row set per principal, the five ways it closes and
  * where focus lands on each, the current-page marker — and what the two call sites vary: the
  * test-id prefix and the sign-out output. Each header's own specs cover its surrounding chrome.
  */

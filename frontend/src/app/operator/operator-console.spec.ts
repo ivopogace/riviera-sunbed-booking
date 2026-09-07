@@ -157,7 +157,7 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
     const chip = header.querySelector<HTMLButtonElement>('[data-testid="oc-account"]')!;
     expect(chip.getAttribute('aria-label')).toBe('Account: operator');
     expect(chip.getAttribute('aria-expanded')).toBe('false');
-    // The five peers are gone from the bar: the chip is the header's one control.
+    // The old peer row is gone: the chip is the header's one control.
     expect(header.querySelectorAll('a, button')).toHaveLength(1);
     expect(header.textContent).not.toContain('Signed in as');
 

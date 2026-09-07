@@ -67,7 +67,7 @@ describe('OperatorChrome', () => {
     const chip = el.querySelector<HTMLButtonElement>('[data-testid="opc-account"]')!;
     expect(chip.getAttribute('aria-label')).toBe('Account: maria');
     expect(chip.getAttribute('aria-expanded')).toBe('false');
-    // The five peers are gone from the bar: the chip is the header's one session control.
+    // The old peer row is gone: the chip is the header's one session control.
     const nav = el.querySelector('nav[aria-label="Operator"]')!;
     expect(nav.querySelectorAll('a, button')).toHaveLength(1);
     expect(nav.textContent).not.toContain('Signed in as');

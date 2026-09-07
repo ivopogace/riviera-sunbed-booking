@@ -242,9 +242,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — round 1 in progress (3 of 5 reviewers reported; 2 fixes committed)`
+**Stage pointer:** `DONE — review + Sonar gates run and cleared; PR #1015 ready for the maintainer's merge`
 
-**Next action:** fold in the last two reviewers' findings, score and post the review comment, confirm CI + Sonar on the fix push, then the close-out (`references/pr-gates.md` §3).
+**Next action:** the maintainer confirms the five ← confirm? assumptions and merges; the session's check-in verifies CI + Sonar on the fix pushes and, after the merge, runs the GitHub half of the close-out (`references/pr-gates.md` §3 steps 1–3, 6–7).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -255,6 +255,16 @@ N/A — no contract change.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
+**Review gate (round 1):** ran `code-review:code-review` (rung 1) over
+`98efb2fdb04f04bbad6b6c59f80cf345ed6b5c49..506a7217289985975f718ccc1b853b60b50cdbd4` (36 files,
++1379/−561, verified by `check-review-range.mjs`) with `riviera-review-overlay` (frontend bank
+RV-FE-1/7/8/9/10/11/E2E, RV-STYLE-1, RV-PROC-1/2): five reviewers, four findings (F-1..F-4), each
+scored 75 by the verification pass — under the procedure's 80 bar, so no review comment was posted —
+and all four fixed in the two review-fix commits. **Sonar gate:** quality gate passed on the head,
+318 new lines analysed, 0 new issues, 0 duplicated blocks, 98.2% new-code coverage (the API lists,
+not the badge). **Merge:** merges via PR #1015 (recorded here ahead of the merge, per §3 step 4); the
+five ← confirm? assumptions above are the maintainer's to settle at that merge.
+
 **Findings register**
 
 | # | Source (review / sonar / CI) | Finding | Status |
@@ -262,6 +272,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | review (git history reviewer) | the `non-text-contrast.md` rewrite of the retired hover-token paragraph cut to the next heading and removed four unrelated precedent paragraphs (the general shape, the dialog close button, the close-sales trigger, "What this rule is not") | fixed — the four paragraphs restored verbatim after the retirement note |
 | F-2 | review (shallow bug scan) | the new open-popover sweep in `touch-targets.e2e.ts` landed between the phase-2 comment and the daily-view test it describes | fixed — moved after the daily-view test |
 | — | review (prior-PR comments reviewer) | no carry-over finding: plan citations verbatim, token rationale single-homed, locators by test id / role | n/a |
+| F-3 | review (code-comment reviewer) | the "five peers are gone" comment in the two host specs reads as a node count above an `a, button` length assertion (the old row had 3–4 such nodes) | fixed — "the old peer row is gone" |
+| F-4 | review (code-comment reviewer) | the chip spec's header said "the four ways it closes"; the file pins five | fixed — "five" |
 
 ---
 
@@ -398,7 +410,7 @@ Full local runs at phase 3: `npm run lint`, `npm run format:check`, the three ho
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #) — the five ← confirm? assumptions and the tourist-shell follow-up are the maintainer's at review; each is a reversible choice recorded in the PR's scope notes.
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
