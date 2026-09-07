@@ -199,17 +199,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** plan → implement (phase 1).
+**Stage pointer:** implement (phase 4) → CI gate.
 
-**Next action:** phase 1 red tests in `app.spec.ts` (AC 1, 4, 5).
+**Next action:** full unit + mocked e2e suites locally, push, open the draft PR, check its CI run.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc | ✅ | |
-| 1 — AC 1, 4, 5: two destinations, Sign in + Menu, account chip | | |
-| 2 — AC 2: Find a booking from the menus, opener-set return | | |
-| 3 — AC 3, 6, 7, 8: swatch + ring, riviera marker, no CTA skin, touch floor | | |
-| 4 — merge `main`, gates | | |
+| 0 — plan doc | ✅ | `0439930e` |
+| 1 + 2 — AC 1, 2, 4, 5: two destinations, Sign in + Menu, account chip, Find a booking from the menus (one commit: the template cannot be rebuilt in halves, so both phases' red tests preceded one green) | ✅ | `c7c914b6` |
+| 3 — AC 3, 6, 7, 8: swatch + ring, riviera marker, no CTA skin, touch floor | ✅ | (this commit) |
+| 4 — merge `main`, gates | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -235,8 +234,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/touch-targets-tourist.e2e.ts` — the menu/find case re-pointed
 - `frontend/e2e/customer-password.e2e.ts` — signed-in proof via the chip's accessible name
 - `frontend/e2e/unified-auth.e2e.ts` — register via the menu popover
+- `frontend/e2e/customer-auth.e2e.ts` — comments naming the retired Register link
 - `frontend/e2e/support/shell.ts` — `openFindBooking` helper; `openAccountMenu` unchanged
 - `frontend/e2e/support/pages/customer-auth.page.ts` — `registerLink` behind the menu, `expectSignedInAs` on the accessible name
+- `frontend/src/app/shared/cta-border-token.contrast.spec.ts` — the sweep-precision control literal moved with the chip glass from `app.html` to `app.ts`
 
 ---
 
@@ -290,14 +291,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-07 | phase 3 (chip glass recipe hoisted to `app.ts`) | every spec asserting a literal's presence in a named shell file | `grep -rn "path: 'app" frontend/src --include=*.spec.ts` | 1 (`cta-border-token.contrast.spec.ts` OUT_OF_FAMILY) | re-pointed to `app.ts`, chip highlight restored in the CHIP recipe |
 | 2026-09-07 | phase 1 (retired test ids) | every spec/e2e reading a header test id or marker class | `grep -rn -E "find-open\|nav-user\|nav-signin\|nav-register\|riv-nav-desktop\|Signed in as\|riv-mobile-theme-label" frontend/e2e frontend/src --include=*.ts` | 12 files | re-pointed in phases 1–3 (parity ledger) |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..5, 8 (unit):** `npx ng test --watch=false --include='src/app/app*.spec.ts'` → PASS.
-- [ ] **AC-2, 6, 7, 8 (e2e):** the mocked suite → PASS locally and in CI.
+- [x] **AC-1..5, 8 (unit):** `npx ng test --watch=false --include='src/app/app*.spec.ts'` → 71 passed.
+- [x] **AC-2, 6, 7, 8 (e2e):** the touched mocked specs → 95 + 56 passed locally; the full suite and CI follow in phase 4.
 
 ## Self-review checklist (before merge / PR)
 

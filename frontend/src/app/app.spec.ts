@@ -10,6 +10,7 @@ import { CustomerAuth } from './core/customer-auth';
 import { OperatorAuth } from './core/operator-auth';
 import { SessionAuth } from './core/session-auth';
 import { SignOutNotice } from './core/sign-out-notice';
+import { ThemeService } from './core/theme';
 
 @Component({ template: '' })
 class BlankPage {}
@@ -619,6 +620,25 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     // focus is stranded on document.body while the popover unmounts around it (WCAG 2.4.3).
     expect(document.activeElement).not.toBe(document.body);
     expect(customerAuth.signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('the theme control is a swatch-only button named for the active theme (#1002)', () => {
+    const { fixture, el } = shell();
+    const themes = TestBed.inject(ThemeService);
+    const swatch = el.querySelector<HTMLButtonElement>('[data-testid="theme-toggle"]')!;
+
+    themes.select('riviera');
+    fixture.detectChanges();
+    expect(swatch.getAttribute('aria-label')).toBe('Color theme: Riviera');
+    // No label, no caret: the swatch is the whole control, painted from the active option.
+    expect(swatch.textContent?.trim()).toBe('');
+    expect(swatch.style.getPropertyValue('--riv-swatch')).toBe(
+      themes.options.find((o) => o.id === 'riviera')?.swatch,
+    );
+
+    themes.select('dark');
+    fixture.detectChanges();
+    expect(swatch.getAttribute('aria-label')).toBe('Color theme: Dark');
   });
 
   /** Every `<a>` in the bar, the popovers and the sheet: the guard judges buttons only. */

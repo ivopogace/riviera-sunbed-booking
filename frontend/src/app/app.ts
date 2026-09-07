@@ -31,9 +31,9 @@ const CURRENT_POP_ROW =
 const POP_ITEM = `block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-riv-pop-ink [transition:background_0.12s_ease] hover:bg-riv-pop-hover ${CURRENT_POP_ROW}`;
 const MOBILE_ITEM = `block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover ${CURRENT_POP_ROW}`;
 
-/** The chip glass the desktop menu button and the account chip share. */
+/** The chip glass the desktop menu button and the account chip share, inner highlight included. */
 const CHIP =
-  'cursor-pointer rounded-full border border-riv-chip-border bg-riv-chip-bg backdrop-blur-[10px] [transition:filter_0.15s_ease] hover:brightness-[0.96] motion-reduce:transition-none';
+  'cursor-pointer rounded-full border border-riv-chip-border bg-riv-chip-bg shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-[10px] [transition:filter_0.15s_ease] hover:brightness-[0.96] motion-reduce:transition-none';
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
@@ -52,9 +52,12 @@ const CLS = {
   accountChip: `inline-flex items-center gap-2 py-1 pr-3 pl-1.5 font-semibold text-riv-ink ${CHIP}`,
   menuBtn: `inline-flex h-11 w-11 flex-col items-center justify-center gap-[4.5px] ${CHIP}`,
   menuBar: 'block h-0.5 w-[17px] rounded-[2px] bg-riv-ink',
+  // The 1.5px ink-soft ring is the swatch's WCAG 1.4.11 boundary (5.4 / 5.5 / 11.6:1 on the three bars): the swatch alone sits at 1.0–2.8:1 against the bar, and a white inset ring vanishes on porcelain.
+  swatchBtn:
+    'grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-full before:h-[22px] before:w-[22px] before:rounded-full before:bg-(image:--riv-swatch) before:shadow-[0_1px_3px_rgba(6,30,40,0.35)] before:ring-[1.5px] before:ring-riv-ink-soft before:[transition:scale_0.12s_ease] hover:before:scale-[1.12] motion-reduce:before:transition-none motion-reduce:hover:before:scale-100',
   // The solid-fill family, not the CTA gradient: nothing in the bar may outweigh the page's primary button.
   avatar:
-    'inline-flex shrink-0 items-center justify-center rounded-full bg-riv-solid-fill-brand font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]',
+    'inline-flex shrink-0 items-center justify-center rounded-full bg-riv-solid-fill-brand font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]',
 } as const;
 
 /** The part of the address before the `@`: the chip's visible label. */

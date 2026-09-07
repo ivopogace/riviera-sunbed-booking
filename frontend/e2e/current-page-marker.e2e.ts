@@ -37,7 +37,7 @@ test.describe('phone: the hamburger sheet', () => {
     await expect(other).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   });
 
-  test('never marks Sign in and Register together', async ({ page }) => {
+  test('never marks Sign in and Create an account together', async ({ page }) => {
     await page.goto('/account/sign-in?mode=register');
     await openShellOverlay(page, 'menu-toggle');
     await expect(page.getByTestId('nav-register-mobile')).toHaveAttribute('aria-current', 'page');
@@ -65,6 +65,26 @@ test.describe('tablet: the inline nav', () => {
     await expect(current).toHaveCSS('text-decoration-color', 'rgb(10, 42, 51)');
     await expect(current).toHaveCSS('font-weight', '600');
     await expect(other).toHaveCSS('color', 'rgba(12, 42, 51, 0.7)');
+    await expect(other).toHaveCSS('text-decoration-line', 'none');
+  });
+
+  test('marks the current page inline with full ink and an underline in the riviera theme', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => localStorage.setItem('riviera-theme', 'riviera'));
+    await page.goto('/my-bookings');
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
+
+    const nav = page.locator('.riv-nav-desktop');
+    const current = nav.getByRole('link', { name: 'My bookings' });
+    const other = nav.getByRole('link', { name: 'Beaches' });
+    await expect(current).toHaveAttribute('aria-current', 'page');
+
+    // Full white ink plus an underline in that ink: the accent ink alone vanishes on the dark glass.
+    await expect(current).toHaveCSS('color', 'rgb(255, 255, 255)');
+    await expect(current).toHaveCSS('text-decoration-line', 'underline');
+    await expect(current).toHaveCSS('text-decoration-color', 'rgb(255, 255, 255)');
+    await expect(other).toHaveCSS('color', 'rgba(255, 255, 255, 0.86)');
     await expect(other).toHaveCSS('text-decoration-line', 'none');
   });
 

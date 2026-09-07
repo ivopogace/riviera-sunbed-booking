@@ -103,24 +103,18 @@
 
         <div class="ml-auto flex items-center gap-1 text-[13.5px] sm:ml-0 sm:gap-3">
           <div class="relative flex items-center">
+            <!-- 44px hit area, 22px swatch: the target is the button, the visual is its ::before, named for the active theme. -->
             <button
               appTouchTarget
               #themeButton
               type="button"
-              class="inline-flex cursor-pointer items-center gap-[9px] rounded-full border border-riv-chip-border bg-riv-chip-bg px-[13px] py-1.5 text-[13.5px] font-semibold text-riv-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-[10px] [transition:filter_0.15s_ease] hover:brightness-[0.96] motion-reduce:transition-none"
+              [class]="cls.swatchBtn"
               data-testid="theme-toggle"
+              [style.--riv-swatch]="activeTheme().swatch"
               [attr.aria-label]="'Color theme: ' + activeTheme().name"
               [attr.aria-expanded]="themeOpen()"
               (click)="toggleThemePicker()"
-            >
-              <span
-                class="h-4 w-4 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55)]"
-                [style.background]="activeTheme().swatch"
-                aria-hidden="true"
-              ></span>
-              <span>{{ activeTheme().name }}</span>
-              <span class="text-[9px] opacity-85" aria-hidden="true">&#9662;</span>
-            </button>
+            ></button>
 
             @if (themeOpen()) {
               <div

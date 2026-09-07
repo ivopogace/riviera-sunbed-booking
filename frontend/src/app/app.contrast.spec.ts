@@ -1,5 +1,14 @@
-import { AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../testing/contrast';
 import {
+  AA_LARGE,
+  AA_NORMAL,
+  Rgb,
+  composite,
+  contrastRatio,
+  hexToRgb,
+  rgbToHex,
+} from '../testing/contrast';
+import {
+  CARD_INK,
   DARK_CHIP,
   DARK_HEADER_GLASS,
   DARK_POP_ACCENT,
@@ -19,6 +28,7 @@ import {
   RIVIERA_CHIP,
   RIVIERA_HEADER_GLASS,
   RIVIERA_STOPS,
+  SOLID_FILL_BRAND,
   WHITE,
   expectAaOverStops,
   surfaceOver,
@@ -163,6 +173,47 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
         AA_NORMAL,
       );
     }
+  });
+
+  /**
+   * The theme control is a bare swatch, so the swatch's ring is its only WCAG 1.4.11 boundary:
+   * the swatch itself sits at 1.0–2.8:1 against the bar it is on, and a white inset ring vanishes
+   * on porcelain. The ring is `--riv-ink-soft`, composited over the header glass like any ink.
+   */
+  it.each([
+    {
+      theme: 'porcelain',
+      ring: CARD_INK,
+      alpha: 0.7,
+      glass: PORCELAIN_HEADER_GLASS,
+      stops: PORCELAIN_STOPS,
+    },
+    {
+      theme: 'riviera',
+      ring: WHITE,
+      alpha: 0.86,
+      glass: RIVIERA_HEADER_GLASS,
+      stops: RIVIERA_STOPS,
+    },
+    { theme: 'dark', ring: WHITE, alpha: 0.86, glass: DARK_HEADER_GLASS, stops: DARK_STOPS },
+  ])(
+    'the swatch ring (ink-soft) clears 3:1 against the header glass in every theme: $theme (#1002)',
+    ({ ring, alpha, glass, stops }) => {
+      for (const stop of stops) {
+        const bar = surfaceOver(glass, stop);
+        const ringOnBar = composite(ring, alpha, bar);
+        expect(
+          contrastRatio(rgbToHex(ringOnBar), rgbToHex(bar)),
+          `over stop ${rgbToHex(stop)}`,
+        ).toBeGreaterThanOrEqual(AA_LARGE);
+      }
+    },
+  );
+
+  it('the avatar initial (white) meets AA on the solid brand fill, the header never wearing the CTA gradient', () => {
+    expect(contrastRatio(rgbToHex(WHITE), rgbToHex(SOLID_FILL_BRAND))).toBeGreaterThanOrEqual(
+      AA_NORMAL,
+    );
   });
 
   it("the mobile menu's current-page row (pop-accent on the hover fill) meets AA in every theme", () => {
