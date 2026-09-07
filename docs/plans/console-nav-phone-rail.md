@@ -42,10 +42,17 @@ Playwright strict-mode violation; that the ⌘K button of AC-5 does not exist ye
 half of the AC is vacuous here; that #1011's plan doc is still in `docs/plans/` and retires at this
 close-out) · `riviera-plan-doc` (this template — forced a seam per AC and the decisions register
 below) · `tdd` (each phase red first at the named seam, scoped Vitest runs) ·
-`riviera-review-overlay` (review gate — due at ready-for-review) · `riviera-docs-freshness` (due at
-close-out: `riviera-tailwind` § *Icons* names `clock-icon.ts` as the one precedent, and
-`admin-console-tabs.ts`'s TSDoc says an overflow menu was rejected for stranding `aria-current`
-— both change with this slice) · `grilling` (the intake questions answered from the code; the
+`riviera-review-overlay` (review gate — due at ready-for-review; this session pushes the branch
+and opens no PR, so the gate has not run and its checkbox below stays unticked) ·
+`riviera-docs-freshness` (**ran** over `5983407e..HEAD` (the merge base with a freshly fetched
+`origin/main`), 5 findings, all patched in phase 5: `riviera-tailwind` § *Icons* named
+`clock-icon.ts` as the one precedent — now two, with the set's shape and the template-literal trap;
+`riviera-frontend`'s routing bullet said the shell wears "the section row and the section's rail" —
+now the text rail from `sm` up and the phone rail below; the two console artboards gain a #1012
+as-built pointer; `admin-console-tabs.ts`'s TSDoc said an overflow menu was rejected for stranding
+`aria-current` — reworded in phase 2 to the More slot that carries it; the counting sweep
+(`the two`/`both` × rail/icon/glyph/precedent across the two frontend skills) found nothing stale.
+Plan-doc retirement: #1011's `console-nav-one-shell.md` deleted, no citation outside `docs/plans/`) · `grilling` (the intake questions answered from the code; the
 reversible calls recorded under *Open questions*) · `riviera-local-debug` (unshallowed the clone;
 scoped `npx vitest run <files>`; `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` for the mocked
 e2e) · `riviera-frontend` (the glyph set is pure and presentational → `shared/`; the admin
@@ -69,7 +76,7 @@ session pushes the branch and opens no PR — the harness forbids one unless ask
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a signed-in operator at 390px on `/operator/1/daily` (and an admin on
+- [x] **AC-1:** Given a signed-in operator at 390px on `/operator/1/daily` (and an admin on
   `/admin`), when the shell renders, then `nav[aria-label="Operator console sections (phone)"]`
   (`… "Admin console sections (phone)"`) is visible with exactly four slots — three links carrying a
   glyph and the labels `Daily` · `Requests` · `Beach map` (`Operators` · `Email` · `Refunds`) and a
@@ -79,20 +86,20 @@ session pushes the branch and opens no PR — the harness forbids one unless ask
   `below sm the phone rail replaces the tab rail: four slots on one row, More reads the current secondary (#1012)`;
   `admin-console-tabs.e2e.ts` › `below sm the phone rail replaces the rail: Operators · Email · Refunds · More (#1012)`;
   `console-shell.spec.ts` › `phone rail: three primaries with glyph and label plus More, on both consoles`.
-- [ ] **AC-2:** Given the `phone` (390×780) and `fold` (344×882) Playwright projects, when
+- [x] **AC-2:** Given the `phone` (390×780) and `fold` (344×882) Playwright projects, when
   `/operator/1/daily` and `/admin/audit` render, then the four slots share one `top`, the document
   never scrolls sideways, every slot's hittable box measures ≥ 44 × 44px (sheet closed and open),
   and the brand, the venue switcher and the account chip do not overlap. *Seam:* the touch-target
   sweeps over the routed SPA · *Pinned by:* `touch-targets.e2e.ts` ›
   `operator console — the phone rail fits one row, every slot at the floor, the More sheet too (#1012)`;
   `touch-targets-admin.e2e.ts` › `admin audit — the phone rail fits one row, every slot at the floor, the More sheet too (#1012)`.
-- [ ] **AC-3:** Given `/operator/1/payouts`, when the phone rail renders, then the fourth slot's
+- [x] **AC-3:** Given `/operator/1/payouts`, when the phone rail renders, then the fourth slot's
   accessible name contains `Payouts` and it carries `aria-current="page"`; on `/operator/1/daily` it
   reads `More` with no `aria-current`; on `/admin/audit` it reads `Audit` (current), on `/admin`
   `More`. *Seam:* the phone rail's More button through the router URL · *Pinned by:*
   `console-shell.spec.ts` › `the More slot carries the current secondary's glyph, label and aria-current, else More`;
   the two AC-1 e2e cases.
-- [ ] **AC-4:** Given the More button, when it is activated, then a sheet lists the secondaries in
+- [x] **AC-4:** Given the More button, when it is activated, then a sheet lists the secondaries in
   groups (`Set-up`: Pricing, Venue & commodities · `Money`: Payouts / `Moderation`: Photos, Reviews
   · `Money`: Commissions · `Records`: Privacy, Audit), each row a link with glyph, label and hint,
   the current one `aria-current="page"`, then the cross-console row — `Admin console` (→ `/admin`,
@@ -103,19 +110,19 @@ session pushes the branch and opens no PR — the harness forbids one unless ask
   `the More sheet lists the secondaries grouped with the current row marked, and the cross-console row per console`,
   `opening More focuses the first row; Escape, the backdrop and a row hand focus back to More`;
   `admin-console-tabs.e2e.ts` › `More opens the grouped sheet with Your venues at its foot; a row navigates and closes it, Escape and the backdrop return focus (#1012)`.
-- [ ] **AC-5:** Given an admin, when the section row renders below `sm`, then the `Admin` link is
+- [x] **AC-5:** Given an admin, when the section row renders below `sm`, then the `Admin` link is
   not visible (it carries `max-sm:hidden`); from `sm` up it is. (The ⌘K button is #1013's; nothing
   to hide yet.) *Seam:* the shell's row through its DOM (unit) and the routed SPA (e2e) ·
   *Pinned by:* `console-shell.spec.ts` › `the Admin section link leaves the row below sm (#1012)`;
   `console-shell.e2e.ts` › `the account chip opens a popover on /admin — axe clean, one header row on a phone (#1008)`
   (amended: `Admin` hidden at 390px) and
   `an admin on /admin gets the section row with Your venues, Admin current and the chip, over the admin rail (#1011)` (1280px, unchanged).
-- [ ] **AC-6:** Given two pending requests at 390px, when the Requests tab renders and one is
+- [x] **AC-6:** Given two pending requests at 390px, when the Requests tab renders and one is
   accepted, then the phone slot's badge (`oc-phone-requests-badge`) reads `2` then `1`. *Seam:* the
   `PendingRequestsStore` count through the phone slot (unit) and the routed requests tab (e2e) ·
   *Pinned by:* `console-shell.spec.ts` › `the Requests phone slot carries the live badge, and none at zero`;
   `operator-requests.e2e.ts` › `the phone rail's Requests slot carries the badge and it decrements on accept (#1012)`.
-- [ ] **AC-7:** Given each glyph component, when rendered, then the host and the `<svg>` carry
+- [x] **AC-7:** Given each glyph component, when rendered, then the host and the `<svg>` carry
   `aria-hidden="true"`, the host is `display: contents`, the svg strokes `currentColor`, sizes by
   presentation attributes with no `size-*` class, and the current slot's ink (full) and the resting
   slot's ink (0.7) composite ≥ 4.5:1 over the porcelain header glass (which covers the 3:1 graphic
@@ -123,12 +130,12 @@ session pushes the branch and opens no PR — the harness forbids one unless ask
   DOM; the token maths · *Pinned by:* `console-glyphs.spec.ts` (every case runs over the whole
   set); `console-shell.contrast.spec.ts` › `the phone rail's current and resting slot inks meet AA on the header glass`,
   `the More sheet's hint ink meets AA on the popover surface`.
-- [ ] **AC-8:** Given 390px and 344px on `/operator/1/daily`, `/operator/1/requests`, `/admin` and
+- [x] **AC-8:** Given 390px and 344px on `/operator/1/daily`, `/operator/1/requests`, `/admin` and
   `/admin/audit`, when axe runs with the sheet closed and open, then it reports no serious
   violation. *Seam:* `expectNoSeriousAxeViolations` over the routed SPA · *Pinned by:* the AC-2
   cases (both projects, both states) and the AC-1 cases; `console-shell.a11y.spec.ts` ›
   `is axe clean with the More sheet open on both consoles` (jsdom).
-- [ ] **AC-9:** Given the desktop rail's scrolling-row contract, when the viewport is `sm` (640px),
+- [x] **AC-9:** Given the desktop rail's scrolling-row contract, when the viewport is `sm` (640px),
   then the admin tabs still share one row with no wrap, and the marker proofs of
   `current-page-marker.e2e.ts` hold on the phone slots at 390px and on the desktop rail at 820px.
   *Seam:* the routed SPA · *Pinned by:* `admin-console-tabs.e2e.ts` (its five rail cases moved to
@@ -268,9 +275,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5 — contract)`
+**Stage pointer:** `built and pushed — awaiting the maintainer's PR (review gate + Sonar gate due at ready-for-review)`
 
-**Next action:** phase 5 — `npm run lint`, `npm run format:check`, `npm test`, the whole mocked e2e; docs-freshness; retire #1011's plan; the file-structure guard; push.
+**Next action:** the maintainer opens the PR from `claude/console-nav-phone-rail-9jofnk`; the next session runs the review gate (`riviera-sdlc` `references/pr-gates.md` §1) and the Sonar gate, folds findings back through Implement, and writes `merged via PR #NN` here in the PR's last code-touching commit.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -278,8 +285,8 @@ N/A — no contract change.
 | 1 — the glyph set (`shared/console-glyphs.ts` + spec; a production build to prove the shared template attributes compile) | ✅ | 03342ac1 |
 | 2 — the phone rail: the destination tables, the four slots, the current-aware More button, the badge, `Admin` `max-sm:hidden`; shell spec, contrast spec (the a11y spec already mounts the rail closed; the open sheet is phase 3's) | ✅ | 3ab2a775 |
 | 3 — the More sheet: groups, rows, cross-console row, the focus legs, close on navigation; shell spec, a11y spec | ✅ | 19e2bd55 |
-| 4 — e2e: the two phone projects; the nine stale seams rewritten; the new cases (AC-1…AC-6, AC-8, AC-9); the touched files run under all three projects (126/126); F-1 fixed | ✅ | the phase-4 commit |
-| 5 — contract: lint, format, `npm test`, the whole mocked e2e; docs-freshness; #1011's plan retired; file-structure guard; push | | |
+| 4 — e2e: the two phone projects; the nine stale seams rewritten; the new cases (AC-1…AC-6, AC-8, AC-9); the touched files run under all three projects (126/126); F-1 fixed | ✅ | cc337d45 |
+| 5 — contract: `npm run lint` + `format:check` green; 232 files / 2733 unit specs green; the whole mocked e2e 509/509 across `chromium`, `phone` and `fold` (7.4 min); docs-freshness run (5 findings, patched); #1011's plan retired; file-structure guard green; branch pushed | ✅ | the phase-5 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -295,7 +302,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - `docs/plans/console-nav-phone-rail.md` — this plan.
 - `docs/plans/console-nav-one-shell.md` — #1011's plan doc, retired at this close-out (deleted).
-- `.claude/skills/riviera-tailwind/SKILL.md` — § *Icons*: the glyph set joins the clock icon as precedent (docs-freshness).
+- `.claude/skills/riviera-tailwind/SKILL.md` — § *Icons*: the glyph set joins the clock icon as precedent, and the template-literal trap (docs-freshness).
+- `.claude/skills/riviera-frontend/SKILL.md` — the routing bullet: the shell wears both rails (docs-freshness).
+- `docs/design/riviera-operator-console-v2.dc.html` · `docs/design/riviera-admin-console.dc.html` — the #1012 as-built pointers (docs-freshness).
 - `frontend/src/app/shared/console-glyphs.ts` — the 17 glyph components.
 - `frontend/src/app/shared/console-glyphs.spec.ts` — the ICON-1..6 contract over the whole set.
 - `frontend/src/app/console-shell.ts` — the destination tables, the phone rail, the More slot and sheet.
@@ -326,7 +335,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `frontend/src/app/shared/console-glyphs.ts`, `console-glyphs.spec.ts`.
 
-- [ ] **Step 1: Write the failing test** — one `describe` iterating `CONSOLE_GLYPHS` (the exported
+- [x] **Step 1: Write the failing test** — one `describe` iterating `CONSOLE_GLYPHS` (the exported
   list of the 17 components) on the `clock-icon.spec.ts` pattern:
 
 ```ts
@@ -342,20 +351,20 @@ it('merges the host class the call site writes, e.g. [&_svg]:size-[21px]', …);
 it('exposes one glyph per venue and admin destination plus More, venues and admin', …);
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/shared/console-glyphs.spec.ts` → FAIL (no module).
-- [ ] **Step 3: Minimal implementation** — the components; `npm run build` once (R-8).
-- [ ] **Step 4: Run it, verify it passes** — the spec + `src/app/shared/clock-icon.spec.ts` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: every inline `<svg>` written by hand in a
+- [x] **Step 2: Run it, verify it fails** — `npx vitest run src/app/shared/console-glyphs.spec.ts` → FAIL (no module).
+- [x] **Step 3: Minimal implementation** — the components; `npm run build` once (R-8).
+- [x] **Step 4: Run it, verify it passes** — the spec + `src/app/shared/clock-icon.spec.ts` → PASS.
+- [x] **Step 5: Generalization-audit pass** — population: every inline `<svg>` written by hand in a
   console template that a shared glyph could replace → `grep -rln "<svg" frontend/src/app --include=*.ts --include=*.html`.
-- [ ] **Step 6: Commit** — `Add the console glyph set (#1012)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `Add the console glyph set (#1012)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 2 — the phone rail and the current-aware More slot
 
 **Files:** Modify `console-shell.ts`, `.spec.ts`, `.contrast.spec.ts`, `.a11y.spec.ts`,
 `admin/admin-console-tabs.ts`, `.spec.ts`.
 
-- [ ] **Step 1: Write the failing tests** — `console-shell.spec.ts`:
+- [x] **Step 1: Write the failing tests** — `console-shell.spec.ts`:
 
 ```ts
 it('phone rail: three primaries with glyph and label plus More, on both consoles', async () => {
@@ -375,49 +384,49 @@ it('the Admin section link leaves the row below sm (#1012)', () => {
 
   `admin-console-tabs.spec.ts`: `ADMIN_CONSOLE_TABS` has a glyph, a non-empty hint and a group in
   `ADMIN_CONSOLE_GROUP_NAMES` per row, in `ADMIN_CONSOLE_TAB_ORDER`.
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/console-shell.spec.ts src/app/admin/admin-console-tabs.spec.ts` → FAIL.
-- [ ] **Step 3: Minimal implementation** — the tables, `phoneNav`, the rail block.
-- [ ] **Step 4: Run it, verify it passes** — the shell's four specs + `src/app/admin/` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: every reader of the rail's ids / labels
+- [x] **Step 2: Run it, verify it fails** — `npx vitest run src/app/console-shell.spec.ts src/app/admin/admin-console-tabs.spec.ts` → FAIL.
+- [x] **Step 3: Minimal implementation** — the tables, `phoneNav`, the rail block.
+- [x] **Step 4: Run it, verify it passes** — the shell's four specs + `src/app/admin/` → PASS.
+- [x] **Step 5: Generalization-audit pass** — population: every reader of the rail's ids / labels
   that could now see two rails → `grep -rn "oc-requests-badge\|oc-tabs\|console sections" frontend/src frontend/e2e` (R-1).
-- [ ] **Step 6: Commit** — `Render the phone rail with a current-aware More slot below sm (#1012)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `Render the phone rail with a current-aware More slot below sm (#1012)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 3 — the More sheet
 
 **Files:** Modify `console-shell.ts`, `.spec.ts`, `.a11y.spec.ts`.
 
-- [ ] **Step 1: Write the failing tests** — the AC-4 cases; the a11y case with the sheet open.
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/console-shell.spec.ts src/app/console-shell.a11y.spec.ts` → FAIL.
-- [ ] **Step 3: Minimal implementation** — the sheet block, `sheetOpen`, the focus legs.
-- [ ] **Step 4: Run it, verify it passes** — the shell's four specs → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: every disclosure that closes on
+- [x] **Step 1: Write the failing tests** — the AC-4 cases; the a11y case with the sheet open.
+- [x] **Step 2: Run it, verify it fails** — `npx vitest run src/app/console-shell.spec.ts src/app/console-shell.a11y.spec.ts` → FAIL.
+- [x] **Step 3: Minimal implementation** — the sheet block, `sheetOpen`, the focus legs.
+- [x] **Step 4: Run it, verify it passes** — the shell's four specs → PASS.
+- [x] **Step 5: Generalization-audit pass** — population: every disclosure that closes on
   `NavigationEnd` → `grep -rln "NavigationEnd" frontend/src/app` — same mechanism, same guard.
-- [ ] **Step 6: Commit** — `Open the More sheet from the phone rail (#1012)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `Open the More sheet from the phone rail (#1012)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 4 — e2e
 
 **Files:** Modify `playwright.a11y.config.ts`, the ten e2e files listed under *File structure*.
 
-- [ ] **Step 1: Write the failing tests** — the new cases per AC; the six stale seams rewritten.
-- [ ] **Step 2: Run it, verify it fails** — the stale readers already fail after phase 2 (R-2);
+- [x] **Step 1: Write the failing tests** — the new cases per AC; the six stale seams rewritten.
+- [x] **Step 2: Run it, verify it fails** — the stale readers already fail after phase 2 (R-2);
   `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts admin-console-tabs operator-console` → FAIL.
-- [ ] **Step 3: Minimal implementation** — the config projects, the rewritten cases, any rendered-size fix the sweep finds.
-- [ ] **Step 4: Run it, verify it passes** — the touched files under every project.
-- [ ] **Step 5: Generalization-audit pass** — population: every e2e that sets a viewport below 640px and reads a rail → `grep -ln "width: 3[0-9][0-9]" frontend/e2e/*.e2e.ts | xargs grep -ln "console sections\|oc-tabs\|admin-tab-"`.
-- [ ] **Step 6: Commit** — `Prove the phone rail at 390px and 344px in the mocked e2e (#1012)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 3: Minimal implementation** — the config projects, the rewritten cases, any rendered-size fix the sweep finds.
+- [x] **Step 4: Run it, verify it passes** — the touched files under every project.
+- [x] **Step 5: Generalization-audit pass** — population: every e2e that sets a viewport below 640px and reads a rail → `grep -ln "width: 3[0-9][0-9]" frontend/e2e/*.e2e.ts | xargs grep -ln "console sections\|oc-tabs\|admin-tab-"`.
+- [x] **Step 6: Commit** — `Prove the phone rail at 390px and 344px in the mocked e2e (#1012)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 5 — contract
 
-- [ ] **Step 1–4:** `npm run lint`, `npm run format:check`, `npm test`, the whole mocked e2e;
+- [x] **Step 1–4:** `npm run lint`, `npm run format:check`, `npm test`, the whole mocked e2e;
   `node scripts/check-plan-file-structure.mjs --diff origin/main`; `riviera-docs-freshness` over
-  `origin/main..HEAD`; #1011's plan deleted.
-- [ ] **Step 5: Generalization-audit pass** — population: every substrate line naming the rail's
-  phone shape or the one icon precedent → `grep -rn "scroll\(s\|ing\) row\|clock-icon\|overflow menu" .claude docs frontend/src/app --include=*.md --include=*.ts`.
-- [ ] **Step 6: Commit** — `Retire #1011's plan and refresh the docs for the phone rail (#1012)`; push.
-- [ ] **Step 7: Update plan-doc execution status.**
+  `5983407e..HEAD`; #1011's plan deleted.
+- [x] **Step 5: Generalization-audit pass** — population: every substrate line naming the rail's
+  phone shape or the one icon precedent → `grep -rn "scroll\(s\|ing\) row\|clock-icon\|overflow menu" .claude docs frontend/src/app --include=*.md --include=*.ts` (the docs-freshness findings above).
+- [x] **Step 6: Commit** — `Retire #1011's plan and refresh the docs for the phone rail (#1012)`; push.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -435,26 +444,28 @@ it('the Admin section link leaves the row below sm (#1012)', () => {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 … AC-9:** `npm test` and `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → PASS with the pinning cases named per AC. Verified at commit `<sha>`.
+- [x] **AC-1 … AC-9:** `npx ng test --watch=false` → 232 files, 2733 specs PASS; `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → 509/509 PASS across the three projects, the pinning cases named per AC among them. Verified at the phase-4 commit `cc337d45` plus the phase-5 docs (no code change after it).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it. *Not yet: no PR exists (the maintainer opens it); the merge close-out is the next session's, in that PR's last code-touching commit.*
+- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked. *Not yet: due at ready-for-review, once the PR exists.*
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
+
+The two unticked boxes are the PR-stage gates: this session pushed the branch without opening a PR (the harness forbids one unless asked), so the review gate, the Sonar gate and the merge close-out are owed by the session that drives the PR.

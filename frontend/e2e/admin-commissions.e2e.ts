@@ -141,8 +141,7 @@ test('the new rate survives a re-read — the server really took it', async ({ p
   await page.getByTestId('admin-commission-save-7').click();
   await expect(page.getByTestId('admin-commission-rate-7')).toHaveText('20%');
 
-  // Away and back (through the phone rail's More sheet at this width): the list is read afresh,
-  // so 20% is the server's answer and not a local edit.
+  // Away and back through the More sheet: the list is read afresh, so 20% is the server's answer.
   await openMoreSheet(page);
   await page
     .getByTestId('oc-more-sheet')
