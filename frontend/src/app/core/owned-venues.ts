@@ -25,8 +25,8 @@ export type OwnedVenuesResult =
  * and the `/operator` picker. Session-scoped at the backend (no id in the request), so this service
  * has no parameters and nothing to authorize client-side.
  *
- * Cached for the session: the landing resolver, the guard and the picker all ask for the same list
- * within a few hundred milliseconds of each other. {@link reset} clears it — call it on sign-out, or
+ * Cached for the session: the sign-in page's landing decision, the `/operator` picker and the
+ * console's venue switcher all ask for the same list. {@link reset} clears it — call it on sign-out, or
  * the next operator to sign in on this device would be shown the previous one's venues.
  */
 @Service()

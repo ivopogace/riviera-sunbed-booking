@@ -41,7 +41,7 @@ plan doc is still in `docs/plans/` and retires at this close-out; and that the h
 name, is the safe popover anchor at 344px) · `riviera-plan-doc` (this template — forced the seam
 per AC and the behavior-parity ledger for the caption and the chip row it replaces) · `tdd` (each
 phase red first at the named seam, scoped Vitest runs) · `riviera-review-overlay` (review gate —
-runs at ready-for-review) · `riviera-docs-freshness` (**pending** — runs at close-out over
+**ran** on the branch before any PR, `code-review:code-review` medium over `58602b00..85f2b6fa` with the FE bank + RV-STYLE-1/RV-PROC-1 walked: seven findings, F-1..F-7 in the register) · `riviera-docs-freshness` (**pending** — runs at close-out over
 `origin/main..HEAD`; the substrate states nothing about the console header's venue caption, so 0
 findings expected) · `grilling` (the intake questions answered from the code, decisions flagged
 `← confirm?` below rather than auto-filled) · `riviera-local-debug` (unshallowed the clone; scoped
@@ -224,17 +224,17 @@ N/A — no contract change (`GET /api/venues/mine` → `OwnedVenue[]`, unchanged
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4) — integration + review`
+**Stage pointer:** `review gate ran on the branch (58602b00..85f2b6fa + fix commits) — PR not yet opened`
 
-**Next action:** phase 4 — merge `origin/main`, full lint + unit suite, the review gate over the branch diff, push.
+**Next action:** the maintainer opens the PR from `claude/venue-name-switcher-hm26td` (CI + Sonar gates are PR-time), answers the two `← confirm?` items and F-1; then the Sonar list, merge, and the close-out (retire `console-nav-account-chip.md`, epic comment on #1006).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `Create a venue` leaves the account chip | ✅ | 4887e86e |
 | 1 — `OperatorVenueSwitch` + its unit and contrast specs | ✅ | ce3b259e |
 | 2 — the console mounts it; host, a11y, contrast and harness specs | ✅ | d3654f3d |
-| 3 — mocked e2e: the two-venue case, the touch-target sweep, the chip row lists | ✅ | phase-3 commit |
-| 4 — merge `origin/main`, ready for review, review + Sonar gates, close-out | | |
+| 3 — mocked e2e: the two-venue case, the touch-target sweep, the chip row lists | ✅ | 85f2b6fa |
+| 4 — merge `origin/main` (not moved), full lint + 2649 unit specs green, review gate run (five reviewers over the pinned range; F-1..F-7), fixes pushed; PR, Sonar and close-out pending | ⏳ | fbbc6296 + the review-fix commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -242,6 +242,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (history + PR-comments + bug-scan reviewers) | A one-venue operator has no in-app link to `/operator?create=1` (switcher plain, chip row gone, console wordmark not a link, `/operator` forwards back) — as #1009 AC-1/AC-4 and epic story 9 specify | flagged as the open product question above; built to the issue — maintainer's call |
+| F-2 | review (comment-compliance reviewer) | `shared/popover-skin.ts`'s "header popovers sit under their trigger" no longer describes the switcher | fixed — comment names the exception |
+| F-3 | review (comment-compliance reviewer) | the switcher's TSDoc and the e2e header named "the guard" as the store's other reader; it is the sign-in page's landing decision (which skips the read on a `returnUrl`) | fixed — both comments corrected |
+| F-4 | review (comment-compliance reviewer) | `core/owned-venues.ts`'s consumer list omitted the switcher (and already named a guard that never reads it) | fixed — list corrected |
+| F-5 | review (comment-compliance reviewer) | with the chip open, its header-contained backdrop covers the venue-name button, so the first click closes the chip rather than opening the switcher (and vice versa) | accepted — the repo's veil pattern; the tourist header's account and theme popovers behave the same; one extra click, focus returned to the closed trigger |
+| F-6 | review (history reviewer) | `operator-home.ts` TSDoc still said `?create=1` is reachable "from both operator headers" | fixed — names the picker and the switcher |
+| F-7 | guard (`check-inline-comments`) | an issue number in the e2e's doc comment; a two-line inline comment in the touch sweep | fixed |
 
 ---
 
@@ -262,6 +269,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/operator-account-chip.spec.ts` — row sets and ids without it.
 - `frontend/src/app/operator/operator-chrome.spec.ts` — asserts the row is gone from the thin chrome.
 - `frontend/src/app/operator/operator-home.ts` — TSDoc: where `?create=1` is reachable from now.
+- `frontend/src/app/core/owned-venues.ts` — TSDoc: the switcher joins the store's consumer list (review F-4).
+- `frontend/src/app/shared/popover-skin.ts` — TSDoc: the switcher's popover anchors to its header row (review F-2).
 - `frontend/e2e/operator-console.e2e.ts` — `mockConsole` mocks `/api/venues/mine` + venue 2; the two-venue case; the chip row list.
 - `frontend/e2e/operator-chrome.e2e.ts` — the chip row list.
 - `frontend/e2e/touch-targets.e2e.ts` — the sweep with the venue popover open.

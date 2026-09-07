@@ -337,7 +337,8 @@ test('the account chip opens a popover on the console — axe clean, one header 
 
 /**
  * The venue switcher over the real routes: a deep-linked console loads the owned list
- * itself (the landing, the only other reader, is never visited), the name is the control for a
+ * itself (the landing is never visited, and the sign-in page skips the read when a `returnUrl` is
+ * set), the name is the control for a
  * two-venue operator, a switch keeps the open tab and re-reads every venue-scoped surface for the
  * new venue (invariant #13 — nothing of venue 1 stays on screen), the popover closes with focus
  * back on the name, and at a Fold cover width the open popover never pushes the page wider.

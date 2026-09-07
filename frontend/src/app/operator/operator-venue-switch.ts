@@ -33,10 +33,10 @@ const NAME = 'min-w-0 max-w-full truncate text-[17px] font-bold tracking-[-0.01e
  * bookmark with no venue.
  *
  * <p>It reads the session-scoped {@link OwnedVenues} store and is the console's one trigger for
- * that read: only the landing and the guard read it today, so a bookmark straight into a console
- * would otherwise render a switcher with nothing to switch to. The store dedupes and caches, so
- * this costs no second request after the landing. A failed read leaves the list unknown and the
- * name plain — never an empty popover.
+ * that read: only the `/operator` landing and the sign-in page's landing decision read it, so a
+ * bookmark straight into a console would otherwise render a switcher with nothing to switch to.
+ * The store dedupes and caches, so this costs no second request after the landing. A failed read
+ * leaves the list unknown and the name plain — never an empty popover.
  *
  * <p>The disclosure is the account chip's, leg for leg (WCAG 2.4.3): Escape, the backdrop and a row
  * activation return focus to the name button; a navigation that ends elsewhere, or a click outside
