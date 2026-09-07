@@ -23,6 +23,12 @@ export const RIVIERA_HEADER_GLASS: Glass = { color: hexToRgb('0a2c3f'), alpha: 0
 export const PORCELAIN_HEADER_GLASS: Glass = { color: WHITE, alpha: 0.6 };
 export const DARK_HEADER_GLASS: Glass = { color: hexToRgb('0f172a'), alpha: 0.72 };
 
+/** `--riv-ink-faint` per theme — the header's faint ink (brand subtitle) and the
+ *  tab rail's hairline and group dividers, held to 1.4.11's 3:1 on the header glass. */
+export const INK_FAINT: Glass = { color: CARD_INK, alpha: 0.66 };
+export const RIVIERA_INK_FAINT: Glass = { color: WHITE, alpha: 0.8 };
+export const DARK_INK_FAINT: Glass = { color: WHITE, alpha: 0.8 };
+
 /** `--riv-tabbar-glass` per theme — the phone tab bar's own near-opaque surface. The
  *  header glass's tint at 0.85 / 0.92 rather than the header token itself: at 0.6 / 0.72 the beach
  *  map's availability strip and the booking view's `← Back home` bled through the bar. */

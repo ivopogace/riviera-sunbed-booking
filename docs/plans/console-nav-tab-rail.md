@@ -159,7 +159,7 @@ stands in for `feature/console-nav-tab-rail` (`riviera-sdlc` remote addendum).
 | R-2 | `--riv-header-border` (white 0.7) cannot reach 3:1 on the header glass — AC-7 as written is unmeetable with the spike's token | high | med | hairline and dividers use `--riv-ink-faint` (already proven AA 4.5 on the header glass by `operator-console.contrast.spec.ts`); pinned by `tab-rail.contrast.spec.ts`; ← confirm? in Open questions | session | open |
 | R-3 | `accent-token-inks.e2e.ts` "the console accent ink resolves…" asserts `admin-tab-privacy` paints `--riv-accent-ink`, which this slice removes by design | high | low | retarget the assertion to another `text-riv-accent-ink` consumer on the admin console (the reviews stars glyph or the erasure heading); coverage of the token stays | session | open |
 | R-4 | Short labels (Email, Audit) narrower than 44px | med | med | `appTouchTarget` (`min-w-11`) on an `inline-flex` `<a>`; measured by the two sweeps (AC-6) | session | open |
-| R-5 | `isActiveChange` as the scroll trigger does not fire on load in jsdom / the e2e | low | med | the existing #983 spec pair and both e2e reload tests pin load + switch; fallback is the consumer-side effect the strips have today | session | open |
+| R-5 | `isActiveChange` as the scroll trigger does not fire on load in jsdom / the e2e | low | med | the existing #983 spec pair and both e2e reload tests pin load + switch; fallback is the consumer-side effect the strips have today | session | closed — `tab-rail.spec.ts` proves load + switch in jsdom (phase 0) |
 | R-6 | `overflow-x: auto` on the rail plus `items-stretch` leaves the tab's `::after` inside the scroll box — if the rail gets vertical padding the marker floats above the hairline | med | low | rail carries no padding (rule 3); consumers add margin outside it, never padding inside | session | open |
 | R-7 | Sibling slices (#1008–#1013) edit the same two headers | low | low | no open PRs today; they are sequenced after this one in the epic | session | closed — no in-flight overlap |
 | R-8 | Group dividers as `<span aria-hidden>` inside the `<nav>` change the accessible link count or axe output | low | low | `aria-hidden="true"` set by the directive; axe runs in both console e2e | session | open |
@@ -212,14 +212,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan — written, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** phase 0 step 1 — write the failing `shared/tab-rail.spec.ts`.
+**Next action:** phase 1 step 1 — amend `admin-console-tabs.spec.ts`'s pins (order, dividers, no pill, query string) and watch them fail.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the rail primitive (`shared/tab-rail.ts` + spec + contrast spec) | ⏳ | |
-| 1 — admin console consumes the rail, amended order + dividers | | |
+| 0 — the rail primitive (`shared/tab-rail.ts` + spec + contrast spec) | ✅ | phase-0 commit (see git log, `Add the shared tab-rail primitive`) |
+| 1 — admin console consumes the rail, amended order + dividers | ⏳ | |
 | 2 — venue console consumes the rail, Today-first order + dividers | | |
 | 3 — e2e (marker, no mask, accent-ink retarget), docs rows, close-out | | |
 
@@ -238,6 +238,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/tab-rail.ts` — the primitive: `nav[appTabRail]`, `a[appTabRailTab]`, `[appTabRailDivider]`, `TAB_RAIL_MATCH`.
 - `frontend/src/app/shared/tab-rail.spec.ts` — classes (no pill recipe), divider `aria-hidden`, scroll-into-view on activation.
 - `frontend/src/app/shared/tab-rail.contrast.spec.ts` — marker + hairline ≥ 3:1 over the header glass, three themes.
+- `frontend/src/testing/glass-tokens.ts` — the per-theme `--riv-ink-faint` mirrors the contrast spec reads.
 - `frontend/src/app/admin/admin-console-tabs.ts` — amended `ADMIN_CONSOLE_TAB_ORDER`, new `ADMIN_CONSOLE_TAB_GROUPS`, TSDoc recording the departure from the canvas, rail markup.
 - `frontend/src/app/admin/admin-console-tabs.spec.ts` — amended pin, dividers, no pill recipe, query-string case.
 - `frontend/src/app/operator/operator-console.ts` — Today-first tabs with group markers; scroll effect removed.
