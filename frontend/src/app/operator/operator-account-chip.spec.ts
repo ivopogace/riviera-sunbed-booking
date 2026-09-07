@@ -139,6 +139,9 @@ describe('OperatorAccountChip', () => {
   });
 
   it('the Console theme rows: aria-pressed marks the choice, a press selects, closes and hands focus back (#1010)', () => {
+    // Whatever the document's theme attribute is when this file runs — the shared jsdom may hold
+    // another spec's value — the rows must leave it exactly there: it is the tourist theme's.
+    const documentTheme = document.documentElement.getAttribute('data-riv-theme');
     open();
     const porcelain = el.querySelector<HTMLButtonElement>('[data-testid="oc-theme-porcelain"]')!;
     const dark = el.querySelector<HTMLButtonElement>('[data-testid="oc-theme-dark"]')!;
@@ -162,8 +165,7 @@ describe('OperatorAccountChip', () => {
     expect(
       el.querySelector('[data-testid="oc-theme-porcelain"]')!.getAttribute('aria-pressed'),
     ).toBe('false');
-    // The document's theme is the tourist's; the rows never reach it.
-    expect(document.documentElement.getAttribute('data-riv-theme')).toBeNull();
+    expect(document.documentElement.getAttribute('data-riv-theme')).toBe(documentTheme);
   });
 
   it('closes on Escape and returns focus to the chip', () => {
