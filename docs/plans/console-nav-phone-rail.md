@@ -253,9 +253,10 @@ at the intake gate) and are each recorded so the maintainer can reverse them on 
   Its plan doc `console-nav-one-shell.md` is still in `docs/plans/` and retires in this PR.
 - **Fact:** module ownership is not in play — frontend only; the shell is the one root-level
   component allowed to read both `operator/` and `admin/`.
-- **Sonar gate (PR #1018):** read on the review-fix head — recorded in the phase-6 row once the
-  analysis on that head completes; on `a80d7b9f` the `SonarCloud Code Analysis` check concluded
-  success.
+- **Sonar gate (PR #1018):** read on `a80d7b9f` — `SonarCloud Code Analysis` concluded success;
+  measures `new_lines` 881, new-code coverage 98.2%, 0 duplicated blocks, 0 bugs, 0 vulnerabilities,
+  2 code smells — both on the ledger's scroll wrapper, handled as F-9 (code) and F-10 (rationale);
+  re-read on the head carrying them, recorded in the phase-6 row.
 
 ## Availability & concurrency (invariant #2)
 
@@ -309,7 +310,7 @@ N/A — no contract change.
 | 3 — the More sheet: groups, rows, cross-console row, the focus legs, close on navigation; shell spec, a11y spec | ✅ | 19e2bd55 |
 | 4 — e2e: the two phone projects; the nine stale seams rewritten; the new cases (AC-1…AC-6, AC-8, AC-9); the touched files run under all three projects (126/126); F-1 fixed | ✅ | cc337d45 |
 | 5 — contract: `npm run lint` + `format:check` green; 232 files / 2733 unit specs green; the whole mocked e2e 509/509 across `chromium`, `phone` and `fold` (7.4 min); docs-freshness run (5 findings, patched); #1011's plan retired; file-structure guard green; branch pushed | ✅ | c1e2d971 · a80d7b9f (the docs check) |
-| 6 — PR #1018 opened; CI 8/8 green on `a80d7b9f`; review gate run (F-2…F-8, all fixed in the review-fix commit; lint, format, the four guards, 675 unit specs and the 81 touched e2e green on it); Sonar gate read on the fix head; close-out written — **merges via PR #1018** | ✅ | the review-fix commit |
+| 6 — PR #1018 opened; CI 8/8 green on `a80d7b9f`; review gate run (F-2…F-8, all fixed in `c227f7be`; lint, format, the four guards, 675 unit specs and the 81 touched e2e green on it); Sonar gate read on `a80d7b9f` (2 code smells → F-9 code-fixed, F-10 resolved with rationale in `sonar-project.properties`, both in the Sonar-fix commit, the PR's last code-touching commit, which carries this close-out); CI and the Sonar analysis re-read on that head before the merge — **merges via PR #1018** | ✅ | c227f7be · the Sonar-fix commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -325,6 +326,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-6 | review gate (the code-comment reviewer; 75) | `popover-skin.ts`'s consumer list named three consumers; the More sheet is a fourth | fixed — the list names the shell's sheet |
 | F-7 | review gate (the code-comment reviewer; 75) | `admin-console-stats.e2e.ts`'s header and its "measured budget, at HEAD" still described the eight-tab strip at 360px | fixed — re-measured at 360×740 with the phone rail (row 0–47, rail 47–106, `h1` 146–182, strip 202–382, first heading 414–441) and rewritten |
 | F-8 | review gate (the code-comment reviewer; 75) | `current-page-marker.e2e.ts`'s module doc said the tab rail was the file's last block | fixed — names both console blocks |
+| F-9 | Sonar gate (PR #1018 on `a80d7b9f`: `Web:S6819`, MAJOR code smell, `payouts-tab.html:194`) | "Use `<section>` instead of the region role" on the ledger's scroll wrapper | fixed — the three scroll wrappers (ledger, statement, audit) are `<section>`s with an accessible name, which is the region role natively |
+| F-10 | Sonar gate (same analysis: `Web:S6845`, MAJOR code smell, `payouts-tab.html:194`) | "`tabindex` only on interactive elements" on the same wrapper — in direct conflict with axe's `scrollable-region-focusable` (WCAG 2.1.1), which the AC-8 sweeps run at 390px and 344px and which F-1 fixed; the ledger measures 459px of table in a 242px wrapper at 344px, so the region must be keyboard-focusable | resolved with rationale — `sonar-project.properties` entry `e10` suppresses `Web:S6845` on `**/payouts-tab.html` alone, the repo's mechanism for an analyser false positive (`e1`…`e9`), with the rule's own text quoted: jsx-a11y `no-noninteractive-tabindex`, which S6845 mirrors, names the scrollable container as the case to exempt per instance and exempts only `tabpanel` itself |
 
 ---
 
@@ -358,6 +361,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/console-destination.ts` — the destination descriptor both rails and the sheet read.
 - `frontend/src/app/admin/admin-audit.ts` · `frontend/src/app/operator/payouts-tab.html` · `frontend/src/app/operator/payout-statement.ts` — F-1: the sideways-scrolling table wrappers become named, focusable regions.
 - `frontend/src/app/shared/popover-skin.ts` — TSDoc: the More sheet joins the consumer list (review F-6).
+- `sonar-project.properties` — `e10`: `Web:S6845` suppressed on the payouts tab with rationale (Sonar F-10).
 - `frontend/e2e/support/shell.ts` — `openMoreSheet(page)`.
 
 ---
