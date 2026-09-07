@@ -253,6 +253,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/admin-console-tabs.e2e.ts` — header, no-mask + divider assertions.
 - `frontend/e2e/operator-console.e2e.ts` — order, no-mask, dividers.
 - `frontend/e2e/accent-token-inks.e2e.ts` — retarget the accent-ink assertion (R-3).
+- `frontend/e2e/admin-commissions.e2e.ts` — the Commissions slot pin, amended to the new order (F-1).
+- `frontend/e2e/admin-privacy.e2e.ts` — the last-three pin, amended to the new order (F-1).
+- `frontend/e2e/fixed-ink-token-recut.e2e.ts` — reads `--riv-console-card-border` off the Venue-not-found card, not the retired pill (F-1).
 - `docs/design/non-text-contrast.md` — the `--riv-console-card-border` row.
 - `docs/design/riviera-admin-console.dc.html` — the header note's order line and the rail.
 
