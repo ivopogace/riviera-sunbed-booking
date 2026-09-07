@@ -24,9 +24,10 @@ export function routeIdParam(
 }
 
 /**
- * {@link routeIdParam} for the operator console's `:venueId`. The console shell reads its OWN
- * route; console tab child routes read the PARENT route via {@link parentVenueId} — child routes
- * do not inherit the param under the router's default `emptyOnly` strategy.
+ * {@link routeIdParam} for the operator console's `:venueId`. The console page reads its OWN
+ * route (the console shell takes the id from the app shell's route walk, {@link idParam}); console
+ * tab child routes read the PARENT route via {@link parentVenueId} — child routes do not inherit
+ * the param under the router's default `emptyOnly` strategy.
  */
 export function venueIdParam(route: ActivatedRoute | null): Signal<number | undefined> {
   return routeIdParam(route, 'venueId');

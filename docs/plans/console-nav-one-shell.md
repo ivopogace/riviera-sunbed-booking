@@ -43,7 +43,7 @@ walk and the pin on App's host; that #1009's plan doc is still in `docs/plans/` 
 this close-out; that the phone `Admin` link has no home until slice 5's More sheet) ·
 `riviera-plan-doc` (this template — forced the parity ledger over three old surfaces and a seam
 per AC) · `tdd` (each phase red first at the named seam, scoped Vitest runs) ·
-`riviera-review-overlay` (review gate — due at ready-for-review, on the PR) · `riviera-docs-freshness`
+`riviera-review-overlay` (review gate — **ran** on PR #1017 over `09a5a335..4455fcb4`, `code-review:code-review` high with the FE bank walked: findings F-4 and F-5 in the register, both fixed in the close-out commit) · `riviera-docs-freshness`
 (**ran** over `09a5a335..HEAD` (the merge base with a freshly fetched `origin/main`), 6 findings,
 all patched in phase 5: the `riviera-frontend` theming bullet located the pin on the console's
 host; `riviera-tailwind`'s theme-invariant case, `colour-literal-token-audit.md` (three rows),
@@ -84,10 +84,10 @@ stands in for `feature/console-nav-one-shell`, per the `riviera-sdlc` cloud adde
   console no longer exist in the tree. *Seam:* the app shell over its stub route table
   (`app.spec.ts`), the shell's own DOM through its inputs (`console-shell.spec.ts`), and the two
   hosts' DOM (`operator-console.spec.ts`, `admin-console.spec.ts`) · *Pinned by:*
-  `app.spec.ts` › `renders the console shell instead of the tourist header on every console route (#1011)`;
+  `app.spec.ts` › `renders the console shell instead of the tourist header on the venue console route (#1011)`;
   `console-shell.spec.ts` › `venue section: brand, the switcher slot, Admin for an admin, the chip and the six-tab rail`;
   `operator-console.spec.ts` › `renders no header, rail or footer of its own — the shell wears them (#1011)`;
-  `admin-console.spec.ts` › `renders no tab strip of its own — the shell wears it (#1011)`;
+  `admin-console.spec.ts` › `renders no tab strip of its own — the shell wears it — and the active child's content once authorized (#1011)`;
   `operator-chrome.spec.ts` deleted with its component.
 - [x] **AC-2:** Given the shell, when the section is `venue` with a venue id, then the venue slot
   carries `aria-current="page"` and `Admin` does not; when `admin`, `Admin` carries it and the
@@ -112,15 +112,15 @@ stands in for `feature/console-nav-one-shell`, per the `riviera-sdlc` cloud adde
   section row shows `Sign in` (`oc-signin`, `href` carrying `returnUrl=%2Fadmin%2Faudit`), the
   page shows the Audit tab's sign-in copy, and no `a[href^="/admin"]` exists anywhere in the
   document. *Seam:* the admin console over a stub route table (unit) and the routed SPA (e2e) ·
-  *Pinned by:* `admin-console.spec.ts` › `never renders the tab strip until the gate passes`
-  (kept); `console-shell.spec.ts` › `admin section, signed out: Sign in with returnUrl, no Admin link, no rail`;
+  *Pinned by:* `admin-console.spec.ts` › `never renders the tab strip until the gate passes — a signed-out visitor isn't told what exists`
+  (kept); `console-shell.spec.ts` › `admin section, signed out: Sign in with returnUrl, no Admin link, no rail, no admin link anywhere`;
   `console-shell.e2e.ts` › `a signed-out visitor on /admin/audit sees the section row with Sign in and no tab link anywhere (#1011)`.
 - [x] **AC-6:** Given the tourist theme stored as `dark` and as `riviera`, when each of the four
   console routes renders, then `app-root` carries `data-riv-theme="porcelain"`, `html` keeps the
   stored theme, and the header, rail and page background colours equal the porcelain run's.
   *Seam:* the app host binding (unit) and computed styles over the routed SPA (e2e) · *Pinned by:*
   `app.spec.ts` › `pins the shell porcelain on every console route and never on a tourist one (#1011)`;
-  `theme-shell.e2e.ts` › `every console route renders porcelain under a dark and a riviera tourist theme, with no seam (#1011)`.
+  `theme-shell.e2e.ts` › `console routes under a tourist theme` › `every console route renders porcelain under a dark and a riviera tourist theme, with no seam`.
 - [x] **AC-7:** Given a signed-in operator on each of the four routes, when `Sign out` is chosen
   from the chip, then focus is on the shell's `<main>` before the chip unmounts, the session is
   signed out, `PendingRequestsStore` reads 0 and `ConsoleVenueMap` refetches on its next load,
@@ -128,12 +128,12 @@ stands in for `feature/console-nav-one-shell`, per the `riviera-sdlc` cloud adde
   the chip's `oc-signout` row (unit) and the routed SPA (e2e) · *Pinned by:*
   `console-shell.spec.ts` › `Sign out parks focus on main, signs out, drops the console stores and leaves for the operator sign-in`;
   `app.spec.ts` › `console-shell Sign out parks focus on main before the control unmounts (WCAG 2.4.3)`;
-  `console-shell.e2e.ts` › `Sign out from the chip lands on the operator sign-in from the console and from /admin (#1011)`.
+  `console-shell.e2e.ts` › `Sign out from the chip on /admin ends the session and lands on the operator sign-in (#1011)`; `operator-console.e2e.ts` › `signs in, renders the console, switches tabs, and signs out (+ axe)` (the console).
 - [x] **AC-8:** Given each of the four routes at 390px and at 1280px, when swept, then every
   visible control measures ≥ 44 × 44 CSS px, the brand, the `Admin` link, the switcher button and
   the chip paint a 3px focus ring, and axe reports no serious violation. *Seam:*
   `expectTouchTargets` / `expectNoSeriousAxeViolations` over the routed SPA · *Pinned by:*
-  `console-shell.e2e.ts` › `the shell's controls meet the 44px floor and the 3px ring on the four routes at 390px and 1280px, axe clean (#1011)`;
+  `console-shell.e2e.ts` › `the shell's controls meet the 44px floor and the 3px ring on the four routes at 390px, axe clean (#1011)` and `… at 1280px, axe clean (#1011)` (one case per viewport);
   `console-shell.a11y.spec.ts` (jsdom axe on the three sections).
 - [x] **AC-9:** Given the merge, when `riviera-docs-freshness` runs over the range, then no
   substrate doc still describes the console pinning porcelain on its own host or a second
@@ -231,9 +231,7 @@ at the intake gate) and are each recorded so the maintainer can reverse them on 
 - **Fact:** #1009's close-out is complete (issue closed via PR #1016); its plan doc retires in
   this PR. No Flyway version in play. No open PR touches `frontend/src/app/app.*`, the consoles
   or `frontend/e2e/` (zero open PRs at intake).
-- **Due on the PR, not in this session:** the review gate (`riviera-sdlc` `references/pr-gates.md`
-  §1) and the Sonar gate (§2) run at ready-for-review, and the close-out line (`merged via PR #NN`)
-  is written in the PR's last code-touching commit — the two unticked self-review boxes below.
+- **Sonar gate (PR #1017):** the analysis exists (523 new lines), 0 new issues, 0 duplicated blocks, 98.9% new-code coverage, `SonarCloud Code Analysis` concluded success — nothing to resolve.
 
 ## Availability & concurrency (invariant #2)
 
@@ -281,9 +279,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement done — branch pushed for the maintainer's draft PR; review gate + Sonar gate due at ready-for-review`
+**Stage pointer:** `merge close-out written — merges via PR #1017`
 
-**Next action:** the maintainer opens the PR from `claude/console-nav-unification-1011-puns5i` (CI fires on the `pull_request` event only); then run the review gate per `riviera-sdlc` `references/pr-gates.md` §1 and the Sonar gate §2, each fix re-entering at Implement.
+**Next action:** merge PR #1017 (CI 8/8 green, review gate run, Sonar clear), then the GitHub-side close-out: verify #1011 closed, tick the epic #1006 checklist with the PR number, unsubscribe.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -292,7 +290,8 @@ N/A — no contract change.
 | 2 — migrate the venue console: App reads `data.console`, mounts the shell for `venue`; the console sheds its chrome; the retired `operatorConsole` flag dropped with its last user; e2e (scroll-hide at 390px, the 1280px beach map) | ✅ | 47e9e60f |
 | 3 — migrate the admin routes: the shell renders the admin rail past the gate; `AdminConsole` sheds its strip; e2e (`console-shell.e2e.ts` from `operator-chrome.e2e.ts`, signed-out `/admin/audit`) | ✅ | eecead86 |
 | 4 — migrate the plain pages: route data on `/operator` and the password page; `OperatorHome` sheds the pin; the theme e2e over the four routes; the four-route sweeps (44px, ring, axe) at 390px and 1280px | ✅ | db83856b |
-| 5 — contract: `operator-chrome.*` and the `operatorChrome` walk deleted; one e2e prefix; the docs + the #1009 plan retired; docs-freshness run (below); file-structure guard green; `npm run lint` + `format:check` green; 2650 unit specs green; the whole mocked e2e suite 473/473 green; branch pushed | ✅ | |
+| 5 — contract: `operator-chrome.*` and the `operatorChrome` walk deleted; one e2e prefix; the docs + the #1009 plan retired; docs-freshness run (below); file-structure guard green; `npm run lint` + `format:check` green; 2650 unit specs green; the whole mocked e2e suite 473/473 green; branch pushed | ✅ | 8535ba9e |
+| 6 — the docs check (F-3), PR #1017 opened; CI 8/8 green on `4455fcb4`; review gate run (F-4, F-5); Sonar 523 new lines, 0 issues, 0 duplicated blocks, 98.9% new-code coverage; close-out written — **merges via PR #1017** | ✅ | 4455fcb4 · the close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -301,6 +300,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | red e2e (`theme-shell.e2e.ts`, phase 4) | Under a dark tourist theme, `main` on a console route inherited `body`'s already-resolved white ink: the retired console host carried `text-riv-ink` to re-resolve it under the pin, and the shell had not | fixed — `text-riv-ink` on the app shell's root box, every pinned route re-resolves; the four-route theme case pins header, rail, page, background and footer paints equal to the porcelain run |
+| F-4 | review gate (`code-review:code-review` high + `riviera-review-overlay`, over `09a5a335..4455fcb4`; the prior-PR-comments reviewer) | Seven *Pinned by* citations paraphrased or truncated the shipped test titles — the #895 / #1005 / #1014 finding again | fixed — every citation quotes the shipped title verbatim, the per-viewport sweep as its two titles |
+| F-5 | review gate (the code-comment reviewer; scored below the posting bar, fixed anyway) | Six present-tense comments the diff made stale: `popover-skin.ts` called the switcher's popover `absolute`; `console-venue-map.ts`, `pending-requests-store.ts` and `parent-venue-id.ts` said "the shell" for reads the console page owns; the shell's row comment named an anchoring mechanism that no longer exists (and its `relative` was dead); an invariant #13 citation in the shell's TSDoc conflated a client guard with the server-side rule | fixed — comments reworded, `relative` dropped from the row, the citation reworded |
 | F-3 | docs check (Tailwind v4 docs + the built stylesheet, after phase 5) | The section row's slide transitioned `transform`, but v4's `-translate-y-full` sets the `translate` property, so below `sm` the row snapped instead of sliding (the e2e measured only the end positions) | fixed — `[transition:translate_0.2s_ease]`; the e2e pins `transition-property: translate` |
 | F-2 | red e2e (`console-shell.e2e.ts` sweeps, phase 4) | The landing picker's `Add another venue` link measured 145×20 — an inline `<a>` no sweep had visited | fixed — `appTouchTarget` + `inline-flex items-center` (`riviera-tailwind` rule 4) |
 
@@ -314,6 +315,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `docs/design/riviera-admin-console.dc.html` — as-built pointer on the in-section strip (docs-freshness).
 - `.claude/skills/riviera-frontend/SKILL.md` — the theming bullet: the pin sits on the app shell host for every console route.
 - `frontend/src/app/shared/tab-rail.ts` — exports the marker recipe (`TAB_RAIL_MARKER`) both rows share.
+- `frontend/src/app/shared/popover-skin.ts` · `frontend/src/app/operator/console-venue-map.ts` · `frontend/src/app/operator/pending-requests-store.ts` — TSDoc: which component reads, seeds and anchors what under the shell (review F-5).
 - `frontend/src/app/shared/parent-venue-id.ts` — exports the id parser the app shell's walk applies to `:venueId`.
 - `frontend/src/app/console-shell.ts` — the shell: section row, rail, sign-out teardown.
 - `frontend/src/app/console-shell.spec.ts` — its DOM per section, the current marks, the scroll-hide, the gate, the sign-out.
@@ -504,7 +506,7 @@ e2e `console-shell.e2e.ts` (landing + password cases), `theme-shell.e2e.ts`.
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #1017`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — rung 1, `code-review:code-review` at high effort over `09a5a335..4455fcb4` (five reviewers + confidence scoring), plus `riviera-review-overlay`'s FE bank, RV-STYLE-1 and RV-PROC-1/2; the posted comment is on PR #1017.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

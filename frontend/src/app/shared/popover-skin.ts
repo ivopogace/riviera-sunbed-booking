@@ -10,8 +10,8 @@ import { IsActiveMatchOptions } from '@angular/router';
 
 /** The near-opaque popover surface (account menu, theme picker, the phone sheet) — themed via the
  *  `--riv-pop-*` family: light in porcelain/riviera, slate in the dark theme. Position-free: the
- *  header popovers are `absolute` under their trigger (the venue switcher's under its header row),
- *  the sheet `fixed` above the tab bar. */
+ *  account and theme popovers are `absolute` under their trigger, the venue switcher's `fixed`
+ *  under the console shell's header row, the sheet `fixed` above the tab bar. */
 export const POP_SKIN =
   'z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-riv-pop-border bg-riv-pop-surface text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none';
 

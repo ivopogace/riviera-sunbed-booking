@@ -2,8 +2,8 @@ import { Service, signal } from '@angular/core';
 
 /**
  * The single source of truth for the operator console's live **pending-request count** — the number
- * the shell renders as the Requests-tab badge. The shell seeds it on sign-in (and clears
- * it on sign-out); the Requests tab keeps it current after every load and every accept/decline/dismiss.
+ * the console shell renders as the Requests-tab badge. The console page seeds it per venue (and the
+ * shell clears it on sign-out); the Requests tab keeps it current after every load and every accept/decline/dismiss.
  * Both read one signal, so the badge never drifts from the queue the operator is working.
  *
  * <p>A deliberately minimal signal store (one writable count, exposed read-only). It lives in
