@@ -297,9 +297,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `implement (phase 6)`
 
-**Next action:** phase 5 — the chip spec's row cases (red), then the two rows.
+**Next action:** phase 6 — the `console-dark` Playwright project, the three tabs' themed-paint cases, `theme-shell.e2e.ts`'s console cases.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -307,8 +307,8 @@ N/A — no contract change.
 | 1 — tokens: the dark block, `--riv-console-inset` / `--riv-premium-ink` / `--riv-sea-grad`, the mirrors, the four guards flipped | ✅ | d6c8b6a8 |
 | 2 — the console restyle (venue tabs AND the admin components, the sweep covers both): literals → tokens, `beach-cell`'s per-state ink, the banners, the statement; `testing/console-themes.ts`; the nine venue-console contrast specs in both themes; the literal sweep spec | ✅ | 4f6a38be |
 | 3 — the chrome in both themes: `console-shell`, chip, switcher and palette contrast specs; the dark avatar ring | ✅ | 33030da8 |
-| 4 — `core/console-theme.ts` + the pin (`app.ts`, `app.spec.ts`) | ✅ | (this commit) |
-| 5 — the chip's `Console theme` rows (spec, a11y, contrast) | | |
+| 4 — `core/console-theme.ts` + the pin (`app.ts`, `app.spec.ts`) | ✅ | a802d25b |
+| 5 — the chip's `Console theme` rows (spec, a11y, contrast) | ✅ | (this commit) |
 | 6 — e2e: the `console-dark` project, the three tabs' cases, `theme-shell.e2e.ts`'s console cases | | |
 | 7 — contract: lint, format, unit, the mocked e2e, the guards, the ledger, docs-freshness, #1013's plan retired; PR, CI, review gate, Sonar gate, close-out | | |
 
@@ -417,10 +417,10 @@ create `testing/console-themes.ts`, `operator/console-literal-sweep.spec.ts`; th
 
 **Files:** `operator-account-chip.ts`, `.spec.ts`, `.contrast.spec.ts`; `console-shell.spec.ts` if the row set is pinned there.
 
-- [ ] **Steps 1–4** — AC-5's chip case red (no rows), then the rows.
-- [ ] **Step 5: Generalization-audit pass** — population: every spec that pins the chip's row set → `grep -rln "Change password.*Sign out\|'Sign out'\]" frontend/src/app frontend/e2e --include=*.ts`.
-- [ ] **Step 6: Commit** — `Offer Porcelain and Dark in the account chip (#1010)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Steps 1–4** — the chip spec's row cases red (4 FAIL: the row set, the test ids, the new `aria-pressed` case), then the `Console theme` group (a labelled `role="group"`, two `aria-pressed` buttons on `POP_BUTTON`, the swatch dot ringed by `--riv-pop-divider`, the tick drawn as the tourist picker draws it) → the chip's three specs + the shell's + `app.spec.ts` + the sweep green.
+- [x] **Step 5: Generalization-audit pass** — the log's phase-5 row.
+- [x] **Step 6: Commit** — `Offer Porcelain and Dark in the account chip (#1010)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 6 — e2e
 
@@ -444,6 +444,7 @@ create `testing/console-themes.ts`, `operator/console-literal-sweep.spec.ts`; th
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-07 | phase 5 | every spec or e2e that pins the chip's row set — the list a new row shifts | `grep -rln "Change password', 'Sign out\|'Change password'" frontend/src/app frontend/e2e --include=*.ts` | `operator-account-chip.spec.ts` (amended), `console-shell.spec.ts` (the palette's rows, not the chip's — unchanged) | one amended |
 | 2026-09-07 | phase 4 | every writer of `data-riv-theme` — the attribute the console pin and the tourist theme share | `grep -rn "rivTheme\|data-riv-theme" frontend/src/app --include=*.ts --include=*.html \| grep -v spec` | `app.ts:156` (the host binding, now off `ConsoleTheme`), `core/theme.ts:122` (the document writer, unchanged); the rest are doc comments | two writers, two attributes, no overlap — `console-theme.ts` writes neither |
 | 2026-09-07 | phase 2 | every `bg-white`/`border-white` position in `frontend/src/app` outside the console sources — the same mechanism on tourist surfaces | `grep -rnoE '\b(bg\|border)-(white\|black)(/[0-9]+)?' frontend/src/app --include=*.ts --include=*.html \| grep -v spec \| grep -v "operator/\|admin/"` | `shared/photo-slideshow.ts` (4), `shared/photo-lightbox.ts` (3), `pages/home/home.html` (2), `booking/booking-qr.ts`, `booking/booking-dialog.ts`, `app.html` (1 each) — photo chrome, the QR's print-white, the tourist shell | none to migrate here: photo surfaces and the tourist chrome, out of this slice's scope; recorded in the ledger's class N |
 | 2026-09-07 | phase 1 | every stylesheet comment whose ground is the porcelain pin — the claim the dark console falsifies | `grep -n "pins porcelain\|porcelain pin\|porcelain-pinned\|Declared ONCE" frontend/src/tailwind.css` | 11 lines: the two console inks, the class-O header, the alert tint, the map palette (retold); the fixed-fill families, the subtree-host mechanism notes and `--riv-accent-*` (true as written) | five retold, six left true |

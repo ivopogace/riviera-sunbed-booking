@@ -12,6 +12,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { filter } from 'rxjs';
 
+import { ConsoleTheme, ConsoleThemeId } from '../core/console-theme';
 import { OperatorAuth } from '../core/operator-auth';
 import {
   AVATAR,
@@ -108,6 +109,33 @@ import { TouchTarget } from '../shared/touch-target';
           (click)="activate()"
           >Change password</a
         >
+        <p [class]="cls.groupLabel" [attr.id]="ids().themeLabel">Console theme</p>
+        <div role="group" [attr.aria-labelledby]="ids().themeLabel">
+          @for (option of consoleTheme.options; track option.id) {
+            <button
+              appTouchTarget
+              type="button"
+              [class]="cls.button"
+              [attr.aria-pressed]="option.id === consoleTheme.theme()"
+              [attr.data-testid]="ids().theme + '-' + option.id"
+              (click)="choose(option.id)"
+            >
+              <span class="flex items-center gap-2.5">
+                <span
+                  class="size-[18px] shrink-0 rounded-full ring-1 ring-riv-pop-divider"
+                  [style.background]="option.swatch"
+                  aria-hidden="true"
+                ></span>
+                <span class="flex-1">{{ option.name }}</span>
+                @if (option.id === consoleTheme.theme()) {
+                  <span class="text-[15px] font-bold text-riv-pop-accent" aria-hidden="true"
+                    >&#10003;</span
+                  >
+                }
+              </span>
+            </button>
+          }
+        </div>
         <button
           appTouchTarget
           type="button"
@@ -126,6 +154,8 @@ export class OperatorAccountChip {
   readonly signOut = output<void>();
 
   protected readonly operator = inject(OperatorAuth);
+  /** The console's porcelain-or-dark choice the two rows switch; never the tourist theme. */
+  protected readonly consoleTheme = inject(ConsoleTheme);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly chipButton = viewChild.required<ElementRef<HTMLButtonElement>>('chip');
 
@@ -138,6 +168,8 @@ export class OperatorAccountChip {
     pop: `absolute top-[calc(100%+10px)] right-0 w-[248px] p-[7px] ${POP_SKIN}`,
     item: POP_ITEM,
     button: POP_BUTTON,
+    groupLabel:
+      'mt-1 border-t border-riv-pop-divider px-2.5 pt-2.5 pb-1 text-[11px] font-bold tracking-[0.14em] text-riv-pop-ink-soft uppercase',
   } as const;
 
   protected readonly username = computed(() => this.operator.username() ?? '');
@@ -145,7 +177,7 @@ export class OperatorAccountChip {
   protected readonly initial = computed(() => initialOf(this.username()));
 
   /** Computed, not a method: these bind in a sticky header that re-runs change detection on
-   *  every navigation, and a method would re-allocate all six strings each pass. */
+   *  every navigation, and a method would re-allocate all eight strings each pass. */
   protected readonly ids = computed(() => {
     const prefix = this.testIdPrefix();
     return {
@@ -154,6 +186,8 @@ export class OperatorAccountChip {
       backdrop: `${prefix}-account-backdrop`,
       identity: `${prefix}-account-identity`,
       changePassword: `${prefix}-change-password`,
+      themeLabel: `${prefix}-theme-label`,
+      theme: `${prefix}-theme`,
       signout: `${prefix}-signout`,
     };
   });
@@ -169,6 +203,12 @@ export class OperatorAccountChip {
 
   protected toggle(): void {
     this.open.update((open) => !open);
+  }
+
+  /** A theme row: the choice, then the row's own close — the popover's rows all hand focus back. */
+  protected choose(id: ConsoleThemeId): void {
+    this.consoleTheme.select(id);
+    this.activate();
   }
 
   /** A row was activated: close, and hand focus back to the chip the row's unmount would strand it from. */
