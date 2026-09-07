@@ -44,12 +44,12 @@ import {
  * mirror the template + `tailwind.css`; a token edit there must re-pass here.
  */
 
-// The FREE tile fill (`bg-white/85`, daily-view-tab.ts tileClass).
+// The FREE tile fill (`bg-riv-console-inset/85`, daily-view-tab.ts tileClass).
 const FREE_TILE_FILL = { color: WHITE, alpha: 0.85 };
 /** The locked tile's worst-case fill: `--riv-walkin-hatch`'s darker band, a `CARD_INK` tint. 0.30
  *  since #879 gave the hatch one declaration (this tile painted 0.28 of its own before). */
 const LOCKED_STRIPE_FILL = { color: CARD_INK, alpha: 0.3 };
-// The close-sales trigger button: --riv-warn-edge/50 hairline on its own `bg-white/60` fill.
+// The close-sales trigger button: --riv-warn-edge/50 hairline on its own `bg-riv-console-inset/60` fill.
 const TRIGGER_EDGE_ALPHA = 0.5;
 const TRIGGER_FILL_ALPHA = 0.6;
 // --riv-cta-grad stops (the AA-safe darkened teal shared with every CTA); the empty-state link sits on these.

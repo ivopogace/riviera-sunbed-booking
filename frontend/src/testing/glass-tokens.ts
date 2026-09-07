@@ -458,7 +458,7 @@ export const DARK_CARD_BORDER: Glass = { color: WHITE, alpha: 0.16 };
  *  mirror carries one value per base colour and no alpha: the alpha is per-site, and stays beside
  *  the comment explaining it (`beach-cell`'s `/55`-not-`/35` aisle boundary is the worked example).
  *
- *  A row with a `dark` value is THEMED: the console has its own dark theme since the console gained its dark theme, so every
+ *  A row with a `dark` value is THEMED: the console has its own dark theme, so every
  *  base colour whose only ground for staying single was "its consumers sit under the porcelain
  *  pin" carries a dark value, declared in the `dark` block and nowhere else. A row without one is
  *  theme-invariant on the stronger, fixed-fill ground (`--riv-warn-*`: the fill is fixed, so a

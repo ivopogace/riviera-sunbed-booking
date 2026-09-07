@@ -108,8 +108,8 @@ const SWATCH_CLASS: Record<CellState, string> = {
  *
  * <p>Reads `:venueId` from the parent route (child routes don't inherit it). Cells are
  * real, individually-labelled `<button>`s so the grid is fully keyboard + AT operable (Enter/Space
- * paints with the active brush); drag-paint is the mouse affordance on top. Always porcelain
- * (inherited from the console shell); glass via {@link CardGlass}; money via {@link formatMoney}
+ * paints with the active brush); drag-paint is the mouse affordance on top. Wears the console
+ * theme (porcelain or dark, pinned on the app shell's host); glass via {@link CardGlass}; money via {@link formatMoney}
  * (invariant #5 — the default prices are integer minor-unit EUR constants, editable later in the
  * Pricing tab).
  */

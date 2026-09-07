@@ -24,7 +24,7 @@ import {
  * label chip + € input value use `--riv-card-ink`; the subheader, tier descriptions, € symbol and
  * projected label use `--riv-card-ink-soft` (0.78); the projected figure + "Saved" notice use the
  * console accent ink `--riv-console-accent-ink`; the reprice error uses `--riv-error-ink`. The number inputs sit on a lighter
- * `bg-white/60`, so `--riv-card-ink` over the plain card glass is the worst case for them too.
+ * `bg-riv-console-inset/60`, so `--riv-card-ink` over the plain card glass is the worst case for them too.
  * Values mirror the template + `tailwind.css`; a token edit there must re-pass here.
  */
 

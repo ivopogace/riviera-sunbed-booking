@@ -35,7 +35,7 @@ import { VenueCreateCard } from './venue-create-card';
  *
  * Behind {@code operatorSessionGuard}, so this component never renders for a signed-out visitor and
  * needs no session state of its own. Wears the console shell like the rest of the operator surface
- * (`data.console` on its route), which pins it porcelain.
+ * (`data.console` on its route), which pins the operator's console theme — porcelain or dark — on it.
  */
 @Component({
   selector: 'app-operator-home',

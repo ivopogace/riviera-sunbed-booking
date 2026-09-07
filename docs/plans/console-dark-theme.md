@@ -53,7 +53,7 @@ comment, 6/7) and its plan doc retires here; zero open PRs, no Flyway number in 
 `riviera-plan-doc` (this template — forced a seam per AC, the reversible-decision register and the
 population-by-mechanism audit rows) · `tdd` (each phase red first at the named seam: the
 two-declaration guards, the dark contrast rows, the sweep, the service spec, the chip spec) ·
-`riviera-review-overlay` (review gate — pending, due at ready-for-review) · `riviera-docs-freshness`
+`riviera-review-overlay` (review gate — ran on PR #1020 at 7343988e: `/code-review`'s five reviewers plus the overlay items, findings F-8…F-10, fixed at 858dcb53) · `riviera-docs-freshness`
 (**ran** over `43efec1d..HEAD` (the merge base with a freshly fetched `origin/main`) in phase 7: the
 rename grep over the substrate found the pin's old wording in two skills and the ledger, all patched
 — `riviera-tailwind` § *Styling across the themes*' third theme-invariant case (the pinned-subtree
@@ -109,7 +109,7 @@ seeding the console key for the `console-dark` project; `toHaveCSS` against a pr
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (tokens):** Given `src/tailwind.css` read as text, when the console token set —
+- [x] **AC-1 (tokens):** Given `src/tailwind.css` read as text, when the console token set —
   `--riv-console-accent-ink`, `--riv-console-negative-ink`, `--riv-console-tint`,
   `--riv-console-scrim`, `--riv-console-card-border`, `--riv-console-inset` (new),
   `--riv-select-tint`, `--riv-select-edge`, `--riv-alert-tint`, `--riv-positive-tint`,
@@ -122,7 +122,7 @@ seeding the console key for the `console-dark` project; `toHaveCSS` against a pr
   `shared/class-o-tint-tokens.contrast.spec.ts`, `shared/fixed-ink-tokens.contrast.spec.ts` — each
   guard's "declared exactly once" case becomes "declared in the base block and in the dark block,
   nowhere else, the dark value the mirror's".
-- [ ] **AC-2 (no literal):** Given the console sources (`operator/`, `admin/`, `console-shell.ts`,
+- [x] **AC-2 (no literal):** Given the console sources (`operator/`, `admin/`, `console-shell.ts`,
   and the `shared/` primitives the console renders: `beach-grid-frame`, `stat-tile`,
   `confirm-with-reason`, `console-palette`), when swept for a colour utility carrying a hex, `rgb()`
   or the named `white`/`black` colour in a fill, border, ink, ring or gradient position, then the
@@ -131,7 +131,7 @@ seeding the console key for the `console-dark` project; `toHaveCSS` against a pr
   `shared/status-chip.ts`'s class-S palette. *Seam:* the component sources as text · *Pinned by:*
   `operator/console-literal-sweep.spec.ts` › `paints no colour literal outside the recorded residue`,
   and the ledger `docs/design/colour-literal-token-audit.md` § *Class N* listing none.
-- [ ] **AC-3 (dark AA):** Given each console tab's inks, fills and edges composited over the dark
+- [x] **AC-3 (dark AA):** Given each console tab's inks, fills and edges composited over the dark
   card glass over every dark background stop (and the porcelain rows unchanged), when the ratios are
   computed, then the Daily view's date field ink over its inset, the sales-close button, the Requests
   tab's Accept and Decline pair, the layout editor's tool rail (idle, hover, armed), the standard,
@@ -146,7 +146,7 @@ seeding the console key for the `console-dark` project; `toHaveCSS` against a pr
   `operator-console.contrast.spec.ts`, `admin/admin-console.contrast.spec.ts` (the console-wide admin
   pairs), `shared/console-palette.contrast.spec.ts`; in the real browser, `theme-shell.e2e.ts` ›
   `every console route is axe clean in the dark console (#1010)` — sixteen routes, the sweep F-4 came from.
-- [ ] **AC-4 (dark render):** Given the mocked suite's `console-dark` project (the console key seeded
+- [x] **AC-4 (dark render):** Given the mocked suite's `console-dark` project (the console key seeded
   `dark` through the project's `storageState`), when `/operator/1/daily`, `/operator/1/requests` and
   `/operator/1/beach-map` render, then `app-root` carries `data-riv-theme="dark"`, the date field, the
   sales-close button, the Decline button, the armed tool chip and a standard tile each paint the dark
@@ -156,7 +156,7 @@ seeding the console key for the `console-dark` project; `toHaveCSS` against a pr
   *Pinned by:* `operator-daily.e2e.ts` › `paints the console theme: the date field, the sales-close control and the tiles under porcelain and dark console (#1010, + axe)`,
   `operator-requests.e2e.ts` › `paints the console theme: the Accept / Decline pair under porcelain and dark console (#1010, + axe)`,
   `layout-editor.e2e.ts` › `paints the console theme: the tool rail and the tiles under porcelain and dark console (#1010, + axe)`.
-- [ ] **AC-5 (the switch):** Given a signed-in operator with the chip open, when the popover renders,
+- [x] **AC-5 (the switch):** Given a signed-in operator with the chip open, when the popover renders,
   then after `Change password` it carries a `Console theme` group of two buttons, `Porcelain`
   (`aria-pressed="true"`) and `Dark` (`aria-pressed="false"`), each at the 44px floor; pressing `Dark`
   sets `ConsoleTheme.theme()` to `dark`, writes `riviera-console-theme=dark`, closes the popover and
@@ -169,13 +169,13 @@ seeding the console key for the `console-dark` project; `toHaveCSS` against a pr
   `operator/operator-account-chip.spec.ts` › `the Console theme rows: aria-pressed marks the choice, a press selects, closes and hands focus back (#1010)`;
   `app.spec.ts` › `the console host wears the console theme, the tourist chrome none (#1010)`;
   `theme-shell.e2e.ts` › `the account chip's Dark row flips the console host only, survives a reload, and Porcelain flips it back (#1010)`.
-- [ ] **AC-6 (no leak):** Given a tourist who stored `riviera` (or `dark`), when a console route
+- [x] **AC-6 (no leak):** Given a tourist who stored `riviera` (or `dark`), when a console route
   renders with the console choice `porcelain` and then `dark`, then `html[data-riv-theme]` is the
   tourist's value and `app-root[data-riv-theme]` the console's — never `riviera` — and the console's
   paint under a `riviera` document equals its paint under a `porcelain` document. *Seam:* the routed
   SPA · *Pinned by:* `theme-shell.e2e.ts` › the amended
   `every console route renders its own console theme under a dark and a riviera tourist theme, with no seam`.
-- [ ] **AC-7 (the chrome in dark):** Given the dark header glass over every dark stop, when the
+- [x] **AC-7 (the chrome in dark):** Given the dark header glass over every dark stop, when the
   rail's current marker, the section row's inks, the chip's avatar disc and the chip's popover rows
   are composited, then each clears 3:1 (non-text) or AA (text). *Seam:* the token mirror through the
   compositing maths · *Pinned by:* `console-shell.contrast.spec.ts`,
@@ -216,9 +216,9 @@ the same number, which is the parity proof for the half that touches shipped pai
 | R-6 | `theme-shell.e2e.ts`'s porcelain-pin case asserts `app-root[data-riv-theme="porcelain"]` under every tourist theme | certain | low | amended to assert the console's own choice, run for both console themes; the "no seam" paint diff kept | agent | closed — phase 6: the case loops both console themes and asserts the two console paints differ |
 | R-7 | The payout statement's fixed `bg-white` panel keeps themed inks (`--riv-card-ink-soft`, `--riv-accent-ink`) → white on white in dark | certain | high | the panel takes the opaque `bg-riv-console-inset` (white in porcelain, byte-identical) and its hairlines follow `--riv-console-tint`; `payouts-tab.contrast.spec.ts`'s statement rows run in both themes | agent | open |
 | R-8 | axe composites translucent dark fills over an assumed white page (the S7924 posture) and flags dark inks | med | med | the inset base is a slate near-black at ≥ 0.45, dark on the white fiction too, as `--riv-card-glass`'s 0.86 was chosen; the AC-4 axe runs are the proof | agent | open |
-| R-9 | Fifteen contrast specs each re-declare a per-theme table → Sonar duplicated blocks | high | med | one `testing/console-themes.ts` table, `describe.each` over it in every spec | agent | open |
-| R-10 | The chip's two new rows push the popover past 390px height or off the touch floor | low | low | `appTouchTarget` on both; the chip e2e's touch sweep at 390/344 already opens the popover | agent | open |
-| R-11 | `check-touch-target.mjs` TT-1 on the two new `<button>`s; `check-inline-comments.mjs` on rationale comments | low | low | the hooks run on save; comments stay at the declaration in `tailwind.css` where the file's own convention keeps them | agent | open |
+| R-9 | Fifteen contrast specs each re-declare a per-theme table → Sonar duplicated blocks | high | med | one `testing/console-themes.ts` table, `describe.each` over it in every spec | agent | closed — Sonar reports 0 duplicated blocks on the PR |
+| R-10 | The chip's two new rows push the popover past 390px height or off the touch floor | low | low | `appTouchTarget` on both; the chip e2e's touch sweep at 390/344 already opens the popover | agent | closed — the touch sweep and the chip's dark-row e2e pass at both widths |
+| R-11 | `check-touch-target.mjs` TT-1 on the two new `<button>`s; `check-inline-comments.mjs` on rationale comments | low | low | the hooks run on save; comments stay at the declaration in `tailwind.css` where the file's own convention keeps them | agent | closed — both guards clean on every push (the inline-comment guard's one advisory is an inherited runtime clause) |
 
 ## Open questions / Assumptions
 
@@ -239,8 +239,8 @@ the intake gate) and are each recorded so the maintainer can reverse them on the
   family is), `--riv-console-scrim: #020a16`, `--riv-console-card-border: rgba(255,255,255,0.16)`
   (the dark `--riv-card-border`), `--riv-select-tint: #7cd7e8` / `--riv-select-edge: #9adde8`,
   `--riv-alert-tint: #ff8a7a` (the dark danger family's rgb), `--riv-positive-tint: #7fd8ac`,
-  `--riv-premium-edge: #c8ab62` (the tourist dark premium border), `--riv-premium-grad:
-  linear-gradient(180deg, #f2d48c, #d9a640)` — a deeper night gold; every value AA-proven in the
+  `--riv-premium-edge: #c8ab62` (the tourist dark premium border), `--riv-premium-grad`: first a deeper day gold (`#f2d48c → #d9a640`), superseded by the
+  phase-2 decision below (the dusk gold, under a themed numeral); every value AA-proven in the
   specs before it ships, and any that fails is retuned there, not here.
 - **Decided:** bounded porcelain moves, each re-proven: the admin pill and field rims
   `border-white/95` / `/70` → `border-riv-card-border` (white/0.6 in porcelain — a rim is the card
@@ -323,9 +323,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 7 — contract)`
+**Stage pointer:** `merge (close-out)` — merged via PR #1020.
 
-**Next action:** phase 7 — the whole mocked e2e (running), a production build, docs-freshness's counting sweep, then mark PR #1020 ready and run the review gate.
+**Next action:** none for this slice; this plan retires at the next close-out (`riviera-docs-freshness` § *Plan-doc retirement*). Epic #1006's checklist is ticked on the merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -336,7 +336,7 @@ N/A — no contract change.
 | 4 — `core/console-theme.ts` + the pin (`app.ts`, `app.spec.ts`) | ✅ | a802d25b |
 | 5 — the chip's `Console theme` rows (spec, a11y, contrast) | ✅ | 99367ebe |
 | 6 — e2e: the `console-dark` project, the three tabs' cases, `theme-shell.e2e.ts`'s console cases; the class-O e2e reads the shared probe | ✅ | 64faf7f8 · e8c96326 (F-1…F-6, the route sweep) |
-| 7 — contract: lint, format, unit, the mocked e2e, the guards, the ledger, docs-freshness, #1013's plan retired; PR #1020 (draft), CI, review gate, Sonar gate, close-out | ⏳ | e8c96326 (docs, ledger, #1013's plan retired) |
+| 7 — contract: lint, format, unit, the mocked e2e, the guards, the ledger, docs-freshness, #1013's plan retired; PR #1020 (draft), CI, review gate, Sonar gate, close-out | ✅ | e8c96326 (docs, ledger, #1013's plan retired) · 7343988e (CI fixes) · 858dcb53 (the review round, F-8…F-11, this close-out) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -350,6 +350,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-5 | the dark-console route sweep (`theme-shell.e2e.ts`, axe on sixteen routes) | The Venue tab's commission chip paints the dark accent ink on the chip tint: 4.21:1 under axe's white-page fiction | fixed — the console's dark accent ink is one step lighter than the tourist accent's (`#a3e3f0`, not `#7cd7e8`); `venue-tab.contrast.spec.ts` pins the chip pair over the stops and over a white page |
 | F-6 | the dark-console route sweep | The Payouts tab's footnote sat on the page below the ledger card, light ink on the page background | fixed — the footnote moved inside the ledger card |
 | F-7 | the whole mocked e2e (`npm run test:e2e:a11y`, 519/520) + CI's frontend job | `fixed-ink-token-recut.e2e.ts` read `--riv-console-card-border` on `html` under a dark document as a theme-invariant token; the chip spec asserted the document attribute is absent, which the full suite's shared jsdom does not guarantee | fixed — the border moved into that e2e's themed table (both values); the chip spec asserts before-equals-after |
+| F-8 | the review gate (`/code-review` + overlay, five reviewers, scored ≥ 80) | four stale statements the slice falsified: the ledger's `#7cd7e8` for the console accent's dark value (the tree holds `#a3e3f0`), the ledger's "declared once each" on the console hairlines, three "always porcelain" component doc comments (`layout-editor`, `daily-view-tab`, `operator-home`), and `fixed-ink-token-recut.e2e.ts`'s header still placing the console family under the porcelain pin | fixed — each sentence retold to the tree as it stands |
+| F-9 | the review gate (below the bar, fixed anyway) | a garbled sentence in `glass-tokens.ts`'s class-O comment; four `bg-white/α` citations in the daily/pricing/venue contrast-spec comments; the plan's first `--riv-premium-grad` value never marked superseded | fixed |
+| F-10 | the review gate (git-history reviewer, scored 75) | the pending-approval banner paints `--riv-warn-edge` as a tint on the card glass, outside the family's fixed-fill argument, and no spec proved it in either theme; its `/55` edge reads 1.40–1.46:1 in porcelain (as its literal predecessor did) and 2.70–2.86:1 in dark | fixed — `pending-approval-banner.contrast.spec.ts` proves the ink AA per console theme and bounds the edge, on the "Venue not found" card's ground (a status region's edge is outside 1.4.11); the banner and `stale-write-banner` join `warn-token-skin`'s sites; the non-text ledger names the case |
+| F-11 | Sonar (PR 1020, one new issue) | S7773 `parseInt` in `console-themes.ts` | fixed — `Number.parseInt` |
 | F-3 | the whole unit suite (`npm test`) | two positive "still painted here" lists (`fixed-fill-token-skins`, `solid-fill-tokens`) named the pending-approval banner's `rgba(240,170,46,0.14)` and the editors' `#0a5f74` rings, which the restyle moved onto `--riv-warn-edge` and `--riv-accent-ink` | fixed — the rows retired with a one-line note each; the lists stay non-empty |
 
 ---
@@ -385,6 +389,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/operator-home.ts`
 - `frontend/src/app/operator/operator-venue-switch.contrast.spec.ts`
 - `frontend/src/app/operator/booking-mode-field.ts` · `booking-cutoff-field.ts` · `stale-write-banner.ts` · `pending-approval-banner.ts`
+- `frontend/src/app/operator/pending-approval-banner.contrast.spec.ts` — F-10: the banner's tint and edge per console theme.
+- `frontend/src/app/shared/warn-token-skin.contrast.spec.ts` — the two console banners join the family's sites (F-10).
+- `docs/design/non-text-contrast.md` — the banner's edge named beside the "Venue not found" card's (F-10).
 - `frontend/src/app/admin/admin-mail-delivery.ts` · `admin-mail-outbox.ts` · `admin-refund-outbox.ts` · `admin-commissions.ts` · `admin-privacy.ts` · `admin-reviews.ts` · `admin-venue-photos.ts` · `admin-console.contrast.spec.ts`
 - `frontend/src/app/shared/beach-grid-frame.ts` · `confirm-with-reason.ts` · `class-o-tint-tokens.contrast.spec.ts` · `fixed-ink-tokens.contrast.spec.ts` · `console-palette.contrast.spec.ts`
 - `frontend/src/app/console-shell.contrast.spec.ts`
@@ -470,10 +477,10 @@ create `testing/console-themes.ts`, `operator/console-literal-sweep.spec.ts`; th
 
 ## Phase 7 — contract
 
-- [ ] **Steps 1–4:** `npm run lint`, `npm run format:check`, `npm test`, the whole mocked e2e; `node scripts/check-plan-file-structure.mjs --diff origin/main` and the other guards; the ledger; `riviera-docs-freshness` over the PR's range; #1013's plan deleted; the Tailwind and Angular doc checks recorded under *Skills consulted*.
-- [ ] **Step 5: Generalization-audit pass** — the counting sweep.
-- [ ] **Step 6: Commit** — `Record the dark console in the ledger and the skills; retire #1013's plan (#1010)`; push; draft PR.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Steps 1–4:** `npm run lint`, `npm run format:check`, `npm test`, the whole mocked e2e; `node scripts/check-plan-file-structure.mjs --diff origin/main` and the other guards; the ledger; `riviera-docs-freshness` over the PR's range; #1013's plan deleted; the Tailwind and Angular doc checks recorded under *Skills consulted*.
+- [x] **Step 5: Generalization-audit pass** — the counting sweep.
+- [x] **Step 6: Commit** — `Record the dark console in the ledger and the skills; retire #1013's plan (#1010)`; push; draft PR.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -492,26 +499,32 @@ create `testing/console-themes.ts`, `operator/console-literal-sweep.spec.ts`; th
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 … AC-7:** pending.
+- [x] **AC-1 (tokens):** the four flipped guards pass — each console token declares in the base and `dark` blocks, nowhere else, the mirror's values; `--riv-walkin-hatch` and `--riv-premium-ink` once.
+- [x] **AC-2 (no literal):** `console-literal-sweep.spec.ts` › `paints no colour literal outside the recorded residue` passes; the ledger's class N lists none.
+- [x] **AC-3 (dark AA):** every console `*.contrast.spec.ts` iterates `CONSOLE_THEMES`; `theme-shell.e2e.ts`'s sixteen-route dark axe sweep passes in the mocked suite (520/520 locally, CI's frontend job green).
+- [x] **AC-4 (dark render):** the `console-dark` project's three tests pass and read dark's composites where `chromium` reads porcelain's.
+- [x] **AC-5 (the switch):** `console-theme.spec.ts`, `operator-account-chip.spec.ts`, `app.spec.ts` and `theme-shell.e2e.ts`'s chip case pass.
+- [x] **AC-6 (no leak):** the amended `theme-shell.e2e.ts` pin case passes for both console themes under a `dark` and a `riviera` document.
+- [x] **AC-7 (the chrome in dark):** `console-shell`, chip, switcher and palette contrast specs carry dark rows and pass.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** (858dcb53, the review round) — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

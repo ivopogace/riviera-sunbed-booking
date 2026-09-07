@@ -170,7 +170,7 @@ export const CONSOLE_THEMES: readonly ConsoleTheme[] = [
 
 /** The class-O rows carry their values as CSS text; the compositing maths wants channels. */
 function hexToRgbOf(hex: string): Rgb {
-  return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as unknown as Rgb;
+  return [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16)) as unknown as Rgb;
 }
 
 /** The header glass composited over one page stop. */

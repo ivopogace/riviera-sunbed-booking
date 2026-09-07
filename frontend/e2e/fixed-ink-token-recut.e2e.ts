@@ -11,16 +11,16 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * reads `tailwind.css` as text, can see.
  *
  * <p>The banner is asserted under BOTH themes against the same expected value: that the value does
- * not move is the test. The console family sits under the app shell's porcelain pin, so its dark branch
- * is proven at the document root instead.
+ * not move is the test.
  *
  * <p>The calendar is asserted under both themes against each theme's OWN value — the inverse claim
  * on the same box. It was the fourth fixed family here until it became a `--riv-pop-*` consumer
  * with a themed, still-opaque day-cell palette; it stays in this file because this is the file that
  * already renders it under both document themes.
  *
- * <p>The console family is one hairline now: the sign-out button's border and hover fill retired
- * with that button when the account chip folded sign-out into a popover row.
+ * <p>No console token is theme-invariant any more: the sign-out button's border and hover fill
+ * retired with that button, and the card border themes with the console, so it is asserted under
+ * both themes against each theme's own value below, beside the calendar.
  *
  * <p>Rationale: `docs/design/colour-literal-token-audit.md` (class T-3 and the calendar verdict).
  */

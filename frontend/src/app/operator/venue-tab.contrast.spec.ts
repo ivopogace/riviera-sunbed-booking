@@ -27,7 +27,7 @@ import {
  * theme (porcelain by default; the themed block at the foot proves both); its cards use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text pairs:
  * headings + field labels + input values use `--riv-card-ink`; sub-copy, soft labels and the
  * INACTIVE amenity chip use `--riv-card-ink-soft` (0.78) — an inactive chip sits on a lighter
- * `bg-white/50`, so `--riv-card-ink-soft` over the plain card glass is its worst case too. The
+ * `bg-riv-console-inset/50`, so `--riv-card-ink-soft` over the plain card glass is its worst case too. The
  * commission % + "Saved" notice use `--riv-console-accent-ink`; the save/load error uses `--riv-error-ink`;
  * the ACTIVE amenity chip reads both its ink and its tint from the `--riv-accent-*` registry.
  * Values mirror the template + `tailwind.css`; a token edit there must re-pass here.
