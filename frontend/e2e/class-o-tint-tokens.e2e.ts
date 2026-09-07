@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { probePaint, tintPaint } from './support/console-theme';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 
 /**
@@ -67,29 +68,8 @@ const OUTGOING_LITERAL = 'color-mix(in oklab, #2bb8d4 20%, transparent)';
  * paints what the literal form painted — in whatever browser is asked, instead of asserting that
  * one build's float formatting has not changed. Pinning the snapshot cost a red CI run first.
  */
-async function probePaint(page: Page, expression: string): Promise<string> {
-  return page.evaluate((literal) => {
-    const probe = document.createElement('div');
-    probe.style.backgroundColor = literal;
-    document.body.append(probe);
-    const computed = getComputedStyle(probe).backgroundColor;
-    probe.remove();
-    return computed;
-  }, expression);
-}
-
 async function outgoingLiteralPaint(page: Page): Promise<string> {
   return probePaint(page, OUTGOING_LITERAL);
-}
-
-/**
- * What `bg-riv-<token>/<alpha>` paints, resolved by the browser under test — the same live-probe
- * discipline as `outgoingLiteralPaint`, generalized so the ladder's before/after pairs can both be
- * asked for. Never pin either side as a string: Chromium serializes `color-mix(in oklab, …)` with
- * build-dependent float precision, so a captured snapshot is not portable across Chromium builds.
- */
-async function tintPaint(page: Page, base: string, alphaPercent: number): Promise<string> {
-  return probePaint(page, `color-mix(in oklab, ${base} ${alphaPercent}%, transparent)`);
 }
 
 /**

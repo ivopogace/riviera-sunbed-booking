@@ -182,12 +182,12 @@ the same number, which is the parity proof for the half that touches shipped pai
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Chromium serializes a `color-mix(in oklab, …)` paint as `oklab(…)` with unstable float digits, so a dark-vs-porcelain e2e that pins strings flakes | certain if pinned | med | the `class-o-tint-tokens.e2e.ts` probe: render the expected expression on a probe element and compare computed to computed | agent | open |
+| R-1 | Chromium serializes a `color-mix(in oklab, …)` paint as `oklab(…)` with unstable float digits, so a dark-vs-porcelain e2e that pins strings flakes | certain if pinned | med | the `class-o-tint-tokens.e2e.ts` probe: render the expected expression on a probe element and compare computed to computed | agent | closed — phase 6: `support/console-theme.ts`'s `probePaint`/`tintPaint`, shared with the class-O e2e; opaque inks pinned as `rgb()` |
 | R-2 | The rewrite moves a porcelain pixel (`bg-white/60` → `bg-riv-console-inset/60` must compile to the same `color-mix()`) | low | high | porcelain rows of every contrast spec unchanged; the AC-4 tests under `chromium` assert porcelain's values; the rims that move (`border-white/95`/`/70` → `--riv-card-border`, the sheet backdrop `console-tint/45` → `console-scrim/45`, `text-[#0c2a33]` → `--riv-card-ink`) are listed under *Open questions* as bounded moves with their ratios re-proven | agent | open |
 | R-3 | The walk-in numeral (`--riv-card-ink`, white in dark) over the hatch's dense band (console-tint at 30% over the night sand) falls under AA | med | high | the dark row in `daily-view-tab.contrast.spec.ts` / `set-editor.contrast.spec.ts` composites the band; if it fails, the dark block declares its own `--riv-walkin-hatch` at a lighter band (the tourist dark map runs its hatch at 0.14 for this reason) | agent | open |
 | R-4 | The premium cell's numeral is the shared `text-riv-card-ink`, white in dark, over the gold gradient | certain | high | `--riv-premium-ink` (fixed `#0a2a33`, the fixed-fill rule: a fixed fill pins its ink) carried by `beach-cell.ts`'s premium variant; the set-editor and layout-editor numerals drop their element-level `text-[#0c2a33]` | agent | open |
 | R-5 | The set-editor's phone sheet backdrop is `bg-riv-console-tint/45` — a white haze once the tint themes to white | certain | med | it is a scrim, the statement backdrop's role and alpha: `bg-riv-console-scrim/45` (porcelain moves `#0c2a33`→`#061e28` at 45%, invisible on a backdrop) | agent | open |
-| R-6 | `theme-shell.e2e.ts`'s porcelain-pin case asserts `app-root[data-riv-theme="porcelain"]` under every tourist theme | certain | low | amended to assert the console's own choice, run for both console themes; the "no seam" paint diff kept | agent | open |
+| R-6 | `theme-shell.e2e.ts`'s porcelain-pin case asserts `app-root[data-riv-theme="porcelain"]` under every tourist theme | certain | low | amended to assert the console's own choice, run for both console themes; the "no seam" paint diff kept | agent | closed — phase 6: the case loops both console themes and asserts the two console paints differ |
 | R-7 | The payout statement's fixed `bg-white` panel keeps themed inks (`--riv-card-ink-soft`, `--riv-accent-ink`) → white on white in dark | certain | high | the panel takes the opaque `bg-riv-console-inset` (white in porcelain, byte-identical) and its hairlines follow `--riv-console-tint`; `payouts-tab.contrast.spec.ts`'s statement rows run in both themes | agent | open |
 | R-8 | axe composites translucent dark fills over an assumed white page (the S7924 posture) and flags dark inks | med | med | the inset base is a slate near-black at ≥ 0.45, dark on the white fiction too, as `--riv-card-glass`'s 0.86 was chosen; the AC-4 axe runs are the proof | agent | open |
 | R-9 | Fifteen contrast specs each re-declare a per-theme table → Sonar duplicated blocks | high | med | one `testing/console-themes.ts` table, `describe.each` over it in every spec | agent | open |
@@ -297,9 +297,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 6)`
+**Stage pointer:** `implement (phase 7 — contract)`
 
-**Next action:** phase 6 — the `console-dark` Playwright project, the three tabs' themed-paint cases, `theme-shell.e2e.ts`'s console cases.
+**Next action:** phase 7 — lint, format, the whole unit suite, the whole mocked e2e, the guards, docs-freshness, the draft PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -308,8 +308,8 @@ N/A — no contract change.
 | 2 — the console restyle (venue tabs AND the admin components, the sweep covers both): literals → tokens, `beach-cell`'s per-state ink, the banners, the statement; `testing/console-themes.ts`; the nine venue-console contrast specs in both themes; the literal sweep spec | ✅ | 4f6a38be |
 | 3 — the chrome in both themes: `console-shell`, chip, switcher and palette contrast specs; the dark avatar ring | ✅ | 33030da8 |
 | 4 — `core/console-theme.ts` + the pin (`app.ts`, `app.spec.ts`) | ✅ | a802d25b |
-| 5 — the chip's `Console theme` rows (spec, a11y, contrast) | ✅ | (this commit) |
-| 6 — e2e: the `console-dark` project, the three tabs' cases, `theme-shell.e2e.ts`'s console cases | | |
+| 5 — the chip's `Console theme` rows (spec, a11y, contrast) | ✅ | 99367ebe |
+| 6 — e2e: the `console-dark` project, the three tabs' cases, `theme-shell.e2e.ts`'s console cases; the class-O e2e reads the shared probe | ✅ | (this commit) |
 | 7 — contract: lint, format, unit, the mocked e2e, the guards, the ledger, docs-freshness, #1013's plan retired; PR, CI, review gate, Sonar gate, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -426,10 +426,10 @@ create `testing/console-themes.ts`, `operator/console-literal-sweep.spec.ts`; th
 
 **Files:** `playwright.a11y.config.ts`, the three tab files, `theme-shell.e2e.ts`, `support/shell.ts`.
 
-- [ ] **Steps 1–4** — AC-4 and AC-6 cases; `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts operator-daily operator-requests layout-editor theme-shell`.
-- [ ] **Step 5: Generalization-audit pass** — population: every e2e that asserts `app-root`'s theme attribute or seeds `riviera-theme` → `grep -rln "data-riv-theme\|riviera-theme" frontend/e2e`.
-- [ ] **Step 6: Commit** — `Prove the dark console in the mocked e2e: a seeded project, the switch, no tourist leak (#1010)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Steps 1–4** — AC-4's three cases (one test each, run under `chromium` expecting porcelain's paint and under the new `console-dark` project expecting dark's, the project seeding `riviera-console-theme=dark` through its `storageState` and filtered by `grep: /dark console/`), AC-5's chip case and AC-6's amended pin case in `theme-shell.e2e.ts`; `e2e/support/console-theme.ts` holds the probe (the class-O e2e now imports it) and the per-theme ink strings. The e2e ran after phases 1–5, so these cases prove the shipped behaviour rather than fail first (their red halves are the unit specs of phases 2–5): `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts operator-daily operator-requests layout-editor theme-shell class-o-tint-tokens` → 49/49 (1.7 min), the three dark cases among them.
+- [x] **Step 5: Generalization-audit pass** — the log's phase-6 row.
+- [x] **Step 6: Commit** — `Prove the dark console in the mocked e2e: a seeded project, the switch, no tourist leak (#1010)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 7 — contract
 
@@ -444,6 +444,7 @@ create `testing/console-themes.ts`, `operator/console-literal-sweep.spec.ts`; th
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-07 | phase 6 | every e2e that asserts `app-root`'s theme attribute or seeds a theme key — the assertions the pin's new value can break | `grep -rln "data-riv-theme\|riviera-theme" frontend/e2e` | `theme-shell` (amended), `class-o-tint-tokens`, `console-accent-ink`, `console-negative-ink`, `fixed-ink-token-recut`, `warn-token-skin`, `solid-btn-token-skin`, … (each seeds the TOURIST key and asserts the console stays porcelain under a dark document — still true: the console default is porcelain whatever the document) | one amended, the rest hold |
 | 2026-09-07 | phase 5 | every spec or e2e that pins the chip's row set — the list a new row shifts | `grep -rln "Change password', 'Sign out\|'Change password'" frontend/src/app frontend/e2e --include=*.ts` | `operator-account-chip.spec.ts` (amended), `console-shell.spec.ts` (the palette's rows, not the chip's — unchanged) | one amended |
 | 2026-09-07 | phase 4 | every writer of `data-riv-theme` — the attribute the console pin and the tourist theme share | `grep -rn "rivTheme\|data-riv-theme" frontend/src/app --include=*.ts --include=*.html \| grep -v spec` | `app.ts:156` (the host binding, now off `ConsoleTheme`), `core/theme.ts:122` (the document writer, unchanged); the rest are doc comments | two writers, two attributes, no overlap — `console-theme.ts` writes neither |
 | 2026-09-07 | phase 2 | every `bg-white`/`border-white` position in `frontend/src/app` outside the console sources — the same mechanism on tourist surfaces | `grep -rnoE '\b(bg\|border)-(white\|black)(/[0-9]+)?' frontend/src/app --include=*.ts --include=*.html \| grep -v spec \| grep -v "operator/\|admin/"` | `shared/photo-slideshow.ts` (4), `shared/photo-lightbox.ts` (3), `pages/home/home.html` (2), `booking/booking-qr.ts`, `booking/booking-dialog.ts`, `app.html` (1 each) — photo chrome, the QR's print-white, the tourist shell | none to migrate here: photo surfaces and the tourist chrome, out of this slice's scope; recorded in the ledger's class N |

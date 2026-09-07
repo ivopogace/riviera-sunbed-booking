@@ -2,6 +2,15 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import {
+  CARD_INK,
+  PREMIUM_INK,
+  SELECT_TINT,
+  consoleThemeOf,
+  expectConsoleTheme,
+  expectInsetFill,
+  tintPaint,
+} from './support/console-theme';
 
 /**
  * Real-render CI-safe e2e for the layout editor. Drives the actual generate → confirm →
@@ -216,6 +225,44 @@ test('generates a grid, paints a walk-in set, and saves the whole layout in one 
   expect(body.sets).toHaveLength(6);
   expect(body.sets.filter((s) => s.pool === 'WALK_IN')).toHaveLength(1);
   expect(body.expectedVersion).toBe(0); // the setVersion loaded from the map read
+});
+
+test('paints the console theme: the tool rail and the tiles under porcelain and dark console (#1010, + axe)', async ({
+  page,
+}, testInfo) => {
+  const theme = consoleThemeOf(testInfo);
+  await mockEditor(page);
+  await page.goto('/operator/1');
+  await signIn(page);
+  await expect(page.getByTestId('layout-editor')).toBeVisible();
+
+  // The console host wears the console theme while the document stays the tourist's dark.
+  await expectConsoleTheme(page, theme);
+  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
+
+  await page.getByTestId('layout-gen-rows').fill('2');
+  await page.getByTestId('layout-gen-cols').fill('3');
+  await page.getByTestId('layout-generate').click();
+  await expect(page.getByTestId('layout-cell')).toHaveCount(6);
+
+  // Row A is priced front row: a premium cell under its own ink; row B standard on the inset.
+  const cells = page.getByTestId('layout-cell');
+  await expect(cells.first()).toHaveAttribute('data-state', 'premium');
+  await expect(cells.first()).toHaveCSS('color', PREMIUM_INK[theme]);
+  await expect(cells.nth(3)).toHaveAttribute('data-state', 'standard');
+  await expectInsetFill(page, cells.nth(3), 85, theme);
+  await expect(cells.nth(3)).toHaveCSS('color', CARD_INK[theme]);
+
+  // The tool rail: an idle chip on the inset, the armed one on the selection tint.
+  await page.getByTestId('layout-tool-standard').click();
+  await expectInsetFill(page, page.getByTestId('layout-tool-walkin'), 45, theme);
+  await expect(page.getByTestId('layout-tool-standard')).toHaveCSS(
+    'background-color',
+    await tintPaint(page, SELECT_TINT[theme], 20),
+  );
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, `layout editor in the ${theme} console`);
 });
 
 test('names a row, saves the venue’s words, and blocks duplicate names before any PUT (#723)', async ({

@@ -2,6 +2,12 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import {
+  CARD_INK,
+  consoleThemeOf,
+  expectConsoleTheme,
+  expectInsetFill,
+} from './support/console-theme';
 
 /**
  * Real-render CI-safe e2e for the Daily view tab. Drives sign-in → open the Daily view tab
@@ -231,6 +237,35 @@ test('shows tile states + arrival codes, and marks a walk-in that survives the r
   await page.locator('[data-set-id="1"]').click();
   await expect(page.locator('[data-set-id="1"]')).toHaveAttribute('data-state', 'STAFF_MARKED');
   await expect(visibleTileText(1)).toHaveText(['✓', '1']);
+});
+
+test('paints the console theme: the date field, the sales-close control and the tiles under porcelain and dark console (#1010, + axe)', async ({
+  page,
+}, testInfo) => {
+  const theme = consoleThemeOf(testInfo);
+  await mockDaily(page);
+  await page.goto('/operator/1');
+  await signInAndOpenDaily(page);
+
+  // The console host wears the console theme; the document keeps the tourist's (porcelain here).
+  await expectConsoleTheme(page, theme);
+  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
+
+  // The inset family: the date field and the sales-close trigger at /60, the free tile at /85.
+  await expectInsetFill(page, page.getByTestId('daily-date'), 60, theme);
+  await expectInsetFill(page, page.getByTestId('daily-close-sales'), 60, theme);
+  await expectInsetFill(page, page.locator('[data-set-id="1"]'), 85, theme);
+  await expect(page.getByTestId('daily-date')).toHaveCSS('color', CARD_INK[theme]);
+
+  // The locked tile keeps its hatch, drawn in the theme's tint, under the theme's ink.
+  const hatch = await page
+    .locator('[data-set-id="2"]')
+    .evaluate((el) => getComputedStyle(el).backgroundImage);
+  expect(hatch).toContain('repeating-linear-gradient');
+  await expect(page.locator('[data-set-id="2"]')).toHaveCSS('color', CARD_INK[theme]);
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, `daily view tab in the ${theme} console`);
 });
 
 test('checks a guest in by QR scan — single-use, announced, and the row stays flagged (#583)', async ({
