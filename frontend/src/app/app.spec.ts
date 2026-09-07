@@ -41,6 +41,7 @@ const operatorAuth = {
 const surfaceRoutes = () => [
   { path: 'glass', component: BlankPage },
   { path: 'my-bookings', component: BlankPage },
+  { path: 'venues/:id', component: BlankPage },
   { path: 'account/password', component: BlankPage },
   { path: 'operator', component: BlankPage, data: { operatorConsole: true } },
   { path: 'operator-chrome', component: BlankPage, data: { operatorChrome: true } },
@@ -110,6 +111,23 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(el.querySelector('[data-testid="theme-option-porcelain"]')).toBeNull();
   });
 
+  it('renders exactly two primary destinations, Beaches and My bookings (#1002)', () => {
+    const { el } = shell();
+    const nav = el.querySelector('nav[aria-label="Primary"]')!;
+
+    const links = [...nav.querySelectorAll<HTMLAnchorElement>('a')].map((a) => [
+      a.textContent?.trim(),
+      a.getAttribute('href'),
+    ]);
+    expect(links).toEqual([
+      ['Beaches', '/'],
+      ['My bookings', '/my-bookings'],
+    ]);
+    // Find a booking is a menu row now, not a destination — and no button lives in the nav at all.
+    expect(nav.querySelector('button')).toBeNull();
+    expect(nav.textContent).not.toContain('Find a booking');
+  });
+
   it('lists a My bookings nav entry on desktop and in the mobile menu (T6 #139)', () => {
     const { fixture, el } = shell();
 
@@ -159,6 +177,11 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     await router.navigate(['/glass']);
     fixture.detectChanges();
     expect(el.querySelector('.riv-nav-desktop')?.querySelector('[aria-current]')).toBeNull();
+
+    // Exact-path matching: a venue page is not "Beaches"; section marking is the tab bar's rule.
+    await router.navigate(['/venues/1']);
+    fixture.detectChanges();
+    expect(el.querySelector('.riv-nav-desktop')?.querySelector('[aria-current]')).toBeNull();
   });
 
   it('marks Your account current in the account menu and the mobile sheet on the account page', async () => {
@@ -185,20 +208,29 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     ).toBe(true);
   });
 
-  it('never marks Sign in and Register current together: the mode query param decides', async () => {
+  it('never marks Sign in and Create an account current together: the mode query param decides', async () => {
     const { fixture, el } = shell();
     const router = TestBed.inject(Router);
 
     await router.navigate(['/account/sign-in'], { queryParams: { mode: 'register' } });
     fixture.detectChanges();
-    expect(current(el, '.riv-nav-desktop', '[data-testid="nav-register"]')).toBe(true);
-    expect(current(el, '.riv-nav-desktop', '[data-testid="nav-signin"]')).toBe(false);
+    expect(current(el, '.riv-header', '[data-testid="nav-signin"]')).toBe(false);
+    // Create an account lives in the menu popover now.
+    el.querySelector<HTMLButtonElement>('[data-testid="nav-menu"]')!.click();
+    fixture.detectChanges();
+    expect(current(el, '[data-testid="nav-account-menu"]', '[data-testid="nav-register"]')).toBe(
+      true,
+    );
 
     // A returnUrl is no reason to lose the marker: the pair keys on `mode` alone.
     await router.navigate(['/account/sign-in'], { queryParams: { returnUrl: '/my-bookings' } });
     fixture.detectChanges();
-    expect(current(el, '.riv-nav-desktop', '[data-testid="nav-signin"]')).toBe(true);
-    expect(current(el, '.riv-nav-desktop', '[data-testid="nav-register"]')).toBe(false);
+    expect(current(el, '.riv-header', '[data-testid="nav-signin"]')).toBe(true);
+    el.querySelector<HTMLButtonElement>('[data-testid="nav-menu"]')!.click();
+    fixture.detectChanges();
+    expect(current(el, '[data-testid="nav-account-menu"]', '[data-testid="nav-register"]')).toBe(
+      false,
+    );
 
     el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
     fixture.detectChanges();
@@ -210,38 +242,61 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     );
   });
 
-  it('shows Sign in and Register links in the header when signed out (S2 #111)', () => {
-    const { el } = shell();
-    const nav = el.querySelector('.riv-nav-desktop');
-    expect(
-      nav?.querySelector<HTMLAnchorElement>('[data-testid="nav-signin"]')?.getAttribute('href'),
-    ).toBe('/account/sign-in');
-    // Register deep-links into the unified card's register mode.
-    expect(
-      nav?.querySelector<HTMLAnchorElement>('[data-testid="nav-register"]')?.getAttribute('href'),
-    ).toBe('/account/sign-in?mode=register');
-    // No signed-in affordances when signed out — including the account menu.
-    expect(nav?.querySelector('[data-testid="nav-user"]')).toBeNull();
-    expect(nav?.querySelector('[data-testid="nav-signout"]')).toBeNull();
-    expect(nav?.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
-    expect(nav?.querySelector('[data-testid="nav-account-link"]')).toBeNull();
+  it('signed out: a Sign in link plus a Menu button, never a Sign in that opens a menu (#1002)', () => {
+    const { fixture, el } = shell();
+    const header = el.querySelector('.riv-header')!;
+
+    const signIn = header.querySelector<HTMLAnchorElement>('[data-testid="nav-signin"]')!;
+    expect(signIn.tagName).toBe('A');
+    expect(signIn.getAttribute('href')).toBe('/account/sign-in');
+    expect(signIn.hasAttribute('aria-expanded')).toBe(false);
+
+    const menu = header.querySelector<HTMLButtonElement>('[data-testid="nav-menu"]')!;
+    expect(menu.getAttribute('aria-label')).toBe('Menu');
+    expect(menu.getAttribute('aria-expanded')).toBe('false');
+    expect(header.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
+
+    menu.click();
+    fixture.detectChanges();
+    expect(menu.getAttribute('aria-expanded')).toBe('true');
+    const pop = header.querySelector('[data-testid="nav-account-menu"]')!;
+    // Create an account deep-links into the unified card's register mode.
+    const register = pop.querySelector<HTMLAnchorElement>('[data-testid="nav-register"]')!;
+    expect(register.getAttribute('href')).toBe('/account/sign-in?mode=register');
+    expect(register.textContent).toContain('Create an account');
+    expect(pop.querySelector('[data-testid="find-open"]')?.textContent).toContain('Find a booking');
+    // No signed-in affordances when signed out.
+    expect(header.querySelector('[data-testid="nav-user"]')).toBeNull();
+    expect(header.querySelector('[data-testid="nav-signout"]')).toBeNull();
+    expect(header.querySelector('[data-testid="nav-account-link"]')).toBeNull();
   });
 
-  it('shows the signed-in email + Sign out when signed in, and signs out on click (S2 #111)', () => {
+  it('signed in: one account chip opening the account menu, and signs out on click (#1002)', () => {
     customerAuth.signedIn.set(true);
     customerAuth.email.set('ana@example.com');
     const { fixture, el } = shell();
+    const header = el.querySelector('.riv-header')!;
 
-    expect(el.querySelector('[data-testid="nav-user"]')?.textContent).toContain(
-      'Signed in as ana@example.com',
-    );
-    // The signed-out links are gone.
-    expect(el.querySelector('[data-testid="nav-signin"]')).toBeNull();
+    const chip = header.querySelector<HTMLButtonElement>('[data-testid="nav-user"]')!;
+    expect(chip.getAttribute('aria-label')).toBe('Account: ana@example.com');
+    // The handle is the visible label; the full address waits in the menu.
+    expect(chip.textContent).toContain('ana');
+    expect(chip.textContent).not.toContain('ana@example.com');
+    expect(header.textContent).not.toContain('Signed in as');
+    // The signed-out controls are gone.
+    expect(header.querySelector('[data-testid="nav-signin"]')).toBeNull();
+    expect(header.querySelector('[data-testid="nav-menu"]')).toBeNull();
 
-    // Sign out lives inside the account menu, so it opens first.
-    el.querySelector<HTMLButtonElement>('[data-testid="nav-user"]')!.click();
+    chip.click();
     fixture.detectChanges();
-    el.querySelector<HTMLButtonElement>('[data-testid="nav-signout"]')!.click();
+    const pop = header.querySelector('[data-testid="nav-account-menu"]')!;
+    expect(pop.querySelector('[data-testid="nav-account-identity"]')?.textContent).toContain(
+      'ana@example.com',
+    );
+    expect(pop.querySelector('[data-testid="find-open"]')?.textContent).toContain('Find a booking');
+    expect(pop.querySelector('[data-testid="nav-register"]')).toBeNull();
+
+    pop.querySelector<HTMLButtonElement>('[data-testid="nav-signout"]')!.click();
     fixture.detectChanges();
     expect(customerAuth.signOut).toHaveBeenCalledTimes(1);
   });
@@ -367,49 +422,86 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(retryable.signOut).not.toHaveBeenCalled();
   });
 
-  it('exposes a Find a booking trigger on desktop that opens the modal and restores focus on dismiss (#148)', () => {
-    const { fixture, el } = shell();
-
-    const desktopBtn = el.querySelector<HTMLButtonElement>(
-      '.riv-nav-desktop [data-testid="find-open"]',
+  /** Opens the find modal from the desktop popover (the menu button signed out, the account
+   *  chip signed in) and returns that persistent trigger — the row itself is gone by then. */
+  function openFindFromPopover(fixture: ComponentFixture<App>, el: HTMLElement): HTMLElement {
+    const trigger = el.querySelector<HTMLButtonElement>(
+      '[data-testid="nav-menu"], [data-testid="nav-user"]',
     )!;
-    expect(desktopBtn.textContent).toContain('Find a booking');
+    trigger.click();
+    fixture.detectChanges();
+    const row = el.querySelector<HTMLButtonElement>(
+      '[data-testid="nav-account-menu"] [data-testid="find-open"]',
+    )!;
+    expect(row.textContent).toContain('Find a booking');
+    row.click();
+    fixture.detectChanges();
+    return trigger;
+  }
+
+  it('Find a booking from the signed-out menu opens the modal, closes the popover and returns focus to the menu button (#1002)', () => {
+    const { fixture, el } = shell();
     expect(el.querySelector('app-find-booking')).toBeNull();
 
-    desktopBtn.click();
-    fixture.detectChanges();
+    const trigger = openFindFromPopover(fixture, el);
     expect(el.querySelector('app-find-booking')).not.toBeNull();
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
 
-    // Dismiss via the modal's close button → the modal closes and focus returns to the trigger.
+    // Dismiss via the modal's close button → focus returns to the popover's persistent trigger.
     el.querySelector<HTMLButtonElement>('[data-testid="find-close"]')!.click();
     fixture.detectChanges();
     expect(el.querySelector('app-find-booking')).toBeNull();
-    expect(document.activeElement).toBe(desktopBtn);
+    expect(document.activeElement).toBe(trigger);
   });
 
-  it('exposes a Find a booking entry in the mobile menu that opens the modal and closes the menu (#148)', () => {
+  it('Find a booking from the account menu returns focus to the chip on dismiss (#1002)', () => {
+    customerAuth.signedIn.set(true);
+    customerAuth.email.set('ana@example.com');
     const { fixture, el } = shell();
 
-    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
-    fixture.detectChanges();
-    const mobileBtn = el.querySelector<HTMLButtonElement>(
-      '[data-testid="mobile-menu"] [data-testid="find-open-mobile"]',
-    )!;
-    expect(mobileBtn.textContent).toContain('Find a booking');
-
-    mobileBtn.click();
-    fixture.detectChanges();
+    const trigger = openFindFromPopover(fixture, el);
+    expect(trigger.getAttribute('data-testid')).toBe('nav-user');
     expect(el.querySelector('app-find-booking')).not.toBeNull();
-    // Opening find collapses the mobile menu.
-    expect(el.querySelector('[data-testid="mobile-menu"]')).toBeNull();
+
+    el.querySelector<HTMLButtonElement>('[data-testid="find-close"]')!.click();
+    fixture.detectChanges();
+    expect(el.querySelector('app-find-booking')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
   });
+
+  it.each([false, true])(
+    'Find a booking from the mobile menu (signed in: %s) closes the menu and returns focus to the hamburger (#148, #1002)',
+    (signedIn) => {
+      customerAuth.signedIn.set(signedIn);
+      customerAuth.email.set(signedIn ? 'ana@example.com' : undefined);
+      const { fixture, el } = shell();
+
+      const hamburger = el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!;
+      hamburger.click();
+      fixture.detectChanges();
+      const mobileBtn = el.querySelector<HTMLButtonElement>(
+        '[data-testid="mobile-menu"] [data-testid="find-open-mobile"]',
+      )!;
+      expect(mobileBtn.textContent).toContain('Find a booking');
+
+      mobileBtn.click();
+      fixture.detectChanges();
+      expect(el.querySelector('app-find-booking')).not.toBeNull();
+      // Opening find collapses the mobile menu.
+      expect(el.querySelector('[data-testid="mobile-menu"]')).toBeNull();
+
+      el.querySelector<HTMLButtonElement>('[data-testid="find-close"]')!.click();
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(hamburger);
+    },
+  );
 
   it('closes the Find a booking modal on navigation and moves focus to main (a11y, #148)', async () => {
     const { fixture, el } = shell();
     const router = TestBed.inject(Router);
 
-    el.querySelector<HTMLButtonElement>('[data-testid="find-open"]')!.click();
-    fixture.detectChanges();
+    openFindFromPopover(fixture, el);
     expect(el.querySelector('app-find-booking')).not.toBeNull();
 
     await router.navigate(['/glass']);
@@ -425,8 +517,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
 
     // The header goes interactive with the first route's chunk still in flight.
     const pending = router.navigate(['/']);
-    el.querySelector<HTMLButtonElement>('[data-testid="find-open"]')!.click();
-    fixture.detectChanges();
+    openFindFromPopover(fixture, el);
     const focused = document.activeElement;
     expect(el.querySelector('app-find-booking')).not.toBeNull();
 
@@ -460,8 +551,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     const router = TestBed.inject(Router);
 
     const pending = router.navigate(['/']);
-    el.querySelector<HTMLButtonElement>('[data-testid="find-open"]')!.click();
-    fixture.detectChanges();
+    openFindFromPopover(fixture, el);
     expect(el.querySelector('app-find-booking')).not.toBeNull();
 
     // find-booking's move on a found code: it supersedes the pending nav onto the very same url.
@@ -530,6 +620,36 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(document.activeElement).not.toBe(document.body);
     expect(customerAuth.signOut).toHaveBeenCalledTimes(1);
   });
+
+  /** Every `<a>` in the bar, the popovers and the sheet: the guard judges buttons only. */
+  function headerLinksDeclareTheFloor(el: HTMLElement): void {
+    const links = [...el.querySelectorAll<HTMLAnchorElement>('.riv-header a')];
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link.classList.contains('min-h-11'), `${link.textContent?.trim()} min-h`).toBe(true);
+      expect(link.classList.contains('min-w-11'), `${link.textContent?.trim()} min-w`).toBe(true);
+    }
+  }
+
+  it.each([false, true])(
+    'every header link declares the touch floor, popovers and sheet open (signed in: %s) (#1002)',
+    (signedIn) => {
+      customerAuth.signedIn.set(signedIn);
+      customerAuth.email.set(signedIn ? 'ana@example.com' : undefined);
+      const { fixture, el } = shell();
+      headerLinksDeclareTheFloor(el);
+
+      el.querySelector<HTMLButtonElement>(
+        '[data-testid="nav-menu"], [data-testid="nav-user"]',
+      )!.click();
+      fixture.detectChanges();
+      headerLinksDeclareTheFloor(el);
+
+      el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+      fixture.detectChanges();
+      headerLinksDeclareTheFloor(el);
+    },
+  );
 
   it('hamburger opens the mobile menu; Escape closes it and returns focus to the button (AC-3)', () => {
     const { fixture, el } = shell();
