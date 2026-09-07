@@ -69,7 +69,7 @@ actually generated, and nothing more.
 | Family | n | Token | Verdict | Status |
 |---|---:|---|---|---|
 | `text-[#a3160e]` in `operator/` (9 files) | 32 | `--riv-error-ink` | **migrate** — hosts are porcelain-pinned, where the token resolves `#a3160e` | **done — #855, PR #856** |
-| `#0a6e85` **inks** in `operator/` | 12 | `--riv-console-accent-ink` (**new**) | **migrated onto its own token, not the coincidental one.** Value-correct, role wrong: `--riv-pop-accent` is the *popover* accent, and `--riv-solid-fill-brand` is a fill. **Option A over B**, on mechanical grounds: `@theme inline` makes a utility resolve `var(--riv-*)` at the point of use, so widening `--riv-pop-accent` would route the console's ink through the variable the popover family's theme blocks override — popover retuning would move payout figures. Angular's emulated encapsulation does not scope custom properties, so naming is the only separator. Declared **once**: every consumer is porcelain-pinned, so a dark branch is unreachable by construction, and no render can tell a themed token from an unthemed one inside a pinned subtree | **done — #848, PR #863.** n corrected 16 → 12: four were `bg-` fills, a different role, and left with #854 |
+| `#0a6e85` **inks** in `operator/` | 12 | `--riv-console-accent-ink` (**new**) | **migrated onto its own token, not the coincidental one.** Value-correct, role wrong: `--riv-pop-accent` is the *popover* accent, and `--riv-solid-fill-brand` is a fill. **Option A over B**, on mechanical grounds: `@theme inline` makes a utility resolve `var(--riv-*)` at the point of use, so widening `--riv-pop-accent` would route the console's ink through the variable the popover family's theme blocks override — popover retuning would move payout figures. Angular's emulated encapsulation does not scope custom properties, so naming is the only separator. Declared **once**: every consumer is porcelain-pinned, so a dark branch is unreachable by construction, and no render can tell a themed token from an unthemed one inside a pinned subtree. **Themed since #1010:** the console has its own porcelain-or-dark theme, so the token declares a dark value (`#7cd7e8`) in the `dark` block too and its guard holds it to exactly those two blocks | **done — #848, PR #863**; themed by #1010. n corrected 16 → 12: four were `bg-` fills, a different role, and left with #854 |
 | ~~`#0a2a33` (`text-`)~~ + ~~`rgba(12,42,51,·)` inks/borders~~ | ~~14~~ | ~~`--riv-ink` / `--riv-card-ink` / `--riv-pop-ink`, `--riv-ink-faint`, `--riv-card-ink-soft`, `--riv-chip-border`, `--riv-pop-divider`~~ | **Retired — the class-T reading was wrong, and #849 is where it was tested rather than assumed.** Both rows moved to classes F and R below; the note under this table is the finding | **done — #849, PR #886** |
 | `bg-[#9a6410]` — the console's close-sales and weather-refund confirm buttons (`daily-view-tab.html`, `payouts-tab.html`) | 2 | `--riv-solid-fill-warn` (**new**, joins the `--riv-solid-fill-*` family, #854) | **migrate** — left literal by #879's own non-goals (that slice merged the amber tint/fill/ink family only, not this button fill); closed once `shared/confirm-panel` gained a `warn` tone for both surfaces to adopt | **done — #881, PR #883** |
 
@@ -462,6 +462,51 @@ bar (`#b3261e` on solid white, both themes). The reason is written at `app.ts:59
 a safety notice about a session that may still be open on a shared device, so legibility
 outranks theme harmony. **Exemption class 1.** Measured 6.5:1, past AA. Do not sweep it.
 
+### Class N — Tailwind's named colours (`bg-white/α`, `border-white/α`): the console's half done — #1010
+
+**Outside every population above.** The command at the top matches `-[#…]` and `-[rgba(…`, so a
+named Tailwind colour in a colour position — `bg-white/60`, `border-white/95`, `bg-black/80` — was
+never counted, and it is a literal in the only sense that matters: it resolves through no `--riv-*`
+token, so it does not theme. The console-nav spike's dark contact sheets were this class made
+visible — the date field, the sales-close and Decline buttons, the tool chips and the standard
+tiles painting `bg-white/α` as grey slabs on the dark card.
+
+```bash
+grep -rnoE '\b(bg|border|text|from|to|via|ring|outline|shadow|divide)-(white|black)(/[0-9]+)?' \
+  frontend/src/app --include=*.ts --include=*.html | grep -v '\.spec\.ts'
+```
+
+| Family | n | Token | Verdict | Status |
+|---|---:|---|---|---|
+| `bg-white/α` insets on the console's card glass — fields, outline buttons, sub-panels, tool chips, the standard tile, the legend key — plus the three opaque `bg-white` surfaces (the "Venue not found" card, the payout statement, a hover) in `operator/`, `admin/`, `shared/confirm-with-reason.ts` | ~90 | `--riv-console-inset` (**new**, class-O rule B: `bg-riv-console-inset/α`, white in porcelain, the tourist dark field fill's slate `#020a16` in dark) | **migrate** — byte-identical in porcelain (`color-mix(in oklab, #ffffff α%, transparent)` either way); in dark an inset sits below its card as the tourist dark fields do | **done — #1010** |
+| `border-white/95` and `/70` rims on the admin pills, the delivery field and its sub-panel | 6 | `--riv-card-border` | **migrate, a bounded porcelain move** (white `0.95`/`0.70` → `0.6`, a rim is the card border's role); a `/95` white base would be a hard ring in dark | **done — #1010** |
+| `border-white/40` on the layout editor's CTA | 1 | `--riv-cta-border` | **migrate**, byte-identical — the CTA hairline's own token (#853) | **done — #1010** |
+| `text-white` / `outline-white` over a solid fill or the CTA gradient, tree-wide | many | — | **exempt**: the fixed-ink family — a fixed fill pins its ink (the `--riv-solid-fill-*` argument) | recorded |
+| `bg-black/80` — the Daily view's camera preview letterbox | 1 | — | **exempt**: a video is a photo surface, and a photo is not themed (`--riv-photo-*`'s ground) | recorded |
+| The tourist half: `shared/photo-slideshow.ts` (4), `shared/photo-lightbox.ts` (3), `pages/home/home.html` (2), `booking/booking-qr.ts`, `booking/booking-dialog.ts`, `app.html` (1 each) | 12 | — | photo chrome, the QR's print-white and the tourist shell — outside #1010's scope, each with a fixed-surface ground to record when cut | open |
+
+The console's half is held at zero by `operator/console-literal-sweep.spec.ts`, which sweeps
+`operator/`, `admin/`, the shell and the shared primitives the console renders for both this
+class and the hex/`rgb()` population, and names the file and the utility on a hit.
+
+**Shadows are a class of their own, and out of every population by decision.** A
+`shadow-[0_8px_22px_rgba(11,120,150,0.35)]` carries an rgba the top command skips (offset-first),
+and ~25 such positions sit in the console. A shadow cannot drift light-on-light — it darkens
+whatever it falls on — so #1010 left them literal and recorded them here rather than in the
+sweep; a slice that tokenises them owes only the one-declaration argument the inline gradients
+below make, never a contrast proof.
+
+**The `--riv-console-*` tokens themed with this slice.** Every row above that says "declared once
+— every consumer is under the porcelain pin" (`--riv-console-{accent-ink,negative-ink,tint,scrim,
+card-border}`, the class-O `--riv-select-*`, `--riv-alert-tint`, `--riv-positive-tint`,
+`--riv-premium-*`) now declares a dark value in the `dark` block and nowhere else; each guard that
+asserted a single declaration asserts exactly two. The `--riv-warn-*` family stays single on its
+fixed-fill ground, as its row says. Two tokens were added for the dark console's own needs:
+`--riv-premium-ink` (the day gold wants a dark numeral, the dusk gold a light one — a light
+selection ring reads 1.1:1 over a bright gold, which is why the dark gold is dusk) and
+`--riv-console-avatar-ring` (`transparent` in porcelain, white at 0.55 in dark, where the solid
+brand disc alone reads 2.6:1 on the dark header glass).
+
 ### The inline image gradients — one declaration, three times running
 
 Not a colour class: these positions are **images**, built inline in a class expression rather than
@@ -542,16 +587,17 @@ log.
 | theme picker, account menu, mobile sheet (`app.ts` `POP`) | `--riv-pop-*` | white `0.92`, dark ink | slate `0.96`, light ink |
 | **availability calendar `<dialog>`** (`venue/availability-calendar.html`) | `--riv-pop-*` **since #888**; before it, the pinned `--riv-calendar-*` ramp #849 registered | white `0.92`, dark ink, light opaque day tints | slate `0.96`, light ink, **dark opaque day tints** (`--riv-calendar-*`, declared in both blocks) |
 | booking dialog, find-a-booking (`booking/`) | `--riv-dialog-glass` | white `0.82` | slate `0.94` |
-| payout statement (`operator/payout-statement.ts`) | none — `bg-white` under the app shell's porcelain pin on the console routes | white | unreachable (the host pins porcelain) |
+| payout statement (`operator/payout-statement.ts`) | `--riv-console-inset` (opaque) **since #1010**; before it a `bg-white` under the console's porcelain pin | white, dark ink | the dark inset `#020a16`, light ink; hairlines on `--riv-console-tint` (white) |
 | photo lightbox (`shared/photo-lightbox.ts`) | none — a fixed `rgba(4,18,24,0.86)` scrim over a photo | photo-proof dark | photo-proof dark |
 
 So the overlay families were three — two that themed and one pinned light — and are now **two**,
 both themed: the calendar was the only surface outside them that a tourist could reach in the dark
 theme, and nobody had decided it should be. The 2026-08-25 restructure note's claim in
 `2026-07-02-liquid-glass-redesign-note.md` — "the dark theme inverts the whole surface family
-(dark cards/dialogs/popovers/fields, light inks)" — is true of the shipped app since #888. The two
-out-of-family overlays are so for reasons the tree already records (a porcelain-pinned subtree; a
-photo-proof scrim), not by omission. `riviera` is not a column because it redeclares no overlay
+(dark cards/dialogs/popovers/fields, light inks)" — is true of the shipped app since #888, and of
+the console's own dark theme since #1010, which took the payout statement onto the themed inset.
+The one out-of-family overlay left is so for a reason the tree records (a photo-proof scrim), not
+by omission. `riviera` is not a column because it redeclares no overlay
 token: its popovers are the base block's white glass by that theme's design.
 
 ## How to cut a slice from this ledger

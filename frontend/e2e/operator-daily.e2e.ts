@@ -247,9 +247,9 @@ test('paints the console theme: the date field, the sales-close control and the 
   await page.goto('/operator/1');
   await signInAndOpenDaily(page);
 
-  // The console host wears the console theme; the document keeps the tourist's (porcelain here).
+  // The console host wears the console theme; the document keeps the tourist's (dark OS scheme here).
   await expectConsoleTheme(page, theme);
-  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
+  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
 
   // The inset family: the date field and the sales-close trigger at /60, the free tile at /85.
   await expectInsetFill(page, page.getByTestId('daily-date'), 60, theme);

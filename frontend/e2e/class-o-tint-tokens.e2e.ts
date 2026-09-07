@@ -4,7 +4,7 @@ import { probePaint, tintPaint } from './support/console-theme';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 
 /**
- * The class-O tint tokens paint from the token registry (#852).
+ * The class-O tint tokens paint from the token registry.
  *
  * <p><strong>These are guards, not red-first drivers.</strong> Rule B replaces the literal inside a
  * `/opacity` position with a token and leaves the modifier at the call site, so
@@ -24,13 +24,14 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  *
  * <p>The paint tests then drive real elements, because a generated utility is not yet a painted
  * pixel — the class has to reach the element and survive the cascade. The dark-theme test is the
- * subtree-pinning proof, and it is worth being precise about what it shows: every one of these
- * tokens is declared ONCE, so none could resolve differently under a dark document theme even if
- * the console's porcelain pin failed. What it proves is the property the sites actually depend
- * on — that nothing in the cascade repaints them when the document theme changes — which is what
- * would break if a later slice gave one a dark override. The declaration guard in
- * `shared/class-o-tint-tokens.contrast.spec.ts` is what watches the override itself.
- * Rationale: #852 (PR #878).
+ * subtree-pinning proof: the console's tints THEME (a dark value in the `dark` block since the
+ * console gained its own dark theme), so under a dark document the document resolves the dark
+ * values while the console host, pinned to the operator's own choice (porcelain by default),
+ * still resolves the porcelain ones — which is why the test reads them on `app-root`, never on
+ * `html`. What it proves is the property the sites depend on: the document theme never repaints
+ * the console. The declaration guard in `shared/class-o-tint-tokens.contrast.spec.ts` watches the
+ * blocks themselves.
+ * Rationale: docs/design/colour-literal-token-audit.md § Class O.
  */
 
 /** The registry as `tailwind.css`'s base block declares it. Mirrors `testing/glass-tokens.ts`. */
@@ -226,9 +227,10 @@ test.describe('the class-O tint tokens paint from the token registry', () => {
     await tool.click();
     await expect(tool).toHaveCSS('background-color', await outgoingLiteralPaint(page));
 
+    // On the console host, whose own pin resolves the tokens — the document resolves the dark theme's.
     const stillPorcelain = await page.evaluate((names) => {
-      const root = getComputedStyle(document.documentElement);
-      return names.map((name) => [name, root.getPropertyValue(name).trim()] as const);
+      const host = getComputedStyle(document.querySelector('app-root')!);
+      return names.map((name) => [name, host.getPropertyValue(name).trim()] as const);
     }, Object.keys(CLASS_O_TINTS));
 
     expect(Object.fromEntries(stillPorcelain)).toEqual(CLASS_O_TINTS);

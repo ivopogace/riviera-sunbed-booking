@@ -119,7 +119,8 @@ seeding the console key for the `console-dark` project; `toHaveCSS` against a pr
   `pricing-tab.contrast.spec.ts`, `venue-tab.contrast.spec.ts`, `payouts-tab.contrast.spec.ts`,
   `venue-create-card.contrast.spec.ts`, `console-stats-strip.contrast.spec.ts`,
   `operator-console.contrast.spec.ts`, `admin/admin-console.contrast.spec.ts` (the console-wide admin
-  pairs), `shared/console-palette.contrast.spec.ts`.
+  pairs), `shared/console-palette.contrast.spec.ts`; in the real browser, `theme-shell.e2e.ts` ›
+  `every console route is axe clean in the dark console (#1010)` — sixteen routes, the sweep F-4 came from.
 - [ ] **AC-4 (dark render):** Given the mocked suite's `console-dark` project (the console key seeded
   `dark` through the project's `storageState`), when `/operator/1/daily`, `/operator/1/requests` and
   `/operator/1/beach-map` render, then `app-root` carries `data-riv-theme="dark"`, the date field, the
@@ -206,8 +207,8 @@ the intake gate) and are each recorded so the maintainer can reverse them on the
   fields do, and hover (`/85`) deepens rather than lightens. The alternative — pointing the console's
   standard tiles at the themed `--riv-tile-available-fill` (light glass in dark) — was rejected
   because its porcelain alpha is 0.75 against the console's 0.85: a drift the restyle owes no one.
-- **Decided:** dark values — `--riv-console-accent-ink: #7cd7e8` (the accent family's dark ink, AA
-  on the dark card), `--riv-console-negative-ink: #ffa9a1` (the themed error red's dark value; the
+- **Decided:** dark values — `--riv-console-accent-ink: #a3e3f0` (one step lighter than the accent
+  family's `#7cd7e8`, which read 4.21:1 on the chip tint under axe's white-page fiction — F-5), `--riv-console-negative-ink: #ffa9a1` (the themed error red's dark value; the
   base comment's "1.84:1" was measured over the *porcelain* card), `--riv-console-tint: #ffffff`
   (hairlines, insets and the hatch are white-at-alpha in dark, as the tourist `--riv-card-border`
   family is), `--riv-console-scrim: #020a16`, `--riv-console-card-border: rgba(255,255,255,0.16)`
@@ -318,6 +319,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | the phase-6 e2e run (axe, the chip case in the dark console) | The Daily view's check-in button painted `bg-riv-accent-ink text-white` — an INK token as a fill, the class-R trap: white on the dark console's light teal reads 1.64:1 | fixed — `bg-riv-solid-fill-brand`, the fixed solid fill under white ink (porcelain moves `#085a6e` → `#0a6e85`, the family every other console solid button already wears); `daily-view-tab.contrast.spec.ts` proves white on that fill |
+| F-2 | the phase-6 e2e run | `class-o-tint-tokens.e2e.ts`'s forced-dark case read the console tints on `html`, where the tourist dark theme now declares them; the daily case assumed a porcelain document under a file that runs on a dark OS scheme | fixed — the class-O case reads the console host (`app-root`), where the pin resolves; the daily case asserts the document's dark |
+| F-4 | the phase-6 e2e re-run (axe, the chip case in the dark console) | The Daily view's tile legend sat on the page below the map card — light ink on the page background, which axe composites as white (the S7924 posture) | fixed — the legend is projected into the map canvas's `canvasFooter` slot, inside the card it decodes; the generalization sweep is a dark axe pass over every console route (`theme-shell.e2e.ts`) |
+| F-5 | the dark-console route sweep (`theme-shell.e2e.ts`, axe on sixteen routes) | The Venue tab's commission chip paints the dark accent ink on the chip tint: 4.21:1 under axe's white-page fiction | fixed — the console's dark accent ink is one step lighter than the tourist accent's (`#a3e3f0`, not `#7cd7e8`); `venue-tab.contrast.spec.ts` pins the chip pair over the stops and over a white page |
+| F-6 | the dark-console route sweep | The Payouts tab's footnote sat on the page below the ledger card, light ink on the page background | fixed — the footnote moved inside the ledger card |
+| F-3 | the whole unit suite (`npm test`) | two positive "still painted here" lists (`fixed-fill-token-skins`, `solid-fill-tokens`) named the pending-approval banner's `rgba(240,170,46,0.14)` and the editors' `#0a5f74` rings, which the restyle moved onto `--riv-warn-edge` and `--riv-accent-ink` | fixed — the rows retired with a one-line note each; the lists stay non-empty |
 
 ---
 
@@ -357,7 +364,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/console-shell.contrast.spec.ts`
 - `frontend/playwright.a11y.config.ts` — the `console-dark` project.
 - `frontend/e2e/operator-daily.e2e.ts` · `operator-requests.e2e.ts` · `layout-editor.e2e.ts` · `theme-shell.e2e.ts`
-- `frontend/e2e/support/shell.ts` — `expectThemedPaint(page, locator, property, porcelain, dark)` if the three files would otherwise repeat the probe.
+- `frontend/e2e/support/console-theme.ts` — the console theme per project, the `color-mix()` probe (shared with `class-o-tint-tokens.e2e.ts`), the per-theme ink strings, `expectInsetFill`.
+- `frontend/e2e/class-o-tint-tokens.e2e.ts` — imports the shared probe; its forced-dark case reads the console host.
+- `frontend/src/app/shared/fixed-fill-token-skins.contrast.spec.ts` · `solid-fill-tokens.contrast.spec.ts` — the "still painted here" lists lose the rows the restyle moved.
+- `frontend/src/app/shared/beach-map-canvas.contrast.spec.ts` · `frontend/src/app/venue/venue-map.contrast.spec.ts` — headers: "porcelain-pinned operator surface" retold.
 
 ---
 
@@ -426,7 +436,7 @@ create `testing/console-themes.ts`, `operator/console-literal-sweep.spec.ts`; th
 
 **Files:** `playwright.a11y.config.ts`, the three tab files, `theme-shell.e2e.ts`, `support/shell.ts`.
 
-- [x] **Steps 1–4** — AC-4's three cases (one test each, run under `chromium` expecting porcelain's paint and under the new `console-dark` project expecting dark's, the project seeding `riviera-console-theme=dark` through its `storageState` and filtered by `grep: /dark console/`), AC-5's chip case and AC-6's amended pin case in `theme-shell.e2e.ts`; `e2e/support/console-theme.ts` holds the probe (the class-O e2e now imports it) and the per-theme ink strings. The e2e ran after phases 1–5, so these cases prove the shipped behaviour rather than fail first (their red halves are the unit specs of phases 2–5): `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts operator-daily operator-requests layout-editor theme-shell class-o-tint-tokens` → 49/49 (1.7 min), the three dark cases among them.
+- [x] **Steps 1–4** — AC-4's three cases (one test each, run under `chromium` expecting porcelain's paint and under the new `console-dark` project expecting dark's, the project seeding `riviera-console-theme=dark` through its `storageState` and filtered by `grep: /dark console/`), AC-5's chip case and AC-6's amended pin case in `theme-shell.e2e.ts`; `e2e/support/console-theme.ts` holds the probe (the class-O e2e now imports it) and the per-theme ink strings. The e2e ran after phases 1–5, so these cases prove the shipped behaviour rather than fail first (their red halves are the unit specs of phases 2–5): `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts operator-daily operator-requests layout-editor theme-shell class-o-tint-tokens` → the first run reported 49 passed and **4 failed** (the summary line was misread as green when phase 6 was recorded; corrected here): F-1's axe finding, F-2's two premises, and the same daily case under both projects. All three fixed under F-1/F-2 and re-run green before phase 7.
 - [x] **Step 5: Generalization-audit pass** — the log's phase-6 row.
 - [x] **Step 6: Commit** — `Prove the dark console in the mocked e2e: a seeded project, the switch, no tourist leak (#1010)`.
 - [x] **Step 7: Update plan-doc execution status.**

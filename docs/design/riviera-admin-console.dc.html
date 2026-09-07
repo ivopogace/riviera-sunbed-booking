@@ -253,6 +253,7 @@
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
           <span class="riv-header-id" style="font-size:13px;color:rgba(12,42,51,0.6);">Signed in as <strong style="color:#0a2a33;">{{ adminName }}</strong><sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ true }}"><span style="margin-left:7px;display:inline-flex;font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#0a4f5e;background:rgba(43,184,212,0.16);border:1px solid rgba(14,138,168,0.35);border-radius:999px;padding:2px 8px;">Admin</span></sc-if></span>
           <a href="riviera-operator-console-v2.dc.html" style="font-size:13px;font-weight:600;color:#0a4f5e;text-decoration:none;background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.75);border-radius:999px;padding:7px 15px;">Operator console &rarr;</a>
+          <!-- as-built diverges — see #1010 (epic #1006, slice 7): the account chip's popover carries a Console theme group (Porcelain · Dark, aria-pressed) before Sign out, and the admin console repaints dark on the operator's choice -->
           <button onClick="{{ onSignOut }}" style="font:inherit;font-size:13px;font-weight:600;color:#0a2a33;cursor:pointer;background:rgba(12,42,51,0.05);border:1px solid rgba(12,42,51,0.14);border-radius:999px;padding:7px 15px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4);">Sign out</button>
         </div>
       </sc-if>

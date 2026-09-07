@@ -162,11 +162,12 @@ export const DARK_POP_HOVER: Glass = { color: WHITE, alpha: 0.08 };
  *  takings, owed/net payout figures, the commission chip and the per-tab "Saved" notices.
  *  Its own token despite sharing a value with `SOLID_FILL_BRAND` (a fill under fixed white ink)
  *  and `--riv-pop-accent` (the popover accent, which themes to DARK_POP_ACCENT above) — same
- *  value, three roles. Themed since the console gained its dark theme: the dark value is the accent
- *  family's light teal, AA over the dark card. Full reasoning sits at the declaration in
- *  `tailwind.css`. Guarded by `operator/console-accent-token.contrast.spec.ts`. */
+ *  value, three roles. Themed since the console gained its dark theme: the dark value is a light
+ *  teal one step lighter than the tourist accent's (`#7cd7e8` reads 4.2:1 on the chip tint under
+ *  axe's white-page fiction). Full reasoning sits at the declaration in `tailwind.css`. Guarded by
+ *  `operator/console-accent-token.contrast.spec.ts`. */
 export const CONSOLE_ACCENT_INK: Rgb = hexToRgb('0a6e85');
-export const DARK_CONSOLE_ACCENT_INK: Rgb = hexToRgb('7cd7e8');
+export const DARK_CONSOLE_ACCENT_INK: Rgb = hexToRgb('a3e3f0');
 
 /** `--riv-console-negative-ink` — the operator console's negative ink: the reversal net
  *  and its reason chip on the Payouts tab, the failed-check-in notice on the Daily view. The

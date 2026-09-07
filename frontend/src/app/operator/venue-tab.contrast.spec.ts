@@ -1,4 +1,4 @@
-import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
+import { AA_NORMAL, Rgb, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   ACCENT_CHIP_FILL,
   ACCENT_INK,
@@ -9,6 +9,7 @@ import {
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
+  WHITE,
   expectAaOverStops,
   surfaceOver,
   WARN_EDGE,
@@ -108,6 +109,19 @@ describe.each(CONSOLE_THEMES)(
     it('the commission % and the Saved notice (--riv-console-accent-ink) and the error ink meet AA on the card glass', () => {
       expectAaOnSurfaces(theme, theme.accentInk, 1, (stop) => cardOver(theme, stop));
       expectAaOnSurfaces(theme, theme.errorInk, 1, (stop) => cardOver(theme, stop));
+    });
+
+    /** The commission chip: the accent ink on the chip tint on the card — over the page stops AND
+     *  over a white page, the surface axe composites a translucent stack onto when it cannot
+     *  resolve the gradient (the S7924 posture the dark card glass was tuned for). */
+    it('the commission chip (--riv-console-accent-ink on --riv-chip-bg) meets AA, on a white page too', () => {
+      const chip = (stop: Rgb) =>
+        composite(theme.chip.color, theme.chip.alpha, cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.accentInk, 1, chip);
+      expect(
+        contrastRatio(rgbToHex(theme.accentInk), rgbToHex(chip(WHITE))),
+        `${theme.name}: the chip on a white page`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
     });
 
     it('the photo Remove button (--riv-error-ink on the inset/50) and the caption buttons (card ink on the inset/70) meet AA', () => {

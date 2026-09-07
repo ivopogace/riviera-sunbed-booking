@@ -120,9 +120,7 @@ const FILL_ROLES = [
  */
 const SURVIVORS: readonly (readonly [string, string])[] = [
   // `#0a6e85`'s eight console-ink rows left with #848 — see this list's header.
-  // `#0a5f74` as two selection `ring-`s and the dialog head's gradient stop.
-  ['operator/set-editor.html', '#0a5f74'],
-  ['operator/layout-editor.html', '#0a5f74'],
+  // `#0a5f74` as the dialog head's gradient stop (the editors' selection rings moved onto the themed `--riv-accent-ink`).
   ['booking/booking-dialog.ts', '#0a5f74'],
   // `#a3160e`'s four class-O rows left with #852 — see this list's header.
 ];

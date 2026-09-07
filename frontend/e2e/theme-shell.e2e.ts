@@ -3,9 +3,11 @@ import { expect, test } from '@playwright/test';
 import { mockWholeAdminConsole } from './support/admin-console.mocks';
 import { mockOwnedVenues } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { settle } from './support/booking-dialog';
 import { mockWholeConsole } from './support/operator-console.mocks';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 import {
+  awaitRoutedPage,
   openAccountMenu as openMenu,
   openOperatorAccountMenu,
   openShellOverlay,
@@ -433,6 +435,49 @@ test.describe('console routes under a tourist theme', () => {
       localStorage.removeItem('riviera-theme');
       localStorage.removeItem('riviera-console-theme');
     });
+  });
+
+  /** Every console route under the dark console: the sweep the Daily view's page-level legend fell
+   *  to (light ink on the page, which axe composites as white), run over every tab and page so a
+   *  surface-less text anywhere in the console is found here rather than by an operator. */
+  test('every console route is axe clean in the dark console (#1010)', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('riviera-console-theme', 'dark'));
+    await mockWholeConsole(page);
+    await mockWholeAdminConsole(page);
+    await mockOwnedVenues(page, [
+      { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
+      { id: 2, name: 'Sunset Lido', beach: 'Dhërmi' },
+    ]);
+    await new OperatorSignInPage(page).goto('/operator/1/daily');
+    await new OperatorSignInPage(page).signIn('operator', 'admin-pw');
+
+    const paths = [
+      '/operator/1/daily',
+      '/operator/1/requests',
+      '/operator/1/beach-map',
+      '/operator/1/pricing',
+      '/operator/1/venue',
+      '/operator/1/payouts',
+      '/admin',
+      '/admin/email',
+      '/admin/refunds',
+      '/admin/photos',
+      '/admin/reviews',
+      '/admin/commissions',
+      '/admin/privacy',
+      '/admin/audit',
+      '/operator',
+      '/account/operator-password',
+    ];
+    for (const path of paths) {
+      await page.goto(path);
+      await awaitRoutedPage(page);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('app-root')).toHaveAttribute('data-riv-theme', 'dark');
+      await settle(page);
+      await expectNoSeriousAxeViolations(page, `${path} in the dark console`);
+    }
+    await page.evaluate(() => localStorage.removeItem('riviera-console-theme'));
   });
 
   test("the account chip's Dark row flips the console host only, survives a reload, and Porcelain flips it back (#1010)", async ({

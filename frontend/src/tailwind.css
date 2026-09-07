@@ -401,9 +401,10 @@
       either would route this ink through a variable another family's theme blocks override.
 
       Themed in exactly two blocks: this porcelain value and a dark one, since the console
-      pin became the operator's own porcelain-or-dark choice. The dark value is the accent family's
-      light teal, AA over the dark card; a `riviera` declaration would be a third theme the console
-      never wears, and the guard fails on one.
+      pin became the operator's own porcelain-or-dark choice. The dark value is a light teal one
+      step lighter than the tourist accent's, AA over the dark card AND over the chip tint on it; a
+      `riviera` declaration would be a third theme the console never wears, and the guard fails on
+      one.
       Proof: operator/console-accent-token.contrast.spec.ts (the two-declaration guard, the only
       thing able to see a stray override) + the operator *.contrast.spec.ts AA proofs in both
       console themes + console-accent-ink.e2e.ts.
@@ -1037,7 +1038,8 @@
       AA-proven in both console themes by the console *.contrast.spec.ts files off
       testing/console-themes.ts, and the guards named at each base declaration hold the pair to
       exactly two blocks. */
-  --riv-console-accent-ink: #7cd7e8;
+  /* A step lighter than the tourist accent's #7cd7e8: the console also paints this on the chip tint, where axe's white-page fiction wants the margin. */
+  --riv-console-accent-ink: #a3e3f0;
   --riv-console-negative-ink: #ffa9a1;
   --riv-console-tint: #ffffff;
   --riv-console-inset: #020a16;
