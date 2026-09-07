@@ -1,50 +1,27 @@
-import { Component, ElementRef, computed, effect, inject, signal, untracked } from '@angular/core';
-import { OperatorAccountChip } from './operator-account-chip';
-import { OperatorVenueSwitch } from './operator-venue-switch';
-import { LegalFooter } from '../shared/legal-footer';
-import {
-  ActivatedRoute,
-  Router,
-  RouterLink,
-  RouterLinkActive,
-  RouterOutlet,
-} from '@angular/router';
+import { Component, effect, inject, signal, untracked } from '@angular/core';
+import { ActivatedRoute, RouterLink, RouterOutlet } from '@angular/router';
 import { Observable } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { todayBookingDate } from '../shared/booking-date';
-import { currentUrl } from '../shared/current-url';
 import { venueIdParam } from '../shared/parent-venue-id';
 import { VenueMapView } from '../shared/venue-views';
-import { TAB_RAIL_MATCH, TabRail, TabRailDivider, TabRailTab } from '../shared/tab-rail';
-import { TouchTarget } from '../shared/touch-target';
 import { ConsoleStatsStrip } from './console-stats-strip';
 import { ConsoleVenueMap } from './console-venue-map';
 import { OperatorConsoleService } from './operator-console.service';
 import { PendingApprovalBanner } from './pending-approval-banner';
 import { PendingRequestsStore } from './pending-requests-store';
 
-/** A console tab: its child-route path, its label, whether a group divider precedes it on the
- *  rail, and whether it carries the live Requests badge. */
-interface ConsoleTab {
-  readonly path: string;
-  readonly label: string;
-  readonly dividerBefore?: boolean;
-  readonly badge?: boolean;
-}
-
 /**
- * Operator console shell. The porcelain-light glass chrome that
- * wraps the operator surface at `/operator/:venueId`: a sticky header (Operator wordmark, the venue
- * name — the venue switcher, `operator-venue-switch.ts` — and the account chip) and the tab rail
- * (`shared/tab-rail.ts`) with a live Requests badge, hosting each tab as a child route. The app shell (`app.ts`) suppresses all of its own chrome for
- * `/operator/:venueId` (`data.operatorConsole`), so this component owns the full viewport — every
- * other operator surface wears the shared operator chrome instead (`data.operatorChrome`).
- *
- * <p><strong>Always porcelain</strong>: the `data-riv-theme="porcelain"` host attribute re-scopes the
- * `--riv-*` tokens for the console subtree WITHOUT writing the document-level theme — so a tourist who
- * chose the dark `riviera` theme still sees a light console, and their choice is preserved on return.
- * The console never injects `ThemeService` and exposes no theme switcher.
+ * The venue console's page at `/operator/:venueId`: the stats strip, the pending-approval banner
+ * and the tab outlet, hosting each tab as a child route. Its chrome — the section row with the
+ * venue switcher and the account chip, the six-tab rail with the live Requests badge, the footer
+ * and the porcelain pin — is the console shell's (`console-shell.ts`), which the app shell wears
+ * for every route carrying `data.console`; this component publishes nothing to it. What it does
+ * own is the per-venue seeding: the shared venue-map snapshot the strip's Free-today tile reads
+ * (the shell reads the same snapshot for the venue name, so the two cost one request) and the
+ * Requests badge count (`PendingRequestsStore`, which the shell renders and the Requests tab keeps
+ * live).
  *
  * <p>It carries <strong>no sign-in gate</strong>: {@code operatorSessionGuard} owns
  * that, and because the guard awaits the session restore before deciding, the console needs no
@@ -52,66 +29,23 @@ interface ConsoleTab {
  */
 @Component({
   selector: 'app-operator-console',
-  imports: [
-    OperatorAccountChip,
-    OperatorVenueSwitch,
-    LegalFooter,
-    RouterOutlet,
-    RouterLink,
-    RouterLinkActive,
-    ConsoleStatsStrip,
-    PendingApprovalBanner,
-    TabRail,
-    TabRailTab,
-    TabRailDivider,
-    TouchTarget,
-  ],
+  imports: [RouterOutlet, RouterLink, ConsoleStatsStrip, PendingApprovalBanner],
   templateUrl: './operator-console.html',
-  host: {
-    'data-riv-theme': 'porcelain',
-    class: 'block min-h-full bg-(image:--riv-bg) text-riv-ink font-riv',
-  },
+  host: { class: 'block' },
 })
 export class OperatorConsole {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly venueMap = inject(ConsoleVenueMap);
   private readonly console = inject(OperatorConsoleService);
   private readonly requests = inject(PendingRequestsStore);
-  protected readonly operator = inject(OperatorAuth);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly operator = inject(OperatorAuth);
 
   /** The venue this console manages — reactive to in-place `:venueId` changes: the router
    *  reuses this instance when only the param differs, so a snapshot read would pin the old venue. */
   protected readonly venueId = venueIdParam(this.route);
-  private readonly url = currentUrl(this.router);
-  /** The open section's path, for the venue switcher to keep across a switch; the console's index
-   *  redirect (`beach-map`) before any child has settled. */
-  protected readonly section = computed(
-    () => /^\/operator\/\d+\/([^/?#;]+)/.exec(this.url())?.[1] ?? 'beach-map',
-  );
 
-  /** The six console sections, Today first and grouped — what a running venue opens every day,
-   *  then set-up, then money (the console-nav spike's grill, answer 7); only Requests carries the
-   *  live badge. */
-  protected readonly tabs: readonly ConsoleTab[] = [
-    { path: 'daily', label: 'Daily view' },
-    { path: 'requests', label: 'Requests', badge: true },
-    { path: 'beach-map', label: 'Beach map', dividerBefore: true },
-    { path: 'pricing', label: 'Pricing' },
-    { path: 'venue', label: 'Venue & commodities' },
-    { path: 'payouts', label: 'Payouts', dividerBefore: true },
-  ];
-  protected readonly match = TAB_RAIL_MATCH;
-
-  /** The venue name shown in the header, from the public venue read (best-effort). */
-  protected readonly venueName = signal<string | undefined>(undefined);
-  /** The venue map loaded per venue for the header, shared with the stats strip for its free/total tile. */
+  /** The venue map loaded per venue for the stats strip's free/total tile. */
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
-  /** The live pending-request count for the Requests tab badge — the shared store the Requests tab
-   *  writes after every accept/decline, so the badge stays in sync with the queue. The shell
-   *  seeds it from its own count read below; a failed read leaves it at 0 (no badge). */
-  protected readonly requestsCount = this.requests.count;
   /** Bumped per venue context: an identity guard — a venueId value check passes again
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
@@ -126,35 +60,21 @@ export class OperatorConsole {
     });
   }
 
-  protected async onSignOut(): Promise<void> {
-    // Park focus on the console's <main> before the chip unmounts (WCAG 2.4.3) — signOut() destroys it.
-    this.host.nativeElement.querySelector<HTMLElement>('main')?.focus();
-    await this.operator.signOut();
-    this.venueName.set(undefined);
-    this.venue.set(undefined);
-    this.venueMap.reset(); // it outlives this component — the next operator must not inherit it
-    this.requests.reset();
-    // The guard gates on ACTIVATION, so leave ourselves rather than sit on a dead session.
-    await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });
-  }
-
   /**
-   * Load the header's venue title + the Requests badge count. Both are best-effort: a failed read
-   * leaves the fallback title / no badge and never blocks the shell.
+   * Load the strip's venue map + the Requests badge count. Both are best-effort: a failed read
+   * leaves the strip's fallback / no badge and never blocks the page.
    */
   private load(venueId: number): void {
     const epoch = ++this.epoch;
-    // A venue switch reuses this instance — drop the old name/map while the new one loads.
-    this.venueName.set(undefined);
+    // A venue switch reuses this instance — drop the old map while the new one loads.
     this.venue.set(undefined);
     // Fresh load starts the badge at 0, so a slow/failed seed never shows a stale count — nor
     // one leaked from a previously-managed venue (the store is a root singleton). The Requests tab, once
-    // visited, takes authority over this store via `set`; the shell only ever seeds it.
+    // visited, takes authority over this store via `set`; this page only ever seeds it.
     this.requests.reset();
     // Continuations re-check the venue so a superseded venue's reads never land here.
     this.bestEffort(this.venueMap.load(venueId, todayBookingDate(new Date())), (venue) => {
       if (this.epoch === epoch) {
-        this.venueName.set(venue.name);
         this.venue.set(venue);
       }
     });
@@ -170,7 +90,7 @@ export class OperatorConsole {
     source.subscribe({
       next: apply,
       error: () => {
-        // best-effort — the console still works with the fallback title / no badge
+        // best-effort — the page still works with the strip's fallback / no badge
       },
     });
   }

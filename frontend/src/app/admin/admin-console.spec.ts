@@ -172,11 +172,21 @@ describe('AdminConsole', () => {
     expect((fixture.nativeElement as HTMLElement).querySelector('nav')).toBeNull();
   });
 
-  it("shows the tab strip and the active child's content once authorized", async () => {
+  it("renders no tab strip of its own — the shell wears it — and the active child's content once authorized (#1011)", async () => {
     const fixture = await renderAt('/admin', authStub());
 
-    expect((fixture.nativeElement as HTMLElement).querySelector('nav')).not.toBeNull();
+    expect((fixture.nativeElement as HTMLElement).querySelector('nav')).toBeNull();
     expect(byTestId(fixture, 'stub-a-content')?.textContent).toBe('Tab A content');
+  });
+
+  it('carries no porcelain pin of its own — the app shell pins every console route (#1011)', async () => {
+    const fixture = await renderAt('/admin', authStub());
+
+    expect(
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('app-admin-console')
+        ?.getAttribute('data-riv-theme'),
+    ).toBeNull();
   });
 
   it('switches the rendered title, gate id and content to match the newly active tab', async () => {

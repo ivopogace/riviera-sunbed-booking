@@ -1,5 +1,5 @@
 @if (venueId() === undefined) {
-  <main class="oc-signin mx-auto w-full max-w-[440px] px-6 py-[72px]">
+  <section class="oc-signin mx-auto w-full max-w-[440px] px-6 py-[72px]">
     <div
       class="oc-signin-card flex flex-col gap-3.5 rounded-[22px] border border-riv-console-card-border bg-white px-[26px] py-7 shadow-[0_20px_50px_rgba(7,42,58,0.14)]"
       data-testid="oc-invalid-venue-card"
@@ -20,85 +20,14 @@
         >.
       </p>
     </div>
-  </main>
+  </section>
 } @else {
-  <!-- No sign-in gate here: operatorSessionGuard owns it and awaits the session restore, so this shell only renders signed-in. -->
-  <div class="oc-shell flex min-h-screen flex-col">
-    <header
-      class="oc-header sticky top-0 z-20 border-b border-b-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7]"
-      data-testid="oc-header"
-    >
-      <!-- relative: the venue switcher's popover anchors to this row, left-aligned with the brand. -->
-      <div
-        class="oc-header-inner relative mx-auto flex max-w-[1120px] items-center justify-between gap-4 px-6 py-3"
-      >
-        <div class="oc-brand flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
-          <span
-            class="oc-wordmark shrink-0 text-[19px] leading-[1.15] font-bold tracking-[-0.01em] text-riv-ink"
-            >Riviera
-            <span class="oc-wordmark-op font-medium text-riv-ink-soft max-sm:hidden"
-              >Operator</span
-            ></span
-          >
-          <app-operator-venue-switch
-            [venueId]="venueId()!"
-            [venueName]="venueName()"
-            [section]="section()"
-          />
-        </div>
-        <div class="oc-header-right flex shrink-0 items-center gap-3.5">
-          <app-operator-account-chip testIdPrefix="oc" (signOut)="onSignOut()" />
-        </div>
-      </div>
-    </header>
+  <!-- No sign-in gate here: operatorSessionGuard owns it and awaits the session restore, so this page only renders signed-in. -->
+  <app-console-stats-strip [venueId]="venueId()!" [venue]="venue()" />
 
-    <app-console-stats-strip [venueId]="venueId()!" [venue]="venue()" />
-
-    <nav
-      appTabRail
-      class="oc-tabs mx-auto max-w-[1120px] px-6 pt-3.5 scroll-px-6"
-      data-testid="oc-tabs"
-      aria-label="Operator console sections"
-    >
-      @for (tab of tabs; track tab.path) {
-        @if (tab.dividerBefore) {
-          <span appTabRailDivider></span>
-        }
-        <a
-          appTabRailTab
-          appTouchTarget
-          [routerLink]="['/operator', venueId(), tab.path]"
-          routerLinkActive
-          [routerLinkActiveOptions]="match"
-          ariaCurrentWhenActive="page"
-        >
-          {{ tab.label }}
-          @if (tab.badge && requestsCount() > 0) {
-            <span
-              class="oc-badge inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-riv-solid-fill-brand px-1.5 text-[11.5px] font-bold leading-none text-white"
-              data-testid="oc-requests-badge"
-              >{{ requestsCount() }}</span
-            >
-          }
-        </a>
-      }
-    </nav>
-
-    <!-- Wider than the 1120px header/tabs/footer so the beach-map tab's grid can fit-to-width (#709); every other tab's own narrower section max-width keeps it visually unchanged. -->
-    <!-- tabindex=-1: sign-out parks keyboard/AT focus here before the chip unmounts, not on document.body. -->
-    <main tabindex="-1" class="oc-main mx-auto w-full max-w-[1300px] flex-1 px-6 pt-5 pb-10">
-      <app-pending-approval-banner />
-      <router-outlet />
-    </main>
-
-    <footer
-      class="border-t border-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7]"
-      data-testid="oc-footer"
-    >
-      <div
-        appLegalFooter
-        class="mx-auto max-w-[1120px] px-6 py-4 text-[13px] text-riv-ink-soft"
-      ></div>
-    </footer>
+  <!-- Wider than the 1120px shell rows so the beach-map tab's grid can fit-to-width; every other tab's own narrower section max-width keeps it visually unchanged. -->
+  <div class="oc-main mx-auto w-full max-w-[1300px] px-6 pt-5 pb-10">
+    <app-pending-approval-banner />
+    <router-outlet />
   </div>
 }

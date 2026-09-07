@@ -388,23 +388,24 @@
   --riv-solid-fill-danger: #a3160e;
   --riv-solid-fill-warn: #9a6410;
 
-  /** The operator console's ACCENT INK (#848): prices, projected takings, the owed/net payout
+  /** The operator console's ACCENT INK: prices, projected takings, the owed/net payout
       figures, the commission chip and the per-tab "Saved" notices — twelve positions across eight
       console files.
 
       Its own token, NOT a reuse, although `--riv-pop-accent` (the popover accent) and
-      `--riv-solid-fill-brand` (a FILL under fixed white ink, #854/#861) carry this exact value.
+      `--riv-solid-fill-brand` (a FILL under fixed white ink) carry this exact value.
       Same value, three roles: `@theme inline` resolves a utility at the point of use, so reusing
       either would route this ink through a variable another family's theme blocks override.
 
       Declared ONCE, with no dark counterpart: all twelve sites are children of `operator-console`,
-      whose host pins porcelain, so a dark branch is unreachable and a dark value would be an
-      unverifiable claim. (#855 could reuse the THEMED --riv-error-ink because that token also
-      paints tourist surfaces, where its dark branch IS reachable.)
+      whose routes the app shell pins porcelain, so a dark branch is unreachable and a dark value
+      would be an unverifiable claim. (The operator error ink could reuse the THEMED
+      --riv-error-ink because that token also paints tourist surfaces, where its dark branch IS
+      reachable.)
       Proof: operator/console-accent-token.contrast.spec.ts (the single-declaration guard, the only
       thing able to see a dark override) + the six operator *.contrast.spec.ts AA proofs +
       console-accent-ink.e2e.ts.
-      Rationale: issue #848. */
+      Rationale: docs/design/colour-literal-token-audit.md § class R. */
   --riv-console-accent-ink: #0a6e85;
 
   /** The operator console's NEGATIVE ink — the reversal net and its reason chip on the Payouts
@@ -414,7 +415,7 @@
 
       Its own token, NOT a reuse, although --riv-solid-btn-danger-ink carries this exact value and
       is itself theme-invariant, so the substitution would resolve correctly and look free. It is
-      not: that is the outline BUTTON's ink, pinned to the button's own fixed #f4f6f7 fill (#851).
+      not: that is the outline BUTTON's ink, pinned to the button's own fixed #f4f6f7 fill.
       `@theme inline` resolves a utility at the point of use, so reusing it would route these
       console inks through the variable the button skin owns, and Angular's emulated encapsulation
       scopes no custom property that would keep the two apart. Named `negative`, not `danger`,
@@ -423,22 +424,22 @@
       The themed reds are not the answer either: #ffa9a1 over this card glass measures 1.84:1.
 
       Declared ONCE, with no dark counterpart: all three sites are children of `operator-console`,
-      whose host pins porcelain, so a dark branch is unreachable and a dark value would be an
+      whose routes the app shell pins porcelain, so a dark branch is unreachable and a dark value would be an
       unverifiable claim.
       Proof: operator/console-negative-token.contrast.spec.ts (the single-declaration guard, the
       only thing able to see a dark override) + payouts-tab.contrast.spec.ts's AA proofs for the
       chip tint, the lowest pair at 5.05:1 + console-negative-ink.e2e.ts.
-      Rationale: issue #864. */
+      Rationale: docs/design/colour-literal-token-audit.md § class R. */
   --riv-console-negative-ink: #a3372a;
 
-  /** The CLASS-O TINT tokens (#852) — the base colour behind any colour position that carries
+  /** The CLASS-O TINT tokens — the base colour behind any colour position that carries
       Tailwind's `/opacity` modifier. Consumed as `bg-riv-<token>/<alpha>`: the modifier stays at
       the CALL SITE and only the literal inside it is a token, so one token serves every alpha and
       no alpha is baked in. Adding a `/opacity` position of a NEW colour means adding a token here,
       not a literal — a standing test fails on any literal of that form.
 
       All THEME-INVARIANT, each declared once: every consumer is either a child of
-      `operator-console`, whose host pins porcelain, or sits on a fixed-white panel, so a dark
+      `operator-console`, whose routes the app shell pins porcelain, or sits on a fixed-white panel, so a dark
       branch is unreachable and a dark value would be an unverifiable claim.
 
       WARNING before using one on a surface where an opaque fallback would be harmful: for a
@@ -451,7 +452,7 @@
       row, and the tree-wide literal sweep) + e2e/class-o-tint-tokens.e2e.ts (the real paint,
       incl. a forced dark document).
       Rationale, and the measurement that settled the rule: docs/design/colour-literal-token-audit.md
-      § Class O, issue #852.
+      § Class O.
 
       --riv-console-tint is the console's neutral tint base: hairlines, inset fills and the
       set-editor's mobile sheet backdrop. It is the rgba base of --riv-ink-soft/--riv-ink-faint,
@@ -562,13 +563,13 @@
     color-mix(in oklab, var(--riv-console-tint) 10%, transparent) 3px 6px
   );
 
-  /** The OUTCOME MEDALLION (#858, class F-3) — the round, centred, `aria-hidden` glyph that a
+  /** The OUTCOME MEDALLION (class F-3) — the round, centred, `aria-hidden` glyph that a
       landed booking state renders: booking-confirmation's ✓, booking-pay's ✓/⏳/✕,
       request-confirmation's ✉, appFailureIcon's ⚠ or 🏖 and outcome-card's ✓/⏳. Three states, one
       form. The glyph is per site and carries no meaning — every one is aria-hidden.
 
       Grouped by FORM, not by value — the --riv-solid-fill-* precedent, and here the alternative was
-      actively wrong: the six inks #858 enumerated carry two values across three different forms
+      actively wrong: the six inks the audit enumerated carry two values across three different forms
       (this medallion, the amenity chip, the dialog's step badge), so a value-led cut would have
       merged three roles and split this one. Within the form the unit is the whole per-state class
       TERNARY: booking-pay's single [class] expression carries the amber waiting state beside the
@@ -577,11 +578,11 @@
 
       Theme-invariant BY DESIGN, as three PAIRS — the same call as --riv-form-error-* and
       --riv-solid-btn-* above, and for the same reason: the fills are fixed and every host DOES
-      theme (no medallion site pins porcelain; the only data-riv-theme host bindings in the tree are
-      the admin and operator consoles). Measured, not assumed: the themed --riv-accent-ink resolves
-      #7cd7e8 at 1.41:1 over the positive fill, and --riv-error-ink resolves #ffa9a1 at 1.54:1 over
-      the negative fill — the very number #850 measured on its own family — and 1.63:1 over the
-      waiting fill. The shipped pairs are 6.20 / 5.54 / 5.62:1.
+      theme (no medallion site sits on a pinned route; the one data-riv-theme host binding in the
+      tree is the app shell's, on the operator and admin console routes). Measured, not assumed:
+      the themed --riv-accent-ink resolves #7cd7e8 at 1.41:1 over the positive fill, and
+      --riv-error-ink resolves #ffa9a1 at 1.54:1 over the negative fill — the very number the
+      fixed-fill family measured on its own — and 1.63:1 over the waiting fill. The shipped pairs are 6.20 / 5.54 / 5.62:1.
 
       No site owes an AA assertion: every glyph is aria-hidden, with the meaning on the
       neighbouring heading or label, so the ratios above are a floor these values happen to clear.
@@ -592,21 +593,20 @@
       Do NOT reach for a coincidental token for any of the three. --riv-accent-ink IS #0a5f74's
       neighbourhood and themes; --riv-solid-btn-danger-ink and --riv-console-negative-ink ARE
       #a3372a and are theme-invariant, which makes them look free — but they are the outline
-      BUTTON's ink on its own #f4f6f7 fill (#851) and the operator console's ink on card glass
-      (#864). Same value, different role, different surface: the class-R trap #848 and #864 were
-      each re-cut around.
+      BUTTON's ink on its own #f4f6f7 fill and the operator console's ink on card glass. Same
+      value, different role, different surface: the class-R trap the earlier re-cuts each worked
+      around.
 
       The negative state's border is non-text chrome (WCAG 1.4.11) on a decorative glyph, measured
       at 1.24:1 over its own fill — the same measured finding --riv-solid-btn-* records at
       1.06:1/1.90:1, exempt under docs/design/non-text-contrast.md rule 2a (a decorative glyph, not
       a control: the card's heading carries the meaning) and carried across unchanged. The positive and waiting
-      states get no border token: theirs is rgba(255,255,255,0.6), class R's glass border (#853).
+      states get no border token: theirs is rgba(255,255,255,0.6), class R's glass border.
       Proof: shared/fixed-fill-token-skins.contrast.spec.ts (the AA floors, the themed-ink bounds,
       the aria-hidden exemption, and the single-declaration guard that is the only thing able to see
       a later dark override) + e2e/fixed-fill-state-skins.e2e.ts (the computed skin under a forced
-      dark document theme). Rationale: issue #858;
-      the outcome-card medallion convergence; docs/design/colour-literal-token-audit.md
-      §F-3, §F-5 (why these values and not the artboards' tints, and what converging cost). */
+      dark document theme). Rationale: the outcome-card medallion convergence,
+      docs/design/colour-literal-token-audit.md §F-3, §F-5 (why these values and not the artboards' tints, and what converging cost). */
   --riv-medallion-positive-fill: #d9f2f7;
   --riv-medallion-positive-ink: #0a5f74;
   --riv-medallion-waiting-fill: #fcf0d9;
@@ -827,7 +827,7 @@
 
   /** The operator console's white-surface hairline: the edge of the "Venue not found" card. Its
       own token, not the same-valued --riv-pop-divider / --riv-chip-border, whose roles and theme
-      overrides are different. Declared once — every consumer sits under a porcelain-pinned host.
+      overrides are different. Declared once — every consumer sits under the app shell's porcelain pin.
       Non-text chrome at 1.21:1 over its white fill; the card's edge is outside 1.4.11 rather than
       exempt under it (docs/design/non-text-contrast.md). Its sibling --riv-console-btn-border and
       the hover fill --riv-console-btn-hover retired with the sign-out pill they bounded, when the

@@ -2,7 +2,7 @@ import { expect, Locator, Page } from '@playwright/test';
 
 /**
  * Helpers for the shell's overlays — the find-a-booking modal, the theme picker, the phone tab
- * bar's sheet, and the signed-in account disclosure.
+ * bar's sheet, the signed-in account disclosure, and the console shell's account chip.
  *
  * <p>Each opener first waits for the routed page to be in the outlet: `page.goto` resolves on
  * `load`, which a lazily loaded route's chunk may outlive, so without the wait a trigger is clicked
@@ -52,12 +52,11 @@ export async function openFindBooking(page: Page): Promise<Locator> {
 }
 
 /**
- * Opens an operator header's account chip (`oc-*` on the venue console, `opc-*` on the thin
- * chrome) and proves it stayed open — the rows (`<prefix>-signout`, `<prefix>-change-password`, …)
- * exist only while it is.
+ * Opens the console shell's account chip (`oc-*`, the one operator header) and proves it stayed
+ * open — the rows (`oc-signout`, `oc-change-password`, …) exist only while it is.
  */
-export async function openOperatorAccountMenu(page: Page, prefix: 'oc' | 'opc'): Promise<void> {
-  const chip = page.getByTestId(`${prefix}-account`);
+export async function openOperatorAccountMenu(page: Page): Promise<void> {
+  const chip = page.getByTestId('oc-account');
   await chip.click();
   await expect(chip).toHaveAttribute('aria-expanded', 'true');
 }

@@ -638,6 +638,37 @@ test('the paint grid, which cannot be drag-panned, still offers a pointer route 
  * drag gesture is now the batch-select rectangle sweep (#714), so its canvas — like the bulk
  * paint grid's — is no longer drag-pannable and shows the same slim scrollbar affordance instead.
  */
+/** Two rows of twelve — the widest layout the console's 1300px page box must show whole at 1280px. */
+const TWELVE_COLUMNS = Array.from({ length: 24 }, (_, i) => ({
+  id: i + 1,
+  rowLabel: i < 12 ? 'A' : 'B',
+  positionNo: (i % 12) + 1,
+  tier: 'STANDARD',
+  pool: 'ONLINE',
+  price: { minorUnits: 3000, currency: 'EUR' },
+  gridX: (i % 12) + 1,
+  gridY: i < 12 ? 1 : 2,
+  available: true,
+}));
+
+test('fits a twelve-column layout to width at 1280px under the shell (#1011)', async ({ page }) => {
+  await mockEditor(page, false, TWELVE_COLUMNS);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/operator/1');
+  await signIn(page);
+  // A seeded layout opens in per-set mode, on the same fit-to-width canvas.
+  await expect(page.getByTestId('set-cell')).toHaveCount(24);
+
+  // Every column fits the frame: nothing to scroll sideways, and the last column's tile ends inside it.
+  const viewport = page.getByTestId('set-grid');
+  await expect
+    .poll(() => viewport.evaluate((el) => el.scrollWidth - el.clientWidth))
+    .toBeLessThanOrEqual(0);
+  const frame = (await viewport.boundingBox())!;
+  const last = (await page.getByTestId('set-cell').last().boundingBox())!;
+  expect(last.x + last.width).toBeLessThanOrEqual(frame.x + frame.width + 1);
+});
+
 test('Select’s own drag gesture (the sweep) leaves its grid not drag-pannable either', async ({
   page,
 }) => {

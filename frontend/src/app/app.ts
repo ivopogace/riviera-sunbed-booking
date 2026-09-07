@@ -12,11 +12,12 @@ import {
 import { filter } from 'rxjs';
 
 import { FindBooking } from './booking/find-booking';
+import { ConsoleSection, ConsoleShell } from './console-shell';
 import { CustomerAuth } from './core/customer-auth';
 import { SignOutNotice } from './core/sign-out-notice';
 import { ThemeId, ThemeService } from './core/theme';
-import { OperatorChrome } from './operator/operator-chrome';
 import { focusMover } from './shared/focus-after-render';
+import { idParam } from './shared/parent-venue-id';
 import {
   AVATAR,
   CHIP,
@@ -37,8 +38,10 @@ const MOBILE_ITEM = `block w-full rounded-[14px] px-3.5 py-[13px] text-left text
 /** The shell's root box, with and without the phone tab bar's clearance: the bar is 61px tall
  *  (60px tabs + the top border) and pads itself by the home-indicator inset, so the page pads by
  *  both — otherwise the last 61px of every page sit under the bar. Two literals, not a
- *  concatenation: Tailwind generates only classes it can read in the source. */
-const SHELL = 'relative flex min-h-screen flex-col';
+ *  concatenation: Tailwind generates only classes it can read in the source. `text-riv-ink`
+ *  re-resolves the ink under the console routes' porcelain pin — `body` resolves it once under
+ *  the document theme, so an inheriting element would keep a dark theme's white ink there. */
+const SHELL = 'relative flex min-h-screen flex-col text-riv-ink';
 const SHELL_WITH_TAB_BAR = `${SHELL} max-sm:pb-[calc(61px+env(safe-area-inset-bottom))]`;
 
 /**
@@ -99,8 +102,10 @@ export interface TouristRouteData {
 
 /** The active route's chrome flags — see {@link App.routeChrome}. */
 interface RouteChrome {
-  chromeless: boolean;
-  operatorChrome: boolean;
+  /** The leaf-most `data.console` on the chain, or `null` on a route outside the console shell. */
+  console: ConsoleSection | null;
+  /** The leaf-most `:venueId` on the chain that is a positive integer, for the console shell. */
+  venueId: number | undefined;
   /** The leaf-most `data.section` on the chain, or `null` on a route outside every section. */
   section: TouristSection | null;
   /** `false` when any route on the chain carries `data.tabBar: false`. */
@@ -110,8 +115,8 @@ interface RouteChrome {
 /** The chrome before the first navigation completes: the tourist header, footer and tab bar,
  *  with no tab lit. */
 const PRE_NAVIGATION_CHROME: RouteChrome = {
-  chromeless: false,
-  operatorChrome: false,
+  console: null,
+  venueId: undefined,
   section: null,
   tabBar: true,
 };
@@ -119,6 +124,11 @@ const PRE_NAVIGATION_CHROME: RouteChrome = {
 /** Narrows an untyped `data.section` to a {@link TouristSection}; anything else is no section. */
 function sectionOf(data: unknown): TouristSection | null {
   return data === 'beaches' || data === 'bookings' || data === 'account' ? data : null;
+}
+
+/** Narrows an untyped `data.console` to a {@link ConsoleSection}; anything else is no console. */
+function consoleOf(data: unknown): ConsoleSection | null {
+  return data === 'venue' || data === 'admin' || data === 'plain' ? data : null;
 }
 
 /**
@@ -135,14 +145,14 @@ function sectionOf(data: unknown): TouristSection | null {
     RouterLink,
     RouterLinkActive,
     FindBooking,
-    OperatorChrome,
+    ConsoleShell,
     TouchTarget,
   ],
   templateUrl: './app.html',
   host: {
     '(document:keydown.escape)': 'closeMenus()',
-    // Pins the subtree porcelain on operator-chrome routes, whatever tourist theme is selected.
-    '[attr.data-riv-theme]': "shellChrome() === 'operator' ? 'porcelain' : null",
+    // Pins the subtree porcelain on every console route, whatever tourist theme is selected.
+    '[attr.data-riv-theme]': "porcelain() ? 'porcelain' : null",
   },
 })
 export class App {
@@ -210,13 +220,12 @@ export class App {
 
   /**
    * The active route's chrome flags, computed once per successful navigation from a SINGLE
-   * root→leaf walk: `chromeless` (the operator console, `/operator/:venueId`, owns a full-bleed
-   * porcelain shell → all shell chrome is suppressed) and `operatorChrome` (every OTHER
-   * operator/admin surface → the shared porcelain operator header/footer replace the tourist ones,
-   * so an admin is never shown the customer session's "Sign in / Register" while signed in). The
-   * console flag sits on a PARENT route and is not inherited into a child snapshot, so both flags
-   * are OR-ed across the whole chain. {@link PRE_NAVIGATION_CHROME} until the first navigation
-   * completes.
+   * root→leaf walk: `console` (every operator/admin surface — the venue console, the admin
+   * console, the two plain operator pages — names its section, and the console shell replaces the
+   * tourist header, so an admin is never shown the customer session's "Sign in / Register" while
+   * signed in) with the `:venueId` beside it, and the tourist `section` / `tabBar` flags. A flag
+   * sits on a PARENT route and is not inherited into a child snapshot, so the leaf-most value on
+   * the chain wins. {@link PRE_NAVIGATION_CHROME} until the first navigation completes.
    *
    * <p>Keyed on `Router.lastSuccessfulNavigation()`; the `routerState` snapshot it walks is not a
    * signal, and reading it here is safe because the router assigns `routerState` before it
@@ -230,19 +239,27 @@ export class App {
       return PRE_NAVIGATION_CHROME;
     }
     let route = this.router.routerState.snapshot.root;
-    let chromeless = route.data['operatorConsole'] === true;
-    let operatorChrome = route.data['operatorChrome'] === true;
+    let console = consoleOf(route.data['console']);
+    let venueId = idParam(route.paramMap, 'venueId');
     let section = sectionOf(route.data['section']);
     let tabBar = route.data['tabBar'] !== false;
     while (route.firstChild) {
       route = route.firstChild;
-      chromeless ||= route.data['operatorConsole'] === true;
-      operatorChrome ||= route.data['operatorChrome'] === true;
+      console = consoleOf(route.data['console']) ?? console;
+      venueId = idParam(route.paramMap, 'venueId') ?? venueId;
       section = sectionOf(route.data['section']) ?? section;
       tabBar &&= route.data['tabBar'] !== false;
     }
-    return { chromeless, operatorChrome, section, tabBar };
+    return { console, venueId, section, tabBar };
   });
+
+  /** The console section the active route belongs to, `plain` when it carries none — read only
+   *  while {@link shellChrome} is `console`. */
+  protected readonly consoleSection = computed(() => this.routeChrome().console ?? 'plain');
+  /** The venue the console shell is on, off the route chain. */
+  protected readonly consoleVenueId = computed(() => this.routeChrome().venueId);
+  /** Whether the subtree is pinned porcelain: every route under the console shell. */
+  protected readonly porcelain = computed(() => this.shellChrome() === 'console');
 
   /** The bottom tab the active route belongs to, `null` outside every section (legal pages) and
    *  before the first navigation. The Account tab reads it together with the signed-in state. */
@@ -284,15 +301,11 @@ export class App {
   /** The shell root's classes: the tab bar's clearance only while the bar renders (AC 4 / AC 6). */
   protected readonly shellClass = computed(() => (this.tabBar() ? SHELL_WITH_TAB_BAR : SHELL));
 
-  /** Which chrome the shell renders: the tourist header/footer (default), the shared operator
-   *  header/footer, or none at all (the console brings its own). */
-  protected readonly shellChrome = computed(() => {
-    const { chromeless, operatorChrome } = this.routeChrome();
-    if (chromeless) {
-      return 'none';
-    }
-    return operatorChrome ? 'operator' : 'tourist';
-  });
+  /** Which chrome the shell renders: the tourist header (default) or the console shell
+   *  (`data.console`); the background and footer are shared by both. */
+  protected readonly shellChrome = computed((): 'console' | 'tourist' =>
+    this.routeChrome().console === null ? 'tourist' : 'console',
+  );
 
   /**
    * Wires the close-on-navigation rule: a navigation the user set off carries them away from the
@@ -319,7 +332,7 @@ export class App {
    *
    * <p><strong>Precondition of the skip:</strong> a skipped navigation must not destroy the open
    * overlay's markup or its trigger. The popovers render inside `app.html`'s
-   * `@if (shellChrome() === 'tourist')`, so a destination on operator or admin chrome would tear
+   * `@if (shellChrome() === 'tourist')`, so a destination under the console shell would tear
    * them out while their signals stayed true, stranding focus on `document.body`. No tourist-header
    * link targets such a route today. Adding the first one means closing the popovers on the chrome
    * switch, not relying on this rule. The sheet's trigger renders inside `@if (tabBar())`, and a

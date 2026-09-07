@@ -28,26 +28,24 @@
     </div>
   }
 
-  <!-- Three chrome modes: tourist (default), shared operator (data.operatorChrome), none (console). -->
+  <!-- Two chrome modes: tourist (default) and the console shell (data.console); the background and footer serve both. -->
   <!-- Negative z keeps the layer behind unpositioned page content, so <main> needs no stacking context (modals must beat the sticky header). -->
-  @if (shellChrome() !== 'none') {
-    <div
-      class="riv-bg fixed inset-0 z-[-1] overflow-hidden bg-(image:--riv-bg) [transition:background_0.5s_ease]"
-      aria-hidden="true"
-    >
-      @if (shellChrome() === 'tourist') {
-        <span
-          class="riv-blob riv-blob-1 pointer-events-none absolute -top-[120px] -left-20 h-[560px] w-[560px] animate-[riv-drift_18s_ease-in-out_infinite] rounded-full bg-(image:--riv-blob-1) opacity-55 blur-[50px] motion-reduce:animate-none"
-        ></span>
-        <span
-          class="riv-blob riv-blob-2 pointer-events-none absolute -right-[60px] -bottom-40 h-[620px] w-[620px] animate-[riv-drift_22s_ease-in-out_infinite_reverse] rounded-full bg-(image:--riv-blob-2) opacity-50 blur-[55px] motion-reduce:animate-none"
-        ></span>
-      }
-    </div>
-  }
+  <div
+    class="riv-bg fixed inset-0 z-[-1] overflow-hidden bg-(image:--riv-bg) [transition:background_0.5s_ease]"
+    aria-hidden="true"
+  >
+    @if (shellChrome() === 'tourist') {
+      <span
+        class="riv-blob riv-blob-1 pointer-events-none absolute -top-[120px] -left-20 h-[560px] w-[560px] animate-[riv-drift_18s_ease-in-out_infinite] rounded-full bg-(image:--riv-blob-1) opacity-55 blur-[50px] motion-reduce:animate-none"
+      ></span>
+      <span
+        class="riv-blob riv-blob-2 pointer-events-none absolute -right-[60px] -bottom-40 h-[620px] w-[620px] animate-[riv-drift_22s_ease-in-out_infinite_reverse] rounded-full bg-(image:--riv-blob-2) opacity-50 blur-[55px] motion-reduce:animate-none"
+      ></span>
+    }
+  </div>
 
-  @if (shellChrome() === 'operator') {
-    <app-operator-chrome />
+  @if (shellChrome() === 'console') {
+    <app-console-shell [section]="consoleSection()" [venueId]="consoleVenueId()" />
   }
 
   @if (shellChrome() === 'tourist') {
@@ -480,17 +478,15 @@
     <router-outlet />
   </main>
 
-  <!-- Shared by the tourist and operator chromes (tokens re-scope under the porcelain pin). -->
-  @if (shellChrome() !== 'none') {
-    <footer
-      class="riv-footer border-t border-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7]"
-    >
-      <div
-        appLegalFooter
-        class="riv-footer-inner mx-auto max-w-[1080px] px-6 py-4 text-[13px] text-riv-ink-soft"
-      ></div>
-    </footer>
-  }
+  <!-- Shared by the tourist chrome and the console shell (tokens re-scope under the porcelain pin). -->
+  <footer
+    class="riv-footer border-t border-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7]"
+  >
+    <div
+      appLegalFooter
+      class="riv-footer-inner mx-auto max-w-[1080px] px-6 py-4 text-[13px] text-riv-ink-soft"
+    ></div>
+  </footer>
 
   <!-- Find-a-booking glass modal: a shell-level, nav-triggered overlay. -->
   @if (findOpen()) {

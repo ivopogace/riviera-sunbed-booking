@@ -15,15 +15,16 @@ import { VenueService } from '../venue/venue.service';
 const SNAPSHOT_TTL_MS = 30_000;
 
 /**
- * The operator console's shared `(venue, date)` beach-map snapshot. The shell reads the
- * map for its header title and the stats strip's Free-today tile, and two of the tabs rendered inside
- * that shell wanted the byte-identical read — so opening the console on Requests or Pricing fired
- * `GET /api/venues/{id}?date=` **twice**, each transferring every set position and running the
- * server's per-date availability query. This coalesces those asks into one request.
+ * The operator console's shared `(venue, date)` beach-map snapshot. The console shell reads the
+ * map for its header's venue name, the console page for the stats strip's Free-today tile, and two
+ * of the tabs rendered inside that page wanted the byte-identical read — so opening the console on
+ * Requests or Pricing fired `GET /api/venues/{id}?date=` several times, each transferring every set
+ * position and running the server's per-date availability query. This coalesces those asks into
+ * one request.
  *
  * <p><strong>Opt-in per call site, deliberately not a transparent cache inside `VenueService`.</strong>
- * Three of the six `getVenueMap` callers want a shared snapshot (this shell, {@code RequestsTab},
- * {@code PricingTab}); the other three want server truth and keep calling {@link VenueService}
+ * Four of the seven `getVenueMap` callers want a shared snapshot (the console shell, the console
+ * page, {@code RequestsTab}, {@code PricingTab}); the other three want server truth and keep calling {@link VenueService}
  * directly — {@code DailyViewTab} (its post-tap-to-mark reconcile must never render a set the
  * operator just marked as still free), {@code LayoutEditor} (it seeds its grid from the server and
  * re-reads to escape a write conflict), and the tourist beach map (a different feature). A

@@ -5,7 +5,7 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * The operator console's error ink paints from the token registry (#855) — the operator-side
+ * The operator console's error ink paints from the token registry — the operator-side
  * counterpart to `admin-token-inks.e2e.ts` and `accent-token-inks.e2e.ts`.
  *
  * <p><strong>These are guards, not red-first drivers, and deliberately so.</strong> The 32 migrated
@@ -18,11 +18,11 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  * resolved computed style separates that from a working token.
  *
  * <p>The last two tests pin the resolution the whole slice rests on. These 32 sites are safe on a
- * THEMED token (`#a3160e` light, `#ffa9a1` dark) ONLY because their host pins porcelain — so the ink
+ * THEMED token (`#a3160e` light, `#ffa9a1` dark) ONLY because the app shell pins their routes porcelain — so the ink
  * must survive a `dark` DOCUMENT theme. The unit contrast specs prove porcelain and cannot see this.
  * Both hosts are driven, because `operator-console.ts` and `operator-home.ts` pin porcelain through
  * two SEPARATE host bindings: one passing is not evidence about the other.
- * Rationale: #855 (PR #856).
+ * Rationale: docs/design/colour-literal-token-audit.md (the operator error-ink row).
  */
 
 /** `--riv-error-ink` as the light themes declare it, which the porcelain pin keeps in force. */

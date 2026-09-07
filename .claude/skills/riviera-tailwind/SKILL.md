@@ -152,7 +152,7 @@ section owns how a component styles across themes. In order of preference:
    - a tint family that painted one literal in every theme before it was tokenised
      (`--riv-accent-*`) gains a silent restyle the day someone adds a dark override;
    - a token whose whole population sits in a theme-pinned subtree
-     (`--riv-console-accent-ink`, under the console's porcelain host) has an unreachable
+     (`--riv-console-accent-ink`, under the app shell's porcelain pin on the console routes) has an unreachable
      dark branch, so a dark value is an unverifiable claim.
    The unit is the whole skin, not one position: a fixed fill pins every ink and border on
    it (the form-error banners' `--riv-form-error-fill`/`-ink` move as a pair; the

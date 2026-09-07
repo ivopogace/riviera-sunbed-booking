@@ -11,7 +11,7 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * reads `tailwind.css` as text, can see.
  *
  * <p>The banner is asserted under BOTH themes against the same expected value: that the value does
- * not move is the test. The console family sits under a porcelain-pinned host, so its dark branch
+ * not move is the test. The console family sits under the app shell's porcelain pin, so its dark branch
  * is proven at the document root instead.
  *
  * <p>The calendar is asserted under both themes against each theme's OWN value — the inverse claim

@@ -16,9 +16,10 @@ const TWO: readonly OwnedVenue[] = [
 ];
 
 /**
- * The venue switcher the console header mounts in place of the venue caption. These specs pin
- * its three states (a disclosure for two or more owned venues, plain text for one, nothing signed
- * out), the popover's contract — `Your venues`, name over beach, the current row marked, every
+ * The venue switcher the console shell mounts as the venue-console section. These specs pin
+ * its states on the console (a disclosure for two or more owned venues, plain text for one,
+ * nothing signed out) and off it (`Your venues` as the same disclosure, or a link to the
+ * landing), the popover's contract — `Your venues`, name over beach, the current row marked, every
  * row keeping the section, `Add another venue` at the foot — the five ways it closes and where
  * focus lands on each, and the read it triggers so a deep-linked console is never empty.
  */
@@ -47,9 +48,9 @@ const owned = {
   </header>`,
 })
 class Host {
-  readonly venueId = signal(1);
+  readonly venueId = signal<number | undefined>(1);
   readonly venueName = signal<string | undefined>('Miramar Beach Club');
-  readonly section = signal('daily');
+  readonly section = signal<string | undefined>('daily');
 }
 
 describe('OperatorVenueSwitch', () => {
@@ -169,6 +170,40 @@ describe('OperatorVenueSwitch', () => {
     fixture.detectChanges();
 
     expect(button().textContent).toContain('Your venue');
+  });
+
+  it('off the console, reads Your venues and discloses the list, each row landing on that console (#1011)', () => {
+    fixture.componentInstance.venueId.set(undefined);
+    fixture.componentInstance.venueName.set(undefined);
+    fixture.componentInstance.section.set(undefined);
+    fixture.detectChanges();
+
+    expect(title()?.tagName).toBe('BUTTON');
+    expect(button().textContent).toContain('Your venues');
+    open();
+    expect(rows().map((row) => row.getAttribute('href'))).toEqual([
+      '/operator/1',
+      '/operator/2',
+      '/operator?create=1',
+    ]);
+    expect(menu()!.querySelector('[aria-current="page"]')).toBeNull();
+  });
+
+  it('off the console with one venue, or an unknown list, Your venues is a link to the landing (#1011)', () => {
+    fixture.componentInstance.venueId.set(undefined);
+    fixture.componentInstance.section.set(undefined);
+    owned.venues.set([TWO[0]]);
+    fixture.detectChanges();
+
+    expect(title()?.tagName).toBe('A');
+    expect(title()?.getAttribute('href')).toBe('/operator');
+    expect(title()?.textContent).toContain('Your venues');
+    expect(el.querySelector('button')).toBeNull();
+
+    owned.venues.set(undefined);
+    fixture.detectChanges();
+    expect(title()?.tagName).toBe('A');
+    expect(title()?.getAttribute('href')).toBe('/operator');
   });
 
   it('renders nothing signed out, and never reads the list', () => {

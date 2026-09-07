@@ -26,12 +26,12 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG guard for the `--riv-accent-*` token family (#835), the positive-state counterpart to
+ * WCAG guard for the `--riv-accent-*` token family, the positive-state counterpart to
  * `admin-console.contrast.spec.ts`'s negative-state guard.
  *
  * <p>The INK sites are porcelain-only, and for them that is the whole proof rather than half of
- * it: all nine sit inside a console that pins `data-riv-theme="porcelain"` on its host
- * (`admin-console.ts`, `operator-console.ts`), so no other theme can reach them. The subtree
+ * it: all nine sit inside the consoles, whose routes the app shell pins `data-riv-theme="porcelain"`
+ * (`app.ts`), so no other theme can reach them. The subtree
  * pinning that guarantee rests on is not something jsdom maths can see — `accent-token-inks.e2e.ts`
  * pins it against a real render under a forced dark document theme.
  *

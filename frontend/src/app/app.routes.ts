@@ -3,6 +3,7 @@ import { Router, Routes } from '@angular/router';
 
 import type { AdminTabRouteData } from './admin/admin-console';
 import type { TouristRouteData } from './app';
+import type { ConsoleRouteData } from './console-shell';
 import { operatorSessionGuard } from './core/operator-session.guard';
 
 /**
@@ -253,7 +254,7 @@ export const routes: Routes = [
     title: 'Change your password — Riviera',
     canActivate: [operatorSessionGuard],
     // Operator surface: the shared operator header/footer, never the tourist ones.
-    data: { operatorChrome: true },
+    data: { console: 'plain' } satisfies ConsoleRouteData,
   },
   {
     // Draft privacy policy — checkout agreement + footer link target.
@@ -293,7 +294,7 @@ export const routes: Routes = [
     title: 'Your venues — Riviera',
     canActivate: [operatorSessionGuard],
     // Operator surface: the shared operator header/footer, never the tourist ones.
-    data: { operatorChrome: true },
+    data: { console: 'plain' } satisfies ConsoleRouteData,
   },
   {
     // The AdminConsole shell owns the tab strip + auth gate; tabs are children.
@@ -301,15 +302,15 @@ export const routes: Routes = [
     loadComponent: () => import('./admin/admin-console').then((m) => m.AdminConsole),
     title: 'Admin — Riviera',
     // Admin surface: the shared operator header/footer, never the tourist ones.
-    data: { operatorChrome: true },
+    data: { console: 'admin' } satisfies ConsoleRouteData,
     children: adminTabRoutes,
   },
   {
-    // Chromeless operator console: the shell suppresses its own chrome via `data.operatorConsole`; tabs are children.
+    // The venue console: the app shell wears the console shell for it; tabs are children.
     path: 'operator/:venueId',
     loadComponent: () => import('./operator/operator-console').then((m) => m.OperatorConsole),
     title: 'Operator console — Riviera',
-    data: { operatorConsole: true },
+    data: { console: 'venue' } satisfies ConsoleRouteData,
     canActivate: [operatorSessionGuard],
     children: [{ path: '', pathMatch: 'full', redirectTo: 'beach-map' }, ...consoleTabRoutes],
   },

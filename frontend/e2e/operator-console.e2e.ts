@@ -182,7 +182,7 @@ test('signs in, renders the console, switches tabs, and signs out (+ axe)', asyn
   await expect(page.getByTestId('daily-view-tab')).toBeVisible();
 
   // Sign out → the console leaves for the unified auth card (the guard gates on activation).
-  await openOperatorAccountMenu(page, 'oc');
+  await openOperatorAccountMenu(page);
   await page.getByTestId('oc-signout').click();
   await expect(page).toHaveURL(/\/account\/sign-in\?audience=operator$/);
   await expect(page.getByTestId('auth-form')).toBeVisible();
@@ -245,8 +245,9 @@ test('renders porcelain over the tourist theme with a single scrolling tab row, 
   await signIn(page);
   await expect(page.getByTestId('oc-header')).toBeVisible();
 
-  // The console is always porcelain (scoped to its host); the document theme stays dark.
-  await expect(page.locator('app-operator-console')).toHaveAttribute('data-riv-theme', 'porcelain');
+  // The console is always porcelain (the app shell pins its host); the document theme stays dark.
+  await expect(page.locator('app-root')).toHaveAttribute('data-riv-theme', 'porcelain');
+  await expect(page.locator('app-operator-console')).not.toHaveAttribute('data-riv-theme');
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
 
   // The tab row scrolls within itself, never wraps or pushes the page wider.
@@ -314,7 +315,7 @@ test('the account chip opens a popover on the console — axe clean, one header 
   await expect(page.getByTestId('oc-header')).not.toContainText('Signed in as');
   await expect(chip).toHaveAccessibleName('Account: operator');
 
-  await openOperatorAccountMenu(page, 'oc');
+  await openOperatorAccountMenu(page);
   await expect(page.getByTestId('oc-account-identity')).toContainText('Signed in as operator');
   await expect(page.getByTestId('oc-account-menu').getByRole('link')).toHaveText([
     'Change password',
@@ -329,10 +330,58 @@ test('the account chip opens a popover on the console — axe clean, one header 
   await expect(chip).toBeFocused();
 
   // A click on the page below the header closes it too — the backdrop covers the header only.
-  await openOperatorAccountMenu(page, 'oc');
+  await openOperatorAccountMenu(page);
   await page.getByTestId('daily-view-tab').click({ position: { x: 8, y: 8 } });
   await expect(page.getByTestId('oc-account-menu')).toHaveCount(0);
   await expect(chip).toHaveAttribute('aria-expanded', 'false');
+});
+
+/**
+ * One shell, one sticky row: the section row is the only `position: sticky` chrome — the rail and
+ * the stats strip scroll with the page — and below `sm` it slides away on scroll-down past 64px
+ * and returns on scroll-up, with no transition under reduced motion; from `sm` up it never moves.
+ */
+test('only the section row is sticky; below sm it slides away on scroll-down and returns on scroll-up (#1011)', async ({
+  page,
+}) => {
+  await mockConsole(page, 3);
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto('/operator/1/daily');
+  await signIn(page);
+  const header = page.getByTestId('oc-header');
+  await expect(header).toBeVisible();
+  await expect(page.getByTestId('daily-view-tab')).toBeVisible();
+
+  await expect(header).toHaveCSS('position', 'sticky');
+  // The slide animates the `translate` property the utility sets — a transition on `transform` would never fire.
+  await expect(header).toHaveCSS('transition-property', 'translate');
+  await expect(page.getByTestId('oc-tabs')).toHaveCSS('position', 'static');
+  await expect(page.getByTestId('oc-stats')).toHaveCSS('position', 'static');
+
+  // A page tall enough to scroll, whatever the tab renders.
+  await page.evaluate(() => (document.body.style.minHeight = '3000px'));
+  await page.evaluate(() => window.scrollTo(0, 200));
+  await expect
+    .poll(async () => {
+      const box = (await header.boundingBox())!;
+      return box.y + box.height;
+    })
+    .toBeLessThanOrEqual(0);
+  await page.evaluate(() => window.scrollTo(0, 150));
+  await expect.poll(async () => (await header.boundingBox())!.y).toBe(0);
+
+  // Under reduced motion the row still hides and shows, only without the slide.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(header).toHaveCSS('transition-property', 'none');
+  await page.evaluate(() => window.scrollTo(0, 400));
+  await expect.poll(async () => (await header.boundingBox())!.y).toBeLessThan(0);
+  await page.emulateMedia({ reducedMotion: null });
+
+  // From sm up the row stays put on scroll-down.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => window.scrollTo(0, 400));
+  await expect.poll(async () => (await header.boundingBox())!.y).toBe(0);
 });
 
 /**
@@ -376,10 +425,14 @@ test('switches venue from the header, keeping the tab and leaving nothing of the
   await expect(rows.nth(1)).toContainText('Sereno');
   await expect(rows.nth(1)).toContainText('Jal');
   await expect(page.getByTestId('oc-venue-add')).toHaveAttribute('href', '/operator?create=1');
-  // Anchored to the header row: its left edge is the brand's, not the name's.
+  // Anchored to the header row: its left edge is the brand's, not the name's, and it hangs under the row.
+  await settle(page);
   const brand = (await page.locator('.oc-wordmark').boundingBox())!;
+  const headerBox = (await page.getByTestId('oc-header').boundingBox())!;
   const popover = (await menu.boundingBox())!;
   expect(Math.abs(popover.x - brand.x)).toBeLessThanOrEqual(2);
+  expect(popover.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
+  expect(popover.y).toBeLessThanOrEqual(headerBox.y + headerBox.height + 12);
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'operator console with the venue popover open');
 

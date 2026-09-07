@@ -56,7 +56,7 @@ test('a registering operator lands straight in the console and works it while PE
   await expectNoSeriousAxeViolations(page, 'pending operator console');
 
   // 3. The admin approves the registration; the queue reconciles from the server to empty.
-  await openOperatorAccountMenu(page, 'oc');
+  await openOperatorAccountMenu(page);
   await page.getByTestId('oc-signout').click();
   await signIn.expectSignedOut();
   await signIn.signIn(ADMIN.username, ADMIN.password);

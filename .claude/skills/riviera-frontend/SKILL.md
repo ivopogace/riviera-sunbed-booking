@@ -81,7 +81,10 @@ Colocate everything the feature owns, flat (no `components/`/`services/` subfold
 - **All routes live in `app.routes.ts`** — one array, no per-feature route files. Mostly
   flat; the operator console (`/operator/:venueId`) is the one nested child-route tree — a
   layout component with a child route per tab so each tab is deep-linkable. Follow that
-  shape for further tabbed sub-apps.
+  shape for further tabbed sub-apps. An operator or admin route carries `data.console`
+  naming its section (`venue` · `admin` · `plain`): the app shell then wears the root-level
+  `console-shell.ts` (the section row and the section's rail) instead of the tourist header —
+  root-level because it composes `operator/` and `admin/`, which no feature folder may.
 - Every route is lazy (`loadComponent: () => import(...)`) and carries a `title`.
 - Order matters for parameterized paths (`booking/confirmation` before `booking/:code`) —
   keep literal segments above `:param` siblings.
@@ -126,9 +129,11 @@ The only place providers are wired:
   inline seed, which pre-paints the same value before Angular boots with the same
   resolution order — drift-pinned by `core/theme-boot.spec.ts`; extend `ThemeService`'s
   resolution only together with the seed. **A subtree may pin its own theme** by setting
-  `data-riv-theme` on its own host element: the operator console is always porcelain via a
-  `host: { 'data-riv-theme': 'porcelain' }` binding, which does not touch the document
-  attribute / `ThemeService`. Writing the document attribute stays `ThemeService`-only.
+  `data-riv-theme` on its own host element: every operator and admin route is always porcelain
+  via the app shell's host binding (`app.ts`, keyed on the route's `data.console`), which does
+  not touch the document attribute / `ThemeService`; the pinned subtree re-resolves the ink on
+  the shell's root box, since `body` resolves it once at document scope. Writing the document
+  attribute stays `ThemeService`-only.
 - **The token registry lives in two places, and only two**: a palette change is one CSS
   block in `tailwind.css` + one registry row in `core/theme.ts`, zero component edits. A
   new token additionally gets a `@theme inline` mapping in `tailwind.css`, which makes it a

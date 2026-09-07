@@ -40,17 +40,15 @@ test('operator changes its own password from the console, and the new credential
   await signIn.expectSignedInAs('operator');
 
   // The entry point is the console header's account chip — not a URL only a maintainer would know.
-  await openOperatorAccountMenu(page, 'oc');
+  await openOperatorAccountMenu(page);
   await page.getByTestId('oc-change-password').click();
   await expect(page.getByTestId('oppw-username')).toContainText('operator');
-  // On the page itself, the thin chrome's chip marks the row as the current page.
-  await openOperatorAccountMenu(page, 'opc');
-  await expect(page.getByTestId('opc-change-password')).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByTestId('opc-account-menu').locator('[aria-current="page"]')).toHaveCount(
-    1,
-  );
+  // On the page itself, the same shell's chip marks the row as the current page.
+  await openOperatorAccountMenu(page);
+  await expect(page.getByTestId('oc-change-password')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('oc-account-menu').locator('[aria-current="page"]')).toHaveCount(1);
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('opc-account-menu')).toHaveCount(0);
+  await expect(page.getByTestId('oc-account-menu')).toHaveCount(0);
   // Pins the deleted `empty:mb-0` as a no-op, not a restyle (#828) — see this file's header.
   await expect(page.getByTestId('oppw-notice')).toHaveCSS('margin-bottom', '20px');
   await expectNoSeriousAxeViolations(page, 'operator change-password form');
@@ -85,7 +83,7 @@ test('operator changes its own password from the console, and the new credential
   await expect(page.getByTestId('oc-account')).toHaveAccessibleName('Account: operator');
 
   // And the rotation was real: after signing out, only the new password gets back in.
-  await openOperatorAccountMenu(page, 'oc');
+  await openOperatorAccountMenu(page);
   await page.getByTestId('oc-signout').click();
   await signIn.expectSignedOut();
 
@@ -104,7 +102,7 @@ test('the env-managed bootstrap admin is told why it cannot self-serve', async (
   await signIn.signIn('operator', OLD_PASSWORD);
   await signIn.expectSignedInAs('operator');
 
-  await openOperatorAccountMenu(page, 'oc');
+  await openOperatorAccountMenu(page);
   await page.getByTestId('oc-change-password').click();
   await page.getByTestId('oppw-current').fill(OLD_PASSWORD);
   await page.getByTestId('oppw-new').fill(NEW_PASSWORD);

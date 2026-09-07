@@ -1,60 +1,27 @@
 import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
-import {
-  INK_DARK,
-  PORCELAIN_HEADER_GLASS,
-  PORCELAIN_STOPS,
-  expectAaOverStops,
-  SOLID_FILL_BRAND,
-} from '../../testing/glass-tokens';
+import { INK_DARK } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the operator console. The console is ALWAYS porcelain
- * (its host scopes `data-riv-theme="porcelain"`), so every pair is proven over the porcelain
- * background stops / header glass; the account chip's pairs are in
+ * WCAG-AA contrast guard for the venue console's page. The console is ALWAYS porcelain (the app
+ * shell pins `data-riv-theme="porcelain"` on every console route), so every pair is proven over
+ * the porcelain surfaces; the section row, the rail and the badge are the console shell's
+ * (`console-shell.contrast.spec.ts`), the account chip's pairs are in
  * `operator-account-chip.contrast.spec.ts`, the venue switcher's popover in
- * `operator-venue-switch.contrast.spec.ts`. Interactive chrome (venue-not-found card, Requests
- * badge) uses OPAQUE SOLID fills instead of translucent ones — the `css:S7924`
- * treatment — so both the WCAG maths and the static analyzer compute contrast without gradient
- * compositing. These values mirror the Tailwind utilities in `operator-console.html`, the host
- * class in `operator-console.ts`, and the porcelain `--riv-*` tokens in `tailwind.css`; a colour
- * edit in any of the three must re-pass here.
+ * `operator-venue-switch.contrast.spec.ts`. The venue-not-found card uses an OPAQUE SOLID fill
+ * instead of a translucent one — the `css:S7924` treatment — so both the WCAG maths and the static
+ * analyzer compute contrast without gradient compositing. These values mirror the Tailwind
+ * utilities in `operator-console.html` and the porcelain `--riv-*` tokens in `tailwind.css`; a
+ * colour edit in either must re-pass here.
  */
 
 const WHITE = '#ffffff';
 const INK = '#0a2a33'; // --riv-ink (porcelain)
-const BADGE_FILL = rgbToHex(SOLID_FILL_BRAND);
 
 describe('OperatorConsole porcelain contrast (WCAG AA, #170)', () => {
-  it('header wordmark ink meets AA on the porcelain header glass', () => {
-    expectAaOverStops(INK_DARK, 1, PORCELAIN_HEADER_GLASS, PORCELAIN_STOPS);
-  });
-
-  it('header "Operator" (ink 0.7) meets AA on the header glass', () => {
-    expectAaOverStops(INK_DARK, 0.7, PORCELAIN_HEADER_GLASS, PORCELAIN_STOPS);
-  });
-
-  it('header venue name (title weight, full ink) meets AA on the header glass (#1009)', () => {
-    expectAaOverStops(INK_DARK, 1, PORCELAIN_HEADER_GLASS, PORCELAIN_STOPS);
-  });
-
   it('not-found card ink meets AA on the opaque white surface', () => {
     expect(contrastRatio(INK, WHITE)).toBeGreaterThanOrEqual(AA_NORMAL);
     // ink-soft intro on the white card
     const inkSoft = composite(INK_DARK, 0.7, [255, 255, 255]);
     expect(contrastRatio(rgbToHex(inkSoft), WHITE)).toBeGreaterThanOrEqual(AA_NORMAL);
-  });
-
-  it('Requests badge (white) meets AA on its solid teal fill', () => {
-    expect(contrastRatio(WHITE, BADGE_FILL)).toBeGreaterThanOrEqual(AA_NORMAL);
-  });
-
-  it('resting tab label (ink 0.7) meets AA over every porcelain background stop', () => {
-    for (const stop of PORCELAIN_STOPS) {
-      const ink = composite(INK_DARK, 0.7, stop);
-      expect(
-        contrastRatio(rgbToHex(ink), rgbToHex(stop)),
-        `stop ${rgbToHex(stop)}`,
-      ).toBeGreaterThanOrEqual(AA_NORMAL);
-    }
   });
 });

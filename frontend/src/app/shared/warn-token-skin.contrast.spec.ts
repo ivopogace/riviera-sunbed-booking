@@ -6,22 +6,22 @@ import { DARK_ERROR_INK, WARN_EDGE, WARN_FILL, WARN_INK } from '../../testing/gl
 import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
- * Guard for the merged **amber warn family** `--riv-warn-{edge,fill,ink}` (#879) — one skin for
+ * Guard for the merged **amber warn family** `--riv-warn-{edge,fill,ink}` — one skin for
  * every amber advisory surface in the tree: `shared/confirm-panel`'s `alertdialog` (used by
- * `set-editor`/`layout-editor` from the start, and — since #881 — by the operator console's
+ * `set-editor`/`layout-editor` from the start, and by the operator console's
  * Daily-view close-sales and Payouts weather-refund confirms too, which used to hand-roll their
  * own copy of this same skin), the Daily-view trigger button that opens the first of those, the two
  * legal pages' standing draft banner, and `booking/withheld-email-notice`.
  *
  * <p><strong>Three token families collapsed into this one, and one deliberately did not.</strong>
- * `--riv-warn-edge`/`--riv-warn-tint` (class O, #852) painted the console's two confirm panels;
- * `--riv-confirm-warn-*` (class O, #852) painted the shared component doing the same job in
- * different markup; `--riv-notice-banner-*` (class F-4, #868) painted the standing banners. The
+ * `--riv-warn-edge`/`--riv-warn-tint` (class O) painted the console's two confirm panels;
+ * `--riv-confirm-warn-*` (class O) painted the shared component doing the same job in
+ * different markup; `--riv-notice-banner-*` (class F-4) painted the standing banners. The
  * first two were the same role in two paints — the console panels are hand-rolled twins of
  * `confirm-panel`, which is what makes this a role match rather than a value coincidence — and the
  * third joined them because an amber advisory is one treatment whichever surface carries it.
  * `--riv-premium-edge` stayed out: it is a beach-map TIER identity over a gold gradient, not a
- * warning, and role beats value (the fork #848, #858 and #864 each resolved the same way).
+ * warning, and role beats value (the earlier token re-cuts each resolved the same way).
  *
  * <p><strong>Why `#e0a03a`/`#fff4e0`/`#7a4a08` and not the notice banner's `#fcf0d9`/`#8a5410`.</strong>
  * It is the higher-contrast pair — 6.86:1 against 5.54:1 — so every surface the merge moves, moves
@@ -29,7 +29,7 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  *
  * <p><strong>The theme-invariance argument changed hands, which is the part worth reading.</strong>
  * As a class-O token this family's single declaration rested on "every consumer is a child of
- * `operator-console`, whose host pins porcelain, so a dark branch is unreachable". That ground is
+ * `operator-console`, whose routes the app shell pins porcelain, so a dark branch is unreachable". That ground is
  * now FALSE: the legal pages and the withheld-email notice are tourist surfaces that render under
  * all three document themes. What holds instead is #868's, and it is the stronger claim — the fill
  * is fixed, so a themed ink over it would drift (`DARK_ERROR_INK` `#ffa9a1` measures 1.63:1 on it,

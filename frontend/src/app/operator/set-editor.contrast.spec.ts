@@ -13,13 +13,13 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the per-set beach-map editor (#600). Same porcelain host and
+ * WCAG-AA contrast guard for the per-set beach-map editor. Same porcelain pin and
  * `appCardGlass` panel as the bulk editor beside it, so the shared ink pairs are re-proven here rather
  * than assumed; what is new is the destructive **Remove** ink and the armed-move surface. Since
- * #677 the grid sits on the shared canvas's sea→sand wash: the BeachCell fill/border pairs over the
- * wash, and the #709 tile-number ink over every cell kind's own fill, are proven once in
+ * the grid sits on the shared canvas's sea→sand wash: the BeachCell fill/border pairs over the
+ * wash, and the tile-number ink over every cell kind's own fill, are proven once in
  * `layout-editor.contrast.spec.ts` (the identical directive + template pattern) — not re-proven
- * here. What is new to THIS surface is the selection ring, distinct from keyboard focus (#709),
+ * here. What is new to THIS surface is the selection ring, distinct from keyboard focus,
  * proven 3:1 (1.4.11) below over every wash stop AND every occupied tile's own worst fill — a
  * selected cell is never a bare gap.
  */

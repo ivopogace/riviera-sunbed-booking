@@ -20,13 +20,14 @@ export function routeIdParam(
     return computed(() => undefined);
   }
   const params = toSignal(route.paramMap, { initialValue: route.snapshot.paramMap });
-  return computed(() => toId(params(), param));
+  return computed(() => idParam(params(), param));
 }
 
 /**
- * {@link routeIdParam} for the operator console's `:venueId`. The console shell reads its OWN
- * route; console tab child routes read the PARENT route via {@link parentVenueId} — child routes
- * do not inherit the param under the router's default `emptyOnly` strategy.
+ * {@link routeIdParam} for the operator console's `:venueId`. The console page reads its OWN
+ * route (the console shell takes the id from the app shell's route walk, {@link idParam}); console
+ * tab child routes read the PARENT route via {@link parentVenueId} — child routes do not inherit
+ * the param under the router's default `emptyOnly` strategy.
  */
 export function venueIdParam(route: ActivatedRoute | null): Signal<number | undefined> {
   return routeIdParam(route, 'venueId');
@@ -37,7 +38,8 @@ export function parentVenueId(route: ActivatedRoute): Signal<number | undefined>
   return venueIdParam(route.parent);
 }
 
-function toId(params: ParamMap, param: string): number | undefined {
+/** The positive-integer id under `param` in `params`, or `undefined` — the rule the signals above apply. */
+export function idParam(params: ParamMap, param: string): number | undefined {
   const id = Number(params.get(param));
   return Number.isInteger(id) && id > 0 ? id : undefined;
 }

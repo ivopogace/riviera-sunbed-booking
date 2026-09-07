@@ -75,15 +75,17 @@ function groupOf(label: string): number {
  * different job. The canvas's own five-tab pill strip predates five of the tabs that ship and is
  * not the target IA.
  *
- * <p>Rendered only inside {@code AdminConsole}'s authorized branch, so a signed-out visitor is never
- * told which admin surfaces exist. The active tab carries `aria-current="page"`, which is what
- * carries the marker to assistive tech rather than to sighted users alone.
+ * <p>Rendered by the console shell (`console-shell.ts`) under its section row, only past the admin
+ * gate, so a signed-out visitor is never told which admin surfaces exist; the shell's 1120px box
+ * gives the rail its width, the rail carries the row's own `px-6` inset. The active tab carries
+ * `aria-current="page"`, which is what carries the marker to assistive tech rather than to sighted
+ * users alone.
  */
 @Component({
   selector: 'app-admin-console-tabs',
   imports: [RouterLink, RouterLinkActive, TabRail, TabRailTab, TabRailDivider, TouchTarget],
   template: `
-    <nav appTabRail class="mt-3 mb-1" [attr.aria-label]="label()">
+    <nav appTabRail class="px-6 pt-3.5 scroll-px-6" [attr.aria-label]="label()">
       @for (row of rows; track row.path) {
         @if (row.dividerBefore) {
           <span appTabRailDivider></span>

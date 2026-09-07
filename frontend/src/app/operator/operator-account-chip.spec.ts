@@ -9,10 +9,11 @@ import { OperatorAccountChip } from './operator-account-chip';
 class BlankPage {}
 
 /**
- * The account chip both operator headers mount. These specs pin the disclosure's contract
- * — the chip's name and `aria-expanded`, the row set per principal, the five ways it closes and
- * where focus lands on each, the current-page marker — and what the two call sites vary: the
- * test-id prefix and the sign-out output. Each header's own specs cover its surrounding chrome.
+ * The account chip the console shell's section row mounts. These specs pin the disclosure's
+ * contract — the chip's name and `aria-expanded`, the row set (the same for every principal), the
+ * five ways it closes and where focus lands on each, the current-page marker — and what the call
+ * site supplies: the test-id prefix and the sign-out output. The shell's own specs cover its
+ * surrounding row.
  */
 const operatorAuth = {
   restoring: signal(false),
@@ -107,17 +108,16 @@ describe('OperatorAccountChip', () => {
     expect(el.querySelector('[data-testid="oc-admin-link"]')).toBeNull();
   });
 
-  it('adds the Admin console row for a platform-admin principal, ahead of Change password', () => {
+  it('holds the same rows for a platform-admin principal — Admin is a section of the shell, not a row (#1011)', () => {
     operatorAuth.isAdmin.set(true);
     open();
 
-    expect(rows()).toEqual(['Admin console', 'Change password', 'Sign out']);
-    expect(
-      el.querySelector<HTMLAnchorElement>('[data-testid="oc-admin-link"]')?.getAttribute('href'),
-    ).toBe('/admin');
+    expect(rows()).toEqual(['Change password', 'Sign out']);
+    expect(el.querySelector('[data-testid="oc-admin-link"]')).toBeNull();
+    expect(el.querySelector('a[href="/admin"]')).toBeNull();
   });
 
-  it('prefixes every test id from the call site, so each header keeps its own', () => {
+  it('prefixes every test id from the call site', () => {
     open();
 
     for (const suffix of [
@@ -129,7 +129,6 @@ describe('OperatorAccountChip', () => {
       'signout',
     ]) {
       expect(el.querySelector(`[data-testid="oc-${suffix}"]`), suffix).not.toBeNull();
-      expect(el.querySelector(`[data-testid="opc-${suffix}"]`), suffix).toBeNull();
     }
   });
 
@@ -229,13 +228,12 @@ describe('OperatorAccountChip', () => {
     expect(current.map((row) => row.textContent.trim())).toEqual(['Change password']);
   });
 
-  it('marks Admin console current on any admin page', async () => {
+  it('marks no row current on an admin page', async () => {
     operatorAuth.isAdmin.set(true);
     await TestBed.inject(Router).navigateByUrl('/admin/email');
     await openSettled();
 
-    const current = [...menu()!.querySelectorAll('[aria-current="page"]')];
-    expect(current.map((row) => row.textContent.trim())).toEqual(['Admin console']);
+    expect(menu()!.querySelector('[aria-current="page"]')).toBeNull();
   });
 
   it('marks no row current on the operator landing', async () => {
@@ -245,7 +243,7 @@ describe('OperatorAccountChip', () => {
     expect(menu()!.querySelector('[aria-current="page"]')).toBeNull();
   });
 
-  it('emits sign-out after closing itself, rather than performing it — the two headers tear down differently', () => {
+  it('emits sign-out after closing itself, rather than performing it — the shell owns the teardown', () => {
     open();
 
     el.querySelector<HTMLButtonElement>('[data-testid="oc-signout"]')!.click();

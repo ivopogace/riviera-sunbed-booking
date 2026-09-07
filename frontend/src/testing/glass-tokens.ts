@@ -421,7 +421,7 @@ export const DIALOG_CLOSE_FILL: Rgb = hexToRgb('31798a');
  *  alternative CTA_BORDER is measured against. */
 export const DARK_CARD_BORDER: Glass = { color: WHITE, alpha: 0.16 };
 
-/** The **class-O tint tokens** (#852): the base colour behind every position carrying Tailwind's
+/** The **class-O tint tokens**: the base colour behind every position carrying Tailwind's
  *  `/opacity` modifier. The audit's class O is settled on rule **B** — the modifier stays at the
  *  call site and the literal inside it becomes a token — because `bg-[#2bb8d4]/20` and
  *  `bg-riv-select-tint/20` compile to the SAME `color-mix(in oklab, … , transparent)` expression;
@@ -430,11 +430,11 @@ export const DARK_CARD_BORDER: Glass = { color: WHITE, alpha: 0.16 };
  *  the comment explaining it (`beach-cell`'s `/55`-not-`/35` aisle boundary is the worked example).
  *
  *  Every one is THEME-INVARIANT by decision rather than omission — each consumer is either a child
- *  of `operator-console`, whose host pins porcelain, or sits on a fixed-white panel — so the
+ *  of `operator-console`, whose routes the app shell pins porcelain, or sits on a fixed-white panel — so the
  *  single-declaration guard is the whole protection. Guarded by
  *  `shared/class-o-tint-tokens.contrast.spec.ts`; proven against a real render, in a forced dark
  *  document, by `e2e/class-o-tint-tokens.e2e.ts`. Per-surface AA/1.4.11 ratios stay with their
- *  elements — this slice moves no pixel, so none of them changed.
+ *  elements — tokenising moves no pixel, so none of them change.
  *
  *  NOT a palette: several of these values coincide with a registered token of a DIFFERENT role
  *  (`#0e8aa8` is `--riv-accent-strong`, `#a3160e` is `--riv-solid-fill-danger`), and the audit's

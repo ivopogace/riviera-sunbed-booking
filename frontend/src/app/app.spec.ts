@@ -4,10 +4,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 
+import { of } from 'rxjs';
+
 import { App } from './app';
 import { routes } from './app.routes';
 import { CustomerAuth } from './core/customer-auth';
 import { OperatorAuth } from './core/operator-auth';
+import { OwnedVenue, OwnedVenues, OwnedVenuesResult } from './core/owned-venues';
+import { ConsoleVenueMap } from './operator/console-venue-map';
 import { SessionAuth } from './core/session-auth';
 import { SignOutNotice } from './core/sign-out-notice';
 import { ThemeService } from './core/theme';
@@ -27,7 +31,7 @@ const customerAuth = {
   signOut: vi.fn(() => Promise.resolve()),
 };
 
-/** An OperatorAuth fake for the shared operator chrome (same rationale as the CustomerAuth fake). */
+/** An OperatorAuth fake for the console shell (same rationale as the CustomerAuth fake). */
 const operatorAuth = {
   restoring: signal(false),
   signedIn: signal(true),
@@ -36,7 +40,20 @@ const operatorAuth = {
   signOut: vi.fn(() => Promise.resolve()),
 };
 
-/** Test routes exercising the chromeless + operator-chrome mechanisms without
+/** The console shell's two reads, faked so no request leaves: the owned list and the venue snapshot. */
+const ONE_VENUE: readonly OwnedVenue[] = [{ id: 7, name: 'Miramar Beach Club', beach: 'Ksamil' }];
+const ownedVenues = {
+  venues: signal<readonly OwnedVenue[] | undefined>(ONE_VENUE),
+  load: vi.fn((): Promise<OwnedVenuesResult> =>
+    Promise.resolve({ status: 'loaded', venues: ONE_VENUE }),
+  ),
+};
+const consoleVenueMap = {
+  load: vi.fn(() => of({ id: 7, name: 'Miramar Beach Club', sets: [] })),
+  reset: vi.fn(),
+};
+
+/** Test routes exercising the console-shell and tourist chrome mechanisms without
  *  loading real (HTTP-bound) pages. Rebuilt per test: Angular caches a resolved `loadComponent`
  *  on the `Route` object itself, so a shared array would let one spec's chunk satisfy the next. */
 const surfaceRoutes = () => [
@@ -52,8 +69,15 @@ const surfaceRoutes = () => [
     data: { section: 'bookings', tabBar: false },
   },
   { path: 'account/password', component: BlankPage, data: { section: 'account' } },
-  { path: 'operator', component: BlankPage, data: { operatorConsole: true } },
-  { path: 'operator-chrome', component: BlankPage, data: { operatorChrome: true } },
+  { path: 'operator/:venueId/daily', component: BlankPage, data: { console: 'venue' } },
+  {
+    path: 'admin',
+    component: BlankPage,
+    data: { console: 'admin' },
+    children: [{ path: 'audit', component: BlankPage }],
+  },
+  { path: 'operator', component: BlankPage, data: { console: 'plain' } },
+  { path: 'retired-flag', component: BlankPage, data: { operatorChrome: true } },
   // The operator chrome's sign-out navigates here; a resolvable target keeps that await clean.
   { path: 'account/sign-in', component: BlankPage },
   // Chunks arriving only when a spec says so — the window the header is interactive in.
@@ -78,6 +102,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     customerAuth.signedIn.set(false);
     customerAuth.email.set(undefined);
     customerAuth.signOut.mockClear();
+    operatorAuth.signOut.mockClear();
     await TestBed.configureTestingModule({
       imports: [App],
       // The find modal's BookingService injects HttpClient (no request fires); the fake stops the /me call.
@@ -86,6 +111,8 @@ describe('App (Liquid Glass shell, issue #134)', () => {
         provideHttpClient(),
         { provide: CustomerAuth, useValue: customerAuth },
         { provide: OperatorAuth, useValue: operatorAuth },
+        { provide: OwnedVenues, useValue: ownedVenues },
+        { provide: ConsoleVenueMap, useValue: consoleVenueMap },
       ],
     }).compileComponents();
   });
@@ -1046,78 +1073,125 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     }
   });
 
-  it('suppresses the tourist header/footer chrome on operator-console routes (#170, AC-7)', async () => {
+  it('renders the console shell instead of the tourist header on the venue console route (#1011)', async () => {
     const { fixture, el } = shell();
     const router = TestBed.inject(Router);
 
     await router.navigate(['/glass']);
     fixture.detectChanges();
     expect(el.querySelector('.riv-header')).not.toBeNull();
-    expect(el.querySelector('.riv-footer')).not.toBeNull();
+    expect(el.querySelector('app-console-shell')).toBeNull();
 
-    await router.navigate(['/operator']);
+    await router.navigate(['/operator/7/daily']);
     fixture.detectChanges();
-    // The operator console owns full-bleed porcelain chrome — the tourist header/nav/footer are hidden.
+    // The section row replaces the tourist header; the shared footer and background stay, the blobs go.
     expect(el.querySelector('.riv-header')).toBeNull();
-    expect(el.querySelector('.riv-footer')).toBeNull();
-  });
-
-  it('renders the shared operator chrome instead of the tourist header on operator-chrome routes', async () => {
-    const { fixture, el } = shell();
-    const router = TestBed.inject(Router);
-
-    await router.navigate(['/operator-chrome']);
-    fixture.detectChanges();
-
-    // The operator header replaces the tourist one; the shell footer stays (porcelain-toned).
-    expect(el.querySelector('.riv-header')).toBeNull();
-    expect(el.querySelector('[data-testid="opc-header"]')).not.toBeNull();
+    expect(el.querySelector('app-operator-chrome')).toBeNull();
+    expect(el.querySelector('[data-testid="oc-header"]')).not.toBeNull();
     expect(el.querySelector('.riv-footer')).not.toBeNull();
-    // The whole subtree is pinned porcelain so page + chrome agree whatever the tourist theme is.
-    expect(el.getAttribute('data-riv-theme')).toBe('porcelain');
-    // The tourist decorative blobs are off; the themed background itself stays.
     expect(el.querySelector('.riv-bg')).not.toBeNull();
     expect(el.querySelector('.riv-blob')).toBeNull();
+    // The section and the venue id come off the route chain: the venue slot is current and the rail is venue 7's.
+    expect(el.querySelector('[data-testid="oc-section-venue"]')?.getAttribute('aria-current')).toBe(
+      'page',
+    );
+    expect(el.querySelector('[data-testid="oc-tabs"] a[href="/operator/7/daily"]')).not.toBeNull();
+    // <main> stays the one landmark: the console page renders no header, rail or main of its own.
+    expect(el.querySelectorAll('main')).toHaveLength(1);
+
+    // An admin tab: the same row, Admin current (the flag on the parent reaches the child), the admin rail.
+    operatorAuth.isAdmin.set(true);
+    await router.navigate(['/admin/audit']);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="oc-header"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="oc-section-admin"]')?.getAttribute('aria-current')).toBe(
+      'page',
+    );
+    expect(
+      el.querySelector('[data-testid="oc-section-venue"]')?.getAttribute('aria-current'),
+    ).toBeNull();
+    expect(
+      el.querySelector('nav[aria-label="Admin console sections"] a[href="/admin/audit"]'),
+    ).not.toBeNull();
+    expect(el.querySelector('[data-testid="oc-tabs"]')).toBeNull();
+
+    // A plain operator page: the row with neither section current, and no rail at all.
+    await router.navigate(['/operator']);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="oc-header"]')).not.toBeNull();
+    expect(
+      el.querySelector('[data-testid="oc-section-venue"]')?.getAttribute('aria-current'),
+    ).toBeNull();
+    expect(
+      el.querySelector('[data-testid="oc-section-admin"]')?.getAttribute('aria-current'),
+    ).toBeNull();
+    expect(el.querySelector('nav[aria-label$="console sections"]')).toBeNull();
+    expect(el.getAttribute('data-riv-theme')).toBe('porcelain');
   });
 
-  it('operator-chrome Sign out parks focus on main before the control unmounts (WCAG 2.4.3)', async () => {
+  it('pins the shell porcelain on every console route and never on a tourist one (#1011)', async () => {
     const { fixture, el } = shell();
     const router = TestBed.inject(Router);
+    TestBed.inject(ThemeService).select('dark');
 
-    await router.navigate(['/operator-chrome']);
+    await router.navigate(['/glass']);
     fixture.detectChanges();
-    el.querySelector<HTMLButtonElement>('[data-testid="opc-account"]')!.click();
+    expect(el.getAttribute('data-riv-theme')).toBeNull();
+
+    await router.navigate(['/operator/7/daily']);
     fixture.detectChanges();
-    const signOut = el.querySelector<HTMLButtonElement>('[data-testid="opc-signout"]')!;
+    expect(el.getAttribute('data-riv-theme')).toBe('porcelain');
+    // The document-level theme is the tourist's choice and stays untouched.
+    expect(document.documentElement.getAttribute('data-riv-theme')).toBe('dark');
+
+    await router.navigate(['/glass']);
+    fixture.detectChanges();
+    expect(el.getAttribute('data-riv-theme')).toBeNull();
+  });
+
+  it('console-shell Sign out parks focus on main before the control unmounts (WCAG 2.4.3)', async () => {
+    const { fixture, el } = shell();
+    await TestBed.inject(Router).navigate(['/operator/7/daily']);
+    fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>('[data-testid="oc-account"]')!.click();
+    fixture.detectChanges();
+    const signOut = el.querySelector<HTMLButtonElement>('[data-testid="oc-signout"]')!;
     signOut.focus();
 
     signOut.click();
     fixture.detectChanges();
 
-    // The recurring stranded-focus class: signOut() unmounts the focused button — focus lands on <main>.
     expect(operatorAuth.signOut).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(el.querySelector('main'));
+  });
+
+  it('renders the tourist chrome on a route carrying only the retired operatorChrome flag (#1011)', async () => {
+    const { fixture, el } = shell();
+    await TestBed.inject(Router).navigate(['/retired-flag']);
+    fixture.detectChanges();
+
+    expect(el.querySelector('.riv-header')).not.toBeNull();
+    expect(el.querySelector('app-console-shell')).toBeNull();
+    expect(el.getAttribute('data-riv-theme')).toBeNull();
   });
 });
 
 describe('app.routes chrome flags (issue #134)', () => {
   /**
-   * The operator/admin surfaces. The console owns its whole porcelain shell
-   * (`operatorConsole`); every other operator/admin page carries `operatorChrome`, so the shell
-   * swaps in the shared operator header/footer — the fix for those pages wearing the tourist
-   * chrome ("Sign in / Register" while signed in as an operator) or none at all (the operator
-   * password page, the '/operator' picker).
+   * The operator/admin surfaces and the console section each names for the app shell
+   * (`data.console`, read on the root→leaf walk): the venue console, the admin console, and the
+   * two plain operator pages — the `/operator` picker and the password page, which used to wear
+   * the tourist chrome ("Sign in / Register" while signed in as an operator) or none at all.
    */
-  const OPERATOR_SURFACE_PATHS = [
-    'operator/:venueId',
-    'operator',
-    'account/operator-password',
-    'admin',
-  ];
+  const CONSOLE_SECTIONS = [
+    ['operator/:venueId', 'venue'],
+    ['admin', 'admin'],
+    ['operator', 'plain'],
+    ['account/operator-password', 'plain'],
+  ] as const;
 
   /** The admin console's tab child routes, nested under `admin` (`AdminConsole`) — they inherit
-   *  `operatorChrome` from the parent chain (`app.ts`'s root→leaf walk) rather than each
-   *  carrying the flag themselves. */
+   *  the section from the parent chain (`app.ts`'s root→leaf walk) rather than each carrying it. */
   const ADMIN_TAB_CHILD_PATHS = [
     '',
     'commissions',
@@ -1129,13 +1203,16 @@ describe('app.routes chrome flags (issue #134)', () => {
     'audit',
   ];
 
-  it('flags every non-console operator/admin surface with the shared operator chrome', () => {
-    for (const path of OPERATOR_SURFACE_PATHS.filter((p) => p !== 'operator/:venueId')) {
+  it('names the console section on the four operator/admin surfaces and nowhere else (#1011)', () => {
+    for (const [path, section] of CONSOLE_SECTIONS) {
       const route = routes.find((r) => r.path === path);
-      expect(route?.data?.['operatorChrome'], `route '${path}' operatorChrome flag`).toBe(true);
-      // The two flags are mutually exclusive — the console alone stays fully chromeless.
-      expect(route?.data?.['operatorConsole'], `route '${path}' console flag`).toBeUndefined();
+      expect(route?.data?.['console'], `route '${path}' console section`).toBe(section);
     }
+    const flagged = routes.filter((r) => r.data?.['console'] !== undefined).map((r) => r.path);
+    expect(flagged.sort()).toEqual(CONSOLE_SECTIONS.map(([path]) => path).sort());
+    // The two retired flags are gone from the table.
+    expect(routes.some((r) => 'operatorChrome' in (r.data ?? {}))).toBe(false);
+    expect(routes.some((r) => 'operatorConsole' in (r.data ?? {}))).toBe(false);
   });
 
   it("admin's tab children inherit the shell's operator chrome rather than carrying their own", () => {
@@ -1143,14 +1220,7 @@ describe('app.routes chrome flags (issue #134)', () => {
     for (const path of ADMIN_TAB_CHILD_PATHS) {
       const child = admin?.children?.find((c) => c.path === path);
       expect(child?.data?.['adminTab'], `admin child '${path}' adminTab data`).toBeDefined();
-      expect(
-        child?.data?.['operatorChrome'],
-        `admin child '${path}' operatorChrome flag`,
-      ).toBeUndefined();
-      expect(
-        child?.data?.['operatorConsole'],
-        `admin child '${path}' console flag`,
-      ).toBeUndefined();
+      expect(child?.data?.['console'], `admin child '${path}' console section`).toBeUndefined();
     }
   });
 
@@ -1160,9 +1230,10 @@ describe('app.routes chrome flags (issue #134)', () => {
     expect(redirect?.redirectTo).toBe('operator/:venueId/daily');
   });
 
-  it('adds the chromeless operator console route with its six tab children (#170)', () => {
+  it('adds the venue console route, in the console shell, with its six tab children (#170, #1011)', () => {
     const console = routes.find((r) => r.path === 'operator/:venueId');
-    expect(console?.data?.['operatorConsole']).toBe(true);
+    expect(console?.data?.['console']).toBe('venue');
+    expect(console?.data?.['operatorConsole']).toBeUndefined();
 
     const children = console?.children ?? [];
     const childPaths = children.map((c) => c.path);
