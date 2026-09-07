@@ -66,7 +66,20 @@ the `--riv-pop-*` family) ·
 angular.dev — `<ng-container *ngComponentOutlet="type" />` — for picking a glyph component from a
 descriptor; `computed()` for the phone nav, `viewChild` for the More button, `focusMover()` for
 the open leg) · `playwright-cli` (the mocked suite: two phone projects for the touch-target files,
-`getByRole` excludes CSS-hidden elements so the rail assertions read the visible rail).
+`getByRole` excludes CSS-hidden elements so the rail assertions read the visible rail) · Tailwind v4
+docs + the production build's stylesheet (after phase 5, at the maintainer's ask — no finding:
+`max-sm:` compiles to `@media(width<40rem)` and `sm:` to `width>=40rem`, so the two rails swap at
+640px as the docs state; the three `calc()` arbitrary values compile with the operators spaced
+(`calc(50% - 26px)`, `calc(100dvh - 24px)`, `calc(12px + env(safe-area-inset-bottom))`) — the docs
+page says nothing about operator normalisation, the built stylesheet is the proof; `[&_svg]:size-*`
+compiles to a descendant rule, `aria-[current=page]:` to an attribute selector, `first:` to
+`:first-child`, `after:` carries `content`, `hover:` sits inside `@media(hover:hover)` (brace-depth
+checked in the minified sheet), `motion-reduce:` under `prefers-reduced-motion`) · angular.dev via
+the angular-cli MCP and the control-flow guide (after phase 5 — `@if (expr; as alias)` is documented
+as the block's alias form; `viewChild()` signal queries; `reflectComponentType` is the public API the
+glyph spec names selectors with; the `host` object takes the same `document:`/`window:` global
+targets and `keydown.escape` key names the `HostListener` reference lists, which itself says to prefer
+`host`; `NgComponentOutlet`'s `*ngComponentOutlet="type"` form as used).
 
 **Branch:** `claude/console-nav-phone-rail-9jofnk` (the session's designated remote branch stands
 in for `feature/console-nav-phone-rail`, per the `riviera-sdlc` cloud addendum; as with #1011, this
