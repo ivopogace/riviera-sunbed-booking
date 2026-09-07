@@ -64,38 +64,45 @@ stands in for `feature/console-nav-tab-rail` (`riviera-sdlc` remote addendum).
 - [x] **AC-1:** Given either console renders its header, when the section links are read, then
   they are `<a>` tabs on one rail landmark and no link carries the pill recipe (`rounded-full`
   together with a `border` and horizontal padding). *Seam:* the `nav[aria-label="… console
-  sections"]` landmark and its links · *Pinned by:* `operator-console.spec.ts` "renders the six
-  tabs as underlined text on one rail, no pill recipe" and `admin-console-tabs.spec.ts` "renders
-  underlined text tabs, no pill recipe".
+  sections"]` landmark and its links · *Pinned by:* `operator-console.spec.ts` "renders underlined
+  text tabs on one rail, no pill recipe (#1007)" and `admin-console-tabs.spec.ts` "renders
+  underlined text tabs, no pill recipe (#1007)".
 - [x] **AC-2:** Given the operator is on `/operator/1/daily` (390px, touch) or the admin on
   `/admin/audit`, when the rail is measured, then the current tab alone has
   `aria-current="page"`, computed `color` = full ink `rgb(10, 42, 51)`, and its `::after`
   marker is `opacity: 1`, `height: 3px`; every other tab is soft ink with the marker at
   `opacity: 0`; hover is unreachable on that viewport so cannot produce the marker. *Seam:* the
   rendered DOM via Playwright (`getByRole('navigation', { name })`) · *Pinned by:*
-  `current-page-marker.e2e.ts` "consoles: marks the current tab with full ink and a 3px
-  underline".
+  `current-page-marker.e2e.ts` "venue console: marks the current tab with full ink and a 3px
+  underline (#1007)" and "admin console: marks the current tab with full ink and a 3px underline
+  (#1007)".
 - [x] **AC-3:** Given the venue console renders, when its tabs are read in DOM order, then they
   are Daily view, Requests, Beach map, Pricing, Venue & commodities, Payouts with a divider
   before Beach map and before Payouts, and the Requests tab carries the live count badge.
   *Seam:* `[data-testid="oc-tabs"]` links + `[data-testid="oc-requests-badge"]` · *Pinned by:*
   `operator-console.spec.ts` "orders the tabs Today-first with dividers at the two group
-  boundaries" (+ the existing badge specs, unchanged) and `operator-requests.e2e.ts`'s badge
-  decrement (unchanged).
+  boundaries (#1007)" (+ the existing badge specs, unchanged) and `operator-requests.e2e.ts`
+  "lists the queue, accepts (badge decrements), and declines to empty — no booking code (#7, #8)"
+  (unchanged).
 - [x] **AC-4:** Given `ADMIN_CONSOLE_TAB_ORDER`, when read, then it is Operators, Email, Refunds,
   Photos, Reviews, Commissions, Payouts, Privacy, Audit; the rendered admin tabs are a
   subsequence of it (Payouts absent); and a divider sits at each of the four boundaries between
   the five groups. *Seam:* the exported constant + the rail landmark · *Pinned by:*
   `admin-console-tabs.spec.ts` "pins the amended canonical order (#1007)", "renders tabs in the
   canonical console order (Q1, #348)" (subsequence, unchanged rule), "draws a divider at each
-  group boundary and nowhere else".
+  group boundary and nowhere else (#1007)"; `admin-console-tabs.e2e.ts` "the rail wears no edge
+  mask and draws a divider at each of the four group boundaries (#1007)".
 - [x] **AC-5:** Given a 360px viewport, when the admin console or the venue console renders, then
   `document.documentElement.scrollWidth - clientWidth ≤ 1`, the rail's `scrollWidth >
   clientWidth`, the rail has computed `mask-image: none`, and on `/admin/audit` the Audit tab is
   in the viewport on click and after reload (likewise Venue & commodities on the venue console).
   *Seam:* Playwright computed style + `toBeInViewport` · *Pinned by:*
-  `admin-console-tabs.e2e.ts` (existing three tests + "the rail wears no edge mask") and
-  `operator-console.e2e.ts` "renders porcelain … single scrolling tab row" (extended).
+  `admin-console-tabs.e2e.ts` "the page never scrolls sideways at 360px — only the tab row does",
+  "every tab shares one row, and the row itself overflows horizontally", "switching to an
+  off-screen tab scrolls it into view, on click and on reload" and "the rail wears no edge mask
+  and draws a divider at each of the four group boundaries (#1007)"; `operator-console.e2e.ts`
+  "renders porcelain over the tourist theme with a single scrolling tab row, no wrap (#710)"
+  (extended).
 - [x] **AC-6:** Given the touch-target sweeps at 390px, when they walk both consoles, then every
   rail tab measures ≥ 44 × 44 px. *Seam:* `expectTouchTargets` over the rendered page ·
   *Pinned by:* `touch-targets.e2e.ts` and `touch-targets-admin.e2e.ts` (existing sweeps, no
@@ -103,18 +110,24 @@ stands in for `feature/console-nav-tab-rail` (`riviera-sdlc` remote addendum).
 - [x] **AC-7:** Given porcelain's worst background stop under the header glass, when the rail's
   marker ink (`--riv-ink`) and its hairline/divider ink (`--riv-ink-faint`) are composited over
   it, then each reaches ≥ 3:1 (WCAG 1.4.11). *Seam:* the token values mirrored in
-  `src/testing/glass-tokens.ts` · *Pinned by:* `shared/tab-rail.contrast.spec.ts`.
+  `src/testing/glass-tokens.ts` · *Pinned by:* `shared/tab-rail.contrast.spec.ts` "porcelain: the
+  current tab's underline (full ink) clears 3:1 on the header glass" and "porcelain: the hairline
+  and dividers (ink-faint) clear 3:1 on the header glass" (plus the riviera and dark rows).
 - [x] **AC-8:** Given a signed-out visitor on `/admin`, when the shell renders, then no `<nav>`
   exists. *Seam:* `AdminConsole`'s gate · *Pinned by:* `admin-console.spec.ts` "never renders
-  the tab strip until the gate passes" (unchanged).
+  the tab strip until the gate passes — a signed-out visitor isn't told what exists" (unchanged).
 - [x] **AC-9:** Given the current tab is off-screen, when the console loads or the operator
   switches tab, then that tab's `scrollIntoView` is called once per activation. *Seam:* the
-  tab directive on a real router host · *Pinned by:* `shared/tab-rail.spec.ts` "scrolls the tab
-  into view when it becomes current, on load and on switch" and the existing
-  `admin-console-tabs.spec.ts` "active tab scroll-into-view (#983)" pair (unchanged).
+  tab directive on a real router host · *Pinned by:* `shared/tab-rail.spec.ts` "scrolls the
+  current tab into view on load, and the newly current one on a switch"; `admin-console-tabs.spec.ts`
+  and `operator-console.spec.ts` "scrolls the active tab into view on load" and "scrolls the newly
+  active tab into view on a tab switch" (the admin pair unchanged, the operator pair rewritten onto
+  a real router).
 - [x] **AC-10:** Given `/admin/email?resend=1` (a query string on a tab URL), when the rail
   renders, then the Email tab is still `aria-current="page"`. *Seam:* the rail landmark ·
-  *Pinned by:* `admin-console-tabs.spec.ts` "keeps the tab lit under a query string".
+  *Pinned by:* `admin-console-tabs.spec.ts` "keeps the tab lit under a query string — the match is
+  path-only (#1007)" and `shared/tab-rail.spec.ts` "keeps the tab lit under a query string — the
+  match is path-only".
 
 ## Non-goals
 
@@ -214,9 +227,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft #1014 open; CI gate pending, then review gate`
+**Stage pointer:** `review gate — round 1 findings fixed; awaiting CI on the fix push, then merge`
 
-**Next action:** check PR #1014's CI run; when green, merge latest `origin/main`, mark ready for review and run the review gate (`references/pr-gates.md` §1) with `riviera-review-overlay`.
+**Next action:** confirm CI + Sonar green on the review-fix push, re-walk the overlay items the fix touched (RV-FE-E2E, RV-STYLE-1), then merge and run the close-out (`references/pr-gates.md` §3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -227,10 +240,20 @@ N/A — no contract change.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
+**Review gate (round 1):** ran `code-review:code-review` (rung 1) over `5a78f8ed..680058a3`
+(21 files, +1107/−213, verified by `check-review-range.mjs`) with `riviera-review-overlay`: six
+reviewers, three findings (F-2..F-4), all fixed in the review-fix commit; RV-FE-1/7/8/9/E2E,
+RV-STYLE-1/2, RV-PROC-1 pass, the rest N/A. **Sonar gate:** quality gate passed on the head,
+0 new issues, 0 duplicated blocks, 100% new-code coverage (the bot comment on the PR).
+**Merge:** merged via PR #1014 (recorded here ahead of the merge, per §3 step 4).
+
 **Findings register**
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-2 | review (prior-PR threads, score 100) | the plan's "Pinned by" citations paraphrased the shipped test titles (the #895/#957/#1005 finding) | fixed — every citation quoted verbatim in the review-fix commit |
+| F-3 | review (riviera overlay RV-FE-E2E, score 75) | `fixed-ink-token-recut.e2e.ts` located the Venue-not-found card by `locator('..')` | fixed — `data-testid="oc-invalid-venue-card"` on the card, located by test id |
+| F-4 | review (git history, score 75) | `app.routes.ts`'s `consoleTabRoutes` TSDoc still described the retired `firstChild.routeConfig.path` scroll and the pills | fixed — the comment now points at the rail tab's own mechanism |
 | F-1 | CI (frontend job, run 34110694421) | three e2e pinned the old strips through the landmark: Commissions slot 2, Privacy's last-three, the active pill's card border | fixed-in-`d10e7a99` |
 
 ---
@@ -256,6 +279,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/admin-commissions.e2e.ts` — the Commissions slot pin, amended to the new order (F-1).
 - `frontend/e2e/admin-privacy.e2e.ts` — the last-three pin, amended to the new order (F-1).
 - `frontend/e2e/fixed-ink-token-recut.e2e.ts` — reads `--riv-console-card-border` off the Venue-not-found card, not the retired pill (F-1).
+- `frontend/src/app/app.routes.ts` — the `consoleTabRoutes` TSDoc no longer names the retired scroll mechanism or the pills (F-4).
 - `docs/design/non-text-contrast.md` — the `--riv-console-card-border` row.
 - `docs/design/riviera-admin-console.dc.html` — the header note's order line and the rail.
 
@@ -338,8 +362,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #) — the three ← confirm? assumptions are the maintainer's to confirm at review; each is a reversible choice recorded in the PR's scope notes.
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

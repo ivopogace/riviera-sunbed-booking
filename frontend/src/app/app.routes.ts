@@ -7,9 +7,9 @@ import { operatorSessionGuard } from './core/operator-session.guard';
 
 /**
  * The operator-console tab child routes — one per section, each deep-linkable. The active tab
- * comes from the router itself: the pills mark themselves with `routerLinkActive`, and
- * {@link OperatorConsole} reads `firstChild.routeConfig.path` to scroll the active one into
- * view, so no route here carries a section key of its own.
+ * comes from the router itself: each rail tab marks itself with `routerLinkActive` and scrolls
+ * itself into view when it becomes current (`shared/tab-rail.ts`), so no route here carries a
+ * section key of its own.
  * A child reads `:venueId` from the PARENT route (child routes don't inherit it under the
  * router's default `emptyOnly` strategy).
  */

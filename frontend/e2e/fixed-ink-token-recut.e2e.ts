@@ -389,7 +389,7 @@ test("the console paints both hairlines, and the button's hover fill, from their
 
   // The card border's one consumer since the tabs moved to the shared rail: the "Venue not found" card.
   await page.goto('/operator/not-a-venue');
-  const notFound = page.getByTestId('oc-invalid-venue');
-  await expect(notFound).toBeVisible();
-  await expect(notFound.locator('..')).toHaveCSS('border-color', 'rgba(12, 42, 51, 0.1)');
+  const card = page.getByTestId('oc-invalid-venue-card');
+  await expect(card).toBeVisible();
+  await expect(card).toHaveCSS('border-color', 'rgba(12, 42, 51, 0.1)');
 });
