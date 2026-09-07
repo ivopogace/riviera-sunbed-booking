@@ -5,7 +5,7 @@ import { completeDialog } from './support/booking-dialog';
 import { awaitRoutedPage, openShellOverlay } from './support/shell';
 
 /**
- * The phone bottom tab bar's rendered-only rules (#1003): below `sm` the top bar scrolls away and
+ * The phone bottom tab bar's rendered-only rules: below `sm` the top bar scrolls away and
  * the bar is the only sticky chrome; nothing on a page sits under the bar; the payment page has no
  * bar and `Pay €45` stays wholly in view; the header popovers' backdrop covers the bar (it is
  * rendered before the header for exactly that); the bar paints its own near-opaque token per

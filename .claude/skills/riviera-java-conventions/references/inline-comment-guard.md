@@ -33,7 +33,9 @@ Scope:
 - **Skill markdown:** `.claude/skills/<skill>/SKILL.md` and its `references/*.md` — added
   lines only, outside fenced code and with code spans removed. Not the triage skill's
   `OUT-OF-SCOPE.md` (a ledger of issue numbers by design), and not `CLAUDE.md`, `docs/` or
-  the ADRs — those are RV-PROC-2's.
+  the ADRs — those are RV-PROC-2's. `docs/` is out of scope in every syntax, not only markdown:
+  its design records are `.dc.html` artboards whose README requires an
+  `<!-- as-built diverges — see #NNN -->` pointer beside every line a slice diverged from.
 - **Four languages, by comment syntax:** `.java`, `.ts`/`.tsx`/`.js`/`.mjs`/`.cjs`,
   `.scss`/`.css`, `.html`. In a `.ts`/`.tsx` file the template literal after `template:` is an
   Angular inline template, and an `<!-- … -->` inside it is judged exactly as one in an `.html`

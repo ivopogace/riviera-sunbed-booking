@@ -58,9 +58,14 @@ const SYNTAX = {
  */
 const SKILL_MARKDOWN = /^\.claude\/skills\/[^/]+\/(?:SKILL\.md|references\/.+\.md)$/;
 
+/** `docs/` in any syntax: the design records there are `.dc.html` artboards whose README requires
+ *  an `<!-- as-built diverges — see #NNN -->` pointer beside every line a slice diverged from. */
+const DOCS = /^docs\//;
+
 /** Returns the comment syntax for a path, or null when the file is out of scope. */
 export function syntaxFor(path) {
   if (SKILL_MARKDOWN.test(path)) return { markdown: true };
+  if (DOCS.test(path)) return null;
   const dot = path.lastIndexOf('.');
   if (dot === -1) return null;
   const extension = path.slice(dot).toLowerCase();

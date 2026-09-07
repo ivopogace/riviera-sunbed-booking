@@ -22,7 +22,7 @@ test.describe('phone: the bottom tab bar', () => {
   /**
    * The current tab is a SHAPE cue in full ink — a 3px bar at the top edge (the tab's `::before`)
    * and a 1.5px `currentColor` ring round the icon pill — plus the full-ink label: no tint the
-   * token set offers clears 1.4.11's 3:1 on the bar (#1003). The other tabs wear the soft ink with
+   * token set offers clears 1.4.11's 3:1 on the bar. The other tabs wear the soft ink with
    * the bar at opacity 0 and no ring.
    */
   for (const { theme, ink, soft } of [

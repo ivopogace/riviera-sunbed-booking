@@ -32,8 +32,10 @@ Flyway in scope; the drift is listed under *Grill outcome*) · `riviera-plan-doc
 forced the parity ledger for the retired hamburger and the seam shift for the computed-style ACs)
 · `tdd` (each AC is one red test in `app.spec.ts` / `app.routes.spec.ts` / `app.contrast.spec.ts`
 or the named e2e before the template changes) · `riviera-review-overlay` (review gate — due at
-ready-for-review) · `riviera-docs-freshness` (due at close-out; the retirement of
-`docs/plans/tourist-header-destinations.md` runs then) · `riviera-local-debug` (unshallowed the
+ready-for-review) · `riviera-docs-freshness` (**ran** over `5e158aed..HEAD` — rename grep for the hamburger / mobile menu
+across the substrate: 1 hit, a historical design-note row, not a stated fact; the v3 artboard depicts the
+hamburger, so it got the README's `as-built diverges — see #1003` pointer; no Nth-of-something
+introduced; `docs/plans/tourist-header-destinations.md` retired, no citation of its slug outside `docs/plans/`) · `riviera-local-debug` (unshallowed the
 clone, fetched the reference branch, scoped Vitest runs, `PW_CHROMIUM_EXECUTABLE` for the mocked
 e2e) · `riviera-frontend` (all changes stay in `app.*` + `app.routes.ts` at the shell root,
 `testing/glass-tokens.ts` for the token mirror, `e2e/`; route data lives in the one route table;
@@ -46,7 +48,11 @@ MCP (`list_projects` → Angular 22, Vitest; `get_best_practices`; `search_docum
 `ActivatedRouteSnapshot.data` — static route data is on the snapshot the existing walk reads —
 and `afterNextRender`, the hook `focusMover()` schedules) · `playwright-cli` (the mocked suite is
 the CI-safe one; new spec `e2e/tourist-tab-bar.e2e.ts`, extensions to `current-page-marker`,
-`theme-shell`, `touch-targets-tourist`).
+`theme-shell`, `touch-targets-tourist`) · `riviera-java-conventions` §6c +
+`references/inline-comment-guard.md` (the provenance gate, which postdates every artboard pointer,
+flagged the README-mandated `as-built diverges — see #1003` pointer on the v3 artboard; `docs/` is
+now out of the guard's scope in every syntax, as its own doc comment already said of `docs/` prose —
+`syntaxFor` + one test + the reference's scope bullet).
 
 **Branch:** `claude/tourist-header-phone-tab-frrvap` (the session's designated remote branch,
 standing in for `feature/tourist-header-phone-tab-bar`)
@@ -215,6 +221,7 @@ The phone hamburger (`sm:hidden` button in the top bar + the header-anchored she
 | R-5 | The sheet's rows keep their ids, so a spec that still passes may be asserting the OLD layout by accident | med | low | every consumer in the audit-log population is re-read and its prose updated, and the two that assert layout (`theme-shell` backdrop hit, `current-page-marker` phone) are rewritten | this session | closed — phase 3; `focus-ring-baseline.e2e.ts` needed no change (id only, no prose) |
 | R-6 | `env()` inside a Tailwind arbitrary value is mangled (underscores, calc spacing) | low | med | phase 2 reads the built CSS for the three declarations and the e2e reads the computed `padding-bottom` (61px) and sheet `bottom` (76px) | this session | closed — Tailwind spaced the `calc()` operators itself (`calc(61px + env(…))` in the build); e2e reads 61px / 76px |
 | R-7 | Two `nav` landmarks with distinct labels but only one visible per width confuse a screen-reader user | low | low | `display:none` removes the hidden one from the accessibility tree; axe in `app.a11y.spec.ts` sees both and passes on distinct labels | this session | closed — `app.a11y.spec.ts` green with both landmarks in the DOM; `theme-shell.e2e.ts` axe sweeps green at 390px |
+| R-8 | The design README's `as-built diverges — see #NNN` pointer and the inline-comment guard's provenance gate contradict each other on `.dc.html` artboards | high | med | `docs/` excluded from the guard in every syntax (its doc comment already excluded `docs/` prose); the exclusion is tested and the reference states it; flagged in the PR body for the maintainer | this session | closed — guard 32/32, diff-scoped run exit 0 |
 
 ## Open questions / Assumptions
 
@@ -286,6 +293,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - `docs/plans/tourist-header-phone-tab-bar.md` — this plan
 - `docs/plans/tourist-header-destinations.md` — retired at close-out (PR #1004 merged)
+- `docs/design/riviera-sunbeds-liquid-glass-v3.dc.html` — the `as-built diverges` pointer beside the artboard's phone hamburger
+- `scripts/check-inline-comments.mjs` + `scripts/check-inline-comments.test.mjs` — `docs/` out of the guard's scope in every syntax (the artboard pointer convention), with its test
+- `.claude/skills/riviera-java-conventions/references/inline-comment-guard.md` — the scope bullet stating it
 - `frontend/src/app/app.html` — the bottom bar before the header, the sheet after it, the `max-sm:relative` header, the hamburger removed, the shell padding binding
 - `frontend/src/app/app.ts` — `TouristSection` / `TouristRouteData`, `routeChrome` walk for `section` + `tabBar`, `tabSection` / `tabBar` / `shellClass` computeds, the sheet's `focusMover()`, `overlayHeldFocus` includes `menuOpen`, class recipes
 - `frontend/src/app/app.routes.ts` — `data.section` on the tourist routes, `data.tabBar: false` on `booking/pay`
