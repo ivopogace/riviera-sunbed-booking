@@ -24,7 +24,7 @@ import { VenueCreateCard } from './venue-create-card';
  * It resolves the owned-venue count and then forwards (1 → straight into that console), renders the
  * picker (2+), or renders the create-venue card inline: the **zero state** for an operator
  * with no venue yet, and the deliberate **`?create=1`** state ("Add another venue", reachable from
- * the picker and both operator headers) for one who already owns some. The decision table itself is
+ * the picker and the console's venue switcher) for one who already owns some. The decision table itself is
  * {@link landingRouteFor}, shared with the auth page so the two can't drift; the create param is
  * read reactively because the router reuses this instance when only the query string changes
  * (picker → create and back).

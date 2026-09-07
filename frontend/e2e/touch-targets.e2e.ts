@@ -130,8 +130,7 @@ test.describe('44px touch targets at a phone width', () => {
   });
 
   test('operator console — daily view, venue switcher open (#1009)', async ({ page }) => {
-    // Two owned venues, so the name renders as the switcher; registered after the whole-console
-    // mock, so this handler wins.
+    // Registered after the whole-console mock, so this two-venue list wins.
     await mockOwnedVenues(page, [
       { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
       { id: 2, name: 'Sereno', beach: 'Jal' },

@@ -139,7 +139,7 @@ The slice replaces the header's venue caption and moves one chip row.
 | Caption drops to `Your venue` the moment the param changes, before venue 2 loads | preserved | the console still clears `venueName` on each `load(id)`; the switcher only renders the input |
 | Caption styled 10px tracked uppercase `--riv-ink-faint` under the wordmark | changed (issue: the most legible word in the bar, invariant #13) | 17px bold `--riv-ink` beside the brand, truncating; contrast row re-pinned at α 1 |
 | Header row wraps (`flex-wrap`) | changed | `flex-nowrap` so the name truncates instead of pushing the chip to a second row (the #1008 one-row e2e stays green) |
-| Account chip row `Create a venue` → `/operator?create=1`, closes the popover and returns focus to the chip | changed (moved) | the switcher's foot row `Add another venue`, same target, same close + focus return; absent from both chips |
+| Account chip row `Create a venue` → `/operator?create=1`, closes the popover and returns focus to the chip | changed (moved) | the switcher's foot row `Add another venue`, same target, same close + focus return; absent from both chips — and reachable only for a **two-or-more-venue** operator, since the one-venue name is plain text (the open product question above) |
 | `Create a venue` reachable from the thin chrome (`/operator` picker, password page, `/admin`) | dropped for this slice (issue: "leaves the account chip in this slice") | the picker's own `Add another venue` link stays; slice 4 mounts the switcher on those pages as `Your venues` |
 | The chip's `oc-create-venue` / `opc-create-venue` test ids | dropped | replaced by `oc-venue-add` |
 
@@ -261,6 +261,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/operator-account-chip.ts` — drops `Create a venue`.
 - `frontend/src/app/operator/operator-account-chip.spec.ts` — row sets and ids without it.
 - `frontend/src/app/operator/operator-chrome.spec.ts` — asserts the row is gone from the thin chrome.
+- `frontend/src/app/operator/operator-home.ts` — TSDoc: where `?create=1` is reachable from now.
 - `frontend/e2e/operator-console.e2e.ts` — `mockConsole` mocks `/api/venues/mine` + venue 2; the two-venue case; the chip row list.
 - `frontend/e2e/operator-chrome.e2e.ts` — the chip row list.
 - `frontend/e2e/touch-targets.e2e.ts` — the sweep with the venue popover open.
