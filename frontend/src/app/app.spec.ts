@@ -45,6 +45,12 @@ const surfaceRoutes = () => [
   { path: 'venues/:id', component: BlankPage, data: { section: 'beaches' } },
   { path: 'booking/:code', component: BlankPage, data: { section: 'bookings' } },
   { path: 'pay', component: BlankPage, data: { section: 'bookings', tabBar: false } },
+  // The pay page's real shape: lazily loaded, so a sheet can be opened while its chunk is in flight.
+  {
+    path: 'pay-lazy',
+    loadComponent: () => lazyChunk,
+    data: { section: 'bookings', tabBar: false },
+  },
   { path: 'account/password', component: BlankPage, data: { section: 'account' } },
   { path: 'operator', component: BlankPage, data: { operatorConsole: true } },
   { path: 'operator-chrome', component: BlankPage, data: { operatorChrome: true } },
@@ -639,9 +645,48 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     await router.navigate(['/glass']);
     fixture.detectChanges();
 
-    // Focus was inside the sheet this navigation destroyed (the #351 rule, WCAG 2.4.3).
+    // The sheet held focus and this navigation destroyed it: land on main, never body (WCAG 2.4.3).
     expect(el.querySelector('[data-testid="mobile-menu"]')).toBeNull();
     expect(document.activeElement).toBe(el.querySelector('main'));
+  });
+
+  it('closes the sheet and lands focus on main when the navigation it was opened during hides the bar (#1003)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+
+    // A deep link to the pay page: the bar is up until the chunk lands, and the sheet opens on it.
+    const pending = router.navigate(['/pay-lazy']);
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+    // whenStable() waits on the pending navigation too; a macrotask flush runs the render hooks.
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(document.activeElement?.getAttribute('data-testid')).toBe('nav-signin-mobile');
+
+    landLazyChunk();
+    await pending;
+    fixture.detectChanges();
+
+    // The destination took the bar, and with it the sheet's trigger: the sheet closes, focus lands on main.
+    expect(el.querySelector('[data-testid="tab-bar"]')).toBeNull();
+    expect(el.querySelector('[data-testid="mobile-menu"]')).toBeNull();
+    expect(document.activeElement).toBe(el.querySelector('main'));
+  });
+
+  it('keeps the sheet open across the navigation it was opened during when the destination keeps the bar (#892, #1003)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+
+    const pending = router.navigate(['/elsewhere']);
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    landLazyChunk();
+    await pending;
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="mobile-menu"]')).not.toBeNull();
+    expect(document.activeElement?.getAttribute('data-testid')).toBe('nav-signin-mobile');
   });
 
   it("renders the tab bar before the header so the header popovers' backdrop covers it (#1003)", () => {
@@ -754,8 +799,8 @@ describe('App (Liquid Glass shell, issue #134)', () => {
       customerAuth.email.set(signedIn ? 'ana@example.com' : undefined);
       const { fixture, el } = shell();
 
-      const hamburger = el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!;
-      hamburger.click();
+      const menuTab = el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!;
+      menuTab.click();
       fixture.detectChanges();
       const mobileBtn = el.querySelector<HTMLButtonElement>(
         '[data-testid="mobile-menu"] [data-testid="find-open-mobile"]',
@@ -770,7 +815,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
 
       el.querySelector<HTMLButtonElement>('[data-testid="find-close"]')!.click();
       fixture.detectChanges();
-      expect(document.activeElement).toBe(hamburger);
+      expect(document.activeElement).toBe(menuTab);
     },
   );
 

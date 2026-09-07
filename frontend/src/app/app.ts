@@ -210,7 +210,8 @@ export class App {
 
   /** The phone sheet's trigger: the bar's third tab (`Menu` signed out, `Account` signed in). */
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
-  /** Moves focus into the sheet once it has rendered (WCAG 2.4.3, all three legs — RV-FE-9). */
+  /** Moves focus onto the sheet's first row once it has rendered — the open leg; `closeMenus()`
+   *  hands it back to the tab, and a navigation that tears the sheet down lands `<main>` (WCAG 2.4.3). */
   private readonly focusAfterRender = focusMover();
   private readonly themeButton = viewChild<ElementRef<HTMLButtonElement>>('themeButton');
   /** The account popover's trigger: the account chip signed in, the round menu button signed out. */
@@ -342,11 +343,14 @@ export class App {
    * for an on-page dismiss.
    *
    * <p><strong>Precondition of the skip:</strong> a skipped navigation must not destroy the open
-   * overlay's markup. The three popovers render inside `app.html`'s
+   * overlay's markup or its trigger. The popovers render inside `app.html`'s
    * `@if (shellChrome() === 'tourist')`, so a destination on operator or admin chrome would tear
    * them out while their signals stayed true, stranding focus on `document.body`. No tourist-header
    * link targets such a route today. Adding the first one means closing the popovers on the chrome
-   * switch, not relying on this rule.
+   * switch, not relying on this rule. The sheet's trigger renders inside `@if (tabBar())`, and a
+   * destination that hides the bar (a deep link to the pay page, whose chunk was still loading when
+   * the sheet opened) IS reachable — so that case closes the sheet and lands focus on `<main>`
+   * instead of skipping.
    */
   constructor() {
     // The navigation an overlay was opened during is not the user leaving the page.
@@ -357,6 +361,10 @@ export class App {
       )
       .subscribe((event) => {
         if (event.id === this.overlayNavId) {
+          if (this.menuOpen() && !this.tabBar()) {
+            this.menuOpen.set(false);
+            this.mainRef()?.nativeElement.focus();
+          }
           return;
         }
         // These overlays hold focus in markup this navigation destroys (find modal, account menu, sheet).

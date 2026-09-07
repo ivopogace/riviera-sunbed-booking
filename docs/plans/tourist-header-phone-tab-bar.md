@@ -50,9 +50,9 @@ and `afterNextRender`, the hook `focusMover()` schedules) · `playwright-cli` (t
 the CI-safe one; new spec `e2e/tourist-tab-bar.e2e.ts`, extensions to `current-page-marker`,
 `theme-shell`, `touch-targets-tourist`) · `riviera-java-conventions` §6c +
 `references/inline-comment-guard.md` (the provenance gate, which postdates every artboard pointer,
-flagged the README-mandated `as-built diverges — see #1003` pointer on the v3 artboard; `docs/` is
-now out of the guard's scope in every syntax, as its own doc comment already said of `docs/` prose —
-`syntaxFor` + one test + the reference's scope bullet).
+flagged the README-mandated `as-built diverges — see #1003` pointer on the v3 artboard; the
+`docs/design/*.dc.html` artboards are now out of the guard's scope — `syntaxFor` + one test + the
+reference's scope bullet; the artboards' support scripts stay in).
 
 **Branch:** `claude/tourist-header-phone-tab-frrvap` (the session's designated remote branch,
 standing in for `feature/tourist-header-phone-tab-bar`)
@@ -108,8 +108,9 @@ hamburger sheet with `Find a booking` and the auth group). Drift and gaps found:
   `max-sm:relative` and the top bar's phone-only control set is brand + swatch (the `sm:hidden`
   hamburger is gone). *Seam:* the class-list declaration + computed `position` in a real browser ·
   *Pinned by:* `app.spec.ts` › `the top bar scrolls away below sm: relative there, sticky from sm up
-  (#1003)`; `e2e/tourist-tab-bar.e2e.ts` › `the top bar is relative at 390px and sticky at 820px,
-  and the bar is the only sticky chrome below sm`.
+  (#1003)`; `e2e/tourist-tab-bar.e2e.ts` › `phone › the top bar is relative and scrolls away; the bar is
+  the only sticky chrome below sm` and `tablet: the inline nav, no bar › the header sticks and the
+  bar is not laid out`.
 - [x] **AC-3:** Given the third tab, when activated, then the sheet (`mobile-menu`) opens holding,
   in order: `Sign in` / `Create an account` (signed out) or the identity block + `Your account`
   (signed in), then `Find a booking`, then `Sign out` (signed in); Escape and a backdrop tap close
@@ -117,15 +118,16 @@ hamburger sheet with `Find a booking` and the auth group). Drift and gaps found:
   auth rows, Find a booking and Sign out in order (signed in: %s) (#1003)`, and the existing
   `hamburger opens the mobile menu; Escape closes it…` / `backdrop click closes the mobile menu`
   re-titled for the tab; `e2e/theme-shell.e2e.ts` › `mobile viewport › the Menu tab opens the
-  sheet, navigates, closes on Escape with focus returned (AC-3, #1003)`.
+  sheet, navigates, closes on Escape with focus returned (AC-3, #1003)` (the `describe` title is
+  `mobile viewport`).
 - [x] **AC-4:** Given the tab bar is shown, when the shell renders, then the shell's root element
   declares `max-sm:pb-[calc(61px+env(safe-area-inset-bottom))]` and the sheet declares
   `bottom-[calc(76px+env(safe-area-inset-bottom))]`; given `/booking/pay`, the padding class is
   absent. In a real browser at 390px the last interactive element on `/venues/1` sits fully above
   the bar's top edge. *Seam:* class-list declaration + rendered boxes · *Pinned by:* `app.spec.ts`
   › `pads the shell by the bar plus the safe-area inset, and the sheet's offset carries the inset
-  too (#1003)`; `e2e/tourist-tab-bar.e2e.ts` › `nothing on the beach map is occluded by the bar
-  at 390px`.
+  too (#1003)`; `e2e/tourist-tab-bar.e2e.ts` › `phone › nothing on the beach map is occluded by the
+  bar`.
 - [x] **AC-5:** Given the tourist routes, when navigating to `/`, `/venues/1`, `/my-bookings`,
   `/booking/CODE`, `/booking/confirmation`, `/booking/requested`, `/account/password` (signed in
   and out), `/account/sign-in` and `/legal/privacy`, then exactly one tab carries
@@ -162,12 +164,12 @@ hamburger sheet with `Find a booking` and the auth group). Drift and gaps found:
   `Find a booking from the mobile menu (signed in: %s) closes the menu and returns focus to the
   hamburger (#148, #1002)` re-titled for the tab, and `moves focus to main when a navigation closes
   the sheet (#1003)`; `e2e/find-a-booking.e2e.ts` › `phone › opens from the sheet and returns
-  focus to the Menu tab on dismiss (#1002, #1003)`.
+  focus to the Menu tab on dismiss (#1002, #1003)` (the `describe` title is `phone`).
 - [x] **AC-9:** Given every tab and sheet row, when the phone sweep runs, then each measures
   ≥ 44 × 44 and every tab `<a>` declares `appTouchTarget`. *Seam:* the rendered boxes; the class
-  list for `<a>` · *Pinned by:* `e2e/touch-targets-tourist.e2e.ts` (every phone-width surface now
-  lays the bar out; `home — discovery with its filter bar` asserts the bar is visible before the
-  sweep) and `the mobile menu, and the find-a-booking dialog behind it`; `app.spec.ts` › `every
+  list for `<a>` · *Pinned by:* `e2e/touch-targets-tourist.e2e.ts` › `home — discovery with its filter
+  bar, and the tab bar every phone surface lays out` (every phone-width surface lays the bar out)
+  and `the tab bar's sheet, and the find-a-booking dialog behind it`; `app.spec.ts` › `every
   header link declares the touch floor…` extended to the bar's links.
 - [x] **AC-10:** Given the tourist chrome, when it renders, then the `tab-bar` precedes the
   `header` in the DOM (`compareDocumentPosition` → `DOCUMENT_POSITION_FOLLOWING`); in a real
@@ -221,7 +223,7 @@ The phone hamburger (`sm:hidden` button in the top bar + the header-anchored she
 | R-5 | The sheet's rows keep their ids, so a spec that still passes may be asserting the OLD layout by accident | med | low | every consumer in the audit-log population is re-read and its prose updated, and the two that assert layout (`theme-shell` backdrop hit, `current-page-marker` phone) are rewritten | this session | closed — phase 3; `focus-ring-baseline.e2e.ts` needed no change (id only, no prose) |
 | R-6 | `env()` inside a Tailwind arbitrary value is mangled (underscores, calc spacing) | low | med | phase 2 reads the built CSS for the three declarations and the e2e reads the computed `padding-bottom` (61px) and sheet `bottom` (76px) | this session | closed — Tailwind spaced the `calc()` operators itself (`calc(61px + env(…))` in the build); e2e reads 61px / 76px |
 | R-7 | Two `nav` landmarks with distinct labels but only one visible per width confuse a screen-reader user | low | low | `display:none` removes the hidden one from the accessibility tree; axe in `app.a11y.spec.ts` sees both and passes on distinct labels | this session | closed — `app.a11y.spec.ts` green with both landmarks in the DOM; `theme-shell.e2e.ts` axe sweeps green at 390px |
-| R-8 | The design README's `as-built diverges — see #NNN` pointer and the inline-comment guard's provenance gate contradict each other on `.dc.html` artboards | high | med | `docs/` excluded from the guard in every syntax (its doc comment already excluded `docs/` prose); the exclusion is tested and the reference states it; flagged in the PR body for the maintainer | this session | closed — guard 32/32, diff-scoped run exit 0 |
+| R-8 | The design README's `as-built diverges — see #NNN` pointer and the inline-comment guard's provenance gate contradict each other on `.dc.html` artboards | high | med | the `docs/design/*.dc.html` artboards excluded from the guard (narrowed from all of `docs/` at the review gate, F-2); the exclusion is tested and the reference states it; flagged in the PR body for the maintainer | this session | closed — guard 32/32, diff-scoped run exit 0 |
 
 ## Open questions / Assumptions
 
@@ -266,11 +268,19 @@ bindings, `computed()` for every derived flag; no deviation.
 
 N/A — no contract change.
 
+## Sonar gate note
+
+First analysis on the plan-only head `433d68e0`: nothing analysed (a plan doc lies outside `sonar.sources`). On `43b20ce2`: gate OK, 244 new lines, 0 bugs, 0 vulnerabilities, 0 duplicated blocks, **96.8%** new-code coverage (API-confirmed), 1 new code smell — `javascript:S6557` on the guard's `docs/` regex, fixed in this commit together with the review gate's narrowing (F-2/F-8). Re-analysis due on this push.
+
+## Review gate note
+
+Ran `/code-review` (the plugin, high effort) + `riviera-review-overlay` on PR #1005 over `5e158aed..43b20ce2` (22 files / +1461 / −538, matched against the PR): six reviewers (CLAUDE.md, shallow bugs, git history, prior-PR comments, comment guidance, the overlay bank), findings scored and every one fixed in this commit — F-2..F-7 above. The overlay walk: RV-FE-1/7/8/9/E2E and RV-PROC-1/2 clean; RV-STYLE-1 the one Minor (F-5).
+
 ## Execution status
 
-**Stage pointer:** phase 4 — integration and gates (full suites running; PR #1005 draft → ready for review next).
+**Stage pointer:** DONE — merge close-out; merged via PR #1005 (awaiting the maintainer's merge; CI, the review gate and the Sonar gate all ran on the PR).
 
-**Next action:** confirm the full unit + mocked e2e suites green, push, mark PR #1005 ready for review, run the review gate (`references/pr-gates.md` §1), then the Sonar gate.
+**Next action:** after the merge, `riviera-sdlc` `references/pr-gates.md` §3: confirm #1003 closed, unsubscribe, retire this plan at the next close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -278,7 +288,7 @@ N/A — no contract change.
 | 1 — AC 5, 6 route data: `data.section` / `data.tabBar` in the table and the `routeChrome` walk | ✅ | `073e115f` |
 | 2 — AC 1, 2, 3, 4, 7, 8, 9, 10, 11 in the shell: the bar, the sheet's focus legs, the `relative` header, the padding, the token | ✅ | `39332e3e` |
 | 3 — the e2e half: `tourist-tab-bar.e2e.ts`, `current-page-marker`, `theme-shell`, `touch-targets-tourist`, `find-a-booking`, `tourist-header` | ✅ | `e78c9424` |
-| 4 — integration and gates; close-out incl. retiring `docs/plans/tourist-header-destinations.md` | ⏳ | |
+| 4 — integration and gates (`main` unchanged, nothing to merge); close-out incl. retiring `docs/plans/tourist-header-destinations.md`; the review-gate + Sonar fix round | ✅ | `cba324cb`, `43b20ce2`, (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -286,6 +296,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (repo hygiene) | the inline-comment guard flagged two `(#1003)` doc comments and the touched `support/shell.ts` TSDoc's history phrasing in the phase-3 e2e files (the guard had only been run before phase 3) | fixed-in-`43b20ce2` |
+| F-2 | CI (repo hygiene) + review (agent 1, scored 60) | the design README's `as-built diverges — see #NNN` pointer vs the guard's provenance gate; the first exclusion covered all of `docs/`, wider than its stated reason (the artboards' support scripts lost the guard) | fixed-in-`43b20ce2`, narrowed to `docs/design/*.dc.html` in this commit |
+| F-3 | review (git history) | a sheet opened during the in-flight navigation to a `tabBar: false` route stayed open under the #892 skip while the bar — and the sheet's trigger — unmounted: `Find a booking` no-oped and Escape stranded focus on `<body>` | fixed in this commit: the skip closes the sheet and lands `<main>` when the destination hides the bar; pinned by `app.spec.ts` › `closes the sheet and lands focus on main when the navigation it was opened during hides the bar (#1003)` and its #892 counterpart |
+| F-4 | review (prior-PR recurrence, scored 95) | plan-doc *Pinned by* citations paraphrased five shipped e2e titles (the #895/#957 finding again) | fixed in this commit: quoted verbatim |
+| F-5 | review (agents 1 + 6, scored 75) | an `app.spec.ts` comment cited `the #351 rule` — provenance in prose the guard's citing-word list misses | fixed in this commit |
+| F-6 | review (prior-PR recurrence, scored 70) | a test-local `hamburger` variable outlived the rename its own test title carried | fixed in this commit: `menuTab` |
+| F-7 | review (comment accuracy, scored 75) | the `focusAfterRender` TSDoc claimed all three focus legs for a field that serves the open leg alone | fixed in this commit |
+| F-8 | sonar | `javascript:S6557` on the guard's `docs/` check: `String#startsWith` over a regex | fixed in this commit, together with F-2's narrowing |
 
 ---
 
@@ -294,7 +312,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `docs/plans/tourist-header-phone-tab-bar.md` — this plan
 - `docs/plans/tourist-header-destinations.md` — retired at close-out (PR #1004 merged)
 - `docs/design/riviera-sunbeds-liquid-glass-v3.dc.html` — the `as-built diverges` pointer beside the artboard's phone hamburger
-- `scripts/check-inline-comments.mjs` + `scripts/check-inline-comments.test.mjs` — `docs/` out of the guard's scope in every syntax (the artboard pointer convention), with its test
+- `scripts/check-inline-comments.mjs` + `scripts/check-inline-comments.test.mjs` — the `docs/design/*.dc.html` artboards out of the guard's scope (the pointer convention), with its test
 - `.claude/skills/riviera-java-conventions/references/inline-comment-guard.md` — the scope bullet stating it
 - `frontend/src/app/app.html` — the bottom bar before the header, the sheet after it, the `max-sm:relative` header, the hamburger removed, the shell padding binding
 - `frontend/src/app/app.ts` — `TouristSection` / `TouristRouteData`, `routeChrome` walk for `section` + `tabBar`, `tabSection` / `tabBar` / `shellClass` computeds, the sheet's `focusMover()`, `overlayHeldFocus` includes `menuOpen`, class recipes
@@ -365,7 +383,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 4 — integration and gates
 
-- [ ] `git merge origin/main` (fetched fresh); `npm run lint`, `npm run format:check`, `npm test`,
+- [x] `git merge origin/main` (fetched fresh); `npm run lint`, `npm run format:check`, `npm test`,
   the full mocked e2e; `node scripts/check-*.mjs --diff origin/main` guards; `git rm
   docs/plans/tourist-header-destinations.md` + grep the slug outside `docs/plans/`; push; mark
   ready for review; review gate; Sonar gate; close-out in the last code-touching commit.
@@ -383,27 +401,27 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1..11 (unit):** `npx ng test --watch=false --include='src/app/app*.spec.ts'` → pass.
-- [x] **AC-2, 4, 6, 7, 8, 9, 10, 11 (e2e):** the full mocked suite green locally and in CI.
+- [x] **AC-1..11 (unit):** `npx ng test --watch=false --include='src/app/app*.spec.ts'` → 104 passed (this commit); the full unit suite 2600/2600 at `43b20ce2`.
+- [x] **AC-2, 4, 6, 7, 8, 9, 10, 11 (e2e):** the seven touched specs 64/64 locally at `e78c9424`; the full mocked suite 460/460 locally at `43b20ce2`; CI green on `43b20ce2`, the frontend job's mocked e2e included.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions hold only the two maintainer assumptions (A-1, A-2), flagged in the PR body for the review.
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here (the review-gate fix commit), citing `merged via PR #1005`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
