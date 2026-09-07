@@ -51,8 +51,14 @@ is consumed, never moved; the e2e belongs to the mocked suite) · `riviera-tailw
 backdrop and row recipes reused from `shared/popover-skin.ts`, no `@apply`; `appTouchTarget` on
 the name button and every row; tokens only — `text-riv-ink`, the `--riv-pop-*` family incl. the
 already-declared `border-riv-pop-divider`) · `angular-developer` + angular-cli MCP (loaded at
-phase 1 — `input()`/`computed()`/`effect()` + `untracked` for the load, `viewChild.required` for
-the focus target, `host` bindings for the document listeners) · `playwright-cli` (loaded at phase
+phase 1 — `input()`/`computed()`/`effect()` + `untracked` for the load, a non-required
+`viewChild` for the focus target, `host` bindings for the document listeners; verified at phase 4
+via `search_documentation` v22 + angular.dev: `document:` host listeners, `viewChild` → `undefined`
+under a false `@if`, `untracked` inside `effect`, `lastSuccessfulNavigation` as a signal, numeric
+`routerLink` commands + `queryParams`) · Tailwind v4 docs + a compile with the project's
+`@tailwindcss/node` (phase 4 — `max-sm:` → `@media (width < 40rem)`, `top-full`, `left-6`,
+`max-w-[calc(100%-3rem)]` normalised to `calc(100% - 3rem)`, `border-riv-pop-divider` →
+`var(--riv-pop-divider)` under `@theme inline`, `truncate`, `aria-[current=page]:`) · `playwright-cli` (loaded at phase
 3 — the two-venue console case, the touch-target sweep with the popover open).
 
 **Branch:** `claude/venue-name-switcher-hm26td` (the session's designated remote branch stands in
