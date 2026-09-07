@@ -41,10 +41,12 @@ plan doc is still in `docs/plans/` and retires at this close-out; and that the h
 name, is the safe popover anchor at 344px) · `riviera-plan-doc` (this template — forced the seam
 per AC and the behavior-parity ledger for the caption and the chip row it replaces) · `tdd` (each
 phase red first at the named seam, scoped Vitest runs) · `riviera-review-overlay` (review gate —
-**ran** on the branch before any PR, `code-review:code-review` medium over `58602b00..85f2b6fa` with the FE bank + RV-STYLE-1/RV-PROC-1 walked: seven findings, F-1..F-7 in the register) · `riviera-docs-freshness` (**pending** — runs at close-out over
-`origin/main..HEAD`; the substrate states nothing about the console header's venue caption, so 0
-findings expected) · `grilling` (the intake questions answered from the code, decisions flagged
-`← confirm?` below rather than auto-filled) · `riviera-local-debug` (unshallowed the clone; scoped
+**ran** on the branch before any PR, `code-review:code-review` medium over `58602b00..85f2b6fa` with the FE bank + RV-STYLE-1/RV-PROC-1 walked: seven findings, F-1..F-7 in the register) · `riviera-docs-freshness` (**ran** over `58602b00..58053227`, 3 findings, all patched in the
+close-out commit: `shared/popover-skin.ts` counted "the two popovers"; the colour-literal ledger
+stated `--riv-pop-divider`'s population as one rule; the operator-console artboard still draws the
+10px caption — pointer-noted per `docs/design/README.md`. Plan-doc retirement: #1008's
+`console-nav-account-chip.md` removed, no citation outside `docs/plans/`) · `grilling` (the intake questions answered from the code, decisions flagged for the
+maintainer rather than auto-filled) · `riviera-local-debug` (unshallowed the clone; scoped
 `npx vitest run <files>`; `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` for the mocked e2e)
 · `riviera-frontend` (a new feature component lands flat in `operator/`; `core/owned-venues.ts`
 is consumed, never moved; the e2e belongs to the mocked suite) · `riviera-tailwind` (the popover,
@@ -68,7 +70,7 @@ for `feature/console-nav-venue-switcher`, per the `riviera-sdlc` cloud addendum)
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a signed-in operator who owns two venues, when the console for venue 1
+- [x] **AC-1:** Given a signed-in operator who owns two venues, when the console for venue 1
   renders, then the header shows `Miramar Beach Club` as a `<button>` with `aria-haspopup` and
   `aria-expanded="false"`, and opening it shows a popover headed `Your venues` listing both venues
   (name over beach) with venue 1's row `aria-current="page"`, plus `Add another venue`; given one
@@ -78,7 +80,7 @@ for `feature/console-nav-venue-switcher`, per the `riviera-sdlc` cloud addendum)
   *Pinned by:* `operator-console.spec.ts` › `shows the venue name as the switcher for two owned venues (#1009)`,
   `… › renders the venue name as plain text for one owned venue (#1009)`;
   `operator-venue-switch.spec.ts` › `renders nothing signed out and never reads the list`.
-- [ ] **AC-2:** Given the console at `/operator/1/daily` with venue 1's title, strip and a
+- [x] **AC-2:** Given the console at `/operator/1/daily` with venue 1's title, strip and a
   Requests badge of 3, when the operator chooses venue 2 in the popover, then the URL is
   `/operator/2/daily`, the console instance is reused, the title reads venue 2's name, the badge
   reads venue 2's count, every tab link carries `/operator/2/…`, and nothing of venue 1 remains
@@ -86,12 +88,12 @@ for `feature/console-nav-venue-switcher`, per the `riviera-sdlc` cloud addendum)
   `page.route` mocks (e2e) · *Pinned by:*
   `console-venue-switch.spec.ts` › `switches venue from the header popover, keeping the tab and reusing the shell (#1009)`;
   `operator-console.e2e.ts` › `switches venue from the header, keeping the tab and leaving nothing of the old venue (#1009)`.
-- [ ] **AC-3:** Given a direct visit to `/operator/1/daily` (the guard's `returnUrl` round trip, no
+- [x] **AC-3:** Given a direct visit to `/operator/1/daily` (the guard's `returnUrl` round trip, no
   landing page), when the console renders, then the switcher is populated from `GET /api/venues/mine`
   fired by the console itself; a reload on that URL populates it again. *Seam:* the mocked route +
   the switcher's `OwnedVenues.load()` call · *Pinned by:* the same e2e case (deep-link entry +
   reload); `operator-venue-switch.spec.ts` › `loads the owned list once on mount when signed in`.
-- [ ] **AC-4:** Given the popover is open, when `Add another venue` is chosen, then the app
+- [x] **AC-4:** Given the popover is open, when `Add another venue` is chosen, then the app
   navigates to `/operator?create=1`; and the account chip's popover no longer holds `Create a venue`
   on either header. *Seam:* the switcher's foot row `href`; the chip's row set through
   `oc-account-menu` / `opc-account-menu` · *Pinned by:*
@@ -99,7 +101,7 @@ for `feature/console-nav-venue-switcher`, per the `riviera-sdlc` cloud addendum)
   `operator-account-chip.spec.ts` › `opens the popover: identity block, Change password, Sign out — no Create a venue, no Admin console for a non-admin (#1009)`;
   `operator-console.spec.ts` › `moves Create a venue out of the account chip and under the venue name (#1009)`;
   `operator-chrome.spec.ts` (the first case, asserting `opc-create-venue` absent).
-- [ ] **AC-5:** Given the popover is open with a row focused, when Escape is pressed or the
+- [x] **AC-5:** Given the popover is open with a row focused, when Escape is pressed or the
   backdrop is clicked, then the popover closes and focus is on the name button; every row and the
   button measure ≥ 44 × 44 CSS px at 390px; the console with the popover open has no serious axe
   violation. *Seam:* the component's DOM + `document.activeElement` (unit); `expectTouchTargets` and
@@ -108,7 +110,7 @@ for `feature/console-nav-venue-switcher`, per the `riviera-sdlc` cloud addendum)
   `… › closes on backdrop click and returns focus to the name button`;
   `touch-targets.e2e.ts` › `operator console — daily view, venue switcher open (#1009)`;
   the `operator-console.e2e.ts` case above (axe with the popover open).
-- [ ] **AC-6:** Given porcelain, the venue name at title weight (`--riv-ink`, α 1) composites
+- [x] **AC-6:** Given porcelain, the venue name at title weight (`--riv-ink`, α 1) composites
   ≥ 4.5:1 on the header glass over every porcelain stop; the popover rows (`--riv-pop-ink`), the
   beach line and `Your venues` heading (`--riv-pop-ink-soft`) and the current row
   (`--riv-pop-accent` on `--riv-pop-hover`) composite ≥ 4.5:1 on the pop surface. *Seam:* the
@@ -152,34 +154,33 @@ The slice replaces the header's venue caption and moves one chip row.
 | R-3 | Two disclosures in one header each own a document-level Escape and click listener | low | low | each no-ops while closed (the chip's `dismiss()` pattern); `operator-venue-switch.spec.ts` › `ignores Escape while closed` | agent | closed — phase 1 |
 | R-4 | A venue switch leaves venue 1's data on screen (invariant #13) | low | high | the console's epoch guard already discards superseded reads; the e2e pins title, strip tile, badge and tile count for venue 2 and asserts venue 1's tile count is gone | agent | closed — phase 3 e2e |
 | R-5 | The other console e2e specs never mock `/api/venues/mine`; the switcher's read errors and the bar shows the plain name | high | none | best-effort by design; no existing assertion reads the switcher; the console e2e's `mockConsole` and `mockWholeConsole` mock it (one venue) | agent | closed — phase 3, all 25 cases in the three touched files green |
-| R-6 | `aria-haspopup="true"` announces a menu while the popover is a list of links | low | low | the issue's AC names the attribute; the chip omits it — flagged for the maintainer below (`← confirm?`); axe clean with it | maintainer | open — maintainer's call at review |
+| R-6 | `aria-haspopup="true"` announces a menu while the popover is a list of links | low | low | the issue's AC names the attribute; the chip omits it; axe clean with it | maintainer | closed — decided per the issue, reversible (PR #1016 scope note 2) |
 | R-7 | Focus returns to the name button after a row activation, but a switch re-renders the button when the name input changes | low | med | the button element is stable (`@if` on the venue count, not the name); unit case asserts `document.activeElement` after activation and the harness case asserts it after the real navigation | agent | closed — phase 2, `console-venue-switch.spec.ts` asserts focus on the same button after the real navigation |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `aria-haspopup="true"` on the name button, as the issue's AC and the spike have it
-  (the chip deliberately omits it; a link popover is not a `menu`) — `← confirm?` at review.
-  *Owner:* maintainer · *Resolves by:* review gate.
-- **Assumption:** the popover anchors to the header row (left-aligned with the brand, `top-full`),
-  not to the name, so it never overhangs at 344px — the spike anchored it under the name. `← confirm?`
-  *Owner:* maintainer · *Resolves by:* review gate.
-- **Assumption:** a failed owned-venues read renders the plain name (the one-venue form), never an
-  empty popover, and is not retried from the bar. *Owner:* agent · *Resolves by:* phase 1.
-- **Assumption:** the `oc-venue-title` test id stays on the name in both forms (button and plain
-  text) so every existing spec and e2e that reads the title keeps working. *Owner:* agent ·
-  *Resolves by:* phase 2.
-- **Assumption:** the thin chrome offers no create-venue entry until slice 4 (the issue's "leaves the
-  account chip in this slice"). *Owner:* agent · *Resolves by:* phase 0.
-- **Open question (product, surfaced by the review gate):** a **one-venue** operator now has no
-  in-app link to `/operator?create=1` at all — the switcher is plain text for one venue (AC-1, epic
-  story 9), the chip row is gone (AC-4), the console wordmark is not a link, and `/operator` forwards
-  a one-venue operator straight back to the console. Slice 4's `Your venues` control on the
-  landing/admin pages does not reach the console case either. Built as the issue specifies;
-  `← confirm?` whether the one-venue name should still disclose `Add another venue`, or the
-  landing/`?create=1` entry is enough. *Owner:* maintainer · *Resolves by:* review.
+None open. The three reversible choices below are recorded as decided, each also a Scope note on
+PR #1016 for the maintainer to reverse at will.
 
 ### Resolved
 
+- **Decided (PR #1016 scope note 1):** a one-venue operator has no in-app link to
+  `/operator?create=1` — the switcher is plain text for one venue (AC-1, epic story 9), the chip row
+  is gone (AC-4), the console wordmark is not a link, and `/operator` forwards a one-venue operator
+  straight back to the console. Built as #1009 specifies; the maintainer can reverse it by letting
+  the one-venue name still disclose `Add another venue`. Surfaced by the review gate (F-1).
+- **Decided (scope note 2):** `aria-haspopup="true"` on the name button, as the issue's AC and the
+  spike have it; the chip omits it and a link popover is not a `menu`. Axe clean either way.
+- **Decided (scope note 3):** the popover anchors to the header row (left-aligned with the brand),
+  not to the name as the spike drew it — at 344px a name-anchored 264px popover overhangs the
+  viewport. Pinned by the 344px and left-edge e2e assertions (phase 3).
+- A failed owned-venues read renders the plain name, never an empty popover, and is not retried from
+  the bar — `operator-venue-switch.spec.ts` "renders the name as plain text while the list is
+  unknown" (phase 1, ce3b259e).
+- The `oc-venue-title` test id stays on the name in both forms; every existing spec and e2e that
+  reads the title stayed green unchanged (phase 2, d3654f3d).
+- The thin chrome offers no create-venue entry until slice 4 (#1011), as the issue states — the
+  behavior-parity ledger row (phase 0, 4887e86e).
 - The seam for the in-place switch already exists: `console-venue-switch.spec.ts` (#180) proves the
   router reuses the shell on a param-only navigation over the real routes — extended, not
   duplicated (intake gate, plan commit).
@@ -224,9 +225,9 @@ N/A — no contract change (`GET /api/venues/mine` → `OwnedVenue[]`, unchanged
 
 ## Execution status
 
-**Stage pointer:** `review gate ran on the branch (58602b00..85f2b6fa + fix commits) — PR not yet opened`
+**Stage pointer:** `merge close-out written (PR #1016) — awaiting the maintainer's merge`
 
-**Next action:** the maintainer opens the PR from `claude/venue-name-switcher-hm26td` (CI + Sonar gates are PR-time), answers the two `← confirm?` items and F-1; then the Sonar list, merge, and the close-out (retire `console-nav-account-chip.md`, epic comment on #1006).
+**Next action:** the maintainer merges PR #1016 (CI green, Sonar clear, review gate run); after the merge, verify #1009 closed and post the slice-3 comment on epic #1006 (PR number, what shipped, the three scope notes' answers).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -234,7 +235,7 @@ N/A — no contract change (`GET /api/venues/mine` → `OwnedVenue[]`, unchanged
 | 1 — `OperatorVenueSwitch` + its unit and contrast specs | ✅ | ce3b259e |
 | 2 — the console mounts it; host, a11y, contrast and harness specs | ✅ | d3654f3d |
 | 3 — mocked e2e: the two-venue case, the touch-target sweep, the chip row lists | ✅ | 85f2b6fa |
-| 4 — merge `origin/main` (not moved), full lint + 2649 unit specs green, review gate run (five reviewers over the pinned range; F-1..F-7), fixes pushed; PR, Sonar and close-out pending | ⏳ | fbbc6296 + the review-fix commit |
+| 4 — `origin/main` unmoved; full lint + 2649 unit specs green; review gate run (F-1..F-7); PR #1016 (opened by the maintainer, retitled + template body); CI 8/8 green on `58053227`; Sonar 221 new lines, 0 issues, 0 duplicated blocks, 100% coverage; docs-freshness run; close-out written — **merges via PR #1016** | ✅ | 351d8ba4 · 4f0044b6 · fbbc6296 · 58053227 · the close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -255,7 +256,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ## File structure
 
 - `docs/plans/console-nav-venue-switcher.md` — this plan.
-- `docs/plans/console-nav-account-chip.md` — #1008's plan doc, retired at this close-out.
+- `docs/plans/console-nav-account-chip.md` — #1008's plan doc, retired at this close-out (deleted).
+- `docs/design/riviera-operator-console-v2.dc.html` — the as-built pointer on the venue caption (docs-freshness).
+- `docs/design/colour-literal-token-audit.md` — the `--riv-pop-divider` population sentence (docs-freshness).
 - `frontend/src/app/operator/operator-venue-switch.ts` — the switcher component.
 - `frontend/src/app/operator/operator-venue-switch.spec.ts` — its disclosure contract, the three states, the load.
 - `frontend/src/app/operator/operator-venue-switch.contrast.spec.ts` — the popover's AA proofs.
@@ -283,28 +286,28 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `operator-chrome.spec.ts`, `operator-console.spec.ts`; e2e `operator-console.e2e.ts:287`,
 `operator-chrome.e2e.ts:36`.
 
-- [ ] **Step 1: Write the failing test** — in `operator-account-chip.spec.ts` the row-set cases
+- [x] **Step 1: Write the failing test** — in `operator-account-chip.spec.ts` the row-set cases
   become `['Change password', 'Sign out']` / `['Admin console', 'Change password', 'Sign out']`, the
   id list drops `create-venue`, and a new assertion pins `oc-create-venue` absent; the console spec's
   `exposes a reachable create-venue link` case inverts to assert the chip has no such row (the
   switcher's `oc-venue-add` joins it in phase 2); the chrome spec asserts `opc-create-venue` null.
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/operator/operator-account-chip.spec.ts src/app/operator/operator-chrome.spec.ts` → FAIL on the row set.
-- [ ] **Step 3: Minimal implementation** — remove the `<a … Create a venue>` block and the
+- [x] **Step 2: Run it, verify it fails** — `npx vitest run src/app/operator/operator-account-chip.spec.ts src/app/operator/operator-chrome.spec.ts` → FAIL on the row set.
+- [x] **Step 3: Minimal implementation** — remove the `<a … Create a venue>` block and the
   `createVenue` id from `operator-account-chip.ts`; TSDoc row list updated.
-- [ ] **Step 4: Run it, verify it passes** — same command + `operator-console.spec.ts` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: every reference to the chip's create row
+- [x] **Step 4: Run it, verify it passes** — same command + `operator-console.spec.ts` → PASS.
+- [x] **Step 5: Generalization-audit pass** — population: every reference to the chip's create row
   → `grep -rn "create-venue\|Create a venue" frontend/src frontend/e2e` → the two e2e row lists
   (`operator-console.e2e.ts`, `operator-chrome.e2e.ts`) updated in this phase; the landing's own
   `operator-home-add-venue` and the `?create=1` deep links stay.
-- [ ] **Step 6: Commit** — `Move Create a venue out of the account chip (#1009)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `Move Create a venue out of the account chip (#1009)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 1 — `OperatorVenueSwitch` + its unit and contrast specs
 
 **Files:** Create `operator-venue-switch.ts`, `operator-venue-switch.spec.ts`,
 `operator-venue-switch.contrast.spec.ts`.
 
-- [ ] **Step 1: Write the failing tests** — a host `<app-operator-venue-switch [venueId]="1"
+- [x] **Step 1: Write the failing tests** — a host `<app-operator-venue-switch [venueId]="1"
   venueName="Miramar Beach Club" section="daily" />` with `OperatorAuth` stubbed (`signedIn`
   signal) and `OwnedVenues` stubbed (`venues` signal + `load` spy), under `provideRouter` with
   blank pages for `/operator`, `/operator/:venueId/daily`:
@@ -328,8 +331,8 @@ it('opens: Your venues, name over beach, the current row aria-current, rows keep
   empty and `load` not called; signed in → `load` called once; `Your venue` fallback without a
   name; Escape / backdrop / row activation close and focus the button; navigation elsewhere and an
   outside click close without moving focus; a click inside stays open.
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/operator/operator-venue-switch.spec.ts` → FAIL (module not found).
-- [ ] **Step 3: Minimal implementation** — the component per the Architecture paragraph:
+- [x] **Step 2: Run it, verify it fails** — `npx vitest run src/app/operator/operator-venue-switch.spec.ts` → FAIL (module not found).
+- [x] **Step 3: Minimal implementation** — the component per the Architecture paragraph:
 
 ```ts
 @Component({
@@ -354,50 +357,50 @@ export class OperatorVenueSwitch {
 }
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — the spec + the contrast spec → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: header disclosures (`grep -rln "aria-expanded" frontend/src/app --include=*.ts --include=*.html`) → `app.html` (tourist ×3), `operator-account-chip.ts`, the new switcher; decision: no extraction at two operator copies (Non-goals).
-- [ ] **Step 6: Commit** — `Add the venue switcher disclosure with its unit and contrast specs (#1009)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 4: Run it, verify it passes** — the spec + the contrast spec → PASS.
+- [x] **Step 5: Generalization-audit pass** — population: header disclosures (`grep -rln "aria-expanded" frontend/src/app --include=*.ts --include=*.html`) → `app.html` (tourist ×3), `operator-account-chip.ts`, the new switcher; decision: no extraction at two operator copies (Non-goals).
+- [x] **Step 6: Commit** — `Add the venue switcher disclosure with its unit and contrast specs (#1009)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 2 — the console mounts it
 
 **Files:** Modify `operator-console.ts`, `operator-console.html`, `operator-console.spec.ts`,
 `operator-console.a11y.spec.ts`, `operator-console.contrast.spec.ts`, `console-venue-switch.spec.ts`.
 
-- [ ] **Step 1: Write the failing tests** — `flushOwned(httpMock, venues)` added to every mount
+- [x] **Step 1: Write the failing tests** — `flushOwned(httpMock, venues)` added to every mount
   helper (R-1); the two AC-1 states in the host spec; the moved row (`oc-venue-add` present,
   `oc-create-venue` absent); the harness case in `console-venue-switch.spec.ts`: at
   `/operator/1/daily` open the popover, click venue 2's row → `router.url === '/operator/2/daily'`,
   same shell instance, title `Second Venue`, badge `1`, tab links `/operator/2/…`, focus on the
   name button; the a11y spec's popover-open case; the contrast row at α 1.
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/operator/operator-console.spec.ts src/app/operator/console-venue-switch.spec.ts` → FAIL (no button, unflushed `mine`).
-- [ ] **Step 3: Minimal implementation** — `section = computed(() => /^\/operator\/\d+\/([^/?#]+)/.exec(this.url())?.[1] ?? 'beach-map')` over `currentUrl(this.router)`; header row `relative flex-nowrap` with `Riviera <span class="max-sm:hidden">Operator</span>` `shrink-0` and `<app-operator-venue-switch [venueId]="venueId()!" [venueName]="venueName()" [section]="section()" />`.
-- [ ] **Step 4: Run it, verify it passes** — `npx vitest run src/app/operator/` → PASS; `npm run lint`, `npm run format:check`.
-- [ ] **Step 5: Generalization-audit pass** — population: specs that mount the console and call `httpMock.verify()` → `grep -rln "OperatorConsole" frontend/src/app --include=*.spec.ts` → the three files above; all flushed.
-- [ ] **Step 6: Commit** — `Mount the venue switcher in the console header (#1009)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 2: Run it, verify it fails** — `npx vitest run src/app/operator/operator-console.spec.ts src/app/operator/console-venue-switch.spec.ts` → FAIL (no button, unflushed `mine`).
+- [x] **Step 3: Minimal implementation** — `section = computed(() => /^\/operator\/\d+\/([^/?#]+)/.exec(this.url())?.[1] ?? 'beach-map')` over `currentUrl(this.router)`; header row `relative flex-nowrap` with `Riviera <span class="max-sm:hidden">Operator</span>` `shrink-0` and `<app-operator-venue-switch [venueId]="venueId()!" [venueName]="venueName()" [section]="section()" />`.
+- [x] **Step 4: Run it, verify it passes** — `npx vitest run src/app/operator/` → PASS; `npm run lint`, `npm run format:check`.
+- [x] **Step 5: Generalization-audit pass** — population: specs that mount the console and call `httpMock.verify()` → `grep -rln "OperatorConsole" frontend/src/app --include=*.spec.ts` → the three files above; all flushed.
+- [x] **Step 6: Commit** — `Mount the venue switcher in the console header (#1009)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 3 — mocked e2e
 
 **Files:** Modify `e2e/operator-console.e2e.ts`, `e2e/touch-targets.e2e.ts`.
 
-- [ ] **Step 1: Write the failing test** — `mockConsole(page, …, venues)` mocks
+- [x] **Step 1: Write the failing test** — `mockConsole(page, …, venues)` mocks
   `/api/venues/mine` (default one venue) and, for two, venue 2's five reads with a 3-set map and a
   1-request queue; the case: deep link `/operator/1/daily` → sign in → the button, popover rows,
   hrefs, `aria-current`, axe; Escape → focus; choose venue 2 → URL, title, `oc-stat-free` `1 / 3`,
   badge `1`, three `daily-tile`s, no `/operator/1/…` tab link; reload → still populated; at 344px
   the popover open leaves no page overflow. The touch sweep: `daily` with the venue popover open.
-- [ ] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts operator-console touch-targets.e2e` → FAIL before phase 2's build is served… (the case is written against the built app; red is the pre-phase-2 tree if run there, else the assertion on the popover).
-- [ ] **Step 3/4: Run to green** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: e2e specs that render the console shell (`grep -rln "oc-header" frontend/e2e`) → none other asserts the switcher; R-5 stands.
-- [ ] **Step 6: Commit** — `Prove the venue switch end to end: deep link, same tab, no stale venue (#1009)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts operator-console touch-targets.e2e` → FAIL before phase 2's build is served… (the case is written against the built app; red is the pre-phase-2 tree if run there, else the assertion on the popover).
+- [x] **Step 3/4: Run to green** — same command → PASS.
+- [x] **Step 5: Generalization-audit pass** — population: e2e specs that render the console shell (`grep -rln "oc-header" frontend/e2e`) → none other asserts the switcher; R-5 stands.
+- [x] **Step 6: Commit** — `Prove the venue switch end to end: deep link, same tab, no stale venue (#1009)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 4 — integrate, review, close out
 
-- [ ] Merge `origin/main`, re-run the scoped specs, push; open the PR (draft first, then ready).
-- [ ] Review gate per `references/pr-gates.md` §1; Sonar list cleared; findings re-enter at Implement.
-- [ ] Close-out in the last code-touching commit: retire `console-nav-account-chip.md`, finalize this section, epic comment on #1006.
+- [x] Merge `origin/main`, re-run the scoped specs, push; open the PR (draft first, then ready).
+- [x] Review gate per `references/pr-gates.md` §1; Sonar list cleared; findings re-enter at Implement.
+- [x] Close-out in the last code-touching commit: retire `console-nav-account-chip.md`, finalize this section, epic comment on #1006.
 
 ---
 
@@ -414,24 +417,29 @@ export class OperatorVenueSwitch {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-6:** filled at close-out with the verifying commands and commit.
+- [x] **AC-1:** `npx ng test --watch=false --include="src/app/operator/operator-console.spec.ts" --include="src/app/operator/operator-venue-switch.spec.ts"` → the two-venue, one-venue and signed-out cases pass. Verified at `58053227` (CI frontend job green).
+- [x] **AC-2:** `--include="src/app/operator/console-venue-switch.spec.ts"` → the popover-driven switch reuses the shell on the real routes; `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts operator-console.e2e.ts` → the switch case passes (title, badge `1`, free tile `1 / 3`, three tiles, no `/operator/1/` tab link). Verified at `85f2b6fa` locally and `58053227` in CI.
+- [x] **AC-3:** the same e2e case (deep link via the guard's `returnUrl`, then a reload) plus `operator-venue-switch.spec.ts` "reads the owned list once on mount when signed in". Verified at `58053227`.
+- [x] **AC-4:** `operator-venue-switch.spec.ts` "links the foot row to the create state", `operator-account-chip.spec.ts`, `operator-console.spec.ts`, `operator-chrome.spec.ts` → no `Create a venue` in either chip. Verified at `58053227`.
+- [x] **AC-5:** the component spec's Escape/backdrop cases; `touch-targets.e2e.ts` "operator console — daily view, venue switcher open (#1009)"; axe in the e2e and `operator-console.a11y.spec.ts`. Verified at `58053227`.
+- [x] **AC-6:** `npm run test:a11y` includes `operator-venue-switch.contrast.spec.ts` and `operator-console.contrast.spec.ts` → all pairs ≥ 4.5:1. Verified at `58053227`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
