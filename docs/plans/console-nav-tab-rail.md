@@ -214,9 +214,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft open; CI gate pending, then review gate`
+**Stage pointer:** `PR — draft #1014 open; CI gate pending, then review gate`
 
-**Next action:** check the draft PR's CI run; when green, merge latest `origin/main`, mark ready for review and run the review gate (`references/pr-gates.md` §1) with `riviera-review-overlay`.
+**Next action:** check PR #1014's CI run; when green, merge latest `origin/main`, mark ready for review and run the review gate (`references/pr-gates.md` §1) with `riviera-review-overlay`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
