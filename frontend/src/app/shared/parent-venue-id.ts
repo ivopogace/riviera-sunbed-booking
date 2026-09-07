@@ -20,7 +20,7 @@ export function routeIdParam(
     return computed(() => undefined);
   }
   const params = toSignal(route.paramMap, { initialValue: route.snapshot.paramMap });
-  return computed(() => toId(params(), param));
+  return computed(() => idParam(params(), param));
 }
 
 /**
@@ -37,7 +37,8 @@ export function parentVenueId(route: ActivatedRoute): Signal<number | undefined>
   return venueIdParam(route.parent);
 }
 
-function toId(params: ParamMap, param: string): number | undefined {
+/** The positive-integer id under `param` in `params`, or `undefined` — the rule the signals above apply. */
+export function idParam(params: ParamMap, param: string): number | undefined {
   const id = Number(params.get(param));
   return Number.isInteger(id) && id > 0 ? id : undefined;
 }

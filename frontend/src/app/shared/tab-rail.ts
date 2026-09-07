@@ -39,6 +39,16 @@ export const TAB_RAIL_MATCH: IsActiveMatchOptions = {
 export class TabRail {}
 
 /**
+ * The current-page marker both console rows share: full ink plus a 3px bar in that ink, keyed on
+ * `aria-current="page"`, drawn by an `after:` pseudo-element on a `relative` host. The host adds
+ * the bar's vertical position — `after:bottom-0` on a rail tab (onto the rail's inset hairline),
+ * `after:-bottom-px` on the shell's section slots (over the header's border) — so section and
+ * tab read as one structure one level apart.
+ */
+export const TAB_RAIL_MARKER =
+  "relative after:absolute after:inset-x-0 after:h-[3px] after:rounded-full after:bg-current after:opacity-0 after:content-[''] aria-[current=page]:text-riv-ink aria-[current=page]:after:opacity-100";
+
+/**
  * An underlined text tab on a {@link TabRail}: soft ink at rest, and when `routerLinkActive`
  * marks it `aria-current="page"`, full ink plus a 3px bar in that ink on the rail's hairline —
  * never the accent ink alone, which vanishes on the header glass. The call site keeps the
@@ -54,8 +64,7 @@ export class TabRail {}
 @Directive({
   selector: 'a[appTabRailTab]',
   host: {
-    class:
-      'relative inline-flex shrink-0 items-center gap-[7px] px-0.5 text-[13.5px] font-semibold whitespace-nowrap text-riv-ink-soft no-underline hover:text-riv-ink after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] after:rounded-full after:bg-current after:opacity-0 aria-[current=page]:text-riv-ink aria-[current=page]:after:opacity-100',
+    class: `inline-flex shrink-0 items-center gap-[7px] px-0.5 text-[13.5px] font-semibold whitespace-nowrap text-riv-ink-soft no-underline hover:text-riv-ink after:bottom-0 ${TAB_RAIL_MARKER}`,
   },
 })
 export class TabRailTab {

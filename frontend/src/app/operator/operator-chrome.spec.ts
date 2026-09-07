@@ -91,17 +91,15 @@ describe('OperatorChrome', () => {
     expect(el.querySelector('[data-testid="opc-admin-link"]')).toBeNull();
   });
 
-  it('adds the Admin console row for a platform-admin principal, current on the admin pages (#1008)', async () => {
+  it('holds no Admin console row for a platform-admin principal either — Admin is a section of the shell (#1011)', async () => {
     operatorAuth.isAdmin.set(true);
     const { fixture, el } = render();
     await TestBed.inject(Router).navigateByUrl('/admin/email');
     fixture.detectChanges();
 
     await openChip(fixture, el);
-    const admin = el.querySelector<HTMLAnchorElement>('[data-testid="opc-admin-link"]')!;
-    expect(admin.getAttribute('href')).toBe('/admin');
-    expect(admin.textContent?.trim()).toBe('Admin console');
-    expect(admin.getAttribute('aria-current')).toBe('page');
+    expect(el.querySelector('[data-testid="opc-admin-link"]')).toBeNull();
+    expect(el.textContent).not.toContain('Admin console');
   });
 
   it('offers the operator sign-in (not session controls) when signed out', () => {

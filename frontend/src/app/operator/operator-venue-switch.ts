@@ -23,16 +23,20 @@ import { TouchTarget } from '../shared/touch-target';
 const NAME = 'min-w-0 max-w-full truncate text-[17px] font-bold tracking-[-0.01em] text-riv-ink';
 
 /**
- * The venue console's venue name, and — for an operator who owns more than one venue — the control
- * that changes it: a disclosure button opening a popover headed `Your venues` that lists the owned
- * venues (name over beach), marks the current one `aria-current="page"`, links each row to the
- * **same section** on the other venue (`/operator/7/daily` → `/operator/9/daily`, the router then
- * reuses the console instance and its reactive `venueId` reload does the rest), and ends in
- * `Add another venue`. With exactly one venue the name is plain text and nothing opens — a label,
- * not a control. Signed out it renders nothing. The `/operator` picker stays the landing for a
- * bookmark with no venue.
+ * The venue-console section of the console shell's section row, and — for an operator who owns
+ * more than one venue — the control that changes venue. On the console (`venueId` given) it is the
+ * venue's name at title weight; with two or more owned venues that name is a disclosure button
+ * opening a popover headed `Your venues` that lists the owned venues (name over beach), marks the
+ * current one `aria-current="page"`, links each row to the **same section** on the other venue
+ * (`/operator/7/daily` → `/operator/9/daily`, the router then reuses the console instance and its
+ * reactive `venueId` reload does the rest), and ends in `Add another venue`; with exactly one venue
+ * the name is plain text — a label, not a control. Off the console (no `venueId`: the `/admin`
+ * tabs, the `/operator` landing, the password page) the slot reads `Your venues`: the same
+ * disclosure for two or more venues, its rows linking to `/operator/<id>` (the console's index
+ * redirect picks the tab), and a plain link to `/operator` otherwise — the landing forwards a
+ * one-venue operator straight into the console. Signed out it renders nothing.
  *
- * <p>It reads the session-scoped {@link OwnedVenues} store and is the console's one trigger for
+ * <p>It reads the session-scoped {@link OwnedVenues} store and is the shell's one trigger for
  * that read: only the `/operator` landing and the sign-in page's landing decision read it, so a
  * bookmark straight into a console would otherwise render a switcher with nothing to switch to.
  * The store dedupes and caches, so this costs no second request after the landing. A failed read
@@ -40,9 +44,11 @@ const NAME = 'min-w-0 max-w-full truncate text-[17px] font-bold tracking-[-0.01e
  *
  * <p>The disclosure is the account chip's, leg for leg (WCAG 2.4.3): Escape, the backdrop and a row
  * activation return focus to the name button; a navigation that ends elsewhere, or a click outside
- * the header, closes without moving it. The popover is anchored to the header row (the nearest
- * positioned ancestor — the console makes its header row `relative`), left-aligned with the row's
- * `px-6`, not to the name: at 344px a name-anchored 264px popover overhangs the viewport.
+ * the header, closes without moving it. The popover is `fixed`, which anchors it to the shell's
+ * header row rather than to the name: the header's `backdrop-filter` makes it the containing block
+ * for fixed descendants (the fact the chip's backdrop relies on too), so `top-full left-6` puts the
+ * popover under the row, left-aligned with the row's `px-6` — at 344px a name-anchored 264px popover
+ * overhangs the viewport, and the section slot between them is `relative` for its underline marker.
  */
 @Component({
   selector: 'app-operator-venue-switch',
@@ -90,7 +96,7 @@ const NAME = 'min-w-0 max-w-full truncate text-[17px] font-bold tracking-[-0.01e
             @for (venue of venues(); track venue.id) {
               <a
                 appTouchTarget
-                [routerLink]="['/operator', venue.id, section()]"
+                [routerLink]="rowLink(venue.id)"
                 [class]="cls.item"
                 [attr.aria-current]="venue.id === venueId() ? 'page' : null"
                 (click)="activate()"
@@ -113,19 +119,24 @@ const NAME = 'min-w-0 max-w-full truncate text-[17px] font-bold tracking-[-0.01e
             >
           </div>
         }
-      } @else {
+      } @else if (venueId() !== undefined) {
         <span [class]="cls.plain" data-testid="oc-venue-title">{{ label() }}</span>
+      } @else {
+        <a appTouchTarget routerLink="/operator" [class]="cls.link" data-testid="oc-venue-title">{{
+          label()
+        }}</a>
       }
     }
   `,
 })
 export class OperatorVenueSwitch {
-  /** The venue this console manages: its row is the current one. */
-  readonly venueId = input.required<number>();
+  /** The venue the console manages — its row is the current one; `undefined` off the console. */
+  readonly venueId = input<number | undefined>(undefined);
   /** The name from the best-effort venue read; `Your venue` until it lands. */
   readonly venueName = input<string | undefined>(undefined);
-  /** The console section to keep across a switch (`daily`, `beach-map`, …). */
-  readonly section = input.required<string>();
+  /** The console section to keep across a switch (`daily`, `beach-map`, …); `undefined` off the
+   *  console, where a row lands on the console's index redirect. */
+  readonly section = input<string | undefined>(undefined);
 
   protected readonly operator = inject(OperatorAuth);
   private readonly owned = inject(OwnedVenues);
@@ -136,13 +147,16 @@ export class OperatorVenueSwitch {
   protected readonly cls = {
     button: `inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-1 ${NAME}`,
     plain: `px-1 ${NAME}`,
+    link: `inline-flex items-center rounded-lg px-1 no-underline hover:underline ${NAME}`,
     backdrop: POP_BACKDROP,
-    pop: `absolute top-full left-6 mt-1 w-[264px] max-w-[calc(100%-3rem)] p-[7px] ${POP_SKIN}`,
+    pop: `fixed top-full left-6 mt-1 w-[264px] max-w-[calc(100%-3rem)] p-[7px] ${POP_SKIN}`,
     item: POP_ITEM,
   } as const;
 
   protected readonly venues = computed(() => this.owned.venues() ?? []);
-  protected readonly label = computed(() => this.venueName() ?? 'Your venue');
+  protected readonly label = computed(() =>
+    this.venueId() === undefined ? 'Your venues' : (this.venueName() ?? 'Your venue'),
+  );
 
   constructor() {
     effect(() => {
@@ -160,6 +174,12 @@ export class OperatorVenueSwitch {
 
   protected toggle(): void {
     this.open.update((open) => !open);
+  }
+
+  /** A venue row's target: the same section on that venue, or its console's index off the console. */
+  protected rowLink(venueId: number): readonly (string | number)[] {
+    const section = this.section();
+    return section === undefined ? ['/operator', venueId] : ['/operator', venueId, section];
   }
 
   /** A row was activated: close, and hand focus back to the button the row's unmount would strand it from. */

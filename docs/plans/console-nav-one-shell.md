@@ -269,14 +269,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan committed — implement (phase 1) next`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** phase 1 — write `console-shell.spec.ts` red, then the component.
+**Next action:** phase 2 — App reads `data.console` and mounts the shell for the venue console; the console sheds its chrome.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | |
-| 1 — expand: `ConsoleShell` + its specs; the switcher's off-console form; the chip drops `Admin console`; the admin rail's inset | | |
+| 1 — expand: `ConsoleShell` + its specs; the switcher's off-console form; the chip drops `Admin console` (the admin rail's inset moves to phase 3, with the rail) | ✅ | |
 | 2 — migrate the venue console: App reads `data.console`, mounts the shell for `venue`; the console sheds its chrome; e2e (scroll-hide at 390px, the 1280px beach map) | | |
 | 3 — migrate the admin routes: the shell renders the admin rail past the gate; `AdminConsole` sheds its strip; e2e (`console-shell.e2e.ts` from `operator-chrome.e2e.ts`, signed-out `/admin/audit`) | | |
 | 4 — migrate the plain pages: route data on `/operator` and the password page; `OperatorHome` sheds the pin; the theme e2e over the four routes | | |
@@ -455,6 +455,7 @@ e2e `console-shell.e2e.ts` (landing + password cases), `theme-shell.e2e.ts`.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-07 | phase 1 | every consumer of the chip's `adminLink` id / `Admin console` row | `grep -rn "admin-link\|Admin console" frontend/src frontend/e2e` | `operator-account-chip.spec.ts`, `operator-chrome.spec.ts` (unit, rewritten now); `operator-chrome.e2e.ts` (rewritten in phase 3 with the file) | rewritten |
 
 ---
 
