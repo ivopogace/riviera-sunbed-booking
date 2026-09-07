@@ -1,8 +1,8 @@
 import { expect, Locator, Page } from '@playwright/test';
 
 /**
- * Helpers for the shell's header overlays — the find-a-booking modal, the theme picker, the
- * mobile menu, and the signed-in account disclosure.
+ * Helpers for the shell's overlays — the find-a-booking modal, the theme picker, the phone tab
+ * bar's sheet, and the signed-in account disclosure.
  *
  * <p>Each opener first waits for the routed page to be in the outlet: `page.goto` resolves on
  * `load`, which a lazily loaded route's chunk may outlive, so without the wait a trigger is clicked

@@ -5,7 +5,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
  * Real-render e2e for the Liquid Glass shell: theme switching + persistence,
- * the mobile hamburger menu, the reduced-motion guard, and what the shell paints before the
+ * the phone tab bar's sheet, the reduced-motion guard, and what the shell paints before the
  * first route lands — with axe sweeps in both themes (the real-browser half of the contrast
  * audit). The discovery API is mocked (`page.route`), so the spec is CI-safe like its siblings.
  */
@@ -177,14 +177,15 @@ test.describe('axe sweeps', () => {
 test.describe('mobile viewport', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test('hamburger menu opens, navigates, closes on Escape with focus returned (AC-3)', async ({
+  test('the Menu tab opens the sheet, navigates, closes on Escape with focus returned (AC-3, #1003)', async ({
     page,
   }) => {
     await page.goto('/');
 
-    const toggle = page.getByTestId('menu-toggle');
+    // The sheet's trigger is the bar's third tab; the desktop nav and its menu button are collapsed.
+    const toggle = page.getByTestId('tab-bar').getByTestId('menu-toggle');
     await expect(toggle).toBeVisible();
-    await expect(page.locator('.riv-nav-desktop')).toBeHidden(); // desktop nav collapsed
+    await expect(page.locator('.riv-nav-desktop')).toBeHidden();
     await expect(page.getByTestId('nav-menu')).toBeHidden();
 
     await openShellOverlay(page, 'menu-toggle');
@@ -203,7 +204,7 @@ test.describe('mobile viewport', () => {
     await expect(toggle).toBeFocused();
 
     await openShellOverlay(page, 'menu-toggle');
-    await expectNoSeriousAxeViolations(page, 'mobile menu open');
+    await expectNoSeriousAxeViolations(page, 'tab-bar sheet open');
 
     // The swatch stays in the bar at phone width; picking a theme closes the open sheet too.
     await page.getByTestId('theme-toggle').press('Enter');
@@ -318,12 +319,12 @@ test.describe('account menu', () => {
   test.describe('mobile viewport', () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
-    test('the mobile menu offers the same account destination (#351)', async ({ page }) => {
+    test('the phone sheet offers the same account destination (#351)', async ({ page }) => {
       await page.goto('/');
 
       await openShellOverlay(page, 'menu-toggle');
       await expect(page.getByTestId('nav-user-mobile')).toContainText(EMAIL);
-      await expectNoSeriousAxeViolations(page, 'mobile menu with the account group');
+      await expectNoSeriousAxeViolations(page, 'phone sheet with the account group');
 
       await page.getByTestId('nav-account-link-mobile').click();
       await expect(page).toHaveURL(/\/account\/password$/);

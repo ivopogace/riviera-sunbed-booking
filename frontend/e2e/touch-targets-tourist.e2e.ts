@@ -138,9 +138,13 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await expectTouchTargets(page, 'sign-out failure notice');
   });
 
-  test('home — discovery with its filter bar', async ({ page }) => {
+  test('home — discovery with its filter bar, and the tab bar every phone surface lays out', async ({
+    page,
+  }) => {
     await page.goto('/');
     await expect(page.getByTestId('venue-card').first()).toBeVisible();
+    // Below sm the bar renders on every tourist page, so every sweep in this file measures its tabs.
+    await expect(page.getByTestId('tab-bar')).toBeVisible();
 
     await expectTouchTargets(page, 'tourist home');
   });
@@ -266,12 +270,12 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await expectTouchTargets(page, 'booking dialog');
   });
 
-  test('the mobile menu, and the find-a-booking dialog behind it', async ({ page }) => {
+  test("the tab bar's sheet, and the find-a-booking dialog behind it", async ({ page }) => {
     await page.goto('/');
-    // At 390px the desktop nav is hidden; the menu is the only route to these controls.
+    // At 390px the desktop nav is hidden; the sheet is the only route to these controls.
     await openShellOverlay(page, 'menu-toggle');
     await expect(page.getByTestId('find-open-mobile')).toBeVisible();
-    await expectTouchTargets(page, 'tourist mobile menu');
+    await expectTouchTargets(page, 'tourist tab-bar sheet');
 
     await openShellOverlay(page, 'find-open-mobile');
     await expect(page.getByRole('dialog')).toBeVisible();

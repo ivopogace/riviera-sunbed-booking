@@ -157,11 +157,14 @@ test.describe('the theme swatch', () => {
   test.describe('phone', () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
-    test('stays in the bar beside the hamburger, one tap from any page', async ({ page }) => {
+    test('stays in the top bar, one tap from any page; the menu has gone to the tab bar (#1003)', async ({
+      page,
+    }) => {
       await page.goto('/');
       await awaitRoutedPage(page);
-      await expect(page.getByTestId('theme-toggle')).toBeVisible();
-      await expect(page.getByTestId('menu-toggle')).toBeVisible();
+      await expect(page.locator('header').getByTestId('theme-toggle')).toBeVisible();
+      await expect(page.locator('header').getByTestId('menu-toggle')).toHaveCount(0);
+      await expect(page.getByTestId('tab-bar').getByTestId('menu-toggle')).toBeVisible();
       await expect(page.getByTestId('theme-toggle')).toHaveAccessibleName(/^Color theme: /);
 
       await page.getByTestId('theme-toggle').click();
