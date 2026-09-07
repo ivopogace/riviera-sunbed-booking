@@ -220,13 +220,25 @@ test('renders porcelain over the tourist theme with a single scrolling tab row, 
   );
   expect(pageOverflow).toBeLessThanOrEqual(1);
 
-  // All six pills share one `top` (one row) and the nav overflows horizontally — it scrolls.
+  // All six tabs share one `top` (one row) and the rail overflows horizontally — it scrolls.
   const tabs = page.getByTestId('oc-tabs');
   const links = tabs.getByRole('link');
   const tops = await links.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
   expect(new Set(tops.map((t) => Math.round(t))).size).toBe(1);
   const [scrollWidth, clientWidth] = await tabs.evaluate((el) => [el.scrollWidth, el.clientWidth]);
   expect(scrollWidth).toBeGreaterThan(clientWidth);
+
+  // No edge mask (the cut-off tab is the overflow cue); Today-first, grouped by two dividers.
+  await expect(tabs).toHaveCSS('mask-image', 'none');
+  await expect(tabs.locator(':scope > span[aria-hidden="true"]')).toHaveCount(2);
+  expect((await links.allTextContents()).map((text) => text.trim())).toEqual([
+    'Daily view',
+    'Requests',
+    'Beach map',
+    'Pricing',
+    'Venue & commodities',
+    'Payouts',
+  ]);
 
   // Switching to a tab further along the row scrolls it into view automatically.
   await links.filter({ hasText: 'Venue & commodities' }).click();

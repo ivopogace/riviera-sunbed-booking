@@ -1,5 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 
+import { ADMIN, mockWholeAdminConsole } from './support/admin-console.mocks';
+import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
+import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 import { awaitRoutedPage, openShellOverlay } from './support/shell';
 
 /**
@@ -9,6 +12,10 @@ import { awaitRoutedPage, openShellOverlay } from './support/shell';
  * then measures the rendered marker (`aria-current="page"` — from `routerLinkActive` on the
  * desktop links, from the route's section data on the phone tabs — styled through its compound
  * selector). The discovery API is mocked (`page.route`), so the spec is CI-safe like its siblings.
+ *
+ * <p>The last block is the two consoles' tab rail (`shared/tab-rail.ts`), which wears the same
+ * marker one level down: full ink plus a 3px underline (the tab's `::after`) on the rail's shared
+ * hairline — never the accent ink alone, which vanishes on the header glass.
  */
 
 test.beforeEach(async ({ page }) => {
@@ -169,5 +176,66 @@ test.describe('tablet: the inline nav', () => {
       'aria-current',
       'page',
     );
+  });
+});
+
+test.describe('consoles: the tab rail', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  const INK = 'rgb(10, 42, 51)';
+  const SOFT = 'rgba(12, 42, 51, 0.7)';
+  const HAIRLINE = 'rgba(12, 42, 51, 0.66)';
+
+  /** The tab's `::after` underline as rendered: its opacity and height. */
+  function marker(tab: ReturnType<Page['getByRole']>) {
+    return tab.evaluate((el) => {
+      const bar = getComputedStyle(el, '::after');
+      return { opacity: bar.opacity, height: bar.height };
+    });
+  }
+
+  async function expectRailMarker(page: Page, railName: string, current: string, other: string) {
+    expect(await page.evaluate(() => matchMedia('(hover: hover)').matches)).toBe(false);
+    const rail = page.getByRole('navigation', { name: railName });
+    const currentTab = rail.getByRole('link', { name: current });
+    const otherTab = rail.getByRole('link', { name: other });
+
+    await expect(currentTab).toHaveAttribute('aria-current', 'page');
+    await expect(otherTab).not.toHaveAttribute('aria-current', 'page');
+    await expect(currentTab).toHaveCSS('color', INK);
+    await expect(otherTab).toHaveCSS('color', SOFT);
+    expect(await marker(currentTab)).toEqual({ opacity: '1', height: '3px' });
+    expect(await marker(otherTab)).toMatchObject({ opacity: '0' });
+    // The underline sits on the rail's shared hairline, painted under the tabs in the faint ink.
+    await expect(rail).toHaveCSS(
+      'box-shadow',
+      new RegExp(
+        `${HAIRLINE.replaceAll('(', '\\(').replaceAll(')', '\\)')} 0px -1px 0px 0px inset`,
+      ),
+    );
+    await expect(rail).toHaveCSS('mask-image', 'none');
+  }
+
+  test('venue console: marks the current tab with full ink and a 3px underline (#1007)', async ({
+    page,
+  }) => {
+    await mockWholeConsole(page);
+    await page.goto('/operator/1/daily');
+    await signInAsOperator(page);
+    await expect(page).toHaveURL(/\/operator\/1\/daily/);
+
+    await expectRailMarker(page, 'Operator console sections', 'Daily view', 'Requests');
+  });
+
+  test('admin console: marks the current tab with full ink and a 3px underline (#1007)', async ({
+    page,
+  }) => {
+    await mockWholeAdminConsole(page);
+    await page.goto('/operator');
+    await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
+    await page.goto('/admin/audit');
+    await page.getByTestId('admin-tab-audit').waitFor();
+
+    await expectRailMarker(page, 'Admin console sections', 'Audit', 'Privacy');
   });
 });

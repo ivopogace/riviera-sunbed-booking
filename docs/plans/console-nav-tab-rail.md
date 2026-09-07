@@ -61,13 +61,13 @@ stands in for `feature/console-nav-tab-rail` (`riviera-sdlc` remote addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given either console renders its header, when the section links are read, then
+- [x] **AC-1:** Given either console renders its header, when the section links are read, then
   they are `<a>` tabs on one rail landmark and no link carries the pill recipe (`rounded-full`
   together with a `border` and horizontal padding). *Seam:* the `nav[aria-label="… console
   sections"]` landmark and its links · *Pinned by:* `operator-console.spec.ts` "renders the six
   tabs as underlined text on one rail, no pill recipe" and `admin-console-tabs.spec.ts` "renders
   underlined text tabs, no pill recipe".
-- [ ] **AC-2:** Given the operator is on `/operator/1/daily` (390px, touch) or the admin on
+- [x] **AC-2:** Given the operator is on `/operator/1/daily` (390px, touch) or the admin on
   `/admin/audit`, when the rail is measured, then the current tab alone has
   `aria-current="page"`, computed `color` = full ink `rgb(10, 42, 51)`, and its `::after`
   marker is `opacity: 1`, `height: 3px`; every other tab is soft ink with the marker at
@@ -75,44 +75,44 @@ stands in for `feature/console-nav-tab-rail` (`riviera-sdlc` remote addendum).
   rendered DOM via Playwright (`getByRole('navigation', { name })`) · *Pinned by:*
   `current-page-marker.e2e.ts` "consoles: marks the current tab with full ink and a 3px
   underline".
-- [ ] **AC-3:** Given the venue console renders, when its tabs are read in DOM order, then they
+- [x] **AC-3:** Given the venue console renders, when its tabs are read in DOM order, then they
   are Daily view, Requests, Beach map, Pricing, Venue & commodities, Payouts with a divider
   before Beach map and before Payouts, and the Requests tab carries the live count badge.
   *Seam:* `[data-testid="oc-tabs"]` links + `[data-testid="oc-requests-badge"]` · *Pinned by:*
   `operator-console.spec.ts` "orders the tabs Today-first with dividers at the two group
   boundaries" (+ the existing badge specs, unchanged) and `operator-requests.e2e.ts`'s badge
   decrement (unchanged).
-- [ ] **AC-4:** Given `ADMIN_CONSOLE_TAB_ORDER`, when read, then it is Operators, Email, Refunds,
+- [x] **AC-4:** Given `ADMIN_CONSOLE_TAB_ORDER`, when read, then it is Operators, Email, Refunds,
   Photos, Reviews, Commissions, Payouts, Privacy, Audit; the rendered admin tabs are a
   subsequence of it (Payouts absent); and a divider sits at each of the four boundaries between
   the five groups. *Seam:* the exported constant + the rail landmark · *Pinned by:*
   `admin-console-tabs.spec.ts` "pins the amended canonical order (#1007)", "renders tabs in the
   canonical console order (Q1, #348)" (subsequence, unchanged rule), "draws a divider at each
   group boundary and nowhere else".
-- [ ] **AC-5:** Given a 360px viewport, when the admin console or the venue console renders, then
+- [x] **AC-5:** Given a 360px viewport, when the admin console or the venue console renders, then
   `document.documentElement.scrollWidth - clientWidth ≤ 1`, the rail's `scrollWidth >
   clientWidth`, the rail has computed `mask-image: none`, and on `/admin/audit` the Audit tab is
   in the viewport on click and after reload (likewise Venue & commodities on the venue console).
   *Seam:* Playwright computed style + `toBeInViewport` · *Pinned by:*
   `admin-console-tabs.e2e.ts` (existing three tests + "the rail wears no edge mask") and
   `operator-console.e2e.ts` "renders porcelain … single scrolling tab row" (extended).
-- [ ] **AC-6:** Given the touch-target sweeps at 390px, when they walk both consoles, then every
+- [x] **AC-6:** Given the touch-target sweeps at 390px, when they walk both consoles, then every
   rail tab measures ≥ 44 × 44 px. *Seam:* `expectTouchTargets` over the rendered page ·
   *Pinned by:* `touch-targets.e2e.ts` and `touch-targets-admin.e2e.ts` (existing sweeps, no
   edit; a tab is an `<a appTouchTarget>` with `inline-flex`).
-- [ ] **AC-7:** Given porcelain's worst background stop under the header glass, when the rail's
+- [x] **AC-7:** Given porcelain's worst background stop under the header glass, when the rail's
   marker ink (`--riv-ink`) and its hairline/divider ink (`--riv-ink-faint`) are composited over
   it, then each reaches ≥ 3:1 (WCAG 1.4.11). *Seam:* the token values mirrored in
   `src/testing/glass-tokens.ts` · *Pinned by:* `shared/tab-rail.contrast.spec.ts`.
-- [ ] **AC-8:** Given a signed-out visitor on `/admin`, when the shell renders, then no `<nav>`
+- [x] **AC-8:** Given a signed-out visitor on `/admin`, when the shell renders, then no `<nav>`
   exists. *Seam:* `AdminConsole`'s gate · *Pinned by:* `admin-console.spec.ts` "never renders
   the tab strip until the gate passes" (unchanged).
-- [ ] **AC-9:** Given the current tab is off-screen, when the console loads or the operator
+- [x] **AC-9:** Given the current tab is off-screen, when the console loads or the operator
   switches tab, then that tab's `scrollIntoView` is called once per activation. *Seam:* the
   tab directive on a real router host · *Pinned by:* `shared/tab-rail.spec.ts` "scrolls the tab
   into view when it becomes current, on load and on switch" and the existing
   `admin-console-tabs.spec.ts` "active tab scroll-into-view (#983)" pair (unchanged).
-- [ ] **AC-10:** Given `/admin/email?resend=1` (a query string on a tab URL), when the rail
+- [x] **AC-10:** Given `/admin/email?resend=1` (a query string on a tab URL), when the rail
   renders, then the Email tab is still `aria-current="page"`. *Seam:* the rail landmark ·
   *Pinned by:* `admin-console-tabs.spec.ts` "keeps the tab lit under a query string".
 
@@ -155,14 +155,14 @@ stands in for `feature/console-nav-tab-rail` (`riviera-sdlc` remote addendum).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A marker overhanging the rail (`-bottom-px`) is clipped by `overflow-x: auto` (it forces `overflow-y: auto`), so the "overlaps the hairline" look cannot come from a border | high | med | hairline = `shadow-[inset_0_-1px_0_var(--riv-ink-faint)]` on the rail, marker `bottom-0 h-[3px]` paints over it; e2e reads `::after` height/opacity; a screenshot check during implement | session | open |
-| R-2 | `--riv-header-border` (white 0.7) cannot reach 3:1 on the header glass — AC-7 as written is unmeetable with the spike's token | high | med | hairline and dividers use `--riv-ink-faint` (already proven AA 4.5 on the header glass by `operator-console.contrast.spec.ts`); pinned by `tab-rail.contrast.spec.ts`; ← confirm? in Open questions | session | open |
-| R-3 | `accent-token-inks.e2e.ts` "the console accent ink resolves…" asserts `admin-tab-privacy` paints `--riv-accent-ink`, which this slice removes by design | high | low | retarget the assertion to another `text-riv-accent-ink` consumer on the admin console (the reviews stars glyph or the erasure heading); coverage of the token stays | session | open |
-| R-4 | Short labels (Email, Audit) narrower than 44px | med | med | `appTouchTarget` (`min-w-11`) on an `inline-flex` `<a>`; measured by the two sweeps (AC-6) | session | open |
+| R-1 | A marker overhanging the rail (`-bottom-px`) is clipped by `overflow-x: auto` (it forces `overflow-y: auto`), so the "overlaps the hairline" look cannot come from a border | high | med | hairline = `shadow-[inset_0_-1px_0_var(--riv-ink-faint)]` on the rail, marker `bottom-0 h-[3px]` paints over it; e2e reads `::after` height/opacity; a screenshot check during implement | session | closed — screenshots at 360/1280 on both consoles show the underline on the hairline; `current-page-marker.e2e.ts` pins the computed marker + hairline |
+| R-2 | `--riv-header-border` (white 0.7) cannot reach 3:1 on the header glass — AC-7 as written is unmeetable with the spike's token | high | med | hairline and dividers use `--riv-ink-faint` (already proven AA 4.5 on the header glass by `operator-console.contrast.spec.ts`); pinned by `tab-rail.contrast.spec.ts`; ← confirm? in Open questions | session | closed in code (`tab-rail.contrast.spec.ts`, three themes); the token choice awaits the maintainer's confirmation at review |
+| R-3 | `accent-token-inks.e2e.ts` "the console accent ink resolves…" asserts `admin-tab-privacy` paints `--riv-accent-ink`, which this slice removes by design | high | low | retarget the assertion to another `text-riv-accent-ink` consumer on the admin console (the reviews stars glyph or the erasure heading); coverage of the token stays | session | closed — retargeted to `admin-review-stars-31` on `/admin/reviews` |
+| R-4 | Short labels (Email, Audit) narrower than 44px | med | med | `appTouchTarget` (`min-w-11`) on an `inline-flex` `<a>`; measured by the two sweeps (AC-6) | session | closed — `touch-targets.e2e.ts` + `touch-targets-admin.e2e.ts` green locally (phase 3) |
 | R-5 | `isActiveChange` as the scroll trigger does not fire on load in jsdom / the e2e | low | med | the existing #983 spec pair and both e2e reload tests pin load + switch; fallback is the consumer-side effect the strips have today | session | closed — `tab-rail.spec.ts` proves load + switch in jsdom (phase 0) |
-| R-6 | `overflow-x: auto` on the rail plus `items-stretch` leaves the tab's `::after` inside the scroll box — if the rail gets vertical padding the marker floats above the hairline | med | low | rail carries no padding (rule 3); consumers add margin outside it, never padding inside | session | open |
+| R-6 | `overflow-x: auto` on the rail plus `items-stretch` leaves the tab's `::after` inside the scroll box — if the rail gets vertical padding the marker floats above the hairline | med | low | rail carries no padding (rule 3); consumers add margin outside it, never padding inside | session | closed — the rule is in `TabRail`'s TSDoc (horizontal inset and top padding fine, never bottom padding); the venue console uses `pt-3.5` and the shot confirms the marker on the line |
 | R-7 | Sibling slices (#1008–#1013) edit the same two headers | low | low | no open PRs today; they are sequenced after this one in the epic | session | closed — no in-flight overlap |
-| R-8 | Group dividers as `<span aria-hidden>` inside the `<nav>` change the accessible link count or axe output | low | low | `aria-hidden="true"` set by the directive; axe runs in both console e2e | session | open |
+| R-8 | Group dividers as `<span aria-hidden>` inside the `<nav>` change the accessible link count or axe output | low | low | `aria-hidden="true"` set by the directive; axe runs in both console e2e | session | closed — axe green in `admin-console-tabs.e2e.ts` and `operator-console.e2e.ts` |
 
 ## Open questions / Assumptions
 
@@ -175,8 +175,10 @@ stands in for `feature/console-nav-tab-rail` (`riviera-sdlc` remote addendum).
 - **Assumption:** the venue console's default landing stays `beach-map` even though Daily view is
   now first (nothing in #1007 moves the redirect). ← confirm? — *Owner:* maintainer ·
   *Resolves by:* review.
+### Resolved
+
 - **Assumption:** `accent-token-inks.e2e.ts`'s admin-tab assertion is retargeted, not deleted
-  (R-3). — *Owner:* session · *Resolves by:* phase 3.
+  (R-3). — retargeted to the reviews stars glyph, phase 3 commit.
 
 ## Availability & concurrency (invariant #2)
 
@@ -212,16 +214,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `PR — draft open; CI gate pending, then review gate`
 
-**Next action:** phase 3 — extend `current-page-marker.e2e.ts` to the two consoles, amend the two console e2e specs, retarget `accent-token-inks.e2e.ts`, run them with `PW_CHROMIUM_EXECUTABLE`.
+**Next action:** check the draft PR's CI run; when green, merge latest `origin/main`, mark ready for review and run the review gate (`references/pr-gates.md` §1) with `riviera-review-overlay`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the rail primitive (`shared/tab-rail.ts` + spec + contrast spec) | ✅ | phase-0 commit (see git log, `Add the shared tab-rail primitive`) |
 | 1 — admin console consumes the rail, amended order + dividers | ✅ | `Admin console: the tab rail and the amended order` |
 | 2 — venue console consumes the rail, Today-first order + dividers | ✅ | `Venue console: the tab rail, Today-first` |
-| 3 — e2e (marker, no mask, accent-ink retarget), docs rows, close-out | ⏳ | |
+| 3 — e2e (marker, no mask, accent-ink retarget), docs rows, close-out | ✅ | `Console nav: marker e2e, docs rows` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -297,29 +299,40 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-07 | phase 0 (the rail carries scroll-into-view) | every routed link that scrolls itself into view via a consumer-side `viewChildren` + `effect` | `grep -rn "scrollIntoView" frontend/src/app --include=*.ts` | `admin-console-tabs.ts`, `operator-console.ts` (the two strips) | both migrated to `a[appTabRailTab]` in phases 1–2; the tourist header's links do not scroll (a non-scrolling row), no action |
+| 2026-09-07 | phase 3 (an e2e pinned the admin tab's accent ink) | every spec or e2e that reads the old strips' markup: `riv-tab`, `oc-tab-label`, `admin-tab-*` colour, pill classes | `grep -rn "riv-tab\b\|oc-tab-label\|admin-tab-\|oc-tabs" frontend/e2e frontend/src` | 1 stale (`accent-token-inks.e2e.ts:108`), 20 files locating tabs by test id / role (unaffected) | the one stale assertion retargeted; the rest hold against the new markup (86 e2e green) |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-10:** filled at close-out with the command and the commit.
+- [x] **AC-1:** `npx ng test --watch=false --include="src/app/operator/operator-console.spec.ts" --include="src/app/admin/admin-console-tabs.spec.ts"` → the no-pill cases pass. Verified in the phase 1 and 2 commits.
+- [x] **AC-2:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/current-page-marker.e2e.ts` → the two console cases pass (colour, `::after` 3px/opacity 1, hairline, no mask). Verified in the phase 3 commit.
+- [x] **AC-3:** operator spec "orders the tabs Today-first…" + `operator-requests.e2e.ts` (badge decrement) pass. Verified phases 2–3.
+- [x] **AC-4:** admin spec "pins the amended canonical order", the subsequence rule, "draws a divider at each group boundary"; `admin-console-tabs.e2e.ts` sequence. Verified phases 1 and 3.
+- [x] **AC-5:** `admin-console-tabs.e2e.ts` (4 + the no-mask test) and `operator-console.e2e.ts` narrow test pass. Verified phase 3.
+- [x] **AC-6:** `touch-targets.e2e.ts` + `touch-targets-admin.e2e.ts` pass at 390px. Verified phase 3.
+- [x] **AC-7:** `npx ng test --watch=false --include="src/app/shared/tab-rail.contrast.spec.ts"` → 6 pass (three themes × marker/hairline). Verified phase 0.
+- [x] **AC-8:** `admin-console.spec.ts` signed-out case unchanged and green in the phase 1 run.
+- [x] **AC-9:** `tab-rail.spec.ts` scroll case + the admin `#983` pair + the operator scroll block (now on a real router). Verified phases 0–2.
+- [x] **AC-10:** `tab-rail.spec.ts` and `admin-console-tabs.spec.ts` query-string cases pass. Verified phases 0–1.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
 - [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
