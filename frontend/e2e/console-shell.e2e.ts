@@ -371,6 +371,7 @@ for (const width of [390, 344]) {
     await expect(more).toHaveCSS('outline-offset', '-7px');
     const box = (await more.boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(width);
     expect(box.y + box.height).toBeLessThanOrEqual(780);
   });

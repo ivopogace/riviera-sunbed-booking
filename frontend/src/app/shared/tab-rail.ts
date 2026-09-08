@@ -54,9 +54,10 @@ export const TAB_RAIL_MARKER =
  * box; the last slot of these bars ends at (or 4px from) the viewport edge, and the bar's own
  * border and safe-area padding sit under the ring's other sides, so the ring showed as an
  * "L" — its right and bottom sides off-screen. Inset instead: `-7px` puts the whole 3px
- * ring inside the slot, one pixel clear of the 3px current-page marker at the slot's top
- * (`app.ts`'s tab) or bottom (`TAB_RAIL_MARKER` at `after:-bottom-px`), so on the current slot
- * the ring and the marker never merge into one thicker bar. Colour and width are the
+ * ring 4–7px inside the slot, clear of the 3px current-page marker by 1px at the slot's top
+ * (`app.ts`'s tab, `before:top-0`) and by 2px at its bottom (`TAB_RAIL_MARKER` at
+ * `after:-bottom-px`, which overhangs the edge by one), so on the current slot the ring and
+ * the marker never merge into one thicker bar. Colour and width are the
  * baseline's (`riviera-tailwind` rule 6: an offset change, not a second ring); the ring covers
  * the bars' `<a>` slots too, which the `button`-only base rule never reached.
  */
