@@ -18,10 +18,11 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  * resolved computed style separates that from a working token.
  *
  * <p>The last two tests pin the resolution the whole slice rests on. These 32 sites are safe on a
- * THEMED token (`#a3160e` light, `#ffa9a1` dark) ONLY because the app shell pins their routes porcelain — so the ink
- * must survive a `dark` DOCUMENT theme. The unit contrast specs prove porcelain and cannot see this.
- * Both hosts are driven, because `operator-console.ts` and `operator-home.ts` pin porcelain through
- * two SEPARATE host bindings: one passing is not evidence about the other.
+ * THEMED token (`#a3160e` light, `#ffa9a1` dark) ONLY because the app shell pins their routes to the
+ * console's own theme, porcelain by default — so the ink must survive a `dark` DOCUMENT theme.
+ * The unit contrast specs prove porcelain and cannot see this. Both hosts are driven, because the
+ * console and the landing reach that one pin through their own route data: one passing is not
+ * evidence about the other.
  * Rationale: docs/design/colour-literal-token-audit.md (the operator error-ink row).
  */
 

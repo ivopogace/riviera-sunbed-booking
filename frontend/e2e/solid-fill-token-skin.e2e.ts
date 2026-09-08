@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 
 /**
- * The solid button/badge fills paint from the token registry, asserted against a real render (#854)
+ * The solid button/badge fills paint from the token registry, asserted against a real render
  * — the third of the audit's theme-invariant families, after `form-error-token-skin.e2e.ts` and
  * `solid-btn-token-skin.e2e.ts`.
  *
@@ -15,9 +15,9 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * <p><strong>Where the forced-dark proof lives, and why not on the confirm button.</strong> The
  * issue asks for the cross-theme assertion on a rendered confirm button, because `ConfirmPanel`
  * lives in `shared/` and its host theme varies with whoever mounts it. Today it does not vary:
- * every mount (including the `warn`-tone pair added at #881) is inside `operator-console`, which
- * pins `data-riv-theme="porcelain"` on its own host and so re-scopes every `--riv-*` token for
- * that subtree. A confirm button asserted under a
+ * every mount, the `warn`-tone pair included, is inside the operator console, whose routes the app
+ * shell pins to the console's own theme — porcelain by default — re-scoping every `--riv-*` token
+ * for that subtree. A confirm button asserted under a
  * forced `dark` document would therefore hold its fill EVEN IF the token had a dark override —
  * proof of the pin, not of the family.
  *
