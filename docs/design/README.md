@@ -1,40 +1,38 @@
-# `docs/design/` — design records, not living docs
+# `docs/design/` — two living design docs
 
-The `.dc.html` files here are **design records**: each captures the approved
-look/copy/interaction at the time it was drawn (see
-`2026-07-02-liquid-glass-redesign-note.md` for the intake history and the
-per-file scope). They are not rewritten to track the shipped app afterward —
-doing so would erase the record of what was actually approved and when.
+This folder holds the design substrate the app is still held to. Both files here are
+**maintained**: they track the shipped app, and a slice that moves what they describe
+corrects them in place.
 
-**So an artboard can legitimately diverge from current shipped copy.** When a
-later slice changes behavior the artboard depicted (e.g. cutoff-copy wording,
-an icon retired in favor of a shared component), the artboard line is left as
-drawn and gets a one-line `<!-- as-built diverges — see #NNN -->` pointer to
-the issue/PR that changed the shipped surface, rather than being edited in
-place.
+- **`colour-literal-token-audit.md`** — the ledger of which hex/rgba positions in
+  `frontend/src` want `--riv-*` tokens, and the verdict per family. Every slice that cuts a
+  family updates that family's row with its PR.
+- **`non-text-contrast.md`** — the project's settled position on sub-3:1 non-text chrome,
+  which token comments across `frontend/src` cite by name. A rule needs a home that cannot
+  close; this is it. Correct it in place when the position moves.
 
-If a screen gets genuinely redesigned, that's a **new export** (new file or a
-new dated intake note), not an edit to the existing record — same pattern as
-the "v3 gap-fill" export superseding the first 2026-07-02 export.
+`riviera-docs-freshness` sweeps both: a ledger row still open for a family that shipped, or a
+rule citing a spec that does not measure what it claims, is a finding.
 
-`docs/design/` is part of `riviera-docs-freshness`'s substrate-doc map for
-exactly this reason: a sweep should catch (and pointer-note) a diverged
-artboard line, never silently drift past it.
+## The visual spec is the app
 
-## The exceptions: the two maintained `.md` files
+The Liquid Glass look was imported in 2026-07 as a set of design-canvas `.dc.html`
+artboards, kept as never-rewritten records of the approved look and pointer-noted wherever
+the shipped app diverged. The tourist header rework and the operator/admin console-nav epic
+took the shipped surfaces far enough from those artboards — and set a direction that keeps
+moving — that the records had stopped describing anything and had started misleading readers
+who took them for a spec. They were retired on 2026-09-08 along with the canvas runtime
+(`support.js`, `image-slot.js`) and the 2026-07-02 intake note; `git log --diff-filter=D --
+'docs/design/*'` recovers any of them.
 
-Everything above governs the `.dc.html` **records**. Two `.md` files here are the
-opposite kind of thing, and neither takes the `as-built diverges` convention.
+So there is no drawn spec to consult, and no `as-built diverges` convention to maintain. What
+a surface should look like now lives in:
 
-`colour-literal-token-audit.md` (#836) is a **maintained ledger** of which hex/rgba
-positions in `frontend/src` want `--riv-*` tokens, and the verdict per family. It
-*is* rewritten to track the shipped app: every slice that cuts a family updates
-that family's row with its PR. It sits here because it reasons about the design
-substrate, not because it records an approved look. Don't apply the
-`as-built diverges` pointer convention to it — bring it up to date instead.
+- the tokens and their comments in `frontend/src/tailwind.css`, plus the two files above;
+- `riviera-tailwind` (how to write the styling) and `riviera-frontend` (where a component
+  goes and who owns theming);
+- the contrast and token-drift specs beside each component, which are the executable half of
+  the design and the only half that cannot silently rot.
 
-`non-text-contrast.md` (#876) is a **living rule**: the project's settled position on
-sub-3:1 non-text chrome, which token comments across `frontend/src` cite by name. It
-exists because that question had been deferred four times to an issue that has since
-closed, and a rule needs a home that cannot close. Same treatment as the ledger —
-correct it in place when the position moves; never pointer-note it as diverged.
+A genuinely new screen gets its look decided in its own issue, against those. Redrawing an
+artboard is not the way back — the specs are.

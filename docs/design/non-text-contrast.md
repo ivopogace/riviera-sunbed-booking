@@ -4,8 +4,8 @@
 after the question had been deferred four times to
 [#834](https://github.com/ivopogace/riviera-sunbed-booking/issues/834), an issue that was
 scoped to the erasure panel and closed as completed on 2026-08-31. This file is the **live
-home** those deferrals now point at. It is maintained, like
-`colour-literal-token-audit.md` and unlike the `.dc.html` records — see `README.md`.
+home** those deferrals now point at, and it is maintained — corrected in place when the
+position moves, never pointer-noted as diverged (`README.md`).
 
 WCAG 2.1 SC 1.4.11 (Non-text Contrast, AA) asks that *visual information required to identify
 user interface components and states* reach 3:1 against **adjacent** colour(s). The Liquid

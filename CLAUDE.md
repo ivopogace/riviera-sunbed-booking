@@ -10,8 +10,9 @@ A two-sided marketplace: tourists pre-book a sunbed **set** (2 loungers + umbrel
 day) at an Albanian-riviera venue, pick the exact spot on a visual beach map, and pay
 in-app; the platform takes a per-booking commission and pays venues out manually. Spring
 serves the Angular SPA same-origin at riviera-sunbed-booking.onrender.com. Product spec:
-`docs/superpowers/specs/`; visual design (Liquid Glass): `docs/design/`; current work: the
-issue tracker.
+`docs/superpowers/specs/`; the Liquid Glass colour ledger and the non-text-contrast rule:
+`docs/design/` (the drawn artboards are retired — the specs beside each component are the
+visual spec now); current work: the issue tracker.
 
 ## Tech stack (locked)
 

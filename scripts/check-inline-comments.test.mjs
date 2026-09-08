@@ -93,8 +93,8 @@ test('exempts a block comment standing before any code as the file header', () =
     path: SCSS,
     lines: [
       '/*',
-      ' * Liquid Glass design tokens (issue #134, design: the v2 tourist export, superseded',
-      ' * in-repo by docs/design/riviera-sunbeds-liquid-glass-v3.dc.html).',
+      ' * Liquid Glass design tokens (issue #134, the theme blocks and the palettes they pin,',
+      ' * consumed by every component through --riv-* and never as a literal).',
       ' */',
       ':root {',
       '  --riv-header-border: rgba(255, 255, 255, 0.22);',
@@ -370,19 +370,6 @@ test('markdown outside SKILL.md and references/ is out of scope', () => {
     findViolations({ path: '.claude/skills/riviera-modulith/references/events.md', lines, added }),
     [],
   );
-});
-
-test('a design artboard is out of scope, so its as-built pointer may cite the issue; its support scripts are not', () => {
-  const lines = ['<!-- as-built diverges — see #1003: the phone hamburger is a bottom tab bar now -->'];
-  const added = new Set([1]);
-
-  assert.deepEqual(
-    findViolations({ path: 'docs/design/riviera-sunbeds-liquid-glass-v3.dc.html', lines, added }),
-    [],
-  );
-  assert.notDeepEqual(findViolations({ path: 'frontend/src/app/app.html', lines, added }), []);
-  const script = ['// see #1003'];
-  assert.notDeepEqual(findViolations({ path: 'docs/design/support.js', lines: script, added }), []);
 });
 
 test('reports history phrasing under its own rule, so the CLI can advise rather than gate', () => {

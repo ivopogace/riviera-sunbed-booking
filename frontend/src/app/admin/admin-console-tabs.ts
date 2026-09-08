@@ -26,10 +26,8 @@ import { TouchTarget } from '../shared/touch-target';
  * not exist yet — <strong>Payouts</strong>; every tab that ships has landed in its slot without the
  * order being renegotiated, which is what writing it down bought.
  *
- * <p>This grouping is a maintainer decision from the console-nav spike's grill (its verdict,
- * answer 8), amending the earlier home-then-money order. The same decision departed from the admin
- * design canvas (`docs/design/riviera-admin-console.dc.html`), whose pill strip is not what ships:
- * the tabs are underlined text on one shared rail, in this order, grouped by these dividers.
+ * <p>The tabs render as underlined text on one shared rail, in this order, grouped by these
+ * dividers.
  */
 export const ADMIN_CONSOLE_TAB_GROUPS = [
   ['Operators'],

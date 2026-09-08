@@ -36,8 +36,7 @@ const CLS = {
 } as const;
 
 /**
- * "Find a booking" glass modal (design
- * `riviera-sunbeds-liquid-glass-v3.dc.html` → *Find booking*). A guest on a device that doesn't
+ * "Find a booking" glass modal. A guest on a device that doesn't
  * hold their booking (no device-local entry, no email link) types their booking **code** — the
  * unguessable bearer credential (invariant #7) — and is taken to the existing `/booking/:code`
  * detail view. The modal performs the lookup itself (`BookingService.getByCode`) so an unknown /

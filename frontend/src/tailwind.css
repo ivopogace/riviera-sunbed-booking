@@ -1,7 +1,7 @@
 /*
- * The one global stylesheet: Tailwind + the Liquid Glass design tokens (design: the v2 tourist
- * export, superseded in-repo by docs/design/riviera-sunbeds-liquid-glass-v3.dc.html — every
- * "(design: …)" note below cites it).
+ * The one global stylesheet: Tailwind + the Liquid Glass design tokens. A "(design: …)" note
+ * below records the intent a token was cut to serve; the artboards that intent came from are
+ * retired, so the contrast and token-drift specs are what hold a value now.
  *
  * Themes are CSS custom properties scoped by `data-riv-theme` on <html> — at runtime the
  * attribute is written only by core/theme.ts; the index.html inline seed pre-paints the same
