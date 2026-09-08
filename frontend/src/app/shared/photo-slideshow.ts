@@ -119,14 +119,9 @@ const SWIPE_THRESHOLD_PX = 40;
           }
         </div>
         <!-- The position announcement stepping would otherwise make silently; see the class doc. -->
-        <p
-          class="sr-only"
-          role="status"
-          aria-live="polite"
-          [attr.data-testid]="testId() + '-position'"
-        >
+        <output class="sr-only" aria-live="polite" [attr.data-testid]="testId() + '-position'">
           {{ positionLabel() }}
-        </p>
+        </output>
       } @else {
         <!-- Inert indicator, not a picker: this placement lives inside the Discover card's <a>. -->
         <span

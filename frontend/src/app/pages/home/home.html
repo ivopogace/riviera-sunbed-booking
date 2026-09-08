@@ -286,9 +286,9 @@
                 />
               </span>
               <!-- The slideshow's own live region cannot serve this placement: the whole band sits inside the card's aria-hidden <a>, so the announcement has to be mounted out here beside the controls that cause it. Persistent, per shared/load-announcer.ts — only its text changes. -->
-              <p class="sr-only" role="status" aria-live="polite" data-testid="card-photo-position">
+              <output class="sr-only" aria-live="polite" data-testid="card-photo-position">
                 {{ show.positionLabel() }}
-              </p>
+              </output>
             }
           </li>
         }
