@@ -83,7 +83,8 @@ are slow on the vfs storage driver):
 gradle --no-daemon --console=plain test \
   --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" \
   --tests "*PackageShapeArchitectureTests*" --tests "*DomainPurityArchitectureTests*" \
-  --tests "*PublishedSurfacePlacementArchitectureTests*"
+  --tests "*PublishedSurfacePlacementArchitectureTests*" \
+  --tests "*RetiredSetExclusionArchitectureTests*"
 
 # plus the unit/slice tests your change touched
 gradle --no-daemon --console=plain test --tests "*<ClassName>*"

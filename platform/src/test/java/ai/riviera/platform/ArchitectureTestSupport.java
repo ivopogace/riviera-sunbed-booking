@@ -1,15 +1,21 @@
 package ai.riviera.platform;
 
 import java.io.IOException;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.constantpool.PoolEntry;
+import java.lang.classfile.constantpool.StringEntry;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
+import com.tngtech.archunit.core.domain.Source;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -121,6 +127,39 @@ public final class ArchitectureTestSupport {
 	public static String bytecode(Path classFile) {
 		try {
 			return Files.readString(classFile, StandardCharsets.ISO_8859_1);
+		}
+		catch (IOException e) {
+			throw new IllegalStateException("could not read " + classFile, e);
+		}
+	}
+
+	/**
+	 * The class's compiled class file via its ArchUnit source URI — no hardcoded build paths, the
+	 * same class set the rules iterate. Empty for a class without a file source.
+	 */
+	static Optional<Path> classFileOf(JavaClass type) {
+		return type.getSource()
+				.map(Source::getUri)
+				.filter(uri -> "file".equals(uri.getScheme()))
+				.map(Path::of);
+	}
+
+	/**
+	 * Every {@code CONSTANT_String} entry of a compiled class, one string each — the SQL text blocks
+	 * and other literals the class carries, and nothing a mere type or member reference leaves
+	 * behind as a {@code Utf8} symbol. The primitive behind the rules that judge each SQL statement
+	 * on its own ({@code RetiredSetExclusionArchitectureTests}), where {@link #bytecode(Path)}'s
+	 * whole-file substring view cannot say which statement a token belongs to.
+	 */
+	static List<String> stringConstants(Path classFile) {
+		try {
+			List<String> strings = new ArrayList<>();
+			for (PoolEntry entry : ClassFile.of().parse(classFile).constantPool()) {
+				if (entry instanceof StringEntry literal) {
+					strings.add(literal.stringValue());
+				}
+			}
+			return strings;
 		}
 		catch (IOException e) {
 			throw new IllegalStateException("could not read " + classFile, e);

@@ -1,0 +1,91 @@
+package ai.riviera.platform.venue.adapter.out;
+
+import java.time.LocalTime;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.stereotype.Repository;
+
+import ai.riviera.platform.venue.api.SetBookingFacts;
+import ai.riviera.platform.venue.vocabulary.BookingMode;
+import ai.riviera.platform.venue.vocabulary.MoneyView;
+import ai.riviera.platform.venue.vocabulary.Pool;
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
+
+/**
+ * JDBC adapter implementing the {@link SetBookingFacts} port directly (invariant #1, no JPA; a
+ * single adapter is a hypothetical seam). Its own class rather than a third surface on
+ * {@link JdbcVenueCatalog} because the two read the set table differently: every catalogue read
+ * forgets a retired set, while the facts reads must keep answering for one — a booking, a mail
+ * and the staff lookup still name the spot the guest was told (ADR-0019). The fitness function
+ * that holds every other set read to the active view exempts the class implementing this port.
+ */
+@Repository
+class JdbcSetBookingFacts implements SetBookingFacts {
+
+	private static final String COL_VENUE_ID = "venue_id";
+	private static final String COL_PRICE_MINOR = "price_minor";
+	private static final String COL_PRICE_CURRENCY = "price_currency";
+
+	/** The set-facts row shared by the single-id and batch reads — one SQL shape, one mapper. */
+	private static final String SET_BOOKING_INFO_SELECT = """
+			SELECT sp.id AS set_id, sp.venue_id, v.name AS venue_name, sp.row_label,
+			       sp.position_no, sp.pool, sp.price_minor, sp.price_currency, v.booking_cutoff,
+			       v.sales_close, v.booking_mode
+			FROM set_position sp
+			JOIN venue v ON v.id = sp.venue_id
+			""";
+
+	private final JdbcClient jdbc;
+
+	JdbcSetBookingFacts(JdbcClient jdbc) {
+		this.jdbc = jdbc;
+	}
+
+	@Override
+	public Optional<Pool> poolForClaim(SetId setId) {
+		// FOR KEY SHARE: the lock the claim's own INSERT needs anyway, taken early (invariant #3).
+		return jdbc.sql("SELECT pool FROM set_position WHERE id = :id FOR KEY SHARE")
+				.param("id", setId.value())
+				.query(String.class)
+				.optional()
+				.map(Pool::valueOf);
+	}
+
+	@Override
+	public Optional<SetBookingInfo> setBookingInfo(SetId setId) {
+		return jdbc.sql(SET_BOOKING_INFO_SELECT + "WHERE sp.id = :id")
+				.param("id", setId.value())
+				.query(JdbcSetBookingFacts::mapSetBookingInfo)
+				.optional();
+	}
+
+	@Override
+	public Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds) {
+		if (setIds.isEmpty()) {
+			return Map.of();
+		}
+		return jdbc.sql(SET_BOOKING_INFO_SELECT + "WHERE sp.id IN (:setIds)")
+				.param("setIds", setIds.stream().map(SetId::value).toList())
+				.query(JdbcSetBookingFacts::mapSetBookingInfo)
+				.list().stream()
+				.collect(Collectors.toMap(SetBookingInfo::setId, info -> info));
+	}
+
+	private static SetBookingInfo mapSetBookingInfo(java.sql.ResultSet rs, int rowNum)
+			throws java.sql.SQLException {
+		return new SetBookingInfo(
+				new SetId(rs.getLong("set_id")), new VenueId(rs.getLong(COL_VENUE_ID)),
+				rs.getString("venue_name"), rs.getString("row_label"),
+				rs.getInt("position_no"), Pool.valueOf(rs.getString("pool")),
+				new MoneyView(rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)),
+				rs.getObject("booking_cutoff", LocalTime.class),
+				rs.getObject("sales_close", LocalTime.class),
+				BookingMode.valueOf(rs.getString("booking_mode")));
+	}
+}
