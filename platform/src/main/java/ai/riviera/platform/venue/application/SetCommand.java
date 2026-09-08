@@ -18,15 +18,21 @@ public record SetCommand(String rowLabel, int positionNo, String tier, Pool pool
 
 	private static final Set<String> TIERS = Set.of("PREMIUM", "STANDARD");
 
+	/** The tier token exactly as {@code set_position_tier_check} stores it; anything else is rejected. */
+	static String requireTier(String tier) {
+		if (!TIERS.contains(tier)) {
+			throw new IllegalArgumentException("tier must be one of " + TIERS);
+		}
+		return tier;
+	}
+
 	public SetCommand {
 		rowLabel = VenueFieldValidation.strip(rowLabel);
 		VenueFieldValidation.requireText(rowLabel, "rowLabel", VenueFieldValidation.MAX_ROW_LABEL_LENGTH);
 		if (positionNo < 1) {
 			throw new IllegalArgumentException("positionNo must be >= 1");
 		}
-		if (!TIERS.contains(tier)) {
-			throw new IllegalArgumentException("tier must be one of " + TIERS);
-		}
+		requireTier(tier);
 		if (pool == null) {
 			throw new IllegalArgumentException("pool is required");
 		}

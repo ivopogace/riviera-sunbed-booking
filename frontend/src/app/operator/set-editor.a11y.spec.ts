@@ -142,6 +142,25 @@ describe('SetEditor a11y (#600)', () => {
     await expectNoAxeViolations(host());
   });
 
+  it('has no axe violations with a batch outcome rendered', async () => {
+    render();
+    const cells = host().querySelectorAll<HTMLButtonElement>('[data-testid="set-cell"]');
+    cells[0].dispatchEvent(new MouseEvent('mousedown', { button: 0, buttons: 1 }));
+    cells[1].dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    fixture.detectChanges();
+    click(byId('batch-tier-PREMIUM'));
+    click(byId('batch-apply'));
+    http
+      .expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1/sets'))
+      .flush({ updated: 2 });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('batch-saved').textContent).toMatch(/2 sets updated/);
+    await expectNoAxeViolations(host());
+  });
+
   it('names every cell by row, position and state so the map is readable without sight', () => {
     render();
     const cells = Array.from(host().querySelectorAll<HTMLElement>('[data-testid="set-cell"]'));

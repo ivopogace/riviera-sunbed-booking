@@ -19,17 +19,17 @@ public enum SetRejection {
 	/**
 	 * The venue's {@code set_version} was bumped by another writer (a concurrent reprice or replace) since
 	 * the tab loaded the map, so the conditional write is rejected rather than clobbering what is stored
-	 * (optimistic-concurrency loss). Row-write-only, like {@link #NO_SUCH_ROW} — the reprice and the
-	 * rename reach it; the shared {@code addSet}/{@code editSet}/{@code removeSet} paths never do.
+	 * (optimistic-concurrency loss). The token-guarded writes reach it — the reprice, the rename and
+	 * the batch apply; the per-set {@code addSet}/{@code editSet}/{@code removeSet} paths never do.
 	 * Maps to 409 {@code STALE_WRITE}.
 	 */
 	STALE_WRITE,
 	/**
-	 * The set is spoken for, so the requested layout write is refused (invariants #2/#3). Both writes
+	 * The set is spoken for, so the requested layout write is refused (invariant #2). Both writes
 	 * refuse a hold dated today or later; they differ on the booking arm alone — a <em>remove</em> is
 	 * refused by a booking of any status, because the RESTRICT FK pins the set, while an
-	 * <em>edit</em> is refused only by a non-terminal one, and only when it would repool or
-	 * reposition the set. The per-set counterpart of
+	 * <em>edit</em> is refused only by a non-terminal one, and only when it would reposition the set
+	 * (price, tier and pool are never refused). The per-set counterpart of
 	 * {@code ReplaceRejection.LAYOUT_IN_USE}, scoped to one set. Maps to 409 {@code SET_IN_USE}.
 	 */
 	SET_IN_USE,

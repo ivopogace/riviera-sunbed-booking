@@ -60,6 +60,42 @@ export interface SetWriteRequest {
   readonly gridY: number;
 }
 
+/**
+ * The body of the set batch apply (`PATCH /api/venues/{id}/sets`): the swept set ids plus ONLY the
+ * fields the operator touched — an absent field leaves each set's own value alone, server-side. At
+ * least one of `tier`/`pool`/`price` must be present (the server answers `400` otherwise).
+ * {@link expectedVersion} is the same `setVersion` token the bulk replace and the row reprice guard:
+ * a stale one refuses the whole batch `409 STALE_WRITE`.
+ */
+export interface SetBatchRequest {
+  readonly setIds: readonly number[];
+  readonly tier?: Tier;
+  readonly pool?: Pool;
+  readonly price?: MoneyView;
+  readonly expectedVersion: number;
+}
+
+/** What the set batch apply answers: how many sets the one transaction changed. */
+export interface SetBatchResult {
+  readonly updated: number;
+}
+
+/**
+ * A known set batch apply failure, mapped from the RFC-7807 `code` for operator-facing copy.
+ * `NO_SUCH_SET` means a swept id is not on the venue (removed from another tab — per-set writes do
+ * not bump `setVersion`), and the whole batch was refused so the count is never a lie;
+ * `STALE_WRITE` is the venue-level 409 the editor's reload banner owns. There is no claim guard:
+ * price, tier and pool are never refused on any set.
+ */
+export type SetBatchErrorCode =
+  | 'STALE_WRITE'
+  | 'NO_SUCH_SET'
+  | 'NO_SUCH_VENUE'
+  | 'NOT_VENUE_OWNER'
+  | 'INVALID_REQUEST'
+  | 'UNAUTHORIZED'
+  | 'UNKNOWN';
+
 /** What `POST /api/venues/{id}/sets` answers: the new set's id, for an immediate re-select. */
 export interface CreatedSet {
   readonly id: number;
@@ -67,8 +103,9 @@ export interface CreatedSet {
 
 /**
  * A known per-set write failure, mapped from the RFC-7807 `code` for operator-facing copy.
- * `SET_IN_USE` is the server's claim guard — a repool or reposition of a set carrying a live hold or
- * a non-terminal booking, or a delete of a set carrying any booking at all. It is the **ordinary**
+ * `SET_IN_USE` is the server's claim guard — a reposition of a set carrying a live hold or a
+ * non-terminal booking, or a delete of a set carrying any booking at all; price, tier and pool are
+ * never refused. It is the **ordinary**
  * answer on a trading venue rather than a fault, and it is discovered only by attempting the write:
  * no console read predicts it, and a pre-warn probe is a standing non-goal.
  */

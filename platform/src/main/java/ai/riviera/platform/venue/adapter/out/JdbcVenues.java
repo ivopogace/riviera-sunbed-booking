@@ -21,7 +21,6 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
-import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.CommissionRateStore;
@@ -31,6 +30,7 @@ import ai.riviera.platform.venue.application.PhotoServingUrls;
 import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.RowNameCommand;
 import ai.riviera.platform.venue.application.RowPriceCommand;
+import ai.riviera.platform.venue.application.SetBatchCommand;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetPlacement;
 import ai.riviera.platform.venue.application.VenueCommissionView;
@@ -61,6 +61,8 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	private static final String P_VENUE = "venue";
 	private static final String P_ROW_LABEL = "rowLabel";
 	private static final String P_NEW_LABEL = "newLabel";
+	private static final String P_PRICE_MINOR = "priceMinor";
+	private static final String P_PRICE_CURRENCY = "priceCurrency";
 	/** Venue text-column / bind-param names, reused across insert / profile-update / profile-read
 	 *  (named once — Sonar S1192; mirrors JdbcVenueCatalog's COL_* constants). */
 	private static final String COL_NAME = "name";
@@ -191,7 +193,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	@Override
 	public long lockAndReadSetVersion(VenueId venueId) {
 		// FOR UPDATE takes the venue row's write lock and reads the current set_version. This is the
-		// FIRST lock both set-writes acquire (before their set_position locks) → consistent venue→sets order
+		// FIRST lock every token-guarded set-write acquires (before its set_position locks) → consistent venue→sets order
 		// → no deadlock (R-1). The caller compares the value to the loaded expectedVersion (mismatch ⇒
 		// STALE_WRITE) and advances it via incrementSetVersion ONLY on success — so a rejected write never
 		// spuriously bumps the token. A concurrent writer blocks here until this tx ends, then re-reads the
@@ -215,14 +217,14 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	public Optional<SetPlacement> lockSet(VenueId venueId, SetId setId) {
 		// FOR UPDATE blocks a concurrent claim's FK check until this edit ends (see Venues#lockSet).
 		return jdbc.sql("""
-				SELECT pool, row_label, position_no, grid_x, grid_y
+				SELECT row_label, position_no, grid_x, grid_y
 				  FROM set_position
 				 WHERE id = :setId AND venue_id = :venue
 				   FOR UPDATE
 				""")
 				.param(P_SET_ID, setId.value())
 				.param(P_VENUE, venueId.value())
-				.query((rs, rowNum) -> new SetPlacement(Pool.valueOf(rs.getString("pool")), rs.getString("row_label"),
+				.query((rs, rowNum) -> new SetPlacement(rs.getString("row_label"),
 						rs.getInt("position_no"), rs.getInt("grid_x"), rs.getInt("grid_y")))
 				.optional();
 	}
@@ -301,8 +303,8 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				SET price_minor = :priceMinor, price_currency = :priceCurrency
 				WHERE venue_id = :venue AND row_label = :rowLabel
 				""")
-				.param("priceMinor", c.priceMinor())
-				.param("priceCurrency", c.priceCurrency())
+				.param(P_PRICE_MINOR, c.priceMinor())
+				.param(P_PRICE_CURRENCY, c.priceCurrency())
 				.param(P_VENUE, venueId.value())
 				.param(P_ROW_LABEL, c.rowLabel())
 				.update();
@@ -353,6 +355,39 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				.stream()
 				.map(SetId::new)
 				.toList();
+	}
+
+	@Override
+	public Set<SetId> lockSets(VenueId venueId, Collection<SetId> setIds) {
+		// FOR UPDATE, as lockSet: a concurrent claim's FOR KEY SHARE pool read waits for this tx to end.
+		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :venue AND id IN (:ids) FOR UPDATE")
+				.param(P_VENUE, venueId.value())
+				.param("ids", setIds.stream().map(SetId::value).toList())
+				.query(Long.class)
+				.list()
+				.stream()
+				.map(SetId::new)
+				.collect(Collectors.toSet());
+	}
+
+	@Override
+	public int updateSetFields(VenueId venueId, SetBatchCommand c) {
+		// COALESCE keeps each row's own value for an untouched (null) field; the casts type a null bind.
+		return jdbc.sql("""
+				UPDATE set_position
+				SET tier = COALESCE(:tier::text, tier),
+				    pool = COALESCE(:pool::text, pool),
+				    price_minor = COALESCE(:priceMinor::bigint, price_minor),
+				    price_currency = COALESCE(:priceCurrency::text, price_currency)
+				WHERE venue_id = :venue AND id IN (:ids)
+				""")
+				.param("tier", c.tier())
+				.param("pool", c.pool() == null ? null : c.pool().name())
+				.param(P_PRICE_MINOR, c.priceMinor())
+				.param(P_PRICE_CURRENCY, c.priceCurrency())
+				.param(P_VENUE, venueId.value())
+				.param("ids", c.setIds().stream().map(SetId::value).toList())
+				.update();
 	}
 
 	@Override
@@ -511,7 +546,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	private static Map<String, Object> setParams(SetCommand c) {
 		return Map.of(
 				P_ROW_LABEL, c.rowLabel(), "positionNo", c.positionNo(), "tier", c.tier(),
-				"pool", c.pool().name(), "priceMinor", c.priceMinor(), "priceCurrency", c.priceCurrency(),
+				"pool", c.pool().name(), P_PRICE_MINOR, c.priceMinor(), P_PRICE_CURRENCY, c.priceCurrency(),
 				"gridX", c.gridX(), "gridY", c.gridY());
 	}
 

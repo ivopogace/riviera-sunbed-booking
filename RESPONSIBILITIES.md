@@ -102,11 +102,22 @@ over time. The standing rules:
   whole answer through `review.api.VenueRatingSummary` and overwrites — a **full
   recompute**, never an increment, so at-least-once redelivery converges. Nothing but the
   venue id is taken off the event.
-- **A layout write that a live claim depends on is refused.** The bulk replace deletes
-  every set, so it asks the venue-wide question (`LAYOUT_IN_USE`); `editSet`/`removeSet`
-  touch one set, so they ask the set-scoped one (`SET_IN_USE`) under `SELECT … FOR UPDATE`.
-  The row-scoped display writes `repriceRow` and `renameRow` destroy nothing and ask no
-  claim question.
+- **A layout write that a live claim depends on is refused — and only that write.** The bulk
+  replace deletes every set, so it asks the venue-wide question (`LAYOUT_IN_USE`); `editSet`/
+  `removeSet` touch one set, so they ask the set-scoped one (`SET_IN_USE`) under
+  `SELECT … FOR UPDATE`. **Price, tier and pool are never refused, on any set** — on the single-set
+  edit and on the batch apply (`PATCH /api/venues/{venueId}/sets`) alike; **only a position move or
+  a removal asks the claim question.** The row-scoped display writes `repriceRow` and `renameRow`
+  destroy nothing and ask no claim question either.
+  - *Why the pool joins price and tier:* the pool is a sales-channel attribute, not a physical one.
+    Invariant #3 is a **reserve-time** rule — it decides whether a *new* online booking may claim
+    a set (`booking`'s fast path, `availability`'s locked claim-time read) and says nothing about a
+    booking that already exists. Staff walk-in marks are pool-agnostic, and every booked
+    `(set, date)` is protected by its own availability row whatever the pool says. So a set
+    switched to walk-in stops selling online from now on, its already-booked dates stay claimed
+    (a new online reserve is refused for any date; a staff mark on a booked date is still refused),
+    and the staff daily view lists the online booking on the now-walk-in set. Repricing a booked
+    set was always allowed; the pool follows the same rule (epic #1027, revision 3).
   - *Availability arm:* every claim-probing write asks one question — is there a hold on
     these sets dated today or later — through `hasLiveHold`. A past hold freezes nothing;
     a past date is never claimable (reserve and staff mark both refuse it), so the range
@@ -114,9 +125,8 @@ over time. The standing rules:
   - *Booking arm:* `removeSet` and the replace refuse on a booking of **any status ever
     recorded** (the RESTRICT `booking.set_id` FK makes such a set undeletable, so refusing
     early turns a 500 into a 409); `editSet` refuses only on a non-terminal booking, and
-    only when the command would repool or reposition the set — a price-or-tier-only edit
-    is never refused. Consequence, by design: a venue with one ancient cancelled booking
-    answers `LAYOUT_IN_USE` on delete/regenerate forever.
+    only when the command would reposition the set. Consequence, by design: a venue with one
+    ancient cancelled booking answers `LAYOUT_IN_USE` on delete/regenerate forever.
   - Which statuses are live is `booking`'s call (`BookingStatus#isTerminal`, reached through
     `BookingPresence#hasLiveBookings`); `venue` never enumerates booking statuses. Price,
     tier and the row's name stay editable on a claimed set: a booking's charge is
@@ -128,16 +138,25 @@ over time. The standing rules:
     one-label-one-physical-row rule within its batch (`ReplaceRejection.ROW_NAME_TAKEN`);
     the single-set `addSet`/`editSet` paths do not yet check it.
   - Because the pool is **mutable** layout data, `SetBookingFacts#poolForClaim` is a
-    **locking** read (`FOR KEY SHARE`, the weakest lock that conflicts with the edit's
+    **locking** read (`FOR KEY SHARE`, the weakest lock that conflicts with the set-writes'
     `FOR UPDATE`). It must run in a transaction, never a read-only one; the unlocked
-    `setBookingInfo` serves list and mail reads.
+    `setBookingInfo` serves list and mail reads. The set-writes' `FOR UPDATE` is what makes a
+    claim racing a pool flip decide against the committed pool: whichever commits first, the
+    other sees it.
+- **The batch apply is one transaction on the `set_version` token.** `applyToSets` takes the
+  venue row (`lockAndReadSetVersion`) and then the named set rows `FOR UPDATE` — the order every
+  set-write takes, so it cannot deadlock the replace or the reprice — writes the touched columns
+  with one `COALESCE` `UPDATE`, and advances the token once, on success only. A stale token refuses
+  the whole batch (`STALE_WRITE`); a set id not on the venue refuses it too (`NO_SUCH_SET`), before
+  any write, because the per-set `removeSet` does not bump the token and "N sets updated" must
+  never overstate. The response reports the count.
 - **The pool vocabulary is stated once.** `venue.vocabulary.Pool` is the one Java statement of
   the `set_position_pool_check` tokens (ADR-0018 §3); every published set fact (`SetBookingInfo`,
   `SetView`, `SetBookingFacts#poolForClaim`) carries it, and no production class — this module
   included — holds an `"ONLINE"` / `"WALK_IN"` literal of its own, so both invariant #3 checks
   (`booking`'s unlocked fast path, `availability`'s locked claim-time check) compare against the
   published type. The wire keeps the tokens (the enum serialises by name) and the edge parses
-  them once, in `SetPositionRequest`.
+  them once, in `PoolToken`.
 - **The commission rate over time, not just its current value.** `venue_commission_rate`
   is the effective-dated schedule behind `VenueRates#commissionBpsOn` — the rate that
   applied to bookings served on date D, for reporting reads — while `commissionBps` is
@@ -983,7 +1002,12 @@ the mechanism and the edge cases. The numbering is `CLAUDE.md`'s and never chang
    claim time via `availability`'s `AvailabilityClaim` port — `availability` has no event
    listener.
 3. **Online and walk-in pools are separate.** Each set carries a pool flag; an online booking
-   can only target an online-pool set.
+   can only target an online-pool set. **A reserve-time rule:** it decides whether a *new* online
+   booking may claim a set — checked by `booking`'s fast path and by `availability`'s locked
+   claim-time read, both against `venue.vocabulary.Pool` — and says nothing about a booking that
+   already exists. A set's pool is mutable layout data: switching a booked set to walk-in stops new
+   online reserves for every date and leaves every booked `(set, date)` claimed by its own
+   availability row, so no layout write is ever refused for the pool alone (§`venue`).
 4. **Sales close is venue-controlled, on the day itself.** A date D's online sales window
    runs until the venue's `sales_close` wall-clock time on D — a per-venue setting fixed at
    one of three values (`00:01` opts the venue out of same-day sales, `16:00` the default, or

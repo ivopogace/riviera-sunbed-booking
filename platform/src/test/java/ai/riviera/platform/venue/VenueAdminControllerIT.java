@@ -45,7 +45,7 @@ class VenueAdminControllerIT {
 
 	/**
 	 * The one {@code SET_IN_USE} detail, asserted wherever this class provokes it — the remove
-	 * guard's hold and terminal-booking arms, and the edit guard's live hold. Why the wording names
+	 * guard's hold and terminal-booking arms, and the edit guard's refused move. Why the wording names
 	 * no arm, and why it must stay true of a set held only by a long-cancelled booking:
 	 * {@code riviera-java-conventions} {@code references/error-contract.md}.
 	 */
@@ -454,7 +454,7 @@ class VenueAdminControllerIT {
 	}
 
 	@Test
-	void editSetKeepsAClaimedSetInItsPoolButStillTakesAPriceChange() throws Exception {
+	void editSetRepoolsAClaimedSetAndKeepsItsHoldButRefusesAMove() throws Exception {
 		long venue = createVenue("Repool Club");
 		long setId = addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
 		// Relative to today: the edit guard only counts holds from today onwards.
@@ -466,20 +466,23 @@ class VenueAdminControllerIT {
 
 		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(setBody("Row A", 1, "STANDARD", "WALK_IN", 3000, "EUR", 1, 1)))
-				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("SET_IN_USE"))
-				.andExpect(jsonPath("$.detail").value(SET_IN_USE_DETAIL));
-
-		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(setBody("Row A", 1, "PREMIUM", "ONLINE", 4200, "EUR", 1, 1)))
+						.content(setBody("Row A", 1, "PREMIUM", "WALK_IN", 4200, "EUR", 1, 1)))
 				.andExpect(status().isNoContent());
 
-		assertEquals("ONLINE", jdbc.sql("SELECT pool FROM set_position WHERE id = :set")
+		assertEquals("WALK_IN", jdbc.sql("SELECT pool FROM set_position WHERE id = :set")
 				.param("set", setId).query(String.class).single());
 		assertEquals(4200L, jdbc.sql("SELECT price_minor FROM set_position WHERE id = :set")
 				.param("set", setId).query(Long.class).single());
+		assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :set")
+						.param("set", setId).query(Integer.class).single(),
+				"the booked date stays claimed by its own row whatever the pool now says (invariant #2)");
+
+		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(setBody("Row A", 2, "PREMIUM", "WALK_IN", 4200, "EUR", 2, 1)))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("SET_IN_USE"))
+				.andExpect(jsonPath("$.detail").value(SET_IN_USE_DETAIL));
 	}
 
 	@Test

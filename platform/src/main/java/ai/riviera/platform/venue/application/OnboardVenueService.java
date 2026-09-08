@@ -9,7 +9,7 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The venue onboarding use case (U7), split from {@code VenueAdminService}: creation is its own
+ * The venue onboarding use case (U7), apart from {@code BeachMapEditService}: creation is its own
  * conversation — it has no path {@code venueId} to ownership-check against (invariant #13) and is
  * the one write that consults the platform's creation terms. Package-private; the public seam is
  * the {@link OnboardVenue} port. The commission rate is stamped here from

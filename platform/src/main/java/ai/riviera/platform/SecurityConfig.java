@@ -71,6 +71,8 @@ class SecurityConfig {
 	private static final String ADMIN_ROLE = "ADMIN";
 	/** A single laid-out set (PATCH/DELETE target); session + CSRF token required. */
 	private static final String SET_ITEM_PATH = "/api/venues/*/sets/*";
+	/** The set collection: add one (POST) or batch-apply price/tier/pool to many (PATCH); session + CSRF. */
+	private static final String SETS_PATH = "/api/venues/*/sets";
 	/** A single venue item (PATCH profile edit — amenities + distance-to-water); session + CSRF. */
 	private static final String VENUE_ITEM_PATH = "/api/venues/*";
 	/**
@@ -378,8 +380,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/venues").hasRole(OPERATOR_ROLE)
 						// `*` matches one segment, so it never shadows the /sets/* matchers.
 						.requestMatchers(HttpMethod.PATCH, VENUE_ITEM_PATH).hasRole(OPERATOR_ROLE)
-						.requestMatchers(HttpMethod.POST, "/api/venues/*/sets").hasRole(OPERATOR_ROLE)
-						.requestMatchers(HttpMethod.PATCH, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.POST, SETS_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.PATCH, SETS_PATH, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.PUT, BEACH_MAP_PATH, ROW_PRICE_PATH, ROW_NAME_PATH)
 						.hasRole(OPERATOR_ROLE)

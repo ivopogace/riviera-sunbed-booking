@@ -20,7 +20,7 @@ import { CardGlass } from '../shared/card-glass';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { ConfirmPanel } from '../shared/confirm-panel';
 import { focusMover } from '../shared/focus-after-render';
-import { eurosToMinorUnits, formatMoney, minorUnitsToEuros, MoneyView } from '../shared/money';
+import { eurosToMinorUnits, formatMoney, minorUnitsToEuros } from '../shared/money';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import {
   BeachCell,
@@ -35,12 +35,16 @@ import {
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { MapSkeletonGrid } from '../shared/map-skeleton-grid';
 import {
-  LayoutCellRequest,
-  LayoutErrorCode,
+  SetBatchErrorCode,
+  SetBatchRequest,
   SetWriteErrorCode,
   SetWriteRequest,
 } from './operator-console.model';
-import { layoutErrorOf, OperatorConsoleService, setWriteErrorOf } from './operator-console.service';
+import {
+  OperatorConsoleService,
+  setBatchErrorOf,
+  setWriteErrorOf,
+} from './operator-console.service';
 
 import { TouchTarget } from '../shared/touch-target';
 
@@ -98,10 +102,9 @@ function setsInRect(sets: readonly SetView[], rect: SweepRect): readonly SetView
 
 /**
  * Which per-set write was attempted. `SET_IN_USE` answers two guards of different breadth — an edit
- * refuses only for a live claim, a remove for any booking ever — so the refusal copy is chosen by
- * action, not by code alone. `save` stays the neutral name: it sends pool alongside a placement
- * snapshot that another tab may already have moved, so which field tripped the server is unknowable
- * here and the copy names the frozen group rather than guessing the operator's intent.
+ * refuses only a move of a live-claimed set, a remove any booking ever — so the refusal copy is chosen
+ * by action, not by code alone. A `save` sends tier, pool and price alongside a placement snapshot
+ * that another tab may already have moved, which is the one way a save can trip the guard.
  */
 type SetWrite = 'add' | 'move' | 'save' | 'remove';
 
@@ -129,14 +132,16 @@ function draftForNewCell(gridY: number): SetDraft {
 /**
  * The per-set beach-map editor — the console's answer to a venue that has started trading. The bulk
  * `PUT …/beach-map` beside it is reject-unless-unclaimed, so once a venue takes its first booking its
- * map is frozen; these three U7 endpoints are not, and this surface is how an operator reaches them.
+ * map is frozen; the per-set endpoints and the batch apply are not, and this surface is how an
+ * operator reaches them. Price, tier and pool are never refused, on any set; only a move or a remove
+ * asks the server's claim question.
  *
  * <p>It renders the <strong>server's</strong> sets by id rather than a painted grid, because the
  * endpoints address a set by `setId` and a painted cell has no identity. Clicking a cell selects it;
  * the panel edits tier, pool and price and saves one `PATCH` carrying the whole set body (a partial
  * body is rejected `400`).
  *
- * <p><strong>Nothing is applied optimistically.</strong> The server's claim guard refuses a repool or
+ * <p><strong>Nothing is applied optimistically.</strong> The server's claim guard refuses a
  * reposition of a set someone is still owed, and no read predicts it, so a refusal must leave the map
  * exactly as the server still has it: the grid re-renders only from the parent's re-read, which
  * {@link changed} asks for. Selection and draft are `linkedSignal`s over {@link sets}, so that
@@ -181,8 +186,8 @@ export class SetEditor {
   readonly loaded = input.required<boolean>();
   /**
    * The optimistic-concurrency token loaded with the map (`setVersion`) — required so a batch
-   * apply can never fire without it, exactly the same guard {@link LayoutEditor}'s own bulk save
-   * enforces. `null` while the parent's initial read hasn't landed or has failed.
+   * apply can never fire without it, the same token {@link LayoutEditor}'s own bulk save and the
+   * row reprice guard. `null` while the parent's initial read hasn't landed or has failed.
    */
   readonly expectedVersion = input.required<number | null>();
   /** A write landed: the parent drops the shared console snapshot and re-reads the map. */
@@ -303,12 +308,12 @@ export class SetEditor {
     computation: () => EMPTY_BATCH_DRAFT,
   });
 
-  /** True while the batch PUT is in flight — the panel's controls are disabled. */
+  /** True while the batch PATCH is in flight — the panel's controls are disabled. */
   protected readonly batchBusy = signal(false);
-  /** Set after a successful batch apply, cleared on the next sweep/apply. */
-  protected readonly batchSaved = signal(false);
+  /** How many sets the last successful batch apply changed; `null` until one lands, and after the next sweep/apply. */
+  protected readonly batchUpdated = signal<number | null>(null);
   /** The last batch-apply failure, mapped to operator-facing copy, or undefined. */
-  protected readonly batchErrorCode = signal<LayoutErrorCode | undefined>(undefined);
+  protected readonly batchErrorCode = signal<SetBatchErrorCode | undefined>(undefined);
 
   /**
    * Where the inspector last stood, kept even after {@link selection} collapses. `selection` can
@@ -603,7 +608,7 @@ export class SetEditor {
     this.saved.set(false);
     this.errorCode.set(undefined);
     this.sweepIds.set(ids);
-    this.batchSaved.set(false);
+    this.batchUpdated.set(null);
     this.batchErrorCode.set(undefined);
     // Keep the swept anchor above the mobile bottom sheet too (#715), same reasoning as onCell.
     this.scrollCellIntoView(swept[0].gridX, swept[0].gridY);
@@ -619,7 +624,7 @@ export class SetEditor {
     const anchor = this.sweptSets()[0];
     this.sweepIds.set(null);
     this.batchErrorCode.set(undefined);
-    this.batchSaved.set(false);
+    this.batchUpdated.set(null);
     this.focusCell(anchor.gridX, anchor.gridY);
   }
 
@@ -642,12 +647,12 @@ export class SetEditor {
   });
 
   /**
-   * Apply the batch draft's touched fields to every swept set, via the SAME bulk `PUT
-   * …/beach-map` {@link LayoutEditor.onSave} drives (AC-3) — one write, `expectedVersion`-guarded,
-   * built from every one of this venue's OWN sets ({@link sets}, the parent's last read) so an
-   * untouched field on an untouched set is never even re-sent as anything but its own value
-   * (AC-2). A touched-but-empty price is a no-op for that field, matching the single-set panel's
-   * "cleared field reads as no change" convention — not a validation error.
+   * Apply the batch draft's touched fields to every swept set in one `PATCH …/sets` — the swept ids
+   * and only the touched fields, `expectedVersion`-guarded; an untouched field is absent from the
+   * body, so the server leaves each set's own value alone. Booked sets go along like any other:
+   * price, tier and pool are never refused. A touched-but-empty price is a no-op for that field,
+   * matching the single-set panel's "cleared field reads as no change" convention — not a validation
+   * error.
    */
   protected async applyBatch(): Promise<void> {
     const venueId = this.venueId();
@@ -662,40 +667,29 @@ export class SetEditor {
       this.batchErrorCode.set('INVALID_REQUEST');
       return;
     }
-    const requestSets: LayoutCellRequest[] = this.sets().map((s) => {
-      const touched = ids.has(s.id);
-      const price: MoneyView =
-        touched && touchedPrice !== null
-          ? { minorUnits: touchedPrice, currency: s.price.currency }
-          : s.price;
-      return {
-        rowLabel: s.rowLabel,
-        positionNo: s.positionNo,
-        tier: touched && draft.tier !== null ? draft.tier : s.tier,
-        pool: touched && draft.pool !== null ? draft.pool : s.pool,
-        price,
-        gridX: s.gridX,
-        gridY: s.gridY,
-      };
-    });
+    const request: SetBatchRequest = {
+      setIds: [...ids],
+      ...(draft.tier !== null ? { tier: draft.tier } : {}),
+      ...(draft.pool !== null ? { pool: draft.pool } : {}),
+      ...(touchedPrice !== null ? { price: { minorUnits: touchedPrice, currency: 'EUR' } } : {}),
+      expectedVersion,
+    };
     this.batchBusy.set(true);
-    this.batchSaved.set(false);
+    this.batchUpdated.set(null);
     this.batchErrorCode.set(undefined);
     try {
-      await firstValueFrom(
-        this.console.replaceLayout(venueId, { sets: requestSets, expectedVersion }),
-      );
+      const result = await firstValueFrom(this.console.applySetBatch(venueId, request));
       if (this.venueId() !== venueId || this.sweepIds() !== ids) {
         return; // a venue switch or a fresh sweep superseded this apply; batchBusy still clears in finally
       }
-      this.batchSaved.set(true);
+      this.batchUpdated.set(result.updated);
       this.batchDraft.set(EMPTY_BATCH_DRAFT);
       this.changed.emit();
     } catch (error) {
       if (this.venueId() !== venueId || this.sweepIds() !== ids) {
         return;
       }
-      const code = layoutErrorOf(error);
+      const code = setBatchErrorOf(error);
       this.batchErrorCode.set(code);
       if (code === 'STALE_WRITE') {
         this.staleWrite.emit(); // the parent's reload banner owns recovery; the sweep is kept (AC-4)
@@ -707,24 +701,21 @@ export class SetEditor {
     }
   }
 
-  /**
-   * The operator-facing message for the current batch-apply failure, or undefined. Its own
-   * {@link LayoutErrorCode} switch, distinct from {@link LayoutEditor}'s `errorMessage()` — a
-   * `LAYOUT_IN_USE` here points the operator at editing one set at a time, which is what they are
-   * already doing, where the bulk save's own copy points them at arming Select instead.
-   */
+  /** The operator-facing message for the current batch-apply failure, or undefined. */
   protected batchErrorMessage(): string | undefined {
     switch (this.batchErrorCode()) {
       case undefined:
         return undefined;
       case 'STALE_WRITE':
         return undefined; // rendered by the parent's stale-write banner instead
-      case 'LAYOUT_IN_USE':
-        return 'This venue has been booked at least once, or some of its sets are still held, so a batch apply is locked. Change price, tier or pool one set at a time instead.';
+      case 'NO_SUCH_SET':
+        return 'One of the selected sets no longer exists, so nothing was changed. Reload the tab to see the current map.';
       case 'INVALID_REQUEST':
         return 'That price is not valid. Enter an amount of €0 or more, or leave it blank to leave prices unchanged.';
       case 'NO_SUCH_VENUE':
         return 'This venue could not be found.';
+      case 'NOT_VENUE_OWNER':
+        return 'You do not manage this venue, so its map can’t be changed.';
       case 'UNAUTHORIZED':
         return 'Your session has expired. Please sign in again.';
       default:
@@ -1047,17 +1038,17 @@ export class SetEditor {
 
   /**
    * The refusal copy for `SET_IN_USE`, which the server answers from two guards of different reach.
-   * A move or save is refused only while someone is still owed the spot, so both stay
-   * lifetime-neutral and point at the fields that remain editable. A remove is refused by any
-   * booking that ever existed — the placement is pinned by the booking's own record — so that arm
-   * says so instead of reading as a claim that will lapse.
+   * A move or save is refused only while someone is still owed the spot and only for its position,
+   * so both stay lifetime-neutral and name the fields that always remain editable — price, tier and
+   * pool. A remove is refused by any booking that ever existed — the placement is pinned by the
+   * booking's own record — so that arm says so instead of reading as a claim that will lapse.
    */
   private inUseMessage(): string {
     switch (this.attempted()) {
       case 'move':
-        return 'This set is booked, or still held, so it can’t be moved. Its price and tier can still change.';
+        return 'This set is booked, or still held, so it can’t be moved. Its price, tier and pool can still change.';
       case 'save':
-        return 'This set is booked, or still held, so its pool and position can’t change. Its price and tier can still change.';
+        return 'This set is booked, or still held, so its position can’t change. Its price, tier and pool can still change.';
       case 'remove':
         return 'This set can’t be removed: it is still held, or it has been booked at least once — and a booked set stays on the map for good.';
       default:

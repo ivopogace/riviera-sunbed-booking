@@ -82,7 +82,7 @@ class BeachMapReplaceIT {
 	private static final String LAYOUT_IN_USE_DETAIL = "This venue has a booking or a current hold.";
 
 	/**
-	 * The row reprice shares this {@code STALE_WRITE} detail, because both set-writes turn on the
+	 * The row reprice shares this {@code STALE_WRITE} detail, because every token-guarded set-write turns on the
 	 * single {@code venue.set_version} token (V23) — either can lose to the other, so the wording
 	 * may attribute the change to neither. Production owns one constant
 	 * ({@code VenueAdminController.STALE_SETS_DETAIL}); this literal and VenueRepriceIT's are two views of

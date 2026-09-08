@@ -34,10 +34,10 @@ class JdbcDailyTakings implements DailyTakings {
 	 * {@code NO_SHOW} alike, so neither a check-in nor the no-show sweep shrinks the venue's day (a
 	 * paid no-show is not refunded: the cancellation window closed at 00:00 on the service date,
 	 * invariant #10). Aggregated in SQL for one service date ({@code booking_date} in
-	 * {@code Europe/Tirane}, invariant #6), served by {@code booking_venue_id_idx}. No pool filter is
-	 * needed for "online": a booking row only ever exists for an online-pool set (invariant #3 —
-	 * walk-ins are staff-marked availability rows, never bookings). {@code COALESCE} keeps an empty
-	 * day a {@code (0, 'EUR')} result (invariant #5).
+	 * {@code Europe/Tirane}, invariant #6), served by {@code booking_venue_id_idx}. "Online" is the
+	 * booking row itself — walk-ins are staff-marked availability rows, never bookings — so no pool
+	 * filter applies either way: a booking on a set since switched to the walk-in pool is still money
+	 * the venue kept. {@code COALESCE} keeps an empty day a {@code (0, 'EUR')} result (invariant #5).
 	 */
 	@Override
 	public OnlineTakings grossOnlineTakings(VenueId venueId, LocalDate date) {
