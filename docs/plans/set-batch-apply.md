@@ -290,6 +290,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `docs/plans/set-batch-apply.md` — this plan
 - `RESPONSIBILITIES.md` — § `venue` layout-write paragraph; § *Invariants, long form* #3
 - `CONTEXT.md` — the **Pool** entry: a reserve-time rule
+- `.claude/skills/riviera-java-conventions/references/error-contract.md` — the `STALE_WRITE` set-write count
 - `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` — `PATCH /api/venues/*/sets` → `OPERATOR`
 - `platform/src/main/java/ai/riviera/platform/venue/application/SetPlacement.java` — `disturbedBy` drops the pool
 - `platform/src/main/java/ai/riviera/platform/venue/application/EditBeachMap.java` — `editSet` Javadoc; `applyToSets`

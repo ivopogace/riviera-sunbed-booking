@@ -40,8 +40,9 @@ kept in sync by nothing.
   one call site: `MISSING_CURRENT_PASSWORD` (operator + customer password change — the
   client owns that sentence as `CURRENT_PASSWORD_REQUIRED_MESSAGE`), `REQUEST_NOT_PENDING`
   (accept, decline, withdraw — the shared wording may not say "already been decided",
-  false of the withdrawn route), and `STALE_WRITE`'s two set-writes (one
-  `venue.set_version` token, so neither may claim *prices* or *layout* changed).
+  false of the withdrawn route), and `STALE_WRITE`'s token-guarded set-writes — reprice, rename,
+  batch apply, replace (one `venue.set_version` token, so none may claim *prices* or *layout*
+  changed).
   `CurrentPasswordDetailTwinTest` asserts its pair's two live responses equal each other,
   so a one-sided edit is red even when the new wording is fine alone.
 - **Examined and deliberately left:** `UNSUPPORTED_FORMAT` (byte-identical to
