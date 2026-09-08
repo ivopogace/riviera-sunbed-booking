@@ -249,6 +249,14 @@ test('a horizontal swipe steps the Discover card without following the card link
   const position = item.getByTestId('card-photo-position');
   await expect(position).toHaveText('Photo 1 of 3');
 
+  // A real touch hit-tests by coordinate: the topmost paint must be inside the slideshow host, not a sibling overlay swallowing the gesture.
+  const box = (await band.boundingBox())!;
+  const insideSlideshow = await page.evaluate(
+    ({ x, y }) => document.elementFromPoint(x, y)?.closest('app-photo-slideshow') != null,
+    { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+  );
+  expect(insideSlideshow).toBe(true);
+
   const swipe = async (dx: number) => {
     for (const [type, x] of [
       ['pointerdown', 200],
