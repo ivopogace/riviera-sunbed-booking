@@ -28,6 +28,15 @@ describe('PhotoLightbox', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  /** The one slide not faded out. */
+  function shownSrc(): string | undefined {
+    return (
+      [...el().querySelectorAll('img')]
+        .find((img) => !img.classList.contains('opacity-0'))
+        ?.getAttribute('src') ?? undefined
+    );
+  }
+
   it('renders as a labelled, modal dialog seeded at the tapped photo', () => {
     create({ photos: PHOTOS, startIndex: 1, name: 'Miramar Beach Club' });
 
@@ -35,10 +44,34 @@ describe('PhotoLightbox', () => {
     expect(el().getAttribute('aria-modal')).toBe('true');
     expect(el().getAttribute('aria-label')).toBe('Photos of Miramar Beach Club');
 
+    // The slideshow mounts only the slide it opens on, so the seeded photo is the only <img> there.
     const slides = el().querySelectorAll<HTMLImageElement>(
       '[data-testid="lightbox-img"], [data-testid="lightbox-slide-img"]',
     );
-    expect(slides[1].classList.contains('opacity-0')).toBe(false);
+    expect(slides.length).toBe(1);
+    expect(slides[0].getAttribute('src')).toBe(PHOTOS[1]);
+    expect(slides[0].classList.contains('opacity-0')).toBe(false);
+  });
+
+  it('steps the photos on the arrow keys from anywhere in the dialog', () => {
+    create({ photos: PHOTOS });
+
+    // Focus opens on the close button, which is the slideshow's SIBLING — the dialog has to listen.
+    const close = el().querySelector<HTMLElement>('[data-testid="lightbox-close"]')!;
+    const right = new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    });
+    close.dispatchEvent(right);
+    fixture.detectChanges();
+
+    expect(right.defaultPrevented).toBe(true);
+    expect(shownSrc()).toBe(PHOTOS[1]);
+
+    close.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    fixture.detectChanges();
+    expect(shownSrc()).toBe(PHOTOS[0]);
   });
 
   it('letterboxes rather than crops, so a portrait photo shows whole (contain, not cover)', () => {

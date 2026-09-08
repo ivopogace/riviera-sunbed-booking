@@ -173,7 +173,8 @@ test('the slideshow chrome carries its own backing over the photo, in both theme
   await page.getByTestId('gallery-photo-0').click();
 
   // The ratios are proven in photo-slideshow.contrast.spec.ts; that the paint ships is proven here.
-  const rail = page.getByTestId('lightbox-dots');
+  // First span in the rail is the pill painted BEHIND the dot buttons, which are transparent 44px boxes.
+  const rail = page.getByTestId('lightbox-dots').locator('span').first();
   await expect(rail).toHaveCSS('background-color', 'rgba(13, 40, 40, 0.7)');
   const chip = page.getByTestId('lightbox-next').locator('span');
   await expect(chip).toHaveCSS('border-top-color', 'rgba(12, 42, 51, 0.6)');
@@ -200,35 +201,99 @@ test('the Discover card slideshow crossfades through all three slots via the ste
   const slides = item.locator(
     '[data-testid="card-photo-img"], [data-testid="card-photo-slide-img"]',
   );
-  await expect(slides).toHaveCount(3);
+  // Only the cover is mounted up front — an opacity-0 slide would still be fetched.
+  await expect(slides).toHaveCount(1);
   const dots = item.getByTestId('card-photo-dots');
   await expect(dots.locator('span')).toHaveCount(3);
 
-  // Measured, because the location's reservation is a literal that cannot follow a rail retune (#704).
+  // Measured, because the location's reservation is a literal that cannot follow a rail retune.
   const rail = (await dots.boundingBox())!;
   const location = (await item.locator('.photo-location').boundingBox())!;
   expect(location.x + location.width).toBeLessThanOrEqual(rail.x);
 
-  // First slide up (cover), the others faded out of the stack.
-  await expect(slides.nth(0)).toHaveCSS('opacity', '1');
-  await expect(slides.nth(1)).toHaveCSS('opacity', '0');
+  const shown = item.locator(
+    '[data-testid="card-photo-img"]:not(.opacity-0), [data-testid="card-photo-slide-img"]:not(.opacity-0)',
+  );
+  const position = item.getByTestId('card-photo-position');
+  await expect(position).toHaveText('Photo 1 of 3');
 
   const next = item.getByTestId('card-photo-next');
   const prev = item.getByTestId('card-photo-prev');
   await next.click();
-  await expect(slides.nth(1)).toHaveCSS('opacity', '1');
-  await expect(slides.nth(0)).toHaveCSS('opacity', '0');
+  await expect(position).toHaveText('Photo 2 of 3');
+  await expect(shown).toHaveCSS('opacity', '1');
+  // The slide mounted on demand, and — the tourist having now stepped once — its paint warmed the
+  // neighbours, so the rest of the set follows. Nothing was fetched before that first step.
+  await expect(slides).toHaveCount(3);
 
   // Forward past the end wraps to the cover; back from the cover wraps to the last slot.
   await next.click();
   await next.click();
-  await expect(slides.nth(0)).toHaveCSS('opacity', '1');
+  await expect(position).toHaveText('Photo 1 of 3');
   await prev.click();
-  await expect(slides.nth(2)).toHaveCSS('opacity', '1');
+  await expect(position).toHaveText('Photo 3 of 3');
 
   // Stepping the slideshow must not navigate — the controls sit outside the card link.
   await expect(page).toHaveURL('/');
 
   // The toHaveCSS('opacity', '1') above already proved the crossfade settled (no mid-fade axe read).
+  await expect(shown).toHaveCSS('opacity', '1');
   await expectNoSeriousAxeViolations(page, 'discovery with an active slideshow');
+});
+
+test('a horizontal swipe steps the Discover card without following the card link', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const item = page.getByTestId('venue-card').first().locator('..');
+  const band = item.locator('app-photo-slideshow');
+  const position = item.getByTestId('card-photo-position');
+  await expect(position).toHaveText('Photo 1 of 3');
+
+  const swipe = async (dx: number) => {
+    for (const [type, x] of [
+      ['pointerdown', 200],
+      ['pointerup', 200 + dx],
+    ] as const) {
+      await band.dispatchEvent(type, { clientX: x, clientY: 300, pointerType: 'touch' });
+    }
+  };
+
+  // The band IS the card's <a>, so the click the swipe synthesises must not reach the router.
+  await swipe(-80);
+  await expect(position).toHaveText('Photo 2 of 3');
+  await expect(page).toHaveURL('/');
+
+  await swipe(80);
+  await expect(position).toHaveText('Photo 1 of 3');
+
+  // A tap that never travelled is still a tap: the card navigates.
+  await band.click();
+  await expect(page).toHaveURL(/\/venues\/1/);
+});
+
+test('the lightbox picker jumps to a slide, and the arrow keys step from the close button (+ axe)', async ({
+  page,
+}) => {
+  await page.goto('/venues/1');
+  await page.getByTestId('gallery-photo-0').click();
+
+  const position = page.getByTestId('lightbox-position');
+  await expect(position).toHaveText('Photo 1 of 3');
+  await expect(page.getByTestId('lightbox-dot-0')).toHaveAttribute('aria-current', 'true');
+
+  // Focus opens on the close button, which is the slideshow's sibling — the dialog is what listens.
+  await expect(page.getByTestId('lightbox-close')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(position).toHaveText('Photo 2 of 3');
+  await page.keyboard.press('ArrowLeft');
+  await expect(position).toHaveText('Photo 1 of 3');
+
+  await page.getByTestId('lightbox-dot-2').click();
+  await expect(position).toHaveText('Photo 3 of 3');
+  await expect(page.getByTestId('lightbox-dot-2')).toHaveAttribute('aria-current', 'true');
+  await expect(page.getByTestId('lightbox-dot-0')).not.toHaveAttribute('aria-current', 'true');
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'photo lightbox with the slide picker');
 });

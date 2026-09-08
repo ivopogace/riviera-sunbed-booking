@@ -493,10 +493,15 @@ describe('VenueMap', () => {
     tile.click();
     fixture.detectChanges();
 
+    // Seeded at the tapped tile — and that slide is the only one the slideshow mounts up front.
     const slides = el().querySelectorAll<HTMLImageElement>(
       '[data-testid="lightbox-img"], [data-testid="lightbox-slide-img"]',
     );
-    expect(slides[2].classList.contains('opacity-0')).toBe(false);
+    expect(slides.length).toBe(1);
+    expect(slides[0].getAttribute('src')).toBe(
+      `${environment.apiBaseUrl}/api/venues/1/photos/dd04`,
+    );
+    expect(slides[0].classList.contains('opacity-0')).toBe(false);
 
     el().querySelector<HTMLButtonElement>('[data-testid="lightbox-close"]')!.click();
     fixture.detectChanges();
