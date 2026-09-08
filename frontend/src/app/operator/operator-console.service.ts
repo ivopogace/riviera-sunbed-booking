@@ -22,6 +22,9 @@ import {
   RowNameErrorCode,
   RequestDecision,
   RequestErrorCode,
+  SetBatchErrorCode,
+  SetBatchRequest,
+  SetBatchResult,
   SetDayState,
   SetWriteErrorCode,
   SetWriteRequest,
@@ -132,11 +135,21 @@ export class OperatorConsoleService {
 
   /**
    * Re-place one existing set — the whole body, since a partial one is rejected `400`. Owner-asserted
-   * server-side (invariant #13); price and tier always apply, while a repool or reposition of a set
-   * carrying a live claim is refused `409 SET_IN_USE` (invariants #2/#3). `204` on success.
+   * server-side (invariant #13); price, tier and pool always apply, while a reposition of a set
+   * carrying a live claim is refused `409 SET_IN_USE` (invariant #2). `204` on success.
    */
   editSet(venueId: number, setId: number, request: SetWriteRequest): Observable<void> {
     return this.http.patch<void>(`${this.base}/api/venues/${venueId}/sets/${setId}`, request);
+  }
+
+  /**
+   * Change price, tier and/or pool on a swept selection of sets in one transaction — booked sets
+   * included, since none of the three is ever refused for a claim. Owner-asserted server-side
+   * (invariant #13); `expectedVersion` is the `setVersion` token the tab loaded, so a stale tab meets
+   * `409 STALE_WRITE` rather than clobbering. Answers the number of sets changed.
+   */
+  applySetBatch(venueId: number, request: SetBatchRequest): Observable<SetBatchResult> {
+    return this.http.patch<SetBatchResult>(`${this.base}/api/venues/${venueId}/sets`, request);
   }
 
   /**
@@ -418,6 +431,27 @@ export function setWriteErrorOf(error: unknown): SetWriteErrorCode {
       case 'SET_IN_USE':
       case 'CELL_TAKEN':
       case 'DUPLICATE_POSITION':
+      case 'NO_SUCH_SET':
+      case 'NO_SUCH_VENUE':
+      case 'NOT_VENUE_OWNER':
+      case 'INVALID_REQUEST':
+        return code;
+      default:
+        return 'UNKNOWN';
+    }
+  }
+  return 'UNKNOWN';
+}
+
+/** Map an HTTP failure of the set batch apply to a known {@link SetBatchErrorCode} (RFC-7807 `code`). */
+export function setBatchErrorOf(error: unknown): SetBatchErrorCode {
+  if (error instanceof HttpErrorResponse) {
+    if (error.status === 401) {
+      return 'UNAUTHORIZED';
+    }
+    const code = problemCodeOf(error);
+    switch (code) {
+      case 'STALE_WRITE':
       case 'NO_SUCH_SET':
       case 'NO_SUCH_VENUE':
       case 'NOT_VENUE_OWNER':

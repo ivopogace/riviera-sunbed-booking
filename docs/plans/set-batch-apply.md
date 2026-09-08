@@ -264,16 +264,16 @@ APIs. No deviation.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `PR — draft open, CI gate`
 
-**Next action:** phase 3 — the mocked e2e, then lint/format, then commit and open the draft PR.
+**Next action:** watch the draft PR's CI run; when green, merge latest `origin/main`, mark ready for review and run the review gate (`references/pr-gates.md` §1).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | |
 | 1 — the reserve-time pool rule (guard, ITs, docs, Javadoc, takings comment) | ✅ | `71b8f366` |
-| 2 — the batch endpoint (backend) | ✅ | phase-2 commit (SHA recorded in the phase-3 commit) |
-| 3 — the batch panel rewire (frontend + e2e) | | |
+| 2 — the batch endpoint (backend) | ✅ | `505a444f` |
+| 3 — the batch panel rewire (frontend + e2e) | ✅ | the phase-3 commit (this plan update rides in it) |
 | 4 — PR gates + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -395,6 +395,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-08 | phase 3 | every client string that states the pool rule to the operator | `grep -rn -i "repool\|pool and position" frontend/src frontend/e2e` (non-spec files) | `set-editor.ts` class TSDoc + `SetWrite` doc + the `save`/`move` copy; `operator-console.model.ts` `SetWriteErrorCode` doc; `operator-console.service.ts` `editSet` doc; the e2e's booked-set test | all reworded; the two `layout-editor.spec.ts` comments narrate a test's own repool through the child (still a valid action) and stand |
 | 2026-09-08 | phase 2 | every `venue.set_version`-guarded write: takes the venue row first and advances the token on success only | `grep -n "lockAndReadSetVersion" platform/src/main/java/ai/riviera/platform/venue/application/VenueAdminService.java` | `repriceRow`, `renameRow`, `replaceLayout`, `applyToSets` | all four follow the order; the batch joins the population with the same shape |
 | 2026-09-08 | phase 1 | every production statement or prose line that refuses a pool change or derives a set's pool from a booking row | `grep -rn -i "repool\|pool flip\|online-pool set\|walk-in inventory" platform/src/main frontend/src RESPONSIBILITIES.md CONTEXT.md` | `EditBeachMap#removeSet` Javadoc ("repool or reposition"); `pricing-tab` projection (sums online-pool sets — a sales projection, still correct); `venue-map.ts` ("ONLINE-pool sets are bookable" — the reserve-time rule, correct); thread-pool matches (noise) | reworded the one Javadoc; the rest stand |
 

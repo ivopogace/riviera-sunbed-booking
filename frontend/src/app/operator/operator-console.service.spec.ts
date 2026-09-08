@@ -7,6 +7,7 @@ import {
   PayoutLedgerView,
   PendingRequestItem,
   RequestDecision,
+  SetBatchRequest,
   SetWriteRequest,
   WeatherRefundResult,
 } from './operator-console.model';
@@ -19,6 +20,7 @@ import {
   checkInErrorOf,
   checkInWrongDateOf,
   setWriteErrorOf,
+  setBatchErrorOf,
   rowNameErrorOf,
 } from './operator-console.service';
 
@@ -355,6 +357,71 @@ describe('OperatorConsoleService — per-set beach-map writes (#600)', () => {
     const req = httpMock.expectOne(`${BASE}/api/venues/1/sets/42`);
     expect(req.request.method).toBe('DELETE');
     req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+});
+
+/**
+ * The set batch apply client — one `PATCH` on the set collection carrying the swept ids and only
+ * the touched fields, guarded by the same `setVersion` token as the bulk replace and the reprice.
+ */
+describe('OperatorConsoleService — set batch apply', () => {
+  let service: OperatorConsoleService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [OperatorConsoleService, provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(OperatorConsoleService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('PATCHes the set collection with the ids, the touched fields and the token, and returns the count', () => {
+    const request: SetBatchRequest = {
+      setIds: [10, 11],
+      price: { minorUnits: 4000, currency: 'EUR' },
+      expectedVersion: 5,
+    };
+    let actual: { updated: number } | undefined;
+    service.applySetBatch(1, request).subscribe((result) => (actual = result));
+
+    const req = httpMock.expectOne(`${BASE}/api/venues/1/sets`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual(request);
+    expect(req.request.body).not.toHaveProperty('tier');
+    expect(req.request.body).not.toHaveProperty('pool');
+    req.flush({ updated: 2 });
+    expect(actual).toEqual({ updated: 2 });
+  });
+});
+
+describe('setBatchErrorOf', () => {
+  function problem(status: number, code?: string): HttpErrorResponse {
+    return new HttpErrorResponse({ status, error: code === undefined ? {} : { code } });
+  }
+
+  it('maps 401 to UNAUTHORIZED before reading the body', () => {
+    expect(setBatchErrorOf(problem(401, 'STALE_WRITE'))).toBe('UNAUTHORIZED');
+  });
+
+  it('passes through every code the batch panel explains', () => {
+    for (const code of [
+      'STALE_WRITE',
+      'NO_SUCH_SET',
+      'NO_SUCH_VENUE',
+      'NOT_VENUE_OWNER',
+      'INVALID_REQUEST',
+    ] as const) {
+      expect(setBatchErrorOf(problem(409, code))).toBe(code);
+    }
+  });
+
+  it('maps an unknown code and a non-HTTP failure to UNKNOWN', () => {
+    expect(setBatchErrorOf(problem(409, 'LAYOUT_IN_USE'))).toBe('UNKNOWN');
+    expect(setBatchErrorOf(problem(500))).toBe('UNKNOWN');
+    expect(setBatchErrorOf(new Error('offline'))).toBe('UNKNOWN');
   });
 });
 

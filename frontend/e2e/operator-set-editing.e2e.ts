@@ -75,15 +75,16 @@ function seedSets(): MockSet[] {
   ];
 }
 
-/** Set 13 stands in for a set someone is still owed: every guarded write against it answers 409. */
+/** Set 13 stands in for a set someone is still owed: a move or a remove against it answers 409. */
 const CLAIMED_SET_ID = 13;
 
 test.use({ colorScheme: 'dark' });
 
 /**
  * Session + a stateful venue map. The map GET serves the current sets; POST appends one, PATCH
- * replaces one in place, DELETE drops one — except against {@link CLAIMED_SET_ID}, whose repool,
- * reposition and removal are refused `409 SET_IN_USE` exactly as the server's claim guard would.
+ * replaces one in place, DELETE drops one — except against {@link CLAIMED_SET_ID}, whose
+ * reposition and removal are refused `409 SET_IN_USE` exactly as the server's claim guard would
+ * (its pool, like its price and tier, changes freely). PATCH on the collection is the batch apply.
  */
 interface MockConsole {
   sets: () => MockSet[];
@@ -114,10 +115,43 @@ async function mockConsole(page: Page, seed = seedSets()): Promise<MockConsole> 
       json: { code: 'SET_IN_USE', detail: 'in use' },
     });
 
+  interface BatchBody {
+    setIds: number[];
+    tier?: 'PREMIUM' | 'STANDARD';
+    pool?: 'ONLINE' | 'WALK_IN';
+    price?: { minorUnits: number; currency: string };
+    expectedVersion: number;
+  }
+
   // Keep the per-set route ABOVE the venue GET so it wins the match.
   await page.route(/\/api\/venues\/1\/sets(\/(\d+))?$/, (route) => {
     const request = route.request();
-    const setId = Number(/\/sets\/(\d+)$/.exec(request.url())?.[1] ?? 0);
+    const itemId = /\/sets\/(\d+)$/.exec(request.url())?.[1];
+    if (request.method() === 'PATCH' && itemId === undefined) {
+      // The batch apply: the swept ids and only the touched fields, on the shared setVersion token.
+      const body = request.postDataJSON() as BatchBody;
+      if (body.expectedVersion !== setVersion) {
+        return route.fulfill({
+          status: 409,
+          contentType: 'application/problem+json',
+          json: { code: 'STALE_WRITE', detail: 'stale' },
+        });
+      }
+      const ids = new Set(body.setIds);
+      sets = sets.map((s) =>
+        ids.has(s.id)
+          ? {
+              ...s,
+              tier: body.tier ?? s.tier,
+              pool: body.pool ?? s.pool,
+              price: body.price ?? s.price,
+            }
+          : s,
+      );
+      setVersion += 1;
+      return route.fulfill({ json: { updated: ids.size } });
+    }
+    const setId = Number(itemId ?? 0);
     if (request.method() === 'POST') {
       const body = request.postDataJSON() as Omit<MockSet, 'id' | 'availability'>;
       sets = [...sets, { ...body, id: nextId++, availability: 'FREE' }];
@@ -126,9 +160,8 @@ async function mockConsole(page: Page, seed = seedSets()): Promise<MockConsole> 
     if (request.method() === 'PATCH') {
       const body = request.postDataJSON() as Omit<MockSet, 'id' | 'availability'>;
       const current = sets.find((s) => s.id === setId)!;
-      const repooledOrMoved =
-        body.pool !== current.pool || body.gridX !== current.gridX || body.gridY !== current.gridY;
-      if (setId === CLAIMED_SET_ID && repooledOrMoved) {
+      const moved = body.gridX !== current.gridX || body.gridY !== current.gridY;
+      if (setId === CLAIMED_SET_ID && moved) {
         return conflict(route);
       }
       sets = sets.map((s) => (s.id === setId ? { ...s, ...body } : s));
@@ -154,7 +187,7 @@ async function mockConsole(page: Page, seed = seedSets()): Promise<MockConsole> 
     gridY: number;
   }
 
-  // The batch editor's own PUT — the same expectedVersion-guarded snapshot write as bulk save (#714).
+  // The bulk save's PUT, on the same setVersion token as the batch apply above.
   await page.route(/\/api\/venues\/1\/beach-map$/, (route) => {
     if (route.request().method() !== 'PUT') return route.fallback();
     const body = route.request().postDataJSON() as {
@@ -256,7 +289,7 @@ test('a venue with sets opens in per-set editing, and one set’s pool + price s
   await expect(cell(page, 1, 2)).toHaveAttribute('data-state', 'walkin');
 });
 
-test('a booked set cannot be repooled or removed, and says so instead of failing silently', async ({
+test('a booked set changes pool freely but cannot be moved or removed, and says so', async ({
   page,
 }) => {
   const mock = await mockConsole(page);
@@ -267,10 +300,19 @@ test('a booked set cannot be repooled or removed, and says so instead of failing
   await page.getByTestId('set-pool-WALK_IN').click();
   await page.getByTestId('set-save').click();
 
-  await expect(page.getByTestId('set-error')).toContainText(/pool and position can’t change/i);
-  // Nothing moved: the server still has it online, and the map agrees.
-  expect(mock.sets().find((s) => s.id === 13)!.pool).toBe('ONLINE');
-  await expect(cell(page, 2, 2)).toHaveAttribute('data-state', 'standard');
+  // The pool governs new online reserves only, so the switch lands and the map repaints it walk-in.
+  await expect(page.getByTestId('set-saved')).toBeVisible();
+  expect(mock.sets().find((s) => s.id === 13)!.pool).toBe('WALK_IN');
+  await expect(cell(page, 2, 2)).toHaveAttribute('data-state', 'walkin');
+
+  await page.getByTestId('set-add-col').click();
+  await page.getByTestId('set-move').click();
+  await cell(page, 3, 2).click();
+  await expect(page.getByTestId('set-error')).toContainText(/can’t be moved/i);
+  await expect(page.getByTestId('set-error')).toContainText(
+    /price, tier and pool can still change/i,
+  );
+  expect(mock.sets().find((s) => s.id === 13)!.gridX).toBe(2);
 
   await page.getByTestId('set-remove').click();
   await page.getByTestId('set-remove-yes').click();
@@ -412,7 +454,7 @@ test('a mostly-vertical drag sweeps a column of sets instead of panning the map 
   await expect(page.getByTestId('set-selected')).toHaveText(/Row A · position 1/);
 });
 
-test('sweeps a block, applies a price change to all of them in one PUT (#714)', async ({
+test('sweeps a block, applies a price change to all of them in one batch PATCH', async ({
   page,
 }) => {
   const mock = await mockConsole(page);
@@ -433,18 +475,18 @@ test('sweeps a block, applies a price change to all of them in one PUT (#714)', 
 
   await expect(page.getByTestId('batch-count')).toHaveText(/2 sets selected/);
 
-  let putCount = 0;
+  let patchCount = 0;
   page.on('request', (request) => {
-    if (request.method() === 'PUT' && request.url().includes('/beach-map')) {
-      putCount += 1;
+    if (request.method() === 'PATCH' && request.url().endsWith('/api/venues/1/sets')) {
+      patchCount += 1;
     }
   });
 
   await page.getByTestId('batch-price').fill('40');
   await page.getByTestId('batch-apply').click();
 
-  await expect(page.getByTestId('batch-saved')).toBeVisible();
-  expect(putCount).toBe(1);
+  await expect(page.getByTestId('batch-saved')).toHaveText(/2 sets updated/);
+  expect(patchCount).toBe(1);
   const set10 = mock.sets().find((s) => s.id === 10)!;
   const set11 = mock.sets().find((s) => s.id === 11)!;
   const set12 = mock.sets().find((s) => s.id === 12)!;
@@ -454,9 +496,7 @@ test('sweeps a block, applies a price change to all of them in one PUT (#714)', 
   expect(set12.price.minorUnits).toBe(2000); // outside the sweep — never touched
 });
 
-test('a STALE_WRITE batch apply keeps the selection and Reload recovers it (#714)', async ({
-  page,
-}) => {
+test('a STALE_WRITE batch apply keeps the selection and Reload recovers it', async ({ page }) => {
   await mockConsole(page);
   await page.goto('/operator/1/beach-map');
   await signIn(page);
@@ -470,9 +510,9 @@ test('a STALE_WRITE batch apply keeps the selection and Reload recovers it (#714
   await page.mouse.move(toBox.x + toBox.width / 2, toBox.y + toBox.height / 2, { steps: 5 });
   await page.mouse.up();
 
-  // A second tab's PUT lands first: the version this tab loaded no longer matches.
+  // A second tab's write landed first, so the token this tab loaded is stale.
   await page.route(
-    /\/api\/venues\/1\/beach-map$/,
+    /\/api\/venues\/1\/sets$/,
     (route) =>
       route.fulfill({
         status: 409,
