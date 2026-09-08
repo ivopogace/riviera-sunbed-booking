@@ -264,9 +264,9 @@ APIs. No deviation.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft open, CI gate`
+**Stage pointer:** `review gate` (CI green on `bf451252`; Sonar's first list cleared)
 
-**Next action:** watch the draft PR's CI run; when green, merge latest `origin/main`, mark ready for review and run the review gate (`references/pr-gates.md` §1).
+**Next action:** run the review gate on PR #1038 over the resolved range (`references/pr-gates.md` §1), then re-read the Sonar list on the new head.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -282,6 +282,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | sonar (java:S1192) | `"priceMinor"` literal three times in `JdbcVenues` | fixed — `P_PRICE_MINOR` constant |
+| F-2 | sonar (java:S1192) | `"priceCurrency"` literal three times in `JdbcVenues` | fixed — `P_PRICE_CURRENCY` constant |
+| F-3 | sonar (java:S6539, info) | `VenueAdminService` depends on 21 classes (max 20) | fixed — `Set.copyOf(…toList())` drops `Collectors`, `hasLiveHold` takes a `List` and drops `Collection`: 19 |
 
 ---
 

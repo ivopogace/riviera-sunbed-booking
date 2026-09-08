@@ -3,11 +3,9 @@ package ai.riviera.platform.venue.application;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -89,9 +87,9 @@ class VenueAdminService
 	@Transactional(readOnly = true)
 	public List<OwnedVenueView> ownedBy(OperatorId operator) {
 		// No assertOwns: the ownership mapping IS the filter, so there is no id to tamper with (#13).
-		Set<VenueId> ids = ownership.ownedVenues(operator).stream()
+		Set<VenueId> ids = Set.copyOf(ownership.ownedVenues(operator).stream()
 				.map(ref -> new VenueId(ref.value()))
-				.collect(Collectors.toSet());
+				.toList());
 		// Short-circuit an operator that owns nothing, so no `IN ()` predicate reaches the database.
 		return ids.isEmpty() ? List.of() : venues.findSummaries(ids);
 	}
@@ -160,7 +158,7 @@ class VenueAdminService
 	 * claimable — a booking reserve rejects it and a staff mark refuses it, invariant #4) — which is
 	 * why the probe stays race-safe under the row locks. Callers must already hold those locks.
 	 */
-	private boolean hasLiveHold(Collection<SetId> setIds) {
+	private boolean hasLiveHold(List<SetId> setIds) {
 		return availability.anyClaimsFrom(setIds, LocalDate.now(clock.withZone(TIRANE)));
 	}
 

@@ -61,6 +61,8 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	private static final String P_VENUE = "venue";
 	private static final String P_ROW_LABEL = "rowLabel";
 	private static final String P_NEW_LABEL = "newLabel";
+	private static final String P_PRICE_MINOR = "priceMinor";
+	private static final String P_PRICE_CURRENCY = "priceCurrency";
 	/** Venue text-column / bind-param names, reused across insert / profile-update / profile-read
 	 *  (named once — Sonar S1192; mirrors JdbcVenueCatalog's COL_* constants). */
 	private static final String COL_NAME = "name";
@@ -301,8 +303,8 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				SET price_minor = :priceMinor, price_currency = :priceCurrency
 				WHERE venue_id = :venue AND row_label = :rowLabel
 				""")
-				.param("priceMinor", c.priceMinor())
-				.param("priceCurrency", c.priceCurrency())
+				.param(P_PRICE_MINOR, c.priceMinor())
+				.param(P_PRICE_CURRENCY, c.priceCurrency())
 				.param(P_VENUE, venueId.value())
 				.param(P_ROW_LABEL, c.rowLabel())
 				.update();
@@ -381,8 +383,8 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				""")
 				.param("tier", c.tier())
 				.param("pool", c.pool() == null ? null : c.pool().name())
-				.param("priceMinor", c.priceMinor())
-				.param("priceCurrency", c.priceCurrency())
+				.param(P_PRICE_MINOR, c.priceMinor())
+				.param(P_PRICE_CURRENCY, c.priceCurrency())
 				.param(P_VENUE, venueId.value())
 				.param("ids", c.setIds().stream().map(SetId::value).toList())
 				.update();
@@ -544,7 +546,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	private static Map<String, Object> setParams(SetCommand c) {
 		return Map.of(
 				P_ROW_LABEL, c.rowLabel(), "positionNo", c.positionNo(), "tier", c.tier(),
-				"pool", c.pool().name(), "priceMinor", c.priceMinor(), "priceCurrency", c.priceCurrency(),
+				"pool", c.pool().name(), P_PRICE_MINOR, c.priceMinor(), P_PRICE_CURRENCY, c.priceCurrency(),
 				"gridX", c.gridX(), "gridY", c.gridY());
 	}
 
