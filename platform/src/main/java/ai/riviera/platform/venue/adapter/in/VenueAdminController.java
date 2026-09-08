@@ -44,7 +44,8 @@ import ai.riviera.platform.venue.application.ViewVenueProfile;
  * ports (invariant #11) plus the edge {@link CurrentOperator} resolver. These are an authenticated
  * operator surface (session cookie, role {@code OPERATOR}, configured in {@code SecurityConfig}); the
  * public U1 read endpoint is a separate controller. Outcomes map to HTTP via exhaustive
- * {@code switch}: created→201 (+Location), applied→204, {@code NO_SUCH_*}→404,
+ * {@code switch}: created→201 (+Location), applied→204 (the batch apply→200 with its count),
+ * {@code NO_SUCH_*}→404,
  * {@code CELL_TAKEN}/{@code DUPLICATE_POSITION}→409; malformed→400 and the
  * constraint-race backstop ({@code DuplicateKeyException}→409 {@code CONFLICT},
  * invariant #12) map centrally in {@code ApiErrorHandler}. Errors are RFC-7807

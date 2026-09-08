@@ -193,7 +193,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	@Override
 	public long lockAndReadSetVersion(VenueId venueId) {
 		// FOR UPDATE takes the venue row's write lock and reads the current set_version. This is the
-		// FIRST lock both set-writes acquire (before their set_position locks) → consistent venue→sets order
+		// FIRST lock every token-guarded set-write acquires (before its set_position locks) → consistent venue→sets order
 		// → no deadlock (R-1). The caller compares the value to the loaded expectedVersion (mismatch ⇒
 		// STALE_WRITE) and advances it via incrementSetVersion ONLY on success — so a rejected write never
 		// spuriously bumps the token. A concurrent writer blocks here until this tx ends, then re-reads the

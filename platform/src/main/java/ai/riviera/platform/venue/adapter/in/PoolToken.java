@@ -6,7 +6,8 @@ import ai.riviera.platform.venue.vocabulary.Pool;
 
 /**
  * The one place the wire's pool token becomes the published {@link Pool} — shared by the single-set
- * body and the batch body, so an unknown or missing token is one {@code 400 INVALID_REQUEST} (§6b).
+ * body, where the token is required, and the batch body, which calls it only for a token it carries
+ * (an absent pool there means untouched). An unknown or missing token is {@code 400 INVALID_REQUEST}.
  */
 final class PoolToken {
 

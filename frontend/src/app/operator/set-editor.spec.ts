@@ -416,7 +416,7 @@ describe('SetEditor (#600)', () => {
     expect(cellForSet(12).getAttribute('data-state')).toBe('standard');
     expect(changed).toBe(0);
     const message = byId('set-error').textContent ?? '';
-    // The save carries pool AND the placement snapshot, so it names both rather than guessing which.
+    // Only the position is ever frozen, so the copy names price, tier and pool as still editable.
     expect(message).toMatch(/position can’t change/i);
     expect(message).not.toMatch(/pool and position/i); // the pool is never refused
     expect(message).toMatch(/price, tier and pool can still change/i);

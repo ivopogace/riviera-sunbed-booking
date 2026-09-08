@@ -38,9 +38,14 @@ deleted and must answer `NO_SUCH_SET` before writing; zero open PRs, no Flyway n
 the epic has no earlier sibling to close out) · `riviera-plan-doc` (this template — forced a seam
 per AC and the module-ownership table for a rule that spans three modules) · `tdd` (each phase
 red first at the named seam: the service fake, the controller IT, the concurrency IT, the Vitest
-spec, the mocked e2e) · `riviera-review-overlay` (review gate — due at ready-for-review; not yet
-run) · `riviera-docs-freshness` (**due at close-out** over the merge base: the slice changes what
-`RESPONSIBILITIES.md` § `venue` and § *Invariants, long form* #3 state) · `grilling` (the intake
+spec, the mocked e2e) · `riviera-review-overlay` (review gate — ran on PR #1038 over `a1f6dfb4..367d9ebe`:
+`code-review:code-review` at high effort, five reviewers plus a sixth walking the overlay banks;
+findings F-4…F-8, all fixed in the same round; RV-BE-1/9/11 and RV-PROC-1/2 clear) · `riviera-docs-freshness` (**ran** over `a1f6dfb4..HEAD` at close-out: the rename grep found no
+substrate hit for `VenueAdminService`, `SetPlacement` or `parsePool`; the counting sweep on the
+set-write family found five "both set-writes / three writes" facts in source prose (`VenueRepriceIT`,
+`BeachMapReplaceIT`, `JdbcVenues`, `Venues`, the moved `replaceLayout` comment) and one rotting "one
+of the five venue-scoped services" count in `VenueRef` — all patched; `V23`'s SQL comment is an
+applied migration and stays; no prior plan doc to retire) · `grilling` (the intake
 questions answered from the code; every product call is the epic's revision 3, recorded under
 *Open questions* as reversible) · `riviera-local-debug` (the clone unshallowed; system Gradle on
 the JDK 21 daemon compiling on 25; scoped `--tests`; the structural net after the port change;
@@ -51,7 +56,9 @@ due after the port grows a method) · `riviera-java-conventions` (a `SetBatchCom
 compact constructor, nullable "untouched" fields validated both-or-neither, a sealed
 `SetBatchOutcome`, `ApiProblem` for rejections, §6c/§6d on every touched Javadoc — the retired
 rule's rationale relocates to `RESPONSIBILITIES.md`) · `codebase-design` (the batch is one more
-method on the existing `EditBeachMap` conversation, not a fifth port; `Venues` gains
+method on the existing `EditBeachMap` conversation, not a fifth port; at the Sonar gate the four
+ports' implementation split by conversation — `BeachMapEditService` for `EditBeachMap`,
+`VenueAdminService` for the profile and own-venues ports — one class per conversation, no port change; `Venues` gains
 `lockSets` + `updateSetFields` beside `lockSetsOfVenue`/`updateSet`, the same seam the replace
 uses) · `domain-modeling` (`CONTEXT.md`'s **Pool** entry gains the reserve-time sentence; no ADR —
 the decision is recorded on the epic and in `RESPONSIBILITIES.md`, and it is reversible) ·
@@ -84,45 +91,45 @@ in for `feature/set-batch-apply` (riviera-sdlc, remote addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a set with a `BOOKED_ONLINE` hold dated 30 days out, when the owner edits it
+- [x] **AC-1:** Given a set with a `BOOKED_ONLINE` hold dated 30 days out, when the owner edits it
   from `ONLINE` to `WALK_IN` keeping its position, then the edit is `Applied` and the hold row
   survives; when the owner instead moves it to another cell, then it is `Rejected(SET_IN_USE)`.
   *Seam:* `EditBeachMap#editSet` · *Pinned by:*
   `VenueAdminServiceTest.editSetAppliesAPoolOnlyChangeToAClaimedSet`,
   `VenueAdminServiceTest.editSetIsRefusedWhenABookedSetWouldBeMovedToAnotherCell`,
-  `VenueAdminControllerIT.editSetRepoolsAClaimedSetAndKeepsItsHold`.
-- [ ] **AC-2:** Given a set with a `CONFIRMED` booking on date D switched to `WALK_IN`, when a
+  `VenueAdminControllerIT.editSetRepoolsAClaimedSetAndKeepsItsHoldButRefusesAMove`.
+- [x] **AC-2:** Given a set with a `CONFIRMED` booking on date D switched to `WALK_IN`, when a
   tourist posts an online reserve for it on any other date, then the reserve is refused
   `SET_NOT_BOOKABLE_ONLINE`; when staff mark it on D, then the mark is refused `ALREADY_TAKEN`.
   *Seam:* `POST /api/bookings` and `POST /api/venues/{v}/sets/{s}/availability` (HTTP) ·
   *Pinned by:* `PoolSwitchOnBookedSetIT.aWalkInSwitchRefusesNewOnlineReservesAndKeepsTheBookedDateClaimed`.
-- [ ] **AC-3:** Given that set, when the owner reads the staff daily view for D, then the booking
+- [x] **AC-3:** Given that set, when the owner reads the staff daily view for D, then the booking
   is listed on that set id. *Seam:* `GET /api/venues/{v}/bookings?date=` · *Pinned by:*
   `PoolSwitchOnBookedSetIT.theDailyViewShowsTheOnlineBookingOnTheNowWalkInSet`.
-- [ ] **AC-4:** Given the claim and a pool flip racing, when either commits first, then the flip
+- [x] **AC-4:** Given the claim and a pool flip racing, when either commits first, then the flip
   always applies, the claim is `CLAIMED` iff it reached its lock first, and a claim that lost the
   lock answers `NOT_ONLINE_POOL` — never a hold decided against a pool that had already changed.
   *Seam:* `EditBeachMap#editSet` / `EditBeachMap#applyToSets` racing `AvailabilityClaim#claim` ·
   *Pinned by:* `SetWriteVsClaimConcurrencyIT.claimNeverLandsOnAPoolItDidNotReadCommitted`,
   `SetWriteVsClaimConcurrencyIT.batchRepoolSerialisesWithTheClaim`.
-- [ ] **AC-5:** Given three sets, two booked, when the owner applies `{tier, pool, price}` to all
+- [x] **AC-5:** Given three sets, two booked, when the owner applies `{tier, pool, price}` to all
   three with the current `set_version`, then all three rows carry the new values, the hold rows are
   untouched, the response is `200 {updated: 3}` and `set_version` advanced by one. *Seam:*
   `PATCH /api/venues/{v}/sets` · *Pinned by:* `SetBatchApplyIT.appliesToBookedSetsAndKeepsTheirHolds`.
-- [ ] **AC-6:** Given a stale `expectedVersion`, when the batch is posted, then `409 STALE_WRITE`
+- [x] **AC-6:** Given a stale `expectedVersion`, when the batch is posted, then `409 STALE_WRITE`
   and no row changes; given a set id not on the venue, then `404 NO_SUCH_SET` and no row changes;
   given no field, an empty id list or a missing token, then `400 INVALID_REQUEST`. *Seam:*
   `PATCH /api/venues/{v}/sets` · *Pinned by:* `SetBatchApplyIT.staleVersionRefusesTheWholeBatch`,
   `SetBatchApplyIT.aForeignSetIdRefusesTheWholeBatch`, `SetBatchApplyIT.rejectsAnEmptyBatch`,
   `SetBatchCommandTest`.
-- [ ] **AC-7:** Given a non-owner operator, when they post a batch, then `403 NOT_VENUE_OWNER`
+- [x] **AC-7:** Given a non-owner operator, when they post a batch, then `403 NOT_VENUE_OWNER`
   before any read. *Seam:* `EditBeachMap#applyToSets` + HTTP · *Pinned by:*
   `VenueAdminServiceTest.batchByANonOwnerIsDeniedBeforeAnyRead`,
   `SetBatchApplyIT.nonOwnerIsForbidden`.
-- [ ] **AC-8:** Given the batch service, when it applies, then the venue row lock precedes the set
+- [x] **AC-8:** Given the batch service, when it applies, then the venue row lock precedes the set
   row locks and the token is advanced once, on success only. *Seam:* `EditBeachMap#applyToSets`
   over the `Venues` fake · *Pinned by:* `VenueAdminServiceTest.batchLocksTheVenueRowThenTheSetRows`.
-- [ ] **AC-9:** Given a swept selection with a touched price, when the operator applies, then the
+- [x] **AC-9:** Given a swept selection with a touched price, when the operator applies, then the
   panel sends one `PATCH …/sets` carrying only the swept ids and the touched field, and renders
   "2 sets updated"; a `STALE_WRITE` keeps the sweep and emits `staleWrite`; a `NO_SUCH_SET`
   renders its own message. *Seam:* `OperatorConsoleService#applySetBatch` (HttpTestingController)
@@ -130,13 +137,13 @@ in for `feature/set-batch-apply` (riviera-sdlc, remote addendum).
   ids and the touched field", "renders the number of sets updated", "explains a NO_SUCH_SET
   batch-apply refusal"), `set-editor.a11y.spec.ts` ("has no axe violations with a batch outcome
   rendered"), `set-editor.contrast.spec.ts` (existing saved-notice row).
-- [ ] **AC-10:** Given the mocked console on a trading venue, when the operator sweeps two sets
+- [x] **AC-10:** Given the mocked console on a trading venue, when the operator sweeps two sets
   and applies a price, then exactly one `PATCH …/sets` fires, the outcome reads "2 sets updated",
   and the claimed set's pool can be switched from the single-set panel while a move is refused.
   *Seam:* the browser against `page.route` mocks · *Pinned by:*
   `operator-set-editing.e2e.ts` ("sweeps a block, applies a price change to all of them in one
   batch PATCH", "a booked set can change pool but not move or be removed").
-- [ ] **AC-11:** Given the structural net, when it runs after the port change, then it is green.
+- [x] **AC-11:** Given the structural net, when it runs after the port change, then it is green.
   *Seam:* `ModularityTests` + the four architecture tests · *Pinned by:* the CLAUDE.md command.
 
 ## Non-goals
@@ -170,25 +177,27 @@ The batch panel's apply moves from `PUT …/beach-map` to `PATCH …/sets`.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A claim racing a pool flip lands a `BOOKED_ONLINE` row after the flip committed (a stale pool read) | low | high | the batch and the edit take `FOR UPDATE` on the set rows; `poolForClaim` reads `FOR KEY SHARE`; pinned by `SetWriteVsClaimConcurrencyIT` (both orders forced) | session | open |
-| R-2 | Deadlock between a batch and a replace/reprice on the same venue | low | med | every set-write takes the venue row first, then set rows (R-1 of the replace plan); the batch does the same | session | open |
-| R-3 | A batch meets a set id removed by another tab (per-set writes don't bump `set_version`) | med | low | lock the named rows first; fewer rows than ids → `NO_SUCH_SET` before any write | session | open |
-| R-4 | BOLA on the new `/api/venues/{venueId}/sets` PATCH | low | high | `ownership.assertOwns` first in `applyToSets`; `SecurityConfig` rule `PATCH /api/venues/*/sets` → `OPERATOR`; IT pins 403 | session | open |
-| R-5 | A staff-marked or booked date read as "online" somewhere that assumed pool from a booking row | low | med | grep of production SQL and prose for the assumption: only the takings comment (reworded); the daily view joins no pool | session | open |
-| R-6 | Error-contract drift: a new request DTO and a new 200 body | low | low | `INVALID_REQUEST` via `InvalidApiRequestException.parsing`; rejections via `ApiProblem`; `detail` states the condition | session | open |
-| R-7 | Sonar: new-code coverage < 80% on the command/DTO validation branches | med | low | `SetBatchCommandTest` + `SetBatchRequestTest` unit tests cover every branch | session | open |
+| R-1 | A claim racing a pool flip lands a `BOOKED_ONLINE` row after the flip committed (a stale pool read) | low | high | the batch and the edit take `FOR UPDATE` on the set rows; `poolForClaim` reads `FOR KEY SHARE`; pinned by `SetWriteVsClaimConcurrencyIT` (both orders forced) | session | closed — both races green, 6 repetitions each, both orders exercised |
+| R-2 | Deadlock between a batch and a replace/reprice on the same venue | low | med | every set-write takes the venue row first, then set rows; the batch does the same | session | closed — `batchLocksTheVenueRowThenTheSetRows` |
+| R-3 | A batch meets a set id removed by another tab (per-set writes don't bump `set_version`) | med | low | lock the named rows first; fewer rows than ids → `NO_SUCH_SET` before any write | session | closed — `aForeignSetIdRefusesTheWholeBatch` |
+| R-4 | BOLA on the new `/api/venues/{venueId}/sets` PATCH | low | high | `ownership.assertOwns` first in `applyToSets`; `SecurityConfig` rule `PATCH /api/venues/*/sets` → `OPERATOR`; IT pins 403 | session | closed — `nonOwnerIsForbidden`, RV-BE-9 clear |
+| R-5 | A staff-marked or booked date read as "online" somewhere that assumed pool from a booking row | low | med | grep of production SQL and prose for the assumption: only the takings comment (reworded); the daily view joins no pool | session | closed — reviewer 3 re-checked takings, walk-in counts and the reserve fast path |
+| R-6 | Error-contract drift: a new request DTO and a new 200 body | low | low | `INVALID_REQUEST` via `InvalidApiRequestException.parsing`; rejections via `ApiProblem`; `detail` states the condition | session | closed — RV-BE-10 clear; the controller Javadoc names the 200 (F-5) |
+| R-7 | Sonar: new-code coverage < 80% on the command/DTO validation branches | med | low | `SetBatchCommandTest` + `SetBatchRequestTest` unit tests cover every branch | session | closed — 100% new-code coverage on `367d9ebe` |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `PATCH /api/venues/{venueId}/sets` (collection PATCH, body names the members)
-  is the "new endpoint under the venue's set resources" the ticket asks for — *Owner:* session ·
-  *Resolves by:* phase 2 (reversible: a path rename touches the controller, the service client and
-  the e2e mock only).
-- **Assumption:** a set id not on the venue refuses the whole batch (`404 NO_SUCH_SET`) rather
-  than skipping it, so "20 sets updated" is never a lie — *Owner:* session · *Resolves by:* phase 2.
-- **Assumption:** the response reports the count (`{updated: n}`) — the ticket's "reports the sets
-  changed" read as a count, since the panel renders "N sets updated" and the ids are the request's
-  own — *Owner:* session · *Resolves by:* phase 2.
+None open.
+
+### Resolved
+
+- **Assumption:** `PATCH /api/venues/{venueId}/sets` (collection PATCH, body names the members) is
+  the "new endpoint under the venue's set resources" — resolved as built in `505a444f`; a rename
+  would touch the controller, the service client and the e2e mock only.
+- **Assumption:** a set id not on the venue refuses the whole batch (`404 NO_SUCH_SET`) rather than
+  skipping it — resolved as built in `505a444f` (`aForeignSetIdRefusesTheWholeBatch`).
+- **Assumption:** the response reports the count (`{updated: n}`) — resolved as built in
+  `505a444f`; the panel renders "N sets updated".
 
 ## Availability & concurrency (invariant #2)
 
@@ -264,17 +273,17 @@ APIs. No deviation.
 
 ## Execution status
 
-**Stage pointer:** `review gate` (CI green on `bf451252`; Sonar's first list cleared)
+**Stage pointer:** `merge close-out` — awaiting CI + the Sonar re-read on the fix push, then merge.
 
-**Next action:** run the review gate on PR #1038 over the resolved range (`references/pr-gates.md` §1), then re-read the Sonar list on the new head.
+**Next action:** confirm the fix push is green and Sonar's list is empty, then merge PR #1038 and run `references/pr-gates.md` §3 steps 1–3, 6–7 (no post-merge repo commit).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | |
 | 1 — the reserve-time pool rule (guard, ITs, docs, Javadoc, takings comment) | ✅ | `71b8f366` |
 | 2 — the batch endpoint (backend) | ✅ | `505a444f` |
-| 3 — the batch panel rewire (frontend + e2e) | ✅ | the phase-3 commit (this plan update rides in it) |
-| 4 — PR gates + close-out | | |
+| 3 — the batch panel rewire (frontend + e2e) | ✅ | `bf451252` |
+| 4 — PR gates + close-out | ✅ | Sonar round `367d9ebe`; review + docs-freshness fix round; merged via PR #1038 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -284,7 +293,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | sonar (java:S1192) | `"priceMinor"` literal three times in `JdbcVenues` | fixed — `P_PRICE_MINOR` constant |
 | F-2 | sonar (java:S1192) | `"priceCurrency"` literal three times in `JdbcVenues` | fixed — `P_PRICE_CURRENCY` constant |
-| F-3 | sonar (java:S6539, info) | `VenueAdminService` depends on 21 classes (max 20) | fixed — `Set.copyOf(…toList())` drops `Collectors`, `hasLiveHold` takes a `List` and drops `Collection`: 19 |
+| F-3 | sonar (java:S6539, info) | `VenueAdminService` depends on 21 classes (max 20) | fixed — the import trim did not move Sonar's count (it counts project types), so the class is split as the rule asks: the beach-map ports' implementation moves to `BeachMapEditService`, `VenueAdminService` keeps the profile and own-venues ports |
+| F-4 | review (reviewer 1, RV-STYLE-1, Minor) | the new `applyToSets` comment cites plan risk id `R-1` (wrong risk here; dangles at plan retirement) | fixed — the parenthetical is gone |
+| F-5 | review (reviewer 5, §6d) | `VenueAdminController` class Javadoc says "applied→204"; the batch apply answers 200 with a count | fixed — the mapping names the exception |
+| F-6 | review (reviewer 5) | a stale inline comment in `set-editor.spec.ts` contradicts the rewritten assertions | fixed — reworded |
+| F-7 | review (reviewer 3, note) | `PoolToken` Javadoc overstates the batch case (a missing pool there is "untouched", not 400) | fixed — reworded |
+| F-8 | review (reviewer 6, note) | AC-1's pin name did not match the shipped test method | fixed — this doc |
 
 ---
 
@@ -297,7 +311,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` — `PATCH /api/venues/*/sets` → `OPERATOR`
 - `platform/src/main/java/ai/riviera/platform/venue/application/SetPlacement.java` — `disturbedBy` drops the pool
 - `platform/src/main/java/ai/riviera/platform/venue/application/EditBeachMap.java` — `editSet` Javadoc; `applyToSets`
-- `platform/src/main/java/ai/riviera/platform/venue/application/VenueAdminService.java` — `applyToSets`; Javadoc
+- `platform/src/main/java/ai/riviera/platform/venue/application/VenueAdminService.java` — keeps the profile + own-venues ports
+- `platform/src/main/java/ai/riviera/platform/venue/application/BeachMapEditService.java` — the `EditBeachMap` implementation, incl. `applyToSets`
+- `platform/src/main/java/ai/riviera/platform/venue/application/OnboardVenueService.java` — Javadoc names the new class
+- `platform/src/main/java/ai/riviera/platform/venue/package-info.java` — Javadoc names the new class
+- `platform/src/main/java/ai/riviera/platform/operator/package-info.java` — Javadoc names the new class
+- `platform/src/main/java/ai/riviera/platform/operator/vocabulary/VenueRef.java` — Javadoc names the new class
 - `platform/src/main/java/ai/riviera/platform/venue/application/SetBatchCommand.java` — the validated batch intent
 - `platform/src/main/java/ai/riviera/platform/venue/application/SetBatchOutcome.java` — sealed outcome
 - `platform/src/main/java/ai/riviera/platform/venue/application/SetCommand.java` — shares the tier vocabulary
@@ -315,6 +334,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/venue/application/SetBatchCommandTest.java` — validation
 - `platform/src/test/java/ai/riviera/platform/venue/adapter/in/SetBatchRequestTest.java` — body parsing
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAdminControllerIT.java` — the repool IT
+- `platform/src/test/java/ai/riviera/platform/venue/VenueRepriceIT.java` · `BeachMapReplaceIT.java` — the `STALE_WRITE` set-write count in their Javadoc
 - `platform/src/test/java/ai/riviera/platform/venue/SetWriteVsClaimConcurrencyIT.java` — rewritten race + batch race
 - `platform/src/test/java/ai/riviera/platform/venue/PoolSwitchOnBookedSetIT.java` — reserve/mark/daily view
 - `platform/src/test/java/ai/riviera/platform/venue/SetBatchApplyIT.java` — the batch HTTP seam
@@ -332,23 +352,23 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `RESPONSIBILITIES.md`, `CONTEXT.md` · Test `VenueAdminServiceTest`, `VenueAdminControllerIT`,
 `SetWriteVsClaimConcurrencyIT`, `PoolSwitchOnBookedSetIT`
 
-- [ ] **Step 1: Write the failing tests** — `VenueAdminServiceTest.editSetAppliesAPoolOnlyChangeToAClaimedSet`
+- [x] **Step 1: Write the failing tests** — `VenueAdminServiceTest.editSetAppliesAPoolOnlyChangeToAClaimedSet`
   (a `WALK_IN` command on a live-held set → `APPLIED`, `updatedSets == 1`);
   `everyPlacementFieldOnItsOwnDisturbsAClaimedSet` asserts `pool` does NOT disturb;
   `VenueAdminControllerIT.editSetRepoolsAClaimedSetAndKeepsItsHold` (204, pool `WALK_IN`, hold
   count 1); `SetWriteVsClaimConcurrencyIT.claimNeverLandsOnAPoolItDidNotReadCommitted` (flip
   always `Applied`; `holdsOn == claimWon ? 1 : 0`; a lost claim is `NOT_ONLINE_POOL`);
   `PoolSwitchOnBookedSetIT` (AC-2, AC-3).
-- [ ] **Step 2: Run, verify red** — `gradle --no-daemon --console=plain test --tests "*VenueAdminServiceTest*"` → FAIL (`SET_IN_USE`).
-- [ ] **Step 3: Minimal implementation** — `SetPlacement.disturbedBy` drops `pool != command.pool()`;
+- [x] **Step 2: Run, verify red** — `gradle --no-daemon --console=plain test --tests "*VenueAdminServiceTest*"` → FAIL (`SET_IN_USE`).
+- [x] **Step 3: Minimal implementation** — `SetPlacement.disturbedBy` drops `pool != command.pool()`;
   Javadocs and prose reworded; `JdbcDailyTakings` comment: the sum is by venue and date, a
   booking row on a set now in the walk-in pool still counts, so no pool filter either way.
-- [ ] **Step 4: Run, verify green** — the four classes above, one at a time.
-- [ ] **Step 5: Generalization-audit pass** — population: every production statement or Javadoc
+- [x] **Step 4: Run, verify green** — the four classes above, one at a time.
+- [x] **Step 5: Generalization-audit pass** — population: every production statement or Javadoc
   that derives a set's pool from the existence of a booking or refuses a pool change; enumerate
   `grep -rn -i "repool\|pool flip\|online-pool set\|walk-in inventory" platform/src/main frontend/src RESPONSIBILITIES.md CONTEXT.md`.
-- [ ] **Step 6: Commit** — `Let a booked set change pool: invariant #3 is a reserve-time rule (#1029)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `Let a booked set change pool: invariant #3 is a reserve-time rule (#1029)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 2 — The batch endpoint
 
@@ -358,20 +378,20 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `VenueAdminController.java`, `SecurityConfig.java`, `SetCommand.java` · Test
 `VenueAdminServiceTest`, `SetWriteVsClaimConcurrencyIT.batchRepoolSerialisesWithTheClaim`
 
-- [ ] **Step 1: Write the failing tests** — `SetBatchCommandTest` (empty ids, too many, no field,
+- [x] **Step 1: Write the failing tests** — `SetBatchCommandTest` (empty ids, too many, no field,
   price both-or-neither, bad tier); `VenueAdminServiceTest.batch*` (applies + token once; stale →
   `STALE_WRITE` no write; missing id → `NO_SUCH_SET` no write; lock order `lockAndReadSetVersion`
   then `lockSets`; non-owner throws before any read); `SetBatchApplyIT` (AC-5/6/7).
-- [ ] **Step 2: Run, verify red** — compile failure on the missing port method.
-- [ ] **Step 3: Minimal implementation** — port + record + outcome + service method + `Venues`
+- [x] **Step 2: Run, verify red** — compile failure on the missing port method.
+- [x] **Step 3: Minimal implementation** — port + record + outcome + service method + `Venues`
   methods + `JdbcVenues` SQL + controller `@PatchMapping("/{venueId}/sets")` + security rule.
-- [ ] **Step 4: Run, verify green** — `VenueAdminServiceTest`, `SetBatchCommandTest`,
+- [x] **Step 4: Run, verify green** — `VenueAdminServiceTest`, `SetBatchCommandTest`,
   `SetBatchRequestTest`, `SetBatchApplyIT`, `SetWriteVsClaimConcurrencyIT`, then the structural net.
-- [ ] **Step 5: Generalization-audit pass** — population: every `venue.set_version`-guarded write
+- [x] **Step 5: Generalization-audit pass** — population: every `venue.set_version`-guarded write
   (`grep -n "lockAndReadSetVersion" platform/src/main`); each takes the venue row first and bumps on
   success only — the batch joins the population.
-- [ ] **Step 6: Commit** — `Add the per-set batch apply endpoint off the replace call (#1029)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `Add the per-set batch apply endpoint off the replace call (#1029)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 3 — The batch panel rewire
 
@@ -379,19 +399,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `operator-console.service.ts` · `.spec.ts`, `operator-console.model.ts`,
 `operator-set-editing.e2e.ts`
 
-- [ ] **Step 1: Write the failing tests** — spec: one `PATCH …/sets` with `{setIds:[10,11],
+- [x] **Step 1: Write the failing tests** — spec: one `PATCH …/sets` with `{setIds:[10,11],
   price, expectedVersion}` and no `tier`/`pool`; "2 sets updated" rendered; `NO_SUCH_SET` copy;
   `LAYOUT_IN_USE` test removed; the `save` copy no longer mentions the pool; service spec for
   `applySetBatch` + `setBatchErrorOf`; a11y with the outcome rendered; e2e batch + repool.
-- [ ] **Step 2: Run, verify red** — `npx vitest run src/app/operator/set-editor.spec.ts`.
-- [ ] **Step 3: Minimal implementation** — model types, service method + mapper, `applyBatch()`
+- [x] **Step 2: Run, verify red** — `npx vitest run src/app/operator/set-editor.spec.ts`.
+- [x] **Step 3: Minimal implementation** — model types, service method + mapper, `applyBatch()`
   rewired, `batchUpdated` signal, template outcome, `batchErrorMessage()` cases, copy.
-- [ ] **Step 4: Run, verify green** — the specs, `npm run lint`, `npm run format:check`, the
+- [x] **Step 4: Run, verify green** — the specs, `npm run lint`, `npm run format:check`, the
   mocked e2e file with `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium`.
-- [ ] **Step 5: Generalization-audit pass** — population: every client string that states the
+- [x] **Step 5: Generalization-audit pass** — population: every client string that states the
   pool rule (`grep -rn -i "repool\|pool and position" frontend/src frontend/e2e`).
-- [ ] **Step 6: Commit** — `Rewire the batch panel to the batch endpoint and report the count (#1029)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `Rewire the batch panel to the batch endpoint and report the count (#1029)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -407,28 +427,28 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1…AC-8, AC-11:** scoped Gradle runs + CI green on the PR head.
-- [ ] **AC-9:** `npx vitest run src/app/operator` green.
-- [ ] **AC-10:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts e2e/operator-set-editing.e2e.ts` green.
+- [x] **AC-1…AC-8, AC-11:** scoped Gradle runs green locally (`VenueAdminServiceTest`, `VenueAdminControllerIT`, `PoolSwitchOnBookedSetIT`, `SetWriteVsClaimConcurrencyIT` 18/18 both orders, `SetBatchApplyIT` 6/6, the structural net + the named fitness functions) and the backend CI job green on `367d9ebe`.
+- [x] **AC-9:** `npx ng test --watch=false --include src/app/operator/…` — 203 tests green; the frontend CI job green on `bf451252` (tree unchanged since).
+- [x] **AC-10:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts e2e/operator-set-editing.e2e.ts` — 11/11 green; the CI mocked suite green.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

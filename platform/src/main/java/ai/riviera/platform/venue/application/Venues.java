@@ -29,7 +29,7 @@ public interface Venues {
 	/**
 	 * Lock the venue row and read its current {@code set_version} optimistic-concurrency token —
 	 * {@code SELECT set_version FROM venue WHERE id = :id FOR UPDATE}. The token is the SEPARATE counter
-	 * for the operator set-position writes (beach-map replace, per-row reprice, per-row rename), distinct from the
+	 * for the operator set-position writes (beach-map replace, per-row reprice, per-row rename, batch apply), distinct from the
 	 * profile {@code version}. The caller (having pre-checked existence) compares the returned value
 	 * to the loaded {@code expectedVersion}: a mismatch means another writer advanced it since the load →
 	 * STALE_WRITE. This is the <strong>first</strong> lock every set-write takes — before
