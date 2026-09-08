@@ -25,6 +25,8 @@ import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.application.ChangeOutcome;
 import ai.riviera.platform.venue.application.EditBeachMap;
+import ai.riviera.platform.venue.application.SetBatchCommand;
+import ai.riviera.platform.venue.application.SetBatchOutcome;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
 import ai.riviera.platform.venue.vocabulary.Pool;
@@ -65,6 +67,7 @@ class SetWriteVsClaimConcurrencyIT {
 	private static final long HEAD_START_MS = 150;
 
 	private static final Set<String> POOL_FLIP_BRANCHES = ConcurrentHashMap.newKeySet();
+	private static final Set<String> BATCH_BRANCHES = ConcurrentHashMap.newKeySet();
 	private static final Set<String> REMOVE_BRANCHES = ConcurrentHashMap.newKeySet();
 
 	/**
@@ -171,6 +174,44 @@ class SetWriteVsClaimConcurrencyIT {
 				"a claim that read ONLINE committed stays claimed; one that lost the lock never inserted");
 		POOL_FLIP_BRANCHES.add(claimWon ? "claim" : "write");
 		assertBothOrdersExercised(info, POOL_FLIP_BRANCHES, "the pool flip race");
+	}
+
+	@RepeatedTest(6)
+	void batchRepoolSerialisesWithTheClaim(RepetitionInfo info) throws Exception {
+		int rep = info.getCurrentRepetition();
+		long venueId = insertVenue("Batch Repool Race " + rep);
+		long setId = insertOnlineSet(venueId);
+		VenueId venue = new VenueId(venueId);
+		OperatorId owner = insertOperator("batch-owner-" + rep);
+		grant(owner, venueId);
+		SetBatchCommand toWalkIn = new SetBatchCommand(Set.of(new SetId(setId)), null, Pool.WALK_IN, null, null);
+
+		Ordering ordering = orderingFor(rep);
+		CountDownLatch gate = new CountDownLatch(1);
+		Outcomes<ClaimOutcome, SetBatchOutcome> outcomes = race(
+				() -> {
+					start(gate, ordering, Ordering.CLAIM_FIRST);
+					return availability.claim(new SetId(setId), DAY);
+				},
+				() -> {
+					start(gate, ordering, Ordering.WRITE_FIRST);
+					return editBeachMap.applyToSets(owner, venue, 0L, toWalkIn);
+				},
+				gate);
+		ClaimOutcome claimed = outcomes.claim();
+		SetBatchOutcome applied = outcomes.write();
+
+		assertEquals(new SetBatchOutcome.Applied(1), applied, "a batch repool is never refused for a claim");
+		assertEquals("WALK_IN", poolOf(setId));
+		boolean claimWon = claimed == ClaimOutcome.CLAIMED;
+		if (!claimWon) {
+			assertEquals(ClaimOutcome.NOT_ONLINE_POOL, claimed,
+					"the batch committed first, so the claim must re-read the new pool");
+		}
+		assertEquals(claimWon ? 1 : 0, holdsOn(setId),
+				"a claim that read ONLINE committed stays claimed; one that lost the lock never inserted");
+		BATCH_BRANCHES.add(claimWon ? "claim" : "write");
+		assertBothOrdersExercised(info, BATCH_BRANCHES, "the batch repool race");
 	}
 
 	@RepeatedTest(6)

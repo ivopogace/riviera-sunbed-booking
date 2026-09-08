@@ -264,15 +264,15 @@ APIs. No deviation.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** phase 2 — red `SetBatchCommandTest` + `VenueAdminServiceTest.batch*`, then the port.
+**Next action:** phase 3 — the mocked e2e, then lint/format, then commit and open the draft PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | |
-| 1 — the reserve-time pool rule (guard, ITs, docs, Javadoc, takings comment) | ✅ | phase-1 commit (SHA recorded in the phase-2 commit) |
-| 2 — the batch endpoint (backend) | | |
+| 1 — the reserve-time pool rule (guard, ITs, docs, Javadoc, takings comment) | ✅ | `71b8f366` |
+| 2 — the batch endpoint (backend) | ✅ | phase-2 commit (SHA recorded in the phase-3 commit) |
 | 3 — the batch panel rewire (frontend + e2e) | | |
 | 4 — PR gates + close-out | | |
 
@@ -304,6 +304,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/SetBatchRequest.java` — the request body
 - `platform/src/main/java/ai/riviera/platform/venue/spi/BookingPresence.java` — Javadoc
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcDailyTakings.java` — the takings comment
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — the `EditBeachMap` stub grows `applyToSets`
+- `platform/src/main/java/ai/riviera/platform/venue/adapter/in/PoolToken.java` — the one pool-token parse
+- `platform/src/main/java/ai/riviera/platform/venue/adapter/in/SetPositionRequest.java` — parses through `PoolToken`
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` — pool rule + batch unit tests, fake
 - `platform/src/test/java/ai/riviera/platform/venue/application/SetBatchCommandTest.java` — validation
 - `platform/src/test/java/ai/riviera/platform/venue/adapter/in/SetBatchRequestTest.java` — body parsing
@@ -392,6 +395,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-08 | phase 2 | every `venue.set_version`-guarded write: takes the venue row first and advances the token on success only | `grep -n "lockAndReadSetVersion" platform/src/main/java/ai/riviera/platform/venue/application/VenueAdminService.java` | `repriceRow`, `renameRow`, `replaceLayout`, `applyToSets` | all four follow the order; the batch joins the population with the same shape |
 | 2026-09-08 | phase 1 | every production statement or prose line that refuses a pool change or derives a set's pool from a booking row | `grep -rn -i "repool\|pool flip\|online-pool set\|walk-in inventory" platform/src/main frontend/src RESPONSIBILITIES.md CONTEXT.md` | `EditBeachMap#removeSet` Javadoc ("repool or reposition"); `pricing-tab` projection (sums online-pool sets — a sales projection, still correct); `venue-map.ts` ("ONLINE-pool sets are bookable" — the reserve-time rule, correct); thread-pool matches (noise) | reworded the one Javadoc; the rest stand |
 
 ---

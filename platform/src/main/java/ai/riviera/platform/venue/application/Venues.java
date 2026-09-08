@@ -141,6 +141,24 @@ public interface Venues {
 	 */
 	List<SetId> lockSetsOfVenue(VenueId venueId);
 
+	/**
+	 * Lock the named set rows of the venue ({@code SELECT … WHERE venue_id = :venue AND id IN (:ids)
+	 * FOR UPDATE}) and return the ids actually found — fewer than asked means an id is not this
+	 * venue's, which the caller refuses before writing. The same {@code FOR UPDATE} as
+	 * {@link #lockSet}, for the same reason: a concurrent claim's {@code FOR KEY SHARE} pool read
+	 * blocks until this transaction ends. Taken after {@link #lockAndReadSetVersion} (venue row before
+	 * set rows). Never called with an empty collection.
+	 */
+	Set<SetId> lockSets(VenueId venueId, Collection<SetId> setIds);
+
+	/**
+	 * Overwrite only the columns {@code command} touches — tier, pool, price — on every named set of
+	 * the venue in one {@code UPDATE}; an untouched field keeps each row's own value. Set identity,
+	 * coordinates and any {@code set_availability} hold survive. Returns the number of rows changed.
+	 * The caller holds the rows from {@link #lockSets}, so every id is present.
+	 */
+	int updateSetFields(VenueId venueId, SetBatchCommand command);
+
 	/** Delete every set position of the venue. Returns the number of rows deleted. */
 	int deleteAllSets(VenueId venueId);
 

@@ -48,6 +48,23 @@ public interface EditBeachMap {
 	ChangeOutcome removeSet(OperatorId operator, VenueId venueId, SetId setId);
 
 	/**
+	 * Change price, tier and/or pool on <strong>every named set</strong> in one transaction — the
+	 * set editor's batch apply on a swept selection. After asserting {@code operator} owns
+	 * {@code venueId}, it writes only the fields {@code command} touches, leaving each set's own value
+	 * for the rest; booked and held sets are included, since none of the three fields is ever refused
+	 * for a claim (see {@link #editSet}). Returns {@code Applied(n)} with the number of sets changed,
+	 * or {@code Rejected(NO_SUCH_VENUE)}; {@code Rejected(NO_SUCH_SET)} when any id is not a set of
+	 * this venue — the whole batch is refused before any write, so the count never overstates.
+	 *
+	 * <p>Optimistic concurrency: identical to {@link #repriceRow} — the same {@code set_version}
+	 * token, {@link SetRejection#STALE_WRITE} (→ 409) on a mismatch, advanced once on success only.
+	 * Lock order: the venue row, then the named set rows {@code FOR UPDATE}, so a racing claim's pool
+	 * read waits for the write to commit and decides against the committed pool (invariant #3).
+	 */
+	SetBatchOutcome applyToSets(OperatorId operator, VenueId venueId, long expectedVersion,
+			SetBatchCommand command);
+
+	/**
 	 * Reprice <strong>every set in a row</strong> — the operator console's Pricing tab.
 	 * After asserting {@code operator} owns {@code venueId}, it applies {@code command}'s full-day price
 	 * to every set carrying {@code command.rowLabel()} in one non-destructive {@code UPDATE}: set identity,

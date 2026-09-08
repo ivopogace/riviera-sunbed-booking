@@ -156,7 +156,7 @@ over time. The standing rules:
   included — holds an `"ONLINE"` / `"WALK_IN"` literal of its own, so both invariant #3 checks
   (`booking`'s unlocked fast path, `availability`'s locked claim-time check) compare against the
   published type. The wire keeps the tokens (the enum serialises by name) and the edge parses
-  them once, in `SetPositionRequest`.
+  them once, in `PoolToken`.
 - **The commission rate over time, not just its current value.** `venue_commission_rate`
   is the effective-dated schedule behind `VenueRates#commissionBpsOn` — the rate that
   applied to bookings served on date D, for reporting reads — while `commissionBps` is

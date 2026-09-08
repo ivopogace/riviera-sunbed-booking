@@ -32,7 +32,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * {@link OnboardVenueService}.
  *
  * <p>Each venue-scoped edit is guarded: the first act of {@code addSet}/{@code editSet}/
- * {@code removeSet}/{@code updateProfile} is {@link VenueOwnership#assertOwns} on the acting
+ * {@code removeSet}/{@code applyToSets}/{@code updateProfile} is {@link VenueOwnership#assertOwns} on the acting
  * {@link OperatorId}, so an operator cannot touch another operator's venue (invariant #13, BOLA) —
  * the check is here in the application service, not the controller, so no driving adapter can
  * bypass it.
@@ -296,6 +296,28 @@ class VenueAdminService
 		venues.insertSets(venueId, command.sets());
 		venues.incrementSetVersion(venueId);
 		return ReplaceLayoutOutcome.Replaced.REPLACED;
+	}
+
+	@Override
+	@Transactional
+	public SetBatchOutcome applyToSets(OperatorId operator, VenueId venueId, long expectedVersion,
+			SetBatchCommand command) {
+		ownership.assertOwns(operator, new VenueRef(venueId.value()));
+		if (!venues.venueExists(venueId)) {
+			return new SetBatchOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
+		}
+		// Venue row first, then the set rows — the order every set-write takes (no deadlock, R-1).
+		if (venues.lockAndReadSetVersion(venueId) != expectedVersion) {
+			return new SetBatchOutcome.Rejected(SetRejection.STALE_WRITE);
+		}
+		// No claim question; the FOR UPDATE makes a racing claim read the committed pool (RESPONSIBILITIES.md §venue).
+		Set<SetId> locked = venues.lockSets(venueId, command.setIds());
+		if (locked.size() != command.setIds().size()) {
+			return new SetBatchOutcome.Rejected(SetRejection.NO_SUCH_SET);
+		}
+		int updated = venues.updateSetFields(venueId, command);
+		venues.incrementSetVersion(venueId); // advance the token iff the batch wrote
+		return new SetBatchOutcome.Applied(updated);
 	}
 
 	private static ReplaceRejection toReplaceRejection(Venues.Conflict conflict) {

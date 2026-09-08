@@ -19,8 +19,8 @@ public enum SetRejection {
 	/**
 	 * The venue's {@code set_version} was bumped by another writer (a concurrent reprice or replace) since
 	 * the tab loaded the map, so the conditional write is rejected rather than clobbering what is stored
-	 * (optimistic-concurrency loss). Row-write-only, like {@link #NO_SUCH_ROW} — the reprice and the
-	 * rename reach it; the shared {@code addSet}/{@code editSet}/{@code removeSet} paths never do.
+	 * (optimistic-concurrency loss). The token-guarded writes reach it — the reprice, the rename and
+	 * the batch apply; the per-set {@code addSet}/{@code editSet}/{@code removeSet} paths never do.
 	 * Maps to 409 {@code STALE_WRITE}.
 	 */
 	STALE_WRITE,

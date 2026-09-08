@@ -33,6 +33,7 @@ import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.OnboardVenue;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.application.ReplaceRejection;
+import ai.riviera.platform.venue.application.SetBatchOutcome;
 import ai.riviera.platform.venue.application.SetRejection;
 import ai.riviera.platform.venue.application.ViewDailyAvailability;
 import ai.riviera.platform.venue.application.ViewVenueProfile;
@@ -72,9 +73,9 @@ class VenueAdminController {
 			"The venue profile has changed since the version this request carries.";
 
 	/**
-	 * The STALE_WRITE detail shared by both set-writes — the row reprice and the bulk layout
-	 * replace turn on one {@code venue.set_version} token (V23), so either can lose to the other
-	 * and the wording may attribute the change to neither.
+	 * The STALE_WRITE detail shared by every token-guarded set-write — the row reprice, the row
+	 * rename, the batch apply and the bulk layout replace turn on one {@code venue.set_version}
+	 * token (V23), so any can lose to another and the wording may attribute the change to none.
 	 */
 	private static final String STALE_SETS_DETAIL =
 			"This venue's sets have changed since the version this request carries.";
@@ -189,6 +190,20 @@ class VenueAdminController {
 			@PathVariable long setId) {
 		OperatorId operator = currentOperator.require(authentication);
 		return toResponse(editBeachMap.removeSet(operator, new VenueId(venueId), new SetId(setId)));
+	}
+
+	@PatchMapping("/{venueId}/sets")
+	ResponseEntity<?> applyToSets(Authentication authentication, @PathVariable long venueId,
+			@RequestBody SetBatchRequest request) {
+		OperatorId operator = currentOperator.require(authentication);
+		// A missing token is a 400 before the write, never a silent 0 — as on the replace below.
+		long expectedVersion = InvalidApiRequestException
+				.parsing(() -> ExpectedVersion.require(request.expectedVersion()));
+		var command = InvalidApiRequestException.parsing(request::toCommand);
+		return switch (editBeachMap.applyToSets(operator, new VenueId(venueId), expectedVersion, command)) {
+			case SetBatchOutcome.Applied applied -> ResponseEntity.ok(Map.of("updated", applied.updated()));
+			case SetBatchOutcome.Rejected rejected -> error(rejected.reason());
+		};
 	}
 
 	@PutMapping("/{venueId}/beach-map")

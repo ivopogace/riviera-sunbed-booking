@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -679,6 +680,84 @@ class VenueAdminServiceTest {
 		assertEquals(0, venues.deletedAllCount);
 	}
 
+	// ---- Batch apply ----
+
+	private static final SetBatchCommand BATCH_CMD =
+			new SetBatchCommand(Set.of(SET, new SetId(43)), "PREMIUM", Pool.WALK_IN, 4000L, "EUR");
+
+	private void seedBatchSets() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		venues.sets.put(43L, VENUE.value());
+	}
+
+	@Test
+	void batchAppliesToEveryNamedSetAndAdvancesTheTokenOnce() {
+		seedBatchSets();
+		availability.holdOn.put(SET, TODAY_IN_TIRANE); // live, yet inert: no claim question on price/tier/pool
+		bookings.setHasLiveBookings = true;
+
+		SetBatchOutcome outcome = service.applyToSets(OWNER, VENUE, 0L, BATCH_CMD);
+
+		assertEquals(new SetBatchOutcome.Applied(2), outcome);
+		assertEquals(1, venues.batchUpdates);
+		assertSame(BATCH_CMD, venues.lastBatch);
+		assertEquals(1, venues.incrementedSetVersions);
+		assertEquals(List.of(), availability.anyClaimsFromAskedAbout, "the batch never probes a claim");
+	}
+
+	@Test
+	void batchLocksTheVenueRowThenTheSetRows() {
+		seedBatchSets();
+
+		service.applyToSets(OWNER, VENUE, 0L, BATCH_CMD);
+
+		assertEquals(List.of("lockSets"), callLog,
+				"the set rows are locked after the venue row (lockAndReadSetVersion) and before the write");
+		assertEquals(Set.of(SET.value(), 43L), venues.lockedBatchIds);
+	}
+
+	@Test
+	void batchWithAStaleTokenIsRefusedBeforeAnyWrite() {
+		seedBatchSets();
+		venues.setVersionOnLock = 1; // the row moved to 1; the tab loaded 0
+
+		SetBatchOutcome outcome = service.applyToSets(OWNER, VENUE, 0L, BATCH_CMD);
+
+		assertEquals(SetRejection.STALE_WRITE, ((SetBatchOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.batchUpdates);
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void batchNamingASetNotOnTheVenueIsRefusedWhole() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value()); // 43 belongs to nobody here
+
+		SetBatchOutcome outcome = service.applyToSets(OWNER, VENUE, 0L, BATCH_CMD);
+
+		assertEquals(SetRejection.NO_SUCH_SET, ((SetBatchOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.batchUpdates, "\"N sets updated\" must never overstate");
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void batchOnUnknownVenueIsRejectedBeforeAnyLock() {
+		SetBatchOutcome outcome = service.applyToSets(OWNER, VENUE, 0L, BATCH_CMD);
+
+		assertEquals(SetRejection.NO_SUCH_VENUE, ((SetBatchOutcome.Rejected) outcome).reason());
+		assertEquals(List.of(), callLog);
+	}
+
+	@Test
+	void batchByANonOwnerIsDeniedBeforeAnyRead() {
+		seedBatchSets();
+
+		assertThrows(NotVenueOwnerException.class, () -> service.applyToSets(STRANGER, VENUE, 0L, BATCH_CMD));
+		assertEquals(List.of(), callLog);
+		assertEquals(0, venues.batchUpdates);
+	}
+
 	// ---- Per-row reprice ----
 
 	private static final RowPriceCommand REPRICE_CMD = new RowPriceCommand("A", 4200, "EUR");
@@ -1071,6 +1150,26 @@ class VenueAdminServiceTest {
 		public List<SetId> lockSetsOfVenue(VenueId venueId) {
 			callLog.add("lockSetsOfVenue");
 			return existingSetIds.stream().map(SetId::new).toList();
+		}
+
+		final Set<Long> lockedBatchIds = new HashSet<>();
+		int batchUpdates;
+		SetBatchCommand lastBatch;
+
+		@Override
+		public Set<SetId> lockSets(VenueId venueId, Collection<SetId> setIds) {
+			callLog.add("lockSets");
+			lockedBatchIds.addAll(setIds.stream().map(SetId::value).toList());
+			return setIds.stream()
+					.filter(id -> venueId.value() == sets.getOrDefault(id.value(), -1L))
+					.collect(Collectors.toSet());
+		}
+
+		@Override
+		public int updateSetFields(VenueId venueId, SetBatchCommand command) {
+			batchUpdates++;
+			lastBatch = command;
+			return command.setIds().size();
 		}
 
 		@Override

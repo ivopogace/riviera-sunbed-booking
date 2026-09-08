@@ -30,6 +30,7 @@ import ai.riviera.platform.venue.application.PhotoServingUrls;
 import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.RowNameCommand;
 import ai.riviera.platform.venue.application.RowPriceCommand;
+import ai.riviera.platform.venue.application.SetBatchCommand;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetPlacement;
 import ai.riviera.platform.venue.application.VenueCommissionView;
@@ -352,6 +353,39 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				.stream()
 				.map(SetId::new)
 				.toList();
+	}
+
+	@Override
+	public Set<SetId> lockSets(VenueId venueId, Collection<SetId> setIds) {
+		// FOR UPDATE, as lockSet: a concurrent claim's FOR KEY SHARE pool read waits for this tx to end.
+		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :venue AND id IN (:ids) FOR UPDATE")
+				.param(P_VENUE, venueId.value())
+				.param("ids", setIds.stream().map(SetId::value).toList())
+				.query(Long.class)
+				.list()
+				.stream()
+				.map(SetId::new)
+				.collect(Collectors.toSet());
+	}
+
+	@Override
+	public int updateSetFields(VenueId venueId, SetBatchCommand c) {
+		// COALESCE keeps each row's own value for an untouched (null) field; the casts type a null bind.
+		return jdbc.sql("""
+				UPDATE set_position
+				SET tier = COALESCE(:tier::text, tier),
+				    pool = COALESCE(:pool::text, pool),
+				    price_minor = COALESCE(:priceMinor::bigint, price_minor),
+				    price_currency = COALESCE(:priceCurrency::text, price_currency)
+				WHERE venue_id = :venue AND id IN (:ids)
+				""")
+				.param("tier", c.tier())
+				.param("pool", c.pool() == null ? null : c.pool().name())
+				.param("priceMinor", c.priceMinor())
+				.param("priceCurrency", c.priceCurrency())
+				.param(P_VENUE, venueId.value())
+				.param("ids", c.setIds().stream().map(SetId::value).toList())
+				.update();
 	}
 
 	@Override
