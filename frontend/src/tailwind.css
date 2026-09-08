@@ -1061,9 +1061,11 @@
     It MUST live in `@layer base`: utilities sit in a later layer, so a site's own colour
     (`outline-white` on a fixed-dark host, `outline-current` on the fixed-white sign-out bar,
     where the themed ink would fade to under 2:1 in dark) or offset (`-outline-offset-[3px]`
-    inside a clip) keeps winning deterministically; un-layered, it would beat them all. Guard:
+    inside a clip; `shared/tab-rail.ts`'s EDGE_SLOT_RING on a slot of an edge-to-edge bar,
+    whose outside ring would run off the viewport) keeps winning deterministically;
+    un-layered, it would beat them all. Guard:
     app/shared/focus-ring-baseline.spec.ts; render: e2e/focus-ring-baseline.e2e.ts.
-    Rationale: issue #890. */
+    Rationale: `riviera-tailwind` rule 6. */
 @layer base {
   button:focus-visible {
     outline: 3px solid var(--riv-accent-ink);

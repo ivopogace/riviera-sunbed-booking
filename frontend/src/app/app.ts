@@ -27,14 +27,16 @@ import {
   POP_BACKDROP,
   POP_BUTTON,
   POP_ITEM,
+  POP_ROW_RING,
   POP_SKIN,
   handleOf,
   initialOf,
 } from './shared/popover-skin';
+import { EDGE_SLOT_RING } from './shared/tab-rail';
 import { TouchTarget } from './shared/touch-target';
 
 const POP = `absolute ${POP_SKIN}`;
-const MOBILE_ITEM = `block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover ${CURRENT_POP_ROW}`;
+const MOBILE_ITEM = `block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover ${CURRENT_POP_ROW} ${POP_ROW_RING}`;
 
 /** The shell's root box, with and without the phone tab bar's clearance: the bar is 61px tall
  *  (60px tabs + the top border) and pads itself by the home-indicator inset, so the page pads by
@@ -50,10 +52,11 @@ const SHELL_WITH_TAB_BAR = `${SHELL} max-sm:pb-[calc(61px+env(safe-area-inset-bo
  * 1.5px ring round the icon pill — plus the full-ink label: no tint the token set offers clears
  * WCAG 1.4.11's 3:1 against the bar (the 0.12 accent fill measured 1.10–1.22:1, the 0.18 chip fill
  * 1.15–1.36:1), and full-vs-soft ink alone reads 1.22–2.54:1. `flex`, so `appTouchTarget`'s floor
- * is live on the two `<a>`s; `group`, so the pill's ring keys on the tab's `aria-current`.
+ * is live on the two `<a>`s; `group`, so the pill's ring keys on the tab's `aria-current`. The
+ * focus ring is inset (`EDGE_SLOT_RING`): the bar is edge-to-edge, so an outside ring lost its
+ * right side past the viewport and its bottom side under the safe-area padding.
  */
-const TAB =
-  "group relative flex h-[60px] cursor-pointer flex-col items-center justify-center gap-[3px] text-[11px] font-semibold text-riv-ink-soft before:absolute before:top-0 before:h-[3px] before:w-9 before:rounded-b-full before:bg-current before:opacity-0 before:content-[''] aria-[current=page]:text-riv-ink aria-[current=page]:before:opacity-100";
+const TAB = `group relative flex h-[60px] cursor-pointer flex-col items-center justify-center gap-[3px] text-[11px] font-semibold text-riv-ink-soft before:absolute before:top-0 before:h-[3px] before:w-9 before:rounded-b-full before:bg-current before:opacity-0 before:content-[''] aria-[current=page]:text-riv-ink aria-[current=page]:before:opacity-100 ${EDGE_SLOT_RING}`;
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {

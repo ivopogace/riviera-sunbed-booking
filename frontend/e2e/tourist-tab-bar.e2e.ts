@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
@@ -52,6 +52,25 @@ const VENUES = Array.from({ length: 8 }, (_, i) => ({
 
 /** The bar's height: 60px tabs plus the 1px top border; the shell pads the page by the same. */
 const BAR_HEIGHT = 61;
+
+/** `--riv-accent-ink` in porcelain, as Chromium reports it. */
+const ACCENT_INK = 'rgb(8, 90, 110)';
+
+/**
+ * The focused control's ring is painted wholly inside the viewport: an inset ring lies inside the
+ * control's own box, so the box's edges are the ring's outer bound; an outside ring would have
+ * needed the box plus `offset + width` on every side, which is what put the last tab's ring
+ * off-screen.
+ */
+async function expectRingInsideViewport(page: Page, control: Locator): Promise<void> {
+  await expect(control).toHaveCSS('outline-offset', /^-/);
+  const box = (await control.boundingBox())!;
+  const { width, height } = page.viewportSize()!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(width);
+  expect(box.y + box.height).toBeLessThanOrEqual(height);
+}
 
 async function mockTourist(page: Page): Promise<void> {
   await page.route(/\/api\/auth\/me$/, (route) =>
@@ -223,6 +242,35 @@ test.describe('phone', () => {
     await expect(sheet).toBeHidden();
     await expect(page.getByTestId('menu-toggle')).toBeFocused();
   });
+
+  for (const width of [390, 344]) {
+    test(`the Menu tab's ring sits inside the viewport and the sheet's link row wears the project ring at ${width}px (#1022)`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 780 });
+      await page.goto('/');
+      await openShellOverlay(page, 'menu-toggle');
+      const row = page.getByTestId('nav-signin-mobile');
+      await expect(row).toBeFocused();
+      // Chromium treats script focus after a click as pointer-driven: step off and back with the keyboard, which always matches :focus-visible.
+      await page.keyboard.press('Tab');
+      await page.keyboard.press('Shift+Tab');
+      await expect(row).toBeFocused();
+      await expect(row).toHaveCSS('outline-style', 'solid');
+      await expect(row).toHaveCSS('outline-width', '3px');
+      await expect(row).toHaveCSS('outline-color', ACCENT_INK);
+      await expect(row).toHaveCSS('outline-offset', '2px');
+
+      await page.keyboard.press('Escape');
+      const menu = page.getByTestId('menu-toggle');
+      await expect(menu).toBeFocused();
+      await expect(menu).toHaveCSS('outline-style', 'solid');
+      await expect(menu).toHaveCSS('outline-width', '3px');
+      await expect(menu).toHaveCSS('outline-color', ACCENT_INK);
+      await expect(menu).toHaveCSS('outline-offset', '-7px');
+      await expectRingInsideViewport(page, menu);
+    });
+  }
 });
 
 test.describe('tablet: the inline nav, no bar', () => {

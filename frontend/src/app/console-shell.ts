@@ -44,6 +44,7 @@ import { currentUrl } from './shared/current-url';
 import { focusMover } from './shared/focus-after-render';
 import { POP_BACKDROP, POP_NAV_HINT, POP_NAV_ROW, POP_SKIN } from './shared/popover-skin';
 import {
+  EDGE_SLOT_RING,
   TAB_RAIL_BADGE,
   TAB_RAIL_MARKER,
   TAB_RAIL_MATCH,
@@ -179,7 +180,8 @@ const CLS = {
   phoneRail:
     'grid grid-cols-4 border-b border-riv-header-border bg-riv-header-glass px-1 sm:hidden',
   // A glyph over an 11px label; `flex`, so the 44px floor is live on the links; the marker is the rail's.
-  phoneSlot: `min-h-[58px] cursor-pointer flex-col justify-center gap-1 px-1 text-center text-[11px] leading-tight font-semibold text-riv-ink-soft no-underline after:-bottom-px [&_svg]:size-[21px] ${SLOT}`,
+  // The ring is inset (`EDGE_SLOT_RING`): the rail is edge-to-edge, so the last slot's outside ring lost its right side past the viewport and its bottom side on the rail's border.
+  phoneSlot: `min-h-[58px] cursor-pointer flex-col justify-center gap-1 px-1 text-center text-[11px] leading-tight font-semibold text-riv-ink-soft no-underline after:-bottom-px [&_svg]:size-[21px] ${SLOT} ${EDGE_SLOT_RING}`,
   phoneBadge: 'absolute top-1.5 right-[calc(50%-26px)]',
   sheetBackdrop: `${POP_BACKDROP} sm:hidden`,
   // Above the home indicator; capped to the viewport so nine admin rows still scroll inside the sheet on a short phone.

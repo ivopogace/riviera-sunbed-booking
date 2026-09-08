@@ -48,6 +48,21 @@ export class TabRail {}
 export const TAB_RAIL_MARKER =
   "relative after:absolute after:inset-x-0 after:h-[3px] after:rounded-full after:bg-current after:opacity-0 after:content-[''] aria-[current=page]:text-riv-ink aria-[current=page]:after:opacity-100";
 
+/**
+ * The focus ring of a slot on an edge-to-edge bar — the tourist tab bar's three tabs and the
+ * console's four phone slots. The baseline ring paints 3px at `outline-offset: 2px`, OUTSIDE the
+ * box; the last slot of these bars ends at (or 4px from) the viewport edge, and the bar's own
+ * border and safe-area padding sit under the ring's other sides, so the ring showed as an
+ * "L" — its right and bottom sides off-screen. Inset instead: `-7px` puts the whole 3px
+ * ring inside the slot, one pixel clear of the 3px current-page marker at the slot's top
+ * (`app.ts`'s tab) or bottom (`TAB_RAIL_MARKER` at `after:-bottom-px`), so on the current slot
+ * the ring and the marker never merge into one thicker bar. Colour and width are the
+ * baseline's (`riviera-tailwind` rule 6: an offset change, not a second ring); the ring covers
+ * the bars' `<a>` slots too, which the `button`-only base rule never reached.
+ */
+export const EDGE_SLOT_RING =
+  'focus-visible:outline-[3px] focus-visible:-outline-offset-[7px] focus-visible:outline-riv-accent-ink';
+
 /** The live Requests count on a rail tab, a phone slot or a palette row: the one solid-fill element
  *  among the tabs, so it outranks every one of them. `oc-badge` is the inert marker the e2e reads. */
 export const TAB_RAIL_BADGE =

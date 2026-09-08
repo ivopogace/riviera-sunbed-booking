@@ -5,7 +5,7 @@ import { mockOperatorLifecycleApi, mockOwnedVenues } from './support/auth-mocks'
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 import { mockWholeConsole } from './support/operator-console.mocks';
-import { openOperatorAccountMenu, openPalette } from './support/shell';
+import { openMoreSheet, openOperatorAccountMenu, openPalette } from './support/shell';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 import { expectTouchTargets } from './support/touch-targets';
 
@@ -334,3 +334,44 @@ test('the search glyph and ⌘K open the Go to dialog: focus legs, the field on 
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'admin console with the palette open');
 });
+
+/** `--riv-accent-ink` in the console's porcelain, as Chromium reports it. */
+const ACCENT_INK = 'rgb(8, 90, 110)';
+
+for (const width of [390, 344]) {
+  test(`the More slot's ring sits inside the viewport and the sheet's link rows wear the project ring at ${width}px (#1022)`, async ({
+    page,
+  }) => {
+    await mockWholeConsole(page);
+    await mockOwnedVenues(page, TWO_VENUES);
+    await page.setViewportSize({ width, height: 780 });
+    await new OperatorSignInPage(page).goto('/operator/1/daily');
+    await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
+    await expect(page.getByTestId('daily-view-tab')).toBeVisible();
+
+    await openMoreSheet(page);
+    const row = page.getByTestId('oc-more-row').first();
+    await expect(row).toBeFocused();
+    // Chromium treats script focus after a click as pointer-driven: step off and back with the keyboard, which always matches :focus-visible.
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    await expect(row).toBeFocused();
+    await expect(row).toHaveCSS('outline-style', 'solid');
+    await expect(row).toHaveCSS('outline-width', '3px');
+    await expect(row).toHaveCSS('outline-color', ACCENT_INK);
+    await expect(row).toHaveCSS('outline-offset', '2px');
+
+    await page.keyboard.press('Escape');
+    const more = page.getByTestId('oc-more');
+    await expect(more).toBeFocused();
+    await expect(more).toHaveCSS('outline-style', 'solid');
+    await expect(more).toHaveCSS('outline-width', '3px');
+    await expect(more).toHaveCSS('outline-color', ACCENT_INK);
+    // Inset: the whole ring lies inside the slot's box, so the box's edges bound the ring.
+    await expect(more).toHaveCSS('outline-offset', '-7px');
+    const box = (await more.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+    expect(box.y + box.height).toBeLessThanOrEqual(780);
+  });
+}
