@@ -666,7 +666,7 @@ describe('ConsoleShell', () => {
         rows()
           .slice(8, 10)
           .map((row) => row.getAttribute('href')),
-      ).toEqual(['/operator/1/beach-map', '/operator/2/beach-map']);
+      ).toEqual(['/operator/1/daily', '/operator/2/daily']);
       expect(rows()[7].getAttribute('href')).toBe('/admin/audit');
       expect(rows()[7].textContent).toContain('Records');
 
@@ -679,7 +679,7 @@ describe('ConsoleShell', () => {
         'Admin console',
         'Change password',
       ]);
-      expect(rows()[0].getAttribute('href')).toBe('/operator/1/beach-map');
+      expect(rows()[0].getAttribute('href')).toBe('/operator/1/daily');
       expect(currentLabels()).toEqual(['Change password']);
     });
 

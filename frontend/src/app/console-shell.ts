@@ -25,7 +25,7 @@ import { OperatorAccountChip } from './operator/operator-account-chip';
 import { OperatorVenueSwitch } from './operator/operator-venue-switch';
 import { PendingRequestsStore } from './operator/pending-requests-store';
 import { todayBookingDate } from './shared/booking-date';
-import { ConsoleDestination } from './shared/console-destination';
+import { ConsoleDestination, VENUE_CONSOLE_LANDING_TAB } from './shared/console-destination';
 import {
   AdminGlyph,
   BeachMapGlyph,
@@ -492,11 +492,11 @@ export class ConsoleShell {
   protected readonly adminGate = computed(
     () => !this.operator.restoring() && this.operator.signedIn() && this.operator.isAdmin(),
   );
-  /** The open venue-console tab, for the switcher to keep across a switch; the console's index
-   *  redirect (`beach-map`) before any child has settled, `undefined` off the console. */
+  /** The open venue-console tab, for the switcher to keep across a switch; the console's landing
+   *  tab before any child has settled, `undefined` off the console. */
   protected readonly tabPath = computed(() =>
     this.venueCurrent()
-      ? (/^\/operator\/\d+\/([^/?#;]+)/.exec(this.url())?.[1] ?? 'beach-map')
+      ? (/^\/operator\/\d+\/([^/?#;]+)/.exec(this.url())?.[1] ?? VENUE_CONSOLE_LANDING_TAB)
       : undefined,
   );
   /** The URL's path alone — what an admin destination is matched against. */
@@ -573,7 +573,7 @@ export class ConsoleShell {
    *  (the current one marked, Requests with its count), the owned venues on the open tab (the
    *  console's landing tab off it), the other console for an admin, the account page. */
   protected readonly paletteRows = computed((): PaletteRow[] => {
-    const keep = this.tabPath() ?? 'beach-map';
+    const keep = this.tabPath() ?? VENUE_CONSOLE_LANDING_TAB;
     const rows: PaletteRow[] = [
       ...this.paletteSections(),
       ...(this.owned.venues() ?? []).map((venue): PaletteRow => ({

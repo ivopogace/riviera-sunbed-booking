@@ -168,10 +168,10 @@ test('generates a grid, paints a walk-in set, and saves the whole layout in one 
   page,
 }) => {
   const { puts } = await mockEditor(page);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
-  // Default tab is the layout editor; the empty venue shows the empty state until we generate.
+  // The deep link came back through sign-in; the empty venue shows the empty state until we generate.
   await expect(page).toHaveURL(/\/operator\/1\/beach-map/);
   await expect(page.getByTestId('layout-editor')).toBeVisible();
   await expect(page.getByTestId('layout-empty')).toBeVisible();
@@ -232,7 +232,7 @@ test('paints the console theme: the tool rail and the tiles under porcelain and 
 }, testInfo) => {
   const theme = consoleThemeOf(testInfo);
   await mockEditor(page);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
   await expect(page.getByTestId('layout-editor')).toBeVisible();
 
@@ -269,7 +269,7 @@ test('names a row, saves the venue’s words, and blocks duplicate names before 
   page,
 }) => {
   const { puts } = await mockEditor(page);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
   await page.getByTestId('layout-gen-rows').fill('2');
@@ -335,7 +335,7 @@ const SEEDED_SETS = [
 
 test('holds both surfaces until the map read settles (#721)', async ({ page }) => {
   const { holdMap, releaseMap } = await mockEditor(page, false, SEEDED_SETS);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
   await expect(page.getByTestId('set-editor')).toBeVisible();
 
@@ -383,7 +383,7 @@ test('holds both surfaces until the map read settles (#721)', async ({ page }) =
 
 test('renames a row on a venue whose bulk save is locked (#726)', async ({ page }) => {
   const { puts, renames } = await mockEditor(page, true, SEEDED_SETS);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
   // A saved venue opens armed on Select; reaching the bulk surface is free, only its SAVE is refused.
@@ -413,7 +413,7 @@ test('drag-painting across cells paints them and never pans the overflowing grid
   page,
 }) => {
   await mockEditor(page);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
   // 20 columns overflow the console viewport, so a pan WOULD move if drag-pan were on.
@@ -447,7 +447,7 @@ test('drag-painting across cells paints them and never pans the overflowing grid
 
 test('fills a row via a drag-sweep across rail chips in one PUT (#713)', async ({ page }) => {
   const { puts } = await mockEditor(page);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
   await page.getByTestId('layout-gen-rows').fill('3');
@@ -481,7 +481,7 @@ test('at 100% zoom, a plain drag paints and never pans; Space-drag pans and neve
   page,
 }) => {
   await mockEditor(page);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
   await page.getByTestId('layout-gen-rows').fill('1');
@@ -538,7 +538,7 @@ test('regenerating over a grid confirms first and moves focus with the confirmat
   page,
 }) => {
   await mockEditor(page);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
   await expect(page.getByTestId('layout-editor')).toBeVisible();
 
@@ -590,7 +590,7 @@ test('shows the layout-locked message when the venue has bookings (409 LAYOUT_IN
   page,
 }) => {
   await mockEditor(page, true);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
   await expect(page.getByTestId('layout-editor')).toBeVisible();
 
@@ -609,7 +609,7 @@ test('a stale-tab save is rejected 409, keeps the painted grid, and Reload recov
   page,
 }) => {
   const { bump } = await mockEditor(page);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page); // the editor loads the map at setVersion 0
 
   // A concurrent writer moves the layout on (→ setVersion 1) behind this still-open tab.
@@ -652,7 +652,7 @@ test('the paint grid, which cannot be drag-panned, still offers a pointer route 
   page,
 }) => {
   await mockEditor(page);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
   // 20 columns overflow the console viewport: over half the layout starts off-screen.
@@ -701,7 +701,7 @@ const TWELVE_COLUMNS = Array.from({ length: 24 }, (_, i) => ({
 test('fits a twelve-column layout to width at 1280px under the shell (#1011)', async ({ page }) => {
   await mockEditor(page, false, TWELVE_COLUMNS);
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
   // A seeded layout opens in per-set mode, on the same fit-to-width canvas.
   await expect(page.getByTestId('set-cell')).toHaveCount(24);
@@ -720,7 +720,7 @@ test('Select’s own drag gesture (the sweep) leaves its grid not drag-pannable 
   page,
 }) => {
   await mockEditor(page, false, SEEDED_SETS);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
   await page.getByTestId('layout-tool-select').click();
   const viewport = page.getByTestId('set-grid');
@@ -735,7 +735,7 @@ test('at a phone width the tool rail is one scrolling row, the armed chip stays 
 }) => {
   await mockEditor(page);
   await page.setViewportSize({ width: 390, height: 800 });
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
   await expect(page.getByTestId('layout-tool-select')).toBeVisible();
 
@@ -758,7 +758,7 @@ test('every paint cell declares touch-action: none, so a paint drag never fights
 }) => {
   await mockEditor(page);
   await page.setViewportSize({ width: 390, height: 800 });
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
   await page.getByTestId('layout-gen-rows').fill('1');

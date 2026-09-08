@@ -5,6 +5,7 @@ import type { AdminTabRouteData } from './admin/admin-console';
 import type { TouristRouteData } from './app';
 import type { ConsoleRouteData } from './console-shell';
 import { operatorSessionGuard } from './core/operator-session.guard';
+import { VENUE_CONSOLE_LANDING_TAB } from './shared/console-destination';
 
 /**
  * The operator-console tab child routes — one per section, each deep-linkable. The active tab
@@ -312,7 +313,10 @@ export const routes: Routes = [
     title: 'Operator console — Riviera',
     data: { console: 'venue' } satisfies ConsoleRouteData,
     canActivate: [operatorSessionGuard],
-    children: [{ path: '', pathMatch: 'full', redirectTo: 'beach-map' }, ...consoleTabRoutes],
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: VENUE_CONSOLE_LANDING_TAB },
+      ...consoleTabRoutes,
+    ],
   },
   {
     path: 'venues/:id',

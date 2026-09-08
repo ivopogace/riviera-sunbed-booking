@@ -188,19 +188,20 @@ async function mockDaily(page: Page): Promise<{ patches: import('@playwright/tes
 
 test.use({ colorScheme: 'dark' });
 
+/** Signs in from the guard's auth card; the console then opens on the Daily view by itself. */
 async function signInAndOpenDaily(page: Page): Promise<void> {
-  // The guard sends us to the unified card's operator tab; returnUrl brings us back.
   await page.getByLabel('Username', { exact: true }).fill('operator');
   await page.getByLabel('Password', { exact: true }).fill('pw');
   await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
   await expect(page.getByTestId('oc-header')).toBeVisible();
-  // Whichever rail the viewport shows: the text rail's `Daily view` from sm up, the phone rail's `Daily` below.
-  await page
-    .getByRole('navigation', { name: /^Operator console sections/ })
-    .getByRole('link', { name: /^Daily/ })
-    .click();
   await expect(page).toHaveURL(/\/operator\/1\/daily/);
   await expect(page.getByTestId('daily-view-tab')).toBeVisible();
+  // The rail marks it current whichever one the viewport shows — the text rail's `Daily view`, the phone rail's `Daily`.
+  await expect(
+    page
+      .getByRole('navigation', { name: /^Operator console sections/ })
+      .getByRole('link', { name: /^Daily/ }),
+  ).toHaveAttribute('aria-current', 'page');
 }
 
 test('shows tile states + arrival codes, and marks a walk-in that survives the reconcile (+ axe)', async ({

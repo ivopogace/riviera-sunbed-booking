@@ -20,3 +20,15 @@ export interface ConsoleDestination {
   readonly badge?: boolean;
   readonly testId?: string;
 }
+
+/**
+ * The venue console's landing tab — the child path `/operator/:venueId` redirects to, and the tab
+ * every caller assumes while that redirect is still in flight (the shell's venue switcher and its
+ * palette rows, which keep the open tab across a venue switch and fall back to this off the
+ * console). One constant so a picked venue and a switched-to venue can never disagree.
+ *
+ * <p>It is the Daily view because that is what a trading venue opens every day; the set-up tabs are
+ * deliberate destinations, reached from the rail or deep-linked (a freshly created venue goes
+ * straight to `beach-map` — `operator/venue-create-card.ts` — since it has no map to run a day on).
+ */
+export const VENUE_CONSOLE_LANDING_TAB = 'daily';
