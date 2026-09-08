@@ -63,10 +63,18 @@ describe('PhotoSlideshow', () => {
     fixture.detectChanges();
   }
 
-  function pointer(type: string, x: number, y: number, id = 1, pointerType = 'touch'): void {
+  function pointer(
+    type: string,
+    x: number,
+    y: number,
+    id = 1,
+    pointerType = 'touch',
+    isPrimary = true,
+  ): void {
     const event = new MouseEvent(type, { clientX: x, clientY: y, bubbles: true });
     Object.defineProperty(event, 'pointerType', { value: pointerType });
     Object.defineProperty(event, 'pointerId', { value: id });
+    Object.defineProperty(event, 'isPrimary', { value: isPrimary });
     el().dispatchEvent(event);
   }
 
@@ -312,15 +320,24 @@ describe('PhotoSlideshow', () => {
   it('drops the gesture when a second finger lands, rather than measuring between two of them', () => {
     create({ photos: PHOTOS });
 
-    // A pinch: A's release would otherwise measure against B's origin, a delta neither travelled.
+    // Finger A never travels; only B's overwritten origin could make its release look like a swipe.
     pointer('pointerdown', 0, 0, 1);
-    pointer('pointerdown', 300, 0, 2);
-    pointer('pointerup', 300, 0, 1);
-    pointer('pointerup', 300, 0, 2);
+    pointer('pointerdown', 300, 0, 2, 'touch', false);
+    pointer('pointerup', 0, 0, 1);
+    pointer('pointerup', 300, 0, 2, 'touch', false);
     fixture.detectChanges();
     expect(shownSrc()).toBe(PHOTOS[0]);
 
     // And the band still takes the next single-finger swipe normally.
+    swipe(-60);
+    expect(shownSrc()).toBe(PHOTOS[1]);
+  });
+
+  it('takes the next swipe even when the previous gesture never got its pointerup', () => {
+    create({ photos: PHOTOS });
+
+    // Some mobile browsers drop a pointerup with no pointercancel; the stale slot must not bite.
+    pointer('pointerdown', 0, 0, 1);
     swipe(-60);
     expect(shownSrc()).toBe(PHOTOS[1]);
   });

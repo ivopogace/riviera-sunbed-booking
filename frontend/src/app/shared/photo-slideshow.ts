@@ -40,6 +40,12 @@ const SWIPE_THRESHOLD_PX = 40;
  * the strip spans 13…(44n − 13) and the rail's pill is that plus 7 × 5 px of padding, held at the
  * widest case so the rail cannot resize mid-step. At most three photos exist (`PhotoSlot`).
  *
+ * <p>The dot rail sits AFTER the step buttons in the template: both take `z-10`, so DOM order is
+ * the tie-break, and any overlap on a short band must fall to the dots — a step button's chip is
+ * opaque where its padding is not. The position live region stays mounted for the component's whole
+ * life rather than inside the branch it announces; the shape and why the alternative reads as
+ * silence are `shared/load-announcer.ts`.
+ *
  * <p>`testId` prefixes the hooks: `{testId}-img` (first slide), `{testId}-slide-img` (rest),
  * `{testId}-dots`, and with own controls `{testId}-prev`/`{testId}-next`, `{testId}-dot-{i}` and
  * `{testId}-position`. `name` gives the control labels their subject.
@@ -118,7 +124,7 @@ const SWIPE_THRESHOLD_PX = 40;
             </button>
           }
         </div>
-        <!-- The position announcement stepping would otherwise make silently; see the class doc. -->
+        <!-- Rationale: shared/load-announcer.ts. -->
         <output class="sr-only" aria-live="polite" [attr.data-testid]="testId() + '-position'">
           {{ positionLabel() }}
         </output>
@@ -271,14 +277,23 @@ export class PhotoSlideshow {
     this.step(delta);
   }
 
+  /**
+   * Begin a gesture.
+   *
+   * <p>`isPrimary` is consulted ONLY to break the tie when a gesture is already in flight: a
+   * non-primary pointer there is a genuine second finger, so the gesture is dropped rather than
+   * one finger's release measured against the other's origin. Any other press starts fresh, which
+   * is what keeps a `pointerup` the browser never delivered (and never cancelled) from swallowing
+   * the next real swipe — and what keeps the band working if `isPrimary` is not populated at all,
+   * rather than silently refusing to swipe.
+   */
   protected onPointerDown(event: PointerEvent): void {
     this.swipeConsumedClick = false;
-    if (this.swipeFrom) {
-      // A second finger is a pinch, never a swipe — drop it rather than measure between two.
+    if (this.swipeFrom && event.isPrimary === false) {
       this.swipeFrom = undefined;
       return;
     }
-    // Touch and pen only — on Discover the band IS the card's link, and a mouse wobble must not eat it.
+    // Touch and pen only — on Discover the band IS the card's link.
     this.swipeFrom =
       event.pointerType === 'mouse' || this.photos().length < 2
         ? undefined
