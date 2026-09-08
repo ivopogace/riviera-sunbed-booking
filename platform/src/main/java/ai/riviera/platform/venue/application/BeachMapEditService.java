@@ -153,17 +153,11 @@ class BeachMapEditService implements EditBeachMap {
 		if (!venues.venueExists(venueId)) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 		}
-		// Optimistic lock — take the venue row lock and read set_version (the SAME token replaceLayout
-		// guards, so a replace and a reprice off the same value cannot both win) BEFORE the reprice UPDATE.
-		// A mismatch is a stale version. Order matches replaceLayout (venue row before its set rows) → no
-		// deadlock (R-1). The token is advanced ONLY after a successful reprice below, so a NO_SUCH_ROW
-		// reject leaves it untouched — the acting tab's own next edit off the same token still works.
+		// Venue row lock + token read first (venue before set rows, as every set-write); advanced only on success.
 		if (venues.lockAndReadSetVersion(venueId) != expectedVersion) {
 			return new ChangeOutcome.Rejected(SetRejection.STALE_WRITE);
 		}
-		// Non-destructive: the UPDATE's rows-affected is the row existence check (0 ⇒ no set carries
-		// the label). Repricing never touches availability/set identity, so — unlike replaceLayout — it
-		// needs no claim probe and is allowed on a venue with bookings/holds (see EditBeachMap#repriceRow).
+		// Rows-affected is the existence check (0 ⇒ no set carries the label); no claim probe (EditBeachMap#repriceRow).
 		int updated = venues.repriceRow(venueId, command);
 		if (updated == 0) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_ROW);
@@ -228,28 +222,16 @@ class BeachMapEditService implements EditBeachMap {
 		if (command.splitsRowLabel()) {
 			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.ROW_NAME_TAKEN);
 		}
-		// Optimistic lock — take the venue row lock and read set_version BEFORE lockSetsOfVenue's
-		// FOR UPDATE. Every token-guarded set-write acquires the venue row first, then its set rows: one consistent order
-		// → no deadlock (R-1). A mismatch means another replace/reprice advanced it since the load →
-		// STALE_WRITE. The token is advanced by incrementSetVersion ONLY on the success path below, so a
-		// LAYOUT_IN_USE reject (or any early return) leaves it untouched — the acting tab's own retry off the
-		// same token still works, and it is the SAME token repriceRow guards, so a replace and a reprice
-		// racing off the same value cannot both win.
+		// Venue row lock + token read before the set locks (venue before set rows, as every set-write); advanced only on success.
 		if (venues.lockAndReadSetVersion(venueId) != expectedVersion) {
 			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.STALE_WRITE);
 		}
-		// Refuse rather than CASCADE away a live hold or trip the RESTRICT booking FK (invariant #2).
-		// Lock the venue's set rows FOR UPDATE *before* the claim probe (invariant #2): a walk-in mark
-		// or booking racing in after the probe but before deleteAllSets would otherwise be lost — the
-		// lock makes that concurrent insert block on its FK's FOR KEY SHARE until this tx ends, so it is
-		// either seen by the probe (→ reject) or fails cleanly against the replaced layout. Never a
-		// silent cascade of a committed hold.
+		// Lock the set rows before the probe: a racing claim is either seen (→ reject) or blocks on its FK (invariant #2).
 		List<SetId> existing = venues.lockSetsOfVenue(venueId);
 		if (hasLiveHold(existing) || bookings.hasBookings(venueId)) {
 			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.LAYOUT_IN_USE);
 		}
-		// Unclaimed: replace the whole map atomically (both writes in this @Transactional unit), then
-		// advance the token — the increment commits with the write, so the token moves iff the layout did.
+		// Unclaimed: replace atomically, then advance the token — it moves iff the layout did.
 		venues.deleteAllSets(venueId);
 		venues.insertSets(venueId, command.sets());
 		venues.incrementSetVersion(venueId);

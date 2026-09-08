@@ -299,6 +299,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-6 | review (reviewer 5) | a stale inline comment in `set-editor.spec.ts` contradicts the rewritten assertions | fixed — reworded |
 | F-7 | review (reviewer 3, note) | `PoolToken` Javadoc overstates the batch case (a missing pool there is "untouched", not 400) | fixed — reworded |
 | F-8 | review (reviewer 6, note) | AC-1's pin name did not match the shipped test method | fixed — this doc |
+| F-9 | CI (repo hygiene, `check-inline-comments`) | the split made `BeachMapEditService.java` a new file, so five moved multi-line inline comments counted as added | fixed — each shortened to one line |
 
 ---
 
