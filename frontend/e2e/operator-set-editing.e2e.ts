@@ -316,9 +316,9 @@ test('a booked set changes pool freely but cannot be moved or removed, and says 
 
   await page.getByTestId('set-remove').click();
   await page.getByTestId('set-remove-yes').click();
-  // The remove guard is the wider one, and the copy is the panel's, not an echo of the mock's detail.
+  // The copy is the panel's, not an echo of the mock's detail, and it names only the live claim.
   await expect(page.getByTestId('set-error')).toContainText(/can’t be removed/i);
-  await expect(page.getByTestId('set-error')).toContainText(/booked at least once/i);
+  await expect(page.getByTestId('set-error')).toContainText(/still held/i);
   expect(mock.sets()).toHaveLength(4);
 });
 

@@ -101,10 +101,11 @@ function setsInRect(sets: readonly SetView[], rect: SweepRect): readonly SetView
 }
 
 /**
- * Which per-set write was attempted. `SET_IN_USE` answers two guards of different breadth — an edit
- * refuses only a move of a live-claimed set, a remove any booking ever — so the refusal copy is chosen
- * by action, not by code alone. A `save` sends tier, pool and price alongside a placement snapshot
- * that another tab may already have moved, which is the one way a save can trip the guard.
+ * Which per-set write was attempted. `SET_IN_USE` is one claim guard — a live hold or a guest still
+ * booked — asked of a move, a save that moves, and every remove; the refusal copy is chosen by
+ * action because what the operator can still do differs. A `save` sends tier, pool and price
+ * alongside a placement snapshot that another tab may already have moved, which is the one way a
+ * save can trip the guard.
  */
 type SetWrite = 'add' | 'move' | 'save' | 'remove';
 
@@ -1037,11 +1038,10 @@ export class SetEditor {
   }
 
   /**
-   * The refusal copy for `SET_IN_USE`, which the server answers from two guards of different reach.
-   * A move or save is refused only while someone is still owed the spot and only for its position,
-   * so both stay lifetime-neutral and name the fields that always remain editable — price, tier and
-   * pool. A remove is refused by any booking that ever existed — the placement is pinned by the
-   * booking's own record — so that arm says so instead of reading as a claim that will lapse.
+   * The refusal copy for `SET_IN_USE`: every arm is refused only while someone is still owed the
+   * spot, so all three read as a claim that will lapse. A move or save names the fields that always
+   * remain editable — price, tier and pool; a remove says what will happen once the claim has
+   * passed, because a set with finished bookings then leaves the map and keeps its history.
    */
   private inUseMessage(): string {
     switch (this.attempted()) {
@@ -1050,7 +1050,7 @@ export class SetEditor {
       case 'save':
         return 'This set is booked, or still held, so its position can’t change. Its price, tier and pool can still change.';
       case 'remove':
-        return 'This set can’t be removed: it is still held, or it has been booked at least once — and a booked set stays on the map for good.';
+        return 'This set can’t be removed while it is still held, or a guest is still booked on it. Once those have passed it can go; its past bookings stay on record.';
       default:
         return 'This set is booked, or still held, so that change was refused.';
     }
