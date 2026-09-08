@@ -481,7 +481,7 @@ grep -rnoE '\b(bg|border|text|from|to|via|ring|outline|shadow|divide)-(white|bla
 | `border-white/40` on the layout editor's CTA | 1 | `--riv-cta-border` | **migrate**, byte-identical — the CTA hairline's own token (#853) | **done — #1010** |
 | `text-white` / `outline-white` over a solid fill or the CTA gradient, tree-wide | many | — | **exempt**: the fixed-ink family — a fixed fill pins its ink (the `--riv-solid-fill-*` argument) | recorded |
 | `bg-black/80` — the Daily view's camera preview letterbox | 1 | — | **exempt**: a video is a photo surface, and a photo is not themed (`--riv-photo-*`'s ground) | recorded |
-| The tourist half: `shared/photo-slideshow.ts` (4), `shared/photo-lightbox.ts` (3), `pages/home/home.html` (2), `booking/booking-qr.ts`, `booking/booking-dialog.ts`, `app.html` (1 each) | 12 | — | photo chrome, the QR's print-white and the tourist shell — outside #1010's scope, each with a fixed-surface ground to record when cut | open |
+| The tourist half: `shared/photo-slideshow.ts` (4), `shared/photo-lightbox.ts` (3), `shared/photo-step-button.ts`, `booking/booking-qr.ts`, `booking/booking-dialog.ts`, `app.html` (1 each) | 11 | — | photo chrome, the QR's print-white and the tourist shell — outside #1010's scope, each with a fixed-surface ground to record when cut | open |
 
 The console's half is held at zero by `operator/console-literal-sweep.spec.ts`, which sweeps
 `operator/`, `admin/`, the shell and the shared primitives the console renders for both this
