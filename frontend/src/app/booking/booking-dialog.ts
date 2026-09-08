@@ -97,7 +97,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
       (keydown.tab)="trapFocus($event, false)"
       (keydown.shift.tab)="trapFocus($event, true)"
     >
-      <!-- AA-safe dark-teal gradient header, SOLID white inks (deviation from the design's frosted whites, on purpose). -->
+      <!-- AA-safe dark-teal gradient header, SOLID white inks (deviation from the drawn frosted whites, on purpose). -->
       <header
         class="dialog-head relative shrink-0 bg-[linear-gradient(160deg,#0c7288,#0a5f74)] px-6 pt-[18px] pb-[15px] text-white"
       >

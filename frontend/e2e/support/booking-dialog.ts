@@ -26,7 +26,7 @@ export async function fillDetailsAndContinue(dialog: Locator): Promise<void> {
   await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
 }
 
-/** Fill the Details step and advance through Review to submit (the v3 2-step booking dialog). */
+/** Fill the Details step and advance through Review to submit (the 2-step booking dialog). */
 export async function completeDialog(dialog: Locator, reviewCta: string): Promise<void> {
   await fillDetailsAndContinue(dialog);
   await dialog.getByRole('button', { name: reviewCta }).click();

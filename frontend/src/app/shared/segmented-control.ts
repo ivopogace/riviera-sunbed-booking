@@ -159,7 +159,7 @@ export class SegmentedControl<T extends string> {
             'font-semibold text-riv-card-ink-soft bg-transparent')
       );
     }
-    // 1.5px in BOTH states (design thickens only the selected): constant width, no reflow on switch.
+    // 1.5px in BOTH states (the drawn control thickened only the selected): constant width, no reflow.
     return (
       `${base} rounded-[18px] border-[1.5px] px-[15px] py-3.5 text-left text-riv-card-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] ` +
       (selected

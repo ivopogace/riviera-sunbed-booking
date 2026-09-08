@@ -18,7 +18,7 @@ export type BookingStatus =
   | 'WITHDRAWN';
 
 /**
- * Presentation metadata per booking lifecycle status (design v3 `STATUS_META`): the chip `label`,
+ * Presentation metadata per booking lifecycle status: the chip `label`,
  * its CSS-modifier `chip`, and whether the amount reads `Paid` (money has moved) or `Amount` (still
  * open / no charge). The single source of truth for all three, shared by the booking detail view
  * and the device-local "My bookings" list — extracted here when the list became the

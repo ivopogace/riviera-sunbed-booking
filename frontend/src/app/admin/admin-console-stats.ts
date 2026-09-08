@@ -11,8 +11,8 @@ import { VenueCommissionView } from './admin.model';
  * how many venues the platform carries. Every number comes from an ADMIN read that already ships;
  * this strip adds no endpoint.
  *
- * <p><strong>Where it renders, and why not everywhere.</strong> The design canvas draws the stats
- * once, above the tab strip, on every screen — because the canvas is a single demo page. Here the
+ * <p><strong>Where it renders, and why not everywhere.</strong> A single strip above the tab rail on
+ * every screen needs one host to render it. Here the
  * console is eight independent lazy routes with no layout component, a shape the console's routing
  * decision chose deliberately and gave one revisit trigger: a <em>ninth</em> tab. So this strip
  * renders on the console <em>home</em> only, and <em>below</em> the tabs. Below, because with the strip on one page

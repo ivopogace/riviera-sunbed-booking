@@ -360,6 +360,13 @@ test('flags a provenance tell in an added skill line, not inside a fence or a co
   );
 });
 
+test('scope follows the extension, not the directory, so a docs-rooted script is judged', () => {
+  const added = new Set([1]);
+
+  assert.notDeepEqual(findViolations({ path: 'docs/design/support.js', lines: ['// see #1003'], added }), []);
+  assert.deepEqual(findViolations({ path: 'docs/design/README.md', lines: ['see #1003'], added }), []);
+});
+
 test('markdown outside SKILL.md and references/ is out of scope', () => {
   const lines = ['- issue #134: "Dark theme option"'];
   const added = new Set([1]);

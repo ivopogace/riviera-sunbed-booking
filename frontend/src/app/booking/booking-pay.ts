@@ -75,7 +75,7 @@ const CLS = {
  * {@link failCardStep}) or `processing` (polling, "Confirming your booking…") →
  * `confirmed` (backend said so) or `awaiting` (webhook hasn't landed within ~30s — "payment
  * received", never "confirmed"). A cold load with no hand-off shows `missing`. A terminal server
- * CANCELLED shows an honest failure (invariant #2/#8 — the design's "someone just booked" pay state
+ * CANCELLED shows an honest failure (invariant #2/#8 — the drawn "someone just booked" pay state
  * isn't reproduced: the backend collapses race + decline into CANCELLED, which can't disambiguate).
  */
 @Component({

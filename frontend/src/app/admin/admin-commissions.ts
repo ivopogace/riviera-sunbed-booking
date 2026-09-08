@@ -21,8 +21,8 @@ import { TouchTarget } from '../shared/touch-target';
  * treats it as display-only on purpose (a venue does not set its own commission), so a rate
  * typed wrong at onboarding was permanent for everyone, admin included.
  *
- * <p><strong>One card per venue, at every width.</strong> The design canvas draws a five-column table
- * that collapses to one labelled card per row at 360px — but two of its columns (owner, last-changed)
+ * <p><strong>One card per venue, at every width.</strong> A five-column table collapsing to one
+ * labelled card per row at 360px was the starting shape — but two of those columns (owner, last-changed)
  * have no wire source: the backend deliberately returns no owner, and exposes no read of the rate
  * schedule. A three-column table is thinner than the card it would collapse into, so the card is
  * drawn at every width instead, which also lets the editor expand in place without a `colspan` row.

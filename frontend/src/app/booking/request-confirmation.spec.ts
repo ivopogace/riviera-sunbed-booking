@@ -56,7 +56,7 @@ describe('RequestConfirmation', () => {
     expect(host.querySelector('h1')?.textContent).toContain('Request sent');
     expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain('RQST234567');
     expect(host.querySelector('[data-testid="request-deadline"]')?.textContent).toContain('17:00');
-    expect(host.textContent).toMatch(/haven.t been charged/); // v3 no-charge copy
+    expect(host.textContent).toMatch(/haven.t been charged/); // no-charge copy
     expect(host.querySelector('[data-testid="status-link"]')?.getAttribute('href')).toContain(
       '/booking/RQST234567',
     );

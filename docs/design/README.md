@@ -1,8 +1,7 @@
-# `docs/design/` — two living design docs
+# `docs/design/`
 
-This folder holds the design substrate the app is still held to. Both files here are
-**maintained**: they track the shipped app, and a slice that moves what they describe
-corrects them in place.
+Two maintained design docs, plus this file. Both track the shipped app: a slice that moves
+what they describe corrects them in place.
 
 - **`colour-literal-token-audit.md`** — the ledger of which hex/rgba positions in
   `frontend/src` want `--riv-*` tokens, and the verdict per family. Every slice that cuts a
@@ -11,28 +10,31 @@ corrects them in place.
   which token comments across `frontend/src` cite by name. A rule needs a home that cannot
   close; this is it. Correct it in place when the position moves.
 
-`riviera-docs-freshness` sweeps both: a ledger row still open for a family that shipped, or a
-rule citing a spec that does not measure what it claims, is a finding.
+`riviera-docs-freshness` sweeps this folder: a ledger row still open for a family that
+shipped, or a rule citing a spec that does not measure what it claims, is a finding.
 
-## The visual spec is the app
+## There is no drawn spec
 
-The Liquid Glass look was imported in 2026-07 as a set of design-canvas `.dc.html`
-artboards, kept as never-rewritten records of the approved look and pointer-noted wherever
-the shipped app diverged. The tourist header rework and the operator/admin console-nav epic
-took the shipped surfaces far enough from those artboards — and set a direction that keeps
-moving — that the records had stopped describing anything and had started misleading readers
-who took them for a spec. They were retired on 2026-09-08 along with the canvas runtime
-(`support.js`, `image-slot.js`) and the 2026-07-02 intake note; `git log --diff-filter=D --
-'docs/design/*'` recovers any of them.
+The Liquid Glass look was imported as a set of design-canvas `.dc.html` artboards and kept as
+records of the approved look, pointer-noted where anyone remembered that the shipped app had
+diverged. They were retired on 2026-09-08 with the canvas runtime and the intake note.
 
-So there is no drawn spec to consult, and no `as-built diverges` convention to maintain. What
-a surface should look like now lives in:
+So no artboard is consultable, and no `as-built diverges` convention is maintained. What a
+surface should look like lives in:
 
 - the tokens and their comments in `frontend/src/tailwind.css`, plus the two files above;
 - `riviera-tailwind` (how to write the styling) and `riviera-frontend` (where a component
   goes and who owns theming);
-- the contrast and token-drift specs beside each component, which are the executable half of
+- the `*.contrast.spec.ts` guards and the token-drift specs, which are the executable half of
   the design and the only half that cannot silently rot.
 
-A genuinely new screen gets its look decided in its own issue, against those. Redrawing an
-artboard is not the way back — the specs are.
+A new screen gets its look decided in its own issue, against those. Redrawing an artboard is
+not the way back — the specs are.
+
+To read a retired artboard, find the commit that removed it and read the file at its parent:
+
+```bash
+git fetch --unshallow                     # a shallow clone answers with silence, not an error
+git log --all --diff-filter=D -- 'docs/design/*.dc.html'
+git show <sha>^:docs/design/<file>.dc.html
+```

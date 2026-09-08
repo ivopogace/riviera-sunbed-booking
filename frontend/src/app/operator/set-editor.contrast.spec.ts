@@ -35,7 +35,7 @@ import {
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
 // --riv-error-ink, here as the Remove ink and the error message (the payouts refund-red is #a3372a).
 const DESTRUCTIVE_INK = rgbToHex(ERROR_INK);
-// set-editor.html: `ring-[#0a5f74]` on the selected cell — not the design's brighter #0e8aa8, which fails 3:1 on the premium tile's own gold fill.
+// set-editor.html: `ring-[#0a5f74]` on the selected cell — not the drawn brighter #0e8aa8, which fails 3:1 on the premium tile's own gold fill.
 const SELECTION_RING = '#0a5f74';
 // beach-cell.ts CELL_CLASS: the premium tile's own gradient — a selected premium set sits on this.
 const PREMIUM_FILL_STOPS = ['#ffe3a3', '#f4c05a'];

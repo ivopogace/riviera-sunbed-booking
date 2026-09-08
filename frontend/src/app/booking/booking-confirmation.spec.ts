@@ -54,7 +54,7 @@ describe('BookingConfirmation', () => {
 
     const { host } = render();
     expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain('ABCD234567');
-    expect(host.querySelector('h1')?.textContent).toMatch(/You.re booked/); // v3 confirmed card copy
+    expect(host.querySelector('h1')?.textContent).toMatch(/You.re booked/); // confirmed card copy
   });
 
   it('keeps the emailed-it copy when the confirmation mail was sent', () => {

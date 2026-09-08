@@ -37,12 +37,12 @@ import {
  * modal that floats over a dark scrim + the theme background, so every pair is the EFFECTIVE
  * colour: the panel glass composited over the theme's worst-case gradient stops, then each ink
  * composited over that (the `venue-map.contrast.spec.ts` pattern). This table mirrors every
- * text-bearing colour in `booking-dialog.ts`'s inline template (Tailwind utilities since #679);
+ * text-bearing colour in `booking-dialog.ts`'s inline template (Tailwind utilities);
  * a colour edit there must re-pass here.
  *
- * Deviations from the design file, on purpose: the gradient header
- * uses the AA-safe `--riv-cta-grad` teal with SOLID white ink (the design's brighter teal + opacity
- * whites fail AA); the panel is white 0.82 (design 0.72) so dark inks clear AA over the darkest
+ * Deviations from the drawn values, on purpose: the gradient header
+ * uses the AA-safe `--riv-cta-grad` teal with SOLID white ink (the drawn brighter teal + opacity
+ * whites fail AA); the panel is white 0.82 (drawn 0.72) so dark inks clear AA over the darkest
  * stop; input borders are the dark `--riv-field-border` (a white border fails the 3:1 boundary).
  *
  * Deliberately excluded (1.4.11 redundant / decorative): the step-number circles and the ✕ close
