@@ -1,24 +1,22 @@
 package ai.riviera.platform.venue.application;
 
-import ai.riviera.platform.venue.vocabulary.Pool;
-
 /**
- * Where a stored set sits and which pool it draws from — the layout facts a claim depends on.
- * Returned by {@link Venues#lockSet} as the locked row's current state, so a per-set edit can be
- * judged against what is actually stored rather than against the caller's assumptions.
+ * Where a stored set sits — the locked row's current position, returned by {@link Venues#lockSet}
+ * so a per-set edit is judged against what is actually stored rather than against the caller's
+ * assumptions.
  */
-public record SetPlacement(Pool pool, String rowLabel, int positionNo, int gridX, int gridY) {
+public record SetPlacement(String rowLabel, int positionNo, int gridX, int gridY) {
 
 	/**
-	 * Whether applying {@code command} would move this set or change which pool it draws from —
-	 * the only edits a hold or booking can be harmed by. A repool strands an online booking on
-	 * walk-in inventory (invariant #3); a reposition silently re-seats a guest who was told this
-	 * row and number. Price and tier are excluded on purpose: a booking's charge is snapshotted at
-	 * reserve time, which is why {@code repriceRow} is allowed on a claimed venue too.
+	 * Whether applying {@code command} would move this set — the only edit a hold or booking can be
+	 * harmed by, because a reposition silently re-seats a guest who was told this row and number.
+	 * Pool, price and tier are excluded on purpose: a booking's charge is snapshotted at reserve time,
+	 * and the pool decides only whether a <em>new</em> online booking may claim the set (invariant #3
+	 * is a reserve-time rule) — an existing hold stays on its {@code (set, date)} row whatever the
+	 * pool now says. Rationale: RESPONSIBILITIES.md §venue.
 	 */
 	public boolean disturbedBy(SetCommand command) {
-		return pool != command.pool()
-				|| !rowLabel.equals(command.rowLabel())
+		return !rowLabel.equals(command.rowLabel())
 				|| positionNo != command.positionNo()
 				|| gridX != command.gridX()
 				|| gridY != command.gridY();

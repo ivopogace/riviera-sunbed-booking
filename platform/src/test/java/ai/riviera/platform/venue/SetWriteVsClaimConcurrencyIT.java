@@ -25,6 +25,8 @@ import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.application.ChangeOutcome;
 import ai.riviera.platform.venue.application.EditBeachMap;
+import ai.riviera.platform.venue.application.SetBatchCommand;
+import ai.riviera.platform.venue.application.SetBatchOutcome;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
 import ai.riviera.platform.venue.vocabulary.Pool;
@@ -35,13 +37,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The per-set layout write racing the online claim (AC-6/AC-7). Both sides lock the one
- * {@code set_position} row — the write with {@code FOR UPDATE}, the claim's pool read with
- * {@code FOR KEY SHARE} — so whichever commits first forces a correct answer out of the other,
- * and neither interleaving can leave a {@code BOOKED_ONLINE} row on a {@code WALK_IN} set
- * (invariant #3) or a hold CASCADE-swept by a delete (invariant #2). Without the locks the
- * loser's stale read wins: the claim checks {@code pool = ONLINE}, the edit flips it, and the
- * insert lands anyway. Repeated to exercise both interleavings against a real Postgres.
+ * The per-set layout write racing the online claim. Both sides lock the one {@code set_position}
+ * row — the write with {@code FOR UPDATE}, the claim's pool read with {@code FOR KEY SHARE} — so
+ * whichever commits first forces a correct answer out of the other. For a pool flip that means the
+ * claim decides against the <em>committed</em> pool (invariant #3 is a reserve-time rule): a flip
+ * that lands first turns the claim away, a claim that lands first stays claimed on a set that is
+ * now walk-in — the flip is never refused. For a remove it means a hold is never CASCADE-swept by
+ * the delete (invariant #2). Without the locks the loser's stale read wins: the claim checks
+ * {@code pool = ONLINE}, the flip commits, and the insert lands anyway. Repeated to exercise both
+ * interleavings against a real Postgres.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -63,6 +67,7 @@ class SetWriteVsClaimConcurrencyIT {
 	private static final long HEAD_START_MS = 150;
 
 	private static final Set<String> POOL_FLIP_BRANCHES = ConcurrentHashMap.newKeySet();
+	private static final Set<String> BATCH_BRANCHES = ConcurrentHashMap.newKeySet();
 	private static final Set<String> REMOVE_BRANCHES = ConcurrentHashMap.newKeySet();
 
 	/**
@@ -81,7 +86,7 @@ class SetWriteVsClaimConcurrencyIT {
 	/**
 	 * Repetitions 1–2 race with no head start (the genuine simultaneous case); 3 and 5 let the
 	 * claim reach its lock first; 4 and 6 let the layout write. The forced pairs are what make
-	 * {@link #bothInterleavingsWereExercised} deterministic instead of scheduler-dependent.
+	 * {@link #assertBothOrdersExercised} deterministic instead of scheduler-dependent.
 	 */
 	private static Ordering orderingFor(int rep) {
 		if (rep <= 2) {
@@ -133,7 +138,7 @@ class SetWriteVsClaimConcurrencyIT {
 	JdbcClient jdbc;
 
 	@RepeatedTest(6)
-	void claimAndPoolFlipCannotBothWin(RepetitionInfo info) throws Exception {
+	void claimNeverLandsOnAPoolItDidNotReadCommitted(RepetitionInfo info) throws Exception {
 		int rep = info.getCurrentRepetition();
 		long venueId = insertVenue("Pool Flip Race " + rep);
 		long setId = insertOnlineSet(venueId);
@@ -157,22 +162,56 @@ class SetWriteVsClaimConcurrencyIT {
 		ClaimOutcome claimed = outcomes.claim();
 		ChangeOutcome flipped = outcomes.write();
 
+		assertTrue(flipped instanceof ChangeOutcome.Applied,
+				() -> "a pool flip is never refused for a claim, got " + flipped);
+		assertEquals("WALK_IN", poolOf(setId));
 		boolean claimWon = claimed == ClaimOutcome.CLAIMED;
-		boolean flipWon = flipped instanceof ChangeOutcome.Applied;
-		assertTrue(claimWon != flipWon,
-				() -> "exactly one of claim/flip may win, got claim=" + claimed + " flip=" + flipped);
-		if (claimWon) {
-			assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) flipped).reason(),
-					"the claim committed first, so the flip must see the hold");
-			assertEquals("ONLINE", poolOf(setId));
-		} else {
+		if (!claimWon) {
 			assertEquals(ClaimOutcome.NOT_ONLINE_POOL, claimed,
 					"the flip committed first, so the claim must re-read the new pool");
-			assertEquals("WALK_IN", poolOf(setId));
 		}
 		assertEquals(claimWon ? 1 : 0, holdsOn(setId),
-				"a BOOKED_ONLINE row on a WALK_IN set would break invariant #3");
+				"a claim that read ONLINE committed stays claimed; one that lost the lock never inserted");
 		POOL_FLIP_BRANCHES.add(claimWon ? "claim" : "write");
+		assertBothOrdersExercised(info, POOL_FLIP_BRANCHES, "the pool flip race");
+	}
+
+	@RepeatedTest(6)
+	void batchRepoolSerialisesWithTheClaim(RepetitionInfo info) throws Exception {
+		int rep = info.getCurrentRepetition();
+		long venueId = insertVenue("Batch Repool Race " + rep);
+		long setId = insertOnlineSet(venueId);
+		VenueId venue = new VenueId(venueId);
+		OperatorId owner = insertOperator("batch-owner-" + rep);
+		grant(owner, venueId);
+		SetBatchCommand toWalkIn = new SetBatchCommand(Set.of(new SetId(setId)), null, Pool.WALK_IN, null, null);
+
+		Ordering ordering = orderingFor(rep);
+		CountDownLatch gate = new CountDownLatch(1);
+		Outcomes<ClaimOutcome, SetBatchOutcome> outcomes = race(
+				() -> {
+					start(gate, ordering, Ordering.CLAIM_FIRST);
+					return availability.claim(new SetId(setId), DAY);
+				},
+				() -> {
+					start(gate, ordering, Ordering.WRITE_FIRST);
+					return editBeachMap.applyToSets(owner, venue, 0L, toWalkIn);
+				},
+				gate);
+		ClaimOutcome claimed = outcomes.claim();
+		SetBatchOutcome applied = outcomes.write();
+
+		assertEquals(new SetBatchOutcome.Applied(1), applied, "a batch repool is never refused for a claim");
+		assertEquals("WALK_IN", poolOf(setId));
+		boolean claimWon = claimed == ClaimOutcome.CLAIMED;
+		if (!claimWon) {
+			assertEquals(ClaimOutcome.NOT_ONLINE_POOL, claimed,
+					"the batch committed first, so the claim must re-read the new pool");
+		}
+		assertEquals(claimWon ? 1 : 0, holdsOn(setId),
+				"a claim that read ONLINE committed stays claimed; one that lost the lock never inserted");
+		BATCH_BRANCHES.add(claimWon ? "claim" : "write");
+		assertBothOrdersExercised(info, BATCH_BRANCHES, "the batch repool race");
 	}
 
 	@RepeatedTest(6)
@@ -215,6 +254,7 @@ class SetWriteVsClaimConcurrencyIT {
 			assertEquals(0, setRowsFor(setId));
 		}
 		REMOVE_BRANCHES.add(claimWon ? "claim" : "write");
+		assertBothOrdersExercised(info, REMOVE_BRANCHES, "the remove race");
 	}
 
 	private String poolOf(long setId) {

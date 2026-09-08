@@ -249,12 +249,13 @@
             </button>
           </div>
 
-          @if (batchSaved()) {
+          @if (batchUpdated(); as updated) {
             <output
               class="mt-2.5 block text-[12.5px] font-semibold text-riv-console-accent-ink"
               data-testid="batch-saved"
             >
-              Saved. The public beach map reflects your change.
+              {{ updated }} set{{ updated === 1 ? '' : 's' }} updated. The public beach map reflects
+              your change.
             </output>
           }
           @if (batchErrorMessage(); as message) {

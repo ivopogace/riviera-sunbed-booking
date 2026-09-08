@@ -402,7 +402,7 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-saved')).toBeTruthy();
   });
 
-  it('keepsTheSetUnchangedOnSetInUse: a refused repool leaves the grid as the server has it (AC-2)', async () => {
+  it('keepsTheSetUnchangedOnSetInUse: a refused save leaves the grid as the server has it (AC-2)', async () => {
     render();
     selectSet(12);
 
@@ -416,9 +416,10 @@ describe('SetEditor (#600)', () => {
     expect(cellForSet(12).getAttribute('data-state')).toBe('standard');
     expect(changed).toBe(0);
     const message = byId('set-error').textContent ?? '';
-    // The save carries pool AND the placement snapshot, so it names both rather than guessing which.
-    expect(message).toMatch(/pool and position can’t change/i);
-    expect(message).toMatch(/price and tier can still change/i);
+    // Only the position is ever frozen, so the copy names price, tier and pool as still editable.
+    expect(message).toMatch(/position can’t change/i);
+    expect(message).not.toMatch(/pool and position/i); // the pool is never refused
+    expect(message).toMatch(/price, tier and pool can still change/i);
     // The edit guard refuses only a live claim, so the message must not speak for the remove guard.
     expect(message).not.toMatch(/removed/i);
   });
@@ -895,25 +896,20 @@ describe('SetEditor (#600)', () => {
     fixture.detectChanges();
   }
 
-  interface LayoutPutCell {
-    rowLabel: string;
-    positionNo: number;
-    tier: string;
-    pool: string;
-    price: { minorUnits: number; currency: string };
-  }
-
-  interface LayoutPutBody {
-    sets: LayoutPutCell[];
+  interface BatchPatchBody {
+    setIds: number[];
+    tier?: string;
+    pool?: string;
+    price?: { minorUnits: number; currency: string };
     expectedVersion: number;
   }
 
-  function expectLayoutPut(): TestRequest {
-    return http.expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/beach-map'));
+  function expectBatchPatch(): TestRequest {
+    return http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1/sets'));
   }
 
-  function layoutPutBody(req: TestRequest): LayoutPutBody {
-    return req.request.body as LayoutPutBody;
+  function batchPatchBody(req: TestRequest): BatchPatchBody {
+    return req.request.body as BatchPatchBody;
   }
 
   it('sweeps a rectangular block of sets on a multi-cell drag', () => {
@@ -941,44 +937,55 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-selected').textContent).toMatch(/Row B · position 1/);
   });
 
-  it('applies only the touched field, per field (AC-2)', async () => {
+  it('sends one batch PATCH with the swept ids and only the touched field, and renders the count (AC-2)', async () => {
     render();
     dragSweep(1, 1, 2, 1); // row A: sets 10 and 11, both PREMIUM/ONLINE/€35
 
     typeBatchPrice('40');
     click(byId('batch-apply'));
 
-    const req = expectLayoutPut();
-    const body = layoutPutBody(req);
+    const req = expectBatchPatch();
+    const body = batchPatchBody(req);
     expect(body.expectedVersion).toBe(5);
-    const sets = body.sets;
-    const touched = sets.filter((s) => s.rowLabel === 'A');
-    const untouched = sets.filter((s) => s.rowLabel === 'B');
-    expect(touched.every((s) => s.price.minorUnits === 4000)).toBe(true);
-    expect(touched.every((s) => s.tier === 'PREMIUM' && s.pool === 'ONLINE')).toBe(true); // untouched fields kept
-    expect(untouched.every((s) => s.price.minorUnits === 2000)).toBe(true); // sets outside the sweep are untouched
+    expect([...body.setIds].sort()).toEqual([10, 11]); // only the swept sets, never the whole map
+    expect(body.price).toEqual({ minorUnits: 4000, currency: 'EUR' });
+    expect(body).not.toHaveProperty('tier'); // untouched fields are absent, not echoed
+    expect(body).not.toHaveProperty('pool');
 
-    req.flush(null, { status: 204, statusText: 'No Content' });
+    req.flush({ updated: 2 });
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(byId('batch-saved')).toBeTruthy();
+    expect(byId('batch-saved').textContent).toMatch(/2 sets updated/);
     expect(changed).toBe(1);
   });
 
-  it('applies only tier for a tier-only touch, leaving pool and price alone', () => {
+  it('sends only the tier for a tier-only touch', () => {
     render();
     dragSweep(1, 2, 2, 2); // row B: sets 12 (ONLINE) and 13 (WALK_IN)
 
     click(byId('batch-tier-PREMIUM'));
     click(byId('batch-apply'));
 
-    const sets = layoutPutBody(expectLayoutPut()).sets;
-    const set12 = sets.find((s) => s.rowLabel === 'B' && s.positionNo === 1)!;
-    const set13 = sets.find((s) => s.rowLabel === 'B' && s.positionNo === 2)!;
-    expect(set12.tier).toBe('PREMIUM');
-    expect(set12.pool).toBe('ONLINE'); // untouched field kept
-    expect(set13.tier).toBe('PREMIUM');
-    expect(set13.pool).toBe('WALK_IN'); // each set's own untouched pool survives independently
+    const body = batchPatchBody(expectBatchPatch());
+    expect([...body.setIds].sort()).toEqual([12, 13]);
+    expect(body.tier).toBe('PREMIUM');
+    expect(body).not.toHaveProperty('pool'); // each set's own pool survives server-side
+    expect(body).not.toHaveProperty('price');
+  });
+
+  it('renders the singular for a one-set batch', async () => {
+    // Two sets on a diagonal: the column-1 sweep covers one set and one gap cell.
+    render([SETS[0], set({ id: 13, rowLabel: 'B', positionNo: 2, gridX: 2, gridY: 2 })]);
+    dragSweep(1, 1, 1, 2);
+    expect(byId('batch-count').textContent).toContain('1 set selected');
+
+    click(byId('batch-tier-STANDARD'));
+    click(byId('batch-apply'));
+    expectBatchPatch().flush({ updated: 1 });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('batch-saved').textContent).toMatch(/1 set updated/);
   });
 
   it('a STALE_WRITE batch apply keeps the selection and offers Reload (AC-4)', async () => {
@@ -989,7 +996,7 @@ describe('SetEditor (#600)', () => {
     click(byId('batch-tier-STANDARD'));
     click(byId('batch-apply'));
 
-    expectLayoutPut().flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    expectBatchPatch().flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -1004,14 +1011,14 @@ describe('SetEditor (#600)', () => {
     dragSweep(1, 1, 1, 2); // sets 10 and 12
     click(byId('batch-tier-STANDARD'));
     click(byId('batch-apply')); // in flight, not yet flushed
-    const firstPut = expectLayoutPut();
+    const firstPatch = expectBatchPatch();
 
     // Clear and the sweep gesture aren't busy-gated, so this can happen mid-flight.
     click(byId('batch-clear'));
     dragSweep(2, 1, 2, 2); // a fresh sweep: sets 11 and 13
     typeBatchPrice('45');
 
-    firstPut.flush(null, { status: 204, statusText: 'No Content' });
+    firstPatch.flush({ updated: 2 });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -1133,20 +1140,18 @@ describe('SetEditor (#600)', () => {
     expect(byId('batch-panel')).toBeFalsy();
   });
 
-  it('touching only pool applies it to every swept set, leaving tier and price alone', () => {
+  it('sends only the pool for a pool-only touch — booked sets included, nothing is pre-refused', () => {
     render();
     dragSweep(1, 2, 2, 2); // row B: sets 12 (ONLINE) and 13 (WALK_IN)
 
     click(byId('batch-pool-WALK_IN'));
     click(byId('batch-apply'));
 
-    const sets = layoutPutBody(expectLayoutPut()).sets;
-    const set12 = sets.find((s) => s.rowLabel === 'B' && s.positionNo === 1)!;
-    const set13 = sets.find((s) => s.rowLabel === 'B' && s.positionNo === 2)!;
-    expect(set12.pool).toBe('WALK_IN');
-    expect(set12.tier).toBe('STANDARD'); // untouched field kept
-    expect(set13.pool).toBe('WALK_IN');
-    expect(set13.price.minorUnits).toBe(2000); // untouched field kept
+    const body = batchPatchBody(expectBatchPatch());
+    expect([...body.setIds].sort()).toEqual([12, 13]);
+    expect(body.pool).toBe('WALK_IN');
+    expect(body).not.toHaveProperty('tier');
+    expect(body).not.toHaveProperty('price');
   });
 
   it('never applies without the expectedVersion token (no map read has settled)', () => {
@@ -1155,7 +1160,7 @@ describe('SetEditor (#600)', () => {
     click(byId('batch-tier-PREMIUM'));
     click(byId('batch-apply'));
 
-    http.expectNone((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/beach-map'));
+    http.expectNone((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1/sets'));
     expect(byId('batch-panel')).toBeTruthy(); // the sweep is untouched, not silently dropped
   });
 
@@ -1169,7 +1174,7 @@ describe('SetEditor (#600)', () => {
     fixture.detectChanges();
     click(byId('batch-apply'));
 
-    http.expectNone((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/beach-map'));
+    http.expectNone((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1/sets'));
     expect(byId('batch-error').textContent).toMatch(/not valid/i);
   });
 
@@ -1178,14 +1183,18 @@ describe('SetEditor (#600)', () => {
     dragSweep(1, 1, 1, 2);
     click(byId('batch-tier-PREMIUM'));
     click(byId('batch-apply'));
-    expectLayoutPut().flush({ code }, { status, statusText: 'error' });
+    expectBatchPatch().flush({ code }, { status, statusText: 'error' });
     await fixture.whenStable();
     fixture.detectChanges();
     return byId('batch-error').textContent ?? '';
   }
 
-  it('explains a LAYOUT_IN_USE batch-apply refusal', async () => {
-    expect(await applyAndFail('LAYOUT_IN_USE', 409)).toMatch(/locked/i);
+  it('explains a NO_SUCH_SET batch-apply refusal — a swept set removed from another tab', async () => {
+    expect(await applyAndFail('NO_SUCH_SET', 404)).toMatch(/no longer exists/i);
+  });
+
+  it('explains a NOT_VENUE_OWNER batch-apply refusal', async () => {
+    expect(await applyAndFail('NOT_VENUE_OWNER', 403)).toMatch(/do not manage this venue/i);
   });
 
   it('explains a NO_SUCH_VENUE batch-apply refusal', async () => {
@@ -1204,7 +1213,7 @@ describe('SetEditor (#600)', () => {
     click(byId('batch-tier-PREMIUM'));
     click(byId('batch-apply'));
 
-    expectLayoutPut().flush({ code: 'UNAUTHORIZED' }, { status: 401, statusText: 'Unauthorized' });
+    expectBatchPatch().flush({ code: 'UNAUTHORIZED' }, { status: 401, statusText: 'Unauthorized' });
     await fixture.whenStable();
     fixture.detectChanges();
 

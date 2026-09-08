@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -76,7 +77,9 @@ class VenueAdminServiceTest {
 
 	private static final VenueCreationProperties CREATION = new VenueCreationProperties(500);
 
-	private final VenueAdminService service = new VenueAdminService(
+	private final VenueAdminService service = new VenueAdminService(venues, new FakeOwnership(OWNER, VENUE));
+
+	private final BeachMapEditService mapEditor = new BeachMapEditService(
 			venues, new FakeOwnership(OWNER, VENUE), availability, bookings, CLOCK);
 
 	private final OnboardVenueService onboarding =
@@ -121,7 +124,7 @@ class VenueAdminServiceTest {
 
 	@Test
 	void addSetToUnknownVenueIsRejectedAndNotInserted() {
-		AddSetOutcome outcome = service.addSet(OWNER, VENUE, SET_CMD);
+		AddSetOutcome outcome = mapEditor.addSet(OWNER, VENUE, SET_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_VENUE, ((AddSetOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.insertedSets);
@@ -132,7 +135,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.conflict = Optional.of(Venues.Conflict.CELL_TAKEN);
 
-		AddSetOutcome outcome = service.addSet(OWNER, VENUE, SET_CMD);
+		AddSetOutcome outcome = mapEditor.addSet(OWNER, VENUE, SET_CMD);
 
 		assertEquals(SetRejection.CELL_TAKEN, ((AddSetOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.insertedSets);
@@ -143,7 +146,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.nextSetId = 123;
 
-		AddSetOutcome outcome = service.addSet(OWNER, VENUE, SET_CMD);
+		AddSetOutcome outcome = mapEditor.addSet(OWNER, VENUE, SET_CMD);
 
 		assertEquals(new SetId(123), ((AddSetOutcome.Added) outcome).setId());
 		assertEquals(1, venues.insertedSets);
@@ -153,7 +156,7 @@ class VenueAdminServiceTest {
 	void editUnknownSetIsRejected() {
 		venues.venues.add(VENUE.value());
 
-		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, SET_CMD);
+		ChangeOutcome outcome = mapEditor.editSet(OWNER, VENUE, SET, SET_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_SET, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.updatedSets);
@@ -164,7 +167,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
 
-		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, SET_CMD);
+		ChangeOutcome outcome = mapEditor.editSet(OWNER, VENUE, SET, SET_CMD);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
 		assertEquals(1, venues.updatedSets);
@@ -175,7 +178,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 
 		// The locking read is the existence check now: no row to lock ⇒ NO_SUCH_SET, nothing deleted.
-		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
+		ChangeOutcome outcome = mapEditor.removeSet(OWNER, VENUE, SET);
 
 		assertEquals(SetRejection.NO_SUCH_SET, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedSets);
@@ -185,25 +188,41 @@ class VenueAdminServiceTest {
 	void editSetIsRefusedWhenAClaimedSetWouldBeRepositioned() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
 		availability.holdOn.put(SET, TODAY_IN_TIRANE); // the inclusive edge: a hold dated today still blocks
 
-		SetCommand repooled = new SetCommand("Row A", 1, "PREMIUM", Pool.WALK_IN, 4500, "EUR", 2, 1);
-		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, repooled);
+		SetCommand moved = new SetCommand("Row A", 2, "PREMIUM", Pool.ONLINE, 4500, "EUR", 3, 1);
+		ChangeOutcome outcome = mapEditor.editSet(OWNER, VENUE, SET, moved);
 
 		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.updatedSets, "the claimed set must keep the pool its booking assumes");
+		assertEquals(0, venues.updatedSets, "a guest was told this row and number");
+	}
+
+	@Test
+	void editSetAppliesAPoolOnlyChangeToAClaimedSet() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
+		availability.holdOn.put(SET, TODAY_IN_TIRANE); // live, yet inert: the pool governs new reserves only
+		bookings.setHasLiveBookings = true;
+
+		SetCommand repooled = new SetCommand("Row A", 1, "PREMIUM", Pool.WALK_IN, 4500, "EUR", 2, 1);
+		ChangeOutcome outcome = mapEditor.editSet(OWNER, VENUE, SET, repooled);
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
+				"invariant #3 is a reserve-time rule: the booked dates stay claimed by their own rows");
+		assertEquals(1, venues.updatedSets);
 	}
 
 	@Test
 	void editSetIsRefusedWhenABookedSetWouldBeMovedToAnotherCell() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
 		bookings.setHasLiveBookings = true;
 
 		SetCommand moved = new SetCommand("Row B", 4, "PREMIUM", Pool.ONLINE, 4500, "EUR", 9, 3);
-		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, moved);
+		ChangeOutcome outcome = mapEditor.editSet(OWNER, VENUE, SET, moved);
 
 		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.updatedSets, "a guest was told this row and number");
@@ -213,13 +232,13 @@ class VenueAdminServiceTest {
 	void editSetAppliesAPriceOnlyChangeToAClaimedSet() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
 		availability.holdOn.put(SET, TODAY_IN_TIRANE); // live, yet inert: a price-only edit never probes
 		bookings.setHasLiveBookings = true;
 
 		// Same pool, same row, same position, same cell — only tier and price move.
 		SetCommand repriced = new SetCommand("Row A", 1, "STANDARD", Pool.ONLINE, 9900, "EUR", 2, 1);
-		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, repriced);
+		ChangeOutcome outcome = mapEditor.editSet(OWNER, VENUE, SET, repriced);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
 				"a booking's charge is snapshotted at reserve time, so repricing is harmless");
@@ -230,10 +249,10 @@ class VenueAdminServiceTest {
 	void editSetAppliesEveryChangeToAnUnclaimedSet() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
 
 		SetCommand moved = new SetCommand("Row C", 7, "STANDARD", Pool.WALK_IN, 100, "EUR", 5, 5);
-		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, moved);
+		ChangeOutcome outcome = mapEditor.editSet(OWNER, VENUE, SET, moved);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
 		assertEquals(1, venues.updatedSets);
@@ -243,13 +262,13 @@ class VenueAdminServiceTest {
 	void editSetIsAllowedWhenTheOnlyBookingIsTerminalAndTheOnlyHoldIsPast() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
 		// History only: the set is un-deletable (setHasBookings/claimed) but strands nobody.
 		availability.holdOn.put(SET, TODAY_IN_TIRANE.minusDays(400)); // last season, nothing still owed
 		bookings.setHasBookings = true;
 
 		SetCommand moved = new SetCommand("Row B", 4, "PREMIUM", Pool.WALK_IN, 4500, "EUR", 9, 3);
-		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, moved);
+		ChangeOutcome outcome = mapEditor.editSet(OWNER, VENUE, SET, moved);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
 				"last season's cancelled booking must not freeze the map forever");
@@ -260,9 +279,9 @@ class VenueAdminServiceTest {
 	void editSetAsksAboutFutureHoldsOnlyForTheSetBeingEdited() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
 
-		service.editSet(OWNER, VENUE, SET, new SetCommand("Row Z", 9, "PREMIUM", Pool.ONLINE, 4500, "EUR", 9, 9));
+		mapEditor.editSet(OWNER, VENUE, SET, new SetCommand("Row Z", 9, "PREMIUM", Pool.ONLINE, 4500, "EUR", 9, 9));
 
 		assertEquals(List.of(SET), availability.anyClaimsFromAskedAbout,
 				"the edit guard must ask about this set alone, never the whole venue");
@@ -277,7 +296,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
 
-		service.removeSet(OWNER, VENUE, SET);
+		mapEditor.removeSet(OWNER, VENUE, SET);
 
 		assertEquals(List.of(SET), availability.anyClaimsFromAskedAbout,
 				"a venue-wide probe here would freeze every set whenever any one is held");
@@ -288,16 +307,15 @@ class VenueAdminServiceTest {
 	}
 
 	@Test
-	void everyPlacementFieldOnItsOwnDisturbsAClaimedSet() {
-		SetPlacement stored = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+	void everyPositionFieldOnItsOwnDisturbsAClaimedSet() {
+		SetPlacement stored = new SetPlacement("Row A", 1, 2, 1);
 
-		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", Pool.WALK_IN, 1, "EUR", 2, 1)), "pool");
 		assertTrue(stored.disturbedBy(new SetCommand("Row B", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 1)), "rowLabel");
 		assertTrue(stored.disturbedBy(new SetCommand("Row A", 7, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 1)), "positionNo");
 		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 8, 1)), "gridX");
 		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 8)), "gridY");
-		assertFalse(stored.disturbedBy(new SetCommand("Row A", 1, "STANDARD", Pool.ONLINE, 9999, "EUR", 2, 1)),
-				"tier and price never disturb a claim — the charge was snapshotted at reserve time");
+		assertFalse(stored.disturbedBy(new SetCommand("Row A", 1, "STANDARD", Pool.WALK_IN, 9999, "EUR", 2, 1)),
+				"tier, price and pool never disturb a claim — the charge was snapshotted, the pool governs new reserves");
 	}
 
 	@Test
@@ -306,7 +324,7 @@ class VenueAdminServiceTest {
 		venues.sets.put(SET.value(), VENUE.value());
 		availability.holdOn.put(SET, TODAY_IN_TIRANE); // the inclusive edge: a hold dated today still blocks
 
-		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
+		ChangeOutcome outcome = mapEditor.removeSet(OWNER, VENUE, SET);
 
 		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedSets,
@@ -320,7 +338,7 @@ class VenueAdminServiceTest {
 		// History only: a walk-in marked last season, nothing still owed, no booking ever.
 		availability.holdOn.put(SET, TODAY_IN_TIRANE.minusDays(400)); // last season, nothing still owed
 
-		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
+		ChangeOutcome outcome = mapEditor.removeSet(OWNER, VENUE, SET);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
 				"last season's walk-in mark must not freeze the map forever");
@@ -333,7 +351,7 @@ class VenueAdminServiceTest {
 		venues.sets.put(SET.value(), VENUE.value());
 		bookings.setHasBookings = true;
 
-		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
+		ChangeOutcome outcome = mapEditor.removeSet(OWNER, VENUE, SET);
 
 		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedSets,
@@ -346,7 +364,7 @@ class VenueAdminServiceTest {
 		venues.sets.put(SET.value(), VENUE.value());
 		bookings.hasBookings = true; // a booking elsewhere on the venue
 
-		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
+		ChangeOutcome outcome = mapEditor.removeSet(OWNER, VENUE, SET);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
 				"a booking on a neighbouring set must not freeze this one");
@@ -358,7 +376,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
 
-		service.removeSet(OWNER, VENUE, SET);
+		mapEditor.removeSet(OWNER, VENUE, SET);
 
 		assertEquals(1, venues.lockedSets,
 				"without the row lock a claim committing after the probe is silently cascaded away");
@@ -370,7 +388,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
 
-		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
+		ChangeOutcome outcome = mapEditor.removeSet(OWNER, VENUE, SET);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
 		assertEquals(1, venues.deletedSets);
@@ -381,7 +399,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 
 		// The ownership guard runs first: a stranger is rejected before any existence check or insert.
-		assertThrows(NotVenueOwnerException.class, () -> service.addSet(STRANGER, VENUE, SET_CMD));
+		assertThrows(NotVenueOwnerException.class, () -> mapEditor.addSet(STRANGER, VENUE, SET_CMD));
 		assertEquals(0, venues.insertedSets);
 	}
 
@@ -390,8 +408,8 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
 
-		assertThrows(NotVenueOwnerException.class, () -> service.editSet(STRANGER, VENUE, SET, SET_CMD));
-		assertThrows(NotVenueOwnerException.class, () -> service.removeSet(STRANGER, VENUE, SET));
+		assertThrows(NotVenueOwnerException.class, () -> mapEditor.editSet(STRANGER, VENUE, SET, SET_CMD));
+		assertThrows(NotVenueOwnerException.class, () -> mapEditor.removeSet(STRANGER, VENUE, SET));
 		assertEquals(0, venues.updatedSets);
 		assertEquals(0, venues.deletedSets);
 	}
@@ -479,7 +497,7 @@ class VenueAdminServiceTest {
 	void replacesLayoutForUnclaimedVenue() {
 		venues.venues.add(VENUE.value());
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome);
 		assertEquals(1, venues.deletedAllCount);
@@ -492,7 +510,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		bookings.hasBookings = true;
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertEquals(ReplaceRejection.LAYOUT_IN_USE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount); // guard runs BEFORE any delete
@@ -508,7 +526,7 @@ class VenueAdminServiceTest {
 		venues.existingSetIds.add(SET.value());
 		availability.holdOn.put(SET, TODAY_IN_TIRANE); // the inclusive edge: a hold dated today still blocks
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertEquals(ReplaceRejection.LAYOUT_IN_USE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount);
@@ -522,7 +540,7 @@ class VenueAdminServiceTest {
 		// History only: a walk-in-only venue's marks from last season, no booking ever.
 		availability.holdOn.put(SET, TODAY_IN_TIRANE.minusDays(400)); // last season, nothing still owed
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome,
 				"last season's walk-in marks must not freeze the whole map forever");
@@ -539,7 +557,7 @@ class VenueAdminServiceTest {
 		// On the LAST locked set: a guard probing only some of them would cascade this one away.
 		availability.holdOn.put(later, TODAY_IN_TIRANE);
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertEquals(ReplaceRejection.LAYOUT_IN_USE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount);
@@ -553,7 +571,7 @@ class VenueAdminServiceTest {
 		SetId later = new SetId(SET.value() + 1);
 		venues.existingSetIds.add(later.value());
 
-		service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
+		mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertEquals(List.of(SET, later), availability.anyClaimsFromAskedAbout,
 				"the probe must ask about exactly the sets the lock covers — every one of them");
@@ -567,7 +585,7 @@ class VenueAdminServiceTest {
 	void rejectsEmptyLayout() {
 		venues.venues.add(VENUE.value());
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, new LayoutCommand(List.of()));
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, new LayoutCommand(List.of()));
 
 		assertEquals(ReplaceRejection.EMPTY_LAYOUT, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount);
@@ -580,7 +598,7 @@ class VenueAdminServiceTest {
 				new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1),
 				new SetCommand("B", 2, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 1))); // same grid cell
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, clashing);
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, clashing);
 
 		assertEquals(ReplaceRejection.CELL_TAKEN, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount);
@@ -595,7 +613,7 @@ class VenueAdminServiceTest {
 				new SetCommand("A", 3, "PREMIUM", Pool.ONLINE, 2000, "EUR", 3, 1),
 				new SetCommand("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 2)));
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, split);
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, split);
 
 		assertEquals(ReplaceRejection.ROW_NAME_TAKEN, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount);
@@ -610,7 +628,7 @@ class VenueAdminServiceTest {
 				new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1),
 				new SetCommand("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 2)));
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, doubleFault);
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, doubleFault);
 
 		assertEquals(ReplaceRejection.DUPLICATE_POSITION, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 	}
@@ -623,7 +641,7 @@ class VenueAdminServiceTest {
 				new SetCommand("A", 2, "PREMIUM", Pool.ONLINE, 2000, "EUR", 2, 1),
 				new SetCommand("A", 3, "PREMIUM", Pool.ONLINE, 2000, "EUR", 3, 1)));
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, gapped);
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, gapped);
 
 		assertEquals(ReplaceLayoutOutcome.Replaced.REPLACED, outcome);
 		assertEquals(2, venues.insertedInLayout);
@@ -631,7 +649,7 @@ class VenueAdminServiceTest {
 
 	@Test
 	void rejectsReplaceOnUnknownVenue() {
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(1, 1));
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(1, 1));
 
 		assertEquals(ReplaceRejection.NO_SUCH_VENUE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 	}
@@ -644,7 +662,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.setVersionOnLock = 1; // the row moved to 1; the tab loaded 0
 
-		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertEquals(ReplaceRejection.STALE_WRITE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount);
@@ -657,11 +675,89 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 
 		assertThrows(NotVenueOwnerException.class,
-				() -> service.replaceLayout(STRANGER, VENUE, 0L, grid(2, 3)));
+				() -> mapEditor.replaceLayout(STRANGER, VENUE, 0L, grid(2, 3)));
 		// Fail closed: the ownership guard fires before the claim probes, the version read/write, any delete.
 		assertEquals(List.of(), callLog);
 		assertEquals(0, venues.incrementedSetVersions);
 		assertEquals(0, venues.deletedAllCount);
+	}
+
+	// ---- Batch apply ----
+
+	private static final SetBatchCommand BATCH_CMD =
+			new SetBatchCommand(Set.of(SET, new SetId(43)), "PREMIUM", Pool.WALK_IN, 4000L, "EUR");
+
+	private void seedBatchSets() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		venues.sets.put(43L, VENUE.value());
+	}
+
+	@Test
+	void batchAppliesToEveryNamedSetAndAdvancesTheTokenOnce() {
+		seedBatchSets();
+		availability.holdOn.put(SET, TODAY_IN_TIRANE); // live, yet inert: no claim question on price/tier/pool
+		bookings.setHasLiveBookings = true;
+
+		SetBatchOutcome outcome = mapEditor.applyToSets(OWNER, VENUE, 0L, BATCH_CMD);
+
+		assertEquals(new SetBatchOutcome.Applied(2), outcome);
+		assertEquals(1, venues.batchUpdates);
+		assertSame(BATCH_CMD, venues.lastBatch);
+		assertEquals(1, venues.incrementedSetVersions);
+		assertEquals(List.of(), availability.anyClaimsFromAskedAbout, "the batch never probes a claim");
+	}
+
+	@Test
+	void batchLocksTheVenueRowThenTheSetRows() {
+		seedBatchSets();
+
+		mapEditor.applyToSets(OWNER, VENUE, 0L, BATCH_CMD);
+
+		assertEquals(List.of("lockSets"), callLog,
+				"the set rows are locked after the venue row (lockAndReadSetVersion) and before the write");
+		assertEquals(Set.of(SET.value(), 43L), venues.lockedBatchIds);
+	}
+
+	@Test
+	void batchWithAStaleTokenIsRefusedBeforeAnyWrite() {
+		seedBatchSets();
+		venues.setVersionOnLock = 1; // the row moved to 1; the tab loaded 0
+
+		SetBatchOutcome outcome = mapEditor.applyToSets(OWNER, VENUE, 0L, BATCH_CMD);
+
+		assertEquals(SetRejection.STALE_WRITE, ((SetBatchOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.batchUpdates);
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void batchNamingASetNotOnTheVenueIsRefusedWhole() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value()); // 43 belongs to nobody here
+
+		SetBatchOutcome outcome = mapEditor.applyToSets(OWNER, VENUE, 0L, BATCH_CMD);
+
+		assertEquals(SetRejection.NO_SUCH_SET, ((SetBatchOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.batchUpdates, "\"N sets updated\" must never overstate");
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void batchOnUnknownVenueIsRejectedBeforeAnyLock() {
+		SetBatchOutcome outcome = mapEditor.applyToSets(OWNER, VENUE, 0L, BATCH_CMD);
+
+		assertEquals(SetRejection.NO_SUCH_VENUE, ((SetBatchOutcome.Rejected) outcome).reason());
+		assertEquals(List.of(), callLog);
+	}
+
+	@Test
+	void batchByANonOwnerIsDeniedBeforeAnyRead() {
+		seedBatchSets();
+
+		assertThrows(NotVenueOwnerException.class, () -> mapEditor.applyToSets(STRANGER, VENUE, 0L, BATCH_CMD));
+		assertEquals(List.of(), callLog);
+		assertEquals(0, venues.batchUpdates);
 	}
 
 	// ---- Per-row reprice ----
@@ -672,7 +768,7 @@ class VenueAdminServiceTest {
 	void repricesRowForOwnedVenue() {
 		venues.venues.add(VENUE.value());
 
-		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
+		ChangeOutcome outcome = mapEditor.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
 		assertEquals(1, venues.repricedRows);
@@ -681,7 +777,7 @@ class VenueAdminServiceTest {
 
 	@Test
 	void repriceOnUnknownVenueIsRejectedBeforeAnyWrite() {
-		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
+		ChangeOutcome outcome = mapEditor.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_VENUE, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.repricedRows);
@@ -693,7 +789,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.forceRepriceRows = 0;
 
-		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
+		ChangeOutcome outcome = mapEditor.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
 		// A NO_SUCH_ROW reject must NOT advance the token (no spurious bump), so the
@@ -709,7 +805,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.setVersionOnLock = 1; // the row moved to 1; the tab loaded 0
 
-		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
+		ChangeOutcome outcome = mapEditor.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
 
 		assertEquals(SetRejection.STALE_WRITE, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.repricedRows);
@@ -722,7 +818,7 @@ class VenueAdminServiceTest {
 
 		// Invariant #13: the ownership guard is the first act — a stranger is denied before the UPDATE.
 		assertThrows(NotVenueOwnerException.class,
-				() -> service.repriceRow(STRANGER, VENUE, 0L, REPRICE_CMD));
+				() -> mapEditor.repriceRow(STRANGER, VENUE, 0L, REPRICE_CMD));
 		assertEquals(0, venues.repricedRows);
 		assertEquals(0, venues.incrementedSetVersions); // fail closed before the version read/write too
 	}
@@ -736,7 +832,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.rowLabels.add("B");
 
-		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
+		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
 		assertEquals(1, venues.renamedRows);
@@ -751,7 +847,7 @@ class VenueAdminServiceTest {
 		availability.holdOn.put(SET, TODAY_IN_TIRANE);
 		bookings.setHasLiveBookings = true;
 
-		assertSame(ChangeOutcome.Applied.APPLIED, service.renameRow(OWNER, VENUE, 0L, RENAME_CMD));
+		assertSame(ChangeOutcome.Applied.APPLIED, mapEditor.renameRow(OWNER, VENUE, 0L, RENAME_CMD));
 		assertFalse(callLog.contains("anyClaimsFrom"));
 	}
 
@@ -761,7 +857,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.rowLabels.addAll(Set.of("A", "B"));
 
-		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "A"));
+		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "A"));
 
 		assertEquals(SetRejection.ROW_NAME_TAKEN, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.renamedRows);
@@ -774,7 +870,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.rowLabels.add("B");
 
-		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "B"));
+		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "B"));
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
 		assertEquals(0, venues.renamedRows);
@@ -783,7 +879,7 @@ class VenueAdminServiceTest {
 
 	@Test
 	void renameOnUnknownVenueIsRejectedBeforeAnyWrite() {
-		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
+		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_VENUE, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.renamedRows);
@@ -793,7 +889,7 @@ class VenueAdminServiceTest {
 	void renameOfARowWithNoSetsIsNotFound() {
 		venues.venues.add(VENUE.value()); // no row carries "B"
 
-		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
+		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.renamedRows); // refused before the UPDATE, not by its rows-affected
@@ -808,7 +904,7 @@ class VenueAdminServiceTest {
 		venues.rowLabels.add("B");
 		venues.forceRenameRows = 0;
 
-		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
+		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.incrementedSetVersions);
@@ -820,7 +916,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.rowLabels.add("A");
 
-		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "A"));
+		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "A"));
 
 		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
 	}
@@ -830,7 +926,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.rowLabels.addAll(Set.of("A", "B"));
 
-		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", " A "));
+		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", " A "));
 
 		assertEquals(SetRejection.ROW_NAME_TAKEN, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.renamedRows);
@@ -842,7 +938,7 @@ class VenueAdminServiceTest {
 		venues.rowLabels.add("B");
 		venues.setVersionOnLock = 1; // the row moved to 1; the tab loaded 0
 
-		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
+		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
 
 		assertEquals(SetRejection.STALE_WRITE, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.renamedRows);
@@ -856,7 +952,7 @@ class VenueAdminServiceTest {
 
 		// Invariant #13: the ownership guard is the first act — a stranger never reaches the UPDATE.
 		assertThrows(NotVenueOwnerException.class,
-				() -> service.renameRow(STRANGER, VENUE, 0L, RENAME_CMD));
+				() -> mapEditor.renameRow(STRANGER, VENUE, 0L, RENAME_CMD));
 		assertEquals(0, venues.renamedRows);
 		assertEquals(0, venues.incrementedSetVersions);
 	}
@@ -875,7 +971,7 @@ class VenueAdminServiceTest {
 		store.summaries.put(20L, new OwnedVenueView(20, "Aurora", "Borsh"));
 		VenueAdminService owned = new VenueAdminService(store, new MultiOwnership(Map.of(
 				MULTI_OWNER, Set.of(new VenueRef(12), new VenueRef(15)),
-				OTHER_OWNER, Set.of(new VenueRef(20)))), availability, bookings, CLOCK);
+				OTHER_OWNER, Set.of(new VenueRef(20)))));
 
 		List<OwnedVenueView> result = owned.ownedBy(MULTI_OWNER);
 
@@ -891,8 +987,7 @@ class VenueAdminServiceTest {
 	void ownedByReturnsEmptyWithoutHittingTheRepositoryWhenNothingIsOwned() {
 		// A freshly-approved operator owns nothing: an empty list, and no `IN ()` predicate at all.
 		FakeVenues store = new FakeVenues(new ArrayList<>());
-		VenueAdminService owned = new VenueAdminService(store, new MultiOwnership(Map.of()),
-				availability, bookings, CLOCK);
+		VenueAdminService owned = new VenueAdminService(store, new MultiOwnership(Map.of()));
 
 		assertEquals(List.of(), owned.ownedBy(MULTI_OWNER));
 		assertEquals(List.of(), store.summaryQueries);
@@ -995,7 +1090,7 @@ class VenueAdminServiceTest {
 
 		int lockedSets;
 		// The placement the locked row reports; the per-set guard compares the command against it.
-		SetPlacement storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+		SetPlacement storedPlacement = new SetPlacement("Row A", 1, 2, 1);
 
 		@Override
 		public Optional<SetPlacement> lockSet(VenueId venueId, SetId setId) {
@@ -1056,6 +1151,26 @@ class VenueAdminServiceTest {
 		public List<SetId> lockSetsOfVenue(VenueId venueId) {
 			callLog.add("lockSetsOfVenue");
 			return existingSetIds.stream().map(SetId::new).toList();
+		}
+
+		final Set<Long> lockedBatchIds = new HashSet<>();
+		int batchUpdates;
+		SetBatchCommand lastBatch;
+
+		@Override
+		public Set<SetId> lockSets(VenueId venueId, Collection<SetId> setIds) {
+			callLog.add("lockSets");
+			lockedBatchIds.addAll(setIds.stream().map(SetId::value).toList());
+			return setIds.stream()
+					.filter(id -> venueId.value() == sets.getOrDefault(id.value(), -1L))
+					.collect(Collectors.toSet());
+		}
+
+		@Override
+		public int updateSetFields(VenueId venueId, SetBatchCommand command) {
+			batchUpdates++;
+			lastBatch = command;
+			return command.setIds().size();
 		}
 
 		@Override

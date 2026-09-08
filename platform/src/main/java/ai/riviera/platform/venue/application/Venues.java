@@ -29,7 +29,7 @@ public interface Venues {
 	/**
 	 * Lock the venue row and read its current {@code set_version} optimistic-concurrency token —
 	 * {@code SELECT set_version FROM venue WHERE id = :id FOR UPDATE}. The token is the SEPARATE counter
-	 * for the operator set-position writes (beach-map replace, per-row reprice, per-row rename), distinct from the
+	 * for the operator set-position writes (beach-map replace, per-row reprice, per-row rename, batch apply), distinct from the
 	 * profile {@code version}. The caller (having pre-checked existence) compares the returned value
 	 * to the loaded {@code expectedVersion}: a mismatch means another writer advanced it since the load →
 	 * STALE_WRITE. This is the <strong>first</strong> lock every set-write takes — before
@@ -57,8 +57,10 @@ public interface Venues {
 	 * guard for {@code editSet}/{@code removeSet}, because a concurrent {@code set_availability} or
 	 * {@code booking} insert needs {@code FOR KEY SHARE} on this row for its FK check and therefore
 	 * blocks until the edit commits — closing the window in which a claim committed after the claim
-	 * probe would be CASCADE-swept by the delete or stranded by a pool flip. Empty doubles as the
-	 * existence check, so the caller needs no separate probe.
+	 * probe would be CASCADE-swept by the delete, and making a racing claim's pool read
+	 * ({@code FOR KEY SHARE}) wait for a pool flip to commit, so the claim decides against the
+	 * committed pool (invariant #3 is a reserve-time rule). Empty doubles as the existence check, so
+	 * the caller needs no separate probe.
 	 *
 	 * <p><strong>Lock ordering.</strong> The per-set writes take this lock and <em>no other</em> —
 	 * in particular they never take the venue row, so they cannot form a cycle with the
@@ -138,6 +140,24 @@ public interface Venues {
 	 * {@code ON DELETE CASCADE}-swept by {@link #deleteAllSets}.
 	 */
 	List<SetId> lockSetsOfVenue(VenueId venueId);
+
+	/**
+	 * Lock the named set rows of the venue ({@code SELECT … WHERE venue_id = :venue AND id IN (:ids)
+	 * FOR UPDATE}) and return the ids actually found — fewer than asked means an id is not this
+	 * venue's, which the caller refuses before writing. The same {@code FOR UPDATE} as
+	 * {@link #lockSet}, for the same reason: a concurrent claim's {@code FOR KEY SHARE} pool read
+	 * blocks until this transaction ends. Taken after {@link #lockAndReadSetVersion} (venue row before
+	 * set rows). Never called with an empty collection.
+	 */
+	Set<SetId> lockSets(VenueId venueId, Collection<SetId> setIds);
+
+	/**
+	 * Overwrite only the columns {@code command} touches — tier, pool, price — on every named set of
+	 * the venue in one {@code UPDATE}; an untouched field keeps each row's own value. Set identity,
+	 * coordinates and any {@code set_availability} hold survive. Returns the number of rows changed.
+	 * The caller holds the rows from {@link #lockSets}, so every id is present.
+	 */
+	int updateSetFields(VenueId venueId, SetBatchCommand command);
 
 	/** Delete every set position of the venue. Returns the number of rows deleted. */
 	int deleteAllSets(VenueId venueId);

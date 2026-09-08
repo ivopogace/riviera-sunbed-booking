@@ -4,8 +4,8 @@
  * The state is the {@code venue} and {@code set_position} tables: a venue's beach map is its set
  * rows, and the commission rate is effective-dated in {@code venue_commission_rate}.
  *
- * <p>Full-module layout (ADR-0007): it owns an application service
- * ({@code VenueAdminService}), so it takes the full template — {@code api} + {@code spi}
+ * <p>Full-module layout (ADR-0007): it owns application services
+ * ({@code BeachMapEditService}, {@code VenueAdminService}), so it takes the full template — {@code api} + {@code spi}
  * + {@code vocabulary} + {@code application} + {@code adapter.in} + {@code adapter.out} + a one-type
  * {@code domain} ({@code SalesClose}). It is the one module that owns <strong>cross-module dependency inversions</strong>:
  * the driven ports declared in {@code venue.spi} (inventory: that package's Javadoc) are
@@ -17,7 +17,7 @@
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Venue",
-    // operator::api: VenueAdminService asserts per-venue ownership before a beach-map edit
+    // operator::api: BeachMapEditService asserts per-venue ownership before a beach-map edit
     // (invariant #13). operator publishes its own VenueRef, so this edge does not cycle.
     // review::events + ::api: the rating listener re-reads the aggregate review computed; review is a leaf.
     allowedDependencies = { "operator::api", "operator::vocabulary", "review::api", "review::events", "review::vocabulary", "shared" }

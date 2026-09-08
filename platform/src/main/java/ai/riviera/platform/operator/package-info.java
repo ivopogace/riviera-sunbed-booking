@@ -16,7 +16,7 @@
  * <p><strong>Deny-by-default and acyclic:</strong> {@code allowedDependencies = {}}. It does
  * <em>not</em> depend on {@code venue::api}; it publishes its own {@link
  * ai.riviera.platform.operator.vocabulary.VenueRef} typed id (invariant #11) so that {@code venue}'s own
- * {@code VenueAdminService} can call the ownership port without creating a {@code venue ↔ operator}
+ * {@code BeachMapEditService} can call the ownership port without creating a {@code venue ↔ operator}
  * cycle. Authentication/login stays a platform/edge (Spring Security) concern; this module
  * owns the ownership <em>mapping</em>, not the login.
  */
