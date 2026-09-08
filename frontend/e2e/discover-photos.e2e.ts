@@ -222,8 +222,7 @@ test('the Discover card slideshow crossfades through all three slots via the ste
   await next.click();
   await expect(position).toHaveText('Photo 2 of 3');
   await expect(shown).toHaveCSS('opacity', '1');
-  // The slide mounted on demand, and — the tourist having now stepped once — its paint warmed the
-  // neighbours, so the rest of the set follows. Nothing was fetched before that first step.
+  // Mounted on demand, and — one step in — its paint warms the neighbours, so the set follows.
   await expect(slides).toHaveCount(3);
 
   // Forward past the end wraps to the cover; back from the cover wraps to the last slot.
