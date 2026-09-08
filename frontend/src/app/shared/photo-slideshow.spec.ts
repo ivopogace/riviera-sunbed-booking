@@ -324,7 +324,7 @@ describe('PhotoSlideshow', () => {
     pointer('pointerdown', 0, 0, 1);
     pointer('pointerdown', 300, 0, 2, 'touch', false);
     pointer('pointerup', 0, 0, 1);
-    pointer('pointerup', 300, 0, 2, 'touch', false);
+    pointer('pointerup', 400, 0, 2, 'touch', false);
     fixture.detectChanges();
     expect(shownSrc()).toBe(PHOTOS[0]);
 
