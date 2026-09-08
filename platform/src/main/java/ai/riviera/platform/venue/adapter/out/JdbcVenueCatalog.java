@@ -129,7 +129,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		List<SetRow> rows = jdbc.sql("""
 				SELECT id, row_label, position_no, tier, pool, price_minor, price_currency,
 				       grid_x, grid_y
-				FROM set_position
+				FROM active_set_position
 				WHERE venue_id = :id
 				ORDER BY grid_y, grid_x
 				""")
@@ -205,7 +205,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		List<Long> venueIds = venues.stream().map(SummaryRow::id).toList();
 		List<SetPriceRow> sets = jdbc.sql("""
 				SELECT id, venue_id, price_minor, price_currency
-				FROM set_position
+				FROM active_set_position
 				WHERE venue_id IN (:venueIds)
 				""")
 				.param(P_VENUE_IDS, venueIds)
@@ -423,7 +423,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		// Ids only — the calendar needs how many sets there are, not how they render or price.
 		List<SetId> sets = jdbc.sql("""
 				SELECT id
-				FROM set_position
+				FROM active_set_position
 				WHERE venue_id = :id
 				""")
 				.param("id", id.value())

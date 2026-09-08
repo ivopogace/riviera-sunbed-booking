@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue.application;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -51,8 +52,9 @@ public interface Venues {
 	void incrementSetVersion(VenueId venueId);
 
 	/**
-	 * Lock one set row and read its current {@link SetPlacement} — {@code SELECT … WHERE id = :setId
-	 * AND venue_id = :venue FOR UPDATE} — or empty when no such set belongs to the venue. The
+	 * Lock one active set row and read its current {@link SetPlacement} — {@code SELECT … WHERE id =
+	 * :setId AND venue_id = :venue FOR UPDATE} on the active map — or empty when no such set belongs
+	 * to the venue, a retired one included. The
 	 * per-set counterpart of {@link #lockSetsOfVenue}: the {@code FOR UPDATE} is the invariant-#2
 	 * guard for {@code editSet}/{@code removeSet}, because a concurrent {@code set_availability} or
 	 * {@code booking} insert needs {@code FOR KEY SHARE} on this row for its FK check and therefore
@@ -90,10 +92,19 @@ public interface Venues {
 	void updateSet(VenueId venueId, SetId setId, SetCommand command);
 
 	/**
-	 * Remove a set position. As with {@link #updateSet}, the caller holds the row lock from
-	 * {@link #lockSet}, so a 0-row delete is not reachable and is not reported.
+	 * Remove a set position that carries no booking. As with {@link #updateSet}, the caller holds the
+	 * row lock from {@link #lockSet}, so a 0-row delete is not reachable and is not reported.
 	 */
 	void deleteSet(VenueId venueId, SetId setId);
+
+	/**
+	 * Retire a set position that carries booking history: stamp {@code retired_at} with
+	 * {@code retiredAt} (a UTC instant, invariant #6) and leave the row for every booking that names
+	 * it (ADR-0019). From then on the set is absent from every read but {@code SetBookingFacts}, and
+	 * its row/position and grid cell are free for a new set. The caller holds the row lock from
+	 * {@link #lockSet}, which reads the active map, so a retired set is never retired twice.
+	 */
+	void retireSet(VenueId venueId, SetId setId, Instant retiredAt);
 
 	/**
 	 * Reprice every set in a row of the venue in one non-destructive {@code UPDATE}:
@@ -122,7 +133,7 @@ public interface Venues {
 	int renameRow(VenueId venueId, RowNameCommand command);
 
 	/**
-	 * The ids of every set currently on the venue's map, <strong>without locking</strong> — the
+	 * The ids of every active set on the venue's map, <strong>without locking</strong> — the
 	 * plain read the owner's daily availability view composes with the per-day states.
 	 * Empty when the venue has no sets. For the bulk layout replace use {@link #lockSetsOfVenue},
 	 * whose {@code FOR UPDATE} is that write's invariant-#2 guard; a read must never take it.
@@ -130,7 +141,7 @@ public interface Venues {
 	List<SetId> setIdsOf(VenueId venueId);
 
 	/**
-	 * The ids of every set currently on the venue's map, <strong>locking those rows</strong>
+	 * The ids of every active set on the venue's map, <strong>locking those rows</strong>
 	 * ({@code SELECT … FOR UPDATE}) for the caller's transaction (empty when the venue has no sets).
 	 * The lock is the invariant-#2 guard for the bulk layout replace: a concurrent
 	 * {@code set_availability}/{@code booking} insert takes a {@code FOR KEY SHARE} lock on the

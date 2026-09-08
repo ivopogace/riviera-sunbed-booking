@@ -49,8 +49,8 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 
 	@Override
 	public Optional<Pool> poolForClaim(SetId setId) {
-		// FOR KEY SHARE: the lock the claim's own INSERT needs anyway, taken early (invariant #3).
-		return jdbc.sql("SELECT pool FROM set_position WHERE id = :id FOR KEY SHARE")
+		// FOR KEY SHARE through the view: the claim's own FK lock, and the view predicate is re-checked after the wait.
+		return jdbc.sql("SELECT pool FROM active_set_position WHERE id = :id FOR KEY SHARE")
 				.param("id", setId.value())
 				.query(String.class)
 				.optional()

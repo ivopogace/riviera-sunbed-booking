@@ -21,7 +21,7 @@ import ai.riviera.platform.venue.api.SetBookingFacts;
  * (invariant #2), package-private behind {@link StaffAvailability}. Explicit SQL via
  * {@link JdbcClient}, no JPA (invariant #1).
  *
- * <p><strong>Per-venue authorization (invariant #13, issue #73):</strong> a set id is globally
+ * <p><strong>Per-venue authorization (invariant #13):</strong> a set id is globally
  * unique, so the owning venue is resolved from {@code setId} via {@link SetBookingFacts#setBookingInfo}
  * (venue's {@code api/} port, not its tables — invariant #11) and the operator is checked against
  * <em>that</em> venue via {@link VenueOwnership#assertOwns} — never the decorative path
@@ -32,13 +32,15 @@ import ai.riviera.platform.venue.api.SetBookingFacts;
  *
  * <p><strong>Mark</strong> in one transaction: resolve the set (→ {@code NO_SUCH_SET} if unknown),
  * assert ownership, reject a date before today in {@code Europe/Tirane} (invariant #6 — reasoned via
- * the injected UTC {@link Clock}, never the JVM zone), then an atomic
+ * the injected UTC {@link Clock}, never the JVM zone), take the same locked claim-time read the
+ * online claim takes ({@link SetBookingFacts#poolForClaim} — empty for a retired set, so
+ * {@code NO_SUCH_SET}; the pool itself is ignored, marks are pool-agnostic), then an atomic
  * {@code INSERT ... ON CONFLICT (set_id, booking_date) DO NOTHING}. Rows-affected decides the winner
  * ({@code 1} = {@code MARKED}, {@code 0} = {@code ALREADY_TAKEN}) — the same single-statement
  * concurrency primitive the online claim uses against the {@code UNIQUE} index, so a staff mark
  * racing an online claim for one {@code (set, date)} cannot both win.
  *
- * <p>Unlike the online claim this is <strong>pool-agnostic</strong> (issue #10): any free set may
+ * <p>Unlike the online claim this is <strong>pool-agnostic</strong>: any free set may
  * be marked, including an online-pool one — marking it is exactly what removes it from the online
  * pool for the day.
  *
@@ -74,6 +76,10 @@ class StaffAvailabilityService implements StaffAvailability {
 		ownership.assertOwns(operator, new VenueRef(set.get().venueId().value()));
 		if (date.isBefore(LocalDate.ofInstant(clock.instant(), TIRANE))) {
 			return MarkOutcome.DATE_IN_PAST;
+		}
+		// The locked claim-time gate: the facts read above answers for a retired set, this one does not (ADR-0019).
+		if (setFacts.poolForClaim(setId).isEmpty()) {
+			return MarkOutcome.NO_SUCH_SET;
 		}
 		int inserted = jdbc.sql("""
 				INSERT INTO set_availability (set_id, booking_date, state)
