@@ -346,16 +346,31 @@ class VenueAdminServiceTest {
 	}
 
 	@Test
-	void removeSetIsRefusedWhenTheSetHasAnyBooking() {
+	void removeSetRetiresASetWithOnlyTerminalBookings() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		bookings.setHasBookings = true; // history only: the FK pins the row, nobody is still coming
+
+		ChangeOutcome outcome = mapEditor.removeSet(OWNER, VENUE, SET);
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
+		assertEquals(1, venues.retiredSets, "a set with history leaves the map by retiring");
+		assertEquals(0, venues.deletedSets, "the RESTRICT FK would raise instead, which the caller sees as a 500");
+		assertEquals(CLOCK.instant(), venues.lastRetiredAt, "the marker is the service clock's instant (invariant #6)");
+	}
+
+	@Test
+	void removeSetIsRefusedWhenTheSetHasALiveBooking() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
 		bookings.setHasBookings = true;
+		bookings.setHasLiveBookings = true;
 
 		ChangeOutcome outcome = mapEditor.removeSet(OWNER, VENUE, SET);
 
 		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.deletedSets,
-				"the RESTRICT FK would raise instead, which the caller sees as a 500");
+		assertEquals(0, venues.retiredSets, "a guest still coming keeps the set on the map");
+		assertEquals(0, venues.deletedSets);
 	}
 
 	@Test
@@ -369,6 +384,7 @@ class VenueAdminServiceTest {
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
 				"a booking on a neighbouring set must not freeze this one");
 		assertEquals(1, venues.deletedSets);
+		assertEquals(0, venues.retiredSets, "no history on this set, so it is deleted, not retired");
 	}
 
 	@Test
