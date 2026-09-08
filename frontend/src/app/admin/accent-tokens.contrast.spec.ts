@@ -29,10 +29,11 @@ import {
  * WCAG guard for the `--riv-accent-*` token family, the positive-state counterpart to
  * `admin-console.contrast.spec.ts`'s negative-state guard.
  *
- * <p>The INK sites are porcelain-only, and for them that is the whole proof rather than half of
- * it: all nine sit inside the consoles, whose routes the app shell pins `data-riv-theme="porcelain"`
- * (`app.ts`), so no other theme can reach them. The subtree
- * pinning that guarantee rests on is not something jsdom maths can see — `accent-token-inks.e2e.ts`
+ * <p>The INK sites are the porcelain half of the proof: all nine sit inside the consoles, whose
+ * routes the app shell pins to the operator's console theme (`app.ts`), so the tourist document
+ * theme never reaches them — but the console's own dark theme does, and that half is measured as
+ * `CONSOLE_THEMES`' `accentRing` by the per-tab console contrast specs. The subtree
+ * pinning both rest on is not something jsdom maths can see — `accent-token-inks.e2e.ts`
  * pins it against a real render under a forced dark document theme.
  *
  * <p>The TINT tokens are a different matter and are asserted on both surface families. They are

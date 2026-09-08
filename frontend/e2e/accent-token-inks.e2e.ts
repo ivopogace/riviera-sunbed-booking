@@ -5,7 +5,7 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * The accent teal family paints from the token registry, asserted against a real render (#835) —
+ * The accent teal family paints from the token registry, asserted against a real render —
  * the positive-state counterpart to `admin-token-inks.e2e.ts`.
  *
  * <p>The computed style is what is checked, never the class list. A `--riv-accent-*` declared
@@ -17,10 +17,11 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  * lets the rest of the file stay on the two families that are cheap to drive.
  *
  * <p>The last two tests pin the subtree resolution the family's correctness rests on: the nine
- * migrated console sites are safe on a THEMED token only because their console pins porcelain, so
- * their inks must survive a `dark` document theme. The unit contrast spec proves porcelain only,
- * and cannot see that. Both consoles are driven, because they pin porcelain through two separate
- * host bindings — one passing is not evidence about the other.
+ * migrated console sites are safe on a THEMED token only because the app shell pins their routes
+ * to the console's own theme, porcelain by default, so their inks must survive a `dark` document
+ * theme. The unit contrast spec proves porcelain only, and cannot see that. Both consoles are
+ * driven, because each reaches that one pin through its own route data — one passing is not
+ * evidence about the other.
  */
 
 const ACCENT_INK = 'rgb(8, 90, 110)';

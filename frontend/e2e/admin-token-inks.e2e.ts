@@ -12,12 +12,13 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  *
  * <p>One representative element per family, since a token resolves the same way everywhere: the
  * error ink, the danger panel's fill and border, and the danger ink and border on the action
- * inside it — the last is the Erase button's WCAG 1.4.11 affordance boundary (issue #834), so
+ * inside it — the last is the Erase button's WCAG 1.4.11 affordance boundary, so
  * its rendered value is asserted, not just its contrast math.
  *
  * <p>The last test pins the subtree resolution `@theme inline` buys: each utility carries
  * `var(--riv-*)` rather than a resolved value, so a subtree pinning its own `data-riv-theme`
- * re-resolves it. The console pins porcelain, so its inks must survive a `dark` document theme.
+ * re-resolves it. The app shell pins the console to its own theme, porcelain by default, so its
+ * inks must survive a `dark` document theme.
  */
 
 const ERROR_INK = 'rgb(163, 22, 14)';

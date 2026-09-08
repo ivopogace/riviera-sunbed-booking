@@ -18,8 +18,8 @@ import {
  * WCAG 1.4.11 guard for the shared tab rail. Two non-text marks identify the rail: the
  * current tab's 3px underline in `--riv-ink`, and the hairline the tabs share plus the group
  * dividers, both in `--riv-ink-faint`. Each is held to 3:1 against the header glass over every
- * background stop, per theme — the rail is a `shared/` primitive, so a dark-themed host is a
- * real consumer even though both consoles pin porcelain today.
+ * background stop, per theme — the rail is a `shared/` primitive, and the console's own dark
+ * theme makes a dark-themed host a real consumer rather than a hypothetical one.
  */
 describe('TabRail contrast (WCAG 1.4.11)', () => {
   const themes = [
