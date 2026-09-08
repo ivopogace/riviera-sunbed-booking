@@ -166,7 +166,7 @@ class VenueAdminService
 
 	/**
 	 * Whether anyone is still owed this exact spot — a live hold, or a booking that has not reached
-	 * a terminal state. The <em>edit</em> question: an {@code UPDATE} of pool or coordinates strands
+	 * a terminal state. The <em>edit</em> question: an {@code UPDATE} of the coordinates strands
 	 * only a guest who is still coming, so last season's cancelled booking must not freeze the map
 	 * forever. Callers must already hold the row lock.
 	 */

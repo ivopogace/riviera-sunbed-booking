@@ -185,21 +185,37 @@ class VenueAdminServiceTest {
 	void editSetIsRefusedWhenAClaimedSetWouldBeRepositioned() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
 		availability.holdOn.put(SET, TODAY_IN_TIRANE); // the inclusive edge: a hold dated today still blocks
+
+		SetCommand moved = new SetCommand("Row A", 2, "PREMIUM", Pool.ONLINE, 4500, "EUR", 3, 1);
+		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, moved);
+
+		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.updatedSets, "a guest was told this row and number");
+	}
+
+	@Test
+	void editSetAppliesAPoolOnlyChangeToAClaimedSet() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
+		availability.holdOn.put(SET, TODAY_IN_TIRANE); // live, yet inert: the pool governs new reserves only
+		bookings.setHasLiveBookings = true;
 
 		SetCommand repooled = new SetCommand("Row A", 1, "PREMIUM", Pool.WALK_IN, 4500, "EUR", 2, 1);
 		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, repooled);
 
-		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.updatedSets, "the claimed set must keep the pool its booking assumes");
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
+				"invariant #3 is a reserve-time rule: the booked dates stay claimed by their own rows");
+		assertEquals(1, venues.updatedSets);
 	}
 
 	@Test
 	void editSetIsRefusedWhenABookedSetWouldBeMovedToAnotherCell() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
 		bookings.setHasLiveBookings = true;
 
 		SetCommand moved = new SetCommand("Row B", 4, "PREMIUM", Pool.ONLINE, 4500, "EUR", 9, 3);
@@ -213,7 +229,7 @@ class VenueAdminServiceTest {
 	void editSetAppliesAPriceOnlyChangeToAClaimedSet() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
 		availability.holdOn.put(SET, TODAY_IN_TIRANE); // live, yet inert: a price-only edit never probes
 		bookings.setHasLiveBookings = true;
 
@@ -230,7 +246,7 @@ class VenueAdminServiceTest {
 	void editSetAppliesEveryChangeToAnUnclaimedSet() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
 
 		SetCommand moved = new SetCommand("Row C", 7, "STANDARD", Pool.WALK_IN, 100, "EUR", 5, 5);
 		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, moved);
@@ -243,7 +259,7 @@ class VenueAdminServiceTest {
 	void editSetIsAllowedWhenTheOnlyBookingIsTerminalAndTheOnlyHoldIsPast() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
 		// History only: the set is un-deletable (setHasBookings/claimed) but strands nobody.
 		availability.holdOn.put(SET, TODAY_IN_TIRANE.minusDays(400)); // last season, nothing still owed
 		bookings.setHasBookings = true;
@@ -260,7 +276,7 @@ class VenueAdminServiceTest {
 	void editSetAsksAboutFutureHoldsOnlyForTheSetBeingEdited() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
 
 		service.editSet(OWNER, VENUE, SET, new SetCommand("Row Z", 9, "PREMIUM", Pool.ONLINE, 4500, "EUR", 9, 9));
 
@@ -288,16 +304,15 @@ class VenueAdminServiceTest {
 	}
 
 	@Test
-	void everyPlacementFieldOnItsOwnDisturbsAClaimedSet() {
-		SetPlacement stored = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+	void everyPositionFieldOnItsOwnDisturbsAClaimedSet() {
+		SetPlacement stored = new SetPlacement("Row A", 1, 2, 1);
 
-		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", Pool.WALK_IN, 1, "EUR", 2, 1)), "pool");
 		assertTrue(stored.disturbedBy(new SetCommand("Row B", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 1)), "rowLabel");
 		assertTrue(stored.disturbedBy(new SetCommand("Row A", 7, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 1)), "positionNo");
 		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 8, 1)), "gridX");
 		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 8)), "gridY");
-		assertFalse(stored.disturbedBy(new SetCommand("Row A", 1, "STANDARD", Pool.ONLINE, 9999, "EUR", 2, 1)),
-				"tier and price never disturb a claim — the charge was snapshotted at reserve time");
+		assertFalse(stored.disturbedBy(new SetCommand("Row A", 1, "STANDARD", Pool.WALK_IN, 9999, "EUR", 2, 1)),
+				"tier, price and pool never disturb a claim — the charge was snapshotted, the pool governs new reserves");
 	}
 
 	@Test
@@ -995,7 +1010,7 @@ class VenueAdminServiceTest {
 
 		int lockedSets;
 		// The placement the locked row reports; the per-set guard compares the command against it.
-		SetPlacement storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
+		SetPlacement storedPlacement = new SetPlacement("Row A", 1, 2, 1);
 
 		@Override
 		public Optional<SetPlacement> lockSet(VenueId venueId, SetId setId) {

@@ -264,14 +264,14 @@ APIs. No deviation.
 
 ## Execution status
 
-**Stage pointer:** `plan → implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** phase 1 — red test on `SetPlacement.disturbedBy` / `editSet`, then the docs.
+**Next action:** phase 2 — red `SetBatchCommandTest` + `VenueAdminServiceTest.batch*`, then the port.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | |
-| 1 — the reserve-time pool rule (guard, ITs, docs, Javadoc, takings comment) | | |
+| 1 — the reserve-time pool rule (guard, ITs, docs, Javadoc, takings comment) | ✅ | phase-1 commit (SHA recorded in the phase-2 commit) |
 | 2 — the batch endpoint (backend) | | |
 | 3 — the batch panel rewire (frontend + e2e) | | |
 | 4 — PR gates + close-out | | |
@@ -392,6 +392,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-08 | phase 1 | every production statement or prose line that refuses a pool change or derives a set's pool from a booking row | `grep -rn -i "repool\|pool flip\|online-pool set\|walk-in inventory" platform/src/main frontend/src RESPONSIBILITIES.md CONTEXT.md` | `EditBeachMap#removeSet` Javadoc ("repool or reposition"); `pricing-tab` projection (sums online-pool sets — a sales projection, still correct); `venue-map.ts` ("ONLINE-pool sets are bookable" — the reserve-time rule, correct); thread-pool matches (noise) | reworded the one Javadoc; the rest stand |
 
 ---
 

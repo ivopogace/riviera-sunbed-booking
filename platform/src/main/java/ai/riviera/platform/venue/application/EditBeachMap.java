@@ -24,16 +24,15 @@ public interface EditBeachMap {
 	AddSetOutcome addSet(OperatorId operator, VenueId venueId, SetCommand command);
 
 	/**
-	 * Re-place an existing set (tier, pool, price, coordinates) — the pool split is editable, but
-	 * not while someone is still owed the spot. If the command would change the pool or the
-	 * position (row label, position number, grid cell) of a set that carries a hold dated today or
-	 * later, or a booking in a non-terminal status, the edit is refused with
-	 * {@link SetRejection#SET_IN_USE} (→ 409) and nothing is written — otherwise a repool would
-	 * strand an online booking on walk-in inventory (invariant #3) and a move would re-seat a
-	 * guest who was told this row and number. Price and tier are never refused: a booking's charge
-	 * is snapshotted at reserve time, the same reason {@link #repriceRow} is allowed on a claimed
-	 * venue. History does not block an edit — a cancelled or completed booking pins the row
-	 * against deletion but strands nobody.
+	 * Re-place an existing set (tier, pool, price, coordinates). Price, tier and pool are never
+	 * refused: a booking's charge is snapshotted at reserve time, and the pool governs only whether a
+	 * <em>new</em> online booking may claim the set (invariant #3 is a reserve-time rule), so a set
+	 * switched to walk-in stops selling online from now on while its already-booked dates stay
+	 * claimed. Only a position change (row label, position number, grid cell) of a set that carries a
+	 * hold dated today or later, or a booking in a non-terminal status, is refused with
+	 * {@link SetRejection#SET_IN_USE} (→ 409) and nothing is written — a move would re-seat a guest
+	 * who was told this row and number. History does not block an edit — a cancelled or completed
+	 * booking pins the row against deletion but strands nobody.
 	 */
 	ChangeOutcome editSet(OperatorId operator, VenueId venueId, SetId setId, SetCommand command);
 
@@ -41,7 +40,7 @@ public interface EditBeachMap {
 	 * Remove a set from the venue's map — refused with {@link SetRejection#SET_IN_USE} (→ 409) if
 	 * the set carries an availability hold dated today or later, or a booking of any status
 	 * including terminal history. It asks {@link #editSet}'s availability question but a stricter
-	 * booking one, and asks it on every delete rather than only on a repool or reposition: the
+	 * booking one, and asks it on every delete rather than only on a reposition: the
 	 * RESTRICT {@code booking.set_id} FK refuses such a delete outright, so the guard turns what
 	 * would surface as a server error into the honest conflict. A hold whose day has passed does
 	 * not block — it CASCADEs away with the set, describing a day that is already gone.

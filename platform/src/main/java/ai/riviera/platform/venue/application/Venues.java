@@ -57,8 +57,10 @@ public interface Venues {
 	 * guard for {@code editSet}/{@code removeSet}, because a concurrent {@code set_availability} or
 	 * {@code booking} insert needs {@code FOR KEY SHARE} on this row for its FK check and therefore
 	 * blocks until the edit commits — closing the window in which a claim committed after the claim
-	 * probe would be CASCADE-swept by the delete or stranded by a pool flip. Empty doubles as the
-	 * existence check, so the caller needs no separate probe.
+	 * probe would be CASCADE-swept by the delete, and making a racing claim's pool read
+	 * ({@code FOR KEY SHARE}) wait for a pool flip to commit, so the claim decides against the
+	 * committed pool (invariant #3 is a reserve-time rule). Empty doubles as the existence check, so
+	 * the caller needs no separate probe.
 	 *
 	 * <p><strong>Lock ordering.</strong> The per-set writes take this lock and <em>no other</em> —
 	 * in particular they never take the venue row, so they cannot form a cycle with the

@@ -21,7 +21,6 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
-import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.CommissionRateStore;
@@ -215,14 +214,14 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	public Optional<SetPlacement> lockSet(VenueId venueId, SetId setId) {
 		// FOR UPDATE blocks a concurrent claim's FK check until this edit ends (see Venues#lockSet).
 		return jdbc.sql("""
-				SELECT pool, row_label, position_no, grid_x, grid_y
+				SELECT row_label, position_no, grid_x, grid_y
 				  FROM set_position
 				 WHERE id = :setId AND venue_id = :venue
 				   FOR UPDATE
 				""")
 				.param(P_SET_ID, setId.value())
 				.param(P_VENUE, venueId.value())
-				.query((rs, rowNum) -> new SetPlacement(Pool.valueOf(rs.getString("pool")), rs.getString("row_label"),
+				.query((rs, rowNum) -> new SetPlacement(rs.getString("row_label"),
 						rs.getInt("position_no"), rs.getInt("grid_x"), rs.getInt("grid_y")))
 				.optional();
 	}

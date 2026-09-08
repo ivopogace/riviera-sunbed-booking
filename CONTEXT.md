@@ -55,7 +55,9 @@ model in `docs/architecture/domain-model.md`.
 - **Tier** — `PREMIUM` (front-row / better) or `STANDARD`; affects price.
 - **Pool** — which channel a set belongs to: **online pool** (bookable in the app)
   or **walk-in pool** (held back for guests who arrive in person). A given set is in
-  exactly one pool. Online bookings can only ever target online-pool sets.
+  exactly one pool. Online bookings can only ever target online-pool sets — a rule about
+  *new* bookings: a set can change pool at any time, and its existing bookings stay on their
+  dates.
 - **Walk-in** — a guest who takes a set in person, without an app booking. Staff
   mark walk-in sets taken in the app.
 
