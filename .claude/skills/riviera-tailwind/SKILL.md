@@ -92,12 +92,13 @@ states the decisions and traps the code can't show you.
    colour (a host that does not theme: `outline-white` on fixed dark, `outline-current` on the
    fixed-white sign-out bar) or the offset (an inset ring inside an `overflow-hidden` clip, or
    on a slot of an edge-to-edge bar — the tourist tab bar, the console's phone rail — where an
-   outside ring runs off the viewport: `shared/tab-rail.ts`'s `EDGE_SLOT_RING`, #1022).
+   outside ring runs off the viewport: `shared/tab-rail.ts`'s `EDGE_SLOT_RING`).
    Never `outline-none`, `outline-hidden`, `outline-0` or `[outline:none]` on a control —
    `app/shared/focus-ring-baseline.spec.ts` fails the build naming the path. Keep the rule
-   inside `@layer base`. The base rule reaches `<button>` only: a row skin an `<a>` wears
-   carries the same ring explicitly (`shared/popover-skin.ts`'s `POP_ROW_RING`), so one
-   surface never shows two ring skins. Rationale: issues #890, #1022.
+   inside `@layer base`. Rationale: issue #890.
+   The base rule reaches `<button>` only: a row skin an `<a>` wears carries the same ring
+   explicitly (`shared/popover-skin.ts`'s `POP_ROW_RING`), so one surface never shows two
+   ring skins.
 
 ## Icons — inline SVG, shared as a component
 
