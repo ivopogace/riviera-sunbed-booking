@@ -14,7 +14,8 @@ import {
 
 /**
  * Real-render CI-safe e2e for the layout editor. Drives the actual generate → confirm →
- * paint → save flow on the default beach-map tab, asserting the single bulk PUT payload, the
+ * paint → save flow on the beach-map tab, deep-linked (the console lands on the Daily view — the
+ * returnUrl carries the tab back through sign-in), asserting the single bulk PUT payload, the
  * server-locked (`LAYOUT_IN_USE`) path, and the stale-write conflict (409 STALE_WRITE keeps the
  * painted grid + offers Reload — co-located here as the venue tab does in operator-venue.e2e.ts). It
  * also parks the map GET open to drive the tab's in-flight window on both surfaces, the one state

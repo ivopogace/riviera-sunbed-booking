@@ -23,9 +23,10 @@ export interface ConsoleDestination {
 
 /**
  * The venue console's landing tab — the child path `/operator/:venueId` redirects to, and the tab
- * every caller assumes while that redirect is still in flight (the shell's venue switcher and its
- * palette rows, which keep the open tab across a venue switch and fall back to this off the
- * console). One constant so a picked venue and a switched-to venue can never disagree.
+ * the shell assumes while that redirect is still in flight, for the venue switcher's rows and the
+ * palette's alike (both keep the open tab across a venue switch). Off the console the two diverge:
+ * the palette's rows fall back to this, the switcher's link to `/operator/<id>` and let the redirect
+ * pick. One constant so a picked venue and a switched-to venue can never disagree.
  *
  * <p>It is the Daily view because that is what a trading venue opens every day; the set-up tabs are
  * deliberate destinations, reached from the rail or deep-linked (a freshly created venue goes
