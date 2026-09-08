@@ -12,68 +12,37 @@ import { TouchTarget } from './touch-target';
 const SWIPE_THRESHOLD_PX = 40;
 
 /**
- * A crossfading photo slideshow: an absolutely-filled slide stack with dot indicators, prev/next
- * stepping, arrow keys and touch swipe, wrapping at either end. The host fills its nearest
- * positioned ancestor (`absolute inset-0`), so consumers drop it into any photo band; with no
- * photos it renders nothing and the band's own background shows through.
+ * A crossfading photo slideshow: a filled slide stack with a dot rail, prev/next stepping, arrow
+ * keys and touch swipe, wrapping at either end. The host fills its nearest positioned ancestor, so
+ * consumers drop it into any photo band; with no photos it renders nothing.
  *
- * Controls come in two placements, because a control nested inside a link is invalid HTML and
- * an axe failure:
- * - `ownControls` (the beach-map banner, the lightbox): the component renders its own labelled step
- *   buttons, its dot rail as an APG slide picker, and the live region that announces the position.
- *   The images layer is `aria-hidden`; the controls are not, so never place this mode inside a link
- *   or an `aria-hidden` subtree. Today that chrome only ever paints in the LIGHTBOX — the banner
- *   yields to the gallery grid at two photos, so it is only ever handed one.
- * - external (the Discover card, whose whole card is an `<a>`): leave `ownControls` unset and
- *   drive {@link prev}/{@link next} from buttons OUTSIDE the link via a template reference. The
- *   dots stay inert `<span>`s there — a picker inside the card's `<a>` would be the very nesting
- *   this split exists to avoid — and the host renders {@link positionLabel} in its own live region,
- *   beside those external buttons.
+ * <p>Two control placements, because a control nested inside a link is invalid HTML and an axe
+ * failure. With `ownControls` (the beach-map banner, the lightbox) it renders its own step buttons,
+ * its dot rail as an APG slide picker, and the live region announcing the position — so never place
+ * that mode inside a link or an `aria-hidden` subtree. Without it (the Discover card, whose whole
+ * card is an `<a>`) the dots stay inert `<span>`s, the host drives {@link prev}/{@link next} from
+ * buttons outside the link, and the host mounts {@link positionLabel} in its own live region.
  *
- * The chrome (dot rail, step chips) carries its OWN backing rather than leaning on a host's
- * scrim — it paints above that scrim, and an uploaded photo can be any colour; the alphas are
- * proven at 3:1 over the worst case in `photo-slideshow.contrast.spec.ts`.
+ * <p>Only slides the tourist has reached are in the DOM: an `opacity-0` slide stacked over the
+ * visible one still intersects the viewport, so `NgOptimizedImage`'s lazy loading would not spare
+ * one byte. Neighbours are warmed from the current slide's `load`, and only once stepping has
+ * begun, which is what holds an idle Discover grid to one request per card. The first step
+ * therefore crossfades to an image still arriving.
  *
- * <p>The current slide's dot is a WIDER PILL, not just a brighter dot. Once the dots became a
- * picker, "which slide is current" is a control state, and WCAG 1.4.11 wants that visible: white
- * against white-at-65% is nowhere near 3:1, and no pair of alphas can be, since the inactive dot
- * must ALSO clear 3:1 against the rail it sits on — two 3:1 steps do not fit between the rail and
- * white. Shape carries the state instead, which leaves both colour proofs exactly as they were.
- * The inert Discover rail wears the same treatment so the two placements stay one design.
+ * <p>The chrome carries its OWN backing rather than a host's scrim: it paints above that scrim and
+ * an uploaded photo can be any colour. Alphas proven at 3:1 in `photo-slideshow.contrast.spec.ts`.
+ * The current slide is marked by a wider PILL, not a brighter dot — the inactive dot must clear 3:1
+ * against its rail and the active one against the inactive, and two such steps do not fit between
+ * the rail and white, so WCAG 1.4.11's state cue is carried by shape.
  *
- * <p><b>The picker's geometry.</b> Each dot is a real 44 px control (WCAG 2.5.5) with the dot
- * PAINTED inside it — `riviera-tailwind` rule 4's split of paint from target — so the rail keeps
- * its 18 px-tall pill instead of growing into a 44 px slab. That makes the pill a separate box,
- * because the dots are now 44 px apart: centres land at 22, 66, 110, the widest a dot gets is the
- * 18 px active pill, so the strip spans 13…(44n − 13) and the pill is that plus the rail's 7 × 5 px
- * padding — `inset-x-[6px] inset-y-[13px]`, held at the WIDEST case so the rail cannot resize as
- * the tourist steps. `right-[7px]` puts the pill's right edge at the 13 px inset the rail has
- * always had; `bottom-0` leaves it 13 px up. At most three photos exist (the backend's
- * COVER/SUNBEDS/BAR slots), so the rail is never wider than 132 px. It sits after the step buttons
- * so a tie on `z-10` falls to the dots: any overlap on a short band is with a step button's
- * TRANSPARENT padding, never its chip.
+ * <p>Picker geometry, to re-derive if any of it moves: each dot is a 44 px control with the dot
+ * painted inside it, so dot centres sit 44 px apart and the widest dot is the 18 px active pill —
+ * the strip spans 13…(44n − 13) and the rail's pill is that plus 7 × 5 px of padding, held at the
+ * widest case so the rail cannot resize mid-step. At most three photos exist (`PhotoSlot`).
  *
- * <p>Stepping is otherwise SILENT: the imagery is `aria-hidden`, so a screen reader hears the
- * button's own label and nothing about what changed. Hence {@link positionLabel} and, with own
- * controls, the live region carrying it — mounted for the component's whole life rather than
- * inside the branch it announces, so the first render is not itself the mutation. That shape, and
- * why the alternative reads as silence, is `shared/load-announcer.ts`.
- *
- * <p><b>Only the slides the tourist has actually reached are in the DOM.</b> `NgOptimizedImage`
- * lazy-loads non-priority images, but a lazy `<img>` that is `opacity-0` on top of the visible one
- * still intersects the viewport, so the browser fetches it: the old always-render-every-slide stack
- * cost Discover one request per photo per card — a 24-card grid of fully-photographed venues is 72
- * — before first paint. Slides
- * are therefore mounted as they are visited, and only once the tourist has stepped ONCE does the
- * current slide's `load` warm its two neighbours — so an idle Discover grid pays for one image per
- * card, and a tourist who is actually browsing a venue's photos never waits twice. The cost is that
- * the FIRST step crossfades to an image still arriving; the band's gradient shows through for that
- * frame, which is the trade the request count is worth.
- *
- * `testId` prefixes the test hooks: `{testId}-img` (first slide), `{testId}-slide-img` (rest),
- * `{testId}-dots`, and — with own controls — `{testId}-prev` / `{testId}-next`, `{testId}-dot-{i}`
- * and `{testId}-position`. `name` gives the control labels their subject ("Next photo, Miramar
- * Beach Club").
+ * <p>`testId` prefixes the hooks: `{testId}-img` (first slide), `{testId}-slide-img` (rest),
+ * `{testId}-dots`, and with own controls `{testId}-prev`/`{testId}-next`, `{testId}-dot-{i}` and
+ * `{testId}-position`. `name` gives the control labels their subject.
  */
 @Component({
   selector: 'app-photo-slideshow',
@@ -243,8 +212,8 @@ export class PhotoSlideshow {
     this.photos().length > 1 ? `Photo ${this.index() + 1} of ${this.photos().length}` : '',
   );
 
-  /** Horizontal/vertical origin of the gesture in flight, or `undefined` when none is. */
-  private swipeFrom: { readonly x: number; readonly y: number } | undefined;
+  /** Origin and pointer of the gesture in flight, or `undefined` when none is. */
+  private swipeFrom: { readonly x: number; readonly y: number; readonly id: number } | undefined;
   /** A swipe just stepped, so the click the browser synthesises from it must not reach the host. */
   private swipeConsumedClick = false;
 
@@ -288,11 +257,20 @@ export class PhotoSlideshow {
     );
   }
 
-  /** ArrowLeft/ArrowRight step the band whenever focus is inside it (WCAG 2.1.1). */
+  /**
+   * ArrowLeft/ArrowRight step the band whenever focus is inside it (WCAG 2.1.1).
+   *
+   * <p>`stopPropagation` is load-bearing, not tidiness: a host may bind the same keys on an
+   * ancestor to catch focus that never reaches us — {@link PhotoLightbox} does, because the
+   * dialog opens focus on a close button that is our SIBLING. Our own step buttons and dot
+   * picker are our DESCENDANTS, so without this an arrow pressed on one bubbles into that
+   * ancestor handler too and advances two slides for one keypress.
+   */
   protected onArrow(event: Event, delta: 1 | -1): void {
     if (this.photos().length < 2) {
       return;
     }
+    event.stopPropagation();
     // Otherwise the arrow also scrolls the page under the lightbox / the venue header.
     event.preventDefault();
     this.step(delta);
@@ -300,19 +278,24 @@ export class PhotoSlideshow {
 
   protected onPointerDown(event: PointerEvent): void {
     this.swipeConsumedClick = false;
+    if (this.swipeFrom) {
+      // A second finger is a pinch, never a swipe — drop it rather than measure between two.
+      this.swipeFrom = undefined;
+      return;
+    }
     // Touch and pen only — on Discover the band IS the card's link, and a mouse wobble must not eat it.
     this.swipeFrom =
       event.pointerType === 'mouse' || this.photos().length < 2
         ? undefined
-        : { x: event.clientX, y: event.clientY };
+        : { x: event.clientX, y: event.clientY, id: event.pointerId };
   }
 
   protected onPointerUp(event: PointerEvent): void {
     const from = this.swipeFrom;
-    this.swipeFrom = undefined;
-    if (!from) {
+    if (from?.id !== event.pointerId) {
       return;
     }
+    this.swipeFrom = undefined;
     const dx = event.clientX - from.x;
     // A mostly-vertical drag is the tourist scrolling the page past the band, not stepping it.
     if (Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) <= Math.abs(event.clientY - from.y)) {

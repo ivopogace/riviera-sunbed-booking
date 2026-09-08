@@ -7,23 +7,15 @@ export type StepDirection = 'prev' | 'next';
 
 /**
  * One prev/next step control for a photo slideshow: a 44 px transparent hit box pinned to the
- * band's left or right edge, painting a 30 px glass chevron chip inside it.
+ * band's left or right edge, painting a 30 px glass chevron chip inside it. The chip's alphas are
+ * proven at 3:1 over any photo in `photo-slideshow.contrast.spec.ts`.
  *
- * <p>It exists because the recipe had four verbatim copies — both controls inside
- * {@link PhotoSlideshow} and both of the Discover card's, which live OUTSIDE the card's `<a>`
- * (a control nested in a link is invalid HTML and an axe failure, so that host drives
- * `prev()`/`next()` from a template reference instead). Four copies of a chip whose alphas are
- * proven at 3:1 in `photo-slideshow.contrast.spec.ts` is four places for that proof to drift, so
- * this is `riviera-tailwind` rule 1's "reused element is a component" branch — never `@apply`.
+ * <p>Hosts on `class: 'contents'` so the wrapper leaves no box and the consumer's positioned band
+ * lays out the `<button>` itself. `pointer-events-auto` is unconditional because the Discover card
+ * parks its pair inside a `pointer-events-none` overlay — keeping the card link clickable between
+ * them — and a `display: contents` host has no box to carry the re-enable.
  *
- * <p>Hosts on `class: 'contents'` so the wrapper leaves no box: the `<button>` itself is what the
- * consumer's positioned band lays out, exactly as if the markup were still inline. That is also
- * why `pointer-events-auto` sits on the button unconditionally — the Discover card parks its pair
- * inside a `pointer-events-none` overlay so the card link stays clickable between them, and a
- * `display: contents` host has no box to carry the re-enable. Elsewhere it is a no-op.
- *
- * <p>The chip is `aria-hidden`; {@link label} is the whole accessible name ("Next photo, Miramar
- * Beach Club"), because a bare "›" is not one.
+ * <p>The chip is `aria-hidden`; {@link label} is the whole accessible name, since "›" is not one.
  */
 @Component({
   selector: 'app-photo-step-button',

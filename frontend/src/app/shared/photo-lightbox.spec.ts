@@ -74,6 +74,17 @@ describe('PhotoLightbox', () => {
     expect(shownSrc()).toBe(PHOTOS[0]);
   });
 
+  it('steps ONCE when the arrow is pressed on the slideshow’s own controls, not twice', () => {
+    create({ photos: PHOTOS });
+
+    // The dialog and the slideshow both listen; a dot button sits INSIDE the slideshow's subtree.
+    const dot = el().querySelector<HTMLElement>('[data-testid="lightbox-dot-0"]')!;
+    dot.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    fixture.detectChanges();
+
+    expect(shownSrc()).toBe(PHOTOS[1]);
+  });
+
   it('letterboxes rather than crops, so a portrait photo shows whole (contain, not cover)', () => {
     create({ photos: PHOTOS });
     const first = el().querySelector<HTMLImageElement>('[data-testid="lightbox-img"]')!;

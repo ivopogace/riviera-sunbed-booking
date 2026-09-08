@@ -19,15 +19,17 @@ import { TouchTarget } from './touch-target';
  * (own controls, seeded at the tapped photo via `startIndex`, letterboxed via `contain` rather than
  * the bands' crop — this box is roomier and closer to square, so a portrait photo fits whole) and
  * adds the modal's own chrome: a close button, a dismissing backdrop, Escape, and a focus trap — the
- * fifth modal in this shape, alongside the booking dialog, find-booking, the payout statement and
- * the availability calendar (`shared/focus-trap.ts`).
+ * sixth modal in this shape, alongside the booking dialog, find-booking, the payout statement, the
+ * availability calendar and the console's jump palette (`shared/focus-trap.ts`).
  *
  * The caller owns returning focus to the thumbnail that opened it (RV-FE-9) — this component only
  * emits {@link dismissed}.
  *
- * <p>Arrow keys are bound HERE rather than left to the slideshow's own host binding: focus opens on
- * the close button, which is the slideshow's SIBLING, so a keydown there never reaches it. The
- * dialog is the region the tourist is actually in, so the dialog is what listens.
+ * <p>Arrow keys are bound HERE as well as on the slideshow: focus opens on the close button, which
+ * is the slideshow's SIBLING, so a keydown there never reaches it, and the dialog is the region the
+ * tourist is actually in. Focus ON the slideshow's own controls is the other half, and the
+ * slideshow keeps that case to itself — `PhotoSlideshow.onArrow` stops the event rather than let
+ * both handlers step it.
  */
 @Component({
   selector: 'app-photo-lightbox',

@@ -293,6 +293,18 @@ test('the lightbox picker jumps to a slide, and the arrow keys step from the clo
   await expect(page.getByTestId('lightbox-dot-2')).toHaveAttribute('aria-current', 'true');
   await expect(page.getByTestId('lightbox-dot-0')).not.toHaveAttribute('aria-current', 'true');
 
+  // The state cue is a SHAPE, so only a measured width proves it — a class list cannot.
+  const dotPaint = (i: number) => page.getByTestId(`lightbox-dot-${i}`).locator('span');
+  await expect(dotPaint(2)).toHaveCSS('width', '18px');
+  await expect(dotPaint(0)).toHaveCSS('width', '8px');
+  await expect(dotPaint(2)).toHaveCSS('height', '8px');
+  // Every dot's own hit box still measures the floor, pill or not.
+  for (const i of [0, 1, 2]) {
+    const box = (await page.getByTestId(`lightbox-dot-${i}`).boundingBox())!;
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+  }
+
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'photo lightbox with the slide picker');
 });

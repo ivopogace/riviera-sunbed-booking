@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 
 import { PhotoSlideshow } from './photo-slideshow';
 
@@ -62,15 +63,16 @@ describe('PhotoSlideshow', () => {
     fixture.detectChanges();
   }
 
+  function pointer(type: string, x: number, y: number, id = 1, pointerType = 'touch'): void {
+    const event = new MouseEvent(type, { clientX: x, clientY: y, bubbles: true });
+    Object.defineProperty(event, 'pointerType', { value: pointerType });
+    Object.defineProperty(event, 'pointerId', { value: id });
+    el().dispatchEvent(event);
+  }
+
   function swipe(dx: number, dy = 0, pointerType = 'touch'): void {
-    for (const [type, x, y] of [
-      ['pointerdown', 0, 0],
-      ['pointerup', dx, dy],
-    ] as const) {
-      const event = new MouseEvent(type, { clientX: x, clientY: y, bubbles: true });
-      Object.defineProperty(event, 'pointerType', { value: pointerType });
-      el().dispatchEvent(event);
-    }
+    pointer('pointerdown', 0, 0, 1, pointerType);
+    pointer('pointerup', dx, dy, 1, pointerType);
     fixture.detectChanges();
   }
 
@@ -305,6 +307,46 @@ describe('PhotoSlideshow', () => {
     swipe(-60, 90); // the tourist scrolling the page past the band
     swipe(-60, 0, 'mouse'); // on Discover the band IS the card's link
     expect(shownSrc()).toBe(PHOTOS[0]);
+  });
+
+  it('drops the gesture when a second finger lands, rather than measuring between two of them', () => {
+    create({ photos: PHOTOS });
+
+    // A pinch: A's release would otherwise measure against B's origin, a delta neither travelled.
+    pointer('pointerdown', 0, 0, 1);
+    pointer('pointerdown', 300, 0, 2);
+    pointer('pointerup', 300, 0, 1);
+    pointer('pointerup', 300, 0, 2);
+    fixture.detectChanges();
+    expect(shownSrc()).toBe(PHOTOS[0]);
+
+    // And the band still takes the next single-finger swipe normally.
+    swipe(-60);
+    expect(shownSrc()).toBe(PHOTOS[1]);
+  });
+
+  it('ignores a release from a pointer it never tracked', () => {
+    create({ photos: PHOTOS });
+    pointer('pointerdown', 0, 0, 1);
+    pointer('pointerup', -300, 0, 7);
+    fixture.detectChanges();
+    expect(shownSrc()).toBe(PHOTOS[0]);
+  });
+
+  it('keeps an arrow press to itself, so a host listening on an ancestor cannot step it twice', () => {
+    create({ photos: PHOTOS, ownControls: true });
+
+    // PhotoLightbox binds the same keys on the dialog to catch focus that never reaches us.
+    const seenByAncestor = vi.fn();
+    el().parentElement!.addEventListener('keydown', seenByAncestor);
+
+    el()
+      .querySelector('[data-testid="photo-dot-0"]')!
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    fixture.detectChanges();
+
+    expect(shownSrc()).toBe(PHOTOS[1]);
+    expect(seenByAncestor).not.toHaveBeenCalled();
   });
 
   it('swallows the click a completed swipe synthesises, so the card link is not followed', () => {
