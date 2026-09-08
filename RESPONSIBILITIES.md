@@ -83,10 +83,12 @@ over time. The standing rules:
   adapter, so a venue whose owning operator is not `ACTIVE` is absent from the list and 404
   on the map and calendar — indistinguishable from nonexistent. The public review list
   applies the same fence in `ListVenueReviewsService` before asking `review`.
-  `SetBookingFacts` is deliberately **unfenced**: its consumers include sold-booking paths
-  (cancel, view, mails, staff marks) that must keep answering for a hidden venue's sets;
-  the reserve path applies the fence itself in `booking`. The anonymous content-hash photo
-  read is unfenced.
+  `SetBookingFacts` is deliberately **unfenced**, and the one port that still answers for a
+  **retired set** (ADR-0019): its consumers include sold-booking paths (cancel, view, mails, the
+  staff booking lookup) that must keep answering for a hidden venue's sets and for a spot that has
+  left the map; the reserve path applies the visibility fence itself in `booking`, and
+  `poolForClaim` — a locking read on the active map — is the retired-set fence for both claim
+  paths. The anonymous content-hash photo read is unfenced.
 - **Venue photos** (ADR-0008): per-slot upload/replace/delete, processing, `bytea` storage
   behind the module-internal `PhotoStorage` port, and the public content-hash serving read.
 - **Photo moderation is ownership-free by design** (ADR-0013). Read and takedown sit on
@@ -105,7 +107,7 @@ over time. The standing rules:
 - **A layout write that a live claim depends on is refused — and only that write.** The bulk
   replace deletes every set, so it asks the venue-wide question (`LAYOUT_IN_USE`); `editSet`/
   `removeSet` touch one set, so they ask the set-scoped one (`SET_IN_USE`) under
-  `SELECT … FOR UPDATE`. **Price, tier and pool are never refused, on any set** — on the single-set
+  `SELECT … FOR UPDATE` on the active map. **Price, tier and pool are never refused, on any set** — on the single-set
   edit and on the batch apply (`PATCH /api/venues/{venueId}/sets`) alike; **only a position move or
   a removal asks the claim question.** The row-scoped display writes `repriceRow` and `renameRow`
   destroy nothing and ask no claim question either.
@@ -122,11 +124,25 @@ over time. The standing rules:
     these sets dated today or later — through `hasLiveHold`. A past hold freezes nothing;
     a past date is never claimable (reserve and staff mark both refuse it), so the range
     the probe ignores is one nothing can be written into.
-  - *Booking arm:* `removeSet` and the replace refuse on a booking of **any status ever
-    recorded** (the RESTRICT `booking.set_id` FK makes such a set undeletable, so refusing
-    early turns a 500 into a 409); `editSet` refuses only on a non-terminal booking, and
-    only when the command would reposition the set. Consequence, by design: a venue with one
-    ancient cancelled booking answers `LAYOUT_IN_USE` on delete/regenerate forever.
+  - *Booking arm:* `editSet` and `removeSet` refuse only on a **non-terminal** booking — the edit
+    only when the command would reposition the set, the remove on every call. A finished booking
+    refuses nothing; it decides how the set leaves the map: **a set that carries any booking is
+    retired, never deleted** (`retired_at` stamped with the service clock, ADR-0019), because the
+    RESTRICT `booking.set_id` FK pins its row for every booking, mail and payout line that names
+    it; a set with no booking is deleted. The replace still refuses on a booking of any status
+    (`LAYOUT_IN_USE`, until #1032 makes it a diff). The "forever" lock is gone: last season's
+    cancelled booking no longer freezes a spot.
+  - *Retired sets — the exclude and exempt lists, machine-held:* a retired set is absent from
+    the tourist list and its counts, the map, the availability calendar, the operator's daily
+    view, every layout lock and conflict probe, and both claim paths (the online reserve and
+    the staff walk-in mark answer `NO_SUCH_SET`); every such read selects from the
+    `active_set_position` view, every set write names the marker, so a retired set is never
+    re-labelled, repriced, re-pooled, moved or deleted — its label and price are frozen at what
+    its guests were told. The one read that still answers for it is `SetBookingFacts#setBookingInfo(s)`
+    — cancel, the booking view, the mails and the staff booking lookup — because the later move
+    mail must name the old spot. Its row/position and grid cell are free for a new set: the
+    layout-uniqueness indexes are partial over active rows. `RetiredSetExclusionArchitectureTests`
+    holds every production statement to this (§ *Machine-checked*).
   - Which statuses are live is `booking`'s call (`BookingStatus#isTerminal`, reached through
     `BookingPresence#hasLiveBookings`); `venue` never enumerates booking statuses. Price,
     tier and the row's name stay editable on a claimed set: a booking's charge is
@@ -1096,10 +1112,11 @@ sufficient. Which of them form the *structural net* — the subset run after any
 | Every self-configured worker pool carries the shared MDC decorator (#455) | `WorkerContextArchitectureTest` |
 | The draining pools' shutdown claims sum within the platform's SIGTERM grace (#456) | `ShutdownDrainArchitectureTest` |
 | The pool tokens are stated once, in `venue.vocabulary.Pool` — no other production class holds an `"ONLINE"` / `"WALK_IN"` literal (invariant #3's operand is the published type) | `PoolTokenArchitectureTest` (`CONSTANT_String` scan, so a `Pool.ONLINE` reference passes; fixture-proven negative) |
+| A retired set is absent from every read but `SetBookingFacts` — every production SQL string naming `set_position` selects from `active_set_position` or names `retired_at`, an `INSERT INTO` and the facts adapter excepted (ADR-0019, §`venue`'s exclude/exempt lists) | `RetiredSetExclusionArchitectureTests` (per-statement `CONSTANT_String` scan; the one structural-net member admitted by decision; fixture-proven negative under `ai.riviera.retirefixture`) |
 
 Each rule is proven able to fail on every build, against deliberately-violating fixtures
-(`ai.riviera.responsibilityfixture`, `ai.riviera.placementfixture`) — never by breaking
-production code.
+(`ai.riviera.responsibilityfixture`, `ai.riviera.placementfixture`, `ai.riviera.retirefixture`) —
+never by breaking production code.
 
 **Review-checked only** (the semantic half — needs **no illegal import**, so it cannot
 be encoded; owned by the plan-time Module-ownership table, `riviera-plan-doc` §4a, and

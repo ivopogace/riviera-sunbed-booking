@@ -49,7 +49,12 @@ model in `docs/architecture/domain-model.md`.
   an unowned venue is hidden (fail-closed). Bookings sold while visible keep working.
 - **Beach map** — a venue's visual layout: rows and individual set positions.
 - **Set position** — one spot on the beach map (e.g. Row A, position 3), flagged
-  by tier and pool, with its own price.
+  by tier and pool, with its own price. It is **active** until it is retired or deleted; only a
+  set position that has never been booked can be deleted.
+- **Retired set** — a set position that has left the beach map but still carries booking history:
+  gone from the map, the calendar, the counts, the daily view and both claim paths, while every
+  booking, mail and staff lookup that names it keeps resolving to the row and position it had. A
+  retired set never comes back; the set that takes its spot is a new set.
 - **Set** — the bookable unit: **2 loungers + 1 umbrella**, full day, tied to a set
   position. The thing a tourist books.
 - **Tier** — `PREMIUM` (front-row / better) or `STANDARD`; affects price.

@@ -47,7 +47,7 @@ left false; zero open PRs, `V50` free; the previous sibling #1029 closed out on 
 `venue` owns but `availability` and `booking` must honour, and the parity ledger for the
 `removeSet` outcomes) · `tdd` (each phase red first at the named seam: the architecture test over the
 compiled tree, the migration IT, the controller ITs, the service fake, the Vitest spec) ·
-`riviera-review-overlay` (review gate — due at ready-for-review; not yet run) ·
+`riviera-review-overlay` (review gate — runs at ready-for-review on PR #1043; outcome recorded in the findings register) ·
 `riviera-docs-freshness` (**due at close-out** over `origin/main..HEAD`; the counting sweep targets
 "three `VenueCatalog` reads", "one bean, three narrow surfaces", "the five in the command", and
 "forever" in `RESPONSIBILITIES.md` § `venue`; the plan-doc retirement removes
@@ -79,8 +79,9 @@ write conversation, not a port) · `domain-modeling` (`CONTEXT.md` gains **Retir
 **Set position** entry gains the lifecycle sentence; ADR-0019 records retire-over-delete-or-snapshot:
 hard to reverse (schema + every read), surprising (the FK still points at a row no read returns),
 a real trade-off (snapshotting labels onto the booking was the alternative)) · `riviera-frontend`
-(the change stays inside `operator/`: `set-editor.ts`, `operator-console.model.ts`,
-`operator-console.service.ts`; e2e in the CI-safe mocked suite; no folder or edge change) ·
+(the change stays inside `operator/`: `set-editor.ts`, `layout-editor.ts` (its locked-layout
+banner's removal clause), `operator-console.model.ts`, `operator-console.service.ts`; e2e in the
+CI-safe mocked suite; no folder or edge change) ·
 `angular-developer` + angular-cli MCP (`list_projects`: one workspace, Angular 22, Vitest;
 `get_best_practices` v22 loaded: signals for state, `computed` for derivations, native control
 flow, no `standalone: true`/OnPush; `search_documentation` v22 verified `signal`/`computed`
@@ -103,7 +104,7 @@ stands in for `feature/retire-set-marker` (riviera-sdlc, remote addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a production class whose SQL names `set_position` outside an `INSERT INTO` and
+- [x] **AC-1:** Given a production class whose SQL names `set_position` outside an `INSERT INTO` and
   without `retired_at`, when the architecture test runs, then it fails naming the class; given the
   class implementing `SetBookingFacts` doing the same, then it passes; given SQL selecting from
   `active_set_position` or an `INSERT INTO set_position`, then it passes. *Seam:* the compiled
@@ -112,14 +113,14 @@ stands in for `feature/retire-set-marker` (riviera-sdlc, remote addendum).
   `RetiredSetExclusionArchitectureTests.everySetTableReadOutsideTheFactsPortExcludesRetiredSets`,
   `.rogueSetTableReaderFixtureIsRejected`, `.theFactsPortAdapterIsExemptAndTheViewReadersPass`,
   `.theExemptionAndTheViewPathAreBothExercised`.
-- [ ] **AC-2:** Given the V50 migration, when the chain runs, then `set_position.retired_at` is a
+- [x] **AC-2:** Given the V50 migration, when the chain runs, then `set_position.retired_at` is a
   nullable `TIMESTAMPTZ`, `active_set_position` hides a row with `retired_at` set, a second active
   set at a retired set's `(row_label, position_no)` and `(grid_x, grid_y)` inserts, and two active
   sets on one cell are still refused by `set_position_grid_uniq`. *Seam:* the schema through
   `JdbcTemplate` · *Pinned by:* `SetRetireMigrationIT.retiredAtIsANullableInstant`,
   `.theActiveViewHidesARetiredSet`, `.aRetiredSetsSlotIsReusable`,
   `.activeSetsStillCannotShareACell`.
-- [ ] **AC-3:** Given a set whose only booking is `CANCELLED` (or `COMPLETED`), when the owner
+- [x] **AC-3:** Given a set whose only booking is `CANCELLED` (or `COMPLETED`), when the owner
   removes it, then the outcome is `Applied`, the row carries `retired_at`, and the booking row still
   references it; given a set with a `STAFF_MARKED` hold dated tomorrow or a `CONFIRMED` booking dated
   30 days out, then `Rejected(SET_IN_USE)`; given a set with no booking, then the row is deleted.
@@ -129,7 +130,7 @@ stands in for `feature/retire-set-marker` (riviera-sdlc, remote addendum).
   `SetRetireIT.removingASetWithAFinishedBookingRetiresItAndKeepsTheBooking`,
   `.removingASetWithALiveBookingIs409`, `VenueAdminControllerIT.removeSetTakesItOffTheMap` (kept:
   the no-booking delete).
-- [ ] **AC-4:** Given a retired set on a venue, when a tourist reads the list, the map and the
+- [x] **AC-4:** Given a retired set on a venue, when a tourist reads the list, the map and the
   availability calendar, then the set is absent from the map and both counts read it as gone;
   when the owner reads the daily availability view, then the set is absent; when the owner edits or
   removes it again, then `404 NO_SUCH_SET`; when the owner adds a set at the retired coordinates,
@@ -137,27 +138,27 @@ stands in for `feature/retire-set-marker` (riviera-sdlc, remote addendum).
   `GET /api/venues/{v}/availability-calendar`, `GET /api/venues/{v}/availability`,
   `PATCH|DELETE /api/venues/{v}/sets/{s}`, `POST /api/venues/{v}/sets` · *Pinned by:*
   `SetRetireIT.aRetiredSetIsGoneFromEveryExcludingRead`, `.aRetiredSetsSpotCanBeReused`.
-- [ ] **AC-5:** Given a retired set, when a tourist posts an online reserve for it, then
+- [x] **AC-5:** Given a retired set, when a tourist posts an online reserve for it, then
   `404 NO_SUCH_SET`; when staff mark it, then `404 NO_SUCH_SET`, and no `set_availability` row is
   written. *Seam:* `AvailabilityClaim#claim` and `StaffAvailability#mark` (service), pinned at the
   HTTP seam too · *Pinned by:* `RetiredSetClaimIT.theOnlineClaimRefusesARetiredSet`,
   `.theStaffMarkRefusesARetiredSet`, `SetRetireIT.bothClaimPathsRefuseARetiredSet`.
-- [ ] **AC-6:** Given a booking on a retired set, when the guest opens the booking view by code
+- [x] **AC-6:** Given a booking on a retired set, when the guest opens the booking view by code
   and the operator opens the staff daily bookings list for its date, then both render the set's
   row label and position; `SetBookingFacts#setBookingInfo` answers for the retired id. *Seam:*
   `GET /api/bookings/{code}`, `GET /api/venues/{v}/bookings?date=`, `SetBookingFacts` · *Pinned by:*
   `SetRetireIT.aBookingOnARetiredSetStillRendersItsSpot`,
   `SetBookingInfoIT.answersForARetiredSet`.
-- [ ] **AC-7:** Given the retire path racing a staff mark on the same set, when the retire commits
+- [x] **AC-7:** Given the retire path racing a staff mark on the same set, when the retire commits
   first, then the mark answers `NO_SUCH_SET` and writes no hold; when the mark commits first, then
   the retire is `SET_IN_USE`. *Seam:* `EditBeachMap#removeSet` racing `StaffAvailability#mark` ·
   *Pinned by:* `SetRetireVsMarkConcurrencyIT.aRetireAndAMarkNeverBothWin`.
-- [ ] **AC-8:** Given the set editor receives `409 SET_IN_USE` on a remove, when the message renders,
+- [x] **AC-8:** Given the set editor receives `409 SET_IN_USE` on a remove, when the message renders,
   then it says the set is still held or still booked and no longer claims a booked set stays on the
   map for good. *Seam:* the `set-error` output of `operator/set-editor.ts`, driven through the
   mocked HTTP layer · *Pinned by:* `set-editor.spec.ts` "explainsARefusedRemove",
   `operator-set-editing.e2e.ts` "a booked set changes pool freely but cannot be moved or removed".
-- [ ] **AC-9:** The structural net (six members after this slice) is green, and the new member is in
+- [x] **AC-9:** The structural net (six members after this slice) is green, and the new member is in
   the `CLAUDE.md` and `riviera-local-debug` commands. *Seam:* the Gradle test task · *Pinned by:*
   the command itself.
 
@@ -192,30 +193,31 @@ The old surface is `DELETE /api/venues/{v}/sets/{s}` and the per-set reads it fe
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A staff mark or online claim lands on a set between the retire's probe and its commit (invariant #2) | med | high | the retire keeps `lockSet … FOR UPDATE` before the probe; both claim paths read the set through `poolForClaim` (`FOR KEY SHARE` through the view, re-checked after the lock wait) so a claim that waited on the retire sees the row gone; `SetRetireVsMarkConcurrencyIT` | session | open |
-| R-2 | The partial unique indexes let two *active* sets share a slot, or drop the name the 409 mapping / `BeachMapLayoutMigrationIT` expects | low | high | same index names; `SetRetireMigrationIT.activeSetsStillCannotShareACell` asserts the violation message names `set_position_grid_uniq`; `BeachMapLayoutMigrationIT` stays green | session | open |
-| R-3 | A read the ticket lists is missed, or a new adapter later forgets the view | med | high | the architecture test is written red first and fails on today's tree; it stays in the structural net so a future adapter trips it; the vacuity guard asserts the view path is exercised | session | open |
-| R-4 | A locking read through the view behaves differently from the table (`FOR UPDATE`/`FOR KEY SHARE` on `active_set_position`) | low | high | proven by the existing concurrency ITs (`SetWriteVsClaimConcurrencyIT`, `VenueSetWriteConcurrencyIT`, `BeachMapReplaceConcurrencyIT`) running against the view-backed adapters, plus AC-7 | session | open |
-| R-5 | Row-scoped writes (`repriceRow`, `renameRow`) touching retired rows, or a retired row blocking `ROW_NAME_TAKEN` / `NO_SUCH_ROW` | med | low | both `UPDATE`s take `AND retired_at IS NULL`; `distinctRowLabels` selects from the view; `VenueRowRenameIT`/`VenueRepriceIT` stay green | session | open |
-| R-6 | The bulk replace (`deleteAllSets`) deletes retired rows and hits the FK | low | med | the replace is still refused on any booking (`bookings.hasBookings(venueId)`), so a venue with a retired set never reaches the delete; the `DELETE` still takes `AND retired_at IS NULL` so the invariant holds even if #1032 relaxes the guard | session | open |
-| R-7 | The structural-net membership rule in `CLAUDE.md` excludes a test that names its table | certain | low | the ticket and the epic place it in the net; `CLAUDE.md`'s sentence is amended to name the one deliberate member and why (a new adapter anywhere can break it), so the rule stays honest | session | open |
-| R-8 | Ownership (BOLA, invariant #13) on every touched endpoint | low | high | no new endpoint; every touched service asserts ownership first; `CrossVenueDenialIT` unchanged | session | open |
-| R-9 | Sonar duplication from the adapter split (two adapters sharing column constants) | med | low | the facts adapter carries only its own three queries and mapper; shared constants stay where they are used | session | open |
+| R-1 | A staff mark or online claim lands on a set between the retire's probe and its commit (invariant #2) | med | high | the retire keeps `lockSet … FOR UPDATE` before the probe; both claim paths read the set through `poolForClaim` (`FOR KEY SHARE` through the view, re-checked after the lock wait) so a claim that waited on the retire sees the row gone; `SetRetireVsMarkConcurrencyIT` | session | closed — pinned by the tests named in the AC column, green locally |
+| R-2 | The partial unique indexes let two *active* sets share a slot, or drop the name the 409 mapping / `BeachMapLayoutMigrationIT` expects | low | high | same index names; `SetRetireMigrationIT.activeSetsStillCannotShareACell` asserts the violation message names `set_position_grid_uniq`; `BeachMapLayoutMigrationIT` stays green | session | closed — pinned by the tests named in the AC column, green locally |
+| R-3 | A read the ticket lists is missed, or a new adapter later forgets the view | med | high | the architecture test is written red first and fails on today's tree; it stays in the structural net so a future adapter trips it; the vacuity guard asserts the view path is exercised | session | closed — pinned by the tests named in the AC column, green locally |
+| R-4 | A locking read through the view behaves differently from the table (`FOR UPDATE`/`FOR KEY SHARE` on `active_set_position`) | low | high | proven by the existing concurrency ITs (`SetWriteVsClaimConcurrencyIT`, `VenueSetWriteConcurrencyIT`, `BeachMapReplaceConcurrencyIT`) running against the view-backed adapters, plus AC-7 | session | closed — pinned by the tests named in the AC column, green locally |
+| R-5 | Row-scoped writes (`repriceRow`, `renameRow`) touching retired rows, or a retired row blocking `ROW_NAME_TAKEN` / `NO_SUCH_ROW` | med | low | both `UPDATE`s take `AND retired_at IS NULL`; `distinctRowLabels` selects from the view; `VenueRowRenameIT`/`VenueRepriceIT` stay green | session | closed — pinned by the tests named in the AC column, green locally |
+| R-6 | The bulk replace (`deleteAllSets`) deletes retired rows and hits the FK | low | med | the replace is still refused on any booking (`bookings.hasBookings(venueId)`), so a venue with a retired set never reaches the delete; the `DELETE` still takes `AND retired_at IS NULL` so the invariant holds even if #1032 relaxes the guard | session | closed — pinned by the tests named in the AC column, green locally |
+| R-7 | The structural-net membership rule in `CLAUDE.md` excludes a test that names its table | certain | low | the ticket and the epic place it in the net; `CLAUDE.md`'s sentence is amended to name the one deliberate member and why (a new adapter anywhere can break it), so the rule stays honest | session | closed — pinned by the tests named in the AC column, green locally |
+| R-8 | Ownership (BOLA, invariant #13) on every touched endpoint | low | high | no new endpoint; every touched service asserts ownership first; `CrossVenueDenialIT` unchanged | session | closed — pinned by the tests named in the AC column, green locally |
+| R-9 | Sonar duplication from the adapter split (two adapters sharing column constants) | med | low | the facts adapter carries only its own three queries and mapper; shared constants stay where they are used | session | closed — pinned by the tests named in the AC column, green locally |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the exempt port is the whole `SetBookingFacts` adapter, `poolForClaim` included,
-  even though `poolForClaim` itself excludes retired sets — the fitness function exempts the class,
-  the ITs pin the claim behaviour. — *Owner:* session · *Resolves by:* phase 0 (the test's Javadoc
-  states it).
-- **Assumption:** a retired set keeps its last row label and position frozen — the row-scoped
-  rename and reprice skip it — because the booking view and the move mail must name the spot the
-  guest was told, and a retired set has no live guest to re-read a renamed row. — *Owner:* session ·
-  *Resolves by:* phase 2 (`RESPONSIBILITIES.md` § `venue` states it).
-- **Assumption:** the uniqueness constraints become partial unique indexes over active rows. The
-  ticket did not name this; without it a retired set pins its coordinates forever and a re-add at
-  that spot is a 500 after the conflict probe (which reads the view) says the slot is free. —
-  *Owner:* session · *Resolves by:* phase 1 (ADR-0019 records it).
+None open.
+
+### Resolved
+
+- The exempt port is the whole `SetBookingFacts` adapter, `poolForClaim` included, even though
+  `poolForClaim` itself excludes retired sets — the fitness function exempts the class
+  (`RetiredSetExclusionArchitectureTests`' Javadoc states it); `RetiredSetClaimIT` and
+  `SetRetireVsMarkConcurrencyIT` pin the claim behaviour. *Resolved in phase 0/2.*
+- A retired set keeps its last row label and price frozen — the row-scoped rename and reprice skip
+  it (`… AND retired_at IS NULL`). *Resolved in phase 2; `RESPONSIBILITIES.md` § `venue` states it.*
+- The uniqueness constraints become partial unique indexes over active rows, so a retired set's
+  slot is reusable and a re-add at that spot is a `201`, not a 500 behind a clean conflict probe.
+  *Resolved in phase 1; ADR-0019 §5 records it; `SetRetireMigrationIT` and `SetRetireIT` pin it.*
 
 ## Availability & concurrency (invariant #2)
 
@@ -293,18 +295,19 @@ N/A — no contract change. `DELETE /api/venues/{v}/sets/{s}` keeps `204` / `404
 
 ## Execution status
 
-**Stage pointer:** `plan — plan doc written, phase 0 next`
+**Stage pointer:** `PR — marking ready for review; review gate next`
 
-**Next action:** commit this plan doc, then write `RetiredSetExclusionArchitectureTests` red.
+**Next action:** run the review gate (`code-review:code-review` + `riviera-review-overlay`) over the
+PR's resolved range, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — architecture test + fixture, adapter split, join the net (red) | ⏳ | |
-| 1 — V50 migration + `SetRetireMigrationIT` | | |
-| 2 — excluding reads via the view, writes name the marker, claim paths refuse (green) | | |
-| 3 — `removeSet` retires; service test, HTTP ITs, concurrency IT | | |
-| 4 — frontend copy + spec + e2e | | |
-| 5 — docs: ADR-0019, CONTEXT, RESPONSIBILITIES, CLAUDE.md, domain-model, plan retirement | | |
+| 0 — architecture test + fixture, adapter split, join the net (red) | ✅ | "Add the retired-set exclusion net and split the set-facts adapter" |
+| 1 — V50 migration + `SetRetireMigrationIT` | ✅ | "Add the retired marker, the active-set view…" |
+| 2 — excluding reads via the view, writes name the marker, claim paths refuse (green) | ✅ | "Read the beach map through active_set_position…" |
+| 3 — `removeSet` retires; service test, HTTP ITs, concurrency IT | ✅ | "Retire a set that carries finished bookings…" |
+| 4 — frontend copy + spec + e2e | ✅ | "Name only the live claim in the set editor's remove refusal" |
+| 5 — docs: ADR-0019, CONTEXT, RESPONSIBILITIES, CLAUDE.md, domain-model, plan retirement | ✅ | "Record the retire lifecycle…" |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -323,7 +326,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/venue/SetRetireMigrationIT.java` — AC-2
 - `platform/src/test/java/ai/riviera/platform/RetiredSetExclusionArchitectureTests.java` — AC-1
 - `platform/src/test/java/ai/riviera/platform/ArchitectureTestSupport.java` — shared constant-pool string reader
-- `platform/src/test/java/ai/riviera/retirefixture/**` — the negative/positive fixtures (`package-info.java`, `RogueSetTableReader.java`, `FixtureActiveSetReader.java`, `FixtureSetRetirer.java`, `FixtureSetInserter.java`, `FixtureSetFacts.java`)
+- `platform/src/test/java/ai/riviera/retirefixture/package-info.java` · `platform/src/test/java/ai/riviera/retirefixture/rogue/adapter/out/RogueSetTableReader.java` · `platform/src/test/java/ai/riviera/retirefixture/venue/adapter/out/FixtureActiveSetReader.java` · `platform/src/test/java/ai/riviera/retirefixture/venue/adapter/out/FixtureSetRetirer.java` · `platform/src/test/java/ai/riviera/retirefixture/venue/adapter/out/FixtureSetInserter.java` · `platform/src/test/java/ai/riviera/retirefixture/venue/adapter/out/FixtureSetFacts.java` — the negative/positive fixtures
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcSetBookingFacts.java` — the exempt port's adapter, split out
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenueCatalog.java` — map/list/calendar via the view; loses the facts methods
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenues.java` — view reads, marker-guarded writes, `retireSet`
@@ -344,6 +347,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAdminControllerIT.java` — the terminal-booking remove test becomes a retire test
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` · `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java` — fakes, only if the port text forces a touch
 - `frontend/src/app/operator/set-editor.ts` · `frontend/src/app/operator/set-editor.spec.ts` — AC-8
+- `frontend/src/app/operator/layout-editor.ts` · `frontend/src/app/operator/layout-editor.spec.ts` — the locked-layout banner's per-set-remove clause ("held or still booked")
 - `frontend/src/app/operator/operator-console.model.ts` · `frontend/src/app/operator/operator-console.service.ts` — TSDoc
 - `frontend/e2e/operator-set-editing.e2e.ts` — AC-8 e2e
 - `CLAUDE.md` — the structural-net command and membership sentence
@@ -398,24 +402,32 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..9:** filled at close-out with the commands and SHAs.
+- [x] **AC-1:** `gradle test --tests "*RetiredSetExclusionArchitectureTests*"` → 4 tests pass (red on the pre-phase-2 tree: 15 statements named).
+- [x] **AC-2:** `gradle test --tests "*SetRetireMigrationIT*"` → 4 pass, 0 skipped.
+- [x] **AC-3:** `--tests "*VenueAdminServiceTest*" --tests "*SetRetireIT*" --tests "*VenueAdminControllerIT*"` → green.
+- [x] **AC-4:** `SetRetireIT.aRetiredSetIsGoneFromEveryExcludingRead`, `.aRetiredSetsSpotCanBeReused` → green.
+- [x] **AC-5:** `--tests "*RetiredSetClaimIT*"` (2) + `SetRetireIT.bothClaimPathsRefuseARetiredSet` → green.
+- [x] **AC-6:** `SetRetireIT.aBookingOnARetiredSetStillRendersItsSpot`, `SetBookingInfoIT.answersForARetiredSet` → green.
+- [x] **AC-7:** `--tests "*SetRetireVsMarkConcurrencyIT*"` → 6 repetitions, both orders exercised.
+- [x] **AC-8:** `ng test --include='**/operator/set-editor.spec.ts' --include='**/operator/layout-editor.spec.ts'` + a11y/contrast pairs → 169 pass; `playwright test --config playwright.a11y.config.ts e2e/operator-set-editing.e2e.ts e2e/layout-editor.e2e.ts` → 28 pass.
+- [x] **AC-9:** the six-member structural-net command → green after the adapter split and after the port change.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.

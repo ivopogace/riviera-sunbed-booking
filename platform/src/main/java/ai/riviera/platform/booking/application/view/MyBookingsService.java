@@ -23,9 +23,10 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * read-only, no {@code @Transactional}.
  *
  * <p>A booking's set always resolves — {@code booking.set_id} references {@code set_position} with
- * {@code ON DELETE RESTRICT} (V5), so a set holding bookings can't be removed — matching the
- * present-set assumption the code-gated detail view makes. An impossible missing set fails loud
- * rather than silently dropping the customer's (paid) booking (review F5).
+ * {@code ON DELETE RESTRICT}, and a set holding bookings is retired rather than deleted while
+ * {@link SetBookingFacts} keeps answering for it (ADR-0019) — matching the present-set assumption the
+ * code-gated detail view makes. An impossible missing set fails loud rather than silently dropping
+ * the customer's (paid) booking.
  */
 @Service
 class MyBookingsService implements MyBookings {

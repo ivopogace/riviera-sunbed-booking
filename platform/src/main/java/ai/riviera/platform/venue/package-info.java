@@ -1,8 +1,10 @@
 /**
  * The venue module — venue profiles, the beach map / layout, set positions,
  * online-vs-walk-in pool assignment, pricing, and booking mode (Instant / Request).
- * The state is the {@code venue} and {@code set_position} tables: a venue's beach map is its set
- * rows, and the commission rate is effective-dated in {@code venue_commission_rate}.
+ * The state is the {@code venue} and {@code set_position} tables: a venue's beach map is its
+ * <em>active</em> set rows — the {@code active_set_position} view; a set that carries booking history
+ * is retired, never deleted (ADR-0019) — and the commission rate is effective-dated in
+ * {@code venue_commission_rate}.
  *
  * <p>Full-module layout (ADR-0007): it owns application services
  * ({@code BeachMapEditService}, {@code VenueAdminService}), so it takes the full template — {@code api} + {@code spi}
