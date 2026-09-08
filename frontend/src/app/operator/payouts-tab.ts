@@ -66,7 +66,7 @@ export class PayoutsTab {
   protected readonly skeletonRows = [1, 2, 3, 4] as const;
 
   /** The washed-out day a weather refund targets (ISO YYYY-MM-DD); defaults to today Europe/Tirane
-   *  (invariant #6). The refund is per-DATE (whole-day, invariant #10) — the design's per-row buttons
+   *  (invariant #6). The refund is per-DATE (whole-day, invariant #10) — the drawn per-row buttons
    *  don't map to the per-date endpoint, and the ledger carries no service-date. */
   protected readonly selectedDate = signal(todayBookingDate(new Date()));
   /** True while the amber "Issue full weather refund" confirm is open (a two-step, no accidental refund). */

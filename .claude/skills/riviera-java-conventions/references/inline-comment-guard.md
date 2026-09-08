@@ -33,10 +33,8 @@ Scope:
 - **Skill markdown:** `.claude/skills/<skill>/SKILL.md` and its `references/*.md` — added
   lines only, outside fenced code and with code spans removed. Not the triage skill's
   `OUT-OF-SCOPE.md` (a ledger of issue numbers by design), and not `CLAUDE.md`, `docs/` or
-  the ADRs — those are RV-PROC-2's. The one non-markdown exemption is the design artboards,
-  `docs/design/*.dc.html`: their README requires an `<!-- as-built diverges — see #NNN -->`
-  pointer beside every artboard line a slice diverged from, so the provenance tell is the rule
-  there. Their support scripts under `docs/design/` stay in scope by extension.
+  the ADRs — those are RV-PROC-2's. There is no path-based exemption beyond that: a file the
+  extension table below covers is in scope wherever in the tree it sits, `docs/` included.
 - **Four languages, by comment syntax:** `.java`, `.ts`/`.tsx`/`.js`/`.mjs`/`.cjs`,
   `.scss`/`.css`, `.html`. In a `.ts`/`.tsx` file the template literal after `template:` is an
   Angular inline template, and an `<!-- … -->` inside it is judged exactly as one in an `.html`

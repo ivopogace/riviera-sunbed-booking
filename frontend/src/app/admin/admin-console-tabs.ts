@@ -23,13 +23,7 @@ import { TouchTarget } from '../shared/touch-target';
  * (accounts), then the two outbox re-drive levers (Email and Refunds share `OutboxLever`), then
  * moderation, then the money the platform sets and pays, then the records — erasure, and Audit last
  * because it is the record of all of the above. One slot is still reserved for a tab that does
- * not exist yet — <strong>Payouts</strong>; every tab that ships has landed in its slot without the
- * order being renegotiated, which is what writing it down bought.
- *
- * <p>This grouping is a maintainer decision from the console-nav spike's grill (its verdict,
- * answer 8), amending the earlier home-then-money order. The same decision departed from the admin
- * design canvas (`docs/design/riviera-admin-console.dc.html`), whose pill strip is not what ships:
- * the tabs are underlined text on one shared rail, in this order, grouped by these dividers.
+ * not exist yet — <strong>Payouts</strong>, at slot 3.
  */
 export const ADMIN_CONSOLE_TAB_GROUPS = [
   ['Operators'],
@@ -144,11 +138,9 @@ interface TabRow {
  * and `aria-current`, so a collapsed menu never strands the current page (the objection that once
  * ruled an overflow menu out). `e2e/admin-console-tabs.e2e.ts` pins both shapes.
  *
- * <p><strong>Which tabs exist is a backend question.</strong> This rail lists what ships, which is
- * why Photos appears here without appearing on the design canvas at all: the canvas's Privacy tab
- * is scoped to GDPR data-subject erasure (built as drawn), and content moderation is a
- * different job. The canvas's own five-tab pill strip predates five of the tabs that ship and is
- * not the target IA.
+ * <p><strong>Which tabs exist is a backend question.</strong> This rail lists what ships. Privacy
+ * is scoped to GDPR data-subject erasure and Photos is content moderation — a different job, which
+ * is why both exist rather than one.
  *
  * <p>Rendered by the console shell (`console-shell.ts`) under its section row, only past the admin
  * gate, so a signed-out visitor is never told which admin surfaces exist; the shell's 1120px box

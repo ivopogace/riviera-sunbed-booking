@@ -47,9 +47,9 @@ import {
  * it composes prove their own (the amenity chips in `shared/amenities.contrast.spec.ts` — solid
  * fills, so backdrop-independent; the failure panel's inks are the `--riv-card-ink` /
  * `--riv-card-ink-soft` pair already below, and the empty-map heading + copy reuse that same
- * pair on the same card glass). Deviations from the design file, on purpose:
+ * pair on the same card glass). Deviations from the drawn values, on purpose:
  * the header + back pill sit on the AA-proven dark header glass, not the bare
- * gradient; the seat tiles are TRANSLUCENT over the sea→sand wash (#672), whose gradient stops
+ * gradient; the seat tiles are TRANSLUCENT over the sea→sand wash, whose gradient stops
  * are opaque and theme-independent — so each tile/chip ink is proven composited (fill alpha over
  * every wash stop) rather than as a solid pair; the date field is near-opaque (it sits on dark
  * glass, unlike Discover's field on light card glass); and the legend band is painted the wash's
@@ -60,7 +60,7 @@ import {
  * ink over the same fill on BOTH hatch bands, so a row here would assert the gap band's arithmetic
  * a second time and give a future retune two places to miss.
  *
- * The ghost-taken tile is deliberately the faintest surface (free inventory pops, #672) but is
+ * The ghost-taken tile is deliberately the faintest surface (free inventory pops) but is
  * NOT excluded: its seat number is proven AA and its dashed border — the non-colour "taken"
  * cue beside the accessible name — is proven at 3:1 (1.4.11), both composited below. The
  * review gate rejected reading it as WCAG 1.4.3 "inactive component": the tile is static
@@ -71,7 +71,7 @@ import {
  * (aria-hidden; the numeric rating carries the value), the failure badge (aria-hidden; the
  * heading carries the meaning), and the decorative live-tile/card borders.
  *
- * The walk-in tile's 135° hatch (#701) joins that exclusion, and the reasoning is written down
+ * The walk-in tile's 135° hatch joins that exclusion, and the reasoning is written down
  * here because the ghost tile above shows the bar is not automatic. The hatch is
  * `rgba(95,77,42,0.16)`, ≈1.26:1 against its own tile fill — nowhere near 3:1, and it cannot be:
  * a 3:1 stripe on this sand needs ≈0.55 alpha, which drops the tile's own numeral to ≈2.1:1, so

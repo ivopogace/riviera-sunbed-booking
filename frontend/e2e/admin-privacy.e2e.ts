@@ -10,7 +10,7 @@ import { openMoreSheet } from './support/shell';
  * actions a data-subject erasure request through form → confirm → done, offers grounds that ride the
  * audit trail, and is told an outcome that reveals nothing about whether the address was known.
  *
- * Run at **360px**, the project's small-screen bar, because the canvas's two-column layout has to
+ * Run at **360px**, the project's small-screen bar, because the two-column layout has to
  * collapse there and the strip is at eight tabs with Privacy in it — the narrow viewport is the honest
  * place to prove both still fit.
  *

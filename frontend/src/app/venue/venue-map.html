@@ -25,7 +25,7 @@
         appPanelGlass
       >
         @if (v.photos.length < 2) {
-          <!-- The photos LEAD the identity card (#704): what the beach looks like is this product's strongest booking motivator, so the band is a media header — full-bleed to the panel's edges (negative margins against its own padding, top corners clipped by its radius) — instead of a strip nested inside the availability card, which mixed trust content with status and undersized the trust half. It still sits ABOVE the grid card's "Facing the sea" banner, keeping the v3 design's spatial order: sea ↑ / promenade ↓. The imagery is decorative (the slideshow hides it from AT); only the step buttons are exposed, so the band itself is NOT aria-hidden. -->
+          <!-- The photos LEAD the identity card: what the beach looks like is this product's strongest booking motivator, so the band is a media header — full-bleed to the panel's edges (negative margins against its own padding, top corners clipped by its radius) — instead of a strip nested inside the availability card, which mixed trust content with status and undersized the trust half. It still sits ABOVE the grid card's "Facing the sea" banner, keeping the spatial order: sea ↑ / promenade ↓. The imagery is decorative (the slideshow hides it from AT); only the step buttons are exposed, so the band itself is NOT aria-hidden. -->
           <div
             class="photo-band relative -mx-[22px] -mt-5 mb-[18px] h-[150px] min-[1024px]:h-[264px] overflow-hidden bg-(image:--riv-photo-grad)"
           >
@@ -173,7 +173,7 @@
         </div>
       </header>
 
-      <!-- Overview card: pure status — the free count and its bar, nothing else (#704). Kept on its own card glass so the dark count stays AA on both themes (the v3 design places it on the bare gradient, which fails AA on the riviera theme — the same reason the header sits on glass). -->
+      <!-- Overview card: pure status — the free count and its bar, nothing else. Kept on its own card glass so the dark count stays AA on both themes (on the bare gradient it fails AA on the riviera theme — the same reason the header sits on glass). -->
       <div
         class="mt-5 backdrop-blur-[26px] backdrop-saturate-[1.7] rounded-[28px] shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)] p-4 min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         appCardGlass
@@ -228,7 +228,7 @@
         </p>
       }
 
-      <!-- Only the map card leaves the 780px shell, to the design's 1100px (#700); the margin derives from that width so a shell edit cannot drift it. The query is px to match: rem-based `xl` tracks the browser's default font size, firing at 960px on Chrome's "Small" setting. -->
+      <!-- Only the map card leaves the 780px shell, to 1100px; the margin derives from that width so a shell edit cannot drift it. The query is px to match: rem-based `xl` tracks the browser's default font size, firing at 960px on Chrome's "Small" setting. -->
       <app-beach-map-canvas
         class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         label="Beach map — {{ v.name }}"

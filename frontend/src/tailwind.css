@@ -1,7 +1,7 @@
 /*
- * The one global stylesheet: Tailwind + the Liquid Glass design tokens (design: the v2 tourist
- * export, superseded in-repo by docs/design/riviera-sunbeds-liquid-glass-v3.dc.html — every
- * "(design: …)" note below cites it).
+ * The one global stylesheet: Tailwind + the Liquid Glass design tokens. A "(design: …)" note
+ * below records the drawn intent a token was cut against; no artboard is consultable, so the
+ * contrast and token-drift specs are what hold a value.
  *
  * Themes are CSS custom properties scoped by `data-riv-theme` on <html> — at runtime the
  * attribute is written only by core/theme.ts; the index.html inline seed pre-paints the same
@@ -17,7 +17,7 @@
  * blocks below, because `@theme` emits onto `:root` only and the switching (and the porcelain
  * subtree pinning) needs the `[data-riv-theme]` cascade.
  *
- * Deviation from the design file, on purpose: the riviera header glass is a DARK tint
+ * Deviation from the drawn intent, on purpose: the riviera header glass is a DARK tint
  * (design: white 0.13) because white ink on the gradient's light top stops fails WCAG AA;
  * the dark tint keeps the glass look and passes (pinned by app.contrast.spec.ts).
  */
@@ -222,7 +222,7 @@
       app.contrast.spec.ts. */
   --riv-tabbar-glass: rgba(255, 255, 255, 0.85);
 
-  /** CTA buttons carry white body-size text, so both stops must clear AA (4.5:1). The design's
+  /** CTA buttons carry white body-size text, so both stops must clear AA (4.5:1). The drawn
       brighter #2bb8d4→#0e8aa8 only reaches 2.4–4.0:1 white; darkened for AA (pinned by the
       CTA_STOPS case in home.contrast.spec.ts). --riv-bar-grad stays bright — it's the availability
       fill, decorative, text-free. Theme-invariant: the dark blocks below inherit both. */
@@ -254,15 +254,15 @@
   /** Card surfaces (consumed by the glass panels/cards). Declared in
       this base block, so they are theme-invariant unless a theme block overrides them
       (riviera overrides only --riv-card-glass; dark inverts the whole family — see its block).
-      0.55 matches the design: porcelain's light stops let the dark card inks reach AA at the
-      design's airier alpha — see home.contrast.spec.ts. */
+      0.55 is the drawn value: porcelain's light stops let the dark card inks reach AA at the
+      drawn airier alpha — see home.contrast.spec.ts. */
   --riv-card-glass: rgba(255, 255, 255, 0.55);
   --riv-card-border: rgba(255, 255, 255, 0.6);
   /* Near-opaque white avoids a muddy dark halo on this light page. */
   --riv-card-hover-border: rgba(255, 255, 255, 0.9);
   --riv-card-hover-shadow: 0 18px 40px rgba(7, 42, 58, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   --riv-card-ink: #0a2a33;
-  /* 0.78 / 0.72 (tourist design: 0.7 / 0.55): AA over the composited card glass (home.contrast.spec.ts) */
+  /* 0.78 / 0.72 (design: 0.7 / 0.55): AA over the composited card glass (home.contrast.spec.ts) */
   --riv-card-ink-soft: rgba(12, 42, 51, 0.78);
   --riv-card-ink-faint: rgba(12, 42, 51, 0.72);
   /* #085a6e (design: #0a6e85): AA for 16px-bold prices on the riviera card glass */
@@ -634,7 +634,7 @@
       the aria-hidden exemption, and the single-declaration guard that is the only thing able to see
       a later dark override) + e2e/fixed-fill-state-skins.e2e.ts (the computed skin under a forced
       dark document theme). Rationale: the outcome-card medallion convergence,
-      docs/design/colour-literal-token-audit.md §F-3, §F-5 (why these values and not the artboards' tints, and what converging cost). */
+      docs/design/colour-literal-token-audit.md §F-3, §F-5 (why these values and not the drawn tints, and what converging cost). */
   --riv-medallion-positive-fill: #d9f2f7;
   --riv-medallion-positive-ink: #0a5f74;
   --riv-medallion-waiting-fill: #fcf0d9;
@@ -800,11 +800,10 @@
   --riv-tile-hover: #e6f6f3;
   --riv-tile-focus: #0f7d8c;
   --riv-photo-grad: linear-gradient(162deg, #2bb8d4 0%, #0e8aa8 70%, #0e8aa8 100%);
-  /** The scrim reaches alpha 0.68 at its three-quarter stop (the design file has no scrim): the
+  /** The scrim reaches alpha 0.68 at its three-quarter stop (the drawn header had no scrim): the
       location overlay's text band, sitting in the lower tenth of the photo, needs a backing of at
-      least 0.68 for white ink to clear AA over ANY cover photo — since issue 142 the band backs a
-      real image, so the worst case is a pure-white photo, not the gradient's light stop (which the
-      earlier 0.5 floor came from; see the issue-135 review history). Geometry is asserted by
+      least 0.68 for white ink to clear AA over ANY cover photo — the band backs a
+      real image, so the worst case is a pure-white photo, not the gradient's light stop. Geometry is asserted by
       home.contrast.spec.ts. */
   --riv-photo-scrim: linear-gradient(
     180deg,
@@ -912,7 +911,7 @@
   /* Native UI and the fields are both dark here (--riv-field-scheme below stays dark) */
   color-scheme: dark;
 
-  /** Neutral slate — no design-file counterpart: derived from riviera's token structure with the
+  /** Neutral slate — no drawn counterpart: derived from riviera's token structure with the
       teal gradient swapped for slate stops; every stop is dark enough that the white ink set
       clears AA bare (no hero scrim needed — --riv-hero-scrim stays the base block's none). AA proof:
       the DARK_* rows in testing/glass-tokens.ts + the per-page contrast specs. */

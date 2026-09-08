@@ -32,7 +32,7 @@ import { BookingService } from './booking.service';
 
 import { TouchTarget } from '../shared/touch-target';
 
-/** The design's per-status sub-label (server-truth-adjacent); '' for CONFIRMED (no sub-label). */
+/** The per-status sub-label (server-truth-adjacent); '' for CONFIRMED (no sub-label). */
 function subLineOf(b: MyBookingSummary): string {
   switch (b.status) {
     case 'AWAITING_PAYMENT':

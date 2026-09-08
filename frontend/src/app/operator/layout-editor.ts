@@ -342,7 +342,7 @@ export class LayoutEditor {
     })),
   );
 
-  /** The tool rail: Select first, then the four paint brushes with live cell counts (design order). */
+  /** The tool rail: Select first, then the four paint brushes with live cell counts. */
   protected readonly tools = computed<readonly ToolRow[]>(() => {
     const counts = this.counts();
     const resolved = this.resolvedTool();

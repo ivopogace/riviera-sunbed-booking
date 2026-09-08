@@ -10,7 +10,7 @@ import { openMoreSheet } from './support/shell';
  * admin sees every venue's rate, corrects one through a percent editor that shows the exact basis
  * points it will store, and offers grounds that ride the audit trail.
  *
- * Run at **360px**, the project's small-screen bar, because the design canvas's phone layout is
+ * Run at **360px**, the project's small-screen bar, because the phone layout is
  * exactly what this tab renders at every width — one labelled card per venue — so the narrow
  * viewport is the honest place to prove it fits and stays accessible.
  *

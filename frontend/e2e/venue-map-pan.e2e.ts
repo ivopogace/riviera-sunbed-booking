@@ -318,8 +318,7 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
   expect(headBg).not.toBe('rgba(0, 0, 0, 0)');
   expect(headBg).not.toBe('transparent');
 
-  // The row-name side labels render as the v3 design's subtle chips — a filled, rounded pill,
-  // not bare text (design-comparison follow-up). Guards that the chip fill/radius isn't dropped.
+  // Side labels are chips — a filled, rounded pill, not bare text; guards fill/radius isn't dropped.
   const chip = await page
     .getByTestId('row-code')
     .first()
@@ -331,7 +330,7 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
   expect(chip.bg).not.toBe('transparent');
   expect(chip.radius).toBeGreaterThan(0);
 
-  // Spatial order (v3 design): the photo band (the sea view) sits ABOVE the "▲ Facing the sea"
+  // Spatial order: the photo band (the sea view) sits ABOVE the "▲ Facing the sea"
   // banner, which labels the front-row edge of the grid — sea ↑ / promenade ↓.
   const photoY = (await page.locator('.photo-band').boundingBox())!.y;
   const bannerY = (await page.locator('.sea-banner').boundingBox())!.y;
@@ -507,7 +506,7 @@ test('a 14-column map fits whole at a desktop viewport — no pan, no hint (#700
   expect(legend.width).toBeCloseTo(banner.width, 0);
   // Within a couple px, not exact — the legend carries its own border the plain header box doesn't.
   expect(Math.abs(legend.width - head.width)).toBeLessThan(3);
-  // The design canvas's number, pinned — the margin derives from it, so a shell edit can't drift it.
+  // The breakout width, from venue-map.html's `max-w-[1100px]`; the margin derives from it.
   expect(card.width).toBeCloseTo(1100, 0);
 
   // A symmetric breakout, not a shift — the wider card stays centred on the header's axis.

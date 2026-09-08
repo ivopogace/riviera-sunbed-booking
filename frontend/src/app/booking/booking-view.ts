@@ -803,7 +803,7 @@ export class BookingView {
     });
   }
 
-  /** The design label for a status (drives the header chip; matches design v3 `STATUS_META`). */
+  /** The display label for a status; drives the header chip. Source of truth: {@link metaFor}. */
   protected statusLabel(status: string): string {
     return metaFor(status).label;
   }

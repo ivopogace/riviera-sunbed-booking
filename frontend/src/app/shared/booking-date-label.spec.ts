@@ -1,9 +1,9 @@
 import { formatBookingDate } from './booking-date-label';
 
 describe('formatBookingDate', () => {
-  it('renders an ISO LocalDate as a friendly weekday/day/month label (design formatDate shape)', () => {
+  it('renders an ISO LocalDate as a friendly weekday/day/month label', () => {
     // 2026-07-20 is a Monday. Locale/ICU punctuation can vary, so assert the parts (like
-    // deadline.spec.ts), not the exact string. No year, matching the v3 design's formatDate.
+    // deadline.spec.ts), not the exact string. The label deliberately carries no year.
     const text = formatBookingDate('2026-07-20');
     expect(text).toContain('Mon');
     expect(text).toContain('20');

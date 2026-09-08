@@ -13,7 +13,7 @@ import { CONSOLE_THEMES, cardOver, expectAaOnSurfaces } from '../../testing/cons
  * WCAG-AA contrast guard for the console stats strip. The strip's tiles use `appCardGlass`
  * (porcelain `--riv-card-glass` = white @ 0.55), so every ink sits over that glass composited over
  * the console's porcelain background stops. The label uses `--riv-card-ink-faint` (0.72) —
- * deliberately brighter than the design file's `rgba(12,42,51,0.5)`, which would fail AA. Values
+ * deliberately brighter than the drawn `rgba(12,42,51,0.5)`, which would fail AA. Values
  * mirror `tailwind.css`; a token edit there must re-pass here.
  */
 
@@ -22,7 +22,7 @@ describe('ConsoleStatsStrip porcelain contrast (WCAG AA, #171)', () => {
     expectAaOverStops(INK_DARK, 1, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
-  it('tile label (--riv-card-ink-faint, 0.72) meets AA — raised from the design 0.5 for AA', () => {
+  it('tile label (--riv-card-ink-faint, 0.72) meets AA — raised from the drawn 0.5 for AA', () => {
     expectAaOverStops(CARD_INK, CARD_INK_FAINT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 

@@ -45,12 +45,12 @@ import {
  * Shared token mirrors + the AA-over-stops loop live in `testing/glass-tokens.ts`.
  *
  * This table mirrors every text-bearing colour in `tailwind.css` + `home.html`'s utilities
- * (the hero scrim is the `--riv-hero-scrim` token there); an edit there must re-pass here. Deviations from the design file, on purpose (the same
+ * (the hero scrim is the `--riv-hero-scrim` token there); an edit there must re-pass here. Deviations from the drawn values, on purpose (the same
  * class as the shell header's): the list-state panels (and, in the riviera theme, the hero) sit on
- * the AA-proven header glass instead of the bare gradient — the porcelain hero matches the
- * design (bare dark ink); the riviera card glass is 0.78 (design 0.55); the muted
- * card inks are 0.78/0.72 (design 0.7/0.55); the teal accent is #085a6e (design #0a6e85);
- * the field border is a dark tint (design white) for the 1.4.11 component boundary; the
+ * the AA-proven header glass instead of the bare gradient — the porcelain hero keeps the
+ * drawn bare dark ink; the riviera card glass is 0.78 (drawn 0.55); the muted
+ * card inks are 0.78/0.72 (drawn 0.7/0.55); the teal accent is #085a6e (drawn #0a6e85);
+ * the field border is a dark tint (drawn white) for the 1.4.11 component boundary; the
  * CTA-button gradient is darkened for white-text AA (see CTA_STOPS below).
  *
  * The failure-panel additions reuse already-pinned tokens: the failure panel sits on the same
@@ -68,7 +68,7 @@ const ACCENT = '#085a6e'; // --riv-accent-ink (light themes; dark uses DARK_ACCE
 
 /**
  * --riv-cta-grad stops (theme-invariant; consumed by the Discover failure-panel "Try again"
- * button). Deviation from the design file, on purpose: the design's brighter
+ * button). Deviation from the drawn values, on purpose: the drawn brighter
  * #2bb8d4→#0e8aa8 gives white body-size text only 2.4–4.0:1 (< AA); darkened for AA. Both stops
  * are pinned because the text sits over the whole gradient (worst case is the lighter stop).
  */
@@ -88,7 +88,7 @@ interface Theme {
   readonly heroInk: Rgb;
   readonly heroInkSoftAlpha: number; // --riv-ink-soft
   /** Riviera backs the hero with a soft dark SCRIM (white ink AA over the gradient's light top
-   *  stops); porcelain's hero is bare dark ink on the gradient (matches the design). null = bare. */
+   *  stops); porcelain's hero is bare dark ink on the gradient, as drawn. null = bare. */
   readonly heroScrim: Glass | null;
 }
 
@@ -148,7 +148,7 @@ const THEMES: readonly Theme[] = [
 describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #135)', (theme) => {
   // The hero backdrop is theme-conditional: a soft dark SCRIM in riviera (white ink needs a dark
   // backing to clear AA over the gradient's light top stops), the BARE gradient in porcelain, where
-  // the hero matches the design (dark ink, no backing). The px-anchored fade (--riv-hero-scrim) keeps the
+  // the hero keeps the drawn treatment (dark ink, no backing). The px-anchored fade (--riv-hero-scrim) keeps the
   // text on the solid scrim core, so the worst case is the full-strength scrim over each stop. The
   // loading/empty .state panels keep the header glass in BOTH themes (asserted separately below).
   const heroBackdrop = (stop: Rgb): Rgb =>

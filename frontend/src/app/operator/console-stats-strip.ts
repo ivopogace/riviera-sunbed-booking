@@ -51,7 +51,7 @@ export class ConsoleStatsStrip {
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
 
-  /** Total sets across both pools (design "Free today {free}/{total}"). */
+  /** Total sets across both pools; renders as "Free today {free}/{total}". */
   protected readonly total = computed(() => this.venue()?.sets.length ?? 0);
   /** Free sets today, from the shared venue map's per-set availability. */
   protected readonly free = computed(

@@ -11,11 +11,11 @@ fills under fixed white ink, PR #860), **#861** (merging that family's two brand
 PR #862), **#848** (the operator console's accent ink, PR #863), **#864** (the console's negative
 ink, PR #866), **#858** (the three fixed-fill state skins, PR #867), **#869** (`outcome-card`'s two tone glyphs onto the medallion skin, PR #871), **#870** (the beach-map zoom toggle's fixed-pair-over-a-themed-host, PR #873), **#868** (the amber notice banner's theme-invariant pair, PR #874), **#853** (the CTA hairline's own border token, PR #875), **#852** (all of class **O** — the `/opacity`-modifier positions — settled on rule B and closed, PR #878), **#879** (class **O**'s values: the multiple-of-five alpha ladder, one `--riv-walkin-hatch`, and the three amber families merged into `--riv-warn-{edge,fill,ink}`, PR #880), **#881** (the console confirm buttons' `#9a6410` onto a fourth `--riv-solid-fill-*` member, `-warn`, PR #883), **#882** (the three inline suns onto one `--riv-sun-grad`, and the card sun's compositing defect with them, PR #885), **#849** (class **T-3** re-cut: its population is class F and class R, and the class-T family is empty — PR #886), **#887** (that re-cut's own class-**R** residue: the console sign-out button's hover fill, the tree's last `hover:bg-[#hex]` literal, PR #889), **#888** (the availability calendar's popover verdict — *adopt*: the pinned class-T-3 calendar ramp retires into `--riv-pop-*`, and the class-**S** day-cell palette becomes eight themed opaque tokens, PR #896).
 
-> **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
-> artboards — approved-look snapshots that are deliberately *never* rewritten to track the
-> shipped app. This ledger is the opposite: it is **maintained**, and every slice that cuts
-> a family from the population updates the family's row to `done` with its PR. It lives here
-> because #836 asked for it here, next to the design substrate it reasons about.
+> **This ledger is maintained.** Every slice that cuts a family from the population updates
+> that family's row to `done` with its PR. Where an entry below cites a `.dc.html` artboard,
+> it is quoting evidence weighed at the time the verdict was taken; the artboards have since
+> been retired (`docs/design/README.md`), so those citations are history and stay as written —
+> nothing is owed against them.
 
 ## Why a ledger and not a sweep
 
@@ -196,9 +196,8 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 > nothing ever forced an AA proof onto it.
 >
 > **Verdict: converge — ratify the as-built retune as the design** (maintainer, 2026-09-01). Both
-> tones move whole onto `--riv-medallion-positive-*` / `--riv-medallion-waiting-*`; the artboard
-> lines get the `as-built diverges` pointers `docs/design/README.md` prescribes, which #858 owed and
-> did not write. Two things this closes and one it opens:
+> tones move whole onto `--riv-medallion-positive-*` / `--riv-medallion-waiting-*`. Two things
+> this closes and one it opens:
 >
 > - **A defect, not a preference.** The `pending` tone pinned a fixed `#a86a12` over a tint that
 >   composited onto the **themed** card: 2.82:1 on riviera and **2.46:1 in dark**. Class F's failure
@@ -215,11 +214,10 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 >   form: `payouts-tab.html:165`, `daily-view-tab.html:142`). The substitution carries **no**
 >   class-O computed-value change; the movement it does carry is the deliberate repaint above.
 >
-> **Adjacent, deliberately not taken:** `riviera-sign-in.dc.html:153`'s "Pending review" status chip
-> is `#a86a12`/`rgba(240,170,46,0.2)` too, while the shipped `status-chip.ts` `chip--pending` is
-> `#8a5410`/`#fceed5` — the same as-built divergence on the **status-chip** family, which is class
-> S's nine-state palette and owes its own design pass. Named here so the next sweep does not read
-> its absence as an oversight.
+> **Adjacent, deliberately not taken:** the shipped `status-chip.ts` `chip--pending` is
+> `#8a5410`/`#fceed5`, carrying the same retune on the **status-chip** family — class S's
+> nine-state palette, which owes its own pass against the contrast specs. Named here so the next
+> sweep does not read its absence as an oversight.
 >
 > **Found by #869's own generalization audit, and filed rather than folded in:** sweeping the
 > *mechanism* (a fixed hex ink sharing a class string with a translucent fill on a themeable host)
@@ -592,10 +590,10 @@ log.
 
 So the overlay families were three — two that themed and one pinned light — and are now **two**,
 both themed: the calendar was the only surface outside them that a tourist could reach in the dark
-theme, and nobody had decided it should be. The 2026-08-25 restructure note's claim in
-`2026-07-02-liquid-glass-redesign-note.md` — "the dark theme inverts the whole surface family
-(dark cards/dialogs/popovers/fields, light inks)" — is true of the shipped app since #888, and of
-the console's own dark theme since #1010, which took the payout statement onto the themed inset.
+theme, and nobody had decided it should be. The theme restructure's rule — the dark theme inverts
+the whole surface family (dark cards/dialogs/popovers/fields, light inks) — is true of the shipped
+app since #888, and of the console's own dark theme since #1010, which took the payout statement
+onto the themed inset.
 The one out-of-family overlay left is so for a reason the tree records (a photo-proof scrim), not
 by omission. `riviera` is not a column because it redeclares no overlay
 token: its popovers are the base block's white glass by that theme's design.

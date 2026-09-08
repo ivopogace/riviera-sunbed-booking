@@ -34,8 +34,8 @@ import {
  * (the booking-dialog.contrast.spec.ts pattern). This table mirrors every text-bearing token in
  * find-booking.ts's `CLS` recipe.
  *
- * Deviations from the design file, on purpose (cloned from booking-dialog): the panel is
- * white 0.82 (design 0.78) so dark inks clear AA over the darkest stop; the input border is the dark
+ * Deviations from the drawn values, on purpose (cloned from booking-dialog): the panel is
+ * white 0.82 (drawn 0.78) so dark inks clear AA over the darkest stop; the input border is the dark
  * --riv-field-border (a white border fails the 3:1 boundary); the CTA is the AA-safe --riv-cta-grad
  * teal with SOLID white ink.
  *

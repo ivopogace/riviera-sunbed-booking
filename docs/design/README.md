@@ -1,40 +1,40 @@
-# `docs/design/` — design records, not living docs
+# `docs/design/`
 
-The `.dc.html` files here are **design records**: each captures the approved
-look/copy/interaction at the time it was drawn (see
-`2026-07-02-liquid-glass-redesign-note.md` for the intake history and the
-per-file scope). They are not rewritten to track the shipped app afterward —
-doing so would erase the record of what was actually approved and when.
+Two maintained design docs, plus this file. Both track the shipped app: a slice that moves
+what they describe corrects them in place.
 
-**So an artboard can legitimately diverge from current shipped copy.** When a
-later slice changes behavior the artboard depicted (e.g. cutoff-copy wording,
-an icon retired in favor of a shared component), the artboard line is left as
-drawn and gets a one-line `<!-- as-built diverges — see #NNN -->` pointer to
-the issue/PR that changed the shipped surface, rather than being edited in
-place.
+- **`colour-literal-token-audit.md`** — the ledger of which hex/rgba positions in
+  `frontend/src` want `--riv-*` tokens, and the verdict per family. Every slice that cuts a
+  family updates that family's row with its PR.
+- **`non-text-contrast.md`** — the project's settled position on sub-3:1 non-text chrome,
+  which token comments across `frontend/src` cite by name. A rule needs a home that cannot
+  close; this is it. Correct it in place when the position moves.
 
-If a screen gets genuinely redesigned, that's a **new export** (new file or a
-new dated intake note), not an edit to the existing record — same pattern as
-the "v3 gap-fill" export superseding the first 2026-07-02 export.
+`riviera-docs-freshness` sweeps this folder: a ledger row still open for a family that
+shipped, or a rule citing a spec that does not measure what it claims, is a finding.
 
-`docs/design/` is part of `riviera-docs-freshness`'s substrate-doc map for
-exactly this reason: a sweep should catch (and pointer-note) a diverged
-artboard line, never silently drift past it.
+## There is no drawn spec
 
-## The exceptions: the two maintained `.md` files
+The Liquid Glass look was imported as a set of design-canvas `.dc.html` artboards and kept as
+records of the approved look, pointer-noted where anyone remembered that the shipped app had
+diverged. They were retired on 2026-09-08 with the canvas runtime and the intake note.
 
-Everything above governs the `.dc.html` **records**. Two `.md` files here are the
-opposite kind of thing, and neither takes the `as-built diverges` convention.
+So no artboard is consultable, and no `as-built diverges` convention is maintained. What a
+surface should look like lives in:
 
-`colour-literal-token-audit.md` (#836) is a **maintained ledger** of which hex/rgba
-positions in `frontend/src` want `--riv-*` tokens, and the verdict per family. It
-*is* rewritten to track the shipped app: every slice that cuts a family updates
-that family's row with its PR. It sits here because it reasons about the design
-substrate, not because it records an approved look. Don't apply the
-`as-built diverges` pointer convention to it — bring it up to date instead.
+- the tokens and their comments in `frontend/src/tailwind.css`, plus the two files above;
+- `riviera-tailwind` (how to write the styling) and `riviera-frontend` (where a component
+  goes and who owns theming);
+- the `*.contrast.spec.ts` guards and the token-drift specs, which are the executable half of
+  the design and the only half that cannot silently rot.
 
-`non-text-contrast.md` (#876) is a **living rule**: the project's settled position on
-sub-3:1 non-text chrome, which token comments across `frontend/src` cite by name. It
-exists because that question had been deferred four times to an issue that has since
-closed, and a rule needs a home that cannot close. Same treatment as the ledger —
-correct it in place when the position moves; never pointer-note it as diverged.
+A new screen gets its look decided in its own issue, against those. Redrawing an artboard is
+not the way back — the specs are.
+
+To read a retired artboard, find the commit that removed it and read the file at its parent:
+
+```bash
+git fetch --unshallow                     # a shallow clone answers with silence, not an error
+git log --all --diff-filter=D -- 'docs/design/*.dc.html'
+git show <sha>^:docs/design/<file>.dc.html
+```
