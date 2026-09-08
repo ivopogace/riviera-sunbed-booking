@@ -156,6 +156,15 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await expectTouchTargets(page, 'venue detail');
   });
 
+  test('venue detail — the photo lightbox, where the slide picker lives', async ({ page }) => {
+    // The picker renders nowhere else — the band yields to the gallery grid at two photos.
+    await page.goto('/venues/1');
+    await page.getByTestId('gallery-photo-0').click();
+    await expect(page.getByTestId('lightbox-dot-0')).toBeVisible();
+
+    await expectTouchTargets(page, 'photo lightbox');
+  });
+
   test('the unified sign-in card', async ({ page }) => {
     await page.goto('/account/sign-in');
     await expect(page.getByLabel('Email', { exact: true })).toBeVisible();

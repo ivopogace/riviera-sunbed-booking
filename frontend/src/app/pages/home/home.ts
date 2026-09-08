@@ -17,6 +17,7 @@ import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
 import { PhotoSlideshow } from '../../shared/photo-slideshow';
+import { PhotoStepButton } from '../../shared/photo-step-button';
 import { slideshowPhotos } from '../../shared/photo-url';
 import { isRated, ratingScore, reviewsLabel } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
@@ -74,6 +75,7 @@ interface VenueCard {
     RetryButton,
     PanelGlass,
     PhotoSlideshow,
+    PhotoStepButton,
     CardGlass,
     AmenityChip,
     SemanticChip,

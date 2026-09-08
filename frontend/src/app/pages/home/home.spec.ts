@@ -149,14 +149,16 @@ describe('Home (venue discovery)', () => {
     fixture.detectChanges();
 
     const item = el().querySelector('[data-testid="venue-card"]')!.closest('li')!;
-    const slides = item.querySelectorAll<HTMLImageElement>(
-      '[data-testid="card-photo-img"], [data-testid="card-photo-slide-img"]',
-    );
-    expect(slides.length).toBe(3);
-    // The service resolves each wire path against the API origin.
-    expect(slides[0].getAttribute('src')).toBe(
-      `${environment.apiBaseUrl}/api/venues/1/photos/aa01`,
-    );
+    const shownSrc = (): string | undefined =>
+      [...item.querySelectorAll('img')]
+        .find((img) => !img.classList.contains('opacity-0'))
+        ?.getAttribute('src') ?? undefined;
+    const resolved = (hash: string): string =>
+      `${environment.apiBaseUrl}/api/venues/1/photos/${hash}`;
+
+    // Only the slide on show is mounted; the service resolves each wire path against the API origin.
+    expect(item.querySelectorAll('img').length).toBe(1);
+    expect(shownSrc()).toBe(resolved('aa01'));
     expect(item.querySelectorAll('[data-testid="card-photo-dots"] span').length).toBe(3);
 
     // The controls are the link's SIBLINGS (a nested interactive control is invalid + an axe fail).
@@ -165,21 +167,20 @@ describe('Home (venue discovery)', () => {
     expect(next.closest('a')).toBeNull();
     expect(prev.closest('a')).toBeNull();
 
-    // First slide visible, the rest faded out.
-    expect(slides[0].classList.contains('opacity-0')).toBe(false);
-    expect(slides[1].classList.contains('opacity-0')).toBe(true);
-
     next.click();
     fixture.detectChanges();
-    expect(slides[0].classList.contains('opacity-0')).toBe(true);
-    expect(slides[1].classList.contains('opacity-0')).toBe(false);
+    expect(shownSrc()).toBe(resolved('cc03'));
 
     // Stepping back from the first photo wraps to the last.
     prev.click();
     prev.click();
     fixture.detectChanges();
-    expect(slides[2].classList.contains('opacity-0')).toBe(false);
-    expect(slides[0].classList.contains('opacity-0')).toBe(true);
+    expect(shownSrc()).toBe(resolved('dd04'));
+
+    // The position the card's own live region announces, since the band itself is aria-hidden.
+    expect(item.querySelector('[data-testid="card-photo-position"]')!.textContent?.trim()).toBe(
+      'Photo 3 of 3',
+    );
   });
 
   it('renders a card per venue with name, location, rating, from-price and availability', async () => {

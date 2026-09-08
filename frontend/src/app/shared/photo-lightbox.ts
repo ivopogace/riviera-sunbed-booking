@@ -6,6 +6,7 @@ import {
   inject,
   input,
   output,
+  viewChild,
 } from '@angular/core';
 
 import { trapFocusWithin } from './focus-trap';
@@ -18,11 +19,17 @@ import { TouchTarget } from './touch-target';
  * (own controls, seeded at the tapped photo via `startIndex`, letterboxed via `contain` rather than
  * the bands' crop — this box is roomier and closer to square, so a portrait photo fits whole) and
  * adds the modal's own chrome: a close button, a dismissing backdrop, Escape, and a focus trap — the
- * fifth modal in this shape, alongside the booking dialog, find-booking, the payout statement and
- * the availability calendar (`shared/focus-trap.ts`).
+ * sixth modal in this shape, alongside the booking dialog, find-booking, the payout statement, the
+ * availability calendar and the console's jump palette (`shared/focus-trap.ts`).
  *
  * The caller owns returning focus to the thumbnail that opened it (RV-FE-9) — this component only
  * emits {@link dismissed}.
+ *
+ * <p>Arrow keys are bound HERE as well as on the slideshow: focus opens on the close button, which
+ * is the slideshow's SIBLING, so a keydown there never reaches it, and the dialog is the region the
+ * tourist is actually in. Focus ON the slideshow's own controls is the other half, and the
+ * slideshow keeps that case to itself — `PhotoSlideshow.onArrow` stops the event rather than let
+ * both handlers step it.
  */
 @Component({
   selector: 'app-photo-lightbox',
@@ -35,6 +42,8 @@ import { TouchTarget } from './touch-target';
     '[attr.aria-label]': 'ariaLabel()',
     '(click)': 'dismissed.emit()',
     '(keydown.escape)': 'dismissed.emit()',
+    '(keydown.arrowleft)': 'step($event, -1)',
+    '(keydown.arrowright)': 'step($event, 1)',
   },
   template: `
     <div
@@ -77,6 +86,8 @@ export class PhotoLightbox {
     this.name() ? `Photos of ${this.name()}` : 'Photos',
   );
 
+  private readonly slideshow = viewChild.required(PhotoSlideshow);
+
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
 
   constructor() {
@@ -85,6 +96,16 @@ export class PhotoLightbox {
         .querySelector<HTMLElement>('[data-testid="lightbox-close"]')
         ?.focus();
     });
+  }
+
+  /** Step the photos from anywhere in the dialog, and keep the arrow off the page behind it. */
+  protected step(event: Event, delta: 1 | -1): void {
+    event.preventDefault();
+    if (delta === 1) {
+      this.slideshow().next();
+    } else {
+      this.slideshow().prev();
+    }
   }
 
   /** Keep keyboard focus inside the dialog (WCAG 2.4.3 / 2.1.2) — shared trap. */

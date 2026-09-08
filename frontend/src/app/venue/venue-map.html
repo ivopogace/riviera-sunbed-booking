@@ -29,12 +29,14 @@
           <div
             class="photo-band relative -mx-[22px] -mt-5 mb-[18px] h-[150px] min-[1024px]:h-[264px] overflow-hidden bg-(image:--riv-photo-grad)"
           >
+            <!-- priority: this band is the venue page's LCP element on the 0-1 photo path (the >=2 path hands that job to the gallery grid's hero tile, which sets it too). angular.dev's image guide warns in the console when the LCP image is not marked. -->
             <app-photo-slideshow
               [photos]="v.photos"
               [name]="v.name"
               testId="map-banner"
               ownControls
               contain
+              priority
             />
             @if (v.photos.length === 0) {
               <!-- The shared sun (#882), opaque so it cannot composite against the cyan the way #704's translucent disc did; the glow stays translucent because a halo is meant to take the sea's colour. -->

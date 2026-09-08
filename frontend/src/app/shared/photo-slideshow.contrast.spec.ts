@@ -10,10 +10,10 @@ import {
 
 /**
  * WCAG 1.4.11 (non-text contrast) guard for the shared slideshow's chrome — the dot rail and the
- * prev/next step chips (issue #704).
+ * prev/next step chips.
  *
  * These are the only overlays in the app whose backdrop is **entirely outside our control**: an
- * uploaded photo can be any colour, so — following the convention #142 set for the Discover
+ * uploaded photo can be any colour, so — following the convention set for the Discover
  * location overlay — every pair below is proven over {@link WORST_PHOTOS}: both stops of the
  * placeholder gradient plus pure white and pure black.
  *
@@ -22,10 +22,14 @@ import {
  * the component is consumed by two hosts whose scrim geometry differs. A backing that is not the
  * component's own is a backing a third consumer can forget.
  *
- * Deliberately NOT asserted: the delta between the active and the inactive dot. 1.4.11 asks that
- * each indicator be discernible from its adjacent colour — which is what the two dot cases below
- * prove — not that two states of a decorative indicator differ by a fixed ratio. The dot strip is
- * inside the `aria-hidden` imagery layer; the step buttons carry the accessible names.
+ * Deliberately NOT asserted: the delta between the active and the inactive dot. With own controls
+ * the dots are now a picker, so which slide is current IS a control state 1.4.11 asks to be
+ * visible — but no pair of alphas can deliver it. The inactive dot must clear 3:1 against the rail
+ * (asserted below) and the active dot would have to clear 3:1 against the inactive one, and two
+ * such steps do not fit between the rail and white. So the state is carried by SHAPE instead — an
+ * 18 px pill against an 8 px dot (`photo-slideshow.ts`) — which is why the colour maths here is
+ * unchanged, and why the inert Discover rail can wear the same treatment without owing
+ * anything: there the dots are decorative, inside the card's `aria-hidden` layer.
  */
 
 /** The inactive dot's white alpha (`photo-slideshow.ts`); the active dot is opaque white. */
