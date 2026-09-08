@@ -315,6 +315,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (full suite, phase-3 push) | Six full-suite-only failures: `RetiredSetClaimIT` and `SetBookingInfoIT` inserted rows on the seeded Miramar venue, breaking the two seed-count migration ITs; `VisibleOnlineSets.newest` (the booking ITs' "newest bookable set" picker) found a sibling test's retired set and the claim refused it. Fix: both tests create their own venue; the picker reads `active_set_position`. | fixed — "Keep the retire tests off the seed venue…" |
 
 ---
 
@@ -397,6 +398,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-08 | plan | every production SQL string naming `set_position` | `git ls-files platform/src/main/java \| xargs grep -ln set_position` + the arch test | `JdbcVenueCatalog` (5), `JdbcVenues` (16), Javadoc-only mentions in 7 files | reads → view; writes → marker; the test holds the population from now on |
+| 2026-09-08 | F-1 (CI red) | test SQL that picks "a set" from `set_position` without a venue scope, on the shared Testcontainers DB | `grep -rn "FROM set_position" platform/src/test/java \| grep -iv "venue_id\|WHERE id ="` | 26 sites: one `ORDER BY id DESC` picker (`VisibleOnlineSets`), 24 `ORDER BY id LIMIT n` pickers (the oldest rows — the seed, never retired), one `count(DISTINCT pool)` | the DESC picker reads the view (a retired row is the newest); the ASC pickers cannot meet a retired row and stay; the two new tests stop inserting on the seed venue |
 
 ---
 

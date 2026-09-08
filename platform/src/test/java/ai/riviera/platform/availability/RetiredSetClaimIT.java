@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.application.MarkOutcome;
@@ -24,16 +25,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * Both claim paths refuse a retired set with {@code NO_SUCH_SET} and write no hold (ADR-0019): the
  * online claim through {@link AvailabilityClaim} and the pool-agnostic staff mark through
- * {@link StaffAvailability}. Real Postgres via Testcontainers; the set is a fresh Miramar row retired
- * directly in SQL, since retiring through the console is {@code venue}'s path and this test is about
- * what {@code availability} does with the result.
+ * {@link StaffAvailability}. Real Postgres via Testcontainers; the set sits on a venue of its own
+ * (the seed venue's set count is asserted elsewhere) and is retired directly in SQL, since retiring
+ * through the console is {@code venue}'s path and this test is about what {@code availability} does
+ * with the result.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 class RetiredSetClaimIT {
 
-	private static final long MIRAMAR = 1L;
 	private static final LocalDate DAY = LocalDate.of(2031, 7, 14);
 
 	@Autowired
@@ -48,14 +49,20 @@ class RetiredSetClaimIT {
 	@Autowired
 	JdbcClient jdbc;
 
-	private SetId retiredMiramarSet(String rowLabel, int gridY) {
+	private SetId retiredSetOnANewVenue(String venueName) {
+		long venue = jdbc.sql("""
+				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, 'Ksamil', 'Riviera', 'INSTANT', 1500, 'EUR')
+				RETURNING id
+				""").param("name", venueName).query(Long.class).single();
+		OwnershipFixtures.grantToBootstrap(jdbc, venue);
 		long id = jdbc.sql("""
 				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool,
 				                          price_minor, price_currency, grid_x, grid_y, retired_at)
-				VALUES (:venue, :row, 1, 'STANDARD', 'ONLINE', 2500, 'EUR', 40, :gridY, :retiredAt)
+				VALUES (:venue, 'Row A', 1, 'STANDARD', 'ONLINE', 2500, 'EUR', 1, 1, :retiredAt)
 				RETURNING id
 				""")
-				.param("venue", MIRAMAR).param("row", rowLabel).param("gridY", gridY)
+				.param("venue", venue)
 				.param("retiredAt", OffsetDateTime.parse("2026-09-08T10:00:00Z"))
 				.query(Long.class).single();
 		return new SetId(id);
@@ -68,7 +75,7 @@ class RetiredSetClaimIT {
 
 	@Test
 	void theOnlineClaimRefusesARetiredSet() {
-		SetId retired = retiredMiramarSet("Retired online", 40);
+		SetId retired = retiredSetOnANewVenue("Retired Online Club");
 
 		assertEquals(ClaimOutcome.NO_SUCH_SET, claim.claim(retired, DAY));
 		assertEquals(0, holdsOn(retired), "a refused claim writes no hold");
@@ -76,7 +83,7 @@ class RetiredSetClaimIT {
 
 	@Test
 	void theStaffMarkRefusesARetiredSet() {
-		SetId retired = retiredMiramarSet("Retired walk-in", 41);
+		SetId retired = retiredSetOnANewVenue("Retired Walk-in Club");
 		OperatorId bootstrap = operators.operatorFor("operator").orElseThrow();
 
 		assertEquals(MarkOutcome.NO_SUCH_SET, staff.mark(bootstrap, retired, DAY));

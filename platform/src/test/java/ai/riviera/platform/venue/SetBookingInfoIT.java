@@ -72,12 +72,18 @@ class SetBookingInfoIT {
 
 	@Test
 	void answersForARetiredSet() {
+		long venue = jdbc.sql("""
+				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
+				VALUES ('Retired Facts Club', 'Ksamil', 'Riviera', 'INSTANT', 1500, 'EUR')
+				RETURNING id
+				""").query(Long.class).single();
 		long retired = jdbc.sql("""
 				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool,
 				                          price_minor, price_currency, grid_x, grid_y, retired_at)
-				VALUES (1, 'Retired row', 7, 'STANDARD', 'ONLINE', 2500, 'EUR', 50, 50, :retiredAt)
+				VALUES (:venue, 'Retired row', 7, 'STANDARD', 'ONLINE', 2500, 'EUR', 1, 1, :retiredAt)
 				RETURNING id
 				""")
+				.param("venue", venue)
 				.param("retiredAt", java.time.OffsetDateTime.parse("2026-09-08T10:00:00Z"))
 				.query(Long.class).single();
 
