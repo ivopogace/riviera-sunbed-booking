@@ -24,15 +24,22 @@ export const POP_BACKDROP = 'fixed inset-0 z-30 bg-[rgba(6,30,40,0.2)]';
 export const CURRENT_POP_ROW =
   'aria-[current=page]:bg-riv-pop-hover aria-[current=page]:text-riv-pop-accent';
 
+/** The project ring on a popover or sheet row that is an `<a>`: `tailwind.css`'s `@layer base`
+ *  rule paints `button:focus-visible` only, so a link row showed the user-agent ring beside a
+ *  button row's 3px ink ring on the same surface. The values are the baseline's own — a
+ *  button wearing the same skin repeats its ring, it does not change it (`riviera-tailwind` rule 6). */
+export const POP_ROW_RING =
+  'focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink';
+
 /** A popover row: a link, or with {@link POP_BUTTON} a button. `block`, so `appTouchTarget`'s
  *  floor is live on an `<a>`. */
-export const POP_ITEM = `block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-riv-pop-ink [transition:background_0.12s_ease] hover:bg-riv-pop-hover ${CURRENT_POP_ROW}`;
+export const POP_ITEM = `block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-riv-pop-ink [transition:background_0.12s_ease] hover:bg-riv-pop-hover ${CURRENT_POP_ROW} ${POP_ROW_RING}`;
 
 export const POP_BUTTON = `${POP_ITEM} cursor-pointer text-left`;
 
 /** A navigation row with a glyph, a label and a hint line — the More sheet's and the palette's:
  *  `flex`, so the 44px floor is live on the `<a>`; the current row is the popover's own recipe. */
-export const POP_NAV_ROW = `flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3.5 py-[11px] text-left text-[15px] font-semibold text-riv-pop-ink no-underline [transition:background_0.12s_ease] hover:bg-riv-pop-hover [&_svg]:size-[18px] [&_svg]:shrink-0 ${CURRENT_POP_ROW}`;
+export const POP_NAV_ROW = `flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3.5 py-[11px] text-left text-[15px] font-semibold text-riv-pop-ink no-underline [transition:background_0.12s_ease] hover:bg-riv-pop-hover [&_svg]:size-[18px] [&_svg]:shrink-0 ${CURRENT_POP_ROW} ${POP_ROW_RING}`;
 
 /** The one-line hint under a {@link POP_NAV_ROW}'s label. */
 export const POP_NAV_HINT = 'text-[12px] font-medium text-riv-pop-ink-soft';
