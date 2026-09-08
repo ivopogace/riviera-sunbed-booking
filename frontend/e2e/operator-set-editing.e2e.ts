@@ -231,7 +231,7 @@ test('a venue with sets opens in per-set editing, and one set’s pool + price s
   page,
 }) => {
   const mock = await mockConsole(page);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
   await expect(page).toHaveURL(/\/operator\/1\/beach-map/);
@@ -260,7 +260,7 @@ test('a booked set cannot be repooled or removed, and says so instead of failing
   page,
 }) => {
   const mock = await mockConsole(page);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
   await cell(page, 2, 2).click(); // the claimed set
@@ -282,7 +282,7 @@ test('a booked set cannot be repooled or removed, and says so instead of failing
 
 test('grows the grid to add a lounger, moves it, then removes it', async ({ page }) => {
   const mock = await mockConsole(page);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
   // The 2×2 grid is full — growing is the only way to add, which is the ordinary case.
@@ -384,7 +384,7 @@ test('a mostly-vertical drag sweeps a column of sets instead of panning the map 
       : route.fallback(),
   );
 
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
   await expect(page.getByTestId('set-editor')).toBeVisible();
 
@@ -416,7 +416,7 @@ test('sweeps a block, applies a price change to all of them in one PUT (#714)', 
   page,
 }) => {
   const mock = await mockConsole(page);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
   await expect(page.getByTestId('set-editor')).toBeVisible();
   await settle(page);
@@ -458,7 +458,7 @@ test('a STALE_WRITE batch apply keeps the selection and Reload recovers it (#714
   page,
 }) => {
   await mockConsole(page);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
   const from = cell(page, 1, 1);
@@ -505,7 +505,7 @@ test('the locked bulk save points at per-set editing instead of claiming it is i
       json: { code: 'LAYOUT_IN_USE', detail: 'locked' },
     }),
   );
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
   await page.getByTestId('layout-tool-premium').click();
@@ -523,7 +523,7 @@ test('stays inside its own scroll at a phone width, with tappable controls (+ ax
 }) => {
   await mockConsole(page);
   await page.setViewportSize({ width: 390, height: 780 });
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
   await cell(page, 1, 2).click();
@@ -551,7 +551,7 @@ test('opens the inspector as a bottom sheet on mobile, tile still visible, dismi
 }) => {
   await mockConsole(page);
   await page.setViewportSize({ width: 390, height: 780 });
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
   const tile = cell(page, 1, 1);
@@ -615,7 +615,7 @@ test('a busy action dims exactly as the disabled state did', async ({ page }) =>
     return route.fallback();
   });
 
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
   await expect(page.getByTestId('set-editor')).toBeVisible();
   await cell(page, 1, 2).click();
@@ -647,7 +647,7 @@ test('a set-less venue is pointed at the bulk generator, and adds its first set 
   page,
 }) => {
   const mock = await mockConsole(page, []);
-  await page.goto('/operator/1');
+  await page.goto('/operator/1/beach-map');
   await signIn(page);
 
   await expect(page).toHaveURL(/\/operator\/1\/beach-map/);

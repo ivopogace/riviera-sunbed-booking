@@ -1306,8 +1306,8 @@ describe('app.routes chrome flags (issue #134)', () => {
     for (const tab of ['beach-map', 'pricing', 'daily', 'requests', 'payouts', 'venue']) {
       expect(childPaths, `tab route '${tab}'`).toContain(tab);
     }
-    // A default child redirects to the first tab so `/operator/:venueId` lands on a tab.
-    expect(children.some((c) => c.path === '' && c.redirectTo === 'beach-map')).toBe(true);
+    // Choosing a venue opens the Daily view: the landing tab, and the one the rail lists first.
+    expect(children.some((c) => c.path === '' && c.redirectTo === 'daily')).toBe(true);
   });
 
   it('graduates the payouts tab from the placeholder to the real PayoutsTab (O7 #173)', async () => {

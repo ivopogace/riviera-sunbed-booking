@@ -110,8 +110,8 @@ test('an operator signs in and lands in its only venue’s console', async ({ pa
   await expect(page).toHaveURL(AUTH_URL);
 
   await signIn.signIn('operator', 'good-pw');
-  // Exactly one owned venue skips the picker entirely.
-  await expect(page).toHaveURL(/\/operator\/7/);
+  // Exactly one owned venue skips the picker entirely, and its console opens on the Daily view.
+  await expect(page).toHaveURL(/\/operator\/7\/daily$/);
 });
 
 test('a multi-venue operator picks a venue on the /operator home', async ({ page }) => {
@@ -134,7 +134,8 @@ test('a multi-venue operator picks a venue on the /operator home', async ({ page
   await expectNoSeriousAxeViolations(page, 'operator venue picker');
 
   await picker.getByRole('link', { name: /Miramar/ }).click();
-  await expect(page).toHaveURL(/\/operator\/12/);
+  // The picked venue's console opens on the Daily view — the console's landing tab.
+  await expect(page).toHaveURL(/\/operator\/12\/daily$/);
 });
 
 test('an operator with no venue lands on the inline create form (#278)', async ({ page }) => {

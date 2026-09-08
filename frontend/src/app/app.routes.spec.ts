@@ -72,6 +72,37 @@ describe('app.routes — retired auth surfaces', () => {
   });
 });
 
+/**
+ * Where a chosen venue opens. Every entry into a console without a tab named — the `/operator`
+ * picker's rows, the one-venue landing, the switcher's rows off the console, a bookmarked
+ * `/operator/:venueId` — resolves through the console's index redirect, so this one assertion
+ * covers them all. The tab it lands on is `shared/console-destination.ts`'s landing tab.
+ */
+describe('app.routes — the venue console opens on the Daily view', () => {
+  it('forwards a venue with no tab named to its Daily view tab', async () => {
+    const console = routes.find((route) => route.path === 'operator/:venueId')!;
+    // The real index child on a blank tab, and no guard: the redirect is what is under test.
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([
+          {
+            path: console.path,
+            component: BlankPage,
+            children: [
+              ...(console.children ?? []).filter((child) => child.redirectTo !== undefined),
+              { path: 'daily', component: BlankPage },
+            ],
+          },
+        ]),
+      ],
+    });
+    const scoped = TestBed.inject(Router);
+
+    await scoped.navigateByUrl('/operator/12');
+    expect(scoped.url).toBe('/operator/12/daily');
+  });
+});
+
 describe('app.routes — every lazy route target resolves its module', () => {
   /**
    * SonarCloud/V8 coverage only counts a lazy target's import lines as covered once its

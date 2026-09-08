@@ -162,24 +162,19 @@ test('signs in, renders the console, switches tabs, and signs out (+ axe)', asyn
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'operator console shell');
 
-  // Default tab is Beach map; the layout editor renders (not a placeholder). It reads :venueId
-  // from the PARENT route (child routes don't inherit it) — a real browser exercises that
-  // inheritance, which a mocked ActivatedRoute unit spec can't; the editor loads the
-  // venue map for that id and seeds its grid.
-  await expect(page).toHaveURL(/\/operator\/1\/beach-map/);
-  await expect(page.getByTestId('layout-editor')).toBeVisible();
-
-  // Switching to Daily view updates the URL and the active tab, rendering the daily view tab
-  // (not a placeholder). It reads :venueId from the PARENT route (child routes don't inherit it) —
-  // a real browser exercises that inheritance, which a mocked ActivatedRoute unit spec can't.
-  const tabs = page.getByTestId('oc-tabs');
-  await tabs.getByRole('link', { name: 'Daily view' }).click();
+  // Default tab is the Daily view: choosing a venue opens the day it is running, not its set-up.
   await expect(page).toHaveURL(/\/operator\/1\/daily/);
-  await expect(tabs.getByRole('link', { name: 'Daily view' })).toHaveAttribute(
+  await expect(page.getByTestId('daily-view-tab')).toBeVisible();
+
+  // Switching tabs: both read :venueId from the PARENT route, which only a real browser exercises.
+  const tabs = page.getByTestId('oc-tabs');
+  await tabs.getByRole('link', { name: 'Beach map' }).click();
+  await expect(page).toHaveURL(/\/operator\/1\/beach-map/);
+  await expect(tabs.getByRole('link', { name: 'Beach map' })).toHaveAttribute(
     'aria-current',
     'page',
   );
-  await expect(page.getByTestId('daily-view-tab')).toBeVisible();
+  await expect(page.getByTestId('layout-editor')).toBeVisible();
 
   // Sign out → the console leaves for the unified auth card (the guard gates on activation).
   await openOperatorAccountMenu(page);
@@ -209,8 +204,8 @@ test('shows the stats strip with live free/total, walk-ins and takings, across a
   await expect(page.getByTestId('oc-stat-net')).toContainText('€93.50 after 15% commission');
 
   // The strip lives in the shell, not a tab — it survives a tab switch.
-  await page.getByTestId('oc-tabs').getByRole('link', { name: 'Daily view' }).click();
-  await expect(page).toHaveURL(/\/operator\/1\/daily/);
+  await page.getByTestId('oc-tabs').getByRole('link', { name: 'Beach map' }).click();
+  await expect(page).toHaveURL(/\/operator\/1\/beach-map/);
   await expect(page.getByTestId('oc-stat-takings')).toHaveText('€110');
 
   await settle(page);
