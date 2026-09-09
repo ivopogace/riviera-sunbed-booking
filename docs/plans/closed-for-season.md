@@ -421,6 +421,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcSetBookingFacts.java` — the closure columns
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueProfileResponse.java` — `+ seasonClosure`
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/DailyAvailabilityView.java` — `+ salesOpen`
+- `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueReadController.java` — the calendar endpoint's Javadoc (docs-freshness patch)
 - `platform/src/main/java/ai/riviera/platform/booking/application/BookingCutoff.java` — `closedForSeason`, `admitsDate`, the four-arg `isBookable`
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/out/BookingCutoffSalesWindow.java` — the two delegations
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcBookingPresence.java` — the counts query
@@ -443,6 +444,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java`
 - `platform/src/test/java/ai/riviera/platform/VenueAvailabilityCalendarControllerTest.java`
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAvailabilityCalendarIT.java`
+- `platform/src/test/java/ai/riviera/platform/venue/VenueListControllerIT.java` — the ordering comment (docs-freshness patch)
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — the inert `CloseForSeason` bean the web slices need
 
 **Frontend — new**
