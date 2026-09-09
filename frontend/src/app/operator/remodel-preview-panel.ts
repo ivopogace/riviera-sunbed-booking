@@ -15,15 +15,17 @@ import {
 } from './operator-console.model';
 
 /**
- * The remodel preview: the `alertdialog` the layout editor opens before a save that drops a set
- * guests still hold, listing every affected claim in five groups — will move (with the distance),
- * will be refunded, will be released or declined, held by staff for a walk-in, blocks this save —
- * and, when anything blocks, the sets to keep on the map. A sibling of `shared/confirm-panel.ts`
- * rather than a variant of it, because this panel owns lists; it wears the same amber warn skin.
+ * The remodel preview: the `alertdialog` the layout editor opens instead of a save that drops a
+ * set guests still hold, listing every affected claim in five groups — will move (with the
+ * distance), will be refunded, will be released or declined, held by staff for a walk-in, blocks
+ * this save — and the sets to keep on the map. Informational: the save is refused while any listed
+ * claim is live, so the one action is Back; the commit that applies the groups is a later slice's.
+ * A sibling of `shared/confirm-panel.ts` rather than a variant of it, because this panel owns lists;
+ * it wears the same amber warn skin.
  *
- * <p><strong>Keep the `@if` outside this component</strong>: it focuses its first button on the
- * way in (WCAG 2.4.3); focus back out is the caller's, via `focusMover()`, and both outcomes close
- * it — the save bar owns the in-flight state. Save is offered only when nothing blocks; Back always. Bookings ride by id and never by code (invariant #7).
+ * <p><strong>Keep the `@if` outside this component</strong>: it focuses its button on the way in
+ * (WCAG 2.4.3); focus back out is the caller's, via `focusMover()`. Bookings ride by id and never by
+ * code (invariant #7).
  */
 @Component({
   selector: 'app-remodel-preview-panel',
