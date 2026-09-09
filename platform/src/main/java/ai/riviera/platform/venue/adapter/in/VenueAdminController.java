@@ -35,6 +35,7 @@ import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.application.ReplaceRejection;
 import ai.riviera.platform.venue.application.SetBatchOutcome;
 import ai.riviera.platform.venue.application.SetRejection;
+import ai.riviera.platform.venue.application.ViewBeachMap;
 import ai.riviera.platform.venue.application.ViewDailyAvailability;
 import ai.riviera.platform.venue.application.ViewVenueProfile;
 
@@ -86,16 +87,19 @@ class VenueAdminController {
 	private final EditVenueProfile editVenueProfile;
 	private final ViewVenueProfile viewVenueProfile;
 	private final ViewDailyAvailability viewDailyAvailability;
+	private final ViewBeachMap viewBeachMap;
 	private final CurrentOperator currentOperator;
 
 	VenueAdminController(OnboardVenue onboardVenue, EditBeachMap editBeachMap,
 			EditVenueProfile editVenueProfile, ViewVenueProfile viewVenueProfile,
-			ViewDailyAvailability viewDailyAvailability, CurrentOperator currentOperator) {
+			ViewDailyAvailability viewDailyAvailability, ViewBeachMap viewBeachMap,
+			CurrentOperator currentOperator) {
 		this.onboardVenue = onboardVenue;
 		this.editBeachMap = editBeachMap;
 		this.editVenueProfile = editVenueProfile;
 		this.viewVenueProfile = viewVenueProfile;
 		this.viewDailyAvailability = viewDailyAvailability;
+		this.viewBeachMap = viewBeachMap;
 		this.currentOperator = currentOperator;
 	}
 
@@ -142,6 +146,22 @@ class VenueAdminController {
 		OperatorId operator = currentOperator.require(authentication);
 		return viewDailyAvailability.statesFor(operator, new VenueId(venueId), date)
 				.<ResponseEntity<?>>map(ResponseEntity::ok)
+				.orElseGet(() -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_VENUE",
+						NO_SUCH_VENUE_DETAIL));
+	}
+
+	/**
+	 * The owner's beach map with its locked sets — owner-scoped (invariant #13): the service asserts
+	 * ownership before answering, so which sets a venue's guests hold never leaks to a non-owner
+	 * ({@code 403} via {@code ApiErrorHandler}). Gated to role OPERATOR ABOVE the public
+	 * {@code GET /api/venues/**} in {@code SecurityConfig}, beside the daily read. A free set has no
+	 * lock entry; a venue the map read answers nothing for is {@code 404 NO_SUCH_VENUE}.
+	 */
+	@GetMapping("/{venueId}/beach-map")
+	ResponseEntity<?> beachMap(Authentication authentication, @PathVariable long venueId) {
+		OperatorId operator = currentOperator.require(authentication);
+		return viewBeachMap.beachMapFor(operator, new VenueId(venueId))
+				.<ResponseEntity<?>>map(beachMap -> ResponseEntity.ok(OperatorBeachMapView.of(beachMap)))
 				.orElseGet(() -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_VENUE",
 						NO_SUCH_VENUE_DETAIL));
 	}
