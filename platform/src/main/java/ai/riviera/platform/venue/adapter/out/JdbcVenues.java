@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -380,6 +381,29 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	}
 
 	@Override
+	public OptionalLong setVersionOf(VenueId venueId) {
+		return jdbc.sql("SELECT set_version FROM venue WHERE id = :id")
+				.param("id", venueId.value())
+				.query(Long.class)
+				.optional()
+				.map(OptionalLong::of)
+				.orElseGet(OptionalLong::empty);
+	}
+
+	@Override
+	public List<PlacedSet> placedSetsOf(VenueId venueId) {
+		return jdbc.sql("""
+				SELECT id, row_label, position_no, grid_x, grid_y
+				  FROM active_set_position
+				 WHERE venue_id = :venue
+				 ORDER BY id
+				""")
+				.param(P_VENUE, venueId.value())
+				.query(JdbcVenues::mapPlacedSet)
+				.list();
+	}
+
+	@Override
 	public List<PlacedSet> lockSetsOfVenue(VenueId venueId) {
 		// FOR UPDATE: a concurrent claim's FK check (FOR KEY SHARE) waits until this save ends (see Venues).
 		return jdbc.sql("""
@@ -390,10 +414,14 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				   FOR UPDATE
 				""")
 				.param(P_VENUE, venueId.value())
-				.query((rs, rowNum) -> new PlacedSet(new SetId(rs.getLong("id")),
-						new SetPlacement(rs.getString("row_label"), rs.getInt("position_no"),
-								rs.getInt("grid_x"), rs.getInt("grid_y"))))
+				.query(JdbcVenues::mapPlacedSet)
 				.list();
+	}
+
+	private static PlacedSet mapPlacedSet(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+		return new PlacedSet(new SetId(rs.getLong("id")),
+				new SetPlacement(rs.getString("row_label"), rs.getInt("position_no"),
+						rs.getInt("grid_x"), rs.getInt("grid_y")));
 	}
 
 	@Override

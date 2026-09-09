@@ -2,8 +2,10 @@ package ai.riviera.platform.venue.application;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -48,6 +50,25 @@ record LayoutDiff(List<Update> updates, List<SetCommand> inserts, List<PlacedSet
 		}
 		List<PlacedSet> removed = stored.stream().filter(byCell::containsValue).toList();
 		return new LayoutDiff(List.copyOf(updates), List.copyOf(inserts), removed);
+	}
+
+	/**
+	 * The preview's twin of {@link #disturbed()}: the stored sets a layout of bare placements would
+	 * remove or renumber, judged by the same cell key, in stored order. One matcher, two callers.
+	 */
+	static List<PlacedSet> disturbedBy(List<PlacedSet> stored, List<SetPlacement> cells) {
+		Map<String, PlacedSet> byCell = new HashMap<>();
+		for (PlacedSet set : stored) {
+			byCell.put(cellKey(set.placement().gridX(), set.placement().gridY()), set);
+		}
+		Set<SetId> kept = new HashSet<>();
+		for (SetPlacement cell : cells) {
+			PlacedSet stored0 = byCell.get(cellKey(cell.gridX(), cell.gridY()));
+			if (stored0 != null && stored0.placement().positionNo() == cell.positionNo()) {
+				kept.add(stored0.id());
+			}
+		}
+		return stored.stream().filter(set -> !kept.contains(set.id())).toList();
 	}
 
 	/** The sets this save could strand a guest on — removed or repositioned — in stored order. */

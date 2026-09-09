@@ -127,4 +127,17 @@ class LayoutDiffTest {
 		assertEquals(List.of(B1), diff.removed().stream().map(PlacedSet::id).toList());
 		assertTrue(diff.collidingUpdates().isEmpty(), "the removal runs first and frees the slot");
 	}
+
+	@Test
+	void disturbedByAnswersTheRemovedAndRepositionedSetsOfASubmittedPlacementList() {
+		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(A2, "A", 2, 2, 1),
+				stored(B1, "B", 1, 1, 2));
+		List<SetPlacement> cells = List.of(new SetPlacement("Front", 1, 1, 1), new SetPlacement("A", 5, 2, 1),
+				new SetPlacement("C", 1, 1, 3));
+
+		List<PlacedSet> disturbed = LayoutDiff.disturbedBy(stored, cells);
+
+		assertEquals(List.of(stored(A2, "A", 2, 2, 1), stored(B1, "B", 1, 1, 2)), disturbed,
+				"A1 is renamed in place; A2 is renumbered; B1 is absent; C1 is new — in stored id order");
+	}
 }

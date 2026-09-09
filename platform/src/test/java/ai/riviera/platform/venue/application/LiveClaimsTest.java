@@ -113,6 +113,11 @@ class LiveClaimsTest {
 		}
 
 		@Override
+		public Map<SetId, List<LocalDate>> walkInHoldsFrom(Collection<SetId> setIds, LocalDate from) {
+			return Map.of();
+		}
+
+		@Override
 		public Map<SetId, String> statesOn(Collection<SetId> setIds, LocalDate date) {
 			return Map.of();
 		}

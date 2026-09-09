@@ -77,6 +77,13 @@ class AvailabilityLookupIT {
 				.query(Long.class).list().stream().map(SetId::new).toList();
 	}
 
+
+	/** A set pair no other test touches: {@code walkInHoldsFrom} also ranges over {@code booking_date >= :from}. */
+	private List<SetId> walkInHoldSets() {
+		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id OFFSET 9 LIMIT 2")
+				.query(Long.class).list().stream().map(SetId::new).toList();
+	}
+
 	private void mark(SetId set, LocalDate date, String state) {
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) VALUES (:id, :date, :state)")
 				.param("id", set.value()).param("date", date).param("state", state)
@@ -241,5 +248,22 @@ class AvailabilityLookupIT {
 	void takenCountsBetweenEmptyInputYieldsEmptyResultWithoutAQuery() {
 		assertEquals(Map.of(), lookup.takenCountsBetween(
 				List.of(), LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 18)));
+	}
+
+	@Test
+	void walkInHoldsFromListsTheStaffMarkedDaysOnOrAfterTheCutoffPerSetInOrder() {
+		List<SetId> sets = walkInHoldSets();
+		SetId marked = sets.get(0);
+		SetId bookedOnly = sets.get(1);
+		LocalDate cutoff = LocalDate.of(2027, 6, 15);
+		mark(marked, cutoff.plusDays(9), "STAFF_MARKED");
+		mark(marked, cutoff, "STAFF_MARKED");
+		mark(marked, cutoff.minusDays(1), "STAFF_MARKED");
+		mark(marked, cutoff.plusDays(2), "BOOKED_ONLINE");
+		mark(bookedOnly, cutoff.plusDays(1), "BOOKED_ONLINE");
+
+		assertEquals(Map.of(marked, List.of(cutoff, cutoff.plusDays(9))), lookup.walkInHoldsFrom(sets, cutoff),
+				"only staff marks, only from the cutoff on, oldest first; a set with none is absent");
+		assertEquals(Map.of(), lookup.walkInHoldsFrom(List.of(), cutoff));
 	}
 }

@@ -70,4 +70,9 @@ class LiveClaims {
 				.collect(Collectors.toUnmodifiableMap(id -> id,
 						id -> new SetLock(id, bookedOn.get(id), heldOn.get(id))));
 	}
+
+	/** The staff walk-in holds from today on each of these sets, oldest first — the preview's hold group. */
+	Map<SetId, List<LocalDate>> walkInHoldsOn(Collection<SetId> setIds) {
+		return availability.walkInHoldsFrom(setIds, today());
+	}
 }

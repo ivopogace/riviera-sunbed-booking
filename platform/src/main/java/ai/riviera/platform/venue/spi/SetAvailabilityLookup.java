@@ -2,6 +2,7 @@ package ai.riviera.platform.venue.spi;
 
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -108,4 +109,18 @@ public interface SetAvailabilityLookup {
 	 *         yields an empty result without touching the database
 	 */
 	Map<LocalDate, Integer> takenCountsBetween(Collection<SetId> setIds, LocalDate from, LocalDate to);
+
+	/**
+	 * The days on or after {@code from} on which staff hold each of {@code setIds} for a walk-in
+	 * ({@code STAFF_MARKED} rows only — an online hold is a booking's, and {@code booking} answers for
+	 * those), oldest first, keyed by set; a set with none is absent. The remodel preview's staff-hold
+	 * group: nobody can be mailed about a walk-in, so such a hold blocks the save.
+	 *
+	 * @param setIds the set positions to list
+	 * @param from   the first day that counts, inclusive, a {@code LocalDate} in {@code Europe/Tirane}
+	 *               (invariant #6)
+	 * @return the held days by set id for the held sets only; never {@code null}; an empty input
+	 *         yields an empty result without touching the database
+	 */
+	Map<SetId, List<LocalDate>> walkInHoldsFrom(Collection<SetId> setIds, LocalDate from);
 }

@@ -1361,6 +1361,16 @@ class VenueAdminServiceTest {
 		}
 
 		@Override
+		public java.util.OptionalLong setVersionOf(VenueId venueId) {
+			throw new UnsupportedOperationException("a write never reads the token unlocked");
+		}
+
+		@Override
+		public List<PlacedSet> placedSetsOf(VenueId venueId) {
+			throw new UnsupportedOperationException("a write never reads the map unlocked");
+		}
+
+		@Override
 		public List<PlacedSet> lockSetsOfVenue(VenueId venueId) {
 			callLog.add("lockSetsOfVenue");
 			return List.copyOf(placed);
@@ -1482,6 +1492,12 @@ class VenueAdminServiceTest {
 			return setIds.stream()
 					.filter(id -> holdOn.containsKey(id) && !holdOn.get(id).isBefore(from))
 					.collect(java.util.stream.Collectors.toMap(id -> id, holdOn::get));
+		}
+
+		@Override
+		public java.util.Map<SetId, List<java.time.LocalDate>> walkInHoldsFrom(Collection<SetId> setIds,
+				java.time.LocalDate from) {
+			return java.util.Map.of();
 		}
 
 		@Override
