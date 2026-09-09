@@ -66,7 +66,11 @@ table for the gate, the transaction and the receipt, and the parity ledger for t
 onto `LayoutWriter`) · `tdd` (the move-vs-reserve concurrency IT is written first and stays red until
 phase 3; each phase red first at its named seam) · `riviera-review-overlay` (review gate ran on
 `72a19bf7..bf3e1b60` via `code-review:code-review` + the overlay: two RV-FE findings fixed, F-7/F-8;
-RV-PROC-1/2 walked, F-10) · `riviera-docs-freshness` (<ran / N/A at close-out>) · `grilling` (the intake
+RV-PROC-1/2 walked, F-10) · `riviera-docs-freshness` (ran over `72a19bf7..2b8a9461`: 2a found `RESPONSIBILITIES.md` still citing
+`ReplaceRejection.ROW_NAME_TAKEN` — patched; step 3 found §`notification` silent on the moved mail and the
+mock outbox, and the observability runbook's abandoned-counter family short of
+`riviera_mail_move_abandoned_total` — both patched (39ce0c81); the counting sweep's other hits stay
+true; `docs/plans/remodel-preview.md` retired) · `grilling` (the intake
 questions answered from the code; the calls a colleague would make are recorded as resolved
 assumptions below) · `riviera-local-debug` (clone unshallowed; system Gradle on the JDK 21 daemon
 compiling on the JDK 25 toolchain; scoped `--tests`; the structural net after the port, event and
