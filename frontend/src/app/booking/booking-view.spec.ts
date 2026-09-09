@@ -38,6 +38,7 @@ const DETAIL: BookingDetail = {
   payWindowClosed: false,
   cancelReason: null,
   cancellationWindowAtBirth: 'FREE',
+  move: null,
   reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
@@ -85,6 +86,21 @@ function cancelled(reason: CancelReason | null, refundMinor: number): BookingDet
     cancelReason: reason,
   };
 }
+
+/** A confirmed booking a remodel re-seated, its free exit still open (13:00Z on a CET date → 14:00 Tirane). */
+const MOVED: BookingDetail = {
+  ...DETAIL,
+  positionNo: 7,
+  beforeCutoff: false,
+  move: {
+    fromRowLabel: 'Front row · Sea view',
+    fromPositionNo: 2,
+    rowsAway: 0,
+    positionsAway: 5,
+    movedAt: '2026-11-29T13:00:00Z',
+    freeExitUntil: '2026-11-30T13:00:00Z',
+  },
+};
 
 const CANCELLATION: Cancellation = {
   code: 'ABCD234567',
@@ -768,6 +784,109 @@ describe('BookingView', () => {
     const labels = [...host.querySelectorAll('dt')].map((dt) => dt.textContent?.trim());
     expect(labels).toContain('Amount');
     expect(labels).not.toContain('Paid');
+  });
+
+  describe('moved booking (#1034)', () => {
+    it('tells the guest the spot changed — where from, where to, how far — and names the free-exit deadline in Tirane time', async () => {
+      const fixture = await render(stubService({ detail: MOVED }));
+      const host = fixture.nativeElement as HTMLElement;
+      const banner = host.querySelector('[data-testid="booking-moved"]')!;
+
+      expect(banner.getAttribute('aria-labelledby')).toBe('booking-moved-title');
+      expect(banner.textContent).toContain('Your spot changed');
+      expect(banner.textContent).toContain(
+        'Miramar Beach Club rearranged its beach map, so your set moved from Front row · Sea view · spot 2 to Front row · Sea view · spot 7 (5 positions along the row). Your booking code, price and date are unchanged.',
+      );
+      expect(host.querySelector('[data-testid="booking-free-exit"]')?.textContent).toMatch(
+        /full refund until\s+Mon, 30 Nov, 14:00/,
+      );
+      expect(host.querySelector('[data-testid="refund-terms"]')?.textContent).toContain(
+        'Because the venue moved your spot, you can cancel for a full refund until Mon, 30 Nov, 14:00 — you’ll be refunded €45 in full.',
+      );
+      expect(host.querySelector('[data-testid="start-cancel"]')).toBeTruthy();
+      await expectNoAxeViolations(host);
+    });
+
+    it('keeps the notice but drops the exit sentence once the deadline has passed, and the terms fall back to the tier', async () => {
+      const fixture = await render(
+        stubService({
+          detail: {
+            ...MOVED,
+            move: { ...MOVED.move!, freeExitUntil: null },
+            refundIfCancelledNow: { minorUnits: 2250, currency: 'EUR' },
+          },
+        }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(host.querySelector('[data-testid="booking-moved"]')).toBeTruthy();
+      expect(host.querySelector('[data-testid="booking-free-exit"]')).toBeNull();
+      expect(host.querySelector('[data-testid="refund-terms"]')?.textContent).toContain(
+        'The free-cancellation cutoff has passed — you’ll be refunded €22.50.',
+      );
+    });
+
+    it('shows no exit sentence on a moved booking that can no longer be cancelled, and no notice once it is cancelled', async () => {
+      const completed = await render(
+        stubService({
+          detail: { ...MOVED, status: 'COMPLETED', cancellable: false },
+        }),
+      );
+      const completedHost = completed.nativeElement as HTMLElement;
+      expect(completedHost.querySelector('[data-testid="booking-moved"]')).toBeTruthy();
+      expect(completedHost.querySelector('[data-testid="booking-free-exit"]')).toBeNull();
+      completed.destroy();
+      TestBed.resetTestingModule();
+
+      const cancelled = await render(
+        stubService({
+          detail: {
+            ...MOVED,
+            status: 'CANCELLED',
+            cancellable: false,
+            refundedAmount: { minorUnits: 4500, currency: 'EUR' },
+            cancelReason: 'VENUE_CHANGE',
+          },
+        }),
+      );
+      const host = cancelled.nativeElement as HTMLElement;
+      expect(host.querySelector('[data-testid="booking-moved"]')).toBeNull();
+      const panel = host.querySelector('[data-testid="booking-cancelled"]');
+      expect(panel?.textContent).toContain('Booking cancelled');
+      expect(panel?.textContent).toContain(
+        'You cancelled this booking after the venue moved your spot.',
+      );
+      expect(panel?.textContent).toContain('€45 will be refunded to your card.');
+    });
+
+    it('the free exit cancels through the same two-step cancel and reports the full refund', async () => {
+      const cancelCalls: string[] = [];
+      const fixture = await render(
+        stubService({
+          detail: MOVED,
+          detailAfterCancel: {
+            ...MOVED,
+            status: 'CANCELLED',
+            cancellable: false,
+            refundedAmount: { minorUnits: 4500, currency: 'EUR' },
+            cancelReason: 'VENUE_CHANGE',
+          },
+          cancelCalls,
+        }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+      host.querySelector<HTMLButtonElement>('[data-testid="start-cancel"]')!.click();
+      fixture.detectChanges();
+      host.querySelector<HTMLButtonElement>('[data-testid="confirm-cancel"]')!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(cancelCalls).toEqual(['ABCD234567']);
+      expect(host.querySelector('[data-testid="cancel-result"]')?.textContent).toContain(
+        '€45 will be refunded to your card.',
+      );
+      expect(host.querySelector('[data-testid="booking-moved"]')).toBeNull();
+    });
   });
 
   it('explains a POLICY cancellation with a refund', async () => {

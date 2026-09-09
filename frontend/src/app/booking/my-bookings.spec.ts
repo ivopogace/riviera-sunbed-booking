@@ -39,6 +39,7 @@ function detail(
     payWindowClosed: false,
     cancelReason: null,
     cancellationWindowAtBirth: 'FREE',
+    move: null,
     reviewPanel: { kind: 'NOT_COMPLETED' },
     ...extra,
   };
@@ -109,6 +110,7 @@ function summary(code: string, extra: Partial<MyBookingSummary> = {}): MyBooking
     amount: { minorUnits: 4500, currency: 'EUR' },
     requestExpiresAt: null,
     refundedAmount: null,
+    movedAt: null,
     ...extra,
   };
 }
@@ -192,6 +194,42 @@ describe('MyBookings (device-local list, issue #139)', () => {
     const host = fixture.nativeElement as HTMLElement;
 
     expect(host.querySelector('[data-testid="row-subline"]')).toBeNull();
+  });
+
+  it('says the spot changed on a CONFIRMED row a remodel moved — from the detail or the account summary — and nothing more on a cancelled one (#1034)', async () => {
+    seedCodes(['CODE0002', 'CODE0003']);
+    const move = {
+      fromRowLabel: 'Front row',
+      fromPositionNo: 2,
+      rowsAway: 0,
+      positionsAway: 5,
+      movedAt: '2026-11-29T13:00:00Z',
+      freeExitUntil: null,
+    };
+    const fixture = await render(
+      {
+        ...stubService({
+          CODE0002: detail('CODE0002', 'CONFIRMED', { bookingDate: '2026-12-03', move }),
+          CODE0003: detail('CODE0003', 'CANCELLED', {
+            bookingDate: '2026-12-02',
+            refundedAmount: { minorUnits: 4500, currency: 'EUR' },
+            move,
+          }),
+        }),
+        myBookings: () => of([summary('ACCT0001', { movedAt: '2026-11-29T13:00:00Z' })]),
+      },
+      authStub(true),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    const sublines = [...host.querySelectorAll('[data-testid="row-subline"]')].map((n) =>
+      n.textContent?.trim(),
+    );
+    expect(sublines).toEqual([
+      'Spot changed by the venue · see details',
+      'Booking cancelled',
+      'Spot changed by the venue · see details',
+    ]);
   });
 
   it('renders the PENDING_REQUEST deadline in Europe/Tirane wall-clock (no client date math)', async () => {

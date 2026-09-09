@@ -2,6 +2,7 @@ import { Component, input, output } from '@angular/core';
 
 import { formatCivilDate } from '../shared/booking-date';
 import { formatDeadline } from '../shared/deadline';
+import { setDistanceText } from '../shared/set-distance';
 import { TouchTarget } from '../shared/touch-target';
 import { RemodelReceipt, RemodelReceiptMove, RemodelSpot } from './operator-console.model';
 
@@ -70,20 +71,10 @@ export class RemodelReceiptPanel {
   }
 
   protected moveText(move: RemodelReceiptMove): string {
-    return `${spotLabel(move.from)} → ${spotLabel(move.to)} · ${distanceText(move)} · ${formatCivilDate(move.bookingDate)}`;
+    return `${spotLabel(move.from)} → ${spotLabel(move.to)} · ${setDistanceText(move.rowsAway, move.positionsAway)} · ${formatCivilDate(move.bookingDate)}`;
   }
 }
 
 function spotLabel(spot: RemodelSpot): string {
   return `Row ${spot.rowLabel} · position ${spot.positionNo}`;
-}
-
-/** "4 positions along the row", "1 row over", "1 row over, 2 positions along" — the preview's words. */
-function distanceText(move: RemodelReceiptMove): string {
-  const positions = `${move.positionsAway} position${move.positionsAway === 1 ? '' : 's'}`;
-  if (move.rowsAway === 0) {
-    return `${positions} along the row`;
-  }
-  const rows = `${move.rowsAway} row${move.rowsAway === 1 ? '' : 's'} over`;
-  return move.positionsAway === 0 ? rows : `${rows}, ${positions} along`;
 }

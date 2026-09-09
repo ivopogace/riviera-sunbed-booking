@@ -12,6 +12,7 @@ import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
 import { focusMover } from '../shared/focus-after-render';
 import { formatMoney, MoneyView } from '../shared/money';
+import { setDistanceText } from '../shared/set-distance';
 import { StatusChip } from '../shared/status-chip';
 import { BusyAction } from '../shared/busy-action';
 import { BookingQr } from './booking-qr';
@@ -79,6 +80,8 @@ const CLS = {
   bannerWithdrawn: `${BANNER} border-[#ddd8e8] bg-[#f0eef6]`,
   // Cancelled and expired share the neutral terminal treatment — one recipe, so they cannot drift.
   bannerCancelled: BANNER_NEUTRAL,
+  // The moved notice wears the awaiting banner's teal: news, not a warning.
+  bannerMoved: `${BANNER} border-[#bfe6ee] bg-[#ddf4f8]`,
   eyebrow: 'm-0 text-[11px] font-bold tracking-[0.1em] uppercase',
   // The banner inks are FIXED per banner fill — themed tokens would drift between themes.
   eyebrowAwaiting: 'text-[#0a5e7a]',
@@ -87,6 +90,7 @@ const CLS = {
   eyebrowExpired: EYEBROW_NEUTRAL,
   eyebrowWithdrawn: 'text-[#5c5470]',
   eyebrowCancelled: EYEBROW_NEUTRAL,
+  eyebrowMoved: 'text-[#0a5e7a]',
   bannerBody:
     'mx-0 mt-1.5 mb-0 text-[14px] leading-[1.5] text-riv-banner-body-ink [&_strong]:text-riv-banner-strong-ink',
   row: 'flex items-center justify-between gap-3 border-b border-riv-card-track py-2.5 text-[14.5px] last:border-b-0',
@@ -360,6 +364,26 @@ const CLS = {
               </p>
             </section>
           }
+        }
+
+        @if (showMoved(b)) {
+          <section
+            [class]="cls.bannerMoved"
+            data-testid="booking-moved"
+            aria-labelledby="booking-moved-title"
+          >
+            <h2 id="booking-moved-title" class="{{ cls.eyebrow }} {{ cls.eyebrowMoved }}">
+              Your spot changed
+            </h2>
+            <p [class]="cls.bannerBody">{{ movedSentence(b) }}</p>
+            @if (freeExitOpen(b); as until) {
+              <p [class]="cls.bannerBody" data-testid="booking-free-exit">
+                If the new spot doesn’t suit you, cancel below for a full refund until
+                <strong>{{ deadlineLabel(until) }}</strong
+                >.
+              </p>
+            }
+          </section>
         }
 
         <div
@@ -829,6 +853,8 @@ export class BookingView {
         return 'You cancelled this booking.';
       case 'WEATHER':
         return `${b.venueName} cancelled this booking because of the weather.`;
+      case 'VENUE_CHANGE':
+        return 'You cancelled this booking after the venue moved your spot.';
       default:
         return 'This booking was cancelled.';
     }
@@ -890,8 +916,28 @@ export class BookingView {
       : 'Non-refundable last-minute booking — it can’t be cancelled.';
   }
 
+  /** The move is news while the booking stands; a cancelled one explains itself in its own banner. */
+  protected showMoved(b: BookingDetail): boolean {
+    return b.move !== null && b.status !== 'CANCELLED';
+  }
+
+  /** "Miramar rearranged its beach map, so your set moved from Row A · spot 3 to Row A · spot 7 (4 positions along the row). …" */
+  protected movedSentence(b: BookingDetail): string {
+    const move = b.move!;
+    return `${b.venueName} rearranged its beach map, so your set moved from ${move.fromRowLabel} · spot ${move.fromPositionNo} to ${b.rowLabel} · spot ${b.positionNo} (${setDistanceText(move.rowsAway, move.positionsAway)}). Your booking code, price and date are unchanged.`;
+  }
+
+  /** The free-exit deadline while it is still open and the booking can still be cancelled; else null. */
+  protected freeExitOpen(b: BookingDetail): string | null {
+    return b.cancellable && !this.cancellation() ? (b.move?.freeExitUntil ?? null) : null;
+  }
+
   /** Refund-terms copy for a still-cancellable booking (server-computed values, invariant #10). */
   protected refundTerms(b: BookingDetail): string {
+    const freeExit = b.move?.freeExitUntil;
+    if (freeExit) {
+      return `Because the venue moved your spot, you can cancel for a full refund until ${formatDeadline(freeExit)} — you’ll be refunded ${formatMoney(b.refundIfCancelledNow)} in full.`;
+    }
     if (b.beforeCutoff) {
       return `Free cancellation until the evening before — you’ll be refunded ${formatMoney(b.refundIfCancelledNow)} in full.`;
     }
