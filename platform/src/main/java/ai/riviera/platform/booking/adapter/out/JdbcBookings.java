@@ -2,6 +2,7 @@ package ai.riviera.platform.booking.adapter.out;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -30,6 +31,7 @@ import ai.riviera.platform.booking.application.reserve.ClaimRef;
 import ai.riviera.platform.booking.application.reserve.ConfirmedBooking;
 import ai.riviera.platform.booking.application.reserve.NewBooking;
 import ai.riviera.platform.booking.application.refund.RefundableBooking;
+import ai.riviera.platform.booking.application.remodel.LiveClaim;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.BookingTransition;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
@@ -651,5 +653,26 @@ class JdbcBookings implements Bookings {
 				.query((rs, rowNum) -> new ClaimRef(new SetId(rs.getLong(COL_SET_ID)),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
 				.optional();
+	}
+
+	/** The same live filter as {@code JdbcBookingPresence}; {@code booking_set_date_idx} serves the set list. */
+	@Override
+	public List<LiveClaim> findLiveOnSets(Collection<SetId> setIds) {
+		if (setIds.isEmpty()) {
+			return List.of();
+		}
+		return jdbc.sql("""
+				SELECT id, set_id, booking_date, status, amount_minor, amount_currency
+				FROM booking
+				WHERE set_id IN (:ids) AND status IN (:live)
+				ORDER BY booking_date, id
+				""")
+				.param("ids", setIds.stream().map(SetId::value).toList())
+				.param("live", JdbcBookingPresence.LIVE_STATUSES)
+				.query((rs, rowNum) -> new LiveClaim(rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
+						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
+				.list();
 	}
 }

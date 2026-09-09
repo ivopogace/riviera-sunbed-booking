@@ -776,6 +776,17 @@ class WebSliceStubs {
 			public Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds) {
 				return Map.of();
 			}
+
+			@Override
+			public List<ai.riviera.platform.venue.vocabulary.SetSpot> activeSetsOf(VenueId venueId) {
+				return List.of();
+			}
+
+			@Override
+			public List<ai.riviera.platform.venue.vocabulary.SetSpot> freeOnlineSetsOn(VenueId venueId,
+					LocalDate date) {
+				return List.of();
+			}
 		};
 	}
 

@@ -1,6 +1,8 @@
 package ai.riviera.retirefixture.venue.adapter.out;
 
+import java.time.LocalDate;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -8,6 +10,8 @@ import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.SetSpot;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The exempt port's adapter: it implements {@link SetBookingFacts} and reads the bare table, because
@@ -35,5 +39,15 @@ final class FixtureSetFacts implements SetBookingFacts {
 	@Override
 	public Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds) {
 		return Map.of();
+	}
+
+	@Override
+	public List<SetSpot> activeSetsOf(VenueId venueId) {
+		return List.of();
+	}
+
+	@Override
+	public List<SetSpot> freeOnlineSetsOn(VenueId venueId, LocalDate date) {
+		return List.of();
 	}
 }

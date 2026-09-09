@@ -658,6 +658,12 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public List<ai.riviera.platform.booking.application.remodel.LiveClaim> findLiveOnSets(
+				Collection<SetId> setIds) {
+			return List.of();
+		}
+
+		@Override
 		public Optional<ai.riviera.platform.booking.application.checkin.CompletedCheckIn> completeConfirmed(
 				String code, ai.riviera.platform.venue.vocabulary.VenueId venueId,
 				java.time.LocalDate serviceDate, Instant completedAt) {
@@ -820,6 +826,17 @@ class CreateBookingServiceTest {
 		public Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds) {
 			return info == null ? Map.of()
 					: setIds.stream().distinct().collect(Collectors.toMap(id -> id, id -> info));
+		}
+
+		@Override
+		public List<ai.riviera.platform.venue.vocabulary.SetSpot> activeSetsOf(VenueId venueId) {
+			return List.of();
+		}
+
+		@Override
+		public List<ai.riviera.platform.venue.vocabulary.SetSpot> freeOnlineSetsOn(VenueId venueId,
+				java.time.LocalDate date) {
+			return List.of();
 		}
 	}
 
