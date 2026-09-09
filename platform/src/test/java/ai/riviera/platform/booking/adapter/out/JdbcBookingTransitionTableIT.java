@@ -90,7 +90,8 @@ class JdbcBookingTransitionTableIT {
 			case REVERT_ACCEPT -> bookings.revertAcceptToPending(booking.id());
 			case CONFIRM_PAYMENT -> bookings.confirmFromPayment(booking.id(), NOW).isPresent();
 			case RELEASE_UNPAID -> bookings.cancelAwaitingPayment(booking.id()).isPresent();
-			case CANCEL_BY_GUEST -> bookings.cancelConfirmed(booking.id(), NOW, 0L).isPresent();
+			case CANCEL_BY_GUEST -> bookings.cancelConfirmed(booking.id(), NOW, 0L,
+					ai.riviera.platform.booking.vocabulary.RefundReason.POLICY).isPresent();
 			case CHECK_IN ->
 				bookings.completeConfirmed(booking.code(), booking.venueId(), SERVICE_DATE, NOW).isPresent();
 			case SWEEP_NO_SHOW -> bookings.markPastConfirmedAsNoShow(SERVICE_DATE.plusDays(1), SWEEP_BATCH) > 0;

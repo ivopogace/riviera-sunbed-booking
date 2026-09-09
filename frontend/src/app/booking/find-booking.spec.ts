@@ -28,6 +28,7 @@ const DETAIL: BookingDetail = {
   payWindowClosed: false,
   cancelReason: null,
   cancellationWindowAtBirth: 'FREE',
+  move: null,
   reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 

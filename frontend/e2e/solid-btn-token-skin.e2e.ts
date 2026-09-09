@@ -65,6 +65,7 @@ const DETAIL = {
   requestExpiresAt: null,
   payment: null,
   cancellationWindowAtBirth: 'FREE',
+  move: null,
   reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 

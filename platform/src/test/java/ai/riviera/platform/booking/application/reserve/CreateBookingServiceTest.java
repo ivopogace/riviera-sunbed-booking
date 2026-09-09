@@ -760,8 +760,15 @@ class CreateBookingServiceTest {
 
 		@Override
 		public Optional<ai.riviera.platform.booking.application.cancel.CancelledBooking> cancelConfirmed(
-				long bookingId, Instant cancelledAt, long refundMinor) {
+				long bookingId, Instant cancelledAt, long refundMinor,
+				ai.riviera.platform.booking.vocabulary.RefundReason reason) {
 			return Optional.empty();
+		}
+
+		@Override
+		public boolean moveToSet(long bookingId, ai.riviera.platform.venue.vocabulary.SetId from,
+				ai.riviera.platform.venue.vocabulary.SetId to, Instant movedAt) {
+			return false;
 		}
 
 		@Override

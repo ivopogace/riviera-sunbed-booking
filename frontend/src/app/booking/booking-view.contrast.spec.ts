@@ -75,6 +75,7 @@ const BANNERS: readonly [name: string, fill: string, eyebrow: string][] = [
   ['expired', '#f0f2f3', '#4f5f67'],
   ['withdrawn', '#f0eef6', '#5c5470'],
   ['cancelled', '#f0f2f3', '#4f5f67'],
+  ['moved', '#ddf4f8', '#0a5e7a'],
 ];
 /**
  * Both are `--riv-banner-*-ink` tokens since #849, so they are read from the one mirror rather

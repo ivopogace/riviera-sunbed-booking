@@ -2,7 +2,9 @@ package ai.riviera.platform.booking.application.view;
 
 import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
+import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
 import ai.riviera.platform.booking.application.request.RequestWindows;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 
 import java.time.Clock;
 import java.util.Optional;
@@ -39,6 +41,7 @@ class ViewBookingService implements ViewBooking {
 	private final ai.riviera.platform.review.api.ReviewEligibility reviewEligibility;
 	private final CustomerLookup customers;
 	private final RequestWindows windows;
+	private final RemodelReceipts receipts;
 	private final Clock clock;
 
 	ViewBookingService(Bookings bookings, CancellationPolicy cancellationPolicy, BookingCutoff cutoff,
@@ -47,7 +50,7 @@ class ViewBookingService implements ViewBooking {
 			ai.riviera.platform.payment.api.CollectionGuarantee collection,
 			ai.riviera.platform.payment.api.RefundStatusLookup refundStatus,
 			ai.riviera.platform.review.api.ReviewEligibility reviewEligibility,
-			CustomerLookup customers, RequestWindows windows, Clock clock) {
+			CustomerLookup customers, RequestWindows windows, RemodelReceipts receipts, Clock clock) {
 		this.bookings = bookings;
 		this.cancellationPolicy = cancellationPolicy;
 		this.cutoff = cutoff;
@@ -58,6 +61,7 @@ class ViewBookingService implements ViewBooking {
 		this.reviewEligibility = reviewEligibility;
 		this.customers = customers;
 		this.windows = windows;
+		this.receipts = receipts;
 		this.clock = clock;
 	}
 
@@ -118,7 +122,18 @@ class ViewBookingService implements ViewBooking {
 				refunded, refundOutstanding, b.requestExpiresAt(), payment, emailWithheld,
 				payWindowClosed, b.cancelReason(),
 				cutoff.cancellationWindow(set.bookingCutoff(), b.bookingDate(), b.createdAt()),
-				panel, nameSuggestionFor(panel, b));
+				panel, nameSuggestionFor(panel, b), moveOf(b, quote));
+	}
+
+	/** The latest move of a moved booking, with the exit deadline the quote still holds open; {@code null} otherwise. */
+	private BookingMove moveOf(BookingRecord b, RefundQuote quote) {
+		if (b.movedAt() == null) {
+			return null;
+		}
+		return receipts.latestMoveOf(new BookingId(b.id()))
+				.map(move -> new BookingMove(move.from().rowLabel(), move.from().positionNo(), move.rowsAway(),
+						move.positionsAway(), b.movedAt(), quote.freeExitUntil()))
+				.orElse(null);
 	}
 
 	/**

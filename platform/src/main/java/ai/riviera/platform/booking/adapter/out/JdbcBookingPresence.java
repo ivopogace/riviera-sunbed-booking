@@ -29,8 +29,9 @@ import ai.riviera.platform.venue.spi.BookingPresence;
  * depends only on {@link JdbcClient}, so the Spring bean graph is acyclic too.
  *
  * <p>Three questions, four probes. {@code hasBookings} counts a booking of <strong>any</strong>
- * status including terminal, because any booking pins its set via the {@code booking.set_id} FK —
- * that is the retire-or-delete decision of every removal. {@code hasLiveBookings} and its batch
+ * status including terminal, and a set a remodel receipt names as a booking's old or new spot,
+ * because each pins its set via a FK ({@code booking.set_id}, {@code remodel_receipt_move.*_set_id})
+ * — that is the retire-or-delete decision of every removal. {@code hasLiveBookings} and its batch
  * twin {@code nearestLiveBookings} count only bookings that can still be honoured — the edit, remove
  * and bulk-save guards, where finished history strands nobody. {@code liveBookingsFrom} counts what
  * a venue's guests are still owed from a day on — the close-for-season response. Indexes:
@@ -57,8 +58,11 @@ class JdbcBookingPresence implements BookingPresence {
 
 	@Override
 	public boolean hasBookings(SetId setId) {
-		// Served by booking_set_date_idx (set_id, booking_date) on its leftmost prefix (V5).
-		return jdbc.sql("SELECT EXISTS(SELECT 1 FROM booking WHERE set_id = :set)")
+		// booking_set_date_idx (V5) and remodel_receipt_move_from_set_idx (V52) serve the two arms.
+		return jdbc.sql("""
+				SELECT EXISTS(SELECT 1 FROM booking WHERE set_id = :set)
+				    OR EXISTS(SELECT 1 FROM remodel_receipt_move WHERE from_set_id = :set OR to_set_id = :set)
+				""")
 				.param("set", setId.value())
 				.query(Boolean.class)
 				.single();

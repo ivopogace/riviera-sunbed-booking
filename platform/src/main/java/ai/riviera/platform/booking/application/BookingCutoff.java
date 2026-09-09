@@ -30,6 +30,8 @@ import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 public class BookingCutoff {
 
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
+	private static final LocalTime FREE_EXIT_NOON = LocalTime.NOON;
+	private static final java.time.Duration FREE_EXIT_NOTICE = java.time.Duration.ofHours(24);
 
 	private final Clock clock;
 
@@ -139,6 +141,19 @@ public class BookingCutoff {
 	 */
 	public static LocalDate lastEndedServiceDay(java.time.Instant now) {
 		return LocalDate.ofInstant(now, TIRANE).minusDays(1);
+	}
+
+	/**
+	 * The instant a moved booking's free exit ends (invariant #10): the later of noon
+	 * {@code Europe/Tirane} the day before and 24 hours after the move, but never past
+	 * {@link #serviceDayOpensAt} — a guest is never refunded for a day that has begun.
+	 */
+	public java.time.Instant freeExitEndsAt(LocalDate bookingDate, java.time.Instant movedAt) {
+		java.time.Instant noonTheDayBefore = bookingDate.minusDays(1).atTime(FREE_EXIT_NOON).atZone(TIRANE).toInstant();
+		java.time.Instant dayAfterTheMove = movedAt.plus(FREE_EXIT_NOTICE);
+		java.time.Instant later = noonTheDayBefore.isAfter(dayAfterTheMove) ? noonTheDayBefore : dayAfterTheMove;
+		java.time.Instant opens = serviceDayOpensAt(bookingDate);
+		return later.isBefore(opens) ? later : opens;
 	}
 
 	/**

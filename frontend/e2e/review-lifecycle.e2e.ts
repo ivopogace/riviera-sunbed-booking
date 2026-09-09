@@ -67,6 +67,7 @@ const STAY = {
   payWindowClosed: true,
   cancelReason: null,
   cancellationWindowAtBirth: 'CLOSED',
+  move: null,
   reviewPanel: { kind: 'ELIGIBLE', windowClosesAt: CLOSES_AT, nameSuggestion: 'Ana' },
 };
 

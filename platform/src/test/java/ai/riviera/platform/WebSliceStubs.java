@@ -123,7 +123,7 @@ import ai.riviera.platform.venue.application.PhotoUploadResult;
 import ai.riviera.platform.venue.application.ProfileUpdateOutcome;
 import ai.riviera.platform.venue.application.ReopenOutcome;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
-import ai.riviera.platform.venue.application.ReplaceRejection;
+import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.application.SeasonClosureRejection;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
@@ -792,12 +792,68 @@ class WebSliceStubs {
 
 	@Bean
 	ai.riviera.platform.venue.api.BeachMapRemodel beachMapRemodel() {
-		return (_, _, _, _) -> new ai.riviera.platform.venue.vocabulary.LayoutPreview.Disturbing(List.of());
+		return new ai.riviera.platform.venue.api.BeachMapRemodel() {
+			@Override
+			public ai.riviera.platform.venue.vocabulary.LayoutPreview preview(OperatorId operator, VenueId venueId,
+					long expectedVersion, List<ai.riviera.platform.venue.vocabulary.SetPlacement> cells) {
+				return new ai.riviera.platform.venue.vocabulary.LayoutPreview.Disturbing(List.of());
+			}
+
+			@Override
+			public ai.riviera.platform.venue.vocabulary.LayoutCommitOutcome commit(OperatorId operator,
+					VenueId venueId, long expectedVersion,
+					List<ai.riviera.platform.venue.vocabulary.LayoutCell> cells,
+					ai.riviera.platform.venue.api.RemodelGate gate) {
+				return ai.riviera.platform.venue.vocabulary.LayoutCommitOutcome.Refused.REFUSED;
+			}
+		};
+	}
+
+	/** The mock outbox read exists wherever the mock transport does; the web slice supplies the transport. */
+	@Bean
+	ai.riviera.platform.notification.adapter.out.MockMailer mockMailer() {
+		return new ai.riviera.platform.notification.adapter.out.MockMailer();
+	}
+
+	@Bean
+	RemodelCommitService remodelCommitService(ai.riviera.platform.venue.api.BeachMapRemodel remodel,
+			ai.riviera.platform.booking.api.RemodelClaims claims) {
+		return new RemodelCommitService(remodel, claims);
+	}
+
+	@Bean
+	ai.riviera.platform.booking.application.remodel.ViewRemodelReceipts viewRemodelReceipts() {
+		return new ai.riviera.platform.booking.application.remodel.ViewRemodelReceipts() {
+			@Override
+			public List<ai.riviera.platform.booking.application.remodel.RemodelReceipt> receiptsOf(OperatorId operator,
+					VenueId venueId) {
+				return List.of();
+			}
+
+			@Override
+			public Optional<ai.riviera.platform.booking.application.remodel.RemodelReceipt> receipt(OperatorId operator,
+					VenueId venueId, ai.riviera.platform.booking.vocabulary.ReceiptId receiptId) {
+				return Optional.empty();
+			}
+		};
 	}
 
 	@Bean
 	ai.riviera.platform.booking.api.RemodelClaims remodelClaims() {
-		return (_, _, _) -> List.of();
+		return new ai.riviera.platform.booking.api.RemodelClaims() {
+			@Override
+			public List<ai.riviera.platform.booking.vocabulary.RemodelClaim> classify(OperatorId operator,
+					VenueId venueId, java.util.Collection<ai.riviera.platform.venue.vocabulary.SetId> disturbedSets) {
+				return List.of();
+			}
+
+			@Override
+			public ai.riviera.platform.booking.vocabulary.RemodelCommit commit(OperatorId operator, VenueId venueId,
+					java.util.Collection<ai.riviera.platform.venue.vocabulary.SetId> disturbedSets,
+					ai.riviera.platform.booking.vocabulary.PreviewToken token) {
+				return new ai.riviera.platform.booking.vocabulary.RemodelCommit.Refused(List.of());
+			}
+		};
 	}
 
 	@Bean
@@ -936,7 +992,7 @@ class WebSliceStubs {
 			@Override
 			public ReplaceLayoutOutcome replaceLayout(OperatorId operator, VenueId venueId,
 					long expectedVersion, LayoutCommand command) {
-				return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.NO_SUCH_VENUE);
+				return new ReplaceLayoutOutcome.Rejected(LayoutRejection.NO_SUCH_VENUE);
 			}
 
 			@Override

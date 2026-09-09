@@ -22,7 +22,7 @@ import ai.riviera.platform.venue.application.ChangeOutcome;
 import ai.riviera.platform.venue.application.EditBeachMap;
 import ai.riviera.platform.venue.application.LayoutCommand;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
-import ai.riviera.platform.venue.application.ReplaceRejection;
+import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.application.RowNameCommand;
 import ai.riviera.platform.venue.application.RowPriceCommand;
 import ai.riviera.platform.venue.application.SetCommand;
@@ -138,7 +138,7 @@ class VenueSetWriteConcurrencyIT {
 	}
 
 	private static boolean isStale(ReplaceLayoutOutcome outcome) {
-		return outcome instanceof ReplaceLayoutOutcome.Rejected r && r.reason() == ReplaceRejection.STALE_WRITE;
+		return outcome instanceof ReplaceLayoutOutcome.Rejected r && r.reason() == LayoutRejection.STALE_WRITE;
 	}
 
 	private static boolean isStale(ChangeOutcome outcome) {

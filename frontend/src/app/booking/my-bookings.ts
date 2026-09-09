@@ -27,14 +27,26 @@ import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { StatusChip } from '../shared/status-chip';
 import { BookingQr } from './booking-qr';
-import { MyBookingSummary } from './booking.model';
+import { BookingDetail, MyBookingSummary } from './booking.model';
 import { BookingService } from './booking.service';
 
 import { TouchTarget } from '../shared/touch-target';
 
-/** The per-status sub-label (server-truth-adjacent); '' for CONFIRMED (no sub-label). */
-function subLineOf(b: MyBookingSummary): string {
+/**
+ * What a row is built from: the account list's summary, or the per-code detail a device-local row
+ * fetches. The detail carries the move inside {@link BookingDetail#move}; the summary as `movedAt`.
+ */
+type RowSource = MyBookingSummary | BookingDetail;
+
+function movedAtOf(b: RowSource): string | null {
+  return 'move' in b ? (b.move?.movedAt ?? null) : b.movedAt;
+}
+
+/** The per-status sub-label (server-truth-adjacent); '' for CONFIRMED unless a remodel moved it. */
+function subLineOf(b: RowSource): string {
   switch (b.status) {
+    case 'CONFIRMED':
+      return movedAtOf(b) ? 'Spot changed by the venue · see details' : '';
     case 'AWAITING_PAYMENT':
       // No server pay-by deadline exists (only requestExpiresAt, the venue response deadline) →
       // fall back rather than invent a cutoff (invariants #4/#6; deliberately not a backend change).
@@ -76,7 +88,7 @@ interface RowView {
   readonly showQr: boolean;
 }
 
-function buildView(b: MyBookingSummary): RowView {
+function buildView(b: RowSource): RowView {
   const meta = metaFor(b.status);
   return {
     code: b.code,

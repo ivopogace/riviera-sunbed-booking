@@ -126,15 +126,26 @@ public interface Bookings {
 	Optional<ClaimRef> cancelAwaitingPayment(long bookingId);
 
 	/**
-	 * Cancel a confirmed booking on the guest/policy path: transition {@code CONFIRMED → CANCELLED},
-	 * stamping {@code cancelled_at}, the server-computed {@code refundMinor} and reason
-	 * {@code POLICY}, returning the facts for the refund + {@code BookingCancelled} payload via SQL
+	 * Cancel a confirmed booking on the guest path: transition {@code CONFIRMED → CANCELLED},
+	 * stamping {@code cancelled_at}, the server-computed {@code refundMinor} and the {@code reason}
+	 * the policy decided ({@code POLICY}, or {@code VENUE_CHANGE} for a moved booking's free exit),
+	 * returning the facts for the refund + {@code BookingCancelled} payload via SQL
 	 * {@code RETURNING}. The guarded {@code WHERE status = 'CONFIRMED'} makes a double-cancel a 0-row
 	 * {@code empty} no-op, so the release, refund and event fire exactly once — and keeps a swept
 	 * {@code NO_SHOW} out of the guest's reach.
 	 */
 	Optional<CancelledBooking> cancelConfirmed(long bookingId, java.time.Instant cancelledAt,
-			long refundMinor);
+			long refundMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason);
+
+	/**
+	 * Re-seat a live booking on another set of the same venue: the guarded
+	 * {@code UPDATE … SET set_id = :to, moved_at = :movedAt WHERE id AND set_id = :from AND status IN
+	 * live}. True iff a row moved; false when the booking is no longer live or no longer on
+	 * {@code from} — the caller's transaction then rolls back, since a move it classified under lock
+	 * cannot legitimately vanish. Code, price and status are untouched (the guest's credential and deal
+	 * survive the move, invariant #7).
+	 */
+	boolean moveToSet(long bookingId, SetId from, SetId to, Instant movedAt);
 
 	/**
 	 * The admin weather refund's transition: like {@link #cancelConfirmed} but admitting

@@ -63,7 +63,9 @@ model in `docs/architecture/domain-model.md`.
 - **Locked set** — a set position someone is still owed: it carries a **live claim** — a hold
   dated today or later, or a booking a guest may still turn up on. The editor shows it pinned
   with a lock and the reason ("booked Sat 12 Sept", "held by staff …"); it cannot be moved or
-  removed while the claim lasts, and its price, tier and pool stay editable. The lock is the
+  removed one set at a time while the claim lasts, and its price, tier and pool stay editable. A
+  set held by staff cannot be painted out of the bulk save either; a set only bookings pin can,
+  and that save then previews moving them (**moved booking**) before it commits. The lock is the
   same fact the server refuses a move or a removal on, read ahead of the click.
 - **Retired set** — a set position that has left the beach map but still carries booking history:
   gone from the map, the calendar, the counts, the daily view and both claim paths, while every
@@ -81,6 +83,23 @@ model in `docs/architecture/domain-model.md`.
   free set serves one booking per date.
 - **Move distance** — how far a move candidate is from the booked set, in rows and positions
   ("A3 → A7, 4 positions along the row"; "1 row over"), so the operator and the guest can judge it.
+- **Preview token** — the operator's proof of what they saw: a digest of every claim in a remodel
+  preview with the outcome it was given, handed back with the save. The save applies only a picture
+  the token still **covers** — the same claims and outcomes, or fewer of them; a claim or an outcome
+  the operator never saw makes the preview **stale**, and the save answers the fresh picture instead.
+- **Commit receipt** — the record of one saved remodel: when it was saved, by whom, and every booking
+  it moved with the spot the guest was told before, the spot they hold now and the distance. Kept
+  after the old set is retired, so the guest's page, their mail and the console still name the spot
+  they were told; readable from the console as **past remodels**. There is no undo — a move is
+  reversed by another remodel.
+- **Moved booking** — a booking a saved remodel re-seated on another set for the same date: its code,
+  price and date are unchanged, the guest is mailed the new spot, and the booking carries when it
+  moved and opens a **free exit**.
+- **Free exit** — a moved guest's right to cancel for a **full refund whatever the refund tier would
+  say**, from the move until the earliest of: the service day opening, and the later of 12:00
+  (`Europe/Tirane`) the day before and 24 hours after the move. It lifts the refund tier only — it
+  never reopens a closed **cancellation window** — and a cancellation that takes it is a refund by
+  reason **venue change**.
 - **Set** — the bookable unit: **2 loungers + 1 umbrella**, full day, tied to a set
   position. The thing a tourist books.
 - **Tier** — `PREMIUM` (front-row / better) or `STANDARD`; affects price.
@@ -170,7 +189,8 @@ model in `docs/architecture/domain-model.md`.
   a partial refund reverses the matching fraction, no refund posts no reversal.
 - **Payout batch** — a period's worth of ledger entries settled together, paid to
   the venue manually via BKT.
-- **Refund** — money returned to a tourist, by reason: policy, weather, or conflict.
+- **Refund** — money returned to a tourist, by reason: policy, weather, venue change (the **free
+  exit** of a **moved booking**), or conflict.
 - **Refund progress** — how far a decided refund has actually travelled: **decided**
   (the cancellation fixed an amount the platform owes), **accepted** (the payment
   gateway has acknowledged it will return the money), **settled** (it has reached the

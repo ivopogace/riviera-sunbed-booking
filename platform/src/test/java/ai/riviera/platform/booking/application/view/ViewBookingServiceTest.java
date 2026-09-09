@@ -81,9 +81,11 @@ class ViewBookingServiceTest {
 	private final ai.riviera.platform.customer.api.CustomerLookup customers =
 			mock(ai.riviera.platform.customer.api.CustomerLookup.class);
 
+	private final ai.riviera.platform.booking.application.remodel.RemodelReceipts receipts =
+			mock(ai.riviera.platform.booking.application.remodel.RemodelReceipts.class);
 	private final ViewBookingService service = new ViewBookingService(bookings, cancellationPolicy,
 			cutoff, checkout, mailDelivery, collection, refundStatus, reviewEligibility, customers,
-			WINDOWS, NOW);
+			WINDOWS, receipts, NOW);
 
 	@org.junit.jupiter.params.ParameterizedTest
 	@org.junit.jupiter.params.provider.MethodSource("everyPanel")
@@ -196,6 +198,37 @@ class ViewBookingServiceTest {
 	 * it can be retracted. The service carries a standing comment warning against exactly the
 	 * widening these two cases forbid.
 	 */
+	@Test
+	void aMovedBookingCarriesItsLatestMoveAndTheOpenExitDeadline() {
+		Instant movedAt = Instant.parse("2026-07-19T13:00:00Z");
+		Instant deadline = Instant.parse("2026-07-20T13:00:00Z");
+		when(collection.provenBeforeConfirmation()).thenReturn(true);
+		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.CONFIRMED, VENUE, SET, GUEST, DATE,
+				4500L, "EUR", null, null, null, null, Instant.EPOCH, null, movedAt);
+		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
+		when(cancellationPolicy.quote(record)).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
+				CancellationWindow.LATE, 4500L, RefundReason.VENUE_CHANGE, deadline));
+		when(receipts.latestMoveOf(new ai.riviera.platform.booking.vocabulary.BookingId(1L))).thenReturn(Optional.of(
+				new ai.riviera.platform.booking.application.remodel.ReceiptMove(
+						new ai.riviera.platform.booking.vocabulary.BookingId(1L), DATE,
+						new ai.riviera.platform.booking.vocabulary.SpotRef(new SetId(9L), "A", 3),
+						new ai.riviera.platform.booking.vocabulary.SpotRef(SET, "Front row", 2), 0, 1)));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.move()).isEqualTo(new BookingMove("A", 3, 0, 1, movedAt, deadline));
+		assertThat(detail.refundIfCancelledNow().minorUnits()).isEqualTo(4500L);
+		assertThat(detail.cancellable()).isTrue();
+	}
+
+	@Test
+	void anUnmovedBookingCarriesNoMove() {
+		givenBooking(BookingStatus.CONFIRMED, CancellationWindow.FREE, 4500L);
+
+		assertThat(service.byCode(CODE).orElseThrow().move()).isNull();
+		org.mockito.Mockito.verifyNoInteractions(receipts);
+	}
+
 	@Test
 	void pendingRequestIsWithdrawableButNotCancellable() {
 		givenBooking(BookingStatus.PENDING_REQUEST);
@@ -521,26 +554,26 @@ class ViewBookingServiceTest {
 	private ViewBookingService serviceAt(Instant now) {
 		Clock at = Clock.fixed(now, ZoneId.of("UTC"));
 		return new ViewBookingService(bookings, cancellationPolicy, new BookingCutoff(at), checkout,
-				mailDelivery, collection, refundStatus, reviewEligibility, customers, WINDOWS, at);
+				mailDelivery, collection, refundStatus, reviewEligibility, customers, WINDOWS, receipts, at);
 	}
 
 	private void givenAwaitingPayment(LocalDate date, Instant createdAt, Instant acceptedAt) {
 		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.AWAITING_PAYMENT, VENUE, SET,
-				GUEST, date, 4500L, "EUR", null, null, null, null, createdAt, acceptedAt);
+				GUEST, date, 4500L, "EUR", null, null, null, null, createdAt, acceptedAt, null);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		when(cancellationPolicy.quote(record))
-				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), CancellationWindow.CLOSED, 0L));
+				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), CancellationWindow.CLOSED, 0L, RefundReason.POLICY, null));
 	}
 
 	/** A cancelled row: the refund decision's three fields move together, or none of them is set. */
 	private void givenCancelledBooking(RefundReason reason, Long refundMinor) {
 		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.CANCELLED, VENUE, SET, GUEST,
 				DATE, 4500L, "EUR", refundMinor == null ? null : Instant.EPOCH, refundMinor, null, reason,
-				Instant.EPOCH, null);
+				Instant.EPOCH, null, null);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		when(cancellationPolicy.quote(record))
-				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), CancellationWindow.CLOSED, 0L));
+				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), CancellationWindow.CLOSED, 0L, RefundReason.POLICY, null));
 	}
 
 	private void givenBooking(BookingStatus status, CancellationWindow window, long refundMinor) {
@@ -552,10 +585,10 @@ class ViewBookingServiceTest {
 			Instant createdAt) {
 		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, status, VENUE, SET, GUEST, DATE,
-				4500L, "EUR", null, null, null, null, createdAt, null);
+				4500L, "EUR", null, null, null, null, createdAt, null, null);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		when(cancellationPolicy.quote(record))
-				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), window, refundMinor));
+				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), window, refundMinor, RefundReason.POLICY, null));
 	}
 
 	private static SetBookingInfo setInfo() {

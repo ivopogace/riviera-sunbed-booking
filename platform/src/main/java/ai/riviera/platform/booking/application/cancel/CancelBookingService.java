@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.vocabulary.BookingId;
-import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy.RefundQuote;
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.Bookings;
@@ -90,7 +89,7 @@ class CancelBookingService implements CancelBooking {
 		long refundMinor = quote.refundMinor();
 
 		Optional<CancelledBooking> transitioned = bookings.cancelConfirmed(
-				booking.id(), clock.instant(), refundMinor);
+				booking.id(), clock.instant(), refundMinor, quote.reason());
 		if (transitioned.isEmpty()) {
 			// Lost a concurrent cancel race — the other cancel already released and published.
 			return new CancelOutcome.NotCancellable(BookingStatus.CANCELLED);
@@ -104,25 +103,34 @@ class CancelBookingService implements CancelBooking {
 		// module) and the payout listener reverses the accrual proportionally (invariant #9).
 		events.publishEvent(new BookingCancelled(new BookingId(cancelled.id()), cancelled.venueId(),
 				cancelled.setId(), cancelled.bookingDate(), refundMinor, cancelled.currency(),
-				RefundReason.POLICY));
+				quote.reason()));
 		log.info("cancelled booking {} and released set {} on {} (refund {} minor)", cancelled.id(),
 				cancelled.setId().value(), cancelled.bookingDate(), refundMinor);
 
-		CancelOutcome.Tier tier = tierFor(quote.window(), refundMinor);
+		CancelOutcome.Tier tier = tierFor(quote.window(), refundMinor, cancelled.amountMinor());
 		return new CancelOutcome.Cancelled(refundMinor, cancelled.currency(), tier);
 	}
 
 	/**
 	 * The tier to report for a cancellation that actually happened (ADR-0005): full in the
-	 * {@code FREE} window, and after it partial when something is refunded, else none. Reads the
-	 * window rather than a boolean derived from it, so the temporal decision has one representation.
-	 * {@code CLOSED} cannot reach here — the fence returns above — hence the throw rather than a tier.
+	 * {@code FREE} window; after it, full when the free-exit override refunded everything, partial when
+	 * something is refunded, else none. Reads the window rather than a boolean derived from it, so
+	 * the temporal decision has one representation. {@code CLOSED} cannot reach here — the fence
+	 * returns above — hence the throw rather than a tier.
 	 */
-	private static CancelOutcome.Tier tierFor(CancellationWindow window, long refundMinor) {
+	private static CancelOutcome.Tier tierFor(CancellationWindow window, long refundMinor, long amountMinor) {
 		return switch (window) {
 			case FREE -> CancelOutcome.Tier.FULL;
-			case LATE -> refundMinor > 0 ? CancelOutcome.Tier.PARTIAL : CancelOutcome.Tier.NONE;
+			case LATE -> lateTier(refundMinor, amountMinor);
 			case CLOSED -> throw new IllegalStateException("a closed window cannot be cancelled");
 		};
+	}
+
+	/** The LATE tier the refund amount implies: the whole amount is FULL (the free exit), part is PARTIAL, nothing is NONE. */
+	private static CancelOutcome.Tier lateTier(long refundMinor, long amountMinor) {
+		if (refundMinor >= amountMinor) {
+			return CancelOutcome.Tier.FULL;
+		}
+		return refundMinor > 0 ? CancelOutcome.Tier.PARTIAL : CancelOutcome.Tier.NONE;
 	}
 }

@@ -26,15 +26,18 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * <p>{@code customerId} is the guest-contact link ({@code booking.customer_id}, NOT NULL since V5).
  * The view carries the id only — never the contact itself, which belongs to {@code customer} — so a
  * confirmed booking can ask {@code booking.spi.ConfirmationMailDelivery} whether its confirmation
- * mail was withheld (#390) without this module ever handling an address.
+ * mail was withheld without this module ever handling an address.
  *
  * <p>{@code acceptedAt} is the accept clock of a Request-to-Book row ({@code null} until — or
  * unless — the venue accepts): it feeds the view's pay deadline,
  * {@code min(acceptedAt + pay-window, end of service day)} (invariant #4), the same instant the
  * payment-due mail promises.
+ *
+ * <p>{@code movedAt} is the instant a remodel re-seated the booking ({@code null} unless one did):
+ * the free-exit override reads its deadline off it; where the booking came from is the receipt's.
  */
 public record BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
 		CustomerId customerId, LocalDate bookingDate, long amountMinor, String currency,
 		Instant cancelledAt, Long refundMinor, Instant requestExpiresAt, RefundReason cancelReason,
-		Instant createdAt, Instant acceptedAt) {
+		Instant createdAt, Instant acceptedAt, Instant movedAt) {
 }

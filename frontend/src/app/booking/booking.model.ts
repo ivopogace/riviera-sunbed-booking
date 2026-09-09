@@ -163,6 +163,23 @@ export interface BookingDetail {
    * server's.
    */
   readonly reviewPanel: ReviewPanel;
+  /** The remodel move this booking went through, or null when the venue never moved it. */
+  readonly move: BookingMove | null;
+}
+
+/**
+ * A booking a remodel re-seated, mirroring the backend `MoveView`: the spot the guest was told
+ * before, the distance to the one they hold now, when it moved, and the free-exit deadline — the
+ * instant until which cancelling refunds in full whatever the tier would say — or null once that
+ * deadline has passed. Server-computed (invariant #10); rendered in Europe/Tirane (invariant #6).
+ */
+export interface BookingMove {
+  readonly fromRowLabel: string;
+  readonly fromPositionNo: number;
+  readonly rowsAway: number;
+  readonly positionsAway: number;
+  readonly movedAt: string;
+  readonly freeExitUntil: string | null;
 }
 
 /** A stored review as its author reads it back; both texts are null on a star-only row, and on one an erasure has tombstoned. */
@@ -225,7 +242,8 @@ export interface BookingPayment {
  * refund fact the list carries, because without it a row cannot tell a cancellation that took money
  * from one that never did). Money as integer
  * minor units (invariant #5); date as ISO `LocalDate`; `requestExpiresAt` null for instant bookings.
- * `BookingDetail` is structurally a superset, so both feed the shared list-row builder.
+ * `BookingDetail` is structurally a superset save for `movedAt`, which the detail carries inside
+ * {@link BookingDetail#move}; the list-row builder reads either.
  */
 export interface MyBookingSummary {
   readonly code: string;
@@ -243,15 +261,18 @@ export interface MyBookingSummary {
    * cannot tell a swept booking from a refunded one and would label both "Paid".
    */
   readonly refundedAmount: MoneyView | null;
+  /** When a remodel re-seated the booking, so the row can say the spot changed; null otherwise. */
+  readonly movedAt: string | null;
 }
 
 /**
  * Why a booking was cancelled, mirroring the backend `RefundReason` (and the V14 `cancel_reason`
  * CHECK tokens). Only a cancellation that took a refund decision carries one, so it is `null` for a
  * booking released without ever being charged — the abandoned-payment sweep and the
- * `payment_intent.canceled` webhook both leave it unset. `CONFLICT` is reserved and unused in v1.
+ * `payment_intent.canceled` webhook both leave it unset. `VENUE_CHANGE` is the guest's free exit
+ * after a remodel moved their spot; `CONFLICT` is reserved and unused in v1.
  */
-export type CancelReason = 'POLICY' | 'WEATHER' | 'CONFLICT';
+export type CancelReason = 'POLICY' | 'WEATHER' | 'CONFLICT' | 'VENUE_CHANGE';
 
 /** The refund tier returned with a cancellation (mirrors the backend `CancelOutcome.Tier`). */
 export type RefundTier = 'FULL' | 'PARTIAL' | 'NONE';

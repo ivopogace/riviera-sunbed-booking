@@ -270,8 +270,9 @@ the work was taken, ran, and failed. Only one of those is about the relay.
 
 **A mail loss `riviera_outbox_pending` cannot show** — and one of the abandoned counters, which are
 never retried by anything. Since #374 it has siblings — `riviera_mail_cancellation_abandoned_total`,
-#373's `riviera_mail_payment_due_abandoned_total`, and #124's
-`riviera_mail_request_declined_abandoned_total` / `riviera_mail_request_expired_abandoned_total` —
+#373's `riviera_mail_payment_due_abandoned_total`, #124's
+`riviera_mail_request_declined_abandoned_total` / `riviera_mail_request_expired_abandoned_total`, and
+#1034's `riviera_mail_move_abandoned_total` —
 each this counter's argument applied to its own listener; everything below holds for all of them, and
 the one place they differ — what an operator does about an increment — is in that section.
 
@@ -330,9 +331,9 @@ never the arrival code and never the address (invariant #7).
    drainer, so at current volume it is a symptom of a *long* outage, not an early warning.
 
 None of the abandoned counters — `riviera_mail_confirmation_abandoned_total`, its #374 sibling
-`riviera_mail_cancellation_abandoned_total`, #373's `riviera_mail_payment_due_abandoned_total`, or
+`riviera_mail_cancellation_abandoned_total`, #373's `riviera_mail_payment_due_abandoned_total`,
 #124's `riviera_mail_request_declined_abandoned_total` /
-`riviera_mail_request_expired_abandoned_total` —
+`riviera_mail_request_expired_abandoned_total`, or #1034's `riviera_mail_move_abandoned_total` —
 is in that order, deliberately: they never rise because
 of a relay, so seeing any of them during an outage means you have found a *second*, unrelated fault.
 
@@ -481,6 +482,34 @@ makes its errand expire.
 healthy system so it cannot flood, no durable copy of the mail, and nothing else recording the loss.
 Lines carry the booking and set ids — which is what tells you *which* refund to go confirm — and
 never the arrival code or the address (invariant #7).
+
+### `riviera_mail_move_abandoned_total` (counter, #1034)
+
+**The remodel sibling of the cancellation counter, read the same way** — same vehicle, same
+`reason` vocabulary, same invisibility to every other signal. A "your spot changed" mail the registry
+listener **gave up on** because the booking, its move receipt, the set or the guest contact did not
+resolve; the listener returns normally, so the publication completes and `riviera_outbox_pending`
+never moves.
+
+**Read one increment as: a guest's set was moved and they were never told — not the new spot, not the
+free-exit deadline.** The move itself is committed (the layout, the availability rows and the
+`moved_at` stamp are one transaction, and the receipt row is written in it), so the booking page
+already shows the change and the deadline; what the guest lacks is the push. Confirm the receipt
+exists (`GET /api/venues/{venueId}/remodels`, the operator's own console) — *then* worry about the
+mail. Nothing re-drives it, and there is no per-booking resend yet (#380).
+
+| Tag | Meaning | Which module to investigate | Alert when |
+|---|---|---|---|
+| `reason="no-booking"` | `BookingNotificationFacts.moveFacts` found no booking, or no receipt row, for the moved booking id | `booking` | **any increase** |
+| `reason="no-set"` | `SetBookingFacts.setBookingInfo` found no set for the event's new set id | `venue` | **any increase** |
+| `reason="no-contact"` | `CustomerLookup.findById` found no contact for the booking's customer id | `customer` | **any increase** |
+
+> Data-integrity signal, not a relay signal, exactly as for its siblings; the receipt is written in
+> the move's own transaction and the listener runs after commit, so `no-booking` here means a row was
+> deleted, not a race.
+
+**Logging is one `ERROR` per loss, unthrottled**, for its siblings' three reasons. Lines carry the
+booking id and both set ids, never the arrival code or the address (invariant #7).
 
 ### `riviera_mail_payment_due_abandoned_total` (counter, #373)
 

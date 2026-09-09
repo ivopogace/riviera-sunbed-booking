@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.application.BookingMovedMail;
 import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
@@ -108,6 +109,15 @@ public class MockMailer implements Mailer {
 		sent.add(SentEmail.requestExpired(toEmail, expired));
 		log.info(BOOKING_RECORD_LOG, SentEmail.Kind.REQUEST_EXPIRED,
 				sanitize(toEmail), sanitize(expired.venueName()), expired.bookingDate());
+	}
+
+	@Override
+	public void sendBookingMoved(String toEmail, BookingMovedMail moved) {
+		sent.add(SentEmail.bookingMoved(toEmail, moved));
+		// Neither the code nor the booking link that embeds it (invariant #7) — the confirmation's rule.
+		log.info("[mock-mailer] {} (to {}) for {} on {} — {}{} to {}{}", SentEmail.Kind.BOOKING_MOVED,
+				sanitize(toEmail), sanitize(moved.venueName()), moved.bookingDate(), moved.fromRowLabel(),
+				moved.fromPositionNo(), moved.toRowLabel(), moved.toPositionNo());
 	}
 
 	@Override

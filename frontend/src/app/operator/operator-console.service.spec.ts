@@ -7,6 +7,8 @@ import {
   OperatorBeachMap,
   PayoutLedgerView,
   PendingRequestItem,
+  RemodelCommitRequest,
+  RemodelPreview,
   RequestDecision,
   SetBatchRequest,
   SetWriteRequest,
@@ -23,6 +25,7 @@ import {
   setWriteErrorOf,
   layoutBlockedSetsOf,
   layoutErrorOf,
+  remodelPreviewOf,
   setBatchErrorOf,
   rowNameErrorOf,
   seasonClosureErrorOf,
@@ -625,5 +628,104 @@ describe('layout save error mapping (#1032)', () => {
     expect(layoutBlockedSetsOf(problem(409, { code: 'STALE_WRITE' }))).toEqual([]);
     expect(layoutBlockedSetsOf(new Error('offline'))).toEqual([]);
     expect(layoutErrorOf(problem(409, { code: 'SOMETHING_ELSE' }))).toBe('UNKNOWN');
+  });
+});
+
+describe('remodel commit error mapping (#1034)', () => {
+  function problem(status: number, error: unknown): HttpErrorResponse {
+    return new HttpErrorResponse({ status, error });
+  }
+
+  const FRESH: RemodelPreview = {
+    moves: [],
+    refunds: [],
+    releases: [],
+    staffHolds: [],
+    blocks: [],
+    keep: [],
+    previewToken: 'v1.fresh',
+  };
+
+  it('passes STALE_PREVIEW and REMODEL_REFUSED through and reads the fresh picture they carry', () => {
+    const stale = problem(409, { code: 'STALE_PREVIEW', preview: FRESH });
+    const refused = problem(409, { code: 'REMODEL_REFUSED', preview: FRESH });
+
+    expect(layoutErrorOf(stale)).toBe('STALE_PREVIEW');
+    expect(layoutErrorOf(refused)).toBe('REMODEL_REFUSED');
+    expect(remodelPreviewOf(stale)).toEqual(FRESH);
+    expect(remodelPreviewOf(refused)).toEqual(FRESH);
+    expect(layoutBlockedSetsOf(stale)).toEqual([]);
+  });
+
+  it('answers no picture for a body not shaped as a preview, a missing token, or any other failure', () => {
+    expect(remodelPreviewOf(problem(409, { code: 'STALE_PREVIEW' }))).toBeNull();
+    expect(remodelPreviewOf(problem(409, { code: 'STALE_PREVIEW', preview: null }))).toBeNull();
+    expect(
+      remodelPreviewOf(problem(409, { code: 'STALE_PREVIEW', preview: { ...FRESH, moves: 'x' } })),
+    ).toBeNull();
+    expect(
+      remodelPreviewOf(
+        problem(409, { code: 'STALE_PREVIEW', preview: { ...FRESH, previewToken: 7 } }),
+      ),
+    ).toBeNull();
+    expect(remodelPreviewOf(problem(409, { code: 'SETS_IN_USE', sets: [] }))).toBeNull();
+    expect(remodelPreviewOf(new Error('offline'))).toBeNull();
+  });
+});
+
+describe('OperatorConsoleService — remodel commit + receipts (#1034)', () => {
+  let service: OperatorConsoleService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(OperatorConsoleService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('POSTs the commit with the layout body and the preview token, returning the receipt', () => {
+    const request: RemodelCommitRequest = {
+      sets: [
+        {
+          rowLabel: 'A',
+          positionNo: 1,
+          tier: 'PREMIUM',
+          pool: 'ONLINE',
+          gridX: 1,
+          gridY: 1,
+          price: { minorUnits: 2000, currency: 'EUR' },
+        },
+      ],
+      expectedVersion: 3,
+      previewToken: 'v1.moves',
+    };
+    let receiptId: number | undefined;
+    service.commitLayout(1, request).subscribe((receipt) => (receiptId = receipt.receiptId));
+
+    const req = http.expectOne(`${BASE}/api/venues/1/beach-map/commit`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(request);
+    req.flush({ receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moves: [] });
+    expect(receiptId).toBe(41);
+  });
+
+  it('GETs the venue’s receipts and one receipt by id', () => {
+    let count: number | undefined;
+    service.remodelReceipts(1).subscribe((list) => (count = list.length));
+    const list = http.expectOne(`${BASE}/api/venues/1/remodels`);
+    expect(list.request.method).toBe('GET');
+    list.flush([{ receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moveCount: 2 }]);
+    expect(count).toBe(1);
+
+    let moves: number | undefined;
+    service.remodelReceipt(1, 41).subscribe((receipt) => (moves = receipt.moves.length));
+    const one = http.expectOne(`${BASE}/api/venues/1/remodels/41`);
+    expect(one.request.method).toBe('GET');
+    one.flush({ receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moves: [] });
+    expect(moves).toBe(0);
   });
 });

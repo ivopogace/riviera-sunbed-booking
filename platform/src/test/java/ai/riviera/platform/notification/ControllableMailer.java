@@ -14,6 +14,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.application.BookingMovedMail;
 import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
@@ -116,6 +117,12 @@ public final class ControllableMailer implements Mailer {
 
 	@Override
 	public void sendRequestExpired(String toEmail, RequestExpiredMail expired) {
+		observeRegistrySend(toEmail);
+	}
+
+	/** The changed-spot notice is the sixth kind on this vehicle — observed, same reason. */
+	@Override
+	public void sendBookingMoved(String toEmail, BookingMovedMail moved) {
 		observeRegistrySend(toEmail);
 	}
 

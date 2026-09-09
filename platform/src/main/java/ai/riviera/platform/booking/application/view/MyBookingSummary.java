@@ -23,5 +23,5 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  */
 public record MyBookingSummary(String code, BookingStatus status, VenueId venueId, String venueName,
 		String rowLabel, int positionNo, LocalDate bookingDate, MoneyView amount, Instant requestExpiresAt,
-		MoneyView refundedAmount) {
+		MoneyView refundedAmount, Instant movedAt) {
 }

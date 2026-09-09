@@ -1,7 +1,7 @@
 # ADR-0020: The remodel preview and commit are composed at the composition root, which is granted `venue`'s and `booking`'s published surfaces for it
 
-- **Status:** Accepted — implemented by the slice for issue #1033 (epic #1027, user stories 19 and 21);
-  the commit (#1034) takes the same seat.
+- **Status:** Accepted — implemented by the slices for issues #1033 (the preview; epic #1027, user
+  stories 19 and 21) and #1034 (the commit; user stories 20, 23–30).
 - **Date:** 2026-09-09
 - **Relates to:** ADR-0017 (the root as the home of edge mechanisms), ADR-0007 (module structure),
   invariants #2, #11, #13, `RESPONSIBILITIES.md` § *Platform edge*, `CompositionRootDisciplineTests`
@@ -40,8 +40,11 @@ edit to this rule".
 ## Decision
 
 1. **The remodel preview and the remodel commit live in the root package**, as driving adapters that
-   compose `venue.api.BeachMapRemodel` and `booking.api.RemodelClaims` (and, for the commit, the
-   apply ports the later slice adds). The preview is `RemodelPreviewController`.
+   compose `venue.api.BeachMapRemodel` and `booking.api.RemodelClaims`. The preview is
+   `RemodelPreviewController`; the commit is `RemodelCommitController` with `RemodelCommitService` as
+   the `venue.api.RemodelGate` that `BeachMapRemodel#commit` calls back inside its transaction, where
+   `RemodelClaims#commit` re-seats the moves — the root composes the callback, the modules own the
+   transaction and every write in it.
 2. **The root's grant map gains `venue` and `booking`, `api` + `vocabulary` only.** Never `spi`
    (the root implements nothing for a module), never `application`, `domain` or `adapter`, and
    nothing of `payment`, `payout` or `availability` — those remain out of bounds exactly as before.
@@ -72,7 +75,8 @@ proofs are unchanged.
 
 **Costs.** The root now carries a domain-shaped adapter, so `PayoutModuleTest` — which bootstraps the
 root — mocks two more ports, and `WebSliceStubs` supplies them to every web slice. A reviewer must
-hold the line in item 4: the preview's assembly is the most the root may do.
+hold the line in item 4: the preview's assembly and the commit's gate hand-off are the most the root
+may do.
 
 **Revisit if:** a third module needs the remodel (a rule at the root would then be the smell item 4
 names), or the commit's transaction turns out to need a module-internal port the root cannot be

@@ -67,6 +67,7 @@ const COMPLETED_BOOKING = {
   payWindowClosed: true,
   cancelReason: null,
   cancellationWindowAtBirth: 'CLOSED',
+  move: null,
   reviewPanel: {
     kind: 'ELIGIBLE',
     windowClosesAt: '2026-07-31T16:00:00Z',

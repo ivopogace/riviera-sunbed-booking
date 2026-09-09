@@ -188,6 +188,7 @@ const PENDING_BOOKING = {
   withdrawable: true,
   payment: null,
   cancellationWindowAtBirth: 'FREE',
+  move: null,
   reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 

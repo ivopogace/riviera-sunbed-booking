@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking.application.cancel;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.domain.RefundPolicy;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -21,7 +23,9 @@ import ai.riviera.platform.venue.api.VenueRates;
  * (what you'd get if you cancelled now) and the cancel (what is actually refunded) use cases so the
  * rule can never drift between them. Resolves the set's cutoff/display from {@code venue::api},
  * applies the evening-before boundary ({@link BookingCutoff}, {@code Europe/Tirane}) and the venue's
- * late-cancel share via {@link RefundPolicy}. Module-internal but {@code public} so the {@code view}
+ * late-cancel share via {@link RefundPolicy}; a booking a remodel moved gets the <strong>free-exit
+ * override</strong> — a full refund until {@link BookingCutoff#freeExitEndsAt}, whatever the LATE
+ * tier would answer, never reopening CLOSED (ADR-0005). Module-internal but {@code public} so the {@code view}
  * slice ({@code ViewBookingService}) can quote the same refund the {@code cancel} slice actions —
  * the rule lives in one place across use-case sub-packages. Not exported: {@code application} is not a
  * {@code @NamedInterface}, so it stays inside the {@code booking} module (invariant #11).
@@ -32,27 +36,47 @@ public class CancellationPolicy implements QuoteCancellationTerms {
 	private final SetBookingFacts setFacts;
 	private final VenueRates rates;
 	private final BookingCutoff cutoff;
+	private final Clock clock;
 
-	CancellationPolicy(SetBookingFacts setFacts, VenueRates rates, BookingCutoff cutoff) {
+	CancellationPolicy(SetBookingFacts setFacts, VenueRates rates, BookingCutoff cutoff, Clock clock) {
 		this.setFacts = setFacts;
 		this.rates = rates;
 		this.cutoff = cutoff;
+		this.clock = clock;
 	}
 
 	/**
 	 * The refund quote for a booking: the set facts (for display), whether free cancellation is still
-	 * open, and the server-computed refund in minor units. Throws if the set is unknown (a booking FK
-	 * to a missing set is a real invariant breach, not an expected flow).
+	 * open, the server-computed refund in minor units and the reason a cancellation now would carry.
+	 * A moved booking whose free exit is still open ({@code freeExitUntil} ahead of now, window not
+	 * CLOSED) refunds in full with reason {@code VENUE_CHANGE} in FREE and LATE alike — the amount is
+	 * the override's in LATE only, the reason is the exit's whenever it is taken. Throws
+	 * if the set is unknown (a booking FK to a missing set is a real invariant breach, not an expected
+	 * flow).
 	 */
 	public RefundQuote quote(BookingRecord booking) {
 		SetBookingInfo set = setFacts.setBookingInfo(booking.setId()).orElseThrow(() ->
 				new IllegalStateException("no set info for set " + booking.setId().value()));
-		CancellationWindow window = cutoff.cancellationWindow(set.bookingCutoff(), booking.bookingDate());
+		Instant now = clock.instant();
+		CancellationWindow window = cutoff.cancellationWindow(set.bookingCutoff(), booking.bookingDate(), now);
+		Instant freeExitUntil = freeExitUntil(booking, window, now);
+		if (freeExitUntil != null) {
+			return new RefundQuote(set, window, booking.amountMinor(), RefundReason.VENUE_CHANGE, freeExitUntil);
+		}
 		int lateBps = window == CancellationWindow.LATE
 				? rates.lateCancelRefundBps(booking.venueId()).orElse(0)
 				: 0;
 		long refundMinor = RefundPolicy.refundMinor(booking.amountMinor(), window, lateBps);
-		return new RefundQuote(set, window, refundMinor);
+		return new RefundQuote(set, window, refundMinor, RefundReason.POLICY, freeExitUntil);
+	}
+
+	/** The open free-exit deadline of a moved booking, or {@code null}: never moved, past it, or CLOSED. */
+	private Instant freeExitUntil(BookingRecord booking, CancellationWindow window, Instant now) {
+		if (booking.movedAt() == null || window == CancellationWindow.CLOSED) {
+			return null;
+		}
+		Instant deadline = cutoff.freeExitEndsAt(booking.bookingDate(), booking.movedAt());
+		return now.isBefore(deadline) ? deadline : null;
 	}
 
 	/**
@@ -95,10 +119,13 @@ public class CancellationPolicy implements QuoteCancellationTerms {
 
 	/**
 	 * The computed cancellation terms: set display, which {@link CancellationWindow} the request
-	 * falls in, and the refund due. {@code beforeCutoff} is derived rather than stored so the
-	 * window stays the single carrier of the temporal decision.
+	 * falls in, the refund due, the {@link RefundReason} a cancellation now would carry, and — for a
+	 * moved booking whose free exit is still open — its deadline ({@code null} otherwise).
+	 * {@code beforeCutoff} is derived rather than stored so the window stays the single carrier of
+	 * the temporal decision.
 	 */
-	public record RefundQuote(SetBookingInfo set, CancellationWindow window, long refundMinor) {
+	public record RefundQuote(SetBookingInfo set, CancellationWindow window, long refundMinor,
+			RefundReason reason, Instant freeExitUntil) {
 
 		/** Whether free cancellation is still open — what the booking view reports on the wire. */
 		public boolean beforeCutoff() {

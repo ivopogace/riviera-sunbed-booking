@@ -86,6 +86,7 @@ const DETAIL: BookingDetail = {
   payWindowClosed: false,
   cancelReason: null,
   cancellationWindowAtBirth: 'FREE',
+  move: null,
   reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
@@ -288,6 +289,7 @@ describe('BookingService', () => {
       payWindowClosed: false,
       cancelReason: null,
       cancellationWindowAtBirth: 'FREE',
+      move: null,
       reviewPanel: { kind: 'NOT_COMPLETED' },
     };
     let received: BookingDetail | undefined;

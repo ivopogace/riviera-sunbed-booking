@@ -16,7 +16,8 @@ import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutEditor } from './layout-editor';
 import { RemodelPreview } from './operator-console.model';
-import { FULL_PREVIEW } from './remodel-preview-panel.spec';
+import { FULL_PREVIEW, MOVES_ONLY_PREVIEW } from './remodel-preview-panel.spec';
+import { RECEIPT } from './remodel-receipt-panel.spec';
 import { SetLock } from './operator-console.model';
 
 interface SentBody {
@@ -30,6 +31,7 @@ interface SentBody {
     price: { minorUnits: number; currency: string };
   }[];
   expectedVersion: number;
+  previewToken?: string;
 }
 
 /** The captured request body, typed — Angular types `HttpRequest.body` as `any`. */
@@ -49,6 +51,7 @@ const EMPTY_PREVIEW: RemodelPreview = {
   staffHolds: [],
   blocks: [],
   keep: [],
+  previewToken: 'v1.empty',
 };
 
 describe('LayoutEditor (#172)', () => {
@@ -430,11 +433,13 @@ describe('LayoutEditor (#172)', () => {
 
   describe('locked cells (#1031)', () => {
     const LOCK: SetLock = { setId: 2, bookedOn: '2026-09-12', heldOn: '2026-09-12' };
+    /** A staff walk-in mark with no booking behind it — the one lock the gap brush still keeps. */
+    const HELD: SetLock = { setId: 2, bookedOn: null, heldOn: '2026-09-12' };
     const DESCRIPTION =
       'Locked — booked Sat 12 Sept 2026. Can’t be moved or removed; tier and pool can still change.';
 
-    /** Row A: three standard online sets, the middle one pinned by a booking. Bulk mode, premium armed. */
-    function renderLockedRow(): void {
+    /** Row A: three standard online sets, the middle one pinned by `lock`. Bulk mode, premium armed. */
+    function renderLockedRow(lock: SetLock = LOCK): void {
       render(
         [
           seat(1, 'STANDARD', 'ONLINE', 1, 1),
@@ -442,7 +447,7 @@ describe('LayoutEditor (#172)', () => {
           seat(3, 'STANDARD', 'ONLINE', 3, 1),
         ],
         0,
-        [LOCK],
+        [lock],
       );
       useBulkMode();
     }
@@ -484,8 +489,8 @@ describe('LayoutEditor (#172)', () => {
       expect(byId('layout-lock-notice').textContent?.trim()).toBe('');
     });
 
-    it('the gap brush leaves the locked cell as it is, says why, and counts nothing (AC-8)', () => {
-      renderLockedRow();
+    it('the gap brush leaves a staff-held cell as it is, says why, and counts nothing (AC-8)', () => {
+      renderLockedRow(HELD);
       byId('layout-tool-gap').click();
       fixture.detectChanges();
 
@@ -496,12 +501,12 @@ describe('LayoutEditor (#172)', () => {
       expect(dirtyText()).toBe('No unsaved changes');
       expect(host.querySelector('[data-testid="layout-last-change"]')).toBeNull();
       expect(byId('layout-lock-notice').textContent?.replace(/\s+/g, ' ').trim()).toBe(
-        'Row A · position 2 is booked Sat 12 Sept 2026 — it can’t become a gap. Its tier and pool can still change.',
+        'Row A · position 2 is held by staff Sat 12 Sept 2026 — it can’t become a gap. Its tier and pool can still change.',
       );
     });
 
-    it('a gap drag-sweep skips the locked cell and counts only the others (AC-9)', () => {
-      renderLockedRow();
+    it('a gap drag-sweep skips the staff-held cell and counts only the others (AC-9)', () => {
+      renderLockedRow(HELD);
       byId('layout-tool-gap').click();
       fixture.detectChanges();
 
@@ -513,11 +518,11 @@ describe('LayoutEditor (#172)', () => {
 
       expect(cells().map((c) => c.getAttribute('data-state'))).toEqual(['gap', 'standard', 'gap']);
       expect(dirtyText()).toBe('2 unsaved changes');
-      expect(byId('layout-lock-notice').textContent).toContain('position 2 is booked');
+      expect(byId('layout-lock-notice').textContent).toContain('position 2 is held by staff');
     });
 
-    it('a gap row fill keeps the locked cell and reports it; a tier fill repaints it (AC-9)', () => {
-      renderLockedRow();
+    it('a gap row fill keeps the staff-held cell and reports it; a tier fill repaints it (AC-9)', () => {
+      renderLockedRow(HELD);
       byId('layout-tool-gap').click();
       fixture.detectChanges();
 
@@ -527,7 +532,7 @@ describe('LayoutEditor (#172)', () => {
       expect(cells().map((c) => c.getAttribute('data-state'))).toEqual(['gap', 'standard', 'gap']);
       expect(dirtyText()).toBe('2 unsaved changes');
       expect(byId('layout-lock-notice').textContent).toContain(
-        'Row A → Gap / aisle kept 1 locked set',
+        'Row A → Gap / aisle kept 1 held set',
       );
 
       byId('layout-tool-premium').click();
@@ -539,8 +544,8 @@ describe('LayoutEditor (#172)', () => {
       expect(dirtyText()).toBe('3 unsaved changes');
     });
 
-    it('a gap column fill keeps the locked cell too', () => {
-      renderLockedRow();
+    it('a gap column fill keeps the staff-held cell too', () => {
+      renderLockedRow(HELD);
       byId('layout-tool-gap').click();
       fixture.detectChanges();
 
@@ -550,8 +555,34 @@ describe('LayoutEditor (#172)', () => {
       expect(cells()[1].getAttribute('data-state')).toBe('standard');
       expect(dirtyText()).toBe('No unsaved changes');
       expect(byId('layout-lock-notice').textContent).toContain(
-        'Column 2 → Gap / aisle kept 1 locked set',
+        'Column 2 → Gap / aisle kept 1 held set',
       );
+    });
+
+    it('the gap brush paints a booked cell and says the save will show the move first (#1034)', () => {
+      renderLockedRow();
+      byId('layout-tool-gap').click();
+      fixture.detectChanges();
+
+      cells()[1].click();
+      fixture.detectChanges();
+      expect(cells()[1].getAttribute('data-state')).toBe('gap');
+      expect(dirtyText()).toBe('1 unsaved change');
+      expect(byId('layout-lock-notice').textContent?.replace(/\s+/g, ' ').trim()).toBe(
+        'Row A · position 2 is booked Sat 12 Sept 2026 — saving will first show where its bookings would move.',
+      );
+
+      // The row fill treats it the same way: only a staff hold is kept.
+      byId('layout-tool-premium').click();
+      fixture.detectChanges();
+      rowFillButtons()[0].click();
+      fixture.detectChanges();
+      byId('layout-tool-gap').click();
+      fixture.detectChanges();
+      rowFillButtons()[0].click();
+      fixture.detectChanges();
+      expect(cells().map((c) => c.getAttribute('data-state'))).toEqual(['gap', 'gap', 'gap']);
+      expect(byId('layout-lock-notice').textContent?.trim()).toBe('');
     });
 
     it('hands the locks to the per-set surface and clears them on a venue switch', () => {
@@ -1903,6 +1934,333 @@ describe('LayoutEditor (#172)', () => {
       expect(byId('layout-stale-banner')).toBeTruthy();
       expect(byId('layout-save').getAttribute('aria-disabled')).toBeNull();
       http.expectNone((r) => r.method === 'PUT');
+    });
+  });
+
+  describe('remodel commit (#1034)', () => {
+    function dropLoadedA2(): void {
+      render([seat(1, 'PREMIUM', 'ONLINE', 1, 1), seat(2, 'STANDARD', 'ONLINE', 2, 1)], 3);
+      useBulkMode();
+      byId('layout-tool-gap').click();
+      fixture.detectChanges();
+      cells()[1].click();
+      fixture.detectChanges();
+    }
+
+    function commitRequest(): TestRequest {
+      return http.expectOne(
+        (r) => r.method === 'POST' && r.url.includes('/api/venues/1/beach-map/commit'),
+      );
+    }
+
+    async function openMovesOnlyDialog(): Promise<void> {
+      dropLoadedA2();
+      byId('layout-save').click();
+      http
+        .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/beach-map/preview'))
+        .flush(MOVES_ONLY_PREVIEW);
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    it('Save and move POSTs the previewed body with the preview token, then shows the receipt in the dialog’s place and focuses it', async () => {
+      await openMovesOnlyDialog();
+      byId('layout-remodel-commit').click();
+      fixture.detectChanges();
+      expect(byId('layout-remodel-commit').getAttribute('aria-disabled')).toBe('true');
+      expect(byId('layout-remodel-commit').textContent).toContain('Saving…');
+
+      const commit = commitRequest();
+      expect(body(commit).sets.map((set) => set.gridX)).toEqual([1]);
+      expect(body(commit).expectedVersion).toBe(3);
+      expect(body(commit).previewToken).toBe('v1.moves');
+      commit.flush(RECEIPT);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="layout-remodel-preview"]')).toBeNull();
+      expect(byId('layout-remodel-receipt-title').textContent).toContain('receipt #41');
+      expect(byId('layout-remodel-receipt-moves').querySelectorAll('li')).toHaveLength(2);
+      expect(document.activeElement).toBe(byId('layout-remodel-receipt-title'));
+      expect(byId('layout-saved')).toBeTruthy();
+      expect(byId('layout-dirty-count').textContent).toContain('No unsaved changes');
+      expect(byId('layout-save').getAttribute('aria-disabled')).toBeNull();
+      http.expectNone((r) => r.method === 'PUT');
+
+      byId('layout-remodel-receipt-close').click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(host.querySelector('[data-testid="layout-remodel-receipt"]')).toBeNull();
+      expect(document.activeElement).toBe(byId('layout-save'));
+    });
+
+    it('a commit advances the loaded token like a save, so the next save is not falsely stale', async () => {
+      await openMovesOnlyDialog();
+      byId('layout-remodel-commit').click();
+      commitRequest().flush(RECEIPT);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      byId('layout-tool-standard').click();
+      fixture.detectChanges();
+      cells()[0].click();
+      fixture.detectChanges();
+      byId('layout-save').click();
+      // A2 is still a gap against the loaded read, so the dry run runs again; it carries the advanced token too.
+      const preview = http.expectOne(
+        (r) => r.method === 'POST' && r.url.includes('/api/venues/1/beach-map/preview'),
+      );
+      expect(body(preview).expectedVersion).toBe(4);
+      preview.flush(EMPTY_PREVIEW);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const put = http.expectOne(
+        (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
+      );
+      expect(body(put).expectedVersion).toBe(4);
+      put.flush(null);
+      await fixture.whenStable();
+    });
+
+    it('STALE_PREVIEW re-renders the dialog with the fresh picture and its token, flagged stale, and the next Save carries the fresh token', async () => {
+      await openMovesOnlyDialog();
+      byId('layout-remodel-commit').click();
+      commitRequest().flush(
+        {
+          code: 'STALE_PREVIEW',
+          detail: 'x',
+          preview: {
+            ...MOVES_ONLY_PREVIEW,
+            moves: [MOVES_ONLY_PREVIEW.moves[0]],
+            previewToken: 'v1.fresh',
+          },
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(byId('layout-remodel-preview')).toBeTruthy();
+      expect(byId('layout-remodel-stale').textContent).toMatch(
+        /bookings changed since you previewed/,
+      );
+      expect(byId('layout-remodel-moves').textContent).toContain('Will move (1)');
+      expect(byId('layout-remodel-commit').textContent).toContain('Save and move 1 booking');
+      expect(byId('layout-remodel-commit').getAttribute('aria-disabled')).toBeNull();
+      expect(document.activeElement).toBe(byId('layout-remodel-commit'));
+      expect(host.querySelector('[data-testid="layout-error"]')).toBeNull();
+      expect(host.querySelector('[data-testid="layout-remodel-receipt"]')).toBeNull();
+
+      byId('layout-remodel-commit').click();
+      const second = commitRequest();
+      expect(body(second).previewToken).toBe('v1.fresh');
+      expect(body(second).expectedVersion).toBe(3);
+      second.flush(RECEIPT);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(host.querySelector('[data-testid="layout-remodel-preview"]')).toBeNull();
+      expect(byId('layout-remodel-receipt')).toBeTruthy();
+    });
+
+    it('REMODEL_REFUSED shows the fresh picture stale with Back alone, and Back returns to the editor with no error', async () => {
+      await openMovesOnlyDialog();
+      byId('layout-remodel-commit').click();
+      commitRequest().flush(
+        { code: 'REMODEL_REFUSED', detail: 'x', preview: FULL_PREVIEW },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(byId('layout-remodel-stale')).toBeTruthy();
+      expect(byId('layout-remodel-blocks').textContent).toMatch(/arrives within the freeze window/);
+      expect(host.querySelector('[data-testid="layout-remodel-commit"]')).toBeNull();
+      expect(host.querySelector('[data-testid="layout-error"]')).toBeNull();
+      // The Save that held focus is gone; Back takes it (WCAG 2.4.3).
+      expect(document.activeElement).toBe(byId('layout-remodel-back'));
+
+      byId('layout-remodel-back').click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(host.querySelector('[data-testid="layout-remodel-preview"]')).toBeNull();
+      expect(host.querySelector('[data-testid="layout-error"]')).toBeNull();
+      expect(document.activeElement).toBe(byId('layout-save'));
+    });
+
+    it('a stale-picture answer without a parsable preview is a plain failure: the dialog closes and the save bar explains', async () => {
+      await openMovesOnlyDialog();
+      byId('layout-remodel-commit').click();
+      commitRequest().flush(
+        { code: 'STALE_PREVIEW', detail: 'x', preview: { moves: 'nope' } },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="layout-remodel-preview"]')).toBeNull();
+      expect(byId('layout-error').textContent).toMatch(/Save again to see the fresh picture/);
+      expect(document.activeElement).toBe(byId('layout-save'));
+    });
+
+    it('a stale write on the commit lands in the reload banner, with the dialog closed and the token unspent', async () => {
+      await openMovesOnlyDialog();
+      byId('layout-remodel-commit').click();
+      commitRequest().flush(
+        { code: 'STALE_WRITE', detail: '' },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="layout-remodel-preview"]')).toBeNull();
+      expect(byId('layout-stale-banner')).toBeTruthy();
+      expect(byId('layout-save').getAttribute('aria-disabled')).toBeNull();
+    });
+
+    it('SETS_IN_USE on the commit marks the named sets exactly as the save does', async () => {
+      await openMovesOnlyDialog();
+      byId('layout-remodel-commit').click();
+      commitRequest().flush(
+        {
+          code: 'SETS_IN_USE',
+          detail: 'x',
+          sets: [{ setId: 2, rowLabel: 'A', positionNo: 2, bookedOn: '2026-09-12', heldOn: null }],
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="layout-remodel-preview"]')).toBeNull();
+      expect(cells()[1].getAttribute('data-locked')).toBe('true');
+      expect(byId('layout-error').textContent).toMatch(/Row A · position 2/);
+    });
+
+    it('drops a superseded commit’s outcome after a venue switch (#180)', async () => {
+      await openMovesOnlyDialog();
+      byId('layout-remodel-commit').click();
+      const commit = commitRequest();
+
+      params$.next(convertToParamMap({ venueId: '2' }));
+      fixture.detectChanges();
+      http
+        .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+        .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
+      fixture.detectChanges();
+
+      commit.flush(RECEIPT);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(host.querySelector('[data-testid="layout-remodel-receipt"]')).toBeNull();
+      expect(host.querySelector('[data-testid="layout-saved"]')).toBeNull();
+    });
+  });
+
+  describe('past remodels (#1034)', () => {
+    function receiptsRequest(): TestRequest {
+      return http.expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/remodels'));
+    }
+
+    async function openDisclosure(): Promise<void> {
+      const details = byId('layout-remodels') as HTMLDetailsElement;
+      details.open = true;
+      details.dispatchEvent(new Event('toggle'));
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    it('reads the receipts on first opening only, lists them newest first as the server sends them, and opens one', async () => {
+      render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)], 3);
+      expect(host.querySelector('[data-testid="layout-remodels-list"]')).toBeNull();
+      http.expectNone((r) => r.url.includes('/remodels'));
+
+      await openDisclosure();
+      expect(byId('layout-remodels-loading')).toBeTruthy();
+      receiptsRequest().flush([
+        { receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moveCount: 2 },
+        { receiptId: 40, committedAt: '2026-09-01T07:30:00Z', moveCount: 1 },
+      ]);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const rows = host.querySelectorAll<HTMLElement>('[data-testid="layout-remodels-open"]');
+      expect([...rows].map((row) => row.textContent?.trim())).toEqual([
+        'Wed, 9 Sept, 15:00 · 2 bookings moved',
+        'Tue, 1 Sept, 09:30 · 1 booking moved',
+      ]);
+      expect(rows[0].getAttribute('data-receipt-id')).toBe('41');
+
+      // A second toggle re-uses the list it already holds.
+      (byId('layout-remodels') as HTMLDetailsElement).open = false;
+      await openDisclosure();
+      http.expectNone((r) => r.url.endsWith('/api/venues/1/remodels'));
+
+      rows[0].click();
+      http
+        .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/remodels/41'))
+        .flush(RECEIPT);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(byId('layout-remodel-receipt-title').textContent).toContain('receipt #41');
+      expect(document.activeElement).toBe(byId('layout-remodel-receipt-title'));
+    });
+
+    it('says so when no remodel has moved a booking, and explains a failed read as an alert', async () => {
+      render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)], 3);
+      await openDisclosure();
+      receiptsRequest().flush([]);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(byId('layout-remodels-empty').textContent).toMatch(
+        /No remodel has moved a booking yet/,
+      );
+      fixture.destroy();
+      TestBed.resetTestingModule();
+
+      render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)], 3);
+      await openDisclosure();
+      receiptsRequest().flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(byId('layout-remodels-failed').getAttribute('role')).toBe('alert');
+      expect(byId('layout-remodels-failed').textContent).toMatch(/Couldn’t load past remodels/);
+    });
+
+    it('a commit invalidates the list, so the next opening re-reads it with the new receipt', async () => {
+      render([seat(1, 'PREMIUM', 'ONLINE', 1, 1), seat(2, 'STANDARD', 'ONLINE', 2, 1)], 3);
+      await openDisclosure();
+      receiptsRequest().flush([]);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(byId('layout-remodels-empty')).toBeTruthy();
+
+      useBulkMode();
+      byId('layout-tool-gap').click();
+      fixture.detectChanges();
+      cells()[1].click();
+      fixture.detectChanges();
+      byId('layout-save').click();
+      http
+        .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/beach-map/preview'))
+        .flush(MOVES_ONLY_PREVIEW);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      byId('layout-remodel-commit').click();
+      http
+        .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/beach-map/commit'))
+        .flush(RECEIPT);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="layout-remodels-empty"]')).toBeNull();
+      (byId('layout-remodels') as HTMLDetailsElement).open = false;
+      await openDisclosure();
+      receiptsRequest().flush([
+        { receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moveCount: 2 },
+      ]);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(host.querySelectorAll('[data-testid="layout-remodels-open"]')).toHaveLength(1);
     });
   });
 });

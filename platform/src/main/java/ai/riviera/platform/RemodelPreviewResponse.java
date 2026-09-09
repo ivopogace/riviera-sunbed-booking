@@ -5,13 +5,14 @@ import java.util.List;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
- * The remodel preview on the wire: the five groups the operator confirms against, and {@code keep}
- * — the sets a blocked preview says to keep in this save (the blocking claims' and the staff
- * holds' sets, by id). Dates are ISO {@code YYYY-MM-DD} (invariant #6), amounts integer minor units
+ * The remodel preview on the wire: the five groups the operator confirms against, {@code keep} — the
+ * sets a blocked preview says to keep in this save (the blocking claims' and the staff holds' sets,
+ * by id) — and {@code previewToken}, what the commit carries back to prove the operator confirmed
+ * this picture. Dates are ISO {@code YYYY-MM-DD} (invariant #6), amounts integer minor units
  * (invariant #5), bookings by id and never by code (invariant #7).
  */
 record RemodelPreviewResponse(List<MoveView> moves, List<ClaimView> refunds, List<ReleaseView> releases,
-		List<StaffHoldView> staffHolds, List<BlockView> blocks, List<SpotView> keep) {
+		List<StaffHoldView> staffHolds, List<BlockView> blocks, List<SpotView> keep, String previewToken) {
 
 	record SpotView(long setId, String rowLabel, int positionNo) {
 	}

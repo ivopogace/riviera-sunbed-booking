@@ -26,6 +26,7 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.spi.BookingPresence;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 import ai.riviera.platform.venue.domain.SalesClose;
+import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.LiveBookingCounts;
@@ -87,7 +88,7 @@ class VenueAdminServiceTest {
 
 	private final BeachMapEditService mapEditor = new BeachMapEditService(
 			venues, new FakeOwnership(OWNER, VENUE), new LiveClaims(availability, bookings, CLOCK),
-			bookings, CLOCK);
+			bookings, new LayoutWriter(venues, new LiveClaims(availability, bookings, CLOCK), bookings, CLOCK), CLOCK);
 
 	private final OnboardVenueService onboarding =
 			new OnboardVenueService(venues, new FakeOwnership(OWNER, VENUE), CREATION);
@@ -694,7 +695,7 @@ class VenueAdminServiceTest {
 
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, new LayoutCommand(List.of()));
 
-		assertEquals(ReplaceRejection.EMPTY_LAYOUT, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+		assertEquals(LayoutRejection.EMPTY_LAYOUT, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(List.of(), callLog);
 	}
 
@@ -707,7 +708,7 @@ class VenueAdminServiceTest {
 
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, clashing);
 
-		assertEquals(ReplaceRejection.CELL_TAKEN, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+		assertEquals(LayoutRejection.CELL_TAKEN, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(List.of(), callLog);
 	}
 
@@ -722,7 +723,7 @@ class VenueAdminServiceTest {
 
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, split);
 
-		assertEquals(ReplaceRejection.ROW_NAME_TAKEN, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+		assertEquals(LayoutRejection.ROW_NAME_TAKEN, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.insertedInLayout);
 		assertEquals(0, venues.incrementedSetVersions);
 	}
@@ -736,7 +737,7 @@ class VenueAdminServiceTest {
 
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, doubleFault);
 
-		assertEquals(ReplaceRejection.DUPLICATE_POSITION, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+		assertEquals(LayoutRejection.DUPLICATE_POSITION, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 	}
 
 	@Test
@@ -757,7 +758,7 @@ class VenueAdminServiceTest {
 	void rejectsReplaceOnUnknownVenue() {
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(1, 1));
 
-		assertEquals(ReplaceRejection.NO_SUCH_VENUE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+		assertEquals(LayoutRejection.NO_SUCH_VENUE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 	}
 
 	@Test
@@ -769,7 +770,7 @@ class VenueAdminServiceTest {
 
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
-		assertEquals(ReplaceRejection.STALE_WRITE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+		assertEquals(LayoutRejection.STALE_WRITE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(List.of(), callLog);
 		assertEquals(0, venues.updatedSets + venues.insertedInLayout);
 		assertEquals(0, venues.incrementedSetVersions);

@@ -170,7 +170,7 @@ over time. The standing rules:
     already booked into a renamed row reads the new name live while the mail in their
     inbox keeps the old one.
   - *The remodel preview is the diff without the lock:* `BeachMapRemodel#preview` (published, the
-    one `api` port the platform edge composes, ADR-0020) asserts ownership, checks the token
+    `api` port the platform edge composes, ADR-0020) asserts ownership, checks the token
     unlocked, runs the same cell-keyed diff over the unlocked active map and answers the removed and
     renumbered sets with their staff walk-in holds from today on
     (`SetAvailabilityLookup#walkInHoldsFrom` through `LiveClaims`). It writes nothing and takes no
@@ -181,9 +181,17 @@ over time. The standing rules:
     mine to render, as the tourist map is: `SetBookingFacts#activeSetsOf` and `#freeOnlineSetsOn`
     read the active map (with the published `Tier` mirror of `set_position_tier_check`) and subtract
     the day's availability rows.
+  - *The remodel commit is the save with a gate in it:* `BeachMapRemodel#commit` runs the one bulk
+    write (`LayoutWriter`, the same code the plain save runs) under the venue-wide set lock and,
+    between the locks and the live-claim probe, hands the disturbed sets to the caller's
+    `venue.api.RemodelGate`; the gate proceeding means the caller has re-seated every claim inside
+    my transaction (`booking` joins it), so the probe finds no live claim and the layout writes. A
+    refusing gate, a probe that still refuses, or a shape rejection marks the transaction
+    rollback-only — the layout and the moves land together or not at all, whichever refused. The
+    plain save is the same writer with a gate that always refuses a disturbed set.
   - A rename is refused only for `ROW_NAME_TAKEN` (another row already carries the label);
     renaming a row to its own label is a no-op. The bulk save enforces the same
-    one-label-one-physical-row rule within its batch (`ReplaceRejection.ROW_NAME_TAKEN`);
+    one-label-one-physical-row rule within its batch (`LayoutRejection.ROW_NAME_TAKEN`);
     the single-set `addSet`/`editSet` paths do not yet check it.
   - Because the pool is **mutable** layout data, `SetBookingFacts#poolForClaim` is a
     **locking** read (`FOR KEY SHARE`, the weakest lock that conflicts with the set-writes'
@@ -299,7 +307,10 @@ be double-sold. Answer the read-side facts through `venue::spi` (`SetAvailabilit
 the state-agnostic taken-set overlay for the public map, the per-set **state tokens**
 (`statesOn`) behind the owner's daily read, and the **taken count per day** over a window
 (`takenCountsBetween`) behind the tourist calendar — how many are held, never how many
-exist. `venue` composes; I answer state.
+exist. `venue` composes; I answer state. A remodel move is two of my ordinary writes inside
+`venue`'s commit transaction — the new `(set, date)` claimed before the old is released, never a
+swap of my own — so a reserve racing the move loses or wins the row exactly as it would against
+any other claim (invariant #2).
 
 **Not My Job:**
 - The venue layout, which sets exist, or their positions → **`venue`**
@@ -424,8 +435,30 @@ exist. `venue` composes; I answer state.
   that candidate leaves the pool for the next claim on that date; a move-only claim with none
   blocks; beyond the floor `CONFIRMED` refunds, `AWAITING_PAYMENT` releases, `PENDING_REQUEST`
   declines. The answer carries outcome kinds, set references and amounts — never a status and never a
-  code (invariant #7). Advisory: read-only and unlocked, so the commit re-derives it; today the save
-  still refuses any disturbed set a live claim pins.
+  code (invariant #7). Advisory: read-only and unlocked, so the commit re-derives it.
+- **The remodel commit applies moves and nothing else.** `RemodelClaims#commit` (published, ADR-0020)
+  runs inside `venue`'s commit transaction as its `RemodelGate`: it re-classifies the disturbed sets
+  under the lock, checks the operator's `PreviewToken` still **covers** the fresh picture — the token
+  is a sorted set of per-pair digests over `(booking id, outcome kind)`, so a fresh picture that is a
+  strict subset of the previewed one still matches, and a claim or an outcome the preview never showed
+  is `Stale` — refuses a picture that holds anything but moves (`Refused`), and otherwise, per move in
+  `(service date, id)` order, claims the new `(set, date)` through `availability`, releases the old,
+  stamps `booking.moved_at` and publishes `BookingMoved` (booking id, venue id, both set ids, the
+  date). The receipt is mine: `remodel_receipt` / `remodel_receipt_move` snapshot the old and new
+  labels and the distance at commit time, so the moved mail and the guest's view still name the spot
+  the guest was told after that set is retired, and `BookingPresence#hasBookings` counts a receipt's
+  from- and to-sets so a set a moved booking left retires rather than deletes. The receipts read
+  (`ViewRemodelReceipts`, `GET /api/venues/{venueId}/remodels[/{receiptId}]`, owner-asserted) is my
+  own inbound adapter, not the root's. No undo: a move is reversed by another remodel.
+- **A moved booking's free exit is a refund-tier override, never a window change.** The exit runs
+  until `min(service day opens, max(12:00 Europe/Tirane the day before, moved_at + 24h))`
+  (`BookingCutoff#freeExitEndsAt`); `CancellationPolicy#quote` reads it and, while it is open, answers
+  the full amount with reason `VENUE_CHANGE` — in `LATE` that lifts the tier, in `FREE` only the reason
+  changes, so the mail and the admin's venue-caused list still know why — and `CLOSED` is never
+  reopened: the guest can already be consuming the stay. The reason lands on the
+  booking and rides `BookingCancelled` into the ledger reversal and the cancellation mail. The
+  code-gated view carries the move (`BookingDetail#move`: old spot, distance, `movedAt`, the exit
+  deadline while open); `BookingNotificationFacts#moveFacts` hands the mail the same, from the receipt.
 
 **Not My Job:**
 - Owning the `(set, date)` availability state → **`availability`** (I *ask* it to claim)
@@ -756,12 +789,22 @@ invariant #7):
   the server-computed refund (invariant #10); the `BookingPaymentDue` notice, on the same
   birth-window rules — `booking` publishes the fact only on the accept branch where money
   is genuinely outstanding, so the listener decides nothing; and the
-  `BookingRequestDeclined` / `BookingRequestExpired` records — plain copy, no CTA. The
-  withdraw leg mails nothing.
+  `BookingRequestDeclined` / `BookingRequestExpired` records — plain copy, no CTA; and the
+  `BookingMoved` "your spot changed" record — the new spot, the spot the guest was told before,
+  the distance and the free-exit deadline, all read through
+  `booking.api.BookingNotificationFacts#moveFacts` (answered from the commit receipt, so a
+  retired from-set still has its label), the code resolved inside this module (invariant #7),
+  abandoned under `MAIL_MOVE_ABANDONED` with the shared `reason` vocabulary. The withdraw leg
+  mails nothing.
 - The **operator-approval notice**, on the recovery vehicle (`kind="operator-approved"`):
   no bearer credential, but edge-orchestrated from an admin request rather than driven by
   a domain fact — which is why "recovery" in `MAIL_RECOVERY_*` names the *vehicle* and
   `kind` names the flow.
+- The **mock outbox read** — `GET /api/mock-mail/booking-mails?to=` in `adapter/in`, present only
+  where the recording `MockMailer` is (`!mailer & !smtp4dev`, so never under `prod`), operator-gated,
+  answering the booking kinds as facts a guest reads on the page anyway — never a code, never a
+  link, never a recovery kind. It exists for the local real-backend e2e run and resolves its mailer
+  lazily, so a test that swaps the `Mailer` bean still loads the web layer.
 - The **email-suppression list**, hashed/non-PII at rest (a `v1:`-tagged peppered-HMAC
   `email_key` plus the cleartext `domain`, never the address; the pepper is env-managed,
   fail-at-boot in prod), deliberately surviving erasure (ADR-0012). The defining invariant
@@ -1086,12 +1129,20 @@ live booking on those sets becomes) in one answer, and `venue` may not depend on
 cycle through `venue.spi.BookingPresence`), so `RemodelPreviewController`
 (`POST /api/venues/{venueId}/beach-map/preview`, operator-gated) composes `venue.api.BeachMapRemodel`
 with `booking.api.RemodelClaims` and assembles the five wire groups — move, refund, release/decline,
-staff hold, block — plus `keep`, the blocking and held sets by id. `CompositionRootDisciplineTests`
-grants the root exactly those two modules' `api` + `vocabulary`, nothing else of the spine. The edge
-resolves the principal and maps outcomes; **each module port asserts venue ownership itself**
-(invariant #13), and every rule — the diff, the zone, the candidate, the status split — stays in its
-module: a rule growing at the root is the signal it belongs in one. The commit (#1034) takes the same
-seat; today the save still refuses any disturbed set a live claim pins.
+staff hold, block — plus `keep`, the blocking and held sets by id, and `previewToken`, the digest of
+the picture the operator saw. `RemodelCommitController` (`POST /api/venues/{venueId}/beach-map/commit`,
+operator-gated; the save body plus `previewToken`) composes the same two ports the other way round:
+`RemodelCommitService` is the `venue.api.RemodelGate` `BeachMapRemodel#commit` calls between its locks
+and its probe, and inside it `RemodelClaims#commit` re-seats the moves — so the layout write, the
+moves, the availability rows and the transition stamps commit or roll back as one, and nothing that
+talks to Stripe is inside. Its answers: `200` with the receipt (id, committed-at, the moves); `409
+STALE_PREVIEW` or `409 REMODEL_REFUSED` carrying the fresh picture and its token in a `preview`
+extension, so the operator re-decides on what is true now; the save's own `SETS_IN_USE`, `STALE_WRITE`
+and shape rejections. `CompositionRootDisciplineTests` grants the root exactly those two modules'
+`api` + `vocabulary`, nothing else of the spine. The edge resolves the principal and maps outcomes;
+**each module port asserts venue ownership itself** (invariant #13), and every rule — the diff, the
+zone, the candidate, the status split, the token, the free exit — stays in its module: a rule growing
+at the root is the signal it belongs in one. The receipts read is `booking`'s own adapter.
 
 ## Invariants, long form
 

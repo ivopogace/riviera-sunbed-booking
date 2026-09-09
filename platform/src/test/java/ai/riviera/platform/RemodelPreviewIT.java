@@ -134,7 +134,8 @@ class RemodelPreviewIT {
 				.andExpect(jsonPath("$.blocks[1].reason").value("NO_MOVE_CANDIDATE"))
 				.andExpect(jsonPath("$.keep.length()").value(2))
 				.andExpect(jsonPath("$.keep[0].setId").value(a1))
-				.andExpect(jsonPath("$.keep[1].setId").value(a2));
+				.andExpect(jsonPath("$.keep[1].setId").value(a2))
+				.andExpect(jsonPath("$.previewToken", org.hamcrest.Matchers.startsWith("v1.")));
 
 		assertEquals(ids, setIds(venue), "a preview writes nothing");
 		assertEquals(tokenBefore, currentSetVersion(venue), "a preview never spends the token");

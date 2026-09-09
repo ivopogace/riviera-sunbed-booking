@@ -133,11 +133,11 @@ non-context modules, `allowedDependencies = {}` — **`challenge`** (proof of wo
 the root (ADR-0017). Their surfaces and contracts are `RESPONSIBILITIES.md` §s.
 
 **Collaboration:** events for state changes, `api/` ports for queries (invariant #11); the
-availability claim and the erasure reach into reviews are synchronous ports. The eight
+availability claim and the erasure reach into reviews are synchronous ports. The nine
 events: `PaymentConfirmed`/`PaymentCanceled` → `booking`; `BookingConfirmed`/
 `BookingCancelled` → `payout`, `notification` (and `booking`'s own refund listener);
-`BookingPaymentDue`, `BookingRequestDeclined`, `BookingRequestExpired` → `notification`;
-`ReviewsChanged` → `venue`.
+`BookingPaymentDue`, `BookingRequestDeclined`, `BookingRequestExpired`, `BookingMoved` →
+`notification`; `ReviewsChanged` → `venue`.
 
 **Platform edge** (settled; `RESPONSIBILITIES.md` § *Platform edge*): server-side sessions
 with two principal types; login machinery at the edge, never in modules; customer account

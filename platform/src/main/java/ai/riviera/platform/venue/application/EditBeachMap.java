@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue.application;
 
+import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -128,14 +129,14 @@ public interface EditBeachMap {
 	 * reaches the save as a removal plus an insert — the body carries no ids, so the cell is the
 	 * identity. Row names may swap or rotate among kept sets in one save.
 	 *
-	 * <p>Refused with {@link ReplaceRejection#ROW_NAME_TAKEN} (→ 409) when one submitted
+	 * <p>Refused with {@link LayoutRejection#ROW_NAME_TAKEN} (→ 409) when one submitted
 	 * {@code rowLabel} appears under two distinct grid rows — {@link #renameRow}'s one-label-one-row
 	 * rule checked within the batch, which no DB constraint can see (gap-cell numbering keeps every
 	 * {@code (row_label, position_no)} pair unique).
 	 *
 	 * <p>Optimistic concurrency: the caller passes the {@code expectedVersion} (the venue's
 	 * {@code set_version}) the tab loaded with the map; the write is conditional on it. Another writer having
-	 * bumped it since the load yields {@link ReplaceRejection#STALE_WRITE} (→ 409), so a stale layout tab
+	 * bumped it since the load yields {@link LayoutRejection#STALE_WRITE} (→ 409), so a stale layout tab
 	 * cannot silently clobber the map. The token is advanced <strong>only</strong> once the save has
 	 * succeeded — on every successful save, an unchanged layout included — so a refusal leaves it
 	 * untouched and the acting tab's own retry off the same value still works; it is the SAME token as

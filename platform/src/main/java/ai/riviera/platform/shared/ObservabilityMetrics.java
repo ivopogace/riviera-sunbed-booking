@@ -89,6 +89,13 @@ public final class ObservabilityMetrics {
 	public static final String MAIL_CANCELLATION_ABANDONED = "riviera.mail.cancellation.abandoned";
 
 	/**
+	 * Counter: changed-spot notices the registry listener gave up on. Same vehicle and {@code reason}
+	 * vocabulary as {@link #MAIL_CONFIRMATION_ABANDONED}; the booking is moved either way, only the
+	 * guest's notice of it — and of their free-exit deadline — is lost, so chase it before that deadline.
+	 */
+	public static final String MAIL_MOVE_ABANDONED = "riviera.mail.move.abandoned";
+
+	/**
 	 * Counter: payment-due mails the registry listener gave up on. The sharpest of the abandoned
 	 * series — this is the guest's only notice that an accepted request must be paid for, and by when,
 	 * so an increment predicts a set released at the deadline. Chase it before that deadline passes.

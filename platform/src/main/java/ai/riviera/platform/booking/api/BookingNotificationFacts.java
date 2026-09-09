@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import ai.riviera.platform.booking.vocabulary.BookingConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.BookingMoveFacts;
 import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
 
 /**
@@ -47,4 +48,12 @@ public interface BookingNotificationFacts {
 	 * empty, so the caller can refuse a never-confirmed booking with a reason instead of an absence.
 	 */
 	Optional<BookingConfirmationFacts> confirmationFacts(BookingId bookingId);
+
+	/**
+	 * The latest remodel move of this booking — both spots as they were, the distance, when it moved
+	 * and the free-exit deadline — or empty when no remodel ever moved it. The "your spot changed"
+	 * mail's read: {@code BookingMoved} carries ids only, and the old label is a snapshot the live set
+	 * may no longer answer.
+	 */
+	Optional<BookingMoveFacts> moveFacts(BookingId bookingId);
 }

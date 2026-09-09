@@ -412,9 +412,10 @@ const BLOCKED_PREVIEW = {
     },
   ],
   keep: [{ setId: 2, rowLabel: 'B', positionNo: 1 }],
+  previewToken: 'v1.blocked',
 };
 
-/** The same save when only a move results — nothing to keep by name, still refused while it lives. */
+/** The same save when only a move results — the one picture the commit applies. */
 const MOVES_ONLY_PREVIEW = {
   ...BLOCKED_PREVIEW,
   refunds: [],
@@ -422,6 +423,23 @@ const MOVES_ONLY_PREVIEW = {
   staffHolds: [],
   blocks: [],
   keep: [],
+  previewToken: 'v1.moves',
+};
+
+/** The receipt the commit of {@link MOVES_ONLY_PREVIEW} answers. */
+const RECEIPT = {
+  receiptId: 41,
+  committedAt: '2026-09-09T13:00:00Z',
+  moves: [
+    {
+      bookingId: 7,
+      bookingDate: '2026-09-20',
+      from: { setId: 2, rowLabel: 'B', positionNo: 1 },
+      to: { setId: 1, rowLabel: 'A', positionNo: 1 },
+      rowsAway: 1,
+      positionsAway: 0,
+    },
+  ],
 };
 
 test('holds both surfaces until the map read settles (#721)', async ({ page }) => {
@@ -742,14 +760,16 @@ test('a refused save marks the sets it names with the lock decoration and lists 
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'layout editor, save refused by set');
 
-  // The way out: the tier brush paints it back, the gap brush is now refused on it.
+  // The way out: the tier brush paints it back; gapping it again is allowed, and says the save will preview the move.
   await page.getByTestId('layout-tool-standard').click();
   await b1.click();
   await expect(b1).toHaveAttribute('data-state', 'standard');
   await page.getByTestId('layout-tool-gap').click();
   await b1.click();
-  await expect(b1).toHaveAttribute('data-state', 'standard');
-  await expect(page.getByTestId('layout-lock-notice')).toContainText(/can’t become a gap/);
+  await expect(b1).toHaveAttribute('data-state', 'gap');
+  await expect(page.getByTestId('layout-lock-notice')).toContainText(
+    /saving will first show where its bookings would move/,
+  );
 });
 
 test('previews the remodel instead of a save that drops a held set: five groups, an inert Save, Back restores focus (#1033, + axe)', async ({
@@ -811,25 +831,137 @@ test('previews the remodel instead of a save that drops a held set: five groups,
   expect(puts).toHaveLength(0);
 });
 
-test('a remodel preview naming only moves still offers Back alone: the save is refused while the claims live (#1033)', async ({
+test('a moves-only preview commits: Save and move POSTs the token, the receipt replaces the dialog, past remodels list it (#1034, + axe)', async ({
   page,
 }) => {
   const { previews, puts } = await mockEditor(page, [], SEEDED_SETS, [], MOVES_ONLY_PREVIEW);
+  const commits: Request[] = [];
+  await page.route(/\/api\/venues\/1\/beach-map\/commit$/, (route) => {
+    commits.push(route.request());
+    return route.fulfill({ json: RECEIPT });
+  });
+  await page.route(/\/api\/venues\/1\/remodels$/, (route) =>
+    route.fulfill({
+      json: [{ receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moveCount: 1 }],
+    }),
+  );
+  await page.route(/\/api\/venues\/1\/remodels\/41$/, (route) => route.fulfill({ json: RECEIPT }));
+  await page.goto('/operator/1/beach-map');
+  await signIn(page);
+  await page.getByTestId('layout-tool-gap').click();
+  const b1 = page.locator('[data-testid="layout-cell"][data-grid-row="1"][data-grid-col="0"]');
+  await b1.click();
+  await page.getByTestId('layout-save').click();
+
+  // The committable shape: Save first and focused, Back beside it, no keep sentence.
+  const dialog = page.getByTestId('layout-remodel-preview');
+  await expect(dialog).toBeVisible();
+  await expect(page.getByTestId('layout-remodel-keep')).toHaveCount(0);
+  await expect(dialog).toContainText('cancel for a full refund');
+  await expect(dialog.getByRole('button')).toHaveCount(2);
+  const save = page.getByTestId('layout-remodel-commit');
+  await expect(save).toHaveText('Save and move 1 booking');
+  await expect(save).toBeFocused();
+  await expect(save).toHaveCSS('min-height', '44px');
+  // White on the solid warn fill, by computed style.
+  await expect(save).toHaveCSS('background-color', 'rgb(154, 100, 16)');
+  await expect(save).toHaveCSS('color', 'rgb(255, 255, 255)');
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'layout editor, committable remodel preview');
+
+  await save.click();
+  const receipt = page.getByTestId('layout-remodel-receipt');
+  await expect(receipt).toBeVisible();
+  await expect(dialog).toBeHidden();
+  expect(previews).toHaveLength(1);
+  expect(puts).toHaveLength(0);
+  expect(commits).toHaveLength(1);
+  const body = commits[0].postDataJSON() as {
+    sets: { gridX: number; gridY: number }[];
+    expectedVersion: number;
+    previewToken: string;
+  };
+  expect(body.previewToken).toBe('v1.moves');
+  expect(body.expectedVersion).toBe(0);
+  expect(body.sets.map((set) => [set.gridX, set.gridY])).toEqual([[1, 1]]);
+  await expect(page.getByTestId('layout-remodel-receipt-title')).toHaveText(
+    'Remodel saved · receipt #41',
+  );
+  await expect(page.getByTestId('layout-remodel-receipt-title')).toBeFocused();
+  await expect(page.getByTestId('layout-remodel-receipt-moves')).toContainText(
+    'Row B · position 1 → Row A · position 1 · 1 row over · Sun 20 Sept 2026',
+  );
+  await expect(page.getByTestId('layout-saved')).toBeVisible();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'layout editor, remodel receipt');
+
+  // Done returns focus to Save; the past remodels disclosure reads the list and reopens the receipt.
+  await page.getByTestId('layout-remodel-receipt-close').click();
+  await expect(receipt).toBeHidden();
+  await expect(page.getByTestId('layout-save')).toBeFocused();
+  await page.getByTestId('layout-remodels-toggle').click();
+  const row = page.getByTestId('layout-remodels-open');
+  await expect(row).toHaveText('Wed, 9 Sept, 15:00 · 1 booking moved');
+  await expect(row).toHaveCSS('min-height', '44px');
+  await row.click();
+  await expect(page.getByTestId('layout-remodel-receipt-title')).toHaveText(
+    'Remodel saved · receipt #41',
+  );
+  await expect(page.getByTestId('layout-remodel-receipt-title')).toBeFocused();
+});
+
+test('a commit that finds the bookings changed re-renders the fresh picture stale, and the next Save carries its token (#1034)', async ({
+  page,
+}) => {
+  const { puts } = await mockEditor(page, [], SEEDED_SETS, [], MOVES_ONLY_PREVIEW);
+  const tokens: string[] = [];
+  await page.route(/\/api\/venues\/1\/beach-map\/commit$/, (route) => {
+    const body = route.request().postDataJSON() as { previewToken: string };
+    tokens.push(body.previewToken);
+    if (body.previewToken === 'v1.fresh') {
+      return route.fulfill({ json: RECEIPT });
+    }
+    return route.fulfill({
+      status: 409,
+      contentType: 'application/problem+json',
+      json: {
+        code: 'STALE_PREVIEW',
+        detail: 'stale',
+        preview: { ...BLOCKED_PREVIEW, previewToken: 'v1.fresh' },
+      },
+    });
+  });
   await page.goto('/operator/1/beach-map');
   await signIn(page);
   await page.getByTestId('layout-tool-gap').click();
   await page.locator('[data-testid="layout-cell"][data-grid-row="1"][data-grid-col="0"]').click();
   await page.getByTestId('layout-save').click();
+  await page.getByTestId('layout-remodel-commit').click();
 
-  const dialog = page.getByTestId('layout-remodel-preview');
-  await expect(dialog).toBeVisible();
-  await expect(page.getByTestId('layout-remodel-keep')).toContainText(
-    'Keep the removed sets on the map to save',
+  // The fresh picture is the blocked shape: flagged stale, every group, Back alone, no error bar.
+  const stale = page.getByTestId('layout-remodel-stale');
+  await expect(stale).toContainText('bookings changed since you previewed');
+  expect(await stale.evaluate((node) => node.tagName)).toBe('OUTPUT');
+  await expect(page.getByTestId('layout-remodel-blocks')).toContainText(
+    'arrives within the freeze window',
   );
-  await expect(dialog.getByRole('button')).toHaveCount(1);
+  await expect(page.getByTestId('layout-remodel-preview').getByRole('button')).toHaveCount(1);
   await expect(page.getByTestId('layout-remodel-back')).toBeFocused();
-  expect(previews).toHaveLength(1);
+  await expect(page.getByTestId('layout-error')).toHaveCount(0);
+  expect(tokens).toEqual(['v1.moves']);
   expect(puts).toHaveLength(0);
+
+  // Back, then a second Save: the new preview is moves-only again but carries the fresh token.
+  await page.getByTestId('layout-remodel-back').click();
+  await page.unroute(/\/api\/venues\/1\/beach-map\/preview$/);
+  await page.route(/\/api\/venues\/1\/beach-map\/preview$/, (route) =>
+    route.fulfill({ json: { ...MOVES_ONLY_PREVIEW, previewToken: 'v1.fresh' } }),
+  );
+  await page.getByTestId('layout-save').click();
+  await expect(page.getByTestId('layout-remodel-stale')).toBeEmpty();
+  await page.getByTestId('layout-remodel-commit').click();
+  await expect(page.getByTestId('layout-remodel-receipt')).toBeVisible();
+  expect(tokens).toEqual(['v1.moves', 'v1.fresh']);
 });
 
 test('a stale-tab save is rejected 409, keeps the painted grid, and Reload recovers (#226, + axe)', async ({
@@ -999,13 +1131,11 @@ test('every paint cell declares touch-action: none, so a paint drag never fights
   }
 });
 
-test('a locked cell repaints its tier but never gaps, and the per-set surface disables Move and Remove (#1031, + axe)', async ({
+test('a staff-held cell repaints its tier but never gaps, and the per-set surface disables Move and Remove (#1031, + axe)', async ({
   page,
 }) => {
-  // Set 2 (row B, position 1) is booked: the owner's map read names it, so the editor knows before any click.
-  await mockEditor(page, [], SEEDED_SETS, [
-    { setId: 2, bookedOn: '2026-09-12', heldOn: '2026-09-12' },
-  ]);
+  // Set 2 (row B, position 1) is marked for a walk-in: the owner's map read names it, so the editor knows before any click.
+  await mockEditor(page, [], SEEDED_SETS, [{ setId: 2, bookedOn: null, heldOn: '2026-09-12' }]);
   await page.goto('/operator/1/beach-map');
   await signIn(page);
 
@@ -1013,11 +1143,13 @@ test('a locked cell repaints its tier but never gaps, and the per-set surface di
   const lockedSetCell = page.locator('[data-testid="set-cell"][data-set-id="2"]');
   await expect(lockedSetCell).toHaveAttribute('data-locked', 'true');
   await expect(lockedSetCell.locator('svg')).toBeVisible();
-  await expect(lockedSetCell).toHaveAccessibleDescription(/booked Sat 12 Sept 2026/);
+  await expect(lockedSetCell).toHaveAccessibleDescription(/held by staff Sat 12 Sept 2026/);
   await lockedSetCell.click();
   await expect(page.getByTestId('set-move')).toBeDisabled();
   await expect(page.getByTestId('set-remove')).toBeDisabled();
-  await expect(page.getByTestId('set-locked-reason')).toContainText(/booked Sat 12 Sept 2026/);
+  await expect(page.getByTestId('set-locked-reason')).toContainText(
+    /held by staff Sat 12 Sept 2026/,
+  );
   await expect(page.getByTestId('set-price')).toBeEnabled();
   await expect(page.getByTestId('set-pool-WALK_IN')).toBeEnabled();
   await settle(page);
@@ -1029,7 +1161,7 @@ test('a locked cell repaints its tier but never gaps, and the per-set surface di
   const lockedCell = page.locator('[data-testid="layout-cell"][data-locked="true"]');
   await expect(lockedCell).toHaveCount(1);
   await expect(lockedCell).toHaveAttribute('data-state', 'standard');
-  await expect(lockedCell).toHaveAccessibleDescription(/booked Sat 12 Sept 2026/);
+  await expect(lockedCell).toHaveAccessibleDescription(/held by staff Sat 12 Sept 2026/);
   await lockedCell.click();
   await expect(lockedCell).toHaveAttribute('data-state', 'premium');
   await expect(page.getByTestId('layout-dirty-count')).toHaveText(/1 unsaved change/);
@@ -1039,7 +1171,7 @@ test('a locked cell repaints its tier but never gaps, and the per-set surface di
   await lockedCell.click();
   await expect(lockedCell).toHaveAttribute('data-state', 'premium');
   await expect(page.getByTestId('layout-lock-notice')).toContainText(
-    /Row B · position 1 is booked Sat 12 Sept 2026 — it can’t become a gap/,
+    /Row B · position 1 is held by staff Sat 12 Sept 2026 — it can’t become a gap/,
   );
   await expect(page.getByTestId('layout-dirty-count')).toHaveText(/1 unsaved change/);
   await settle(page);

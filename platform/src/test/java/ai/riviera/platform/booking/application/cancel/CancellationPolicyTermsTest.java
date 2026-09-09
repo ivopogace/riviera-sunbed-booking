@@ -45,8 +45,8 @@ class CancellationPolicyTermsTest {
 	private final VenueRates rates = mock(VenueRates.class);
 
 	private CancellationPolicy policyAt(ZonedDateTime tiraneNow) {
-		return new CancellationPolicy(setFacts, rates,
-				new BookingCutoff(Clock.fixed(tiraneNow.toInstant(), ZoneId.of("UTC"))));
+		Clock clock = Clock.fixed(tiraneNow.toInstant(), ZoneId.of("UTC"));
+		return new CancellationPolicy(setFacts, rates, new BookingCutoff(clock), clock);
 	}
 
 	private void givenSet() {

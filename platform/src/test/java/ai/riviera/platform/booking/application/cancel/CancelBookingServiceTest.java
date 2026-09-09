@@ -78,7 +78,7 @@ class CancelBookingServiceTest {
 
 		assertInstanceOf(CancelOutcome.WindowClosed.class, outcome);
 		verifyNoInteractions(cancellationPolicy, availability, events);
-		verify(bookings, never()).cancelConfirmed(anyLong(), any(), anyLong());
+		verify(bookings, never()).cancelConfirmed(anyLong(), any(), anyLong(), any());
 	}
 
 	@ParameterizedTest
@@ -93,15 +93,15 @@ class CancelBookingServiceTest {
 				assertInstanceOf(CancelOutcome.NotCancellable.class, outcome);
 		assertEquals(status, refused.currentStatus(), "the refusal names the status it found");
 		verifyNoInteractions(cancellationPolicy, availability, events);
-		verify(bookings, never()).cancelConfirmed(anyLong(), any(), anyLong());
+		verify(bookings, never()).cancelConfirmed(anyLong(), any(), anyLong(), any());
 	}
 
 	@Test
 	void aConfirmedBookingInsideTheWindowIsCancelled() {
 		BookingRecord booking = givenBooking(BookingStatus.CONFIRMED);
 		when(cancellationPolicy.quote(booking))
-				.thenReturn(new RefundQuote(setInfo(), CancellationWindow.FREE, 4500L));
-		when(bookings.cancelConfirmed(booking.id(), NOW.instant(), 4500L))
+				.thenReturn(new RefundQuote(setInfo(), CancellationWindow.FREE, 4500L, RefundReason.POLICY, null));
+		when(bookings.cancelConfirmed(booking.id(), NOW.instant(), 4500L, RefundReason.POLICY))
 				.thenReturn(Optional.of(new CancelledBooking(booking.id(), VENUE, SET, DATE, 4500L, "EUR")));
 
 		CancelOutcome outcome = service.cancel(CODE);
@@ -114,9 +114,25 @@ class CancelBookingServiceTest {
 				4500L, "EUR", RefundReason.POLICY));
 	}
 
+	@Test
+	void aMovedBookingInsideItsFreeExitIsCancelledInFullAsAVenueChange() {
+		BookingRecord booking = givenBooking(BookingStatus.CONFIRMED);
+		Instant deadline = NOW.instant().plusSeconds(3600);
+		when(cancellationPolicy.quote(booking))
+				.thenReturn(new RefundQuote(setInfo(), CancellationWindow.LATE, 4500L, RefundReason.VENUE_CHANGE, deadline));
+		when(bookings.cancelConfirmed(booking.id(), NOW.instant(), 4500L, RefundReason.VENUE_CHANGE))
+				.thenReturn(Optional.of(new CancelledBooking(booking.id(), VENUE, SET, DATE, 4500L, "EUR")));
+
+		CancelOutcome.Cancelled cancelled = assertInstanceOf(CancelOutcome.Cancelled.class, service.cancel(CODE));
+
+		assertEquals(CancelOutcome.Tier.FULL, cancelled.tier());
+		verify(events).publishEvent(new BookingCancelled(new BookingId(booking.id()), VENUE, SET, DATE,
+				4500L, "EUR", RefundReason.VENUE_CHANGE));
+	}
+
 	private BookingRecord givenBooking(BookingStatus status) {
 		BookingRecord record = new BookingRecord(1L, CODE, status, VENUE, SET, GUEST, DATE, 4500L, "EUR",
-				null, null, null, null, Instant.EPOCH, null);
+				null, null, null, null, Instant.EPOCH, null, null);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		return record;
 	}

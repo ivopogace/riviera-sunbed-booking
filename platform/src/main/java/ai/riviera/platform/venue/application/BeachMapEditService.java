@@ -23,7 +23,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * public seam is the {@link EditBeachMap} port (invariant #11). The hard command validation lives
  * in the command records ({@link SetCommand}, {@link SetBatchCommand}); this service owns the
  * orchestration: existence checks, the row locks, the claim probes, conflict→{@link SetRejection}
- * mapping, and the transactional write through {@link Venues}. The DB UNIQUE constraints (V2/V12)
+ * mapping, and the transactional write through {@link Venues}. The bulk save is {@link LayoutWriter}'s
+ * write with a gate that always proceeds — the remodel commit is the same write with the edge's gate. The DB UNIQUE constraints (V2/V12)
  * are the race-safe backstop behind the pre-checks. The profile and own-venues reads are
  * {@link VenueAdminService}'s; venue creation is {@link OnboardVenueService}'s.
  *
@@ -40,14 +41,16 @@ class BeachMapEditService implements EditBeachMap {
 	private final VenueOwnership ownership;
 	private final LiveClaims claims;
 	private final BookingPresence bookings;
+	private final LayoutWriter writer;
 	private final Clock clock;
 
 	BeachMapEditService(Venues venues, VenueOwnership ownership, LiveClaims claims,
-			BookingPresence bookings, Clock clock) {
+			BookingPresence bookings, LayoutWriter writer, Clock clock) {
 		this.venues = venues;
 		this.ownership = ownership;
 		this.claims = claims;
 		this.bookings = bookings;
+		this.writer = writer;
 		this.clock = clock;
 	}
 
@@ -174,55 +177,13 @@ class BeachMapEditService implements EditBeachMap {
 			LayoutCommand command) {
 		// Ownership first — fail closed before any read/write (invariant #13, BOLA).
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
-		if (command.isEmpty()) {
-			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.EMPTY_LAYOUT);
-		}
-		if (command.tooLarge()) {
-			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.LAYOUT_TOO_LARGE);
-		}
-		if (!venues.venueExists(venueId)) {
-			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.NO_SUCH_VENUE);
-		}
-		Optional<Venues.Conflict> internal = command.duplicateWithin();
-		if (internal.isPresent()) {
-			return new ReplaceLayoutOutcome.Rejected(toReplaceRejection(internal.get()));
-		}
-		if (command.splitsRowLabel()) {
-			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.ROW_NAME_TAKEN);
-		}
-		// Venue row lock + token read before the set locks (venue before set rows, as every set-write); advanced only on success.
-		if (venues.lockAndReadSetVersion(venueId) != expectedVersion) {
-			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.STALE_WRITE);
-		}
-		// Lock the set rows before the probe: a racing claim is either seen (→ refuse) or blocks on its FK (invariant #2).
-		LayoutDiff diff = LayoutDiff.of(venues.lockSetsOfVenue(venueId), command);
-		List<PlacedSet> disturbed = diff.disturbed();
-		Map<SetId, SetLock> locks = claims.locksOn(disturbed.stream().map(PlacedSet::id).toList());
-		if (!locks.isEmpty()) {
-			return new ReplaceLayoutOutcome.SetsInUse(disturbed.stream()
-					.filter(set -> locks.containsKey(set.id()))
-					.map(set -> new BlockedSet(set, locks.get(set.id())))
-					.toList());
-		}
-		// Removals first, so a slot they free is open before an update or an insert takes it.
-		for (PlacedSet gone : diff.removed()) {
-			if (bookings.hasBookings(gone.id())) {
-				venues.retireSet(venueId, gone.id(), clock.instant());
-			}
-			else {
-				venues.deleteSet(venueId, gone.id());
-			}
-		}
-		List<SetId> colliding = diff.collidingUpdates();
-		if (!colliding.isEmpty()) {
-			venues.parkRowLabels(venueId, colliding);
-		}
-		for (LayoutDiff.Update kept : diff.updates()) {
-			venues.updateSet(venueId, kept.stored().id(), kept.command());
-		}
-		venues.insertSets(venueId, diff.inserts());
-		venues.incrementSetVersion(venueId);
-		return ReplaceLayoutOutcome.Replaced.REPLACED;
+		// The save's gate always proceeds: the probe after it is what refuses a live claim (SetsInUse).
+		return switch (writer.write(venueId, expectedVersion, command, disturbed -> true)) {
+			case LayoutWrite.Written ignored -> ReplaceLayoutOutcome.Replaced.REPLACED;
+			case LayoutWrite.SetsInUse(var sets) -> new ReplaceLayoutOutcome.SetsInUse(sets);
+			case LayoutWrite.Rejected(var reason) -> new ReplaceLayoutOutcome.Rejected(reason);
+			case LayoutWrite.Refused ignored -> throw new IllegalStateException("the save's gate never refuses");
+		};
 	}
 
 	@Override
@@ -245,13 +206,6 @@ class BeachMapEditService implements EditBeachMap {
 		int updated = venues.updateSetFields(venueId, command);
 		venues.incrementSetVersion(venueId); // advance the token iff the batch wrote
 		return new SetBatchOutcome.Applied(updated);
-	}
-
-	private static ReplaceRejection toReplaceRejection(Venues.Conflict conflict) {
-		return switch (conflict) {
-			case DUPLICATE_POSITION -> ReplaceRejection.DUPLICATE_POSITION;
-			case CELL_TAKEN -> ReplaceRejection.CELL_TAKEN;
-		};
 	}
 
 	private static SetRejection toRejection(Venues.Conflict conflict) {

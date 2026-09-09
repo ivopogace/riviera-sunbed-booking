@@ -179,6 +179,32 @@ class CrossVenueDenialIT {
 	}
 
 	@Test
+	void remodelCommitByNonOwnerIs403() throws Exception {
+		// The commit moves bookings and writes the layout: both module ports assert ownership first (invariant #13).
+		actingAs(operatorA);
+		String commitBody = """
+				{"sets":[{"rowLabel":"A","positionNo":1,"tier":"STANDARD","pool":"ONLINE",
+				 "price":{"minorUnits":2000,"currency":"EUR"},"gridX":1,"gridY":1}],"expectedVersion":0,"previewToken":"v1"}
+				""";
+		mvc.perform(post("/api/venues/{v}/beach-map/commit", MIRAMAR).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(commitBody))
+				.andExpect(status().isForbidden())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
+	void remodelReceiptsByNonOwnerAre403() throws Exception {
+		actingAs(operatorA);
+		mvc.perform(get("/api/venues/{v}/remodels", MIRAMAR).cookie(operatorSession))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+		mvc.perform(get("/api/venues/{v}/remodels/{r}", MIRAMAR, 1).cookie(operatorSession))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
 	void rowRepriceByNonOwnerIs403() throws Exception {
 		// Repricing a beach-map row is venue-scoped — a non-owner is denied before any
 		// read/write, so Miramar's prices are never touched. Ownership asserts first (invariant #13). The
