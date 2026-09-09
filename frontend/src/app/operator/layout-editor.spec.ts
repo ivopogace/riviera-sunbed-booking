@@ -11,6 +11,7 @@ import { BeachMapCanvas } from '../shared/beach-map-canvas';
 import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutEditor } from './layout-editor';
+import { SetLock } from './operator-console.model';
 
 interface SentBody {
   sets: {
@@ -68,12 +69,12 @@ describe('LayoutEditor (#172)', () => {
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
   }
 
-  function render(initialSets: SetView[] = [], setVersion = 0): void {
+  function render(initialSets: SetView[] = [], setVersion = 0, locks: SetLock[] = []): void {
     configure();
     // Flush the constructor's layout load so the grid seeds and the optimistic-concurrency token is captured.
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ map: { id: 1, name: 'V', sets: initialSets, setVersion }, locks: [] });
+      .flush({ map: { id: 1, name: 'V', sets: initialSets, setVersion }, locks });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
   }
@@ -410,6 +411,151 @@ describe('LayoutEditor (#172)', () => {
 
     expect(cells()[1].getAttribute('data-state')).toBe('premium');
     expect(cells()[2].getAttribute('data-state')).toBe('premium');
+  });
+
+  describe('locked cells (#1031)', () => {
+    const LOCK: SetLock = { setId: 2, bookedOn: '2026-09-12', heldOn: '2026-09-12' };
+    const DESCRIPTION =
+      'Locked — booked Sat 12 Sept 2026. Can’t be moved or removed; tier and pool can still change.';
+
+    /** Row A: three standard online sets, the middle one pinned by a booking. Bulk mode, premium armed. */
+    function renderLockedRow(): void {
+      render(
+        [
+          seat(1, 'STANDARD', 'ONLINE', 1, 1),
+          seat(2, 'STANDARD', 'ONLINE', 2, 1),
+          seat(3, 'STANDARD', 'ONLINE', 3, 1),
+        ],
+        0,
+        [LOCK],
+      );
+      useBulkMode();
+    }
+
+    function dirtyText(): string {
+      return byId('layout-dirty-count').textContent?.trim() ?? '';
+    }
+
+    it('marks the locked cell with the glyph, the reason as its description, and counts it in the rail', () => {
+      renderLockedRow();
+      const locked = cells()[1];
+
+      expect(locked.dataset['locked']).toBe('true');
+      expect(locked.querySelector('app-lock-icon svg')).toBeTruthy();
+      const described = host.querySelector(`#${locked.getAttribute('aria-describedby')}`);
+      expect(described?.textContent?.trim()).toBe(DESCRIPTION);
+      expect(locked.getAttribute('title')).toContain(DESCRIPTION);
+      expect(cells()[0].hasAttribute('aria-describedby')).toBe(false);
+      expect(cells()[0].querySelector('app-lock-icon')).toBeNull();
+      expect(byId('layout-locked-legend').textContent).toContain(
+        '1 set is booked or held by staff',
+      );
+    });
+
+    it('the tier and pool brushes repaint the locked cell and count that change (AC-8)', () => {
+      renderLockedRow();
+
+      cells()[1].click();
+      fixture.detectChanges();
+      expect(cells()[1].getAttribute('data-state')).toBe('premium');
+      expect(dirtyText()).toBe('1 unsaved change');
+
+      byId('layout-tool-walkin').click();
+      fixture.detectChanges();
+      cells()[1].click();
+      fixture.detectChanges();
+      expect(cells()[1].getAttribute('data-state')).toBe('walkin');
+      expect(dirtyText()).toBe('1 unsaved change');
+      expect(host.querySelector('[data-testid="layout-lock-notice"]')).toBeNull();
+    });
+
+    it('the gap brush leaves the locked cell as it is, says why, and counts nothing (AC-8)', () => {
+      renderLockedRow();
+      byId('layout-tool-gap').click();
+      fixture.detectChanges();
+
+      cells()[1].click();
+      fixture.detectChanges();
+
+      expect(cells()[1].getAttribute('data-state')).toBe('standard');
+      expect(dirtyText()).toBe('No unsaved changes');
+      expect(host.querySelector('[data-testid="layout-last-change"]')).toBeNull();
+      expect(byId('layout-lock-notice').textContent?.replace(/\s+/g, ' ').trim()).toBe(
+        'Row A · position 2 is booked Sat 12 Sept 2026 — it can’t become a gap. Its tier and pool can still change.',
+      );
+    });
+
+    it('a gap drag-sweep skips the locked cell and counts only the others (AC-9)', () => {
+      renderLockedRow();
+      byId('layout-tool-gap').click();
+      fixture.detectChanges();
+
+      cells()[0].dispatchEvent(new MouseEvent('mousedown', { buttons: 1 }));
+      cells()[1].dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+      cells()[2].dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+      document.dispatchEvent(new MouseEvent('mouseup'));
+      fixture.detectChanges();
+
+      expect(cells().map((c) => c.getAttribute('data-state'))).toEqual(['gap', 'standard', 'gap']);
+      expect(dirtyText()).toBe('2 unsaved changes');
+      expect(byId('layout-lock-notice').textContent).toContain('position 2 is booked');
+    });
+
+    it('a gap row fill keeps the locked cell and reports it; a tier fill repaints it (AC-9)', () => {
+      renderLockedRow();
+      byId('layout-tool-gap').click();
+      fixture.detectChanges();
+
+      rowFillButtons()[0].click();
+      fixture.detectChanges();
+
+      expect(cells().map((c) => c.getAttribute('data-state'))).toEqual(['gap', 'standard', 'gap']);
+      expect(dirtyText()).toBe('2 unsaved changes');
+      expect(byId('layout-lock-notice').textContent).toContain(
+        'Row A → Gap / aisle kept 1 locked set',
+      );
+
+      byId('layout-tool-premium').click();
+      fixture.detectChanges();
+      expect(host.querySelector('[data-testid="layout-lock-notice"]')).toBeNull();
+      rowFillButtons()[0].click();
+      fixture.detectChanges();
+      expect(cells().every((c) => c.getAttribute('data-state') === 'premium')).toBe(true);
+      expect(dirtyText()).toBe('3 unsaved changes');
+    });
+
+    it('a gap column fill keeps the locked cell too', () => {
+      renderLockedRow();
+      byId('layout-tool-gap').click();
+      fixture.detectChanges();
+
+      colFillButtons()[1].click();
+      fixture.detectChanges();
+
+      expect(cells()[1].getAttribute('data-state')).toBe('standard');
+      expect(dirtyText()).toBe('No unsaved changes');
+      expect(byId('layout-lock-notice').textContent).toContain(
+        'Column 2 → Gap / aisle kept 1 locked set',
+      );
+    });
+
+    it('hands the locks to the per-set surface and clears them on a venue switch', () => {
+      renderLockedRow();
+      byId('layout-tool-select').click();
+      fixture.detectChanges();
+      expect(host.querySelector('[data-testid="set-cell"][data-locked="true"]')).toBeTruthy();
+
+      params$.next(convertToParamMap({ venueId: '2' }));
+      fixture.detectChanges();
+      http
+        .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+        .flush({
+          map: { id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 0 },
+          locks: [],
+        });
+      fixture.detectChanges();
+      expect(host.querySelector('[data-locked="true"]')).toBeNull();
+    });
   });
 
   function rowFillButtons(): HTMLButtonElement[] {

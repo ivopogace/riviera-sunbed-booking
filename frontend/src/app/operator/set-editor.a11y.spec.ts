@@ -97,6 +97,26 @@ describe('SetEditor a11y (#600)', () => {
     await expectNoAxeViolations(host());
   });
 
+  it('describes a locked cell on its button and stays axe-clean with its disabled Move and Remove (#1031)', async () => {
+    render();
+    const locked = firstSetCell();
+    fixture.componentRef.setInput('locks', [
+      { setId: Number(locked.dataset['setId']), bookedOn: '2026-09-12', heldOn: null },
+    ]);
+    fixture.detectChanges();
+
+    const description = host().querySelector(`#${locked.getAttribute('aria-describedby')}`);
+    expect(description?.textContent?.trim()).toBe(
+      'Locked — booked Sat 12 Sept 2026. Can’t be moved or removed; tier and pool can still change.',
+    );
+    await expectNoAxeViolations(host());
+
+    click(locked);
+    expect((byId('set-move') as HTMLButtonElement).disabled).toBe(true);
+    expect(byId('set-locked-reason')).toBeTruthy();
+    await expectNoAxeViolations(host());
+  });
+
   it('has no axe violations with a set selected for editing', async () => {
     render();
     click(firstSetCell());

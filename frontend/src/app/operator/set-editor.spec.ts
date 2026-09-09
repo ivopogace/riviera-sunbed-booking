@@ -12,6 +12,7 @@ import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { OperatorAuth } from '../core/operator-auth';
 import { BeachMapCanvas } from '../shared/beach-map-canvas';
 import { SetView } from '../shared/venue-views';
+import { SetLock } from './operator-console.model';
 import { SetEditor } from './set-editor';
 
 /**
@@ -138,6 +139,77 @@ describe('SetEditor (#600)', () => {
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
   }
+
+  describe('locked set (#1031)', () => {
+    const LOCK: SetLock = { setId: 11, bookedOn: '2026-09-12', heldOn: '2026-09-12' };
+    const DESCRIPTION =
+      'Locked — booked Sat 12 Sept 2026. Can’t be moved or removed; tier and pool can still change.';
+
+    function renderLocked(): void {
+      render();
+      fixture.componentRef.setInput('locks', [LOCK]);
+      fixture.detectChanges();
+    }
+
+    it('marks the locked cell with the glyph and the reason as its description, the others untouched', () => {
+      renderLocked();
+      const locked = cellForSet(11);
+
+      expect(locked.dataset['locked']).toBe('true');
+      expect(locked.querySelector('app-lock-icon svg')).toBeTruthy();
+      expect(locked.getAttribute('aria-label')).toBe(
+        'Row A position 2, front row, premium, online',
+      );
+      const described = host.querySelector(`#${locked.getAttribute('aria-describedby')}`);
+      expect(described?.textContent?.trim()).toBe(DESCRIPTION);
+      expect(locked.getAttribute('title')).toContain(DESCRIPTION);
+      expect(cellForSet(10).hasAttribute('aria-describedby')).toBe(false);
+      expect(cellForSet(10).querySelector('app-lock-icon')).toBeNull();
+    });
+
+    it('disables Move and Remove with the reason before any request; price, tier and pool stay editable (AC-11)', () => {
+      renderLocked();
+      selectSet(11);
+
+      expect((byId('set-move') as HTMLButtonElement).disabled).toBe(true);
+      expect((byId('set-remove') as HTMLButtonElement).disabled).toBe(true);
+      expect(byId('set-locked-reason').textContent?.replace(/\s+/g, ' ').trim()).toBe(
+        'This set is booked Sat 12 Sept 2026, so it can’t be moved or removed. Its price, tier and pool can still change.',
+      );
+      expect((byId('set-price') as HTMLInputElement).disabled).toBe(false);
+      expect((byId('set-tier-PREMIUM') as HTMLButtonElement).disabled).toBe(false);
+      expect((byId('set-pool-WALK_IN') as HTMLButtonElement).disabled).toBe(false);
+
+      click(byId('set-move'));
+      expect(host.querySelector('[data-testid="set-move-armed"]')).toBeNull();
+      click(byId('set-remove'));
+      expect(host.querySelector('[data-testid="set-remove-confirm"]')).toBeNull();
+      http.expectNone((r) => r.method === 'PATCH' || r.method === 'DELETE');
+    });
+
+    it('still saves a repool and a reprice on the locked set (the lock never means unpaintable)', async () => {
+      renderLocked();
+      selectSet(11);
+      click(byId('set-pool-WALK_IN'));
+      typePrice('31');
+      click(byId('set-save'));
+
+      const request = expectPatch(11);
+      expect(request.request.body).toMatchObject({ pool: 'WALK_IN', price: { minorUnits: 3100 } });
+      request.flush(null, { status: 204, statusText: 'No Content' });
+      await fixture.whenStable();
+      expect(changed).toBe(1);
+    });
+
+    it('a free set beside it keeps Move and Remove enabled with no reason', () => {
+      renderLocked();
+      selectSet(12);
+
+      expect((byId('set-move') as HTMLButtonElement).disabled).toBe(false);
+      expect((byId('set-remove') as HTMLButtonElement).disabled).toBe(false);
+      expect(host.querySelector('[data-testid="set-locked-reason"]')).toBeNull();
+    });
+  });
 
   function expectPatch(setId: number): TestRequest {
     return http.expectOne(
