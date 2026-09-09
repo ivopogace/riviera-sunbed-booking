@@ -40,9 +40,10 @@ import ai.riviera.platform.venue.application.ViewDailyAvailability;
 import ai.riviera.platform.venue.application.ViewVenueProfile;
 
 /**
- * Operator write endpoints for venue onboarding + beach-map editing (U7, issue #7). Driving
- * adapter — depends only on the {@code venue} module's {@link OnboardVenue} / {@link EditBeachMap}
- * ports (invariant #11) plus the edge {@link CurrentOperator} resolver. These are an authenticated
+ * Operator endpoints for venue onboarding, beach-map editing and the owner's reads (U7). Driving
+ * adapter — depends only on the {@code venue} module's {@link OnboardVenue} / {@link EditBeachMap} /
+ * {@link EditVenueProfile} / {@link ViewVenueProfile} / {@link ViewDailyAvailability} /
+ * {@link ViewBeachMap} ports (invariant #11) plus the edge {@link CurrentOperator} resolver. These are an authenticated
  * operator surface (session cookie, role {@code OPERATOR}, configured in {@code SecurityConfig}); the
  * public U1 read endpoint is a separate controller. Outcomes map to HTTP via exhaustive
  * {@code switch}: created→201 (+Location), applied→204 (the batch apply→200 with its count),

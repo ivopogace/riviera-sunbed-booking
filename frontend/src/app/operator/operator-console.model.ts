@@ -194,8 +194,9 @@ export interface SetDayState {
  * Why one set on the owner's beach map cannot be moved or removed right now, from
  * `GET /api/venues/{id}/beach-map`: `bookedOn` is the earliest service day a guest is still coming on
  * (a booking that can still be honoured), `heldOn` the earliest hold dated today or later — each an ISO
- * `YYYY-MM-DD` (invariant #6) or `null` when that arm does not hold, never both. The set's price, tier
- * and pool stay editable; the lock means "cannot move or remove" only.
+ * `YYYY-MM-DD` (invariant #6) or `null` when that arm does not hold, never both null (a booked set
+ * usually carries both). The set's price, tier and pool stay editable; the lock means "cannot move or
+ * remove" only.
  */
 export interface SetLock {
   readonly setId: number;

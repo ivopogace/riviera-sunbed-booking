@@ -297,6 +297,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-2 | review (reviewer #5, code-comment guidance) | `SetLock`'s Javadoc and the frontend `SetLock` TSDoc said "never both", which reads as never both set while a booked set routinely carries both dates; the controller's class Javadoc listed two of its six ports | fixed in `5eb07590` — wording is now "never both null", the port list is complete |
 | F-1 | CI (frontend job, first push) | three multi-line `layout-editor.spec.ts` fixtures still flushed the flat map to the owner's read → two unhandled `Cannot read properties of undefined (reading 'setVersion')` errors, green locally because Vitest's summary line hid them | fixed in the close-out commit (fixtures wrapped `{ map, locks }`; re-run shows no Errors line) |
 
 ---
