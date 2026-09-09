@@ -527,20 +527,20 @@ class ViewBookingServiceTest {
 	private void givenAwaitingPayment(LocalDate date, Instant createdAt, Instant acceptedAt) {
 		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.AWAITING_PAYMENT, VENUE, SET,
-				GUEST, date, 4500L, "EUR", null, null, null, null, createdAt, acceptedAt);
+				GUEST, date, 4500L, "EUR", null, null, null, null, createdAt, acceptedAt, null);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		when(cancellationPolicy.quote(record))
-				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), CancellationWindow.CLOSED, 0L));
+				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), CancellationWindow.CLOSED, 0L, RefundReason.POLICY, null));
 	}
 
 	/** A cancelled row: the refund decision's three fields move together, or none of them is set. */
 	private void givenCancelledBooking(RefundReason reason, Long refundMinor) {
 		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.CANCELLED, VENUE, SET, GUEST,
 				DATE, 4500L, "EUR", refundMinor == null ? null : Instant.EPOCH, refundMinor, null, reason,
-				Instant.EPOCH, null);
+				Instant.EPOCH, null, null);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		when(cancellationPolicy.quote(record))
-				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), CancellationWindow.CLOSED, 0L));
+				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), CancellationWindow.CLOSED, 0L, RefundReason.POLICY, null));
 	}
 
 	private void givenBooking(BookingStatus status, CancellationWindow window, long refundMinor) {
@@ -552,10 +552,10 @@ class ViewBookingServiceTest {
 			Instant createdAt) {
 		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, status, VENUE, SET, GUEST, DATE,
-				4500L, "EUR", null, null, null, null, createdAt, null);
+				4500L, "EUR", null, null, null, null, createdAt, null, null);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		when(cancellationPolicy.quote(record))
-				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), window, refundMinor));
+				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), window, refundMinor, RefundReason.POLICY, null));
 	}
 
 	private static SetBookingInfo setInfo() {

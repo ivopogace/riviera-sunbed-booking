@@ -11,12 +11,20 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
+import org.springframework.context.ApplicationEventPublisher;
+
+import ai.riviera.platform.availability.api.AvailabilityClaim;
+import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.booking.events.BookingMoved;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.vocabulary.BlockReason;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.PreviewToken;
+import ai.riviera.platform.booking.vocabulary.ReceiptId;
 import ai.riviera.platform.booking.vocabulary.RemodelClaim;
+import ai.riviera.platform.booking.vocabulary.RemodelCommit;
 import ai.riviera.platform.booking.vocabulary.RemodelOutcome;
 import ai.riviera.platform.booking.vocabulary.SpotRef;
 import ai.riviera.platform.operator.api.VenueOwnership;
@@ -69,10 +77,13 @@ class RemodelClaimsServiceTest {
 	private final VenueOwnership ownership = mock(VenueOwnership.class);
 	private final Bookings bookings = mock(Bookings.class);
 	private final SetBookingFacts facts = mock(SetBookingFacts.class);
+	private final AvailabilityClaim availability = mock(AvailabilityClaim.class);
+	private final RemodelReceipts receipts = mock(RemodelReceipts.class);
+	private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
 	private final RemodelClaimsService service = new RemodelClaimsService(ownership, bookings, facts,
 			new RemodelZones(new BookingCutoff(CLOCK),
 					new RemodelWindows(Duration.ofHours(24), Duration.ofHours(96)), CLOCK),
-			CLOCK);
+			availability, receipts, events, CLOCK);
 
 	private static SetSpot spot(long id, String row, int position, int gridY, Tier tier) {
 		return new SetSpot(new SetId(id), new SetPlacement(row, position, position, gridY), tier, Pool.ONLINE);
@@ -166,5 +177,119 @@ class RemodelClaimsServiceTest {
 		assertEquals(new RemodelOutcome.Move(ref(A3), 0, 2), claims.get(0).outcome());
 		assertEquals(RemodelOutcome.Refund.REFUND, claims.get(1).outcome());
 		verify(facts).freeOnlineSetsOn(VENUE, IN_TEN_DAYS);
+	}
+
+	private static final ReceiptId RECEIPT = new ReceiptId(42);
+
+	private PreviewToken previewOf(RemodelClaim... claims) {
+		return PreviewToken.of(List.of(claims));
+	}
+
+	@Test
+	void commitRefusesANonOwnerBeforeAnyRead() {
+		doThrow(new NotVenueOwnerException(OWNER, new VenueRef(VENUE.value())))
+				.when(ownership).assertOwns(OWNER, new VenueRef(VENUE.value()));
+
+		assertThrows(NotVenueOwnerException.class,
+				() -> service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf()));
+		verify(bookings, never()).findLiveOnSets(anyCollection());
+	}
+
+	@Test
+	void commitAnswersStaleWhenTheTokenDoesNotCoverTheFreshClaimsAndWritesNothing() {
+		when(bookings.findLiveOnSets(Set.of(A1.setId())))
+				.thenReturn(List.of(claim(200, A1, IN_TEN_DAYS, BookingStatus.CONFIRMED)));
+		givenMap(List.of(A1, A2, A3), IN_TEN_DAYS, List.of(A2));
+		RemodelClaim previewedElsewhere = new RemodelClaim(new BookingId(201), ref(A1), IN_TEN_DAYS, 4500, "EUR",
+				new RemodelOutcome.Move(ref(A2), 0, 1));
+
+		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(previewedElsewhere));
+
+		RemodelCommit.Stale stale = (RemodelCommit.Stale) outcome;
+		assertEquals(List.of(new BookingId(200)), stale.fresh().stream().map(RemodelClaim::bookingId).toList());
+		verify(availability, never()).claim(any(), any());
+		verify(bookings, never()).moveToSet(any(Long.class), any(), any(), any());
+		verify(receipts, never()).record(any(), any(), any(), any());
+		verify(events, never()).publishEvent(any());
+	}
+
+	@Test
+	void commitRefusesAnyOutcomeThatIsNotAMoveEvenWhenTheTokenCoversIt() {
+		RemodelClaim refund = new RemodelClaim(new BookingId(202), ref(A1), IN_TEN_DAYS, 4500, "EUR",
+				RemodelOutcome.Refund.REFUND);
+		when(bookings.findLiveOnSets(Set.of(A1.setId())))
+				.thenReturn(List.of(claim(202, A1, IN_TEN_DAYS, BookingStatus.CONFIRMED)));
+		givenMap(List.of(A1), IN_TEN_DAYS, List.of());
+
+		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(refund));
+
+		assertEquals(new RemodelCommit.Refused(List.of(refund)), outcome);
+		verify(availability, never()).claim(any(), any());
+		verify(receipts, never()).record(any(), any(), any(), any());
+	}
+
+	@Test
+	void commitMovesEveryClaimClaimingTheCandidateBeforeReleasingTheOldRowAndReceiptsIt() {
+		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(
+				claim(203, A1, IN_TEN_DAYS, BookingStatus.CONFIRMED),
+				claim(204, A1, IN_TEN_DAYS.plusDays(1), BookingStatus.PENDING_REQUEST)));
+		givenMap(List.of(A1, A2, A3), IN_TEN_DAYS, List.of(A2, A3));
+		when(facts.freeOnlineSetsOn(VENUE, IN_TEN_DAYS.plusDays(1))).thenReturn(List.of(A3));
+		when(availability.claim(any(), any())).thenReturn(ClaimOutcome.CLAIMED);
+		when(bookings.moveToSet(any(Long.class), any(), any(), any())).thenReturn(true);
+		when(receipts.record(any(), any(), any(), any())).thenReturn(RECEIPT);
+		RemodelClaim first = new RemodelClaim(new BookingId(203), ref(A1), IN_TEN_DAYS, 4500, "EUR",
+				new RemodelOutcome.Move(ref(A2), 0, 1));
+		RemodelClaim second = new RemodelClaim(new BookingId(204), ref(A1), IN_TEN_DAYS.plusDays(1), 4500, "EUR",
+				new RemodelOutcome.Move(ref(A3), 0, 2));
+
+		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(first, second));
+
+		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(first, second)), outcome);
+		InOrder order = inOrder(availability, bookings, events, receipts);
+		order.verify(availability).claim(A2.setId(), IN_TEN_DAYS);
+		order.verify(availability).release(A1.setId(), IN_TEN_DAYS);
+		order.verify(bookings).moveToSet(203, A1.setId(), A2.setId(), CLOCK.instant());
+		order.verify(events).publishEvent(new BookingMoved(new BookingId(203), VENUE, A1.setId(), A2.setId(), IN_TEN_DAYS));
+		order.verify(availability).claim(A3.setId(), IN_TEN_DAYS.plusDays(1));
+		order.verify(availability).release(A1.setId(), IN_TEN_DAYS.plusDays(1));
+		order.verify(bookings).moveToSet(204, A1.setId(), A3.setId(), CLOCK.instant());
+		order.verify(receipts).record(VENUE, OWNER, CLOCK.instant(), List.of(
+				new ReceiptMove(new BookingId(203), IN_TEN_DAYS, ref(A1), ref(A2), 0, 1),
+				new ReceiptMove(new BookingId(204), IN_TEN_DAYS.plusDays(1), ref(A1), ref(A3), 0, 2)));
+	}
+
+	@Test
+	void commitStillMatchesATokenWhoseMoveWasReRankedAndTolerantOfAVanishedClaim() {
+		when(bookings.findLiveOnSets(Set.of(A1.setId())))
+				.thenReturn(List.of(claim(205, A1, IN_TEN_DAYS, BookingStatus.CONFIRMED)));
+		givenMap(List.of(A1, A2, A3), IN_TEN_DAYS, List.of(A3));
+		when(availability.claim(any(), any())).thenReturn(ClaimOutcome.CLAIMED);
+		when(bookings.moveToSet(any(Long.class), any(), any(), any())).thenReturn(true);
+		when(receipts.record(any(), any(), any(), any())).thenReturn(RECEIPT);
+		PreviewToken previewed = previewOf(
+				new RemodelClaim(new BookingId(205), ref(A1), IN_TEN_DAYS, 4500, "EUR", new RemodelOutcome.Move(ref(A2), 0, 1)),
+				new RemodelClaim(new BookingId(206), ref(A1), IN_TEN_DAYS, 4500, "EUR", new RemodelOutcome.Move(ref(A3), 0, 2)));
+
+		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewed);
+
+		RemodelCommit.Applied applied = (RemodelCommit.Applied) outcome;
+		assertEquals(new RemodelOutcome.Move(ref(A3), 0, 2), applied.moves().getFirst().outcome());
+		verify(bookings).moveToSet(205, A1.setId(), A3.setId(), CLOCK.instant());
+	}
+
+	@Test
+	void aCandidateNotWonUnderTheLockThrowsSoTheTransactionRollsBack() {
+		when(bookings.findLiveOnSets(Set.of(A1.setId())))
+				.thenReturn(List.of(claim(207, A1, IN_TEN_DAYS, BookingStatus.CONFIRMED)));
+		givenMap(List.of(A1, A2), IN_TEN_DAYS, List.of(A2));
+		when(availability.claim(A2.setId(), IN_TEN_DAYS)).thenReturn(ClaimOutcome.ALREADY_TAKEN);
+		PreviewToken previewed = previewOf(new RemodelClaim(new BookingId(207), ref(A1), IN_TEN_DAYS, 4500, "EUR",
+				new RemodelOutcome.Move(ref(A2), 0, 1)));
+
+		assertThrows(IllegalStateException.class, () -> service.commit(OWNER, VENUE, List.of(A1.setId()), previewed));
+		verify(availability, never()).release(any(), any());
+		verify(bookings, never()).moveToSet(any(Long.class), any(), any(), any());
+		verify(receipts, never()).record(any(), any(), any(), any());
 	}
 }

@@ -32,9 +32,12 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * unless — the venue accepts): it feeds the view's pay deadline,
  * {@code min(acceptedAt + pay-window, end of service day)} (invariant #4), the same instant the
  * payment-due mail promises.
+ *
+ * <p>{@code movedAt} is the instant a remodel re-seated the booking ({@code null} unless one did):
+ * the free-exit override reads its deadline off it; where the booking came from is the receipt's.
  */
 public record BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
 		CustomerId customerId, LocalDate bookingDate, long amountMinor, String currency,
 		Instant cancelledAt, Long refundMinor, Instant requestExpiresAt, RefundReason cancelReason,
-		Instant createdAt, Instant acceptedAt) {
+		Instant createdAt, Instant acceptedAt, Instant movedAt) {
 }

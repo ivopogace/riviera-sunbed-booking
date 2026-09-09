@@ -295,7 +295,7 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				SELECT id, code, status, venue_id, set_id, customer_id, booking_date,
 				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at,
-				       cancel_reason, created_at, accepted_at
+				       cancel_reason, created_at, accepted_at, moved_at
 				FROM booking
 				WHERE code = :code
 				""")
@@ -313,7 +313,7 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				SELECT id, code, status, venue_id, set_id, customer_id, booking_date,
 				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at,
-				       cancel_reason, created_at, accepted_at
+				       cancel_reason, created_at, accepted_at, moved_at
 				FROM booking
 				WHERE account_id = :account
 				ORDER BY booking_date DESC, id DESC
@@ -330,6 +330,7 @@ class JdbcBookings implements Bookings {
 		java.sql.Timestamp requestExpiresAt = rs.getTimestamp(COL_REQUEST_EXPIRES_AT);
 		String cancelReason = rs.getString(COL_CANCEL_REASON);
 		java.sql.Timestamp acceptedAt = rs.getTimestamp("accepted_at");
+		java.sql.Timestamp movedAt = rs.getTimestamp("moved_at");
 		return new BookingRecord(
 				rs.getLong("id"), rs.getString("code"),
 				BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
@@ -340,7 +341,8 @@ class JdbcBookings implements Bookings {
 				cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor,
 				requestExpiresAt == null ? null : requestExpiresAt.toInstant(),
 				refundReasonOf(cancelReason), rs.getTimestamp(COL_CREATED_AT).toInstant(),
-				acceptedAt == null ? null : acceptedAt.toInstant());
+				acceptedAt == null ? null : acceptedAt.toInstant(),
+				movedAt == null ? null : movedAt.toInstant());
 	}
 
 	/**
@@ -406,9 +408,24 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public Optional<CancelledBooking> cancelConfirmed(long bookingId, Instant cancelledAt,
-			long refundMinor) {
-		return cancelReturningFacts(bookingId, cancelledAt, refundMinor, RefundReason.POLICY,
+			long refundMinor, RefundReason reason) {
+		return cancelReturningFacts(bookingId, cancelledAt, refundMinor, reason,
 				BookingTransition.CANCEL_BY_GUEST.admittedFrom());
+	}
+
+	@Override
+	public boolean moveToSet(long bookingId, SetId from, SetId to, Instant movedAt) {
+		return jdbc.sql("""
+				UPDATE booking
+				SET set_id = :to, moved_at = :at
+				WHERE id = :id AND set_id = :from AND status IN (:live)
+				""")
+				.param("to", to.value())
+				.param("at", java.sql.Timestamp.from(movedAt))
+				.param("id", bookingId)
+				.param("from", from.value())
+				.param("live", JdbcBookingPresence.LIVE_STATUSES)
+				.update() == 1;
 	}
 
 	@Override

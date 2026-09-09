@@ -56,6 +56,27 @@ class JdbcBookingPresenceIT {
 	}
 
 	@Test
+	void aSetAMovedBookingLeftStillCarriesHistory() {
+		long venueId = insertVenue("Presence Receipt Club " + System.nanoTime());
+		long left = insertSet(venueId, 1);
+		long seated = insertSet(venueId, 2);
+		insertBooking("PRESMOVE" + (System.nanoTime() % 100_000), venueId, seated, "CONFIRMED");
+		long booking = jdbc.sql("SELECT id FROM booking WHERE set_id = :s").param("s", seated).query(Long.class).single();
+		long operator = jdbc.sql("INSERT INTO operator (username, status) VALUES (:u, 'ACTIVE') RETURNING id")
+				.param("u", "presence-" + System.nanoTime()).query(Long.class).single();
+		long receipt = jdbc.sql("INSERT INTO remodel_receipt (venue_id, operator_id, committed_at) VALUES (:v, :o, now()) RETURNING id")
+				.param("v", venueId).param("o", operator).query(Long.class).single();
+		jdbc.sql("""
+				INSERT INTO remodel_receipt_move (receipt_id, booking_id, booking_date, from_set_id, from_row_label,
+				    from_position_no, to_set_id, to_row_label, to_position_no, rows_away, positions_away)
+				VALUES (:r, :b, '2027-08-10', :from, 'A', 1, :to, 'A', 2, 0, 1)
+				""").param("r", receipt).param("b", booking).param("from", left).param("to", seated).update();
+
+		assertTrue(presence.hasBookings(new SetId(left)), "the old spot of a moved booking is history, so it retires");
+		assertFalse(presence.hasLiveBookings(new SetId(left)), "but nobody is owed it any more");
+	}
+
+	@Test
 	void aSetWithNoBookingsIsUnclaimed() {
 		long venueId = insertVenue("Pristine Venue");
 		long setId = insertSet(venueId, 1);

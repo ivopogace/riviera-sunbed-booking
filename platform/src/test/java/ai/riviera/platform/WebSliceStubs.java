@@ -797,7 +797,20 @@ class WebSliceStubs {
 
 	@Bean
 	ai.riviera.platform.booking.api.RemodelClaims remodelClaims() {
-		return (_, _, _) -> List.of();
+		return new ai.riviera.platform.booking.api.RemodelClaims() {
+			@Override
+			public List<ai.riviera.platform.booking.vocabulary.RemodelClaim> classify(OperatorId operator,
+					VenueId venueId, java.util.Collection<ai.riviera.platform.venue.vocabulary.SetId> disturbedSets) {
+				return List.of();
+			}
+
+			@Override
+			public ai.riviera.platform.booking.vocabulary.RemodelCommit commit(OperatorId operator, VenueId venueId,
+					java.util.Collection<ai.riviera.platform.venue.vocabulary.SetId> disturbedSets,
+					ai.riviera.platform.booking.vocabulary.PreviewToken token) {
+				return new ai.riviera.platform.booking.vocabulary.RemodelCommit.Refused(List.of());
+			}
+		};
 	}
 
 	@Bean
