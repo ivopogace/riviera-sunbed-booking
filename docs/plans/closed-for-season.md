@@ -52,8 +52,15 @@ the epic with PR #1046 and `docs/plans/pinned-cells.md` retires in this PR's clo
 that `venue` stores and `booking` decides, and the parity note for the calendar's changed today
 behaviour) · `tdd` (each phase red first at the named seam: the cutoff unit test, the migration IT,
 the SPI IT, the controller ITs, the Vitest specs, the mocked e2e) · `riviera-review-overlay`
-(review gate — due at ready-for-review; not yet run) · `riviera-docs-freshness` (due at the
-pre-merge smoke; not yet run) · `grilling` (the intake questions answered from the code; the
+(review gate — due at ready-for-review) · `riviera-docs-freshness` (**ran** over
+`10faa3a4..HEAD` as the pre-merge smoke: four findings, all patched in place — `JdbcBookingPresence`'s
+and `JdbcBookingPresenceIT`'s "four probes / two questions" (five and three now), the list IT's
+"ordered rating desc" comment (open venues first), and the calendar endpoint's "reports availability,
+not bookability" Javadoc (the per-day verdict rides beside the counts); the rename grep found the
+widened `SalesWindow#isOpen` cited nowhere outside the tree; the counting sweep over probe, closure,
+sales-window, catalogue-read and rejection vocabulary found nothing else stale; the frontend skill's
+frozen-edge table is unchanged (the card imports the chip from `shared/`); `docs/plans/pinned-cells.md`
+retired with no citation outside `docs/plans/`) · `grilling` (the intake questions answered from the code; the
 product-flavoured calls — the counts' definition, the rejection of a reopen date not after today,
 the closed-last ordering done server-side, the closure kept as stored state after an automatic
 reopen — are recorded as resolved assumptions below) · `riviera-local-debug` (clone unshallowed;
@@ -102,90 +109,90 @@ stands in for `feature/closed-for-season`, per the `riviera-sdlc` remote addendu
 
 > These ACs ARE the pre-agreed seams. *Seam* names the public boundary the test observes through.
 
-- [ ] **AC-1:** Given V51 has run, when a venue row is inserted, then `closed_at`, `reopen_on` and
+- [x] **AC-1:** Given V51 has run, when a venue row is inserted, then `closed_at`, `reopen_on` and
   `advance_sales` exist, `advance_sales` defaults `false`, and the CHECK refuses `reopen_on` or
   `advance_sales = true` on an open venue and `advance_sales = true` without `reopen_on`.
   *Seam:* the `venue` table through Flyway · *Pinned by:* `SeasonClosureMigrationIT`
-- [ ] **AC-2:** Given a closure reopening on 2027-05-15 with the opt-in off, when asked at
+- [x] **AC-2:** Given a closure reopening on 2027-05-15 with the opt-in off, when asked at
   2027-05-14 23:59 `Europe/Tirane`, then the closure is in effect and admits no date; with the opt-in
   on it admits 2027-05-20 and refuses 2027-05-14; at 2027-05-15 00:00 `Europe/Tirane` (22:00Z the
   day before) it is no longer in effect and admits every date; a closure with no reopen date is in
   effect until reopened by hand. *Seam:* `booking.application.BookingCutoff` (the module-wide
   day-boundary authority) · *Pinned by:* `BookingCutoffTest.seasonClosure*`
-- [ ] **AC-3:** Given the owning operator, when they `PUT /api/venues/{venueId}/season-closure` with
+- [x] **AC-3:** Given the owning operator, when they `PUT /api/venues/{venueId}/season-closure` with
   `{reopenOn, advanceSales}` or `{reopenOn: null, advanceSales: false}`, then `200` with
   `closedForSeason: true`, the stored values, and `futureBookings` / `pendingRequests` counting the
   venue's bookings dated today (`Europe/Tirane`) or later; a non-owner gets `403 NOT_VENUE_OWNER`; a
   reopen date not after today gets `422 REOPEN_DATE_PASSED`; the opt-in without a date gets
   `400 INVALID_REQUEST`. *Seam:* `PUT /api/venues/{venueId}/season-closure` · *Pinned by:*
   `SeasonClosureControllerIT`
-- [ ] **AC-4:** Given a closed venue, when its owner `DELETE`s the closure, then `204`, the profile
+- [x] **AC-4:** Given a closed venue, when its owner `DELETE`s the closure, then `204`, the profile
   reads open, and the closure columns are cleared; a non-owner gets `403`. *Seam:*
   `DELETE /api/venues/{venueId}/season-closure` + `GET …/profile` · *Pinned by:*
   `SeasonClosureControllerIT`
-- [ ] **AC-5:** Given a closed venue and an open one, when the tourist list is read for a date, then
+- [x] **AC-5:** Given a closed venue and an open one, when the tourist list is read for a date, then
   the closed venue carries `closedForSeason: true`, `reopensOn`, `salesOpen: false`, and sorts after
   every open venue whatever its rating; with the opt-in on and a date on or after the reopen date it
   reads `salesOpen: true` and still `closedForSeason: true`. *Seam:* `VenueCatalog#listVenues` via
   `GET /api/venues?date=` · *Pinned by:* `SeasonClosureCatalogIT`
-- [ ] **AC-6:** Given a closed venue, when its map is read, then `200` with sets, photos and
+- [x] **AC-6:** Given a closed venue, when its map is read, then `200` with sets, photos and
   `salesOpen: false`, `closedForSeason: true`; an opted-in date on or after the reopen date reads
   `salesOpen: true`. *Seam:* `VenueCatalog#findVenueMap` via `GET /api/venues/{id}?date=` ·
   *Pinned by:* `SeasonClosureCatalogIT`
-- [ ] **AC-7:** Given a closed venue, when its calendar is read, then every day carries
+- [x] **AC-7:** Given a closed venue, when its calendar is read, then every day carries
   `salesOpen: false` with its counts unchanged; with the opt-in on, days on or after the reopen date
   carry `true`. *Seam:* `VenueCatalog#availabilityBetween` via
   `GET /api/venues/{id}/availability-calendar` · *Pinned by:* `SeasonClosureCatalogIT` (the verdict)
   + `VenueAvailabilityCalendarControllerTest` (the wire field)
-- [ ] **AC-8:** Given a closure reopening on date R, when the clock stands at R 00:00
+- [x] **AC-8:** Given a closure reopening on date R, when the clock stands at R 00:00
   `Europe/Tirane` (the previous day 22:00Z in May), then the list and map read the venue open
   (`closedForSeason: false`, `salesOpen: true`) with nothing written. *Seam:*
   `VenueCatalog#listVenues` · *Pinned by:* `SeasonClosureCatalogIT.reopensByItselfOnTheReopenDate`
-- [ ] **AC-9:** Given a closed venue, when a guest posts a reserve for one of its online sets (an
+- [x] **AC-9:** Given a closed venue, when a guest posts a reserve for one of its online sets (an
   INSTANT venue and a REQUEST venue), then `422 VENUE_CLOSED` and no availability row; an opted-in
   date on or after the reopen date reserves normally; a hidden venue still answers
   `404 NO_SUCH_SET`. *Seam:* `CreateBooking#create` via `POST /api/bookings` · *Pinned by:*
   `SeasonClosureReserveIT` + `CreateBookingServiceTest`
-- [ ] **AC-10:** Given a venue with a confirmed booking, a staff hold and a pending request dated
+- [x] **AC-10:** Given a venue with a confirmed booking, a staff hold and a pending request dated
   today or later, when the owner closes it, then the response counts the booking and the request,
   every row keeps its status, and the staff walk-in mark and the daily view still work. *Seam:*
   `PUT …/season-closure` + `POST …/sets/{setId}/availability` + `GET …/bookings` · *Pinned by:*
   `SeasonClosureControllerIT`
-- [ ] **AC-11:** Given bookings of every status across dates, when `liveBookingsFrom(venue, today)`
+- [x] **AC-11:** Given bookings of every status across dates, when `liveBookingsFrom(venue, today)`
   is asked, then `futureBookings` counts `CONFIRMED` + `AWAITING_PAYMENT` dated today or later,
   `pendingRequests` counts `PENDING_REQUEST` dated today or later, and terminal or past rows count
   nowhere. *Seam:* `venue.spi.BookingPresence` · *Pinned by:*
   `JdbcBookingPresenceIT.liveBookingsFromCountsWhatAGuestIsStillOwed`
-- [ ] **AC-12:** Given a closed venue, when its reviews page and a photo are read, then both answer
+- [x] **AC-12:** Given a closed venue, when its reviews page and a photo are read, then both answer
   `200`. *Seam:* `GET /api/venues/{id}/reviews`, `GET /api/venues/{id}/photos/{hash}` · *Pinned by:*
   `SeasonClosureCatalogIT`
-- [ ] **AC-13:** Given a summary with `closedForSeason: true` and `reopensOn`, when the Discover list
+- [x] **AC-13:** Given a summary with `closedForSeason: true` and `reopensOn`, when the Discover list
   renders, then the card wears the "Closed for season · reopens 15 May" chip, its accessible name
   carries the closure, cards keep the served order, and a summary without the field is unbadged.
   *Seam:* `HomePage` through the mocked `GET /api/venues` · *Pinned by:* `home.spec.ts` +
   `closed-for-season-chip.spec.ts` / `.a11y.spec.ts` / `.contrast.spec.ts`
-- [ ] **AC-14:** Given a map with `closedForSeason: true, salesOpen: false`, when the venue page
+- [x] **AC-14:** Given a map with `closedForSeason: true, salesOpen: false`, when the venue page
   renders, then the header wears the chip, the closed-for-season notice replaces the sales-closed
   copy, and no tile is selectable. *Seam:* `VenueMap` through the mocked `GET /api/venues/{id}` ·
   *Pinned by:* `venue-map.spec.ts` + `venue-map.a11y.spec.ts`
-- [ ] **AC-15:** Given calendar days with `salesOpen: false`, when the picker renders, then those
+- [x] **AC-15:** Given calendar days with `salesOpen: false`, when the picker renders, then those
   days are not selectable, draw no bar and speak "not bookable"; a day without the field keeps
   today's behaviour. *Seam:* `AvailabilityCalendar` through the mocked calendar read · *Pinned by:*
   `availability-calendar.spec.ts`
-- [ ] **AC-16:** Given the owner's profile, when the Venue tab renders, then an open venue shows the
+- [x] **AC-16:** Given the owner's profile, when the Venue tab renders, then an open venue shows the
   season card with "Close for season"; opening it reveals the reopen-date field and, once a date is
   set, the advance-sales checkbox; confirming `PUT`s `{reopenOn, advanceSales}` and the card shows
   the closed state with the counts; "Reopen now" `DELETE`s and the card returns to open; 403 and 422
   show their copy. *Seam:* `VenueTab` through the mocked profile and closure routes · *Pinned by:*
   `venue-tab.spec.ts` + `venue-tab.a11y.spec.ts` + `venue-tab.contrast.spec.ts`
-- [ ] **AC-17:** Given a reserve refused `VENUE_CLOSED`, when the booking dialog renders the
+- [x] **AC-17:** Given a reserve refused `VENUE_CLOSED`, when the booking dialog renders the
   failure, then it says the venue is closed for the season. *Seam:* `BookingDialog` through the
   mocked `POST /api/bookings` · *Pinned by:* `booking-dialog.spec.ts`
-- [ ] **AC-18:** Given the mocked console, when the operator closes with a reopen date, then the
+- [x] **AC-18:** Given the mocked console, when the operator closes with a reopen date, then the
   Discover list badges the venue and orders it last, and reopening clears the badge; axe clean on
   the tab and the list. *Seam:* the browser through `page.route` · *Pinned by:*
   `frontend/e2e/operator-venue-season.e2e.ts`
-- [ ] **AC-19:** `CONTEXT.md` gains **Closed for season** (visible-and-unsellable, distinct from
+- [x] **AC-19:** `CONTEXT.md` gains **Closed for season** (visible-and-unsellable, distinct from
   **Venue visibility**); `RESPONSIBILITIES.md` § `venue` (the closure paragraph, the endpoint, the
   projection) and § `booking` (`BookingCutoff` and the reserve fence) updated;
   `docs/architecture/domain-model.md` § 3.1 shows the columns. *Seam:* the substrate docs ·
@@ -215,40 +222,44 @@ whose payload lacks the field keeps today's behaviour, counts and the bar are un
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The closure rule is stated twice — once for the catalogue verdict, once for the reserve fence — and drifts (invariant #4) | med | high | one holder, `BookingCutoff`, reached by `venue` through `SalesWindow`; `BookingCutoffSalesWindowTest` pins the delegation, `SeasonClosureCatalogIT` and `SeasonClosureReserveIT` pin the same boundary instant | agent | open |
-| R-2 | Reopen-date arithmetic in the JVM zone (invariant #6): the boundary is R 00:00 `Europe/Tirane`, 22:00Z the day before in May | med | high | `LocalDate.ofInstant(now, TIRANE)`; unit test at 21:59Z / 22:00Z on 14 May; IT with a mocked Clock at both instants | agent | open |
-| R-3 | A stale closure row after an automatic reopen misleads a later read | low | med | every read derives closed-ness through the rule (`closedForSeason(closure, now)`), never from `closed_at IS NOT NULL`; the profile response carries the verdict beside the stored values | agent | open |
-| R-4 | BOLA on the new venue-scoped endpoint (invariant #13) | low | high | `assertOwns` is the service's first act; `SeasonClosureControllerIT` pins 403 for a foreign operator on both verbs; `EndpointRoleGateCoverageTest` pins the OPERATOR matcher | agent | open |
-| R-5 | The counts race a concurrent reserve (a booking lands between the write and the count) | low | low | acceptable: the counts are informational; both run in one read-committed transaction after the write, and the response says "still stand" | agent | open |
-| R-6 | Widening `SalesWindow`, `SetBookingInfo`, `VenueSummaryView`, `VenueMapView`, `DailyAvailability`, `VenueProfileView` breaks every test fake and constructor call | high | low | the blast radius is enumerated in File structure (eight `SetBookingInfo` test callers, two `BookingPresence` fakes, one `DailyAvailability` controller test, one `VenueProfileView` service test); compile is the net | agent | open |
-| R-7 | Error contract: `VENUE_CLOSED` and `REOPEN_DATE_PASSED` details must state the condition, not a remedy (`riviera-java-conventions` §6b) | low | med | "The venue is closed for the season on this date." / "The reopen date is not after today." | agent | open |
-| R-8 | Flyway V51 collides with an in-flight PR | low | med | free on `main` at `10faa3a`; the one open PR (#1047) is frontend-only; the branch that merges second renumbers | agent | open |
-| R-9 | The mocked Clock bean in the catalogue/reserve ITs starves a clock-backed edge bean (rate limiter, challenge registry) | med | med | the ITs read the clock through `when(clock.instant())` with a fixed instant per test and `getZone()` UTC, exactly as `VenueAvailabilityCalendarControllerTest`; logins use `SessionLoginSupport.uniqueClientIp()`; the reserve IT is driven through the same fenced-create helper the booking ITs use | agent | open |
-| R-10 | The frontend gates on a client clock (the house rule: clients never compare with a clock) | low | med | the badge keys on `closedForSeason`, the tiles and calendar on `salesOpen` — both server verdicts; `reopensOn` is display copy | agent | open |
+| R-1 | The closure rule is stated twice — once for the catalogue verdict, once for the reserve fence — and drifts (invariant #4) | med | high | one holder, `BookingCutoff`, reached by `venue` through `SalesWindow`; `BookingCutoffSalesWindowTest` pins the delegation, `SeasonClosureCatalogIT` and `SeasonClosureReserveIT` pin the same boundary instant | agent | closed — `6669d155` |
+| R-2 | Reopen-date arithmetic in the JVM zone (invariant #6): the boundary is R 00:00 `Europe/Tirane`, 22:00Z the day before in May | med | high | `LocalDate.ofInstant(now, TIRANE)`; unit test at 21:59Z / 22:00Z on 14 May; IT with a mocked Clock at both instants | agent | closed — `6669d155` |
+| R-3 | A stale closure row after an automatic reopen misleads a later read | low | med | every read derives closed-ness through the rule (`closedForSeason(closure, now)`), never from `closed_at IS NOT NULL`; the profile response carries the verdict beside the stored values | agent | closed — `37d467d8` |
+| R-4 | BOLA on the new venue-scoped endpoint (invariant #13) | low | high | `assertOwns` is the service's first act; `SeasonClosureControllerIT` pins 403 for a foreign operator on both verbs; `EndpointRoleGateCoverageTest` pins the OPERATOR matcher | agent | closed — `37d467d8` |
+| R-5 | The counts race a concurrent reserve (a booking lands between the write and the count) | low | low | acceptable: the counts are informational; both run in one read-committed transaction after the write, and the response says "still stand" | agent | closed — `37d467d8` |
+| R-6 | Widening `SalesWindow`, `SetBookingInfo`, `VenueSummaryView`, `VenueMapView`, `DailyAvailability`, `VenueProfileView` breaks every test fake and constructor call | high | low | the blast radius is enumerated in File structure (eight `SetBookingInfo` test callers, two `BookingPresence` fakes, one `DailyAvailability` controller test, one `VenueProfileView` service test); compile is the net | agent | closed — `f37442ce` |
+| R-7 | Error contract: `VENUE_CLOSED` and `REOPEN_DATE_PASSED` details must state the condition, not a remedy (`riviera-java-conventions` §6b) | low | med | "The venue is closed for the season on this date." / "The reopen date is not after today." | agent | closed — `f37442ce` |
+| R-8 | Flyway V51 collides with an in-flight PR | low | med | free on `main` at `10faa3a`; the one open PR (#1047) is frontend-only; the branch that merges second renumbers | agent | closed — V51 landed with no other migration in flight (#1047 carried none) |
+| R-9 | The mocked Clock bean in the catalogue/reserve ITs starves a clock-backed edge bean (rate limiter, challenge registry) | med | med | the ITs read the clock through `when(clock.instant())` with a fixed instant per test and `getZone()` UTC, exactly as `VenueAvailabilityCalendarControllerTest`; logins use `SessionLoginSupport.uniqueClientIp()`; the reserve IT is driven through the same fenced-create helper the booking ITs use | agent | closed — `f37442ce` |
+| R-10 | The frontend gates on a client clock (the house rule: clients never compare with a clock) | low | med | the badge keys on `closedForSeason`, the tiles and calendar on `salesOpen` — both server verdicts; `reopensOn` is display copy | agent | closed — `9a470e10` |
 
 ## Open questions / Assumptions
+
+None open.
+
+### Resolved
 
 - **Assumption:** "future bookings" = bookings a guest may still turn up on that are not requests
   (`CONFIRMED`, `AWAITING_PAYMENT`) dated today or later in `Europe/Tirane`; "pending requests" =
   `PENDING_REQUEST` dated today or later. Terminal rows and past dates count nowhere. `booking`
-  decides the statuses. — *Owner:* agent · *Resolves by:* phase 1 (confirm with the maintainer at review if the console copy needs a different cut).
+  decides the statuses. — *Owner:* agent · *Resolved:* `37d467d8` (`JdbcBookingPresence#liveBookingsFrom`; the console copy says "still stand").
 - **Assumption:** a reopen date must be **after** today (`Europe/Tirane`); otherwise `422
   REOPEN_DATE_PASSED`. A closure that would be over the moment it is written is a mistake worth
-  refusing. — *Owner:* agent · *Resolves by:* phase 1.
+  refusing. — *Owner:* agent · *Resolved:* `37d467d8`.
 - **Assumption:** closed venues sort after open ones **server-side**, inside `listVenues` (open
   first, then rating desc, name asc), because the verdict needs the clock the server holds and the
-  client must not re-sort on a fact it cannot derive. — *Owner:* agent · *Resolves by:* phase 2.
+  client must not re-sort on a fact it cannot derive. — *Owner:* agent · *Resolved:* `f37442ce`.
 - **Assumption:** after the reopen date passes, the stored closure stays on the row until the
   operator closes again or reopens by hand; every read derives the open state through the rule
   (R-3). The Venue tab shows the open state with a "Close for season" control. — *Owner:* agent ·
-  *Resolves by:* phase 1.
+  *Resolved:* `37d467d8`.
 - **Assumption:** the profile response carries `seasonClosure: {closed, reopenOn, advanceSales}`
   where `closed` is the verdict at read time and the other two are the stored values — so the tab
-  keys on `closed` and never compares dates. — *Owner:* agent · *Resolves by:* phase 1.
+  keys on `closed` and never compares dates. — *Owner:* agent · *Resolved:* `37d467d8`.
 - **Assumption:** the PR is opened once the plan's ACs are checked off (the brief's rule), not at
   the first phase commit as `riviera-sdlc` prefers; CI runs on the PR event, so the phases are
   verified locally with scoped runs and the first CI run comes at PR time. — *Owner:* agent ·
-  *Resolves by:* PR stage.
+  *Resolved:* the PR opens after phase 4's commit with every AC ticked.
 
 ## Availability & concurrency (invariant #2)
 
@@ -362,7 +373,7 @@ APIs. No deviation.
 | 1 — close/reopen endpoint, `SeasonClosureService`, `Venues` writes, `LiveBookingCounts` + `BookingPresence#liveBookingsFrom`, profile carries the closure, security matchers, ITs | ✅ | `37d467d8` |
 | 2 — catalogue projection (list order, map, calendar `salesOpen`), `SetBookingInfo` closure, `VENUE_CLOSED` fence, ITs with the movable clock, structural net | ⏳ | |
 | 3 — frontend: models, chip, Discover card, map notice, calendar, booking copy, Venue tab season card, specs + a11y + contrast, mocked e2e | | |
-| 4 — docs: `CONTEXT.md`, `RESPONSIBILITIES.md`, domain-model, `CLAUDE.md` row, package Javadocs; retire `pinned-cells.md`; PR | ⏳ | |
+| 4 — docs: `CONTEXT.md`, `RESPONSIBILITIES.md`, domain-model, `CLAUDE.md` row, package Javadocs; retire `pinned-cells.md`; PR | ✅ | `3e954827`; `origin/main` (#1047) merged in `28f9c5bb` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -567,30 +578,44 @@ callers, `BeachMapReadServiceTest`, `VenueAvailabilityCalendarControllerTest`,
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-09 | phase 0 — `SalesWindow` widened | every caller of the SPI and every `SetBookingInfo` constructor | `grep -rn "\.isOpen(\|new SetBookingInfo(" platform/src` | 2 callers (both in `JdbcVenueCatalog`), 8 constructors (1 main, 7 tests) | all updated in phases 0 and 2 |
+| 2026-09-09 | phase 1 — a new operator route | every non-GET `/api/venues/*/…` matcher and every venue controller resolving the principal | `grep -n "hasRole(OPERATOR_ROLE)" SecurityConfig.java`; `grep -rn "currentOperator.require" venue/adapter/in` | the PUT block; 3 controllers | the pair joins the PUT block; the new controller uses `require` |
+| 2026-09-09 | phase 1 — a root-edge bean dependency | every `@WebMvcTest` stub set | `grep -rl WebSliceStubs platform/src/test` | one stub configuration | the inert `CloseForSeason` bean added |
+| 2026-09-09 | phase 2 — a new `Rejected` arm | every `switch` over `BookingOutcome.Rejected` | the compiler (exhaustive switch) | `BookingController` | mapped to 422 |
+| 2026-09-09 | phase 3 — a new `BookingErrorCode` and `salesOpen` consumers | every `BOOKING_CLOSED` switch; every `salesOpen` reader | `grep -rn "BOOKING_CLOSED\|salesOpen" frontend/src/app --include=*.ts -l` | model, service, dialog; home, map, calendar, daily view | the three switches gain `VENUE_CLOSED`; `daily-view-tab` reads the same verdict and needs no change |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 … AC-19:** to be filled at close-out with the command and the commit.
+- [x] **AC-1:** `gradle test --tests "*SeasonClosureMigrationIT*"` → 4 pass. Verified at `6669d155`.
+- [x] **AC-2:** `gradle test --tests "*BookingCutoffTest*"` → the six `seasonClosure` cases pass. Verified at `6669d155`.
+- [x] **AC-3, AC-4, AC-10:** `gradle test --tests "*SeasonClosureControllerIT*"` → 8 pass (403 on both verbs, 422 `REOPEN_DATE_PASSED`, 400 for the opt-in without a date, the staff mark and daily view while closed). Verified at `37d467d8`.
+- [x] **AC-5 … AC-8, AC-12:** `gradle test --tests "*SeasonClosureCatalogIT*"` → 6 pass with the movable clock at 2027-05-14T21:59Z / 22:00Z / 2027-05-13T06:00Z. Verified at `f37442ce`.
+- [x] **AC-9:** `gradle test --tests "*SeasonClosureReserveIT*" --tests "*CreateBookingServiceTest*"` → pass (422 `VENUE_CLOSED`, no availability row, both modes, the opted-in day, the hidden venue). Verified at `f37442ce`.
+- [x] **AC-11:** `gradle test --tests "*JdbcBookingPresenceIT*"` → `liveBookingsFromCountsWhatAGuestIsStillOwed` passes. Verified at `37d467d8`.
+- [x] **AC-13 … AC-17:** `npm test` → 244 files, 2974 tests pass; `npm run test:a11y` → 92 files, 979 pass. Verified at `9a470e10`; the four touched surfaces re-run green after the `origin/main` merge (`28f9c5bb`).
+- [x] **AC-18:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts operator-venue-season discovery-flow operator-venue.e2e` → 13 pass. Verified at `9a470e10`.
+- [x] **AC-19:** `riviera-docs-freshness` ran over `10faa3a4..HEAD` (Skills consulted). Verified at `3e954827`.
+- Structural net after phases 1 and 2: green; `EndpointRoleGateCoverageTest`, `VenueWriteRoleGateTest`, `CrossVenueDenialIT`, `VenueAdminControllerIT`, `VenueListControllerIT`, `VenueReadControllerIT`, `BookingControllerIT`, `VenueCatalogVisibilityIT`, `VenueAvailabilityCalendarIT` green as regression.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
