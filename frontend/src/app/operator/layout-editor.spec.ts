@@ -433,11 +433,13 @@ describe('LayoutEditor (#172)', () => {
 
   describe('locked cells (#1031)', () => {
     const LOCK: SetLock = { setId: 2, bookedOn: '2026-09-12', heldOn: '2026-09-12' };
+    /** A staff walk-in mark with no booking behind it — the one lock the gap brush still keeps. */
+    const HELD: SetLock = { setId: 2, bookedOn: null, heldOn: '2026-09-12' };
     const DESCRIPTION =
       'Locked — booked Sat 12 Sept 2026. Can’t be moved or removed; tier and pool can still change.';
 
-    /** Row A: three standard online sets, the middle one pinned by a booking. Bulk mode, premium armed. */
-    function renderLockedRow(): void {
+    /** Row A: three standard online sets, the middle one pinned by `lock`. Bulk mode, premium armed. */
+    function renderLockedRow(lock: SetLock = LOCK): void {
       render(
         [
           seat(1, 'STANDARD', 'ONLINE', 1, 1),
@@ -445,7 +447,7 @@ describe('LayoutEditor (#172)', () => {
           seat(3, 'STANDARD', 'ONLINE', 3, 1),
         ],
         0,
-        [LOCK],
+        [lock],
       );
       useBulkMode();
     }
@@ -487,8 +489,8 @@ describe('LayoutEditor (#172)', () => {
       expect(byId('layout-lock-notice').textContent?.trim()).toBe('');
     });
 
-    it('the gap brush leaves the locked cell as it is, says why, and counts nothing (AC-8)', () => {
-      renderLockedRow();
+    it('the gap brush leaves a staff-held cell as it is, says why, and counts nothing (AC-8)', () => {
+      renderLockedRow(HELD);
       byId('layout-tool-gap').click();
       fixture.detectChanges();
 
@@ -499,12 +501,12 @@ describe('LayoutEditor (#172)', () => {
       expect(dirtyText()).toBe('No unsaved changes');
       expect(host.querySelector('[data-testid="layout-last-change"]')).toBeNull();
       expect(byId('layout-lock-notice').textContent?.replace(/\s+/g, ' ').trim()).toBe(
-        'Row A · position 2 is booked Sat 12 Sept 2026 — it can’t become a gap. Its tier and pool can still change.',
+        'Row A · position 2 is held by staff Sat 12 Sept 2026 — it can’t become a gap. Its tier and pool can still change.',
       );
     });
 
-    it('a gap drag-sweep skips the locked cell and counts only the others (AC-9)', () => {
-      renderLockedRow();
+    it('a gap drag-sweep skips the staff-held cell and counts only the others (AC-9)', () => {
+      renderLockedRow(HELD);
       byId('layout-tool-gap').click();
       fixture.detectChanges();
 
@@ -516,11 +518,11 @@ describe('LayoutEditor (#172)', () => {
 
       expect(cells().map((c) => c.getAttribute('data-state'))).toEqual(['gap', 'standard', 'gap']);
       expect(dirtyText()).toBe('2 unsaved changes');
-      expect(byId('layout-lock-notice').textContent).toContain('position 2 is booked');
+      expect(byId('layout-lock-notice').textContent).toContain('position 2 is held by staff');
     });
 
-    it('a gap row fill keeps the locked cell and reports it; a tier fill repaints it (AC-9)', () => {
-      renderLockedRow();
+    it('a gap row fill keeps the staff-held cell and reports it; a tier fill repaints it (AC-9)', () => {
+      renderLockedRow(HELD);
       byId('layout-tool-gap').click();
       fixture.detectChanges();
 
@@ -530,7 +532,7 @@ describe('LayoutEditor (#172)', () => {
       expect(cells().map((c) => c.getAttribute('data-state'))).toEqual(['gap', 'standard', 'gap']);
       expect(dirtyText()).toBe('2 unsaved changes');
       expect(byId('layout-lock-notice').textContent).toContain(
-        'Row A → Gap / aisle kept 1 locked set',
+        'Row A → Gap / aisle kept 1 held set',
       );
 
       byId('layout-tool-premium').click();
@@ -542,8 +544,8 @@ describe('LayoutEditor (#172)', () => {
       expect(dirtyText()).toBe('3 unsaved changes');
     });
 
-    it('a gap column fill keeps the locked cell too', () => {
-      renderLockedRow();
+    it('a gap column fill keeps the staff-held cell too', () => {
+      renderLockedRow(HELD);
       byId('layout-tool-gap').click();
       fixture.detectChanges();
 
@@ -553,8 +555,34 @@ describe('LayoutEditor (#172)', () => {
       expect(cells()[1].getAttribute('data-state')).toBe('standard');
       expect(dirtyText()).toBe('No unsaved changes');
       expect(byId('layout-lock-notice').textContent).toContain(
-        'Column 2 → Gap / aisle kept 1 locked set',
+        'Column 2 → Gap / aisle kept 1 held set',
       );
+    });
+
+    it('the gap brush paints a booked cell and says the save will show the move first (#1034)', () => {
+      renderLockedRow();
+      byId('layout-tool-gap').click();
+      fixture.detectChanges();
+
+      cells()[1].click();
+      fixture.detectChanges();
+      expect(cells()[1].getAttribute('data-state')).toBe('gap');
+      expect(dirtyText()).toBe('1 unsaved change');
+      expect(byId('layout-lock-notice').textContent?.replace(/\s+/g, ' ').trim()).toBe(
+        'Row A · position 2 is booked Sat 12 Sept 2026 — saving will first show where its bookings would move.',
+      );
+
+      // The row fill treats it the same way: only a staff hold is kept.
+      byId('layout-tool-premium').click();
+      fixture.detectChanges();
+      rowFillButtons()[0].click();
+      fixture.detectChanges();
+      byId('layout-tool-gap').click();
+      fixture.detectChanges();
+      rowFillButtons()[0].click();
+      fixture.detectChanges();
+      expect(cells().map((c) => c.getAttribute('data-state'))).toEqual(['gap', 'gap', 'gap']);
+      expect(byId('layout-lock-notice').textContent?.trim()).toBe('');
     });
 
     it('hands the locks to the per-set surface and clears them on a venue switch', () => {

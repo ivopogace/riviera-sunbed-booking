@@ -49,8 +49,8 @@ public class CancellationPolicy implements QuoteCancellationTerms {
 	 * The refund quote for a booking: the set facts (for display), whether free cancellation is still
 	 * open, the server-computed refund in minor units and the reason a cancellation now would carry.
 	 * A moved booking whose free exit is still open ({@code freeExitUntil} ahead of now, window not
-	 * CLOSED) refunds in full; the reason is {@code VENUE_CHANGE} only where that override changed the
-	 * answer (LATE), so a cancellation the policy already refunds in full stays {@code POLICY}. Throws
+	 * CLOSED) refunds in full with reason {@code VENUE_CHANGE} in FREE and LATE alike — the amount is
+	 * the override's in LATE only, the reason is the exit's whenever it is taken. Throws
 	 * if the set is unknown (a booking FK to a missing set is a real invariant breach, not an expected
 	 * flow).
 	 */
@@ -60,7 +60,7 @@ public class CancellationPolicy implements QuoteCancellationTerms {
 		Instant now = clock.instant();
 		CancellationWindow window = cutoff.cancellationWindow(set.bookingCutoff(), booking.bookingDate(), now);
 		Instant freeExitUntil = freeExitUntil(booking, window, now);
-		if (freeExitUntil != null && window == CancellationWindow.LATE) {
+		if (freeExitUntil != null) {
 			return new RefundQuote(set, window, booking.amountMinor(), RefundReason.VENUE_CHANGE, freeExitUntil);
 		}
 		int lateBps = window == CancellationWindow.LATE

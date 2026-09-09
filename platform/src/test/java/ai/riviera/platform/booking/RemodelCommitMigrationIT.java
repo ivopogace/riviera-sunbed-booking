@@ -85,6 +85,11 @@ class RemodelCommitMigrationIT {
 		}
 		assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM remodel_receipt_move WHERE receipt_id = :r")
 				.param("r", receipt).query(Integer.class).single());
+
+		// The actor is a recorded id, not a foreign key: the receipt outlives the operator row.
+		assertDoesNotThrow(() -> jdbc.sql("DELETE FROM operator WHERE id = :o").param("o", operator).update());
+		assertEquals(operator, jdbc.sql("SELECT operator_id FROM remodel_receipt WHERE id = :r")
+				.param("r", receipt).query(Long.class).single());
 	}
 
 	private void insertMove(long receipt, long booking, long from, long to, int rowsAway, int positionsAway) {

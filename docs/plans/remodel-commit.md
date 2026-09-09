@@ -120,18 +120,18 @@ stands in for `feature/remodel-commit`).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue with A1 booked by a guest on date D and A2, A3 free online sets of the
+- [x] **AC-1:** Given a venue with A1 booked by a guest on date D and A2, A3 free online sets of the
   same tier, when a commit removing A1 races an online reserve of A2 on D, then never do both the
   moved guest and the reserve hold `(A2, D)`: either the reserve wins and the commit re-ranks the
   guest to A3, or the commit wins and the reserve answers `ALREADY_TAKEN`; the guest holds exactly
   one availability row, on the set the booking now names; `(A1, D)` is free. Both orders are
   exercised. *Seam:* the root's commit orchestration + `availability.api.AvailabilityClaim#claim` ·
   *Pinned by:* `MoveVsReserveConcurrencyIT.aMoveAndAReserveNeverBothHoldTheCandidate`
-- [ ] **AC-2:** Given the preview's pairs, when the token is asked whether a fresh classification is
+- [x] **AC-2:** Given the preview's pairs, when the token is asked whether a fresh classification is
   covered, then the same pairs match, a strict subset (a claim gone) matches, a new booking id does
   not, a changed kind does not, and a move whose candidate changed still matches. *Seam:*
   `booking.vocabulary.PreviewToken#of/#covers` · *Pinned by:* `PreviewTokenTest.*`
-- [ ] **AC-3:** Given a booking moved at 15:00 `Europe/Tirane` for a service day two days out, when
+- [x] **AC-3:** Given a booking moved at 15:00 `Europe/Tirane` for a service day two days out, when
   the deadline is asked, then it is 15:00 the next day (24h after the move), not noon the day before;
   a move five days out ends at noon the day before; a move three hours before the day opens ends at
   the day's open. Given a moved booking inside the LATE window before its deadline, when quoted, then
@@ -139,7 +139,7 @@ stands in for `feature/remodel-commit`).
   a CLOSED window is not cancellable; an unmoved booking is unchanged. *Seam:*
   `BookingCutoff#freeExitEndsAt` and `CancellationPolicy#quote` · *Pinned by:*
   `BookingCutoffFreeExitTest.*`, `CancellationPolicyFreeExitTest.*`
-- [ ] **AC-4:** Given live bookings on the disturbed sets and a token, when `commit` runs, then a
+- [x] **AC-4:** Given live bookings on the disturbed sets and a token, when `commit` runs, then a
   non-owner is refused first; a token that does not cover the fresh classification answers
   `Stale(fresh)` and writes nothing; a fresh classification with any non-move outcome answers
   `Refused(fresh)` and writes nothing; an all-move classification claims each candidate, releases
@@ -147,14 +147,14 @@ stands in for `feature/remodel-commit`).
   five ids, writes one receipt with one row per move and answers `Applied(receiptId, moves)`; a
   candidate claim that is not `CLAIMED` throws so the caller's transaction rolls back. *Seam:*
   `booking.api.RemodelClaims#commit` with fakes · *Pinned by:* `RemodelClaimsServiceTest.commit*`
-- [ ] **AC-5:** Given a layout that removes a booked set, when `BeachMapRemodel#commit` runs with a
+- [x] **AC-5:** Given a layout that removes a booked set, when `BeachMapRemodel#commit` runs with a
   gate, then ownership asserts first, the shape rejections answer as the save does, the venue row
   and every set row are locked before the gate is asked, the gate sees the disturbed sets with their
   holds, a refusing gate writes nothing and spends no token, a proceeding gate applies the diff and
   advances the token; the PUT behaves exactly as before through the same writer. *Seam:*
   `venue.api.BeachMapRemodel#commit`, `venue.application.EditBeachMap#replaceLayout` with fakes ·
   *Pinned by:* `BeachMapRemodelServiceTest.*`, `LayoutWriterTest.*`, `BeachMapDiffConcurrencyIT.*`
-- [ ] **AC-6:** Given the owner's session, when `POST /api/venues/{v}/beach-map/commit` carries the
+- [x] **AC-6:** Given the owner's session, when `POST /api/venues/{v}/beach-map/commit` carries the
   save body and a token, then a mismatching token is `409 STALE_PREVIEW` with the fresh preview and
   its token, nothing written; a token covering a superset (a guest cancelled) commits; an all-move
   commit answers `200 { receiptId, moves }`, the layout is applied, the moved booking keeps its code
@@ -164,26 +164,26 @@ stands in for `feature/remodel-commit`).
   disturbed set is `409 STALE_PREVIEW`; a stale `set_version` is `409 STALE_WRITE`; a non-owner is
   `403`; no booking code on the wire. *Seam:* HTTP `POST /api/venues/{venueId}/beach-map/commit` ·
   *Pinned by:* `RemodelCommitIT.*`, `CrossVenueDenialIT.remodelCommitByNonOwnerIs403`
-- [ ] **AC-7:** Given a committed receipt, when the owner reads
+- [x] **AC-7:** Given a committed receipt, when the owner reads
   `GET /api/venues/{v}/remodels` and `/remodels/{id}`, then the list names it newest first and the
   detail carries every move with both spots, the distance and the date; an unknown id is `404`; a
   non-owner is `403`. *Seam:* HTTP `GET /api/venues/{venueId}/remodels[/{receiptId}]` · *Pinned by:*
   `RemodelReceiptIT.*`, `CrossVenueDenialIT.remodelReceiptsByNonOwnerIs403`
-- [ ] **AC-8:** Given `BookingMoved`, when the listener runs, then the mail names the guest's code,
+- [x] **AC-8:** Given `BookingMoved`, when the listener runs, then the mail names the guest's code,
   the venue, both spots, the distance and the free-exit deadline, is delivered through the registry
   vehicle with suppression honoured, and no code rides the event; a missing fact is abandoned and
   counted. *Seam:* `BookingMoved` → `TransactionalMailService#sendBookingMoved` · *Pinned by:*
   `BookingMovedMailListenerTest.*`, `BookingMovedMailIT.*`
-- [ ] **AC-9:** Given a moved booking inside its LATE window before the deadline, when the guest
+- [x] **AC-9:** Given a moved booking inside its LATE window before the deadline, when the guest
   cancels by code, then the refund is the full amount, tier `FULL`, `cancel_reason = VENUE_CHANGE`
   and the ledger reversal carries the same reason; after the deadline the venue's late share applies
   with reason `POLICY`; a booking whose window is CLOSED is refused. The view shows the move and the
   deadline. *Seam:* HTTP `POST /api/bookings/{code}/cancel`, `GET /api/bookings/{code}` · *Pinned
   by:* `FreeExitCancelIT.*`
-- [ ] **AC-10:** `ModularityTests` and the structural net are green with the new event, the two port
+- [x] **AC-10:** `ModularityTests` and the structural net are green with the new event, the two port
   methods, the vocabulary and the receipt controller; `EndpointRoleGateCoverageTest` sees every new
   route gated. *Seam:* the net + the named tests · *Pinned by:* the net command in `CLAUDE.md`
-- [ ] **AC-11:** Given a preview naming only moves, when the operator saves from the editor, then
+- [x] **AC-11:** Given a preview naming only moves, when the operator saves from the editor, then
   the dialog offers **Save and move** beside Back, the POST carries the preview's token, a `200`
   shows the receipt (each move, the receipt id) and the saved notice, and "Past remodels" lists the
   receipt after reload; a `409 STALE_PREVIEW` re-renders the dialog with the fresh groups, a stale
@@ -191,13 +191,13 @@ stands in for `feature/remodel-commit`).
   `LayoutEditor` DOM through the mocked `HttpTestingController` · *Pinned by:*
   `layout-editor.spec.ts` "commits…" cases, `remodel-preview-panel.spec.ts`,
   `remodel-receipt-panel.spec.ts`, their `.a11y` and `.contrast` pairs
-- [ ] **AC-12:** Given a moved booking's detail, when the guest opens it, then a notice names the
+- [x] **AC-12:** Given a moved booking's detail, when the guest opens it, then a notice names the
   old spot, the new spot, the distance and "free cancellation until <deadline>", the cancel copy
   states the full refund, and a completed cancel reports tier `FULL`; the my-bookings row wears a
   "Spot changed" chip. *Seam:* `BookingView` / `MyBookings` DOM through the mocked
   `HttpTestingController` · *Pinned by:* `booking-view.spec.ts` "moved…" cases,
   `booking-view.contrast.spec.ts`, `my-bookings.spec.ts`
-- [ ] **AC-13:** Given mocked routes, when the operator commits a moves-only remodel from the running
+- [x] **AC-13:** Given mocked routes, when the operator commits a moves-only remodel from the running
   SPA, then the dialog's Save posts the token, the receipt renders, axe is clean, focus lands on the
   receipt; a stale answer re-renders the dialog; then the guest's my-bookings shows the moved row and
   the booking view offers the full-refund cancel. *Seam:* the running SPA against `page.route` mocks
@@ -208,7 +208,7 @@ stands in for `feature/remodel-commit`).
   outbox read shows a `BOOKING_MOVED` mail to the guest naming A1 → A2; the guest opens the booking,
   sees the move and the deadline, **cancels**, and is told the full refund. *Seam:* the running SPA
   against the real backend · *Pinned by:* `frontend/e2e/real-backend/remodel-move.e2e.ts`
-- [ ] **AC-15:** `CONTEXT.md` defines Moved booking, Free exit, Commit receipt and Preview token;
+- [x] **AC-15:** `CONTEXT.md` defines Moved booking, Free exit, Commit receipt and Preview token;
   `RESPONSIBILITIES.md` § *Platform edge*, § `venue`, § `booking`, § `availability`,
   § `notification` describe the commit; `CLAUDE.md`'s event list counts nine with `BookingMoved`;
   ADR-0020's status records the commit. *Seam:* the docs · *Pinned by:* review (RV-PROC),
@@ -243,20 +243,20 @@ that always proceeds; the request, responses and lock order are unchanged.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A reserve or staff mark on a candidate lands between classification and the move (invariant #2) | med | high | classification and moves run under `FOR UPDATE` on every active set row; a claim's `poolForClaim` takes `FOR KEY SHARE` and waits; a mark takes the same read; a claim that still answers other than `CLAIMED` throws and rolls the whole transaction back; `MoveVsReserveConcurrencyIT` exercises both orders | session | open |
-| R-2 | A stale preview commits the wrong thing (a new claim, a changed group) | med | high | the token covers `{booking id, kind}`; re-derivation under lock; `Stale` on any uncovered pair; `RemodelCommitIT` mismatch + subset cases | session | open |
-| R-3 | The old spot's label is lost when the set is renumbered or retired | med | med | the receipt row snapshots both labels and the distance; the mail and the view read the receipt, never the live set | session | open |
-| R-4 | A later remove of a set a moved booking left hits the receipt FK | med | med | `hasBookings` counts `remodel_receipt_move.from_set_id`/`to_set_id`, so such a set retires; `JdbcBookingPresenceIT` case | session | open |
-| R-5 | Ownership on the new venue-scoped routes (BOLA, invariant #13) | low | high | both module ports assert `VenueOwnership` first; the receipt service asserts on read; `CrossVenueDenialIT` probes commit and receipts | session | open |
-| R-6 | New routes reachable by any authenticated principal | med | high | explicit OPERATOR matchers for the commit POST and the receipt GETs (ordered before the public `GET /api/venues/**`) and the mock outbox read; `EndpointRoleGateCoverageTest` | session | open |
-| R-7 | `@ApplicationModuleTest` contexts fail on the new root bean or the mock outbox controller (blast radius) | high | med | `RemodelCommitService` depends only on the two already-mocked ports; `WebSliceStubs` supplies a `MockMailer`; `PayoutModuleTest` and `ReviewSubmitFlowIT` run before the push | session | open |
-| R-8 | Free-exit arithmetic across noon/midnight/DST (invariants #4, #6, #10) | med | med | `BookingCutoff#freeExitEndsAt` in Tirane; `BookingCutoffFreeExitTest` pins the three arms incl. the 15:00 two-days-out case; the override never reopens CLOSED | session | open |
-| R-9 | The reason CHECKs and the Java enum drift | low | med | V52 widens both under the same names; `RemodelCommitMigrationIT` inserts `VENUE_CHANGE` on both tables; the transports switch exhaustively | session | open |
-| R-10 | The registry dead-letters a `BookingMoved` whose facts vanished | low | low | the listener abandons with a counter like the cancellation listener; the receipt row is written in the same transaction as the event, so the facts exist when the listener runs | session | open |
-| R-11 | Error-contract drift on the two 409s | low | med | `STALE_PREVIEW`/`REMODEL_REFUSED` via `ApiProblem` with a `preview` extension shaped exactly as the preview response; `RemodelCommitIT` pins bodies; detail states the condition | session | open |
-| R-12 | Booking code on the wire or in a log (invariant #7) | low | high | receipts and 409s carry booking ids; `RemodelCommitIT`/`RemodelReceiptIT` assert no `"code"`; the mock outbox read omits codes and links | session | open |
-| R-13 | The console literal sweep or the focus-posture guard fails the new panels | low | low | token-only classes; `[appBusy]` on Save; `focusMover` on commit → receipt, stale → dialog, back → Save | session | open |
-| R-14 | Full-suite-only failure: seeded codes/addresses colliding across ITs | med | med | every IT mints codes and emails per insert (`RC-<nanoTime>`), as F-1 of #1033 taught | session | open |
+| R-1 | A reserve or staff mark on a candidate lands between classification and the move (invariant #2) | med | high | classification and moves run under `FOR UPDATE` on every active set row; a claim's `poolForClaim` takes `FOR KEY SHARE` and waits; a mark takes the same read; a claim that still answers other than `CLAIMED` throws and rolls the whole transaction back; `MoveVsReserveConcurrencyIT` exercises both orders | session | closed — `MoveVsReserveConcurrencyIT` green both orders (phase 3) |
+| R-2 | A stale preview commits the wrong thing (a new claim, a changed group) | med | high | the token covers `{booking id, kind}`; re-derivation under lock; `Stale` on any uncovered pair; `RemodelCommitIT` mismatch + subset cases | session | closed — `PreviewTokenTest`, `RemodelClaimsServiceTest.commit*`, `RemodelCommitIT` (phases 1, 3) |
+| R-3 | The old spot's label is lost when the set is renumbered or retired | med | med | the receipt row snapshots both labels and the distance; the mail and the view read the receipt, never the live set | session | closed — `JdbcRemodelReceiptsIT`, `BookingMovedMailIT` read the receipt (phases 1, 4) |
+| R-4 | A later remove of a set a moved booking left hits the receipt FK | med | med | `hasBookings` counts `remodel_receipt_move.from_set_id`/`to_set_id`, so such a set retires; `JdbcBookingPresenceIT` case | session | closed — `JdbcBookingPresenceIT` receipt case (phase 1) |
+| R-5 | Ownership on the new venue-scoped routes (BOLA, invariant #13) | low | high | both module ports assert `VenueOwnership` first; the receipt service asserts on read; `CrossVenueDenialIT` probes commit and receipts | session | closed — `CrossVenueDenialIT` commit + receipts probes (phase 3) |
+| R-6 | New routes reachable by any authenticated principal | med | high | explicit OPERATOR matchers for the commit POST and the receipt GETs (ordered before the public `GET /api/venues/**`) and the mock outbox read; `EndpointRoleGateCoverageTest` | session | closed — `EndpointRoleGateCoverageTest` green with the three matchers (phases 3, 4) |
+| R-7 | `@ApplicationModuleTest` contexts fail on the new root bean or the mock outbox controller (blast radius) | high | med | `RemodelCommitService` depends only on the two already-mocked ports; `WebSliceStubs` supplies a `MockMailer`; `PayoutModuleTest` and `ReviewSubmitFlowIT` run before the push | session | closed — `PayoutModuleTest`, `ReviewSubmitFlowIT`, every `@WebMvcTest` green (phases 3, 4) |
+| R-8 | Free-exit arithmetic across noon/midnight/DST (invariants #4, #6, #10) | med | med | `BookingCutoff#freeExitEndsAt` in Tirane; `BookingCutoffFreeExitTest` pins the three arms incl. the 15:00 two-days-out case; the override never reopens CLOSED | session | closed — `BookingCutoffFreeExitTest`, `CancellationPolicyFreeExitTest`, `FreeExitCancelIT` (phases 1, 5) |
+| R-9 | The reason CHECKs and the Java enum drift | low | med | V52 widens both under the same names; `RemodelCommitMigrationIT` inserts `VENUE_CHANGE` on both tables; the transports switch exhaustively | session | closed — `RemodelCommitMigrationIT`, `JdbcBookingTransitionTableIT` (phase 0) |
+| R-10 | The registry dead-letters a `BookingMoved` whose facts vanished | low | low | the listener abandons with a counter like the cancellation listener; the receipt row is written in the same transaction as the event, so the facts exist when the listener runs | session | closed — `BookingMovedMailListenerTest` abandon case, `MAIL_MOVE_ABANDONED` (phase 4) |
+| R-11 | Error-contract drift on the two 409s | low | med | `STALE_PREVIEW`/`REMODEL_REFUSED` via `ApiProblem` with a `preview` extension shaped exactly as the preview response; `RemodelCommitIT` pins bodies; detail states the condition | session | closed — `RemodelCommitIT` pins both 409 bodies (phase 3) |
+| R-12 | Booking code on the wire or in a log (invariant #7) | low | high | receipts and 409s carry booking ids; `RemodelCommitIT`/`RemodelReceiptIT` assert no `"code"`; the mock outbox read omits codes and links | session | closed — `RemodelCommitIT`, `RemodelReceiptIT`, `BookingMovedMailIT` assert no code (phases 3, 4) |
+| R-13 | The console literal sweep or the focus-posture guard fails the new panels | low | low | token-only classes; `[appBusy]` on Save; `focusMover` on commit → receipt, stale → dialog, back → Save | session | closed — `console-literal-sweep.spec.ts`, `check-focus-posture.mjs --diff` green (phase 6) |
+| R-14 | Full-suite-only failure: seeded codes/addresses colliding across ITs | med | med | every IT mints codes and emails per insert (`RC-<nanoTime>`), as F-1 of #1033 taught | session | closed — the full frontend suite and the scoped IT set green; CI runs the whole backend suite |
 
 ## Open questions / Assumptions
 
@@ -297,6 +297,17 @@ that always proceeds; the request, responses and lock order are unchanged.
 - **A moved `PENDING_REQUEST` or `AWAITING_PAYMENT` booking moves like a confirmed one**: every live
   status holds a `BOOKED_ONLINE` row through the same claim, and the classification already ranks
   them — plan time.
+- **The gap brush may paint out a cell only a booking pins; a staff hold still keeps it.** The
+  real-backend run showed the editor refusing the gap on every locked cell (#1031 story 18), which
+  made the commit unreachable from the UI for a booked set. Story 18's rationale — never draft a
+  change the save will refuse — now holds only for a hold (no guest to mail, so the preview always
+  blocks it); a booked set's save previews the move instead. The per-set Move/Remove stay disabled
+  on any locked set: they are single-set paths with no preview — phase 8, real-backend run.
+- **A free-exit cancel is `VENUE_CHANGE` in the FREE window too.** The real-backend run cancelled a
+  far-out moved booking and the panel said "You cancelled this booking": the reason was `POLICY`
+  because only LATE took the override. The amount is full either way; the reason is what the
+  cancellation mail and the admin's venue-caused list read, so the exit names itself whenever it is
+  taken — phase 8, real-backend run.
 - **A candidate the same save switches to walk-in still receives the move**: the pool governs new
   online reserves only (revision 3), the daily view shows the booking on the now-walk-in set — plan
   time.
@@ -426,9 +437,9 @@ never `[disabled]` on the pressed control, `focusMover` on every leg — no devi
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 8) — draft PR #1052 open`
+**Stage pointer:** `implement (phase 9) — draft PR #1052 open; CI red on the phase-7 head (plan guard, two backend contexts) fixed in the phase-8 commit`
 
-**Next action:** the mocked e2e (editor commit + stale, moved booking) and the real-backend spec.
+**Next action:** the final real-backend run against the fixed backend, CI green, ready for review, the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -440,8 +451,8 @@ never `[disabled]` on the pressed control, `focusMover` on every leg — no devi
 | 5 — the guest view and the free-exit cancel at the HTTP seam | ✅ | phase-5 commit |
 | 6 — the editor: model, service, panel Save, receipt panel, past remodels, specs | ✅ | phase-6 commit |
 | 7 — the guest: moved notice, free-exit copy, my-bookings chip, specs | ✅ | phase-7 commit |
-| 8 — the mocked e2e + the real-backend spec | | |
-| 9 — docs; close-out | | |
+| 8 — the mocked e2e + the real-backend spec | ✅ | phase-8 commit |
+| 9 — docs; close-out | ⏳ | phase-9 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -492,6 +503,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/MyBookingView.java` — `movedAt`
 - `platform/src/main/java/ai/riviera/platform/venue/vocabulary/LayoutCell.java` — (new)
 - `platform/src/main/java/ai/riviera/platform/venue/vocabulary/LayoutCommitOutcome.java` — sealed (new)
+- `platform/src/main/java/ai/riviera/platform/venue/vocabulary/LockedSet.java` — (new)
 - `platform/src/main/java/ai/riviera/platform/venue/vocabulary/LayoutRejection.java` — moved from `application.ReplaceRejection`
 - `platform/src/main/java/ai/riviera/platform/venue/api/BeachMapRemodel.java` — `commit`
 - `platform/src/main/java/ai/riviera/platform/venue/api/RemodelGate.java` — (new)
@@ -501,6 +513,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/venue/application/LayoutWriter.java` — (new)
 - `platform/src/main/java/ai/riviera/platform/venue/application/LayoutWrite.java` — sealed (new)
 - `platform/src/main/java/ai/riviera/platform/venue/application/BeachMapEditService.java` — delegates to the writer
+- `platform/src/main/java/ai/riviera/platform/venue/application/EditBeachMap.java` — Javadoc
 - `platform/src/main/java/ai/riviera/platform/venue/application/BeachMapPreviewService.java` — renamed to `BeachMapRemodelService`
 - `platform/src/main/java/ai/riviera/platform/venue/application/BeachMapRemodelService.java` — preview + commit (new)
 - `platform/src/main/java/ai/riviera/platform/venue/application/LayoutCommand.java` — `of(List<LayoutCell>)`
@@ -516,6 +529,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/notification/adapter/out/SmtpMailer.java` — the kind, the reason arm
 - `platform/src/main/java/ai/riviera/platform/shared/ObservabilityMetrics.java` — `MAIL_MOVE_ABANDONED`
 - `platform/src/main/java/ai/riviera/platform/RemodelCommitController.java` — (new)
+- `platform/src/main/java/ai/riviera/platform/RemodelCommitOutcome.java` — sealed (new)
 - `platform/src/main/java/ai/riviera/platform/RemodelCommitService.java` — the gate (new)
 - `platform/src/main/java/ai/riviera/platform/RemodelCommitRequest.java` — (new)
 - `platform/src/main/java/ai/riviera/platform/RemodelCommitResponse.java` — (new)
@@ -525,12 +539,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` — the matchers
 - `platform/src/test/java/ai/riviera/platform/MoveVsReserveConcurrencyIT.java` — AC-1 (new)
 - `platform/src/test/java/ai/riviera/platform/RemodelCommitIT.java` — AC-6 (new)
+- `platform/src/test/java/ai/riviera/platform/RemodelPreviewIT.java` — the token on the wire
 - `platform/src/test/java/ai/riviera/platform/CrossVenueDenialIT.java` — AC-6, AC-7
 - `platform/src/test/java/ai/riviera/platform/EndpointRoleGateCoverageTest.java` — if a permitAll entry is needed
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — `MockMailer`
 - `platform/src/test/java/ai/riviera/platform/booking/RemodelCommitMigrationIT.java` — V52 (new)
-- `platform/src/test/java/ai/riviera/platform/booking/RemodelReceiptIT.java` — AC-7 (new)
+- `platform/src/test/java/ai/riviera/platform/RemodelReceiptIT.java` — AC-7 (new)
 - `platform/src/test/java/ai/riviera/platform/booking/FreeExitCancelIT.java` — AC-9 (new)
+- `platform/src/test/java/ai/riviera/platform/booking/MyBookingsIT.java` — `movedAt`
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcBookingTransitionTableIT.java` — the reason CHECK
 - `platform/src/test/java/ai/riviera/platform/booking/vocabulary/PreviewTokenTest.java` — AC-2 (new)
 - `platform/src/test/java/ai/riviera/platform/booking/application/BookingCutoffFreeExitTest.java` — AC-3 (new)
 - `platform/src/test/java/ai/riviera/platform/booking/application/cancel/CancellationPolicyFreeExitTest.java` — AC-3 (new)
@@ -566,12 +583,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/layout-editor.html` — the receipt, the past remodels
 - `frontend/src/app/operator/layout-editor.spec.ts` — AC-11
 - `frontend/src/app/operator/warn-token-skin.contrast.spec.ts` — the receipt panel joins the sweep if it wears the skin
+- `frontend/src/app/shared/set-distance.ts` — the distance words, shared by three surfaces (new)
+- `frontend/src/app/shared/set-distance.spec.ts` — (new)
 - `frontend/src/app/booking/booking.model.ts` — `move`, `movedAt`, `VENUE_CHANGE`
 - `frontend/src/app/booking/booking-view.ts` — the moved notice
 - `frontend/src/app/booking/booking-view.spec.ts` — AC-12
 - `frontend/src/app/booking/booking-view.contrast.spec.ts` — AC-12
 - `frontend/src/app/booking/my-bookings.ts` — the chip
 - `frontend/src/app/booking/my-bookings.spec.ts` — AC-12
+- `frontend/src/app/booking/booking-pay.spec.ts`, `booking.service.spec.ts`, `find-booking.spec.ts` — `BookingDetail` fixtures gain `move`
+- `frontend/e2e/fixed-ink-token-recut.e2e.ts`, `review-a-stay.e2e.ts`, `review-lifecycle.e2e.ts`, `solid-btn-token-skin.e2e.ts` — detail fixtures gain `move`
 - `frontend/e2e/layout-editor.e2e.ts` — AC-13
 - `frontend/e2e/moved-booking.e2e.ts` — AC-13 (new)
 - `frontend/e2e/real-backend/remodel-move.e2e.ts` — AC-14 (new)
@@ -671,12 +692,20 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-09 | phase 3 — a probe refusing after a proceeding gate would have committed the moves without the layout | every caller that runs a module port inside another's transaction and can refuse after the callee wrote | `grep -rn "RemodelGate\|TransactionTemplate" platform/src/main` | 1 (`BeachMapRemodelService#commit`) | explicit `TransactionTemplate`, `setRollbackOnly()` on every non-`Written` outcome; pinned in `BeachMapRemodelServiceTest` |
+| 2026-09-09 | phase 5 — two Javadocs the diff touched carried issue numbers | every doc comment the diff touches | `node scripts/check-inline-comments.mjs --diff origin/main` | 2 (`MyBookingView`, `BookingRecord`) | provenance dropped; guard exit 0 |
+| 2026-09-09 | phase 7 — a third copy of the move-distance words | every surface saying "N positions along the row" | `grep -rn "along the row" frontend/src` | 3 (preview panel, receipt panel, booking view) | promoted to `shared/set-distance.ts`, one spec |
+| 2026-09-09 | phase 7 — `BookingDetail` gained a required `move` | every literal typed as `BookingDetail` | `grep -rln "cancellationWindowAtBirth:" frontend/src frontend/e2e` | 11 files | fixtures gain `move: null`; the guest list normalises `movedAt` from either shape |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-15:** filled at close-out with the commands and the commit.
+- [x] **AC-1..AC-10:** `gradle --no-daemon test --tests "*MoveVsReserveConcurrencyIT*" --tests "*PreviewTokenTest*" --tests "*BookingCutoffFreeExitTest*" --tests "*CancellationPolicyFreeExitTest*" --tests "*RemodelClaimsServiceTest*" --tests "*BeachMapRemodelServiceTest*" --tests "*LayoutWriterTest*" --tests "*RemodelCommitIT*" --tests "*RemodelReceiptIT*" --tests "*CrossVenueDenialIT*" --tests "*BookingMovedMail*" --tests "*FreeExitCancelIT*"` green, plus the structural net command from `CLAUDE.md`, `EndpointRoleGateCoverageTest`, `CompositionRootDisciplineTests`, `PayoutModuleTest` — phases 0–5; CI runs the whole suite on PR #1052.
+- [x] **AC-11, AC-12:** `npx ng test --watch=false` — 251 files, 3065 tests green (phase 7 commit).
+- [x] **AC-13:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- e2e/layout-editor.e2e.ts e2e/moved-booking.e2e.ts` — 24 passed (phase 8).
+- [ ] **AC-14:** `npx playwright test e2e/real-backend/remodel-move.e2e.ts` against `gradle bootRun` + `npm start` in this session — result recorded below.
+- [x] **AC-15:** the four `CONTEXT.md` entries, the five `RESPONSIBILITIES.md` sections, the nine-event list, ADR-0020's status — phase 9 commit.
 
 ## Self-review checklist (before merge / PR)
 

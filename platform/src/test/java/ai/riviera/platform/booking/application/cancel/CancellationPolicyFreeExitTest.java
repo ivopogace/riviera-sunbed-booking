@@ -37,8 +37,8 @@ import static org.mockito.Mockito.when;
 /**
  * The free-exit override (invariant #10): a moved booking quoted inside the LATE window before its
  * deadline refunds in full with reason {@code VENUE_CHANGE}; after the deadline the venue's late share
- * applies with reason {@code POLICY}; a CLOSED window stays closed; an unmoved booking and a moved one
- * still in the FREE window keep the policy's own answer, the latter still reporting the deadline.
+ * applies with reason {@code POLICY}; a CLOSED window stays closed; an unmoved booking keeps the
+ * policy's own answer; a moved one still in the FREE window is full either way and names the exit.
  */
 class CancellationPolicyFreeExitTest {
 
@@ -110,12 +110,12 @@ class CancellationPolicyFreeExitTest {
 	}
 
 	@Test
-	void aMovedBookingStillInTheFreeWindowIsFullByPolicyAndStillReportsTheDeadline() {
+	void aMovedBookingStillInTheFreeWindowIsFullAndNamesTheExitWithItsDeadline() {
 		RefundQuote quote = policyAt(tirane(9, 10, 16, 0)).quote(booking(MOVED_AT));
 
 		assertEquals(CancellationWindow.FREE, quote.window());
 		assertEquals(4500L, quote.refundMinor());
-		assertEquals(RefundReason.POLICY, quote.reason());
+		assertEquals(RefundReason.VENUE_CHANGE, quote.reason());
 		assertEquals(tirane(9, 11, 15, 0), quote.freeExitUntil());
 	}
 }

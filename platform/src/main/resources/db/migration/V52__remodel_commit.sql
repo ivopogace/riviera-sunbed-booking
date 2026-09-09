@@ -21,11 +21,12 @@ ALTER TABLE payout_ledger_entry
 -- The commit receipt: what one remodel did to the bookings on the sets it removed or renumbered,
 -- written in the moves' own transaction and read by the venue's owner afterwards. Owned by
 -- `booking`. The operator is the actor, never the authority: the read is owner-asserted through
--- the venue.
+-- the venue, and the actor is recorded as the id at commit time without a foreign key — like the
+-- admin audit trail's actor, a receipt outlives whatever later happens to the operator row.
 CREATE TABLE remodel_receipt (
     id            BIGINT      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     venue_id      BIGINT      NOT NULL REFERENCES venue(id),
-    operator_id   BIGINT      NOT NULL REFERENCES operator(id),
+    operator_id   BIGINT      NOT NULL,
     committed_at  TIMESTAMPTZ NOT NULL
 );
 

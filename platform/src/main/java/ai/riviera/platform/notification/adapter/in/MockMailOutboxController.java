@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,15 +28,20 @@ import ai.riviera.platform.notification.adapter.out.SentEmail;
 @Profile("!mailer & !smtp4dev")
 class MockMailOutboxController {
 
-	private final MockMailer mailer;
+	private final ObjectProvider<MockMailer> mailer;
 
-	MockMailOutboxController(MockMailer mailer) {
+	/** Resolved lazily: a test that swaps the {@code Mailer} bean for a double leaves no outbox to read. */
+	MockMailOutboxController(ObjectProvider<MockMailer> mailer) {
 		this.mailer = mailer;
 	}
 
 	@GetMapping("/booking-mails")
 	List<BookingMailView> bookingMails(@RequestParam("to") String toEmail) {
-		return mailer.sent().stream()
+		MockMailer outbox = mailer.getIfAvailable();
+		if (outbox == null) {
+			return List.of();
+		}
+		return outbox.sent().stream()
 				.filter(sent -> sent.toEmail().equalsIgnoreCase(toEmail))
 				.flatMap(sent -> BookingMailView.of(sent).stream())
 				.toList();

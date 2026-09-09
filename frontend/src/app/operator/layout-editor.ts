@@ -748,10 +748,15 @@ export class LayoutEditor {
     const tool = this.activeBrush();
     const lock = this.lockAt(r, c);
     if (tool === 'gap' && lock !== undefined) {
+      if (heldByStaff(lock)) {
+        this.lockNotice.set(
+          `Row ${gridRowLabel(r)} · position ${c + 1} is ${lockReason(lock)} — it can’t become a gap. Its tier and pool can still change.`,
+        );
+        return;
+      }
       this.lockNotice.set(
-        `Row ${gridRowLabel(r)} · position ${c + 1} is ${lockReason(lock)} — it can’t become a gap. Its tier and pool can still change.`,
+        `Row ${gridRowLabel(r)} · position ${c + 1} is ${lockReason(lock)} — saving will first show where its bookings would move.`,
       );
-      return;
     }
     this.grid.update((g) =>
       g.map((row, ri) => (ri !== r ? row : row.map((cell, ci) => (ci !== c ? cell : tool)))),
@@ -765,16 +770,20 @@ export class LayoutEditor {
     return this.lockByCoord().get(coordKey(c + 1, r + 1));
   }
 
-  /** The gap brush keeps every locked cell; the other brushes repaint them. */
+  /**
+   * The gap brush keeps a cell staff hold (nobody can be mailed, so the save would refuse it); a cell
+   * only a booking pins may be painted out, since the save previews moving its bookings first.
+   */
   private paintOver(state: CellState, tool: CellState, r: number, c: number): CellState {
-    return tool === 'gap' && this.lockAt(r, c) !== undefined ? state : tool;
+    const lock = this.lockAt(r, c);
+    return tool === 'gap' && lock !== undefined && heldByStaff(lock) ? state : tool;
   }
 
-  /** The fills' notice: how many locked cells the gap brush left as they were. */
+  /** The fills' notice: how many held cells the gap brush left as they were. */
   private noteKeptLocks(kept: number, scope: string): void {
     if (kept > 0) {
       this.lockNotice.set(
-        `${scope} → ${TOOL_LABEL.gap} kept ${kept} locked ${kept === 1 ? 'set' : 'sets'} — booked or held sets can’t become gaps.`,
+        `${scope} → ${TOOL_LABEL.gap} kept ${kept} held ${kept === 1 ? 'set' : 'sets'} — sets held by staff can’t become gaps.`,
       );
     }
   }
@@ -1387,4 +1396,12 @@ function formatClockTime(date: Date): string {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date);
+}
+
+/**
+ * A lock with no booking behind it is a staff walk-in mark alone: no guest to mail, so no remodel
+ * can move it. `heldOn` names the nearest claim of either kind, so it cannot tell the two apart.
+ */
+function heldByStaff(lock: SetLock): boolean {
+  return lock.bookedOn === null;
 }
