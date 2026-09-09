@@ -100,7 +100,7 @@ class BookingMovedMailIT {
 		Instant movedAt = Instant.parse("2029-08-01T13:00:00Z");
 		jdbc.sql("UPDATE booking SET moved_at = :at WHERE id = :id").param("at", java.sql.Timestamp.from(movedAt))
 				.param("id", booking).update();
-		receipts.record(new VenueId(from.venueId()), operatorId(), movedAt, List.of(new ReceiptMove(
+		receipts.store(new VenueId(from.venueId()), operatorId(), movedAt, List.of(new ReceiptMove(
 				new BookingId(booking), date, new SpotRef(new SetId(from.setId()), "A", 3),
 				new SpotRef(new SetId(to), "Z", 87), 0, 84)));
 		String venueName = jdbc.sql("SELECT name FROM venue WHERE id = :v").param("v", from.venueId())
@@ -146,7 +146,7 @@ class BookingMovedMailIT {
 		Instant movedAt = Instant.parse("2029-08-01T13:00:00Z");
 		jdbc.sql("UPDATE booking SET moved_at = :at WHERE id = :id").param("at", java.sql.Timestamp.from(movedAt))
 				.param("id", booking).update();
-		receipts.record(new VenueId(from.venueId()), operatorId(), movedAt, List.of(new ReceiptMove(
+		receipts.store(new VenueId(from.venueId()), operatorId(), movedAt, List.of(new ReceiptMove(
 				new BookingId(booking), date, new SpotRef(new SetId(from.setId()), "A", 3),
 				new SpotRef(new SetId(to), "Z", 88), 0, 85)));
 

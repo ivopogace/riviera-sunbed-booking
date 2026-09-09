@@ -59,9 +59,9 @@ class JdbcRemodelReceiptsIT {
 		SpotRef toA2 = new SpotRef(new SetId(a2), "A", 2);
 		SpotRef toA3 = new SpotRef(new SetId(a3), "A", 3);
 
-		ReceiptId earlier = receipts.record(new VenueId(venue), operator, first, List.of(
+		ReceiptId earlier = receipts.store(new VenueId(venue), operator, first, List.of(
 				new ReceiptMove(new BookingId(booking), DAY, fromA1, toA2, 0, 1)));
-		ReceiptId newest = receipts.record(new VenueId(venue), operator, first.plus(1, ChronoUnit.HOURS), List.of(
+		ReceiptId newest = receipts.store(new VenueId(venue), operator, first.plus(1, ChronoUnit.HOURS), List.of(
 				new ReceiptMove(new BookingId(booking), DAY, toA2, toA3, 0, 1),
 				new ReceiptMove(new BookingId(later), DAY.plusDays(1), fromA1, toA3, 0, 2)));
 

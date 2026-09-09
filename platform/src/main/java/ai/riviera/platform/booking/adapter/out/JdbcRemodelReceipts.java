@@ -36,6 +36,7 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 			receipt_id, booking_id, booking_date, from_set_id, from_row_label, from_position_no,
 			to_set_id, to_row_label, to_position_no, rows_away, positions_away
 			""";
+	private static final String SELECT_MOVES = "SELECT " + MOVE_COLUMNS;
 	private static final String P_VENUE = "venue";
 	private static final String P_RECEIPT = "receipt";
 
@@ -46,7 +47,7 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 	}
 
 	@Override
-	public ReceiptId record(VenueId venueId, OperatorId operatorId, Instant committedAt, List<ReceiptMove> moves) {
+	public ReceiptId store(VenueId venueId, OperatorId operatorId, Instant committedAt, List<ReceiptMove> moves) {
 		long id = jdbc.sql("""
 				INSERT INTO remodel_receipt (venue_id, operator_id, committed_at)
 				VALUES (:venue, :operator, :at)
@@ -94,7 +95,7 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 			return List.of();
 		}
 		Map<Long, List<ReceiptMove>> moves = new LinkedHashMap<>();
-		jdbc.sql("SELECT " + MOVE_COLUMNS + """
+		jdbc.sql(SELECT_MOVES + """
 				FROM remodel_receipt_move WHERE receipt_id IN (:receipts) ORDER BY id
 				""")
 				.param("receipts", List.copyOf(heads.keySet()))
@@ -116,7 +117,7 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 				.param(P_VENUE, venueId.value())
 				.query(JdbcRemodelReceipts::mapHead)
 				.optional()
-				.map(head -> withMoves(head, jdbc.sql("SELECT " + MOVE_COLUMNS
+				.map(head -> withMoves(head, jdbc.sql(SELECT_MOVES
 						+ " FROM remodel_receipt_move WHERE receipt_id = :receipt ORDER BY id")
 						.param(P_RECEIPT, receiptId.value())
 						.query((rs, rowNum) -> mapMove(rs))
@@ -125,7 +126,7 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 
 	@Override
 	public Optional<ReceiptMove> latestMoveOf(BookingId bookingId) {
-		return jdbc.sql("SELECT " + MOVE_COLUMNS + """
+		return jdbc.sql(SELECT_MOVES + """
 				FROM remodel_receipt_move WHERE booking_id = :booking ORDER BY id DESC LIMIT 1
 				""")
 				.param("booking", bookingId.value())

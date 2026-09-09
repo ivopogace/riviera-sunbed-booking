@@ -194,7 +194,7 @@ describe('RemodelPreviewPanel (#1033, #1034)', () => {
     render(MOVES_ONLY_PREVIEW);
     // The live region exists (empty) before the change, so its later text is announced (RV-FE-10).
     const note = byId('layout-remodel-stale')!;
-    expect(note.getAttribute('role')).toBe('status');
+    expect(note.tagName).toBe('OUTPUT');
     expect(note.textContent?.trim()).toBe('');
     fixture.componentRef.setInput('stale', true);
     fixture.detectChanges();

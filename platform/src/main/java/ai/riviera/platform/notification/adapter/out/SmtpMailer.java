@@ -247,12 +247,19 @@ class SmtpMailer implements Mailer {
 
 	/** "4 positions along the row", "1 row over", "2 rows and 3 positions away". */
 	static String distance(BookingMovedMail moved) {
+		String positions = plural(moved.positionsAway(), "position");
 		if (moved.rowsAway() == 0) {
-			return moved.positionsAway() + (moved.positionsAway() == 1 ? " position" : " positions") + " along the row";
+			return positions + " along the row";
 		}
-		String rows = moved.rowsAway() + (moved.rowsAway() == 1 ? " row" : " rows");
-		return moved.positionsAway() == 0 ? rows + " over"
-				: rows + " and " + moved.positionsAway() + (moved.positionsAway() == 1 ? " position" : " positions") + " away";
+		String rows = plural(moved.rowsAway(), "row");
+		if (moved.positionsAway() == 0) {
+			return rows + " over";
+		}
+		return rows + " and " + positions + " away";
+	}
+
+	private static String plural(int count, String noun) {
+		return count + " " + noun + (count == 1 ? "" : "s");
 	}
 
 	@Override

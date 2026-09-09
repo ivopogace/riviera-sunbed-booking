@@ -74,10 +74,12 @@ export class RemodelPreviewPanel {
 
   /** "Save and move 2 bookings" */
   protected saveLabel(): string {
+    if (this.committing()) {
+      return 'Saving…';
+    }
     const count = this.preview().moves.length;
-    return this.committing()
-      ? 'Saving…'
-      : `Save and move ${count} booking${count === 1 ? '' : 's'}`;
+    const noun = count === 1 ? 'booking' : 'bookings';
+    return `Save and move ${count} ${noun}`;
   }
 
   /** "Keep Row A · position 3 and Row A · position 2 on the map to save." */

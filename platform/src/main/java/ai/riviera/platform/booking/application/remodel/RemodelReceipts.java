@@ -17,7 +17,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 public interface RemodelReceipts {
 
 	/** Persist a receipt with its moves in the caller's transaction and answer its id. */
-	ReceiptId record(VenueId venueId, OperatorId operatorId, Instant committedAt, List<ReceiptMove> moves);
+	ReceiptId store(VenueId venueId, OperatorId operatorId, Instant committedAt, List<ReceiptMove> moves);
 
 	/** The venue's receipts with their moves, newest first. */
 	List<RemodelReceipt> receiptsOf(VenueId venueId);

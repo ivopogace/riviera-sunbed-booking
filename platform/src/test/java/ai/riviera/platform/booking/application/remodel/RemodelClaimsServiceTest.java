@@ -209,7 +209,7 @@ class RemodelClaimsServiceTest {
 		assertEquals(List.of(new BookingId(200)), stale.fresh().stream().map(RemodelClaim::bookingId).toList());
 		verify(availability, never()).claim(any(), any());
 		verify(bookings, never()).moveToSet(any(Long.class), any(), any(), any());
-		verify(receipts, never()).record(any(), any(), any(), any());
+		verify(receipts, never()).store(any(), any(), any(), any());
 		verify(events, never()).publishEvent(any());
 	}
 
@@ -225,7 +225,7 @@ class RemodelClaimsServiceTest {
 
 		assertEquals(new RemodelCommit.Refused(List.of(refund)), outcome);
 		verify(availability, never()).claim(any(), any());
-		verify(receipts, never()).record(any(), any(), any(), any());
+		verify(receipts, never()).store(any(), any(), any(), any());
 	}
 
 	@Test
@@ -237,7 +237,7 @@ class RemodelClaimsServiceTest {
 		when(facts.freeOnlineSetsOn(VENUE, IN_TEN_DAYS.plusDays(1))).thenReturn(List.of(A3));
 		when(availability.claim(any(), any())).thenReturn(ClaimOutcome.CLAIMED);
 		when(bookings.moveToSet(any(Long.class), any(), any(), any())).thenReturn(true);
-		when(receipts.record(any(), any(), any(), any())).thenReturn(RECEIPT);
+		when(receipts.store(any(), any(), any(), any())).thenReturn(RECEIPT);
 		RemodelClaim first = new RemodelClaim(new BookingId(203), ref(A1), IN_TEN_DAYS, 4500, "EUR",
 				new RemodelOutcome.Move(ref(A2), 0, 1));
 		RemodelClaim second = new RemodelClaim(new BookingId(204), ref(A1), IN_TEN_DAYS.plusDays(1), 4500, "EUR",
@@ -254,7 +254,7 @@ class RemodelClaimsServiceTest {
 		order.verify(availability).claim(A3.setId(), IN_TEN_DAYS.plusDays(1));
 		order.verify(availability).release(A1.setId(), IN_TEN_DAYS.plusDays(1));
 		order.verify(bookings).moveToSet(204, A1.setId(), A3.setId(), CLOCK.instant());
-		order.verify(receipts).record(VENUE, OWNER, CLOCK.instant(), List.of(
+		order.verify(receipts).store(VENUE, OWNER, CLOCK.instant(), List.of(
 				new ReceiptMove(new BookingId(203), IN_TEN_DAYS, ref(A1), ref(A2), 0, 1),
 				new ReceiptMove(new BookingId(204), IN_TEN_DAYS.plusDays(1), ref(A1), ref(A3), 0, 2)));
 	}
@@ -266,7 +266,7 @@ class RemodelClaimsServiceTest {
 		givenMap(List.of(A1, A2, A3), IN_TEN_DAYS, List.of(A3));
 		when(availability.claim(any(), any())).thenReturn(ClaimOutcome.CLAIMED);
 		when(bookings.moveToSet(any(Long.class), any(), any(), any())).thenReturn(true);
-		when(receipts.record(any(), any(), any(), any())).thenReturn(RECEIPT);
+		when(receipts.store(any(), any(), any(), any())).thenReturn(RECEIPT);
 		PreviewToken previewed = previewOf(
 				new RemodelClaim(new BookingId(205), ref(A1), IN_TEN_DAYS, 4500, "EUR", new RemodelOutcome.Move(ref(A2), 0, 1)),
 				new RemodelClaim(new BookingId(206), ref(A1), IN_TEN_DAYS, 4500, "EUR", new RemodelOutcome.Move(ref(A3), 0, 2)));
@@ -290,6 +290,6 @@ class RemodelClaimsServiceTest {
 		assertThrows(IllegalStateException.class, () -> service.commit(OWNER, VENUE, List.of(A1.setId()), previewed));
 		verify(availability, never()).release(any(), any());
 		verify(bookings, never()).moveToSet(any(Long.class), any(), any(), any());
-		verify(receipts, never()).record(any(), any(), any(), any());
+		verify(receipts, never()).store(any(), any(), any(), any());
 	}
 }

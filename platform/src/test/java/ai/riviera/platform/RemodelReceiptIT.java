@@ -74,8 +74,8 @@ class RemodelReceiptIT {
 		OperatorId operator = new OperatorId(jdbc.sql("SELECT id FROM operator WHERE username = 'operator'")
 				.query(Long.class).single());
 		LocalDate day = LocalDate.of(2027, 7, 12);
-		ReceiptId older = receipts.record(new VenueId(venue), operator, Instant.parse("2026-09-09T10:00:00Z"), List.of());
-		ReceiptId newer = receipts.record(new VenueId(venue), operator, Instant.parse("2026-09-09T11:00:00Z"), List.of(
+		ReceiptId older = receipts.store(new VenueId(venue), operator, Instant.parse("2026-09-09T10:00:00Z"), List.of());
+		ReceiptId newer = receipts.store(new VenueId(venue), operator, Instant.parse("2026-09-09T11:00:00Z"), List.of(
 				new ReceiptMove(new BookingId(booking), day, new SpotRef(new SetId(a1), "A", 1),
 						new SpotRef(new SetId(a2), "A", 2), 0, 1)));
 

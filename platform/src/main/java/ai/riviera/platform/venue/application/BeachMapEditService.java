@@ -1,6 +1,5 @@
 package ai.riviera.platform.venue.application;
 
-import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
@@ -207,13 +206,6 @@ class BeachMapEditService implements EditBeachMap {
 		int updated = venues.updateSetFields(venueId, command);
 		venues.incrementSetVersion(venueId); // advance the token iff the batch wrote
 		return new SetBatchOutcome.Applied(updated);
-	}
-
-	private static LayoutRejection toReplaceRejection(Venues.Conflict conflict) {
-		return switch (conflict) {
-			case DUPLICATE_POSITION -> LayoutRejection.DUPLICATE_POSITION;
-			case CELL_TAKEN -> LayoutRejection.CELL_TAKEN;
-		};
 	}
 
 	private static SetRejection toRejection(Venues.Conflict conflict) {

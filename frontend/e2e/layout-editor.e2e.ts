@@ -941,7 +941,7 @@ test('a commit that finds the bookings changed re-renders the fresh picture stal
   // The fresh picture is the blocked shape: flagged stale, every group, Back alone, no error bar.
   const stale = page.getByTestId('layout-remodel-stale');
   await expect(stale).toContainText('bookings changed since you previewed');
-  await expect(stale).toHaveAttribute('role', 'status');
+  expect(await stale.evaluate((node) => node.tagName)).toBe('OUTPUT');
   await expect(page.getByTestId('layout-remodel-blocks')).toContainText(
     'arrives within the freeze window',
   );

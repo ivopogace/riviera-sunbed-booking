@@ -104,7 +104,7 @@ class RemodelClaimsService implements RemodelClaims {
 			RemodelOutcome.Move move = (RemodelOutcome.Move) claim.outcome();
 			moves.add(applyMove(venueId, claim, move, movedAt));
 		}
-		ReceiptId receipt = receipts.record(venueId, operator, movedAt, moves);
+		ReceiptId receipt = receipts.store(venueId, operator, movedAt, moves);
 		return new RemodelCommit.Applied(receipt, movedAt, fresh);
 	}
 

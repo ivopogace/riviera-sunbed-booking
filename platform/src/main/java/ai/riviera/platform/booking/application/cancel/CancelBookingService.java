@@ -121,9 +121,16 @@ class CancelBookingService implements CancelBooking {
 	private static CancelOutcome.Tier tierFor(CancellationWindow window, long refundMinor, long amountMinor) {
 		return switch (window) {
 			case FREE -> CancelOutcome.Tier.FULL;
-			case LATE -> refundMinor >= amountMinor ? CancelOutcome.Tier.FULL
-					: refundMinor > 0 ? CancelOutcome.Tier.PARTIAL : CancelOutcome.Tier.NONE;
+			case LATE -> lateTier(refundMinor, amountMinor);
 			case CLOSED -> throw new IllegalStateException("a closed window cannot be cancelled");
 		};
+	}
+
+	/** The LATE tier the refund amount implies: the whole amount is FULL (the free exit), part is PARTIAL, nothing is NONE. */
+	private static CancelOutcome.Tier lateTier(long refundMinor, long amountMinor) {
+		if (refundMinor >= amountMinor) {
+			return CancelOutcome.Tier.FULL;
+		}
+		return refundMinor > 0 ? CancelOutcome.Tier.PARTIAL : CancelOutcome.Tier.NONE;
 	}
 }

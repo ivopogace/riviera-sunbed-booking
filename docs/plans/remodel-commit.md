@@ -443,7 +443,7 @@ never `[disabled]` on the pressed control, `focusMover` on every leg — no devi
 
 ## Execution status
 
-**Stage pointer:** `merge — PR #1052 ready for review; review gate run, findings fixed; CI + Sonar on the final head, then merge`
+**Stage pointer:** `merge — PR #1052 ready for review; review gate run, Sonar list cleared (F-12); CI + Sonar re-read on the final head, then merge`
 
 **Next action:** merge once CI and the Sonar list are green on the final head, then the merge close-out (`pr-gates.md` §3: issue closed, epic #1027 ticked, this plan retired at the next close-out).
 
@@ -476,6 +476,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-8 | review gate (RV-FE-10) | the stale note's `role="status"` was born with its text | fixed — the region always renders, only its text branches (2b8a9461) |
 | F-9 | review gate (RV-STYLE-1) | `LockedSet` "never both"; `cancelledOpener` doc said only `POLICY` is the guest's act | fixed (1958c6ef, 2b8a9461) |
 | F-10 | review gate (RV-PROC-2c) | `RESPONSIBILITIES.md` cited `ReplaceRejection.ROW_NAME_TAKEN` after the rename | fixed (1e93a7f6) |
+| F-12 | Sonar (PR analysis on ce6259c0): gate passed, 89.0% new-code coverage, 0.7% duplication, 8 new code smells | `record` as a method name (S6213 ×2), a `"SELECT "` literal three times (S1192), three nested ternaries (S3358 — `saveLabel`, `SmtpMailer#distance`, `CancelBookingService#tierFor`), an unused `toReplaceRejection` (S1144), `role="status"` where `<output>` serves (Web:S6819) | fixed — `store`, `SELECT_MOVES`, `plural`/`lateTier`/an early return, the method dropped, the stale note is an `<output>`; list re-read after the push |
 | F-11 | CI (head a0fc6132), the a11y e2e | 8 booking-view specs in other files mock a detail without `move`; `showMoved` read `undefined !== null` as moved and the template threw | fixed — a missing field reads as never moved, pinned in `booking-view.spec.ts`; the whole mocked suite run locally before the push |
 
 ---
@@ -742,7 +743,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [x] **Close-out written in THIS PR, in its last code-touching commit** (the F-11 fix; merged via PR #1052) — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **Close-out written in THIS PR, in its last code-touching commit** (the F-12 Sonar fixes; merged via PR #1052) — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
 - [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
