@@ -426,16 +426,16 @@ never `[disabled]` on the pressed control, `focusMover` on every leg — no devi
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4) — draft PR open`
 
-**Next action:** the edge: `RemodelCommitService` with the gate, the controller, the assembler, the receipt read, the ITs, the net.
+**Next action:** `notification`: the moved mail, `moveFacts`, the mock outbox read.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the concurrency IT (red), V52, `VENUE_CHANGE`, the migration IT | ✅ | phase-0 commit |
 | 1 — `booking`: token, free exit, move, receipts, `BookingMoved`, `commit` | ✅ | phase-1 commit |
 | 2 — `venue`: `LayoutCell`, `LayoutWriter`, `BeachMapRemodel#commit` | ✅ | phase-2 commit |
-| 3 — the edge: commit service + controller, assembler, receipts controller, security, ITs, the net | | |
+| 3 — the edge: commit service + controller, assembler, receipts controller, security, ITs, the net | ✅ | phase-3 commit |
 | 4 — `notification`: the moved mail, `moveFacts`, the mock outbox read | | |
 | 5 — the guest view and the free-exit cancel at the HTTP seam | | |
 | 6 — the editor: model, service, panel Save, receipt panel, past remodels, specs | | |

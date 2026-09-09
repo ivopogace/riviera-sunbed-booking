@@ -6,6 +6,7 @@ import ai.riviera.platform.booking.vocabulary.ReceiptId;
 import ai.riviera.platform.booking.vocabulary.RemodelClaim;
 import ai.riviera.platform.venue.vocabulary.DisturbedSet;
 import ai.riviera.platform.venue.vocabulary.LayoutRejection;
+import ai.riviera.platform.venue.vocabulary.LockedSet;
 
 /**
  * What the edge's remodel commit answered, for the controller to map: the layout is saved and the
@@ -27,7 +28,7 @@ sealed interface RemodelCommitOutcome {
 	record Refused(List<DisturbedSet> disturbed, List<RemodelClaim> fresh) implements RemodelCommitOutcome {
 	}
 
-	record SetsInUse(List<DisturbedSet> sets) implements RemodelCommitOutcome {
+	record SetsInUse(List<LockedSet> sets) implements RemodelCommitOutcome {
 	}
 
 	record Rejected(LayoutRejection reason) implements RemodelCommitOutcome {

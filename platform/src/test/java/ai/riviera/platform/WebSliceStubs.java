@@ -810,6 +810,29 @@ class WebSliceStubs {
 	}
 
 	@Bean
+	RemodelCommitService remodelCommitService(ai.riviera.platform.venue.api.BeachMapRemodel remodel,
+			ai.riviera.platform.booking.api.RemodelClaims claims) {
+		return new RemodelCommitService(remodel, claims);
+	}
+
+	@Bean
+	ai.riviera.platform.booking.application.remodel.ViewRemodelReceipts viewRemodelReceipts() {
+		return new ai.riviera.platform.booking.application.remodel.ViewRemodelReceipts() {
+			@Override
+			public List<ai.riviera.platform.booking.application.remodel.RemodelReceipt> receiptsOf(OperatorId operator,
+					VenueId venueId) {
+				return List.of();
+			}
+
+			@Override
+			public Optional<ai.riviera.platform.booking.application.remodel.RemodelReceipt> receipt(OperatorId operator,
+					VenueId venueId, ai.riviera.platform.booking.vocabulary.ReceiptId receiptId) {
+				return Optional.empty();
+			}
+		};
+	}
+
+	@Bean
 	ai.riviera.platform.booking.api.RemodelClaims remodelClaims() {
 		return new ai.riviera.platform.booking.api.RemodelClaims() {
 			@Override

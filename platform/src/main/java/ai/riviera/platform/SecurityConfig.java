@@ -86,6 +86,10 @@ class SecurityConfig {
 	 */
 	private static final String BEACH_MAP_PATH = "/api/venues/*/beach-map";
 	private static final String BEACH_MAP_PREVIEW_PATH = "/api/venues/*/beach-map/preview";
+	private static final String BEACH_MAP_COMMIT_PATH = "/api/venues/*/beach-map/commit";
+	/** The owner's remodel receipts: who was moved where. Order-sensitive against the public venue GET. */
+	private static final String REMODEL_RECEIPTS_PATH = "/api/venues/*/remodels";
+	private static final String REMODEL_RECEIPT_PATH = "/api/venues/*/remodels/*";
 	private static final String ROW_PRICE_PATH = "/api/venues/*/rows/*/price";
 	private static final String ROW_NAME_PATH = "/api/venues/*/rows/*/name";
 	/**
@@ -344,6 +348,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, DAILY_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)
 						// Order-sensitive: the owner's map read carries which sets guests hold.
 						.requestMatchers(HttpMethod.GET, BEACH_MAP_PATH).hasRole(OPERATOR_ROLE)
+						// Order-sensitive: a receipt names which bookings a remodel moved.
+						.requestMatchers(HttpMethod.GET, REMODEL_RECEIPTS_PATH, REMODEL_RECEIPT_PATH).hasRole(OPERATOR_ROLE)
 						// Order-sensitive: exposes the operator↔venue ownership map.
 						.requestMatchers(HttpMethod.GET, MY_VENUES_PATH).hasRole(OPERATOR_ROLE)
 						// The platform's venue-creation terms; a literal path outside /api/venues/**.
@@ -392,6 +398,8 @@ class SecurityConfig {
 						.hasRole(OPERATOR_ROLE)
 						// The remodel dry run reads which sets guests hold (ADR-0020); owner-asserted in the modules.
 						.requestMatchers(HttpMethod.POST, BEACH_MAP_PREVIEW_PATH).hasRole(OPERATOR_ROLE)
+						// The remodel commit moves bookings (ADR-0020); owner-asserted in the modules.
+						.requestMatchers(HttpMethod.POST, BEACH_MAP_COMMIT_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.PUT, SEASON_CLOSURE_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, SEASON_CLOSURE_PATH).hasRole(OPERATOR_ROLE)
 						// Non-GET, so these never shadow the public serving read above.
