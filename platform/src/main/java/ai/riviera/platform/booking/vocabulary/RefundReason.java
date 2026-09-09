@@ -5,7 +5,7 @@ package ai.riviera.platform.booking.vocabulary;
  * {@link BookingCancelled} and recorded on the booking row and the payout {@code REVERSAL}.
  * Published vocabulary (invariant #11): the {@code payout} module reads it off the
  * event to stamp the reversal. Mirrors the {@code cancel_reason} / {@code reason} CHECK token sets
- * (V14) one-to-one — keep the Java enum and the SQL tokens in lockstep.
+ * (V14, widened by V52) one-to-one — keep the Java enum and the SQL tokens in lockstep.
  *
  * <ul>
  *   <li>{@link #POLICY} — a tourist cancellation under the cancellation policy (invariant #10):
@@ -14,10 +14,14 @@ package ai.riviera.platform.booking.vocabulary;
  *       the cutoff (invariant #10).</li>
  *   <li>{@link #CONFLICT} — reserved (an admin availability-conflict cancel); admitted by the schema
  *       now as a closed value set, not exercised in v1.</li>
+ *   <li>{@link #VENUE_CHANGE} — the guest cancelled a booking the venue's remodel had moved, inside
+ *       the free-exit deadline: a full refund whatever tier the window would answer (invariant #10),
+ *       operator-caused and distinct from {@link #CONFLICT}.</li>
  * </ul>
  */
 public enum RefundReason {
 	POLICY,
 	WEATHER,
-	CONFLICT
+	CONFLICT,
+	VENUE_CHANGE
 }

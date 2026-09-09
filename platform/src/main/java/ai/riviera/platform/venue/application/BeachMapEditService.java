@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue.application;
 
+import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
@@ -175,24 +176,24 @@ class BeachMapEditService implements EditBeachMap {
 		// Ownership first — fail closed before any read/write (invariant #13, BOLA).
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
 		if (command.isEmpty()) {
-			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.EMPTY_LAYOUT);
+			return new ReplaceLayoutOutcome.Rejected(LayoutRejection.EMPTY_LAYOUT);
 		}
 		if (command.tooLarge()) {
-			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.LAYOUT_TOO_LARGE);
+			return new ReplaceLayoutOutcome.Rejected(LayoutRejection.LAYOUT_TOO_LARGE);
 		}
 		if (!venues.venueExists(venueId)) {
-			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.NO_SUCH_VENUE);
+			return new ReplaceLayoutOutcome.Rejected(LayoutRejection.NO_SUCH_VENUE);
 		}
 		Optional<Venues.Conflict> internal = command.duplicateWithin();
 		if (internal.isPresent()) {
 			return new ReplaceLayoutOutcome.Rejected(toReplaceRejection(internal.get()));
 		}
 		if (command.splitsRowLabel()) {
-			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.ROW_NAME_TAKEN);
+			return new ReplaceLayoutOutcome.Rejected(LayoutRejection.ROW_NAME_TAKEN);
 		}
 		// Venue row lock + token read before the set locks (venue before set rows, as every set-write); advanced only on success.
 		if (venues.lockAndReadSetVersion(venueId) != expectedVersion) {
-			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.STALE_WRITE);
+			return new ReplaceLayoutOutcome.Rejected(LayoutRejection.STALE_WRITE);
 		}
 		// Lock the set rows before the probe: a racing claim is either seen (→ refuse) or blocks on its FK (invariant #2).
 		LayoutDiff diff = LayoutDiff.of(venues.lockSetsOfVenue(venueId), command);
@@ -247,10 +248,10 @@ class BeachMapEditService implements EditBeachMap {
 		return new SetBatchOutcome.Applied(updated);
 	}
 
-	private static ReplaceRejection toReplaceRejection(Venues.Conflict conflict) {
+	private static LayoutRejection toReplaceRejection(Venues.Conflict conflict) {
 		return switch (conflict) {
-			case DUPLICATE_POSITION -> ReplaceRejection.DUPLICATE_POSITION;
-			case CELL_TAKEN -> ReplaceRejection.CELL_TAKEN;
+			case DUPLICATE_POSITION -> LayoutRejection.DUPLICATE_POSITION;
+			case CELL_TAKEN -> LayoutRejection.CELL_TAKEN;
 		};
 	}
 

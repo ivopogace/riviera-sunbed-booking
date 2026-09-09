@@ -142,6 +142,7 @@ class SmtpMailer implements Mailer {
 			case WEATHER -> "The venue cancelled bookings for %s because of the weather."
 					.formatted(DATE_FORMAT.format(cancellation.bookingDate()));
 			case CONFLICT -> "The venue had to cancel your booking.";
+			case VENUE_CHANGE -> "You cancelled the booking the venue had moved, so it is refunded in full.";
 		};
 	}
 

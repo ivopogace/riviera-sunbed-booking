@@ -25,7 +25,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.application.EditBeachMap;
 import ai.riviera.platform.venue.application.LayoutCommand;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
-import ai.riviera.platform.venue.application.ReplaceRejection;
+import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -138,7 +138,7 @@ class BeachMapDiffConcurrencyIT {
 
 	private static boolean isStaleWrite(ReplaceLayoutOutcome outcome) {
 		return outcome instanceof ReplaceLayoutOutcome.Rejected rejected
-				&& rejected.reason() == ReplaceRejection.STALE_WRITE;
+				&& rejected.reason() == LayoutRejection.STALE_WRITE;
 	}
 
 	private List<ReplaceLayoutOutcome> race(OperatorId owner, VenueId venue, List<LayoutCommand> layouts)

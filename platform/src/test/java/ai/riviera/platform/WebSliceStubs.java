@@ -123,7 +123,7 @@ import ai.riviera.platform.venue.application.PhotoUploadResult;
 import ai.riviera.platform.venue.application.ProfileUpdateOutcome;
 import ai.riviera.platform.venue.application.ReopenOutcome;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
-import ai.riviera.platform.venue.application.ReplaceRejection;
+import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.application.SeasonClosureRejection;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
@@ -936,7 +936,7 @@ class WebSliceStubs {
 			@Override
 			public ReplaceLayoutOutcome replaceLayout(OperatorId operator, VenueId venueId,
 					long expectedVersion, LayoutCommand command) {
-				return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.NO_SUCH_VENUE);
+				return new ReplaceLayoutOutcome.Rejected(LayoutRejection.NO_SUCH_VENUE);
 			}
 
 			@Override

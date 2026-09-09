@@ -426,13 +426,13 @@ never `[disabled]` on the pressed control, `focusMover` on every leg — no devi
 
 ## Execution status
 
-**Stage pointer:** `plan — doc committed; implement (phase 0) next`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** write `MoveVsReserveConcurrencyIT` (red), then V52 and `VENUE_CHANGE`.
+**Next action:** `booking`: the free exit, the move, the receipts, `RemodelClaims#commit`, `BookingMoved`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the concurrency IT (red), V52, `VENUE_CHANGE`, the migration IT | | |
+| 0 — the concurrency IT (red), V52, `VENUE_CHANGE`, the migration IT | ✅ | phase-0 commit |
 | 1 — `booking`: token, free exit, move, receipts, `BookingMoved`, `commit` | | |
 | 2 — `venue`: `LayoutCell`, `LayoutWriter`, `BeachMapRemodel#commit` | | |
 | 3 — the edge: commit service + controller, assembler, receipts controller, security, ITs, the net | | |

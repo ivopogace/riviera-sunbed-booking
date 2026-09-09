@@ -32,7 +32,7 @@ import ai.riviera.platform.venue.application.EditBeachMap;
 import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.OnboardVenue;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
-import ai.riviera.platform.venue.application.ReplaceRejection;
+import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.application.SetBatchOutcome;
 import ai.riviera.platform.venue.application.SetRejection;
 import ai.riviera.platform.venue.application.ViewBeachMap;
@@ -313,7 +313,7 @@ class VenueAdminController {
 		return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
 	}
 
-	private static ResponseEntity<ProblemDetail> error(ReplaceRejection reason) {
+	private static ResponseEntity<ProblemDetail> error(LayoutRejection reason) {
 		return switch (reason) {
 			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
 					NO_SUCH_VENUE_DETAIL);

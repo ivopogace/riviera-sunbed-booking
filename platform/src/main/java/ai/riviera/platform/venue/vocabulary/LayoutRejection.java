@@ -1,15 +1,15 @@
-package ai.riviera.platform.venue.application;
+package ai.riviera.platform.venue.vocabulary;
 
 /**
  * Why a bulk beach-map save was rejected without naming a set — the closed set of expected,
- * caller-handled failures of {@link EditBeachMap#replaceLayout} besides
- * {@link ReplaceLayoutOutcome.SetsInUse}. Returned as a value, not thrown
+ * caller-handled failures of the bulk save and the remodel commit besides the refusal that names
+ * the sets in use. Returned as a value, not thrown
  * (riviera-java-conventions: typed outcomes). The REST adapter maps each to one HTTP status:
  * {@code NO_SUCH_VENUE}→404, {@code STALE_WRITE}→409,
  * {@code DUPLICATE_POSITION}/{@code CELL_TAKEN}/{@code ROW_NAME_TAKEN}→409,
  * {@code EMPTY_LAYOUT}/{@code LAYOUT_TOO_LARGE}→400.
  */
-public enum ReplaceRejection {
+public enum LayoutRejection {
 
 	/** No venue has the given id. */
 	NO_SUCH_VENUE,

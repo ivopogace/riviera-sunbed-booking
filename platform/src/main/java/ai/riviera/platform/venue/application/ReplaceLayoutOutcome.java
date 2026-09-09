@@ -1,11 +1,12 @@
 package ai.riviera.platform.venue.application;
 
+import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import java.util.List;
 
 /**
  * The closed set of outcomes of {@link EditBeachMap#replaceLayout}. Sealed so the
  * REST adapter {@code switch}es exhaustively: {@code Replaced}→204, {@code SetsInUse}→409 with the
- * blocking sets, {@code Rejected}→the {@link ReplaceRejection}'s HTTP status.
+ * blocking sets, {@code Rejected}→the {@link LayoutRejection}'s HTTP status.
  */
 public sealed interface ReplaceLayoutOutcome
 		permits ReplaceLayoutOutcome.Replaced, ReplaceLayoutOutcome.SetsInUse, ReplaceLayoutOutcome.Rejected {
@@ -30,6 +31,6 @@ public sealed interface ReplaceLayoutOutcome
 	}
 
 	/** The layout was not saved; the reason maps to an HTTP status in the controller. */
-	record Rejected(ReplaceRejection reason) implements ReplaceLayoutOutcome {
+	record Rejected(LayoutRejection reason) implements ReplaceLayoutOutcome {
 	}
 }
