@@ -26,11 +26,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * for cross-module <em>domain</em> orchestration. The only module surfaces the root still touches are
  * {@code customer}/{@code operator} (the two principal types), {@code notification::api} (the send
  * port), {@code challenge}'s port and verdict (the abuse mechanism the edge's fence calls),
- * {@code audit::api} (the trail the admin-audit fence records through) and {@code shared} — never the booking spine. A root class importing
- * {@code booking}/{@code venue}/{@code payment}/{@code payout}/{@code availability} is the
- * shared-kernel cycle pattern reappearing (an edge listener assembling module facts); such a
- * listener belongs in a module — see {@code notification.adapter.in.BookingConfirmationMailListener},
- * which is exactly that listener, moved.
+ * {@code audit::api} (the trail the admin-audit fence records through), {@code shared}, and — the
+ * one granted domain composition, ADR-0020 — the published {@code api}/{@code vocabulary} of
+ * {@code venue} and {@code booking}, so the remodel preview and commit can compose the two modules
+ * that may not see each other. Nothing else of the spine: a root class importing {@code payment},
+ * {@code payout} or {@code availability}, or any module's internals, is the shared-kernel cycle
+ * pattern reappearing (an edge listener assembling module facts); such a listener belongs in a
+ * module — see {@code notification.adapter.in.BookingConfirmationMailListener}, which is exactly
+ * that listener, moved.
  *
  * <p><strong>Stated as an allowlist, deliberately.</strong> This rule used to deny the five
  * 2026 spine modules by name, which was strictly weaker than the paragraph above in two ways a
@@ -45,7 +48,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code api}/{@code vocabulary} of the two principal-type modules, {@code notification}'s
  * {@code api} alone, the {@code challenge} mechanism's {@code api} + {@code vocabulary}, the
  * {@code audit} mechanism's {@code api} alone — its fence appends primitives and never names the
- * published entry — and the flat {@code shared} kernel — never any module's {@code application}, {@code domain} or {@code adapter}
+ * published entry — the remodel pair's {@code api} + {@code vocabulary}, and the flat {@code shared}
+ * kernel — never any module's {@code application}, {@code domain} or {@code adapter}
  * internals, and never {@code spi} (an "implement-me" port; the root implements nothing for a module).
  *
  * <p><strong>The edge runs both ways.</strong> The first rule bounds what the root may reach; the
@@ -83,6 +87,8 @@ class CompositionRootDisciplineTests {
 			"notification", Set.of("api"),
 			"challenge", Set.of("api", "vocabulary"),
 			"audit", Set.of("api"),
+			"venue", Set.of("api", "vocabulary"),
+			"booking", Set.of("api", "vocabulary"),
 			"shared", Set.of(MODULE_ROOT_SURFACE));
 
 	@Test

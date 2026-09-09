@@ -73,6 +73,14 @@ class PayoutModuleTest {
 	@MockitoBean
 	DailyTakings bookingTakings;
 
+	// The root's remodel preview controller (ADR-0020) composes venue's and booking's remodel ports;
+	// neither module is bootstrapped here, so both are mocked to let the root edge load.
+	@MockitoBean
+	ai.riviera.platform.venue.api.BeachMapRemodel beachMapRemodel;
+
+	@MockitoBean
+	ai.riviera.platform.booking.api.RemodelClaims remodelClaims;
+
 	// The ledger-read service (PayoutLedgerQueryService) depends on operator::api's ownership port,
 	// and the root edge (SecurityConfig + its beans) depends on operator::api too — CurrentOperator on
 	// OperatorDirectory, the DB-backed UserDetailsService on OperatorAccounts, and the boot

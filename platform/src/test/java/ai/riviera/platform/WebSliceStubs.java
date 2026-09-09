@@ -791,6 +791,16 @@ class WebSliceStubs {
 	}
 
 	@Bean
+	ai.riviera.platform.venue.api.BeachMapRemodel beachMapRemodel() {
+		return (_, _, _, _) -> new ai.riviera.platform.venue.vocabulary.LayoutPreview.Disturbing(List.of());
+	}
+
+	@Bean
+	ai.riviera.platform.booking.api.RemodelClaims remodelClaims() {
+		return (_, _, _) -> List.of();
+	}
+
+	@Bean
 	VenueCommissionAdministration venueCommissionAdministration() {
 		return new VenueCommissionAdministration() {
 			@Override
