@@ -85,9 +85,9 @@ conversations that read the same table with opposite intent.
   has no live guest to re-read a renamed row and a later mail must name what the guest was told.
 - Every future read of the beach map must select from `active_set_position`; the build fails
   otherwise. A column a future read needs is a visible `CREATE OR REPLACE VIEW` in its migration.
-- The bulk replace is untouched in behaviour — still refused on any booking — and its delete names
-  the marker, so the invariant holds if #1032 relaxes that guard.
-- The `LAYOUT_IN_USE` copy still tells the operator a booked venue is locked; #1032 retires that code.
+- The bulk save is a diff keyed by grid cell: it retires or deletes only the sets it removes, by this
+  same rule, and refuses a removal only for a live claim (`SETS_IN_USE`, naming the sets); the
+  venue-wide `LAYOUT_IN_USE` code and its "a booked venue is locked" copy are retired.
 - **Revisit if:** a second table grows a retirement marker (the fitness function then generalises
   or gets a sibling), or a consumer needs to *know* a set is retired rather than merely not see it
   (a `retired` fact on `SetBookingInfo` is the shape, deliberately not added now).

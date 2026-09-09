@@ -104,13 +104,27 @@ over time. The standing rules:
   whole answer through `review.api.VenueRatingSummary` and overwrites — a **full
   recompute**, never an increment, so at-least-once redelivery converges. Nothing but the
   venue id is taken off the event.
-- **A layout write that a live claim depends on is refused — and only that write.** The bulk
-  replace deletes every set, so it asks the venue-wide question (`LAYOUT_IN_USE`); `editSet`/
-  `removeSet` touch one set, so they ask the set-scoped one (`SET_IN_USE`) under
-  `SELECT … FOR UPDATE` on the active map. **Price, tier and pool are never refused, on any set** — on the single-set
-  edit and on the batch apply (`PATCH /api/venues/{venueId}/sets`) alike; **only a position move or
-  a removal asks the claim question.** The row-scoped display writes `repriceRow` and `renameRow`
-  destroy nothing and ask no claim question either.
+- **A layout write that a live claim depends on is refused — and only that write.** Every
+  layout write asks the set-scoped question under `SELECT … FOR UPDATE` on the active map:
+  `editSet`/`removeSet` of the one set they touch (`SET_IN_USE`), the bulk save of exactly the
+  sets it removes (`SETS_IN_USE`, naming every one). **Price, tier and pool are never refused, on
+  any set** — on the single-set edit, on the batch apply (`PATCH /api/venues/{venueId}/sets`) and
+  on the bulk save alike; **only a position move or a removal asks the claim question.** The
+  row-scoped display writes `repriceRow` and `renameRow` destroy nothing and ask no claim question
+  either.
+- **The bulk save is a diff keyed by grid cell, never a delete-all.** `PUT /api/venues/{venueId}/beach-map`
+  takes the venue row (`lockAndReadSetVersion`, `STALE_WRITE` on a mismatch), then every active set
+  row `FOR UPDATE` with its placement, and diffs the submitted layout against them: a kept cell is
+  updated in place under its own id (row label, position, tier, pool, price), a new cell is inserted,
+  an absent cell's set is removed — retired when it carries any booking, deleted otherwise
+  (ADR-0019). Only the removed sets are probed, through `LiveClaims#locksOn` — the owner's read's own
+  predicate — so a refusal names exactly the sets the editor already pins; a refused save writes
+  nothing and leaves the token untouched. Removals are written before the in-place updates and the
+  inserts, so a freed slot is open before another set takes it; a label swap between two kept cells
+  can still collide transiently on the partial unique index and rolls back to the `409 CONFLICT`
+  backstop. The body carries no set ids, so a set that changes cell reaches the save as a removal
+  plus an insert — the removal question is the move question. The token advances once on every
+  successful save, an unchanged layout included.
   - *Why the pool joins price and tier:* the pool is a sales-channel attribute, not a physical one.
     Invariant #3 is a **reserve-time** rule — it decides whether a *new* online booking may claim
     a set (`booking`'s fast path, `availability`'s locked claim-time read) and says nothing about a
@@ -121,7 +135,8 @@ over time. The standing rules:
     and the staff daily view lists the online booking on the now-walk-in set. Repricing a booked
     set was always allowed; the pool follows the same rule (epic #1027, revision 3).
   - *Availability arm:* every claim-probing write asks one question — is there a hold on
-    these sets dated today or later — through `LiveClaims#hasLiveHold`. A past hold freezes nothing;
+    these sets dated today or later — through `LiveClaims` (`hasLiveHold` for the per-set writes,
+    `locksOn` for the bulk save and the owner's read). A past hold freezes nothing;
     a past date is never claimable (reserve and staff mark both refuse it), so the range
     the probe ignores is one nothing can be written into.
   - *One predicate, two callers:* the `LiveClaims` holder owns both arms (the Tirane cutoff and
@@ -133,9 +148,8 @@ over time. The standing rules:
     refuses nothing; it decides how the set leaves the map: **a set that carries any booking is
     retired, never deleted** (`retired_at` stamped with the service clock, ADR-0019), because the
     RESTRICT `booking.set_id` FK pins its row for every booking, mail and payout line that names
-    it; a set with no booking is deleted. The replace still refuses on a booking of any status
-    (`LAYOUT_IN_USE`, until #1032 makes it a diff). The "forever" lock is gone: last season's
-    cancelled booking no longer freezes a spot.
+    it; a set with no booking is deleted. The bulk save applies the same rule to every set it
+    removes. The "forever" lock is gone: last season's cancelled booking no longer freezes a spot.
   - *Retired sets — the exclude and exempt lists, machine-held:* a retired set is absent from
     the tourist list and its counts, the map, the availability calendar, the operator's daily
     view, every layout lock and conflict probe, and both claim paths (the online reserve and
@@ -154,7 +168,7 @@ over time. The standing rules:
     already booked into a renamed row reads the new name live while the mail in their
     inbox keeps the old one.
   - A rename is refused only for `ROW_NAME_TAKEN` (another row already carries the label);
-    renaming a row to its own label is a no-op. The bulk replace enforces the same
+    renaming a row to its own label is a no-op. The bulk save enforces the same
     one-label-one-physical-row rule within its batch (`ReplaceRejection.ROW_NAME_TAKEN`);
     the single-set `addSet`/`editSet` paths do not yet check it.
   - Because the pool is **mutable** layout data, `SetBookingFacts#poolForClaim` is a
@@ -165,7 +179,7 @@ over time. The standing rules:
     other sees it.
 - **The batch apply is one transaction on the `set_version` token.** `applyToSets` takes the
   venue row (`lockAndReadSetVersion`) and then the named set rows `FOR UPDATE` — the order every
-  set-write takes, so it cannot deadlock the replace or the reprice — writes the touched columns
+  set-write takes, so it cannot deadlock the bulk save or the reprice — writes the touched columns
   with one `COALESCE` `UPDATE`, and advances the token once, on success only. A stale token refuses
   the whole batch (`STALE_WRITE`); a set id not on the venue refuses it too (`NO_SUCH_SET`), before
   any write, because the per-set `removeSet` does not bump the token and "N sets updated" must
