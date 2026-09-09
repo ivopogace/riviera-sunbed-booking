@@ -72,7 +72,8 @@ compiling on the JDK 25 toolchain; scoped `--tests`; the structural net after th
 grant changes; the module tests for the root-bean blast radius; the mocked e2e via
 `PW_CHROMIUM_EXECUTABLE`) · `postgres` (V52: `TIMESTAMPTZ` for `moved_at`; `BIGINT` identity PKs;
 `TEXT + CHECK` reasons widened by drop-and-re-add under the same names so `BookingMigrationIT`'s
-token pin keeps recognising them; every FK column indexed — `remodel_receipt(venue_id)`,
+token pin keeps recognising them; the actor `remodel_receipt(operator_id)` recorded and indexed
+without a foreign key, as the audit trail records its actor; every FK column indexed — `remodel_receipt(venue_id)`,
 `remodel_receipt_move(receipt_id)`, `(booking_id)`, `(from_set_id)`, `(to_set_id)`; the latest-move
 read takes `(booking_id)` and orders by id; the move `UPDATE` is guarded on `set_id` and status so a
 lost race is a 0-row no-op) · `riviera-modulith` (`BeachMapRemodel#commit` and `RemodelClaims#commit`

@@ -191,7 +191,7 @@ over time. The standing rules:
     plain save is the same writer with a gate that always refuses a disturbed set.
   - A rename is refused only for `ROW_NAME_TAKEN` (another row already carries the label);
     renaming a row to its own label is a no-op. The bulk save enforces the same
-    one-label-one-physical-row rule within its batch (`ReplaceRejection.ROW_NAME_TAKEN`);
+    one-label-one-physical-row rule within its batch (`LayoutRejection.ROW_NAME_TAKEN`);
     the single-set `addSet`/`editSet` paths do not yet check it.
   - Because the pool is **mutable** layout data, `SetBookingFacts#poolForClaim` is a
     **locking** read (`FOR KEY SHARE`, the weakest lock that conflicts with the set-writes'
