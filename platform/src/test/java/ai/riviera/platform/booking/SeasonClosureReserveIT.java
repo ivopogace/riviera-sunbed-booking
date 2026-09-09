@@ -52,6 +52,11 @@ class SeasonClosureReserveIT {
 	@AfterEach
 	void removeFixtures() {
 		for (long venue : venues) {
+			// The rows the reserve's listeners hang off a booking go first; each FK is RESTRICT.
+			for (String dependent : List.of("booking_confirmation_mail_attempt", "payout_ledger_entry", "review")) {
+				jdbc.sql("DELETE FROM " + dependent + " WHERE booking_id IN (SELECT id FROM booking WHERE venue_id = :v)")
+						.param("v", venue).update();
+			}
 			jdbc.sql("DELETE FROM booking WHERE venue_id = :v").param("v", venue).update();
 			jdbc.sql("DELETE FROM set_availability WHERE set_id IN (SELECT id FROM set_position WHERE venue_id = :v)")
 					.param("v", venue).update();

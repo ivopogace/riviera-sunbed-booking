@@ -301,7 +301,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | review (generalisation sweep of F-1 by mechanism: prose stating the old venue-wide lock — `git grep -i "reject-unless-unclaimed\|map is frozen\|layout is locked"` over `platform/src frontend/src frontend/e2e RESPONSIBILITIES.md CONTEXT.md docs/adr .claude/skills`) | `layout-editor.html`'s row-names helper said a rename works "even when saving the whole layout is locked" | fixed — the sentence no longer names a lock |
 | F-5 | review (git-history reviewer) | a swap or rotation of row names between kept cells collided transiently on the partial unique index — the delete-all replace never could — and fell to the `409 CONFLICT` backstop (plan R-4) | fixed — `LayoutDiff#collidingUpdates` + `Venues#parkRowLabels` park the labels before the in-place updates; `BeachMapReplaceIT.swapsTwoRowNamesInOneSaveOnATradingVenue` |
 | F-6 | review (git-history reviewer) | a position-number change at a kept cell — the per-set `editSet` refuses it on a claimed set ("a guest was told this row and number") — went through the bulk save unprobed | fixed — `LayoutDiff#disturbed` probes removed and repositioned sets alike; `BeachMapReplaceIT.refusesRenumberingABookedSetAtItsCell` |
-| F-4 | CI (`Backend (build + test)` on `0d712411`) | `SeasonClosureReserveIT.theOptInReservesDatesOnOrAfterTheReopenDayOnly` — the sibling test's `@AfterEach` races the async spine; `main` fails identically at the base commit | not this PR's — standing-down comment with a proposed patch on PR #1050; the head `bcea4ac4` run is the one re-run |
+| F-4 | CI (`Backend (build + test)` on `0d712411`) | `SeasonClosureReserveIT.theOptInReservesDatesOnOrAfterTheReopenDayOnly` — the sibling test's `@AfterEach` races the async spine; `main` fails identically at the base commit | not this PR's, but deterministic (three identical runs, reproduces alone: `payout_ledger_entry_booking_id_fkey` on the cleanup's booking delete) — ported the test-only fix into this PR: the cleanup deletes the ledger, mail-attempt and review rows before the bookings; declared on PR #1050 |
 
 ---
 
@@ -333,6 +333,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/venue/VenueRowRenameIT.java` — comment
 - `platform/src/test/java/ai/riviera/platform/venue/VenueSetWriteConcurrencyIT.java` — comment
 - `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcBookingPresenceIT.java` — the venue probe assertions removed
+- `platform/src/test/java/ai/riviera/platform/booking/SeasonClosureReserveIT.java` — ported fix (F-4): the cleanup deletes a booking's dependents first
 - `frontend/src/app/operator/operator-console.model.ts` — `SETS_IN_USE`, `BlockedSet`
 - `frontend/src/app/operator/operator-console.service.ts` — `layoutErrorOf`, `layoutBlockedSetsOf`
 - `frontend/src/app/operator/operator-console.service.spec.ts` — the mapper specs
