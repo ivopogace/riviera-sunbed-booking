@@ -1911,6 +1911,37 @@ describe('LayoutEditor (#172)', () => {
       expect(byId('layout-saved')).toBeTruthy();
     });
 
+    it('a grid painted behind the open dialog is previewed again on Save, never saved unseen', async () => {
+      dropLoadedA2();
+      byId('layout-save').click();
+      previewRequest().flush(MOVES_ONLY_PREVIEW);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // The grid is still paintable: A1 is repainted standard while the dialog shows A2's preview.
+      byId('layout-tool-standard').click();
+      fixture.detectChanges();
+      cells()[0].click();
+      fixture.detectChanges();
+      byId('layout-remodel-save').click();
+      fixture.detectChanges();
+
+      http.expectNone((r) => r.method === 'PUT');
+      const again = previewRequest();
+      expect(body(again).sets.map((set) => set.tier)).toEqual(['STANDARD']);
+      again.flush(EMPTY_PREVIEW);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const put = http.expectOne(
+        (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
+      );
+      expect(body(put).sets.map((set) => set.tier)).toEqual(['STANDARD']);
+      put.flush(null);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(byId('layout-saved')).toBeTruthy();
+    });
+
     it('a stale dry run lands in the same reload banner as a stale save', async () => {
       dropLoadedA2();
       byId('layout-save').click();

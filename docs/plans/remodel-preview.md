@@ -325,6 +325,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-2 | review (shallow bug scan) | the dialog's Save re-read the grid at confirm time, so a cell painted behind the open dialog shipped un-previewed | fixed — the dialog carries the exact body it previewed; a draft that changed underneath is previewed again, never saved unseen (`layout-editor.spec.ts` "a grid painted behind the open dialog…") |
 | F-1 | CI (`Backend (build + test)` on 42a9f039) | `JdbcBookingsLiveClaimsIT` seeded booking codes `LIVE0001…` that `JdbcBookingPresenceIT` also seeds; green alone, `DuplicateKeyException` on `booking_code_uniq` in the full suite's shared database | fixed — codes and addresses minted per insert (`LC-<nanoTime>`); both classes green in one JVM |
 
 ---
