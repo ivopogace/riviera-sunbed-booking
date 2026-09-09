@@ -317,6 +317,14 @@ export class OperatorConsoleService {
    * optimistic `version` guards the read-modify-write, so a concurrent profile edit loses loudly
    * (`409 STALE_WRITE`) instead of being clobbered; effective on the very next tourist reserve.
    */
+  closeOnlineSalesNow(venueId: number): Observable<void> {
+    return this.venueProfile(venueId).pipe(
+      switchMap((view) =>
+        this.updateVenueProfile(venueId, { ...toProfileUpdate(view), salesClose: '00:01' }),
+      ),
+    );
+  }
+
   /**
    * Close the venue for the season on its own owner-asserted state-transition resource (never the
    * profile PATCH: a full replace off a stale form could silently reopen a venue, and it has nowhere
@@ -332,14 +340,6 @@ export class OperatorConsoleService {
   /** Reopen by hand — clears the closure; idempotent. */
   reopenForSeason(venueId: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/api/venues/${venueId}/season-closure`);
-  }
-
-  closeOnlineSalesNow(venueId: number): Observable<void> {
-    return this.venueProfile(venueId).pipe(
-      switchMap((view) =>
-        this.updateVenueProfile(venueId, { ...toProfileUpdate(view), salesClose: '00:01' }),
-      ),
-    );
   }
 }
 

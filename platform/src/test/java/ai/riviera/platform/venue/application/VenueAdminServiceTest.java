@@ -1015,7 +1015,6 @@ class VenueAdminServiceTest {
 		assertEquals(List.of(), store.summaryQueries);
 	}
 
-	/** Stub {@link VenueOwnership} over an explicit operator→venues map (the S9 owned-venues read). */
 	// --- closed for season: the owner-asserted state transition and its counts ---
 
 	@Test
@@ -1082,6 +1081,7 @@ class VenueAdminServiceTest {
 		assertEquals(1, venues.reopenings);
 	}
 
+	/** Stub {@link VenueOwnership} over an explicit operator→venues map (the S9 owned-venues read). */
 	private record MultiOwnership(Map<OperatorId, Set<VenueRef>> byOperator) implements VenueOwnership {
 		@Override
 		public void assertOwns(OperatorId operator, VenueRef target) {

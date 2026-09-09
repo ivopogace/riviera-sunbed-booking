@@ -381,6 +381,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (Repo hygiene, first push) | the plan's File structure did not list the two files the docs-freshness sweep patched (`VenueReadController`, `VenueListControllerIT`) | fixed in `cf3426b9` |
+| F-2 | review (reviewers #4 and #5, RV-STYLE-1) | the new `closeForSeason`/`reopenForSeason` methods were inserted between `closeOnlineSalesNow` and its TSDoc, orphaning the block | fixed in the review-fix commit — the methods follow `closeOnlineSalesNow` |
+| F-3 | review (reviewer #5, RV-STYLE-1) | the season tests in `VenueAdminServiceTest` were inserted between `MultiOwnership` and its Javadoc | fixed in the review-fix commit — the tests precede the Javadoc |
+| F-4 | review (reviewer #4, cosmetic) | `WebSliceStubs`' four new imports out of alphabetical order | fixed in the review-fix commit |
+| F-5 | review (reviewer #3) | the calendar's `focusedDate` doc said the position falls to the floor "when that day can no longer be booked", while a chosen day the server marks unsellable keeps the position — the truthful behaviour, since a season closure can leave no bookable day to fall to and the month must not jump | fixed in the review-fix commit — the TSDoc states the rule; behaviour unchanged |
 
 ---
 

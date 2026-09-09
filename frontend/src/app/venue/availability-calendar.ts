@@ -114,8 +114,11 @@ export class AvailabilityCalendar {
 
   /**
    * The roving-tabindex position. Arrow keys move it; only Enter/Space/click commits a choice.
-   * It opens on the chosen day, or on the floor when that day can no longer be booked — a carried
-   * `?date=` is already clamped upstream, so this is the guard rather than the usual path.
+   * It opens on the chosen day, or on the floor when that day is already past — a carried
+   * `?date=` is already clamped upstream, so this is the guard rather than the usual path. A
+   * chosen day the server marks unsellable keeps the position: the cell is disabled but stays the
+   * roving stop, so the arrow keys move from it — a season closure can leave no bookable day to
+   * fall to, and the month must not jump.
    */
   private readonly focusedDate = linkedSignal(() => {
     const selected = this.selectedDate();
