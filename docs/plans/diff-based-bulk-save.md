@@ -96,53 +96,53 @@ for `feature/diff-based-bulk-save`).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue with a live booking on A1, when the owner PUTs a layout that keeps
+- [x] **AC-1:** Given a venue with a live booking on A1, when the owner PUTs a layout that keeps
   A1 and A2 at their coordinates and adds row B, then the outcome is `Replaced`, A1 and A2 keep
   their ids, B's sets are inserted and the token advances by one. *Seam:* `EditBeachMap#replaceLayout`
   over HTTP `PUT /api/venues/{venueId}/beach-map` · *Pinned by:* `BeachMapReplaceIT.addsARowOnAVenueWithALiveBooking`
-- [ ] **AC-2:** Given a live booking on A1, when the PUT repaints A1 to the walk-in pool, changes
+- [x] **AC-2:** Given a live booking on A1, when the PUT repaints A1 to the walk-in pool, changes
   its tier and price and renames row A, then the save succeeds, A1 keeps its id and its
   availability row for the booked date survives. *Seam:* as AC-1 · *Pinned by:*
   `BeachMapReplaceIT.repaintsRenamesAndRepricesABookedSetInPlace`
-- [ ] **AC-3:** Given a live booking on A1 and a live staff hold on A2, when the PUT omits both
+- [x] **AC-3:** Given a live booking on A1 and a live staff hold on A2, when the PUT omits both
   coordinates, then the answer is `409 SETS_IN_USE` whose `sets` extension names A1 (bookedOn) and
   A2 (heldOn) with their ids, row labels and positions, nothing is written and the token does not
   advance. *Seam:* as AC-1 · *Pinned by:* `BeachMapReplaceIT.refusesRemovingBookedOrHeldSetsNamingThem`
-- [ ] **AC-4:** Given a set whose only bookings are terminal, when the PUT omits its coordinate,
+- [x] **AC-4:** Given a set whose only bookings are terminal, when the PUT omits its coordinate,
   then the set is retired (`retired_at` stamped, row kept) and its coordinate is free for a new set;
   given a set with no booking, the same PUT deletes it. *Seam:* as AC-1 · *Pinned by:*
   `BeachMapReplaceIT.retiresARemovedSetWithHistoryAndDeletesOneWithout`
-- [ ] **AC-5:** Given two owners who both loaded `set_version = V`, when both submit a diff save,
+- [x] **AC-5:** Given two owners who both loaded `set_version = V`, when both submit a diff save,
   then exactly one is `Replaced` and the other `Rejected(STALE_WRITE)`, the token ends at `V+1`, and
   the kept set carries one writer's price. *Seam:* `EditBeachMap#replaceLayout` · *Pinned by:*
   `BeachMapDiffConcurrencyIT.exactlyOneDiffSaveWins`
-- [ ] **AC-6:** Given a walk-in mark racing a diff save that removes the marked set, then never
+- [x] **AC-6:** Given a walk-in mark racing a diff save that removes the marked set, then never
   both succeed: the mark either commits and the save is `Blocked` naming the set, or the save wins
   and the mark fails its FK. *Seam:* `EditBeachMap#replaceLayout` beside a raw
   `set_availability` insert · *Pinned by:* `BeachMapDiffConcurrencyIT.aRacingMarkOnARemovedSetIsSeenOrBlocks`
-- [ ] **AC-7:** Given stored sets and an incoming layout, when the diff is computed, then a kept
+- [x] **AC-7:** Given stored sets and an incoming layout, when the diff is computed, then a kept
   coordinate is an update carrying the stored id, an absent one a removal, a new one an insert, and
   a gap-shaped regenerate over a smaller grid removes exactly the out-of-bounds sets. *Seam:*
   `LayoutDiff.of(List<PlacedSet>, LayoutCommand)` · *Pinned by:* `LayoutDiffTest.*`
-- [ ] **AC-8:** Given the service, when a removed set is locked, then no write happens, the lock
+- [x] **AC-8:** Given the service, when a removed set is locked, then no write happens, the lock
   question is asked only about the removed sets and only after the rows are locked, and the venue
   row was locked first; a retired removal calls `retireSet` and a clean one `deleteSet`. *Seam:*
   `EditBeachMap#replaceLayout` with fakes · *Pinned by:* `VenueAdminServiceTest.replace*`
-- [ ] **AC-9:** Given the editor loaded a trading venue, when the PUT answers `409 SETS_IN_USE`
+- [x] **AC-9:** Given the editor loaded a trading venue, when the PUT answers `409 SETS_IN_USE`
   naming a set whose cell the draft painted as a gap, then that cell wears the lock glyph with the
   reason as its description, the legend counts it, the banner lists the set by row and position with
   its reason, and painting it back to a tier clears nothing until the next save. *Seam:* the
   `LayoutEditor` component through its DOM and the mocked `HttpTestingController` · *Pinned by:*
   `layout-editor.spec.ts` "marks the sets a refused save names…" + `layout-editor.a11y.spec.ts`
   + `layout-editor.contrast.spec.ts` (gap-cell glyph ink)
-- [ ] **AC-10:** Given a trading venue with locks, when the operator regenerates with one more row
+- [x] **AC-10:** Given a trading venue with locks, when the operator regenerates with one more row
   and saves, then the one PUT keeps every seeded coordinate and adds the row; and a `409 SETS_IN_USE`
   answer marks the named cell. *Seam:* the running SPA against `page.route` mocks · *Pinned by:*
   `frontend/e2e/layout-editor.e2e.ts` "adds a row on a trading venue…" and "…marks the sets a refusal names"
-- [ ] **AC-11:** `LAYOUT_IN_USE` appears in no production or test source, backend or frontend;
+- [x] **AC-11:** `LAYOUT_IN_USE` appears in no production or test source, backend or frontend;
   `BookingPresence#hasBookings(VenueId)` and `Venues#deleteAllSets` are gone. *Seam:* the tree ·
   *Pinned by:* `git grep -n LAYOUT_IN_USE` empty on the branch (verified at close-out) + compilation
-- [ ] **AC-12:** The structural net is green after the port changes. *Seam:* the six net tests ·
+- [x] **AC-12:** The structural net is green after the port changes. *Seam:* the six net tests ·
   *Pinned by:* the net command in `CLAUDE.md`
 
 ## Non-goals
@@ -176,22 +176,21 @@ for `feature/diff-based-bulk-save`).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A claim racing the save lands on a set the save removes (invariant #2) | med | high | unchanged lock order: venue row, then every active set row `FOR UPDATE`, then the probe; a racing claim's FK `FOR KEY SHARE` blocks until the save ends; pinned by AC-6 | session | open |
+| R-1 | A claim racing the save lands on a set the save removes (invariant #2) | med | high | unchanged lock order: venue row, then every active set row `FOR UPDATE`, then the probe; a racing claim's FK `FOR KEY SHARE` blocks until the save ends; pinned by AC-6 | session | closed — 0d712411 (`BeachMapDiffConcurrencyIT.aRacingMarkOnARemovedSetIsSeenOrBlocks`) |
 | R-2 | Two saves off the same token both write | med | high | `set_version` read under the venue row lock, advanced once on success; AC-5 | session | open |
-| R-3 | A refused set the editor cannot show (its coordinate is outside the regenerated grid) | med | low | the banner names every refused set by row and position; the cells inside the grid wear the glyph; e2e + Vitest | session | open |
-| R-4 | A row-label swap in one save collides transiently on the partial unique index between two in-place updates | low | low | write order removals → updates → inserts frees slots first; the swap case rolls back to the `DuplicateKeyException → 409 CONFLICT` backstop, nothing written, the editor shows "Two sets overlap" | session | open |
+| R-3 | A refused set the editor cannot show (its coordinate is outside the regenerated grid) | med | low | the banner names every refused set by row and position; the cells inside the grid wear the glyph; e2e + Vitest | session | closed — ff22b51f |
+| R-4 | A row-label swap in one save collides transiently on the partial unique index between two in-place updates | low | low | write order removals → updates → inserts frees slots first; the swap case rolls back to the `DuplicateKeyException → 409 CONFLICT` backstop, nothing written, the editor shows "Two sets overlap" | session | closed — accepted; written down in RESPONSIBILITIES §venue (afb37272) |
 | R-5 | A removed set retired while still holding a *past* availability row keeps that row (no CASCADE on retire) | low | none | a past row is history nothing reads or claims; the retire path already behaves so for `removeSet` | session | closed — by design (ADR-0019) |
-| R-6 | Ownership on a venue-scoped endpoint (BOLA) | low | high | `VenueOwnership#assertOwns` stays the first act of the service; `VenueAdminServiceTest.replaceByNonOwnerIsDenied…` | session | open |
-| R-7 | Error-contract drift on the new code | low | med | `SETS_IN_USE` 409, detail "Sets this save would remove are booked or held." (condition, not remedy); `sets` extension built beside the problem in the controller through `ApiProblem.of` | session | open |
-| R-8 | The `@ApplicationModuleTest`s or `WebSliceStubs` break on the SPI/port change | low | med | `BookingPresence` loses a method — implementors shrink, no bean moves; module tests run before the push | session | open |
+| R-6 | Ownership on a venue-scoped endpoint (BOLA) | low | high | `VenueOwnership#assertOwns` stays the first act of the service; `VenueAdminServiceTest.replaceByANonOwnerIsDeniedBeforeAnyRead` | session | closed — 6f384795 |
+| R-7 | Error-contract drift on the new code | low | med | `SETS_IN_USE` 409, detail "Sets this save would remove are booked or held." (condition, not remedy); `sets` extension built beside the problem in the controller through `ApiProblem.of` | session | closed — 0d712411 (`BeachMapReplaceIT.refusesRemovingBookedOrHeldSetsNamingThem`) |
+| R-8 | The `@ApplicationModuleTest`s or `WebSliceStubs` break on the SPI/port change | low | med | `BookingPresence` loses a method — implementors shrink, no bean moves; module tests run before the push | session | closed — no bean moved; the full test tree compiles and the touched ITs pass (0d712411) |
 
 ## Open questions / Assumptions
 
-- **Assumption:** The token advances on every successful save, even one whose diff is empty, so
-  the editor's `+1` after `204` stays correct. — *Owner:* session · *Resolves by:* phase 1
-
 ### Resolved
 
+- **The token advances on every successful save**, an unchanged layout included, so the editor's
+  `+1` after `204` stays correct — 6f384795 (`EditBeachMap#replaceLayout` Javadoc).
 - **Coordinate is the identity key; a "move" is a removal plus an insert.** The body carries no ids
   and the canvas has no drag-move; the removal question is the claim question the epic names for a
   moved set, and identity is kept for every cell that stays put. — resolved at plan time (code fact).
@@ -273,18 +272,18 @@ N/A — no payment in scope.
 
 ## Execution status
 
-**Stage pointer:** `plan — doc written, phase 0 next`
+**Stage pointer:** `CI gate — phases 0–5 pushed on draft PR #1050; next: merge latest main, mark ready for review, run the review gate`
 
-**Next action:** phase 0 — `LayoutDiffTest` red at `LayoutDiff.of`.
+**Next action:** check PR #1050's CI run; then merge `origin/main` in, mark ready for review, run `/code-review` with `riviera-review-overlay`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the diff calculation | | |
-| 1 — the service: diff save, blocked outcome, retired SPI method | | |
-| 2 — the edge: `SETS_IN_USE` + `sets`, HTTP ITs, concurrency IT, net | | |
-| 3 — the editor: highlight, banner, vocabulary retirement, Vitest + a11y + contrast | | |
-| 4 — the mocked e2e | | |
-| 5 — docs: RESPONSIBILITIES §venue, ADR-0019, Javadoc; close-out | | |
+| 0 — the diff calculation | ✅ | d5fbe23c |
+| 1 — the service: diff save, blocked outcome, retired SPI method | ✅ | 6f384795 |
+| 2 — the edge: `SETS_IN_USE` + `sets`, HTTP ITs, concurrency IT, net | ✅ | 0d712411 |
+| 3 — the editor: highlight, banner, vocabulary retirement, Vitest + a11y + contrast | ✅ | ff22b51f |
+| 4 — the mocked e2e | ✅ | ff22b51f |
+| 5 — docs: RESPONSIBILITIES §venue, ADR-0019, Javadoc; close-out | ⏳ | afb37272 (docs); close-out pending |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -345,48 +344,48 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `LayoutDiff.java`, `PlacedSet.java` · Test `LayoutDiffTest.java`
 
-- [ ] **Step 1: Write the failing test** — kept coordinate → update with the stored id; absent →
+- [x] **Step 1: Write the failing test** — kept coordinate → update with the stored id; absent →
   removed; new → insert; a 1×1 regenerate over a 2×2 map removes three.
-- [ ] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*LayoutDiffTest*"` → compilation failure
-- [ ] **Step 3: Minimal implementation** — `record LayoutDiff(List<Update> updates, List<SetCommand> inserts, List<PlacedSet> removed)` with `static of(List<PlacedSet>, LayoutCommand)`
-- [ ] **Step 4: Run it, verify it passes**
-- [ ] **Step 5: Generalization audit** — N/A, no bug fix
-- [ ] **Step 6: Commit** — `Compute the beach-map save as a diff keyed by coordinate (#1032)`
+- [x] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*LayoutDiffTest*"` → compilation failure
+- [x] **Step 3: Minimal implementation** — `record LayoutDiff(List<Update> updates, List<SetCommand> inserts, List<PlacedSet> removed)` with `static of(List<PlacedSet>, LayoutCommand)`
+- [x] **Step 4: Run it, verify it passes**
+- [x] **Step 5: Generalization audit** — N/A, no bug fix
+- [x] **Step 6: Commit** — `Compute the beach-map save as a diff keyed by coordinate (#1032)`
 
 ## Phase 1 — the service
 
 **Files:** Modify `BeachMapEditService.java`, `Venues.java`, `EditBeachMap.java`, `ReplaceLayoutOutcome.java`, `ReplaceRejection.java`, `BookingPresence.java`, `JdbcBookingPresence.java`, `JdbcVenues.java` · Create `BlockedSet.java` · Test `VenueAdminServiceTest.java`, `LiveClaimsTest.java`, `JdbcBookingPresenceIT.java`
 
-- [ ] **Step 1: Failing tests** — AC-8 cases against the fakes.
-- [ ] **Step 2: Run** — `--tests "*VenueAdminServiceTest*"` → FAIL
-- [ ] **Step 3: Implement** — the diff save under the unchanged lock order; `SetsInUse` outcome.
-- [ ] **Step 4: Run** → PASS; then the structural net.
-- [ ] **Step 6: Commit** — `Save the beach map as a diff: keep, update, insert, retire; refuse by set (#1032)`
+- [x] **Step 1: Failing tests** — AC-8 cases against the fakes.
+- [x] **Step 2: Run** — `--tests "*VenueAdminServiceTest*"` → FAIL
+- [x] **Step 3: Implement** — the diff save under the unchanged lock order; `SetsInUse` outcome.
+- [x] **Step 4: Run** → PASS; then the structural net.
+- [x] **Step 6: Commit** — `Save the beach map as a diff: keep, update, insert, retire; refuse by set (#1032)`
 
 ## Phase 2 — the edge
 
 **Files:** Modify `VenueAdminController.java`, `BeachMapReplaceIT.java` · Create `BlockedSetView.java`, `BeachMapDiffConcurrencyIT.java`
 
-- [ ] **Step 1: Failing ITs** — AC-1..6.
-- [ ] **Step 2: Run** — one class at a time
-- [ ] **Step 3: Implement** — `SETS_IN_USE` + `sets`.
-- [ ] **Step 4: Run** → PASS
-- [ ] **Step 6: Commit** — `Answer 409 SETS_IN_USE with the blocking sets; pin the diff save's races (#1032)`
+- [x] **Step 1: Failing ITs** — AC-1..6.
+- [x] **Step 2: Run** — one class at a time
+- [x] **Step 3: Implement** — `SETS_IN_USE` + `sets`.
+- [x] **Step 4: Run** → PASS
+- [x] **Step 6: Commit** — `Answer 409 SETS_IN_USE with the blocking sets; pin the diff save's races (#1032)`
 
 ## Phase 3 — the editor
 
 **Files:** Modify the `operator/` files listed above.
 
-- [ ] **Step 1: Failing specs** — AC-9; the mapper specs.
-- [ ] **Step 2: Run** — `npm test -- layout-editor` → FAIL
-- [ ] **Step 3: Implement** — merge the refused sets into `locks`; the banner; the gap cell ink.
-- [ ] **Step 4: Run** → PASS, plus `npm run lint`, `npm run format:check`, `npm run test:a11y`
-- [ ] **Step 6: Commit** — `Mark the sets a refused save names with the lock decoration; retire LAYOUT_IN_USE (#1032)`
+- [x] **Step 1: Failing specs** — AC-9; the mapper specs.
+- [x] **Step 2: Run** — `npm test -- layout-editor` → FAIL
+- [x] **Step 3: Implement** — merge the refused sets into `locks`; the banner; the gap cell ink.
+- [x] **Step 4: Run** → PASS, plus `npm run lint`, `npm run format:check`, `npm run test:a11y`
+- [x] **Step 6: Commit** — `Mark the sets a refused save names with the lock decoration; retire LAYOUT_IN_USE (#1032)`
 
 ## Phase 4 — the mocked e2e
 
-- [ ] AC-10 specs green under `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- layout-editor operator-set-editing`
-- [ ] **Commit** — `Drive add-a-row on a trading venue and the refusal highlight end to end (#1032)`
+- [x] AC-10 specs green under `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- layout-editor operator-set-editing`
+- [x] **Commit** — `Drive add-a-row on a trading venue and the refusal highlight end to end (#1032)`
 
 ## Phase 5 — docs and close-out
 
