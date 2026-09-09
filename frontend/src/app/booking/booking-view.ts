@@ -917,9 +917,12 @@ export class BookingView {
       : 'Non-refundable last-minute booking — it can’t be cancelled.';
   }
 
-  /** The move is news while the booking stands; a cancelled one explains itself in its own banner. */
+  /**
+   * The move is news while the booking stands; a cancelled one explains itself in its own banner. A
+   * wire body without the field (an older server, a mock) reads as never moved, never as a crash.
+   */
   protected showMoved(b: BookingDetail): boolean {
-    return b.move !== null && b.status !== 'CANCELLED';
+    return (b.move ?? null) !== null && b.status !== 'CANCELLED';
   }
 
   /** "Miramar rearranged its beach map, so your set moved from Row A · spot 3 to Row A · spot 7 (4 positions along the row). …" */

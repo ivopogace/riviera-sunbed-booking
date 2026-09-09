@@ -807,6 +807,18 @@ describe('BookingView', () => {
       await expectNoAxeViolations(host);
     });
 
+    it('renders a detail whose wire body carries no move field as never moved', async () => {
+      const legacy = Object.fromEntries(
+        Object.entries(DETAIL).filter(([key]) => key !== 'move'),
+      ) as unknown as BookingDetail;
+      const fixture = await render(stubService({ detail: legacy }));
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(host.querySelector('[data-testid="booking-moved"]')).toBeNull();
+      expect(host.querySelector('[data-testid="start-cancel"]')).toBeTruthy();
+      expect(host.querySelector('[data-testid="refund-terms"]')?.textContent).toContain('in full');
+    });
+
     it('keeps the notice but drops the exit sentence once the deadline has passed, and the terms fall back to the tier', async () => {
       const fixture = await render(
         stubService({

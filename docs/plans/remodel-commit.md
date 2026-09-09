@@ -443,9 +443,9 @@ never `[disabled]` on the pressed control, `focusMover` on every leg — no devi
 
 ## Execution status
 
-**Stage pointer:** `review → merge — PR #1052 ready for review; review gate run, findings fixed; waiting on CI (frontend job blocked by Google's apt mirror) and the Sonar gate`
+**Stage pointer:** `merge — PR #1052 ready for review; review gate run, findings fixed; CI + Sonar on the final head, then merge`
 
-**Next action:** CI green on the current head, the Sonar list cleared, merge, then the close-out checklist (`pr-gates.md` §3).
+**Next action:** merge once CI and the Sonar list are green on the final head, then the merge close-out (`pr-gates.md` §3: issue closed, epic #1027 ticked, this plan retired at the next close-out).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -458,7 +458,7 @@ never `[disabled]` on the pressed control, `focusMover` on every leg — no devi
 | 6 — the editor: model, service, panel Save, receipt panel, past remodels, specs | ✅ | phase-6 commit |
 | 7 — the guest: moved notice, free-exit copy, my-bookings chip, specs | ✅ | phase-7 commit |
 | 8 — the mocked e2e + the real-backend spec | ✅ | phase-8 commit |
-| 9 — docs; close-out | ⏳ | phase-9 commit |
+| 9 — docs; close-out | ✅ | phase-9 commits; close-out in the F-11 fix commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -476,6 +476,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-8 | review gate (RV-FE-10) | the stale note's `role="status"` was born with its text | fixed — the region always renders, only its text branches (2b8a9461) |
 | F-9 | review gate (RV-STYLE-1) | `LockedSet` "never both"; `cancelledOpener` doc said only `POLICY` is the guest's act | fixed (1958c6ef, 2b8a9461) |
 | F-10 | review gate (RV-PROC-2c) | `RESPONSIBILITIES.md` cited `ReplaceRejection.ROW_NAME_TAKEN` after the rename | fixed (1e93a7f6) |
+| F-11 | CI (head a0fc6132), the a11y e2e | 8 booking-view specs in other files mock a detail without `move`; `showMoved` read `undefined !== null` as moved and the template threw | fixed — a missing field reads as never moved, pinned in `booking-view.spec.ts`; the whole mocked suite run locally before the push |
 
 ---
 
@@ -699,7 +700,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 9 — docs; close-out
 
-- [ ] `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, ADR-0020 status, Javadoc; retire
+- [x] `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, ADR-0020 status, Javadoc; retire
   `remodel-preview.md`; `check-plan-file-structure.mjs --diff origin/main`; the review gate; Sonar;
   `riviera-docs-freshness`; the close-out in the last code-touching commit.
 
@@ -741,7 +742,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **Close-out written in THIS PR, in its last code-touching commit** (the F-11 fix; merged via PR #1052) — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
 - [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
