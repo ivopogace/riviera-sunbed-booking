@@ -187,6 +187,7 @@ classDiagram
         late_cancel_refund_bps
         payout_currency
         booking_cutoff, sales_close
+        closed_at, reopen_on, advance_sales
         distance_to_water_m
         version
     }
@@ -232,6 +233,13 @@ classDiagram
         MoneyView price
         bookingCutoff, salesClose
         BookingMode
+        SeasonClosure
+    }
+    class SeasonClosure {
+        <<record>>
+        closed
+        reopenOn
+        advanceSales
     }
     class Pool {
         <<enum>>
@@ -249,6 +257,7 @@ classDiagram
     venue "1" *-- "many" venue_photo
     venue_photo "1" *-- "many" venue_photo_variant
     venue ..> SalesClose : sales_close
+    venue ..> SeasonClosure : closed_at, reopen_on, advance_sales
     set_position ..> Pool : pool
     set_position ..> SetBookingInfo : the published projection
 ```

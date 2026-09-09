@@ -9,22 +9,31 @@ import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { FieldErrorFor } from '../shared/field-error-for';
+import { focusMover } from '../shared/focus-after-render';
 import { TouchTarget } from '../shared/touch-target';
 import { Amenity, AMENITY_CATALOGUE, amenityLabel } from '../shared/amenities';
+import { formatCivilDate } from '../shared/booking-date';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { formatCommissionPercent } from '../shared/commission-rate';
 import { parentVenueId } from '../shared/parent-venue-id';
+import { plural } from '../shared/plural';
 import { SegmentedControl, SegmentedOption } from '../shared/segmented-control';
 import { parseWholeNumber } from '../shared/whole-number';
 import { BookingMode, PhotoSlotKey } from '../shared/venue-views';
 import {
   SalesCloseTime,
+  SeasonClosureErrorCode,
+  SeasonClosureView,
   VenueProfileErrorCode,
   VenueProfileUpdate,
   VenueProfileView,
 } from './operator-console.model';
-import { OperatorConsoleService, venueProfileErrorOf } from './operator-console.service';
+import {
+  OperatorConsoleService,
+  seasonClosureErrorOf,
+  venueProfileErrorOf,
+} from './operator-console.service';
 import { StaleWriteBanner } from './stale-write-banner';
 import {
   PhotoErrorCode,
@@ -91,6 +100,29 @@ interface SlotUi {
   readonly previewUrl: string | null;
   readonly busy: boolean;
   readonly error: PhotoErrorCode | null;
+}
+
+/** The season form's model: an ISO reopen day or blank, and the opt-in (off by default). */
+interface SeasonCloseModel {
+  reopenOn: string;
+  advanceSales: boolean;
+}
+
+const EMPTY_SEASON_CLOSE: SeasonCloseModel = { reopenOn: '', advanceSales: false };
+const OPEN_SEASON: SeasonClosureView = { closed: false, reopenOn: null, advanceSales: false };
+
+/** Which dates a closed venue still sells, as the status sentence's second half. */
+function sellingSentence(season: SeasonClosureView): string {
+  if (season.advanceSales) {
+    return ' Dates from the reopen date can be booked now.';
+  }
+  return season.reopenOn ? ' No date can be booked until then.' : ' No date can be booked.';
+}
+
+/** What the close answered: the counts of bookings and requests that still stand. */
+interface SeasonCounts {
+  readonly futureBookings: number;
+  readonly pendingRequests: number;
 }
 
 const EMPTY_SLOT: SlotUi = { previewUrl: null, busy: false, error: null };
@@ -182,6 +214,36 @@ export class VenueTab {
   protected readonly amenityDraft = signal<ReadonlySet<Amenity>>(new Set());
   protected readonly distanceDraft = signal('');
 
+  /** Every season transition destroys the control that was just activated (WCAG 2.4.3). */
+  private readonly focusAfterRender = focusMover();
+  /** The closed-for-season state as the server reads it now; seeded from the profile, replaced by each write. */
+  protected readonly season = signal<SeasonClosureView>(OPEN_SEASON);
+  /** True while the close form is open — two-step, so a close is never one careless click. */
+  protected readonly seasonArmed = signal(false);
+  protected readonly seasonBusy = signal(false);
+  protected readonly seasonError = signal<SeasonClosureErrorCode | null>(null);
+  /** The counts the last close answered; absent until a close happens in this tab. */
+  protected readonly seasonCounts = signal<SeasonCounts | null>(null);
+  protected readonly seasonModel = signal<SeasonCloseModel>(EMPTY_SEASON_CLOSE);
+  protected readonly seasonForm = form(this.seasonModel);
+  /** The opt-in only means something with a reopen day, so it appears once one is set. */
+  protected readonly reopenDateSet = computed(() => this.seasonModel().reopenOn !== '');
+  /** The closed state in words: the reopen day (if any) and whether dates from it sell already. */
+  protected readonly seasonStatusText = computed(() => {
+    const season = this.season();
+    const reopens = season.reopenOn
+      ? ` — reopens ${formatCivilDate(season.reopenOn)}.`
+      : ' until you reopen it.';
+    return `Closed for season${reopens}${sellingSentence(season)}`;
+  });
+  /** "3 future bookings and 1 pending request still stand." */
+  protected readonly seasonCountsText = computed(() => {
+    const counts = this.seasonCounts();
+    return counts === null
+      ? ''
+      : `${plural(counts.futureBookings, 'future booking')} and ${plural(counts.pendingRequests, 'pending request')} still stand.`;
+  });
+
   protected readonly photoSlots = PHOTO_SLOTS;
   /** Per-slot photo UI state, seeded from the profile's `photos` map on load/reload. */
   protected readonly slotUi = signal<Readonly<Record<PhotoSlotKey, SlotUi>>>(EMPTY_SLOTS);
@@ -212,6 +274,12 @@ export class VenueTab {
     this.payoutCurrency.set(null);
     this.loadedVersion.set(null);
     this.slotUi.set(EMPTY_SLOTS);
+    this.season.set(OPEN_SEASON);
+    this.seasonArmed.set(false);
+    this.seasonBusy.set(false);
+    this.seasonError.set(null);
+    this.seasonCounts.set(null);
+    this.seasonModel.set(EMPTY_SEASON_CLOSE);
     this.loaded.set(false);
     this.loadError.set(false);
     this.saving.set(false);
@@ -380,12 +448,127 @@ export class VenueTab {
     this.commissionBps.set(profile.commissionBps);
     this.payoutCurrency.set(profile.payoutCurrency);
     this.loadedVersion.set(profile.version);
+    this.season.set(profile.seasonClosure ?? OPEN_SEASON);
     this.slotUi.set({
       cover: { ...EMPTY_SLOT, previewUrl: profile.photos.cover.previewUrl },
       sunbeds: { ...EMPTY_SLOT, previewUrl: profile.photos.sunbeds.previewUrl },
       bar: { ...EMPTY_SLOT, previewUrl: profile.photos.bar.previewUrl },
     });
     this.loaded.set(true);
+  }
+
+  /** Open the close form; focus lands on the reopen-day field (the trigger is gone). */
+  protected onArmSeasonClose(): void {
+    this.seasonError.set(null);
+    this.seasonModel.set(EMPTY_SEASON_CLOSE);
+    this.seasonArmed.set(true);
+    this.focusAfterRender('venue-season-reopen-on');
+  }
+
+  protected onCancelSeasonClose(): void {
+    this.seasonArmed.set(false);
+    this.seasonError.set(null);
+    this.focusAfterRender('venue-season-close');
+  }
+
+  /**
+   * Close for the season through the owner-asserted state-transition resource. The opt-in rides
+   * only with a reopen day (the server refuses the pair otherwise). On success the card shows the
+   * closed state with what still stands; a refused date stays on the form as a field error.
+   */
+  protected onConfirmSeasonClose(): void {
+    const venueId = this.venueId();
+    if (venueId === undefined || this.seasonBusy()) {
+      return;
+    }
+    const model = this.seasonModel();
+    const reopenOn = model.reopenOn === '' ? null : model.reopenOn;
+    const epoch = this.epoch;
+    this.seasonError.set(null);
+    this.seasonBusy.set(true);
+    this.console
+      .closeForSeason(venueId, { reopenOn, advanceSales: reopenOn !== null && model.advanceSales })
+      .subscribe({
+        next: (result) => {
+          if (this.epoch !== epoch) {
+            return; // a venue switch superseded this write's UI state
+          }
+          this.seasonBusy.set(false);
+          this.seasonArmed.set(false);
+          this.season.set({
+            closed: result.closedForSeason,
+            reopenOn: result.reopenOn,
+            advanceSales: result.advanceSales,
+          });
+          this.seasonCounts.set({
+            futureBookings: result.futureBookings,
+            pendingRequests: result.pendingRequests,
+          });
+          this.focusAfterRender('venue-season-status');
+        },
+        error: (error: unknown) => {
+          if (this.epoch !== epoch) {
+            return; // a venue switch superseded this write's UI state
+          }
+          this.seasonBusy.set(false);
+          this.failSeason(seasonClosureErrorOf(error));
+        },
+      });
+  }
+
+  /** Reopen by hand: clears the closure; the card returns to open with the close trigger focused. */
+  protected onReopen(): void {
+    const venueId = this.venueId();
+    if (venueId === undefined || this.seasonBusy()) {
+      return;
+    }
+    const epoch = this.epoch;
+    this.seasonError.set(null);
+    this.seasonBusy.set(true);
+    this.console.reopenForSeason(venueId).subscribe({
+      next: () => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this write's UI state
+        }
+        this.seasonBusy.set(false);
+        this.season.set(OPEN_SEASON);
+        this.seasonCounts.set(null);
+        this.focusAfterRender('venue-season-close');
+      },
+      error: (error: unknown) => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this write's UI state
+        }
+        this.seasonBusy.set(false);
+        this.failSeason(seasonClosureErrorOf(error));
+      },
+    });
+  }
+
+  private failSeason(code: SeasonClosureErrorCode): void {
+    this.seasonError.set(code);
+    if (code === 'UNAUTHORIZED') {
+      this.operator.sessionLost();
+    }
+  }
+
+  /** The operator-facing message for a close/reopen failure; the refused date speaks at its field. */
+  protected seasonErrorMessage(): string | undefined {
+    switch (this.seasonError()) {
+      case 'NOT_VENUE_OWNER':
+        return 'You do not manage this venue, so its season can’t be changed.';
+      case 'NO_SUCH_VENUE':
+        return 'This venue could not be found.';
+      case 'INVALID_REQUEST':
+        return 'Please check the reopen date and try again.';
+      case 'UNAUTHORIZED':
+        return 'Your session has expired. Please sign in again.';
+      case 'STALE_WRITE':
+      case 'UNKNOWN':
+        return 'Something went wrong changing the season. Please try again.';
+      default:
+        return undefined;
+    }
   }
 
   private patchSlot(slot: PhotoSlotKey, patch: Partial<SlotUi>): void {

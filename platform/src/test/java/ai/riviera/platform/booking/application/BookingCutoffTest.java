@@ -10,6 +10,7 @@ import java.time.ZonedDateTime;
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -183,5 +184,69 @@ class BookingCutoffTest {
 				.cancellationWindow(lateCutoff, BOOKING_DATE));
 		assertEquals(CancellationWindow.CLOSED, at(ZonedDateTime.of(2026, 7, 15, 0, 1, 0, 0, TIRANE))
 				.cancellationWindow(lateCutoff, BOOKING_DATE));
+	}
+
+	// --- the season closure: the second arm of the sales fence, keyed on the civil day in Tirane ---
+
+	private static final LocalDate REOPEN = LocalDate.of(2027, 5, 15);
+	private static final SeasonClosure CLOSED_UNTIL_REOPEN = SeasonClosure.closed(REOPEN, false);
+	private static final SeasonClosure CLOSED_SELLING_AHEAD = SeasonClosure.closed(REOPEN, true);
+	private static final SeasonClosure CLOSED_INDEFINITELY = SeasonClosure.closed(null, false);
+	/** 2027-05-14 23:59 in Tirane (CEST): the last minute before the reopen day. */
+	private static final ZonedDateTime LAST_MINUTE_BEFORE_REOPEN = ZonedDateTime.of(2027, 5, 14, 23, 59, 0, 0, TIRANE);
+	/** 2027-05-15 00:00 in Tirane — 2027-05-14T22:00Z, still the 14th in UTC. */
+	private static final ZonedDateTime REOPEN_MIDNIGHT = ZonedDateTime.of(2027, 5, 15, 0, 0, 0, 0, TIRANE);
+
+	@Test
+	void anOpenVenueIsNeverClosedForSeason() {
+		BookingCutoff cutoff = at(LAST_MINUTE_BEFORE_REOPEN);
+		assertFalse(cutoff.closedForSeason(SeasonClosure.open(), LAST_MINUTE_BEFORE_REOPEN.toInstant()));
+		assertTrue(cutoff.admitsDate(SeasonClosure.open(), REOPEN.plusDays(30), LAST_MINUTE_BEFORE_REOPEN.toInstant()));
+	}
+
+	@Test
+	void closedForSeasonUntilTheReopenDayOpensInTirane() {
+		BookingCutoff cutoff = at(LAST_MINUTE_BEFORE_REOPEN);
+		assertTrue(cutoff.closedForSeason(CLOSED_UNTIL_REOPEN, LAST_MINUTE_BEFORE_REOPEN.toInstant()));
+		assertFalse(cutoff.closedForSeason(CLOSED_UNTIL_REOPEN, REOPEN_MIDNIGHT.toInstant()));
+		assertEquals(Instant.parse("2027-05-14T22:00:00Z"), REOPEN_MIDNIGHT.toInstant());
+	}
+
+	@Test
+	void aClosureWithoutAReopenDateHoldsUntilReopenedByHand() {
+		BookingCutoff cutoff = at(LAST_MINUTE_BEFORE_REOPEN);
+		assertTrue(cutoff.closedForSeason(CLOSED_INDEFINITELY, REOPEN_MIDNIGHT.toInstant()));
+		assertTrue(cutoff.closedForSeason(CLOSED_INDEFINITELY, REOPEN_MIDNIGHT.plusYears(1).toInstant()));
+		assertFalse(cutoff.admitsDate(CLOSED_INDEFINITELY, REOPEN.plusYears(1), REOPEN_MIDNIGHT.toInstant()));
+	}
+
+	@Test
+	void aClosedVenueAdmitsNoDateWithoutTheOptIn() {
+		BookingCutoff cutoff = at(LAST_MINUTE_BEFORE_REOPEN);
+		Instant now = LAST_MINUTE_BEFORE_REOPEN.toInstant();
+		assertFalse(cutoff.admitsDate(CLOSED_UNTIL_REOPEN, REOPEN, now));
+		assertFalse(cutoff.admitsDate(CLOSED_UNTIL_REOPEN, REOPEN.plusDays(30), now));
+		assertFalse(cutoff.isBookable(SALES_CLOSE_1600, CLOSED_UNTIL_REOPEN, REOPEN.plusDays(30), now));
+	}
+
+	@Test
+	void theOptInAdmitsDatesOnOrAfterTheReopenDateOnly() {
+		BookingCutoff cutoff = at(LAST_MINUTE_BEFORE_REOPEN);
+		Instant now = LAST_MINUTE_BEFORE_REOPEN.toInstant();
+		assertTrue(cutoff.admitsDate(CLOSED_SELLING_AHEAD, REOPEN, now));
+		assertTrue(cutoff.admitsDate(CLOSED_SELLING_AHEAD, REOPEN.plusDays(5), now));
+		assertFalse(cutoff.admitsDate(CLOSED_SELLING_AHEAD, REOPEN.minusDays(1), now));
+		assertTrue(cutoff.isBookable(SALES_CLOSE_1600, CLOSED_SELLING_AHEAD, REOPEN.plusDays(5), now));
+	}
+
+	@Test
+	void onceReopenedEveryDateIsAdmittedAndTheSalesCloseStillFences() {
+		BookingCutoff cutoff = at(REOPEN_MIDNIGHT);
+		Instant now = REOPEN_MIDNIGHT.toInstant();
+		assertTrue(cutoff.admitsDate(CLOSED_UNTIL_REOPEN, REOPEN, now));
+		assertTrue(cutoff.isBookable(SALES_CLOSE_1600, CLOSED_UNTIL_REOPEN, REOPEN, now));
+		// Admitted by the closure, refused by the on-day sales close: the two arms compose.
+		assertFalse(cutoff.isBookable(SALES_CLOSE_0001, CLOSED_UNTIL_REOPEN, REOPEN,
+				ZonedDateTime.of(2027, 5, 15, 0, 1, 0, 0, TIRANE).toInstant()));
 	}
 }

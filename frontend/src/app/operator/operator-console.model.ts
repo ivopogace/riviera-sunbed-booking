@@ -391,7 +391,49 @@ export interface VenueProfileView {
   readonly version: number;
   /** Every photo slot's presence + preview URL — always all three keys, occupied or not. */
   readonly photos: Readonly<Record<PhotoSlotKey, SlotPhotoView>>;
+  /**
+   * The venue's closed-for-season state. Read-only here — written through
+   * {@link OperatorConsoleService.closeForSeason} / `reopenForSeason`, never the profile PATCH.
+   * Optional because test doubles and older payloads may omit it; absent reads open.
+   */
+  readonly seasonClosure?: SeasonClosureView;
 }
+
+/**
+ * The season-closure block of the owner profile: `closed` is the server's verdict at read time (a
+ * closure whose reopen day has arrived reads open), `reopenOn` (ISO `YYYY-MM-DD`, Europe/Tirane) and
+ * `advanceSales` the stored values. The tab keys on `closed` and never compares a date with a clock.
+ */
+export interface SeasonClosureView {
+  readonly closed: boolean;
+  readonly reopenOn: string | null;
+  readonly advanceSales: boolean;
+}
+
+/**
+ * `PUT /api/venues/{id}/season-closure` body: close with an optional reopen day and the
+ * advance-sales opt-in (default off — a beach re-laid in spring must not collect winter bookings).
+ * The opt-in without a reopen day is rejected `400` server-side, so the tab never sends that pair.
+ */
+export interface SeasonClosureRequest {
+  readonly reopenOn: string | null;
+  readonly advanceSales: boolean;
+}
+
+/**
+ * The close response, field for field the server's `SeasonClosureResponse`: the closure now in force
+ * (`closedForSeason` is the read-time verdict) and what guests are still owed from today.
+ */
+export interface SeasonClosureResult {
+  readonly closedForSeason: boolean;
+  readonly reopenOn: string | null;
+  readonly advanceSales: boolean;
+  readonly futureBookings: number;
+  readonly pendingRequests: number;
+}
+
+/** A close/reopen failure: the profile codes plus a reopen day the server refuses as not after today. */
+export type SeasonClosureErrorCode = VenueProfileErrorCode | 'REOPEN_DATE_PASSED';
 
 /**
  * One slot on the owner profile: the PREVIEW variant's content-addressed serving URL, or `null` when the

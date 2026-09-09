@@ -5,6 +5,7 @@ import java.util.List;
 
 import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
+import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 
 /**
  * The operator's own view of a venue's admin profile — everything the console's
@@ -30,9 +31,14 @@ import ai.riviera.platform.venue.vocabulary.BookingMode;
  * <p>{@code salesClose} is the per-venue on-day sales-close time, owner-editable via the profile
  * {@code PATCH}. The read model keeps {@code LocalTime} — it only displays; the write path
  * speaks the three-value {@code SalesClose} choice.
+ *
+ * <p>{@code seasonClosure} is the stored closed-for-season state and {@code closedForSeason} the
+ * verdict at read time (a closure whose reopen day has arrived reads open) — the tab keys on the
+ * verdict and never compares a date with a clock. Written through {@code CloseForSeason}, never the
+ * profile {@code PATCH}.
  */
 public record VenueProfileView(String name, String beach, String region, String description,
 		BookingMode bookingMode, LocalTime bookingCutoff, LocalTime salesClose, int commissionBps,
 		String payoutCurrency, List<Amenity> amenities, Integer distanceToWaterM, long version,
-		List<PhotoSlotView> photos) {
+		List<PhotoSlotView> photos, SeasonClosure seasonClosure, boolean closedForSeason) {
 }

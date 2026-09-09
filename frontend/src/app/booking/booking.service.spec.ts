@@ -369,6 +369,7 @@ describe('bookingErrorOf', () => {
   it('maps known server codes', () => {
     expect(bookingErrorOf(httpError(409, 'SET_TAKEN'))).toBe('SET_TAKEN');
     expect(bookingErrorOf(httpError(422, 'BOOKING_CLOSED'))).toBe('BOOKING_CLOSED');
+    expect(bookingErrorOf(httpError(422, 'VENUE_CLOSED'))).toBe('VENUE_CLOSED');
     expect(bookingErrorOf(httpError(422, 'SET_NOT_BOOKABLE_ONLINE'))).toBe(
       'SET_NOT_BOOKABLE_ONLINE',
     );

@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -24,6 +25,7 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
+import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.CommissionRateStore;
@@ -41,6 +43,7 @@ import ai.riviera.platform.venue.application.VenueProfileCommand;
 import ai.riviera.platform.venue.application.VenueProfileView;
 import ai.riviera.platform.venue.application.VenueRatings;
 import ai.riviera.platform.venue.application.Venues;
+import ai.riviera.platform.venue.spi.SalesWindow;
 
 /**
  * JDBC adapter implementing the {@link Venues} write port and the {@link CommissionRateStore}
@@ -95,9 +98,13 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 			""";
 
 	private final JdbcClient jdbc;
+	private final SalesWindow salesWindow;
+	private final Clock clock;
 
-	JdbcVenues(JdbcClient jdbc) {
+	JdbcVenues(JdbcClient jdbc, SalesWindow salesWindow, Clock clock) {
 		this.jdbc = jdbc;
+		this.salesWindow = salesWindow;
+		this.clock = clock;
 	}
 
 	@Override
@@ -498,7 +505,8 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 		// (catalogue-ordered) — mirroring findVenueMap's shape. Ownership is asserted by the caller.
 		Optional<ProfileRow> venue = jdbc.sql("""
 				SELECT name, beach, region, description, booking_mode, booking_cutoff, sales_close,
-				       commission_bps, payout_currency, distance_to_water_m, version
+				       commission_bps, payout_currency, distance_to_water_m, version,
+				       closed_at, reopen_on, advance_sales
 				FROM venue
 				WHERE id = :id
 				""")
@@ -511,7 +519,11 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 						rs.getObject("sales_close", LocalTime.class),
 						rs.getInt("commission_bps"), rs.getString("payout_currency"),
 						rs.getObject("distance_to_water_m", Integer.class),
-						rs.getLong("version")))
+						rs.getLong("version"),
+						rs.getObject("closed_at") == null
+								? SeasonClosure.open()
+								: SeasonClosure.closed(rs.getObject("reopen_on", LocalDate.class),
+										rs.getBoolean("advance_sales"))))
 				.optional();
 		if (venue.isEmpty()) {
 			return Optional.empty();
@@ -525,7 +537,29 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				.toList();
 		return Optional.of(new VenueProfileView(v.name(), v.beach(), v.region(), v.description(),
 				v.bookingMode(), v.bookingCutoff(), v.salesClose(), v.commissionBps(), v.payoutCurrency(),
-				amenities, v.distanceToWaterM(), v.version(), slotPhotos(venueId)));
+				amenities, v.distanceToWaterM(), v.version(), slotPhotos(venueId), v.seasonClosure(),
+				salesWindow.closedForSeason(v.seasonClosure(), clock.instant())));
+	}
+
+	@Override
+	public void closeForSeason(VenueId venueId, SeasonClosure closure, Instant closedAt) {
+		jdbc.sql("""
+				UPDATE venue
+				SET closed_at = :closedAt, reopen_on = :reopenOn, advance_sales = :advanceSales
+				WHERE id = :id
+				""")
+				.param("closedAt", OffsetDateTime.ofInstant(closedAt, ZoneOffset.UTC))
+				.param("reopenOn", closure.reopenOn())
+				.param("advanceSales", closure.advanceSales())
+				.param("id", venueId.value())
+				.update();
+	}
+
+	@Override
+	public void reopenForSeason(VenueId venueId) {
+		jdbc.sql("UPDATE venue SET closed_at = NULL, reopen_on = NULL, advance_sales = FALSE WHERE id = :id")
+				.param("id", venueId.value())
+				.update();
 	}
 
 	/**
@@ -556,7 +590,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	/** The venue row backing a {@link VenueProfileView}, before its amenity set is folded in. */
 	private record ProfileRow(String name, String beach, String region, String description,
 			BookingMode bookingMode, LocalTime bookingCutoff, LocalTime salesClose, int commissionBps,
-			String payoutCurrency, Integer distanceToWaterM, long version) {
+			String payoutCurrency, Integer distanceToWaterM, long version, SeasonClosure seasonClosure) {
 	}
 
 	private static Map<String, Object> setParams(SetCommand c) {

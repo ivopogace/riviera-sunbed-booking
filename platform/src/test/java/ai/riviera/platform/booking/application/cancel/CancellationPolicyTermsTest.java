@@ -17,6 +17,7 @@ import ai.riviera.platform.venue.api.VenueRates;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.Pool;
+import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -51,7 +52,7 @@ class CancellationPolicyTermsTest {
 	private void givenSet() {
 		when(setFacts.setBookingInfo(SET)).thenReturn(Optional.of(new SetBookingInfo(SET, VENUE,
 				"Blue Marlin", "A", 1, Pool.ONLINE, new MoneyView(4500, "EUR"), CUTOFF,
-				LocalTime.of(16, 0), BookingMode.INSTANT)));
+				LocalTime.of(16, 0), BookingMode.INSTANT, SeasonClosure.open())));
 	}
 
 	@Test

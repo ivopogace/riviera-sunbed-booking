@@ -110,6 +110,8 @@ class SecurityConfig {
 	 * currency, which must never reach the public tourist read. Order-sensitive.
 	 */
 	private static final String VENUE_PROFILE_PATH = "/api/venues/*/profile";
+	/** The owner's close/reopen state transition; non-GET, so it never shadows the public read. */
+	private static final String SEASON_CLOSURE_PATH = "/api/venues/*/season-closure";
 	/** The operator-only per-venue daily online-takings read. Order-sensitive. */
 	private static final String TAKINGS_PATH = "/api/venues/*/takings";
 	/**
@@ -387,6 +389,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.DELETE, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.PUT, BEACH_MAP_PATH, ROW_PRICE_PATH, ROW_NAME_PATH)
 						.hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.PUT, SEASON_CLOSURE_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.DELETE, SEASON_CLOSURE_PATH).hasRole(OPERATOR_ROLE)
 						// Non-GET, so these never shadow the public serving read above.
 						.requestMatchers(HttpMethod.POST, PHOTO_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, PHOTO_ITEM_PATH).hasRole(OPERATOR_ROLE)

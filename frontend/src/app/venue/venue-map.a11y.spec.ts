@@ -139,6 +139,17 @@ describe('VenueMap accessibility (axe)', () => {
     await expectNoAxeViolations(host());
   });
 
+  it('has no violations when the venue is closed for the season', async () => {
+    expectVenueRequest().flush({
+      ...fixture(),
+      salesOpen: false,
+      closedForSeason: true,
+      reopensOn: '2027-05-15',
+    });
+    await fixtureRef.whenStable();
+    await expectNoAxeViolations(host());
+  });
+
   it('has no violations with the venue sales-close note rendered (#804)', async () => {
     expectVenueRequest().flush({ ...fixture(), salesClose: '16:00' });
     await fixtureRef.whenStable();

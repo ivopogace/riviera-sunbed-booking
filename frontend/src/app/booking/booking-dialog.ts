@@ -567,6 +567,8 @@ export class BookingDialog implements OnInit {
         return this.date() === todayBookingDate(new Date())
           ? 'Online sales for today have closed at this venue. Try another venue or tomorrow.'
           : 'Booking has closed for that date. Try a later day.';
+      case 'VENUE_CLOSED':
+        return 'This venue is closed for the season, so this date can’t be booked. Try another venue.';
       case 'NO_SUCH_SET':
         return 'That set could not be found.';
       case 'INVALID_REQUEST':

@@ -36,6 +36,9 @@ import {
   VenueProfileView,
   WeatherRefundResult,
   toProfileUpdate,
+  SeasonClosureErrorCode,
+  SeasonClosureRequest,
+  SeasonClosureResult,
 } from './operator-console.model';
 
 /**
@@ -321,11 +324,36 @@ export class OperatorConsoleService {
       ),
     );
   }
+
+  /**
+   * Close the venue for the season on its own owner-asserted state-transition resource (never the
+   * profile PATCH: a full replace off a stale form could silently reopen a venue, and it has nowhere
+   * to return the counts). The response says what guests are still owed.
+   */
+  closeForSeason(venueId: number, request: SeasonClosureRequest): Observable<SeasonClosureResult> {
+    return this.http.put<SeasonClosureResult>(
+      `${this.base}/api/venues/${venueId}/season-closure`,
+      request,
+    );
+  }
+
+  /** Reopen by hand — clears the closure; idempotent. */
+  reopenForSeason(venueId: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/api/venues/${venueId}/season-closure`);
+  }
 }
 
 /** {@link apiPhotoUrl} over one slot's preview; an empty slot (`null` URL) passes through. */
 function resolveSlotPhoto(slot: SlotPhotoView): SlotPhotoView {
   return { previewUrl: slot.previewUrl === null ? null : apiPhotoUrl(slot.previewUrl) };
+}
+
+/** Map a close/reopen failure to a known {@link SeasonClosureErrorCode}: the profile codes plus `REOPEN_DATE_PASSED`. */
+export function seasonClosureErrorOf(error: unknown): SeasonClosureErrorCode {
+  if (error instanceof HttpErrorResponse && problemCodeOf(error) === 'REOPEN_DATE_PASSED') {
+    return 'REOPEN_DATE_PASSED';
+  }
+  return venueProfileErrorOf(error);
 }
 
 /** Map a venue-details load/save failure to a known {@link VenueProfileErrorCode} (RFC-7807 `code`; or 401). */

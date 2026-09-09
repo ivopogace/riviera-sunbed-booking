@@ -518,6 +518,166 @@ describe('VenueTab (#177)', () => {
     expect(byId('photo-error-bar').textContent?.toLowerCase()).toContain('session');
   });
 
+  // ---- closed for season: the owner-asserted state transition beside the profile form
+
+  const CLOSED_PROFILE: VenueProfileView = {
+    ...PROFILE,
+    seasonClosure: { closed: true, reopenOn: '2027-05-15', advanceSales: false },
+  };
+
+  function seasonRequest(method: 'PUT' | 'DELETE') {
+    return http.expectOne(
+      (r) => r.method === method && r.url.endsWith('/api/venues/1/season-closure'),
+    );
+  }
+
+  async function submitSeason(): Promise<void> {
+    byId('venue-season-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  it('an open venue offers Close for season; a profile without the block reads open too', () => {
+    render();
+    expect(byId('venue-season-close')).toBeTruthy();
+    expect(host.querySelector('[data-testid="venue-season-form"]')).toBeNull();
+    expect(host.querySelector('[data-testid="venue-season-status"]')).toBeNull();
+  });
+
+  it('arming reveals the reopen date; the advance-sales opt-in appears only once a date is set, and the close PUTs both', async () => {
+    render();
+    byId('venue-season-close').click();
+    fixture.detectChanges();
+    expect(byId('venue-season-form')).toBeTruthy();
+    expect(host.querySelector('[data-testid="venue-season-advance-sales"]')).toBeNull();
+
+    setValue('venue-season-reopen-on', '2027-05-15');
+    const optIn = byId('venue-season-advance-sales') as HTMLInputElement;
+    expect(optIn.checked).toBe(false);
+    optIn.click();
+    fixture.detectChanges();
+
+    await submitSeason();
+    const req = seasonRequest('PUT');
+    expect(req.request.body).toEqual({ reopenOn: '2027-05-15', advanceSales: true });
+    req.flush({
+      closedForSeason: true,
+      reopenOn: '2027-05-15',
+      advanceSales: true,
+      futureBookings: 3,
+      pendingRequests: 1,
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const status = byId('venue-season-status');
+    expect(status.textContent).toContain('Closed for season');
+    expect(status.textContent).toContain('Sat 15 May 2027');
+    expect(status.textContent).toContain('Dates from the reopen date can be booked');
+    expect(byId('venue-season-counts').textContent).toContain('3 future bookings');
+    expect(byId('venue-season-counts').textContent).toContain('1 pending request');
+    expect(byId('venue-season-reopen')).toBeTruthy();
+    expect(host.querySelector('[data-testid="venue-season-close"]')).toBeNull();
+  });
+
+  it('closing without a date sends no reopen day and no opt-in, and the status says so', async () => {
+    render();
+    byId('venue-season-close').click();
+    fixture.detectChanges();
+    await submitSeason();
+    const req = seasonRequest('PUT');
+    expect(req.request.body).toEqual({ reopenOn: null, advanceSales: false });
+    req.flush({
+      closedForSeason: true,
+      reopenOn: null,
+      advanceSales: false,
+      futureBookings: 0,
+      pendingRequests: 0,
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('venue-season-status').textContent).toContain('until you reopen');
+    expect(byId('venue-season-counts').textContent).toContain('0 future bookings');
+  });
+
+  it('a closed profile seeds the closed state, and Reopen now DELETEs the closure', async () => {
+    render(CLOSED_PROFILE);
+    expect(byId('venue-season-status').textContent).toContain('Sat 15 May 2027');
+    expect(byId('venue-season-status').textContent).toContain('No date can be booked');
+    expect(host.querySelector('[data-testid="venue-season-counts"]')).toBeNull();
+
+    byId('venue-season-reopen').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const req = seasonRequest('DELETE');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="venue-season-status"]')).toBeNull();
+    expect(byId('venue-season-close')).toBeTruthy();
+  });
+
+  it('a reopen date the server refuses shows a field error on the date and keeps the form', async () => {
+    render();
+    byId('venue-season-close').click();
+    fixture.detectChanges();
+    setValue('venue-season-reopen-on', '2020-01-01');
+    await submitSeason();
+    seasonRequest('PUT').flush(
+      { code: 'REOPEN_DATE_PASSED' },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('venue-season-date-error').textContent).toContain('after today');
+    expect(byId('venue-season-date-error').getAttribute('role')).toBe('alert');
+    expect(byId('venue-season-form')).toBeTruthy();
+    expect(host.querySelector('[data-testid="venue-season-status"]')).toBeNull();
+  });
+
+  it('Cancel drops the form without a request', () => {
+    render();
+    byId('venue-season-close').click();
+    fixture.detectChanges();
+    byId('venue-season-cancel').click();
+    fixture.detectChanges();
+    expect(host.querySelector('[data-testid="venue-season-form"]')).toBeNull();
+    expect(byId('venue-season-close')).toBeTruthy();
+  });
+
+  it('shows the not-owner copy on a 403 close', async () => {
+    render();
+    byId('venue-season-close').click();
+    fixture.detectChanges();
+    await submitSeason();
+    seasonRequest('PUT').flush(
+      { code: 'NOT_VENUE_OWNER' },
+      { status: 403, statusText: 'Forbidden' },
+    );
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('venue-season-error').textContent?.toLowerCase()).toContain('manage');
+  });
+
+  it('drops the session on a 401 reopen', async () => {
+    render(CLOSED_PROFILE);
+    const auth = TestBed.inject(OperatorAuth);
+    const lost = vi.spyOn(auth, 'sessionLost');
+    byId('venue-season-reopen').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    seasonRequest('DELETE').flush(
+      { code: 'UNAUTHENTICATED' },
+      { status: 401, statusText: 'Unauthorized' },
+    );
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(lost).toHaveBeenCalled();
+    expect(byId('venue-season-error').textContent?.toLowerCase()).toContain('session');
+  });
+
   it('shows an invalid-link state when the parent route has no venue id', () => {
     configure({});
     fixture.detectChanges();

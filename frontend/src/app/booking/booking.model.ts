@@ -303,6 +303,7 @@ export type BookingErrorCode =
   | 'SET_TAKEN'
   | 'SET_NOT_BOOKABLE_ONLINE'
   | 'BOOKING_CLOSED'
+  | 'VENUE_CLOSED'
   | 'NO_SUCH_SET'
   | 'INVALID_REQUEST'
   | 'UNKNOWN';

@@ -68,8 +68,12 @@ class CreateBookingServiceTest {
 	}
 
 	private SetBookingInfo set(Pool pool, BookingMode mode) {
+		return set(pool, mode, SeasonClosure.open());
+	}
+
+	private SetBookingInfo set(Pool pool, BookingMode mode, SeasonClosure closure) {
 		return new SetBookingInfo(SET, new VenueId(1), "Miramar", "Front row", 2, pool,
-				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0), mode);
+				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0), mode, closure);
 	}
 
 	private static final RequestWindows WINDOWS =
@@ -477,6 +481,45 @@ class CreateBookingServiceTest {
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, LocalDate.of(2026, 10, 1), GUEST));
 		assertSame(BookingOutcome.Rejected.BOOKING_CLOSED, outcome);
+	}
+
+	@Test
+	void rejectsAClosedVenueBeforeAnyClaim() {
+		SeasonClosure closed = SeasonClosure.closed(DATE.plusDays(10), false);
+		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.INSTANT, closed),
+				claiming(ClaimOutcome.CLAIMED), (_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+
+		assertSame(BookingOutcome.Rejected.VENUE_CLOSED, service.create(command()));
+		assertEquals(0, bookings.inserted.size(), "nothing is written: the fence runs before the claim");
+	}
+
+	@Test
+	void aClosedRequestVenueIsRefusedTheSameWay() {
+		SeasonClosure closed = SeasonClosure.closed(null, false);
+		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST, closed),
+				claiming(ClaimOutcome.CLAIMED), (_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+
+		assertSame(BookingOutcome.Rejected.VENUE_CLOSED, service.create(command()));
+	}
+
+	@Test
+	void theOptInSellsDatesOnOrAfterTheReopenDayWhileStillClosed() {
+		SeasonClosure sellingAhead = SeasonClosure.closed(DATE, true);
+		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.INSTANT, sellingAhead),
+				claiming(ClaimOutcome.CLAIMED), (_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+
+		assertInstanceOf(BookingOutcome.Confirmed.class, service.create(command()));
+		assertSame(BookingOutcome.Rejected.VENUE_CLOSED,
+				service.create(new CreateBookingCommand(SET, DATE.minusDays(1), GUEST)));
+	}
+
+	@Test
+	void aHiddenClosedVenueStillReadsAsNoSuchSet() {
+		SeasonClosure closed = SeasonClosure.closed(null, false);
+		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.INSTANT, closed),
+				claiming(ClaimOutcome.CLAIMED), (_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X", false);
+
+		assertSame(BookingOutcome.Rejected.NO_SUCH_SET, service.create(command()));
 	}
 
 	@Test

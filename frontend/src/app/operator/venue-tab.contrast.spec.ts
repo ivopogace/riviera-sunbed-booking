@@ -13,6 +13,8 @@ import {
   expectAaOverStops,
   surfaceOver,
   WARN_EDGE,
+  WARN_FILL,
+  WARN_INK,
 } from '../../testing/glass-tokens';
 import {
   CONSOLE_THEMES,
@@ -78,6 +80,12 @@ describe('VenueTab porcelain contrast (WCAG AA, #177)', () => {
         `error over ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }
+  });
+
+  it('the closed-for-season status (--riv-warn-ink on the fixed --riv-warn-fill) meets AA, theme-invariant', () => {
+    expect(contrastRatio(rgbToHex(WARN_INK), rgbToHex(WARN_FILL))).toBeGreaterThanOrEqual(
+      AA_NORMAL,
+    );
   });
 
   it('the stale-write banner ink (--riv-card-ink) meets AA over the amber tint on the card glass (#224)', () => {

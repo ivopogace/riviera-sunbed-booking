@@ -257,6 +257,29 @@ describe('AvailabilityCalendar', () => {
       expect(host.chosen).toEqual([]);
     });
 
+    it('treats a day the server marks unsellable as not bookable, bar and all', async () => {
+      const request = calendarRequest();
+      const from = request.request.params.get('from')!;
+      const to = request.request.params.get('to')!;
+      request.flush(
+        uniformDays(from, to, 20, 30).map((day) =>
+          day.date === '2026-06-20' ? { ...day, salesOpen: false } : { ...day, salesOpen: true },
+        ),
+      );
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(dayButton('2026-06-20')!.getAttribute('aria-disabled')).toBe('true');
+      expect(dayButton('2026-06-20')!.getAttribute('aria-label')).toContain('not bookable');
+      expect(barTrack('2026-06-20').classList.contains('invisible')).toBe(true);
+      dayButton('2026-06-20')!.click();
+      fixture.detectChanges();
+      expect(host.chosen).toEqual([]);
+      // A neighbour the server leaves open keeps its counts and its bar.
+      expect(dayButton('2026-06-21')!.getAttribute('aria-disabled')).toBeNull();
+      expect(dayButton('2026-06-21')!.getAttribute('aria-label')).toContain('20 of 30 sets free');
+    });
+
     it('announces today as bookable, not disabled (#791)', async () => {
       await flushCalendar();
 

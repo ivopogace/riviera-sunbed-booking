@@ -12,9 +12,11 @@
  * <p>Holds {@link SetAvailabilityLookup}, implemented by the {@code availability} module so the
  * venue's dated reads — the beach map, the owner's daily view and the tourist availability calendar — can overlay live per-{@code (set, date)} availability,
  * {@link BookingPresence}, implemented by the {@code booking} module so the layout writes can refuse
- * a set someone is still owed and the owner's beach-map read can pin it, and {@link SalesWindow}, implemented by the {@code booking}
- * module so the tourist catalogue reads can carry the open/closed sales verdict without venue
- * re-deriving the rule — all without venue depending on those modules.
+ * a set someone is still owed, the owner's beach-map read can pin it and the close-for-season
+ * response can count what guests are still owed, and {@link SalesWindow}, implemented by the
+ * {@code booking} module so the tourist catalogue reads can carry the open/closed sales verdict —
+ * the on-day sales close and the season closure — without venue re-deriving either rule — all
+ * without venue depending on those modules.
  * Grant {@code venue::spi} only to the implementing module; callers that merely use venue use
  * {@code venue::api}.
  */

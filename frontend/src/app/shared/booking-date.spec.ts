@@ -1,4 +1,5 @@
 import {
+  formatDayMonth,
   addDays,
   addMonths,
   defaultBookingDate,
@@ -239,5 +240,10 @@ describe('formatMonthLabel', () => {
   it('reads the civil day itself, not the viewer zone', () => {
     // Midnight UTC on the 1st: a local-zone read west of UTC would render the previous month.
     expect(formatMonthLabel('2026-09-01')).toBe('September 2026');
+  });
+
+  it('formatDayMonth renders the civil day and month only, for the reopen badge', () => {
+    expect(formatDayMonth('2027-05-15')).toBe('15 May');
+    expect(formatDayMonth('2027-10-01')).toBe('1 Oct');
   });
 });

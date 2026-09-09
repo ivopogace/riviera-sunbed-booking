@@ -9,6 +9,7 @@ import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.booking.application.BookingCutoff;
+import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -32,12 +33,27 @@ class BookingCutoffSalesWindowTest {
 
 	@Test
 	void delegatesToTheCutoffAuthority() {
-		assertTrue(window.isOpen(FOUR_PM, DATE, BEFORE_CLOSE));
-		assertTrue(window.isOpen(FOUR_PM, DATE.plusDays(1), AT_CLOSE));
+		assertTrue(window.isOpen(FOUR_PM, SeasonClosure.open(), DATE, BEFORE_CLOSE));
+		assertTrue(window.isOpen(FOUR_PM, SeasonClosure.open(), DATE.plusDays(1), AT_CLOSE));
 	}
 
 	@Test
 	void closedAtTheExactCloseInstant() {
-		assertFalse(window.isOpen(FOUR_PM, DATE, AT_CLOSE));
+		assertFalse(window.isOpen(FOUR_PM, SeasonClosure.open(), DATE, AT_CLOSE));
+	}
+
+	@Test
+	void aSeasonClosureShutsTheWindowAndReadsClosedForSeason() {
+		SeasonClosure closed = SeasonClosure.closed(DATE.plusMonths(6), false);
+		assertFalse(window.isOpen(FOUR_PM, closed, DATE, BEFORE_CLOSE));
+		assertTrue(window.closedForSeason(closed, BEFORE_CLOSE));
+		assertFalse(window.closedForSeason(SeasonClosure.open(), BEFORE_CLOSE));
+	}
+
+	@Test
+	void theOptInReopensTheWindowFromTheReopenDate() {
+		SeasonClosure sellingAhead = SeasonClosure.closed(DATE.plusMonths(6), true);
+		assertFalse(window.isOpen(FOUR_PM, sellingAhead, DATE, BEFORE_CLOSE));
+		assertTrue(window.isOpen(FOUR_PM, sellingAhead, DATE.plusMonths(6), BEFORE_CLOSE));
 	}
 }

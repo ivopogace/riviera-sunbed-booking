@@ -34,6 +34,7 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.PhotoSurface;
 import ai.riviera.platform.venue.vocabulary.Pool;
+import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetView;
 import ai.riviera.platform.venue.api.VenueCatalog;
@@ -73,6 +74,9 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	private static final String COL_VENUE_ID = "venue_id";
 	private static final String COL_AMENITY = "amenity";
 	private static final String COL_SALES_CLOSE = "sales_close";
+	private static final String COL_CLOSED_AT = "closed_at";
+	private static final String COL_REOPEN_ON = "reopen_on";
+	private static final String COL_ADVANCE_SALES = "advance_sales";
 	/** The bulk IN-clause bind param shared by the three list-read queries (named once — Sonar S1192). */
 	private static final String P_VENUE_IDS = "venueIds";
 	// Slideshow preferences: own size first, then fallbacks for pre-uniform-surface uploads.
@@ -104,7 +108,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		}
 		Optional<VenueRow> venue = jdbc.sql("""
 				SELECT id, name, beach, region, description, rating_tenths, reviews_count, booking_mode,
-				       distance_to_water_m, set_version, sales_close
+				       distance_to_water_m, set_version, sales_close, closed_at, reopen_on, advance_sales
 				FROM venue
 				WHERE id = :id
 				""")
@@ -116,7 +120,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 						rs.getString(COL_BOOKING_MODE),
 						rs.getObject(COL_DISTANCE_TO_WATER, Integer.class),
 						rs.getLong("set_version"),
-						rs.getObject(COL_SALES_CLOSE, LocalTime.class)))
+						rs.getObject(COL_SALES_CLOSE, LocalTime.class), seasonClosureOf(rs)))
 				.optional();
 
 		if (venue.isEmpty()) {
@@ -166,11 +170,14 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		CoverPhotoView coverPhoto = coverOf(id.value(), photoVariants);
 		List<String> photos = slideshowOf(id.value(), photoVariants, BANNER_SLIDESHOW);
 
+		Instant now = clock.instant();
+		boolean closedForSeason = salesWindow.closedForSeason(v.seasonClosure(), now);
 		return Optional.of(new VenueMapView(v.id(), v.name(), v.beach(), v.region(),
 				v.description(), v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, amenities, v.distanceToWaterM(), sets, v.setVersion(), coverPhoto,
-				photos, salesWindow.isOpen(v.salesClose(), date, clock.instant()),
-				SalesClose.WIRE.format(v.salesClose())));
+				photos, salesWindow.isOpen(v.salesClose(), v.seasonClosure(), date, now),
+				SalesClose.WIRE.format(v.salesClose()), closedForSeason,
+				closedForSeason ? v.seasonClosure().reopenOn() : null));
 	}
 
 	@Override
@@ -179,7 +186,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		// type the bound NULL so "(:p IS NULL OR col = :p)" plans without an undetermined-type error.
 		List<SummaryRow> venues = jdbc.sql("""
 				SELECT id, name, beach, region, rating_tenths, reviews_count, booking_mode,
-				       distance_to_water_m, sales_close
+				       distance_to_water_m, sales_close, closed_at, reopen_on, advance_sales
 				FROM venue
 				WHERE (CAST(:beach AS TEXT) IS NULL OR beach = :beach)
 				  AND (CAST(:region AS TEXT) IS NULL OR region = :region)
@@ -192,7 +199,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 						rs.getString(COL_REGION), rs.getInt("rating_tenths"),
 						rs.getInt("reviews_count"), rs.getString(COL_BOOKING_MODE),
 						rs.getObject(COL_DISTANCE_TO_WATER, Integer.class),
-						rs.getObject(COL_SALES_CLOSE, LocalTime.class)))
+						rs.getObject(COL_SALES_CLOSE, LocalTime.class), seasonClosureOf(rs)))
 				.list();
 
 		venues = onlyVisible(venues);
@@ -241,11 +248,21 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		return venues.stream()
 				.map(v -> toSummary(v, setsByVenue.getOrDefault(v.id(), List.of()), taken,
 						amenitiesByVenue.getOrDefault(v.id(), List.of()),
-						coverOf(v.id(), photosByVenue.getOrDefault(v.id(), Map.of())),
-						slideshowOf(v.id(), photosByVenue.getOrDefault(v.id(), Map.of()),
-								CARD_SLIDESHOW),
-						salesWindow.isOpen(v.salesClose(), date, now)))
+						photosByVenue.getOrDefault(v.id(), Map.of()),
+						salesWindow.isOpen(v.salesClose(), v.seasonClosure(), date, now),
+						salesWindow.closedForSeason(v.seasonClosure(), now)))
+				// Stable, so the SQL's rating-then-name order survives inside each half.
+				.sorted(Comparator.comparing(VenueSummaryView::closedForSeason))
 				.toList();
+	}
+
+	/** The stored closure off a venue row; the three columns are read together or not at all. */
+	private static SeasonClosure seasonClosureOf(java.sql.ResultSet rs) throws java.sql.SQLException {
+		if (rs.getObject(COL_CLOSED_AT) == null) {
+			return SeasonClosure.open();
+		}
+		return SeasonClosure.closed(rs.getObject(COL_REOPEN_ON, LocalDate.class),
+				rs.getBoolean(COL_ADVANCE_SALES));
 	}
 
 	/**
@@ -324,8 +341,10 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	}
 
 	private static VenueSummaryView toSummary(SummaryRow v, List<SetPriceRow> sets, Set<SetId> taken,
-			List<Amenity> amenities, CoverPhotoView coverPhoto, List<String> photos,
-			boolean salesOpen) {
+			List<Amenity> amenities, Map<PhotoSlot, Map<PhotoSurface, String>> photoSlots,
+			boolean salesOpen, boolean closedForSeason) {
+		CoverPhotoView coverPhoto = coverOf(v.id(), photoSlots);
+		List<String> photos = slideshowOf(v.id(), photoSlots, CARD_SLIDESHOW);
 		int total = sets.size();
 		int free = (int) sets.stream().filter(s -> !taken.contains(new SetId(s.id()))).count();
 		MoneyView fromPrice = sets.stream()
@@ -336,7 +355,8 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		return new VenueSummaryView(v.id(), v.name(), v.beach(), v.region(),
 				v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, ordered, v.distanceToWaterM(), new AvailabilitySummary(free, total),
-				coverPhoto, photos, salesOpen);
+				coverPhoto, photos, salesOpen, closedForSeason,
+				closedForSeason ? v.seasonClosure().reopenOn() : null);
 	}
 
 	@Override
@@ -389,7 +409,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 
 	private record VenueRow(long id, String name, String beach, String region,
 			String description, int ratingTenths, int reviewsCount, String bookingMode,
-			Integer distanceToWaterM, long setVersion, LocalTime salesClose) {
+			Integer distanceToWaterM, long setVersion, LocalTime salesClose, SeasonClosure seasonClosure) {
 	}
 
 	/** The static set-position layout, before availability is overlaid for the chosen date. */
@@ -400,7 +420,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	/** A venue's discovery-list row, before its sets' price/availability are folded in. */
 	private record SummaryRow(long id, String name, String beach, String region,
 			int ratingTenths, int reviewsCount, String bookingMode, Integer distanceToWaterM,
-			LocalTime salesClose) {
+			LocalTime salesClose, SeasonClosure seasonClosure) {
 	}
 
 	/** A set's id, owning venue, and price — all the list view needs to count and price a venue. */
@@ -420,6 +440,16 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		if (!visibility.isVisible(new VenueRef(id.value()))) {
 			return Optional.empty();
 		}
+		Optional<SalesSettings> settings = jdbc.sql("""
+				SELECT sales_close, closed_at, reopen_on, advance_sales FROM venue WHERE id = :id
+				""")
+				.param("id", id.value())
+				.query((rs, rowNum) -> new SalesSettings(
+						rs.getObject(COL_SALES_CLOSE, LocalTime.class), seasonClosureOf(rs)))
+				.optional();
+		if (settings.isEmpty()) {
+			return Optional.empty();
+		}
 		// Ids only — the calendar needs how many sets there are, not how they render or price.
 		List<SetId> sets = jdbc.sql("""
 				SELECT id
@@ -434,12 +464,20 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 
 		int total = sets.size();
 		Map<LocalDate, Integer> taken = availability.takenCountsBetween(sets, from, to);
+		// One instant for every day, so verdicts within one response cannot disagree (invariant #6).
+		Instant now = clock.instant();
+		SalesSettings sales = settings.get();
 		// Counted forward from `from`; an exclusive `to + 1` would throw at LocalDate.MAX.
 		long days = ChronoUnit.DAYS.between(from, to) + 1;
 		return Optional.of(LongStream.range(0, days)
 				.mapToObj(from::plusDays)
 				.map(day -> new DailyAvailability(day,
-						new AvailabilitySummary(total - taken.getOrDefault(day, 0), total)))
+						new AvailabilitySummary(total - taken.getOrDefault(day, 0), total),
+						salesWindow.isOpen(sales.salesClose(), sales.seasonClosure(), day, now)))
 				.toList());
+	}
+
+	/** The venue's two sales settings the calendar projects per day. */
+	private record SalesSettings(LocalTime salesClose, SeasonClosure seasonClosure) {
 	}
 }

@@ -21,8 +21,9 @@ import { PhotoStepButton } from '../../shared/photo-step-button';
 import { slideshowPhotos } from '../../shared/photo-url';
 import { isRated, ratingScore, reviewsLabel } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
+import { ClosedForSeasonChip } from '../../shared/closed-for-season-chip';
 import { SemanticChip } from '../../shared/semantic-chip';
-import { defaultBookingDate } from '../../shared/booking-date';
+import { defaultBookingDate, formatDayMonth } from '../../shared/booking-date';
 import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
@@ -54,8 +55,25 @@ interface VenueCard {
   readonly total: number;
   /** True when the server's verdict says online sales for the selected date have closed. */
   readonly salesClosed: boolean;
+  /** True when the venue is closed for the season — the badge outranks the sales-closed chip. */
+  readonly closedForSeason: boolean;
+  /** The reopen day while closed with one set, for the badge's copy; else `null`. */
+  readonly reopensOn: string | null;
   /** The single accessible name carrying every card fact (nothing conveyed by layout alone). */
   readonly ariaLabel: string;
+}
+
+/** The closed-state clause of a card's accessible name; the season badge outranks today's sales close. */
+function closedStateText(
+  closedForSeason: boolean,
+  reopensOn: string | null,
+  salesClosed: boolean,
+): string {
+  if (closedForSeason) {
+    const reopens = reopensOn ? `, reopens ${formatDayMonth(reopensOn)}` : '';
+    return `, closed for season${reopens}`;
+  }
+  return salesClosed ? ', online sales for today have closed' : '';
 }
 
 /**
@@ -78,6 +96,7 @@ interface VenueCard {
     PhotoStepButton,
     CardGlass,
     AmenityChip,
+    ClosedForSeasonChip,
     SemanticChip,
     FieldGlass,
     LoadAnnouncer,
@@ -276,6 +295,8 @@ export class Home {
 
     // Only an explicit false is "closed" — an older payload without the verdict stays unbadged.
     const salesClosed = venue.salesOpen === false;
+    const closedForSeason = venue.closedForSeason === true;
+    const reopensOn = closedForSeason ? (venue.reopensOn ?? null) : null;
 
     const price = priceLabel ? `, from ${priceLabel} per set` : '';
     const waterText = water ? `${water}. ` : '';
@@ -284,7 +305,7 @@ export class Home {
       : '';
     const ratingText = rated ? `rated ${rating} out of 5` : 'no reviews yet';
     // The card body is aria-hidden, so the closed state must ride the accessible name too.
-    const closedText = salesClosed ? ', online sales for today have closed' : '';
+    const closedText = closedStateText(closedForSeason, reopensOn, salesClosed);
     const ariaLabel =
       `${venue.name}, ${venue.beach} · ${venue.region}, ${ratingText}${price}, ` +
       `${free} of ${total} sets free on ${dateLabel}${closedText}. ` +
@@ -308,6 +329,8 @@ export class Home {
       free,
       total,
       salesClosed,
+      closedForSeason,
+      reopensOn,
       ariaLabel,
     };
   }

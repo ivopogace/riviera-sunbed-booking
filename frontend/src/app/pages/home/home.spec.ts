@@ -125,6 +125,40 @@ describe('Home (venue discovery)', () => {
     expect(cards[1].getAttribute('aria-label')).not.toContain('closed');
   });
 
+  it('badges a venue closed for the season with its reopen day, ahead of the sales-closed chip, and keeps the served order', async () => {
+    const [first, second] = venues();
+    listRequest().flush([
+      { ...first, salesOpen: true },
+      { ...second, salesOpen: false, closedForSeason: true, reopensOn: '2027-05-15' },
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const cards = el().querySelectorAll('[data-testid="venue-card"]');
+    // The server sorts closed venues last; the client never re-orders.
+    expect(cards[1].textContent).toContain('Aurora Bay');
+    const chip = cards[1].querySelector('.closed-for-season-chip');
+    expect(chip?.textContent?.replace(/\s+/g, ' ')).toContain('Closed for season · reopens 15 May');
+    // One claim at a time: the season chip replaces the sales-closed one.
+    expect(cards[1].querySelector('.sales-closed-chip')).toBeNull();
+    expect(cards[1].getAttribute('aria-label')).toContain('closed for season, reopens 15 May');
+    expect(cards[1].getAttribute('aria-label')).not.toContain('online sales for today');
+    expect(cards[0].querySelector('.closed-for-season-chip')).toBeNull();
+  });
+
+  it('badges a closure with no reopen day without naming one', async () => {
+    const [first] = venues();
+    listRequest().flush([{ ...first, salesOpen: false, closedForSeason: true, reopensOn: null }]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const card = el().querySelector('[data-testid="venue-card"]')!;
+    expect(card.querySelector('.closed-for-season-chip')?.textContent?.trim()).toBe(
+      'Closed for season',
+    );
+    expect(card.getAttribute('aria-label')).toContain('closed for season.');
+  });
+
   it('shows no closed badge when the payload omits salesOpen (older test double)', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();

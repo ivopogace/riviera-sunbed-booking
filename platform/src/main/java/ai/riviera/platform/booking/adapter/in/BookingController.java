@@ -34,7 +34,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * Public tourist booking endpoint (U3). Driving adapter — depends only on the
  * {@code booking} module's {@link CreateBooking} port (invariant #11). Maps the sealed
  * {@link BookingOutcome} to HTTP via an exhaustive {@code switch}: {@code Confirmed}→201,
- * {@code SET_TAKEN}→409, {@code NOT_ONLINE_POOL}/{@code BOOKING_CLOSED}→422,
+ * {@code SET_TAKEN}→409, {@code NOT_ONLINE_POOL}/{@code BOOKING_CLOSED}/{@code VENUE_CLOSED}→422,
  * {@code NO_SUCH_SET}→404; malformed input→400 via {@code ApiErrorHandler}. Errors are
  * RFC-7807 {@link ProblemDetail} built by {@link ApiProblem}.
  */
@@ -162,6 +162,8 @@ class BookingController {
 						"This set is not bookable online.");
 				case BOOKING_CLOSED -> error(HttpStatus.UNPROCESSABLE_ENTITY, "BOOKING_CLOSED",
 						"Online booking for this date has closed.");
+				case VENUE_CLOSED -> error(HttpStatus.UNPROCESSABLE_ENTITY, "VENUE_CLOSED",
+						"The venue is closed for the season on this date.");
 				case NO_SUCH_SET -> error(HttpStatus.NOT_FOUND, "NO_SUCH_SET",
 						"No such set.");
 			};

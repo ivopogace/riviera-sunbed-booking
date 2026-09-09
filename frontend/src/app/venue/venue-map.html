@@ -68,8 +68,13 @@
         >
           <div>
             <!-- The SEMANTIC pair (#705): this chip and the "New" chip below wear the same inverted accent pill they wear on the Discover cards, which is what makes the family readable across both surfaces. Its opaque fill replaces the --riv-chip-bg tint that had to be composited over this panel's glass, per theme. -->
-            <p appSemanticChip class="inline-block text-[0.78rem] px-3 py-[5px] mb-[13px]">
-              {{ v.modeLabel }}
+            <p class="mb-[13px] flex flex-wrap items-center gap-[7px]">
+              <span appSemanticChip class="inline-block text-[0.78rem] px-3 py-[5px]">
+                {{ v.modeLabel }}
+              </span>
+              @if (v.closedForSeason) {
+                <app-closed-for-season-chip [reopensOn]="v.reopensOn" variant="header" />
+              }
             </p>
             <h1
               id="venue-name"
@@ -214,7 +219,20 @@
 
       <!-- Date-dependent (unlike map-empty's onward guidance): the copy points back at the date picker above, which stays enabled as the recovery path. The grid below stays rendered — availability is still true, only selection is gated. -->
       <!-- role=alert, the inserted-panel pattern (map-not-found/map-error): a status region created together with its message announces nothing (RV-FE-10, #741); insertion of an alert is the reliably-announced case. -->
-      @if (salesClosed()) {
+      @if (salesClosed() && v.closedForSeason) {
+        <p
+          role="alert"
+          data-testid="map-closed-for-season"
+          appCardGlass
+          class="mt-[18px] rounded-[26px] px-5 py-4 text-[14.5px] leading-normal text-riv-card-ink min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
+        >
+          This venue is closed for the season
+          @if (v.reopensOn; as reopensOn) {
+            and reopens on {{ reopenLabel(reopensOn) }}
+          }
+          . Its dates show as unavailable until then — the page, photos and reviews stay open.
+        </p>
+      } @else if (salesClosed()) {
         <p
           role="alert"
           data-testid="map-sales-closed"

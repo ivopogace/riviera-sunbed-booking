@@ -47,6 +47,15 @@ model in `docs/architecture/domain-model.md`.
   means absent from the tourist list, 404 on the map and availability-calendar reads, and both
   booking paths refused;
   an unowned venue is hidden (fail-closed). Bookings sold while visible keep working.
+- **Closed for season** — a venue-level state its operator sets: the venue is **visible and
+  unsellable** — still listed, badged "Closed for season" (with its reopen day when one is set)
+  after every open venue; its page, photos, reviews, map and calendar stay browsable with every
+  date unavailable, and an online reserve is refused — until the reopen day starts in
+  `Europe/Tirane` or the operator reopens by hand. With the **advance-sales opt-in** (off by
+  default) dates on or after the reopen day sell while the venue is still shut. Distinct from
+  **Venue visibility**, which is derived from the operator's status and hides the venue; closing is
+  a stored choice, touches no booking, hold or request, and leaves the staff daily view and walk-in
+  marks working.
 - **Beach map** — a venue's visual layout: rows and individual set positions.
 - **Set position** — one spot on the beach map (e.g. Row A, position 3), flagged
   by tier and pool, with its own price. It is **active** until it is retired or deleted; only a

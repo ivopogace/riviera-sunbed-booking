@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.venue.spi.SalesWindow;
+import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 
 /**
  * Answers {@link SalesWindow} by delegating to {@link BookingCutoff}, so the browse's open/closed
@@ -26,7 +27,12 @@ class BookingCutoffSalesWindow implements SalesWindow {
 	}
 
 	@Override
-	public boolean isOpen(LocalTime salesClose, LocalDate bookingDate, Instant now) {
-		return cutoff.isBookable(salesClose, bookingDate, now);
+	public boolean isOpen(LocalTime salesClose, SeasonClosure closure, LocalDate bookingDate, Instant now) {
+		return cutoff.isBookable(salesClose, closure, bookingDate, now);
+	}
+
+	@Override
+	public boolean closedForSeason(SeasonClosure closure, Instant now) {
+		return cutoff.closedForSeason(closure, now);
 	}
 }

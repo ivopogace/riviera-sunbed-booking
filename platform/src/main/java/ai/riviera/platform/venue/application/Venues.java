@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -193,6 +194,16 @@ public interface Venues {
 	 * the version guard rejects the write.
 	 */
 	int updateVenueProfile(VenueId venueId, long expectedVersion, VenueProfileCommand command);
+
+	/**
+	 * Replace the venue's season closure with {@code closure} (a closed value), stamped
+	 * {@code closedAt} (a UTC instant, invariant #6). Touches no other column and no token: the
+	 * profile {@code version} is the form's, and this state change rides no form.
+	 */
+	void closeForSeason(VenueId venueId, SeasonClosure closure, Instant closedAt);
+
+	/** Clear the venue's season closure — the three columns back to open. Idempotent. */
+	void reopenForSeason(VenueId venueId);
 
 	/**
 	 * The venue's admin profile for the operator console — the editable core plus the
