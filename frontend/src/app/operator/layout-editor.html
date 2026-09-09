@@ -361,15 +361,16 @@
               @if (lastChange(); as change) {
                 <span data-testid="layout-last-change">{{ change }}</span>
               }
-              @if (lockNotice(); as notice) {
-                <output
-                  class="flex items-start gap-1.5 font-semibold text-riv-card-ink"
-                  data-testid="layout-lock-notice"
-                >
+              <!-- Always rendered: a live region born with its text announces nothing; only the content branches. -->
+              <output
+                class="flex items-start gap-1.5 font-semibold text-riv-card-ink"
+                data-testid="layout-lock-notice"
+              >
+                @if (lockNotice(); as notice) {
                   <app-lock-icon class="mt-[2px] shrink-0 [&_svg]:size-[11px]" />
                   <span>{{ notice }}</span>
-                </output>
-              }
+                }
+              </output>
               <span data-testid="layout-last-saved">{{ lastSavedLabel() }}</span>
             </div>
 

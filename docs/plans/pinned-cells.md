@@ -52,7 +52,7 @@ its plan doc retires in this PR's close-out) · `riviera-plan-doc` (this templat
 AC, the module-ownership table for a read that `venue` composes from two other modules' facts, and
 the parity ledger for the editor's read switch) · `tdd` (each phase red first at the named seam: the
 service fake, the adapter ITs, the controller IT, the Vitest specs, the mocked e2e) ·
-`riviera-review-overlay` (review gate — pending) · `riviera-docs-freshness` (**ran** over `dbb76da7..HEAD` as the pre-merge smoke: the rename grep on `hasLiveHold`/`isLivelyClaimed` and `getVenueMap` found only the sentences the diff already rewrote (RESPONSIBILITIES § venue, the frontend skill's frozen-edge table, the SPI inventory Javadoc, `JdbcBookingPresenceIT`'s "four probes"); the counting sweep over probe/spi/owner-read vocabulary found no stale "the two/three"; zero further findings; `docs/plans/retire-set-marker.md` retired, no citation of its slug outside `docs/plans/`) · `grilling`
+`riviera-review-overlay` (review gate — **ran** on PR #1046 over `dbb76da7..6c5ddb90`: `code-review:code-review` at high effort, five generic reviewers plus a sixth walking the overlay banks; three findings, F-2/F-3/F-4, all fixed in the same round; RV-BE-1/9/11/12/19, RV-FE-8/9, RV-STYLE-1, RV-PROC-1 clear) · `riviera-docs-freshness` (**ran** over `dbb76da7..HEAD` as the pre-merge smoke: the rename grep on `hasLiveHold`/`isLivelyClaimed` and `getVenueMap` found only the sentences the diff already rewrote (RESPONSIBILITIES § venue, the frontend skill's frozen-edge table, the SPI inventory Javadoc, `JdbcBookingPresenceIT`'s "four probes"); the counting sweep over probe/spi/owner-read vocabulary found no stale "the two/three"; zero further findings; `docs/plans/retire-set-marker.md` retired, no citation of its slug outside `docs/plans/`) · `grilling`
 (the intake questions answered from the code; the two product-flavoured calls — the reason copy and
 keeping the tourist visibility fence on the owner's read — are recorded as resolved assumptions
 below) · `riviera-local-debug` (clone unshallowed; system Gradle on the JDK 21 daemon compiling on
@@ -278,18 +278,18 @@ for derived state. No deviation.
 
 ## Execution status
 
-**Stage pointer:** `review gate — running on PR #1046 over dbb76da7..6c5ddb90; the first push's frontend failure (F-1) fixed here`
+**Stage pointer:** `DONE — merged via PR #1046`
 
-**Next action:** fold the review findings into the next commit, tick the last three self-review boxes, push, clear the Sonar list, merge, then the epic comment.
+**Next action:** none for this slice; the merge close-out (issue closed, epic #1027 ticked with the PR number, subscription ended) is GitHub-side.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `LiveClaims` holder + the two SPI nearest-date methods | ✅ | `dd7c3a89` |
 | 1 — `ViewBeachMap` read: service, controller, security gate, ITs | ✅ | `3385b40b` |
 | 2 — Frontend model/service + editor read switch + lock glyph | ✅ | `c47f564e` (carries the phase 3/4 code too: the set editor's `locks` input is what lets the editor template compile) |
-| 3 — Canvas lock behaviour (brushes, sweep, fills, notice) + specs | ✅ | phase 3/4 specs commit |
-| 4 — Set editor Move/Remove lock + specs | ✅ | phase 3/4 specs commit |
-| 5 — Mocked e2e + docs (RESPONSIBILITIES, CONTEXT, frontend skill table) | ✅ | phase 5 commit |
+| 3 — Canvas lock behaviour (brushes, sweep, fills, notice) + specs | ✅ | `e5e5d9b5` |
+| 4 — Set editor Move/Remove lock + specs | ✅ | `e5e5d9b5` |
+| 5 — Mocked e2e + docs (RESPONSIBILITIES, CONTEXT, frontend skill table) | ✅ | `6c5ddb90`; CI fix + close-out prep `99b73573`; review fixes `9691c749` + the close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -298,6 +298,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-2 | review (reviewer #5, code-comment guidance) | `SetLock`'s Javadoc and the frontend `SetLock` TSDoc said "never both", which reads as never both set while a booked set routinely carries both dates; the controller's class Javadoc listed two of its six ports | fixed in `5eb07590` — wording is now "never both null", the port list is complete |
+| F-3 | review (reviewers #1 and #6, RV-FE-10, Major) | the lock-notice `<output>` live region was rendered inside the `@if`, so it entered the DOM already holding its text — silent on most screen readers, and the refusal's only signal | fixed in the close-out commit — the region is always mounted, only its content branches; `layout-editor.a11y.spec.ts` now pins the empty region before the refusal and the text after |
+| F-4 | review (reviewer #6, RV-PROC-2 §c, Major) | `console-venue-map.ts`'s TSDoc still counted `LayoutEditor` among the direct `getVenueMap` callers ("four of the seven"), and `pricing-tab.ts`'s said the editor reads the public map | fixed in the close-out commit — both TSDocs state the tree as it now stands (five callers: four snapshot, two direct) |
 | F-1 | CI (frontend job, first push) | three multi-line `layout-editor.spec.ts` fixtures still flushed the flat map to the owner's read → two unhandled `Cannot read properties of undefined (reading 'setVersion')` errors, green locally because Vitest's summary line hid them | fixed in the close-out commit (fixtures wrapped `{ map, locks }`; re-run shows no Errors line) |
 
 ---
@@ -335,6 +337,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/lock-reason.ts` — the reason copy; `operator/`, not `shared/`, because it reads the operator model (new)
 - `frontend/src/app/operator/lock-reason.spec.ts` (new)
 - `frontend/src/app/operator/layout-editor.ts` / `.html` — read switch, locks, refusals, glyph, legend, notice
+- `frontend/src/app/operator/console-venue-map.ts` — TSDoc: the editor no longer calls `getVenueMap` (review F-4)
+- `frontend/src/app/operator/pricing-tab.ts` — TSDoc: reads the shared snapshot, not "like the editor" (review F-4)
 - `frontend/src/app/operator/layout-editor.spec.ts` — the locked-cells describe
 - `frontend/src/app/operator/layout-editor.a11y.spec.ts` — the description + axe proof
 - `frontend/src/app/operator/layout-editor.contrast.spec.ts` — the glyph and notice inks
@@ -484,9 +488,9 @@ void locksOnAnswersTheNearestHoldAndBookingPerSetAndSkipsFreeSets() {
 - [x] Booking codes unguessable (invariant #7).
 - [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #1046`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone (rung 1, `code-review:code-review`).
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

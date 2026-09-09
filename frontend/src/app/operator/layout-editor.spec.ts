@@ -466,7 +466,7 @@ describe('LayoutEditor (#172)', () => {
       fixture.detectChanges();
       expect(cells()[1].getAttribute('data-state')).toBe('walkin');
       expect(dirtyText()).toBe('1 unsaved change');
-      expect(host.querySelector('[data-testid="layout-lock-notice"]')).toBeNull();
+      expect(byId('layout-lock-notice').textContent?.trim()).toBe('');
     });
 
     it('the gap brush leaves the locked cell as it is, says why, and counts nothing (AC-8)', () => {
@@ -517,7 +517,7 @@ describe('LayoutEditor (#172)', () => {
 
       byId('layout-tool-premium').click();
       fixture.detectChanges();
-      expect(host.querySelector('[data-testid="layout-lock-notice"]')).toBeNull();
+      expect(byId('layout-lock-notice').textContent?.trim()).toBe('');
       rowFillButtons()[0].click();
       fixture.detectChanges();
       expect(cells().every((c) => c.getAttribute('data-state') === 'premium')).toBe(true);

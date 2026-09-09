@@ -165,11 +165,14 @@ describe('LayoutEditor a11y (#172)', () => {
     expect(cell.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     await expectNoAxeViolations(host());
 
+    // The status region exists before the refusal (a region born with its text announces nothing).
+    expect(byId('layout-lock-notice').tagName).toBe('OUTPUT');
+    expect(byId('layout-lock-notice').textContent?.trim()).toBe('');
     byId('layout-tool-gap').click();
     fixture.detectChanges();
     cell.click();
     fixture.detectChanges();
-    expect(byId('layout-lock-notice').tagName).toBe('OUTPUT');
+    expect(byId('layout-lock-notice').textContent).toContain('booked Sat 12 Sept 2026');
     await expectNoAxeViolations(host());
   });
 
