@@ -17,7 +17,7 @@
     <button
       appTouchTarget
       type="button"
-      class="flex cursor-pointer items-center justify-center rounded-[12px] text-[19px] leading-none text-riv-calendar-accent hover:bg-riv-pop-hover aria-disabled:cursor-default aria-disabled:text-riv-pop-ink-disabled aria-disabled:hover:bg-transparent"
+      class="flex cursor-pointer touch-manipulation items-center justify-center rounded-[12px] text-[19px] leading-none text-riv-calendar-accent hover:bg-riv-pop-hover aria-disabled:cursor-default aria-disabled:text-riv-pop-ink-disabled aria-disabled:hover:bg-transparent"
       data-testid="calendar-prev"
       aria-label="Previous month"
       [attr.aria-disabled]="atEarliestMonth() ? 'true' : null"
@@ -37,7 +37,7 @@
     <button
       appTouchTarget
       type="button"
-      class="flex cursor-pointer items-center justify-center rounded-[12px] text-[19px] leading-none text-riv-calendar-accent hover:bg-riv-pop-hover"
+      class="flex cursor-pointer touch-manipulation items-center justify-center rounded-[12px] text-[19px] leading-none text-riv-calendar-accent hover:bg-riv-pop-hover"
       data-testid="calendar-next"
       aria-label="Next month"
       (click)="stepMonth(1)"
@@ -78,7 +78,7 @@
                 <button
                   appTouchTarget
                   type="button"
-                  class="flex w-full cursor-pointer flex-col items-center justify-center gap-[3px] rounded-[10px] border border-transparent px-0 py-1 text-[14px] font-semibold text-riv-pop-ink focus-visible:outline-[3px] focus-visible:outline-offset-[-1px] aria-disabled:cursor-default aria-disabled:text-riv-pop-ink-disabled"
+                  class="flex w-full cursor-pointer touch-manipulation flex-col items-center justify-center gap-[3px] rounded-[10px] border border-transparent px-0 py-1 text-[14px] font-semibold text-riv-pop-ink focus-visible:outline-[3px] focus-visible:outline-offset-[-1px] aria-disabled:cursor-default aria-disabled:text-riv-pop-ink-disabled"
                   [class]="cell.tint"
                   [attr.data-date]="cell.iso"
                   [attr.data-state]="cell.state"

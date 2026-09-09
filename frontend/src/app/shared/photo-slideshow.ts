@@ -110,7 +110,7 @@ const SWIPE_THRESHOLD_PX = 40;
             <button
               type="button"
               appTouchTarget
-              class="relative inline-flex size-11 cursor-pointer items-center justify-center rounded-full focus-visible:outline-[3px] focus-visible:-outline-offset-[3px] focus-visible:outline-white"
+              class="relative inline-flex size-11 cursor-pointer touch-manipulation items-center justify-center rounded-full focus-visible:outline-[3px] focus-visible:-outline-offset-[3px] focus-visible:outline-white"
               [attr.data-testid]="testId() + '-dot-' + i"
               [attr.aria-label]="slideLabel(i)"
               [attr.aria-current]="i === index() ? 'true' : null"
