@@ -63,6 +63,19 @@ interface VenueCard {
   readonly ariaLabel: string;
 }
 
+/** The closed-state clause of a card's accessible name; the season badge outranks today's sales close. */
+function closedStateText(
+  closedForSeason: boolean,
+  reopensOn: string | null,
+  salesClosed: boolean,
+): string {
+  if (closedForSeason) {
+    const reopens = reopensOn ? `, reopens ${formatDayMonth(reopensOn)}` : '';
+    return `, closed for season${reopens}`;
+  }
+  return salesClosed ? ', online sales for today have closed' : '';
+}
+
 /**
  * Tourist venue discovery — the app's landing page (`/`).
  * Hero + one glass filter bar (beach/region/date with the live result count inside) + glass venue
@@ -292,11 +305,7 @@ export class Home {
       : '';
     const ratingText = rated ? `rated ${rating} out of 5` : 'no reviews yet';
     // The card body is aria-hidden, so the closed state must ride the accessible name too.
-    const closedText = closedForSeason
-      ? `, closed for season${reopensOn ? `, reopens ${formatDayMonth(reopensOn)}` : ''}`
-      : salesClosed
-        ? ', online sales for today have closed'
-        : '';
+    const closedText = closedStateText(closedForSeason, reopensOn, salesClosed);
     const ariaLabel =
       `${venue.name}, ${venue.beach} · ${venue.region}, ${ratingText}${price}, ` +
       `${free} of ${total} sets free on ${dateLabel}${closedText}. ` +

@@ -363,16 +363,16 @@ APIs. No deviation.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR — Sonar gate`
 
-**Next action:** phase 2 — red `CreateBookingServiceTest` (`VENUE_CLOSED`), `SeasonClosureCatalogIT`, `SeasonClosureReserveIT`.
+**Next action:** the Sonar list for PR #1049 empty on the current head; then the merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V51 + `SeasonClosure` + the `BookingCutoff` arm + `SalesWindow` widened | ✅ | `6669d155` |
 | 1 — close/reopen endpoint, `SeasonClosureService`, `Venues` writes, `LiveBookingCounts` + `BookingPresence#liveBookingsFrom`, profile carries the closure, security matchers, ITs | ✅ | `37d467d8` |
-| 2 — catalogue projection (list order, map, calendar `salesOpen`), `SetBookingInfo` closure, `VENUE_CLOSED` fence, ITs with the movable clock, structural net | ⏳ | |
-| 3 — frontend: models, chip, Discover card, map notice, calendar, booking copy, Venue tab season card, specs + a11y + contrast, mocked e2e | | |
+| 2 — catalogue projection (list order, map, calendar `salesOpen`), `SetBookingInfo` closure, `VENUE_CLOSED` fence, ITs with the movable clock, structural net | ✅ | `f37442ce` |
+| 3 — frontend: models, chip, Discover card, map notice, calendar, booking copy, Venue tab season card, specs + a11y + contrast, mocked e2e | ✅ | `9a470e10` |
 | 4 — docs: `CONTEXT.md`, `RESPONSIBILITIES.md`, domain-model, `CLAUDE.md` row, package Javadocs; retire `pinned-cells.md`; PR | ✅ | `3e954827`; `origin/main` (#1047) merged in `28f9c5bb` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -382,10 +382,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (Repo hygiene, first push) | the plan's File structure did not list the two files the docs-freshness sweep patched (`VenueReadController`, `VenueListControllerIT`) | fixed in `cf3426b9` |
-| F-2 | review (reviewers #4 and #5, RV-STYLE-1) | the new `closeForSeason`/`reopenForSeason` methods were inserted between `closeOnlineSalesNow` and its TSDoc, orphaning the block | fixed in the review-fix commit — the methods follow `closeOnlineSalesNow` |
-| F-3 | review (reviewer #5, RV-STYLE-1) | the season tests in `VenueAdminServiceTest` were inserted between `MultiOwnership` and its Javadoc | fixed in the review-fix commit — the tests precede the Javadoc |
-| F-4 | review (reviewer #4, cosmetic) | `WebSliceStubs`' four new imports out of alphabetical order | fixed in the review-fix commit |
-| F-5 | review (reviewer #3) | the calendar's `focusedDate` doc said the position falls to the floor "when that day can no longer be booked", while a chosen day the server marks unsellable keeps the position — the truthful behaviour, since a season closure can leave no bookable day to fall to and the month must not jump | fixed in the review-fix commit — the TSDoc states the rule; behaviour unchanged |
+| F-2 | review (reviewers #4 and #5, RV-STYLE-1) | the new `closeForSeason`/`reopenForSeason` methods were inserted between `closeOnlineSalesNow` and its TSDoc, orphaning the block | fixed in `e7b83a24` — the methods follow `closeOnlineSalesNow` |
+| F-3 | review (reviewer #5, RV-STYLE-1) | the season tests in `VenueAdminServiceTest` were inserted between `MultiOwnership` and its Javadoc | fixed in `e7b83a24` — the tests precede the Javadoc |
+| F-4 | review (reviewer #4, cosmetic) | `WebSliceStubs`' four new imports out of alphabetical order | fixed in `e7b83a24` |
+| F-5 | review (reviewer #3) | the calendar's `focusedDate` doc said the position falls to the floor "when that day can no longer be booked", while a chosen day the server marks unsellable keeps the position — the truthful behaviour, since a season closure can leave no bookable day to fall to and the month must not jump | fixed in `e7b83a24` — the TSDoc states the rule; behaviour unchanged |
+| F-6 | sonar (5 new issues on `e7b83a24`, gate passed but the bar is 0) | two nested ternaries and a nested template literal in the Discover card's accessible name and the season status sentence (`home.ts`, `venue-tab.ts`); `JdbcVenueCatalog#toSummary` at eight parameters | fixed in the Sonar-fix commit — each sentence builder is a named function; `toSummary` takes the venue's photo slots and derives cover + slideshow itself |
 
 ---
 
@@ -486,19 +487,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 (compile only: pass `SeasonClosure.open()` until phase 2 reads the columns), `BookingPresence` +
 its two test fakes.
 
-- [ ] **Step 1: Write the failing tests** — `BookingCutoffTest.seasonClosure*` (AC-2: the four
+- [x] **Step 1: Write the failing tests** — `BookingCutoffTest.seasonClosure*` (AC-2: the four
   boundary cases at 2027-05-14T21:59Z / 22:00Z, the no-date closure, the opt-in), `SeasonClosureTest`
   (the value refuses an opt-in without a date and an open closure with either), `SeasonClosureMigrationIT`
   (AC-1), `BookingCutoffSalesWindowTest` (the two delegations).
-- [ ] **Step 2: Run, verify red** — `gradle --no-daemon --console=plain test --tests "*BookingCutoffTest*" --tests "*SeasonClosureTest*"` → compile failure naming `SeasonClosure`.
-- [ ] **Step 3: Minimal implementation** — the migration, the record with its compact constructor,
+- [x] **Step 2: Run, verify red** — `gradle --no-daemon --console=plain test --tests "*BookingCutoffTest*" --tests "*SeasonClosureTest*"` → compile failure naming `SeasonClosure`.
+- [x] **Step 3: Minimal implementation** — the migration, the record with its compact constructor,
   `BookingCutoff#closedForSeason(closure, now)` / `#admitsDate(closure, date, now)` /
   `#isBookable(salesClose, closure, date, now)`, the widened SPI and its adapter, the counts record and
   the new SPI method (adapter implemented in phase 1; fakes return zero).
-- [ ] **Step 4: Run, verify green** — the same command plus `--tests "*SeasonClosureMigrationIT*"` and `--tests "*BookingCutoffSalesWindowTest*"`.
-- [ ] **Step 5: Generalization audit** — population: every caller of `SalesWindow#isOpen` and every constructor of `SetBookingInfo` (`grep -rn "isOpen(\|new SetBookingInfo(" platform/src`); decision: all updated in the phase that owns them.
-- [ ] **Step 6: Commit** — `Add the season-closure value, its cutoff rule and the widened sales window (#1028)`
-- [ ] **Step 7: Update the execution status.**
+- [x] **Step 4: Run, verify green** — the same command plus `--tests "*SeasonClosureMigrationIT*"` and `--tests "*BookingCutoffSalesWindowTest*"`.
+- [x] **Step 5: Generalization audit** — population: every caller of `SalesWindow#isOpen` and every constructor of `SetBookingInfo` (`grep -rn "isOpen(\|new SetBookingInfo(" platform/src`); decision: all updated in the phase that owns them.
+- [x] **Step 6: Commit** — `Add the season-closure value, its cutoff rule and the widened sales window (#1028)`
+- [x] **Step 7: Update the execution status.**
 
 ## Phase 1 — The close/reopen endpoint with counts
 
@@ -508,20 +509,20 @@ its two test fakes.
 `JdbcVenues`, `VenueProfileView`, `VenueProfileResponse`, `JdbcBookingPresence`,
 `JdbcBookingPresenceIT`, `SecurityConfig`, `VenueAdminServiceTest`.
 
-- [ ] **Step 1: Failing tests** — `VenueAdminServiceTest` (the closure service beside the profile service: assertOwns first, `NO_SUCH_VENUE`,
+- [x] **Step 1: Failing tests** — `VenueAdminServiceTest` (the closure service beside the profile service: assertOwns first, `NO_SUCH_VENUE`,
   `REOPEN_DATE_PASSED` at a Tirane boundary, the counts passed through), `JdbcBookingPresenceIT`
   (AC-11), `SeasonClosureControllerIT` (AC-3, AC-4, AC-10: seeds a venue owned by the bootstrap
   operator, a confirmed booking, a pending request, a staff hold, a past booking, a cancelled one;
   a second operator for the 403).
-- [ ] **Step 2: Red** — `gradle … test --tests "*VenueAdminServiceTest*"` → compile failure.
-- [ ] **Step 3: Implementation** — service (Tirane today from the injected Clock), adapter writes
+- [x] **Step 2: Red** — `gradle … test --tests "*VenueAdminServiceTest*"` → compile failure.
+- [x] **Step 3: Implementation** — service (Tirane today from the injected Clock), adapter writes
   (`UPDATE venue SET closed_at = :closedAt, reopen_on = :reopenOn, advance_sales = :advanceSales WHERE id = :id`
   and the clearing twin), the profile read + response, the counts SQL with `COUNT(*) FILTER`, the
   controller, the two matchers.
-- [ ] **Step 4: Green** — the three classes one at a time; then `--tests "*EndpointRoleGateCoverageTest*" --tests "*VenueWriteRoleGateTest*"`.
-- [ ] **Step 5: Generalization audit** — population: every `/api/venues/*/…` non-GET matcher in `SecurityConfig` (`grep -n "hasRole(OPERATOR_ROLE)" SecurityConfig.java`) — the new pair joins the PUT block; every `@RestController` under `venue/adapter/in` reads the principal through `CurrentOperator#require` — the new one does.
-- [ ] **Step 6: Commit** — `Close and reopen a venue for the season on its own owner-asserted endpoint, answering the counts (#1028)`
-- [ ] **Step 7: Update the execution status.**
+- [x] **Step 4: Green** — the three classes one at a time; then `--tests "*EndpointRoleGateCoverageTest*" --tests "*VenueWriteRoleGateTest*"`.
+- [x] **Step 5: Generalization audit** — population: every `/api/venues/*/…` non-GET matcher in `SecurityConfig` (`grep -n "hasRole(OPERATOR_ROLE)" SecurityConfig.java`) — the new pair joins the PUT block; every `@RestController` under `venue/adapter/in` reads the principal through `CurrentOperator#require` — the new one does.
+- [x] **Step 6: Commit** — `Close and reopen a venue for the season on its own owner-asserted endpoint, answering the counts (#1028)`
+- [x] **Step 7: Update the execution status.**
 
 ## Phase 2 — The projection and the reserve fence
 
@@ -531,53 +532,53 @@ its two test fakes.
 callers, `BeachMapReadServiceTest`, `VenueAvailabilityCalendarControllerTest`,
 `VenueAvailabilityCalendarIT` · Create `SeasonClosureCatalogIT`, `SeasonClosureReserveIT`.
 
-- [ ] **Step 1: Failing tests** — `SeasonClosureCatalogIT` (AC-5–8, AC-12 with `@MockitoBean Clock`
+- [x] **Step 1: Failing tests** — `SeasonClosureCatalogIT` (AC-5–8, AC-12 with `@MockitoBean Clock`
   at 2027-05-14T21:59Z and 22:00Z), `SeasonClosureReserveIT` (AC-9), `CreateBookingServiceTest`
   (the fence's typed outcome), `VenueAvailabilityCalendarControllerTest` (the `salesOpen` field).
-- [ ] **Step 2: Red** — `gradle … test --tests "*CreateBookingServiceTest*"` → compile failure on `VENUE_CLOSED`.
-- [ ] **Step 3: Implementation** — the catalogue rows read the three columns and build a
+- [x] **Step 2: Red** — `gradle … test --tests "*CreateBookingServiceTest*"` → compile failure on `VENUE_CLOSED`.
+- [x] **Step 3: Implementation** — the catalogue rows read the three columns and build a
   `SeasonClosure`; `salesOpen = salesWindow.isOpen(salesClose, closure, date, now)`,
   `closedForSeason = salesWindow.closedForSeason(closure, now)`, `reopensOn` when closed; the list
   sorts open-first (stable); the calendar reads the venue row once and projects per day;
   `JdbcSetBookingFacts` carries the closure; `ReserveSetService` refuses `VENUE_CLOSED` after the
   visibility and pool checks, before the sales-close arm; the controller maps 422.
-- [ ] **Step 4: Green** — the ITs one class at a time; `VenueListControllerIT`, `VenueReadControllerIT`,
+- [x] **Step 4: Green** — the ITs one class at a time; `VenueListControllerIT`, `VenueReadControllerIT`,
   `BookingControllerIT`, `VenueCatalogVisibilityIT` as regression; then **the structural net**.
-- [ ] **Step 5: Generalization audit** — population: every read that projects `salesOpen` (`grep -rn "salesOpen\|isOpen(" platform/src/main`); every `error(` arm in `BookingController` for a `Rejected` case (exhaustive switch — the compiler enumerates).
-- [ ] **Step 6: Commit** — `Fold the season closure into the sales-open projection and refuse a closed date on reserve (#1028)`
-- [ ] **Step 7: Update the execution status.**
+- [x] **Step 5: Generalization audit** — population: every read that projects `salesOpen` (`grep -rn "salesOpen\|isOpen(" platform/src/main`); every `error(` arm in `BookingController` for a `Rejected` case (exhaustive switch — the compiler enumerates).
+- [x] **Step 6: Commit** — `Fold the season closure into the sales-open projection and refuse a closed date on reserve (#1028)`
+- [x] **Step 7: Update the execution status.**
 
 ## Phase 3 — Frontend
 
 **Files:** per the Angular table above.
 
-- [ ] **Step 1: Failing specs** — `closed-for-season-chip.spec.ts` (+ a11y, contrast), `home.spec.ts`
+- [x] **Step 1: Failing specs** — `closed-for-season-chip.spec.ts` (+ a11y, contrast), `home.spec.ts`
   (AC-13), `venue-map.spec.ts` (AC-14), `availability-calendar.spec.ts` + `day-availability.spec.ts`
   (AC-15), `venue-tab.spec.ts` (AC-16), `booking-dialog.spec.ts` (AC-17),
   `operator-console.service.spec.ts` (the two calls).
-- [ ] **Step 2: Red** — `npm test -- --run src/app/shared/closed-for-season-chip.spec.ts` → module not found.
-- [ ] **Step 3: Implementation** — models, the chip, the card and map wiring, the calendar gate, the
+- [x] **Step 2: Red** — `npm test -- --run src/app/shared/closed-for-season-chip.spec.ts` → module not found.
+- [x] **Step 3: Implementation** — models, the chip, the card and map wiring, the calendar gate, the
   booking copy, the service methods, the Venue tab season card (open → arm → form → confirm; closed →
   counts → reopen; `focusMover()` on both legs; `[appBusy]` on the pressed control; the field error
   for a rejected date via `[appFieldErrorFor]`).
-- [ ] **Step 4: Green** — the touched specs; then `npm run lint`, `npm run format:check`, `npm test`,
+- [x] **Step 4: Green** — the touched specs; then `npm run lint`, `npm run format:check`, `npm test`,
   `npm run test:a11y`, `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- operator-venue-season` (AC-18), `npm run build`.
-- [ ] **Step 5: Generalization audit** — population: every consumer of `salesOpen` in `frontend/src`
+- [x] **Step 5: Generalization audit** — population: every consumer of `salesOpen` in `frontend/src`
   (`grep -rn "salesOpen" frontend/src/app --include=*.ts -l`) — `daily-view-tab.ts` reads the same
   verdict and needs no change; every `BookingErrorCode` switch (`grep -rn "BOOKING_CLOSED" frontend/src/app`).
-- [ ] **Step 6: Commit** — `Show a closed-for-season venue as such: the Discover badge, the map notice, the calendar, the Venue tab's close and reopen (#1028)`
-- [ ] **Step 7: Update the execution status.**
+- [x] **Step 6: Commit** — `Show a closed-for-season venue as such: the Discover badge, the map notice, the calendar, the Venue tab's close and reopen (#1028)`
+- [x] **Step 7: Update the execution status.**
 
 ## Phase 4 — Docs and the PR
 
-- [ ] `CONTEXT.md` **Closed for season**; `RESPONSIBILITIES.md` § `venue` (the closure paragraph
+- [x] `CONTEXT.md` **Closed for season**; `RESPONSIBILITIES.md` § `venue` (the closure paragraph
   beside the sales-close one; the endpoint; the projection sentence gains the closure; the
   ordering), § `booking` (`BookingCutoff`'s list gains the closure arm; the reserve paths' refusal
   list gains `VENUE_CLOSED`), § *Invariants* #4 (one sentence); `domain-model.md` § 3.1; `CLAUDE.md`
   venue row; `venue.spi` package Javadoc; retire `docs/plans/pinned-cells.md`.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` and the inline-comment,
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` and the inline-comment,
   focus-posture and touch-target guards over the diff.
-- [ ] Merge latest `origin/main`; open the PR; subscribe; review gate; Sonar gate; close-out.
+- [x] Merge latest `origin/main`; open the PR (#1049); subscribe; review gate; Sonar gate; close-out.
 
 ---
 

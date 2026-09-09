@@ -248,9 +248,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		return venues.stream()
 				.map(v -> toSummary(v, setsByVenue.getOrDefault(v.id(), List.of()), taken,
 						amenitiesByVenue.getOrDefault(v.id(), List.of()),
-						coverOf(v.id(), photosByVenue.getOrDefault(v.id(), Map.of())),
-						slideshowOf(v.id(), photosByVenue.getOrDefault(v.id(), Map.of()),
-								CARD_SLIDESHOW),
+						photosByVenue.getOrDefault(v.id(), Map.of()),
 						salesWindow.isOpen(v.salesClose(), v.seasonClosure(), date, now),
 						salesWindow.closedForSeason(v.seasonClosure(), now)))
 				// Stable, so the SQL's rating-then-name order survives inside each half.
@@ -343,8 +341,10 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	}
 
 	private static VenueSummaryView toSummary(SummaryRow v, List<SetPriceRow> sets, Set<SetId> taken,
-			List<Amenity> amenities, CoverPhotoView coverPhoto, List<String> photos,
+			List<Amenity> amenities, Map<PhotoSlot, Map<PhotoSurface, String>> photoSlots,
 			boolean salesOpen, boolean closedForSeason) {
+		CoverPhotoView coverPhoto = coverOf(v.id(), photoSlots);
+		List<String> photos = slideshowOf(v.id(), photoSlots, CARD_SLIDESHOW);
 		int total = sets.size();
 		int free = (int) sets.stream().filter(s -> !taken.contains(new SetId(s.id()))).count();
 		MoneyView fromPrice = sets.stream()

@@ -110,6 +110,15 @@ interface SeasonCloseModel {
 
 const EMPTY_SEASON_CLOSE: SeasonCloseModel = { reopenOn: '', advanceSales: false };
 const OPEN_SEASON: SeasonClosureView = { closed: false, reopenOn: null, advanceSales: false };
+
+/** Which dates a closed venue still sells, as the status sentence's second half. */
+function sellingSentence(season: SeasonClosureView): string {
+  if (season.advanceSales) {
+    return ' Dates from the reopen date can be booked now.';
+  }
+  return season.reopenOn ? ' No date can be booked until then.' : ' No date can be booked.';
+}
+
 /** What the close answered: the counts of bookings and requests that still stand. */
 interface SeasonCounts {
   readonly futureBookings: number;
@@ -225,12 +234,7 @@ export class VenueTab {
     const reopens = season.reopenOn
       ? ` — reopens ${formatCivilDate(season.reopenOn)}.`
       : ' until you reopen it.';
-    const selling = season.advanceSales
-      ? ' Dates from the reopen date can be booked now.'
-      : season.reopenOn
-        ? ' No date can be booked until then.'
-        : ' No date can be booked.';
-    return `Closed for season${reopens}${selling}`;
+    return `Closed for season${reopens}${sellingSentence(season)}`;
   });
   /** "3 future bookings and 1 pending request still stand." */
   protected readonly seasonCountsText = computed(() => {
