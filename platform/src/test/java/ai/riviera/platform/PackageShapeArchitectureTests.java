@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * reconciliation between the allowed-set below and invariant #11's unqualified spelling.
  *
  * <p>The <em>thin-vs-full judgment</em> (whether a serviceless module should stay thin or graduate)
- * and the <em>use-case-slicing</em> call (booking's {@code application/{reserve,cancel,refund,view}})
+ * and the <em>use-case-slicing</em> call (booking's {@code application/{reserve,request,cancel,checkin,refund,view,remodel}})
  * are deliberately <strong>review-only</strong>, so this rule keys on the module-agnostic
  * <strong>union</strong> allowed-set {@code {api, spi, vocabulary, events, application, domain,
  * adapter}}, never on a per-module classification. Which <em>kind</em> of type may live in which

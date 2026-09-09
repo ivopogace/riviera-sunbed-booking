@@ -58,10 +58,13 @@ root controller is bootstrapped by every `@ApplicationModuleTest`, so its two po
 (this template — forced a seam per AC, the module-ownership table for the two arms of the
 classification, and the parity ledger as N/A with its reason) · `tdd` (each phase red first at the
 named seam: the two holders against a fixed clock, the services through their ports with fakes, the
-HTTP ITs, the Vitest specs, the mocked e2e) · `riviera-review-overlay` (review gate — due at
-ready-for-review; recorded in Execution status) · `riviera-docs-freshness` (due at close-out: the
-counting sweep for "the three ports" of `booking.api`, "the two principal-type modules" of the root
-grant, and `RESPONSIBILITIES.md`'s edge paragraph) · `grilling` (the intake questions answered from the
+HTTP ITs, the Vitest specs, the mocked e2e) · `riviera-review-overlay` (ran on PR #1051 over `17597d20..46be319c`, then the fix range
+`46be319c..4537cb9b`; findings F-2..F-12 in Execution status, all fixed) · `riviera-docs-freshness` (ran over
+`17597d20..75d78e76`, 5 findings, all patched: `/remodel/` in `riviera-modulith`'s slice list, the two slice
+enumerations in `booking/package-info` and `PackageShapeArchitectureTests`, `BeachMapRemodel` in
+`venue/api/package-info`, and ADR-0018 §3's mirror count with `Tier` as the second published mirror; the
+rename grep for `application.SetPlacement`/`disturbedBy`/`diff-based-bulk-save` and the counting sweep
+over `booking.api`'s ports and the root grant answered empty) · `grilling` (the intake questions answered from the
 code; the calls a colleague would make — advisory read, two transactions, candidate allocation order,
 booking id on the wire — are recorded as resolved assumptions below) · `riviera-local-debug` (clone
 unshallowed; system Gradle on the JDK 21 daemon compiling on the JDK 25 toolchain; scoped `--tests`;
@@ -183,16 +186,16 @@ handling are untouched; the dialog sits before the PUT, never instead of it.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The preview's two read-only transactions see different snapshots, or a claim lands between preview and save (invariant #2) | med | low | the preview is advisory by contract (Javadoc on both ports); the save re-decides under its row locks and this slice's save refuses any live claim; `STALE_PREVIEW` is #1034's | session | open |
-| R-2 | The root grant weakens the composition-root rule for every future root class | low | med | the grant is the narrowest surfaces (`api`+`vocabulary`), the test's Javadoc names the one sanctioned reason (the remodel orchestration, ADR-0020), and `ApplicationModules.verify()` still holds the module graph | session | open |
-| R-3 | Ownership on the venue-scoped endpoint (BOLA, invariant #13) | low | high | both application services assert `VenueOwnership#assertOwns` first; the edge only resolves the principal; `CrossVenueDenialIT` probes the route | session | open |
-| R-4 | A new POST under `/api/venues/**` reachable by any authenticated principal | med | high | an explicit `POST /api/venues/*/beach-map/preview` OPERATOR matcher; `EndpointRoleGateCoverageTest` | session | open |
-| R-5 | `@ApplicationModuleTest` contexts fail on the root controller's new ports (blast radius) | high | med | the two ports join `PayoutModuleTest`'s and `ReviewSubmitFlowIT`'s `@MockitoBean` lists and `WebSliceStubs`; both module tests run before the push | session | open |
-| R-6 | Two claims on one date allocated the same candidate | med | med | the service allocates in `(bookingDate, bookingId)` order and removes a picked candidate from that date's pool; `RemodelClaimsServiceTest` | session | open |
-| R-7 | Zone arithmetic across midnight / DST (invariants #4, #6) | med | med | durations to `BookingCutoff#serviceDayOpensAt` (Tirane midnight as a UTC instant); `RemodelZonesTest` crosses midnight and the exact boundaries | session | open |
-| R-8 | Error-contract drift on the new endpoint | low | med | `NOT_VENUE_OWNER` via the advice, `STALE_WRITE`/`NO_SUCH_VENUE`/`INVALID_REQUEST` through `ApiProblem`, detail states the condition | session | open |
-| R-9 | The console literal sweep or the focus-posture guard fails the new panel | low | low | token-only classes; `[appBusy]` on the save; `focusMover` on all three legs | session | open |
-| R-10 | Booking code on the wire (invariant #7) | low | high | the wire carries the booking id, never the code; `RemodelPreviewIT` asserts no `code` field | session | open |
+| R-1 | The preview's two read-only transactions see different snapshots, or a claim lands between preview and save (invariant #2) | med | low | the preview is advisory by contract (Javadoc on both ports); the save re-decides under its row locks and this slice's save refuses any live claim; `STALE_PREVIEW` is #1034's | session | closed — both ports' Javadoc state the advisory read; `RemodelPreviewIT` proves nothing is written and the token holds; the save's refusal is unchanged |
+| R-2 | The root grant weakens the composition-root rule for every future root class | low | med | the grant is the narrowest surfaces (`api`+`vocabulary`), the test's Javadoc names the one sanctioned reason (the remodel orchestration, ADR-0020), and `ApplicationModules.verify()` still holds the module graph | session | closed — `CompositionRootDisciplineTests` grants `api`+`vocabulary` only and its negative proofs stand; ADR-0020 |
+| R-3 | Ownership on the venue-scoped endpoint (BOLA, invariant #13) | low | high | both application services assert `VenueOwnership#assertOwns` first; the edge only resolves the principal; `CrossVenueDenialIT` probes the route | session | closed — `CrossVenueDenialIT.remodelPreviewByNonOwnerIs403`; both services call `assertOwns` before any read (`RemodelClaimsServiceTest`, `BeachMapPreviewServiceTest`) |
+| R-4 | A new POST under `/api/venues/**` reachable by any authenticated principal | med | high | an explicit `POST /api/venues/*/beach-map/preview` OPERATOR matcher; `EndpointRoleGateCoverageTest` | session | closed — `BEACH_MAP_PREVIEW_PATH` POST `hasRole(OPERATOR)`; `EndpointRoleGateCoverageTest` green |
+| R-5 | `@ApplicationModuleTest` contexts fail on the root controller's new ports (blast radius) | high | med | the two ports join `PayoutModuleTest`'s and `ReviewSubmitFlowIT`'s `@MockitoBean` lists and `WebSliceStubs`; both module tests run before the push | session | closed — `PayoutModuleTest` mocks both ports, `WebSliceStubs` supplies them; every `@ApplicationModuleTest` green in CI |
+| R-6 | Two claims on one date allocated the same candidate | med | med | the service allocates in `(bookingDate, bookingId)` order and removes a picked candidate from that date's pool; `RemodelClaimsServiceTest` | session | closed — `RemodelClaimsServiceTest.oneCandidateServesOneClaimPerDateAndADisturbedSetIsNeverACandidate` |
+| R-7 | Zone arithmetic across midnight / DST (invariants #4, #6) | med | med | durations to `BookingCutoff#serviceDayOpensAt` (Tirane midnight as a UTC instant); `RemodelZonesTest` crosses midnight and the exact boundaries | session | closed — `RemodelZonesTest` crosses midnight (49h / 47.5h to open) and pins the two boundaries |
+| R-8 | Error-contract drift on the new endpoint | low | med | `NOT_VENUE_OWNER` via the advice, `STALE_WRITE`/`NO_SUCH_VENUE`/`INVALID_REQUEST` through `ApiProblem`, detail states the condition | session | closed — `RemodelPreviewIT` pins `403`/`409`/`400` bodies and the detail twin against the PUT (F-7, F-12) |
+| R-9 | The console literal sweep or the focus-posture guard fails the new panel | low | low | token-only classes; `[appBusy]` on the save; `focusMover` on all three legs | session | closed — `console-literal-sweep.spec.ts`, `check-focus-posture.mjs` and `check-touch-target.mjs` green on the panel |
+| R-10 | Booking code on the wire (invariant #7) | low | high | the wire carries the booking id, never the code; `RemodelPreviewIT` asserts no `code` field | session | closed — `RemodelPreviewIT` asserts no `code` field; `remodel-preview-panel.spec.ts` asserts no "code" in the dialog text |
 
 ## Open questions / Assumptions
 
@@ -275,7 +278,7 @@ currency, read, never computed.
 | # | Surface | Existing/new | Type | State/reactivity | Forms |
 |---|---|---|---|---|---|
 | FE-1 | `operator/layout-editor.ts` + `.html` | existing | standalone component | `removesLoadedSet` computed over `grid`/`loadedSets`; `previewing`, `preview` signals; save `[appBusy]` while previewing or the dialog is open | none |
-| FE-2 | `operator/remodel-preview-panel.ts` + `.html` | new | standalone `alertdialog` component (sibling of `shared/confirm-panel.ts`) | `input.required<RemodelPreview>()`, `output` confirmed/cancelled; focuses its first button on open | none |
+| FE-2 | `operator/remodel-preview-panel.ts` + `.html` | new | standalone `alertdialog` component (sibling of `shared/confirm-panel.ts`) | `input.required<RemodelPreview>()`, `output` cancelled (Back only — the commit is #1034's); focuses Back on open | none |
 | FE-3 | `operator/operator-console.model.ts` / `.service.ts` | existing | model + `@Service` | `RemodelPreview` wire types, `previewLayout(venueId, body)` | — |
 
 **Standards:** standalone, `inject()`, native control flow with `track`, signal state, `[appBusy]`
@@ -304,10 +307,9 @@ never `[disabled]` on the pressed control, `focusMover` on the three legs — no
 
 ## Execution status
 
-**Stage pointer:** `review gate — round 1 findings fixed; next: re-resolve the range, re-walk the overlay on the fix commits, then the Sonar gate`
+**Stage pointer:** `DONE — merged via PR #1051`
 
-**Next action:** re-resolve the review range (`references/pr-gates.md` §1 step 2) over the fix
-push, re-walk the overlay items for the touched areas, then pull the Sonar list for PR #1051.
+**Next action:** none — the commit (#1034) is the next slice of epic #1027.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -318,7 +320,7 @@ push, re-walk the overlay items for the touched areas, then pull the Sonar list 
 | 4 — the edge: controller, security, stubs, ITs, the grant, ADR-0020, the net | ✅ | the "Answer the remodel preview at the edge" commit |
 | 5 — the editor: model, service, panel, wiring, Vitest + a11y + contrast | ✅ | 052dca0a |
 | 6 — the mocked e2e | ✅ | 779b9d61 |
-| 7 — docs: CONTEXT, RESPONSIBILITIES, Javadoc; close-out | ⏳ | the docs commit; close-out in the PR's last code-touching commit |
+| 7 — docs: CONTEXT, RESPONSIBILITIES, Javadoc; close-out | ✅ | the docs went with phase 4 (ADR-0020, CONTEXT, RESPONSIBILITIES); close-out in the PR's last code-touching commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -333,6 +335,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-7 | review (CLAUDE.md/overlay reviewer, RV-BE-10) | the root's `STALE_WRITE`/`NO_SUCH_VENUE` details diverged from the venue module's and named "layout" | fixed — the same two sentences; `RemodelPreviewIT` pins the detail |
 | F-8 | review (CLAUDE.md/overlay reviewer) | `LayoutDiff#of` and `#disturbedBy` each walked the cells with their own map — two matchers that could drift | fixed — one private `matchByCell`; `LayoutDiffTest.thePreviewAndTheSaveDisturbTheSameSetsForOneLayout` |
 | F-9 | review (CLAUDE.md/overlay reviewer) | the plan's `postgres` line claimed a `NOT EXISTS` anti-join the code does not use | fixed — the line states the two-select subtraction |
+| F-10 | re-review of the fix round | `SetCommand#placement()` landed between `disturbs`' Javadoc and `disturbs` — the two methods swapped their doc | fixed — 75d78e76 |
+| F-11 | re-review of the fix round | `RemodelPreviewPanel`'s class TSDoc still described a Save (prettier had joined the lines the first edit targeted) | fixed — 75d78e76 |
+| F-12 | re-review of the fix round (RV-BE-10) | the stale-token detail was asserted on the preview only, with no twin against the save | fixed — `RemodelPreviewIT` drives the stale PUT beside the stale preview and holds both to one sentence; the `NO_SUCH_VENUE` arm is unreachable over HTTP, since ownership asserts first and an unknown venue is nobody's (403) |
 | F-2 | review (shallow bug scan) | the dialog's Save re-read the grid at confirm time, so a cell painted behind the open dialog shipped un-previewed | fixed, then superseded by F-3 — with no Save in the dialog there is no confirm to carry a body |
 | F-1 | CI (`Backend (build + test)` on 42a9f039) | `JdbcBookingsLiveClaimsIT` seeded booking codes `LIVE0001…` that `JdbcBookingPresenceIT` also seeds; green alone, `DuplicateKeyException` on `booking_code_uniq` in the full suite's shared database | fixed — codes and addresses minted per insert (`LC-<nanoTime>`); both classes green in one JVM |
 
@@ -427,6 +432,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `docs/adr/ADR-0020-remodel-orchestration-at-the-composition-root.md` — (new)
 - `docs/plans/remodel-preview.md` — this plan
 - `docs/plans/diff-based-bulk-save.md` — retired at close-out
+- `docs/adr/ADR-0018-rule-layer-and-its-packaging.md` — the mirror count and `Tier` as the second published mirror (docs-freshness)
+- `.claude/skills/riviera-modulith/SKILL.md` — `/remodel/` joins the booking slice list (docs-freshness)
+- `platform/src/test/java/ai/riviera/platform/PackageShapeArchitectureTests.java` — the slice list in its Javadoc (docs-freshness)
 
 ---
 
@@ -501,8 +509,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 7 — docs and close-out
 
-- [ ] CONTEXT.md, RESPONSIBILITIES.md, Javadoc sweep; `docs/plans/diff-based-bulk-save.md` retired.
-- [ ] Plan doc execution status; `node scripts/check-plan-file-structure.mjs --diff origin/main`.
+- [x] CONTEXT.md, RESPONSIBILITIES.md, Javadoc sweep; `docs/plans/diff-based-bulk-save.md` retired.
+- [x] Plan doc execution status; `node scripts/check-plan-file-structure.mjs --diff origin/main`.
 
 ---
 
@@ -516,26 +524,29 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-9:** verified at close-out, commands recorded here.
+- [x] **AC-1..AC-6 (backend):** `gradle --no-daemon --console=plain test --tests "*RemodelZonesTest*" --tests "*MoveRankingTest*" --tests "*RemodelClaimsServiceTest*" --tests "*BeachMapPreviewServiceTest*" --tests "*RemodelPreviewIT*" --tests "*CrossVenueDenialIT*" --tests "*CompositionRootDisciplineTests*" --tests "*EndpointRoleGateCoverageTest*"` green, plus the structural net command from `CLAUDE.md`; the full suite green in CI (`Backend (build + test)`) on the PR head.
+- [x] **AC-7:** `npx ng test --watch=false --include='**/layout-editor*.spec.ts' --include='**/remodel-preview-panel*.spec.ts' --include='**/warn-token-skin.contrast.spec.ts'` green; the whole Vitest suite green in CI.
+- [x] **AC-8:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/layout-editor.e2e.ts` green; the mocked suite green in CI.
+- [x] **AC-9:** the terms, the three `RESPONSIBILITIES.md` bullets and ADR-0020 read at the review gate (RV-PROC-2) and by the `riviera-docs-freshness` run recorded in *Skills consulted*.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

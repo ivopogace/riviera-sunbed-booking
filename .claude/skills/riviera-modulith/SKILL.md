@@ -131,7 +131,7 @@ Modulith. Notes the trees can't carry:
 - **Name ports by purpose, never technology** — `CheckoutPort`, not `StripePort`;
   `AvailabilityClaim`, not `JdbcAvailabilityTable`.
 - `booking` is the one module sliced by use-case: `application/reserve/`, `/request/`,
-  `/cancel/`, `/checkin/`, `/refund/`, `/view/`, with the outbound `Bookings` port at
+  `/cancel/`, `/checkin/`, `/refund/`, `/view/`, `/remodel/`, with the outbound `Bookings` port at
   `application/` root and `domain/` flat and shared. No other module is sliced.
 - `@SpringBootApplication` (`PlatformApplication`) and app-wide config (`SecurityConfig`,
   `WebCorsConfig`, `TimeConfig`) stay in the root package; the root is not a module.

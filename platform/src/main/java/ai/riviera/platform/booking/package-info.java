@@ -8,7 +8,8 @@
  * {@code api} (the four query ports, by consumer role) + {@code events} + {@code vocabulary}
  * + {@code spi} (the {@code ConfirmationMailDelivery} driven port {@code notification} implements)
  * — the published surface —, {@code application} (shared {@code Bookings}/{@code BookingCodeGenerator} at root
- * + {@code reserve/}, {@code cancel/}, {@code refund/}, {@code view/}, {@code remodel/} slices), flat {@code domain},
+ * + {@code reserve/}, {@code request/}, {@code cancel/}, {@code checkin/}, {@code refund/}, {@code view/},
+ * {@code remodel/} slices), flat {@code domain},
  * {@code adapter.in/out}.
  *
  * <p>Why each grant beyond the obvious call edges: {@code operator::api} — the staff daily view and
