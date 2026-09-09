@@ -352,14 +352,14 @@ APIs. No deviation.
 
 ## Execution status
 
-**Stage pointer:** `plan — written, phase 0 next`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** phase 0 — red `BookingCutoffTest.seasonClosure*` and `SeasonClosureMigrationIT`.
+**Next action:** phase 1 — red the close/reopen tests in `VenueAdminServiceTest`, `JdbcBookingPresenceIT`, `SeasonClosureControllerIT`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V51 + `SeasonClosure` + `LiveBookingCounts` + the `BookingCutoff` arm + `SalesWindow` widened | ⏳ | |
-| 1 — close/reopen endpoint, `SeasonClosureService`, `Venues` writes, `BookingPresence#liveBookingsFrom`, profile carries the closure, security matchers, ITs | | |
+| 0 — V51 + `SeasonClosure` + the `BookingCutoff` arm + `SalesWindow` widened | ✅ | (phase 0 commit) |
+| 1 — close/reopen endpoint, `SeasonClosureService`, `Venues` writes, `LiveBookingCounts` + `BookingPresence#liveBookingsFrom`, profile carries the closure, security matchers, ITs | ⏳ | |
 | 2 — catalogue projection (list order, map, calendar `salesOpen`), `SetBookingInfo` closure, `VENUE_CLOSED` fence, ITs with the mocked clock, structural net | | |
 | 3 — frontend: models, chip, Discover card, map notice, calendar, booking copy, Venue tab season card, specs + a11y + contrast, mocked e2e | | |
 | 4 — docs: `CONTEXT.md`, `RESPONSIBILITIES.md`, domain-model, `CLAUDE.md` row, package Javadocs; retire `pinned-cells.md`; PR | | |
@@ -391,7 +391,6 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/venue/SeasonClosureMigrationIT.java`
 - `platform/src/test/java/ai/riviera/platform/venue/SeasonClosureControllerIT.java`
 - `platform/src/test/java/ai/riviera/platform/venue/SeasonClosureCatalogIT.java` — list/map/calendar/reviews/photo with a mocked Clock crossing the reopen date
-- `platform/src/test/java/ai/riviera/platform/venue/application/SeasonClosureServiceTest.java`
 - `platform/src/test/java/ai/riviera/platform/venue/vocabulary/SeasonClosureTest.java`
 - `platform/src/test/java/ai/riviera/platform/booking/SeasonClosureReserveIT.java`
 
@@ -486,16 +485,16 @@ its two test fakes.
 
 **Files:** Create `CloseForSeason`, `CloseOutcome`, `SeasonClosureRejection`, `ReopenOutcome`,
 `SeasonClosureService`, `SeasonClosureController`, `SeasonClosureRequest`, `SeasonClosureResponse`,
-`SeasonClosureView`, `SeasonClosureServiceTest`, `SeasonClosureControllerIT` · Modify `Venues`,
+`SeasonClosureView`, `SeasonClosureControllerIT` · Modify `Venues`,
 `JdbcVenues`, `VenueProfileView`, `VenueProfileResponse`, `JdbcBookingPresence`,
 `JdbcBookingPresenceIT`, `SecurityConfig`, `VenueAdminServiceTest`.
 
-- [ ] **Step 1: Failing tests** — `SeasonClosureServiceTest` (assertOwns first, `NO_SUCH_VENUE`,
+- [ ] **Step 1: Failing tests** — `VenueAdminServiceTest` (the closure service beside the profile service: assertOwns first, `NO_SUCH_VENUE`,
   `REOPEN_DATE_PASSED` at a Tirane boundary, the counts passed through), `JdbcBookingPresenceIT`
   (AC-11), `SeasonClosureControllerIT` (AC-3, AC-4, AC-10: seeds a venue owned by the bootstrap
   operator, a confirmed booking, a pending request, a staff hold, a past booking, a cancelled one;
   a second operator for the 403).
-- [ ] **Step 2: Red** — `gradle … test --tests "*SeasonClosureServiceTest*"` → compile failure.
+- [ ] **Step 2: Red** — `gradle … test --tests "*VenueAdminServiceTest*"` → compile failure.
 - [ ] **Step 3: Implementation** — service (Tirane today from the injected Clock), adapter writes
   (`UPDATE venue SET closed_at = :closedAt, reopen_on = :reopenOn, advance_sales = :advanceSales WHERE id = :id`
   and the clearing twin), the profile read + response, the counts SQL with `COUNT(*) FILTER`, the

@@ -9,6 +9,7 @@ import java.time.ZonedDateTime;
 import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 
 /**
  * Names the service day's boundaries (invariant #4), all reasoned in {@code Europe/Tirane}
@@ -47,6 +48,41 @@ public class BookingCutoff {
 	 */
 	public boolean isBookable(LocalTime salesClose, LocalDate bookingDate, java.time.Instant now) {
 		return now.isBefore(salesCloseAt(salesClose, bookingDate));
+	}
+
+	/**
+	 * Both arms of the sales fence against one reading: the season closure admits {@code bookingDate}
+	 * and its sales close has not passed. The reserve path asks the arms separately to name which
+	 * refused; the catalogue verdict asks this.
+	 */
+	public boolean isBookable(LocalTime salesClose, SeasonClosure closure, LocalDate bookingDate,
+			java.time.Instant now) {
+		return admitsDate(closure, bookingDate, now) && isBookable(salesClose, bookingDate, now);
+	}
+
+	/**
+	 * Whether the venue's season closure is still in effect at {@code now}: closed with no reopen
+	 * day, or closed with a reopen day that has not yet opened in {@code Europe/Tirane}. Reads
+	 * compare dates — a venue reopens by itself the moment its reopen day starts, nothing sweeps.
+	 */
+	public boolean closedForSeason(SeasonClosure closure, java.time.Instant now) {
+		if (!closure.closed()) {
+			return false;
+		}
+		return closure.reopenOn() == null
+				|| LocalDate.ofInstant(now, TIRANE).isBefore(closure.reopenOn());
+	}
+
+	/**
+	 * Whether the season closure lets {@code bookingDate} sell at {@code now}: always once the
+	 * closure is over; while it holds, only a date on or after the reopen day, and only with the
+	 * advance-sales opt-in. A closure with no reopen day admits nothing.
+	 */
+	public boolean admitsDate(SeasonClosure closure, LocalDate bookingDate, java.time.Instant now) {
+		if (!closedForSeason(closure, now)) {
+			return true;
+		}
+		return closure.advanceSales() && !bookingDate.isBefore(closure.reopenOn());
 	}
 
 	/**
