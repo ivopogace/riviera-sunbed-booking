@@ -103,11 +103,11 @@ class VenueAvailabilityCalendarIT {
 				.orElseThrow();
 
 		assertEquals(List.of(
-				new DailyAvailability(from, new AvailabilitySummary(4, TOTAL_SETS)),
-				new DailyAvailability(from.plusDays(1), new AvailabilitySummary(2, TOTAL_SETS)),
-				new DailyAvailability(from.plusDays(2), new AvailabilitySummary(4, TOTAL_SETS)),
-				new DailyAvailability(from.plusDays(3), new AvailabilitySummary(3, TOTAL_SETS)),
-				new DailyAvailability(from.plusDays(4), new AvailabilitySummary(4, TOTAL_SETS))),
+				new DailyAvailability(from, new AvailabilitySummary(4, TOTAL_SETS), true),
+				new DailyAvailability(from.plusDays(1), new AvailabilitySummary(2, TOTAL_SETS), true),
+				new DailyAvailability(from.plusDays(2), new AvailabilitySummary(4, TOTAL_SETS), true),
+				new DailyAvailability(from.plusDays(3), new AvailabilitySummary(3, TOTAL_SETS), true),
+				new DailyAvailability(from.plusDays(4), new AvailabilitySummary(4, TOTAL_SETS), true)),
 				days,
 				"every day in the inclusive window, ascending; untouched days read free == total");
 	}
@@ -137,7 +137,7 @@ class VenueAvailabilityCalendarIT {
 	void singleDayWindowIsOneEntry() {
 		LocalDate day = LocalDate.of(2027, 5, 1);
 
-		assertEquals(List.of(new DailyAvailability(day, new AvailabilitySummary(TOTAL_SETS, TOTAL_SETS))),
+		assertEquals(List.of(new DailyAvailability(day, new AvailabilitySummary(TOTAL_SETS, TOTAL_SETS), true)),
 				catalog.availabilityBetween(venue, day, day).orElseThrow(),
 				"from == to is a legal one-day window, not an empty one");
 	}

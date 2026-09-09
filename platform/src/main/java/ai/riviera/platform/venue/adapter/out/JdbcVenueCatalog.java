@@ -170,11 +170,14 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		CoverPhotoView coverPhoto = coverOf(id.value(), photoVariants);
 		List<String> photos = slideshowOf(id.value(), photoVariants, BANNER_SLIDESHOW);
 
+		Instant now = clock.instant();
+		boolean closedForSeason = salesWindow.closedForSeason(v.seasonClosure(), now);
 		return Optional.of(new VenueMapView(v.id(), v.name(), v.beach(), v.region(),
 				v.description(), v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, amenities, v.distanceToWaterM(), sets, v.setVersion(), coverPhoto,
-				photos, salesWindow.isOpen(v.salesClose(), v.seasonClosure(), date, clock.instant()),
-				SalesClose.WIRE.format(v.salesClose())));
+				photos, salesWindow.isOpen(v.salesClose(), v.seasonClosure(), date, now),
+				SalesClose.WIRE.format(v.salesClose()), closedForSeason,
+				closedForSeason ? v.seasonClosure().reopenOn() : null));
 	}
 
 	@Override
@@ -248,7 +251,10 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 						coverOf(v.id(), photosByVenue.getOrDefault(v.id(), Map.of())),
 						slideshowOf(v.id(), photosByVenue.getOrDefault(v.id(), Map.of()),
 								CARD_SLIDESHOW),
-						salesWindow.isOpen(v.salesClose(), v.seasonClosure(), date, now)))
+						salesWindow.isOpen(v.salesClose(), v.seasonClosure(), date, now),
+						salesWindow.closedForSeason(v.seasonClosure(), now)))
+				// Stable, so the SQL's rating-then-name order survives inside each half.
+				.sorted(Comparator.comparing(VenueSummaryView::closedForSeason))
 				.toList();
 	}
 
@@ -338,7 +344,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 
 	private static VenueSummaryView toSummary(SummaryRow v, List<SetPriceRow> sets, Set<SetId> taken,
 			List<Amenity> amenities, CoverPhotoView coverPhoto, List<String> photos,
-			boolean salesOpen) {
+			boolean salesOpen, boolean closedForSeason) {
 		int total = sets.size();
 		int free = (int) sets.stream().filter(s -> !taken.contains(new SetId(s.id()))).count();
 		MoneyView fromPrice = sets.stream()
@@ -349,7 +355,8 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		return new VenueSummaryView(v.id(), v.name(), v.beach(), v.region(),
 				v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, ordered, v.distanceToWaterM(), new AvailabilitySummary(free, total),
-				coverPhoto, photos, salesOpen);
+				coverPhoto, photos, salesOpen, closedForSeason,
+				closedForSeason ? v.seasonClosure().reopenOn() : null);
 	}
 
 	@Override
@@ -433,6 +440,16 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		if (!visibility.isVisible(new VenueRef(id.value()))) {
 			return Optional.empty();
 		}
+		Optional<SalesSettings> settings = jdbc.sql("""
+				SELECT sales_close, closed_at, reopen_on, advance_sales FROM venue WHERE id = :id
+				""")
+				.param("id", id.value())
+				.query((rs, rowNum) -> new SalesSettings(
+						rs.getObject(COL_SALES_CLOSE, LocalTime.class), seasonClosureOf(rs)))
+				.optional();
+		if (settings.isEmpty()) {
+			return Optional.empty();
+		}
 		// Ids only — the calendar needs how many sets there are, not how they render or price.
 		List<SetId> sets = jdbc.sql("""
 				SELECT id
@@ -447,12 +464,20 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 
 		int total = sets.size();
 		Map<LocalDate, Integer> taken = availability.takenCountsBetween(sets, from, to);
+		// One instant for every day, so verdicts within one response cannot disagree (invariant #6).
+		Instant now = clock.instant();
+		SalesSettings sales = settings.get();
 		// Counted forward from `from`; an exclusive `to + 1` would throw at LocalDate.MAX.
 		long days = ChronoUnit.DAYS.between(from, to) + 1;
 		return Optional.of(LongStream.range(0, days)
 				.mapToObj(from::plusDays)
 				.map(day -> new DailyAvailability(day,
-						new AvailabilitySummary(total - taken.getOrDefault(day, 0), total)))
+						new AvailabilitySummary(total - taken.getOrDefault(day, 0), total),
+						salesWindow.isOpen(sales.salesClose(), sales.seasonClosure(), day, now)))
 				.toList());
+	}
+
+	/** The venue's two sales settings the calendar projects per day. */
+	private record SalesSettings(LocalTime salesClose, SeasonClosure seasonClosure) {
 	}
 }

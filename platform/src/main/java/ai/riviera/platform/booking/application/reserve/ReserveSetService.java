@@ -26,18 +26,17 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 
 /**
- * The committed <em>reserve</em> phase of Instant-Book (issue #52): validate the set (online pool,
- * invariant #3; the venue's on-day sales close, invariant #4), claim the {@code (set, date)} (the
- * double-booking guard, invariant #2), resolve the guest, and insert the {@code AWAITING_PAYMENT}
- * booking — all in <strong>one transaction that commits before any payment call</strong>. Splitting
- * this off from {@link CreateBookingService} is precisely what lets the Stripe PaymentIntent be
- * created <em>after</em> commit, so the claim row lock is never held across the Stripe network
- * round-trip (risk R-3 from #8).
+ * The committed <em>reserve</em> phase of Instant-Book: validate the set (online pool, invariant
+ * #3; the venue's season closure, then its on-day sales close, invariant #4), claim the
+ * {@code (set, date)} (the double-booking guard, invariant #2), resolve the guest, and insert the
+ * {@code AWAITING_PAYMENT} booking — all in <strong>one transaction that commits before any payment
+ * call</strong>, so the Stripe PaymentIntent is created <em>after</em> commit and the claim row lock is
+ * never held across the network round-trip.
  *
  * <p><strong>Transaction:</strong> the availability claim (propagation {@code REQUIRED}) joins this
  * {@code @Transactional} method, so a failure between the claim and the insert rolls the claim back
- * too — a set is never held for a booking that wasn't created (risk R-2). Invariant #2 is upheld by
- * the DB {@code UNIQUE(set_id, booking_date)} + atomic {@code INSERT … ON CONFLICT} claim, which is
+ * too — a set is never held for a booking that wasn't created. Invariant #2 is upheld by the DB
+ * {@code UNIQUE(set_id, booking_date)} + atomic {@code INSERT … ON CONFLICT} claim, which is
  * independent of how long the lock is held — so committing before payment does not weaken it.
  *
  * <p>Package-private, no interface — a single internal collaborator of {@code CreateBookingService}
@@ -92,8 +91,11 @@ class ReserveSetService {
 		if (set.pool() != Pool.ONLINE) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NOT_ONLINE_POOL);
 		}
-		// One reading of the clock, so the fence and the request deadline classify the same instant.
+		// One reading of the clock, so both fences and the request deadline classify the same instant.
 		Instant now = clock.instant();
+		if (!cutoff.admitsDate(set.seasonClosure(), command.bookingDate(), now)) {
+			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.VENUE_CLOSED);
+		}
 		if (!cutoff.isBookable(set.salesClose(), command.bookingDate(), now)) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.BOOKING_CLOSED);
 		}

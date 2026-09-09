@@ -16,6 +16,7 @@ import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.Pool;
+import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -88,7 +89,7 @@ class BookingCreationViewsContractTest {
 		return new BookingConfirmation("CODE234567", status,
 				new SetBookingInfo(new SetId(11), new VenueId(7), "Vala Beach", "A", 4, Pool.ONLINE,
 						new MoneyView(4500, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
-						BookingMode.REQUEST),
+						BookingMode.REQUEST, SeasonClosure.open()),
 				LocalDate.of(2026, 8, 10), false);
 	}
 }

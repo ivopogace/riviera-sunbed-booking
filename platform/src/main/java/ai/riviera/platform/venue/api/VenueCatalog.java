@@ -39,13 +39,14 @@ public interface VenueCatalog {
 
 	/**
 	 * The venues matching {@code filter}, as discovery summaries, for the tourist browse screen
-	 * (issue #61, design §4.1 steps 1–2). Each summary carries the venue's "from" price (cheapest
+	 * (design §4.1 steps 1–2). Each summary carries the venue's "from" price (cheapest
 	 * set, integer minor units, invariant #5) and its free/total set count for {@code date},
 	 * sourced per-{@code (set, date)} from the authoritative availability table (invariant #2) —
 	 * the same overlay {@link #findVenueMap} uses, so the count never disagrees with the map.
 	 *
-	 * <p>Results are ordered <strong>rating descending, then name ascending</strong> (best first,
-	 * stable tie-break). A filter matching nothing yields an empty list, never {@code null}.
+	 * <p>Results are ordered <strong>open venues first, then rating descending, then name
+	 * ascending</strong> — a venue closed for the season stays listed, badged, after every open one.
+	 * A filter matching nothing yields an empty list, never {@code null}.
 	 *
 	 * @param filter the optional beach/region narrowing ({@link VenueFilter#of}); both-null lists all
 	 * @param date   the calendar day to count availability for, a {@code LocalDate} in
@@ -66,8 +67,10 @@ public interface VenueCatalog {
 	 *
 	 * <p><strong>A snapshot, never a hold.</strong> A day reporting free capacity may be full by
 	 * the time a claim is attempted — the claim decides, not this read — and it answers past days
-	 * as readily as future ones: it reports availability, not bookability. The booking cutoff
-	 * (invariant #4) stays enforced where it already is.
+	 * as readily as future ones: the counts report availability, not bookability. Bookability rides
+	 * beside them as each day's {@code salesOpen} verdict — the on-day sales close and the season
+	 * closure, the same projection the list and map carry — display only; the reserve path enforces
+	 * the fence (invariant #4) where it already does.
 	 *
 	 * @param id   the venue
 	 * @param from the first day, inclusive, a {@code LocalDate} in {@code Europe/Tirane}

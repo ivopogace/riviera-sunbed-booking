@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue.vocabulary;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -26,8 +27,10 @@ import java.util.List;
  * so a venue's slideshow never loses a photo to the rollout.
  *
  * <p>{@code salesOpen} is whether online sales for the selected date are open right now —
- * booking's sales-window verdict (invariant #4), computed per request; display only, the reserve
- * path enforces the fence independently.
+ * booking's sales-window verdict (invariant #4), the on-day sales close and the season closure
+ * together, computed per request; display only, the reserve path enforces the fence independently.
+ * {@code closedForSeason} is whether the season closure is in effect right now and
+ * {@code reopensOn} its reopen day while it is, else {@code null}; the page stays browsable either way.
  *
  * <p>{@code salesClose} is the venue's own sales-close setting as {@code HH:mm} — one of
  * {@code 00:01}, {@code 16:00}, {@code 23:59}. A display-copy key only: clients branch wording on
@@ -37,5 +40,5 @@ public record VenueMapView(long id, String name, String beach, String region,
 		String description, int ratingTenths, int reviewsCount, String bookingMode,
 		MoneyView fromPrice, List<Amenity> amenities, Integer distanceToWaterM,
 		List<SetView> sets, long setVersion, CoverPhotoView coverPhoto, List<String> photos,
-		boolean salesOpen, String salesClose) {
+		boolean salesOpen, String salesClose, boolean closedForSeason, LocalDate reopensOn) {
 }

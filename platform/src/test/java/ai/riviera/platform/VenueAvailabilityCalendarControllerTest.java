@@ -75,8 +75,8 @@ class VenueAvailabilityCalendarControllerTest {
 		LocalDate first = LocalDate.of(2026, 12, 1);
 		when(catalog.availabilityBetween(new VenueId(VENUE), first, first.plusDays(1)))
 				.thenReturn(Optional.of(List.of(
-						new DailyAvailability(first, new AvailabilitySummary(12, 30)),
-						new DailyAvailability(first.plusDays(1), new AvailabilitySummary(30, 30)))));
+						new DailyAvailability(first, new AvailabilitySummary(12, 30), true),
+						new DailyAvailability(first.plusDays(1), new AvailabilitySummary(30, 30), false))));
 
 		mvc.perform(get(CALENDAR, VENUE).param("from", "2026-12-01").param("to", "2026-12-02"))
 				.andExpect(status().isOk())
@@ -84,8 +84,10 @@ class VenueAvailabilityCalendarControllerTest {
 				.andExpect(jsonPath("$[0].date").value("2026-12-01"))
 				.andExpect(jsonPath("$[0].free").value(12))
 				.andExpect(jsonPath("$[0].total").value(30))
+				.andExpect(jsonPath("$[0].salesOpen").value(true))
 				.andExpect(jsonPath("$[1].date").value("2026-12-02"))
-				.andExpect(jsonPath("$[1].free").value(30));
+				.andExpect(jsonPath("$[1].free").value(30))
+				.andExpect(jsonPath("$[1].salesOpen").value(false));
 	}
 
 	@Test

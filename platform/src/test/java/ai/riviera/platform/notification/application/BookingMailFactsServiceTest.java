@@ -13,6 +13,7 @@ import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.Pool;
+import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -46,7 +47,7 @@ class BookingMailFactsServiceTest {
 			new BookingNotificationInfo("ABCD2345", CUSTOMER_ID);
 	private static final SetBookingInfo SET = new SetBookingInfo(SET_ID, new VenueId(3L), "Vala Beach",
 			"A", 3, Pool.ONLINE, new MoneyView(4500, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
-			BookingMode.INSTANT);
+			BookingMode.INSTANT, SeasonClosure.open());
 	private static final GuestContact CONTACT =
 			new GuestContact("tourist@example.com", "Tourist", "+355691234567");
 

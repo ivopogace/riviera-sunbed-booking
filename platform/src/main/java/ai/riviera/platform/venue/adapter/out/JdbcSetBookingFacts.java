@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue.adapter.out;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collection;
 import java.util.Map;
@@ -13,6 +14,7 @@ import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.Pool;
+import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -36,7 +38,7 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 	private static final String SET_BOOKING_INFO_SELECT = """
 			SELECT sp.id AS set_id, sp.venue_id, v.name AS venue_name, sp.row_label,
 			       sp.position_no, sp.pool, sp.price_minor, sp.price_currency, v.booking_cutoff,
-			       v.sales_close, v.booking_mode
+			       v.sales_close, v.booking_mode, v.closed_at, v.reopen_on, v.advance_sales
 			FROM set_position sp
 			JOIN venue v ON v.id = sp.venue_id
 			""";
@@ -86,6 +88,10 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 				new MoneyView(rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)),
 				rs.getObject("booking_cutoff", LocalTime.class),
 				rs.getObject("sales_close", LocalTime.class),
-				BookingMode.valueOf(rs.getString("booking_mode")));
+				BookingMode.valueOf(rs.getString("booking_mode")),
+				rs.getObject("closed_at") == null
+						? SeasonClosure.open()
+						: SeasonClosure.closed(rs.getObject("reopen_on", LocalDate.class),
+								rs.getBoolean("advance_sales")));
 	}
 }
