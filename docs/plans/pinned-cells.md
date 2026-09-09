@@ -52,7 +52,7 @@ its plan doc retires in this PR's close-out) · `riviera-plan-doc` (this templat
 AC, the module-ownership table for a read that `venue` composes from two other modules' facts, and
 the parity ledger for the editor's read switch) · `tdd` (each phase red first at the named seam: the
 service fake, the adapter ITs, the controller IT, the Vitest specs, the mocked e2e) ·
-`riviera-review-overlay` (review gate — pending) · `riviera-docs-freshness` (pending) · `grilling`
+`riviera-review-overlay` (review gate — pending) · `riviera-docs-freshness` (**ran** over `dbb76da7..HEAD` as the pre-merge smoke: the rename grep on `hasLiveHold`/`isLivelyClaimed` and `getVenueMap` found only the sentences the diff already rewrote (RESPONSIBILITIES § venue, the frontend skill's frozen-edge table, the SPI inventory Javadoc, `JdbcBookingPresenceIT`'s "four probes"); the counting sweep over probe/spi/owner-read vocabulary found no stale "the two/three"; zero further findings; `docs/plans/retire-set-marker.md` retired, no citation of its slug outside `docs/plans/`) · `grilling`
 (the intake questions answered from the code; the two product-flavoured calls — the reason copy and
 keeping the tourist visibility fence on the owner's read — are recorded as resolved assumptions
 below) · `riviera-local-debug` (clone unshallowed; system Gradle on the JDK 21 daemon compiling on
@@ -90,66 +90,66 @@ branch stands in for `feature/pinned-cells` (`riviera-sdlc` remote addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue with three sets — one carrying a `CONFIRMED` booking dated 2027-07-01
+- [x] **AC-1:** Given a venue with three sets — one carrying a `CONFIRMED` booking dated 2027-07-01
   (with its `BOOKED_ONLINE` availability row), one carrying only a `STAFF_MARKED` row dated
   tomorrow, one free — when the owner reads `GET /api/venues/{venueId}/beach-map`, then the
   response carries `map.sets` for all three and `locks` for exactly the first two:
   `{setId, bookedOn: "2027-07-01", heldOn: "2027-07-01"}` and `{setId, bookedOn: null,
   heldOn: <tomorrow>}`, ordered by set id. *Seam:* the HTTP route · *Pinned by:*
   `VenueAdminControllerIT.beachMapReadCarriesALockPerClaimedSetAndNothingForAFreeSet`
-- [ ] **AC-2:** Given a set whose only hold is dated yesterday and whose only booking is
+- [x] **AC-2:** Given a set whose only hold is dated yesterday and whose only booking is
   `CANCELLED`, when the owner reads the beach map, then `locks` is empty — the read's lock is the
   write guard's lock. *Seam:* the HTTP route · *Pinned by:*
   `VenueAdminControllerIT.beachMapReadIgnoresPastHoldsAndFinishedBookings`
-- [ ] **AC-3:** Given a non-owner operator, when they read another venue's beach map, then the
+- [x] **AC-3:** Given a non-owner operator, when they read another venue's beach map, then the
   answer is `403 NOT_VENUE_OWNER` before any existence probe; unauthenticated is `401`. *Seam:* the
   HTTP route · *Pinned by:* `CrossVenueDenialIT.beachMapReadByNonOwnerIs403`,
   `VenueAdminControllerIT.beachMapReadRequiresOperator`
-- [ ] **AC-4:** Given `LiveClaims` over fakes with a hold on set 1 dated today, a hold on set 2
+- [x] **AC-4:** Given `LiveClaims` over fakes with a hold on set 1 dated today, a hold on set 2
   dated yesterday and a live booking on set 3, when `locksOn([1,2,3])` is asked, then sets 1 and 3
   are locked with their dates and set 2 is absent; and `isLivelyClaimed` agrees per set. *Seam:*
   `LiveClaims` (the application holder) · *Pinned by:* `LiveClaimsTest`
-- [ ] **AC-5:** Given the owner's read service, when a non-owner asks, then `NotVenueOwnerException`
+- [x] **AC-5:** Given the owner's read service, when a non-owner asks, then `NotVenueOwnerException`
   is thrown with no catalogue or claim probe; when the venue vanished, the answer is empty; when it
   exists, the locks are the holder's answer for the map's set ids. *Seam:* `ViewBeachMap` ·
   *Pinned by:* `BeachMapReadServiceTest`
-- [ ] **AC-6:** Given set 1 held on 2027-06-20 and 2027-06-18, set 2 held only on 2027-06-10, when
+- [x] **AC-6:** Given set 1 held on 2027-06-20 and 2027-06-18, set 2 held only on 2027-06-10, when
   `nearestClaimsFrom([1,2], 2027-06-15)` is asked, then `{1 → 2027-06-18}`; an empty input answers
   an empty map without a query. *Seam:* `SetAvailabilityLookup` (SPI) · *Pinned by:*
   `AvailabilityLookupIT.nearestClaimsFromAnswersTheEarliestHoldOnOrAfterTheCutoffPerSet`
-- [ ] **AC-7:** Given set 1 with a `CANCELLED` booking on 2027-06-10 and a `CONFIRMED` one on
+- [x] **AC-7:** Given set 1 with a `CANCELLED` booking on 2027-06-10 and a `CONFIRMED` one on
   2027-06-22, set 2 with only a `COMPLETED` booking, when `nearestLiveBookings([1,2])` is asked,
   then `{1 → 2027-06-22}`. *Seam:* `BookingPresence` (SPI) · *Pinned by:*
   `JdbcBookingPresenceIT.nearestLiveBookingsAnswersTheEarliestHonourableDatePerSet`
-- [ ] **AC-8:** Given the layout editor loaded with a locked set at row A position 2 (booked
+- [x] **AC-8:** Given the layout editor loaded with a locked set at row A position 2 (booked
   2026-09-12), when the tier brush paints it, then its `data-state` changes and the dirty count is
   1; when the gap brush then clicks it, `data-state` and the dirty count are unchanged and the lock
   notice reads "Row A · position 2 is booked Sat 12 Sept 2026 — it can’t become a gap. Its tier and
   pool can still change." (`formatCivilDate`'s en-IE label, the console's one date format) *Seam:* the rendered component (`[data-testid=layout-cell]`, the save bar) ·
   *Pinned by:* `layout-editor.spec.ts` "locked cells"
-- [ ] **AC-9:** Given a gap-brush drag-sweep across a row holding one locked cell, and a gap
+- [x] **AC-9:** Given a gap-brush drag-sweep across a row holding one locked cell, and a gap
   fill of that row, when each completes, then every unlocked cell is a gap, the locked cell keeps
   its state, and the dirty count counts only the unlocked cells. *Seam:* the rendered component ·
   *Pinned by:* `layout-editor.spec.ts` "locked cells"
-- [ ] **AC-10:** Given a locked cell, when the a11y spec inspects its button, then it carries a
+- [x] **AC-10:** Given a locked cell, when the a11y spec inspects its button, then it carries a
   lock glyph, `aria-describedby` resolves to the reason text, and axe finds no violation on the
   locked grid. *Seam:* the rendered component · *Pinned by:* `layout-editor.a11y.spec.ts`
-- [ ] **AC-11:** Given the set editor with a locked set selected, when the inspector renders, then
+- [x] **AC-11:** Given the set editor with a locked set selected, when the inspector renders, then
   Move and Remove are `disabled` with a visible reason naming the date, the price, tier and pool
   controls are enabled, the cell's description carries the reason, and axe finds no violation.
   *Seam:* the rendered component (`set-move`, `set-remove`, `set-locked-reason`) · *Pinned by:*
   `set-editor.spec.ts` "locked set", `set-editor.a11y.spec.ts`
-- [ ] **AC-12:** Given the console themes, when the contrast specs run, then the lock glyph's ink
+- [x] **AC-12:** Given the console themes, when the contrast specs run, then the lock glyph's ink
   meets 3:1 over every cell fill and the lock reason's ink meets 4.5:1 on its surface. *Seam:* the
   token mirrors (`src/testing/*`) · *Pinned by:* `layout-editor.contrast.spec.ts`,
   `set-editor.contrast.spec.ts`
-- [ ] **AC-13:** Given the mocked editor with a locked seeded set, when the operator repaints its
+- [x] **AC-13:** Given the mocked editor with a locked seeded set, when the operator repaints its
   tier and then tries to gap it in a real browser, then the tier paint lands and the gap is refused
   with the reason; on the per-set surface Move and Remove are disabled with the reason. *Seam:*
   the browser (`test:e2e:a11y`) · *Pinned by:* `layout-editor.e2e.ts` "a locked cell repaints but
   never gaps", `operator-set-editing.e2e.ts` "a locked set disables Move and Remove before any
   request"
-- [ ] **AC-14:** `RESPONSIBILITIES.md` § `venue` carries the owner's beach-map read bullet and the
+- [x] **AC-14:** `RESPONSIBILITIES.md` § `venue` carries the owner's beach-map read bullet and the
   layout-write paragraph names the shared predicate; `CONTEXT.md` defines **Locked set**.
   *Seam:* the docs · *Pinned by:* review (RV-PROC-1) + `riviera-docs-freshness`
 
@@ -181,13 +181,13 @@ The editor's seed read moves from the public `GET /api/venues/{id}?date=` to the
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The canvas lock and the server's `SET_IN_USE` disagree (a set shown free is refused, or shown locked is allowed) | med | high | one predicate, `LiveClaims`, called by both; `LiveClaimsTest` + AC-2 pin the shared cutoff; the SPI methods mirror `anyClaimsFrom`'s `>= from` and `hasLiveBookings`' `LIVE_STATUSES` | agent | open |
-| R-2 | Hold/booking facts leak to tourists (BOLA / public surface) | low | high | the read is owner-asserted first (403 before existence) and gated `OPERATOR` in `SecurityConfig` above the public GET; AC-3 | agent | open |
-| R-3 | A lock read failure leaves the editor painting gaps the server refuses | low | med | the locks ride the same response as the map: no map without locks; the load-failed state already exists | agent | open |
-| R-4 | Every editor spec and mock serves the old map URL/shape | high | med | the spec helpers' predicate `includes('/api/venues/1')` matches the new URL; fixtures gain the `{ map, locks }` wrap by one sed; the three e2e mock helpers (`mockEditor`, `mockConsole`, `mockWholeConsole`) gain the GET route — the PUT-only `beach-map` routes must `fallback()` on GET | agent | open |
-| R-5 | Timezone: the read's "today" drifts from the guard's | low | high | both take `LiveClaims.today()` — `LocalDate.now(clock.withZone(Europe/Tirane))`; `LiveClaimsTest` uses the `VenueAdminServiceTest` late-UTC clock that fails a UTC-vs-Tirane bug | agent | open |
-| R-6 | The disabled Move/Remove strand focus (RV-FE-9) | low | med | a validity-disabled control keeps `[disabled]`; it is disabled before the operator can focus it (state, not a transition) | agent | open |
-| R-7 | Error-contract drift on the new endpoint | low | low | `ApiProblem` only: `404 NO_SUCH_VENUE` with the controller's existing detail; 403/401 from the handler | agent | open |
+| R-1 | The canvas lock and the server's `SET_IN_USE` disagree (a set shown free is refused, or shown locked is allowed) | med | high | one predicate, `LiveClaims`, called by both; `LiveClaimsTest` + AC-2 pin the shared cutoff; the SPI methods mirror `anyClaimsFrom`'s `>= from` and `hasLiveBookings`' `LIVE_STATUSES` | agent | closed — `dd7c3a89` (`LiveClaims`), `3385b40b` (AC-2 IT) |
+| R-2 | Hold/booking facts leak to tourists (BOLA / public surface) | low | high | the read is owner-asserted first (403 before existence) and gated `OPERATOR` in `SecurityConfig` above the public GET; AC-3 | agent | closed — `3385b40b` (`CrossVenueDenialIT`, `EndpointRoleGateCoverageTest`) |
+| R-3 | A lock read failure leaves the editor painting gaps the server refuses | low | med | the locks ride the same response as the map: no map without locks; the load-failed state already exists | agent | closed — `c47f564e` (one read, `{ map, locks }`) |
+| R-4 | Every editor spec and mock serves the old map URL/shape | high | med | the spec helpers' predicate `includes('/api/venues/1')` matches the new URL; fixtures gain the `{ map, locks }` wrap by one sed; the three e2e mock helpers (`mockEditor`, `mockConsole`, `mockWholeConsole`) gain the GET route — the PUT-only `beach-map` routes must `fallback()` on GET | agent | closed — `c47f564e`, `6c5ddb90`; three multi-line fixtures the sed missed surfaced as CI's two unhandled `setVersion` errors (F-1) |
+| R-5 | Timezone: the read's "today" drifts from the guard's | low | high | both take `LiveClaims.today()` — `LocalDate.now(clock.withZone(Europe/Tirane))`; `LiveClaimsTest` uses the `VenueAdminServiceTest` late-UTC clock that fails a UTC-vs-Tirane bug | agent | closed — `dd7c3a89` (`LiveClaimsTest.todayIsTheTiraneDate`) |
+| R-6 | The disabled Move/Remove strand focus (RV-FE-9) | low | med | a validity-disabled control keeps `[disabled]`; it is disabled before the operator can focus it (state, not a transition) | agent | closed — `c47f564e`; `check-focus-posture.mjs` clean over the range |
+| R-7 | Error-contract drift on the new endpoint | low | low | `ApiProblem` only: `404 NO_SUCH_VENUE` with the controller's existing detail; 403/401 from the handler | agent | closed — `3385b40b` |
 
 ## Open questions / Assumptions
 
@@ -278,9 +278,9 @@ for derived state. No deviation.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5) — e2e + docs committed, draft PR next`
+**Stage pointer:** `review gate — running on PR #1046 over dbb76da7..6c5ddb90; the first push's frontend failure (F-1) fixed here`
 
-**Next action:** open the draft PR, check its CI run, then mark ready for review and run the review gate.
+**Next action:** fold the review findings into the next commit, tick the last three self-review boxes, push, clear the Sonar list, merge, then the epic comment.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -297,6 +297,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (frontend job, first push) | three multi-line `layout-editor.spec.ts` fixtures still flushed the flat map to the owner's read → two unhandled `Cannot read properties of undefined (reading 'setVersion')` errors, green locally because Vitest's summary line hid them | fixed in the close-out commit (fixtures wrapped `{ map, locks }`; re-run shows no Errors line) |
 
 ---
 
@@ -359,7 +360,7 @@ Modify `BeachMapEditService.java`, `SetAvailabilityLookup.java`, `BookingPresenc
 `JdbcSetAvailabilityLookup.java`, `JdbcBookingPresence.java`, `VenueAdminServiceTest.java`,
 `AvailabilityLookupIT.java`, `spi/package-info.java`
 
-- [ ] **Step 1: Write the failing tests** — `LiveClaimsTest` (AC-4) over hand-written fakes with the
+- [x] **Step 1: Write the failing tests** — `LiveClaimsTest` (AC-4) over hand-written fakes with the
   late-UTC fixed clock; `AvailabilityLookupIT.nearestClaimsFrom…` (AC-6);
   `BookingPresenceIT.nearestLiveBookings…` (AC-7).
 
@@ -381,68 +382,68 @@ void locksOnAnswersTheNearestHoldAndBookingPerSetAndSkipsFreeSets() {
 }
 ```
 
-- [ ] **Step 2: Run, verify red** — `gradle --no-daemon --console=plain test --tests "*LiveClaimsTest*"` → compile failure (no holder).
-- [ ] **Step 3: Minimal implementation** — `LiveClaims` (`@Component`, package-private): `today()`,
+- [x] **Step 2: Run, verify red** — `gradle --no-daemon --console=plain test --tests "*LiveClaimsTest*"` → compile failure (no holder).
+- [x] **Step 3: Minimal implementation** — `LiveClaims` (`@Component`, package-private): `today()`,
   `hasLiveHold(Collection<SetId>)`, `isLivelyClaimed(SetId)`, `locksOn(Collection<SetId>)`;
   `BeachMapEditService` takes `LiveClaims` instead of `SetAvailabilityLookup`; the two SPI methods
   + adapters + fakes.
-- [ ] **Step 4: Run, verify green** — the three classes + `VenueAdminServiceTest`, then the structural net.
-- [ ] **Step 5: Generalization audit** — population: every implementor of the two SPI ports
+- [x] **Step 4: Run, verify green** — the three classes + `VenueAdminServiceTest`, then the structural net.
+- [x] **Step 5: Generalization audit** — population: every implementor of the two SPI ports
   (`grep -rln "implements SetAvailabilityLookup\|implements BookingPresence" platform/src`).
-- [ ] **Step 6: Commit** — `Extract the live-claim predicate and add the nearest-date SPI reads (#1031)`
-- [ ] **Step 7: Update execution status.**
+- [x] **Step 6: Commit** — `Extract the live-claim predicate and add the nearest-date SPI reads (#1031)`
+- [x] **Step 7: Update execution status.**
 
 ## Phase 1 — `ViewBeachMap` read: service, controller, security gate, ITs
 
-- [ ] **Step 1: Failing tests** — `BeachMapReadServiceTest` (AC-5), `VenueAdminControllerIT` (AC-1,
+- [x] **Step 1: Failing tests** — `BeachMapReadServiceTest` (AC-5), `VenueAdminControllerIT` (AC-1,
   AC-2, `beachMapReadRequiresOperator`), `CrossVenueDenialIT.beachMapReadByNonOwnerIs403` (AC-3).
-- [ ] **Step 2: Run, verify red.**
-- [ ] **Step 3: Minimal implementation** — `SetLock`, `OperatorBeachMap`, `ViewBeachMap`,
+- [x] **Step 2: Run, verify red.**
+- [x] **Step 3: Minimal implementation** — `SetLock`, `OperatorBeachMap`, `ViewBeachMap`,
   `BeachMapReadService` (ownership → `catalog.findVenueMap(venueId, claims.today())` →
   `claims.locksOn(setIds)` sorted by id), controller `GET /{venueId}/beach-map` →
   `OperatorBeachMapView`, `SecurityConfig` `GET BEACH_MAP_PATH` → `OPERATOR`.
-- [ ] **Step 4: Run, verify green** — the classes above + the structural net.
-- [ ] **Step 5: Generalization audit** — population: every owner-asserted `GET` under
+- [x] **Step 4: Run, verify green** — the classes above + the structural net.
+- [x] **Step 5: Generalization audit** — population: every owner-asserted `GET` under
   `/api/venues/*` that `SecurityConfig` gates above the public GET (`grep -n "hasRole(OPERATOR_ROLE)" SecurityConfig.java`), confirming the new route sits in that block.
-- [ ] **Step 6: Commit** — `Add the owner's beach-map read with per-set lock facts (#1031)`; open the draft PR.
-- [ ] **Step 7: Update execution status.**
+- [x] **Step 6: Commit** — `Add the owner's beach-map read with per-set lock facts (#1031)`; open the draft PR.
+- [x] **Step 7: Update execution status.**
 
 ## Phase 2 — Frontend model/service + editor read switch + lock glyph
 
-- [ ] **Step 1: Failing tests** — `operator-console.service.spec.ts` (`beachMap` GET URL + shape),
+- [x] **Step 1: Failing tests** — `operator-console.service.spec.ts` (`beachMap` GET URL + shape),
   `lock-icon.spec.ts` (aria-hidden host + svg, currentColor), `lock-reason.spec.ts` (the copy),
   `layout-editor.spec.ts` fixtures switched to `{ map, locks }` — red until the editor reads it.
-- [ ] **Step 2–4** — implement, green: `npm test -- layout-editor operator-console.service lock-`.
-- [ ] **Step 5: Generalization audit** — population: every spec/mock that serves the editor's map
+- [x] **Step 2–4** — implement, green: `npm test -- layout-editor operator-console.service lock-`.
+- [x] **Step 5: Generalization audit** — population: every spec/mock that serves the editor's map
   read (`grep -rln "api/venues/1\b\|api\\\\/venues\\\\/1(" frontend/src/app/operator frontend/e2e`).
-- [ ] **Step 6: Commit** — `Read the editor's map through the owner's beach-map read (#1031)`.
+- [x] **Step 6: Commit** — `Read the editor's map through the owner's beach-map read (#1031)`.
 
 ## Phase 3 — Canvas lock behaviour + specs
 
-- [ ] **Step 1: Failing tests** — `layout-editor.spec.ts` "locked cells" (AC-8, AC-9),
+- [x] **Step 1: Failing tests** — `layout-editor.spec.ts` "locked cells" (AC-8, AC-9),
   `layout-editor.a11y.spec.ts` (AC-10), `layout-editor.contrast.spec.ts` (AC-12).
-- [ ] **Step 2–4** — `paintAt` refuses the gap brush on a locked coordinate with `lockNotice`;
+- [x] **Step 2–4** — `paintAt` refuses the gap brush on a locked coordinate with `lockNotice`;
   `fillRow`/`fillColumn` skip locked cells for the gap brush and report the kept count; the cell
   renders the glyph, `title` with the reason, `aria-describedby` to an `sr-only` reason span; the
   rail legend counts locked sets.
-- [ ] **Step 5: Generalization audit** — population: every writer of `grid` that can turn a cell
+- [x] **Step 5: Generalization audit** — population: every writer of `grid` that can turn a cell
   into `'gap'` (`grep -n "grid.update\|grid.set" layout-editor.ts`).
-- [ ] **Step 6: Commit** — `Lock claimed cells on the paint canvas: repaint yes, gap no (#1031)`.
+- [x] **Step 6: Commit** — `Lock claimed cells on the paint canvas: repaint yes, gap no (#1031)`.
 
 ## Phase 4 — Set editor Move/Remove lock + specs
 
-- [ ] **Step 1: Failing tests** — `set-editor.spec.ts` "locked set" (AC-11), a11y + contrast.
-- [ ] **Step 2–4** — `locks` input, `selectedLock` computed, `[disabled]` on Move/Remove,
+- [x] **Step 1: Failing tests** — `set-editor.spec.ts` "locked set" (AC-11), a11y + contrast.
+- [x] **Step 2–4** — `locks` input, `selectedLock` computed, `[disabled]` on Move/Remove,
   `set-locked-reason` paragraph, cell glyph + description.
-- [ ] **Step 6: Commit** — `Disable Move and Remove on a locked set before any request (#1031)`.
+- [x] **Step 6: Commit** — `Disable Move and Remove on a locked set before any request (#1031)`.
 
 ## Phase 5 — Mocked e2e + docs
 
-- [ ] **Step 1: Failing e2e** — the two flows (AC-13); run
+- [x] **Step 1: Failing e2e** — the two flows (AC-13); run
   `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts layout-editor operator-set-editing`.
-- [ ] **Step 2–4** — the mock routes, the flows green; docs (AC-14); the frontend skill table;
+- [x] **Step 2–4** — the mock routes, the flows green; docs (AC-14); the frontend skill table;
   `SetWriteErrorCode` TSDoc; lint + format + full Vitest.
-- [ ] **Step 6: Commit** — `Pinned cells: mocked e2e, glossary and responsibilities (#1031)`; mark ready for review.
+- [x] **Step 6: Commit** — `Pinned cells: mocked e2e, glossary and responsibilities (#1031)`; mark ready for review.
 
 ---
 
@@ -459,25 +460,31 @@ void locksOnAnswersTheNearestHoldAndBookingPerSetAndSkipsFreeSets() {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-14:** filled at close-out with the command and commit per AC.
+- [x] **AC-1/2/3 (HTTP):** `gradle test --tests "*VenueAdminControllerIT*" --tests "*CrossVenueDenialIT*"` → 50 + 29 tests, 0 skipped, 0 failures. Verified at `3385b40b`.
+- [x] **AC-4/5 (service):** `gradle test --tests "*LiveClaimsTest*" --tests "*BeachMapReadServiceTest*"` → 4 + 3 green. Verified at `dd7c3a89` / `3385b40b`.
+- [x] **AC-6/7 (SPI):** `gradle test --tests "*AvailabilityLookupIT*" --tests "*JdbcBookingPresenceIT*"` → 15 + 5 green, Docker present. Verified at `dd7c3a89`.
+- [x] **AC-8/9/10/11/12 (Vitest):** `ng test --watch=false` → 241 files, 2948 tests green, no unhandled errors after F-1. Verified at the close-out commit.
+- [x] **AC-13 (browser):** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts` over the 12 editor-rendering specs → 117 green after the two set-editing overrides moved onto the mock. Verified at `6c5ddb90`.
+- [x] **AC-14 (docs):** `RESPONSIBILITIES.md` § `venue` (read bullet + *One predicate, two callers*), `CONTEXT.md` **Locked set**. Verified at `6c5ddb90`.
+- [x] **Structural net:** the six-class command green after phase 0 and phase 1 (`ModularityTests` 1, `JdbcOnly` 2, `PackageShape` 4, `DomainPurity` 5, `PublishedSurfacePlacement` 11, `RetiredSetExclusion` 4).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 

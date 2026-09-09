@@ -1153,10 +1153,8 @@ describe('LayoutEditor (#172)', () => {
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
       .flush({
-        id: 2,
-        name: 'W',
-        sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1, 'Z')],
-        setVersion: 0,
+        map: { id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1, 'Z')], setVersion: 0 },
+        locks: [],
       });
     fixture.detectChanges();
     useBulkMode();
@@ -1188,10 +1186,8 @@ describe('LayoutEditor (#172)', () => {
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
       .flush({
-        id: 1,
-        name: 'V',
-        sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'A')],
-        setVersion: 9,
+        map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'A')], setVersion: 9 },
+        locks: [],
       });
     fixture.detectChanges();
 
@@ -1538,10 +1534,8 @@ describe('LayoutEditor (#172)', () => {
     venue1Reads[1].flush({ map: { id: 1, name: 'V', sets: [], setVersion: 9 }, locks: [] });
     // …then the FIRST visit's response arrives last. It must not seed the returned-to editor.
     venue1Reads[0].flush({
-      id: 1,
-      name: 'V',
-      sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)],
-      setVersion: 7,
+      map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 7 },
+      locks: [],
     });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
