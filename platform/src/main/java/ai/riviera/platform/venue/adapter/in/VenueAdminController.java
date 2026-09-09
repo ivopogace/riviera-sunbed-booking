@@ -314,21 +314,14 @@ class VenueAdminController {
 	}
 
 	private static ResponseEntity<ProblemDetail> error(LayoutRejection reason) {
-		return switch (reason) {
-			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
-					NO_SUCH_VENUE_DETAIL);
-			case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
-					STALE_SETS_DETAIL);
-			case CELL_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
-					"Two sets occupy the same grid cell.");
-			case DUPLICATE_POSITION -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
-					"Two sets share the same row and position.");
-			case ROW_NAME_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
-					"Two rows in this layout share the same name.");
-			case EMPTY_LAYOUT -> ApiProblem.response(HttpStatus.BAD_REQUEST, reason.name(),
-					"A layout must have at least one set.");
-			case LAYOUT_TOO_LARGE -> ApiProblem.response(HttpStatus.BAD_REQUEST, reason.name(),
-					"The layout exceeds the maximum grid size.");
+		return ApiProblem.response(statusOf(reason.fault()), reason.name(), reason.detail());
+	}
+
+	private static HttpStatus statusOf(LayoutRejection.Fault fault) {
+		return switch (fault) {
+			case NOT_FOUND -> HttpStatus.NOT_FOUND;
+			case CONFLICT -> HttpStatus.CONFLICT;
+			case INVALID -> HttpStatus.BAD_REQUEST;
 		};
 	}
 }
