@@ -128,11 +128,6 @@ class LiveClaimsTest {
 		final Map<SetId, LocalDate> liveOn = new HashMap<>();
 
 		@Override
-		public boolean hasBookings(VenueId venueId) {
-			return !liveOn.isEmpty();
-		}
-
-		@Override
 		public boolean hasBookings(SetId setId) {
 			return liveOn.containsKey(setId);
 		}

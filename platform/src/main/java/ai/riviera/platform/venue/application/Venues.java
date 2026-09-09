@@ -31,21 +31,21 @@ public interface Venues {
 	/**
 	 * Lock the venue row and read its current {@code set_version} optimistic-concurrency token —
 	 * {@code SELECT set_version FROM venue WHERE id = :id FOR UPDATE}. The token is the SEPARATE counter
-	 * for the operator set-position writes (beach-map replace, per-row reprice, per-row rename, batch apply), distinct from the
+	 * for the operator set-position writes (bulk beach-map save, per-row reprice, per-row rename, batch apply), distinct from the
 	 * profile {@code version}. The caller (having pre-checked existence) compares the returned value
 	 * to the loaded {@code expectedVersion}: a mismatch means another writer advanced it since the load →
 	 * STALE_WRITE. This is the <strong>first</strong> lock every set-write takes — before
 	 * {@link #lockSetsOfVenue}'s / {@link #repriceRow}'s {@code set_position} locks — so both acquire the
 	 * venue row before its set rows (one consistent order → no deadlock, R-1). Crucially it does NOT
 	 * increment: the token is advanced by {@link #incrementSetVersion} <strong>only on the success path</strong>,
-	 * so a rejected write (LAYOUT_IN_USE / NO_SUCH_ROW) never spuriously advances it and self-conflicts the
-	 * acting tab's own retry (review finding; the earlier bump-first-then-reject persisted the bump).
+	 * so a rejected write (a refused removal / NO_SUCH_ROW) never spuriously advances it and self-conflicts the
+	 * acting tab's own retry.
 	 */
 	long lockAndReadSetVersion(VenueId venueId);
 
 	/**
 	 * Advance the venue's {@code set_version} by one — {@code UPDATE venue SET set_version =
-	 * set_version + 1 WHERE id = :id} — called ONLY after a set-write commits (the layout was replaced,
+	 * set_version + 1 WHERE id = :id} — called ONLY after a set-write commits (the layout was saved,
 	 * the row repriced or renamed). The caller already holds the venue row lock from {@link #lockAndReadSetVersion},
 	 * so this is race-free; a concurrent writer blocked on that lock re-reads the advanced value and gets
 	 * STALE_WRITE.
@@ -136,22 +136,23 @@ public interface Venues {
 	/**
 	 * The ids of every active set on the venue's map, <strong>without locking</strong> — the
 	 * plain read the owner's daily availability view composes with the per-day states.
-	 * Empty when the venue has no sets. For the bulk layout replace use {@link #lockSetsOfVenue},
+	 * Empty when the venue has no sets. For the bulk beach-map save use {@link #lockSetsOfVenue},
 	 * whose {@code FOR UPDATE} is that write's invariant-#2 guard; a read must never take it.
 	 */
 	List<SetId> setIdsOf(VenueId venueId);
 
 	/**
-	 * The ids of every active set on the venue's map, <strong>locking those rows</strong>
-	 * ({@code SELECT … FOR UPDATE}) for the caller's transaction (empty when the venue has no sets).
-	 * The lock is the invariant-#2 guard for the bulk layout replace: a concurrent
+	 * Every active set on the venue's map with its placement, in id order, <strong>locking those
+	 * rows</strong> ({@code SELECT … FOR UPDATE}) for the caller's transaction (empty when the venue
+	 * has no sets). The lock is the invariant-#2 guard for the bulk beach-map save: a concurrent
 	 * {@code set_availability}/{@code booking} insert takes a {@code FOR KEY SHARE} lock on the
 	 * referenced {@code set_position} row (its FK check), which conflicts with this {@code FOR UPDATE},
-	 * so it blocks until the replace commits or rolls back. That closes the check-then-delete window in
-	 * which a hold committed after the availability probe would otherwise be silently
-	 * {@code ON DELETE CASCADE}-swept by {@link #deleteAllSets}.
+	 * so it blocks until the save commits or rolls back. That closes the check-then-delete window in
+	 * which a hold committed after the claim probe would otherwise be silently
+	 * {@code ON DELETE CASCADE}-swept by {@link #deleteSet}. The placements are what the save diffs
+	 * the submitted layout against.
 	 */
-	List<SetId> lockSetsOfVenue(VenueId venueId);
+	List<PlacedSet> lockSetsOfVenue(VenueId venueId);
 
 	/**
 	 * Lock the named set rows of the venue ({@code SELECT … WHERE venue_id = :venue AND id IN (:ids)
@@ -171,13 +172,10 @@ public interface Venues {
 	 */
 	int updateSetFields(VenueId venueId, SetBatchCommand command);
 
-	/** Delete every set position of the venue. Returns the number of rows deleted. */
-	int deleteAllSets(VenueId venueId);
-
 	/**
-	 * Insert every set of a fresh layout for the venue in one unit of work. The caller
-	 * runs this inside the same {@code @Transactional} boundary as {@link #deleteAllSets}, after having
-	 * verified the venue is unclaimed, so the map is never left partially replaced.
+	 * Insert the new sets of a bulk beach-map save in one unit of work. The caller runs this inside
+	 * the same {@code @Transactional} boundary as the save's removals and in-place updates, after the
+	 * refusal check, so the map is never left partially saved. An empty list inserts nothing.
 	 */
 	void insertSets(VenueId venueId, List<SetCommand> sets);
 

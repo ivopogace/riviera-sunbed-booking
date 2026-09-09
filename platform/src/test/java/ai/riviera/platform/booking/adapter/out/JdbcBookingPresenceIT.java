@@ -23,10 +23,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The five {@code venue.spi.BookingPresence} probes and the three questions they answer.
- * The venue- and set-scoped {@code hasBookings} count a booking of <em>any</em> status, including
- * terminal history, because any booking pins its set through the RESTRICT {@code booking.set_id}
- * FK — that is the delete guard. {@code hasLiveBookings} counts only non-terminal ones — the edit
+ * The four {@code venue.spi.BookingPresence} probes and the three questions they answer.
+ * {@code hasBookings} counts a booking of <em>any</em> status, including terminal history, because
+ * any booking pins its set through the RESTRICT {@code booking.set_id} FK — that is the
+ * retire-or-delete decision. {@code hasLiveBookings} counts only non-terminal ones — the edit
  * guard, where finished history strands nobody. {@code liveBookingsFrom} counts what guests are still
  * owed from a day on. Scope matters too: a sibling set on the same venue is not claimed by its
  * neighbour's booking. Testcontainers; skipped where Docker is absent.
@@ -53,17 +53,14 @@ class JdbcBookingPresenceIT {
 				"a long-terminal booking still pins its set through the RESTRICT FK");
 		assertFalse(presence.hasBookings(new SetId(free)),
 				"the probe must be set-scoped: a sibling set on the same venue is unclaimed");
-		assertTrue(presence.hasBookings(new VenueId(venueId)),
-				"the venue-scoped probe the bulk replace uses is unchanged");
 	}
 
 	@Test
-	void aVenueWithNoBookingsClaimsNeitherScope() {
+	void aSetWithNoBookingsIsUnclaimed() {
 		long venueId = insertVenue("Pristine Venue");
 		long setId = insertSet(venueId, 1);
 
 		assertFalse(presence.hasBookings(new SetId(setId)));
-		assertFalse(presence.hasBookings(new VenueId(venueId)));
 	}
 
 	/**

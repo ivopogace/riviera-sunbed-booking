@@ -115,14 +115,17 @@ public interface EditBeachMap {
 			RowNameCommand command);
 
 	/**
-	 * Replace the venue's <strong>whole</strong> beach-map layout in one transaction —
-	 * the generate-grid + paint editor's bulk write. After asserting {@code operator} owns {@code venueId},
-	 * it is <em>reject-unless-unclaimed</em>: if any of the venue's existing sets has a booking (any status)
-	 * or an availability hold dated today or later, the replace is refused
-	 * ({@link ReplaceRejection#LAYOUT_IN_USE}) and nothing is deleted — so no claimed set is dropped and
-	 * invariants #2/#3 hold. A hold whose day has gone does not block: it describes a day already past and
-	 * goes with its set. On a clear venue the existing sets are deleted and {@code command}'s grid inserted
-	 * atomically.
+	 * Save the venue's <strong>whole</strong> beach-map layout in one transaction — the generate-grid
+	 * + paint editor's bulk write — as a <em>diff keyed by grid cell</em> against the stored active map.
+	 * After asserting {@code operator} owns {@code venueId}: a stored set whose cell the submission still
+	 * names is updated in place under its own id (row label, position, tier, pool and price — none of
+	 * them ever refused), a cell no stored set occupies is inserted, and a stored set whose cell is
+	 * absent is removed — retired when it carries any booking, deleted otherwise (ADR-0019). Only the
+	 * removed sets ask the claim question: if any of them has a hold dated today or later or a booking
+	 * that can still be honoured, the whole save is refused as
+	 * {@link ReplaceLayoutOutcome.SetsInUse} naming every such set, and nothing is written
+	 * (invariant #2). A hold whose day has gone does not block. A set that changes cell reaches the
+	 * save as a removal plus an insert — the body carries no ids, so the cell is the identity.
 	 *
 	 * <p>Refused with {@link ReplaceRejection#ROW_NAME_TAKEN} (→ 409) when one submitted
 	 * {@code rowLabel} appears under two distinct grid rows — {@link #renameRow}'s one-label-one-row
@@ -132,10 +135,10 @@ public interface EditBeachMap {
 	 * <p>Optimistic concurrency: the caller passes the {@code expectedVersion} (the venue's
 	 * {@code set_version}) the tab loaded with the map; the write is conditional on it. Another writer having
 	 * bumped it since the load yields {@link ReplaceRejection#STALE_WRITE} (→ 409), so a stale layout tab
-	 * cannot silently clobber the map. The token is advanced <strong>only</strong> once the replace has
-	 * succeeded, so a rejected one leaves it untouched and the acting tab's own retry off the same value
-	 * still works; it is the SAME token as {@link #repriceRow}, so a replace and a reprice racing off the
-	 * same value cannot both win.
+	 * cannot silently clobber the map. The token is advanced <strong>only</strong> once the save has
+	 * succeeded — on every successful save, an unchanged layout included — so a refusal leaves it
+	 * untouched and the acting tab's own retry off the same value still works; it is the SAME token as
+	 * {@link #repriceRow}, so a save and a reprice racing off the same value cannot both win.
 	 */
 	ReplaceLayoutOutcome replaceLayout(OperatorId operator, VenueId venueId, long expectedVersion,
 			LayoutCommand command);
