@@ -68,6 +68,8 @@ const RETIRED = [
  */
 const SITES = [
   'shared/confirm-panel.ts',
+  'operator/remodel-preview-panel.ts',
+  'operator/remodel-preview-panel.html',
   'operator/daily-view-tab.html',
   'operator/pending-approval-banner.ts',
   'operator/stale-write-banner.ts',

@@ -169,6 +169,18 @@ over time. The standing rules:
     snapshotted at reserve time, and `row_label` lives on `set_position` alone, so a guest
     already booked into a renamed row reads the new name live while the mail in their
     inbox keeps the old one.
+  - *The remodel preview is the diff without the lock:* `BeachMapRemodel#preview` (published, the
+    one `api` port the platform edge composes, ADR-0020) asserts ownership, checks the token
+    unlocked, runs the same cell-keyed diff over the unlocked active map and answers the removed and
+    renumbered sets with their staff walk-in holds from today on
+    (`SetAvailabilityLookup#walkInHoldsFrom` through `LiveClaims`). It writes nothing and takes no
+    row lock — read-only, so it never queues a claim's FK lock — which is why its answer is a
+    snapshot the save re-decides; the layout-shape rejections stay the save's, the preview refuses
+    only `NO_SUCH_VENUE` and `STALE_WRITE`. What a booking on a disturbed set becomes is `booking`'s
+    (`RemodelClaims`); the edge assembles the two answers. The candidate spots `booking` ranks are
+    mine to render, as the tourist map is: `SetBookingFacts#activeSetsOf` and `#freeOnlineSetsOn`
+    read the active map (with the published `Tier` mirror of `set_position_tier_check`) and subtract
+    the day's availability rows.
   - A rename is refused only for `ROW_NAME_TAKEN` (another row already carries the label);
     renaming a row to its own label is a no-op. The bulk save enforces the same
     one-label-one-physical-row rule within its batch (`ReplaceRejection.ROW_NAME_TAKEN`);
@@ -400,6 +412,20 @@ exist. `venue` composes; I answer state.
   gate is two-part: the booking must be `CONFIRMED` **and** `payment.api.CollectionGuarantee`
   must say this deployment's gateway collects before confirming (the in-process stub does
   not, so the flag is inert there — otherwise it would be a free suppression oracle).
+- **The remodel classification is keyed on the claim, then split by status.** `RemodelClaims#classify`
+  (published for the platform edge, ADR-0020) asserts venue ownership, reads every booking a guest
+  may still turn up on across the sets a layout save would remove or renumber, and decides each in
+  `(service date, id)` order through two named rule holders (ADR-0018): `RemodelZones`
+  (`application/remodel`, clock-backed — the zone is the duration to
+  `BookingCutoff#serviceDayOpensAt` against the `riviera.booking.remodel.freeze-window` (24h) and
+  `refund-notice-floor` (96h) bounds, both inclusive on the nearer side; sales close plays no role)
+  and `MoveRanking` (`domain/`, pure — same date, online pool, same or better tier; same row, then
+  closest position, then closest row). A frozen claim blocks; a claim with a candidate moves, and
+  that candidate leaves the pool for the next claim on that date; a move-only claim with none
+  blocks; beyond the floor `CONFIRMED` refunds, `AWAITING_PAYMENT` releases, `PENDING_REQUEST`
+  declines. The answer carries outcome kinds, set references and amounts — never a status and never a
+  code (invariant #7). Advisory: read-only and unlocked, so the commit re-derives it; today the save
+  still refuses any disturbed set a live claim pins.
 
 **Not My Job:**
 - Owning the `(set, date)` availability state → **`availability`** (I *ask* it to claim)
@@ -1053,6 +1079,19 @@ than its Details step: on Details it took the dialog past its above-the-fold bud
 laptop viewport, and on Review the solve still starts a step early, because advancing focuses the
 primary button inside the widget's form and the widget starts solving when its form already holds
 focus.
+
+**Remodel orchestration (ADR-0020)** — the one domain composition the root holds. A layout remodel
+needs `venue` (what a save removes or renumbers, and the staff holds on it) and `booking` (what each
+live booking on those sets becomes) in one answer, and `venue` may not depend on `booking` (the
+cycle through `venue.spi.BookingPresence`), so `RemodelPreviewController`
+(`POST /api/venues/{venueId}/beach-map/preview`, operator-gated) composes `venue.api.BeachMapRemodel`
+with `booking.api.RemodelClaims` and assembles the five wire groups — move, refund, release/decline,
+staff hold, block — plus `keep`, the blocking and held sets by id. `CompositionRootDisciplineTests`
+grants the root exactly those two modules' `api` + `vocabulary`, nothing else of the spine. The edge
+resolves the principal and maps outcomes; **each module port asserts venue ownership itself**
+(invariant #13), and every rule — the diff, the zone, the candidate, the status split — stays in its
+module: a rule growing at the root is the signal it belongs in one. The commit (#1034) takes the same
+seat; today the save still refuses any disturbed set a live claim pins.
 
 ## Invariants, long form
 

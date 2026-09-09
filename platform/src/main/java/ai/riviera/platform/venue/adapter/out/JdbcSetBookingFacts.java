@@ -3,20 +3,26 @@ package ai.riviera.platform.venue.adapter.out;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.venue.api.SetBookingFacts;
+import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.SetPlacement;
+import ai.riviera.platform.venue.vocabulary.SetSpot;
+import ai.riviera.platform.venue.vocabulary.Tier;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
@@ -43,10 +49,19 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 			JOIN venue v ON v.id = sp.venue_id
 			""";
 
-	private final JdbcClient jdbc;
+	/** The spot reads select the active map: a retired set is neither a claim's spot nor a candidate. */
+	private static final String ACTIVE_SPOTS_SELECT = """
+			SELECT id, row_label, position_no, grid_x, grid_y, tier, pool
+			FROM active_set_position
+			WHERE venue_id = :venue
+			""";
 
-	JdbcSetBookingFacts(JdbcClient jdbc) {
+	private final JdbcClient jdbc;
+	private final SetAvailabilityLookup availability;
+
+	JdbcSetBookingFacts(JdbcClient jdbc, SetAvailabilityLookup availability) {
 		this.jdbc = jdbc;
+		this.availability = availability;
 	}
 
 	@Override
@@ -93,5 +108,31 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 						? SeasonClosure.open()
 						: SeasonClosure.closed(rs.getObject("reopen_on", LocalDate.class),
 								rs.getBoolean("advance_sales")));
+	}
+
+	@Override
+	public List<SetSpot> activeSetsOf(VenueId venueId) {
+		return jdbc.sql(ACTIVE_SPOTS_SELECT + "ORDER BY id")
+				.param("venue", venueId.value())
+				.query(JdbcSetBookingFacts::mapSetSpot)
+				.list();
+	}
+
+	@Override
+	public List<SetSpot> freeOnlineSetsOn(VenueId venueId, LocalDate date) {
+		List<SetSpot> online = jdbc.sql(ACTIVE_SPOTS_SELECT + "AND pool = :pool ORDER BY id")
+				.param("venue", venueId.value())
+				.param("pool", Pool.ONLINE.name())
+				.query(JdbcSetBookingFacts::mapSetSpot)
+				.list();
+		Set<SetId> taken = availability.takenOn(online.stream().map(SetSpot::setId).toList(), date);
+		return online.stream().filter(spot -> !taken.contains(spot.setId())).toList();
+	}
+
+	private static SetSpot mapSetSpot(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+		return new SetSpot(new SetId(rs.getLong("id")),
+				new SetPlacement(rs.getString("row_label"), rs.getInt("position_no"), rs.getInt("grid_x"),
+						rs.getInt("grid_y")),
+				Tier.valueOf(rs.getString("tier")), Pool.valueOf(rs.getString("pool")));
 	}
 }

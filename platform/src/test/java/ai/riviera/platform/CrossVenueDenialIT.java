@@ -165,6 +165,20 @@ class CrossVenueDenialIT {
 	}
 
 	@Test
+	void remodelPreviewByNonOwnerIs403() throws Exception {
+		// Venue-scoped like the save it previews: each module port asserts ownership first (invariant #13).
+		actingAs(operatorA);
+		String previewBody = """
+				{"sets":[{"rowLabel":"A","positionNo":1,"gridX":1,"gridY":1}],"expectedVersion":0}
+				""";
+		mvc.perform(post("/api/venues/{v}/beach-map/preview", MIRAMAR).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(previewBody))
+				.andExpect(status().isForbidden())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
 	void rowRepriceByNonOwnerIs403() throws Exception {
 		// Repricing a beach-map row is venue-scoped — a non-owner is denied before any
 		// read/write, so Miramar's prices are never touched. Ownership asserts first (invariant #13). The

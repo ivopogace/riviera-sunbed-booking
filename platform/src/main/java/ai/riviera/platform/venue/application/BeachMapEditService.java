@@ -14,6 +14,7 @@ import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.spi.BookingPresence;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
@@ -76,7 +77,7 @@ class BeachMapEditService implements EditBeachMap {
 		if (placement.isEmpty()) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET);
 		}
-		if (placement.get().disturbedBy(command) && claims.isLivelyClaimed(setId)) {
+		if (command.disturbs(placement.get()) && claims.isLivelyClaimed(setId)) {
 			return new ChangeOutcome.Rejected(SetRejection.SET_IN_USE);
 		}
 		Optional<Venues.Conflict> conflict = venues.findConflict(venueId, command, Optional.of(setId));

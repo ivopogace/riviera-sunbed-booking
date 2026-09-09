@@ -1,12 +1,16 @@
 package ai.riviera.platform.venue.api;
 
+import java.time.LocalDate;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.SetSpot;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The {@code venue} module's published <strong>set-facts</strong> port (invariant #11) —
@@ -62,4 +66,18 @@ public interface SetBookingFacts {
 	 * defaulted per-id loop.
 	 */
 	Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds);
+
+	/**
+	 * Every active set of the venue as a spot — placement, tier and pool — in id order; empty for an
+	 * unknown venue. The remodel classification resolves a disturbed set's own spot here. Reads the
+	 * active map: a retired set is not a spot.
+	 */
+	List<SetSpot> activeSetsOf(VenueId venueId);
+
+	/**
+	 * The venue's active {@code ONLINE}-pool sets with no availability row on {@code date} — the
+	 * spots a booking on that date could move to — in id order. A snapshot: nothing is held, and a
+	 * claim may land on any of them before the caller acts.
+	 */
+	List<SetSpot> freeOnlineSetsOn(VenueId venueId, LocalDate date);
 }

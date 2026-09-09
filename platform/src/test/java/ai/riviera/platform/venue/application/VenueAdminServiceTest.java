@@ -32,6 +32,7 @@ import ai.riviera.platform.venue.vocabulary.LiveBookingCounts;
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.AddSetOutcome;
 import ai.riviera.platform.venue.application.ChangeOutcome;
@@ -316,11 +317,11 @@ class VenueAdminServiceTest {
 	void everyPositionFieldOnItsOwnDisturbsAClaimedSet() {
 		SetPlacement stored = new SetPlacement("Row A", 1, 2, 1);
 
-		assertTrue(stored.disturbedBy(new SetCommand("Row B", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 1)), "rowLabel");
-		assertTrue(stored.disturbedBy(new SetCommand("Row A", 7, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 1)), "positionNo");
-		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 8, 1)), "gridX");
-		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 8)), "gridY");
-		assertFalse(stored.disturbedBy(new SetCommand("Row A", 1, "STANDARD", Pool.WALK_IN, 9999, "EUR", 2, 1)),
+		assertTrue(new SetCommand("Row B", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 1).disturbs(stored), "rowLabel");
+		assertTrue(new SetCommand("Row A", 7, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 1).disturbs(stored), "positionNo");
+		assertTrue(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 8, 1).disturbs(stored), "gridX");
+		assertTrue(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 8).disturbs(stored), "gridY");
+		assertFalse(new SetCommand("Row A", 1, "STANDARD", Pool.WALK_IN, 9999, "EUR", 2, 1).disturbs(stored),
 				"tier, price and pool never disturb a claim — the charge was snapshotted, the pool governs new reserves");
 	}
 
@@ -1360,6 +1361,16 @@ class VenueAdminServiceTest {
 		}
 
 		@Override
+		public java.util.OptionalLong setVersionOf(VenueId venueId) {
+			throw new UnsupportedOperationException("a write never reads the token unlocked");
+		}
+
+		@Override
+		public List<PlacedSet> placedSetsOf(VenueId venueId) {
+			throw new UnsupportedOperationException("a write never reads the map unlocked");
+		}
+
+		@Override
 		public List<PlacedSet> lockSetsOfVenue(VenueId venueId) {
 			callLog.add("lockSetsOfVenue");
 			return List.copyOf(placed);
@@ -1481,6 +1492,12 @@ class VenueAdminServiceTest {
 			return setIds.stream()
 					.filter(id -> holdOn.containsKey(id) && !holdOn.get(id).isBefore(from))
 					.collect(java.util.stream.Collectors.toMap(id -> id, holdOn::get));
+		}
+
+		@Override
+		public java.util.Map<SetId, List<java.time.LocalDate>> walkInHoldsFrom(Collection<SetId> setIds,
+				java.time.LocalDate from) {
+			return java.util.Map.of();
 		}
 
 		@Override

@@ -4,10 +4,12 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 
 import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
@@ -149,6 +151,19 @@ public interface Venues {
 	 * whose {@code FOR UPDATE} is that write's invariant-#2 guard; a read must never take it.
 	 */
 	List<SetId> setIdsOf(VenueId venueId);
+
+	/**
+	 * The venue's current {@code set_version} <strong>without locking</strong> — the token a remodel
+	 * preview compares against — or empty for an unknown venue. A write reads it through
+	 * {@link #lockAndReadSetVersion} instead.
+	 */
+	OptionalLong setVersionOf(VenueId venueId);
+
+	/**
+	 * Every active set with its placement, in id order, <strong>without locking</strong> — what the
+	 * remodel preview diffs against. A snapshot: the save re-reads through {@link #lockSetsOfVenue}.
+	 */
+	List<PlacedSet> placedSetsOf(VenueId venueId);
 
 	/**
 	 * Every active set on the venue's map with its placement, in id order, <strong>locking those

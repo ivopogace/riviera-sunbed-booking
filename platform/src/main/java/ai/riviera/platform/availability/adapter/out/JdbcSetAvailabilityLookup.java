@@ -2,6 +2,8 @@ package ai.riviera.platform.availability.adapter.out;
 
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +36,8 @@ import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
  */
 @Repository
 class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
+
+	private static final String SET_ID = "set_id";
 
 	private final JdbcClient jdbc;
 
@@ -94,7 +98,7 @@ class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 				.param("ids", ids)
 				.param("from", from)
 				.query((rs, rowNum) -> Map.entry(
-						new SetId(rs.getLong("set_id")), rs.getObject("nearest", LocalDate.class)))
+						new SetId(rs.getLong(SET_ID)), rs.getObject("nearest", LocalDate.class)))
 				.list()
 				.stream()
 				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
@@ -114,7 +118,7 @@ class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 				""")
 				.param("date", date)
 				.param("ids", ids)
-				.query((rs, rowNum) -> Map.entry(new SetId(rs.getLong("set_id")), rs.getString("state")))
+				.query((rs, rowNum) -> Map.entry(new SetId(rs.getLong(SET_ID)), rs.getString("state")))
 				.list()
 				.stream()
 				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
@@ -142,5 +146,30 @@ class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 				.list()
 				.stream()
 				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
+	}
+
+	@Override
+	public Map<SetId, List<LocalDate>> walkInHoldsFrom(Collection<SetId> setIds, LocalDate from) {
+		if (setIds.isEmpty()) {
+			return Map.of(); // no IN-list — avoid an empty "IN ()" and a needless round-trip
+		}
+		List<Long> ids = setIds.stream().map(SetId::value).toList();
+		Map<SetId, List<LocalDate>> holds = new LinkedHashMap<>();
+		jdbc.sql("""
+				SELECT set_id, booking_date
+				FROM set_availability
+				WHERE set_id IN (:ids)
+				  AND booking_date >= :from
+				  AND state = 'STAFF_MARKED'
+				ORDER BY set_id, booking_date
+				""")
+				.param("ids", ids)
+				.param("from", from)
+				.query((rs, rowNum) -> Map.entry(
+						new SetId(rs.getLong(SET_ID)), rs.getObject("booking_date", LocalDate.class)))
+				.list()
+				.forEach(row -> holds.computeIfAbsent(row.getKey(), id -> new ArrayList<>()).add(row.getValue()));
+		holds.replaceAll((id, days) -> List.copyOf(days));
+		return Map.copyOf(holds);
 	}
 }

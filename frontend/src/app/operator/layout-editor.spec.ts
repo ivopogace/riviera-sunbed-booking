@@ -1,5 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+  TestRequest,
+} from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
@@ -11,6 +15,8 @@ import { BeachMapCanvas } from '../shared/beach-map-canvas';
 import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutEditor } from './layout-editor';
+import { RemodelPreview } from './operator-console.model';
+import { FULL_PREVIEW } from './remodel-preview-panel.spec';
 import { SetLock } from './operator-console.model';
 
 interface SentBody {
@@ -36,6 +42,15 @@ function body(req: { request: { body: unknown } }): SentBody {
  * and loads the venue map to seed its grid; the mock mirrors that. Drives generate, drag-paint, save
  * (asserting the one bulk PUT payload), and the SETS_IN_USE refusal that marks the named sets.
  */
+const EMPTY_PREVIEW: RemodelPreview = {
+  moves: [],
+  refunds: [],
+  releases: [],
+  staffHolds: [],
+  blocks: [],
+  keep: [],
+};
+
 describe('LayoutEditor (#172)', () => {
   let fixture: ComponentFixture<LayoutEditor>;
   let http: HttpTestingController;
@@ -1438,6 +1453,8 @@ describe('LayoutEditor (#172)', () => {
     expect(cells()[1].getAttribute('data-state')).toBe('gap');
 
     byId('layout-save').click();
+    flushEmptyPreview();
+    await fixture.whenStable();
     http
       .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
       .flush(
@@ -1783,6 +1800,110 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
 
     expect(byId('set-cell').getAttribute('data-state')).toBe('walkin');
+  });
+  /** The remodel preview a save that drops a loaded set asks for first; nothing affected → straight to the PUT. */
+  function flushEmptyPreview(): void {
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/beach-map/preview'))
+      .flush(EMPTY_PREVIEW);
+  }
+
+  describe('remodel preview (#1033)', () => {
+    function dropLoadedA2(): void {
+      render([seat(1, 'PREMIUM', 'ONLINE', 1, 1), seat(2, 'STANDARD', 'ONLINE', 2, 1)], 3);
+      useBulkMode();
+      byId('layout-tool-gap').click();
+      fixture.detectChanges();
+      cells()[1].click();
+      fixture.detectChanges();
+    }
+
+    function previewRequest(): TestRequest {
+      return http.expectOne(
+        (r) => r.method === 'POST' && r.url.includes('/api/venues/1/beach-map/preview'),
+      );
+    }
+
+    it('asks the dry run with the save body before a save that drops a loaded set, and proceeds when nothing is affected', async () => {
+      dropLoadedA2();
+      byId('layout-save').click();
+      fixture.detectChanges();
+      expect(byId('layout-save').getAttribute('aria-disabled')).toBe('true');
+      expect(byId('layout-save').textContent).toContain('Checking');
+
+      const preview = previewRequest();
+      expect(body(preview).sets.map((set) => set.gridX)).toEqual([1]);
+      expect(body(preview).expectedVersion).toBe(3);
+      preview.flush(EMPTY_PREVIEW);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="layout-remodel-preview"]')).toBeNull();
+      const put = http.expectOne(
+        (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
+      );
+      expect(body(put).expectedVersion).toBe(3);
+      put.flush(null);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(byId('layout-saved')).toBeTruthy();
+    });
+
+    it('never asks the dry run for a save that keeps every loaded set', async () => {
+      render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)], 3);
+      useBulkMode();
+      byId('layout-tool-standard').click();
+      fixture.detectChanges();
+      cells()[0].click();
+      fixture.detectChanges();
+      byId('layout-save').click();
+
+      http
+        .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
+        .flush(null);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(byId('layout-saved')).toBeTruthy();
+    });
+
+    it('opens the preview dialog on an affecting answer, keeps the save busy, and Back hands focus to Save with no PUT', async () => {
+      dropLoadedA2();
+      byId('layout-save').click();
+      previewRequest().flush(FULL_PREVIEW);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const dialog = byId('layout-remodel-preview');
+      expect(dialog.getAttribute('role')).toBe('alertdialog');
+      expect(byId('layout-remodel-moves').textContent).toMatch(/4 positions along the row/);
+      expect(byId('layout-remodel-blocks').textContent).toMatch(/arrives within the freeze window/);
+      expect(byId('layout-remodel-keep').textContent).toMatch(/Keep Row A · position 3/);
+      expect(byId('layout-save').getAttribute('aria-disabled')).toBe('true');
+      expect(byId('layout-remodel-preview').querySelectorAll('button')).toHaveLength(1);
+
+      byId('layout-remodel-back').click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(host.querySelector('[data-testid="layout-remodel-preview"]')).toBeNull();
+      expect(document.activeElement).toBe(byId('layout-save'));
+      expect(byId('layout-save').getAttribute('aria-disabled')).toBeNull();
+      http.expectNone((r) => r.method === 'PUT');
+    });
+
+    it('a stale dry run lands in the same reload banner as a stale save', async () => {
+      dropLoadedA2();
+      byId('layout-save').click();
+      previewRequest().flush(
+        { code: 'STALE_WRITE', detail: '' },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(byId('layout-stale-banner')).toBeTruthy();
+      expect(byId('layout-save').getAttribute('aria-disabled')).toBeNull();
+      http.expectNone((r) => r.method === 'PUT');
+    });
   });
 });
 

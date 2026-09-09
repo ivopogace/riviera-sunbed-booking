@@ -9,13 +9,16 @@ import ai.riviera.platform.booking.application.reserve.ConfirmedBooking;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.application.remodel.LiveClaim;
 import ai.riviera.platform.booking.application.view.DailyBooking;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
@@ -242,4 +245,11 @@ public interface Bookings {
 	 */
 	Optional<ai.riviera.platform.booking.application.request.WithdrawnRequest> withdrawPendingRequest(
 			String code);
+
+	/**
+	 * Every booking a guest may still turn up on (the {@code BookingStatus#canStillBeHonoured}
+	 * statuses) holding any of the given sets, on any date — the remodel preview's claims. Ordered by
+	 * service date then id. An empty input answers empty without a round-trip.
+	 */
+	List<LiveClaim> findLiveOnSets(Collection<SetId> setIds);
 }

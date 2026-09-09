@@ -38,11 +38,13 @@ import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { lockDescription, lockReason } from './lock-reason';
 import {
+  BlockedSet,
   LayoutCellRequest,
   LayoutErrorCode,
   OperatorBeachMap,
+  RemodelPreview,
+  remodelPreviewIsEmpty,
   RowNameErrorCode,
-  BlockedSet,
   SetLock,
 } from './operator-console.model';
 import {
@@ -53,6 +55,7 @@ import {
 } from './operator-console.service';
 import { SetEditor } from './set-editor';
 import { StaleWriteBanner } from './stale-write-banner';
+import { RemodelPreviewPanel } from './remodel-preview-panel';
 
 import { TouchTarget } from '../shared/touch-target';
 
@@ -115,7 +118,10 @@ const SWATCH_CLASS: Record<CellState, string> = {
  * inserts, an absent cell's set leaves the map — so it works on a venue that has sold. Only a set
  * someone is still owed (a {@link SetLock locked set}) may not leave: a save that would remove one
  * is refused `SETS_IN_USE` naming every such set, which this tab then marks with the lock decoration
- * and lists, so the operator can paint them back or regenerate a grid that includes them.
+ * and lists, so the operator can paint them back or regenerate a grid that includes them. Before
+ * such a save the tab asks the owner-asserted dry run (`POST …/beach-map/preview`): a save that
+ * drops a loaded set nobody holds proceeds, one that disturbs live claims opens
+ * {@link RemodelPreviewPanel} — what a remodel would do to each, and the sets to keep — instead.
  *
  * <p>Arming Select shows <strong>{@link SetEditor}</strong>: the per-set U7 endpoints, which carry
  * the same set-scoped claim guards one set at a time. The rail opens armed
@@ -147,6 +153,7 @@ const SWATCH_CLASS: Record<CellState, string> = {
     BusyAction,
     TouchTarget,
     LockIcon,
+    RemodelPreviewPanel,
   ],
   templateUrl: './layout-editor.html',
   // Painting ends wherever the mouse is released — the grid container is canvas-owned now.
@@ -240,6 +247,14 @@ export class LayoutEditor {
   protected readonly errorCode = signal<LayoutErrorCode | undefined>(undefined);
   /** True while awaiting confirmation of a destructive regenerate over an existing grid. */
   protected readonly confirmRegen = signal(false);
+  /** True while the remodel dry run is in flight — the save button reads "Checking…" and is inert. */
+  protected readonly previewing = signal(false);
+  /**
+   * The remodel preview shown instead of a save, or null. Set only when a save would drop a loaded
+   * set AND the dry run names a claim — a save that is refused while any such claim is live, so the
+   * dialog explains and offers Back; the save button stays inert while it is open.
+   */
+  protected readonly remodelPreview = signal<RemodelPreview | null>(null);
   /** The optimistic-concurrency token loaded with the map (`setVersion`), echoed back on Save; a
    *  `409 STALE_WRITE` means the layout moved on since — the editor keeps the grid and offers Reload. */
   protected readonly loadedSetVersion = signal<number | null>(null);
@@ -347,6 +362,18 @@ export class LayoutEditor {
     return byCoord;
   });
   protected readonly lockedCount = computed(() => this.lockByCoord().size);
+
+  /**
+   * Whether the draft drops a loaded set — its cell painted to a gap or gone from a smaller grid.
+   * The only edit a bulk save can strand a guest by (a kept cell keeps its id and its position
+   * number, which the editor derives from the column), so the only one that asks the dry run first.
+   */
+  private readonly removesLoadedSet = computed(() => {
+    const grid = this.grid();
+    return this.loadedSets().some(
+      (set) => (grid[set.gridY - 1]?.[set.gridX - 1] ?? 'gap') === 'gap',
+    );
+  });
 
   /** The save bar's last-saved line: the clock time in Tirane, or a not-yet-saved notice. */
   protected readonly lastSavedLabel = computed(() => {
@@ -885,6 +912,51 @@ export class LayoutEditor {
     if (this.renamingRow() !== null) {
       return; // the other half of the shared-token guard: a rename in flight owns the version
     }
+    if (this.saving() || this.previewing() || this.remodelPreview() !== null) {
+      return;
+    }
+    if (!this.removesLoadedSet()) {
+      await this.commitSave(venueId, sets, expectedVersion);
+      return;
+    }
+    const epoch = this.epoch;
+    this.previewing.set(true);
+    this.errorCode.set(undefined);
+    this.blockedSets.set([]);
+    this.savedNotice.set(false);
+    try {
+      const preview = await firstValueFrom(
+        this.console.previewLayout(venueId, { sets, expectedVersion }),
+      );
+      if (this.epoch !== epoch) {
+        return;
+      }
+      if (remodelPreviewIsEmpty(preview)) {
+        this.previewing.set(false);
+        await this.commitSave(venueId, sets, expectedVersion);
+        return;
+      }
+      this.remodelPreview.set(preview);
+    } catch (error) {
+      if (this.epoch !== epoch) {
+        return;
+      }
+      this.failSave(error);
+    } finally {
+      this.previewing.set(false);
+    }
+  }
+
+  protected cancelRemodel(): void {
+    this.remodelPreview.set(null);
+    this.focusAfterRender('layout-save');
+  }
+
+  private async commitSave(
+    venueId: number,
+    sets: LayoutCellRequest[],
+    expectedVersion: number,
+  ): Promise<void> {
     const epoch = this.epoch;
     this.saving.set(true);
     this.errorCode.set(undefined);
@@ -902,27 +974,30 @@ export class LayoutEditor {
       this.storedRowNames.set(saved.map((label, y) => (written.has(y) ? label : undefined)));
       // The layout was replaced, so the console's shared snapshot now describes retired sets.
       this.venueMap.reset();
-      // The conditional write bumped set_version by one; advance the token so a second save isn't stale.
       this.loadedSetVersion.set(expectedVersion + 1);
-      // The grid just saved becomes the new baseline: nothing pending until the next paint/generate.
       this.baselineGrid.set(cloneGrid(this.grid()));
       this.baselineRowNames.set(this.effectiveRowNames());
       this.lastChange.set(null);
       this.lastSavedAt.set(new Date());
     } catch (error) {
       if (this.epoch !== epoch) {
-        return; // a venue switch superseded this save (#180)
+        return;
       }
-      const code = layoutErrorOf(error);
-      this.errorCode.set(code);
-      if (code === 'SETS_IN_USE') {
-        this.markBlocked(layoutBlockedSetsOf(error));
-      }
-      if (code === 'UNAUTHORIZED') {
-        this.operator.sessionLost();
-      }
+      this.failSave(error);
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  /** The one failure path the dry run and the save share: the code, the refused sets, the lost session. */
+  private failSave(error: unknown): void {
+    const code = layoutErrorOf(error);
+    this.errorCode.set(code);
+    if (code === 'SETS_IN_USE') {
+      this.markBlocked(layoutBlockedSetsOf(error));
+    }
+    if (code === 'UNAUTHORIZED') {
+      this.operator.sessionLost();
     }
   }
 

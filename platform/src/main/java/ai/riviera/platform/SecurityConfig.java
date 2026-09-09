@@ -85,6 +85,7 @@ class SecurityConfig {
 	 * unnoticed — is covered by {@code EndpointRoleGateCoverageTest} instead.
 	 */
 	private static final String BEACH_MAP_PATH = "/api/venues/*/beach-map";
+	private static final String BEACH_MAP_PREVIEW_PATH = "/api/venues/*/beach-map/preview";
 	private static final String ROW_PRICE_PATH = "/api/venues/*/rows/*/price";
 	private static final String ROW_NAME_PATH = "/api/venues/*/rows/*/name";
 	/**
@@ -389,6 +390,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.DELETE, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.PUT, BEACH_MAP_PATH, ROW_PRICE_PATH, ROW_NAME_PATH)
 						.hasRole(OPERATOR_ROLE)
+						// The remodel dry run reads which sets guests hold (ADR-0020); owner-asserted in the modules.
+						.requestMatchers(HttpMethod.POST, BEACH_MAP_PREVIEW_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.PUT, SEASON_CLOSURE_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, SEASON_CLOSURE_PATH).hasRole(OPERATOR_ROLE)
 						// Non-GET, so these never shadow the public serving read above.

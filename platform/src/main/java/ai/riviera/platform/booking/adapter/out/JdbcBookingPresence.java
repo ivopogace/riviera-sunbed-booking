@@ -44,7 +44,7 @@ class JdbcBookingPresence implements BookingPresence {
 	 * The statuses a guest may still turn up on. Derived from {@link BookingStatus} rather than
 	 * listed by hand, so a newly added live state cannot silently fall out of the edit guard.
 	 */
-	private static final List<String> LIVE_STATUSES = Stream.of(BookingStatus.values())
+	static final List<String> LIVE_STATUSES = Stream.of(BookingStatus.values())
 			.filter(BookingStatus::canStillBeHonoured)
 			.map(Enum::name)
 			.toList();
