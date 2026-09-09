@@ -1,13 +1,14 @@
-@if (stale()) {
-  <p
-    class="text-[12.5px] leading-[1.45] font-bold"
-    data-testid="layout-remodel-stale"
-    role="status"
-  >
+<!-- Always rendered: a status region announces a change to its content, not its own arrival. -->
+<p
+  class="text-[12.5px] leading-[1.45] font-bold empty:hidden"
+  data-testid="layout-remodel-stale"
+  role="status"
+>
+  @if (stale()) {
     The bookings changed since you previewed — this is the fresh picture. Check it again before
     saving.
-  </p>
-}
+  }
+</p>
 @if (committable()) {
   <p class="text-[12.5px] leading-[1.45] font-semibold">
     <strong>Guests hold sets this save removes.</strong>

@@ -161,7 +161,7 @@ describe('RemodelPreviewPanel (#1033, #1034)', () => {
     expect(host.textContent).toMatch(/cancel for a full refund/);
     expect(host.textContent).toMatch(/There is no undo/);
     expect(byId('layout-remodel-commit')!.textContent).toContain('Save and move 2 bookings');
-    expect(byId('layout-remodel-stale')).toBeNull();
+    expect(byId('layout-remodel-stale')!.textContent?.trim()).toBe('');
     byId('layout-remodel-commit')!.click();
     expect(committed).toHaveBeenCalledTimes(1);
   });
@@ -190,11 +190,14 @@ describe('RemodelPreviewPanel (#1033, #1034)', () => {
     expect(committed).not.toHaveBeenCalled();
   });
 
-  it('a stale picture announces that the bookings changed, as a status, above the fresh groups', () => {
-    render(MOVES_ONLY_PREVIEW, { stale: true });
-
+  it('a stale picture announces that the bookings changed, in a status region that outlives its text, above the fresh groups', () => {
+    render(MOVES_ONLY_PREVIEW);
+    // The live region exists (empty) before the change, so its later text is announced (RV-FE-10).
     const note = byId('layout-remodel-stale')!;
     expect(note.getAttribute('role')).toBe('status');
+    expect(note.textContent?.trim()).toBe('');
+    fixture.componentRef.setInput('stale', true);
+    fixture.detectChanges();
     expect(note.textContent).toMatch(/bookings changed since you previewed/);
     expect(note.compareDocumentPosition(byId('layout-remodel-moves')!)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,

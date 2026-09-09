@@ -44,6 +44,7 @@ import {
   LayoutErrorCode,
   OperatorBeachMap,
   RemodelPreview,
+  remodelPreviewIsCommittable,
   remodelPreviewIsEmpty,
   RemodelReceipt,
   RemodelReceiptSummary,
@@ -1024,6 +1025,10 @@ export class LayoutEditor {
       if (fresh) {
         this.previewStale.set(true);
         this.remodelPreview.set(fresh);
+        // The same dialog re-renders in place; a picture that lost its Save hands focus to Back.
+        this.focusAfterRender(
+          remodelPreviewIsCommittable(fresh) ? 'layout-remodel-commit' : 'layout-remodel-back',
+        );
         return;
       }
       this.remodelPreview.set(null);

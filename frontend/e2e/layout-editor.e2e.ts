@@ -946,6 +946,7 @@ test('a commit that finds the bookings changed re-renders the fresh picture stal
     'arrives within the freeze window',
   );
   await expect(page.getByTestId('layout-remodel-preview').getByRole('button')).toHaveCount(1);
+  await expect(page.getByTestId('layout-remodel-back')).toBeFocused();
   await expect(page.getByTestId('layout-error')).toHaveCount(0);
   expect(tokens).toEqual(['v1.moves']);
   expect(puts).toHaveLength(0);
@@ -957,7 +958,7 @@ test('a commit that finds the bookings changed re-renders the fresh picture stal
     route.fulfill({ json: { ...MOVES_ONLY_PREVIEW, previewToken: 'v1.fresh' } }),
   );
   await page.getByTestId('layout-save').click();
-  await expect(page.getByTestId('layout-remodel-stale')).toHaveCount(0);
+  await expect(page.getByTestId('layout-remodel-stale')).toBeEmpty();
   await page.getByTestId('layout-remodel-commit').click();
   await expect(page.getByTestId('layout-remodel-receipt')).toBeVisible();
   expect(tokens).toEqual(['v1.moves', 'v1.fresh']);

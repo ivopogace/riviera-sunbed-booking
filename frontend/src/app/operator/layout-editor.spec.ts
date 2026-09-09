@@ -2047,6 +2047,7 @@ describe('LayoutEditor (#172)', () => {
       expect(byId('layout-remodel-moves').textContent).toContain('Will move (1)');
       expect(byId('layout-remodel-commit').textContent).toContain('Save and move 1 booking');
       expect(byId('layout-remodel-commit').getAttribute('aria-disabled')).toBeNull();
+      expect(document.activeElement).toBe(byId('layout-remodel-commit'));
       expect(host.querySelector('[data-testid="layout-error"]')).toBeNull();
       expect(host.querySelector('[data-testid="layout-remodel-receipt"]')).toBeNull();
 
@@ -2057,7 +2058,7 @@ describe('LayoutEditor (#172)', () => {
       second.flush(RECEIPT);
       await fixture.whenStable();
       fixture.detectChanges();
-      expect(host.querySelector('[data-testid="layout-remodel-stale"]')).toBeNull();
+      expect(host.querySelector('[data-testid="layout-remodel-preview"]')).toBeNull();
       expect(byId('layout-remodel-receipt')).toBeTruthy();
     });
 
@@ -2075,6 +2076,8 @@ describe('LayoutEditor (#172)', () => {
       expect(byId('layout-remodel-blocks').textContent).toMatch(/arrives within the freeze window/);
       expect(host.querySelector('[data-testid="layout-remodel-commit"]')).toBeNull();
       expect(host.querySelector('[data-testid="layout-error"]')).toBeNull();
+      // The Save that held focus is gone; Back takes it (WCAG 2.4.3).
+      expect(document.activeElement).toBe(byId('layout-remodel-back'));
 
       byId('layout-remodel-back').click();
       await fixture.whenStable();
