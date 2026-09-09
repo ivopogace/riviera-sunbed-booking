@@ -74,6 +74,10 @@ public final class BookingMailFixtures {
 	public static final String REQUEST_DECLINED_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
 			+ "RequestDeclinedMailListener.on(ai.riviera.platform.booking.events.BookingRequestDeclined)";
 
+	/** The registry's id for the booking-moved listener; new class, no migration needed. */
+	public static final String BOOKING_MOVED_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
+			+ "BookingMovedMailListener.on(ai.riviera.platform.booking.events.BookingMoved)";
+
 	/** The registry's id for the request-expired listener; new class, no migration needed. */
 	public static final String REQUEST_EXPIRED_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
 			+ "RequestExpiredMailListener.on(ai.riviera.platform.booking.events.BookingRequestExpired)";
@@ -162,6 +166,13 @@ public final class BookingMailFixtures {
 	/** The decline fact an IT publishes to drive the mail; the date is the matching fragment. */
 	public BookingRequestDeclined requestDeclinedOf(SetRef set, long bookingId, LocalDate date) {
 		return new BookingRequestDeclined(new BookingId(bookingId), new SetId(set.setId()), date);
+	}
+
+	/** The move fact an IT publishes to drive the mail; the booking must carry a receipt move and {@code moved_at}. */
+	public ai.riviera.platform.booking.events.BookingMoved movedOf(SetRef from, long toSetId, long bookingId,
+			LocalDate date) {
+		return new ai.riviera.platform.booking.events.BookingMoved(new BookingId(bookingId), new VenueId(from.venueId()),
+				new SetId(from.setId()), new SetId(toSetId), date);
 	}
 
 	/** The expiry fact an IT publishes to drive the mail; the date is the matching fragment. */

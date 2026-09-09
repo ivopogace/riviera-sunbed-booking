@@ -73,4 +73,7 @@ public interface Mailer {
 	 * for the sweep's outcome, under the same plain-record rule.
 	 */
 	void sendRequestExpired(String toEmail, RequestExpiredMail expired);
+
+	/** Send the "your spot changed" notice: both spots, the distance, and the free-exit deadline. */
+	void sendBookingMoved(String toEmail, BookingMovedMail moved);
 }

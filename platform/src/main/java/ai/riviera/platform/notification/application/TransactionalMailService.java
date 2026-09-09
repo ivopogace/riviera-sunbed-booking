@@ -134,6 +134,15 @@ public class TransactionalMailService implements MailSender {
 		mailer.sendPaymentDue(toEmail, paymentDue);
 	}
 
+	/** Deliver the changed-spot notice now, on the caller's thread; a transport failure propagates. */
+	public void sendBookingMoved(String toEmail, BookingMovedMail moved) {
+		if (suppressions.isSuppressed(toEmail)) {
+			log.info("Booking-moved mail skipped: the address is suppressed");
+			return;
+		}
+		mailer.sendBookingMoved(toEmail, moved);
+	}
+
 	/** Deliver the declined request's record now, on the caller's thread; a transport failure propagates. */
 	public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
 		if (suppressions.isSuppressed(toEmail)) {

@@ -87,6 +87,8 @@ class SecurityConfig {
 	private static final String BEACH_MAP_PATH = "/api/venues/*/beach-map";
 	private static final String BEACH_MAP_PREVIEW_PATH = "/api/venues/*/beach-map/preview";
 	private static final String BEACH_MAP_COMMIT_PATH = "/api/venues/*/beach-map/commit";
+	/** The mock transport's recorded booking mails; the controller exists only where the mock does. */
+	private static final String MOCK_MAIL_PATH = "/api/mock-mail/**";
 	/** The owner's remodel receipts: who was moved where. Order-sensitive against the public venue GET. */
 	private static final String REMODEL_RECEIPTS_PATH = "/api/venues/*/remodels";
 	private static final String REMODEL_RECEIPT_PATH = "/api/venues/*/remodels/*";
@@ -400,6 +402,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, BEACH_MAP_PREVIEW_PATH).hasRole(OPERATOR_ROLE)
 						// The remodel commit moves bookings (ADR-0020); owner-asserted in the modules.
 						.requestMatchers(HttpMethod.POST, BEACH_MAP_COMMIT_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.GET, MOCK_MAIL_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.PUT, SEASON_CLOSURE_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, SEASON_CLOSURE_PATH).hasRole(OPERATOR_ROLE)
 						// Non-GET, so these never shadow the public serving read above.

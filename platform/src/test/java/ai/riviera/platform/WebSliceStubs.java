@@ -809,6 +809,12 @@ class WebSliceStubs {
 		};
 	}
 
+	/** The mock outbox read exists wherever the mock transport does; the web slice supplies the transport. */
+	@Bean
+	ai.riviera.platform.notification.adapter.out.MockMailer mockMailer() {
+		return new ai.riviera.platform.notification.adapter.out.MockMailer();
+	}
+
 	@Bean
 	RemodelCommitService remodelCommitService(ai.riviera.platform.venue.api.BeachMapRemodel remodel,
 			ai.riviera.platform.booking.api.RemodelClaims claims) {

@@ -144,6 +144,11 @@ class MailSenderWiringIT {
 			record();
 		}
 
+		@Override
+		public void sendBookingMoved(String toEmail, ai.riviera.platform.notification.application.BookingMovedMail moved) {
+			record();
+		}
+
 		private void record() {
 			sendThread.set(Thread.currentThread().getName());
 			sent.countDown();

@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.application.BookingMovedMail;
 import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
@@ -45,6 +46,7 @@ class SmtpMailer implements Mailer {
 	private static final String PAYMENT_DUE_SUBJECT = "%s accepted your request — payment due";
 	private static final String OPERATOR_APPROVED_SUBJECT = "Your operator account is approved";
 	private static final String REQUEST_DECLINED_SUBJECT = "%s declined your booking request";
+	private static final String BOOKING_MOVED_SUBJECT = "Your spot at %s has changed";
 	private static final String REQUEST_EXPIRED_SUBJECT = "Your booking request to %s has expired";
 
 	/** English-only in v1 (ADR-0011); the locale is explicit so the JVM default cannot change the copy. */
@@ -221,6 +223,36 @@ class SmtpMailer implements Mailer {
 	/** Basis points → a display percentage, trimming trailing zeros (2500 → 25, 2250 → 22.5). */
 	private static String bpsAsPercent(int bps) {
 		return BigDecimal.valueOf(bps).movePointLeft(2).stripTrailingZeros().toPlainString();
+	}
+
+	@Override
+	public void sendBookingMoved(String toEmail, BookingMovedMail moved) {
+		send(toEmail, BOOKING_MOVED_SUBJECT.formatted(headerSafe(moved.venueName())), """
+				%s re-laid its beach, so your booking has moved to a new spot: %s%d instead of %s%d, %s.
+				Your booking code, price and date are unchanged.
+
+				  Booking code:  %s
+				  Venue:         %s
+				  Date:          %s
+				  Your spot:     Row %s, position %d
+
+				If the new spot does not suit you, you can cancel for a full refund until %s (Albania time):
+
+				%s"""
+				.formatted(moved.venueName(), moved.toRowLabel(), moved.toPositionNo(), moved.fromRowLabel(),
+						moved.fromPositionNo(), distance(moved), moved.bookingCode(), moved.venueName(),
+						DATE_FORMAT.format(moved.bookingDate()), moved.toRowLabel(), moved.toPositionNo(),
+						DEADLINE_FORMAT.format(moved.freeExitUntil().atZone(TIRANE)), moved.bookingLink()));
+	}
+
+	/** "4 positions along the row", "1 row over", "2 rows and 3 positions away". */
+	static String distance(BookingMovedMail moved) {
+		if (moved.rowsAway() == 0) {
+			return moved.positionsAway() + (moved.positionsAway() == 1 ? " position" : " positions") + " along the row";
+		}
+		String rows = moved.rowsAway() + (moved.rowsAway() == 1 ? " row" : " rows");
+		return moved.positionsAway() == 0 ? rows + " over"
+				: rows + " and " + moved.positionsAway() + (moved.positionsAway() == 1 ? " position" : " positions") + " away";
 	}
 
 	@Override

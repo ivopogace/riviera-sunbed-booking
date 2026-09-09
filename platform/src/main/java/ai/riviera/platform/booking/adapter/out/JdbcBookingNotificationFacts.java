@@ -7,18 +7,22 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.booking.api.BookingNotificationFacts;
+import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
+import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
 import ai.riviera.platform.booking.vocabulary.BookingConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.BookingMoveFacts;
 import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * JDBC adapter for {@link BookingNotificationFacts} — both reads are by primary key via
+ * JDBC adapter for {@link BookingNotificationFacts} — every read is by primary key via
  * {@link JdbcClient} (invariant #1, no JPA): two columns for the listener's narrow
- * {@code notificationInfo}, and since #380 the wider {@code confirmationFacts} an admin resend
- * rebuilds the mail from. Package-private; only the {@code api/} port is
+ * {@code notificationInfo}, the wider {@code confirmationFacts} an admin resend rebuilds the mail
+ * from, and {@code moveFacts}, the receipt's latest move plus the booking's {@code moved_at} and the
+ * free-exit deadline {@link BookingCutoff} derives from it. Package-private; only the {@code api/} port is
  * referenced cross-module (invariant #11). Read-only.
  */
 @Repository
@@ -26,10 +30,27 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 
 	private final JdbcClient jdbc;
 	private final CancellationPolicy cancellationPolicy;
+	private final RemodelReceipts receipts;
+	private final BookingCutoff cutoff;
 
-	JdbcBookingNotificationFacts(JdbcClient jdbc, CancellationPolicy cancellationPolicy) {
+	JdbcBookingNotificationFacts(JdbcClient jdbc, CancellationPolicy cancellationPolicy, RemodelReceipts receipts,
+			BookingCutoff cutoff) {
 		this.jdbc = jdbc;
 		this.cancellationPolicy = cancellationPolicy;
+		this.receipts = receipts;
+		this.cutoff = cutoff;
+	}
+
+	@Override
+	public Optional<BookingMoveFacts> moveFacts(BookingId bookingId) {
+		return receipts.latestMoveOf(bookingId).flatMap(move -> jdbc.sql(
+				"SELECT moved_at FROM booking WHERE id = :id AND moved_at IS NOT NULL")
+				.param("id", bookingId.value())
+				.query((rs, rowNum) -> rs.getTimestamp("moved_at").toInstant())
+				.optional()
+				.map(movedAt -> new BookingMoveFacts(move.bookingDate(), move.from().rowLabel(),
+						move.from().positionNo(), move.to().rowLabel(), move.to().positionNo(), move.rowsAway(),
+						move.positionsAway(), movedAt, cutoff.freeExitEndsAt(move.bookingDate(), movedAt))));
 	}
 
 	@Override
