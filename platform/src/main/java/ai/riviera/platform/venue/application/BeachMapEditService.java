@@ -102,10 +102,15 @@ class BeachMapEditService implements EditBeachMap {
 		if (venues.lockSet(venueId, setId).isEmpty()) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET);
 		}
-		if (isLivelyClaimedOrEverBooked(setId)) {
+		if (isLivelyClaimed(setId)) {
 			return new ChangeOutcome.Rejected(SetRejection.SET_IN_USE);
 		}
-		venues.deleteSet(venueId, setId);
+		if (bookings.hasBookings(setId)) {
+			venues.retireSet(venueId, setId, clock.instant());
+		}
+		else {
+			venues.deleteSet(venueId, setId);
+		}
 		return ChangeOutcome.Applied.APPLIED;
 	}
 
@@ -124,24 +129,13 @@ class BeachMapEditService implements EditBeachMap {
 
 	/**
 	 * Whether anyone is still owed this exact spot — a live hold, or a booking that has not reached
-	 * a terminal state. The <em>edit</em> question: an {@code UPDATE} of the coordinates strands
-	 * only a guest who is still coming, so last season's cancelled booking must not freeze the map
-	 * forever. Callers must already hold the row lock.
+	 * a terminal state. The one claim question a move and a removal both ask: repositioning or
+	 * retiring the set strands only a guest who is still coming, so last season's finished booking
+	 * refuses neither — it decides only whether the removal retires the row or deletes it
+	 * (ADR-0019). Callers must already hold the row lock.
 	 */
 	private boolean isLivelyClaimed(SetId setId) {
 		return hasLiveHold(List.of(setId)) || bookings.hasLiveBookings(setId);
-	}
-
-	/**
-	 * Whether a live hold or a booking of <em>any</em> status pins this set. The <em>delete</em>
-	 * question, stricter than {@link #isLivelyClaimed} on the booking arm alone: the RESTRICT
-	 * {@code booking.set_id} FK makes a set carrying any booking undeletable, so refusing here turns
-	 * what would surface as a server error into an honest conflict. History does not block on the
-	 * availability arm — a past hold CASCADEs away describing a day that is already gone.
-	 * Rationale: RESPONSIBILITIES.md §venue. Callers must already hold the row lock.
-	 */
-	private boolean isLivelyClaimedOrEverBooked(SetId setId) {
-		return hasLiveHold(List.of(setId)) || bookings.hasBookings(setId);
 	}
 
 	@Override

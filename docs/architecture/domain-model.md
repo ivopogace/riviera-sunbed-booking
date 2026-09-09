@@ -202,7 +202,11 @@ classDiagram
         tier, pool
         price_minor, price_currency
         grid_x, grid_y
-        version
+        retired_at
+    }
+    class active_set_position {
+        <<view>>
+        set_position WHERE retired_at IS NULL
     }
     class venue_photo {
         <<table>>
@@ -240,6 +244,7 @@ classDiagram
         REQUEST
     }
     venue "1" *-- "many" set_position
+    set_position <.. active_set_position : every map read
     venue "1" *-- "many" venue_commission_rate
     venue "1" *-- "many" venue_photo
     venue_photo "1" *-- "many" venue_photo_variant
@@ -259,6 +264,11 @@ classDiagram
 > `booking_cutoff` (the free-cancellation cutoff) defaults to 18:00 and `sales_close` to 16:00, both
 > `Europe/Tirane` (invariants #4, #6). `pool` keeps online and walk-in sets physically separate
 > (invariant #3) — an online booking can only target an `ONLINE` set.
+>
+> A set that carries booking history is **retired**, never deleted (`retired_at`, ADR-0019): every
+> read that means "the map" — list, map, calendar, daily view, layout locks, both claim paths —
+> selects from `active_set_position`, and only `SetBookingFacts` still answers for a retired set, so
+> its bookings keep naming it. The layout-uniqueness indexes are partial over active rows.
 
 ### 3.2 `availability` — the heart (invariant #2)
 

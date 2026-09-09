@@ -154,7 +154,8 @@ export class OperatorConsoleService {
 
   /**
    * Remove one set from the venue's map. Owner-asserted server-side (invariant #13); refused
-   * `409 SET_IN_USE` when the set carries a hold dated today or later, or a booking of any status.
+   * `409 SET_IN_USE` when the set carries a hold dated today or later, or a guest still booked on it.
+   * A set with only finished bookings is retired rather than deleted, and answers `204` all the same.
    */
   removeSet(venueId: number, setId: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/api/venues/${venueId}/sets/${setId}`);

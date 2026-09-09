@@ -40,7 +40,8 @@ self-provision there and the full test task can OOM the sandbox.
 ./gradlew test --tests "*ClassName*"   # one test class
 ./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" \
   --tests "*PackageShapeArchitectureTests*" --tests "*DomainPurityArchitectureTests*" \
-  --tests "*PublishedSurfacePlacementArchitectureTests*"
+  --tests "*PublishedSurfacePlacementArchitectureTests*" \
+  --tests "*RetiredSetExclusionArchitectureTests*"
                                        # the structural net — run after any backend structure change
 ./gradlew bootRun                      # run the API on :8080
 ```
@@ -51,8 +52,11 @@ no target — no module, table, class, port or bean it holds to the rule; the ba
 or the class it borrows to find that package, is an anchor, not a target — runs without a Spring
 context, and fails on a violation.
 That is exactly the set a structure change *anywhere* can break, which is why it runs after every
-one; the five in the command are today's members, derived from the rule, not chosen. A fitness
-function that names its target (`CompositionRootDisciplineTests`' grant map,
+one; five of the six in the command are today's members derived from the rule, not chosen. The
+sixth, `RetiredSetExclusionArchitectureTests`, names its table and its exempt port and is the one
+member admitted by decision (ADR-0019): a retired set's absence from every read is a forever tax
+that a new JDBC adapter anywhere in the tree can break, which is the property the net exists to
+catch. A fitness function that names its target (`CompositionRootDisciplineTests`' grant map,
 `ErrorContractArchitectureTests`, `ResponsibilitiesArchitectureTests`, the two
 `*AuthPlacementTests`, `VenueApiRoleSplitTests`, the `*ArchitectureTest` pool and scheduler
 guards) is context-free too, but only work on what it names can break it, so that work puts it

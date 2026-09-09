@@ -22,13 +22,13 @@ kept in sync by nothing.
   repooled or removed"*), not a remedy (*"Reload the latest and try again"*), never UI
   navigation (*"Switch to Edit sets…"*).
 - **Name the condition class, not the arm — and make sure the class is true.** A code that
-  serves several guards (`SET_IN_USE` serves two of different breadth) gets a `detail` that
-  names no arm, and the ITs assert the same string at every arm. Two traps: *too short and
-  untrue* ("This set is in use." is false for a set whose only booking is long-cancelled —
-  undeletable by the RESTRICT `booking.set_id` FK, not in use) and *too broad to
-  characterize* ("has a booking or a hold" is true of sets the server happily edits, since a
-  hold whose day has passed locks nothing). "has a booking or a **current** hold" is the
-  narrowest statement true at every arm.
+  serves several guards (`SET_IN_USE` serves a move, a save that moves, and a remove) gets a
+  `detail` that names no arm, and the ITs assert the same string at every arm. Two traps:
+  *too short and untrue* ("This set is in use." reads as occupied right now, which a guest
+  booked for next month is not) and *too broad to characterize* ("has a booking or a hold" is
+  true of sets the server happily edits, since a hold whose day has passed locks nothing, and
+  of sets it retires, since a finished booking refuses nothing — ADR-0019). "has a booking or
+  a **current** hold" is the narrowest statement true at every arm.
 - **No remedy-voiced `detail` is left in the tree, and none is exempt.** Scope is every
   `detail` in remedy voice, whether or not a client mapper duplicates it
   (`RATE_LIMITED` and `CANNOT_SUSPEND_SELF` have no client `code`→copy mapper and are still

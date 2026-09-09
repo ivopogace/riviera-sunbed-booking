@@ -538,8 +538,9 @@ describe('SetEditor (#600)', () => {
     expect(changed).toBe(0);
     const message = byId('set-error').textContent ?? '';
     expect(message).toMatch(/can’t be removed/i);
-    // The remove guard reaches any booking ever, so the copy states that arm as permanent.
-    expect(message).toMatch(/booked at least once/i);
+    // Only a live claim refuses a remove now; a finished booking retires the set instead.
+    expect(message).toMatch(/still held/i);
+    expect(message).not.toMatch(/booked at least once/i);
     expect(message).not.toMatch(/repooled/i);
   });
 

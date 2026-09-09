@@ -45,9 +45,8 @@ class VenueAdminControllerIT {
 
 	/**
 	 * The one {@code SET_IN_USE} detail, asserted wherever this class provokes it — the remove
-	 * guard's hold and terminal-booking arms, and the edit guard's refused move. Why the wording names
-	 * no arm, and why it must stay true of a set held only by a long-cancelled booking:
-	 * {@code riviera-java-conventions} {@code references/error-contract.md}.
+	 * guard's hold and live-booking arms, and the edit guard's refused move. Why the wording names
+	 * no arm: {@code riviera-java-conventions} {@code references/error-contract.md}.
 	 */
 	private static final String SET_IN_USE_DETAIL = "This set has a booking or a current hold.";
 
@@ -433,17 +432,17 @@ class VenueAdminControllerIT {
 	}
 
 	@Test
-	void removeSetOnABookedSetAnswers409NotAServerError() throws Exception {
+	void removeSetOnALiveBookedSetAnswers409() throws Exception {
 		long venue = createVenue("Booked Club");
 		long setId = addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES ('booked-club@example.com', 'Guest', '+355600') RETURNING id")
 				.query(Long.class).single();
-		// CANCELLED: long-terminal, yet the RESTRICT FK still pins the set — the 500 the guard pre-empts.
+		// CONFIRMED: a guest still coming; a finished booking would retire the set instead (SetRetireIT).
 		jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status)
-				VALUES ('BOOKCLB1', :venue, :set, :cust, DATE '2027-07-01', 3000, 'EUR', 'CANCELLED')
+				VALUES ('BOOKCLB1', :venue, :set, :cust, DATE '2027-07-01', 3000, 'EUR', 'CONFIRMED')
 				""")
 				.param("venue", venue).param("set", setId).param("cust", customer).update();
 

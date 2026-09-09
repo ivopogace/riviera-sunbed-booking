@@ -14,8 +14,11 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
@@ -218,7 +221,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 		// FOR UPDATE blocks a concurrent claim's FK check until this edit ends (see Venues#lockSet).
 		return jdbc.sql("""
 				SELECT row_label, position_no, grid_x, grid_y
-				  FROM set_position
+				  FROM active_set_position
 				 WHERE id = :setId AND venue_id = :venue
 				   FOR UPDATE
 				""")
@@ -236,10 +239,10 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 		Long excludeId = exclude.map(SetId::value).orElse(null);
 		ConflictRow row = jdbc.sql("""
 				SELECT
-				  EXISTS(SELECT 1 FROM set_position
+				  EXISTS(SELECT 1 FROM active_set_position
 				         WHERE venue_id = :venue AND row_label = :rowLabel AND position_no = :positionNo
 				           AND (:exclude::bigint IS NULL OR id <> :exclude)) AS position_taken,
-				  EXISTS(SELECT 1 FROM set_position
+				  EXISTS(SELECT 1 FROM active_set_position
 				         WHERE venue_id = :venue AND grid_x = :gridX AND grid_y = :gridY
 				           AND (:exclude::bigint IS NULL OR id <> :exclude)) AS cell_taken
 				""")
@@ -279,7 +282,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				SET row_label = :rowLabel, position_no = :positionNo, tier = :tier, pool = :pool,
 				    price_minor = :priceMinor, price_currency = :priceCurrency,
 				    grid_x = :gridX, grid_y = :gridY
-				WHERE id = :setId AND venue_id = :venue
+				WHERE id = :setId AND venue_id = :venue AND retired_at IS NULL
 				""")
 				.params(params)
 				.update();
@@ -287,7 +290,21 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 
 	@Override
 	public void deleteSet(VenueId venueId, SetId setId) {
-		jdbc.sql("DELETE FROM set_position WHERE id = :setId AND venue_id = :venue")
+		jdbc.sql("DELETE FROM set_position WHERE id = :setId AND venue_id = :venue AND retired_at IS NULL")
+				.param(P_SET_ID, setId.value())
+				.param(P_VENUE, venueId.value())
+				.update();
+	}
+
+	@Override
+	public void retireSet(VenueId venueId, SetId setId, Instant retiredAt) {
+		// Guarded on the marker: a retire never re-stamps, and never touches a set already retired.
+		jdbc.sql("""
+				UPDATE set_position
+				SET retired_at = :retiredAt
+				WHERE id = :setId AND venue_id = :venue AND retired_at IS NULL
+				""")
+				.param("retiredAt", OffsetDateTime.ofInstant(retiredAt, ZoneOffset.UTC))
 				.param(P_SET_ID, setId.value())
 				.param(P_VENUE, venueId.value())
 				.update();
@@ -295,13 +312,11 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 
 	@Override
 	public int repriceRow(VenueId venueId, RowPriceCommand c) {
-		// Non-destructive per-row reprice: overwrite only the price columns for every set
-		// carrying the row label. The WHERE (venue_id, row_label) rides the set_position_cell_uniq
-		// UNIQUE(venue_id, row_label, position_no) index prefix. Rows-affected 0 ⇒ unknown row.
+		// Price columns only, active sets only (a retired set keeps its booked price); 0 rows ⇒ unknown row.
 		return jdbc.sql("""
 				UPDATE set_position
 				SET price_minor = :priceMinor, price_currency = :priceCurrency
-				WHERE venue_id = :venue AND row_label = :rowLabel
+				WHERE venue_id = :venue AND row_label = :rowLabel AND retired_at IS NULL
 				""")
 				.param(P_PRICE_MINOR, c.priceMinor())
 				.param(P_PRICE_CURRENCY, c.priceCurrency())
@@ -312,7 +327,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 
 	@Override
 	public Set<String> distinctRowLabels(VenueId venueId) {
-		return Set.copyOf(jdbc.sql("SELECT DISTINCT row_label FROM set_position WHERE venue_id = :venue")
+		return Set.copyOf(jdbc.sql("SELECT DISTINCT row_label FROM active_set_position WHERE venue_id = :venue")
 				.param(P_VENUE, venueId.value())
 				.query(String.class)
 				.list());
@@ -320,11 +335,11 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 
 	@Override
 	public int renameRow(VenueId venueId, RowNameCommand c) {
-		// Display-only: only row_label is written, so identity/pool/price/holds survive. 0 ⇒ unknown row.
+		// Display-only: only row_label is written, active sets only (a retired set keeps its label). 0 ⇒ unknown row.
 		return jdbc.sql("""
 				UPDATE set_position
 				SET row_label = :newLabel
-				WHERE venue_id = :venue AND row_label = :rowLabel
+				WHERE venue_id = :venue AND row_label = :rowLabel AND retired_at IS NULL
 				""")
 				.param(P_NEW_LABEL, c.newLabel())
 				.param(P_VENUE, venueId.value())
@@ -334,7 +349,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 
 	@Override
 	public List<SetId> setIdsOf(VenueId venueId) {
-		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :venue ORDER BY id")
+		return jdbc.sql("SELECT id FROM active_set_position WHERE venue_id = :venue ORDER BY id")
 				.param(P_VENUE, venueId.value())
 				.query(Long.class)
 				.list()
@@ -348,7 +363,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 		// FOR UPDATE locks the venue's set_position rows so a concurrent set_availability/booking
 		// insert (which needs FOR KEY SHARE on the referenced row for its FK check) blocks until this
 		// replace transaction ends — closing the invariant-#2 check-then-delete window (see Venues).
-		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :venue FOR UPDATE")
+		return jdbc.sql("SELECT id FROM active_set_position WHERE venue_id = :venue FOR UPDATE")
 				.param(P_VENUE, venueId.value())
 				.query(Long.class)
 				.list()
@@ -360,7 +375,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	@Override
 	public Set<SetId> lockSets(VenueId venueId, Collection<SetId> setIds) {
 		// FOR UPDATE, as lockSet: a concurrent claim's FOR KEY SHARE pool read waits for this tx to end.
-		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :venue AND id IN (:ids) FOR UPDATE")
+		return jdbc.sql("SELECT id FROM active_set_position WHERE venue_id = :venue AND id IN (:ids) FOR UPDATE")
 				.param(P_VENUE, venueId.value())
 				.param("ids", setIds.stream().map(SetId::value).toList())
 				.query(Long.class)
@@ -379,7 +394,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				    pool = COALESCE(:pool::text, pool),
 				    price_minor = COALESCE(:priceMinor::bigint, price_minor),
 				    price_currency = COALESCE(:priceCurrency::text, price_currency)
-				WHERE venue_id = :venue AND id IN (:ids)
+				WHERE venue_id = :venue AND id IN (:ids) AND retired_at IS NULL
 				""")
 				.param("tier", c.tier())
 				.param("pool", c.pool() == null ? null : c.pool().name())
@@ -392,7 +407,8 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 
 	@Override
 	public int deleteAllSets(VenueId venueId) {
-		return jdbc.sql("DELETE FROM set_position WHERE venue_id = :venue")
+		// Retired rows are history the FK pins; the replace only ever clears the active map.
+		return jdbc.sql("DELETE FROM set_position WHERE venue_id = :venue AND retired_at IS NULL")
 				.param(P_VENUE, venueId.value())
 				.update();
 	}

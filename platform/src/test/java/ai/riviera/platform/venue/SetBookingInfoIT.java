@@ -71,6 +71,31 @@ class SetBookingInfoIT {
 	}
 
 	@Test
+	void answersForARetiredSet() {
+		long venue = jdbc.sql("""
+				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
+				VALUES ('Retired Facts Club', 'Ksamil', 'Riviera', 'INSTANT', 1500, 'EUR')
+				RETURNING id
+				""").query(Long.class).single();
+		long retired = jdbc.sql("""
+				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool,
+				                          price_minor, price_currency, grid_x, grid_y, retired_at)
+				VALUES (:venue, 'Retired row', 7, 'STANDARD', 'ONLINE', 2500, 'EUR', 1, 1, :retiredAt)
+				RETURNING id
+				""")
+				.param("venue", venue)
+				.param("retiredAt", java.time.OffsetDateTime.parse("2026-09-08T10:00:00Z"))
+				.query(Long.class).single();
+
+		Optional<SetBookingInfo> info = catalog.setBookingInfo(new SetId(retired));
+
+		assertTrue(info.isPresent(), "the facts port is the one read a retired set still answers (ADR-0019)");
+		assertEquals("Retired row", info.get().rowLabel());
+		assertEquals(7, info.get().positionNo());
+		assertTrue(catalog.setBookingInfos(List.of(new SetId(retired))).containsKey(new SetId(retired)));
+	}
+
+	@Test
 	void emptyForUnknownSet() {
 		assertTrue(catalog.setBookingInfo(new SetId(999_999L)).isEmpty());
 	}

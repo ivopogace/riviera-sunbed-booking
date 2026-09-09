@@ -90,10 +90,10 @@ class VenueSeedMigrationIT {
 
 	@Test
 	void enforcesOneSetPerGridCell() {
-		// invariant #12: the layout UNIQUE(venue_id, row_label, position_no) constraint exists.
+		// invariant #12: one ACTIVE set per (venue_id, row_label, position_no); a retired set may share its slot with its replacement (ADR-0019).
 		Integer duplicateCells = jdbc.queryForObject(
 				"SELECT count(*) FROM (SELECT venue_id, row_label, position_no "
-						+ "FROM set_position GROUP BY venue_id, row_label, position_no "
+						+ "FROM active_set_position GROUP BY venue_id, row_label, position_no "
 						+ "HAVING count(*) > 1) dupes", Integer.class);
 		assertThat(duplicateCells).isZero();
 	}

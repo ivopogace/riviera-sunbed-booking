@@ -6,7 +6,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -34,9 +33,7 @@ import ai.riviera.platform.venue.vocabulary.DailyAvailability;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.PhotoSurface;
-import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.Pool;
-import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetView;
 import ai.riviera.platform.venue.api.VenueCatalog;
@@ -50,15 +47,17 @@ import ai.riviera.platform.venue.spi.SalesWindow;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 
 /**
- * JDBC adapter implementing the three role-split {@code venue::api} read ports —
- * {@link VenueCatalog}, {@link SetBookingFacts}, {@link VenueRates} — directly (no
- * intervening application service / out-port — a single adapter is a hypothetical seam,
- * not a real one). One bean, three narrow surfaces. Explicit SQL via
- * {@link JdbcClient}, no JPA (invariant #1): one query loads the venue, a second
- * loads its sets ordered for rendering, and from-price is the minimum set price.
+ * JDBC adapter implementing two of the role-split {@code venue::api} read ports —
+ * {@link VenueCatalog}, {@link VenueRates} — directly (no intervening application service /
+ * out-port — a single adapter is a hypothetical seam, not a real one). Explicit SQL via
+ * {@link JdbcClient}, no JPA (invariant #1): one query loads the venue, a second loads its
+ * active sets ordered for rendering, and from-price is the minimum set price. The third port,
+ * {@code SetBookingFacts}, is {@link JdbcSetBookingFacts}: it must keep answering for a retired
+ * set while every read here forgets one (ADR-0019), and the fitness function holding that line
+ * exempts a class, so the two conversations are two classes.
  */
 @Repository
-class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
+class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 
 	private static final String AVAILABILITY_FREE = "FREE";
 	private static final String AVAILABILITY_TAKEN = "TAKEN";
@@ -130,7 +129,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		List<SetRow> rows = jdbc.sql("""
 				SELECT id, row_label, position_no, tier, pool, price_minor, price_currency,
 				       grid_x, grid_y
-				FROM set_position
+				FROM active_set_position
 				WHERE venue_id = :id
 				ORDER BY grid_y, grid_x
 				""")
@@ -206,7 +205,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		List<Long> venueIds = venues.stream().map(SummaryRow::id).toList();
 		List<SetPriceRow> sets = jdbc.sql("""
 				SELECT id, venue_id, price_minor, price_currency
-				FROM set_position
+				FROM active_set_position
 				WHERE venue_id IN (:venueIds)
 				""")
 				.param(P_VENUE_IDS, venueIds)
@@ -388,57 +387,6 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				.orElseGet(OptionalInt::empty);
 	}
 
-	@Override
-	public Optional<Pool> poolForClaim(SetId setId) {
-		// FOR KEY SHARE: the lock the claim's own INSERT needs anyway, taken early (invariant #3).
-		return jdbc.sql("SELECT pool FROM set_position WHERE id = :id FOR KEY SHARE")
-				.param("id", setId.value())
-				.query(String.class)
-				.optional()
-				.map(Pool::valueOf);
-	}
-
-	/** The set-facts row shared by the single-id and batch reads — one SQL shape, one mapper. */
-	private static final String SET_BOOKING_INFO_SELECT = """
-			SELECT sp.id AS set_id, sp.venue_id, v.name AS venue_name, sp.row_label,
-			       sp.position_no, sp.pool, sp.price_minor, sp.price_currency, v.booking_cutoff,
-			       v.sales_close, v.booking_mode
-			FROM set_position sp
-			JOIN venue v ON v.id = sp.venue_id
-			""";
-
-	@Override
-	public Optional<SetBookingInfo> setBookingInfo(SetId setId) {
-		return jdbc.sql(SET_BOOKING_INFO_SELECT + "WHERE sp.id = :id")
-				.param("id", setId.value())
-				.query(JdbcVenueCatalog::mapSetBookingInfo)
-				.optional();
-	}
-
-	@Override
-	public Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds) {
-		if (setIds.isEmpty()) {
-			return Map.of();
-		}
-		return jdbc.sql(SET_BOOKING_INFO_SELECT + "WHERE sp.id IN (:setIds)")
-				.param("setIds", setIds.stream().map(SetId::value).toList())
-				.query(JdbcVenueCatalog::mapSetBookingInfo)
-				.list().stream()
-				.collect(Collectors.toMap(SetBookingInfo::setId, info -> info));
-	}
-
-	private static SetBookingInfo mapSetBookingInfo(java.sql.ResultSet rs, int rowNum)
-			throws java.sql.SQLException {
-		return new SetBookingInfo(
-				new SetId(rs.getLong("set_id")), new VenueId(rs.getLong(COL_VENUE_ID)),
-				rs.getString("venue_name"), rs.getString("row_label"),
-				rs.getInt("position_no"), Pool.valueOf(rs.getString("pool")),
-				new MoneyView(rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)),
-				rs.getObject("booking_cutoff", java.time.LocalTime.class),
-				rs.getObject(COL_SALES_CLOSE, java.time.LocalTime.class),
-				BookingMode.valueOf(rs.getString(COL_BOOKING_MODE)));
-	}
-
 	private record VenueRow(long id, String name, String beach, String region,
 			String description, int ratingTenths, int reviewsCount, String bookingMode,
 			Integer distanceToWaterM, long setVersion, LocalTime salesClose) {
@@ -475,7 +423,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		// Ids only — the calendar needs how many sets there are, not how they render or price.
 		List<SetId> sets = jdbc.sql("""
 				SELECT id
-				FROM set_position
+				FROM active_set_position
 				WHERE venue_id = :id
 				""")
 				.param("id", id.value())

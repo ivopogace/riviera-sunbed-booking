@@ -11,13 +11,15 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 /**
  * The {@code venue} module's published <strong>set-facts</strong> port (invariant #11) —
  * the booking-relevant truths about a single set, split out of {@code VenueCatalog} by
- * consumer role (issue #94) so callers depend only on the surface they use. Consumed by
+ * consumer role so callers depend only on the surface they use. Consumed by
  * {@code booking} (reserve, cancel, view) and {@code availability} (claim pool check,
  * staff mark).
  *
  * <p>Deliberately <strong>not</strong> fenced by tourist visibility ({@code
- * operator.api.VenueVisibility}): sold-booking paths — cancel, view, mails, staff marks —
- * must keep answering for a hidden venue's sets. The reserve path applies the fence itself.
+ * operator.api.VenueVisibility}), and the one port that still answers for a <strong>retired</strong>
+ * set (ADR-0019): sold-booking paths — cancel, view, mails, staff lookups — must keep resolving a
+ * hidden venue's sets and a spot that has since left the map. The reserve path applies the
+ * visibility fence itself; {@link #poolForClaim} is the retired-set fence for both claim paths.
  */
 public interface SetBookingFacts {
 
@@ -26,6 +28,10 @@ public interface SetBookingFacts {
 	 * lock held for the caller's transaction</strong>. Used by the {@code availability} module to
 	 * enforce invariant #3 (an online booking can only target a {@link Pool#ONLINE} set) before
 	 * claiming, without reaching into venue's tables.
+	 *
+	 * <p>Also the claim-time existence gate: it reads the <em>active</em> map, so a retired set
+	 * answers empty here while {@link #setBookingInfo} still resolves it — which is why the staff
+	 * mark, pool-agnostic as it is, takes this read before writing its hold.
 	 *
 	 * <p>The lock is the weakest one that conflicts with the {@code FOR UPDATE} a per-set layout
 	 * edit takes — the same lock this caller's own {@code INSERT} needs for its FK check, only
@@ -39,7 +45,8 @@ public interface SetBookingFacts {
 
 	/**
 	 * The booking-relevant facts about a set (pool, price, owning venue, sales close,
-	 * evening-before cutoff), or empty if no set has that id. Consumed by the {@code booking}
+	 * evening-before cutoff), or empty if no set has that id — a retired set still answers, with the
+	 * row label and position it had. Consumed by the {@code booking}
 	 * module (U3) to enforce the pool rule (invariant #3), record the amount (invariant #5),
 	 * and gate/compute the day's boundaries (invariant #4) — in one lookup, without touching
 	 * venue's tables (invariant #11).
