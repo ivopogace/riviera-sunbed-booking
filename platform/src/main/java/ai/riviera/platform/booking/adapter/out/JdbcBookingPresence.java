@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.booking.domain.BookingStatus;
 
+import ai.riviera.platform.venue.vocabulary.LiveBookingCounts;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.spi.BookingPresence;
@@ -101,5 +102,23 @@ class JdbcBookingPresence implements BookingPresence {
 				.list()
 				.stream()
 				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
+	}
+
+	@Override
+	public LiveBookingCounts liveBookingsFrom(VenueId venueId, LocalDate from) {
+		// A pending request is owed an answer; every other live status is a guest still coming.
+		return jdbc.sql("""
+				SELECT COUNT(*) FILTER (WHERE status <> :pending) AS future_bookings,
+				       COUNT(*) FILTER (WHERE status = :pending) AS pending_requests
+				FROM booking
+				WHERE venue_id = :venue AND booking_date >= :from AND status IN (:live)
+				""")
+				.param("venue", venueId.value())
+				.param("from", from)
+				.param("live", LIVE_STATUSES)
+				.param("pending", BookingStatus.PENDING_REQUEST.name())
+				.query((rs, rowNum) -> new LiveBookingCounts(
+						rs.getInt("future_bookings"), rs.getInt("pending_requests")))
+				.single();
 	}
 }

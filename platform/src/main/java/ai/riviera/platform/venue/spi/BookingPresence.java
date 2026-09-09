@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Map;
 
+import ai.riviera.platform.venue.vocabulary.LiveBookingCounts;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -73,4 +74,11 @@ public interface BookingPresence {
 	 *         {@code null}; an empty input yields an empty result without touching the database
 	 */
 	Map<SetId, LocalDate> nearestLiveBookings(Collection<SetId> setIds);
+
+	/**
+	 * What the venue's guests are still owed from {@code from} (a civil day in {@code Europe/Tirane})
+	 * on: bookings a guest may still turn up on, and requests the venue has not answered. Serves the
+	 * close-for-season response; which statuses count is this module's call.
+	 */
+	LiveBookingCounts liveBookingsFrom(VenueId venueId, LocalDate from);
 }

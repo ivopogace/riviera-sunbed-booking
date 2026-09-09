@@ -109,7 +109,11 @@ import ai.riviera.platform.venue.api.VenueRates;
 import ai.riviera.platform.venue.application.AddSetOutcome;
 import ai.riviera.platform.venue.application.ChangeOutcome;
 import ai.riviera.platform.venue.application.CommissionRateCommand;
+import ai.riviera.platform.venue.application.CloseForSeason;
+import ai.riviera.platform.venue.application.CloseOutcome;
 import ai.riviera.platform.venue.application.EditBeachMap;
+import ai.riviera.platform.venue.application.ReopenOutcome;
+import ai.riviera.platform.venue.application.SeasonClosureRejection;
 import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.LayoutCommand;
 import ai.riviera.platform.venue.application.ListOwnedVenues;
@@ -203,6 +207,23 @@ class WebSliceStubs {
 	@Bean
 	ExpireRequests expireRequests() {
 		return () -> 0;
+	}
+
+	/** The owner's close/reopen port, inert: every venue is unknown. */
+	@Bean
+	CloseForSeason closeForSeason() {
+		return new CloseForSeason() {
+			@Override
+			public CloseOutcome close(OperatorId operator, VenueId venueId,
+					ai.riviera.platform.venue.vocabulary.SeasonClosure closure) {
+				return new CloseOutcome.Rejected(SeasonClosureRejection.NO_SUCH_VENUE);
+			}
+
+			@Override
+			public ReopenOutcome reopen(OperatorId operator, VenueId venueId) {
+				return ReopenOutcome.NO_SUCH_VENUE;
+			}
+		};
 	}
 
 	/** Stamp a client IP onto a MockMvc request (shared by the rate-limit slices). */

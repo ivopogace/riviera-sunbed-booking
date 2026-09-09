@@ -352,15 +352,15 @@ APIs. No deviation.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** phase 1 — red the close/reopen tests in `VenueAdminServiceTest`, `JdbcBookingPresenceIT`, `SeasonClosureControllerIT`.
+**Next action:** phase 2 — red `CreateBookingServiceTest` (`VENUE_CLOSED`), `SeasonClosureCatalogIT`, `SeasonClosureReserveIT`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V51 + `SeasonClosure` + the `BookingCutoff` arm + `SalesWindow` widened | ✅ | (phase 0 commit) |
-| 1 — close/reopen endpoint, `SeasonClosureService`, `Venues` writes, `LiveBookingCounts` + `BookingPresence#liveBookingsFrom`, profile carries the closure, security matchers, ITs | ⏳ | |
-| 2 — catalogue projection (list order, map, calendar `salesOpen`), `SetBookingInfo` closure, `VENUE_CLOSED` fence, ITs with the mocked clock, structural net | | |
+| 0 — V51 + `SeasonClosure` + the `BookingCutoff` arm + `SalesWindow` widened | ✅ | `6669d155` |
+| 1 — close/reopen endpoint, `SeasonClosureService`, `Venues` writes, `LiveBookingCounts` + `BookingPresence#liveBookingsFrom`, profile carries the closure, security matchers, ITs | ✅ | (phase 1 commit) |
+| 2 — catalogue projection (list order, map, calendar `salesOpen`), `SetBookingInfo` closure, `VENUE_CLOSED` fence, ITs with the movable clock, structural net | ⏳ | |
 | 3 — frontend: models, chip, Discover card, map notice, calendar, booking copy, Venue tab season card, specs + a11y + contrast, mocked e2e | | |
 | 4 — docs: `CONTEXT.md`, `RESPONSIBILITIES.md`, domain-model, `CLAUDE.md` row, package Javadocs; retire `pinned-cells.md`; PR | | |
 
@@ -432,7 +432,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java`
 - `platform/src/test/java/ai/riviera/platform/VenueAvailabilityCalendarControllerTest.java`
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAvailabilityCalendarIT.java`
-- `platform/src/test/java/ai/riviera/platform/EndpointRoleGateCoverageTest.java` (if it enumerates routes by name)
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — the inert `CloseForSeason` bean the web slices need
 
 **Frontend — new**
 - `frontend/src/app/shared/closed-for-season-chip.ts` · `.spec.ts` · `.a11y.spec.ts` · `.contrast.spec.ts`

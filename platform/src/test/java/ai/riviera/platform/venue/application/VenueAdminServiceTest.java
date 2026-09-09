@@ -28,6 +28,8 @@ import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
+import ai.riviera.platform.venue.vocabulary.LiveBookingCounts;
+import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -78,6 +80,9 @@ class VenueAdminServiceTest {
 	private static final VenueCreationProperties CREATION = new VenueCreationProperties(500);
 
 	private final VenueAdminService service = new VenueAdminService(venues, new FakeOwnership(OWNER, VENUE));
+
+	private final SeasonClosureService seasons =
+			new SeasonClosureService(venues, new FakeOwnership(OWNER, VENUE), bookings, CLOCK);
 
 	private final BeachMapEditService mapEditor = new BeachMapEditService(
 			venues, new FakeOwnership(OWNER, VENUE), new LiveClaims(availability, bookings, CLOCK),
@@ -1011,6 +1016,72 @@ class VenueAdminServiceTest {
 	}
 
 	/** Stub {@link VenueOwnership} over an explicit operator→venues map (the S9 owned-venues read). */
+	// --- closed for season: the owner-asserted state transition and its counts ---
+
+	@Test
+	void closeAssertsOwnershipBeforeAnythingElse() {
+		venues.venues.add(VENUE.value());
+		assertThrows(NotVenueOwnerException.class,
+				() -> seasons.close(STRANGER, VENUE, SeasonClosure.closed(TODAY_IN_TIRANE.plusDays(30), false)));
+		assertThrows(NotVenueOwnerException.class, () -> seasons.reopen(STRANGER, VENUE));
+		assertEquals(0, venues.closures);
+		assertEquals(0, venues.reopenings);
+	}
+
+	@Test
+	void closeAndReopenRefuseAnUnknownVenue() {
+		assertEquals(new CloseOutcome.Rejected(SeasonClosureRejection.NO_SUCH_VENUE),
+				seasons.close(OWNER, VENUE, SeasonClosure.closed(null, false)));
+		assertEquals(ReopenOutcome.NO_SUCH_VENUE, seasons.reopen(OWNER, VENUE));
+	}
+
+	@Test
+	void closeRefusesAReopenDateNotAfterTodayInTirane() {
+		venues.venues.add(VENUE.value());
+		// 22:30Z on the 15th is already the 16th in Tirane: the 16th is today, so it is refused.
+		assertEquals(new CloseOutcome.Rejected(SeasonClosureRejection.REOPEN_DATE_PASSED),
+				seasons.close(OWNER, VENUE, SeasonClosure.closed(TODAY_IN_TIRANE, false)));
+		assertEquals(new CloseOutcome.Rejected(SeasonClosureRejection.REOPEN_DATE_PASSED),
+				seasons.close(OWNER, VENUE, SeasonClosure.closed(TODAY_IN_TIRANE.minusDays(1), true)));
+		assertEquals(0, venues.closures);
+	}
+
+	@Test
+	void closeStampsTheClosureAndAnswersTheCountsFromToday() {
+		venues.venues.add(VENUE.value());
+		bookings.liveCounts = new LiveBookingCounts(3, 2);
+		SeasonClosure closure = SeasonClosure.closed(TODAY_IN_TIRANE.plusDays(1), true);
+
+		assertEquals(new CloseOutcome.Closed(closure, new LiveBookingCounts(3, 2)),
+				seasons.close(OWNER, VENUE, closure));
+		assertEquals(1, venues.closures);
+		assertEquals(closure, venues.lastClosure);
+		assertEquals(CLOCK.instant(), venues.lastClosedAt);
+		assertEquals(TODAY_IN_TIRANE, bookings.countedFrom, "the counts start on today in Tirane, not UTC");
+	}
+
+	@Test
+	void closeWithoutAReopenDateHoldsIndefinitely() {
+		venues.venues.add(VENUE.value());
+		SeasonClosure closure = SeasonClosure.closed(null, false);
+		assertEquals(new CloseOutcome.Closed(closure, new LiveBookingCounts(0, 0)),
+				seasons.close(OWNER, VENUE, closure));
+		assertEquals(closure, venues.lastClosure);
+	}
+
+	@Test
+	void closeRefusesAnOpenValue() {
+		venues.venues.add(VENUE.value());
+		assertThrows(IllegalArgumentException.class, () -> seasons.close(OWNER, VENUE, SeasonClosure.open()));
+	}
+
+	@Test
+	void reopenClearsTheClosure() {
+		venues.venues.add(VENUE.value());
+		assertEquals(ReopenOutcome.REOPENED, seasons.reopen(OWNER, VENUE));
+		assertEquals(1, venues.reopenings);
+	}
+
 	private record MultiOwnership(Map<OperatorId, Set<VenueRef>> byOperator) implements VenueOwnership {
 		@Override
 		public void assertOwns(OperatorId operator, VenueRef target) {
@@ -1159,8 +1230,25 @@ class VenueAdminServiceTest {
 			return venues.contains(venueId.value())
 					? Optional.of(new VenueProfileView("Sunset", "Ksamil", "Riviera", "nice",
 							BookingMode.INSTANT, LocalTime.of(18, 0), LocalTime.of(16, 0), 1500, "EUR",
-							List.of(Amenity.WIFI), 20, 0, List.of()))
+							List.of(Amenity.WIFI), 20, 0, List.of(), SeasonClosure.open(), false))
 					: Optional.empty();
+		}
+
+		int closures;
+		int reopenings;
+		SeasonClosure lastClosure;
+		Instant lastClosedAt;
+
+		@Override
+		public void closeForSeason(VenueId venueId, SeasonClosure closure, Instant closedAt) {
+			closures++;
+			lastClosure = closure;
+			lastClosedAt = closedAt;
+		}
+
+		@Override
+		public void reopenForSeason(VenueId venueId) {
+			reopenings++;
 		}
 
 		final List<Long> existingSetIds = new ArrayList<>();
@@ -1318,6 +1406,14 @@ class VenueAdminServiceTest {
 		boolean hasBookings;
 		boolean setHasBookings;
 		boolean setHasLiveBookings;
+		LiveBookingCounts liveCounts = new LiveBookingCounts(0, 0);
+		LocalDate countedFrom;
+
+		@Override
+		public LiveBookingCounts liveBookingsFrom(VenueId venueId, LocalDate from) {
+			countedFrom = from;
+			return liveCounts;
+		}
 
 		@Override
 		public boolean hasBookings(VenueId venueId) {

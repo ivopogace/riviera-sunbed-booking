@@ -14,6 +14,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.venue.spi.BookingPresence;
+import ai.riviera.platform.venue.vocabulary.LiveBookingCounts;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -125,6 +126,32 @@ class JdbcBookingPresenceIT {
 				"the earliest non-terminal date; the cancelled one before it and the finished set are absent");
 		assertEquals(Map.of(), presence.nearestLiveBookings(List.of()),
 				"an empty input answers empty without a query");
+	}
+
+	/**
+	 * The counts the close-for-season response carries: what a guest is still owed from {@code from}
+	 * on, split into bookings (confirmed or awaiting payment) and pending requests. Terminal rows and
+	 * days already gone count nowhere; a neighbouring venue never bleeds in.
+	 */
+	@Test
+	void liveBookingsFromCountsWhatAGuestIsStillOwed() {
+		long venueId = insertVenue("Counts Venue");
+		long neighbour = insertVenue("Counts Neighbour");
+		long set = insertSet(venueId, 1);
+		long neighbourSet = insertSet(neighbour, 1);
+		LocalDate from = LocalDate.of(2027, 9, 1);
+		insertBooking("CNT00001", venueId, set, "CONFIRMED", from);
+		insertBooking("CNT00002", venueId, set, "AWAITING_PAYMENT", from.plusDays(3));
+		insertBooking("CNT00003", venueId, set, "PENDING_REQUEST", from.plusDays(5));
+		insertBooking("CNT00004", venueId, set, "CONFIRMED", from.minusDays(1));
+		insertBooking("CNT00005", venueId, set, "CANCELLED", from.plusDays(9));
+		insertBooking("CNT00006", venueId, set, "EXPIRED", from.plusDays(9));
+		insertBooking("CNT00007", neighbour, neighbourSet, "CONFIRMED", from.plusDays(2));
+
+		assertEquals(new LiveBookingCounts(2, 1), presence.liveBookingsFrom(new VenueId(venueId), from),
+				"two bookings a guest may still turn up on from the 1st, one request still awaiting the venue");
+		assertEquals(new LiveBookingCounts(0, 0), presence.liveBookingsFrom(new VenueId(venueId), from.plusDays(10)),
+				"nothing is owed past the last live date");
 	}
 
 	private long insertVenue(String name) {

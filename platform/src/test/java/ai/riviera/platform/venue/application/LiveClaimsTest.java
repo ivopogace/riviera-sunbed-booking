@@ -143,6 +143,11 @@ class LiveClaimsTest {
 		}
 
 		@Override
+		public ai.riviera.platform.venue.vocabulary.LiveBookingCounts liveBookingsFrom(VenueId venueId, LocalDate from) {
+			return new ai.riviera.platform.venue.vocabulary.LiveBookingCounts(0, 0);
+		}
+
+		@Override
 		public Map<SetId, LocalDate> nearestLiveBookings(Collection<SetId> setIds) {
 			return setIds.stream()
 					.filter(liveOn::containsKey)
