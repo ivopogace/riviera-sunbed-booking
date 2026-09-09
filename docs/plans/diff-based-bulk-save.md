@@ -49,7 +49,7 @@ the retire-or-delete decision) · `tdd` (each phase red first at the named seam:
 test, the service unit tests through `EditBeachMap`, the HTTP ITs, the concurrency IT, the Vitest
 specs, the mocked e2e) · `riviera-review-overlay` (review gate — **ran** on PR #1050 over `6521f8d5..bcea4ac4`: five generic
 reviewers plus the overlay walk; RV-BE-1/9, RV-CT-1/5, RV-STYLE-1, RV-PROC-1/2 clean; findings F-1..F-3 and F-5..F-6, all
-fixed in the PR) · `riviera-docs-freshness` (**running** over `6521f8d5..3a7ff04f` — the rename grep, the counting sweep over the third `ReplaceLayoutOutcome` variant and the four `BookingPresence` probes, the map walk; findings and the retirement of `docs/plans/closed-for-season.md` — whose slug is cited nowhere as a plan path — land in the close-out commits) ·
+fixed in the PR) · `riviera-docs-freshness` (**ran** over `6521f8d5..3a7ff04f`, zero findings: the rename grep for `LAYOUT_IN_USE`, `deleteAllSets`, `hasBookings(VenueId)` and the id-returning `lockSetsOfVenue` hits only ADR-0019's historical context; the counting sweep over the third `ReplaceLayoutOutcome` variant and the four `BookingPresence` probes finds every count already updated in this diff; the map walk finds no stated sentence falsified; `docs/plans/closed-for-season.md` retired, its slug cited nowhere as a plan path) ·
 `grilling` (the intake questions answered from the code; the calls a colleague would make —
 coordinate as the identity key, the token advancing on every successful save, the write order
 removals → updates → inserts — are recorded as resolved assumptions below) ·
