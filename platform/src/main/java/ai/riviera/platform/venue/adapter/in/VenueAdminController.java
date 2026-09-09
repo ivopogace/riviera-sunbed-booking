@@ -64,7 +64,8 @@ import ai.riviera.platform.venue.application.ViewVenueProfile;
 @RequestMapping("/api/venues")
 class VenueAdminController {
 
-	/** The 404 problem detail shared by every NO_SUCH_VENUE outcome (profile write + beach-map edits). */
+	/** The 404 code and detail shared by every NO_SUCH_VENUE outcome (profile write, owner reads, beach-map edits). */
+	private static final String NO_SUCH_VENUE_CODE = "NO_SUCH_VENUE";
 	private static final String NO_SUCH_VENUE_DETAIL = "No such venue.";
 
 	/**
@@ -147,7 +148,7 @@ class VenueAdminController {
 		OperatorId operator = currentOperator.require(authentication);
 		return viewDailyAvailability.statesFor(operator, new VenueId(venueId), date)
 				.<ResponseEntity<?>>map(ResponseEntity::ok)
-				.orElseGet(() -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_VENUE",
+				.orElseGet(() -> ApiProblem.response(HttpStatus.NOT_FOUND, NO_SUCH_VENUE_CODE,
 						NO_SUCH_VENUE_DETAIL));
 	}
 
@@ -163,7 +164,7 @@ class VenueAdminController {
 		OperatorId operator = currentOperator.require(authentication);
 		return viewBeachMap.beachMapFor(operator, new VenueId(venueId))
 				.<ResponseEntity<?>>map(beachMap -> ResponseEntity.ok(OperatorBeachMapView.of(beachMap)))
-				.orElseGet(() -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_VENUE",
+				.orElseGet(() -> ApiProblem.response(HttpStatus.NOT_FOUND, NO_SUCH_VENUE_CODE,
 						NO_SUCH_VENUE_DETAIL));
 	}
 
@@ -179,7 +180,7 @@ class VenueAdminController {
 		return switch (editVenueProfile.updateProfile(operator, new VenueId(venueId),
 				expectedVersion, command)) {
 			case APPLIED -> ResponseEntity.noContent().build();
-			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_VENUE",
+			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, NO_SUCH_VENUE_CODE,
 					NO_SUCH_VENUE_DETAIL);
 			case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, "STALE_WRITE",
 					STALE_PROFILE_DETAIL);
