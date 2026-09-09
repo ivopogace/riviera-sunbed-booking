@@ -69,6 +69,18 @@ model in `docs/architecture/domain-model.md`.
   gone from the map, the calendar, the counts, the daily view and both claim paths, while every
   booking, mail and staff lookup that names it keeps resolving to the row and position it had. A
   retired set never comes back; the set that takes its spot is a new set.
+- **Remodel zone** — how close a live claim's service day is when a layout change would take its
+  set, measured as the time left until that day opens (midnight, `Europe/Tirane`), never as a count
+  of calendar days: **frozen** when the day opens within the freeze window or has opened — the
+  claim pins its set; **move-only** when it opens within the refund-notice floor — the booking may
+  be moved to another set, never refunded by the venue's change; **move-or-refund** beyond it. The
+  two bounds are settings, not dates, so the answer does not depend on the hour the operator clicks.
+- **Move candidate** — a free set a disturbed booking could be seated on instead, on the same date:
+  in the online pool, of the same or a better tier, preferring the same row, then the closest
+  position, then the closest row. Never a worse tier, never a walk-in set, never another date. One
+  free set serves one booking per date.
+- **Move distance** — how far a move candidate is from the booked set, in rows and positions
+  ("A3 → A7, 4 positions along the row"; "1 row over"), so the operator and the guest can judge it.
 - **Set** — the bookable unit: **2 loungers + 1 umbrella**, full day, tied to a set
   position. The thing a tourist books.
 - **Tier** — `PREMIUM` (front-row / better) or `STANDARD`; affects price.

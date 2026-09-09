@@ -73,8 +73,7 @@ class PayoutModuleTest {
 	@MockitoBean
 	DailyTakings bookingTakings;
 
-	// The root's remodel preview controller (ADR-0020) composes venue's and booking's remodel ports;
-	// neither module is bootstrapped here, so both are mocked to let the root edge load.
+	// The root's remodel preview controller composes these two ports; neither module is bootstrapped here.
 	@MockitoBean
 	ai.riviera.platform.venue.api.BeachMapRemodel beachMapRemodel;
 

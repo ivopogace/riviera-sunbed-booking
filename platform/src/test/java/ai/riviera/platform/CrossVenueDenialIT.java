@@ -166,8 +166,7 @@ class CrossVenueDenialIT {
 
 	@Test
 	void remodelPreviewByNonOwnerIs403() throws Exception {
-		// The dry run is venue-scoped like the save it previews: each module port asserts ownership
-		// first, so a non-owner learns nothing about Miramar's claims (invariant #13, ADR-0020).
+		// Venue-scoped like the save it previews: each module port asserts ownership first (invariant #13).
 		actingAs(operatorA);
 		String previewBody = """
 				{"sets":[{"rowLabel":"A","positionNo":1,"gridX":1,"gridY":1}],"expectedVersion":0}

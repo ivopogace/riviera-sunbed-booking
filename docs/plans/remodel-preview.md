@@ -111,39 +111,39 @@ for `feature/remodel-preview`).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a booking on 15 July and the freeze window 24h / notice floor 96h, when the zone
+- [x] **AC-1:** Given a booking on 15 July and the freeze window 24h / notice floor 96h, when the zone
   is asked at 23:00 on 13 July and at 00:30 on 14 July (`Europe/Tirane`), then both answer
   `MOVE_ONLY`; for a booking on 19 July both answer `MOVE_OR_REFUND`; a booking whose day opens in
   exactly 24h, or already opened, is `FROZEN`. *Seam:* `RemodelZones#zoneOf(LocalDate, Instant)` ·
   *Pinned by:* `RemodelZonesTest.*`
-- [ ] **AC-2:** Given a claim on A3 (row A, position 3, grid row 1) and a candidate pool, when the
+- [x] **AC-2:** Given a claim on A3 (row A, position 3, grid row 1) and a candidate pool, when the
   ranking runs, then it picks the same row first, then the closest position, then the closest row,
   never a worse tier, never a walk-in set, never another date, and reports rows-away and
   positions-away. *Seam:* `MoveRanking#pick(SetSpot from, LocalDate date, List<FreeSpot> pool)` ·
   *Pinned by:* `MoveRankingTest.*`
-- [ ] **AC-3:** Given live bookings on the disturbed sets, when classified, then a frozen claim is
+- [x] **AC-3:** Given live bookings on the disturbed sets, when classified, then a frozen claim is
   `Blocked(FROZEN)`, a move-only claim with no candidate is `Blocked(NO_MOVE_CANDIDATE)`, a claim
   with a candidate is `Move`, and with no candidate beyond the floor `CONFIRMED` is `Refund`,
   `AWAITING_PAYMENT` is `Release`, `PENDING_REQUEST` is `Decline`; two claims on one date never share a
   candidate; a non-owner is refused before any read. *Seam:* `booking.api.RemodelClaims#classify` with
   fakes · *Pinned by:* `RemodelClaimsServiceTest.*`
-- [ ] **AC-4:** Given a venue with a live booking on A1, a staff hold on A3 and a pool switch on A2,
+- [x] **AC-4:** Given a venue with a live booking on A1, a staff hold on A3 and a pool switch on A2,
   when the owner previews a layout that keeps every cell but repaints A2, then the answer is
   `Disturbing([])`; when it drops A1 and A3, then the answer names A1 and A3 with A3's hold dates; a
   stale token answers `Rejected(STALE_WRITE)`, an unknown venue `Rejected(NO_SUCH_VENUE)`, and a
   non-owner is refused first. *Seam:* `venue.api.BeachMapRemodel#preview` with fakes · *Pinned by:*
   `BeachMapPreviewServiceTest.*`
-- [ ] **AC-5:** Given the owner's session, when `POST /api/venues/{v}/beach-map/preview` carries the
+- [x] **AC-5:** Given the owner's session, when `POST /api/venues/{v}/beach-map/preview` carries the
   save body, then the response carries the five groups and `keep`, nothing is written, the token
   does not advance; a non-owner gets `403 NOT_VENUE_OWNER`; a stale token `409 STALE_WRITE`; a
   repaint-only body answers every group empty without asking `booking`. *Seam:* HTTP
   `POST /api/venues/{venueId}/beach-map/preview` · *Pinned by:* `RemodelPreviewIT.*`,
   `CrossVenueDenialIT.previewIsDeniedForANonOwner`
-- [ ] **AC-6:** `ModularityTests` and the structural net are green with the two new ports, the root
+- [x] **AC-6:** `ModularityTests` and the structural net are green with the two new ports, the root
   grant and the `spi` method; `CompositionRootDisciplineTests` admits `venue`/`booking`
   `api`+`vocabulary` only; `EndpointRoleGateCoverageTest` sees the POST gated. *Seam:* the net +
   the two named tests · *Pinned by:* the net command in `CLAUDE.md`
-- [ ] **AC-7:** Given the editor loaded a trading venue, when the operator paints a loaded set to a
+- [x] **AC-7:** Given the editor loaded a trading venue, when the operator paints a loaded set to a
   gap and saves, then the editor POSTs the preview first; an all-empty answer proceeds straight to
   the PUT; a non-empty answer opens an `alertdialog` listing the five groups (move with "A3 → A7,
   4 positions", refund with amount, release/decline, staff hold with dates, block with the set to
@@ -152,12 +152,12 @@ for `feature/remodel-preview`).
   loaded set never previews. *Seam:* the `LayoutEditor` DOM through the mocked `HttpTestingController` ·
   *Pinned by:* `layout-editor.spec.ts` "previews…" cases, `remodel-preview-panel.spec.ts`,
   `remodel-preview-panel.a11y.spec.ts`, `remodel-preview-panel.contrast.spec.ts`
-- [ ] **AC-8:** Given a mocked preview answering the five groups, when the operator saves from the
+- [x] **AC-8:** Given a mocked preview answering the five groups, when the operator saves from the
   running SPA, then the dialog renders each group, axe is clean, the save is `aria-disabled`, Back
   restores focus to Save, and a preview answering nothing goes straight to the PUT. *Seam:* the
   running SPA against `page.route` mocks · *Pinned by:* `frontend/e2e/layout-editor.e2e.ts`
   "previews the remodel…" cases
-- [ ] **AC-9:** `CONTEXT.md` defines Remodel zone, Move candidate and Move distance;
+- [x] **AC-9:** `CONTEXT.md` defines Remodel zone, Move candidate and Move distance;
   `RESPONSIBILITIES.md` § `venue`, § `booking` and § *Platform edge* describe the preview and its
   orchestration home; ADR-0020 records the root grant. *Seam:* the docs · *Pinned by:* review
   (RV-PROC), `riviera-docs-freshness` at close-out
@@ -303,20 +303,21 @@ never `[disabled]` on the pressed control, `focusMover` on the three legs — no
 
 ## Execution status
 
-**Stage pointer:** `plan — doc committed; next: phase 0`
+**Stage pointer:** `PR — draft #1051; docs landed; next: merge latest main, mark ready, review gate`
 
-**Next action:** phase 0 — `RemodelZonesTest` red at `RemodelZones#zoneOf`.
+**Next action:** merge `origin/main`, push, mark PR #1051 ready for review, run the review gate
+(`references/pr-gates.md` §1) over the resolved range.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the zone holder + properties | | |
-| 1 — the ranking holder + `Tier` | | |
-| 2 — `booking`: the live-claims read, the service, the `api` port | | |
-| 3 — `venue`: `SetPlacement` published, the preview service + port, the facts reads, the SPI method | | |
-| 4 — the edge: controller, security, stubs, ITs, the grant, ADR-0020, the net | | |
-| 5 — the editor: model, service, panel, wiring, Vitest + a11y + contrast | | |
-| 6 — the mocked e2e | | |
-| 7 — docs: CONTEXT, RESPONSIBILITIES, Javadoc; close-out | | |
+| 0 — the zone holder + properties | ✅ | f893073e |
+| 1 — the ranking holder + `Tier` | ✅ | 0a6bb174 |
+| 2 — `booking`: the live-claims read, the service, the `api` port | ✅ | a76eb986 |
+| 3 — `venue`: `SetPlacement` published, the preview service + port, the facts reads, the SPI method | ✅ | cfc5c2ee |
+| 4 — the edge: controller, security, stubs, ITs, the grant, ADR-0020, the net | ✅ | the "Answer the remodel preview at the edge" commit |
+| 5 — the editor: model, service, panel, wiring, Vitest + a11y + contrast | ✅ | 052dca0a |
+| 6 — the mocked e2e | ✅ | 779b9d61 |
+| 7 — docs: CONTEXT, RESPONSIBILITIES, Javadoc; close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -378,14 +379,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/booking/application/remodel/RemodelZonesTest.java` — AC-1 (new)
 - `platform/src/test/java/ai/riviera/platform/booking/application/remodel/RemodelClaimsServiceTest.java` — AC-3 (new)
 - `platform/src/test/java/ai/riviera/platform/booking/domain/MoveRankingTest.java` — AC-2 (new)
-- `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcBookingPresenceIT.java` — `findLiveOnSets`
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcBookingsLiveClaimsIT.java` — `findLiveOnSets` (new)
 - `platform/src/test/java/ai/riviera/platform/venue/application/BeachMapPreviewServiceTest.java` — AC-4 (new)
 - `platform/src/test/java/ai/riviera/platform/venue/application/LayoutDiffTest.java` — `disturbedBy`
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` — fakes
 - `platform/src/test/java/ai/riviera/platform/venue/application/LiveClaimsTest.java` — fake
 - `platform/src/test/java/ai/riviera/platform/venue/application/DailyAvailabilityServiceTest.java` — fake
-- `platform/src/test/java/ai/riviera/platform/venue/JdbcSetBookingFactsIT.java` — the two reads (new)
-- `platform/src/test/java/ai/riviera/platform/availability/adapter/out/JdbcSetAvailabilityLookupIT.java` — the holds read
+- `platform/src/test/java/ai/riviera/platform/venue/SetSpotsIT.java` — the two spot reads (new)
+- `platform/src/test/java/ai/riviera/platform/availability/AvailabilityLookupIT.java` — the holds read
 - `platform/src/test/java/ai/riviera/retirefixture/venue/adapter/out/FixtureSetFacts.java` — the port grows
 - `platform/src/test/java/ai/riviera/platform/RemodelPreviewIT.java` — AC-5 (new)
 - `platform/src/test/java/ai/riviera/platform/CrossVenueDenialIT.java` — AC-5
