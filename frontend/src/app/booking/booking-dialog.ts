@@ -189,7 +189,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                 <input
                   appTouchTarget
                   appFieldGlass
-                  class="rounded-[14px] px-[13px] py-[11px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink"
+                  class="rounded-[14px] px-[13px] py-[11px] text-[16px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink"
                   type="text"
                   autocomplete="name"
                   [formField]="bookingForm.fullName"
@@ -213,7 +213,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                 <input
                   appTouchTarget
                   appFieldGlass
-                  class="rounded-[14px] px-[13px] py-[11px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink"
+                  class="rounded-[14px] px-[13px] py-[11px] text-[16px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink"
                   type="email"
                   autocomplete="email"
                   [formField]="bookingForm.email"
@@ -236,7 +236,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                 <input
                   appTouchTarget
                   appFieldGlass
-                  class="rounded-[14px] px-[13px] py-[11px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink"
+                  class="rounded-[14px] px-[13px] py-[11px] text-[16px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink"
                   type="tel"
                   autocomplete="tel"
                   [formField]="bookingForm.phone"

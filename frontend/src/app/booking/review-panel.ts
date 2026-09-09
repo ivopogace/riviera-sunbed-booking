@@ -42,9 +42,9 @@ const CLS = {
   field: 'mt-3.5 flex flex-col gap-1.5',
   fieldLabel: 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-soft',
   input:
-    'rounded-[11px] px-3 py-2 text-[14px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink',
+    'rounded-[11px] px-3 py-2 text-[16px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink',
   textarea:
-    'resize-y rounded-[11px] px-3 py-2 text-[14px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink',
+    'resize-y rounded-[11px] px-3 py-2 text-[16px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink',
   fieldError: 'text-[12px] font-semibold text-riv-error-ink',
   actions: 'mt-3.5 flex flex-wrap gap-2.5',
   btnOutline: `${BTN_OUTLINE} border-riv-solid-btn-border text-riv-solid-btn-ink`,

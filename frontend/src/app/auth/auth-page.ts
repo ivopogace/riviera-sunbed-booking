@@ -64,7 +64,7 @@ const ROLE_OPTIONS: readonly SegmentedOption<Audience>[] = [
   },
 ];
 
-const FIELD_CLASS = 'w-full rounded-[14px] px-[13px] py-[11px] text-[15px] font-[inherit]';
+const FIELD_CLASS = 'w-full rounded-[14px] px-[13px] py-[11px] text-[16px] font-[inherit]';
 const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-faint';
 
 /**
