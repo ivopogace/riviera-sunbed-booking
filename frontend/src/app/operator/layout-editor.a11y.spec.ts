@@ -10,6 +10,7 @@ import { of } from 'rxjs';
 
 import { expectNoAxeViolations } from '../../testing/axe';
 import { LayoutEditor } from './layout-editor';
+import { FULL_PREVIEW } from './remodel-preview-panel.spec';
 
 /**
  * Structural a11y audit for the layout editor. The grid must be keyboard + AT operable
@@ -196,6 +197,10 @@ describe('LayoutEditor a11y (#172)', () => {
     fixture.detectChanges();
     byId('layout-save').click();
     http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/beach-map/preview'))
+      .flush({ moves: [], refunds: [], releases: [], staffHolds: [], blocks: [], keep: [] });
+    await fixture.whenStable();
+    http
       .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
       .flush(
         {
@@ -222,6 +227,34 @@ describe('LayoutEditor a11y (#172)', () => {
     await expectNoAxeViolations(host());
   });
 
+  it('has no axe violations with the remodel preview open over the save bar (#1033)', async () => {
+    const seat = (id: number, gridX: number) => ({
+      id,
+      rowLabel: 'A',
+      positionNo: gridX,
+      tier: 'STANDARD',
+      pool: 'ONLINE',
+      price: { minorUnits: 2000, currency: 'EUR' },
+      gridX,
+      gridY: 1,
+      availability: 'FREE',
+    });
+    render([seat(1, 1), seat(2, 2)]);
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+    host().querySelectorAll<HTMLButtonElement>('[data-testid="layout-cell"]')[1].click();
+    fixture.detectChanges();
+    byId('layout-save').click();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/beach-map/preview'))
+      .flush(FULL_PREVIEW);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('layout-remodel-preview').getAttribute('role')).toBe('alertdialog');
+    expect(byId('layout-save').getAttribute('aria-disabled')).toBe('true');
+    await expectNoAxeViolations(host());
+  });
   it('has no axe violations with a generated + painted grid', async () => {
     render();
     setInput('layout-gen-rows', '3');

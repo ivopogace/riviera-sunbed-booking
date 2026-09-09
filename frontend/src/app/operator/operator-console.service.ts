@@ -7,39 +7,40 @@ import { problemCodeOf } from '../shared/api-error';
 import { apiPhotoUrl } from '../shared/photo-url';
 import { MoneyView } from '../shared/money';
 import {
-  BlockedSet,
   BeachMapLayoutRequest,
+  BlockedSet,
   CheckInErrorCode,
   CheckInResultView,
   ConsoleDailyBooking,
   CreatedSet,
   LayoutErrorCode,
   MarkErrorCode,
+  OperatorBeachMap,
   PayoutErrorCode,
   PayoutLedgerView,
   PendingRequestItem,
   ReleaseErrorCode,
+  RemodelPreview,
   RepriceErrorCode,
-  RowNameErrorCode,
   RequestDecision,
   RequestErrorCode,
+  RowNameErrorCode,
+  SeasonClosureErrorCode,
+  SeasonClosureRequest,
+  SeasonClosureResult,
   SetBatchErrorCode,
   SetBatchRequest,
   SetBatchResult,
-  OperatorBeachMap,
   SetDayState,
   SetWriteErrorCode,
   SetWriteRequest,
   SlotPhotoView,
   TakingsView,
+  toProfileUpdate,
   VenueProfileErrorCode,
   VenueProfileUpdate,
   VenueProfileView,
   WeatherRefundResult,
-  toProfileUpdate,
-  SeasonClosureErrorCode,
-  SeasonClosureRequest,
-  SeasonClosureResult,
 } from './operator-console.model';
 
 /**
@@ -138,6 +139,18 @@ export class OperatorConsoleService {
    */
   replaceLayout(venueId: number, request: BeachMapLayoutRequest): Observable<void> {
     return this.http.put<void>(`${this.base}/api/venues/${venueId}/beach-map`, request);
+  }
+
+  /**
+   * The dry run of {@link replaceLayout}: the same body, and what the save would do to every live
+   * claim on the sets it removes or renumbers, in five groups — nothing written, the token not spent.
+   * Owner-asserted (invariant #13); `STALE_WRITE` and `NO_SUCH_VENUE` answer as the save would.
+   */
+  previewLayout(venueId: number, request: BeachMapLayoutRequest): Observable<RemodelPreview> {
+    return this.http.post<RemodelPreview>(
+      `${this.base}/api/venues/${venueId}/beach-map/preview`,
+      request,
+    );
   }
 
   /**

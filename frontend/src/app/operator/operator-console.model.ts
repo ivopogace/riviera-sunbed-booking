@@ -213,6 +213,69 @@ export interface BlockedSet extends SetLock {
   readonly positionNo: number;
 }
 
+/** A set as the operator names it, on the remodel preview: id, row label and position number. */
+export interface RemodelSpot {
+  readonly setId: number;
+  readonly rowLabel: string;
+  readonly positionNo: number;
+}
+
+/** One live booking a remodel would disturb: by id (never its code), its day and its amount. */
+export interface RemodelClaim {
+  readonly bookingId: number;
+  readonly bookingDate: string;
+  readonly amount: MoneyView;
+  readonly from: RemodelSpot;
+}
+
+/** A booking that would move to `to`, `rowsAway` rows and `positionsAway` positions from its set. */
+export interface RemodelMove extends RemodelClaim {
+  readonly to: RemodelSpot;
+  readonly rowsAway: number;
+  readonly positionsAway: number;
+}
+
+/** An unpaid booking that would be released, or a pending request that would be declined. */
+export interface RemodelRelease extends RemodelClaim {
+  readonly kind: 'RELEASE' | 'DECLINE';
+}
+
+/** A set staff hold for a walk-in on `dates` (ISO `YYYY-MM-DD`, oldest first) — nobody to mail, so it blocks. */
+export interface RemodelStaffHold {
+  readonly set: RemodelSpot;
+  readonly dates: readonly string[];
+}
+
+/** A claim that blocks the save: its set must stay on the map. */
+export interface RemodelBlock extends RemodelClaim {
+  readonly reason: 'FROZEN' | 'NO_MOVE_CANDIDATE';
+}
+
+/**
+ * The remodel preview (`POST /api/venues/{id}/beach-map/preview`): what the bulk save's body would
+ * do to every live claim on the sets it removes or renumbers, in five groups, plus `keep` — the sets
+ * a blocked save must keep on the map. Nothing is written by the preview; the save re-decides.
+ */
+export interface RemodelPreview {
+  readonly moves: readonly RemodelMove[];
+  readonly refunds: readonly RemodelClaim[];
+  readonly releases: readonly RemodelRelease[];
+  readonly staffHolds: readonly RemodelStaffHold[];
+  readonly blocks: readonly RemodelBlock[];
+  readonly keep: readonly RemodelSpot[];
+}
+
+/** True when the preview names no claim at all — the save can proceed without a confirmation. */
+export function remodelPreviewIsEmpty(preview: RemodelPreview): boolean {
+  return (
+    preview.moves.length === 0 &&
+    preview.refunds.length === 0 &&
+    preview.releases.length === 0 &&
+    preview.staffHolds.length === 0 &&
+    preview.blocks.length === 0
+  );
+}
+
 /**
  * The owner's beach-map read: the venue map in the public read's exact shape, and the sparse `locks`
  * list beside it — one entry per set a live claim pins, ordered by set id, nothing for a free set.

@@ -1,0 +1,111 @@
+<p class="text-[12.5px] leading-[1.45] font-semibold">
+  <strong>This save changes sets guests still hold.</strong>
+  @if (blocked()) {
+    It can’t be saved as painted.
+  } @else {
+    Saving moves them as listed; each guest is told.
+  }
+</p>
+
+@if (preview().keep.length > 0) {
+  <p class="mt-1 text-[12.5px] leading-[1.45] font-bold" data-testid="layout-remodel-keep">
+    {{ keepSentence() }}
+  </p>
+}
+
+<div class="mt-2 grid gap-2 text-[12px] leading-[1.45]">
+  @if (preview().moves.length > 0) {
+    <section data-testid="layout-remodel-moves">
+      <h3 class="font-bold">Will move ({{ preview().moves.length }})</h3>
+      <ul class="list-disc pl-4">
+        @for (move of preview().moves; track move.bookingId) {
+          <li>{{ moveText(move) }}</li>
+        }
+      </ul>
+    </section>
+  }
+  @if (preview().refunds.length > 0) {
+    <section data-testid="layout-remodel-refunds">
+      <h3 class="font-bold">Will be refunded ({{ preview().refunds.length }})</h3>
+      <ul class="list-disc pl-4">
+        @for (claim of preview().refunds; track claim.bookingId) {
+          <li>{{ refundText(claim) }}</li>
+        }
+      </ul>
+    </section>
+  }
+  @if (preview().releases.length > 0) {
+    <section data-testid="layout-remodel-releases">
+      <h3 class="font-bold">Will be released or declined ({{ preview().releases.length }})</h3>
+      <ul class="list-disc pl-4">
+        @for (release of preview().releases; track release.bookingId) {
+          <li>{{ releaseText(release) }}</li>
+        }
+      </ul>
+    </section>
+  }
+  @if (preview().staffHolds.length > 0) {
+    <section data-testid="layout-remodel-holds">
+      <h3 class="font-bold">Held by staff for a walk-in ({{ preview().staffHolds.length }})</h3>
+      <ul class="list-disc pl-4">
+        @for (hold of preview().staffHolds; track hold.set.setId) {
+          <li>{{ holdText(hold) }}</li>
+        }
+      </ul>
+    </section>
+  }
+  @if (preview().blocks.length > 0) {
+    <section data-testid="layout-remodel-blocks">
+      <h3 class="font-bold">Blocks this save ({{ preview().blocks.length }})</h3>
+      <ul class="list-disc pl-4">
+        @for (block of preview().blocks; track block.bookingId) {
+          <li>{{ blockText(block) }}</li>
+        }
+      </ul>
+    </section>
+  }
+</div>
+
+<a
+  appTouchTarget
+  class="mt-2 inline-flex items-center text-[12.5px] font-semibold underline underline-offset-2"
+  [routerLink]="['/operator', venueId(), 'daily']"
+  data-testid="layout-remodel-bookings"
+>
+  Open the bookings
+</a>
+
+<div class="mt-2 flex flex-wrap gap-2">
+  @if (!blocked()) {
+    <button
+      appTouchTarget
+      #firstButton
+      type="button"
+      class="rounded-[10px] bg-riv-solid-fill-warn px-4 py-1.5 text-[12.5px] font-bold text-white aria-disabled:opacity-60"
+      data-testid="layout-remodel-save"
+      (click)="confirmed.emit()"
+    >
+      Save layout
+    </button>
+    <button
+      appTouchTarget
+      type="button"
+      class="rounded-[10px] border border-riv-warn-edge px-4 py-1.5 text-[12.5px] font-semibold aria-disabled:opacity-60"
+      data-testid="layout-remodel-back"
+      (click)="cancelled.emit()"
+    >
+      Back to the editor
+    </button>
+  } @else {
+    <button
+      appTouchTarget
+      #firstButton
+      type="button"
+      class="rounded-[10px] border border-riv-warn-edge px-4 py-1.5 text-[12.5px] font-semibold aria-disabled:opacity-60"
+      data-testid="layout-remodel-back"
+      (click)="cancelled.emit()"
+    >
+      Back to the editor
+    </button>
+  }
+</div>
