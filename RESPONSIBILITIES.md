@@ -121,9 +121,13 @@ over time. The standing rules:
     and the staff daily view lists the online booking on the now-walk-in set. Repricing a booked
     set was always allowed; the pool follows the same rule (epic #1027, revision 3).
   - *Availability arm:* every claim-probing write asks one question — is there a hold on
-    these sets dated today or later — through `hasLiveHold`. A past hold freezes nothing;
+    these sets dated today or later — through `LiveClaims#hasLiveHold`. A past hold freezes nothing;
     a past date is never claimable (reserve and staff mark both refuse it), so the range
     the probe ignores is one nothing can be written into.
+  - *One predicate, two callers:* the `LiveClaims` holder owns both arms (the Tirane cutoff and
+    the delegation to `booking` for what "live" means), and the owner's beach-map read asks it
+    per set with the nearest dates. So the lock the editor shows before a click is, set by set,
+    the lock `SET_IN_USE` would enforce after one; the two cannot drift because there is one.
   - *Booking arm:* `editSet` and `removeSet` refuse only on a **non-terminal** booking — the edit
     only when the command would reposition the set, the remove on every call. A finished booking
     refuses nothing; it decides how the set leaves the map: **a set that carries any booking is
@@ -217,6 +221,16 @@ over time. The standing rules:
   I own the set list and the map composition; `availability` answers the per-`(set, date)`
   state tokens through my `spi` (`SetAvailabilityLookup#statesOn`). The public tourist map
   stays state-agnostic (`FREE`/`TAKEN`) — hold type never reaches the public surface.
+- **The owner's beach-map read** (`GET /api/venues/{venueId}/beach-map`; owner-asserted,
+  403-before-existence; the layout editor's seed): the map exactly as the tourist read composes
+  it — fence included, so a hidden venue reads the same on both — plus a sparse `locks` list, one
+  entry per set a live claim pins, nothing for a free set. Each entry carries the earliest
+  service day a guest is still coming on and the earliest hold dated today or later, answered
+  through my `spi` (`BookingPresence#nearestLiveBookings`, `SetAvailabilityLookup#nearestClaimsFrom`)
+  by the same `LiveClaims` predicate the write guards ask. The lock means *cannot move or
+  remove*, never *cannot repaint*: the editor still changes a locked set's price, tier and pool,
+  refuses to gap or move it with the reason, and disables Move and Remove on it before any
+  request; which sets a venue's guests hold never reaches the public map.
 
 **Not My Job:**
 - Knowing whether a specific set is free on a date → **`availability`**

@@ -120,12 +120,12 @@ branch stands in for `feature/pinned-cells` (`riviera-sdlc` remote addendum).
 - [ ] **AC-7:** Given set 1 with a `CANCELLED` booking on 2027-06-10 and a `CONFIRMED` one on
   2027-06-22, set 2 with only a `COMPLETED` booking, when `nearestLiveBookings([1,2])` is asked,
   then `{1 → 2027-06-22}`. *Seam:* `BookingPresence` (SPI) · *Pinned by:*
-  `BookingPresenceIT.nearestLiveBookingsAnswersTheEarliestHonourableDatePerSet`
+  `JdbcBookingPresenceIT.nearestLiveBookingsAnswersTheEarliestHonourableDatePerSet`
 - [ ] **AC-8:** Given the layout editor loaded with a locked set at row A position 2 (booked
   2026-09-12), when the tier brush paints it, then its `data-state` changes and the dirty count is
   1; when the gap brush then clicks it, `data-state` and the dirty count are unchanged and the lock
-  notice reads "Row A · position 2 is booked Sat 12 Sep — it can’t become a gap. Its tier and pool
-  can still change." *Seam:* the rendered component (`[data-testid=layout-cell]`, the save bar) ·
+  notice reads "Row A · position 2 is booked Sat 12 Sept 2026 — it can’t become a gap. Its tier and
+  pool can still change." (`formatCivilDate`'s en-IE label, the console's one date format) *Seam:* the rendered component (`[data-testid=layout-cell]`, the save bar) ·
   *Pinned by:* `layout-editor.spec.ts` "locked cells"
 - [ ] **AC-9:** Given a gap-brush drag-sweep across a row holding one locked cell, and a gap
   fill of that row, when each completes, then every unlocked cell is a gap, the locked cell keeps
@@ -260,7 +260,7 @@ N/A — no payment in scope.
 | FE-2 | `operator/set-editor.ts` + `.html` | existing | standalone component | new `locks` `input()`, `selectedLock` computed | Signal Forms unchanged |
 | FE-3 | `shared/lock-icon.ts` | new | glyph component (ICON-1..6) | none | none |
 | FE-4 | `operator/operator-console.model.ts` / `.service.ts` | existing | model + `@Service` | `beachMap(venueId)` observable | none |
-| FE-5 | `shared/lock-reason.ts` | new | pure function `lockReason(lock)` — the one home of the copy | none | none |
+| FE-5 | `operator/lock-reason.ts` | new | pure functions `lockReason`/`lockDescription` — the one home of the copy | none | none |
 
 **Standards:** standalone components, `inject()`, `@if`/`@for`, `input()` signal APIs, `computed()`
 for derived state. No deviation.
@@ -278,18 +278,18 @@ for derived state. No deviation.
 
 ## Execution status
 
-**Stage pointer:** `plan — doc written, phase 0 next`
+**Stage pointer:** `implement (phase 5) — e2e + docs committed, draft PR next`
 
-**Next action:** phase 0 — `LiveClaims` holder red-first, then the two SPI methods.
+**Next action:** open the draft PR, check its CI run, then mark ready for review and run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `LiveClaims` holder + the two SPI nearest-date methods | | |
-| 1 — `ViewBeachMap` read: service, controller, security gate, ITs | | |
-| 2 — Frontend model/service + editor read switch + lock glyph | | |
-| 3 — Canvas lock behaviour (brushes, sweep, fills, notice) + specs | | |
-| 4 — Set editor Move/Remove lock + specs | | |
-| 5 — Mocked e2e + docs (RESPONSIBILITIES, CONTEXT, frontend skill table) | | |
+| 0 — `LiveClaims` holder + the two SPI nearest-date methods | ✅ | `dd7c3a89` |
+| 1 — `ViewBeachMap` read: service, controller, security gate, ITs | ✅ | `3385b40b` |
+| 2 — Frontend model/service + editor read switch + lock glyph | ✅ | `c47f564e` (carries the phase 3/4 code too: the set editor's `locks` input is what lets the editor template compile) |
+| 3 — Canvas lock behaviour (brushes, sweep, fills, notice) + specs | ✅ | phase 3/4 specs commit |
+| 4 — Set editor Move/Remove lock + specs | ✅ | phase 3/4 specs commit |
+| 5 — Mocked e2e + docs (RESPONSIBILITIES, CONTEXT, frontend skill table) | ✅ | phase 5 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -318,10 +318,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/SetLockView.java` — wire shape with ISO dates (new)
 - `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` — `GET` beach-map gated `OPERATOR`
 - `platform/src/test/java/ai/riviera/platform/venue/application/LiveClaimsTest.java` (new)
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — the inert `ViewBeachMap` bean the web slices need
 - `platform/src/test/java/ai/riviera/platform/venue/application/BeachMapReadServiceTest.java` (new)
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` — constructor + fakes gain the new methods
 - `platform/src/test/java/ai/riviera/platform/availability/AvailabilityLookupIT.java` — `nearestClaimsFrom`
-- `platform/src/test/java/ai/riviera/platform/booking/BookingPresenceIT.java` — `nearestLiveBookings` (new)
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcBookingPresenceIT.java` — `nearestLiveBookings`
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAdminControllerIT.java` — the read's ITs
 - `platform/src/test/java/ai/riviera/platform/CrossVenueDenialIT.java` — the 403
 - `frontend/src/app/operator/operator-console.model.ts` — `SetLock`, `OperatorBeachMap`; `SetWriteErrorCode` TSDoc
@@ -329,13 +330,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/operator-console.service.spec.ts` — the read
 - `frontend/src/app/shared/lock-icon.ts` — the glyph (new)
 - `frontend/src/app/shared/lock-icon.spec.ts` (new)
-- `frontend/src/app/shared/lock-reason.ts` — the reason copy (new)
-- `frontend/src/app/shared/lock-reason.spec.ts` (new)
+- `frontend/src/app/operator/lock-reason.ts` — the reason copy; `operator/`, not `shared/`, because it reads the operator model (new)
+- `frontend/src/app/operator/lock-reason.spec.ts` (new)
 - `frontend/src/app/operator/layout-editor.ts` / `.html` — read switch, locks, refusals, glyph, legend, notice
-- `frontend/src/app/operator/layout-editor.spec.ts` / `.a11y.spec.ts` / `.contrast.spec.ts`
+- `frontend/src/app/operator/layout-editor.spec.ts` — the locked-cells describe
+- `frontend/src/app/operator/layout-editor.a11y.spec.ts` — the description + axe proof
+- `frontend/src/app/operator/layout-editor.contrast.spec.ts` — the glyph and notice inks
 - `frontend/src/app/operator/console-venue-switch.spec.ts` — the read's new URL/shape
 - `frontend/src/app/operator/set-editor.ts` / `.html` — `locks` input, disabled Move/Remove, reason, glyph
-- `frontend/src/app/operator/set-editor.spec.ts` / `.a11y.spec.ts` / `.contrast.spec.ts`
+- `frontend/src/app/operator/set-editor.spec.ts` — the locked-set describe
+- `frontend/src/app/operator/set-editor.a11y.spec.ts` — the description + axe proof
+- `frontend/src/app/operator/set-editor.contrast.spec.ts` — the reason ink
 - `frontend/e2e/layout-editor.e2e.ts` — GET route + the locked-cell flow
 - `frontend/e2e/operator-set-editing.e2e.ts` — GET route + the locked-set flow
 - `frontend/e2e/support/operator-console.mocks.ts` — GET route
@@ -445,6 +450,10 @@ void locksOnAnswersTheNearestHoldAndBookingPerSetAndSkipsFreeSets() {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-09 | phase 0 — two methods added to the SPI ports | every class implementing either port (a new abstract method breaks each) | `grep -rln "implements SetAvailabilityLookup\|implements BookingPresence" platform/src` | `JdbcSetAvailabilityLookup`, `JdbcBookingPresence`, `VenueAdminServiceTest`'s two fakes; `LiveClaimsTest` adds two more | all implemented; Mockito mocks elsewhere need nothing |
+| 2026-09-09 | phase 1 — a new operator-only `GET` under `/api/venues/*` | every owner-asserted `GET` the security chain gates above the public GET | `grep -n "hasRole(OPERATOR_ROLE)" platform/src/main/java/ai/riviera/platform/SecurityConfig.java` | profile, takings, daily availability, mine, defaults, staff bookings, payout ledger | the beach-map GET joins that block; `EndpointRoleGateCoverageTest` proves it is gated, `WebSliceStubs` supplies the port |
+| 2026-09-09 | phase 2 — the editor's read moved to `/beach-map` | every spec or mock that serves the editor's map read | `grep -rln "api/venues/1" frontend/src/app/operator; grep -ln "layout-grid\|layout-cell\|set-cell\|/beach-map" frontend/e2e/*.e2e.ts frontend/e2e/support/*.ts` | `layout-editor.spec/a11y.spec`, `console-venue-switch.spec`; 12 e2e specs through three mock helpers (`mockEditor`, `mockConsole`, `mockWholeConsole`) | fixtures wrapped `{ map, locks }`; the three helpers gain the GET route; the PUT-only `beach-map` routes now `fallback()`/answer on GET |
+| 2026-09-09 | phase 3 — the gap brush must skip a locked coordinate | every writer of `grid` that can turn a cell into `'gap'` | `grep -n "grid.update\|grid.set" frontend/src/app/operator/layout-editor.ts` | `paintCell`, `fillRow`, `fillColumn` (the brush writers); `generateNow`, `seedFrom`, `discard`, `reloadAfterStale`, `onSetsChanged` (whole-grid resets) | the three brush writers go through `paintOver`; the resets are out of scope (Regenerate stays server-refused until #1032) |
 
 ---
 
