@@ -3,33 +3,17 @@ package ai.riviera.platform.venue;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.operator.vocabulary.OperatorId;
-import ai.riviera.platform.venue.application.EditBeachMap;
-import ai.riviera.platform.venue.application.LayoutCommand;
-import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
-import ai.riviera.platform.venue.application.SetCommand;
-import ai.riviera.platform.venue.vocabulary.Pool;
-import ai.riviera.platform.venue.vocabulary.VenueId;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.RepeatedTest;
-import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
@@ -37,6 +21,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -45,22 +30,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Verifies the bulk beach-map replace ({@code PUT /api/venues/{id}/beach-map}) end to
- * end against Testcontainers Postgres, through the real {@code JdbcVenues}, {@code JdbcBookingPresence},
- * and {@code JdbcSetAvailabilityLookup} adapters. Pins: the whole grid round-trips through the U1 read
- * API with row A priced front-row premium and the {@code WALK_IN} pool preserved (AC-1/AC-4/AC-7);
- * regenerate replaces the previous layout (AC-1); and — the highest-stakes case — the
- * reject-unless-unclaimed guard refuses a replace when the venue has a booking or an availability hold
- * dated today or later, leaving the existing layout <em>and</em> the hold untouched (AC-6, invariant #2
- * / R-1: the {@code set_availability} CASCADE must never silently fire). A hold whose day has gone does
- * not freeze the map — it goes with its set.
+ * Verifies the bulk beach-map save ({@code PUT /api/venues/{id}/beach-map}) end to end against
+ * Testcontainers Postgres, through the real {@code JdbcVenues}, {@code JdbcBookingPresence} and
+ * {@code JdbcSetAvailabilityLookup} adapters. The save is a diff keyed by grid cell: a kept cell is
+ * updated in place under its own id, a new cell inserted, an absent cell's set retired (with booking
+ * history) or deleted (without). Pins: the whole grid round-trips through the U1 read with row A
+ * priced front-row premium and the {@code WALK_IN} pool preserved; a regenerate keeps the ids of the
+ * cells it keeps; adding a row, and repainting, renaming and repricing a booked set, all save on a
+ * trading venue; and — the highest-stakes case — a save that would remove a set with a live booking
+ * or a hold dated today or later is refused {@code 409 SETS_IN_USE} naming those sets, leaving the
+ * layout <em>and</em> the hold untouched (invariant #2: the {@code set_availability} CASCADE must
+ * never silently fire). A hold whose day has gone does not freeze its set — it goes with it.
  *
- * <p>The replace is optimistic-locked on the venue's {@code set_version}: every replace body
- * carries the required {@code expectedVersion} the tab loaded from the map read, and a stale token is
- * rejected 409 {@code STALE_WRITE} without clobbering the current layout
- * ({@link #staleReplaceIs409StaleWrite}). The version is read under the venue row lock before the
- * invariant-#2 set locks (R-1) and bumped only on the success path, so the concurrent-hold scenarios
- * above still hold and a rejected replace leaves the token untouched.
+ * <p>The save is optimistic-locked on the venue's {@code set_version}: every body carries the
+ * required {@code expectedVersion} the tab loaded from the map read, and a stale token is rejected
+ * 409 {@code STALE_WRITE} without clobbering the current layout ({@link #staleReplaceIs409StaleWrite}).
+ * The version is read under the venue row lock before the invariant-#2 set locks and bumped only on
+ * the success path, so a refused save leaves the token untouched. The races live in
+ * {@link BeachMapDiffConcurrencyIT}.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -71,15 +58,6 @@ class BeachMapReplaceIT {
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane"); // the zone the guard's cutoff reads
-
-	/**
-	 * The one {@code LAYOUT_IN_USE} detail, asserted at both arms this class provokes — a
-	 * {@code CONFIRMED} booking and a future-dated walk-in hold. The guard's booking arm is broader
-	 * than that (any status, permanently — {@code RESPONSIBILITIES.md} §venue), which this class does
-	 * not seed. Why the wording names no arm: {@code riviera-java-conventions}
-	 * {@code references/error-contract.md}.
-	 */
-	private static final String LAYOUT_IN_USE_DETAIL = "This venue has a booking or a current hold.";
 
 	/**
 	 * The row reprice shares this {@code STALE_WRITE} detail, because every token-guarded set-write turns on the
@@ -95,8 +73,6 @@ class BeachMapReplaceIT {
 	MockMvc mvc;
 	@Autowired
 	JdbcClient jdbc;
-	@Autowired
-	EditBeachMap editBeachMap;
 
 	private Cookie operatorSession;
 
@@ -129,12 +105,6 @@ class BeachMapReplaceIT {
 		return Long.parseLong(com.jayway.jsonpath.JsonPath.read(json, "$.setVersion").toString());
 	}
 
-	/** The venue's current {@code set_version} straight from the row (for the direct-service-call race). */
-	private long setVersionOf(long venueId) {
-		return jdbc.sql("SELECT set_version FROM venue WHERE id = :v")
-				.param("v", venueId).query(Long.class).single();
-	}
-
 	private long createVenue(String name) throws Exception {
 		String body = """
 				{"name":"%s","beach":"Ksamil","region":"Riviera","description":"x",
@@ -155,9 +125,25 @@ class BeachMapReplaceIT {
 				.andExpect(status().is(expectedStatus));
 	}
 
+	/** The active sets' ids in read order — a retired set is absent. */
 	private List<Long> setIds(long venueId) {
-		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :v ORDER BY grid_y, grid_x")
+		return jdbc.sql("SELECT id FROM active_set_position WHERE venue_id = :v ORDER BY grid_y, grid_x")
 				.param("v", venueId).query(Long.class).list();
+	}
+
+	private boolean retired(long setId) {
+		return jdbc.sql("SELECT retired_at IS NOT NULL FROM set_position WHERE id = :s")
+				.param("s", setId).query(Boolean.class).single();
+	}
+
+	private long holdsOn(long setId) {
+		return jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :s")
+				.param("s", setId).query(Long.class).single();
+	}
+
+	private void seedHold(long setId, LocalDate day, String state) {
+		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) VALUES (:s, :d, :state)")
+				.param("s", setId).param("d", day).param("state", state).update();
 	}
 
 	@Test
@@ -219,12 +205,15 @@ class BeachMapReplaceIT {
 				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
 				cell("A", 2, "PREMIUM", "ONLINE", 3500, 2, 1)), 204);
 
-		// AC-1: regenerate to a smaller grid replaces (not appends) — the old sets are gone. The first
-		// replace bumped set_version to 1, so this one must load it afresh (a stale 0 would be 409).
+		long a1 = setIds(venue).getFirst();
+
+		// Regenerate to a smaller grid: the cell that stays keeps its id, the cell that goes is deleted.
+		// The first save bumped set_version to 1, so this one must load it afresh (a stale 0 would be 409).
 		putLayout(venue, layout(currentSetVersion(venue), cell("A", 1, "PREMIUM", "ONLINE", 4000, 1, 1)), 204);
 
 		mvc.perform(get("/api/venues/{id}", venue))
 				.andExpect(jsonPath("$.sets.length()").value(1))
+				.andExpect(jsonPath("$.sets[0].id").value(a1))
 				.andExpect(jsonPath("$.sets[0].price.minorUnits").value(4000));
 	}
 
@@ -270,58 +259,118 @@ class BeachMapReplaceIT {
 	}
 
 	@Test
-	void rejectsWhenVenueHasBooking() throws Exception {
-		long venue = createVenue("Booked Club");
+	void addsARowOnAVenueWithALiveBooking() throws Exception {
+		long venue = createVenue("Trading Club");
 		putLayout(venue, layout(0,
 				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
 				cell("A", 2, "STANDARD", "ONLINE", 2000, 2, 1)), 204);
-		long bookedSet = setIds(venue).getFirst();
-		seedBooking(venue, bookedSet);
+		List<Long> rowA = setIds(venue);
+		seedBooking(venue, rowA.getFirst());
 
-		// AC-6/AC-8: a venue with a booking is locked — the replace is 409 LAYOUT_IN_USE and nothing changes.
-		// The token is current (not stale), so the reject is LAYOUT_IN_USE — the in-use guard, not STALE_WRITE.
+		// Row A stays at its cells, row B is new: the booked set is never disturbed, so nothing refuses.
+		long tokenBefore = currentSetVersion(venue);
+		putLayout(venue, layout(tokenBefore,
+				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
+				cell("A", 2, "STANDARD", "ONLINE", 2000, 2, 1),
+				cell("B", 1, "STANDARD", "ONLINE", 1500, 1, 2),
+				cell("B", 2, "STANDARD", "ONLINE", 1500, 2, 2)), 204);
+
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.sets.length()").value(4))
+				.andExpect(jsonPath("$.sets[0].id").value(rowA.get(0)))
+				.andExpect(jsonPath("$.sets[1].id").value(rowA.get(1)))
+				.andExpect(jsonPath("$.sets[2].rowLabel").value("B"))
+				.andExpect(jsonPath("$.setVersion").value((int) tokenBefore + 1));
+	}
+
+	@Test
+	void repaintsRenamesAndRepricesABookedSetInPlace() throws Exception {
+		long venue = createVenue("Repaint Club");
+		putLayout(venue, layout(0,
+				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
+				cell("A", 2, "PREMIUM", "ONLINE", 3500, 2, 1)), 204);
+		long a1 = setIds(venue).getFirst();
+		seedBooking(venue, a1);
+		seedHold(a1, LocalDate.of(2035, 7, 1), "BOOKED_ONLINE"); // the booked date's own availability row
+
+		// Price, tier, pool and row label are always editable — on a booked set too (RESPONSIBILITIES.md §venue).
+		putLayout(venue, layout(currentSetVersion(venue),
+				cell("Front", 1, "STANDARD", "WALK_IN", 1500, 1, 1),
+				cell("Front", 2, "PREMIUM", "ONLINE", 3500, 2, 1)), 204);
+
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.sets[0].id").value(a1))
+				.andExpect(jsonPath("$.sets[0].rowLabel").value("Front"))
+				.andExpect(jsonPath("$.sets[0].tier").value("STANDARD"))
+				.andExpect(jsonPath("$.sets[0].pool").value("WALK_IN"))
+				.andExpect(jsonPath("$.sets[0].price.minorUnits").value(1500));
+		assertEquals(1L, holdsOn(a1), "an in-place update keeps the booked date claimed (invariant #2)");
+	}
+
+	@Test
+	void refusesRemovingBookedOrHeldSetsNamingThem() throws Exception {
+		long venue = createVenue("Refused Club");
+		putLayout(venue, layout(0,
+				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
+				cell("A", 2, "STANDARD", "ONLINE", 2000, 2, 1),
+				cell("A", 3, "STANDARD", "ONLINE", 2000, 3, 1)), 204);
+		List<Long> rowA = setIds(venue);
+		seedBooking(venue, rowA.get(0));
+		LocalDate heldOn = LocalDate.now(TIRANE).plusDays(30);
+		seedHold(rowA.get(2), heldOn, "STAFF_MARKED"); // deliberately the LAST set: the probe must cover every removal
+
+		// A layout that drops all of row A: the two claimed sets refuse the whole save, nothing is written.
 		long tokenBefore = currentSetVersion(venue);
 		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(layout(tokenBefore, cell("A", 1, "PREMIUM", "ONLINE", 9999, 1, 1))))
+						.content(layout(tokenBefore, cell("B", 1, "STANDARD", "ONLINE", 2000, 1, 2))))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.code").value("LAYOUT_IN_USE"))
-				.andExpect(jsonPath("$.detail").value(LAYOUT_IN_USE_DETAIL));
-
-		// The original two sets are untouched (no partial delete), and the LAYOUT_IN_USE
-		// reject did NOT advance set_version (no spurious bump), so the acting tab's token still matches and
-		// a retry after the lock clears would not falsely 409 STALE_WRITE.
-		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.code").value("SETS_IN_USE"))
+				.andExpect(jsonPath("$.detail").value("Sets this save would remove are booked or held."))
 				.andExpect(jsonPath("$.sets.length()").value(2))
+				.andExpect(jsonPath("$.sets[0].setId").value(rowA.get(0)))
+				.andExpect(jsonPath("$.sets[0].rowLabel").value("A"))
+				.andExpect(jsonPath("$.sets[0].positionNo").value(1))
+				.andExpect(jsonPath("$.sets[0].bookedOn").value("2035-07-01"))
+				.andExpect(jsonPath("$.sets[0].heldOn").doesNotExist())
+				.andExpect(jsonPath("$.sets[1].setId").value(rowA.get(2)))
+				.andExpect(jsonPath("$.sets[1].positionNo").value(3))
+				.andExpect(jsonPath("$.sets[1].bookedOn").doesNotExist())
+				.andExpect(jsonPath("$.sets[1].heldOn").value(heldOn.toString()));
+
+		// The three sets are untouched, the hold survives (the CASCADE never fired), and the refusal
+		// did not advance set_version, so the acting tab's retry off the same token still works.
+		assertEquals(rowA, setIds(venue));
+		assertEquals(1L, holdsOn(rowA.get(2)));
+		mvc.perform(get("/api/venues/{id}", venue))
 				.andExpect(jsonPath("$.setVersion").value((int) tokenBefore));
 	}
 
 	@Test
-	void rejectsWhenVenueHasWalkInHoldAndHoldSurvives() throws Exception {
-		long venue = createVenue("Held Club");
+	void retiresARemovedSetWithHistoryAndDeletesOneWithout() throws Exception {
+		long venue = createVenue("History Club");
 		putLayout(venue, layout(0,
-				cell("A", 1, "STANDARD", "WALK_IN", 2000, 1, 1),
+				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
 				cell("A", 2, "STANDARD", "ONLINE", 2000, 2, 1)), 204);
-		long heldSet = setIds(venue).getLast(); // deliberately NOT the first: the probe must cover every locked set
-		jdbc.sql("""
-				INSERT INTO set_availability (set_id, booking_date, state)
-				VALUES (:s, :d, 'STAFF_MARKED')
-				""").param("s", heldSet).param("d", LocalDate.now(TIRANE).plusDays(30)).update();
+		List<Long> rowA = setIds(venue);
+		seedBooking(venue, rowA.get(0), "CANCELLED"); // finished history: the FK pins the row, nobody is still coming
 
-		// AC-6/AC-8 / R-1: the guard consults availability BEFORE any delete, so the CASCADE never fires.
-		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(layout(currentSetVersion(venue), cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1))))
-				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("LAYOUT_IN_USE"))
-				.andExpect(jsonPath("$.detail").value(LAYOUT_IN_USE_DETAIL));
+		putLayout(venue, layout(currentSetVersion(venue), cell("B", 1, "STANDARD", "ONLINE", 2000, 1, 2)), 204);
 
-		// The hold row still exists — it was not silently cascade-deleted.
-		Long holds = jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :s")
-				.param("s", heldSet).query(Long.class).single();
-		org.junit.jupiter.api.Assertions.assertEquals(1L, holds);
-		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.sets.length()").value(2));
+		assertTrue(retired(rowA.get(0)), "a set with booking history is retired, never deleted (ADR-0019)");
+		assertEquals(0L, jdbc.sql("SELECT COUNT(*) FROM set_position WHERE id = :s").param("s", rowA.get(1))
+				.query(Long.class).single(), "a set with no booking is deleted");
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.sets.length()").value(1))
+				.andExpect(jsonPath("$.sets[0].rowLabel").value("B"));
+
+		// The retired set's cell and row/position are free for a new set (the V50 partial indexes).
+		putLayout(venue, layout(currentSetVersion(venue),
+				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
+				cell("B", 1, "STANDARD", "ONLINE", 2000, 1, 2)), 204);
+		assertEquals(2, setIds(venue).size());
+		assertFalse(retired(setIds(venue).getFirst()), "the new A1 is a fresh active row");
 	}
 
 	@Test
@@ -330,25 +379,18 @@ class BeachMapReplaceIT {
 		putLayout(venue, layout(0,
 				cell("A", 1, "STANDARD", "WALK_IN", 2000, 1, 1),
 				cell("A", 2, "STANDARD", "WALK_IN", 2000, 2, 1)), 204);
-		long heldSet = setIds(venue).getFirst();
+		long heldSet = setIds(venue).getLast();
 		// Inserted directly: the staff-mark endpoint refuses a past date, which is how history accrues.
-		jdbc.sql("""
-				INSERT INTO set_availability (set_id, booking_date, state)
-				VALUES (:s, :d, 'STAFF_MARKED')
-				""")
-				.param("s", heldSet)
-				.param("d", LocalDate.now(TIRANE).minusDays(400))
-				.update();
+		seedHold(heldSet, LocalDate.now(TIRANE).minusDays(400), "STAFF_MARKED");
 
+		// A2 leaves the map; its only hold is last season's, so nothing refuses and the set is deleted.
 		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(layout(currentSetVersion(venue),
 								cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1))))
 				.andExpect(status().isNoContent());
 
-		assertEquals(0L, jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :s")
-						.param("s", heldSet).query(Long.class).single(),
-				"a hold describing a day that is gone goes with its set (CASCADE)");
+		assertEquals(0L, holdsOn(heldSet), "a hold describing a day that is gone goes with its set (CASCADE)");
 		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.sets.length()").value(1));
 	}
 
@@ -390,70 +432,11 @@ class BeachMapReplaceIT {
 		assertEquals(List.of(), setIds(venue), "a refused replace must write nothing");
 	}
 
-	/**
-	 * Invariant #2 (RV-BE-1): a walk-in mark committed concurrently with a regenerate must never be
-	 * silently lost. The replace locks the venue's {@code set_position} rows {@code FOR UPDATE} before
-	 * probing availability, so the mark's FK {@code FOR KEY SHARE} blocks until the replace ends — the
-	 * two can never both succeed. Without the lock, a mark landing in the check→delete window would be
-	 * {@code ON DELETE CASCADE}-swept while staff believe the set is held. Repeated to exercise both
-	 * interleavings; passes reliably with the lock, can fail without it.
-	 */
-	@RepeatedTest(4)
-	void concurrentWalkInMarkAndReplaceNeverSilentlyLoseTheHold(RepetitionInfo info) throws Exception {
-		long venue = createVenue("Race Club " + info.getCurrentRepetition());
-		putLayout(venue, layout(0,
-				cell("A", 1, "STANDARD", "ONLINE", 2000, 1, 1),
-				cell("A", 2, "STANDARD", "ONLINE", 2000, 2, 1)), 204);
-		long setX = setIds(venue).getFirst();
-		// The venue was created via POST as the bootstrap session, so creator-owns-on-create
-		// already made the bootstrap its owner — drive the replace as that owner (no second grant, which
-		// would violate the one-owner-per-venue PK).
-		OperatorId owner = new OperatorId(jdbc.sql("SELECT id FROM operator WHERE username = 'operator'")
-				.query(Long.class).single());
-		// The seed replace bumped set_version to 1; the racing replace loads it so it passes the token gate
-		// and exercises the invariant-#2 lock path (not STALE_WRITE — the mark never touches set_version).
-		long loadedSetVersion = setVersionOf(venue);
-		LocalDate date = LocalDate.now(TIRANE).plusYears(2).plusDays(info.getCurrentRepetition());
-
-		CountDownLatch gate = new CountDownLatch(1);
-		Callable<Boolean> mark = () -> {
-			gate.await();
-			try {
-				jdbc.sql("""
-						INSERT INTO set_availability (set_id, booking_date, state)
-						VALUES (:s, :d, 'STAFF_MARKED')
-						""").param("s", setX).param("d", date).update();
-				return true; // the hold committed
-			} catch (DataIntegrityViolationException deletedByReplace) {
-				return false; // the set was replaced out from under the mark — a clean loss, not a silent one
-			}
-		};
-		Callable<ReplaceLayoutOutcome> replace = () -> {
-			gate.await();
-			return editBeachMap.replaceLayout(owner, new VenueId(venue), loadedSetVersion, new LayoutCommand(
-					List.of(new SetCommand("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 1))));
-		};
-
-		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
-			Future<Boolean> heldF = pool.submit(mark);
-			Future<ReplaceLayoutOutcome> replacedF = pool.submit(replace);
-			gate.countDown();
-			boolean held = heldF.get(20, TimeUnit.SECONDS);
-			boolean replaced = replacedF.get(20, TimeUnit.SECONDS)
-					instanceof ReplaceLayoutOutcome.Replaced;
-
-			assertFalse(held && replaced,
-					"a committed walk-in hold was silently lost by a concurrent layout replace (invariant #2)");
-			if (held) {
-				// The hold committed ⇒ the replace must have seen it and been rejected, so it survives.
-				Long holds = jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :s")
-						.param("s", setX).query(Long.class).single();
-				assertEquals(1L, holds);
-			}
-		}
+	private void seedBooking(long venueId, long setId) {
+		seedBooking(venueId, setId, "CONFIRMED");
 	}
 
-	private void seedBooking(long venueId, long setId) {
+	private void seedBooking(long venueId, long setId, String status) {
 		long customerId = jdbc.sql("""
 				INSERT INTO customer (email, full_name, phone)
 				VALUES (:e, 'Guest', '+355000') RETURNING id
@@ -461,10 +444,10 @@ class BeachMapReplaceIT {
 		jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status)
-				VALUES (:code, :v, :s, :c, DATE '2035-07-01', 2000, 'EUR', 'CONFIRMED')
+				VALUES (:code, :v, :s, :c, DATE '2035-07-01', 2000, 'EUR', :status)
 				""")
 				.param("code", "BK-" + venueId + "-" + setId)
-				.param("v", venueId).param("s", setId).param("c", customerId)
+				.param("v", venueId).param("s", setId).param("c", customerId).param("status", status)
 				.update();
 	}
 }

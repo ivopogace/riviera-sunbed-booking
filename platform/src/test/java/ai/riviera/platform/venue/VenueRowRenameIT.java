@@ -32,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Postgres, through the real {@code JdbcVenues} adapter. Pins:
  * <ul>
  *   <li><strong>AC-1</strong>: a venue that has already sold can still rename a row — the write the
- *       bulk replace ({@code LAYOUT_IN_USE}) and {@code editSet} ({@code SET_IN_USE}) both refuse.
+ *       bulk save ({@code SETS_IN_USE}) and {@code editSet} ({@code SET_IN_USE}) both refuse.
  *       The booking, its {@code set_id}, the set's hold, pool, position and price all survive, and
  *       the tourist map read speaks the new name.</li>
  *   <li><strong>AC-2</strong>: renaming onto a label another row already carries is
@@ -146,7 +146,7 @@ class VenueRowRenameIT {
 		long b3 = setIdsOfRow(venue, "B").getFirst();
 		seedBooking(venue, b3);
 
-		// The venue now answers LAYOUT_IN_USE to a replace and SET_IN_USE to a move; the rename still works.
+		// Removing B3 would now answer SETS_IN_USE and moving it SET_IN_USE; the rename still works.
 		mvc.perform(put("/api/venues/{v}/rows/{r}/name", venue, "B").cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(nameBody("Back row", currentSetVersion(venue))))

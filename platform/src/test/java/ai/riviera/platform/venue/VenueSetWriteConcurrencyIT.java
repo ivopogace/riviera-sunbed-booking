@@ -58,7 +58,7 @@ class VenueSetWriteConcurrencyIT {
 	void replaceAndRepriceCannotBothWin(RepetitionInfo info) throws Exception {
 		int rep = info.getCurrentRepetition();
 		VenueId venue = new VenueId(insertVenue());
-		seedRowA(venue.value()); // set_version stays 0 (the DEFAULT); no holds/bookings, so replace isn't LAYOUT_IN_USE
+		seedRowA(venue.value()); // set_version stays 0 (the DEFAULT); no holds/bookings, so nothing refuses the save
 		OperatorId owner = insertOperator("crosswrite-owner-" + rep);
 		grant(owner, venue.value());
 
