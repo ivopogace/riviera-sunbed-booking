@@ -118,7 +118,10 @@ const SWATCH_CLASS: Record<CellState, string> = {
  * inserts, an absent cell's set leaves the map — so it works on a venue that has sold. Only a set
  * someone is still owed (a {@link SetLock locked set}) may not leave: a save that would remove one
  * is refused `SETS_IN_USE` naming every such set, which this tab then marks with the lock decoration
- * and lists, so the operator can paint them back or regenerate a grid that includes them.
+ * and lists, so the operator can paint them back or regenerate a grid that includes them. Before
+ * such a save the tab asks the owner-asserted dry run (`POST …/beach-map/preview`): a save that
+ * drops a loaded set nobody holds proceeds, one that disturbs live claims opens
+ * {@link RemodelPreviewPanel} — what a remodel would do to each, and the sets to keep — instead.
  *
  * <p>Arming Select shows <strong>{@link SetEditor}</strong>: the per-set U7 endpoints, which carry
  * the same set-scoped claim guards one set at a time. The rail opens armed
@@ -247,13 +250,11 @@ export class LayoutEditor {
   /** True while the remodel dry run is in flight — the save button reads "Checking…" and is inert. */
   protected readonly previewing = signal(false);
   /**
-   * The remodel preview the operator must confirm against, or null. Set only when a save would drop
-   * a loaded set AND the dry run names a claim; the save button stays inert while it is open, and
-   * its Save issues the PUT the dry run stood in for — over the exact cells the dry run judged.
+   * The remodel preview shown instead of a save, or null. Set only when a save would drop a loaded
+   * set AND the dry run names a claim — a save that is refused while any such claim is live, so the
+   * dialog explains and offers Back; the save button stays inert while it is open.
    */
   protected readonly remodelPreview = signal<RemodelPreview | null>(null);
-  /** The body the open preview was asked about: what its Save may send, and nothing else. */
-  private previewedSets: LayoutCellRequest[] = [];
   /** The optimistic-concurrency token loaded with the map (`setVersion`), echoed back on Save; a
    *  `409 STALE_WRITE` means the layout moved on since — the editor keeps the grid and offers Reload. */
   protected readonly loadedSetVersion = signal<number | null>(null);
@@ -935,7 +936,6 @@ export class LayoutEditor {
         await this.commitSave(venueId, sets, expectedVersion);
         return;
       }
-      this.previewedSets = sets;
       this.remodelPreview.set(preview);
     } catch (error) {
       if (this.epoch !== epoch) {
@@ -945,27 +945,6 @@ export class LayoutEditor {
     } finally {
       this.previewing.set(false);
     }
-  }
-
-  /**
-   * The dialog's Save: close it, hand focus back, then the PUT the dry run stood in for — with the
-   * cells the dry run judged. The grid stays paintable behind the dialog, so a draft that moved on
-   * since is previewed again rather than saved unseen.
-   */
-  protected async confirmRemodel(): Promise<void> {
-    const venueId = this.venueId();
-    const expectedVersion = this.loadedSetVersion();
-    const previewed = this.previewedSets;
-    this.remodelPreview.set(null);
-    this.focusAfterRender('layout-save');
-    if (venueId === undefined || expectedVersion === null || this.saving()) {
-      return;
-    }
-    if (!sameCells(previewed, this.toRequest())) {
-      await this.onSave();
-      return;
-    }
-    await this.commitSave(venueId, previewed, expectedVersion);
   }
 
   protected cancelRemodel(): void {
@@ -1244,26 +1223,6 @@ export class LayoutEditor {
       (premium ? PREMIUM_PRICE : STANDARD_PRICE);
     return formatMoney(price);
   }
-}
-
-/** Whether two save bodies name the same cells with the same fields — the previewed one and the draft. */
-function sameCells(a: readonly LayoutCellRequest[], b: readonly LayoutCellRequest[]): boolean {
-  return (
-    a.length === b.length &&
-    a.every((cell, i) => {
-      const other = b[i];
-      return (
-        cell.gridX === other.gridX &&
-        cell.gridY === other.gridY &&
-        cell.rowLabel === other.rowLabel &&
-        cell.positionNo === other.positionNo &&
-        cell.tier === other.tier &&
-        cell.pool === other.pool &&
-        cell.price.minorUnits === other.price.minorUnits &&
-        cell.price.currency === other.price.currency
-      );
-    })
-  );
 }
 
 function coordKey(gridX: number, gridY: number): string {

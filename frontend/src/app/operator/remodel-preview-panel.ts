@@ -41,17 +41,12 @@ export class RemodelPreviewPanel {
   readonly preview = input.required<RemodelPreview>();
   /** The venue the bookings link opens the daily view of. */
   readonly venueId = input.required<number>();
-  readonly confirmed = output<void>();
   readonly cancelled = output<void>();
 
   private readonly firstButton = viewChild.required<ElementRef<HTMLButtonElement>>('firstButton');
 
   constructor() {
     afterNextRender({ write: () => this.firstButton().nativeElement.focus() });
-  }
-
-  protected blocked(): boolean {
-    return this.preview().blocks.length > 0 || this.preview().staffHolds.length > 0;
   }
 
   /** "Keep Row A · position 3 and Row A · position 2 on the map to save." */

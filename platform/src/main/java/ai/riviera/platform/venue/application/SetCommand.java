@@ -55,6 +55,11 @@ public record SetCommand(String rowLabel, int positionNo, String tier, Pool pool
 	 * reserve time, and the pool decides only whether a <em>new</em> online booking may claim the set
 	 * (invariant #3 is a reserve-time rule). Rationale: RESPONSIBILITIES.md §venue.
 	 */
+	/** Where this command places the set — the cell key, the row label and the position number. */
+	public SetPlacement placement() {
+		return new SetPlacement(rowLabel, positionNo, gridX, gridY);
+	}
+
 	public boolean disturbs(SetPlacement stored) {
 		return !stored.rowLabel().equals(rowLabel)
 				|| stored.positionNo() != positionNo

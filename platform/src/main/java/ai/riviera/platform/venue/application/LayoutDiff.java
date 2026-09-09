@@ -5,7 +5,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -33,14 +35,12 @@ record LayoutDiff(List<Update> updates, List<SetCommand> inserts, List<PlacedSet
 	}
 
 	static LayoutDiff of(List<PlacedSet> stored, LayoutCommand command) {
-		Map<String, PlacedSet> byCell = new HashMap<>();
-		for (PlacedSet set : stored) {
-			byCell.put(cellKey(set.placement().gridX(), set.placement().gridY()), set);
-		}
+		List<PlacedSet> matched = matchByCell(stored, command.sets().stream().map(SetCommand::placement).toList());
 		List<Update> updates = new ArrayList<>();
 		List<SetCommand> inserts = new ArrayList<>();
-		for (SetCommand cell : command.sets()) {
-			PlacedSet kept = byCell.remove(cellKey(cell.gridX(), cell.gridY()));
+		for (int i = 0; i < matched.size(); i++) {
+			SetCommand cell = command.sets().get(i);
+			PlacedSet kept = matched.get(i);
 			if (kept == null) {
 				inserts.add(cell);
 			}
@@ -48,27 +48,42 @@ record LayoutDiff(List<Update> updates, List<SetCommand> inserts, List<PlacedSet
 				updates.add(new Update(kept, cell));
 			}
 		}
-		List<PlacedSet> removed = stored.stream().filter(byCell::containsValue).toList();
+		Set<SetId> keptIds = matched.stream().filter(Objects::nonNull).map(PlacedSet::id).collect(Collectors.toSet());
+		List<PlacedSet> removed = stored.stream().filter(set -> !keptIds.contains(set.id())).toList();
 		return new LayoutDiff(List.copyOf(updates), List.copyOf(inserts), removed);
 	}
 
 	/**
 	 * The preview's twin of {@link #disturbed()}: the stored sets a layout of bare placements would
-	 * remove or renumber, judged by the same cell key, in stored order. One matcher, two callers.
+	 * remove or renumber, in stored order — {@link #matchByCell} decides what is kept for both, and
+	 * {@code LayoutDiffTest} holds the two answers equal for one layout.
 	 */
 	static List<PlacedSet> disturbedBy(List<PlacedSet> stored, List<SetPlacement> cells) {
+		List<PlacedSet> matched = matchByCell(stored, cells);
+		Set<SetId> kept = new HashSet<>();
+		for (int i = 0; i < matched.size(); i++) {
+			PlacedSet at = matched.get(i);
+			if (at != null && at.placement().positionNo() == cells.get(i).positionNo()) {
+				kept.add(at.id());
+			}
+		}
+		return stored.stream().filter(set -> !kept.contains(set.id())).toList();
+	}
+
+	/**
+	 * The one matching rule: for each submitted cell, the stored set at its grid coordinate, or
+	 * {@code null} for a cell no stored set occupies; a stored set matches at most once.
+	 */
+	private static List<PlacedSet> matchByCell(List<PlacedSet> stored, List<SetPlacement> cells) {
 		Map<String, PlacedSet> byCell = new HashMap<>();
 		for (PlacedSet set : stored) {
 			byCell.put(cellKey(set.placement().gridX(), set.placement().gridY()), set);
 		}
-		Set<SetId> kept = new HashSet<>();
+		List<PlacedSet> matched = new ArrayList<>(cells.size());
 		for (SetPlacement cell : cells) {
-			PlacedSet stored0 = byCell.get(cellKey(cell.gridX(), cell.gridY()));
-			if (stored0 != null && stored0.placement().positionNo() == cell.positionNo()) {
-				kept.add(stored0.id());
-			}
+			matched.add(byCell.remove(cellKey(cell.gridX(), cell.gridY())));
 		}
-		return stored.stream().filter(set -> !kept.contains(set.id())).toList();
+		return matched;
 	}
 
 	/** The sets this save could strand a guest on — removed or repositioned — in stored order. */

@@ -164,7 +164,9 @@ class RemodelPreviewIT {
 						.content(layout(token + 1, cell("A", 1, "STANDARD", "ONLINE", 2000, 1, 1))))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.code").value("STALE_WRITE"));
+				.andExpect(jsonPath("$.code").value("STALE_WRITE"))
+				.andExpect(jsonPath("$.detail")
+						.value("This venue's sets have changed since the version this request carries."));
 
 		mvc.perform(post("/api/venues/{v}/beach-map/preview", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)

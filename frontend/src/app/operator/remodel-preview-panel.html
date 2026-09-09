@@ -1,15 +1,15 @@
 <p class="text-[12.5px] leading-[1.45] font-semibold">
-  <strong>This save changes sets guests still hold.</strong>
-  @if (blocked()) {
-    It can’t be saved as painted.
-  } @else {
-    Saving moves them as listed; each guest is told.
-  }
+  <strong>Guests still hold sets this save removes, so it can’t be saved as painted.</strong>
+  A remodel of these sets would do the following.
 </p>
 
 @if (preview().keep.length > 0) {
   <p class="mt-1 text-[12.5px] leading-[1.45] font-bold" data-testid="layout-remodel-keep">
     {{ keepSentence() }}
+  </p>
+} @else {
+  <p class="mt-1 text-[12.5px] leading-[1.45] font-bold" data-testid="layout-remodel-keep">
+    Keep the removed sets on the map to save, or wait until their bookings have passed.
   </p>
 }
 
@@ -76,36 +76,14 @@
 </a>
 
 <div class="mt-2 flex flex-wrap gap-2">
-  @if (!blocked()) {
-    <button
-      appTouchTarget
-      #firstButton
-      type="button"
-      class="rounded-[10px] bg-riv-solid-fill-warn px-4 py-1.5 text-[12.5px] font-bold text-white aria-disabled:opacity-60"
-      data-testid="layout-remodel-save"
-      (click)="confirmed.emit()"
-    >
-      Save layout
-    </button>
-    <button
-      appTouchTarget
-      type="button"
-      class="rounded-[10px] border border-riv-warn-edge px-4 py-1.5 text-[12.5px] font-semibold aria-disabled:opacity-60"
-      data-testid="layout-remodel-back"
-      (click)="cancelled.emit()"
-    >
-      Back to the editor
-    </button>
-  } @else {
-    <button
-      appTouchTarget
-      #firstButton
-      type="button"
-      class="rounded-[10px] border border-riv-warn-edge px-4 py-1.5 text-[12.5px] font-semibold aria-disabled:opacity-60"
-      data-testid="layout-remodel-back"
-      (click)="cancelled.emit()"
-    >
-      Back to the editor
-    </button>
-  }
+  <button
+    appTouchTarget
+    #firstButton
+    type="button"
+    class="rounded-[10px] border border-riv-warn-edge px-4 py-1.5 text-[12.5px] font-semibold aria-disabled:opacity-60"
+    data-testid="layout-remodel-back"
+    (click)="cancelled.emit()"
+  >
+    Back to the editor
+  </button>
 </div>

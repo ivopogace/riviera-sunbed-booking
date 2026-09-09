@@ -69,7 +69,7 @@ the structural net after the port and grant changes; the module tests for the ro
 the mocked e2e via `PW_CHROMIUM_EXECUTABLE`) · `postgres` (no schema change; every new read is
 index-served: the placements read and the free-sets read scan `set_position_venue_id_idx` through the
 view, the holds read and the live-bookings read take the `(set_id, booking_date)` leftmost prefixes;
-the free-sets read is one `NOT EXISTS` anti-join per date rather than N per-set probes; the preview
+the free-sets read is one active-map select plus one `takenOn` select per date, subtracted in the adapter, rather than N per-set probes; the preview
 runs `readOnly` and takes no row lock, so it never queues a claim's `FOR KEY SHARE`) ·
 `riviera-modulith` (two new `api/` ports, one per module, each a "call-me" interface; the classification
 value types are `booking.vocabulary` sealed outcomes and records, the preview outcome and the tier a
@@ -147,14 +147,14 @@ for `feature/remodel-preview`).
   gap and saves, then the editor POSTs the preview first; an all-empty answer proceeds straight to
   the PUT; a non-empty answer opens an `alertdialog` listing the five groups (move with "A3 → A7,
   4 positions", refund with amount, release/decline, staff hold with dates, block with the set to
-  keep) and a link to the bookings tab, the save button is `aria-disabled` while it is open, Back
-  closes it and returns focus to Save, and Save inside it issues the PUT; a save that removes no
-  loaded set never previews. *Seam:* the `LayoutEditor` DOM through the mocked `HttpTestingController` ·
+  keep) and a link to the bookings tab, the save button is `aria-disabled` while it is open, and Back
+  closes it and returns focus to Save; a save that removes no loaded set never previews. *Seam:* the `LayoutEditor` DOM through the mocked `HttpTestingController` ·
   *Pinned by:* `layout-editor.spec.ts` "previews…" cases, `remodel-preview-panel.spec.ts`,
   `remodel-preview-panel.a11y.spec.ts`, `remodel-preview-panel.contrast.spec.ts`
 - [x] **AC-8:** Given a mocked preview answering the five groups, when the operator saves from the
   running SPA, then the dialog renders each group, axe is clean, the save is `aria-disabled`, Back
-  restores focus to Save, and a preview answering nothing goes straight to the PUT. *Seam:* the
+  restores focus to Save, a moves-only answer still offers Back alone, and a preview answering
+  nothing goes straight to the PUT. *Seam:* the
   running SPA against `page.route` mocks · *Pinned by:* `frontend/e2e/layout-editor.e2e.ts`
   "previews the remodel…" cases
 - [x] **AC-9:** `CONTEXT.md` defines Remodel zone, Move candidate and Move distance;
@@ -196,11 +196,12 @@ handling are untouched; the dialog sits before the PUT, never instead of it.
 
 ## Open questions / Assumptions
 
-- **Assumption:** the dialog's Save proceeds to the PUT even when moves/refunds are listed, and this
-  slice's PUT then answers `409 SETS_IN_USE` as today — the operator sees why first, the commit lands
-  in #1034. When blocks exist the dialog offers Back only. — *Owner:* session · *Resolves by:* review.
-
 ### Resolved
+
+- **The dialog is informational in this slice: the five groups, the sets to keep, Back only.** A
+  non-empty preview means a live claim on a disturbed set, which this slice's PUT refuses, so a Save
+  in the dialog would only promise what the commit (#1034) delivers; the Save joins the dialog with
+  the commit — resolved at the review gate (F-3).
 
 - **The orchestration home is the root package, granted `venue`/`booking` `api`+`vocabulary`.** The
   epic's decision (rev. 2), reaffirmed in the ticket; ADR-0020 records it and the alternatives — plan time.
@@ -303,10 +304,10 @@ never `[disabled]` on the pressed control, `focusMover` on the three legs — no
 
 ## Execution status
 
-**Stage pointer:** `PR — draft #1051; docs landed; next: merge latest main, mark ready, review gate`
+**Stage pointer:** `review gate — round 1 findings fixed; next: re-resolve the range, re-walk the overlay on the fix commits, then the Sonar gate`
 
-**Next action:** merge `origin/main`, push, mark PR #1051 ready for review, run the review gate
-(`references/pr-gates.md` §1) over the resolved range.
+**Next action:** re-resolve the review range (`references/pr-gates.md` §1 step 2) over the fix
+push, re-walk the overlay items for the touched areas, then pull the Sonar list for PR #1051.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -317,7 +318,7 @@ never `[disabled]` on the pressed control, `focusMover` on the three legs — no
 | 4 — the edge: controller, security, stubs, ITs, the grant, ADR-0020, the net | ✅ | the "Answer the remodel preview at the edge" commit |
 | 5 — the editor: model, service, panel, wiring, Vitest + a11y + contrast | ✅ | 052dca0a |
 | 6 — the mocked e2e | ✅ | 779b9d61 |
-| 7 — docs: CONTEXT, RESPONSIBILITIES, Javadoc; close-out | ⏳ | |
+| 7 — docs: CONTEXT, RESPONSIBILITIES, Javadoc; close-out | ⏳ | the docs commit; close-out in the PR's last code-touching commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -325,7 +326,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-2 | review (shallow bug scan) | the dialog's Save re-read the grid at confirm time, so a cell painted behind the open dialog shipped un-previewed | fixed — the dialog carries the exact body it previewed; a draft that changed underneath is previewed again, never saved unseen (`layout-editor.spec.ts` "a grid painted behind the open dialog…") |
+| F-3 | review (prior-PR-comments reviewer) | the dialog offered "Save layout" and said "Saving moves them as listed" while this slice's PUT still refuses every live claim — a promise the backend cannot keep until #1034 | fixed — the dialog is informational: the five groups, the sets to keep, Back only; the Save and the F-2 machinery leave with it |
+| F-4 | review (prior-PR-comments reviewer) | `LayoutEditor`'s class TSDoc still described the refuse-outright flow only | fixed — names the dry run and the panel |
+| F-5 | review (code-comment reviewer) | `warn-token-skin.contrast.spec.ts`'s `SITES` claims every site painting the warn family, and the new panel was not on it | fixed — both panel files join the sweep |
+| F-6 | review (code-comment reviewer) | `LiveClaims`'s class Javadoc framed the class as two callers of one question; `walkInHoldsOn` is a third | fixed — the Javadoc names it |
+| F-7 | review (CLAUDE.md/overlay reviewer, RV-BE-10) | the root's `STALE_WRITE`/`NO_SUCH_VENUE` details diverged from the venue module's and named "layout" | fixed — the same two sentences; `RemodelPreviewIT` pins the detail |
+| F-8 | review (CLAUDE.md/overlay reviewer) | `LayoutDiff#of` and `#disturbedBy` each walked the cells with their own map — two matchers that could drift | fixed — one private `matchByCell`; `LayoutDiffTest.thePreviewAndTheSaveDisturbTheSameSetsForOneLayout` |
+| F-9 | review (CLAUDE.md/overlay reviewer) | the plan's `postgres` line claimed a `NOT EXISTS` anti-join the code does not use | fixed — the line states the two-select subtraction |
+| F-2 | review (shallow bug scan) | the dialog's Save re-read the grid at confirm time, so a cell painted behind the open dialog shipped un-previewed | fixed, then superseded by F-3 — with no Save in the dialog there is no confirm to carry a body |
 | F-1 | CI (`Backend (build + test)` on 42a9f039) | `JdbcBookingsLiveClaimsIT` seeded booking codes `LIVE0001…` that `JdbcBookingPresenceIT` also seeds; green alone, `DuplicateKeyException` on `booking_code_uniq` in the full suite's shared database | fixed — codes and addresses minted per insert (`LC-<nanoTime>`); both classes green in one JVM |
 
 ---
@@ -412,6 +420,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/layout-editor.html` — the panel
 - `frontend/src/app/operator/layout-editor.spec.ts` — AC-7
 - `frontend/src/app/operator/layout-editor.a11y.spec.ts` — the open panel
+- `frontend/src/app/shared/warn-token-skin.contrast.spec.ts` — the panel joins the warn-skin site sweep
 - `frontend/e2e/layout-editor.e2e.ts` — AC-8
 - `CONTEXT.md` — three terms
 - `RESPONSIBILITIES.md` — § venue, § booking, § Platform edge

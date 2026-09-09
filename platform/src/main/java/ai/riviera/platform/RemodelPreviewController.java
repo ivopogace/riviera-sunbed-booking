@@ -47,8 +47,10 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 @RequestMapping("/api/venues")
 class RemodelPreviewController {
 
-	private static final String NO_SUCH_VENUE_DETAIL = "No venue has this id.";
-	private static final String STALE_WRITE_DETAIL = "The layout has changed since this map was loaded.";
+	/** The venue module's wording for the same codes: one {@code set_version} token, one sentence. */
+	private static final String NO_SUCH_VENUE_DETAIL = "No such venue.";
+	private static final String STALE_SETS_DETAIL =
+			"This venue's sets have changed since the version this request carries.";
 
 	private final CurrentOperator currentOperator;
 	private final BeachMapRemodel remodel;
@@ -71,7 +73,7 @@ class RemodelPreviewController {
 			case LayoutPreview.Disturbing disturbing -> ResponseEntity.ok(assemble(operator, venue, disturbing.sets()));
 			case LayoutPreview.Rejected(var reason) -> switch (reason) {
 				case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(), NO_SUCH_VENUE_DETAIL);
-				case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(), STALE_WRITE_DETAIL);
+				case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(), STALE_SETS_DETAIL);
 			};
 		};
 	}

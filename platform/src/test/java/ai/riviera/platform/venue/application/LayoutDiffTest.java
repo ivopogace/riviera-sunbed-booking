@@ -140,4 +140,17 @@ class LayoutDiffTest {
 		assertEquals(List.of(stored(A2, "A", 2, 2, 1), stored(B1, "B", 1, 1, 2)), disturbed,
 				"A1 is renamed in place; A2 is renumbered; B1 is absent; C1 is new — in stored id order");
 	}
+
+	@Test
+	void thePreviewAndTheSaveDisturbTheSameSetsForOneLayout() {
+		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(A2, "A", 2, 2, 1),
+				stored(B1, "B", 1, 1, 2), stored(B2, "B", 2, 2, 2));
+		List<SetCommand> commands = List.of(renamed("Front", 1, 1, 1), cell("A", 9, 2, 1), cell("C", 1, 1, 3));
+
+		List<PlacedSet> saveWould = LayoutDiff.of(stored, new LayoutCommand(commands)).disturbed();
+		List<PlacedSet> previewSays = LayoutDiff.disturbedBy(stored, commands.stream().map(SetCommand::placement).toList());
+
+		assertEquals(saveWould, previewSays);
+		assertEquals(List.of(stored(A2, "A", 2, 2, 1), stored(B1, "B", 1, 1, 2), stored(B2, "B", 2, 2, 2)), previewSays);
+	}
 }

@@ -73,7 +73,7 @@ export const FULL_PREVIEW: RemodelPreview = {
   ],
 };
 
-/** A preview that only moves — the one shape whose confirm proceeds to the save. */
+/** A preview that only moves — no block names a set, so the keep sentence is the general one. */
 export const MOVES_ONLY_PREVIEW: RemodelPreview = {
   ...FULL_PREVIEW,
   refunds: [],
@@ -127,41 +127,34 @@ describe('RemodelPreviewPanel (#1033)', () => {
     expect(host.textContent).not.toMatch(/\bcode\b/i);
   });
 
-  it('names the sets to keep and offers Back only when something blocks', () => {
+  it('names the sets to keep, links the bookings tab, and offers Back only', () => {
     render(FULL_PREVIEW);
+    const cancelled = vi.fn();
+    fixture.componentInstance.cancelled.subscribe(cancelled);
 
     expect(byId('layout-remodel-keep')!.textContent).toMatch(
       /Keep Row A · position 3 and Row A · position 2 on the map to save/,
     );
-    expect(byId('layout-remodel-save')).toBeNull();
-    expect(byId('layout-remodel-back')).toBeTruthy();
     expect(byId('layout-remodel-bookings')!.getAttribute('href')).toBe('/operator/1/daily');
-  });
-
-  it('offers Save when nothing blocks, hides the empty groups, and emits both outcomes', () => {
-    render(MOVES_ONLY_PREVIEW);
-    const confirmed = vi.fn();
-    const cancelled = vi.fn();
-    fixture.componentInstance.confirmed.subscribe(confirmed);
-    fixture.componentInstance.cancelled.subscribe(cancelled);
-
-    expect(byId('layout-remodel-keep')).toBeNull();
-    expect(byId('layout-remodel-refunds')).toBeNull();
-    expect(byId('layout-remodel-blocks')).toBeNull();
-    byId('layout-remodel-save')!.click();
+    expect(host.querySelectorAll('button')).toHaveLength(1);
     byId('layout-remodel-back')!.click();
-
-    expect(confirmed).toHaveBeenCalledTimes(1);
     expect(cancelled).toHaveBeenCalledTimes(1);
   });
 
-  it('focuses its first button on the way in — Save when it can proceed, Back when blocked', async () => {
+  it('hides the empty groups and, with nothing to keep by name, says to keep the removed sets', () => {
     render(MOVES_ONLY_PREVIEW);
-    await fixture.whenStable();
-    expect(document.activeElement).toBe(byId('layout-remodel-save'));
 
-    TestBed.resetTestingModule();
-    render(FULL_PREVIEW);
+    expect(byId('layout-remodel-refunds')).toBeNull();
+    expect(byId('layout-remodel-blocks')).toBeNull();
+    expect(byId('layout-remodel-holds')).toBeNull();
+    expect(byId('layout-remodel-keep')!.textContent).toMatch(
+      /Keep the removed sets on the map to save/,
+    );
+    expect(host.textContent).toMatch(/can’t be saved as painted/);
+  });
+
+  it('focuses Back on the way in', async () => {
+    render(MOVES_ONLY_PREVIEW);
     await fixture.whenStable();
     expect(document.activeElement).toBe(byId('layout-remodel-back'));
   });

@@ -16,7 +16,7 @@ import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutEditor } from './layout-editor';
 import { RemodelPreview } from './operator-console.model';
-import { FULL_PREVIEW, MOVES_ONLY_PREVIEW } from './remodel-preview-panel.spec';
+import { FULL_PREVIEW } from './remodel-preview-panel.spec';
 import { SetLock } from './operator-console.model';
 
 interface SentBody {
@@ -1866,7 +1866,7 @@ describe('LayoutEditor (#172)', () => {
       expect(byId('layout-saved')).toBeTruthy();
     });
 
-    it('opens the confirm dialog on an affecting answer, keeps the save busy, and Back hands focus to Save with no PUT', async () => {
+    it('opens the preview dialog on an affecting answer, keeps the save busy, and Back hands focus to Save with no PUT', async () => {
       dropLoadedA2();
       byId('layout-save').click();
       previewRequest().flush(FULL_PREVIEW);
@@ -1879,7 +1879,7 @@ describe('LayoutEditor (#172)', () => {
       expect(byId('layout-remodel-blocks').textContent).toMatch(/arrives within the freeze window/);
       expect(byId('layout-remodel-keep').textContent).toMatch(/Keep Row A · position 3/);
       expect(byId('layout-save').getAttribute('aria-disabled')).toBe('true');
-      expect(host.querySelector('[data-testid="layout-remodel-save"]')).toBeNull();
+      expect(byId('layout-remodel-preview').querySelectorAll('button')).toHaveLength(1);
 
       byId('layout-remodel-back').click();
       await fixture.whenStable();
@@ -1888,58 +1888,6 @@ describe('LayoutEditor (#172)', () => {
       expect(document.activeElement).toBe(byId('layout-save'));
       expect(byId('layout-save').getAttribute('aria-disabled')).toBeNull();
       http.expectNone((r) => r.method === 'PUT');
-    });
-
-    it('Save inside the dialog issues the PUT with the loaded token', async () => {
-      dropLoadedA2();
-      byId('layout-save').click();
-      previewRequest().flush(MOVES_ONLY_PREVIEW);
-      await fixture.whenStable();
-      fixture.detectChanges();
-
-      byId('layout-remodel-save').click();
-      fixture.detectChanges();
-      const put = http.expectOne(
-        (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
-      );
-      expect(body(put).expectedVersion).toBe(3);
-      expect(body(put).sets.map((set) => set.gridX)).toEqual([1]);
-      put.flush(null);
-      await fixture.whenStable();
-      fixture.detectChanges();
-      expect(host.querySelector('[data-testid="layout-remodel-preview"]')).toBeNull();
-      expect(byId('layout-saved')).toBeTruthy();
-    });
-
-    it('a grid painted behind the open dialog is previewed again on Save, never saved unseen', async () => {
-      dropLoadedA2();
-      byId('layout-save').click();
-      previewRequest().flush(MOVES_ONLY_PREVIEW);
-      await fixture.whenStable();
-      fixture.detectChanges();
-
-      // The grid is still paintable: A1 is repainted standard while the dialog shows A2's preview.
-      byId('layout-tool-standard').click();
-      fixture.detectChanges();
-      cells()[0].click();
-      fixture.detectChanges();
-      byId('layout-remodel-save').click();
-      fixture.detectChanges();
-
-      http.expectNone((r) => r.method === 'PUT');
-      const again = previewRequest();
-      expect(body(again).sets.map((set) => set.tier)).toEqual(['STANDARD']);
-      again.flush(EMPTY_PREVIEW);
-      await fixture.whenStable();
-      fixture.detectChanges();
-      const put = http.expectOne(
-        (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
-      );
-      expect(body(put).sets.map((set) => set.tier)).toEqual(['STANDARD']);
-      put.flush(null);
-      await fixture.whenStable();
-      fixture.detectChanges();
-      expect(byId('layout-saved')).toBeTruthy();
     });
 
     it('a stale dry run lands in the same reload banner as a stale save', async () => {

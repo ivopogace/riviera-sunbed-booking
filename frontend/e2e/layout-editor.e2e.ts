@@ -414,7 +414,7 @@ const BLOCKED_PREVIEW = {
   keep: [{ setId: 2, rowLabel: 'B', positionNo: 1 }],
 };
 
-/** The same save when only a move results — the one shape whose confirm proceeds to the PUT. */
+/** The same save when only a move results — nothing to keep by name, still refused while it lives. */
 const MOVES_ONLY_PREVIEW = {
   ...BLOCKED_PREVIEW,
   refunds: [],
@@ -752,7 +752,7 @@ test('a refused save marks the sets it names with the lock decoration and lists 
   await expect(page.getByTestId('layout-lock-notice')).toContainText(/can’t become a gap/);
 });
 
-test('previews the remodel before a save that drops a held set: five groups, an inert Save, Back restores focus (#1033, + axe)', async ({
+test('previews the remodel instead of a save that drops a held set: five groups, an inert Save, Back restores focus (#1033, + axe)', async ({
   page,
 }) => {
   const { previews, puts } = await mockEditor(page, [], SEEDED_SETS, [], BLOCKED_PREVIEW);
@@ -787,7 +787,7 @@ test('previews the remodel before a save that drops a held set: five groups, an 
   await expect(page.getByTestId('layout-remodel-keep')).toContainText(
     'Keep Row B · position 1 on the map to save.',
   );
-  await expect(page.getByTestId('layout-remodel-save')).toHaveCount(0);
+  await expect(dialog.getByRole('button')).toHaveCount(1);
   await expect(page.getByTestId('layout-remodel-back')).toBeFocused();
   await expect(page.getByTestId('layout-save')).toHaveAttribute('aria-disabled', 'true');
   await expect(page.getByTestId('layout-remodel-bookings')).toHaveAttribute(
@@ -811,7 +811,7 @@ test('previews the remodel before a save that drops a held set: five groups, an 
   expect(puts).toHaveLength(0);
 });
 
-test('a remodel preview that only moves offers Save, whose click issues the one PUT (#1033)', async ({
+test('a remodel preview naming only moves still offers Back alone: the save is refused while the claims live (#1033)', async ({
   page,
 }) => {
   const { previews, puts } = await mockEditor(page, [], SEEDED_SETS, [], MOVES_ONLY_PREVIEW);
@@ -823,21 +823,13 @@ test('a remodel preview that only moves offers Save, whose click issues the one 
 
   const dialog = page.getByTestId('layout-remodel-preview');
   await expect(dialog).toBeVisible();
-  await expect(page.getByTestId('layout-remodel-keep')).toHaveCount(0);
-  await expect(page.getByTestId('layout-remodel-save')).toBeFocused();
-  await expect(page.getByTestId('layout-remodel-save')).toHaveCSS(
-    'background-color',
-    'rgb(154, 100, 16)', // --riv-solid-fill-warn
+  await expect(page.getByTestId('layout-remodel-keep')).toContainText(
+    'Keep the removed sets on the map to save',
   );
-  await expect(page.getByTestId('layout-remodel-save')).toHaveCSS('min-height', '44px');
-
-  await page.getByTestId('layout-remodel-save').click();
-  await expect(dialog).toBeHidden();
-  await expect(page.getByTestId('layout-saved')).toBeVisible();
+  await expect(dialog.getByRole('button')).toHaveCount(1);
+  await expect(page.getByTestId('layout-remodel-back')).toBeFocused();
   expect(previews).toHaveLength(1);
-  expect(puts).toHaveLength(1);
-  const body = puts[0].postDataJSON() as { sets: { gridX: number; gridY: number }[] };
-  expect(body.sets.map((set) => [set.gridX, set.gridY])).toEqual([[1, 1]]);
+  expect(puts).toHaveLength(0);
 });
 
 test('a stale-tab save is rejected 409, keeps the painted grid, and Reload recovers (#226, + axe)', async ({

@@ -23,6 +23,8 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * The write guards ask it as a boolean before refusing a move or a removal; the read asks it per
  * set with the nearest dates, so the lock the canvas shows is the lock the server enforces.
  * Holding both answers here is what keeps them from drifting (ADR-0018: one rule, two callers).
+ * The remodel preview asks a third, narrower thing through the same cutoff — which staff walk-in
+ * holds sit on a set from today on — so "today" is read in one place.
  *
  * <p>A past hold freezes nothing: a past date is never claimable (reserve and staff mark both refuse
  * it), so the range the cutoff ignores is one nothing can be written into. Rationale:
