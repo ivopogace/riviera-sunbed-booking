@@ -55,7 +55,7 @@ describe('LayoutEditor a11y (#172)', () => {
 
   function render(sets: unknown[] = []): void {
     configure();
-    mapRequest().flush({ id: 1, name: 'V', sets, setVersion: 2 });
+    mapRequest().flush({ map: { id: 1, name: 'V', sets, setVersion: 2 }, locks: [] });
     fixture.detectChanges();
   }
 
@@ -94,7 +94,7 @@ describe('LayoutEditor a11y (#172)', () => {
     expect(byId('layout-loading')).toBeTruthy();
     await expectNoAxeViolations(host());
 
-    mapRequest().flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
+    mapRequest().flush({ map: { id: 1, name: 'V', sets: [], setVersion: 0 }, locks: [] });
     fixture.detectChanges();
   });
 

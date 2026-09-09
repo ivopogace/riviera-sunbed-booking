@@ -58,6 +58,7 @@ describe('SetEditor a11y (#600)', () => {
     fixture.componentRef.setInput('sets', sets);
     fixture.componentRef.setInput('loaded', loaded);
     fixture.componentRef.setInput('expectedVersion', expectedVersion);
+    fixture.componentRef.setInput('locks', []);
     fixture.detectChanges();
     http
       .expectOne((r) => r.url.includes('/api/auth/me'))

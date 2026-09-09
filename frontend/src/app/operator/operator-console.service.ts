@@ -25,6 +25,7 @@ import {
   SetBatchErrorCode,
   SetBatchRequest,
   SetBatchResult,
+  OperatorBeachMap,
   SetDayState,
   SetWriteErrorCode,
   SetWriteRequest,
@@ -104,6 +105,15 @@ export class OperatorConsoleService {
     return this.http.get<SetDayState[]>(`${this.base}/api/venues/${venueId}/availability`, {
       params: new HttpParams().set('date', date),
     });
+  }
+
+  /**
+   * The owner's beach map with its locked sets — the layout editor's seed read. Owner-asserted
+   * server-side (invariant #13): the map is the public read's shape, the `locks` beside it name the
+   * sets a live claim pins and why, which the public map never carries. A free set has no entry.
+   */
+  beachMap(venueId: number): Observable<OperatorBeachMap> {
+    return this.http.get<OperatorBeachMap>(`${this.base}/api/venues/${venueId}/beach-map`);
   }
 
   /**

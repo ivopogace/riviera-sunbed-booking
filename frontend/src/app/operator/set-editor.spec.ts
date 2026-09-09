@@ -81,6 +81,7 @@ describe('SetEditor (#600)', () => {
     fixture.componentRef.setInput('sets', sets);
     fixture.componentRef.setInput('loaded', loaded);
     fixture.componentRef.setInput('expectedVersion', expectedVersion);
+    fixture.componentRef.setInput('locks', []);
     fixture.componentInstance.changed.subscribe(() => (changed += 1));
     fixture.detectChanges();
     // OperatorAuth restores the session on construction — settle it as signed-out.

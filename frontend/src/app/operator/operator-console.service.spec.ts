@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
 import {
+  OperatorBeachMap,
   PayoutLedgerView,
   PendingRequestItem,
   RequestDecision,
@@ -364,6 +365,36 @@ describe('OperatorConsoleService — per-set beach-map writes (#600)', () => {
  * The set batch apply client — one `PATCH` on the set collection carrying the swept ids and only
  * the touched fields, guarded by the same `setVersion` token as the bulk replace and the reprice.
  */
+describe('OperatorConsoleService — the owner’s beach-map read', () => {
+  let service: OperatorConsoleService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [OperatorConsoleService, provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(OperatorConsoleService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('GETs the map and its sparse locks from the owner-asserted beach-map resource', () => {
+    let received: OperatorBeachMap | undefined;
+    service.beachMap(1).subscribe((view) => (received = view));
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/venues/1/beach-map`);
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      map: { id: 1, name: 'V', sets: [], setVersion: 4 },
+      locks: [{ setId: 7, bookedOn: '2026-09-12', heldOn: null }],
+    });
+
+    expect(received?.map.setVersion).toBe(4);
+    expect(received?.locks).toEqual([{ setId: 7, bookedOn: '2026-09-12', heldOn: null }]);
+  });
+});
+
 describe('OperatorConsoleService — set batch apply', () => {
   let service: OperatorConsoleService;
   let httpMock: HttpTestingController;

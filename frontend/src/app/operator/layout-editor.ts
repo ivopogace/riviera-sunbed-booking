@@ -32,12 +32,18 @@ import {
   MAX_ROWS,
 } from './beach-cell';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
-import { todayBookingDate } from '../shared/booking-date';
 import { MapSkeletonGrid } from '../shared/map-skeleton-grid';
+import { LockIcon } from '../shared/lock-icon';
 import { SetView } from '../shared/venue-views';
-import { VenueService } from '../venue/venue.service';
 import { ConsoleVenueMap } from './console-venue-map';
-import { LayoutCellRequest, LayoutErrorCode, RowNameErrorCode } from './operator-console.model';
+import { lockDescription, lockReason } from './lock-reason';
+import {
+  LayoutCellRequest,
+  LayoutErrorCode,
+  OperatorBeachMap,
+  RowNameErrorCode,
+  SetLock,
+} from './operator-console.model';
 import { OperatorConsoleService, layoutErrorOf, rowNameErrorOf } from './operator-console.service';
 import { SetEditor } from './set-editor';
 import { StaleWriteBanner } from './stale-write-banner';
@@ -53,7 +59,12 @@ type EditorTool = 'select' | CellState;
 
 /** One paint-grid row on the shared canvas's row contract, plus the cells the editor paints. */
 interface LayoutRow extends BeachMapCanvasRow {
-  readonly cells: readonly { readonly state: CellState; readonly label: string }[];
+  readonly cells: readonly {
+    readonly state: CellState;
+    readonly label: string;
+    /** Set when a live claim pins the cell's set: the reason the gap brush will refuse it. */
+    readonly lock: SetLock | undefined;
+  }[];
 }
 
 /** One tool-rail row: Select carries no count, a brush carries its live cell count. */
@@ -127,6 +138,7 @@ const SWATCH_CLASS: Record<CellState, string> = {
     StaleWriteBanner,
     BusyAction,
     TouchTarget,
+    LockIcon,
   ],
   templateUrl: './layout-editor.html',
   // Painting ends wherever the mouse is released — the grid container is canvas-owned now.
@@ -140,7 +152,6 @@ const SWATCH_CLASS: Record<CellState, string> = {
 })
 export class LayoutEditor {
   private readonly route = inject(ActivatedRoute);
-  private readonly venues = inject(VenueService);
   private readonly venueMap = inject(ConsoleVenueMap);
   private readonly console = inject(OperatorConsoleService);
   private readonly focusAfterRender = focusMover();
@@ -170,6 +181,14 @@ export class LayoutEditor {
   protected readonly rowNames = signal<readonly string[]>([]);
   /** The venue's saved sets from the last map read — what {@link SetEditor} edits, by id. */
   protected readonly loadedSets = signal<readonly SetView[]>([]);
+  /**
+   * The sets a live claim pins, from the same read as {@link loadedSets}: the lock means "cannot
+   * move or remove", never "cannot repaint" — the tier and pool brushes still paint a locked cell,
+   * the gap brush and the fills leave it as it is and say why.
+   */
+  protected readonly locks = signal<readonly SetLock[]>([]);
+  /** The last refused gap paint's reason, shown in the save bar until the tool changes or the draft settles. */
+  protected readonly lockNotice = signal<string | null>(null);
 
   /**
    * The label each grid row carries **on the server** — the rename's source, and `undefined` for a
@@ -302,6 +321,20 @@ export class LayoutEditor {
   });
   protected readonly isDirty = computed(() => this.dirtyCount() > 0);
 
+  /** The locks keyed by the cell coordinate they sit on, resolved through the loaded sets. */
+  private readonly lockByCoord = computed(() => {
+    const byId = new Map(this.locks().map((lock) => [lock.setId, lock]));
+    const byCoord = new Map<string, SetLock>();
+    for (const set of this.loadedSets()) {
+      const lock = byId.get(set.id);
+      if (lock !== undefined) {
+        byCoord.set(coordKey(set.gridX, set.gridY), lock);
+      }
+    }
+    return byCoord;
+  });
+  protected readonly lockedCount = computed(() => this.lockByCoord().size);
+
   /** The save bar's last-saved line: the clock time in Tirane, or a not-yet-saved notice. */
   protected readonly lastSavedLabel = computed(() => {
     const at = this.lastSavedAt();
@@ -338,6 +371,7 @@ export class LayoutEditor {
       cells: row.map((state, x) => ({
         state,
         label: `Row ${gridRowLabel(y)} position ${x + 1}, ${CELL_STATE_DESC[state]}`,
+        lock: this.lockByCoord().get(coordKey(x + 1, y + 1)),
       })),
     })),
   );
@@ -396,6 +430,8 @@ export class LayoutEditor {
     this.rowNames.set([]);
     this.storedRowNames.set([]);
     this.loadedSets.set([]);
+    this.locks.set([]);
+    this.lockNotice.set(null);
     this.armedTool.set(null);
     this.priceByCoord.clear();
     this.activeBrush.set('premium');
@@ -423,6 +459,7 @@ export class LayoutEditor {
    *  switches to the paint grid, remembering itself as {@link activeBrush}. */
   protected armTool(tool: EditorTool): void {
     this.armedTool.set(tool);
+    this.lockNotice.set(null);
     if (tool !== 'select') {
       this.activeBrush.set(tool);
     }
@@ -650,11 +687,37 @@ export class LayoutEditor {
       return; // Space-drag pans at 100% zoom (#713); it never also paints
     }
     const tool = this.activeBrush();
+    const lock = this.lockAt(r, c);
+    if (tool === 'gap' && lock !== undefined) {
+      this.lockNotice.set(
+        `Row ${gridRowLabel(r)} · position ${c + 1} is ${lockReason(lock)} — it can’t become a gap. Its tier and pool can still change.`,
+      );
+      return;
+    }
     this.grid.update((g) =>
       g.map((row, ri) => (ri !== r ? row : row.map((cell, ci) => (ci !== c ? cell : tool)))),
     );
     this.savedNotice.set(false);
     this.lastChange.set(`Row ${gridRowLabel(r)} · position ${c + 1} → ${TOOL_LABEL[tool]}`);
+  }
+
+  /** The lock on the cell at 0-based row `r`, column `c`, if a live claim pins its set. */
+  private lockAt(r: number, c: number): SetLock | undefined {
+    return this.lockByCoord().get(coordKey(c + 1, r + 1));
+  }
+
+  /** The gap brush keeps every locked cell; the other brushes repaint them. */
+  private paintOver(state: CellState, tool: CellState, r: number, c: number): CellState {
+    return tool === 'gap' && this.lockAt(r, c) !== undefined ? state : tool;
+  }
+
+  /** The fills' notice: how many locked cells the gap brush left as they were. */
+  private noteKeptLocks(kept: number, scope: string): void {
+    if (kept > 0) {
+      this.lockNotice.set(
+        `${scope} → ${TOOL_LABEL.gap} kept ${kept} locked ${kept === 1 ? 'set' : 'sets'} — booked or held sets can’t become gaps.`,
+      );
+    }
   }
 
   /**
@@ -665,22 +728,52 @@ export class LayoutEditor {
    */
   protected fillRow(r: number): void {
     const tool = this.activeBrush();
-    this.grid.update((g) => g.map((row, ri) => (ri !== r ? row : row.map(() => tool))));
+    let kept = 0;
+    this.grid.update((g) =>
+      g.map((row, ri) =>
+        ri !== r
+          ? row
+          : row.map((cell, ci) => {
+              const next = this.paintOver(cell, tool, r, ci);
+              kept += next === tool ? 0 : 1;
+              return next;
+            }),
+      ),
+    );
     this.savedNotice.set(false);
     this.lastChange.set(`Row ${gridRowLabel(r)} → ${TOOL_LABEL[tool]}`);
+    this.noteKeptLocks(kept, `Row ${gridRowLabel(r)}`);
   }
 
   /** {@link fillRow}'s column counterpart — the column-header's fill button. */
   protected fillColumn(c: number): void {
     const tool = this.activeBrush();
-    this.grid.update((g) => g.map((row) => row.map((cell, ci) => (ci !== c ? cell : tool))));
+    let kept = 0;
+    this.grid.update((g) =>
+      g.map((row, ri) =>
+        row.map((cell, ci) => {
+          if (ci !== c) {
+            return cell;
+          }
+          const next = this.paintOver(cell, tool, ri, c);
+          kept += next === tool ? 0 : 1;
+          return next;
+        }),
+      ),
+    );
     this.savedNotice.set(false);
     this.lastChange.set(`Column ${c + 1} → ${TOOL_LABEL[tool]}`);
+    this.noteKeptLocks(kept, `Column ${c + 1}`);
   }
 
   /** The row-rail fill button's accessible name — tracks whichever brush is currently armed. */
   protected readonly rowFillLabel = (r: number): string =>
     `Fill row ${gridRowLabel(r)} with ${TOOL_LABEL[this.activeBrush()]}`;
+
+  /** The sentence a locked cell's accessible description and title carry. */
+  protected lockText(lock: SetLock): string {
+    return lockDescription(lock);
+  }
 
   /** The column-header fill button's accessible name. */
   protected readonly colFillLabel = (c: number): string =>
@@ -859,11 +952,12 @@ export class LayoutEditor {
     this.reloading.set(true);
     this.reloadFailed.set(false);
     this.venueMap.reset(); // the other tabs must not serve the pre-conflict layout either (#486)
-    this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
-      next: (venue) => {
+    this.console.beachMap(venueId).subscribe({
+      next: (view: OperatorBeachMap) => {
         if (this.epoch !== epoch) {
           return; // a venue switch superseded this reload (#180)
         }
+        const venue = view.map;
         // Success: NOW replace the in-progress grid with the server's latest layout + token, clear the banner.
         this.priceByCoord.clear();
         this.grid.set([]); // hasLayout() → false, so seedFrom re-seeds (or leaves the empty state)
@@ -874,6 +968,8 @@ export class LayoutEditor {
         this.loadFailed.set(false);
         this.mapLoaded.set(true);
         this.loadedSets.set(venue.sets);
+        this.locks.set(view.locks);
+        this.lockNotice.set(null);
         this.seedFrom(venue.sets);
         this.errorCode.set(undefined);
         this.savedNotice.set(false);
@@ -928,16 +1024,18 @@ export class LayoutEditor {
   private loadExisting(venueId: number): void {
     const epoch = this.epoch;
     this.reading.set(true);
-    this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
-      next: (venue) => {
+    this.console.beachMap(venueId).subscribe({
+      next: (view: OperatorBeachMap) => {
         if (this.epoch !== epoch) {
           return; // a venue switch superseded this load — never seed the new venue's editor (#180)
         }
+        const venue = view.map;
         this.reading.set(false);
         this.loadFailed.set(false);
         this.mapLoaded.set(true);
         this.loadedSetVersion.set(venue.setVersion ?? null);
         this.loadedSets.set(venue.sets);
+        this.locks.set(view.locks);
         this.seedFrom(venue.sets);
       },
       error: (error: unknown) => {
@@ -994,6 +1092,7 @@ export class LayoutEditor {
     this.grid.set(cloneGrid(this.baselineGrid()));
     this.rowNames.set([...this.baselineRowNames()]);
     this.lastChange.set(null);
+    this.lockNotice.set(null);
     this.savedNotice.set(false);
     this.errorCode.set(undefined);
     this.clearRenameNotices();

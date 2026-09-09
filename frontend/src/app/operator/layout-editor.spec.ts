@@ -73,7 +73,7 @@ describe('LayoutEditor (#172)', () => {
     // Flush the constructor's layout load so the grid seeds and the optimistic-concurrency token is captured.
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: initialSets, setVersion });
+      .flush({ map: { id: 1, name: 'V', sets: initialSets, setVersion }, locks: [] });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
   }
@@ -141,7 +141,7 @@ describe('LayoutEditor (#172)', () => {
     // The sentence the skeleton replaces; a mirrored shape says it without a reflow (#744).
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
+      .flush({ map: { id: 1, name: 'V', sets: [], setVersion: 0 }, locks: [] });
     fixture.detectChanges();
 
     expect(host.querySelector('[data-testid="layout-loading"]')).toBeNull();
@@ -165,7 +165,7 @@ describe('LayoutEditor (#172)', () => {
 
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
+      .flush({ map: { id: 1, name: 'V', sets: [], setVersion: 0 }, locks: [] });
     fixture.detectChanges();
   });
 
@@ -937,12 +937,7 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({
-        id: 2,
-        name: 'W',
-        sets: [],
-        setVersion: 0,
-      });
+      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
     req.flush(null);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -963,12 +958,7 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({
-        id: 2,
-        name: 'W',
-        sets: [],
-        setVersion: 0,
-      });
+      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
     req.flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
     await fixture.whenStable();
     fixture.detectChanges();
@@ -1129,7 +1119,7 @@ describe('LayoutEditor (#172)', () => {
     const snapshots = TestBed.inject(ConsoleVenueMap);
     snapshots.load(1, todayBookingDate(new Date())).subscribe();
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1'))
       .flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
 
     generate('1', '1');
@@ -1143,7 +1133,7 @@ describe('LayoutEditor (#172)', () => {
     let refetched: number | undefined;
     snapshots.load(1, todayBookingDate(new Date())).subscribe((v) => (refetched = v.setVersion));
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1'))
       .flush({ id: 1, name: 'V', sets: [], setVersion: 1 });
 
     expect(refetched).toBe(1);
@@ -1176,7 +1166,10 @@ describe('LayoutEditor (#172)', () => {
     byId('layout-stale-reload').click();
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [seat(1, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 4 });
+      .flush({
+        map: { id: 1, name: 'V', sets: [seat(1, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 4 },
+        locks: [],
+      });
     fixture.detectChanges();
 
     expect(host.querySelector('[data-testid="layout-stale-banner"]')).toBeNull();
@@ -1350,7 +1343,10 @@ describe('LayoutEditor (#172)', () => {
     expect(cells()).toHaveLength(0);
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({ id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 3 });
+      .flush({
+        map: { id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 3 },
+        locks: [],
+      });
     fixture.detectChanges();
     useBulkMode(); // the switch resets the mode default, and venue 2 also has sets
 
@@ -1365,11 +1361,14 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({ id: 2, name: 'W', sets: [], setVersion: 3 });
+      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 3 }, locks: [] });
     // The superseded venue-1 response resolves late — it must not seed venue 2's editor.
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 7 });
+      .flush({
+        map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 7 },
+        locks: [],
+      });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
 
@@ -1388,9 +1387,9 @@ describe('LayoutEditor (#172)', () => {
     expect(venue1Reads).toHaveLength(2); // the first visit's read + the return visit's read
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({ id: 2, name: 'W', sets: [], setVersion: 3 });
+      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 3 }, locks: [] });
     // The RETURN visit's read settles first (empty layout at version 9)…
-    venue1Reads[1].flush({ id: 1, name: 'V', sets: [], setVersion: 9 });
+    venue1Reads[1].flush({ map: { id: 1, name: 'V', sets: [], setVersion: 9 }, locks: [] });
     // …then the FIRST visit's response arrives last. It must not seed the returned-to editor.
     venue1Reads[0].flush({
       id: 1,
@@ -1417,7 +1416,10 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({ id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 3 });
+      .flush({
+        map: { id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 3 },
+        locks: [],
+      });
     stalePut.flush(null); // venue 1's save succeeds late
     await fixture.whenStable();
     fixture.detectChanges();
@@ -1478,7 +1480,10 @@ describe('LayoutEditor (#172)', () => {
     // The re-read carries the server's new truth: set 1 repooled, set 2 removed elsewhere meanwhile.
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)], setVersion: 0 });
+      .flush({
+        map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)], setVersion: 0 },
+        locks: [],
+      });
     fixture.detectChanges();
 
     useBulkMode();
@@ -1501,7 +1506,10 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
     expect(cells()).toHaveLength(0); // nothing generated over a layout nobody has seen
 
-    read.flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 0 });
+    read.flush({
+      map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 0 },
+      locks: [],
+    });
     fixture.detectChanges();
     useBulkMode();
 
@@ -1534,10 +1542,8 @@ describe('LayoutEditor (#172)', () => {
     http.expectNone((r) => r.method === 'PUT');
 
     reread.flush({
-      id: 1,
-      name: 'V',
-      sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)],
-      setVersion: 0,
+      map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)], setVersion: 0 },
+      locks: [],
     });
     fixture.detectChanges();
 
@@ -1556,11 +1562,14 @@ describe('LayoutEditor (#172)', () => {
     const second = http.expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'));
 
     // Venue 1's read lands late: it must not report venue 2's still-running read as settled.
-    first.flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 0 });
+    first.flush({
+      map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 0 },
+      locks: [],
+    });
     fixture.detectChanges();
     expect(generateInert()).toBe(true);
 
-    second.flush({ id: 2, name: 'W', sets: [], setVersion: 0 });
+    second.flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
     fixture.detectChanges();
     expect(generateInert()).toBe(false);
   });
@@ -1585,7 +1594,10 @@ describe('LayoutEditor (#172)', () => {
     expect(reset).toHaveBeenCalled();
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)], setVersion: 0 });
+      .flush({
+        map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)], setVersion: 0 },
+        locks: [],
+      });
     fixture.detectChanges();
 
     expect(byId('set-cell').getAttribute('data-state')).toBe('walkin');
