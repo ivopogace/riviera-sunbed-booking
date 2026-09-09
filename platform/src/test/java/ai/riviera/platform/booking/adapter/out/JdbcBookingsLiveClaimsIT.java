@@ -45,12 +45,12 @@ class JdbcBookingsLiveClaimsIT {
 		long a1 = insertSet(venue, 1);
 		long a2 = insertSet(venue, 2);
 		long other = insertSet(venue, 3);
-		long later = insertBooking("LIVE0001", venue, a1, "CONFIRMED", JULY_1.plusDays(2));
-		long pending = insertBooking("LIVE0002", venue, a2, "PENDING_REQUEST", JULY_1);
-		long awaiting = insertBooking("LIVE0003", venue, a1, "AWAITING_PAYMENT", JULY_1);
-		insertBooking("LIVE0004", venue, a1, "CANCELLED", JULY_1);
-		insertBooking("LIVE0005", venue, a1, "COMPLETED", JULY_1.minusDays(30));
-		insertBooking("LIVE0006", venue, other, "CONFIRMED", JULY_1);
+		long later = insertBooking(venue, a1, "CONFIRMED", JULY_1.plusDays(2));
+		long pending = insertBooking(venue, a2, "PENDING_REQUEST", JULY_1);
+		long awaiting = insertBooking(venue, a1, "AWAITING_PAYMENT", JULY_1);
+		insertBooking(venue, a1, "CANCELLED", JULY_1);
+		insertBooking(venue, a1, "COMPLETED", JULY_1.minusDays(30));
+		insertBooking(venue, other, "CONFIRMED", JULY_1);
 
 		List<LiveClaim> claims = bookings.findLiveOnSets(Set.of(new SetId(a1), new SetId(a2)));
 
@@ -84,7 +84,9 @@ class JdbcBookingsLiveClaimsIT {
 				""").param("venue", venueId).param("pos", positionNo).query(Long.class).single();
 	}
 
-	private long insertBooking(String code, long venueId, long setId, String status, LocalDate date) {
+	/** Codes and addresses unique across the suite: the full run shares one database with its siblings. */
+	private long insertBooking(long venueId, long setId, String status, LocalDate date) {
+		String code = "LC-" + System.nanoTime();
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();

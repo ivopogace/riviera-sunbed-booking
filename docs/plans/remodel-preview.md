@@ -325,6 +325,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (`Backend (build + test)` on 42a9f039) | `JdbcBookingsLiveClaimsIT` seeded booking codes `LIVE0001…` that `JdbcBookingPresenceIT` also seeds; green alone, `DuplicateKeyException` on `booking_code_uniq` in the full suite's shared database | fixed — codes and addresses minted per insert (`LC-<nanoTime>`); both classes green in one JVM |
 
 ---
 
@@ -499,6 +500,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-09 | F-1 | every IT that inserts a `booking` row with a literal code (the full suite shares one database, so two classes seeding one literal collide) | `grep -rn 'INSERT INTO booking' platform/src/test/java -l` then the literal codes each seeds | `JdbcBookingPresenceIT` (`LIVE`/`TERM`/`PRES`+index), `RemodelPreviewIT` (`RM-`+nanoTime), `BeachMapReplaceIT` (`BK-venue-set`), the new class (`LIVE`+index — the collision) | fixed the new class only; every other prefix is distinct per class |
 
 ---
 
