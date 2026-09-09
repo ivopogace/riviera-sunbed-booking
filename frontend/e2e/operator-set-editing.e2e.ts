@@ -521,33 +521,6 @@ test('a STALE_WRITE batch apply keeps the selection and Reload recovers it', asy
   await expect(page.getByTestId('layout-stale-banner')).toHaveCount(0);
 });
 
-test('the locked bulk save points at per-set editing instead of claiming it is impossible', async ({
-  page,
-}) => {
-  await mockConsole(page);
-  // The bulk PUT only: the owner's GET on the same path still seeds the editor.
-  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
-    route.request().method() === 'PUT'
-      ? route.fulfill({
-          status: 409,
-          contentType: 'application/problem+json',
-          json: { code: 'LAYOUT_IN_USE', detail: 'locked' },
-        })
-      : route.fallback(),
-  );
-  await page.goto('/operator/1/beach-map');
-  await signIn(page);
-
-  await page.getByTestId('layout-tool-premium').click();
-  await page.getByTestId('layout-save').click();
-
-  const message = page.getByTestId('layout-error');
-  await expect(message).toContainText(/Select/i);
-  await expect(message).not.toContainText(/not possible/i);
-  // The advice must not offer a per-set remove that the same lock can itself refuse.
-  await expect(message).not.toContainText(/or remove sets/i);
-});
-
 test('stays inside its own scroll at a phone width, with tappable controls (+ axe)', async ({
   page,
 }) => {

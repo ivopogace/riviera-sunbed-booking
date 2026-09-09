@@ -7,6 +7,7 @@ import { problemCodeOf } from '../shared/api-error';
 import { apiPhotoUrl } from '../shared/photo-url';
 import { MoneyView } from '../shared/money';
 import {
+  BlockedSet,
   BeachMapLayoutRequest,
   CheckInErrorCode,
   CheckInResultView,
@@ -130,9 +131,10 @@ export class OperatorConsoleService {
   }
 
   /**
-   * Replace the venue's whole beach-map layout in one write. Server-side it is owner-asserted
-   * (invariant #13) and reject-unless-unclaimed (invariants #2/#3) — a `LAYOUT_IN_USE` failure means the
-   * venue has bookings or a hold dated today or later, and its layout is locked. `204` on success.
+   * Save the venue's whole beach-map layout in one write — a diff by grid cell server-side: a kept
+   * cell updates in place under its own id, a new cell inserts, an absent cell's set leaves the map.
+   * Owner-asserted (invariant #13); a `SETS_IN_USE` failure means the save would remove sets someone
+   * is still owed (invariant #2) — it names them and writes nothing. `204` on success.
    */
   replaceLayout(venueId: number, request: BeachMapLayoutRequest): Observable<void> {
     return this.http.put<void>(`${this.base}/api/venues/${venueId}/beach-map`, request);
@@ -554,7 +556,7 @@ export function layoutErrorOf(error: unknown): LayoutErrorCode {
     }
     const code = problemCodeOf(error);
     switch (code) {
-      case 'LAYOUT_IN_USE':
+      case 'SETS_IN_USE':
       case 'DUPLICATE_POSITION':
       case 'CELL_TAKEN':
       case 'EMPTY_LAYOUT':
@@ -569,6 +571,38 @@ export function layoutErrorOf(error: unknown): LayoutErrorCode {
     }
   }
   return 'UNKNOWN';
+}
+
+/**
+ * The sets a `SETS_IN_USE` refusal names, from the problem's `sets` extension — empty for any other
+ * failure, and an entry the server did not shape as a {@link BlockedSet} is dropped rather than trusted.
+ */
+export function layoutBlockedSetsOf(error: unknown): readonly BlockedSet[] {
+  if (
+    !(error instanceof HttpErrorResponse) ||
+    typeof error.error !== 'object' ||
+    error.error === null
+  ) {
+    return [];
+  }
+  const sets = (error.error as { sets?: unknown }).sets;
+  return Array.isArray(sets) ? sets.filter(isBlockedSet) : [];
+}
+
+function isBlockedSet(value: unknown): value is BlockedSet {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const set = value as Record<string, unknown>;
+  const date = (field: unknown): boolean => field === null || typeof field === 'string';
+  return (
+    typeof set['setId'] === 'number' &&
+    typeof set['rowLabel'] === 'string' &&
+    typeof set['positionNo'] === 'number' &&
+    date(set['bookedOn']) &&
+    date(set['heldOn']) &&
+    (set['bookedOn'] !== null || set['heldOn'] !== null)
+  );
 }
 
 /** Map an HTTP failure of a check-in to a known {@link CheckInErrorCode} (RFC-7807 `code`; or 401). */

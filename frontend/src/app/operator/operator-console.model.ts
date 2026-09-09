@@ -205,6 +205,15 @@ export interface SetLock {
 }
 
 /**
+ * One set a refused bulk save names (the `409 SETS_IN_USE` problem's `sets` extension): the lock the
+ * owner's read would show for it, plus the row label and position number the operator knows it by.
+ */
+export interface BlockedSet extends SetLock {
+  readonly rowLabel: string;
+  readonly positionNo: number;
+}
+
+/**
  * The owner's beach-map read: the venue map in the public read's exact shape, and the sparse `locks`
  * list beside it — one entry per set a live claim pins, ordered by set id, nothing for a free set.
  * Owner-asserted server-side (invariant #13): which sets guests hold never reaches the public map.
@@ -349,10 +358,12 @@ export type ReleaseErrorCode = 'NOT_MARKED' | 'NOT_VENUE_OWNER' | 'UNAUTHORIZED'
 /**
  * A known layout-write failure, mapped from the RFC-7807 `code` for operator-facing copy. `STALE_WRITE`
  * is the 409 optimistic-concurrency loss — the layout was changed elsewhere since the tab loaded it, so
- * the editor keeps the operator's edits and offers a Reload, never a clobber.
+ * the editor keeps the operator's edits and offers a Reload, never a clobber. `SETS_IN_USE` is the 409
+ * set-scoped refusal: the save would remove sets someone is still owed, named in the problem's `sets`
+ * extension ({@link BlockedSet}), and nothing was written.
  */
 export type LayoutErrorCode =
-  | 'LAYOUT_IN_USE'
+  | 'SETS_IN_USE'
   | 'DUPLICATE_POSITION'
   | 'CELL_TAKEN'
   | 'EMPTY_LAYOUT'

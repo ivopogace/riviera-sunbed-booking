@@ -17,15 +17,16 @@ export const CELL_STATE_DESC: Record<CellState, string> = {
   gap: 'gap or aisle',
 };
 
-/** Per-state background, border and numeral-ink classes — the ink rides with the state because the
- *  premium gold pins its own (`--riv-premium-ink`) in both console themes. Geometry (size, radius)
+/** Per-state background, border and ink classes — the ink rides with the state because the premium
+ *  gold pins its own (`--riv-premium-ink`) in both console themes; a gap carries no numeral, but a
+ *  refused save can pin a lock glyph on it, so it states the card ink too. Geometry (size, radius)
  *  stays with the consumer. */
 const CELL_CLASS: Record<CellState, string> = {
   premium: 'border-riv-premium-edge/40 bg-(image:--riv-premium-grad) text-riv-premium-ink',
   standard: 'border-riv-console-tint/15 bg-riv-console-inset/85 text-riv-card-ink',
   walkin: 'border-riv-console-tint/15 bg-(image:--riv-walkin-hatch) text-riv-card-ink',
   // 0.55, not 0.35: the gap cell's identity is its border alone, proven 3:1 over the canvas wash.
-  gap: 'border-dashed border-riv-console-tint/55 bg-transparent',
+  gap: 'border-dashed border-riv-console-tint/55 bg-transparent text-riv-card-ink',
 };
 
 /**

@@ -207,8 +207,7 @@ class BeachMapReplaceIT {
 
 		long a1 = setIds(venue).getFirst();
 
-		// Regenerate to a smaller grid: the cell that stays keeps its id, the cell that goes is deleted.
-		// The first save bumped set_version to 1, so this one must load it afresh (a stale 0 would be 409).
+		// A smaller regenerate: the kept cell keeps its id, the other is deleted; the token is loaded afresh.
 		putLayout(venue, layout(currentSetVersion(venue), cell("A", 1, "PREMIUM", "ONLINE", 4000, 1, 1)), 204);
 
 		mvc.perform(get("/api/venues/{id}", venue))
@@ -339,8 +338,7 @@ class BeachMapReplaceIT {
 				.andExpect(jsonPath("$.sets[1].bookedOn").doesNotExist())
 				.andExpect(jsonPath("$.sets[1].heldOn").value(heldOn.toString()));
 
-		// The three sets are untouched, the hold survives (the CASCADE never fired), and the refusal
-		// did not advance set_version, so the acting tab's retry off the same token still works.
+		// Nothing written: the sets, the hold (no CASCADE) and the token are as they were.
 		assertEquals(rowA, setIds(venue));
 		assertEquals(1L, holdsOn(rowA.get(2)));
 		mvc.perform(get("/api/venues/{id}", venue))

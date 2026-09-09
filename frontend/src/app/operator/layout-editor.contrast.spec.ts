@@ -151,6 +151,15 @@ describe('LayoutEditor porcelain contrast (WCAG AA, #172)', () => {
     }
   });
 
+  it('the lock glyph on a gap cell (card ink, a refused save) marks it at 3:1 over every wash stop (WCAG 1.4.11, #1032)', () => {
+    for (const stop of WASH_STOPS) {
+      expect(
+        contrastRatio(TILE_NUMBER_INK, rgbToHex(stop)),
+        `wash ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_LARGE);
+    }
+  });
+
   it('the lock legend and the refusal notice (card ink, soft and full) meet AA on the card glass (#1031)', () => {
     expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
     expectAaOverStops(INK_DARK, 1, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
@@ -232,6 +241,15 @@ describe.each(CONSOLE_THEMES)(
             AA_LARGE,
           );
         }
+      }
+    });
+
+    it('the lock glyph on a gap cell (the card ink) marks a refused set at 3:1 over every wash stop (#1032)', () => {
+      for (const stop of theme.washStops) {
+        expect(
+          contrastRatio(rgbToHex(theme.ink), rgbToHex(stop)),
+          `${theme.name}: card ink over ${rgbToHex(stop)}`,
+        ).toBeGreaterThanOrEqual(AA_LARGE);
       }
     });
 
