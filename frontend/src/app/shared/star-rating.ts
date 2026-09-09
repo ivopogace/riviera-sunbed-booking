@@ -90,7 +90,7 @@ export class StarRating implements FormValueControl<number | null> {
    * are deliberately absent: the glyph carries selection, so the skin never has to.
    */
   protected readonly starClasses =
-    'star cursor-pointer border-0 bg-transparent px-1 font-[inherit] text-[30px] leading-none text-riv-accent-ink [transition:transform_0.12s_ease] hover:scale-110 motion-reduce:transition-none motion-reduce:hover:scale-100 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink';
+    'star cursor-pointer touch-manipulation border-0 bg-transparent px-1 font-[inherit] text-[30px] leading-none text-riv-accent-ink [transition:transform_0.12s_ease] hover:scale-110 motion-reduce:transition-none motion-reduce:hover:scale-100 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink';
 
   protected readonly rows = computed(() => {
     const selected = this.value();

@@ -25,7 +25,7 @@ export type StepDirection = 'prev' | 'next';
     <button
       type="button"
       appTouchTarget
-      class="group pointer-events-auto absolute top-1/2 z-10 inline-flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
+      class="group pointer-events-auto absolute top-1/2 z-10 inline-flex size-11 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-full focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
       [class]="direction() === 'prev' ? 'left-[6px]' : 'right-[6px]'"
       [attr.data-testid]="testId()"
       [attr.aria-label]="label()"

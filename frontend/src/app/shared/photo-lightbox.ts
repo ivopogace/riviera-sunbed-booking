@@ -64,7 +64,7 @@ import { TouchTarget } from './touch-target';
       <button
         type="button"
         appTouchTarget
-        class="group absolute top-2 right-2 z-20 inline-flex size-11 cursor-pointer items-center justify-center rounded-full bg-black/55 backdrop-blur-[10px] [transition:background_0.15s_ease] hover:bg-black/70 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
+        class="group absolute top-2 right-2 z-20 inline-flex size-11 cursor-pointer touch-manipulation items-center justify-center rounded-full bg-black/55 backdrop-blur-[10px] [transition:background_0.15s_ease] hover:bg-black/70 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
         data-testid="lightbox-close"
         aria-label="Close photo viewer"
         (click)="dismissed.emit()"
