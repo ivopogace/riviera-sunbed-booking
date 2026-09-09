@@ -1,8 +1,6 @@
 package ai.riviera.platform.venue.application;
 
 import java.time.Clock;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -14,7 +12,6 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.spi.BookingPresence;
-import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -37,19 +34,17 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 @Service
 class BeachMapEditService implements EditBeachMap {
 
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
-
 	private final Venues venues;
 	private final VenueOwnership ownership;
-	private final SetAvailabilityLookup availability;
+	private final LiveClaims claims;
 	private final BookingPresence bookings;
 	private final Clock clock;
 
-	BeachMapEditService(Venues venues, VenueOwnership ownership, SetAvailabilityLookup availability,
+	BeachMapEditService(Venues venues, VenueOwnership ownership, LiveClaims claims,
 			BookingPresence bookings, Clock clock) {
 		this.venues = venues;
 		this.ownership = ownership;
-		this.availability = availability;
+		this.claims = claims;
 		this.bookings = bookings;
 		this.clock = clock;
 	}
@@ -80,7 +75,7 @@ class BeachMapEditService implements EditBeachMap {
 		if (placement.isEmpty()) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET);
 		}
-		if (placement.get().disturbedBy(command) && isLivelyClaimed(setId)) {
+		if (placement.get().disturbedBy(command) && claims.isLivelyClaimed(setId)) {
 			return new ChangeOutcome.Rejected(SetRejection.SET_IN_USE);
 		}
 		Optional<Venues.Conflict> conflict = venues.findConflict(venueId, command, Optional.of(setId));
@@ -102,7 +97,7 @@ class BeachMapEditService implements EditBeachMap {
 		if (venues.lockSet(venueId, setId).isEmpty()) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET);
 		}
-		if (isLivelyClaimed(setId)) {
+		if (claims.isLivelyClaimed(setId)) {
 			return new ChangeOutcome.Rejected(SetRejection.SET_IN_USE);
 		}
 		if (bookings.hasBookings(setId)) {
@@ -114,29 +109,6 @@ class BeachMapEditService implements EditBeachMap {
 		return ChangeOutcome.Applied.APPLIED;
 	}
 
-	/**
-	 * Whether a hold on any of these sets is still ahead — dated today or later in
-	 * {@code Europe/Tirane} (invariant #6). The availability arm the three <em>claim-probing</em> layout
-	 * writes share ({@code editSet}, {@code removeSet}, {@code replaceLayout} — the display-only reprice
-	 * and rename probe nothing): a hold whose day has passed can neither be stranded by a move nor be lost by a delete
-	 * that matters, and no write path can add one behind this cutoff (a past date is never
-	 * claimable — a booking reserve rejects it and a staff mark refuses it, invariant #4) — which is
-	 * why the probe stays race-safe under the row locks. Callers must already hold those locks.
-	 */
-	private boolean hasLiveHold(List<SetId> setIds) {
-		return availability.anyClaimsFrom(setIds, LocalDate.now(clock.withZone(TIRANE)));
-	}
-
-	/**
-	 * Whether anyone is still owed this exact spot — a live hold, or a booking that has not reached
-	 * a terminal state. The one claim question a move and a removal both ask: repositioning or
-	 * retiring the set strands only a guest who is still coming, so last season's finished booking
-	 * refuses neither — it decides only whether the removal retires the row or deletes it
-	 * (ADR-0019). Callers must already hold the row lock.
-	 */
-	private boolean isLivelyClaimed(SetId setId) {
-		return hasLiveHold(List.of(setId)) || bookings.hasLiveBookings(setId);
-	}
 
 	@Override
 	@Transactional
@@ -222,7 +194,7 @@ class BeachMapEditService implements EditBeachMap {
 		}
 		// Lock the set rows before the probe: a racing claim is either seen (→ reject) or blocks on its FK (invariant #2).
 		List<SetId> existing = venues.lockSetsOfVenue(venueId);
-		if (hasLiveHold(existing) || bookings.hasBookings(venueId)) {
+		if (claims.hasLiveHold(existing) || bookings.hasBookings(venueId)) {
 			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.LAYOUT_IN_USE);
 		}
 		// Unclaimed: replace atomically, then advance the token — it moves iff the layout did.

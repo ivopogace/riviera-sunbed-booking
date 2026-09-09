@@ -78,6 +78,29 @@ class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 	}
 
 	@Override
+	public Map<SetId, LocalDate> nearestClaimsFrom(Collection<SetId> setIds, LocalDate from) {
+		if (setIds.isEmpty()) {
+			return Map.of(); // no IN-list — avoid an empty "IN ()" and a needless round-trip
+		}
+		List<Long> ids = setIds.stream().map(SetId::value).toList();
+		// The same predicate as anyClaimsFrom, grouped — one index scan answers every set.
+		return jdbc.sql("""
+				SELECT set_id, MIN(booking_date) AS nearest
+				FROM set_availability
+				WHERE set_id IN (:ids)
+				  AND booking_date >= :from
+				GROUP BY set_id
+				""")
+				.param("ids", ids)
+				.param("from", from)
+				.query((rs, rowNum) -> Map.entry(
+						new SetId(rs.getLong("set_id")), rs.getObject("nearest", LocalDate.class)))
+				.list()
+				.stream()
+				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
+	}
+
+	@Override
 	public Map<SetId, String> statesOn(Collection<SetId> setIds, LocalDate date) {
 		if (setIds.isEmpty()) {
 			return Map.of(); // no IN-list — avoid an empty "IN ()" and a needless round-trip
