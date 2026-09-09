@@ -49,7 +49,7 @@ the retire-or-delete decision) · `tdd` (each phase red first at the named seam:
 test, the service unit tests through `EditBeachMap`, the HTTP ITs, the concurrency IT, the Vitest
 specs, the mocked e2e) · `riviera-review-overlay` (review gate — **ran** on PR #1050 over `6521f8d5..bcea4ac4`: five generic
 reviewers plus the overlay walk; RV-BE-1/9, RV-CT-1/5, RV-STYLE-1, RV-PROC-1/2 clean; findings F-1..F-3 and F-5..F-6, all
-fixed in the PR) · `riviera-docs-freshness` (due at close-out over `6521f8d5..HEAD`; not yet run) ·
+fixed in the PR) · `riviera-docs-freshness` (**running** over `6521f8d5..3a7ff04f` — the rename grep, the counting sweep over the third `ReplaceLayoutOutcome` variant and the four `BookingPresence` probes, the map walk; findings and the retirement of `docs/plans/closed-for-season.md` — whose slug is cited nowhere as a plan path — land in the close-out commits) ·
 `grilling` (the intake questions answered from the code; the calls a colleague would make —
 coordinate as the identity key, the token advancing on every successful save, the write order
 removals → updates → inserts — are recorded as resolved assumptions below) ·
@@ -182,7 +182,7 @@ for `feature/diff-based-bulk-save`).
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | A claim racing the save lands on a set the save removes (invariant #2) | med | high | unchanged lock order: venue row, then every active set row `FOR UPDATE`, then the probe; a racing claim's FK `FOR KEY SHARE` blocks until the save ends; pinned by AC-6 | session | closed — 0d712411 (`BeachMapDiffConcurrencyIT.aRacingMarkOnARemovedSetIsSeenOrBlocks`) |
-| R-2 | Two saves off the same token both write | med | high | `set_version` read under the venue row lock, advanced once on success; AC-5 | session | open |
+| R-2 | Two saves off the same token both write | med | high | `set_version` read under the venue row lock, advanced once on success; AC-5 | session | closed — 0d712411 (`BeachMapDiffConcurrencyIT.exactlyOneDiffSaveWins`) |
 | R-3 | A refused set the editor cannot show (its coordinate is outside the regenerated grid) | med | low | the banner names every refused set by row and position; the cells inside the grid wear the glyph; e2e + Vitest | session | closed — ff22b51f |
 | R-4 | A row-label swap in one save collides transiently on the partial unique index between two in-place updates | low | low | write order removals → updates → inserts frees slots first; the swap case rolls back to the `DuplicateKeyException → 409 CONFLICT` backstop, nothing written, the editor shows "Two sets overlap" | session | closed — superseded by F-5: the colliding labels are parked first, so the swap saves |
 | R-5 | A removed set retired while still holding a *past* availability row keeps that row (no CASCADE on retire) | low | none | a past row is history nothing reads or claims; the retire path already behaves so for `removeSet` | session | closed — by design (ADR-0019) |
@@ -277,9 +277,9 @@ N/A — no payment in scope.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings F-1..F-3, F-5, F-6 fixed and pushed; next: CI on the fix push, then the Sonar gate`
+**Stage pointer:** `DONE — merged via PR #1050`
 
-**Next action:** check PR #1050's CI on the review-fix push; then pull the Sonar list; then the close-out in the last code-touching commit.
+**Next action:** none — close-out written; this plan retires at the next close-out of any kind.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -288,9 +288,15 @@ N/A — no payment in scope.
 | 2 — the edge: `SETS_IN_USE` + `sets`, HTTP ITs, concurrency IT, net | ✅ | 0d712411 |
 | 3 — the editor: highlight, banner, vocabulary retirement, Vitest + a11y + contrast | ✅ | ff22b51f |
 | 4 — the mocked e2e | ✅ | ff22b51f |
-| 5 — docs: RESPONSIBILITIES §venue, ADR-0019, Javadoc; close-out | ⏳ | afb37272 (docs); close-out pending |
+| 5 — docs: RESPONSIBILITIES §venue, ADR-0019, Javadoc; close-out | ✅ | afb37272 (docs); bcea4ac4 (status); fefc720e, 3f684c47 (review fixes); f7c22f59, 3a7ff04f (the ported `SeasonClosureReserveIT` cleanup, F-4); close-out in the final commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Sonar note** — the `SonarCloud Code Analysis` check concluded `success` on `3a7ff04f`; the API
+list for PR #1050 (`api/issues/search … resolved=false`) answers `total: 0`, and the measures
+carry `new_lines 423`, `new_bugs 0`, `new_vulnerabilities 0`, `new_code_smells 0`,
+`new_duplicated_blocks 0`, `new_duplicated_lines_density 0.0`, `new_coverage 98.2`. Nothing to
+clear. CI on `3a7ff04f`: every job green; the backend suite reports no skipped tests.
 
 **Findings register**
 
@@ -402,8 +408,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 5 — docs and close-out
 
-- [ ] RESPONSIBILITIES §venue, ADR-0019, Javadoc sweep; `git grep LAYOUT_IN_USE` empty.
-- [ ] Plan doc execution status; `node scripts/check-plan-file-structure.mjs --diff origin/main`.
+- [x] RESPONSIBILITIES §venue, ADR-0019, Javadoc sweep; `git grep LAYOUT_IN_USE` empty.
+- [x] Plan doc execution status; `node scripts/check-plan-file-structure.mjs --diff origin/main`.
 
 ---
 
@@ -417,24 +423,30 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..12:** see the phase commits; verified at close-out.
+- [x] **AC-1..AC-4, AC-2b:** `gradle test --tests "*BeachMapReplaceIT*"` → 16 tests green, verified at `3a7ff04f` (CI run 34345044399).
+- [x] **AC-5, AC-6:** `gradle test --tests "*BeachMapDiffConcurrencyIT*"` → 9 repetitions green, same run.
+- [x] **AC-7, AC-8:** `gradle test --tests "*LayoutDiffTest*" --tests "*VenueAdminServiceTest*"` → green, same run.
+- [x] **AC-9:** `npx ng test --watch=false --include=src/app/operator/layout-editor*.spec.ts --include=src/app/operator/operator-console.service.spec.ts` → green, same run (Vitest job).
+- [x] **AC-10:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → the two layout-editor specs green locally and in the frontend job.
+- [x] **AC-11:** `git grep -n LAYOUT_IN_USE -- . ':!docs/plans'` → only ADR-0019's consequence naming it as retired; `hasBookings(VenueId)` and `deleteAllSets` compile nowhere.
+- [x] **AC-12:** the structural net green locally after every backend change and in CI.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled; concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports (invariant #11).
-- [ ] **Payment/payout** N/A.
-- [ ] Refund policy N/A.
-- [ ] Timezone correct: `Europe/Tirane` for the hold cutoff (invariant #6).
-- [ ] Booking codes N/A.
-- [ ] No schema change (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR, in its last code-touching commit.**
-- [ ] **The review gate ran in full.**
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled; concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports (invariant #11).
+- [x] **Payment/payout** N/A.
+- [x] Refund policy N/A.
+- [x] Timezone correct: `Europe/Tirane` for the hold cutoff (invariant #6).
+- [x] Booking codes N/A.
+- [x] No schema change (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR, in its last code-touching commit.**
+- [x] **The review gate ran in full.**
