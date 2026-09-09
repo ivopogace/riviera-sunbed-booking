@@ -1,5 +1,9 @@
 package ai.riviera.platform.venue.spi;
 
+import java.time.LocalDate;
+import java.util.Collection;
+import java.util.Map;
+
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -57,4 +61,16 @@ public interface BookingPresence {
 	 * @return {@code true} if at least one non-terminal booking references the set
 	 */
 	boolean hasLiveBookings(SetId setId);
+
+	/**
+	 * The per-set counterpart of {@link #hasLiveBookings}: for each of {@code setIds} with a booking
+	 * that can still be honoured, the <em>earliest</em> service day among those bookings, whatever
+	 * that day is. Feeds the owner-asserted beach-map read, which pins a locked cell with the day a
+	 * guest is still coming; a set absent here is one {@code hasLiveBookings} would clear.
+	 *
+	 * @param setIds the set positions to probe (typically one venue's map)
+	 * @return the earliest honourable service day keyed by set id, for the booked sets only; never
+	 *         {@code null}; an empty input yields an empty result without touching the database
+	 */
+	Map<SetId, LocalDate> nearestLiveBookings(Collection<SetId> setIds);
 }

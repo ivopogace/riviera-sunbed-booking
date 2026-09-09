@@ -53,9 +53,9 @@ describe('LayoutEditor a11y (#172)', () => {
     return http.expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'));
   }
 
-  function render(sets: unknown[] = []): void {
+  function render(sets: unknown[] = [], locks: unknown[] = []): void {
     configure();
-    mapRequest().flush({ id: 1, name: 'V', sets, setVersion: 2 });
+    mapRequest().flush({ map: { id: 1, name: 'V', sets, setVersion: 2 }, locks });
     fixture.detectChanges();
   }
 
@@ -94,7 +94,7 @@ describe('LayoutEditor a11y (#172)', () => {
     expect(byId('layout-loading')).toBeTruthy();
     await expectNoAxeViolations(host());
 
-    mapRequest().flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
+    mapRequest().flush({ map: { id: 1, name: 'V', sets: [], setVersion: 0 }, locks: [] });
     fixture.detectChanges();
   });
 
@@ -137,6 +137,42 @@ describe('LayoutEditor a11y (#172)', () => {
     byId('layout-tool-select').click();
     fixture.detectChanges();
 
+    await expectNoAxeViolations(host());
+  });
+
+  it('describes a locked cell on its button — name unchanged, the reason as the description — and stays axe-clean (#1031)', async () => {
+    const set = {
+      id: 7,
+      rowLabel: 'A',
+      positionNo: 1,
+      tier: 'STANDARD',
+      pool: 'ONLINE',
+      price: { minorUnits: 2000, currency: 'EUR' },
+      gridX: 1,
+      gridY: 1,
+      availability: 'FREE',
+    };
+    render([set], [{ setId: 7, bookedOn: '2026-09-12', heldOn: '2026-09-12' }]);
+    byId('layout-tool-premium').click();
+    fixture.detectChanges();
+
+    const cell = byId('layout-cell');
+    expect(cell.getAttribute('aria-label')).toBe('Row A position 1, standard, online');
+    const description = host().querySelector(`#${cell.getAttribute('aria-describedby')}`);
+    expect(description?.textContent?.trim()).toBe(
+      'Locked — booked Sat 12 Sept 2026. Can’t be moved or removed; tier and pool can still change.',
+    );
+    expect(cell.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    await expectNoAxeViolations(host());
+
+    // The status region exists before the refusal (a region born with its text announces nothing).
+    expect(byId('layout-lock-notice').tagName).toBe('OUTPUT');
+    expect(byId('layout-lock-notice').textContent?.trim()).toBe('');
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+    cell.click();
+    fixture.detectChanges();
+    expect(byId('layout-lock-notice').textContent).toContain('booked Sat 12 Sept 2026');
     await expectNoAxeViolations(host());
   });
 

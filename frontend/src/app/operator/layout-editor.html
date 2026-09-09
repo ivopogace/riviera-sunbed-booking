@@ -20,6 +20,19 @@
           Arm Select to pick a set on the map, or a brush to paint tier, pool and aisles by click or
           drag.
         </p>
+        @if (lockedCount() > 0) {
+          <p
+            class="mb-3 flex items-start gap-1.5 text-[12.5px] leading-[1.45] text-riv-card-ink-soft"
+            data-testid="layout-locked-legend"
+          >
+            <app-lock-icon class="mt-[3px] [&_svg]:size-[11px]" />
+            <span
+              >{{ lockedCount() }} {{ lockedCount() === 1 ? 'set is' : 'sets are' }} booked or held
+              by staff. You can still repaint their tier or pool, but they can’t become gaps or
+              move.</span
+            >
+          </p>
+        }
         <div
           class="flex gap-2 overflow-x-auto scroll-px-1 pb-1 [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%_-_16px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%_-_16px),transparent)] scrollbar-none lg:flex-col lg:overflow-visible lg:pb-0 lg:[mask-image:none] lg:[-webkit-mask-image:none]"
           aria-label="Tools"
@@ -224,6 +237,7 @@
             <app-set-editor
               [venueId]="id"
               [sets]="loadedSets()"
+              [locks]="locks()"
               [loaded]="mapLoaded()"
               [expectedVersion]="loadedSetVersion()"
               (changed)="onSetsChanged()"
@@ -296,15 +310,23 @@
                   (mouseenter)="onCellEnter(ri, ci, $event)"
                   (touchstart)="onCellTouchStart(ri, ci)"
                   (click)="paintCell(ri, ci)"
-                  [title]="cell.label"
+                  [title]="cell.lock ? cell.label + '. ' + lockText(cell.lock) : cell.label"
                   [attr.aria-label]="cell.label"
+                  [attr.aria-describedby]="cell.lock ? 'layout-cell-lock-' + ri + '-' + ci : null"
                   [attr.data-grid-row]="ri"
                   [attr.data-grid-col]="ci"
+                  [attr.data-locked]="cell.lock ? 'true' : null"
                   data-testid="layout-cell"
-                  class="h-full min-w-0 flex items-center justify-center touch-none rounded-[6px] border text-[12.5px] font-bold [transition:scale_0.1s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100"
+                  class="relative h-full min-w-0 flex items-center justify-center touch-none rounded-[6px] border text-[12.5px] font-bold [transition:scale_0.1s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100"
                 >
                   @if (cell.state !== 'gap') {
                     <span aria-hidden="true">{{ ci + 1 }}</span>
+                  }
+                  @if (cell.lock; as lock) {
+                    <app-lock-icon class="absolute top-0.5 right-0.5 [&_svg]:size-[9px]" />
+                    <span class="sr-only" [id]="'layout-cell-lock-' + ri + '-' + ci">{{
+                      lockText(lock)
+                    }}</span>
                   }
                 </button>
               }
@@ -339,6 +361,16 @@
               @if (lastChange(); as change) {
                 <span data-testid="layout-last-change">{{ change }}</span>
               }
+              <!-- Always rendered: a live region born with its text announces nothing; only the content branches. -->
+              <output
+                class="flex items-start gap-1.5 font-semibold text-riv-card-ink"
+                data-testid="layout-lock-notice"
+              >
+                @if (lockNotice(); as notice) {
+                  <app-lock-icon class="mt-[2px] shrink-0 [&_svg]:size-[11px]" />
+                  <span>{{ notice }}</span>
+                }
+              </output>
               <span data-testid="layout-last-saved">{{ lastSavedLabel() }}</span>
             </div>
 

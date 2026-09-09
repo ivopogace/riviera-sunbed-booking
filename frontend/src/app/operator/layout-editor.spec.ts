@@ -11,6 +11,7 @@ import { BeachMapCanvas } from '../shared/beach-map-canvas';
 import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutEditor } from './layout-editor';
+import { SetLock } from './operator-console.model';
 
 interface SentBody {
   sets: {
@@ -68,12 +69,12 @@ describe('LayoutEditor (#172)', () => {
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
   }
 
-  function render(initialSets: SetView[] = [], setVersion = 0): void {
+  function render(initialSets: SetView[] = [], setVersion = 0, locks: SetLock[] = []): void {
     configure();
     // Flush the constructor's layout load so the grid seeds and the optimistic-concurrency token is captured.
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: initialSets, setVersion });
+      .flush({ map: { id: 1, name: 'V', sets: initialSets, setVersion }, locks });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
   }
@@ -141,7 +142,7 @@ describe('LayoutEditor (#172)', () => {
     // The sentence the skeleton replaces; a mirrored shape says it without a reflow (#744).
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
+      .flush({ map: { id: 1, name: 'V', sets: [], setVersion: 0 }, locks: [] });
     fixture.detectChanges();
 
     expect(host.querySelector('[data-testid="layout-loading"]')).toBeNull();
@@ -165,7 +166,7 @@ describe('LayoutEditor (#172)', () => {
 
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
+      .flush({ map: { id: 1, name: 'V', sets: [], setVersion: 0 }, locks: [] });
     fixture.detectChanges();
   });
 
@@ -410,6 +411,151 @@ describe('LayoutEditor (#172)', () => {
 
     expect(cells()[1].getAttribute('data-state')).toBe('premium');
     expect(cells()[2].getAttribute('data-state')).toBe('premium');
+  });
+
+  describe('locked cells (#1031)', () => {
+    const LOCK: SetLock = { setId: 2, bookedOn: '2026-09-12', heldOn: '2026-09-12' };
+    const DESCRIPTION =
+      'Locked — booked Sat 12 Sept 2026. Can’t be moved or removed; tier and pool can still change.';
+
+    /** Row A: three standard online sets, the middle one pinned by a booking. Bulk mode, premium armed. */
+    function renderLockedRow(): void {
+      render(
+        [
+          seat(1, 'STANDARD', 'ONLINE', 1, 1),
+          seat(2, 'STANDARD', 'ONLINE', 2, 1),
+          seat(3, 'STANDARD', 'ONLINE', 3, 1),
+        ],
+        0,
+        [LOCK],
+      );
+      useBulkMode();
+    }
+
+    function dirtyText(): string {
+      return byId('layout-dirty-count').textContent?.trim() ?? '';
+    }
+
+    it('marks the locked cell with the glyph, the reason as its description, and counts it in the rail', () => {
+      renderLockedRow();
+      const locked = cells()[1];
+
+      expect(locked.dataset['locked']).toBe('true');
+      expect(locked.querySelector('app-lock-icon svg')).toBeTruthy();
+      const described = host.querySelector(`#${locked.getAttribute('aria-describedby')}`);
+      expect(described?.textContent?.trim()).toBe(DESCRIPTION);
+      expect(locked.getAttribute('title')).toContain(DESCRIPTION);
+      expect(cells()[0].hasAttribute('aria-describedby')).toBe(false);
+      expect(cells()[0].querySelector('app-lock-icon')).toBeNull();
+      expect(byId('layout-locked-legend').textContent).toContain(
+        '1 set is booked or held by staff',
+      );
+    });
+
+    it('the tier and pool brushes repaint the locked cell and count that change (AC-8)', () => {
+      renderLockedRow();
+
+      cells()[1].click();
+      fixture.detectChanges();
+      expect(cells()[1].getAttribute('data-state')).toBe('premium');
+      expect(dirtyText()).toBe('1 unsaved change');
+
+      byId('layout-tool-walkin').click();
+      fixture.detectChanges();
+      cells()[1].click();
+      fixture.detectChanges();
+      expect(cells()[1].getAttribute('data-state')).toBe('walkin');
+      expect(dirtyText()).toBe('1 unsaved change');
+      expect(byId('layout-lock-notice').textContent?.trim()).toBe('');
+    });
+
+    it('the gap brush leaves the locked cell as it is, says why, and counts nothing (AC-8)', () => {
+      renderLockedRow();
+      byId('layout-tool-gap').click();
+      fixture.detectChanges();
+
+      cells()[1].click();
+      fixture.detectChanges();
+
+      expect(cells()[1].getAttribute('data-state')).toBe('standard');
+      expect(dirtyText()).toBe('No unsaved changes');
+      expect(host.querySelector('[data-testid="layout-last-change"]')).toBeNull();
+      expect(byId('layout-lock-notice').textContent?.replace(/\s+/g, ' ').trim()).toBe(
+        'Row A · position 2 is booked Sat 12 Sept 2026 — it can’t become a gap. Its tier and pool can still change.',
+      );
+    });
+
+    it('a gap drag-sweep skips the locked cell and counts only the others (AC-9)', () => {
+      renderLockedRow();
+      byId('layout-tool-gap').click();
+      fixture.detectChanges();
+
+      cells()[0].dispatchEvent(new MouseEvent('mousedown', { buttons: 1 }));
+      cells()[1].dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+      cells()[2].dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+      document.dispatchEvent(new MouseEvent('mouseup'));
+      fixture.detectChanges();
+
+      expect(cells().map((c) => c.getAttribute('data-state'))).toEqual(['gap', 'standard', 'gap']);
+      expect(dirtyText()).toBe('2 unsaved changes');
+      expect(byId('layout-lock-notice').textContent).toContain('position 2 is booked');
+    });
+
+    it('a gap row fill keeps the locked cell and reports it; a tier fill repaints it (AC-9)', () => {
+      renderLockedRow();
+      byId('layout-tool-gap').click();
+      fixture.detectChanges();
+
+      rowFillButtons()[0].click();
+      fixture.detectChanges();
+
+      expect(cells().map((c) => c.getAttribute('data-state'))).toEqual(['gap', 'standard', 'gap']);
+      expect(dirtyText()).toBe('2 unsaved changes');
+      expect(byId('layout-lock-notice').textContent).toContain(
+        'Row A → Gap / aisle kept 1 locked set',
+      );
+
+      byId('layout-tool-premium').click();
+      fixture.detectChanges();
+      expect(byId('layout-lock-notice').textContent?.trim()).toBe('');
+      rowFillButtons()[0].click();
+      fixture.detectChanges();
+      expect(cells().every((c) => c.getAttribute('data-state') === 'premium')).toBe(true);
+      expect(dirtyText()).toBe('3 unsaved changes');
+    });
+
+    it('a gap column fill keeps the locked cell too', () => {
+      renderLockedRow();
+      byId('layout-tool-gap').click();
+      fixture.detectChanges();
+
+      colFillButtons()[1].click();
+      fixture.detectChanges();
+
+      expect(cells()[1].getAttribute('data-state')).toBe('standard');
+      expect(dirtyText()).toBe('No unsaved changes');
+      expect(byId('layout-lock-notice').textContent).toContain(
+        'Column 2 → Gap / aisle kept 1 locked set',
+      );
+    });
+
+    it('hands the locks to the per-set surface and clears them on a venue switch', () => {
+      renderLockedRow();
+      byId('layout-tool-select').click();
+      fixture.detectChanges();
+      expect(host.querySelector('[data-testid="set-cell"][data-locked="true"]')).toBeTruthy();
+
+      params$.next(convertToParamMap({ venueId: '2' }));
+      fixture.detectChanges();
+      http
+        .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+        .flush({
+          map: { id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 0 },
+          locks: [],
+        });
+      fixture.detectChanges();
+      expect(host.querySelector('[data-locked="true"]')).toBeNull();
+    });
   });
 
   function rowFillButtons(): HTMLButtonElement[] {
@@ -937,12 +1083,7 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({
-        id: 2,
-        name: 'W',
-        sets: [],
-        setVersion: 0,
-      });
+      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
     req.flush(null);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -963,12 +1104,7 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({
-        id: 2,
-        name: 'W',
-        sets: [],
-        setVersion: 0,
-      });
+      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
     req.flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
     await fixture.whenStable();
     fixture.detectChanges();
@@ -1017,10 +1153,8 @@ describe('LayoutEditor (#172)', () => {
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
       .flush({
-        id: 2,
-        name: 'W',
-        sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1, 'Z')],
-        setVersion: 0,
+        map: { id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1, 'Z')], setVersion: 0 },
+        locks: [],
       });
     fixture.detectChanges();
     useBulkMode();
@@ -1052,10 +1186,8 @@ describe('LayoutEditor (#172)', () => {
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
       .flush({
-        id: 1,
-        name: 'V',
-        sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'A')],
-        setVersion: 9,
+        map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'A')], setVersion: 9 },
+        locks: [],
       });
     fixture.detectChanges();
 
@@ -1129,7 +1261,7 @@ describe('LayoutEditor (#172)', () => {
     const snapshots = TestBed.inject(ConsoleVenueMap);
     snapshots.load(1, todayBookingDate(new Date())).subscribe();
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1'))
       .flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
 
     generate('1', '1');
@@ -1143,7 +1275,7 @@ describe('LayoutEditor (#172)', () => {
     let refetched: number | undefined;
     snapshots.load(1, todayBookingDate(new Date())).subscribe((v) => (refetched = v.setVersion));
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1'))
       .flush({ id: 1, name: 'V', sets: [], setVersion: 1 });
 
     expect(refetched).toBe(1);
@@ -1176,7 +1308,10 @@ describe('LayoutEditor (#172)', () => {
     byId('layout-stale-reload').click();
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [seat(1, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 4 });
+      .flush({
+        map: { id: 1, name: 'V', sets: [seat(1, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 4 },
+        locks: [],
+      });
     fixture.detectChanges();
 
     expect(host.querySelector('[data-testid="layout-stale-banner"]')).toBeNull();
@@ -1350,7 +1485,10 @@ describe('LayoutEditor (#172)', () => {
     expect(cells()).toHaveLength(0);
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({ id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 3 });
+      .flush({
+        map: { id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 3 },
+        locks: [],
+      });
     fixture.detectChanges();
     useBulkMode(); // the switch resets the mode default, and venue 2 also has sets
 
@@ -1365,11 +1503,14 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({ id: 2, name: 'W', sets: [], setVersion: 3 });
+      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 3 }, locks: [] });
     // The superseded venue-1 response resolves late — it must not seed venue 2's editor.
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 7 });
+      .flush({
+        map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 7 },
+        locks: [],
+      });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
 
@@ -1388,15 +1529,13 @@ describe('LayoutEditor (#172)', () => {
     expect(venue1Reads).toHaveLength(2); // the first visit's read + the return visit's read
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({ id: 2, name: 'W', sets: [], setVersion: 3 });
+      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 3 }, locks: [] });
     // The RETURN visit's read settles first (empty layout at version 9)…
-    venue1Reads[1].flush({ id: 1, name: 'V', sets: [], setVersion: 9 });
+    venue1Reads[1].flush({ map: { id: 1, name: 'V', sets: [], setVersion: 9 }, locks: [] });
     // …then the FIRST visit's response arrives last. It must not seed the returned-to editor.
     venue1Reads[0].flush({
-      id: 1,
-      name: 'V',
-      sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)],
-      setVersion: 7,
+      map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 7 },
+      locks: [],
     });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
@@ -1417,7 +1556,10 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({ id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 3 });
+      .flush({
+        map: { id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 3 },
+        locks: [],
+      });
     stalePut.flush(null); // venue 1's save succeeds late
     await fixture.whenStable();
     fixture.detectChanges();
@@ -1478,7 +1620,10 @@ describe('LayoutEditor (#172)', () => {
     // The re-read carries the server's new truth: set 1 repooled, set 2 removed elsewhere meanwhile.
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)], setVersion: 0 });
+      .flush({
+        map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)], setVersion: 0 },
+        locks: [],
+      });
     fixture.detectChanges();
 
     useBulkMode();
@@ -1501,7 +1646,10 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
     expect(cells()).toHaveLength(0); // nothing generated over a layout nobody has seen
 
-    read.flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 0 });
+    read.flush({
+      map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 0 },
+      locks: [],
+    });
     fixture.detectChanges();
     useBulkMode();
 
@@ -1534,10 +1682,8 @@ describe('LayoutEditor (#172)', () => {
     http.expectNone((r) => r.method === 'PUT');
 
     reread.flush({
-      id: 1,
-      name: 'V',
-      sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)],
-      setVersion: 0,
+      map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)], setVersion: 0 },
+      locks: [],
     });
     fixture.detectChanges();
 
@@ -1556,11 +1702,14 @@ describe('LayoutEditor (#172)', () => {
     const second = http.expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'));
 
     // Venue 1's read lands late: it must not report venue 2's still-running read as settled.
-    first.flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 0 });
+    first.flush({
+      map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 0 },
+      locks: [],
+    });
     fixture.detectChanges();
     expect(generateInert()).toBe(true);
 
-    second.flush({ id: 2, name: 'W', sets: [], setVersion: 0 });
+    second.flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
     fixture.detectChanges();
     expect(generateInert()).toBe(false);
   });
@@ -1585,7 +1734,10 @@ describe('LayoutEditor (#172)', () => {
     expect(reset).toHaveBeenCalled();
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)], setVersion: 0 });
+      .flush({
+        map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)], setVersion: 0 },
+        locks: [],
+      });
     fixture.detectChanges();
 
     expect(byId('set-cell').getAttribute('data-state')).toBe('walkin');

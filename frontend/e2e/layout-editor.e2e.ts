@@ -45,14 +45,16 @@ test.use({ colorScheme: 'dark' });
 
 /**
  * Session + reads mock; `puts` collects the layout PUT payloads; `lock` makes that PUT 409 LAYOUT_IN_USE.
- * STATEFUL on the `setVersion`: the map GET hands out the current token, the PUT enforces it (a
- * mismatch is 409 STALE_WRITE) and bumps it on success. `bump()` simulates a concurrent writer moving the
- * layout on behind the tab's back, so a subsequent stale save is genuinely rejected.
+ * STATEFUL on the `setVersion`: the owner's beach-map GET hands out the current token, the PUT enforces
+ * it (a mismatch is 409 STALE_WRITE) and bumps it on success. `bump()` simulates a concurrent writer
+ * moving the layout on behind the tab's back, so a subsequent stale save is genuinely rejected.
+ * `locks` is what that GET names as pinned: the sets a live claim holds, with the reason's dates.
  */
 async function mockEditor(
   page: Page,
   lock = false,
   seededSets: typeof VENUE_MAP.sets = [],
+  locks: { setId: number; bookedOn: string | null; heldOn: string | null }[] = [],
 ): Promise<{
   puts: Request[];
   renames: Request[];
@@ -90,8 +92,14 @@ async function mockEditor(
     sessionLive = false;
     return route.fulfill({ status: 204, body: '' });
   });
-  // Captures the PUT; locked → 409 LAYOUT_IN_USE; stale expectedVersion → 409 STALE_WRITE; match → 204 + bump.
-  await page.route(/\/api\/venues\/1\/beach-map$/, (route) => {
+  // GET: the owner's map read, parked by the gate too. PUT: locked → 409, stale token → 409, else 204 + bump.
+  await page.route(/\/api\/venues\/1\/beach-map$/, async (route) => {
+    if (route.request().method() === 'GET') {
+      await mapGate;
+      return route.fulfill({
+        json: { map: { ...VENUE_MAP, sets: seededSets, setVersion: serverSetVersion }, locks },
+      });
+    }
     puts.push(route.request());
     if (lock) {
       return route.fulfill({
@@ -771,4 +779,51 @@ test('every paint cell declares touch-action: none, so a paint drag never fights
   for (let i = 0; i < 3; i++) {
     await expect(cells.nth(i)).toHaveCSS('touch-action', 'none');
   }
+});
+
+test('a locked cell repaints its tier but never gaps, and the per-set surface disables Move and Remove (#1031, + axe)', async ({
+  page,
+}) => {
+  // Set 2 (row B, position 1) is booked: the owner's map read names it, so the editor knows before any click.
+  await mockEditor(page, false, SEEDED_SETS, [
+    { setId: 2, bookedOn: '2026-09-12', heldOn: '2026-09-12' },
+  ]);
+  await page.goto('/operator/1/beach-map');
+  await signIn(page);
+
+  // The per-set surface opens first on a venue with sets: the locked cell carries the glyph + reason.
+  const lockedSetCell = page.locator('[data-testid="set-cell"][data-set-id="2"]');
+  await expect(lockedSetCell).toHaveAttribute('data-locked', 'true');
+  await expect(lockedSetCell.locator('svg')).toBeVisible();
+  await expect(lockedSetCell).toHaveAccessibleDescription(/booked Sat 12 Sept 2026/);
+  await lockedSetCell.click();
+  await expect(page.getByTestId('set-move')).toBeDisabled();
+  await expect(page.getByTestId('set-remove')).toBeDisabled();
+  await expect(page.getByTestId('set-locked-reason')).toContainText(/booked Sat 12 Sept 2026/);
+  await expect(page.getByTestId('set-price')).toBeEnabled();
+  await expect(page.getByTestId('set-pool-WALK_IN')).toBeEnabled();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'set editor, locked set selected');
+
+  // The bulk canvas: the rail counts the lock, the cell wears it, the tier brush still repaints it.
+  await page.getByTestId('layout-tool-premium').click();
+  await expect(page.getByTestId('layout-locked-legend')).toContainText('1 set is booked or held');
+  const lockedCell = page.locator('[data-testid="layout-cell"][data-locked="true"]');
+  await expect(lockedCell).toHaveCount(1);
+  await expect(lockedCell).toHaveAttribute('data-state', 'standard');
+  await expect(lockedCell).toHaveAccessibleDescription(/booked Sat 12 Sept 2026/);
+  await lockedCell.click();
+  await expect(lockedCell).toHaveAttribute('data-state', 'premium');
+  await expect(page.getByTestId('layout-dirty-count')).toHaveText(/1 unsaved change/);
+
+  // The gap brush is refused on it, with the reason, and the dirty count counts only the repaint.
+  await page.getByTestId('layout-tool-gap').click();
+  await lockedCell.click();
+  await expect(lockedCell).toHaveAttribute('data-state', 'premium');
+  await expect(page.getByTestId('layout-lock-notice')).toContainText(
+    /Row B · position 1 is booked Sat 12 Sept 2026 — it can’t become a gap/,
+  );
+  await expect(page.getByTestId('layout-dirty-count')).toHaveText(/1 unsaved change/);
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'layout editor, gap refused on a locked cell');
 });

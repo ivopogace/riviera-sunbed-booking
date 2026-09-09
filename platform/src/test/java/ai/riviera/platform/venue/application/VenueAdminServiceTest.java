@@ -80,7 +80,8 @@ class VenueAdminServiceTest {
 	private final VenueAdminService service = new VenueAdminService(venues, new FakeOwnership(OWNER, VENUE));
 
 	private final BeachMapEditService mapEditor = new BeachMapEditService(
-			venues, new FakeOwnership(OWNER, VENUE), availability, bookings, CLOCK);
+			venues, new FakeOwnership(OWNER, VENUE), new LiveClaims(availability, bookings, CLOCK),
+			bookings, CLOCK);
 
 	private final OnboardVenueService onboarding =
 			new OnboardVenueService(venues, new FakeOwnership(OWNER, VENUE), CREATION);
@@ -1289,6 +1290,14 @@ class VenueAdminServiceTest {
 		}
 
 		@Override
+		public java.util.Map<SetId, java.time.LocalDate> nearestClaimsFrom(
+				Collection<SetId> setIds, java.time.LocalDate from) {
+			return setIds.stream()
+					.filter(id -> holdOn.containsKey(id) && !holdOn.get(id).isBefore(from))
+					.collect(java.util.stream.Collectors.toMap(id -> id, holdOn::get));
+		}
+
+		@Override
 		public java.util.Map<SetId, String> statesOn(Collection<SetId> setIds, java.time.LocalDate date) {
 			return java.util.Map.of();
 		}
@@ -1323,6 +1332,11 @@ class VenueAdminServiceTest {
 		@Override
 		public boolean hasLiveBookings(SetId setId) {
 			return setHasLiveBookings;
+		}
+
+		@Override
+		public java.util.Map<SetId, java.time.LocalDate> nearestLiveBookings(Collection<SetId> setIds) {
+			return java.util.Map.of();
 		}
 	}
 }

@@ -1,6 +1,10 @@
 package ai.riviera.platform.booking.adapter.out;
 
+import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -23,7 +27,7 @@ import ai.riviera.platform.venue.spi.BookingPresence;
  * {@code venue} never imports {@code booking}, so {@code ModularityTests} stays cycle-free. The adapter
  * depends only on {@link JdbcClient}, so the Spring bean graph is acyclic too.
  *
- * <p>Two questions, three probes. The {@code hasBookings} pair counts a booking of <strong>any</strong>
+ * <p>Two questions, four probes. The {@code hasBookings} pair counts a booking of <strong>any</strong>
  * status including terminal, because any booking pins its set via the {@code booking.set_id} FK — that
  * is the delete guard, venue-wide for the bulk replace and set-scoped for the per-set remove.
  * {@code hasLiveBookings} counts only bookings that can still be honoured — the edit guard, where
@@ -75,5 +79,27 @@ class JdbcBookingPresence implements BookingPresence {
 				.param("live", LIVE_STATUSES)
 				.query(Boolean.class)
 				.single();
+	}
+
+	@Override
+	public Map<SetId, LocalDate> nearestLiveBookings(Collection<SetId> setIds) {
+		if (setIds.isEmpty()) {
+			return Map.of(); // no IN-list — avoid an empty "IN ()" and a needless round-trip
+		}
+		List<Long> ids = setIds.stream().map(SetId::value).toList();
+		// The same live filter as hasLiveBookings, grouped; booking_set_date_idx serves both columns.
+		return jdbc.sql("""
+				SELECT set_id, MIN(booking_date) AS nearest
+				FROM booking
+				WHERE set_id IN (:ids) AND status IN (:live)
+				GROUP BY set_id
+				""")
+				.param("ids", ids)
+				.param("live", LIVE_STATUSES)
+				.query((rs, rowNum) -> Map.entry(
+						new SetId(rs.getLong("set_id")), rs.getObject("nearest", LocalDate.class)))
+				.list()
+				.stream()
+				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
 	}
 }

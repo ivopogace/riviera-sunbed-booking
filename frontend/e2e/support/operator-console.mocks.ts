@@ -59,27 +59,30 @@ export async function mockWholeConsole(page: Page): Promise<void> {
       json: { venueId: 1, currency: 'EUR', netOwedMinor: 3825, entries: [accrual(11, 3825)] },
     }),
   );
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.fulfill({
-      json: {
-        id: 1,
-        name: 'Miramar Beach Club',
-        beach: 'Ksamil',
-        region: 'Albanian Riviera',
-        description: 'A quiet cove.',
-        ratingTenths: 48,
-        reviewsCount: 12,
-        bookingMode: 'INSTANT',
-        fromPrice: { minorUnits: 2000, currency: 'EUR' },
-        amenities: ['WIFI'],
-        distanceToWaterM: 20,
-        cutoffTime: '18:00',
-        sets: seedSets(),
-        setVersion: 0,
-        coverPhoto: null,
-      },
-    }),
+  const venueMap = {
+    id: 1,
+    name: 'Miramar Beach Club',
+    beach: 'Ksamil',
+    region: 'Albanian Riviera',
+    description: 'A quiet cove.',
+    ratingTenths: 48,
+    reviewsCount: 12,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 2000, currency: 'EUR' },
+    amenities: ['WIFI'],
+    distanceToWaterM: 20,
+    cutoffTime: '18:00',
+    sets: seedSets(),
+    setVersion: 0,
+    coverPhoto: null,
+  };
+  // The owner's map read the layout editor seeds from: the same map, no set pinned.
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({ json: { map: venueMap, locks: [] } })
+      : route.fallback(),
   );
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: venueMap }));
 }
 
 /**

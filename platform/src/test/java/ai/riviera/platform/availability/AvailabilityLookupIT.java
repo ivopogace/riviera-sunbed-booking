@@ -68,6 +68,15 @@ class AvailabilityLookupIT {
 				.query(Long.class).single());
 	}
 
+	/**
+	 * A set pair no other test in this class touches: {@code nearestClaimsFrom} answers over
+	 * {@code booking_date >= :from} too, so a sibling's later hold would become its answer.
+	 */
+	private List<SetId> nearestClaimSets() {
+		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id OFFSET 7 LIMIT 2")
+				.query(Long.class).list().stream().map(SetId::new).toList();
+	}
+
 	private void mark(SetId set, LocalDate date, String state) {
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) VALUES (:id, :date, :state)")
 				.param("id", set.value()).param("date", date).param("state", state)
@@ -156,6 +165,29 @@ class AvailabilityLookupIT {
 	@Test
 	void anyClaimsFromEmptyInputYieldsFalseWithoutAQuery() {
 		assertFalse(lookup.anyClaimsFrom(List.of(), LocalDate.of(2026, 11, 20)));
+	}
+
+	@Test
+	void nearestClaimsFromAnswersTheEarliestHoldOnOrAfterTheCutoffPerSet() {
+		List<SetId> sets = nearestClaimSets();
+		SetId twiceHeld = sets.get(0);
+		SetId heldBeforeOnly = sets.get(1);
+		LocalDate cutoff = LocalDate.of(2027, 6, 15);
+		mark(twiceHeld, cutoff.plusDays(5), "BOOKED_ONLINE");
+		mark(twiceHeld, cutoff.plusDays(3), "STAFF_MARKED");
+		mark(twiceHeld, cutoff.minusDays(2), "STAFF_MARKED");
+		mark(heldBeforeOnly, cutoff.minusDays(5), "BOOKED_ONLINE");
+
+		assertEquals(Map.of(twiceHeld, cutoff.plusDays(3)), lookup.nearestClaimsFrom(sets, cutoff),
+				"the earliest hold on or after the cutoff, whatever its state; a set held only before is absent");
+		assertEquals(Map.of(twiceHeld, cutoff.plusDays(3)),
+				lookup.nearestClaimsFrom(sets, cutoff.plusDays(3)),
+				"the cutoff day itself still counts — inclusive, like anyClaimsFrom");
+	}
+
+	@Test
+	void nearestClaimsFromEmptyInputYieldsEmptyResultWithoutAQuery() {
+		assertEquals(Map.of(), lookup.nearestClaimsFrom(List.of(), LocalDate.of(2027, 6, 15)));
 	}
 
 	@Test

@@ -51,6 +51,11 @@ model in `docs/architecture/domain-model.md`.
 - **Set position** — one spot on the beach map (e.g. Row A, position 3), flagged
   by tier and pool, with its own price. It is **active** until it is retired or deleted; only a
   set position that has never been booked can be deleted.
+- **Locked set** — a set position someone is still owed: it carries a **live claim** — a hold
+  dated today or later, or a booking a guest may still turn up on. The editor shows it pinned
+  with a lock and the reason ("booked Sat 12 Sept", "held by staff …"); it cannot be moved or
+  removed while the claim lasts, and its price, tier and pool stay editable. The lock is the
+  same fact the server refuses a move or a removal on, read ahead of the click.
 - **Retired set** — a set position that has left the beach map but still carries booking history:
   gone from the map, the calendar, the counts, the daily view and both claim paths, while every
   booking, mail and staff lookup that names it keeps resolving to the row and position it had. A

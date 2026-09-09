@@ -47,11 +47,11 @@ the same PR that shrinks the code):
 
 | Edge | Files | What crosses |
 |---|---|---|
-| `operator/` → `venue/` | 3 | `venue.service` (`console-venue-map.ts`, `daily-view-tab.ts`, `layout-editor.ts`) |
+| `operator/` → `venue/` | 2 | `venue.service` (`console-venue-map.ts`, `daily-view-tab.ts`) |
 | `pages/home` → `venue/` | 1 | `venue.service` (`pages/` may take only `core`/`shared`) |
 | `venue/venue-map` → `booking/` | 1 | `booking-dialog` — the reverse edge, the one feature→feature *component* import |
 
-These five carry behavior, not vocabulary — a shared HTTP service and a component edge —
+These four carry behavior, not vocabulary — a shared HTTP service and a component edge —
 and each needs its own argument on its merits (e.g. promoting `VenueService` to `core/`,
 or inverting the dialog edge); never a blanket "features may import features" rule. No
 ESLint rule pins this today.

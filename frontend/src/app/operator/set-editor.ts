@@ -17,11 +17,13 @@ import { firstValueFrom, Observable } from 'rxjs';
 import { OperatorAuth } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { LockIcon } from '../shared/lock-icon';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { ConfirmPanel } from '../shared/confirm-panel';
 import { focusMover } from '../shared/focus-after-render';
 import { eurosToMinorUnits, formatMoney, minorUnitsToEuros } from '../shared/money';
 import { Pool, SetView, Tier } from '../shared/venue-views';
+import { lockDescription, lockReason } from './lock-reason';
 import {
   BeachCell,
   CELL_STATE_DESC,
@@ -39,6 +41,7 @@ import {
   SetBatchRequest,
   SetWriteErrorCode,
   SetWriteRequest,
+  SetLock,
 } from './operator-console.model';
 import {
   OperatorConsoleService,
@@ -58,6 +61,8 @@ interface SetRow extends BeachMapCanvasRow {
     readonly selected: boolean;
     readonly disabled: boolean;
     readonly label: string;
+    /** Set when a live claim pins the cell's set: it can be repainted, never moved or removed. */
+    readonly lock: SetLock | undefined;
   }[];
 }
 
@@ -161,6 +166,7 @@ function draftForNewCell(gridY: number): SetDraft {
     BusyAction,
     LoadAnnouncer,
     TouchTarget,
+    LockIcon,
   ],
   templateUrl: './set-editor.html',
   host: {
@@ -179,6 +185,12 @@ export class SetEditor {
   readonly venueId = input.required<number>();
   /** The venue's saved sets, from the parent's map read. Replacing this re-seeds selection and draft. */
   readonly sets = input.required<readonly SetView[]>();
+  /**
+   * The sets a live claim pins, from the same read as {@link sets}. Required, not defaulted: an
+   * unknown lock list is not an empty one. A locked set's Move and Remove are disabled with the
+   * reason before any request; its price, tier and pool stay editable.
+   */
+  readonly locks = input.required<readonly SetLock[]>();
   /**
    * Whether {@link sets} is the settled answer from the parent's map read. Required, not defaulted:
    * an unread map is not an empty venue, and every caller has to say which one it is holding. While
@@ -352,6 +364,24 @@ export class SetEditor {
     });
   }
 
+  private readonly lockById = computed(
+    () => new Map(this.locks().map((lock) => [lock.setId, lock])),
+  );
+
+  /** The selected set's lock, if a live claim pins it. */
+  protected readonly selectedLock = computed(() => {
+    const selected = this.selectedSet();
+    return selected === undefined ? undefined : this.lockById().get(selected.id);
+  });
+
+  /** Why Move and Remove are disabled on the selected set, or undefined while it is free. */
+  protected readonly selectedLockReason = computed(() => {
+    const lock = this.selectedLock();
+    return lock === undefined
+      ? undefined
+      : `This set is ${lockReason(lock)}, so it can’t be moved or removed. Its price, tier and pool can still change.`;
+  });
+
   /** The selected set's server state, or undefined when nothing or an empty cell is selected. */
   protected readonly selectedSet = computed(() => {
     const chosen = this.selection();
@@ -434,6 +464,7 @@ export class SetEditor {
     const cell = this.selectedCell();
     const moving = this.armed();
     const swept = this.sweepIds();
+    const lockById = this.lockById();
     return Array.from({ length: this.rowCount() }, (_, y) => {
       const cells = Array.from({ length: this.colCount() }, (_, x) => {
         const gridX = x + 1;
@@ -455,6 +486,7 @@ export class SetEditor {
           label: `Row ${gridRowLabel(y)} position ${gridX}, ${
             empty && moving ? 'empty — move here' : CELL_STATE_DESC[state]
           }`,
+          lock: set === undefined ? undefined : lockById.get(set.id),
         };
       });
       const first = cells.find((c) => c.setId !== null);
@@ -890,7 +922,15 @@ export class SetEditor {
     this.extraCols.update((extra) => extra + 1);
   }
 
+  /** The sentence a locked cell's accessible description and title carry. */
+  protected lockText(lock: SetLock): string {
+    return lockDescription(lock);
+  }
+
   protected armMove(): void {
+    if (this.selectedLock() !== undefined) {
+      return; // the button is disabled with the reason; a locked set never arms a move
+    }
     this.moving.set(true);
     this.saved.set(false);
     this.errorCode.set(undefined);
@@ -985,6 +1025,9 @@ export class SetEditor {
    * own doing; only the way back out is this component's, since the panel is gone by then.
    */
   protected askRemove(): void {
+    if (this.selectedLock() !== undefined) {
+      return; // the button is disabled with the reason; a locked set never opens the confirm
+    }
     this.confirmRemove.set(true);
   }
 

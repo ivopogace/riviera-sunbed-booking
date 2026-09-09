@@ -339,6 +339,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, TAKINGS_PATH).hasRole(OPERATOR_ROLE)
 						// Order-sensitive: exposes the hold split the public map hides.
 						.requestMatchers(HttpMethod.GET, DAILY_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)
+						// Order-sensitive: the owner's map read carries which sets guests hold.
+						.requestMatchers(HttpMethod.GET, BEACH_MAP_PATH).hasRole(OPERATOR_ROLE)
 						// Order-sensitive: exposes the operator↔venue ownership map.
 						.requestMatchers(HttpMethod.GET, MY_VENUES_PATH).hasRole(OPERATOR_ROLE)
 						// The platform's venue-creation terms; a literal path outside /api/venues/**.

@@ -2,7 +2,7 @@ import { Amenity } from '../shared/amenities';
 import { BookingStatus } from '../shared/booking-status';
 import { HeldSetState } from '../shared/availability-grid';
 import { MoneyView } from '../shared/money';
-import { BookingMode, PhotoSlotKey, Pool, Tier } from '../shared/venue-views';
+import { BookingMode, PhotoSlotKey, Pool, Tier, VenueMapView } from '../shared/venue-views';
 
 /**
  * The operator console's "online takings today" read (`GET /api/venues/{id}/takings`). Money is integer
@@ -106,8 +106,9 @@ export interface CreatedSet {
  * `SET_IN_USE` is the server's claim guard — a reposition or a removal of a set carrying a live hold
  * or a non-terminal booking; price, tier and pool are never refused, and a finished booking refuses
  * nothing (the removal retires the set instead of deleting it). It is the **ordinary** answer on a
- * trading venue rather than a fault, and it is discovered only by attempting the write: no console
- * read predicts it, and a pre-warn probe is a standing non-goal.
+ * trading venue rather than a fault. The owner's beach-map read ({@link OperatorBeachMap}) names the
+ * same sets in advance, so the editor disables a move or a removal before it is tried; the server's
+ * answer still decides, because a claim can land between the read and the write.
  */
 export type SetWriteErrorCode =
   | 'SET_IN_USE'
@@ -187,6 +188,30 @@ export type CheckInErrorCode =
 export interface SetDayState {
   readonly setId: number;
   readonly state: HeldSetState;
+}
+
+/**
+ * Why one set on the owner's beach map cannot be moved or removed right now, from
+ * `GET /api/venues/{id}/beach-map`: `bookedOn` is the earliest service day a guest is still coming on
+ * (a booking that can still be honoured), `heldOn` the earliest hold dated today or later — each an ISO
+ * `YYYY-MM-DD` (invariant #6) or `null` when that arm does not hold, never both null (a booked set
+ * usually carries both). The set's price, tier and pool stay editable; the lock means "cannot move or
+ * remove" only.
+ */
+export interface SetLock {
+  readonly setId: number;
+  readonly bookedOn: string | null;
+  readonly heldOn: string | null;
+}
+
+/**
+ * The owner's beach-map read: the venue map in the public read's exact shape, and the sparse `locks`
+ * list beside it — one entry per set a live claim pins, ordered by set id, nothing for a free set.
+ * Owner-asserted server-side (invariant #13): which sets guests hold never reaches the public map.
+ */
+export interface OperatorBeachMap {
+  readonly map: VenueMapView;
+  readonly locks: readonly SetLock[];
 }
 
 /** The kind of payout-ledger entry: a confirmed booking accrues, a refund reverses. */

@@ -35,8 +35,8 @@ interface PriceRow {
  * The Pricing tab — one full-day EUR price input per beach-map <strong>row</strong>,
  * applied to every set in that row, with a live "projected full-day take if every online set sells" figure.
  *
- * <p>Reads the current layout from the public venue map (like {@link import('./layout-editor').LayoutEditor})
- * and groups sets by row label. Committing a row's € input (on {@code change}) converts the euros to
+ * <p>Reads the current layout from the shared public-map snapshot ({@code ConsoleVenueMap}) and groups
+ * sets by row label. Committing a row's € input (on {@code change}) converts the euros to
  * <strong>integer minor units at the edge</strong> (invariant #5 — no float in state or on the wire) and
  * PUTs a non-destructive per-row reprice; the projection sums only ONLINE-pool sets. An empty/cleared
  * field is ignored (never a €0 reprice). The write is owner-asserted server-side (invariant #13); a
