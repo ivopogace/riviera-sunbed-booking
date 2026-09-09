@@ -40,9 +40,9 @@ public interface SetAvailabilityLookup {
 
 	/**
 	 * Whether any of {@code setIds} has an availability row dated {@code from} or later — the one
-	 * availability question asked by every layout write that <em>disturbs</em> a set: repositioning
-	 * one, removing one, or regenerating the whole map. (Adding a set and repricing a row disturb
-	 * nothing, so they never probe.) Because {@code set_availability.set_id} is
+	 * availability question asked by a per-set layout write that <em>disturbs</em> a set: repositioning
+	 * one or removing one. (Adding a set and repricing a row disturb nothing, so they never probe;
+	 * the bulk save asks {@link #nearestClaimsFrom} so it can name the sets.) Because {@code set_availability.set_id} is
 	 * {@code ON DELETE CASCADE}, a write that removes a held set would silently drop the hold
 	 * (invariant #2), so it is refused while this returns {@code true}. A hold whose day has already
 	 * passed can neither be stranded by moving the set nor meaningfully lost by deleting it, so it
@@ -60,8 +60,9 @@ public interface SetAvailabilityLookup {
 	 * The per-set counterpart of {@link #anyClaimsFrom}: for each of {@code setIds} that has an
 	 * availability row dated {@code from} or later, the <em>earliest</em> such day, whatever the
 	 * row's state. Feeds the owner-asserted beach-map read, which pins a locked cell with the day
-	 * behind the lock; the predicate is the same one the layout-write guards ask, so a set absent
-	 * here is one {@code anyClaimsFrom} would clear.
+	 * behind the lock, and the bulk save's refusal, which names the removed sets so pinned; the
+	 * predicate is the same one the per-set guards ask, so a set absent here is one
+	 * {@code anyClaimsFrom} would clear.
 	 *
 	 * @param setIds the set positions to probe (typically one venue's map)
 	 * @param from   the first day that still counts, a {@code LocalDate} in {@code Europe/Tirane}

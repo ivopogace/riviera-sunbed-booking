@@ -1,19 +1,35 @@
 package ai.riviera.platform.venue.application;
 
+import java.util.List;
+
 /**
  * The closed set of outcomes of {@link EditBeachMap#replaceLayout}. Sealed so the
- * REST adapter {@code switch}es exhaustively: {@code Replaced}→204, {@code Rejected}→the
- * {@link ReplaceRejection}'s HTTP status.
+ * REST adapter {@code switch}es exhaustively: {@code Replaced}→204, {@code SetsInUse}→409 with the
+ * blocking sets, {@code Rejected}→the {@link ReplaceRejection}'s HTTP status.
  */
 public sealed interface ReplaceLayoutOutcome
-		permits ReplaceLayoutOutcome.Replaced, ReplaceLayoutOutcome.Rejected {
+		permits ReplaceLayoutOutcome.Replaced, ReplaceLayoutOutcome.SetsInUse, ReplaceLayoutOutcome.Rejected {
 
-	/** The whole layout was replaced. A stateless singleton — there is nothing to carry. */
+	/** The layout was saved. A stateless singleton — there is nothing to carry. */
 	enum Replaced implements ReplaceLayoutOutcome {
 		REPLACED
 	}
 
-	/** The layout was not replaced; the reason maps to an HTTP status in the controller. */
+	/**
+	 * The save would remove a set someone is still owed — a hold dated today or later, or a booking
+	 * that can still be honoured — so the whole save is refused and nothing is written. Carries every
+	 * such set, in map order, so the operator can keep exactly those (invariant #2).
+	 */
+	record SetsInUse(List<BlockedSet> sets) implements ReplaceLayoutOutcome {
+		public SetsInUse {
+			sets = List.copyOf(sets);
+			if (sets.isEmpty()) {
+				throw new IllegalArgumentException("a refusal names at least one set");
+			}
+		}
+	}
+
+	/** The layout was not saved; the reason maps to an HTTP status in the controller. */
 	record Rejected(ReplaceRejection reason) implements ReplaceLayoutOutcome {
 	}
 }

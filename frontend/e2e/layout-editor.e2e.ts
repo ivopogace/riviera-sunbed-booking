@@ -16,7 +16,7 @@ import {
  * Real-render CI-safe e2e for the layout editor. Drives the actual generate → confirm →
  * paint → save flow on the beach-map tab, deep-linked (the console lands on the Daily view — the
  * returnUrl carries the tab back through sign-in), asserting the single bulk PUT payload, the
- * server-locked (`LAYOUT_IN_USE`) path, and the stale-write conflict (409 STALE_WRITE keeps the
+ * set-scoped refusal (`409 SETS_IN_USE` marks the named sets), and the stale-write conflict (409 STALE_WRITE keeps the
  * painted grid + offers Reload — co-located here as the venue tab does in operator-venue.e2e.ts). It
  * also parks the map GET open to drive the tab's in-flight window on both surfaces, the one state
  * jsdom cannot show as a real mount. API mocked via `page.route` (no backend), axe over the editor —
@@ -43,18 +43,25 @@ const VENUE_MAP = {
 
 test.use({ colorScheme: 'dark' });
 
+/** What the owner's read pins and what a refusal names: one lock, with the reason's dates. */
+interface MockLock {
+  setId: number;
+  bookedOn: string | null;
+  heldOn: string | null;
+}
+
 /**
- * Session + reads mock; `puts` collects the layout PUT payloads; `lock` makes that PUT 409 LAYOUT_IN_USE.
- * STATEFUL on the `setVersion`: the owner's beach-map GET hands out the current token, the PUT enforces
- * it (a mismatch is 409 STALE_WRITE) and bumps it on success. `bump()` simulates a concurrent writer
- * moving the layout on behind the tab's back, so a subsequent stale save is genuinely rejected.
- * `locks` is what that GET names as pinned: the sets a live claim holds, with the reason's dates.
+ * Session + reads mock; `puts` collects the layout PUT payloads; a non-empty `refusing` makes that PUT
+ * 409 SETS_IN_USE naming those sets. STATEFUL on the `setVersion`: the owner's beach-map GET hands out
+ * the current token, the PUT enforces it (a mismatch is 409 STALE_WRITE) and bumps it on success.
+ * `bump()` simulates a concurrent writer moving the layout on behind the tab's back, so a subsequent
+ * stale save is genuinely rejected. `locks` is what that GET names as pinned.
  */
 async function mockEditor(
   page: Page,
-  lock = false,
+  refusing: (MockLock & { rowLabel: string; positionNo: number })[] = [],
   seededSets: typeof VENUE_MAP.sets = [],
-  locks: { setId: number; bookedOn: string | null; heldOn: string | null }[] = [],
+  locks: MockLock[] = [],
 ): Promise<{
   puts: Request[];
   renames: Request[];
@@ -101,12 +108,12 @@ async function mockEditor(
       });
     }
     puts.push(route.request());
-    if (lock) {
+    if (refusing.length > 0) {
       return route.fulfill({
         status: 409,
         contentType: 'application/problem+json',
-        // A sentinel absent from the client copy, so the assertions prove the CLIENT mapped the code.
-        json: { code: 'LAYOUT_IN_USE', detail: 'in use' },
+        // A sentinel detail absent from the client copy, so the assertions prove the CLIENT built the message.
+        json: { code: 'SETS_IN_USE', detail: 'in use', sets: refusing },
       });
     }
     const body = route.request().postDataJSON() as { expectedVersion?: number };
@@ -342,8 +349,11 @@ const SEEDED_SETS = [
   },
 ];
 
+/** Set 2 (row B, position 1) as a refusal names it: booked, so a save that removes it is refused. */
+const REFUSED_B1 = { setId: 2, rowLabel: 'B', positionNo: 1, bookedOn: '2026-09-12', heldOn: null };
+
 test('holds both surfaces until the map read settles (#721)', async ({ page }) => {
-  const { holdMap, releaseMap } = await mockEditor(page, false, SEEDED_SETS);
+  const { holdMap, releaseMap } = await mockEditor(page, [], SEEDED_SETS);
   await page.goto('/operator/1/beach-map');
   await signIn(page);
   await expect(page.getByTestId('set-editor')).toBeVisible();
@@ -390,8 +400,8 @@ test('holds both surfaces until the map read settles (#721)', async ({ page }) =
   await expect(page.getByTestId('layout-confirm-regen')).toBeVisible();
 });
 
-test('renames a row on a venue whose bulk save is locked (#726)', async ({ page }) => {
-  const { puts, renames } = await mockEditor(page, true, SEEDED_SETS);
+test('renames a row on its own PUT while the bulk save is refused (#726)', async ({ page }) => {
+  const { puts, renames } = await mockEditor(page, [REFUSED_B1], SEEDED_SETS);
   await page.goto('/operator/1/beach-map');
   await signIn(page);
 
@@ -399,7 +409,7 @@ test('renames a row on a venue whose bulk save is locked (#726)', async ({ page 
   await page.getByTestId('layout-tool-premium').click();
   await expect(page.getByTestId('layout-row-name')).toHaveCount(2);
 
-  // The whole-layout save really is locked, which is the situation #726 exists for.
+  // The whole-layout save really is refused, which is the situation #726 exists for.
   await page.getByTestId('layout-save').click();
   await expect(page.getByTestId('layout-error')).toBeVisible();
   expect(puts).toHaveLength(1);
@@ -595,23 +605,79 @@ test('regenerating over a grid confirms first and moves focus with the confirmat
   await expect(page.getByTestId('layout-generate')).toBeFocused();
 });
 
-test('shows the layout-locked message when the venue has bookings (409 LAYOUT_IN_USE)', async ({
+test('adds a row on a trading venue in one PUT that keeps every seeded cell (#1032, + axe)', async ({
   page,
 }) => {
-  await mockEditor(page, true);
+  const { puts } = await mockEditor(page, [], SEEDED_SETS, [
+    { setId: 2, bookedOn: '2026-09-12', heldOn: '2026-09-12' },
+  ]);
   await page.goto('/operator/1/beach-map');
   await signIn(page);
-  await expect(page.getByTestId('layout-editor')).toBeVisible();
 
-  // Generate a minimal grid, then save — the server rejects it as in-use (the venue has bookings).
-  await page.getByTestId('layout-gen-rows').fill('1');
+  // The bulk surface on a venue that has sold: the booked cell is pinned, the grid is still editable.
+  await page.getByTestId('layout-tool-premium').click();
+  await expect(page.getByTestId('layout-locked-legend')).toContainText('1 set is booked or held');
+  await expect(page.getByTestId('layout-cell')).toHaveCount(2);
+
+  // Regenerate one row taller: the two seeded cells stay at their coordinates, row C is new.
+  await page.getByTestId('layout-gen-rows').fill('3');
   await page.getByTestId('layout-gen-cols').fill('1');
   await page.getByTestId('layout-generate').click();
-  await expect(page.getByTestId('layout-cell')).toHaveCount(1);
+  await page.getByTestId('layout-confirm-yes').click();
+  await expect(page.getByTestId('layout-cell')).toHaveCount(3);
+  await expect(page.locator('[data-testid="layout-cell"][data-locked="true"]')).toHaveCount(1);
   await page.getByTestId('layout-save').click();
-  await expect(page.getByTestId('layout-error')).toContainText(/locked/i);
-  await expect(page.getByTestId('layout-error')).toContainText(/booked at least once/i);
-  await expect(page.getByTestId('layout-error')).toContainText(/still held/i);
+  await expect(page.getByTestId('layout-saved')).toBeVisible();
+
+  expect(puts).toHaveLength(1);
+  const body = puts[0].postDataJSON() as {
+    sets: { gridX: number; gridY: number; rowLabel: string }[];
+    expectedVersion: number;
+  };
+  expect(body.expectedVersion).toBe(0);
+  expect(body.sets.map((set) => [set.rowLabel, set.gridX, set.gridY])).toEqual([
+    ['A', 1, 1],
+    ['B', 1, 2],
+    ['C', 1, 3],
+  ]);
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'layout editor, row added on a trading venue');
+});
+
+test('a refused save marks the sets it names with the lock decoration and lists them (409 SETS_IN_USE, + axe)', async ({
+  page,
+}) => {
+  // A booking landed after the load: the tab knows no lock, so the gap brush paints B1 out.
+  const { puts } = await mockEditor(page, [REFUSED_B1], SEEDED_SETS);
+  await page.goto('/operator/1/beach-map');
+  await signIn(page);
+  await page.getByTestId('layout-tool-gap').click();
+  const b1 = page.locator('[data-testid="layout-cell"][data-grid-row="1"][data-grid-col="0"]');
+  await b1.click();
+  await expect(b1).toHaveAttribute('data-state', 'gap');
+  await page.getByTestId('layout-save').click();
+
+  // The refusal: the named cell wears the #1031 lock, the legend counts it, the alert names it.
+  await expect(b1).toHaveAttribute('data-locked', 'true');
+  await expect(b1.locator('svg')).toBeVisible();
+  await expect(b1).toHaveAccessibleDescription(/booked Sat 12 Sept 2026/);
+  await expect(page.getByTestId('layout-locked-legend')).toContainText('1 set is booked or held');
+  await expect(page.getByTestId('layout-error')).toContainText(
+    /Row B · position 1 \(booked Sat 12 Sept 2026\)/,
+  );
+  await expect(page.getByTestId('layout-error')).not.toContainText(/in use/);
+  expect(puts).toHaveLength(1);
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'layout editor, save refused by set');
+
+  // The way out: the tier brush paints it back, the gap brush is now refused on it.
+  await page.getByTestId('layout-tool-standard').click();
+  await b1.click();
+  await expect(b1).toHaveAttribute('data-state', 'standard');
+  await page.getByTestId('layout-tool-gap').click();
+  await b1.click();
+  await expect(b1).toHaveAttribute('data-state', 'standard');
+  await expect(page.getByTestId('layout-lock-notice')).toContainText(/can’t become a gap/);
 });
 
 test('a stale-tab save is rejected 409, keeps the painted grid, and Reload recovers (#226, + axe)', async ({
@@ -708,7 +774,7 @@ const TWELVE_COLUMNS = Array.from({ length: 24 }, (_, i) => ({
 }));
 
 test('fits a twelve-column layout to width at 1280px under the shell (#1011)', async ({ page }) => {
-  await mockEditor(page, false, TWELVE_COLUMNS);
+  await mockEditor(page, [], TWELVE_COLUMNS);
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/operator/1/beach-map');
   await signIn(page);
@@ -728,7 +794,7 @@ test('fits a twelve-column layout to width at 1280px under the shell (#1011)', a
 test('Select’s own drag gesture (the sweep) leaves its grid not drag-pannable either', async ({
   page,
 }) => {
-  await mockEditor(page, false, SEEDED_SETS);
+  await mockEditor(page, [], SEEDED_SETS);
   await page.goto('/operator/1/beach-map');
   await signIn(page);
   await page.getByTestId('layout-tool-select').click();
@@ -785,7 +851,7 @@ test('a locked cell repaints its tier but never gaps, and the per-set surface di
   page,
 }) => {
   // Set 2 (row B, position 1) is booked: the owner's map read names it, so the editor knows before any click.
-  await mockEditor(page, false, SEEDED_SETS, [
+  await mockEditor(page, [], SEEDED_SETS, [
     { setId: 2, bookedOn: '2026-09-12', heldOn: '2026-09-12' },
   ]);
   await page.goto('/operator/1/beach-map');

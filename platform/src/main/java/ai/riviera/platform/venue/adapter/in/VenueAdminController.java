@@ -48,7 +48,8 @@ import ai.riviera.platform.venue.application.ViewVenueProfile;
  * public U1 read endpoint is a separate controller. Outcomes map to HTTP via exhaustive
  * {@code switch}: created→201 (+Location), applied→204 (the batch apply→200 with its count),
  * {@code NO_SUCH_*}→404,
- * {@code CELL_TAKEN}/{@code DUPLICATE_POSITION}→409; malformed→400 and the
+ * {@code CELL_TAKEN}/{@code DUPLICATE_POSITION}→409, the bulk save's {@code SetsInUse}→409
+ * {@code SETS_IN_USE} carrying the named sets; malformed→400 and the
  * constraint-race backstop ({@code DuplicateKeyException}→409 {@code CONFLICT},
  * invariant #12) map centrally in {@code ApiErrorHandler}. Errors are RFC-7807
  * {@link ProblemDetail} built by {@link ApiProblem}.
@@ -63,6 +64,10 @@ import ai.riviera.platform.venue.application.ViewVenueProfile;
 @RestController
 @RequestMapping("/api/venues")
 class VenueAdminController {
+
+	/** The bulk save's set-naming refusal and the extension property carrying the named sets. */
+	private static final String SETS_IN_USE_CODE = "SETS_IN_USE";
+	private static final String SETS_PROPERTY = "sets";
 
 	/** The 404 code and detail shared by every NO_SUCH_VENUE outcome (profile write, owner reads, beach-map edits). */
 	private static final String NO_SUCH_VENUE_CODE = "NO_SUCH_VENUE";
@@ -241,6 +246,7 @@ class VenueAdminController {
 		return switch (editBeachMap.replaceLayout(operator, new VenueId(venueId),
 				expectedVersion, command)) {
 			case ReplaceLayoutOutcome.Replaced ignored -> ResponseEntity.noContent().build();
+			case ReplaceLayoutOutcome.SetsInUse inUse -> setsInUse(inUse);
 			case ReplaceLayoutOutcome.Rejected rejected -> error(rejected.reason());
 		};
 	}
@@ -296,14 +302,23 @@ class VenueAdminController {
 		};
 	}
 
+	/**
+	 * The one layout refusal that names sets: {@code 409 SETS_IN_USE} with a {@code sets} extension
+	 * listing every removed set a live claim pins, so the editor can mark them.
+	 */
+	private static ResponseEntity<ProblemDetail> setsInUse(ReplaceLayoutOutcome.SetsInUse inUse) {
+		ProblemDetail problem = ApiProblem.of(HttpStatus.CONFLICT, SETS_IN_USE_CODE,
+				"Sets this save would remove are booked or held.");
+		problem.setProperty(SETS_PROPERTY, inUse.sets().stream().map(BlockedSetView::of).toList());
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+	}
+
 	private static ResponseEntity<ProblemDetail> error(ReplaceRejection reason) {
 		return switch (reason) {
 			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
 					NO_SUCH_VENUE_DETAIL);
 			case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					STALE_SETS_DETAIL);
-			case LAYOUT_IN_USE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
-					"This venue has a booking or a current hold.");
 			case CELL_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"Two sets occupy the same grid cell.");
 			case DUPLICATE_POSITION -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),

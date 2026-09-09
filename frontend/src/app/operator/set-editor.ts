@@ -136,11 +136,11 @@ function draftForNewCell(gridY: number): SetDraft {
 }
 
 /**
- * The per-set beach-map editor — the console's answer to a venue that has started trading. The bulk
- * `PUT …/beach-map` beside it is reject-unless-unclaimed, so once a venue takes its first booking its
- * map is frozen; the per-set endpoints and the batch apply are not, and this surface is how an
- * operator reaches them. Price, tier and pool are never refused, on any set; only a move or a remove
- * asks the server's claim question.
+ * The per-set beach-map editor — one set at a time, by id, beside the bulk paint surface. Both
+ * work on a venue that has started trading: the bulk `PUT …/beach-map` saves a diff and refuses
+ * only a removal of a set someone is still owed, and the per-set endpoints and the batch apply are
+ * how an operator reaches one set or a swept selection. Price, tier and pool are never refused, on
+ * any set; only a move or a remove asks the server's claim question.
  *
  * <p>It renders the <strong>server's</strong> sets by id rather than a painted grid, because the
  * endpoints address a set by `setId` and a painted cell has no identity. Clicking a cell selects it;

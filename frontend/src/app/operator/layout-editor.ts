@@ -42,9 +42,15 @@ import {
   LayoutErrorCode,
   OperatorBeachMap,
   RowNameErrorCode,
+  BlockedSet,
   SetLock,
 } from './operator-console.model';
-import { OperatorConsoleService, layoutErrorOf, rowNameErrorOf } from './operator-console.service';
+import {
+  OperatorConsoleService,
+  layoutBlockedSetsOf,
+  layoutErrorOf,
+  rowNameErrorOf,
+} from './operator-console.service';
 import { SetEditor } from './set-editor';
 import { StaleWriteBanner } from './stale-write-banner';
 
@@ -105,16 +111,18 @@ const SWATCH_CLASS: Record<CellState, string> = {
  * <p>Arming a paint brush on the rail shows <strong>the bulk paint grid</strong>: an R×C grid
  * generated in one action (row A faces the sea, auto-priced front-row premium), tier/pool/gap
  * painted per cell by click or drag, saved through one owner-asserted `PUT …/beach-map`. That write
- * is reject-unless-unclaimed, so it works only while the venue has never been booked and carries no
- * hold dated today or later. A venue that has ever sold online answers `LAYOUT_IN_USE`
- * permanently; a walk-in-only venue whose marks are all history becomes replaceable again.
+ * is a diff by grid cell server-side: a kept cell updates in place under its own id, a new cell
+ * inserts, an absent cell's set leaves the map — so it works on a venue that has sold. Only a set
+ * someone is still owed (a {@link SetLock locked set}) may not leave: a save that would remove one
+ * is refused `SETS_IN_USE` naming every such set, which this tab then marks with the lock decoration
+ * and lists, so the operator can paint them back or regenerate a grid that includes them.
  *
- * <p>Arming Select shows <strong>{@link SetEditor}</strong> — what a live venue uses: the per-set U7
- * endpoints, which carry set-scoped claim guards instead of a venue-wide lock. The rail opens armed
+ * <p>Arming Select shows <strong>{@link SetEditor}</strong>: the per-set U7 endpoints, which carry
+ * the same set-scoped claim guards one set at a time. The rail opens armed
  * on whichever tool the venue needs — Select once it has saved sets, the default brush while it is
  * empty — and the operator can override that; a per-set write makes this tab re-read the map and
- * drop the shared console snapshot, since the other tabs would otherwise render a set that no longer
- * exists. Select's own panel keeps its current placement — the docked-inspector merge is a later
+ * drop the shared console snapshot, since the other tabs would otherwise render a set that has left
+ * the map. Select's own panel keeps its current placement — the docked-inspector merge is a later
  * slice, not this one.
  *
  * <p>Reads `:venueId` from the parent route (child routes don't inherit it). Cells are
@@ -189,6 +197,11 @@ export class LayoutEditor {
   protected readonly locks = signal<readonly SetLock[]>([]);
   /** The last refused gap paint's reason, shown in the save bar until the tool changes or the draft settles. */
   protected readonly lockNotice = signal<string | null>(null);
+  /**
+   * The sets the last save was refused for (`SETS_IN_USE`), listed in the save bar; each also joins
+   * {@link locks}, so its cell — where the draft still has one — wears the lock decoration.
+   */
+  protected readonly blockedSets = signal<readonly BlockedSet[]>([]);
 
   /**
    * The label each grid row carries **on the server** — the rename's source, and `undefined` for a
@@ -432,6 +445,7 @@ export class LayoutEditor {
     this.loadedSets.set([]);
     this.locks.set([]);
     this.lockNotice.set(null);
+    this.blockedSets.set([]);
     this.armedTool.set(null);
     this.priceByCoord.clear();
     this.activeBrush.set('premium');
@@ -552,6 +566,7 @@ export class LayoutEditor {
     this.storedRowNames.set([]); // a regenerated grid is unsaved: nothing to rename until it is
     this.savedNotice.set(false);
     this.errorCode.set(undefined);
+    this.blockedSets.set([]);
     this.clearRenameNotices();
     // A regenerate replaces the whole grid, so every cell is unsaved surface against an empty baseline.
     this.baselineGrid.set([]);
@@ -582,10 +597,9 @@ export class LayoutEditor {
   }
 
   /**
-   * Rename one stored row: a display-only write that keeps working when the bulk save is locked
-   * (`LAYOUT_IN_USE`). The PUT names the row by its **stored** label, never the draft, so a second
-   * rename of the same row still addresses it. On success the shared `set_version` token advances by
-   * one, exactly as a reprice or a bulk save does.
+   * Rename one stored row: a display-only write on its own PUT, which names the row by its
+   * **stored** label, never the draft, so a second rename of the same row still addresses it. On
+   * success the shared `set_version` token advances by one, exactly as a reprice or a bulk save does.
    */
   protected async onRenameRow(y: number): Promise<void> {
     const venueId = this.venueId();
@@ -874,6 +888,7 @@ export class LayoutEditor {
     const epoch = this.epoch;
     this.saving.set(true);
     this.errorCode.set(undefined);
+    this.blockedSets.set([]);
     this.savedNotice.set(false);
     try {
       await firstValueFrom(this.console.replaceLayout(venueId, { sets, expectedVersion }));
@@ -900,6 +915,9 @@ export class LayoutEditor {
       }
       const code = layoutErrorOf(error);
       this.errorCode.set(code);
+      if (code === 'SETS_IN_USE') {
+        this.markBlocked(layoutBlockedSetsOf(error));
+      }
       if (code === 'UNAUTHORIZED') {
         this.operator.sessionLost();
       }
@@ -908,13 +926,31 @@ export class LayoutEditor {
     }
   }
 
+  /** The refused sets are locked sets the tab did not know about (or knew): the fresher fact wins. */
+  private markBlocked(blocked: readonly BlockedSet[]): void {
+    this.blockedSets.set(blocked);
+    const refused = new Set(blocked.map((set) => set.setId));
+    this.locks.update((locks) => [...locks.filter((lock) => !refused.has(lock.setId)), ...blocked]);
+  }
+
+  /** The refusal's sentence: every named set by row and position with its reason, and the way out. */
+  private blockedMessage(): string {
+    const blocked = this.blockedSets();
+    const named = blocked
+      .map((set) => `Row ${set.rowLabel} · position ${set.positionNo} (${lockReason(set)})`)
+      .join(', ');
+    const count = blocked.length === 1 ? 'a set that is' : `${blocked.length} sets that are`;
+    const them = blocked.length === 1 ? 'it' : 'them';
+    return `Saving would remove ${count} booked or held by staff: ${named}. Keep ${them} on the map — paint the marked cells back to a tier, or generate a grid that still includes ${them}.`;
+  }
+
   /** The operator-facing message for the current error code, or undefined. */
   protected errorMessage(): string | undefined {
     switch (this.errorCode()) {
       case undefined:
         return undefined;
-      case 'LAYOUT_IN_USE':
-        return 'This venue has been booked at least once, or some of its sets are still held, so replacing the whole layout is locked. Arm Select on the tool rail to add and change sets one at a time — though a set that is held or still booked can’t be removed there either.';
+      case 'SETS_IN_USE':
+        return this.blockedMessage();
       case 'EMPTY_LAYOUT':
         return 'Add at least one set before saving.';
       case 'LAYOUT_TOO_LARGE':
@@ -970,6 +1006,7 @@ export class LayoutEditor {
         this.loadedSets.set(venue.sets);
         this.locks.set(view.locks);
         this.lockNotice.set(null);
+        this.blockedSets.set([]);
         this.seedFrom(venue.sets);
         this.errorCode.set(undefined);
         this.savedNotice.set(false);
@@ -1095,6 +1132,7 @@ export class LayoutEditor {
     this.lockNotice.set(null);
     this.savedNotice.set(false);
     this.errorCode.set(undefined);
+    this.blockedSets.set([]);
     this.clearRenameNotices();
   }
 

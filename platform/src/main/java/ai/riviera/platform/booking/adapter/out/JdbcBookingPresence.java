@@ -28,14 +28,14 @@ import ai.riviera.platform.venue.spi.BookingPresence;
  * {@code venue} never imports {@code booking}, so {@code ModularityTests} stays cycle-free. The adapter
  * depends only on {@link JdbcClient}, so the Spring bean graph is acyclic too.
  *
- * <p>Three questions, five probes. The {@code hasBookings} pair counts a booking of <strong>any</strong>
- * status including terminal, because any booking pins its set via the {@code booking.set_id} FK — that
- * is the delete guard, venue-wide for the bulk replace and set-scoped for the per-set remove.
- * {@code hasLiveBookings} counts only bookings that can still be honoured — the edit guard, where
- * finished history strands nobody. {@code liveBookingsFrom} counts what a venue's guests are still
- * owed from a day on — the close-for-season response. Indexes: {@code booking_venue_id_idx} serves
- * the venue-scoped probes and {@code booking_set_date_idx}'s leftmost prefix the set-scoped ones
- * (both V5); no new index.
+ * <p>Three questions, four probes. {@code hasBookings} counts a booking of <strong>any</strong>
+ * status including terminal, because any booking pins its set via the {@code booking.set_id} FK —
+ * that is the retire-or-delete decision of every removal. {@code hasLiveBookings} and its batch
+ * twin {@code nearestLiveBookings} count only bookings that can still be honoured — the edit, remove
+ * and bulk-save guards, where finished history strands nobody. {@code liveBookingsFrom} counts what
+ * a venue's guests are still owed from a day on — the close-for-season response. Indexes:
+ * {@code booking_venue_id_idx} serves the venue-scoped probe and {@code booking_set_date_idx}'s
+ * leftmost prefix the set-scoped ones (both V5); no new index.
  */
 @Repository
 class JdbcBookingPresence implements BookingPresence {
@@ -53,14 +53,6 @@ class JdbcBookingPresence implements BookingPresence {
 
 	JdbcBookingPresence(JdbcClient jdbc) {
 		this.jdbc = jdbc;
-	}
-
-	@Override
-	public boolean hasBookings(VenueId venueId) {
-		return jdbc.sql("SELECT EXISTS(SELECT 1 FROM booking WHERE venue_id = :venue)")
-				.param("venue", venueId.value())
-				.query(Boolean.class)
-				.single();
 	}
 
 	@Override

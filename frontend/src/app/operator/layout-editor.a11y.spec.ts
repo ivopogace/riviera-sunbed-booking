@@ -176,6 +176,52 @@ describe('LayoutEditor a11y (#172)', () => {
     await expectNoAxeViolations(host());
   });
 
+  it('describes a refused set’s cell and lists it in the alert, and stays axe-clean (#1032)', async () => {
+    const seat = (id: number, gridX: number) => ({
+      id,
+      rowLabel: 'A',
+      positionNo: gridX,
+      tier: 'STANDARD',
+      pool: 'ONLINE',
+      price: { minorUnits: 2000, currency: 'EUR' },
+      gridX,
+      gridY: 1,
+      availability: 'FREE',
+    });
+    render([seat(1, 1), seat(2, 2)]);
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+    const cells = host().querySelectorAll<HTMLButtonElement>('[data-testid="layout-cell"]');
+    cells[1].click();
+    fixture.detectChanges();
+    byId('layout-save').click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
+      .flush(
+        {
+          code: 'SETS_IN_USE',
+          detail: 'x',
+          sets: [{ setId: 2, rowLabel: 'A', positionNo: 2, bookedOn: null, heldOn: '2026-09-12' }],
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const refused = cells[1];
+    expect(refused.getAttribute('aria-label')).toBe('Row A position 2, gap or aisle');
+    const description = host().querySelector(`#${refused.getAttribute('aria-describedby')}`);
+    expect(description?.textContent?.trim()).toBe(
+      'Locked — held by staff Sat 12 Sept 2026. Can’t be moved or removed; tier and pool can still change.',
+    );
+    expect(refused.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(byId('layout-error').getAttribute('role')).toBe('alert');
+    expect(byId('layout-error').textContent).toContain(
+      'Row A · position 2 (held by staff Sat 12 Sept 2026)',
+    );
+    await expectNoAxeViolations(host());
+  });
+
   it('has no axe violations with a generated + painted grid', async () => {
     render();
     setInput('layout-gen-rows', '3');

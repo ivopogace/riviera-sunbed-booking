@@ -291,7 +291,7 @@ class VenueAdminServiceTest {
 
 		assertEquals(List.of(SET), availability.anyClaimsFromAskedAbout,
 				"the edit guard must ask about this set alone, never the whole venue");
-		assertEquals(List.of("lockSet", "anyClaimsFrom"), callLog,
+		assertEquals(List.of("lockSet", "anyClaimsFrom", "updateSet"), callLog,
 				"probing before locking reopens the window a claim slips through (invariant #2)");
 		assertEquals(TODAY_IN_TIRANE, availability.anyClaimsFromDate,
 				"the cutoff is today in Europe/Tirane, not in UTC (invariant #6)");
@@ -306,7 +306,7 @@ class VenueAdminServiceTest {
 
 		assertEquals(List.of(SET), availability.anyClaimsFromAskedAbout,
 				"a venue-wide probe here would freeze every set whenever any one is held");
-		assertEquals(List.of("lockSet", "anyClaimsFrom"), callLog,
+		assertEquals(List.of("lockSet", "anyClaimsFrom", "deleteSet"), callLog,
 				"probing before locking reopens the window a claim slips through (invariant #2)");
 		assertEquals(TODAY_IN_TIRANE, availability.anyClaimsFromDate,
 				"the cutoff is today in Europe/Tirane, not in UTC (invariant #6)");
@@ -383,7 +383,7 @@ class VenueAdminServiceTest {
 	void removeSetAsksTheSetScopedBookingQuestionNotTheVenueScopedOne() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		bookings.hasBookings = true; // a booking elsewhere on the venue
+		bookings.everBooked.add(new SetId(SET.value() + 1)); // a booking elsewhere on the venue
 
 		ChangeOutcome outcome = mapEditor.removeSet(OWNER, VENUE, SET);
 
@@ -513,93 +513,177 @@ class VenueAdminServiceTest {
 		assertTrue(service.profileFor(OWNER, VENUE).isEmpty());
 	}
 
-	// ---- Bulk layout replace ----
+	// ---- Bulk layout save (the diff) ----
+
+	/** A stored set at a cell no {@link #grid} names, so a save that keeps the grid removes it. */
+	private static final SetPlacement OFF_GRID = new SetPlacement("Z", 9, 9, 9);
+	private static final SetPlacement A1 = new SetPlacement("A", 1, 1, 1);
 
 	@Test
-	void replacesLayoutForUnclaimedVenue() {
+	void savesAFreshLayoutAsInserts() {
 		venues.venues.add(VENUE.value());
 
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome);
-		assertEquals(1, venues.deletedAllCount);
 		assertEquals(6, venues.insertedInLayout);
+		assertEquals(0, venues.updatedSets);
 		assertEquals(1, venues.incrementedSetVersions); // token advanced exactly once, on success
 	}
 
 	@Test
-	void rejectsReplaceWhenVenueHasBooking() {
+	void aKeptCellIsUpdatedUnderItsOwnIdAndOnlyNewCellsAreInserted() {
 		venues.venues.add(VENUE.value());
-		bookings.hasBookings = true;
+		venues.place(SET, A1);
 
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
-		assertEquals(ReplaceRejection.LAYOUT_IN_USE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.deletedAllCount); // guard runs BEFORE any delete
-		assertEquals(0, venues.insertedInLayout);
-		// A LAYOUT_IN_USE reject must NOT advance the token (no spurious bump), so the
-		// acting operator's own retry after the lock clears still works off the same loaded token.
-		assertEquals(0, venues.incrementedSetVersions);
+		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome);
+		assertEquals(List.of(SET), venues.updatedSetIds, "the set at A1 keeps its identity");
+		assertEquals(5, venues.insertedInLayout);
+		assertEquals(0, venues.deletedSets + venues.retiredSets);
+		assertEquals(1, venues.incrementedSetVersions);
 	}
 
 	@Test
-	void rejectsReplaceWhenVenueHasLiveAvailabilityHold() {
+	void refusesRemovingASetWithALiveBookingAndNamesIt() {
 		venues.venues.add(VENUE.value());
-		venues.existingSetIds.add(SET.value());
+		venues.place(SET, OFF_GRID);
+		bookings.liveOn.put(SET, TODAY_IN_TIRANE.plusDays(3));
+
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
+
+		assertEquals(new ReplaceLayoutOutcome.SetsInUse(List.of(new BlockedSet(
+				new PlacedSet(SET, OFF_GRID), new SetLock(SET, TODAY_IN_TIRANE.plusDays(3), null)))), outcome);
+		assertEquals(0, venues.deletedSets + venues.retiredSets + venues.updatedSets + venues.insertedInLayout,
+				"a refused save writes nothing");
+		assertEquals(0, venues.incrementedSetVersions, "no spurious bump on the in-use refusal");
+	}
+
+	@Test
+	void refusesRemovingASetWithALiveHoldAndNamesIt() {
+		venues.venues.add(VENUE.value());
+		venues.place(SET, OFF_GRID);
 		availability.holdOn.put(SET, TODAY_IN_TIRANE); // the inclusive edge: a hold dated today still blocks
 
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
-		assertEquals(ReplaceRejection.LAYOUT_IN_USE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.deletedAllCount);
-		assertEquals(0, venues.incrementedSetVersions); // no spurious bump on the in-use reject
+		assertEquals(new ReplaceLayoutOutcome.SetsInUse(List.of(new BlockedSet(
+				new PlacedSet(SET, OFF_GRID), new SetLock(SET, null, TODAY_IN_TIRANE)))), outcome);
+		assertEquals(0, venues.deletedSets + venues.retiredSets);
+		assertEquals(0, venues.incrementedSetVersions);
 	}
 
 	@Test
-	void replacesLayoutWhenTheOnlyHoldsArePast() {
+	void aClaimOnAKeptCellNeverRefuses() {
 		venues.venues.add(VENUE.value());
-		venues.existingSetIds.add(SET.value());
-		// History only: a walk-in-only venue's marks from last season, no booking ever.
+		venues.place(SET, A1);
+		availability.holdOn.put(SET, TODAY_IN_TIRANE);
+		bookings.liveOn.put(SET, TODAY_IN_TIRANE);
+
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
+
+		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome,
+				"an in-place update disturbs no guest: price, tier, pool and row label are always editable");
+		assertEquals(List.of(SET), venues.updatedSetIds);
+		assertEquals(List.of(), availability.nearestClaimsFromAskedAbout, "a kept set is never probed");
+	}
+
+	@Test
+	void refusesRepositioningAKeptClaimedSetButNotRenamingIt() {
+		venues.venues.add(VENUE.value());
+		venues.place(SET, A1);
+		bookings.liveOn.put(SET, TODAY_IN_TIRANE.plusDays(3));
+		LayoutCommand renamed = new LayoutCommand(List.of(
+				new SetCommand("Front", 1, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1)));
+		LayoutCommand renumbered = new LayoutCommand(List.of(
+				new SetCommand("A", 7, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1)));
+
+		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, mapEditor.replaceLayout(OWNER, VENUE, 0L, renamed),
+				"a row label changes in place on a booked set, as a rename does");
+		assertEquals(new ReplaceLayoutOutcome.SetsInUse(List.of(new BlockedSet(
+				new PlacedSet(SET, A1), new SetLock(SET, TODAY_IN_TIRANE.plusDays(3), null)))),
+				mapEditor.replaceLayout(OWNER, VENUE, 0L, renumbered),
+				"a guest was told this row and number: a new number on a claimed set is refused and named");
+	}
+
+	@Test
+	void parksTheLabelsOfSwappedRowsBeforeUpdatingThem() {
+		venues.venues.add(VENUE.value());
+		SetId b1 = new SetId(SET.value() + 1);
+		venues.place(SET, A1);
+		venues.place(b1, new SetPlacement("B", 1, 1, 2));
+		LayoutCommand swapped = new LayoutCommand(List.of(
+				new SetCommand("B", 1, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1),
+				new SetCommand("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 2)));
+
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, swapped);
+
+		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome);
+		assertEquals(List.of(SET, b1), venues.parkedSetIds, "both sets move into each other's slot");
+		assertEquals(List.of("lockSetsOfVenue", "nearestClaimsFrom", "parkRowLabels", "updateSet", "updateSet", "insertSets"),
+				callLog, "the parking precedes every in-place update");
+	}
+
+	@Test
+	void retiresARemovedSetWithHistoryAndDeletesOneWithout() {
+		venues.venues.add(VENUE.value());
+		SetId clean = new SetId(SET.value() + 1);
+		venues.place(SET, OFF_GRID);
+		venues.place(clean, new SetPlacement("Z", 8, 8, 9));
+		bookings.everBooked.add(SET); // finished history: the FK pins the row, nobody is still coming
+
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
+
+		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome);
+		assertEquals(1, venues.retiredSets, "a set with history leaves the map by retiring (ADR-0019)");
+		assertEquals(CLOCK.instant(), venues.lastRetiredAt, "the marker is the service clock's instant (invariant #6)");
+		assertEquals(1, venues.deletedSets, "a set with no booking is deleted");
+		assertEquals(1, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void removesASetWhoseOnlyHoldsArePast() {
+		venues.venues.add(VENUE.value());
+		venues.place(SET, OFF_GRID);
 		availability.holdOn.put(SET, TODAY_IN_TIRANE.minusDays(400)); // last season, nothing still owed
 
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome,
-				"last season's walk-in marks must not freeze the whole map forever");
-		assertEquals(1, venues.deletedAllCount);
-		assertEquals(1, venues.incrementedSetVersions);
+				"last season's walk-in marks must not freeze the map");
+		assertEquals(1, venues.deletedSets);
 	}
 
 	@Test
-	void rejectsReplaceWhenAnyLockedSetIsHeldNotJustTheFirst() {
+	void namesEveryRefusedSetNotJustTheFirst() {
 		venues.venues.add(VENUE.value());
-		venues.existingSetIds.add(SET.value());
 		SetId later = new SetId(SET.value() + 1);
-		venues.existingSetIds.add(later.value());
-		// On the LAST locked set: a guard probing only some of them would cascade this one away.
-		availability.holdOn.put(later, TODAY_IN_TIRANE);
+		venues.place(SET, OFF_GRID);
+		venues.place(later, new SetPlacement("Z", 8, 8, 9));
+		availability.holdOn.put(later, TODAY_IN_TIRANE); // on the LAST removed set
 
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
-		assertEquals(ReplaceRejection.LAYOUT_IN_USE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.deletedAllCount);
-		assertEquals(0, venues.incrementedSetVersions);
+		assertEquals(List.of(later), ((ReplaceLayoutOutcome.SetsInUse) outcome).sets().stream()
+				.map(blocked -> blocked.set().id()).toList(), "only the sets a claim pins are named");
+		assertEquals(0, venues.deletedSets + venues.retiredSets);
 	}
 
 	@Test
-	void replaceAsksTheLiveHoldQuestionAboutTheLockedSetsAfterLockingThem() {
+	void probesOnlyTheRemovedSetsAfterLockingTheMap() {
 		venues.venues.add(VENUE.value());
-		venues.existingSetIds.add(SET.value());
-		SetId later = new SetId(SET.value() + 1);
-		venues.existingSetIds.add(later.value());
+		SetId gone = new SetId(SET.value() + 1);
+		venues.place(SET, A1);
+		venues.place(gone, OFF_GRID);
 
 		mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
-		assertEquals(List.of(SET, later), availability.anyClaimsFromAskedAbout,
-				"the probe must ask about exactly the sets the lock covers — every one of them");
-		assertEquals(List.of("lockSetsOfVenue", "anyClaimsFrom"), callLog,
-				"probing before locking reopens the window a claim slips through (invariant #2)");
-		assertEquals(TODAY_IN_TIRANE, availability.anyClaimsFromDate,
+		assertEquals(List.of(gone), availability.nearestClaimsFromAskedAbout,
+				"the probe asks about exactly the removed sets — every one of them, none of the kept");
+		assertEquals(List.of("lockSetsOfVenue", "nearestClaimsFrom", "deleteSet", "updateSet", "insertSets"), callLog,
+				"lock, then probe (invariant #2), then removals before the in-place updates and the inserts");
+		assertEquals(TODAY_IN_TIRANE, availability.nearestClaimsFromDate,
 				"the cutoff is today in Europe/Tirane, not in UTC (invariant #6)");
 	}
 
@@ -610,7 +694,7 @@ class VenueAdminServiceTest {
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, new LayoutCommand(List.of()));
 
 		assertEquals(ReplaceRejection.EMPTY_LAYOUT, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.deletedAllCount);
+		assertEquals(List.of(), callLog);
 	}
 
 	@Test
@@ -623,7 +707,7 @@ class VenueAdminServiceTest {
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, clashing);
 
 		assertEquals(ReplaceRejection.CELL_TAKEN, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.deletedAllCount);
+		assertEquals(List.of(), callLog);
 	}
 
 	@Test
@@ -638,7 +722,6 @@ class VenueAdminServiceTest {
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, split);
 
 		assertEquals(ReplaceRejection.ROW_NAME_TAKEN, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.deletedAllCount);
 		assertEquals(0, venues.insertedInLayout);
 		assertEquals(0, venues.incrementedSetVersions);
 	}
@@ -678,17 +761,16 @@ class VenueAdminServiceTest {
 
 	@Test
 	void replaceWithStaleSetVersionIsStaleWrite() {
-		// AC-1 (unit): the venue exists but the locked set_version no longer matches the loaded token
-		// (another writer advanced it) ⇒ STALE_WRITE, and the layout is left untouched — the version check
-		// precedes the delete, and the token is never advanced on the stale path.
+		// STALE_WRITE precedes the map lock, the probe and every write; the token is never advanced.
 		venues.venues.add(VENUE.value());
+		venues.place(SET, A1);
 		venues.setVersionOnLock = 1; // the row moved to 1; the tab loaded 0
 
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertEquals(ReplaceRejection.STALE_WRITE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.deletedAllCount);
-		assertEquals(0, venues.insertedInLayout);
+		assertEquals(List.of(), callLog);
+		assertEquals(0, venues.updatedSets + venues.insertedInLayout);
 		assertEquals(0, venues.incrementedSetVersions);
 	}
 
@@ -698,10 +780,10 @@ class VenueAdminServiceTest {
 
 		assertThrows(NotVenueOwnerException.class,
 				() -> mapEditor.replaceLayout(STRANGER, VENUE, 0L, grid(2, 3)));
-		// Fail closed: the ownership guard fires before the claim probes, the version read/write, any delete.
+		// Fail closed: the ownership guard fires before the claim probes, the version read/write, any write.
 		assertEquals(List.of(), callLog);
 		assertEquals(0, venues.incrementedSetVersions);
-		assertEquals(0, venues.deletedAllCount);
+		assertEquals(0, venues.insertedInLayout);
 	}
 
 	// ---- Batch apply ----
@@ -1201,18 +1283,31 @@ class VenueAdminServiceTest {
 			return nextSetId;
 		}
 
+		final List<SetId> updatedSetIds = new ArrayList<>();
+		final List<SetId> parkedSetIds = new ArrayList<>();
+
+		@Override
+		public void parkRowLabels(VenueId venueId, Collection<SetId> setIds) {
+			callLog.add("parkRowLabels");
+			parkedSetIds.addAll(setIds);
+		}
+
 		@Override
 		public void updateSet(VenueId venueId, SetId setId, SetCommand command) {
+			callLog.add("updateSet");
 			updatedSets++;
+			updatedSetIds.add(setId);
 		}
 
 		@Override
 		public void deleteSet(VenueId venueId, SetId setId) {
+			callLog.add("deleteSet");
 			deletedSets++;
 		}
 
 		@Override
 		public void retireSet(VenueId venueId, SetId setId, Instant retiredAt) {
+			callLog.add("retireSet");
 			retiredSets++;
 			lastRetiredAt = retiredAt;
 		}
@@ -1251,19 +1346,23 @@ class VenueAdminServiceTest {
 			reopenings++;
 		}
 
-		final List<Long> existingSetIds = new ArrayList<>();
-		int deletedAllCount;
+		/** The active map, in id order: the bulk save's diff base. */
+		final List<PlacedSet> placed = new ArrayList<>();
 		int insertedInLayout;
 
-		@Override
-		public List<SetId> setIdsOf(VenueId venueId) {
-			return existingSetIds.stream().map(SetId::new).toList();
+		void place(SetId id, SetPlacement placement) {
+			placed.add(new PlacedSet(id, placement));
 		}
 
 		@Override
-		public List<SetId> lockSetsOfVenue(VenueId venueId) {
+		public List<SetId> setIdsOf(VenueId venueId) {
+			return placed.stream().map(PlacedSet::id).toList();
+		}
+
+		@Override
+		public List<PlacedSet> lockSetsOfVenue(VenueId venueId) {
 			callLog.add("lockSetsOfVenue");
-			return existingSetIds.stream().map(SetId::new).toList();
+			return List.copyOf(placed);
 		}
 
 		final Set<Long> lockedBatchIds = new HashSet<>();
@@ -1287,15 +1386,8 @@ class VenueAdminServiceTest {
 		}
 
 		@Override
-		public int deleteAllSets(VenueId venueId) {
-			deletedAllCount++;
-			int n = existingSetIds.size();
-			existingSetIds.clear();
-			return n;
-		}
-
-		@Override
 		public void insertSets(VenueId venueId, List<SetCommand> sets) {
+			callLog.add("insertSets");
 			insertedInLayout += sets.size();
 		}
 
@@ -1377,9 +1469,15 @@ class VenueAdminServiceTest {
 					.anyMatch(day -> day != null && !day.isBefore(from));
 		}
 
+		final List<SetId> nearestClaimsFromAskedAbout = new ArrayList<>();
+		java.time.LocalDate nearestClaimsFromDate;
+
 		@Override
 		public java.util.Map<SetId, java.time.LocalDate> nearestClaimsFrom(
 				Collection<SetId> setIds, java.time.LocalDate from) {
+			nearestClaimsFromAskedAbout.addAll(setIds);
+			callLog.add("nearestClaimsFrom");
+			nearestClaimsFromDate = from;
 			return setIds.stream()
 					.filter(id -> holdOn.containsKey(id) && !holdOn.get(id).isBefore(from))
 					.collect(java.util.stream.Collectors.toMap(id -> id, holdOn::get));
@@ -1398,14 +1496,17 @@ class VenueAdminServiceTest {
 	}
 
 	/**
-	 * Programmable {@link BookingPresence}. The three flags are separate so a test can pin both axes:
-	 * the bulk replace asks the venue-scoped question while the per-set writes ask the set-scoped one,
-	 * and the delete asks about any booking ever while the edit asks only about a live one.
+	 * Programmable {@link BookingPresence}. The two booleans answer for whichever set is asked (the
+	 * per-set writes name one); the per-set map and set answer the bulk save, which asks about many
+	 * — a removal asks about any booking ever, an edit only about a live one.
 	 */
 	private static final class FakeBookings implements BookingPresence {
-		boolean hasBookings;
 		boolean setHasBookings;
 		boolean setHasLiveBookings;
+		/** The nearest live booking per set. */
+		final Map<SetId, LocalDate> liveOn = new HashMap<>();
+		/** Sets with a booking of any status. */
+		final Set<SetId> everBooked = new HashSet<>();
 		LiveBookingCounts liveCounts = new LiveBookingCounts(0, 0);
 		LocalDate countedFrom;
 
@@ -1416,23 +1517,20 @@ class VenueAdminServiceTest {
 		}
 
 		@Override
-		public boolean hasBookings(VenueId venueId) {
-			return hasBookings;
-		}
-
-		@Override
 		public boolean hasBookings(SetId setId) {
-			return setHasBookings;
+			return setHasBookings || everBooked.contains(setId) || liveOn.containsKey(setId);
 		}
 
 		@Override
 		public boolean hasLiveBookings(SetId setId) {
-			return setHasLiveBookings;
+			return setHasLiveBookings || liveOn.containsKey(setId);
 		}
 
 		@Override
-		public java.util.Map<SetId, java.time.LocalDate> nearestLiveBookings(Collection<SetId> setIds) {
-			return java.util.Map.of();
+		public Map<SetId, LocalDate> nearestLiveBookings(Collection<SetId> setIds) {
+			return setIds.stream()
+					.filter(liveOn::containsKey)
+					.collect(Collectors.toMap(id -> id, liveOn::get));
 		}
 	}
 }

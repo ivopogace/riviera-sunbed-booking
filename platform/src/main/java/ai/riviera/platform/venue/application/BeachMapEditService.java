@@ -2,6 +2,7 @@ package ai.riviera.platform.venue.application;
 
 import java.time.Clock;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -17,7 +18,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The beach-map edit use cases (U7): place, re-place and remove a set, reprice and rename a row,
- * replace the whole layout, and apply a batch of price/tier/pool changes. Package-private — the
+ * save the whole layout as a diff, and apply a batch of price/tier/pool changes. Package-private — the
  * public seam is the {@link EditBeachMap} port (invariant #11). The hard command validation lives
  * in the command records ({@link SetCommand}, {@link SetBatchCommand}); this service owns the
  * orchestration: existence checks, the row locks, the claim probes, conflict→{@link SetRejection}
@@ -192,14 +193,33 @@ class BeachMapEditService implements EditBeachMap {
 		if (venues.lockAndReadSetVersion(venueId) != expectedVersion) {
 			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.STALE_WRITE);
 		}
-		// Lock the set rows before the probe: a racing claim is either seen (→ reject) or blocks on its FK (invariant #2).
-		List<SetId> existing = venues.lockSetsOfVenue(venueId);
-		if (claims.hasLiveHold(existing) || bookings.hasBookings(venueId)) {
-			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.LAYOUT_IN_USE);
+		// Lock the set rows before the probe: a racing claim is either seen (→ refuse) or blocks on its FK (invariant #2).
+		LayoutDiff diff = LayoutDiff.of(venues.lockSetsOfVenue(venueId), command);
+		List<PlacedSet> disturbed = diff.disturbed();
+		Map<SetId, SetLock> locks = claims.locksOn(disturbed.stream().map(PlacedSet::id).toList());
+		if (!locks.isEmpty()) {
+			return new ReplaceLayoutOutcome.SetsInUse(disturbed.stream()
+					.filter(set -> locks.containsKey(set.id()))
+					.map(set -> new BlockedSet(set, locks.get(set.id())))
+					.toList());
 		}
-		// Unclaimed: replace atomically, then advance the token — it moves iff the layout did.
-		venues.deleteAllSets(venueId);
-		venues.insertSets(venueId, command.sets());
+		// Removals first, so a slot they free is open before an update or an insert takes it.
+		for (PlacedSet gone : diff.removed()) {
+			if (bookings.hasBookings(gone.id())) {
+				venues.retireSet(venueId, gone.id(), clock.instant());
+			}
+			else {
+				venues.deleteSet(venueId, gone.id());
+			}
+		}
+		List<SetId> colliding = diff.collidingUpdates();
+		if (!colliding.isEmpty()) {
+			venues.parkRowLabels(venueId, colliding);
+		}
+		for (LayoutDiff.Update kept : diff.updates()) {
+			venues.updateSet(venueId, kept.stored().id(), kept.command());
+		}
+		venues.insertSets(venueId, diff.inserts());
 		venues.incrementSetVersion(venueId);
 		return ReplaceLayoutOutcome.Replaced.REPLACED;
 	}

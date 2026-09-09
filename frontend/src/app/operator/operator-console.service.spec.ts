@@ -21,6 +21,8 @@ import {
   checkInErrorOf,
   checkInWrongDateOf,
   setWriteErrorOf,
+  layoutBlockedSetsOf,
+  layoutErrorOf,
   setBatchErrorOf,
   rowNameErrorOf,
   seasonClosureErrorOf,
@@ -451,7 +453,7 @@ describe('setBatchErrorOf', () => {
   });
 
   it('maps an unknown code and a non-HTTP failure to UNKNOWN', () => {
-    expect(setBatchErrorOf(problem(409, 'LAYOUT_IN_USE'))).toBe('UNKNOWN');
+    expect(setBatchErrorOf(problem(409, 'SOMETHING_ELSE'))).toBe('UNKNOWN');
     expect(setBatchErrorOf(problem(500))).toBe('UNKNOWN');
     expect(setBatchErrorOf(new Error('offline'))).toBe('UNKNOWN');
   });
@@ -581,5 +583,47 @@ describe('OperatorConsoleService season closure (#1028)', () => {
     expect(seasonClosureErrorOf(fail(401, 'UNAUTHENTICATED'))).toBe('UNAUTHORIZED');
     expect(seasonClosureErrorOf(fail(500, 'BOOM'))).toBe('UNKNOWN');
     expect(seasonClosureErrorOf(new Error('offline'))).toBe('UNKNOWN');
+  });
+});
+
+describe('layout save error mapping (#1032)', () => {
+  function problem(status: number, error: unknown): HttpErrorResponse {
+    return new HttpErrorResponse({ status, error });
+  }
+
+  it('passes SETS_IN_USE through and reads the sets it names', () => {
+    const refusal = problem(409, {
+      code: 'SETS_IN_USE',
+      sets: [
+        { setId: 2, rowLabel: 'A', positionNo: 2, bookedOn: '2026-09-12', heldOn: null },
+        { setId: 5, rowLabel: 'Front', positionNo: 1, bookedOn: null, heldOn: '2026-09-20' },
+      ],
+    });
+
+    expect(layoutErrorOf(refusal)).toBe('SETS_IN_USE');
+    expect(layoutBlockedSetsOf(refusal)).toEqual([
+      { setId: 2, rowLabel: 'A', positionNo: 2, bookedOn: '2026-09-12', heldOn: null },
+      { setId: 5, rowLabel: 'Front', positionNo: 1, bookedOn: null, heldOn: '2026-09-20' },
+    ]);
+  });
+
+  it('drops an entry the server did not shape as a blocked set, and answers no sets for any other failure', () => {
+    const malformed = problem(409, {
+      code: 'SETS_IN_USE',
+      sets: [
+        { setId: '2', rowLabel: 'A', positionNo: 2, bookedOn: '2026-09-12', heldOn: null },
+        { setId: 3, rowLabel: 'A', positionNo: 3, bookedOn: null, heldOn: null },
+        { setId: 4, rowLabel: 'A', positionNo: 4, bookedOn: '2026-09-12', heldOn: null },
+        null,
+      ],
+    });
+
+    expect(layoutBlockedSetsOf(malformed)).toEqual([
+      { setId: 4, rowLabel: 'A', positionNo: 4, bookedOn: '2026-09-12', heldOn: null },
+    ]);
+    expect(layoutBlockedSetsOf(problem(409, { code: 'SETS_IN_USE' }))).toEqual([]);
+    expect(layoutBlockedSetsOf(problem(409, { code: 'STALE_WRITE' }))).toEqual([]);
+    expect(layoutBlockedSetsOf(new Error('offline'))).toEqual([]);
+    expect(layoutErrorOf(problem(409, { code: 'SOMETHING_ELSE' }))).toBe('UNKNOWN');
   });
 });

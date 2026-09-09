@@ -33,6 +33,7 @@ import ai.riviera.platform.venue.application.NewVenueCommand;
 import ai.riviera.platform.venue.application.OwnedVenueView;
 import ai.riviera.platform.venue.application.PhotoServingUrls;
 import ai.riviera.platform.venue.application.PhotoSlotView;
+import ai.riviera.platform.venue.application.PlacedSet;
 import ai.riviera.platform.venue.application.RowNameCommand;
 import ai.riviera.platform.venue.application.RowPriceCommand;
 import ai.riviera.platform.venue.application.SetBatchCommand;
@@ -296,6 +297,19 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	}
 
 	@Override
+	public void parkRowLabels(VenueId venueId, Collection<SetId> setIds) {
+		// chr(1) is unreachable from the API, and the id keeps the parked labels distinct from one another.
+		jdbc.sql("""
+				UPDATE set_position
+				SET row_label = chr(1) || id::text
+				WHERE venue_id = :venue AND id IN (:ids) AND retired_at IS NULL
+				""")
+				.param(P_VENUE, venueId.value())
+				.param("ids", setIds.stream().map(SetId::value).toList())
+				.update();
+	}
+
+	@Override
 	public void deleteSet(VenueId venueId, SetId setId) {
 		jdbc.sql("DELETE FROM set_position WHERE id = :setId AND venue_id = :venue AND retired_at IS NULL")
 				.param(P_SET_ID, setId.value())
@@ -366,17 +380,20 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	}
 
 	@Override
-	public List<SetId> lockSetsOfVenue(VenueId venueId) {
-		// FOR UPDATE locks the venue's set_position rows so a concurrent set_availability/booking
-		// insert (which needs FOR KEY SHARE on the referenced row for its FK check) blocks until this
-		// replace transaction ends — closing the invariant-#2 check-then-delete window (see Venues).
-		return jdbc.sql("SELECT id FROM active_set_position WHERE venue_id = :venue FOR UPDATE")
+	public List<PlacedSet> lockSetsOfVenue(VenueId venueId) {
+		// FOR UPDATE: a concurrent claim's FK check (FOR KEY SHARE) waits until this save ends (see Venues).
+		return jdbc.sql("""
+				SELECT id, row_label, position_no, grid_x, grid_y
+				  FROM active_set_position
+				 WHERE venue_id = :venue
+				 ORDER BY id
+				   FOR UPDATE
+				""")
 				.param(P_VENUE, venueId.value())
-				.query(Long.class)
-				.list()
-				.stream()
-				.map(SetId::new)
-				.toList();
+				.query((rs, rowNum) -> new PlacedSet(new SetId(rs.getLong("id")),
+						new SetPlacement(rs.getString("row_label"), rs.getInt("position_no"),
+								rs.getInt("grid_x"), rs.getInt("grid_y"))))
+				.list();
 	}
 
 	@Override
@@ -413,19 +430,8 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	}
 
 	@Override
-	public int deleteAllSets(VenueId venueId) {
-		// Retired rows are history the FK pins; the replace only ever clears the active map.
-		return jdbc.sql("DELETE FROM set_position WHERE venue_id = :venue AND retired_at IS NULL")
-				.param(P_VENUE, venueId.value())
-				.update();
-	}
-
-	@Override
 	public void insertSets(VenueId venueId, List<SetCommand> sets) {
-		// One INSERT per set inside the caller's @Transactional boundary, sharing the single-row column
-		// list (INSERT_SET_SQL). Bounded by LayoutCommand.MAX_SETS and run only on a verified-unclaimed
-		// venue, so the per-row round-trips are acceptable for this rare operator action; if it ever
-		// mattered, JdbcClient sits on NamedParameterJdbcTemplate.batchUpdate.
+		// One INSERT per set, bounded by LayoutCommand.MAX_SETS on a rare operator action.
 		for (SetCommand c : sets) {
 			jdbc.sql(INSERT_SET_SQL).params(insertParams(venueId, c)).update();
 		}

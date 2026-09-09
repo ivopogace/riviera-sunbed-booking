@@ -34,7 +34,7 @@ function body(req: { request: { body: unknown } }): SentBody {
 /**
  * The layout editor. Reads `:venueId` from the PARENT route (child routes don't inherit it)
  * and loads the venue map to seed its grid; the mock mirrors that. Drives generate, drag-paint, save
- * (asserting the one bulk PUT payload), and the LAYOUT_IN_USE lock message.
+ * (asserting the one bulk PUT payload), and the SETS_IN_USE refusal that marks the named sets.
  */
 describe('LayoutEditor (#172)', () => {
   let fixture: ComponentFixture<LayoutEditor>;
@@ -775,7 +775,7 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('layout-discard').getAttribute('disabled')).toBe('');
   });
 
-  it('surfaces LAYOUT_IN_USE and STALE_WRITE through the persistent save bar (#712)', async () => {
+  it('surfaces STALE_WRITE through the persistent save bar (#712)', async () => {
     render();
     generate('1', '1');
 
@@ -1427,41 +1427,83 @@ describe('LayoutEditor (#172)', () => {
     await fixture.whenStable();
   });
 
-  it('shows the layout-locked message when the server rejects LAYOUT_IN_USE', async () => {
-    render();
-    generate('1', '1');
+  it('marks the sets a refused save names with the lock decoration and lists them (#1032)', async () => {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1), seat(2, 'STANDARD', 'ONLINE', 2, 1)], 3);
+    useBulkMode();
+    // A booking landed after the load: the tab knows no lock, so the gap brush paints A2 out.
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+    cells()[1].click();
+    fixture.detectChanges();
+    expect(cells()[1].getAttribute('data-state')).toBe('gap');
+
     byId('layout-save').click();
     http
       .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
-      .flush({ code: 'LAYOUT_IN_USE' }, { status: 409, statusText: 'Conflict' });
+      .flush(
+        {
+          code: 'SETS_IN_USE',
+          detail: 'x',
+          sets: [{ setId: 2, rowLabel: 'A', positionNo: 2, bookedOn: '2026-09-12', heldOn: null }],
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(byId('layout-error').textContent?.toLowerCase()).toContain('locked');
-    // The booking arm is any booking ever (hasBookings), so the banner must not read as a live claim.
-    expect(byId('layout-error').textContent).toMatch(/booked at least once/i);
-    expect(byId('layout-error').textContent).toMatch(/still held/i);
+    // The named set's cell wears the #1031 lock decoration; the kept cell does not.
+    const refused = cells()[1];
+    expect(refused.getAttribute('data-locked')).toBe('true');
+    expect(refused.getAttribute('data-state')).toBe('gap');
+    expect(
+      host.querySelector(`#${refused.getAttribute('aria-describedby')}`)?.textContent,
+    ).toContain('booked Sat 12 Sept 2026');
+    expect(cells()[0].getAttribute('data-locked')).toBeNull();
+    expect(byId('layout-locked-legend').textContent).toContain('1 set is booked or held');
+    expect(byId('layout-error').textContent).toMatch(
+      /Row A · position 2 \(booked Sat 12 Sept 2026\)/,
+    );
+    expect(byId('layout-error').textContent).toMatch(/paint the marked cells back/i);
+    expect(byId('layout-error').textContent).not.toMatch(/locked|Select/);
+
+    // Painting it back to a tier is the way out: the next save carries A2 again.
+    byId('layout-tool-standard').click();
+    fixture.detectChanges();
+    refused.click();
+    fixture.detectChanges();
+    expect(refused.getAttribute('data-state')).toBe('standard');
+    byId('layout-save').click();
+    const second = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
+    );
+    expect(body(second).sets.map((set) => set.gridX)).toEqual([1, 2]);
+    expect(body(second).expectedVersion).toBe(3); // the refusal never spent the token
+    second.flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(host.querySelector('[data-testid="layout-error"]')).toBeNull();
+    expect(refused.getAttribute('data-locked')).toBe('true'); // still booked — the lock stays
   });
 
-  it('pointsALockedLayoutAtPerSetEditing: the locked message no longer claims editing is impossible (AC-7)', async () => {
-    render();
-    generate('1', '1');
+  it('keeps the refused set out of the error once a new save starts, and a SETS_IN_USE answer naming no parsable set still refuses', async () => {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)], 0);
+    useBulkMode();
+    byId('layout-tool-premium').click();
+    fixture.detectChanges();
+    cells()[0].click();
+    fixture.detectChanges();
     byId('layout-save').click();
     http
       .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
-      .flush({ code: 'LAYOUT_IN_USE' }, { status: 409, statusText: 'Conflict' });
+      .flush(
+        { code: 'SETS_IN_USE', detail: 'x', sets: [{ setId: 'x' }] },
+        { status: 409, statusText: 'Conflict' },
+      );
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const message = byId('layout-error').textContent ?? '';
-    expect(message).toMatch(/select/i);
-    expect(message).not.toMatch(/not possible/i);
-    // The lock is venue-wide, but the per-set remove it points at is refused only by a live claim.
-    expect(message).not.toMatch(/or remove sets/i);
-    expect(message).toMatch(/can’t be removed/i);
-    // removeSet refuses on a live hold too, so the caveat must not read as booking-only.
-    expect(message).toMatch(/held or still booked/i);
-    expect(message).not.toMatch(/has ever been booked/i);
+    expect(byId('layout-error').textContent).toMatch(/Saving would remove 0 sets/);
+    expect(host.querySelector('[data-testid="layout-cell"][data-locked="true"]')).toBeNull();
   });
 
   it('seeds the grid from the venue’s existing layout, preserving the walk-in pool', () => {

@@ -29,8 +29,8 @@ public enum SetRejection {
 	 * dated today or later, or a non-terminal booking. A <em>remove</em> asks on every call, an
 	 * <em>edit</em> only when it would reposition the set (price, tier and pool are never refused);
 	 * finished bookings refuse neither — they make a removal retire the set instead of deleting it
-	 * (ADR-0019). The per-set counterpart of {@code ReplaceRejection.LAYOUT_IN_USE}, scoped to one
-	 * set. Maps to 409 {@code SET_IN_USE}.
+	 * (ADR-0019). The per-set counterpart of {@code ReplaceLayoutOutcome.SetsInUse}, which names every
+	 * set a bulk save may not remove. Maps to 409 {@code SET_IN_USE}.
 	 */
 	SET_IN_USE,
 	/** Another set already occupies the target {@code (grid_x, grid_y)} cell (invariant #12). */
