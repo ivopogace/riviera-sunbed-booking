@@ -52,7 +52,7 @@ the epic with PR #1046 and `docs/plans/pinned-cells.md` retires in this PR's clo
 that `venue` stores and `booking` decides, and the parity note for the calendar's changed today
 behaviour) · `tdd` (each phase red first at the named seam: the cutoff unit test, the migration IT,
 the SPI IT, the controller ITs, the Vitest specs, the mocked e2e) · `riviera-review-overlay`
-(review gate — due at ready-for-review) · `riviera-docs-freshness` (**ran** over
+(review gate — **ran** on PR #1049 over `4ab63d98..213695d4`: the generic five reviewers plus the overlay walk; RV-BE-1/9/11, RV-PROC-1 and RV-PROC-2 a–c clean; findings F-2..F-5 and F-7..F-8, all fixed in the PR) · `riviera-docs-freshness` (**ran** over
 `10faa3a4..HEAD` as the pre-merge smoke: four findings, all patched in place — `JdbcBookingPresence`'s
 and `JdbcBookingPresenceIT`'s "four probes / two questions" (five and three now), the list IT's
 "ordered rating desc" comment (open venues first), and the calendar endpoint's "reports availability,
@@ -363,9 +363,9 @@ APIs. No deviation.
 
 ## Execution status
 
-**Stage pointer:** `PR — Sonar gate`
+**Stage pointer:** `DONE — merged via PR #1049`
 
-**Next action:** the Sonar list for PR #1049 empty on the current head; then the merge close-out.
+**Next action:** none — the merge close-out (issue #1028 closes, epic #1027 gets the PR number) runs after the merge; this plan retires at the next close-out of any kind.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -386,7 +386,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | review (reviewer #5, RV-STYLE-1) | the season tests in `VenueAdminServiceTest` were inserted between `MultiOwnership` and its Javadoc | fixed in `e7b83a24` — the tests precede the Javadoc |
 | F-4 | review (reviewer #4, cosmetic) | `WebSliceStubs`' four new imports out of alphabetical order | fixed in `e7b83a24` |
 | F-5 | review (reviewer #3) | the calendar's `focusedDate` doc said the position falls to the floor "when that day can no longer be booked", while a chosen day the server marks unsellable keeps the position — the truthful behaviour, since a season closure can leave no bookable day to fall to and the month must not jump | fixed in `e7b83a24` — the TSDoc states the rule; behaviour unchanged |
-| F-6 | sonar (5 new issues on `e7b83a24`, gate passed but the bar is 0) | two nested ternaries and a nested template literal in the Discover card's accessible name and the season status sentence (`home.ts`, `venue-tab.ts`); `JdbcVenueCatalog#toSummary` at eight parameters | fixed in the Sonar-fix commit — each sentence builder is a named function; `toSummary` takes the venue's photo slots and derives cover + slideshow itself |
+| F-6 | sonar (5 new issues on `e7b83a24`, gate passed but the bar is 0) | two nested ternaries and a nested template literal in the Discover card's accessible name and the season status sentence (`home.ts`, `venue-tab.ts`); `JdbcVenueCatalog#toSummary` at eight parameters | fixed in the Sonar-fix commit — each sentence builder is a named function; `toSummary` takes the venue's photo slots and derives cover + slideshow itself; the Sonar list on `213695d4` is empty |
+| F-7 | review (reviewer #6, RV-CT-1, scored 85) | `SeasonClosureResult` extended `SeasonClosureView` and so claimed a `closed` field the `SeasonClosureResponse` wire never carries | fixed in the reviewer-6 fix commit — the type mirrors the DTO's five fields, field for field |
+| F-8 | review (reviewer #6, scored 25 and 50 — below the comment bar, fixed anyway) | `SeasonClosure` imported before `Pool` in `JdbcVenueCatalog` and `VenueAdminServiceTest`; an unused `closedForSeason` computed in `venue-map.ts` beside the `VenueHeader` field the template reads | fixed in the reviewer-6 fix commit — imports reordered, the computed deleted |
 
 ---
 
@@ -624,7 +626,7 @@ callers, `BeachMapReadServiceTest`, `VenueAvailabilityCalendarControllerTest`,
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

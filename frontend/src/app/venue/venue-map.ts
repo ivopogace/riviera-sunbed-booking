@@ -215,9 +215,6 @@ export class VenueMap {
     return formatCivilDate(isoDate);
   }
 
-  /** True when the server says the venue is closed for the season — only an explicit `true`. */
-  protected readonly closedForSeason = computed(() => this.venue()?.closedForSeason === true);
-
   /** Whether the selected date is today — keys the closed banner's copy. Reads a fresh clock
    *  per recompute (each date change), not the mount-time floor, so a tab held across Tirane
    *  midnight gets the today copy back on its next pick; a banner already on screen at the

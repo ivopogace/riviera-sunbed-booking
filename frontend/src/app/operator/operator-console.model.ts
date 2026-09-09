@@ -420,9 +420,14 @@ export interface SeasonClosureRequest {
   readonly advanceSales: boolean;
 }
 
-/** The close response: the closure now in force and what guests are still owed from today. */
-export interface SeasonClosureResult extends SeasonClosureView {
+/**
+ * The close response, field for field the server's `SeasonClosureResponse`: the closure now in force
+ * (`closedForSeason` is the read-time verdict) and what guests are still owed from today.
+ */
+export interface SeasonClosureResult {
   readonly closedForSeason: boolean;
+  readonly reopenOn: string | null;
+  readonly advanceSales: boolean;
   readonly futureBookings: number;
   readonly pendingRequests: number;
 }
