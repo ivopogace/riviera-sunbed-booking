@@ -47,11 +47,13 @@ left false; zero open PRs, `V50` free; the previous sibling #1029 closed out on 
 `venue` owns but `availability` and `booking` must honour, and the parity ledger for the
 `removeSet` outcomes) · `tdd` (each phase red first at the named seam: the architecture test over the
 compiled tree, the migration IT, the controller ITs, the service fake, the Vitest spec) ·
-`riviera-review-overlay` (review gate — runs at ready-for-review on PR #1043; outcome recorded in the findings register) ·
-`riviera-docs-freshness` (**due at close-out** over `origin/main..HEAD`; the counting sweep targets
-"three `VenueCatalog` reads", "one bean, three narrow surfaces", "the five in the command", and
-"forever" in `RESPONSIBILITIES.md` § `venue`; the plan-doc retirement removes
-`docs/plans/set-batch-apply.md`) · `grilling` (the intake questions answered from the code; the
+`riviera-review-overlay` (review gate — **ran** on PR #1043 over `11a82ba7..1c1598f4`: `code-review:code-review` at high effort, five reviewers plus a sixth walking the overlay banks; one finding, F-2, fixed in the same round; RV-BE-1/9/11/12/19, RV-STYLE-1, RV-PROC-1/2 clear) ·
+`riviera-docs-freshness` (**ran** over `11a82ba7..HEAD` at close-out: the rename sweep on
+`isLivelyClaimedOrEverBooked`, "three role-split", "One bean, three narrow surfaces", "the five in
+the command", "any status ever recorded", "has ever been booked" found substrate hits only where
+the diff already rewrote them, plus the `error-contract.md` example the review surfaced (F-2) and
+two `docs/research/` notes, which record what was true when written and stay; "All three
+`VenueCatalog` reads" stays true; the plan-doc retirement removed `docs/plans/set-batch-apply.md`) · `grilling` (the intake questions answered from the code; the
 product calls are the epic's revision 3 and the ticket's exclude/exempt lists, taken verbatim) ·
 `riviera-local-debug` (clone unshallowed; system Gradle 8.14 on the JDK 21 daemon compiling on the
 JDK 25 toolchain; scoped `--tests`; the structural net after the adapter split and again after the
@@ -295,10 +297,9 @@ N/A — no contract change. `DELETE /api/venues/{v}/sets/{s}` keeps `204` / `404
 
 ## Execution status
 
-**Stage pointer:** `PR — marking ready for review; review gate next`
+**Stage pointer:** `sonar gate — review gate ran (F-2 fixed), waiting on CI + Sonar for the fix push`
 
-**Next action:** run the review gate (`code-review:code-review` + `riviera-review-overlay`) over the
-PR's resolved range, then the Sonar gate.
+**Next action:** confirm CI green on the fix push, pull the Sonar issue list for PR #1043, then merge and close out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -315,6 +316,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-2 | review (RV-PROC-2c, reviewer 5) | `riviera-java-conventions/references/error-contract.md` justified the `SET_IN_USE` detail wording with "a set whose only booking is long-cancelled — undeletable by the RESTRICT FK", a case that now retires the set instead of refusing. Example rewritten around the live-claim arms and the retire rule. | fixed — "Close the review and CI findings…" |
+| F-3 | CI (full suite, CI-fix push) | `VenueSeedMigrationIT.enforcesOneSetPerGridCell` asserted no duplicate `(venue, row_label, position_no)` over the whole table; a retired set and its replacement share a slot by design (partial unique indexes). The test now reads the active view. | fixed — same commit |
 | F-1 | CI (full suite, phase-3 push) | Six full-suite-only failures: `RetiredSetClaimIT` and `SetBookingInfoIT` inserted rows on the seeded Miramar venue, breaking the two seed-count migration ITs; `VisibleOnlineSets.newest` (the booking ITs' "newest bookable set" picker) found a sibling test's retired set and the claim refused it. Fix: both tests create their own venue; the picker reads `active_set_position`. | fixed — "Keep the retire tests off the seed venue…" |
 
 ---
@@ -346,7 +349,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/venue/SetBookingInfoIT.java` — AC-6 port half
 - `platform/src/test/java/ai/riviera/platform/availability/RetiredSetClaimIT.java` — AC-5 service half
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAdminControllerIT.java` — the terminal-booking remove test becomes a retire test
-- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` · `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java` — fakes, only if the port text forces a touch
+- `platform/src/test/java/ai/riviera/platform/booking/VisibleOnlineSets.java` — the booking ITs' newest-bookable-set picker reads the active view (F-1)
+- `platform/src/test/java/ai/riviera/platform/venue/VenueSeedMigrationIT.java` — slot uniqueness asserted over the active view (F-3)
+- `.claude/skills/riviera-java-conventions/references/error-contract.md` — the `SET_IN_USE` wording example follows the retire rule (F-2)
 - `frontend/src/app/operator/set-editor.ts` · `frontend/src/app/operator/set-editor.spec.ts` — AC-8
 - `frontend/src/app/operator/layout-editor.ts` · `frontend/src/app/operator/layout-editor.spec.ts` — the locked-layout banner's per-set-remove clause ("held or still booked")
 - `frontend/src/app/operator/operator-console.model.ts` · `frontend/src/app/operator/operator-console.service.ts` — TSDoc
