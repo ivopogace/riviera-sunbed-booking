@@ -20,7 +20,10 @@ import {
   PayoutLedgerView,
   PendingRequestItem,
   ReleaseErrorCode,
+  RemodelCommitRequest,
   RemodelPreview,
+  RemodelReceipt,
+  RemodelReceiptSummary,
   RepriceErrorCode,
   RequestDecision,
   RequestErrorCode,
@@ -150,6 +153,31 @@ export class OperatorConsoleService {
     return this.http.post<RemodelPreview>(
       `${this.base}/api/venues/${venueId}/beach-map/preview`,
       request,
+    );
+  }
+
+  /**
+   * The commit of a moves-only preview: the save body plus the preview's token. Under the venue's
+   * set locks the server re-derives the picture; a match saves the layout and moves every booking in
+   * one transaction and answers the receipt. `STALE_PREVIEW` / `REMODEL_REFUSED` carry the fresh
+   * picture ({@link remodelPreviewOf}); `STALE_WRITE` and `SETS_IN_USE` answer as the save would.
+   */
+  commitLayout(venueId: number, request: RemodelCommitRequest): Observable<RemodelReceipt> {
+    return this.http.post<RemodelReceipt>(
+      `${this.base}/api/venues/${venueId}/beach-map/commit`,
+      request,
+    );
+  }
+
+  /** The venue's remodel receipts, newest first. Owner-asserted (invariant #13). */
+  remodelReceipts(venueId: number): Observable<RemodelReceiptSummary[]> {
+    return this.http.get<RemodelReceiptSummary[]>(`${this.base}/api/venues/${venueId}/remodels`);
+  }
+
+  /** One receipt with every move; `404 NO_SUCH_RECEIPT` for an unknown or foreign id. */
+  remodelReceipt(venueId: number, receiptId: number): Observable<RemodelReceipt> {
+    return this.http.get<RemodelReceipt>(
+      `${this.base}/api/venues/${venueId}/remodels/${receiptId}`,
     );
   }
 
@@ -570,6 +598,8 @@ export function layoutErrorOf(error: unknown): LayoutErrorCode {
     const code = problemCodeOf(error);
     switch (code) {
       case 'SETS_IN_USE':
+      case 'STALE_PREVIEW':
+      case 'REMODEL_REFUSED':
       case 'DUPLICATE_POSITION':
       case 'CELL_TAKEN':
       case 'EMPTY_LAYOUT':
@@ -600,6 +630,34 @@ export function layoutBlockedSetsOf(error: unknown): readonly BlockedSet[] {
   }
   const sets = (error.error as { sets?: unknown }).sets;
   return Array.isArray(sets) ? sets.filter(isBlockedSet) : [];
+}
+
+/**
+ * The fresh picture a `STALE_PREVIEW` or `REMODEL_REFUSED` refusal carries in its `preview` extension,
+ * or `null` for any other failure or a body not shaped as a {@link RemodelPreview}.
+ */
+export function remodelPreviewOf(error: unknown): RemodelPreview | null {
+  if (
+    !(error instanceof HttpErrorResponse) ||
+    typeof error.error !== 'object' ||
+    error.error === null
+  ) {
+    return null;
+  }
+  const preview = (error.error as { preview?: unknown }).preview;
+  return isRemodelPreview(preview) ? preview : null;
+}
+
+function isRemodelPreview(value: unknown): value is RemodelPreview {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const preview = value as Record<string, unknown>;
+  return (
+    ['moves', 'refunds', 'releases', 'staffHolds', 'blocks', 'keep'].every((group) =>
+      Array.isArray(preview[group]),
+    ) && typeof preview['previewToken'] === 'string'
+  );
 }
 
 function isBlockedSet(value: unknown): value is BlockedSet {

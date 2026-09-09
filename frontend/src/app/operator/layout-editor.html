@@ -392,7 +392,11 @@
                 (click)="onSave()"
                 [disabled]="!hasLayout()"
                 [appBusy]="
-                  saving() || previewing() || remodelPreview() !== null || renamingRow() !== null
+                  saving() ||
+                  previewing() ||
+                  committing() ||
+                  remodelPreview() !== null ||
+                  renamingRow() !== null
                 "
                 data-testid="layout-save"
                 class="rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
@@ -424,7 +428,10 @@
             <app-remodel-preview-panel
               [preview]="preview"
               [venueId]="venueId() ?? 0"
+              [stale]="previewStale()"
+              [committing]="committing()"
               (cancelled)="cancelRemodel()"
+              (committed)="commitRemodel()"
             />
           }
 
@@ -455,6 +462,67 @@
           }
         </div>
       }
+
+      <!-- The receipt of a commit and the past remodels read in either mode: a moved booking outlives the paint grid. -->
+      @if (receipt(); as shown) {
+        <app-remodel-receipt-panel [receipt]="shown" (closed)="closeReceipt()" />
+      }
+
+      <details
+        class="mt-3 rounded-[12px] border border-riv-card-border bg-riv-console-inset/45 px-3 py-2 text-riv-card-ink open:pb-3"
+        data-testid="layout-remodels"
+        (toggle)="onReceiptsToggle($event)"
+      >
+        <summary
+          appTouchTarget
+          class="flex cursor-pointer items-center text-[13px] font-semibold"
+          data-testid="layout-remodels-toggle"
+        >
+          Past remodels
+        </summary>
+        @if (receiptsLoading()) {
+          <p
+            class="mt-1.5 text-[12px] text-riv-card-ink-soft"
+            data-testid="layout-remodels-loading"
+          >
+            Loading past remodels…
+          </p>
+        } @else if (receiptsFailed()) {
+          <p
+            class="mt-1.5 text-[12px] text-riv-error-ink"
+            role="alert"
+            data-testid="layout-remodels-failed"
+          >
+            Couldn’t load past remodels. Close and reopen this section to try again.
+          </p>
+        } @else if (receipts(); as list) {
+          @if (list.length === 0) {
+            <p
+              class="mt-1.5 text-[12px] text-riv-card-ink-soft"
+              data-testid="layout-remodels-empty"
+            >
+              No remodel has moved a booking yet.
+            </p>
+          } @else {
+            <ul class="mt-1.5 grid gap-1" data-testid="layout-remodels-list">
+              @for (summary of list; track summary.receiptId) {
+                <li>
+                  <button
+                    appTouchTarget
+                    type="button"
+                    class="inline-flex items-center text-[12.5px] font-semibold text-riv-card-ink underline underline-offset-2"
+                    [attr.data-receipt-id]="summary.receiptId"
+                    data-testid="layout-remodels-open"
+                    (click)="openReceipt(summary.receiptId)"
+                  >
+                    {{ receiptSummaryText(summary) }}
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        }
+      </details>
     </div>
   </div>
 </section>

@@ -18,6 +18,7 @@ import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmPanel } from '../shared/confirm-panel';
 import { FieldErrorFor } from '../shared/field-error-for';
+import { formatDeadline } from '../shared/deadline';
 import { focusMover } from '../shared/focus-after-render';
 import { formatMoney, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
@@ -44,18 +45,22 @@ import {
   OperatorBeachMap,
   RemodelPreview,
   remodelPreviewIsEmpty,
+  RemodelReceipt,
+  RemodelReceiptSummary,
   RowNameErrorCode,
   SetLock,
 } from './operator-console.model';
 import {
-  OperatorConsoleService,
   layoutBlockedSetsOf,
   layoutErrorOf,
+  OperatorConsoleService,
+  remodelPreviewOf,
   rowNameErrorOf,
 } from './operator-console.service';
 import { SetEditor } from './set-editor';
 import { StaleWriteBanner } from './stale-write-banner';
 import { RemodelPreviewPanel } from './remodel-preview-panel';
+import { RemodelReceiptPanel } from './remodel-receipt-panel';
 
 import { TouchTarget } from '../shared/touch-target';
 
@@ -150,6 +155,7 @@ const SWATCH_CLASS: Record<CellState, string> = {
     SetEditor,
     MapSkeletonGrid,
     StaleWriteBanner,
+    RemodelReceiptPanel,
     BusyAction,
     TouchTarget,
     LockIcon,
@@ -255,6 +261,18 @@ export class LayoutEditor {
    * dialog explains and offers Back; the save button stays inert while it is open.
    */
   protected readonly remodelPreview = signal<RemodelPreview | null>(null);
+  /** The picture on screen is the server's fresh answer after a commit found the bookings had changed. */
+  protected readonly previewStale = signal(false);
+  /** True while the commit POST is in flight — the dialog's Save is busy. */
+  protected readonly committing = signal(false);
+  /** The receipt of the commit just made, or one opened from past remodels; null when none is shown. */
+  protected readonly receipt = signal<RemodelReceipt | null>(null);
+  /** The venue's past remodels once the disclosure has been opened; null until read, or after a commit. */
+  protected readonly receipts = signal<readonly RemodelReceiptSummary[] | null>(null);
+  protected readonly receiptsLoading = signal(false);
+  protected readonly receiptsFailed = signal(false);
+  /** The body the open dialog previewed; the commit sends exactly this, never a re-read of the grid. */
+  private pendingRemodel: { sets: LayoutCellRequest[]; expectedVersion: number } | null = null;
   /** The optimistic-concurrency token loaded with the map (`setVersion`), echoed back on Save; a
    *  `409 STALE_WRITE` means the layout moved on since — the editor keeps the grid and offers Reload. */
   protected readonly loadedSetVersion = signal<number | null>(null);
@@ -936,6 +954,8 @@ export class LayoutEditor {
         await this.commitSave(venueId, sets, expectedVersion);
         return;
       }
+      this.pendingRemodel = { sets, expectedVersion };
+      this.previewStale.set(false);
       this.remodelPreview.set(preview);
     } catch (error) {
       if (this.epoch !== epoch) {
@@ -949,7 +969,124 @@ export class LayoutEditor {
 
   protected cancelRemodel(): void {
     this.remodelPreview.set(null);
+    this.previewStale.set(false);
+    this.pendingRemodel = null;
     this.focusAfterRender('layout-save');
+  }
+
+  /**
+   * Save the previewed layout and move its bookings: the body the dialog previewed plus the token
+   * the preview answered. A `200` shows the receipt in the dialog's place; `STALE_PREVIEW` and
+   * `REMODEL_REFUSED` re-render the dialog with the server's fresh picture and its token; every other
+   * failure is the save's own.
+   */
+  protected async commitRemodel(): Promise<void> {
+    const venueId = this.venueId();
+    const preview = this.remodelPreview();
+    const pending = this.pendingRemodel;
+    if (venueId === undefined || preview === null || pending === null || this.committing()) {
+      return;
+    }
+    const epoch = this.epoch;
+    this.committing.set(true);
+    this.errorCode.set(undefined);
+    this.blockedSets.set([]);
+    try {
+      const receipt = await firstValueFrom(
+        this.console.commitLayout(venueId, { ...pending, previewToken: preview.previewToken }),
+      );
+      if (this.epoch !== epoch) {
+        return;
+      }
+      this.remodelPreview.set(null);
+      this.previewStale.set(false);
+      this.pendingRemodel = null;
+      this.afterSaved(pending.sets, pending.expectedVersion);
+      this.receipts.set(null);
+      this.receipt.set(receipt);
+      this.focusAfterRender('layout-remodel-receipt-title', 'layout-save');
+    } catch (error) {
+      if (this.epoch !== epoch) {
+        return;
+      }
+      const code = layoutErrorOf(error);
+      const fresh =
+        code === 'STALE_PREVIEW' || code === 'REMODEL_REFUSED' ? remodelPreviewOf(error) : null;
+      if (fresh) {
+        this.previewStale.set(true);
+        this.remodelPreview.set(fresh);
+        return;
+      }
+      this.remodelPreview.set(null);
+      this.previewStale.set(false);
+      this.pendingRemodel = null;
+      this.failSave(error);
+      this.focusAfterRender('layout-save');
+    } finally {
+      this.committing.set(false);
+    }
+  }
+
+  protected closeReceipt(): void {
+    this.receipt.set(null);
+    this.focusAfterRender('layout-save');
+  }
+
+  /** The past-remodels disclosure reads the list on its first opening; a commit invalidates it. */
+  protected async onReceiptsToggle(event: Event): Promise<void> {
+    const venueId = this.venueId();
+    if (
+      !(event.target as HTMLDetailsElement).open ||
+      venueId === undefined ||
+      this.receiptsLoading() ||
+      this.receipts() !== null
+    ) {
+      return;
+    }
+    await this.loadReceipts(venueId);
+  }
+
+  protected async loadReceipts(venueId: number): Promise<void> {
+    const epoch = this.epoch;
+    this.receiptsLoading.set(true);
+    this.receiptsFailed.set(false);
+    try {
+      const list = await firstValueFrom(this.console.remodelReceipts(venueId));
+      if (this.epoch === epoch) {
+        this.receipts.set(list);
+      }
+    } catch {
+      if (this.epoch === epoch) {
+        this.receiptsFailed.set(true);
+      }
+    } finally {
+      this.receiptsLoading.set(false);
+    }
+  }
+
+  protected async openReceipt(receiptId: number): Promise<void> {
+    const venueId = this.venueId();
+    if (venueId === undefined) {
+      return;
+    }
+    const epoch = this.epoch;
+    try {
+      const receipt = await firstValueFrom(this.console.remodelReceipt(venueId, receiptId));
+      if (this.epoch !== epoch) {
+        return;
+      }
+      this.receipt.set(receipt);
+      this.focusAfterRender('layout-remodel-receipt-title');
+    } catch {
+      if (this.epoch === epoch) {
+        this.receiptsFailed.set(true);
+      }
+    }
+  }
+
+  /** "Tue 9 Sept, 15:00 · 2 bookings moved" */
+  protected receiptSummaryText(summary: RemodelReceiptSummary): string {
+    return `${formatDeadline(summary.committedAt)} · ${summary.moveCount} booking${summary.moveCount === 1 ? '' : 's'} moved`;
   }
 
   private async commitSave(
@@ -967,18 +1104,7 @@ export class LayoutEditor {
       if (this.epoch !== epoch) {
         return; // a venue switch superseded this save (#180); saving clears in finally
       }
-      this.savedNotice.set(true);
-      // Only rows that contributed a set exist server-side; an all-gap row has nothing to rename.
-      const written = new Set(sets.map((set) => set.gridY - 1));
-      const saved = this.effectiveRowNames();
-      this.storedRowNames.set(saved.map((label, y) => (written.has(y) ? label : undefined)));
-      // The layout was replaced, so the console's shared snapshot now describes retired sets.
-      this.venueMap.reset();
-      this.loadedSetVersion.set(expectedVersion + 1);
-      this.baselineGrid.set(cloneGrid(this.grid()));
-      this.baselineRowNames.set(this.effectiveRowNames());
-      this.lastChange.set(null);
-      this.lastSavedAt.set(new Date());
+      this.afterSaved(sets, expectedVersion);
     } catch (error) {
       if (this.epoch !== epoch) {
         return;
@@ -989,7 +1115,23 @@ export class LayoutEditor {
     }
   }
 
-  /** The one failure path the dry run and the save share: the code, the refused sets, the lost session. */
+  /** What a saved layout means for the editor's own state — the PUT's and the commit's shared tail. */
+  private afterSaved(sets: LayoutCellRequest[], expectedVersion: number): void {
+    this.savedNotice.set(true);
+    // Only rows that contributed a set exist server-side; an all-gap row has nothing to rename.
+    const written = new Set(sets.map((set) => set.gridY - 1));
+    const saved = this.effectiveRowNames();
+    this.storedRowNames.set(saved.map((label, y) => (written.has(y) ? label : undefined)));
+    // The layout was replaced, so the console's shared snapshot now describes retired sets.
+    this.venueMap.reset();
+    this.loadedSetVersion.set(expectedVersion + 1);
+    this.baselineGrid.set(cloneGrid(this.grid()));
+    this.baselineRowNames.set(this.effectiveRowNames());
+    this.lastChange.set(null);
+    this.lastSavedAt.set(new Date());
+  }
+
+  /** The one failure path the dry run, the save and the commit share: the code, the refused sets, the lost session. */
   private failSave(error: unknown): void {
     const code = layoutErrorOf(error);
     this.errorCode.set(code);
@@ -1039,6 +1181,10 @@ export class LayoutEditor {
       case 'STALE_WRITE':
         // Rendered by the dedicated recover-and-reload banner in the template, not this inline message.
         return undefined;
+      case 'STALE_PREVIEW':
+      case 'REMODEL_REFUSED':
+        // Reached only when the answer carried no readable fresh picture; otherwise the dialog re-opens.
+        return 'The bookings changed since you previewed. Save again to see the fresh picture.';
       case 'UNAUTHORIZED':
         return 'Your session has expired. Please sign in again.';
       default:

@@ -6,7 +6,7 @@ import ai.riviera.platform.booking.application.view.MyBookingSummary;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
- * One item in the {@code 200} response of {@code GET /api/me/bookings} (S3, #114) — the signed-in
+ * One item in the {@code 200} response of {@code GET /api/me/bookings} — the signed-in
  * "my bookings" list row the Angular app renders. Money travels as {@link MoneyView} (integer minor
  * units + ISO currency, invariant #5); the date as an ISO {@code LocalDate} string;
  * {@code requestExpiresAt} is {@code null} for instant bookings. A subset of the code-gated

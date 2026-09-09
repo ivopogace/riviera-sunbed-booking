@@ -26,7 +26,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * <p>{@code customerId} is the guest-contact link ({@code booking.customer_id}, NOT NULL since V5).
  * The view carries the id only — never the contact itself, which belongs to {@code customer} — so a
  * confirmed booking can ask {@code booking.spi.ConfirmationMailDelivery} whether its confirmation
- * mail was withheld (#390) without this module ever handling an address.
+ * mail was withheld without this module ever handling an address.
  *
  * <p>{@code acceptedAt} is the accept clock of a Request-to-Book row ({@code null} until — or
  * unless — the venue accepts): it feeds the view's pay deadline,

@@ -71,9 +71,10 @@ export const FULL_PREVIEW: RemodelPreview = {
     { setId: 1, rowLabel: 'A', positionNo: 3 },
     { setId: 2, rowLabel: 'A', positionNo: 2 },
   ],
+  previewToken: 'v1.full',
 };
 
-/** A preview that only moves — no block names a set, so the keep sentence is the general one. */
+/** A preview that only moves — the one picture the commit applies, so the panel offers Save. */
 export const MOVES_ONLY_PREVIEW: RemodelPreview = {
   ...FULL_PREVIEW,
   refunds: [],
@@ -81,13 +82,17 @@ export const MOVES_ONLY_PREVIEW: RemodelPreview = {
   staffHolds: [],
   blocks: [],
   keep: [],
+  previewToken: 'v1.moves',
 };
 
-describe('RemodelPreviewPanel (#1033)', () => {
+describe('RemodelPreviewPanel (#1033, #1034)', () => {
   let fixture: ComponentFixture<RemodelPreviewPanel>;
   let host: HTMLElement;
 
-  function render(preview: RemodelPreview): void {
+  function render(
+    preview: RemodelPreview,
+    inputs: { stale?: boolean; committing?: boolean } = {},
+  ): void {
     TestBed.configureTestingModule({
       imports: [RemodelPreviewPanel],
       providers: [provideRouter([])],
@@ -95,6 +100,8 @@ describe('RemodelPreviewPanel (#1033)', () => {
     fixture = TestBed.createComponent(RemodelPreviewPanel);
     fixture.componentRef.setInput('preview', preview);
     fixture.componentRef.setInput('venueId', 1);
+    fixture.componentRef.setInput('stale', inputs.stale ?? false);
+    fixture.componentRef.setInput('committing', inputs.committing ?? false);
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
   }
@@ -141,20 +148,76 @@ describe('RemodelPreviewPanel (#1033)', () => {
     expect(cancelled).toHaveBeenCalledTimes(1);
   });
 
-  it('hides the empty groups and, with nothing to keep by name, says to keep the removed sets', () => {
+  it('a moves-only picture hides the empty groups and offers Save and move, which emits committed (#1034)', () => {
     render(MOVES_ONLY_PREVIEW);
+    const committed = vi.fn();
+    fixture.componentInstance.committed.subscribe(committed);
 
     expect(byId('layout-remodel-refunds')).toBeNull();
     expect(byId('layout-remodel-blocks')).toBeNull();
     expect(byId('layout-remodel-holds')).toBeNull();
-    expect(byId('layout-remodel-keep')!.textContent).toMatch(
-      /Keep the removed sets on the map to save/,
-    );
-    expect(host.textContent).toMatch(/can’t be saved as painted/);
+    expect(byId('layout-remodel-keep')).toBeNull();
+    expect(host.textContent).not.toMatch(/can’t be saved as painted/);
+    expect(host.textContent).toMatch(/cancel for a full refund/);
+    expect(host.textContent).toMatch(/There is no undo/);
+    expect(byId('layout-remodel-commit')!.textContent).toContain('Save and move 2 bookings');
+    expect(byId('layout-remodel-stale')).toBeNull();
+    byId('layout-remodel-commit')!.click();
+    expect(committed).toHaveBeenCalledTimes(1);
   });
 
-  it('focuses Back on the way in', async () => {
+  it('singularises the Save label and keeps Back beside it', () => {
+    render({ ...MOVES_ONLY_PREVIEW, moves: [MOVES_ONLY_PREVIEW.moves[0]] });
+    const cancelled = vi.fn();
+    fixture.componentInstance.cancelled.subscribe(cancelled);
+
+    expect(byId('layout-remodel-commit')!.textContent).toContain('Save and move 1 booking');
+    expect(host.querySelectorAll('button')).toHaveLength(2);
+    byId('layout-remodel-back')!.click();
+    expect(cancelled).toHaveBeenCalledTimes(1);
+  });
+
+  it('while committing, Save reads Saving… and both buttons are busy, never disabled (RV-FE-9)', () => {
+    render(MOVES_ONLY_PREVIEW, { committing: true });
+    const committed = vi.fn();
+    fixture.componentInstance.committed.subscribe(committed);
+
+    expect(byId('layout-remodel-commit')!.textContent).toContain('Saving…');
+    expect(byId('layout-remodel-commit')!.getAttribute('aria-disabled')).toBe('true');
+    expect(byId('layout-remodel-commit')!.hasAttribute('disabled')).toBe(false);
+    expect(byId('layout-remodel-back')!.getAttribute('aria-disabled')).toBe('true');
+    byId('layout-remodel-commit')!.click();
+    expect(committed).not.toHaveBeenCalled();
+  });
+
+  it('a stale picture announces that the bookings changed, as a status, above the fresh groups', () => {
+    render(MOVES_ONLY_PREVIEW, { stale: true });
+
+    const note = byId('layout-remodel-stale')!;
+    expect(note.getAttribute('role')).toBe('status');
+    expect(note.textContent).toMatch(/bookings changed since you previewed/);
+    expect(note.compareDocumentPosition(byId('layout-remodel-moves')!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(byId('layout-remodel-commit')).toBeTruthy();
+  });
+
+  it('a stale picture that is no longer committable offers Back alone', () => {
+    render(FULL_PREVIEW, { stale: true });
+
+    expect(byId('layout-remodel-stale')).toBeTruthy();
+    expect(byId('layout-remodel-commit')).toBeNull();
+    expect(host.querySelectorAll('button')).toHaveLength(1);
+  });
+
+  it('focuses the first button on the way in — Save when committable, Back otherwise', async () => {
     render(MOVES_ONLY_PREVIEW);
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(byId('layout-remodel-commit'));
+    fixture.destroy();
+    TestBed.resetTestingModule();
+
+    render(FULL_PREVIEW);
     await fixture.whenStable();
     expect(document.activeElement).toBe(byId('layout-remodel-back'));
   });

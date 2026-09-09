@@ -235,6 +235,39 @@ export interface RemodelMove extends RemodelClaim {
   readonly positionsAway: number;
 }
 
+/** One move a receipt records: the same facts as {@link RemodelMove} without the amount, which a receipt does not keep. */
+export interface RemodelReceiptMove {
+  readonly bookingId: number;
+  readonly bookingDate: string;
+  readonly from: RemodelSpot;
+  readonly to: RemodelSpot;
+  readonly rowsAway: number;
+  readonly positionsAway: number;
+}
+
+/**
+ * A persisted remodel-commit receipt (`GET /api/venues/{id}/remodels/{receiptId}`), and the
+ * `200` of the commit itself, whose moves also carry the amount: when it was committed and every
+ * booking it moved, both spots as they were. Bookings by id, never by code.
+ */
+export interface RemodelReceipt {
+  readonly receiptId: number;
+  readonly committedAt: string;
+  readonly moves: readonly RemodelReceiptMove[];
+}
+
+/** One row of `GET /api/venues/{id}/remodels`, newest first. */
+export interface RemodelReceiptSummary {
+  readonly receiptId: number;
+  readonly committedAt: string;
+  readonly moveCount: number;
+}
+
+/** The commit body: the save body plus the token the preview answered. */
+export interface RemodelCommitRequest extends BeachMapLayoutRequest {
+  readonly previewToken: string;
+}
+
 /** An unpaid booking that would be released, or a pending request that would be declined. */
 export interface RemodelRelease extends RemodelClaim {
   readonly kind: 'RELEASE' | 'DECLINE';
@@ -263,6 +296,19 @@ export interface RemodelPreview {
   readonly staffHolds: readonly RemodelStaffHold[];
   readonly blocks: readonly RemodelBlock[];
   readonly keep: readonly RemodelSpot[];
+  /** What the commit carries back to prove the operator confirmed this picture; opaque. */
+  readonly previewToken: string;
+}
+
+/** True when the preview names moves and nothing else — the one picture the commit applies. */
+export function remodelPreviewIsCommittable(preview: RemodelPreview): boolean {
+  return (
+    preview.moves.length > 0 &&
+    preview.refunds.length === 0 &&
+    preview.releases.length === 0 &&
+    preview.staffHolds.length === 0 &&
+    preview.blocks.length === 0
+  );
 }
 
 /** True when the preview names no claim at all — the save can proceed without a confirmation. */
@@ -423,10 +469,13 @@ export type ReleaseErrorCode = 'NOT_MARKED' | 'NOT_VENUE_OWNER' | 'UNAUTHORIZED'
  * is the 409 optimistic-concurrency loss — the layout was changed elsewhere since the tab loaded it, so
  * the editor keeps the operator's edits and offers a Reload, never a clobber. `SETS_IN_USE` is the 409
  * set-scoped refusal: the save would remove sets someone is still owed, named in the problem's `sets`
- * extension ({@link BlockedSet}), and nothing was written.
+ * extension ({@link BlockedSet}), and nothing was written. `STALE_PREVIEW` and `REMODEL_REFUSED` are the
+ * commit's two 409s, each carrying the fresh picture in the problem's `preview` extension.
  */
 export type LayoutErrorCode =
   | 'SETS_IN_USE'
+  | 'STALE_PREVIEW'
+  | 'REMODEL_REFUSED'
   | 'DUPLICATE_POSITION'
   | 'CELL_TAKEN'
   | 'EMPTY_LAYOUT'

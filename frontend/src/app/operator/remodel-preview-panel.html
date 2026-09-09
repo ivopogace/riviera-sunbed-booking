@@ -1,16 +1,34 @@
-<p class="text-[12.5px] leading-[1.45] font-semibold">
-  <strong>Guests still hold sets this save removes, so it can’t be saved as painted.</strong>
-  A remodel of these sets would do the following.
-</p>
-
-@if (preview().keep.length > 0) {
-  <p class="mt-1 text-[12.5px] leading-[1.45] font-bold" data-testid="layout-remodel-keep">
-    {{ keepSentence() }}
+@if (stale()) {
+  <p
+    class="text-[12.5px] leading-[1.45] font-bold"
+    data-testid="layout-remodel-stale"
+    role="status"
+  >
+    The bookings changed since you previewed — this is the fresh picture. Check it again before
+    saving.
+  </p>
+}
+@if (committable()) {
+  <p class="text-[12.5px] leading-[1.45] font-semibold">
+    <strong>Guests hold sets this save removes.</strong>
+    Saving moves each booking to the nearest free set of the same or better tier on its day; every
+    guest is emailed the new spot and can cancel for a full refund until the deadline the mail
+    names. There is no undo.
   </p>
 } @else {
-  <p class="mt-1 text-[12.5px] leading-[1.45] font-bold" data-testid="layout-remodel-keep">
-    Keep the removed sets on the map to save, or wait until their bookings have passed.
+  <p class="text-[12.5px] leading-[1.45] font-semibold">
+    <strong>Guests still hold sets this save removes, so it can’t be saved as painted.</strong>
+    A remodel of these sets would do the following.
   </p>
+  @if (preview().keep.length > 0) {
+    <p class="mt-1 text-[12.5px] leading-[1.45] font-bold" data-testid="layout-remodel-keep">
+      {{ keepSentence() }}
+    </p>
+  } @else {
+    <p class="mt-1 text-[12.5px] leading-[1.45] font-bold" data-testid="layout-remodel-keep">
+      Keep the removed sets on the map to save, or wait until their bookings have passed.
+    </p>
+  }
 }
 
 <div class="mt-2 grid gap-2 text-[12px] leading-[1.45]">
@@ -76,14 +94,38 @@
 </a>
 
 <div class="mt-2 flex flex-wrap gap-2">
-  <button
-    appTouchTarget
-    #firstButton
-    type="button"
-    class="rounded-[10px] border border-riv-warn-edge px-4 py-1.5 text-[12.5px] font-semibold aria-disabled:opacity-60"
-    data-testid="layout-remodel-back"
-    (click)="cancelled.emit()"
-  >
-    Back to the editor
-  </button>
+  @if (committable()) {
+    <button
+      appTouchTarget
+      #firstButton
+      type="button"
+      class="rounded-[10px] bg-riv-solid-fill-warn px-4 py-1.5 text-[12.5px] font-bold text-white aria-disabled:opacity-60"
+      data-testid="layout-remodel-commit"
+      [appBusy]="committing()"
+      (click)="committed.emit()"
+    >
+      {{ saveLabel() }}
+    </button>
+    <button
+      appTouchTarget
+      type="button"
+      class="rounded-[10px] border border-riv-warn-edge px-4 py-1.5 text-[12.5px] font-semibold aria-disabled:opacity-60"
+      data-testid="layout-remodel-back"
+      [appBusy]="committing()"
+      (click)="cancelled.emit()"
+    >
+      Back to the editor
+    </button>
+  } @else {
+    <button
+      appTouchTarget
+      #firstButton
+      type="button"
+      class="rounded-[10px] border border-riv-warn-edge px-4 py-1.5 text-[12.5px] font-semibold aria-disabled:opacity-60"
+      data-testid="layout-remodel-back"
+      (click)="cancelled.emit()"
+    >
+      Back to the editor
+    </button>
+  }
 </div>
