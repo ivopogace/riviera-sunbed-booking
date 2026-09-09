@@ -343,6 +343,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/layout-editor.a11y.spec.ts` — AC-9
 - `frontend/src/app/operator/layout-editor.contrast.spec.ts` — AC-9
 - `frontend/src/app/operator/beach-cell.ts` — the gap cell's ink
+- `frontend/src/app/operator/set-editor.ts` — class TSDoc (F-1)
 - `frontend/e2e/layout-editor.e2e.ts` — AC-10
 - `frontend/e2e/operator-set-editing.e2e.ts` — the `LAYOUT_IN_USE` mock retires
 - `RESPONSIBILITIES.md` — §venue layout-write paragraph
