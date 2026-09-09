@@ -426,9 +426,9 @@ never `[disabled]` on the pressed control, `focusMover` on every leg — no devi
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5) — draft PR #1052 open`
+**Stage pointer:** `implement (phase 6) — draft PR #1052 open`
 
-**Next action:** the guest view (`move`, `freeExitUntil`) and `FreeExitCancelIT` at the HTTP seam.
+**Next action:** the editor: model, service, panel Save, receipt panel, past remodels, specs.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -437,7 +437,7 @@ never `[disabled]` on the pressed control, `focusMover` on every leg — no devi
 | 2 — `venue`: `LayoutCell`, `LayoutWriter`, `BeachMapRemodel#commit` | ✅ | phase-2 commit |
 | 3 — the edge: commit service + controller, assembler, receipts controller, security, ITs, the net | ✅ | phase-3 commit |
 | 4 — `notification`: the moved mail, `moveFacts`, the mock outbox read | ✅ | phase-4 commit |
-| 5 — the guest view and the free-exit cancel at the HTTP seam | | |
+| 5 — the guest view and the free-exit cancel at the HTTP seam | ✅ | phase-5 commit |
 | 6 — the editor: model, service, panel Save, receipt panel, past remodels, specs | | |
 | 7 — the guest: moved notice, free-exit copy, my-bookings chip, specs | | |
 | 8 — the mocked e2e + the real-backend spec | | |

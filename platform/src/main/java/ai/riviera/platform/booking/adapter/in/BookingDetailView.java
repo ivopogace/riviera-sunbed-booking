@@ -22,7 +22,8 @@ import java.time.Instant;
  * a cancelled booking's refund is decided but not yet accepted by the gateway — the panel then says
  * the refund is being processed instead of on its way. {@code reviewPanel} is the server's own answer
  * to "what should this stay's review section show?" — the client renders on its {@code kind}, never
- * on {@code status}. Mirrors the FE {@code BookingDetail} type.
+ * on {@code status}. {@code move} is present only for a booking a remodel re-seated. Mirrors the FE
+ * {@code BookingDetail} type.
  */
 record BookingDetailView(String code, String status, long venueId, String venueName, String rowLabel,
 		int positionNo, String bookingDate, MoneyView amount, boolean cancellable, boolean withdrawable,
@@ -30,7 +31,7 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 		boolean refundOutstanding,
 		Instant requestExpiresAt, PaymentCredentialsView payment, boolean emailWithheld,
 		boolean payWindowClosed, String cancelReason, String cancellationWindowAtBirth,
-		ReviewPanelView reviewPanel) {
+		ReviewPanelView reviewPanel, MoveView move) {
 
 	static BookingDetailView of(BookingDetail d) {
 		return new BookingDetailView(d.code(), d.status().name(), d.venueId().value(), d.venueName(),
@@ -43,7 +44,22 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 				d.emailWithheld(), d.payWindowClosed(),
 				d.cancelReason() == null ? null : d.cancelReason().name(),
 				d.cancellationWindowAtBirth().name(),
-				ReviewPanelView.of(d.reviewPanel(), d.reviewNameSuggestion()));
+				ReviewPanelView.of(d.reviewPanel(), d.reviewNameSuggestion()),
+				d.move() == null ? null : MoveView.of(d.move()));
+	}
+
+	/**
+	 * The remodel move a booking went through, or {@code null}: the spot the guest was told before, the
+	 * distance, when it moved and the free-exit deadline while it is still open (null once passed) —
+	 * the full refund the guest can take until then whatever the tier would say.
+	 */
+	record MoveView(String fromRowLabel, int fromPositionNo, int rowsAway, int positionsAway, Instant movedAt,
+			Instant freeExitUntil) {
+
+		static MoveView of(ai.riviera.platform.booking.application.view.BookingMove move) {
+			return new MoveView(move.fromRowLabel(), move.fromPositionNo(), move.rowsAway(), move.positionsAway(),
+					move.movedAt(), move.freeExitUntil());
+		}
 	}
 
 	/**

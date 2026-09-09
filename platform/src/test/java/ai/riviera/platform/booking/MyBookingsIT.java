@@ -26,6 +26,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -94,6 +95,17 @@ class MyBookingsIT {
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString(CODE_A)))
 				.andExpect(content().string(not(containsString(CODE_B))));
+	}
+
+	@Test
+	void aMovedBookingCarriesWhenItMoved() throws Exception {
+		jdbc.sql("UPDATE booking SET moved_at = TIMESTAMPTZ '2026-09-09T13:00:00Z' WHERE code = :c").param("c", CODE_A).update();
+		Cookie session = customerLogin(EMAIL_A);
+
+		mvc.perform(get("/api/me/bookings").cookie(session))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].movedAt").value("2026-09-09T13:00:00Z"));
+		jdbc.sql("UPDATE booking SET moved_at = NULL WHERE code = :c").param("c", CODE_A).update();
 	}
 
 	@Test

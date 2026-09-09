@@ -69,5 +69,5 @@ public record BookingDetail(String code, BookingStatus status, VenueId venueId, 
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment, boolean emailWithheld,
 		boolean payWindowClosed, RefundReason cancelReason,
 		CancellationWindow cancellationWindowAtBirth, ReviewPanel reviewPanel,
-		String reviewNameSuggestion) {
+		String reviewNameSuggestion, BookingMove move) {
 }
