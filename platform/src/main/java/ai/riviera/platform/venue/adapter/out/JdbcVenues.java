@@ -297,6 +297,19 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	}
 
 	@Override
+	public void parkRowLabels(VenueId venueId, Collection<SetId> setIds) {
+		// chr(1) is unreachable from the API, and the id keeps the parked labels distinct from one another.
+		jdbc.sql("""
+				UPDATE set_position
+				SET row_label = chr(1) || id::text
+				WHERE venue_id = :venue AND id IN (:ids) AND retired_at IS NULL
+				""")
+				.param(P_VENUE, venueId.value())
+				.param("ids", setIds.stream().map(SetId::value).toList())
+				.update();
+	}
+
+	@Override
 	public void deleteSet(VenueId venueId, SetId setId) {
 		jdbc.sql("DELETE FROM set_position WHERE id = :setId AND venue_id = :venue AND retired_at IS NULL")
 				.param(P_SET_ID, setId.value())

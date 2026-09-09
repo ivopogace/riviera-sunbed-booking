@@ -590,6 +590,42 @@ class VenueAdminServiceTest {
 	}
 
 	@Test
+	void refusesRepositioningAKeptClaimedSetButNotRenamingIt() {
+		venues.venues.add(VENUE.value());
+		venues.place(SET, A1);
+		bookings.liveOn.put(SET, TODAY_IN_TIRANE.plusDays(3));
+		LayoutCommand renamed = new LayoutCommand(List.of(
+				new SetCommand("Front", 1, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1)));
+		LayoutCommand renumbered = new LayoutCommand(List.of(
+				new SetCommand("A", 7, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1)));
+
+		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, mapEditor.replaceLayout(OWNER, VENUE, 0L, renamed),
+				"a row label changes in place on a booked set, as a rename does");
+		assertEquals(new ReplaceLayoutOutcome.SetsInUse(List.of(new BlockedSet(
+				new PlacedSet(SET, A1), new SetLock(SET, TODAY_IN_TIRANE.plusDays(3), null)))),
+				mapEditor.replaceLayout(OWNER, VENUE, 0L, renumbered),
+				"a guest was told this row and number: a new number on a claimed set is refused and named");
+	}
+
+	@Test
+	void parksTheLabelsOfSwappedRowsBeforeUpdatingThem() {
+		venues.venues.add(VENUE.value());
+		SetId b1 = new SetId(SET.value() + 1);
+		venues.place(SET, A1);
+		venues.place(b1, new SetPlacement("B", 1, 1, 2));
+		LayoutCommand swapped = new LayoutCommand(List.of(
+				new SetCommand("B", 1, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1),
+				new SetCommand("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 2)));
+
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, swapped);
+
+		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome);
+		assertEquals(List.of(SET, b1), venues.parkedSetIds, "both sets move into each other's slot");
+		assertEquals(List.of("lockSetsOfVenue", "nearestClaimsFrom", "parkRowLabels", "updateSet", "updateSet", "insertSets"),
+				callLog, "the parking precedes every in-place update");
+	}
+
+	@Test
 	void retiresARemovedSetWithHistoryAndDeletesOneWithout() {
 		venues.venues.add(VENUE.value());
 		SetId clean = new SetId(SET.value() + 1);
@@ -1248,6 +1284,13 @@ class VenueAdminServiceTest {
 		}
 
 		final List<SetId> updatedSetIds = new ArrayList<>();
+		final List<SetId> parkedSetIds = new ArrayList<>();
+
+		@Override
+		public void parkRowLabels(VenueId venueId, Collection<SetId> setIds) {
+			callLog.add("parkRowLabels");
+			parkedSetIds.addAll(setIds);
+		}
 
 		@Override
 		public void updateSet(VenueId venueId, SetId setId, SetCommand command) {

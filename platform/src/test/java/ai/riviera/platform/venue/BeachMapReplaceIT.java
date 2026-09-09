@@ -346,6 +346,44 @@ class BeachMapReplaceIT {
 	}
 
 	@Test
+	void swapsTwoRowNamesInOneSaveOnATradingVenue() throws Exception {
+		long venue = createVenue("Swap Club");
+		putLayout(venue, layout(0,
+				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
+				cell("B", 1, "STANDARD", "ONLINE", 2000, 1, 2)), 204);
+		List<Long> ids = setIds(venue);
+		seedBooking(venue, ids.get(0));
+
+		// Each kept set takes the other's slot: the save parks the labels first, so one save, ids kept.
+		putLayout(venue, layout(currentSetVersion(venue),
+				cell("B", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
+				cell("A", 1, "STANDARD", "ONLINE", 2000, 1, 2)), 204);
+
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.sets[0].id").value(ids.get(0)))
+				.andExpect(jsonPath("$.sets[0].rowLabel").value("B"))
+				.andExpect(jsonPath("$.sets[1].id").value(ids.get(1)))
+				.andExpect(jsonPath("$.sets[1].rowLabel").value("A"));
+	}
+
+	@Test
+	void refusesRenumberingABookedSetAtItsCell() throws Exception {
+		long venue = createVenue("Renumber Club");
+		putLayout(venue, layout(0, cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1)), 204);
+		long a1 = setIds(venue).getFirst();
+		seedBooking(venue, a1);
+
+		// The same cell with a new position number: a guest was told "A1", so it is the per-set reposition's twin.
+		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(layout(currentSetVersion(venue), cell("A", 5, "PREMIUM", "ONLINE", 3500, 1, 1))))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("SETS_IN_USE"))
+				.andExpect(jsonPath("$.sets[0].setId").value(a1))
+				.andExpect(jsonPath("$.sets[0].positionNo").value(1));
+	}
+
+	@Test
 	void retiresARemovedSetWithHistoryAndDeletesOneWithout() throws Exception {
 		long venue = createVenue("History Club");
 		putLayout(venue, layout(0,

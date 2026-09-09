@@ -93,6 +93,15 @@ public interface Venues {
 	void updateSet(VenueId venueId, SetId setId, SetCommand command);
 
 	/**
+	 * Give each named active set a row label no submission can carry (a control character and the
+	 * set's own id), so the in-place updates of a save that swaps or rotates row names among kept
+	 * sets never collide on the layout-uniqueness index before the other set moves on. Only ever
+	 * followed, in the same transaction, by the updates that write the final labels; the caller
+	 * holds the rows from {@link #lockSetsOfVenue}. Never called with an empty collection.
+	 */
+	void parkRowLabels(VenueId venueId, Collection<SetId> setIds);
+
+	/**
 	 * Remove a set position that carries no booking. As with {@link #updateSet}, the caller holds the
 	 * row lock from {@link #lockSet}, so a 0-row delete is not reachable and is not reported.
 	 */

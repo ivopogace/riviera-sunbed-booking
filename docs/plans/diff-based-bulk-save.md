@@ -47,8 +47,9 @@ holds and nothing is written; recorded as R-4) · `riviera-plan-doc` (this templ
 seam per AC, the parity ledger for the retired venue-wide guard, and the module-ownership row for
 the retire-or-delete decision) · `tdd` (each phase red first at the named seam: the diff unit
 test, the service unit tests through `EditBeachMap`, the HTTP ITs, the concurrency IT, the Vitest
-specs, the mocked e2e) · `riviera-review-overlay` (review gate — due at ready-for-review; not yet
-run) · `riviera-docs-freshness` (due at close-out over `6521f8d5..HEAD`; not yet run) ·
+specs, the mocked e2e) · `riviera-review-overlay` (review gate — **ran** on PR #1050 over `6521f8d5..bcea4ac4`: five generic
+reviewers plus the overlay walk; RV-BE-1/9, RV-CT-1/5, RV-STYLE-1, RV-PROC-1/2 clean; findings F-1..F-3 and F-5..F-6, all
+fixed in the PR) · `riviera-docs-freshness` (due at close-out over `6521f8d5..HEAD`; not yet run) ·
 `grilling` (the intake questions answered from the code; the calls a colleague would make —
 coordinate as the identity key, the token advancing on every successful save, the write order
 removals → updates → inserts — are recorded as resolved assumptions below) ·
@@ -107,7 +108,11 @@ for `feature/diff-based-bulk-save`).
 - [x] **AC-3:** Given a live booking on A1 and a live staff hold on A2, when the PUT omits both
   coordinates, then the answer is `409 SETS_IN_USE` whose `sets` extension names A1 (bookedOn) and
   A2 (heldOn) with their ids, row labels and positions, nothing is written and the token does not
-  advance. *Seam:* as AC-1 · *Pinned by:* `BeachMapReplaceIT.refusesRemovingBookedOrHeldSetsNamingThem`
+  advance; a new position number at a booked set's kept cell is refused the same way. *Seam:* as
+  AC-1 · *Pinned by:* `BeachMapReplaceIT.refusesRemovingBookedOrHeldSetsNamingThem`,
+  `.refusesRenumberingABookedSetAtItsCell`
+- [x] **AC-2b:** Given two kept sets that swap row names in one save, then both keep their ids and
+  carry the other's label. *Seam:* as AC-1 · *Pinned by:* `BeachMapReplaceIT.swapsTwoRowNamesInOneSaveOnATradingVenue`
 - [x] **AC-4:** Given a set whose only bookings are terminal, when the PUT omits its coordinate,
   then the set is retired (`retired_at` stamped, row kept) and its coordinate is free for a new set;
   given a set with no booking, the same PUT deletes it. *Seam:* as AC-1 · *Pinned by:*
@@ -179,7 +184,7 @@ for `feature/diff-based-bulk-save`).
 | R-1 | A claim racing the save lands on a set the save removes (invariant #2) | med | high | unchanged lock order: venue row, then every active set row `FOR UPDATE`, then the probe; a racing claim's FK `FOR KEY SHARE` blocks until the save ends; pinned by AC-6 | session | closed — 0d712411 (`BeachMapDiffConcurrencyIT.aRacingMarkOnARemovedSetIsSeenOrBlocks`) |
 | R-2 | Two saves off the same token both write | med | high | `set_version` read under the venue row lock, advanced once on success; AC-5 | session | open |
 | R-3 | A refused set the editor cannot show (its coordinate is outside the regenerated grid) | med | low | the banner names every refused set by row and position; the cells inside the grid wear the glyph; e2e + Vitest | session | closed — ff22b51f |
-| R-4 | A row-label swap in one save collides transiently on the partial unique index between two in-place updates | low | low | write order removals → updates → inserts frees slots first; the swap case rolls back to the `DuplicateKeyException → 409 CONFLICT` backstop, nothing written, the editor shows "Two sets overlap" | session | closed — accepted; written down in RESPONSIBILITIES §venue (afb37272) |
+| R-4 | A row-label swap in one save collides transiently on the partial unique index between two in-place updates | low | low | write order removals → updates → inserts frees slots first; the swap case rolls back to the `DuplicateKeyException → 409 CONFLICT` backstop, nothing written, the editor shows "Two sets overlap" | session | closed — superseded by F-5: the colliding labels are parked first, so the swap saves |
 | R-5 | A removed set retired while still holding a *past* availability row keeps that row (no CASCADE on retire) | low | none | a past row is history nothing reads or claims; the retire path already behaves so for `removeSet` | session | closed — by design (ADR-0019) |
 | R-6 | Ownership on a venue-scoped endpoint (BOLA) | low | high | `VenueOwnership#assertOwns` stays the first act of the service; `VenueAdminServiceTest.replaceByANonOwnerIsDeniedBeforeAnyRead` | session | closed — 6f384795 |
 | R-7 | Error-contract drift on the new code | low | med | `SETS_IN_USE` 409, detail "Sets this save would remove are booked or held." (condition, not remedy); `sets` extension built beside the problem in the controller through `ApiProblem.of` | session | closed — 0d712411 (`BeachMapReplaceIT.refusesRemovingBookedOrHeldSetsNamingThem`) |
@@ -272,9 +277,9 @@ N/A — no payment in scope.
 
 ## Execution status
 
-**Stage pointer:** `CI gate — phases 0–5 pushed on draft PR #1050; next: merge latest main, mark ready for review, run the review gate`
+**Stage pointer:** `review gate — findings F-1..F-3, F-5, F-6 fixed and pushed; next: CI on the fix push, then the Sonar gate`
 
-**Next action:** check PR #1050's CI run; then merge `origin/main` in, mark ready for review, run `/code-review` with `riviera-review-overlay`.
+**Next action:** check PR #1050's CI on the review-fix push; then pull the Sonar list; then the close-out in the last code-touching commit.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -291,6 +296,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-1 | review (prior-PR-comments reviewer, RV-PROC-2c) | `set-editor.ts` class TSDoc still said the bulk PUT is reject-unless-unclaimed and the map frozen after the first booking | fixed — the TSDoc states the diff save |
+| F-2 | review (prior-PR-comments reviewer, §6d) | `VenueAdminController` class Javadoc's outcome→HTTP list lacked the new `SetsInUse`→409 | fixed |
+| F-3 | review (generalisation sweep of F-1 by mechanism: prose stating the old venue-wide lock — `git grep -i "reject-unless-unclaimed\|map is frozen\|layout is locked"` over `platform/src frontend/src frontend/e2e RESPONSIBILITIES.md CONTEXT.md docs/adr .claude/skills`) | `layout-editor.html`'s row-names helper said a rename works "even when saving the whole layout is locked" | fixed — the sentence no longer names a lock |
+| F-5 | review (git-history reviewer) | a swap or rotation of row names between kept cells collided transiently on the partial unique index — the delete-all replace never could — and fell to the `409 CONFLICT` backstop (plan R-4) | fixed — `LayoutDiff#collidingUpdates` + `Venues#parkRowLabels` park the labels before the in-place updates; `BeachMapReplaceIT.swapsTwoRowNamesInOneSaveOnATradingVenue` |
+| F-6 | review (git-history reviewer) | a position-number change at a kept cell — the per-set `editSet` refuses it on a claimed set ("a guest was told this row and number") — went through the bulk save unprobed | fixed — `LayoutDiff#disturbed` probes removed and repositioned sets alike; `BeachMapReplaceIT.refusesRenumberingABookedSetAtItsCell` |
+| F-4 | CI (`Backend (build + test)` on `0d712411`) | `SeasonClosureReserveIT.theOptInReservesDatesOnOrAfterTheReopenDayOnly` — the sibling test's `@AfterEach` races the async spine; `main` fails identically at the base commit | not this PR's — standing-down comment with a proposed patch on PR #1050; the head `bcea4ac4` run is the one re-run |
 
 ---
 
@@ -398,6 +409,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-09 | review F-1 | prose anywhere in code, templates, e2e and the substrate that states the retired venue-wide layout lock as present fact | `git grep -n -i "reject-unless-unclaimed\|map is frozen\|first booking\|has ever sold\|ever been booked\|layout is locked\|whole layout" -- platform/src frontend/src frontend/e2e RESPONSIBILITIES.md CONTEXT.md docs/adr .claude/skills` | 5 hits: `set-editor.ts` (F-1), `layout-editor.html:158` (F-3); `CONTEXT.md:62`, `BeachMapEditService.java:20`, `BookingPresence.java:12`, the e2e title — all still true | fixed the two, kept the rest |
 
 ---
 

@@ -1,6 +1,7 @@
 package ai.riviera.platform.venue.application;
 
 import java.time.Clock;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -194,11 +195,12 @@ class BeachMapEditService implements EditBeachMap {
 		}
 		// Lock the set rows before the probe: a racing claim is either seen (→ refuse) or blocks on its FK (invariant #2).
 		LayoutDiff diff = LayoutDiff.of(venues.lockSetsOfVenue(venueId), command);
-		Map<SetId, SetLock> locks = claims.locksOn(diff.removed().stream().map(PlacedSet::id).toList());
+		List<PlacedSet> disturbed = diff.disturbed();
+		Map<SetId, SetLock> locks = claims.locksOn(disturbed.stream().map(PlacedSet::id).toList());
 		if (!locks.isEmpty()) {
-			return new ReplaceLayoutOutcome.SetsInUse(diff.removed().stream()
-					.filter(gone -> locks.containsKey(gone.id()))
-					.map(gone -> new BlockedSet(gone, locks.get(gone.id())))
+			return new ReplaceLayoutOutcome.SetsInUse(disturbed.stream()
+					.filter(set -> locks.containsKey(set.id()))
+					.map(set -> new BlockedSet(set, locks.get(set.id())))
 					.toList());
 		}
 		// Removals first, so a slot they free is open before an update or an insert takes it.
@@ -210,8 +212,12 @@ class BeachMapEditService implements EditBeachMap {
 				venues.deleteSet(venueId, gone.id());
 			}
 		}
+		List<SetId> colliding = diff.collidingUpdates();
+		if (!colliding.isEmpty()) {
+			venues.parkRowLabels(venueId, colliding);
+		}
 		for (LayoutDiff.Update kept : diff.updates()) {
-			venues.updateSet(venueId, kept.id(), kept.command());
+			venues.updateSet(venueId, kept.stored().id(), kept.command());
 		}
 		venues.insertSets(venueId, diff.inserts());
 		venues.incrementSetVersion(venueId);

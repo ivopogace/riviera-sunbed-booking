@@ -117,14 +117,16 @@ over time. The standing rules:
   row `FOR UPDATE` with its placement, and diffs the submitted layout against them: a kept cell is
   updated in place under its own id (row label, position, tier, pool, price), a new cell is inserted,
   an absent cell's set is removed — retired when it carries any booking, deleted otherwise
-  (ADR-0019). Only the removed sets are probed, through `LiveClaims#locksOn` — the owner's read's own
-  predicate — so a refusal names exactly the sets the editor already pins; a refused save writes
-  nothing and leaves the token untouched. Removals are written before the in-place updates and the
-  inserts, so a freed slot is open before another set takes it; a label swap between two kept cells
-  can still collide transiently on the partial unique index and rolls back to the `409 CONFLICT`
-  backstop. The body carries no set ids, so a set that changes cell reaches the save as a removal
-  plus an insert — the removal question is the move question. The token advances once on every
-  successful save, an unchanged layout included.
+  (ADR-0019). Only the sets a guest could be stranded on are probed — the removed ones and the kept
+  ones whose position number changes, the per-set reposition's twin — through `LiveClaims#locksOn`,
+  the owner's read's own predicate, so a refusal names exactly the sets the editor already pins; a
+  refused save writes nothing and leaves the token untouched. Removals are written before the
+  in-place updates and the inserts, so a freed slot is open before another set takes it, and a kept
+  set whose new row label and position another kept set still holds (a swap or rotation of row
+  names) has its label parked on a transient value first (`Venues#parkRowLabels`), so the
+  layout-uniqueness index never sees two sets in one slot mid-save. The body carries no set ids, so
+  a set that changes cell reaches the save as a removal plus an insert — the removal question is the
+  move question. The token advances once on every successful save, an unchanged layout included.
   - *Why the pool joins price and tier:* the pool is a sales-channel attribute, not a physical one.
     Invariant #3 is a **reserve-time** rule — it decides whether a *new* online booking may claim
     a set (`booking`'s fast path, `availability`'s locked claim-time read) and says nothing about a

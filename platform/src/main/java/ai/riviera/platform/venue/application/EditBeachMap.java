@@ -118,14 +118,15 @@ public interface EditBeachMap {
 	 * Save the venue's <strong>whole</strong> beach-map layout in one transaction — the generate-grid
 	 * + paint editor's bulk write — as a <em>diff keyed by grid cell</em> against the stored active map.
 	 * After asserting {@code operator} owns {@code venueId}: a stored set whose cell the submission still
-	 * names is updated in place under its own id (row label, position, tier, pool and price — none of
-	 * them ever refused), a cell no stored set occupies is inserted, and a stored set whose cell is
-	 * absent is removed — retired when it carries any booking, deleted otherwise (ADR-0019). Only the
-	 * removed sets ask the claim question: if any of them has a hold dated today or later or a booking
-	 * that can still be honoured, the whole save is refused as
-	 * {@link ReplaceLayoutOutcome.SetsInUse} naming every such set, and nothing is written
-	 * (invariant #2). A hold whose day has gone does not block. A set that changes cell reaches the
-	 * save as a removal plus an insert — the body carries no ids, so the cell is the identity.
+	 * names is updated in place under its own id (row label, tier, pool and price — never refused;
+	 * the position number too, but that is a reposition), a cell no stored set occupies is inserted,
+	 * and a stored set whose cell is absent is removed — retired when it carries any booking, deleted
+	 * otherwise (ADR-0019). Only the removed and the repositioned sets ask the claim question: if any
+	 * of them has a hold dated today or later or a booking that can still be honoured, the whole save
+	 * is refused as {@link ReplaceLayoutOutcome.SetsInUse} naming every such set, and nothing is
+	 * written (invariant #2). A hold whose day has gone does not block. A set that changes cell
+	 * reaches the save as a removal plus an insert — the body carries no ids, so the cell is the
+	 * identity. Row names may swap or rotate among kept sets in one save.
 	 *
 	 * <p>Refused with {@link ReplaceRejection#ROW_NAME_TAKEN} (→ 409) when one submitted
 	 * {@code rowLabel} appears under two distinct grid rows — {@link #renameRow}'s one-label-one-row
