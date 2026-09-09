@@ -88,7 +88,7 @@ class VenueAdminServiceTest {
 
 	private final BeachMapEditService mapEditor = new BeachMapEditService(
 			venues, new FakeOwnership(OWNER, VENUE), new LiveClaims(availability, bookings, CLOCK),
-			bookings, CLOCK);
+			bookings, new LayoutWriter(venues, new LiveClaims(availability, bookings, CLOCK), bookings, CLOCK), CLOCK);
 
 	private final OnboardVenueService onboarding =
 			new OnboardVenueService(venues, new FakeOwnership(OWNER, VENUE), CREATION);

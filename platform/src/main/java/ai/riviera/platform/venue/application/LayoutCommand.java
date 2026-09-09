@@ -29,6 +29,14 @@ public record LayoutCommand(List<SetCommand> sets) {
 		sets = List.copyOf(sets); // defensive copy + null-hostile
 	}
 
+	/** The remodel commit's cells as the save's commands; each {@link SetCommand} re-validates its cell. */
+	public static LayoutCommand of(List<ai.riviera.platform.venue.vocabulary.LayoutCell> cells) {
+		return new LayoutCommand(cells.stream()
+				.map(cell -> new SetCommand(cell.rowLabel(), cell.positionNo(), cell.tier(), cell.pool(),
+						cell.priceMinor(), cell.priceCurrency(), cell.gridX(), cell.gridY()))
+				.toList());
+	}
+
 	boolean isEmpty() {
 		return sets.isEmpty();
 	}

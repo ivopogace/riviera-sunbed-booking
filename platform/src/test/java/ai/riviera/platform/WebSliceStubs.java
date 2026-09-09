@@ -792,7 +792,21 @@ class WebSliceStubs {
 
 	@Bean
 	ai.riviera.platform.venue.api.BeachMapRemodel beachMapRemodel() {
-		return (_, _, _, _) -> new ai.riviera.platform.venue.vocabulary.LayoutPreview.Disturbing(List.of());
+		return new ai.riviera.platform.venue.api.BeachMapRemodel() {
+			@Override
+			public ai.riviera.platform.venue.vocabulary.LayoutPreview preview(OperatorId operator, VenueId venueId,
+					long expectedVersion, List<ai.riviera.platform.venue.vocabulary.SetPlacement> cells) {
+				return new ai.riviera.platform.venue.vocabulary.LayoutPreview.Disturbing(List.of());
+			}
+
+			@Override
+			public ai.riviera.platform.venue.vocabulary.LayoutCommitOutcome commit(OperatorId operator,
+					VenueId venueId, long expectedVersion,
+					List<ai.riviera.platform.venue.vocabulary.LayoutCell> cells,
+					ai.riviera.platform.venue.api.RemodelGate gate) {
+				return ai.riviera.platform.venue.vocabulary.LayoutCommitOutcome.Refused.REFUSED;
+			}
+		};
 	}
 
 	@Bean
