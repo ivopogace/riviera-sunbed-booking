@@ -1,8 +1,12 @@
 package ai.riviera.platform.venue.application;
 
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import ai.riviera.platform.venue.vocabulary.Pool;
+import ai.riviera.platform.venue.vocabulary.SetPlacement;
+import ai.riviera.platform.venue.vocabulary.Tier;
 
 /**
  * The validated intent to place or re-place one set position on a venue's beach map (U7) —
@@ -16,9 +20,10 @@ import ai.riviera.platform.venue.vocabulary.Pool;
 public record SetCommand(String rowLabel, int positionNo, String tier, Pool pool,
 		long priceMinor, String priceCurrency, int gridX, int gridY) {
 
-	private static final Set<String> TIERS = Set.of("PREMIUM", "STANDARD");
+	private static final Set<String> TIERS =
+			Stream.of(Tier.values()).map(Enum::name).collect(Collectors.toUnmodifiableSet());
 
-	/** The tier token exactly as {@code set_position_tier_check} stores it; anything else is rejected. */
+	/** The tier token exactly as {@link Tier} and {@code set_position_tier_check} state it; anything else is rejected. */
 	static String requireTier(String tier) {
 		if (!TIERS.contains(tier)) {
 			throw new IllegalArgumentException("tier must be one of " + TIERS);
@@ -41,5 +46,19 @@ public record SetCommand(String rowLabel, int positionNo, String tier, Pool pool
 		if (gridX < 1 || gridY < 1) {
 			throw new IllegalArgumentException("gridX and gridY must be >= 1");
 		}
+	}
+
+	/**
+	 * Whether applying this command would move the set at {@code stored} — the only edit a hold or
+	 * booking can be harmed by, because a reposition silently re-seats a guest who was told this row
+	 * and number. Pool, price and tier are excluded on purpose: a booking's charge is snapshotted at
+	 * reserve time, and the pool decides only whether a <em>new</em> online booking may claim the set
+	 * (invariant #3 is a reserve-time rule). Rationale: RESPONSIBILITIES.md §venue.
+	 */
+	public boolean disturbs(SetPlacement stored) {
+		return !stored.rowLabel().equals(rowLabel)
+				|| stored.positionNo() != positionNo
+				|| stored.gridX() != gridX
+				|| stored.gridY() != gridY;
 	}
 }

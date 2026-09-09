@@ -1,6 +1,7 @@
 package ai.riviera.platform.venue.application;
 
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.SetPlacement;
 
 /**
  * One active set of a venue's map as the bulk save locks it: its id and where it sits. The grid

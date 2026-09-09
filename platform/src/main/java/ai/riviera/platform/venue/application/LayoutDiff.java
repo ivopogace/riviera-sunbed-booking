@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.SetPlacement;
 
 /**
  * The bulk beach-map save as a diff of the submitted layout against the stored active map, keyed
