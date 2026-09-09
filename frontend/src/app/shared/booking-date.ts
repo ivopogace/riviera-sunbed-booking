@@ -76,6 +76,19 @@ export function formatCivilDate(isoDate: string): string {
 }
 
 /**
+ * Render an ISO civil day as its day and month only — `"15 May"` — for the closed-for-season badge,
+ * where the year is the coming one and the card has no room for it. Same UTC anchoring and locale
+ * as {@link formatCivilDate}.
+ */
+export function formatDayMonth(isoDate: string): string {
+  return new Intl.DateTimeFormat('en-IE', {
+    timeZone: 'UTC',
+    day: 'numeric',
+    month: 'short',
+  }).format(parseIsoDate(isoDate));
+}
+
+/**
  * Shift an ISO `YYYY-MM-DD` civil day by `days` (negative moves back), returning the same format.
  * Arithmetic happens on the UTC-anchored {@link parseIsoDate} instant, so it is free of the
  * viewer's zone and of DST.

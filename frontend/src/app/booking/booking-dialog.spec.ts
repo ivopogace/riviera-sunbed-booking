@@ -583,6 +583,7 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
       SET_TAKEN: 'just booked',
       SET_NOT_BOOKABLE_ONLINE: 'not available to book online',
       BOOKING_CLOSED: 'Booking has closed',
+      VENUE_CLOSED: 'closed for the season',
       NO_SUCH_SET: 'could not be found',
       INVALID_REQUEST: 'check the form',
       UNKNOWN: 'Something went wrong',

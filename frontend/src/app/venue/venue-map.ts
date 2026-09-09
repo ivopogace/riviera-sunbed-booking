@@ -6,6 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { BookingDialog } from '../booking/booking-dialog';
 import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '../shared/amenities';
 import { AmenityChip } from '../shared/amenity-chip';
+import { ClosedForSeasonChip } from '../shared/closed-for-season-chip';
 import { SemanticChip } from '../shared/semantic-chip';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { CardGlass } from '../shared/card-glass';
@@ -84,6 +85,10 @@ interface VenueHeader {
   readonly amenities: readonly { readonly code: Amenity; readonly label: string }[];
   /** The venue's sales-close value — the note's copy key only; `salesOpen` stays the verdict. */
   readonly salesClose: VenueMapView['salesClose'];
+  /** True when the venue is closed for the season right now — the header chip and the notice. */
+  readonly closedForSeason: boolean;
+  /** The reopen day while closed with one set; else `null`. */
+  readonly reopensOn: string | null;
 }
 
 /**
@@ -106,6 +111,7 @@ interface VenueHeader {
 @Component({
   selector: 'app-venue-map',
   imports: [
+    ClosedForSeasonChip,
     BookingDialog,
     VenueReviews,
     RetryButton,
@@ -204,6 +210,14 @@ export class VenueMap {
    */
   protected readonly salesClosed = computed(() => this.venue()?.salesOpen === false);
 
+  /** The reopen day as the notice states it ("Sat 15 May 2027"). */
+  protected reopenLabel(isoDate: string): string {
+    return formatCivilDate(isoDate);
+  }
+
+  /** True when the server says the venue is closed for the season — only an explicit `true`. */
+  protected readonly closedForSeason = computed(() => this.venue()?.closedForSeason === true);
+
   /** Whether the selected date is today — keys the closed banner's copy. Reads a fresh clock
    *  per recompute (each date change), not the mount-time floor, so a tab held across Tirane
    *  midnight gets the today copy back on its next pick; a banner already on screen at the
@@ -241,6 +255,8 @@ export class VenueMap {
         label: amenityLabel(code),
       })),
       salesClose: v.salesClose,
+      closedForSeason: v.closedForSeason === true,
+      reopensOn: v.closedForSeason === true ? (v.reopensOn ?? null) : null,
     };
   });
 

@@ -72,6 +72,36 @@ describe('VenueTab a11y (#177)', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  it('has no axe violations with the season card closed, and with the close form armed', async () => {
+    configure();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/profile'))
+      .flush({
+        ...PROFILE,
+        seasonClosure: { closed: true, reopenOn: '2027-05-15', advanceSales: true },
+      });
+    fixture.detectChanges();
+    await expectNoAxeViolations(host());
+
+    host().querySelector<HTMLButtonElement>('[data-testid="venue-season-reopen"]')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'DELETE' && r.url.endsWith('/api/venues/1/season-closure'))
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    host().querySelector<HTMLButtonElement>('[data-testid="venue-season-close"]')!.click();
+    fixture.detectChanges();
+    const reopenOn = host().querySelector<HTMLInputElement>(
+      '[data-testid="venue-season-reopen-on"]',
+    )!;
+    reopenOn.value = '2027-05-15';
+    reopenOn.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await expectNoAxeViolations(host());
+  });
+
   it('has no axe violations with a loaded profile', async () => {
     configure();
     http

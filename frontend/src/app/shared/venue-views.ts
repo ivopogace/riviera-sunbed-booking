@@ -87,6 +87,15 @@ export interface VenueMapView {
    * Optional because test doubles and older payloads may omit it; absent renders no note.
    */
   readonly salesClose?: SalesCloseTime;
+  /**
+   * Whether the venue is closed for the season right now — the server's verdict, never a date the
+   * client compares. The page stays browsable; `salesOpen` says whether the selected date sells
+   * regardless (an opted-in date after the reopen day does). Optional because test doubles and
+   * older payloads may omit it; only an explicit `true` renders the closed state.
+   */
+  readonly closedForSeason?: boolean;
+  /** The reopen day (ISO `YYYY-MM-DD`, Europe/Tirane) while closed with one set; else `null`/absent. */
+  readonly reopensOn?: string | null;
 }
 
 /**
@@ -119,6 +128,12 @@ export interface DailyAvailability {
   readonly date: string;
   readonly free: number;
   readonly total: number;
+  /**
+   * Whether online sales for this day are open right now — the server's verdict (the on-day sales
+   * close and a season closure together), display only; the picker refuses a `false` day. Optional
+   * because test doubles and older payloads may omit it; absent keeps the day selectable.
+   */
+  readonly salesOpen?: boolean;
 }
 
 /**
@@ -158,6 +173,14 @@ export interface VenueSummary {
    * because test doubles and older payloads may omit it; only an explicit `false` badges the card.
    */
   readonly salesOpen?: boolean;
+  /**
+   * Whether the venue is closed for the season right now — the server's verdict; the card wears the
+   * "Closed for season" badge and the server has already sorted it after every open venue. Optional
+   * because test doubles and older payloads may omit it; only an explicit `true` badges the card.
+   */
+  readonly closedForSeason?: boolean;
+  /** The reopen day (ISO `YYYY-MM-DD`, Europe/Tirane) while closed with one set; else `null`/absent. */
+  readonly reopensOn?: string | null;
 }
 
 /**

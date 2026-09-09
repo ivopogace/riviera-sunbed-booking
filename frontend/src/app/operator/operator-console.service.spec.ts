@@ -23,6 +23,7 @@ import {
   setWriteErrorOf,
   setBatchErrorOf,
   rowNameErrorOf,
+  seasonClosureErrorOf,
 } from './operator-console.service';
 
 const BASE = environment.apiBaseUrl;
@@ -520,5 +521,65 @@ describe('setWriteErrorOf (#600)', () => {
     expect(setWriteErrorOf(problem(500, 'SOMETHING_ELSE'))).toBe('UNKNOWN');
     expect(setWriteErrorOf(problem(500))).toBe('UNKNOWN');
     expect(setWriteErrorOf(new Error('offline'))).toBe('UNKNOWN');
+  });
+});
+
+describe('OperatorConsoleService season closure (#1028)', () => {
+  let service: OperatorConsoleService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(OperatorConsoleService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('closes with PUT on the season-closure resource and answers the counts', () => {
+    let result: unknown;
+    service
+      .closeForSeason(1, { reopenOn: '2027-05-15', advanceSales: true })
+      .subscribe((r) => (result = r));
+    const req = http.expectOne(`${BASE}/api/venues/1/season-closure`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ reopenOn: '2027-05-15', advanceSales: true });
+    req.flush({
+      closedForSeason: true,
+      reopenOn: '2027-05-15',
+      advanceSales: true,
+      futureBookings: 3,
+      pendingRequests: 1,
+    });
+    expect(result).toEqual({
+      closedForSeason: true,
+      reopenOn: '2027-05-15',
+      advanceSales: true,
+      futureBookings: 3,
+      pendingRequests: 1,
+    });
+  });
+
+  it('reopens with DELETE on the same resource', () => {
+    let done = false;
+    service.reopenForSeason(1).subscribe(() => (done = true));
+    const req = http.expectOne(`${BASE}/api/venues/1/season-closure`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    expect(done).toBe(true);
+  });
+
+  it('maps the closure codes: the profile codes plus REOPEN_DATE_PASSED', () => {
+    const fail = (status: number, code: string) =>
+      new HttpErrorResponse({ status, error: { code } });
+    expect(seasonClosureErrorOf(fail(422, 'REOPEN_DATE_PASSED'))).toBe('REOPEN_DATE_PASSED');
+    expect(seasonClosureErrorOf(fail(403, 'NOT_VENUE_OWNER'))).toBe('NOT_VENUE_OWNER');
+    expect(seasonClosureErrorOf(fail(404, 'NO_SUCH_VENUE'))).toBe('NO_SUCH_VENUE');
+    expect(seasonClosureErrorOf(fail(400, 'INVALID_REQUEST'))).toBe('INVALID_REQUEST');
+    expect(seasonClosureErrorOf(fail(401, 'UNAUTHENTICATED'))).toBe('UNAUTHORIZED');
+    expect(seasonClosureErrorOf(fail(500, 'BOOM'))).toBe('UNKNOWN');
+    expect(seasonClosureErrorOf(new Error('offline'))).toBe('UNKNOWN');
   });
 });

@@ -183,8 +183,139 @@
         </form>
       </section>
 
-      <!-- Right rail: photo placeholders + commodities -->
+      <!-- Right rail: the season, photo placeholders + commodities -->
       <div class="flex flex-col gap-4">
+        <section appCardGlass class="rounded-[24px] px-[22px] py-5" data-testid="venue-season">
+          <h2 class="text-[16px] font-bold text-riv-card-ink">Season</h2>
+          @if (season().closed) {
+            <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
+              Tourists still see your venue, badged “Closed for season”; the staff view and walk-in
+              marks keep working.
+            </p>
+            <!-- Focus lands here after a close (WCAG 2.4.3): the confirm control is gone. -->
+            <output
+              tabindex="-1"
+              class="block rounded-[12px] border border-riv-warn-edge/60 bg-riv-warn-fill px-3 py-2.5 text-[12.5px] font-semibold leading-[1.45] text-riv-warn-ink"
+              data-testid="venue-season-status"
+            >
+              {{ seasonStatusText() }}
+              @if (seasonCountsText(); as counts) {
+                <span class="block font-normal" data-testid="venue-season-counts">{{
+                  counts
+                }}</span>
+              }
+            </output>
+            <button
+              type="button"
+              appTouchTarget
+              class="mt-3 rounded-[12px] border border-riv-card-border bg-riv-console-inset/70 px-3.5 py-1.5 text-[12.5px] font-bold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-riv-console-inset/90 aria-disabled:opacity-50"
+              data-testid="venue-season-reopen"
+              [appBusy]="seasonBusy()"
+              (click)="onReopen()"
+            >
+              {{ seasonBusy() ? 'Reopening…' : 'Reopen now' }}
+            </button>
+          } @else {
+            <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
+              Closing keeps your venue listed with a “Closed for season” badge and makes every date
+              unbookable. Existing bookings, holds and requests are untouched.
+            </p>
+            @if (!seasonArmed()) {
+              <button
+                type="button"
+                appTouchTarget
+                class="rounded-[12px] border border-riv-warn-edge/50 bg-riv-console-inset/60 px-[14px] py-[9px] text-[13.5px] font-bold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-riv-console-inset/85 aria-disabled:opacity-65"
+                data-testid="venue-season-close"
+                [appBusy]="seasonBusy()"
+                (click)="onArmSeasonClose()"
+              >
+                Close for season
+              </button>
+            } @else {
+              <form
+                class="flex flex-col gap-3"
+                data-testid="venue-season-form"
+                (submit)="onConfirmSeasonClose(); $event.preventDefault()"
+                novalidate
+              >
+                <label class="flex flex-col gap-1">
+                  <span class="text-[12.5px] font-semibold text-riv-card-ink"
+                    >Reopen date (optional, Europe/Tirane)</span
+                  >
+                  <input
+                    type="date"
+                    [formField]="seasonForm.reopenOn"
+                    data-testid="venue-season-reopen-on"
+                    appTouchTarget
+                    class="w-[190px] rounded-[11px] border border-riv-card-border bg-riv-console-inset/60 px-3 py-2 text-[14px] text-riv-card-ink"
+                    #reopenOnControl
+                  />
+                  @if (seasonError() === 'REOPEN_DATE_PASSED') {
+                    <span
+                      [appFieldErrorFor]="reopenOnControl"
+                      class="text-[11.5px] font-semibold text-riv-error-ink"
+                      role="alert"
+                      data-testid="venue-season-date-error"
+                      >Pick a reopen date after today.</span
+                    >
+                  }
+                  <span class="text-[11px] text-riv-card-ink-soft"
+                    >Leave it blank to stay closed until you reopen by hand.</span
+                  >
+                </label>
+                @if (reopenDateSet()) {
+                  <label class="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      [formField]="seasonForm.advanceSales"
+                      data-testid="venue-season-advance-sales"
+                      appTouchTarget
+                      class="mt-0.5 size-[18px] accent-riv-accent-strong"
+                    />
+                    <span class="flex flex-col gap-0.5">
+                      <span class="text-[12.5px] font-semibold text-riv-card-ink"
+                        >Let tourists book dates from the reopen date now</span
+                      >
+                      <span class="text-[11px] text-riv-card-ink-soft"
+                        >Off by default — a beach you will re-lay in spring should not collect
+                        winter bookings.</span
+                      >
+                    </span>
+                  </label>
+                }
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    type="submit"
+                    appTouchTarget
+                    class="rounded-[12px] bg-riv-solid-fill-warn px-4 py-2 text-[12.5px] font-bold text-white aria-disabled:opacity-60"
+                    data-testid="venue-season-confirm"
+                    [appBusy]="seasonBusy()"
+                  >
+                    {{ seasonBusy() ? 'Closing…' : 'Close for season' }}
+                  </button>
+                  <button
+                    type="button"
+                    appTouchTarget
+                    class="rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-4 py-2 text-[12.5px] font-bold text-riv-card-ink"
+                    data-testid="venue-season-cancel"
+                    (click)="onCancelSeasonClose()"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            }
+          }
+          @if (seasonErrorMessage(); as msg) {
+            <span
+              class="mt-2 block text-[11.5px] font-semibold text-riv-error-ink"
+              role="alert"
+              data-testid="venue-season-error"
+              >{{ msg }}</span
+            >
+          }
+        </section>
+
         <section appCardGlass class="rounded-[24px] px-[22px] py-5">
           <h2 class="text-[16px] font-bold text-riv-card-ink">Photos</h2>
           <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">

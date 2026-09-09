@@ -362,7 +362,7 @@ APIs. No deviation.
 | 1 — close/reopen endpoint, `SeasonClosureService`, `Venues` writes, `LiveBookingCounts` + `BookingPresence#liveBookingsFrom`, profile carries the closure, security matchers, ITs | ✅ | `37d467d8` |
 | 2 — catalogue projection (list order, map, calendar `salesOpen`), `SetBookingInfo` closure, `VENUE_CLOSED` fence, ITs with the movable clock, structural net | ⏳ | |
 | 3 — frontend: models, chip, Discover card, map notice, calendar, booking copy, Venue tab season card, specs + a11y + contrast, mocked e2e | | |
-| 4 — docs: `CONTEXT.md`, `RESPONSIBILITIES.md`, domain-model, `CLAUDE.md` row, package Javadocs; retire `pinned-cells.md`; PR | | |
+| 4 — docs: `CONTEXT.md`, `RESPONSIBILITIES.md`, domain-model, `CLAUDE.md` row, package Javadocs; retire `pinned-cells.md`; PR | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

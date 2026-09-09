@@ -74,9 +74,11 @@ const WEEKDAYS: readonly { readonly short: string; readonly long: string }[] = [
  * Nothing here is phrased as bookable or reserved, and no count gates a later step of the flow.
  * `total` spans both pools, so it answers "how busy is this day", not "how many can I book".
  *
- * <p>Today and every past day render but cannot be chosen (invariant #4, display only — the server
- * stays authoritative for the real cutoff). The endpoint answers them, because it reports
- * availability rather than bookability, so the exclusion is entirely this component's job.
+ * <p>Every past day renders but cannot be chosen (invariant #4, display only — the server stays
+ * authoritative for the real fence), and so does any day whose counts carry `salesOpen: false` —
+ * today past the venue's sales close, or a day inside a season closure. The endpoint answers past
+ * days because it reports availability, so the floor is this component's; the per-day verdict is the
+ * server's.
  *
  * <p>Focus, not selection, drives the visible month: {@link focusedDate} is the roving-tabindex
  * position and the month is computed from it, so an arrow key that crosses a month boundary and a
@@ -157,7 +159,8 @@ export class AvailabilityCalendar {
           return undefined;
         }
         const day = counts.get(iso);
-        const selectable = this.isBookable(iso);
+        // The server's verdict outranks the client floor: a day it marks unsellable is not bookable.
+        const selectable = this.isBookable(iso) && day?.salesOpen !== false;
         const state = selectable ? dayAvailabilityState(day) : 'unknown';
         const isSelected = iso === selected;
         return {

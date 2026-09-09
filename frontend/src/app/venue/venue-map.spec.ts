@@ -1067,6 +1067,45 @@ describe('VenueMap', () => {
     expect(el().querySelector('app-booking-dialog')).not.toBeNull();
   });
 
+  it('a venue closed for the season wears the chip, shows the season notice instead of the sales-closed copy, and stays browsable', async () => {
+    venueRequest().flush({
+      ...miramar(),
+      salesOpen: false,
+      closedForSeason: true,
+      reopensOn: '2027-05-15',
+    });
+    await settle();
+    fixture.detectChanges();
+
+    const chip = el().querySelector(
+      '[data-testid="venue-header"] .closed-for-season-chip, .closed-for-season-chip',
+    );
+    expect(chip?.textContent?.replace(/\s+/g, ' ')).toContain('Closed for season · reopens 15 May');
+    const notice = el().querySelector('[data-testid="map-closed-for-season"]')!;
+    expect(notice.getAttribute('role')).toBe('alert');
+    expect(notice.textContent).toContain('closed for the season');
+    expect(notice.textContent).toContain('15 May 2027');
+    expect(el().querySelector('[data-testid="map-sales-closed"]')).toBeNull();
+    // Browsable: the grid renders; unsellable: no tile can be selected.
+    expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBeGreaterThan(0);
+    expect(el().querySelector('.set-button')).toBeNull();
+  });
+
+  it('an opted-in reopen date on a closed venue keeps the chip and books normally', async () => {
+    venueRequest().flush({
+      ...miramar(),
+      salesOpen: true,
+      closedForSeason: true,
+      reopensOn: '2027-05-15',
+    });
+    await settle();
+    fixture.detectChanges();
+
+    expect(el().querySelector('.closed-for-season-chip')).not.toBeNull();
+    expect(el().querySelector('[data-testid="map-closed-for-season"]')).toBeNull();
+    expect(el().querySelector('.set-button')).not.toBeNull();
+  });
+
   it('keys the closed copy on the selected date — a non-today date gets the pick-a-later-day copy', async () => {
     flushVenue();
     await settle();

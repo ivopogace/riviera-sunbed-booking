@@ -183,7 +183,9 @@
                     class="mode-chip inline-flex items-center px-[11px] py-[5px] text-[11px] tracking-[0.03em]"
                     >{{ card.modeLabel }}</span
                   >
-                  @if (card.salesClosed) {
+                  @if (card.closedForSeason) {
+                    <app-closed-for-season-chip [reopensOn]="card.reopensOn" />
+                  } @else if (card.salesClosed) {
                     <span
                       appSemanticChip
                       class="sales-closed-chip inline-flex items-center px-[11px] py-[5px] text-[11px] tracking-[0.03em]"

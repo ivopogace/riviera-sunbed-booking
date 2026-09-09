@@ -69,6 +69,20 @@ describe('Home accessibility (axe)', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  it('has no violations with a venue closed for the season badged and sorted last', async () => {
+    fixture.detectChanges();
+    const [open, closed] = venues();
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush([
+        { ...open, salesOpen: true },
+        { ...closed, salesOpen: false, closedForSeason: true, reopensOn: '2027-05-15' },
+      ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
+  });
+
   it('has no critical/serious violations when venues are listed', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();
