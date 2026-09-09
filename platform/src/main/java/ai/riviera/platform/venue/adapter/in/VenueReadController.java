@@ -98,9 +98,10 @@ class VenueReadController {
 	 * reads above, {@code to} to a fortnight from {@code from}. A window that is inverted or wider
 	 * than {@link #MAX_WINDOW_DAYS} days is rejected {@code 400} before the catalogue is asked.
 	 *
-	 * <p>The counts are a snapshot, not a hold, and past days are answered like any other: this
-	 * reports availability, not bookability. The venue's sales close (invariant #4) stays enforced
-	 * at booking time.
+	 * <p>The counts are a snapshot, not a hold, and past days are answered like any other: the
+	 * counts report availability, not bookability; each day's {@code salesOpen} carries the sales
+	 * verdict beside them, display only. The venue's sales close and season closure (invariant #4)
+	 * stay enforced at booking time.
 	 */
 	@GetMapping("/{venueId}/availability-calendar")
 	ResponseEntity<List<DailyAvailabilityView>> availabilityCalendar(

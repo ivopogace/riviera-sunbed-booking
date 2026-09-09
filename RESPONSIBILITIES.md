@@ -195,18 +195,37 @@ over time. The standing rules:
   CHECK, so an off-vocabulary value is a `400` at the edge); the read model and the
   cross-module carriers keep `LocalTime`. The console's "close today's online sales now"
   is the same write — no per-day override. The list and map reads also *project* the
-  open/closed verdict for the selected date as `salesOpen`, through my `spi` port
+  open/closed verdict for the selected date as `salesOpen` — the on-day close and the season
+  closure together — through my `spi` port
   `SalesWindow` (implemented by `booking`) with one request-scoped instant per read; the
   port returns the *verdict*, never a close instant — I store the time and display the
   answer, `booking` keeps the rule. The map read also projects the stored close value
   (`salesClose`, `HH:mm`) as a display-copy key; clients never compare it with a clock.
+- **The season closure** (`closed_at`, `reopen_on`, `advance_sales`; glossary *Closed for
+  season*): owner-asserted on its own state-transition endpoint
+  (`PUT`/`DELETE /api/venues/{venueId}/season-closure`, the `CloseForSeason` port), never the
+  profile full-replace — a state change rides no version token, and the close answers what guests
+  are still owed (`LiveBookingCounts`, through my `spi` `BookingPresence#liveBookingsFrom`;
+  `booking` decides which statuses count). A reopen day not after today in `Europe/Tirane` is
+  refused (`REOPEN_DATE_PASSED`); the opt-in needs a reopen day (`venue_season_closure_check`,
+  mirrored by `venue.vocabulary.SeasonClosure`). I store the facts and hand them out — on
+  `SetBookingInfo` to the reserve path and into my catalogue rows — and `booking` keeps the rule:
+  whether a closure is still in effect and which dates it admits is `BookingCutoff`'s, reached
+  through `SalesWindow#closedForSeason` and the widened `#isOpen`. The list and map project
+  `closedForSeason` and `reopensOn` beside `salesOpen`, the list sorts closed venues after open
+  ones, and the calendar carries `salesOpen` per day — one projection, never a second flag the
+  client ANDs. Reads compare dates; nothing sweeps, and the stored closure stays on the row past
+  its reopen day until the operator closes again or reopens. Closing touches no booking, hold,
+  request, daily view or walk-in mark; the owner profile carries the stored closure beside the
+  read-time verdict.
 - **The tourist availability calendar**
   (`GET /api/venues/{venueId}/availability-calendar?from=&to=`; public, window-capped at
   the edge): I own the set total and therefore `free = total − taken` and the gap fill;
   `availability` answers the taken count per day through my `spi`
   (`SetAvailabilityLookup#takenCountsBetween`). It does not reuse the operator-only
   `/availability` segment. The counts are a snapshot, never a hold (invariant #2), and the
-  read answers past days too — it reports availability, not bookability.
+  read answers past days too — it reports availability, not bookability. Each day also carries
+  the `salesOpen` verdict, the same projection as the list and map, display only.
 - **The public review list** (`GET /api/venues/{venueId}/reviews?cursor=`; public,
   keyset-paged newest first): I carry it, `review` decides it. My service fences on
   tourist visibility and passes the page `review.api.ListedReviews` answers straight
@@ -294,7 +313,12 @@ exist. `venue` composes; I answer state.
   `salesCloseAt` (the venue's setting per date — gates creation and caps a pending
   request's response deadline at `min(created + expiry-window, D at sales close)`;
   also answers the tourist browse through `venue.spi.SalesWindow`, display-only — the
-  reserve path enforces independently), `freeCancellationEndsAt` (the evening-before
+  reserve path enforces independently), `closedForSeason` / `admitsDate` (the season closure's
+  arm of the same fence: a closure holds until its reopen day opens in `Europe/Tirane` or the
+  operator reopens, and admits a date on or after that day only with the advance-sales opt-in;
+  the four-argument `isBookable` composes both arms for the catalogue verdict, while the reserve
+  path asks them one at a time to name which refused — `VENUE_CLOSED`, then `BOOKING_CLOSED`),
+  `freeCancellationEndsAt` (the evening-before
   boundary, cancellation-only), `serviceDayOpensAt` (midnight, the cancellation window's
   outer fence) and `serviceDayEndsAt` (the next midnight, the pay deadline's outer bound).
 - **The pay path fences on the pay deadline having passed.** An accepted
@@ -323,7 +347,9 @@ exist. `venue` composes; I answer state.
   read (bounded, documented drift; the stamped events stay the record).
 - **The reserve paths refuse a hidden venue's set** before any claim, via
   `operator.api.VenueVisibility`, answering `NO_SUCH_SET`. No post-reserve leg (view,
-  cancel, check-in, sweeps) consults visibility.
+  cancel, check-in, sweeps) consults visibility. They refuse a date the venue's season closure
+  does not admit with `VENUE_CLOSED` — its own code, because the venue is deliberately visible —
+  before any claim, on both booking modes; the closure rides `SetBookingInfo`.
 - **The request lifecycle's three terminal legs** live on `RequestReleaseService`:
   decline, the expiry sweep, and the guest's **withdraw**. Withdraw is authorized by the
   booking **code** alone (the only request command with no ownership check) and guarded by
@@ -1041,7 +1067,10 @@ the mechanism and the edge cases. The numbering is `CLAUDE.md`'s and never chang
 4. **Sales close is venue-controlled, on the day itself.** A date D's online sales window
    runs until the venue's `sales_close` wall-clock time on D — a per-venue setting fixed at
    one of three values (`00:01` opts the venue out of same-day sales, `16:00` the default, or
-   `23:59`), `Europe/Tirane`. A pending request's response deadline is capped at that same
+   `23:59`), `Europe/Tirane`. A venue **closed for season** shuts every date until its reopen day
+   starts in `Europe/Tirane` or the operator reopens by hand; with the advance-sales opt-in, dates
+   on or after the reopen day sell while it is still shut. Both arms are `booking`'s
+   `BookingCutoff`; the venue stays visible (§`venue`). A pending request's response deadline is capped at that same
    close (`min(created + expiry-window, D at sales close)`). Cancellation keeps its own,
    separate evening-before boundary (default 18:00 `Europe/Tirane`, configurable). The pay
    path fences on **the pay deadline having passed**: an accepted `AWAITING_PAYMENT`

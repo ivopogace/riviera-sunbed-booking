@@ -440,6 +440,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Frontend — modified**
 - `frontend/src/app/shared/venue-views.ts`
+- `frontend/src/app/shared/booking-date.ts` · `booking-date.spec.ts` — `formatDayMonth` for the badge
 - `frontend/src/app/pages/home/home.ts` · `home.html` · `home.spec.ts` · `home.a11y.spec.ts`
 - `frontend/src/app/venue/venue-map.ts` · `venue-map.html` · `venue-map.spec.ts` · `venue-map.a11y.spec.ts`
 - `frontend/src/app/venue/availability-calendar.ts` · `availability-calendar.spec.ts` · `day-availability.ts` · `day-availability.spec.ts`

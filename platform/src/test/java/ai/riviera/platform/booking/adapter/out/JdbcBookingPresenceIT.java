@@ -23,12 +23,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The four {@code venue.spi.BookingPresence} probes and the two different questions they answer.
+ * The five {@code venue.spi.BookingPresence} probes and the three questions they answer.
  * The venue- and set-scoped {@code hasBookings} count a booking of <em>any</em> status, including
  * terminal history, because any booking pins its set through the RESTRICT {@code booking.set_id}
  * FK — that is the delete guard. {@code hasLiveBookings} counts only non-terminal ones — the edit
- * guard, where finished history strands nobody. Scope matters too: a sibling set on the same venue
- * is not claimed by its neighbour's booking. Testcontainers; skipped where Docker is absent.
+ * guard, where finished history strands nobody. {@code liveBookingsFrom} counts what guests are still
+ * owed from a day on. Scope matters too: a sibling set on the same venue is not claimed by its
+ * neighbour's booking. Testcontainers; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

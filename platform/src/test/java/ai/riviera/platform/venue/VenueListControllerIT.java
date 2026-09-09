@@ -122,7 +122,7 @@ class VenueListControllerIT {
 
 	@Test
 	void returnsAllVenuesSortedByRatingThenName() throws Exception {
-		// AC-1: no filter ⇒ every venue, ordered rating desc then name asc. Asserted as a global
+		// AC-1: no filter ⇒ every venue, open ones first (none closed here), rating desc then name asc. Asserted as a global
 		// monotonic property (robust to seed/sibling venues), plus our fixtures must be present.
 		String body = mvc.perform(get("/api/venues"))
 				.andExpect(status().isOk())
