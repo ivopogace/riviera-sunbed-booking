@@ -789,12 +789,22 @@ invariant #7):
   the server-computed refund (invariant #10); the `BookingPaymentDue` notice, on the same
   birth-window rules — `booking` publishes the fact only on the accept branch where money
   is genuinely outstanding, so the listener decides nothing; and the
-  `BookingRequestDeclined` / `BookingRequestExpired` records — plain copy, no CTA. The
-  withdraw leg mails nothing.
+  `BookingRequestDeclined` / `BookingRequestExpired` records — plain copy, no CTA; and the
+  `BookingMoved` "your spot changed" record — the new spot, the spot the guest was told before,
+  the distance and the free-exit deadline, all read through
+  `booking.api.BookingNotificationFacts#moveFacts` (answered from the commit receipt, so a
+  retired from-set still has its label), the code resolved inside this module (invariant #7),
+  abandoned under `MAIL_MOVE_ABANDONED` with the shared `reason` vocabulary. The withdraw leg
+  mails nothing.
 - The **operator-approval notice**, on the recovery vehicle (`kind="operator-approved"`):
   no bearer credential, but edge-orchestrated from an admin request rather than driven by
   a domain fact — which is why "recovery" in `MAIL_RECOVERY_*` names the *vehicle* and
   `kind` names the flow.
+- The **mock outbox read** — `GET /api/mock-mail/booking-mails?to=` in `adapter/in`, present only
+  where the recording `MockMailer` is (`!mailer & !smtp4dev`, so never under `prod`), operator-gated,
+  answering the booking kinds as facts a guest reads on the page anyway — never a code, never a
+  link, never a recovery kind. It exists for the local real-backend e2e run and resolves its mailer
+  lazily, so a test that swaps the `Mailer` bean still loads the web layer.
 - The **email-suppression list**, hashed/non-PII at rest (a `v1:`-tagged peppered-HMAC
   `email_key` plus the cleartext `domain`, never the address; the pepper is env-managed,
   fail-at-boot in prod), deliberately surviving erasure (ADR-0012). The defining invariant

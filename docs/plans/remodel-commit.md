@@ -64,8 +64,9 @@ sibling #1033 closed out on the epic with PR #1051 and `docs/plans/remodel-previ
 this close-out) · `riviera-plan-doc` (this template — forced a seam per AC, the module-ownership
 table for the gate, the transaction and the receipt, and the parity ledger for the PUT's rewrite
 onto `LayoutWriter`) · `tdd` (the move-vs-reserve concurrency IT is written first and stays red until
-phase 3; each phase red first at its named seam) · `riviera-review-overlay` (review gate — <runs at
-ready-for-review>) · `riviera-docs-freshness` (<ran / N/A at close-out>) · `grilling` (the intake
+phase 3; each phase red first at its named seam) · `riviera-review-overlay` (review gate ran on
+`72a19bf7..bf3e1b60` via `code-review:code-review` + the overlay: two RV-FE findings fixed, F-7/F-8;
+RV-PROC-1/2 walked, F-10) · `riviera-docs-freshness` (<ran / N/A at close-out>) · `grilling` (the intake
 questions answered from the code; the calls a colleague would make are recorded as resolved
 assumptions below) · `riviera-local-debug` (clone unshallowed; system Gradle on the JDK 21 daemon
 compiling on the JDK 25 toolchain; scoped `--tests`; the structural net after the port, event and
@@ -204,7 +205,7 @@ stands in for `feature/remodel-commit`).
   the booking view offers the full-refund cancel. *Seam:* the running SPA against `page.route` mocks
   · *Pinned by:* `frontend/e2e/layout-editor.e2e.ts` "commits…" cases,
   `frontend/e2e/moved-booking.e2e.ts`
-- [ ] **AC-14:** Against the real backend: an operator creates a venue and a three-set row, a guest
+- [x] **AC-14:** Against the real backend: an operator creates a venue and a three-set row, a guest
   books A1 through the real challenge, the operator paints A1 to a gap, previews, commits; the mock
   outbox read shows a `BOOKING_MOVED` mail to the guest naming A1 → A2; the guest opens the booking,
   sees the move and the deadline, **cancels**, and is told the full refund. *Seam:* the running SPA
@@ -438,9 +439,9 @@ never `[disabled]` on the pressed control, `focusMover` on every leg — no devi
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 9) — draft PR #1052 open; CI red on the phase-7 head (plan guard, two backend contexts) fixed in the phase-8 commit`
+**Stage pointer:** `review → merge — PR #1052 ready for review; review gate run, findings fixed; waiting on CI (frontend job blocked by Google's apt mirror) and the Sonar gate`
 
-**Next action:** the final real-backend run against the fixed backend, CI green, ready for review, the review gate.
+**Next action:** CI green on the current head, the Sonar list cleared, merge, then the close-out checklist (`pr-gates.md` §3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -461,6 +462,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (phase-7 head) | `check-plan-file-structure.mjs` named 16 touched paths the File structure omitted | fixed — phase-8 commit |
+| F-2 | CI (phase-7 head) | `RecoveryMailerFailureIT` context: `MockMailOutboxController` demanded a `MockMailer` bean the test had swapped for a `Mailer` double | fixed — `ObjectProvider<MockMailer>`, phase-8 commit |
+| F-3 | CI (phase-7 head) | `Operator*IT` cleanups deleted operators that `remodel_receipt.operator_id` referenced | fixed — the actor is recorded without a FK, like the audit trail; `RemodelCommitMigrationIT` pins it |
+| F-4 | real-backend run | the gap brush refused every locked cell, so the commit was unreachable from the UI | fixed — only a staff hold keeps the cell; resolved assumption above |
+| F-5 | real-backend run | a free-exit cancel in the FREE window said `POLICY` | fixed — `VENUE_CHANGE` whenever the exit is open |
+| F-6 | CI (phase-8 head) | `Frontend` job: `playwright install --with-deps` hit an apt `Hash Sum mismatch` on Google's mirror, twice | not this PR's — commented on the PR; e2e + build run locally |
+| F-7 | review gate (RV-FE-9) | a `REMODEL_REFUSED` re-render destroyed the focused Save without moving focus | fixed — focus to Back/Save after a stale re-render (2b8a9461) |
+| F-8 | review gate (RV-FE-10) | the stale note's `role="status"` was born with its text | fixed — the region always renders, only its text branches (2b8a9461) |
+| F-9 | review gate (RV-STYLE-1) | `LockedSet` "never both"; `cancelledOpener` doc said only `POLICY` is the guest's act | fixed (1958c6ef, 2b8a9461) |
+| F-10 | review gate (RV-PROC-2c) | `RESPONSIBILITIES.md` cited `ReplaceRejection.ROW_NAME_TAKEN` after the rename | fixed (1e93a7f6) |
 
 ---
 
@@ -601,6 +612,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `CONTEXT.md` — the four entries
 - `RESPONSIBILITIES.md` — the five sections
 - `docs/adr/ADR-0020-remodel-orchestration-at-the-composition-root.md` — the status line
+- `docs/runbooks/observability.md` — the `riviera_mail_move_abandoned_total` counter joins the abandoned family
 - `docs/plans/remodel-preview.md` — retired
 - `docs/plans/remodel-commit.md` — this plan
 
@@ -614,72 +626,72 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `RemodelCommitMigrationIT` (moved_at present and nullable; `VENUE_CHANGE` accepted on both tables;
 `remodel_receipt_move` rejects a negative distance and an orphan receipt; every FK column indexed).
 
-- [ ] Red: `gradle test --tests "*RemodelCommitMigrationIT*"` fails on the missing column.
-- [ ] Green; commit `Add the remodel-commit schema and the VENUE_CHANGE reason (#1034)`.
+- [x] Red: `gradle test --tests "*RemodelCommitMigrationIT*"` fails on the missing column.
+- [x] Green; commit `Add the remodel-commit schema and the VENUE_CHANGE reason (#1034)`.
 
 ## Phase 1 — `booking`
 
 **Files:** the `booking` entries above.
 
-- [ ] `PreviewTokenTest` red → `PreviewToken` green.
-- [ ] `BookingCutoffFreeExitTest` (the three arms) red → `freeExitEndsAt` green.
-- [ ] `CancellationPolicyFreeExitTest` red → the override (`RefundQuote` gains `reason` and
+- [x] `PreviewTokenTest` red → `PreviewToken` green.
+- [x] `BookingCutoffFreeExitTest` (the three arms) red → `freeExitEndsAt` green.
+- [x] `CancellationPolicyFreeExitTest` red → the override (`RefundQuote` gains `reason` and
   `freeExitUntil`) green; `CancelBookingServiceTest` pins the reason on the event and the `FULL` tier.
-- [ ] `JdbcRemodelReceiptsIT` red → `JdbcRemodelReceipts` (record, list, detail, latest move) green;
+- [x] `JdbcRemodelReceiptsIT` red → `JdbcRemodelReceipts` (record, list, detail, latest move) green;
   `JdbcBookingPresenceIT` pins `hasBookings` on a receipt-named set.
-- [ ] `RemodelClaimsServiceTest.commit*` red → `RemodelClaimsService#commit`, `RemodelCommit`,
+- [x] `RemodelClaimsServiceTest.commit*` red → `RemodelClaimsService#commit`, `RemodelCommit`,
   `BookingMoved`, `Bookings#moveToSet` green.
-- [ ] Commit `Move bookings under the venue lock: token, free exit, receipts, BookingMoved (#1034)`.
+- [x] Commit `Move bookings under the venue lock: token, free exit, receipts, BookingMoved (#1034)`.
 
 ## Phase 2 — `venue`
 
-- [ ] `LayoutWriterTest` red (the PUT's cases moved over, plus the gate's two arms) →
+- [x] `LayoutWriterTest` red (the PUT's cases moved over, plus the gate's two arms) →
   `LayoutWriter`/`LayoutWrite` green; `BeachMapEditService#replaceLayout` delegates.
-- [ ] `BeachMapRemodelServiceTest.commit*` red → `BeachMapRemodel#commit`, `LayoutCell`,
+- [x] `BeachMapRemodelServiceTest.commit*` red → `BeachMapRemodel#commit`, `LayoutCell`,
   `RemodelGate`, `LayoutCommitOutcome`, `LayoutRejection` green.
-- [ ] `gradle test --tests "*BeachMapDiffConcurrencyIT*"` green through the writer.
-- [ ] Commit `Give the layout write a gate the remodel commit asks before writing (#1034)`.
+- [x] `gradle test --tests "*BeachMapDiffConcurrencyIT*"` green through the writer.
+- [x] Commit `Give the layout write a gate the remodel commit asks before writing (#1034)`.
 
 ## Phase 3 — the edge
 
-- [ ] `RemodelCommitIT` red → `RemodelCommitService`, `RemodelCommitController`, the request and
+- [x] `RemodelCommitIT` red → `RemodelCommitService`, `RemodelCommitController`, the request and
   response, `RemodelPreviewAssembler` (+ `previewToken`), the security matchers green.
-- [ ] `RemodelReceiptIT` red → `RemodelReceiptController` + `RemodelReceiptService` green.
-- [ ] `CrossVenueDenialIT` gains the two probes; `MoveVsReserveConcurrencyIT` green (both orders).
-- [ ] The structural net + `EndpointRoleGateCoverageTest` + `PayoutModuleTest` + `ReviewSubmitFlowIT`.
-- [ ] Commit `Commit the remodel at the edge: the gate, the receipt read and the move-vs-reserve race (#1034)`;
+- [x] `RemodelReceiptIT` red → `RemodelReceiptController` + `RemodelReceiptService` green.
+- [x] `CrossVenueDenialIT` gains the two probes; `MoveVsReserveConcurrencyIT` green (both orders).
+- [x] The structural net + `EndpointRoleGateCoverageTest` + `PayoutModuleTest` + `ReviewSubmitFlowIT`.
+- [x] Commit `Commit the remodel at the edge: the gate, the receipt read and the move-vs-reserve race (#1034)`;
   open the draft PR.
 
 ## Phase 4 — `notification`
 
-- [ ] `BookingMovedMailListenerTest` red → listener, `BookingMovedMail`, `Mailer#sendBookingMoved`,
+- [x] `BookingMovedMailListenerTest` red → listener, `BookingMovedMail`, `Mailer#sendBookingMoved`,
   `TransactionalMailService`, `SentEmail.Kind.BOOKING_MOVED`, `moveFacts` green; `BookingMovedMailIT`
   proves the registry vehicle and suppression.
-- [ ] `MockMailOutboxController` + `WebSliceStubs` + the matcher; the role-gate test green.
-- [ ] Commit `Mail the guest their changed spot and expose the mock outbox for the real-backend run (#1034)`.
+- [x] `MockMailOutboxController` + `WebSliceStubs` + the matcher; the role-gate test green.
+- [x] Commit `Mail the guest their changed spot and expose the mock outbox for the real-backend run (#1034)`.
 
 ## Phase 5 — the guest view and the exit at the HTTP seam
 
-- [ ] `FreeExitCancelIT` red → `ViewBookingService` (`move`, `freeExitUntil`), the two views,
+- [x] `FreeExitCancelIT` red → `ViewBookingService` (`move`, `freeExitUntil`), the two views,
   `MyBookingSummary.movedAt` green.
-- [ ] Commit `Show the move and honour the free exit on the guest's booking (#1034)`.
+- [x] Commit `Show the move and honour the free exit on the guest's booking (#1034)`.
 
 ## Phase 6 — the editor
 
-- [ ] Specs red → model/service, panel Save + stale note, receipt panel, editor commit flow, past
+- [x] Specs red → model/service, panel Save + stale note, receipt panel, editor commit flow, past
   remodels; a11y + contrast pairs; `npm run lint`, `npm run format:check`, `npm test`.
-- [ ] Commit `Let the operator save a moves-only remodel and read its receipt (#1034)`.
+- [x] Commit `Let the operator save a moves-only remodel and read its receipt (#1034)`.
 
 ## Phase 7 — the guest
 
-- [ ] Specs red → `booking-view` moved notice + free-exit copy, `my-bookings` chip.
-- [ ] Commit `Tell the guest their spot changed and offer the free exit (#1034)`.
+- [x] Specs red → `booking-view` moved notice + free-exit copy, `my-bookings` chip.
+- [x] Commit `Tell the guest their spot changed and offer the free exit (#1034)`.
 
 ## Phase 8 — e2e
 
-- [ ] `layout-editor.e2e.ts` commit + stale cases; `moved-booking.e2e.ts`; run the mocked suite.
-- [ ] `real-backend/remodel-move.e2e.ts`; run it where the stack runs (recorded honestly if not).
-- [ ] Commit `Drive preview → commit → mail → free-exit cancel end to end (#1034)`.
+- [x] `layout-editor.e2e.ts` commit + stale cases; `moved-booking.e2e.ts`; run the mocked suite.
+- [x] `real-backend/remodel-move.e2e.ts`; run it where the stack runs (recorded honestly if not).
+- [x] Commit `Drive preview → commit → mail → free-exit cancel end to end (#1034)`.
 
 ## Phase 9 — docs; close-out
 
@@ -705,27 +717,27 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **AC-1..AC-10:** `gradle --no-daemon test --tests "*MoveVsReserveConcurrencyIT*" --tests "*PreviewTokenTest*" --tests "*BookingCutoffFreeExitTest*" --tests "*CancellationPolicyFreeExitTest*" --tests "*RemodelClaimsServiceTest*" --tests "*BeachMapRemodelServiceTest*" --tests "*LayoutWriterTest*" --tests "*RemodelCommitIT*" --tests "*RemodelReceiptIT*" --tests "*CrossVenueDenialIT*" --tests "*BookingMovedMail*" --tests "*FreeExitCancelIT*"` green, plus the structural net command from `CLAUDE.md`, `EndpointRoleGateCoverageTest`, `CompositionRootDisciplineTests`, `PayoutModuleTest` — phases 0–5; CI runs the whole suite on PR #1052.
 - [x] **AC-11, AC-12:** `npx ng test --watch=false` — 251 files, 3065 tests green (phase 7 commit).
 - [x] **AC-13:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- e2e/layout-editor.e2e.ts e2e/moved-booking.e2e.ts` — 24 passed (phase 8).
-- [ ] **AC-14:** `npx playwright test e2e/real-backend/remodel-move.e2e.ts` against `gradle bootRun` + `npm start` in this session — result recorded below.
+- [x] **AC-14:** `npx playwright test e2e/real-backend/remodel-move.e2e.ts` against `gradle bootRun` (compose Postgres) + `npm start` in this session — 1 passed (10.7s), after F-4 and F-5.
 - [x] **AC-15:** the four `CONTEXT.md` entries, the five `RESPONSIBILITIES.md` sections, the nine-event list, ADR-0020's status — phase 9 commit.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
