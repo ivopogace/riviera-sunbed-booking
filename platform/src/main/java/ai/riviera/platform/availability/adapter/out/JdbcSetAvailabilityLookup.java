@@ -37,6 +37,8 @@ import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 @Repository
 class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 
+	private static final String SET_ID = "set_id";
+
 	private final JdbcClient jdbc;
 
 	JdbcSetAvailabilityLookup(JdbcClient jdbc) {
@@ -96,7 +98,7 @@ class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 				.param("ids", ids)
 				.param("from", from)
 				.query((rs, rowNum) -> Map.entry(
-						new SetId(rs.getLong("set_id")), rs.getObject("nearest", LocalDate.class)))
+						new SetId(rs.getLong(SET_ID)), rs.getObject("nearest", LocalDate.class)))
 				.list()
 				.stream()
 				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
@@ -116,7 +118,7 @@ class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 				""")
 				.param("date", date)
 				.param("ids", ids)
-				.query((rs, rowNum) -> Map.entry(new SetId(rs.getLong("set_id")), rs.getString("state")))
+				.query((rs, rowNum) -> Map.entry(new SetId(rs.getLong(SET_ID)), rs.getString("state")))
 				.list()
 				.stream()
 				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
@@ -164,7 +166,7 @@ class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 				.param("ids", ids)
 				.param("from", from)
 				.query((rs, rowNum) -> Map.entry(
-						new SetId(rs.getLong("set_id")), rs.getObject("booking_date", LocalDate.class)))
+						new SetId(rs.getLong(SET_ID)), rs.getObject("booking_date", LocalDate.class)))
 				.list()
 				.forEach(row -> holds.computeIfAbsent(row.getKey(), id -> new ArrayList<>()).add(row.getValue()));
 		holds.replaceAll((id, days) -> List.copyOf(days));

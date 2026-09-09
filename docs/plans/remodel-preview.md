@@ -339,6 +339,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-11 | re-review of the fix round | `RemodelPreviewPanel`'s class TSDoc still described a Save (prettier had joined the lines the first edit targeted) | fixed — 75d78e76 |
 | F-12 | re-review of the fix round (RV-BE-10) | the stale-token detail was asserted on the preview only, with no twin against the save | fixed — `RemodelPreviewIT` drives the stale PUT beside the stale preview and holds both to one sentence; the `NO_SUCH_VENUE` arm is unreachable over HTTP, since ownership asserts first and an unknown venue is nobody's (403) |
 | F-2 | review (shallow bug scan) | the dialog's Save re-read the grid at confirm time, so a cell painted behind the open dialog shipped un-previewed | fixed, then superseded by F-3 — with no Save in the dialog there is no confirm to carry a body |
+| F-13 | sonar (java:S1192 on `JdbcSetAvailabilityLookup`) | the third `rs.getLong("set_id")` the holds read added tripped the duplicated-literal rule | fixed — a `SET_ID` column constant, the customer adapters' precedent; new code otherwise 0 issues, 0 duplicated blocks, 93.5% new-code coverage |
 | F-1 | CI (`Backend (build + test)` on 42a9f039) | `JdbcBookingsLiveClaimsIT` seeded booking codes `LIVE0001…` that `JdbcBookingPresenceIT` also seeds; green alone, `DuplicateKeyException` on `booking_code_uniq` in the full suite's shared database | fixed — codes and addresses minted per insert (`LC-<nanoTime>`); both classes green in one JVM |
 
 ---
