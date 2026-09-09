@@ -41,6 +41,16 @@ const VENUE_MAP = {
   sets: [],
 };
 
+/** The dry run's answer when a save disturbs nobody: the editor then saves without a dialog. */
+const EMPTY_PREVIEW = {
+  moves: [],
+  refunds: [],
+  releases: [],
+  staffHolds: [],
+  blocks: [],
+  keep: [],
+};
+
 test.use({ colorScheme: 'dark' });
 
 /** What the owner's read pins and what a refusal names: one lock, with the reason's dates. */
@@ -62,7 +72,9 @@ async function mockEditor(
   refusing: (MockLock & { rowLabel: string; positionNo: number })[] = [],
   seededSets: typeof VENUE_MAP.sets = [],
   locks: MockLock[] = [],
+  preview: object = EMPTY_PREVIEW,
 ): Promise<{
+  previews: Request[];
   puts: Request[];
   renames: Request[];
   bump: () => void;
@@ -70,6 +82,7 @@ async function mockEditor(
   releaseMap: () => void;
 }> {
   const puts: Request[] = [];
+  const previews: Request[] = [];
   const renames: Request[] = [];
   let sessionLive = false;
   let serverSetVersion = 0;
@@ -99,6 +112,12 @@ async function mockEditor(
     sessionLive = false;
     return route.fulfill({ status: 204, body: '' });
   });
+  // The remodel dry run a save that drops a loaded set asks first: answers `preview`, writes nothing.
+  await page.route(/\/api\/venues\/1\/beach-map\/preview$/, (route) => {
+    previews.push(route.request());
+    return route.fulfill({ json: preview });
+  });
+
   // GET: the owner's map read, parked by the gate too. PUT: locked → 409, stale token → 409, else 204 + bump.
   await page.route(/\/api\/venues\/1\/beach-map$/, async (route) => {
     if (route.request().method() === 'GET') {
@@ -169,7 +188,7 @@ async function mockEditor(
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
   );
-  return { puts, renames, bump, holdMap, releaseMap };
+  return { previews, puts, renames, bump, holdMap, releaseMap };
 }
 
 async function signIn(page: Page): Promise<void> {
@@ -351,6 +370,59 @@ const SEEDED_SETS = [
 
 /** Set 2 (row B, position 1) as a refusal names it: booked, so a save that removes it is refused. */
 const REFUSED_B1 = { setId: 2, rowLabel: 'B', positionNo: 1, bookedOn: '2026-09-12', heldOn: null };
+
+/** The remodel preview of a save that drops B1 with claims in every group — the blocked shape. */
+const BLOCKED_PREVIEW = {
+  moves: [
+    {
+      bookingId: 7,
+      bookingDate: '2026-09-20',
+      amount: { minorUnits: 2000, currency: 'EUR' },
+      from: { setId: 2, rowLabel: 'B', positionNo: 1 },
+      to: { setId: 1, rowLabel: 'A', positionNo: 1 },
+      rowsAway: 1,
+      positionsAway: 0,
+    },
+  ],
+  refunds: [
+    {
+      bookingId: 8,
+      bookingDate: '2026-09-22',
+      amount: { minorUnits: 2000, currency: 'EUR' },
+      from: { setId: 2, rowLabel: 'B', positionNo: 1 },
+    },
+  ],
+  releases: [
+    {
+      bookingId: 9,
+      bookingDate: '2026-09-23',
+      amount: { minorUnits: 2000, currency: 'EUR' },
+      from: { setId: 2, rowLabel: 'B', positionNo: 1 },
+      kind: 'DECLINE',
+    },
+  ],
+  staffHolds: [{ set: { setId: 2, rowLabel: 'B', positionNo: 1 }, dates: ['2026-09-15'] }],
+  blocks: [
+    {
+      bookingId: 10,
+      bookingDate: '2026-09-11',
+      amount: { minorUnits: 2000, currency: 'EUR' },
+      from: { setId: 2, rowLabel: 'B', positionNo: 1 },
+      reason: 'FROZEN',
+    },
+  ],
+  keep: [{ setId: 2, rowLabel: 'B', positionNo: 1 }],
+};
+
+/** The same save when only a move results — the one shape whose confirm proceeds to the PUT. */
+const MOVES_ONLY_PREVIEW = {
+  ...BLOCKED_PREVIEW,
+  refunds: [],
+  releases: [],
+  staffHolds: [],
+  blocks: [],
+  keep: [],
+};
 
 test('holds both surfaces until the map read settles (#721)', async ({ page }) => {
   const { holdMap, releaseMap } = await mockEditor(page, [], SEEDED_SETS);
@@ -678,6 +750,94 @@ test('a refused save marks the sets it names with the lock decoration and lists 
   await b1.click();
   await expect(b1).toHaveAttribute('data-state', 'standard');
   await expect(page.getByTestId('layout-lock-notice')).toContainText(/can’t become a gap/);
+});
+
+test('previews the remodel before a save that drops a held set: five groups, an inert Save, Back restores focus (#1033, + axe)', async ({
+  page,
+}) => {
+  const { previews, puts } = await mockEditor(page, [], SEEDED_SETS, [], BLOCKED_PREVIEW);
+  await page.goto('/operator/1/beach-map');
+  await signIn(page);
+  await page.getByTestId('layout-tool-gap').click();
+  const b1 = page.locator('[data-testid="layout-cell"][data-grid-row="1"][data-grid-col="0"]');
+  await b1.click();
+  await expect(b1).toHaveAttribute('data-state', 'gap');
+  await page.getByTestId('layout-save').click();
+
+  // The dry run first, then the dialog: every group, the set to keep, no PUT, the save inert.
+  const dialog = page.getByTestId('layout-remodel-preview');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute('role', 'alertdialog');
+  await expect(dialog).toHaveAttribute('aria-label', 'Confirm remodel');
+  expect(previews).toHaveLength(1);
+  expect(puts).toHaveLength(0);
+  await expect(page.getByTestId('layout-remodel-moves')).toContainText(
+    'Row B · position 1 → Row A · position 1 · 1 row over · Sun 20 Sept 2026 · €20',
+  );
+  await expect(page.getByTestId('layout-remodel-refunds')).toContainText('refunded in full');
+  await expect(page.getByTestId('layout-remodel-releases')).toContainText(
+    'pending request declined',
+  );
+  await expect(page.getByTestId('layout-remodel-holds')).toContainText(
+    'held by staff Tue 15 Sept 2026',
+  );
+  await expect(page.getByTestId('layout-remodel-blocks')).toContainText(
+    'arrives within the freeze window',
+  );
+  await expect(page.getByTestId('layout-remodel-keep')).toContainText(
+    'Keep Row B · position 1 on the map to save.',
+  );
+  await expect(page.getByTestId('layout-remodel-save')).toHaveCount(0);
+  await expect(page.getByTestId('layout-remodel-back')).toBeFocused();
+  await expect(page.getByTestId('layout-save')).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByTestId('layout-remodel-bookings')).toHaveAttribute(
+    'href',
+    '/operator/1/daily',
+  );
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'layout editor, remodel preview open');
+  // The amber warn skin, by computed style: the fixed fill and its ink, whichever console theme.
+  await expect(dialog).toHaveCSS('background-color', 'rgb(255, 244, 224)');
+  await expect(dialog).toHaveCSS('color', 'rgb(122, 74, 8)');
+  await expect(page.getByTestId('layout-remodel-back')).toHaveCSS('min-height', '44px');
+
+  // Backing out leaves the grid as painted and hands focus back to Save; still no PUT.
+  await page.getByTestId('layout-remodel-back').click();
+  await expect(dialog).toBeHidden();
+  await expect(b1).toHaveAttribute('data-state', 'gap');
+  await expect(page.getByTestId('layout-save')).toBeFocused();
+  await expect(page.getByTestId('layout-save')).not.toHaveAttribute('aria-disabled', 'true');
+  expect(puts).toHaveLength(0);
+});
+
+test('a remodel preview that only moves offers Save, whose click issues the one PUT (#1033)', async ({
+  page,
+}) => {
+  const { previews, puts } = await mockEditor(page, [], SEEDED_SETS, [], MOVES_ONLY_PREVIEW);
+  await page.goto('/operator/1/beach-map');
+  await signIn(page);
+  await page.getByTestId('layout-tool-gap').click();
+  await page.locator('[data-testid="layout-cell"][data-grid-row="1"][data-grid-col="0"]').click();
+  await page.getByTestId('layout-save').click();
+
+  const dialog = page.getByTestId('layout-remodel-preview');
+  await expect(dialog).toBeVisible();
+  await expect(page.getByTestId('layout-remodel-keep')).toHaveCount(0);
+  await expect(page.getByTestId('layout-remodel-save')).toBeFocused();
+  await expect(page.getByTestId('layout-remodel-save')).toHaveCSS(
+    'background-color',
+    'rgb(154, 100, 16)', // --riv-solid-fill-warn
+  );
+  await expect(page.getByTestId('layout-remodel-save')).toHaveCSS('min-height', '44px');
+
+  await page.getByTestId('layout-remodel-save').click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId('layout-saved')).toBeVisible();
+  expect(previews).toHaveLength(1);
+  expect(puts).toHaveLength(1);
+  const body = puts[0].postDataJSON() as { sets: { gridX: number; gridY: number }[] };
+  expect(body.sets.map((set) => [set.gridX, set.gridY])).toEqual([[1, 1]]);
 });
 
 test('a stale-tab save is rejected 409, keeps the painted grid, and Reload recovers (#226, + axe)', async ({
