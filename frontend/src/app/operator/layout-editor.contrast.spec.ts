@@ -57,6 +57,8 @@ const STANDARD_FILL_ALPHA = 0.85;
 const WALKIN_BAND_ALPHAS = [0.3, 0.1] as const;
 
 const ERROR_HEX = rgbToHex(ERROR_INK);
+// tailwind.css `--riv-premium-ink` in porcelain: the premium tile's own numeral and lock-glyph ink.
+const PREMIUM_INK_HEX = rgbToHex(PREMIUM_INK);
 
 describe('LayoutEditor porcelain contrast (WCAG AA, #172)', () => {
   it('panel headings + promenade banner (--riv-card-ink) meet AA on the card glass', () => {
@@ -133,6 +135,27 @@ describe('LayoutEditor porcelain contrast (WCAG AA, #172)', () => {
     }
   });
 
+  it('the lock glyph, drawn in the tile ink, marks a locked cell at 3:1 over every cell kind’s own worst fill (WCAG 1.4.11, #1031)', () => {
+    for (const stop of PREMIUM_FILL_STOPS) {
+      expect(contrastRatio(PREMIUM_INK_HEX, stop), `premium fill ${stop}`).toBeGreaterThanOrEqual(
+        AA_LARGE,
+      );
+    }
+    for (const stop of WASH_STOPS) {
+      const standard = rgbToHex(composite([255, 255, 255], STANDARD_FILL_ALPHA, stop));
+      expect(contrastRatio(TILE_NUMBER_INK, standard)).toBeGreaterThanOrEqual(AA_LARGE);
+      for (const band of WALKIN_BAND_ALPHAS) {
+        const walkin = rgbToHex(composite(CARD_INK, band, stop));
+        expect(contrastRatio(TILE_NUMBER_INK, walkin)).toBeGreaterThanOrEqual(AA_LARGE);
+      }
+    }
+  });
+
+  it('the lock legend and the refusal notice (card ink, soft and full) meet AA on the card glass (#1031)', () => {
+    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
+    expectAaOverStops(INK_DARK, 1, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
+  });
+
   it('sanity: the design cyan (#0e8aa8) that we replaced would have FAILED AA with white', () => {
     // Documents WHY the buttons use --riv-cta-grad, not the design gradient — guards against a re-swap.
     expect(contrastRatio('#ffffff', '#0e8aa8')).toBeLessThan(AA_NORMAL);
@@ -187,6 +210,27 @@ describe.each(CONSOLE_THEMES)(
             contrastRatio(rgbToHex(theme.ink), rgbToHex(walkin)),
             `${theme.name}: walk-in (band ${band}) over ${wash}`,
           ).toBeGreaterThanOrEqual(AA_NORMAL);
+        }
+      }
+    });
+
+    it('the lock glyph (the tile ink) marks a locked cell at 3:1 over every cell kind’s own worst fill (#1031)', () => {
+      for (const stop of theme.premiumStops) {
+        expect(
+          contrastRatio(rgbToHex(theme.premiumInk), rgbToHex(stop)),
+          `${theme.name}: premium fill ${rgbToHex(stop)}`,
+        ).toBeGreaterThanOrEqual(AA_LARGE);
+      }
+      for (const stop of theme.washStops) {
+        const standard = composite(theme.inset, STANDARD_FILL_ALPHA, stop);
+        expect(contrastRatio(rgbToHex(theme.ink), rgbToHex(standard))).toBeGreaterThanOrEqual(
+          AA_LARGE,
+        );
+        for (const band of WALKIN_BAND_ALPHAS) {
+          const walkin = composite(theme.tint, band, stop);
+          expect(contrastRatio(rgbToHex(theme.ink), rgbToHex(walkin))).toBeGreaterThanOrEqual(
+            AA_LARGE,
+          );
         }
       }
     });

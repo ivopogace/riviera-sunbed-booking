@@ -42,12 +42,16 @@
                   [attr.data-grid-y]="cell.gridY"
                   [attr.aria-pressed]="cell.selected"
                   [attr.aria-label]="cell.label"
-                  [title]="cell.label"
+                  [attr.aria-describedby]="
+                    cell.lock ? 'set-cell-lock-' + cell.gridX + '-' + cell.gridY : null
+                  "
+                  [attr.data-locked]="cell.lock ? 'true' : null"
+                  [title]="cell.lock ? cell.label + '. ' + lockText(cell.lock) : cell.label"
                   (mousedown)="onCellMouseDown(cell.gridX, cell.gridY, $event)"
                   (mouseenter)="onCellMouseEnter(cell.gridX, cell.gridY, $event)"
                   (click)="onCell(cell.gridX, cell.gridY, cell.setId)"
                   data-testid="set-cell"
-                  class="h-full min-w-0 flex items-center justify-center scroll-mb-[35vh] rounded-[8px] border text-[12.5px] font-bold [transition:scale_0.1s_ease,box-shadow_0.12s_ease,translate_0.12s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:hover:translate-y-0 lg:scroll-mb-0"
+                  class="relative h-full min-w-0 flex items-center justify-center scroll-mb-[35vh] rounded-[8px] border text-[12.5px] font-bold [transition:scale_0.1s_ease,box-shadow_0.12s_ease,translate_0.12s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:hover:translate-y-0 lg:scroll-mb-0"
                   [class]="
                     cell.selected
                       ? 'selected -translate-y-1 ring-2 ring-offset-2 ring-riv-accent-ink shadow-[0_6px_14px_rgba(10,95,116,0.4)]'
@@ -56,6 +60,12 @@
                 >
                   @if (cell.state !== 'gap') {
                     <span aria-hidden="true">{{ cell.gridX }}</span>
+                  }
+                  @if (cell.lock; as lock) {
+                    <app-lock-icon class="absolute top-0.5 right-0.5 [&_svg]:size-[9px]" />
+                    <span class="sr-only" [id]="'set-cell-lock-' + cell.gridX + '-' + cell.gridY">{{
+                      lockText(lock)
+                    }}</span>
                   }
                 </button>
               }
@@ -413,7 +423,7 @@
                 appTouchTarget
                 type="button"
                 (click)="armMove()"
-                [disabled]="dirty()"
+                [disabled]="dirty() || selectedLock() !== undefined"
                 [appBusy]="busy()"
                 data-testid="set-move"
                 class="rounded-[14px] border border-riv-card-border bg-riv-console-inset/45 px-4 py-2.5 text-[13.5px] font-semibold text-riv-card-ink disabled:opacity-50 aria-disabled:opacity-50"
@@ -424,13 +434,24 @@
                 appTouchTarget
                 type="button"
                 (click)="askRemove()"
+                [disabled]="selectedLock() !== undefined"
                 [appBusy]="busy()"
                 data-testid="set-remove"
-                class="rounded-[14px] border border-riv-alert-tint/40 px-4 py-2.5 text-[13.5px] font-bold text-riv-error-ink aria-disabled:opacity-50"
+                class="rounded-[14px] border border-riv-alert-tint/40 px-4 py-2.5 text-[13.5px] font-bold text-riv-error-ink disabled:opacity-50 aria-disabled:opacity-50"
               >
                 Remove
               </button>
             </div>
+
+            @if (selectedLockReason(); as reason) {
+              <p
+                class="mt-2 flex items-start gap-1.5 text-[11.5px] leading-[1.4] text-riv-card-ink-soft"
+                data-testid="set-locked-reason"
+              >
+                <app-lock-icon class="mt-[2px] shrink-0 [&_svg]:size-[11px]" />
+                <span>{{ reason }}</span>
+              </p>
+            }
 
             @if (dirty()) {
               <p

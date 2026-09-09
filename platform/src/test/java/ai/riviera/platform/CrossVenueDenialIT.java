@@ -268,6 +268,16 @@ class CrossVenueDenialIT {
 	}
 
 	@Test
+	void beachMapReadByNonOwnerIs403() throws Exception {
+		// Which sets guests hold is operator data — denied BEFORE any existence probe (invariant #13).
+		actingAs(operatorA);
+		mvc.perform(get("/api/venues/{v}/beach-map", MIRAMAR).cookie(operatorSession))
+				.andExpect(status().isForbidden())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
 	void staffAvailabilityMarkByNonOwnerIs403_evenWhenSpoofingThePathVenue() throws Exception {
 		// A owns venueOwnedByA and puts it in the PATH, but targets a Miramar setId. The check must
 		// resolve the venue from the set (Miramar → owned by B), not the path → 403 (invariant #13, R-2).
@@ -389,6 +399,10 @@ class CrossVenueDenialIT {
 		mvc.perform(get("/api/venues/{v}/availability", venueOwnedByB).cookie(operatorSession)
 						.param("date", "2026-09-14"))
 				.andExpect(status().isOk());
+		// Likewise the owner's beach-map read (B is ACTIVE, so the map's visibility fence passes).
+		mvc.perform(get("/api/venues/{v}/beach-map", venueOwnedByB).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.locks.length()").value(0));
 		// A weather refund on a day with no bookings is a no-op (200), not a 403 — the check passed.
 		mvc.perform(post("/api/venues/{v}/weather-refund", venueOwnedByB).cookie(operatorSession)
 						.with(csrf()).param("date", "2019-02-02"))

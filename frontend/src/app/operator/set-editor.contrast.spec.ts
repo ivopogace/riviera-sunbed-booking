@@ -80,6 +80,10 @@ describe('SetEditor porcelain contrast (WCAG AA, #600)', () => {
     }
   });
 
+  it('the locked-set reason (card ink soft) meets AA on the card glass; the disabled Move/Remove are exempt at opacity 50 (WCAG 1.4.3, #1031)', () => {
+    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
+  });
+
   it('the remove confirmation reads AA on its warning surface, in both directions it uses', () => {
     expect(contrastRatio('#7a4a08', '#fff4e0')).toBeGreaterThanOrEqual(AA_NORMAL);
     // "Remove set" is white on the solid destructive fill, not the outlined variant.
@@ -135,6 +139,10 @@ describe.each(CONSOLE_THEMES)(
       expectAaOnSurfaces(theme, theme.ink, 1, (stop) =>
         tintOver(theme, theme.selectTint, 0.2, stop),
       );
+    });
+
+    it('the locked-set reason (card ink soft) meets AA on the card glass (#1031)', () => {
+      expectAaOnSurfaces(theme, theme.ink, CARD_INK_SOFT_ALPHA, (stop) => cardOver(theme, stop));
     });
 
     it('the price field (card ink on the inset/60) meets AA', () => {

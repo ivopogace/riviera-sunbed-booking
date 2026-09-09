@@ -83,7 +83,15 @@ describe('Operator console — in-place venue switch over the real routes (#180)
 
   /** Flush every read the shell + strip + layout tab fire for a venue (order-independent). */
   function flushVenueReads(id: number, name: string, pending = 1): void {
-    // Two venue-map GETs: the shared snapshot (the shell's name + the strip) + the layout editor's direct read.
+    // The shared venue-map snapshot (the shell's name + the strip); the layout editor reads the owner's map below.
+    http
+      .match((r) => r.method === 'GET' && r.url === `${BASE}/api/venues/${id}/beach-map`)
+      .forEach((req) =>
+        req.flush({
+          map: { id, name, beach: 'Ksamil', region: 'Riviera', sets: [], setVersion: 1 },
+          locks: [],
+        }),
+      );
     http
       .match((r) => r.method === 'GET' && r.url === `${BASE}/api/venues/${id}`)
       .forEach((req) =>

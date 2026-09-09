@@ -1,6 +1,8 @@
 package ai.riviera.platform.booking.adapter.out;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,11 +17,12 @@ import ai.riviera.platform.venue.spi.BookingPresence;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The three {@code venue.spi.BookingPresence} probes and the two different questions they answer.
+ * The four {@code venue.spi.BookingPresence} probes and the two different questions they answer.
  * The venue- and set-scoped {@code hasBookings} count a booking of <em>any</em> status, including
  * terminal history, because any booking pins its set through the RESTRICT {@code booking.set_id}
  * FK — that is the delete guard. {@code hasLiveBookings} counts only non-terminal ones — the edit
@@ -100,6 +103,30 @@ class JdbcBookingPresenceIT {
 		}
 	}
 
+	/**
+	 * The read the owner's beach map pins a locked cell with: per set, the earliest date a guest may
+	 * still turn up on. Finished history never answers, a set whose whole history is finished is
+	 * absent, and a neighbour's booking never bleeds across.
+	 */
+	@Test
+	void nearestLiveBookingsAnswersTheEarliestHonourableDatePerSet() {
+		long venueId = insertVenue("Nearest Venue");
+		long twiceBooked = insertSet(venueId, 1);
+		long finishedOnly = insertSet(venueId, 2);
+		long neverBooked = insertSet(venueId, 3);
+		insertBooking("NEAR0001", venueId, twiceBooked, "CANCELLED", LocalDate.of(2027, 6, 10));
+		insertBooking("NEAR0002", venueId, twiceBooked, "CONFIRMED", LocalDate.of(2027, 6, 22));
+		insertBooking("NEAR0003", venueId, twiceBooked, "PENDING_REQUEST", LocalDate.of(2027, 6, 25));
+		insertBooking("NEAR0004", venueId, finishedOnly, "COMPLETED", LocalDate.of(2027, 6, 1));
+
+		assertEquals(Map.of(new SetId(twiceBooked), LocalDate.of(2027, 6, 22)),
+				presence.nearestLiveBookings(List.of(
+						new SetId(twiceBooked), new SetId(finishedOnly), new SetId(neverBooked))),
+				"the earliest non-terminal date; the cancelled one before it and the finished set are absent");
+		assertEquals(Map.of(), presence.nearestLiveBookings(List.of()),
+				"an empty input answers empty without a query");
+	}
+
 	private long insertVenue(String name) {
 		return jdbc.sql("""
 				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
@@ -118,6 +145,10 @@ class JdbcBookingPresenceIT {
 	}
 
 	private void insertBooking(String code, long venueId, long setId, String status) {
+		insertBooking(code, venueId, setId, status, LocalDate.of(2027, 8, 10));
+	}
+
+	private void insertBooking(String code, long venueId, long setId, String status, LocalDate date) {
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();
@@ -127,7 +158,7 @@ class JdbcBookingPresenceIT {
 				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', :status)
 				""")
 				.param("code", code).param("venue", venueId).param("set", setId)
-				.param("cust", customer).param("date", LocalDate.of(2027, 8, 10))
+				.param("cust", customer).param("date", date)
 				.param("status", status).update();
 	}
 }

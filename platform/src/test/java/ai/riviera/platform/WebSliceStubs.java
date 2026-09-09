@@ -129,6 +129,7 @@ import ai.riviera.platform.venue.application.VenueCommissionAdministration;
 import ai.riviera.platform.venue.application.VenueCommissionView;
 import ai.riviera.platform.venue.application.VenuePhotoModeration;
 import ai.riviera.platform.venue.application.VenuePhotos;
+import ai.riviera.platform.venue.application.ViewBeachMap;
 import ai.riviera.platform.venue.application.ViewDailyAvailability;
 import ai.riviera.platform.venue.application.ViewVenueProfile;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
@@ -939,6 +940,12 @@ class WebSliceStubs {
 	@Bean
 	ViewDailyAvailability viewDailyAvailability() {
 		return (_, _, _) -> Optional.empty();
+	}
+
+	/** The owner beach-map read behind {@code GET /api/venues/{id}/beach-map}. */
+	@Bean
+	ViewBeachMap viewBeachMap() {
+		return (_, _) -> Optional.empty();
 	}
 
 	/**

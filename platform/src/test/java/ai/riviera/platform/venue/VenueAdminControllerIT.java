@@ -294,6 +294,73 @@ class VenueAdminControllerIT {
 	}
 
 	@Test
+	void beachMapReadCarriesALockPerClaimedSetAndNothingForAFreeSet() throws Exception {
+		long venue = createVenue("Pinned Club");
+		long booked = addSet(venue, setBody("A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
+		long staffHeld = addSet(venue, setBody("A", 2, "STANDARD", "ONLINE", 3000, "EUR", 2, 1));
+		addSet(venue, setBody("A", 3, "STANDARD", "WALK_IN", 2500, "EUR", 3, 1));
+		seedBooking("PINNED01", venue, booked, "CONFIRMED", LocalDate.of(2027, 7, 1));
+		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
+						+ "VALUES (:set, DATE '2027-07-01', 'BOOKED_ONLINE')")
+				.param("set", booked).update();
+		// Tomorrow, not today: this test's clock and the guard's may straddle midnight (see removeSet…).
+		LocalDate tomorrow = LocalDate.now(ZoneId.of("Europe/Tirane")).plusDays(1);
+		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
+						+ "VALUES (:set, :day, 'STAFF_MARKED')")
+				.param("set", staffHeld).param("day", tomorrow).update();
+
+		mvc.perform(get("/api/venues/{v}/beach-map", venue).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.map.id").value(venue))
+				.andExpect(jsonPath("$.map.sets.length()").value(3))
+				.andExpect(jsonPath("$.map.setVersion").isNumber())
+				.andExpect(jsonPath("$.locks.length()").value(2))
+				.andExpect(jsonPath("$.locks[0].setId").value(booked))
+				.andExpect(jsonPath("$.locks[0].bookedOn").value("2027-07-01"))
+				.andExpect(jsonPath("$.locks[0].heldOn").value("2027-07-01"))
+				.andExpect(jsonPath("$.locks[1].setId").value(staffHeld))
+				.andExpect(jsonPath("$.locks[1].bookedOn").value(Matchers.nullValue()))
+				.andExpect(jsonPath("$.locks[1].heldOn").value(tomorrow.toString()));
+	}
+
+	@Test
+	void beachMapReadIgnoresPastHoldsAndFinishedBookings() throws Exception {
+		// The read's lock is the write guard's lock: what would not refuse a move does not pin a cell.
+		long venue = createVenue("History Club");
+		long setId = addSet(venue, setBody("A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
+		seedBooking("HISTRY01", venue, setId, "CANCELLED", LocalDate.of(2026, 7, 1));
+		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
+						+ "VALUES (:set, :day, 'STAFF_MARKED')")
+				.param("set", setId)
+				.param("day", LocalDate.now(ZoneId.of("Europe/Tirane")).minusDays(1)).update();
+
+		mvc.perform(get("/api/venues/{v}/beach-map", venue).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.map.sets.length()").value(1))
+				.andExpect(jsonPath("$.locks.length()").value(0));
+	}
+
+	@Test
+	void beachMapReadRequiresOperator() throws Exception {
+		// Gated OPERATOR ahead of the public venue GET — which sets guests hold never serves publicly.
+		mvc.perform(get("/api/venues/{v}/beach-map", MIRAMAR))
+				.andExpect(status().isUnauthorized());
+	}
+
+	private void seedBooking(String code, long venue, long setId, String status, LocalDate date) {
+		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
+						+ "VALUES (:email, 'Guest', '+355600') RETURNING id")
+				.param("email", code.toLowerCase() + "@example.com").query(Long.class).single();
+		jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
+				                     amount_minor, amount_currency, status)
+				VALUES (:code, :venue, :set, :cust, :date, 3000, 'EUR', :status)
+				""")
+				.param("code", code).param("venue", venue).param("set", setId)
+				.param("cust", customer).param("date", date).param("status", status).update();
+	}
+
+	@Test
 	void dailyAvailabilityRequiresOperator() throws Exception {
 		// AC-4: gated OPERATOR ahead of the public venue GET — the hold split never serves publicly.
 		mvc.perform(get("/api/venues/{v}/availability", MIRAMAR).param("date", "2026-09-14"))

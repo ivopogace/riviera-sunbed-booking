@@ -91,7 +91,11 @@ interface MockConsole {
   setVersion: () => number;
 }
 
-async function mockConsole(page: Page, seed = seedSets()): Promise<MockConsole> {
+async function mockConsole(
+  page: Page,
+  seed = seedSets(),
+  locks: { setId: number; bookedOn: string | null; heldOn: string | null }[] = [],
+): Promise<MockConsole> {
   let sessionLive = false;
   let sets = seed;
   let nextId = 20;
@@ -187,8 +191,25 @@ async function mockConsole(page: Page, seed = seedSets()): Promise<MockConsole> 
     gridY: number;
   }
 
-  // The bulk save's PUT, on the same setVersion token as the batch apply above.
+  const venueMap = () => ({
+    id: 1,
+    name: 'Miramar Beach Club',
+    beach: 'Ksamil',
+    region: 'Albanian Riviera',
+    description: '',
+    ratingTenths: 48,
+    reviewsCount: 12,
+    bookingMode: 'INSTANT',
+    fromPrice: null,
+    sets,
+    setVersion,
+  });
+
+  // GET: the owner's map read with the locks it was told. PUT: the bulk save, on the batch apply's token.
   await page.route(/\/api\/venues\/1\/beach-map$/, (route) => {
+    if (route.request().method() === 'GET') {
+      return route.fulfill({ json: { map: venueMap(), locks } });
+    }
     if (route.request().method() !== 'PUT') return route.fallback();
     const body = route.request().postDataJSON() as {
       sets: readonly LayoutCellBody[];
@@ -210,23 +231,7 @@ async function mockConsole(page: Page, seed = seedSets()): Promise<MockConsole> 
   });
 
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.request().method() === 'GET'
-      ? route.fulfill({
-          json: {
-            id: 1,
-            name: 'Miramar Beach Club',
-            beach: 'Ksamil',
-            region: 'Albanian Riviera',
-            description: '',
-            ratingTenths: 48,
-            reviewsCount: 12,
-            bookingMode: 'INSTANT',
-            fromPrice: null,
-            sets,
-            setVersion,
-          },
-        })
-      : route.fallback(),
+    route.request().method() === 'GET' ? route.fulfill({ json: venueMap() }) : route.fallback(),
   );
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
@@ -292,6 +297,7 @@ test('a venue with sets opens in per-set editing, and one set’s pool + price s
 test('a booked set changes pool freely but cannot be moved or removed, and says so', async ({
   page,
 }) => {
+  // The map read predates the claim (no lock served), so the server's refusal is what the panel explains.
   const mock = await mockConsole(page);
   await page.goto('/operator/1/beach-map');
   await signIn(page);
@@ -387,7 +393,6 @@ test('grows the grid to add a lounger, moves it, then removes it', async ({ page
 test('a mostly-vertical drag sweeps a column of sets instead of panning the map (#714)', async ({
   page,
 }) => {
-  await mockConsole(page);
   // A 12-row map, so the wash scroller overflows its 532px cap.
   const tallSets: MockSet[] = [];
   let id = 100;
@@ -406,25 +411,7 @@ test('a mostly-vertical drag sweeps a column of sets instead of panning the map 
       });
     }
   }
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.request().method() === 'GET'
-      ? route.fulfill({
-          json: {
-            id: 1,
-            name: 'Miramar Beach Club',
-            beach: 'Ksamil',
-            region: 'Albanian Riviera',
-            description: '',
-            ratingTenths: 48,
-            reviewsCount: 12,
-            bookingMode: 'INSTANT',
-            fromPrice: null,
-            sets: tallSets,
-            setVersion: 0,
-          },
-        })
-      : route.fallback(),
-  );
+  await mockConsole(page, tallSets);
 
   await page.goto('/operator/1/beach-map');
   await signIn(page);
@@ -538,12 +525,15 @@ test('the locked bulk save points at per-set editing instead of claiming it is i
   page,
 }) => {
   await mockConsole(page);
+  // The bulk PUT only: the owner's GET on the same path still seeds the editor.
   await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
-    route.fulfill({
-      status: 409,
-      contentType: 'application/problem+json',
-      json: { code: 'LAYOUT_IN_USE', detail: 'locked' },
-    }),
+    route.request().method() === 'PUT'
+      ? route.fulfill({
+          status: 409,
+          contentType: 'application/problem+json',
+          json: { code: 'LAYOUT_IN_USE', detail: 'locked' },
+        })
+      : route.fallback(),
   );
   await page.goto('/operator/1/beach-map');
   await signIn(page);
@@ -708,4 +698,39 @@ test('a set-less venue is pointed at the bulk generator, and adds its first set 
   await expect(page.getByTestId('set-selected')).toHaveText(/Row A · position 1/);
   await expect(page.getByTestId('set-panel-no-sets')).toHaveCount(0);
   expect(mock.sets()).toHaveLength(1);
+});
+
+test('a locked set disables Move and Remove with the reason before any request, and still saves a repool (#1031, + axe)', async ({
+  page,
+}) => {
+  const mock = await mockConsole(page, seedSets(), [
+    { setId: CLAIMED_SET_ID, bookedOn: '2026-09-12', heldOn: '2026-09-12' },
+  ]);
+  await page.goto('/operator/1/beach-map');
+  await signIn(page);
+
+  const locked = cell(page, 2, 2);
+  await expect(locked).toHaveAttribute('data-locked', 'true');
+  await expect(locked).toHaveAccessibleDescription(/booked Sat 12 Sept 2026/);
+  await expect(cell(page, 1, 1)).not.toHaveAttribute('data-locked', 'true');
+
+  await locked.click();
+  await expect(page.getByTestId('set-move')).toBeDisabled();
+  await expect(page.getByTestId('set-remove')).toBeDisabled();
+  await expect(page.getByTestId('set-locked-reason')).toContainText(
+    /booked Sat 12 Sept 2026, so it can’t be moved or removed/,
+  );
+  await expect(page.getByTestId('set-locked-reason')).toContainText(
+    /price, tier and pool can still change/i,
+  );
+  await expectNoSeriousAxeViolations(page, 'set editor, locked set selected');
+
+  // The lock never means unpaintable: the pool switch still lands, and the map repaints it walk-in.
+  await page.getByTestId('set-pool-WALK_IN').click();
+  await page.getByTestId('set-save').click();
+  await expect(page.getByTestId('set-saved')).toBeVisible();
+  expect(mock.sets().find((s) => s.id === CLAIMED_SET_ID)!.pool).toBe('WALK_IN');
+  await expect(locked).toHaveAttribute('data-state', 'walkin');
+  await expect(locked).toHaveAttribute('data-locked', 'true');
+  await expect(page.getByTestId('set-move')).toBeDisabled();
 });

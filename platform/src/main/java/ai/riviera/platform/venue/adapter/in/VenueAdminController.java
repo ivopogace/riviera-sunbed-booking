@@ -35,13 +35,15 @@ import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.application.ReplaceRejection;
 import ai.riviera.platform.venue.application.SetBatchOutcome;
 import ai.riviera.platform.venue.application.SetRejection;
+import ai.riviera.platform.venue.application.ViewBeachMap;
 import ai.riviera.platform.venue.application.ViewDailyAvailability;
 import ai.riviera.platform.venue.application.ViewVenueProfile;
 
 /**
- * Operator write endpoints for venue onboarding + beach-map editing (U7, issue #7). Driving
- * adapter — depends only on the {@code venue} module's {@link OnboardVenue} / {@link EditBeachMap}
- * ports (invariant #11) plus the edge {@link CurrentOperator} resolver. These are an authenticated
+ * Operator endpoints for venue onboarding, beach-map editing and the owner's reads (U7). Driving
+ * adapter — depends only on the {@code venue} module's {@link OnboardVenue} / {@link EditBeachMap} /
+ * {@link EditVenueProfile} / {@link ViewVenueProfile} / {@link ViewDailyAvailability} /
+ * {@link ViewBeachMap} ports (invariant #11) plus the edge {@link CurrentOperator} resolver. These are an authenticated
  * operator surface (session cookie, role {@code OPERATOR}, configured in {@code SecurityConfig}); the
  * public U1 read endpoint is a separate controller. Outcomes map to HTTP via exhaustive
  * {@code switch}: created→201 (+Location), applied→204 (the batch apply→200 with its count),
@@ -62,7 +64,8 @@ import ai.riviera.platform.venue.application.ViewVenueProfile;
 @RequestMapping("/api/venues")
 class VenueAdminController {
 
-	/** The 404 problem detail shared by every NO_SUCH_VENUE outcome (profile write + beach-map edits). */
+	/** The 404 code and detail shared by every NO_SUCH_VENUE outcome (profile write, owner reads, beach-map edits). */
+	private static final String NO_SUCH_VENUE_CODE = "NO_SUCH_VENUE";
 	private static final String NO_SUCH_VENUE_DETAIL = "No such venue.";
 
 	/**
@@ -86,16 +89,19 @@ class VenueAdminController {
 	private final EditVenueProfile editVenueProfile;
 	private final ViewVenueProfile viewVenueProfile;
 	private final ViewDailyAvailability viewDailyAvailability;
+	private final ViewBeachMap viewBeachMap;
 	private final CurrentOperator currentOperator;
 
 	VenueAdminController(OnboardVenue onboardVenue, EditBeachMap editBeachMap,
 			EditVenueProfile editVenueProfile, ViewVenueProfile viewVenueProfile,
-			ViewDailyAvailability viewDailyAvailability, CurrentOperator currentOperator) {
+			ViewDailyAvailability viewDailyAvailability, ViewBeachMap viewBeachMap,
+			CurrentOperator currentOperator) {
 		this.onboardVenue = onboardVenue;
 		this.editBeachMap = editBeachMap;
 		this.editVenueProfile = editVenueProfile;
 		this.viewVenueProfile = viewVenueProfile;
 		this.viewDailyAvailability = viewDailyAvailability;
+		this.viewBeachMap = viewBeachMap;
 		this.currentOperator = currentOperator;
 	}
 
@@ -142,7 +148,23 @@ class VenueAdminController {
 		OperatorId operator = currentOperator.require(authentication);
 		return viewDailyAvailability.statesFor(operator, new VenueId(venueId), date)
 				.<ResponseEntity<?>>map(ResponseEntity::ok)
-				.orElseGet(() -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_VENUE",
+				.orElseGet(() -> ApiProblem.response(HttpStatus.NOT_FOUND, NO_SUCH_VENUE_CODE,
+						NO_SUCH_VENUE_DETAIL));
+	}
+
+	/**
+	 * The owner's beach map with its locked sets — owner-scoped (invariant #13): the service asserts
+	 * ownership before answering, so which sets a venue's guests hold never leaks to a non-owner
+	 * ({@code 403} via {@code ApiErrorHandler}). Gated to role OPERATOR ABOVE the public
+	 * {@code GET /api/venues/**} in {@code SecurityConfig}, beside the daily read. A free set has no
+	 * lock entry; a venue the map read answers nothing for is {@code 404 NO_SUCH_VENUE}.
+	 */
+	@GetMapping("/{venueId}/beach-map")
+	ResponseEntity<?> beachMap(Authentication authentication, @PathVariable long venueId) {
+		OperatorId operator = currentOperator.require(authentication);
+		return viewBeachMap.beachMapFor(operator, new VenueId(venueId))
+				.<ResponseEntity<?>>map(beachMap -> ResponseEntity.ok(OperatorBeachMapView.of(beachMap)))
+				.orElseGet(() -> ApiProblem.response(HttpStatus.NOT_FOUND, NO_SUCH_VENUE_CODE,
 						NO_SUCH_VENUE_DETAIL));
 	}
 
@@ -158,7 +180,7 @@ class VenueAdminController {
 		return switch (editVenueProfile.updateProfile(operator, new VenueId(venueId),
 				expectedVersion, command)) {
 			case APPLIED -> ResponseEntity.noContent().build();
-			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_VENUE",
+			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, NO_SUCH_VENUE_CODE,
 					NO_SUCH_VENUE_DETAIL);
 			case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, "STALE_WRITE",
 					STALE_PROFILE_DETAIL);

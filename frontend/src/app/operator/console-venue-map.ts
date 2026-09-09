@@ -23,13 +23,14 @@ const SNAPSHOT_TTL_MS = 30_000;
  * one request.
  *
  * <p><strong>Opt-in per call site, deliberately not a transparent cache inside `VenueService`.</strong>
- * Four of the seven `getVenueMap` callers want a shared snapshot (the console shell, the console
- * page, {@code RequestsTab}, {@code PricingTab}); the other three want server truth and keep calling {@link VenueService}
- * directly — {@code DailyViewTab} (its post-tap-to-mark reconcile must never render a set the
- * operator just marked as still free), {@code LayoutEditor} (it seeds its grid from the server and
- * re-reads to escape a write conflict), and the tourist beach map (a different feature). A
- * transparent layer would have staled all three silently, and freshness is the harder property to
- * get back.
+ * Four `getVenueMap` callers want a shared snapshot (the console shell, the console page,
+ * {@code RequestsTab}, {@code PricingTab}); the other two want server truth and keep calling
+ * {@link VenueService} directly — {@code DailyViewTab} (its post-tap-to-mark reconcile must never
+ * render a set the operator just marked as still free) and the tourist beach map (a different
+ * feature). {@code LayoutEditor} reads the owner-asserted beach map through the console service
+ * instead, for the same reason: it seeds its grid from the server and re-reads to escape a write
+ * conflict. A transparent layer would have staled all of them silently, and freshness is the harder
+ * property to get back.
  *
  * <p><strong>Bounded, single slot.</strong> Every consumer asks for the same key within one console
  * session, so one entry is enough — and a changed key (venue switch, midnight date rollover) evicts
