@@ -322,14 +322,14 @@ over `ngClass`/`ngStyle`. No `NgOptimizedImage` (no images). No deviation to doc
 
 ## Execution status
 
-**Stage pointer:** `plan — written, awaiting phase 0`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Run phase 0 — write `PayoutMigrationIT.feeRowIsAdmittedWithNoGrossAndNoCommission`
-red, then `V54__venue_change_fee.sql`.
+**Next action:** Add a `FEE` row to `PayoutLedgerViewIT` and `PayoutBatchGenerationIT`, and prove
+each bites by flipping S-1's `CASE` locally.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Migration V54 + `FEE` entry type + the fee factory | | |
+| 0 — Migration V54 + `FEE` entry type + the fee factory | ✅ | |
 | 1 — The ledger-sum audit: a `FEE` row in every read's test | | |
 | 2 — The listener posts the fee | | |
 | 3 — The fee on the preview and the receipt | | |
@@ -580,6 +580,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-10 | phase 0 | Every Java guard that mirrors a `payout_ledger_entry` CHECK — found by grepping the guards' own messages, not by looking where I expected them | `git grep -n "net must equal\|netMinor != grossMinor\|must be non-negative" -- platform/src/main/java` | 1 (`PayoutLedgerEntry`'s canonical constructor, both guards) | Relaxed the net guard on the same `entry_type = FEE` key as the DB; left the amounts guard binding, so a fee cannot be stored negative |
 
 ---
 
