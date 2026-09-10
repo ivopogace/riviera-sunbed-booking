@@ -9,6 +9,7 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.payout.application.PayoutLedger;
 import ai.riviera.platform.payout.application.VenueChangeFeeAmount;
+import ai.riviera.platform.payout.application.VenueChangeFeeSetting;
 import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -30,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -68,11 +70,17 @@ class BookingCancelledPayoutListenerTest {
 			BOOKING_ID.value(), REFUND_MINOR, 1500, "EUR");
 
 	private final PayoutLedger ledger = mock(PayoutLedger.class);
+	private final VenueChangeFeeSetting feeSetting = mock(VenueChangeFeeSetting.class);
 	private final BookingCancelledPayoutListener listener =
-			new BookingCancelledPayoutListener(ledger, new VenueChangeFeeAmount(500L, "EUR"));
+			new BookingCancelledPayoutListener(ledger, feeSetting);
 
 	private final ListAppender<ILoggingEvent> logged = new ListAppender<>();
 	private ch.qos.logback.classic.Logger logger;
+
+	@BeforeEach
+	void storeTheFee() {
+		when(feeSetting.current()).thenReturn(new VenueChangeFeeAmount(500L, "EUR"));
+	}
 
 	@BeforeEach
 	void captureLogs() {
@@ -131,7 +139,7 @@ class BookingCancelledPayoutListenerTest {
 	}
 
 	@Test
-	void aVenueCausedRefundChargesTheConfiguredFeeBesideTheReversal() {
+	void aVenueCausedRefundChargesTheStoredFeeBesideTheReversal() {
 		when(ledger.findAccrual(BOOKING_ID.value())).thenReturn(Optional.of(ACCRUAL));
 
 		assertThatCode(() -> listener.on(VENUE_CHANGED)).doesNotThrowAnyException();
@@ -168,5 +176,20 @@ class BookingCancelledPayoutListenerTest {
 		assertThatThrownBy(() -> listener.on(VENUE_CHANGED)).isInstanceOf(IllegalStateException.class);
 
 		verify(ledger, never()).charge(any());
+	}
+
+	@Test
+	void eachChargeReadsTheFeeAgainSoAChangeInForceIsSeen() {
+		when(ledger.findAccrual(BOOKING_ID.value())).thenReturn(Optional.of(ACCRUAL));
+		when(feeSetting.current()).thenReturn(new VenueChangeFeeAmount(500L, "EUR"),
+				new VenueChangeFeeAmount(700L, "EUR"));
+
+		listener.on(VENUE_CHANGED);
+		listener.on(VENUE_CHANGED);
+
+		ArgumentCaptor<PayoutLedgerEntry> charged = ArgumentCaptor.forClass(PayoutLedgerEntry.class);
+		verify(ledger, times(2)).charge(charged.capture());
+		assertThat(charged.getAllValues()).extracting(PayoutLedgerEntry::netMinor)
+				.containsExactly(500L, 700L);
 	}
 }

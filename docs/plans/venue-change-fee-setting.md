@@ -252,15 +252,15 @@ number. Rejected: a new `Fees` tab in the Money group, which would split the two
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** point the cancelled-booking listener and the `booking.spi` rate implementation at
-`VenueChangeFeeSetting#current()` instead of the injected seed bean.
+**Next action:** add the role-gated `/api/admin/venue-change-fee` read and write, with the IT that
+pins the audit row and the validation refusals.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Table, port, JDBC adapter | ✅ | |
-| 1 — Listener and rate read through the port | | |
+| 0 — Table, port, JDBC adapter | ✅ | `6d0239a9` |
+| 1 — Listener and rate read through the port | ✅ | |
 | 2 — Admin read/write endpoint | | |
 | 3 — Admin console fee card | | |
 | 4 — e2e, docs, ADR-0021 amendment, close-out | | |
