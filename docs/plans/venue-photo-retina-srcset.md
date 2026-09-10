@@ -298,17 +298,16 @@ attribute stays authoritative.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Write `VenuePhotoReadModelIT.publishesEveryStoredCandidateWithItsIntrinsicWidth`
-red, per AC-3. Phase 0 left both tourist read models pinned to `scale = 1` so the tree stays
-correct between phases; phase 1 is what widens `JdbcVenueCatalog` to publish both candidates.
+**Next action:** Write `photo-slideshow.spec.ts` › `emits every candidate as a w-descriptor srcset`
+red, per AC-6. The backend contract is settled; phase 2 is the mirror plus the three components.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Retina tier in the processor + `V56` scale column | ✅ | AC-1, AC-2, AC-5 green |
-| 1 — `PhotoView` read model | ⏳ | |
-| 2 — Frontend `srcset` + per-host `sizes` | | |
+| 1 — `PhotoView` read model | ✅ | AC-3, AC-4 green |
+| 2 — Frontend `srcset` + per-host `sizes` | ⏳ | |
 | 3 — e2e coverage + ADR-0008 footprint figures | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -474,6 +473,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-10 | phase 0 | Every reader of `venue_photo_variant` — a second row per surface changes what any of them sees | `grep -rn "venue_photo_variant" platform/src --include=*.java --include=*.sql` | `JdbcPhotoStorage` (3 reads + the write), `JdbcVenueCatalog:293` (tourist read model), `JdbcVenues:610` (console slot read), 2 test call sites | Fixed all three production readers. `JdbcVenueCatalog` keys its map by surface alone, so a second density silently overwrote the first — pinned to `scale = :scale` (BASE_SCALE) until phase 1 widens it. `JdbcVenues` collects with `Collectors.toMap`, which would throw on a duplicate slot key if PREVIEW ever gained a tier — pinned to `PREVIEW_SCALE`. |
+| 2026-09-10 | phase 1 | Every consumer of `CoverPhotoView` / `VenueSummaryView#photos` / `VenueMapView#photos` — the record shape changed under all of them | `grep -rn "CoverPhotoView\|coverPhoto\|\.photos()" platform/src/main --include=*.java` and the same over `frontend/src` | Backend: `JdbcVenueCatalog` (both read paths) and the two view records' own Javadoc, which still described a bare URL. Frontend: `venue-views.ts`, `photo-url.ts`, `venue.service.ts` | Backend all updated in this phase, Javadoc included. The three frontend sites are phase 2's whole subject and are listed in the File structure section. `VenueProfileResponse.photos()` is the operator `PhotoSlotView` list, a different type — untouched. |
 | 2026-09-10 | phase 0 | Measured rendition bytes (synthetic noise, so an upper bound — a real photo compresses better) | throwaway `ScratchSizeProbe` against `PhotoProcessor`, deleted after reading | 3:2 3000×2000 → CARD@1 26 KB, CARD@2 95 KB, BANNER@1 48 KB, BANNER@2 170 KB, PREVIEW@1 17 KB (**358 KB**); 16:9 3000×1688 → 29/104/86/**327**/14 KB (**563 KB**); 2:3 2000×3000 → 10/39/17/61/6 KB (**135 KB**) | Feeds R-3 and phase 3's ADR-0008 update. |
 
 ---

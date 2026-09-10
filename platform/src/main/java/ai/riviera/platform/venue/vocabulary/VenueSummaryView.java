@@ -18,13 +18,14 @@ import java.util.List;
  * possibly empty — the Discover card renders the first few. {@code distanceToWaterM} is the
  * optional distance to the water in metres, or {@code null} when not stated.
  *
- * <p>{@code coverPhoto} is the cover slot's card + banner serving URLs, or {@code null}
+ * <p>{@code coverPhoto} is the cover slot's card + banner {@link PhotoView}s, or {@code null}
  * when no cover photo is uploaded — the card then renders its gradient fallback.
  *
- * <p>{@code photos} is the Discover card's slideshow: one card-sized serving URL per occupied
- * photo slot, in {@link PhotoSlot} order (cover, sunbeds, bar), possibly empty. Uploads predating
- * the secondary slots' CARD variant serve their PREVIEW variant instead, so a venue's slideshow
- * never loses a photo to the rollout.
+ * <p>{@code photos} is the Discover card's slideshow: one card-sized {@link PhotoView} per occupied
+ * photo slot, in {@link PhotoSlot} order (cover, sunbeds, bar), possibly empty. Each carries every
+ * stored density so the browser picks per rendered box. Uploads predating the secondary slots' CARD
+ * variant serve their PREVIEW variant instead, so a venue's slideshow never loses a photo to the
+ * rollout.
  *
  * <p>{@code salesOpen} is whether online sales for the selected date are open right now —
  * booking's sales-window verdict (invariant #4), the on-day sales close and the season closure
@@ -37,6 +38,6 @@ import java.util.List;
 public record VenueSummaryView(long id, String name, String beach, String region,
 		int ratingTenths, int reviewsCount, String bookingMode,
 		MoneyView fromPrice, List<Amenity> amenities, Integer distanceToWaterM,
-		AvailabilitySummary availability, CoverPhotoView coverPhoto, List<String> photos,
+		AvailabilitySummary availability, CoverPhotoView coverPhoto, List<PhotoView> photos,
 		boolean salesOpen, boolean closedForSeason, LocalDate reopensOn) {
 }

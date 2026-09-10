@@ -18,13 +18,15 @@ import java.util.List;
  * or prices. It is <strong>date-independent</strong> (a property of the static map, not the availability
  * overlay) and separate from the profile {@code version}; tourists ignore it.
  *
- * <p>{@code coverPhoto} is the cover slot's card + banner serving URLs, or {@code null}
+ * <p>{@code coverPhoto} is the cover slot's card + banner {@link PhotoView}s, or {@code null}
  * when no cover photo is uploaded — the map banner then renders its gradient fallback.
  *
- * <p>{@code photos} is the banner band's slideshow: one banner-sized serving URL per occupied
- * photo slot, in {@link PhotoSlot} order (cover, sunbeds, bar), possibly empty. Uploads predating
- * the uniform per-slot surfaces serve their best available variant (CARD, then PREVIEW) instead,
- * so a venue's slideshow never loses a photo to the rollout.
+ * <p>{@code photos} is the banner band's slideshow: one banner-sized {@link PhotoView} per occupied
+ * photo slot, in {@link PhotoSlot} order (cover, sunbeds, bar), possibly empty. Each carries every
+ * stored density so the browser picks per rendered box — the band, the gallery grid and the
+ * lightbox all read this one list. Uploads predating the uniform per-slot surfaces serve their best
+ * available variant (CARD, then PREVIEW) instead, so a venue's slideshow never loses a photo to the
+ * rollout.
  *
  * <p>{@code salesOpen} is whether online sales for the selected date are open right now —
  * booking's sales-window verdict (invariant #4), the on-day sales close and the season closure
@@ -39,6 +41,6 @@ import java.util.List;
 public record VenueMapView(long id, String name, String beach, String region,
 		String description, int ratingTenths, int reviewsCount, String bookingMode,
 		MoneyView fromPrice, List<Amenity> amenities, Integer distanceToWaterM,
-		List<SetView> sets, long setVersion, CoverPhotoView coverPhoto, List<String> photos,
+		List<SetView> sets, long setVersion, CoverPhotoView coverPhoto, List<PhotoView> photos,
 		boolean salesOpen, String salesClose, boolean closedForSeason, LocalDate reopensOn) {
 }

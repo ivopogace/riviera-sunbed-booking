@@ -32,7 +32,9 @@ import ai.riviera.platform.venue.vocabulary.CoverPhotoView;
 import ai.riviera.platform.venue.vocabulary.DailyAvailability;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
+import ai.riviera.platform.venue.vocabulary.PhotoSourceView;
 import ai.riviera.platform.venue.vocabulary.PhotoSurface;
+import ai.riviera.platform.venue.vocabulary.PhotoView;
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -79,9 +81,6 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	private static final String COL_ADVANCE_SALES = "advance_sales";
 	/** The bulk IN-clause bind param shared by the three list-read queries (named once — Sonar S1192). */
 	private static final String P_VENUE_IDS = "venueIds";
-	private static final String P_SCALE = "scale";
-	/** One hash per (slot, surface): the map below is keyed by surface, so it holds one density. */
-	private static final int BASE_SCALE = 1;
 	// Slideshow preferences: own size first, then fallbacks for pre-uniform-surface uploads.
 	private static final List<PhotoSurface> CARD_SLIDESHOW =
 			List.of(PhotoSurface.CARD, PhotoSurface.PREVIEW);
@@ -168,10 +167,10 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 				.sorted() // enum natural order == declaration order == canonical catalogue order
 				.toList();
 
-		Map<PhotoSlot, Map<PhotoSurface, String>> photoVariants =
+		Map<PhotoSlot, Map<PhotoSurface, PhotoView>> photoVariants =
 				photoVariantsByVenue(List.of(id.value())).getOrDefault(id.value(), Map.of());
-		CoverPhotoView coverPhoto = coverOf(id.value(), photoVariants);
-		List<String> photos = slideshowOf(id.value(), photoVariants, BANNER_SLIDESHOW);
+		CoverPhotoView coverPhoto = coverOf(photoVariants);
+		List<PhotoView> photos = slideshowOf(photoVariants, BANNER_SLIDESHOW);
 
 		Instant now = clock.instant();
 		boolean closedForSeason = salesWindow.closedForSeason(v.seasonClosure(), now);
@@ -244,7 +243,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 						Collectors.mapping(AmenityRow::amenity, Collectors.toList())));
 
 		// One blob-free photo read for ALL matched venues feeds both the cover pair and the slideshow.
-		Map<Long, Map<PhotoSlot, Map<PhotoSurface, String>>> photosByVenue = photoVariantsByVenue(venueIds);
+		Map<Long, Map<PhotoSlot, Map<PhotoSurface, PhotoView>>> photosByVenue = photoVariantsByVenue(venueIds);
 
 		// One instant for every row, so verdicts within one response cannot disagree (invariant #6).
 		Instant now = clock.instant();
@@ -281,74 +280,92 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	}
 
 	/**
-	 * Every stored photo-variant hash for the venues, in one blob-free query (only hashes travel;
-	 * the {@code bytea} column is never selected here — R-3/ADR-0008), bucketed
-	 * venue → slot → surface with slots in {@link PhotoSlot} order. Both tourist photo views
-	 * derive from this one read — {@link #coverOf} and {@link #slideshowOf} — so they cannot drift.
+	 * Every stored photo rendition for the venues, in one blob-free query (only hashes and widths
+	 * travel; the {@code bytea} column is never selected here — R-3/ADR-0008), bucketed
+	 * venue → slot → surface with slots in {@link PhotoSlot} order. Each surface holds a
+	 * {@link PhotoView}: its densities collapsed into one baseline URL plus every candidate. Both
+	 * tourist photo views derive from this one read — {@link #coverOf} and {@link #slideshowOf} —
+	 * so they cannot drift.
 	 */
-	private Map<Long, Map<PhotoSlot, Map<PhotoSurface, String>>> photoVariantsByVenue(List<Long> venueIds) {
-		record VariantRow(long venueId, PhotoSlot slot, PhotoSurface surface, String hash) {
+	private Map<Long, Map<PhotoSlot, Map<PhotoSurface, PhotoView>>> photoVariantsByVenue(List<Long> venueIds) {
+		record VariantRow(long venueId, PhotoSlot slot, PhotoSurface surface, String hash, int width) {
 		}
-		Map<Long, Map<PhotoSlot, Map<PhotoSurface, String>>> byVenue = new HashMap<>();
+		Map<Long, Map<PhotoSlot, Map<PhotoSurface, List<VariantRow>>>> rowsByVenue = new HashMap<>();
 		jdbc.sql("""
-				SELECT vp.venue_id, vp.slot, vv.surface, vv.content_hash
+				SELECT vp.venue_id, vp.slot, vv.surface, vv.content_hash, vv.width
 				FROM venue_photo vp
 				JOIN venue_photo_variant vv ON vv.photo_id = vp.id
-				WHERE vp.venue_id IN (:venueIds) AND vv.scale = :scale
+				WHERE vp.venue_id IN (:venueIds)
+				ORDER BY vv.scale
 				""")
 				.param(P_VENUE_IDS, venueIds)
-				.param(P_SCALE, BASE_SCALE)
 				.query((rs, rowNum) -> new VariantRow(
 						rs.getLong(COL_VENUE_ID), PhotoSlot.valueOf(rs.getString("slot")),
-						PhotoSurface.valueOf(rs.getString("surface")), rs.getString("content_hash")))
+						PhotoSurface.valueOf(rs.getString("surface")), rs.getString("content_hash"),
+						rs.getInt("width")))
 				.list()
-				.forEach(row -> byVenue
+				.forEach(row -> rowsByVenue
 						.computeIfAbsent(row.venueId(), id -> new EnumMap<>(PhotoSlot.class))
 						.computeIfAbsent(row.slot(), slot -> new EnumMap<>(PhotoSurface.class))
-						.put(row.surface(), row.hash()));
+						.computeIfAbsent(row.surface(), surface -> new ArrayList<>())
+						.add(row));
+		Map<Long, Map<PhotoSlot, Map<PhotoSurface, PhotoView>>> byVenue = new HashMap<>();
+		rowsByVenue.forEach((venueId, slots) -> {
+			Map<PhotoSlot, Map<PhotoSurface, PhotoView>> viewSlots = new EnumMap<>(PhotoSlot.class);
+			slots.forEach((slot, surfaces) -> {
+				Map<PhotoSurface, PhotoView> viewSurfaces = new EnumMap<>(PhotoSurface.class);
+				surfaces.forEach((surface, rows) -> {
+					List<PhotoSourceView> sources = rows.stream()
+							.map(r -> new PhotoSourceView(
+									PhotoServingUrls.servingUrl(venueId, new ContentHash(r.hash())), r.width()))
+							.toList();
+					viewSurfaces.put(surface, new PhotoView(sources.get(0).url(), sources));
+				});
+				viewSlots.put(slot, viewSurfaces);
+			});
+			byVenue.put(venueId, viewSlots);
+		});
 		return byVenue;
 	}
 
 	/**
-	 * The COVER slot's card + banner serving URLs, or {@code null} without a COMPLETE pair: a
-	 * cover missing one of its CARD/BANNER rows (manual data fix, future surface-set change) must
+	 * The COVER slot's card + banner photos, or {@code null} without a COMPLETE pair: a cover
+	 * missing one of its CARD/BANNER surfaces (manual data fix, future surface-set change) must
 	 * read as "no cover" — otherwise the frontend's presence check passes and
 	 * {@code NgOptimizedImage} receives a null URL.
 	 */
-	private static CoverPhotoView coverOf(long venueId, Map<PhotoSlot, Map<PhotoSurface, String>> slots) {
-		Map<PhotoSurface, String> cover = slots.getOrDefault(PhotoSlot.COVER, Map.of());
-		String card = cover.get(PhotoSurface.CARD);
-		String banner = cover.get(PhotoSurface.BANNER);
+	private static CoverPhotoView coverOf(Map<PhotoSlot, Map<PhotoSurface, PhotoView>> slots) {
+		Map<PhotoSurface, PhotoView> cover = slots.getOrDefault(PhotoSlot.COVER, Map.of());
+		PhotoView card = cover.get(PhotoSurface.CARD);
+		PhotoView banner = cover.get(PhotoSurface.BANNER);
 		if (card == null || banner == null) {
 			return null;
 		}
-		return new CoverPhotoView(
-				PhotoServingUrls.servingUrl(venueId, new ContentHash(card)),
-				PhotoServingUrls.servingUrl(venueId, new ContentHash(banner)));
+		return new CoverPhotoView(card, banner);
 	}
 
 	/**
-	 * A tourist slideshow: one serving URL per occupied slot, in {@link PhotoSlot} order (the
-	 * EnumMap's iteration order — cover, sunbeds, bar), taking each slot's first present variant
-	 * per {@code preference} — the Discover card wants {@link #CARD_SLIDESHOW}, the beach-map band
-	 * {@link #BANNER_SLIDESHOW}.
+	 * A tourist slideshow: one photo per occupied slot, in {@link PhotoSlot} order (the EnumMap's
+	 * iteration order — cover, sunbeds, bar), taking each slot's first present surface per
+	 * {@code preference} — the Discover card wants {@link #CARD_SLIDESHOW}, the beach-map band
+	 * {@link #BANNER_SLIDESHOW}. The chosen surface brings all of its densities with it.
 	 */
-	private static List<String> slideshowOf(long venueId, Map<PhotoSlot, Map<PhotoSurface, String>> slots,
+	private static List<PhotoView> slideshowOf(Map<PhotoSlot, Map<PhotoSurface, PhotoView>> slots,
 			List<PhotoSurface> preference) {
-		List<String> photos = new ArrayList<>();
+		List<PhotoView> photos = new ArrayList<>();
 		slots.forEach((slot, surfaces) -> preference.stream()
 				.map(surfaces::get)
 				.filter(Objects::nonNull)
 				.findFirst()
-				.ifPresent(hash -> photos.add(PhotoServingUrls.servingUrl(venueId, new ContentHash(hash)))));
+				.ifPresent(photos::add));
 		return List.copyOf(photos);
 	}
 
 	private static VenueSummaryView toSummary(SummaryRow v, List<SetPriceRow> sets, Set<SetId> taken,
-			List<Amenity> amenities, Map<PhotoSlot, Map<PhotoSurface, String>> photoSlots,
+			List<Amenity> amenities, Map<PhotoSlot, Map<PhotoSurface, PhotoView>> photoSlots,
 			boolean salesOpen, boolean closedForSeason) {
-		CoverPhotoView coverPhoto = coverOf(v.id(), photoSlots);
-		List<String> photos = slideshowOf(v.id(), photoSlots, CARD_SLIDESHOW);
+		CoverPhotoView coverPhoto = coverOf(photoSlots);
+		List<PhotoView> photos = slideshowOf(photoSlots, CARD_SLIDESHOW);
 		int total = sets.size();
 		int free = (int) sets.stream().filter(s -> !taken.contains(new SetId(s.id()))).count();
 		MoneyView fromPrice = sets.stream()
