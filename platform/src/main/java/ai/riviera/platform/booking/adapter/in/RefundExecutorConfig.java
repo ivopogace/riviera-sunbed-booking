@@ -23,8 +23,10 @@ import org.springframework.core.task.support.CompositeTaskDecorator;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
- * The executor {@link BookingRefundListener} drains on — a bulkhead between a degraded payment gateway
- * and the money-path spine.
+ * The executor this module's gateway-reaching listeners drain on — a bulkhead between a degraded
+ * payment gateway and the money-path spine. Today that is {@link BookingRefundListener} and
+ * {@link RemodelReleasePaymentListener}; the population is a rule, not a list
+ * ({@code RefundListenerExecutorArchitectureTest}).
  *
  * <p><strong>Why the bean exists.</strong> {@code @ApplicationModuleListener} expands to {@code @Async}
  * with no qualifier, which is Boot's shared {@code applicationTaskExecutor} — the same pool that carries

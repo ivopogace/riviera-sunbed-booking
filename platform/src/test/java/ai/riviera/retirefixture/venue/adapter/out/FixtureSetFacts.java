@@ -27,6 +27,11 @@ final class FixtureSetFacts implements SetBookingFacts {
 			""";
 
 	@Override
+	public boolean sellsOnlineOn(VenueId venueId, LocalDate date) {
+		return false;
+	}
+
+	@Override
 	public Optional<Pool> poolForClaim(SetId setId) {
 		return Optional.empty();
 	}

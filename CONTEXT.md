@@ -87,11 +87,22 @@ model in `docs/architecture/domain-model.md`.
   preview with the outcome it was given, handed back with the save. The save applies only a picture
   the token still **covers** — the same claims and outcomes, or fewer of them; a claim or an outcome
   the operator never saw makes the preview **stale**, and the save answers the fresh picture instead.
-- **Commit receipt** — the record of one saved remodel: when it was saved, by whom, and every booking
-  it moved with the spot the guest was told before, the spot they hold now and the distance. Kept
-  after the old set is retired, so the guest's page, their mail and the console still name the spot
-  they were told; readable from the console as **past remodels**. There is no undo — a move is
-  reversed by another remodel.
+- **Commit receipt** — the record of one saved remodel: when it was saved, by whom, every booking it
+  moved with the spot the guest was told before, the spot they hold now and the distance, and every
+  claim it ended instead — refunded, released or declined — with the amount, the operator's reason
+  and the total returned. Kept after the old set is retired, so the guest's page, their mail and the
+  console still name the spot they were told; readable from the console as **past remodels**. There
+  is no undo — a move is reversed by another remodel.
+
+- **Venue-caused refund** — what a saved remodel owes a **confirmed** booking it disturbs beyond the
+  refund-notice floor with no **move candidate** free: the booking is cancelled and refunded in
+  full, by reason **venue change**, and the guest is mailed a link to book again — that venue's map
+  for the same day, or the discovery list for it when the venue cannot sell that day. The operator
+  authorises it by typing how many refunds the preview named and why; both go on the **commit
+  receipt**. An unpaid booking in the same position is **released** — mailed the same way, link and
+  all — and a pending request is **declined**, which keeps the mail a decline has always sent and no
+  link. Neither collected anything, so neither returns money and the payout ledger is untouched. Distinct from the **weather refund**, which is the admin's answer to a storm,
+  and from the guest's own **free exit**, which is the same reason from the other side.
 - **Moved booking** — a booking a saved remodel re-seated on another set for the same date: its code,
   price and date are unchanged, the guest is mailed the new spot, and the booking carries when it
   moved and opens a **free exit**.

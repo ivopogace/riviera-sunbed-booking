@@ -16,7 +16,7 @@ import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutEditor } from './layout-editor';
 import { RemodelPreview } from './operator-console.model';
-import { FULL_PREVIEW, MOVES_ONLY_PREVIEW } from './remodel-preview-panel.spec';
+import { FULL_PREVIEW, MOVES_ONLY_PREVIEW, REFUNDING_PREVIEW } from './remodel-preview-panel.spec';
 import { RECEIPT } from './remodel-receipt-panel.spec';
 import { SetLock } from './operator-console.model';
 
@@ -32,6 +32,8 @@ interface SentBody {
   }[];
   expectedVersion: number;
   previewToken?: string;
+  refundCount?: number;
+  refundReason?: string;
 }
 
 /** The captured request body, typed — Angular types `HttpRequest.body` as `any`. */
@@ -2022,6 +2024,57 @@ describe('LayoutEditor (#172)', () => {
       await fixture.whenStable();
     });
 
+    it('a picture that refunds carries the typed count and reason, and REFUND_NOT_CONFIRMED re-renders it', async () => {
+      dropLoadedA2();
+      byId('layout-save').click();
+      http
+        .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/beach-map/preview'))
+        .flush(REFUNDING_PREVIEW);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const count = byId('layout-remodel-refund-count') as HTMLInputElement;
+      count.value = '1';
+      count.dispatchEvent(new Event('input'));
+      const reason = byId('layout-remodel-reason') as HTMLInputElement;
+      reason.value = 'Re-laying row A';
+      reason.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      byId('layout-remodel-commit').click();
+      const commit = commitRequest();
+      expect(body(commit).refundCount).toBe(1);
+      expect(body(commit).refundReason).toBe('Re-laying row A');
+      // The fresh picture refunds two, so the typed 1 no longer matches and Save re-disables.
+      commit.flush(
+        {
+          code: 'REFUND_NOT_CONFIRMED',
+          detail: 'x',
+          preview: {
+            ...REFUNDING_PREVIEW,
+            refunds: [
+              REFUNDING_PREVIEW.refunds[0],
+              { ...REFUNDING_PREVIEW.refunds[0], bookingId: 99 },
+            ],
+            previewToken: 'v1.fresher',
+          },
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(byId('layout-remodel-preview')).toBeTruthy();
+      expect(byId('layout-remodel-stale').textContent).toMatch(
+        /bookings changed since you previewed/,
+      );
+      expect(byId('layout-remodel-confirm')).toBeTruthy();
+      // Save is validity-disabled again, so focus goes to the field that has to change, not to it.
+      expect((byId('layout-remodel-commit') as HTMLButtonElement).disabled).toBe(true);
+      expect(document.activeElement).toBe(byId('layout-remodel-refund-count'));
+      expect(host.querySelector('[data-testid="layout-error"]')).toBeNull();
+    });
+
     it('STALE_PREVIEW re-renders the dialog with the fresh picture and its token, flagged stale, and the next Save carries the fresh token', async () => {
       await openMovesOnlyDialog();
       byId('layout-remodel-commit').click();
@@ -2177,15 +2230,15 @@ describe('LayoutEditor (#172)', () => {
       await openDisclosure();
       expect(byId('layout-remodels-loading')).toBeTruthy();
       receiptsRequest().flush([
-        { receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moveCount: 2 },
-        { receiptId: 40, committedAt: '2026-09-01T07:30:00Z', moveCount: 1 },
+        { receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moveCount: 2, refundCount: 1 },
+        { receiptId: 40, committedAt: '2026-09-01T07:30:00Z', moveCount: 1, refundCount: 0 },
       ]);
       await fixture.whenStable();
       fixture.detectChanges();
 
       const rows = host.querySelectorAll<HTMLElement>('[data-testid="layout-remodels-open"]');
       expect([...rows].map((row) => row.textContent?.trim())).toEqual([
-        'Wed, 9 Sept, 15:00 · 2 bookings moved',
+        'Wed, 9 Sept, 15:00 · 2 bookings moved, 1 refunded',
         'Tue, 1 Sept, 09:30 · 1 booking moved',
       ]);
       expect(rows[0].getAttribute('data-receipt-id')).toBe('41');
@@ -2256,7 +2309,7 @@ describe('LayoutEditor (#172)', () => {
       (byId('layout-remodels') as HTMLDetailsElement).open = false;
       await openDisclosure();
       receiptsRequest().flush([
-        { receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moveCount: 2 },
+        { receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moveCount: 2, refundCount: 0 },
       ]);
       await fixture.whenStable();
       fixture.detectChanges();

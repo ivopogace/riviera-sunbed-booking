@@ -1,12 +1,17 @@
 package ai.riviera.platform.notification.application;
 
 import java.net.URI;
+import java.time.LocalDate;
 
 import org.springframework.web.util.UriComponentsBuilder;
 
+import ai.riviera.platform.venue.vocabulary.VenueId;
+
 /**
- * Builds the link a booking mail points at: the code-gated booking view,
- * {@code <base>/booking/<code>}.
+ * Builds the links a booking mail points at: the code-gated booking view,
+ * {@code <base>/booking/<code>}, and the two a guest whose booking the venue cancelled needs to book
+ * again — that venue's map for a day ({@code <base>/venues/<id>?date=…}) and the discovery list for
+ * it ({@code <base>/?date=…}). Which of the two a mail carries is {@link RebookLinks}' decision.
  *
  * <p><strong>Why this module may build a link at all, given RV-BE-11.</strong> That rule keeps
  * <em>credential-material machinery</em> — minting a token, hashing it, deciding its TTL — at the
@@ -37,6 +42,10 @@ public record BookingLinks(String baseUrl) {
 	 */
 	private static final String BOOKING_SEGMENT = "booking";
 
+	/** The tourist map route, and the query param both rebook links carry; both match {@code app.routes.ts}. */
+	private static final String VENUES_SEGMENT = "venues";
+	private static final String DATE_PARAM = "date";
+
 	public BookingLinks {
 		if (baseUrl == null || baseUrl.isBlank()) {
 			throw new IllegalArgumentException(
@@ -56,6 +65,24 @@ public record BookingLinks(String baseUrl) {
 	public URI forBooking(String bookingCode) {
 		return UriComponentsBuilder.fromUriString(baseUrl)
 				.pathSegment(BOOKING_SEGMENT, bookingCode)
+				.build()
+				.toUri();
+	}
+
+	/** That venue's beach map for the day the guest lost — where the same spot is rebooked. */
+	public URI forVenueMap(VenueId venueId, LocalDate date) {
+		return UriComponentsBuilder.fromUriString(baseUrl)
+				.pathSegment(VENUES_SEGMENT, String.valueOf(venueId.value()))
+				.queryParam(DATE_PARAM, date)
+				.build()
+				.toUri();
+	}
+
+	/** The discovery list for the day — where a guest goes when that venue cannot sell it. */
+	public URI forDiscovery(LocalDate date) {
+		return UriComponentsBuilder.fromUriString(baseUrl)
+				.path("/")
+				.queryParam(DATE_PARAM, date)
 				.build()
 				.toUri();
 	}

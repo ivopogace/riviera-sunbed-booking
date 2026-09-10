@@ -4,14 +4,22 @@ import { formatCivilDate } from '../shared/booking-date';
 import { formatDeadline } from '../shared/deadline';
 import { setDistanceText } from '../shared/set-distance';
 import { TouchTarget } from '../shared/touch-target';
-import { RemodelReceipt, RemodelReceiptMove, RemodelSpot } from './operator-console.model';
+import { formatMoney } from '../shared/money';
+import {
+  RemodelReceipt,
+  RemodelReceiptClaim,
+  RemodelReceiptMove,
+  RemodelReceiptRelease,
+  RemodelSpot,
+} from './operator-console.model';
 
 /**
- * A remodel-commit receipt: when the layout was saved and every booking it moved, each with the spot
- * the guest was told before, the spot they hold now and the distance. Shown right after a commit and
- * again from the editor's past remodels, so an operator can answer a guest who phones about a
- * changed spot. Bookings by id, never by code (invariant #7). The `@if` stays outside; focus in and
- * out is the caller's (`focusMover()` on the heading's test id).
+ * A remodel-commit receipt: when the layout was saved, every booking it moved — each with the spot
+ * the guest was told before, the spot they hold now and the distance — and every claim it ended
+ * instead, with what was refunded and why. Shown right after a commit and again from the editor's
+ * past remodels, so an operator can answer a guest who phones about a changed spot or a refund.
+ * Bookings by id, never by code (invariant #7). The `@if` stays outside; focus in and out is the
+ * caller's (`focusMover()` on the heading's test id).
  */
 @Component({
   selector: 'app-remodel-receipt-panel',
@@ -49,6 +57,38 @@ import { RemodelReceipt, RemodelReceiptMove, RemodelSpot } from './operator-cons
         No booking was moved.
       </p>
     }
+    @if (receipt().refunds.length > 0) {
+      <h4 class="mt-2 text-[12.5px] font-bold">
+        Refunded ({{ receipt().refunds.length }}) · {{ refundedTotalText() }}
+      </h4>
+      <ul
+        class="mt-1 list-disc pl-4 text-[12px] leading-[1.45]"
+        data-testid="layout-remodel-receipt-refunds"
+      >
+        @for (refund of receipt().refunds; track refund.bookingId) {
+          <li>{{ claimText(refund) }}</li>
+        }
+      </ul>
+      <p
+        class="mt-1 text-[12px] leading-[1.45] text-riv-card-ink-soft"
+        data-testid="layout-remodel-receipt-reason"
+      >
+        Reason: {{ receipt().refundReason }}
+      </p>
+    }
+    @if (receipt().releases.length > 0) {
+      <h4 class="mt-2 text-[12.5px] font-bold">
+        Released or declined ({{ receipt().releases.length }})
+      </h4>
+      <ul
+        class="mt-1 list-disc pl-4 text-[12px] leading-[1.45]"
+        data-testid="layout-remodel-receipt-releases"
+      >
+        @for (release of receipt().releases; track release.bookingId) {
+          <li>{{ releaseText(release) }}</li>
+        }
+      </ul>
+    }
     <button
       appTouchTarget
       type="button"
@@ -64,10 +104,34 @@ export class RemodelReceiptPanel {
   readonly receipt = input.required<RemodelReceipt>();
   readonly closed = output<void>();
 
-  /** "Saved Tue 9 Sept, 15:00 · 2 bookings moved" */
+  /** "Saved Tue 9 Sept, 15:00 · 2 bookings moved, 1 refunded, 2 ended" */
   protected committedText(): string {
-    const count = this.receipt().moves.length;
-    return `Saved ${formatDeadline(this.receipt().committedAt)} · ${count} booking${count === 1 ? '' : 's'} moved`;
+    const receipt = this.receipt();
+    const moved = receipt.moves.length;
+    const parts = [`${moved} booking${moved === 1 ? '' : 's'} moved`];
+    if (receipt.refunds.length > 0) {
+      parts.push(`${receipt.refunds.length} refunded`);
+    }
+    if (receipt.releases.length > 0) {
+      parts.push(`${receipt.releases.length} ended`);
+    }
+    return `Saved ${formatDeadline(receipt.committedAt)} · ${parts.join(', ')}`;
+  }
+
+  /** What the commit returned to guests; only rendered when it refunded at least one. */
+  protected refundedTotalText(): string {
+    const total = this.receipt().refundedTotal;
+    return total === null ? '' : `${formatMoney(total)} returned`;
+  }
+
+  protected claimText(claim: RemodelReceiptClaim): string {
+    return `${spotLabel(claim.from)} · ${formatCivilDate(claim.bookingDate)} · ${formatMoney(claim.amount)}`;
+  }
+
+  protected releaseText(release: RemodelReceiptRelease): string {
+    const kind =
+      release.kind === 'RELEASE' ? 'unpaid booking released' : 'pending request declined';
+    return `${this.claimText(release)} · ${kind}`;
   }
 
   protected moveText(move: RemodelReceiptMove): string {

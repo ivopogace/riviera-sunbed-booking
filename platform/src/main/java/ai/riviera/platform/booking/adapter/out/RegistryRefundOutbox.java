@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking.adapter.out;
 
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.modulith.events.EventPublication;
@@ -14,16 +15,19 @@ import ai.riviera.platform.booking.application.refund.RefundOutbox;
  * The {@link RefundOutbox} over Spring Modulith's Event Publication Registry — the driven
  * adapter that knows the registry exists, so nothing inside the hexagon has to.
  *
- * <p><strong>Scope is one exact listener id, and that is the load-bearing decision.</strong>
+ * <p><strong>Scope is an allowlist of exact listener ids, and that is the load-bearing decision.</strong>
  * {@code RegistryMailOutbox} scopes by module package prefix, which is safe there because every
  * listener in {@code notification} is a mail listener. This module also hosts
  * {@code PaymentEventListener} — the payment → confirm spine (invariant #8), whose cancel branch
  * releases availability (invariant #2) — so the {@code ai.riviera.platform.booking.} prefix would let
  * a button labelled "refund" replay payment-confirmation work. Exact equality deliberately loses the
- * "future listeners covered automatically" property: a second money-moving listener must be added to
- * this allowlist on purpose, with review. {@code RefundOutboxScopeTest} pins the constant against the
- * class-derived id and {@code RefundBulkheadIT} pins that against what the running registry writes
- * (two levels).
+ * "future listeners covered automatically" property: a listener joins this allowlist on purpose, with
+ * review. The two that have are exactly the two on the refund bulkhead
+ * ({@code RefundListenerExecutorArchitectureTest}'s population): both make a gateway call the pool can
+ * shed, and a shed one is invisible to the admin until the next restart's republish unless it is in
+ * scope here. {@code RefundOutboxScopeTest} pins both constants against ids derived from the class
+ * literals, and {@code RefundBulkheadIT} pins that derivation against what the running registry
+ * actually writes (two levels).
  *
  * <p><strong>Why the {@code Predicate} overload and not {@code ResubmissionOptions}.</strong> The
  * options object delegates to a query reaching {@code STATUS = 'FAILED'} rows (plus legacy NULLs) — a
@@ -48,12 +52,22 @@ import ai.riviera.platform.booking.application.refund.RefundOutbox;
 class RegistryRefundOutbox implements RefundOutbox {
 
 	/**
-	 * The registry's id for {@code BookingRefundListener.on(BookingCancelled)} — the whole allowlist.
-	 * #404 deliberately kept class, method and parameter type unchanged so this id is byte-identical to
-	 * what every historical publication row carries (invariant #12: no Flyway rewrite owed).
+	 * The registry's id for {@code BookingRefundListener.on(BookingCancelled)}. #404 deliberately kept
+	 * class, method and parameter type unchanged so this id is byte-identical to what every historical
+	 * publication row carries (invariant #12: no Flyway rewrite owed).
 	 */
 	static final String REFUND_LISTENER_ID = "ai.riviera.platform.booking.adapter.in."
 			+ "BookingRefundListener.on(ai.riviera.platform.booking.events.BookingCancelled)";
+
+	/**
+	 * The registry's id for {@code RemodelReleasePaymentListener.on(BookingCancelled)} — the void of a
+	 * remodel-released booking's uncollected intent. No money moves when it runs, but none is collected
+	 * either: an intent left un-voided stays chargeable to a guest whose booking no longer exists.
+	 */
+	static final String RELEASE_VOID_LISTENER_ID = "ai.riviera.platform.booking.adapter.in."
+			+ "RemodelReleasePaymentListener.on(ai.riviera.platform.booking.events.BookingCancelled)";
+
+	private static final Set<String> ALLOWED_LISTENER_IDS = Set.of(REFUND_LISTENER_ID, RELEASE_VOID_LISTENER_ID);
 
 	private final EventPublicationRegistry registry;
 
@@ -85,12 +99,12 @@ class RegistryRefundOutbox implements RefundOutbox {
 	}
 
 	/**
-	 * Whether a publication is targeted at exactly the refund listener. Counting inside the predicate
-	 * is the only seam the framework offers — its resubmission API returns {@code void} and applies the
-	 * predicate once per candidate.
+	 * Whether a publication is targeted at exactly one of the allowed listeners. Counting inside the
+	 * predicate is the only seam the framework offers — its resubmission API returns {@code void} and
+	 * applies the predicate once per candidate.
 	 */
 	static boolean isRefundPublication(EventPublication publication) {
 		return publication instanceof TargetEventPublication target
-				&& REFUND_LISTENER_ID.equals(target.getTargetIdentifier().getValue());
+				&& ALLOWED_LISTENER_IDS.contains(target.getTargetIdentifier().getValue());
 	}
 }

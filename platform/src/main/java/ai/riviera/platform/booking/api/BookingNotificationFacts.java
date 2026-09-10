@@ -56,4 +56,13 @@ public interface BookingNotificationFacts {
 	 * may no longer answer.
 	 */
 	Optional<BookingMoveFacts> moveFacts(BookingId bookingId);
+
+	/**
+	 * Whether a venue's remodel ended this booking — refunded, released or declined it — rather than
+	 * the guest ending it themselves. The two reach a consumer as the same {@code BookingCancelled}
+	 * with reason {@code VENUE_CHANGE}, because a guest who takes the free exit a move earned them is
+	 * refunded on the venue's account too; only the commit receipt says which happened, and the
+	 * cancellation mail owes a way to book again in exactly the first case.
+	 */
+	boolean endedByRemodel(BookingId bookingId);
 }

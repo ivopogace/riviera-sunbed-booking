@@ -42,6 +42,8 @@ class SmtpMailerIT {
 	private static final String FROM = "noreply@test.local";
 	private static final URI LINK = URI.create("https://app.example/account/verify?token=s3cret-t0ken");
 	private static final String BOOKING_CODE = "XK4T9PQ2";
+	private static final java.net.URI REBOOK_LINK =
+			java.net.URI.create("https://riviera.test/venues/7?date=2026-08-15");
 
 	private static final URI PAY_LINK = URI.create("https://app.example/booking/" + BOOKING_CODE);
 
@@ -230,6 +232,34 @@ class SmtpMailerIT {
 		}
 	}
 
+	/**
+	 * The two {@code VENUE_CHANGE} shapes must not read alike: one the guest asked for, one done to
+	 * them. The rebook link is what tells them apart, and a released claim says nothing was charged
+	 * rather than naming a cutoff it never reached.
+	 */
+	@Test
+	void aVenueCausedCancellationReadsDifferentlyFromTheGuestsOwnFreeExit() throws Exception {
+		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.VENUE_CHANGE));
+		String freeExit = theOnlyReceivedMessage().getContent().toString();
+		greenMail.reset();
+
+		mailer().sendBookingCancellation(TO, venueCaused(2500));
+		String refunded = theOnlyReceivedMessage().getContent().toString();
+		greenMail.reset();
+
+		mailer().sendBookingCancellation(TO, venueCaused(0));
+		String released = theOnlyReceivedMessage().getContent().toString();
+
+		assertThat(freeExit).containsIgnoringCase("you cancelled").doesNotContain(REBOOK_LINK.toString());
+		assertThat(refunded).containsIgnoringCase("changed its beach layout")
+				.contains(REBOOK_LINK.toString())
+				.containsIgnoringCase("book another spot");
+		assertThat(released).containsIgnoringCase("released")
+				.containsIgnoringCase("nothing was charged")
+				.doesNotContainIgnoringCase("free-cancellation cutoff")
+				.contains(REBOOK_LINK.toString());
+	}
+
 	@Test
 	void carriesNoTrackingMarkup() throws Exception {
 		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.WEATHER));
@@ -299,9 +329,15 @@ class SmtpMailerIT {
 				DEADLINE, 2500, "EUR", PAY_LINK, CancellationWindow.FREE, 0);
 	}
 
+	/** The venue's own remodel ended it: same reason, plus the way back that marks it. */
+	private static BookingCancellationMail venueCaused(long refundMinor) {
+		return new BookingCancellationMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15),
+				refundMinor, "EUR", RefundReason.VENUE_CHANGE, REBOOK_LINK);
+	}
+
 	private static BookingCancellationMail cancellation(long refundMinor, RefundReason reason) {
 		return new BookingCancellationMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15),
-				refundMinor, "EUR", reason);
+				refundMinor, "EUR", reason, null);
 	}
 
 	/**

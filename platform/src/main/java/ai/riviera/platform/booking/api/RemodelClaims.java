@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 
 import ai.riviera.platform.booking.vocabulary.PreviewToken;
+import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
 import ai.riviera.platform.booking.vocabulary.RemodelClaim;
 import ai.riviera.platform.booking.vocabulary.RemodelCommit;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -36,13 +37,23 @@ public interface RemodelClaims {
 
 	/**
 	 * Apply the remodel to every live booking on the given sets, inside the caller's transaction:
-	 * re-classify, check {@code token} still covers the answer, and — when every claim is a move —
-	 * claim each candidate's {@code (set, date)} row before releasing the old one (invariant #2),
-	 * re-seat the booking with a moved-at stamp, write the receipt and publish one
-	 * {@code BookingMoved} per move. Owner-asserted first (invariant #13). A token that does not cover
-	 * the fresh answer is {@code Stale}, any non-move outcome is {@code Refused}; both write nothing.
-	 * A candidate whose claim is not won throws, so the caller's whole transaction rolls back — under
-	 * the caller's set locks that cannot happen legitimately.
+	 * re-classify, check {@code token} still covers the answer, then act on each claim — a move claims
+	 * its candidate's {@code (set, date)} row before releasing the old one (invariant #2) and re-seats
+	 * the booking with a moved-at stamp; a confirmed claim with nowhere to go is cancelled with reason
+	 * {@code VENUE_CHANGE} and its full amount as the refund; an unpaid one is released and a pending
+	 * request declined, neither involving money. Every leg frees its {@code (set, date)} row, writes a
+	 * receipt line and publishes the module's existing fact for it. Nothing here talks to Stripe: the
+	 * refunds drain after commit on the module's own listener. Owner-asserted first (invariant #13).
+	 *
+	 * <p>A token that does not cover the fresh answer is {@code Stale}; a claim that pins its set is
+	 * {@code Refused}; a picture that refunds guests without a matching typed count and a reason is
+	 * {@code Unconfirmed}. None of the three writes anything. A candidate whose claim is not won, or a
+	 * guarded transition that matches no row, throws so the caller's whole transaction rolls back. The
+	 * caller's locks are on the venue's <em>sets</em>, not on the booking rows, so a booking that
+	 * changes status inside the commit window — a payment webhook, a guest cancel, an expiry sweep —
+	 * lands here rather than in one of the three refusals; the rollback leaves nothing half-applied,
+	 * and the operator's next save classifies against the new fact.
 	 */
-	RemodelCommit commit(OperatorId operator, VenueId venueId, Collection<SetId> disturbedSets, PreviewToken token);
+	RemodelCommit commit(OperatorId operator, VenueId venueId, Collection<SetId> disturbedSets, PreviewToken token,
+			RefundConfirmation confirmation);
 }

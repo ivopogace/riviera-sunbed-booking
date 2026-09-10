@@ -25,6 +25,42 @@ export const RECEIPT: RemodelReceipt = {
       positionsAway: 1,
     },
   ],
+  refunds: [],
+  releases: [],
+  refundReason: '',
+  refundedTotal: null,
+};
+
+/** The receipt of a commit that also ended claims it could not move — refund, release, decline. */
+export const RECEIPT_WITH_ENDINGS: RemodelReceipt = {
+  ...RECEIPT,
+  receiptId: 42,
+  refunds: [
+    {
+      bookingId: 9,
+      bookingDate: '2026-09-22',
+      from: { setId: 3, rowLabel: 'A', positionNo: 1 },
+      amount: { minorUnits: 4500, currency: 'EUR' },
+    },
+  ],
+  releases: [
+    {
+      bookingId: 10,
+      bookingDate: '2026-09-23',
+      from: { setId: 3, rowLabel: 'A', positionNo: 1 },
+      amount: { minorUnits: 2000, currency: 'EUR' },
+      kind: 'RELEASE',
+    },
+    {
+      bookingId: 11,
+      bookingDate: '2026-09-24',
+      from: { setId: 3, rowLabel: 'A', positionNo: 1 },
+      amount: { minorUnits: 2000, currency: 'EUR' },
+      kind: 'DECLINE',
+    },
+  ],
+  refundReason: 'Re-laying row A for the season',
+  refundedTotal: { minorUnits: 4500, currency: 'EUR' },
 };
 
 describe('RemodelReceiptPanel (#1034)', () => {
@@ -42,6 +78,32 @@ describe('RemodelReceiptPanel (#1034)', () => {
   function byId(id: string): HTMLElement | null {
     return host.querySelector<HTMLElement>(`[data-testid="${id}"]`);
   }
+
+  it('lists the refund, release and decline lines with the reason and total', () => {
+    render(RECEIPT_WITH_ENDINGS);
+
+    expect(byId('layout-remodel-receipt-refunds')!.textContent).toMatch(
+      /Row A · position 1 · Tue 22 Sept 2026 · €45/,
+    );
+    expect(host.textContent).toMatch(/Refunded \(1\) · €45 returned/);
+    expect(byId('layout-remodel-receipt-reason')!.textContent).toMatch(
+      /Reason: Re-laying row A for the season/,
+    );
+    expect(byId('layout-remodel-receipt-releases')!.textContent).toMatch(/unpaid booking released/);
+    expect(byId('layout-remodel-receipt-releases')!.textContent).toMatch(
+      /pending request declined/,
+    );
+    expect(host.textContent).not.toMatch(/\bcode\b/i);
+  });
+
+  it('shows no refund block and no reason when the commit refunded nobody', () => {
+    render(RECEIPT);
+
+    expect(byId('layout-remodel-receipt-refunds')).toBeNull();
+    expect(byId('layout-remodel-receipt-releases')).toBeNull();
+    expect(byId('layout-remodel-receipt-reason')).toBeNull();
+    expect(host.textContent).not.toMatch(/returned/);
+  });
 
   it('is a region named by its heading, saying when the layout was saved in Tirane time and what moved', () => {
     render(RECEIPT);

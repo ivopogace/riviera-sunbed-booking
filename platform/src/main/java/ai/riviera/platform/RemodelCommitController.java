@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.booking.vocabulary.PreviewToken;
+import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.shared.ApiProblem;
 import ai.riviera.platform.shared.CurrentOperator;
@@ -22,13 +23,15 @@ import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The remodel commit: the bulk beach-map save that also moves the bookings its layout disturbs, at
- * the platform edge because it composes {@code venue}'s write with {@code booking}'s moves
- * (ADR-0020; {@link RemodelCommitService} is the gate). The outcome→HTTP map: committed →
- * {@code 200} with the receipt and the moves; a picture the preview no longer describes →
- * {@code 409 STALE_PREVIEW}; a picture with anything but moves → {@code 409 REMODEL_REFUSED} — both
- * carrying the fresh {@code preview}, token included, so the editor re-renders the dialog; the save's
- * own refusals and rejections in the save's words and codes; a non-owner → {@code 403} via
+ * The remodel commit: the bulk beach-map save that also settles the claims its layout disturbs, at
+ * the platform edge because it composes {@code venue}'s write with {@code booking}'s moves, refunds,
+ * releases and declines (ADR-0020; {@link RemodelCommitService} is the gate). The outcome→HTTP map:
+ * committed → {@code 200} with the receipt and every applied claim; a picture the preview no longer
+ * describes → {@code 409 STALE_PREVIEW}; a picture holding a claim that pins its set →
+ * {@code 409 REMODEL_REFUSED}; a picture that refunds guests without the typed count and a reason →
+ * {@code 409 REFUND_NOT_CONFIRMED} — all three carrying the fresh {@code preview}, token included, so
+ * the editor re-renders the dialog and the count it now owes is the picture's own; the save's own refusals
+ * and rejections in the save's words and codes; a non-owner → {@code 403} via
  * {@code ApiErrorHandler}. Nothing is written on any answer but {@code 200}.
  */
 @RestController
@@ -37,6 +40,7 @@ class RemodelCommitController {
 
 	static final String STALE_PREVIEW_CODE = "STALE_PREVIEW";
 	static final String REMODEL_REFUSED_CODE = "REMODEL_REFUSED";
+	static final String REFUND_NOT_CONFIRMED_CODE = "REFUND_NOT_CONFIRMED";
 	static final String SETS_IN_USE_CODE = "SETS_IN_USE";
 	static final String PREVIEW_PROPERTY = "preview";
 	static final String SETS_PROPERTY = "sets";
@@ -56,15 +60,21 @@ class RemodelCommitController {
 		long expectedVersion = InvalidApiRequestException.parsing(request::requireExpectedVersion);
 		List<LayoutCell> cells = InvalidApiRequestException.parsing(request::toCells);
 		PreviewToken token = InvalidApiRequestException.parsing(request::requireToken);
-		return switch (commits.commit(operator, new VenueId(venueId), expectedVersion, cells, token)) {
-			case RemodelCommitOutcome.Committed committed -> ResponseEntity.ok(RemodelCommitResponse.of(committed));
+		RefundConfirmation confirmation = request.confirmation();
+		return switch (commits.commit(operator, new VenueId(venueId), expectedVersion, cells, token, confirmation)) {
+			case RemodelCommitOutcome.Committed committed ->
+				ResponseEntity.ok(RemodelCommitResponse.of(committed, confirmation.reason()));
 			case RemodelCommitOutcome.StalePreview(var disturbed, var fresh) -> withPreview(
 					ApiProblem.of(HttpStatus.CONFLICT, STALE_PREVIEW_CODE,
 							"The bookings this remodel affects have changed since the preview."),
 					RemodelPreviewAssembler.assemble(disturbed, fresh));
 			case RemodelCommitOutcome.Refused(var disturbed, var fresh) -> withPreview(
 					ApiProblem.of(HttpStatus.CONFLICT, REMODEL_REFUSED_CODE,
-							"The remodel affects a booking that cannot be moved."),
+							"The remodel affects a booking that cannot be moved or ended."),
+					RemodelPreviewAssembler.assemble(disturbed, fresh));
+			case RemodelCommitOutcome.NotConfirmed(var disturbed, var fresh) -> withPreview(
+					ApiProblem.of(HttpStatus.CONFLICT, REFUND_NOT_CONFIRMED_CODE,
+							"A remodel that refunds guests needs the refund count typed out and a reason."),
 					RemodelPreviewAssembler.assemble(disturbed, fresh));
 			case RemodelCommitOutcome.SetsInUse(var sets) -> {
 				ProblemDetail problem = ApiProblem.of(HttpStatus.CONFLICT, SETS_IN_USE_CODE,

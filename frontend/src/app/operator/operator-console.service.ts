@@ -157,10 +157,11 @@ export class OperatorConsoleService {
   }
 
   /**
-   * The commit of a moves-only preview: the save body plus the preview's token. Under the venue's
-   * set locks the server re-derives the picture; a match saves the layout and moves every booking in
-   * one transaction and answers the receipt. `STALE_PREVIEW` / `REMODEL_REFUSED` carry the fresh
-   * picture ({@link remodelPreviewOf}); `STALE_WRITE` and `SETS_IN_USE` answer as the save would.
+   * The commit of a previewed picture: the save body, the preview's token, and the refund count and
+   * reason the operator typed. Under the venue's set locks the server re-derives the picture; a
+   * match saves the layout and settles every booking on it in one transaction and answers the
+   * receipt. `STALE_PREVIEW`, `REMODEL_REFUSED` and `REFUND_NOT_CONFIRMED` carry the fresh picture
+   * ({@link remodelPreviewOf}); `STALE_WRITE` and `SETS_IN_USE` answer as the save would.
    */
   commitLayout(venueId: number, request: RemodelCommitRequest): Observable<RemodelReceipt> {
     return this.http.post<RemodelReceipt>(
@@ -600,6 +601,7 @@ export function layoutErrorOf(error: unknown): LayoutErrorCode {
       case 'SETS_IN_USE':
       case 'STALE_PREVIEW':
       case 'REMODEL_REFUSED':
+      case 'REFUND_NOT_CONFIRMED':
       case 'DUPLICATE_POSITION':
       case 'CELL_TAKEN':
       case 'EMPTY_LAYOUT':
@@ -633,8 +635,9 @@ export function layoutBlockedSetsOf(error: unknown): readonly BlockedSet[] {
 }
 
 /**
- * The fresh picture a `STALE_PREVIEW` or `REMODEL_REFUSED` refusal carries in its `preview` extension,
- * or `null` for any other failure or a body not shaped as a {@link RemodelPreview}.
+ * The fresh picture a `STALE_PREVIEW`, `REMODEL_REFUSED` or `REFUND_NOT_CONFIRMED` refusal carries in
+ * its `preview` extension, or `null` for any other failure or a body not shaped as a
+ * {@link RemodelPreview}.
  */
 export function remodelPreviewOf(error: unknown): RemodelPreview | null {
   if (

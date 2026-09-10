@@ -91,8 +91,10 @@ Venues choose the mode per venue (`venue` module); the two charge differently:
 
 - `payment` and `payout` are separate modules collaborating with `booking` per invariant
   #11: `BookingConfirmed`/`BookingCancelled` fan out to `payout` (accrue / reverse) and
-  `notification`, and `booking`'s own `BookingCancelled` listener drives the refund via
-  `payment.api.RefundPort`. `availability` consumes no events — the `(set, date)` row was
+  `notification`, and two `booking` listeners of its own on the second drive `payment.api`: the
+  refund via `RefundPort`, and — for a remodel-released unpaid booking, the one cancellation that
+  returns nothing under reason `VENUE_CHANGE` — the uncollected intent's void via
+  `CancelPaymentPort`. `availability` consumes no events — the `(set, date)` row was
   claimed synchronously at reserve time and is released synchronously on cancel.
 - The Stripe SDK and webhook controller live in `payment`'s adapter layer only
   (`adapter/in/StripeWebhookController`, `adapter/out/StripePaymentGateway`); the

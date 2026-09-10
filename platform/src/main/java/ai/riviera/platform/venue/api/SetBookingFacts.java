@@ -19,6 +19,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * {@code booking} (reserve, cancel, view) and {@code availability} (claim pool check,
  * staff mark).
  *
+ * <p>{@link #sellsOnlineOn} is the one read here that is about the venue's day rather than a set:
+ * it belongs to this port because it answers the same conversation {@link #freeOnlineSetsOn} does —
+ * what can still be booked at this venue on this date — and because {@code VenueCatalog} is the
+ * tourist-read port siblings may not take ({@code VenueApiRoleSplitTests}).
+ *
  * <p>Deliberately <strong>not</strong> fenced by tourist visibility ({@code
  * operator.api.VenueVisibility}), and the one port that still answers for a <strong>retired</strong>
  * set (ADR-0019): sold-booking paths — cancel, view, mails, staff lookups — must keep resolving a
@@ -80,4 +85,12 @@ public interface SetBookingFacts {
 	 * claim may land on any of them before the caller acts.
 	 */
 	List<SetSpot> freeOnlineSetsOn(VenueId venueId, LocalDate date);
+
+	/**
+	 * Whether the venue's online sales for {@code date} are open right now — the sales close on the
+	 * day itself and the season closure together, the same per-date projection the tourist list and
+	 * map carry (invariant #4). False for an unknown venue. The read a mail takes before it offers a
+	 * guest a day to book again; the reserve path enforces the fence itself, so this is advisory.
+	 */
+	boolean sellsOnlineOn(VenueId venueId, LocalDate date);
 }

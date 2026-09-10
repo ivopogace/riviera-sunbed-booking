@@ -21,19 +21,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The scoping half of the decision that keeps a button labelled "refund" off every other
  * listener, including the two that share its module.
  *
- * <p><strong>Why the scope is an exact listener id and not a package prefix.</strong> The
+ * <p><strong>Why the scope is an exact-id allowlist and not a package prefix.</strong> The
  * notification module's listener-id-prefix scope is safe because every listener in {@code notification}
  * is a mail listener. This module also hosts
  * {@code PaymentEventListener} — payment → confirm (invariant #8) and payment-cancel → availability
  * release (invariant #2) — so {@code ai.riviera.platform.booking.} would hand an admin button the
- * payment spine. An allowlist of one loses that prefix scope's "future listeners covered automatically"
- * property, and for money that is a feature: a second money-moving listener must join the scope
- * deliberately, with review.
+ * payment spine. The allowlist loses that prefix scope's "future listeners covered automatically"
+ * property, and for money that is a feature: a listener joins the scope deliberately, with review. The
+ * two that have are the two on the refund bulkhead, so the lever reaches everything that pool can shed.
  *
- * <p><strong>How the id is kept honest, two levels.</strong> This test pins
- * {@link RegistryRefundOutbox#REFUND_LISTENER_ID} against {@link BookingListenerIds#REFUND}, which is
- * derived from the class literals (compile-safe against a rename); {@code RefundBulkheadIT} pins that
- * same fixture against the id the live registry writes. A stale string here would otherwise be a
+ * <p><strong>How each id is kept honest, two levels.</strong> This test pins
+ * {@link RegistryRefundOutbox#REFUND_LISTENER_ID} and
+ * {@link RegistryRefundOutbox#RELEASE_VOID_LISTENER_ID} against {@link BookingListenerIds}, which
+ * derives them from the class literals (compile-safe against a rename); {@code RefundBulkheadIT} pins
+ * that derivation against the id the live registry writes. A stale string here would otherwise be a
  * silent no-op lever — the V31 failure mode one level up.
  */
 class RefundOutboxScopeTest {
@@ -46,15 +47,27 @@ class RefundOutboxScopeTest {
 			+ "BookingCancelledPayoutListener.on(ai.riviera.platform.booking.events.BookingCancelled)";
 
 	@Test
-	@DisplayName("the constant is the refund listener's real id (level 1 of the two-level pin)")
-	void pinsTheConstantAgainstTheListenersRealId() {
+	@DisplayName("each constant is its listener's real id (level 1 of the two-level pin)")
+	void pinsTheConstantsAgainstTheListenersRealIds() {
 		assertEquals(BookingListenerIds.REFUND, RegistryRefundOutbox.REFUND_LISTENER_ID);
+		assertEquals(BookingListenerIds.REMODEL_RELEASE_VOID, RegistryRefundOutbox.RELEASE_VOID_LISTENER_ID);
 	}
 
 	@Test
 	@DisplayName("the refund listener's publication is in scope")
 	void matchesTheRefundListenersPublication() {
 		assertTrue(RegistryRefundOutbox.isRefundPublication(publicationFor(BookingListenerIds.REFUND)));
+	}
+
+	/**
+	 * The second allowed id. It shares the refund executor, so the same saturation that sheds a refund
+	 * sheds this void — and an un-voided intent stays chargeable to a guest whose booking is gone.
+	 */
+	@Test
+	@DisplayName("the remodel release's intent-void publication is in scope")
+	void matchesTheRemodelReleaseVoidPublication() {
+		assertTrue(RegistryRefundOutbox
+				.isRefundPublication(publicationFor(BookingListenerIds.REMODEL_RELEASE_VOID)));
 	}
 
 	/**

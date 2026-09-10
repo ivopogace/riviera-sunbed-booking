@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Fitness function: a {@code booking} listener that reaches the payment gateway must do it behind the
- * bulkhead — not just the one listener that does today. The twin of
+ * bulkhead — not just the two that do today. The twin of
  * {@code MailListenerExecutorArchitectureTest}, guarding the same trap for a different transport.
  * Rationale: RESPONSIBILITIES.md §`booking`.
  *
@@ -67,20 +67,22 @@ class RefundListenerExecutorArchitectureTest {
 
 	/**
 	 * Guards against a vacuously-green rule. Two filters stand between a class on the classpath and an
-	 * actual assertion — the production import and the {@code payment::api} scope — so this asserts the
-	 * one production listener that must be examined survives both. Without it, a scope predicate that
-	 * quietly stopped matching would leave the rule permanently, invisibly green.
+	 * actual assertion — the production import and the {@code payment::api} scope — so this asserts
+	 * every production listener that must be examined survives both. Without it, a scope predicate
+	 * that quietly stopped matching would leave the rule permanently, invisibly green.
 	 */
 	@Test
-	void theRuleExaminesTheRefundListener() {
+	void theRuleExaminesEveryGatewayReachingListener() {
 		List<Class<?>> examined = gatewayReachingListeners().stream()
 				.map(Method::getDeclaringClass)
 				.toList();
 
-		assertTrue(examined.contains(BookingRefundListener.class),
-				"Expected the rule to examine BookingRefundListener under " + BOOKING_PACKAGE
-						+ " — a listener the scope predicate swallows is a listener free to put a gateway "
-						+ "round-trip back on the money-path pool; examined: " + examined);
+		for (Class<?> listener : List.of(BookingRefundListener.class, RemodelReleasePaymentListener.class)) {
+			assertTrue(examined.contains(listener),
+					"Expected the rule to examine " + listener.getSimpleName() + " under " + BOOKING_PACKAGE
+							+ " — a listener the scope predicate swallows is a listener free to put a gateway "
+							+ "round-trip back on the money-path pool; examined: " + examined);
+		}
 	}
 
 	/**

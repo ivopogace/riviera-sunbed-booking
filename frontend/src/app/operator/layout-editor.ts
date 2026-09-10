@@ -43,6 +43,7 @@ import {
   LayoutCellRequest,
   LayoutErrorCode,
   OperatorBeachMap,
+  RemodelConfirmation,
   RemodelPreview,
   remodelPreviewIsCommittable,
   remodelPreviewIsEmpty,
@@ -88,6 +89,33 @@ interface ToolRow {
   readonly label: string;
   readonly count: number | null;
   readonly active: boolean;
+}
+
+/** The three commit refusals that answer with the server's fresh picture, for the dialog to re-render. */
+const REFUSALS_CARRYING_A_FRESH_PICTURE: ReadonlySet<string> = new Set([
+  'STALE_PREVIEW',
+  'REMODEL_REFUSED',
+  'REFUND_NOT_CONFIRMED',
+]);
+
+/**
+ * Where focus lands when a refused commit re-renders the dialog in place, destroying or disabling
+ * the button that was pressed (WCAG 2.4.3, RV-FE-9). A committable picture that refunds arms Save
+ * only once the count is retyped — and the count is exactly what changed — so the field the
+ * operator must correct takes it; a picture with nothing to correct hands it to Save, and one that
+ * lost its Save to Back.
+ */
+function freshPictureLandingSpot(fresh: RemodelPreview): string {
+  if (!remodelPreviewIsCommittable(fresh)) {
+    return 'layout-remodel-back';
+  }
+  return fresh.refunds.length > 0 ? 'layout-remodel-refund-count' : 'layout-remodel-commit';
+}
+
+/** "2 moved, 1 refunded" — a remodel that refunded nobody says only what it moved. */
+function remodelTallyText(moveCount: number, refundCount: number): string {
+  const moved = `${moveCount} booking${moveCount === 1 ? '' : 's'} moved`;
+  return refundCount === 0 ? moved : `${moved}, ${refundCount} refunded`;
 }
 
 const PREMIUM_PRICE: MoneyView = { minorUnits: 3500, currency: 'EUR' };
@@ -985,12 +1013,13 @@ export class LayoutEditor {
   }
 
   /**
-   * Save the previewed layout and move its bookings: the body the dialog previewed plus the token
-   * the preview answered. A `200` shows the receipt in the dialog's place; `STALE_PREVIEW` and
-   * `REMODEL_REFUSED` re-render the dialog with the server's fresh picture and its token; every other
-   * failure is the save's own.
+   * Save the previewed layout and settle its bookings: the body the dialog previewed, the token the
+   * preview answered and — on a picture that refunds guests — the count and reason the operator
+   * typed. A `200` shows the receipt in the dialog's place; `STALE_PREVIEW`, `REMODEL_REFUSED` and
+   * `REFUND_NOT_CONFIRMED` re-render the dialog with the server's fresh picture and its token; every
+   * other failure is the save's own.
    */
-  protected async commitRemodel(): Promise<void> {
+  protected async commitRemodel(confirmation: RemodelConfirmation): Promise<void> {
     const venueId = this.venueId();
     const preview = this.remodelPreview();
     const pending = this.pendingRemodel;
@@ -1003,7 +1032,11 @@ export class LayoutEditor {
     this.blockedSets.set([]);
     try {
       const receipt = await firstValueFrom(
-        this.console.commitLayout(venueId, { ...pending, previewToken: preview.previewToken }),
+        this.console.commitLayout(venueId, {
+          ...pending,
+          previewToken: preview.previewToken,
+          ...confirmation,
+        }),
       );
       if (this.epoch !== epoch) {
         return;
@@ -1020,15 +1053,13 @@ export class LayoutEditor {
         return;
       }
       const code = layoutErrorOf(error);
-      const fresh =
-        code === 'STALE_PREVIEW' || code === 'REMODEL_REFUSED' ? remodelPreviewOf(error) : null;
+      const fresh = REFUSALS_CARRYING_A_FRESH_PICTURE.has(code ?? '')
+        ? remodelPreviewOf(error)
+        : null;
       if (fresh) {
         this.previewStale.set(true);
         this.remodelPreview.set(fresh);
-        // The same dialog re-renders in place; a picture that lost its Save hands focus to Back.
-        this.focusAfterRender(
-          remodelPreviewIsCommittable(fresh) ? 'layout-remodel-commit' : 'layout-remodel-back',
-        );
+        this.focusAfterRender(freshPictureLandingSpot(fresh));
         return;
       }
       this.remodelPreview.set(null);
@@ -1098,9 +1129,9 @@ export class LayoutEditor {
     }
   }
 
-  /** "Tue 9 Sept, 15:00 · 2 bookings moved" */
+  /** "Tue 9 Sept, 15:00 · 2 moved, 1 refunded" */
   protected receiptSummaryText(summary: RemodelReceiptSummary): string {
-    return `${formatDeadline(summary.committedAt)} · ${summary.moveCount} booking${summary.moveCount === 1 ? '' : 's'} moved`;
+    return `${formatDeadline(summary.committedAt)} · ${remodelTallyText(summary.moveCount, summary.refundCount)}`;
   }
 
   private async commitSave(
@@ -1197,6 +1228,7 @@ export class LayoutEditor {
         return undefined;
       case 'STALE_PREVIEW':
       case 'REMODEL_REFUSED':
+      case 'REFUND_NOT_CONFIRMED':
         // Reached only when the answer carried no readable fresh picture; otherwise the dialog re-opens.
         return 'The bookings changed since you previewed. Save again to see the fresh picture.';
       case 'UNAUTHORIZED':

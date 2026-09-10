@@ -1,5 +1,6 @@
 package ai.riviera.platform.notification.application;
 
+import java.net.URI;
 import java.time.LocalDate;
 
 import ai.riviera.platform.booking.vocabulary.RefundReason;
@@ -23,7 +24,7 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
  * ({@code riviera.refunds.failed}). So the copy says the refund is on its way back, never that it
  * has arrived — a "your refund has settled" mail would need a fact no event carries today.
  *
- * <p>{@code reason} is {@code booking}'s published vocabulary rather than a local copy, so a fourth
+ * <p>{@code reason} is {@code booking}'s published vocabulary rather than a local copy, so a fifth
  * constant becomes a compile error in the transports (which switch over it exhaustively) instead of
  * a silently blank line. It is what lets one event serve both cancellation channels while the tourist
  * still learns which happened — a weather cancellation is one they never asked for.
@@ -33,10 +34,17 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
  * the confirmation already sent it to this address, and the code unlocks nothing once the booking is
  * {@code CANCELLED} — but it must never be logged, and no transport reachable in production does.
  *
+ * <p>{@code rebookLink} is the way back a <strong>venue-caused</strong> cancellation owes and no
+ * other does: the venue's own map for the same day, or the discovery list for it when that venue
+ * cannot sell the date ({@code RebookLinks}). It is {@code null} on every other cancellation, and
+ * on the free exit a moved guest takes themselves — which is what tells the transports the two
+ * {@link RefundReason#VENUE_CHANGE} shapes apart, since one is the venue's doing and the other the
+ * guest's. It embeds no credential.
+ *
  * <p>No spot ({@code rowLabel}/{@code positionNo}): the set is released, so it is not a fact this
  * reader needs. Unpublished module-internal value — public only for the module's own
  * {@code adapter} packages.
  */
 public record BookingCancellationMail(String bookingCode, String venueName, LocalDate bookingDate,
-		long refundMinor, String currency, RefundReason reason) {
+		long refundMinor, String currency, RefundReason reason, URI rebookLink) {
 }

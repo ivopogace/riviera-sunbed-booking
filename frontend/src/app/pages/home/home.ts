@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
 
 import {
   Amenity,
@@ -23,7 +24,7 @@ import { isRated, ratingScore, reviewsLabel } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
 import { ClosedForSeasonChip } from '../../shared/closed-for-season-chip';
 import { SemanticChip } from '../../shared/semantic-chip';
-import { defaultBookingDate, formatDayMonth } from '../../shared/booking-date';
+import { defaultBookingDate, formatDayMonth, isIsoDate } from '../../shared/booking-date';
 import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
@@ -108,6 +109,7 @@ function closedStateText(
 })
 export class Home {
   private readonly venueService = inject(VenueService);
+  private readonly route = inject(ActivatedRoute);
 
   /** The displayed (filtered) venues; `undefined` while a request is in flight (loading). */
   protected readonly venues = signal<VenueSummary[] | undefined>(undefined);
@@ -133,7 +135,13 @@ export class Home {
    * regardless.
    */
   protected readonly minDate = defaultBookingDate(new Date());
-  /** The day availability is counted for (ISO YYYY-MM-DD); defaults to the earliest bookable date. */
+  /**
+   * The day availability is counted for (ISO YYYY-MM-DD). Seeded from the route's `?date` — where
+   * the rebook link a venue-caused cancellation mails lands — clamped to the earliest bookable day,
+   * and defaulting to it. A later navigation that only changes that param reuses this component, so
+   * the constructor's subscription keeps the date and the counts in step rather than leaving a new
+   * label over an old list.
+   */
   protected readonly selectedDate = signal(this.minDate);
 
   /** Distinct beaches/regions for the filter selects, captured once from the unfiltered catalogue. */
@@ -177,7 +185,21 @@ export class Home {
   private lastLoad!: () => void;
 
   constructor() {
+    this.selectedDate.set(this.routeDate(this.route.snapshot.queryParamMap));
     this.loadInitial();
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const date = this.routeDate(params);
+      if (date !== this.selectedDate()) {
+        this.selectedDate.set(date);
+        this.reload();
+      }
+    });
+  }
+
+  /** The route-carried day: a well-formed `?date` on or after the floor, else the floor itself. */
+  private routeDate(params: ParamMap): string {
+    const raw = params.get('date') ?? '';
+    return isIsoDate(raw) && raw >= this.minDate ? raw : this.minDate;
   }
 
   /** First load: no filters. Seeds the filter selects from the full catalogue and shows all venues. */

@@ -245,15 +245,34 @@ export interface RemodelReceiptMove {
   readonly positionsAway: number;
 }
 
+/** One claim a receipt records as ended rather than moved: the spot it held and the amount involved. */
+export interface RemodelReceiptClaim {
+  readonly bookingId: number;
+  readonly bookingDate: string;
+  readonly from: RemodelSpot;
+  readonly amount: MoneyView;
+}
+
+/** A released unpaid booking or a declined request, told apart by `kind`; neither collected anything. */
+export interface RemodelReceiptRelease extends RemodelReceiptClaim {
+  readonly kind: 'RELEASE' | 'DECLINE';
+}
+
 /**
  * A persisted remodel-commit receipt (`GET /api/venues/{id}/remodels/{receiptId}`), and the
- * `200` of the commit itself, whose moves also carry the amount: when it was committed and every
- * booking it moved, both spots as they were. Bookings by id, never by code.
+ * `200` of the commit itself, whose moves also carry the amount: when it was committed, every
+ * booking it moved, every claim it ended instead, the operator's reason for the refunds and what
+ * they returned to guests. `refundedTotal` is null when it refunded nobody, so a zero is never
+ * rendered as a refund. Bookings by id, never by code.
  */
 export interface RemodelReceipt {
   readonly receiptId: number;
   readonly committedAt: string;
   readonly moves: readonly RemodelReceiptMove[];
+  readonly refunds: readonly RemodelReceiptClaim[];
+  readonly releases: readonly RemodelReceiptRelease[];
+  readonly refundReason: string;
+  readonly refundedTotal: MoneyView | null;
 }
 
 /** One row of `GET /api/venues/{id}/remodels`, newest first. */
@@ -261,11 +280,24 @@ export interface RemodelReceiptSummary {
   readonly receiptId: number;
   readonly committedAt: string;
   readonly moveCount: number;
+  readonly refundCount: number;
 }
 
-/** The commit body: the save body plus the token the preview answered. */
+/**
+ * The commit body: the save body, the token the preview answered, and the operator's refund
+ * confirmation — the count they read off the preview and why they are remodelling. Both are 0 and
+ * `''` on a picture that refunds nobody, the only case that needs neither.
+ */
 export interface RemodelCommitRequest extends BeachMapLayoutRequest {
   readonly previewToken: string;
+  readonly refundCount: number;
+  readonly refundReason: string;
+}
+
+/** What the operator typed on a preview that refunds guests, carried into the commit. */
+export interface RemodelConfirmation {
+  readonly refundCount: number;
+  readonly refundReason: string;
 }
 
 /** An unpaid booking that would be released, or a pending request that would be declined. */
@@ -300,12 +332,13 @@ export interface RemodelPreview {
   readonly previewToken: string;
 }
 
-/** True when the preview names moves and nothing else — the one picture the commit applies. */
+/**
+ * True when every claim the preview names can be applied — moves, refunds, releases and declines.
+ * A staff walk-in hold or a blocked claim pins its set, and the save refuses the lot.
+ */
 export function remodelPreviewIsCommittable(preview: RemodelPreview): boolean {
   return (
-    preview.moves.length > 0 &&
-    preview.refunds.length === 0 &&
-    preview.releases.length === 0 &&
+    !remodelPreviewIsEmpty(preview) &&
     preview.staffHolds.length === 0 &&
     preview.blocks.length === 0
   );
@@ -469,13 +502,15 @@ export type ReleaseErrorCode = 'NOT_MARKED' | 'NOT_VENUE_OWNER' | 'UNAUTHORIZED'
  * is the 409 optimistic-concurrency loss — the layout was changed elsewhere since the tab loaded it, so
  * the editor keeps the operator's edits and offers a Reload, never a clobber. `SETS_IN_USE` is the 409
  * set-scoped refusal: the save would remove sets someone is still owed, named in the problem's `sets`
- * extension ({@link BlockedSet}), and nothing was written. `STALE_PREVIEW` and `REMODEL_REFUSED` are the
- * commit's two 409s, each carrying the fresh picture in the problem's `preview` extension.
+ * extension ({@link BlockedSet}), and nothing was written. `STALE_PREVIEW`, `REMODEL_REFUSED` and
+ * `REFUND_NOT_CONFIRMED` are the commit's three 409s, each carrying the fresh picture in the
+ * problem's `preview` extension — for the last, that picture's own `refunds` is the count owed.
  */
 export type LayoutErrorCode =
   | 'SETS_IN_USE'
   | 'STALE_PREVIEW'
   | 'REMODEL_REFUSED'
+  | 'REFUND_NOT_CONFIRMED'
   | 'DUPLICATE_POSITION'
   | 'CELL_TAKEN'
   | 'EMPTY_LAYOUT'

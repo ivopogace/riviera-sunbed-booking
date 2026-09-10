@@ -19,7 +19,10 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import com.jayway.jsonpath.JsonPath;
 
+import ai.riviera.platform.booking.application.remodel.NewReceipt;
 import ai.riviera.platform.booking.application.remodel.ReceiptMove;
+import ai.riviera.platform.booking.application.remodel.ReceiptOutcome;
+import ai.riviera.platform.booking.application.remodel.ReceiptOutcomeKind;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.ReceiptId;
@@ -74,10 +77,10 @@ class RemodelReceiptIT {
 		OperatorId operator = new OperatorId(jdbc.sql("SELECT id FROM operator WHERE username = 'operator'")
 				.query(Long.class).single());
 		LocalDate day = LocalDate.of(2027, 7, 12);
-		ReceiptId older = receipts.store(new VenueId(venue), operator, Instant.parse("2026-09-09T10:00:00Z"), List.of());
-		ReceiptId newer = receipts.store(new VenueId(venue), operator, Instant.parse("2026-09-09T11:00:00Z"), List.of(
+		ReceiptId older = receipts.store(new NewReceipt(new VenueId(venue), operator, Instant.parse("2026-09-09T10:00:00Z"), List.of(), List.of(), ""));
+		ReceiptId newer = receipts.store(new NewReceipt(new VenueId(venue), operator, Instant.parse("2026-09-09T11:00:00Z"), List.of(
 				new ReceiptMove(new BookingId(booking), day, new SpotRef(new SetId(a1), "A", 1),
-						new SpotRef(new SetId(a2), "A", 2), 0, 1)));
+						new SpotRef(new SetId(a2), "A", 2), 0, 1)), List.of(), ""));
 
 		mvc.perform(get("/api/venues/{v}/remodels", venue).cookie(operatorSession))
 				.andExpect(status().isOk())
@@ -105,6 +108,49 @@ class RemodelReceiptIT {
 		mvc.perform(get("/api/venues/{v}/remodels/{r}", venue, newer.value() + 100_000).cookie(operatorSession))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("NO_SUCH_RECEIPT"));
+	}
+
+	@Test
+	void readsRefundReleaseAndDeclineLinesWithTheReason() throws Exception {
+		long venue = createVenue("Ended Claims Club");
+		long a1 = insertSet(venue, 1);
+		long refunded = seedBooking(venue, a1, "RCP-" + System.nanoTime());
+		long released = seedBooking(venue, a1, "RCP-" + System.nanoTime());
+		OperatorId operator = new OperatorId(jdbc.sql("SELECT id FROM operator WHERE username = 'operator'")
+				.query(Long.class).single());
+		LocalDate day = LocalDate.of(2027, 7, 12);
+		SpotRef spot = new SpotRef(new SetId(a1), "A", 1);
+		ReceiptId id = receipts.store(new NewReceipt(new VenueId(venue), operator,
+				Instant.parse("2026-09-09T12:00:00Z"), List.of(), List.of(
+						new ReceiptOutcome(new BookingId(refunded), day, spot, ReceiptOutcomeKind.REFUND, 4500, "EUR"),
+						new ReceiptOutcome(new BookingId(released), day, spot, ReceiptOutcomeKind.RELEASE, 2000, "EUR")),
+				"Re-laying row A for the season"));
+
+		mvc.perform(get("/api/venues/{v}/remodels/{r}", venue, id.value()).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(content().string(not(containsString("\"code\""))))
+				.andExpect(jsonPath("$.refunds.length()").value(1))
+				.andExpect(jsonPath("$.refunds[0].bookingId").value(refunded))
+				.andExpect(jsonPath("$.refunds[0].bookingDate").value("2027-07-12"))
+				.andExpect(jsonPath("$.refunds[0].from.rowLabel").value("A"))
+				.andExpect(jsonPath("$.refunds[0].amount.minorUnits").value(4500))
+				.andExpect(jsonPath("$.releases.length()").value(1))
+				.andExpect(jsonPath("$.releases[0].bookingId").value(released))
+				.andExpect(jsonPath("$.releases[0].kind").value("RELEASE"))
+				.andExpect(jsonPath("$.refundReason").value("Re-laying row A for the season"))
+				.andExpect(jsonPath("$.refundedTotal.minorUnits").value(4500))
+				.andExpect(jsonPath("$.refundedTotal.currency").value("EUR"));
+
+		mvc.perform(get("/api/venues/{v}/remodels", venue).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].refundCount").value(1));
+
+		mvc.perform(get("/api/venues/{v}/remodels/{r}", other(venue), id.value()).cookie(operatorSession))
+				.andExpect(status().isNotFound());
+	}
+
+	private long other(long venue) throws Exception {
+		return createVenue("Foreign Club " + venue);
 	}
 
 	private long createVenue(String name) throws Exception {

@@ -1,14 +1,17 @@
 package ai.riviera.platform.notification.adapter.in;
 
+import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
 
+import ai.riviera.platform.booking.api.BookingNotificationFacts;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingMailFacts;
 import ai.riviera.platform.notification.application.BookingMailFactsService;
+import ai.riviera.platform.notification.application.RebookLinks;
 import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
@@ -64,6 +67,8 @@ class BookingCancellationMailListenerTest {
 
 	private static final BookingCancelled EVENT = new BookingCancelled(BOOKING_ID, new VenueId(4L),
 			SET_ID, BOOKING_DATE, 4500, "EUR", RefundReason.POLICY);
+	private static final URI MAP_LINK = URI.create("https://riviera.test/venues/4?date=2026-08-12");
+	private static final URI DISCOVERY_LINK = URI.create("https://riviera.test/?date=2026-08-12");
 	private static final BookingMailFacts.Resolved FACTS =
 			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3);
 
@@ -71,8 +76,11 @@ class BookingCancellationMailListenerTest {
 	private final TransactionalMailService mails = mock(TransactionalMailService.class);
 	private final MeterRegistry meters = new SimpleMeterRegistry();
 
+	private final RebookLinks rebookLinks = mock(RebookLinks.class);
+	private final BookingNotificationFacts bookings = mock(BookingNotificationFacts.class);
+
 	private final BookingCancellationMailListener listener =
-			new BookingCancellationMailListener(facts, mails, meters);
+			new BookingCancellationMailListener(facts, bookings, mails, rebookLinks, meters);
 
 	private final ListAppender<ILoggingEvent> logged = new ListAppender<>();
 	private ch.qos.logback.classic.Logger logger;
@@ -103,7 +111,8 @@ class BookingCancellationMailListenerTest {
 		listener.on(EVENT);
 
 		verify(mails).sendBookingCancellation(EMAIL, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.POLICY));
+				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.POLICY, null));
+		verifyNoInteractions(rebookLinks);
 	}
 
 	/** The refund is the event's number, never re-derived — invariant #10 has one owner, upstream. */
@@ -116,7 +125,7 @@ class BookingCancellationMailListenerTest {
 		listener.on(nothingRefunded);
 
 		verify(mails).sendBookingCancellation(EMAIL, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.POLICY));
+				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.POLICY, null));
 	}
 
 	/** AC-3: one event, every channel — the reason reaches the transport rather than being flattened. */
@@ -124,13 +133,52 @@ class BookingCancellationMailListenerTest {
 	@EnumSource(RefundReason.class)
 	void everyCancellationChannelMails(RefundReason reason) {
 		givenTheFactsAre(FACTS);
+		givenTheRemodelEndedIt();
+		when(rebookLinks.forDate(new VenueId(4L), BOOKING_DATE)).thenReturn(MAP_LINK);
 		BookingCancelled event = new BookingCancelled(BOOKING_ID, new VenueId(4L), SET_ID,
 				BOOKING_DATE, 4500, "EUR", reason);
 
 		listener.on(event);
 
 		verify(mails).sendBookingCancellation(EMAIL, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", reason));
+				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", reason,
+				reason == RefundReason.VENUE_CHANGE ? MAP_LINK : null));
+	}
+
+	/**
+	 * Only a venue-caused cancellation carries a way back: the link is the venue's own map for the
+	 * same day when it can still sell it, and the discovery list for that day when it cannot — closed
+	 * for season, or past its sales close for the date.
+	 */
+	@Test
+	void rebookLinkFallsBackToDiscoveryWhenTheVenueCannotSell() {
+		givenTheFactsAre(FACTS);
+		givenTheRemodelEndedIt();
+		BookingCancelled venueCaused = new BookingCancelled(BOOKING_ID, new VenueId(4L), SET_ID,
+				BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE);
+		when(rebookLinks.forDate(new VenueId(4L), BOOKING_DATE)).thenReturn(MAP_LINK, DISCOVERY_LINK);
+
+		listener.on(venueCaused);
+		listener.on(venueCaused);
+
+		verify(mails).sendBookingCancellation(EMAIL, new BookingCancellationMail(
+				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, MAP_LINK));
+		verify(mails).sendBookingCancellation(EMAIL, new BookingCancellationMail(
+				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK));
+	}
+
+	/** A released unpaid claim is the same fact with nothing to return, and still gets the way back. */
+	@Test
+	void aReleasedUnpaidClaimIsMailedWithItsRebookLinkAndNoRefund() {
+		givenTheFactsAre(FACTS);
+		givenTheRemodelEndedIt();
+		when(rebookLinks.forDate(new VenueId(4L), BOOKING_DATE)).thenReturn(DISCOVERY_LINK);
+
+		listener.on(new BookingCancelled(BOOKING_ID, new VenueId(4L), SET_ID, BOOKING_DATE, 0, "EUR",
+				RefundReason.VENUE_CHANGE));
+
+		verify(mails).sendBookingCancellation(EMAIL, new BookingCancellationMail(
+				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK));
 	}
 
 	@ParameterizedTest(name = "{0}")
@@ -190,6 +238,27 @@ class BookingCancellationMailListenerTest {
 		assertThatThrownBy(() -> listener.on(EVENT)).isInstanceOf(IllegalStateException.class);
 
 		assertThat(meters.find(ObservabilityMetrics.MAIL_CANCELLATION_ABANDONED).counters()).isEmpty();
+	}
+
+	/**
+	 * The free exit a moved guest takes is {@code VENUE_CHANGE} too, so reason alone cannot earn a
+	 * rebook link: only a booking the receipt records as ended by a remodel does.
+	 */
+	@Test
+	void theGuestsOwnFreeExitCarriesNoRebookLink() {
+		givenTheFactsAre(FACTS);
+		when(bookings.endedByRemodel(BOOKING_ID)).thenReturn(false);
+
+		listener.on(new BookingCancelled(BOOKING_ID, new VenueId(4L), SET_ID, BOOKING_DATE, 4500, "EUR",
+				RefundReason.VENUE_CHANGE));
+
+		verify(mails).sendBookingCancellation(EMAIL, new BookingCancellationMail(
+				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, null));
+		verifyNoInteractions(rebookLinks);
+	}
+
+	private void givenTheRemodelEndedIt() {
+		when(bookings.endedByRemodel(BOOKING_ID)).thenReturn(true);
 	}
 
 	private void givenTheFactsAre(BookingMailFacts outcome) {

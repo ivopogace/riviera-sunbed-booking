@@ -1,8 +1,11 @@
 package ai.riviera.platform;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+
+import org.awaitility.Awaitility;
 
 import jakarta.servlet.http.Cookie;
 
@@ -40,8 +43,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code booking}'s moves (ADR-0020): an all-move commit applies the layout and every move in one
  * transaction and answers the receipt; a token that no longer covers the claims is
  * {@code 409 STALE_PREVIEW} with the fresh picture and writes nothing; a token covering a vanished
- * claim commits; a picture with a refund is {@code 409 REMODEL_REFUSED}; a staff hold is stale; a
- * stale {@code set_version} answers in the save's words; no booking code anywhere (invariant #7).
+ * claim commits; a mixed picture moves, refunds, releases and declines in that one transaction and
+ * receipts every line; a picture that refunds without the typed count and a reason is
+ * {@code 409 REFUND_NOT_CONFIRMED}; a claim that pins its set is {@code 409 REMODEL_REFUSED}; a staff
+ * hold is stale; a stale {@code set_version} answers in the save's words; no booking code anywhere
+ * (invariant #7).
  * Dates are relative to today in {@code Europe/Tirane} so the zones fall where the default windows
  * put them.
  */
@@ -164,24 +170,116 @@ class RemodelCommitIT {
 	}
 
 	@Test
-	void aPictureWithARefundIsRefusedAndAStaffHoldIsStale() throws Exception {
-		long venue = createVenue("Refused Club");
-		putLayout(venue, layout(0, cell("A", 1, 1), cellWalkIn("A", 2, 2)));
+	void commitsAMixedPictureAndReceiptsEveryOutcome() throws Exception {
+		long venue = createVenue("Mixed Club");
+		putLayout(venue, layout(0, cell("A", 1, 1), cell("A", 2, 2)));
 		List<Long> ids = setIds(venue);
 		long a1 = ids.get(0);
+		long a2 = ids.get(1);
+		LocalDate moveDay = today.plusDays(10);
+		LocalDate refundDay = today.plusDays(11);
+		LocalDate releaseDay = today.plusDays(12);
+		LocalDate declineDay = today.plusDays(13);
+		long moved = claimOn(venue, a1, moveDay, "CONFIRMED");
+		long refunded = claimOn(venue, a1, refundDay, "CONFIRMED");
+		seedAccrual(venue, refunded);
+		long released = claimOn(venue, a1, releaseDay, "AWAITING_PAYMENT");
+		long declined = claimOn(venue, a1, declineDay, "PENDING_REQUEST");
+		// A2 is the only candidate, so blocking it on three days leaves one move and three ended claims.
+		seedHold(a2, refundDay, "STAFF_MARKED");
+		seedHold(a2, releaseDay, "STAFF_MARKED");
+		seedHold(a2, declineDay, "STAFF_MARKED");
+		long token = currentSetVersion(venue);
+		String body = layout(token, cell("A", 2, 2));
+		String previewToken = previewToken(venue, body);
+
+		MvcResult result = mvc.perform(commit(venue, body, previewToken, 1, "Re-laying row A for the season"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(not(containsString("\"code\""))))
+				.andExpect(jsonPath("$.moves.length()").value(1))
+				.andExpect(jsonPath("$.moves[0].bookingId").value(moved))
+				.andExpect(jsonPath("$.refunds.length()").value(1))
+				.andExpect(jsonPath("$.refunds[0].bookingId").value(refunded))
+				.andExpect(jsonPath("$.refunds[0].amount.minorUnits").value(2000))
+				.andExpect(jsonPath("$.releases.length()").value(2))
+				.andExpect(jsonPath("$.refundReason").value("Re-laying row A for the season"))
+				.andExpect(jsonPath("$.refundedTotal.minorUnits").value(2000))
+				.andExpect(jsonPath("$.refundedTotal.currency").value("EUR"))
+				.andReturn();
+		long receipt = ((Number) JsonPath.read(result.getResponse().getContentAsString(), "$.receiptId")).longValue();
+
+		assertEquals(a2, setOf(moved), "the movable claim is re-seated");
+		assertEquals("CANCELLED", statusOf(refunded));
+		assertEquals("VENUE_CHANGE", reasonOf(refunded));
+		assertEquals(2000L, refundOf(refunded), "a venue-caused refund is the whole amount");
+		assertEquals("CANCELLED", statusOf(released));
+		assertNull(refundOf(released), "an unpaid claim is released with no refund");
+		assertEquals("DECLINED", statusOf(declined));
+		for (LocalDate day : List.of(refundDay, releaseDay, declineDay)) {
+			assertEquals(0, holds(a1, day), "every ended claim frees its (set, date) row");
+		}
+
+		// The reversal rides the same BookingCancelled the mail does — after commit, so it is awaited.
+		Awaitility.await().atMost(Duration.ofSeconds(20))
+				.until(() -> "VENUE_CHANGE".equals(reversalReasonOf(refunded)));
+		assertEquals(0, ledgerRowsFor(released), "a released claim collected nothing to reverse");
+		assertEquals(0, ledgerRowsFor(declined), "a declined request never accrued");
+		assertEquals(3, jdbc.sql("SELECT COUNT(*) FROM remodel_receipt_outcome WHERE receipt_id = :r")
+				.param("r", receipt).query(Integer.class).single());
+		assertEquals("Re-laying row A for the season",
+				jdbc.sql("SELECT refund_reason FROM remodel_receipt WHERE id = :r").param("r", receipt)
+						.query(String.class).single());
+		assertTrue(retired(a1));
+		assertEquals(List.of(a2), setIds(venue));
+	}
+
+	@Test
+	void refusesACommitWithRefundsThatIsNotTypedOut() throws Exception {
+		long venue = createVenue("Unconfirmed Club");
+		putLayout(venue, layout(0, cell("A", 1, 1), cellWalkIn("A", 2, 2)));
+		long a1 = setIds(venue).get(0);
 		LocalDate farOut = today.plusDays(10);
-		long refunded = seedBooking(venue, a1, "RFS-" + System.nanoTime(), "CONFIRMED", farOut);
-		seedHold(a1, farOut, "BOOKED_ONLINE");
+		long refunded = claimOn(venue, a1, farOut, "CONFIRMED");
 		long token = currentSetVersion(venue);
 		String body = layout(token, cellWalkIn("A", 2, 2));
 		String previewToken = previewToken(venue, body);
 
 		mvc.perform(commit(venue, body, previewToken))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("REMODEL_REFUSED"))
+				.andExpect(jsonPath("$.code").value("REFUND_NOT_CONFIRMED"))
 				.andExpect(jsonPath("$.preview.refunds.length()").value(1))
-				.andExpect(jsonPath("$.preview.refunds[0].bookingId").value(refunded));
-		assertEquals(a1, setOf(refunded));
+				.andExpect(jsonPath("$.preview.refunds[0].bookingId").value(refunded))
+				.andExpect(jsonPath("$.preview.previewToken", startsWith("v1")));
+		mvc.perform(commit(venue, body, previewToken, 2, "Wrong count"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("REFUND_NOT_CONFIRMED"));
+		mvc.perform(commit(venue, body, previewToken, 1, "   "))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("REFUND_NOT_CONFIRMED"));
+
+		assertEquals("CONFIRMED", statusOf(refunded));
+		assertEquals(token, currentSetVersion(venue), "nothing is written and the token is unspent");
+		assertEquals(0, receiptsOf(venue));
+	}
+
+	@Test
+	void aBlockedClaimIsRefusedAndAStaffHoldIsStale() throws Exception {
+		long venue = createVenue("Refused Club");
+		putLayout(venue, layout(0, cell("A", 1, 1), cellWalkIn("A", 2, 2)));
+		List<Long> ids = setIds(venue);
+		long a1 = ids.get(0);
+		LocalDate tomorrow = today.plusDays(1);
+		long frozen = claimOn(venue, a1, tomorrow, "CONFIRMED");
+		long token = currentSetVersion(venue);
+		String body = layout(token, cellWalkIn("A", 2, 2));
+		String previewToken = previewToken(venue, body);
+
+		mvc.perform(commit(venue, body, previewToken, 1, "Re-laying"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("REMODEL_REFUSED"))
+				.andExpect(jsonPath("$.preview.blocks.length()").value(1))
+				.andExpect(jsonPath("$.preview.blocks[0].bookingId").value(frozen));
+		assertEquals("CONFIRMED", statusOf(frozen));
 		assertEquals(token, currentSetVersion(venue));
 
 		long held = createVenue("Held Club");
@@ -235,6 +333,56 @@ class RemodelCommitIT {
 				: body.substring(0, body.length() - 1) + ",\"previewToken\":\"" + previewToken + "\"}";
 		return post("/api/venues/{v}/beach-map/commit", venue).cookie(operatorSession).with(csrf())
 				.contentType(MediaType.APPLICATION_JSON).content(content);
+	}
+
+	/** The same body with the operator's refund confirmation: the count they read off the preview and why. */
+	private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder commit(long venue, String body,
+			String previewToken, int refundCount, String reason) {
+		String content = body.substring(0, body.length() - 1) + ",\"previewToken\":\"" + previewToken
+				+ "\",\"refundCount\":" + refundCount + ",\"refundReason\":\"" + reason + "\"}";
+		return post("/api/venues/{v}/beach-map/commit", venue).cookie(operatorSession).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON).content(content);
+	}
+
+	/** A live claim on a set: the booking plus the {@code (set, date)} row it holds. */
+	private long claimOn(long venueId, long setId, LocalDate date, String status) {
+		long id = seedBooking(venueId, setId, "CMT-" + System.nanoTime(), status, date);
+		seedHold(setId, date, "BOOKED_ONLINE");
+		return id;
+	}
+
+	/** The accrual a confirmed booking would already carry, so the reversal has its mirror. */
+	private void seedAccrual(long venueId, long bookingId) {
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (booking_id, venue_id, entry_type, gross_minor, commission_minor,
+				                                 net_minor, currency, reason)
+				VALUES (:b, :v, 'ACCRUAL', 2000, 300, 1700, 'EUR', NULL)
+				""").param("b", bookingId).param("v", venueId).update();
+	}
+
+	private String reversalReasonOf(long bookingId) {
+		return jdbc.sql("SELECT reason FROM payout_ledger_entry WHERE booking_id = :b AND entry_type = 'REVERSAL'")
+				.param("b", bookingId).query(String.class).optional().orElse(null);
+	}
+
+	private int ledgerRowsFor(long bookingId) {
+		return jdbc.sql("SELECT COUNT(*) FROM payout_ledger_entry WHERE booking_id = :b")
+				.param("b", bookingId).query(Integer.class).single();
+	}
+
+	private String statusOf(long bookingId) {
+		return jdbc.sql("SELECT status FROM booking WHERE id = :id").param("id", bookingId)
+				.query(String.class).single();
+	}
+
+	private String reasonOf(long bookingId) {
+		return jdbc.sql("SELECT cancel_reason FROM booking WHERE id = :id").param("id", bookingId)
+				.query(String.class).single();
+	}
+
+	private Long refundOf(long bookingId) {
+		return jdbc.sql("SELECT refund_minor FROM booking WHERE id = :id").param("id", bookingId)
+				.query(Long.class).optional().orElse(null);
 	}
 
 	private String previewToken(long venue, String body) throws Exception {
