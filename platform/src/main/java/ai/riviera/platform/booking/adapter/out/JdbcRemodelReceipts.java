@@ -27,8 +27,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * JDBC adapter for {@link RemodelReceipts} (invariant #1): one insert per receipt, per move and
- * per ended claim, the venue-scoped reads off {@code remodel_receipt_venue_idx}, and the latest
- * move per booking off {@code remodel_receipt_move_booking_idx}. Names no set table: every spot is
+ * per ended claim, the venue-scoped reads off {@code remodel_receipt_venue_idx}, and the two
+ * per-booking reads off {@code remodel_receipt_move_booking_idx} and
+ * {@code remodel_receipt_outcome_booking_idx}. Names no set table: every spot is
  * the row's own snapshot. Package-private; only the port is referenced.
  */
 @Repository
@@ -187,6 +188,14 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 				.param(P_BOOKING, bookingId.value())
 				.query((rs, rowNum) -> mapMove(rs))
 				.optional();
+	}
+
+	@Override
+	public boolean endedByRemodel(BookingId bookingId) {
+		return jdbc.sql("SELECT EXISTS(SELECT 1 FROM remodel_receipt_outcome WHERE booking_id = :booking)")
+				.param(P_BOOKING, bookingId.value())
+				.query(Boolean.class)
+				.single();
 	}
 
 	private static RemodelReceipt withLines(RemodelReceipt head, List<ReceiptMove> moves,

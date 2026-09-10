@@ -469,7 +469,11 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/test/java/ai/riviera/platform/RemodelCommitIT.java` — AC-6, AC-7
 - `platform/src/test/java/ai/riviera/platform/RemodelReceiptIT.java` — AC-8
 - `platform/src/test/java/ai/riviera/platform/notification/adapter/in/BookingCancellationMailListenerTest.java` — AC-10
-- `platform/src/test/java/ai/riviera/platform/notification/BookingCancellationRebookMailIT.java` — the vehicle + suppression
+- `platform/src/test/java/ai/riviera/platform/notification/BookingCancellationMailIT.java` — the vehicle + suppression on the venue-caused leg
+- `platform/src/test/java/ai/riviera/platform/notification/adapter/out/SmtpMailerIT.java` — the venue-caused copy
+- `platform/src/test/java/ai/riviera/platform/notification/adapter/out/MockMailerTest.java`, `platform/src/test/java/ai/riviera/platform/notification/application/TransactionalMailServiceTest.java` — the widened record
+- `platform/src/main/java/ai/riviera/platform/notification/application/RebookLinks.java` — which of the two links a mail carries
+- `platform/src/main/java/ai/riviera/platform/booking/api/BookingNotificationFacts.java`, `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcBookingNotificationFacts.java` — `endedByRemodel`, the venue-caused discriminator
 - `frontend/src/app/operator/operator-console.model.ts` — the widened types + committable rule
 - `frontend/src/app/operator/operator-console.service.ts` — the commit body
 - `frontend/src/app/operator/operator-console.service.spec.ts` — its spec

@@ -8,11 +8,16 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.net.URI;
+
+import ai.riviera.platform.booking.api.BookingNotificationFacts;
 import ai.riviera.platform.booking.events.BookingCancelled;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingMailFacts;
 import ai.riviera.platform.notification.application.BookingMailFactsService;
 import ai.riviera.platform.notification.application.MissingBookingFact;
+import ai.riviera.platform.notification.application.RebookLinks;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
@@ -43,6 +48,12 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * has already committed by the time this runs, so no mail outcome can touch the cancellation, the
  * availability release (invariant #2), or the refund.
  *
+ * <p><strong>Only a venue-caused cancellation carries a way back.</strong> A booking the venue's own
+ * remodel ended is mailed a rebook link ({@link RebookLinks}). Reason alone cannot say so: a guest
+ * who takes the free exit a move earned them is refunded under {@code VENUE_CHANGE} too, and only
+ * the commit receipt tells the two apart ({@code BookingNotificationFacts#endedByRemodel}). The link
+ * is also what lets the transports tell them apart in the copy.
+ *
  * <p><strong>Giving up is counted under this flow's own name</strong> —
  * {@link ObservabilityMetrics#MAIL_CANCELLATION_ABANDONED}, not the confirmation's. The two ride the
  * same vehicle and share the same three reasons but are not the same event and <strong>must not be
@@ -55,13 +66,17 @@ class BookingCancellationMailListener {
 	private static final Logger log = LoggerFactory.getLogger(BookingCancellationMailListener.class);
 
 	private final BookingMailFactsService facts;
+	private final BookingNotificationFacts bookings;
 	private final TransactionalMailService mails;
+	private final RebookLinks rebookLinks;
 	private final MeterRegistry meters;
 
-	BookingCancellationMailListener(BookingMailFactsService facts, TransactionalMailService mails,
-			MeterRegistry meters) {
+	BookingCancellationMailListener(BookingMailFactsService facts, BookingNotificationFacts bookings,
+			TransactionalMailService mails, RebookLinks rebookLinks, MeterRegistry meters) {
 		this.facts = facts;
+		this.bookings = bookings;
 		this.mails = mails;
+		this.rebookLinks = rebookLinks;
 		this.meters = meters;
 	}
 
@@ -72,8 +87,15 @@ class BookingCancellationMailListener {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
 			case BookingMailFacts.Resolved booking -> mails.sendBookingCancellation(booking.toEmail(),
 					new BookingCancellationMail(booking.bookingCode(), booking.venueName(),
-							event.bookingDate(), event.refundMinor(), event.currency(), event.reason()));
+							event.bookingDate(), event.refundMinor(), event.currency(), event.reason(),
+							rebookLinkFor(event)));
 		}
+	}
+
+	private URI rebookLinkFor(BookingCancelled event) {
+		return event.reason() == RefundReason.VENUE_CHANGE && bookings.endedByRemodel(event.bookingId())
+				? rebookLinks.forDate(event.venueId(), event.bookingDate())
+				: null;
 	}
 
 	/**

@@ -3,6 +3,7 @@ package ai.riviera.platform.notification;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,7 +24,16 @@ import com.jayway.jsonpath.JsonPath;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.application.remodel.NewReceipt;
+import ai.riviera.platform.booking.application.remodel.ReceiptOutcome;
+import ai.riviera.platform.booking.application.remodel.ReceiptOutcomeKind;
+import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
+import ai.riviera.platform.booking.vocabulary.SpotRef;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.notification.adapter.out.MockMailer;
 import ai.riviera.platform.notification.adapter.out.SentEmail;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
@@ -77,6 +87,9 @@ class BookingCancellationMailIT {
 
 	@Autowired
 	MockMailer mailer;
+
+	@Autowired
+	RemodelReceipts receipts;
 
 	@Autowired
 	EmailSuppressions suppressions;
@@ -135,7 +148,7 @@ class BookingCancellationMailIT {
 		SentEmail sent = mailer.lastTo(guest).orElseThrow();
 		assertThat(sent.kind()).isEqualTo(SentEmail.Kind.BOOKING_CANCELLATION);
 		assertThat(sent.cancellation()).isEqualTo(new BookingCancellationMail(
-				code, set.venueName(), date, refundMinor, "EUR", RefundReason.POLICY));
+				code, set.venueName(), date, refundMinor, "EUR", RefundReason.POLICY, null));
 		assertThat(refundMinor).as("cancelled long before the cutoff — ADR-0005 tier FULL").isPositive();
 	}
 
@@ -162,7 +175,7 @@ class BookingCancellationMailIT {
 
 		assertThat(mailer.lastTo(guest).orElseThrow().cancellation())
 				.isEqualTo(new BookingCancellationMail("WEATHER1", set.venueName(), date, 7331L, "EUR",
-						RefundReason.WEATHER));
+						RefundReason.WEATHER, null));
 	}
 
 	/**
@@ -244,6 +257,68 @@ class BookingCancellationMailIT {
 				.param("module", "ai.riviera.platform.notification.%")
 				.query(String.class).list())
 				.containsExactly(BookingMailFixtures.CANCELLATION_LISTENER_ID);
+	}
+
+	/**
+	 * The venue-caused legs: a booking a remodel receipt records as ended carries a way to book again
+	 * — that venue's map for the day it can still sell, the discovery list for one it cannot.
+	 */
+	@Test
+	void aVenueCausedCancellationCarriesTheRebookLinkAndFallsBackToDiscovery() {
+		SetRef set = onlineSet();
+		LocalDate sellable = LocalDate.of(2029, 7, 15);
+		LocalDate unsellable = LocalDate.of(2020, 7, 15);
+		String onOpenDay = "remodelled-open@example.com";
+		String onClosedDay = "remodelled-closed@example.com";
+		BookingMailFixtures.SetRef ref = new BookingMailFixtures.SetRef(set.setId(), set.venueId());
+
+		long sellableBooking = fixtures.seedBooking(ref, "REBOOK01", sellable, onOpenDay, 7335L, "CANCELLED");
+		endedByRemodel(set, sellableBooking, sellable);
+		fixtures.publishInTransaction(fixtures.cancellationOf(ref, sellableBooking, sellable, 7335L,
+				RefundReason.VENUE_CHANGE));
+		Awaitility.await().atMost(WAIT).until(() -> countTo(onOpenDay) == 1L);
+		assertThat(mailer.lastTo(onOpenDay).orElseThrow().cancellation().rebookLink())
+				.hasToString("http://localhost:4200/venues/" + set.venueId() + "?date=" + sellable);
+
+		long pastBooking = fixtures.seedBooking(ref, "REBOOK02", unsellable, onClosedDay, 7336L, "CANCELLED");
+		endedByRemodel(set, pastBooking, unsellable);
+		fixtures.publishInTransaction(fixtures.cancellationOf(ref, pastBooking, unsellable, 7336L,
+				RefundReason.VENUE_CHANGE));
+		Awaitility.await().atMost(WAIT).until(() -> countTo(onClosedDay) == 1L);
+		assertThat(mailer.lastTo(onClosedDay).orElseThrow().cancellation().rebookLink())
+				.hasToString("http://localhost:4200/?date=" + unsellable);
+	}
+
+	/** A suppressed address is skipped on this leg too, and the publication still completes. */
+	@Test
+	void aSuppressedAddressIsSkippedOnTheVenueCausedLegToo() {
+		SetRef set = onlineSet();
+		LocalDate date = LocalDate.of(2029, 7, 16);
+		String suppressed = "suppressed-remodel@example.com";
+		suppressions.suppress(suppressed, SuppressionReason.HARD_BOUNCE, Instant.now());
+		BookingMailFixtures.SetRef ref = new BookingMailFixtures.SetRef(set.setId(), set.venueId());
+
+		long bookingId = fixtures.seedBooking(ref, "SUPPREM1", date, suppressed, 7337L, "CANCELLED");
+		endedByRemodel(set, bookingId, date);
+		fixtures.publishInTransaction(fixtures.cancellationOf(ref, bookingId, date, 7337L,
+				RefundReason.VENUE_CHANGE));
+
+		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsFor(
+				BookingMailFixtures.CANCELLATION_LISTENER_ID, 7337L) == 0L);
+		assertThat(countTo(suppressed)).isZero();
+	}
+
+	/** The receipt line a commit writes for a claim it refunded — what {@code endedByRemodel} reads. */
+	private void endedByRemodel(SetRef set, long bookingId, LocalDate date) {
+		receipts.store(new NewReceipt(new VenueId(set.venueId()), new OperatorId(anOperator()), Instant.now(),
+				List.of(), List.of(new ReceiptOutcome(new BookingId(bookingId), date,
+						new SpotRef(new SetId(set.setId()), "A", 1), ReceiptOutcomeKind.REFUND, 7335L, "EUR")),
+				"Re-laying row A"));
+	}
+
+	private long anOperator() {
+		return jdbc.sql("INSERT INTO operator (username, status) VALUES (:u, 'ACTIVE') RETURNING id")
+				.param("u", "rebook-" + System.nanoTime()).query(Long.class).single();
 	}
 
 	private SetRef onlineSet() {

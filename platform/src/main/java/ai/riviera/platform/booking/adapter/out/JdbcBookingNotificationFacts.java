@@ -54,6 +54,11 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 	}
 
 	@Override
+	public boolean endedByRemodel(BookingId bookingId) {
+		return receipts.endedByRemodel(bookingId);
+	}
+
+	@Override
 	public Optional<BookingNotificationInfo> notificationInfo(BookingId bookingId) {
 		// No status predicate on purpose — the caller reacts to a published confirmation fact, and a
 		// booking cancelled in the interim must still resolve (the port's contract).

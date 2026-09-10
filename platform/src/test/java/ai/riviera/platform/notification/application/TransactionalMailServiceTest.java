@@ -61,7 +61,7 @@ class TransactionalMailServiceTest {
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR",
 			CancellationWindow.FREE, 0);
 	private static final BookingCancellationMail CANCELLATION = new BookingCancellationMail(
-			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), 4500, "EUR", RefundReason.POLICY);
+			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), 4500, "EUR", RefundReason.POLICY, null);
 	private static final PaymentDueMail PAYMENT_DUE = new PaymentDueMail(
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1),
 			Instant.parse("2026-07-31T18:00:00Z"), 4500, "EUR",

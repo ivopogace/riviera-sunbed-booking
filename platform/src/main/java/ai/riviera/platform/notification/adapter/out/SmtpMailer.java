@@ -128,14 +128,15 @@ class SmtpMailer implements Mailer {
 				  Booking:  %s
 				  Venue:    %s
 				  Date:     %s
-				%s"""
+				%s%s"""
 				.formatted(opening(cancellation), cancellation.bookingCode(), cancellation.venueName(),
-						DATE_FORMAT.format(cancellation.bookingDate()), refundLine(cancellation)));
+						DATE_FORMAT.format(cancellation.bookingDate()), refundLine(cancellation),
+						rebookLine(cancellation)));
 	}
 
 	/**
 	 * Why the booking ended, in the tourist's terms. Exhaustive over the published enum with no
-	 * {@code default}, so a fourth {@code RefundReason} is a compile error here rather than a blank
+	 * {@code default}, so a fifth {@code RefundReason} is a compile error here rather than a blank
 	 * first line in someone's inbox.
 	 */
 	private static String opening(BookingCancellationMail cancellation) {
@@ -144,27 +145,60 @@ class SmtpMailer implements Mailer {
 			case WEATHER -> "The venue cancelled bookings for %s because of the weather."
 					.formatted(DATE_FORMAT.format(cancellation.bookingDate()));
 			case CONFLICT -> "The venue had to cancel your booking.";
-			case VENUE_CHANGE -> "You cancelled the booking the venue had moved, so it is refunded in full.";
+			case VENUE_CHANGE -> venueChangeOpening(cancellation);
 		};
+	}
+
+	/**
+	 * A rebook link marks the venue's own remodel; without one the guest took the free exit a move
+	 * earned them, which is the same reason from the other side.
+	 */
+	private static String venueChangeOpening(BookingCancellationMail cancellation) {
+		if (cancellation.rebookLink() == null) {
+			return "You cancelled the booking the venue had moved, so it is refunded in full.";
+		}
+		return cancellation.refundMinor() > 0
+				? "The venue changed its beach layout and had no free spot left for you, so your booking is "
+						+ "cancelled and refunded in full."
+				: "The venue changed its beach layout and had no free spot left for you, so your unpaid booking "
+						+ "has been released.";
 	}
 
 	/**
 	 * Nothing refunded is said in words, never as {@code EUR 0.00} — a zero amount on a "Refund:" line
 	 * reads as a refund at a glance, which is the opposite of what happened (ADR-0005 tier
-	 * {@code NONE}, past the invariant-#4 cutoff).
+	 * {@code NONE}, past the invariant-#4 cutoff). A released unpaid booking collected nothing at all,
+	 * so it says that instead of naming a cutoff it never reached.
 	 */
 	private static String refundLine(BookingCancellationMail cancellation) {
-		if (cancellation.refundMinor() <= 0) {
+		if (cancellation.refundMinor() > 0) {
+			return """
+					  Refund:   %s
+
+					The refund is on its way back to the payment method you used; it can take a few working
+					days to appear on your statement."""
+					.formatted(formatAmount(cancellation.refundMinor(), cancellation.currency()));
+		}
+		if (cancellation.rebookLink() != null) {
 			return """
 
-					No refund applies — the booking was cancelled after the free-cancellation cutoff.""";
+					Nothing was charged for this booking.""";
 		}
 		return """
-				  Refund:   %s
 
-				The refund is on its way back to the payment method you used; it can take a few working
-				days to appear on your statement."""
-				.formatted(formatAmount(cancellation.refundMinor(), cancellation.currency()));
+				No refund applies — the booking was cancelled after the free-cancellation cutoff.""";
+	}
+
+	/** The way back a venue-caused cancellation owes: that venue's map for the day, or the day's list. */
+	private static String rebookLine(BookingCancellationMail cancellation) {
+		if (cancellation.rebookLink() == null) {
+			return "";
+		}
+		return """
+
+
+				Book another spot for the same day:
+				%s""".formatted(cancellation.rebookLink());
 	}
 
 	@Override
