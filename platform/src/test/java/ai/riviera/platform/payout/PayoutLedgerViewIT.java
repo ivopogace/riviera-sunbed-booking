@@ -25,9 +25,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * AC-1: the per-venue payout ledger read returns every entry oldest-first with the
- * <strong>running net owed</strong>, and the total net owed = {@code Σ(ACCRUAL.net) − Σ(REVERSAL.net)}
- * (invariant #9), all in integer minor units (invariant #5). Uses a dedicated venue so the per-venue
- * sum is isolated from other tests on the shared container. Testcontainers; skipped without Docker.
+ * <strong>running net owed</strong>, and the total net owed =
+ * {@code Σ(ACCRUAL.net) − Σ(REVERSAL.net) − Σ(FEE.net)} (invariant #9), all in integer minor units
+ * (invariant #5). Uses a dedicated venue so the per-venue sum is isolated from other tests on the
+ * shared container. Testcontainers; skipped without Docker.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

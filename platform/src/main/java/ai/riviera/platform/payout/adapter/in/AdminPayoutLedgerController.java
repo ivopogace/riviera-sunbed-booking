@@ -12,7 +12,7 @@ import ai.riviera.platform.payout.application.ViewPayoutLedger;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Operator-gated read of a venue's payout ledger (U9, issue #12): accruals + reversals with the
+ * Operator-gated read of a venue's payout ledger (U9): accruals, reversals and fees with the
  * running net owed (invariant #9). Driving adapter depending on the payout module's
  * {@link ViewPayoutLedger} port (invariant #11) plus the edge {@link CurrentOperator} resolver.
  *

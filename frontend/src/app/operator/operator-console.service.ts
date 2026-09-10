@@ -300,7 +300,7 @@ export class OperatorConsoleService {
   }
 
   /**
-   * The venue's payout ledger — accruals + reversals with the server-authoritative net owed
+   * The venue's payout ledger — accruals, reversals and fees with the server-authoritative net owed
    * (`netOwedMinor`, invariant #9). Owner-asserted server-side (invariant #13); money is integer minor
    * units (invariant #5) rendered by the tab, never computed; carries no booking code / guest identity
    * (invariants #7/#11).

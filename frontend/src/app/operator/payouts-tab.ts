@@ -25,9 +25,9 @@ import { PayoutStatement } from './payout-statement';
 
 /**
  * The Payouts tab — the operator console's payout ledger. Renders the
- * venue's accruals + reversals (per-entry date, a `#<bookingId>` reference, gross / commission / net),
- * an "Owed to you" hero, and a period-total row; refund **reversals** show as negative rows with a
- * reason chip. The weather-refund action + the statement modal live alongside (phase 2).
+ * venue's accruals, reversals and fees (per-entry date, a `#<bookingId>` reference, gross /
+ * commission / net), an "Owed to you" hero, and a period-total row; everything but an accrual shows
+ * as a negative row with a reason chip. The weather-refund action + the statement modal live alongside (phase 2).
  *
  * <p><strong>Renders and triggers; the backend decides and moves the money.</strong> Every amount is
  * integer minor units (invariant #5) rendered via {@link formatMoney}; the owed figure is the server's
