@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.payout.application.LedgerEntryView;
@@ -116,6 +117,43 @@ class PayoutLedgerViewIT {
 		assertEquals(EntryType.REVERSAL, reversal.entryType());
 		assertEquals(4250L, reversal.netMinor());
 		assertEquals(4250L, reversal.runningNetMinor(), "running net owed after the reversal");
+	}
+
+	@Test
+	void aFeeDeductsFromTheRunningNetOwed() {
+		long venueId = newVenue();
+		grantToBootstrap(venueId);
+		long bookingId = newBooking(venueId, anySeededSet(), "LEDGERVIEWFEE");
+		// Accrual net 8500, then the venue-change refund's pair: a full reversal net 8500 and a 500 fee.
+		// 8500 - 8500 - 500 = -500. A read that added the fee would answer 500 and pay a venue that
+		// owes the platform (invariant #9).
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor,
+				                                 commission_minor, net_minor, currency)
+				VALUES (:v, :b, 'ACCRUAL', 10000, 1500, 8500, 'EUR')
+				""").param("v", venueId).param("b", bookingId).update();
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor,
+				                                 commission_minor, net_minor, currency, reason)
+				VALUES (:v, :b, 'REVERSAL', 10000, 1500, 8500, 'EUR', 'VENUE_CHANGE')
+				""").param("v", venueId).param("b", bookingId).update();
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor,
+				                                 commission_minor, net_minor, currency, reason)
+				VALUES (:v, :b, 'FEE', 0, 0, 500, 'EUR', 'VENUE_CHANGE')
+				""").param("v", venueId).param("b", bookingId).update();
+
+		VenueLedger ledger = viewPayoutLedger.forVenue(bootstrap(), new VenueId(venueId));
+
+		assertEquals(-500L, ledger.netOwedMinor(), "net owed = 8500 accrued - 8500 reversed - 500 fee");
+		List<LedgerEntryView> entries = ledger.entries();
+		assertEquals(3, entries.size(), "the fee is listed like any other entry");
+
+		LedgerEntryView fee = entries.get(2);
+		assertEquals(EntryType.FEE, fee.entryType());
+		assertEquals(500L, fee.netMinor(), "stored as a positive magnitude; the type carries the sign");
+		assertEquals(-500L, fee.runningNetMinor(), "running net owed after the fee");
+		assertEquals(RefundReason.VENUE_CHANGE, fee.reason(), "a fee names the reason that earned it");
 	}
 
 	@Test

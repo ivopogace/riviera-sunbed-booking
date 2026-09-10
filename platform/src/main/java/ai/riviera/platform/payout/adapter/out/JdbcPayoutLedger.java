@@ -96,9 +96,11 @@ class JdbcPayoutLedger implements PayoutLedger {
 
 	@Override
 	public List<VenuePeriodTotal> netTotalsForPeriod(PeriodKey period) {
-		// Signed net owed per venue for the period: ACCRUAL adds net, REVERSAL subtracts it (invariant
-		// #9). Served by payout_ledger_period_idx (V15). MAX(currency) is a single-value pick (EUR-only
-		// in v1, invariant #5). Total may be negative when a period's reversals exceed its accruals.
+		// Signed net owed per venue for the period (invariant #9): only ACCRUAL adds; every other entry
+		// type — REVERSAL and FEE — is a deduction, which is the ledger's sign convention (V54) and the
+		// safe default for a type added later. Served by payout_ledger_period_idx (V15). MAX(currency)
+		// is a single-value pick (EUR-only in v1, invariant #5). Total may be negative when a period's
+		// reversals and fees exceed its accruals.
 		return jdbc.sql("""
 				SELECT venue_id,
 				       SUM(CASE WHEN entry_type = 'ACCRUAL' THEN net_minor ELSE -net_minor END) AS net_minor,
