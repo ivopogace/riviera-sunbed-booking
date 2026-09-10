@@ -75,65 +75,65 @@ stands in for `feature/venue-change-fee` (`riviera-sdlc` § Remote/cloud addendu
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the ledger schema, when a row `(entry_type='FEE', gross 0, commission 0, net 500)`
+- [x] **AC-1:** Given the ledger schema, when a row `(entry_type='FEE', gross 0, commission 0, net 500)`
   is inserted, then it is accepted; and when `(entry_type='FEE', gross 0, commission 0, net -1)` is
   inserted, then `payout_amounts_check` rejects it; and when `(entry_type='ACCRUAL', gross 0,
   commission 0, net 500)` is inserted, then `payout_net_check` still rejects it.
   *Seam:* the `payout_ledger_entry` table (Flyway V54) · *Pinned by:* `PayoutMigrationIT.feeRowIsAdmittedWithNoGrossAndNoCommission`, `PayoutMigrationIT.feeRowWithNegativeAmountRejected`, `PayoutMigrationIT.inconsistentNetRejected`
-- [ ] **AC-2:** Given a confirmed booking that accrued, when `BookingCancelled(reason=VENUE_CHANGE,
+- [x] **AC-2:** Given a confirmed booking that accrued, when `BookingCancelled(reason=VENUE_CHANGE,
   refundMinor>0)` is delivered, then the ledger holds exactly one `REVERSAL` and one `FEE` of the
   configured amount for that booking, in the event's currency, stamped `reason=VENUE_CHANGE`.
   *Seam:* `booking.events.BookingCancelled` → the `payout` ledger · *Pinned by:* `PayoutVenueChangeFeeIT.venueChangeRefundPostsAReversalAndOneFee`
-- [ ] **AC-3:** Given the same event, when it is redelivered, then the ledger still holds exactly one
+- [x] **AC-3:** Given the same event, when it is redelivered, then the ledger still holds exactly one
   `FEE` row for that booking. *Seam:* as AC-2 · *Pinned by:* `PayoutVenueChangeFeeIT.redeliveryPostsNoSecondFee`
-- [ ] **AC-4:** Given a cancellation with `reason` `POLICY` or `WEATHER`, when it is delivered, then
+- [x] **AC-4:** Given a cancellation with `reason` `POLICY` or `WEATHER`, when it is delivered, then
   no `FEE` row exists for that booking. *Seam:* as AC-2 · *Pinned by:* `PayoutVenueChangeFeeIT.policyAndWeatherRefundsPostNoFee`
-- [ ] **AC-5:** Given a remodel **release** of an unpaid booking — `BookingCancelled(reason=VENUE_CHANGE,
+- [x] **AC-5:** Given a remodel **release** of an unpaid booking — `BookingCancelled(reason=VENUE_CHANGE,
   refundMinor=0)` — when it is delivered, then neither a `REVERSAL` nor a `FEE` is posted.
   *Seam:* as AC-2 · *Pinned by:* `PayoutVenueChangeFeeIT.aReleaseThatReturnsNothingPostsNoFee`
-- [ ] **AC-6:** Given a venue's ledger holding an `ACCRUAL` of 4250, a `REVERSAL` of 1000 and a `FEE`
+- [x] **AC-6:** Given a venue's ledger holding an `ACCRUAL` of 4250, a `REVERSAL` of 1000 and a `FEE`
   of 500, when the venue's ledger is read, then `netOwedMinor` is 2750 and the `FEE` row's running
   value shows the deduction. *Seam:* `payout.application.ViewPayoutLedger` · *Pinned by:* `PayoutLedgerViewIT.aFeeDeductsFromTheRunningNetOwed`
-- [ ] **AC-7:** Given the same three rows inside one period, when the payout batch is generated, then
+- [x] **AC-7:** Given the same three rows inside one period, when the payout batch is generated, then
   the batch's `totalNetMinor` is 2750. *Seam:* `payout.application.PayoutReport#generate` · *Pinned by:* `PayoutBatchGenerationIT.aFeeDeductsFromTheBatchTotal`
-- [ ] **AC-8:** Given two venues with `VENUE_CHANGE` reversals and fees, when an admin reads the
+- [x] **AC-8:** Given two venues with `VENUE_CHANGE` reversals and fees, when an admin reads the
   venue-caused refunds, then each venue's row carries its refund count, the refunded total and the
   fee total, and a `POLICY` reversal on the same venue is excluded. *Seam:* `payout.application.ViewVenueChangeRefunds` · *Pinned by:* `AdminVenueChangeRefundsIT.listsVenueCausedRefundsPerVenueWithCountAmountAndFee`
-- [ ] **AC-9:** Given a non-admin operator, when they call the venue-caused refunds endpoint, then
+- [x] **AC-9:** Given a non-admin operator, when they call the venue-caused refunds endpoint, then
   they get `403`. *Seam:* `GET /api/admin/venue-change-refunds` · *Pinned by:* `AdminVenueChangeRefundsIT.aNonAdminOperatorIsForbidden`
-- [ ] **AC-10:** Given a remodel preview whose picture refunds two bookings, when the operator reads
+- [x] **AC-10:** Given a remodel preview whose picture refunds two bookings, when the operator reads
   it, then each refund line carries the fee per booking and the response carries the fee total
   (2 × the configured fee); and a picture that refunds nobody carries a zero total.
   *Seam:* `POST /api/venues/{venueId}/beach-map/preview` · *Pinned by:* `RemodelPreviewFeeIT.aRefundingPreviewQuotesTheFeePerBookingAndItsTotal`
-- [ ] **AC-11:** Given a commit that refunded two bookings, when its receipt is read, then each
+- [x] **AC-11:** Given a commit that refunded two bookings, when its receipt is read, then each
   refund line carries the fee that was charged and the receipt carries the fee total; a released or
   declined line carries no fee. *Seam:* `GET /api/venues/{venueId}/remodels/{receiptId}` · *Pinned by:* `RemodelReceiptFeeIT.aReceiptCarriesThePerRefundFeeAndTheTotal`
-- [ ] **AC-12:** Given a `booking.spi.VenueChangeFeeRate` fake answering 500 EUR, when
+- [x] **AC-12:** Given a `booking.spi.VenueChangeFeeRate` fake answering 500 EUR, when
   `RemodelClaims#venueChangeFee` is called, then it answers 500 EUR. *Seam:* `booking.api.RemodelClaims` · *Pinned by:* `RemodelClaimsServiceTest.quotesTheVenueChangeFeeItIsGiven`
-- [ ] **AC-13:** Given a payouts-tab ledger containing a `FEE` entry, when the tab renders, then the
+- [x] **AC-13:** Given a payouts-tab ledger containing a `FEE` entry, when the tab renders, then the
   fee row shows a negative net in the negative ink, is labelled as a venue-change fee, is not counted
   as a refund in the counts line, and the period gross/commission totals do not add it.
   *Seam:* the rendered `app-payouts-tab` · *Pinned by:* `payouts-tab.spec.ts › a FEE entry reads as a deduction, not an accrual`
-- [ ] **AC-14:** Given the same ledger, when the statement modal opens, then it lists the fee row and
+- [x] **AC-14:** Given the same ledger, when the statement modal opens, then it lists the fee row and
   its total due is the server's `netOwedMinor`. *Seam:* the rendered `app-payout-statement` · *Pinned by:* `payout-statement.spec.ts › lists a venue-change fee row as a deduction`
-- [ ] **AC-15:** Given a preview whose picture refunds bookings, when the preview panel renders, then
+- [x] **AC-15:** Given a preview whose picture refunds bookings, when the preview panel renders, then
   it states the fee per refunded booking and the fee total. *Seam:* the rendered
   `app-remodel-preview-panel` · *Pinned by:* `remodel-preview-panel.spec.ts › states the venue-change fee per refunded booking and the total`
-- [ ] **AC-16:** Given a receipt with refunds, when the receipt panel renders, then it shows the fee
+- [x] **AC-16:** Given a receipt with refunds, when the receipt panel renders, then it shows the fee
   per refunded booking and the fee total. *Seam:* the rendered `app-remodel-receipt-panel` · *Pinned by:* `remodel-receipt-panel.spec.ts › shows the fee charged per refunded booking and the total`
-- [ ] **AC-17:** Given venue-caused refund rows, when the admin opens the new tab, then it lists one
+- [x] **AC-17:** Given venue-caused refund rows, when the admin opens the new tab, then it lists one
   row per venue with count, refunded amount and fee total, and shows an empty state when there are
   none. *Seam:* the rendered `app-admin-venue-changes` at `/admin/venue-changes` · *Pinned by:* `admin-venue-changes.spec.ts › lists venue-caused refunds per venue with count, amount and fee`
-- [ ] **AC-18:** Given each new or changed surface, when axe and the contrast maths run, then there
+- [x] **AC-18:** Given each new or changed surface, when axe and the contrast maths run, then there
   are no serious violations and every new ink/fill pair meets AA. *Seam:* the rendered components ·
   *Pinned by:* `admin-venue-changes.a11y.spec.ts`, `admin-venue-changes.contrast.spec.ts`,
   `payouts-tab.a11y.spec.ts`, `payouts-tab.contrast.spec.ts`, `remodel-preview-panel.a11y.spec.ts`,
   `remodel-preview-panel.contrast.spec.ts`, `remodel-receipt-panel.a11y.spec.ts`,
   `remodel-receipt-panel.contrast.spec.ts`
-- [ ] **AC-19:** Given the mocked e2e ledger fixture with a `FEE` row, when the operator opens the
+- [x] **AC-19:** Given the mocked e2e ledger fixture with a `FEE` row, when the operator opens the
   payouts tab and its statement, then the fee line is visible and the owed figure is the server's.
   *Seam:* the browser at `/operator/:venueId/payouts` · *Pinned by:* `frontend/e2e/operator-payouts.e2e.ts › the statement lists a venue-change fee as a deduction`
-- [ ] **AC-20:** Given the backend tree, when the structural net runs, then `ModularityTests`
+- [x] **AC-20:** Given the backend tree, when the structural net runs, then `ModularityTests`
   (`payout` → `booking::spi`) and the four sibling architecture tests pass. *Seam:*
   `ApplicationModules.of(PlatformApplication.class).verify()` · *Pinned by:* `ModularityTests.verifiesModularStructure` + the structural-net command
 
@@ -162,30 +162,31 @@ gain the arm they lacked.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A ledger sum treats `FEE` as an accrual and the venue is silently overpaid (invariant #9) | med | high | Every sum in the tree is enumerated below and each read's test gains a `FEE` row whose expected total only holds if `FEE` deducts (AC-6, AC-7, AC-8, AC-13) | agent | open |
-| R-2 | The two frontend sums (`payouts-tab.ts` `signedSum` and the row `sign`) branch on `type === 'REVERSAL'` and treat everything else as positive — a real defect the moment `FEE` exists | high | high | Invert both to "ACCRUAL adds, everything else subtracts" so a fourth type is a deduction by default; AC-13 fails without it | agent | open |
+| R-1 | A ledger sum treats `FEE` as an accrual and the venue is silently overpaid (invariant #9) | med | high | Every sum in the tree is enumerated below and each read's test gains a `FEE` row whose expected total only holds if `FEE` deducts (AC-6, AC-7, AC-8, AC-13) | agent | closed — five sites enumerated in the audit table; each read's test carries a `FEE` row |
+| R-2 | The two frontend sums (`payouts-tab.ts` `signedSum` and the row `sign`) branch on `type === 'REVERSAL'` and treat everything else as positive — a real defect the moment `FEE` exists | high | high | Invert both to "ACCRUAL adds, everything else subtracts" so a fourth type is a deduction by default; AC-13 fails without it | agent | closed — both inverted to *only an `ACCRUAL` adds*, pinned by AC-13/AC-14 |
 | R-3 | A moved guest's own free exit is also `VENUE_CHANGE` and would be charged unintentionally | high | med | Settled with the maintainer: **both shapes pay** — the venue caused the move that caused the exit, and charging only the forced refund leaves a loophole (move the guest somewhere they will abandon). Recorded in ADR-0021 and in `RefundReason`'s contract | maintainer | resolved — see Resolved |
-| R-4 | The `FEE` posts but the `REVERSAL` defers (no accrual yet), leaving a fee with no refund | low | med | The fee is posted inside the same listener, *after* the accrual lookup, so a deferral throws before either row is written and the registry retries both together | agent | open |
-| R-5 | `payout_net_check` relaxed too far and a malformed `ACCRUAL`/`REVERSAL` becomes storable | low | high | The exemption is keyed on `entry_type = 'FEE'` alone; `PayoutMigrationIT.inconsistentNetRejected` stays green unchanged (AC-1) | agent | open |
-| R-6 | `PayoutLedgerEntry`'s canonical constructor duplicates `payout_net_check` and would reject a fee before the DB sees it | high | med | Relax the record's guard on the same key with the same one-line convention, and keep the DB as the enforcer of record | agent | open |
-| R-7 | Flyway version collision on `V54` | low | med | `V54` is free on `main` (highest is `V53`) and no PR is open on the repo. If one appears, the branch that merges second renumbers | agent | open |
-| R-8 | Granting the composition root `payout::api` to reach the fee would break `CompositionRootDisciplineTests`, whose Javadoc names `payout` as exactly what the root may not touch | high | high | The fee reaches the preview through `booking.spi.VenueChangeFeeRate` (an inversion `payout` implements) — no root grant, no rule change | agent | open |
-| R-9 | `booking`'s `@ApplicationModuleTest` bootstraps without `payout`, so the new SPI bean is missing and the context fails (`riviera-local-debug` § blast radius) | med | med | Add `VenueChangeFeeRate` to that test's `@MockitoBean` list, as `ConfirmationMailDelivery` already is; run every `@ApplicationModuleTest` before pushing | agent | open |
-| R-10 | The admin endpoint is a new `/api/admin/**` surface and could leak a booking code or a per-guest row | low | high | It returns venue-level aggregates only — ids, counts, amounts — never a booking id or code (invariant #7); role-gated, not venue-scoped (invariant #13 exemption) | agent | open |
-| R-11 | Adding a tab out of slot fails `admin-console-tabs.spec.ts`'s subsequence contract | med | low | The label is added to `ADMIN_CONSOLE_TAB_GROUPS` in the Money group, in slot, not appended | agent | open |
-| R-12 | A new `MoneyView`-bearing response field breaks the FE contract silently | low | med | Both new response fields are typed in `operator-console.model.ts`/`admin.model.ts` and asserted in the service specs; no `as any` | agent | open |
+| R-4 | The `FEE` posts but the `REVERSAL` defers (no accrual yet), leaving a fee with no refund | low | med | The fee is posted inside the same listener, *after* the accrual lookup, so a deferral throws before either row is written and the registry retries both together | agent | closed — the fee posts after the accrual lookup, so a deferral rolls both back (AC-2, listener unit test) |
+| R-5 | `payout_net_check` relaxed too far and a malformed `ACCRUAL`/`REVERSAL` becomes storable | low | high | The exemption is keyed on `entry_type = 'FEE'` alone; `PayoutMigrationIT.inconsistentNetRejected` stays green unchanged (AC-1) | agent | closed — `PayoutMigrationIT.inconsistentNetRejected` unchanged and green |
+| R-6 | `PayoutLedgerEntry`'s canonical constructor duplicates `payout_net_check` and would reject a fee before the DB sees it | high | med | Relax the record's guard on the same key with the same one-line convention, and keep the DB as the enforcer of record | agent | closed — the record's guard keyed on `EntryType.FEE`, pinned by `FeeMathTest` |
+| R-7 | Flyway version collision on `V54` | low | med | `V54` is free on `main` (highest is `V53`) and no PR is open on the repo. If one appears, the branch that merges second renumbers | agent | closed — `V54` free on `main`, no open PR on the repo |
+| R-8 | Granting the composition root `payout::api` to reach the fee would break `CompositionRootDisciplineTests`, whose Javadoc names `payout` as exactly what the root may not touch | high | high | The fee reaches the preview through `booking.spi.VenueChangeFeeRate` (an inversion `payout` implements) — no root grant, no rule change | agent | closed — the fee reaches the preview through `booking.spi.VenueChangeFeeRate`; `CompositionRootDisciplineTests` green, unchanged |
+| R-9 | `booking`'s `@ApplicationModuleTest` bootstraps without `payout`, so the new SPI bean is missing and the context fails (`riviera-local-debug` § blast radius) | med | med | Add `VenueChangeFeeRate` to that test's `@MockitoBean` list, as `ConfirmationMailDelivery` already is; run every `@ApplicationModuleTest` before pushing | agent | closed — no `@ApplicationModuleTest` needed a stub; the gap was `WebSliceStubs`, found by `AdminSurfaceRoleGateTest` and fixed |
+| R-10 | The admin endpoint is a new `/api/admin/**` surface and could leak a booking code or a per-guest row | low | high | It returns venue-level aggregates only — ids, counts, amounts — never a booking id or code (invariant #7); role-gated, not venue-scoped (invariant #13 exemption) | agent | closed — the response carries venue ids, counts and amounts only; `AdminVenueChangeRefundsIT` covers the 403 |
+| R-11 | Adding a tab out of slot fails `admin-console-tabs.spec.ts`'s subsequence contract | med | low | The label is added to `ADMIN_CONSOLE_TAB_GROUPS` in the Money group, in slot, not appended | agent | closed — added in slot; the rail, sheet, palette and lazy-route counts followed |
+| R-12 | A new `MoneyView`-bearing response field breaks the FE contract silently | low | med | Both new response fields are typed in `operator-console.model.ts`/`admin.model.ts` and asserted in the service specs; no `as any` | agent | closed — typed in `operator-console.model.ts` and `admin.model.ts`, no `as any` |
 
 ## Open questions / Assumptions
 
-- **Assumption:** The fee's currency is the cancelled booking's currency (EUR in v1, invariant #5);
-  the property carries minor units only, so a non-EUR collection currency would need the property to
-  grow a currency. — *Owner:* agent · *Resolves by:* phase 2 (stated on the properties record)
-- **Assumption:** A `FEE` row's `period_key` comes from the same `DEFAULT NOW()` the reversal's does,
-  so a fee always lands in the period its refund did unless the two straddle midnight in
-  `Europe/Tirane` — both are written in one transaction, so they cannot. — *Owner:* agent ·
-  *Resolves by:* phase 2
+None open.
 
 ### Resolved
+
+- **Assumption:** the fee's currency is the cancelled booking's (EUR in v1, invariant #5) → **held**:
+  the listener charges in `event.currency()` and the SPI quotes the collection currency, one constant
+  in `PayoutFeeConfig`. Both are stated on `VenueChangeFeeProperties`. Commit `3676a032`.
+- **Assumption:** a `FEE` row's `period_key` comes from the same `DEFAULT NOW()` the reversal's does
+  → **held**: both rows are written in one transaction, so they cannot straddle a period boundary.
+  Commit `3676a032`.
 
 - **Open question (from #1035's close-out):** `VENUE_CHANGE` covers two shapes — the remodel refunding
   a confirmed booking it could not move, and a moved guest taking their own free exit. Which pays the
@@ -322,9 +323,10 @@ over `ngClass`/`ngStyle`. No `NgOptimizedImage` (no images). No deviation to doc
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 6)`
+**Stage pointer:** `PR — draft opened, awaiting the CI, review and Sonar gates`
 
-**Next action:** Commit the docs round, run the plan-file-structure guard, then open the PR.
+**Next action:** Check this push's CI run, then run the review gate per `riviera-sdlc`
+`references/pr-gates.md` §1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -334,7 +336,7 @@ over `ngClass`/`ngStyle`. No `NgOptimizedImage` (no images). No deviation to doc
 | 3 — The fee on the preview and the receipt | ✅ | |
 | 4 — The admin venue-caused refunds read | ✅ | |
 | 5 — Frontend: statement, preview, receipt, admin tab | ✅ | |
-| 6 — Docs: invariant #9 in four places, ADR-0021, glossary | | |
+| 6 — Docs: invariant #9 in four places, ADR-0021, glossary | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -401,6 +403,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/{console-shell.spec.ts,app.routes.spec.ts}` — the rail, palette and lazy-route counts the new tab moves
 - `frontend/src/app/operator/layout-editor.spec.ts` — the widened empty-preview fixture
 - `frontend/e2e/layout-editor.e2e.ts` — the preview and receipt fee lines
+- `frontend/e2e/admin-console-tabs.e2e.ts` · `frontend/e2e/admin-privacy.e2e.ts` · `frontend/e2e/console-shell.e2e.ts` — the rail, sheet and palette counts the new tab moves
 - `frontend/src/app/app.routes.ts` — the lazy route
 - `frontend/e2e/operator-payouts.e2e.ts` — the statement's fee line
 - `frontend/e2e/support/operator-console.mocks.ts` — the fixture's `FEE` row
@@ -605,10 +608,10 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 … AC-12, AC-20:** `gradle --no-daemon --console=plain test --tests "*Payout*" --tests
+- [x] **AC-1 … AC-12, AC-20:** `gradle --no-daemon --console=plain test --tests "*Payout*" --tests
   "*Remodel*"` + the structural-net command → all green. Verified at commit `<sha>`.
-- [ ] **AC-13 … AC-18:** `npm test && npm run test:a11y` → green. Verified at commit `<sha>`.
-- [ ] **AC-19:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → green.
+- [x] **AC-13 … AC-18:** `npm test && npm run test:a11y` → green. Verified at commit `<sha>`.
+- [x] **AC-19:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → green.
   Verified at commit `<sha>`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
