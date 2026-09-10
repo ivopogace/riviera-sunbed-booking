@@ -436,20 +436,45 @@ any other claim (invariant #2).
   blocks; beyond the floor `CONFIRMED` refunds, `AWAITING_PAYMENT` releases, `PENDING_REQUEST`
   declines. The answer carries outcome kinds, set references and amounts — never a status and never a
   code (invariant #7). Advisory: read-only and unlocked, so the commit re-derives it.
-- **The remodel commit applies moves and nothing else.** `RemodelClaims#commit` (published, ADR-0020)
-  runs inside `venue`'s commit transaction as its `RemodelGate`: it re-classifies the disturbed sets
-  under the lock, checks the operator's `PreviewToken` still **covers** the fresh picture — the token
-  is a sorted set of per-pair digests over `(booking id, outcome kind)`, so a fresh picture that is a
-  strict subset of the previewed one still matches, and a claim or an outcome the preview never showed
-  is `Stale` — refuses a picture that holds anything but moves (`Refused`), and otherwise, per move in
-  `(service date, id)` order, claims the new `(set, date)` through `availability`, releases the old,
-  stamps `booking.moved_at` and publishes `BookingMoved` (booking id, venue id, both set ids, the
-  date). The receipt is mine: `remodel_receipt` / `remodel_receipt_move` snapshot the old and new
-  labels and the distance at commit time, so the moved mail and the guest's view still name the spot
-  the guest was told after that set is retired, and `BookingPresence#hasBookings` counts a receipt's
-  from- and to-sets so a set a moved booking left retires rather than deletes. The receipts read
-  (`ViewRemodelReceipts`, `GET /api/venues/{venueId}/remodels[/{receiptId}]`, owner-asserted) is my
-  own inbound adapter, not the root's. No undo: a move is reversed by another remodel.
+- **The remodel commit settles every claim it can, and refuses only a claim that pins its set.**
+  `RemodelClaims#commit` (published, ADR-0020) runs inside `venue`'s commit transaction as its
+  `RemodelGate`: it re-classifies the disturbed sets under the lock, checks the operator's
+  `PreviewToken` still **covers** the fresh picture — the token is a sorted set of per-pair digests
+  over `(booking id, outcome kind)`, so a fresh picture that is a strict subset of the previewed one
+  still matches, and a claim or an outcome the preview never showed is `Stale` — and then, in
+  `(service date, id)` order, applies each claim through the guarded transition its status already
+  has: a **move** claims the new `(set, date)` through `availability`, releases the old, stamps
+  `booking.moved_at` and publishes `BookingMoved`; a **refund** runs `cancelConfirmed` with the
+  booking's whole amount and reason `VENUE_CHANGE`; a **release** runs the `AWAITING_PAYMENT →
+  CANCELLED` transition the payment-canceled webhook and the TTL sweep share; a **decline** runs the
+  venue-scoped `PENDING_REQUEST → DECLINED` one. Each ending frees its `(set, date)` and publishes the
+  fact the platform already reacts to — `BookingCancelled` for the first two, `BookingRequestDeclined`
+  for the third — so the refund, the payout reversal and the mails drain after commit and nothing here
+  talks to Stripe. A released claim's `BookingCancelled` carries `refundMinor = 0`, which is what
+  mails the guest without moving money: no refund is issued and no reversal is posted for a booking
+  that never collected. A `Blocked` claim refuses the whole commit (`Refused`).
+- **A commit that refunds guests is a deliberate second act.** It carries a `RefundConfirmation` — how
+  many refunds the operator read off the preview and why they are remodelling — and a count that does
+  not match the picture re-derived under the lock, or a blank reason, is `Unconfirmed` with the number
+  owed and writes nothing. Both land on the receipt beside the money.
+- **The receipt is mine.** `remodel_receipt` / `remodel_receipt_move` / `remodel_receipt_outcome`
+  snapshot the old and new labels, the distance, and one line per ended claim with its amount, plus
+  the operator's reason, so the moved mail, the guest's view and the console still name the spot the
+  guest was told after that set is retired. `BookingPresence#hasBookings` counts a receipt's from- and
+  to-sets so a set a moved booking left retires rather than deletes; an ended claim needs no such arm,
+  because its booking keeps that `set_id` — which is why the outcome row records the set id without a
+  foreign key. `BookingNotificationFacts#endedByRemodel` reads those lines, and is the only thing that
+  tells a venue-caused cancellation from the guest's own free exit, since both are `VENUE_CHANGE`. The
+  receipts read (`ViewRemodelReceipts`, `GET /api/venues/{venueId}/remodels[/{receiptId}]`,
+  owner-asserted) is my own inbound adapter, not the root's. No undo: a move is reversed by another
+  remodel.
+- **A remodel-released booking's PaymentIntent is voided after the commit, never inside it.** The
+  release cancels an unpaid booking without moving money, but its intent stays collectable and the
+  abandoned-payment sweep only ever reads `AWAITING_PAYMENT` rows, so nothing would reach it again.
+  `RemodelReleasePaymentListener` runs on the refund bulkhead off `BookingCancelled`, keyed on the one
+  shape only a release has — `VENUE_CHANGE` returning nothing — and calls `payment.api.CancelPaymentPort`.
+  A transient gateway failure throws so the publication is retried; a payment that already succeeded
+  is logged for a manual refund, because nothing there can be undone automatically.
 - **A moved booking's free exit is a refund-tier override, never a window change.** The exit runs
   until `min(service day opens, max(12:00 Europe/Tirane the day before, moved_at + 24h))`
   (`BookingCutoff#freeExitEndsAt`); `CancellationPolicy#quote` reads it and, while it is open, answers
@@ -849,13 +874,27 @@ invariant #7):
   sends **synchronously through the chokepoint and publishes nothing**, so it re-drives no
   other `BookingConfirmed` consumer (`AdminMailDeliveryIT`).
 
+- **A venue-caused cancellation carries a way back; nothing else does.** A booking a remodel
+  ended is mailed the venue's own map for the same day, or — when `venue`'s per-date sales
+  projection says that venue cannot sell it, closed for season or past its sales close — the
+  discovery list for that day (`RebookLinks`, `VenueCatalog#availabilityBetween`; an absent
+  answer degrades the same way a closed one does). The reason alone cannot mark such a
+  cancellation, because a guest who takes the free exit a move earned them is `VENUE_CHANGE`
+  too, so the listener asks `BookingNotificationFacts#endedByRemodel`. The link is also what
+  tells the two apart in the copy: with it, the venue had no free spot left and a released
+  claim says nothing was charged; without it, the guest cancelled and the shipped free-exit
+  wording stands. A remodel-declined request keeps `RequestDeclinedMail` unchanged — no
+  call-to-action, by the 2026-08-01 product decision.
+
 **Not My Job:**
 - Deciding **when** to send, minting/hashing recovery tokens, building the **tokenized**
   links → the **platform edge** (`CustomerRecovery`); for edge-triggered kinds I am handed
   fully-formed messages. The line: a *credential-material* link — one whose token I would
   have to mint, hash or time-bound — is the edge's; a link I merely *format* from a fact
   already in my hand is mine (`BookingLinks` composes `<base>/booking/<code>` from the code
-  I read through `booking::api`; the code cannot ride the payload, invariant #7)
+  I read through `booking::api`; the code cannot ride the payload, invariant #7). Its two
+  **rebook** links carry no credential at all: `<base>/venues/<id>?date=…` and
+  `<base>/?date=…`
 - The recovery-token lifecycle/store → **`customer`** (`CustomerAccountRecovery`)
 - Resolving an email address to a guest contact → **`customer`**
   (`CustomerLookup#findByEmail`); *which bookings* a contact has → **`booking`**
@@ -1131,14 +1170,16 @@ cycle through `venue.spi.BookingPresence`), so `RemodelPreviewController`
 with `booking.api.RemodelClaims` and assembles the five wire groups — move, refund, release/decline,
 staff hold, block — plus `keep`, the blocking and held sets by id, and `previewToken`, the digest of
 the picture the operator saw. `RemodelCommitController` (`POST /api/venues/{venueId}/beach-map/commit`,
-operator-gated; the save body plus `previewToken`) composes the same two ports the other way round:
-`RemodelCommitService` is the `venue.api.RemodelGate` `BeachMapRemodel#commit` calls between its locks
-and its probe, and inside it `RemodelClaims#commit` re-seats the moves — so the layout write, the
-moves, the availability rows and the transition stamps commit or roll back as one, and nothing that
-talks to Stripe is inside. Its answers: `200` with the receipt (id, committed-at, the moves); `409
-STALE_PREVIEW` or `409 REMODEL_REFUSED` carrying the fresh picture and its token in a `preview`
-extension, so the operator re-decides on what is true now; the save's own `SETS_IN_USE`, `STALE_WRITE`
-and shape rejections. `CompositionRootDisciplineTests` grants the root exactly those two modules'
+operator-gated; the save body, `previewToken` and the operator's `refundCount`/`refundReason`)
+composes the same two ports the other way round: `RemodelCommitService` is the `venue.api.RemodelGate`
+`BeachMapRemodel#commit` calls between its locks and its probe, and inside it `RemodelClaims#commit`
+settles every claim — so the layout write, the moves, the availability rows, the status transitions
+and the receipt commit or roll back as one, and nothing that talks to Stripe is inside. Its answers:
+`200` with the receipt (id, committed-at, the moves, the refunds, the releases and declines, the
+reason and the total returned); `409 STALE_PREVIEW`, `409 REMODEL_REFUSED` or `409
+REFUND_NOT_CONFIRMED` — the last also naming the count owed — each carrying the fresh picture and its
+token in a `preview` extension, so the operator re-decides on what is true now; the save's own
+`SETS_IN_USE`, `STALE_WRITE` and shape rejections. `CompositionRootDisciplineTests` grants the root exactly those two modules'
 `api` + `vocabulary`, nothing else of the spine. The edge resolves the principal and maps outcomes;
 **each module port asserts venue ownership itself** (invariant #13), and every rule — the diff, the
 zone, the candidate, the status split, the token, the free exit — stays in its module: a rule growing

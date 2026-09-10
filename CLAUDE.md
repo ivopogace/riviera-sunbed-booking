@@ -135,7 +135,7 @@ the root (ADR-0017). Their surfaces and contracts are `RESPONSIBILITIES.md` §s.
 **Collaboration:** events for state changes, `api/` ports for queries (invariant #11); the
 availability claim and the erasure reach into reviews are synchronous ports. The nine
 events: `PaymentConfirmed`/`PaymentCanceled` → `booking`; `BookingConfirmed`/
-`BookingCancelled` → `payout`, `notification` (and `booking`'s own refund listener);
+`BookingCancelled` → `payout`, `notification` (and `booking`'s own refund and intent-void listeners);
 `BookingPaymentDue`, `BookingRequestDeclined`, `BookingRequestExpired`, `BookingMoved` →
 `notification`; `ReviewsChanged` → `venue`.
 

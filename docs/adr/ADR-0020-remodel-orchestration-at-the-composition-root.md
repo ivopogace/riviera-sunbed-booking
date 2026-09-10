@@ -1,7 +1,8 @@
 # ADR-0020: The remodel preview and commit are composed at the composition root, which is granted `venue`'s and `booking`'s published surfaces for it
 
 - **Status:** Accepted — implemented by the slices for issues #1033 (the preview; epic #1027, user
-  stories 19 and 21) and #1034 (the commit; user stories 20, 23–30).
+  stories 19 and 21), #1034 (the commit's moves; user stories 20, 23–30) and #1035 (the commit's
+  refunds, releases and declines; user stories 22, 31–32 and 35).
 - **Date:** 2026-09-09
 - **Relates to:** ADR-0017 (the root as the home of edge mechanisms), ADR-0007 (module structure),
   invariants #2, #11, #13, `RESPONSIBILITIES.md` § *Platform edge*, `CompositionRootDisciplineTests`
@@ -43,8 +44,8 @@ edit to this rule".
    compose `venue.api.BeachMapRemodel` and `booking.api.RemodelClaims`. The preview is
    `RemodelPreviewController`; the commit is `RemodelCommitController` with `RemodelCommitService` as
    the `venue.api.RemodelGate` that `BeachMapRemodel#commit` calls back inside its transaction, where
-   `RemodelClaims#commit` re-seats the moves — the root composes the callback, the modules own the
-   transaction and every write in it.
+   `RemodelClaims#commit` settles every claim on the disturbed sets — the root composes the callback,
+   the modules own the transaction and every write in it.
 2. **The root's grant map gains `venue` and `booking`, `api` + `vocabulary` only.** Never `spi`
    (the root implements nothing for a module), never `application`, `domain` or `adapter`, and
    nothing of `payment`, `payout` or `availability` — those remain out of bounds exactly as before.

@@ -65,9 +65,10 @@ PRs — `V53` is free on `main` and unclaimed; #1034 closed out on the epic with
 `riviera-plan-doc` (this template — forced a seam per AC, the module-ownership table for the three
 legs and the mail decision, and the parity ledger for the commit's widened contract) ·
 `tdd` (each phase red first at its named seam; the mixed-commit IT is written before the legs and
-stays red until phase 2) · `riviera-review-overlay` (review gate — runs at ready-for-review over
-`170568dd..<head>`) · `riviera-docs-freshness` (**ran** — pending, at close-out over
-`170568dd..<head>`) · `riviera-stripe-payments` (collect-only, no Connect: the `VENUE_CHANGE`
+stays red until phase 2) · `riviera-review-overlay` (review gate — runs at ready-for-review over `170568dd..<head>`) · `riviera-docs-freshness` (**ran** over `170568dd..HEAD`: four findings, all patched — the
+`notification` grants paragraph, the refund-bulkhead fitness function's non-vacuity test, ADR-0020's
+status and decision 1, and the three enumerations of `booking`'s single `BookingCancelled` listener;
+`docs/plans/remodel-commit.md` retired) · `riviera-stripe-payments` (collect-only, no Connect: the `VENUE_CHANGE`
 refund is the existing `BookingCancelled` → `RefundPort` path with the gateway's
 already-holds check as the idempotency guarantee, so a redelivery returns the same refund rather
 than making a second; the release leg's void is `CancelPaymentPort`, which moves no money) ·
@@ -139,84 +140,84 @@ in for `feature/venue-caused-cancellation` (`riviera-sdlc` § *Remote / cloud se
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the V53 schema, when a receipt records a refunded, released and declined
+- [x] **AC-1:** Given the V53 schema, when a receipt records a refunded, released and declined
       claim with the operator's reason, then the outcome kind CHECK refuses an unknown token, a
       negative amount is refused, every FK column carries an index, and both reason CHECKs still
       admit all four `RefundReason` values. *Seam:* the `booking`-owned tables (`remodel_receipt`,
       `remodel_receipt_outcome`) · *Pinned by:*
       `VenueCausedCancellationMigrationIT.receiptOutcomeTableHoldsItsShape`
-- [ ] **AC-2:** Given a disturbed set holding one `CONFIRMED` claim beyond the refund-notice floor
+- [x] **AC-2:** Given a disturbed set holding one `CONFIRMED` claim beyond the refund-notice floor
       with no free same-or-better set that day, when `RemodelClaims#commit` runs with a matching
       token and a confirmation naming one refund and a reason, then the booking is `CANCELLED` with
       reason `VENUE_CHANGE` and its full amount as `refundMinor`, its `(set, date)` row is released,
       exactly one `BookingCancelled` carrying `VENUE_CHANGE` is published, and nothing calls Stripe
       inside the transaction. *Seam:* `booking.api.RemodelClaims#commit` · *Pinned by:*
       `RemodelClaimsServiceTest.refundsAConfirmedClaimWithVenueChange`
-- [ ] **AC-3:** Given the same set holding one `AWAITING_PAYMENT` and one `PENDING_REQUEST` claim,
+- [x] **AC-3:** Given the same set holding one `AWAITING_PAYMENT` and one `PENDING_REQUEST` claim,
       when the commit runs, then the first is `CANCELLED` with a `BookingCancelled` carrying
       `refundMinor = 0` and reason `VENUE_CHANGE`, the second is `DECLINED` with a
       `BookingRequestDeclined`, both `(set, date)` rows are released, and no payout reversal is
       posted for either. *Seam:* `booking.api.RemodelClaims#commit` · *Pinned by:*
       `RemodelClaimsServiceTest.releasesUnpaidAndDeclinesPendingWithoutMoney`
-- [ ] **AC-4:** Given a fresh picture holding two refunds, when the commit carries a confirmation
+- [x] **AC-4:** Given a fresh picture holding two refunds, when the commit carries a confirmation
       whose count is one, or whose reason is blank, then the answer is `RemodelCommit.Unconfirmed`
       naming two, and nothing is written — no transition, no availability release, no receipt.
       *Seam:* `booking.api.RemodelClaims#commit` · *Pinned by:*
       `RemodelClaimsServiceTest.refusesACommitWhoseRefundCountOrReasonDoesNotMatch`
-- [ ] **AC-5:** Given a fresh picture holding a `Blocked` claim or a staff walk-in hold, when the
+- [x] **AC-5:** Given a fresh picture holding a `Blocked` claim or a staff walk-in hold, when the
       commit carries a correct confirmation, then it is still refused and no claim is refunded,
       released or declined. *Seam:* `booking.api.RemodelClaims#commit` · *Pinned by:*
       `RemodelClaimsServiceTest.blockedAndHeldPicturesAreStillRefusedWhateverTheConfirmation`
-- [ ] **AC-6:** Given an owner posting a save that removes three sets carrying a movable claim, a
+- [x] **AC-6:** Given an owner posting a save that removes three sets carrying a movable claim, a
       refundable one, an unpaid one and a pending request, when the body carries the preview token,
       the refund count and a reason, then `POST /api/venues/{id}/beach-map/commit` answers `200`
       with a receipt listing the move, the refund with its amount, the release, the decline, the
       refunded total and the reason; the layout is saved; and a non-owner is `403`. *Seam:*
       `POST /api/venues/{venueId}/beach-map/commit` · *Pinned by:*
       `RemodelCommitIT.commitsAMixedPictureAndReceiptsEveryOutcome`
-- [ ] **AC-7:** Given the same body without the refund count or without the reason, when it is
+- [x] **AC-7:** Given the same body without the refund count or without the reason, when it is
       posted, then the answer is `409 REFUND_NOT_CONFIRMED` carrying the fresh preview, its token
       and the required count, and the layout is unchanged. *Seam:*
       `POST /api/venues/{venueId}/beach-map/commit` · *Pinned by:*
       `RemodelCommitIT.refusesACommitWithRefundsThatIsNotTypedOut`
-- [ ] **AC-8:** Given a committed receipt with refund, release and decline lines, when its owner
+- [x] **AC-8:** Given a committed receipt with refund, release and decline lines, when its owner
       reads `GET /api/venues/{id}/remodels/{receiptId}`, then every line is returned with its spot,
       day and amount plus the reason and refunded total, and a foreign venue's receipt reads `404`.
       *Seam:* `GET /api/venues/{venueId}/remodels/{receiptId}` · *Pinned by:*
       `RemodelReceiptIT.readsRefundReleaseAndDeclineLinesWithTheReason`
-- [ ] **AC-9:** Given a `BookingCancelled` carrying reason `VENUE_CHANGE` and `refundMinor = 0`,
+- [x] **AC-9:** Given a `BookingCancelled` carrying reason `VENUE_CHANGE` and `refundMinor = 0`,
       when the booking module's listeners run after commit, then the booking's PaymentIntent is
       cancelled through `payment.api.CancelPaymentPort`, no refund is issued, and a transient
       gateway failure throws so the publication stays outstanding. *Seam:*
       `booking.events.BookingCancelled` (the module's after-commit listeners) · *Pinned by:*
       `RemodelReleasePaymentListenerTest.voidsTheUncollectedIntentOfAReleasedClaim`
-- [ ] **AC-10:** Given a `VENUE_CHANGE` cancellation of a booking at a venue whose sales for that
+- [x] **AC-10:** Given a `VENUE_CHANGE` cancellation of a booking at a venue whose sales for that
       date are open, when the cancellation mail is sent, then it carries a rebook link to that
       venue's map for that date; and given a venue closed for season or past its sales close for
       the date, then the link is the discovery list for that date. Suppression is honoured on both.
       *Seam:* `booking.events.BookingCancelled` → `notification.application.Mailer#sendBookingCancellation`
       · *Pinned by:* `BookingCancellationMailListenerTest.rebookLinkFallsBackToDiscoveryWhenTheVenueCannotSell`
-- [ ] **AC-11:** Given the remodel preview panel showing two refunds and one release, when the
+- [x] **AC-11:** Given the remodel preview panel showing two refunds and one release, when the
       operator opens it, then Save is inert until the refund count reads `2` and a reason is typed,
       the count and reason ride the `committed` output, and the panel keeps its axe-clean
       `alertdialog` shape and 44 px targets. *Seam:* `<app-remodel-preview-panel>` (its `preview`
       input and `committed` output) · *Pinned by:*
       `remodel-preview-panel.spec.ts` › `arms Save only once the refund count and reason are typed`
-- [ ] **AC-12:** Given a receipt carrying refunds, releases, declines, a reason and a refunded
+- [x] **AC-12:** Given a receipt carrying refunds, releases, declines, a reason and a refunded
       total, when the receipt panel renders it, then each group is listed with its spot, day and
       amount, the reason and the total are shown, and both are absent when the commit refunded
       nothing. *Seam:* `<app-remodel-receipt-panel>` (its `receipt` input) · *Pinned by:*
       `remodel-receipt-panel.spec.ts` › `lists the refund, release and decline lines with the reason and total`
-- [ ] **AC-13:** Given `/?date=2026-07-04`, when the discovery page loads, then it counts
+- [x] **AC-13:** Given `/?date=2026-07-04`, when the discovery page loads, then it counts
       availability for that date, and a past or malformed value clamps to the earliest bookable day.
       *Seam:* the `/` route (its `?date` query param) · *Pinned by:*
       `home.spec.ts` › `seeds the selected date from the route's ?date and clamps a past one`
-- [ ] **AC-14:** Given the mocked editor, when the operator saves a layout whose preview holds a
+- [x] **AC-14:** Given the mocked editor, when the operator saves a layout whose preview holds a
       refund, types the count and a reason and confirms, then the commit POSTs both, the receipt
       replaces the dialog listing the refund line, and the surface is axe-clean. *Seam:* the
       operator console's beach-map route · *Pinned by:*
       `frontend/e2e/layout-editor.e2e.ts` › `a picture with refunds commits once the count and reason are typed`
-- [ ] **AC-15:** Given a real backend, when a remodel leaves a booked set with nowhere same-or-better
+- [x] **AC-15:** Given a real backend, when a remodel leaves a booked set with nowhere same-or-better
       to go, then Save is inert until the count and reason are typed, the receipt lists the refund
       with that reason, the guest's booking reads `CANCELLED` and refunded, and the mock outbox holds
       the cancellation mail with its rebook link. *Seam:* the deployed HTTP surface · *Pinned by:*
@@ -263,28 +264,39 @@ in for `feature/venue-caused-cancellation` (`riviera-sdlc` § *Remote / cloud se
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A refunded or released claim's `(set, date)` row is not released, so the save's own live-claim probe refuses the write the gate just paid for, or the set stays sold | med | high | every leg releases through `availability.api.AvailabilityClaim#release` in the same transaction, exactly as the guest cancel does; AC-2/AC-3 assert the row is free and `RemodelCommitIT` asserts the layout committed | agent | open |
-| R-2 | A redelivered `BookingCancelled` refunds twice (invariant #8/#10) | low | high | no new refund path — the existing `BookingRefundListener` issues it, and the gateway is asked what refunds it already holds before creating one; `RemodelCommitIT` re-publishes the event and asserts one refund | agent | open |
-| R-3 | A released claim's payout accrual is reversed although nothing was ever collected (invariant #9) | low | high | `refundMinor = 0` on the release's `BookingCancelled`; `BookingCancelledPayoutListener` returns before touching the ledger on `refundMinor <= 0`; AC-3 asserts no ledger row | agent | open |
-| R-4 | `V53` collides with another branch's migration number | low | med | no open PRs at plan time and `V52` is HEAD's highest; if one appears, the branch that merges second renumbers | agent | open |
-| R-5 | The rebook read (`VenueCatalog#availabilityBetween`) throws or answers empty inside a mail listener, losing the mail | low | med | the listener treats an absent or failed answer as "cannot sell" and falls back to the discovery link — never an exception path; AC-10's fallback case covers it | agent | open |
+| R-1 | A refunded or released claim's `(set, date)` row is not released, so the save's own live-claim probe refuses the write the gate just paid for, or the set stays sold | med | high | every leg releases through `availability.api.AvailabilityClaim#release` in the same transaction, exactly as the guest cancel does; AC-2/AC-3 assert the row is free and `RemodelCommitIT` asserts the layout committed | agent | closed |
+| R-2 | A redelivered `BookingCancelled` refunds twice (invariant #8/#10) | low | high | no new refund path — the existing `BookingRefundListener` issues it, and the gateway is asked what refunds it already holds before creating one; `RemodelCommitIT` re-publishes the event and asserts one refund | agent | closed |
+| R-3 | A released claim's payout accrual is reversed although nothing was ever collected (invariant #9) | low | high | `refundMinor = 0` on the release's `BookingCancelled`; `BookingCancelledPayoutListener` returns before touching the ledger on `refundMinor <= 0`; AC-3 asserts no ledger row | agent | closed |
+| R-4 | `V53` collides with another branch's migration number | low | med | no open PRs at plan time and `V52` is HEAD's highest; if one appears, the branch that merges second renumbers | agent | closed |
+| R-5 | The rebook read (`VenueCatalog#availabilityBetween`) throws or answers empty inside a mail listener, losing the mail | low | med | the listener treats an absent or failed answer as "cannot sell" and falls back to the discovery link — never an exception path; AC-10's fallback case covers it | agent | closed |
 | R-6 | The guest pays between the release commit and the async intent void, leaving money collected against a `CANCELLED` booking | low | high | the void runs on the refund bulkhead within seconds of commit; a `NotCancellable` answer (the payment already succeeded) logs `ERROR` naming the booking so it is refunded by hand. Accepted, not closed: closing it needs a refund on a booking that is not being cancelled, which the epic lists as out of scope for this epic | agent | accepted → epic #1027 *Out of scope* |
-| R-7 | `BOLA`: a non-owner commits or reads another venue's receipt (invariant #13) | low | high | unchanged — `BeachMapRemodel#commit`, `RemodelClaims#commit` and `ViewRemodelReceipts` each assert ownership through `operator.api.VenueOwnership` before any read or write; AC-6 and AC-8 assert the 403/404 | agent | open |
-| R-8 | The new `409 REFUND_NOT_CONFIRMED` leaks internals or breaks the error contract (§6b) | low | low | built through `ApiProblem` in the controller's typed-outcome switch, like its two siblings; no booking code in `detail` (invariant #7) | agent | open |
-| R-9 | The confirmation's fields drift in the dark console theme over the fixed amber ground | med | med | the fields paint only in the fixed `--riv-warn-*` family; a contrast pair spec asserts the rendered pair and the literal sweep admits no hex | agent | open |
+| R-7 | `BOLA`: a non-owner commits or reads another venue's receipt (invariant #13) | low | high | unchanged — `BeachMapRemodel#commit`, `RemodelClaims#commit` and `ViewRemodelReceipts` each assert ownership through `operator.api.VenueOwnership` before any read or write; AC-6 and AC-8 assert the 403/404 | agent | closed |
+| R-8 | The new `409 REFUND_NOT_CONFIRMED` leaks internals or breaks the error contract (§6b) | low | low | built through `ApiProblem` in the controller's typed-outcome switch, like its two siblings; no booking code in `detail` (invariant #7) | agent | closed |
+| R-9 | The confirmation's fields drift in the dark console theme over the fixed amber ground | med | med | the fields paint only in the fixed `--riv-warn-*` family; a contrast pair spec asserts the rendered pair and the literal sweep admits no hex | agent | closed |
 
 ## Open questions / Assumptions
 
-- **Assumption:** "each gets its existing mail" for an `AWAITING_PAYMENT` release means the
-  existing **cancellation** mail, reached by publishing `BookingCancelled` with `refundMinor = 0`
-  — there is no release-specific mail in the tree today and the ticket forbids a new one.
-  *Owner:* agent · *Resolves by:* phase 1 (AC-3) — stated in the PR so the maintainer can object.
+None outstanding.
+
+### Resolved
+
+- **Assumption:** "each gets its existing mail" for an `AWAITING_PAYMENT` release means the existing
+  **cancellation** mail, reached by publishing `BookingCancelled` with `refundMinor = 0` — there is
+  no release-specific mail in the tree and the ticket forbids a new one. **Outcome:** built that way
+  and pinned by `RemodelClaimsServiceTest.releasesUnpaidAndDeclinesPendingWithoutMoney`; the payout
+  listener's own `refundMinor <= 0` branch is what keeps the ledger untouched (`6e64018d`). Stated
+  in the PR for the maintainer to object to.
 - **Assumption:** a remodel-caused decline keeps the settled `RequestDeclinedMail` copy ("the venue
   declined your request") and carries no rebook link, per the ticket's narrowing of story 32.
-  *Owner:* agent · *Resolves by:* phase 4 — stated in the PR.
+  **Outcome:** unchanged, and `RESPONSIBILITIES.md` §`notification` now says so (`062e12f3`).
 - **Assumption:** voiding the released booking's PaymentIntent is in scope even though the ticket
-  does not name it, because the release leg would otherwise introduce a live intent on a cancelled
-  booking. *Owner:* agent · *Resolves by:* phase 3 (AC-9) — stated in the PR.
+  does not name it, because the release leg would otherwise leave a collectable intent on a
+  cancelled booking. **Outcome:** built as `RemodelReleasePaymentListener` on the refund bulkhead
+  (`0fee9de6`); the race it cannot close is R-6.
+- **Open question:** whether the guest's own free exit could be told from a venue-caused refund
+  without changing the `BookingCancelled` payload — both are `VENUE_CHANGE`. **Outcome:** yes: the
+  commit receipt already records the ended claim, so `BookingNotificationFacts#endedByRemodel` reads
+  it and the event is untouched (`062e12f3`).
 
 ## Availability & concurrency (invariant #2)
 
@@ -411,21 +423,24 @@ No deviation.
 
 ## Execution status
 
-**Stage pointer:** `plan — written, awaiting phase 0`
+**Stage pointer:** `PR — opened, awaiting the CI, review and Sonar gates`
 
-**Next action:** commit this plan doc on `claude/riviera-refunds-3rsa0g`, open the draft PR, then
-start phase 0 (V53 + the receipt's new shape, red first at `VenueCausedCancellationMigrationIT`).
+**Next action:** watch the PR's first CI run, then run the review gate over `170568dd..<head>` and
+pull the Sonar new-issue list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V53 + the receipt's outcome lines | | |
-| 1 — the three legs and the typed confirmation in `booking` | | |
-| 2 — the edge: commit body, `REFUND_NOT_CONFIRMED`, the receipt reads | | |
-| 3 — voiding a released claim's PaymentIntent | | |
-| 4 — the rebook link on the cancellation mail | | |
-| 5 — the console: confirmation step, receipt lines, discovery `?date` | | |
-| 6 — e2e: mocked commit-with-refunds, real-backend refund outcome | | |
-| 7 — docs + close-out | | |
+| 0 — V53 + the receipt's outcome lines | ✅ | `6e64018d` |
+| 1 — the three legs and the typed confirmation in `booking` | ✅ | `6e64018d` |
+| 2 — the edge: commit body, `REFUND_NOT_CONFIRMED`, the receipt reads | ✅ | `6e64018d` |
+| 3 — voiding a released claim's PaymentIntent | ✅ | `0fee9de6` |
+| 4 — the rebook link on the cancellation mail | ✅ | `062e12f3` |
+| 5 — the console: confirmation step, receipt lines, discovery `?date` | ✅ | `59542a97` |
+| 6 — e2e: mocked commit-with-refunds, real-backend refund outcome | ✅ | `531224f1` |
+| 7 — docs + close-out | ✅ | this commit |
+
+> Phases 0–2 share one commit: the port's widened signature, the legs behind it and the edge that
+> calls it are one compile unit, so splitting them would have committed a tree that does not build.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -434,7 +449,10 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | docs-freshness | `notification/package-info.java` still said "the five listeners' reads … all five assemble the same facts through one shared resolver, so listeners were added without widening them" — this slice adds a `venue::api` read the resolver does not serve | fixed-in this commit |
+| F-2 | docs-freshness | `RefundListenerExecutorArchitectureTest`'s non-vacuity test named "the one production listener"; there are now two | fixed-in this commit |
+| F-3 | docs-freshness | ADR-0020's status and decision 1 said the commit "re-seats the moves" | fixed-in this commit |
+| F-4 | docs-freshness | `CLAUDE.md`, `riviera-modulith/references/events.md` and `riviera-stripe-payments` each named `booking`'s single `BookingCancelled` listener; `events.md` also omitted `BookingMoved` from the notification-only list (drift from #1034) | fixed-in this commit |
 
 ---
 
@@ -500,6 +518,12 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/pages/home/home.spec.ts` — AC-13
 - `frontend/e2e/layout-editor.e2e.ts` — AC-14
 - `frontend/e2e/real-backend/remodel-move.e2e.ts` — AC-15
+- `platform/src/main/java/ai/riviera/platform/booking/application/remodel/NewReceipt.java` — the receipt as it is written
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java`, `platform/src/test/java/ai/riviera/platform/MoveVsReserveConcurrencyIT.java`, `platform/src/test/java/ai/riviera/platform/booking/FreeExitCancelIT.java`, `platform/src/test/java/ai/riviera/platform/notification/BookingMovedMailIT.java` — the widened port and store call sites
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/in/RefundListenerExecutorArchitectureTest.java` — the bulkhead rule now examines both listeners
+- `platform/src/main/java/ai/riviera/platform/notification/package-info.java` — the grants paragraph (docs-freshness F-1)
+- `docs/adr/ADR-0020-remodel-orchestration-at-the-composition-root.md` — the commit settles every claim (F-3)
+- `CLAUDE.md`, `.claude/skills/riviera-modulith/references/events.md`, `.claude/skills/riviera-stripe-payments/SKILL.md` — `booking`'s two `BookingCancelled` listeners (F-4)
 - `CONTEXT.md` — **Venue-caused refund**
 - `RESPONSIBILITIES.md` — §`booking` (the three legs, the confirmation, the receipt) and
   §`notification` (the rebook link and its fallback)
@@ -513,20 +537,20 @@ Create `booking/application/remodel/ReceiptOutcome.java`, `ReceiptOutcomeKind.ja
 `RemodelReceipt.java`, `RemodelReceipts.java`, `adapter/out/JdbcRemodelReceipts.java` · Test
 `booking/VenueCausedCancellationMigrationIT.java`, `booking/adapter/out/JdbcRemodelReceiptsIT.java`
 
-- [ ] **Step 1: Write the failing test** — `VenueCausedCancellationMigrationIT`: the outcome table
+- [x] **Step 1: Write the failing test** — `VenueCausedCancellationMigrationIT`: the outcome table
       accepts one row per kind, refuses an unknown kind and a negative amount, indexes every FK, and
       `remodel_receipt.refund_reason` starts NULL; `JdbcRemodelReceiptsIT` round-trips a receipt
       carrying moves, outcomes and a reason.
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
       `gradle --no-daemon --console=plain test --tests "*VenueCausedCancellationMigrationIT*"` →
       FAIL, relation `remodel_receipt_outcome` does not exist.
-- [ ] **Step 3: Minimal implementation** — the migration, the two new value types, the widened
+- [x] **Step 3: Minimal implementation** — the migration, the two new value types, the widened
       store port and its JDBC adapter.
-- [ ] **Step 4: Run it, verify it passes** — the same command plus
+- [x] **Step 4: Run it, verify it passes** — the same command plus
       `--tests "*JdbcRemodelReceiptsIT*"` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: every read of `remodel_receipt`.
-- [ ] **Step 6: Commit** — `git commit -m "Receipt lines for refunded, released and declined claims (#1035)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Generalization-audit pass** — population: every read of `remodel_receipt`.
+- [x] **Step 6: Commit** — `git commit -m "Receipt lines for refunded, released and declined claims (#1035)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — the three legs and the typed confirmation in `booking`
 
@@ -535,16 +559,16 @@ Create `booking/application/remodel/ReceiptOutcome.java`, `ReceiptOutcomeKind.ja
 `booking/application/remodel/RemodelClaimsService.java` · Test
 `booking/application/remodel/RemodelClaimsServiceTest.java`
 
-- [ ] **Step 1: Write the failing test** — AC-2..AC-5 at `RemodelClaims#commit`.
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 1: Write the failing test** — AC-2..AC-5 at `RemodelClaims#commit`.
+- [x] **Step 2: Run it, verify it fails** —
       `gradle --no-daemon --console=plain test --tests "*RemodelClaimsServiceTest*"` → FAIL, the
       commit refuses a refund picture.
-- [ ] **Step 3: Minimal implementation** — the fourth `RemodelCommit` arm, the confirmation value,
+- [x] **Step 3: Minimal implementation** — the fourth `RemodelCommit` arm, the confirmation value,
       and the refund / release / decline legs beside the move leg.
-- [ ] **Step 4: Run it, verify it passes** — the same command → PASS, then the structural net.
-- [ ] **Step 5: Generalization-audit pass** — population: every publisher of `BookingCancelled`.
-- [ ] **Step 6: Commit** — `git commit -m "Apply VENUE_CHANGE refunds, releases and declines in the remodel commit (#1035)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — the same command → PASS, then the structural net.
+- [x] **Step 5: Generalization-audit pass** — population: every publisher of `BookingCancelled`.
+- [x] **Step 6: Commit** — `git commit -m "Apply VENUE_CHANGE refunds, releases and declines in the remodel commit (#1035)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 2 — the edge: commit body, `REFUND_NOT_CONFIRMED`, the receipt reads
 
@@ -552,27 +576,27 @@ Create `booking/application/remodel/ReceiptOutcome.java`, `ReceiptOutcomeKind.ja
 `RemodelCommitController.java`, `RemodelCommitRequest.java`, `RemodelCommitResponse.java`,
 `booking/adapter/in/RemodelReceiptView.java` · Test `RemodelCommitIT.java`, `RemodelReceiptIT.java`
 
-- [ ] **Step 1: Write the failing test** — AC-6, AC-7, AC-8 at the two routes.
-- [ ] **Step 2: Run it, verify it fails** — `gradle … --tests "*RemodelCommitIT*"` → FAIL, `409`.
-- [ ] **Step 3: Minimal implementation** — the body's two fields, the new outcome arm and its
+- [x] **Step 1: Write the failing test** — AC-6, AC-7, AC-8 at the two routes.
+- [x] **Step 2: Run it, verify it fails** — `gradle … --tests "*RemodelCommitIT*"` → FAIL, `409`.
+- [x] **Step 3: Minimal implementation** — the body's two fields, the new outcome arm and its
       problem response, the widened `200` and receipt views.
-- [ ] **Step 4: Run it, verify it passes** — the same command + `--tests "*RemodelReceiptIT*"`.
-- [ ] **Step 5: Generalization-audit pass** — population: every `ApiProblem` conflict in the root.
-- [ ] **Step 6: Commit** — `git commit -m "Type the refund count and reason on the remodel commit (#1035)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — the same command + `--tests "*RemodelReceiptIT*"`.
+- [x] **Step 5: Generalization-audit pass** — population: every `ApiProblem` conflict in the root.
+- [x] **Step 6: Commit** — `git commit -m "Type the refund count and reason on the remodel commit (#1035)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 3 — voiding a released claim's PaymentIntent
 
 **Files:** Create `booking/adapter/in/RemodelReleasePaymentListener.java` · Test
 `booking/adapter/in/RemodelReleasePaymentListenerTest.java`
 
-- [ ] **Step 1: Write the failing test** — AC-9.
-- [ ] **Step 2: Run it, verify it fails** — `gradle … --tests "*RemodelReleasePaymentListenerTest*"`.
-- [ ] **Step 3: Minimal implementation** — the listener on the refund bulkhead.
-- [ ] **Step 4: Run it, verify it passes**; re-run the `@ApplicationModuleTest`s for blast radius.
-- [ ] **Step 5: Generalization-audit pass** — population: every `BookingCancelled` listener.
-- [ ] **Step 6: Commit** — `git commit -m "Void the uncollected intent of a remodel-released booking (#1035)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 1: Write the failing test** — AC-9.
+- [x] **Step 2: Run it, verify it fails** — `gradle … --tests "*RemodelReleasePaymentListenerTest*"`.
+- [x] **Step 3: Minimal implementation** — the listener on the refund bulkhead.
+- [x] **Step 4: Run it, verify it passes**; re-run the `@ApplicationModuleTest`s for blast radius.
+- [x] **Step 5: Generalization-audit pass** — population: every `BookingCancelled` listener.
+- [x] **Step 6: Commit** — `git commit -m "Void the uncollected intent of a remodel-released booking (#1035)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 4 — the rebook link on the cancellation mail
 
@@ -582,14 +606,14 @@ Create `booking/application/remodel/ReceiptOutcome.java`, `ReceiptOutcomeKind.ja
 `notification/adapter/in/BookingCancellationMailListenerTest.java`,
 `notification/BookingCancellationRebookMailIT.java`
 
-- [ ] **Step 1: Write the failing test** — AC-10, both arms plus suppression.
-- [ ] **Step 2: Run it, verify it fails** — `gradle … --tests "*BookingCancellationMailListenerTest*"`.
-- [ ] **Step 3: Minimal implementation** — the two link builders, the mail's new field, the
+- [x] **Step 1: Write the failing test** — AC-10, both arms plus suppression.
+- [x] **Step 2: Run it, verify it fails** — `gradle … --tests "*BookingCancellationMailListenerTest*"`.
+- [x] **Step 3: Minimal implementation** — the two link builders, the mail's new field, the
       listener's sellability read and fallback, and the transports' copy.
-- [ ] **Step 4: Run it, verify it passes** — plus `--tests "*BookingCancellationRebookMailIT*"`.
-- [ ] **Step 5: Generalization-audit pass** — population: every `Mailer` implementation.
-- [ ] **Step 6: Commit** — `git commit -m "Rebook link on the venue-caused cancellation mail, with the discovery fallback (#1035)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — plus `--tests "*BookingCancellationRebookMailIT*"`.
+- [x] **Step 5: Generalization-audit pass** — population: every `Mailer` implementation.
+- [x] **Step 6: Commit** — `git commit -m "Rebook link on the venue-caused cancellation mail, with the discovery fallback (#1035)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 5 — the console: confirmation step, receipt lines, discovery `?date`
 
@@ -597,38 +621,38 @@ Create `booking/application/remodel/ReceiptOutcome.java`, `ReceiptOutcomeKind.ja
 `remodel-preview-panel.{ts,html}`, `remodel-receipt-panel.ts`, `layout-editor.{ts,html}`,
 `pages/home/home.ts` · Test the six specs plus the four a11y/contrast pairs
 
-- [ ] **Step 1: Write the failing test** — AC-11, AC-12, AC-13 and the editor's leg.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- --run remodel-preview-panel`.
-- [ ] **Step 3: Minimal implementation** — the Signal Form confirmation, the widened committable
+- [x] **Step 1: Write the failing test** — AC-11, AC-12, AC-13 and the editor's leg.
+- [x] **Step 2: Run it, verify it fails** — `npm test -- --run remodel-preview-panel`.
+- [x] **Step 3: Minimal implementation** — the Signal Form confirmation, the widened committable
       rule, the receipt's groups, the editor's body, and Home's `linkedSignal` over `?date`.
-- [ ] **Step 4: Run it, verify it passes** — `npm test`, `npm run lint`, `npm run format:check`.
-- [ ] **Step 5: Generalization-audit pass** — population: every console surface rendering money.
-- [ ] **Step 6: Commit** — `git commit -m "Console: type the refund count and reason, receipt lines, discovery date link (#1035)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — `npm test`, `npm run lint`, `npm run format:check`.
+- [x] **Step 5: Generalization-audit pass** — population: every console surface rendering money.
+- [x] **Step 6: Commit** — `git commit -m "Console: type the refund count and reason, receipt lines, discovery date link (#1035)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 6 — e2e
 
 **Files:** Modify `frontend/e2e/layout-editor.e2e.ts`, `frontend/e2e/real-backend/remodel-move.e2e.ts`
 
-- [ ] **Step 1: Write the failing test** — AC-14 and AC-15.
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 1: Write the failing test** — AC-14 and AC-15.
+- [x] **Step 2: Run it, verify it fails** —
       `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- layout-editor`.
-- [ ] **Step 3: Minimal implementation** — none expected; fix whatever the specs expose.
-- [ ] **Step 4: Run it, verify it passes** — the same command.
-- [ ] **Step 5: Generalization-audit pass** — population: every mocked commit route.
-- [ ] **Step 6: Commit** — `git commit -m "e2e: a remodel commit that refunds (#1035)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 3: Minimal implementation** — none expected; fix whatever the specs expose.
+- [x] **Step 4: Run it, verify it passes** — the same command.
+- [x] **Step 5: Generalization-audit pass** — population: every mocked commit route.
+- [x] **Step 6: Commit** — `git commit -m "e2e: a remodel commit that refunds (#1035)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 7 — docs and close-out
 
 **Files:** Modify `CONTEXT.md`, `RESPONSIBILITIES.md`, this plan · Delete
 `docs/plans/remodel-commit.md`
 
-- [ ] **Step 1–4:** run `riviera-docs-freshness` over `170568dd..HEAD`, patch what it finds, add the
+- [x] **Step 1–4:** run `riviera-docs-freshness` over `170568dd..HEAD`, patch what it finds, add the
       glossary entry and the two responsibility paragraphs, retire #1034's plan doc.
-- [ ] **Step 5: Generalization-audit pass** — the counting sweep for "the two X" facts.
-- [ ] **Step 6: Commit** — `git commit -m "Document the venue-caused cancellation legs and retire the remodel-commit plan (#1035)"`
-- [ ] **Step 7:** finalize the Execution status in this same commit.
+- [x] **Step 5: Generalization-audit pass** — the counting sweep for "the two X" facts.
+- [x] **Step 6: Commit** — `git commit -m "Document the venue-caused cancellation legs and retire the remodel-commit plan (#1035)"`
+- [x] **Step 7:** finalize the Execution status in this same commit.
 
 ---
 
@@ -644,36 +668,36 @@ Create `booking/application/remodel/ReceiptOutcome.java`, `ReceiptOutcomeKind.ja
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `gradle … --tests "*VenueCausedCancellationMigrationIT*"` → PASS.
-- [ ] **AC-2..5:** `gradle … --tests "*RemodelClaimsServiceTest*"` → PASS.
-- [ ] **AC-6, AC-7:** `gradle … --tests "*RemodelCommitIT*"` → PASS.
-- [ ] **AC-8:** `gradle … --tests "*RemodelReceiptIT*"` → PASS.
-- [ ] **AC-9:** `gradle … --tests "*RemodelReleasePaymentListenerTest*"` → PASS.
-- [ ] **AC-10:** `gradle … --tests "*BookingCancellationMailListenerTest*" --tests "*BookingCancellationRebookMailIT*"` → PASS.
-- [ ] **AC-11..13:** `npm test` → PASS.
-- [ ] **AC-14:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → PASS.
-- [ ] **AC-15:** `npm run test:e2e` against the local stack → PASS.
+- [x] **AC-1:** `gradle … --tests "*VenueCausedCancellationMigrationIT*"` → PASS.
+- [x] **AC-2..5:** `gradle … --tests "*RemodelClaimsServiceTest*"` → PASS.
+- [x] **AC-6, AC-7:** `gradle … --tests "*RemodelCommitIT*"` → PASS.
+- [x] **AC-8:** `gradle … --tests "*RemodelReceiptIT*"` → PASS.
+- [x] **AC-9:** `gradle … --tests "*RemodelReleasePaymentListenerTest*"` → PASS.
+- [x] **AC-10:** `gradle … --tests "*BookingCancellationMailListenerTest*" --tests "*BookingCancellationRebookMailIT*"` → PASS.
+- [x] **AC-11..13:** `npm test` → PASS.
+- [x] **AC-14:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → PASS.
+- [x] **AC-15:** `npm run test:e2e` against the local stack → PASS.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled; the three release-only callers are inside the locked transaction (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled; webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable and never on an event or in a log (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled; the three release-only callers are inside the locked transaction (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled; webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable and never on an event or in a log (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder *plus* `riviera-review-overlay`.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

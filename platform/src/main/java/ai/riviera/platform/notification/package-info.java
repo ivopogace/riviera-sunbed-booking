@@ -25,9 +25,11 @@
  * and the arrival code cannot ride the payload, which the registry persists as text (invariant #7).
  * Formatting a fact already in hand mints nothing and hashes nothing.
  *
- * <p>The grants below are the five listeners' reads, least-privilege (#95) — no command surface, and
- * all five assemble the same facts through one shared resolver, so listeners were added without
- * widening them. {@code shared} is the OPEN kernel, granted for the admin adapter's {@code ApiProblem}
+ * <p>The grants below are the listeners' reads, least-privilege (#95) — no command surface. Every
+ * booking mail assembles the same facts through one shared resolver, so a listener joins them
+ * without widening anything; the reads beyond it are named ones a single mail needs — the moved
+ * mail's spots off {@code booking::api}, and the rebook link's sellability verdict off
+ * {@code venue::api}. {@code shared} is the OPEN kernel, granted for the admin adapter's {@code ApiProblem}
  * factory; it publishes no named interfaces, so its module root is the narrowest grant available.
  * {@code booking::spi} is the one <em>inbound</em> grant: {@code booking} declares
  * {@code ConfirmationMailDelivery} and this module implements it, so a confirmed booking's read model
