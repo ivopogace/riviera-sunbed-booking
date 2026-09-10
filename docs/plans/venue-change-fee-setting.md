@@ -148,6 +148,8 @@ remote branch stands in for `feature/venue-change-fee-setting`.
 - **Assumption:** `V55` is free. — **Confirmed at phase 0** against fetched `origin/main`
   (`V54` newest) with no open PR claiming a number.
 
+*(No open questions or assumptions remain.)*
+
 - **Open question:** ADR-0021 §7 says #1037 "owes the rate an effective-dated schedule of its
   own". Does this slice ship one? — **Resolved by the user (2026-09-10, `AskUserQuestion`):
   no.** An effective-dated table alone cannot close the divergence window it was meant to
@@ -257,10 +259,10 @@ number. Rejected: a new `Fees` tab in the Money group, which would split the two
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, awaiting CI + the Sonar gate on the new head`
+**Stage pointer:** `DONE — merged via PR #1055`
 
-**Next action:** confirm CI green and re-read the SonarCloud gate on the head carrying the review
-fixes, then finalize this section citing the PR and merge.
+**Next action:** none. The slice is merged; the remaining close-out items are GitHub edits (the
+issue's closure and the epic's checklist).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -268,7 +270,8 @@ fixes, then finalize this section citing the PR and merge.
 | 1 — Listener and rate read through the port | ✅ | `9e987086` |
 | 2 — Admin read/write endpoint | ✅ | `003dbba9` |
 | 3 — Admin console fee card | ✅ | `1bf3e85b` |
-| 4 — e2e, docs, ADR-0021 amendment, close-out | ✅ | |
+| Review-gate fixes (F-5…F-19) | ✅ | `5998822c` |
+| 4 — e2e, docs, ADR-0021 amendment, close-out | ✅ | `d49dbb47`, `7a815ffa` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -546,6 +549,6 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the invocation ladder plus `riviera-review-overlay`.
+- [x] **The review gate ran in full** — `code-review:code-review` (rung 1) over `66bb4b3b..d49dbb47` with `riviera-review-overlay` layered on: five agents, 15 findings, all fixed in `5998822c` and recorded as F-5…F-19.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
