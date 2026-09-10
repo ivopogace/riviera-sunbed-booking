@@ -58,6 +58,10 @@ fi
 # (corretto.aws) — used when the GitHub path is blocked by the session's repo-scope
 # proxy (403 "not enabled for this session"). Any JDK 25 satisfies build.gradle
 # (languageVersion=25, vendor=any).
+# On a repo-scoped session the fallback is the EXPECTED outcome, not a degradation: only the
+# resolve-latest API call below is gated (release-asset downloads are not), so a pinned direct
+# URL would make Temurin work — deliberately not done, since vendor is free and a pin is a
+# version to hand-maintain. Measurements + rationale: docs/agents/gradle-proxy-trust.md.
 JDK_DIR=/opt/jdk-25
 if ! { [ -x "$JDK_DIR/bin/java" ] && "$JDK_DIR/bin/java" -version 2>&1 | grep -q 'version "25'; }; then
   echo "cloud-session-setup: installing Temurin JDK 25 (backend toolchain) ..." >&2

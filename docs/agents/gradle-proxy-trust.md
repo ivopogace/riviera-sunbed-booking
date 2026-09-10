@@ -53,11 +53,26 @@ export JAVA_HOME=/opt/jdk-25
 on the pinned version (`platform/gradle/wrapper/gradle-wrapper.properties` is the source
 of truth) + JDK 25.
 
-The **JDK** has its own 403 story, and it is still live: the setup hook's Temurin JDK (from
-`adoptium/temurin25-binaries`) 403s on a repo-scoped session, which is why
-`scripts/cloud-session-setup.sh` step 2b falls back to **Amazon Corretto 25** from
-`corretto.aws` (network-allowlisted, not GitHub-gated). That fallback is what serves
-`/opt/jdk-25` today — the JDK there is Corretto, not Temurin.
+The **JDK** has its own 403, and it is narrower than it looks. Measured 2026-09-10 on a
+repo-scoped session, the repo-scope gate covers github.com **pages and API** but not release
+assets:
+
+| URL | Result |
+|---|---|
+| `api.github.com/repos/adoptium/temurin25-binaries/releases/latest` | 403 `not enabled for this session` |
+| `github.com/adoptium/temurin25-binaries/releases/latest` | 403, same body |
+| `github.com/adoptium/…/releases/download/<tag>/<asset>.tar.gz` | **200/206 — serves fine** |
+| `api.adoptium.net` | CONNECT refused — genuinely off the network allowlist |
+
+So only step 2's **resolve-latest** call is blocked; the tarball it would then fetch is
+reachable. A pinned direct download URL would make the Temurin path work with no allowlist
+change (that is exactly what step 6 does for `gh`, and why its version is pinned). **We
+deliberately do not do that** — `build.gradle` takes any vendor at `languageVersion = 25`, so
+the Corretto fallback is a fine outcome, not a degraded one, and a pin is a version to keep
+current by hand. Step 2 is therefore expected to fall through to step 2b on a repo-scoped
+session, and `/opt/jdk-25` is **Amazon Corretto 25** from `corretto.aws` (network-allowlisted,
+not GitHub-gated). If you ever do want vendor-side resolution instead, `api.adoptium.net` is
+the one domain to add — nothing else here is an allowlist problem.
 
 ### Fallback: the wrapper's distribution download is blocked
 
