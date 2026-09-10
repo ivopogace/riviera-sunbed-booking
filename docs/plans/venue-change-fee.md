@@ -381,6 +381,8 @@ at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/main/java/ai/riviera/platform/booking/spi/package-info.java` — the surface now holds two ports
 - `platform/src/main/java/ai/riviera/platform/booking/package-info.java` · `platform/src/main/java/ai/riviera/platform/booking/api/package-info.java` — the module's and the api surface's own counts
 - `platform/src/test/java/ai/riviera/platform/payout/FeeMathTest.java` — the fee entry's shape
+- `platform/src/test/java/ai/riviera/platform/payout/adapter/in/VenueChangeFeePropertiesTest.java` — the configuration bounds
+- `platform/src/test/java/ai/riviera/platform/booking/vocabulary/VenueChangeFeeTest.java` — the published value and its total
 - `platform/src/test/java/ai/riviera/platform/payout/PayoutVenueChangeFeeIT.java` — the listener's four cases
 - `platform/src/test/java/ai/riviera/platform/payout/AdminVenueChangeRefundsIT.java` — the admin report
 - `platform/src/test/java/ai/riviera/platform/payout/PayoutMigrationIT.java` — the relaxed and unchanged constraints
@@ -397,7 +399,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/operator/{remodel-receipt-panel.ts,remodel-receipt-panel.spec.ts,remodel-receipt-panel.a11y.spec.ts,remodel-receipt-panel.contrast.spec.ts}` — the fee line
 - `frontend/src/app/operator/operator-console.model.ts` — `PayoutEntryType` gains `FEE`; the preview/receipt fee fields
 - `frontend/src/app/operator/operator-console.service.spec.ts` — the widened ledger fixture
-- `frontend/src/app/admin/{admin-venue-changes.ts,admin-venue-changes.service.ts,admin-venue-changes.spec.ts,admin-venue-changes.a11y.spec.ts,admin-venue-changes.contrast.spec.ts}` — the new tab
+- `frontend/src/app/admin/{admin-venue-changes.ts,admin-venue-changes.service.ts,admin-venue-changes.spec.ts,admin-venue-changes.service.spec.ts,admin-venue-changes.a11y.spec.ts,admin-venue-changes.contrast.spec.ts}` — the new tab
 - `frontend/src/app/admin/admin.model.ts` — the tab's response types
 - `frontend/src/app/admin/{admin-console-tabs.ts,admin-console-tabs.spec.ts}` — the label in its slot
 - `frontend/src/app/{console-shell.spec.ts,app.routes.spec.ts}` — the rail, palette and lazy-route counts the new tab moves
