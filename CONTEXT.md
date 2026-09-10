@@ -212,8 +212,8 @@ model in `docs/architecture/domain-model.md`.
   rewrites what is already recorded. Today there is exactly one — the venue-change **fee**.
 - **Payout batch** — a period's worth of ledger entries settled together, paid to
   the venue manually via BKT.
-- **Refund** — money returned to a tourist, by reason: policy, weather, venue change (the **free
-  exit** of a **moved booking**), or conflict.
+- **Refund** — money returned to a tourist, by reason: policy, weather, venue change (a remodel
+  that ended the booking, or the **free exit** of a **moved booking**), or conflict.
 - **Refund progress** — how far a decided refund has actually travelled: **decided**
   (the cancellation fixed an amount the platform owes), **accepted** (the payment
   gateway has acknowledged it will return the money), **settled** (it has reached the

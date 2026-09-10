@@ -774,8 +774,8 @@ classDiagram
 > the suppression list is keyed by a peppered SHA-256 (`v1:<64 hex>`, ADR-0012) with the domain
 > kept in clear for operational reads.
 >
-> It listens rather than being called: `BookingConfirmed`, `BookingCancelled`,
-> `BookingPaymentDue`, `BookingRequestDeclined` and `BookingRequestExpired` arrive as events — five
+> It listens rather than being called: `BookingConfirmed`, `BookingCancelled`, `BookingMoved`,
+> `BookingPaymentDue`, `BookingRequestDeclined` and `BookingRequestExpired` arrive as events — six
 > listeners — and the facts each mail needs are resolved back through `booking`/`venue`/`customer`
 > ports from inside the listener. Which of the two ADR-0011 vehicles carries a mail follows from
 > its payload: an ids-only payload rides the **Event Publication Registry** (at-least-once,

@@ -163,7 +163,7 @@ over time. The standing rules:
     mail must name the old spot. Its row/position and grid cell are free for a new set: the
     layout-uniqueness indexes are partial over active rows. `RetiredSetExclusionArchitectureTests`
     holds every production statement to this (§ *Machine-checked*).
-  - Which statuses are live is `booking`'s call (`BookingStatus#isTerminal`, reached through
+  - Which statuses are live is `booking`'s call (`BookingStatus#canStillBeHonoured`, reached through
     `BookingPresence#hasLiveBookings`); `venue` never enumerates booking statuses. Price,
     tier and the row's name stay editable on a claimed set: a booking's charge is
     snapshotted at reserve time, and `row_label` lives on `set_position` alone, so a guest
