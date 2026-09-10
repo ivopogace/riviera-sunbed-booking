@@ -1288,8 +1288,11 @@ the mechanism and the edge cases. The numbering is `CLAUDE.md`'s and never chang
 10. **Cancellation/refund policy is enforced server-side.** Free cancellation until the #4
     cutoff → full refund; after → non-refundable (or partial); the window closes entirely at
     service-day open (00:00 `Europe/Tirane`) — a guest cancel is then refused, not refunded
-    (ADR-0005 as amended). The weather exception is a manual admin-triggered full refund,
-    deliberately outside that fence. Refund decisions are computed on the server.
+    (ADR-0005 as amended). Two refunds sit outside the tier, both deliberately. The weather
+    exception is a manual admin-triggered full refund. A **moved booking's free exit** returns the
+    full amount under reason `VENUE_CHANGE` until `BookingCutoff#freeExitEndsAt` — whatever the
+    `LATE` tier would answer — and never reopens `CLOSED`, because that deadline is itself capped
+    at service-day open (§`booking`, ADR-0020). Refund decisions are computed on the server.
 11. **Spring Modulith boundaries are hexagonal and id-based.** The ADR-0007 graduated shape:
     a full module is `{api?, spi?, vocabulary?, events?, application, domain, adapter/in,
     adapter/out}`; a thin module is `{api, vocabulary?, adapter/out}`. No `application/in|out`

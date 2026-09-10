@@ -180,8 +180,9 @@ numbering is stable; **never renumber**. Mechanisms and edge cases: `RESPONSIBIL
    Σ amounts − commission (per-venue, effective-dated, forward-only) − fees. Direction lives in
    the entry type, never in the amount.
 10. **Cancellation/refund policy is enforced server-side.** Free until the #4 cutoff, then
-    non-refundable; the window closes at service-day open (ADR-0005). The weather refund is a
-    manual admin action outside that fence.
+    non-refundable; the window closes at service-day open (ADR-0005). Two refunds sit outside the
+    tier: the admin weather refund, and a **moved booking's free exit**, which returns the full
+    amount whatever the tier says until its deadline, itself capped at service-day open.
 11. **Spring Modulith boundaries are hexagonal and id-based** (ADR-0007): cross-module access
     only via another module's `api/` port or a domain event; event payloads carry technical ids
     and values, never a foreign aggregate — `BookingConfirmed` deliberately carries
