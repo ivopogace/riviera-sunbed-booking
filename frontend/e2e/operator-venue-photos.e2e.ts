@@ -42,9 +42,10 @@ const PROFILE = {
 const UPLOADED_COVER = {
   slot: 'cover',
   variants: [
-    { surface: 'card', url: '/api/venues/1/photos/aa01', width: 640, height: 384 },
-    { surface: 'banner', url: '/api/venues/1/photos/bb02', width: 1280, height: 480 },
-    { surface: 'preview', url: '/api/venues/1/photos/cc03', width: 480, height: 360 },
+    { surface: 'card', scale: 1, url: '/api/venues/1/photos/aa01', width: 640, height: 384 },
+    { surface: 'card', scale: 2, url: '/api/venues/1/photos/dd04', width: 1280, height: 768 },
+    { surface: 'banner', scale: 1, url: '/api/venues/1/photos/bb02', width: 1280, height: 480 },
+    { surface: 'preview', scale: 1, url: '/api/venues/1/photos/cc03', width: 480, height: 360 },
   ],
 };
 

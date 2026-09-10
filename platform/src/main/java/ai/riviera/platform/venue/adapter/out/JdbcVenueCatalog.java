@@ -281,7 +281,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 
 	/**
 	 * Every stored photo rendition for the venues, in one blob-free query (only hashes and widths
-	 * travel; the {@code bytea} column is never selected here — R-3/ADR-0008), bucketed
+	 * travel; the {@code bytea} column is never selected here — ADR-0008), bucketed
 	 * venue → slot → surface with slots in {@link PhotoSlot} order. Each surface holds a
 	 * {@link PhotoView}: its densities collapsed into one baseline URL plus every candidate. Both
 	 * tourist photo views derive from this one read — {@link #coverOf} and {@link #slideshowOf} —

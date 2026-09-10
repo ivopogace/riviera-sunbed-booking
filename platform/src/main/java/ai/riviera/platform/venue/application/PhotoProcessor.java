@@ -35,8 +35,8 @@ import net.coobird.thumbnailator.Thumbnails;
  * crop) → re-encode as quality JPEG, which drops all source metadata incl. GPS EXIF (ADR-0008 /
  * privacy).
  *
- * <p>The retina rendition is skipped rather than upscaled when the source is smaller than its box,
- * so a small upload simply publishes fewer {@code srcset} candidates. A deep module behind one
+ * <p>A retina rendition that came out larger than its own source is discarded rather than stored, so
+ * a small upload simply publishes fewer {@code srcset} candidates. A deep module behind one
  * method; the only thing that varies across a seam is where the bytes then live
  * ({@link PhotoStorage}), not this. Package-private; the service depends on it directly (one impl —
  * a hypothetical seam, riviera-java-conventions §4).
@@ -92,10 +92,14 @@ class PhotoProcessor {
 		}
 		List<StoredVariant> variants = new ArrayList<>();
 		try {
+			long sourcePixels = (long) width * height;
 			for (PhotoSurface surface : PhotoSurface.values()) {
 				variants.add(render(upload, surface, BASE_SCALE));
-				if (RETINA_SURFACES.contains(surface) && retinaWouldNotUpscale(surface, width, height)) {
-					variants.add(render(upload, surface, RETINA_SCALE));
+				if (RETINA_SURFACES.contains(surface)) {
+					StoredVariant retina = render(upload, surface, RETINA_SCALE);
+					if (isNotUpscaled(retina, sourcePixels)) {
+						variants.add(retina);
+					}
 				}
 			}
 		} catch (IOException e) {
@@ -110,12 +114,15 @@ class PhotoProcessor {
 		return new PhotoProcessingResult.Rejected(reason);
 	}
 
-	/** Renders one rendition's JPEG; an {@link IOException} means the raster is undecodable (→ UNREADABLE). */
+	/**
+	 * Renders one rendition's JPEG; an {@link IOException} means the raster is undecodable (→ UNREADABLE).
+	 *
+	 * <p>Decodes from the raw upload each time, so EXIF orientation is applied and then dropped per
+	 * rendition. An upload is a rare operator action, so the repeated decode is acceptable.
+	 */
 	private StoredVariant render(byte[] upload, PhotoSurface surface, int scale) throws IOException {
 		int[] bound = boundsFor(surface, scale);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		// Re-decodes from the raw bytes per rendition so EXIF orientation is read + applied (and then
-		// dropped) each time; a rare operator action, so the repeated decode is acceptable.
 		Thumbnails.of(new ByteArrayInputStream(upload))
 				.useExifOrientation(true)
 				.size(bound[0], bound[1])
@@ -134,12 +141,16 @@ class PhotoProcessor {
 	}
 
 	/**
-	 * Whether the retina box is small enough to be a downscale. Fit-within enlarges a source smaller
-	 * than the box in <em>both</em> axes, and a blurred upscale is bytes for nothing.
+	 * Whether a rendition carries no more pixels than the upload it came from — fit-within enlarges a
+	 * source smaller than the box in both axes, and a blurred upscale is bytes for nothing.
+	 *
+	 * <p>Compared by AREA, not by axis: a rotation preserves area, so this holds whatever orientation
+	 * the camera recorded. The raw header dimensions are pre-rotation while
+	 * {@code useExifOrientation} resizes the rotated raster, so an axis-wise test would read a
+	 * portrait phone shot against the wrong bound.
 	 */
-	private static boolean retinaWouldNotUpscale(PhotoSurface surface, int width, int height) {
-		int[] bound = boundsFor(surface, RETINA_SCALE);
-		return width >= bound[0] || height >= bound[1];
+	private static boolean isNotUpscaled(StoredVariant rendition, long sourcePixels) {
+		return (long) rendition.width() * rendition.height() <= sourcePixels;
 	}
 
 	private static int[] boundsFor(PhotoSurface surface, int scale) {

@@ -43,15 +43,23 @@ describe('VenuePhotoService (#142)', () => {
     req.flush({
       slot: 'cover',
       variants: [
-        { surface: 'card', url: '/api/venues/1/photos/aa01', width: 640, height: 384 },
-        { surface: 'preview', url: '/api/venues/1/photos/cc03', width: 480, height: 360 },
+        { surface: 'card', scale: 1, url: '/api/venues/1/photos/aa01', width: 640, height: 384 },
+        { surface: 'card', scale: 2, url: '/api/venues/1/photos/bb02', width: 1280, height: 768 },
+        { surface: 'preview', scale: 1, url: '/api/venues/1/photos/cc03', width: 480, height: 360 },
       ],
     });
     // The wire paths are root-relative; the service prefixes the API origin so <img> works
     // in local dev where the API is another origin (a no-op in same-origin prod).
     expect(response?.variants.map((v) => v.url)).toEqual([
       'http://localhost:8080/api/venues/1/photos/aa01',
+      'http://localhost:8080/api/venues/1/photos/bb02',
       'http://localhost:8080/api/venues/1/photos/cc03',
+    ]);
+    // A surface repeats across densities, so scale is what tells the two card renditions apart.
+    expect(response?.variants.map((v) => `${v.surface}@${v.scale}`)).toEqual([
+      'card@1',
+      'card@2',
+      'preview@1',
     ]);
   });
 
@@ -72,8 +80,8 @@ describe('VenuePhotoService (#142)', () => {
       previewUrlOf({
         slot: 'cover',
         variants: [
-          { surface: 'card', url: '/c', width: 640, height: 384 },
-          { surface: 'preview', url: '/p', width: 480, height: 360 },
+          { surface: 'card', scale: 1, url: '/c', width: 640, height: 384 },
+          { surface: 'preview', scale: 1, url: '/p', width: 480, height: 360 },
         ],
       }),
     ).toBe('/p');

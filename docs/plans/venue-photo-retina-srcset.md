@@ -40,7 +40,10 @@ view records land in `venue/vocabulary/`, the published-surface kind for value r
 `PhotoStorage` stays module-internal) · `riviera-java-conventions` (records, no Lombok,
 the `StoredVariant` array-equality pattern already in the file) · `codebase-design`
 (kept the surface concept and added a density axis rather than exposing a width parameter
-on the serving route, which would have broken the content-addressed URL) ·
+on the serving route, which would have broken the content-addressed URL) · `domain-modeling`
+(**loaded late, at the review gate** — RV-PROC-1 caught its absence: editing an ADR is its own
+trigger. It owns `CONTEXT.md`'s *Photo variant* entry, which still described the retired
+one-row-per-surface model, and ADR-0008's amendment log, which had no entry for this slice) ·
 `riviera-frontend` (the API-view mirror stays in `shared/venue-views.ts`; the `srcset`
 helper joins `shared/photo-url.ts` beside `apiPhotoUrl`) · `riviera-tailwind` (no styling
 change — `object-contain`/`object-cover` and the aspect boxes are untouched; confirmed
@@ -300,10 +303,10 @@ attribute stays authoritative.
 
 ## Execution status
 
-**Stage pointer:** `PR — ready to mark ready-for-review once CI is green`
+**Stage pointer:** `review gate — findings fixed, re-verifying`
 
-**Next action:** Check this push's CI run, then mark PR #1058 ready for review, which is what makes
-the Review and Sonar gates due.
+**Next action:** Re-run the scoped backend + frontend suites and the structural net, push the
+review-fix commit, then re-check CI and the Sonar gate on the new head.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -318,7 +321,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate | **`PhotoProcessor`'s retina guard read the wrong axes.** `readHeaderDimensions` returns the pre-rotation frame, but `useExifOrientation(true)` resizes the rotated raster. A portrait phone shot tagged Orientation 6 was measured against the landscape retina box and got a 1.37× upscale — the exact outcome the guard's own Javadoc promised never happens | fixed — replaced with an area comparison on the rendered output (rotation preserves area), pinned red-first by `PhotoProcessorTest.decidesTheRetinaTierOnTheDISPLAYEDDimensionsOfARotatedUpload` |
+| F-2 | review gate | **`CONTEXT.md`'s *Photo variant* entry** still said "one stored rendition … for a display surface" with per-surface pixel caps. Both halves false: a tourist surface stores two rows, and `CARD@2` at 1280×768 exceeds the stated bound | fixed — the entry now names the density axis and the no-backfill consequence |
+| F-3 | review gate | **ADR-0008's amendment log** records every prior material change and had no entry for this slice, which re-decided what is stored | fixed |
+| F-4 | review gate (RV-PROC-1) | **`domain-modeling` missing from *Skills consulted*.** Editing an ADR is its explicit trigger; F-2 and F-3 are what its absence cost | fixed — loaded, the line updated, the ADR and glossary re-vetted through it |
+| F-5 | review gate | **`PhotoUploadResponse` was never touched** though the plan's file list claimed it was. Its `Variant` DTO is keyed by `surface`, which now repeats per density with nothing to tell the two apart. Dormant only because the sole consumer reads `preview`, which stays single | fixed — `scale` joins the DTO and the frontend mirror, with a spec asserting the repeated surface |
+| F-6 | review gate | **`PhotoMetadata`'s Javadoc** still promised one `VariantMeta` per surface | fixed |
+| F-7 | review gate (RV-STYLE-1) | **A doc comment cited `R-3`**, a plan-doc risk id, in `JdbcVenueCatalog`. A plan is deleted at close-out, so the pointer would dangle | fixed — dropped to the ADR citation alone |
+| F-8 | review gate (RV-STYLE-1) | Two pre-existing **two-line inline comments** the diff edited, in `JdbcPhotoStorage` and `PhotoProcessor` | fixed — the processor's rationale moved into the method's doc comment, the adapter's collapsed to the half the SQL does not already state |
+| F-9 | review gate (RV-FE-E2E) | The header band's new `sizes` on the **0–1 photo path** had no pinning test | fixed — `venue-map.spec.ts` › `sizes the single-photo header band to its own breakout` |
 
 ---
 
@@ -341,6 +352,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/venue/vocabulary/VenueMapView.java` — same
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenueCatalog.java` — builds the candidate lists
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/PhotoUploadResponse.java` — upload echo carries `scale`
+- `platform/src/main/java/ai/riviera/platform/venue/application/PhotoMetadata.java` — Javadoc: a surface no longer keys the list
+- `frontend/src/app/operator/venue-photo.service.ts|.spec.ts` — the upload-echo mirror carries `scale`
+- `CONTEXT.md` — the *Photo variant* glossary entry gains the density axis
 - `platform/src/main/java/ai/riviera/platform/venue/application/VenuePhotoService.java` — slot view follows the record change
 - `platform/src/test/java/ai/riviera/platform/venue/application/PhotoProcessorTest.java` — AC-1, AC-2
 - `platform/src/test/java/ai/riviera/platform/venue/application/InMemoryPhotoStorage.java` — fake follows the port
@@ -368,6 +382,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/discover-photos.e2e.ts` — AC-9
 - `frontend/e2e/support/photo-views.ts` — the mocked suite's `PhotoView` payload builder
 - `frontend/e2e/{focus-ring-baseline,loading-skeletons,touch-targets-tourist}.e2e.ts` — tourist photo fixtures follow the wire shape
+- `frontend/e2e/operator-venue-photos.e2e.ts` — the upload-echo fixture carries a repeated surface
 - `docs/adr/ADR-0008-venue-photo-storage.md` — measured footprint figures (phase 3)
 - `RESPONSIBILITIES.md` — `venue` § photo line, if the measured figures move what it states
 
@@ -479,6 +494,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-10 | phase 0 | Every reader of `venue_photo_variant` — a second row per surface changes what any of them sees | `grep -rn "venue_photo_variant" platform/src --include=*.java --include=*.sql` | `JdbcPhotoStorage` (3 reads + the write), `JdbcVenueCatalog:293` (tourist read model), `JdbcVenues:610` (console slot read), 2 test call sites | Fixed all three production readers. `JdbcVenueCatalog` keys its map by surface alone, so a second density silently overwrote the first — pinned to `scale = :scale` (BASE_SCALE) until phase 1 widens it. `JdbcVenues` collects with `Collectors.toMap`, which would throw on a duplicate slot key if PREVIEW ever gained a tier — pinned to `PREVIEW_SCALE`. |
+| 2026-09-10 | review gate | Every consumer of `PhotoMetadata`/`VariantMeta` — the population phase 0's sweep stopped short of. It enumerated readers of `venue_photo_variant` and phase 1's enumerated consumers of the tourist view records; the operator upload echo reads neither, it reads the metadata carrier in between | `grep -rn "PhotoMetadata\|VariantMeta" platform/src --include=*.java` then the frontend types built from that wire shape | `PhotoUploadResponse.from` (the upload echo), `VenuePhotoService.slotsOf` and `.metadataOf`, `JdbcPhotoStorage.listMetadata`, `InMemoryPhotoStorage` | `PhotoUploadResponse` and its frontend mirror gained `scale` (F-5); `PhotoMetadata`'s Javadoc corrected (F-6). `slotsOf` needed no change: it filters to PREVIEW and takes `findFirst()` over a `scale`-ordered read, so it stays on the baseline whatever is added later. |
 | 2026-09-10 | phase 3 | Every mock payload carrying the tourist photo shape — the wire record changed under all of them | `grep -rn "coverPhoto" frontend/e2e --include=*.ts` and `grep -rn "^\s*photos: " frontend/e2e --include=*.ts` | 4 tourist fixtures (`discover-photos`, `focus-ring-baseline`, `loading-skeletons`, `touch-targets-tourist`); the operator/admin `photos: { cover: … }` slot maps are a different type | All four migrated behind `e2e/support/photo-views.ts`. The serving route mock also had to widen for the suffixed candidate URLs. Running the whole mocked suite is what caught `focus-ring-baseline`, whose second fixture the targeted grep had already named but the first pass missed. |
 | 2026-09-10 | phase 2 | Every `ngSrc` in the tree — the mechanism is an image whose photo now has more than one stored density to choose from | `grep -rn "ngSrc" frontend/src --include=*.ts --include=*.html` | 5 production sites: `photo-slideshow`, `photo-gallery-grid` (hero + 2 tiles), `admin/admin-venue-photos.ts`, `operator/venue-tab.html` | The three tourist sites carry the `srcset`. The other two are **not in the population**: both render a PREVIEW variant, which by phase 0's decision carries no retina tier, so there is no second candidate to offer. The admin one already sets `disableOptimizedSrcset`; the console one generates no automatic `srcset` either (fixed size, no loader), so a defensive attribute there would change nothing. `VenuePhotoService.slotsOf` takes `findFirst()` over a `scale`-ordered read, so it stays on the baseline whatever happens later. |
 | 2026-09-10 | phase 1 | Every consumer of `CoverPhotoView` / `VenueSummaryView#photos` / `VenueMapView#photos` — the record shape changed under all of them | `grep -rn "CoverPhotoView\|coverPhoto\|\.photos()" platform/src/main --include=*.java` and the same over `frontend/src` | Backend: `JdbcVenueCatalog` (both read paths) and the two view records' own Javadoc, which still described a bare URL. Frontend: `venue-views.ts`, `photo-url.ts`, `venue.service.ts` | Backend all updated in this phase, Javadoc included. The three frontend sites are phase 2's whole subject and are listed in the File structure section. `VenueProfileResponse.photos()` is the operator `PhotoSlotView` list, a different type — untouched. |

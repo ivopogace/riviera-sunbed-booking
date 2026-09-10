@@ -120,3 +120,7 @@ affordable again.
 - #508 — the serving cache directive changed from `public, max-age=31536000, immutable` to
   `public, no-cache` with an existence-checked `304`, and purge-on-takedown became a
   precondition on the object-storage flip.
+- #1041 — a rendition is keyed by surface **and** density: the two tourist surfaces gained a
+  scale-2 rendition so the browser can choose from a `srcset`. The stored-footprint figures above
+  are the measurement that followed, and discarding the original became a stated consequence
+  rather than only a privacy property — it is what makes the new tier un-backfillable.

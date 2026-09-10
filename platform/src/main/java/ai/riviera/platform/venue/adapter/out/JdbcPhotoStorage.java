@@ -128,8 +128,7 @@ class JdbcPhotoStorage implements PhotoStorage {
 
 	@Override
 	public List<PhotoMetadata> listMetadata(VenueId venueId) {
-		// One blob-free join read (the bytea column is deliberately NOT selected — ADR-0008), grouped
-		// into a PhotoMetadata per occupied slot in a stable (slot, surface, scale) order.
+		// Blob-free: the bytea column is deliberately NOT selected on this path (ADR-0008).
 		List<SlotVariantRow> rows = jdbc.sql("""
 				SELECT p.slot, v.surface, v.scale, v.content_hash, v.content_type, v.width, v.height
 				FROM venue_photo p
