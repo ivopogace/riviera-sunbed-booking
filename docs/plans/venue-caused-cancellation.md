@@ -447,8 +447,7 @@ No deviation.
 
 **Stage pointer:** `merge close-out — merged via PR #1053`
 
-**Next action:** watch the CI run on this head and pull the Sonar new-issue list; if either
-reports, the fix commit rewrites this close-out in place.
+**Next action:** none — CI is green and the Sonar list is empty on this head. Merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -484,6 +483,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-11 | review — RV-BE-19 | `refundedTotal` sums the minor units while taking the currency from one row, with no stated basis | fixed — the Javadoc states the invariant-#5 EUR-only basis, on both the commit response and the receipt view |
 | F-12 | review — shallow scan | The commit's 409 carried a `requiredRefundCount` extension that restated `preview.refunds.length` | fixed — removed from the controller, the outcome, the vocabulary, the service, the IT and the model doc |
 | F-13 | review — Vitest | The past-remodels list fixtures lagged the widened summary shape, so the row rendered "undefined refunded" | fixed — the fixtures carry `refundCount` and the expectation covers both tally shapes |
+| S-1 | sonar | `java:S1192` (CRITICAL, MAINTAINABILITY-high) — `sellsOnlineOn` made `"venue"` the third duplicated named-param literal in `JdbcSetBookingFacts`. Sonar's own gate passed, but the repo's bar is 0 new issues | fixed — `VENUE_PARAM`, the same constant `JdbcOperators` already carries for the same rule |
 
 ---
 

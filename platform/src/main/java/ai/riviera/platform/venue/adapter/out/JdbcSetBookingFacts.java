@@ -38,6 +38,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 @Repository
 class JdbcSetBookingFacts implements SetBookingFacts {
 
+	/** SQL named-param key bound to a venue id in the reads below (named, not duplicated — S1192). */
+	private static final String VENUE_PARAM = "venue";
+
 	private static final String COL_VENUE_ID = "venue_id";
 	private static final String COL_PRICE_MINOR = "price_minor";
 	private static final String COL_PRICE_CURRENCY = "price_currency";
@@ -76,7 +79,7 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 		return jdbc.sql("""
 				SELECT sales_close, closed_at, reopen_on, advance_sales FROM venue WHERE id = :venue
 				""")
-				.param("venue", venueId.value())
+				.param(VENUE_PARAM, venueId.value())
 				.query((rs, rowNum) -> salesWindow.isOpen(rs.getObject("sales_close", LocalTime.class),
 						rs.getObject("closed_at") == null
 								? SeasonClosure.open()
@@ -136,7 +139,7 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 	@Override
 	public List<SetSpot> activeSetsOf(VenueId venueId) {
 		return jdbc.sql(ACTIVE_SPOTS_SELECT + "ORDER BY id")
-				.param("venue", venueId.value())
+				.param(VENUE_PARAM, venueId.value())
 				.query(JdbcSetBookingFacts::mapSetSpot)
 				.list();
 	}
@@ -144,7 +147,7 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 	@Override
 	public List<SetSpot> freeOnlineSetsOn(VenueId venueId, LocalDate date) {
 		List<SetSpot> online = jdbc.sql(ACTIVE_SPOTS_SELECT + "AND pool = :pool ORDER BY id")
-				.param("venue", venueId.value())
+				.param(VENUE_PARAM, venueId.value())
 				.param("pool", Pool.ONLINE.name())
 				.query(JdbcSetBookingFacts::mapSetSpot)
 				.list();
