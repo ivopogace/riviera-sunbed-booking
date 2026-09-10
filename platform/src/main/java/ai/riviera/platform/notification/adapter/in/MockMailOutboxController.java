@@ -1,5 +1,6 @@
 package ai.riviera.platform.notification.adapter.in;
 
+import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -73,7 +74,7 @@ class MockMailOutboxController {
 			};
 		}
 
-		private static String link(java.net.URI rebookLink) {
+		private static String link(URI rebookLink) {
 			return rebookLink == null ? null : rebookLink.toString();
 		}
 	}

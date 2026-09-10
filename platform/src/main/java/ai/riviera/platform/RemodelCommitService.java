@@ -64,8 +64,7 @@ class RemodelCommitService {
 				new RemodelCommitOutcome.Committed(receipt, committedAt, applied);
 			case RemodelCommit.Stale(var fresh) -> new RemodelCommitOutcome.StalePreview(disturbed, fresh);
 			case RemodelCommit.Refused(var fresh) -> new RemodelCommitOutcome.Refused(disturbed, fresh);
-			case RemodelCommit.Unconfirmed(var fresh, var refundCount) ->
-				new RemodelCommitOutcome.NotConfirmed(disturbed, fresh, refundCount);
+			case RemodelCommit.Unconfirmed(var fresh) -> new RemodelCommitOutcome.NotConfirmed(disturbed, fresh);
 		};
 	}
 

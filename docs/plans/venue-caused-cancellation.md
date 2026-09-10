@@ -133,6 +133,25 @@ fields therefore paint in the fixed warn family only: `border-riv-warn-edge bg-r
 text-riv-warn-ink`, the 6.86:1 pair `shared/warn-token-skin.contrast.spec.ts` already proves. No new
 token, no colour literal (`operator/console-literal-sweep.spec.ts` admits none).
 
+**Both checks re-run in review, against the diff (the brief's second pass).**
+*Angular (angular-cli MCP, v22).* `list_projects` → the same single v22/Vitest workspace;
+`get_best_practices` re-read. `search_documentation` on **Signal Forms field metadata** confirmed
+what the diff actually shipped: `required()` and `maxLength()` are constraint validators that both
+enforce and publish a metadata key, while `validate()` enforces without publishing — so the
+panel's `maxLength(path.reason, 500)` is what surfaces the limit to the control, and the separate
+`validate` blank rule is not redundant with `required` (a whitespace-only reason passes `required`
+and fails the blank rule). `FormField` with `[formField]` is confirmed as the v22 template
+directive the diff binds. Nothing changed as a result: the diff already matched. The one idiom the
+diff had to give up stands — `NG8022` forbids a literal `min`/`maxlength` attribute beside
+`[formField]`, so both constraints live in the schema.
+*Tailwind v4 (tailwindcss.com/docs).* Re-verified against the diff's own classes: a `--color-*`
+theme colour takes the slash opacity modifier (`border-riv-warn-edge/60`) exactly as a palette
+colour does, and `bg-*`/`text-*`/`border-*` resolve custom names identically. The diff adds **no
+`@apply`** (repo rule 1) and no colour literal. Ground discipline re-checked line by line: every
+`--riv-warn-*` class sits on the fixed warn ground of `remodel-preview-panel`, and the one themed
+ink in the slice (`text-riv-card-ink-soft`) sits in `remodel-receipt-panel`, on the themed card
+ground. Nothing changed as a result.
+
 **Branch:** `claude/riviera-refunds-3rsa0g` — the cloud session's designated remote branch stands
 in for `feature/venue-caused-cancellation` (`riviera-sdlc` § *Remote / cloud session addendum*).
 
@@ -423,10 +442,9 @@ No deviation.
 
 ## Execution status
 
-**Stage pointer:** `PR — opened, awaiting the CI, review and Sonar gates`
+**Stage pointer:** `PR — review gate walked, its findings pushed; awaiting CI and Sonar`
 
-**Next action:** watch the PR's first CI run, then run the review gate over `170568dd..<head>` and
-pull the Sonar new-issue list.
+**Next action:** watch the CI run on the review-fix head, then pull the Sonar new-issue list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -453,6 +471,15 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-2 | docs-freshness | `RefundListenerExecutorArchitectureTest`'s non-vacuity test named "the one production listener"; there are now two | fixed-in this commit |
 | F-3 | docs-freshness | ADR-0020's status and decision 1 said the commit "re-seats the moves" | fixed-in this commit |
 | F-4 | docs-freshness | `CLAUDE.md`, `riviera-modulith/references/events.md` and `riviera-stripe-payments` each named `booking`'s single `BookingCancelled` listener; `events.md` also omitted `BookingMoved` from the notification-only list (drift from #1034) | fixed-in this commit |
+| F-5 | review — RV-FE-9 | The refusal focus leg sent focus to Save, which the confirmation step renders `disabled` whenever the fresh picture's refund count differs from the typed one, so focus was stranded on `<body>` inside the `alertdialog` | fixed — `freshPictureLandingSpot()` lands on the refund-count field, covered by the `REFUND_NOT_CONFIRMED` spec |
+| F-6 | review — RV-BE-8 | `RemodelReleasePaymentListener`'s `NotCancellable` branch is a money-owed loss (the guest paid for a booking that no longer exists) carrying only a `log.error`; nothing an alert can watch | fixed — `ObservabilityMetrics.REMODEL_RELEASE_COLLECTED`, its runbook row, two unit tests |
+| F-7 | review — git history | The new bulkhead listener was outside `RegistryRefundOutbox`'s allowlist, so a shed or thrown intent-void was invisible to `GET /api/admin/refund-outbox` and unreachable by its `POST` until a restart republished it | fixed — the allowlist is the two refund-bulkhead listener ids, pinned by `RefundOutboxScopeTest` |
+| F-8 | review — code comments | Four doc statements the diff falsified: `BookingCancellationMail`'s "a fourth constant", `notification/package-info.java`'s five-listener count and its `#95` provenance, `NewReceipt`'s "six arguments" narration | fixed |
+| F-9 | review — git history | `RemodelClaims#commit` claimed the caller's set locks make a lost guarded transition impossible; they lock the venue's sets, not the booking rows, so a concurrent webhook, guest cancel or expiry sweep reaches it | fixed — the premise is restated as what actually happens (a rollback the operator's next save reclassifies against); the throw stays, matching the move leg |
+| F-10 | review — copy | The preview panel promised every ended guest "a link to book again"; a declined request gets `RequestDeclinedMail`, which carries none | fixed |
+| F-11 | review — RV-BE-19 | `refundedTotal` sums the minor units while taking the currency from one row, with no stated basis | fixed — the Javadoc states the invariant-#5 EUR-only basis, on both the commit response and the receipt view |
+| F-12 | review — shallow scan | The commit's 409 carried a `requiredRefundCount` extension that restated `preview.refunds.length` | fixed — removed from the controller, the outcome, the vocabulary, the service, the IT and the model doc |
+| F-13 | review — Vitest | The past-remodels list fixtures lagged the widened summary shape, so the row rendered "undefined refunded" | fixed — the fixtures carry `refundCount` and the expectation covers both tally shapes |
 
 ---
 
@@ -516,6 +543,14 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/operator/remodel-receipt-panel.a11y.spec.ts`, `frontend/src/app/operator/remodel-receipt-panel.contrast.spec.ts` — the ended-claim lines' pairs
 - `frontend/src/app/operator/operator-console.service.ts` — the commit body and the third 409
 - `frontend/src/app/pages/home/home.spec.ts` — AC-13
+- `platform/src/main/java/ai/riviera/platform/venue/api/SetBookingFacts.java`, `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcSetBookingFacts.java` — `sellsOnlineOn`, the sellability verdict the rebook link picks on (the role-named port, not the tourist-read `VenueCatalog`)
+- `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java`, `platform/src/test/java/ai/riviera/retirefixture/venue/adapter/out/FixtureSetFacts.java` — the fakes that implement it
+- `platform/src/main/java/ai/riviera/platform/booking/vocabulary/RefundReason.java` — `VENUE_CHANGE`'s two shapes stated
+- `platform/src/main/java/ai/riviera/platform/shared/ObservabilityMetrics.java` — `REMODEL_RELEASE_COLLECTED` (F-6) and the widened `REFUNDS_SHED`
+- `docs/runbooks/observability.md` — the new counter's row and the shed row's second listener
+- `platform/src/main/java/ai/riviera/platform/booking/adapter/in/RefundExecutorConfig.java` — the pool's population is two listeners now
+- `platform/src/main/java/ai/riviera/platform/booking/adapter/out/RegistryRefundOutbox.java`, `platform/src/main/java/ai/riviera/platform/booking/application/refund/RefundOutbox.java` — the two-id allowlist (F-7)
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/in/BookingListenerIds.java`, `platform/src/test/java/ai/riviera/platform/booking/adapter/out/RefundOutboxScopeTest.java`, `platform/src/test/java/ai/riviera/platform/booking/RefundOutboxScopeIT.java` — its pins
 - `frontend/e2e/layout-editor.e2e.ts` — AC-14
 - `frontend/e2e/real-backend/remodel-move.e2e.ts` — AC-15
 - `platform/src/main/java/ai/riviera/platform/booking/application/remodel/NewReceipt.java` — the receipt as it is written

@@ -29,8 +29,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * committed → {@code 200} with the receipt and every applied claim; a picture the preview no longer
  * describes → {@code 409 STALE_PREVIEW}; a picture holding a claim that pins its set →
  * {@code 409 REMODEL_REFUSED}; a picture that refunds guests without the typed count and a reason →
- * {@code 409 REFUND_NOT_CONFIRMED}, which additionally names the count owed — all three carrying the
- * fresh {@code preview}, token included, so the editor re-renders the dialog; the save's own refusals
+ * {@code 409 REFUND_NOT_CONFIRMED} — all three carrying the fresh {@code preview}, token included, so
+ * the editor re-renders the dialog and the count it now owes is the picture's own; the save's own refusals
  * and rejections in the save's words and codes; a non-owner → {@code 403} via
  * {@code ApiErrorHandler}. Nothing is written on any answer but {@code 200}.
  */
@@ -44,7 +44,6 @@ class RemodelCommitController {
 	static final String SETS_IN_USE_CODE = "SETS_IN_USE";
 	static final String PREVIEW_PROPERTY = "preview";
 	static final String SETS_PROPERTY = "sets";
-	static final String REFUND_COUNT_PROPERTY = "requiredRefundCount";
 
 	private final CurrentOperator currentOperator;
 	private final RemodelCommitService commits;
@@ -73,12 +72,10 @@ class RemodelCommitController {
 					ApiProblem.of(HttpStatus.CONFLICT, REMODEL_REFUSED_CODE,
 							"The remodel affects a booking that cannot be moved or ended."),
 					RemodelPreviewAssembler.assemble(disturbed, fresh));
-			case RemodelCommitOutcome.NotConfirmed(var disturbed, var fresh, var refundCount) -> {
-				ProblemDetail problem = ApiProblem.of(HttpStatus.CONFLICT, REFUND_NOT_CONFIRMED_CODE,
-						"A remodel that refunds guests needs the refund count typed out and a reason.");
-				problem.setProperty(REFUND_COUNT_PROPERTY, refundCount);
-				yield withPreview(problem, RemodelPreviewAssembler.assemble(disturbed, fresh));
-			}
+			case RemodelCommitOutcome.NotConfirmed(var disturbed, var fresh) -> withPreview(
+					ApiProblem.of(HttpStatus.CONFLICT, REFUND_NOT_CONFIRMED_CODE,
+							"A remodel that refunds guests needs the refund count typed out and a reason."),
+					RemodelPreviewAssembler.assemble(disturbed, fresh));
 			case RemodelCommitOutcome.SetsInUse(var sets) -> {
 				ProblemDetail problem = ApiProblem.of(HttpStatus.CONFLICT, SETS_IN_USE_CODE,
 						"Sets this save would remove are booked or held.");

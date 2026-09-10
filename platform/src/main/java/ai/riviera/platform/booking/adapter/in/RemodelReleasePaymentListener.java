@@ -1,16 +1,20 @@
 package ai.riviera.platform.booking.adapter.in;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionalEventListener;
-
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.payment.api.CancelPaymentPort;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
+import ai.riviera.platform.shared.ObservabilityMetrics;
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * Voids the PaymentIntent of a booking a remodel released, <strong>after</strong> the commit
@@ -32,7 +36,10 @@ import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
  * spine, and {@code @TransactionalEventListener} leaves an {@code event_publication} row so a
  * transient failure is retried. That is why {@link PaymentCancellation.Failed} throws.
  * {@link PaymentCancellation.NotCancellable} means the guest paid between the commit and this call:
- * nothing here can undo that, so it is logged for a manual refund rather than retried forever.
+ * nothing here can undo that, so it is counted under
+ * {@link ObservabilityMetrics#REMODEL_RELEASE_COLLECTED} and logged for a manual refund rather than
+ * retried forever. The counter is what an alert can watch — the line is the only per-loss record, and
+ * a retry could not help: there is no uncollected intent left to void.
  */
 @Component
 class RemodelReleasePaymentListener {
@@ -41,8 +48,11 @@ class RemodelReleasePaymentListener {
 
 	private final CancelPaymentPort cancelPaymentPort;
 
-	RemodelReleasePaymentListener(CancelPaymentPort cancelPaymentPort) {
+	private final Counter collected;
+
+	RemodelReleasePaymentListener(CancelPaymentPort cancelPaymentPort, MeterRegistry meters) {
 		this.cancelPaymentPort = cancelPaymentPort;
+		this.collected = meters.counter(ObservabilityMetrics.REMODEL_RELEASE_COLLECTED);
 	}
 
 	@Async(RefundExecutorConfig.REFUND_EXECUTOR)
@@ -57,10 +67,12 @@ class RemodelReleasePaymentListener {
 				log.info("voided the intent of booking {} released by a remodel", bookingId);
 			case PaymentCancellation.NoCollection ignored ->
 				log.debug("booking {} released by a remodel had no payment on record", bookingId);
-			case PaymentCancellation.NotCancellable notCancellable -> log.error(
-					"booking {} was released by a remodel but its payment already succeeded ({}) — the guest has "
-							+ "paid for a cancelled booking and is owed a refund by hand",
-					bookingId, notCancellable.reason());
+			case PaymentCancellation.NotCancellable notCancellable -> {
+				collected.increment();
+				log.error("booking {} was released by a remodel but its payment already succeeded ({}) — the guest "
+						+ "has paid for a cancelled booking and is owed a refund by hand", bookingId,
+						notCancellable.reason());
+			}
 			case PaymentCancellation.Failed failed -> throw new IllegalStateException(
 					"could not void the intent of released booking " + bookingId + ": " + failed.reason());
 		}

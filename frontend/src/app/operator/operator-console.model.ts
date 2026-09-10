@@ -503,8 +503,8 @@ export type ReleaseErrorCode = 'NOT_MARKED' | 'NOT_VENUE_OWNER' | 'UNAUTHORIZED'
  * the editor keeps the operator's edits and offers a Reload, never a clobber. `SETS_IN_USE` is the 409
  * set-scoped refusal: the save would remove sets someone is still owed, named in the problem's `sets`
  * extension ({@link BlockedSet}), and nothing was written. `STALE_PREVIEW`, `REMODEL_REFUSED` and
- * `REFUND_NOT_CONFIRMED` are the commit's three 409s, each carrying the fresh picture in the problem's
- * `preview` extension; the last also names the refund count the operator owes.
+ * `REFUND_NOT_CONFIRMED` are the commit's three 409s, each carrying the fresh picture in the
+ * problem's `preview` extension — for the last, that picture's own `refunds` is the count owed.
  */
 export type LayoutErrorCode =
   | 'SETS_IN_USE'

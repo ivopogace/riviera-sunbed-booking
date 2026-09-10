@@ -17,8 +17,12 @@ import ai.riviera.platform.payment.events.PaymentConfirmed;
  */
 public final class BookingListenerIds {
 
-	/** {@code BookingRefundListener} — the one id the admin lever is allowed to re-drive. */
+	/** {@code BookingRefundListener} — the money-moving half of what the admin lever may re-drive. */
 	public static final String REFUND = id(BookingRefundListener.class, BookingCancelled.class);
+
+	/** {@code RemodelReleasePaymentListener} — the intent-void half, the lever's second allowed id. */
+	public static final String REMODEL_RELEASE_VOID =
+			id(RemodelReleasePaymentListener.class, BookingCancelled.class);
 
 	/** {@code PaymentEventListener}'s confirm branch — the invariant-#8 spine the lever must not reach. */
 	public static final String PAYMENT_CONFIRMED = id(PaymentEventListener.class, PaymentConfirmed.class);

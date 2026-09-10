@@ -8,8 +8,8 @@ import java.util.List;
  * ({@link Applied}); the preview token no longer covers the claims re-derived under lock — a new
  * booking or a changed kind — ({@link Stale}, with the fresh classification); the fresh
  * classification holds a claim that pins its set ({@link Refused}, with it); or it refunds guests
- * and the operator's typed count and reason do not authorise it ({@link Unconfirmed}, with the
- * count they owe). Only {@link Applied} wrote anything. Sealed so the edge's switch is exhaustive.
+ * and the operator's typed count and reason do not authorise it ({@link Unconfirmed}). Only
+ * {@link Applied} wrote anything. Sealed so the edge's switch is exhaustive.
  */
 public sealed interface RemodelCommit
 		permits RemodelCommit.Applied, RemodelCommit.Stale, RemodelCommit.Refused, RemodelCommit.Unconfirmed {
@@ -36,8 +36,8 @@ public sealed interface RemodelCommit
 		}
 	}
 
-	/** {@code refundCount} is how many refunds the fresh picture holds — what the operator must type. */
-	record Unconfirmed(List<RemodelClaim> fresh, int refundCount) implements RemodelCommit {
+	/** How many refunds the operator must type is the fresh picture's own count, never a second copy. */
+	record Unconfirmed(List<RemodelClaim> fresh) implements RemodelCommit {
 		public Unconfirmed {
 			fresh = List.copyOf(fresh);
 		}

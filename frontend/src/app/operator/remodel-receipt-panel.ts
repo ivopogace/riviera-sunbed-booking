@@ -104,10 +104,18 @@ export class RemodelReceiptPanel {
   readonly receipt = input.required<RemodelReceipt>();
   readonly closed = output<void>();
 
-  /** "Saved Tue 9 Sept, 15:00 · 2 bookings moved" */
+  /** "Saved Tue 9 Sept, 15:00 · 2 bookings moved, 1 refunded, 2 ended" */
   protected committedText(): string {
-    const count = this.receipt().moves.length;
-    return `Saved ${formatDeadline(this.receipt().committedAt)} · ${count} booking${count === 1 ? '' : 's'} moved`;
+    const receipt = this.receipt();
+    const moved = receipt.moves.length;
+    const parts = [`${moved} booking${moved === 1 ? '' : 's'} moved`];
+    if (receipt.refunds.length > 0) {
+      parts.push(`${receipt.refunds.length} refunded`);
+    }
+    if (receipt.releases.length > 0) {
+      parts.push(`${receipt.releases.length} ended`);
+    }
+    return `Saved ${formatDeadline(receipt.committedAt)} · ${parts.join(', ')}`;
   }
 
   /** What the commit returned to guests; only rendered when it refunded at least one. */

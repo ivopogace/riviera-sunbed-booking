@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue.adapter.out;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collection;
@@ -13,6 +14,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.venue.api.SetBookingFacts;
+import ai.riviera.platform.venue.spi.SalesWindow;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
@@ -58,10 +60,31 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 
 	private final JdbcClient jdbc;
 	private final SetAvailabilityLookup availability;
+	private final SalesWindow salesWindow;
+	private final Clock clock;
 
-	JdbcSetBookingFacts(JdbcClient jdbc, SetAvailabilityLookup availability) {
+	JdbcSetBookingFacts(JdbcClient jdbc, SetAvailabilityLookup availability, SalesWindow salesWindow,
+			Clock clock) {
 		this.jdbc = jdbc;
 		this.availability = availability;
+		this.salesWindow = salesWindow;
+		this.clock = clock;
+	}
+
+	@Override
+	public boolean sellsOnlineOn(VenueId venueId, LocalDate date) {
+		return jdbc.sql("""
+				SELECT sales_close, closed_at, reopen_on, advance_sales FROM venue WHERE id = :venue
+				""")
+				.param("venue", venueId.value())
+				.query((rs, rowNum) -> salesWindow.isOpen(rs.getObject("sales_close", LocalTime.class),
+						rs.getObject("closed_at") == null
+								? SeasonClosure.open()
+								: SeasonClosure.closed(rs.getObject("reopen_on", LocalDate.class),
+										rs.getBoolean("advance_sales")),
+						date, clock.instant()))
+				.optional()
+				.orElse(false);
 	}
 
 	@Override

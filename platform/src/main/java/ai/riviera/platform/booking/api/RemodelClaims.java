@@ -48,8 +48,11 @@ public interface RemodelClaims {
 	 * <p>A token that does not cover the fresh answer is {@code Stale}; a claim that pins its set is
 	 * {@code Refused}; a picture that refunds guests without a matching typed count and a reason is
 	 * {@code Unconfirmed}. None of the three writes anything. A candidate whose claim is not won, or a
-	 * guarded transition that matches no row, throws so the caller's whole transaction rolls back —
-	 * under the caller's set locks neither can happen legitimately.
+	 * guarded transition that matches no row, throws so the caller's whole transaction rolls back. The
+	 * caller's locks are on the venue's <em>sets</em>, not on the booking rows, so a booking that
+	 * changes status inside the commit window — a payment webhook, a guest cancel, an expiry sweep —
+	 * lands here rather than in one of the three refusals; the rollback leaves nothing half-applied,
+	 * and the operator's next save classifies against the new fact.
 	 */
 	RemodelCommit commit(OperatorId operator, VenueId venueId, Collection<SetId> disturbedSets, PreviewToken token,
 			RefundConfirmation confirmation);

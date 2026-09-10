@@ -24,7 +24,7 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
  * ({@code riviera.refunds.failed}). So the copy says the refund is on its way back, never that it
  * has arrived — a "your refund has settled" mail would need a fact no event carries today.
  *
- * <p>{@code reason} is {@code booking}'s published vocabulary rather than a local copy, so a fourth
+ * <p>{@code reason} is {@code booking}'s published vocabulary rather than a local copy, so a fifth
  * constant becomes a compile error in the transports (which switch over it exhaustively) instead of
  * a silently blank line. It is what lets one event serve both cancellation channels while the tourist
  * still learns which happened — a weather cancellation is one they never asked for.

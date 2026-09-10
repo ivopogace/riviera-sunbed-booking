@@ -29,9 +29,8 @@ sealed interface RemodelCommitOutcome {
 	record Refused(List<DisturbedSet> disturbed, List<RemodelClaim> fresh) implements RemodelCommitOutcome {
 	}
 
-	/** {@code refundCount} is how many refunds the fresh picture holds — the number the operator must type. */
-	record NotConfirmed(List<DisturbedSet> disturbed, List<RemodelClaim> fresh, int refundCount)
-			implements RemodelCommitOutcome {
+	/** The fresh picture's own refund count is the number the operator must type; it needs no second copy. */
+	record NotConfirmed(List<DisturbedSet> disturbed, List<RemodelClaim> fresh) implements RemodelCommitOutcome {
 	}
 
 	record SetsInUse(List<LockedSet> sets) implements RemodelCommitOutcome {

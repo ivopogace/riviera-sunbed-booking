@@ -414,10 +414,17 @@ any other claim (invariant #2).
   Saturation **sheds** to `ObservabilityMetrics.REFUNDS_SHED` and the publication stays
   outstanding for the restart republish; the queue is sized so shedding is unreachable
   for any plausible burst. Structural: `RefundListenerExecutorArchitectureTest`, scoped to
-  `booking` listeners reaching `payment::api`.
-- **The ADMIN refund-outbox re-drive** (`GET`/`POST /api/admin/refund-outbox`) is scoped
-  to the refund listener's **exact id** — never the `booking` package prefix, which would
-  sweep `PaymentEventListener`'s payment→confirm spine (`RefundOutboxScopeIT`).
+  `booking` listeners reaching `payment::api` — today the refund listener and
+  `RemodelReleasePaymentListener`, which voids the uncollected intent of a booking a remodel
+  released, so `REFUNDS_SHED` counts both kinds of shed gateway call.
+- **A remodel-released booking that had in fact collected** is the one loss that void cannot
+  undo: the guest paid for a booking that no longer exists, so it counts to
+  `ObservabilityMetrics.REMODEL_RELEASE_COLLECTED` and is settled by hand. Nothing retries it —
+  there is no uncollected intent left to void.
+- **The ADMIN refund-outbox re-drive** (`GET`/`POST /api/admin/refund-outbox`) is scoped to an
+  **exact-id allowlist** — the two listeners on the refund bulkhead — never the `booking` package
+  prefix, which would sweep `PaymentEventListener`'s payment→confirm spine (`RefundOutboxScopeIT`
+  for what it leaves alone, `RefundOutboxScopeTest` for the ids).
 - **The withheld-mail flag on a confirmed booking's read model** is asked through
   `booking.spi.ConfirmationMailDelivery` by `CustomerId` — I never handle an address. The
   gate is two-part: the booking must be `CONFIRMED` **and** `payment.api.CollectionGuarantee`
@@ -1025,7 +1032,8 @@ can own it, not because several use it:
 - the accessors that resolve an authenticated principal to a typed id;
 - the **platform's metric names** (`ObservabilityMetrics`): a name is a `String` constant,
   compile-time-inlined, and the emission stays in the module that owns the thing measured
-  (`payment` emits `REFUNDS_FAILED`, `booking` `REFUNDS_SHED`, `notification` the mail
+  (`payment` emits `REFUNDS_FAILED`, `booking` `REFUNDS_SHED` and
+  `REMODEL_RELEASE_COLLECTED`, `notification` the mail
   counters, with their `kind`/`reason` tag values). Admitted for **consistency of the
   naming convention**, a narrower ground than the other entries — hold new metric-name
   entries to it;

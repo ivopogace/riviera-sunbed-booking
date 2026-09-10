@@ -108,7 +108,7 @@ class RemodelClaimsService implements RemodelClaims {
 		}
 		int refunds = (int) fresh.stream().filter(claim -> claim.outcome() == RemodelOutcome.Refund.REFUND).count();
 		if (!authorises(confirmation, refunds)) {
-			return new RemodelCommit.Unconfirmed(fresh, refunds);
+			return new RemodelCommit.Unconfirmed(fresh);
 		}
 		Instant committedAt = clock.instant();
 		List<ReceiptMove> moves = new ArrayList<>();
@@ -155,9 +155,12 @@ class RemodelClaimsService implements RemodelClaims {
 
 	/**
 	 * Release an unpaid claim: the same guarded {@code AWAITING_PAYMENT → CANCELLED} transition the
-	 * payment-canceled webhook and the TTL sweep share. It publishes {@code BookingCancelled} with a
-	 * zero refund, which is what mails the guest without moving money — no refund is issued and no
-	 * payout reversal is posted for a booking that never collected.
+	 * payment-canceled webhook and the TTL sweep share through {@code ClaimReleaseService} — kept in
+	 * step with it by hand, because that seam answers only whether it released and this leg needs the
+	 * freed claim's spot for the receipt and publishes {@code BookingCancelled}, which the seam's two
+	 * drivers must not. The zero refund on that event is what mails the guest without moving money —
+	 * no refund is issued and no payout reversal is posted for a booking that never collected, and the
+	 * module's own listener voids the intent the guest could otherwise still pay.
 	 */
 	private ReceiptOutcome applyRelease(VenueId venueId, RemodelClaim claim) {
 		ClaimRef released = bookings.cancelAwaitingPayment(claim.bookingId().value())

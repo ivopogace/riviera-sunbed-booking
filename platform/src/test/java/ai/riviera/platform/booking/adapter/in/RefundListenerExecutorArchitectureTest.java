@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Fitness function: a {@code booking} listener that reaches the payment gateway must do it behind the
- * bulkhead — not just the one listener that does today. The twin of
+ * bulkhead — not just the two that do today. The twin of
  * {@code MailListenerExecutorArchitectureTest}, guarding the same trap for a different transport.
  * Rationale: RESPONSIBILITIES.md §`booking`.
  *

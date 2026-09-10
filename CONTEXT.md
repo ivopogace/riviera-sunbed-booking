@@ -99,9 +99,9 @@ model in `docs/architecture/domain-model.md`.
   full, by reason **venue change**, and the guest is mailed a link to book again — that venue's map
   for the same day, or the discovery list for it when the venue cannot sell that day. The operator
   authorises it by typing how many refunds the preview named and why; both go on the **commit
-  receipt**. An unpaid booking in the same position is **released** and a pending request
-  **declined**: mailed the same way, but nothing was collected, so nothing is returned and the payout
-  ledger is untouched. Distinct from the **weather refund**, which is the admin's answer to a storm,
+  receipt**. An unpaid booking in the same position is **released** — mailed the same way, link and
+  all — and a pending request is **declined**, which keeps the mail a decline has always sent and no
+  link. Neither collected anything, so neither returns money and the payout ledger is untouched. Distinct from the **weather refund**, which is the admin's answer to a storm,
   and from the guest's own **free exit**, which is the same reason from the other side.
 - **Moved booking** — a booking a saved remodel re-seated on another set for the same date: its code,
   price and date are unchanged, the guest is mailed the new spot, and the booking carries when it

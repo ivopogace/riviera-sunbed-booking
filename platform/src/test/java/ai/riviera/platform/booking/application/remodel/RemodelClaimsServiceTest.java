@@ -320,9 +320,9 @@ class RemodelClaimsServiceTest {
 		when(receipts.store(any())).thenReturn(RECEIPT);
 		PreviewToken previewed = previewOf(first, second);
 
-		assertEquals(new RemodelCommit.Unconfirmed(List.of(first, second), 2),
+		assertEquals(new RemodelCommit.Unconfirmed(List.of(first, second)),
 				service.commit(OWNER, VENUE, List.of(A1.setId()), previewed, CONFIRMED_ONE));
-		assertEquals(new RemodelCommit.Unconfirmed(List.of(first, second), 2),
+		assertEquals(new RemodelCommit.Unconfirmed(List.of(first, second)),
 				service.commit(OWNER, VENUE, List.of(A1.setId()), previewed, new RefundConfirmation(2, "   ")));
 		assertInstanceOf(RemodelCommit.Applied.class,
 				service.commit(OWNER, VENUE, List.of(A1.setId()), previewed, new RefundConfirmation(2, "Re-laying")));

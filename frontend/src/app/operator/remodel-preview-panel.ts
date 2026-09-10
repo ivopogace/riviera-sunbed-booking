@@ -68,7 +68,7 @@ export class RemodelPreviewPanel {
   readonly venueId = input.required<number>();
   /** The commit found the bookings changed since the preview; this picture is the fresh one. */
   readonly stale = input(false);
-  /** The commit is in flight — Save is busy, never disabled (RV-FE-9). */
+  /** The commit is in flight — Save goes busy, never disabled by it (RV-FE-9). */
   readonly committing = input(false);
   readonly cancelled = output<void>();
   readonly committed = output<RemodelConfirmation>();

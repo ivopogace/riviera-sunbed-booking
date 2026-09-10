@@ -15,7 +15,8 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
  * when it was committed, every move, every claim it ended instead — refunded, released or declined —
  * the operator's reason and what it returned to guests. The booking rides by id (never by code,
  * invariant #7), its day as ISO {@code YYYY-MM-DD}, both spots as they were. {@code refundedTotal}
- * is {@code null} when the commit refunded nobody, so a zero never reads as a refund.
+ * is {@code null} when the commit refunded nobody, so a zero never reads as a refund; its one
+ * currency code is sound because collection is EUR-only (invariant #5).
  * {@link Summary} is the list row. Mirrors the FE {@code RemodelReceipt} type.
  */
 record RemodelReceiptView(long receiptId, Instant committedAt, List<MoveView> moves, List<ClaimView> refunds,

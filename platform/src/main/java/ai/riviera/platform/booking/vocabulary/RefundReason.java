@@ -14,9 +14,13 @@ package ai.riviera.platform.booking.vocabulary;
  *       the cutoff (invariant #10).</li>
  *   <li>{@link #CONFLICT} — reserved (an admin availability-conflict cancel); admitted by the schema
  *       now as a closed value set, not exercised in v1.</li>
- *   <li>{@link #VENUE_CHANGE} — the guest cancelled a booking the venue's remodel had moved, inside
- *       the free-exit deadline: a full refund whatever tier the window would answer (invariant #10),
- *       operator-caused and distinct from {@link #CONFLICT}.</li>
+ *   <li>{@link #VENUE_CHANGE} — a venue's own remodel ended the booking, or the guest took the free
+ *       exit one earned them. Operator-caused throughout, and distinct from {@link #CONFLICT}, which
+ *       is admin-actioned. It says nothing about the amount: a remodel refund and a free exit each
+ *       return the whole booking (invariant #10), while a remodel <em>release</em> of an unpaid
+ *       booking returns nothing, since nothing was collected. Which of the three a cancellation is
+ *       cannot be read off this token — {@code BookingNotificationFacts#endedByRemodel} tells the
+ *       venue's doing from the guest's, and a zero refund tells a release from either.</li>
  * </ul>
  */
 public enum RefundReason {

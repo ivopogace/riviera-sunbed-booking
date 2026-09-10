@@ -13,8 +13,8 @@
  * <p>Hexagonal layout (invariant #11, ADR-0007 full template): {@code api} publishes two role-split
  * ports the edge calls — the fire-and-forget {@code MailSender} and the synchronous
  * {@code MailDeliverability} read; {@code application} holds the chokepoint service, the internal
- * transport/dispatch/suppression ports and the dispatcher; {@code adapter/in} the five registry
- * listeners plus the config that binds their properties; {@code adapter/out} the transports and the
+ * transport/dispatch/suppression ports and the dispatcher; {@code adapter/in} the registry listeners
+ * plus the config that binds their properties; {@code adapter/out} the transports and the
  * suppression repository. No {@code domain} — table-backed state, but no aggregate yet.
  *
  * <p>The edge keeps deciding <em>when</em> to send and keeps all <strong>credential-material</strong>
@@ -25,7 +25,7 @@
  * and the arrival code cannot ride the payload, which the registry persists as text (invariant #7).
  * Formatting a fact already in hand mints nothing and hashes nothing.
  *
- * <p>The grants below are the listeners' reads, least-privilege (#95) — no command surface. Every
+ * <p>The grants below are the listeners' reads, least-privilege — no command surface. Every
  * booking mail assembles the same facts through one shared resolver, so a listener joins them
  * without widening anything; the reads beyond it are named ones a single mail needs — the moved
  * mail's spots off {@code booking::api}, and the rebook link's sellability verdict off

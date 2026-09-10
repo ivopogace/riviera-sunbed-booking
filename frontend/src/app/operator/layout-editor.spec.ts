@@ -2045,12 +2045,19 @@ describe('LayoutEditor (#172)', () => {
       const commit = commitRequest();
       expect(body(commit).refundCount).toBe(1);
       expect(body(commit).refundReason).toBe('Re-laying row A');
+      // The fresh picture refunds two, so the typed 1 no longer matches and Save re-disables.
       commit.flush(
         {
           code: 'REFUND_NOT_CONFIRMED',
           detail: 'x',
-          requiredRefundCount: 2,
-          preview: { ...REFUNDING_PREVIEW, previewToken: 'v1.fresher' },
+          preview: {
+            ...REFUNDING_PREVIEW,
+            refunds: [
+              REFUNDING_PREVIEW.refunds[0],
+              { ...REFUNDING_PREVIEW.refunds[0], bookingId: 99 },
+            ],
+            previewToken: 'v1.fresher',
+          },
         },
         { status: 409, statusText: 'Conflict' },
       );
@@ -2062,6 +2069,9 @@ describe('LayoutEditor (#172)', () => {
         /bookings changed since you previewed/,
       );
       expect(byId('layout-remodel-confirm')).toBeTruthy();
+      // Save is validity-disabled again, so focus goes to the field that has to change, not to it.
+      expect((byId('layout-remodel-commit') as HTMLButtonElement).disabled).toBe(true);
+      expect(document.activeElement).toBe(byId('layout-remodel-refund-count'));
       expect(host.querySelector('[data-testid="layout-error"]')).toBeNull();
     });
 
@@ -2220,15 +2230,15 @@ describe('LayoutEditor (#172)', () => {
       await openDisclosure();
       expect(byId('layout-remodels-loading')).toBeTruthy();
       receiptsRequest().flush([
-        { receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moveCount: 2 },
-        { receiptId: 40, committedAt: '2026-09-01T07:30:00Z', moveCount: 1 },
+        { receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moveCount: 2, refundCount: 1 },
+        { receiptId: 40, committedAt: '2026-09-01T07:30:00Z', moveCount: 1, refundCount: 0 },
       ]);
       await fixture.whenStable();
       fixture.detectChanges();
 
       const rows = host.querySelectorAll<HTMLElement>('[data-testid="layout-remodels-open"]');
       expect([...rows].map((row) => row.textContent?.trim())).toEqual([
-        'Wed, 9 Sept, 15:00 · 2 bookings moved',
+        'Wed, 9 Sept, 15:00 · 2 bookings moved, 1 refunded',
         'Tue, 1 Sept, 09:30 · 1 booking moved',
       ]);
       expect(rows[0].getAttribute('data-receipt-id')).toBe('41');
@@ -2299,7 +2309,7 @@ describe('LayoutEditor (#172)', () => {
       (byId('layout-remodels') as HTMLDetailsElement).open = false;
       await openDisclosure();
       receiptsRequest().flush([
-        { receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moveCount: 2 },
+        { receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moveCount: 2, refundCount: 0 },
       ]);
       await fixture.whenStable();
       fixture.detectChanges();

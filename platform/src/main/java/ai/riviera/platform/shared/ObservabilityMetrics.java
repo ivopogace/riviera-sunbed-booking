@@ -35,12 +35,20 @@ public final class ObservabilityMetrics {
 	public static final String HTTP_SERVER_REQUESTS = "http.server.requests";
 
 	/**
-	 * Counter: cancellation refunds shed because the refund bulkhead's pool was saturated. Distinct
-	 * from {@link #REFUNDS_FAILED} — shed is a refund the gateway was never asked for, and unlike a
-	 * failure it does not leave the process. Deferred, not lost: the event publication stays
-	 * outstanding.
+	 * Counter: work shed because the refund bulkhead's pool was saturated — a cancellation refund, or
+	 * the void of a remodel-released booking's uncollected intent, which shares that pool. Distinct
+	 * from {@link #REFUNDS_FAILED} — shed is a gateway call that was never made, and unlike a failure
+	 * it does not leave the process. Deferred, not lost: the event publication stays outstanding.
 	 */
 	public static final String REFUNDS_SHED = "riviera.refunds.shed";
+
+	/**
+	 * Counter: bookings a remodel released as unpaid whose payment had in fact already succeeded, so
+	 * the intent could not be voided. The guest has paid for a booking that no longer exists and is
+	 * owed a refund by hand — nothing retries it, because there is no uncollected intent left to void.
+	 * Distinct from {@link #REFUNDS_FAILED}, which counts refunds the platform did ask the gateway for.
+	 */
+	public static final String REMODEL_RELEASE_COLLECTED = "riviera.remodel.release.collected";
 
 	/**
 	 * Counter: refunds already present at the gateway and adopted instead of created again. An

@@ -1,5 +1,7 @@
 package ai.riviera.platform.notification.adapter.in;
 
+import java.net.URI;
+
 import io.micrometer.core.instrument.MeterRegistry;
 
 import org.slf4j.Logger;
@@ -7,8 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
-
-import java.net.URI;
 
 import ai.riviera.platform.booking.api.BookingNotificationFacts;
 import ai.riviera.platform.booking.events.BookingCancelled;

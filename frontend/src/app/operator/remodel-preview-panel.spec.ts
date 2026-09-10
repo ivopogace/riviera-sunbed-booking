@@ -74,7 +74,7 @@ export const FULL_PREVIEW: RemodelPreview = {
   previewToken: 'v1.full',
 };
 
-/** A preview that only moves — the one picture the commit applies, so the panel offers Save. */
+/** A preview that only moves — committable, and the one shape that needs no typed confirmation. */
 export const MOVES_ONLY_PREVIEW: RemodelPreview = {
   ...FULL_PREVIEW,
   refunds: [],

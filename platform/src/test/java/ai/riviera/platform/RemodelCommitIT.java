@@ -247,7 +247,7 @@ class RemodelCommitIT {
 		mvc.perform(commit(venue, body, previewToken))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("REFUND_NOT_CONFIRMED"))
-				.andExpect(jsonPath("$.requiredRefundCount").value(1))
+				.andExpect(jsonPath("$.preview.refunds.length()").value(1))
 				.andExpect(jsonPath("$.preview.refunds[0].bookingId").value(refunded))
 				.andExpect(jsonPath("$.preview.previewToken", startsWith("v1")));
 		mvc.perform(commit(venue, body, previewToken, 2, "Wrong count"))

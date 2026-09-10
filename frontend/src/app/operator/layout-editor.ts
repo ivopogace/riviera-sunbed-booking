@@ -98,6 +98,26 @@ const REFUSALS_CARRYING_A_FRESH_PICTURE: ReadonlySet<string> = new Set([
   'REFUND_NOT_CONFIRMED',
 ]);
 
+/**
+ * Where focus lands when a refused commit re-renders the dialog in place, destroying or disabling
+ * the button that was pressed (WCAG 2.4.3, RV-FE-9). A committable picture that refunds arms Save
+ * only once the count is retyped — and the count is exactly what changed — so the field the
+ * operator must correct takes it; a picture with nothing to correct hands it to Save, and one that
+ * lost its Save to Back.
+ */
+function freshPictureLandingSpot(fresh: RemodelPreview): string {
+  if (!remodelPreviewIsCommittable(fresh)) {
+    return 'layout-remodel-back';
+  }
+  return fresh.refunds.length > 0 ? 'layout-remodel-refund-count' : 'layout-remodel-commit';
+}
+
+/** "2 moved, 1 refunded" — a remodel that refunded nobody says only what it moved. */
+function remodelTallyText(moveCount: number, refundCount: number): string {
+  const moved = `${moveCount} booking${moveCount === 1 ? '' : 's'} moved`;
+  return refundCount === 0 ? moved : `${moved}, ${refundCount} refunded`;
+}
+
 const PREMIUM_PRICE: MoneyView = { minorUnits: 3500, currency: 'EUR' };
 const STANDARD_PRICE: MoneyView = { minorUnits: 2000, currency: 'EUR' };
 
@@ -1039,10 +1059,7 @@ export class LayoutEditor {
       if (fresh) {
         this.previewStale.set(true);
         this.remodelPreview.set(fresh);
-        // The same dialog re-renders in place; a picture that lost its Save hands focus to Back.
-        this.focusAfterRender(
-          remodelPreviewIsCommittable(fresh) ? 'layout-remodel-commit' : 'layout-remodel-back',
-        );
+        this.focusAfterRender(freshPictureLandingSpot(fresh));
         return;
       }
       this.remodelPreview.set(null);
@@ -1112,9 +1129,9 @@ export class LayoutEditor {
     }
   }
 
-  /** "Tue 9 Sept, 15:00 · 2 bookings moved" */
+  /** "Tue 9 Sept, 15:00 · 2 moved, 1 refunded" */
   protected receiptSummaryText(summary: RemodelReceiptSummary): string {
-    return `${formatDeadline(summary.committedAt)} · ${summary.moveCount} booking${summary.moveCount === 1 ? '' : 's'} moved`;
+    return `${formatDeadline(summary.committedAt)} · ${remodelTallyText(summary.moveCount, summary.refundCount)}`;
   }
 
   private async commitSave(

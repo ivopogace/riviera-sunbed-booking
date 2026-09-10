@@ -763,6 +763,11 @@ class WebSliceStubs {
 	SetBookingFacts setBookingFacts() {
 		return new SetBookingFacts() {
 			@Override
+			public boolean sellsOnlineOn(VenueId venueId, java.time.LocalDate date) {
+				return false;
+			}
+
+			@Override
 			public Optional<Pool> poolForClaim(SetId setId) {
 				return Optional.empty();
 			}
