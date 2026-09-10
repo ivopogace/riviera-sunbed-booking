@@ -850,7 +850,8 @@ class WebSliceStubs {
 			@Override
 			public ai.riviera.platform.booking.vocabulary.RemodelCommit commit(OperatorId operator, VenueId venueId,
 					java.util.Collection<ai.riviera.platform.venue.vocabulary.SetId> disturbedSets,
-					ai.riviera.platform.booking.vocabulary.PreviewToken token) {
+					ai.riviera.platform.booking.vocabulary.PreviewToken token,
+					ai.riviera.platform.booking.vocabulary.RefundConfirmation confirmation) {
 				return new ai.riviera.platform.booking.vocabulary.RemodelCommit.Refused(List.of());
 			}
 		};

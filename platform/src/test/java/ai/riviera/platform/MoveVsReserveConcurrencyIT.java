@@ -23,6 +23,7 @@ import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.booking.api.RemodelClaims;
 import ai.riviera.platform.booking.vocabulary.PreviewToken;
+import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.LayoutCell;
 import ai.riviera.platform.venue.vocabulary.Pool;
@@ -89,7 +90,7 @@ class MoveVsReserveConcurrencyIT {
 		};
 		Callable<RemodelCommitOutcome> commit = () -> {
 			start(gate, ordering, Ordering.COMMIT_FIRST);
-			return commits.commit(owner, venue, 0L, keepingA2AndA3, token);
+			return commits.commit(owner, venue, 0L, keepingA2AndA3, token, RefundConfirmation.NONE);
 		};
 
 		ExecutorService pool = Executors.newFixedThreadPool(2);

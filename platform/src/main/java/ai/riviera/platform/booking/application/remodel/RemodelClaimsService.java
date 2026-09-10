@@ -23,14 +23,20 @@ import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.booking.api.RemodelClaims;
 import ai.riviera.platform.booking.application.Bookings;
-import ai.riviera.platform.booking.events.BookingMoved;
+import ai.riviera.platform.booking.application.cancel.CancelledBooking;
+import ai.riviera.platform.booking.application.reserve.ClaimRef;
 import ai.riviera.platform.booking.domain.FreeSpot;
 import ai.riviera.platform.booking.domain.MoveRanking;
 import ai.riviera.platform.booking.domain.RemodelZone;
+import ai.riviera.platform.booking.events.BookingCancelled;
+import ai.riviera.platform.booking.events.BookingMoved;
+import ai.riviera.platform.booking.events.BookingRequestDeclined;
 import ai.riviera.platform.booking.vocabulary.BlockReason;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.PreviewToken;
 import ai.riviera.platform.booking.vocabulary.ReceiptId;
+import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.RemodelClaim;
 import ai.riviera.platform.booking.vocabulary.RemodelCommit;
 import ai.riviera.platform.booking.vocabulary.RemodelOutcome;
@@ -50,9 +56,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * ones and less what an earlier claim took, then the status split. The free pool is read once per
  * distinct date and only when a claim needs it. {@link #classify} is read-only and unlocked, advisory
  * by contract; {@link #commit} runs the same classification inside the caller's transaction — the
- * edge calls it from inside the layout write, under {@code venue}'s set locks — and applies the
- * moves: claim the candidate's row, release the old one, re-seat the booking, receipt, publish.
- * Rationale: RESPONSIBILITIES.md §booking.
+ * edge calls it from inside the layout write, under {@code venue}'s set locks — and applies every
+ * claim: a move claims the candidate's row and re-seats the booking, a refund, release or decline
+ * runs the module's own guarded transition for that status. Each leg frees the {@code (set, date)}
+ * row it held and publishes the fact the rest of the platform already reacts to, so no refund,
+ * reversal or mail is driven from here. Rationale: RESPONSIBILITIES.md §booking.
  */
 @Service
 class RemodelClaimsService implements RemodelClaims {
@@ -89,23 +97,94 @@ class RemodelClaimsService implements RemodelClaims {
 	@Override
 	@Transactional
 	public RemodelCommit commit(OperatorId operator, VenueId venueId, Collection<SetId> disturbedSets,
-			PreviewToken token) {
+			PreviewToken token, RefundConfirmation confirmation) {
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
 		List<RemodelClaim> fresh = classifyOwned(venueId, disturbedSets);
 		if (!token.covers(fresh)) {
 			return new RemodelCommit.Stale(fresh);
 		}
-		if (!fresh.stream().allMatch(claim -> claim.outcome() instanceof RemodelOutcome.Move)) {
+		if (fresh.stream().anyMatch(claim -> claim.outcome() instanceof RemodelOutcome.Blocked)) {
 			return new RemodelCommit.Refused(fresh);
 		}
-		Instant movedAt = clock.instant();
-		List<ReceiptMove> moves = new ArrayList<>(fresh.size());
-		for (RemodelClaim claim : fresh) {
-			RemodelOutcome.Move move = (RemodelOutcome.Move) claim.outcome();
-			moves.add(applyMove(venueId, claim, move, movedAt));
+		int refunds = (int) fresh.stream().filter(claim -> claim.outcome() == RemodelOutcome.Refund.REFUND).count();
+		if (!authorises(confirmation, refunds)) {
+			return new RemodelCommit.Unconfirmed(fresh, refunds);
 		}
-		ReceiptId receipt = receipts.store(venueId, operator, movedAt, moves);
-		return new RemodelCommit.Applied(receipt, movedAt, fresh);
+		Instant committedAt = clock.instant();
+		List<ReceiptMove> moves = new ArrayList<>();
+		List<ReceiptOutcome> outcomes = new ArrayList<>();
+		for (RemodelClaim claim : fresh) {
+			apply(venueId, claim, committedAt, moves, outcomes);
+		}
+		ReceiptId receipt = receipts.store(new NewReceipt(venueId, operator, committedAt, moves, outcomes,
+				confirmation.reason()));
+		return new RemodelCommit.Applied(receipt, committedAt, fresh);
+	}
+
+	/** A commit that refunds nobody needs no confirmation; one that does needs the count and a reason. */
+	private static boolean authorises(RefundConfirmation confirmation, int refunds) {
+		return refunds == 0 || (confirmation.refundCount() == refunds && !confirmation.reason().isBlank());
+	}
+
+	private void apply(VenueId venueId, RemodelClaim claim, Instant committedAt, List<ReceiptMove> moves,
+			List<ReceiptOutcome> outcomes) {
+		switch (claim.outcome()) {
+			case RemodelOutcome.Move move -> moves.add(applyMove(venueId, claim, move, committedAt));
+			case RemodelOutcome.Refund ignored -> outcomes.add(applyRefund(venueId, claim, committedAt));
+			case RemodelOutcome.Release ignored -> outcomes.add(applyRelease(venueId, claim));
+			case RemodelOutcome.Decline ignored -> outcomes.add(applyDecline(venueId, claim));
+			case RemodelOutcome.Blocked ignored ->
+				throw new IllegalStateException("a blocked claim is refused before anything is applied");
+		}
+	}
+
+	/**
+	 * Cancel a confirmed claim the remodel strands and refund it in full. The refund itself is issued
+	 * after commit by the module's {@code BookingCancelled} listener (invariant #10 computed here,
+	 * invariant #8 honoured there); the payout reversal rides the same fact.
+	 */
+	private ReceiptOutcome applyRefund(VenueId venueId, RemodelClaim claim, Instant cancelledAt) {
+		CancelledBooking cancelled = bookings
+				.cancelConfirmed(claim.bookingId().value(), cancelledAt, claim.amountMinor(), RefundReason.VENUE_CHANGE)
+				.orElseThrow(() -> lostUnderLock(claim, "confirmed"));
+		availability.release(cancelled.setId(), cancelled.bookingDate());
+		events.publishEvent(new BookingCancelled(claim.bookingId(), venueId, cancelled.setId(),
+				cancelled.bookingDate(), claim.amountMinor(), claim.currency(), RefundReason.VENUE_CHANGE));
+		return outcomeOf(claim, ReceiptOutcomeKind.REFUND);
+	}
+
+	/**
+	 * Release an unpaid claim: the same guarded {@code AWAITING_PAYMENT → CANCELLED} transition the
+	 * payment-canceled webhook and the TTL sweep share. It publishes {@code BookingCancelled} with a
+	 * zero refund, which is what mails the guest without moving money — no refund is issued and no
+	 * payout reversal is posted for a booking that never collected.
+	 */
+	private ReceiptOutcome applyRelease(VenueId venueId, RemodelClaim claim) {
+		ClaimRef released = bookings.cancelAwaitingPayment(claim.bookingId().value())
+				.orElseThrow(() -> lostUnderLock(claim, "awaiting payment"));
+		availability.release(released.setId(), released.bookingDate());
+		events.publishEvent(new BookingCancelled(claim.bookingId(), venueId, released.setId(),
+				released.bookingDate(), 0, claim.currency(), RefundReason.VENUE_CHANGE));
+		return outcomeOf(claim, ReceiptOutcomeKind.RELEASE);
+	}
+
+	/** Decline a pending request: the venue-scoped guarded transition and the fact its mail listens for. */
+	private ReceiptOutcome applyDecline(VenueId venueId, RemodelClaim claim) {
+		ClaimRef declined = bookings.declinePending(claim.bookingId().value(), venueId)
+				.orElseThrow(() -> lostUnderLock(claim, "pending"));
+		availability.release(declined.setId(), declined.bookingDate());
+		events.publishEvent(new BookingRequestDeclined(claim.bookingId(), declined.setId(), declined.bookingDate()));
+		return outcomeOf(claim, ReceiptOutcomeKind.DECLINE);
+	}
+
+	private static ReceiptOutcome outcomeOf(RemodelClaim claim, ReceiptOutcomeKind kind) {
+		return new ReceiptOutcome(claim.bookingId(), claim.bookingDate(), claim.from(), kind, claim.amountMinor(),
+				claim.currency());
+	}
+
+	private static IllegalStateException lostUnderLock(RemodelClaim claim, String was) {
+		return new IllegalStateException(
+				"booking " + claim.bookingId().value() + " was no longer " + was + " under the venue lock");
 	}
 
 	/** Claim the candidate before releasing the old row (invariant #2), then re-seat the booking. */

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.booking.api.RemodelClaims;
 import ai.riviera.platform.booking.vocabulary.PreviewToken;
+import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
 import ai.riviera.platform.booking.vocabulary.RemodelCommit;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.api.BeachMapRemodel;
@@ -22,8 +23,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * its gate — asked once, under the locks, with the disturbed sets and their staff holds. A held set
  * is a claim the preview could not have offered a save for, so it answers the fresh picture as
  * stale; otherwise {@link RemodelClaims#commit} re-derives the classification, checks the token and
- * moves the bookings, all inside {@code venue}'s transaction, and the gate proceeds only when every
- * claim moved. Each port asserts venue ownership itself (invariant #13); this class holds no rule.
+ * the operator's refund confirmation, and applies every claim, all inside {@code venue}'s
+ * transaction; the gate proceeds only when it answered applied. Each port asserts venue ownership
+ * itself (invariant #13); this class holds no rule.
  */
 @Component
 class RemodelCommitService {
@@ -37,10 +39,10 @@ class RemodelCommitService {
 	}
 
 	RemodelCommitOutcome commit(OperatorId operator, VenueId venue, long expectedVersion, List<LayoutCell> cells,
-			PreviewToken token) {
+			PreviewToken token, RefundConfirmation confirmation) {
 		AtomicReference<RemodelCommitOutcome> decided = new AtomicReference<>();
 		LayoutCommitOutcome layout = remodel.commit(operator, venue, expectedVersion, cells, disturbed -> {
-			decided.set(decide(operator, venue, disturbed, token));
+			decided.set(decide(operator, venue, disturbed, token, confirmation));
 			return decided.get() instanceof RemodelCommitOutcome.Committed;
 		});
 		return switch (layout) {
@@ -52,16 +54,18 @@ class RemodelCommitService {
 	}
 
 	private RemodelCommitOutcome decide(OperatorId operator, VenueId venue, List<DisturbedSet> disturbed,
-			PreviewToken token) {
+			PreviewToken token, RefundConfirmation confirmation) {
 		List<SetId> setIds = disturbed.stream().map(DisturbedSet::setId).toList();
 		if (disturbed.stream().anyMatch(set -> !set.walkInHolds().isEmpty())) {
 			return new RemodelCommitOutcome.StalePreview(disturbed, claims.classify(operator, venue, setIds));
 		}
-		return switch (claims.commit(operator, venue, setIds, token)) {
-			case RemodelCommit.Applied(var receipt, var committedAt, var moves) ->
-				new RemodelCommitOutcome.Committed(receipt, committedAt, moves);
+		return switch (claims.commit(operator, venue, setIds, token, confirmation)) {
+			case RemodelCommit.Applied(var receipt, var committedAt, var applied) ->
+				new RemodelCommitOutcome.Committed(receipt, committedAt, applied);
 			case RemodelCommit.Stale(var fresh) -> new RemodelCommitOutcome.StalePreview(disturbed, fresh);
 			case RemodelCommit.Refused(var fresh) -> new RemodelCommitOutcome.Refused(disturbed, fresh);
+			case RemodelCommit.Unconfirmed(var fresh, var refundCount) ->
+				new RemodelCommitOutcome.NotConfirmed(disturbed, fresh, refundCount);
 		};
 	}
 

@@ -1,6 +1,7 @@
 package ai.riviera.platform;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 import ai.riviera.platform.booking.vocabulary.RemodelClaim;
@@ -9,23 +10,46 @@ import ai.riviera.platform.venue.vocabulary.LockedSet;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
- * A committed remodel on the wire: the receipt the console can open later and every move it made,
- * in the preview's own move shape. Bookings by id, never by code (invariant #7).
+ * A committed remodel on the wire: the receipt the console can open later and everything it did —
+ * the bookings it moved, the confirmed ones it refunded in full, the unpaid ones it released and
+ * the requests it declined, in the preview's own shapes, with the operator's reason and what the
+ * commit returned to guests. {@code refundedTotal} is {@code null} when it refunded nobody, so a
+ * zero is never rendered as a refund. Bookings by id, never by code (invariant #7).
  */
-record RemodelCommitResponse(long receiptId, Instant committedAt, List<RemodelPreviewResponse.MoveView> moves) {
+record RemodelCommitResponse(long receiptId, Instant committedAt, List<RemodelPreviewResponse.MoveView> moves,
+		List<RemodelPreviewResponse.ClaimView> refunds, List<RemodelPreviewResponse.ReleaseView> releases,
+		String refundReason, MoneyView refundedTotal) {
 
-	static RemodelCommitResponse of(RemodelCommitOutcome.Committed committed) {
-		return new RemodelCommitResponse(committed.receiptId().value(), committed.committedAt(),
-				committed.moves().stream().map(RemodelCommitResponse::moveOf).toList());
-	}
-
-	private static RemodelPreviewResponse.MoveView moveOf(RemodelClaim claim) {
-		if (!(claim.outcome() instanceof RemodelOutcome.Move(var to, var rowsAway, var positionsAway))) {
-			throw new IllegalStateException("a committed remodel carries moves only");
+	static RemodelCommitResponse of(RemodelCommitOutcome.Committed committed, String refundReason) {
+		List<RemodelPreviewResponse.MoveView> moves = new ArrayList<>();
+		List<RemodelPreviewResponse.ClaimView> refunds = new ArrayList<>();
+		List<RemodelPreviewResponse.ReleaseView> releases = new ArrayList<>();
+		long refundedMinor = 0;
+		String currency = null;
+		for (RemodelClaim claim : committed.applied()) {
+			long id = claim.bookingId().value();
+			String date = claim.bookingDate().toString();
+			MoneyView amount = new MoneyView(claim.amountMinor(), claim.currency());
+			RemodelPreviewResponse.SpotView from = RemodelPreviewAssembler.spot(claim.from());
+			switch (claim.outcome()) {
+				case RemodelOutcome.Move(var to, var rowsAway, var positionsAway) ->
+					moves.add(new RemodelPreviewResponse.MoveView(id, date, amount, from,
+							RemodelPreviewAssembler.spot(to), rowsAway, positionsAway));
+				case RemodelOutcome.Refund ignored -> {
+					refunds.add(new RemodelPreviewResponse.ClaimView(id, date, amount, from));
+					refundedMinor += claim.amountMinor();
+					currency = claim.currency();
+				}
+				case RemodelOutcome.Release release ->
+					releases.add(new RemodelPreviewResponse.ReleaseView(id, date, amount, from, release.name()));
+				case RemodelOutcome.Decline decline ->
+					releases.add(new RemodelPreviewResponse.ReleaseView(id, date, amount, from, decline.name()));
+				case RemodelOutcome.Blocked ignored ->
+					throw new IllegalStateException("a committed remodel applies no blocked claim");
+			}
 		}
-		return new RemodelPreviewResponse.MoveView(claim.bookingId().value(), claim.bookingDate().toString(),
-				new MoneyView(claim.amountMinor(), claim.currency()), RemodelPreviewAssembler.spot(claim.from()),
-				RemodelPreviewAssembler.spot(to), rowsAway, positionsAway);
+		return new RemodelCommitResponse(committed.receiptId().value(), committed.committedAt(), moves, refunds,
+				releases, refundReason, currency == null ? null : new MoneyView(refundedMinor, currency));
 	}
 
 	/** One set a {@code 409 SETS_IN_USE} names, in the bulk save's own wire shape. */

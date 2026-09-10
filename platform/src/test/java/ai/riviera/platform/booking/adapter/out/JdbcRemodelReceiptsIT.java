@@ -14,7 +14,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.application.remodel.NewReceipt;
 import ai.riviera.platform.booking.application.remodel.ReceiptMove;
+import ai.riviera.platform.booking.application.remodel.ReceiptOutcome;
+import ai.riviera.platform.booking.application.remodel.ReceiptOutcomeKind;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipt;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
 import ai.riviera.platform.booking.vocabulary.BookingId;
@@ -59,11 +62,11 @@ class JdbcRemodelReceiptsIT {
 		SpotRef toA2 = new SpotRef(new SetId(a2), "A", 2);
 		SpotRef toA3 = new SpotRef(new SetId(a3), "A", 3);
 
-		ReceiptId earlier = receipts.store(new VenueId(venue), operator, first, List.of(
-				new ReceiptMove(new BookingId(booking), DAY, fromA1, toA2, 0, 1)));
-		ReceiptId newest = receipts.store(new VenueId(venue), operator, first.plus(1, ChronoUnit.HOURS), List.of(
+		ReceiptId earlier = receipts.store(new NewReceipt(new VenueId(venue), operator, first, List.of(
+				new ReceiptMove(new BookingId(booking), DAY, fromA1, toA2, 0, 1)), List.of(), ""));
+		ReceiptId newest = receipts.store(new NewReceipt(new VenueId(venue), operator, first.plus(1, ChronoUnit.HOURS), List.of(
 				new ReceiptMove(new BookingId(booking), DAY, toA2, toA3, 0, 1),
-				new ReceiptMove(new BookingId(later), DAY.plusDays(1), fromA1, toA3, 0, 2)));
+				new ReceiptMove(new BookingId(later), DAY.plusDays(1), fromA1, toA3, 0, 2)), List.of(), ""));
 
 		List<RemodelReceipt> listed = receipts.receiptsOf(new VenueId(venue));
 		assertEquals(List.of(newest, earlier), listed.stream().map(RemodelReceipt::id).toList());
@@ -82,6 +85,42 @@ class JdbcRemodelReceiptsIT {
 		assertEquals(Optional.of(new ReceiptMove(new BookingId(booking), DAY, toA2, toA3, 0, 1)),
 				receipts.latestMoveOf(new BookingId(booking)), "the last move written is the latest");
 		assertTrue(receipts.latestMoveOf(new BookingId(booking + 100_000)).isEmpty());
+	}
+
+	@Test
+	void endedClaimsAndTheOperatorsReasonReadBackWithTheReceipt() {
+		long venue = insertVenue();
+		long a1 = insertSet(venue, 1);
+		long refunded = insertBooking(venue, a1);
+		long released = insertBooking(venue, a1);
+		OperatorId operator = new OperatorId(insertOperator());
+		SpotRef spot = new SpotRef(new SetId(a1), "A", 1);
+
+		ReceiptId id = receipts.store(new NewReceipt(new VenueId(venue), operator,
+				Instant.parse("2026-09-09T10:00:00Z"), List.of(), List.of(
+						new ReceiptOutcome(new BookingId(refunded), DAY, spot, ReceiptOutcomeKind.REFUND, 4500, "EUR"),
+						new ReceiptOutcome(new BookingId(released), DAY, spot, ReceiptOutcomeKind.RELEASE, 2000, "EUR")),
+				"Re-laying row A for the season"));
+
+		RemodelReceipt read = receipts.find(new VenueId(venue), id).orElseThrow();
+		assertEquals(2, read.outcomes().size());
+		assertEquals(new ReceiptOutcome(new BookingId(refunded), DAY, spot, ReceiptOutcomeKind.REFUND, 4500, "EUR"),
+				read.outcomes().getFirst());
+		assertEquals("Re-laying row A for the season", read.refundReason());
+		assertEquals(4500, read.refundedMinor(), "only the refund lines count toward what guests got back");
+		assertEquals(List.of(read.outcomes().getFirst()), read.refunds());
+		assertEquals(read.outcomes(), receipts.receiptsOf(new VenueId(venue)).getFirst().outcomes());
+	}
+
+	@Test
+	void aCommitThatRefundedNobodyReadsAnEmptyReason() {
+		long venue = insertVenue();
+		ReceiptId id = receipts.store(new NewReceipt(new VenueId(venue), new OperatorId(insertOperator()),
+				Instant.parse("2026-09-09T10:00:00Z"), List.of(), List.of(), ""));
+
+		RemodelReceipt read = receipts.find(new VenueId(venue), id).orElseThrow();
+		assertEquals("", read.refundReason());
+		assertEquals(0, read.refundedMinor());
 	}
 
 	private long insertVenue() {
