@@ -138,7 +138,7 @@ describe('AdminConsoleTabs', () => {
 
   /**
    * The strip's information architecture is an ORDER rather than a layout: one scrolling rail of
-   * at most nine tabs, in the canonical order. Every tab that ships sits in it, so this pins a
+   * at most nine tabs — the canonical order's ten slots less the reserved one — in that order. Every tab that ships sits in it, so this pins a
    * rule rather than a snapshot — a subset in canonical order passes, which is what lets a new tab
    * join the strip without editing an assertion here.
    */

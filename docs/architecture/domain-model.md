@@ -46,6 +46,7 @@ graph TB
     end
     subgraph booking["booking"]
         BOOK["booking"]
+        RCPT["remodel_receipt<br/>+ _move, _outcome"]
     end
     subgraph payment["payment"]
         PAY["payment<br/>+ stripe_webhook_event"]
@@ -53,6 +54,7 @@ graph TB
     subgraph payout["payout"]
         LEDG["payout_ledger_entry"]
         BATCH["payout_batch"]
+        PSET["platform_setting<br/>(the venue-change fee)"]
     end
     subgraph notification["notification — owns email_suppression, mail attempts"]
     end
@@ -329,6 +331,7 @@ classDiagram
         created_at, confirmed_at, completed_at
         cancelled_at, refund_minor, cancel_reason
         request_expires_at, accepted_at
+        moved_at
         UNIQUE (code)
         CHECK status IN (the nine below)
     }
@@ -365,11 +368,19 @@ classDiagram
         POLICY
         WEATHER
         CONFLICT
+        VENUE_CHANGE
+    }
+    class remodel_receipt {
+        <<table>>
+        id, venue_id, operator_id, committed_at, refund_reason
+        _move child (from/to set, labels, rows_away, positions_away)
+        _outcome child (kind, booking_id, booking_date, set label, amount_minor, fee_minor)
     }
     booking ..> BookingStatus : status
     BookingTransition ..> BookingStatus : the lifecycle, stated once
     RefundPolicy ..> CancellationWindow : one tier per window
     booking ..> RefundReason : cancel_reason
+    remodel_receipt "1" o-- "many" booking : what one commit moved, refunded, released or declined
 ```
 
 > The booking **code** is an unguessable bearer credential — ≥ 8 random base32 chars, never
@@ -389,7 +400,7 @@ classDiagram
 >
 > **Scale note.** `booking` is by a wide margin the largest module, and the only one ADR-0007
 > (sub-decision 3) slices by use case: `application/{reserve, cancel, refund, request, checkin,
-> view}`, with `domain/` flat and shared. A nine-field sketch is not the shape of the module; the
+> view, remodel}`, with `domain/` flat and shared. A nine-field sketch is not the shape of the module; the
 > slices are.
 
 ### 3.4 `payment`
@@ -474,7 +485,7 @@ classDiagram
         VenueId, long bookingId
         EntryType, RefundReason reason
         grossMinor, commissionMinor, netMinor, currency
-        accrual() / reversalOf()
+        accrual() / reversalOf() / fee()
     }
     class PayoutBatch {
         <<record>>
@@ -491,12 +502,19 @@ classDiagram
         <<enum>>
         ACCRUAL
         REVERSAL
+        FEE
     }
     class BatchStatus {
         <<enum>>
         DRAFT
         REPORTED
         SETTLED
+    }
+    class platform_setting {
+        <<table>>
+        setting_key (PK), amount_minor, currency
+        CHECK setting_key IN (VENUE_CHANGE_FEE, the only one)
+        CHECK amount_minor within its bound
     }
     payout_ledger_entry ..> PayoutLedgerEntry : the row, as a record
     payout_batch ..> PayoutBatch : the row, as a record
@@ -506,15 +524,23 @@ classDiagram
 
 > These two records are the only ones the docs ever called aggregate roots that actually exist —
 > and they are **immutable value records**, not mutable roots with identity and a lifecycle
-> (ADR-0018 §6): the entry carries the `accrual`/`reversalOf` factories, while the batch is built
+> (ADR-0018 §6): the entry carries the `accrual`/`reversalOf`/`fee` factories, while the batch is built
 > straight through its canonical constructor. The entry carries no id type, no
 > `Money`, and one field the old diagram omitted: `reason`, which is what makes a `REVERSAL`
 > auditable under invariant #9. `bookingId` is a bare `long` while `venueId` is typed.
 >
-> A booking contributes **exactly once** (an `ACCRUAL`) and a refund posts a proportional
-> `REVERSAL`, enforced by `payout_once_per_booking UNIQUE (booking_id, entry_type)` (invariant #9).
-> `net = gross − commission`, checked in the record's canonical constructor and again by
-> `payout_net_check`; the rate is per venue and effective-dated (§3.1). Payouts settle manually via
+> A booking contributes **exactly once** (an `ACCRUAL`), a refund posts a proportional `REVERSAL`,
+> and a refund the venue's own layout change caused posts a `FEE` beside it — each enforced by
+> `payout_once_per_booking UNIQUE (booking_id, entry_type)` (invariant #9).
+>
+> **Direction lives in the entry type, never in the amount.** Every amount is a non-negative
+> magnitude, so a payout reads `Σ ACCRUAL.net − Σ REVERSAL.net − Σ FEE.net`: only an `ACCRUAL` adds
+> (ADR-0021). `net = gross − commission` is checked in the record's canonical constructor and again
+> by `payout_net_check`. Both **exempt `FEE`**, keyed on the entry type alone — the one type charged
+> against no booking amount
+> and carrying no commission, so its gross and commission are both `0` and the whole fee is the net.
+> The commission rate is per venue and effective-dated (§3.1); the fee is one platform-wide amount
+> in `platform_setting`, which `payout` solely writes and an admin edits. Payouts settle manually via
 > BKT — the ledger is the record of what is owed.
 
 ### 3.6 `customer`
@@ -749,8 +775,8 @@ classDiagram
 > the suppression list is keyed by a peppered SHA-256 (`v1:<64 hex>`, ADR-0012) with the domain
 > kept in clear for operational reads.
 >
-> It listens rather than being called: `BookingConfirmed`, `BookingCancelled`,
-> `BookingPaymentDue`, `BookingRequestDeclined` and `BookingRequestExpired` arrive as events — five
+> It listens rather than being called: `BookingConfirmed`, `BookingCancelled`, `BookingMoved`,
+> `BookingPaymentDue`, `BookingRequestDeclined` and `BookingRequestExpired` arrive as events — six
 > listeners — and the facts each mail needs are resolved back through `booking`/`venue`/`customer`
 > ports from inside the listener. Which of the two ADR-0011 vehicles carries a mail follows from
 > its payload: an ids-only payload rides the **Event Publication Registry** (at-least-once,

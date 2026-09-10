@@ -18,7 +18,7 @@ import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 /**
- * Mails the tourist a record that the venue declined their Request-to-Book (#124) — the outcome
+ * Mails the tourist a record that the venue declined their Request-to-Book — the outcome
  * that until now reached only a guest who happened to reload the code-gated view, leaving everyone
  * else waiting on a request already refused.
  *
@@ -38,7 +38,7 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * Event Publication Registry's, whole; a transport failure propagates on purpose so the send is
  * retried. Giving up on an unresolvable fact is counted under this flow's own name,
  * {@link ObservabilityMetrics#MAIL_REQUEST_DECLINED_ABANDONED} — per loss, {@code ERROR}, never
- * summed with its four siblings — and returns normally so the publication completes: none of the
+ * summed with its five siblings — and returns normally so the publication completes: none of the
  * three facts can appear later.
  */
 @Component

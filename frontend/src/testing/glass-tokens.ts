@@ -169,8 +169,9 @@ export const DARK_POP_HOVER: Glass = { color: WHITE, alpha: 0.08 };
 export const CONSOLE_ACCENT_INK: Rgb = hexToRgb('0a6e85');
 export const DARK_CONSOLE_ACCENT_INK: Rgb = hexToRgb('a3e3f0');
 
-/** `--riv-console-negative-ink` — the operator console's negative ink: the reversal net
- *  and its reason chip on the Payouts tab, the failed-check-in notice on the Daily view. The
+/** `--riv-console-negative-ink` — the console's negative ink: the reversal net and its reason
+ *  chip on the Payouts tab, the failed-check-in notice on the Daily view, the fee column on the
+ *  admin Venue changes tab. The
  *  `negative` pole of the `--riv-console-*-ink` pair; the two share a host, a surface and a
  *  theme-invariance ground, but not a declaration and not a guard.
  *  Its own token despite equalling `SOLID_BTN_DANGER_INK` — that one is the outline BUTTON's ink

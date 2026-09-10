@@ -9,8 +9,9 @@ voiding a remodel-released booking's uncollected intent through `CancelPaymentPo
 `BookingPaymentDue`/`BookingRequestDeclined`/`BookingRequestExpired`/`BookingMoved` go to
 `notification` only. `ReviewsChanged` goes from `review` to `venue`, whose listener recomputes its own
 rating columns from a full re-read rather than from the payload (ADR-0015).
-`availability` has no event listener: the `(set, date)` row is claimed at reserve time and
-released on cancel synchronously through `AvailabilityClaim.claim/release` (invariant #2).
+`availability` has no event listener: the `(set, date)` row is claimed at reserve time or by a
+remodel move, and released on cancel or when a remodel moves or ends the claim — always
+synchronously through `AvailabilityClaim.claim/release` (invariant #2, ADR-0020).
 `payment` → `booking` (`PaymentConfirmed`/`PaymentCanceled`) is a synchronous
 in-transaction listener (no registry; see below). The asynchronous spine is
 `@ApplicationModuleListener` + the Event Publication Registry (schema Flyway-owned:

@@ -163,7 +163,7 @@ over time. The standing rules:
     mail must name the old spot. Its row/position and grid cell are free for a new set: the
     layout-uniqueness indexes are partial over active rows. `RetiredSetExclusionArchitectureTests`
     holds every production statement to this (§ *Machine-checked*).
-  - Which statuses are live is `booking`'s call (`BookingStatus#isTerminal`, reached through
+  - Which statuses are live is `booking`'s call (`BookingStatus#canStillBeHonoured`, reached through
     `BookingPresence#hasLiveBookings`); `venue` never enumerates booking statuses. Price,
     tier and the row's name stay editable on a claimed set: a booking's charge is
     snapshotted at reserve time, and `row_label` lives on `set_position` alone, so a guest
@@ -1288,8 +1288,11 @@ the mechanism and the edge cases. The numbering is `CLAUDE.md`'s and never chang
 10. **Cancellation/refund policy is enforced server-side.** Free cancellation until the #4
     cutoff → full refund; after → non-refundable (or partial); the window closes entirely at
     service-day open (00:00 `Europe/Tirane`) — a guest cancel is then refused, not refunded
-    (ADR-0005 as amended). The weather exception is a manual admin-triggered full refund,
-    deliberately outside that fence. Refund decisions are computed on the server.
+    (ADR-0005 as amended). Two refunds sit outside the tier, both deliberately. The weather
+    exception is a manual admin-triggered full refund. A **moved booking's free exit** returns the
+    full amount under reason `VENUE_CHANGE` until `BookingCutoff#freeExitEndsAt` — whatever the
+    `LATE` tier would answer — and never reopens `CLOSED`, because that deadline is itself capped
+    at service-day open (§`booking`, ADR-0020). Refund decisions are computed on the server.
 11. **Spring Modulith boundaries are hexagonal and id-based.** The ADR-0007 graduated shape:
     a full module is `{api?, spi?, vocabulary?, events?, application, domain, adapter/in,
     adapter/out}`; a thin module is `{api, vocabulary?, adapter/out}`. No `application/in|out`

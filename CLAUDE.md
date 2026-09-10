@@ -117,7 +117,7 @@ tables, and the lifecycles are guarded SQL (ADR-0018).
 |---|---|---|
 | `venue` | venue profile, beach map (sets, pools, positions), pricing, booking mode, sales-close setting, season closure, photos + moderation (ADR-0008/0013), commission-rate schedule | `venue`, `set_position`, `venue_amenity`, `venue_photo(_variant)`, `venue_commission_rate` |
 | `availability` | the per-`(set, date)` source-of-truth state; the only writer of that table | `set_availability` |
-| `booking` | bookings and codes, the whole lifecycle and its sweeps, request accept/decline, cancellation policy, driving refunds via `payment.api.RefundPort` | `booking` |
+| `booking` | bookings and codes, the whole lifecycle and its sweeps, request accept/decline, cancellation policy, driving refunds via `payment.api.RefundPort`, the remodel's claim classification and its commit receipt | `booking`, `remodel_receipt(_move/_outcome)` |
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `payment`, `stripe_webhook_event` |
 | `payout` | the venue payout ledger, manual BKT batches, and the platform's own settings (today: the venue-change fee) | `payout_ledger_entry`, `payout_batch`, `platform_setting` |
 | `customer` | tourist identity: guest contact, the customer account (sign-in, SSO, verification, password), GDPR erasure (ADR-0010) + retention sweep, the canonical email form | `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token` |
@@ -133,7 +133,8 @@ non-context modules, `allowedDependencies = {}` — **`challenge`** (proof of wo
 the root (ADR-0017). Their surfaces and contracts are `RESPONSIBILITIES.md` §s.
 
 **Collaboration:** events for state changes, `api/` ports for queries (invariant #11); the
-availability claim and the erasure reach into reviews are synchronous ports. The nine
+availability claim, the erasure reach into reviews, and the remodel's gate and claim settlement
+(ADR-0020) are synchronous ports. The nine
 events: `PaymentConfirmed`/`PaymentCanceled` → `booking`; `BookingConfirmed`/
 `BookingCancelled` → `payout`, `notification` (and `booking`'s own refund and intent-void listeners);
 `BookingPaymentDue`, `BookingRequestDeclined`, `BookingRequestExpired`, `BookingMoved` →
@@ -179,8 +180,9 @@ numbering is stable; **never renumber**. Mechanisms and edge cases: `RESPONSIBIL
    Σ amounts − commission (per-venue, effective-dated, forward-only) − fees. Direction lives in
    the entry type, never in the amount.
 10. **Cancellation/refund policy is enforced server-side.** Free until the #4 cutoff, then
-    non-refundable; the window closes at service-day open (ADR-0005). The weather refund is a
-    manual admin action outside that fence.
+    non-refundable; the window closes at service-day open (ADR-0005). Two refunds sit outside the
+    tier: the admin weather refund, and a **moved booking's free exit**, which returns the full
+    amount whatever the tier says until its deadline, itself capped at service-day open.
 11. **Spring Modulith boundaries are hexagonal and id-based** (ADR-0007): cross-module access
     only via another module's `api/` port or a domain event; event payloads carry technical ids
     and values, never a foreign aggregate — `BookingConfirmed` deliberately carries

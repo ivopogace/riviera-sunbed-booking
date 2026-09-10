@@ -411,9 +411,11 @@
       Rationale: docs/design/colour-literal-token-audit.md § class R. */
   --riv-console-accent-ink: #0a6e85;
 
-  /** The operator console's NEGATIVE ink — the reversal net and its reason chip on the Payouts
-      tab, the failed-check-in notice on the Daily view. Three positions, all on the console's
-      card glass. The `negative` pole of the --riv-console-*-ink pair whose accent pole sits above.
+  /** The console's NEGATIVE ink — the reversal net and its reason chip on the Payouts tab, the
+      failed-check-in notice on the Daily view, the fee column on the admin Venue changes tab.
+      Four positions across both consoles, on card glass and on the tints laid over it. The
+      `negative` pole of the
+      --riv-console-*-ink pair whose accent pole sits above.
 
       Its own token, NOT a reuse, although --riv-solid-btn-danger-ink carries this exact value and
       is itself theme-invariant, so the substitution would resolve correctly and look free. It is

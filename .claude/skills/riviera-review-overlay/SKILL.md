@@ -112,7 +112,9 @@ diff adds or tightens a member of the net, re-walk **every** example in the subs
 **including files the diff never opened** — the example that breaks is by definition not in
 the diff. A fitness function outside the net names its target (`ErrorContractArchitectureTests`
 the exception-handler annotations, `ResponsibilitiesArchitectureTests` a table or a module, an
-`*AuthPlacementTests` one module), so tightening one puts a narrower walk due: grep the substrate
+`*AuthPlacementTests` one module) — as does the net's one admitted-by-decision member,
+`RetiredSetExclusionArchitectureTests` (`CLAUDE.md` § *Commands*). Tightening a target-naming
+rule puts a narrower walk due, net member or not: grep the substrate
 for the names read out of the test and walk those hits alone — an example that never names the
 target cannot break. A diff that adds a rule of any other kind (a review item, a skill's prose
 rule, a guard script) gets the first walk alone. Locate the examples, then sweep for the

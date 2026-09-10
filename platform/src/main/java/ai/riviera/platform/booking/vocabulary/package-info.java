@@ -1,7 +1,7 @@
 /**
  * Published <strong>vocabulary</strong> of the {@code booking} module (invariant #11) — the
  * {@link BookingId} typed id, the {@link RefundReason} carried by
- * {@code BookingCancelled} (policy vs weather, ADR-0005), {@link OnlineTakings} returned by
+ * {@code BookingCancelled} (policy, weather or venue change; ADR-0005), {@link OnlineTakings} returned by
  * the {@code api/DailyTakings} query port, {@link BookingNotificationInfo} returned by
  * the {@code api/BookingNotificationFacts} query port, and the {@link CancellationWindow}
  * phases (FREE/LATE/CLOSED) the events and views speak. Value types only — the module's

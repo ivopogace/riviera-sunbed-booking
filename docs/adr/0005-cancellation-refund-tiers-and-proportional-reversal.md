@@ -25,6 +25,7 @@ reclaim money afterwards.
   `venue.late_cancel_refund_bps` (basis points, `0..10000`, **default 0** = non-refundable);
   `refund = floorDiv(gross × bps, 10000)`, rounded **down** (the platform keeps the sub-cent,
   consistent with commission rounding). The set is freed regardless of tier (invariant #2).
+  A **moved booking's free exit overrides this tier** with a full refund — see the amendment log.
 - **`CLOSED`** — from `00:00` on the booking date onward. The cancellation is **refused**
   (`CancelOutcome.WindowClosed` → `409 CANCELLATION_WINDOW_CLOSED`): nothing is refunded, the
   `(set, date)` row is not released, and **no `BookingCancelled` is published**, which is what
@@ -67,7 +68,8 @@ returns the venue's own money behind an `assertOwns` check (invariant #13). Pinn
   share of money it actually returned.
 - The reversal listener reads the prior ACCRUAL to mirror it, never the venue's current rate.
 - A future session must not "simplify" the missing-accrual throw back into a silent return, read
-  "two tiers" as the whole rule, or fence the weather refund for symmetry.
+  "two tiers" as the whole rule, or fence the weather refund — or a moved booking's free exit —
+  for symmetry.
 
 ## Alternatives considered
 
@@ -91,3 +93,11 @@ returns the venue's own money behind an `assertOwns` check (invariant #13). Pinn
 - 2026-07-29, #428 — a missing accrual defers (throws) instead of declining.
 - 2026-08-08, #566 — the third `CLOSED` tier at service-day open; the weather refund stays
   outside the fence.
+- 2026-09-10, epic #1027 — a **second** refund now sits outside the tiers. A booking a remodel
+  moved earns a **free exit**: a full refund under reason `VENUE_CHANGE` until
+  `BookingCutoff#freeExitEndsAt` = `min(serviceDayOpensAt, max(12:00 the day before,
+  movedAt + notice))`, whatever `LATE` would otherwise answer. It does **not** reopen `CLOSED` —
+  the deadline is capped at service-day open, so the refusal above still holds — and it is the
+  venue's change that earned it, which is why the same reason charges the venue a fee (ADR-0021).
+  Orchestration and the move itself: ADR-0020. The standing warning in *Consequences* covers this
+  exit too: do not fence it for symmetry either.

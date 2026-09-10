@@ -32,8 +32,8 @@ const FALLBACK_TAB: AdminTabRouteData = {
 };
 
 /**
- * The admin console's page — the one persistent host for every `/admin/*` tab (Operators,
- * Commissions, Email, Refunds, Photos, Privacy, Audit), each a child route. Owns what every tab
+ * The admin console's page — the one persistent host for every `/admin/*` tab (Operators, Email,
+ * Refunds, Photos, Reviews, Commissions, Venue changes, Privacy, Audit), each a child route. Owns what every tab
  * used to repeat identically: the per-tab title and the self-gate on {@link OperatorAuth}
  * (loading / signed-out / forbidden — UX only, the backend `/api/admin/**` role gate does the
  * actual enforcing), both read once per navigation from the active child's `data.adminTab`

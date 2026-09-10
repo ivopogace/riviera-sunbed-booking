@@ -10,7 +10,7 @@ package ai.riviera.platform.operator.vocabulary;
  * {@code venue::api}, then {@code venue → operator} (to call {@link ai.riviera.platform.operator.api.VenueOwnership VenueOwnership}) plus
  * {@code operator → venue} (for {@code VenueId}) would form a Spring Modulith cycle. Publishing a
  * dedicated {@code VenueRef} keeps {@code operator}'s {@code allowedDependencies} empty and the
- * module graph acyclic, so a <em>single uniform</em> {@code api} port serves all five callers.
+ * module graph acyclic, so a <em>single uniform</em> {@code api} port serves every caller.
  * Callers convert with {@code new VenueRef(venueId.value())}.
  */
 public record VenueRef(long value) {

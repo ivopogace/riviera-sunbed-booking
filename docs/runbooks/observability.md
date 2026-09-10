@@ -514,13 +514,13 @@ booking id and both set ids, never the arrival code or the address (invariant #7
 
 ### `riviera_mail_payment_due_abandoned_total` (counter, #373)
 
-**The third of the abandoned series** — same vehicle, same three `reason` tag values off the same
+**The fourth of the abandoned series** — same vehicle, same three `reason` tag values off the same
 enum, same invisibility to `riviera_outbox_pending`, same "do not sum" rule, same data-integrity
 reading. The mail is the one an accepted Request-mode booking's guest gets telling them payment is
 due and by when.
 
 **What makes this one different is that it is a *deadline* you are racing, not a record you are
-reconstructing.** The other two describe something already settled; this one is the guest's only
+reconstructing.** The other three describe something already settled; this one is the guest's only
 notice that an accepted request must be paid for. So read one increment as a **prediction**: unless
 someone reaches that guest out-of-band, the abandoned-payment sweep will expire the booking at its
 `payBy` and release the set, and the venue will have held a spot for nothing.
@@ -545,8 +545,8 @@ booking id, the set id and the deadline — never the arrival code, never the pa
 
 > **The separate-series argument is the cancellation counter's, verbatim:** this name states a
 > **flow**, so it cannot be a `kind` tag on a counter named for a different flow, and the shipped
-> names stay. Only the `reason` dimension is shared, off one enum, so a filter written for any of the
-> three works on all three.
+> names stay. Only the `reason` dimension is shared, off one enum, so a filter written for any one of
+> the abandoned counters works on all six.
 
 ## Alert route (today): in-app self-check → ERROR log
 
