@@ -46,6 +46,7 @@ graph TB
     end
     subgraph booking["booking"]
         BOOK["booking"]
+        RCPT["remodel_receipt<br/>+ _move, _outcome"]
     end
     subgraph payment["payment"]
         PAY["payment<br/>+ stripe_webhook_event"]
@@ -53,6 +54,7 @@ graph TB
     subgraph payout["payout"]
         LEDG["payout_ledger_entry"]
         BATCH["payout_batch"]
+        PSET["platform_setting<br/>(the venue-change fee)"]
     end
     subgraph notification["notification — owns email_suppression, mail attempts"]
     end
@@ -329,6 +331,7 @@ classDiagram
         created_at, confirmed_at, completed_at
         cancelled_at, refund_minor, cancel_reason
         request_expires_at, accepted_at
+        moved_at
         UNIQUE (code)
         CHECK status IN (the nine below)
     }
@@ -365,11 +368,19 @@ classDiagram
         POLICY
         WEATHER
         CONFLICT
+        VENUE_CHANGE
+    }
+    class remodel_receipt {
+        <<table>>
+        id, venue_id, operator_id, committed_at
+        _move child (from/to set, labels, rows_away, positions_away)
+        _outcome child (kind, booking_id, refund_minor, fee_minor, reason)
     }
     booking ..> BookingStatus : status
     BookingTransition ..> BookingStatus : the lifecycle, stated once
     RefundPolicy ..> CancellationWindow : one tier per window
     booking ..> RefundReason : cancel_reason
+    remodel_receipt "1" o-- "many" booking : what one commit moved, refunded or released
 ```
 
 > The booking **code** is an unguessable bearer credential — ≥ 8 random base32 chars, never
@@ -389,7 +400,7 @@ classDiagram
 >
 > **Scale note.** `booking` is by a wide margin the largest module, and the only one ADR-0007
 > (sub-decision 3) slices by use case: `application/{reserve, cancel, refund, request, checkin,
-> view}`, with `domain/` flat and shared. A nine-field sketch is not the shape of the module; the
+> view, remodel}`, with `domain/` flat and shared. A nine-field sketch is not the shape of the module; the
 > slices are.
 
 ### 3.4 `payment`
@@ -474,7 +485,7 @@ classDiagram
         VenueId, long bookingId
         EntryType, RefundReason reason
         grossMinor, commissionMinor, netMinor, currency
-        accrual() / reversalOf()
+        accrual() / reversalOf() / fee()
     }
     class PayoutBatch {
         <<record>>
@@ -491,12 +502,19 @@ classDiagram
         <<enum>>
         ACCRUAL
         REVERSAL
+        FEE
     }
     class BatchStatus {
         <<enum>>
         DRAFT
         REPORTED
         SETTLED
+    }
+    class platform_setting {
+        <<table>>
+        setting_key (PK), amount_minor, currency
+        CHECK setting_key IN (VENUE_CHANGE_FEE, the only one)
+        CHECK amount_minor within its bound
     }
     payout_ledger_entry ..> PayoutLedgerEntry : the row, as a record
     payout_batch ..> PayoutBatch : the row, as a record
@@ -511,10 +529,17 @@ classDiagram
 > `Money`, and one field the old diagram omitted: `reason`, which is what makes a `REVERSAL`
 > auditable under invariant #9. `bookingId` is a bare `long` while `venueId` is typed.
 >
-> A booking contributes **exactly once** (an `ACCRUAL`) and a refund posts a proportional
-> `REVERSAL`, enforced by `payout_once_per_booking UNIQUE (booking_id, entry_type)` (invariant #9).
-> `net = gross − commission`, checked in the record's canonical constructor and again by
-> `payout_net_check`; the rate is per venue and effective-dated (§3.1). Payouts settle manually via
+> A booking contributes **exactly once** (an `ACCRUAL`), a refund posts a proportional `REVERSAL`,
+> and a refund the venue's own layout change caused posts a `FEE` beside it — each enforced by
+> `payout_once_per_booking UNIQUE (booking_id, entry_type)` (invariant #9).
+>
+> **Direction lives in the entry type, never in the amount.** Every amount is a non-negative
+> magnitude, so a payout reads `Σ ACCRUAL.net − Σ REVERSAL.net − Σ FEE.net`: only an `ACCRUAL` adds
+> (ADR-0021). `net = gross − commission` is checked in the record's canonical constructor and again
+> by `payout_net_check` — which **exempts `FEE`**, the one type charged against no booking amount
+> and carrying no commission, so its gross and commission are both `0` and the whole fee is the net.
+> The commission rate is per venue and effective-dated (§3.1); the fee is one platform-wide amount
+> in `platform_setting`, which `payout` solely writes and an admin edits. Payouts settle manually via
 > BKT — the ledger is the record of what is owed.
 
 ### 3.6 `customer`
