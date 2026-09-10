@@ -216,10 +216,12 @@ in for `feature/venue-caused-cancellation` (`riviera-sdlc` § *Remote / cloud se
       replaces the dialog listing the refund line, and the surface is axe-clean. *Seam:* the
       operator console's beach-map route · *Pinned by:*
       `frontend/e2e/layout-editor.e2e.ts` › `a picture with refunds commits once the count and reason are typed`
-- [ ] **AC-15:** Given a real backend, when a remodel refunds a confirmed booking, then the guest's
-      booking reads `CANCELLED`, the mock outbox holds the cancellation mail with its rebook link,
-      and the payout ledger holds a `VENUE_CHANGE` reversal. *Seam:* the deployed HTTP surface ·
-      *Pinned by:* `frontend/e2e/real-backend/remodel-move.e2e.ts` › `a remodel that refunds`
+- [ ] **AC-15:** Given a real backend, when a remodel leaves a booked set with nowhere same-or-better
+      to go, then Save is inert until the count and reason are typed, the receipt lists the refund
+      with that reason, the guest's booking reads `CANCELLED` and refunded, and the mock outbox holds
+      the cancellation mail with its rebook link. *Seam:* the deployed HTTP surface · *Pinned by:*
+      `frontend/e2e/real-backend/remodel-move.e2e.ts` › `with nowhere same-or-better free, the commit
+      refunds the guest under the typed confirmation`
 
 ## Non-goals
 
@@ -469,7 +471,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/test/java/ai/riviera/platform/booking/application/remodel/RemodelClaimsServiceTest.java` — AC-2..5
 - `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcRemodelReceiptsIT.java` — the outcome round-trip
 - `platform/src/test/java/ai/riviera/platform/booking/adapter/in/RemodelReleasePaymentListenerTest.java` — AC-9
-- `platform/src/test/java/ai/riviera/platform/RemodelCommitIT.java` — AC-6, AC-7
+- `platform/src/test/java/ai/riviera/platform/RemodelCommitIT.java` — AC-6, AC-7, the ledger legs
+- `platform/src/main/java/ai/riviera/platform/notification/adapter/in/MockMailOutboxController.java` — the rebook link the real-backend spec reads
 - `platform/src/test/java/ai/riviera/platform/RemodelReceiptIT.java` — AC-8
 - `platform/src/test/java/ai/riviera/platform/notification/adapter/in/BookingCancellationMailListenerTest.java` — AC-10
 - `platform/src/test/java/ai/riviera/platform/notification/BookingCancellationMailIT.java` — the vehicle + suppression on the venue-caused leg

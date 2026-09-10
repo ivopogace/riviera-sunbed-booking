@@ -1,8 +1,11 @@
 package ai.riviera.platform;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+
+import org.awaitility.Awaitility;
 
 import jakarta.servlet.http.Cookie;
 
@@ -179,6 +182,7 @@ class RemodelCommitIT {
 		LocalDate declineDay = today.plusDays(13);
 		long moved = claimOn(venue, a1, moveDay, "CONFIRMED");
 		long refunded = claimOn(venue, a1, refundDay, "CONFIRMED");
+		seedAccrual(venue, refunded);
 		long released = claimOn(venue, a1, releaseDay, "AWAITING_PAYMENT");
 		long declined = claimOn(venue, a1, declineDay, "PENDING_REQUEST");
 		// A2 is the only candidate, so blocking it on three days leaves one move and three ended claims.
@@ -214,6 +218,12 @@ class RemodelCommitIT {
 		for (LocalDate day : List.of(refundDay, releaseDay, declineDay)) {
 			assertEquals(0, holds(a1, day), "every ended claim frees its (set, date) row");
 		}
+
+		// The reversal rides the same BookingCancelled the mail does — after commit, so it is awaited.
+		Awaitility.await().atMost(Duration.ofSeconds(20))
+				.until(() -> "VENUE_CHANGE".equals(reversalReasonOf(refunded)));
+		assertEquals(0, ledgerRowsFor(released), "a released claim collected nothing to reverse");
+		assertEquals(0, ledgerRowsFor(declined), "a declined request never accrued");
 		assertEquals(3, jdbc.sql("SELECT COUNT(*) FROM remodel_receipt_outcome WHERE receipt_id = :r")
 				.param("r", receipt).query(Integer.class).single());
 		assertEquals("Re-laying row A for the season",
@@ -339,6 +349,25 @@ class RemodelCommitIT {
 		long id = seedBooking(venueId, setId, "CMT-" + System.nanoTime(), status, date);
 		seedHold(setId, date, "BOOKED_ONLINE");
 		return id;
+	}
+
+	/** The accrual a confirmed booking would already carry, so the reversal has its mirror. */
+	private void seedAccrual(long venueId, long bookingId) {
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (booking_id, venue_id, entry_type, gross_minor, commission_minor,
+				                                 net_minor, currency, reason)
+				VALUES (:b, :v, 'ACCRUAL', 2000, 300, 1700, 'EUR', NULL)
+				""").param("b", bookingId).param("v", venueId).update();
+	}
+
+	private String reversalReasonOf(long bookingId) {
+		return jdbc.sql("SELECT reason FROM payout_ledger_entry WHERE booking_id = :b AND entry_type = 'REVERSAL'")
+				.param("b", bookingId).query(String.class).optional().orElse(null);
+	}
+
+	private int ledgerRowsFor(long bookingId) {
+		return jdbc.sql("SELECT COUNT(*) FROM payout_ledger_entry WHERE booking_id = :b")
+				.param("b", bookingId).query(Integer.class).single();
 	}
 
 	private String statusOf(long bookingId) {

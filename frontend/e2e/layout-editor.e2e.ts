@@ -440,6 +440,44 @@ const RECEIPT = {
       positionsAway: 0,
     },
   ],
+  refunds: [],
+  releases: [],
+  refundReason: '',
+  refundedTotal: null,
+};
+
+/** The same save when a claim must be refunded too — the picture that needs the typed confirmation. */
+const REFUNDING_PREVIEW = {
+  ...BLOCKED_PREVIEW,
+  staffHolds: [],
+  blocks: [],
+  keep: [],
+  previewToken: 'v1.refunds',
+};
+
+/** The receipt the commit of {@link REFUNDING_PREVIEW} answers. */
+const REFUNDING_RECEIPT = {
+  ...RECEIPT,
+  receiptId: 42,
+  refunds: [
+    {
+      bookingId: 8,
+      bookingDate: '2026-09-22',
+      from: { setId: 2, rowLabel: 'B', positionNo: 1 },
+      amount: { minorUnits: 2000, currency: 'EUR' },
+    },
+  ],
+  releases: [
+    {
+      bookingId: 9,
+      bookingDate: '2026-09-23',
+      from: { setId: 2, rowLabel: 'B', positionNo: 1 },
+      amount: { minorUnits: 2000, currency: 'EUR' },
+      kind: 'DECLINE',
+    },
+  ],
+  refundReason: 'Re-laying row B for the season',
+  refundedTotal: { minorUnits: 2000, currency: 'EUR' },
 };
 
 test('holds both surfaces until the map read settles (#721)', async ({ page }) => {
@@ -842,7 +880,7 @@ test('a moves-only preview commits: Save and move POSTs the token, the receipt r
   });
   await page.route(/\/api\/venues\/1\/remodels$/, (route) =>
     route.fulfill({
-      json: [{ receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moveCount: 1 }],
+      json: [{ receiptId: 41, committedAt: '2026-09-09T13:00:00Z', moveCount: 1, refundCount: 0 }],
     }),
   );
   await page.route(/\/api\/venues\/1\/remodels\/41$/, (route) => route.fulfill({ json: RECEIPT }));
@@ -908,6 +946,70 @@ test('a moves-only preview commits: Save and move POSTs the token, the receipt r
     'Remodel saved · receipt #41',
   );
   await expect(page.getByTestId('layout-remodel-receipt-title')).toBeFocused();
+});
+
+test('a picture with refunds commits once the count and reason are typed, and the receipt lists them (#1035, + axe)', async ({
+  page,
+}) => {
+  await mockEditor(page, [], SEEDED_SETS, [], REFUNDING_PREVIEW);
+  const commits: Request[] = [];
+  await page.route(/\/api\/venues\/1\/beach-map\/commit$/, (route) => {
+    commits.push(route.request());
+    return route.fulfill({ json: REFUNDING_RECEIPT });
+  });
+  await page.goto('/operator/1/beach-map');
+  await signIn(page);
+  await page.getByTestId('layout-tool-gap').click();
+  await page.locator('[data-testid="layout-cell"][data-grid-row="1"][data-grid-col="0"]').click();
+  await page.getByTestId('layout-save').click();
+
+  const dialog = page.getByTestId('layout-remodel-preview');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('is ended');
+  const save = page.getByTestId('layout-remodel-commit');
+  await expect(save).toHaveText('Save and move 1, refund 1, release 1 bookings');
+  await expect(save).toBeDisabled();
+
+  // The count field, not Save, takes focus while there is something to fill in.
+  const count = page.getByTestId('layout-remodel-refund-count');
+  await expect(count).toBeFocused();
+  await expect(count).toHaveCSS('min-height', '44px');
+  // The fixed warn family, by computed style: a themed field skin would drift on this ground.
+  await expect(count).toHaveCSS('color', 'rgb(122, 74, 8)');
+  await expect(count).toHaveCSS('background-color', 'rgb(255, 244, 224)');
+
+  await count.fill('3');
+  await count.blur();
+  await expect(page.getByTestId('layout-remodel-refund-count-error')).toHaveText(
+    'Type 1 to confirm the refunds.',
+  );
+  await expect(save).toBeDisabled();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'layout editor, remodel refund confirmation');
+
+  await count.fill('1');
+  await page.getByTestId('layout-remodel-reason').fill('Re-laying row B for the season');
+  await expect(save).toBeEnabled();
+  await save.click();
+
+  const body = commits[0].postDataJSON() as { refundCount: number; refundReason: string };
+  expect(body.refundCount).toBe(1);
+  expect(body.refundReason).toBe('Re-laying row B for the season');
+
+  const receipt = page.getByTestId('layout-remodel-receipt');
+  await expect(receipt).toBeVisible();
+  await expect(page.getByTestId('layout-remodel-receipt-refunds')).toContainText(
+    'Row B · position 1 · Tue 22 Sept 2026 · €20',
+  );
+  await expect(receipt).toContainText('Refunded (1) · €20 returned');
+  await expect(page.getByTestId('layout-remodel-receipt-reason')).toHaveText(
+    'Reason: Re-laying row B for the season',
+  );
+  await expect(page.getByTestId('layout-remodel-receipt-releases')).toContainText(
+    'pending request declined',
+  );
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'layout editor, remodel receipt with refunds');
 });
 
 test('a commit that finds the bookings changed re-renders the fresh picture stale, and the next Save carries its token (#1034)', async ({

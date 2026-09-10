@@ -10,7 +10,9 @@ import { createVenue, signInOperator, uniqueSuffix, venueName } from './support/
  * booked set out and previews, the commit moves the booking and the layout in one transaction under
  * the venue-wide set lock (invariant #2), the "your spot changed" mail lands in the recording mailer's
  * outbox (read over the operator-gated mock-mail endpoint), and the guest takes the free exit for a
- * full refund — the refund tier the move overrides (invariant #10).
+ * full refund — the refund tier the move overrides (invariant #10). The second run takes the other
+ * branch: with nowhere same-or-better to go, the commit refunds the guest under the typed
+ * confirmation and mails them a link to book again.
  *
  * The tourist runs in its OWN browser context: the booking legs are session-free, and sharing the
  * operator's cookie would test a signed-in operator booking a sunbed instead. Local-only suite (never
@@ -77,6 +79,22 @@ interface BookingMail {
   rowsAway: number | null;
   positionsAway: number | null;
   freeExitUntil: string | null;
+  rebookLink: string | null;
+}
+
+/** Poll the recording mailer's outbox until the guest's mail of `kind` has landed. */
+async function awaitMail(page: Page, email: string, kind: string): Promise<BookingMail> {
+  let found: BookingMail | undefined;
+  await expect(async () => {
+    const response = await page.request.get(
+      `${API}/api/mock-mail/booking-mails?to=${encodeURIComponent(email)}`,
+    );
+    expect(response.ok()).toBe(true);
+    const mails = (await response.json()) as BookingMail[];
+    found = mails.find((mail) => mail.kind === kind);
+    expect(found).toBeDefined();
+  }).toPass({ timeout: 20_000 });
+  return found!;
 }
 
 test.describe('remodel commit — real backend, real Postgres', () => {
@@ -126,18 +144,9 @@ test.describe('remodel commit — real backend, real Postgres', () => {
       await expect(page.getByTestId('layout-saved')).toBeVisible();
 
       // The "your spot changed" mail rides an AFTER_COMMIT event, so the outbox is polled, not assumed.
-      let moved: BookingMail | undefined;
-      await expect(async () => {
-        const response = await page.request.get(
-          `${API}/api/mock-mail/booking-mails?to=${encodeURIComponent(email)}`,
-        );
-        expect(response.ok()).toBe(true);
-        const mails = (await response.json()) as BookingMail[];
-        moved = mails.find((mail) => mail.kind === 'BOOKING_MOVED');
-        expect(moved).toBeDefined();
-      }).toPass({ timeout: 20_000 });
+      const moved = await awaitMail(page, email, 'BOOKING_MOVED');
       expect(moved).toMatchObject({ from: 'A1', to: 'A2', rowsAway: 0, positionsAway: 1 });
-      expect(moved?.freeExitUntil).toBeTruthy();
+      expect(moved.freeExitUntil).toBeTruthy();
 
       // The guest reads the change on the booking they hold, with the same deadline the mail named.
       await tourist.goto(`/booking/${code}`);
@@ -164,6 +173,78 @@ test.describe('remodel commit — real backend, real Postgres', () => {
       await expect(tourist.getByTestId('booking-cancelled')).toContainText(
         'You cancelled this booking after the venue moved your spot.',
       );
+      await expect(tourist.getByTestId('refunded-amount')).toBeVisible();
+    } finally {
+      await touristContext.close();
+    }
+  });
+
+  test('with nowhere same-or-better free, the commit refunds the guest under the typed confirmation', async ({
+    page,
+    browser,
+  }: {
+    page: Page;
+    browser: Browser;
+  }) => {
+    await page.goto('/operator?create=1');
+    await signInOperator(page);
+    await expect(page.getByRole('heading', { name: 'Venue details' })).toBeVisible();
+    const venueId = await createVenue(page, venueName('refund'));
+    await layOutRowOfThree(page, venueId);
+
+    const touristContext = await browser.newContext();
+    const tourist = await touristContext.newPage();
+    try {
+      const email = `e2e-refunded-${uniqueSuffix()}@example.com`;
+      const date = farFutureDate();
+      const code = await bookSpotOne(tourist, venueId, date, email);
+
+      // Take the other two sets off the online pool first, so the booked one has no candidate left.
+      await page.goto(`/operator/${venueId}/beach-map`);
+      await expect(page.getByTestId('layout-editor')).toBeVisible();
+      await page.getByTestId('layout-tool-walkin').click();
+      await page
+        .locator('[data-testid="layout-cell"][data-grid-row="0"][data-grid-col="1"]')
+        .click();
+      await page
+        .locator('[data-testid="layout-cell"][data-grid-row="0"][data-grid-col="2"]')
+        .click();
+      await page.getByTestId('layout-save').click();
+      await expect(page.getByTestId('layout-saved')).toBeVisible();
+
+      // Now paint the booked set out: the dry run answers a refund, not a move.
+      await page.getByTestId('layout-tool-gap').click();
+      const a1 = page.locator('[data-testid="layout-cell"][data-grid-row="0"][data-grid-col="0"]');
+      await a1.click();
+      await page.getByTestId('layout-save').click();
+
+      await expect(page.getByTestId('layout-remodel-preview')).toBeVisible();
+      await expect(page.getByTestId('layout-remodel-refunds')).toContainText('refunded in full');
+      await expect(page.getByTestId('layout-remodel-moves')).toHaveCount(0);
+      const save = page.getByTestId('layout-remodel-commit');
+      await expect(save).toBeDisabled();
+
+      await page.getByTestId('layout-remodel-refund-count').fill('1');
+      await page.getByTestId('layout-remodel-reason').fill('Re-laying row A for the season');
+      await expect(save).toBeEnabled();
+      await save.click();
+
+      await expect(page.getByTestId('layout-remodel-receipt')).toBeVisible();
+      await expect(page.getByTestId('layout-remodel-receipt-refunds')).toContainText(
+        'Row A · position 1',
+      );
+      await expect(page.getByTestId('layout-remodel-receipt-reason')).toHaveText(
+        'Reason: Re-laying row A for the season',
+      );
+      await expect(page.getByTestId('layout-saved')).toBeVisible();
+
+      // The cancellation mail carries the way back: the venue's own map for the day it can still sell.
+      const cancelled = await awaitMail(page, email, 'BOOKING_CANCELLATION');
+      expect(cancelled.rebookLink).toContain(`/venues/${venueId}?date=${date}`);
+
+      // The guest reads the cancellation on the booking they hold, refunded in full.
+      await tourist.goto(`/booking/${code}`);
+      await expect(tourist.getByTestId('booking-status')).toHaveText('Cancelled');
       await expect(tourist.getByTestId('refunded-amount')).toBeVisible();
     } finally {
       await touristContext.close();
