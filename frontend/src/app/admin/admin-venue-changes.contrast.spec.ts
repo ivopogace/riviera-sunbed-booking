@@ -14,7 +14,9 @@ import {
  * refund count are `--riv-card-ink`; the intro, amounts and column headers `--riv-card-ink-soft`; the
  * fee column `--riv-console-negative-ink`, the same ink a payout-ledger deduction wears, over the card
  * and over the table header's own tint; the load-error `--riv-error-ink` on the inset; the Refresh
- * button's `--riv-accent-ink` over the console tint at 0.05.
+ * button's `--riv-accent-ink` over the console tint at 0.05. The fee editor adds two: its field text
+ * (`--riv-card-ink`) over the inset it is typed into, and its field/save errors (`--riv-error-ink`)
+ * over the card glass, where the editor's own bordered box sits.
  */
 describe.each(CONSOLE_THEMES)(
   'AdminVenueChanges contrast in the $name console (WCAG AA)',
@@ -45,6 +47,14 @@ describe.each(CONSOLE_THEMES)(
       expectAaOnSurfaces(theme, theme.accentRing, 1, (stop) =>
         tintOver(theme, theme.tint, 0.05, stop),
       );
+    });
+
+    it('the fee editor field text (--riv-card-ink) meets AA on the inset it is typed into', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.7, stop));
+    });
+
+    it('the fee editor errors (--riv-error-ink) meet AA on the card glass', () => {
+      expectAaOnSurfaces(theme, theme.errorInk, 1, (stop) => cardOver(theme, stop));
     });
   },
 );

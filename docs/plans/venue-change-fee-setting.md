@@ -229,9 +229,11 @@ rejected half of the resolved open question above).
 **Standards:** standalone components, `inject()`, `@if`/`@for`, `input()`/`output()` signal
 APIs. The editor uses Signal Forms per the angular-cli MCP's v22 best-practices guide ("prefer
 Signal Forms for new forms"), matching `admin-privacy.ts` and `operator/set-editor.ts`; the
-sibling `admin-commissions.ts` predates that idiom and is deliberately left alone. The write is
-a plain `HttpClient.put`, not `httpResource` — the guide's own tip is to avoid `httpResource`
-for mutations. No new images, so `NgOptimizedImage` does not apply.
+sibling `admin-commissions.ts` predates that idiom and is deliberately left alone. Signal Forms
+owns a bound field's native validation attributes (`NG8022`), so `min`/`max`/`maxlength` moved
+into the form schema and the amount is validated by parsing it on save through the one
+euros↔minor helper. The write is a plain `HttpClient.put`, not `httpResource` — the guide's own
+tip is to avoid `httpResource` for mutations. No new images, so `NgOptimizedImage` does not apply.
 
 **Where it lives:** the fee card is a sibling above the report list on the existing Venue
 changes tab, not a new route. That tab already reports what the fee has charged each venue, so
@@ -252,17 +254,17 @@ number. Rejected: a new `Fees` tab in the Money group, which would split the two
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** add the fee card to the Venue changes tab with a Signal Forms editor, and extend the
-tab's four specs.
+**Next action:** write the mocked Playwright spec for the edit, then the docs and the ADR-0021
+amendment, and retire #1036's plan doc.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Table, port, JDBC adapter | ✅ | `6d0239a9` |
 | 1 — Listener and rate read through the port | ✅ | `9e987086` |
-| 2 — Admin read/write endpoint | ✅ | |
-| 3 — Admin console fee card | | |
+| 2 — Admin read/write endpoint | ✅ | `003dbba9` |
+| 3 — Admin console fee card | ✅ | |
 | 4 — e2e, docs, ADR-0021 amendment, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

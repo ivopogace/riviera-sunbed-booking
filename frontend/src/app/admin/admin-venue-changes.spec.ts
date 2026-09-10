@@ -7,7 +7,7 @@ import { OperatorAuth } from '../core/operator-auth';
 import { AdminVenueChanges } from './admin-venue-changes';
 import { AdminVenueChangesService } from './admin-venue-changes.service';
 import { AdminVenuesService } from './admin-venues.service';
-import { VenueChangeRefundsView } from './admin.model';
+import { VenueChangeFeeView, VenueChangeRefundsView } from './admin.model';
 
 /**
  * The admin console's Venue changes tab: venue-caused refunds per venue with count, what was returned
@@ -26,6 +26,8 @@ const VENUES = [
   { id: 7, name: 'Bora Bora', beach: 'Dhërmi' },
 ];
 
+const FEE: VenueChangeFeeView = { amountMinor: 500, currency: 'EUR' };
+
 function authStub(isAdmin = true): OperatorAuth {
   return {
     restoring: signal(false),
@@ -35,17 +37,28 @@ function authStub(isAdmin = true): OperatorAuth {
   } as unknown as OperatorAuth;
 }
 
+interface Stubs {
+  readonly fee?: () => Promise<VenueChangeFeeView>;
+  readonly setFee?: (amountMinor: number, reason?: string) => Promise<VenueChangeFeeView>;
+}
+
 async function render(
   report: () => Promise<VenueChangeRefundsView>,
   venues: () => Promise<readonly { id: number; name: string; beach: string }[]> = () =>
     Promise.resolve(VENUES),
+  stubs: Stubs = {},
 ): Promise<ComponentFixture<AdminVenueChanges>> {
+  const changes = {
+    report,
+    fee: stubs.fee ?? (() => Promise.resolve(FEE)),
+    setFee: stubs.setFee ?? (() => Promise.resolve(FEE)),
+  };
   await TestBed.configureTestingModule({
     imports: [AdminVenueChanges],
     providers: [
       provideRouter([]),
       { provide: OperatorAuth, useValue: authStub() },
-      { provide: AdminVenueChangesService, useValue: { report } },
+      { provide: AdminVenueChangesService, useValue: changes },
       { provide: AdminVenuesService, useValue: { venues } },
     ],
   }).compileComponents();
@@ -55,6 +68,40 @@ async function render(
   await fixture.whenStable();
   fixture.detectChanges();
   return fixture;
+}
+
+/** Arm the fee editor and settle the render it triggers. */
+async function armEditor(fixture: ComponentFixture<AdminVenueChanges>): Promise<HTMLElement> {
+  const host = fixture.nativeElement as HTMLElement;
+  byId(host, 'admin-venue-change-fee-edit')!.click();
+  fixture.detectChanges();
+  await fixture.whenStable();
+  fixture.detectChanges();
+  return host;
+}
+
+/** Type into the editor's amount field the way a user does, and settle. */
+async function typeAmount(
+  fixture: ComponentFixture<AdminVenueChanges>,
+  value: string,
+): Promise<void> {
+  const host = fixture.nativeElement as HTMLElement;
+  const input = byId(host, 'admin-venue-change-fee-input') as HTMLInputElement;
+  input.value = value;
+  input.dispatchEvent(new Event('input'));
+  fixture.detectChanges();
+  await fixture.whenStable();
+  fixture.detectChanges();
+}
+
+/** Press Save fee and settle the write it starts. */
+async function save(fixture: ComponentFixture<AdminVenueChanges>): Promise<void> {
+  const host = fixture.nativeElement as HTMLElement;
+  byId(host, 'admin-venue-change-fee-save')!.click();
+  fixture.detectChanges();
+  await fixture.whenStable();
+  await fixture.whenStable();
+  fixture.detectChanges();
 }
 
 function byId(host: HTMLElement, id: string): HTMLElement | null {
@@ -130,5 +177,102 @@ describe('AdminVenueChanges', () => {
 
     expect(byId(host, 'admin-venue-changes-error')).toBeNull();
     expect(host.querySelectorAll('[data-testid="venue-change-row"]')).toHaveLength(2);
+  });
+
+  it('shows the fee in force', async () => {
+    const fixture = await render(() => Promise.resolve(REPORT));
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(byId(host, 'admin-venue-change-fee-amount')?.textContent).toContain('€5');
+  });
+
+  it('shows the fee card even when no venue has caused a refund yet', async () => {
+    const fixture = await render(() => Promise.resolve({ venues: [] }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(byId(host, 'admin-venue-change-fee-card')).toBeTruthy();
+    expect(byId(host, 'admin-venue-changes-empty')).toBeTruthy();
+  });
+
+  /**
+   * The write carries minor units (invariant #5) and the response replaces what the card shows, so
+   * the page never re-reads the report to learn its own write.
+   */
+  it('writes the fee and splices the response', async () => {
+    const setFee = vi.fn(() => Promise.resolve({ amountMinor: 700, currency: 'EUR' }));
+    const fixture = await render(() => Promise.resolve(REPORT), undefined, { setFee });
+    await armEditor(fixture);
+    await typeAmount(fixture, '7');
+    await save(fixture);
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(setFee).toHaveBeenCalledWith(700, '');
+    expect(byId(host, 'admin-venue-change-fee-amount')?.textContent).toContain('€7');
+    expect(byId(host, 'admin-venue-change-fee-editor')).toBeNull();
+    expect(byId(host, 'admin-venue-change-fee-notice')?.textContent).toContain('€7');
+  });
+
+  it('carries the typed grounds into the write', async () => {
+    const setFee = vi.fn(() => Promise.resolve({ amountMinor: 700, currency: 'EUR' }));
+    const fixture = await render(() => Promise.resolve(REPORT), undefined, { setFee });
+    const host = await armEditor(fixture);
+    await typeAmount(fixture, '7');
+    const reason = byId(host, 'admin-venue-change-fee-reason') as HTMLInputElement;
+    reason.value = 'Board approved';
+    reason.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await save(fixture);
+
+    expect(setFee).toHaveBeenCalledWith(700, 'Board approved');
+  });
+
+  it('opens the editor on the amount already in force', async () => {
+    const fixture = await render(() => Promise.resolve(REPORT));
+    const host = await armEditor(fixture);
+
+    expect((byId(host, 'admin-venue-change-fee-input') as HTMLInputElement).value).toBe('5');
+  });
+
+  /**
+   * The shared euros parser clamps a negative to zero, which here would silently make venue changes
+   * free — so the field refuses it rather than sending a legitimate-looking 0.
+   */
+  it('refuses an out-of-range amount without calling the API', async () => {
+    const setFee = vi.fn(() => Promise.resolve(FEE));
+    const fixture = await render(() => Promise.resolve(REPORT), undefined, { setFee });
+    await armEditor(fixture);
+
+    for (const typed of ['', '-5', '2000']) {
+      await typeAmount(fixture, typed);
+      await save(fixture);
+      const host = fixture.nativeElement as HTMLElement;
+      expect(byId(host, 'admin-venue-change-fee-input-error')).toBeTruthy();
+      expect(byId(host, 'admin-venue-change-fee-editor')).toBeTruthy();
+    }
+
+    expect(setFee).not.toHaveBeenCalled();
+  });
+
+  it('reports a failed write and keeps the editor open', async () => {
+    const setFee = vi.fn(() => Promise.reject(new Error('boom')));
+    const fixture = await render(() => Promise.resolve(REPORT), undefined, { setFee });
+    await armEditor(fixture);
+    await typeAmount(fixture, '7');
+    await save(fixture);
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(byId(host, 'admin-venue-change-fee-error')).toBeTruthy();
+    expect(byId(host, 'admin-venue-change-fee-editor')).toBeTruthy();
+    expect(byId(host, 'admin-venue-change-fee-amount')?.textContent).toContain('€5');
+  });
+
+  it('cards a failed fee read like a failed report read', async () => {
+    const fixture = await render(() => Promise.resolve(REPORT), undefined, {
+      fee: () => Promise.reject(new Error('boom')),
+    });
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(byId(host, 'admin-venue-changes-error')).toBeTruthy();
+    expect(byId(host, 'admin-venue-change-fee-card')).toBeNull();
   });
 });
