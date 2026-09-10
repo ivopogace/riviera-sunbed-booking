@@ -168,7 +168,8 @@ const adminTabRoutes: Routes = [
         title: 'Venue changes',
         titleId: 'admin-venue-changes-title',
         maxWidthClass: 'max-w-[900px]',
-        signInCopy: 'Sign in as an admin to review venue-caused refunds.',
+        signInCopy:
+          'Sign in as an admin to set the venue-change fee and review what it has charged.',
         restoringTestId: 'admin-venue-changes-restoring',
         signedOutTestId: 'admin-venue-changes-signed-out',
         forbiddenTestId: 'admin-venue-changes-forbidden',

@@ -206,3 +206,9 @@ export interface VenueChangeRefundRow {
 export interface VenueChangeRefundsView {
   readonly venues: readonly VenueChangeRefundRow[];
 }
+
+/** The platform's venue-change fee: integer minor units + ISO currency (invariant #5). */
+export interface VenueChangeFeeView {
+  readonly amountMinor: number;
+  readonly currency: string;
+}

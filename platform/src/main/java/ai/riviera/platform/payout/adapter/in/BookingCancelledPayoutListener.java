@@ -9,6 +9,7 @@ import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.payout.application.PayoutLedger;
 import ai.riviera.platform.payout.application.VenueChangeFeeAmount;
+import ai.riviera.platform.payout.application.VenueChangeFeeSetting;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 
 /**
@@ -29,6 +30,9 @@ import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
  * with a zero refund because nothing was collected. After the accrual lookup, so a deferred reversal
  * defers its fee with it rather than charging for a refund the ledger has not reversed.
  *
+ * <p>The amount is read at charge time, never held: what that reaches, and the window it leaves, is
+ * on {@code VenueChangeFeeSetting}.
+ *
  * <p><strong>Asynchronous</strong> {@code @ApplicationModuleListener} (registry-backed,
  * at-least-once). Both rows are idempotent via {@code UNIQUE(booking_id, entry_type)}, so a
  * redelivered event writes neither twice.
@@ -48,9 +52,9 @@ class BookingCancelledPayoutListener {
 	private static final Logger log = LoggerFactory.getLogger(BookingCancelledPayoutListener.class);
 
 	private final PayoutLedger ledger;
-	private final VenueChangeFeeAmount venueChangeFee;
+	private final VenueChangeFeeSetting venueChangeFee;
 
-	BookingCancelledPayoutListener(PayoutLedger ledger, VenueChangeFeeAmount venueChangeFee) {
+	BookingCancelledPayoutListener(PayoutLedger ledger, VenueChangeFeeSetting venueChangeFee) {
 		this.ledger = ledger;
 		this.venueChangeFee = venueChangeFee;
 	}
@@ -70,10 +74,11 @@ class BookingCancelledPayoutListener {
 				event.refundMinor(), event.currency(), event.reason());
 
 		if (event.reason() == RefundReason.VENUE_CHANGE) {
-			ledger.charge(PayoutLedgerEntry.fee(event.venueId(), bookingId, venueChangeFee.minorUnits(),
+			VenueChangeFeeAmount fee = venueChangeFee.current();
+			ledger.charge(PayoutLedgerEntry.fee(event.venueId(), bookingId, fee.minorUnits(),
 					event.currency()));
 			log.info("charged venue {} a venue-change fee of {} {} for booking {}", event.venueId().value(),
-					venueChangeFee.minorUnits(), event.currency(), bookingId);
+					fee.minorUnits(), event.currency(), bookingId);
 		}
 	}
 

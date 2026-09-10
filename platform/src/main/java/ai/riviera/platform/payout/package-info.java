@@ -1,7 +1,8 @@
 /**
- * The payout module — the venue payout ledger (booking amounts − commission − fees)
- * and manual BKT batch reporting (invariant #9: a booking contributes exactly once;
- * refunds reverse it, and a refund the venue's own change caused also charges it a fee).
+ * The payout module — the venue payout ledger (booking amounts − commission − fees),
+ * manual BKT batch reporting (invariant #9: a booking contributes exactly once; refunds reverse it,
+ * and a refund the venue's own change caused also charges it a fee), and the platform's own
+ * settings, of which the venue-change fee is the only one.
  * {@code PayoutLedgerEntry} and {@code PayoutBatch} are immutable value records over the two ledger
  * tables — the entry with {@code accrual}/{@code reversalOf}/{@code fee} factories, the batch built
  * through its canonical constructor — not mutable roots.

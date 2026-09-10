@@ -203,7 +203,13 @@ model in `docs/architecture/domain-model.md`.
   remodel refunding a booking it could not move, or a **moved booking**'s guest taking their
   **free exit**. Flat, platform-wide, and charged once per booking beside the reversal. It is not
   part of what the guest got back, and it is charged only where money was returned — a release or
-  a decline collected nothing, so neither is charged.
+  a decline collected nothing, so neither is charged. Its amount is a **platform setting**: a
+  change applies to every fee charged after it, and fees already charged keep what they were
+  charged at.
+- **Platform setting** — a value the platform sets for itself, where every other setting belongs to
+  one venue. Only the platform admin reads or changes one, every change is recorded with its
+  grounds, and a change is **forward-only**: it governs what is decided from then on and never
+  rewrites what is already recorded. Today there is exactly one — the venue-change **fee**.
 - **Payout batch** — a period's worth of ledger entries settled together, paid to
   the venue manually via BKT.
 - **Refund** — money returned to a tourist, by reason: policy, weather, venue change (the **free

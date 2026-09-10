@@ -657,11 +657,27 @@ display-only totals and the admin venue-caused report — is written that way an
 test carrying a `FEE` row. A **`FEE`** is charged when a refund the venue's own change caused is
 reversed (`reason == VENUE_CHANGE`, which covers both the remodel refunding a booking it could
 not move and a moved guest taking the free exit that move earned them); it has no gross and no
-commission, so it is the one entry type `payout_net_check` exempts. The amount is
-`riviera.payout.venue-change-fee-minor`, flat and platform-wide, and it reaches the remodel
-preview through `booking.spi.VenueChangeFeeRate` — an inversion, because a `booking → payout`
-call would cycle. A release or a decline collected nothing, so nothing is reversed and nothing is
-charged. Rationale and rejected alternatives: ADR-0021.
+commission, so it is the one entry type `payout_net_check` exempts. The amount is flat and
+platform-wide, and it reaches the remodel preview through `booking.spi.VenueChangeFeeRate` — an
+inversion, because a `booking → payout` call would cycle. A release or a decline collected nothing,
+so nothing is reversed and nothing is charged. Rationale and rejected alternatives: ADR-0021.
+
+**I own the platform's own settings, and today there is exactly one.** `platform_setting` holds the
+venue-change fee, and I am its sole writer: I own the ledger the fee is posted to, so I decide the
+amount. Both readers — the cancelled-booking listener and the `booking.spi` rate the remodel preview
+quotes — go through `VenueChangeFeeSetting#current()` **per call**, never a held bean, so an admin's
+change applies to every fee charged after it. `riviera.payout.venue-change-fee-minor` stays the seed
+the row is created with and the fallback a missing row falls back to; it is not a second source of
+truth. The admin read and write live at `/api/admin/venue-change-fee`, role-gated, and audited by
+the edge fence like every other mutating admin action.
+
+**A change is forward-only in effect, and one window is accepted rather than closed.** Posted `FEE`
+rows are never repriced — the ledger is append-only and nothing in the settings path touches it. But
+the charge is asynchronous, so a change landing between a remodel commit and its `BookingCancelled`
+draining charges an amount the commit receipt did not quote. An effective-dated schedule cannot close
+that on its own: `BookingCancelled` carries no instant to resolve a rate against, so the listener
+would still read "as of now". Closing it would mean widening a registry-persisted event payload, which
+the fee does not justify. Accepted and documented: ADR-0021 §7 and its amendment.
 
 **Not My Job:**
 - Actually moving money to venues → settled **manually via BKT**; I record what is owed
@@ -1314,6 +1330,7 @@ sufficient. Which of them form the *structural net* — the subset run after any
 | Only `venue` names `rating_tenths` / `reviews_count` — "I store the aggregate; `review` computes it" (#811) | `ResponsibilitiesArchitectureTests` (rating-columns sole-writer scan) |
 | `challenge` is the **only writer** (and direct reader) of `challenge_registry` — ADR-0017 | `ResponsibilitiesArchitectureTests` (sole-writer bytecode scan) |
 | `audit` is the **only writer** (and direct reader) of `admin_audit_record` — ADR-0017 | `ResponsibilitiesArchitectureTests` (sole-writer bytecode scan) |
+| `payout` is the **only writer** (and direct reader) of `platform_setting` — ADR-0021 | `ResponsibilitiesArchitectureTests` (sole-writer bytecode scan) |
 | No class inside a module depends on a type sitting directly in `ai.riviera.platform` — ADR-0017 | `CompositionRootDisciplineTests` (module→root reach rule; Modulith's `allowedDependencies` cannot see it) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
 | No module reaches another's `application`/`domain`/`adapter` internals; `allowedDependencies` deny-lists hold | `ModularityTests` (`ApplicationModules.verify()`) |
