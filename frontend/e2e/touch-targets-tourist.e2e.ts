@@ -4,6 +4,7 @@ import { mockCustomerAuthApi, mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
 import { openShellOverlay } from './support/shell';
 import { expectTouchTargets } from './support/touch-targets';
+import { photoViews } from './support/photo-views';
 
 /**
  * The 44 px touch-target floor (#605) over the tourist, auth and booking surfaces — the third and
@@ -30,7 +31,11 @@ const VENUE = {
   availability: { free: 4, total: 6 },
   coverPhoto: null,
   // A multi-photo slideshow so the home sweep measures the card's step controls.
-  photos: ['/api/venues/1/photos/aa01', '/api/venues/1/photos/cc03', '/api/venues/1/photos/dd04'],
+  photos: photoViews([
+    '/api/venues/1/photos/aa01',
+    '/api/venues/1/photos/cc03',
+    '/api/venues/1/photos/dd04',
+  ]),
   sets: Array.from({ length: 6 }, (_, i) => ({
     id: i + 1,
     rowLabel: i < 3 ? 'Front row · Sea view' : 'Second row',

@@ -10,9 +10,12 @@ Venue photos are the **first binary payload in the system** — every other aggr
 structured rows, so the question "where do the images live?" was genuinely open. Constraints:
 
 - **Scale is small and known (Phase 1).** A handful of Albanian-riviera venues, ≈3 photos per
-  venue, modest anonymous browse. Only **resized, capped variants** are stored (≈≤120 KB each);
-  the full-res upload (up to 25 MB) is decoded, resized and **discarded**. The stored footprint is
-  ≈360 KB per venue, sub-megabyte across all Phase-1 venues.
+  venue, modest anonymous browse. Only **resized, capped renditions** are stored; the full-res
+  upload (up to 25 MB) is decoded, resized and **discarded**. Measured against synthetic noise, so
+  an upper bound a real photograph stays under: the largest single rendition is ≈330 KB (the 16:9
+  retina banner) and one photo runs ≈135–565 KB across its renditions depending on aspect, so a
+  three-slot venue holds ≈0.4–1.7 MB. Still single-digit megabytes across all Phase-1 venues, which
+  is what the `bytea` decision below is sized for.
 - **The tourist read is public and must not hammer Neon.** Cards and the map banner are served
   to anonymous browsers; a "SELECT the blob on every render" would put the free-tier serverless
   Postgres (ADR-0004) in the hot path.
@@ -38,10 +41,16 @@ put big blobs in your OLTP database" objection does not bite.
 
 Serving discipline that keeps Neon out of the tourist hot path (part of this decision):
 
-- **Resize at upload → store only the small per-surface variants.** Card, beach-map banner and
-  operator preview are distinct capped targets; the full-res original is never served and never
-  stored. Hard byte + dimension caps on every variant; a ≈50 MP / 12,000-px decode guard rejects
-  decompression bombs regardless of byte size.
+- **Resize at upload → store only the small per-surface renditions.** Card, beach-map banner and
+  operator preview are distinct capped targets, and the two tourist ones carry a second rendition
+  at twice the density so the browser can pick per rendered box from a `srcset`; the full-res
+  original is never served and never stored. The retina rendition is skipped rather than upscaled
+  when the source is smaller than its box, and is encoded at a lower JPEG quality, which a
+  high-density display hides. Hard byte + dimension caps on every rendition; a ≈50 MP / 12,000-px
+  decode guard rejects decompression bombs regardless of byte size.
+- **The retina tier cannot be backfilled.** Discarding the original is what makes a photo stored
+  before that tier existed publish a one-candidate `srcset` until it is re-uploaded — the accepted
+  cost of not keeping masters.
 - **Content-hash URLs, revalidated.** The serving endpoint is keyed by the variant's content hash
   and returns a strong `ETag`, so a client stores the bytes once and thereafter reuses them via
   `304` — the database is hit ≈once per image, not per view. A replaced photo gets a new hash →

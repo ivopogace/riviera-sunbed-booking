@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
+import { photoViews } from './support/photo-views';
 
 /**
  * The anti-jump half of the skeleton contract (#744), in a real browser: on the two surfaces whose
@@ -118,7 +119,11 @@ const EMPTY_VENUE = { ...BARE_VENUE, sets: [], fromPrice: null };
  */
 const GALLERY_VENUE = {
   ...RICH_VENUE,
-  photos: ['/api/venues/1/photos/aa01', '/api/venues/1/photos/bb02', '/api/venues/1/photos/cc03'],
+  photos: photoViews([
+    '/api/venues/1/photos/aa01',
+    '/api/venues/1/photos/bb02',
+    '/api/venues/1/photos/cc03',
+  ]),
 };
 
 /** The viewport-relative top edge of a frame, which is what a layout jump moves. */
