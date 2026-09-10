@@ -41,13 +41,15 @@ if [ -z "$PROXY_CA" ]; then
   exit 0
 fi
 
-# ── 1. Locate the JDK cacerts (prefer the session JDK, then JAVA_HOME). ────
+# ── 1. Locate the JDK cacerts (prefer the session JDK, then JAVA_HOME, then the
+#     apt fallback path used when both Temurin and Corretto downloads are blocked
+#     by the network/repo-scope proxy — see scripts/cloud-session-setup.sh step 2c). ──
 CACERTS=""
-for j in /opt/jdk-25 "${JAVA_HOME:-}"; do
+for j in /opt/jdk-25 "${JAVA_HOME:-}" /usr/lib/jvm/java-25-openjdk-amd64; do
   [ -n "$j" ] && [ -f "$j/lib/security/cacerts" ] && { CACERTS="$j/lib/security/cacerts"; break; }
 done
 if [ -z "$CACERTS" ]; then
-  log "no JDK cacerts found (looked in /opt/jdk-25, \$JAVA_HOME) — skipping."
+  log "no JDK cacerts found (looked in /opt/jdk-25, \$JAVA_HOME, /usr/lib/jvm/java-25-openjdk-amd64) — skipping."
   exit 0
 fi
 

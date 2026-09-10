@@ -102,14 +102,43 @@ if ! { [ -x "$JDK_DIR/bin/java" ] && "$JDK_DIR/bin/java" -version 2>&1 | grep -q
   rm -f "$tmp"
 fi
 
+# ── 2c. Fallback: apt (Ubuntu package archive). Used when BOTH the GitHub-hosted
+#     Temurin release AND corretto.aws are blocked by the session's network/repo-scope
+#     proxy — observed 2026-09: corretto.aws 403s the CONNECT tunnel and api.github.com
+#     403s too (this session's GitHub scope didn't reach adoptium/temurin25-binaries).
+#     archive.ubuntu.com / security.ubuntu.com are on the default network allowlist
+#     already (apt-get update works out of the box), so this path needs NO allowlist
+#     change — prefer it over widening the allowlist for corretto.aws/adoptium. Lands
+#     the JDK at the distro path via update-alternatives, not /opt/jdk-25.
+APT_JDK_DIR=/usr/lib/jvm/java-25-openjdk-amd64
+have_jdk25() { [ -x "$1/bin/java" ] && "$1/bin/java" -version 2>&1 | grep -q 'version "25'; }
+if ! have_jdk25 "$JDK_DIR" && ! have_jdk25 "$APT_JDK_DIR"; then
+  echo "cloud-session-setup: GitHub/Temurin and Corretto JDK paths unavailable; falling back to apt (openjdk-25-jdk) ..." >&2
+  if apt-get update -qq && apt-get install -y -qq openjdk-25-jdk; then
+    echo "cloud-session-setup: $("$APT_JDK_DIR/bin/java" -version 2>&1 | grep -i version | head -1) installed (apt fallback)." >&2
+  else
+    echo "cloud-session-setup: apt fallback failed too (backend ./gradlew build will need JDK 25 installed manually)" >&2
+  fi
+fi
+# Prefer /opt/jdk-25 (Temurin/Corretto) when it landed; else use apt's JDK.
+if ! have_jdk25 "$JDK_DIR" && have_jdk25 "$APT_JDK_DIR"; then
+  JDK_DIR="$APT_JDK_DIR"
+fi
+
 # Make JDK 25 the session default. Gradle auto-detects JDKs in /opt, but set
 # JAVA_HOME + PATH so `java`/`./gradlew` use it too. Persist for subsequent Bash
 # commands via $CLAUDE_ENV_FILE (keeps the Node-26 dir ahead of the image node).
-if [ -x "$JDK_DIR/bin/java" ] && [ -n "${CLAUDE_ENV_FILE:-}" ]; then
-  {
-    echo "JAVA_HOME=$JDK_DIR"
-    echo "PATH=$JDK_DIR/bin:$PATH"
-  } >> "$CLAUDE_ENV_FILE"
+# Export in-process too (not just the env file) so step 3 below, run later in this
+# same script, sees the right JAVA_HOME when the JDK came from the apt fallback.
+if have_jdk25 "$JDK_DIR"; then
+  export JAVA_HOME="$JDK_DIR"
+  export PATH="$JDK_DIR/bin:$PATH"
+  if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+    {
+      echo "JAVA_HOME=$JDK_DIR"
+      echo "PATH=$JDK_DIR/bin:$PATH"
+    } >> "$CLAUDE_ENV_FILE"
+  fi
 fi
 
 # ── 3. JDK trusts the agent-proxy CA (so ./gradlew works) ─────────────────

@@ -41,18 +41,29 @@ On a session whose **GitHub scope is limited to this repo**, the pinned Gradle w
 proxy blocks with `403 {"message":"...not enabled for this session..."}`. Likewise the
 setup hook's Temurin JDK (from `adoptium/temurin25-binaries`) 403s — which is why
 `scripts/cloud-session-setup.sh` step 2b falls back to **Amazon Corretto 25** from
-`corretto.aws` (network-allowlisted, not GitHub-gated), landing a JDK at `/opt/jdk-25`.
+`corretto.aws`, landing a JDK at `/opt/jdk-25`.
+
+`corretto.aws` is **not** on the default network allowlist (confirmed 2026-09: the CONNECT
+tunnel 403s) — an earlier version of this doc assumed it was. Rather than widening the
+allowlist for it, step 2c falls back further to **apt** (`openjdk-25-jdk` from
+`archive.ubuntu.com`/`security.ubuntu.com`, already allowlisted by default — no allowlist
+change needed), landing the JDK at `/usr/lib/jvm/java-25-openjdk-amd64` via
+`update-alternatives` instead of `/opt/jdk-25`. If you'd rather unblock the Temurin/Corretto
+path directly, add `corretto.aws` to the env's network allowlist (Environment settings on
+claude.ai) — either path satisfies `build.gradle`'s `languageVersion=25, vendor=any`.
 
 **Do NOT change the wrapper's `distributionUrl`** — CI has full GitHub access and depends
 on the pinned version (`platform/gradle/wrapper/gradle-wrapper.properties` is the source
 of truth) + JDK 25. Local builds use the **pre-installed system Gradle 8.14.x**
 instead. One catch: **Gradle 8.14.x cannot _run_ on JDK 25** (`Unsupported class file major
-version 69`). So run its daemon on **JDK 21** and point the **toolchain** at `/opt/jdk-25`:
+version 69`). So run its daemon on **JDK 21** and point the **toolchain** at wherever step 2/2b/2c
+landed JDK 25 — `/opt/jdk-25` (Temurin/Corretto) or `/usr/lib/jvm/java-25-openjdk-amd64` (apt
+fallback; check which exists with `ls /opt/jdk-25 /usr/lib/jvm/java-25-openjdk-amd64 2>/dev/null`):
 
 ```bash
 # one-time: register the JDK 25 toolchain for Gradle (user-level, uncommitted)
 mkdir -p ~/.gradle
-printf 'org.gradle.java.installations.paths=/opt/jdk-25\norg.gradle.java.installations.auto-download=false\n' \
+printf 'org.gradle.java.installations.paths=/opt/jdk-25,/usr/lib/jvm/java-25-openjdk-amd64\norg.gradle.java.installations.auto-download=false\n' \
   >> ~/.gradle/gradle.properties
 
 cd platform
