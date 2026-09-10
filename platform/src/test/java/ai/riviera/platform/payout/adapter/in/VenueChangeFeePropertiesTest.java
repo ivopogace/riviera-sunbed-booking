@@ -44,4 +44,18 @@ class VenueChangeFeePropertiesTest {
 		assertThrows(IllegalArgumentException.class, () -> new VenueChangeFeeAmount(-1L, "EUR"));
 		assertThrows(IllegalArgumentException.class, () -> new VenueChangeFeeAmount(500L, " "));
 	}
+
+	/**
+	 * The third place the bound must hold. The request DTO refuses an out-of-range amount at the edge
+	 * and {@code platform_setting_amount_check} refuses one in the table; this guard is what catches a
+	 * stored amount that got past both, so it is the one an admin surface can never exercise.
+	 */
+	@Test
+	void theApplicationValueRefusesAnAmountAboveItsBound() {
+		assertEquals(VenueChangeFeeAmount.MAX_FEE_MINOR,
+				new VenueChangeFeeAmount(VenueChangeFeeAmount.MAX_FEE_MINOR, "EUR").minorUnits(),
+				"the bound itself is a legal fee");
+		assertThrows(IllegalArgumentException.class,
+				() -> new VenueChangeFeeAmount(VenueChangeFeeAmount.MAX_FEE_MINOR + 1, "EUR"));
+	}
 }

@@ -71,10 +71,13 @@ commit receipt tells them apart, through `BookingNotificationFacts#endedByRemode
    `customer.spi.GuestBookingHistory` already use. `RemodelClaims` gains one method on the
    conversation it already holds rather than a fifth narrow port.
 
-7. **A commit records the rate it quoted onto its receipt line** (`remodel_receipt_outcome.fee_minor`).
-   *(Amended — the divergence window is now real, and is accepted rather than closed; see below.)*
+7. **A commit records the rate it quoted onto its receipt line** (`remodel_receipt_outcome.fee_minor`),
    so a receipt reads back what the operator confirmed rather than today's rate — the lesson V39 taught
    for the commission schedule.
+
+   *(Amended — the paragraph below reasons from the fee being a static property, which it no longer
+   is. The window it calls unreachable is now real, and accepted rather than closed; see*
+   Amendment *below.)*
 
    It is deliberately **not** a pin on what the ledger charges, and cannot be one: the fee is a
    configured amount that the commit and the (asynchronous) payout listener each read, and the second

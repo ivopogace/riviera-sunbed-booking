@@ -17,11 +17,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * fee would pay the venue for changing a guest's deal, and would put direction in the amount where
  * the ledger keeps it in the entry type.
  *
- * <p>Converted to the application-layer {@code VenueChangeFeeAmount} value by {@link PayoutFeeConfig},
- * whose constructor also enforces the upper bound the table shares. Rationale and rejected
- * alternatives: ADR-0021.
+ * <p>Converted to the application-layer {@code VenueChangeFeeAmount} value by {@link PayoutFeeConfig}.
+ * That record's own constructor enforces the upper bound the table shares, so a seed above it fails
+ * the context at startup rather than at the first charge. Rationale and rejected alternatives:
+ * ADR-0021.
  *
- * @param venueChangeFeeMinor default {@code 500} (5 EUR), never negative
+ * @param venueChangeFeeMinor default {@code 500} (5 EUR); never negative, and never above
+ *        {@code VenueChangeFeeAmount.MAX_FEE_MINOR}
  */
 @ConfigurationProperties("riviera.payout")
 public record VenueChangeFeeProperties(Long venueChangeFeeMinor) {

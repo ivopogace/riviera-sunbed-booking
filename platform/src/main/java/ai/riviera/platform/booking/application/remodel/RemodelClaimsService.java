@@ -154,8 +154,9 @@ class RemodelClaimsService implements RemodelClaims {
 	 * invariant #8 honoured there); the payout reversal and the venue-change fee ride the same fact.
 	 * {@code feeMinor} is the rate quoted when this commit ran, recorded on the receipt line so it reads
 	 * back what the operator confirmed rather than today's rate. It is not a pin on what the ledger
-	 * charges: the fee is a configured amount both sides read, and the free exit of a moved booking
-	 * charges one with no receipt line at all. Rationale: ADR-0021.
+	 * charges: the fee is a stored setting both sides read when they need it, so an edit landing
+	 * between this commit and the asynchronous charge is charged at the new amount, and the free exit
+	 * of a moved booking charges one with no receipt line at all. Rationale: ADR-0021.
 	 */
 	private ReceiptOutcome applyRefund(VenueId venueId, RemodelClaim claim, Instant cancelledAt, long feeMinor) {
 		CancelledBooking cancelled = bookings

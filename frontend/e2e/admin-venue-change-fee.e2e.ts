@@ -158,6 +158,14 @@ test('no grounds are sent when the reason is left blank', async ({ page }) => {
  * dangling `aria-describedby` as `incomplete`, and `expectNoSeriousAxeViolations` reads
  * `violations` only, so nothing in CI would see a rotted association except an assertion that
  * dereferences it. The refusal never reaches the wire, so no extra network mock is needed.
+ *
+ * <p>The negative is checked here and not only in jsdom because the shared euros parser clamps a
+ * negative to zero: were the refusal to stop happening ahead of it, a typo would silently make
+ * venue changes free rather than fail.
+ *
+ * <p>Both refusals are settled on by their own copy before the association is dereferenced.
+ * Comparing the described element against text read a moment earlier races the re-render that
+ * swaps one message for the other, and fails only when the whole file runs.
  */
 test('an out-of-range fee names the field it blames, and lets go when corrected', async ({
   page,
@@ -168,8 +176,6 @@ test('an out-of-range fee names the field it blames, and lets go when corrected'
 
   await page.getByTestId('admin-venue-change-fee-edit').click();
 
-  // A negative reaches the field as typed: the shared euros parser would clamp it to a legitimate
-  // -looking zero, so the refusal has to happen before it.
   await page.getByTestId('admin-venue-change-fee-input').fill('-5');
   await page.getByTestId('admin-venue-change-fee-save').click();
   await expect(page.getByTestId('admin-venue-change-fee-input-error')).toContainText('negative');
@@ -178,8 +184,6 @@ test('an out-of-range fee names the field it blames, and lets go when corrected'
   await page.getByTestId('admin-venue-change-fee-input').fill('2000');
   await page.getByTestId('admin-venue-change-fee-save').click();
 
-  // Settle on the second message before dereferencing: comparing a live locator against text read
-  // a moment earlier races the re-render that swaps one refusal for the other.
   const error = page.getByTestId('admin-venue-change-fee-input-error');
   await expect(error).toContainText('cannot exceed');
   const describedBy = await page
@@ -189,6 +193,11 @@ test('an out-of-range fee names the field it blames, and lets go when corrected'
   expect(await writesSoFar(page)).toEqual([]);
 
   await page.getByTestId('admin-venue-change-fee-input').fill('6');
+  await expect(page.getByTestId('admin-venue-change-fee-input-error')).toBeHidden();
+  await expect(page.getByTestId('admin-venue-change-fee-input')).not.toHaveAttribute(
+    'aria-describedby',
+  );
+
   await page.getByTestId('admin-venue-change-fee-save').click();
 
   await expect(page.getByTestId('admin-venue-change-fee-amount')).toHaveText('€6');
@@ -205,4 +214,32 @@ test('the tab fits the small-screen bar', async ({ page }) => {
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+/**
+ * The failure leg, in a real browser. The editor deliberately stays open holding what was typed, so
+ * focus must land back on the control that started the write — jsdom does not blur a focused element
+ * the way a browser does, which is why this leg is pinned here and not only in the unit spec.
+ */
+test('a failed save keeps the editor open, reports it, and moves focus back to Save', async ({
+  page,
+}) => {
+  await mockOperatorLifecycleApi(page, { admin: ADMIN });
+  await mockVenueChanges(page);
+  await openVenueChangesTab(page);
+
+  await page.getByTestId('admin-venue-change-fee-edit').click();
+  await page.getByTestId('admin-venue-change-fee-input').fill('8');
+  await page.route(/\/api\/admin\/venue-change-fee$/, (route) =>
+    route.request().method() === 'PUT'
+      ? route.fulfill({ status: 500, body: '' })
+      : route.fulfill({ json: { amountMinor: 500, currency: 'EUR' } }),
+  );
+  await page.getByTestId('admin-venue-change-fee-save').click();
+
+  await expect(page.getByTestId('admin-venue-change-fee-error')).toContainText(
+    'Nothing was changed',
+  );
+  await expect(page.getByTestId('admin-venue-change-fee-save')).toBeFocused();
+  await expect(page.getByTestId('admin-venue-change-fee-amount')).toHaveText('€5');
 });

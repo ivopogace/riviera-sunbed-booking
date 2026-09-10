@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Encodes the <strong>machine-checkable half of {@code RESPONSIBILITIES.md}</strong> as fitness
- * functions (issue #96, improvement-plan C4) — the structural subset of the Job / Not-My-Job
+ * functions (improvement-plan C4) — the structural subset of the Job / Not-My-Job
  * boundaries that an illegal import or a stray SQL string would betray:
  * <ol>
  *   <li><strong>Sole-writer:</strong> no class outside the {@code availability} module touches
@@ -45,13 +45,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *       (generics and arrays unwrapped) is a primitive, a {@code java.*} type, or a published
  *       {@code vocabulary} type; never an aggregate from any {@code domain} package (the
  *       Need-To-Know half of invariant #11).</li>
- *   <li><strong>Sole-writer, review table (#811):</strong> no class outside the {@code review}
+ *   <li><strong>Sole-writer, review table:</strong> no class outside the {@code review}
  *       module carries SQL against the {@code review} table. The bare table name is useless as a
  *       token — every legitimate consumer of review's published surfaces has the module's package
  *       name in its constant pool — so this rule keys on <em>SQL-shaped</em> references instead:
  *       an SQL keyword ({@code FROM}/{@code INTO}/{@code UPDATE}/{@code JOIN}/{@code TABLE})
  *       followed by the whole-word table name.</li>
- *   <li><strong>Sole-writer, venue rating columns (#811):</strong> {@code rating_tenths} /
+ *   <li><strong>Sole-writer, venue rating columns:</strong> {@code rating_tenths} /
  *       {@code reviews_count} are referenced only inside {@code venue} — the mechanical form of
  *       §venue's "I store the rating aggregate; {@code review} computes it": {@code review}
  *       announces via {@code ReviewsChanged} and answers via its aggregate port; only {@code venue}
@@ -69,6 +69,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *       fence records through {@code audit::api}, never at the table. Same whole-word constant-pool
  *       scan as rule 1, and the bare token is safe for the same reason as rule 6 — the module's
  *       package name is {@code audit}.</li>
+ *   <li><strong>Sole-writer, platform settings:</strong> no class outside the {@code payout} module
+ *       touches {@code platform_setting} — the mechanical form of §{@code payout}'s "I am its sole
+ *       writer". The value that table holds is what the ledger deducts from a venue, so a second
+ *       writer is a second opinion on what a venue is charged. Same whole-word constant-pool scan
+ *       as rule 1.</li>
  * </ol>
  *
  * <p><strong>Necessary, not sufficient.</strong> These rules encode only the <em>structural</em>
@@ -130,6 +135,12 @@ class ResponsibilitiesArchitectureTests {
 
 	/** The one module that may reference {@link #ADMIN_AUDIT_TABLE}. */
 	private static final String AUDIT_MODULE = "audit";
+
+	/** The platform's own settings, owned by {@code payout} (ADR-0021). */
+	private static final String PLATFORM_SETTING_TABLE = "platform_setting";
+
+	/** The one module that may reference {@link #PLATFORM_SETTING_TABLE}. */
+	private static final String PAYOUT_MODULE = "payout";
 
 	private static final String EVENTS_SURFACE = "events";
 	private static final String VOCABULARY_SURFACE = "vocabulary";
@@ -418,6 +429,44 @@ class ResponsibilitiesArchitectureTests {
 				"The fixture audit module's own SQL must not be flagged, but got: " + violations);
 	}
 
+	// ---- rule 8: payout is the sole toucher of the platform settings table -----------------
+
+	@Test
+	void platformSettingTableIsTouchedOnlyInsideThePayoutModule() {
+		List<String> violations = platformSettingTableViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
+		assertNoViolations(
+				"RESPONSIBILITIES.md fitness-function violations (payout sole-writer, ADR-0021)",
+				violations);
+	}
+
+	/** Guards against a vacuously-green scan: the module's own adapter DOES carry the table's SQL. */
+	@Test
+	void thePayoutModuleItselfWritesTheTable() {
+		boolean payoutReferencesTable = false;
+		for (JavaClass type : PRODUCTION_CLASSES) {
+			if (PAYOUT_MODULE.equals(moduleOf(type, PRODUCTION_BASE))
+					&& referencesPlatformSettingTable(type)) {
+				payoutReferencesTable = true;
+				break;
+			}
+		}
+		assertTrue(payoutReferencesTable,
+				"expected at least one payout class to reference '" + PLATFORM_SETTING_TABLE
+						+ "' — otherwise the sole-writer scan proves nothing");
+	}
+
+	/** The negative proof (red run): an outside writer is rejected — and the fixture module's
+	 * own writer is NOT (the exclusion path works). */
+	@Test
+	void platformSettingTableTouchedOutsideThePayoutModuleIsRejected() {
+		List<String> violations = platformSettingTableViolations(FIXTURE_CLASSES, FIXTURE_BASE);
+		assertTrue(violations.stream().anyMatch(v -> v.contains("RoguePlatformSettingWriter")),
+				"Expected the payout sole-writer scan to reject the fixture outside writer, but got: "
+						+ violations);
+		assertFalse(violations.stream().anyMatch(v -> v.contains("FixtureJdbcVenueChangeFeeSetting")),
+				"The fixture payout module's own SQL must not be flagged, but got: " + violations);
+	}
+
 	// ---- violation collectors (parameterized so fixtures prove the red case) ---------------
 
 	private static List<String> availabilityTableViolations(JavaClasses classes, String base) {
@@ -483,6 +532,28 @@ class ResponsibilitiesArchitectureTests {
 	private static boolean referencesAdminAuditTable(JavaClass type) {
 		return compiledBytecodeOf(type)
 				.map(bytecode -> containsWholeWord(bytecode, ADMIN_AUDIT_TABLE))
+				.orElse(false);
+	}
+
+	private static List<String> platformSettingTableViolations(JavaClasses classes, String base) {
+		List<String> violations = new ArrayList<>();
+		for (JavaClass type : classes) {
+			if (PAYOUT_MODULE.equals(moduleOf(type, base))) {
+				continue;
+			}
+			if (referencesPlatformSettingTable(type)) {
+				violations.add(type.getName() + " references the '" + PLATFORM_SETTING_TABLE
+						+ "' table — the payout module is its only writer AND reader "
+						+ "(ADR-0021 / RESPONSIBILITIES.md §payout); what that table holds is what the "
+						+ "ledger deducts, so a second writer is a second opinion on what a venue is charged");
+			}
+		}
+		return violations;
+	}
+
+	private static boolean referencesPlatformSettingTable(JavaClass type) {
+		return compiledBytecodeOf(type)
+				.map(bytecode -> containsWholeWord(bytecode, PLATFORM_SETTING_TABLE))
 				.orElse(false);
 	}
 

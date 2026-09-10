@@ -50,7 +50,6 @@ describe('AdminVenueChangesService', () => {
     expect(await promise).toEqual({ amountMinor: 500, currency: 'EUR' });
   });
 
-  /** The amount goes out in minor units (invariant #5) and the response is what is now in force. */
   it('writes the fee in minor units and answers what is now stored', async () => {
     const promise = service.setFee(700);
     const req = http.expectOne(`${base}/api/admin/venue-change-fee`);
@@ -73,7 +72,6 @@ describe('AdminVenueChangesService', () => {
     blank.flush({ amountMinor: 700, currency: 'EUR' });
   });
 
-  /** Header values must be Latin-1; anything outside becomes a space rather than an aborted request. */
   it('flattens a reason the header encoding cannot carry', () => {
     void service.setFee(700, 'raised \u2014 season 2027 \u{1F600}');
     const req = http.expectOne(`${base}/api/admin/venue-change-fee`);

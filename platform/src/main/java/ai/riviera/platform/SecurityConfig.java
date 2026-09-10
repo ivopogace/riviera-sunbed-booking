@@ -184,11 +184,7 @@ class SecurityConfig {
 	private static final String ADMIN_REFUND_OUTBOX_RESUBMIT_PATH = "/api/admin/refund-outbox/resubmit";
 	/** The per-venue venue-caused refund report: aggregates only, no booking id or code. */
 	private static final String ADMIN_VENUE_CHANGE_REFUNDS_PATH = "/api/admin/venue-change-refunds";
-	/**
-	 * The venue-change fee an admin reads and writes — one platform-wide commercial term, so the role
-	 * gate is the whole authorization. A distinct exact path from the refunds report above; neither
-	 * shadows the other.
-	 */
+	/** The venue-change fee an admin reads and writes: one platform-wide amount, no venue scope. */
 	private static final String ADMIN_VENUE_CHANGE_FEE_PATH = "/api/admin/venue-change-fee";
 	/**
 	 * The per-booking mail-delivery view and its resend — the support lever the outbox cannot be: that

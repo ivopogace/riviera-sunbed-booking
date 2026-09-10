@@ -30,10 +30,8 @@ import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
  * with a zero refund because nothing was collected. After the accrual lookup, so a deferred reversal
  * defers its fee with it rather than charging for a refund the ledger has not reversed.
  *
- * <p><strong>The amount is read here, not held.</strong> The fee is editable, so a charge takes what
- * is in force when it posts. A posted FEE row is never repriced afterwards, and the window that
- * leaves — a change landing between a remodel commit and this listener draining — is documented in
- * {@code RESPONSIBILITIES.md} §{@code payout}.
+ * <p>The amount is read at charge time, never held: what that reaches, and the window it leaves, is
+ * on {@code VenueChangeFeeSetting}.
  *
  * <p><strong>Asynchronous</strong> {@code @ApplicationModuleListener} (registry-backed,
  * at-least-once). Both rows are idempotent via {@code UNIQUE(booking_id, entry_type)}, so a

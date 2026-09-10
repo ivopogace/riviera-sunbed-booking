@@ -1330,6 +1330,7 @@ sufficient. Which of them form the *structural net* — the subset run after any
 | Only `venue` names `rating_tenths` / `reviews_count` — "I store the aggregate; `review` computes it" (#811) | `ResponsibilitiesArchitectureTests` (rating-columns sole-writer scan) |
 | `challenge` is the **only writer** (and direct reader) of `challenge_registry` — ADR-0017 | `ResponsibilitiesArchitectureTests` (sole-writer bytecode scan) |
 | `audit` is the **only writer** (and direct reader) of `admin_audit_record` — ADR-0017 | `ResponsibilitiesArchitectureTests` (sole-writer bytecode scan) |
+| `payout` is the **only writer** (and direct reader) of `platform_setting` — ADR-0021 | `ResponsibilitiesArchitectureTests` (sole-writer bytecode scan) |
 | No class inside a module depends on a type sitting directly in `ai.riviera.platform` — ADR-0017 | `CompositionRootDisciplineTests` (module→root reach rule; Modulith's `allowedDependencies` cannot see it) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
 | No module reaches another's `application`/`domain`/`adapter` internals; `allowedDependencies` deny-lists hold | `ModularityTests` (`ApplicationModules.verify()`) |

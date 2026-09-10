@@ -20,10 +20,7 @@ import ai.riviera.platform.shared.InvalidApiRequestException;
  * <strong>whole</strong> authorization: a plain {@code OPERATOR} is {@code 403}, anonymous
  * {@code 401}.
  *
- * <p><strong>A change is forward-only in effect, never retroactive.</strong> It applies to every fee
- * charged after it; posted {@code FEE} ledger rows are history and are not repriced. The one window
- * this leaves — a write landing between a remodel commit and the asynchronous charge it will cause —
- * is documented in {@code RESPONSIBILITIES.md} §{@code payout}.
+ * <p>What a change does and does not reach: {@link VenueChangeFeeSetting}.
  *
  * <p>Errors are the one RFC-7807 contract: a missing or out-of-range amount is
  * {@code 400 INVALID_REQUEST} via {@link InvalidApiRequestException#parsing} at the conversion

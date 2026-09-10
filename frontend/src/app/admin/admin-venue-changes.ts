@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, linkedSignal, signal } from '@angular/core';
 import { disabled, form, FormField, maxLength } from '@angular/forms/signals';
 
 import { OperatorAuth } from '../core/operator-auth';
@@ -31,8 +31,7 @@ const MAX_FEE_MINOR = 100_000;
 /**
  * The admin console's Venue changes tab: the fee the platform charges a venue for a refund its own
  * layout change caused, and — per venue — how many bookings a remodel refunded, what those refunds
- * returned to guests, and what the venue paid in those fees. The lever and its consequences on one
- * page, which is why the fee is edited here rather than on a tab of its own.
+ * returned to guests, and what the venue paid in those fees.
  *
  * <p>The report is the epic's abuse guard — built from ledger rows the refund path always writes, so
  * a venue cannot be missing from it by omission, and a venue that keeps re-laying its beach to resell
@@ -42,21 +41,10 @@ const MAX_FEE_MINOR = 100_000;
  * the fee total is what the platform charged for it. They come from different ledger entry types and
  * sit in separate columns.
  *
- * <p><strong>A fee change is forward-only in effect.</strong> It applies to every refund charged
- * after it, and fees already charged keep the amount they were charged at — the copy says exactly
- * that, and it is the guarantee the backend actually makes. It deliberately does not promise that a
- * remodel previewed at the old fee will be charged at the old fee: the charge happens
- * asynchronously, so a change landing in between is charged at the new amount.
- *
  * <p><strong>Venue names come from the admin venue list, not the report endpoint.</strong> The payout
  * module holds no venue name — its published reads are role-split for tourists — so the report ships
  * venue ids and the console joins them, exactly as the moderation pickers do. A venue the list does
  * not name still renders, by id, rather than vanishing from an abuse report.
- *
- * <p>The change is armed in place before it is sent — the console's recurring confirm-in-place shape,
- * where the editor itself is the confirmation: it shows was-and-will-be, states when the change takes
- * effect, and collects optional grounds that ride `X-Audit-Reason` into the platform's admin audit
- * trail (recorded at the edge with no instrumentation here).
  *
  * <p>Like every admin tab, the surrounding {@code AdminConsole} shell self-gates on
  * {@link OperatorAuth} for UX while the backend `/api/admin/**` role gate does the enforcing; this
@@ -175,7 +163,19 @@ const MAX_FEE_MINOR = 100_000;
               [formField]="feeForm.reason"
               placeholder="e.g. raised for the 2027 season"
               class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[14px] text-riv-card-ink"
+              #reasonControl
             />
+
+            @if (feeForm.reason().errors().length) {
+              <p
+                class="mt-2 text-[13.5px] font-semibold text-riv-error-ink"
+                role="alert"
+                [appFieldErrorFor]="reasonControl"
+                data-testid="admin-venue-change-fee-reason-error"
+              >
+                {{ feeForm.reason().errors()[0].message }}
+              </p>
+            }
 
             <p class="mt-3 text-[13px] leading-[1.5] text-riv-card-ink-soft">
               The new amount applies to every refund charged after it. Fees already charged keep the
@@ -328,7 +328,6 @@ export class AdminVenueChanges {
 
   protected readonly editing = signal(false);
   protected readonly busy = signal(false);
-  protected readonly amountError = signal('');
   protected readonly saveError = signal('');
   protected readonly notice = signal('');
 
@@ -338,10 +337,10 @@ export class AdminVenueChanges {
 
   protected readonly model = signal({ amountEur: '', reason: '' });
   /**
-   * Signal Forms over the draft — the two fields bind through it, and it owns their native validation
-   * attributes, so the bound elements carry none of their own. The amount is a euros string validated
-   * by parsing it on save through the one euros↔minor helper, the way the sibling money forms treat
-   * their numeric fields; the server validates independently and its refusal has its own message.
+   * Signal Forms over the draft. A bound element may not carry its own `min`/`max`/`maxlength`
+   * (`NG8022`), so any such bound belongs in this schema. The amount's range is not expressible here
+   * — it is a euros string checked by {@link checkAmount} on both the preview and the save, the way
+   * the sibling money forms treat their numeric fields.
    */
   protected readonly feeForm = form(this.model, (path) => {
     disabled(path.amountEur, { when: () => this.busy() });
@@ -349,10 +348,23 @@ export class AdminVenueChanges {
     maxLength(path.reason, 500, { message: 'Keep the reason under 500 characters.' });
   });
 
+  /**
+   * The refusal the amount field is currently showing. It clears itself the moment the amount is
+   * retyped, so the error and the `aria-describedby` pointing at it are released as the admin
+   * corrects rather than surviving until the next save attempt.
+   */
+  protected readonly amountError = linkedSignal<string, string>({
+    source: () => this.model().amountEur,
+    computation: () => '',
+  });
+
   protected readonly feeStr = computed(() => formatMoney(this.feeMoney()));
 
-  /** The typed amount in minor units, or `null` while it is not a usable number. */
-  protected readonly draftMinor = computed(() => eurosToMinorUnits(this.model().amountEur));
+  /** The typed amount in minor units, or `null` while it is not one this surface would send. */
+  protected readonly draftMinor = computed(() => {
+    const checked = checkAmount(this.model().amountEur, this.fee().currency);
+    return 'minorUnits' in checked ? checked.minorUnits : null;
+  });
 
   protected readonly rows = computed<readonly ReportRow[]>(() => {
     const names = this.venueNames();
@@ -412,13 +424,28 @@ export class AdminVenueChanges {
     this.focusAfterRender('admin-venue-change-fee-edit');
   }
 
+  /**
+   * Send the typed amount, then splice the answer into the card. Two refusals never reach the
+   * network: an amount the field refuses, grounds too long for the trail to carry whole, and the
+   * amount already in force —
+   * the latter because a write is recorded whether or not it changed anything, so a no-op save would
+   * leave an audit entry for a change that did not happen, in the trail that is this setting's only
+   * history.
+   *
+   * <p>A failure keeps the editor open holding what was typed, so a retry costs no re-typing, and
+   * focus lands back on the control that started the write (WCAG 2.4.3).
+   */
   protected async saveFee(): Promise<void> {
+    this.saveError.set('');
     const minorUnits = this.validatedAmount();
-    if (minorUnits === null) {
+    if (minorUnits === null || this.feeForm().invalid()) {
+      return;
+    }
+    if (minorUnits === this.fee().amountMinor) {
+      this.amountError.set(`That is already the fee (${this.feeStr()}).`);
       return;
     }
     this.busy.set(true);
-    this.saveError.set('');
     try {
       const stored = await this.report.setFee(minorUnits, this.model().reason.trim());
       this.fee.set(stored);
@@ -427,6 +454,7 @@ export class AdminVenueChanges {
       this.focusAfterRender('admin-venue-change-fee-notice');
     } catch {
       this.saveError.set('Something went wrong saving the fee. Nothing was changed.');
+      this.focusAfterRender('admin-venue-change-fee-save');
     } finally {
       this.busy.set(false);
     }
@@ -434,28 +462,41 @@ export class AdminVenueChanges {
 
   /** The amount to send, or `null` with the field error set. */
   private validatedAmount(): number | null {
-    const typed = this.model().amountEur.trim();
-    // The shared euros parser clamps a negative to 0, which here would read as "changes are free".
-    if (typed.startsWith('-')) {
-      this.amountError.set('A fee cannot be negative.');
-      return null;
-    }
-    const minorUnits = eurosToMinorUnits(typed);
-    if (minorUnits === null) {
-      this.amountError.set('Enter the fee in euros, for example 5.');
-      return null;
-    }
-    if (minorUnits > MAX_FEE_MINOR) {
-      this.amountError.set(
-        `The fee cannot exceed ${formatMoney({ minorUnits: MAX_FEE_MINOR, currency: this.fee().currency })}.`,
-      );
+    const checked = checkAmount(this.model().amountEur, this.fee().currency);
+    if ('error' in checked) {
+      this.amountError.set(checked.error);
       return null;
     }
     this.amountError.set('');
-    return minorUnits;
+    return checked.minorUnits;
   }
 
   private feeMoney(): { minorUnits: number; currency: string } {
     return { minorUnits: this.fee().amountMinor, currency: this.fee().currency };
   }
+}
+
+/** Either the amount the typed euros mean, or why they are not a fee this surface would send. */
+type AmountCheck = { readonly minorUnits: number } | { readonly error: string };
+
+/**
+ * The one rule the preview and the save share, so the card can never quote an amount the save would
+ * refuse. A negative is rejected before parsing: the shared euros helper clamps it to zero, and a
+ * quoted zero reads as "venue changes are free" — the opposite of what was typed.
+ */
+function checkAmount(raw: string, currency: string): AmountCheck {
+  const typed = raw.trim();
+  if (typed.startsWith('-')) {
+    return { error: 'A fee cannot be negative.' };
+  }
+  const minorUnits = eurosToMinorUnits(typed);
+  if (minorUnits === null) {
+    return { error: 'Enter the fee in euros, for example 5.' };
+  }
+  if (minorUnits > MAX_FEE_MINOR) {
+    return {
+      error: `The fee cannot exceed ${formatMoney({ minorUnits: MAX_FEE_MINOR, currency })}.`,
+    };
+  }
+  return { minorUnits };
 }

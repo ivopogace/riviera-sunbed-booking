@@ -15,9 +15,6 @@ import ai.riviera.platform.payout.application.VenueChangeFeeAmount;
  * yields {@code 400 INVALID_REQUEST} through {@code InvalidApiRequestException.parsing}. The same
  * bound guards the value record and the table, where it catches corrupt stored state instead — one
  * constant, three places it must hold.
- *
- * <p>It carries no version token: the fee is a scalar an admin sets outright, and a concurrent
- * second write is last-one-wins with both recorded in the audit trail.
  */
 record SetVenueChangeFeeRequest(Long amountMinor) {
 

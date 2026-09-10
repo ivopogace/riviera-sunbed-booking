@@ -11,8 +11,8 @@ package ai.riviera.platform.payout.application;
 public record VenueChangeFeeAmount(long minorUnits, String currency) {
 
 	/**
-	 * The ceiling a stored fee may reach, mirroring {@code platform_setting_amount_check} — keep the
-	 * two in lockstep (ADR-0018 §3).
+	 * The ceiling a stored fee may reach, mirrored by {@code platform_setting_amount_check} and by the
+	 * console's own constant — keep the three in lockstep (ADR-0018 §3).
 	 */
 	public static final long MAX_FEE_MINOR = 100_000L;
 

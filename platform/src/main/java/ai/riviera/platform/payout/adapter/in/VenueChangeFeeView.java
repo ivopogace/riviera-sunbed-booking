@@ -5,8 +5,7 @@ import ai.riviera.platform.payout.application.VenueChangeFeeAmount;
 /**
  * The venue-change fee on the wire: integer minor units + ISO currency (invariant #5).
  *
- * <p>It carries no last-changed field. Who changed the fee, when and on what grounds is the admin
- * audit trail's record, and a second half-history here would only disagree with it.
+ * <p>No last-changed field: the admin audit trail is this setting's history.
  */
 record VenueChangeFeeView(long amountMinor, String currency) {
 

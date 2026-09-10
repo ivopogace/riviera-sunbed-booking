@@ -30,7 +30,8 @@ seam-per-AC line and the behavior-parity ledger for the retired property path) �
 phase red-green at the seams named below) · `riviera-review-overlay` (review gate — runs at
 ready-for-review) · `riviera-docs-freshness` (**ran** over `66bb4b3b..HEAD` at phase 4 — 2 findings, both
 patched: `payout`'s `package-info` and an ADR-0021 consequence line) · `postgres` (`TEXT` + `CHECK` over a
-native enum for `setting_key`, `BIGINT` minor units, `TIMESTAMPTZ`) · `riviera-modulith` (the
+native enum for `setting_key`, `BIGINT` minor units, `TEXT` currency to match every other currency
+column) · `riviera-modulith` (the
 setting is an internal `application/` port implemented by `adapter/out`, not a published
 surface — no module but `payout` reads it) · `riviera-java-conventions` (records for the
 DTOs, `InvalidApiRequestException.parsing` at the conversion boundary, the named bound
@@ -57,7 +58,7 @@ remote branch stands in for `feature/venue-change-fee-setting`.
   `reason == VENUE_CHANGE` and a positive refund is handled, then the listener charges a `FEE`
   of exactly the stored amount, read at charge time. *Seam:*
   `payout.application.VenueChangeFeeSetting#current()` · *Pinned by:*
-  `BookingCancelledPayoutListenerTest.chargesTheStoredFee`
+  `BookingCancelledPayoutListenerTest.eachChargeReadsTheFeeAgainSoAChangeInForceIsSeen`
 - [x] **AC-2:** Given no `platform_setting` row for the fee, when `current()` is read, then it
   answers the seed property amount (500 EUR) rather than failing. *Seam:*
   `payout.application.VenueChangeFeeSetting#current()` · *Pinned by:*
@@ -208,8 +209,8 @@ rejected half of the resolved open question above).
 - **Idempotency:** unchanged. The `FEE` row stays exactly-once per booking via
   `UNIQUE (booking_id, entry_type)`; a redelivered `BookingCancelled` that arrives after a fee
   change writes nothing, so the redelivery cannot reprice.
-- **Money:** integer minor units + explicit ISO currency, stored as `BIGINT` + `CHAR(3)`
-  (invariant #5). No float anywhere; the console parses euros to minor units through the
+- **Money:** integer minor units + explicit ISO currency, stored as `BIGINT` + `TEXT` — the
+  uniform shape of every currency column in the tree (invariant #5). No float anywhere; the console parses euros to minor units through the
   existing `eurosToMinorUnits`.
 - **Payout-ledger effect:** none directly. The ledger's arithmetic, entry types and CHECKs are
   untouched; only the amount a future `FEE` carries can now change.
@@ -256,10 +257,10 @@ number. Rejected: a new `Fees` tab in the Money group, which would split the two
 
 ## Execution status
 
-**Stage pointer:** `PR ready for review — review gate next`
+**Stage pointer:** `review gate — findings fixed, awaiting CI + the Sonar gate on the new head`
 
-**Next action:** mark PR #1055 ready for review, run the review gate per `references/pr-gates.md` §1,
-then the Sonar gate.
+**Next action:** confirm CI green and re-read the SonarCloud gate on the head carrying the review
+fixes, then finalize this section citing the PR and merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -279,6 +280,21 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-2 | local build (phase 3) | `NG8022` — Signal Forms forbids `min`/`max`/`maxlength` on a bound field; they belong in the form schema | fixed-in-`1bf3e85b` |
 | F-3 | `riviera-docs-freshness` (phase 4) | `payout`'s `package-info` and one ADR-0021 consequence line still described the module before it owned a settings table | fixed in this phase |
 | F-4 | local e2e run (review gate) | The out-of-range e2e compared a live locator against text read a moment earlier, so it raced the re-render between the two refusals and failed only in a full-file run | fixed — the assertion settles on the expected message first |
+| F-5 | CI (Repo hygiene) | Two multi-line inline comments in the e2e broke RV-STYLE-1 | fixed — moved into the test's doc comment |
+| F-6 | review gate | `RemodelClaimsService`'s Javadoc still called the fee "a configured amount both sides read" | fixed |
+| F-7 | review gate | ADR-0021 point 7: the amendment marker broke the sentence it was inserted into, and the superseded paragraph read as current fact | fixed — marker moved, sentence restored |
+| F-8 | review gate | The failed-save leg moved no focus (WCAG 2.4.3), and none of the four legs was pinned | fixed — leg added, all four pinned in the spec plus the failure leg in a real browser |
+| F-9 | review gate | A no-op save reached the network and left an audit row for a change that did not happen | fixed — refused before the wire, as the sibling editor does |
+| F-10 | review gate | A write failure's banner survived beside a later field refusal, showing two alerts at once | fixed |
+| F-11 | review gate | The preview quoted "Stores 0 minor units" for a typed negative — the shared parser's clamp, on the element whose job is to show what will be stored | fixed — one `checkAmount` rule now serves the preview and the save |
+| F-12 | review gate | The Signal Forms doc claimed the schema owned the amount's validation, which it does not | fixed |
+| F-13 | review gate | `VenueChangeFeeProperties` did not mention the bound its seed must now satisfy, and credited the wrong class with enforcing it | fixed |
+| F-14 | review gate | ADR-0018 §3 counts the Java↔DB bound mirrors; this slice added one and left the count and enumeration stale | fixed — count, enumeration and the `application/` placement note |
+| F-15 | review gate | §`payout`'s new sole-writer claim shipped without the fitness function every precedent shipped with | fixed — rule 8 plus its two fixtures and the Machine-checked row |
+| F-16 | review gate | `maxLength` on the reason field was inert: no rendered error, no gate, so over-long grounds were silently truncated server-side | fixed — rendered, associated and gated |
+| F-17 | review gate | The field-error association was proven taken but never released | fixed — the refusal now clears on retype (`linkedSignal`), pinned in the spec and the e2e |
+| F-18 | review gate | Plan doc: AC-7 claimed a last-changed field that is a Non-goal, AC-1 named a test that never shipped, the verification command named a non-existent class, and the money section stated `CHAR(3)` where the table uses `TEXT` | fixed |
+| F-19 | review gate | Repeated prose: the forward-only paragraph was retold in four places, and several doc comments narrated the diff or restated the code | fixed — trimmed to one canonical home with pointers |
 
 ---
 
@@ -299,6 +315,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/resources/application.properties` — the commented property line describes the seed
 - `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` — the ADMIN gate for the new read and write
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — the web slices' stub for the new port
+- `platform/src/test/java/ai/riviera/platform/ResponsibilitiesArchitectureTests.java` — the sole-writer rule for the new table
+- `platform/src/test/java/ai/riviera/responsibilityfixture/payout/adapter/out/FixtureJdbcVenueChangeFeeSetting.java` — the owning module's fixture, which the rule must not flag
+- `platform/src/test/java/ai/riviera/responsibilityfixture/rogue/adapter/out/RoguePlatformSettingWriter.java` — the outside writer the rule must reject
+- `platform/src/main/java/ai/riviera/platform/booking/application/remodel/RemodelClaimsService.java` — its Javadoc no longer calls the fee a configured amount
+- `docs/adr/ADR-0018-rule-layer-and-its-packaging.md` — §3's mirror count and enumeration gain the new bound
 - `platform/src/test/java/ai/riviera/platform/payout/adapter/out/JdbcVenueChangeFeeSettingIT.java` — read, write, fallback, no-reprice, CHECK rejections
 - `platform/src/test/java/ai/riviera/platform/payout/AdminVenueChangeFeeIT.java` — the HTTP seam: read, write, role gate, audit row, validation
 - `platform/src/test/java/ai/riviera/platform/payout/adapter/in/BookingCancelledPayoutListenerTest.java` — charges the stored amount
@@ -324,8 +345,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ## Phase 0 — Table, port, JDBC adapter
 
 **Files:** Create `V55__platform_setting.sql`, `VenueChangeFeeSetting.java`,
-`StoredVenueChangeFee.java`, `JdbcVenueChangeFeeSetting.java`,
-`JdbcVenueChangeFeeSettingIT.java` · Modify `VenueChangeFeeAmount.java`
+`JdbcVenueChangeFeeSetting.java`, `JdbcVenueChangeFeeSettingIT.java` · Modify
+`VenueChangeFeeAmount.java`
 
 - [ ] **Step 0: Re-check the Flyway number** — `ls platform/src/main/resources/db/migration | sort -V | tail -3` on latest `main`, and re-run the open-PR check. `V55` free → proceed; taken → renumber this plan first.
 
@@ -360,20 +381,17 @@ void aChangeNeverRepricesAPostedFee() {
 ```sql
 -- V55__platform_setting.sql
 CREATE TABLE platform_setting (
-    setting_key  TEXT        NOT NULL PRIMARY KEY,
-    amount_minor BIGINT      NOT NULL,
-    currency     CHAR(3)     NOT NULL,
-    updated_at   TIMESTAMPTZ NOT NULL,
+    setting_key  TEXT   NOT NULL PRIMARY KEY,
+    amount_minor BIGINT NOT NULL,
+    currency     TEXT   NOT NULL,
     CONSTRAINT platform_setting_key_check
         CHECK (setting_key IN ('VENUE_CHANGE_FEE')),
     CONSTRAINT platform_setting_amount_check
-        CHECK (amount_minor >= 0 AND amount_minor <= 100000),
-    CONSTRAINT platform_setting_currency_check
-        CHECK (currency ~ '^[A-Z]{3}$')
+        CHECK (amount_minor >= 0 AND amount_minor <= 100000)
 );
 
-INSERT INTO platform_setting (setting_key, amount_minor, currency, updated_at)
-VALUES ('VENUE_CHANGE_FEE', 500, 'EUR', now());
+INSERT INTO platform_setting (setting_key, amount_minor, currency)
+VALUES ('VENUE_CHANGE_FEE', 500, 'EUR');
 ```
 
 ```java
@@ -381,7 +399,7 @@ public interface VenueChangeFeeSetting {
 
 	VenueChangeFeeAmount current();
 
-	StoredVenueChangeFee change(long minorUnits);
+	VenueChangeFeeAmount change(long minorUnits);
 }
 ```
 
@@ -405,7 +423,7 @@ public interface VenueChangeFeeSetting {
 
 ```java
 @Test
-void chargesTheStoredFee() {
+void eachChargeReadsTheFeeAgainSoAChangeInForceIsSeen() {
     setting.set(new VenueChangeFeeAmount(700L, "EUR"));
 
     listener.on(cancelled(RefundReason.VENUE_CHANGE, 2000L));
@@ -435,11 +453,11 @@ void chargesTheStoredFee() {
 
 - [ ] **Step 1: Write the failing test** — the IT covering AC-4 through AC-7: read, write plus its audit row, `403` for an operator, `400` for a negative, missing and above-bound amount.
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*AdminVenueChangeFeeControllerIT*"` → FAIL, `404` (no such route)
+- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*AdminVenueChangeFeeIT*"` → FAIL, `404` (no such route)
 
 - [ ] **Step 3: Minimal implementation** — a `@RestController` at `/api/admin/venue-change-fee` depending only on `VenueChangeFeeSetting`, converting the request through `InvalidApiRequestException.parsing`. No audit instrumentation: the edge fence covers it.
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*AdminVenueChangeFeeControllerIT*"` then `--tests "*payout*"` → PASS
+- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*AdminVenueChangeFeeIT*"` then `--tests "*payout*"` → PASS
 
 - [ ] **Step 5: Generalization-audit pass**
 
@@ -504,7 +522,7 @@ void chargesTheStoredFee() {
 
 - [x] **AC-1:** `./gradlew test --tests "*BookingCancelledPayoutListenerTest*"` → PASS.
 - [x] **AC-2/3:** `./gradlew test --tests "*JdbcVenueChangeFeeSettingIT*"` → PASS.
-- [x] **AC-4/5/6/7:** `./gradlew test --tests "*AdminVenueChangeFeeControllerIT*"` → PASS.
+- [x] **AC-4/5/6/7:** `./gradlew test --tests "*AdminVenueChangeFeeIT*"` → PASS.
 - [x] **AC-8/9/10:** `npx vitest run src/app/admin/admin-venue-changes` → PASS.
 - [x] **AC-11:** `npm run test:e2e:a11y -- admin-venue-change-fee` → PASS.
 

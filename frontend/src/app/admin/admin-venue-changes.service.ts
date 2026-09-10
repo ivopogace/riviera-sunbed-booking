@@ -27,10 +27,8 @@ const AUDIT_REASON_HEADER = 'X-Audit-Reason';
  * <p>ADMIN-gated by the backend (a non-admin operator gets 403). The report returns aggregates only
  * — never a booking id or code (invariant #7).
  *
- * <p>The fee write is a plain `put` for the same reason the read is a plain `get`: `httpResource`
- * models a reactive read, and the guide's own tip is to <em>"avoid using httpResource for mutations
- * like POST or PUT"</em> (angular.dev/guide/http/http-resource — <em>Using httpResource</em>). It
- * answers the fee as it now stands, so the caller splices the response instead of re-reading.
+ * <p>The fee write answers the fee as it now stands, so the caller splices the response instead of
+ * re-reading.
  */
 @Service()
 export class AdminVenueChangesService {
@@ -47,8 +45,7 @@ export class AdminVenueChangesService {
   }
 
   /**
-   * Put a new fee in force, answering the fee as it now stands. It applies to every refund charged
-   * after it; fees already charged keep the amount they were charged at.
+   * Put a new fee in force, answering the fee as it now stands.
    *
    * <p>A non-blank `reason` rides the {@link AUDIT_REASON_HEADER} into the audit trail; header values
    * must be Latin-1, so anything outside it becomes a space rather than an aborted request.
