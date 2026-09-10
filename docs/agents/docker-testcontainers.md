@@ -36,9 +36,9 @@ cd platform && ./gradlew cleanTest test --tests "ai.riviera.platform.venue.*"
 # → the venue ITs run, 0 skipped, green (proves the daemon is reachable)
 ```
 
-> In a **repo-scoped** session `./gradlew` cannot download its distribution — use the
-> system-Gradle recipe from `riviera-local-debug` / `gradle-proxy-trust.md` with the
-> same `--tests` scope instead.
+> `./gradlew` is the first thing to try, here as everywhere. If its distribution download
+> 403s in a repo-scoped session — per-session, not a given — use the system-Gradle recipe
+> from `riviera-local-debug` / `gradle-proxy-trust.md` with the same `--tests` scope.
 
 ## Why it's set up this way (gotchas)
 

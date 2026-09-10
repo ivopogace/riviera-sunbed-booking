@@ -67,17 +67,22 @@ export JAVA_HOME=/opt/jdk-25
 
 Do NOT change the wrapper's `distributionUrl` — CI depends on the pinned version.
 
-**If the wrapper's distribution download 403s** (the repo-scope proxy blocking it was the
-default until 2026-09-10), fall back to the image's system Gradle 8.14, which cannot itself
-run on JDK 25 — its daemon goes on JDK 21 while the toolchain still compiles and tests on
-25. That recipe is in `docs/agents/gradle-proxy-trust.md`, which is also what to read on any
-TLS/PKIX or 403 error.
+**If the wrapper's distribution download 403s**, fall back to the image's system Gradle 8.14,
+which cannot itself run on JDK 25 — its daemon goes on JDK 21 while the toolchain still
+compiles and tests on 25. That recipe is in `docs/agents/gradle-proxy-trust.md`, which is also
+what to read on any TLS/PKIX or 403 error. Whether you need it is **per-session**: the proxy
+allowlist and GitHub scope are per-environment, and two sessions on 2026-09-10 disagreed about
+whether the wrapper and even `corretto.aws` were reachable. Measure, don't assume.
 
 ### Scoped tests (any environment)
 
 Run the smallest set that proves the change; never the bare `test` task in a cloud sandbox
 (it boots several Spring contexts and can OOM-kill the container, exit 137; broad IT sweeps
 are slow on the vfs storage driver):
+
+On the fallback path above, substitute `gradle --no-daemon` for `./gradlew` in both commands
+(the flags and `--tests` filters are identical) — `./gradlew` is precisely what is unavailable
+there.
 
 ```bash
 # the structural net — run after any backend structure change; membership rule + members: CLAUDE.md §Commands
