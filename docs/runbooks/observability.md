@@ -545,8 +545,8 @@ booking id, the set id and the deadline — never the arrival code, never the pa
 
 > **The separate-series argument is the cancellation counter's, verbatim:** this name states a
 > **flow**, so it cannot be a `kind` tag on a counter named for a different flow, and the shipped
-> names stay. Only the `reason` dimension is shared, off one enum, so a filter written for any of the
-> three works on all three.
+> names stay. Only the `reason` dimension is shared, off one enum, so a filter written for any one of
+> the abandoned counters works on all six.
 
 ## Alert route (today): in-app self-check → ERROR log
 

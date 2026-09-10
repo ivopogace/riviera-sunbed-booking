@@ -102,8 +102,8 @@ export class TabRailTab {
 }
 
 /**
- * A hairline between two groups of tabs on a {@link TabRail} — how ten admin destinations stop
- * reading as ten peers. Decorative: hidden from assistive tech, in the rail's own hairline ink.
+ * A hairline between two groups of tabs on a {@link TabRail} — how nine admin destinations stop
+ * reading as nine peers. Decorative: hidden from assistive tech, in the rail's own hairline ink.
  * Apply to an empty `<span appTabRailDivider></span>`.
  */
 @Directive({

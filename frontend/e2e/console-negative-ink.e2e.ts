@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 
 /**
- * The operator console's negative ink paints from the token registry (#864) — the class-R sibling
+ * The console's negative ink paints from the token registry — the class-R sibling
  * of `console-accent-ink.e2e.ts`, and the same kind of proof for the other pole of the
  * `--riv-console-*-ink` pair.
  *
@@ -23,19 +23,19 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * <p>The dark-theme test is the subtree-pinning proof, and it is worth being precise about what it
  * does and does not show. This token is declared ONCE, so it could not resolve differently under a
  * dark document theme even if the pin failed; the test therefore cannot, by itself, distinguish
- * this token from a themed one. What it does prove is the property the three sites actually depend
+ * this token from a themed one. What it does prove is the property the four sites actually depend
  * on — that nothing in the cascade repaints the console's negative ink when the document theme
  * changes — which is exactly what would break if a later slice gave the token a dark override and
  * the console stopped pinning porcelain. Both sites carry their own dark-theme test, for the same
  * reason the porcelain ones are separate: independent lazy route children. The declaration guard in
  * `operator/console-negative-token.contrast.spec.ts` is what watches the override itself.
- * Rationale: #864 (PR #866).
+ * Rationale: `docs/design/colour-literal-token-audit.md` § class R.
  */
 
 /** `--riv-console-negative-ink` as the base block declares it — the console pin keeps it in force. */
 const CONSOLE_NEGATIVE_INK = 'rgb(163, 55, 42)';
 
-/** The utility the three sites are consumed through — it exists only if the `@theme inline` row does. */
+/** The utility the four sites are consumed through — it exists only if the `@theme inline` row does. */
 const UTILITY = 'text-riv-console-negative-ink';
 
 /** Not a booking code, so the panel reports it without reaching the server (`daily-view-tab.ts`). */

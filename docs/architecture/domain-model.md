@@ -372,15 +372,15 @@ classDiagram
     }
     class remodel_receipt {
         <<table>>
-        id, venue_id, operator_id, committed_at
+        id, venue_id, operator_id, committed_at, refund_reason
         _move child (from/to set, labels, rows_away, positions_away)
-        _outcome child (kind, booking_id, refund_minor, fee_minor, reason)
+        _outcome child (kind, booking_id, booking_date, set label, amount_minor, fee_minor)
     }
     booking ..> BookingStatus : status
     BookingTransition ..> BookingStatus : the lifecycle, stated once
     RefundPolicy ..> CancellationWindow : one tier per window
     booking ..> RefundReason : cancel_reason
-    remodel_receipt "1" o-- "many" booking : what one commit moved, refunded or released
+    remodel_receipt "1" o-- "many" booking : what one commit moved, refunded, released or declined
 ```
 
 > The booking **code** is an unguessable bearer credential — ≥ 8 random base32 chars, never
@@ -524,7 +524,7 @@ classDiagram
 
 > These two records are the only ones the docs ever called aggregate roots that actually exist —
 > and they are **immutable value records**, not mutable roots with identity and a lifecycle
-> (ADR-0018 §6): the entry carries the `accrual`/`reversalOf` factories, while the batch is built
+> (ADR-0018 §6): the entry carries the `accrual`/`reversalOf`/`fee` factories, while the batch is built
 > straight through its canonical constructor. The entry carries no id type, no
 > `Money`, and one field the old diagram omitted: `reason`, which is what makes a `REVERSAL`
 > auditable under invariant #9. `bookingId` is a bare `long` while `venueId` is typed.
@@ -536,7 +536,8 @@ classDiagram
 > **Direction lives in the entry type, never in the amount.** Every amount is a non-negative
 > magnitude, so a payout reads `Σ ACCRUAL.net − Σ REVERSAL.net − Σ FEE.net`: only an `ACCRUAL` adds
 > (ADR-0021). `net = gross − commission` is checked in the record's canonical constructor and again
-> by `payout_net_check` — which **exempts `FEE`**, the one type charged against no booking amount
+> by `payout_net_check`. Both **exempt `FEE`**, keyed on the entry type alone — the one type charged
+> against no booking amount
 > and carrying no commission, so its gross and commission are both `0` and the whole fee is the net.
 > The commission rate is per venue and effective-dated (§3.1); the fee is one platform-wide amount
 > in `platform_setting`, which `payout` solely writes and an admin edits. Payouts settle manually via
