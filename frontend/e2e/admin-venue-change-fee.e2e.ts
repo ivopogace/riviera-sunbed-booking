@@ -167,15 +167,25 @@ test('an out-of-range fee names the field it blames, and lets go when corrected'
   await openVenueChangesTab(page);
 
   await page.getByTestId('admin-venue-change-fee-edit').click();
+
+  // A negative reaches the field as typed: the shared euros parser would clamp it to a legitimate
+  // -looking zero, so the refusal has to happen before it.
+  await page.getByTestId('admin-venue-change-fee-input').fill('-5');
+  await page.getByTestId('admin-venue-change-fee-save').click();
+  await expect(page.getByTestId('admin-venue-change-fee-input-error')).toContainText('negative');
+  expect(await writesSoFar(page)).toEqual([]);
+
   await page.getByTestId('admin-venue-change-fee-input').fill('2000');
   await page.getByTestId('admin-venue-change-fee-save').click();
 
+  // Settle on the second message before dereferencing: comparing a live locator against text read
+  // a moment earlier races the re-render that swaps one refusal for the other.
   const error = page.getByTestId('admin-venue-change-fee-input-error');
-  await expect(error).toBeVisible();
+  await expect(error).toContainText('cannot exceed');
   const describedBy = await page
     .getByTestId('admin-venue-change-fee-input')
     .getAttribute('aria-describedby');
-  await expect(page.locator(`#${describedBy}`)).toHaveText(await error.innerText());
+  await expect(page.locator(`#${describedBy}`)).toContainText('cannot exceed');
   expect(await writesSoFar(page)).toEqual([]);
 
   await page.getByTestId('admin-venue-change-fee-input').fill('6');

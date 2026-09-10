@@ -278,6 +278,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | local test run (phase 2) | The new controller's port had no stub in `WebSliceStubs`, so every web-slice context failed to load | fixed-in-`003dbba9` |
 | F-2 | local build (phase 3) | `NG8022` — Signal Forms forbids `min`/`max`/`maxlength` on a bound field; they belong in the form schema | fixed-in-`1bf3e85b` |
 | F-3 | `riviera-docs-freshness` (phase 4) | `payout`'s `package-info` and one ADR-0021 consequence line still described the module before it owned a settings table | fixed in this phase |
+| F-4 | local e2e run (review gate) | The out-of-range e2e compared a live locator against text read a moment earlier, so it raced the re-render between the two refusals and failed only in a full-file run | fixed — the assertion settles on the expected message first |
 
 ---
 
