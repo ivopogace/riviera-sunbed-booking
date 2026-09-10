@@ -119,7 +119,7 @@ tables, and the lifecycles are guarded SQL (ADR-0018).
 | `availability` | the per-`(set, date)` source-of-truth state; the only writer of that table | `set_availability` |
 | `booking` | bookings and codes, the whole lifecycle and its sweeps, request accept/decline, cancellation policy, driving refunds via `payment.api.RefundPort` | `booking` |
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `payment`, `stripe_webhook_event` |
-| `payout` | the venue payout ledger and manual BKT batches | `payout_ledger_entry`, `payout_batch` |
+| `payout` | the venue payout ledger, manual BKT batches, and the platform's own settings (today: the venue-change fee) | `payout_ledger_entry`, `payout_batch`, `platform_setting` |
 | `customer` | tourist identity: guest contact, the customer account (sign-in, SSO, verification, password), GDPR erasure (ADR-0010) + retention sweep, the canonical email form | `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token` |
 | `operator` | operator accounts, operator↔venue ownership (invariant #13), the admin-driven lifecycle and `is_admin`, the tourist-visibility answer | `operator`, `operator_venue` |
 | `review` | reviews (one per booking), eligibility + window, the aggregate rating, the listed page, admin takedown, erasure tombstone; a **leaf** module (ADR-0015) | `review` |

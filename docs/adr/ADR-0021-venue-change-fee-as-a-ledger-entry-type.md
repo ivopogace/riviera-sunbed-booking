@@ -1,6 +1,8 @@
 # ADR-0021: The venue-change fee is a third payout-ledger entry type, and the entry type carries the sign
 
 - **Status:** Accepted — implemented by the slice for issue #1036 (epic #1027, user stories 33–34).
+  Amended 2026-09-10 by the slice for issue #1037; see *Amendment* below, which supersedes points 5
+  and 7.
 - **Date:** 2026-09-10
 - **Relates to:** ADR-0002 (collect-only, no Stripe Connect — the fee moves no money at the
   gateway), ADR-0005 (the proportional reversal it rides beside), ADR-0020 (the remodel's
@@ -57,6 +59,7 @@ commit receipt tells them apart, through `BookingNotificationFacts#endedByRemode
    port, or a widened, registry-persisted event payload. Neither is worth buying a loophole.
 
 5. **The amount is `riviera.payout.venue-change-fee-minor`, flat, platform-wide, default 500 (EUR).**
+   *(Amended — the amount is now a stored setting; see below.)*
    The flat fee is regressive on a cheap booking — 5 EUR on a 12 EUR set — and that is accepted for
    version one. Issue #1037 makes it admin-editable and audited.
 
@@ -68,7 +71,8 @@ commit receipt tells them apart, through `BookingNotificationFacts#endedByRemode
    `customer.spi.GuestBookingHistory` already use. `RemodelClaims` gains one method on the
    conversation it already holds rather than a fifth narrow port.
 
-7. **A commit records the rate it quoted onto its receipt line** (`remodel_receipt_outcome.fee_minor`),
+7. **A commit records the rate it quoted onto its receipt line** (`remodel_receipt_outcome.fee_minor`).
+   *(Amended — the divergence window is now real, and is accepted rather than closed; see below.)*
    so a receipt reads back what the operator confirmed rather than today's rate — the lesson V39 taught
    for the commission schedule.
 
@@ -111,3 +115,39 @@ commit receipt tells them apart, through `BookingNotificationFacts#endedByRemode
 - **Granting the composition root `payout::api`** so the preview could read the rate directly. It
   contradicts the composition-root rule by name and would reopen the pattern that rule exists to
   prevent, for one configured number.
+
+
+## Amendment (2026-09-10) — the amount is a stored setting, and the window is accepted
+
+Issue #1037 made the fee admin-editable. Two points above change.
+
+**Point 5 is superseded.** The amount lives in a `platform_setting` row that `payout` owns and
+solely writes, read per call through `payout.application.VenueChangeFeeSetting`. Both readers — the
+cancelled-booking listener and the `booking.spi` rate the preview quotes — read it at the moment
+they need it, so a change applies to every fee charged after it. The property stays as the seed the
+row is created with and the fallback a missing row falls back to; it is not a second source of
+truth. The flat-fee regressiveness accepted in point 5 is unchanged.
+
+**Point 7's window is now real, and a schedule would not close it.** Point 7 said this ADR's
+successor "owes the rate an effective-dated schedule of its own". Building it showed that a schedule
+alone cannot deliver what it was wanted for. The divergence is between what a commit receipt quoted
+and what the asynchronous listener later charges, and resolving a dated rate needs the instant to
+resolve *at* — which `BookingCancelled` does not carry. A schedule would still be read "as of now"
+at drain time and would change nothing. Closing the window properly means adding a cancellation
+instant to a registry-persisted event payload, so that outstanding publications deserialize a null
+and need a fallback of their own.
+
+That is more machinery than a rarely-changed flat fee justifies, so the window is **accepted and
+documented** instead — in the `V55` migration header, on the listener, on the admin controller, and
+in `RESPONSIBILITIES.md` §`payout`. What is still guaranteed is narrower and exact: a posted `FEE`
+row is never repriced, because the ledger is append-only and nothing in the settings path writes to
+it. The second `VENUE_CHANGE` shape — a moved guest's free exit — still has no receipt line to
+diverge from at all.
+
+**One consequence above is now understated.** "Its admin surface grows a second read beside the
+payout-batch report" is now a third read and this module's first admin *write*, and `payout` owns a
+second table (`platform_setting`) beside the two ledger ones.
+
+**What did not change.** The `FEE` entry type, its CHECK exemption, its idempotency guard, which
+refunds earn it, where it is posted from, and the receipt's own snapshot of the quoted amount are all
+exactly as decided above.

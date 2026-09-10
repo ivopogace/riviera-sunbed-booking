@@ -28,8 +28,8 @@ ADR-0021 §7 obliges this slice to an effective-dated schedule, which forced the
 `AskUserQuestion` that settled the design) · `riviera-plan-doc` (this template — forced the
 seam-per-AC line and the behavior-parity ledger for the retired property path) · `tdd` (each
 phase red-green at the seams named below) · `riviera-review-overlay` (review gate — runs at
-ready-for-review) · `riviera-docs-freshness` (**ran** at close-out over
-`origin/main..HEAD`, findings recorded in the register) · `postgres` (`TEXT` + `CHECK` over a
+ready-for-review) · `riviera-docs-freshness` (**ran** over `66bb4b3b..HEAD` at phase 4 — 2 findings, both
+patched: `payout`'s `package-info` and an ADR-0021 consequence line) · `postgres` (`TEXT` + `CHECK` over a
 native enum for `setting_key`, `BIGINT` minor units, `TIMESTAMPTZ`) · `riviera-modulith` (the
 setting is an internal `application/` port implemented by `adapter/out`, not a published
 surface — no module but `payout` reads it) · `riviera-java-conventions` (records for the
@@ -37,6 +37,8 @@ DTOs, `InvalidApiRequestException.parsing` at the conversion boundary, the named
 constant instead of a magic number) · `riviera-stripe-payments` (the fee stays a non-negative
 magnitude whose direction lives in the `FEE` entry type) · `codebase-design` (collapsed the
 hypothetical `VenueChangeFeeService` — the controller talks to the port directly) ·
+`domain-modeling` (the *Platform setting* glossary entry and the ADR-0021 amendment rather than a
+silent contradiction) ·
 `riviera-frontend` (the editor joins the existing Venue changes tab rather than claiming a
 new route) · `angular-developer` + angular-cli MCP (v22 `get_best_practices`: Signal Forms
 for new forms, `@Service`, no explicit `standalone`/`OnPush`) · `riviera-tailwind` (the card
@@ -51,52 +53,52 @@ remote branch stands in for `feature/venue-change-fee-setting`.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a stored fee of 500 EUR, when a `BookingCancelled` with
+- [x] **AC-1:** Given a stored fee of 500 EUR, when a `BookingCancelled` with
   `reason == VENUE_CHANGE` and a positive refund is handled, then the listener charges a `FEE`
   of exactly the stored amount, read at charge time. *Seam:*
   `payout.application.VenueChangeFeeSetting#current()` · *Pinned by:*
   `BookingCancelledPayoutListenerTest.chargesTheStoredFee`
-- [ ] **AC-2:** Given no `platform_setting` row for the fee, when `current()` is read, then it
+- [x] **AC-2:** Given no `platform_setting` row for the fee, when `current()` is read, then it
   answers the seed property amount (500 EUR) rather than failing. *Seam:*
   `payout.application.VenueChangeFeeSetting#current()` · *Pinned by:*
   `JdbcVenueChangeFeeSettingIT.fallsBackToTheSeedWhenTheRowIsMissing`
-- [ ] **AC-3:** Given a posted `FEE` ledger row of 500, when the setting is changed to 700,
+- [x] **AC-3:** Given a posted `FEE` ledger row of 500, when the setting is changed to 700,
   then the posted row still reads 500 and the next charge reads 700. *Seam:*
   `payout.application.VenueChangeFeeSetting` + `payout.application.PayoutLedger` · *Pinned by:*
   `JdbcVenueChangeFeeSettingIT.aChangeNeverRepricesAPostedFee`
-- [ ] **AC-4:** Given an authenticated platform ADMIN, when `PUT /api/admin/venue-change-fee`
+- [x] **AC-4:** Given an authenticated platform ADMIN, when `PUT /api/admin/venue-change-fee`
   carries `{"amountMinor": 700}` and an `X-Audit-Reason`, then the response is `200` with the
   new amount and exactly one admin-audit row records the write with that reason. *Seam:*
   `PUT /api/admin/venue-change-fee` · *Pinned by:*
   `AdminVenueChangeFeeIT.writesTheFeeAndLeavesAnAuditRow`
-- [ ] **AC-5:** Given an authenticated OPERATOR who is not an admin, when the same `PUT` is
+- [x] **AC-5:** Given an authenticated OPERATOR who is not an admin, when the same `PUT` is
   sent, then the response is `403` and the stored amount is unchanged. *Seam:*
   `PUT /api/admin/venue-change-fee` · *Pinned by:*
   `AdminVenueChangeFeeIT.refusesANonAdmin`
-- [ ] **AC-6:** Given an admin, when the `PUT` carries a negative amount, a missing amount, or
+- [x] **AC-6:** Given an admin, when the `PUT` carries a negative amount, a missing amount, or
   one above the stored bound, then the response is `400 INVALID_REQUEST` and the stored amount
   is unchanged. *Seam:* `PUT /api/admin/venue-change-fee` · *Pinned by:*
   `AdminVenueChangeFeeIT.rejectsAnOutOfRangeAmount`
-- [ ] **AC-7:** Given an admin, when `GET /api/admin/venue-change-fee` is read, then it answers
+- [x] **AC-7:** Given an admin, when `GET /api/admin/venue-change-fee` is read, then it answers
   the stored amount, its ISO currency and when it last changed. *Seam:*
   `GET /api/admin/venue-change-fee` · *Pinned by:*
   `AdminVenueChangeFeeIT.readsTheStoredFee`
-- [ ] **AC-8:** Given the Venue changes tab rendered with a fee of €5, when the admin types
+- [x] **AC-8:** Given the Venue changes tab rendered with a fee of €5, when the admin types
   `7`, arms the change and confirms, then one `PUT` carries `700` and the card renders €7 from
   the response without re-fetching the report. *Seam:* the `AdminVenueChanges` component's
   rendered DOM over `HttpTestingController` · *Pinned by:*
   `admin-venue-changes.spec.ts` › `writes the fee and splices the response`
-- [ ] **AC-9:** Given the fee editor, when the admin submits an empty, negative or
+- [x] **AC-9:** Given the fee editor, when the admin submits an empty, negative or
   above-bound amount, then a field error is shown and no request is sent. *Seam:* the
   `AdminVenueChanges` component's rendered DOM over `HttpTestingController` · *Pinned by:*
   `admin-venue-changes.spec.ts` › `refuses an out-of-range amount without calling the API`
-- [ ] **AC-10:** Given the Venue changes tab with the fee card, when axe runs over it in both
+- [x] **AC-10:** Given the Venue changes tab with the fee card, when axe runs over it in both
   themes, then there are no violations and every token pair meets the contrast floor. *Seam:*
   the rendered tab · *Pinned by:* `admin-venue-changes.a11y.spec.ts`,
   `admin-venue-changes.contrast.spec.ts`
-- [ ] **AC-11:** Given the mocked admin console, when an admin edits the fee end to end, then
+- [x] **AC-11:** Given the mocked admin console, when an admin edits the fee end to end, then
   the request carries the new amount and the page renders it. *Seam:* the `/admin/venue-changes`
-  route against mocked HTTP · *Pinned by:* `frontend/e2e/admin-venue-change-fee.spec.ts`
+  route against mocked HTTP · *Pinned by:* `frontend/e2e/admin-venue-change-fee.e2e.ts`
 
 ## Non-goals
 
@@ -130,13 +132,13 @@ remote branch stands in for `feature/venue-change-fee-setting`.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A write between a remodel commit and the async listener draining charges an amount the receipt did not quote | low | med | Accepted and documented: migration header, listener Javadoc, `RESPONSIBILITIES.md` §`payout`, ADR-0021 amendment. Closing it needs `cancelledAt` on a registry-persisted event; out of scope by decision | Ivo | open → documented in phase 4 |
+| R-1 | A write between a remodel commit and the async listener draining charges an amount the receipt did not quote | low | med | Accepted and documented: migration header, listener Javadoc, `RESPONSIBILITIES.md` §`payout`, ADR-0021 amendment. Closing it needs `cancelledAt` on a registry-persisted event; out of scope by decision | Ivo | closed — documented in `1bf3e85b`+ |
 | R-2 | `V55` collides with a migration claimed by an in-flight PR | low | high | Checked at plan time and re-checked against fetched `origin/main` at phase 0: `V54` is the newest and no PR is open | Ivo | closed at phase 0 |
-| R-3 | The listener reads the setting on every cancellation, adding a query to the money path | med | low | Single-row primary-key lookup on a table with one row; the listener already does two ledger queries in the same transaction | Ivo | open |
-| R-4 | Two admins write the fee concurrently and one silently wins | low | low | Accepted: last write wins on a single-row `UPDATE`, and the audit trail records both. No optimistic token — the setting is one number changed rarely | Ivo | open |
-| R-5 | A `FEE` charged from the fallback (row missing) is indistinguishable from one charged from the row | low | low | The migration seeds the row, so the fallback is only reachable by hand-deleting it; the adapter logs at WARN when it falls back | Ivo | open |
-| R-6 | The new DTOs drift from the error contract | low | med | `InvalidApiRequestException.parsing` at the conversion boundary yields `400 INVALID_REQUEST`; no per-controller `@ExceptionHandler` (`ErrorContractArchitectureTests`) | Ivo | open |
-| R-7 | Adding a write to a read-only report tab breaks its existing specs | med | low | The report's own specs are untouched by construction — the fee card is a sibling above the list; `.a11y`/`.contrast` pairs re-run | Ivo | open |
+| R-3 | The listener reads the setting on every cancellation, adding a query to the money path | med | low | Single-row primary-key lookup on a table with one row; the listener already does two ledger queries in the same transaction | Ivo | closed — accepted |
+| R-4 | Two admins write the fee concurrently and one silently wins | low | low | Accepted: last write wins on a single-row upsert, and the audit trail records both. No optimistic token — the setting is one number changed rarely | Ivo | closed — accepted, stated on the request DTO |
+| R-5 | A `FEE` charged from the fallback (row missing) is indistinguishable from one charged from the row | low | low | The adapter logs at WARN when it falls back, and the write upserts, so the next change restores the row | Ivo | closed — `JdbcVenueChangeFeeSettingIT` pins both |
+| R-6 | The new DTOs drift from the error contract | low | med | `InvalidApiRequestException.parsing` at the conversion boundary yields `400 INVALID_REQUEST`; no per-controller `@ExceptionHandler` | Ivo | closed — `ErrorContractArchitectureTests` + `AdminVenueChangeFeeIT` green |
+| R-7 | Adding a write to a read-only report tab breaks its existing specs | med | low | The report's own assertions were untouched; the four tab specs and the whole 3138-test frontend suite are green | Ivo | closed |
 
 ## Open questions / Assumptions
 
@@ -254,18 +256,18 @@ number. Rejected: a new `Fees` tab in the Money group, which would split the two
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `PR ready for review — review gate next`
 
-**Next action:** write the mocked Playwright spec for the edit, then the docs and the ADR-0021
-amendment, and retire #1036's plan doc.
+**Next action:** mark PR #1055 ready for review, run the review gate per `references/pr-gates.md` §1,
+then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Table, port, JDBC adapter | ✅ | `6d0239a9` |
 | 1 — Listener and rate read through the port | ✅ | `9e987086` |
 | 2 — Admin read/write endpoint | ✅ | `003dbba9` |
-| 3 — Admin console fee card | ✅ | |
-| 4 — e2e, docs, ADR-0021 amendment, close-out | | |
+| 3 — Admin console fee card | ✅ | `1bf3e85b` |
+| 4 — e2e, docs, ADR-0021 amendment, close-out | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -273,6 +275,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | local test run (phase 2) | The new controller's port had no stub in `WebSliceStubs`, so every web-slice context failed to load | fixed-in-`003dbba9` |
+| F-2 | local build (phase 3) | `NG8022` — Signal Forms forbids `min`/`max`/`maxlength` on a bound field; they belong in the form schema | fixed-in-`1bf3e85b` |
+| F-3 | `riviera-docs-freshness` (phase 4) | `payout`'s `package-info` and one ADR-0021 consequence line still described the module before it owned a settings table | fixed in this phase |
 
 ---
 
@@ -287,6 +292,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/payout/adapter/in/AdminVenueChangeFeeController.java` — the role-gated read/write surface
 - `platform/src/main/java/ai/riviera/platform/payout/adapter/in/VenueChangeFeeView.java` — the response DTO
 - `platform/src/main/java/ai/riviera/platform/payout/adapter/in/SetVenueChangeFeeRequest.java` — the request DTO and its conversion guard
+- `platform/src/main/java/ai/riviera/platform/payout/package-info.java` — the module also owns the platform's settings
 - `platform/src/main/java/ai/riviera/platform/payout/adapter/in/PayoutFeeConfig.java` — the property bean becomes the seed
 - `platform/src/main/java/ai/riviera/platform/payout/adapter/in/VenueChangeFeeProperties.java` — Javadoc: seed and fallback, not the source of truth
 - `platform/src/main/resources/application.properties` — the commented property line describes the seed
@@ -304,7 +310,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/admin/admin-venue-changes.contrast.spec.ts` — the card's token pairs
 - `frontend/src/app/admin/admin.model.ts` — `VenueChangeFeeView`
 - `frontend/src/app/app.routes.ts` — the tab's sign-in copy now names the fee
-- `frontend/e2e/admin-venue-change-fee.spec.ts` — the mocked end-to-end edit
+- `frontend/e2e/admin-venue-change-fee.e2e.ts` — the mocked end-to-end edit
 - `CLAUDE.md` — `platform_setting` on `payout`'s owned-tables row
 - `CONTEXT.md` — the "Platform setting" glossary entry
 - `RESPONSIBILITIES.md` — §`payout` names the settings read and the divergence window
@@ -464,7 +470,7 @@ void chargesTheStoredFee() {
 
 ## Phase 4 — e2e, docs, ADR-0021 amendment, close-out
 
-**Files:** Create `frontend/e2e/admin-venue-change-fee.spec.ts` · Modify `CLAUDE.md`,
+**Files:** Create `frontend/e2e/admin-venue-change-fee.e2e.ts` · Modify `CLAUDE.md`,
 `CONTEXT.md`, `RESPONSIBILITIES.md`, `ADR-0021…md` · Delete `docs/plans/venue-change-fee.md`
 
 - [ ] **Step 1: Write the failing test** — the mocked Playwright spec for AC-11.
@@ -495,31 +501,31 @@ void chargesTheStoredFee() {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `./gradlew test --tests "*BookingCancelledPayoutListenerTest*"` → PASS.
-- [ ] **AC-2/3:** `./gradlew test --tests "*JdbcVenueChangeFeeSettingIT*"` → PASS.
-- [ ] **AC-4/5/6/7:** `./gradlew test --tests "*AdminVenueChangeFeeControllerIT*"` → PASS.
-- [ ] **AC-8/9/10:** `npx vitest run src/app/admin/admin-venue-changes` → PASS.
-- [ ] **AC-11:** `npm run test:e2e:a11y -- admin-venue-change-fee` → PASS.
+- [x] **AC-1:** `./gradlew test --tests "*BookingCancelledPayoutListenerTest*"` → PASS.
+- [x] **AC-2/3:** `./gradlew test --tests "*JdbcVenueChangeFeeSettingIT*"` → PASS.
+- [x] **AC-4/5/6/7:** `./gradlew test --tests "*AdminVenueChangeFeeControllerIT*"` → PASS.
+- [x] **AC-8/9/10:** `npx vitest run src/app/admin/admin-venue-changes` → PASS.
+- [x] **AC-11:** `npm run test:e2e:a11y -- admin-venue-change-fee` → PASS.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — the invocation ladder plus `riviera-review-overlay`.
 
