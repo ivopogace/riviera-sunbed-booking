@@ -30,7 +30,7 @@ import { RetryButton } from '../shared/retry-button';
 import { defaultBookingDate, formatCivilDate, isIsoDate } from '../shared/booking-date';
 import { routeIdParam } from '../shared/parent-venue-id';
 import { spotLabel, tierSentenceLabel } from '../shared/set-label';
-import { SetView, VenueMapView } from '../shared/venue-views';
+import { PhotoView, SetView, VenueMapView } from '../shared/venue-views';
 import { AvailabilityCalendar } from './availability-calendar';
 import { VenueReviews } from './venue-reviews';
 import { VenueService } from './venue.service';
@@ -72,7 +72,7 @@ interface VenueHeader {
   readonly region: string;
   readonly description: string;
   /** The banner slideshow's photo URLs in slot order; empty → the gradient placeholder. */
-  readonly photos: readonly string[];
+  readonly photos: readonly PhotoView[];
   readonly bookingMode: VenueMapView['bookingMode'];
   readonly modeLabel: string;
   readonly isRated: boolean;

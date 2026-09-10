@@ -26,7 +26,7 @@ import { ClosedForSeasonChip } from '../../shared/closed-for-season-chip';
 import { SemanticChip } from '../../shared/semantic-chip';
 import { defaultBookingDate, formatDayMonth, isIsoDate } from '../../shared/booking-date';
 import { TouchTarget } from '../../shared/touch-target';
-import { VenueSummary } from '../../shared/venue-views';
+import { PhotoView, VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
 
 /**
@@ -41,7 +41,7 @@ interface VenueCard {
   readonly beach: string;
   readonly region: string;
   /** The slideshow's photo URLs in slot order (cover first); empty → the gradient placeholder. */
-  readonly photos: readonly string[];
+  readonly photos: readonly PhotoView[];
   readonly modeLabel: string;
   readonly isRated: boolean;
   readonly rating: string;

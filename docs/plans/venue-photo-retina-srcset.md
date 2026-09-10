@@ -198,11 +198,11 @@ and stays content-addressed.`
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `[attr.srcset]` is overwritten or ignored by `NgOptimizedImage`, so the whole slice is inert — the exact failure mode #1041 documents for `sizes` | med | high | Verified in the 22.1.4 bundle that `updateSrcAndSrcset` writes `srcset` only from `ngSrcset` or the automatic path, both gated on a loader; `disableOptimizedSrcset` closes the future-loader hole. **Phase 2 pins it in the rendered DOM (AC-6), not in the class list** | agent | open |
-| R-2 | Without `sizes="auto"` support the `100vw` fallback makes every Discover card pick the widest candidate — a **bytes regression** on the exact surface #1041 cared about | med | high | AC-7: pass an explicit vw-only `sizes` per host so the fallback describes the real box. `sizes` must contain no pixel values (RuntimeError 2952) — vw-only by construction | agent | open |
+| R-1 | `[attr.srcset]` is overwritten or ignored by `NgOptimizedImage`, so the whole slice is inert — the exact failure mode #1041 documents for `sizes` | med | high | Closed. AC-6 reads the rendered `<img>`: `src` is the baseline URL, `srcset` carries both candidates, `disableOptimizedSrcset` is set. Mutation-checked by deleting the `[attr.srcset]` binding, which fails that test alone, so the assertion is load-bearing rather than incidentally true | agent | closed in phase 2 |
+| R-2 | Without `sizes="auto"` support the `100vw` fallback makes every Discover card pick the widest candidate — a **bytes regression** on the exact surface #1041 cared about | med | high | Closed. Every host passes an explicit vw-only `sizes`; AC-7 pins the Discover grid's, AC-8 the lightbox's. `assertNoComplexSizes` was read in the bundle: it runs whenever `ngSrcset` is absent, loader or not, and its regex only rejects a pixel value in a size *slot*, so the media conditions used here are legal | agent | closed in phase 2 |
 | R-3 | Retina bytes blow ADR-0008's stated "≈≤120 KB each" cap and the per-venue footprint it sizes the `bytea` decision on | high | med | Confirmed: it does. Measured in phase 0 (see the Generalization-audit log) — worst single rendition 327 KB, per-photo total 135–563 KB by aspect, so a 3-slot venue runs ~0.4–1.7 MB against the ADR's stated ≈360 KB. The 0.62 retina quality is what keeps it there. **Phase 3 updates ADR-0008's figures**; the flip threshold itself is unmoved at Phase-1 venue counts | agent | measured in phase 0, doc fix due phase 3 |
 | R-4 | Widening the uniqueness constraint drops the old one; a bad migration could leave the table with no protection against a duplicate `(photo, surface)` write | low | high | AC-5 pins the new constraint from the DB side in `JdbcPhotoStorageIT`; the migration adds the new constraint before dropping the old | agent | open |
-| R-5 | `PhotoView` replaces `List<String>` in two published view records, so every consumer of `photos` and `coverPhoto` breaks at once — backend read models, the frontend mirror, three components and their specs | high | med | Phase 1 changes the backend contract and its ITs together; phase 2 changes the mirror and all three components together. Neither phase is green in isolation, which is expected and stated in the phase table | agent | open |
+| R-5 | `PhotoView` replaces `List<String>` in two published view records, so every consumer of `photos` and `coverPhoto` breaks at once — backend read models, the frontend mirror, three components and their specs | high | med | Closed. 44 specs broke at once as predicted. Kept to fixture churn by wrapping inside each spec's own `create` helper and adding `src/testing/photo-views.ts`, so every existing assertion comparing a rendered `src` to a URL constant reads unchanged | agent | closed in phase 2 |
 | R-6 | Flyway `V56` collides with a concurrently-merged branch | low | med | Checked at the intake gate: `V55` is the max on `main` and there are no open PRs. If one appears, this branch renumbers (it will merge second) | agent | open |
 | R-7 | A module-boundary leak: the new view records land somewhere other than `venue/vocabulary/` | low | med | `PublishedSurfacePlacementArchitectureTests` + `ModularityTests` in the structural-net run after phase 1 | agent | open |
 
@@ -298,17 +298,17 @@ attribute stays authoritative.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Write `photo-slideshow.spec.ts` › `emits every candidate as a w-descriptor srcset`
-red, per AC-6. The backend contract is settled; phase 2 is the mirror plus the three components.
+**Next action:** Extend `frontend/e2e/discover-photos.e2e.ts` for AC-9, then fold phase 0's measured
+byte figures into ADR-0008.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Retina tier in the processor + `V56` scale column | ✅ | AC-1, AC-2, AC-5 green |
 | 1 — `PhotoView` read model | ✅ | AC-3, AC-4 green |
-| 2 — Frontend `srcset` + per-host `sizes` | ⏳ | |
-| 3 — e2e coverage + ADR-0008 footprint figures | | |
+| 2 — Frontend `srcset` + per-host `sizes` | ✅ | AC-6, AC-7, AC-8 green |
+| 3 — e2e coverage + ADR-0008 footprint figures | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -351,10 +351,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/venue-views.ts` — the `PhotoView`/`PhotoSourceView` mirror
 - `frontend/src/app/shared/photo-url.ts` — `apiPhotoView` + `photoSrcset` helpers
 - `frontend/src/app/shared/photo-url.spec.ts` — helper specs
+- `frontend/src/testing/photo-views.ts` — `photoView`/`photoViews`, the shared spec fixture builder
 - `frontend/src/app/shared/photo-slideshow.ts` — `[attr.srcset]`, `disableOptimizedSrcset`, `sizes` input
 - `frontend/src/app/shared/photo-slideshow.spec.ts` — AC-6
 - `frontend/src/app/shared/photo-gallery-grid.ts|.spec.ts` — same treatment for the three tiles
-- `frontend/src/app/shared/photo-lightbox.ts|.spec.ts` — retyped `photos`
+- `frontend/src/app/shared/photo-lightbox.ts|.spec.ts` — retyped `photos`, and its own `sizes`
 - `frontend/src/app/shared/photo-slideshow.contrast.spec.ts` — follows the retype
 - `frontend/src/app/pages/home/home.ts|.html` — passes the grid's `sizes`
 - `frontend/src/app/pages/home/home.spec.ts` — AC-7
@@ -473,6 +474,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-10 | phase 0 | Every reader of `venue_photo_variant` — a second row per surface changes what any of them sees | `grep -rn "venue_photo_variant" platform/src --include=*.java --include=*.sql` | `JdbcPhotoStorage` (3 reads + the write), `JdbcVenueCatalog:293` (tourist read model), `JdbcVenues:610` (console slot read), 2 test call sites | Fixed all three production readers. `JdbcVenueCatalog` keys its map by surface alone, so a second density silently overwrote the first — pinned to `scale = :scale` (BASE_SCALE) until phase 1 widens it. `JdbcVenues` collects with `Collectors.toMap`, which would throw on a duplicate slot key if PREVIEW ever gained a tier — pinned to `PREVIEW_SCALE`. |
+| 2026-09-10 | phase 2 | Every `ngSrc` in the tree — the mechanism is an image whose photo now has more than one stored density to choose from | `grep -rn "ngSrc" frontend/src --include=*.ts --include=*.html` | 5 production sites: `photo-slideshow`, `photo-gallery-grid` (hero + 2 tiles), `admin/admin-venue-photos.ts`, `operator/venue-tab.html` | The three tourist sites carry the `srcset`. The other two are **not in the population**: both render a PREVIEW variant, which by phase 0's decision carries no retina tier, so there is no second candidate to offer. The admin one already sets `disableOptimizedSrcset`; the console one generates no automatic `srcset` either (fixed size, no loader), so a defensive attribute there would change nothing. `VenuePhotoService.slotsOf` takes `findFirst()` over a `scale`-ordered read, so it stays on the baseline whatever happens later. |
 | 2026-09-10 | phase 1 | Every consumer of `CoverPhotoView` / `VenueSummaryView#photos` / `VenueMapView#photos` — the record shape changed under all of them | `grep -rn "CoverPhotoView\|coverPhoto\|\.photos()" platform/src/main --include=*.java` and the same over `frontend/src` | Backend: `JdbcVenueCatalog` (both read paths) and the two view records' own Javadoc, which still described a bare URL. Frontend: `venue-views.ts`, `photo-url.ts`, `venue.service.ts` | Backend all updated in this phase, Javadoc included. The three frontend sites are phase 2's whole subject and are listed in the File structure section. `VenueProfileResponse.photos()` is the operator `PhotoSlotView` list, a different type — untouched. |
 | 2026-09-10 | phase 0 | Measured rendition bytes (synthetic noise, so an upper bound — a real photo compresses better) | throwaway `ScratchSizeProbe` against `PhotoProcessor`, deleted after reading | 3:2 3000×2000 → CARD@1 26 KB, CARD@2 95 KB, BANNER@1 48 KB, BANNER@2 170 KB, PREVIEW@1 17 KB (**358 KB**); 16:9 3000×1688 → 29/104/86/**327**/14 KB (**563 KB**); 2:3 2000×3000 → 10/39/17/61/6 KB (**135 KB**) | Feeds R-3 and phase 3's ADR-0008 update. |
 

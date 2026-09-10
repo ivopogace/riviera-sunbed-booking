@@ -1,7 +1,9 @@
 import { NgOptimizedImage } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 
+import { photoSrcset } from './photo-url';
 import { TouchTarget } from './touch-target';
+import { PhotoView } from './venue-views';
 
 /**
  * The venue detail page's wide photo lead: a large cover tile beside up to two smaller
@@ -39,11 +41,14 @@ import { TouchTarget } from './touch-target';
         <div
           aria-hidden="true"
           class="absolute inset-0 scale-110 bg-cover bg-center brightness-90 blur-2xl"
-          [style.background-image]="'url(' + photos()[0] + ')'"
+          [style.background-image]="'url(' + photos()[0].url + ')'"
           data-testid="gallery-hero-backdrop"
         ></div>
         <img
-          [ngSrc]="photos()[0]"
+          [ngSrc]="photos()[0].url"
+          [attr.srcset]="srcsetOf(photos()[0])"
+          disableOptimizedSrcset
+          sizes="(min-width: 1280px) 50vw, 66vw"
           fill
           priority
           class="relative object-contain"
@@ -65,11 +70,14 @@ import { TouchTarget } from './touch-target';
           <div
             aria-hidden="true"
             class="absolute inset-0 scale-110 bg-cover bg-center brightness-90 blur-2xl"
-            [style.background-image]="'url(' + second + ')'"
+            [style.background-image]="'url(' + second.url + ')'"
             data-testid="gallery-tile-backdrop"
           ></div>
           <img
-            [ngSrc]="second"
+            [ngSrc]="second.url"
+            [attr.srcset]="srcsetOf(second)"
+            disableOptimizedSrcset
+            sizes="(min-width: 1280px) 25vw, 33vw"
             fill
             class="relative object-contain"
             alt=""
@@ -89,11 +97,14 @@ import { TouchTarget } from './touch-target';
           <div
             aria-hidden="true"
             class="absolute inset-0 scale-110 bg-cover bg-center brightness-90 blur-2xl"
-            [style.background-image]="'url(' + third + ')'"
+            [style.background-image]="'url(' + third.url + ')'"
             data-testid="gallery-tile-backdrop"
           ></div>
           <img
-            [ngSrc]="third"
+            [ngSrc]="third.url"
+            [attr.srcset]="srcsetOf(third)"
+            disableOptimizedSrcset
+            sizes="(min-width: 1280px) 25vw, 33vw"
             fill
             class="relative object-contain"
             alt=""
@@ -106,11 +117,16 @@ import { TouchTarget } from './touch-target';
 })
 export class PhotoGalleryGrid {
   /** Caller guarantees length >= 2 — see the class doc. */
-  readonly photos = input.required<readonly string[]>();
+  readonly photos = input.required<readonly PhotoView[]>();
   /** The subject named in each tile's accessible label. */
   readonly name = input('');
   /** The tapped tile's photo index, for the caller to seed a lightbox. */
   readonly opened = output<number>();
+
+  /** `null` rather than a one-entry attribute — with a single candidate, `src` already says it. */
+  protected srcsetOf(photo: PhotoView): string | null {
+    return photoSrcset(photo);
+  }
 
   protected tileLabel(index: number): string {
     const subject = this.name() ? ` of ${this.name()}` : '';

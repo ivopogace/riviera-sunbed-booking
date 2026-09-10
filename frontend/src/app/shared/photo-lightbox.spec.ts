@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
+import { photoViews } from '../../testing/photo-views';
+
 import { PhotoLightbox } from './photo-lightbox';
 
 const PHOTOS = [
@@ -14,7 +16,7 @@ describe('PhotoLightbox', () => {
 
   function create(inputs: { photos: readonly string[]; startIndex?: number; name?: string }): void {
     fixture = TestBed.createComponent(PhotoLightbox);
-    fixture.componentRef.setInput('photos', inputs.photos);
+    fixture.componentRef.setInput('photos', photoViews(inputs.photos));
     if (inputs.startIndex !== undefined) {
       fixture.componentRef.setInput('startIndex', inputs.startIndex);
     }

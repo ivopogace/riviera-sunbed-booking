@@ -17,6 +17,7 @@ import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
+import { photoView, photoViews } from '../../testing/photo-views';
 import { uniformDays } from '../../testing/calendar-days';
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { formatBookingDate } from '../shared/booking-date-label';
@@ -380,7 +381,10 @@ describe('VenueMap', () => {
   it('renders the cover banner photo when present, keeping the scrim; no "coming soon" pill either way (#142)', async () => {
     venueRequest().flush({
       ...miramar(),
-      coverPhoto: { card: '/api/venues/1/photos/aa01', banner: '/api/venues/1/photos/bb02' },
+      coverPhoto: {
+        card: photoView('/api/venues/1/photos/aa01'),
+        banner: photoView('/api/venues/1/photos/bb02'),
+      },
     });
     await settle();
     fixture.detectChanges();
@@ -408,7 +412,7 @@ describe('VenueMap', () => {
   it('cycles the banner slideshow through its own controls when only one photo is set', async () => {
     venueRequest().flush({
       ...miramar(),
-      photos: ['/api/venues/1/photos/bb02'],
+      photos: photoViews(['/api/venues/1/photos/bb02']),
     });
     await settle();
     fixture.detectChanges();
@@ -431,11 +435,11 @@ describe('VenueMap', () => {
   it('renders the wide gallery grid instead of the header band once 2+ photos are set', async () => {
     venueRequest().flush({
       ...miramar(),
-      photos: [
+      photos: photoViews([
         '/api/venues/1/photos/bb02',
         '/api/venues/1/photos/cc03',
         '/api/venues/1/photos/dd04',
-      ],
+      ]),
     });
     await settle();
     fixture.detectChanges();
@@ -452,7 +456,7 @@ describe('VenueMap', () => {
   });
 
   it('opens the lightbox from the single-photo band and returns focus to it on dismiss (#765)', async () => {
-    venueRequest().flush({ ...miramar(), photos: ['/api/venues/1/photos/bb02'] });
+    venueRequest().flush({ ...miramar(), photos: photoViews(['/api/venues/1/photos/bb02']) });
     await settle();
     fixture.detectChanges();
 
@@ -480,11 +484,11 @@ describe('VenueMap', () => {
   it('opens the lightbox from a gallery tile, seeded at that photo, and returns focus on dismiss', async () => {
     venueRequest().flush({
       ...miramar(),
-      photos: [
+      photos: photoViews([
         '/api/venues/1/photos/bb02',
         '/api/venues/1/photos/cc03',
         '/api/venues/1/photos/dd04',
-      ],
+      ]),
     });
     await settle();
     fixture.detectChanges();
@@ -511,8 +515,36 @@ describe('VenueMap', () => {
     expect(document.activeElement).toBe(tile);
   });
 
+  it('hands the gallery grid and the lightbox the same candidates, picking no variant itself', async () => {
+    venueRequest().flush({
+      ...miramar(),
+      photos: [
+        photoView('/api/venues/1/photos/bb02', 1440),
+        photoView('/api/venues/1/photos/cc03', 1440),
+      ],
+    });
+    await settle();
+    fixture.detectChanges();
+
+    const srcset = (img: Element | null): string | null => img?.getAttribute('srcset') ?? null;
+    const expected =
+      `${environment.apiBaseUrl}/api/venues/1/photos/bb02 576w, ` +
+      `${environment.apiBaseUrl}/api/venues/1/photos/bb02@1440 1440w`;
+
+    // The hero tile letterboxes a ~730px box; the same photo's candidates back it.
+    expect(srcset(el().querySelector('[data-testid="gallery-hero"]'))).toBe(expected);
+
+    el().querySelector<HTMLButtonElement>('[data-testid="gallery-photo-0"]')!.click();
+    fixture.detectChanges();
+
+    // The same candidates in a far wider box: the server chose no variant, so both can be sharp.
+    const lightboxImg = el().querySelector('app-photo-lightbox img');
+    expect(srcset(lightboxImg)).toBe(expected);
+    expect(lightboxImg?.getAttribute('sizes')).toBe('auto, 94vw');
+  });
+
   it('closes the lightbox on an in-place venue switch, instead of reopening on the new venue', async () => {
-    venueRequest().flush({ ...miramar(), photos: ['/api/venues/1/photos/bb02'] });
+    venueRequest().flush({ ...miramar(), photos: photoViews(['/api/venues/1/photos/bb02']) });
     await settle();
     fixture.detectChanges();
     el().querySelector<HTMLButtonElement>('[data-testid="photo-band-view"]')!.click();
@@ -530,7 +562,7 @@ describe('VenueMap', () => {
       ...miramar(),
       id: 2,
       name: 'Riviera Blue',
-      photos: ['/api/venues/1/photos/aa01', '/api/venues/1/photos/cc03'],
+      photos: photoViews(['/api/venues/1/photos/aa01', '/api/venues/1/photos/cc03']),
     });
     await settle();
     fixture.detectChanges();

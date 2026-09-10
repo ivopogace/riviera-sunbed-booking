@@ -3,7 +3,7 @@ import { Service, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { apiPhotoUrl, resolveCoverPhoto } from '../shared/photo-url';
+import { apiPhotoView, resolveCoverPhoto } from '../shared/photo-url';
 import {
   DailyAvailability,
   VenueMapView,
@@ -48,7 +48,7 @@ export class VenueService {
         venues.map((venue) => ({
           ...venue,
           coverPhoto: resolveCoverPhoto(venue.coverPhoto),
-          photos: (venue.photos ?? []).map(apiPhotoUrl),
+          photos: (venue.photos ?? []).map(apiPhotoView),
         })),
       ),
     );
@@ -67,7 +67,7 @@ export class VenueService {
         map((venue) => ({
           ...venue,
           coverPhoto: resolveCoverPhoto(venue.coverPhoto),
-          photos: (venue.photos ?? []).map(apiPhotoUrl),
+          photos: (venue.photos ?? []).map(apiPhotoView),
         })),
       );
   }

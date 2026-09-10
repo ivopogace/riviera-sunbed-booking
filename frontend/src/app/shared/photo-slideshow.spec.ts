@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
+import { photoView, photoViews } from '../../testing/photo-views';
+
 import { PhotoSlideshow } from './photo-slideshow';
 
 const PHOTOS = [
@@ -22,7 +24,7 @@ describe('PhotoSlideshow', () => {
     priority?: boolean;
   }): void {
     fixture = TestBed.createComponent(PhotoSlideshow);
-    fixture.componentRef.setInput('photos', inputs.photos);
+    fixture.componentRef.setInput('photos', photoViews(inputs.photos));
     for (const key of ['ownControls', 'testId', 'name', 'startIndex', 'contain', 'priority']) {
       const value = inputs[key as keyof typeof inputs];
       if (value !== undefined) {
@@ -31,6 +33,32 @@ describe('PhotoSlideshow', () => {
     }
     fixture.detectChanges();
   }
+
+  it('emits every candidate as a w-descriptor srcset the browser picks from', () => {
+    fixture = TestBed.createComponent(PhotoSlideshow);
+    fixture.componentRef.setInput('photos', [photoView('/api/venues/1/photos/aa01', 1152)]);
+    fixture.componentRef.setInput('sizes', '30vw');
+    fixture.detectChanges();
+
+    const img = (fixture.nativeElement as HTMLElement).querySelector('img')!;
+    // src stays the baseline: it is what a client without srcset support fetches.
+    expect(img.getAttribute('src')).toBe('/api/venues/1/photos/aa01');
+    expect(img.getAttribute('srcset')).toBe(
+      '/api/venues/1/photos/aa01 576w, /api/venues/1/photos/aa01@1152 1152w',
+    );
+    // Without this, a loader added later would silently overwrite the attribute above.
+    expect(img.hasAttribute('disableOptimizedSrcset')).toBe(true);
+    // The directive prefixes `auto,` on a lazy image, so a browser that measures the box wins.
+    expect(img.getAttribute('sizes')).toBe('auto, 30vw');
+  });
+
+  it('renders no srcset for a photo with a single candidate, since src already says it', () => {
+    create({ photos: [PHOTOS[0]] });
+
+    const img = (fixture.nativeElement as HTMLElement).querySelector('img')!;
+    expect(img.getAttribute('src')).toBe(PHOTOS[0]);
+    expect(img.hasAttribute('srcset')).toBe(false);
+  });
 
   function el(): HTMLElement {
     return fixture.nativeElement as HTMLElement;
@@ -187,7 +215,7 @@ describe('PhotoSlideshow', () => {
     expect(shownSrc()).toBe(PHOTOS[2]);
 
     // The list shrinks under the same instance (e.g. photos deleted, date change re-fetches).
-    fixture.componentRef.setInput('photos', [PHOTOS[0]]);
+    fixture.componentRef.setInput('photos', photoViews([PHOTOS[0]]));
     fixture.detectChanges();
     const only = el().querySelector<HTMLImageElement>('[data-testid="photo-img"]')!;
     expect(only.classList.contains('opacity-0')).toBe(false);
@@ -199,7 +227,7 @@ describe('PhotoSlideshow', () => {
     expect(shownSrc()).toBe(PHOTOS[1]);
 
     // pages/home rebuilds every card view inside a computed(), handing over a new array each time.
-    fixture.componentRef.setInput('photos', [...PHOTOS]);
+    fixture.componentRef.setInput('photos', photoViews([...PHOTOS]));
     fixture.detectChanges();
     expect(shownSrc()).toBe(PHOTOS[1]);
   });

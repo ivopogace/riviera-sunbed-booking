@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
+import { photoViews } from '../../testing/photo-views';
+
 import { PhotoGalleryGrid } from './photo-gallery-grid';
 
 const PHOTOS = ['/api/venues/1/photos/aa01', '/api/venues/1/photos/cc03'];
@@ -10,7 +12,7 @@ describe('PhotoGalleryGrid', () => {
 
   function create(photos: readonly string[], name?: string): void {
     fixture = TestBed.createComponent(PhotoGalleryGrid);
-    fixture.componentRef.setInput('photos', photos);
+    fixture.componentRef.setInput('photos', photoViews(photos));
     if (name !== undefined) {
       fixture.componentRef.setInput('name', name);
     }
