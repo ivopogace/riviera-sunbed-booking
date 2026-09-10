@@ -2,7 +2,7 @@
 name: riviera-local-debug
 description: >-
   How to build and test riviera-sunbed-booking locally, especially in a Claude Code cloud
-  session (the Gradle wrapper cannot self-provision, the full test task OOMs,
+  session (the JDK 25 toolchain is hook-provisioned, the full test task OOMs,
   Testcontainers need the hook's dockerd, the clone is shallow). Load BEFORE the session's
   first ./gradlew, gradle, or npm invocation, when a local build/test fails, or BEFORE any
   git history claim (git log / blame / show / merge-base) in a cloud session.
@@ -55,22 +55,23 @@ exactly as a tracking ref is. Reach for the SHA form when there is no network.
 
 ### Cloud session (Claude Code on the web)
 
-The pinned Gradle wrapper cannot self-provision (the repo-scoped proxy blocks the
-distribution download) and the image's system Gradle 8.14 cannot run on JDK 25. Recipe
-(details in `docs/agents/gradle-proxy-trust.md` — read it on any TLS/PKIX or 403 error):
+Use the pinned wrapper. The SessionStart hook installs a JDK 25 at `/opt/jdk-25`
+(`scripts/cloud-session-setup.sh` step 2); point `JAVA_HOME` at it and `./gradlew` runs and
+compiles on the same JVM, so no toolchain registration is needed:
 
 ```bash
-# one-time per environment: register the JDK 25 toolchain (user-level, uncommitted)
-mkdir -p ~/.gradle
-printf 'org.gradle.java.installations.paths=/opt/jdk-25\norg.gradle.java.installations.auto-download=false\n' \
-  >> ~/.gradle/gradle.properties
-
 cd platform
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64   # daemon on 21; code compiles/tests on 25
-gradle --no-daemon --console=plain compileJava compileTestJava
+export JAVA_HOME=/opt/jdk-25
+./gradlew --console=plain compileJava compileTestJava
 ```
 
 Do NOT change the wrapper's `distributionUrl` — CI depends on the pinned version.
+
+**If the wrapper's distribution download 403s** (the repo-scope proxy blocking it was the
+default until 2026-09-10), fall back to the image's system Gradle 8.14, which cannot itself
+run on JDK 25 — its daemon goes on JDK 21 while the toolchain still compiles and tests on
+25. That recipe is in `docs/agents/gradle-proxy-trust.md`, which is also what to read on any
+TLS/PKIX or 403 error.
 
 ### Scoped tests (any environment)
 
@@ -80,14 +81,14 @@ are slow on the vfs storage driver):
 
 ```bash
 # the structural net — run after any backend structure change; membership rule + members: CLAUDE.md §Commands
-gradle --no-daemon --console=plain test \
+./gradlew --console=plain test \
   --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" \
   --tests "*PackageShapeArchitectureTests*" --tests "*DomainPurityArchitectureTests*" \
   --tests "*PublishedSurfacePlacementArchitectureTests*" \
   --tests "*RetiredSetExclusionArchitectureTests*"
 
 # plus the unit/slice tests your change touched
-gradle --no-daemon --console=plain test --tests "*<ClassName>*"
+./gradlew --console=plain test --tests "*<ClassName>*"
 ```
 
 CI owns the full suite. In a cloud session a `dockerd` is normally provided by the

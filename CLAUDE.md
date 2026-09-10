@@ -30,8 +30,8 @@ visual spec now); current work: the issue tracker.
 
 Requires **JDK 25**, **Node 26** (`.nvmrc`), and **Docker** for the backend Testcontainers
 ITs (they skip cleanly without a daemon). In a Claude Code cloud session, load
-**`riviera-local-debug`** before the first `./gradlew`/`npm` — the wrapper cannot
-self-provision there and the full test task can OOM the sandbox.
+**`riviera-local-debug`** before the first `./gradlew`/`npm` — the JDK 25 toolchain is
+hook-provisioned there and the full test task can OOM the sandbox.
 
 **Backend** (from `platform/`):
 
