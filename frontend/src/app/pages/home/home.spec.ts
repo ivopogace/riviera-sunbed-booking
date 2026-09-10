@@ -5,7 +5,8 @@ import {
   TestRequest,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { defaultBookingDate } from '../../shared/booking-date';
@@ -43,6 +44,72 @@ function venues(): VenueSummary[] {
     },
   ];
 }
+
+/**
+ * The route-carried day. A venue-caused cancellation mails a link here when the venue itself cannot
+ * sell the date, so `/?date=…` has to count that day rather than today — and a past or malformed
+ * value must clamp, since the picker's `min` cannot police a hand-typed URL.
+ */
+describe('Home (the route-carried date)', () => {
+  let params: BehaviorSubject<ParamMap>;
+  let httpMock: HttpTestingController;
+
+  function renderWith(date: string | null): ComponentFixture<Home> {
+    TestBed.resetTestingModule();
+    params = new BehaviorSubject<ParamMap>(convertToParamMap(date === null ? {} : { date }));
+    TestBed.configureTestingModule({
+      imports: [Home],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: { queryParamMap: params, snapshot: { queryParamMap: params.value } },
+        },
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(Home);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function dateOfNextRequest(): string | null {
+    const req = httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`);
+    const date = req.request.params.get('date');
+    req.flush(venues());
+    return date;
+  }
+
+  afterEach(() => httpMock.verify());
+
+  it('seeds the selected date from the route’s ?date', () => {
+    const fixture = renderWith('2027-07-04');
+
+    expect(dateOfNextRequest()).toBe('2027-07-04');
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Sun 4 Jul 2027');
+  });
+
+  it.each([['2001-01-01'], ['not-a-date'], [null]])(
+    'clamps %s to the earliest bookable day',
+    (date) => {
+      renderWith(date);
+
+      expect(dateOfNextRequest()).toBe(defaultBookingDate(new Date()));
+    },
+  );
+
+  it('re-counts when a later navigation changes only ?date', () => {
+    renderWith('2027-07-04');
+    expect(dateOfNextRequest()).toBe('2027-07-04');
+
+    params.next(convertToParamMap({ date: '2027-07-09' }));
+
+    expect(dateOfNextRequest()).toBe('2027-07-09');
+  });
+});
 
 describe('Home (venue discovery)', () => {
   let fixture: ComponentFixture<Home>;

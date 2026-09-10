@@ -702,6 +702,8 @@ describe('OperatorConsoleService — remodel commit + receipts (#1034)', () => {
       ],
       expectedVersion: 3,
       previewToken: 'v1.moves',
+      refundCount: 1,
+      refundReason: 'Re-laying row A',
     };
     let receiptId: number | undefined;
     service.commitLayout(1, request).subscribe((receipt) => (receiptId = receipt.receiptId));

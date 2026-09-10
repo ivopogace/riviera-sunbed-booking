@@ -431,7 +431,7 @@
               [stale]="previewStale()"
               [committing]="committing()"
               (cancelled)="cancelRemodel()"
-              (committed)="commitRemodel()"
+              (committed)="commitRemodel($event)"
             />
           }
 

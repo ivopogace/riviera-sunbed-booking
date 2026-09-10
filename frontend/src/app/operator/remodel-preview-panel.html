@@ -10,10 +10,16 @@
 </output>
 @if (committable()) {
   <p class="text-[12.5px] leading-[1.45] font-semibold">
-    <strong>Guests hold sets this save removes.</strong>
-    Saving moves each booking to the nearest free set of the same or better tier on its day; every
-    guest is emailed the new spot and can cancel for a full refund until the deadline the mail
-    names. There is no undo.
+    <strong>Guests hold sets this save disturbs.</strong>
+    Saving moves each booking it can to the nearest free set of the same or better tier on its day;
+    every moved guest is emailed the new spot and can cancel for a full refund until the deadline
+    the mail names.
+    @if (preview().refunds.length > 0 || preview().releases.length > 0) {
+      A booking with nowhere same-or-better to go is ended: a paid one is cancelled and refunded in
+      full, an unpaid one released, a pending request declined. Each guest is emailed a link to book
+      again.
+    }
+    There is no undo.
   </p>
 } @else {
   <p class="text-[12.5px] leading-[1.45] font-semibold">
@@ -93,16 +99,65 @@
   Open the bookings
 </a>
 
+@if (committable() && refundCount() > 0) {
+  <div class="mt-2 grid gap-2" data-testid="layout-remodel-confirm">
+    <label class="grid gap-1 text-[12.5px] leading-[1.45] font-bold">
+      <span>Type {{ refundCount() }} to confirm the refunds</span>
+      <input
+        appTouchTarget
+        #refundCountField
+        type="number"
+        inputmode="numeric"
+        data-testid="layout-remodel-refund-count"
+        [formField]="confirmForm.typedCount"
+        class="w-[120px] rounded-[10px] border border-riv-warn-edge bg-riv-warn-fill px-3 py-1.5 text-[12.5px] font-semibold text-riv-warn-ink"
+      />
+    </label>
+    @if (confirmForm.typedCount().touched() && confirmForm.typedCount().invalid()) {
+      <p
+        role="alert"
+        [appFieldErrorFor]="refundCountField"
+        class="text-[12px] leading-[1.45] font-bold"
+        data-testid="layout-remodel-refund-count-error"
+      >
+        {{ confirmForm.typedCount().errors()[0].message }}
+      </p>
+    }
+    <label class="grid gap-1 text-[12.5px] leading-[1.45] font-bold">
+      <span>Why are you remodelling?</span>
+      <input
+        appTouchTarget
+        #reasonField
+        type="text"
+        data-testid="layout-remodel-reason"
+        [formField]="confirmForm.reason"
+        class="w-full rounded-[10px] border border-riv-warn-edge bg-riv-warn-fill px-3 py-1.5 text-[12.5px] font-semibold text-riv-warn-ink"
+      />
+    </label>
+    @if (confirmForm.reason().touched() && confirmForm.reason().invalid()) {
+      <p
+        role="alert"
+        [appFieldErrorFor]="reasonField"
+        class="text-[12px] leading-[1.45] font-bold"
+        data-testid="layout-remodel-reason-error"
+      >
+        {{ confirmForm.reason().errors()[0].message }}
+      </p>
+    }
+  </div>
+}
+
 <div class="mt-2 flex flex-wrap gap-2">
   @if (committable()) {
     <button
       appTouchTarget
       #firstButton
       type="button"
-      class="rounded-[10px] bg-riv-solid-fill-warn px-4 py-1.5 text-[12.5px] font-bold text-white aria-disabled:opacity-60"
+      class="rounded-[10px] bg-riv-solid-fill-warn px-4 py-1.5 text-[12.5px] font-bold text-white aria-disabled:opacity-60 disabled:cursor-not-allowed disabled:opacity-60"
       data-testid="layout-remodel-commit"
+      [disabled]="!armed()"
       [appBusy]="committing()"
-      (click)="committed.emit()"
+      (click)="confirm()"
     >
       {{ saveLabel() }}
     </button>

@@ -16,7 +16,7 @@ import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutEditor } from './layout-editor';
 import { RemodelPreview } from './operator-console.model';
-import { FULL_PREVIEW, MOVES_ONLY_PREVIEW } from './remodel-preview-panel.spec';
+import { FULL_PREVIEW, MOVES_ONLY_PREVIEW, REFUNDING_PREVIEW } from './remodel-preview-panel.spec';
 import { RECEIPT } from './remodel-receipt-panel.spec';
 import { SetLock } from './operator-console.model';
 
@@ -32,6 +32,8 @@ interface SentBody {
   }[];
   expectedVersion: number;
   previewToken?: string;
+  refundCount?: number;
+  refundReason?: string;
 }
 
 /** The captured request body, typed — Angular types `HttpRequest.body` as `any`. */
@@ -2020,6 +2022,47 @@ describe('LayoutEditor (#172)', () => {
       expect(body(put).expectedVersion).toBe(4);
       put.flush(null);
       await fixture.whenStable();
+    });
+
+    it('a picture that refunds carries the typed count and reason, and REFUND_NOT_CONFIRMED re-renders it', async () => {
+      dropLoadedA2();
+      byId('layout-save').click();
+      http
+        .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/beach-map/preview'))
+        .flush(REFUNDING_PREVIEW);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const count = byId('layout-remodel-refund-count') as HTMLInputElement;
+      count.value = '1';
+      count.dispatchEvent(new Event('input'));
+      const reason = byId('layout-remodel-reason') as HTMLInputElement;
+      reason.value = 'Re-laying row A';
+      reason.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      byId('layout-remodel-commit').click();
+      const commit = commitRequest();
+      expect(body(commit).refundCount).toBe(1);
+      expect(body(commit).refundReason).toBe('Re-laying row A');
+      commit.flush(
+        {
+          code: 'REFUND_NOT_CONFIRMED',
+          detail: 'x',
+          requiredRefundCount: 2,
+          preview: { ...REFUNDING_PREVIEW, previewToken: 'v1.fresher' },
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(byId('layout-remodel-preview')).toBeTruthy();
+      expect(byId('layout-remodel-stale').textContent).toMatch(
+        /bookings changed since you previewed/,
+      );
+      expect(byId('layout-remodel-confirm')).toBeTruthy();
+      expect(host.querySelector('[data-testid="layout-error"]')).toBeNull();
     });
 
     it('STALE_PREVIEW re-renders the dialog with the fresh picture and its token, flagged stale, and the next Save carries the fresh token', async () => {

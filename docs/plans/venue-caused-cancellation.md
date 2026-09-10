@@ -105,9 +105,12 @@ tests for the root-bean blast radius; the mocked e2e via `PW_CHROMIUM_EXECUTABLE
   copied from `shared/confirm-with-reason.ts`; it becomes a Signal Form with a `required` reason and
   a `validate` count rule, which is what v22 prescribes and what four in-tree forms already do.
 - **`linkedSignal`** — confirmed the `{source, computation}` overload returns a `WritableSignal`
-  reset by its source. **Changed because of it:** the discovery page's `selectedDate` stays
-  operator-writable while resetting from the route's `?date`, instead of the `signal()` + manual
-  `effect()` sync a first pass would have written.
+  reset by its source, and then **rejected it here**: reseeding the discovery page's `selectedDate`
+  from the route would have shown a new date label over the old counts, because the refetch is a
+  command and not derived state. The page keeps a plain writable signal, seeded from the route
+  snapshot, with the constructor subscribing to `queryParamMap` so a later `?date`-only navigation
+  sets the date and reloads together. Verified against the same guide that a data fetch does not
+  belong in an `effect`.
 - **`output()`** — confirmed a typed payload; the panel's `committed` output stops being
   `output<void>()` and carries the confirmation.
 - **`resource()`/`httpResource`** — searched and **deliberately not used**: both new server calls
@@ -383,7 +386,7 @@ No new port and no new grant: every edge above is already in the owner's `allowe
 | FE-3 | `operator/layout-editor.ts` | existing | standalone component | signals; carries the confirmation into the commit POST and maps `REFUND_NOT_CONFIRMED` | none |
 | FE-4 | `operator/operator-console.model.ts` | existing | types | — | — |
 | FE-5 | `operator/operator-console.service.ts` | existing | `@Service` | plain `post` (a mutation, not `httpResource`) | — |
-| FE-6 | `pages/home/home.ts|.html` | existing | standalone component | `linkedSignal` over the route's `?date` | none |
+| FE-6 | `pages/home/home.ts` | existing | standalone component | a writable signal seeded from the route, kept in step by a `queryParamMap` subscription | none |
 
 **Standards:** standalone components, `inject()`, `@if`/`@for`, `input()`/`output()` signal APIs.
 No deviation.
@@ -488,6 +491,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/operator/layout-editor.{ts,html}` — carries the confirmation, maps the new 409
 - `frontend/src/app/operator/layout-editor.spec.ts` — the editor's leg
 - `frontend/src/app/pages/home/home.ts` — the `?date` read
+- `frontend/src/app/operator/remodel-preview-panel.a11y.spec.ts`, `frontend/src/app/operator/remodel-preview-panel.contrast.spec.ts` — the confirmation's pairs
+- `frontend/src/app/operator/remodel-receipt-panel.a11y.spec.ts`, `frontend/src/app/operator/remodel-receipt-panel.contrast.spec.ts` — the ended-claim lines' pairs
+- `frontend/src/app/operator/operator-console.service.ts` — the commit body and the third 409
 - `frontend/src/app/pages/home/home.spec.ts` — AC-13
 - `frontend/e2e/layout-editor.e2e.ts` — AC-14
 - `frontend/e2e/real-backend/remodel-move.e2e.ts` — AC-15

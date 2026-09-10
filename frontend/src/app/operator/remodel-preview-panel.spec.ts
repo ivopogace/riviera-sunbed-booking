@@ -85,6 +85,15 @@ export const MOVES_ONLY_PREVIEW: RemodelPreview = {
   previewToken: 'v1.moves',
 };
 
+/** A picture the commit applies that also refunds a guest — so it needs the typed confirmation. */
+export const REFUNDING_PREVIEW: RemodelPreview = {
+  ...FULL_PREVIEW,
+  staffHolds: [],
+  blocks: [],
+  keep: [],
+  previewToken: 'v1.refunds',
+};
+
 describe('RemodelPreviewPanel (#1033, #1034)', () => {
   let fixture: ComponentFixture<RemodelPreviewPanel>;
   let host: HTMLElement;
@@ -109,6 +118,70 @@ describe('RemodelPreviewPanel (#1033, #1034)', () => {
   function byId(id: string): HTMLElement | null {
     return host.querySelector<HTMLElement>(`[data-testid="${id}"]`);
   }
+
+  function type(id: string, value: string): void {
+    const field = byId(id) as HTMLInputElement;
+    field.value = value;
+    field.dispatchEvent(new Event('input'));
+    field.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+  }
+
+  it('arms Save only once the refund count and reason are typed, and carries both', () => {
+    render(REFUNDING_PREVIEW);
+    const committed = vi.fn();
+    fixture.componentInstance.committed.subscribe(committed);
+    const save = byId('layout-remodel-commit') as HTMLButtonElement;
+
+    expect(save.textContent).toMatch(/Save and move 2, refund 1, release 2 bookings/);
+    expect(save.disabled).toBe(true);
+    save.click();
+    expect(committed).not.toHaveBeenCalled();
+
+    type('layout-remodel-refund-count', '2');
+    expect(byId('layout-remodel-refund-count-error')!.textContent).toMatch(
+      /Type 1 to confirm the refunds/,
+    );
+    expect(save.disabled).toBe(true);
+
+    type('layout-remodel-refund-count', '1');
+    expect(byId('layout-remodel-refund-count-error')).toBeNull();
+    expect(save.disabled).toBe(true);
+
+    type('layout-remodel-reason', '   ');
+    expect(byId('layout-remodel-reason-error')!.textContent).toMatch(/Give a reason/);
+    expect(save.disabled).toBe(true);
+
+    type('layout-remodel-reason', '  Re-laying row A  ');
+    expect(save.disabled).toBe(false);
+    save.click();
+
+    expect(committed).toHaveBeenCalledWith({ refundCount: 1, refundReason: 'Re-laying row A' });
+  });
+
+  it('asks for no confirmation when the picture refunds nobody', () => {
+    render(MOVES_ONLY_PREVIEW);
+    const committed = vi.fn();
+    fixture.componentInstance.committed.subscribe(committed);
+
+    expect(byId('layout-remodel-confirm')).toBeNull();
+    (byId('layout-remodel-commit') as HTMLButtonElement).click();
+
+    expect(committed).toHaveBeenCalledWith({ refundCount: 0, refundReason: '' });
+  });
+
+  it('focuses the refund count when there is one to fill in, and the error names its field', async () => {
+    render(REFUNDING_PREVIEW);
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(byId('layout-remodel-refund-count'));
+
+    type('layout-remodel-refund-count', '9');
+    const field = byId('layout-remodel-refund-count')!;
+    const error = byId('layout-remodel-refund-count-error')!;
+    expect(field.getAttribute('aria-describedby')).toContain(error.id);
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+  });
 
   it('is an alertdialog listing the five groups with set labels, dates, amounts and distances', () => {
     render(FULL_PREVIEW);

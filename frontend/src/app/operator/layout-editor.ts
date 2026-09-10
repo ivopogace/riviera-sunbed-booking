@@ -43,6 +43,7 @@ import {
   LayoutCellRequest,
   LayoutErrorCode,
   OperatorBeachMap,
+  RemodelConfirmation,
   RemodelPreview,
   remodelPreviewIsCommittable,
   remodelPreviewIsEmpty,
@@ -89,6 +90,13 @@ interface ToolRow {
   readonly count: number | null;
   readonly active: boolean;
 }
+
+/** The three commit refusals that answer with the server's fresh picture, for the dialog to re-render. */
+const REFUSALS_CARRYING_A_FRESH_PICTURE: ReadonlySet<string> = new Set([
+  'STALE_PREVIEW',
+  'REMODEL_REFUSED',
+  'REFUND_NOT_CONFIRMED',
+]);
 
 const PREMIUM_PRICE: MoneyView = { minorUnits: 3500, currency: 'EUR' };
 const STANDARD_PRICE: MoneyView = { minorUnits: 2000, currency: 'EUR' };
@@ -985,12 +993,13 @@ export class LayoutEditor {
   }
 
   /**
-   * Save the previewed layout and move its bookings: the body the dialog previewed plus the token
-   * the preview answered. A `200` shows the receipt in the dialog's place; `STALE_PREVIEW` and
-   * `REMODEL_REFUSED` re-render the dialog with the server's fresh picture and its token; every other
-   * failure is the save's own.
+   * Save the previewed layout and settle its bookings: the body the dialog previewed, the token the
+   * preview answered and — on a picture that refunds guests — the count and reason the operator
+   * typed. A `200` shows the receipt in the dialog's place; `STALE_PREVIEW`, `REMODEL_REFUSED` and
+   * `REFUND_NOT_CONFIRMED` re-render the dialog with the server's fresh picture and its token; every
+   * other failure is the save's own.
    */
-  protected async commitRemodel(): Promise<void> {
+  protected async commitRemodel(confirmation: RemodelConfirmation): Promise<void> {
     const venueId = this.venueId();
     const preview = this.remodelPreview();
     const pending = this.pendingRemodel;
@@ -1003,7 +1012,11 @@ export class LayoutEditor {
     this.blockedSets.set([]);
     try {
       const receipt = await firstValueFrom(
-        this.console.commitLayout(venueId, { ...pending, previewToken: preview.previewToken }),
+        this.console.commitLayout(venueId, {
+          ...pending,
+          previewToken: preview.previewToken,
+          ...confirmation,
+        }),
       );
       if (this.epoch !== epoch) {
         return;
@@ -1020,8 +1033,9 @@ export class LayoutEditor {
         return;
       }
       const code = layoutErrorOf(error);
-      const fresh =
-        code === 'STALE_PREVIEW' || code === 'REMODEL_REFUSED' ? remodelPreviewOf(error) : null;
+      const fresh = REFUSALS_CARRYING_A_FRESH_PICTURE.has(code ?? '')
+        ? remodelPreviewOf(error)
+        : null;
       if (fresh) {
         this.previewStale.set(true);
         this.remodelPreview.set(fresh);
@@ -1197,6 +1211,7 @@ export class LayoutEditor {
         return undefined;
       case 'STALE_PREVIEW':
       case 'REMODEL_REFUSED':
+      case 'REFUND_NOT_CONFIRMED':
         // Reached only when the answer carried no readable fresh picture; otherwise the dialog re-opens.
         return 'The bookings changed since you previewed. Save again to see the fresh picture.';
       case 'UNAUTHORIZED':
