@@ -3,20 +3,20 @@ package ai.riviera.platform.notification.application;
 import java.net.URI;
 
 /**
- * Internal transport port for sending transactional email (S8, epic #108, design D-6; grown with the
- * booking-confirmation kind in #371; moved into the {@code notification} module in #382). Epic
- * #367's locked seam decision: <strong>this port is THE transport seam</strong> — it grows message
- * kinds and keeps exactly two implementations, and no module outside {@code notification}
- * ever touches mail (RV-BE-11). Exactly one implementation is active per profile (mirroring
- * {@code StubPaymentGateway} vs {@code StripePaymentGateway}, and {@code MockSsoGateway} vs
- * {@code RealSsoGateway}): the recording {@code MockMailer} under the default profile, the real SMTP
- * {@code SmtpMailer} under {@code mailer} (#368, ADR-0011); {@code MockMailerProdGuard} forbids the
- * mock from running in production.
+ * Internal transport port for sending transactional email. <strong>This port is THE transport
+ * seam</strong> — it grows message kinds and keeps exactly two implementations, and no module
+ * outside {@code notification} ever touches mail (RV-BE-11). Exactly one implementation is active
+ * per profile (mirroring {@code StubPaymentGateway} vs {@code StripePaymentGateway}, and
+ * {@code MockSsoGateway} vs {@code RealSsoGateway}): the recording {@code MockMailer} under the
+ * default profile, the real SMTP {@code SmtpMailer} under {@code mailer} (ADR-0011);
+ * {@code MockMailerProdGuard} forbids the mock from running in production. Rationale:
+ * {@code RESPONSIBILITIES.md} §{@code notification}.
  *
- * <p>Recovery messages carry a raw single-use token inside the emailed link and the booking
- * kinds carry the arrival code — the payment-due and the two request-outcome kinds additionally
- * inside their links, which are therefore bearer URLs too — all bearer credentials (invariant #7). The caller hands each here
- * fully formed, so the mailer never touches the token store, the account, or the booking. <strong>No
+ * <p>Recovery messages carry a raw single-use token inside the emailed link and the booking kinds
+ * carry the arrival code — the payment-due, the moved-booking and the two request-outcome kinds
+ * additionally inside their links, which are therefore bearer URLs too — all bearer credentials
+ * (invariant #7). The caller hands each here fully formed, so the mailer never touches the token
+ * store, the account, or the booking. <strong>No
  * implementation reachable in production may log them</strong>: {@code SmtpMailer} logs neither, and
  * {@code MockMailer}'s deliberate dev-only echo of the recovery <em>link</em> is the documented
  * exception — mock-only, prod-guarded, and never extended to the arrival code. Unpublished

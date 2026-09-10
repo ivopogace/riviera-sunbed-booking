@@ -440,7 +440,7 @@ class JdbcBookings implements Bookings {
 	 * The one cancellation write, guarded on {@code admitted}. {@code RETURNING} yields the facts only
 	 * on a real transition, so a double-cancel — or a status outside {@code admitted} — is a 0-row
 	 * {@code empty} no-op and the caller releases the set, refunds and publishes exactly once. The
-	 * reason (POLICY/WEATHER) is the audit of why it happened (invariant #10). Shared so the two
+	 * reason (POLICY/WEATHER/VENUE_CHANGE) is the audit of why it happened (invariant #10). Shared so the two
 	 * entry points cannot drift in the columns they stamp or the facts they return; only the admitted
 	 * statuses and the reason differ, which is exactly what the guest/admin split is about.
 	 *

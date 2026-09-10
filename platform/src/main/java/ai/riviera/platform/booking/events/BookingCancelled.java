@@ -24,7 +24,8 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
  * invariant #6), the server-computed {@code refundMinor} in integer minor units + ISO
  * {@code currency} (invariants #5/#10), and the {@link RefundReason} (U9). {@code refundMinor} drives
  * the proportional reversal; {@code reason} is stamped on that reversal so the ledger stays auditable
- * (policy vs weather). The original accrual is re-read by {@code payout}, not carried here.
+ * (policy, weather, or the venue's own change — the value {@code payout} charges its fee on).
+ * The original accrual is re-read by {@code payout}, not carried here.
  */
 public record BookingCancelled(BookingId bookingId, VenueId venueId, SetId setId,
 		LocalDate bookingDate, long refundMinor, String currency, RefundReason reason) {

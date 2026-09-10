@@ -18,8 +18,8 @@ import { baseBlock, declarationsOf, themeBlock } from '../../testing/stylesheet-
 
 /**
  * Guard for `--riv-console-negative-ink` (class R of the colour-literal audit) — the
- * operator console's negative ink: the reversal net and its reason chip on the Payouts tab, and
- * the failed-check-in notice on the Daily view. The `negative` pole of the `--riv-console-*-ink`
+ * console's negative ink: the reversal net and its reason chip on the Payouts tab, the
+ * failed-check-in notice on the Daily view, and the fee column on the admin Venue changes tab. The `negative` pole of the `--riv-console-*-ink`
  * pair whose accent pole the accent-ink re-cut registered.
  *
  * <p>The sibling of `console-accent-token.contrast.spec.ts`, and deliberately a SEPARATE file
@@ -37,7 +37,7 @@ import { baseBlock, declarationsOf, themeBlock } from '../../testing/stylesheet-
  * since every ratio in the tree would still pass. So the declaration tests read `src/tailwind.css`
  * as text (the `core/theme-boot.spec.ts` drift-guard pattern) and assert exactly those two
  * declarations. The chip tint's own AA proof — the LOWEST-contrast pair of the three
- * sites, and lower than any raw stop below — stays where the element is, in
+ * four sites, and lower than any raw stop below — stays where the element is, in
  * `payouts-tab.contrast.spec.ts`. The cross-theme proof against a real render, where the cascade
  * rather than a regex decides, is `e2e/console-negative-ink.e2e.ts`.
  */
