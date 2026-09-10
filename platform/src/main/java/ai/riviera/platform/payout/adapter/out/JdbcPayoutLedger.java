@@ -101,6 +101,11 @@ class JdbcPayoutLedger implements PayoutLedger {
 		return ts == null ? null : ts.toInstant();
 	}
 
+	/**
+	 * Served by {@code payout_ledger_period_idx}. {@code MAX(currency)} is a single-value pick, sound
+	 * while collection is EUR-only (invariant #5). A period whose reversals and fees exceed its
+	 * accruals nets negative, which the batch column deliberately allows.
+	 */
 	@Override
 	public List<VenuePeriodTotal> netTotalsForPeriod(PeriodKey period) {
 		// Signed net owed per venue: only ACCRUAL adds, every other type deducts (invariant #9).
@@ -119,6 +124,10 @@ class JdbcPayoutLedger implements PayoutLedger {
 				.list();
 	}
 
+	/**
+	 * Served by {@code payout_ledger_venue_idx}; {@code MAX(currency)} is the same single-value pick as
+	 * {@link #netTotalsForPeriod}'s.
+	 */
 	@Override
 	public List<VenueChangeRefundTotal> venueChangeTotals() {
 		// Two aggregates over one scan, kept apart by entry type; adding them would double-count.
@@ -139,7 +148,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 				.list();
 	}
 
-	/** Conflict-free insert shared by accrual and reversal — {@code ON CONFLICT (booking_id, entry_type)}. */
+	/** Conflict-free insert shared by every entry type — {@code ON CONFLICT (booking_id, entry_type)}. */
 	private void insertIdempotently(PayoutLedgerEntry entry) {
 		jdbc.sql("""
 				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor,

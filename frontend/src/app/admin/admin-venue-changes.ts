@@ -12,7 +12,7 @@ import { VenueChangeRefundRow } from './admin.model';
 interface ReportRow {
   readonly venueId: number;
   readonly venueName: string;
-  readonly refundCountLabel: string;
+  readonly refundCount: number;
   readonly refundedStr: string;
   readonly feeStr: string;
 }
@@ -107,7 +107,7 @@ interface ReportRow {
                 <tr class="border-t border-riv-card-border" data-testid="venue-change-row">
                   <td class="px-3.5 py-3 font-semibold text-riv-card-ink">{{ row.venueName }}</td>
                   <td class="whitespace-nowrap px-3.5 py-3 text-right text-riv-card-ink">
-                    {{ row.refundCountLabel }}
+                    {{ row.refundCount }}
                   </td>
                   <td class="whitespace-nowrap px-3.5 py-3 text-right text-riv-card-ink-soft">
                     {{ row.refundedStr }}
@@ -153,7 +153,7 @@ export class AdminVenueChanges {
     return this.totals().map((total) => ({
       venueId: total.venueId,
       venueName: names.get(total.venueId) ?? `Venue #${total.venueId}`,
-      refundCountLabel: `${total.refundCount}`,
+      refundCount: total.refundCount,
       refundedStr: formatMoney({ minorUnits: total.refundedMinor, currency: total.currency }),
       feeStr: formatMoney({ minorUnits: total.feeMinor, currency: total.currency }),
     }));
