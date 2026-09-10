@@ -31,6 +31,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 class JdbcPayoutLedger implements PayoutLedger {
 
 	// Result-column / param names reused across the row mappers (kept in lockstep with the SQL).
+	private static final String COL_VENUE_ID = "venue_id";
 	private static final String COL_NET_MINOR = "net_minor";
 	private static final String COL_CURRENCY = "currency";
 
@@ -67,7 +68,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 				""")
 				.param("booking", bookingId)
 				.query((rs, rowNum) -> new PayoutLedgerEntry(
-						new VenueId(rs.getLong("venue_id")), rs.getLong("booking_id"), EntryType.ACCRUAL,
+						new VenueId(rs.getLong(COL_VENUE_ID)), rs.getLong("booking_id"), EntryType.ACCRUAL,
 						rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong(COL_NET_MINOR),
 						rs.getString(COL_CURRENCY), null))
 				.optional();
@@ -120,7 +121,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 				""")
 				.param("period", period.value())
 				.query((rs, rowNum) -> new VenuePeriodTotal(
-						new VenueId(rs.getLong("venue_id")), rs.getLong(COL_NET_MINOR), rs.getString(COL_CURRENCY)))
+						new VenueId(rs.getLong(COL_VENUE_ID)), rs.getLong(COL_NET_MINOR), rs.getString(COL_CURRENCY)))
 				.list();
 	}
 
@@ -143,7 +144,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 				ORDER BY venue_id
 				""")
 				.query((rs, rowNum) -> new VenueChangeRefundTotal(
-						new VenueId(rs.getLong("venue_id")), rs.getInt("refund_count"),
+						new VenueId(rs.getLong(COL_VENUE_ID)), rs.getInt("refund_count"),
 						rs.getLong("refunded_minor"), rs.getLong("fee_minor"), rs.getString(COL_CURRENCY)))
 				.list();
 	}

@@ -180,10 +180,10 @@ class SecurityConfig {
 	 * The refund outbox — the mail outbox's twin on the money path. The lever's own scope (an exact
 	 * listener id) is what keeps it off every other listener.
 	 */
-	/** The per-venue venue-caused refund report: aggregates only, no booking id or code. */
-	private static final String ADMIN_VENUE_CHANGE_REFUNDS_PATH = "/api/admin/venue-change-refunds";
 	private static final String ADMIN_REFUND_OUTBOX_PATH = "/api/admin/refund-outbox";
 	private static final String ADMIN_REFUND_OUTBOX_RESUBMIT_PATH = "/api/admin/refund-outbox/resubmit";
+	/** The per-venue venue-caused refund report: aggregates only, no booking id or code. */
+	private static final String ADMIN_VENUE_CHANGE_REFUNDS_PATH = "/api/admin/venue-change-refunds";
 	/**
 	 * The per-booking mail-delivery view and its resend — the support lever the outbox cannot be: that
 	 * re-drives what the registry still <em>owes</em>, this re-sends a confirmation whose publication
