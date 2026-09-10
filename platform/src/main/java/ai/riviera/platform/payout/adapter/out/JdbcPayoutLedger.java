@@ -52,6 +52,12 @@ class JdbcPayoutLedger implements PayoutLedger {
 	}
 
 	@Override
+	public void charge(PayoutLedgerEntry entry) {
+		// UNIQUE(booking_id, entry_type) gives one FEE per booking (exactly-once, invariant #9).
+		insertIdempotently(entry);
+	}
+
+	@Override
 	public Optional<PayoutLedgerEntry> findAccrual(long bookingId) {
 		return jdbc.sql("""
 				SELECT venue_id, booking_id, gross_minor, commission_minor, net_minor, currency

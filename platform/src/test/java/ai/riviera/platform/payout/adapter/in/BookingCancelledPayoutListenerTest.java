@@ -8,6 +8,7 @@ import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.payout.application.PayoutLedger;
+import ai.riviera.platform.payout.application.VenueChangeFee;
 import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -34,19 +35,20 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * The reversal listener's behaviour when the accrual it must mirror is <strong>not there yet</strong>
- * — a money-path sibling case, found by that slice's generalization audit.
+ * The cancelled-booking listener's two decisions, at the seam where the ledger is a mock: whether it
+ * may post at all, and what it posts.
  *
- * <p>The two publications are independent, so their delivery order is not guaranteed across a crash
- * or a shed send: {@code BookingCancelled} can reach this listener while {@code BookingConfirmed}'s
- * publication is still outstanding. Until this slice the branch logged one {@code WARN} and returned
- * normally, which completed the publication — so the reversal was lost, the ledger kept overstating
- * what the venue was owed (invariant #9), and no gauge moved.
+ * <p><strong>A refunded cancellation whose accrual is not there yet throws.</strong> The two
+ * publications are independent, so their delivery order is not guaranteed across a crash or a shed
+ * send: {@code BookingCancelled} can arrive while {@code BookingConfirmed}'s publication is still
+ * outstanding. Throwing leaves this publication outstanding too, so {@code riviera.outbox.pending}
+ * rises (watched by {@code MoneyPathAlertCheck}) and the restart republish retries the reversal
+ * against a ledger that by then has the accrual, instead of the ledger silently overstating what the
+ * venue is owed (invariant #9). Idempotency makes the retry safe.
  *
- * <p>It now <strong>throws</strong>, which is the correct half of the accrual/reversal asymmetry for a fact
- * that <em>can</em> appear later: the publication stays outstanding, {@code riviera.outbox.pending}
- * rises (already watched by {@code MoneyPathAlertCheck}), and the restart republish retries the
- * reversal against a ledger that by then has the accrual. Idempotency makes the retry safe.
+ * <p><strong>A venue-caused refund also charges a fee</strong> (ADR-0021), and only where both
+ * guards have passed: a cancellation that returns nothing touches the ledger not at all, and one
+ * whose accrual is missing charges nothing either.
  */
 class BookingCancelledPayoutListenerTest {
 
@@ -58,11 +60,16 @@ class BookingCancelledPayoutListenerTest {
 			new SetId(7L), LocalDate.of(2026, 8, 1), REFUND_MINOR, "EUR", RefundReason.POLICY);
 	private static final BookingCancelled NOT_REFUNDED = new BookingCancelled(BOOKING_ID, VENUE_ID,
 			new SetId(7L), LocalDate.of(2026, 8, 1), 0L, "EUR", RefundReason.POLICY);
+	private static final BookingCancelled VENUE_CHANGED = new BookingCancelled(BOOKING_ID, VENUE_ID,
+			new SetId(7L), LocalDate.of(2026, 8, 1), REFUND_MINOR, "EUR", RefundReason.VENUE_CHANGE);
+	private static final BookingCancelled VENUE_RELEASED = new BookingCancelled(BOOKING_ID, VENUE_ID,
+			new SetId(7L), LocalDate.of(2026, 8, 1), 0L, "EUR", RefundReason.VENUE_CHANGE);
 	private static final PayoutLedgerEntry ACCRUAL = PayoutLedgerEntry.accrual(VENUE_ID,
 			BOOKING_ID.value(), REFUND_MINOR, 1500, "EUR");
 
 	private final PayoutLedger ledger = mock(PayoutLedger.class);
-	private final BookingCancelledPayoutListener listener = new BookingCancelledPayoutListener(ledger);
+	private final BookingCancelledPayoutListener listener =
+			new BookingCancelledPayoutListener(ledger, new VenueChangeFee(500L));
 
 	private final ListAppender<ILoggingEvent> logged = new ListAppender<>();
 	private ch.qos.logback.classic.Logger logger;
@@ -121,5 +128,45 @@ class BookingCancelledPayoutListenerTest {
 		assertThatCode(() -> listener.on(NOT_REFUNDED)).doesNotThrowAnyException();
 
 		verifyNoInteractions(ledger);
+	}
+
+	@Test
+	void aVenueCausedRefundChargesTheConfiguredFeeBesideTheReversal() {
+		when(ledger.findAccrual(BOOKING_ID.value())).thenReturn(Optional.of(ACCRUAL));
+
+		assertThatCode(() -> listener.on(VENUE_CHANGED)).doesNotThrowAnyException();
+
+		ArgumentCaptor<PayoutLedgerEntry> charged = ArgumentCaptor.forClass(PayoutLedgerEntry.class);
+		verify(ledger).reverse(any());
+		verify(ledger).charge(charged.capture());
+		assertThat(charged.getValue().entryType()).isEqualTo(EntryType.FEE);
+		assertThat(charged.getValue().venueId()).isEqualTo(VENUE_ID);
+		assertThat(charged.getValue().netMinor()).isEqualTo(500L);
+		assertThat(charged.getValue().currency()).isEqualTo("EUR");
+	}
+
+	@Test
+	void aPolicyRefundChargesNoFee() {
+		when(ledger.findAccrual(BOOKING_ID.value())).thenReturn(Optional.of(ACCRUAL));
+
+		assertThatCode(() -> listener.on(REFUNDED)).doesNotThrowAnyException();
+
+		verify(ledger, never()).charge(any());
+	}
+
+	@Test
+	void aVenueCausedReleaseThatReturnsNothingChargesNoFee() {
+		assertThatCode(() -> listener.on(VENUE_RELEASED)).doesNotThrowAnyException();
+
+		verifyNoInteractions(ledger);
+	}
+
+	@Test
+	void aVenueCausedRefundWithNoAccrualChargesNoFeeEither() {
+		when(ledger.findAccrual(BOOKING_ID.value())).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> listener.on(VENUE_CHANGED)).isInstanceOf(IllegalStateException.class);
+
+		verify(ledger, never()).charge(any());
 	}
 }
