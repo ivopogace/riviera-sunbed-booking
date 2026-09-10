@@ -322,10 +322,10 @@ over `ngClass`/`ngStyle`. No `NgOptimizedImage` (no images). No deviation to doc
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** Write `AdminVenueChangeRefundsIT` red, then the per-venue aggregate and its
-ADMIN-gated endpoint.
+**Next action:** Write `payouts-tab.spec.ts`'s FEE case red — it fails today because `signedSum`
+adds anything that is not a `REVERSAL` — then the four console surfaces and the new admin tab.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -333,7 +333,7 @@ ADMIN-gated endpoint.
 | 1 — The ledger-sum audit: a `FEE` row in every read's test | ✅ | |
 | 2 — The listener posts the fee | ✅ | |
 | 3 — The fee on the preview and the receipt | ✅ | |
-| 4 — The admin venue-caused refunds read | | |
+| 4 — The admin venue-caused refunds read | ✅ | |
 | 5 — Frontend: statement, preview, receipt, admin tab | | |
 | 6 — Docs: invariant #9 in four places, ADR-0021, glossary | | |
 
@@ -580,6 +580,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-10 | phase 4 | Every controller a web slice must be able to build without the application layer — the population `WebSliceStubs` exists for, which a new controller silently breaks (found by `AdminSurfaceRoleGateTest`'s red context, not by inspection) | `git grep -n '"/api/admin' -- platform/src/main/java` for the surfaces, then `grep -n '@Bean' platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` for what is stubbed | 1 gap (the new `ViewVenueChangeRefunds`) | Stubbed it; the other admin surfaces were already covered. Every new controller owes a stub here, which is the same blast-radius rule `riviera-local-debug` names for a bean crossing a module edge |
 | 2026-09-10 | phase 3 | Every `@ApplicationModuleTest` — the population a bean crossing a module edge can break, per `riviera-local-debug` § blast radius | `grep -rl '@ApplicationModuleTest' platform/src/test/java` | 2 (`PayoutModuleTest`, `ReviewSubmitFlowIT`) | Neither needs a `@MockitoBean`: the new bean is `payout`'s own, and `booking` is not bootstrapped in isolation anywhere. Both run green |
 | 2026-09-10 | phase 2 | Every listener on `BookingCancelled` — judged for whether `VENUE_CHANGE` now means something it did not | `git grep -rln "BookingCancelled" -- platform/src/main/java` then `git grep -n "ApplicationModuleListener\|TransactionalEventListener"` over the hits | 4 listeners (`BookingRefundListener`, `RemodelReleasePaymentListener`, `BookingCancellationMailListener`, this one) | None to change: the first two are already keyed on `VENUE_CHANGE` and the mail listener already discriminates the two shapes through `endedByRemodel` |
 | 2026-09-10 | phase 1 | Every fold over ledger rows anywhere in the tree — named by mechanism (a site that turns more than one ledger row into a figure), enumerated by the table's own three commands, not by looking in `payout` | `git grep -n "payout_ledger_entry" -- platform/src/main` · `git grep -n "EntryType\." -- platform/src` · `git grep -n "signedSum\|netOwedMinor\|PayoutEntryType" -- frontend/src` | 5 (S-1…S-5) | S-1/S-2 pinned with a `FEE` row and their comments reworded to the convention; S-3/S-4 are defects fixed in phase 5; S-5 is new in phase 4 |

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.payout.application.LedgerEntryRow;
 import ai.riviera.platform.payout.application.PayoutLedger;
+import ai.riviera.platform.payout.application.VenueChangeRefundTotal;
 import ai.riviera.platform.payout.application.VenuePeriodTotal;
 import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
@@ -119,6 +120,28 @@ class JdbcPayoutLedger implements PayoutLedger {
 				.param("period", period.value())
 				.query((rs, rowNum) -> new VenuePeriodTotal(
 						new VenueId(rs.getLong("venue_id")), rs.getLong(COL_NET_MINOR), rs.getString(COL_CURRENCY)))
+				.list();
+	}
+
+	@Override
+	public List<VenueChangeRefundTotal> venueChangeTotals() {
+		// Two aggregates over one scan, kept apart by their entry type: a refund's size is the
+		// REVERSAL's gross (what the guest got back) and a fee's is the FEE's net, so adding them would
+		// report a venue as having refunded its own fees. Served by payout_ledger_venue_idx (V9).
+		return jdbc.sql("""
+				SELECT venue_id,
+				       COUNT(*) FILTER (WHERE entry_type = 'REVERSAL')                        AS refund_count,
+				       COALESCE(SUM(gross_minor) FILTER (WHERE entry_type = 'REVERSAL'), 0)   AS refunded_minor,
+				       COALESCE(SUM(net_minor) FILTER (WHERE entry_type = 'FEE'), 0)          AS fee_minor,
+				       MAX(currency) AS currency
+				FROM payout_ledger_entry
+				WHERE reason = 'VENUE_CHANGE'
+				GROUP BY venue_id
+				ORDER BY venue_id
+				""")
+				.query((rs, rowNum) -> new VenueChangeRefundTotal(
+						new VenueId(rs.getLong("venue_id")), rs.getInt("refund_count"),
+						rs.getLong("refunded_minor"), rs.getLong("fee_minor"), rs.getString(COL_CURRENCY)))
 				.list();
 	}
 

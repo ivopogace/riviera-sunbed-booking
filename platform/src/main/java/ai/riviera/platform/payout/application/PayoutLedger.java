@@ -67,4 +67,14 @@ public interface PayoutLedger {
 	 * Money is integer minor units (invariant #5); the total may be negative.
 	 */
 	List<VenuePeriodTotal> netTotalsForPeriod(PeriodKey period);
+
+	/**
+	 * Every venue with at least one venue-caused refund, with its refund count, what those refunds
+	 * returned to guests and what it paid in fees — the admin's abuse guard. Keyed on
+	 * {@code reason = 'VENUE_CHANGE'}, so a policy or weather refund never appears. The two amounts
+	 * are aggregated separately by entry type and must not be added: the refunded total is the
+	 * {@code REVERSAL}s' gross, the fee total the {@code FEE}s' net. Money is integer minor units
+	 * (invariant #5). Empty when no venue-caused refund has been posted.
+	 */
+	List<VenueChangeRefundTotal> venueChangeTotals();
 }

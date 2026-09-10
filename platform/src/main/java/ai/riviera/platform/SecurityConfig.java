@@ -180,6 +180,8 @@ class SecurityConfig {
 	 * The refund outbox — the mail outbox's twin on the money path. The lever's own scope (an exact
 	 * listener id) is what keeps it off every other listener.
 	 */
+	/** The per-venue venue-caused refund report: aggregates only, no booking id or code. */
+	private static final String ADMIN_VENUE_CHANGE_REFUNDS_PATH = "/api/admin/venue-change-refunds";
 	private static final String ADMIN_REFUND_OUTBOX_PATH = "/api/admin/refund-outbox";
 	private static final String ADMIN_REFUND_OUTBOX_RESUBMIT_PATH = "/api/admin/refund-outbox/resubmit";
 	/**
@@ -373,6 +375,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, ADMIN_SUPPRESSION_REINSTATE_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, ADMIN_MAIL_OUTBOX_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_OUTBOX_RESUBMIT_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.GET, ADMIN_VENUE_CHANGE_REFUNDS_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, ADMIN_REFUND_OUTBOX_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_REFUND_OUTBOX_RESUBMIT_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_LOOKUP_PATH).hasRole(ADMIN_ROLE)

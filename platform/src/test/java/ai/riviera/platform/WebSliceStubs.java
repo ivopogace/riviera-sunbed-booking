@@ -844,6 +844,11 @@ class WebSliceStubs {
 	}
 
 	@Bean
+	ai.riviera.platform.payout.application.ViewVenueChangeRefunds viewVenueChangeRefunds() {
+		return List::of;
+	}
+
+	@Bean
 	ai.riviera.platform.booking.api.RemodelClaims remodelClaims() {
 		return new ai.riviera.platform.booking.api.RemodelClaims() {
 			@Override
