@@ -122,8 +122,8 @@ class RemodelReceiptIT {
 		SpotRef spot = new SpotRef(new SetId(a1), "A", 1);
 		ReceiptId id = receipts.store(new NewReceipt(new VenueId(venue), operator,
 				Instant.parse("2026-09-09T12:00:00Z"), List.of(), List.of(
-						new ReceiptOutcome(new BookingId(refunded), day, spot, ReceiptOutcomeKind.REFUND, 4500, "EUR"),
-						new ReceiptOutcome(new BookingId(released), day, spot, ReceiptOutcomeKind.RELEASE, 2000, "EUR")),
+						new ReceiptOutcome(new BookingId(refunded), day, spot, ReceiptOutcomeKind.REFUND, 4500, "EUR", 500L),
+						new ReceiptOutcome(new BookingId(released), day, spot, ReceiptOutcomeKind.RELEASE, 2000, "EUR", 0L)),
 				"Re-laying row A for the season"));
 
 		mvc.perform(get("/api/venues/{v}/remodels/{r}", venue, id.value()).cookie(operatorSession))
@@ -139,7 +139,11 @@ class RemodelReceiptIT {
 				.andExpect(jsonPath("$.releases[0].kind").value("RELEASE"))
 				.andExpect(jsonPath("$.refundReason").value("Re-laying row A for the season"))
 				.andExpect(jsonPath("$.refundedTotal.minorUnits").value(4500))
-				.andExpect(jsonPath("$.refundedTotal.currency").value("EUR"));
+				.andExpect(jsonPath("$.refundedTotal.currency").value("EUR"))
+				.andExpect(jsonPath("$.refunds[0].fee.minorUnits").value(500))
+				.andExpect(jsonPath("$.refunds[0].fee.currency").value("EUR"))
+				.andExpect(jsonPath("$.feeTotal.minorUnits").value(500))
+				.andExpect(jsonPath("$.releases[0].fee").doesNotExist());
 
 		mvc.perform(get("/api/venues/{v}/remodels", venue).cookie(operatorSession))
 				.andExpect(status().isOk())

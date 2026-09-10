@@ -98,13 +98,13 @@ class JdbcRemodelReceiptsIT {
 
 		ReceiptId id = receipts.store(new NewReceipt(new VenueId(venue), operator,
 				Instant.parse("2026-09-09T10:00:00Z"), List.of(), List.of(
-						new ReceiptOutcome(new BookingId(refunded), DAY, spot, ReceiptOutcomeKind.REFUND, 4500, "EUR"),
-						new ReceiptOutcome(new BookingId(released), DAY, spot, ReceiptOutcomeKind.RELEASE, 2000, "EUR")),
+						new ReceiptOutcome(new BookingId(refunded), DAY, spot, ReceiptOutcomeKind.REFUND, 4500, "EUR", 500L),
+						new ReceiptOutcome(new BookingId(released), DAY, spot, ReceiptOutcomeKind.RELEASE, 2000, "EUR", 0L)),
 				"Re-laying row A for the season"));
 
 		RemodelReceipt read = receipts.find(new VenueId(venue), id).orElseThrow();
 		assertEquals(2, read.outcomes().size());
-		assertEquals(new ReceiptOutcome(new BookingId(refunded), DAY, spot, ReceiptOutcomeKind.REFUND, 4500, "EUR"),
+		assertEquals(new ReceiptOutcome(new BookingId(refunded), DAY, spot, ReceiptOutcomeKind.REFUND, 4500, "EUR", 500L),
 				read.outcomes().getFirst());
 		assertEquals("Re-laying row A for the season", read.refundReason());
 		assertEquals(4500, read.refundedMinor(), "only the refund lines count toward what guests got back");

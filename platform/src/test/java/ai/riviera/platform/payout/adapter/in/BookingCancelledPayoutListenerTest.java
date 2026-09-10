@@ -8,7 +8,7 @@ import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.payout.application.PayoutLedger;
-import ai.riviera.platform.payout.application.VenueChangeFee;
+import ai.riviera.platform.payout.application.VenueChangeFeeAmount;
 import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -69,7 +69,7 @@ class BookingCancelledPayoutListenerTest {
 
 	private final PayoutLedger ledger = mock(PayoutLedger.class);
 	private final BookingCancelledPayoutListener listener =
-			new BookingCancelledPayoutListener(ledger, new VenueChangeFee(500L));
+			new BookingCancelledPayoutListener(ledger, new VenueChangeFeeAmount(500L, "EUR"));
 
 	private final ListAppender<ILoggingEvent> logged = new ListAppender<>();
 	private ch.qos.logback.classic.Logger logger;

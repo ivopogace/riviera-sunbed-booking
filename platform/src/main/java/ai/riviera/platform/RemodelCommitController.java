@@ -63,19 +63,19 @@ class RemodelCommitController {
 		RefundConfirmation confirmation = request.confirmation();
 		return switch (commits.commit(operator, new VenueId(venueId), expectedVersion, cells, token, confirmation)) {
 			case RemodelCommitOutcome.Committed committed ->
-				ResponseEntity.ok(RemodelCommitResponse.of(committed, confirmation.reason()));
+				ResponseEntity.ok(RemodelCommitResponse.of(committed, confirmation.reason(), commits.venueChangeFee()));
 			case RemodelCommitOutcome.StalePreview(var disturbed, var fresh) -> withPreview(
 					ApiProblem.of(HttpStatus.CONFLICT, STALE_PREVIEW_CODE,
 							"The bookings this remodel affects have changed since the preview."),
-					RemodelPreviewAssembler.assemble(disturbed, fresh));
+					RemodelPreviewAssembler.assemble(disturbed, fresh, commits.venueChangeFee()));
 			case RemodelCommitOutcome.Refused(var disturbed, var fresh) -> withPreview(
 					ApiProblem.of(HttpStatus.CONFLICT, REMODEL_REFUSED_CODE,
 							"The remodel affects a booking that cannot be moved or ended."),
-					RemodelPreviewAssembler.assemble(disturbed, fresh));
+					RemodelPreviewAssembler.assemble(disturbed, fresh, commits.venueChangeFee()));
 			case RemodelCommitOutcome.NotConfirmed(var disturbed, var fresh) -> withPreview(
 					ApiProblem.of(HttpStatus.CONFLICT, REFUND_NOT_CONFIRMED_CODE,
 							"A remodel that refunds guests needs the refund count typed out and a reason."),
-					RemodelPreviewAssembler.assemble(disturbed, fresh));
+					RemodelPreviewAssembler.assemble(disturbed, fresh, commits.venueChangeFee()));
 			case RemodelCommitOutcome.SetsInUse(var sets) -> {
 				ProblemDetail problem = ApiProblem.of(HttpStatus.CONFLICT, SETS_IN_USE_CODE,
 						"Sets this save would remove are booked or held.");

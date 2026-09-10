@@ -859,6 +859,11 @@ class WebSliceStubs {
 					ai.riviera.platform.booking.vocabulary.RefundConfirmation confirmation) {
 				return new ai.riviera.platform.booking.vocabulary.RemodelCommit.Refused(List.of());
 			}
+
+			@Override
+			public ai.riviera.platform.booking.vocabulary.VenueChangeFee venueChangeFee() {
+				return new ai.riviera.platform.booking.vocabulary.VenueChangeFee(500L, "EUR");
+			}
 		};
 	}
 

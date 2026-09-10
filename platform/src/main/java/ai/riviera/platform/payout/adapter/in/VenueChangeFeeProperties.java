@@ -13,7 +13,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * fee would pay the venue for changing a guest's deal, and would put direction in the amount where
  * the ledger keeps it in the entry type.
  *
- * <p>Converted to the application-layer {@code VenueChangeFee} value by {@link PayoutFeeConfig}.
+ * <p>Converted to the application-layer {@code VenueChangeFeeAmount} value by {@link PayoutFeeConfig}.
  * Rationale and rejected alternatives: ADR-0021.
  *
  * @param venueChangeFeeMinor default {@code 500} (5 EUR), never negative

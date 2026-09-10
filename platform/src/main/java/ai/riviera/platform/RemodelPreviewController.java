@@ -62,7 +62,8 @@ class RemodelPreviewController {
 		return switch (remodel.preview(operator, venue, expectedVersion, cells)) {
 			case LayoutPreview.Disturbing(var disturbed) -> ResponseEntity.ok(RemodelPreviewAssembler.assemble(disturbed,
 					disturbed.isEmpty() ? List.of()
-							: claims.classify(operator, venue, disturbed.stream().map(DisturbedSet::setId).toList())));
+							: claims.classify(operator, venue, disturbed.stream().map(DisturbedSet::setId).toList()),
+					claims.venueChangeFee()));
 			case LayoutPreview.Rejected(var reason) -> switch (reason) {
 				case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(), NO_SUCH_VENUE_DETAIL);
 				case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(), STALE_SETS_DETAIL);

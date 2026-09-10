@@ -7,6 +7,7 @@ import ai.riviera.platform.booking.vocabulary.PreviewToken;
 import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
 import ai.riviera.platform.booking.vocabulary.RemodelClaim;
 import ai.riviera.platform.booking.vocabulary.RemodelCommit;
+import ai.riviera.platform.booking.vocabulary.VenueChangeFee;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -56,4 +57,12 @@ public interface RemodelClaims {
 	 */
 	RemodelCommit commit(OperatorId operator, VenueId venueId, Collection<SetId> disturbedSets, PreviewToken token,
 			RefundConfirmation confirmation);
+
+	/**
+	 * What each refund in a picture would cost the venue — the current rate, so the operator sees the
+	 * price of the change before confirming it. Decided by {@code payout} and read through
+	 * {@code booking.spi.VenueChangeFeeRate}; a commit snapshots what it charged onto its receipt, so
+	 * this answer never re-prices one already written.
+	 */
+	VenueChangeFee venueChangeFee();
 }

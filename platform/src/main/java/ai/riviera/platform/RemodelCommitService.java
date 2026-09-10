@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.booking.api.RemodelClaims;
 import ai.riviera.platform.booking.vocabulary.PreviewToken;
+import ai.riviera.platform.booking.vocabulary.VenueChangeFee;
 import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
 import ai.riviera.platform.booking.vocabulary.RemodelCommit;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -36,6 +37,11 @@ class RemodelCommitService {
 	RemodelCommitService(BeachMapRemodel remodel, RemodelClaims claims) {
 		this.remodel = remodel;
 		this.claims = claims;
+	}
+
+	/** The rate the refusal pictures quote — the same one the preview did, straight off the port. */
+	VenueChangeFee venueChangeFee() {
+		return claims.venueChangeFee();
 	}
 
 	RemodelCommitOutcome commit(OperatorId operator, VenueId venue, long expectedVersion, List<LayoutCell> cells,

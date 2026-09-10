@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.payout.application.PayoutLedger;
-import ai.riviera.platform.payout.application.VenueChangeFee;
+import ai.riviera.platform.payout.application.VenueChangeFeeAmount;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 
 /**
@@ -48,9 +48,9 @@ class BookingCancelledPayoutListener {
 	private static final Logger log = LoggerFactory.getLogger(BookingCancelledPayoutListener.class);
 
 	private final PayoutLedger ledger;
-	private final VenueChangeFee venueChangeFee;
+	private final VenueChangeFeeAmount venueChangeFee;
 
-	BookingCancelledPayoutListener(PayoutLedger ledger, VenueChangeFee venueChangeFee) {
+	BookingCancelledPayoutListener(PayoutLedger ledger, VenueChangeFeeAmount venueChangeFee) {
 		this.ledger = ledger;
 		this.venueChangeFee = venueChangeFee;
 	}
