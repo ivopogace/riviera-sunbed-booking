@@ -41,18 +41,43 @@ class PhotoProcessorTest {
 		Processed result = assertProcessed(processor.process(solidJpeg(1600, 1200)));
 
 		List<StoredVariant> variants = result.photo().variants();
-		assertEquals(3, variants.size(), "every slot feeds card + banner + preview (uniform surfaces)");
 		Set<PhotoSurface> surfaces = variants.stream().map(StoredVariant::surface).collect(Collectors.toSet());
 		assertEquals(Set.of(PhotoSurface.CARD, PhotoSurface.BANNER, PhotoSurface.PREVIEW), surfaces);
 		for (StoredVariant v : variants) {
 			assertEquals("image/jpeg", v.contentType(), "re-encoded to JPEG");
 			assertTrue(isJpeg(v.bytes()), "output is a real JPEG");
 			assertTrue(v.width() > 0 && v.height() > 0, "positive dimensions");
-			assertTrue(v.width() <= boundW(v.surface()) && v.height() <= boundH(v.surface()),
-					() -> v.surface() + " fits within its bound");
+			assertTrue(v.width() <= boundW(v.surface()) * v.scale()
+							&& v.height() <= boundH(v.surface()) * v.scale(),
+					() -> v.surface() + "@" + v.scale() + " fits within its bound");
 			assertTrue(v.hash().value().matches("[0-9a-f]{64}"), "SHA-256 lower-case-hex content hash");
-			assertTrue(v.bytes().length <= 200_000, "capped variant size");
+			assertTrue(v.bytes().length <= 200_000 * v.scale() * v.scale(), "capped variant size");
 		}
+	}
+
+	@Test
+	void rendersARetinaTierForTheTouristSurfacesOnly() throws IOException {
+		Processed result = assertProcessed(processor.process(solidJpeg(1600, 1200)));
+
+		List<StoredVariant> variants = result.photo().variants();
+		Set<String> renditions = variants.stream()
+				.map(v -> v.surface() + "@" + v.scale())
+				.collect(Collectors.toSet());
+		assertEquals(Set.of("CARD@1", "CARD@2", "BANNER@1", "BANNER@2", "PREVIEW@1"), renditions,
+				"the two tourist surfaces carry a retina tier; the operator slot preview does not");
+		assertEquals(variants.size(), variants.stream().map(StoredVariant::hash).distinct().count(),
+				"every rendition is its own content-addressed row");
+	}
+
+	@Test
+	void omitsTheRetinaTierRatherThanUpscaleASmallUpload() throws IOException {
+		// 700x525 clears every scale-1 bound but is smaller than both retina boxes.
+		Processed result = assertProcessed(processor.process(solidJpeg(700, 525)));
+
+		List<StoredVariant> variants = result.photo().variants();
+		assertTrue(variants.stream().allMatch(v -> v.scale() == 1),
+				"a source smaller than the retina box yields no retina row");
+		assertEquals(3, variants.size(), "the scale-1 set is unchanged");
 	}
 
 	@Test

@@ -86,6 +86,8 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	 * day already sold.
 	 */
 	private static final LocalDate EPOCH_FLOOR = LocalDate.of(1970, 1, 1);
+	/** The console slot grid is one thumbnail per slot; PREVIEW carries no retina tier to choose from. */
+	private static final int PREVIEW_SCALE = 1;
 	/** One mapper for the commission columns, shared by the list read and the write's RETURNING. */
 	private static final RowMapper<VenueCommissionView> COMMISSION_ROW = (rs, rowNum) ->
 			new VenueCommissionView(rs.getLong("id"), rs.getString(COL_NAME), rs.getString(COL_BEACH),
@@ -608,9 +610,10 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				SELECT vp.slot, vv.content_hash
 				FROM venue_photo vp
 				JOIN venue_photo_variant vv ON vv.photo_id = vp.id
-				WHERE vp.venue_id = :id AND vv.surface = 'PREVIEW'
+				WHERE vp.venue_id = :id AND vv.surface = 'PREVIEW' AND vv.scale = :scale
 				""")
 				.param("id", venueId.value())
+				.param("scale", PREVIEW_SCALE)
 				.query((rs, rowNum) -> new SlotPreviewRow(
 						PhotoSlot.valueOf(rs.getString("slot")), rs.getString("content_hash")))
 				.list().stream()

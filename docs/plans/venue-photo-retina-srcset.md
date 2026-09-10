@@ -200,7 +200,7 @@ and stays content-addressed.`
 |---|---|---|---|---|---|---|
 | R-1 | `[attr.srcset]` is overwritten or ignored by `NgOptimizedImage`, so the whole slice is inert — the exact failure mode #1041 documents for `sizes` | med | high | Verified in the 22.1.4 bundle that `updateSrcAndSrcset` writes `srcset` only from `ngSrcset` or the automatic path, both gated on a loader; `disableOptimizedSrcset` closes the future-loader hole. **Phase 2 pins it in the rendered DOM (AC-6), not in the class list** | agent | open |
 | R-2 | Without `sizes="auto"` support the `100vw` fallback makes every Discover card pick the widest candidate — a **bytes regression** on the exact surface #1041 cared about | med | high | AC-7: pass an explicit vw-only `sizes` per host so the fallback describes the real box. `sizes` must contain no pixel values (RuntimeError 2952) — vw-only by construction | agent | open |
-| R-3 | Retina bytes blow ADR-0008's stated "≈≤120 KB each" cap and the per-venue footprint it sizes the `bytea` decision on | high | med | Render the scale-2 tier at a lower JPEG quality (0.62 vs 0.82) — a high-density display hides the artifacts, and it roughly halves the bytes. Measure the real per-variant sizes in phase 0 and **update ADR-0008's figures at close-out**, not silently | agent | open |
+| R-3 | Retina bytes blow ADR-0008's stated "≈≤120 KB each" cap and the per-venue footprint it sizes the `bytea` decision on | high | med | Confirmed: it does. Measured in phase 0 (see the Generalization-audit log) — worst single rendition 327 KB, per-photo total 135–563 KB by aspect, so a 3-slot venue runs ~0.4–1.7 MB against the ADR's stated ≈360 KB. The 0.62 retina quality is what keeps it there. **Phase 3 updates ADR-0008's figures**; the flip threshold itself is unmoved at Phase-1 venue counts | agent | measured in phase 0, doc fix due phase 3 |
 | R-4 | Widening the uniqueness constraint drops the old one; a bad migration could leave the table with no protection against a duplicate `(photo, surface)` write | low | high | AC-5 pins the new constraint from the DB side in `JdbcPhotoStorageIT`; the migration adds the new constraint before dropping the old | agent | open |
 | R-5 | `PhotoView` replaces `List<String>` in two published view records, so every consumer of `photos` and `coverPhoto` breaks at once — backend read models, the frontend mirror, three components and their specs | high | med | Phase 1 changes the backend contract and its ITs together; phase 2 changes the mirror and all three components together. Neither phase is green in isolation, which is expected and stated in the phase table | agent | open |
 | R-6 | Flyway `V56` collides with a concurrently-merged branch | low | med | Checked at the intake gate: `V55` is the max on `main` and there are no open PRs. If one appears, this branch renumbers (it will merge second) | agent | open |
@@ -298,15 +298,16 @@ attribute stays authoritative.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, awaiting go-ahead to implement`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Begin phase 0 — write `PhotoProcessorTest.rendersARetinaTierForTheTouristSurfacesOnly`
-red, per AC-1.
+**Next action:** Write `VenuePhotoReadModelIT.publishesEveryStoredCandidateWithItsIntrinsicWidth`
+red, per AC-3. Phase 0 left both tourist read models pinned to `scale = 1` so the tree stays
+correct between phases; phase 1 is what widens `JdbcVenueCatalog` to publish both candidates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Retina tier in the processor + `V56` scale column | | |
-| 1 — `PhotoView` read model | | |
+| 0 — Retina tier in the processor + `V56` scale column | ✅ | AC-1, AC-2, AC-5 green |
+| 1 — `PhotoView` read model | ⏳ | |
 | 2 — Frontend `srcset` + per-host `sizes` | | |
 | 3 — e2e coverage + ADR-0008 footprint figures | | |
 
@@ -328,6 +329,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/venue/application/StoredVariant.java` — carries `scale`
 - `platform/src/main/java/ai/riviera/platform/venue/application/PhotoProcessor.java` — renders the retina tier
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcPhotoStorage.java` — writes/reads `scale`
+- `platform/src/main/java/ai/riviera/platform/venue/application/VariantMeta.java` — the moderation read's rendition carries `scale`
+- `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenues.java` — the console slot read is pinned to the baseline density
 - `platform/src/main/java/ai/riviera/platform/venue/application/PhotoMetadata.java` — admin moderation read carries `scale`
 - `platform/src/main/java/ai/riviera/platform/venue/vocabulary/PhotoSourceView.java` — one candidate: URL + intrinsic width
 - `platform/src/main/java/ai/riviera/platform/venue/vocabulary/PhotoView.java` — a photo as its candidate list
@@ -343,6 +346,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/venue/VenuePhotoReadModelIT.java` — AC-3, AC-4
 - `platform/src/test/java/ai/riviera/platform/venue/JdbcPhotoStorageIT.java` — AC-5
 - `platform/src/test/java/ai/riviera/platform/venue/VenuePhotoServingIT.java` — serving path unchanged, re-pinned
+- `platform/src/test/java/ai/riviera/platform/venue/application/StoredCarrierEqualityTest.java` — `scale` joins the equality contract
+- `platform/src/test/java/ai/riviera/platform/venue/AdminPhotoModerationIT.java` — fixture follows the record change
+- `platform/src/test/java/ai/riviera/platform/venue/AdminPhotoTakedownIT.java` — fixture follows the record change
 - `frontend/src/app/shared/venue-views.ts` — the `PhotoView`/`PhotoSourceView` mirror
 - `frontend/src/app/shared/photo-url.ts` — `apiPhotoView` + `photoSrcset` helpers
 - `frontend/src/app/shared/photo-url.spec.ts` — helper specs
@@ -467,6 +473,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-10 | phase 0 | Every reader of `venue_photo_variant` — a second row per surface changes what any of them sees | `grep -rn "venue_photo_variant" platform/src --include=*.java --include=*.sql` | `JdbcPhotoStorage` (3 reads + the write), `JdbcVenueCatalog:293` (tourist read model), `JdbcVenues:610` (console slot read), 2 test call sites | Fixed all three production readers. `JdbcVenueCatalog` keys its map by surface alone, so a second density silently overwrote the first — pinned to `scale = :scale` (BASE_SCALE) until phase 1 widens it. `JdbcVenues` collects with `Collectors.toMap`, which would throw on a duplicate slot key if PREVIEW ever gained a tier — pinned to `PREVIEW_SCALE`. |
+| 2026-09-10 | phase 0 | Measured rendition bytes (synthetic noise, so an upper bound — a real photo compresses better) | throwaway `ScratchSizeProbe` against `PhotoProcessor`, deleted after reading | 3:2 3000×2000 → CARD@1 26 KB, CARD@2 95 KB, BANNER@1 48 KB, BANNER@2 170 KB, PREVIEW@1 17 KB (**358 KB**); 16:9 3000×1688 → 29/104/86/**327**/14 KB (**563 KB**); 2:3 2000×3000 → 10/39/17/61/6 KB (**135 KB**) | Feeds R-3 and phase 3's ADR-0008 update. |
 
 ---
 

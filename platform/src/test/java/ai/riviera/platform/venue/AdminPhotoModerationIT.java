@@ -111,7 +111,7 @@ class AdminPhotoModerationIT {
 		ownership.assignOwner(new OperatorId(plainOperatorId()), new VenueRef(id));
 		VenueId venue = new VenueId(id);
 		storage.replace(venue, PhotoSlot.COVER, new ProcessedPhoto(List.of(
-				new StoredVariant(PhotoSurface.PREVIEW, new ContentHash(previewHash),
+				new StoredVariant(PhotoSurface.PREVIEW, 1, new ContentHash(previewHash),
 						"image/jpeg", 480, 320, new byte[] {1, 2}))));
 		return venue;
 	}

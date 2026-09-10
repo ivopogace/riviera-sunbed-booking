@@ -23,7 +23,7 @@ class StoredCarrierEqualityTest {
 	}
 
 	private static StoredVariant variant(String hash, byte... payload) {
-		return new StoredVariant(PhotoSurface.CARD, new ContentHash(hash), "image/jpeg", 640, 384, payload);
+		return new StoredVariant(PhotoSurface.CARD, 1, new ContentHash(hash), "image/jpeg", 640, 384, payload);
 	}
 
 	@Test
@@ -58,13 +58,15 @@ class StoredCarrierEqualityTest {
 		assertEquals(a.hashCode(), sameContent.hashCode());
 		assertNotEquals(a, variant("aa01", (byte) 9));
 		assertNotEquals(a, variant("bb02", (byte) 1, (byte) 2));
-		assertNotEquals(a, new StoredVariant(PhotoSurface.BANNER, new ContentHash("aa01"),
+		assertNotEquals(a, new StoredVariant(PhotoSurface.BANNER, 1, new ContentHash("aa01"),
 				"image/jpeg", 640, 384, new byte[] {1, 2}));
-		assertNotEquals(a, new StoredVariant(PhotoSurface.CARD, new ContentHash("aa01"),
+		assertNotEquals(a, new StoredVariant(PhotoSurface.CARD, 2, new ContentHash("aa01"),
+				"image/jpeg", 640, 384, new byte[] {1, 2}));
+		assertNotEquals(a, new StoredVariant(PhotoSurface.CARD, 1, new ContentHash("aa01"),
 				"image/jpeg", 999, 384, new byte[] {1, 2}));
-		assertNotEquals(a, new StoredVariant(PhotoSurface.CARD, new ContentHash("aa01"),
+		assertNotEquals(a, new StoredVariant(PhotoSurface.CARD, 1, new ContentHash("aa01"),
 				"image/jpeg", 640, 999, new byte[] {1, 2}));
-		assertNotEquals(a, new StoredVariant(PhotoSurface.CARD, new ContentHash("aa01"),
+		assertNotEquals(a, new StoredVariant(PhotoSurface.CARD, 1, new ContentHash("aa01"),
 				"image/png", 640, 384, new byte[] {1, 2}));
 		assertFalse(a.equals(null));
 	}

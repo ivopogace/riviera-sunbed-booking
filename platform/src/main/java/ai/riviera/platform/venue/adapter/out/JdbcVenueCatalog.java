@@ -79,6 +79,9 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	private static final String COL_ADVANCE_SALES = "advance_sales";
 	/** The bulk IN-clause bind param shared by the three list-read queries (named once — Sonar S1192). */
 	private static final String P_VENUE_IDS = "venueIds";
+	private static final String P_SCALE = "scale";
+	/** One hash per (slot, surface): the map below is keyed by surface, so it holds one density. */
+	private static final int BASE_SCALE = 1;
 	// Slideshow preferences: own size first, then fallbacks for pre-uniform-surface uploads.
 	private static final List<PhotoSurface> CARD_SLIDESHOW =
 			List.of(PhotoSurface.CARD, PhotoSurface.PREVIEW);
@@ -291,9 +294,10 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 				SELECT vp.venue_id, vp.slot, vv.surface, vv.content_hash
 				FROM venue_photo vp
 				JOIN venue_photo_variant vv ON vv.photo_id = vp.id
-				WHERE vp.venue_id IN (:venueIds)
+				WHERE vp.venue_id IN (:venueIds) AND vv.scale = :scale
 				""")
 				.param(P_VENUE_IDS, venueIds)
+				.param(P_SCALE, BASE_SCALE)
 				.query((rs, rowNum) -> new VariantRow(
 						rs.getLong(COL_VENUE_ID), PhotoSlot.valueOf(rs.getString("slot")),
 						PhotoSurface.valueOf(rs.getString("surface")), rs.getString("content_hash")))

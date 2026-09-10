@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
@@ -24,6 +25,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -54,7 +56,35 @@ class JdbcPhotoStorageIT {
 	}
 
 	private static StoredVariant variant(PhotoSurface surface, String hashHex, byte[] bytes) {
-		return new StoredVariant(surface, new ContentHash(hashHex), "image/jpeg", 640, 360, bytes);
+		return variant(surface, 1, hashHex, bytes);
+	}
+
+	private static StoredVariant variant(PhotoSurface surface, int scale, String hashHex, byte[] bytes) {
+		return new StoredVariant(surface, scale, new ContentHash(hashHex), "image/jpeg",
+				640 * scale, 360 * scale, bytes);
+	}
+
+	@Test
+	void rejectsADuplicateSurfaceAndScaleForOnePhoto() {
+		VenueId v = newVenue();
+		storage.replace(v, PhotoSlot.COVER, new ProcessedPhoto(List.of(
+				variant(PhotoSurface.CARD, 1, "ca01", new byte[] {1}),
+				variant(PhotoSurface.CARD, 2, "ca02", new byte[] {1, 2}))));
+
+		assertEquals(2, storage.listMetadata(v).get(0).variants().size(),
+				"the two densities of one surface coexist");
+
+		long photoId = jdbc.sql("SELECT id FROM venue_photo WHERE venue_id = :v AND slot = 'COVER'")
+				.param("v", v.value()).query(Long.class).single();
+		assertThrows(DuplicateKeyException.class, () -> jdbc.sql("""
+				INSERT INTO venue_photo_variant (photo_id, venue_id, surface, scale, content_hash,
+				                                 content_type, width, height, byte_size, bytes)
+				VALUES (:photoId, :venue, 'CARD', 2, 'ca03', 'image/jpeg', 1280, 720, 1, :bytes)
+				""")
+				.param("photoId", photoId)
+				.param("venue", v.value())
+				.param("bytes", new byte[] {9})
+				.update(), "UNIQUE (photo_id, surface, scale) rejects a second CARD at scale 2");
 	}
 
 	@Test

@@ -70,7 +70,13 @@ class VenuePhotoReadModelIT {
 	}
 
 	private static StoredVariant variant(PhotoSurface surface, String hashHex) {
-		return new StoredVariant(surface, new ContentHash(hashHex), "image/jpeg", 640, 384, new byte[] {1});
+		return variant(surface, 1, hashHex);
+	}
+
+	/** Dimensions track the scale so a width assertion distinguishes the two candidates. */
+	private static StoredVariant variant(PhotoSurface surface, int scale, String hashHex) {
+		return new StoredVariant(surface, scale, new ContentHash(hashHex), "image/jpeg",
+				640 * scale, 384 * scale, new byte[] {1});
 	}
 
 	private void seedCover(VenueId venue, String cardHash, String bannerHash, String previewHash) {

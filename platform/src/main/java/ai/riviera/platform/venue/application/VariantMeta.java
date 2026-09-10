@@ -10,6 +10,6 @@ import ai.riviera.platform.venue.vocabulary.PhotoSurface;
  * (ADR-0008: keep the blob off the list/metadata path). The Discover cards, the beach-map banner and
  * the operator slots do <em>not</em> come through here — they run their own SQL in the JDBC adapters.
  */
-public record VariantMeta(PhotoSurface surface, ContentHash hash, String contentType,
+public record VariantMeta(PhotoSurface surface, int scale, ContentHash hash, String contentType,
 		int width, int height) {
 }

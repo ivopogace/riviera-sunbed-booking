@@ -55,7 +55,8 @@ class VenuePhotoServiceTest {
 				PhotoSlot.COVER, jpeg(1600, 1200));
 
 		PhotoUploadResult.Stored stored = assertInstanceOf(PhotoUploadResult.Stored.class, result);
-		assertEquals(3, stored.metadata().variants().size(), "cover → card + banner + preview");
+		assertEquals(5, stored.metadata().variants().size(),
+				"cover → card + banner at both densities, preview at one");
 		assertEquals(1, storage.listMetadata(new VenueId(VENUE)).size(), "the slot is now occupied");
 	}
 
@@ -199,13 +200,13 @@ class VenuePhotoServiceTest {
 
 	/** A stored photo carrying only the PREVIEW variant — the surface the moderation read serves. */
 	private static ProcessedPhoto previewOnly(String hashHex) {
-		return new ProcessedPhoto(List.of(new StoredVariant(PhotoSurface.PREVIEW, new ContentHash(hashHex),
+		return new ProcessedPhoto(List.of(new StoredVariant(PhotoSurface.PREVIEW, 1, new ContentHash(hashHex),
 				"image/jpeg", 480, 320, new byte[] {1, 2, 3})));
 	}
 
 	/** A one-variant stored photo, for seeding a venue the fake ownership port refuses. */
 	private static ProcessedPhoto oneVariant(String hashHex) {
-		return new ProcessedPhoto(List.of(new StoredVariant(PhotoSurface.CARD, new ContentHash(hashHex),
+		return new ProcessedPhoto(List.of(new StoredVariant(PhotoSurface.CARD, 1, new ContentHash(hashHex),
 				"image/jpeg", 640, 384, new byte[] {1, 2, 3})));
 	}
 
