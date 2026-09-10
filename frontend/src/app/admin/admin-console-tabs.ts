@@ -7,6 +7,7 @@ import {
   CommissionsGlyph,
   EmailGlyph,
   OperatorsGlyph,
+  PayoutsGlyph,
   PhotosGlyph,
   PrivacyGlyph,
   RefundsGlyph,
@@ -29,7 +30,7 @@ export const ADMIN_CONSOLE_TAB_GROUPS = [
   ['Operators'],
   ['Email', 'Refunds'],
   ['Photos', 'Reviews'],
-  ['Commissions', 'Payouts'],
+  ['Commissions', 'Venue changes', 'Payouts'],
   ['Privacy', 'Audit'],
 ] as const;
 
@@ -106,6 +107,13 @@ export const ADMIN_CONSOLE_TABS: readonly ConsoleDestination[] = [
     'admin-tab-commissions',
     CommissionsGlyph,
     'Per-venue rate schedule',
+  ),
+  shipped(
+    '/admin/venue-changes',
+    'Venue changes',
+    'admin-tab-venue-changes',
+    PayoutsGlyph,
+    'Venue-caused refunds and fees',
   ),
   shipped('/admin/privacy', 'Privacy', 'admin-tab-privacy', PrivacyGlyph, 'Data-subject erasure'),
   shipped('/admin/audit', 'Audit', 'admin-tab-audit', AuditGlyph, 'Every admin action, in order'),

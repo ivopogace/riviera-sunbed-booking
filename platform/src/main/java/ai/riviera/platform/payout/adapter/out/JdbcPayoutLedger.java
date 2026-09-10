@@ -103,11 +103,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 
 	@Override
 	public List<VenuePeriodTotal> netTotalsForPeriod(PeriodKey period) {
-		// Signed net owed per venue for the period (invariant #9): only ACCRUAL adds; every other entry
-		// type — REVERSAL and FEE — is a deduction, which is the ledger's sign convention (V54) and the
-		// safe default for a type added later. Served by payout_ledger_period_idx (V15). MAX(currency)
-		// is a single-value pick (EUR-only in v1, invariant #5). Total may be negative when a period's
-		// reversals and fees exceed its accruals.
+		// Signed net owed per venue: only ACCRUAL adds, every other type deducts (invariant #9).
 		return jdbc.sql("""
 				SELECT venue_id,
 				       SUM(CASE WHEN entry_type = 'ACCRUAL' THEN net_minor ELSE -net_minor END) AS net_minor,
@@ -125,9 +121,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 
 	@Override
 	public List<VenueChangeRefundTotal> venueChangeTotals() {
-		// Two aggregates over one scan, kept apart by their entry type: a refund's size is the
-		// REVERSAL's gross (what the guest got back) and a fee's is the FEE's net, so adding them would
-		// report a venue as having refunded its own fees. Served by payout_ledger_venue_idx (V9).
+		// Two aggregates over one scan, kept apart by entry type; adding them would double-count.
 		return jdbc.sql("""
 				SELECT venue_id,
 				       COUNT(*) FILTER (WHERE entry_type = 'REVERSAL')                        AS refund_count,

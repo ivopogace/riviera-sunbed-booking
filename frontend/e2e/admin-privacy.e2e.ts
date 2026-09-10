@@ -219,7 +219,7 @@ test('the failure banner lands in reserved space, so the panel absorbs part of i
   expect((await confirm.boundingBox())?.y).toBe(clean.confirm?.y);
 });
 
-test('the tab rail marks Privacy in slot 8 and never scrolls sideways at 360px', async ({
+test('the tab rail marks Privacy in slot 9 and never scrolls sideways at 360px', async ({
   page,
 }) => {
   await mockOperatorLifecycleApi(page, { admin: ADMIN });
@@ -232,12 +232,12 @@ test('the tab rail marks Privacy in slot 8 and never scrolls sideways at 360px',
   await expect(more).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('admin-tab-privacy')).toBeHidden();
 
-  // The amended tab order puts Privacy after the money pair and before Audit, the records last.
+  // The amended tab order puts Privacy after the money group and before Audit, the records last.
   await openMoreSheet(page);
   const labels = (await page.getByTestId('oc-more-sheet').getByRole('link').allInnerTexts()).map(
     (text) => text.split('\n')[0],
   );
-  expect(labels.slice(2, 5)).toEqual(['Commissions', 'Privacy', 'Audit']);
+  expect(labels.slice(2, 6)).toEqual(['Commissions', 'Venue changes', 'Privacy', 'Audit']);
   await page.keyboard.press('Escape');
 
   const scrollsSideways = await page.evaluate(

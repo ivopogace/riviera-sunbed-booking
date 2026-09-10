@@ -124,9 +124,7 @@ class PayoutLedgerViewIT {
 		long venueId = newVenue();
 		grantToBootstrap(venueId);
 		long bookingId = newBooking(venueId, anySeededSet(), "LEDGERVIEWFEE");
-		// Accrual net 8500, then the venue-change refund's pair: a full reversal net 8500 and a 500 fee.
-		// 8500 - 8500 - 500 = -500. A read that added the fee would answer 500 and pay a venue that
-		// owes the platform (invariant #9).
+		// 8500 accrued - 8500 reversed - 500 charged; adding the fee would answer 500 (invariant #9).
 		jdbc.sql("""
 				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor,
 				                                 commission_minor, net_minor, currency)

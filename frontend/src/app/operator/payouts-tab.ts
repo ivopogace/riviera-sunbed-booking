@@ -117,22 +117,22 @@ export class PayoutsTab {
   );
   private readonly currency = computed(() => this.ledger()?.currency ?? 'EUR');
 
-  /** The ledger rows, each pre-formatted; a reversal carries a negative net + a reason chip. */
+  /** The ledger rows, each pre-formatted; a deduction carries a negative net + a reason chip. */
   protected readonly rows = computed<readonly LedgerRow[]>(() => {
     const currency = this.currency();
     return this.entries().map((e) => {
-      const reversal = e.type === 'REVERSAL';
-      const sign = reversal ? -1 : 1;
+      const deduction = isDeduction(e);
+      const sign = deduction ? -1 : 1;
       return {
         bookingId: e.bookingId,
         ref: `#${e.bookingId}`,
         dateLabel: ledgerDateLabel(e.createdAt),
-        isReversal: reversal,
-        reasonLabel: reversal ? reasonLabel(e.reason) : null,
+        isDeduction: deduction,
+        reasonLabel: deduction ? reasonLabel(e) : null,
         grossStr: money(e.grossMinor, currency),
         commissionStr: money(e.commissionMinor, currency),
         netStr: money(sign * e.netMinor, currency),
-        netClass: reversal ? 'text-riv-console-negative-ink' : 'text-riv-console-accent-ink',
+        netClass: deduction ? 'text-riv-console-negative-ink' : 'text-riv-console-accent-ink',
       };
     });
   });
@@ -311,16 +311,33 @@ function money(minorUnits: number, currency: string): string {
   return formatMoney({ minorUnits, currency });
 }
 
-/** Sum a picked minor-unit field across entries, signed by type: accrual adds, reversal subtracts. */
+/**
+ * Whether an entry deducts from what the venue is owed. Only an `ACCRUAL` adds — the ledger's sign
+ * convention (invariant #9), so a type added later deducts by default rather than silently paying
+ * the venue for it.
+ */
+function isDeduction(entry: PayoutLedgerEntryView): boolean {
+  return entry.type !== 'ACCRUAL';
+}
+
+/** Sum a picked minor-unit field across entries, signed by type: an accrual adds, anything else subtracts. */
 function signedSum(
   entries: readonly PayoutLedgerEntryView[],
   pick: (e: PayoutLedgerEntryView) => number,
 ): number {
-  return entries.reduce((total, e) => total + (e.type === 'REVERSAL' ? -pick(e) : pick(e)), 0);
+  return entries.reduce((total, e) => total + (isDeduction(e) ? -pick(e) : pick(e)), 0);
+}
+
+/** A deduction's short human label — the fee names itself, a reversal names its refund reason. */
+function reasonLabel(entry: PayoutLedgerEntryView): string {
+  if (entry.type === 'FEE') {
+    return 'Venue change fee';
+  }
+  return refundReasonLabel(entry.reason);
 }
 
 /** A reversal's reason as a short human label (mirrors the backend `RefundReason` token set). */
-function reasonLabel(reason: RefundReasonCode | null): string {
+function refundReasonLabel(reason: RefundReasonCode | null): string {
   switch (reason) {
     case 'WEATHER':
       return 'Weather';
@@ -328,6 +345,8 @@ function reasonLabel(reason: RefundReasonCode | null): string {
       return 'Policy';
     case 'CONFLICT':
       return 'Conflict';
+    case 'VENUE_CHANGE':
+      return 'Venue change';
     default:
       return 'Refund';
   }

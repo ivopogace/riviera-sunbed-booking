@@ -226,6 +226,8 @@ export interface RemodelClaim {
   readonly bookingDate: string;
   readonly amount: MoneyView;
   readonly from: RemodelSpot;
+  /** What the venue pays for this refund; present on a refund line only. */
+  readonly fee?: MoneyView;
 }
 
 /** A booking that would move to `to`, `rowsAway` rows and `positionsAway` positions from its set. */
@@ -251,6 +253,8 @@ export interface RemodelReceiptClaim {
   readonly bookingDate: string;
   readonly from: RemodelSpot;
   readonly amount: MoneyView;
+  /** What the venue was charged for this refund, as it was charged; present on a refund line only. */
+  readonly fee?: MoneyView;
 }
 
 /** A released unpaid booking or a declined request, told apart by `kind`; neither collected anything. */
@@ -263,7 +267,8 @@ export interface RemodelReceiptRelease extends RemodelReceiptClaim {
  * `200` of the commit itself, whose moves also carry the amount: when it was committed, every
  * booking it moved, every claim it ended instead, the operator's reason for the refunds and what
  * they returned to guests. `refundedTotal` is null when it refunded nobody, so a zero is never
- * rendered as a refund. Bookings by id, never by code.
+ * rendered as a refund, and `feeTotal` — what those refunds cost the venue, at the rate charged then
+ * — is null with it. Bookings by id, never by code.
  */
 export interface RemodelReceipt {
   readonly receiptId: number;
@@ -273,6 +278,7 @@ export interface RemodelReceipt {
   readonly releases: readonly RemodelReceiptRelease[];
   readonly refundReason: string;
   readonly refundedTotal: MoneyView | null;
+  readonly feeTotal: MoneyView | null;
 }
 
 /** One row of `GET /api/venues/{id}/remodels`, newest first. */
@@ -330,6 +336,8 @@ export interface RemodelPreview {
   readonly keep: readonly RemodelSpot[];
   /** What the commit carries back to prove the operator confirmed this picture; opaque. */
   readonly previewToken: string;
+  /** What the refunds in this picture would cost the venue in venue-change fees, at the current rate. */
+  readonly feeTotal: MoneyView;
 }
 
 /**
@@ -365,11 +373,15 @@ export interface OperatorBeachMap {
   readonly locks: readonly SetLock[];
 }
 
-/** The kind of payout-ledger entry: a confirmed booking accrues, a refund reverses. */
-export type PayoutEntryType = 'ACCRUAL' | 'REVERSAL';
+/**
+ * The kind of payout-ledger entry: a confirmed booking accrues, a refund reverses, and a refund the
+ * venue's own change caused also charges a fee. Direction lives here, never in the amount — only an
+ * `ACCRUAL` adds, everything else deducts (invariant #9).
+ */
+export type PayoutEntryType = 'ACCRUAL' | 'REVERSAL' | 'FEE';
 
-/** Why a reversal happened; `null` on an ACCRUAL. */
-export type RefundReasonCode = 'WEATHER' | 'POLICY' | 'CONFLICT';
+/** Why a reversal or a fee happened; `null` on an ACCRUAL. */
+export type RefundReasonCode = 'WEATHER' | 'POLICY' | 'CONFLICT' | 'VENUE_CHANGE';
 
 /**
  * One row of the per-venue payout ledger (`GET /api/venues/{id}/payout-ledger`, invariant #9). Money is
@@ -392,8 +404,8 @@ export interface PayoutLedgerEntryView {
 
 /**
  * A venue's payout ledger (invariant #9). {@link netOwedMinor} is the **server-authoritative** net owed
- * (Σ ACCRUAL.net − Σ REVERSAL.net) in integer minor units — the console **renders** it, never recomputes
- * it (invariants #5/#9). Entries are oldest-first, each carrying its running net owed.
+ * (Σ ACCRUAL.net − Σ REVERSAL.net − Σ FEE.net) in integer minor units — the console **renders** it, never
+ * recomputes it (invariants #5/#9). Entries are oldest-first, each carrying its running net owed.
  */
 export interface PayoutLedgerView {
   readonly venueId: number;
@@ -422,7 +434,7 @@ export type PayoutErrorCode = 'NOT_VENUE_OWNER' | 'UNAUTHORIZED' | 'UNKNOWN';
 
 /**
  * One rendered payout-ledger row — a **presentational** view model: all money already formatted from
- * integer minor units (invariant #5), a reversal carrying a negative net plus a reason label. Shared by
+ * integer minor units (invariant #5), a deduction carrying a negative net plus a reason label. Shared by
  * the ledger table and the statement modal ({@link PayoutStatement}) so the one row shape cannot drift
  * between them. `ref` is the non-credential `#<bookingId>` reference (invariants #7/#11).
  */
@@ -430,12 +442,13 @@ export interface LedgerRow {
   readonly bookingId: number;
   readonly ref: string;
   readonly dateLabel: string;
-  readonly isReversal: boolean;
+  /** True for anything that is not an `ACCRUAL` — a reversal or a venue-change fee. */
+  readonly isDeduction: boolean;
   readonly reasonLabel: string | null;
   readonly grossStr: string;
   readonly commissionStr: string;
   readonly netStr: string;
-  /** The net cell's colour class — teal for an accrual, refund-red for a reversal. */
+  /** The net cell's colour class — teal for an accrual, refund-red for a deduction. */
   readonly netClass: string;
 }
 

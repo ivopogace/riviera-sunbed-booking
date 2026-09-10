@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { formatMoney } from '../shared/money';
 import { RemodelPreview } from './operator-console.model';
 import { RemodelPreviewPanel } from './remodel-preview-panel';
 
@@ -32,6 +33,7 @@ export const FULL_PREVIEW: RemodelPreview = {
       bookingDate: '2026-09-22',
       amount: { minorUnits: 2000, currency: 'EUR' },
       from: { setId: 1, rowLabel: 'A', positionNo: 3 },
+      fee: { minorUnits: 500, currency: 'EUR' },
     },
   ],
   releases: [
@@ -72,6 +74,7 @@ export const FULL_PREVIEW: RemodelPreview = {
     { setId: 2, rowLabel: 'A', positionNo: 2 },
   ],
   previewToken: 'v1.full',
+  feeTotal: { minorUnits: 500, currency: 'EUR' },
 };
 
 /** A preview that only moves — committable, and the one shape that needs no typed confirmation. */
@@ -205,6 +208,15 @@ describe('RemodelPreviewPanel (#1033, #1034)', () => {
       /no free set of the same or better tier that day/,
     );
     expect(host.textContent).not.toMatch(/\bcode\b/i);
+  });
+
+  it('states the venue-change fee per refunded booking and the total', () => {
+    render(FULL_PREVIEW);
+
+    const fee = byId('layout-remodel-fee')!.textContent ?? '';
+    expect(fee).toContain(formatMoney({ minorUnits: 500, currency: 'EUR' }));
+    expect(fee).toMatch(/per refunded booking/i);
+    expect(fee).toMatch(/deducted from your payout/i);
   });
 
   it('names the sets to keep, links the bookings tab, and offers Back only', () => {

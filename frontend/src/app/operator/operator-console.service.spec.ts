@@ -644,6 +644,7 @@ describe('remodel commit error mapping (#1034)', () => {
     blocks: [],
     keep: [],
     previewToken: 'v1.fresh',
+    feeTotal: { minorUnits: 0, currency: 'EUR' },
   };
 
   it('passes STALE_PREVIEW and REMODEL_REFUSED through and reads the fresh picture they carry', () => {

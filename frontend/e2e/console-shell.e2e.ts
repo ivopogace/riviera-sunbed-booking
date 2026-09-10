@@ -47,7 +47,7 @@ test('an admin on /admin gets the section row with Your venues, Admin current an
 
   // The admin rail sits under the row, outside the page's 860px section.
   const rail = page.getByRole('navigation', { name: 'Admin console sections' });
-  await expect(rail.getByRole('link')).toHaveCount(8);
+  await expect(rail.getByRole('link')).toHaveCount(9);
   await expect(rail.getByRole('link', { name: 'Operators' })).toHaveAttribute(
     'aria-current',
     'page',
@@ -321,14 +321,14 @@ test('the search glyph and ⌘K open the Go to dialog: focus legs, the field on 
   await page.keyboard.press('Meta+k');
   await expect(dialog).toBeHidden();
 
-  // On the admin console: the eight tabs, the venues on the console's landing tab, no Admin row.
+  // On the admin console: the nine tabs, the venues on the console's landing tab, no Admin row.
   await page.goto('/admin');
   await expect(page.getByTestId('admin-op-row').first()).toBeVisible();
   await openPalette(page);
-  await expect(rows).toHaveCount(11);
+  await expect(rows).toHaveCount(12);
   await expect(rows.first()).toHaveAttribute('href', '/admin');
   await expect(rows.first()).toHaveAttribute('aria-current', 'page');
-  await expect(rows.nth(8)).toHaveAttribute('href', '/operator/1/daily');
+  await expect(rows.nth(9)).toHaveAttribute('href', '/operator/1/daily');
   await expect(dialog.getByRole('link', { name: /Admin console/ })).toHaveCount(0);
   await expectTouchTargets(page, 'the admin palette open at 1280px');
   await settle(page);

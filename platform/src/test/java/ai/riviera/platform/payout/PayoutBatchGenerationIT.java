@@ -138,8 +138,7 @@ class PayoutBatchGenerationIT {
 
 		List<PayoutBatch> batches = payoutReport.generate(period);
 
-		// 8500 - 8500 - 500. A period sum that added the fee would bank 500 and pay a venue that owes
-		// the platform (invariant #9).
+		// 8500 - 8500 - 500; a sum that added the fee would answer 500 and overpay (invariant #9).
 		assertEquals(-500L, batchFor(batches, venue).totalNetMinor(),
 				"the venue-change fee is a deduction, not an accrual");
 	}

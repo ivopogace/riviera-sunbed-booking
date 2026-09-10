@@ -12,7 +12,7 @@ import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The per-venue payout-ledger read use case (U9, issue #12). Reads the venue's entries oldest-first
+ * The per-venue payout-ledger read use case (U9). Reads the venue's entries oldest-first
  * via {@link PayoutLedger#entriesForVenue} and folds the <strong>running net owed</strong> — only an
  * {@code ACCRUAL} adds its net; every other entry type, {@code REVERSAL} and {@code FEE}, deducts
  * (invariant #9, the ledger's sign convention) — so the final running value is the venue's current

@@ -76,27 +76,47 @@ function reversal(
   };
 }
 
-/** The ledger before a weather refund: two accruals + a prior POLICY reversal → net owed €66.50. */
+/** A venue-change fee: no gross, no commission, the whole charge as its net (V54). */
+function fee(bookingId: number, netMinor: number, runningNetMinor: number, createdAt: string) {
+  return {
+    type: 'FEE',
+    bookingId,
+    grossMinor: 0,
+    commissionMinor: 0,
+    netMinor,
+    currency: 'EUR',
+    reason: 'VENUE_CHANGE',
+    createdAt,
+    runningNetMinor,
+  };
+}
+
+/**
+ * The ledger before a weather refund: two accruals, a prior POLICY reversal and a venue-change fee
+ * → net owed €61.50. The fee is what makes the owed figure unreachable by adding every row up, which
+ * is the point: the hero renders the server's number.
+ */
 function seedLedger() {
   return {
     venueId: VENUE,
     currency: 'EUR',
-    netOwedMinor: 6650,
+    netOwedMinor: 6150,
     entries: [
       accrual(11, 3825, 3825, '2026-07-01T09:00:00Z'),
       accrual(12, 3825, 7650, '2026-07-02T09:00:00Z'),
       reversal(13, 1000, 6650, 'POLICY', '2026-07-03T09:00:00Z'),
+      fee(13, 500, 6150, '2026-07-03T09:00:01Z'),
     ],
   };
 }
 
-/** The ledger after the weather refund of #11 posts its reversal → net owed €28.25, two reversals. */
+/** The ledger after the weather refund of #11 posts its reversal → net owed €23.25, two reversals. */
 function ledgerAfterWeather() {
   const seed = seedLedger();
   return {
     ...seed,
-    netOwedMinor: 2825,
-    entries: [...seed.entries, reversal(11, 3825, 2825, 'WEATHER', '2026-07-05T09:00:00Z')],
+    netOwedMinor: 2325,
+    entries: [...seed.entries, reversal(11, 3825, 2325, 'WEATHER', '2026-07-05T09:00:00Z')],
   };
 }
 
@@ -179,10 +199,13 @@ test('renders the ledger + owed, opens the statement, and issues a per-date weat
   await mockPayouts(page);
   await signInAndOpenPayouts(page);
 
-  // Ledger: two accruals + one prior reversal; the owed hero is the server's net owed; no code/guest.
-  await expect(page.getByTestId('ledger-row')).toHaveCount(3);
-  await expect(page.getByTestId('payout-owed')).toContainText('€66.50');
-  await expect(page.getByTestId('ledger-reason')).toHaveCount(1); // the prior POLICY reversal
+  // Two accruals, a prior reversal and a fee; the owed hero is the server's figure, no code/guest.
+  await expect(page.getByTestId('ledger-row')).toHaveCount(4);
+  await expect(page.getByTestId('payout-owed')).toContainText('€61.50');
+  // Two chips: the POLICY reversal and the fee, which names itself rather than a refund reason.
+  await expect(page.getByTestId('ledger-reason')).toHaveCount(2);
+  await expect(page.getByTestId('payouts-tab')).toContainText('Venue change fee');
+  await expect(page.getByTestId('ledger-net').nth(3)).toContainText('-€5');
   await expect(page.getByTestId('payouts-tab')).toContainText('#11'); // the non-credential reference
   await expect(page.getByTestId('payouts-tab').locator('code')).toHaveCount(0); // no bearer code (#7)
   await settle(page);
@@ -191,7 +214,9 @@ test('renders the ledger + owed, opens the statement, and issues a per-date weat
   // Statement modal: display-only — the total due is the server owed, transfer details are placeholders.
   await page.getByTestId('statement-open').click();
   await expect(page.getByTestId('payout-statement')).toBeVisible();
-  await expect(page.getByTestId('statement-total')).toContainText('€66.50');
+  await expect(page.getByTestId('statement-total')).toContainText('€61.50');
+  await expect(page.getByTestId('payout-statement')).toContainText('Venue change fee');
+  await expect(page.getByTestId('payout-statement')).toContainText('-€5');
   await expect(page.getByTestId('payout-statement')).toContainText('Assigned at settlement');
   await expectNoSeriousAxeViolations(page, 'payout statement');
   await page.getByTestId('statement-close').click();
@@ -207,8 +232,8 @@ test('renders the ledger + owed, opens the statement, and issues a per-date weat
   await expect(weatherConfirm).toHaveAccessibleName(/^Weather refund for .+\?$/);
   await page.getByTestId('weather-confirm-btn').click();
   await expect(page.getByTestId('payouts-notice')).toContainText('refund issued');
-  await expect(page.getByTestId('ledger-reason')).toHaveCount(2); // the new WEATHER reversal joined
-  await expect(page.getByTestId('payout-owed')).toContainText('€28.25');
+  await expect(page.getByTestId('ledger-reason')).toHaveCount(3); // the new WEATHER reversal joined
+  await expect(page.getByTestId('payout-owed')).toContainText('€23.25');
   await expectNoSeriousAxeViolations(page, 'after weather refund');
 });
 
@@ -222,9 +247,9 @@ test('a cross-venue weather refund shows the owner-assert copy and posts no reve
   await page.getByTestId('weather-confirm-btn').click();
 
   await expect(page.getByTestId('payouts-notice')).toContainText('manage');
-  // The confirm closed and no reversal was added (the ledger is unchanged — still one reason chip).
+  // The confirm closed and no reversal was added (the ledger is unchanged — the seed's two chips).
   await expect(page.getByTestId('weather-confirm')).toHaveCount(0);
-  await expect(page.getByTestId('ledger-reason')).toHaveCount(1);
+  await expect(page.getByTestId('ledger-reason')).toHaveCount(2);
 });
 
 test('keeps focus off body across the weather-refund confirm (WCAG 2.4.3)', async ({ page }) => {

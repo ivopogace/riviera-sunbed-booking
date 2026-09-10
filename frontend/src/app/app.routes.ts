@@ -160,6 +160,22 @@ const adminTabRoutes: Routes = [
     },
   },
   {
+    path: 'venue-changes',
+    loadComponent: () => import('./admin/admin-venue-changes').then((m) => m.AdminVenueChanges),
+    title: 'Venue changes — Riviera',
+    data: {
+      adminTab: {
+        title: 'Venue changes',
+        titleId: 'admin-venue-changes-title',
+        maxWidthClass: 'max-w-[900px]',
+        signInCopy: 'Sign in as an admin to review venue-caused refunds.',
+        restoringTestId: 'admin-venue-changes-restoring',
+        signedOutTestId: 'admin-venue-changes-signed-out',
+        forbiddenTestId: 'admin-venue-changes-forbidden',
+      } satisfies AdminTabRouteData,
+    },
+  },
+  {
     path: 'privacy',
     loadComponent: () => import('./admin/admin-privacy').then((m) => m.AdminPrivacy),
     title: 'Privacy — Riviera',

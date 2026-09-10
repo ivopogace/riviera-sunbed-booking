@@ -67,7 +67,7 @@ public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entry
 	}
 
 	/**
-	 * Build the {@code FEE} entry charged to a venue for a refund its own change caused (epic #1027).
+	 * Build the {@code FEE} entry charged to a venue for a refund its own change caused.
 	 * A fee is charged against no booking amount and the platform takes no commission on it, so
 	 * {@code gross} and {@code commission} are both zero and {@code feeMinor} is the whole net — the
 	 * one shape {@code payout_net_check} exempts. Stored as a <strong>positive</strong> magnitude; the

@@ -390,6 +390,7 @@ const BLOCKED_PREVIEW = {
       bookingDate: '2026-09-22',
       amount: { minorUnits: 2000, currency: 'EUR' },
       from: { setId: 2, rowLabel: 'B', positionNo: 1 },
+      fee: { minorUnits: 500, currency: 'EUR' },
     },
   ],
   releases: [
@@ -413,6 +414,7 @@ const BLOCKED_PREVIEW = {
   ],
   keep: [{ setId: 2, rowLabel: 'B', positionNo: 1 }],
   previewToken: 'v1.blocked',
+  feeTotal: { minorUnits: 500, currency: 'EUR' },
 };
 
 /** The same save when only a move results — the one picture the commit applies. */
@@ -424,6 +426,7 @@ const MOVES_ONLY_PREVIEW = {
   blocks: [],
   keep: [],
   previewToken: 'v1.moves',
+  feeTotal: { minorUnits: 0, currency: 'EUR' },
 };
 
 /** The receipt the commit of {@link MOVES_ONLY_PREVIEW} answers. */
@@ -444,6 +447,7 @@ const RECEIPT = {
   releases: [],
   refundReason: '',
   refundedTotal: null,
+  feeTotal: null,
 };
 
 /** The same save when a claim must be refunded too — the picture that needs the typed confirmation. */
@@ -453,6 +457,7 @@ const REFUNDING_PREVIEW = {
   blocks: [],
   keep: [],
   previewToken: 'v1.refunds',
+  feeTotal: { minorUnits: 500, currency: 'EUR' },
 };
 
 /** The receipt the commit of {@link REFUNDING_PREVIEW} answers. */
@@ -465,6 +470,7 @@ const REFUNDING_RECEIPT = {
       bookingDate: '2026-09-22',
       from: { setId: 2, rowLabel: 'B', positionNo: 1 },
       amount: { minorUnits: 2000, currency: 'EUR' },
+      fee: { minorUnits: 500, currency: 'EUR' },
     },
   ],
   releases: [
@@ -478,6 +484,7 @@ const REFUNDING_RECEIPT = {
   ],
   refundReason: 'Re-laying row B for the season',
   refundedTotal: { minorUnits: 2000, currency: 'EUR' },
+  feeTotal: { minorUnits: 500, currency: 'EUR' },
 };
 
 test('holds both surfaces until the map read settles (#721)', async ({ page }) => {
@@ -970,6 +977,11 @@ test('a picture with refunds commits once the count and reason are typed, and th
   await expect(save).toHaveText('Save and move 1, refund 1, release 1 bookings');
   await expect(save).toBeDisabled();
 
+  // What the refunds will cost the venue, before it confirms them.
+  await expect(page.getByTestId('layout-remodel-fee')).toContainText(
+    '€5 per refunded booking — €5 in total',
+  );
+
   // The count field, not Save, takes focus while there is something to fill in.
   const count = page.getByTestId('layout-remodel-refund-count');
   await expect(count).toBeFocused();
@@ -1002,6 +1014,9 @@ test('a picture with refunds commits once the count and reason are typed, and th
     'Row B · position 1 · Tue 22 Sept 2026 · €20',
   );
   await expect(receipt).toContainText('Refunded (1) · €20 returned');
+  await expect(page.getByTestId('layout-remodel-receipt-fee')).toHaveText(
+    'Venue-change fee: €5 per refunded booking, €5 in total',
+  );
   await expect(page.getByTestId('layout-remodel-receipt-reason')).toHaveText(
     'Reason: Re-laying row B for the season',
   );

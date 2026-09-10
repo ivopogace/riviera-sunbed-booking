@@ -322,10 +322,9 @@ over `ngClass`/`ngStyle`. No `NgOptimizedImage` (no images). No deviation to doc
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `implement (phase 6)`
 
-**Next action:** Write `payouts-tab.spec.ts`'s FEE case red — it fails today because `signedSum`
-adds anything that is not a `REVERSAL` — then the four console surfaces and the new admin tab.
+**Next action:** Commit the docs round, run the plan-file-structure guard, then open the PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -334,7 +333,7 @@ adds anything that is not a `REVERSAL` — then the four console surfaces and th
 | 2 — The listener posts the fee | ✅ | |
 | 3 — The fee on the preview and the receipt | ✅ | |
 | 4 — The admin venue-caused refunds read | ✅ | |
-| 5 — Frontend: statement, preview, receipt, admin tab | | |
+| 5 — Frontend: statement, preview, receipt, admin tab | ✅ | |
 | 6 — Docs: invariant #9 in four places, ADR-0021, glossary | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -357,7 +356,9 @@ at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/main/resources/application.properties` — the commented `riviera.payout.venue-change-fee-minor` default
 - `platform/src/main/java/ai/riviera/platform/payout/domain/EntryType.java` — the `FEE` member + the sign convention
 - `platform/src/main/java/ai/riviera/platform/payout/domain/PayoutLedgerEntry.java` — the `fee(...)` factory + the relaxed net guard
-- `platform/src/main/java/ai/riviera/platform/payout/application/VenueChangeFeeProperties.java` — the configured amount
+- `platform/src/main/java/ai/riviera/platform/payout/adapter/in/VenueChangeFeeProperties.java` — the configured amount
+- `platform/src/main/java/ai/riviera/platform/payout/adapter/in/PayoutFeeConfig.java` — binds it to the plain application value
+- `platform/src/main/java/ai/riviera/platform/payout/application/VenueChangeFeeAmount.java` — that value
 - `platform/src/main/java/ai/riviera/platform/payout/adapter/in/BookingCancelledPayoutListener.java` — posts the fee beside the reversal
 - `platform/src/main/java/ai/riviera/platform/payout/adapter/out/PayoutVenueChangeFeeRate.java` — implements `booking.spi.VenueChangeFeeRate`
 - `platform/src/main/java/ai/riviera/platform/payout/adapter/out/JdbcPayoutLedger.java` — the per-venue venue-change aggregate + the reworded period sum
@@ -370,13 +371,24 @@ at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/main/java/ai/riviera/platform/booking/spi/package-info.java` — surface Javadoc
 - `platform/src/main/java/ai/riviera/platform/booking/vocabulary/VenueChangeFee.java` — the published fee value
 - `platform/src/main/java/ai/riviera/platform/booking/api/RemodelClaims.java` — `venueChangeFee()`
-- `platform/src/main/java/ai/riviera/platform/booking/application/remodel/{RemodelClaimsService,ReceiptOutcome,RemodelReceipt,RemodelReceipts,NewReceipt}.java` — the stored fee
+- `platform/src/main/java/ai/riviera/platform/booking/application/remodel/{RemodelClaimsService,ReceiptOutcome,RemodelReceipt}.java` — the stored fee
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcRemodelReceipts.java` — `fee_minor` write + read
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/RemodelReceiptView.java` — the fee on the wire
-- `platform/src/main/java/ai/riviera/platform/{RemodelPreviewAssembler,RemodelPreviewResponse}.java` — the fee on the preview
-- `platform/src/test/java/ai/riviera/platform/payout/**` — the payout tests below
-- `platform/src/test/java/ai/riviera/platform/booking/**` — the booking tests below
-- `platform/src/test/java/ai/riviera/platform/{RemodelPreviewFeeIT,RemodelPreviewAssemblerTest}.java` — the preview's fee
+- `platform/src/main/java/ai/riviera/platform/{RemodelPreviewAssembler,RemodelPreviewResponse,RemodelPreviewController,RemodelCommitController,RemodelCommitResponse,RemodelCommitService}.java` — the fee on the preview and the commit answer
+- `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` — the ADMIN gate on the new report path
+- `platform/src/main/java/ai/riviera/platform/booking/spi/package-info.java` — the surface now holds two ports
+- `platform/src/main/java/ai/riviera/platform/booking/package-info.java` · `platform/src/main/java/ai/riviera/platform/booking/api/package-info.java` — the module's and the api surface's own counts
+- `platform/src/test/java/ai/riviera/platform/payout/FeeMathTest.java` — the fee entry's shape
+- `platform/src/test/java/ai/riviera/platform/payout/PayoutVenueChangeFeeIT.java` — the listener's four cases
+- `platform/src/test/java/ai/riviera/platform/payout/AdminVenueChangeRefundsIT.java` — the admin report
+- `platform/src/test/java/ai/riviera/platform/payout/PayoutMigrationIT.java` — the relaxed and unchanged constraints
+- `platform/src/test/java/ai/riviera/platform/payout/PayoutLedgerViewIT.java` — a `FEE` row in the venue ledger
+- `platform/src/test/java/ai/riviera/platform/payout/PayoutBatchGenerationIT.java` — a `FEE` row in the batch total
+- `platform/src/test/java/ai/riviera/platform/payout/adapter/in/BookingCancelledPayoutListenerTest.java` — the fee's two guard positions
+- `platform/src/test/java/ai/riviera/platform/booking/application/remodel/RemodelClaimsServiceTest.java` — the quoted rate and the receipt's fee
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcRemodelReceiptsIT.java` — the stored fee round-trips
+- `platform/src/test/java/ai/riviera/platform/{RemodelPreviewIT,RemodelReceiptIT,WebSliceStubs}.java` — the preview's and receipt's fee, and the web-slice stub the new controller needs
+- `platform/src/test/java/ai/riviera/platform/notification/BookingCancellationMailIT.java` — the widened receipt-outcome fixture
 - `frontend/src/app/operator/{payouts-tab.ts,payouts-tab.html,payouts-tab.spec.ts,payouts-tab.a11y.spec.ts,payouts-tab.contrast.spec.ts}` — the fee row
 - `frontend/src/app/operator/{payout-statement.ts,payout-statement.spec.ts}` — the statement's fee row
 - `frontend/src/app/operator/{remodel-preview-panel.ts,remodel-preview-panel.html,remodel-preview-panel.spec.ts,remodel-preview-panel.a11y.spec.ts,remodel-preview-panel.contrast.spec.ts}` — the fee line
@@ -385,7 +397,10 @@ at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/operator/operator-console.service.spec.ts` — the widened ledger fixture
 - `frontend/src/app/admin/{admin-venue-changes.ts,admin-venue-changes.service.ts,admin-venue-changes.spec.ts,admin-venue-changes.a11y.spec.ts,admin-venue-changes.contrast.spec.ts}` — the new tab
 - `frontend/src/app/admin/admin.model.ts` — the tab's response types
-- `frontend/src/app/admin/admin-console-tabs.ts` — the label in its slot
+- `frontend/src/app/admin/{admin-console-tabs.ts,admin-console-tabs.spec.ts}` — the label in its slot
+- `frontend/src/app/{console-shell.spec.ts,app.routes.spec.ts}` — the rail, palette and lazy-route counts the new tab moves
+- `frontend/src/app/operator/layout-editor.spec.ts` — the widened empty-preview fixture
+- `frontend/e2e/layout-editor.e2e.ts` — the preview and receipt fee lines
 - `frontend/src/app/app.routes.ts` — the lazy route
 - `frontend/e2e/operator-payouts.e2e.ts` — the statement's fee line
 - `frontend/e2e/support/operator-console.mocks.ts` — the fixture's `FEE` row
