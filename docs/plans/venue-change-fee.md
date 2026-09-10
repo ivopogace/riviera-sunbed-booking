@@ -104,10 +104,10 @@ stands in for `feature/venue-change-fee` (`riviera-sdlc` § Remote/cloud addendu
 - [x] **AC-10:** Given a remodel preview whose picture refunds two bookings, when the operator reads
   it, then each refund line carries the fee per booking and the response carries the fee total
   (2 × the configured fee); and a picture that refunds nobody carries a zero total.
-  *Seam:* `POST /api/venues/{venueId}/beach-map/preview` · *Pinned by:* `RemodelPreviewFeeIT.aRefundingPreviewQuotesTheFeePerBookingAndItsTotal`
+  *Seam:* `POST /api/venues/{venueId}/beach-map/preview` · *Pinned by:* `RemodelPreviewIT.classifiesEveryLiveClaimOnTheDroppedSetsIntoTheFiveGroupsWithoutWriting` and `.aRepaintAnswersEveryGroupEmptyAndAStaleTokenIsRefused`
 - [x] **AC-11:** Given a commit that refunded two bookings, when its receipt is read, then each
   refund line carries the fee that was charged and the receipt carries the fee total; a released or
-  declined line carries no fee. *Seam:* `GET /api/venues/{venueId}/remodels/{receiptId}` · *Pinned by:* `RemodelReceiptFeeIT.aReceiptCarriesThePerRefundFeeAndTheTotal`
+  declined line carries no fee. *Seam:* `GET /api/venues/{venueId}/remodels/{receiptId}` · *Pinned by:* `RemodelReceiptIT.readsRefundReleaseAndDeclineLinesWithTheReason`
 - [x] **AC-12:** Given a `booking.spi.VenueChangeFeeRate` fake answering 500 EUR, when
   `RemodelClaims#venueChangeFee` is called, then it answers 500 EUR. *Seam:* `booking.api.RemodelClaims` · *Pinned by:* `RemodelClaimsServiceTest.quotesTheVenueChangeFeeItIsGiven`
 - [x] **AC-13:** Given a payouts-tab ledger containing a `FEE` entry, when the tab renders, then the
@@ -345,7 +345,14 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | sonar (`java:S8491`) | The new admin path constant landed between the refund outbox's Javadoc and the field it documents, orphaning that comment | fixed-in-`2ead0451` |
+| F-2 | sonar (`java:S1192`) | The venue-caused aggregate made `"venue_id"` a third literal in the ledger adapter | fixed-in-`2ead0451` — extracted `COL_VENUE_ID` |
+| F-3 | review (agents 3 + 4) | Five Javadoc/TSDoc comments still stated the two-term formula the slice made false: `LedgerEntryView`, `VenueLedger`, `VenuePeriodTotal`, `PayoutBatch`, `ViewPayoutLedger`, plus `payouts-tab.ts`'s period-sum TSDoc and `payout/package-info`'s factory list | fixed |
+| F-4 | review (agent 1) | ADR-0021 and the plan's counting sweep claimed `payout` gains "its first ADMIN read"; `/api/admin/payout-batches` predates this slice | fixed |
+| F-5 | review (agent 1) | AC-10 and AC-11 named `RemodelPreviewFeeIT` / `RemodelReceiptFeeIT`, which do not exist — the assertions were folded into the existing `RemodelPreviewIT` / `RemodelReceiptIT` | fixed |
+| F-6 | review (agent 1) | ADR-0018 cited `PayoutLedgerEntry.java:17–18` and `:20–30`; this slice's edits moved both ranges and added a third factory | fixed |
+| F-7 | review (agent 5) | Three comments claimed the receipt's `fee_minor` pins what the ledger charges. It cannot: both sides read the same configured amount, and a moved guest's free exit charges a fee with no receipt line at all. Within one instance they read one immutable bean and cannot differ | fixed — the comments now state the real property, and ADR-0021 §7 records the effective-dated schedule #1037 owes the rate once editing makes the window real |
+| F-8 | review (agent 5) | `PayoutLedgerEntry.reversalOf`'s Javadoc listed the reason set as "POLICY/WEATHER"; it has been four values since V52 | fixed |
 
 ---
 
@@ -366,6 +373,8 @@ at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/main/java/ai/riviera/platform/payout/adapter/out/JdbcPayoutLedger.java` — the per-venue venue-change aggregate + the reworded period sum
 - `platform/src/main/java/ai/riviera/platform/payout/application/PayoutLedger.java` — the new query on the port
 - `platform/src/main/java/ai/riviera/platform/payout/application/PayoutLedgerQueryService.java` — the fold's comment
+- `platform/src/main/java/ai/riviera/platform/payout/application/{LedgerEntryView,VenueLedger,VenuePeriodTotal,ViewPayoutLedger}.java` · `platform/src/main/java/ai/riviera/platform/payout/domain/PayoutBatch.java` — the prose that states the payout formula
+- `docs/adr/ADR-0018-rule-layer-and-its-packaging.md` — the line ranges this slice moved in `PayoutLedgerEntry`
 - `platform/src/main/java/ai/riviera/platform/payout/application/{ViewVenueChangeRefunds,VenueChangeRefundsService,VenueChangeRefundTotal}.java` — the admin read
 - `platform/src/main/java/ai/riviera/platform/payout/adapter/in/{AdminVenueChangeRefundsController,VenueChangeRefundsView}.java` — the admin endpoint
 - `platform/src/main/java/ai/riviera/platform/payout/package-info.java` — `booking::spi` grant
@@ -503,7 +512,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 `booking/application/remodel/{RemodelClaimsService,ReceiptOutcome,RemodelReceipt,NewReceipt,RemodelReceipts}.java`,
 `booking/adapter/out/JdbcRemodelReceipts.java`, `booking/adapter/in/RemodelReceiptView.java`,
 `RemodelPreviewAssembler.java`, `RemodelPreviewResponse.java`, both `package-info.java` files · Test
-`RemodelClaimsServiceTest`, `RemodelReceiptFeeIT`, `RemodelPreviewFeeIT`
+`RemodelClaimsServiceTest`, `RemodelReceiptIT`, `RemodelPreviewIT`
 
 - [ ] **Step 1: Write the failing tests** — AC-12, then AC-11, then AC-10.
 - [ ] **Step 2: Run them, verify they fail** — `gradle --no-daemon --console=plain test --tests
@@ -586,8 +595,8 @@ at Implement per the `riviera-sdlc` re-entry rule.
   cannot express a fee on a booking whose accrual is fully reversed).
 - [ ] **Step 4:** Retire `docs/plans/venue-caused-cancellation.md` (due at this close-out).
 - [ ] **Step 5: Run `riviera-docs-freshness`** over `origin/main..HEAD`, including the counting sweep
-  for "the two X" facts — `payout` gains its first `spi` consumer edge and its first admin GET, and
-  `booking.spi` goes from one port to two.
+  for "the two X" facts — `payout` gains its first implemented `spi` and a second admin GET beside the
+  payout-batch report, and `booking.spi` goes from one port to two.
 - [ ] **Step 6: Commit** — `git commit -m "State invariant #9 with fees in all four places and record ADR-0021 (#1036)"`
 - [ ] **Step 7: Update plan-doc execution status.**
 
@@ -600,6 +609,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-10 | review gate | Every Javadoc/TSDoc **sentence** stating the ledger's payout formula — the population the phase-1 audit structurally could not reach, because it enumerated *computation* sites (`git grep "EntryType\."`, `"payout_ledger_entry"`, `"signedSum"`) and a prose comment names none of those | `grep -rniE "ACCRUAL adds\|REVERSAL subtracts"` then `grep -rniE "Σ\(ACCRUAL" -- platform/src/main/java/ai/riviera/platform/payout` | 7 (`LedgerEntryView`, `VenueLedger`, `VenuePeriodTotal`, `PayoutBatch`, `ViewPayoutLedger`, `payout/package-info`, `payouts-tab.ts`) | All corrected. The lesson: a sum audit needs a second sweep over the prose that *describes* the sums, keyed on the formula's words rather than on the code's identifiers |
 | 2026-09-10 | phase 4 | Every controller a web slice must be able to build without the application layer — the population `WebSliceStubs` exists for, which a new controller silently breaks (found by `AdminSurfaceRoleGateTest`'s red context, not by inspection) | `git grep -n '"/api/admin' -- platform/src/main/java` for the surfaces, then `grep -n '@Bean' platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` for what is stubbed | 1 gap (the new `ViewVenueChangeRefunds`) | Stubbed it; the other admin surfaces were already covered. Every new controller owes a stub here, which is the same blast-radius rule `riviera-local-debug` names for a bean crossing a module edge |
 | 2026-09-10 | phase 3 | Every `@ApplicationModuleTest` — the population a bean crossing a module edge can break, per `riviera-local-debug` § blast radius | `grep -rl '@ApplicationModuleTest' platform/src/test/java` | 2 (`PayoutModuleTest`, `ReviewSubmitFlowIT`) | Neither needs a `@MockitoBean`: the new bean is `payout`'s own, and `booking` is not bootstrapped in isolation anywhere. Both run green |
 | 2026-09-10 | phase 2 | Every listener on `BookingCancelled` — judged for whether `VENUE_CHANGE` now means something it did not | `git grep -rln "BookingCancelled" -- platform/src/main/java` then `git grep -n "ApplicationModuleListener\|TransactionalEventListener"` over the hits | 4 listeners (`BookingRefundListener`, `RemodelReleasePaymentListener`, `BookingCancellationMailListener`, this one) | None to change: the first two are already keyed on `VENUE_CHANGE` and the mail listener already discriminates the two shapes through `endedByRemodel` |

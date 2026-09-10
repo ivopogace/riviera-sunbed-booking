@@ -17,8 +17,8 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
  * commit returned to guests. {@code refundedTotal} is {@code null} when it refunded nobody, so a
  * zero is never rendered as a refund; it sums the minor units and carries one currency code, which
  * is sound because collection is EUR-only (invariant #5) so every refund in a commit shares it.
- * {@code feeTotal} is what those refunds cost the venue, at the rate the commit charged and wrote
- * onto its receipt; {@code null} alongside {@code refundedTotal} when it refunded nobody.
+ * {@code feeTotal} is what those refunds cost the venue, at the rate quoted with this commit;
+ * {@code null} alongside {@code refundedTotal} when it refunded nobody.
  * Bookings by id, never by code (invariant #7).
  */
 record RemodelCommitResponse(long receiptId, Instant committedAt, List<RemodelPreviewResponse.MoveView> moves,

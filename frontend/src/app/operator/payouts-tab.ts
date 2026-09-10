@@ -161,8 +161,8 @@ export class PayoutsTab {
       ` · paid by bank transfer`,
   );
 
-  /** Display-only period sums (signed: an accrual adds, a reversal subtracts) — presentation, not the
-   *  authoritative owed (that stays {@link owedStr} = the server figure). */
+  /** Display-only period sums (signed: only an accrual adds, everything else deducts) — presentation,
+   *  not the authoritative owed (that stays {@link owedStr} = the server figure). */
   protected readonly grossTotalStr = computed(() =>
     money(
       signedSum(this.entries(), (e) => e.grossMinor),

@@ -4,8 +4,8 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The per-venue payout-ledger read use case (U9, issue #12) — the inbound port the operator-gated web
- * adapter calls to show a venue's accruals + reversals and the running net owed (invariant #9).
+ * The per-venue payout-ledger read use case (U9) — the inbound port the operator-gated web
+ * adapter calls to show a venue's accruals, reversals and fees with the running net owed (invariant #9).
  * Internal to {@code payout} ({@code application.in}); the admin surface is not cross-module {@code api/}.
  *
  * <p>The ledger is venue financial data, so it is venue-scoped: the implementation asserts

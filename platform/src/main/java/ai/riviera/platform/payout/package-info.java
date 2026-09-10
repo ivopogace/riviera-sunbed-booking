@@ -1,9 +1,10 @@
 /**
- * The payout module — the venue payout ledger (booking amounts − commission)
+ * The payout module — the venue payout ledger (booking amounts − commission − fees)
  * and manual BKT batch reporting (invariant #9: a booking contributes exactly once;
- * refunds reverse it). {@code PayoutLedgerEntry} and {@code PayoutBatch} are immutable value
- * records over the two ledger tables — the entry with {@code accrual}/{@code reversalOf}
- * factories, the batch built through its canonical constructor — not mutable roots.
+ * refunds reverse it, and a refund the venue's own change caused also charges it a fee).
+ * {@code PayoutLedgerEntry} and {@code PayoutBatch} are immutable value records over the two ledger
+ * tables — the entry with {@code accrual}/{@code reversalOf}/{@code fee} factories, the batch built
+ * through its canonical constructor — not mutable roots.
  *
  * <p>Hexagonal layout (invariant #11, ADR-0007 full template): {@code application},
  * {@code domain}, {@code adapter.in/out}. Publishes nothing — no {@code api}/{@code spi} of its own;

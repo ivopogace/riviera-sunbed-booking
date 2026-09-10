@@ -55,8 +55,8 @@ public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entry
 	 * the matching share. Stored as <strong>positive</strong> magnitudes (the V9 CHECK forbids
 	 * negatives); the sign is carried by {@link EntryType#REVERSAL} for the payout sum (invariant #9).
 	 * Rounds <strong>down</strong> like the accrual (invariant #5). Caller must not reverse a zero
-	 * refund (ADR-0005: no refund ⇒ no reversal). {@code reason} (POLICY/WEATHER, U9) is recorded on
-	 * the reversal for audit; it does not affect the arithmetic.
+	 * refund (ADR-0005: no refund ⇒ no reversal). {@code reason} — whichever {@link RefundReason} the
+	 * cancellation carried — is recorded on the reversal for audit; it does not affect the arithmetic.
 	 */
 	public static PayoutLedgerEntry reversalOf(PayoutLedgerEntry accrual, long refundMinor,
 			RefundReason reason) {

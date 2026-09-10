@@ -152,8 +152,10 @@ class RemodelClaimsService implements RemodelClaims {
 	 * Cancel a confirmed claim the remodel strands and refund it in full. The refund itself is issued
 	 * after commit by the module's {@code BookingCancelled} listener (invariant #10 computed here,
 	 * invariant #8 honoured there); the payout reversal and the venue-change fee ride the same fact.
-	 * {@code feeMinor} is what {@code payout} will charge for it, snapshotted onto the receipt line so a
-	 * later change to the rate never re-prices this one.
+	 * {@code feeMinor} is the rate quoted when this commit ran, recorded on the receipt line so it reads
+	 * back what the operator confirmed rather than today's rate. It is not a pin on what the ledger
+	 * charges: the fee is a configured amount both sides read, and the free exit of a moved booking
+	 * charges one with no receipt line at all. Rationale: ADR-0021.
 	 */
 	private ReceiptOutcome applyRefund(VenueId venueId, RemodelClaim claim, Instant cancelledAt, long feeMinor) {
 		CancelledBooking cancelled = bookings

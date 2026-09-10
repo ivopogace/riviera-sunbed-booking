@@ -28,10 +28,10 @@ ALTER TABLE payout_ledger_entry
     ADD CONSTRAINT payout_net_check
         CHECK (entry_type = 'FEE' OR net_minor = gross_minor - commission_minor);
 
--- What the venue was charged for this refund, snapshotted on the receipt line the commit wrote, so a
--- receipt reads the fee that applied then rather than today's rate (the commission schedule's lesson,
--- V39: history is never repriced). Only a REFUND line bears one — a released or declined claim
--- collected nothing, so nothing is reversed and nothing is charged.
+-- The fee rate quoted when the commit ran, recorded on the receipt line so it reads back what the
+-- operator confirmed rather than today's rate (the commission schedule's lesson, V39: history is never
+-- repriced). Only a REFUND line bears one — a released or declined claim collected nothing, so nothing
+-- is reversed and nothing is charged.
 ALTER TABLE remodel_receipt_outcome
     ADD COLUMN fee_minor BIGINT NOT NULL DEFAULT 0,
     ADD CONSTRAINT remodel_receipt_outcome_fee_check

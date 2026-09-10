@@ -68,17 +68,27 @@ commit receipt tells them apart, through `BookingNotificationFacts#endedByRemode
    `customer.spi.GuestBookingHistory` already use. `RemodelClaims` gains one method on the
    conversation it already holds rather than a fifth narrow port.
 
-7. **A commit snapshots the fee it charged onto its receipt line** (`remodel_receipt_outcome.fee_minor`).
-   A receipt therefore reads the fee that applied when it was committed, not today's rate — the lesson
-   V39 taught for the commission schedule, and what stops #1037's editable fee from re-pricing history.
+7. **A commit records the rate it quoted onto its receipt line** (`remodel_receipt_outcome.fee_minor`),
+   so a receipt reads back what the operator confirmed rather than today's rate — the lesson V39 taught
+   for the commission schedule.
+
+   It is deliberately **not** a pin on what the ledger charges, and cannot be one: the fee is a
+   configured amount that the commit and the (asynchronous) payout listener each read, and the second
+   shape the fee covers — a moved guest's free exit — charges one with no receipt line at all, because
+   it writes no receipt outcome. Within a running instance the two reads are the same immutable bean and
+   cannot differ. They can only diverge if the property changes in a deploy while a `BookingCancelled`
+   publication is still outstanding, which is unreachable while the fee is a static property. **Making
+   it editable is what makes that window real, so #1037 owes the rate an effective-dated schedule of its
+   own**, exactly as the commission rate has one — a decision that belongs with the editing surface, not
+   ahead of it.
 
 ## Consequences
 
 - The venue's payout statement, the console's period totals, the BKT batch and the admin report all
   net the fee out with no per-read arithmetic of their own.
 - A new entry type is now a schema change plus one CHECK edit, and the sums need no touching.
-- `payout` gains its first implemented `spi` and its first ADMIN read; `booking.spi` goes from one
-  port to two.
+- `payout` gains its first implemented `spi`; `booking.spi` goes from one port to two. Its admin
+  surface grows a second read beside the payout-batch report.
 - A venue whose fees exceed its accruals in a period nets negative. The ledger and the batch already
   allow that (`payout_batch.total_net_minor` has no non-negative CHECK, deliberately); settlement is
   a manual BKT transfer, so a negative period is carried by the founder rather than by an automated
