@@ -51,7 +51,7 @@
                   (mouseenter)="onCellMouseEnter(cell.gridX, cell.gridY, $event)"
                   (click)="onCell(cell.gridX, cell.gridY, cell.setId)"
                   data-testid="set-cell"
-                  class="relative h-full min-w-0 flex items-center justify-center scroll-mb-[35vh] rounded-[8px] border text-[12.5px] font-bold [transition:scale_0.1s_ease,box-shadow_0.12s_ease,translate_0.12s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:hover:translate-y-0 lg:scroll-mb-0"
+                  class="relative h-full min-w-0 flex items-center justify-center touch-manipulation scroll-mb-[35vh] rounded-[8px] border text-[12.5px] font-bold [transition:scale_0.1s_ease,box-shadow_0.12s_ease,translate_0.12s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:hover:translate-y-0 lg:scroll-mb-0"
                   [class]="
                     cell.selected
                       ? 'selected -translate-y-1 ring-2 ring-offset-2 ring-riv-accent-ink shadow-[0_6px_14px_rgba(10,95,116,0.4)]'
@@ -186,7 +186,7 @@
                   [appBusy]="batchBusy()"
                   (click)="chooseBatchTier(tier.key)"
                   [attr.data-testid]="'batch-tier-' + tier.key"
-                  class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
+                  class="flex-1 touch-manipulation rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
                   [class]="
                     batchDraft().tier === tier.key
                       ? 'border-[1.5px] border-riv-select-edge bg-riv-select-tint/20'
@@ -214,7 +214,7 @@
                   [appBusy]="batchBusy()"
                   (click)="chooseBatchPool(pool.key)"
                   [attr.data-testid]="'batch-pool-' + pool.key"
-                  class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
+                  class="flex-1 touch-manipulation rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
                   [class]="
                     batchDraft().pool === pool.key
                       ? 'border-[1.5px] border-riv-select-edge bg-riv-select-tint/20'
@@ -241,7 +241,7 @@
               (input)="onBatchPriceInput($any($event.target).value)"
               [appBusy]="batchBusy()"
               data-testid="batch-price"
-              class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
+              class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[16px] text-riv-card-ink"
             />
           </label>
 
@@ -334,7 +334,7 @@
                   [appBusy]="busy()"
                   (click)="chooseTier(tier.key)"
                   [attr.data-testid]="'set-tier-' + tier.key"
-                  class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
+                  class="flex-1 touch-manipulation rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
                   [class]="
                     draft().tier === tier.key
                       ? 'border-[1.5px] border-riv-select-edge bg-riv-select-tint/20'
@@ -362,7 +362,7 @@
                   [appBusy]="busy()"
                   (click)="choosePool(pool.key)"
                   [attr.data-testid]="'set-pool-' + pool.key"
-                  class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
+                  class="flex-1 touch-manipulation rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
                   [class]="
                     draft().pool === pool.key
                       ? 'border-[1.5px] border-riv-select-edge bg-riv-select-tint/20'
@@ -387,7 +387,7 @@
               step="0.5"
               [formField]="draftForm.priceEur"
               data-testid="set-price"
-              class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
+              class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[16px] text-riv-card-ink"
             />
           </label>
           <p class="mt-1 text-[11px] leading-[1.4] text-riv-card-ink-soft">

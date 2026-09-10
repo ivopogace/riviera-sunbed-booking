@@ -45,7 +45,7 @@
               [attr.aria-pressed]="tool.active"
               (click)="armTool(tool.key)"
               [attr.data-testid]="'layout-tool-' + tool.key"
-              class="flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-[13px] px-3 py-2.5 text-[13.5px] font-semibold text-riv-card-ink lg:w-full lg:shrink"
+              class="flex shrink-0 touch-manipulation items-center gap-2.5 whitespace-nowrap rounded-[13px] px-3 py-2.5 text-[13.5px] font-semibold text-riv-card-ink lg:w-full lg:shrink"
               [class]="
                 tool.active
                   ? 'border-[1.5px] border-riv-select-edge bg-riv-select-tint/20'
@@ -96,7 +96,7 @@
               [value]="genRows()"
               (input)="setRows($any($event.target).value)"
               data-testid="layout-gen-rows"
-              class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
+              class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[16px] text-riv-card-ink"
             />
           </label>
           <label class="flex flex-1 flex-col gap-1.5">
@@ -112,7 +112,7 @@
               [value]="genCols()"
               (input)="setCols($any($event.target).value)"
               data-testid="layout-gen-cols"
-              class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
+              class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[16px] text-riv-card-ink"
             />
           </label>
         </div>
@@ -174,7 +174,7 @@
                     (input)="onRowNameInput(y, $any($event.target).value)"
                     [attr.aria-label]="'Row ' + rowCode(y) + ' name'"
                     data-testid="layout-row-name"
-                    class="w-full min-w-0 rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[14px] text-riv-card-ink"
+                    class="w-full min-w-0 rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[16px] text-riv-card-ink"
                     #rowNameControl
                   />
                 </label>

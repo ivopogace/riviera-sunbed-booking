@@ -53,7 +53,7 @@ const BTN =
         data-testid="admin-reviews-venue"
         [value]="picker.selectedVenueId() ?? ''"
         (change)="onVenuePicked($event)"
-        class="mt-1 w-full max-w-[420px] rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[15px] text-riv-ink"
+        class="mt-1 w-full max-w-[420px] rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[16px] text-riv-ink"
       >
         <option value="">Choose a venue…</option>
         @for (venue of picker.venues(); track venue.id) {

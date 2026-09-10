@@ -94,7 +94,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
               spellcheck="false"
               placeholder="guest@example.com"
               aria-describedby="admin-privacy-erase-intro"
-              class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[15px] text-riv-card-ink"
+              class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[16px] text-riv-card-ink"
               #emailControl
             />
 
@@ -153,7 +153,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
               [disabled]="busy()"
               (input)="onReasonTyped($event)"
               placeholder="e.g. DSAR-2026-08-04"
-              class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[14px] text-riv-card-ink"
+              class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[16px] text-riv-card-ink"
             />
 
             <div class="mt-3 flex flex-wrap items-center gap-2">

@@ -152,7 +152,7 @@ interface PhoneNav {
 }
 
 /** A section slot on the row: the rail's marker one level up, the bar over the header's border. */
-const SLOT = `flex items-center after:-bottom-px ${TAB_RAIL_MARKER}`;
+const SLOT = `flex touch-manipulation items-center after:-bottom-px ${TAB_RAIL_MARKER}`;
 
 /** Template skins, hoisted so each recipe exists once (the `app.ts` `cls` idiom). */
 const CLS = {
