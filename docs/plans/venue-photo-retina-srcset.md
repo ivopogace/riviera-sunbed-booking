@@ -157,21 +157,25 @@ in `node_modules`, not from memory):
       `<img>` carries `srcset` listing both URLs with `w` descriptors, carries
       `disableOptimizedSrcset`, and its `src` is still the scale-1 URL. *Seam:* the rendered
       `app-photo-slideshow` DOM · *Pinned by:*
-      `photo-slideshow.spec.ts` › `emits every candidate as a w-descriptor srcset`
+      `photo-slideshow.spec.ts` ›
+      `emits every candidate as a w-descriptor srcset the browser picks from`
 - [x] **AC-7:** Given the Discover grid, when it renders, then each card image carries an
       explicit `sizes` whose fallback describes the grid's real column fraction, so a
       browser without `sizes="auto"` does not fall back to `100vw` and pick the widest
       candidate for a 330 px card. *Seam:* the rendered `app-photo-slideshow` DOM ·
-      *Pinned by:* `home.spec.ts` › `passes the Discover grid's own sizes to the slideshow`
+      *Pinned by:* `home.spec.ts` ›
+      `passes the Discover grid's own sizes to the slideshow, not the 100vw default`
 - [x] **AC-8:** Given the venue page, when the gallery grid and the lightbox render the
       same photo, then both receive the same candidate list and neither hard-codes a
       variant — the browser, not the server, picks per box. *Seam:* the rendered
       `app-photo-gallery-grid` / `app-photo-lightbox` DOM · *Pinned by:*
-      `venue-map.spec.ts` › `hands the gallery grid and the lightbox the same candidates`
+      `venue-map.spec.ts` ›
+      `hands the gallery grid and the lightbox the same candidates, picking no variant itself`
 - [x] **AC-9:** Given a venue with photos, when the Discover page and the venue page load
       in a real browser, then every slideshow `<img>` has a non-empty `srcset` and a
       `sizes`, and the page passes the axe policy unchanged. *Seam:* the rendered pages ·
-      *Pinned by:* `frontend/e2e/discover-photos.e2e.ts`
+      *Pinned by:* `frontend/e2e/discover-photos.e2e.ts` ›
+      `every tourist photo offers its candidates as a srcset the browser sizes against (+ axe)`
 
 ## Non-goals
 
@@ -338,6 +342,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-7 | review gate (RV-STYLE-1) | **A doc comment cited `R-3`**, a plan-doc risk id, in `JdbcVenueCatalog`. A plan is deleted at close-out, so the pointer would dangle | fixed — dropped to the ADR citation alone |
 | F-8 | review gate (RV-STYLE-1) | Two pre-existing **two-line inline comments** the diff edited, in `JdbcPhotoStorage` and `PhotoProcessor` | fixed — the processor's rationale moved into the method's doc comment, the adapter's collapsed to the half the SQL does not already state |
 | F-9 | review gate (RV-FE-E2E) | The header band's new `sizes` on the **0–1 photo path** had no pinning test | fixed — `venue-map.spec.ts` › `sizes the single-photo header band to its own breakout` |
+| F-10 | prior-PR pass, run against `main` after the merge | **Four AC citations paraphrased the shipped test titles instead of quoting them.** This is the recurring #871 / #875 / #877 / #895 finding, whose stated fix is "verbatim" — a fifth occurrence. It surfaced only because the prior-PR review dimension was re-run separately: the agent covering it during the gate hung and never reported, which is why the review checkbox below stays unticked | fixed — all four quote the test titles exactly; the backend five already did |
 
 ---
 
@@ -540,10 +545,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR, in its last code-touching commit** — citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — left unticked deliberately. It ran via rung 1
-      (`code-review:code-review`) with `riviera-review-overlay` layered on, over the
-      PR-verified range, and produced nine findings, all fixed and re-verified. But two of
-      six dispatched review dimensions hung past an hour and never reported: the independent
-      bug scan — substantially covered by the git-history pass, which is what found F-1 — and
-      prior-PR feedback, which is **genuinely unreviewed**. Stated in the PR's review-gate
-      comment rather than ticked.
+- [ ] **The review gate ran in full** — left unticked deliberately, and still accurate. It ran
+      via rung 1 (`code-review:code-review`) with `riviera-review-overlay` layered on, over the
+      PR-verified range, and produced nine findings, all fixed and re-verified. But two of six
+      dispatched review dimensions hung past an hour and never reported. The **prior-PR
+      dimension was re-run by hand against `main` after the merge** and produced F-10; the
+      independent bug scan was never re-run, though the git-history pass covered that ground
+      and is what found F-1. The gate did not run in full at merge time, and this box records
+      that rather than being back-dated.
