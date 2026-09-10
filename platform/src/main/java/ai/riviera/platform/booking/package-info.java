@@ -6,7 +6,8 @@
  *
  * <p>Hexagonal layout (invariant #11, ADR-0007 full template, sliced by use-case):
  * {@code api} (the four query ports, by consumer role) + {@code events} + {@code vocabulary}
- * + {@code spi} (the {@code ConfirmationMailDelivery} driven port {@code notification} implements)
+ * + {@code spi} (two driven ports: {@code ConfirmationMailDelivery}, implemented by
+ * {@code notification}, and {@code VenueChangeFeeRate}, implemented by {@code payout})
  * — the published surface —, {@code application} (shared {@code Bookings}/{@code BookingCodeGenerator} at root
  * + {@code reserve/}, {@code request/}, {@code cancel/}, {@code checkin/}, {@code refund/}, {@code view/},
  * {@code remodel/} slices), flat {@code domain},
@@ -21,7 +22,9 @@
  * an erased subject to its bookings, then reaching {@code review::api}), the same inversion, since
  * customer must not depend on booking; {@code review::spi} — the {@code CompletedStays} inversion
  * (review is a leaf), while {@code review::api} answers the view's review panel and takes the
- * erasure reach.
+ * erasure reach. Booking declares {@code booking.spi.VenueChangeFeeRate} for the same reason in
+ * reverse: {@code payout} already depends on booking, so it implements the fee rate rather than
+ * booking calling for it.
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Booking",

@@ -192,12 +192,18 @@ model in `docs/architecture/domain-model.md`.
   agree with is never rewritten (invariant #9). A venue whose rate has never changed has no
   schedule at all — its live rate is what applied throughout.
 - **Payout ledger** — the per-venue record of what is owed (booking amounts minus
-  commission), entry-per-booking, reversed on refund.
+  commission, minus fees), entry-per-booking, reversed on refund. Direction lives in the entry
+  type: only an accrual adds, every other kind deducts.
 - **Accrual** — a payout-ledger entry that adds what the platform owes a venue for a
   confirmed booking (`net = gross − commission`).
 - **Reversal** — a payout-ledger entry that backs out an accrual when a booking is
   refunded. **Proportional to the refund**: a full refund reverses the whole accrual,
   a partial refund reverses the matching fraction, no refund posts no reversal.
+- **Fee** — a payout-ledger entry that charges a venue for a refund its own change caused: the
+  remodel refunding a booking it could not move, or a **moved booking**'s guest taking their
+  **free exit**. Flat, platform-wide, and charged once per booking beside the reversal. It is not
+  part of what the guest got back, and it is charged only where money was returned — a release or
+  a decline collected nothing, so neither is charged.
 - **Payout batch** — a period's worth of ledger entries settled together, paid to
   the venue manually via BKT.
 - **Refund** — money returned to a tourist, by reason: policy, weather, venue change (the **free

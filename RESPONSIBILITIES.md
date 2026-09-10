@@ -641,12 +641,27 @@ are the slow ones (the restart republish, the admin re-drive). Hence:
 ---
 
 ## `payout`
-**Job:** Own the venue payout ledger (Σ booking amounts − commission) and the manual BKT
-batch reporting. Accrue **idempotently** — a booking contributes exactly once; a refund
+**Job:** Own the venue payout ledger (Σ booking amounts − commission − fees) and the manual
+BKT batch reporting. Accrue **idempotently** — a booking contributes exactly once; a refund
 reverses it. The promise is **order-independent**: a refunded cancellation that finds no
 `ACCRUAL` to mirror *defers* (the listener throws, so its publication stays outstanding
 and `riviera.outbox.pending` shows it) rather than treating the absence as "nothing to
 reverse".
+
+**Direction lives in the entry type, never in the amount.** Every amount is stored as a
+non-negative magnitude (`payout_amounts_check`), so a payout reads
+`Σ ACCRUAL.net − Σ REVERSAL.net − Σ FEE.net`: only an `ACCRUAL` adds, and a type added later
+deducts by default rather than silently paying the venue for it. Every ledger sum in the tree —
+the period sum behind the BKT batch, the per-venue ledger fold, the console statement's
+display-only totals and the admin venue-caused report — is written that way and pinned by a
+test carrying a `FEE` row. A **`FEE`** is charged when a refund the venue's own change caused is
+reversed (`reason == VENUE_CHANGE`, which covers both the remodel refunding a booking it could
+not move and a moved guest taking the free exit that move earned them); it has no gross and no
+commission, so it is the one entry type `payout_net_check` exempts. The amount is
+`riviera.payout.venue-change-fee-minor`, flat and platform-wide, and it reaches the remodel
+preview through `booking.spi.VenueChangeFeeRate` — an inversion, because a `booking → payout`
+call would cycle. A release or a decline collected nothing, so nothing is reversed and nothing is
+charged. Rationale and rejected alternatives: ADR-0021.
 
 **Not My Job:**
 - Actually moving money to venues → settled **manually via BKT**; I record what is owed
@@ -1247,9 +1262,13 @@ the mechanism and the edge cases. The numbering is `CLAUDE.md`'s and never chang
    webhooks; idempotency keys on charge/refund creation; collection-only, no Stripe Connect
    (`riviera-stripe-payments`).
 9. **The payout ledger is auditable and idempotent.** A booking contributes to a venue's
-   payout exactly once; refunds reverse it. Payout = Σ(booking amounts) − commission (rate
-   stored per venue, effective-dated, forward-only). Payouts settle manually via BKT; the
-   ledger is the record. Accrual/reversal is order-independent and idempotent.
+   payout exactly once; refunds reverse it; a refund the venue's own change caused also charges
+   it a fee. Payout = Σ(booking amounts) − commission (rate stored per venue, effective-dated,
+   forward-only) − fees. **Direction lives in the entry type**: every amount is a non-negative
+   magnitude, so only an `ACCRUAL` adds and every other type deducts — the safe default for a
+   type added later. A `FEE` has no gross and no commission and is the one type the net CHECK
+   exempts (ADR-0021). Payouts settle manually via BKT; the ledger is the record. Every entry is
+   order-independent and idempotent, keyed on `UNIQUE (booking_id, entry_type)`.
 10. **Cancellation/refund policy is enforced server-side.** Free cancellation until the #4
     cutoff → full refund; after → non-refundable (or partial); the window closes entirely at
     service-day open (00:00 `Europe/Tirane`) — a guest cancel is then refused, not refunded

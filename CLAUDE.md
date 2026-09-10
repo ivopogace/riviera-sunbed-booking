@@ -175,7 +175,9 @@ numbering is stable; **never renumber**. Mechanisms and edge cases: `RESPONSIBIL
 8. **Stripe webhooks are the source of truth for payment state — not the client.** Never
    confirm from a redirect; idempotency keys on charge/refund; collection-only, no Connect.
 9. **The payout ledger is auditable and idempotent.** A booking accrues once, a refund
-   reverses it; payout = Σ amounts − commission (per-venue, effective-dated, forward-only).
+   reverses it, a refund the venue's own change caused also charges it a fee; payout =
+   Σ amounts − commission (per-venue, effective-dated, forward-only) − fees. Direction lives in
+   the entry type, never in the amount.
 10. **Cancellation/refund policy is enforced server-side.** Free until the #4 cutoff, then
     non-refundable; the window closes at service-day open (ADR-0005). The weather refund is a
     manual admin action outside that fence.
