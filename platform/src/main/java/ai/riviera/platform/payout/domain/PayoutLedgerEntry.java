@@ -8,11 +8,14 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * object: immutable, transparent, and the home of the commission arithmetic so the math lives with
  * the data it produces rather than scattered in an adapter.
  *
- * <p>Money is integer minor units + ISO currency (invariant #5); {@code net = gross − commission}.
- * The canonical constructor guards the amount invariants the DB also enforces (defence in depth) so
- * a malformed entry can never be constructed in the first place. {@code reason} is {@code null} on an
- * {@code ACCRUAL} and carries the {@link RefundReason} (POLICY/WEATHER) on a {@code REVERSAL} (U9) so
- * the ledger stays auditable.
+ * <p>Money is integer minor units + ISO currency (invariant #5); {@code net = gross − commission},
+ * except on a {@code FEE}, which is charged against no booking amount and carries the whole charge as
+ * its net. The canonical constructor guards the amount invariants the DB also enforces (defence in
+ * depth) so a malformed entry can never be constructed in the first place — including the
+ * {@code FEE} exemption, keyed on the entry type alone exactly as {@code payout_net_check} is.
+ * Amounts are always non-negative magnitudes: direction lives in {@link EntryType}.
+ * {@code reason} is {@code null} on an {@code ACCRUAL} and carries the {@link RefundReason} on a
+ * {@code REVERSAL} (U9) and on a {@code FEE} so the ledger stays auditable.
  */
 public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entryType,
 		long grossMinor, long commissionMinor, long netMinor, String currency, RefundReason reason) {
@@ -24,7 +27,7 @@ public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entry
 		if (grossMinor < 0 || commissionMinor < 0 || netMinor < 0) {
 			throw new IllegalArgumentException("amounts must be non-negative (minor units)");
 		}
-		if (netMinor != grossMinor - commissionMinor) {
+		if (entryType != EntryType.FEE && netMinor != grossMinor - commissionMinor) {
 			throw new IllegalArgumentException("net must equal gross - commission");
 		}
 	}
@@ -52,8 +55,8 @@ public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entry
 	 * the matching share. Stored as <strong>positive</strong> magnitudes (the V9 CHECK forbids
 	 * negatives); the sign is carried by {@link EntryType#REVERSAL} for the payout sum (invariant #9).
 	 * Rounds <strong>down</strong> like the accrual (invariant #5). Caller must not reverse a zero
-	 * refund (ADR-0005: no refund ⇒ no reversal). {@code reason} (POLICY/WEATHER, U9) is recorded on
-	 * the reversal for audit; it does not affect the arithmetic.
+	 * refund (ADR-0005: no refund ⇒ no reversal). {@code reason} — whichever {@link RefundReason} the
+	 * cancellation carried — is recorded on the reversal for audit; it does not affect the arithmetic.
 	 */
 	public static PayoutLedgerEntry reversalOf(PayoutLedgerEntry accrual, long refundMinor,
 			RefundReason reason) {
@@ -61,5 +64,18 @@ public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entry
 				: Math.floorDiv(accrual.commissionMinor() * refundMinor, accrual.grossMinor());
 		return new PayoutLedgerEntry(accrual.venueId(), accrual.bookingId(), EntryType.REVERSAL,
 				refundMinor, commission, refundMinor - commission, accrual.currency(), reason);
+	}
+
+	/**
+	 * Build the {@code FEE} entry charged to a venue for a refund its own change caused.
+	 * A fee is charged against no booking amount and the platform takes no commission on it, so
+	 * {@code gross} and {@code commission} are both zero and {@code feeMinor} is the whole net — the
+	 * one shape {@code payout_net_check} exempts. Stored as a <strong>positive</strong> magnitude; the
+	 * sign is carried by {@link EntryType#FEE}, which every payout sum deducts (invariant #9). The
+	 * reason is {@link RefundReason#VENUE_CHANGE} by construction: it is the only one that earns a fee.
+	 */
+	public static PayoutLedgerEntry fee(VenueId venueId, long bookingId, long feeMinor, String currency) {
+		return new PayoutLedgerEntry(venueId, bookingId, EntryType.FEE, 0L, 0L, feeMinor, currency,
+				RefundReason.VENUE_CHANGE);
 	}
 }

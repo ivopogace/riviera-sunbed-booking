@@ -39,7 +39,9 @@ import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.RemodelClaim;
 import ai.riviera.platform.booking.vocabulary.RemodelCommit;
+import ai.riviera.platform.booking.spi.VenueChangeFeeRate;
 import ai.riviera.platform.booking.vocabulary.RemodelOutcome;
+import ai.riviera.platform.booking.vocabulary.VenueChangeFee;
 import ai.riviera.platform.booking.vocabulary.SpotRef;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -72,11 +74,12 @@ class RemodelClaimsService implements RemodelClaims {
 	private final AvailabilityClaim availability;
 	private final RemodelReceipts receipts;
 	private final ApplicationEventPublisher events;
+	private final VenueChangeFeeRate feeRate;
 	private final Clock clock;
 
 	RemodelClaimsService(VenueOwnership ownership, Bookings bookings, SetBookingFacts facts,
 			RemodelZones zones, AvailabilityClaim availability, RemodelReceipts receipts,
-			ApplicationEventPublisher events, Clock clock) {
+			ApplicationEventPublisher events, VenueChangeFeeRate feeRate, Clock clock) {
 		this.ownership = ownership;
 		this.bookings = bookings;
 		this.facts = facts;
@@ -84,7 +87,13 @@ class RemodelClaimsService implements RemodelClaims {
 		this.availability = availability;
 		this.receipts = receipts;
 		this.events = events;
+		this.feeRate = feeRate;
 		this.clock = clock;
+	}
+
+	@Override
+	public VenueChangeFee venueChangeFee() {
+		return feeRate.perRefund();
 	}
 
 	@Override
@@ -111,10 +120,11 @@ class RemodelClaimsService implements RemodelClaims {
 			return new RemodelCommit.Unconfirmed(fresh);
 		}
 		Instant committedAt = clock.instant();
+		long feeMinor = feeRate.perRefund().perRefundMinor();
 		List<ReceiptMove> moves = new ArrayList<>();
 		List<ReceiptOutcome> outcomes = new ArrayList<>();
 		for (RemodelClaim claim : fresh) {
-			apply(venueId, claim, committedAt, moves, outcomes);
+			apply(venueId, claim, committedAt, feeMinor, moves, outcomes);
 		}
 		ReceiptId receipt = receipts.store(new NewReceipt(venueId, operator, committedAt, moves, outcomes,
 				confirmation.reason()));
@@ -126,11 +136,11 @@ class RemodelClaimsService implements RemodelClaims {
 		return refunds == 0 || (confirmation.refundCount() == refunds && !confirmation.reason().isBlank());
 	}
 
-	private void apply(VenueId venueId, RemodelClaim claim, Instant committedAt, List<ReceiptMove> moves,
-			List<ReceiptOutcome> outcomes) {
+	private void apply(VenueId venueId, RemodelClaim claim, Instant committedAt, long feeMinor,
+			List<ReceiptMove> moves, List<ReceiptOutcome> outcomes) {
 		switch (claim.outcome()) {
 			case RemodelOutcome.Move move -> moves.add(applyMove(venueId, claim, move, committedAt));
-			case RemodelOutcome.Refund ignored -> outcomes.add(applyRefund(venueId, claim, committedAt));
+			case RemodelOutcome.Refund ignored -> outcomes.add(applyRefund(venueId, claim, committedAt, feeMinor));
 			case RemodelOutcome.Release ignored -> outcomes.add(applyRelease(venueId, claim));
 			case RemodelOutcome.Decline ignored -> outcomes.add(applyDecline(venueId, claim));
 			case RemodelOutcome.Blocked ignored ->
@@ -141,16 +151,20 @@ class RemodelClaimsService implements RemodelClaims {
 	/**
 	 * Cancel a confirmed claim the remodel strands and refund it in full. The refund itself is issued
 	 * after commit by the module's {@code BookingCancelled} listener (invariant #10 computed here,
-	 * invariant #8 honoured there); the payout reversal rides the same fact.
+	 * invariant #8 honoured there); the payout reversal and the venue-change fee ride the same fact.
+	 * {@code feeMinor} is the rate quoted when this commit ran, recorded on the receipt line so it reads
+	 * back what the operator confirmed rather than today's rate. It is not a pin on what the ledger
+	 * charges: the fee is a configured amount both sides read, and the free exit of a moved booking
+	 * charges one with no receipt line at all. Rationale: ADR-0021.
 	 */
-	private ReceiptOutcome applyRefund(VenueId venueId, RemodelClaim claim, Instant cancelledAt) {
+	private ReceiptOutcome applyRefund(VenueId venueId, RemodelClaim claim, Instant cancelledAt, long feeMinor) {
 		CancelledBooking cancelled = bookings
 				.cancelConfirmed(claim.bookingId().value(), cancelledAt, claim.amountMinor(), RefundReason.VENUE_CHANGE)
 				.orElseThrow(() -> lostUnderLock(claim, "confirmed"));
 		availability.release(cancelled.setId(), cancelled.bookingDate());
 		events.publishEvent(new BookingCancelled(claim.bookingId(), venueId, cancelled.setId(),
 				cancelled.bookingDate(), claim.amountMinor(), claim.currency(), RefundReason.VENUE_CHANGE));
-		return outcomeOf(claim, ReceiptOutcomeKind.REFUND);
+		return outcomeOf(claim, ReceiptOutcomeKind.REFUND, feeMinor);
 	}
 
 	/**
@@ -168,7 +182,7 @@ class RemodelClaimsService implements RemodelClaims {
 		availability.release(released.setId(), released.bookingDate());
 		events.publishEvent(new BookingCancelled(claim.bookingId(), venueId, released.setId(),
 				released.bookingDate(), 0, claim.currency(), RefundReason.VENUE_CHANGE));
-		return outcomeOf(claim, ReceiptOutcomeKind.RELEASE);
+		return outcomeOf(claim, ReceiptOutcomeKind.RELEASE, 0L);
 	}
 
 	/** Decline a pending request: the venue-scoped guarded transition and the fact its mail listens for. */
@@ -177,12 +191,12 @@ class RemodelClaimsService implements RemodelClaims {
 				.orElseThrow(() -> lostUnderLock(claim, "pending"));
 		availability.release(declined.setId(), declined.bookingDate());
 		events.publishEvent(new BookingRequestDeclined(claim.bookingId(), declined.setId(), declined.bookingDate()));
-		return outcomeOf(claim, ReceiptOutcomeKind.DECLINE);
+		return outcomeOf(claim, ReceiptOutcomeKind.DECLINE, 0L);
 	}
 
-	private static ReceiptOutcome outcomeOf(RemodelClaim claim, ReceiptOutcomeKind kind) {
+	private static ReceiptOutcome outcomeOf(RemodelClaim claim, ReceiptOutcomeKind kind, long feeMinor) {
 		return new ReceiptOutcome(claim.bookingId(), claim.bookingDate(), claim.from(), kind, claim.amountMinor(),
-				claim.currency());
+				claim.currency(), feeMinor);
 	}
 
 	private static IllegalStateException lostUnderLock(RemodelClaim claim, String was) {

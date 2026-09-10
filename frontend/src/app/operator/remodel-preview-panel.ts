@@ -157,6 +157,14 @@ export class RemodelPreviewPanel {
     return `${spotLabel(move.from)} → ${spotLabel(move.to)} · ${setDistanceText(move.rowsAway, move.positionsAway)} · ${when(move)}`;
   }
 
+  /** "You pay €5 per refunded booking — €10 in total, deducted from your payout." */
+  protected feeSentence(): string {
+    const preview = this.preview();
+    const perBooking = preview.refunds[0]?.fee;
+    const perBookingText = perBooking ? `${formatMoney(perBooking)} per refunded booking` : 'a fee';
+    return `You pay ${perBookingText} — ${formatMoney(preview.feeTotal)} in total, deducted from your payout.`;
+  }
+
   protected refundText(claim: RemodelClaim): string {
     return `${spotLabel(claim.from)} · ${when(claim)} refunded in full`;
   }

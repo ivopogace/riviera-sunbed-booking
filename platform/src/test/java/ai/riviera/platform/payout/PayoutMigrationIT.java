@@ -16,11 +16,16 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Verifies the U5 migration (V9, issue #9) creates {@code payout_ledger_entry} with the constraints
- * that enforce the ledger invariants (invariant #12): the {@code UNIQUE(booking_id, entry_type)}
+ * Verifies the ledger migrations create {@code payout_ledger_entry} with the constraints that
+ * enforce the ledger invariants (invariant #12): the {@code UNIQUE(booking_id, entry_type)}
  * exactly-once guard (#9), the {@code net = gross − commission} CHECK (#5), the {@code entry_type}
  * CHECK, and the {@code booking_id} FK. A different {@code entry_type} for the same booking (the
- * future REVERSAL, U6) is allowed. Testcontainers + real Flyway; skipped where Docker is absent.
+ * REVERSAL, and the venue-change FEE) is allowed.
+ *
+ * <p>A {@code FEE} is the one entry type exempt from the net CHECK: it has no gross and no
+ * commission, so {@code (0, 0, fee)} must store while the same shape under any other type must not.
+ * The amounts CHECK still binds it — direction lives in the entry type, never in a negative amount.
+ * Testcontainers + real Flyway; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -92,7 +97,34 @@ class PayoutMigrationIT {
 		long booking = insertBooking("PAYMIG0004");
 		assertThrows(DataIntegrityViolationException.class,
 				() -> insertEntry(booking, "BONUS", 4500, 675, 3825),
-				"entry_type CHECK admits only ACCRUAL | REVERSAL.");
+				"entry_type CHECK admits only ACCRUAL | REVERSAL | FEE.");
+	}
+
+	@Test
+	void feeRowIsAdmittedWithNoGrossAndNoCommission() {
+		long booking = insertBooking("PAYMIG0006");
+		insertEntry(booking, "ACCRUAL", 4500, 675, 3825);
+
+		assertDoesNotThrow(() -> insertEntry(booking, "FEE", 0, 0, 500),
+				"a fee has no gross and no commission, so the net CHECK exempts FEE.");
+	}
+
+	@Test
+	void feeRowWithNegativeAmountRejected() {
+		long booking = insertBooking("PAYMIG0007");
+		assertThrows(DataIntegrityViolationException.class,
+				() -> insertEntry(booking, "FEE", 0, 0, -500),
+				"the amounts CHECK still binds a fee: direction lives in the entry type, not the sign.");
+	}
+
+	@Test
+	void secondFeeForSameBookingRejected() {
+		long booking = insertBooking("PAYMIG0008");
+		insertEntry(booking, "FEE", 0, 0, 500);
+
+		assertThrows(DataIntegrityViolationException.class,
+				() -> insertEntry(booking, "FEE", 0, 0, 500),
+				"UNIQUE(booking_id, entry_type) is the fee's idempotency guard too (invariant #9).");
 	}
 
 	@Test

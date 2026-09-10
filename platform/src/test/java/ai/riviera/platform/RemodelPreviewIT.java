@@ -119,6 +119,9 @@ class RemodelPreviewIT {
 				.andExpect(jsonPath("$.moves[1].rowsAway").value(1))
 				.andExpect(jsonPath("$.refunds.length()").value(1))
 				.andExpect(jsonPath("$.refunds[0].bookingId").value(refunded))
+				.andExpect(jsonPath("$.refunds[0].fee.minorUnits").value(500))
+				.andExpect(jsonPath("$.refunds[0].fee.currency").value("EUR"))
+				.andExpect(jsonPath("$.feeTotal.minorUnits").value(500))
 				.andExpect(jsonPath("$.releases.length()").value(2))
 				.andExpect(jsonPath("$.releases[0].bookingId").value(released))
 				.andExpect(jsonPath("$.releases[0].kind").value("RELEASE"))
@@ -161,7 +164,8 @@ class RemodelPreviewIT {
 				.andExpect(jsonPath("$.releases.length()").value(0))
 				.andExpect(jsonPath("$.staffHolds.length()").value(0))
 				.andExpect(jsonPath("$.blocks.length()").value(0))
-				.andExpect(jsonPath("$.keep.length()").value(0));
+				.andExpect(jsonPath("$.keep.length()").value(0))
+				.andExpect(jsonPath("$.feeTotal.minorUnits").value(0));
 
 		mvc.perform(post("/api/venues/{v}/beach-map/preview", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)

@@ -13,7 +13,8 @@
  * confirmation email and to rebuild one for the admin resend, which has no event payload to read
  * them from; the same module asks which bookings one guest contact has, to find the
  * booking a support call is about; and the platform edge asks what a layout remodel would do to the
- * live bookings on the sets it disturbs, composing the answer with {@code venue}'s diff (ADR-0020).
+ * live bookings on the sets it disturbs — and what a refund in that picture costs the venue —
+ * composing the answer with {@code venue}'s diff (ADR-0020, ADR-0021).
  * No caller sees another's methods.
  */
 @org.springframework.modulith.NamedInterface("api")

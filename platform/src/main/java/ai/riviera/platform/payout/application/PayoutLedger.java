@@ -44,19 +44,37 @@ public interface PayoutLedger {
 	void reverse(PayoutLedgerEntry entry);
 
 	/**
-	 * Every ledger entry for {@code venueId} — accruals and reversals — ordered by {@code created_at}
-	 * then {@code id} (oldest first), for the per-venue ledger read (U9, issue #12). Read-only; the
+	 * Record a {@code FEE} entry <strong>idempotently</strong>: an entry whose
+	 * {@code (booking_id, FEE)} already exists is a no-op. Exactly-once under the registry's
+	 * at-least-once redelivery (invariant #9), the fee sibling of {@link #accrue} and {@link #reverse}.
+	 * Implemented as {@code INSERT … ON CONFLICT DO NOTHING}.
+	 */
+	void charge(PayoutLedgerEntry entry);
+
+	/**
+	 * Every ledger entry for {@code venueId} — accruals, reversals and fees — ordered by {@code created_at}
+	 * then {@code id} (oldest first), for the per-venue ledger read (U9). Read-only; the
 	 * running net owed is computed by the caller from this ordered list. Empty when the venue has no
 	 * entries yet.
 	 */
 	List<LedgerEntryRow> entriesForVenue(VenueId venueId);
 
 	/**
-	 * The signed net owed per venue for {@code period} — {@code Σ(ACCRUAL.net) − Σ(REVERSAL.net)}
-	 * grouped by venue over the entries whose {@code period_key} matches (U9 BKT report, issue #12).
-	 * One {@link VenuePeriodTotal} per venue that has any entry in the period; a venue whose accruals
-	 * and reversals net to zero still appears (it had activity). Empty when no entry falls in the
-	 * period. Money is integer minor units (invariant #5); the total may be negative.
+	 * The signed net owed per venue for {@code period} — {@code Σ(ACCRUAL.net) − Σ(REVERSAL.net) −
+	 * Σ(FEE.net)} grouped by venue over the entries whose {@code period_key} matches (the U9 BKT
+	 * report). One {@link VenuePeriodTotal} per venue that has any entry in the period; a venue whose
+	 * entries net to zero still appears (it had activity). Empty when no entry falls in the period.
+	 * Money is integer minor units (invariant #5); the total may be negative.
 	 */
 	List<VenuePeriodTotal> netTotalsForPeriod(PeriodKey period);
+
+	/**
+	 * Every venue with at least one venue-caused refund, with its refund count, what those refunds
+	 * returned to guests and what it paid in fees — the admin's abuse guard. Keyed on
+	 * {@code reason = 'VENUE_CHANGE'}, so a policy or weather refund never appears. The two amounts
+	 * are aggregated separately by entry type and must not be added: the refunded total is the
+	 * {@code REVERSAL}s' gross, the fee total the {@code FEE}s' net. Money is integer minor units
+	 * (invariant #5). Empty when no venue-caused refund has been posted.
+	 */
+	List<VenueChangeRefundTotal> venueChangeTotals();
 }

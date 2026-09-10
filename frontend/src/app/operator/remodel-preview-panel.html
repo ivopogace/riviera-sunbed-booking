@@ -56,6 +56,9 @@
           <li>{{ refundText(claim) }}</li>
         }
       </ul>
+      <p class="mt-1 text-[12.5px] leading-[1.45]" data-testid="layout-remodel-fee">
+        {{ feeSentence() }}
+      </p>
     </section>
   }
   @if (preview().releases.length > 0) {

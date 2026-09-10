@@ -41,7 +41,7 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 			""";
 	private static final String OUTCOME_COLUMNS = """
 			receipt_id, booking_id, booking_date, kind, set_id, row_label, position_no, amount_minor,
-			amount_currency
+			amount_currency, fee_minor
 			""";
 	private static final String SELECT_MOVES = "SELECT " + MOVE_COLUMNS;
 	private static final String SELECT_OUTCOMES = "SELECT " + OUTCOME_COLUMNS;
@@ -99,7 +99,7 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 
 	private void insertOutcome(long receiptId, ReceiptOutcome outcome) {
 		jdbc.sql("INSERT INTO remodel_receipt_outcome (" + OUTCOME_COLUMNS + """
-				) VALUES (:receipt, :booking, :date, :kind, :set, :row, :position, :amount, :currency)
+				) VALUES (:receipt, :booking, :date, :kind, :set, :row, :position, :amount, :currency, :fee)
 				""")
 				.param(P_RECEIPT, receiptId)
 				.param(P_BOOKING, outcome.bookingId().value())
@@ -110,6 +110,7 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 				.param("position", outcome.spot().positionNo())
 				.param("amount", outcome.amountMinor())
 				.param("currency", outcome.currency())
+				.param("fee", outcome.feeMinor())
 				.update();
 	}
 
@@ -216,7 +217,7 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 		return new ReceiptOutcome(new BookingId(rs.getLong(C_BOOKING)), rs.getObject(C_DATE, LocalDate.class),
 				new SpotRef(new SetId(rs.getLong("set_id")), rs.getString("row_label"), rs.getInt("position_no")),
 				ReceiptOutcomeKind.valueOf(rs.getString("kind")), rs.getLong("amount_minor"),
-				rs.getString("amount_currency"));
+				rs.getString("amount_currency"), rs.getLong("fee_minor"));
 	}
 
 	private static ReceiptMove mapMove(ResultSet rs) throws SQLException {

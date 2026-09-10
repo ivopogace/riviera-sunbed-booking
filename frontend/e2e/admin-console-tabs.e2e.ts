@@ -54,7 +54,7 @@ test.describe('from sm up: one scrolling row', () => {
     await openConsole(page);
 
     const tabs = railTabs(page);
-    await expect(tabs).toHaveCount(8);
+    await expect(tabs).toHaveCount(9);
     const tops = await tabs.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
     expect(new Set(tops.map((t) => Math.round(t))).size).toBe(1);
 
@@ -102,7 +102,7 @@ test.describe('from sm up: one scrolling row', () => {
     await expect(dialog).toBeVisible();
     const field = page.getByTestId('oc-palette-search');
     await expect(field).toBeFocused();
-    await expect(dialog.getByRole('link')).toHaveCount(10);
+    await expect(dialog.getByRole('link')).toHaveCount(11);
 
     // No hit: the status line, and Enter leaves the dialog and the page alone.
     await field.fill('zzz');
@@ -144,7 +144,7 @@ test.describe('from sm up: one scrolling row', () => {
 
     const dividers = nav.locator(':scope > span[aria-hidden="true"]');
     await expect(dividers).toHaveCount(4);
-    // Operators | Email · Refunds | Photos · Reviews | Commissions | Privacy · Audit
+    // Operators | Email · Refunds | Photos · Reviews | Commissions · Venue changes | Privacy · Audit
     const sequence = await nav.evaluate((el) =>
       [...el.children].map((child) => (child.tagName === 'A' ? child.textContent.trim() : '|')),
     );
@@ -158,6 +158,7 @@ test.describe('from sm up: one scrolling row', () => {
       'Reviews',
       '|',
       'Commissions',
+      'Venue changes',
       '|',
       'Privacy',
       'Audit',
@@ -222,6 +223,7 @@ test.describe('below sm: the phone rail', () => {
       'Photos',
       'Reviews',
       'Commissions',
+      'Venue changes',
       'Privacy',
       'Audit',
       'Your venues',

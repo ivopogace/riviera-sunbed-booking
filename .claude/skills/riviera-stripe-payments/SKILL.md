@@ -72,15 +72,21 @@ Venues choose the mode per venue (`venue` module); the two charge differently:
 
 - Refund eligibility and amount are computed server-side per invariant #10 — the client
   never supplies the amount.
-- A refund reverses the payout-ledger accrual for that booking (invariant #9).
+- A refund reverses the payout-ledger accrual for that booking (invariant #9); a venue-caused
+  one also charges the venue-change fee beside it.
 - The weather exception is admin-triggered: an explicit admin action issuing full refunds
   for a venue+date.
 
 ### Payout (the `payout` module)
 
 - The ledger records what the platform owes each venue: each confirmed booking accrues
-  `amount − commission` (rate stored per venue, invariant #9); each refund reverses it.
-  Exactly-once accrual per booking.
+  `amount − commission` (rate stored per venue, invariant #9); each refund reverses it; a refund
+  the venue's own change caused (`reason == VENUE_CHANGE`) also charges it a flat **fee**, so
+  payout = `Σ amounts − commission − fees`. Exactly-once per booking and entry type.
+- **Direction lives in the entry type, never in the amount.** Amounts are non-negative
+  magnitudes, so only an `ACCRUAL` adds and every other type deducts — write every new ledger sum
+  that way and pin it with a `FEE` row, or the venue is silently overpaid. A `FEE` has no gross
+  and no commission and is the one type the ledger's net CHECK exempts (ADR-0021).
 - Settlement is out-of-app: a weekly report lists, per venue, the net owed and the bookings
   behind it; the founder pays via BKT and marks the batch settled.
 - Payout is currency-aware per the CLAUDE.md provisional decision (EUR vs ALL, per venue):

@@ -844,6 +844,11 @@ class WebSliceStubs {
 	}
 
 	@Bean
+	ai.riviera.platform.payout.application.ViewVenueChangeRefunds viewVenueChangeRefunds() {
+		return List::of;
+	}
+
+	@Bean
 	ai.riviera.platform.booking.api.RemodelClaims remodelClaims() {
 		return new ai.riviera.platform.booking.api.RemodelClaims() {
 			@Override
@@ -858,6 +863,11 @@ class WebSliceStubs {
 					ai.riviera.platform.booking.vocabulary.PreviewToken token,
 					ai.riviera.platform.booking.vocabulary.RefundConfirmation confirmation) {
 				return new ai.riviera.platform.booking.vocabulary.RemodelCommit.Refused(List.of());
+			}
+
+			@Override
+			public ai.riviera.platform.booking.vocabulary.VenueChangeFee venueChangeFee() {
+				return new ai.riviera.platform.booking.vocabulary.VenueChangeFee(500L, "EUR");
 			}
 		};
 	}

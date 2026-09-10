@@ -33,6 +33,7 @@ import ai.riviera.platform.booking.vocabulary.RemodelClaim;
 import ai.riviera.platform.booking.vocabulary.RemodelCommit;
 import ai.riviera.platform.booking.vocabulary.RemodelOutcome;
 import ai.riviera.platform.booking.vocabulary.SpotRef;
+import ai.riviera.platform.booking.vocabulary.VenueChangeFee;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -92,10 +93,11 @@ class RemodelClaimsServiceTest {
 	private final AvailabilityClaim availability = mock(AvailabilityClaim.class);
 	private final RemodelReceipts receipts = mock(RemodelReceipts.class);
 	private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
+	private static final VenueChangeFee FEE = new VenueChangeFee(500L, "EUR");
 	private final RemodelClaimsService service = new RemodelClaimsService(ownership, bookings, facts,
 			new RemodelZones(new BookingCutoff(CLOCK),
 					new RemodelWindows(Duration.ofHours(24), Duration.ofHours(96)), CLOCK),
-			availability, receipts, events, CLOCK);
+			availability, receipts, events, () -> FEE, CLOCK);
 
 	private static SetSpot spot(long id, String row, int position, int gridY, Tier tier) {
 		return new SetSpot(new SetId(id), new SetPlacement(row, position, position, gridY), tier, Pool.ONLINE);
@@ -112,6 +114,12 @@ class RemodelClaimsServiceTest {
 	private void givenMap(List<SetSpot> active, LocalDate date, List<SetSpot> freeOn) {
 		when(facts.activeSetsOf(VENUE)).thenReturn(active);
 		when(facts.freeOnlineSetsOn(VENUE, date)).thenReturn(freeOn);
+	}
+
+	@Test
+	void quotesTheVenueChangeFeeItIsGiven() {
+		assertEquals(FEE, service.venueChangeFee(),
+				"the rate is payout's, read straight off the port and never recomputed here");
 	}
 
 	@Test
@@ -264,7 +272,7 @@ class RemodelClaimsServiceTest {
 				4500, "EUR", RefundReason.VENUE_CHANGE));
 		order.verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(),
 				List.of(new ReceiptOutcome(new BookingId(210), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.REFUND,
-						4500, "EUR")),
+						4500, "EUR", 500L)),
 				"Re-laying row A"));
 		verify(availability, never()).claim(any(), any());
 		verify(bookings, never()).moveToSet(anyLong(), any(), any(), any());
@@ -296,8 +304,8 @@ class RemodelClaimsServiceTest {
 		verify(availability, times(2)).release(A1.setId(), IN_TEN_DAYS);
 		verify(bookings, never()).cancelConfirmed(anyLong(), any(), anyLong(), any());
 		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(), List.of(
-				new ReceiptOutcome(new BookingId(211), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.RELEASE, 4500, "EUR"),
-				new ReceiptOutcome(new BookingId(212), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.DECLINE, 4500, "EUR")),
+				new ReceiptOutcome(new BookingId(211), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.RELEASE, 4500, "EUR", 0L),
+				new ReceiptOutcome(new BookingId(212), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.DECLINE, 4500, "EUR", 0L)),
 				""));
 	}
 

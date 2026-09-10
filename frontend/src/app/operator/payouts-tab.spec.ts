@@ -224,6 +224,55 @@ describe('PayoutsTab (#173) — ledger', () => {
     expect(counts.toLowerCase()).toContain('bank transfer');
   });
 
+  it('reads a FEE entry as a deduction, not an accrual', () => {
+    // 3825 accrued - 3825 reversed - 500 charged = -500 (invariant #9).
+    render(
+      ledger({
+        netOwedMinor: -500,
+        entries: [
+          entry({ bookingId: 21, netMinor: 3825, runningNetMinor: 3825 }),
+          entry({
+            type: 'REVERSAL',
+            bookingId: 21,
+            grossMinor: 4500,
+            commissionMinor: 675,
+            netMinor: 3825,
+            reason: 'VENUE_CHANGE',
+            runningNetMinor: 0,
+          }),
+          entry({
+            type: 'FEE',
+            bookingId: 21,
+            grossMinor: 0,
+            commissionMinor: 0,
+            netMinor: 500,
+            reason: 'VENUE_CHANGE',
+            runningNetMinor: -500,
+          }),
+        ],
+      }),
+    );
+
+    const fee = rows()[2];
+    expect(fee.textContent).toContain(formatMoney({ minorUnits: -500, currency: 'EUR' }));
+    expect(fee.querySelector('[data-testid="ledger-net"]')?.className).toContain(
+      'text-riv-console-negative-ink',
+    );
+    expect(fee.querySelector('[data-testid="ledger-reason"]')?.textContent).toMatch(
+      /venue change/i,
+    );
+
+    // The hero counts one booking and one refund — a fee is neither.
+    const counts = byId('payout-counts')?.textContent ?? '';
+    expect(counts).toContain('1 booking');
+    expect(counts).toContain('1 refund');
+
+    // Signed period totals: gross 4500 - 4500 - 0, commission 675 - 675 - 0.
+    const total = byId('period-total')?.textContent ?? '';
+    expect(total).toContain(formatMoney({ minorUnits: 0, currency: 'EUR' }));
+    expect(total).toContain(formatMoney({ minorUnits: -500, currency: 'EUR' }));
+  });
+
   it('renders the empty state (nothing owed) for an empty ledger', () => {
     render(ledger({ netOwedMinor: 0, entries: [] }));
     expect(byId('payouts-empty')).toBeTruthy();

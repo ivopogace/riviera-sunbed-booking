@@ -312,7 +312,7 @@ class BookingCancellationMailIT {
 	private void endedByRemodel(SetRef set, long bookingId, LocalDate date) {
 		receipts.store(new NewReceipt(new VenueId(set.venueId()), new OperatorId(anOperator()), Instant.now(),
 				List.of(), List.of(new ReceiptOutcome(new BookingId(bookingId), date,
-						new SpotRef(new SetId(set.setId()), "A", 1), ReceiptOutcomeKind.REFUND, 7335L, "EUR")),
+						new SpotRef(new SetId(set.setId()), "A", 1), ReceiptOutcomeKind.REFUND, 7335L, "EUR", 500L)),
 				"Re-laying row A"));
 	}
 

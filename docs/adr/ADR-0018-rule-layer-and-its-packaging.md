@@ -188,10 +188,10 @@ should describe them that way:
 
 - `PayoutLedgerEntry` — `record PayoutLedgerEntry(VenueId, long bookingId, EntryType, long
   grossMinor, long commissionMinor, long netMinor, String currency, RefundReason)`
-  (`payout/domain/PayoutLedgerEntry.java:17–18`), append-only, with `accrual()` and `reversalOf()`
-  factories and a canonical constructor that re-checks the amount invariants the DB also enforces
-  (`:20–30`). Its own Javadoc calls it "A value object: immutable, transparent, and the home of the
-  commission arithmetic" (`:7–9`).
+  (`payout/domain/PayoutLedgerEntry.java:20–21`), append-only, with `accrual()`, `reversalOf()` and
+  `fee()` factories and a canonical constructor that re-checks the amount invariants the DB also
+  enforces (`:23–33`). Its own Javadoc calls it "A value object: immutable, transparent, and the home
+  of the commission arithmetic" (`:7–9`).
 - `PayoutBatch` — `record PayoutBatch(Long id, VenueId, PeriodKey, long totalNetMinor, String
   currency, BatchStatus)` (`payout/domain/PayoutBatch.java:15–16`), one row per `(venue, period)`,
   `id` null before persistence. Its Javadoc line "Aggregate root: one row per `(venue, period)`"

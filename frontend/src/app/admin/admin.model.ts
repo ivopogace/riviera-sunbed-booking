@@ -184,3 +184,25 @@ export interface AdminReviewsPage {
   readonly reviews: readonly AdminReviewEntryView[];
   readonly nextCursor: number | null;
 }
+
+/**
+ * One venue's venue-caused refunds (`GET /api/admin/venue-change-refunds`): how many bookings a
+ * remodel refunded, what those refunds returned to guests, and what the venue paid in venue-change
+ * fees. Money is integer minor units (invariant #5) and the two amounts are reported apart — a fee
+ * is not part of what a guest got back.
+ *
+ * <p>Aggregates only: the venue rides as a technical id the console resolves to a name from its own
+ * venue list, and no booking id or code appears at all (invariant #7).
+ */
+export interface VenueChangeRefundRow {
+  readonly venueId: number;
+  readonly refundCount: number;
+  readonly refundedMinor: number;
+  readonly feeMinor: number;
+  readonly currency: string;
+}
+
+/** The venue-caused refunds report: one row per venue with at least one, by venue id. */
+export interface VenueChangeRefundsView {
+  readonly venues: readonly VenueChangeRefundRow[];
+}

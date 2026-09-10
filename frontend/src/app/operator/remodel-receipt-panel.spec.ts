@@ -29,6 +29,7 @@ export const RECEIPT: RemodelReceipt = {
   releases: [],
   refundReason: '',
   refundedTotal: null,
+  feeTotal: null,
 };
 
 /** The receipt of a commit that also ended claims it could not move — refund, release, decline. */
@@ -41,6 +42,7 @@ export const RECEIPT_WITH_ENDINGS: RemodelReceipt = {
       bookingDate: '2026-09-22',
       from: { setId: 3, rowLabel: 'A', positionNo: 1 },
       amount: { minorUnits: 4500, currency: 'EUR' },
+      fee: { minorUnits: 500, currency: 'EUR' },
     },
   ],
   releases: [
@@ -61,6 +63,7 @@ export const RECEIPT_WITH_ENDINGS: RemodelReceipt = {
   ],
   refundReason: 'Re-laying row A for the season',
   refundedTotal: { minorUnits: 4500, currency: 'EUR' },
+  feeTotal: { minorUnits: 500, currency: 'EUR' },
 };
 
 describe('RemodelReceiptPanel (#1034)', () => {
@@ -96,13 +99,23 @@ describe('RemodelReceiptPanel (#1034)', () => {
     expect(host.textContent).not.toMatch(/\bcode\b/i);
   });
 
-  it('shows no refund block and no reason when the commit refunded nobody', () => {
+  it('shows the fee charged per refunded booking and the total', () => {
+    render(RECEIPT_WITH_ENDINGS);
+
+    expect(byId('layout-remodel-receipt-fee')!.textContent).toMatch(
+      /Venue-change fee: €5 per refunded booking, €5 in total/,
+    );
+  });
+
+  it('shows no refund block, no reason and no fee when the commit refunded nobody', () => {
     render(RECEIPT);
 
     expect(byId('layout-remodel-receipt-refunds')).toBeNull();
     expect(byId('layout-remodel-receipt-releases')).toBeNull();
     expect(byId('layout-remodel-receipt-reason')).toBeNull();
+    expect(byId('layout-remodel-receipt-fee')).toBeNull();
     expect(host.textContent).not.toMatch(/returned/);
+    expect(host.textContent).not.toMatch(/fee/i);
   });
 
   it('is a region named by its heading, saying when the layout was saved in Tirane time and what moved', () => {

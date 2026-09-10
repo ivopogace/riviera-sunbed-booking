@@ -16,11 +16,14 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
  * the operator's reason and what it returned to guests. The booking rides by id (never by code,
  * invariant #7), its day as ISO {@code YYYY-MM-DD}, both spots as they were. {@code refundedTotal}
  * is {@code null} when the commit refunded nobody, so a zero never reads as a refund; its one
- * currency code is sound because collection is EUR-only (invariant #5).
+ * currency code is sound because collection is EUR-only (invariant #5). {@code feeTotal} is what the
+ * commit cost the venue in venue-change fees, and each refund line carries the fee charged for it —
+ * the amounts charged then, never today's rate; both are {@code null} on a commit that refunded
+ * nobody, for the same reason {@code refundedTotal} is.
  * {@link Summary} is the list row. Mirrors the FE {@code RemodelReceipt} type.
  */
 record RemodelReceiptView(long receiptId, Instant committedAt, List<MoveView> moves, List<ClaimView> refunds,
-		List<ReleaseView> releases, String refundReason, MoneyView refundedTotal) {
+		List<ReleaseView> releases, String refundReason, MoneyView refundedTotal, MoneyView feeTotal) {
 
 	static RemodelReceiptView of(RemodelReceipt receipt) {
 		List<ReceiptOutcome> refunds = receipt.refunds();
@@ -32,7 +35,8 @@ record RemodelReceiptView(long receiptId, Instant committedAt, List<MoveView> mo
 						.map(ReleaseView::of)
 						.toList(),
 				receipt.refundReason(),
-				refunds.isEmpty() ? null : new MoneyView(receipt.refundedMinor(), refunds.getFirst().currency()));
+				refunds.isEmpty() ? null : new MoneyView(receipt.refundedMinor(), refunds.getFirst().currency()),
+				refunds.isEmpty() ? null : new MoneyView(receipt.feeTotalMinor(), refunds.getFirst().currency()));
 	}
 
 	record Summary(long receiptId, Instant committedAt, int moveCount, int refundCount) {
@@ -51,11 +55,13 @@ record RemodelReceiptView(long receiptId, Instant committedAt, List<MoveView> mo
 		}
 	}
 
-	record ClaimView(long bookingId, String bookingDate, SpotView from, MoneyView amount) {
+	/** {@code fee} is what the venue was charged for this refund, as it was charged. */
+	record ClaimView(long bookingId, String bookingDate, SpotView from, MoneyView amount, MoneyView fee) {
 
 		static ClaimView of(ReceiptOutcome outcome) {
 			return new ClaimView(outcome.bookingId().value(), outcome.bookingDate().toString(),
-					SpotView.of(outcome.spot()), new MoneyView(outcome.amountMinor(), outcome.currency()));
+					SpotView.of(outcome.spot()), new MoneyView(outcome.amountMinor(), outcome.currency()),
+					new MoneyView(outcome.feeMinor(), outcome.currency()));
 		}
 	}
 

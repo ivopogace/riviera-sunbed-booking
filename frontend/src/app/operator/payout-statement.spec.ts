@@ -18,7 +18,7 @@ describe('PayoutStatement (#173)', () => {
       bookingId: 11,
       ref: '#11',
       dateLabel: '1 Jul 2026',
-      isReversal: false,
+      isDeduction: false,
       reasonLabel: null,
       grossStr: '€45',
       commissionStr: '€6.75',
@@ -29,7 +29,7 @@ describe('PayoutStatement (#173)', () => {
       bookingId: 12,
       ref: '#12',
       dateLabel: '2 Jul 2026',
-      isReversal: true,
+      isDeduction: true,
       reasonLabel: 'Weather',
       grossStr: '€25',
       commissionStr: '€3.75',
@@ -63,6 +63,28 @@ describe('PayoutStatement (#173)', () => {
     expect(byId('statement-total')?.textContent).toContain('€17'); // server total due
     expect(dialog.textContent).toContain('Assigned at settlement'); // IBAN + reference placeholder
     expect(dialog.textContent).toContain('EUR');
+  });
+
+  it('lists a venue-change fee row as a deduction', () => {
+    render([
+      ...ROWS,
+      {
+        bookingId: 12,
+        ref: '#12',
+        dateLabel: '2 Jul 2026',
+        isDeduction: true,
+        reasonLabel: 'Venue change fee',
+        grossStr: '€0',
+        commissionStr: '€0',
+        netStr: '-€5',
+        netClass: 'text-riv-console-negative-ink',
+      },
+    ]);
+
+    const dialog = byId('payout-statement')!;
+    expect(dialog.textContent).toContain('Venue change fee');
+    expect(dialog.textContent).toContain('-€5');
+    expect(byId('statement-total')?.textContent).toContain('€17');
   });
 
   it('emits dismissed when the Close button is clicked', () => {

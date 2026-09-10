@@ -182,6 +182,8 @@ class SecurityConfig {
 	 */
 	private static final String ADMIN_REFUND_OUTBOX_PATH = "/api/admin/refund-outbox";
 	private static final String ADMIN_REFUND_OUTBOX_RESUBMIT_PATH = "/api/admin/refund-outbox/resubmit";
+	/** The per-venue venue-caused refund report: aggregates only, no booking id or code. */
+	private static final String ADMIN_VENUE_CHANGE_REFUNDS_PATH = "/api/admin/venue-change-refunds";
 	/**
 	 * The per-booking mail-delivery view and its resend — the support lever the outbox cannot be: that
 	 * re-drives what the registry still <em>owes</em>, this re-sends a confirmation whose publication
@@ -373,6 +375,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, ADMIN_SUPPRESSION_REINSTATE_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, ADMIN_MAIL_OUTBOX_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_OUTBOX_RESUBMIT_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.GET, ADMIN_VENUE_CHANGE_REFUNDS_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, ADMIN_REFUND_OUTBOX_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_REFUND_OUTBOX_RESUBMIT_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_LOOKUP_PATH).hasRole(ADMIN_ROLE)

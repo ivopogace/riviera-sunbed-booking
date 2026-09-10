@@ -54,6 +54,7 @@ const EMPTY_PREVIEW: RemodelPreview = {
   blocks: [],
   keep: [],
   previewToken: 'v1.empty',
+  feeTotal: { minorUnits: 0, currency: 'EUR' },
 };
 
 describe('LayoutEditor (#172)', () => {

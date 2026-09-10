@@ -71,6 +71,12 @@ import {
       </ul>
       <p
         class="mt-1 text-[12px] leading-[1.45] text-riv-card-ink-soft"
+        data-testid="layout-remodel-receipt-fee"
+      >
+        {{ feeText() }}
+      </p>
+      <p
+        class="mt-1 text-[12px] leading-[1.45] text-riv-card-ink-soft"
         data-testid="layout-remodel-receipt-reason"
       >
         Reason: {{ receipt().refundReason }}
@@ -122,6 +128,18 @@ export class RemodelReceiptPanel {
   protected refundedTotalText(): string {
     const total = this.receipt().refundedTotal;
     return total === null ? '' : `${formatMoney(total)} returned`;
+  }
+
+  /** "Venue-change fee: €5 per refunded booking, €5 in total" — the rate charged then, not today's. */
+  protected feeText(): string {
+    const receipt = this.receipt();
+    const total = receipt.feeTotal;
+    if (total === null) {
+      return '';
+    }
+    const perBooking = receipt.refunds[0]?.fee;
+    const perBookingText = perBooking ? `${formatMoney(perBooking)} per refunded booking, ` : '';
+    return `Venue-change fee: ${perBookingText}${formatMoney(total)} in total`;
   }
 
   protected claimText(claim: RemodelReceiptClaim): string {

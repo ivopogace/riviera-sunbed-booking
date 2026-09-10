@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.payout.application.LedgerEntryRow;
 import ai.riviera.platform.payout.application.PayoutLedger;
+import ai.riviera.platform.payout.application.VenueChangeRefundTotal;
 import ai.riviera.platform.payout.application.VenuePeriodTotal;
 import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
@@ -30,6 +31,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 class JdbcPayoutLedger implements PayoutLedger {
 
 	// Result-column / param names reused across the row mappers (kept in lockstep with the SQL).
+	private static final String COL_VENUE_ID = "venue_id";
 	private static final String COL_NET_MINOR = "net_minor";
 	private static final String COL_CURRENCY = "currency";
 
@@ -52,6 +54,12 @@ class JdbcPayoutLedger implements PayoutLedger {
 	}
 
 	@Override
+	public void charge(PayoutLedgerEntry entry) {
+		// UNIQUE(booking_id, entry_type) gives one FEE per booking (exactly-once, invariant #9).
+		insertIdempotently(entry);
+	}
+
+	@Override
 	public Optional<PayoutLedgerEntry> findAccrual(long bookingId) {
 		return jdbc.sql("""
 				SELECT venue_id, booking_id, gross_minor, commission_minor, net_minor, currency
@@ -60,7 +68,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 				""")
 				.param("booking", bookingId)
 				.query((rs, rowNum) -> new PayoutLedgerEntry(
-						new VenueId(rs.getLong("venue_id")), rs.getLong("booking_id"), EntryType.ACCRUAL,
+						new VenueId(rs.getLong(COL_VENUE_ID)), rs.getLong("booking_id"), EntryType.ACCRUAL,
 						rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong(COL_NET_MINOR),
 						rs.getString(COL_CURRENCY), null))
 				.optional();
@@ -94,11 +102,14 @@ class JdbcPayoutLedger implements PayoutLedger {
 		return ts == null ? null : ts.toInstant();
 	}
 
+	/**
+	 * Served by {@code payout_ledger_period_idx}. {@code MAX(currency)} is a single-value pick, sound
+	 * while collection is EUR-only (invariant #5). A period whose reversals and fees exceed its
+	 * accruals nets negative, which the batch column deliberately allows.
+	 */
 	@Override
 	public List<VenuePeriodTotal> netTotalsForPeriod(PeriodKey period) {
-		// Signed net owed per venue for the period: ACCRUAL adds net, REVERSAL subtracts it (invariant
-		// #9). Served by payout_ledger_period_idx (V15). MAX(currency) is a single-value pick (EUR-only
-		// in v1, invariant #5). Total may be negative when a period's reversals exceed its accruals.
+		// Signed net owed per venue: only ACCRUAL adds, every other type deducts (invariant #9).
 		return jdbc.sql("""
 				SELECT venue_id,
 				       SUM(CASE WHEN entry_type = 'ACCRUAL' THEN net_minor ELSE -net_minor END) AS net_minor,
@@ -110,11 +121,35 @@ class JdbcPayoutLedger implements PayoutLedger {
 				""")
 				.param("period", period.value())
 				.query((rs, rowNum) -> new VenuePeriodTotal(
-						new VenueId(rs.getLong("venue_id")), rs.getLong(COL_NET_MINOR), rs.getString(COL_CURRENCY)))
+						new VenueId(rs.getLong(COL_VENUE_ID)), rs.getLong(COL_NET_MINOR), rs.getString(COL_CURRENCY)))
 				.list();
 	}
 
-	/** Conflict-free insert shared by accrual and reversal — {@code ON CONFLICT (booking_id, entry_type)}. */
+	/**
+	 * Served by {@code payout_ledger_venue_idx}; {@code MAX(currency)} is the same single-value pick as
+	 * {@link #netTotalsForPeriod}'s.
+	 */
+	@Override
+	public List<VenueChangeRefundTotal> venueChangeTotals() {
+		// Two aggregates over one scan, kept apart by entry type; adding them would double-count.
+		return jdbc.sql("""
+				SELECT venue_id,
+				       COUNT(*) FILTER (WHERE entry_type = 'REVERSAL')                        AS refund_count,
+				       COALESCE(SUM(gross_minor) FILTER (WHERE entry_type = 'REVERSAL'), 0)   AS refunded_minor,
+				       COALESCE(SUM(net_minor) FILTER (WHERE entry_type = 'FEE'), 0)          AS fee_minor,
+				       MAX(currency) AS currency
+				FROM payout_ledger_entry
+				WHERE reason = 'VENUE_CHANGE'
+				GROUP BY venue_id
+				ORDER BY venue_id
+				""")
+				.query((rs, rowNum) -> new VenueChangeRefundTotal(
+						new VenueId(rs.getLong(COL_VENUE_ID)), rs.getInt("refund_count"),
+						rs.getLong("refunded_minor"), rs.getLong("fee_minor"), rs.getString(COL_CURRENCY)))
+				.list();
+	}
+
+	/** Conflict-free insert shared by every entry type — {@code ON CONFLICT (booking_id, entry_type)}. */
 	private void insertIdempotently(PayoutLedgerEntry entry) {
 		jdbc.sql("""
 				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor,

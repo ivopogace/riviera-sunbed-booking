@@ -27,7 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * AC-2/AC-3/AC-7: the weekly BKT report generates one persisted {@link PayoutBatch} per
- * venue for a period with {@code total = Σ(ACCRUAL.net) − Σ(REVERSAL.net)} (integer minor units),
+ * venue for a period with {@code total = Σ(ACCRUAL.net) − Σ(REVERSAL.net) − Σ(FEE.net)} (integer
+ * minor units),
  * starts batches {@code DRAFT}, is idempotent on re-generation (refreshes a draft, freezes a
  * reported/settled one), and advances status DRAFT→REPORTED→SETTLED while rejecting illegal moves.
  * Entries are inserted with explicit, test-unique {@code period_key}s so each case is isolated on the
@@ -92,6 +93,17 @@ class PayoutBatchGenerationIT {
 		entry(venueId, bookingId, "REVERSAL", net, period, "POLICY");
 	}
 
+	/** A venue-change fee: no gross, no commission, the whole charge as the net (V54). */
+	private void fee(long venueId, long bookingId, long feeMinor, String period) {
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor,
+				                                 commission_minor, net_minor, currency, period_key, reason)
+				VALUES (:v, :b, 'FEE', 0, 0, :fee, 'EUR', :period, 'VENUE_CHANGE')
+				""")
+				.param("v", venueId).param("b", bookingId).param("fee", feeMinor)
+				.param("period", period).update();
+	}
+
 	private PayoutBatch batchFor(List<PayoutBatch> batches, long venueId) {
 		return batches.stream().filter(b -> b.venueId().value() == venueId).findFirst().orElseThrow();
 	}
@@ -114,6 +126,22 @@ class PayoutBatchGenerationIT {
 		assertEquals(8500L, batchFor(batches, venueA).totalNetMinor(), "venue A net = 8500");
 		assertEquals(2000L, batchFor(batches, venueB).totalNetMinor(), "venue B net = 3000 - 1000");
 		assertEquals(BatchStatus.DRAFT, batchFor(batches, venueA).status(), "new batches are DRAFT");
+	}
+
+	@Test
+	void aFeeDeductsFromTheBatchTotal() {
+		PeriodKey period = PeriodKey.of("2099-W49");
+		long venue = newVenue();
+		long booking = newBooking(venue, "BATCHFEE1");
+		accrual(venue, booking, 8500L, period.value());
+		entry(venue, booking, "REVERSAL", 8500L, period.value(), "VENUE_CHANGE");
+		fee(venue, booking, 500L, period.value());
+
+		List<PayoutBatch> batches = payoutReport.generate(period);
+
+		// 8500 - 8500 - 500; a sum that added the fee would answer 500 and overpay (invariant #9).
+		assertEquals(-500L, batchFor(batches, venue).totalNetMinor(),
+				"the venue-change fee is a deduction, not an accrual");
 	}
 
 	@Test

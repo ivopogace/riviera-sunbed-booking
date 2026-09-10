@@ -31,4 +31,9 @@ public record RemodelReceipt(ReceiptId id, VenueId venueId, OperatorId operatorI
 	public long refundedMinor() {
 		return refunds().stream().mapToLong(ReceiptOutcome::amountMinor).sum();
 	}
+
+	/** What this commit cost the venue in fees — the amounts charged then, not today's rate; 0 when it refunded nothing. */
+	public long feeTotalMinor() {
+		return refunds().stream().mapToLong(ReceiptOutcome::feeMinor).sum();
+	}
 }
