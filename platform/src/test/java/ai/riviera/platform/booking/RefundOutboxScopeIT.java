@@ -42,9 +42,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * The guarantee that makes the admin lever safe: <strong>a button labelled "refund" reaches only the
  * listeners on the refund bulkhead</strong> (AC-2) — the cancellation refund and the remodel
  * release's intent void, never the payment spine, the payout reversal or a mail — and it never
- * re-drives a refund already settled (AC-8). Which ids those are, and that each is the one the
- * registry writes, is {@code RefundOutboxScopeTest}'s; this class is about what the lever leaves
- * alone.
+ * re-drives a refund already settled (AC-8). Which ids the allowlist holds is
+ * {@code RefundOutboxScopeTest}'s; this class is about what the lever leaves alone.
  *
  * <p><strong>Why the fixture holds an outstanding {@code PaymentConfirmed}.</strong> The defect the
  * issue's original scope proposal would have shipped — a {@code booking} package-prefix sweep — is
