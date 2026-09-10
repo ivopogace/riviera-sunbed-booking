@@ -195,8 +195,9 @@ in for `feature/venue-caused-cancellation` (`riviera-sdlc` § *Remote / cloud se
       `POST /api/venues/{venueId}/beach-map/commit` · *Pinned by:*
       `RemodelCommitIT.commitsAMixedPictureAndReceiptsEveryOutcome`
 - [x] **AC-7:** Given the same body without the refund count or without the reason, when it is
-      posted, then the answer is `409 REFUND_NOT_CONFIRMED` carrying the fresh preview, its token
-      and the required count, and the layout is unchanged. *Seam:*
+      posted, then the answer is `409 REFUND_NOT_CONFIRMED` carrying the fresh preview and its
+      token — the count to type is that picture's own `refunds.length` — and the layout is
+      unchanged. *Seam:*
       `POST /api/venues/{venueId}/beach-map/commit` · *Pinned by:*
       `RemodelCommitIT.refusesACommitWithRefundsThatIsNotTypedOut`
 - [x] **AC-8:** Given a committed receipt with refund, release and decline lines, when its owner
@@ -428,10 +429,12 @@ No deviation.
 
 - **New/changed endpoints:**
   - `POST /api/venues/{venueId}/beach-map/commit` — body gains `refundCount` (integer, defaults 0)
-    and `refundReason` (string, defaults `""`). `200` body gains `refunds[]`, `releases[]`,
-    `declines[]` (each `{bookingId, bookingDate, spot{setId,rowLabel,positionNo}, amount{minorUnits,currency}}`),
+    and `refundReason` (string, defaults `""`). `200` body gains `refunds[]` and `releases[]` (each
+    `{bookingId, bookingDate, spot{setId,rowLabel,positionNo}, amount{minorUnits,currency}}`, and a
+    release also `kind: RELEASE | DECLINE` — a decline is a release row, not a third array),
     `refundReason` and `refundedTotal{minorUnits,currency}`. New `409 REFUND_NOT_CONFIRMED` carrying
-    `preview` (the fresh picture + token) and `requiredRefundCount`.
+    `preview` alone (the fresh picture + token): the count to type is that picture's
+    `refunds.length`.
   - `GET /api/venues/{venueId}/remodels` — summary row gains `refundCount`.
   - `GET /api/venues/{venueId}/remodels/{receiptId}` — gains the same four fields as the commit's
     `200`.
@@ -442,9 +445,10 @@ No deviation.
 
 ## Execution status
 
-**Stage pointer:** `PR — review gate walked, its findings pushed; awaiting CI and Sonar`
+**Stage pointer:** `merge close-out — merged via PR #1053`
 
-**Next action:** watch the CI run on the review-fix head, then pull the Sonar new-issue list.
+**Next action:** watch the CI run on this head and pull the Sonar new-issue list; if either
+reports, the fix commit rewrites this close-out in place.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
