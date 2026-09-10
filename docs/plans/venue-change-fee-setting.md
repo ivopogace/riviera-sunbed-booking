@@ -107,6 +107,9 @@ remote branch stands in for `feature/venue-change-fee-setting`.
 - **No per-venue or tiered fee.** The fee stays flat and platform-wide (ADR-0021 §5).
 - **No new admin tab.** The editor joins the existing Venue changes tab.
 - **No change to which refunds earn a fee** (ADR-0021 §3/§4) and none to the ledger's shape.
+- **No last-changed column.** The admin audit trail already records who changed the fee, when
+  and why; a second half-history on the row would duplicate it and force a null on the
+  row-missing fallback path.
 - **No retroactive repricing** of posted `FEE` rows, and no backfill.
 
 ## Behavior-parity ledger
@@ -128,7 +131,7 @@ remote branch stands in for `feature/venue-change-fee-setting`.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | A write between a remodel commit and the async listener draining charges an amount the receipt did not quote | low | med | Accepted and documented: migration header, listener Javadoc, `RESPONSIBILITIES.md` §`payout`, ADR-0021 amendment. Closing it needs `cancelledAt` on a registry-persisted event; out of scope by decision | Ivo | open → documented in phase 4 |
-| R-2 | `V55` collides with a migration claimed by an in-flight PR | low | high | Checked at plan time: `V54` is the newest on `main` and `list_pull_requests` returns no open PR. Re-check before phase 0; if taken, this slice renumbers | Ivo | open |
+| R-2 | `V55` collides with a migration claimed by an in-flight PR | low | high | Checked at plan time and re-checked against fetched `origin/main` at phase 0: `V54` is the newest and no PR is open | Ivo | closed at phase 0 |
 | R-3 | The listener reads the setting on every cancellation, adding a query to the money path | med | low | Single-row primary-key lookup on a table with one row; the listener already does two ledger queries in the same transaction | Ivo | open |
 | R-4 | Two admins write the fee concurrently and one silently wins | low | low | Accepted: last write wins on a single-row `UPDATE`, and the audit trail records both. No optimistic token — the setting is one number changed rarely | Ivo | open |
 | R-5 | A `FEE` charged from the fallback (row missing) is indistinguishable from one charged from the row | low | low | The migration seeds the row, so the fallback is only reachable by hand-deleting it; the adapter logs at WARN when it falls back | Ivo | open |
@@ -137,9 +140,10 @@ remote branch stands in for `feature/venue-change-fee-setting`.
 
 ## Open questions / Assumptions
 
-- **Assumption:** `V55` is free. *Owner:* Ivo · *Resolves by:* phase 0 (re-check `main` + open PRs).
-
 ### Resolved
+
+- **Assumption:** `V55` is free. — **Confirmed at phase 0** against fetched `origin/main`
+  (`V54` newest) with no open PR claiming a number.
 
 - **Open question:** ADR-0021 §7 says #1037 "owes the rate an effective-dated schedule of its
   own". Does this slice ship one? — **Resolved by the user (2026-09-10, `AskUserQuestion`):
@@ -179,7 +183,7 @@ No new published surface. `booking.spi.VenueChangeFeeRate` is unchanged in shape
 
 | # | Port | Implemented by | Methods |
 |---|---|---|---|
-| IP-1 | `payout.application.VenueChangeFeeSetting` | `payout.adapter.out.JdbcVenueChangeFeeSetting` | `VenueChangeFeeAmount current()`, `StoredVenueChangeFee change(long minorUnits)` |
+| IP-1 | `payout.application.VenueChangeFeeSetting` | `payout.adapter.out.JdbcVenueChangeFeeSetting` | `VenueChangeFeeAmount current()`, `VenueChangeFeeAmount change(long minorUnits)` |
 
 **Domain events**
 
@@ -237,25 +241,25 @@ number. Rejected: a new `Fees` tab in the Money group, which would split the two
 ## FE↔BE contract
 
 - **New endpoints:**
-  - `GET /api/admin/venue-change-fee` → `200 {"amountMinor": 500, "currency": "EUR", "updatedAt": "2026-09-10T09:00:00Z"}`
+  - `GET /api/admin/venue-change-fee` → `200 {"amountMinor": 500, "currency": "EUR"}`
   - `PUT /api/admin/venue-change-fee` with `{"amountMinor": 700}` → `200` with the same shape;
     `400 INVALID_REQUEST` out of range; `403` non-admin; `401` anonymous. Carries the optional
     `X-Audit-Reason` header the edge fence records.
 - **Client typing:** a hand-written typed method on the existing `AdminVenueChangesService`,
   returning a `VenueChangeFeeView` declared in `admin.model.ts`. No `as any`.
-- **Money/date on the wire:** amount as integer minor units + ISO currency; `updatedAt` as an
-  ISO instant (invariant #6), rendered through the console's existing `admin-moment.ts`.
+- **Money on the wire:** amount as integer minor units + ISO currency (invariant #5). No date:
+  the fee carries no last-changed field, by the Non-goal below.
 
 ## Execution status
 
-**Stage pointer:** `plan — awaiting approval`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** get the plan approved, then start phase 0 by re-checking that `V55` is still
-free on `main` and unclaimed by open PRs.
+**Next action:** point the cancelled-booking listener and the `booking.spi` rate implementation at
+`VenueChangeFeeSetting#current()` instead of the injected seed bean.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Table, port, JDBC adapter | | |
+| 0 — Table, port, JDBC adapter | ✅ | |
 | 1 — Listener and rate read through the port | | |
 | 2 — Admin read/write endpoint | | |
 | 3 — Admin console fee card | | |
@@ -274,7 +278,6 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - `platform/src/main/resources/db/migration/V55__platform_setting.sql` — the table, its CHECKs and the seeded fee row
 - `platform/src/main/java/ai/riviera/platform/payout/application/VenueChangeFeeSetting.java` — the internal port: read the current fee, change it
-- `platform/src/main/java/ai/riviera/platform/payout/application/StoredVenueChangeFee.java` — the amount plus when it last changed
 - `platform/src/main/java/ai/riviera/platform/payout/application/VenueChangeFeeAmount.java` — gains the upper bound mirroring the table CHECK
 - `platform/src/main/java/ai/riviera/platform/payout/adapter/out/JdbcVenueChangeFeeSetting.java` — the `JdbcClient` implementation with the seed fallback
 - `platform/src/main/java/ai/riviera/platform/payout/adapter/out/PayoutVenueChangeFeeRate.java` — answers the spi from the port instead of a bean

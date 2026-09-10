@@ -8,7 +8,8 @@ import ai.riviera.platform.payout.application.VenueChangeFeeAmount;
 
 /**
  * Binds {@link VenueChangeFeeProperties} and exposes it to the application layer as the plain
- * {@link VenueChangeFeeAmount} value. Package-private config inside the module (invariant #11).
+ * {@link VenueChangeFeeAmount} value — the <strong>seed</strong> the stored setting is created with
+ * and falls back to, not the amount charged. Package-private config inside the module (invariant #11).
  */
 @Configuration
 @EnableConfigurationProperties(VenueChangeFeeProperties.class)
@@ -17,7 +18,7 @@ class PayoutFeeConfig {
 	private static final String COLLECTION_CURRENCY = "EUR"; // v1 collection currency (invariant #5)
 
 	@Bean
-	VenueChangeFeeAmount venueChangeFeeAmount(VenueChangeFeeProperties properties) {
+	VenueChangeFeeAmount venueChangeFeeSeed(VenueChangeFeeProperties properties) {
 		return new VenueChangeFeeAmount(properties.venueChangeFeeMinor(), COLLECTION_CURRENCY);
 	}
 }
