@@ -323,10 +323,10 @@ over `ngClass`/`ngStyle`. No `NgOptimizedImage` (no images). No deviation to doc
 
 ## Execution status
 
-**Stage pointer:** `PR — draft opened, awaiting the CI, review and Sonar gates`
+**Stage pointer:** `PR #1054 — closed out; every gate green, awaiting the maintainer's merge`
 
-**Next action:** Check this push's CI run, then run the review gate per `riviera-sdlc`
-`references/pr-gates.md` §1.
+**Next action:** None on the agent's side. The maintainer merges; this plan doc and the review
+comment are the record.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -353,6 +353,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 | F-6 | review (agent 1) | ADR-0018 cited `PayoutLedgerEntry.java:17–18` and `:20–30`; this slice's edits moved both ranges and added a third factory | fixed |
 | F-7 | review (agent 5) | Three comments claimed the receipt's `fee_minor` pins what the ledger charges. It cannot: both sides read the same configured amount, and a moved guest's free exit charges a fee with no receipt line at all. Within one instance they read one immutable bean and cannot differ | fixed — the comments now state the real property, and ADR-0021 §7 records the effective-dated schedule #1037 owes the rate once editing makes the window real |
 | F-8 | review (agent 5) | `PayoutLedgerEntry.reversalOf`'s Javadoc listed the reason set as "POLICY/WEATHER"; it has been four values since V52 | fixed |
+| F-10 | sonar (per-file new coverage) | `ReceiptOutcome.java` at 70.0% new coverage — the compact-constructor guard this slice added had no direct test, alone among the five guards the slice added | fixed — `ReceiptOutcomeTest` covers all three branches; proven to bite by weakening the guard (2 of 3 tests went red) before restoring it. `remodel-receipt-panel.ts` at 78.57% is deliberately left alone: both uncovered branches in `feeText()` narrow types the wire contract never produces — the server sends `feeTotal` null exactly when `refunds` is empty, and the template calls the method only when it is not, while `fee?` is optional because `RemodelReceiptRelease` extends the claim and a release bears none. A test of either would pin imagined behavior |
 | F-9 | re-review of the fix round | The widened prose sweep found five more sites, three of them outside `main/java` where the first sweep never looked: the class Javadoc of `PayoutLedgerViewIT` and `PayoutBatchGenerationIT` (both of which this slice gave a `FEE` case), and the "accruals + reversals" enumerations in `AdminPayoutLedgerController`, `operator-console.service.ts` and `payouts-tab.ts` | fixed |
 
 ---
@@ -395,6 +396,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/test/java/ai/riviera/platform/payout/FeeMathTest.java` — the fee entry's shape
 - `platform/src/test/java/ai/riviera/platform/payout/adapter/in/VenueChangeFeePropertiesTest.java` — the configuration bounds
 - `platform/src/test/java/ai/riviera/platform/booking/vocabulary/VenueChangeFeeTest.java` — the published value and its total
+- `platform/src/test/java/ai/riviera/platform/booking/application/remodel/ReceiptOutcomeTest.java` — the receipt line's own fee guard
 - `platform/src/test/java/ai/riviera/platform/payout/PayoutVenueChangeFeeIT.java` — the listener's four cases
 - `platform/src/test/java/ai/riviera/platform/payout/AdminVenueChangeRefundsIT.java` — the admin report
 - `platform/src/test/java/ai/riviera/platform/payout/PayoutMigrationIT.java` — the relaxed and unchanged constraints
@@ -584,24 +586,44 @@ at Implement per the `riviera-sdlc` re-entry rule.
 `.claude/skills/riviera-stripe-payments/SKILL.md`, `docs/adr/ADR-0021-*.md`, delete
 `docs/plans/venue-caused-cancellation.md`
 
-- [ ] **Step 1:** Rewrite invariant #9's one-liner to `payout = Σ amounts − commission − fees` in
+- [x] **Step 1:** Rewrite invariant #9's one-liner to `payout = Σ amounts − commission − fees` in
   CLAUDE.md, in `RESPONSIBILITIES.md` § `payout` **and** § *Invariants, long form* #9, in
   `CONTEXT.md` § *Payout ledger*, and in `riviera-stripe-payments` § *Payout* — one commit, so no
   reader ever sees two of the four disagree.
-- [ ] **Step 2:** `CONTEXT.md` gains **Fee** — a payout-ledger entry that deducts what the platform
+- [x] **Step 2:** `CONTEXT.md` gains **Fee** — a payout-ledger entry that deducts what the platform
   charges a venue for a refund its own change caused; direction lives in the entry type. Glossary
   only, no implementation detail.
-- [ ] **Step 3:** Write ADR-0021 — the fee as a ledger entry type, and the rejected alternatives: a
+- [x] **Step 3:** Write ADR-0021 — the fee as a ledger entry type, and the rejected alternatives: a
   negative accrual (breaks `payout_amounts_check` and every sum's sign convention), a separate fee
   table (loses the `UNIQUE (booking_id, entry_type)` idempotency the ledger already gives and splits
   the audit trail), and keeping the commission on a refunded booking (opaque to the venue, and it
   cannot express a fee on a booking whose accrual is fully reversed).
-- [ ] **Step 4:** Retire `docs/plans/venue-caused-cancellation.md` (due at this close-out).
-- [ ] **Step 5: Run `riviera-docs-freshness`** over `origin/main..HEAD`, including the counting sweep
+- [x] **Step 4:** Retire `docs/plans/venue-caused-cancellation.md` (due at this close-out).
+- [x] **Step 5: Run `riviera-docs-freshness`** over the resolved range `6a19ae4b..HEAD`, including the counting sweep
   for "the two X" facts — `payout` gains its first implemented `spi` and a second admin GET beside the
   payout-batch report, and `booking.spi` goes from one port to two.
-- [ ] **Step 6: Commit** — `git commit -m "State invariant #9 with fees in all four places and record ADR-0021 (#1036)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "State invariant #9 with fees in all four places and record ADR-0021 (#1036)"`
+- [x] **Step 7: Update plan-doc execution status.**
+
+### `riviera-docs-freshness` run — range `6a19ae4b..HEAD`, **zero findings**
+
+Range resolved per the skill's *Inputs* (fetch `origin/main`, then the merge base) rather than named
+as a bare `origin/main...HEAD`.
+
+- **Step 2a (rename/removal grep)** over the full substrate set — `isReversal` → `isDeduction`, the
+  retired `venue-caused-cancellation` plan slug, `payout_net_check`, `RefundReason.CONFLICT`: no
+  dangling pointer. The three `payout_net_check` hits state the tree as it now stands.
+- **Step 2b (counting sweep)** over `platform/src`, `frontend/.claude/CLAUDE.md` and the substrate,
+  narrowed to the ledger vocabulary: every surviving "the two X" is true of the tree after the diff —
+  `payout`'s two ledger *tables* (unchanged), `notification`'s one implemented port (unchanged), the
+  admin report's two figures (new, and deliberately never summed). The twelve that were false were
+  found and fixed at the review gate (F-3, F-9), which is where this sweep's first pass ran.
+- **Step 3 (reverse direction)** over the map: `RESPONSIBILITIES.md` § `payout`, `CONTEXT.md`
+  § *Payout ledger* + the new **Fee** entry, `CLAUDE.md` invariant #9, `RESPONSIBILITIES.md`
+  § *Invariants, long form* #9 and `riviera-stripe-payments` § *Payout* all state the three-term
+  formula and agree with each other.
+- **Plan-doc retirement:** `docs/plans/venue-caused-cancellation.md` removed; no citation of its slug
+  survives anywhere outside `docs/plans/`.
 
 ---
 
@@ -612,6 +634,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-10 | Sonar gate (F-10) | Every **validation guard this slice added** — the mechanism a missing test hides, enumerated from the diff rather than from the coverage report, which only names the file that happened to fall below the bar | `for f in $(git diff --name-only 6a19ae4b..HEAD -- 'platform/src/main/java/*.java'); do grep -n "throw new IllegalArgumentException\|throw new IllegalStateException" "$f"; done` | 5 guards added (`ReceiptOutcome`, `VenueChangeFee` ×2, `VenueChangeFeeAmount` ×2, `VenueChangeFeeProperties`, `PayoutLedgerEntry`'s relaxed net check) | One gap: `ReceiptOutcome` alone had no direct test. Covered by `ReceiptOutcomeTest`, proven to bite. The other four were already pinned — `VenueChangeFeeAmount`'s pair sits in `VenueChangeFeePropertiesTest`, not in a file named after it, which is why a per-file coverage figure could not have found this population |
 | 2026-09-10 | review gate | Every Javadoc/TSDoc **sentence** stating the ledger's payout formula — the population the phase-1 audit structurally could not reach, because it enumerated *computation* sites (`git grep "EntryType\."`, `"payout_ledger_entry"`, `"signedSum"`) and a prose comment names none of those | `grep -rniE "ACCRUAL adds\|REVERSAL subtracts\|accruals \+ reversals"` and `grep -rn "Σ(ACCRUAL"` over **`platform/src` and `frontend/src` whole**, not just `main/java` | 12 | All corrected. Two lessons, each learned from a miss: a sum audit needs a second sweep over the prose that *describes* the sums, keyed on the formula's words rather than the code's identifiers; and that sweep must cover `src/test` and the frontend, because a test's own class Javadoc states a fact too — both files this slice gave a `FEE` case still described the two-term formula in their headers |
 | 2026-09-10 | phase 4 | Every controller a web slice must be able to build without the application layer — the population `WebSliceStubs` exists for, which a new controller silently breaks (found by `AdminSurfaceRoleGateTest`'s red context, not by inspection) | `git grep -n '"/api/admin' -- platform/src/main/java` for the surfaces, then `grep -n '@Bean' platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` for what is stubbed | 1 gap (the new `ViewVenueChangeRefunds`) | Stubbed it; the other admin surfaces were already covered. Every new controller owes a stub here, which is the same blast-radius rule `riviera-local-debug` names for a bean crossing a module edge |
 | 2026-09-10 | phase 3 | Every `@ApplicationModuleTest` — the population a bean crossing a module edge can break, per `riviera-local-debug` § blast radius | `grep -rl '@ApplicationModuleTest' platform/src/test/java` | 2 (`PayoutModuleTest`, `ReviewSubmitFlowIT`) | Neither needs a `@MockitoBean`: the new bean is `payout`'s own, and `booking` is not bootstrapped in isolation anywhere. Both run green |
@@ -623,33 +646,39 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1 … AC-12, AC-20:** `gradle --no-daemon --console=plain test --tests "*Payout*" --tests
-  "*Remodel*"` + the structural-net command → all green. Verified at commit `<sha>`.
-- [x] **AC-13 … AC-18:** `npm test && npm run test:a11y` → green. Verified at commit `<sha>`.
-- [x] **AC-19:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → green.
-  Verified at commit `<sha>`.
+- [x] **AC-1 … AC-12, AC-20:** `./gradlew test --tests "*Payout*" --tests "*Remodel*"` + the
+  structural-net command → all green. Verified at commit `f39abadb`, and by CI's own backend
+  build+test on that head.
+- [x] **AC-13 … AC-18:** `npm test && npm run test:a11y` → green. Verified at commit `f39abadb`.
+- [x] **AC-19:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` →
+  537/537 passed. Verified at commit `f39abadb`.
+- [x] **The close-out commit** adds one unit test and this doc, nothing else:
+  `./gradlew test --tests "*ReceiptOutcomeTest*" --tests "*VenueChangeFeeTest*" --tests
+  "*RemodelClaimsServiceTest*"` → green, and the new test was proven to bite against a weakened
+  guard before the guard was restored.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (N/A justified); no availability row is read or written.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; the new port
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (N/A justified); no availability row is read or written.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; the new port
       is `spi`, granted only to its implementor (invariant #11).
-- [ ] **Payment/payout** section filled; webhooks still the source of truth; the fee idempotent via
+- [x] **Payment/payout** section filled; webhooks still the source of truth; the fee idempotent via
       the existing unique guard; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — unchanged.
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for the period key (invariant #6).
-- [ ] Booking codes unguessable and absent from every new surface (invariant #7).
-- [ ] Flyway migration present; the relaxed and unchanged constraints both tested (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder *plus*
+- [x] Refund policy enforced server-side (invariant #10) — unchanged.
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for the period key (invariant #6).
+- [x] Booking codes unguessable and absent from every new surface (invariant #7).
+- [x] Flyway migration present; the relaxed and unchanged constraints both tested (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit**, citing PR #1054 — the
+      number, not a merge SHA, because the agent neither approves nor merges.
+- [x] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder *plus*
       `riviera-review-overlay`.
