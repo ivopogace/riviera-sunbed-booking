@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { openShellOverlay } from './support/shell';
 import { settle } from './support/booking-dialog';
+import { photoView, photoViews } from './support/photo-views';
 
 /**
  * Real-render CI-safe e2e for the tourist cover-photo display: the Discover card
@@ -18,20 +19,21 @@ const TINY_IMAGE = Buffer.from(
   'base64',
 );
 
-const COVER = { card: '/api/venues/1/photos/aa01', banner: '/api/venues/1/photos/bb02' };
+const COVER = {
+  card: photoView('/api/venues/1/photos/aa01', 1152),
+  banner: photoView('/api/venues/1/photos/bb02', 1440),
+};
 
 /** The three-slot slideshow, slot order (cover, sunbeds, bar) — the summary's card-sized `photos`. */
 const CARD_SLIDESHOW = [
-  '/api/venues/1/photos/aa01',
-  '/api/venues/1/photos/cc03',
-  '/api/venues/1/photos/dd04',
+  photoView('/api/venues/1/photos/aa01', 1152),
+  ...photoViews(['/api/venues/1/photos/cc03', '/api/venues/1/photos/dd04']),
 ];
 
 /** The same three slots banner-sized — the map read's `photos` (cover's BANNER variant first). */
 const BANNER_SLIDESHOW = [
-  '/api/venues/1/photos/bb02',
-  '/api/venues/1/photos/cc03',
-  '/api/venues/1/photos/dd04',
+  photoView('/api/venues/1/photos/bb02', 1440),
+  ...photoViews(['/api/venues/1/photos/cc03', '/api/venues/1/photos/dd04']),
 ];
 
 const VENUES = [
@@ -98,7 +100,7 @@ test.beforeEach(async ({ page }) => {
   // Registered first, so the more specific photo route below wins where both could match.
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE_MAP }));
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: VENUES }));
-  await page.route(/\/api\/venues\/1\/photos\/[0-9a-f]+$/, (route) =>
+  await page.route(/\/api\/venues\/1\/photos\/[0-9a-f]+(@\d+)?$/, (route) =>
     route.fulfill({ body: TINY_IMAGE, contentType: 'image/jpeg' }),
   );
 });
@@ -134,6 +136,42 @@ test('the Discover card shows the cover photo (scrim kept), the photo-less card 
   await expect(page.getByTestId('gallery-tile')).toHaveCount(2);
   await expect(page.getByText('coming soon')).toBeHidden();
   await expectNoSeriousAxeViolations(page, 'beach map with its gallery grid');
+});
+
+test('every tourist photo offers its candidates as a srcset the browser sizes against (+ axe)', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const card = page.getByTestId('venue-card').first().getByTestId('card-photo-img');
+  // Both candidates on the wire, as w-descriptors — the browser, not the server, picks.
+  await expect(card).toHaveAttribute('srcset', /photos\/aa01 576w, .*photos\/aa01@1152 1152w$/);
+  // The grid's own fraction, not the 100vw default a browser without sizes="auto" would read.
+  await expect(card).toHaveAttribute(
+    'sizes',
+    'auto, (min-width: 1128px) 30vw, (min-width: 768px) 47vw, 92vw',
+  );
+  await expectNoSeriousAxeViolations(page, 'discovery with candidate srcsets');
+
+  await page.getByTestId('venue-card').first().click();
+  await expect(page).toHaveURL(/\/venues\/1/);
+
+  // One candidate list, three boxes: the hero letterboxes ~730px, a tile ~356px, the lightbox 1100px.
+  const hero = page.getByTestId('gallery-hero');
+  await expect(hero).toHaveAttribute('srcset', /photos\/bb02@1440 1440w$/);
+  await expect(hero).toHaveAttribute('sizes', '(min-width: 1280px) 50vw, 66vw');
+  // The `auto,` prefix rides lazy loading, so the priority hero has none and the tiles do.
+  await expect(page.getByTestId('gallery-tile').first()).toHaveAttribute(
+    'sizes',
+    'auto, (min-width: 1280px) 25vw, 33vw',
+  );
+
+  await page.getByTestId('gallery-photo-0').click();
+  const lightbox = page.getByTestId('lightbox-img');
+  await expect(lightbox).toHaveAttribute('srcset', /photos\/bb02@1440 1440w$/);
+  await expect(lightbox).toHaveAttribute('sizes', 'auto, 94vw');
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'lightbox with candidate srcsets');
 });
 
 test('the venue banner is a media header — ≥260px on desktop, 150px on mobile, above the status card (#704)', async ({

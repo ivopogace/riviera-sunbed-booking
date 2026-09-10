@@ -70,7 +70,13 @@ class VenuePhotoReadModelIT {
 	}
 
 	private static StoredVariant variant(PhotoSurface surface, String hashHex) {
-		return new StoredVariant(surface, new ContentHash(hashHex), "image/jpeg", 640, 384, new byte[] {1});
+		return variant(surface, 1, hashHex);
+	}
+
+	/** Dimensions track the scale so a width assertion distinguishes the two candidates. */
+	private static StoredVariant variant(PhotoSurface surface, int scale, String hashHex) {
+		return new StoredVariant(surface, scale, new ContentHash(hashHex), "image/jpeg",
+				640 * scale, 384 * scale, new byte[] {1});
 	}
 
 	private void seedCover(VenueId venue, String cardHash, String bannerHash, String previewHash) {
@@ -85,6 +91,41 @@ class VenuePhotoReadModelIT {
 	}
 
 	@Test
+	void publishesEveryStoredCandidateWithItsIntrinsicWidth() throws Exception {
+		VenueId venue = newVenue("RM candidate venue");
+		storage.replace(venue, PhotoSlot.COVER, new ProcessedPhoto(List.of(
+				variant(PhotoSurface.CARD, 1, "5a05"),
+				variant(PhotoSurface.CARD, 2, "5b05"),
+				variant(PhotoSurface.BANNER, 1, "5c05"),
+				variant(PhotoSurface.BANNER, 2, "5d05"),
+				variant(PhotoSurface.PREVIEW, 1, "5e05"))));
+
+		mvc.perform(get("/api/venues/{v}", venue.value()))
+				.andExpect(status().isOk())
+				// url is the BASELINE density: what a client without srcset support fetches.
+				.andExpect(jsonPath("$.photos[0].url").value(url(venue, "5c05")))
+				.andExpect(jsonPath("$.photos[0].sources[*].url")
+						.value(contains(url(venue, "5c05"), url(venue, "5d05"))))
+				.andExpect(jsonPath("$.photos[0].sources[*].width").value(contains(640, 1280)))
+				.andExpect(jsonPath("$.coverPhoto.card.url").value(url(venue, "5a05")))
+				.andExpect(jsonPath("$.coverPhoto.card.sources[*].url")
+						.value(contains(url(venue, "5a05"), url(venue, "5b05"))));
+	}
+
+	@Test
+	void degradesToASingleCandidateForAPreMigrationPhoto() throws Exception {
+		VenueId venue = newVenue("RM pre-migration venue");
+		seedCover(venue, "6a06", "6b06", "6c06"); // scale-1 rows only, as every photo was before V56
+
+		mvc.perform(get("/api/venues/{v}", venue.value()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.photos[0].url").value(url(venue, "6b06")))
+				.andExpect(jsonPath("$.photos[0].sources.length()").value(1))
+				.andExpect(jsonPath("$.coverPhoto.card.sources.length()").value(1))
+				.andExpect(jsonPath("$.coverPhoto.banner.sources.length()").value(1));
+	}
+
+	@Test
 	void discoveryExposesCoverCardAndBannerUrlsAndNullWhenAbsent() throws Exception {
 		VenueId withCover = newVenue("RM list venue with cover");
 		VenueId noPhoto = newVenue("RM list venue without photo");
@@ -92,15 +133,15 @@ class VenuePhotoReadModelIT {
 
 		mvc.perform(get("/api/venues"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.id == %d)].coverPhoto.card", withCover.value())
+				.andExpect(jsonPath("$[?(@.id == %d)].coverPhoto.card.url", withCover.value())
 						.value(contains(url(withCover, "1a01"))))
-				.andExpect(jsonPath("$[?(@.id == %d)].coverPhoto.banner", withCover.value())
+				.andExpect(jsonPath("$[?(@.id == %d)].coverPhoto.banner.url", withCover.value())
 						.value(contains(url(withCover, "1b01"))))
 				// The photo-less venue is present and its coverPhoto is null — the FE gradient fallback.
 				.andExpect(jsonPath("$[?(@.id == %d && @.coverPhoto == null)]", noPhoto.value()).exists())
 				// Slideshow: cover-only venue lists just the cover card; photo-less venue lists nothing.
-				.andExpect(jsonPath("$[?(@.id == %d)].photos", withCover.value())
-						.value(contains(contains(url(withCover, "1a01")))))
+				.andExpect(jsonPath("$[?(@.id == %d)].photos[*].url", withCover.value())
+						.value(contains(url(withCover, "1a01"))))
 				.andExpect(jsonPath("$[?(@.id == %d)].photos", noPhoto.value())
 						.value(contains(empty())));
 	}
@@ -119,14 +160,14 @@ class VenuePhotoReadModelIT {
 
 		mvc.perform(get("/api/venues"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.id == %d)].photos", venue.value())
-						.value(contains(contains(
-								url(venue, "4a04"), url(venue, "4d04"), url(venue, "4f04")))));
+				.andExpect(jsonPath("$[?(@.id == %d)].photos[*].url", venue.value())
+						.value(contains(
+								url(venue, "4a04"), url(venue, "4d04"), url(venue, "4f04"))));
 
 		// The map read prefers BANNER per slot, falling back CARD → PREVIEW for older uploads.
 		mvc.perform(get("/api/venues/{v}", venue.value()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.photos").value(contains(
+				.andExpect(jsonPath("$.photos[*].url").value(contains(
 						url(venue, "4b04"), url(venue, "4d04"), url(venue, "4f04"))));
 	}
 
@@ -138,10 +179,10 @@ class VenuePhotoReadModelIT {
 
 		mvc.perform(get("/api/venues/{v}", withCover.value()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.coverPhoto.card").value(url(withCover, "2a02")))
-				.andExpect(jsonPath("$.coverPhoto.banner").value(url(withCover, "2b02")))
+				.andExpect(jsonPath("$.coverPhoto.card.url").value(url(withCover, "2a02")))
+				.andExpect(jsonPath("$.coverPhoto.banner.url").value(url(withCover, "2b02")))
 				// The banner slideshow serves the banner-sized variant of the one occupied slot.
-				.andExpect(jsonPath("$.photos").value(contains(url(withCover, "2b02"))));
+				.andExpect(jsonPath("$.photos[*].url").value(contains(url(withCover, "2b02"))));
 
 		mvc.perform(get("/api/venues/{v}", noPhoto.value()))
 				.andExpect(status().isOk())

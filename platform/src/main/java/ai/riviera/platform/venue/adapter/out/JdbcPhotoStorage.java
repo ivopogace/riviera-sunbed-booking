@@ -64,13 +64,14 @@ class JdbcPhotoStorage implements PhotoStorage {
 				.update();
 		for (StoredVariant v : photo.variants()) {
 			jdbc.sql("""
-					INSERT INTO venue_photo_variant (photo_id, venue_id, surface, content_hash,
+					INSERT INTO venue_photo_variant (photo_id, venue_id, surface, scale, content_hash,
 					                                 content_type, width, height, byte_size, bytes)
-					VALUES (:photoId, :venue, :surface, :hash, :type, :width, :height, :size, :bytes)
+					VALUES (:photoId, :venue, :surface, :scale, :hash, :type, :width, :height, :size, :bytes)
 					""")
 					.param("photoId", photoId)
 					.param(P_VENUE, venueId.value())
 					.param("surface", v.surface().name())
+					.param("scale", v.scale())
 					.param("hash", v.hash().value())
 					.param("type", v.contentType())
 					.param("width", v.width())
@@ -127,20 +128,20 @@ class JdbcPhotoStorage implements PhotoStorage {
 
 	@Override
 	public List<PhotoMetadata> listMetadata(VenueId venueId) {
-		// One blob-free join read (the bytea column is deliberately NOT selected — ADR-0008), grouped
-		// into a PhotoMetadata per occupied slot in a stable (slot, surface) order.
+		// Blob-free: the bytea column is deliberately NOT selected on this path (ADR-0008).
 		List<SlotVariantRow> rows = jdbc.sql("""
-				SELECT p.slot, v.surface, v.content_hash, v.content_type, v.width, v.height
+				SELECT p.slot, v.surface, v.scale, v.content_hash, v.content_type, v.width, v.height
 				FROM venue_photo p
 				JOIN venue_photo_variant v ON v.photo_id = p.id
 				WHERE p.venue_id = :venue
-				ORDER BY p.slot, v.surface
+				ORDER BY p.slot, v.surface, v.scale
 				""")
 				.param(P_VENUE, venueId.value())
 				.query((rs, rowNum) -> new SlotVariantRow(
 						PhotoSlot.valueOf(rs.getString("slot")),
 						new VariantMeta(
 								PhotoSurface.valueOf(rs.getString("surface")),
+								rs.getInt("scale"),
 								new ContentHash(rs.getString("content_hash")),
 								rs.getString("content_type"),
 								rs.getInt("width"),

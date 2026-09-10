@@ -1,6 +1,6 @@
 import { environment } from '../../environments/environment';
 
-import { CoverPhotoView } from './venue-views';
+import { CoverPhotoView, PhotoView } from './venue-views';
 
 /**
  * Resolve a photo serving path from the API (`/api/venues/{id}/photos/{hash}`) against the API
@@ -14,9 +14,31 @@ export function apiPhotoUrl(path: string): string {
   return environment.apiBaseUrl + path;
 }
 
-/** {@link apiPhotoUrl} over a summary/map view's cover pair; `null`/absent passes through. */
+/** {@link apiPhotoUrl} over every candidate of a photo, baseline URL included. */
+export function apiPhotoView(photo: PhotoView): PhotoView {
+  return {
+    url: apiPhotoUrl(photo.url),
+    sources: photo.sources.map((source) => ({ ...source, url: apiPhotoUrl(source.url) })),
+  };
+}
+
+/** {@link apiPhotoView} over a summary/map view's cover pair; `null`/absent passes through. */
 export function resolveCoverPhoto(cover: CoverPhotoView | null | undefined): CoverPhotoView | null {
-  return cover ? { card: apiPhotoUrl(cover.card), banner: apiPhotoUrl(cover.banner) } : null;
+  return cover ? { card: apiPhotoView(cover.card), banner: apiPhotoView(cover.banner) } : null;
+}
+
+/**
+ * A photo's candidates as an HTML `srcset` with width descriptors, or `null` with fewer than two —
+ * a one-candidate `srcset` says nothing `src` does not, and the attribute is then better absent.
+ *
+ * Width descriptors rather than `1x`/`2x`: the browser pairs them with `sizes` (which
+ * `NgOptimizedImage` fills as `auto, 100vw` on a lazy `fill` image) and picks against the box it
+ * actually laid out, which is the only thing that can size an `auto-fill` grid correctly.
+ */
+export function photoSrcset(photo: PhotoView): string | null {
+  return photo.sources.length > 1
+    ? photo.sources.map((source) => `${source.url} ${source.width}w`).join(', ')
+    : null;
 }
 
 /**
@@ -25,9 +47,9 @@ export function resolveCoverPhoto(cover: CoverPhotoView | null | undefined): Cov
  * gradient placeholder renders instead. The Discover card picks `card`, the beach-map band `banner`.
  */
 export function slideshowPhotos(
-  view: { readonly photos?: readonly string[]; readonly coverPhoto?: CoverPhotoView | null },
+  view: { readonly photos?: readonly PhotoView[]; readonly coverPhoto?: CoverPhotoView | null },
   coverSurface: keyof CoverPhotoView,
-): readonly string[] {
+): readonly PhotoView[] {
   if (view.photos?.length) {
     return view.photos;
   }

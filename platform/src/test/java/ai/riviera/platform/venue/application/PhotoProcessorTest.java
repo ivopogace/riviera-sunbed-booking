@@ -41,18 +41,57 @@ class PhotoProcessorTest {
 		Processed result = assertProcessed(processor.process(solidJpeg(1600, 1200)));
 
 		List<StoredVariant> variants = result.photo().variants();
-		assertEquals(3, variants.size(), "every slot feeds card + banner + preview (uniform surfaces)");
 		Set<PhotoSurface> surfaces = variants.stream().map(StoredVariant::surface).collect(Collectors.toSet());
 		assertEquals(Set.of(PhotoSurface.CARD, PhotoSurface.BANNER, PhotoSurface.PREVIEW), surfaces);
 		for (StoredVariant v : variants) {
 			assertEquals("image/jpeg", v.contentType(), "re-encoded to JPEG");
 			assertTrue(isJpeg(v.bytes()), "output is a real JPEG");
 			assertTrue(v.width() > 0 && v.height() > 0, "positive dimensions");
-			assertTrue(v.width() <= boundW(v.surface()) && v.height() <= boundH(v.surface()),
-					() -> v.surface() + " fits within its bound");
+			assertTrue(v.width() <= boundW(v.surface()) * v.scale()
+							&& v.height() <= boundH(v.surface()) * v.scale(),
+					() -> v.surface() + "@" + v.scale() + " fits within its bound");
 			assertTrue(v.hash().value().matches("[0-9a-f]{64}"), "SHA-256 lower-case-hex content hash");
-			assertTrue(v.bytes().length <= 200_000, "capped variant size");
+			assertTrue(v.bytes().length <= 200_000 * v.scale() * v.scale(), "capped variant size");
 		}
+	}
+
+	@Test
+	void rendersARetinaTierForTheTouristSurfacesOnly() throws IOException {
+		Processed result = assertProcessed(processor.process(solidJpeg(1600, 1200)));
+
+		List<StoredVariant> variants = result.photo().variants();
+		Set<String> renditions = variants.stream()
+				.map(v -> v.surface() + "@" + v.scale())
+				.collect(Collectors.toSet());
+		assertEquals(Set.of("CARD@1", "CARD@2", "BANNER@1", "BANNER@2", "PREVIEW@1"), renditions,
+				"the two tourist surfaces carry a retina tier; the operator slot preview does not");
+		assertEquals(variants.size(), variants.stream().map(StoredVariant::hash).distinct().count(),
+				"every rendition is its own content-addressed row");
+	}
+
+	@Test
+	void omitsTheRetinaTierRatherThanUpscaleASmallUpload() throws IOException {
+		// 700x525 clears every scale-1 bound but is smaller than both retina boxes.
+		Processed result = assertProcessed(processor.process(solidJpeg(700, 525)));
+
+		List<StoredVariant> variants = result.photo().variants();
+		assertTrue(variants.stream().allMatch(v -> v.scale() == 1),
+				"a source smaller than the retina box yields no retina row");
+		assertEquals(3, variants.size(), "the scale-1 set is unchanged");
+	}
+
+	@Test
+	void decidesTheRetinaTierOnTheDISPLAYEDDimensionsOfARotatedUpload() throws IOException {
+		// A 700x1400 raster tagged Orientation=6 DISPLAYS as 1400x700, and the resize follows that.
+		Processed result = assertProcessed(processor.process(jpegWithExif(700, 1400, 6)));
+
+		Set<String> renditions = result.photo().variants().stream()
+				.map(v -> v.surface() + "@" + v.scale())
+				.collect(Collectors.toSet());
+		// Displayed 1400x700 into the 2560x960 banner box scales UP (x1.37) — bytes for nothing.
+		assertFalse(renditions.contains("BANNER@2"), () -> "no upscaled banner retina: " + renditions);
+		// Into the 1280x768 card box it scales DOWN (x0.91), so that one is genuinely earned.
+		assertTrue(renditions.contains("CARD@2"), () -> "the card retina still fits: " + renditions);
 	}
 
 	@Test
@@ -159,8 +198,13 @@ class PhotoProcessorTest {
 
 	/** A valid JPEG with a well-formed minimal EXIF APP1 (Orientation=1) spliced in after the SOI. */
 	private static byte[] jpegWithExif(int w, int h) throws IOException {
+		return jpegWithExif(w, h, 1);
+	}
+
+	/** The same, at a chosen EXIF orientation — 6 means the raster displays rotated 90°. */
+	private static byte[] jpegWithExif(int w, int h, int orientation) throws IOException {
 		byte[] base = solidJpeg(w, h); // starts FF D8 (SOI)
-		byte[] exif = minimalExifApp1();
+		byte[] exif = minimalExifApp1(orientation);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		out.write(0xFF);
 		out.write(0xD8); // SOI
@@ -169,7 +213,7 @@ class PhotoProcessorTest {
 		return out.toByteArray();
 	}
 
-	private static byte[] minimalExifApp1() {
+	private static byte[] minimalExifApp1(int orientation) {
 		// "Exif\0\0" + a little-endian TIFF with one IFD entry: Orientation (0x0112) = 1.
 		byte[] exifId = {'E', 'x', 'i', 'f', 0x00, 0x00};
 		byte[] tiff = {
@@ -178,7 +222,7 @@ class PhotoProcessorTest {
 			0x01, 0x00, // 1 directory entry
 			0x12, 0x01, 0x03, 0x00, // tag 0x0112 (Orientation), type 3 (SHORT)
 			0x01, 0x00, 0x00, 0x00, // count 1
-			0x01, 0x00, 0x00, 0x00, // value 1 (normal)
+			(byte) orientation, 0x00, 0x00, 0x00, // the orientation value
 			0x00, 0x00, 0x00, 0x00 // next-IFD offset = 0
 		};
 		int length = 2 + exifId.length + tiff.length; // the length field counts itself

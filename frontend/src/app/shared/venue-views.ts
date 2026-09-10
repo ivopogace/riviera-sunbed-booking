@@ -9,13 +9,37 @@ import { MoneyView } from './money';
  */
 
 /**
- * The venue's tourist-surfaced cover photo: content-addressed, immutably-cached serving
- * URLs for the Discover card and the beach-map banner. Opaque strings fed to `NgOptimizedImage`;
- * `null`/absent when the venue has no cover photo — the gradient fallback renders instead.
+ * One density candidate of a photo: its content-addressed serving URL and the intrinsic pixel
+ * width of the bytes behind it. The pair is one `srcset` entry (`"<url> <width>w"`).
+ */
+export interface PhotoSourceView {
+  readonly url: string;
+  readonly width: number;
+}
+
+/**
+ * A tourist-surfaced photo with every density the backend stored for it. `url` is the baseline
+ * candidate — what `ngSrc` binds and what a client without `srcset` support fetches — and
+ * `sources` lists every candidate ascending by width, always including `url`'s own.
+ *
+ * A photo uploaded before the retina tier existed has exactly one source and renders a
+ * one-candidate `srcset`; it cannot be backfilled, since the full-res original is discarded at
+ * upload. URLs are opaque and content-addressed: a replaced photo changes the URL, never the bytes
+ * behind an old one.
+ */
+export interface PhotoView {
+  readonly url: string;
+  readonly sources: readonly PhotoSourceView[];
+}
+
+/**
+ * The venue's tourist-surfaced cover photo: the Discover card's and the beach-map banner's
+ * surfaces, each with its own density candidates. `null`/absent when the venue has no cover
+ * photo — the gradient fallback renders instead.
  */
 export interface CoverPhotoView {
-  readonly card: string;
-  readonly banner: string;
+  readonly card: PhotoView;
+  readonly banner: PhotoView;
 }
 
 export type Tier = 'PREMIUM' | 'STANDARD';
@@ -73,7 +97,7 @@ export interface VenueMapView {
    * slot order (cover, sunbeds, bar), possibly empty. Optional because test doubles and older
    * payloads may omit it; the band then falls back to `coverPhoto` alone.
    */
-  readonly photos?: readonly string[];
+  readonly photos?: readonly PhotoView[];
   /**
    * Whether online sales for the selected date are open right now — the server's sales-window
    * verdict (invariant #4), display only; the reserve path enforces the real fence. Optional
@@ -166,7 +190,7 @@ export interface VenueSummary {
    * slot order (cover, sunbeds, bar), possibly empty. Optional because test doubles and older
    * payloads may omit it; the card then falls back to `coverPhoto` alone.
    */
-  readonly photos?: readonly string[];
+  readonly photos?: readonly PhotoView[];
   /**
    * Whether online sales for the selected date are open right now — the server's sales-window
    * verdict (invariant #4), display only; the reserve path enforces the real fence. Optional

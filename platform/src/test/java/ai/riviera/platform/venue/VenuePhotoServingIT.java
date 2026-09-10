@@ -67,7 +67,7 @@ class VenuePhotoServingIT {
 				""").query(Long.class).single();
 		VenueId venue = new VenueId(id);
 		storage.replace(venue, PhotoSlot.COVER, new ProcessedPhoto(List.of(
-				new StoredVariant(PhotoSurface.CARD, new ContentHash(hashHex), "image/jpeg", 640, 384, bytes))));
+				new StoredVariant(PhotoSurface.CARD, 1, new ContentHash(hashHex), "image/jpeg", 640, 384, bytes))));
 		return venue;
 	}
 

@@ -55,7 +55,7 @@ class InMemoryPhotoStorage implements PhotoStorage {
 		store.forEach((key, photo) -> {
 			if (key.venueId() == venueId.value()) {
 				List<VariantMeta> metas = photo.variants().stream()
-						.map(v -> new VariantMeta(v.surface(), v.hash(), v.contentType(), v.width(), v.height()))
+						.map(v -> new VariantMeta(v.surface(), v.scale(), v.hash(), v.contentType(), v.width(), v.height()))
 						.toList();
 				out.add(new PhotoMetadata(key.slot(), metas));
 			}

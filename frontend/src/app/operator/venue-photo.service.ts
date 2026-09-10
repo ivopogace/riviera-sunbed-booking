@@ -7,9 +7,13 @@ import { problemCodeOf } from '../shared/api-error';
 import { apiPhotoUrl } from '../shared/photo-url';
 import { PhotoSlotKey } from '../shared/venue-views';
 
-/** One stored variant of an uploaded photo: its surface, serving URL, and dimensions. */
+/**
+ * One stored rendition of an uploaded photo. A tourist surface appears once per stored density, so
+ * `surface` alone does not key this list — `scale` is the other half.
+ */
 export interface PhotoVariantView {
   readonly surface: 'card' | 'banner' | 'preview';
+  readonly scale: number;
   readonly url: string;
   readonly width: number;
   readonly height: number;
@@ -58,7 +62,7 @@ export class VenuePhotoService {
   }
 }
 
-/** The PREVIEW variant's serving URL out of an upload response, or `null` if absent. */
+/** The PREVIEW rendition's serving URL out of an upload response, or `null` if absent. */
 export function previewUrlOf(upload: PhotoUploadView): string | null {
   return upload.variants.find((variant) => variant.surface === 'preview')?.url ?? null;
 }

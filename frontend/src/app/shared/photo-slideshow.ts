@@ -1,8 +1,10 @@
 import { NgOptimizedImage } from '@angular/common';
 import { booleanAttribute, Component, computed, input, linkedSignal } from '@angular/core';
 
+import { photoSrcset } from './photo-url';
 import { PhotoStepButton } from './photo-step-button';
 import { TouchTarget } from './touch-target';
+import { PhotoView } from './venue-views';
 
 /**
  * How far a finger must travel horizontally before it counts as a step rather than a tap. 40 px is
@@ -69,7 +71,10 @@ const SWIPE_THRESHOLD_PX = 40;
       @for (photo of photos(); track $index; let i = $index) {
         @if (mounted().has(i)) {
           <img
-            [ngSrc]="photo"
+            [ngSrc]="photo.url"
+            [attr.srcset]="srcsetOf(photo)"
+            disableOptimizedSrcset
+            [sizes]="sizes()"
             fill
             [priority]="priority() && i === 0"
             class="[transition:opacity_0.45s_ease] motion-reduce:transition-none"
@@ -147,13 +152,25 @@ const SWIPE_THRESHOLD_PX = 40;
   `,
 })
 export class PhotoSlideshow {
-  readonly photos = input.required<readonly string[]>();
+  readonly photos = input.required<readonly PhotoView[]>();
   /** The subject named in the step controls' accessible labels. */
   readonly name = input('');
   /** Prefix for the slide/dots/controls test hooks. */
   readonly testId = input('photo');
   /** Render the component's own step buttons — only for hosts NOT inside a link/aria-hidden tree. */
   readonly ownControls = input(false, { transform: booleanAttribute });
+
+  /**
+   * What share of the viewport a slide occupies, for the `srcset` fallback. Responsive values only
+   * — a pixel value throws (`NgOptimizedImage` RuntimeError 2952). Left unset it becomes `100vw`,
+   * which over-states every band narrower than the page and makes the browser fetch the widest
+   * candidate, so a host in a grid or a breakout column passes its own.
+   *
+   * <p>Only the fallback: the directive prefixes `auto,` on a lazy image, and a browser honouring
+   * `sizes="auto"` measures the laid-out box instead. Must be constant for a given instance —
+   * `assertNoPostInitInputChange` covers `sizes`.
+   */
+  readonly sizes = input<string>();
 
   /** Letterbox instead of crop — the lightbox's roomier, closer-to-square box can afford to
    *  show a portrait photo whole; the header/card bands stay cropped (the default). */
@@ -181,10 +198,14 @@ export class PhotoSlideshow {
    * <p>Keying on the `photos` input itself would key on array IDENTITY, and `pages/home`'s card
    * views are rebuilt inside a `computed()` — every re-derivation of the venue list handed the
    * component a fresh array holding the same URLs and snapped every card back to slide 1
-   * mid-browse. A join is enough: these are opaque server paths, and a list whose strings all match
-   * in order IS the same slideshow.
+   * mid-browse. Joining the baseline URLs is enough: they are content-addressed, so a list whose
+   * URLs all match in order IS the same slideshow, candidates included.
    */
-  private readonly photosKey = computed(() => this.photos().join('\n'));
+  private readonly photosKey = computed(() =>
+    this.photos()
+      .map((photo) => photo.url)
+      .join('\n'),
+  );
 
   /**
    * The photo currently shown (0-based). Linked to {@link photosKey} so a genuinely changed list
@@ -236,6 +257,11 @@ export class PhotoSlideshow {
     this.stepped.set(true);
     this.mounted.update((shown) => new Set(shown).add(target));
     this.index.set(target);
+  }
+
+  /** `null` rather than a one-entry attribute — with a single candidate, `src` already says it. */
+  protected srcsetOf(photo: PhotoView): string | null {
+    return photoSrcset(photo);
   }
 
   protected slideLabel(i: number): string {

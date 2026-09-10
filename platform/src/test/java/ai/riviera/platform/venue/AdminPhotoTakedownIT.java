@@ -124,7 +124,7 @@ class AdminPhotoTakedownIT {
 	}
 
 	private static StoredVariant variant(PhotoSurface surface, String hashHex) {
-		return new StoredVariant(surface, new ContentHash(hashHex), "image/jpeg", 640, 384, new byte[] {1, 2});
+		return new StoredVariant(surface, 1, new ContentHash(hashHex), "image/jpeg", 640, 384, new byte[] {1, 2});
 	}
 
 	@Test

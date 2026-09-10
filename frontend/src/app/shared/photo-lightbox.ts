@@ -12,6 +12,7 @@ import {
 import { trapFocusWithin } from './focus-trap';
 import { PhotoSlideshow } from './photo-slideshow';
 import { TouchTarget } from './touch-target';
+import { PhotoView } from './venue-views';
 
 /**
  * A modal, larger-scale view of a venue's photos, opened by tapping a thumbnail in either the
@@ -58,6 +59,7 @@ import { TouchTarget } from './touch-target';
         [startIndex]="startIndex()"
         [name]="name()"
         testId="lightbox"
+        sizes="94vw"
         ownControls
         contain
       />
@@ -75,7 +77,7 @@ import { TouchTarget } from './touch-target';
   `,
 })
 export class PhotoLightbox {
-  readonly photos = input.required<readonly string[]>();
+  readonly photos = input.required<readonly PhotoView[]>();
   /** Which photo to open on — the tile/slide the tourist tapped. */
   readonly startIndex = input(0);
   /** The subject named in the dialog's accessible label and the slideshow's step controls. */

@@ -9,6 +9,7 @@ import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@ang
 import { BehaviorSubject } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { photoView, photoViews } from '../../../testing/photo-views';
 import { defaultBookingDate } from '../../shared/booking-date';
 import { VenueSummary } from '../../shared/venue-views';
 import { Home } from './home';
@@ -150,7 +151,10 @@ describe('Home (venue discovery)', () => {
     listRequest().flush([
       {
         ...withCover,
-        coverPhoto: { card: '/api/venues/1/photos/aa01', banner: '/api/venues/1/photos/bb02' },
+        coverPhoto: {
+          card: photoView('/api/venues/1/photos/aa01'),
+          banner: photoView('/api/venues/1/photos/bb02'),
+        },
       },
       noPhoto,
     ]);
@@ -234,16 +238,32 @@ describe('Home (venue discovery)', () => {
     expect(el().querySelector('.sales-closed-chip')).toBeNull();
   });
 
+  it("passes the Discover grid's own sizes to the slideshow, not the 100vw default", async () => {
+    const [venue] = venues();
+    listRequest().flush([{ ...venue, photos: photoViews(['/api/venues/1/photos/aa01']) }]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const img = el()
+      .querySelector('[data-testid="venue-card"]')!
+      .closest('li')!
+      .querySelector('img')!;
+    // vw only (a pixel value throws, RuntimeError 2952), tracking the auto-fill grid's columns.
+    expect(img.getAttribute('sizes')).toBe(
+      'auto, (min-width: 1128px) 30vw, (min-width: 768px) 47vw, 92vw',
+    );
+  });
+
   it('renders the photo slideshow — resolved slide stack, dots, and step controls outside the card link', async () => {
     const [venue] = venues();
     listRequest().flush([
       {
         ...venue,
-        photos: [
+        photos: photoViews([
           '/api/venues/1/photos/aa01',
           '/api/venues/1/photos/cc03',
           '/api/venues/1/photos/dd04',
-        ],
+        ]),
       },
     ]);
     await fixture.whenStable();
