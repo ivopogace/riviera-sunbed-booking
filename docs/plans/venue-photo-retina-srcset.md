@@ -130,45 +130,45 @@ in `node_modules`, not from memory):
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a 3:2 upload wider than 1152 px, when it is processed, then the
+- [x] **AC-1:** Given a 3:2 upload wider than 1152 px, when it is processed, then the
       result carries a scale-1 **and** a scale-2 variant for `CARD` and for `BANNER`, and a
       scale-1 variant only for `PREVIEW`, every one of them a distinct content hash.
       *Seam:* `PhotoProcessor#process` · *Pinned by:*
       `PhotoProcessorTest.rendersARetinaTierForTheTouristSurfacesOnly`
-- [ ] **AC-2:** Given an upload narrower than a target's scale-2 width, when it is
+- [x] **AC-2:** Given an upload narrower than a target's scale-2 width, when it is
       processed, then no scale-2 variant is produced for that surface — the pipeline never
       upscales. *Seam:* `PhotoProcessor#process` · *Pinned by:*
       `PhotoProcessorTest.omitsTheRetinaTierRatherThanUpscaleASmallUpload`
-- [ ] **AC-3:** Given a photo whose `CARD` surface has a scale-1 and a scale-2 variant,
+- [x] **AC-3:** Given a photo whose `CARD` surface has a scale-1 and a scale-2 variant,
       when the tourist catalog is read, then the summary's photo carries `url` equal to the
       scale-1 serving URL and `sources` listing both candidates with their intrinsic pixel
       widths, ascending. *Seam:* `venue.api.VenueCatalog` · *Pinned by:*
       `VenuePhotoReadModelIT.publishesEveryStoredCandidateWithItsIntrinsicWidth`
-- [ ] **AC-4:** Given a photo stored before this slice (scale-1 rows only), when the
+- [x] **AC-4:** Given a photo stored before this slice (scale-1 rows only), when the
       catalog is read, then its `PhotoView` carries exactly one source and the surface still
       renders — a pre-migration photo degrades to a one-candidate `srcset`, never to a
       missing image. *Seam:* `venue.api.VenueCatalog` · *Pinned by:*
       `VenuePhotoReadModelIT.degradesToASingleCandidateForAPreMigrationPhoto`
-- [ ] **AC-5:** Given a `venue_photo_variant` row, when a second row is inserted for the
+- [x] **AC-5:** Given a `venue_photo_variant` row, when a second row is inserted for the
       same `(photo_id, surface, scale)`, then the insert is rejected by the uniqueness
       constraint. *Seam:* the `V56` schema · *Pinned by:*
       `JdbcPhotoStorageIT.rejectsADuplicateSurfaceAndScaleForOnePhoto`
-- [ ] **AC-6:** Given a photo with two candidates, when the slideshow renders it, then the
+- [x] **AC-6:** Given a photo with two candidates, when the slideshow renders it, then the
       `<img>` carries `srcset` listing both URLs with `w` descriptors, carries
       `disableOptimizedSrcset`, and its `src` is still the scale-1 URL. *Seam:* the rendered
       `app-photo-slideshow` DOM · *Pinned by:*
       `photo-slideshow.spec.ts` › `emits every candidate as a w-descriptor srcset`
-- [ ] **AC-7:** Given the Discover grid, when it renders, then each card image carries an
+- [x] **AC-7:** Given the Discover grid, when it renders, then each card image carries an
       explicit `sizes` whose fallback describes the grid's real column fraction, so a
       browser without `sizes="auto"` does not fall back to `100vw` and pick the widest
       candidate for a 330 px card. *Seam:* the rendered `app-photo-slideshow` DOM ·
       *Pinned by:* `home.spec.ts` › `passes the Discover grid's own sizes to the slideshow`
-- [ ] **AC-8:** Given the venue page, when the gallery grid and the lightbox render the
+- [x] **AC-8:** Given the venue page, when the gallery grid and the lightbox render the
       same photo, then both receive the same candidate list and neither hard-codes a
       variant — the browser, not the server, picks per box. *Seam:* the rendered
       `app-photo-gallery-grid` / `app-photo-lightbox` DOM · *Pinned by:*
       `venue-map.spec.ts` › `hands the gallery grid and the lightbox the same candidates`
-- [ ] **AC-9:** Given a venue with photos, when the Discover page and the venue page load
+- [x] **AC-9:** Given a venue with photos, when the Discover page and the venue page load
       in a real browser, then every slideshow `<img>` has a non-empty `srcset` and a
       `sizes`, and the page passes the axe policy unchanged. *Seam:* the rendered pages ·
       *Pinned by:* `frontend/e2e/discover-photos.e2e.ts`
@@ -208,23 +208,31 @@ and stays content-addressed.`
 | R-3 | Retina bytes blow ADR-0008's stated "≈≤120 KB each" cap and the per-venue footprint it sizes the `bytea` decision on | high | med | Confirmed: it does. Measured in phase 0 (see the Generalization-audit log) — worst single rendition 327 KB, per-photo total 135–563 KB by aspect, so a 3-slot venue runs ~0.4–1.7 MB against the ADR's stated ≈360 KB. The 0.62 retina quality is what keeps it there. **Phase 3 updates ADR-0008's figures**; the flip threshold itself is unmoved at Phase-1 venue counts | agent | closed in phase 3 — ADR-0008's figures now state the measured range |
 | R-4 | Widening the uniqueness constraint drops the old one; a bad migration could leave the table with no protection against a duplicate `(photo, surface)` write | low | high | Closed. `V56` adds the new constraint before dropping the old, and AC-5 proves it from the DB side against real Postgres: the two densities of one surface coexist, a second `CARD@2` is rejected | agent | closed in phase 0 |
 | R-5 | `PhotoView` replaces `List<String>` in two published view records, so every consumer of `photos` and `coverPhoto` breaks at once — backend read models, the frontend mirror, three components and their specs | high | med | Closed. 44 specs broke at once as predicted. Kept to fixture churn by wrapping inside each spec's own `create` helper and adding `src/testing/photo-views.ts`, so every existing assertion comparing a rendered `src` to a URL constant reads unchanged | agent | closed in phase 2 |
-| R-6 | Flyway `V56` collides with a concurrently-merged branch | low | med | Still the only open PR. Re-check before merge; if another claims `V56` first, this branch renumbers | agent | open — re-check at merge |
+| R-6 | Flyway `V56` collides with a concurrently-merged branch | low | med | Closed. Re-checked at merge: `V55` is still the maximum on `main`, `V56` is unclaimed, and this remained the only open PR for the life of the slice | agent | closed at merge |
 | R-7 | A module-boundary leak: the new view records land somewhere other than `venue/vocabulary/` | low | med | Closed. Both records are in `venue/vocabulary/`; the structural net ran green after phases 0 and 1 | agent | closed in phase 1 |
 
 ## Open questions / Assumptions
 
-- **Assumption:** every browser that matters honours a `w`-descriptor `srcset` on an
-  `<img>` that also carries `src` — standard HTML, but the interaction with the directive's
-  own `src` write is what phase 2's rendered-DOM test actually proves. — *Owner:* agent ·
-  *Resolves by:* phase 2 (AC-6)
-- **Assumption:** the scale-2 JPEG quality of 0.62 is visually acceptable on a high-density
-  display. Not verifiable in this sandbox; the byte measurement in phase 0 is, and the
-  quality choice is recorded so it can be revisited. — *Owner:* agent · *Resolves by:*
-  phase 0
-- **Open question:** should the surface vocabulary eventually collapse into one per-photo
-  width ladder, deleting `CARD_SLIDESHOW`/`BANNER_SLIDESHOW` and `coverOf`'s complete-pair
-  guard? Out of scope here (Non-goals). — *Owner:* maintainer · *Resolves by:* a follow-up
-  issue opened at close-out if the lightbox's remaining DPR-2 softness matters
+None open. The one deferred decision is **#1059** — whether the surface vocabulary should
+collapse into a per-photo width ladder — filed at close-out per Non-goals.
+
+### Resolved
+
+- **Assumption (phase 2):** a `w`-descriptor `srcset` coexists with the directive's own `src`
+  write. Confirmed in a real browser, not only jsdom — AC-9 reads both attributes off the
+  rendered `<img>` on the Discover page and the venue page, and the whole 544-test mocked
+  suite passes.
+- **Assumption (phase 3):** the `auto,` prefix appears on every `sizes`. **False as stated,
+  and the e2e caught it**: the directive prefixes `auto,` only on a lazy image, so the
+  `priority` gallery hero renders the bare value while the lazy tiles carry the prefix. The
+  ACs assert the real behaviour per surface rather than one rule for all.
+- **Assumption (phase 0):** the scale-2 JPEG quality of 0.62 keeps the bytes acceptable.
+  Measured — worst single rendition 327 KB, per-photo 135–563 KB by aspect. Visual
+  acceptability on a high-density display is not verifiable in this sandbox; the constant is
+  named (`RETINA_JPEG_QUALITY`) so it is one edit to revisit.
+- **Assumption (review gate):** the retina guard could reason about the raw header
+  dimensions. **False, and the review gate caught it** — they are pre-rotation while the
+  resize applies EXIF orientation. Finding F-1.
 
 ## Availability & concurrency (invariant #2)
 
@@ -303,10 +311,10 @@ attribute stays authoritative.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, re-verifying`
+**Stage pointer:** `DONE — merged via PR #1058`
 
-**Next action:** Re-run the scoped backend + frontend suites and the structural net, push the
-review-fix commit, then re-check CI and the Sonar gate on the new head.
+**Next action:** None. The slice is complete. This plan doc is retired at the next close-out of
+any kind (`riviera-docs-freshness` § *Plan-doc retirement*); nothing durable cites its path.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -394,28 +402,28 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `StoredVariant.java`, `JdbcPhotoStorage.java`, `PhotoMetadata.java` · Test
 `PhotoProcessorTest.java`, `JdbcPhotoStorageIT.java`
 
-- [ ] **Step 1: Write the failing test** — `PhotoProcessorTest.rendersARetinaTierForTheTouristSurfacesOnly`
+- [x] **Step 1: Write the failing test** — `PhotoProcessorTest.rendersARetinaTierForTheTouristSurfacesOnly`
       and `.omitsTheRetinaTierRatherThanUpscaleASmallUpload` (AC-1, AC-2), asserting on the
       variant list `PhotoProcessor#process` returns: five variants for a wide 3:2 upload
       (`CARD`@1, `CARD`@2, `BANNER`@1, `BANNER`@2, `PREVIEW`@1) with distinct hashes, and no
       `@2` rows for an upload narrower than the `@2` target.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*PhotoProcessorTest*"`
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*PhotoProcessorTest*"`
       → FAIL (no `scale` on `StoredVariant`).
-- [ ] **Step 3: Minimal implementation** — `StoredVariant` gains `int scale`; `PhotoProcessor`
+- [x] **Step 3: Minimal implementation** — `StoredVariant` gains `int scale`; `PhotoProcessor`
       renders `boundsFor(surface, scale)` (scale-2 = the scale-1 box doubled) at
       `RETINA_JPEG_QUALITY = 0.62` for `CARD` and `BANNER` only, skipping a scale-2 render
       whose target exceeds the source's own dimensions; `V56` adds
       `scale SMALLINT NOT NULL DEFAULT 1`, its `CHECK (scale IN (1, 2))`, the new
       `UNIQUE (photo_id, surface, scale)` **before** dropping
       `venue_photo_variant_surface_uniq`; `JdbcPhotoStorage` writes and reads the column.
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*PhotoProcessorTest*"`
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*PhotoProcessorTest*"`
       then `--tests "*JdbcPhotoStorageIT*"` → PASS. Record the measured byte size of each
       variant in the Generalization-audit log (feeds R-3 and phase 3's ADR update).
-- [ ] **Step 5: Generalization-audit pass** — population: every reader of
+- [x] **Step 5: Generalization-audit pass** — population: every reader of
       `venue_photo_variant`. Enumerate with
       `grep -rn "venue_photo_variant" platform/src --include=*.java --include=*.sql`.
-- [ ] **Step 6: Commit** — `git commit -m "Render a retina tier for the tourist photo surfaces (#1041)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Render a retina tier for the tourist photo surfaces (#1041)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 > After this phase, run the structural net —
 > `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*DomainPurityArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*RetiredSetExclusionArchitectureTests*"`.
@@ -428,19 +436,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `VenueSummaryView.java`, `VenueMapView.java`, `JdbcVenueCatalog.java`,
 `PhotoUploadResponse.java`, `VenuePhotoService.java` · Test `VenuePhotoReadModelIT.java`
 
-- [ ] **Step 1: Write the failing test** — `VenuePhotoReadModelIT.publishesEveryStoredCandidateWithItsIntrinsicWidth`
+- [x] **Step 1: Write the failing test** — `VenuePhotoReadModelIT.publishesEveryStoredCandidateWithItsIntrinsicWidth`
       and `.degradesToASingleCandidateForAPreMigrationPhoto` (AC-3, AC-4).
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*VenuePhotoReadModelIT*"` → FAIL.
-- [ ] **Step 3: Minimal implementation** — the two new `vocabulary/` records;
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*VenuePhotoReadModelIT*"` → FAIL.
+- [x] **Step 3: Minimal implementation** — the two new `vocabulary/` records;
       `JdbcVenueCatalog`'s variant query selects `scale`, `width` and groups per
       `(slot, surface)` into a `PhotoView`; `slideshowOf` returns `List<PhotoView>`;
       `coverOf` keeps its complete-pair guard on the scale-1 rows.
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*VenuePhotoReadModelIT*"`,
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*VenuePhotoReadModelIT*"`,
       then the `venue` package, then the structural net.
-- [ ] **Step 5: Generalization-audit pass** — population: every consumer of
+- [x] **Step 5: Generalization-audit pass** — population: every consumer of
       `VenueSummaryView#photos` / `VenueMapView#photos` / `CoverPhotoView`.
-- [ ] **Step 6: Commit** — `git commit -m "Publish venue photos as their density candidates (#1041)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Publish venue photos as their density candidates (#1041)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -450,23 +458,23 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `photo-gallery-grid.ts`, `photo-lightbox.ts`, `home.ts|.html`, `venue-map.ts|.html`,
 `venue.service.ts` · Test the matching `.spec.ts` files
 
-- [ ] **Step 1: Write the failing test** — `photo-slideshow.spec.ts` › `emits every candidate
+- [x] **Step 1: Write the failing test** — `photo-slideshow.spec.ts` › `emits every candidate
       as a w-descriptor srcset` (AC-6), `home.spec.ts` › `passes the Discover grid's own
       sizes to the slideshow` (AC-7), `venue-map.spec.ts` › `hands the gallery grid and the
       lightbox the same candidates` (AC-8). Assert on rendered attributes, never on the class list.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- photo-slideshow` → FAIL.
-- [ ] **Step 3: Minimal implementation** — mirror the two records in `venue-views.ts`;
+- [x] **Step 2: Run it, verify it fails** — `npm test -- photo-slideshow` → FAIL.
+- [x] **Step 3: Minimal implementation** — mirror the two records in `venue-views.ts`;
       `photoSrcset(photo)` joins `sources` as `"<url> <width>w"`; every `<img ngSrc>` in the
       three components gains `[attr.srcset]` and `disableOptimizedSrcset`; `PhotoSlideshow`
       and `PhotoGalleryGrid` gain a `sizes` input (vw-only, no pixel values — RuntimeError
       2952); `home.html` passes the Discover grid's real fraction and `venue-map.html` each
       band's.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- photo-slideshow photo-gallery-grid photo-lightbox home venue-map`,
+- [x] **Step 4: Run it, verify it passes** — `npm test -- photo-slideshow photo-gallery-grid photo-lightbox home venue-map`,
       then `npm run lint && npm run format:check`.
-- [ ] **Step 5: Generalization-audit pass** — population: every `ngSrc` in the tree.
+- [x] **Step 5: Generalization-audit pass** — population: every `ngSrc` in the tree.
       Enumerate with `grep -rn "ngSrc" frontend/src --include=*.ts --include=*.html`.
-- [ ] **Step 6: Commit** — `git commit -m "Let the browser pick the photo candidate that fits (#1041)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Let the browser pick the photo candidate that fits (#1041)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -475,17 +483,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Modify `frontend/e2e/discover-photos.e2e.ts`,
 `docs/adr/ADR-0008-venue-photo-storage.md`, `RESPONSIBILITIES.md`
 
-- [ ] **Step 1: Write the failing test** — extend `discover-photos.e2e.ts` for AC-9: every
+- [x] **Step 1: Write the failing test** — extend `discover-photos.e2e.ts` for AC-9: every
       slideshow `<img>` has a non-empty `srcset` and a `sizes`, on both the Discover page and
       the venue page, with the axe policy unchanged (`expectNoSeriousAxeViolations`).
-- [ ] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- discover-photos` → FAIL.
-- [ ] **Step 3: Minimal implementation** — mock fixtures updated to the new payload shape.
-- [ ] **Step 4: Run it, verify it passes** — `npm run test:e2e:a11y -- discover-photos` → PASS.
-- [ ] **Step 5: Docs** — fold phase 0's measured byte sizes into ADR-0008's serving-discipline
+- [x] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- discover-photos` → FAIL.
+- [x] **Step 3: Minimal implementation** — mock fixtures updated to the new payload shape.
+- [x] **Step 4: Run it, verify it passes** — `npm run test:e2e:a11y -- discover-photos` → PASS.
+- [x] **Step 5: Docs** — fold phase 0's measured byte sizes into ADR-0008's serving-discipline
       figures and its flip threshold; check `RESPONSIBILITIES.md` §`venue`'s photo line.
       This is the `riviera-docs-freshness` sweep's input, not a substitute for it.
-- [ ] **Step 6: Commit** — `git commit -m "Pin the rendered srcset in e2e and refresh ADR-0008's figures (#1041)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Pin the rendered srcset in e2e and refresh ADR-0008's figures (#1041)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -504,32 +512,38 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `./gradlew test --tests "*PhotoProcessorTest*"` → PASS.
-- [ ] **AC-2:** `./gradlew test --tests "*PhotoProcessorTest*"` → PASS.
-- [ ] **AC-3:** `./gradlew test --tests "*VenuePhotoReadModelIT*"` → PASS.
-- [ ] **AC-4:** `./gradlew test --tests "*VenuePhotoReadModelIT*"` → PASS.
-- [ ] **AC-5:** `./gradlew test --tests "*JdbcPhotoStorageIT*"` → PASS.
-- [ ] **AC-6:** `npm test -- photo-slideshow` → PASS.
-- [ ] **AC-7:** `npm test -- home` → PASS.
-- [ ] **AC-8:** `npm test -- venue-map` → PASS.
-- [ ] **AC-9:** `npm run test:e2e:a11y -- discover-photos` → PASS.
+- [x] **AC-1:** `./gradlew test --tests "*PhotoProcessorTest*"` → PASS.
+- [x] **AC-2:** `./gradlew test --tests "*PhotoProcessorTest*"` → PASS.
+- [x] **AC-3:** `./gradlew test --tests "*VenuePhotoReadModelIT*"` → PASS.
+- [x] **AC-4:** `./gradlew test --tests "*VenuePhotoReadModelIT*"` → PASS.
+- [x] **AC-5:** `./gradlew test --tests "*JdbcPhotoStorageIT*"` → PASS.
+- [x] **AC-6:** `npm test -- photo-slideshow` → PASS.
+- [x] **AC-7:** `npm test -- home` → PASS.
+- [x] **AC-8:** `npm test -- venue-map` → PASS.
+- [x] **AC-9:** `npm run test:e2e:a11y -- discover-photos` → PASS.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — citing `merged via PR #NN`.
+- [ ] **The review gate ran in full** — left unticked deliberately. It ran via rung 1
+      (`code-review:code-review`) with `riviera-review-overlay` layered on, over the
+      PR-verified range, and produced nine findings, all fixed and re-verified. But two of
+      six dispatched review dimensions hung past an hour and never reported: the independent
+      bug scan — substantially covered by the git-history pass, which is what found F-1 — and
+      prior-PR feedback, which is **genuinely unreviewed**. Stated in the PR's review-gate
+      comment rather than ticked.
