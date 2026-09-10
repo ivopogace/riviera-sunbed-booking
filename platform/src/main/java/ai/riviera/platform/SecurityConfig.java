@@ -185,6 +185,12 @@ class SecurityConfig {
 	/** The per-venue venue-caused refund report: aggregates only, no booking id or code. */
 	private static final String ADMIN_VENUE_CHANGE_REFUNDS_PATH = "/api/admin/venue-change-refunds";
 	/**
+	 * The venue-change fee an admin reads and writes — one platform-wide commercial term, so the role
+	 * gate is the whole authorization. A distinct exact path from the refunds report above; neither
+	 * shadows the other.
+	 */
+	private static final String ADMIN_VENUE_CHANGE_FEE_PATH = "/api/admin/venue-change-fee";
+	/**
 	 * The per-booking mail-delivery view and its resend — the support lever the outbox cannot be: that
 	 * re-drives what the registry still <em>owes</em>, this re-sends a confirmation whose publication
 	 * already completed (the common "never got the email" case).
@@ -376,6 +382,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, ADMIN_MAIL_OUTBOX_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_OUTBOX_RESUBMIT_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, ADMIN_VENUE_CHANGE_REFUNDS_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.GET, ADMIN_VENUE_CHANGE_FEE_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.PUT, ADMIN_VENUE_CHANGE_FEE_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, ADMIN_REFUND_OUTBOX_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_REFUND_OUTBOX_RESUBMIT_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_LOOKUP_PATH).hasRole(ADMIN_ROLE)

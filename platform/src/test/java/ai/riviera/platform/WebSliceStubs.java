@@ -94,6 +94,8 @@ import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
 import ai.riviera.platform.payout.application.BatchStatusOutcome;
 import ai.riviera.platform.payout.application.DailyTakingsView;
 import ai.riviera.platform.payout.application.PayoutReport;
+import ai.riviera.platform.payout.application.VenueChangeFeeAmount;
+import ai.riviera.platform.payout.application.VenueChangeFeeSetting;
 import ai.riviera.platform.payout.application.VenueLedger;
 import ai.riviera.platform.payout.application.ViewDailyTakings;
 import ai.riviera.platform.payout.application.ViewPayoutLedger;
@@ -846,6 +848,21 @@ class WebSliceStubs {
 	@Bean
 	ai.riviera.platform.payout.application.ViewVenueChangeRefunds viewVenueChangeRefunds() {
 		return List::of;
+	}
+
+	@Bean
+	VenueChangeFeeSetting venueChangeFeeSetting() {
+		return new VenueChangeFeeSetting() {
+			@Override
+			public VenueChangeFeeAmount current() {
+				return new VenueChangeFeeAmount(500L, "EUR");
+			}
+
+			@Override
+			public VenueChangeFeeAmount change(long minorUnits) {
+				return new VenueChangeFeeAmount(minorUnits, "EUR");
+			}
+		};
 	}
 
 	@Bean

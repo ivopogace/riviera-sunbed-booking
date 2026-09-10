@@ -68,19 +68,19 @@ remote branch stands in for `feature/venue-change-fee-setting`.
   carries `{"amountMinor": 700}` and an `X-Audit-Reason`, then the response is `200` with the
   new amount and exactly one admin-audit row records the write with that reason. *Seam:*
   `PUT /api/admin/venue-change-fee` · *Pinned by:*
-  `AdminVenueChangeFeeControllerIT.writesTheFeeAndLeavesAnAuditRow`
+  `AdminVenueChangeFeeIT.writesTheFeeAndLeavesAnAuditRow`
 - [ ] **AC-5:** Given an authenticated OPERATOR who is not an admin, when the same `PUT` is
   sent, then the response is `403` and the stored amount is unchanged. *Seam:*
   `PUT /api/admin/venue-change-fee` · *Pinned by:*
-  `AdminVenueChangeFeeControllerIT.refusesANonAdmin`
+  `AdminVenueChangeFeeIT.refusesANonAdmin`
 - [ ] **AC-6:** Given an admin, when the `PUT` carries a negative amount, a missing amount, or
   one above the stored bound, then the response is `400 INVALID_REQUEST` and the stored amount
   is unchanged. *Seam:* `PUT /api/admin/venue-change-fee` · *Pinned by:*
-  `AdminVenueChangeFeeControllerIT.rejectsAnOutOfRangeAmount`
+  `AdminVenueChangeFeeIT.rejectsAnOutOfRangeAmount`
 - [ ] **AC-7:** Given an admin, when `GET /api/admin/venue-change-fee` is read, then it answers
   the stored amount, its ISO currency and when it last changed. *Seam:*
   `GET /api/admin/venue-change-fee` · *Pinned by:*
-  `AdminVenueChangeFeeControllerIT.readsTheStoredFee`
+  `AdminVenueChangeFeeIT.readsTheStoredFee`
 - [ ] **AC-8:** Given the Venue changes tab rendered with a fee of €5, when the admin types
   `7`, arms the change and confirms, then one `PUT` carries `700` and the card renders €7 from
   the response without re-fetching the report. *Seam:* the `AdminVenueChanges` component's
@@ -216,7 +216,7 @@ rejected half of the resolved open question above).
   `VenueChangeFeeAmount` constructor, and the request DTO.
 - **Refund policy applied:** unchanged (ADR-0005 / invariant #10).
 - **Pinning tests:** `BookingCancelledPayoutListenerTest`, `JdbcVenueChangeFeeSettingIT`,
-  `AdminVenueChangeFeeControllerIT`.
+  `AdminVenueChangeFeeIT`.
 
 ## Angular — frontend surfaces touched
 
@@ -252,16 +252,16 @@ number. Rejected: a new `Fees` tab in the Money group, which would split the two
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** add the role-gated `/api/admin/venue-change-fee` read and write, with the IT that
-pins the audit row and the validation refusals.
+**Next action:** add the fee card to the Venue changes tab with a Signal Forms editor, and extend the
+tab's four specs.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Table, port, JDBC adapter | ✅ | `6d0239a9` |
-| 1 — Listener and rate read through the port | ✅ | |
-| 2 — Admin read/write endpoint | | |
+| 1 — Listener and rate read through the port | ✅ | `9e987086` |
+| 2 — Admin read/write endpoint | ✅ | |
 | 3 — Admin console fee card | | |
 | 4 — e2e, docs, ADR-0021 amendment, close-out | | |
 
@@ -288,8 +288,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/payout/adapter/in/PayoutFeeConfig.java` — the property bean becomes the seed
 - `platform/src/main/java/ai/riviera/platform/payout/adapter/in/VenueChangeFeeProperties.java` — Javadoc: seed and fallback, not the source of truth
 - `platform/src/main/resources/application.properties` — the commented property line describes the seed
+- `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` — the ADMIN gate for the new read and write
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — the web slices' stub for the new port
 - `platform/src/test/java/ai/riviera/platform/payout/adapter/out/JdbcVenueChangeFeeSettingIT.java` — read, write, fallback, no-reprice, CHECK rejections
-- `platform/src/test/java/ai/riviera/platform/payout/adapter/in/AdminVenueChangeFeeControllerIT.java` — the HTTP seam: read, write, role gate, audit row, validation
+- `platform/src/test/java/ai/riviera/platform/payout/AdminVenueChangeFeeIT.java` — the HTTP seam: read, write, role gate, audit row, validation
 - `platform/src/test/java/ai/riviera/platform/payout/adapter/in/BookingCancelledPayoutListenerTest.java` — charges the stored amount
 - `platform/src/test/java/ai/riviera/platform/payout/adapter/in/VenueChangeFeePropertiesTest.java` — the seed's guards, including the new bound
 - `frontend/src/app/admin/admin-venue-changes.ts` — the fee card and its confirm-in-place editor
@@ -420,7 +422,7 @@ void chargesTheStoredFee() {
 ## Phase 2 — Admin read/write endpoint
 
 **Files:** Create `AdminVenueChangeFeeController.java`, `VenueChangeFeeView.java`,
-`SetVenueChangeFeeRequest.java`, `AdminVenueChangeFeeControllerIT.java`
+`SetVenueChangeFeeRequest.java`, `AdminVenueChangeFeeIT.java`
 
 - [ ] **Step 1: Write the failing test** — the IT covering AC-4 through AC-7: read, write plus its audit row, `403` for an operator, `400` for a negative, missing and above-bound amount.
 
@@ -485,6 +487,7 @@ void chargesTheStoredFee() {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-10 | phase 2 — `AdminSurfaceRoleGateTest` context failure | Every web-slice test whose context must supply a module bean a `@RestController` constructor asks for | `grep -rl "WebSliceStubs" platform/src/test/java` | 30 slice tests, all served by the one `WebSliceStubs` | Fixed centrally: one stub bean there covers the whole population, so no per-test edit |
 
 ---
 
