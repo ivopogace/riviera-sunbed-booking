@@ -172,9 +172,7 @@
                     class="photo-sun absolute top-[42%] left-1/2 size-[52px] rounded-[50%] bg-(image:--riv-sun-grad) shadow-[0_0_30px_10px_rgba(255,199,105,0.4)] [transform:translate(-50%,-50%)]"
                   ></span>
                 }
-                <span
-                  class="photo-scrim pointer-events-none absolute inset-0 bg-(image:--riv-photo-scrim)"
-                ></span>
+                <span appPhotoScrim></span>
                 <!-- The SEMANTIC chips (#705): platform claims about how booking will go, wearing the inverted accent pill (opaque fill — see shared/semantic-chip.ts). One flex row instead of two absolute corners: flex-wrap stacks the closed chip under the mode chip on a near-minimum-width card, where the two pills would otherwise collide. card.ariaLabel carries the closed state to AT — this band is aria-hidden. -->
                 <span
                   class="absolute inset-x-[14px] top-[14px] flex flex-wrap items-start justify-between gap-[7px]"

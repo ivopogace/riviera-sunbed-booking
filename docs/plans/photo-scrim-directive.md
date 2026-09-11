@@ -99,10 +99,10 @@ for `feature/photo-scrim-directive` (`riviera-sdlc` § Remote / cloud session ad
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Silent visual drift: a class is dropped or reordered in the move and the class list still "looks right" | med | high | `riviera-tailwind`'s hard rule — AC-4 diffs *computed* styles in a real browser on both surfaces, and phase 0 lands it green against the OLD markup first, so it is a characterization test, not a post-hoc rationalization | claude | closed — phase 0 baseline green against the old spans |
-| R-2 | A live test hook breaks: `home.spec.ts` and `discover-photos.e2e.ts` query `.photo-scrim`; `venue-map.spec.ts` asserts `.photo-band` innerHTML contains `riv-photo-scrim` | high | med | rule 2 keeps `photo-scrim` first on the host; the innerHTML assertion keeps passing because Angular writes static host classes into the real `class` attribute — and phase 2 *adds* an element-level assertion beside it rather than replacing the innerHTML proof | claude | open |
+| R-2 | A live test hook breaks: `home.spec.ts` and `discover-photos.e2e.ts` query `.photo-scrim`; `venue-map.spec.ts` asserts `.photo-band` innerHTML contains `riv-photo-scrim` | high | med | rule 2 keeps `photo-scrim` first on the host; the innerHTML assertion keeps passing because Angular writes static host classes into the real `class` attribute — and phase 2 *adds* an element-level assertion beside it rather than replacing the innerHTML proof | claude | closed — all three hooks green after the swap |
 | R-3 | Bundling `absolute inset-0` into a surface directive conflicts with rule 3's stylesheet-order argument if a future call site wants different geometry | low | low | rule 3 names border-radius and padding, not position; both call sites are full-bleed and full-bleed *is* the scrim's identity. The reason is written at the declaration so a third call site wanting other geometry re-opens it deliberately rather than by drift | claude | closed — reason recorded in `photo-scrim.ts`'s NOTE |
 | R-4 | `aria-hidden` on the directive host hides something that should be exposed | low | med | the scrim is paint-only, has no content and is never focusable; both call sites already set it. AC-1 pins it and the e2e axe pass on both routes stays green | claude | closed — AC-1 pins it; axe stays green in phase 2 |
-| R-5 | Tailwind stops generating a utility because the class now lives in a `.ts` host string rather than a template | low | high | `riviera-tailwind`'s ICON-5 note records that a host `class` string is scanned by Tailwind — the same mechanism `card-glass.ts` and `panel-glass.ts` already rely on. AC-4's computed `background-image` would catch a missing utility outright | claude | open — settles at phase 2's e2e run |
+| R-5 | Tailwind stops generating a utility because the class now lives in a `.ts` host string rather than a template | low | high | `riviera-tailwind`'s ICON-5 note records that a host `class` string is scanned by Tailwind — the same mechanism `card-glass.ts` and `panel-glass.ts` already rely on. AC-4's computed `background-image` would catch a missing utility outright | claude | closed — AC-4 green after the swap, every utility generated |
 
 ## Open questions / Assumptions
 
@@ -156,15 +156,15 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR — marking ready for review`
 
-**Next action:** Extend `home.spec.ts` / `venue-map.spec.ts`, then swap both call sites to `appPhotoScrim`.
+**Next action:** Check this push's CI run, then mark PR #1068 ready for review to make the Review and Sonar gates due.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Pin the no-drift baseline (characterization e2e against the OLD markup) | ✅ | this commit |
 | 1 — The directive, red-green | ✅ | this commit |
-| 2 — Swap both call sites, tighten the map assertion, generalization audit | ⏳ | |
+| 2 — Swap both call sites, tighten the map assertion, generalization audit | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -248,28 +248,31 @@ That is what makes it evidence in phase 2 rather than a description of whatever 
 **Files:** Modify `frontend/src/app/pages/home/home.html|.ts|.spec.ts` ·
 `frontend/src/app/venue/venue-map.html|.ts|.spec.ts`
 
-- [ ] **Step 1: Extend the two surface specs first** — `home.spec.ts` asserts the card's
+- [x] **Step 1: Extend the two surface specs first** — `home.spec.ts` asserts the card's
   `.photo-scrim` is pointer-transparent; `venue-map.spec.ts` gains a `.photo-band .photo-scrim`
   element assertion beside (not replacing) its innerHTML proof. Both pass against the old
-  markup too — they describe the surface, not the mechanism.
+  markup too — they describe the surface, not the mechanism. **Verified: 2 files / 134 tests
+  passed against the old spans before any markup changed.**
 
-- [ ] **Step 2: Swap the markup** — each span becomes `<span appPhotoScrim></span>`; add the
+- [x] **Step 2: Swap the markup** — each span becomes `<span appPhotoScrim></span>`; add the
   `PhotoScrim` import to `home.ts` and `venue-map.ts`.
 
-- [ ] **Step 3: Run the scoped suites** — `npm test -- photo-scrim home venue-map` → PASS, then
-  `npm run lint && npm run format:check`.
+- [x] **Step 3: Run the scoped suites** —
+  `npx ng test --include "src/app/pages/home" --include "src/app/venue" --include "src/app/shared"`
+  → **PASS (93 files / 1132 tests)**, then `npm run lint && npm run format:check` → both clean.
 
-- [ ] **Step 4: Run the no-drift proof** —
-  `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- discover-photos`
-  → PASS, unchanged from phase 0. This is AC-4.
+- [x] **Step 4: Run the no-drift proof** —
+  `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts discover-photos`
+  → **PASS (9 passed)**, the computed recipe unchanged from the phase-0 baseline. This is AC-4, and
+  it also settles R-5: Tailwind generated every utility from the directive's host string.
 
-- [ ] **Step 5: Generalization-audit pass** — population: *every element in a tourist template
+- [x] **Step 5: Generalization-audit pass** — population: *every element in a tourist template
   that hand-writes a multi-class decorative overlay recipe more than once*. Enumerate, judge each,
-  record the finding command in the log below.
+  record the finding command in the log below. **Result: the scrim was the only member.**
 
-- [ ] **Step 6: Commit** — `git commit -m "Share the photo scrim as a directive across both bands (#1066)"`
+- [x] **Step 6: Commit** — `git commit -m "Share the photo scrim as a directive across both bands (#1066)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -277,6 +280,7 @@ That is what makes it evidence in phase 2 rather than a description of whatever 
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-11 | phase 2 — the pattern this slice introduces (a duplicated decorative overlay shared as a directive) | **A decorative overlay written out verbatim in more than one template AND carrying a behavioral utility whose absence renders identically** — that invisibility is the mechanism the #1044→#1064 divergence needed, not "two similar class strings". Enumerated in two passes: a sweep of all 193 app templates (`.html` + inline `template:`) for any ≥3-utility `class` string repeated across files returned **89** hits, almost all incidental typography/layout (`flex flex-col gap-3`) where divergence is visible on sight; narrowing to the behavioral utilities that make divergence silent left **7**. | pass 1: a Python sweep over `git ls-files 'frontend/src/app/**/*.html' 'frontend/src/app/**/*.ts'` bucketing every `class="…"` by its normalised text; pass 2: `grep -rn "pointer-events-none\|select-none" frontend/src/app --include="*.html" --include="*.ts"` | 7 | **1 fixed (this slice):** the two photo-band scrims. **6 skipped, each with a reason:** `app.html`'s two `riv-blob` spans are two members of a family, not one reused surface — they share a tail but differ in position, size, animation and token, so a directive would leave most of each string at the call site, and they are adjacent in one file where divergence is visible in a single read; `shared/photo-slideshow.ts`'s chrome backing, `shared/beach-map-canvas.html`'s `select-none` and `home.html`'s step-button overlay are one site each, so there is nothing to diverge from. **Near-miss noted, not acted on:** the empty-state sun in `home.html` and `venue-map.html` shares `--riv-sun-grad` but not its class string (different size, shadow, and two spellings of the same centering transform) — already shared at the token layer, which that token's own "THE ONE SUN" declaration owns, and the differences are deliberate rather than silent. |
 
 ---
 
