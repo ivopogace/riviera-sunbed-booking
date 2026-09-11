@@ -137,8 +137,9 @@ affordable again.
   `getBoundingClientRect` rather than derived from the markup. The viewer drew from the 8:3
   `BANNER` box, which cannot carry a tall image — a 2:3 upload stored 640 × 960 where the paint
   needs 1200 × 1800. Because the box is near-square the binding axis flips with the aspect at 11:9:
-  below it the height binds, above it the width. The footprint figures above were re-taken across
-  2:3 to 8:3 on one generator so the before and after are comparable. Three decisions ride with it:
+  below it the height binds, above it the width — which is also where the box fills, and so where
+  the figures above take their ceiling. Those were re-taken on one generator so the before and
+  after are comparable. Three decisions ride with it:
   - **The viewer reads its own candidate list**, not a widened shared one, so a 2200px-wide
     candidate is never offered to the beach-map band or the gallery grid.
   - **A phone pays for that.** With a `LIGHTBOX` row present the list holds one candidate, so a
