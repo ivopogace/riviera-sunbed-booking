@@ -38,7 +38,7 @@ The two routes to that outcome are not comparable in cost:
 | | Ladder remodel | `LIGHTBOX` surface (#1070) |
 |---|---|---|
 | Portrait lightbox at DPR 2 | fixed | fixed |
-| Files touched | every photo read model, both view records, the frontend mirror, a migration | one migration, one processor constant, one read-model line |
+| Files touched | every photo read model, both view records, the frontend mirror, a migration | a migration, the processor's bound, one view record, one read-model preference list, the frontend mirror (measured on #1070 as shipped) |
 | Other surfaces disturbed | all of them | none |
 | Rendered pixels changed by the remodel itself | none | n/a |
 

@@ -265,7 +265,7 @@ the banner list it already computes. No deviation. No `sizes` value changes (R-9
 
 **Stage pointer:** `PR #1074 — CI green, Sonar green, review gate run; fix round pushed`
 
-**Next action:** Re-check CI on the fix commit, then merge and run the close-out.
+**Next action:** Merge once CI reports green on this head, then run the close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -307,6 +307,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/venue/vocabulary/VenueMapView.java` — the lightbox candidate list
 - `platform/src/main/java/ai/riviera/platform/venue/application/PhotoProcessor.java` — the bound, the skip rule, the re-read Javadoc
 - `platform/src/main/java/ai/riviera/platform/venue/application/StoredVariant.java` — the re-read Javadoc
+- `platform/src/main/java/ai/riviera/platform/venue/application/ProcessedPhoto.java` — its "fixed set" claim, which a conditional baseline ends
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenueCatalog.java` — the `LIGHTBOX_SLIDESHOW` preference + the second `slideshowOf` call
 - `platform/src/test/java/ai/riviera/platform/venue/application/PhotoProcessorTest.java` — AC-1/2/3
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenuePhotoServiceTest.java` — AC-10
