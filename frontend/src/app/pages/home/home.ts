@@ -17,6 +17,7 @@ import { focusMover } from '../../shared/focus-after-render';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
+import { PhotoScrim } from '../../shared/photo-scrim';
 import { PhotoSlideshow } from '../../shared/photo-slideshow';
 import { PhotoStepButton } from '../../shared/photo-step-button';
 import { slideshowPhotos } from '../../shared/photo-url';
@@ -93,6 +94,7 @@ function closedStateText(
     RouterLink,
     RetryButton,
     PanelGlass,
+    PhotoScrim,
     PhotoSlideshow,
     PhotoStepButton,
     CardGlass,

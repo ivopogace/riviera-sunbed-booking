@@ -23,6 +23,7 @@ import { formatBookingDate } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
 import { PhotoGalleryGrid } from '../shared/photo-gallery-grid';
 import { PhotoLightbox } from '../shared/photo-lightbox';
+import { PhotoScrim } from '../shared/photo-scrim';
 import { PhotoSlideshow } from '../shared/photo-slideshow';
 import { slideshowPhotos } from '../shared/photo-url';
 import { isRated, ratingScore, reviewsLabel } from '../shared/rating';
@@ -118,6 +119,7 @@ interface VenueHeader {
     PanelGlass,
     PhotoGalleryGrid,
     PhotoLightbox,
+    PhotoScrim,
     PhotoSlideshow,
     CardGlass,
     LoadAnnouncer,

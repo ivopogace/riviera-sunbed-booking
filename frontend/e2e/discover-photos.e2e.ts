@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { openShellOverlay } from './support/shell';
@@ -238,6 +238,51 @@ test('the banner scrim is paint only — the band’s own control owns every tou
   await page.goto('/venues/1');
   await expect(page.getByTestId('map-banner-empty')).toBeVisible();
   expect(await ownerAt(0.2, 0.8)).toBe('slideshow');
+});
+
+test('the photo scrim computes one identical recipe on the Discover card and the map banner (#1066)', async ({
+  page,
+}) => {
+  // Computed styles, never the class list: a class list cannot see a utility Tailwind never generated.
+  const recipeOf = (scrim: Locator) =>
+    scrim.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return {
+        backgroundImage: s.backgroundImage,
+        position: s.position,
+        top: s.top,
+        right: s.right,
+        bottom: s.bottom,
+        left: s.left,
+        pointerEvents: s.pointerEvents,
+      };
+    });
+
+  await page.goto('/');
+  const cardScrim = page.getByTestId('venue-card').first().locator('.photo-scrim');
+  await expect(cardScrim).toBeAttached();
+  const card = await recipeOf(cardScrim);
+
+  // One photo is the only state that renders the band; 2+ hands the photo lead to the gallery grid.
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+    route.fulfill({ json: { ...VENUE_MAP, photos: [COVER.banner] } }),
+  );
+  await page.goto('/venues/1');
+  const bandScrim = page.locator('.photo-band .photo-scrim');
+  await expect(bandScrim).toBeAttached();
+  const band = await recipeOf(bandScrim);
+
+  // The whole point of the shared directive: the two surfaces cannot disagree.
+  expect(band).toEqual(card);
+
+  // …and what they agree ON is the intended recipe, not some other value they happen to share.
+  expect(card.position).toBe('absolute');
+  expect([card.top, card.right, card.bottom, card.left]).toEqual(['0px', '0px', '0px', '0px']);
+  expect(card.pointerEvents).toBe('none');
+  // The α ladder and its AA duty belong to home.contrast.spec.ts; this asserts the token reached the element.
+  expect(card.backgroundImage).toContain('linear-gradient');
+  expect(card.backgroundImage).toContain('rgba(13, 40, 40, 0)');
+  expect(card.backgroundImage).toContain('rgba(13, 40, 40, 0.68)');
 });
 
 test('the slideshow chrome carries its own backing over the photo, in both themes (#704)', async ({

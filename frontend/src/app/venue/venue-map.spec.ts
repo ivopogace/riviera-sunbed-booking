@@ -392,8 +392,11 @@ describe('VenueMap', () => {
     const img = el().querySelector<HTMLImageElement>('[data-testid="map-banner-img"]');
     // The service resolves the wire's root-relative path against the API origin.
     expect(img?.getAttribute('src')).toBe(`${environment.apiBaseUrl}/api/venues/1/photos/bb02`);
-    // The scrim stays layered over the photo band, and the retired pill never renders.
+    // The scrim stays layered over the band as paint only, and the retired pill never renders.
     expect(el().querySelector('.photo-band')?.innerHTML).toContain('riv-photo-scrim');
+    const scrim = el().querySelector('.photo-band .photo-scrim');
+    expect(scrim).toBeTruthy();
+    expect(scrim?.classList.contains('pointer-events-none')).toBe(true);
     expect(el().textContent).not.toContain('coming soon');
     // Letterboxed, not cropped — a portrait photo stays whole against the band's own gradient.
     expect(img?.classList.contains('object-contain')).toBe(true);
