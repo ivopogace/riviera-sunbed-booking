@@ -21,10 +21,10 @@ import java.util.List;
  * <p>{@code coverPhoto} is the cover slot's card + banner {@link PhotoView}s, or {@code null}
  * when no cover photo is uploaded — the map banner then renders its gradient fallback.
  *
- * <p>{@code photos} is the banner band's slideshow: one banner-sized {@link PhotoView} per occupied
+ * <p>{@code photos} is the venue page's photos: one banner-sized {@link PhotoView} per occupied
  * photo slot, in {@link PhotoSlot} order (cover, sunbeds, bar), possibly empty. Each carries every
- * stored density so the browser picks per rendered box — the band and the gallery grid read this
- * list. Uploads predating the uniform per-slot surfaces serve their best available variant (CARD,
+ * stored density so the browser picks per rendered box — the single-photo band and the gallery grid
+ * both read this list. Uploads predating the uniform per-slot surfaces serve their best available variant (CARD,
  * then PREVIEW) instead, so a venue's slideshow never loses a photo to the rollout.
  *
  * <p>{@code lightboxPhotos} is the same slot order for the modal viewer, taken from the

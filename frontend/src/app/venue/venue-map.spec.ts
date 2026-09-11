@@ -17,7 +17,7 @@ import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
-import { photoView, photoViews } from '../../testing/photo-views';
+import { lightboxPhotoView, photoView, photoViews } from '../../testing/photo-views';
 import { uniformDays } from '../../testing/calendar-days';
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { formatBookingDate } from '../shared/booking-date-label';
@@ -543,8 +543,8 @@ describe('VenueMap', () => {
         photoView('/api/venues/1/photos/cc03', 1440),
       ],
       lightboxPhotos: [
-        photoView('/api/venues/1/photos/bb02@2200'),
-        photoView('/api/venues/1/photos/cc03@2200'),
+        lightboxPhotoView('/api/venues/1/photos/bb02'),
+        lightboxPhotoView('/api/venues/1/photos/cc03'),
       ],
     });
     await settle();
@@ -552,7 +552,7 @@ describe('VenueMap', () => {
 
     const srcset = (img: Element | null): string | null => img?.getAttribute('srcset') ?? null;
 
-    // The hero letterboxes a ~730px box and keeps the banner pair it has always had.
+    // The hero letterboxes a ~730px box and takes the banner pair from `photos`.
     expect(srcset(el().querySelector('[data-testid="gallery-hero"]'))).toBe(
       `${environment.apiBaseUrl}/api/venues/1/photos/bb02 576w, ` +
         `${environment.apiBaseUrl}/api/venues/1/photos/bb02@1440 1440w`,
@@ -572,7 +572,7 @@ describe('VenueMap', () => {
   });
 
   it('shows the lightbox the banner photos when the payload carries no lightbox list', async () => {
-    // A photo stored before the surface existed can never gain one (the original is discarded).
+    // The field is absent, not empty — an older payload or a test double, not the server's fallback.
     venueRequest().flush({
       ...miramar(),
       photos: [photoView('/api/venues/1/photos/bb02', 1440)],

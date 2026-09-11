@@ -4,15 +4,15 @@ import { bannerPhotoView, lightboxPhotoView } from './support/photo-views';
 
 /**
  * Real-render CI-safe e2e for the candidate the lightbox fetches, and for the two surfaces that
- * must not move when it gains its own list. Only a real engine picks a candidate, which is why this
- * is an e2e rather than a jsdom spec; `venue-photo-candidates.e2e.ts` covers the band and gallery
- * on their own, and this file covers the modal viewer plus the no-regression half.
+ * read `photos` rather than `lightboxPhotos`. Only a real engine picks a candidate, which is why
+ * this is an e2e rather than a jsdom spec; `venue-photo-candidates.e2e.ts` covers the band and
+ * gallery on their own, and this file covers the modal viewer plus the no-regression half.
  *
  * <p>Both branches of the fallback are exercised from one page. A photo WITH a LIGHTBOX row
  * publishes exactly one candidate, because the surface is stored at scale 1 alone; a photo WITHOUT
  * one publishes the BANNER pair, which is the un-backfillable case (ADR-0008 discards the original,
- * so an existing photo never gains the row). Asserting only the first branch would pass against a
- * lightbox still wired to the banner list.
+ * so an existing photo never gains the row). Both branches are asserted because the first alone
+ * holds for a lightbox reading either list.
  *
  * <p>Density is fixed per `describe`, because the choice is made from `sizes × DPR`.
  */

@@ -68,8 +68,9 @@ class PhotoProcessorTest {
 		assertEquals(Set.of("CARD@1", "CARD@2", "BANNER@1", "BANNER@2", "LIGHTBOX@1", "PREVIEW@1"),
 				renditions,
 				"CARD and BANNER carry a retina tier; LIGHTBOX already is one and PREVIEW needs none");
+		// Distinct here, but not a guarantee: a 2.29:1 upload renders BANNER@2 and LIGHTBOX@1 alike.
 		assertEquals(variants.size(), variants.stream().map(StoredVariant::hash).distinct().count(),
-				"every rendition is its own content-addressed row");
+				"these six renditions are six content-addressed rows");
 	}
 
 	@Test
@@ -104,7 +105,7 @@ class PhotoProcessorTest {
 
 	@Test
 	void omitsTheRetinaTierRatherThanUpscaleASmallUpload() throws IOException {
-		// 700x525 clears every scale-1 bound but is smaller than both retina boxes.
+		// 700x525 clears the three unconditional scale-1 bounds but no retina box, nor LIGHTBOX.
 		Processed result = assertProcessed(processor.process(solidJpeg(700, 525)));
 
 		List<StoredVariant> variants = result.photo().variants();

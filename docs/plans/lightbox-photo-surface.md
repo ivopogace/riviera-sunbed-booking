@@ -263,17 +263,16 @@ the banner list it already computes. No deviation. No `sizes` value changes (R-9
 
 ## Execution status
 
-**Stage pointer:** `PR #1074 ready for review — review + sonar gates next`
+**Stage pointer:** `PR #1074 — CI green, Sonar green, review gate run; fix round pushed`
 
-**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then the
-Sonar gate, then merge.
+**Next action:** Re-check CI on the fix commit, then merge and run the close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 1 — The `LIGHTBOX` surface + V57 + the processor bound | ✅ | `6a363052` |
-| 2 — The read model's second candidate list | ✅ | `f4118692` |
-| 3 — The frontend mirror, the lightbox wiring, and the two specs it falsifies | ✅ | `03a030ae` |
-| 4 — Substrate docs: ADR-0008, CONTEXT.md + close-out | ✅ | `f473c7e7` |
+| 1 — The `LIGHTBOX` surface + V57 + the processor bound | ✅ | `d8e3b316` |
+| 2 — The read model's second candidate list | ✅ | `516543fb` |
+| 3 — The frontend mirror, the lightbox wiring, and the two specs it falsifies | ✅ | `76dfc45b` |
+| 4 — Substrate docs: ADR-0008, CONTEXT.md + close-out | ✅ | `ad3abdee` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -281,6 +280,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-14 | review gate (comments) | `.out-of-scope/photo-width-ladder.md` still enumerated the surfaces as CARD/BANNER/PREVIEW, and its "they share a candidate list" premise was falsified for the lightbox. **The sweep's own gap:** step 2b's grep covered the substrate-doc set and both source trees but not `.out-of-scope/`, and matched quoted UPPERCASE tokens, so neither a backticked markdown list nor a lower-cased wire union could match. Both fixed; the grep widened in this round | fixed |
+| F-13 | review gate (bugs, history) | `frontend/src/app/operator/venue-photo.service.ts` typed the upload response's `surface` as `'card' \| 'banner' \| 'preview'`. `PhotoUploadResponse` lower-cases `PhotoSurface.name()`, so a large upload now returns `'lightbox'` outside the union. Nothing broke (the only consumer filters `=== 'preview'`), which is why it survived. The audit log's "0 frontend sites" was wrong for the same grep reason as F-14 | fixed |
+| F-12 | review gate (history) | `PhotoSurface`'s Javadoc said "the venue page's photo **bands**", re-introducing the framing #1067 removed one commit earlier (BANNER's main venue-page consumer is the gallery grid, not a band). Restored #1067's wording, and `VenueMapView`'s twin sentence with it | fixed |
+| F-11 | review gate (comments) | `PhotoProcessor`'s touched class Javadoc said `object-fit` "does the visible crop" and the bounds comment said `object-fit: cover` crops on display. Measured: only the Discover card crops — the band, the gallery grid and the viewer all letterbox. Both corrected | fixed |
+| F-10 | review gate (comments) | `StoredVariant`'s Javadoc read "present for every surface but LIGHTBOX", which parses as "LIGHTBOX has no scale-1 row" — the opposite of the truth. Rewritten | fixed |
+| F-9 | review gate (comments) | V57's header carried "no longer" (§6c history) and said a LIGHTBOX row "only appears on re-upload", omitting that a re-upload too small for the box still stores none. Both corrected, and the drop-then-add ordering justified against V56's opposite discipline | fixed |
+| F-8 | review gate (comments) | The client fallback's comment named the un-backfillable case, which the **server** resolves inside `LIGHTBOX_SLIDESHOW`; the branch fires only for an absent field. Comment and its spec twin re-pointed | fixed |
+| F-7 | review gate (prior PRs) | `discover-photos.e2e.ts` and `venue-map.spec.ts` built lightbox fixtures with `photoView('…@2200')`, stamping a 576w descriptor on a URL naming 2200 — #1071's F-19 recurring. Both now use `lightboxPhotoView`, and `src/testing/photo-views.ts` gained the counterpart the unit suite lacked | fixed |
+| F-6 | review gate (prior PRs) | ADR-0008 said a merged ladder is rejected because it is "non-monotone past ≈2.3:1, where `BANNER@2` (2560w) is wider" — two errors. `BANNER@2` is 2208w at 2.3:1 and reaches 2560w only at 8:3 (an 8:3 figure pinned to a 2.3:1 claim, the cross-aspect class #1071 hit four times); and a `srcset` is picked by width, so unordered rungs are valid and "non-monotone" is not a defect at all. Rewritten to the real reason: #1070 scopes the viewer to its own surface | fixed |
+| F-5 | review gate (prior PRs) | ADR-0008 asserted both that a 2200w candidate is "never offered to the gallery grid" and that offering it "to the hero's list is the byte-free route" — but the hero IS the grid (`photo-gallery-grid.ts` takes one `photos()` input). Rewritten so the successor route names its real cost | fixed |
+| F-4 | review gate (prior PRs) | ADR-0008's footprint ceiling sampled 4:3, not the extremum. The `LIGHTBOX` box fills at **11:9** (2200 × 1800 = 3.96 MP against 4:3's 3.63 MP), which this slice had identified twice over. Re-measured: ≈879 KB, not ≈808 KB; the per-venue ceiling ≈3.8 MB, not ≈3.7 MB | fixed |
+| F-3 | review gate (prior PRs) | ADR-0008 said "the box asks 1200 × 1800" — #1073's F-2 distinction. The paint *needs* 1200 × 1800; with `sizes="auto, 94vw"` the box *asks* 2200 | fixed |
+| F-2b | review gate (bugs) | At ≈2.2917:1, `BANNER@2` and `LIGHTBOX@1` render byte-identical (measured: same 2200 × 960, same SHA-256), so one photo can hold two rows with one hash. Benign — the serving index is deliberately non-unique and `loadBytes` takes `LIMIT 1` — but `PhotoProcessorTest`'s "every rendition is its own content-addressed row" claimed a guarantee that does not hold. Message narrowed; the property recorded on `StoredVariant` and V57 | fixed |
 | F-2 | phase 3 local run | The full mocked Playwright suite reported one failure (`layout-editor.e2e.ts:958`) that did **not** reproduce on a fresh run. Cause: a dev server started by hand for the phase-0 measurements was still listening on :4200, and `reuseExistingServer` handed Playwright that stale process mid-rebuild. Re-run against a server Playwright started itself: **617/617 pass**. Nothing in the diff reaches the layout editor | closed |
 | F-1 | phase 1 mutation testing | A first attempt to pin `LIGHTBOX`'s JPEG quality (0.62, not 0.82) by comparing bytes-per-pixel **survived** the mutation: on the test's flat fixture quality moves bytes by 6% (0.01783 → 0.01897 B/px) because the image is almost all flat colour, and on a detail-rich one the comparison is confounded by rendition size instead. The assertion was **removed** rather than tuned to a fixture-specific threshold — a test that passes under its own mutation claims coverage it does not have. The quality choice is pinned by ADR-0008's measured footprint figures, not by a unit test | closed |
 
@@ -302,6 +314,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/venue/VenuePhotoReadModelIT.java` — AC-4/5/6
 - `platform/src/test/java/ai/riviera/platform/venue/JdbcPhotoStorageIT.java` — AC-7
 - `frontend/src/app/shared/venue-views.ts` — the mirror
+- `frontend/src/app/shared/photo-url.ts` — two `CONTAIN_SIZES` doc claims this slice falsifies (prose only; the three values are untouched)
+- `frontend/src/app/operator/venue-photo.service.ts` — the upload response's `surface` union, which the wire now widens
+- `frontend/src/testing/photo-views.ts` — the unit suite's lightbox fixture builder
+- `.out-of-scope/photo-width-ladder.md` — the surface enumeration and the shared-list premise this slice ends
 - `frontend/src/app/venue/venue.service.ts` — mapping the new field
 - `frontend/src/app/venue/venue-map.ts` — the header view's second photo list
 - `frontend/src/app/venue/venue-map.html` — binding the lightbox to it
@@ -423,7 +439,12 @@ Ran over `11f6eeb8..HEAD` (merge base resolved after `git fetch --no-tags origin
 
 - **2a, rename/removal:** the only renamed identifiers are a private constant and three test
   method names; `grep` over the whole substrate-doc set finds no citation of any of them. **0 findings.**
-- **2b, the counting sweep:** twelve sites enumerated at plan time (*The counting sweep* above),
+- **2b, the counting sweep — re-run after the review gate widened it.** The plan-time grep covered
+  the substrate-doc set plus both source trees and matched quoted UPPERCASE tokens. It missed two
+  live sites (F-13, F-14) because one is a lower-cased TypeScript union and the other is a
+  backticked markdown list in `.out-of-scope/`, a directory the map does not name. Re-run as
+  `grep -rniE "'?(card|banner|preview|lightbox)'?" ... .out-of-scope docs frontend/src platform/src`
+  over the widened path set; both fixed, no third site. The original twelve sites enumerated at plan time (*The counting sweep* above),
   each judged. Eight were rewritten in phases 1–4; `ADR-0008`'s #1041 line is historical narrative
   and stays; the two Flyway comments are applied migrations; `CLAUDE.md` and `RESPONSIBILITIES.md`
   name no surface. Re-run after the fix rounds. **0 stale statements left.**
@@ -452,7 +473,7 @@ Ran over `11f6eeb8..HEAD` (merge base resolved after `git fetch --no-tags origin
 - [x] **AC-8:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-lightbox-candidates` → both branches. Verified at commit `76dfc45b`.
 - [x] **AC-9:** same run → band and hero unchanged. Verified at commit `76dfc45b`.
 - [x] **AC-10:** Run `./gradlew test --tests "*VenuePhotoServiceTest*"` → the slot read still resolves `PREVIEW`. Verified at commit `516543fb`.
-- [x] **AC-11:** `riviera-docs-freshness` pass reports no stale statement. Verified at commit `597bb77a`.
+- [x] **AC-11:** `riviera-docs-freshness` pass reports no stale statement. Verified at commit `ad3abdee`.
 
 ## Self-review checklist (before merge / PR)
 

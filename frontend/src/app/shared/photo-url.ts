@@ -30,7 +30,8 @@ export function resolveCoverPhoto(cover: CoverPhotoView | null | undefined): Cov
 /**
  * The `sizes` the beach-map band and the gallery grid state. Both letterbox (`object-contain`), so
  * each value approximates the PAINTED photo — `min(boxWidth, boxHeight × aspect)` — rather than the
- * element it sits in. The lightbox states its own; its under-service is a different defect.
+ * element it sits in. The lightbox is not here: it draws from its own candidate list (ADR-0008's
+ * `LIGHTBOX` surface), which usually holds one candidate and so needs no `sizes` to choose from.
  *
  * <p>A BANNER rendition is fit within 1280 × 480 at scale 1 and 2560 × 960 at scale 2, each tier
  * into its OWN box — so the retina width is not the baseline doubled, and a 3:2 upload stores
@@ -43,8 +44,9 @@ export function resolveCoverPhoto(cover: CoverPhotoView | null | undefined): Cov
  * 2560px, DPR 1 and 2 on every surface, and DPR 3 as well on the gallery hero below its
  * `min-[1024px]` step. Three things sit outside that bound. Past 8:3 both tiers are width-bound
  * at 1280w/2560w, stop following the aspect, and the rule stops holding. The hero's 360px box at
- * DPR 3 is ladder-limited — a 3:2 upload is 1% short from 1024 and 11% short from 1280, reachable
- * only by a wider stored rendition, which ADR-0008's list would have to gain. And narrower than
+ * DPR 3 is ladder-limited — short by a uniform 11% from 1024 up, at every aspect from 2:3 to 16:9.
+ * No `sizes` value reaches it; only a wider candidate in the hero's own list does, which ADR-0008
+ * weighs against a third stored density and declines. And narrower than
  * 3:2 the hero's cap buys a wider candidate than DPR 1 or DPR 2 needs (a 2:3 portrait upload takes
  * its retina candidate from about 485px viewports at DPR 1), which is an unavoidable trade rather
  * than a mistuning: covering 3:2 at DPR 3 needs more than 240 CSS px above a 412px viewport, where

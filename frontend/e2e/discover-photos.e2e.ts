@@ -3,7 +3,7 @@ import { expect, test, type Locator } from '@playwright/test';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { openShellOverlay } from './support/shell';
 import { settle } from './support/booking-dialog';
-import { photoView, photoViews } from './support/photo-views';
+import { lightboxPhotoView, photoView, photoViews } from './support/photo-views';
 
 /**
  * Real-render CI-safe e2e for the tourist cover-photo display: the Discover card
@@ -39,8 +39,9 @@ const BANNER_SLIDESHOW = [
 
 /** The map read's `lightboxPhotos`: the LIGHTBOX surface is stored at one scale, so one candidate. */
 const LIGHTBOX_SLIDESHOW = [
-  photoView('/api/venues/1/photos/bb02@2200'),
-  ...photoViews(['/api/venues/1/photos/cc03@2200', '/api/venues/1/photos/dd04@2200']),
+  lightboxPhotoView('/api/venues/1/photos/bb02'),
+  lightboxPhotoView('/api/venues/1/photos/cc03'),
+  lightboxPhotoView('/api/venues/1/photos/dd04'),
 ];
 
 const VENUES = [

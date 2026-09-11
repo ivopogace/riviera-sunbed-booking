@@ -28,11 +28,13 @@ import net.coobird.thumbnailator.Thumbnails;
 
 /**
  * Turns a raw operator upload into the capped, EXIF-stripped JPEG renditions every slot carries —
- * one per {@link PhotoSurface} at scale 1, plus a scale-2 retina rendition for {@code CARD} and
- * {@code BANNER}. The pure image pipeline (no I/O, no DB, deterministic): validate (size → magic bytes → a
+ * one per {@link PhotoSurface} at scale 1 — {@code LIGHTBOX}'s conditionally — plus a scale-2 retina
+ * rendition for {@code CARD} and {@code BANNER}. The pure image pipeline (no I/O, no DB,
+ * deterministic): validate (size → magic bytes → a
  * <em>header-only</em> dimension guard against decompression bombs) → decode with EXIF orientation
- * applied → downscale per rendition (fit-within; the frontend's {@code object-fit} does the visible
- * crop) → re-encode as quality JPEG, which drops all source metadata incl. GPS EXIF (ADR-0008 /
+ * applied → downscale per rendition (fit-within, so the whole image is stored; the frontend's
+ * {@code object-fit} then crops it on the Discover card and letterboxes it everywhere else)
+ * → re-encode as quality JPEG, which drops all source metadata incl. GPS EXIF (ADR-0008 /
  * privacy).
  *
  * <p>A rendition that came out larger than its own source is discarded rather than stored wherever
@@ -45,7 +47,7 @@ import net.coobird.thumbnailator.Thumbnails;
 @Component
 class PhotoProcessor {
 
-	/** Per-surface max bounds at scale 1 (fit-within; CSS {@code object-fit: cover} crops on display). */
+	/** Per-surface max bounds at scale 1; fit-within, so a rendition keeps the upload's aspect. */
 	private static final int CARD_W = 640;
 	private static final int CARD_H = 384;
 	private static final int BANNER_W = 1280;
@@ -57,7 +59,7 @@ class PhotoProcessor {
 	private static final int LIGHTBOX_H = 1800;
 	private static final int BASE_SCALE = 1;
 	private static final int RETINA_SCALE = 2;
-	/** The surfaces carrying a second density; LIGHTBOX already is one and PREVIEW needs none. */
+	/** The surfaces carrying a second density; LIGHTBOX's box already is a DPR-2 size, PREVIEW needs none. */
 	private static final Set<PhotoSurface> RETINA_SURFACES =
 			Collections.unmodifiableSet(EnumSet.of(PhotoSurface.CARD, PhotoSurface.BANNER));
 	/** Surfaces whose baseline is skipped rather than upscaled; the rest must always render, or the

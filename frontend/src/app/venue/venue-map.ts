@@ -248,7 +248,7 @@ export class VenueMap {
       region: v.region,
       description: v.description,
       photos,
-      // Un-backfillable (ADR-0008): a photo predating the surface shows what the band shows.
+      // Absent only on an older payload or a double; the server resolves its own fallback.
       lightboxPhotos: v.lightboxPhotos?.length ? v.lightboxPhotos : photos,
       bookingMode: v.bookingMode,
       modeLabel: v.bookingMode === 'INSTANT' ? 'Instant Book' : 'Request to Book',

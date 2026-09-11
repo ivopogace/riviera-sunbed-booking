@@ -1,8 +1,8 @@
 # Per-photo width ladder for venue photos
 
 Venue photos stay modelled as **renditions into named per-surface boxes**
-(`CARD`, `BANNER`, `PREVIEW`, keyed with a density `scale`). They will not be
-collapsed into a single per-photo ladder of widths.
+(`CARD`, `BANNER`, `LIGHTBOX`, `PREVIEW`, keyed with a density `scale`). They will
+not be collapsed into a single per-photo ladder of widths.
 
 ## What was proposed
 
@@ -16,9 +16,11 @@ complete-pair guard, and the `(surface, scale)` key itself.
 
 **The simplification it claims does not follow.** The case for the ladder was that four
 venue-page consumers — the beach-map band, the gallery hero, the gallery tile and the
-lightbox — span 356 px to 1100 px while sharing one server-chosen variant. They share a
-candidate *list*, and the browser already picks per rendered box from it. A ladder is also
-one shared list picked by width. The behaviour is identical under both models.
+lightbox — span 356 px to 1100 px while sharing one server-chosen variant. The first three
+share a candidate *list*, and the browser already picks per rendered box from it; the
+lightbox took its own list with the `LIGHTBOX` surface (#1070), which is a fourth preference
+list rather than a ladder. A ladder is also one shared list picked by width. The behaviour is
+identical under both models.
 
 What actually goes wrong on that band is that its `sizes` attribute describes the band
 rather than the `object-contain` image painted inside it. That bug is present under either
