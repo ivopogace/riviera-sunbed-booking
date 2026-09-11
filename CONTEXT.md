@@ -18,10 +18,10 @@ model in `docs/architecture/domain-model.md`.
 - **Venue photo** — venue profile media: one image per photo slot, uploaded by the venue's
   operator, validated server-side (JPEG/PNG/WebP, ≤25 MB, real-bytes magic check, decompression-bomb
   guard), EXIF-stripped, and persisted only as its resized variants (the full-res upload is
-  discarded — ADR-0008). Every occupied slot is tourist-surfaced in the photo slideshows on the
-  Discover card and the beach-map banner band; the **cover** leads both.
-- **Photo slot** — one of a venue's three fixed photo positions: `COVER` (the first slide of both
-  tourist slideshows), `SUNBEDS`, `BAR` (the later slides — and, as always, visible to the
+  discarded — ADR-0008). Every occupied slot is tourist-surfaced on both the Discover card and
+  the venue page; the **cover** leads both.
+- **Photo slot** — one of a venue's three fixed photo positions: `COVER` (what leads every
+  tourist surface), `SUNBEDS`, `BAR` (the ones after it — and, as always, visible to the
   venue's own operator and to a platform admin moderating them). At most one photo
   per `(venue, slot)`; uploading again replaces the slot; deleting erases metadata + bytes in one
   transaction.

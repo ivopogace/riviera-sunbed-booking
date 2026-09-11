@@ -2,7 +2,7 @@ package ai.riviera.platform.venue.vocabulary;
 
 /**
  * The target box a venue photo is rendered into at upload — never the full-res original (ADR-0008):
- * {@code CARD} for the Discover card thumbnail, {@code BANNER} for the beach-map banner band,
+ * {@code CARD} for the Discover card thumbnail, {@code BANNER} for the venue page's photos,
  * {@code PREVIEW} for the operator slot. The enum name is the DB token
  * ({@code CHECK (surface IN ('CARD','BANNER','PREVIEW'))}).
  *
