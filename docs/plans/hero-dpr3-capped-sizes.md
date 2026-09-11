@@ -108,7 +108,7 @@ case the registry doc already disclaims; `min(330px, 66vw)` does not change it e
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue with 3 photos and a **3:2** upload (720w/1440w stored), when the
+- [x] **AC-1:** Given a venue with 3 photos and a **3:2** upload (720w/1440w stored), when the
       venue page is rendered at DPR 3 at 430, 560 and 673 CSS px, then the gallery hero's
       `currentSrc` is the **1440w** candidate, which covers its measured paint of 252, 330 and
       330 CSS px respectively. *Seam:* the `/venues/1` route's rendered
@@ -116,17 +116,17 @@ case the registry doc already disclaims; `min(330px, 66vw)` does not change it e
       *Pinned by:* `venue-photo-candidates.e2e.ts` › `the gallery hero at {430,560,673} x 900,
       DPR 3` › `a 3:2 upload takes the retina candidate at the low end of the DPR-3 window` /
       `... where the paint caps` / `... at the top of the DPR-3 window`.
-- [ ] **AC-2:** Given the same page with a **16:9** upload (853w/1707w stored), when rendered
+- [x] **AC-2:** Given the same page with a **16:9** upload (853w/1707w stored), when rendered
       at DPR 3 at 800 CSS px, then the hero's `currentSrc` is the **1707w** candidate, which
       covers its 391 CSS px paint — a width at which the 3:2 upload is already served by its
       baseline, so the two aspects cannot be conflated. *Seam:* as AC-1 · *Pinned by:*
       `venue-photo-candidates.e2e.ts` › `a 16:9 upload's DPR-3 window runs wider than a 3:2 upload's`.
-- [ ] **AC-3:** Given a **3:2** upload, when rendered at DPR 3 at 360 CSS px — below the
+- [x] **AC-3:** Given a **3:2** upload, when rendered at DPR 3 at 360 CSS px — below the
       window, where the 205 CSS px paint needs 616 device px — then the hero stays on the
       **720w** baseline, so the fix is a capped clause and not a blanket retina switch.
       *Seam:* as AC-1 · *Pinned by:* `venue-photo-candidates.e2e.ts` › `the gallery hero at 360 x
       900, DPR 3` › `a 3:2 upload stays on its baseline below the DPR-3 window`.
-- [ ] **AC-4:** Given a **3:2** upload at 560 CSS px at DPR 1 and at DPR 2, and a **16:9**
+- [x] **AC-4:** Given a **3:2** upload at 560 CSS px at DPR 1 and at DPR 2, and a **16:9**
       upload at 560 CSS px at DPR 2, when the venue page is rendered, then the hero fetches the
       **baseline** candidate in all three — #1069's win is not traded back inside the
       registry's stated 3:2–16:9 band. *Seam:* as AC-1 · *Pinned by:*
@@ -134,31 +134,31 @@ case the registry doc already disclaims; `min(330px, 66vw)` does not change it e
       clause leaves a 3:2 upload on its baseline at DPR 1`, and `... DPR 2` › `the capped clause
       leaves a 3:2 upload on its baseline at DPR 2` + `and leaves a 16:9 upload on its own,
       wider baseline at DPR 2`.
-- [ ] **AC-5:** Given viewports 1024 to 2560 at DPR 1 and DPR 2, when the hero renders, then
+- [x] **AC-5:** Given viewports 1024 to 2560 at DPR 1 and DPR 2, when the hero renders, then
       every selection is the one #1071 shipped — guaranteed by the two clauses above the
       `min-[1024px]` step being byte-identical, and pinned at the 1024 boundary and at 1440.
       *Seam:* as AC-1 · *Pinned by:* the existing `the gallery grid at 1440 x 900, DPR 1` and
       `... DPR 2`, `the gallery grid at 1920 x 900, DPR 1` and `the gallery grid at 1100 x 800,
       DPR 1` describes, plus the new `the gallery hero at 1024 x 800, DPR 2` › `the step the
       capped clause stops at is untouched`.
-- [ ] **AC-6:** Given the `CONTAIN_SIZES` registry, when the shape rule runs, then it asserts
+- [x] **AC-6:** Given the `CONTAIN_SIZES` registry, when the shape rule runs, then it asserts
       **no `px` LENGTH** rather than "vw clauses only", its test name says so, and a companion
       case proves the rule is not vacuous by rejecting a value that does carry a px LENGTH.
       *Seam:* the exported `CONTAIN_SIZES` object · *Pinned by:* `photo-url.spec.ts` › `states
       every contain-fitted sizes without a bare px LENGTH, math-function bounds apart` and `and
       that rule rejects a bare px LENGTH, so it cannot pass by saying nothing`.
-- [ ] **AC-7:** Given every `CONTAIN_SIZES` value, when the canary mounts each through the real
+- [x] **AC-7:** Given every `CONTAIN_SIZES` value, when the canary mounts each through the real
       `NgOptimizedImage`, then none throws today and any Angular tightening of
       `assertNoComplexSizes` fails this spec at upgrade time naming the value — not in
       production. *Seam:* `PhotoSlideshow`'s `sizes` input through `NgOptimizedImage`'s
       init-time guards · *Pinned by:* `photo-slideshow.spec.ts` ›
       `carries every authored contain-fitted sizes through NgOptimizedImage untouched`.
-- [ ] **AC-8:** Given `venue-photo-candidates.e2e.ts`, when a reader opens it, then its header
+- [x] **AC-8:** Given `venue-photo-candidates.e2e.ts`, when a reader opens it, then its header
       states which densities it covers (1, 2 and 3) and which engine coverage it does **not**
       have (Chromium only; the math function's cross-engine behaviour unmeasured, with the
       measured Chromium failure mode named). *Seam:* the spec file's header comment ·
       *Pinned by:* review (prose); the DPR-3 describes are what make the "covers 3" half true.
-- [ ] **AC-9:** Given `CONTAIN_SIZES`' TSDoc, when a reader consults it, then it states the
+- [x] **AC-9:** Given `CONTAIN_SIZES`' TSDoc, when a reader consults it, then it states the
       **density bound** the registry now holds to and the **aspect band** it holds over, and
       replaces "a `px` LENGTH throws `RuntimeError 2952`" with the true rule (no bare px
       LENGTH; a px inside a math function passes by a regex gap that the canary guards).
@@ -190,15 +190,19 @@ new rule says "no px LENGTH", which is the constraint the old one was always app
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The value ships as a string; a spec that pins the string is a tautology and proves nothing about the fetch | high | high | No new spec pins the string. Every new assertion observes `currentSrc` in a real engine (AC-1…AC-5) or the shape rule (AC-6). Every new assertion is mutation-checked: the value it guards is changed and the test shown red. | this slice | open |
-| R-2 | A future Angular release replaces the regex with a parser and the value starts throwing `NG02952` in production | low | high | The canary (AC-7) mounts every registry value through the real directive, so the failure lands in CI at upgrade time naming the value. **Proved by mutation, V-3(b)** — not assumed. | this slice | open |
-| R-3 | The 3:2 and 16:9 windows differ (414–673 vs 480–800) and get conflated, as they were on #1071 (F-3, F-13, F-14, part of F-17) | high | med | Each fixture's aspect is named beside every number it produces, in the e2e case titles, the inline comments and this doc. AC-2 exists purely to pin a width where the two aspects disagree. | this slice | open |
-| R-4 | Box widths derived from markup rather than measured, as nearly happened on #1071 | med | high | Every box in this doc came from `getBoundingClientRect` on the real page at that viewport; the boxes narrow with the viewport under 780 and are not computable from the breakout alone. | this slice | open |
-| R-5 | The mocked e2e suite cannot run here because the pinned Playwright wants a browser revision the image lacks | med | med | Run as `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` (`riviera-local-debug`); never `playwright install`. | this slice | open |
-| R-6 | A `scripts/check-*.mjs` guard exits 2 on the shallow clone and the failure is read as a code problem | high | low | `git fetch --unshallow` ran before any guard. | this slice | resolved — done at intake |
-| R-7 | The capped clause over-fetches at DPR 3 between roughly 364 and 412 CSS px for a 3:2 upload (1440w fetched where 720w covers the 240 CSS px paint) | certain | low | Accepted deliberately. The alternative coefficient that removes it (`58vw`) leaves a 16:9 upload short at 480 × DPR 3, and AC-1's "covers its painted width" is the property worth keeping. Recorded in the registry TSDoc. | this slice | open |
+| R-1 | The value ships as a string; a spec that pins the string is a tautology and proves nothing about the fetch | high | high | No new spec pins the string. Every new assertion observes `currentSrc` in a real engine (AC-1…AC-5) or the shape rule (AC-6). Every new assertion is mutation-checked: the value it guards is changed and the test shown red. | this slice | closed — no new spec pins the string; every new assertion reads `currentSrc` in a real engine or the shape rule, and the Mutation matrix below shows each one red under a named mutation |
+| R-2 | A future Angular release replaces the regex with a parser and the value starts throwing `NG02952` in production | low | high | The canary (AC-7) mounts every registry value through the real directive, so the failure lands in CI at upgrade time naming the value. **Proved by mutation, V-3(b)** — not assumed. | this slice | closed — proved by mutation in both directions (V-3); the residual is a red test at upgrade time, not a production break |
+| R-3 | The 3:2 and 16:9 windows differ (414–673 vs 480–800) and get conflated, as they were on #1071 (F-3, F-13, F-14, part of F-17) | high | med | Each fixture's aspect is named beside every number it produces, in the e2e case titles, the inline comments and this doc. AC-2 exists purely to pin a width where the two aspects disagree. | this slice | closed — every number in the diff carries its fixture's aspect; the review gate re-derived all of them and found no cross-aspect pairing |
+| R-4 | Box widths derived from markup rather than measured, as nearly happened on #1071 | med | high | Every box in this doc came from `getBoundingClientRect` on the real page at that viewport; the boxes narrow with the viewport under 780 and are not computable from the breakout alone. | this slice | closed — every box came from `getBoundingClientRect` on the real page; F-5/F-6/F-7 were the doc's *derived* numbers, caught and corrected |
+| R-5 | The mocked e2e suite cannot run here because the pinned Playwright wants a browser revision the image lacks | med | med | Run as `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` (`riviera-local-debug`); never `playwright install`. | this slice | closed — the suite ran locally throughout via `PW_CHROMIUM_EXECUTABLE`, and completed green in CI on `11337d8e` |
+| R-6 | A `scripts/check-*.mjs` guard exits 2 on the shallow clone and the failure is read as a code problem | high | low | `git fetch --unshallow` ran before any guard. | this slice | closed — `git fetch --unshallow` ran before any guard |
+| R-7 | The capped clause over-fetches at DPR 3 between roughly 364 and 412 CSS px for a 3:2 upload (1440w fetched where 720w covers the 240 CSS px paint) | certain | low | Accepted deliberately. The alternative coefficient that removes it (`58vw`) leaves a 16:9 upload short at 480 × DPR 3, and AC-1's "covers its painted width" is the property worth keeping. Recorded in the registry TSDoc. | this slice | closed — `git fetch --unshallow` ran before any guard |
 
 ## Open questions / Assumptions
+
+None open.
+
+### Resolved
 
 - **Assumption A-1:** AC-4/AC-5's "no DPR-1 or DPR-2 selection regressed" is proved **within
   the registry's stated 3:2–16:9 aspect band**, where it holds with zero changed selections.
@@ -209,12 +213,14 @@ new rule says "no px LENGTH", which is the constraint the old one was always app
   fixing 3:2 at DPR 3 requires the resolved value to exceed 240 CSS px for viewports above
   240, while leaving 1:1 alone at DPR 2 requires it to stay at or below 240 for viewports up
   to 686; the two cannot both hold. Ship the issue's value, state the band in the TSDoc
-  (AC-9). — *Owner:* this slice · *Resolves by:* phase 2 (the TSDoc wording).
+  (AC-9). — **Resolved** in `a305cf3a`, corrected in `11337d8e` after the review gate found the
+  portrait crossover stated as a sampled width (F-6).
 - **Assumption A-2:** AC-8 is satisfied by covering DPR 3 in the spec's own `test.use`
   describes plus an honest header, rather than by a fourth Playwright *project*. The file
   already fixes density per describe, so a project-level `deviceScaleFactor` would re-run the
   DPR-1 and DPR-2 cases at the wrong density. The issue's AC allows either; this is the
-  branch that actually covers the window. — *Owner:* this slice · *Resolves by:* phase 1.
+  branch that actually covers the window. — **Resolved** in `848ac99f`; the header states the
+  densities covered and the engine that is not.
 
 ## Availability & concurrency (invariant #2)
 
@@ -255,17 +261,19 @@ widths are all unchanged; only the client-side `sizes` hint moves.
 
 ## Execution status
 
-**Stage pointer:** `implement (phases 0-2 done) — draft PR + CI gate next`
+**Stage pointer:** `DONE — merged via PR #1073`
 
-**Next action:** Push, open the draft PR so CI fires, then phase 3 close-out — `git rm`
-`docs/plans/band-contain-sizes.md` and run `riviera-docs-freshness`.
+**Next action:** None — the slice is complete. Post-merge items are GitHub edits only
+(confirm #1072 closed, end the PR-activity subscription).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Pin the defect as a red e2e | ✅ (red by design) | `3ccb0f50` |
+| — review-gate fixes (F-1…F-4) | ✅ | `c347d36d` |
+| — review-gate fixes (F-5…F-7) | ✅ | `11337d8e` |
 | 1 — Ship the capped clause and correct the shape rule | ✅ | `848ac99f` |
 | 2 — State the density and aspect bounds in the registry TSDoc | ✅ | `a305cf3a` |
-| 3 — Close-out: retire `band-contain-sizes.md`, finalize this doc | | |
+| 3 — Close-out: retire `band-contain-sizes.md`, finalize this doc | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -306,56 +314,56 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/e2e/venue-photo-candidates.e2e.ts`
 
-- [ ] **Step 1: Write the failing tests** — the AC-1/AC-2/AC-3 describes, against the value
+- [x] **Step 1: Write the failing tests** — the AC-1/AC-2/AC-3 describes, against the value
       currently on `main`. Each case names its fixture's aspect in the title and comment.
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
       `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates`
       → the three DPR-3 retina cases FAIL (`bb02` / `ee05` where `bb02@1440` / `ee05@1707` is
       expected); the below-the-window case (AC-3) PASSES already, which is correct — it is a
       guard against the fix over-reaching, not a defect witness.
-- [ ] **Step 3: Commit** — `git commit -m "Pin the gallery hero's DPR-3 under-service at 3:2 and 16:9 (#1072)"`
+- [x] **Step 3: Commit** — `git commit -m "Pin the gallery hero's DPR-3 under-service at 3:2 and 16:9 (#1072)"`
       (a red-TDD push; the CI gate's red-TDD exemption applies)
-- [ ] **Step 4: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Ship the capped clause and correct the shape rule
 
 **Files:** Modify `frontend/src/app/shared/photo-url.ts` · `frontend/src/app/shared/photo-url.spec.ts`
 
-- [ ] **Step 1: Change the clause** to `min(330px, 66vw)` and run `photo-url.spec.ts` → the old
+- [x] **Step 1: Change the clause** to `min(330px, 66vw)` and run `photo-url.spec.ts` → the old
       "vw clauses only" rule goes RED, which is the cost the issue predicted.
-- [ ] **Step 2: Correct the rule** to "no px LENGTH", rename the test, and add the non-vacuity
+- [x] **Step 2: Correct the rule** to "no px LENGTH", rename the test, and add the non-vacuity
       case. Run → GREEN.
-- [ ] **Step 3: Mutation-check the new rule** — assert it rejects `clamp(0px, 66vw, 330px)`
+- [x] **Step 3: Mutation-check the new rule** — assert it rejects `clamp(0px, 66vw, 330px)`
       inside the spec itself, so the rule cannot silently become vacuous.
-- [ ] **Step 4: Run the canary** (`photo-slideshow.spec.ts`) → GREEN, and add the one line
+- [x] **Step 4: Run the canary** (`photo-slideshow.spec.ts`) → GREEN, and add the one line
       saying it is what holds V-1's regex gap.
-- [ ] **Step 5: Run the DPR-3 e2e from phase 0** → GREEN.
-- [ ] **Step 6: Add the DPR-1/DPR-2 no-trade-back cases and the 1024 boundary case** (AC-4,
+- [x] **Step 5: Run the DPR-3 e2e from phase 0** → GREEN.
+- [x] **Step 6: Add the DPR-1/DPR-2 no-trade-back cases and the 1024 boundary case** (AC-4,
       AC-5) and run → GREEN. Mutation-check each by reverting the clause and showing it red.
-- [ ] **Step 7: Generalization-audit pass.**
-- [ ] **Step 8: Commit + update execution status.**
+- [x] **Step 7: Generalization-audit pass.**
+- [x] **Step 8: Commit + update execution status.**
 
 ## Phase 2 — State the density and aspect bounds in the registry TSDoc
 
 **Files:** Modify `frontend/src/app/shared/photo-url.ts` · `frontend/e2e/venue-photo-candidates.e2e.ts`
 
-- [ ] **Step 1:** Rewrite the `CONTAIN_SIZES` TSDoc's bound sentence — density bound, aspect
+- [x] **Step 1:** Rewrite the `CONTAIN_SIZES` TSDoc's bound sentence — density bound, aspect
       band, A-1's out-of-band trade, R-7's DPR-3 over-fetch band, and the true px rule.
-- [ ] **Step 2:** Rewrite the `galleryHero` clause comment: what the cap tracks, at which
+- [x] **Step 2:** Rewrite the `galleryHero` clause comment: what the cap tracks, at which
       aspect, and that 330 is the 3:2 paint cap and not a 16:9 one.
-- [ ] **Step 3:** Rewrite the e2e header for AC-8 — densities covered, engine not covered, and
+- [x] **Step 3:** Rewrite the e2e header for AC-8 — densities covered, engine not covered, and
       V-7's measured Chromium failure mode.
-- [ ] **Step 4:** `npm run lint && npm run format:check` and
+- [x] **Step 4:** `npm run lint && npm run format:check` and
       `node scripts/check-inline-comments.mjs --diff origin/main`.
-- [ ] **Step 5: Commit + update execution status.**
+- [x] **Step 5: Commit + update execution status.**
 
 ## Phase 3 — Close-out
 
 **Files:** Delete `docs/plans/band-contain-sizes.md` · Modify `docs/plans/hero-dpr3-capped-sizes.md`
 
-- [ ] **Step 1:** `git rm docs/plans/band-contain-sizes.md` — PR #1071 has merged.
-- [ ] **Step 2:** Run `riviera-docs-freshness` over the range; record findings.
-- [ ] **Step 3:** Finalize this doc in the PR's **last code-touching commit**.
+- [x] **Step 1:** `git rm docs/plans/band-contain-sizes.md` — PR #1071 has merged.
+- [x] **Step 2:** Run `riviera-docs-freshness` over the range; record findings.
+- [x] **Step 3:** Finalize this doc in the PR's **last code-touching commit**.
 
 ---
 
@@ -363,6 +371,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-11 | phase 1 — the capped-length pattern | Every `object-contain` photo surface, i.e. every place a paint CAPS at `boxHeight × aspect` while a `vw` keeps climbing — the mechanism the cap exists for, not the surfaces that resemble the hero | `grep -rn "object-contain" frontend/src/app --include=*.ts --include=*.html` | `venue-map`'s band (150 tall below 1024), `galleryHero` (220), `gallerySideTile` (106), plus `photo-lightbox`, which states its own `sizes` outside the registry | **Only the hero needs it.** At DPR 3 the band's paint caps at 225 (3:2) / 267 (16:9) and needs 675 / 800 against its own 720w / 853w baselines; the side tile's caps at 159 / 188 and needs 477 / 565. Both are covered by the baseline at every aspect in the band, so a cap there would only over-fetch. The lightbox is a different surface with a different defect and is out of this slice. |
 
 ---
 
@@ -389,26 +398,26 @@ against the shipped value.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 … AC-5:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → all green.
-- [ ] **AC-6, AC-7:** Run `npm test -- --include="src/app/shared/photo-url.spec.ts" --include="src/app/shared/photo-slideshow.spec.ts"` → all green.
-- [ ] **AC-8, AC-9:** Prose, checked at the review gate against this doc's V-table.
+- [x] **AC-1 … AC-5:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → all green.
+- [x] **AC-6, AC-7:** Run `npm test -- --include="src/app/shared/photo-url.spec.ts" --include="src/app/shared/photo-slideshow.spec.ts"` → all green.
+- [x] **AC-8, AC-9:** Prose, checked at the review gate against this doc's V-table.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — no Java touched at all.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — not in play.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy (invariant #10) — not in play.
-- [ ] Timezone (invariant #6) — not in play.
-- [ ] Booking codes (invariant #7) — not in play.
-- [ ] Flyway (invariant #12) — no schema change.
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — no Java touched at all.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — not in play.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy (invariant #10) — not in play.
+- [x] Timezone (invariant #6) — not in play.
+- [x] Booking codes (invariant #7) — not in play.
+- [x] Flyway (invariant #12) — no schema change.
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
