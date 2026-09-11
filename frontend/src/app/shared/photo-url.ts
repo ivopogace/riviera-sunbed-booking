@@ -28,35 +28,29 @@ export function resolveCoverPhoto(cover: CoverPhotoView | null | undefined): Cov
 }
 
 /**
- * The `sizes` every `object-contain` photo surface authors, kept together because not one of them
- * is readable at its call site. A contain-fitted element paints `boxHeight × sourceAspect` rather
- * than its own width, so each value below describes the LETTERBOXED image and was derived from
- * boxes measured in a real engine — a `sizes` describing the element instead bought the retina
- * candidate for images the baseline one already covered.
+ * The `sizes` the beach-map band and the gallery grid state. Both letterbox (`object-contain`), so
+ * each value describes the PAINTED photo — `min(boxWidth, boxHeight × aspect)` — and not the
+ * element it sits in. The lightbox states its own; its under-service is a different defect.
  *
- * <p>Two rules hold for anything added here. The length is viewport-relative: a `px` length throws
- * `RuntimeError 2952` from `NgOptimizedImage`'s dev-mode guard, which is live on these surfaces
- * because they supply `[attr.srcset]` rather than `ngSrcset` (the `px` inside a media condition is
- * not a length and is fine). And the value is constant per instance, which
- * `assertNoPostInitInputChange` requires. Which candidate each one buys is pinned in
- * `frontend/e2e/venue-photo-candidates.e2e.ts`.
- *
- * <p>Every clause aims at the painted width and, above all, inside the window the stored candidate
- * pair leaves: with only a 720w and a 1440w rendition, `360 < value ≤ 720` CSS px is what takes the
- * baseline at DPR 1 and the retina one at DPR 2, and `value ≤ 360` is what takes the baseline at
- * both. Tuned to a 16:9 upload and to viewports up to ~2000px; outside either the value overstates
- * again, which costs a candidate rather than correctness.
+ * <p>A BANNER rendition is fit within 1280 × 480, so a height-bound upload stores a baseline
+ * `480 × aspect` wide and paints `boxHeight × aspect`. The aspect cancels: the baseline candidate
+ * suffices exactly when `boxHeight × DPR ≤ 480`, whatever was uploaded. Each value below is that
+ * painted width for a 3:2 upload — the pair the fixtures and `e2e/venue-photo-candidates.e2e.ts`
+ * pin — and holds up to 16:9 and to viewports of ~2000px; past either it overstates, which costs a
+ * candidate rather than correctness. A value is viewport-relative: a `px` LENGTH throws
+ * `RuntimeError 2952` (the `px` inside a media condition is not a length).
  */
 export const CONTAIN_SIZES = {
-  /** The beach-map band: 1098 × 264 above the 1024px step and 730 × 150 below, so a 16:9 photo
-   *  paints ~470 CSS px and ~267 px respectively — never the ~1008 px its width claimed. */
+  /** The band: 1098 × 264 from the 1024px step up and 730 × 150 below, painting 396 and 225 CSS px
+   *  at 3:2. Only the tall box can need the retina candidate, and only at DPR 2. */
   band: '(min-width: 1280px) 30vw, (min-width: 1024px) 45vw, 35vw',
-  /** The gallery hero, two of three columns: ~640 CSS px painted in a 731px box above 1280, ~485 px
-   *  in a 485px box below it, where the grid drops to the narrower breakout. */
-  galleryHero: '(min-width: 1280px) 35vw, (min-width: 1024px) 45vw, 55vw',
-  /** A gallery side tile, one column: it paints under 360 CSS px at every viewport, so it wants the
-   *  baseline candidate at both densities and one clause says so. */
-  gallerySideTile: '22vw',
+  /** The gallery hero: 731 × 360 above 1280, 485 × 360 down to 1024, 485 × 220 below, painting 540,
+   *  485 and 330. The two outer clauses share a number for opposite reasons — the widest caps a
+   *  painted width that stops growing, the narrowest holds a box that can never need retina. */
+  galleryHero: '(min-width: 1280px) 35vw, (min-width: 1024px) 45vw, 35vw',
+  /** A gallery side tile: 361 × 176 above 1280 and 239 × 106 below, painting 264 and 159. It never
+   *  needs the retina candidate; the 1280px clause is what keeps a wide desktop from buying one. */
+  gallerySideTile: '(min-width: 1280px) 18vw, 22vw',
 } as const;
 
 /**

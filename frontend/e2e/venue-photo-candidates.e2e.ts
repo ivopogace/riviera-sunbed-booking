@@ -167,3 +167,16 @@ test.describe('the gallery grid at 1440 x 900, DPR 2', () => {
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
   });
 });
+
+test.describe('the gallery grid at 900 x 800, DPR 2', () => {
+  test.use({ viewport: { width: 900, height: 800 }, deviceScaleFactor: 2 });
+
+  test('the hero stays on the baseline candidate where its short box cannot need more', async ({
+    page,
+  }) => {
+    await openGallery(page);
+
+    // A 220px-tall box, and 220 x 2 fits the 480px BANNER box: no upload can out-paint the baseline.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
+  });
+});

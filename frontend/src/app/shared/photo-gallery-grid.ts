@@ -121,7 +121,6 @@ import { PhotoView } from './venue-views';
   `,
 })
 export class PhotoGalleryGrid {
-  /** Each tile letterboxes, so it states the width its PAINTED photo needs. */
   protected readonly sizes = CONTAIN_SIZES;
 
   /** Caller guarantees length >= 2 — see the class doc. */

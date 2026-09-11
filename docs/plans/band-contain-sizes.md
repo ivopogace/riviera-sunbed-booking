@@ -46,7 +46,9 @@ candidate as a characterization test, phase 1 is red-green on the band, phase 2 
 · `riviera-frontend` (placement: no new file in `app/`; the e2e spec belongs in the CI-safe
 `frontend/e2e/` suite, not `real-backend/`) · `angular-developer` + the installed
 `@angular/common` bundle (the two ruled-out routes above; `assertNoPostInitInputChange` covers
-`sizes`, so the value must be a constant per instance) · `playwright-cli` (candidate selection is
+`sizes`, so the value must be a constant per instance) · `riviera-local-debug` (every build and test
+command in this doc — the shallow-clone deepening, the `PW_CHROMIUM_EXECUTABLE` recipe, and the
+rule against the bare full-suite task in a sandbox) · `playwright-cli` (candidate selection is
 only observable in a real engine — `deviceScaleFactor` per project is what makes the DPR-2 AC
 testable) · angular-cli MCP `search_documentation` v22 (checked the plan against angular.dev:
 confirmed the `auto,` prepend, the contain-letterboxing statement and that `sizes` is meant to
@@ -60,7 +62,9 @@ hook in `venue-map.spec.ts` and must survive as an inert marker`).
 **Branch:** `claude/beach-map-band-sizes-ucub4s` — the implement session's designated remote
 branch, standing in for `bugfix/band-contain-sizes` per `riviera-sdlc` § *Remote / cloud session
 addendum*. It starts from `claude/intelligent-albattani-otm46u`, the planning session's branch,
-which carries this doc and is not on `main`.
+which is not on `main`. That branch carries three artifacts this PR therefore also contains and
+this slice does not own: this doc, #1070's plan (`docs/plans/lightbox-photo-surface.md`, not
+started) and #1059's wontfix record (`.out-of-scope/photo-width-ladder.md`).
 
 ---
 
@@ -98,7 +102,7 @@ adjacent to the change (a one-candidate photo emitting no `srcset`) is untouched
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | A `vw` value tuned for one viewport under-serves at another, trading a DPR-1 win for a visible DPR-2 regression | high | med | The candidate set is coarse (720w / 1440w), so the whole correct answer is the window `360 < sizes ≤ 720` CSS px at every supported viewport. Derive the value against that window, not against a single width; AC-1/2/3 probe three viewport × DPR combinations | agent | **closed** — AC-2 (DPR 2) passed before and after the band change, so the DPR-1 win cost no retina ground |
-| R-2 | A wide-panorama upload (aspect > ~2.7:1) paints wider than the tuned value and becomes under-served | low | low | Tune to the widest *common* aspect (16:9 → `264 × 1.78 ≈ 470` px painted), so under-service needs an unusually wide source; note the bound in the code's one-line comment | agent | **closed** — the bound is stated in the band's template comment beside the value |
+| R-2 | A wide-panorama upload (aspect > ~2.7:1) paints wider than the tuned value and becomes under-served | low | low | Tune to the widest *common* aspect (16:9 → `264 × 1.78 ≈ 470` px painted), so under-service needs an unusually wide source; note the bound in the code's one-line comment | agent | **closed** — phase 3 moved the value into `CONTAIN_SIZES`, and the bound is stated in that registry's doc beside it |
 | R-3 | A pixel value slips into `sizes` during tuning and throws `RuntimeError 2952` only in dev/test, not prod | med | med | AC-6 pins it in a unit spec, which runs in `ngDevMode`; the guard is the assertion, not review | agent | **closed** — two specs over `CONTAIN_SIZES`, and a `300px` mutation failed both |
 | R-4 | The gallery tiles' geometry is derived from markup rather than measured, so the tuned value is wrong | med | med | Measure the rendered tile boxes in the e2e run (`getBoundingClientRect`) before choosing values; phase 2 step 1 does this and records the numbers in this doc | agent | **closed** — measured in phase 0 (table under Open questions); the grid is 731/361 above 1280 and 485/239 from 1024 |
 | R-6 | Three existing specs pin today's exact `sizes` strings, so the fix lands as a red suite rather than a clean green | **certain** | low | Known and located before phase 0: `venue-map.spec.ts:425` (`'(min-width: 1280px) 70vw, 100vw'`), `discover-photos.e2e.ts:162` (hero) and `:166` (tile). They are updated in the phase that changes each value, not swept at the end. The Discover card's assertion at `:151` must NOT change — it is `object-cover` and out of scope | agent | **closed** — all three repointed in the phase that moved their value; the Discover card's stands unchanged |
@@ -106,8 +110,13 @@ adjacent to the change (a one-candidate photo emitting no `srcset`) is untouched
 
 ## Open questions / Assumptions
 
-- **Assumption:** 16:9 is the widest aspect worth tuning for; sources wider than ~2.7:1 accept
-  under-service. — *Owner:* agent · *Resolves by:* phase 1, by stating the bound in code
+- **Assumption (resolved, review round 1):** 16:9 is the widest aspect worth tuning for. The review
+  found the premise half-wrong and it is now stated correctly in the code. A BANNER rendition is fit
+  within 1280 × 480, so a height-bound upload stores a baseline `480 × aspect` wide and paints
+  `boxHeight × aspect` — **the aspect cancels**, and the baseline candidate suffices exactly when
+  `boxHeight × DPR ≤ 480`, whatever was uploaded. The stored pair is 720w/1440w only for a 3:2
+  upload (16:9 stores 853w/1706w), which is what the fixtures pin. The aspect still sets how far an
+  authored value may drift, and 16:9 remains that bound. — *Owner:* agent
 - **Open question (resolved in phase 2):** Do the three gallery tiles want one shared `sizes` or
   one each? **One each by kind.** The hero takes three clauses, one per box width, to stay inside
   `360 < s ≤ 720`; the two side tiles share a single `22vw`, because a side tile paints under
@@ -133,7 +142,9 @@ threshold: the browser takes 720w while `sizes × DPR ≤ 720` and 1440w above i
 | 390 | 340 × 150 | 267 | 225 × 220 | 225 | 109 × 106 | 109 |
 
 The band's two heights confirm the plan's arithmetic: `30vw` / `45vw` / `35vw` land inside the
-`360 < s ≤ 720` window above 1024 and under 360 below it. The gallery is the surprise — see the
+`360 < s ≤ 720` window above 1024 and under 360 below it. That window is the **3:2** instantiation of the
+rule — see the resolved aspect Assumption above, and note that the `Painted` column here is a 16:9
+letterbox, which is why pairing the two misled the first cut of the gallery values. The gallery is the surprise — see the
 phase 2 notes, where the measured hero already picks correctly at 1440 × DPR 1.
 
 ## Availability & concurrency (invariant #2)
@@ -174,10 +185,10 @@ changes only how the client describes its own layout.
 
 ## Execution status
 
-**Stage pointer:** `implement — all phases done; PR gates next`
+**Stage pointer:** `review — round 1 findings fixed; re-review + Sonar next`
 
-**Next action:** Check the PR's CI run, then mark PR #1071 ready for review and run the review gate
-(`riviera-sdlc` `references/pr-gates.md` §1) and the Sonar gate.
+**Next action:** Re-resolve the review range on the new head, re-run the review gate over it, then
+read the Sonar issue list for PR #1071 rather than its gate conclusion alone.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -192,7 +203,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI (hygiene, phase 0 push) | A two-line inline comment in the new e2e tripped `check-inline-comments.mjs` | **fixed** in phase 1's commit; green on every push since |
+| F-2 | review — bug scan | `gallerySideTile` `22vw` exceeds the 360 CSS px ceiling above 1636px, so a wide desktop at DPR 2 buys the retina candidate a 176px-tall tile can never need | **fixed** — `(min-width: 1280px) 18vw, 22vw`, which holds the ceiling to the 2000px the doc claims |
+| F-3 | review — git history | Claimed the hero's `<1024` clause under-serves at DPR 2 in a ~60px viewport window | **rejected, and a real defect found underneath** — the claim mixes a 16:9 painted width with the 3:2 candidate pair. The aspect-independent rule is `boxHeight × DPR ≤ 480`, so the 220px-tall box can never need retina; `55vw` was buying it anyway across 655–1023px. Fixed to `35vw`, and the untested tier the finding pointed at now has its own DPR-2 case |
+| F-4 | review — comments | The registry doc claimed to hold *every* `object-contain` surface; the lightbox still states its own `94vw` | **fixed** — the claim now names the band and the grid, and says the lightbox is out |
+| F-5 | review — comments | The 2952 rule and the constant-per-instance rule were stated authoritatively in two files | **fixed** — the pixel rule lives in `CONTAIN_SIZES`, the input constraint on `PhotoSlideshow.sizes`, neither restates the other |
+| F-6 | review — overlay RV-STYLE-1 | A field doc on the gallery grid restated its own class doc | **fixed** — dropped; `venue-map.ts`'s kept, it is that call site's only pointer |
+| F-7 | review — overlay RV-PROC-1 | `riviera-local-debug` missing from *Skills consulted* though every command in the doc came from it | **fixed** — added |
+| F-8 | review — overlay (plan-doc discipline) | `<sha>` placeholders left in the AC-verification block, and three recorded `npm test -- <name>` commands that error rather than run | **fixed** — real SHAs, and `ng test --include` |
+| F-9 | review — overlay (plan-doc accuracy) | R-2's resolution pointed at a template comment phase 3 had removed; the 16:9 assumption still open | **fixed** — R-2 re-pointed at the registry, the assumption resolved with the corrected aspect model |
+| F-10 | review — CLAUDE.md audit, prior-PR sweep | Registry doc over §6d's ~6-line type budget, the pattern flagged on PRs #1039 and #1058 | **fixed** — trimmed to contract; what was archaeology is gone and what remains is the rule a new entry must satisfy |
 
 ---
 
@@ -203,6 +223,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/photo-gallery-grid.ts` — the hero + two tiles' `sizes`
 - `frontend/src/app/shared/photo-url.ts` — the authored-`sizes` constants, if phase 1 extracts them
 - `frontend/src/app/shared/photo-url.spec.ts` — AC-6, the no-pixel-token rule
+- `frontend/src/app/shared/photo-slideshow.ts` — the `sizes` input's doc, which points at the registry
 - `frontend/src/app/shared/photo-slideshow.spec.ts` — AC-4, one-candidate photos emit no `srcset`
 - `frontend/e2e/venue-photo-candidates.e2e.ts` — AC-1/2/3/5, candidate selection per viewport × DPR
 - `frontend/src/app/venue/venue-map.spec.ts` — AC-7, the band's pinned `sizes` string and its test name
@@ -251,7 +272,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - [x] **Step 4: Update the pinned band spec** — `venue-map.spec.ts:415` asserts the old string and its
       name says "not the 100vw default". Re-point both at the new value and what it now guards.
-- [x] **Step 5: Run it, verify it passes** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` then `npm test -- venue-map` → PASS
+- [x] **Step 5: Run it, verify it passes** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` then `npx ng test --include "src/app/venue/venue-map.spec.ts"` → PASS
 - [x] **Step 6: Generalization-audit pass** — Population `every NgOptimizedImage call site whose
       element is object-contain under fill` → enumerate
       `grep -rn "object-contain" frontend/src/app --include=*.ts --include=*.html` → candidates
@@ -340,12 +361,16 @@ Probed in Chromium 141 over 8 viewports × 2 densities against the real `720w, 1
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → 720w at DPR 1. Verified at commit `<sha>`.
-- [x] **AC-2:** same run → 1440w at DPR 2. Verified at commit `<sha>`.
-- [x] **AC-3:** same run → 720w on the short band at DPR 2. Verified at commit `<sha>`.
-- [x] **AC-4:** Run `npm test -- photo-slideshow` → no `srcset` for one candidate. Verified at commit `<sha>`.
-- [x] **AC-5:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → all three tiles 720w at DPR 1. Verified at commit `<sha>`.
-- [x] **AC-6:** Run `npm test -- photo-url` → no pixel token. Verified at commit `<sha>`.
+> `npm test` is `ng test`, which reads a bare argument as a PROJECT name and errors. Filter a unit
+> run with `--include` instead; the e2e runner does take a path filter after `--`.
+
+- [x] **AC-1:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → 720w at DPR 1. Verified at commit `7e558f22`.
+- [x] **AC-2:** same run → 1440w at DPR 2. Verified at commit `7e558f22`.
+- [x] **AC-3:** same run → 720w on the short band at DPR 2. Verified at commit `7e558f22`.
+- [x] **AC-4:** `npx ng test --include "src/app/shared/photo-slideshow.spec.ts"` → no `srcset` for one candidate. Verified at commit `6b0c7bc7`.
+- [x] **AC-5:** the e2e run above → all three tiles 720w at DPR 1, the hero also at 1920 × DPR 1, 1100 × DPR 1 and 900 × DPR 2. Verified at the review-round commit.
+- [x] **AC-6:** `npx ng test --include "src/app/shared/photo-url.spec.ts" --include "src/app/shared/photo-slideshow.spec.ts"` → no pixel length, and the directive accepts every value. Verified at commit `418c3014`.
+- [x] **AC-7:** the three pinned strings re-point to the new values, each in the phase that moved it. Verified at commits `7e558f22`, `6b0c7bc7` and the review-round commit.
 
 ## Self-review checklist (before merge / PR)
 
