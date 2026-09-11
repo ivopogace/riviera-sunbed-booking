@@ -1,0 +1,279 @@
+# Contain-fitted `sizes` Implementation Plan
+
+> **For agentic workers:** implement this plan with `tdd` at the plan's named seams
+> (`/implement` is the human's entry command; the model's route is `riviera-sdlc`'s
+> Implement row). Steps use checkbox (`- [ ]`) syntax for tracking. The Availability &
+> concurrency, Spring-Modulith, and Payment & payout sections are spec sections, not
+> documentation. Invariant numbers refer to `CLAUDE.md`.
+
+**Goal:** Every `object-contain` photo surface requests the `srcset` candidate its
+**letterboxed image** needs, not the one its element box implies — so the beach-map band
+fetches `BANNER@1` at DPR 1 instead of `BANNER@2`, and still fetches `BANNER@2` at DPR 2.
+
+**Architecture:** The fix is a **smaller responsive `sizes` per contain-fitted surface**,
+derived from `boxHeight × sourceAspect` rather than box width. Two cheaper-looking routes are
+closed, both verified rather than assumed: `sizes="auto"` resolves to the element's layout box,
+and under `fill` the `<img>` is `inset-0` — `object-contain` letterboxes the *content*, not the
+element — so dropping `priority` to get the directive's `auto,` prefix changes nothing; and a
+pixel-valued `sizes` throws `RuntimeError 2952` from `assertNoComplexSizes`
+(`@angular/common@22.1.4` `fesm2022/common.mjs:1190`, called at `:806` under `if (!this.ngSrcset)`,
+which is our case because the slideshow supplies `[attr.srcset]` directly). A `vw` value is
+therefore the only lever the directive leaves, and it is an approximation by construction: the
+painted width is constant above 1280 px while a `vw` value is not.
+
+**Persistence:** N/A — frontend-only, no table and no migration touched (invariant #1 not in play).
+
+**Source of intent:** GitHub issue #1069 (surfaced by the #1059 intake grill).
+
+**Skills consulted:** `riviera-sdlc` (routing + the issue-intake grill gate — found the defect
+while grilling #1059, and caught that the issue's own `sizes="auto"` remedy is disproven) ·
+`riviera-plan-doc` (this template — forced the candidate-selection ACs to be stated as observable
+`currentSrc` outcomes rather than as a pinned `sizes` string) · `tdd` (phase 0 pins today's wrong
+candidate as a characterization test, phase 1 is red-green on the band, phase 2 on the gallery) ·
+`riviera-review-overlay` (review gate — due at ready-for-review) · `riviera-docs-freshness`
+(`N/A — no substrate doc states a `sizes` value; re-check at close-out if the band geometry moves`)
+· `riviera-frontend` (placement: no new file in `app/`; the e2e spec belongs in the CI-safe
+`frontend/e2e/` suite, not `real-backend/`) · `angular-developer` + the installed
+`@angular/common` bundle (the two ruled-out routes above; `assertNoPostInitInputChange` covers
+`sizes`, so the value must be a constant per instance) · `playwright-cli` (candidate selection is
+only observable in a real engine — `deviceScaleFactor` per project is what makes the DPR-2 AC
+testable) · `riviera-tailwind` (`N/A — no class changes; `sizes` is an attribute, not styling`).
+
+**Branch:** `claude/intelligent-albattani-otm46u` — the cloud session's designated remote branch,
+standing in for `bugfix/band-contain-sizes` per `riviera-sdlc` § *Remote / cloud session addendum*.
+
+---
+
+## Acceptance criteria (testable)
+
+> Each AC observes **which candidate the browser actually fetched** (`img.currentSrc`), never the
+> `sizes` string itself. A pinned string is a tautology; the candidate is the behaviour.
+
+- [ ] **AC-1:** Given a venue whose cover photo carries both `BANNER` candidates (720w + 1440w), when the venue page renders at a 1440 × 900 viewport at **DPR 1**, then the band image's `currentSrc` is the **720w** candidate. *Seam:* the `/venue/:venueId` route's rendered band `<img>` · *Pinned by:* `venue-photo-candidates.e2e.ts` → `band picks the baseline candidate at DPR 1`
+- [ ] **AC-2:** Given the same venue, when the venue page renders at 1440 × 900 at **DPR 2**, then the band image's `currentSrc` is the **1440w** candidate. *Seam:* same route · *Pinned by:* `venue-photo-candidates.e2e.ts` → `band still picks the retina candidate at DPR 2`
+- [ ] **AC-3:** Given the same venue at a **900 × 800** viewport (the 150 px band, below the `min-[1024px]` step), when the page renders at **DPR 2**, then `currentSrc` is the **720w** candidate — the short band needs 267 device px at most. *Seam:* same route · *Pinned by:* `venue-photo-candidates.e2e.ts` → `the short band stays on the baseline candidate at DPR 2`
+- [ ] **AC-4:** Given a photo with a **single** stored candidate (pre-retina, un-backfillable per ADR-0008), when the band renders, then no `srcset` attribute is emitted and `src` is the baseline URL. *Seam:* `photoSrcset` in `shared/photo-url.ts`, observed through the rendered `<img>` · *Pinned by:* `photo-slideshow.spec.ts` → `emits no srcset for a one-candidate photo`
+- [ ] **AC-5:** Given a venue with ≥ 2 photos (so the gallery grid renders), when the page renders at 1440 × 900 at **DPR 1**, then the hero tile and both side tiles each resolve to the **720w** candidate. *Seam:* the `/venue/:venueId` route's rendered gallery `<img>`s · *Pinned by:* `venue-photo-candidates.e2e.ts` → `every contain-fitted gallery tile picks the baseline candidate at DPR 1`
+- [ ] **AC-6:** Given any `sizes` value this slice authors, when `NgOptimizedImage` initialises in dev mode, then no `RuntimeError 2952` is thrown — i.e. no value contains a `px` token. *Seam:* the `sizes` input of `app-photo-slideshow` / the gallery `<img>`s · *Pinned by:* `photo-url.spec.ts` → `no authored sizes value carries a pixel token`
+
+## Non-goals
+
+- Storing any new rendition. This slice selects better among candidates that already exist; the
+  lightbox's genuine under-service is #1070.
+- Changing `object-contain` to `object-cover` on any surface. That would make `sizes` honest by
+  construction, but it is a visual-design change and belongs to whoever owns the band's look.
+- Introducing an `IMAGE_LOADER`. Ruled out on its merits in #1041 and unchanged here.
+- Touching the Discover card. It is `object-cover`, so its element box *is* its painted box and
+  its `sizes` is already honest.
+
+## Behavior-parity ledger (retirement / replacement slices only)
+
+N/A — no surface is retired or replaced. The band, the gallery tiles and the slideshow keep every
+behaviour; only the `sizes` value each passes changes. AC-4 is the guard that the one behaviour
+adjacent to the change (a one-candidate photo emitting no `srcset`) is untouched.
+
+## Risk register
+
+| # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
+|---|---|---|---|---|---|---|
+| R-1 | A `vw` value tuned for one viewport under-serves at another, trading a DPR-1 win for a visible DPR-2 regression | high | med | The candidate set is coarse (720w / 1440w), so the whole correct answer is the window `360 < sizes ≤ 720` CSS px at every supported viewport. Derive the value against that window, not against a single width; AC-1/2/3 probe three viewport × DPR combinations | agent | open |
+| R-2 | A wide-panorama upload (aspect > ~2.7:1) paints wider than the tuned value and becomes under-served | low | low | Tune to the widest *common* aspect (16:9 → `264 × 1.78 ≈ 470` px painted), so under-service needs an unusually wide source; note the bound in the code's one-line comment | agent | open |
+| R-3 | A pixel value slips into `sizes` during tuning and throws `RuntimeError 2952` only in dev/test, not prod | med | med | AC-6 pins it in a unit spec, which runs in `ngDevMode`; the guard is the assertion, not review | agent | open |
+| R-4 | The gallery tiles' geometry is derived from markup rather than measured, so the tuned value is wrong | med | med | Measure the rendered tile boxes in the e2e run (`getBoundingClientRect`) before choosing values; phase 2 step 1 does this and records the numbers in this doc | agent | open |
+| R-5 | Playwright's pinned browser revision is absent in the cloud sandbox; only `/opt/pw-browsers/chromium` exists | high | low | Run the mocked suite as `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` — `playwright.a11y.config.ts` honours only that env var (`riviera-local-debug` § Frontend). Never `playwright install`. CI has its own browsers and is unaffected | agent | open |
+
+## Open questions / Assumptions
+
+- **Assumption:** 16:9 is the widest aspect worth tuning for; sources wider than ~2.7:1 accept
+  under-service. — *Owner:* agent · *Resolves by:* phase 1, by stating the bound in code
+- **Open question:** Do the three gallery tiles want one shared `sizes` or one each? Their painted
+  widths differ (hero ~2:1 box, side tiles ~2:1 but half the width). — *Owner:* agent ·
+  *Resolves by:* phase 2 step 1, from the measured boxes
+
+## Availability & concurrency (invariant #2)
+
+N/A — does not affect availability. This slice changes one presentational attribute on already-
+rendered photo elements. It reads no `set_availability` row, writes none, and touches no booking,
+beach-map set or sales-window code path.
+
+## Spring Modulith — modules, interfaces, events
+
+N/A — frontend-only. No backend file is touched, no published surface changes, and the photo
+serving contract (`PhotoView` / `PhotoSourceView`) is consumed exactly as it stands.
+
+### Module ownership (§4a)
+
+N/A — no backend behavior is added or moved.
+
+## Payment & payout (invariants #5, #8, #9, #10)
+
+N/A — no payment in scope.
+
+## Angular — frontend surfaces touched
+
+| # | Surface | Existing/new | Type | State/reactivity | Forms |
+|---|---|---|---|---|---|
+| FE-1 | `venue/venue-map.html` | existing | template | none — a constant attribute value | none |
+| FE-2 | `shared/photo-gallery-grid.ts` | existing | standalone component (inline template) | none — constant attribute values | none |
+| FE-3 | `frontend/e2e/venue-photo-candidates.e2e.ts` | new | Playwright spec (CI-safe mocked suite) | n/a | n/a |
+
+**Standards:** standalone components, `inject()`, `@if`/`@for`, `input()`/`output()` signal APIs,
+`NgOptimizedImage` for images. No deviation. `sizes` stays a constant per instance, as
+`assertNoPostInitInputChange` requires.
+
+## FE↔BE contract
+
+N/A — no contract change. `PhotoView.sources` is already everything the browser needs; this slice
+changes only how the client describes its own layout.
+
+## Execution status
+
+**Stage pointer:** `plan — committed, awaiting implement`
+
+**Next action:** Start phase 0 — write the characterization e2e that pins today's wrong candidate
+(band fetches 1440w at DPR 1), and confirm it passes against unmodified `main`.
+
+| Phase | Status | Commits |
+|-------|--------|---------|
+| 0 — Characterize: pin the wrong candidate today | | |
+| 1 — Fix the beach-map band (both heights) | | |
+| 2 — Measure and fix the three gallery tiles | | |
+| 3 — Pin the no-pixel-token rule | | |
+
+Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Findings register**
+
+| # | Source (review / sonar / CI) | Finding | Status |
+|---|---|---|---|
+| — | — | none yet | — |
+
+---
+
+## File structure
+
+- `docs/plans/band-contain-sizes.md` — this plan
+- `frontend/src/app/venue/venue-map.html` — the band's `sizes`
+- `frontend/src/app/shared/photo-gallery-grid.ts` — the hero + two tiles' `sizes`
+- `frontend/src/app/shared/photo-url.ts` — the authored-`sizes` constants, if phase 1 extracts them
+- `frontend/src/app/shared/photo-url.spec.ts` — AC-6, the no-pixel-token rule
+- `frontend/src/app/shared/photo-slideshow.spec.ts` — AC-4, one-candidate photos emit no `srcset`
+- `frontend/e2e/venue-photo-candidates.e2e.ts` — AC-1/2/3/5, candidate selection per viewport × DPR
+- `frontend/e2e/support/photo-views.ts` — the mocked photo fixture, if a two-candidate cover is missing
+
+---
+
+## Phase 0 — Characterize: pin the wrong candidate today
+
+**Files:** Create `frontend/e2e/venue-photo-candidates.e2e.ts` · Read `frontend/e2e/support/photo-views.ts`
+
+- [ ] **Step 1: Write the characterization test** — assert the band's `currentSrc` is the **1440w**
+      candidate at 1440 × 900 DPR 1. This is today's wrong behaviour; the test passes now and is
+      inverted in phase 1. Serve two distinguishable image bodies from `page.route` so `currentSrc`
+      identifies the candidate unambiguously.
+- [ ] **Step 2: Run it, verify it PASSES** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → PASS
+      (characterization, not red-green; it documents the defect before the fix moves it)
+- [ ] **Step 3: Record the measured boxes** — in the same run, log
+      `getBoundingClientRect()` for the band and each gallery tile, and write the numbers into
+      this doc's Open questions. Phase 1 and 2 tune against measurements, not against markup arithmetic.
+- [ ] **Step 4: Commit** — `git commit -m "Pin today's band candidate selection (#1069)"`
+- [ ] **Step 5: Update plan-doc execution status** in the same commit window.
+
+---
+
+## Phase 1 — Fix the beach-map band (both heights)
+
+**Files:** Modify `frontend/src/app/venue/venue-map.html:37` · Test `frontend/e2e/venue-photo-candidates.e2e.ts`
+
+- [ ] **Step 1: Invert the characterization into AC-1, and add AC-2 + AC-3** — three assertions:
+      720w at 1440 × 900 DPR 1, 1440w at 1440 × 900 DPR 2, 720w at 900 × 800 DPR 2.
+- [ ] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` →
+      FAIL on AC-1 with the 1440w candidate
+- [ ] **Step 3: Minimal implementation** — replace the band's `sizes`, deriving each clause so the
+      computed value lands inside the `360 < sizes ≤ 720` window across that clause's viewport range:
+
+| Viewport range | Band box | Painted at 16:9 | Target window | Clause |
+|---|---|---|---|---|
+| ≥ 1280px | 1100 × 264 (fixed) | ~470px | 360 < s ≤ 720 | `30vw` (1280→384, 1920→576) |
+| 1024–1279px | 732 × 264 | ~470px | 360 < s ≤ 720 | `45vw` (1024→461, 1279→576) |
+| < 1024px | 732 × 150 | ~267px | s ≤ 360 (720w at both densities) | `35vw` (768→269, 1023→358) |
+
+      Values are the derivation, not the answer — re-derive against phase 0's measured boxes and let
+      the ACs arbitrate.
+
+- [ ] **Step 4: Run it, verify it passes** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → PASS
+- [ ] **Step 5: Generalization-audit pass** — Population `every NgOptimizedImage call site whose
+      element is object-contain under fill` → enumerate
+      `grep -rn "object-contain" frontend/src/app --include=*.ts --include=*.html` → candidates
+      `<list>` → decision `<fix all in phase 2 / subset + why>`. Append to the log below.
+- [ ] **Step 6: Commit** — `git commit -m "Size the beach-map band by its painted image (#1069)"`
+- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+
+---
+
+## Phase 2 — Measure and fix the three gallery tiles
+
+**Files:** Modify `frontend/src/app/shared/photo-gallery-grid.ts:51,80,107` · Test `frontend/e2e/venue-photo-candidates.e2e.ts`
+
+- [ ] **Step 1: Write the failing test** — AC-5, over all three tiles at 1440 × 900 DPR 1.
+- [ ] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → FAIL
+- [ ] **Step 3: Minimal implementation** — tune each tile's `sizes` against phase 0's measured boxes,
+      resolving the Open question on whether one shared value serves all three.
+- [ ] **Step 4: Run it, verify it passes** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → PASS,
+      then broaden: `npm test -- photo` and `npm run test:e2e:a11y`
+- [ ] **Step 5: Commit** — `git commit -m "Size the gallery tiles by their painted images (#1069)"`
+- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+
+---
+
+## Phase 3 — Pin the no-pixel-token rule
+
+**Files:** Modify `frontend/src/app/shared/photo-url.ts` · Test `frontend/src/app/shared/photo-url.spec.ts`, `frontend/src/app/shared/photo-slideshow.spec.ts`
+
+- [ ] **Step 1: Write the failing tests** — AC-6 (no authored value carries a `px` token) and AC-4
+      (a one-candidate photo emits no `srcset`). If phase 1/2 left the values inline in templates,
+      extract them to named constants in `photo-url.ts` first so a spec can reach them.
+- [ ] **Step 2: Run it, verify it fails** — `npm test -- photo-url` → FAIL
+- [ ] **Step 3: Minimal implementation** — the constants + the guard.
+- [ ] **Step 4: Run it, verify it passes** — `npm test -- photo-url photo-slideshow` → PASS, then
+      `npm run lint && npm run format:check`
+- [ ] **Step 5: Commit** — `git commit -m "Guard authored sizes against pixel tokens (#1069)"`
+- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+
+---
+
+## Generalization-audit log
+
+| Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
+|---|---|---|---|---|---|
+
+---
+
+## Acceptance-criteria verification (final)
+
+- [ ] **AC-1:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → 720w at DPR 1. Verified at commit `<sha>`.
+- [ ] **AC-2:** same run → 1440w at DPR 2. Verified at commit `<sha>`.
+- [ ] **AC-3:** same run → 720w on the short band at DPR 2. Verified at commit `<sha>`.
+- [ ] **AC-4:** Run `npm test -- photo-slideshow` → no `srcset` for one candidate. Verified at commit `<sha>`.
+- [ ] **AC-5:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → all three tiles 720w at DPR 1. Verified at commit `<sha>`.
+- [ ] **AC-6:** Run `npm test -- photo-url` → no pixel token. Verified at commit `<sha>`.
+
+## Self-review checklist (before merge / PR)
+
+- [ ] Every AC has an implementing task and a verifying test.
+- [ ] No placeholders / TODO / TBD anywhere in the doc.
+- [ ] Type & method-signature consistency across phases.
+- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [ ] Pool + cutoff rules honored (invariants #3, #4).
+- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [ ] Refund policy enforced server-side (invariant #10).
+- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [ ] Booking codes unguessable (invariant #7).
+- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [ ] **Close-out written in THIS PR, in its last code-touching commit** — citing `merged via PR #NN`.
+- [ ] **The review gate ran in full** — per the ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
