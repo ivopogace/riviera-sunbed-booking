@@ -100,9 +100,9 @@ for `feature/photo-scrim-directive` (`riviera-sdlc` § Remote / cloud session ad
 |---|---|---|---|---|---|---|
 | R-1 | Silent visual drift: a class is dropped or reordered in the move and the class list still "looks right" | med | high | `riviera-tailwind`'s hard rule — AC-4 diffs *computed* styles in a real browser on both surfaces, and phase 0 lands it green against the OLD markup first, so it is a characterization test, not a post-hoc rationalization | claude | closed — phase 0 baseline green against the old spans |
 | R-2 | A live test hook breaks: `home.spec.ts` and `discover-photos.e2e.ts` query `.photo-scrim`; `venue-map.spec.ts` asserts `.photo-band` innerHTML contains `riv-photo-scrim` | high | med | rule 2 keeps `photo-scrim` first on the host; the innerHTML assertion keeps passing because Angular writes static host classes into the real `class` attribute — and phase 2 *adds* an element-level assertion beside it rather than replacing the innerHTML proof | claude | open |
-| R-3 | Bundling `absolute inset-0` into a surface directive conflicts with rule 3's stylesheet-order argument if a future call site wants different geometry | low | low | rule 3 names border-radius and padding, not position; both call sites are full-bleed and full-bleed *is* the scrim's identity. The reason is written at the declaration so a third call site wanting other geometry re-opens it deliberately rather than by drift | claude | open |
-| R-4 | `aria-hidden` on the directive host hides something that should be exposed | low | med | the scrim is paint-only, has no content and is never focusable; both call sites already set it. AC-1 pins it and the e2e axe pass on both routes stays green | claude | open |
-| R-5 | Tailwind stops generating a utility because the class now lives in a `.ts` host string rather than a template | low | high | `riviera-tailwind`'s ICON-5 note records that a host `class` string is scanned by Tailwind — the same mechanism `card-glass.ts` and `panel-glass.ts` already rely on. AC-4's computed `background-image` would catch a missing utility outright | claude | open |
+| R-3 | Bundling `absolute inset-0` into a surface directive conflicts with rule 3's stylesheet-order argument if a future call site wants different geometry | low | low | rule 3 names border-radius and padding, not position; both call sites are full-bleed and full-bleed *is* the scrim's identity. The reason is written at the declaration so a third call site wanting other geometry re-opens it deliberately rather than by drift | claude | closed — reason recorded in `photo-scrim.ts`'s NOTE |
+| R-4 | `aria-hidden` on the directive host hides something that should be exposed | low | med | the scrim is paint-only, has no content and is never focusable; both call sites already set it. AC-1 pins it and the e2e axe pass on both routes stays green | claude | closed — AC-1 pins it; axe stays green in phase 2 |
+| R-5 | Tailwind stops generating a utility because the class now lives in a `.ts` host string rather than a template | low | high | `riviera-tailwind`'s ICON-5 note records that a host `class` string is scanned by Tailwind — the same mechanism `card-glass.ts` and `panel-glass.ts` already rely on. AC-4's computed `background-image` would catch a missing utility outright | claude | open — settles at phase 2's e2e run |
 
 ## Open questions / Assumptions
 
@@ -156,15 +156,15 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Write the failing `photo-scrim.spec.ts`, then create `shared/photo-scrim.ts`.
+**Next action:** Extend `home.spec.ts` / `venue-map.spec.ts`, then swap both call sites to `appPhotoScrim`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Pin the no-drift baseline (characterization e2e against the OLD markup) | ✅ | this commit |
-| 1 — The directive, red-green | ⏳ | |
-| 2 — Swap both call sites, tighten the map assertion, generalization audit | | |
+| 1 — The directive, red-green | ✅ | this commit |
+| 2 — Swap both call sites, tighten the map assertion, generalization audit | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -219,24 +219,27 @@ That is what makes it evidence in phase 2 rather than a description of whatever 
 
 **Files:** Create `frontend/src/app/shared/photo-scrim.ts` · Test `frontend/src/app/shared/photo-scrim.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — `photo-scrim.spec.ts`, modelled on `card-glass.spec.ts`:
+- [x] **Step 1: Write the failing test** — `photo-scrim.spec.ts`, modelled on `card-glass.spec.ts`:
   a `Host` component applying `appPhotoScrim` to a `<span>`; assert every recipe class is present,
   assert `aria-hidden="true"`, and assert no class on the host starts with `rounded` or `p`-padding
   (rule 3).
 
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- photo-scrim` → FAIL, cannot resolve
-  `./photo-scrim`.
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --include "src/app/shared/photo-scrim.spec.ts"`
+  → **FAIL**, `Cannot find module './photo-scrim'`. (`npm test -- <name>` does not scope — the
+  Angular Vitest builder takes `--include <glob>`; the plan's later commands use that form.)
 
-- [ ] **Step 3: Minimal implementation** — `shared/photo-scrim.ts`: a standalone `@Directive`
+- [x] **Step 3: Minimal implementation** — `shared/photo-scrim.ts`: a standalone `@Directive`
   with selector `[appPhotoScrim]` and a `host` block carrying the recipe classes and
   `aria-hidden`, with the comment recording why the geometry is bundled where the glass
   directives unbundle radius.
 
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- photo-scrim` → PASS.
+- [x] **Step 4: Run it, verify it passes** — `npx ng test --include "src/app/shared/photo-scrim.spec.ts"`
+  → **PASS (3 passed)**. Mutation-checked, not just observed green: dropping `pointer-events-none`
+  and `aria-hidden` and adding `rounded-lg` fails all three tests, so none of them is vacuous.
 
-- [ ] **Step 5: Commit** — `git commit -m "Add the appPhotoScrim surface directive (#1066)"`
+- [x] **Step 5: Commit** — `git commit -m "Add the appPhotoScrim surface directive (#1066)"`
 
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ---
 
