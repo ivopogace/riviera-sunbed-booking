@@ -30,8 +30,9 @@ issue's AC-2 "every DPR-1 and DPR-2 selection is unchanged" holds only inside th
 stated 3:2–16:9 aspect band, see A-1) · `riviera-plan-doc` (this template — forced the
 aspect-by-aspect AC split and the seam names) · `tdd` (phase 0 pins the defect as a red e2e
 before the value moves; every new assertion is mutation-checked) · `riviera-review-overlay`
-(review gate — runs at ready-for-review) · `riviera-docs-freshness` (**ran** at close-out over
-`origin/main..HEAD`, findings in the register) · `riviera-local-debug` (unshallowed the clone
+(review gate — runs at ready-for-review) · `riviera-docs-freshness` (**ran** over `07599f77..612a3bf1`,
+**0 findings** — every "density" claim in the tree is about the two STORED renditions, which this
+slice does not touch, and no substrate doc states a `sizes` value or a DPR bound) · `riviera-local-debug` (unshallowed the clone
 before the guards; `PW_CHROMIUM_EXECUTABLE` for the mocked suite; never `playwright install`) ·
 `riviera-frontend` (`shared/photo-url.ts` is the registry's home — a pure `shared/` utility, no
 folder move) · `riviera-tailwind` (checked and **compiled**: Tailwind 4.3.3 ships no `sizes`,
