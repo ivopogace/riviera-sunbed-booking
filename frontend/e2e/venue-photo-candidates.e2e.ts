@@ -9,10 +9,24 @@ import { bannerPhotoView } from './support/photo-views';
  * engine makes that choice, which is why this is an e2e and not a jsdom spec.
  *
  * <p>Each case fixes a viewport AND a device-pixel ratio, because the candidate is picked from
- * `sizes × DPR`: a value that serves DPR 1 correctly can under-serve DPR 2. DPR 3 is deliberately
- * uncovered: the values are tuned to DPR 1 and 2, and the tracker carries what that leaves. Axe is
- * not re-run here — `discover-photos.e2e.ts` already sweeps these two
- * surfaces, and an image's `srcset` cannot move an axe result.
+ * `sizes × DPR`: a value that serves DPR 1 correctly can under-serve DPR 2. DPR 1, 2 and 3 are all
+ * covered. Density is set per `describe` rather than by a Playwright project, so the DPR-1 and
+ * DPR-2 no-regression cases keep their own densities instead of being re-run at someone else's.
+ *
+ * <p>Each case also fixes an ASPECT, and its title and comment say which. A 3:2 upload stores
+ * 720w/1440w and a 16:9 one 853w/1707w, so the two differ in BOTH what they paint and what they
+ * store, and their windows do not line up — at 800 CSS px at DPR 3 the 16:9 upload is short while
+ * the 3:2 one needs nothing. No number in this file belongs to more than one fixture.
+ *
+ * <p>NOT covered: any engine but Chromium. `galleryHero` carries a CSS math function, and whether
+ * an engine that cannot parse one in `sizes` exists is unmeasured — no second engine ships in this
+ * repo's Playwright setup. Measured in Chromium, the failure mode is benign rather than unknown:
+ * an entry the engine cannot parse is dropped and the next valid one is used, and with the math
+ * function last there is none behind it, so the `100vw` default applies and the page OVER-fetches
+ * instead of under-serving.
+ *
+ * <p>Axe is not re-run here — `discover-photos.e2e.ts` already sweeps these two surfaces, and an
+ * image's `srcset` cannot move an axe result.
  */
 
 /** A 1×1 PNG for the mocked serving endpoint — the `<img>`s genuinely load and settle on a choice. */
@@ -57,6 +71,8 @@ const VENUE_MAP = {
 
 /** The 2+ photo path, where the header hands its photo lead to the gallery grid, not the band. */
 const GALLERY_VENUE = { ...VENUE_MAP, photos: [BANNER, SECOND, THIRD] };
+/** The same page whose hero is the 16:9 upload, which stores 853w/1707w rather than 720w/1440w. */
+const WIDE_GALLERY_VENUE = { ...VENUE_MAP, photos: [WIDE_BANNER, SECOND, THIRD] };
 
 test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE_MAP }));
@@ -116,8 +132,8 @@ test.describe('the beach-map band at 900 x 800, DPR 2', () => {
 });
 
 /** The 2+ photo page, scrolled until the lazy side tiles have chosen a candidate. */
-async function openGallery(page: Page) {
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: GALLERY_VENUE }));
+async function openGallery(page: Page, venue: object = GALLERY_VENUE) {
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: venue }));
   await page.goto('/venues/1');
   await expect(page.getByTestId('gallery-hero')).toBeVisible();
   await page.getByTestId('gallery-tile').nth(1).scrollIntoViewIfNeeded();
@@ -213,5 +229,111 @@ test.describe('the beach-map band at 1024 x 800, DPR 2', () => {
 
     // The clause's tightest point: 45vw asks 922 device px against a 16:9 baseline of 853.
     await candidate(band).toBe('ee05@1707');
+  });
+});
+
+test.describe('the gallery hero at 360 x 900, DPR 3', () => {
+  test.use({ viewport: { width: 360, height: 900 }, deviceScaleFactor: 3 });
+
+  test('a 3:2 upload stays on its baseline below the DPR-3 window', async ({ page }) => {
+    await openGallery(page);
+
+    // 3:2 fixture: a ~205 x 220 box paints ~205 CSS px, so DPR 3 needs 616 - inside its 720w.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
+  });
+});
+
+test.describe('the gallery hero at 430 x 900, DPR 3', () => {
+  test.use({ viewport: { width: 430, height: 900 }, deviceScaleFactor: 3 });
+
+  test('a 3:2 upload takes the retina candidate at the low end of the DPR-3 window', async ({
+    page,
+  }) => {
+    await openGallery(page);
+
+    // 3:2 fixture: a width-bound 252 x 220 box paints 252, so DPR 3 needs 756 - past 720w by 5%.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
+  });
+});
+
+test.describe('the gallery hero at 560 x 900, DPR 3', () => {
+  test.use({ viewport: { width: 560, height: 900 }, deviceScaleFactor: 3 });
+
+  test('a 3:2 upload takes the retina candidate where the paint caps', async ({ page }) => {
+    await openGallery(page);
+
+    // 3:2 fixture: a height-bound ~339 x 220 box paints 220 x 1.5 = 330, so DPR 3 needs 990.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
+  });
+});
+
+test.describe('the gallery hero at 673 x 900, DPR 3', () => {
+  test.use({ viewport: { width: 673, height: 900 }, deviceScaleFactor: 3 });
+
+  test('a 3:2 upload takes the retina candidate at the top of the DPR-3 window', async ({
+    page,
+  }) => {
+    await openGallery(page);
+
+    // 3:2 fixture: a 414 x 220 box, paint still capped at 330, still needing 990 - the top end.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
+  });
+});
+
+test.describe('the gallery hero at 800 x 900, DPR 3', () => {
+  test.use({ viewport: { width: 800, height: 900 }, deviceScaleFactor: 3 });
+
+  test("a 16:9 upload's DPR-3 window runs wider than a 3:2 upload's", async ({ page }) => {
+    await openGallery(page, WIDE_GALLERY_VENUE);
+
+    // 16:9 fixture: a ~485 x 220 box paints 220 x 16/9 = ~391, so DPR 3 needs 1173 - past its 853w.
+    await candidate(page.getByTestId('gallery-hero')).toBe('ee05@1707');
+  });
+
+  test('while a 3:2 upload at the same width needed no help', async ({ page }) => {
+    await openGallery(page);
+
+    // 3:2 fixture, same box: it paints 330 and needs 990, which the widest clause already buys.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
+  });
+});
+
+test.describe('the gallery hero at 560 x 900, DPR 1', () => {
+  test.use({ viewport: { width: 560, height: 900 }, deviceScaleFactor: 1 });
+
+  test('the capped clause leaves a 3:2 upload on its baseline at DPR 1', async ({ page }) => {
+    await openGallery(page);
+
+    // 3:2 fixture: a 330 CSS px paint needs 330 device px, far inside 720w - the cap is why.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
+  });
+});
+
+test.describe('the gallery hero at 560 x 900, DPR 2', () => {
+  test.use({ viewport: { width: 560, height: 900 }, deviceScaleFactor: 2 });
+
+  test('the capped clause leaves a 3:2 upload on its baseline at DPR 2', async ({ page }) => {
+    await openGallery(page);
+
+    // 3:2 fixture: a 330 paint needs 660; an uncapped 66vw would ask 739 and buy retina for free.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
+  });
+
+  test('and leaves a 16:9 upload on its own, wider baseline at DPR 2', async ({ page }) => {
+    await openGallery(page, WIDE_GALLERY_VENUE);
+
+    // 16:9 fixture: a width-bound ~339 paint needs 678 device px, inside its own wider 853w.
+    await candidate(page.getByTestId('gallery-hero')).toBe('ee05');
+  });
+});
+
+test.describe('the gallery hero at 1024 x 800, DPR 2', () => {
+  test.use({ viewport: { width: 1024, height: 800 }, deviceScaleFactor: 2 });
+
+  test('the step the capped clause stops at is untouched', async ({ page }) => {
+    await openGallery(page);
+
+    // 3:2 fixture: the middle clause governs (45vw = 922 device px) over a 485 x 360 box.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
   });
 });

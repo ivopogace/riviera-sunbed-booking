@@ -22,6 +22,18 @@ const SINGLE: PhotoView = {
   sources: [{ url: '/api/venues/1/photos/cc03', width: 576 }],
 };
 
+/**
+ * A `sizes` string with the two places `CONTAIN_SIZES`' doc allows a `px` removed — a media
+ * condition and a CSS math function — leaving the bare size values behind. A `px` among those is
+ * what this registry has never wanted. `NgOptimizedImage`'s own NG02952 guard is a different rule
+ * that overlaps this one; `photo-slideshow.spec.ts` holds that half, against the real directive.
+ */
+function sizeValuesOf(value: string): string {
+  return value
+    .replace(/\((?:min|max)-width:[^)]*\)/g, '')
+    .replace(/\b(?:min|max|clamp|calc)\([^()]*\)/g, '');
+}
+
 describe('photo-url', () => {
   it('joins every candidate into a w-descriptor srcset', () => {
     expect(photoSrcset(CARD)).toBe(
@@ -29,11 +41,17 @@ describe('photo-url', () => {
     );
   });
 
-  it('states every contain-fitted sizes as vw clauses with a vw fallback, never a pixel length', () => {
-    // A px LENGTH throws RuntimeError 2952; the px inside a media condition is fine.
+  it('states every contain-fitted sizes without a bare px LENGTH, math-function bounds apart', () => {
     for (const [surface, value] of Object.entries(CONTAIN_SIZES)) {
-      expect(value, surface).toMatch(/^(\(min-width: \d+px\) \d+vw, )*\d+vw$/);
+      expect(sizeValuesOf(value), surface).not.toMatch(/\d+px/);
+      expect(value, surface).toMatch(/\d+vw/);
     }
+  });
+
+  it('and that rule rejects a bare px LENGTH, so it cannot pass by saying nothing', () => {
+    expect(sizeValuesOf('(min-width: 1280px) 330px, 66vw')).toMatch(/\d+px/);
+    expect(sizeValuesOf('330px')).toMatch(/\d+px/);
+    expect(sizeValuesOf('(min-width: 1280px) 35vw, min(330px, 66vw)')).not.toMatch(/\d+px/);
   });
 
   it('returns null for a single candidate, since src already carries it', () => {

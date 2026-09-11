@@ -54,8 +54,13 @@ describe('PhotoSlideshow', () => {
     expect(img.getAttribute('sizes')).toBe('auto, 30vw');
   });
 
+  /**
+   * The directive's dev-mode guards run on init, so a value it rejects fails here, not in prod.
+   * Load-bearing for `galleryHero`, whose `px` clears `assertNoComplexSizes` on the technicality
+   * `CONTAIN_SIZES`' own doc states: a release that closes it turns this red, naming the value,
+   * instead of reaching production.
+   */
   it('carries every authored contain-fitted sizes through NgOptimizedImage untouched', () => {
-    // The directive's dev-mode guards run on init, so a value it rejects fails here, not in prod.
     for (const value of Object.values(CONTAIN_SIZES)) {
       const surface = TestBed.createComponent(PhotoSlideshow);
       surface.componentRef.setInput('photos', [photoView('/api/venues/1/photos/aa01', 1152)]);
