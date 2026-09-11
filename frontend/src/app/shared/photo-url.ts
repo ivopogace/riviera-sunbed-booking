@@ -44,12 +44,12 @@ export function resolveCoverPhoto(cover: CoverPhotoView | null | undefined): Cov
  * `min-[1024px]` step. Three things sit outside that bound. Past 8:3 both tiers are width-bound
  * at 1280w/2560w, stop following the aspect, and the rule stops holding. The hero's 360px box at
  * DPR 3 is ladder-limited — a 3:2 upload is 1% short from 1024 and 11% short from 1280, reachable
- * only by a wider stored rendition, which ADR-0008's list would
- * have to gain. And narrower than 3:2 the hero's cap buys
- * a wider candidate than DPR 1 or DPR 2 needs (a 2:3 portrait upload takes its retina candidate
- * from 540px viewports at DPR 1), which is an unavoidable trade rather than a mistuning: covering
- * 3:2 at DPR 3 needs more than 240 CSS px above a 240px viewport, and leaving 1:1 alone at DPR 2
- * needs 240 or less up to 686 — the two cannot both hold in one aspect-blind value.
+ * only by a wider stored rendition, which ADR-0008's list would have to gain. And narrower than
+ * 3:2 the hero's cap buys a wider candidate than DPR 1 or DPR 2 needs (a 2:3 portrait upload takes
+ * its retina candidate from about 485px viewports at DPR 1), which is an unavoidable trade rather
+ * than a mistuning: covering 3:2 at DPR 3 needs more than 240 CSS px above a 412px viewport, where
+ * the box first paints wider than 240, while leaving 1:1 alone at DPR 2 needs 240 or less up to
+ * 686 — the two cannot both hold in one aspect-blind value.
  *
  * <p>No bare `px` LENGTH: one opening a value, or following `") "` or `", "`, throws
  * `RuntimeError 2952`. A `px` in a media condition is not a length at all, and one inside a CSS
@@ -65,7 +65,8 @@ export const CONTAIN_SIZES = {
   /** The gallery hero: 731 × 360 above 1280, 485 × 360 down to 1024, 220 tall below in a box that
    *  narrows with the viewport under 780 — painting 540, then 485 width-bound, then a 3:2 upload's
    *  330 (220 × 1.5). The widest clause caps a box that stops growing at the 1100px breakout; the
-   *  middle one holds a box that cannot need retina at DPR 2. The narrowest is capped at the PAINT,
+   *  middle one stays large enough to buy the retina candidate, which its 485-wide box does need at
+   *  DPR 2 (971 device px against a 720w baseline). The narrowest is capped at the PAINT,
    *  because below 1024 the paint stops at 330 while a `vw` keeps climbing, and no bare coefficient
    *  both reaches DPR 3 and leaves DPR 2 on the baseline. 330 is the 3:2 figure; a 16:9 upload
    *  paints 391 in the same box and is still covered, because its own baseline is 853w rather than

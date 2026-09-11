@@ -203,8 +203,9 @@ new rule says "no px LENGTH", which is the constraint the old one was always app
 - **Assumption A-1:** AC-4/AC-5's "no DPR-1 or DPR-2 selection regressed" is proved **within
   the registry's stated 3:2–16:9 aspect band**, where it holds with zero changed selections.
   Outside that band the capped clause does change DPR-1/DPR-2 selections, always toward a
-  wider candidate: 2:3 portrait at DPR 1 (540–900) and DPR 2 (320–430), 1:1 at DPR 2
-  (375–673), 4:3 at DPR 2 (540–900). That trade is **unavoidable**, not a tuning error —
+  wider candidate: 2:3 portrait at DPR 1 (from ~485 to ~914 — the crossovers, not the sampled
+  widths 540 and 900) and at DPR 2 (from ~243), 1:1 at DPR 2 (from ~364 to ~686), 4:3 at DPR 2
+  (from ~485 to ~914). That trade is **unavoidable**, not a tuning error —
   fixing 3:2 at DPR 3 requires the resolved value to exceed 240 CSS px for viewports above
   240, while leaving 1:1 alone at DPR 2 requires it to stay at or below 240 for viewports up
   to 686; the two cannot both hold. Ship the issue's value, state the band in the TSDoc
@@ -275,6 +276,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | review gate | RV-STYLE-1: the registry TSDoc cited issue #1070, which is provenance in a doc comment the diff touched. `check-inline-comments.mjs` misses it because "which" is not in its citing-word list, so the guard's silence was not a defence. | fixed — repointed to ADR-0008, which owns the rendition list |
 | F-2 | review gate | The new e2e comments said a paint "asks" N device px. A paint *needs*; what *asks* is the resolved `sizes` value × DPR, a different number. Every assertion still selected the same candidate, but conflating requirement with request is the error class this issue was rewritten twice over. | fixed — "asks" → "needs" throughout |
 | F-3 | review gate | AC-1, AC-3, AC-4, AC-5 and AC-6 cited "Pinned by" names that no shipped test carries; AC-4's `the #1069 win survives at DPR 1 and DPR 2` existed nowhere at all. | fixed — every AC now quotes its shipped describe/test title verbatim |
+| F-5 | review gate | The `galleryHero` doc said the MIDDLE clause "holds a box that cannot need retina at DPR 2". False, and contradicted by this PR's own 1024 × DPR-2 case: that 485 × 360 box needs 971 device px against a 720w baseline. The property belongs to the NARROWEST clause and was mis-assigned when the sentence was split from two clauses to three. | fixed — the middle clause is now described by what it actually does |
+| F-6 | review gate | The doc gave 540px as where a 2:3 portrait upload starts taking retina at DPR 1. That was the first width in the 31-point sample grid, not the crossover; measured, 480 still selects 320w and 485 selects 640w. | fixed — "about 485px", and the plan's A-1 now gives crossovers rather than sampled widths |
+| F-7 | self, while verifying F-5/F-6 | The same sentence said the 3:2 DPR-3 requirement begins "above a 240px viewport". 240 is the BOX width, which the viewport reaches at 412. | fixed — "above a 412px viewport, where the box first paints wider than 240" |
 | F-4 | review gate | A repeat of #1071's own F-5: the regex-gap mechanism was stated authoritatively in `photo-url.ts`' TSDoc **and** `photo-slideshow.spec.ts`' canary doc, with a third partial restatement in `photo-url.spec.ts`. Nothing would keep the three in lockstep if the guard's behaviour were ever corrected. | fixed — the mechanism lives only in the `CONTAIN_SIZES` doc; the other two name it as the owner |
 
 ---
