@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { ADMIN, mockWholeAdminConsole } from './support/admin-console.mocks';
+import { mockOwnedVenues } from './support/auth-mocks';
 import { expectNoFocusZoom, expectTouchManipulation } from './support/mobile-zoom';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
@@ -23,9 +24,9 @@ import { openPalette } from './support/shell';
  *
  * <p>Viewport: the project runs this file once under `chromium`, at that project's desktop width.
  * No field in `src/` carries a responsive text size, so a field's computed size is the same at
- * every width and one pass measures it. What IS width-dependent is which chrome exists at all —
- * the console's phone rail renders only below `sm` — so the one test that needs it sets a phone
- * viewport of its own.
+ * every width and one pass measures it. What IS width-dependent is which chrome exists at all, and
+ * the two rails sit on opposite sides of `sm` — the text rail above it, the phone rail below — so
+ * each rail assertion sets the width it needs rather than inheriting the project's.
  */
 const PHONE = { width: 390, height: 780 };
 const DESKTOP = { width: 1280, height: 800 };
@@ -41,7 +42,7 @@ test.describe('operator console — mobile zoom', () => {
     await expect(page.getByTestId(marker).first()).toBeVisible();
   }
 
-  // `fields` is what the surface renders at rest — 0 says "none" out loud rather than by silence.
+  // `fields` is the FLOOR a surface must sweep at rest — 0 says "none" out loud, not by silence.
   const SURFACES = [
     { path: 'daily', marker: 'daily-view-tab', label: 'operator daily view', fields: 1 },
     { path: 'requests', marker: 'request-card', label: 'operator requests', fields: 0 },
@@ -71,6 +72,7 @@ test.describe('operator console — mobile zoom', () => {
   test('the command palette — no field zooms the page in on focus', async ({ page }) => {
     await openConsoleTab(page, 'daily', 'daily-view-tab');
     await openPalette(page);
+    await expect(page.getByTestId('oc-palette-search')).toBeVisible();
 
     await expectNoFocusZoom(page, 'the command palette');
   });
@@ -78,9 +80,24 @@ test.describe('operator console — mobile zoom', () => {
   test('beach map, a set selected — no field zooms the page in on focus', async ({ page }) => {
     await openConsoleTab(page, 'beach-map', 'set-grid');
     await page.getByTestId('set-cell').first().click();
-    await expect(page.getByTestId('set-panel')).toBeVisible();
+    await expect(page.getByTestId('set-price')).toBeVisible();
 
     await expectNoFocusZoom(page, 'operator beach map (per-set panel)');
+  });
+
+  test('beach map, a sweep selection — no field zooms the page in on focus', async ({ page }) => {
+    await openConsoleTab(page, 'beach-map', 'set-grid');
+    // The bulk panel's price opens on a drag-sweep across cells, not on a tool click.
+    const cells = page.getByTestId('set-cell');
+    const from = (await cells.nth(0).boundingBox())!;
+    const to = (await cells.nth(2).boundingBox())!;
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 10 });
+    await page.mouse.up();
+    await expect(page.getByTestId('batch-price')).toBeVisible();
+
+    await expectNoFocusZoom(page, 'operator beach map (sweep selection)');
   });
 
   test('beach map, bulk paint mode — no field zooms the page in on focus', async ({ page }) => {
@@ -96,7 +113,7 @@ test.describe('operator console — mobile zoom', () => {
   }) => {
     await openConsoleTab(page, 'payouts', 'statement-open');
     await page.getByTestId('weather-trigger').click();
-    await expect(page.getByTestId('weather-confirm-btn')).toBeVisible();
+    await expect(page.getByTestId('weather-date')).toBeVisible();
 
     await expectNoFocusZoom(page, 'operator payouts (weather confirm)');
   });
@@ -149,6 +166,21 @@ test.describe('operator console — mobile zoom', () => {
     await expect(page.getByTestId('amenity-toggle-WIFI')).toBeVisible();
 
     await expectTouchManipulation(page, '[data-testid^="amenity-toggle-"]', 'the amenity chips');
+  });
+
+  test('the header disclosure triggers keep their double-tap', async ({ page }) => {
+    // The venue name is only a disclosure button on two or more owned venues.
+    await mockOwnedVenues(page, [
+      { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
+      { id: 2, name: 'Sereno', beach: 'Jal' },
+    ]);
+    await openConsoleTab(page, 'daily', 'daily-view-tab');
+
+    await expectTouchManipulation(
+      page,
+      'button[data-testid="oc-venue-title"], [data-testid="oc-account"]',
+      'the venue switcher and account chip',
+    );
   });
 
   test('the console rail tabs and the phone rail slots keep their double-tap', async ({ page }) => {
@@ -235,7 +267,7 @@ test.describe('admin console — mobile zoom', () => {
     await openAdmin(page, '/admin/privacy', 'admin-privacy-form');
     await page.getByTestId('admin-privacy-email').fill('guest@example.com');
     await page.getByTestId('admin-privacy-review').click();
-    await expect(page.getByTestId('admin-privacy-confirm-panel')).toBeVisible();
+    await expect(page.getByTestId('admin-privacy-reason')).toBeVisible();
 
     await expectNoFocusZoom(page, 'admin privacy (erasure confirm)');
   });
@@ -245,7 +277,7 @@ test.describe('admin console — mobile zoom', () => {
   }) => {
     await openAdmin(page, '/admin', 'admin-op-row');
     await page.getByTestId('admin-suspend-12').click();
-    await expect(page.getByTestId('admin-suspend-panel-12')).toBeVisible();
+    await expect(page.getByTestId('admin-suspend-reason-12')).toBeVisible();
 
     await expectNoFocusZoom(page, 'admin operators (suspend confirm)');
   });

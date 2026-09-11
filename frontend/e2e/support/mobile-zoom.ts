@@ -38,7 +38,7 @@ const FLOOR_PX = 16;
  * unstyled field inheriting 16 px is fine without carrying any size class at all.
  *
  * <p>The fix is never `user-scalable=no`/`maximum-scale=1` — that would defeat the zoom by taking
- * pinch-zoom away from everyone, failing WCAG 1.4.4 Resize text. Raising the field costs nothing.
+ * pinch-zoom away from everyone, failing WCAG 1.4.4 Resize text. Raising the field is the cheap fix.
  *
  * <p>It measures the RESTING surface: a field behind an editor, a confirm or a bottom sheet stays
  * invisible to it until the caller opens that state, which is why the spec has a gated-states half.
@@ -102,7 +102,7 @@ export async function expectNoFocusZoom(page: Page, label: string, minFields = 1
  * adjacent cluster — a tile grid, a chip row, a rail of tabs — which is what staff tap through
  * fastest, and which is why the assertion names its cluster rather than sweeping every control.
  *
- * <p>`manipulation` keeps pan and pinch-zoom (so WCAG 1.4.10 is untouched) and drops only the
+ * <p>`manipulation` keeps pan and pinch-zoom (so WCAG 1.4.4 is untouched) and drops only the
  * double-tap gesture. It is not `touch-none`: a control driving its own drag gesture — the layout
  * editor's paint cells — needs that instead, and is deliberately not covered here.
  */

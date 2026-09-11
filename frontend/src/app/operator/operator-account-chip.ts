@@ -162,7 +162,7 @@ export class OperatorAccountChip {
   protected readonly open = signal(false);
   protected readonly exactPath = EXACT_PATH;
   protected readonly cls = {
-    chip: `inline-flex items-center gap-2 py-1 pr-3 pl-1.5 text-[13px] font-semibold text-riv-ink ${CHIP}`,
+    chip: `inline-flex touch-manipulation items-center gap-2 py-1 pr-3 pl-1.5 text-[13px] font-semibold text-riv-ink ${CHIP}`,
     avatar: `${AVATAR} ring-1 ring-riv-console-avatar-ring`,
     backdrop: POP_BACKDROP,
     pop: `absolute top-[calc(100%+10px)] right-0 w-[248px] p-[7px] ${POP_SKIN}`,
