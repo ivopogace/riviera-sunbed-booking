@@ -64,7 +64,7 @@ import { TouchTarget } from '../shared/touch-target';
             autocapitalize="off"
             spellcheck="false"
             aria-describedby="admin-delivery-intro"
-            class="w-[280px] max-w-full rounded-[10px] border border-riv-card-border bg-riv-console-inset/85 px-3 py-2 text-[14px] text-riv-accent-ink [transition:border-color_0.15s_ease] focus-visible:border-riv-accent-ink"
+            class="w-[280px] max-w-full rounded-[10px] border border-riv-card-border bg-riv-console-inset/85 px-3 py-2 text-[16px] text-riv-accent-ink [transition:border-color_0.15s_ease] focus-visible:border-riv-accent-ink"
           />
         </label>
         <button

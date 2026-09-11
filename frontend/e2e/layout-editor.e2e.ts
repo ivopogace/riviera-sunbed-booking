@@ -989,6 +989,9 @@ test('a picture with refunds commits once the count and reason are typed, and th
   // The fixed warn family, by computed style: a themed field skin would drift on this ground.
   await expect(count).toHaveCSS('color', 'rgb(122, 74, 8)');
   await expect(count).toHaveCSS('background-color', 'rgb(255, 244, 224)');
+  // Behind a committable preview, so no sweep reaches them: pin the 16px no-iOS-zoom floor here.
+  await expect(count).toHaveCSS('font-size', '16px');
+  await expect(page.getByTestId('layout-remodel-reason')).toHaveCSS('font-size', '16px');
 
   await count.fill('3');
   await count.blur();

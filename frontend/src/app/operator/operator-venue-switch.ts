@@ -146,7 +146,7 @@ export class OperatorVenueSwitch {
 
   protected readonly open = signal(false);
   protected readonly cls = {
-    button: `inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-1 ${NAME}`,
+    button: `inline-flex cursor-pointer touch-manipulation items-center gap-1.5 rounded-lg px-1 ${NAME}`,
     plain: `px-1 ${NAME}`,
     link: `inline-flex items-center rounded-lg px-1 no-underline hover:underline ${NAME}`,
     backdrop: POP_BACKDROP,

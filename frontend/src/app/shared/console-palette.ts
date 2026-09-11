@@ -51,7 +51,7 @@ const CLS = {
   dialog: `fixed top-[12vh] left-1/2 w-[min(560px,calc(100vw-24px))] -translate-x-1/2 p-2.5 ${POP_SKIN}`,
   // The field keeps the 3px baseline ring, its offset tightened to the field (`riviera-tailwind` rule 6).
   field:
-    'w-full rounded-xl border border-riv-field-border bg-riv-field-fill px-3.5 py-2.5 text-[15px] text-riv-pop-ink placeholder:text-riv-pop-ink-soft focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink',
+    'w-full rounded-xl border border-riv-field-border bg-riv-field-fill px-3.5 py-2.5 text-[16px] text-riv-pop-ink placeholder:text-riv-pop-ink-soft focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink',
   list: 'mt-2 max-h-[60vh] overflow-y-auto',
   // The first hit wears the hover fill, so Enter's target reads on touch and keyboard alike.
   row: `${POP_NAV_ROW} data-[hit]:bg-riv-pop-hover`,

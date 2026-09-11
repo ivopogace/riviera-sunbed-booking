@@ -85,7 +85,7 @@ export const TAB_RAIL_BADGE =
 @Directive({
   selector: 'a[appTabRailTab]',
   host: {
-    class: `inline-flex shrink-0 items-center gap-[7px] px-0.5 text-[13.5px] font-semibold whitespace-nowrap text-riv-ink-soft no-underline hover:text-riv-ink after:bottom-0 ${TAB_RAIL_MARKER}`,
+    class: `inline-flex shrink-0 touch-manipulation items-center gap-[7px] px-0.5 text-[13.5px] font-semibold whitespace-nowrap text-riv-ink-soft no-underline hover:text-riv-ink after:bottom-0 ${TAB_RAIL_MARKER}`,
   },
 })
 export class TabRailTab {

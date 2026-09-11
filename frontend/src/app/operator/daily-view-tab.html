@@ -94,7 +94,7 @@
             [value]="selectedDate()"
             (change)="onDateChange($event)"
             appTouchTarget
-            class="rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
+            class="rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[16px] text-riv-card-ink"
           />
         </label>
         <!-- Only the CONTENT branches (#718): swapping the element rebuilds the live region, which announces unreliably. -->
@@ -190,7 +190,7 @@
                   [attr.aria-label]="tileLabel(set)"
                   [disabled]="isPending(set)"
                   (click)="onTile(set)"
-                  class="flex h-full w-full items-center justify-center gap-1 rounded-[6px] border text-[10.5px] font-semibold [transition:scale_0.1s_ease] hover:scale-[1.04] disabled:opacity-60 motion-reduce:transition-none motion-reduce:hover:scale-100"
+                  class="flex h-full w-full touch-manipulation items-center justify-center gap-1 rounded-[6px] border text-[10.5px] font-semibold [transition:scale_0.1s_ease] hover:scale-[1.04] disabled:opacity-60 motion-reduce:transition-none motion-reduce:hover:scale-100"
                   [class]="tileClass(set)"
                 >
                   @if (stateGlyph(set); as glyph) {
@@ -306,7 +306,7 @@
             spellcheck="false"
             placeholder="Booking code"
             appTouchTarget
-            class="w-[170px] rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] font-mono text-[14px] tracking-[0.06em] text-riv-card-ink uppercase placeholder:font-sans placeholder:normal-case"
+            class="w-[170px] rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] font-mono text-[16px] tracking-[0.06em] text-riv-card-ink uppercase placeholder:font-sans placeholder:normal-case"
             (keydown.enter)="submitCode(checkinCode)"
             data-testid="checkin-code-input"
           />

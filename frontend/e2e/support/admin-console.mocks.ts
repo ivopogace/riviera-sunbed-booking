@@ -15,9 +15,10 @@ const VENUES = [
 ];
 
 /**
- * Every `/api/admin/**` read the eight console routes make on mount, on top of the shared operator
+ * Every `/api/admin/**` read the nine console routes make on mount, on top of the shared operator
  * lifecycle mock. Breadth-first and read-only, the admin twin of `operator-console.mocks.ts`: the
- * touch-target sweep walks each route and measures, it never writes.
+ * sweeps that use it walk these routes and measure, they never write. A sweep need not walk them
+ * all — the touch-target one covers eight, the mobile-zoom one all nine.
  */
 export async function mockWholeAdminConsole(page: Page): Promise<void> {
   await mockOperatorLifecycleApi(page, { admin: ADMIN });
@@ -99,6 +100,20 @@ export async function mockWholeAdminConsole(page: Page): Promise<void> {
       },
     }),
   );
+  await page.route(/\/api\/admin\/venue-change-refunds$/, (route) =>
+    route.fulfill({
+      json: {
+        venues: [
+          { venueId: 7, refundCount: 2, refundedMinor: 14000, feeMinor: 1000, currency: 'EUR' },
+        ],
+      },
+    }),
+  );
+
+  await page.route(/\/api\/admin\/venue-change-fee$/, (route) =>
+    route.fulfill({ json: { amountMinor: 500, currency: 'EUR' } }),
+  );
+
   await page.route(/\/api\/admin\/audit$/, (route) =>
     route.fulfill({
       json: [

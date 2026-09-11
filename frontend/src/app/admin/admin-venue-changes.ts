@@ -123,7 +123,7 @@ const MAX_FEE_MINOR = 100_000;
               inputmode="decimal"
               data-testid="admin-venue-change-fee-input"
               [formField]="feeForm.amountEur"
-              class="mt-1 w-full max-w-[160px] rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[15px] text-riv-card-ink"
+              class="mt-1 w-full max-w-[160px] rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[16px] text-riv-card-ink"
               #amountControl
             />
 
@@ -162,7 +162,7 @@ const MAX_FEE_MINOR = 100_000;
               data-testid="admin-venue-change-fee-reason"
               [formField]="feeForm.reason"
               placeholder="e.g. raised for the 2027 season"
-              class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[14px] text-riv-card-ink"
+              class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[16px] text-riv-card-ink"
               #reasonControl
             />
 
