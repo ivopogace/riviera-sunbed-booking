@@ -30,10 +30,12 @@ behavior-parity ledger this refactor would otherwise have skipped) · `tdd` (pha
 current computed styles as a characterization test, phase 1 is red-green on the directive,
 phase 2 swaps the call sites under both) · `riviera-review-overlay` (review gate — runs at
 ready-for-review) · `riviera-docs-freshness` (**ran** over `6569e59f..3539d289` at
-close-out — 0 staleness findings, 1 optional addition flagged to the maintainer; recorded as
-F-5 in the Execution status) · `riviera-tailwind` (rule 1 settled directive-vs-spans;
+close-out — 0 staleness findings, 1 optional addition flagged to the maintainer, who chose to
+take it; recorded as F-5/F-7 in the Execution status) · `riviera-tailwind` (rule 1 settled directive-vs-spans;
 rule 2 kept `photo-scrim` as an inert marker on the host; rule 3 kept radius and padding off
-the directive; the no-drift rule made computed styles, not the class list, the proof) ·
+the directive; the no-drift rule made computed styles, not the class list, the proof — and
+rule 3 gained the clause separating a property consumers vary from one the surface is defined
+by, the question this slice had to answer and the skill did not yet settle) ·
 `riviera-frontend` (placed the directive in `shared/` as a stateless presentational primitive
 beside `card-glass.ts`/`panel-glass.ts`) · `angular-developer` + the **angular-cli MCP** (`get_best_practices`
 for v22 and `search_documentation` for the `host` metadata contract — verified the directive
@@ -168,9 +170,8 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 **Stage pointer:** `merge close-out`
 
-**Next action:** Both gates are green. Awaiting the maintainer's call on F-5/F-7 — whether
-`riviera-tailwind` rule 3 should record the constitutive-geometry exception, or whether the
-geometry should be unbundled to the call sites instead — then merge.
+**Next action:** Nothing in the repo. Re-run the review gate over the substrate change (RV-PROC-2),
+confirm CI and Sonar on this head, then merge and run the GitHub-only close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -178,6 +179,7 @@ geometry should be unbundled to the call sites instead — then merge.
 | 1 — The directive, red-green | ✅ | `6d847564` |
 | 2 — Swap both call sites, tighten the map assertion, generalization audit | ✅ | `25f50e2e` |
 | Review-gate fixes (F-1 … F-4) | ✅ | `dca0e481`, `3539d289` |
+| Upstream-docs check (F-6, F-7) + the rule-3 clause | ✅ | `45c6eb0e`, this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -189,9 +191,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-2 | review gate — prior-PR-comment agent | The AC citations paraphrased the shipped test titles, and AC-2 named `renders each venue as a card…`, which no test carries. The same class of inaccuracy PR #1060 was opened to fix. All four ACs now quote the titles verbatim. | fixed-in-this-commit |
 | F-3 | review gate — code-comment agent | The plan claimed both call sites were byte-identical and that both wrote `aria-hidden`. False: the class strings matched, the elements did not — only the banner's span carried its own `aria-hidden`, the card's inherited it from `.card-photo`. Corrected in the Skills-consulted line and the behavior-parity ledger. Not a code defect: `aria-hidden` is not a CSS property, so AC-4's computed-style equivalence is unaffected, and the card's subtree was already hidden. | fixed-in-`3539d289` |
 | F-4 | review gate — conventions agent | The Acceptance-criteria-verification section still held `<sha>` placeholders and the Self-review checklist was entirely unticked, while the phase table already read ✅ — the doc contradicted itself, and its own "no placeholders" line was the one it broke. | fixed-in-this-commit |
-| F-5 | close-out — `riviera-docs-freshness` over `6569e59f..3539d289` | **Zero staleness findings.** Nothing retired is cited as present fact (rule 2 kept `photo-scrim` alive, so every class-based citation still resolves), and the counting sweep found no statement that counts the surface directives — `field-glass.ts` was already a third one absent from `riviera-tailwind`'s example parenthetical before this slice. One **optional addition** flagged, not written: whether rule 3 should record the constitutive-geometry exception this directive establishes. The skill holds that a judgement about a rule's substance is flagged to the maintainer, never silently written. | deferred → follow-up issue |
+| F-5 | close-out — `riviera-docs-freshness` over `6569e59f..3539d289` | **Zero staleness findings.** Nothing retired is cited as present fact (rule 2 kept `photo-scrim` alive, so every class-based citation still resolves), and the counting sweep found no statement that counts the surface directives — `field-glass.ts` was already a third one absent from `riviera-tailwind`'s example parenthetical before this slice. One **optional addition** flagged, not written: whether rule 3 should record the constitutive-geometry exception this directive establishes. The skill holds that a judgement about a rule's substance is flagged to the maintainer, never silently written. | **maintainer chose to record it** — rule 3 clause added in this commit |
 | F-6 | upstream-docs check (Angular v22 + Tailwind v4) | **No defect found; three claims the slice rests on are now verified against the vendors' own docs rather than in-tree precedent.** (a) Tailwind documents `bg-(image:<custom-property>)` as exactly `background-image: var(…)`, and that a bare `bg-(--x)` would be a *color* — the form used is the right one. (b) Tailwind v4 scans every non-ignored file as **plain text**, `.ts` included, needing only the class name as a complete unbroken string; the host string is one such literal, which closes R-5 on documentation as well as on AC-4's computed `background-image`. (c) Angular documents the `host` map as the way to set static classes and attributes, and a probe on this exact version showed directive classes **merge** with a call site's (`…scrim … mine-1 mine-2`) while a template attribute **overrides** the host one — matching the documented collision rule "if both values are static, the instance binding wins". | verified, no change |
-| F-7 | upstream-docs check — Tailwind conflicting utilities | Tailwind states the winner between two utilities on one property is "the class that appears later **in the stylesheet**", not in the `class` attribute, and advises never putting two conflicting classes on one element. This **confirms** `panel-glass`'s reason for unbundling radius, and it means the hazard is not specific to radius: it reaches the `absolute inset-0` this directive bundles, should a call site ever add a competing inset. Nothing is wrong today — no call site competes, and the probe above confirms a call site's classes would merge rather than replace — but the exception is real and the skill does not record it. Same subject as F-5's flagged addition. | open → maintainer's call (see F-5) |
+| F-7 | upstream-docs check — Tailwind conflicting utilities | Tailwind states the winner between two utilities on one property is "the class that appears later **in the stylesheet**", not in the `class` attribute, and advises never putting two conflicting classes on one element. This **confirms** `panel-glass`'s reason for unbundling radius, and it means the hazard is not specific to radius: it reaches the `absolute inset-0` this directive bundles, should a call site ever add a competing inset. Nothing is wrong today — no call site competes, and the probe above confirms a call site's classes would merge rather than replace — but the exception is real and the skill does not record it. Same subject as F-5's flagged addition. | **fixed-in-this-commit** — rule 3 now states the test, citing this directive as the worked example; the code is unchanged, which was the option taken over unbundling the geometry back into both templates (that would restore the very duplication this slice removes, with no variation between the copies) |
 
 ---
 
@@ -207,6 +209,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/venue/venue-map.ts` — imports `PhotoScrim`
 - `frontend/src/app/venue/venue-map.spec.ts` — adds the element-level scrim assertion beside the innerHTML proof (AC-3)
 - `frontend/e2e/discover-photos.e2e.ts` — the computed-style no-drift test across both surfaces (AC-4)
+- `.claude/skills/riviera-tailwind/SKILL.md` — rule 3 gains the bundle-or-unbundle test this slice answered
 
 ---
 

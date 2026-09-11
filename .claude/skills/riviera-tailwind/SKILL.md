@@ -44,6 +44,13 @@ states the decisions and traps the code can't show you.
    competing `border-radius` utilities by stylesheet order, not `class` order, so a
    directive `rounded-[26px]` + a consumer `rounded-full` is a coin-flip. Each consumer
    sets its own radius.
+   - The stylesheet-order trap is the mechanism, not the list — it catches any property two
+     classes can both set. What keeps one out of the directive is consumers legitimately
+     wanting different values: radius, across cards, panels and the back pill. A property
+     the surface is *defined* by has no such spread and stays bundled, so the recipe cannot
+     drift — a scrim's full-bleed `absolute inset-0` (`shared/photo-scrim.ts`). Decide on
+     that test and state it at the directive, so a call site wanting other geometry re-opens
+     the decision rather than losing a coin-flip.
 4. **Every interactive control meets a 44 × 44 CSS px floor** (WCAG 2.5.5) — set it with
    `[appTouchTarget]` (`shared/touch-target.ts`), not by hand-tuning padding. Both axes.
    - `min-height` is a no-op on a `display: inline` box. On an `<a>`, the directive does
