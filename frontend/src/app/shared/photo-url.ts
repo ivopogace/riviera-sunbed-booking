@@ -28,6 +28,40 @@ export function resolveCoverPhoto(cover: CoverPhotoView | null | undefined): Cov
 }
 
 /**
+ * The `sizes` the beach-map band and the gallery grid state. Both letterbox (`object-contain`), so
+ * each value approximates the PAINTED photo — `min(boxWidth, boxHeight × aspect)` — rather than the
+ * element it sits in. The lightbox states its own; its under-service is a different defect.
+ *
+ * <p>A BANNER rendition is fit within 1280 × 480, so an upload no wider than 8:3 stores a baseline
+ * `480 × aspect`. Where the box is height-bound the paint is `boxHeight × aspect`, the aspect
+ * cancels, and the baseline candidate suffices exactly when `boxHeight × DPR ≤ 480`; where it is
+ * width-bound the paint is narrower again, so that test is safe there rather than tight. Each
+ * value buys the right candidate from 3:2 to 16:9, to ~2000px viewports, and at DPR 1 and 2.
+ * Narrower or shorter it over-fetches, costing bytes; wider it under-fetches, costing sharpness;
+ * past 8:3 the baseline caps at 1280 and the rule stops holding; and DPR 3 sits outside the bound,
+ * short on the hero for two unrelated reasons that #1072 decides. Viewport-relative only: a `px`
+ * LENGTH throws `RuntimeError 2952` (the `px` in a media condition is not a length).
+ */
+export const CONTAIN_SIZES = {
+  /** The band: 1098 × 264 above 1280, 730 × 264 down to 1024, 150 tall below in a box that narrows
+   *  with the viewport under 780 — painting 396 and 225 CSS px at 3:2, 469 and 267 at 16:9. Only the
+   *  264px box can need retina, at DPR 2, and BOTH clauses over it stay large enough to buy it. */
+  band: '(min-width: 1280px) 36vw, (min-width: 1024px) 45vw, 35vw',
+  /** The gallery hero: 731 × 360 above 1280, 485 × 360 down to 1024, 220 tall below in a box that
+   *  narrows with the viewport under 780 — painting 540, then 485 width-bound, then 330. The two
+   *  outer clauses share a number for opposite reasons: the widest caps a box that stops growing,
+   *  the narrowest holds one that cannot need retina at DPR 2. */
+  galleryHero: '(min-width: 1280px) 35vw, (min-width: 1024px) 45vw, 35vw',
+  /** A gallery side tile: 361 × 176 above 1280, 239 × 176 down to 1024, 106 tall below and narrower
+   *  with the viewport under 780. At DPR 1 and 2 it never needs the retina candidate, and the
+   *  1280px clause is what says so — to the engines that read it. Chromium is not one: the tiles
+   *  are lazy, so its `auto` prefix wins and it sizes against the 361px box, which asks 723 device
+   *  px at DPR 2 and so buys retina off a 3:2 upload's 720w baseline, though not off a wider
+   *  upload's. */
+  gallerySideTile: '(min-width: 1280px) 18vw, 22vw',
+} as const;
+
+/**
  * A photo's candidates as an HTML `srcset` with width descriptors, or `null` with fewer than two —
  * a one-candidate `srcset` says nothing `src` does not, and the attribute is then better absent.
  *

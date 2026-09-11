@@ -1,15 +1,15 @@
 import { NgOptimizedImage } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 
-import { photoSrcset } from './photo-url';
+import { CONTAIN_SIZES, photoSrcset } from './photo-url';
 import { TouchTarget } from './touch-target';
 import { PhotoView } from './venue-views';
 
 /**
  * The venue detail page's wide photo lead: a large cover tile beside up to two smaller
  * supporting tiles, filling the beach map's 1100px breakout instead of the identity card's
- * narrower 780px shell (#700's width split is otherwise unbridged between the header and the
- * map). Only worth it once a venue actually has more than one photo — with 0 or 1, the caller
+ * narrower 780px shell, whose width split is otherwise unbridged between the header and the
+ * map. Only worth it once a venue actually has more than one photo — with 0 or 1, the caller
  * keeps the existing single-photo band inside the header, so this component is never asked to
  * render fewer than 2 photos.
  *
@@ -22,6 +22,10 @@ import { PhotoView } from './venue-views';
  * labelled button — tapping one emits {@link opened} with that photo's index, so the caller can
  * mount a {@link PhotoLightbox} seeded at the tapped photo; the image itself stays `alt=""` since
  * the button's own label already names the action.
+ *
+ * <p>Letterboxing is also why each tile takes its `sizes` from {@link CONTAIN_SIZES}. The side
+ * tiles are lazy, so Chromium resolves their `auto` prefix against the tile box instead and the
+ * authored value reaches only engines without it; the eager hero's reaches every engine.
  */
 @Component({
   selector: 'app-photo-gallery-grid',
@@ -48,7 +52,7 @@ import { PhotoView } from './venue-views';
           [ngSrc]="photos()[0].url"
           [attr.srcset]="srcsetOf(photos()[0])"
           disableOptimizedSrcset
-          sizes="(min-width: 1280px) 50vw, 66vw"
+          [sizes]="sizes.galleryHero"
           fill
           priority
           class="relative object-contain"
@@ -77,7 +81,7 @@ import { PhotoView } from './venue-views';
             [ngSrc]="second.url"
             [attr.srcset]="srcsetOf(second)"
             disableOptimizedSrcset
-            sizes="(min-width: 1280px) 25vw, 33vw"
+            [sizes]="sizes.gallerySideTile"
             fill
             class="relative object-contain"
             alt=""
@@ -104,7 +108,7 @@ import { PhotoView } from './venue-views';
             [ngSrc]="third.url"
             [attr.srcset]="srcsetOf(third)"
             disableOptimizedSrcset
-            sizes="(min-width: 1280px) 25vw, 33vw"
+            [sizes]="sizes.gallerySideTile"
             fill
             class="relative object-contain"
             alt=""
@@ -116,6 +120,8 @@ import { PhotoView } from './venue-views';
   `,
 })
 export class PhotoGalleryGrid {
+  protected readonly sizes = CONTAIN_SIZES;
+
   /** Caller guarantees length >= 2 — see the class doc. */
   readonly photos = input.required<readonly PhotoView[]>();
   /** The subject named in each tile's accessible label. */

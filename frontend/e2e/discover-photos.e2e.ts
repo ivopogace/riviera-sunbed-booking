@@ -156,14 +156,17 @@ test('every tourist photo offers its candidates as a srcset the browser sizes ag
   await page.getByTestId('venue-card').first().click();
   await expect(page).toHaveURL(/\/venues\/1/);
 
-  // One candidate list, three boxes: the hero letterboxes ~730px, a tile ~356px, the lightbox 1100px.
+  // One candidate list, three boxes, each sized by what it PAINTS, not by the box.
   const hero = page.getByTestId('gallery-hero');
   await expect(hero).toHaveAttribute('srcset', /photos\/bb02@1440 1440w$/);
-  await expect(hero).toHaveAttribute('sizes', '(min-width: 1280px) 50vw, 66vw');
+  await expect(hero).toHaveAttribute(
+    'sizes',
+    '(min-width: 1280px) 35vw, (min-width: 1024px) 45vw, 35vw',
+  );
   // The `auto,` prefix rides lazy loading, so the priority hero has none and the tiles do.
   await expect(page.getByTestId('gallery-tile').first()).toHaveAttribute(
     'sizes',
-    'auto, (min-width: 1280px) 25vw, 33vw',
+    'auto, (min-width: 1280px) 18vw, 22vw',
   );
 
   await page.getByTestId('gallery-photo-0').click();

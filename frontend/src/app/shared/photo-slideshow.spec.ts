@@ -3,6 +3,8 @@ import { vi } from 'vitest';
 
 import { photoView, photoViews } from '../../testing/photo-views';
 
+import { CONTAIN_SIZES } from './photo-url';
+
 import { PhotoSlideshow } from './photo-slideshow';
 
 const PHOTOS = [
@@ -50,6 +52,19 @@ describe('PhotoSlideshow', () => {
     expect(img.hasAttribute('disableOptimizedSrcset')).toBe(true);
     // The directive prefixes `auto,` on a lazy image, so a browser that measures the box wins.
     expect(img.getAttribute('sizes')).toBe('auto, 30vw');
+  });
+
+  it('carries every authored contain-fitted sizes through NgOptimizedImage untouched', () => {
+    // The directive's dev-mode guards run on init, so a value it rejects fails here, not in prod.
+    for (const value of Object.values(CONTAIN_SIZES)) {
+      const surface = TestBed.createComponent(PhotoSlideshow);
+      surface.componentRef.setInput('photos', [photoView('/api/venues/1/photos/aa01', 1152)]);
+      surface.componentRef.setInput('sizes', value);
+
+      expect(() => surface.detectChanges(), value).not.toThrow();
+      const img = (surface.nativeElement as HTMLElement).querySelector('img')!;
+      expect(img.getAttribute('sizes'), value).toContain(value);
+    }
   });
 
   it('renders no srcset for a photo with a single candidate, since src already says it', () => {
