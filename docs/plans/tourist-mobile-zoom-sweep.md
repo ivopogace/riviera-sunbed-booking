@@ -55,7 +55,7 @@ CI-safe suite) · `riviera-frontend` (the new spec is mocked, so it lands in `fr
   and reverting it.
   *Seam:* the same computed `font-size`, which is blind to how the class arrived ·
   *Pinned by:* `mobile-zoom-tourist.e2e.ts` — the find-a-booking case, plus the recorded mutation run.
-- [ ] **AC-3:** Given the tourist bottom tab bar at a phone width and the header's account chip and
+- [x] **AC-3:** Given the tourist bottom tab bar at a phone width and the header's account chip and
   menu button at a desktop width, when their `touch-action` is read from computed style, then every
   one of them includes `manipulation`; `CHIP` and `POP_BUTTON` are unchanged in the diff.
   *Seam:* computed `touch-action` on the rendered controls, read through `expectTouchManipulation` ·
@@ -86,8 +86,8 @@ artifact is the `touch-targets-tourist.e2e.ts` fixture, moved verbatim into
 | R-1 | A sweep passes vacuously — the surface rendered its empty/error state and measured nothing | med | high | Every surface states a `minFields` floor (the helper fails below it) AND a content marker awaited before the sweep; the floors are derived from the counted fields in the source, not guessed | claude | closed — 10 surfaces swept, each above its floor |
 | R-2 | Extracting the shared fixture regresses `touch-targets-tourist.e2e.ts` | low | med | Move the fixture verbatim, change only the import; re-run that whole spec file before and after | claude | closed — 15/15 pass after the move |
 | R-3 | The sweep is green everywhere and proves nothing, because no tourist field is actually under 16px today | high | med | Expected — the issue says so. Prove the sweep bites by mutating a hoisted recipe (AC-2) and recording the failure, then revert | claude | closed — `find-booking.ts` `cls.input` at 15px failed the sweep naming the field; reverted |
-| R-4 | `touch-manipulation` on `TAB` collides with the tab bar's `EDGE_SLOT_RING` or its `before:` marker | low | low | `touch-action` is an input-gesture property with no paint; assert computed `touch-action` and leave the existing tab-bar ring/marker e2e (`tourist-tab-bar.e2e.ts`) green | claude | open |
-| R-5 | The header chips are `sm:flex` (tablet-and-up), so a phone-width assertion would find nothing and pass vacuously | med | med | `expectTouchManipulation` fails on a zero match; assert the chips at desktop width and the tab bar at phone width, each setting the width it needs | claude | open |
+| R-4 | `touch-manipulation` on `TAB` collides with the tab bar's `EDGE_SLOT_RING` or its `before:` marker | low | low | `touch-action` is an input-gesture property with no paint; assert computed `touch-action` and leave the existing tab-bar ring/marker e2e (`tourist-tab-bar.e2e.ts`) green | claude | closed — 52 shell e2e + 97 shell unit tests green after the change |
+| R-5 | The header chips are `sm:flex` (tablet-and-up), so a phone-width assertion would find nothing and pass vacuously | med | med | `expectTouchManipulation` fails on a zero match; assert the chips at desktop width and the tab bar at phone width, each setting the width it needs | claude | closed — each assertion sets its own width; the helper's zero-match guard covers the rest |
 
 ## Open questions / Assumptions
 
@@ -132,15 +132,15 @@ N/A — no contract change. The new spec consumes the existing mocked endpoints 
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — both phases done, opening the draft PR for the CI gate`
 
-**Next action:** Add `touch-manipulation` to `TAB`, `CLS.accountChip` and `CLS.menuBtn` in
-`src/app/app.ts` to green the two double-tap tests already written and red.
+**Next action:** Push the branch, open the draft PR so CI fires, then mark ready for review and
+run the Review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Shared tourist fixture + the field sweep (AC-1, AC-2) | ✅ | 198d5b6b |
-| 1 — The double-tap opt-out (AC-3) | ⏳ | |
+| 1 — The double-tap opt-out (AC-3) | ✅ | 6727897b |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -187,16 +187,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/app/app.ts` · Modify `frontend/e2e/mobile-zoom-tourist.e2e.ts`
 
-- [ ] **Step 1:** Write the two failing tests — the tab bar at 390px, the header triggers at 1280px.
-- [ ] **Step 2:** Run → FAIL: the three tabs are `touch-action: auto`.
-- [ ] **Step 3:** Add `touch-manipulation` to `TAB`, `CLS.accountChip`, `CLS.menuBtn`; leave `CHIP`
+- [x] **Step 1:** Write the two failing tests — the tab bar at 390px, the header triggers at 1280px.
+- [x] **Step 2:** Run → FAIL: `tab-beaches`/`tab-bookings`/`menu-toggle` and `nav-menu` all read `touch-action: auto`.
+- [x] **Step 3:** Add `touch-manipulation` to `TAB`, `CLS.accountChip`, `CLS.menuBtn`; leave `CHIP`
   and `POP_BUTTON` untouched.
-- [ ] **Step 4:** Run → PASS; re-run `tourist-tab-bar.e2e.ts` for R-4.
-- [ ] **Step 5: Generalization-audit pass** — population: every dense repeatedly-tapped tourist
+- [x] **Step 4:** Run → 12/12 PASS; the shell regression set (`tourist-tab-bar`, `tourist-header`, `touch-targets-tourist`, `current-page-marker`, `focus-ring-baseline`) 52/52 and the shell unit specs 97/97.
+- [x] **Step 5: Generalization-audit pass** — population: every dense repeatedly-tapped tourist
   cluster still on the browser's double-tap, enumerated by grepping `touch-manipulation` against the
   control recipes.
-- [ ] **Step 6: Commit** — `Opt the tourist tab bar and header triggers out of double-tap zoom (#1062)`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `Opt the tourist tab bar and header triggers out of double-tap zoom (#1062)`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -204,7 +204,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-09-11 | phase 0 | Every tourist surface rendering a field of a type iOS Safari zooms into (the mechanism: a caret-taking `input`/`select`/`textarea` on a tourist route) | `grep -rn '<input\|<select\|<textarea' --include=*.html --include=*.ts auth/ booking/ pages/ venue/ shared/ core/` over `frontend/src/app` | `auth/` ×4 pages, `booking/` booking-dialog + review-panel + find-booking, `pages/home/home.html` ×3, plus `shared/confirm-with-reason.ts` | All tourist sites swept. `confirm-with-reason.ts` is admin-only (its three consumers are all `admin/`), so it belongs to the console half already covered by `mobile-zoom.e2e.ts` — skipped, not missed |
+| 2026-09-11 | phase 0 | Every tourist surface rendering a field of a type iOS Safari zooms into (the mechanism: a caret-taking `input`/`select`/`textarea` on a tourist route) | `grep -rn '<input\|<select\|<textarea' --include=*.html --include=*.ts auth/ booking/ pages/ venue/ shared/ core/` over `frontend/src/app` | `auth/` ×4 pages, `booking/` booking-dialog + review-panel + find-booking, `pages/home/home.html` ×3, plus `shared/confirm-with-reason.ts` | All tourist sites swept. `confirm-with-reason.ts` is admin-only (its three consumers are all `admin/`), so it belongs to the console half already covered by `mobile-zoom.e2e.ts` — skipped, not missed || 2026-09-11 | phase 1 | Every control recipe that could want the double-tap opt-out (the mechanism: a `touch-action` default of `auto` on a densely or repeatedly tapped tourist control) | `grep -rn 'touch-manipulation' frontend/src/` — the complement is what lacks it | The tourist `TAB`, `accountChip` and `menuBtn`; PR #1047 already covered the slideshow arrows, dot picker, gallery tiles, beach map, calendar and star rating | Fixed all three. The theme swatch and the popover rows were judged out: a lone control and a list, not the dense cluster the opt-out is for (recorded as a Non-goal) |
 
 ---
 

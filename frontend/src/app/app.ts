@@ -55,8 +55,11 @@ const SHELL_WITH_TAB_BAR = `${SHELL} max-sm:pb-[calc(61px+env(safe-area-inset-bo
  * is live on the two `<a>`s; `group`, so the pill's ring keys on the tab's `aria-current`. The
  * focus ring is inset (`EDGE_SLOT_RING`): the bar is edge-to-edge, so an outside ring lost its
  * right side past the viewport and its bottom side under the safe-area padding.
+ * `touch-manipulation` drops the browser's native double-tap-to-zoom, which a fast second tap on
+ * the phone's most repeatedly tapped control would otherwise fire instead of navigating; it keeps
+ * pan and pinch-zoom, so WCAG 1.4.4 is untouched.
  */
-const TAB = `group relative flex h-[60px] cursor-pointer flex-col items-center justify-center gap-[3px] text-[11px] font-semibold text-riv-ink-soft before:absolute before:top-0 before:h-[3px] before:w-9 before:rounded-b-full before:bg-current before:opacity-0 before:content-[''] aria-[current=page]:text-riv-ink aria-[current=page]:before:opacity-100 ${EDGE_SLOT_RING}`;
+const TAB = `group relative flex h-[60px] cursor-pointer touch-manipulation flex-col items-center justify-center gap-[3px] text-[11px] font-semibold text-riv-ink-soft before:absolute before:top-0 before:h-[3px] before:w-9 before:rounded-b-full before:bg-current before:opacity-0 before:content-[''] aria-[current=page]:text-riv-ink aria-[current=page]:before:opacity-100 ${EDGE_SLOT_RING}`;
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
@@ -79,8 +82,9 @@ const CLS = {
   // inline-flex: appTouchTarget's min-height is a no-op on an inline <a>.
   navLink:
     'inline-flex cursor-pointer items-center hover:text-riv-ink aria-[current=page]:font-semibold aria-[current=page]:text-riv-ink aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:decoration-current aria-[current=page]:underline-offset-[7px]',
-  accountChip: `inline-flex items-center gap-2 py-1 pr-3 pl-1.5 font-semibold text-riv-ink ${CHIP}`,
-  menuBtn: `inline-flex h-11 w-11 flex-col items-center justify-center gap-[4.5px] ${CHIP}`,
+  // Both header disclosure triggers drop the double-tap too — a disclosure is toggled open and shut in quick succession. Composed here, never on the shared CHIP, which the console's two triggers wear the same way.
+  accountChip: `inline-flex touch-manipulation items-center gap-2 py-1 pr-3 pl-1.5 font-semibold text-riv-ink ${CHIP}`,
+  menuBtn: `inline-flex h-11 w-11 touch-manipulation flex-col items-center justify-center gap-[4.5px] ${CHIP}`,
   menuBar: 'block h-0.5 w-[17px] rounded-[2px] bg-riv-ink',
   // The 1.5px ink-soft ring is the swatch's WCAG 1.4.11 boundary (5.4 / 5.5 / 11.6:1 on the three bars): the swatch alone reaches 1.0:1 against the bar (its white end on porcelain), and a white inset ring vanishes there too.
   swatchBtn:
