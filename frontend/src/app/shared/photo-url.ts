@@ -42,9 +42,9 @@ export function photoSrcset(photo: PhotoView): string | null {
 }
 
 /**
- * A tourist surface's slideshow photos: the view's `photos` when present, else the chosen cover
+ * A tourist surface's photos: the view's `photos` when present, else the chosen cover
  * surface alone (older payloads/doubles omit `photos` — a compatibility shim), else empty — the
- * gradient placeholder renders instead. The Discover card picks `card`, the beach-map band `banner`.
+ * gradient placeholder renders instead. The Discover card picks `card`, the venue page `banner`.
  */
 export function slideshowPhotos(
   view: { readonly photos?: readonly PhotoView[]; readonly coverPhoto?: CoverPhotoView | null },
