@@ -24,13 +24,14 @@ unbundle radius, and the reason is written at the declaration.
 **Source of intent:** GitHub issue #1066 (surfaced by the review gate on PR #1064, closing #1045).
 
 **Skills consulted:** `riviera-sdlc` (routing + the issue-intake grill gate — confirmed both
-call sites are still byte-identical today, listed the three live test hooks, and found no open
-PR to collide with) · `riviera-plan-doc` (this template — forced the no-drift AC and the
+call sites carry byte-identical *class strings* today, listed the three live test hooks, and
+found no open PR to collide with) · `riviera-plan-doc` (this template — forced the no-drift AC and the
 behavior-parity ledger this refactor would otherwise have skipped) · `tdd` (phase 0 pins the
 current computed styles as a characterization test, phase 1 is red-green on the directive,
 phase 2 swaps the call sites under both) · `riviera-review-overlay` (review gate — runs at
-ready-for-review) · `riviera-docs-freshness` (ran over `origin/main..HEAD` at close-out —
-findings recorded in the Execution status) · `riviera-tailwind` (rule 1 settled directive-vs-spans;
+ready-for-review) · `riviera-docs-freshness` (**ran** over `6569e59f..3539d289` at
+close-out — 0 staleness findings, 1 optional addition flagged to the maintainer; recorded as
+F-5 in the Execution status) · `riviera-tailwind` (rule 1 settled directive-vs-spans;
 rule 2 kept `photo-scrim` as an inert marker on the host; rule 3 kept radius and padding off
 the directive; the no-drift rule made computed styles, not the class list, the proof) ·
 `riviera-frontend` (placed the directive in `shared/` as a stateless presentational primitive
@@ -48,23 +49,27 @@ for `feature/photo-scrim-directive` (`riviera-sdlc` § Remote / cloud session ad
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a host element carrying `appPhotoScrim`, when it renders, then it carries
+- [x] **AC-1:** Given a host element carrying `appPhotoScrim`, when it renders, then it carries
   exactly the scrim recipe — `photo-scrim`, `pointer-events-none`, `absolute`, `inset-0`,
   `bg-(image:--riv-photo-scrim)` and `aria-hidden="true"` — and no border-radius or padding
   utility (rule 3). *Seam:* the `[appPhotoScrim]` directive's host contract ·
-  *Pinned by:* `photo-scrim.spec.ts` › `applies the scrim recipe to the host` and
-  `carries no border-radius or padding of its own`.
-- [ ] **AC-2:** Given a Discover card with a cover photo, when Home renders, then the card
+  *Pinned by:* `photo-scrim.spec.ts` › `applies the whole scrim recipe to the host`,
+  `hides itself from assistive tech`, and
+  `carries no border-radius and no padding of its own (rule 3)`.
+- [x] **AC-2:** Given a Discover card with a cover photo, when Home renders, then the card
   contains a `.photo-scrim` element and it is pointer-transparent. *Seam:* the `/` route's
-  rendered DOM · *Pinned by:* `home.spec.ts` › `renders each venue as a card…` (existing
-  `.photo-scrim` assertion, extended with `pointer-events-none`) and
-  `discover-photos.e2e.ts` › `the Discover card shows the cover photo…`.
-- [ ] **AC-3:** Given the beach-map banner with one photo, when it renders, then the band
+  rendered DOM · *Pinned by:* `home.spec.ts` › `renders the cover photo on a card that has one
+  and the gradient fallback on one that does not (#142)` (its existing `.photo-scrim` assertion,
+  extended with `pointer-events-none`) and `discover-photos.e2e.ts` › `the Discover card shows
+  the cover photo (scrim kept), the photo-less card keeps the gradient, and the map banner shows
+  the cover — no "coming soon" anywhere (+ axe)`.
+- [x] **AC-3:** Given the beach-map banner with one photo, when it renders, then the band
   contains a `.photo-scrim` element and a touch anywhere over the band lands on the band's own
   "view larger" control, never the scrim. *Seam:* the `/venues/:id` route's rendered DOM and
-  its hit test · *Pinned by:* `venue-map.spec.ts` › `renders the cover banner photo when
-  present…` and `discover-photos.e2e.ts` › `the banner scrim is paint only…`.
-- [ ] **AC-4 (no drift):** Given either surface, when the scrim renders, then its *computed*
+  its hit test · *Pinned by:* `venue-map.spec.ts` › `renders the cover banner photo when present,
+  keeping the scrim; no "coming soon" pill either way (#142)` and `discover-photos.e2e.ts` ›
+  `the banner scrim is paint only — the band's own control owns every touch (#1045)`.
+- [x] **AC-4 (no drift):** Given either surface, when the scrim renders, then its *computed*
   `background-image`, `position`, the four inset offsets and `pointer-events` are identical to
   the values the hand-written spans produce today. *Seam:* `getComputedStyle` on the rendered
   `.photo-scrim` in a real browser, on both routes · *Pinned by:* `discover-photos.e2e.ts` ›
@@ -91,7 +96,7 @@ for `feature/photo-scrim-directive` (`riviera-sdlc` § Remote / cloud session ad
 | Paints `--riv-photo-scrim` as a background image | preserved | directive host class `bg-(image:--riv-photo-scrim)`; computed value pinned by AC-4 |
 | Covers its positioned parent edge-to-edge (`absolute inset-0`) | preserved | directive host classes `absolute inset-0`; computed insets pinned by AC-4 |
 | Takes no pointer (`pointer-events-none`) | preserved | directive host class `pointer-events-none`; the map band's hit test (AC-3) and AC-4 both prove it |
-| Hidden from assistive tech (`aria-hidden="true"`) | preserved | moved from both call sites to the directive host as a static attribute — one source instead of two |
+| Hidden from assistive tech | preserved | only the banner's span wrote `aria-hidden="true"`; the card's inherited it from the already-hidden `.card-photo` ancestor. The banner's moves to the directive host, and the card's becomes explicit where it was implied — redundant on an already-hidden subtree, not a change in what AT sees |
 | Carries the `photo-scrim` marker class for `home.spec.ts` + `discover-photos.e2e.ts` | preserved | first class on the directive host (`riviera-tailwind` rule 2) |
 | Carries no border-radius and no padding | preserved | the directive declares neither (rule 3); AC-1 asserts their absence |
 | Home: sits inside the already-`aria-hidden` `.card-photo` span, above the sun and under the chips/location | preserved | same DOM position; only the element's own attributes move to the directive |
@@ -103,7 +108,7 @@ for `feature/photo-scrim-directive` (`riviera-sdlc` § Remote / cloud session ad
 |---|---|---|---|---|---|---|
 | R-1 | Silent visual drift: a class is dropped or reordered in the move and the class list still "looks right" | med | high | `riviera-tailwind`'s hard rule — AC-4 diffs *computed* styles in a real browser on both surfaces, and phase 0 lands it green against the OLD markup first, so it is a characterization test, not a post-hoc rationalization | claude | closed — phase 0 baseline green against the old spans |
 | R-2 | A live test hook breaks: `home.spec.ts` and `discover-photos.e2e.ts` query `.photo-scrim`; `venue-map.spec.ts` asserts `.photo-band` innerHTML contains `riv-photo-scrim` | high | med | rule 2 keeps `photo-scrim` first on the host; the innerHTML assertion keeps passing because Angular writes static host classes into the real `class` attribute — and phase 2 *adds* an element-level assertion beside it rather than replacing the innerHTML proof | claude | closed — all three hooks green after the swap |
-| R-3 | Bundling `absolute inset-0` into a surface directive conflicts with rule 3's stylesheet-order argument if a future call site wants different geometry | low | low | rule 3 names border-radius and padding, not position; both call sites are full-bleed and full-bleed *is* the scrim's identity. The reason is written at the declaration so a third call site wanting other geometry re-opens it deliberately rather than by drift | claude | closed — reason recorded in `photo-scrim.ts`'s NOTE |
+| R-3 | Bundling `absolute inset-0` into a surface directive conflicts with rule 3's stylesheet-order argument if a future call site wants different geometry | low | low | rule 3 names border-radius and padding, not position; both call sites are full-bleed and full-bleed *is* the scrim's identity. The reason is written at the declaration so a third call site wanting other geometry re-opens it deliberately rather than by drift | claude | closed — reason recorded in `photo-scrim.ts`'s TSDoc |
 | R-4 | `aria-hidden` on the directive host hides something that should be exposed | low | med | the scrim is paint-only, has no content and is never focusable; both call sites already set it. AC-1 pins it and the e2e axe pass on both routes stays green | claude | closed — AC-1 pins it; axe stays green in phase 2 |
 | R-5 | Tailwind stops generating a utility because the class now lives in a `.ts` host string rather than a template | low | high | `riviera-tailwind`'s ICON-5 note records that a host `class` string is scanned by Tailwind — the same mechanism `card-glass.ts` and `panel-glass.ts` already rely on. AC-4's computed `background-image` would catch a missing utility outright | claude | closed — AC-4 green after the swap, every utility generated |
 
@@ -159,15 +164,17 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `review gate — fixing findings`
+**Stage pointer:** `merge close-out`
 
-**Next action:** Re-resolve the review range on the new head, then re-walk the overlay items for the comment fix.
+**Next action:** Nothing in the repo. Merge once the Sonar gate's list is clear, then the GitHub-only
+close-out steps: confirm #1066 closed, and file the one flagged docs addition as a follow-up.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Pin the no-drift baseline (characterization e2e against the OLD markup) | ✅ | this commit |
-| 1 — The directive, red-green | ✅ | this commit |
-| 2 — Swap both call sites, tighten the map assertion, generalization audit | ✅ | this commit |
+| 0 — Pin the no-drift baseline (characterization e2e against the OLD markup) | ✅ | `a6dd4f29` |
+| 1 — The directive, red-green | ✅ | `6d847564` |
+| 2 — Swap both call sites, tighten the map assertion, generalization audit | ✅ | `25f50e2e` |
+| Review-gate fixes (F-1 … F-4) | ✅ | `dca0e481`, `3539d289` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -175,7 +182,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | CI — `Repo hygiene (diff-scoped)`, `check-inline-comments.mjs` | RV-STYLE-1, 17 lines across 5 files: multi-line inline comments, and issue numbers as provenance. My own miss — the rule was in scope from the first line I wrote. Fixed by moving the directive's rationale into a TSDoc (which is exempt from the one-line rule but not from provenance), cutting every inline comment to one line, and dropping every `#NNNN`. | fixed-in-this-commit |
+| F-1 | CI — `Repo hygiene (diff-scoped)`, `check-inline-comments.mjs` | RV-STYLE-1, 17 lines across 5 files: multi-line inline comments, and issue numbers as provenance. My own miss — the rule was in scope from the first line I wrote. Fixed by moving the directive's rationale into a TSDoc (which is exempt from the one-line rule but not from provenance), cutting every inline comment to one line, and dropping every `#NNNN`. | fixed-in-`dca0e481` |
+| F-2 | review gate — prior-PR-comment agent | The AC citations paraphrased the shipped test titles, and AC-2 named `renders each venue as a card…`, which no test carries. The same class of inaccuracy PR #1060 was opened to fix. All four ACs now quote the titles verbatim. | fixed-in-this-commit |
+| F-3 | review gate — code-comment agent | The plan claimed both call sites were byte-identical and that both wrote `aria-hidden`. False: the class strings matched, the elements did not — only the banner's span carried its own `aria-hidden`, the card's inherited it from `.card-photo`. Corrected in the Skills-consulted line and the behavior-parity ledger. Not a code defect: `aria-hidden` is not a CSS property, so AC-4's computed-style equivalence is unaffected, and the card's subtree was already hidden. | fixed-in-`3539d289` |
+| F-4 | review gate — conventions agent | The Acceptance-criteria-verification section still held `<sha>` placeholders and the Self-review checklist was entirely unticked, while the phase table already read ✅ — the doc contradicted itself, and its own "no placeholders" line was the one it broke. | fixed-in-this-commit |
+| F-5 | close-out — `riviera-docs-freshness` over `6569e59f..3539d289` | **Zero staleness findings.** Nothing retired is cited as present fact (rule 2 kept `photo-scrim` alive, so every class-based citation still resolves), and the counting sweep found no statement that counts the surface directives — `field-glass.ts` was already a third one absent from `riviera-tailwind`'s example parenthetical before this slice. One **optional addition** flagged, not written: whether rule 3 should record the constitutive-geometry exception this directive establishes. The skill holds that a judgement about a rule's substance is flagged to the maintainer, never silently written. | deferred → follow-up issue |
 
 ---
 
@@ -289,30 +300,37 @@ That is what makes it evidence in phase 2 rather than a description of whatever 
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `npm test -- photo-scrim` → the host-contract spec passes. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run `npm test -- home` → the card's scrim assertion passes. Verified at commit `<sha>`.
-- [ ] **AC-3:** Run `npm test -- venue-map` → the band's scrim assertion passes; the mocked e2e
-  hit test still gives every touch to the "view larger" control. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- discover-photos`
-  → the computed recipe is identical on both surfaces and unchanged from the phase-0 baseline.
-  Verified at commit `<sha>`.
+> The Angular Vitest builder scopes by `--include <glob>`, not by a bare name.
+
+- [x] **AC-1:** `npx ng test --include "src/app/shared/photo-scrim.spec.ts"` → 3 passed. Also
+  mutation-checked: dropping `pointer-events-none` and `aria-hidden` and adding `rounded-lg` fails
+  all three, so none is vacuous. Verified at `6d847564`, comments corrected at `dca0e481`.
+- [x] **AC-2:** `npx ng test --include "src/app/pages/home/home.spec.ts"` → passed within the
+  93-file / 1132-test folder sweep. Verified at `25f50e2e`.
+- [x] **AC-3:** `npx ng test --include "src/app/venue/venue-map.spec.ts"` → passed in the same
+  sweep; the mocked e2e hit test still gives every touch over the band to the "view larger"
+  control. Verified at `25f50e2e`.
+- [x] **AC-4:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config
+  playwright.a11y.config.ts discover-photos` → 9 passed. The computed recipe is identical on both
+  surfaces and unchanged from the phase-0 baseline that landed against the old spans. Verified at
+  `25f50e2e`, re-run green at `dca0e481`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced — N/A, no Java in the diff (invariant #1).
+- [x] **Availability** section filled — N/A with its reason; no availability write in scope (invariant #2).
+- [x] Pool + cutoff rules — N/A, no claim or sales-close path touched (invariants #3, #4).
+- [x] **Modulith** section filled — N/A, frontend-only (invariant #11).
+- [x] **Payment/payout** section filled — N/A, no money moves (invariants #5, #8, #9).
+- [x] Refund policy — N/A, no refund path touched (invariant #10).
+- [x] Timezone — N/A, no instant or date handled (invariant #6).
+- [x] Booking codes — N/A, none rendered or logged (invariant #7).
+- [x] Flyway — N/A, no schema change (invariant #12).
+- [x] **Frontend** standards met: standalone directive, `host` metadata, no inputs, no `as any`. The one deviation from the glass precedents — bundling the full-bleed geometry — is argued at the declaration.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, and all five findings carrying a decision.
+- [x] Risk register has no `open` rows — R-1…R-5 all closed with their outcome; Open Questions empty, its one entry resolved with the evidence.
+- [x] **Close-out written in THIS PR** — this is the branch's last commit; it carries the final plan state, cites `merged via PR #1068`, and nothing follows it. `docs/plans/` holds no other plan to retire.
+- [x] **The review gate ran in full** — `code-review:code-review` at rung 1 of the ladder, over the resolved range `6569e59f..25f50e2e` (10 files / +471 / −11, matched against the PR by `check-review-range.mjs`), with `riviera-review-overlay` layered on. Five parallel reviewers; four findings, all resolved; the overlay's RV items re-walked on the fix head.
