@@ -9,8 +9,9 @@ import { photoView, photoViews } from './support/photo-views';
  * Real-render CI-safe e2e for the tourist cover-photo display: the Discover card
  * renders the cover's CARD variant when a venue has one and keeps the gradient placeholder (sun,
  * no image) when it does not; the beach-map banner renders the BANNER variant, the scrim stays
- * layered over both as PAINT ONLY (it never takes a pointer), and the retired "coming soon"
- * pill never renders in either state. API mocked via `page.route`; the content-addressed serving GET answers real image bytes; axe at each step.
+ * layered over both as PAINT ONLY (it never takes a pointer), and the retired "coming soon" pill
+ * never renders in either state. API mocked via `page.route`; the content-addressed serving GET
+ * answers real image bytes; axe at each step.
  */
 
 /** A 1×1 PNG for the mocked serving endpoint — the `<img>`s genuinely load. */
