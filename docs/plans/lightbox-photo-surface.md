@@ -68,17 +68,17 @@ PR #1071, #1072 via PR #1073).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a 3:2 upload of 4000 × 2667, when it is processed, then a `LIGHTBOX@1` rendition of **2200 × 1467** is among the stored variants. *Seam:* `PhotoProcessor#process` · *Pinned by:* `PhotoProcessorTest.rendersALightboxRenditionBoundByWidthForALandscapeUpload`
-- [ ] **AC-2:** Given a 2:3 portrait upload of 2667 × 4000, when it is processed, then the `LIGHTBOX@1` rendition is **1200 × 1800** — bound by the box's HEIGHT, and taller than the 640 × 960 `BANNER@2` it replaces. *Seam:* `PhotoProcessor#process` · *Pinned by:* `PhotoProcessorTest.rendersALightboxRenditionBoundByHeightForAPortraitUpload`
-- [ ] **AC-3:** Given a 1600 × 1200 upload (1.92 MP, under the 3.63 MP a 4:3 `LIGHTBOX` would need), when it is processed, then **no** `LIGHTBOX` rendition is stored and the five existing renditions are unchanged — `isNotUpscaled` governs it as it governs the retina tier. *Seam:* `PhotoProcessor#process` · *Pinned by:* `PhotoProcessorTest.omitsTheLightboxRenditionRatherThanUpscaleASmallUpload`
-- [ ] **AC-4:** Given a venue whose cover photo has a `LIGHTBOX` row, when `findVenueMap` is called, then the returned view's `lightboxPhotos` carries the `LIGHTBOX` candidate and its `photos` list is **equal to the list the same fixture produces without the `LIGHTBOX` row** — the band and gallery selection must not move. *Seam:* `venue.api.VenueCatalog#findVenueMap` · *Pinned by:* `VenuePhotoReadModelIT.publishesLightboxCandidatesWithoutDisturbingTheBannerList`
-- [ ] **AC-5:** Given a venue whose photos predate this surface (no `LIGHTBOX` row), when `findVenueMap` is called, then `lightboxPhotos` falls back to the `BANNER` view and the cover still renders. *Seam:* `venue.api.VenueCatalog#findVenueMap` · *Pinned by:* `VenuePhotoReadModelIT.fallsBackToBannerForAPhotoStoredBeforeTheLightboxSurface`
-- [ ] **AC-6:** Given a cover slot holding `CARD` + `BANNER` + `LIGHTBOX`, and one holding `CARD` + `LIGHTBOX` only, when `findVenueMap` is called, then the first yields a `coverPhoto` and the second yields `null` — `LIGHTBOX` neither joins nor satisfies the complete-pair guard. *Seam:* `JdbcVenueCatalog#coverOf` · *Pinned by:* `VenuePhotoReadModelIT.keepsTheCoverPairGuardOnCardAndBannerAlone`
-- [ ] **AC-7:** Given a `venue_photo_variant` row with `surface = 'LIGHTBOX'`, when V57 has run, then the insert succeeds; and given `surface = 'POSTER'`, then it is rejected by `venue_photo_variant_surface_check`. *Seam:* the `venue_photo_variant` table constraint · *Pinned by:* `JdbcPhotoStorageIT.admitsLightboxAndStillRejectsAnUnknownSurface`
-- [ ] **AC-8:** Given the venue page at 1440 × 900 at DPR 2, when a photo **with** a `LIGHTBOX` row is opened in the lightbox, then the rendered `<img>`'s `currentSrc` is the `LIGHTBOX` candidate; and when a photo **without** one is opened, it is the `BANNER@2` candidate. *Seam:* the `/venue/:venueId` route's rendered lightbox `<img>` · *Pinned by:* `venue-lightbox-candidates.e2e.ts`
-- [ ] **AC-9:** Given the same page, when the lightbox is open on a photo with a `LIGHTBOX` row, then the beach-map band's and the gallery hero's `currentSrc` are the `BANNER` candidates they fetch today. *Seam:* the same route · *Pinned by:* `venue-lightbox-candidates.e2e.ts`
-- [ ] **AC-10:** Given the admin photo-moderation slot read, when a venue's photos carry a `LIGHTBOX` row, then each slot still resolves its `PREVIEW` variant. *Seam:* `VenuePhotoService#slotsOf` · *Pinned by:* `VenuePhotoServiceTest.resolvesTheOperatorSlotFromPreviewEvenWithALightboxRow`
-- [ ] **AC-11:** Given ADR-0008 and `CONTEXT.md`, when the slice is done, then each states the four-surface vocabulary, the amended stored-footprint figures, and the `BANNER` scale-3 decision. *Seam:* the substrate docs · *Pinned by:* the `riviera-docs-freshness` pass at close-out
+- [x] **AC-1:** Given a 3:2 upload of 4000 × 2667, when it is processed, then a `LIGHTBOX@1` rendition of **2200 × 1467** is among the stored variants. *Seam:* `PhotoProcessor#process` · *Pinned by:* `PhotoProcessorTest.rendersALightboxRenditionBoundByWidthForALandscapeUpload`
+- [x] **AC-2:** Given a 2:3 portrait upload of 2667 × 4000, when it is processed, then the `LIGHTBOX@1` rendition is **1200 × 1800** — bound by the box's HEIGHT, and taller than the 640 × 960 `BANNER@2` it replaces. *Seam:* `PhotoProcessor#process` · *Pinned by:* `PhotoProcessorTest.rendersALightboxRenditionBoundByHeightForAPortraitUpload`
+- [x] **AC-3:** Given a 1600 × 1200 upload (1.92 MP, under the 3.63 MP a 4:3 `LIGHTBOX` would need), when it is processed, then **no** `LIGHTBOX` rendition is stored and the five existing renditions are unchanged — `isNotUpscaled` governs it as it governs the retina tier. *Seam:* `PhotoProcessor#process` · *Pinned by:* `PhotoProcessorTest.omitsTheLightboxRenditionRatherThanUpscaleASmallUpload`
+- [x] **AC-4:** Given a venue whose cover photo has a `LIGHTBOX` row, when `findVenueMap` is called, then the returned view's `lightboxPhotos` carries the `LIGHTBOX` candidate and its `photos` list is **equal to the list the same fixture produces without the `LIGHTBOX` row** — the band and gallery selection must not move. *Seam:* `venue.api.VenueCatalog#findVenueMap` · *Pinned by:* `VenuePhotoReadModelIT.publishesLightboxCandidatesWithoutDisturbingTheBannerList`
+- [x] **AC-5:** Given a venue whose photos predate this surface (no `LIGHTBOX` row), when `findVenueMap` is called, then `lightboxPhotos` falls back to the `BANNER` view and the cover still renders. *Seam:* `venue.api.VenueCatalog#findVenueMap` · *Pinned by:* `VenuePhotoReadModelIT.fallsBackToBannerForAPhotoStoredBeforeTheLightboxSurface`
+- [x] **AC-6:** Given a cover slot holding `CARD` + `BANNER` + `LIGHTBOX`, and one holding `CARD` + `LIGHTBOX` only, when `findVenueMap` is called, then the first yields a `coverPhoto` and the second yields `null` — `LIGHTBOX` neither joins nor satisfies the complete-pair guard. *Seam:* `JdbcVenueCatalog#coverOf` · *Pinned by:* `VenuePhotoReadModelIT.keepsTheCoverPairGuardOnCardAndBannerAlone`
+- [x] **AC-7:** Given a `venue_photo_variant` row with `surface = 'LIGHTBOX'`, when V57 has run, then the insert succeeds; and given `surface = 'POSTER'`, then it is rejected by `venue_photo_variant_surface_check`. *Seam:* the `venue_photo_variant` table constraint · *Pinned by:* `JdbcPhotoStorageIT.admitsLightboxAndStillRejectsAnUnknownSurface`
+- [x] **AC-8:** Given the venue page at 1440 × 900 at DPR 2, when a photo **with** a `LIGHTBOX` row is opened in the lightbox, then the rendered `<img>`'s `currentSrc` is the `LIGHTBOX` candidate; and when a photo **without** one is opened, it is the `BANNER@2` candidate. *Seam:* the `/venue/:venueId` route's rendered lightbox `<img>` · *Pinned by:* `venue-lightbox-candidates.e2e.ts`
+- [x] **AC-9:** Given the same page, when the lightbox is open on a photo with a `LIGHTBOX` row, then the beach-map band's and the gallery hero's `currentSrc` are the `BANNER` candidates they fetch today. *Seam:* the same route · *Pinned by:* `venue-lightbox-candidates.e2e.ts`
+- [x] **AC-10:** Given the admin photo-moderation slot read, when a venue's photos carry a `LIGHTBOX` row, then each slot still resolves its `PREVIEW` variant. *Seam:* `VenuePhotoService#slotsOf` · *Pinned by:* `VenuePhotoServiceTest.resolvesTheOperatorSlotFromPreviewEvenWithALightboxRow`
+- [x] **AC-11:** Given ADR-0008 and `CONTEXT.md`, when the slice is done, then each states the four-surface vocabulary, the amended stored-footprint figures, and the `BANNER` scale-3 decision. *Seam:* the substrate docs · *Pinned by:* the `riviera-docs-freshness` pass at close-out
 
 ## Non-goals
 
@@ -106,16 +106,16 @@ are the verification that "adds only" is true rather than aspirational.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The 2200w candidate leaks into the band's or the gallery's `srcset` and the LCP image balloons | med | **high** | The lightbox gets its own list on `VenueMapView`; the shared `photos` array is left alone. AC-4 asserts the banner list is unchanged and AC-9 asserts the two rendered surfaces still fetch what they fetch today | agent | open |
+| R-1 | The 2200w candidate leaks into the band's or the gallery's `srcset` and the LCP image balloons | med | **high** | The lightbox gets its own list on `VenueMapView`; the shared `photos` array is left alone. AC-4 asserts the banner list is unchanged and AC-9 asserts the two rendered surfaces still fetch what they fetch today | agent | **resolved** — AC-4 and AC-9 both pass; the mutation that folds LIGHTBOX into the shared list turns the read-model IT red |
 | R-2 | `PhotoProcessorTest`'s `200_000 * scale * scale` byte cap silently stops constraining, because `LIGHTBOX@1` is a scale-1 rendition larger than every scale-2 one | **high** | med | **Falsified by measurement — closed, no action.** The cap is *tighter* on `LIGHTBOX@1` than on any other rendition, not looser: on the test's own fixture `LIGHTBOX@1` is 64,521 B against its 200,000 B budget (3.1× headroom) where `BANNER@2` is 20,664 B against 800,000 B (39×). The guard is non-monotone in rendition size, which is worth a note in the ADR, not a test rewrite inside this slice | agent | **resolved** |
-| R-3 | Stored footprint grows past what ADR-0008 sized its `bytea` decision for | med | med | Measured through the real pipeline, photo-like content: `LIGHTBOX@1` adds 72–112 KB per photo depending on aspect (mean 93 KB across five aspects), against 135–565 KB for a whole photo today. A three-slot venue goes from ≈0.4–1.7 MB to ≈0.6–2.0 MB. AC-11 amends the ADR's figures and re-reads its flip threshold | agent | open |
-| R-4 | A phone opening the lightbox now downloads a 2200w rendition where it used to take `BANNER@2` | **certain** | med | **Accepted, and the cost of the settled "its own candidate list" scope.** Measured: at 390 × 844 at DPR 2 the box is 358 CSS px and the engine asks 716 device px, which `BANNER@1` (720w, 22.9 KB) covered; a single `LIGHTBOX` candidate serves 2200w (99 KB) instead. It is one image on a deliberate tourist action, never the LCP element. The alternative — a merged `LIGHTBOX + BANNER` ladder — is #1059's rejected design AND is non-monotone past ≈2.3:1, where `BANNER@2` (2560w) is wider than `LIGHTBOX` (2200w). Stated in the ADR amendment so it is not rediscovered | agent | open |
-| R-5 | A `LIGHTBOX` row is served to the operator console or admin moderation surface, which expect the small `PREVIEW` | low | low | `VenuePhotoService#slotsOf` filters `surface() == PREVIEW` explicitly (`VenuePhotoService.java:73`), so the path cannot drift; AC-10 pins it anyway | agent | open |
+| R-3 | Stored footprint grows past what ADR-0008 sized its `bytea` decision for | med | med | Measured through the real pipeline, photo-like content: `LIGHTBOX@1` adds 72–112 KB per photo depending on aspect (mean 93 KB across five aspects), against 135–565 KB for a whole photo today. A three-slot venue goes from ≈0.4–1.7 MB to ≈0.6–2.0 MB. AC-11 amends the ADR's figures and re-reads its flip threshold | agent | **resolved** — ADR-0008 amended with the re-measured figures; the flip threshold re-read and unchanged |
+| R-4 | A phone opening the lightbox now downloads a 2200w rendition where it used to take `BANNER@2` | **certain** | med | **Accepted, and the cost of the settled "its own candidate list" scope.** Measured: at 390 × 844 at DPR 2 the box is 358 CSS px and the engine asks 716 device px, which `BANNER@1` (720w, 22.9 KB) covered; a single `LIGHTBOX` candidate serves 2200w (99 KB) instead. It is one image on a deliberate tourist action, never the LCP element. The alternative — a merged `LIGHTBOX + BANNER` ladder — is #1059's rejected design AND is non-monotone past ≈2.3:1, where `BANNER@2` (2560w) is wider than `LIGHTBOX` (2200w). Stated in the ADR amendment so it is not rediscovered | agent | **resolved** — accepted and recorded in ADR-0008 rather than left to be rediscovered |
+| R-5 | A `LIGHTBOX` row is served to the operator console or admin moderation surface, which expect the small `PREVIEW` | low | low | `VenuePhotoService#slotsOf` filters `surface() == PREVIEW` explicitly (`VenuePhotoService.java:73`), so the path cannot drift; AC-10 pins it anyway | agent | **resolved** — AC-10 passes; the sweep also found `JdbcVenues:613`, which pins PREVIEW in SQL |
 | R-6 | Upload latency grows — the processor decodes the raw upload once per rendition and this adds a sixth, at the largest box | med | low | Measured over three rounds on a 6000 × 4000 photo-like source: the five existing renditions take 2.57–2.67 s, `LIGHTBOX@1` adds 0.50–0.52 s, **+19–20%**. A rare operator action, far inside any request timeout. No action | agent | **resolved** |
-| R-7 | The e2e's mocked photo fixture has no `LIGHTBOX` candidate, so AC-8 passes vacuously | med | med | The fixture carries **both** a photo with and one without a `LIGHTBOX` row; AC-8 asserts both branches, so a vacuous pass fails the second | agent | open |
-| R-8 | Two existing specs assert that the lightbox shows the **banner** candidates, which is exactly what this slice ends | **certain** | low | Located: `venue-map.spec.ts:538` (test name) + `:560` (comment), and `discover-photos.e2e.ts:159` (comment) + `:172–175` (the assertions). Both are rewritten in phase 3 — names and comments, not just expectations, because "the server chose no variant" is the property being deliberately ended | agent | open |
+| R-7 | The e2e's mocked photo fixture has no `LIGHTBOX` candidate, so AC-8 passes vacuously | med | med | The fixture carries **both** a photo with and one without a `LIGHTBOX` row; AC-8 asserts both branches, so a vacuous pass fails the second | agent | **resolved** — the e2e fixture carries both branches and the mutation that drops one turns it red |
+| R-8 | Two existing specs assert that the lightbox shows the **banner** candidates, which is exactly what this slice ends | **certain** | low | Located: `venue-map.spec.ts:538` (test name) + `:560` (comment), and `discover-photos.e2e.ts:159` (comment) + `:172–175` (the assertions). Both are rewritten in phase 3 — names and comments, not just expectations, because "the server chose no variant" is the property being deliberately ended | agent | **resolved** — both rewritten in phase 3 — names and comments, not only expectations |
 | R-9 | The lightbox's `sizes="94vw"` over-states the box once the box caps at 1100 CSS px, the same shape #1072 fixed on the hero | med | low | **Measured — closed, no change.** In Chromium the lazy lightbox image's `auto` prefix wins and resolves to the element box (10/10 probe cells reproduce `round(box × DPR)` exactly), so the `94vw` clause is never consulted; and with a `LIGHTBOX` row present the list has one candidate and renders no `srcset` at all. Only an `auto`-less engine in the `BANNER`-fallback case reads `94vw`, where over-stating can only pick a wider candidate — measured to change the choice in exactly one narrow band (< 534 CSS px at DPR 2, one rung), which is pre-existing and unchanged by this slice. Not a defect, and not its own issue | agent | **resolved** |
-| R-10 | V57 collides with another branch's migration | low | med | V56 is the highest on `main`; GitHub reports **zero open PRs**, and `git diff --name-only origin/main...<branch>` over all 31 remote branches finds **no** branch touching `db/migration`. Default rule stands: the branch that merges second renumbers | agent | open |
+| R-10 | V57 collides with another branch's migration | low | med | V56 is the highest on `main`; GitHub reports **zero open PRs**, and `git diff --name-only origin/main...<branch>` over all 31 remote branches finds **no** branch touching `db/migration`. Default rule stands: the branch that merges second renumbers | agent | **resolved** — V57 shipped; no other branch carries a migration |
 
 ## Open questions / Assumptions
 
@@ -131,7 +131,7 @@ are the verification that "adds only" is true rather than aspirational.
   exact DPR-2 match for the box's 1100 × 900 maximum. The height is not padding-clamped because
   `items-center` gives the item no cross-axis shrink — it overflows the padding instead.
 - **Assumption (resolved, phase 0 measurement):** JPEG quality. `LIGHTBOX` takes
-  `RETINA_JPEG_QUALITY` (0.62), since it too is consumed at ≈1 image pixel per device pixel on a
+  the high-density JPEG quality (0.62), since it too is consumed at ≈1 image pixel per device pixel on a
   retina screen. Measured on a 3:2 photo-like source: 100,967 B at 0.62 against 137,360 B at 0.82,
   and on ADR-0008's synthetic-noise upper bound 735,278 B against 1,266,185 B. The lower quality is
   what makes R-3's figures affordable.
@@ -263,16 +263,17 @@ the banner list it already computes. No deviation. No `sizes` value changes (R-9
 
 ## Execution status
 
-**Stage pointer:** `implement — phases 1-3 done; phase 4 next`
+**Stage pointer:** `PR #1074 ready for review — review + sonar gates next`
 
-**Next action:** Phase 4 — amend ADR-0008 and `CONTEXT.md`, retire the hero plan doc, close out.
+**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then the
+Sonar gate, then merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 1 — The `LIGHTBOX` surface + V57 + the processor bound | ✅ | `6a363052` |
 | 2 — The read model's second candidate list | ✅ | `f4118692` |
 | 3 — The frontend mirror, the lightbox wiring, and the two specs it falsifies | ✅ | `03a030ae` |
-| 4 — Substrate docs: ADR-0008, CONTEXT.md + close-out | | |
+| 4 — Substrate docs: ADR-0008, CONTEXT.md + close-out | ✅ | `f473c7e7` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -297,6 +298,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenueCatalog.java` — the `LIGHTBOX_SLIDESHOW` preference + the second `slideshowOf` call
 - `platform/src/test/java/ai/riviera/platform/venue/application/PhotoProcessorTest.java` — AC-1/2/3
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenuePhotoServiceTest.java` — AC-10
+- `platform/src/test/java/ai/riviera/platform/venue/application/BeachMapReadServiceTest.java` — its `VenueMapView` double gains the new field
 - `platform/src/test/java/ai/riviera/platform/venue/VenuePhotoReadModelIT.java` — AC-4/5/6
 - `platform/src/test/java/ai/riviera/platform/venue/JdbcPhotoStorageIT.java` — AC-7
 - `frontend/src/app/shared/venue-views.ts` — the mirror
@@ -316,32 +318,32 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `platform/src/main/resources/db/migration/V57__venue_photo_variant_lightbox_surface.sql` · Modify `PhotoSurface.java`, `PhotoProcessor.java`, `StoredVariant.java` · Test `PhotoProcessorTest.java`, `JdbcPhotoStorageIT.java`
 
-- [ ] **Step 1: Write the failing tests** — AC-1 (2200 × 1467 for 3:2, width-bound), AC-2
+- [x] **Step 1: Write the failing tests** — AC-1 (2200 × 1467 for 3:2, width-bound), AC-2
       (1200 × 1800 for 2:3, height-bound), AC-3 (omitted rather than upscaled), AC-7 (the CHECK
       admits `LIGHTBOX`, rejects `POSTER`). AC-1/2 need a fixture larger than today's 1600 × 1200,
       which earns no `LIGHTBOX` row.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew --console=plain test --tests "*PhotoProcessorTest*"` → FAIL
+- [x] **Step 2: Run it, verify it fails** — `./gradlew --console=plain test --tests "*PhotoProcessorTest*"` → FAIL
       with no `LIGHTBOX` constant
-- [ ] **Step 3: Minimal implementation** — the enum constant; `LIGHTBOX_W`/`LIGHTBOX_H` constants
+- [x] **Step 3: Minimal implementation** — the enum constant; `LIGHTBOX_W`/`LIGHTBOX_H` constants
       beside `BANNER_W`/`_H` (§6a — never inline); `LIGHTBOX` excluded from `RETINA_SURFACES` so it
       stays scale 1, and added to the surfaces whose baseline is skipped rather than upscaled; the
       migration widening the CHECK. The three exhaustive `switch`es over `PhotoSurface`
       (`PhotoProcessor#boundsFor`, `PhotoProcessorTest#boundW`/`#boundH`) stop compiling until each
       names the new constant — that is the intended forcing function. Re-read the touched Javadoc
       whole (§6c) per *The counting sweep*.
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew --console=plain test --tests "*PhotoProcessorTest*"`, then
+- [x] **Step 4: Run it, verify it passes** — `./gradlew --console=plain test --tests "*PhotoProcessorTest*"`, then
       `./gradlew --console=plain test --tests "*JdbcPhotoStorageIT*"` → PASS
-- [ ] **Step 5: Mutation-test every new assertion** — change each guarded value (2200 → 2199,
+- [x] **Step 5: Mutation-test every new assertion** — change each guarded value (2200 → 2199,
       1467 → 1466, 1800 → 1799, the skipped-rendition count) and show the assertion going red.
-- [ ] **Step 6: Generalization-audit pass** — Population `every place that enumerates PhotoSurface
+- [x] **Step 6: Generalization-audit pass** — Population `every place that enumerates PhotoSurface
       or its DB token` → enumerated with
       `grep -rn "PhotoSurface" platform/src frontend/src` + `grep -rn "'CARD'\|'BANNER'\|'PREVIEW'"` +
       `git ls-files '*/adapter/out/*.java'` (an empty search is not evidence of absence —
       `CLAUDE.md` § Searching the codebase) → record the sites and the decision.
-- [ ] **Step 7: Run the structural net** — the six-test command in `CLAUDE.md` § Commands. A new
+- [x] **Step 7: Run the structural net** — the six-test command in `CLAUDE.md` § Commands. A new
       published vocabulary constant is a structure change.
-- [ ] **Step 8: Commit** — `git commit -m "Add the LIGHTBOX photo surface (#1070)"`
-- [ ] **Step 9: Update plan-doc execution status** in the same commit window.
+- [x] **Step 8: Commit** — `git commit -m "Add the LIGHTBOX photo surface (#1070)"`
+- [x] **Step 9: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -349,21 +351,21 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `VenueMapView.java`, `JdbcVenueCatalog.java` · Test `VenuePhotoReadModelIT.java`, `VenuePhotoServiceTest.java`
 
-- [ ] **Step 1: Write the failing tests** — AC-4 (the lightbox list carries `LIGHTBOX`; `photos` is
+- [x] **Step 1: Write the failing tests** — AC-4 (the lightbox list carries `LIGHTBOX`; `photos` is
       unchanged), AC-5 (fallback to `BANNER` with no `LIGHTBOX` row), AC-6 (the complete-pair guard
       is unmoved — a cover with `CARD` + `LIGHTBOX` but no `BANNER` still reads as no cover),
       AC-10 (the operator slot still resolves `PREVIEW`).
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew --console=plain test --tests "*VenuePhotoReadModelIT*"` → FAIL
-- [ ] **Step 3: Minimal implementation** — `LIGHTBOX_SLIDESHOW = List.of(LIGHTBOX, BANNER, CARD,
+- [x] **Step 2: Run it, verify it fails** — `./gradlew --console=plain test --tests "*VenuePhotoReadModelIT*"` → FAIL
+- [x] **Step 3: Minimal implementation** — `LIGHTBOX_SLIDESHOW = List.of(LIGHTBOX, BANNER, CARD,
       PREVIEW)` beside the existing two; a second `slideshowOf` call in `findVenueMap`; the new
       field on `VenueMapView`. `coverOf`'s complete-pair guard stays exactly as it is — `LIGHTBOX`
       must **not** join it, or every pre-existing cover photo would read as absent.
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew --console=plain test --tests "*VenuePhotoReadModelIT*"`, then
+- [x] **Step 4: Run it, verify it passes** — `./gradlew --console=plain test --tests "*VenuePhotoReadModelIT*"`, then
       `--tests "*VenuePhotoServiceTest*"` and `--tests "*VenueReadController*"` → PASS
-- [ ] **Step 5: Mutation-test every new assertion** — add `LIGHTBOX` to `coverOf`'s guard and show
+- [x] **Step 5: Mutation-test every new assertion** — add `LIGHTBOX` to `coverOf`'s guard and show
       AC-6 going red; point `LIGHTBOX_SLIDESHOW` at `BANNER` first and show AC-4 going red.
-- [ ] **Step 6: Commit** — `git commit -m "Publish lightbox candidates on the venue map view (#1070)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Publish lightbox candidates on the venue map view (#1070)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -371,26 +373,26 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `venue-views.ts`, `venue.service.ts`, `venue-map.ts|.html`, `e2e/support/photo-views.ts` · Create `frontend/e2e/venue-lightbox-candidates.e2e.ts` · Test `venue-map.spec.ts`, `discover-photos.e2e.ts`
 
-- [ ] **Step 1: Write the failing tests** — AC-8 in the new e2e (both branches: with and without a
+- [x] **Step 1: Write the failing tests** — AC-8 in the new e2e (both branches: with and without a
       `LIGHTBOX` row — R-7) and AC-9 (the band and hero unchanged), plus a unit spec that an absent
       `lightboxPhotos` falls back to the banner list.
-- [ ] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-lightbox-candidates` → FAIL
-- [ ] **Step 3: Minimal implementation** — the optional field on the mirror, `apiPhotoView` over the
+- [x] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-lightbox-candidates` → FAIL
+- [x] **Step 3: Minimal implementation** — the optional field on the mirror, `apiPhotoView` over the
       new list in `venue.service.ts`, `VenueHeader` gaining its second list, and
       `venue-map.html:353` binding the lightbox to it.
-- [ ] **Step 3a: Rewrite the two specs that assert the old sharing** — `venue-map.spec.ts:538`
+- [x] **Step 3a: Rewrite the two specs that assert the old sharing** — `venue-map.spec.ts:538`
       (test NAME) + `:560` (comment), and `discover-photos.e2e.ts:159` (comment) + `:172–175`
       (assertions). Their claim is that the lightbox and hero share one candidate list and the
       server chose no variant; that is the property this slice ends, so rewrite the names and
       comments rather than re-pointing the expectations.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- venue-map photo-url` then
+- [x] **Step 4: Run it, verify it passes** — `npm test -- venue-map photo-url` then
       `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → PASS; then
       `npm run lint && npm run format:check`
-- [ ] **Step 5: Mutation-test every new assertion** — bind the lightbox back to the banner list and
+- [x] **Step 5: Mutation-test every new assertion** — bind the lightbox back to the banner list and
       show AC-8's first branch going red; drop the no-`LIGHTBOX` fixture and show the second branch
       going red.
-- [ ] **Step 6: Commit** — `git commit -m "Serve the lightbox its own candidates (#1070)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Serve the lightbox its own candidates (#1070)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -398,22 +400,37 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `docs/adr/ADR-0008-venue-photo-storage.md`, `CONTEXT.md` · Delete `docs/plans/hero-dpr3-capped-sizes.md`
 
-- [ ] **Step 1: Run `riviera-docs-freshness`** over the slice's range and reconcile against *The
+- [x] **Step 1: Run `riviera-docs-freshness`** over the slice's range and reconcile against *The
       counting sweep* above — every site judged there is either changed or justified.
-- [ ] **Step 2: Amend ADR-0008** — a new amendment-log entry; the rendition list; the
+- [x] **Step 2: Amend ADR-0008** — a new amendment-log entry; the rendition list; the
       stored-footprint figures (R-3's measurements); the declined `BANNER` scale-3 rung with its
       basis; and R-4's accepted byte cost on a phone. Re-read the flip threshold and state whether
       it still holds.
-- [ ] **Step 3: Update `CONTEXT.md`** — the surface vocabulary and the second-density sentence.
-- [ ] **Step 4: Retire `docs/plans/hero-dpr3-capped-sizes.md`** — `git rm`, in this slice's last
+- [x] **Step 3: Update `CONTEXT.md`** — the surface vocabulary and the second-density sentence.
+- [x] **Step 4: Retire `docs/plans/hero-dpr3-capped-sizes.md`** — `git rm`, in this slice's last
       code-touching commit, per `riviera-docs-freshness` § *Plan-doc retirement* (its PR #1073 has
       merged).
-- [ ] **Step 5: Verify** — `node scripts/check-plan-file-structure.mjs --diff origin/main` and
+- [x] **Step 5: Verify** — `node scripts/check-plan-file-structure.mjs --diff origin/main` and
       `node scripts/check-inline-comments.mjs --diff origin/main` → clean
-- [ ] **Step 6: Commit** — `git commit -m "Amend ADR-0008 for the lightbox surface (#1070)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Amend ADR-0008 for the lightbox surface (#1070)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
+
+## Docs-freshness run
+
+Ran over `11f6eeb8..HEAD` (merge base resolved after `git fetch --no-tags origin main`).
+
+- **2a, rename/removal:** the only renamed identifiers are a private constant and three test
+  method names; `grep` over the whole substrate-doc set finds no citation of any of them. **0 findings.**
+- **2b, the counting sweep:** twelve sites enumerated at plan time (*The counting sweep* above),
+  each judged. Eight were rewritten in phases 1–4; `ADR-0008`'s #1041 line is historical narrative
+  and stays; the two Flyway comments are applied migrations; `CLAUDE.md` and `RESPONSIBILITIES.md`
+  name no surface. Re-run after the fix rounds. **0 stale statements left.**
+- **Plan-doc retirement:** `docs/plans/hero-dpr3-capped-sizes.md` deleted (PR #1073 merged). Its
+  residuals were already durable before deletion — the aspect band and the 364–412 px over-fetch
+  live in `CONTAIN_SIZES`' TSDoc, the ladder-limited hero note is now ADR-0008's #1070 entry — so
+  nothing needed relocating, and no file outside `docs/plans/` cites either slug.
 
 ## Generalization-audit log
 
@@ -425,17 +442,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `./gradlew test --tests "*PhotoProcessorTest*"` → 2200 × 1467, width-bound. Verified at commit `<sha>`.
-- [ ] **AC-2:** same run → 1200 × 1800, height-bound. Verified at commit `<sha>`.
-- [ ] **AC-3:** same run → no upscaled rendition; the five existing ones unchanged. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `./gradlew test --tests "*VenuePhotoReadModelIT*"` → banner list unchanged. Verified at commit `<sha>`.
-- [ ] **AC-5:** same run → falls back to `BANNER`. Verified at commit `<sha>`.
-- [ ] **AC-6:** same run → the cover pair guard is unmoved. Verified at commit `<sha>`.
-- [ ] **AC-7:** Run `./gradlew test --tests "*JdbcPhotoStorageIT*"` → CHECK admits/rejects. Verified at commit `<sha>`.
-- [ ] **AC-8:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-lightbox-candidates` → both branches. Verified at commit `<sha>`.
-- [ ] **AC-9:** same run → band and hero unchanged. Verified at commit `<sha>`.
-- [ ] **AC-10:** Run `./gradlew test --tests "*VenuePhotoServiceTest*"` → the slot read still resolves `PREVIEW`. Verified at commit `<sha>`.
-- [ ] **AC-11:** `riviera-docs-freshness` pass reports no stale statement. Verified at commit `<sha>`.
+- [x] **AC-1:** Run `./gradlew test --tests "*PhotoProcessorTest*"` → 2200 × 1467, width-bound. Verified at commit `d8e3b316`.
+- [x] **AC-2:** same run → 1200 × 1800, height-bound. Verified at commit `d8e3b316`.
+- [x] **AC-3:** same run → no upscaled rendition; the five existing ones unchanged. Verified at commit `d8e3b316`.
+- [x] **AC-4:** Run `./gradlew test --tests "*VenuePhotoReadModelIT*"` → banner list unchanged. Verified at commit `516543fb`.
+- [x] **AC-5:** same run → falls back to `BANNER`. Verified at commit `516543fb`.
+- [x] **AC-6:** same run → the cover pair guard is unmoved. Verified at commit `516543fb`.
+- [x] **AC-7:** Run `./gradlew test --tests "*JdbcPhotoStorageIT*"` → CHECK admits/rejects. Verified at commit `d8e3b316`.
+- [x] **AC-8:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-lightbox-candidates` → both branches. Verified at commit `76dfc45b`.
+- [x] **AC-9:** same run → band and hero unchanged. Verified at commit `76dfc45b`.
+- [x] **AC-10:** Run `./gradlew test --tests "*VenuePhotoServiceTest*"` → the slot read still resolves `PREVIEW`. Verified at commit `516543fb`.
+- [x] **AC-11:** `riviera-docs-freshness` pass reports no stale statement. Verified at commit `597bb77a`.
 
 ## Self-review checklist (before merge / PR)
 
