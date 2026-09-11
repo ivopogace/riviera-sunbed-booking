@@ -412,7 +412,7 @@ describe('VenueMap', () => {
     expect(el().textContent).not.toContain('coming soon');
   });
 
-  it('sizes the single-photo header band to its own breakout, not the 100vw default', async () => {
+  it('sizes the single-photo header band to its letterboxed image, not to its own box', async () => {
     venueRequest().flush({
       ...miramar(),
       photos: [photoView('/api/venues/1/photos/bb02', 1440)],
@@ -422,7 +422,10 @@ describe('VenueMap', () => {
 
     const img = el().querySelector('.photo-band img')!;
     // The band is priority (the page's LCP on this path), so the directive adds no `auto,` prefix.
-    expect(img.getAttribute('sizes')).toBe('(min-width: 1280px) 70vw, 100vw');
+    // Which candidate each clause buys: venue-photo-candidates.e2e.ts.
+    expect(img.getAttribute('sizes')).toBe(
+      '(min-width: 1280px) 30vw, (min-width: 1024px) 45vw, 35vw',
+    );
     expect(img.getAttribute('srcset')).toContain('1440w');
   });
 

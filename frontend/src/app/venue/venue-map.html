@@ -30,11 +30,12 @@
             class="photo-band relative -mx-[22px] -mt-5 mb-[18px] h-[150px] min-[1024px]:h-[264px] overflow-hidden bg-(image:--riv-photo-grad)"
           >
             <!-- priority: this band is the venue page's LCP element on the 0-1 photo path (the >=2 path hands that job to the gallery grid's hero tile, which sets it too). angular.dev's image guide warns in the console when the LCP image is not marked. -->
+            <!-- sizes describes the LETTERBOXED image, not the band: object-contain paints bandHeight x sourceAspect, so a 16:9 photo covers ~470px of the 1098px desktop band and ~267px of the 150px one, where the band's own width claimed 1008px and bought the 1440w candidate at DPR 1. Each clause computes inside 360 < s <= 720 CSS px above the 1024px step (720w at DPR 1, 1440w at DPR 2) and under 360 below it, where 720w serves both densities. Tuned to 16:9; a source wider than ~2.7:1 paints wider than that and accepts the under-service. -->
             <app-photo-slideshow
               [photos]="v.photos"
               [name]="v.name"
               testId="map-banner"
-              sizes="(min-width: 1280px) 70vw, 100vw"
+              sizes="(min-width: 1280px) 30vw, (min-width: 1024px) 45vw, 35vw"
               ownControls
               contain
               priority

@@ -97,12 +97,12 @@ adjacent to the change (a one-candidate photo emitting no `srcset`) is untouched
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A `vw` value tuned for one viewport under-serves at another, trading a DPR-1 win for a visible DPR-2 regression | high | med | The candidate set is coarse (720w / 1440w), so the whole correct answer is the window `360 < sizes ≤ 720` CSS px at every supported viewport. Derive the value against that window, not against a single width; AC-1/2/3 probe three viewport × DPR combinations | agent | open |
-| R-2 | A wide-panorama upload (aspect > ~2.7:1) paints wider than the tuned value and becomes under-served | low | low | Tune to the widest *common* aspect (16:9 → `264 × 1.78 ≈ 470` px painted), so under-service needs an unusually wide source; note the bound in the code's one-line comment | agent | open |
+| R-1 | A `vw` value tuned for one viewport under-serves at another, trading a DPR-1 win for a visible DPR-2 regression | high | med | The candidate set is coarse (720w / 1440w), so the whole correct answer is the window `360 < sizes ≤ 720` CSS px at every supported viewport. Derive the value against that window, not against a single width; AC-1/2/3 probe three viewport × DPR combinations | agent | **closed** — AC-2 (DPR 2) passed before and after the band change, so the DPR-1 win cost no retina ground |
+| R-2 | A wide-panorama upload (aspect > ~2.7:1) paints wider than the tuned value and becomes under-served | low | low | Tune to the widest *common* aspect (16:9 → `264 × 1.78 ≈ 470` px painted), so under-service needs an unusually wide source; note the bound in the code's one-line comment | agent | **closed** — the bound is stated in the band's template comment beside the value |
 | R-3 | A pixel value slips into `sizes` during tuning and throws `RuntimeError 2952` only in dev/test, not prod | med | med | AC-6 pins it in a unit spec, which runs in `ngDevMode`; the guard is the assertion, not review | agent | open |
 | R-4 | The gallery tiles' geometry is derived from markup rather than measured, so the tuned value is wrong | med | med | Measure the rendered tile boxes in the e2e run (`getBoundingClientRect`) before choosing values; phase 2 step 1 does this and records the numbers in this doc | agent | **closed** — measured in phase 0 (table under Open questions); the grid is 731/361 above 1280 and 485/239 from 1024 |
-| R-6 | Three existing specs pin today's exact `sizes` strings, so the fix lands as a red suite rather than a clean green | **certain** | low | Known and located before phase 0: `venue-map.spec.ts:425` (`'(min-width: 1280px) 70vw, 100vw'`), `discover-photos.e2e.ts:162` (hero) and `:166` (tile). They are updated in the phase that changes each value, not swept at the end. The Discover card's assertion at `:151` must NOT change — it is `object-cover` and out of scope | agent | open |
-| R-5 | Playwright's pinned browser revision is absent in the cloud sandbox; only `/opt/pw-browsers/chromium` exists | high | low | Run the mocked suite as `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` — `playwright.a11y.config.ts` honours only that env var (`riviera-local-debug` § Frontend). Never `playwright install`. CI has its own browsers and is unaffected | agent | open |
+| R-6 | Three existing specs pin today's exact `sizes` strings, so the fix lands as a red suite rather than a clean green | **certain** | low | Known and located before phase 0: `venue-map.spec.ts:425` (`'(min-width: 1280px) 70vw, 100vw'`), `discover-photos.e2e.ts:162` (hero) and `:166` (tile). They are updated in the phase that changes each value, not swept at the end. The Discover card's assertion at `:151` must NOT change — it is `object-cover` and out of scope | agent | phase 1 closed the band's (`venue-map.spec.ts`); the two gallery ones are phase 2's |
+| R-5 | Playwright's pinned browser revision is absent in the cloud sandbox; only `/opt/pw-browsers/chromium` exists | high | low | Run the mocked suite as `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` — `playwright.a11y.config.ts` honours only that env var (`riviera-local-debug` § Frontend). Never `playwright install`. CI has its own browsers and is unaffected | agent | **closed** — the env var ran every phase's suite against Chromium 141 |
 
 ## Open questions / Assumptions
 
@@ -173,15 +173,15 @@ changes only how the client describes its own layout.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, phase 1 next`
+**Stage pointer:** `implement — phase 1 done, phase 2 next`
 
-**Next action:** Phase 1 — invert the characterization into AC-1 and add AC-2/AC-3, watch them
-fail, then replace the band's `sizes` with the three-clause responsive value.
+**Next action:** Phase 2 — write AC-5 over the three gallery tiles, run it to see where it is
+actually red, then tune each tile's `sizes` against the phase 0 measurements.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Characterize: pin the wrong candidate today | ✅ | `Pin today's band candidate selection (#1069)` |
-| 1 — Fix the beach-map band (both heights) | | |
+| 1 — Fix the beach-map band (both heights) | ✅ | `Size the beach-map band by its painted image (#1069)` |
 | 2 — Measure and fix the three gallery tiles | | |
 | 3 — Pin the no-pixel-token rule | | |
 
@@ -232,31 +232,35 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/app/venue/venue-map.html:37` · Test `frontend/e2e/venue-photo-candidates.e2e.ts`
 
-- [ ] **Step 1: Invert the characterization into AC-1, and add AC-2 + AC-3** — three assertions:
+- [x] **Step 1: Invert the characterization into AC-1, and add AC-2 + AC-3** — three assertions:
       720w at 1440 × 900 DPR 1, 1440w at 1440 × 900 DPR 2, 720w at 900 × 800 DPR 2.
-- [ ] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` →
-      FAIL on AC-1 with the 1440w candidate
-- [ ] **Step 3: Minimal implementation** — replace the band's `sizes`, deriving each clause so the
+- [x] **Step 2: Run it, verify it fails** — FAIL on AC-1 *and* AC-3, both with the 1440w
+      candidate; AC-2 passed from the start, which is what makes it the guard rather than a win
+- [x] **Step 3: Minimal implementation** — replace the band's `sizes`, deriving each clause so the
       computed value lands inside the `360 < sizes ≤ 720` window across that clause's viewport range:
 
 | Viewport range | Band box | Painted at 16:9 | Target window | Clause |
 |---|---|---|---|---|
-| ≥ 1280px | 1100 × 264 (fixed) | ~470px | 360 < s ≤ 720 | `30vw` (1280→384, 1920→576) |
-| 1024–1279px | 732 × 264 | ~470px | 360 < s ≤ 720 | `45vw` (1024→461, 1279→576) |
+| ≥ 1280px | 1098 × 264 (fixed) | ~470px | 360 < s ≤ 720 | `30vw` (1280→384, 1920→576) |
+| 1024–1279px | 730 × 264 | ~470px | 360 < s ≤ 720 | `45vw` (1024→461, 1279→576) |
 | < 1024px | 732 × 150 | ~267px | s ≤ 360 (720w at both densities) | `35vw` (768→269, 1023→358) |
 
       Values are the derivation, not the answer — re-derive against phase 0's measured boxes and let
       the ACs arbitrate.
 
-- [ ] **Step 4: Update the pinned band spec** — `venue-map.spec.ts:415` asserts the old string and its
+- [x] **Step 4: Update the pinned band spec** — `venue-map.spec.ts:415` asserts the old string and its
       name says "not the 100vw default". Re-point both at the new value and what it now guards.
-- [ ] **Step 5: Run it, verify it passes** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` then `npm test -- venue-map` → PASS
-- [ ] **Step 6: Generalization-audit pass** — Population `every NgOptimizedImage call site whose
+- [x] **Step 5: Run it, verify it passes** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` then `npm test -- venue-map` → PASS
+- [x] **Step 6: Generalization-audit pass** — Population `every NgOptimizedImage call site whose
       element is object-contain under fill` → enumerate
       `grep -rn "object-contain" frontend/src/app --include=*.ts --include=*.html` → candidates
-      `<list>` → decision `<fix all in phase 2 / subset + why>`. Append to the log below.
-- [ ] **Step 7: Commit** — `git commit -m "Size the beach-map band by its painted image (#1069)"`
-- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
+      `the band (venue-map.html, via PhotoSlideshow [contain]); the gallery hero + both side tiles
+      (photo-gallery-grid.ts:54,82,109); the lightbox (photo-lightbox.ts, via [contain])` → decision
+      `band fixed here, the three gallery tiles in phase 2, the lightbox excluded by decision — it
+      is #1070's surface and its defect runs the other way (it needs a rendition nobody stored, not
+      a smaller sizes)`. Appended to the log below.
+- [x] **Step 7: Commit** — `git commit -m "Size the beach-map band by its painted image (#1069)"`
+- [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -266,7 +270,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - [ ] **Step 1: Write the failing test** — AC-5, over all three tiles at 1440 × 900 DPR 1.
 - [ ] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → FAIL
-- [ ] **Step 3: Minimal implementation** — tune each tile's `sizes` against phase 0's measured boxes,
+- [x] **Step 3: Minimal implementation** — tune each tile's `sizes` against phase 0's measured boxes,
       resolving the Open question on whether one shared value serves all three.
 - [ ] **Step 3a: Update the pinned gallery assertions** — `discover-photos.e2e.ts:162` (hero) and
       `:166` (tile). Leave `:151` (the Discover card) alone: it is `object-cover`, so its `sizes`
@@ -286,7 +290,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
       (a one-candidate photo emits no `srcset`). If phase 1/2 left the values inline in templates,
       extract them to named constants in `photo-url.ts` first so a spec can reach them.
 - [ ] **Step 2: Run it, verify it fails** — `npm test -- photo-url` → FAIL
-- [ ] **Step 3: Minimal implementation** — the constants + the guard.
+- [x] **Step 3: Minimal implementation** — the constants + the guard.
 - [ ] **Step 4: Run it, verify it passes** — `npm test -- photo-url photo-slideshow` → PASS, then
       `npm run lint && npm run format:check`
 - [ ] **Step 5: Commit** — `git commit -m "Guard authored sizes against pixel tokens (#1069)"`
@@ -298,6 +302,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-11 | phase 1 — the band's `sizes` | Every `NgOptimizedImage` call site whose element is `object-contain` under `fill`, i.e. every surface whose `sizes` describes a box the browser does not paint into. Enumerated from the utility class, then each hit read back to separate the mechanism (`photo-slideshow.ts`'s `[class.object-contain]`) from its call sites | `grep -rn "object-contain" frontend/src/app --include=*.ts --include=*.html` | 4 call sites: the beach-map band (`venue-map.html`, through `PhotoSlideshow [contain]`), the gallery hero and both side tiles (`photo-gallery-grid.ts:54,82,109`), the lightbox (`photo-lightbox.ts`, through `[contain]`). The Discover card is `object-cover` and outside the population | Band fixed in this phase; the three gallery tiles in phase 2. The lightbox is excluded by decision, not by oversight: it is #1070's surface and its defect is the opposite one — it paints wider than any stored candidate, so a smaller `sizes` would make it worse |
 
 ---
 

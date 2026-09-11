@@ -68,18 +68,41 @@ function candidate(img: Locator) {
   );
 }
 
-test.describe('the beach-map band', () => {
+test.describe('the beach-map band at 1440 x 900, DPR 1', () => {
   test.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 
-  test('fetches the retina candidate at DPR 1, sized by its box and not by its letterboxed image', async ({
-    page,
-  }) => {
+  test('band picks the baseline candidate at DPR 1', async ({ page }) => {
     await page.goto('/venues/1');
     const band = page.getByTestId('map-banner-img');
     await expect(band).toBeVisible();
 
-    // Characterization of #1069: 70vw of 1440 asks for 1008px, so the browser takes the 1440w
-    // candidate — while `object-contain` paints the image ~470px wide inside that 1100 × 264 box.
+    // An 1098 x 264 box, but object-contain paints a 16:9 photo only ~470 CSS px wide in it.
+    await candidate(band).toBe('bb02');
+  });
+});
+
+test.describe('the beach-map band at 1440 x 900, DPR 2', () => {
+  test.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
+
+  test('band still picks the retina candidate at DPR 2', async ({ page }) => {
+    await page.goto('/venues/1');
+    const band = page.getByTestId('map-banner-img');
+    await expect(band).toBeVisible();
+
+    // The half of the fix that is a guard, not a win: ~940 device px needs the wider candidate.
     await candidate(band).toBe('bb02@1440');
+  });
+});
+
+test.describe('the beach-map band at 900 x 800, DPR 2', () => {
+  test.use({ viewport: { width: 900, height: 800 }, deviceScaleFactor: 2 });
+
+  test('the short band stays on the baseline candidate at DPR 2', async ({ page }) => {
+    await page.goto('/venues/1');
+    const band = page.getByTestId('map-banner-img');
+    await expect(band).toBeVisible();
+
+    // Below the 1024px step the band is 150px tall: ~534 device px even at DPR 2.
+    await candidate(band).toBe('bb02');
   });
 });
