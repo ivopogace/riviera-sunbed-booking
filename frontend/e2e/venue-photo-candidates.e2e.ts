@@ -57,6 +57,8 @@ const VENUE_MAP = {
 
 /** The 2+ photo path, where the header hands its photo lead to the gallery grid, not the band. */
 const GALLERY_VENUE = { ...VENUE_MAP, photos: [BANNER, SECOND, THIRD] };
+/** The same page whose hero is the 16:9 upload, which stores 853w/1707w rather than 720w/1440w. */
+const WIDE_GALLERY_VENUE = { ...VENUE_MAP, photos: [WIDE_BANNER, SECOND, THIRD] };
 
 test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE_MAP }));
@@ -116,8 +118,8 @@ test.describe('the beach-map band at 900 x 800, DPR 2', () => {
 });
 
 /** The 2+ photo page, scrolled until the lazy side tiles have chosen a candidate. */
-async function openGallery(page: Page) {
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: GALLERY_VENUE }));
+async function openGallery(page: Page, venue: object = GALLERY_VENUE) {
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: venue }));
   await page.goto('/venues/1');
   await expect(page.getByTestId('gallery-hero')).toBeVisible();
   await page.getByTestId('gallery-tile').nth(1).scrollIntoViewIfNeeded();
@@ -213,5 +215,80 @@ test.describe('the beach-map band at 1024 x 800, DPR 2', () => {
 
     // The clause's tightest point: 45vw asks 922 device px against a 16:9 baseline of 853.
     await candidate(band).toBe('ee05@1707');
+  });
+});
+
+test.describe('the gallery hero at 360 x 900, DPR 3', () => {
+  test.use({ viewport: { width: 360, height: 900 }, deviceScaleFactor: 3 });
+
+  test('a 3:2 upload stays on its baseline below the DPR-3 window', async ({ page }) => {
+    await openGallery(page);
+
+    // 3:2 fixture: a measured 205 x 220 box paints 205 CSS px, so DPR 3 asks 616 - inside the
+    // 720w baseline this upload stores. The guard that the capped clause is a cap, not a
+    // blanket switch to retina on every phone.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
+  });
+});
+
+test.describe('the gallery hero at 430 x 900, DPR 3', () => {
+  test.use({ viewport: { width: 430, height: 900 }, deviceScaleFactor: 3 });
+
+  test('a 3:2 upload takes the retina candidate at the low end of the DPR-3 window', async ({
+    page,
+  }) => {
+    await openGallery(page);
+
+    // 3:2 fixture: a measured 252 x 220 box is still width-bound, so it paints 252 CSS px and
+    // DPR 3 asks 756 - past this upload's 720w baseline by 5%.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
+  });
+});
+
+test.describe('the gallery hero at 560 x 900, DPR 3', () => {
+  test.use({ viewport: { width: 560, height: 900 }, deviceScaleFactor: 3 });
+
+  test('a 3:2 upload takes the retina candidate where the paint caps', async ({ page }) => {
+    await openGallery(page);
+
+    // 3:2 fixture: a measured 339 x 220 box is height-bound, so the paint caps at 220 x 1.5 =
+    // 330 CSS px and DPR 3 asks 990 - the worst point of this upload's window, 27% past 720w.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
+  });
+});
+
+test.describe('the gallery hero at 673 x 900, DPR 3', () => {
+  test.use({ viewport: { width: 673, height: 900 }, deviceScaleFactor: 3 });
+
+  test('a 3:2 upload takes the retina candidate at the top of the DPR-3 window', async ({
+    page,
+  }) => {
+    await openGallery(page);
+
+    // 3:2 fixture: a measured 414 x 220 box, still capped at a 330 CSS px paint and still
+    // asking 990. The last width at which a 3:2 upload is short; from 686 up the widest
+    // clause already bought retina before this slice.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
+  });
+});
+
+test.describe('the gallery hero at 800 x 900, DPR 3', () => {
+  test.use({ viewport: { width: 800, height: 900 }, deviceScaleFactor: 3 });
+
+  test("a 16:9 upload's DPR-3 window runs wider than a 3:2 upload's", async ({ page }) => {
+    await openGallery(page, WIDE_GALLERY_VENUE);
+
+    // 16:9 fixture: the measured 485 x 220 box is height-bound, so it paints 220 x 16/9 = 391
+    // CSS px and DPR 3 asks 1173 - past the 853w baseline a 16:9 upload stores.
+    await candidate(page.getByTestId('gallery-hero')).toBe('ee05@1707');
+  });
+
+  test('while a 3:2 upload at the same width needed no help', async ({ page }) => {
+    await openGallery(page);
+
+    // 3:2 fixture, same box: it paints only 220 x 1.5 = 330 CSS px and asks 990, which the
+    // widest clause already covered. The control on the case above - the two aspects diverge
+    // here because their paints and their stored ladders both differ, never one alone.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
   });
 });

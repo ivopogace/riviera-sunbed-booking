@@ -244,14 +244,14 @@ widths are all unchanged; only the client-side `sizes` hint moves.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, phase 0 next`
+**Stage pointer:** `implement (phase 0 committed red; phase 1 next)`
 
-**Next action:** Phase 0 — add the DPR-3 e2e cases against the **current** `35vw` value and
-run the mocked suite to see them red, before touching `photo-url.ts`.
+**Next action:** Phase 1 — change `CONTAIN_SIZES.galleryHero`'s narrowest clause to
+`min(330px, 66vw)`, watch `photo-url.spec.ts`'s old shape rule go red, then correct it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Pin the defect as a red e2e | | |
+| 0 — Pin the defect as a red e2e | ✅ (red by design) | `a0a5382a` |
 | 1 — Ship the capped clause and correct the shape rule | | |
 | 2 — State the density and aspect bounds in the registry TSDoc | | |
 | 3 — Close-out: retire `band-contain-sizes.md`, finalize this doc | | |
