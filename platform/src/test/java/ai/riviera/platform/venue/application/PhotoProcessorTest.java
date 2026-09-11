@@ -37,12 +37,13 @@ class PhotoProcessorTest {
 	private final PhotoProcessor processor = new PhotoProcessor(26_214_400L, 50_000_000L, 12_000);
 
 	@Test
-	void everyUploadProducesCardBannerAndPreviewJpegVariants() throws IOException {
-		Processed result = assertProcessed(processor.process(solidJpeg(1600, 1200)));
+	void everyUploadProducesCardBannerLightboxAndPreviewJpegVariants() throws IOException {
+		Processed result = assertProcessed(processor.process(solidJpeg(4000, 2667)));
 
 		List<StoredVariant> variants = result.photo().variants();
 		Set<PhotoSurface> surfaces = variants.stream().map(StoredVariant::surface).collect(Collectors.toSet());
-		assertEquals(Set.of(PhotoSurface.CARD, PhotoSurface.BANNER, PhotoSurface.PREVIEW), surfaces);
+		assertEquals(Set.of(PhotoSurface.CARD, PhotoSurface.BANNER, PhotoSurface.LIGHTBOX,
+				PhotoSurface.PREVIEW), surfaces);
 		for (StoredVariant v : variants) {
 			assertEquals("image/jpeg", v.contentType(), "re-encoded to JPEG");
 			assertTrue(isJpeg(v.bytes()), "output is a real JPEG");
@@ -56,17 +57,49 @@ class PhotoProcessorTest {
 	}
 
 	@Test
-	void rendersARetinaTierForTheTouristSurfacesOnly() throws IOException {
-		Processed result = assertProcessed(processor.process(solidJpeg(1600, 1200)));
+	void rendersARetinaTierForCardAndBannerOnly() throws IOException {
+		// 16.7 MP clears a hypothetical LIGHTBOX@2 (4400x2933), which a smaller source would skip.
+		Processed result = assertProcessed(processor.process(solidJpeg(5000, 3333)));
 
 		List<StoredVariant> variants = result.photo().variants();
 		Set<String> renditions = variants.stream()
 				.map(v -> v.surface() + "@" + v.scale())
 				.collect(Collectors.toSet());
-		assertEquals(Set.of("CARD@1", "CARD@2", "BANNER@1", "BANNER@2", "PREVIEW@1"), renditions,
-				"the two tourist surfaces carry a retina tier; the operator slot preview does not");
+		assertEquals(Set.of("CARD@1", "CARD@2", "BANNER@1", "BANNER@2", "LIGHTBOX@1", "PREVIEW@1"),
+				renditions,
+				"CARD and BANNER carry a retina tier; LIGHTBOX already is one and PREVIEW needs none");
 		assertEquals(variants.size(), variants.stream().map(StoredVariant::hash).distinct().count(),
 				"every rendition is its own content-addressed row");
+	}
+
+	@Test
+	void rendersALightboxRenditionBoundByWidthForALandscapeUpload() throws IOException {
+		Processed result = assertProcessed(processor.process(solidJpeg(4000, 2667)));
+
+		// 3:2 is wider than the 2200x1800 box, so fit-within pins the WIDTH and derives the height.
+		assertEquals("2200x1467", dimensionsOf(result, PhotoSurface.LIGHTBOX));
+	}
+
+	@Test
+	void rendersALightboxRenditionBoundByHeightForAPortraitUpload() throws IOException {
+		Processed result = assertProcessed(processor.process(solidJpeg(2667, 4000)));
+
+		// 2:3 is narrower than the box, so the HEIGHT binds — the axis flips with the aspect.
+		assertEquals("1200x1800", dimensionsOf(result, PhotoSurface.LIGHTBOX));
+		assertEquals("640x960", dimensionsOf(result, PhotoSurface.BANNER, 2),
+				"the BANNER retina it replaces is both narrower and shorter");
+	}
+
+	@Test
+	void omitsTheLightboxRenditionRatherThanUpscaleASmallUpload() throws IOException {
+		// 1600x1200 is 1.92 MP; a 4:3 LIGHTBOX would be 2200x1650 = 3.63 MP, so it is an upscale.
+		Processed result = assertProcessed(processor.process(solidJpeg(1600, 1200)));
+
+		List<StoredVariant> variants = result.photo().variants();
+		assertFalse(variants.stream().anyMatch(v -> v.surface() == PhotoSurface.LIGHTBOX),
+				() -> "no upscaled lightbox rendition: " + renditionsOf(variants));
+		assertEquals(Set.of("CARD@1", "CARD@2", "BANNER@1", "BANNER@2", "PREVIEW@1"),
+				renditionsOf(variants), "every other rendition is unchanged");
 	}
 
 	@Test
@@ -169,6 +202,22 @@ class PhotoProcessorTest {
 		}
 	}
 
+	private static String dimensionsOf(Processed result, PhotoSurface surface) {
+		return dimensionsOf(result, surface, 1);
+	}
+
+	private static String dimensionsOf(Processed result, PhotoSurface surface, int scale) {
+		return result.photo().variants().stream()
+				.filter(v -> v.surface() == surface && v.scale() == scale)
+				.map(v -> v.width() + "x" + v.height())
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("no " + surface + "@" + scale + " rendition"));
+	}
+
+	private static Set<String> renditionsOf(List<StoredVariant> variants) {
+		return variants.stream().map(v -> v.surface() + "@" + v.scale()).collect(Collectors.toSet());
+	}
+
 	// --- fixtures (generated in-test; no binary resources) -------------------------------------
 
 	private static byte[] solidJpeg(int w, int h) throws IOException {
@@ -261,6 +310,7 @@ class PhotoProcessorTest {
 		return switch (s) {
 			case CARD -> 640;
 			case BANNER -> 1280;
+			case LIGHTBOX -> 2200;
 			case PREVIEW -> 480;
 		};
 	}
@@ -269,6 +319,7 @@ class PhotoProcessorTest {
 		return switch (s) {
 			case CARD -> 384;
 			case BANNER -> 480;
+			case LIGHTBOX -> 1800;
 			case PREVIEW -> 360;
 		};
 	}

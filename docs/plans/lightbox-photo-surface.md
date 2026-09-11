@@ -263,14 +263,13 @@ the banner list it already computes. No deviation. No `sizes` value changes (R-9
 
 ## Execution status
 
-**Stage pointer:** `plan — re-grilled and committed; implement next`
+**Stage pointer:** `implement — phase 1 done; phase 2 next`
 
-**Next action:** Phase 1 — add the `LIGHTBOX` constant, its bound, its skip-when-upscaled rule and
-V57, test-first.
+**Next action:** Phase 2 — the read model's second candidate list, test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 1 — The `LIGHTBOX` surface + V57 + the processor bound | | |
+| 1 — The `LIGHTBOX` surface + V57 + the processor bound | ✅ | `6a363052` |
 | 2 — The read model's second candidate list | | |
 | 3 — The frontend mirror, the lightbox wiring, and the two specs it falsifies | | |
 | 4 — Substrate docs: ADR-0008, CONTEXT.md + close-out | | |
@@ -281,7 +280,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | phase 1 mutation testing | A first attempt to pin `LIGHTBOX`'s JPEG quality (0.62, not 0.82) by comparing bytes-per-pixel **survived** the mutation: on the test's flat fixture quality moves bytes by 6% (0.01783 → 0.01897 B/px) because the image is almost all flat colour, and on a detail-rich one the comparison is confounded by rendition size instead. The assertion was **removed** rather than tuned to a fixture-specific threshold — a test that passes under its own mutation claims coverage it does not have. The quality choice is pinned by ADR-0008's measured footprint figures, not by a unit test | closed |
 
 ---
 
@@ -419,6 +418,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-11 | phase 1 — a fourth `PhotoSurface` constant | Mechanism: *anything that enumerates the surface set or names a surface token*, in Java, SQL and TypeScript alike — not "files about photos" | `grep -rn "PhotoSurface\." --include=*.java platform/src` · `grep -rn "'CARD'\|'BANNER'\|'PREVIEW'\|'LIGHTBOX'" --include=*.java --include=*.sql --include=*.ts platform/src frontend/src frontend/e2e` · `git ls-files '*/adapter/out/*.java' \| xargs grep -l PhotoSurface` | 11 Java files; 3 exhaustive `switch`es (`PhotoProcessor#boundsFor`, `PhotoProcessorTest#boundW`/`#boundH`); 2 `adapter/out` classes; 2 SQL token lists (V24, V57); **1 site the first pass missed** — `JdbcVenues.java:613`, the operator console's slot read, which pins `surface = 'PREVIEW'` in SQL; **0 frontend sites** — the wire carries URLs and widths, never a surface name | The three `switch`es are compiler-forced and were updated. `JdbcVenues:613` and `VenuePhotoService:73` both select `PREVIEW` explicitly, so neither can pick up a `LIGHTBOX` row — R-5 is covered twice over, and AC-10 pins the second. V24 is an applied migration and stays as written |
 
 ---
 

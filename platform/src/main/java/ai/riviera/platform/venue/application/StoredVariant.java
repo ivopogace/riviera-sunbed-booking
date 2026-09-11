@@ -14,9 +14,10 @@ import ai.riviera.platform.venue.vocabulary.PhotoSurface;
  * dimensions.
  *
  * <p>{@code (surface, scale)} is the identity of a rendition within one photo, and matches the
- * {@code UNIQUE (photo_id, surface, scale)} constraint. Scale 1 is the baseline every surface
- * carries; scale 2 is the retina tier, present only for the tourist surfaces and only when the
- * source was large enough to render it without upscaling.
+ * {@code UNIQUE (photo_id, surface, scale)} constraint. Scale 1 is the baseline, present for every
+ * surface but {@code LIGHTBOX}, whose box is large enough that a modest upload would only be
+ * upscaled into it; scale 2 is the retina tier, present for {@code CARD} and {@code BANNER}. Both
+ * conditional cases turn on the same test: the source was large enough to render without upscaling.
  */
 public record StoredVariant(PhotoSurface surface, int scale, ContentHash hash, String contentType,
 		int width, int height, byte[] bytes) {
