@@ -101,16 +101,17 @@ adjacent to the change (a one-candidate photo emitting no `srcset`) is untouched
 | R-2 | A wide-panorama upload (aspect > ~2.7:1) paints wider than the tuned value and becomes under-served | low | low | Tune to the widest *common* aspect (16:9 → `264 × 1.78 ≈ 470` px painted), so under-service needs an unusually wide source; note the bound in the code's one-line comment | agent | **closed** — the bound is stated in the band's template comment beside the value |
 | R-3 | A pixel value slips into `sizes` during tuning and throws `RuntimeError 2952` only in dev/test, not prod | med | med | AC-6 pins it in a unit spec, which runs in `ngDevMode`; the guard is the assertion, not review | agent | open |
 | R-4 | The gallery tiles' geometry is derived from markup rather than measured, so the tuned value is wrong | med | med | Measure the rendered tile boxes in the e2e run (`getBoundingClientRect`) before choosing values; phase 2 step 1 does this and records the numbers in this doc | agent | **closed** — measured in phase 0 (table under Open questions); the grid is 731/361 above 1280 and 485/239 from 1024 |
-| R-6 | Three existing specs pin today's exact `sizes` strings, so the fix lands as a red suite rather than a clean green | **certain** | low | Known and located before phase 0: `venue-map.spec.ts:425` (`'(min-width: 1280px) 70vw, 100vw'`), `discover-photos.e2e.ts:162` (hero) and `:166` (tile). They are updated in the phase that changes each value, not swept at the end. The Discover card's assertion at `:151` must NOT change — it is `object-cover` and out of scope | agent | phase 1 closed the band's (`venue-map.spec.ts`); the two gallery ones are phase 2's |
+| R-6 | Three existing specs pin today's exact `sizes` strings, so the fix lands as a red suite rather than a clean green | **certain** | low | Known and located before phase 0: `venue-map.spec.ts:425` (`'(min-width: 1280px) 70vw, 100vw'`), `discover-photos.e2e.ts:162` (hero) and `:166` (tile). They are updated in the phase that changes each value, not swept at the end. The Discover card's assertion at `:151` must NOT change — it is `object-cover` and out of scope | agent | **closed** — all three repointed in the phase that moved their value; the Discover card's stands unchanged |
 | R-5 | Playwright's pinned browser revision is absent in the cloud sandbox; only `/opt/pw-browsers/chromium` exists | high | low | Run the mocked suite as `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` — `playwright.a11y.config.ts` honours only that env var (`riviera-local-debug` § Frontend). Never `playwright install`. CI has its own browsers and is unaffected | agent | **closed** — the env var ran every phase's suite against Chromium 141 |
 
 ## Open questions / Assumptions
 
 - **Assumption:** 16:9 is the widest aspect worth tuning for; sources wider than ~2.7:1 accept
   under-service. — *Owner:* agent · *Resolves by:* phase 1, by stating the bound in code
-- **Open question:** Do the three gallery tiles want one shared `sizes` or one each? Their painted
-  widths differ (hero ~2:1 box, side tiles ~2:1 but half the width). — *Owner:* agent ·
-  *Resolves by:* phase 2 step 1, from the measured boxes
+- **Open question (resolved in phase 2):** Do the three gallery tiles want one shared `sizes` or
+  one each? **One each by kind.** The hero takes three clauses, one per box width, to stay inside
+  `360 < s ≤ 720`; the two side tiles share a single `22vw`, because a side tile paints under
+  360 CSS px at every viewport and so wants the 720w candidate at both densities. — *Owner:* agent
 
 ### Measured boxes (phase 0 step 3)
 
@@ -173,16 +174,16 @@ changes only how the client describes its own layout.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 done, phase 2 next`
+**Stage pointer:** `implement — phase 2 done, phase 3 next`
 
-**Next action:** Phase 2 — write AC-5 over the three gallery tiles, run it to see where it is
-actually red, then tune each tile's `sizes` against the phase 0 measurements.
+**Next action:** Phase 3 — extract the authored `sizes` values to named constants and pin the
+no-pixel-token rule (AC-6) plus the one-candidate no-`srcset` guard (AC-4).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Characterize: pin the wrong candidate today | ✅ | `Pin today's band candidate selection (#1069)` |
 | 1 — Fix the beach-map band (both heights) | ✅ | `Size the beach-map band by its painted image (#1069)` |
-| 2 — Measure and fix the three gallery tiles | | |
+| 2 — Measure and fix the three gallery tiles | ✅ | `Size the gallery tiles by their painted images (#1069)` |
 | 3 — Pin the no-pixel-token rule | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -268,19 +269,43 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/app/shared/photo-gallery-grid.ts:51,80,107` · Test `frontend/e2e/venue-photo-candidates.e2e.ts`
 
-- [ ] **Step 1: Write the failing test** — AC-5, over all three tiles at 1440 × 900 DPR 1.
-- [ ] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → FAIL
-- [x] **Step 3: Minimal implementation** — tune each tile's `sizes` against phase 0's measured boxes,
-      resolving the Open question on whether one shared value serves all three.
-- [ ] **Step 3a: Update the pinned gallery assertions** — `discover-photos.e2e.ts:162` (hero) and
+- [x] **Step 1: Write the failing test** — AC-5, over all three tiles at 1440 × 900 DPR 1.
+- [x] **Step 2: Run it, verify it fails** — AC-5 as written **passed** before the change; the red
+      cases are 1920 × 900 DPR 1 and 1100 × 800 DPR 1, added beside it. See the phase 2 notes.
+- [x] **Step 3: Minimal implementation** — hero `(min-width: 1280px) 35vw, (min-width: 1024px) 45vw, 55vw`,
+      both side tiles `22vw`. The Open question resolves as *not one shared value*: the hero needs a
+      clause per box width to stay inside `360 < s ≤ 720`, while a side tile paints under 360 px at
+      every viewport and therefore states a single number.
+- [x] **Step 3a: Update the pinned gallery assertions** — `discover-photos.e2e.ts:162` (hero) and
       `:166` (tile). Leave `:151` (the Discover card) alone: it is `object-cover`, so its `sizes`
       is already honest and changing it would be scope creep.
-- [ ] **Step 4: Run it, verify it passes** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → PASS,
-      then broaden: `npm test -- photo` and `npm run test:e2e:a11y`
-- [ ] **Step 5: Commit** — `git commit -m "Size the gallery tiles by their painted images (#1069)"`
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — 7/7 in the candidates spec, then 191/191 across the
+      photo + venue-map unit specs and 599/599 in the whole mocked e2e suite.
+- [x] **Step 5: Commit** — `git commit -m "Size the gallery tiles by their painted images (#1069)"`
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ---
+
+
+### Phase 2 notes — where the gallery is actually wrong
+
+AC-5's viewport was derived from markup, and the measurement disagreed with it — R-4's whole point.
+Probed in Chromium 141 over 8 viewports × 2 densities against the real `720w, 1440w` pair:
+
+- **AC-5 as written was already green.** At 1440 × 900 DPR 1 the hero's `50vw` computes to exactly
+  720 px and the 720w candidate covers it, so all three tiles already picked the baseline. Kept as
+  a guard rather than deleted — it is the case the fix must not break.
+- **The hero is red at 1920 × 900 DPR 1 and at 1100 × 800 DPR 1.** Above 1280 the grid stops
+  growing at its 1100 px breakout while `50vw` keeps climbing (960 px at 1920); below 1280 the grid
+  drops to the 730 px breakout while `66vw` *rises* to 726 px. Both bought 1440w for an image
+  painting 640 px and 485 px. Those two are the red tests this phase turns green, and a
+  1440 × 900 DPR 2 case guards the retina side.
+- **A side tile's authored `sizes` is unobservable in Chromium.** The tiles are lazy, so
+  `NgOptimizedImage` prefixes `auto,` and Chromium resolves it against the tile's layout box: at
+  1100 × DPR 2 the tile picked 720w, which only `auto` (239 × 2 = 478) explains — the authored
+  `33vw` would have asked for 726. So the tile value is pinned as a string in
+  `discover-photos.e2e.ts` and reaches only engines without `sizes=auto`. No candidate assertion
+  can prove it, and inventing one would have been a test that proves nothing.
 
 ## Phase 3 — Pin the no-pixel-token rule
 
@@ -290,7 +315,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
       (a one-candidate photo emits no `srcset`). If phase 1/2 left the values inline in templates,
       extract them to named constants in `photo-url.ts` first so a spec can reach them.
 - [ ] **Step 2: Run it, verify it fails** — `npm test -- photo-url` → FAIL
-- [x] **Step 3: Minimal implementation** — the constants + the guard.
+- [ ] **Step 3: Minimal implementation** — the constants + the guard.
 - [ ] **Step 4: Run it, verify it passes** — `npm test -- photo-url photo-slideshow` → PASS, then
       `npm run lint && npm run format:check`
 - [ ] **Step 5: Commit** — `git commit -m "Guard authored sizes against pixel tokens (#1069)"`
