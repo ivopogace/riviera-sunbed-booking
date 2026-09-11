@@ -23,10 +23,9 @@ import { PhotoView } from './venue-views';
  * mount a {@link PhotoLightbox} seeded at the tapped photo; the image itself stays `alt=""` since
  * the button's own label already names the action.
  *
- * <p>Letterboxing is also why each tile's `sizes` comes from {@link CONTAIN_SIZES}, which states
- * the width the PAINTED photo needs rather than the tile's own. The side tiles are lazy, so
- * Chromium resolves their `auto` prefix against the tile box and the authored value reaches only
- * engines without `sizes=auto`; the eager hero's reaches every engine.
+ * <p>Letterboxing is also why each tile takes its `sizes` from {@link CONTAIN_SIZES}. The side
+ * tiles are lazy, so Chromium resolves their `auto` prefix against the tile box instead and the
+ * authored value reaches only engines without it; the eager hero's reaches every engine.
  */
 @Component({
   selector: 'app-photo-gallery-grid',

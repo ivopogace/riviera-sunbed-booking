@@ -30,21 +30,26 @@ export function photoViews(urls: readonly string[]): readonly MockPhotoView[] {
   return urls.map((url) => photoView(url));
 }
 
-/** The BANNER baseline's width: `PhotoProcessor`'s 1280×480 box fits a 3:2 upload at 720×480. */
-const BANNER_BASELINE_WIDTH = 720;
+/** `PhotoProcessor` fits a BANNER within 1280×480, so a height-bound upload is 480 tall. */
+const BANNER_BOX_HEIGHT = 480;
 
 /**
- * A venue-page photo carrying both stored BANNER candidates. {@link photoView}'s baseline is the
- * CARD box, which understates the venue page by 144px and would let a spec read a candidate choice
- * the real payload never offers — so the specs that assert which candidate the browser fetched
- * build their photos here.
+ * A venue-page photo carrying both stored BANNER candidates, for the specs that assert which one
+ * the browser fetched. {@link photoView}'s baseline is the CARD box, which would offer a choice the
+ * real payload never does.
+ *
+ * The candidate widths follow the upload's aspect, which is the whole reason this takes one: a 3:2
+ * upload stores 720w/1440w and a 16:9 one 853w/1706w, so a spec that only ever saw 3:2 cannot see a
+ * `sizes` that serves 3:2 and under-serves wider.
  */
-export function bannerPhotoView(url: string): MockPhotoView {
+export function bannerPhotoView(url: string, aspect = 3 / 2): MockPhotoView {
+  const baseline = Math.round(BANNER_BOX_HEIGHT * aspect);
+  const retina = baseline * 2;
   return {
     url,
     sources: [
-      { url, width: BANNER_BASELINE_WIDTH },
-      { url: `${url}@1440`, width: 1440 },
+      { url, width: baseline },
+      { url: `${url}@${retina}`, width: retina },
     ],
   };
 }

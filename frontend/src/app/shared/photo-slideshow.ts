@@ -164,7 +164,8 @@ export class PhotoSlideshow {
    * What share of the viewport a slide occupies, for the `srcset` fallback. Left unset it becomes
    * `100vw`, which over-states every band narrower than the page and makes the browser fetch the
    * widest candidate, so a host in a grid or a breakout column passes its own — a letterboxing one
-   * takes it from {@link CONTAIN_SIZES}, which holds the rules any value must satisfy.
+   * takes it from `CONTAIN_SIZES` in `shared/photo-url.ts`, which holds the rules any value must
+   * satisfy.
    *
    * <p>Only the fallback: the directive prefixes `auto,` on a lazy image, and a browser honouring
    * `sizes="auto"` measures the laid-out box instead. Must be constant for a given instance —

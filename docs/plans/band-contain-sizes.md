@@ -117,17 +117,20 @@ adjacent to the change (a one-candidate photo emitting no `srcset`) is untouched
   `boxHeight × DPR ≤ 480`, whatever was uploaded. The stored pair is 720w/1440w only for a 3:2
   upload (16:9 stores 853w/1706w), which is what the fixtures pin. The aspect still sets how far an
   authored value may drift, and 16:9 remains that bound. — *Owner:* agent
-- **Open question (resolved in phase 2):** Do the three gallery tiles want one shared `sizes` or
-  one each? **One each by kind.** The hero takes three clauses, one per box width, to stay inside
-  `360 < s ≤ 720`; the two side tiles share a single `22vw`, because a side tile paints under
-  360 CSS px at every viewport and so wants the 720w candidate at both densities. — *Owner:* agent
+- **Open question (resolved in phase 2, corrected in review round 3):** Do the three gallery tiles
+  want one shared `sizes` or one each? **One each.** The hero takes three clauses, one per box
+  width; the two side tiles share a value but still need two clauses, because a tile's painted
+  width stops growing at the 1280px breakout while a `vw` does not. Neither is "inside
+  `360 < s ≤ 720`" as this entry first said — that window is the 3:2 instantiation of the rule, and
+  the hero's narrowest clause sits deliberately below it. — *Owner:* agent
 
 ### Measured boxes (phase 0 step 3)
 
 `getBoundingClientRect()` in a real Chromium, one photo for the band and three for the grid.
 "Painted" is the 16:9 letterbox inside that box (`min(boxW, boxH × 16/9)`), which is what the
-candidate should be chosen against. Candidates are 720w and 1440w, so the whole answer is a
-threshold: the browser takes 720w while `sizes × DPR ≤ 720` and 1440w above it.
+candidate should be chosen against. For the 3:2 fixture the candidates are 720w and 1440w and the
+answer is a threshold — the browser takes 720w while `sizes × DPR ≤ 720` — but the stored widths
+follow the upload's aspect, so the general rule is the one under the resolved Assumption above.
 
 | Viewport | Band box | Band painted | Hero box | Hero painted | Tile box | Tile painted |
 |---|---|---|---|---|---|---|
@@ -143,8 +146,8 @@ threshold: the browser takes 720w while `sizes × DPR ≤ 720` and 1440w above i
 
 The band's two heights confirm the plan's arithmetic: `30vw` / `45vw` / `35vw` land inside the
 `360 < s ≤ 720` window above 1024 and under 360 below it. That window is the **3:2** instantiation of the
-rule — see the resolved aspect Assumption above, and note that the `Painted` column here is a 16:9
-letterbox, which is why pairing the two misled the first cut of the gallery values. The gallery is the surprise — see the
+rule while the `Painted` column is a 16:9 letterbox — pairing the two is what misled the first cut
+of the gallery values, and then the band's widest clause, which review round 3 raised to `36vw`. The gallery is the surprise — see the
 phase 2 notes, where the measured hero already picks correctly at 1440 × DPR 1.
 
 ## Availability & concurrency (invariant #2)
@@ -185,10 +188,10 @@ changes only how the client describes its own layout.
 
 ## Execution status
 
-**Stage pointer:** `review — round 1 findings fixed; re-review + Sonar next`
+**Stage pointer:** `review — round 3 findings fixed; CI + Sonar, then close-out`
 
-**Next action:** Re-resolve the review range on the new head, re-run the review gate over it, then
-read the Sonar issue list for PR #1071 rather than its gate conclusion alone.
+**Next action:** Check CI on the new head, read the Sonar issue list for PR #1071 (not its gate
+conclusion alone), then write the close-out and tick the self-review checklist.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -212,7 +215,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-7 | review — overlay RV-PROC-1 | `riviera-local-debug` missing from *Skills consulted* though every command in the doc came from it | **fixed** — added |
 | F-8 | review — overlay (plan-doc discipline) | `<sha>` placeholders left in the AC-verification block, and three recorded `npm test -- <name>` commands that error rather than run | **fixed** — real SHAs, and `ng test --include` |
 | F-9 | review — overlay (plan-doc accuracy) | R-2's resolution pointed at a template comment phase 3 had removed; the 16:9 assumption still open | **fixed** — R-2 re-pointed at the registry, the assumption resolved with the corrected aspect model |
-| F-10 | review — CLAUDE.md audit, prior-PR sweep | Registry doc over §6d's ~6-line type budget, the pattern flagged on PRs #1039 and #1058 | **fixed** — trimmed to contract; what was archaeology is gone and what remains is the rule a new entry must satisfy |
+| F-10 | review — CLAUDE.md audit, prior-PR sweep | Registry doc over §6d's ~6-line type budget, the pattern flagged on PRs #1039 and #1058 | **partly fixed in `e8889782`, and deliberately left over budget** — 21 prose lines to 11. What went was archaeology; what stays a new entry has to act on, and §6d's budget is a smell test that asks the question rather than settling it |
+| F-11 | re-review rounds 2 and 3, independently | The band's `(min-width: 1280px) 30vw` under-served at DPR 2: 768 device px against a 16:9 upload's 853w baseline, for a band painting 469 — a regression from `main` on the page's LCP image, across viewports 1280–1422 | **fixed** — `36vw`, and a 16:9 fixture now exists, so a suite that had only ever seen 3:2 can see this class of defect |
+| F-12 | re-review round 3 | The side tile's entry claimed its 1280px clause stops a wide desktop buying retina; in Chromium the lazy `auto` prefix wins and it buys retina anyway | **fixed** — the entry now says which engines the value reaches, agreeing with the grid's class doc instead of contradicting it |
+| F-13 | re-review round 3 | The registry doc over-generalized three ways: "whatever was uploaded" (false past 8:3, where the baseline caps at 1280), "holds up to 16:9" (unbounded on the narrow side), and "overstates, which costs a candidate rather than correctness" (backwards — past 16:9 it understates, which costs sharpness) | **fixed** — each bound now stated in both directions |
+| F-14 | re-review round 3 | Four comments in the new e2e explained a 3:2 fixture's choice with 16:9 arithmetic — the premise-mixing F-3 was supposed to have removed | **fixed** — every number in that file is now its own fixture's |
+| F-15 | re-review round 3 | `venue-map.spec.ts` pointed at the e2e for "each clause", but the band's 1024–1279 clause had no case | **fixed** — a 1100 × 800 DPR 2 case covers it |
+| F-16 | re-review round 3 | A `{@link CONTAIN_SIZES}` added to `photo-slideshow.ts` had no symbol in scope | **fixed** — a plain path reference; importing a value for a doc link would be an unused import |
 
 ---
 
