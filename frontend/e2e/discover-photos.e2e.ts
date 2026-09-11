@@ -9,8 +9,9 @@ import { photoView, photoViews } from './support/photo-views';
  * Real-render CI-safe e2e for the tourist cover-photo display: the Discover card
  * renders the cover's CARD variant when a venue has one and keeps the gradient placeholder (sun,
  * no image) when it does not; the beach-map banner renders the BANNER variant, the scrim stays
- * layered over both, and the retired "coming soon" pill never renders in either state. API mocked
- * via `page.route`; the content-addressed serving GET answers real image bytes; axe at each step.
+ * layered over both as PAINT ONLY (it never takes a pointer), and the retired "coming soon" pill
+ * never renders in either state. API mocked via `page.route`; the content-addressed serving GET
+ * answers real image bytes; axe at each step.
  */
 
 /** A 1×1 PNG for the mocked serving endpoint — the `<img>`s genuinely load. */
@@ -201,6 +202,42 @@ test('the venue banner is a media header — ≥260px on desktop, 150px on mobil
   const date = page.getByTestId('map-date');
   await date.focus();
   await expect(date).toHaveCSS('outline-width', '3px');
+});
+
+test('the banner scrim is paint only — the band’s own control owns every touch (#1045)', async ({
+  page,
+}) => {
+  // Who owns the topmost paint at a point: a real touch hit-tests by coordinate, so an overlay stacked above the band takes the gesture before any listener under it sees it, and a class list cannot see stacking.
+  const ownerAt = async (fx: number, fy: number) => {
+    const box = (await page.locator('.photo-band').boundingBox())!;
+    return page.evaluate(
+      ({ x, y }) => {
+        const el = document.elementFromPoint(x, y);
+        if (el?.closest('.photo-scrim')) return 'scrim';
+        if (el?.closest('[data-testid="photo-band-view"]')) return 'view-larger';
+        if (el?.closest('app-photo-slideshow')) return 'slideshow';
+        return el?.tagName.toLowerCase() ?? 'nothing';
+      },
+      { x: box.x + box.width * fx, y: box.y + box.height * fy },
+    );
+  };
+
+  // One photo is the only state that paints a photo into this band, and its full-bleed "view larger" button is the one control the band offers, so that is what a finger must land on anywhere over it.
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+    route.fulfill({ json: { ...VENUE_MAP, photos: [COVER.banner] } }),
+  );
+  await page.goto('/venues/1');
+  await expect(page.locator('.photo-band')).toBeVisible();
+  expect(await ownerAt(0.5, 0.5)).toBe('view-larger');
+  expect(await ownerAt(0.2, 0.8)).toBe('view-larger');
+
+  // With no photos no zoom button renders, so nothing else covers the scrim: this is the state that tells a scrim passing touches through from one eating them.
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+    route.fulfill({ json: { ...VENUE_MAP, coverPhoto: null, photos: [] } }),
+  );
+  await page.goto('/venues/1');
+  await expect(page.getByTestId('map-banner-empty')).toBeVisible();
+  expect(await ownerAt(0.2, 0.8)).toBe('slideshow');
 });
 
 test('the slideshow chrome carries its own backing over the photo, in both themes (#704)', async ({

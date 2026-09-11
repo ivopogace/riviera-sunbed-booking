@@ -47,7 +47,10 @@
                 class="absolute top-[42%] left-1/2 size-[68px] min-[1024px]:size-[96px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-(image:--riv-sun-grad) shadow-[0_0_44px_14px_rgba(255,199,105,0.4)]"
               ></span>
             }
-            <span aria-hidden="true" class="absolute inset-0 bg-(image:--riv-photo-scrim)"></span>
+            <span
+              aria-hidden="true"
+              class="photo-scrim pointer-events-none absolute inset-0 bg-(image:--riv-photo-scrim)"
+            ></span>
             @if (v.photos.length > 0) {
               <button
                 type="button"
