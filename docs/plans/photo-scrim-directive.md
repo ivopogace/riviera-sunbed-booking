@@ -35,8 +35,10 @@ F-5 in the Execution status) · `riviera-tailwind` (rule 1 settled directive-vs-
 rule 2 kept `photo-scrim` as an inert marker on the host; rule 3 kept radius and padding off
 the directive; the no-drift rule made computed styles, not the class list, the proof) ·
 `riviera-frontend` (placed the directive in `shared/` as a stateless presentational primitive
-beside `card-glass.ts`/`panel-glass.ts`) · `angular-developer` (the `host` static-class +
-static-attribute form, standalone directive, no inputs) · `playwright-cli` (the mocked
+beside `card-glass.ts`/`panel-glass.ts`) · `angular-developer` + the **angular-cli MCP** (`get_best_practices`
+for v22 and `search_documentation` for the `host` metadata contract — verified the directive
+against every applicable rule: `host` object over `@HostBinding`, no `standalone: true`, no
+explicit `OnPush`, no `ngClass`/`ngStyle`, no `input()` needed) · `playwright-cli` (the mocked
 CI-safe suite is where the no-drift and hit-test proofs live) · `riviera-java-conventions`
 (§6c/§6d, pulled in by finding F-1 — it owns RV-STYLE-1's one-line and no-provenance rules for
 TypeScript as well as Java: the directive's rationale moved into a TSDoc and every inline
@@ -166,8 +168,9 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 **Stage pointer:** `merge close-out`
 
-**Next action:** Nothing in the repo. Merge once the Sonar gate's list is clear, then the GitHub-only
-close-out steps: confirm #1066 closed, and file the one flagged docs addition as a follow-up.
+**Next action:** Both gates are green. Awaiting the maintainer's call on F-5/F-7 — whether
+`riviera-tailwind` rule 3 should record the constitutive-geometry exception, or whether the
+geometry should be unbundled to the call sites instead — then merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -187,6 +190,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | review gate — code-comment agent | The plan claimed both call sites were byte-identical and that both wrote `aria-hidden`. False: the class strings matched, the elements did not — only the banner's span carried its own `aria-hidden`, the card's inherited it from `.card-photo`. Corrected in the Skills-consulted line and the behavior-parity ledger. Not a code defect: `aria-hidden` is not a CSS property, so AC-4's computed-style equivalence is unaffected, and the card's subtree was already hidden. | fixed-in-`3539d289` |
 | F-4 | review gate — conventions agent | The Acceptance-criteria-verification section still held `<sha>` placeholders and the Self-review checklist was entirely unticked, while the phase table already read ✅ — the doc contradicted itself, and its own "no placeholders" line was the one it broke. | fixed-in-this-commit |
 | F-5 | close-out — `riviera-docs-freshness` over `6569e59f..3539d289` | **Zero staleness findings.** Nothing retired is cited as present fact (rule 2 kept `photo-scrim` alive, so every class-based citation still resolves), and the counting sweep found no statement that counts the surface directives — `field-glass.ts` was already a third one absent from `riviera-tailwind`'s example parenthetical before this slice. One **optional addition** flagged, not written: whether rule 3 should record the constitutive-geometry exception this directive establishes. The skill holds that a judgement about a rule's substance is flagged to the maintainer, never silently written. | deferred → follow-up issue |
+| F-6 | upstream-docs check (Angular v22 + Tailwind v4) | **No defect found; three claims the slice rests on are now verified against the vendors' own docs rather than in-tree precedent.** (a) Tailwind documents `bg-(image:<custom-property>)` as exactly `background-image: var(…)`, and that a bare `bg-(--x)` would be a *color* — the form used is the right one. (b) Tailwind v4 scans every non-ignored file as **plain text**, `.ts` included, needing only the class name as a complete unbroken string; the host string is one such literal, which closes R-5 on documentation as well as on AC-4's computed `background-image`. (c) Angular documents the `host` map as the way to set static classes and attributes, and a probe on this exact version showed directive classes **merge** with a call site's (`…scrim … mine-1 mine-2`) while a template attribute **overrides** the host one — matching the documented collision rule "if both values are static, the instance binding wins". | verified, no change |
+| F-7 | upstream-docs check — Tailwind conflicting utilities | Tailwind states the winner between two utilities on one property is "the class that appears later **in the stylesheet**", not in the `class` attribute, and advises never putting two conflicting classes on one element. This **confirms** `panel-glass`'s reason for unbundling radius, and it means the hazard is not specific to radius: it reaches the `absolute inset-0` this directive bundles, should a call site ever add a competing inset. Nothing is wrong today — no call site competes, and the probe above confirms a call site's classes would merge rather than replace — but the exception is real and the skill does not record it. Same subject as F-5's flagged addition. | open → maintainer's call (see F-5) |
 
 ---
 
