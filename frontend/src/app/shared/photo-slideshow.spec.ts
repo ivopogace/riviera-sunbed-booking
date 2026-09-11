@@ -56,9 +56,9 @@ describe('PhotoSlideshow', () => {
 
   /**
    * The directive's dev-mode guards run on init, so a value it rejects fails here, not in prod.
-   * Load-bearing for `galleryHero`, whose `px` clears `assertNoComplexSizes` only because that
-   * guard's regex anchors on `") "`, `", "` or start-of-string and so never looks just after `(`.
-   * A release that closes the gap turns this red, naming the value, instead of reaching production.
+   * Load-bearing for `galleryHero`, whose `px` clears `assertNoComplexSizes` on the technicality
+   * `CONTAIN_SIZES`' own doc states: a release that closes it turns this red, naming the value,
+   * instead of reaching production.
    */
   it('carries every authored contain-fitted sizes through NgOptimizedImage untouched', () => {
     for (const value of Object.values(CONTAIN_SIZES)) {

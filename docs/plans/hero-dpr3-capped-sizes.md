@@ -113,7 +113,9 @@ case the registry doc already disclaims; `min(330px, 66vw)` does not change it e
       `currentSrc` is the **1440w** candidate, which covers its measured paint of 252, 330 and
       330 CSS px respectively. *Seam:* the `/venues/1` route's rendered
       `img[data-testid="gallery-hero"]`, observed through `currentSrc` in a real engine ·
-      *Pinned by:* `venue-photo-candidates.e2e.ts` › `the gallery hero at DPR 3` describes.
+      *Pinned by:* `venue-photo-candidates.e2e.ts` › `the gallery hero at {430,560,673} x 900,
+      DPR 3` › `a 3:2 upload takes the retina candidate at the low end of the DPR-3 window` /
+      `... where the paint caps` / `... at the top of the DPR-3 window`.
 - [ ] **AC-2:** Given the same page with a **16:9** upload (853w/1707w stored), when rendered
       at DPR 3 at 800 CSS px, then the hero's `currentSrc` is the **1707w** candidate, which
       covers its 391 CSS px paint — a width at which the 3:2 upload is already served by its
@@ -122,22 +124,29 @@ case the registry doc already disclaims; `min(330px, 66vw)` does not change it e
 - [ ] **AC-3:** Given a **3:2** upload, when rendered at DPR 3 at 360 CSS px — below the
       window, where the 205 CSS px paint needs 616 device px — then the hero stays on the
       **720w** baseline, so the fix is a capped clause and not a blanket retina switch.
-      *Seam:* as AC-1 · *Pinned by:* `venue-photo-candidates.e2e.ts` › `stays on the baseline below the DPR-3 window`.
+      *Seam:* as AC-1 · *Pinned by:* `venue-photo-candidates.e2e.ts` › `the gallery hero at 360 x
+      900, DPR 3` › `a 3:2 upload stays on its baseline below the DPR-3 window`.
 - [ ] **AC-4:** Given a **3:2** upload at 560 CSS px at DPR 1 and at DPR 2, and a **16:9**
       upload at 560 CSS px at DPR 2, when the venue page is rendered, then the hero fetches the
       **baseline** candidate in all three — #1069's win is not traded back inside the
       registry's stated 3:2–16:9 band. *Seam:* as AC-1 · *Pinned by:*
-      `venue-photo-candidates.e2e.ts` › `the #1069 win survives at DPR 1 and DPR 2` describes.
+      `venue-photo-candidates.e2e.ts` › `the gallery hero at 560 x 900, DPR 1` › `the capped
+      clause leaves a 3:2 upload on its baseline at DPR 1`, and `... DPR 2` › `the capped clause
+      leaves a 3:2 upload on its baseline at DPR 2` + `and leaves a 16:9 upload on its own,
+      wider baseline at DPR 2`.
 - [ ] **AC-5:** Given viewports 1024 to 2560 at DPR 1 and DPR 2, when the hero renders, then
       every selection is the one #1071 shipped — guaranteed by the two clauses above the
       `min-[1024px]` step being byte-identical, and pinned at the 1024 boundary and at 1440.
-      *Seam:* as AC-1 · *Pinned by:* the existing `1440 x 900, DPR 1|2`, `1920 x 900, DPR 1`
-      and `1100 x 800, DPR 1` describes plus a new `1024 x 800, DPR 2` case.
+      *Seam:* as AC-1 · *Pinned by:* the existing `the gallery grid at 1440 x 900, DPR 1` and
+      `... DPR 2`, `the gallery grid at 1920 x 900, DPR 1` and `the gallery grid at 1100 x 800,
+      DPR 1` describes, plus the new `the gallery hero at 1024 x 800, DPR 2` › `the step the
+      capped clause stops at is untouched`.
 - [ ] **AC-6:** Given the `CONTAIN_SIZES` registry, when the shape rule runs, then it asserts
       **no `px` LENGTH** rather than "vw clauses only", its test name says so, and a companion
       case proves the rule is not vacuous by rejecting a value that does carry a px LENGTH.
-      *Seam:* the exported `CONTAIN_SIZES` object · *Pinned by:* `photo-url.spec.ts` ›
-      `states every contain-fitted sizes without a px length, a math function apart`.
+      *Seam:* the exported `CONTAIN_SIZES` object · *Pinned by:* `photo-url.spec.ts` › `states
+      every contain-fitted sizes without a bare px LENGTH, math-function bounds apart` and `and
+      that rule rejects a bare px LENGTH, so it cannot pass by saying nothing`.
 - [ ] **AC-7:** Given every `CONTAIN_SIZES` value, when the canary mounts each through the real
       `NgOptimizedImage`, then none throws today and any Angular tightening of
       `assertNoComplexSizes` fails this spec at upgrade time naming the value — not in
@@ -263,6 +272,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review gate | RV-STYLE-1: the registry TSDoc cited issue #1070, which is provenance in a doc comment the diff touched. `check-inline-comments.mjs` misses it because "which" is not in its citing-word list, so the guard's silence was not a defence. | fixed — repointed to ADR-0008, which owns the rendition list |
+| F-2 | review gate | The new e2e comments said a paint "asks" N device px. A paint *needs*; what *asks* is the resolved `sizes` value × DPR, a different number. Every assertion still selected the same candidate, but conflating requirement with request is the error class this issue was rewritten twice over. | fixed — "asks" → "needs" throughout |
+| F-3 | review gate | AC-1, AC-3, AC-4, AC-5 and AC-6 cited "Pinned by" names that no shipped test carries; AC-4's `the #1069 win survives at DPR 1 and DPR 2` existed nowhere at all. | fixed — every AC now quotes its shipped describe/test title verbatim |
+| F-4 | review gate | A repeat of #1071's own F-5: the regex-gap mechanism was stated authoritatively in `photo-url.ts`' TSDoc **and** `photo-slideshow.spec.ts`' canary doc, with a third partial restatement in `photo-url.spec.ts`. Nothing would keep the three in lockstep if the guard's behaviour were ever corrected. | fixed — the mechanism lives only in the `CONTAIN_SIZES` doc; the other two name it as the owner |
 
 ---
 

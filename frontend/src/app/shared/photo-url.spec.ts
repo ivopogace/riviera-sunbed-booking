@@ -23,11 +23,10 @@ const SINGLE: PhotoView = {
 };
 
 /**
- * A `sizes` string with the two places a `px` is legitimate removed: a media condition, where the
- * `px` is not a length at all, and a CSS math function, where it bounds a `vw` rather than
- * replacing it. What remains is the bare size values, and a `px` among those is the thing this
- * registry has never wanted. `NgOptimizedImage`'s own NG02952 guard is a different rule that
- * overlaps this one — `photo-slideshow.spec.ts` holds that half, against the real directive.
+ * A `sizes` string with the two places `CONTAIN_SIZES`' doc allows a `px` removed — a media
+ * condition and a CSS math function — leaving the bare size values behind. A `px` among those is
+ * what this registry has never wanted. `NgOptimizedImage`'s own NG02952 guard is a different rule
+ * that overlaps this one; `photo-slideshow.spec.ts` holds that half, against the real directive.
  */
 function sizeValuesOf(value: string): string {
   return value

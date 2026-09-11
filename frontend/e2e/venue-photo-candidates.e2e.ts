@@ -238,7 +238,7 @@ test.describe('the gallery hero at 360 x 900, DPR 3', () => {
   test('a 3:2 upload stays on its baseline below the DPR-3 window', async ({ page }) => {
     await openGallery(page);
 
-    // 3:2 fixture: a 205 x 220 box paints 205 CSS px, so DPR 3 asks 616 - inside its 720w.
+    // 3:2 fixture: a ~205 x 220 box paints ~205 CSS px, so DPR 3 needs 616 - inside its 720w.
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
   });
 });
@@ -251,7 +251,7 @@ test.describe('the gallery hero at 430 x 900, DPR 3', () => {
   }) => {
     await openGallery(page);
 
-    // 3:2 fixture: a width-bound 252 x 220 box paints 252, so DPR 3 asks 756 - past 720w by 5%.
+    // 3:2 fixture: a width-bound 252 x 220 box paints 252, so DPR 3 needs 756 - past 720w by 5%.
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
   });
 });
@@ -262,7 +262,7 @@ test.describe('the gallery hero at 560 x 900, DPR 3', () => {
   test('a 3:2 upload takes the retina candidate where the paint caps', async ({ page }) => {
     await openGallery(page);
 
-    // 3:2 fixture: a height-bound 339 x 220 box paints 220 x 1.5 = 330, so DPR 3 asks 990.
+    // 3:2 fixture: a height-bound ~339 x 220 box paints 220 x 1.5 = 330, so DPR 3 needs 990.
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
   });
 });
@@ -275,7 +275,7 @@ test.describe('the gallery hero at 673 x 900, DPR 3', () => {
   }) => {
     await openGallery(page);
 
-    // 3:2 fixture: a 414 x 220 box, paint still capped at 330, still asking 990 - the top end.
+    // 3:2 fixture: a 414 x 220 box, paint still capped at 330, still needing 990 - the top end.
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
   });
 });
@@ -286,14 +286,14 @@ test.describe('the gallery hero at 800 x 900, DPR 3', () => {
   test("a 16:9 upload's DPR-3 window runs wider than a 3:2 upload's", async ({ page }) => {
     await openGallery(page, WIDE_GALLERY_VENUE);
 
-    // 16:9 fixture: a 485 x 220 box paints 220 x 16/9 = 391, so DPR 3 asks 1173 - past its 853w.
+    // 16:9 fixture: a ~485 x 220 box paints 220 x 16/9 = ~391, so DPR 3 needs 1173 - past its 853w.
     await candidate(page.getByTestId('gallery-hero')).toBe('ee05@1707');
   });
 
   test('while a 3:2 upload at the same width needed no help', async ({ page }) => {
     await openGallery(page);
 
-    // 3:2 fixture, same box: it paints 330 and asks 990, which the widest clause already buys.
+    // 3:2 fixture, same box: it paints 330 and needs 990, which the widest clause already buys.
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
   });
 });
@@ -304,7 +304,7 @@ test.describe('the gallery hero at 560 x 900, DPR 1', () => {
   test('the capped clause leaves a 3:2 upload on its baseline at DPR 1', async ({ page }) => {
     await openGallery(page);
 
-    // 3:2 fixture: a 330 CSS px paint asks 330 device px, far inside 720w - the cap is why.
+    // 3:2 fixture: a 330 CSS px paint needs 330 device px, far inside 720w - the cap is why.
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
   });
 });
@@ -315,14 +315,14 @@ test.describe('the gallery hero at 560 x 900, DPR 2', () => {
   test('the capped clause leaves a 3:2 upload on its baseline at DPR 2', async ({ page }) => {
     await openGallery(page);
 
-    // 3:2 fixture: a 330 paint asks 660; an uncapped 66vw would ask 739 and buy retina for free.
+    // 3:2 fixture: a 330 paint needs 660; an uncapped 66vw would ask 739 and buy retina for free.
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
   });
 
   test('and leaves a 16:9 upload on its own, wider baseline at DPR 2', async ({ page }) => {
     await openGallery(page, WIDE_GALLERY_VENUE);
 
-    // 16:9 fixture: a width-bound 339 paint asks 678 device px, inside its own wider 853w.
+    // 16:9 fixture: a width-bound ~339 paint needs 678 device px, inside its own wider 853w.
     await candidate(page.getByTestId('gallery-hero')).toBe('ee05');
   });
 });

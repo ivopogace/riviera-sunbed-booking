@@ -44,7 +44,8 @@ export function resolveCoverPhoto(cover: CoverPhotoView | null | undefined): Cov
  * `min-[1024px]` step. Three things sit outside that bound. Past 8:3 both tiers are width-bound
  * at 1280w/2560w, stop following the aspect, and the rule stops holding. The hero's 360px box at
  * DPR 3 is ladder-limited — a 3:2 upload is 1% short from 1024 and 11% short from 1280, reachable
- * only by a wider stored rendition, which #1070 weighs. And narrower than 3:2 the hero's cap buys
+ * only by a wider stored rendition, which ADR-0008's list would
+ * have to gain. And narrower than 3:2 the hero's cap buys
  * a wider candidate than DPR 1 or DPR 2 needs (a 2:3 portrait upload takes its retina candidate
  * from 540px viewports at DPR 1), which is an unavoidable trade rather than a mistuning: covering
  * 3:2 at DPR 3 needs more than 240 CSS px above a 240px viewport, and leaving 1:1 alone at DPR 2
