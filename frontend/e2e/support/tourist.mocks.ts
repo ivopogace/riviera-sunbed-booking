@@ -66,8 +66,9 @@ export const TOURIST_BOOKING = {
 };
 
 /**
- * Routes every tourist surface reads, signed out. A spec that needs a session (the account page) or
- * a stateful auth API layers `support/auth-mocks.ts` over this — the later `page.route` wins.
+ * Routes every tourist surface reads, signed out. A spec that needs a session overrides
+ * `/api/auth/me` after calling this; one that needs the auth API to hold state layers
+ * `support/auth-mocks.ts` over it instead. Either way the later `page.route` wins.
  */
 export async function mockTourist(page: Page): Promise<void> {
   await page.route(/\/api\/auth\/me$/, (route) =>

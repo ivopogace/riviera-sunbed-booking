@@ -32,11 +32,17 @@ proven non-vacuous by a reverted mutation rather than by a natural red) ·
 `riviera-tailwind` (rule 6 kept the opt-out a `touch-manipulation` class beside `EDGE_SLOT_RING`
 rather than a new ring or an `@apply`; the shared `CHIP`/`POP_BUTTON` recipes stay untouched and
 each consumer composes) · `playwright-cli` + `frontend/.claude/CLAUDE.md` (spec shape, the mocked
-CI-safe suite) · `riviera-frontend` (the new spec is mocked, so it lands in `frontend/e2e/`, not
-`frontend/e2e/real-backend/`)
+CI-safe suite) · `riviera-frontend` (placement: the new spec is mocked, so `frontend/e2e/`, not
+`frontend/e2e/real-backend/`; the shared fixture belongs beside the other mock modules in
+`e2e/support/`) · `angular-developer` + the angular-cli MCP `get_best_practices` (loaded late, at
+the review gate, on RV-PROC-1 F-3 — the styling row of the routing table requires them and the
+plan's first pass named neither; re-vetted the `app.ts` change against the v22 posture and it
+changed nothing: no decorator metadata, no `ngClass`/`ngStyle`, no signal API, three additions to
+hoisted class strings the existing `[class]` bindings already consume)
 
 **Branch:** `claude/sdlc-1062-cldbip` — the cloud session's designated remote branch stands in for
-`bugfix/tourist-mobile-zoom-sweep` (`riviera-sdlc` § *Remote / cloud session addendum*).
+`bugfix/tourist-mobile-zoom-sweep` (`riviera-sdlc` § *Remote / cloud session addendum*). Merged
+via PR #1063.
 
 ---
 
@@ -55,12 +61,14 @@ CI-safe suite) · `riviera-frontend` (the new spec is mocked, so it lands in `fr
   and reverting it.
   *Seam:* the same computed `font-size`, which is blind to how the class arrived ·
   *Pinned by:* `mobile-zoom-tourist.e2e.ts` — the find-a-booking case, plus the recorded mutation run.
-- [x] **AC-3:** Given the tourist bottom tab bar at a phone width and the header's account chip and
-  menu button at a desktop width, when their `touch-action` is read from computed style, then every
-  one of them includes `manipulation`; `CHIP` and `POP_BUTTON` are unchanged in the diff.
+- [x] **AC-3:** Given the tourist bottom tab bar at a phone width, and all three header disclosure
+  triggers — the account chip and menu button at a desktop width, the theme swatch at both — when
+  their `touch-action` is read from computed style, then every one includes `manipulation`; `CHIP`
+  and `POP_BUTTON` are unchanged in the diff.
   *Seam:* computed `touch-action` on the rendered controls, read through `expectTouchManipulation` ·
-  *Pinned by:* `mobile-zoom-tourist.e2e.ts` — `the tourist tab bar keeps its double-tap` and
-  `the tourist header disclosure triggers keep their double-tap`.
+  *Pinned by:* `mobile-zoom-tourist.e2e.ts` — `the tab bar keeps its double-tap`,
+  `the header disclosure triggers keep their double-tap`, and
+  `the theme swatch keeps its double-tap at a phone width too`.
 
 ## Non-goals
 
@@ -70,8 +78,8 @@ CI-safe suite) · `riviera-frontend` (the new spec is mocked, so it lands in `fr
   and `POP_BUTTON` recipes — the issue is explicit that consumers compose.
 - The `viewport` meta tag: `user-scalable=no` / `maximum-scale=1` is the forbidden fix (WCAG 1.4.4).
 - The operator/admin halves of either bug — shipped in PR #1061.
-- The theme swatch button and the popover rows: single controls and a list, not the dense
-  repeatedly-tapped cluster the opt-out is for.
+- The popover rows inside the theme picker and the account menu: a list read then tapped once, not
+  a control toggled in quick succession. (The theme swatch BUTTON is in scope — see F-2.)
 
 ## Behavior-parity ledger (retirement / replacement slices only)
 
@@ -93,9 +101,12 @@ artifact is the `touch-targets-tourist.e2e.ts` fixture, moved verbatim into
 
 - **Assumption:** No tourist field carries a responsive text size, so one viewport measures them
   all — the same premise the console half states. *Verified:* `grep -rno '\b(sm|md|lg|xl):text-\[[0-9.]*px\]' frontend/src/app/` returns nothing. *Owner:* claude · *Resolves by:* phase 0.
-- **Assumption:** The tourist header's account chip (`nav-user`) and menu button (`nav-menu`) are the
-  "same shape" as the console's two header disclosure triggers the issue points at, so both get the
-  opt-out. *Owner:* claude · *Resolves by:* phase 1 (review gate confirms).
+### Resolved
+
+- **Assumption (resolved, F-2):** that the account chip and menu button were the whole of the
+  tourist header's "same shape" set. The review gate found a third — the theme swatch — and it is
+  the one that matters most, being the only header trigger a phone renders. All three now carry the
+  opt-out.
 
 ## Availability & concurrency (invariant #2)
 
@@ -132,10 +143,10 @@ N/A — no contract change. The new spec consumes the existing mocked endpoints 
 
 ## Execution status
 
-**Stage pointer:** `implement — both phases done, opening the draft PR for the CI gate`
+**Stage pointer:** `review gate cleared — all findings fixed; verifying CI + Sonar on the new head, then merge`
 
-**Next action:** Push the branch, open the draft PR so CI fires, then mark ready for review and
-run the Review + Sonar gates.
+**Next action:** Confirm CI green and the Sonar new-issue list empty on the new head, then merge via
+PR #1063 and run the close-out checklist.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -144,11 +155,21 @@ run the Review + Sonar gates.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
+**Review gate:** ran at ready-for-review over `1a058115..09dcc539` (base `main` @ `1a058115`,
+6 files / +528 / -105, matched against the PR by `check-review-range.mjs`), at **high** effort —
+`code-review:code-review`, rung 1 of the ladder, with `riviera-review-overlay` layered on. Five
+reviewers: CLAUDE.md-adherence, shallow-bug, git-history, prior-PR-comments, in-code-comments. The
+bug and history reviewers returned clean; the others produced F-2, F-3 and F-4.
+
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI — `Repo hygiene (diff-scoped)` red | RV-STYLE-1 ×2 in the new spec: a PR number (provenance) in the file TSDoc, and a two-line inline comment | fixed — both rewritten; `check-inline-comments.mjs --diff origin/main` green |
+| F-2 | review gate — prior-PR-comments reviewer | The theme swatch (`CLS.swatchBtn`, `theme-toggle`) is a header disclosure trigger too and was left out. It is the sharpest case of the three: the chip and menu button are `sm:flex`, so the swatch is the only header trigger a phone renders, and double-tap is a phone gesture. The "lone control, not a cluster" defence was inconsistent — the two triggers already fixed are equally lone | fixed — `touch-manipulation` added; new phone-width test, verified red first (`theme-toggle is touch-action: auto`) |
+| F-3 | review gate — CLAUDE.md reviewer | RV-PROC-1: *Skills consulted* named neither `angular-developer` nor the angular-cli MCP, which the routing table's Angular-styling row requires; `riviera-frontend` was listed but had not actually been loaded | fixed — both loaded and the `app.ts` change re-vetted (no change), line rewritten to say what actually happened |
+| F-4 | review gate — in-code-comment reviewer | `tourist.mocks.ts`'s doc comment said a spec needing a session layers `auth-mocks.ts` over the fixture, citing the account page — but this PR's own account-page test overrides `/api/auth/me` directly. A comment wrong about code in the same diff | fixed — reworded to describe both routes honestly |
+| F-5 | self, while fixing F-2 | The new swatch test's explanatory comment ran to two lines — the same RV-STYLE-1 rule F-1 had just fixed | fixed — one line |
 
 ---
 
@@ -160,7 +181,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/touch-targets-tourist.e2e.ts` — fixture removed, imported instead; no test changes
 - `frontend/e2e/mobile-zoom-tourist.e2e.ts` — **new**; the tourist half of the zoom pair
 - `frontend/e2e/mobile-zoom.e2e.ts` — header comment now points at the tourist file
-- `frontend/src/app/app.ts` — `touch-manipulation` on `TAB`, `CLS.accountChip`, `CLS.menuBtn`
+- `frontend/src/app/app.ts` — `touch-manipulation` on `TAB`, `CLS.accountChip`, `CLS.menuBtn`,
+  and `CLS.swatchBtn` (F-2)
+- `docs/plans/venue-photo-retina-srcset.md` — **deleted**; its PR #1058 has merged, so the close-out
+  sweep retires it (nothing cites it)
 
 ---
 
@@ -204,32 +228,32 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-09-11 | phase 0 | Every tourist surface rendering a field of a type iOS Safari zooms into (the mechanism: a caret-taking `input`/`select`/`textarea` on a tourist route) | `grep -rn '<input\|<select\|<textarea' --include=*.html --include=*.ts auth/ booking/ pages/ venue/ shared/ core/` over `frontend/src/app` | `auth/` ×4 pages, `booking/` booking-dialog + review-panel + find-booking, `pages/home/home.html` ×3, plus `shared/confirm-with-reason.ts` | All tourist sites swept. `confirm-with-reason.ts` is admin-only (its three consumers are all `admin/`), so it belongs to the console half already covered by `mobile-zoom.e2e.ts` — skipped, not missed || 2026-09-11 | phase 1 | Every control recipe that could want the double-tap opt-out (the mechanism: a `touch-action` default of `auto` on a densely or repeatedly tapped tourist control) | `grep -rn 'touch-manipulation' frontend/src/` — the complement is what lacks it | The tourist `TAB`, `accountChip` and `menuBtn`; PR #1047 already covered the slideshow arrows, dot picker, gallery tiles, beach map, calendar and star rating | Fixed all three. The theme swatch and the popover rows were judged out: a lone control and a list, not the dense cluster the opt-out is for (recorded as a Non-goal) |
+| 2026-09-11 | phase 0 | Every tourist surface rendering a field of a type iOS Safari zooms into (the mechanism: a caret-taking `input`/`select`/`textarea` on a tourist route) | `grep -rn '<input\|<select\|<textarea' --include=*.html --include=*.ts auth/ booking/ pages/ venue/ shared/ core/` over `frontend/src/app` | `auth/` ×4 pages, `booking/` booking-dialog + review-panel + find-booking, `pages/home/home.html` ×3, plus `shared/confirm-with-reason.ts` | All tourist sites swept. `confirm-with-reason.ts` is admin-only (its three consumers are all `admin/`), so it belongs to the console half already covered by `mobile-zoom.e2e.ts` — skipped, not missed || 2026-09-11 | phase 1 | Every control recipe that could want the double-tap opt-out (the mechanism: a `touch-action` default of `auto` on a densely or repeatedly tapped tourist control) | `grep -rn 'touch-manipulation' frontend/src/` — the complement is what lacks it | The tourist `TAB`, `accountChip`, `menuBtn` and `swatchBtn`; the slideshow arrows, dot picker, gallery tiles, beach map, calendar and star rating were already covered | Fixed all four. `swatchBtn` was missed on the first pass and caught at the review gate (F-2): the first sweep judged by cluster density, but the operative criterion is a control tapped twice fast, which a disclosure trigger is. The popover rows stay out — read, then tapped once |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run the tourist zoom spec → every surface sweeps ≥ its floor, none under 16px.
-- [ ] **AC-2:** The recorded mutation run failed naming the field; reverted.
-- [ ] **AC-3:** Run the two double-tap tests → PASS; `git diff` shows `CHIP`/`POP_BUTTON` unchanged.
+- [x] **AC-1:** Verified — the tourist zoom spec, 13/13, every surface above its floor and nothing under 16px.
+- [x] **AC-2:** Verified — `find-booking.ts`'s `cls.input` at 15px failed the sweep naming `input[data-testid="find-code"] at 15px`; reverted.
+- [x] **AC-3:** Verified — the three double-tap tests pass, the swatch one red first (`theme-toggle is touch-action: auto`); `CHIP`/`POP_BUTTON` absent from the diff.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (justified N/A).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section filled (justified N/A, frontend-only).
-- [ ] **Payment/payout** section filled (justified N/A).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit.**
-- [ ] **The review gate ran in full** — the `/code-review` ladder plus `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (justified N/A).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section filled (justified N/A, frontend-only).
+- [x] **Payment/payout** section filled (justified N/A).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — this commit; it also retires `docs/plans/venue-photo-retina-srcset.md`, whose PR #1058 has merged.
+- [x] **The review gate ran in full** — rung 1 of the ladder plus `riviera-review-overlay`; five reviewers, F-2..F-4 fixed.

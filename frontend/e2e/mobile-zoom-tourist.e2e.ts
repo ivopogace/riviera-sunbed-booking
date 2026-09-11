@@ -9,9 +9,9 @@ import { TOURIST_BOOKING, mockTourist } from './support/tourist.mocks';
  * The tourist half of the two mobile-browser zoom bugs, measured rather than asserted from class
  * lists; `mobile-zoom.e2e.ts` is the operator and admin half and the helpers are shared.
  *
- * <p>The tourist fields were raised in PR #1047, so this sweep is expected to be green on its first
- * run — that is the point of it. The console half went in believed-correct too, and its sweep found
- * two fields still carrying the bug, one of them hidden from a by-hand audit because its size
+ * <p>Every tourist field already measures at or above the floor, so this sweep is green on its
+ * first run — that is the point of it. The console half went in believed-correct too, and its sweep
+ * found two fields still carrying the bug, one of them hidden from a by-hand audit because its size
  * arrived through a hoisted `cls` recipe rather than the tag's own `class` attribute. A belief that
  * nothing is broken is what a measurement replaces, not what excuses it.
  *
@@ -20,10 +20,12 @@ import { TOURIST_BOOKING, mockTourist } from './support/tourist.mocks';
  * the sweep and a `minFields` floor, so a surface that rendered its empty, loading or error state
  * fails instead of passing on nothing.
  *
- * <p>**Double-tap-to-zoom** is asserted per named cluster: `touch-action: manipulation` belongs on
- * a dense group tapped in quick succession. On the tourist side that is the bottom tab bar — the
- * most repeatedly tapped control on a phone — and the header's single disclosure trigger, which is
- * toggled open and shut in quick succession, the same two shapes the console half opted out.
+ * <p>**Double-tap-to-zoom** is asserted per named control: `touch-action: manipulation` belongs
+ * wherever a fast second tap is ordinary — a dense group, or a disclosure toggled open and shut.
+ * On the tourist side that is the bottom tab bar, the most repeatedly tapped control on a phone,
+ * and the header's three disclosure triggers. The theme swatch is the one that matters most: the
+ * account chip and the menu button are `sm:flex`, so the swatch is the only header trigger a phone
+ * renders at all, and the double-tap gesture is a phone gesture.
  *
  * <p>Viewport: the sweeps run once at the project's desktop width. No field in `src/` carries a
  * responsive text size, so a field's computed size is the same at every width. What IS
@@ -147,16 +149,28 @@ test.describe('tourist UI — mobile zoom', () => {
 
   test('the header disclosure triggers keep their double-tap', async ({ page }) => {
     await page.setViewportSize(DESKTOP);
-    // Signed out the trigger is the round menu button, signed in the account chip: two elements
-    // composing the same shared CHIP, and only ever one of them at a time.
+    // The round menu button signed out, the account chip signed in — never both at once.
     await page.goto('/');
     await expect(page.getByTestId('nav-menu')).toBeVisible();
-    await expectTouchManipulation(page, '[data-testid="nav-menu"]', 'the header menu button');
+    await expectTouchManipulation(
+      page,
+      '[data-testid="nav-menu"], [data-testid="theme-toggle"]',
+      'the header menu button and theme swatch',
+    );
 
     await page.route(/\/api\/auth\/me$/, (route) => route.fulfill({ json: SIGNED_IN_CUSTOMER }));
     await page.reload();
     await expect(page.getByTestId('nav-user')).toBeVisible();
 
     await expectTouchManipulation(page, '[data-testid="nav-user"]', 'the account chip');
+  });
+
+  test('the theme swatch keeps its double-tap at a phone width too', async ({ page }) => {
+    // The only header trigger below `sm`, so a desktop-width assertion would never reach it.
+    await page.setViewportSize(PHONE);
+    await page.goto('/');
+    await expect(page.getByTestId('theme-toggle')).toBeVisible();
+
+    await expectTouchManipulation(page, '[data-testid="theme-toggle"]', 'the theme swatch');
   });
 });

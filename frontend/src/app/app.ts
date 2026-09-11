@@ -82,13 +82,13 @@ const CLS = {
   // inline-flex: appTouchTarget's min-height is a no-op on an inline <a>.
   navLink:
     'inline-flex cursor-pointer items-center hover:text-riv-ink aria-[current=page]:font-semibold aria-[current=page]:text-riv-ink aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:decoration-current aria-[current=page]:underline-offset-[7px]',
-  // Both header disclosure triggers drop the double-tap too — a disclosure is toggled open and shut in quick succession. Composed here, never on the shared CHIP, which the console's two triggers wear the same way.
+  // Every header disclosure trigger drops the double-tap — one is toggled open and shut in quick succession. Composed here, never on the shared CHIP.
   accountChip: `inline-flex touch-manipulation items-center gap-2 py-1 pr-3 pl-1.5 font-semibold text-riv-ink ${CHIP}`,
   menuBtn: `inline-flex h-11 w-11 touch-manipulation flex-col items-center justify-center gap-[4.5px] ${CHIP}`,
   menuBar: 'block h-0.5 w-[17px] rounded-[2px] bg-riv-ink',
   // The 1.5px ink-soft ring is the swatch's WCAG 1.4.11 boundary (5.4 / 5.5 / 11.6:1 on the three bars): the swatch alone reaches 1.0:1 against the bar (its white end on porcelain), and a white inset ring vanishes there too.
   swatchBtn:
-    'grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-full before:h-[22px] before:w-[22px] before:rounded-full before:bg-(image:--riv-swatch) before:shadow-[0_1px_3px_rgba(6,30,40,0.35)] before:ring-[1.5px] before:ring-riv-ink-soft before:[transition:scale_0.12s_ease] hover:before:scale-[1.12] motion-reduce:before:transition-none motion-reduce:hover:before:scale-100',
+    'grid h-11 w-11 shrink-0 cursor-pointer touch-manipulation place-items-center rounded-full before:h-[22px] before:w-[22px] before:rounded-full before:bg-(image:--riv-swatch) before:shadow-[0_1px_3px_rgba(6,30,40,0.35)] before:ring-[1.5px] before:ring-riv-ink-soft before:[transition:scale_0.12s_ease] hover:before:scale-[1.12] motion-reduce:before:transition-none motion-reduce:hover:before:scale-100',
   avatar: AVATAR,
 } as const;
 
