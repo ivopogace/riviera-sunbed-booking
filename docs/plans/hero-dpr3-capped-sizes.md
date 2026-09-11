@@ -244,15 +244,15 @@ widths are all unchanged; only the client-side `sizes` hint moves.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0 committed red; phase 1 next)`
+**Stage pointer:** `implement (phases 0-1 done; phase 2 next)`
 
-**Next action:** Phase 1 — change `CONTAIN_SIZES.galleryHero`'s narrowest clause to
-`min(330px, 66vw)`, watch `photo-url.spec.ts`'s old shape rule go red, then correct it.
+**Next action:** Phase 2 — rewrite the `CONTAIN_SIZES` TSDoc (density bound, aspect band,
+the true px rule) and the e2e header's density/engine coverage.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Pin the defect as a red e2e | ✅ (red by design) | `a0a5382a` |
-| 1 — Ship the capped clause and correct the shape rule | | |
+| 0 — Pin the defect as a red e2e | ✅ (red by design) | `3ccb0f50` |
+| 1 — Ship the capped clause and correct the shape rule | ✅ | `<phase-1>` |
 | 2 — State the density and aspect bounds in the registry TSDoc | | |
 | 3 — Close-out: retire `band-contain-sizes.md`, finalize this doc | | |
 
@@ -278,6 +278,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   holds
 - `frontend/e2e/venue-photo-candidates.e2e.ts` — DPR-3 cases at both aspects, the DPR-1/DPR-2
   no-trade-back cases, the 1024 boundary case, and the header's density/engine coverage
+- `frontend/e2e/discover-photos.e2e.ts` — the pinned RENDERED `sizes` attribute on the hero,
+  which is what shows the priority image takes no `auto,` prefix (V-5); the string moves with
+  the clause
 
 ---
 
@@ -344,6 +347,27 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|---|---|
 
 ---
+
+## Mutation matrix (no assertion that cannot fail)
+
+> Every assertion this slice adds, with a mutation that turns it red. Run as a sweep after
+> phase 1; #1069 shipped two tests that could not fail, and a later round had to replace both.
+
+| Mutation of `galleryHero` | Assertions it turns red |
+|---|---|
+| M1 `…, 35vw` (revert to what #1071 shipped) | 430 · 560 · 673 at DPR 3, 3:2; 800 at DPR 3, 16:9 |
+| M2 `…, 66vw` (drop the cap, keep the coefficient) | 560 at DPR 2, 3:2 (+ the pre-existing 900 at DPR 2) |
+| M3 `…, min(3000px, 66vw)` (cap out of reach) | 560 at DPR 2, 3:2 (+ 900 at DPR 2) |
+| M4 `…, min(330px, 70vw)` (coefficient up) | 360 at DPR 3, 3:2 — the below-the-window guard |
+| M5 `…, min(200px, 66vw)` (cap down) | all four DPR-3 window cases + the 800 DPR-3 **3:2 control** |
+| M6 `…, min(500px, 80vw)` | 560 at DPR 2 **16:9**; 560 at DPR 2 3:2; 360 at DPR 3 |
+| M7 `…, min(900px, 200vw)` | 560 at **DPR 1**; both 560 DPR-2 cases; 360 at DPR 3 |
+| M8 middle clause `45vw`→`30vw` | 1024 at DPR 2 — the no-leak-upward case |
+
+Unit side: the shape rule's own non-vacuity case (AC-6) is a permanent mutation, asserting the
+rule still rejects `(min-width: 1280px) 330px, 66vw` and a bare `330px`. The canary (AC-7) was
+mutation-proved both ways in V-3 — a rejected value in the registry, and a widened guard regex
+against the shipped value.
 
 ## Acceptance-criteria verification (final)
 

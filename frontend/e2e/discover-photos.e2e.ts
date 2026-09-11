@@ -161,7 +161,7 @@ test('every tourist photo offers its candidates as a srcset the browser sizes ag
   await expect(hero).toHaveAttribute('srcset', /photos\/bb02@1440 1440w$/);
   await expect(hero).toHaveAttribute(
     'sizes',
-    '(min-width: 1280px) 35vw, (min-width: 1024px) 45vw, 35vw',
+    '(min-width: 1280px) 35vw, (min-width: 1024px) 45vw, min(330px, 66vw)',
   );
   // The `auto,` prefix rides lazy loading, so the priority hero has none and the tiles do.
   await expect(page.getByTestId('gallery-tile').first()).toHaveAttribute(

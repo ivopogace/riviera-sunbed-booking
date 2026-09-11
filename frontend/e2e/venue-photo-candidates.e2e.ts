@@ -292,3 +292,49 @@ test.describe('the gallery hero at 800 x 900, DPR 3', () => {
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
   });
 });
+
+test.describe('the gallery hero at 560 x 900, DPR 1', () => {
+  test.use({ viewport: { width: 560, height: 900 }, deviceScaleFactor: 1 });
+
+  test('the capped clause leaves a 3:2 upload on its baseline at DPR 1', async ({ page }) => {
+    await openGallery(page);
+
+    // 3:2 fixture: 330 CSS px painted, so 330 device px asked - well inside 720w. The half of
+    // #1069's win this slice must not trade back; the clause resolves to its 330px cap here,
+    // and a cap is what keeps that harmless at DPR 1.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
+  });
+});
+
+test.describe('the gallery hero at 560 x 900, DPR 2', () => {
+  test.use({ viewport: { width: 560, height: 900 }, deviceScaleFactor: 2 });
+
+  test('the capped clause leaves a 3:2 upload on its baseline at DPR 2', async ({ page }) => {
+    await openGallery(page);
+
+    // 3:2 fixture: 330 CSS px painted asks 660 device px, and the cap asks 660 too - both under
+    // the 720w baseline. An uncapped 66vw would ask 739 here and buy retina for nothing.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
+  });
+
+  test('and leaves a 16:9 upload on its own, wider baseline at DPR 2', async ({ page }) => {
+    await openGallery(page, WIDE_GALLERY_VENUE);
+
+    // 16:9 fixture: a different paint (339 CSS px, width-bound here) against a different stored
+    // baseline (853w). Same clause, same 660 device px asked, and 853w covers it.
+    await candidate(page.getByTestId('gallery-hero')).toBe('ee05');
+  });
+});
+
+test.describe('the gallery hero at 1024 x 800, DPR 2', () => {
+  test.use({ viewport: { width: 1024, height: 800 }, deviceScaleFactor: 2 });
+
+  test('the step the capped clause stops at is untouched', async ({ page }) => {
+    await openGallery(page);
+
+    // 3:2 fixture: at 1024 the middle clause takes over (45vw = 922 device px) and the box grows
+    // to 360 tall, painting 485 CSS px. Unchanged by this slice, and pinned so a later edit to
+    // the narrowest clause cannot leak upward past its own breakpoint.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
+  });
+});

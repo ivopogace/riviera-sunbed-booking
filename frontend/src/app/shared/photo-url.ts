@@ -51,7 +51,7 @@ export const CONTAIN_SIZES = {
    *  narrows with the viewport under 780 — painting 540, then 485 width-bound, then 330. The two
    *  outer clauses share a number for opposite reasons: the widest caps a box that stops growing,
    *  the narrowest holds one that cannot need retina at DPR 2. */
-  galleryHero: '(min-width: 1280px) 35vw, (min-width: 1024px) 45vw, 35vw',
+  galleryHero: '(min-width: 1280px) 35vw, (min-width: 1024px) 45vw, min(330px, 66vw)',
   /** A gallery side tile: 361 × 176 above 1280, 239 × 176 down to 1024, 106 tall below and narrower
    *  with the viewport under 780. At DPR 1 and 2 it never needs the retina candidate, and the
    *  1280px clause is what says so — to the engines that read it. Chromium is not one: the tiles
