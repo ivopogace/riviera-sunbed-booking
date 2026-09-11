@@ -167,9 +167,7 @@ describe('Home (venue discovery)', () => {
     expect(coverImg?.getAttribute('src')).toBe(
       `${environment.apiBaseUrl}/api/venues/1/photos/aa01`,
     );
-    // The scrim stays layered over the photo — the location text's AA floor depends on it — and it
-    // is paint only: the card is one big link, so a scrim that took the pointer would eat taps on it
-    // (#1044). Since #1066 both that class and this one come from the shared `appPhotoScrim`.
+    // The scrim stays layered over the photo, as paint only: the location text's AA floor needs the layering, the card link needs the pointer.
     const scrim = cards[0].querySelector('.photo-scrim');
     expect(scrim).toBeTruthy();
     expect(scrim?.classList.contains('pointer-events-none')).toBe(true);

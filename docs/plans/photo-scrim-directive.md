@@ -36,7 +36,10 @@ the directive; the no-drift rule made computed styles, not the class list, the p
 `riviera-frontend` (placed the directive in `shared/` as a stateless presentational primitive
 beside `card-glass.ts`/`panel-glass.ts`) · `angular-developer` (the `host` static-class +
 static-attribute form, standalone directive, no inputs) · `playwright-cli` (the mocked
-CI-safe suite is where the no-drift and hit-test proofs live).
+CI-safe suite is where the no-drift and hit-test proofs live) · `riviera-java-conventions`
+(§6c/§6d, pulled in by finding F-1 — it owns RV-STYLE-1's one-line and no-provenance rules for
+TypeScript as well as Java: the directive's rationale moved into a TSDoc and every inline
+comment came down to one line).
 
 **Branch:** `claude/sdlc-1066-jijqhf` — the cloud session's designated remote branch stands in
 for `feature/photo-scrim-directive` (`riviera-sdlc` § Remote / cloud session addendum).
@@ -156,9 +159,9 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `PR — marking ready for review`
+**Stage pointer:** `review gate — fixing findings`
 
-**Next action:** Check this push's CI run, then mark PR #1068 ready for review to make the Review and Sonar gates due.
+**Next action:** Re-resolve the review range on the new head, then re-walk the overlay items for the comment fix.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -172,7 +175,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| *(none yet)* | | | |
+| F-1 | CI — `Repo hygiene (diff-scoped)`, `check-inline-comments.mjs` | RV-STYLE-1, 17 lines across 5 files: multi-line inline comments, and issue numbers as provenance. My own miss — the rule was in scope from the first line I wrote. Fixed by moving the directive's rationale into a TSDoc (which is exempt from the one-line rule but not from provenance), cutting every inline comment to one line, and dropping every `#NNNN`. | fixed-in-this-commit |
 
 ---
 

@@ -243,13 +243,7 @@ test('the banner scrim is paint only — the band’s own control owns every tou
 test('the photo scrim computes one identical recipe on the Discover card and the map banner (#1066)', async ({
   page,
 }) => {
-  // Both bands paint the same scrim, so `riviera-tailwind`'s no-drift rule governs it: a shared
-  // surface is proven by the COMPUTED style, never the class list — a class list cannot see a
-  // utility Tailwind failed to generate, nor a value one surface overrides. This test was written
-  // and landed GREEN against the two hand-written spans (#1066 phase 0) BEFORE they were replaced
-  // by `shared/photo-scrim.ts`, so the recipe it pins is the one those spans produced: the
-  // directive inherits this baseline rather than defining it. The `pointer-events` row is the one
-  // that already drifted — the card gained it in #1044, the banner only caught up in #1064.
+  // Computed styles, never the class list: a class list cannot see a utility Tailwind never generated.
   const recipeOf = (scrim: Locator) =>
     scrim.evaluate((el) => {
       const s = getComputedStyle(el);
@@ -269,8 +263,7 @@ test('the photo scrim computes one identical recipe on the Discover card and the
   await expect(cardScrim).toBeAttached();
   const card = await recipeOf(cardScrim);
 
-  // One photo is the state that renders the banner band at all — 2+ hands the photo lead to the
-  // gallery grid (#765), which carries no scrim.
+  // One photo is the only state that renders the band; 2+ hands the photo lead to the gallery grid.
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
     route.fulfill({ json: { ...VENUE_MAP, photos: [COVER.banner] } }),
   );
@@ -286,8 +279,7 @@ test('the photo scrim computes one identical recipe on the Discover card and the
   expect(card.position).toBe('absolute');
   expect([card.top, card.right, card.bottom, card.left]).toEqual(['0px', '0px', '0px', '0px']);
   expect(card.pointerEvents).toBe('none');
-  // --riv-photo-scrim resolves to its four rgba(13, 40, 40, α) stops; the α ladder and the 75%
-  // stop's AA duty belong to home.contrast.spec.ts, so this asserts the token reached the element.
+  // The α ladder and its AA duty belong to home.contrast.spec.ts; this asserts the token reached the element.
   expect(card.backgroundImage).toContain('linear-gradient');
   expect(card.backgroundImage).toContain('rgba(13, 40, 40, 0)');
   expect(card.backgroundImage).toContain('rgba(13, 40, 40, 0.68)');
