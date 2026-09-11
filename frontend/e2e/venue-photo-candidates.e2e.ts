@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { bannerPhotoView } from './support/photo-views';
 
@@ -21,6 +21,8 @@ const TINY_IMAGE = Buffer.from(
 );
 
 const BANNER = bannerPhotoView('/api/venues/1/photos/bb02');
+const SECOND = bannerPhotoView('/api/venues/1/photos/cc03');
+const THIRD = bannerPhotoView('/api/venues/1/photos/dd04');
 const VENUE_MAP = {
   id: 1,
   name: 'Miramar Beach Club',
@@ -49,6 +51,9 @@ const VENUE_MAP = {
   coverPhoto: { card: BANNER, banner: BANNER },
   photos: [BANNER],
 };
+
+/** The 2+ photo path, where the header hands its photo lead to the gallery grid, not the band. */
+const GALLERY_VENUE = { ...VENUE_MAP, photos: [BANNER, SECOND, THIRD] };
 
 test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE_MAP }));
@@ -104,5 +109,61 @@ test.describe('the beach-map band at 900 x 800, DPR 2', () => {
 
     // Below the 1024px step the band is 150px tall: ~534 device px even at DPR 2.
     await candidate(band).toBe('bb02');
+  });
+});
+
+/** The 2+ photo page, scrolled until the lazy side tiles have chosen a candidate. */
+async function openGallery(page: Page) {
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: GALLERY_VENUE }));
+  await page.goto('/venues/1');
+  await expect(page.getByTestId('gallery-hero')).toBeVisible();
+  await page.getByTestId('gallery-tile').nth(1).scrollIntoViewIfNeeded();
+}
+
+test.describe('the gallery grid at 1440 x 900, DPR 1', () => {
+  test.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+
+  test('every contain-fitted gallery tile picks the baseline candidate at DPR 1', async ({
+    page,
+  }) => {
+    await openGallery(page);
+    const tiles = page.getByTestId('gallery-tile');
+
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
+    await candidate(tiles.first()).toBe('cc03');
+    await candidate(tiles.nth(1)).toBe('dd04');
+  });
+});
+
+test.describe('the gallery grid at 1920 x 900, DPR 1', () => {
+  test.use({ viewport: { width: 1920, height: 900 }, deviceScaleFactor: 1 });
+
+  test('the hero keeps the baseline candidate on a wide desktop', async ({ page }) => {
+    await openGallery(page);
+
+    // The grid stops at the 1100px breakout, so the hero still paints ~640 CSS px here.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
+  });
+});
+
+test.describe('the gallery grid at 1100 x 800, DPR 1', () => {
+  test.use({ viewport: { width: 1100, height: 800 }, deviceScaleFactor: 1 });
+
+  test('the hero picks the baseline candidate on the narrower breakout', async ({ page }) => {
+    await openGallery(page);
+
+    // Below 1280 the grid drops to the 730px breakout and the hero paints ~485 CSS px.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
+  });
+});
+
+test.describe('the gallery grid at 1440 x 900, DPR 2', () => {
+  test.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
+
+  test('the hero still takes the retina candidate at DPR 2', async ({ page }) => {
+    await openGallery(page);
+
+    // The guard on the two cases above: ~1280 device px is more than the baseline carries.
+    await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
   });
 });

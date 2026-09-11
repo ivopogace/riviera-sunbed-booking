@@ -8,8 +8,8 @@ import { PhotoView } from './venue-views';
 /**
  * The venue detail page's wide photo lead: a large cover tile beside up to two smaller
  * supporting tiles, filling the beach map's 1100px breakout instead of the identity card's
- * narrower 780px shell (#700's width split is otherwise unbridged between the header and the
- * map). Only worth it once a venue actually has more than one photo — with 0 or 1, the caller
+ * narrower 780px shell, whose width split is otherwise unbridged between the header and the
+ * map. Only worth it once a venue actually has more than one photo — with 0 or 1, the caller
  * keeps the existing single-photo band inside the header, so this component is never asked to
  * render fewer than 2 photos.
  *
@@ -22,6 +22,16 @@ import { PhotoView } from './venue-views';
  * labelled button — tapping one emits {@link opened} with that photo's index, so the caller can
  * mount a {@link PhotoLightbox} seeded at the tapped photo; the image itself stays `alt=""` since
  * the button's own label already names the action.
+ *
+ * <p>Letterboxing is also why each `sizes` describes the PAINTED image and not the tile: a 16:9
+ * upload covers ~640 CSS px of the 731 px hero and ~313 px of a 361 px side tile, so a `sizes`
+ * stating the tile bought a 1440w candidate the 720w one already covered. The hero's three clauses
+ * follow its three box widths and each computes inside `360 < s ≤ 720` CSS px, which is what takes
+ * 720w at DPR 1 and 1440w at DPR 2; a side tile paints under 360 px at every viewport, so it wants
+ * 720w at both densities and states one value. Tuned to 16:9 and to viewports up to ~2000 px —
+ * beyond either the value overstates again, which costs a candidate, not correctness. The side
+ * tiles are lazy, so Chromium resolves their `auto` prefix against the tile box instead and this
+ * value only reaches engines without it.
  */
 @Component({
   selector: 'app-photo-gallery-grid',
@@ -48,7 +58,7 @@ import { PhotoView } from './venue-views';
           [ngSrc]="photos()[0].url"
           [attr.srcset]="srcsetOf(photos()[0])"
           disableOptimizedSrcset
-          sizes="(min-width: 1280px) 50vw, 66vw"
+          sizes="(min-width: 1280px) 35vw, (min-width: 1024px) 45vw, 55vw"
           fill
           priority
           class="relative object-contain"
@@ -77,7 +87,7 @@ import { PhotoView } from './venue-views';
             [ngSrc]="second.url"
             [attr.srcset]="srcsetOf(second)"
             disableOptimizedSrcset
-            sizes="(min-width: 1280px) 25vw, 33vw"
+            sizes="22vw"
             fill
             class="relative object-contain"
             alt=""
@@ -104,7 +114,7 @@ import { PhotoView } from './venue-views';
             [ngSrc]="third.url"
             [attr.srcset]="srcsetOf(third)"
             disableOptimizedSrcset
-            sizes="(min-width: 1280px) 25vw, 33vw"
+            sizes="22vw"
             fill
             class="relative object-contain"
             alt=""
