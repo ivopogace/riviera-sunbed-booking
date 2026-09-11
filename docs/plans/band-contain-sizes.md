@@ -88,6 +88,8 @@ started) and #1059's wontfix record (`.out-of-scope/photo-width-ladder.md`).
 - Changing `object-contain` to `object-cover` on any surface. That would make `sizes` honest by
   construction, but it is a visual-design change and belongs to whoever owns the band's look.
 - Introducing an `IMAGE_LOADER`. Ruled out on its merits in #1041 and unchanged here.
+- Serving DPR 3. The values are tuned to DPR 1 and 2; what that leaves on the gallery hero is
+  measured in F-17 and decided in #1072.
 - Touching the Discover card. It is `object-cover`, so its element box *is* its painted box and
   its `sizes` is already honest.
 
@@ -144,8 +146,8 @@ follow the upload's aspect, so the general rule is the one under the resolved As
 | 500 | 450 × 150 | 267 | 299 × 220 | 299 | 145 × 106 | 145 |
 | 390 | 340 × 150 | 267 | 225 × 220 | 225 | 109 × 106 | 109 |
 
-The band's two heights confirm the plan's arithmetic: `30vw` / `45vw` / `35vw` land inside the
-`360 < s ≤ 720` window above 1024 and under 360 below it. That window is the **3:2** instantiation of the
+The band's two heights confirm the plan's arithmetic: the shipped `36vw` / `45vw` / `35vw` land
+inside the `360 < s ≤ 720` window above 1024 and under 360 below it. That window is the **3:2** instantiation of the
 rule while the `Painted` column is a 16:9 letterbox — pairing the two is what misled the first cut
 of the gallery values, and then the band's widest clause, which review round 3 raised to `36vw`. The gallery is the surprise — see the
 phase 2 notes, where the measured hero already picks correctly at 1440 × DPR 1.
@@ -188,10 +190,11 @@ changes only how the client describes its own layout.
 
 ## Execution status
 
-**Stage pointer:** `review — round 3 findings fixed; CI + Sonar, then close-out`
+**Stage pointer:** `review — round 4 findings fixed; re-check CI + Sonar, then close-out`
 
-**Next action:** Check CI on the new head, read the Sonar issue list for PR #1071 (not its gate
-conclusion alone), then write the close-out and tick the self-review checklist.
+**Next action:** CI and Sonar were green on `e7674bfb` (0 new issues, 0 duplication, 100% new-code
+coverage, `new_lines` present so the analysis is real). Re-check both on the round-4 head, then
+write the close-out and tick the self-review checklist.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -216,12 +219,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-8 | review — overlay (plan-doc discipline) | `<sha>` placeholders left in the AC-verification block, and three recorded `npm test -- <name>` commands that error rather than run | **fixed** — real SHAs, and `ng test --include` |
 | F-9 | review — overlay (plan-doc accuracy) | R-2's resolution pointed at a template comment phase 3 had removed; the 16:9 assumption still open | **fixed** — R-2 re-pointed at the registry, the assumption resolved with the corrected aspect model |
 | F-10 | review — CLAUDE.md audit, prior-PR sweep | Registry doc over §6d's ~6-line type budget, the pattern flagged on PRs #1039 and #1058 | **partly fixed in `e8889782`, and deliberately left over budget** — 21 prose lines to 11. What went was archaeology; what stays a new entry has to act on, and §6d's budget is a smell test that asks the question rather than settling it |
-| F-11 | re-review rounds 2 and 3, independently | The band's `(min-width: 1280px) 30vw` under-served at DPR 2: 768 device px against a 16:9 upload's 853w baseline, for a band painting 469 — a regression from `main` on the page's LCP image, across viewports 1280–1422 | **fixed** — `36vw`, and a 16:9 fixture now exists, so a suite that had only ever seen 3:2 can see this class of defect |
-| F-12 | re-review round 3 | The side tile's entry claimed its 1280px clause stops a wide desktop buying retina; in Chromium the lazy `auto` prefix wins and it buys retina anyway | **fixed** — the entry now says which engines the value reaches, agreeing with the grid's class doc instead of contradicting it |
-| F-13 | re-review round 3 | The registry doc over-generalized three ways: "whatever was uploaded" (false past 8:3, where the baseline caps at 1280), "holds up to 16:9" (unbounded on the narrow side), and "overstates, which costs a candidate rather than correctness" (backwards — past 16:9 it understates, which costs sharpness) | **fixed** — each bound now stated in both directions |
-| F-14 | re-review round 3 | Four comments in the new e2e explained a 3:2 fixture's choice with 16:9 arithmetic — the premise-mixing F-3 was supposed to have removed | **fixed** — every number in that file is now its own fixture's |
-| F-15 | re-review round 3 | `venue-map.spec.ts` pointed at the e2e for "each clause", but the band's 1024–1279 clause had no case | **fixed** — a 1100 × 800 DPR 2 case covers it |
+| F-11 | re-review rounds 2 and 3, independently | The band's `(min-width: 1280px) 30vw` under-served at DPR 2: 768 device px against a 16:9 upload's 853w baseline, for a band painting 469 — a regression from `main` on the page's LCP image, across viewports 1280–1421 | **fixed** — `36vw`, and a 16:9 fixture now exists, so a suite that had only ever seen 3:2 can see this class of defect |
+| F-12 | re-review round 3 | The side tile's entry claimed its 1280px clause stops a wide desktop buying retina; in Chromium the lazy `auto` prefix wins and it buys retina anyway | **fixed in two passes** — the entry says which engines the value reaches; round 4 caught that the replacement over-claimed the other way (the auto-sized tile asks 723 device px, which clears a 3:2 baseline of 720 but not a 16:9 one of 853) and it now says so |
+| F-13 | re-review round 3 | The registry doc over-generalized three ways: "whatever was uploaded" (false past 8:3, where the baseline caps at 1280), "holds up to 16:9" (unbounded on the narrow side), and "overstates, which costs a candidate rather than correctness" (backwards — past 16:9 it understates, which costs sharpness) | **fixed for the aspect and viewport bounds; the density bound was missing and is now stated** — see F-17 |
+| F-14 | re-review round 3 | Five comments in the new e2e explained a 3:2 fixture's choice with 16:9 arithmetic — the premise-mixing F-3 was supposed to have removed | **fixed** — every number in that file is now its own fixture's |
+| F-15 | re-review round 3 | `venue-map.spec.ts` pointed at the e2e for "each clause", but the band's 1024–1279 clause had no case | **fixed in two passes** — the 1100 × 800 case round 3 added could not fail (the 3:2 fallback clears 720 there on its own, proved by mutation), so round 4 retargeted it to 1024 × 800 DPR 2 against the 16:9 fixture, where 45vw asks 922 against a baseline of 853 and a 40vw mutation does fail |
 | F-16 | re-review round 3 | A `{@link CONTAIN_SIZES}` added to `photo-slideshow.ts` had no symbol in scope | **fixed** — a plain path reference; importing a value for a doc link would be an unused import |
+| F-17 | re-review round 4 | The values under-serve the gallery hero at **DPR 3** across ~412–686 CSS px, by 5% at a 430px phone and 27% from 560 up. `main` bought the retina candidate there, so this is sharper on `main` and cheaper here | **accepted as a bound, and handed on** — `sizes` is DPR-independent and the ladder is two candidates deep, so one clause would have to satisfy `s > 240` (retina at DPR 3) and `s ≤ 360` (baseline at DPR 2) at the same viewport: `k > 0.583` and `k ≤ 0.525` at once. Covering it needs three or more `max-width`-bounded, aspect-tuned clauses, which is not a maintainable `sizes`. The doc and the e2e now state DPR 1–2 as the bound, and the decision is issue #1072 |
+| F-18 | re-review round 4 | "the baseline candidate suffices **exactly** when `boxHeight × DPR ≤ 480`" is only exact for a height-bound box; round 3 had dropped the `min(boxWidth, …)` term that made it true | **fixed** — the doc separates the height-bound case (exact) from the width-bound one (safe, not tight) |
+| F-19 | re-review round 4 | `bannerPhotoView` derived the retina width as the baseline doubled; `PhotoProcessor` fits the retina tier into its own 2560 × 960 box, so a 16:9 upload stores 1707w and not 1706w — the fixture asserted a URL production can never write | **fixed** — both tiers now fit their own box, and the helper caps at 8:3 like the backend |
+| F-20 | re-review round 4 | Five findings-register rows stated things untrue of the head: F-11's window off by one, F-12's and F-15's fixes carrying new inaccuracies, F-13's "both directions" silent on density, F-14's count | **fixed** — each row corrected above |
 
 ---
 

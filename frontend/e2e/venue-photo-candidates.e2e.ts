@@ -9,8 +9,9 @@ import { bannerPhotoView } from './support/photo-views';
  * engine makes that choice, which is why this is an e2e and not a jsdom spec.
  *
  * <p>Each case fixes a viewport AND a device-pixel ratio, because the candidate is picked from
- * `sizes × DPR`: a value that serves DPR 1 correctly can under-serve DPR 2, and the pair is the
- * whole behaviour. Axe is not re-run here — `discover-photos.e2e.ts` already sweeps these two
+ * `sizes × DPR`: a value that serves DPR 1 correctly can under-serve DPR 2. DPR 3 is deliberately
+ * uncovered: the values are tuned to DPR 1 and 2, and the tracker carries what that leaves. Axe is
+ * not re-run here — `discover-photos.e2e.ts` already sweeps these two
  * surfaces, and an image's `srcset` cannot move an axe result.
  */
 
@@ -21,7 +22,7 @@ const TINY_IMAGE = Buffer.from(
 );
 
 const BANNER = bannerPhotoView('/api/venues/1/photos/bb02');
-/** The same band photo uploaded at 16:9, which stores a wider pair: 853w and 1706w. */
+/** The same band photo uploaded at 16:9, which stores a wider pair: 853w and 1707w. */
 const WIDE_BANNER = bannerPhotoView('/api/venues/1/photos/ee05', 16 / 9);
 const SECOND = bannerPhotoView('/api/venues/1/photos/cc03');
 const THIRD = bannerPhotoView('/api/venues/1/photos/dd04');
@@ -195,19 +196,22 @@ test.describe('the beach-map band at 1280 x 900, DPR 2', () => {
     await expect(band).toBeVisible();
 
     // A 16:9 upload stores a wider pair, which a value tuned to 3:2 alone clears and misses.
-    await candidate(band).toBe('ee05@1706');
+    await candidate(band).toBe('ee05@1707');
   });
 });
 
-test.describe('the beach-map band at 1100 x 800, DPR 2', () => {
-  test.use({ viewport: { width: 1100, height: 800 }, deviceScaleFactor: 2 });
+test.describe('the beach-map band at 1024 x 800, DPR 2', () => {
+  test.use({ viewport: { width: 1024, height: 800 }, deviceScaleFactor: 2 });
 
-  test('the middle clause buys the retina candidate on the narrower breakout', async ({ page }) => {
+  test('the middle clause buys the retina candidate at the step it starts on', async ({ page }) => {
+    await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+      route.fulfill({ json: { ...VENUE_MAP, photos: [WIDE_BANNER] } }),
+    );
     await page.goto('/venues/1');
     const band = page.getByTestId('map-banner-img');
     await expect(band).toBeVisible();
 
-    // Below 1280 the band keeps its 264px height, and 264 x 2 is past the 480px BANNER box.
-    await candidate(band).toBe('bb02@1440');
+    // The clause's tightest point: 45vw asks 922 device px against a 16:9 baseline of 853.
+    await candidate(band).toBe('ee05@1707');
   });
 });

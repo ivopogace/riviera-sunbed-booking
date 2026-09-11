@@ -29,16 +29,18 @@ export function resolveCoverPhoto(cover: CoverPhotoView | null | undefined): Cov
 
 /**
  * The `sizes` the beach-map band and the gallery grid state. Both letterbox (`object-contain`), so
- * each value approximates the PAINTED photo rather than the element it sits in. The lightbox states
- * its own; its under-service is a different defect.
+ * each value approximates the PAINTED photo — `min(boxWidth, boxHeight × aspect)` — rather than the
+ * element it sits in. The lightbox states its own; its under-service is a different defect.
  *
  * <p>A BANNER rendition is fit within 1280 × 480, so an upload no wider than 8:3 stores a baseline
- * `480 × aspect` and paints `boxHeight × aspect` — the aspect cancels, and the baseline candidate
- * suffices exactly when `boxHeight × DPR ≤ 480`. Each value buys that candidate from 3:2 to 16:9
- * and to ~2000px viewports; narrower over-fetches, which costs bytes, wider under-fetches, which
- * costs sharpness, and past 8:3 the baseline caps at 1280 and the rule stops holding at all.
- * Viewport-relative only: a `px` LENGTH throws `RuntimeError 2952` (the `px` in a media condition
- * is not a length).
+ * `480 × aspect`. Where the box is height-bound the paint is `boxHeight × aspect`, the aspect
+ * cancels, and the baseline candidate suffices exactly when `boxHeight × DPR ≤ 480`; where it is
+ * width-bound the paint is narrower again, so that test is safe there rather than tight. Each
+ * value buys the right candidate from 3:2 to 16:9, to ~2000px viewports, and at DPR 1 and 2.
+ * Narrower or shorter it over-fetches, costing bytes; wider it under-fetches, costing sharpness;
+ * past 8:3 the baseline caps at 1280 and the rule stops holding; and DPR 3 wants a rendition ladder
+ * finer than two, which the tracker carries as its own slice. Viewport-relative only: a `px` LENGTH
+ * throws `RuntimeError 2952` (the `px` in a media condition is not a length).
  */
 export const CONTAIN_SIZES = {
   /** The band: 1098 × 264 above 1280, 730 × 264 down to 1024, 730 × 150 below — painting 396 and
@@ -53,7 +55,8 @@ export const CONTAIN_SIZES = {
   /** A gallery side tile: 361 × 176 above 1280, 239 × 176 down to 1024, 239 × 106 below. It never
    *  needs the retina candidate, and the 1280px clause is what says so — to the engines that read
    *  it. Chromium is not one: the tiles are lazy, so its `auto` prefix wins and it sizes against
-   *  the 361px box, buying retina at DPR 2 whatever this says. */
+   *  the 361px box, which asks 723 device px at DPR 2 and so buys retina off a 3:2 upload's 720w
+   *  baseline, though not off a wider upload's. */
   gallerySideTile: '(min-width: 1280px) 18vw, 22vw',
 } as const;
 
