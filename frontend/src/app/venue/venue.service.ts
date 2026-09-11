@@ -68,6 +68,7 @@ export class VenueService {
           ...venue,
           coverPhoto: resolveCoverPhoto(venue.coverPhoto),
           photos: (venue.photos ?? []).map(apiPhotoView),
+          lightboxPhotos: (venue.lightboxPhotos ?? []).map(apiPhotoView),
         })),
       );
   }

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
@@ -191,6 +192,27 @@ class JdbcPhotoStorageIT {
 		storage.delete(v, PhotoSlot.COVER);
 
 		assertFalse(storage.exists(v, new ContentHash("7a7a")), "removal is visible to a revalidation");
+	}
+
+	@Test
+	void admitsLightboxAndStillRejectsAnUnknownSurface() {
+		VenueId v = newVenue();
+		storage.replace(v, PhotoSlot.COVER, new ProcessedPhoto(List.of(
+				variant(PhotoSurface.CARD, "1a1a", new byte[] {1}),
+				variant(PhotoSurface.LIGHTBOX, "1b1b", new byte[] {2}))));
+
+		assertEquals(2, storage.listMetadata(v).get(0).variants().size(),
+				"venue_photo_variant_surface_check admits the lightbox token");
+
+		long photoId = jdbc.sql("SELECT id FROM venue_photo WHERE venue_id = :v")
+				.param("v", v.value()).query(Long.class).single();
+		assertThrows(DataIntegrityViolationException.class, () -> jdbc.sql("""
+				INSERT INTO venue_photo_variant
+				    (photo_id, venue_id, surface, content_hash, content_type, width, height, byte_size, bytes)
+				VALUES (:photo, :venue, 'POSTER', '1c1c', 'image/jpeg', 10, 10, 1, :bytes)
+				""")
+				.param("photo", photoId).param("venue", v.value()).param("bytes", new byte[] {3})
+				.update(), "the widened CHECK still names a closed set");
 	}
 
 	@Test

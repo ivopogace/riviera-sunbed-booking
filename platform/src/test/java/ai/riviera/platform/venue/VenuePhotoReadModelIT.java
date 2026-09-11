@@ -172,6 +172,63 @@ class VenuePhotoReadModelIT {
 	}
 
 	@Test
+	void publishesLightboxCandidatesWithoutDisturbingTheBannerList() throws Exception {
+		VenueId venue = newVenue("RM lightbox venue");
+		storage.replace(venue, PhotoSlot.COVER, new ProcessedPhoto(List.of(
+				variant(PhotoSurface.CARD, 1, "7a07"),
+				variant(PhotoSurface.BANNER, 1, "7b07"),
+				variant(PhotoSurface.BANNER, 2, "7c07"),
+				variant(PhotoSurface.LIGHTBOX, 1, "7d07"),
+				variant(PhotoSurface.PREVIEW, 1, "7e07"))));
+
+		mvc.perform(get("/api/venues/{v}", venue.value()))
+				.andExpect(status().isOk())
+				// Its OWN list: one candidate, because LIGHTBOX is stored at scale 1 alone.
+				.andExpect(jsonPath("$.lightboxPhotos[0].url").value(url(venue, "7d07")))
+				.andExpect(jsonPath("$.lightboxPhotos[0].sources[*].url")
+						.value(contains(url(venue, "7d07"))))
+				// The band and gallery read `photos`, which must be exactly what it was.
+				.andExpect(jsonPath("$.photos[0].url").value(url(venue, "7b07")))
+				.andExpect(jsonPath("$.photos[0].sources[*].url")
+						.value(contains(url(venue, "7b07"), url(venue, "7c07"))));
+	}
+
+	@Test
+	void fallsBackToBannerForAPhotoStoredBeforeTheLightboxSurface() throws Exception {
+		VenueId venue = newVenue("RM pre-lightbox venue");
+		seedCover(venue, "8a08", "8b08", "8c08");
+
+		mvc.perform(get("/api/venues/{v}", venue.value()))
+				.andExpect(status().isOk())
+				// Un-backfillable (ADR-0008), so the lightbox shows what the band shows.
+				.andExpect(jsonPath("$.lightboxPhotos[*].url").value(contains(url(venue, "8b08"))))
+				.andExpect(jsonPath("$.coverPhoto.banner.url").value(url(venue, "8b08")));
+	}
+
+	@Test
+	void keepsTheCoverPairGuardOnCardAndBannerAlone() throws Exception {
+		VenueId complete = newVenue("RM cover pair complete");
+		storage.replace(complete, PhotoSlot.COVER, new ProcessedPhoto(List.of(
+				variant(PhotoSurface.CARD, "9a09"),
+				variant(PhotoSurface.BANNER, "9b09"),
+				variant(PhotoSurface.LIGHTBOX, "9c09"))));
+		VenueId noBanner = newVenue("RM cover pair without banner");
+		storage.replace(noBanner, PhotoSlot.COVER, new ProcessedPhoto(List.of(
+				variant(PhotoSurface.CARD, "9d09"),
+				variant(PhotoSurface.LIGHTBOX, "9e09"))));
+
+		mvc.perform(get("/api/venues/{v}", complete.value()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.coverPhoto.banner.url").value(url(complete, "9b09")));
+
+		// A third member would make every pre-existing cover read as absent; it must not join.
+		mvc.perform(get("/api/venues/{v}", noBanner.value()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.coverPhoto").value(nullValue()))
+				.andExpect(jsonPath("$.lightboxPhotos[*].url").value(contains(url(noBanner, "9e09"))));
+	}
+
+	@Test
 	void mapReadExposesCoverPhotoAndNullWhenAbsent() throws Exception {
 		VenueId withCover = newVenue("RM map venue with cover");
 		VenueId noPhoto = newVenue("RM map venue without photo");

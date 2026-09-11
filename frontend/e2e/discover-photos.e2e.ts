@@ -3,7 +3,7 @@ import { expect, test, type Locator } from '@playwright/test';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { openShellOverlay } from './support/shell';
 import { settle } from './support/booking-dialog';
-import { photoView, photoViews } from './support/photo-views';
+import { lightboxPhotoView, photoView, photoViews } from './support/photo-views';
 
 /**
  * Real-render CI-safe e2e for the tourist cover-photo display: the Discover card
@@ -35,6 +35,13 @@ const CARD_SLIDESHOW = [
 const BANNER_SLIDESHOW = [
   photoView('/api/venues/1/photos/bb02', 1440),
   ...photoViews(['/api/venues/1/photos/cc03', '/api/venues/1/photos/dd04']),
+];
+
+/** The map read's `lightboxPhotos`: the LIGHTBOX surface is stored at one scale, so one candidate. */
+const LIGHTBOX_SLIDESHOW = [
+  lightboxPhotoView('/api/venues/1/photos/bb02'),
+  lightboxPhotoView('/api/venues/1/photos/cc03'),
+  lightboxPhotoView('/api/venues/1/photos/dd04'),
 ];
 
 const VENUES = [
@@ -95,6 +102,7 @@ const VENUE_MAP = {
   ],
   coverPhoto: COVER,
   photos: BANNER_SLIDESHOW,
+  lightboxPhotos: LIGHTBOX_SLIDESHOW,
 };
 
 test.beforeEach(async ({ page }) => {
@@ -139,7 +147,7 @@ test('the Discover card shows the cover photo (scrim kept), the photo-less card 
   await expectNoSeriousAxeViolations(page, 'beach map with its gallery grid');
 });
 
-test('every tourist photo offers its candidates as a srcset the browser sizes against (+ axe)', async ({
+test('each tourist photo surface offers the candidates its own list carries (+ axe)', async ({
   page,
 }) => {
   await page.goto('/');
@@ -156,7 +164,7 @@ test('every tourist photo offers its candidates as a srcset the browser sizes ag
   await page.getByTestId('venue-card').first().click();
   await expect(page).toHaveURL(/\/venues\/1/);
 
-  // One candidate list, three boxes, each sized by what it PAINTS, not by the box.
+  // The band and the gallery share one list, each sized by what it PAINTS, not by the box.
   const hero = page.getByTestId('gallery-hero');
   await expect(hero).toHaveAttribute('srcset', /photos\/bb02@1440 1440w$/);
   await expect(hero).toHaveAttribute(
@@ -169,9 +177,11 @@ test('every tourist photo offers its candidates as a srcset the browser sizes ag
     'auto, (min-width: 1280px) 18vw, 22vw',
   );
 
+  // The lightbox reads a list of its own, so its widest candidate is never offered to those two.
   await page.getByTestId('gallery-photo-0').click();
   const lightbox = page.getByTestId('lightbox-img');
-  await expect(lightbox).toHaveAttribute('srcset', /photos\/bb02@1440 1440w$/);
+  await expect(lightbox).toHaveAttribute('src', /photos\/bb02@2200$/);
+  await expect(lightbox).not.toHaveAttribute('srcset', /./);
   await expect(lightbox).toHaveAttribute('sizes', 'auto, 94vw');
 
   await settle(page);

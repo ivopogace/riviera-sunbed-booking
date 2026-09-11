@@ -86,6 +86,8 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 			List.of(PhotoSurface.CARD, PhotoSurface.PREVIEW);
 	private static final List<PhotoSurface> BANNER_SLIDESHOW =
 			List.of(PhotoSurface.BANNER, PhotoSurface.CARD, PhotoSurface.PREVIEW);
+	private static final List<PhotoSurface> LIGHTBOX_SLIDESHOW =
+			List.of(PhotoSurface.LIGHTBOX, PhotoSurface.BANNER, PhotoSurface.CARD, PhotoSurface.PREVIEW);
 
 	private final JdbcClient jdbc;
 	private final SetAvailabilityLookup availability;
@@ -171,13 +173,14 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 				photoVariantsByVenue(List.of(id.value())).getOrDefault(id.value(), Map.of());
 		CoverPhotoView coverPhoto = coverOf(photoVariants);
 		List<PhotoView> photos = slideshowOf(photoVariants, BANNER_SLIDESHOW);
+		List<PhotoView> lightboxPhotos = slideshowOf(photoVariants, LIGHTBOX_SLIDESHOW);
 
 		Instant now = clock.instant();
 		boolean closedForSeason = salesWindow.closedForSeason(v.seasonClosure(), now);
 		return Optional.of(new VenueMapView(v.id(), v.name(), v.beach(), v.region(),
 				v.description(), v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, amenities, v.distanceToWaterM(), sets, v.setVersion(), coverPhoto,
-				photos, salesWindow.isOpen(v.salesClose(), v.seasonClosure(), date, now),
+				photos, lightboxPhotos, salesWindow.isOpen(v.salesClose(), v.seasonClosure(), date, now),
 				SalesClose.WIRE.format(v.salesClose()), closedForSeason,
 				closedForSeason ? v.seasonClosure().reopenOn() : null));
 	}
@@ -333,6 +336,9 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	 * missing one of its CARD/BANNER surfaces (manual data fix, future surface-set change) must
 	 * read as "no cover" — otherwise the frontend's presence check passes and
 	 * {@code NgOptimizedImage} receives a null URL.
+	 *
+	 * <p>The pair is CARD and BANNER alone. A surface added later must not join it: every photo
+	 * stored before that surface existed would then read as no cover at all.
 	 */
 	private static CoverPhotoView coverOf(Map<PhotoSlot, Map<PhotoSurface, PhotoView>> slots) {
 		Map<PhotoSurface, PhotoView> cover = slots.getOrDefault(PhotoSlot.COVER, Map.of());
@@ -348,7 +354,9 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	 * A tourist slideshow: one photo per occupied slot, in {@link PhotoSlot} order (the EnumMap's
 	 * iteration order — cover, sunbeds, bar), taking each slot's first present surface per
 	 * {@code preference} — the Discover card wants {@link #CARD_SLIDESHOW}, the beach-map band
-	 * {@link #BANNER_SLIDESHOW}. The chosen surface brings all of its densities with it.
+	 * {@link #BANNER_SLIDESHOW}, the modal viewer {@link #LIGHTBOX_SLIDESHOW}. The chosen surface
+	 * brings all of its densities with it, and only its own, which is what keeps one list's widest
+	 * candidate out of another's.
 	 */
 	private static List<PhotoView> slideshowOf(Map<PhotoSlot, Map<PhotoSurface, PhotoView>> slots,
 			List<PhotoSurface> preference) {

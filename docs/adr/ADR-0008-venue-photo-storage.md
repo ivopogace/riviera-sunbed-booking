@@ -12,10 +12,13 @@ structured rows, so the question "where do the images live?" was genuinely open.
 - **Scale is small and known (Phase 1).** A handful of Albanian-riviera venues, ≈3 photos per
   venue, modest anonymous browse. Only **resized, capped renditions** are stored; the full-res
   upload (up to 25 MB) is decoded, resized and **discarded**. Measured against synthetic noise, so
-  an upper bound a real photograph stays under: the largest single rendition is ≈330 KB (the 16:9
-  retina banner) and one photo runs ≈135–565 KB across its renditions depending on aspect, so a
-  three-slot venue holds ≈0.4–1.7 MB. Still single-digit megabytes across all Phase-1 venues, which
-  is what the `bytea` decision below is sized for.
+  an upper bound a real photograph stays under, swept across aspects 2:3 to 8:3 and at the
+  worst-case aspect itself: the largest single rendition is ≈879 KB — the lightbox at **11:9**,
+  where that box fills at 2200 × 1800 rather than clamping on one axis — and one photo runs
+  ≈615 KB–1.26 MB across its renditions depending on aspect, so a three-slot venue holds
+  ≈1.8–3.8 MB. The same sweep on photo-like content gives ≈144–241 KB per photo and ≈0.4–0.7 MB
+  per venue. Still single-digit megabytes
+  across all Phase-1 venues, which is what the `bytea` decision below is sized for.
 - **The tourist read is public and must not hammer Neon.** Cards and the map banner are served
   to anonymous browsers; a "SELECT the blob on every render" would put the free-tier serverless
   Postgres (ADR-0004) in the hot path.
@@ -41,16 +44,21 @@ put big blobs in your OLTP database" objection does not bite.
 
 Serving discipline that keeps Neon out of the tourist hot path (part of this decision):
 
-- **Resize at upload → store only the small per-surface renditions.** Card, beach-map banner and
-  operator preview are distinct capped targets, and the two tourist ones carry a second rendition
-  at twice the density so the browser can pick per rendered box from a `srcset`; the full-res
-  original is never served and never stored. The retina rendition is skipped rather than upscaled
-  when the source is smaller than its box, and is encoded at a lower JPEG quality, which a
-  high-density display hides. Hard byte + dimension caps on every rendition; a ≈50 MP / 12,000-px
-  decode guard rejects decompression bombs regardless of byte size.
-- **The retina tier cannot be backfilled.** Discarding the original is what makes a photo stored
-  before that tier existed publish a one-candidate `srcset` until it is re-uploaded — the accepted
-  cost of not keeping masters.
+- **Resize at upload → store only the small per-surface renditions.** Card, beach-map banner,
+  lightbox and operator preview are distinct capped targets. `CARD` and `BANNER` each carry a
+  second rendition at twice the density so the browser can pick per rendered box from a `srcset`;
+  `LIGHTBOX` carries one because its near-square box already *is* the DPR-2 size for the viewer it
+  serves, and `PREVIEW` one because the operator slot is small and authenticated. The full-res
+  original is never served and never stored. A rendition whose box is larger than the source is
+  skipped rather than upscaled — which governs the retina tier and the lightbox baseline alike —
+  and both are encoded at a lower JPEG quality, which a high-density display hides. Hard byte +
+  dimension caps on every rendition; a ≈50 MP / 12,000-px decode guard rejects decompression bombs
+  regardless of byte size.
+- **A rendition added later cannot be backfilled.** Discarding the original is what makes a photo
+  stored before a surface or a density existed publish fewer candidates until it is re-uploaded —
+  the accepted cost of not keeping masters. Each slideshow read falls back to its next-best stored
+  surface, so such a photo is degraded, never absent; the cover read is the deliberate exception,
+  answering `null` without a pair rather than a partial cover.
 - **Content-hash URLs, revalidated.** The serving endpoint is keyed by the variant's content hash
   and returns a strong `ETag`, so a client stores the bytes once and thereafter reuses them via
   `304` — the database is hit ≈once per image, not per view. A replaced photo gets a new hash →
@@ -124,3 +132,34 @@ affordable again.
   scale-2 rendition so the browser can choose from a `srcset`. The stored-footprint figures above
   are the measurement that followed, and discarding the original became a stated consequence
   rather than only a privacy property — it is what makes the new tier un-backfillable.
+- #1070 — a fourth rendition target, `LIGHTBOX`, fit within a near-square **2200 × 1800** box at
+  scale 1 only: DPR 2 over the modal viewer's painted maximum of 1100 × 900 CSS px, measured with
+  `getBoundingClientRect` rather than derived from the markup. The viewer drew from the 8:3
+  `BANNER` box, which cannot carry a tall image — a 2:3 upload stored 640 × 960 where the paint
+  needs 1200 × 1800. Because the box is near-square the binding axis flips with the aspect at 11:9:
+  below it the height binds, above it the width — which is also where the box fills, and so where
+  the figures above take their ceiling. Those were re-taken on one generator so the before and
+  after are comparable. Three decisions ride with it:
+  - **The viewer reads its own candidate list**, not a widened shared one, so a 2200px-wide
+    candidate is never offered to the beach-map band or the gallery grid.
+  - **A phone pays for that.** With a `LIGHTBOX` row present the list holds one candidate, so a
+    390px viewport at DPR 2 fetches 2200w (≈97 KB) where its measured 358px box needs 716 device
+    px and `BANNER@1` (720w, ≈23 KB) covered it. Accepted: the viewer is a deliberate tourist
+    action and never the LCP element. A list carrying `LIGHTBOX` **and** `BANNER`'s densities would
+    restore the browser's choice and remove that cost — a `srcset` is picked by width, so the rungs
+    need no particular order — and it buys nothing above ≈2.29:1, where `BANNER@2` is already the
+    wider rendition (2208w against 2200w at 2.3:1, reaching 2560w only at 8:3). It is not taken
+    here because #1070 scopes the viewer to its own surface's densities; it is the cheapest
+    follow-up if the phone cost is ever judged to matter.
+  - **`BANNER` gains no scale-3 rung**, the question #1072 handed here. At DPR 3 the gallery hero's
+    measured 730.7 × 360 box is short by a uniform **11%** at every aspect from 2:3 to 16:9 — not
+    the 1%/11% split first reported, which was a 3:2-only artefact, and which this entry supersedes.
+    A `BANNER@3` rung would cost a measured 50–105 KB on every photo and would buy pixels the tree
+    now already holds: the `LIGHTBOX` rendition is wide enough to cover that box's DPR-3 need in all
+    five aspects. Reaching them is not free, though — the hero draws from the shared `photos` list,
+    so it means either widening that list (which moves the band too) or giving the gallery a merged
+    list of its own, the same construct the bullet above describes. Either is cheaper than a third
+    stored density on every photo, which is why the rung is declined rather than deferred.
+  The flip threshold is re-read and **unchanged**: the worst case is a three-slot venue at ≈3.8 MB
+  of incompressible noise and a real photograph stays near 0.7 MB, so none of the four conditions
+  is met by one more rendition at Phase-1 scale.

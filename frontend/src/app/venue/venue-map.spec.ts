@@ -17,7 +17,7 @@ import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
-import { photoView, photoViews } from '../../testing/photo-views';
+import { lightboxPhotoView, photoView, photoViews } from '../../testing/photo-views';
 import { uniformDays } from '../../testing/calendar-days';
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { formatBookingDate } from '../shared/booking-date-label';
@@ -535,32 +535,62 @@ describe('VenueMap', () => {
     expect(document.activeElement).toBe(tile);
   });
 
-  it('hands the gallery grid and the lightbox the same candidates, picking no variant itself', async () => {
+  it('gives the gallery grid and the lightbox separate candidate lists', async () => {
     venueRequest().flush({
       ...miramar(),
       photos: [
         photoView('/api/venues/1/photos/bb02', 1440),
         photoView('/api/venues/1/photos/cc03', 1440),
       ],
+      lightboxPhotos: [
+        lightboxPhotoView('/api/venues/1/photos/bb02'),
+        lightboxPhotoView('/api/venues/1/photos/cc03'),
+      ],
     });
     await settle();
     fixture.detectChanges();
 
     const srcset = (img: Element | null): string | null => img?.getAttribute('srcset') ?? null;
-    const expected =
-      `${environment.apiBaseUrl}/api/venues/1/photos/bb02 576w, ` +
-      `${environment.apiBaseUrl}/api/venues/1/photos/bb02@1440 1440w`;
 
-    // The hero tile letterboxes a ~730px box; the same photo's candidates back it.
-    expect(srcset(el().querySelector('[data-testid="gallery-hero"]'))).toBe(expected);
+    // The hero letterboxes a ~730px box and takes the banner pair from `photos`.
+    expect(srcset(el().querySelector('[data-testid="gallery-hero"]'))).toBe(
+      `${environment.apiBaseUrl}/api/venues/1/photos/bb02 576w, ` +
+        `${environment.apiBaseUrl}/api/venues/1/photos/bb02@1440 1440w`,
+    );
 
     el().querySelector<HTMLButtonElement>('[data-testid="gallery-photo-0"]')!.click();
     fixture.detectChanges();
 
-    // The same candidates in a far wider box: the server chose no variant, so both can be sharp.
+    // The lightbox draws from its own list, so the hero is never offered its widest candidate.
     const lightboxImg = el().querySelector('app-photo-lightbox img');
-    expect(srcset(lightboxImg)).toBe(expected);
+    expect(lightboxImg?.getAttribute('src')).toBe(
+      `${environment.apiBaseUrl}/api/venues/1/photos/bb02@2200`,
+    );
+    // One stored density means one candidate, and a one-entry srcset says nothing src does not.
+    expect(srcset(lightboxImg)).toBeNull();
     expect(lightboxImg?.getAttribute('sizes')).toBe('auto, 94vw');
+  });
+
+  it('shows the lightbox the banner photos when the payload carries no lightbox list', async () => {
+    // The field is absent, not empty — an older payload or a test double, not the server's fallback.
+    venueRequest().flush({
+      ...miramar(),
+      photos: [photoView('/api/venues/1/photos/bb02', 1440)],
+    });
+    await settle();
+    fixture.detectChanges();
+
+    el().querySelector<HTMLButtonElement>('[data-testid="photo-band-view"]')!.click();
+    fixture.detectChanges();
+
+    const lightboxImg = el().querySelector('app-photo-lightbox img');
+    expect(lightboxImg?.getAttribute('src')).toBe(
+      `${environment.apiBaseUrl}/api/venues/1/photos/bb02`,
+    );
+    expect(lightboxImg?.getAttribute('srcset')).toBe(
+      `${environment.apiBaseUrl}/api/venues/1/photos/bb02 576w, ` +
+        `${environment.apiBaseUrl}/api/venues/1/photos/bb02@1440 1440w`,
+    );
   });
 
   it('closes the lightbox on an in-place venue switch, instead of reopening on the new venue', async () => {

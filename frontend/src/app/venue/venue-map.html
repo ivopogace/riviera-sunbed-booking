@@ -350,7 +350,7 @@
 
     @if (lightboxIndex() !== undefined) {
       <app-photo-lightbox
-        [photos]="v.photos"
+        [photos]="v.lightboxPhotos"
         [startIndex]="lightboxIndex()!"
         [name]="v.name"
         (dismissed)="closeLightbox()"

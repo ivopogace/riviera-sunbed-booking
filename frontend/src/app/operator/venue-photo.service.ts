@@ -8,11 +8,12 @@ import { apiPhotoUrl } from '../shared/photo-url';
 import { PhotoSlotKey } from '../shared/venue-views';
 
 /**
- * One stored rendition of an uploaded photo. A tourist surface appears once per stored density, so
- * `surface` alone does not key this list — `scale` is the other half.
+ * One stored rendition of an uploaded photo. A surface appears once per stored density, so
+ * `surface` alone does not key this list — `scale` is the other half. The values mirror the
+ * backend's photo-surface vocabulary, lower-cased on the wire.
  */
 export interface PhotoVariantView {
-  readonly surface: 'card' | 'banner' | 'preview';
+  readonly surface: 'card' | 'banner' | 'lightbox' | 'preview';
   readonly scale: number;
   readonly url: string;
   readonly width: number;

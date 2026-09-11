@@ -38,12 +38,13 @@ model in `docs/architecture/domain-model.md`.
   named for that posture. The read answers **every** slot, empty ones as a null preview URL, and
   answers identically for an unknown venue, so it reports nothing about which venues exist.
 - **Photo variant** — one stored rendition of a venue photo, identified by the display surface it
-  is sized for (`CARD`, `BANNER`, `PREVIEW`) **and** its pixel density. The two tourist surfaces
-  carry a second rendition at twice the density, which the browser chooses between; the operator
-  preview carries one. Each is a fit-within-resized progressive JPEG served by its **content hash**
+  is sized for (`CARD`, `BANNER`, `LIGHTBOX`, `PREVIEW`) **and** its pixel density. `CARD` and
+  `BANNER` carry a second rendition at twice the density, which the browser chooses between;
+  `LIGHTBOX` and the operator preview carry one each — the lightbox's near-square box already is a
+  high-density size. Each is a fit-within-resized progressive JPEG served by its **content hash**
   at a public URL (`/api/venues/{venueId}/photos/{hash}`); a replace mints new hashes → new URLs,
   and a removed variant stops being served rather than outliving its removal in caches. A photo
-  uploaded before the second density existed keeps the single rendition it was given: the full-res
+  uploaded before a surface or a density existed keeps the renditions it was given: the full-res
   original is discarded at upload, so nothing can be re-derived from it.
 - **Venue visibility** — whether tourists can discover and book a venue: a venue is
   **visible iff its owning operator is `ACTIVE`** — derived, never a flag. Hidden

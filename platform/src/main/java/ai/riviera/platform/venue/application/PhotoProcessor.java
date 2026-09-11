@@ -28,15 +28,18 @@ import net.coobird.thumbnailator.Thumbnails;
 
 /**
  * Turns a raw operator upload into the capped, EXIF-stripped JPEG renditions every slot carries —
- * one per {@link PhotoSurface} at scale 1, plus a scale-2 retina rendition for the two tourist
- * surfaces. The pure image pipeline (no I/O, no DB, deterministic): validate (size → magic bytes → a
+ * one per {@link PhotoSurface} at scale 1 — {@code LIGHTBOX}'s conditionally — plus a scale-2 retina
+ * rendition for {@code CARD} and {@code BANNER}. The pure image pipeline (no I/O, no DB,
+ * deterministic): validate (size → magic bytes → a
  * <em>header-only</em> dimension guard against decompression bombs) → decode with EXIF orientation
- * applied → downscale per rendition (fit-within; the frontend's {@code object-fit} does the visible
- * crop) → re-encode as quality JPEG, which drops all source metadata incl. GPS EXIF (ADR-0008 /
+ * applied → downscale per rendition (fit-within, so the whole image is stored; the frontend's
+ * {@code object-fit} then crops it on the Discover card and letterboxes it everywhere else)
+ * → re-encode as quality JPEG, which drops all source metadata incl. GPS EXIF (ADR-0008 /
  * privacy).
  *
- * <p>A retina rendition that came out larger than its own source is discarded rather than stored, so
- * a small upload simply publishes fewer {@code srcset} candidates. A deep module behind one
+ * <p>A rendition that came out larger than its own source is discarded rather than stored wherever
+ * the surface can afford to be absent, so a small upload simply publishes fewer candidates; the
+ * {@code CARD}, {@code BANNER} and {@code PREVIEW} baselines always render. A deep module behind one
  * method; the only thing that varies across a seam is where the bytes then live
  * ({@link PhotoStorage}), not this. Package-private; the service depends on it directly (one impl —
  * a hypothetical seam, riviera-java-conventions §4).
@@ -44,22 +47,30 @@ import net.coobird.thumbnailator.Thumbnails;
 @Component
 class PhotoProcessor {
 
-	/** Per-surface max bounds at scale 1 (fit-within; CSS {@code object-fit: cover} crops on display). */
+	/** Per-surface max bounds at scale 1; fit-within, so a rendition keeps the upload's aspect. */
 	private static final int CARD_W = 640;
 	private static final int CARD_H = 384;
 	private static final int BANNER_W = 1280;
 	private static final int BANNER_H = 480;
 	private static final int PREVIEW_W = 480;
 	private static final int PREVIEW_H = 360;
+	/** DPR 2 over the lightbox's own box, which paints at most 1100 x 900 CSS px. */
+	private static final int LIGHTBOX_W = 2200;
+	private static final int LIGHTBOX_H = 1800;
 	private static final int BASE_SCALE = 1;
 	private static final int RETINA_SCALE = 2;
-	/** The two tourist surfaces; the operator slot preview is small, authenticated and stays scale 1. */
+	/** The surfaces carrying a second density; LIGHTBOX's box already is a DPR-2 size, PREVIEW needs none. */
 	private static final Set<PhotoSurface> RETINA_SURFACES =
 			Collections.unmodifiableSet(EnumSet.of(PhotoSurface.CARD, PhotoSurface.BANNER));
+	/** Surfaces whose baseline is skipped rather than upscaled; the rest must always render, or the
+	 *  photo would have nothing to serve. */
+	private static final Set<PhotoSurface> OPTIONAL_SURFACES =
+			Collections.unmodifiableSet(EnumSet.of(PhotoSurface.LIGHTBOX));
 	private static final String JPEG_TYPE = "image/jpeg";
 	private static final double JPEG_QUALITY = 0.82;
-	/** A high-density display hides the extra artifacts, so the retina tier trades quality for bytes. */
-	private static final double RETINA_JPEG_QUALITY = 0.62;
+	/** A high-density display hides the extra artifacts, so a rendition sized for one trades quality
+	 *  for bytes. */
+	private static final double HIGH_DENSITY_JPEG_QUALITY = 0.62;
 
 	private final long maxUploadBytes;
 	private final long maxMegapixels;
@@ -94,7 +105,10 @@ class PhotoProcessor {
 		try {
 			long sourcePixels = (long) width * height;
 			for (PhotoSurface surface : PhotoSurface.values()) {
-				variants.add(render(upload, surface, BASE_SCALE));
+				StoredVariant baseline = render(upload, surface, BASE_SCALE);
+				if (!OPTIONAL_SURFACES.contains(surface) || isNotUpscaled(baseline, sourcePixels)) {
+					variants.add(baseline);
+				}
 				if (RETINA_SURFACES.contains(surface)) {
 					StoredVariant retina = render(upload, surface, RETINA_SCALE);
 					if (isNotUpscaled(retina, sourcePixels)) {
@@ -127,7 +141,7 @@ class PhotoProcessor {
 				.useExifOrientation(true)
 				.size(bound[0], bound[1])
 				.outputFormat("jpg")
-				.outputQuality(scale == RETINA_SCALE ? RETINA_JPEG_QUALITY : JPEG_QUALITY)
+				.outputQuality(isHighDensity(surface, scale) ? HIGH_DENSITY_JPEG_QUALITY : JPEG_QUALITY)
 				.toOutputStream(out);
 		byte[] bytes = out.toByteArray();
 		// Header-only read of our own freshly encoded JPEG — no second full-raster decode just for
@@ -153,10 +167,16 @@ class PhotoProcessor {
 		return (long) rendition.width() * rendition.height() <= sourcePixels;
 	}
 
+	/** Whether the rendition is consumed at about one image pixel per device pixel. */
+	private static boolean isHighDensity(PhotoSurface surface, int scale) {
+		return scale == RETINA_SCALE || surface == PhotoSurface.LIGHTBOX;
+	}
+
 	private static int[] boundsFor(PhotoSurface surface, int scale) {
 		int[] base = switch (surface) {
 			case CARD -> new int[] {CARD_W, CARD_H};
 			case BANNER -> new int[] {BANNER_W, BANNER_H};
+			case LIGHTBOX -> new int[] {LIGHTBOX_W, LIGHTBOX_H};
 			case PREVIEW -> new int[] {PREVIEW_W, PREVIEW_H};
 		};
 		return new int[] {base[0] * scale, base[1] * scale};
