@@ -29,3 +29,22 @@ export function photoView(url: string, ...extraWidths: readonly number[]): MockP
 export function photoViews(urls: readonly string[]): readonly MockPhotoView[] {
   return urls.map((url) => photoView(url));
 }
+
+/** The BANNER baseline's width: `PhotoProcessor`'s 1280×480 box fits a 3:2 upload at 720×480. */
+const BANNER_BASELINE_WIDTH = 720;
+
+/**
+ * A venue-page photo carrying both stored BANNER candidates. {@link photoView}'s baseline is the
+ * CARD box, which understates the venue page by 144px and would let a spec read a candidate choice
+ * the real payload never offers — so the specs that assert which candidate the browser fetched
+ * build their photos here.
+ */
+export function bannerPhotoView(url: string): MockPhotoView {
+  return {
+    url,
+    sources: [
+      { url, width: BANNER_BASELINE_WIDTH },
+      { url: `${url}@1440`, width: 1440 },
+    ],
+  };
+}

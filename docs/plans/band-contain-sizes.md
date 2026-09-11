@@ -57,8 +57,10 @@ only relevant utility and it is unchanged. No class changes, so the no-drift com
 does not apply — if a phase ends up touching a class, rule 2 fires: `.photo-band` is a live test
 hook in `venue-map.spec.ts` and must survive as an inert marker`).
 
-**Branch:** `claude/intelligent-albattani-otm46u` — the cloud session's designated remote branch,
-standing in for `bugfix/band-contain-sizes` per `riviera-sdlc` § *Remote / cloud session addendum*.
+**Branch:** `claude/beach-map-band-sizes-ucub4s` — the implement session's designated remote
+branch, standing in for `bugfix/band-contain-sizes` per `riviera-sdlc` § *Remote / cloud session
+addendum*. It starts from `claude/intelligent-albattani-otm46u`, the planning session's branch,
+which carries this doc and is not on `main`.
 
 ---
 
@@ -98,7 +100,7 @@ adjacent to the change (a one-candidate photo emitting no `srcset`) is untouched
 | R-1 | A `vw` value tuned for one viewport under-serves at another, trading a DPR-1 win for a visible DPR-2 regression | high | med | The candidate set is coarse (720w / 1440w), so the whole correct answer is the window `360 < sizes ≤ 720` CSS px at every supported viewport. Derive the value against that window, not against a single width; AC-1/2/3 probe three viewport × DPR combinations | agent | open |
 | R-2 | A wide-panorama upload (aspect > ~2.7:1) paints wider than the tuned value and becomes under-served | low | low | Tune to the widest *common* aspect (16:9 → `264 × 1.78 ≈ 470` px painted), so under-service needs an unusually wide source; note the bound in the code's one-line comment | agent | open |
 | R-3 | A pixel value slips into `sizes` during tuning and throws `RuntimeError 2952` only in dev/test, not prod | med | med | AC-6 pins it in a unit spec, which runs in `ngDevMode`; the guard is the assertion, not review | agent | open |
-| R-4 | The gallery tiles' geometry is derived from markup rather than measured, so the tuned value is wrong | med | med | Measure the rendered tile boxes in the e2e run (`getBoundingClientRect`) before choosing values; phase 2 step 1 does this and records the numbers in this doc | agent | open |
+| R-4 | The gallery tiles' geometry is derived from markup rather than measured, so the tuned value is wrong | med | med | Measure the rendered tile boxes in the e2e run (`getBoundingClientRect`) before choosing values; phase 2 step 1 does this and records the numbers in this doc | agent | **closed** — measured in phase 0 (table under Open questions); the grid is 731/361 above 1280 and 485/239 from 1024 |
 | R-6 | Three existing specs pin today's exact `sizes` strings, so the fix lands as a red suite rather than a clean green | **certain** | low | Known and located before phase 0: `venue-map.spec.ts:425` (`'(min-width: 1280px) 70vw, 100vw'`), `discover-photos.e2e.ts:162` (hero) and `:166` (tile). They are updated in the phase that changes each value, not swept at the end. The Discover card's assertion at `:151` must NOT change — it is `object-cover` and out of scope | agent | open |
 | R-5 | Playwright's pinned browser revision is absent in the cloud sandbox; only `/opt/pw-browsers/chromium` exists | high | low | Run the mocked suite as `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` — `playwright.a11y.config.ts` honours only that env var (`riviera-local-debug` § Frontend). Never `playwright install`. CI has its own browsers and is unaffected | agent | open |
 
@@ -109,6 +111,29 @@ adjacent to the change (a one-candidate photo emitting no `srcset`) is untouched
 - **Open question:** Do the three gallery tiles want one shared `sizes` or one each? Their painted
   widths differ (hero ~2:1 box, side tiles ~2:1 but half the width). — *Owner:* agent ·
   *Resolves by:* phase 2 step 1, from the measured boxes
+
+### Measured boxes (phase 0 step 3)
+
+`getBoundingClientRect()` in a real Chromium, one photo for the band and three for the grid.
+"Painted" is the 16:9 letterbox inside that box (`min(boxW, boxH × 16/9)`), which is what the
+candidate should be chosen against. Candidates are 720w and 1440w, so the whole answer is a
+threshold: the browser takes 720w while `sizes × DPR ≤ 720` and 1440w above it.
+
+| Viewport | Band box | Band painted | Hero box | Hero painted | Tile box | Tile painted |
+|---|---|---|---|---|---|---|
+| 1920 | 1098 × 264 | 470 | 731 × 360 | 640 | 361 × 176 | 313 |
+| 1440 | 1098 × 264 | 470 | 731 × 360 | 640 | 361 × 176 | 313 |
+| 1280 | 1098 × 264 | 470 | 731 × 360 | 640 | 361 × 176 | 313 |
+| 1100 | 730 × 264 | 470 | 485 × 360 | 485 | 239 × 176 | 239 |
+| 1024 | 730 × 264 | 470 | 485 × 360 | 485 | 239 × 176 | 239 |
+| 900 | 730 × 150 | 267 | 485 × 220 | 391 | 239 × 106 | 189 |
+| 768 | 718 × 150 | 267 | 477 × 220 | 391 | 235 × 106 | 189 |
+| 500 | 450 × 150 | 267 | 299 × 220 | 299 | 145 × 106 | 145 |
+| 390 | 340 × 150 | 267 | 225 × 220 | 225 | 109 × 106 | 109 |
+
+The band's two heights confirm the plan's arithmetic: `30vw` / `45vw` / `35vw` land inside the
+`360 < s ≤ 720` window above 1024 and under 360 below it. The gallery is the surprise — see the
+phase 2 notes, where the measured hero already picks correctly at 1440 × DPR 1.
 
 ## Availability & concurrency (invariant #2)
 
@@ -148,14 +173,14 @@ changes only how the client describes its own layout.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, awaiting implement`
+**Stage pointer:** `implement — phase 0 done, phase 1 next`
 
-**Next action:** Start phase 0 — write the characterization e2e that pins today's wrong candidate
-(band fetches 1440w at DPR 1), and confirm it passes against unmodified `main`.
+**Next action:** Phase 1 — invert the characterization into AC-1 and add AC-2/AC-3, watch them
+fail, then replace the band's `sizes` with the three-clause responsive value.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Characterize: pin the wrong candidate today | | |
+| 0 — Characterize: pin the wrong candidate today | ✅ | `Pin today's band candidate selection (#1069)` |
 | 1 — Fix the beach-map band (both heights) | | |
 | 2 — Measure and fix the three gallery tiles | | |
 | 3 — Pin the no-pixel-token rule | | |
@@ -189,17 +214,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `frontend/e2e/venue-photo-candidates.e2e.ts` · Read `frontend/e2e/support/photo-views.ts`
 
-- [ ] **Step 1: Write the characterization test** — assert the band's `currentSrc` is the **1440w**
+- [x] **Step 1: Write the characterization test** — assert the band's `currentSrc` is the **1440w**
       candidate at 1440 × 900 DPR 1. This is today's wrong behaviour; the test passes now and is
       inverted in phase 1. Serve two distinguishable image bodies from `page.route` so `currentSrc`
       identifies the candidate unambiguously.
-- [ ] **Step 2: Run it, verify it PASSES** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → PASS
+- [x] **Step 2: Run it, verify it PASSES** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → PASS
       (characterization, not red-green; it documents the defect before the fix moves it)
-- [ ] **Step 3: Record the measured boxes** — in the same run, log
+- [x] **Step 3: Record the measured boxes** — in the same run, log
       `getBoundingClientRect()` for the band and each gallery tile, and write the numbers into
       this doc's Open questions. Phase 1 and 2 tune against measurements, not against markup arithmetic.
-- [ ] **Step 4: Commit** — `git commit -m "Pin today's band candidate selection (#1069)"`
-- [ ] **Step 5: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Commit** — `git commit -m "Pin today's band candidate selection (#1069)"`
+- [x] **Step 5: Update plan-doc execution status** in the same commit window.
 
 ---
 
