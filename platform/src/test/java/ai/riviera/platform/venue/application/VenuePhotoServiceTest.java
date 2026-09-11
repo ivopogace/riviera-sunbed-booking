@@ -154,6 +154,26 @@ class VenuePhotoServiceTest {
 		assertNull(slots.get(2).previewUrl());
 	}
 
+	@Test
+	void resolvesTheOperatorSlotFromPreviewEvenWithALightboxRow() throws IOException {
+		// Large enough to earn a LIGHTBOX rendition, which is 2200px wide where PREVIEW is 480.
+		PhotoUploadResult result = service.upload(new OperatorId(OPERATOR), new VenueId(VENUE),
+				PhotoSlot.COVER, jpeg(4000, 2667));
+		PhotoUploadResult.Stored stored = assertInstanceOf(PhotoUploadResult.Stored.class, result);
+		assertTrue(stored.metadata().variants().stream()
+				.anyMatch(v -> v.surface() == PhotoSurface.LIGHTBOX), "the fixture earns a lightbox row");
+
+		List<PhotoSlotView> slots = service.slotsOf(new VenueId(VENUE));
+
+		String previewHash = stored.metadata().variants().stream()
+				.filter(v -> v.surface() == PhotoSurface.PREVIEW)
+				.map(v -> v.hash().value())
+				.findFirst()
+				.orElseThrow();
+		assertTrue(slots.get(0).previewUrl().endsWith("/" + previewHash),
+				"the console slot serves PREVIEW, never the largest rendition present");
+	}
+
 	/**
 	 * The platform-admin case, mirroring {@link #takedownReachesAVenueTheCallerCouldNeverOwn}: the fake
 	 * ownership port refuses every venue but {@code VENUE}, so reading another venue's slots at all is

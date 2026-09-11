@@ -23,10 +23,15 @@ import java.util.List;
  *
  * <p>{@code photos} is the banner band's slideshow: one banner-sized {@link PhotoView} per occupied
  * photo slot, in {@link PhotoSlot} order (cover, sunbeds, bar), possibly empty. Each carries every
- * stored density so the browser picks per rendered box — the band, the gallery grid and the
- * lightbox all read this one list. Uploads predating the uniform per-slot surfaces serve their best
- * available variant (CARD, then PREVIEW) instead, so a venue's slideshow never loses a photo to the
- * rollout.
+ * stored density so the browser picks per rendered box — the band and the gallery grid read this
+ * list. Uploads predating the uniform per-slot surfaces serve their best available variant (CARD,
+ * then PREVIEW) instead, so a venue's slideshow never loses a photo to the rollout.
+ *
+ * <p>{@code lightboxPhotos} is the same slot order for the modal viewer, taken from the
+ * {@code LIGHTBOX} surface where one is stored and falling back to the same chain otherwise — a
+ * photo uploaded before that surface existed cannot gain one (ADR-0008), so it shows what the band
+ * shows. A separate list precisely so a 2200px-wide candidate is never offered to the band or the
+ * grid, whose {@code sizes} would take it.
  *
  * <p>{@code salesOpen} is whether online sales for the selected date are open right now —
  * booking's sales-window verdict (invariant #4), the on-day sales close and the season closure
@@ -42,5 +47,6 @@ public record VenueMapView(long id, String name, String beach, String region,
 		String description, int ratingTenths, int reviewsCount, String bookingMode,
 		MoneyView fromPrice, List<Amenity> amenities, Integer distanceToWaterM,
 		List<SetView> sets, long setVersion, CoverPhotoView coverPhoto, List<PhotoView> photos,
-		boolean salesOpen, String salesClose, boolean closedForSeason, LocalDate reopensOn) {
+		List<PhotoView> lightboxPhotos, boolean salesOpen, String salesClose, boolean closedForSeason,
+		LocalDate reopensOn) {
 }

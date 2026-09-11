@@ -263,14 +263,15 @@ the banner list it already computes. No deviation. No `sizes` value changes (R-9
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 done; phase 2 next`
+**Stage pointer:** `implement — phases 1-2 done; phase 3 next`
 
-**Next action:** Phase 2 — the read model's second candidate list, test-first.
+**Next action:** Phase 3 — the frontend mirror, the lightbox wiring, and the two specs this slice
+falsifies, test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 1 — The `LIGHTBOX` surface + V57 + the processor bound | ✅ | `6a363052` |
-| 2 — The read model's second candidate list | | |
+| 2 — The read model's second candidate list | ✅ | `f4118692` |
 | 3 — The frontend mirror, the lightbox wiring, and the two specs it falsifies | | |
 | 4 — Substrate docs: ADR-0008, CONTEXT.md + close-out | | |
 
