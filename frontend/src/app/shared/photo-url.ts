@@ -28,6 +28,38 @@ export function resolveCoverPhoto(cover: CoverPhotoView | null | undefined): Cov
 }
 
 /**
+ * The `sizes` every `object-contain` photo surface authors, kept together because not one of them
+ * is readable at its call site. A contain-fitted element paints `boxHeight × sourceAspect` rather
+ * than its own width, so each value below describes the LETTERBOXED image and was derived from
+ * boxes measured in a real engine — a `sizes` describing the element instead bought the retina
+ * candidate for images the baseline one already covered.
+ *
+ * <p>Two rules hold for anything added here. The length is viewport-relative: a `px` length throws
+ * `RuntimeError 2952` from `NgOptimizedImage`'s dev-mode guard, which is live on these surfaces
+ * because they supply `[attr.srcset]` rather than `ngSrcset` (the `px` inside a media condition is
+ * not a length and is fine). And the value is constant per instance, which
+ * `assertNoPostInitInputChange` requires. Which candidate each one buys is pinned in
+ * `frontend/e2e/venue-photo-candidates.e2e.ts`.
+ *
+ * <p>Every clause aims at the painted width and, above all, inside the window the stored candidate
+ * pair leaves: with only a 720w and a 1440w rendition, `360 < value ≤ 720` CSS px is what takes the
+ * baseline at DPR 1 and the retina one at DPR 2, and `value ≤ 360` is what takes the baseline at
+ * both. Tuned to a 16:9 upload and to viewports up to ~2000px; outside either the value overstates
+ * again, which costs a candidate rather than correctness.
+ */
+export const CONTAIN_SIZES = {
+  /** The beach-map band: 1098 × 264 above the 1024px step and 730 × 150 below, so a 16:9 photo
+   *  paints ~470 CSS px and ~267 px respectively — never the ~1008 px its width claimed. */
+  band: '(min-width: 1280px) 30vw, (min-width: 1024px) 45vw, 35vw',
+  /** The gallery hero, two of three columns: ~640 CSS px painted in a 731px box above 1280, ~485 px
+   *  in a 485px box below it, where the grid drops to the narrower breakout. */
+  galleryHero: '(min-width: 1280px) 35vw, (min-width: 1024px) 45vw, 55vw',
+  /** A gallery side tile, one column: it paints under 360 CSS px at every viewport, so it wants the
+   *  baseline candidate at both densities and one clause says so. */
+  gallerySideTile: '22vw',
+} as const;
+
+/**
  * A photo's candidates as an HTML `srcset` with width descriptors, or `null` with fewer than two —
  * a one-candidate `srcset` says nothing `src` does not, and the attribute is then better absent.
  *

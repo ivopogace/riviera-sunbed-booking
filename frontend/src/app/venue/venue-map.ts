@@ -25,7 +25,7 @@ import { PhotoGalleryGrid } from '../shared/photo-gallery-grid';
 import { PhotoLightbox } from '../shared/photo-lightbox';
 import { PhotoScrim } from '../shared/photo-scrim';
 import { PhotoSlideshow } from '../shared/photo-slideshow';
-import { slideshowPhotos } from '../shared/photo-url';
+import { CONTAIN_SIZES, slideshowPhotos } from '../shared/photo-url';
 import { isRated, ratingScore, reviewsLabel } from '../shared/rating';
 import { RetryButton } from '../shared/retry-button';
 import { defaultBookingDate, formatCivilDate, isIsoDate } from '../shared/booking-date';
@@ -144,6 +144,9 @@ interface VenueHeader {
 export class VenueMap {
   /** The legend's rows, in tile-state order — labelled beside the colours they explain. */
   protected readonly legend = MAP_TILE_LEGEND;
+
+  /** The band letterboxes, so it states the width its PAINTED photo needs — {@link CONTAIN_SIZES}. */
+  protected readonly bandSizes = CONTAIN_SIZES.band;
 
   private readonly route = inject(ActivatedRoute);
   private readonly venues = inject(VenueService);

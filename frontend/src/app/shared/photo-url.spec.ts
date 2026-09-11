@@ -1,6 +1,12 @@
 import { environment } from '../../environments/environment';
 
-import { apiPhotoView, photoSrcset, resolveCoverPhoto, slideshowPhotos } from './photo-url';
+import {
+  apiPhotoView,
+  CONTAIN_SIZES,
+  photoSrcset,
+  resolveCoverPhoto,
+  slideshowPhotos,
+} from './photo-url';
 import { PhotoView } from './venue-views';
 
 const CARD: PhotoView = {
@@ -21,6 +27,13 @@ describe('photo-url', () => {
     expect(photoSrcset(CARD)).toBe(
       '/api/venues/1/photos/aa01 576w, /api/venues/1/photos/bb02 1152w',
     );
+  });
+
+  it('states every contain-fitted sizes as vw clauses with a vw fallback, never a pixel length', () => {
+    // A px LENGTH throws RuntimeError 2952; the px inside a media condition is fine.
+    for (const [surface, value] of Object.entries(CONTAIN_SIZES)) {
+      expect(value, surface).toMatch(/^(\(min-width: \d+px\) \d+vw, )*\d+vw$/);
+    }
   });
 
   it('returns null for a single candidate, since src already carries it', () => {

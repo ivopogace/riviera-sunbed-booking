@@ -69,13 +69,13 @@ which carries this doc and is not on `main`.
 > Each AC observes **which candidate the browser actually fetched** (`img.currentSrc`), never the
 > `sizes` string itself. A pinned string is a tautology; the candidate is the behaviour.
 
-- [ ] **AC-1:** Given a venue whose cover photo carries both `BANNER` candidates (720w + 1440w), when the venue page renders at a 1440 × 900 viewport at **DPR 1**, then the band image's `currentSrc` is the **720w** candidate. *Seam:* the `/venue/:venueId` route's rendered band `<img>` · *Pinned by:* `venue-photo-candidates.e2e.ts` → `band picks the baseline candidate at DPR 1`
-- [ ] **AC-2:** Given the same venue, when the venue page renders at 1440 × 900 at **DPR 2**, then the band image's `currentSrc` is the **1440w** candidate. *Seam:* same route · *Pinned by:* `venue-photo-candidates.e2e.ts` → `band still picks the retina candidate at DPR 2`
-- [ ] **AC-3:** Given the same venue at a **900 × 800** viewport (the 150 px band, below the `min-[1024px]` step), when the page renders at **DPR 2**, then `currentSrc` is the **720w** candidate — the short band needs 267 device px at most. *Seam:* same route · *Pinned by:* `venue-photo-candidates.e2e.ts` → `the short band stays on the baseline candidate at DPR 2`
-- [ ] **AC-4:** Given a photo with a **single** stored candidate (pre-retina, un-backfillable per ADR-0008), when the band renders, then no `srcset` attribute is emitted and `src` is the baseline URL. *Seam:* `photoSrcset` in `shared/photo-url.ts`, observed through the rendered `<img>` · *Pinned by:* `photo-slideshow.spec.ts` → `emits no srcset for a one-candidate photo`
-- [ ] **AC-5:** Given a venue with ≥ 2 photos (so the gallery grid renders), when the page renders at 1440 × 900 at **DPR 1**, then the hero tile and both side tiles each resolve to the **720w** candidate. *Seam:* the `/venue/:venueId` route's rendered gallery `<img>`s · *Pinned by:* `venue-photo-candidates.e2e.ts` → `every contain-fitted gallery tile picks the baseline candidate at DPR 1`
-- [ ] **AC-6:** Given any `sizes` value this slice authors, when `NgOptimizedImage` initialises in dev mode, then no `RuntimeError 2952` is thrown — i.e. no value contains a `px` token. *Seam:* the `sizes` input of `app-photo-slideshow` / the gallery `<img>`s · *Pinned by:* `photo-url.spec.ts` → `no authored sizes value carries a pixel token`
-- [ ] **AC-7:** Given the three existing specs that pin today's exact `sizes` strings, when the slice lands, then each asserts the new value and its test name still describes what it checks. *Seam:* the same rendered `<img>`s those specs already observe · *Pinned by:* `venue-map.spec.ts` → `sizes the single-photo header band to its own breakout, not the 100vw default` (line 415, whose name must change too) and `discover-photos.e2e.ts` → `every tourist photo offers its candidates as a srcset the browser sizes against`
+- [x] **AC-1:** Given a venue whose cover photo carries both `BANNER` candidates (720w + 1440w), when the venue page renders at a 1440 × 900 viewport at **DPR 1**, then the band image's `currentSrc` is the **720w** candidate. *Seam:* the `/venue/:venueId` route's rendered band `<img>` · *Pinned by:* `venue-photo-candidates.e2e.ts` → `band picks the baseline candidate at DPR 1`
+- [x] **AC-2:** Given the same venue, when the venue page renders at 1440 × 900 at **DPR 2**, then the band image's `currentSrc` is the **1440w** candidate. *Seam:* same route · *Pinned by:* `venue-photo-candidates.e2e.ts` → `band still picks the retina candidate at DPR 2`
+- [x] **AC-3:** Given the same venue at a **900 × 800** viewport (the 150 px band, below the `min-[1024px]` step), when the page renders at **DPR 2**, then `currentSrc` is the **720w** candidate — the short band needs 267 device px at most. *Seam:* same route · *Pinned by:* `venue-photo-candidates.e2e.ts` → `the short band stays on the baseline candidate at DPR 2`
+- [x] **AC-4:** Given a photo with a **single** stored candidate (pre-retina, un-backfillable per ADR-0008), when the band renders, then no `srcset` attribute is emitted and `src` is the baseline URL. *Seam:* `photoSrcset` in `shared/photo-url.ts`, observed through the rendered `<img>` · *Pinned by:* `photo-slideshow.spec.ts` → `renders no srcset for a photo with a single candidate, since src already says it` (the test that already existed; it is AC-4's pin, so no duplicate was written)
+- [x] **AC-5:** Given a venue with ≥ 2 photos (so the gallery grid renders), when the page renders at 1440 × 900 at **DPR 1**, then the hero tile and both side tiles each resolve to the **720w** candidate. *Seam:* the `/venue/:venueId` route's rendered gallery `<img>`s · *Pinned by:* `venue-photo-candidates.e2e.ts` → `every contain-fitted gallery tile picks the baseline candidate at DPR 1` (green before the change too, so it is a guard; the hero's genuinely red viewports are the two cases beside it — phase 2 notes)
+- [x] **AC-6:** Given any `sizes` value this slice authors, when `NgOptimizedImage` initialises in dev mode, then no `RuntimeError 2952` is thrown — i.e. no value contains a `px` token. *Seam:* the `sizes` input of `app-photo-slideshow` / the gallery `<img>`s · *Pinned by:* `photo-url.spec.ts` → `states every contain-fitted sizes as vw clauses with a vw fallback, never a pixel length`, and `photo-slideshow.spec.ts` → `carries every authored contain-fitted sizes through NgOptimizedImage untouched`, which runs the real directive rather than a copy of its regex
+- [x] **AC-7:** Given the three existing specs that pin today's exact `sizes` strings, when the slice lands, then each asserts the new value and its test name still describes what it checks. *Seam:* the same rendered `<img>`s those specs already observe · *Pinned by:* `venue-map.spec.ts` → `sizes the single-photo header band to its own breakout, not the 100vw default` (line 415, whose name must change too) and `discover-photos.e2e.ts` → `every tourist photo offers its candidates as a srcset the browser sizes against`
 
 ## Non-goals
 
@@ -99,7 +99,7 @@ adjacent to the change (a one-candidate photo emitting no `srcset`) is untouched
 |---|---|---|---|---|---|---|
 | R-1 | A `vw` value tuned for one viewport under-serves at another, trading a DPR-1 win for a visible DPR-2 regression | high | med | The candidate set is coarse (720w / 1440w), so the whole correct answer is the window `360 < sizes ≤ 720` CSS px at every supported viewport. Derive the value against that window, not against a single width; AC-1/2/3 probe three viewport × DPR combinations | agent | **closed** — AC-2 (DPR 2) passed before and after the band change, so the DPR-1 win cost no retina ground |
 | R-2 | A wide-panorama upload (aspect > ~2.7:1) paints wider than the tuned value and becomes under-served | low | low | Tune to the widest *common* aspect (16:9 → `264 × 1.78 ≈ 470` px painted), so under-service needs an unusually wide source; note the bound in the code's one-line comment | agent | **closed** — the bound is stated in the band's template comment beside the value |
-| R-3 | A pixel value slips into `sizes` during tuning and throws `RuntimeError 2952` only in dev/test, not prod | med | med | AC-6 pins it in a unit spec, which runs in `ngDevMode`; the guard is the assertion, not review | agent | open |
+| R-3 | A pixel value slips into `sizes` during tuning and throws `RuntimeError 2952` only in dev/test, not prod | med | med | AC-6 pins it in a unit spec, which runs in `ngDevMode`; the guard is the assertion, not review | agent | **closed** — two specs over `CONTAIN_SIZES`, and a `300px` mutation failed both |
 | R-4 | The gallery tiles' geometry is derived from markup rather than measured, so the tuned value is wrong | med | med | Measure the rendered tile boxes in the e2e run (`getBoundingClientRect`) before choosing values; phase 2 step 1 does this and records the numbers in this doc | agent | **closed** — measured in phase 0 (table under Open questions); the grid is 731/361 above 1280 and 485/239 from 1024 |
 | R-6 | Three existing specs pin today's exact `sizes` strings, so the fix lands as a red suite rather than a clean green | **certain** | low | Known and located before phase 0: `venue-map.spec.ts:425` (`'(min-width: 1280px) 70vw, 100vw'`), `discover-photos.e2e.ts:162` (hero) and `:166` (tile). They are updated in the phase that changes each value, not swept at the end. The Discover card's assertion at `:151` must NOT change — it is `object-cover` and out of scope | agent | **closed** — all three repointed in the phase that moved their value; the Discover card's stands unchanged |
 | R-5 | Playwright's pinned browser revision is absent in the cloud sandbox; only `/opt/pw-browsers/chromium` exists | high | low | Run the mocked suite as `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` — `playwright.a11y.config.ts` honours only that env var (`riviera-local-debug` § Frontend). Never `playwright install`. CI has its own browsers and is unaffected | agent | **closed** — the env var ran every phase's suite against Chromium 141 |
@@ -174,17 +174,17 @@ changes only how the client describes its own layout.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 2 done, phase 3 next`
+**Stage pointer:** `implement — all phases done; PR gates next`
 
-**Next action:** Phase 3 — extract the authored `sizes` values to named constants and pin the
-no-pixel-token rule (AC-6) plus the one-candidate no-`srcset` guard (AC-4).
+**Next action:** Check the PR's CI run, then mark PR #1071 ready for review and run the review gate
+(`riviera-sdlc` `references/pr-gates.md` §1) and the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Characterize: pin the wrong candidate today | ✅ | `Pin today's band candidate selection (#1069)` |
 | 1 — Fix the beach-map band (both heights) | ✅ | `Size the beach-map band by its painted image (#1069)` |
 | 2 — Measure and fix the three gallery tiles | ✅ | `Size the gallery tiles by their painted images (#1069)` |
-| 3 — Pin the no-pixel-token rule | | |
+| 3 — Pin the no-pixel-token rule | ✅ | `Guard authored sizes against pixel tokens (#1069)` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -311,15 +311,22 @@ Probed in Chromium 141 over 8 viewports × 2 densities against the real `720w, 1
 
 **Files:** Modify `frontend/src/app/shared/photo-url.ts` · Test `frontend/src/app/shared/photo-url.spec.ts`, `frontend/src/app/shared/photo-slideshow.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — AC-6 (no authored value carries a `px` token) and AC-4
-      (a one-candidate photo emits no `srcset`). If phase 1/2 left the values inline in templates,
-      extract them to named constants in `photo-url.ts` first so a spec can reach them.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- photo-url` → FAIL
-- [ ] **Step 3: Minimal implementation** — the constants + the guard.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- photo-url photo-slideshow` → PASS, then
-      `npm run lint && npm run format:check`
-- [ ] **Step 5: Commit** — `git commit -m "Guard authored sizes against pixel tokens (#1069)"`
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+- [x] **Step 1: Write the failing tests** — the three authored values moved into one named
+      `CONTAIN_SIZES` registry in `photo-url.ts`, and AC-6 written twice over it: the shape rule at
+      the registry (`photo-url.spec.ts`) and the real one through the directive
+      (`photo-slideshow.spec.ts`). AC-4 needed no new test — `photo-slideshow.spec.ts` →
+      `renders no srcset for a photo with a single candidate, since src already says it` already
+      pins it, and a duplicate would have proven nothing.
+- [x] **Step 2: Run it, verify it fails** — FAIL, no `CONTAIN_SIZES` to import. Then, once green,
+      mutated `gallerySideTile` to `300px`: both tests failed, the directive one on the real
+      `NG02952` text. The guard bites.
+- [x] **Step 3: Minimal implementation** — the registry, and the three surfaces bound to it
+      (`[sizes]` instead of a literal attribute; still constant per instance, as
+      `assertNoPostInitInputChange` requires).
+- [x] **Step 4: Run it, verify it passes** — 3162/3162 unit tests, the two photo e2e specs green
+      after the binding change, plus `npm run lint` and `npm run format:check`.
+- [x] **Step 5: Commit** — `git commit -m "Guard authored sizes against pixel tokens (#1069)"`
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -333,12 +340,12 @@ Probed in Chromium 141 over 8 viewports × 2 densities against the real `720w, 1
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → 720w at DPR 1. Verified at commit `<sha>`.
-- [ ] **AC-2:** same run → 1440w at DPR 2. Verified at commit `<sha>`.
-- [ ] **AC-3:** same run → 720w on the short band at DPR 2. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `npm test -- photo-slideshow` → no `srcset` for one candidate. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → all three tiles 720w at DPR 1. Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `npm test -- photo-url` → no pixel token. Verified at commit `<sha>`.
+- [x] **AC-1:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → 720w at DPR 1. Verified at commit `<sha>`.
+- [x] **AC-2:** same run → 1440w at DPR 2. Verified at commit `<sha>`.
+- [x] **AC-3:** same run → 720w on the short band at DPR 2. Verified at commit `<sha>`.
+- [x] **AC-4:** Run `npm test -- photo-slideshow` → no `srcset` for one candidate. Verified at commit `<sha>`.
+- [x] **AC-5:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → all three tiles 720w at DPR 1. Verified at commit `<sha>`.
+- [x] **AC-6:** Run `npm test -- photo-url` → no pixel token. Verified at commit `<sha>`.
 
 ## Self-review checklist (before merge / PR)
 

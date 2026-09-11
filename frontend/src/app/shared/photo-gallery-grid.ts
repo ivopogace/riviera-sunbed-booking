@@ -1,7 +1,7 @@
 import { NgOptimizedImage } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 
-import { photoSrcset } from './photo-url';
+import { CONTAIN_SIZES, photoSrcset } from './photo-url';
 import { TouchTarget } from './touch-target';
 import { PhotoView } from './venue-views';
 
@@ -23,15 +23,10 @@ import { PhotoView } from './venue-views';
  * mount a {@link PhotoLightbox} seeded at the tapped photo; the image itself stays `alt=""` since
  * the button's own label already names the action.
  *
- * <p>Letterboxing is also why each `sizes` describes the PAINTED image and not the tile: a 16:9
- * upload covers ~640 CSS px of the 731 px hero and ~313 px of a 361 px side tile, so a `sizes`
- * stating the tile bought a 1440w candidate the 720w one already covered. The hero's three clauses
- * follow its three box widths and each computes inside `360 < s ≤ 720` CSS px, which is what takes
- * 720w at DPR 1 and 1440w at DPR 2; a side tile paints under 360 px at every viewport, so it wants
- * 720w at both densities and states one value. Tuned to 16:9 and to viewports up to ~2000 px —
- * beyond either the value overstates again, which costs a candidate, not correctness. The side
- * tiles are lazy, so Chromium resolves their `auto` prefix against the tile box instead and this
- * value only reaches engines without it.
+ * <p>Letterboxing is also why each tile's `sizes` comes from {@link CONTAIN_SIZES}, which states
+ * the width the PAINTED photo needs rather than the tile's own. The side tiles are lazy, so
+ * Chromium resolves their `auto` prefix against the tile box and the authored value reaches only
+ * engines without `sizes=auto`; the eager hero's reaches every engine.
  */
 @Component({
   selector: 'app-photo-gallery-grid',
@@ -58,7 +53,7 @@ import { PhotoView } from './venue-views';
           [ngSrc]="photos()[0].url"
           [attr.srcset]="srcsetOf(photos()[0])"
           disableOptimizedSrcset
-          sizes="(min-width: 1280px) 35vw, (min-width: 1024px) 45vw, 55vw"
+          [sizes]="sizes.galleryHero"
           fill
           priority
           class="relative object-contain"
@@ -87,7 +82,7 @@ import { PhotoView } from './venue-views';
             [ngSrc]="second.url"
             [attr.srcset]="srcsetOf(second)"
             disableOptimizedSrcset
-            sizes="22vw"
+            [sizes]="sizes.gallerySideTile"
             fill
             class="relative object-contain"
             alt=""
@@ -114,7 +109,7 @@ import { PhotoView } from './venue-views';
             [ngSrc]="third.url"
             [attr.srcset]="srcsetOf(third)"
             disableOptimizedSrcset
-            sizes="22vw"
+            [sizes]="sizes.gallerySideTile"
             fill
             class="relative object-contain"
             alt=""
@@ -126,6 +121,9 @@ import { PhotoView } from './venue-views';
   `,
 })
 export class PhotoGalleryGrid {
+  /** Each tile letterboxes, so it states the width its PAINTED photo needs. */
+  protected readonly sizes = CONTAIN_SIZES;
+
   /** Caller guarantees length >= 2 — see the class doc. */
   readonly photos = input.required<readonly PhotoView[]>();
   /** The subject named in each tile's accessible label. */
