@@ -253,7 +253,7 @@ widths are all unchanged; only the client-side `sizes` hint moves.
 |-------|--------|---------|
 | 0 — Pin the defect as a red e2e | ✅ (red by design) | `3ccb0f50` |
 | 1 — Ship the capped clause and correct the shape rule | ✅ | `848ac99f` |
-| 2 — State the density and aspect bounds in the registry TSDoc | ✅ | `<phase-2>` |
+| 2 — State the density and aspect bounds in the registry TSDoc | ✅ | `a305cf3a` |
 | 3 — Close-out: retire `band-contain-sizes.md`, finalize this doc | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
