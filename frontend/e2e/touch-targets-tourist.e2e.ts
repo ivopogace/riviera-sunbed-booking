@@ -1,10 +1,10 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 import { mockCustomerAuthApi, mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
 import { openShellOverlay } from './support/shell';
 import { expectTouchTargets } from './support/touch-targets';
-import { photoViews } from './support/photo-views';
+import { TOURIST_BOOKING, mockTourist } from './support/tourist.mocks';
 
 /**
  * The 44 px touch-target floor (#605) over the tourist, auth and booking surfaces — the third and
@@ -15,104 +15,6 @@ import { photoViews } from './support/photo-views';
  * ours, so `/booking/pay` is swept through the booking dialog — reaching it by URL alone renders
  * only the empty state.
  */
-
-const VENUE = {
-  id: 1,
-  name: 'Miramar Beach Club',
-  beach: 'Ksamil',
-  region: 'Albanian Riviera',
-  description: 'Premium loungers on the Ksamil shoreline.',
-  ratingTenths: 48,
-  reviewsCount: 326,
-  bookingMode: 'INSTANT',
-  fromPrice: { minorUnits: 2500, currency: 'EUR' },
-  amenities: ['SHOWERS', 'BEACH_BAR', 'FREE_PARKING', 'WIFI'],
-  distanceToWaterM: 15,
-  availability: { free: 4, total: 6 },
-  coverPhoto: null,
-  // A multi-photo slideshow so the home sweep measures the card's step controls.
-  photos: photoViews([
-    '/api/venues/1/photos/aa01',
-    '/api/venues/1/photos/cc03',
-    '/api/venues/1/photos/dd04',
-  ]),
-  sets: Array.from({ length: 6 }, (_, i) => ({
-    id: i + 1,
-    rowLabel: i < 3 ? 'Front row · Sea view' : 'Second row',
-    positionNo: (i % 3) + 1,
-    tier: i < 3 ? 'PREMIUM' : 'STANDARD',
-    pool: 'ONLINE',
-    price: { minorUnits: 4500, currency: 'EUR' },
-    gridX: (i % 3) + 1,
-    gridY: i < 3 ? 1 : 2,
-    availability: 'FREE',
-  })),
-};
-
-const BOOKING = {
-  code: 'WXYZ345678',
-  status: 'CONFIRMED',
-  venueId: 1,
-  venueName: 'Miramar Beach Club',
-  rowLabel: 'Front row · Sea view',
-  positionNo: 2,
-  bookingDate: '2026-12-01',
-  amount: { minorUnits: 4500, currency: 'EUR' },
-  cancellable: true,
-  beforeCutoff: true,
-  refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
-  refundedAmount: null,
-  // The wire always carries a panel; a stay nobody checked in is the reason there is no form.
-  reviewPanel: { kind: 'NOT_COMPLETED' },
-};
-
-async function mockTourist(page: Page): Promise<void> {
-  await page.route(/\/api\/auth\/me$/, (route) =>
-    route.fulfill({ status: 401, json: { code: 'UNAUTHENTICATED' } }),
-  );
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE }));
-  await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [VENUE] }));
-  // One listed review with a page behind it, so the sweep measures the "Show more" control.
-  await page.route(/\/api\/venues\/1\/reviews(\?.*)?$/, (route) =>
-    route.fulfill({
-      json: {
-        reviews: [{ id: 41, stars: 4, displayName: 'Ana', stayedIn: '2026-07', comment: 'Great.' }],
-        nextCursor: 41,
-      },
-    }),
-  );
-  await page.route(/\/api\/venues\/1\/photos\/[0-9a-f]+$/, (route) =>
-    route.fulfill({
-      // A 1×1 PNG so the slideshow <img>s genuinely load under the sweep.
-      body: Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-        'base64',
-      ),
-      contentType: 'image/png',
-    }),
-  );
-  await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
-    route.fulfill({ json: BOOKING }),
-  );
-  await page.route('**/api/bookings', (route) =>
-    route.fulfill({
-      status: 202,
-      json: {
-        code: 'WXYZ345678',
-        status: 'AWAITING_PAYMENT',
-        venueId: 1,
-        venueName: 'Miramar Beach Club',
-        setId: 2,
-        rowLabel: 'Front row · Sea view',
-        positionNo: 2,
-        bookingDate: '2026-12-01',
-        amount: { minorUnits: 4500, currency: 'EUR' },
-        clientSecret: 'pi_123_secret_abc',
-        paymentIntentId: 'pi_123',
-      },
-    }),
-  );
-}
 
 test.describe('44px touch targets on the tourist surfaces at a phone width', () => {
   test.beforeEach(async ({ page }) => {
@@ -233,7 +135,7 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
       route.fulfill({
         json: {
-          ...BOOKING,
+          ...TOURIST_BOOKING,
           status: 'COMPLETED',
           cancellable: false,
           reviewPanel: {
@@ -256,7 +158,7 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
       route.fulfill({
         json: {
-          ...BOOKING,
+          ...TOURIST_BOOKING,
           status: 'COMPLETED',
           cancellable: false,
           reviewPanel: {
