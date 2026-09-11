@@ -115,7 +115,7 @@ import { TouchTarget } from '../shared/touch-target';
             <button
               appTouchTarget
               type="button"
-              [class]="cls.themeOption"
+              [class]="cls.button"
               [attr.aria-pressed]="option.id === consoleTheme.theme()"
               [attr.data-testid]="ids().theme + '-' + option.id"
               (click)="choose(option.id)"
@@ -168,8 +168,6 @@ export class OperatorAccountChip {
     pop: `absolute top-[calc(100%+10px)] right-0 w-[248px] p-[7px] ${POP_SKIN}`,
     item: POP_ITEM,
     button: POP_BUTTON,
-    // A picker: its rows are tapped back and forth, so they alone drop the double-tap zoom.
-    themeOption: `${POP_BUTTON} touch-manipulation`,
     groupLabel:
       'mt-1 border-t border-riv-pop-divider px-2.5 pt-2.5 pb-1 text-[11px] font-bold tracking-[0.14em] text-riv-pop-ink-soft uppercase',
   } as const;

@@ -4,26 +4,31 @@ import { ADMIN, mockWholeAdminConsole } from './support/admin-console.mocks';
 import { expectNoFocusZoom, expectTouchManipulation } from './support/mobile-zoom';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
+import { openPalette } from './support/shell';
 
 /**
  * The two mobile-browser zoom bugs on the staff-facing consoles, measured rather than asserted
  * from class lists. The tourist UI carries the same pair; these are the operator and admin halves.
  *
- * <p>**Auto-zoom-on-focus** is swept generically per surface: iOS Safari zooms the whole page in
- * when a focused field's computed `font-size` is under 16 px, so every visible field on every
- * console surface is measured, and a field added to a covered surface later is measured too.
+ * <p>**Auto-zoom-on-focus** is swept per surface: iOS Safari zooms the whole page in when a focused
+ * field's computed `font-size` is under 16 px, so every field the surface renders is measured, and
+ * a field added to a covered surface later is measured too. The sweep sees the RESTING surface
+ * only, which is why the gated-states half opens every editor, confirm and panel this console
+ * keeps a field behind — that is where most of these fields live.
  *
  * <p>**Double-tap-to-zoom** is asserted per named cluster instead, because there is no mechanical
  * rule for which controls want it: `touch-action: manipulation` belongs on a dense or adjacent
  * group tapped in quick succession — a tile grid, a chip row, a rail of tabs — and the layout
  * editor's paint cells deliberately want `touch-none` for their own drag gesture.
  *
- * <p>Viewport: this file sets its own, unlike the two touch-target sweeps the project runs at
- * `phone` and `fold`. Neither font-size nor `touch-action` varies with width, so one pass is the
- * whole proof; the one width-dependent case is the console's phone rail, which renders only below
- * `sm` and gets a phone viewport of its own.
+ * <p>Viewport: the project runs this file once under `chromium`, at that project's desktop width.
+ * No field in `src/` carries a responsive text size, so a field's computed size is the same at
+ * every width and one pass measures it. What IS width-dependent is which chrome exists at all —
+ * the console's phone rail renders only below `sm` — so the one test that needs it sets a phone
+ * viewport of its own.
  */
 const PHONE = { width: 390, height: 780 };
+const DESKTOP = { width: 1280, height: 800 };
 
 test.describe('operator console — mobile zoom', () => {
   test.beforeEach(async ({ page }) => {
@@ -36,19 +41,20 @@ test.describe('operator console — mobile zoom', () => {
     await expect(page.getByTestId(marker).first()).toBeVisible();
   }
 
+  // `fields` is what the surface renders at rest — 0 says "none" out loud rather than by silence.
   const SURFACES = [
-    { path: 'daily', marker: 'daily-view-tab', label: 'operator daily view' },
-    { path: 'requests', marker: 'request-card', label: 'operator requests' },
-    { path: 'pricing', marker: 'pricing-row', label: 'operator pricing' },
-    { path: 'payouts', marker: 'statement-open', label: 'operator payouts' },
-    { path: 'venue', marker: 'venue-name', label: 'operator venue & commodities' },
-    { path: 'beach-map', marker: 'set-grid', label: 'operator beach map' },
+    { path: 'daily', marker: 'daily-view-tab', label: 'operator daily view', fields: 1 },
+    { path: 'requests', marker: 'request-card', label: 'operator requests', fields: 0 },
+    { path: 'pricing', marker: 'pricing-row', label: 'operator pricing', fields: 1 },
+    { path: 'payouts', marker: 'statement-open', label: 'operator payouts', fields: 1 },
+    { path: 'venue', marker: 'venue-name', label: 'operator venue & commodities', fields: 1 },
+    { path: 'beach-map', marker: 'set-grid', label: 'operator beach map', fields: 1 },
   ];
 
   for (const surface of SURFACES) {
     test(`${surface.label} — no field zooms the page in on focus`, async ({ page }) => {
       await openConsoleTab(page, surface.path, surface.marker);
-      await expectNoFocusZoom(page, surface.label);
+      await expectNoFocusZoom(page, surface.label, surface.fields);
     });
   }
 
@@ -59,7 +65,50 @@ test.describe('operator console — mobile zoom', () => {
     await signInAsOperator(page);
     await expect(page.getByTestId('venue-create-name')).toBeVisible();
 
-    await expectNoFocusZoom(page, 'operator create-venue card');
+    await expectNoFocusZoom(page, 'operator create-venue card', 5);
+  });
+
+  test('the command palette — no field zooms the page in on focus', async ({ page }) => {
+    await openConsoleTab(page, 'daily', 'daily-view-tab');
+    await openPalette(page);
+
+    await expectNoFocusZoom(page, 'the command palette');
+  });
+
+  test('beach map, a set selected — no field zooms the page in on focus', async ({ page }) => {
+    await openConsoleTab(page, 'beach-map', 'set-grid');
+    await page.getByTestId('set-cell').first().click();
+    await expect(page.getByTestId('set-panel')).toBeVisible();
+
+    await expectNoFocusZoom(page, 'operator beach map (per-set panel)');
+  });
+
+  test('beach map, bulk paint mode — no field zooms the page in on focus', async ({ page }) => {
+    await openConsoleTab(page, 'beach-map', 'set-grid');
+    await page.getByTestId('layout-tool-premium').click();
+    await expect(page.getByTestId('layout-row-name').first()).toBeVisible();
+
+    await expectNoFocusZoom(page, 'operator beach map (bulk paint)');
+  });
+
+  test('payouts, the weather confirm open — no field zooms the page in on focus', async ({
+    page,
+  }) => {
+    await openConsoleTab(page, 'payouts', 'statement-open');
+    await page.getByTestId('weather-trigger').click();
+    await expect(page.getByTestId('weather-confirm-btn')).toBeVisible();
+
+    await expectNoFocusZoom(page, 'operator payouts (weather confirm)');
+  });
+
+  test('venue tab, the season close armed — no field zooms the page in on focus', async ({
+    page,
+  }) => {
+    await openConsoleTab(page, 'venue', 'venue-name');
+    await page.getByTestId('venue-season-close').click();
+    await expect(page.getByTestId('venue-season-reopen-on')).toBeVisible();
+
+    await expectNoFocusZoom(page, 'operator venue tab (season close armed)');
   });
 
   test('beach map — the set-tile grid and the tier/pool chips keep their double-tap', async ({
@@ -103,6 +152,7 @@ test.describe('operator console — mobile zoom', () => {
   });
 
   test('the console rail tabs and the phone rail slots keep their double-tap', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
     await openConsoleTab(page, 'daily', 'daily-view-tab');
     await expectTouchManipulation(page, '[data-testid="oc-tabs"] a', 'the console rail tabs');
 
@@ -124,25 +174,84 @@ test.describe('admin console — mobile zoom', () => {
     await expect(page.getByTestId(marker).first()).toBeVisible();
   }
 
+  // All nine rail destinations, so a raised field on any of them is measured.
   const SURFACES = [
-    { path: '/admin', marker: 'admin-op-row', label: 'admin operators' },
-    { path: '/admin/commissions', marker: 'admin-commissions-list', label: 'admin commissions' },
-    { path: '/admin/email', marker: 'admin-outbox-card', label: 'admin mail outbox' },
-    { path: '/admin/refunds', marker: 'admin-refunds-card', label: 'admin refund outbox' },
-    { path: '/admin/photos', marker: 'admin-photos-venue', label: 'admin venue photos' },
-    { path: '/admin/reviews', marker: 'admin-reviews-venue', label: 'admin reviews' },
-    { path: '/admin/privacy', marker: 'admin-privacy-form', label: 'admin privacy' },
-    { path: '/admin/audit', marker: 'admin-audit-card', label: 'admin audit' },
+    { path: '/admin', marker: 'admin-op-row', label: 'admin operators', fields: 0 },
+    {
+      path: '/admin/commissions',
+      marker: 'admin-commissions-list',
+      label: 'admin commissions',
+      fields: 0,
+    },
+    { path: '/admin/email', marker: 'admin-outbox-card', label: 'admin mail outbox', fields: 1 },
+    {
+      path: '/admin/refunds',
+      marker: 'admin-refunds-card',
+      label: 'admin refund outbox',
+      fields: 0,
+    },
+    { path: '/admin/photos', marker: 'admin-photos-venue', label: 'admin venue photos', fields: 1 },
+    { path: '/admin/reviews', marker: 'admin-reviews-venue', label: 'admin reviews', fields: 1 },
+    {
+      path: '/admin/venue-changes',
+      marker: 'admin-venue-change-fee-card',
+      label: 'admin venue changes',
+      fields: 0,
+    },
+    { path: '/admin/privacy', marker: 'admin-privacy-form', label: 'admin privacy', fields: 1 },
+    { path: '/admin/audit', marker: 'admin-audit-card', label: 'admin audit', fields: 0 },
   ];
 
   for (const surface of SURFACES) {
     test(`${surface.label} — no field zooms the page in on focus`, async ({ page }) => {
       await openAdmin(page, surface.path, surface.marker);
-      await expectNoFocusZoom(page, surface.label);
+      await expectNoFocusZoom(page, surface.label, surface.fields);
     });
   }
 
+  test('commissions, the rate editor open — no field zooms the page in on focus', async ({
+    page,
+  }) => {
+    await openAdmin(page, '/admin/commissions', 'admin-commissions-list');
+    await page.getByTestId('admin-commission-edit-7').click();
+    await expect(page.getByTestId('admin-commission-editor-7')).toBeVisible();
+
+    await expectNoFocusZoom(page, 'admin commissions (rate editor)', 2);
+  });
+
+  test('venue changes, the fee editor open — no field zooms the page in on focus', async ({
+    page,
+  }) => {
+    await openAdmin(page, '/admin/venue-changes', 'admin-venue-change-fee-card');
+    await page.getByTestId('admin-venue-change-fee-edit').click();
+    await expect(page.getByTestId('admin-venue-change-fee-editor')).toBeVisible();
+
+    await expectNoFocusZoom(page, 'admin venue changes (fee editor)', 2);
+  });
+
+  test('privacy, the erasure confirm open — no field zooms the page in on focus', async ({
+    page,
+  }) => {
+    await openAdmin(page, '/admin/privacy', 'admin-privacy-form');
+    await page.getByTestId('admin-privacy-email').fill('guest@example.com');
+    await page.getByTestId('admin-privacy-review').click();
+    await expect(page.getByTestId('admin-privacy-confirm-panel')).toBeVisible();
+
+    await expectNoFocusZoom(page, 'admin privacy (erasure confirm)');
+  });
+
+  test('operators, the suspend confirm open — no field zooms the page in on focus', async ({
+    page,
+  }) => {
+    await openAdmin(page, '/admin', 'admin-op-row');
+    await page.getByTestId('admin-suspend-12').click();
+    await expect(page.getByTestId('admin-suspend-panel-12')).toBeVisible();
+
+    await expectNoFocusZoom(page, 'admin operators (suspend confirm)');
+  });
+
   test('the admin rail tabs keep their double-tap', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
     await openAdmin(page, '/admin/audit', 'admin-audit-card');
 
     await expectTouchManipulation(

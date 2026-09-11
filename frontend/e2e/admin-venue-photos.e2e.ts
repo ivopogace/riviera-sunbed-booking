@@ -126,7 +126,7 @@ test('an admin picks a venue, sees its slots, and takes one down behind a confir
     'color',
     'rgb(163, 22, 14)',
   );
-  await expect(page.getByTestId('admin-photo-reason-cover')).toHaveCSS('font-size', '14px');
+  await expect(page.getByTestId('admin-photo-reason-cover')).toHaveCSS('font-size', '16px');
 
   await page.getByTestId('admin-photo-confirm-cover').click();
 

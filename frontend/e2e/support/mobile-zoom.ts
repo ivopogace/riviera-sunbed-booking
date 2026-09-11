@@ -38,9 +38,14 @@ const FLOOR_PX = 16;
  * unstyled field inheriting 16 px is fine without carrying any size class at all.
  *
  * <p>The fix is never `user-scalable=no`/`maximum-scale=1` — that would defeat the zoom by taking
- * pinch-zoom away from everyone, failing WCAG 1.4.10. Raising the field to 16 px costs nothing.
+ * pinch-zoom away from everyone, failing WCAG 1.4.4 Resize text. Raising the field costs nothing.
+ *
+ * <p>It measures the RESTING surface: a field behind an editor, a confirm or a bottom sheet stays
+ * invisible to it until the caller opens that state, which is why the spec has a gated-states half.
+ * `minFields` is what keeps a surface honest — a sweep that matched nothing passes vacuously, so
+ * each surface states how many fields it expects, and the field-free ones state `0` out loud.
  */
-export async function expectNoFocusZoom(page: Page, label: string): Promise<void> {
+export async function expectNoFocusZoom(page: Page, label: string, minFields = 1): Promise<void> {
   await settle(page);
 
   const zooming = await page.evaluate(
@@ -56,30 +61,37 @@ export async function expectNoFocusZoom(page: Page, label: string): Promise<void
         return classes ? `${tag}.${classes}…` : tag;
       };
 
-      return (
-        [...document.querySelectorAll(fields)]
-          .filter((el) => {
-            if (el.tagName === 'INPUT') {
-              const type = (el.getAttribute('type') ?? '').toLowerCase();
-              if (!types.includes(type)) return false;
-            }
-            // No box (`hidden`) means no tap can focus it — the labelled file input is the case.
-            const box = el.getBoundingClientRect();
-            if (box.width <= 0 || box.height <= 0) return false;
-            return getComputedStyle(el).visibility !== 'hidden';
-          })
-          .map((el) => ({ selector: describe(el), px: parseFloat(getComputedStyle(el).fontSize) }))
-          // Round before comparing: a 16px box can read 15.998.
-          .filter((f) => Math.round(f.px * 100) / 100 < floor)
-      );
+      const measured = [...document.querySelectorAll(fields)]
+        .filter((el) => {
+          if (el.tagName === 'INPUT') {
+            const type = (el.getAttribute('type') ?? '').toLowerCase();
+            if (!types.includes(type)) return false;
+          }
+          // No box (`display: none`, a closed panel) means no tap can ever focus it.
+          const box = el.getBoundingClientRect();
+          if (box.width <= 0 || box.height <= 0) return false;
+          return getComputedStyle(el).visibility !== 'hidden';
+        })
+        .map((el) => ({ selector: describe(el), px: parseFloat(getComputedStyle(el).fontSize) }));
+      // Round before comparing: a 16px box can read 15.998.
+      return {
+        seen: measured.length,
+        under: measured.filter((f) => Math.round(f.px * 100) / 100 < floor),
+      };
     },
     { fields: FIELDS, floor: FLOOR_PX, types: [...ZOOMING_INPUT_TYPES] },
   );
 
   expect(
-    zooming,
-    `${label}: ${zooming.length} field(s) under ${FLOOR_PX}px — iOS Safari zooms the page in on ` +
-      `focus — ${zooming.map((f) => `${f.selector} at ${f.px}px`).join(' | ')}`,
+    zooming.seen,
+    `${label}: swept ${zooming.seen} field(s) but expected at least ${minFields} — the surface ` +
+      `rendered its empty or error state, so the sweep proved nothing`,
+  ).toBeGreaterThanOrEqual(minFields);
+
+  expect(
+    zooming.under,
+    `${label}: ${zooming.under.length} field(s) under ${FLOOR_PX}px — iOS Safari zooms the page ` +
+      `in on focus — ${zooming.under.map((f) => `${f.selector} at ${f.px}px`).join(' | ')}`,
   ).toEqual([]);
 }
 
