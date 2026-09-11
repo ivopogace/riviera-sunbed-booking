@@ -88,8 +88,8 @@ started) and #1059's wontfix record (`.out-of-scope/photo-width-ladder.md`).
 - Changing `object-contain` to `object-cover` on any surface. That would make `sizes` honest by
   construction, but it is a visual-design change and belongs to whoever owns the band's look.
 - Introducing an `IMAGE_LOADER`. Ruled out on its merits in #1041 and unchanged here.
-- Serving DPR 3. The values are tuned to DPR 1 and 2; what that leaves on the gallery hero is
-  measured in F-17 and decided in #1072.
+- Serving DPR 3. The values are tuned to DPR 1 and 2; what that leaves on the gallery hero and
+  the side tile is measured in F-17, F-21 and F-22, and decided in #1072.
 - Touching the Discover card. It is `object-cover`, so its element box *is* its painted box and
   its `sizes` is already honest.
 
@@ -190,11 +190,11 @@ changes only how the client describes its own layout.
 
 ## Execution status
 
-**Stage pointer:** `review — round 4 findings fixed; re-check CI + Sonar, then close-out`
+**Stage pointer:** `review — round 5 findings fixed; re-check CI + Sonar, then merge`
 
 **Next action:** CI and Sonar were green on `e7674bfb` (0 new issues, 0 duplication, 100% new-code
-coverage, `new_lines` present so the analysis is real). Re-check both on the round-4 head, then
-write the close-out and tick the self-review checklist.
+coverage, `new_lines` present so the analysis is real). The close-out below is written and the
+checklist ticked; re-check both gates on the round-5 head, then merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -225,9 +225,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-14 | re-review round 3 | Five comments in the new e2e explained a 3:2 fixture's choice with 16:9 arithmetic — the premise-mixing F-3 was supposed to have removed | **fixed** — every number in that file is now its own fixture's |
 | F-15 | re-review round 3 | `venue-map.spec.ts` pointed at the e2e for "each clause", but the band's 1024–1279 clause had no case | **fixed in two passes** — the 1100 × 800 case round 3 added could not fail (the 3:2 fallback clears 720 there on its own, proved by mutation), so round 4 retargeted it to 1024 × 800 DPR 2 against the 16:9 fixture, where 45vw asks 922 against a baseline of 853 and a 40vw mutation does fail |
 | F-16 | re-review round 3 | A `{@link CONTAIN_SIZES}` added to `photo-slideshow.ts` had no symbol in scope | **fixed** — a plain path reference; importing a value for a doc link would be an unused import |
-| F-17 | re-review round 4 | The values under-serve the gallery hero at **DPR 3** across ~412–686 CSS px, by 5% at a 430px phone and 27% from 560 up. `main` bought the retina candidate there, so this is sharper on `main` and cheaper here | **accepted as a bound, and handed on** — `sizes` is DPR-independent and the ladder is two candidates deep, so one clause would have to satisfy `s > 240` (retina at DPR 3) and `s ≤ 360` (baseline at DPR 2) at the same viewport: `k > 0.583` and `k ≤ 0.525` at once. Covering it needs three or more `max-width`-bounded, aspect-tuned clauses, which is not a maintainable `sizes`. The doc and the e2e now state DPR 1–2 as the bound, and the decision is issue #1072 |
+| F-17 | re-review round 4 | The values under-serve the gallery hero at **DPR 3** across ~412–686 CSS px, by 5% at a 430px phone and 27% from 560 up. `main` bought the retina candidate there, so this is sharper on `main` and cheaper here | **measurement stands, reasoning corrected in round 5** — the window and its 5%/27% shortfalls are right; the impossibility argument is not, and F-21 supersedes it. The doc and the e2e state DPR 1–2 as the bound, and the decision is issue #1072 |
 | F-18 | re-review round 4 | "the baseline candidate suffices **exactly** when `boxHeight × DPR ≤ 480`" is only exact for a height-bound box; round 3 had dropped the `min(boxWidth, …)` term that made it true | **fixed** — the doc separates the height-bound case (exact) from the width-bound one (safe, not tight) |
 | F-19 | re-review round 4 | `bannerPhotoView` derived the retina width as the baseline doubled; `PhotoProcessor` fits the retina tier into its own 2560 × 960 box, so a 16:9 upload stores 1707w and not 1706w — the fixture asserted a URL production can never write | **fixed** — both tiers now fit their own box, and the helper caps at 8:3 like the backend |
+| F-21 | re-review round 5 | F-17 concluded that covering the DPR-3 window needs "three or more `max-width`-bounded, aspect-tuned clauses", and #1072 proposed a third BANNER rendition. Both are wrong, and for the same reason: the hero's paint CAPS at 330 CSS px at 3:2 while a `vw` keeps growing, which is the only thing that stops a coefficient fitting. A capped length tracks it — `min(330px, 66vw)` on the narrowest clause measured correct at DPR 1, 2 AND 3 over 17 viewport × density cells at 3:2 and 16:9, with every DPR-1/2 selection unchanged. A DENSER ladder fixes nothing: at 560 × DPR 3 a 720/960/1200/1440 ladder still selects 720w, because the request is under-stated rather than the ladder too coarse | **corrected, not implemented** — the fix carries four costs this close-out declines: a `px` in `sizes` against the registry's own "viewport-relative only" rule and `photo-url.spec.ts`'s vw-only regex; survival of `assertNoComplexSizes` only because its regex matches `\d+px` after `)`, `,` or start, and here the px follows `(`; Chromium-only verification; and no DPR-3 Playwright project. Handed to #1072, whose body is rewritten around it |
+| F-22 | re-review round 5 | The DPR-3 shortfall is two defects, and F-17 and #1072 describe only one. The hero's 360px box from 1024 up needs 1620 device px at 3:2 against a widest candidate of 1440 — **ladder-limited**, 1% at 1024 to 11% at 1920, unreachable by any `sizes`; measured, a 720/1440/2160 ladder selects 2160w there. The side tile is short too, 1280–1333 at 3:2, invisible in Chromium because the `auto` prefix buys retina regardless | **recorded in #1072 as its second part** — the only piece that genuinely wants a rendition decision, and the one adjacent to #1070 |
+| F-23 | re-review round 5 | Three inaccuracies in the entry comments: "DPR 3 wants a rendition ladder finer than two" (the wrong remedy, per F-21), the side tile's unqualified "It never needs the retina candidate" (false at DPR 3), and three box widths stated as fixed below 1024 when each narrows with the viewport under 780 — 718 at 768, 270 at 320 | **fixed** — each bound now stated at the density and viewport it holds at |
+| F-24 | re-review round 5 | The band entry credited "the widest clause" with buying retina for a 16:9 upload, but the 264px box spans the 1024–1279 clause too — the comment half of what round 4 fixed on the test side as F-15 | **fixed** — the entry now says both clauses over that box |
 | F-20 | re-review round 4 | Five findings-register rows stated things untrue of the head: F-11's window off by one, F-12's and F-15's fixes carrying new inaccuracies, F-13's "both directions" silent on density, F-14's count | **fixed** — each row corrected above |
 
 ---
@@ -431,7 +435,7 @@ box, paints `boxHeight × aspect`. The aspect cancels: the baseline candidate su
 instantiation, and pairing it with 16:9 painted widths is what produced two of the four review
 rounds' findings.
 
-**Review gate.** Four rounds, twenty findings (F-1…F-20). Three were defects in shipped values,
+**Review gate.** Five rounds, twenty-four findings (F-1…F-24). Three were defects in shipped values,
 each fetching the wrong candidate, and each found by a different reviewer: the side tile's ceiling
 above 1636px, the hero's short-box over-fetch across 655–1023px, and the band's under-service
 across 1280–1421px at DPR 2 for anything wider than 16:10. One finding was rejected with reasons
@@ -443,7 +447,10 @@ over-claimed. Every round re-resolved the range against the PR before dispatchin
 badge — 0 issues, 0 duplicated blocks, 100% new-code coverage, `new_lines` present so the analysis
 is real rather than an empty-scope zero.
 
-**Known bound, deferred.** The values are tuned to DPR 1 and 2. At DPR 3 the gallery hero's short
-box under-serves across ~412–686 CSS px (5% at a 430px phone, 27% from 560 up); `main` was sharper
-there and more wasteful at DPR 2. A two-candidate ladder cannot be fixed by one `vw` clause — see
-F-17 — so the decision is #1072, and the code states DPR 1–2 as the bound it holds to.
+**Known bound, deferred.** The values are tuned to DPR 1 and 2, and DPR 3 is short in two
+unrelated ways. The hero's 220px box under-serves across ~412–686 CSS px (5% at a 430px phone, 27%
+from 560 up) — no `vw` reaches it, because the paint caps while a `vw` grows, but a capped length
+does, measured green at all three densities (F-21); this close-out declines that fix on its costs,
+not its feasibility. The hero's 360px box from 1024 up is short by 1–11% against the widest stored
+candidate, which only a new rendition reaches (F-22). `main` was sharper at both and more wasteful
+at DPR 2. Both are #1072, and the code states DPR 1–2 as the bound it holds to.
