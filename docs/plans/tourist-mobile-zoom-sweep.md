@@ -42,14 +42,14 @@ CI-safe suite) · `riviera-frontend` (the new spec is mocked, so it lands in `fr
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given each tourist surface that renders a field — the home filter bar, the four auth
+- [x] **AC-1:** Given each tourist surface that renders a field — the home filter bar, the four auth
   card states, forgot / reset / account-password, the booking dialog, the review form and the
   find-a-booking modal — when it has settled, then `expectNoFocusZoom` sweeps at least that
   surface's stated `minFields` and reports no field under 16px.
   *Seam:* the rendered route (`/`, `/account/*`, `/booking/:code`) and its computed `font-size`,
   read through `expectNoFocusZoom` · *Pinned by:* `mobile-zoom-tourist.e2e.ts` — every
   `— no field zooms the page in on focus` test.
-- [ ] **AC-2:** Given a tourist field whose size arrives through a hoisted `cls`/`CLS` recipe rather
+- [x] **AC-2:** Given a tourist field whose size arrives through a hoisted `cls`/`CLS` recipe rather
   than the tag's own `class` attribute, when that recipe drops below 16px, then the sweep fails
   naming the field — proven by mutating one hoisted recipe (`booking/find-booking.ts`'s `cls.input`)
   and reverting it.
@@ -83,9 +83,9 @@ artifact is the `touch-targets-tourist.e2e.ts` fixture, moved verbatim into
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A sweep passes vacuously — the surface rendered its empty/error state and measured nothing | med | high | Every surface states a `minFields` floor (the helper fails below it) AND a content marker awaited before the sweep; the floors are derived from the counted fields in the source, not guessed | claude | open |
-| R-2 | Extracting the shared fixture regresses `touch-targets-tourist.e2e.ts` | low | med | Move the fixture verbatim, change only the import; re-run that whole spec file before and after | claude | open |
-| R-3 | The sweep is green everywhere and proves nothing, because no tourist field is actually under 16px today | high | med | Expected — the issue says so. Prove the sweep bites by mutating a hoisted recipe (AC-2) and recording the failure, then revert | claude | open |
+| R-1 | A sweep passes vacuously — the surface rendered its empty/error state and measured nothing | med | high | Every surface states a `minFields` floor (the helper fails below it) AND a content marker awaited before the sweep; the floors are derived from the counted fields in the source, not guessed | claude | closed — 10 surfaces swept, each above its floor |
+| R-2 | Extracting the shared fixture regresses `touch-targets-tourist.e2e.ts` | low | med | Move the fixture verbatim, change only the import; re-run that whole spec file before and after | claude | closed — 15/15 pass after the move |
+| R-3 | The sweep is green everywhere and proves nothing, because no tourist field is actually under 16px today | high | med | Expected — the issue says so. Prove the sweep bites by mutating a hoisted recipe (AC-2) and recording the failure, then revert | claude | closed — `find-booking.ts` `cls.input` at 15px failed the sweep naming the field; reverted |
 | R-4 | `touch-manipulation` on `TAB` collides with the tab bar's `EDGE_SLOT_RING` or its `before:` marker | low | low | `touch-action` is an input-gesture property with no paint; assert computed `touch-action` and leave the existing tab-bar ring/marker e2e (`tourist-tab-bar.e2e.ts`) green | claude | open |
 | R-5 | The header chips are `sm:flex` (tablet-and-up), so a phone-width assertion would find nothing and pass vacuously | med | med | `expectTouchManipulation` fails on a zero match; assert the chips at desktop width and the tab bar at phone width, each setting the width it needs | claude | open |
 
@@ -132,15 +132,15 @@ N/A — no contract change. The new spec consumes the existing mocked endpoints 
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Extract `e2e/support/tourist.mocks.ts` from `touch-targets-tourist.e2e.ts` and
-re-run that spec to prove parity (R-2).
+**Next action:** Add `touch-manipulation` to `TAB`, `CLS.accountChip` and `CLS.menuBtn` in
+`src/app/app.ts` to green the two double-tap tests already written and red.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Shared tourist fixture + the field sweep (AC-1, AC-2) | | |
-| 1 — The double-tap opt-out (AC-3) | | |
+| 0 — Shared tourist fixture + the field sweep (AC-1, AC-2) | ✅ | 198d5b6b |
+| 1 — The double-tap opt-out (AC-3) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -169,17 +169,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Create `frontend/e2e/support/tourist.mocks.ts` · Create
 `frontend/e2e/mobile-zoom-tourist.e2e.ts` · Modify `frontend/e2e/touch-targets-tourist.e2e.ts`
 
-- [ ] **Step 1:** Move the fixture verbatim into `support/tourist.mocks.ts`; re-run
+- [x] **Step 1:** Move the fixture verbatim into `support/tourist.mocks.ts`; re-run
   `npx playwright test e2e/touch-targets-tourist.e2e.ts --config=playwright-a11y.config.ts` → PASS (R-2).
-- [ ] **Step 2:** Write the sweep spec — a `SURFACES` loop for the goto-only surfaces, plus a case
+- [x] **Step 2:** Write the sweep spec — a `SURFACES` loop for the goto-only surfaces, plus a case
   each for reset-with-token, the signed-in account page, and the three gated states.
-- [ ] **Step 3:** Run it → expect PASS (R-3: no known broken field).
-- [ ] **Step 4:** Prove it bites — drop `booking/find-booking.ts`'s `cls.input` to `text-[15px]`,
+- [x] **Step 3:** Run it → PASS (10/10 sweeps) (R-3: no known broken field).
+- [x] **Step 4:** Prove it bites — drop `booking/find-booking.ts`'s `cls.input` to `text-[15px]`,
   re-run the find-a-booking case → FAIL naming the field; revert.
-- [ ] **Step 5: Generalization-audit pass** — population: every tourist surface rendering a
+- [x] **Step 5: Generalization-audit pass** — population: every tourist surface rendering a
   zooming-type field; enumerated by grepping the field tags, not by resemblance.
-- [ ] **Step 6: Commit** — `Sweep the tourist surfaces for iOS focus-zoom fields (#1062)`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `Sweep the tourist surfaces for iOS focus-zoom fields (#1062)`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -204,6 +204,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-11 | phase 0 | Every tourist surface rendering a field of a type iOS Safari zooms into (the mechanism: a caret-taking `input`/`select`/`textarea` on a tourist route) | `grep -rn '<input\|<select\|<textarea' --include=*.html --include=*.ts auth/ booking/ pages/ venue/ shared/ core/` over `frontend/src/app` | `auth/` ×4 pages, `booking/` booking-dialog + review-panel + find-booking, `pages/home/home.html` ×3, plus `shared/confirm-with-reason.ts` | All tourist sites swept. `confirm-with-reason.ts` is admin-only (its three consumers are all `admin/`), so it belongs to the console half already covered by `mobile-zoom.e2e.ts` — skipped, not missed |
 
 ---
 

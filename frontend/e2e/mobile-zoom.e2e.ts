@@ -11,6 +11,8 @@ import { openPalette } from './support/shell';
  * The two mobile-browser zoom bugs on the staff-facing consoles, measured rather than asserted
  * from class lists. The tourist UI carries the same pair; these are the operator and admin halves.
  *
+ * <p>The tourist half is `mobile-zoom-tourist.e2e.ts`, over the same two helpers.
+ *
  * <p>**Auto-zoom-on-focus** is swept per surface: iOS Safari zooms the whole page in when a focused
  * field's computed `font-size` is under 16 px, so every field the surface renders is measured, and
  * a field added to a covered surface later is measured too. The sweep sees the RESTING surface
