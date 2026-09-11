@@ -447,6 +447,11 @@ over-claimed. Every round re-resolved the range against the PR before dispatchin
 badge — 0 issues, 0 duplicated blocks, 100% new-code coverage, `new_lines` present so the analysis
 is real rather than an empty-scope zero.
 
+**Plan-doc retirement.** `docs/plans/photo-scrim-directive.md` is `git rm`'d here: its PR (#1068)
+merged into `main`, and this is the next close-out (`riviera-docs-freshness` § *Plan-doc
+retirement*). Nothing outside the file cited its slug, and its close-out already names PR #1068 as
+the durable record, so no citation moved. `lightbox-photo-surface.md` stays — #1070 has not started.
+
 **Known bound, deferred.** The values are tuned to DPR 1 and 2, and DPR 3 is short in two
 unrelated ways. The hero's 220px box under-serves across ~412–686 CSS px (5% at a 430px phone, 27%
 from 560 up) — no `vw` reaches it, because the paint caps while a `vw` grows, but a capped length
