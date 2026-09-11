@@ -384,26 +384,66 @@ Probed in Chromium 141 over 8 viewports × 2 densities against the real `720w, 1
 - [x] **AC-2:** same run → 1440w at DPR 2. Verified at commit `7e558f22`.
 - [x] **AC-3:** same run → 720w on the short band at DPR 2. Verified at commit `7e558f22`.
 - [x] **AC-4:** `npx ng test --include "src/app/shared/photo-slideshow.spec.ts"` → no `srcset` for one candidate. Verified at commit `6b0c7bc7`.
-- [x] **AC-5:** the e2e run above → all three tiles 720w at DPR 1, the hero also at 1920 × DPR 1, 1100 × DPR 1 and 900 × DPR 2. Verified at the review-round commit.
+- [x] **AC-5:** the e2e run above → all three tiles 720w at DPR 1, the hero also at 1920 × DPR 1, 1100 × DPR 1 and 900 × DPR 2. Verified at commit `e8889782`.
 - [x] **AC-6:** `npx ng test --include "src/app/shared/photo-url.spec.ts" --include "src/app/shared/photo-slideshow.spec.ts"` → no pixel length, and the directive accepts every value. Verified at commit `418c3014`.
-- [x] **AC-7:** the three pinned strings re-point to the new values, each in the phase that moved it. Verified at commits `7e558f22`, `6b0c7bc7` and the review-round commit.
+- [x] **AC-7:** the three pinned strings re-point to the new values, each in the phase or round that moved it. Verified at commits `7e558f22`, `6b0c7bc7`, `e8889782` and `e7674bfb`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1). *(N/A — no backend file touched.)*
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4). *(N/A — no booking path.)*
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10). *(N/A.)*
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6). *(N/A.)*
+- [x] Booking codes unguessable (invariant #7). *(N/A.)*
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12). *(N/A — no schema change.)*
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #) — R-1…R-6 all closed, both Open-question entries resolved, and the one thing this slice does not serve is deferred as #1072.
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — see below.
+- [x] **The review gate ran in full** — four rounds, `Skill("code-review:code-review")` at rung 1 of the ladder with `riviera-review-overlay` layered on, range re-resolved against the PR every round.
+
+---
+
+## Close-out
+
+Delivered by **PR #1071**, which closes #1069. The plan doc retires at the next close-out after
+that PR merges (`riviera-docs-freshness` § *Plan-doc retirement*); nothing durable cites this path.
+
+**What shipped.** Three `object-contain` surfaces state the width of the letterboxed image instead
+of their own box, from one `CONTAIN_SIZES` registry in `shared/photo-url.ts`:
+
+| Surface | Was | Now |
+|---|---|---|
+| Beach-map band | `(min-width: 1280px) 70vw, 100vw` | `(min-width: 1280px) 36vw, (min-width: 1024px) 45vw, 35vw` |
+| Gallery hero | `(min-width: 1280px) 50vw, 66vw` | `(min-width: 1280px) 35vw, (min-width: 1024px) 45vw, 35vw` |
+| Gallery side tile | `(min-width: 1280px) 25vw, 33vw` | `(min-width: 1280px) 18vw, 22vw` |
+
+**The rule that survived.** Not the one the plan started from. A BANNER rendition is fit within
+1280 × 480, so an upload no wider than 8:3 stores a baseline `480 × aspect` and, in a height-bound
+box, paints `boxHeight × aspect`. The aspect cancels: the baseline candidate suffices exactly when
+`boxHeight × DPR ≤ 480`. The plan's original `360 < s ≤ 720` window is that rule's 3:2
+instantiation, and pairing it with 16:9 painted widths is what produced two of the four review
+rounds' findings.
+
+**Review gate.** Four rounds, twenty findings (F-1…F-20). Three were defects in shipped values,
+each fetching the wrong candidate, and each found by a different reviewer: the side tile's ceiling
+above 1636px, the hero's short-box over-fetch across 655–1023px, and the band's under-service
+across 1280–1421px at DPR 2 for anything wider than 16:10. One finding was rejected with reasons
+(F-3) and a real defect found underneath it. The rest were documentation and test-quality: two
+tests that could not fail, a fixture that modelled the backend wrongly, and several docs that
+over-claimed. Every round re-resolved the range against the PR before dispatching.
+
+**Gates.** CI green on the head; SonarCloud green with its list pulled from the API rather than the
+badge — 0 issues, 0 duplicated blocks, 100% new-code coverage, `new_lines` present so the analysis
+is real rather than an empty-scope zero.
+
+**Known bound, deferred.** The values are tuned to DPR 1 and 2. At DPR 3 the gallery hero's short
+box under-serves across ~412–686 CSS px (5% at a 430px phone, 27% from 560 up); `main` was sharper
+there and more wasteful at DPR 2. A two-candidate ladder cannot be fixed by one `vw` clause — see
+F-17 — so the decision is #1072, and the code states DPR 1–2 as the bound it holds to.
