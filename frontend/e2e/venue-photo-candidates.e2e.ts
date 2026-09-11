@@ -9,10 +9,24 @@ import { bannerPhotoView } from './support/photo-views';
  * engine makes that choice, which is why this is an e2e and not a jsdom spec.
  *
  * <p>Each case fixes a viewport AND a device-pixel ratio, because the candidate is picked from
- * `sizes × DPR`: a value that serves DPR 1 correctly can under-serve DPR 2. DPR 3 is deliberately
- * uncovered: the values are tuned to DPR 1 and 2, and the tracker carries what that leaves. Axe is
- * not re-run here — `discover-photos.e2e.ts` already sweeps these two
- * surfaces, and an image's `srcset` cannot move an axe result.
+ * `sizes × DPR`: a value that serves DPR 1 correctly can under-serve DPR 2. DPR 1, 2 and 3 are all
+ * covered. Density is set per `describe` rather than by a Playwright project, so the DPR-1 and
+ * DPR-2 no-regression cases keep their own densities instead of being re-run at someone else's.
+ *
+ * <p>Each case also fixes an ASPECT, and its title and comment say which. A 3:2 upload stores
+ * 720w/1440w and a 16:9 one 853w/1707w, so the two differ in BOTH what they paint and what they
+ * store, and their windows do not line up — at 800 CSS px at DPR 3 the 16:9 upload is short while
+ * the 3:2 one needs nothing. No number in this file belongs to more than one fixture.
+ *
+ * <p>NOT covered: any engine but Chromium. `galleryHero` carries a CSS math function, and whether
+ * an engine that cannot parse one in `sizes` exists is unmeasured — no second engine ships in this
+ * repo's Playwright setup. Measured in Chromium, the failure mode is benign rather than unknown:
+ * an entry the engine cannot parse is dropped and the next valid one is used, and with the math
+ * function last there is none behind it, so the `100vw` default applies and the page OVER-fetches
+ * instead of under-serving.
+ *
+ * <p>Axe is not re-run here — `discover-photos.e2e.ts` already sweeps these two surfaces, and an
+ * image's `srcset` cannot move an axe result.
  */
 
 /** A 1×1 PNG for the mocked serving endpoint — the `<img>`s genuinely load and settle on a choice. */
@@ -224,9 +238,7 @@ test.describe('the gallery hero at 360 x 900, DPR 3', () => {
   test('a 3:2 upload stays on its baseline below the DPR-3 window', async ({ page }) => {
     await openGallery(page);
 
-    // 3:2 fixture: a measured 205 x 220 box paints 205 CSS px, so DPR 3 asks 616 - inside the
-    // 720w baseline this upload stores. The guard that the capped clause is a cap, not a
-    // blanket switch to retina on every phone.
+    // 3:2 fixture: a 205 x 220 box paints 205 CSS px, so DPR 3 asks 616 - inside its 720w.
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
   });
 });
@@ -239,8 +251,7 @@ test.describe('the gallery hero at 430 x 900, DPR 3', () => {
   }) => {
     await openGallery(page);
 
-    // 3:2 fixture: a measured 252 x 220 box is still width-bound, so it paints 252 CSS px and
-    // DPR 3 asks 756 - past this upload's 720w baseline by 5%.
+    // 3:2 fixture: a width-bound 252 x 220 box paints 252, so DPR 3 asks 756 - past 720w by 5%.
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
   });
 });
@@ -251,8 +262,7 @@ test.describe('the gallery hero at 560 x 900, DPR 3', () => {
   test('a 3:2 upload takes the retina candidate where the paint caps', async ({ page }) => {
     await openGallery(page);
 
-    // 3:2 fixture: a measured 339 x 220 box is height-bound, so the paint caps at 220 x 1.5 =
-    // 330 CSS px and DPR 3 asks 990 - the worst point of this upload's window, 27% past 720w.
+    // 3:2 fixture: a height-bound 339 x 220 box paints 220 x 1.5 = 330, so DPR 3 asks 990.
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
   });
 });
@@ -265,9 +275,7 @@ test.describe('the gallery hero at 673 x 900, DPR 3', () => {
   }) => {
     await openGallery(page);
 
-    // 3:2 fixture: a measured 414 x 220 box, still capped at a 330 CSS px paint and still
-    // asking 990. The last width at which a 3:2 upload is short; from 686 up the widest
-    // clause already bought retina before this slice.
+    // 3:2 fixture: a 414 x 220 box, paint still capped at 330, still asking 990 - the top end.
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
   });
 });
@@ -278,17 +286,14 @@ test.describe('the gallery hero at 800 x 900, DPR 3', () => {
   test("a 16:9 upload's DPR-3 window runs wider than a 3:2 upload's", async ({ page }) => {
     await openGallery(page, WIDE_GALLERY_VENUE);
 
-    // 16:9 fixture: the measured 485 x 220 box is height-bound, so it paints 220 x 16/9 = 391
-    // CSS px and DPR 3 asks 1173 - past the 853w baseline a 16:9 upload stores.
+    // 16:9 fixture: a 485 x 220 box paints 220 x 16/9 = 391, so DPR 3 asks 1173 - past its 853w.
     await candidate(page.getByTestId('gallery-hero')).toBe('ee05@1707');
   });
 
   test('while a 3:2 upload at the same width needed no help', async ({ page }) => {
     await openGallery(page);
 
-    // 3:2 fixture, same box: it paints only 220 x 1.5 = 330 CSS px and asks 990, which the
-    // widest clause already covered. The control on the case above - the two aspects diverge
-    // here because their paints and their stored ladders both differ, never one alone.
+    // 3:2 fixture, same box: it paints 330 and asks 990, which the widest clause already buys.
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
   });
 });
@@ -299,9 +304,7 @@ test.describe('the gallery hero at 560 x 900, DPR 1', () => {
   test('the capped clause leaves a 3:2 upload on its baseline at DPR 1', async ({ page }) => {
     await openGallery(page);
 
-    // 3:2 fixture: 330 CSS px painted, so 330 device px asked - well inside 720w. The half of
-    // #1069's win this slice must not trade back; the clause resolves to its 330px cap here,
-    // and a cap is what keeps that harmless at DPR 1.
+    // 3:2 fixture: a 330 CSS px paint asks 330 device px, far inside 720w - the cap is why.
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
   });
 });
@@ -312,16 +315,14 @@ test.describe('the gallery hero at 560 x 900, DPR 2', () => {
   test('the capped clause leaves a 3:2 upload on its baseline at DPR 2', async ({ page }) => {
     await openGallery(page);
 
-    // 3:2 fixture: 330 CSS px painted asks 660 device px, and the cap asks 660 too - both under
-    // the 720w baseline. An uncapped 66vw would ask 739 here and buy retina for nothing.
+    // 3:2 fixture: a 330 paint asks 660; an uncapped 66vw would ask 739 and buy retina for free.
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02');
   });
 
   test('and leaves a 16:9 upload on its own, wider baseline at DPR 2', async ({ page }) => {
     await openGallery(page, WIDE_GALLERY_VENUE);
 
-    // 16:9 fixture: a different paint (339 CSS px, width-bound here) against a different stored
-    // baseline (853w). Same clause, same 660 device px asked, and 853w covers it.
+    // 16:9 fixture: a width-bound 339 paint asks 678 device px, inside its own wider 853w.
     await candidate(page.getByTestId('gallery-hero')).toBe('ee05');
   });
 });
@@ -332,9 +333,7 @@ test.describe('the gallery hero at 1024 x 800, DPR 2', () => {
   test('the step the capped clause stops at is untouched', async ({ page }) => {
     await openGallery(page);
 
-    // 3:2 fixture: at 1024 the middle clause takes over (45vw = 922 device px) and the box grows
-    // to 360 tall, painting 485 CSS px. Unchanged by this slice, and pinned so a later edit to
-    // the narrowest clause cannot leak upward past its own breakpoint.
+    // 3:2 fixture: the middle clause governs (45vw = 922 device px) over a 485 x 360 box.
     await candidate(page.getByTestId('gallery-hero')).toBe('bb02@1440');
   });
 });

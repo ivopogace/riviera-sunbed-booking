@@ -32,15 +32,29 @@ export function resolveCoverPhoto(cover: CoverPhotoView | null | undefined): Cov
  * each value approximates the PAINTED photo — `min(boxWidth, boxHeight × aspect)` — rather than the
  * element it sits in. The lightbox states its own; its under-service is a different defect.
  *
- * <p>A BANNER rendition is fit within 1280 × 480, so an upload no wider than 8:3 stores a baseline
- * `480 × aspect`. Where the box is height-bound the paint is `boxHeight × aspect`, the aspect
- * cancels, and the baseline candidate suffices exactly when `boxHeight × DPR ≤ 480`; where it is
- * width-bound the paint is narrower again, so that test is safe there rather than tight. Each
- * value buys the right candidate from 3:2 to 16:9, to ~2000px viewports, and at DPR 1 and 2.
- * Narrower or shorter it over-fetches, costing bytes; wider it under-fetches, costing sharpness;
- * past 8:3 the baseline caps at 1280 and the rule stops holding; and DPR 3 sits outside the bound,
- * short on the hero for two unrelated reasons that #1072 decides. Viewport-relative only: a `px`
- * LENGTH throws `RuntimeError 2952` (the `px` in a media condition is not a length).
+ * <p>A BANNER rendition is fit within 1280 × 480 at scale 1 and 2560 × 960 at scale 2, each tier
+ * into its OWN box — so the retina width is not the baseline doubled, and a 3:2 upload stores
+ * 720w/1440w where a 16:9 one stores 853w/1707w. Where the box is height-bound the paint is
+ * `boxHeight × aspect`, the aspect cancels, and the baseline candidate suffices exactly when
+ * `boxHeight × DPR ≤ 480`; where it is width-bound the paint is narrower again, so that test is
+ * safe there rather than tight.
+ *
+ * <p>The bound these values are measured to hold to: aspects 3:2 through 16:9, viewports to
+ * 2560px, DPR 1 and 2 on every surface, and DPR 3 as well on the gallery hero below its
+ * `min-[1024px]` step. Three things sit outside that bound. Past 8:3 both tiers are width-bound
+ * at 1280w/2560w, stop following the aspect, and the rule stops holding. The hero's 360px box at
+ * DPR 3 is ladder-limited — a 3:2 upload is 1% short from 1024 and 11% short from 1280, reachable
+ * only by a wider stored rendition, which #1070 weighs. And narrower than 3:2 the hero's cap buys
+ * a wider candidate than DPR 1 or DPR 2 needs (a 2:3 portrait upload takes its retina candidate
+ * from 540px viewports at DPR 1), which is an unavoidable trade rather than a mistuning: covering
+ * 3:2 at DPR 3 needs more than 240 CSS px above a 240px viewport, and leaving 1:1 alone at DPR 2
+ * needs 240 or less up to 686 — the two cannot both hold in one aspect-blind value.
+ *
+ * <p>No bare `px` LENGTH: one opening a value, or following `") "` or `", "`, throws
+ * `RuntimeError 2952`. A `px` in a media condition is not a length at all, and one inside a CSS
+ * math function passes only because that guard's regex never looks just after `(` — a gap in the
+ * regex, not a promise in the API, and `photo-slideshow.spec.ts` is what turns red if a later
+ * release closes it.
  */
 export const CONTAIN_SIZES = {
   /** The band: 1098 × 264 above 1280, 730 × 264 down to 1024, 150 tall below in a box that narrows
@@ -48,9 +62,14 @@ export const CONTAIN_SIZES = {
    *  264px box can need retina, at DPR 2, and BOTH clauses over it stay large enough to buy it. */
   band: '(min-width: 1280px) 36vw, (min-width: 1024px) 45vw, 35vw',
   /** The gallery hero: 731 × 360 above 1280, 485 × 360 down to 1024, 220 tall below in a box that
-   *  narrows with the viewport under 780 — painting 540, then 485 width-bound, then 330. The two
-   *  outer clauses share a number for opposite reasons: the widest caps a box that stops growing,
-   *  the narrowest holds one that cannot need retina at DPR 2. */
+   *  narrows with the viewport under 780 — painting 540, then 485 width-bound, then a 3:2 upload's
+   *  330 (220 × 1.5). The widest clause caps a box that stops growing at the 1100px breakout; the
+   *  middle one holds a box that cannot need retina at DPR 2. The narrowest is capped at the PAINT,
+   *  because below 1024 the paint stops at 330 while a `vw` keeps climbing, and no bare coefficient
+   *  both reaches DPR 3 and leaves DPR 2 on the baseline. 330 is the 3:2 figure; a 16:9 upload
+   *  paints 391 in the same box and is still covered, because its own baseline is 853w rather than
+   *  720w — not because 330 describes it. The cap's price: from roughly 364 to 412 CSS px at DPR 3
+   *  a 3:2 upload takes 1440w where 720w covered its 240 CSS px paint. */
   galleryHero: '(min-width: 1280px) 35vw, (min-width: 1024px) 45vw, min(330px, 66vw)',
   /** A gallery side tile: 361 × 176 above 1280, 239 × 176 down to 1024, 106 tall below and narrower
    *  with the viewport under 780. At DPR 1 and 2 it never needs the retina candidate, and the

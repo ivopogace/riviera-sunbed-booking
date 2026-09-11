@@ -54,11 +54,13 @@ describe('PhotoSlideshow', () => {
     expect(img.getAttribute('sizes')).toBe('auto, 30vw');
   });
 
+  /**
+   * The directive's dev-mode guards run on init, so a value it rejects fails here, not in prod.
+   * Load-bearing for `galleryHero`, whose `px` clears `assertNoComplexSizes` only because that
+   * guard's regex anchors on `") "`, `", "` or start-of-string and so never looks just after `(`.
+   * A release that closes the gap turns this red, naming the value, instead of reaching production.
+   */
   it('carries every authored contain-fitted sizes through NgOptimizedImage untouched', () => {
-    // The directive's dev-mode guards run on init, so a value it rejects fails here, not in prod.
-    // Load-bearing since #1072: galleryHero's px survives assertNoComplexSizes only because that
-    // guard's regex anchors on ') ', ', ' or start-of-string, so a px after '(' is unseen. An
-    // Angular release that swaps the regex for a parser turns THIS red, naming the value.
     for (const value of Object.values(CONTAIN_SIZES)) {
       const surface = TestBed.createComponent(PhotoSlideshow);
       surface.componentRef.setInput('photos', [photoView('/api/venues/1/photos/aa01', 1152)]);

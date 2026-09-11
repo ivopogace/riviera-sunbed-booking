@@ -244,16 +244,16 @@ widths are all unchanged; only the client-side `sizes` hint moves.
 
 ## Execution status
 
-**Stage pointer:** `implement (phases 0-1 done; phase 2 next)`
+**Stage pointer:** `implement (phases 0-2 done) — draft PR + CI gate next`
 
-**Next action:** Phase 2 — rewrite the `CONTAIN_SIZES` TSDoc (density bound, aspect band,
-the true px rule) and the e2e header's density/engine coverage.
+**Next action:** Push, open the draft PR so CI fires, then phase 3 close-out — `git rm`
+`docs/plans/band-contain-sizes.md` and run `riviera-docs-freshness`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Pin the defect as a red e2e | ✅ (red by design) | `3ccb0f50` |
-| 1 — Ship the capped clause and correct the shape rule | ✅ | `<phase-1>` |
-| 2 — State the density and aspect bounds in the registry TSDoc | | |
+| 1 — Ship the capped clause and correct the shape rule | ✅ | `848ac99f` |
+| 2 — State the density and aspect bounds in the registry TSDoc | ✅ | `<phase-2>` |
 | 3 — Close-out: retire `band-contain-sizes.md`, finalize this doc | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
