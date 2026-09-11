@@ -98,7 +98,7 @@ for `feature/photo-scrim-directive` (`riviera-sdlc` § Remote / cloud session ad
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Silent visual drift: a class is dropped or reordered in the move and the class list still "looks right" | med | high | `riviera-tailwind`'s hard rule — AC-4 diffs *computed* styles in a real browser on both surfaces, and phase 0 lands it green against the OLD markup first, so it is a characterization test, not a post-hoc rationalization | claude | open |
+| R-1 | Silent visual drift: a class is dropped or reordered in the move and the class list still "looks right" | med | high | `riviera-tailwind`'s hard rule — AC-4 diffs *computed* styles in a real browser on both surfaces, and phase 0 lands it green against the OLD markup first, so it is a characterization test, not a post-hoc rationalization | claude | closed — phase 0 baseline green against the old spans |
 | R-2 | A live test hook breaks: `home.spec.ts` and `discover-photos.e2e.ts` query `.photo-scrim`; `venue-map.spec.ts` asserts `.photo-band` innerHTML contains `riv-photo-scrim` | high | med | rule 2 keeps `photo-scrim` first on the host; the innerHTML assertion keeps passing because Angular writes static host classes into the real `class` attribute — and phase 2 *adds* an element-level assertion beside it rather than replacing the innerHTML proof | claude | open |
 | R-3 | Bundling `absolute inset-0` into a surface directive conflicts with rule 3's stylesheet-order argument if a future call site wants different geometry | low | low | rule 3 names border-radius and padding, not position; both call sites are full-bleed and full-bleed *is* the scrim's identity. The reason is written at the declaration so a third call site wanting other geometry re-opens it deliberately rather than by drift | claude | open |
 | R-4 | `aria-hidden` on the directive host hides something that should be exposed | low | med | the scrim is paint-only, has no content and is never focusable; both call sites already set it. AC-1 pins it and the e2e axe pass on both routes stays green | claude | open |
@@ -156,14 +156,14 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `plan — committing the plan doc`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Commit this plan doc, open the draft PR so CI has a vehicle, then start phase 0.
+**Next action:** Write the failing `photo-scrim.spec.ts`, then create `shared/photo-scrim.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Pin the no-drift baseline (characterization e2e against the OLD markup) | | |
-| 1 — The directive, red-green | | |
+| 0 — Pin the no-drift baseline (characterization e2e against the OLD markup) | ✅ | this commit |
+| 1 — The directive, red-green | ⏳ | |
 | 2 — Swap both call sites, tighten the map assertion, generalization audit | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -198,19 +198,20 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 This phase is a **characterization test**: it must pass against the OLD hand-written spans.
 That is what makes it evidence in phase 2 rather than a description of whatever phase 2 did.
 
-- [ ] **Step 1: Write the test** — one mocked-suite test that reads the computed
+- [x] **Step 1: Write the test** — one mocked-suite test that reads the computed
   `background-image`, `position`, the four inset offsets and `pointer-events` off `.photo-scrim`
   on the Discover card and on the map banner, asserts the two are equal to each other, and
   asserts the literal recipe (`pointer-events: none`, `position: absolute`, every inset `0px`,
   a `background-image` carrying the scrim's `rgba(13, 40, 40, …)` stops).
 
-- [ ] **Step 2: Run it, verify it PASSES against the current markup** —
-  `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test discover-photos --config=playwright.a11y.config.ts -g "one identical recipe"`
-  → PASS. A failure here means the two spans are not equivalent today and the premise is wrong.
+- [x] **Step 2: Run it, verify it PASSES against the current markup** —
+  `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts discover-photos -g "one identical recipe"`
+  → **PASS (1 passed, 23.3s)**. The premise holds: the two spans are computationally identical
+  today, so the recipe this test pins is theirs, not the directive's.
 
-- [ ] **Step 3: Commit** — `git commit -m "Pin the photo scrim's computed recipe on both surfaces (#1066)"`
+- [x] **Step 3: Commit** — `git commit -m "Pin the photo scrim's computed recipe on both surfaces (#1066)"`
 
-- [ ] **Step 4: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Update plan-doc execution status** in the same commit window.
 
 ---
 
