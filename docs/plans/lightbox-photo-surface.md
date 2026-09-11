@@ -49,8 +49,9 @@ read model keeps deriving both views from one blob-free query) · `domain-modeli
 enters `CONTEXT.md` beside the other surfaces; ADR-0008 takes an amendment-log entry, not a new
 ADR — the storage decision is unchanged, only its measured footprint) · `riviera-frontend`
 (placement: the view mirror stays in `shared/venue-views.ts`, the `venue` feature remains editor of
-record) · `angular-developer` (the lightbox's `sizes="94vw"` is already correct for a `contain` box
-that is nearly square; it needs no change, unlike the band in #1069) · `playwright-cli` (the
+record) · `angular-developer` + angular-cli MCP `search_documentation` v22 (the lightbox's
+`sizes="94vw"` is already correct for a `contain` box that is nearly square — its element box and
+its painted box differ by little — so it needs no change, unlike the band in #1069) · `playwright-cli` (the
 fallback path — a photo with no `LIGHTBOX` row — is only observable in a real engine).
 
 **Branch:** `claude/intelligent-albattani-otm46u` — the cloud session's designated remote branch,
@@ -99,6 +100,7 @@ verification that "adds only" is true rather than aspirational.
 | R-4 | Flyway `V57` collides with another branch | low | med | `V56` is the highest on `main` and there are **zero open PRs** (checked at plan time). Default rule stands: the branch that merges second renumbers | agent | open |
 | R-5 | A `LIGHTBOX` row is served to the operator console or admin moderation surface, which expect the small `PREVIEW` | low | med | Those paths select by surface explicitly (`VariantMeta` / `PhotoSlots`); add an assertion that the operator slot still resolves `PREVIEW` | agent | open |
 | R-6 | Upload latency grows — the processor decodes the raw upload once per rendition and this adds a sixth, at the largest size | med | low | Upload is a rare operator action and the existing Javadoc already accepts the repeated decode. Measure the delta in phase 0 and record it; only act if it exceeds the request timeout | agent | open |
+| R-8 | Two existing specs assert that the lightbox shows the **banner** candidates, which is exactly what this slice changes | **certain** | low | Located before phase 0: `venue-map.spec.ts:559` and `discover-photos.e2e.ts:171`. Both are updated in phase 3, and their comments ("the same candidates in a far wider box: the server chose no variant") become false and must be rewritten, not just re-pointed | agent | open |
 | R-7 | The e2e's mocked photo fixture has no `LIGHTBOX` candidate, so AC-7 passes vacuously | med | med | The fixture must carry **both** a photo with and one without a `LIGHTBOX` row; AC-7 asserts both branches, so a vacuous pass fails the second | agent | open |
 
 ## Open questions / Assumptions
@@ -226,7 +228,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/photo-url.ts` — resolving the new list against the API origin
 - `frontend/src/app/venue/venue.service.ts` — mapping the new field
 - `frontend/src/app/venue/venue-map.ts|.html` — passing the lightbox its own list
-- `frontend/src/app/venue/venue-map.spec.ts` — the fallback when the field is absent
+- `frontend/src/app/venue/venue-map.spec.ts` — the fallback when the field is absent, and the lightbox `srcset` assertion at `:559` that currently expects the banner candidates
+- `frontend/e2e/discover-photos.e2e.ts` — the lightbox `srcset` assertion at `:171`, same reason
 - `frontend/e2e/venue-lightbox-candidates.e2e.ts` — AC-7
 - `frontend/e2e/support/photo-views.ts` — a fixture with and without a `LIGHTBOX` row
 - `frontend/src/testing/photo-views.ts` — the unit-test double
@@ -314,6 +317,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [ ] **Step 3: Minimal implementation** — the optional field on the mirror, `apiPhotoView` over the
       new list in `venue.service.ts`, and `venue-map.html:353` binding the lightbox to it with the
       existing `slideshowPhotos` fallback shape.
+- [ ] **Step 3a: Update the two specs that assert the old sharing** — `venue-map.spec.ts:559` and
+      `discover-photos.e2e.ts:171`. Their comments assert the lightbox and hero share one candidate
+      list; that is the property this slice ends, so rewrite the comments rather than re-pointing
+      the expectation.
 - [ ] **Step 4: Run it, verify it passes** — `npm test -- venue-map photo-url` then
       `npm run test:e2e:a11y` → PASS; then `npm run lint && npm run format:check`
 - [ ] **Step 5: Commit** — `git commit -m "Serve the lightbox its own candidates (#1070)"`

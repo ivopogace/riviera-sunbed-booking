@@ -17,9 +17,20 @@ and under `fill` the `<img>` is `inset-0` — `object-contain` letterboxes the *
 element — so dropping `priority` to get the directive's `auto,` prefix changes nothing; and a
 pixel-valued `sizes` throws `RuntimeError 2952` from `assertNoComplexSizes`
 (`@angular/common@22.1.4` `fesm2022/common.mjs:1190`, called at `:806` under `if (!this.ngSrcset)`,
-which is our case because the slideshow supplies `[attr.srcset]` directly). A `vw` value is
-therefore the only lever the directive leaves, and it is an approximation by construction: the
-painted width is constant above 1280 px while a `vw` value is not.
+which is our case because the slideshow supplies `[attr.srcset]` directly). angular.dev documents
+neither guard, so the bundle is cited rather than the docs. The documented escape — supplying
+`ngSrcset` — silences the px guard but is useless here rather than blocked: with the noop loader
+every width descriptor resolves to the same URL (Angular's own `NG02963` warning says exactly
+that), and the directive would then write `srcset` itself and fight the `[attr.srcset]` binding for
+the same attribute. `assertNoConflictingSrcset` does *not* catch that, because it tests the
+`srcset` **input**, which a `[attr.srcset]` binding never sets. A `vw` value is therefore the only
+lever the directive leaves, and it is an approximation by construction: the painted width is
+constant above 1280 px while a `vw` value is not.
+
+angular.dev does endorse the *direction*: `sizes` is documented as describing the image's rendered
+width ("if your image is only likely to take up half the screen … set `sizes` to `50vw`"), and the
+fill-mode section states that `object-fit: contain` letterboxes the image inside the element. Those
+two together are exactly the mismatch this slice fixes.
 
 **Persistence:** N/A — frontend-only, no table and no migration touched (invariant #1 not in play).
 
@@ -37,7 +48,14 @@ candidate as a characterization test, phase 1 is red-green on the band, phase 2 
 `@angular/common` bundle (the two ruled-out routes above; `assertNoPostInitInputChange` covers
 `sizes`, so the value must be a constant per instance) · `playwright-cli` (candidate selection is
 only observable in a real engine — `deviceScaleFactor` per project is what makes the DPR-2 AC
-testable) · `riviera-tailwind` (`N/A — no class changes; `sizes` is an attribute, not styling`).
+testable) · angular-cli MCP `search_documentation` v22 (checked the plan against angular.dev:
+confirmed the `auto,` prepend, the contain-letterboxing statement and that `sizes` is meant to
+describe rendered width; found the docs silent on both dev-mode guards) · `riviera-tailwind`
+(`N/A — measured, not assumed: Tailwind 4.3.3 ships no srcset/sizes/DPR utility and no
+min-resolution variant, so nothing in the styling layer can express this. object-contain is the
+only relevant utility and it is unchanged. No class changes, so the no-drift computed-style proof
+does not apply — if a phase ends up touching a class, rule 2 fires: `.photo-band` is a live test
+hook in `venue-map.spec.ts` and must survive as an inert marker`).
 
 **Branch:** `claude/intelligent-albattani-otm46u` — the cloud session's designated remote branch,
 standing in for `bugfix/band-contain-sizes` per `riviera-sdlc` § *Remote / cloud session addendum*.
@@ -55,6 +73,7 @@ standing in for `bugfix/band-contain-sizes` per `riviera-sdlc` § *Remote / clou
 - [ ] **AC-4:** Given a photo with a **single** stored candidate (pre-retina, un-backfillable per ADR-0008), when the band renders, then no `srcset` attribute is emitted and `src` is the baseline URL. *Seam:* `photoSrcset` in `shared/photo-url.ts`, observed through the rendered `<img>` · *Pinned by:* `photo-slideshow.spec.ts` → `emits no srcset for a one-candidate photo`
 - [ ] **AC-5:** Given a venue with ≥ 2 photos (so the gallery grid renders), when the page renders at 1440 × 900 at **DPR 1**, then the hero tile and both side tiles each resolve to the **720w** candidate. *Seam:* the `/venue/:venueId` route's rendered gallery `<img>`s · *Pinned by:* `venue-photo-candidates.e2e.ts` → `every contain-fitted gallery tile picks the baseline candidate at DPR 1`
 - [ ] **AC-6:** Given any `sizes` value this slice authors, when `NgOptimizedImage` initialises in dev mode, then no `RuntimeError 2952` is thrown — i.e. no value contains a `px` token. *Seam:* the `sizes` input of `app-photo-slideshow` / the gallery `<img>`s · *Pinned by:* `photo-url.spec.ts` → `no authored sizes value carries a pixel token`
+- [ ] **AC-7:** Given the three existing specs that pin today's exact `sizes` strings, when the slice lands, then each asserts the new value and its test name still describes what it checks. *Seam:* the same rendered `<img>`s those specs already observe · *Pinned by:* `venue-map.spec.ts` → `sizes the single-photo header band to its own breakout, not the 100vw default` (line 415, whose name must change too) and `discover-photos.e2e.ts` → `every tourist photo offers its candidates as a srcset the browser sizes against`
 
 ## Non-goals
 
@@ -80,6 +99,7 @@ adjacent to the change (a one-candidate photo emitting no `srcset`) is untouched
 | R-2 | A wide-panorama upload (aspect > ~2.7:1) paints wider than the tuned value and becomes under-served | low | low | Tune to the widest *common* aspect (16:9 → `264 × 1.78 ≈ 470` px painted), so under-service needs an unusually wide source; note the bound in the code's one-line comment | agent | open |
 | R-3 | A pixel value slips into `sizes` during tuning and throws `RuntimeError 2952` only in dev/test, not prod | med | med | AC-6 pins it in a unit spec, which runs in `ngDevMode`; the guard is the assertion, not review | agent | open |
 | R-4 | The gallery tiles' geometry is derived from markup rather than measured, so the tuned value is wrong | med | med | Measure the rendered tile boxes in the e2e run (`getBoundingClientRect`) before choosing values; phase 2 step 1 does this and records the numbers in this doc | agent | open |
+| R-6 | Three existing specs pin today's exact `sizes` strings, so the fix lands as a red suite rather than a clean green | **certain** | low | Known and located before phase 0: `venue-map.spec.ts:425` (`'(min-width: 1280px) 70vw, 100vw'`), `discover-photos.e2e.ts:162` (hero) and `:166` (tile). They are updated in the phase that changes each value, not swept at the end. The Discover card's assertion at `:151` must NOT change — it is `object-cover` and out of scope | agent | open |
 | R-5 | Playwright's pinned browser revision is absent in the cloud sandbox; only `/opt/pw-browsers/chromium` exists | high | low | Run the mocked suite as `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` — `playwright.a11y.config.ts` honours only that env var (`riviera-local-debug` § Frontend). Never `playwright install`. CI has its own browsers and is unaffected | agent | open |
 
 ## Open questions / Assumptions
@@ -159,6 +179,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/photo-url.spec.ts` — AC-6, the no-pixel-token rule
 - `frontend/src/app/shared/photo-slideshow.spec.ts` — AC-4, one-candidate photos emit no `srcset`
 - `frontend/e2e/venue-photo-candidates.e2e.ts` — AC-1/2/3/5, candidate selection per viewport × DPR
+- `frontend/src/app/venue/venue-map.spec.ts` — AC-7, the band's pinned `sizes` string and its test name
+- `frontend/e2e/discover-photos.e2e.ts` — AC-7, the gallery hero + tile pinned `sizes` strings
 - `frontend/e2e/support/photo-views.ts` — the mocked photo fixture, if a two-candidate cover is missing
 
 ---
@@ -201,13 +223,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
       Values are the derivation, not the answer — re-derive against phase 0's measured boxes and let
       the ACs arbitrate.
 
-- [ ] **Step 4: Run it, verify it passes** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → PASS
-- [ ] **Step 5: Generalization-audit pass** — Population `every NgOptimizedImage call site whose
+- [ ] **Step 4: Update the pinned band spec** — `venue-map.spec.ts:415` asserts the old string and its
+      name says "not the 100vw default". Re-point both at the new value and what it now guards.
+- [ ] **Step 5: Run it, verify it passes** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` then `npm test -- venue-map` → PASS
+- [ ] **Step 6: Generalization-audit pass** — Population `every NgOptimizedImage call site whose
       element is object-contain under fill` → enumerate
       `grep -rn "object-contain" frontend/src/app --include=*.ts --include=*.html` → candidates
       `<list>` → decision `<fix all in phase 2 / subset + why>`. Append to the log below.
-- [ ] **Step 6: Commit** — `git commit -m "Size the beach-map band by its painted image (#1069)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [ ] **Step 7: Commit** — `git commit -m "Size the beach-map band by its painted image (#1069)"`
+- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -219,6 +243,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [ ] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → FAIL
 - [ ] **Step 3: Minimal implementation** — tune each tile's `sizes` against phase 0's measured boxes,
       resolving the Open question on whether one shared value serves all three.
+- [ ] **Step 3a: Update the pinned gallery assertions** — `discover-photos.e2e.ts:162` (hero) and
+      `:166` (tile). Leave `:151` (the Discover card) alone: it is `object-cover`, so its `sizes`
+      is already honest and changing it would be scope creep.
 - [ ] **Step 4: Run it, verify it passes** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-photo-candidates` → PASS,
       then broaden: `npm test -- photo` and `npm run test:e2e:a11y`
 - [ ] **Step 5: Commit** — `git commit -m "Size the gallery tiles by their painted images (#1069)"`
