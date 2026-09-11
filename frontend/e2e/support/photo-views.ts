@@ -57,3 +57,19 @@ export function bannerPhotoView(url: string, aspect = 3 / 2): MockPhotoView {
     ],
   };
 }
+
+/** `PhotoProcessor` fits a LIGHTBOX within 2200x1800, at scale 1 only. */
+const LIGHTBOX_BOX = { width: 2200, height: 1800 };
+
+/**
+ * A photo as the lightbox's own candidate list carries it: ONE candidate, because the surface is
+ * stored at a single scale. The box is near-square, so the binding axis flips with the aspect — a
+ * 3:2 upload stores 2200w and a 2:3 one 1200w.
+ *
+ * A photo uploaded before the surface existed has no such row and its lightbox entry is the BANNER
+ * view instead ({@link bannerPhotoView}); that fallback is the un-backfillable case.
+ */
+export function lightboxPhotoView(url: string, aspect = 3 / 2): MockPhotoView {
+  const width = Math.round(Math.min(LIGHTBOX_BOX.width, LIGHTBOX_BOX.height * aspect));
+  return { url: `${url}@${width}`, sources: [{ url: `${url}@${width}`, width }] };
+}

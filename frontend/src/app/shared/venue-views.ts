@@ -99,6 +99,14 @@ export interface VenueMapView {
    */
   readonly photos?: readonly PhotoView[];
   /**
+   * The same slot order sized for the modal viewer's near-square box, which is why it is a
+   * separate list: its widest candidate must never be offered to the band or the gallery grid.
+   * A photo stored before that surface existed carries its banner view here instead and cannot
+   * gain one, since the full-res original is discarded at upload. Optional because test doubles
+   * and older payloads may omit it; the lightbox then shows what the band shows.
+   */
+  readonly lightboxPhotos?: readonly PhotoView[];
+  /**
    * Whether online sales for the selected date are open right now — the server's sales-window
    * verdict (invariant #4), display only; the reserve path enforces the real fence. Optional
    * because test doubles and older payloads may omit it; only an explicit `false` renders the

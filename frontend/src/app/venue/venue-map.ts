@@ -74,6 +74,8 @@ interface VenueHeader {
   readonly description: string;
   /** The banner slideshow's photo URLs in slot order; empty → the gradient placeholder. */
   readonly photos: readonly PhotoView[];
+  /** The same slots sized for the lightbox's own box; falls back to {@link photos} when absent. */
+  readonly lightboxPhotos: readonly PhotoView[];
   readonly bookingMode: VenueMapView['bookingMode'];
   readonly modeLabel: string;
   readonly isRated: boolean;
@@ -238,13 +240,16 @@ export class VenueMap {
     if (v === undefined) {
       return undefined;
     }
+    const photos = slideshowPhotos(v, 'banner');
     return {
       id: v.id,
       name: v.name,
       beach: v.beach,
       region: v.region,
       description: v.description,
-      photos: slideshowPhotos(v, 'banner'),
+      photos,
+      // Un-backfillable (ADR-0008): a photo predating the surface shows what the band shows.
+      lightboxPhotos: v.lightboxPhotos?.length ? v.lightboxPhotos : photos,
       bookingMode: v.bookingMode,
       modeLabel: v.bookingMode === 'INSTANT' ? 'Instant Book' : 'Request to Book',
       isRated: isRated(v),

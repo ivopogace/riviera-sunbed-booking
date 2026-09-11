@@ -263,16 +263,15 @@ the banner list it already computes. No deviation. No `sizes` value changes (R-9
 
 ## Execution status
 
-**Stage pointer:** `implement — phases 1-2 done; phase 3 next`
+**Stage pointer:** `implement — phases 1-3 done; phase 4 next`
 
-**Next action:** Phase 3 — the frontend mirror, the lightbox wiring, and the two specs this slice
-falsifies, test-first.
+**Next action:** Phase 4 — amend ADR-0008 and `CONTEXT.md`, retire the hero plan doc, close out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 1 — The `LIGHTBOX` surface + V57 + the processor bound | ✅ | `6a363052` |
 | 2 — The read model's second candidate list | ✅ | `f4118692` |
-| 3 — The frontend mirror, the lightbox wiring, and the two specs it falsifies | | |
+| 3 — The frontend mirror, the lightbox wiring, and the two specs it falsifies | ✅ | `03a030ae` |
 | 4 — Substrate docs: ADR-0008, CONTEXT.md + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -281,6 +280,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-2 | phase 3 local run | The full mocked Playwright suite reported one failure (`layout-editor.e2e.ts:958`) that did **not** reproduce on a fresh run. Cause: a dev server started by hand for the phase-0 measurements was still listening on :4200, and `reuseExistingServer` handed Playwright that stale process mid-rebuild. Re-run against a server Playwright started itself: **617/617 pass**. Nothing in the diff reaches the layout editor | closed |
 | F-1 | phase 1 mutation testing | A first attempt to pin `LIGHTBOX`'s JPEG quality (0.62, not 0.82) by comparing bytes-per-pixel **survived** the mutation: on the test's flat fixture quality moves bytes by 6% (0.01783 → 0.01897 B/px) because the image is almost all flat colour, and on a detail-rich one the comparison is confounded by rendition size instead. The assertion was **removed** rather than tuned to a fixture-specific threshold — a test that passes under its own mutation claims coverage it does not have. The quality choice is pinned by ADR-0008's measured footprint figures, not by a unit test | closed |
 
 ---
