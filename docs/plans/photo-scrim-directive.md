@@ -170,8 +170,8 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 **Stage pointer:** `merge close-out`
 
-**Next action:** Nothing in the repo. Re-run the review gate over the substrate change (RV-PROC-2),
-confirm CI and Sonar on this head, then merge and run the GitHub-only close-out.
+**Next action:** Nothing in the repo. Confirm CI and Sonar on this head, then merge and run the
+GitHub-only close-out: verify #1066 closed, and end the PR-activity subscription.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -179,7 +179,8 @@ confirm CI and Sonar on this head, then merge and run the GitHub-only close-out.
 | 1 — The directive, red-green | ✅ | `6d847564` |
 | 2 — Swap both call sites, tighten the map assertion, generalization audit | ✅ | `25f50e2e` |
 | Review-gate fixes (F-1 … F-4) | ✅ | `dca0e481`, `3539d289` |
-| Upstream-docs check (F-6, F-7) + the rule-3 clause | ✅ | `45c6eb0e`, this commit |
+| Upstream-docs check (F-6, F-7) + the rule-3 clause | ✅ | `45c6eb0e`, `2db7d77f` |
+| Substrate re-review fixes (F-8 … F-10) | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -193,7 +194,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-4 | review gate — conventions agent | The Acceptance-criteria-verification section still held `<sha>` placeholders and the Self-review checklist was entirely unticked, while the phase table already read ✅ — the doc contradicted itself, and its own "no placeholders" line was the one it broke. | fixed-in-this-commit |
 | F-5 | close-out — `riviera-docs-freshness` over `6569e59f..3539d289` | **Zero staleness findings.** Nothing retired is cited as present fact (rule 2 kept `photo-scrim` alive, so every class-based citation still resolves), and the counting sweep found no statement that counts the surface directives — `field-glass.ts` was already a third one absent from `riviera-tailwind`'s example parenthetical before this slice. One **optional addition** flagged, not written: whether rule 3 should record the constitutive-geometry exception this directive establishes. The skill holds that a judgement about a rule's substance is flagged to the maintainer, never silently written. | **maintainer chose to record it** — rule 3 clause added in this commit |
 | F-6 | upstream-docs check (Angular v22 + Tailwind v4) | **No defect found; three claims the slice rests on are now verified against the vendors' own docs rather than in-tree precedent.** (a) Tailwind documents `bg-(image:<custom-property>)` as exactly `background-image: var(…)`, and that a bare `bg-(--x)` would be a *color* — the form used is the right one. (b) Tailwind v4 scans every non-ignored file as **plain text**, `.ts` included, needing only the class name as a complete unbroken string; the host string is one such literal, which closes R-5 on documentation as well as on AC-4's computed `background-image`. (c) Angular documents the `host` map as the way to set static classes and attributes, and a probe on this exact version showed directive classes **merge** with a call site's (`…scrim … mine-1 mine-2`) while a template attribute **overrides** the host one — matching the documented collision rule "if both values are static, the instance binding wins". | verified, no change |
-| F-7 | upstream-docs check — Tailwind conflicting utilities | Tailwind states the winner between two utilities on one property is "the class that appears later **in the stylesheet**", not in the `class` attribute, and advises never putting two conflicting classes on one element. This **confirms** `panel-glass`'s reason for unbundling radius, and it means the hazard is not specific to radius: it reaches the `absolute inset-0` this directive bundles, should a call site ever add a competing inset. Nothing is wrong today — no call site competes, and the probe above confirms a call site's classes would merge rather than replace — but the exception is real and the skill does not record it. Same subject as F-5's flagged addition. | **fixed-in-this-commit** — rule 3 now states the test, citing this directive as the worked example; the code is unchanged, which was the option taken over unbundling the geometry back into both templates (that would restore the very duplication this slice removes, with no variation between the copies) |
+| F-7 | upstream-docs check — Tailwind conflicting utilities | Tailwind states the winner between two utilities on one property is "the class that appears later **in the stylesheet**", not in the `class` attribute, and advises never putting two conflicting classes on one element. This **confirms** `panel-glass`'s reason for unbundling radius, and it means the hazard is not specific to radius: it reaches the `absolute inset-0` this directive bundles, should a call site ever add a competing inset. Nothing is wrong today — no call site competes, and the probe above confirms a call site's classes would merge rather than replace — but the exception is real and the skill does not record it. Same subject as F-5's flagged addition. | **fixed-in-`2db7d77f`** — rule 3 now states the test, citing this directive as the worked example; the code is unchanged, which was the option taken over unbundling the geometry back into both templates (that would restore the very duplication this slice removes, with no variation between the copies) |
+| F-8 | re-review of the substrate change | Rule 3's headline bans radius outright while the added bullet reframes the rule as a per-property test, so a session writing a pill-shaped surface directive could read radius as re-openable — and three chip directives already bundle `rounded-full`, one of them arguing it from a *third* rationale. The bullet also widened to "any property" and then narrowed back to "geometry" in its last sentence. Reworded: radius is named as the settled case that stays unbundled whatever a new directive's own argument looks like, and the closing sentence now says "a different value". | fixed-in-this-commit |
+| F-9 | re-review of the substrate change | The self-review checklist claimed "all five findings carrying a decision" while the register had grown past five. | fixed-in-this-commit |
+| F-10 | re-review of the substrate change | The close-out line claimed "this is the branch's last commit … nothing follows it" and pinned the review gate to `6569e59f..25f50e2e`; two commits had followed and the range no longer reached the head. Both restated against the real final head. | fixed-in-this-commit |
 
 ---
 
@@ -338,7 +342,7 @@ That is what makes it evidence in phase 2 rather than a description of whatever 
 - [x] Booking codes — N/A, none rendered or logged (invariant #7).
 - [x] Flyway — N/A, no schema change (invariant #12).
 - [x] **Frontend** standards met: standalone directive, `host` metadata, no inputs, no `as any`. The one deviation from the glass precedents — bundling the full-bleed geometry — is argued at the declaration.
-- [x] Execution status at HEAD matches reality — stage pointer, phase table, and all five findings carrying a decision.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, and every finding in the register carrying a decision.
 - [x] Risk register has no `open` rows — R-1…R-5 all closed with their outcome; Open Questions empty, its one entry resolved with the evidence.
-- [x] **Close-out written in THIS PR** — this is the branch's last commit; it carries the final plan state, cites `merged via PR #1068`, and nothing follows it. `docs/plans/` holds no other plan to retire.
-- [x] **The review gate ran in full** — `code-review:code-review` at rung 1 of the ladder, over the resolved range `6569e59f..25f50e2e` (10 files / +471 / −11, matched against the PR by `check-review-range.mjs`), with `riviera-review-overlay` layered on. Five parallel reviewers; four findings, all resolved; the overlay's RV items re-walked on the fix head.
+- [x] **Close-out written in THIS PR** — rewritten into each later commit as the maintainer's rule-3 decision and its re-review added one; this commit is the branch's last, carries the final plan state, and cites `merged via PR #1068`. `docs/plans/` holds no other plan to retire.
+- [x] **The review gate ran in full** — `code-review:code-review` at rung 1 of the ladder, over the resolved range `6569e59f..25f50e2e` (10 files / +471 / −11, matched against the PR by `check-review-range.mjs`), with `riviera-review-overlay` layered on: five parallel reviewers, four findings, all resolved. Re-reviewed after the substrate change over a freshly resolved `6569e59f..2db7d77f` (11 files, +482 / −11), RV-PROC-2 walked part by part against the added rule text; three further findings, all fixed here.
