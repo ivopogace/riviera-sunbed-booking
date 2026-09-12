@@ -176,6 +176,11 @@ export class VenueTab {
   protected readonly loadError = signal(false);
   protected readonly saving = signal(false);
   protected readonly saved = signal(false);
+
+  /** The save outcome as one sentence, or '' — bound by both the announcer and the visible copy. */
+  protected readonly savedMessage = computed(() =>
+    this.saved() ? 'Saved. Your venue card and beach-map page now show these details.' : '',
+  );
   protected readonly errorCode = signal<VenueProfileErrorCode | null>(null);
   /** A field-level error for the distance input (not a Signal-Form field), so a bad metres value points
    *  the operator at the right field instead of a generic form-wide message. */

@@ -341,6 +341,26 @@ describe('VenueTab (#177)', () => {
     expect(byId('venue-error').textContent?.toLowerCase()).toContain('session');
   });
 
+  it('announces the profile save through a region that predates it (#1078)', async () => {
+    render();
+
+    // Present and empty beforehand: a region born holding its sentence announces nothing.
+    const announce = byId('venue-saved-announce');
+    expect(announce).toBeTruthy();
+    expect(announce.textContent?.trim()).toBe('');
+
+    await save();
+    http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1')).flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(byId('venue-saved-announce')).toBe(announce);
+    expect(announce.textContent).toContain('Saved.');
+    // The visible copy is decoration; the announcer alone carries the words.
+    expect(byId('venue-saved').getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('clears the Saved notice when a details field is edited after saving (no silent lost edit)', async () => {
     render();
 
