@@ -181,14 +181,15 @@ N/A — no contract change. No request, response, or DTO shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — write the failing `reset-password.spec.ts` focus spec for `reset-done`.
+**Next action:** Phase 2 — write the failing `verify-email.spec.ts` element-identity spec, then
+hoist `app-load-announcer` above the `@switch`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — forgot-password: focus the sent confirmation | ✅ | this commit |
-| 1 — reset-password: focus the done confirmation | | |
+| 0 — forgot-password: focus the sent confirmation | ✅ | `4f04964` |
+| 1 — reset-password: focus the done confirmation | ✅ | this commit |
 | 2 — verify-email: one announcer across the switch | | |
 | 3 — set-password: hoist the notice out of its branch | | |
 | 4 — real-browser coverage + the e2e assertions R-1 names | | |

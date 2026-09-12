@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CustomerAuth } from '../core/customer-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { focusMover } from '../shared/focus-after-render';
 import {
   PASSWORD_BLOCKED_MESSAGE,
   PASSWORD_LENGTH_MESSAGE,
@@ -50,7 +51,7 @@ const CLS = {
         <h1 id="reset-title" [class]="cls.title">Set a new password</h1>
 
         @if (done()) {
-          <output [class]="cls.intro" data-testid="reset-done">
+          <output [class]="cls.intro" tabindex="-1" data-testid="reset-done">
             Your password has been updated. You can sign in with it now.
           </output>
           <p [class]="cls.alt">
@@ -126,6 +127,7 @@ export class ResetPassword {
   private readonly auth = inject(CustomerAuth);
   private readonly route = inject(ActivatedRoute);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly focusAfterRender = focusMover();
 
   protected readonly cls = CLS;
   protected readonly policyHint = PASSWORD_POLICY_HINT;
@@ -167,6 +169,11 @@ export class ResetPassword {
     switch (result) {
       case 'reset':
         this.done.set(true);
+        // The submit button that was just activated is destroyed with the form branch, stranding
+        // focus on <body> (WCAG 2.4.3). Moving it onto the confirmation is also what announces the
+        // outcome: the region enters the DOM already holding its text, and a live region generally
+        // speaks only text that MUTATES after it is mounted (#1076, RV-FE-10).
+        this.focusAfterRender('reset-done');
         break;
       case 'invalid-token':
         this.error.set('This reset link is invalid or has expired. Request a new one.');

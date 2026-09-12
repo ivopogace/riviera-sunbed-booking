@@ -51,6 +51,12 @@ function submit(fixture: ComponentFixture<ResetPassword>): void {
   fixture.detectChanges();
 }
 
+function byId(fixture: ComponentFixture<ResetPassword>, testid: string): HTMLElement | null {
+  return (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+    `[data-testid="${testid}"]`,
+  );
+}
+
 function text(fixture: ComponentFixture<ResetPassword>, testid: string): string {
   return (
     (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testid}"]`)
@@ -87,6 +93,21 @@ describe('ResetPassword', () => {
 
     expect(auth.resetPassword).toHaveBeenCalledWith('tok', 'passphrase-123');
     expect(text(fixture, 'reset-done')).toContain('updated');
+  });
+
+  it('parks focus on the done confirmation, whose trigger the branch destroyed (#1076)', async () => {
+    const fixture = await render(authStub('reset'), 'tok');
+
+    setModel(fixture, 'passphrase-123', 'passphrase-123');
+    submit(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The submit button that was activated no longer exists, so focus would otherwise sit on
+    // <body>. Landing on the confirmation both rescues it (WCAG 2.4.3) and is what announces the
+    // outcome: the region is born holding its text, which a live region alone does not speak.
+    expect(byId(fixture, 'reset-submit')).toBeNull();
+    expect(document.activeElement).toBe(byId(fixture, 'reset-done'));
   });
 
   it('says the password rule up front and rejects a short password before calling the service', async () => {
