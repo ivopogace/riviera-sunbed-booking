@@ -70,6 +70,12 @@ function submit(fixture: ComponentFixture<SetPassword>): void {
   fixture.detectChanges();
 }
 
+async function submitAndSettle(fixture: ComponentFixture<SetPassword>): Promise<void> {
+  submit(fixture);
+  await fixture.whenStable();
+  fixture.detectChanges();
+}
+
 async function clickAndSettle(
   fixture: ComponentFixture<SetPassword>,
   testid: string,
@@ -409,5 +415,125 @@ describe('SetPassword', () => {
     fixture.detectChanges();
 
     expect(auth.eraseAccount).toHaveBeenCalledOnce();
+  });
+
+  /**
+   * The policy guard returns before the request, so unless the clearing happens first a success
+   * notice from an earlier save stays on screen beside the fresh error and the customer reads "Your
+   * password has been saved." directly above a failure. `operator-password.ts` carries the identical
+   * fix, and its comment is why this clearing sits above the early return.
+   */
+  it('clears a stale success notice before showing a fresh error', async () => {
+    const fixture = await render(authStub({ setPassword: 'set' }));
+
+    setModel(fixture, 'brandnewpass2', '');
+    await submitAndSettle(fixture);
+    expect(text(fixture, 'setpw-notice')).toContain('saved');
+
+    // Under the minimum, so the client-side guard takes the early return and spends no request.
+    setModel(fixture, 'short', '');
+    await submitAndSettle(fixture);
+
+    expect(text(fixture, 'setpw-error')).toContain('12–72 characters');
+    expect(text(fixture, 'setpw-notice')).toBe('');
+  });
+
+  /**
+   * The notice renders ABOVE the form, so on a phone a save submitted from the bottom of the form
+   * leaves its only confirmation off-screen, indistinguishable from the fields merely emptying
+   * themselves. Focusing it is what scrolls it back — the browser's focusing steps scroll a
+   * focus target into view — so `document.activeElement` is the unit-level proof; the pixel proof is
+   * `customer-password.e2e.ts`, which needs a real viewport.
+   */
+  it('focuses the saved notice, which is what brings it into view', async () => {
+    const fixture = await render(authStub({ setPassword: 'set' }));
+
+    setModel(fixture, 'brandnewpass2', '');
+    await submitAndSettle(fixture);
+
+    expect(byId(fixture, 'setpw-error')).toBeNull();
+    expect(document.activeElement).toBe(byId(fixture, 'setpw-notice'));
+  });
+
+  /**
+   * The error is what just spoke, so the error is what focus lands on — even though the notice sits
+   * EARLIER in the document. That ordering is the whole reason `focusMover`'s two-argument form is
+   * used rather than one `querySelector` selector list: a list resolves in document order and would
+   * hand back the notice above the form every time.
+   */
+  it('focuses the error below the form, not the notice above it', async () => {
+    const fixture = await render(authStub({ setPassword: 'invalid-current' }));
+
+    setModel(fixture, 'brandnewpass2', 'wrong-current');
+    await submitAndSettle(fixture);
+
+    const error = byId(fixture, 'setpw-error')!;
+    expect(error.getAttribute('role')).toBe('alert');
+    expect(document.activeElement).toBe(error);
+  });
+
+  // The client-side guard returns before any request, so it needs the reveal of its own.
+  it('focuses a policy error the client-side guard raised without a request', async () => {
+    const auth = authStub();
+    const fixture = await render(auth);
+
+    setModel(fixture, 'short', '');
+    await submitAndSettle(fixture);
+
+    expect(auth.setPassword).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(byId(fixture, 'setpw-error'));
+  });
+
+  /**
+   * The save path moves focus because its notice can be off-screen; the resend path must NOT, and
+   * the grounds are WCAG rather than Angular — the framework's own guidance stops at "follow WCAG
+   * AA". 4.1.3 wants a status message conveyed without a focus move, which this page's live region
+   * already does, and 2.4.3 only compels a move when the focused element is destroyed, which this
+   * click does not do. Taking focus off a still-visible, repeatable trigger costs the customer
+   * their place for nothing.
+   */
+  it('leaves focus on the resend button, which survives its own click', async () => {
+    const fixture = await render(authStub({ emailVerified: false, requestVerification: 'sent' }));
+
+    const resend = byId(fixture, 'setpw-resend')!;
+    resend.focus();
+    await clickAndSettle(fixture, 'setpw-resend');
+
+    expect(text(fixture, 'setpw-notice')).toContain('Verification email sent');
+    expect(document.activeElement).toBe(resend);
+  });
+
+  /**
+   * Focus survives the round-trip of a retry. The error region is `@if`-gated, so clearing it before
+   * the request unmounts the very element the previous outcome focused, and nothing takes its place
+   * until the reply lands — focus sits on `<body>` for the whole request (WCAG 2.4.3), measured at
+   * about a second in Chromium. Holding the clear until the reply keeps the region mounted, and a
+   * resubmit that never touches a field is reachable: a tap does not focus a button on iOS Safari.
+   */
+  it('keeps focus off the body while a retry is in flight', async () => {
+    const gates: ((result: SetPasswordResult) => void)[] = [];
+    const fixture = await render({
+      ...authStub(),
+      setPassword: vi.fn(
+        () =>
+          new Promise<SetPasswordResult>((resolve) => {
+            gates.push(resolve);
+          }),
+      ),
+    });
+
+    setModel(fixture, 'brandnewpass2', 'wrong-current');
+    submit(fixture);
+    gates[0]('invalid-current');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(byId(fixture, 'setpw-error'));
+
+    submit(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId(fixture, 'setpw-error')).not.toBeNull();
+    expect(document.activeElement).toBe(byId(fixture, 'setpw-error'));
   });
 });

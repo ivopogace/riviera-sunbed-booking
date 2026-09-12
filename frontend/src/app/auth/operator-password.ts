@@ -153,9 +153,7 @@ export class OperatorPassword {
     if (this.submitting()) {
       return;
     }
-    // Cleared up front, not per-branch: an early return used to leave the previous success notice on
-    // screen beside a fresh error, so the operator saw "your password has been changed" next to a failure.
-    this.error.set(undefined);
+    // Up front, not per-branch: the early returns below must not leave a stale notice on screen.
     this.notice.set(undefined);
     const { currentPassword, newPassword } = this.model();
     // Kept though the server now names this case too: an attempt still costs a rate-limit token.
@@ -173,6 +171,8 @@ export class OperatorPassword {
     // account with such a password unable to prove its current one.
     const result = await this.auth.changePassword(currentPassword, newPassword);
     this.submitting.set(false);
+    // Held until the reply: clearing earlier unmounts a focused error, stranding focus on <body>.
+    this.error.set(undefined);
     const message = operatorPasswordChangeMessage(result);
     if (result === 'session-lost') {
       this.auth.sessionLost();

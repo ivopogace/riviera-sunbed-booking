@@ -48,6 +48,14 @@ function setModel(
   fixture.detectChanges();
 }
 
+/** Press Submit without settling, so the in-flight window is inspectable. */
+function press(fixture: ComponentFixture<OperatorPassword>): void {
+  (fixture.nativeElement as HTMLElement)
+    .querySelector<HTMLButtonElement>('[data-testid="oppw-submit"]')!
+    .click();
+  fixture.detectChanges();
+}
+
 async function submit(fixture: ComponentFixture<OperatorPassword>): Promise<void> {
   (fixture.nativeElement as HTMLElement)
     .querySelector<HTMLButtonElement>('[data-testid="oppw-submit"]')!
@@ -237,5 +245,39 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
       }
     ).model();
     expect(model).toEqual({ currentPassword: '', newPassword: '' });
+  });
+
+  /**
+   * Focus survives the round-trip of a retry. The error region is `@if`-gated, so clearing it before
+   * the request unmounts the very element `revealOutcome()` focused, and nothing takes its place
+   * until the reply lands — focus sits on `<body>` for the whole request (WCAG 2.4.3). A resubmit
+   * that never touches a field is reachable: a tap does not focus a button on iOS Safari, which is
+   * also why the click below is not followed by one.
+   */
+  it('keeps focus off the body while a retry is in flight', async () => {
+    const gates: ((result: OperatorPasswordChangeResult) => void)[] = [];
+    const fixture = await render({
+      ...authStub(),
+      changePassword: vi.fn(
+        () =>
+          new Promise<OperatorPasswordChangeResult>((resolve) => {
+            gates.push(resolve);
+          }),
+      ),
+    });
+
+    setModel(fixture, 'wrong-current', 'rotated-pass2');
+    press(fixture);
+    gates[0]('invalid-current');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(query(fixture, 'oppw-error'));
+
+    press(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(query(fixture, 'oppw-error')).not.toBeNull();
+    expect(document.activeElement).toBe(query(fixture, 'oppw-error'));
   });
 });

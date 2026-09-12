@@ -265,20 +265,23 @@ export class SetPassword {
     if (this.submitting()) {
       return;
     }
+    // Up front, not per-branch: the early return below must not leave a stale notice on screen.
+    this.notice.set(undefined);
     const { newPassword, currentPassword } = this.model();
     const violation = passwordPolicyViolation(newPassword, emailLocalPart(this.auth.email() ?? ''));
     if (violation) {
       this.error.set(passwordPolicyMessage(violation));
+      this.revealOutcome();
       return;
     }
     this.submitting.set(true);
-    this.error.set(undefined);
-    this.notice.set(undefined);
     // Send the current password exactly as typed — passwords may contain leading/trailing spaces, so
     // trimming would make an account with such a password unable to verify its current one (review fix).
     // Only an empty field means "no current password" (an SSO-only account setting its first).
     const result = await this.auth.setPassword(newPassword, currentPassword || undefined);
     this.submitting.set(false);
+    // Held until the reply: clearing earlier unmounts a focused error, stranding focus on <body>.
+    this.error.set(undefined);
     switch (result) {
       case 'set':
         this.notice.set('Your password has been saved.');
@@ -303,6 +306,22 @@ export class SetPassword {
         this.error.set('Something went wrong. Please try again.');
         break;
     }
+    this.revealOutcome();
+  }
+
+  /**
+   * Focus the outcome just set, which is also what scrolls it into view: the notice renders above
+   * the form, so on a phone a success message otherwise lands off-screen and reads as the form
+   * merely emptying itself.
+   *
+   * <p>Error first, notice second — `focusMover` resolves its arguments in the order given, where a
+   * `querySelector` selector list would resolve in document order and return the notice every time.
+   *
+   * <p>Not called from `resend()`, whose trigger survives its own click: a status message is
+   * announced without a focus move.
+   */
+  private revealOutcome(): void {
+    this.focusAfterRender('setpw-error', 'setpw-notice');
   }
 
   /**
