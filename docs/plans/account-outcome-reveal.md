@@ -52,19 +52,19 @@ for `bugfix/account-outcome-reveal` (`riviera-sdlc` § *Remote / cloud session a
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a signed-in customer on `/account`, when a valid new password saves,
+- [x] **AC-1:** Given a signed-in customer on `/account`, when a valid new password saves,
   then the success notice receives focus (which is what scrolls it into view), and no error is
   mounted. *Seam:* the rendered DOM of the `/account` page, observed through
   `document.activeElement` and `data-testid` · *Pinned by:*
   `set-password.spec.ts` → `focuses the saved notice, which is what brings it into view`
-- [ ] **AC-2:** Given a save attempt the server rejects, when the error renders below the form,
+- [x] **AC-2:** Given a save attempt the server rejects, when the error renders below the form,
   then the **error** receives focus, not the notice that sits above the form. *Seam:* as AC-1 ·
   *Pinned by:* `set-password.spec.ts` → `focuses the error below the form, not the notice above it`
-- [ ] **AC-3:** Given a success notice already on screen from an earlier save, when the customer
+- [x] **AC-3:** Given a success notice already on screen from an earlier save, when the customer
   submits a password the client-side policy rejects, then the notice is empty and only the error
   is shown. *Seam:* as AC-1 · *Pinned by:* `set-password.spec.ts` →
   `clears a stale success notice before showing a fresh error`
-- [ ] **AC-4:** Given an unverified account, when the customer clicks resend, then the notice
+- [x] **AC-4:** Given an unverified account, when the customer clicks resend, then the notice
   takes the resend outcome and focus **stays on the resend button**. *Seam:* as AC-1 ·
   *Pinned by:* `set-password.spec.ts` → `leaves focus on the resend button, which survives its own click`
 - [ ] **AC-5:** Given a 390x780 phone viewport scrolled so the notice is off-screen above, when
@@ -160,15 +160,15 @@ N/A — no contract change. No request, response, or DTO is touched.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Phase 0 step 1 — write the failing spec for AC-3 (stale notice cleared before
-a fresh error) in `frontend/src/app/auth/set-password.spec.ts`.
+**Next action:** Phase 1 — add the 390x780 phone-viewport proof (AC-5) to
+`frontend/e2e/customer-password.e2e.ts`, and verify it fails against the pre-fix component.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Clear the outcome up front, then reveal it | | |
-| 1 — Prove the phone-viewport visibility in a real browser | | |
+| 0 — Clear the outcome up front, then reveal it | ✅ | see below |
+| 1 — Prove the phone-viewport visibility in a real browser | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -246,6 +246,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-12 | Phase 0 | A component that renders an outcome notice **separated from the control that produces it** and never moves focus to it. Enumerated by the signal that carries such an outcome, then each hit read for a focus move and for where its region sits relative to its trigger | `grep -rln "notice = signal" frontend/src/app --include=*.ts \| grep -v spec`, then per file `grep -c "focusAfterRender\|revealOutcome\|moveFocus"` | 12 components; 9 already move focus. 3 do not: `admin/admin-outbox-lever.ts`, `admin/admin-mail-delivery.ts`, `operator/requests-tab.ts` | **Fix 1 (this slice), skip 3, follow-up on 2.** `admin-outbox-lever.ts` is **not** a member on inspection — its notice renders directly beneath its own Resubmit button, so there is no separation to close. `operator/requests-tab.ts` is the true match (notice at the top of the template, accept/decline triggers in the cards below) and `admin-mail-delivery.ts` is the inverted one (notice below a list of per-row resend buttons). Both are console surfaces rather than the phone-first tourist page this issue reports, and `requests-tab`'s accept re-renders the queue and can destroy the trigger — an RV-FE-9 destroyed-trigger decision, not this slice's reveal. Widening a bug-fix slice across two console pages with a different focus question is what #1079 itself declined to do; carried to the PR as a follow-up |
 
 ---
 

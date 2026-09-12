@@ -265,15 +265,17 @@ export class SetPassword {
     if (this.submitting()) {
       return;
     }
+    // Up front, not per-branch: the early return below must not leave a stale notice on screen.
+    this.error.set(undefined);
+    this.notice.set(undefined);
     const { newPassword, currentPassword } = this.model();
     const violation = passwordPolicyViolation(newPassword, emailLocalPart(this.auth.email() ?? ''));
     if (violation) {
       this.error.set(passwordPolicyMessage(violation));
+      this.revealOutcome();
       return;
     }
     this.submitting.set(true);
-    this.error.set(undefined);
-    this.notice.set(undefined);
     // Send the current password exactly as typed — passwords may contain leading/trailing spaces, so
     // trimming would make an account with such a password unable to verify its current one (review fix).
     // Only an empty field means "no current password" (an SSO-only account setting its first).
@@ -303,6 +305,26 @@ export class SetPassword {
         this.error.set('Something went wrong. Please try again.');
         break;
     }
+    this.revealOutcome();
+  }
+
+  /**
+   * Bring the outcome just set into view and focus it. The notice renders above the form while the
+   * error renders below it, so on a phone a success message lands off-screen and is
+   * indistinguishable from the form merely emptying itself — the confirmation the customer
+   * submitted for, silently missed. The scroll is the browser's: focusing an element scrolls it
+   * into view.
+   *
+   * <p>Error first, notice second, because `focusMover` resolves its two arguments in the order
+   * given: a `querySelector` selector list resolves in DOCUMENT order and would hand back the
+   * notice above the form even when the error below it is what just spoke.
+   *
+   * <p>The resend path deliberately does not call this. Its button survives its own click and sits
+   * one line above the notice, so nothing is destroyed and nothing is off-screen; WCAG 4.1.3 wants
+   * a status message conveyed WITHOUT moving focus, which this page's live region already does.
+   */
+  private revealOutcome(): void {
+    this.focusAfterRender('setpw-error', 'setpw-notice');
   }
 
   /**
