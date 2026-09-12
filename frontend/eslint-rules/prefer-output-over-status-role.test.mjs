@@ -74,7 +74,7 @@ describe('the eslint-disable door', () => {
     assert.equal(messages[0].ruleId, 'riviera/prefer-output-over-status-role');
   });
 
-  it('stays silent above a multi-line open tag, the shape both exemptions use', async () => {
+  it('stays silent above a multi-line open tag, which holds no line a comment could sit on', async () => {
     const messages = await lint(
       [
         '<!-- eslint-disable-next-line riviera/prefer-output-over-status-role -->',

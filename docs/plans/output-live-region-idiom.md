@@ -167,6 +167,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review gate | `frontend/eslint-rules/` sits outside `sonar.sources`, repeating the gap PR #963 closed for `scripts/` — gate machinery whose defects make a gate report clean rather than fail a build | fixed — the directory joins `sonar.sources` and the frontend job now emits its lcov into the same cached artifact |
+| F-2 | review gate | The rule module's doc comment ran to ~20 lines of motivation and history, over the §6d budget and into RV-STYLE-1's drop list | fixed — trimmed to what changes a reader's action |
+| F-3 | review gate | A rule test was titled "the shape both exemptions use", but only the pending-approval banner has a multi-line open tag; the booking dialog's is one line | fixed — retitled to the property the test actually pins |
+| F-4 | review gate | Five auth live regions are born holding their text inside the branch that mounts them (RV-FE-10), so the outcome may never be announced | deferred → follow-up issue. Pre-existing placement, unchanged by this slice, and out of its stated scope. The reviewer's sixth site, `erase-done`, is not a defect: `set-password.ts` focuses it explicitly, pinned by its spec |
 
 ---
 
@@ -177,7 +181,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/eslint-rules/prefer-output-over-status-role.test.mjs` — its RuleTester suite
 - `frontend/eslint.config.js` — registers the local plugin on the `**/*.html` block
 - `frontend/package.json` — the rule-test script; Prettier scope gains `eslint-rules`
-- `.github/workflows/ci.yml` — runs the rule suite in the frontend job
+- `.github/workflows/ci.yml` — runs the rule suite in the frontend job, with coverage for Sonar
+- `sonar-project.properties` — the rules directory joins `sonar.sources`, its lcov joins the report paths
 - `CLAUDE.md` — the frontend command block gains the rule suite and the widened format scope
 - `frontend/src/app/shared/load-announcer.ts|.spec.ts` — region + its identity assertion + the reference class doc
 - `frontend/src/app/shared/challenge-widget.ts` — region
