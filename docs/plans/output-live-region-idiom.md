@@ -46,8 +46,8 @@ for `feature/output-live-region-idiom`.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given an inline `.ts` template containing `<p role="status">`, when ESLint runs, then the rule reports it once and names `<output>`. *Seam:* the rule module's `create()` visitor, observed through ESLint's `RuleTester` · *Pinned by:* `prefer-output-over-status-role.test.mjs` › `flags a static role="status" attribute`
-- [ ] **AC-2:** Given a template using `<output>`, or `role="alert"`, or `role="status"` on an element behind `<!-- eslint-disable-next-line -->`, when ESLint runs, then nothing is reported. *Seam:* same rule module through `RuleTester` (the valid cases) · *Pinned by:* `prefer-output-over-status-role.test.mjs` › `leaves <output>, other roles and disabled lines alone`
+- [x] **AC-1:** Given a template containing `role="status"` as a static attribute or as a literal binding, when ESLint runs, then the rule reports it once at that attribute and names `<output>`. *Seam:* the rule module's `create()` visitor, observed through ESLint's `RuleTester` · *Pinned by:* `prefer-output-over-status-role.test.mjs` › the four `invalid` cases
+- [x] **AC-2:** Given a template using `<output>`, or another role, or `role="status"` on an element behind `<!-- eslint-disable-next-line -->`, when ESLint runs, then nothing is reported. *Seam:* the rule module's valid cases through `RuleTester`, and the directive through the real `ESLint` API, which is the only harness that sees the name a component actually writes · *Pinned by:* `prefer-output-over-status-role.test.mjs` › the `valid` cases and `the eslint-disable door`
 - [ ] **AC-3:** Given the whole frontend tree with the rule wired into `eslint.config.js`, when `npm run lint` runs, then it passes — proving all 24 conversions landed and the 3 remaining `role="status"` sites each carry a disable comment. *Seam:* the `npm run lint` script over `frontend/src` · *Pinned by:* the CI frontend job's lint step
 - [ ] **AC-4:** Given the command palette's empty-state region in a real browser, when no entry matches, then it still computes the accessible role `status` and paints as a block box. *Seam:* the rendered page, observed through Playwright role and computed-style locators · *Pinned by:* `admin-console-tabs.e2e.ts` › the existing `Meta+k` palette test
 - [ ] **AC-5:** Given the customer set-password notice after a successful save, when it renders, then it computes the accessible role `status`. *Seam:* the rendered page through `toHaveRole` · *Pinned by:* `customer-password.e2e.ts`
@@ -149,15 +149,15 @@ N/A — no contract change. No HTTP shape, DTO or endpoint is touched.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Write `frontend/eslint-rules/prefer-output-over-status-role.test.mjs` with the
-RuleTester cases for AC-1 and AC-2, run it, and watch it fail for a missing rule module.
+**Next action:** Convert the 24 regions to `<output>`, add `block` to every visible one, write the
+three exemption comments, and update the nine role assertions.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the ESLint rule, test-first, unwired | | |
-| 1 — the sweep: 24 conversions, 3 exemptions, 9 spec assertions | | |
+| 0 — the ESLint rule, test-first, unwired | ✅ | (this commit) |
+| 1 — the sweep: 24 conversions, 3 exemptions, 9 spec assertions | ⏳ | |
 | 2 — wire the rule: config, npm script, CI step, format scope | | |
 | 3 — e2e proof in a real browser + the reference doc | | |
 
