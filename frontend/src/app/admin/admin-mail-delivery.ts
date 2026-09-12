@@ -142,14 +142,13 @@ import { TouchTarget } from '../shared/touch-target';
         </ul>
       }
 
-      <p
-        class="mt-4 min-h-[1.5rem] text-[15px] text-riv-card-ink"
-        role="status"
+      <output
+        class="mt-4 block min-h-[1.5rem] text-[15px] text-riv-card-ink"
         aria-live="polite"
         data-testid="admin-delivery-notice"
       >
         {{ notice() }}
-      </p>
+      </output>
     </div>
   `,
 })

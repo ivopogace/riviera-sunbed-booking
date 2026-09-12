@@ -150,7 +150,8 @@ and duplications below its fail thresholds. Pull the actual list and fix every e
    **The third false zero: a diff outside `sonar.sources`.** An analysis that ran and
    concluded `success` still read nothing of a PR whose changed files all lie outside
    `sonar.sources` in `sonar-project.properties` (today: `platform/src/main/java`,
-   `frontend/src`, `scripts`) — a plan doc, a skill, a workflow, the properties file itself.
+   `frontend/src`, `frontend/eslint-rules`, `scripts`) — a plan doc, a skill, a workflow, the
+   properties file itself.
    Its green proves nothing about the diff: the issue list is empty because no line was
    analysed, and the tell is the measures — `new_lines` absent, and the bot comment reporting
    0.0% coverage and 0.0% duplication on new code. Distinguish it from clean by checking the

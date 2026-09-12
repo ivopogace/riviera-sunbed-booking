@@ -169,7 +169,9 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: actions/cache/restore@v6
         with:
-          path: frontend/coverage/frontend/lcov.info
+          path: |
+            frontend/coverage/frontend/lcov.info
+            frontend/coverage/eslint-rules/lcov.info
           key: ${{ steps.key.outputs.key }}
 
       - name: Set up Node (from .nvmrc)
@@ -192,6 +194,24 @@ jobs:
         if: steps.restore.outputs.cache-hit != 'true'
         run: npm run lint
 
+      - name: Test the lint rules themselves (with coverage, for Sonar)
+        # Beside the frontend gates rather than in `Repo hygiene (diff-scoped)` because the suite
+        # drives ESLint itself, and that job installs nothing. It runs with coverage for the same
+        # reason `scripts/` does: the rules are merge-gate machinery, whose defects never fail a
+        # build and instead make a gate report clean (sonar-project.properties says so).
+        #
+        # Unlike the `scripts/` lcov, this one is written from `frontend/`, so its SF paths are
+        # relative to that — hence the sed, the mirror of the frontend lcov's below.
+        if: steps.restore.outputs.cache-hit != 'true'
+        run: >-
+          mkdir -p coverage/eslint-rules &&
+          node --test --experimental-test-coverage
+          --test-coverage-include='eslint-rules/**' --test-coverage-exclude='eslint-rules/*.test.mjs'
+          --test-reporter=lcov --test-reporter-destination=coverage/eslint-rules/lcov.info
+          --test-reporter=spec --test-reporter-destination=stdout
+          "eslint-rules/*.test.mjs" &&
+          sed -i 's#^SF:eslint-rules/#SF:frontend/eslint-rules/#' coverage/eslint-rules/lcov.info
+
       - name: Format (Prettier, hard gate)
         # Bare `prettier --check` over the whole scope — the tree has been clean since the one-time
         # reformat (#631, PR #634, recorded in .git-blame-ignore-revs), which retired the
@@ -209,7 +229,7 @@ jobs:
         # cheap post-merge invariant. On a cache hit the install step is `skipped`, which is not
         # `success`, so this gate skips with the rest — the identical tree already passed it.
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: npx prettier --check src e2e
+        run: npx prettier --check src e2e eslint-rules
 
       - name: Test (Vitest, once, with coverage)
         if: steps.restore.outputs.cache-hit != 'true'
@@ -240,7 +260,9 @@ jobs:
         if: steps.restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
-          path: frontend/coverage/frontend/lcov.info
+          path: |
+            frontend/coverage/frontend/lcov.info
+            frontend/coverage/eslint-rules/lcov.info
           key: ${{ steps.key.outputs.key }}
 
       - name: Upload frontend coverage (for Sonar)
@@ -248,7 +270,12 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: frontend-sonar
-          path: frontend/coverage/frontend/lcov.info
+          # Two paths, so the artifact's root is their common ancestor `frontend/coverage` and it
+          # holds `frontend/lcov.info` + `eslint-rules/lcov.info`. The sonar job's download path
+          # moved up one level to match.
+          path: |
+            frontend/coverage/frontend/lcov.info
+            frontend/coverage/eslint-rules/lcov.info
           if-no-files-found: error
           retention-days: 1
 
@@ -429,7 +456,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: frontend-sonar
-          path: frontend/coverage/frontend
+          path: frontend/coverage
 
       - name: Normalize frontend lcov paths to repo root
         if: ${{ env.SONAR_TOKEN != '' }}

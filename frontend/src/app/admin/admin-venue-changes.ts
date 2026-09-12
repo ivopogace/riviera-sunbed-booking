@@ -231,14 +231,13 @@ const MAX_FEE_MINOR = 100_000;
         }
       </section>
 
-      <p
-        class="mt-3 min-h-[1.5rem] text-[15px] text-riv-ink-soft"
-        role="status"
+      <output
+        class="mt-3 block min-h-[1.5rem] text-[15px] text-riv-ink-soft"
         aria-live="polite"
         data-testid="admin-venue-change-fee-notice"
       >
         {{ notice() }}
-      </p>
+      </output>
 
       @if (rows().length === 0) {
         <div appCardGlass class="mt-3 rounded-[14px] p-5" data-testid="admin-venue-changes-empty">

@@ -95,9 +95,9 @@ const CLS = {
     <!-- One persistent live region announces every state change. A live region only announces
          content that MUTATES after it is in the DOM — a region re-created together with the
          confirmed/awaiting section would never announce its initial text (a11y). -->
-    <p class="sr-only" role="status" aria-live="polite" data-testid="pay-status">
+    <output class="sr-only" aria-live="polite" data-testid="pay-status">
       {{ liveStatus() }}
-    </p>
+    </output>
     @if (state() === 'missing') {
       <section [class]="cls.standalone" appCardGlass aria-labelledby="pay-title">
         <h1 [class]="cls.h1" id="pay-title">No payment in progress</h1>
@@ -335,12 +335,11 @@ const CLS = {
               </button>
             }
             @if (state() === 'processing') {
-              <p
-                class="mt-3.5 text-center text-[13px] font-semibold text-riv-accent-ink"
-                role="status"
+              <output
+                class="mt-3.5 block text-center text-[13px] font-semibold text-riv-accent-ink"
               >
                 Finalising… hang tight.
-              </p>
+              </output>
             }
           </aside>
         </div>

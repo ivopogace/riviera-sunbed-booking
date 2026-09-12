@@ -58,7 +58,7 @@ const CLS = {
   hint: `${POP_NAV_HINT} truncate`,
   badge: TAB_RAIL_BADGE,
   group: 'shrink-0 text-[10.5px] font-bold tracking-[0.12em] text-riv-pop-ink-soft uppercase',
-  empty: 'm-0 px-3.5 py-4 text-[14px] text-riv-pop-ink-soft',
+  empty: 'm-0 block px-3.5 py-4 text-[14px] text-riv-pop-ink-soft',
 } as const;
 
 /**
@@ -126,13 +126,9 @@ const CLS = {
           (input)="query.set(search.value)"
           (keydown.enter)="go()"
         />
-        <p
-          [class]="hits().length > 0 ? 'sr-only' : cls.empty"
-          role="status"
-          data-testid="oc-palette-empty"
-        >
+        <output [class]="hits().length > 0 ? 'sr-only' : cls.empty" data-testid="oc-palette-empty">
           {{ hits().length > 0 ? '' : 'Nothing matches.' }}
-        </p>
+        </output>
         @if (hits().length > 0) {
           <ul [class]="cls.list" role="list">
             @for (row of hits(); track row.key; let first = $first) {

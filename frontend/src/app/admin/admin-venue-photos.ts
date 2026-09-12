@@ -156,15 +156,14 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
       </ul>
     }
 
-    <p
-      class="mt-4 min-h-[1.5rem] text-[15px] text-riv-ink-soft"
-      role="status"
+    <output
+      class="mt-4 block min-h-[1.5rem] text-[15px] text-riv-ink-soft"
       aria-live="polite"
       tabindex="-1"
       data-testid="admin-photos-notice"
     >
       {{ notice() }}
-    </p>
+    </output>
   `,
 })
 export class AdminVenuePhotos {

@@ -13,6 +13,8 @@ import { OperatorAuth } from '../core/operator-auth';
   selector: 'app-pending-approval-banner',
   template: `
     @if (operator.pendingApproval()) {
+      <!-- Not an output element: this reports standing account state, not the result of an action. -->
+      <!-- eslint-disable-next-line riviera/prefer-output-over-status-role -->
       <div
         role="status"
         data-testid="pending-approval-banner"

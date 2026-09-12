@@ -23,6 +23,6 @@ describe('WithheldEmailNotice', () => {
     fixture.detectChanges();
     const host = fixture.nativeElement as HTMLElement;
 
-    expect(host.querySelector('[role="status"], [role="alert"], [aria-live]')).toBeNull();
+    expect(host.querySelector('output, [role="status"], [role="alert"], [aria-live]')).toBeNull();
   });
 });
