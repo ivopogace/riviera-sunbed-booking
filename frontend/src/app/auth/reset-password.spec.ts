@@ -103,9 +103,7 @@ describe('ResetPassword', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    // The submit button that was activated no longer exists, so focus would otherwise sit on
-    // <body>. Landing on the confirmation both rescues it (WCAG 2.4.3) and is what announces the
-    // outcome: the region is born holding its text, which a live region alone does not speak.
+    // Focus would sit on <body> otherwise, and landing here is what announces the outcome.
     expect(byId(fixture, 'reset-submit')).toBeNull();
     expect(document.activeElement).toBe(byId(fixture, 'reset-done'));
   });

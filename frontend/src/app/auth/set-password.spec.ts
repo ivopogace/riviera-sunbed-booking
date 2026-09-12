@@ -263,6 +263,53 @@ describe('SetPassword', () => {
     expect(text(fixture, 'setpw-notice')).toContain('Verification email sent. Check your inbox.');
   });
 
+  it('announces the resend outcome through a region that predates it (#1076)', async () => {
+    const fixture = await render(authStub({ emailVerified: false, requestVerification: 'sent' }));
+
+    // Present and empty beforehand: a region born holding its sentence announces nothing.
+    const notice = byId(fixture, 'setpw-notice');
+    expect(notice).not.toBeNull();
+    expect(text(fixture, 'setpw-notice')).toBe('');
+
+    await clickAndSettle(fixture, 'setpw-resend');
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(byId(fixture, 'setpw-notice')).toBe(notice);
+    expect(text(fixture, 'setpw-notice')).toContain('Verification email sent');
+  });
+
+  it('re-announces an identical resend outcome by clearing first (#1076)', async () => {
+    // Each resend stays in flight until its gate is opened, so the gap between the click and
+    // the response — where the region has to pass through empty — is observable.
+    const gates: (() => void)[] = [];
+    const fixture = await render({
+      ...authStub({ emailVerified: false }),
+      requestVerification: vi.fn(
+        () =>
+          new Promise<'sent'>((resolve) => {
+            gates.push(() => resolve('sent'));
+          }),
+      ),
+    });
+
+    await clickAndSettle(fixture, 'setpw-resend');
+    gates[0]();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(text(fixture, 'setpw-notice')).toContain('Verification email sent');
+
+    await clickAndSettle(fixture, 'setpw-resend');
+
+    // An unchanged string is not a mutation, so an identical second outcome must clear first.
+    expect(text(fixture, 'setpw-notice')).toBe('');
+
+    gates[1]();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(text(fixture, 'setpw-notice')).toContain('Verification email sent');
+  });
+
   it('shows the verified badge for a verified account (no nudge)', async () => {
     const fixture = await render(authStub({ emailVerified: true }));
 

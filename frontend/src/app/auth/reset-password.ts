@@ -169,10 +169,7 @@ export class ResetPassword {
     switch (result) {
       case 'reset':
         this.done.set(true);
-        // The submit button that was just activated is destroyed with the form branch, stranding
-        // focus on <body> (WCAG 2.4.3). Moving it onto the confirmation is also what announces the
-        // outcome: the region enters the DOM already holding its text, and a live region generally
-        // speaks only text that MUTATES after it is mounted (#1076, RV-FE-10).
+        // The branch destroys the trigger, so focus moves here — which is also what announces it.
         this.focusAfterRender('reset-done');
         break;
       case 'invalid-token':

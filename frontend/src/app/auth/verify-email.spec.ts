@@ -113,24 +113,19 @@ describe('VerifyEmail', () => {
     expect(byId(fixture, 'verify-pending')?.getAttribute('aria-hidden')).toBe('true');
 
     release();
-    // Two settles, as `render` does: the held promise resolves one microtask hop before
-    // `verify()` resumes and writes the state.
+    // Two settles, as render does: the promise resolves a hop before verify() writes the state.
     await fixture.whenStable();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
 
-    // Same node, mutated text: the mechanism that makes a live region speak. A region rebuilt
-    // together with its sentence — what this page did — announces nothing.
+    // Same node, mutated text: the mechanism that makes a live region speak.
     expect(byId(fixture, 'load-announcer')).toBe(announcer);
     expect(announcer?.textContent?.trim()).toBe('Your email is verified. Thanks!');
     expect(byId(fixture, 'verify-success')?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  // `ready` is bound to the verified branch alone, so an exit nobody described stays silent
-  // rather than announcing "verified" over a panel saying the opposite. The failures announce
-  // themselves: inserting a role="alert" is the one case a live region speaks without a prior
-  // mutation, which is why they are not on the announcer.
+  // ready names the verified branch alone; the failures speak through their own alert panels.
   it.each([
     ['an invalid token', 'invalid-token' as const, 'tok', 'verify-failed'],
     ['a transport error', 'error' as const, 'tok', 'verify-error'],

@@ -127,9 +127,8 @@ const RESEND_NOTICES = {
             <p [class]="cls.hint" data-testid="setpw-verified">Your email is verified.</p>
           }
 
-          @if (notice(); as msg) {
-            <output [class]="cls.intro" data-testid="setpw-notice">{{ msg }}</output>
-          }
+          <!-- Present but empty: a region born holding its text is often not announced. -->
+          <output [class]="cls.intro" data-testid="setpw-notice">{{ notice() }}</output>
 
           <form (submit)="onSubmit(); $event.preventDefault()" novalidate>
             <label [class]="cls.field">
@@ -345,6 +344,8 @@ export class SetPassword {
       return;
     }
     this.resending.set(true);
+    // Cleared first, as onSubmit does: a live region speaks only text that CHANGES.
+    this.notice.set(undefined);
     const result = await this.auth.requestVerification();
     this.resending.set(false);
     this.notice.set(RESEND_NOTICES[result]);

@@ -181,17 +181,17 @@ N/A — no contract change. No request, response, or DTO shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** Phase 3 — write the failing `set-password.spec.ts` specs for AC-6 and AC-7, then
-hoist `setpw-notice` out of its `@if`.
+**Next action:** Phase 4 — add the real-browser coverage to `loading-announcements.e2e.ts` and fix
+the four `toBeHidden()` assertions R-1 names.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — forgot-password: focus the sent confirmation | ✅ | `4f04964` |
 | 1 — reset-password: focus the done confirmation | ✅ | `effd8c2` |
-| 2 — verify-email: one announcer across the switch | ✅ | this commit |
-| 3 — set-password: hoist the notice out of its branch | | |
+| 2 — verify-email: one announcer across the switch | ✅ | `d107278` |
+| 3 — set-password: hoist the notice out of its branch | ✅ | this commit |
 | 4 — real-browser coverage + the e2e assertions R-1 names | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

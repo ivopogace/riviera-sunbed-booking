@@ -36,9 +36,7 @@ const CLS = {
       <div [class]="cls.card" appCardGlass>
         <h1 id="verify-title" [class]="cls.title">Verify your email</h1>
 
-        <!-- Above the @switch on purpose: a live region must outlive the branch it describes
-             (#1076). Ready names the verified branch alone, so the two dead-ends stay silent
-             here and announce themselves through their own role="alert" panels. -->
+        <!-- Above the @switch on purpose: a live region must outlive the branch it describes. -->
         <app-load-announcer
           [loading]="state() === 'verifying'"
           [ready]="state() === 'verified'"
@@ -48,7 +46,7 @@ const CLS = {
 
         @switch (state()) {
           @case ('verifying') {
-            <!-- Visible copy only; the announcer above owns the announcement (#1076). -->
+            <!-- Visible copy only; the announcer above owns the announcement. -->
             <p [class]="cls.intro" aria-hidden="true" data-testid="verify-pending">
               Verifying your email…
             </p>
