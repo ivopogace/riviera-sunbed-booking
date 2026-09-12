@@ -155,8 +155,8 @@ test('the forgot and reset confirmations take focus when their form is replaced 
 });
 
 /**
- * The same contract on the operator console and Discover, in the two shapes #1078 needed beyond a
- * plain hoist: one region for a whole table, whose sentence names the row so consecutive rows still
+ * The same contract on the operator console and Discover, in the two shapes a plain hoist cannot
+ * take: one region for a whole table, whose sentence names the row so that consecutive rows still
  * mutate it, and a panel that gives its live semantics up because a persistent sibling already
  * speaks the outcome.
  */
