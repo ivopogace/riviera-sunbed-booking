@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prototype — giving up an unpaid booking</title>
+    <style>
+      :root {
+        --ink: #10242e;
+        --ink-soft: #4a6472;
+        --ink-faint: #7d95a1;
+        --bg: #f4f7f8;
+        --panel: #ffffff;
+        --line: #dde6ea;
+        --accent: #0b7896;
+        --accent-soft: #e6f2f6;
+        --good: #1d6f4a;
+        --good-soft: #e4f4ec;
+        --bad: #a32a34;
+        --bad-soft: #fbeaec;
+        --warn: #8a5a09;
+        --warn-soft: #fdf1dc;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 40px 20px 80px;
+        background: var(--bg);
+        color: var(--ink);
+        font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      .wrap { max-width: 1080px; margin: 0 auto; }
+      h1 { font-size: 27px; letter-spacing: -0.02em; margin: 0 0 10px; }
+      h2 { font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 14px; }
+      h3 { font-size: 16px; margin: 0 0 6px; }
+      p { margin: 0 0 12px; }
+      .lead { color: var(--ink-soft); max-width: 74ch; }
+      .banner {
+        background: var(--accent-soft);
+        border: 1px solid #c2dfe8;
+        border-radius: 14px;
+        padding: 18px 20px;
+        margin: 0 0 30px;
+      }
+      .banner strong { color: var(--accent); }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 22px 24px;
+        margin-bottom: 22px;
+      }
+      .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+      @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+      dl.state { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 9px 18px; }
+      dl.state dt { color: var(--ink-soft); }
+      dl.state dd { margin: 0; font-weight: 650; }
+      .pill {
+        display: inline-block; padding: 2px 11px; border-radius: 999px;
+        font-size: 13px; font-weight: 650; border: 1px solid transparent;
+      }
+      .pill.neutral { background: #eef3f5; color: var(--ink-soft); border-color: var(--line); }
+      .pill.good { background: var(--good-soft); color: var(--good); border-color: #bfe3d1; }
+      .pill.bad { background: var(--bad-soft); color: var(--bad); border-color: #f0c5ca; }
+      .pill.warn { background: var(--warn-soft); color: var(--warn); border-color: #ebd5a8; }
+      .changed { box-shadow: 0 0 0 3px rgba(11, 120, 150, 0.18); border-radius: 999px; }
+      button {
+        font: inherit; cursor: pointer; border-radius: 10px; padding: 9px 15px;
+        border: 1px solid var(--line); background: #fff; color: var(--ink);
+        margin: 0 8px 8px 0;
+      }
+      button:hover:enabled { border-color: var(--accent); color: var(--accent); }
+      button:disabled { opacity: 0.4; cursor: default; }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 650; }
+      button.primary:hover:enabled { filter: brightness(1.08); color: #fff; }
+      button.step { display: block; width: 100%; text-align: left; margin: 0 0 8px; }
+      button.step.done { background: var(--good-soft); border-color: #bfe3d1; color: var(--good); }
+      button.step .n { display: inline-block; width: 22px; font-weight: 700; color: var(--ink-faint); }
+      button.step.done .n { color: var(--good); }
+      .group { margin-bottom: 18px; }
+      .group-label { font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 8px; }
+      .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+      .tabs button { margin: 0; }
+      .tabs button[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: #fff; font-weight: 650; }
+      .tabs button[aria-selected="true"]:hover { color: #fff; }
+      .said {
+        border-left: 3px solid var(--accent); background: #f7fbfc;
+        padding: 12px 16px; border-radius: 0 10px 10px 0; margin: 0 0 16px;
+      }
+      .said .who { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 3px; }
+      .said.good { border-left-color: var(--good); background: var(--good-soft); }
+      .said.bad { border-left-color: var(--bad); background: var(--bad-soft); }
+      .said.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+      ol.log { margin: 0; padding-left: 20px; color: var(--ink-soft); font-size: 14px; min-height: 220px; max-height: 320px; overflow-y: auto; }
+      ol.log li { margin-bottom: 5px; }
+      ol.log li.flag { color: var(--bad); font-weight: 650; }
+      .watch { background: var(--warn-soft); border: 1px solid #ebd5a8; border-radius: 10px; padding: 12px 16px; font-size: 14px; }
+      .watch b { color: var(--warn); }
+      footer { color: var(--ink-faint); font-size: 13.5px; margin-top: 40px; max-width: 74ch; }
+      code { background: #eef3f5; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Can a guest give up an unpaid booking?</h1>
+
+      <div class="banner">
+        <p class="lead">
+          Today a tourist who reaches the payment page and changes their mind has no way out. The
+          set stays held until a background sweep reclaims it — about twenty minutes after an
+          instant booking, about twelve hours after a venue accepts a request. This demo adds one
+          new guest action, <strong>“Give up this booking”</strong>, and lets you push it through
+          the cases that are hard to reason about on paper.
+        </p>
+        <p class="lead" style="margin-bottom: 0">
+          <strong>The question:</strong> is it safe to let the guest release their own hold — and
+          what should they be told when the payment is already in flight, already through, or the
+          card provider can’t be reached?
+        </p>
+      </div>
+
+      <div class="cols">
+        <div>
+          <div class="panel">
+            <h2>Where things stand</h2>
+            <dl class="state" id="state"></dl>
+          </div>
+
+          <div class="panel" id="saidPanel">
+            <h2>What the guest is told</h2>
+            <div id="said"></div>
+          </div>
+
+          <div class="panel">
+            <h2>What has happened</h2>
+            <ol class="log" id="log"></ol>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel">
+            <h2>Free play</h2>
+            <p class="lead" style="font-size: 14px">
+              Every action is always available, so you can try things in any order — including
+              orders that shouldn’t be allowed.
+            </p>
+            <div id="freeplay"></div>
+            <button id="reset">Start over</button>
+          </div>
+
+          <div class="panel">
+            <h2>Walkthroughs</h2>
+            <div class="tabs" id="tabs" role="tablist"></div>
+            <div id="scenario"></div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        Throwaway prototype. The page is disposable; the module at the top of the script is the
+        part worth keeping — it is the shape the real abandon use case would take, and it
+        deliberately mirrors the order the existing abandoned-payment sweep already uses: cancel
+        the payment first, release the set only on an authoritative answer.
+      </footer>
+    </div>
+
+    <script>
+      /* ===================================================================
+       * THE PORTABLE BIT — the abandon decision as a pure module.
+       * No DOM in here. This is the shape that would lift into the real
+       * booking module if the prototype answers its question "yes".
+       * =================================================================== */
+
+      const Booking = Object.freeze({
+        AWAITING_PAYMENT: 'AWAITING_PAYMENT',
+        CONFIRMED: 'CONFIRMED',
+        CANCELLED: 'CANCELLED',
+      });
+
+      // What the card provider says the payment is doing. This is the authority —
+      // never the browser's opinion of how checkout went.
+      const Intent = Object.freeze({
+        NONE: 'NONE', // pay() threw after the booking committed; nothing was ever registered
+        AWAITING_CARD: 'AWAITING_CARD',
+        IN_FLIGHT: 'IN_FLIGHT', // card submitted, 3-D Secure or bank still deciding
+        SUCCEEDED: 'SUCCEEDED',
+        VOIDED: 'VOIDED',
+      });
+
+      const initialState = (overrides = {}) => ({
+        booking: Booking.AWAITING_PAYMENT,
+        origin: 'INSTANT', // or ACCEPTED_REQUEST
+        intent: Intent.AWAITING_CARD,
+        setHeld: true,
+        gatewayReachable: true,
+        ...overrides,
+      });
+
+      // Mirrors what a real cancel call can answer. A payment that is in flight or
+      // already through is NOT cancellable — that refusal is the whole safety property.
+      function cancelPayment(state) {
+        if (!state.gatewayReachable) return { kind: 'FAILED' };
+        if (state.intent === Intent.NONE) return { kind: 'NO_COLLECTION' };
+        if (state.intent === Intent.SUCCEEDED) return { kind: 'NOT_CANCELLABLE', why: 'succeeded' };
+        if (state.intent === Intent.IN_FLIGHT) return { kind: 'NOT_CANCELLABLE', why: 'in_flight' };
+        return { kind: 'VOIDED' };
+      }
+
+      // The guarded release: it acts ONLY on a booking still awaiting payment, so whoever
+      // gets there first does the single release and everyone after is a no-op.
+      function releaseHold(state) {
+        if (state.booking !== Booking.AWAITING_PAYMENT) return { state, released: false };
+        return {
+          state: { ...state, booking: Booking.CANCELLED, setHeld: false, intent: Intent.VOIDED },
+          released: true,
+        };
+      }
+
+      /**
+       * The new guest action. Cancel the payment first, release the set only on an
+       * authoritative answer — the same order the existing sweep uses, which is what
+       * keeps a paid booking from ever being released out from under its payment.
+       */
+      function abandon(state) {
+        if (state.booking !== Booking.AWAITING_PAYMENT) {
+          return { state, outcome: 'NOT_AWAITING' };
+        }
+        const cancellation = cancelPayment(state);
+        switch (cancellation.kind) {
+          case 'VOIDED':
+          case 'NO_COLLECTION': {
+            const { state: next } = releaseHold(state);
+            return { state: next, outcome: 'GIVEN_UP' };
+          }
+          case 'NOT_CANCELLABLE':
+            return { state, outcome: 'PAYMENT_ALREADY_THROUGH', why: cancellation.why };
+          case 'FAILED':
+            return { state, outcome: 'TRY_AGAIN' };
+        }
+      }
+
+      // The signature-verified confirmation. Guarded the same way, so a confirmation that
+      // arrives after the booking is already gone changes nothing.
+      function confirmPayment(state) {
+        if (state.booking !== Booking.AWAITING_PAYMENT) {
+          return { state: { ...state, intent: Intent.SUCCEEDED }, confirmed: false };
+        }
+        return {
+          state: { ...state, booking: Booking.CONFIRMED, intent: Intent.SUCCEEDED },
+          confirmed: true,
+        };
+      }
+
+      /* =================================================================== */
+      /* Everything below is the throwaway page.                              */
+      /* =================================================================== */
+
+      const SAID = {
+        GIVEN_UP: {
+          tone: 'good',
+          who: 'The guest sees',
+          text: 'Booking given up. You haven’t been charged, and the spot is back on the map for someone else.',
+        },
+        PAYMENT_ALREADY_THROUGH: {
+          tone: 'warn',
+          who: 'The guest sees',
+          text: 'Your payment is going through, so this booking can’t be given up. Hold on a moment — we’re confirming it now.',
+        },
+        TRY_AGAIN: {
+          tone: 'bad',
+          who: 'The guest sees',
+          text: 'We couldn’t reach our payment provider just now, so nothing changed. Try again in a moment — if you simply close this page, the spot is released on its own.',
+        },
+        NOT_AWAITING: {
+          tone: 'bad',
+          who: 'The guest sees',
+          text: 'This booking isn’t waiting for payment any more, so there’s nothing to give up. Check its status for what to do next.',
+        },
+      };
+
+      let state = initialState();
+      let previous = null;
+      let log = [];
+      let said = null;
+      let activeTab = 0;
+      let stepsDone = 0;
+
+      const say = (key) => (said = SAID[key] ?? null);
+      const note = (text, flag = false) => log.push({ text, flag });
+
+      const actions = {
+        GIVE_UP: {
+          label: 'Guest: Give up this booking',
+          group: 'The guest',
+          primary: true,
+          run() {
+            const result = abandon(state);
+            state = result.state;
+            say(result.outcome);
+            const told = {
+              GIVEN_UP: 'Guest gave up the booking — payment voided, spot released.',
+              PAYMENT_ALREADY_THROUGH:
+                'Guest tried to give up, refused: the payment is already through or in flight. Nothing released.',
+              TRY_AGAIN:
+                'Guest tried to give up, but the payment provider was unreachable. Nothing changed.',
+              NOT_AWAITING:
+                'Guest tried to give up a booking that is no longer awaiting payment. Nothing changed.',
+            };
+            note(told[result.outcome]);
+          },
+        },
+        SUBMIT_CARD: {
+          label: 'Guest: Submit the card',
+          group: 'The guest',
+          run() {
+            if (state.intent !== Intent.AWAITING_CARD) {
+              note('Card submitted again — no effect, the payment has already moved on.');
+              return;
+            }
+            state = { ...state, intent: Intent.IN_FLIGHT };
+            said = null;
+            note('Guest submitted their card. The bank is deciding (3-D Secure may be open).');
+          },
+        },
+        PAYMENT_SUCCEEDED: {
+          label: 'Provider: Payment succeeded',
+          group: 'The payment provider',
+          run() {
+            const wasCancelled = state.booking === Booking.CANCELLED;
+            const result = confirmPayment(state);
+            state = result.state;
+            if (result.confirmed) {
+              said = null;
+              note('Confirmation arrived — the booking is confirmed and the spot is the guest’s.');
+            } else if (wasCancelled) {
+              note(
+                'A confirmation arrived for a booking that was already given up — refused, nothing changed. Money would be stranded if the payment had really gone through, which is why the give-up voids the payment first.',
+                true,
+              );
+            } else {
+              note('A confirmation arrived, but this booking is not awaiting payment — refused.');
+            }
+          },
+        },
+        PAYMENT_VOIDED: {
+          label: 'Provider: Payment voided',
+          group: 'The payment provider',
+          run() {
+            const { state: next, released } = releaseHold(state);
+            state = next;
+            said = null;
+            note(
+              released
+                ? 'The provider reported the payment voided — the booking was cancelled and the spot released.'
+                : 'The provider reported the payment voided, but this booking was already settled — no effect.',
+            );
+          },
+        },
+        NEVER_REGISTERED: {
+          label: 'Provider: Payment was never registered',
+          group: 'The payment provider',
+          run() {
+            state = { ...state, intent: Intent.NONE };
+            said = null;
+            note(
+              'The payment was never registered against this booking — the set is held with nothing collecting for it.',
+            );
+          },
+        },
+        TOGGLE_GATEWAY: {
+          label: 'Provider: Toggle reachable / unreachable',
+          group: 'The payment provider',
+          run() {
+            state = { ...state, gatewayReachable: !state.gatewayReachable };
+            said = null;
+            note(
+              state.gatewayReachable
+                ? 'The payment provider is reachable again.'
+                : 'The payment provider has gone unreachable.',
+            );
+          },
+        },
+        SWEEP: {
+          label: 'Clock: The reclaim sweep runs',
+          group: 'The clock and the venue',
+          run() {
+            if (state.booking !== Booking.AWAITING_PAYMENT) {
+              note('The sweep ran and found nothing to reclaim.');
+              said = null;
+              return;
+            }
+            const result = abandon(state);
+            state = result.state;
+            said = null;
+            note(
+              result.outcome === 'GIVEN_UP'
+                ? 'The sweep reclaimed the booking — payment voided, spot released.'
+                : 'The sweep looked at the booking and left it alone (the payment is in flight, through, or unreachable).',
+            );
+          },
+        },
+        VENUE_ACCEPTS: {
+          label: 'Venue: Accept the request',
+          group: 'The clock and the venue',
+          run() {
+            state = { ...state, origin: 'ACCEPTED_REQUEST', intent: Intent.AWAITING_CARD };
+            said = null;
+            note('The venue accepted the request. The guest now has a long window to pay.');
+          },
+        },
+      };
+
+      const SCENARIOS = [
+        {
+          name: 'The ordinary give-up',
+          blurb:
+            'A tourist reaches the payment page, thinks better of it, and says so. This is the case that has no answer today.',
+          watch: 'The spot goes back on the map immediately, instead of twenty minutes later.',
+          setup: () => initialState(),
+          steps: ['GIVE_UP'],
+        },
+        {
+          name: 'Mid-payment',
+          blurb:
+            'The guest submits their card, a 3-D Secure window opens, and while it is open they go back and try to give the booking up.',
+          watch:
+            'The give-up is refused, because a payment in flight cannot be voided. The payment then lands and the booking confirms. This is the case that would be a disaster if the release came first.',
+          setup: () => initialState(),
+          steps: ['SUBMIT_CARD', 'GIVE_UP', 'PAYMENT_SUCCEEDED'],
+        },
+        {
+          name: 'A late confirmation',
+          blurb:
+            'The guest gives up cleanly, and a moment later a confirmation for that same booking turns up anyway.',
+          watch:
+            'The confirmation is refused and the booking stays given up. Watch the red line in the history: this is the shape of the only way money could be stranded, and it is why the payment is voided before anything is released.',
+          setup: () => initialState(),
+          steps: ['GIVE_UP', 'PAYMENT_SUCCEEDED'],
+        },
+        {
+          name: 'Two exits at once',
+          blurb:
+            'The guest presses give-up at almost exactly the moment the background sweep reaches the same booking.',
+          watch:
+            'Exactly one of them releases the spot. The second finds nothing to do and says so quietly, rather than releasing a second time.',
+          setup: () => initialState(),
+          steps: ['GIVE_UP', 'SWEEP'],
+        },
+        {
+          name: 'Provider unreachable',
+          blurb:
+            'The guest tries to give up while the payment provider cannot be reached, so the payment cannot be voided.',
+          watch:
+            'Nothing changes and the guest is told so honestly. The booking is still theirs to pay or to give up once the provider is back — and the sweep remains the backstop either way.',
+          setup: () => initialState(),
+          steps: ['TOGGLE_GATEWAY', 'GIVE_UP', 'TOGGLE_GATEWAY', 'GIVE_UP'],
+        },
+        {
+          name: 'An accepted request',
+          blurb:
+            'The venue said yes and is holding the spot. The guest then decides not to come after all — today that spot is dead for twelve hours.',
+          watch:
+            'It works identically. The open product question is whether the venue should be able to tell this apart from a payment that simply failed, since the two land on the same terminal state.',
+          setup: () => initialState(),
+          steps: ['VENUE_ACCEPTS', 'GIVE_UP'],
+        },
+        {
+          name: 'Already paid',
+          blurb:
+            'The booking is confirmed and paid for. The guest finds the give-up action anyway and presses it.',
+          watch:
+            'It is refused. Giving up is for unpaid bookings; a paid one has to go through the cancellation policy, because there is real money to return.',
+          setup: () => initialState(),
+          steps: ['SUBMIT_CARD', 'PAYMENT_SUCCEEDED', 'GIVE_UP'],
+        },
+        {
+          name: 'Nothing ever collected',
+          blurb:
+            'A rare failure leaves the booking holding a spot with no payment registered against it at all. The guest just sees a page that will never work.',
+          watch:
+            'The give-up still frees the spot. Without it, this booking holds its set until the sweep gets there.',
+          setup: () => initialState(),
+          steps: ['NEVER_REGISTERED', 'GIVE_UP'],
+        },
+      ];
+
+      const LABELS = {
+        booking: {
+          AWAITING_PAYMENT: ['Waiting to be paid', 'warn'],
+          CONFIRMED: ['Confirmed', 'good'],
+          CANCELLED: ['Given up / cancelled', 'bad'],
+        },
+        intent: {
+          NONE: ['Nothing was ever registered', 'bad'],
+          AWAITING_CARD: ['Waiting for a card', 'neutral'],
+          IN_FLIGHT: ['In flight — the bank is deciding', 'warn'],
+          SUCCEEDED: ['Paid', 'good'],
+          VOIDED: ['Voided — no money moved', 'neutral'],
+        },
+        origin: {
+          INSTANT: ['Booked instantly', 'neutral'],
+          ACCEPTED_REQUEST: ['A request the venue accepted', 'neutral'],
+        },
+      };
+
+      const el = (id) => document.getElementById(id);
+
+      function pill(value, map, changed) {
+        const [text, tone] = map[value];
+        return `<span class="pill ${tone}${changed ? ' changed' : ''}">${text}</span>`;
+      }
+
+      // Held means two different things to a venue: held for someone who still owes money,
+      // and held by someone who has paid. Only the first one is inventory going to waste.
+      function spot(changed) {
+        const ring = changed ? ' changed' : '';
+        if (!state.setHeld) return `<span class="pill good${ring}">Free — anyone can book it</span>`;
+        return state.booking === Booking.CONFIRMED
+          ? `<span class="pill good${ring}">Theirs — paid for</span>`
+          : `<span class="pill warn${ring}">Held, nothing paid yet</span>`;
+      }
+
+      function render() {
+        const ch = (k) => previous && previous[k] !== state[k];
+        el('state').innerHTML = `
+          <dt>This booking</dt><dd>${pill(state.booking, LABELS.booking, ch('booking'))}</dd>
+          <dt>The spot on the map</dt><dd>${spot(ch('setHeld'))}</dd>
+          <dt>The payment</dt><dd>${pill(state.intent, LABELS.intent, ch('intent'))}</dd>
+          <dt>How it started</dt><dd>${pill(state.origin, LABELS.origin, ch('origin'))}</dd>
+          <dt>Payment provider</dt><dd>${
+            state.gatewayReachable
+              ? '<span class="pill neutral">Reachable</span>'
+              : `<span class="pill bad${ch('gatewayReachable') ? ' changed' : ''}">Unreachable</span>`
+          }</dd>`;
+
+        el('said').innerHTML = said
+          ? `<div class="said ${said.tone}"><div class="who">${said.who}</div>${said.text}</div>`
+          : `<div class="said"><div class="who">The guest sees</div>Nothing new — the last thing that happened wasn’t the guest pressing give-up.</div>`;
+
+        el('log').innerHTML = log.length
+          ? log.map((e) => `<li${e.flag ? ' class="flag"' : ''}>${e.text}</li>`).join('')
+          : '<li style="list-style:none;margin-left:-20px">Nothing yet — press something.</li>';
+        el('log').scrollTop = el('log').scrollHeight;
+
+        renderScenario();
+      }
+
+      function dispatch(key) {
+        previous = { ...state };
+        said = null;
+        actions[key].run();
+        render();
+      }
+
+      function renderFreePlay() {
+        const groups = {};
+        for (const [key, action] of Object.entries(actions)) {
+          (groups[action.group] ??= []).push([key, action]);
+        }
+        el('freeplay').innerHTML = Object.entries(groups)
+          .map(
+            ([group, entries]) =>
+              `<div class="group"><div class="group-label">${group}</div>${entries
+                .map(
+                  ([key, a]) =>
+                    `<button data-action="${key}"${a.primary ? ' class="primary"' : ''}>${a.label}</button>`,
+                )
+                .join('')}</div>`,
+          )
+          .join('');
+        el('freeplay')
+          .querySelectorAll('[data-action]')
+          .forEach((b) => b.addEventListener('click', () => dispatch(b.dataset.action)));
+      }
+
+      function renderTabs() {
+        el('tabs').innerHTML = SCENARIOS.map(
+          (s, i) =>
+            `<button role="tab" aria-selected="${i === activeTab}" data-tab="${i}">${s.name}</button>`,
+        ).join('');
+        el('tabs')
+          .querySelectorAll('[data-tab]')
+          .forEach((b) =>
+            b.addEventListener('click', () => {
+              activeTab = Number(b.dataset.tab);
+              startScenario();
+            }),
+          );
+      }
+
+      function renderScenario() {
+        const s = SCENARIOS[activeTab];
+        el('scenario').innerHTML = `
+          <h3>${s.name}</h3>
+          <p class="lead">${s.blurb}</p>
+          <div class="watch"><b>Watch for:</b> ${s.watch}</div>
+          <div class="group-label" style="margin-top:18px">Press these in order</div>
+          ${s.steps
+            .map(
+              (key, i) =>
+                `<button class="step${i < stepsDone ? ' done' : ''}" data-step="${i}"${
+                  i === stepsDone ? '' : ' disabled'
+                }><span class="n">${i < stepsDone ? '✓' : i + 1}</span>${actions[key].label}</button>`,
+            )
+            .join('')}
+          ${
+            stepsDone === s.steps.length
+              ? '<p class="lead" style="margin-top:12px;font-size:14px">Walkthrough finished. Keep poking with the free-play buttons, or pick another tab.</p>'
+              : ''
+          }`;
+        el('scenario')
+          .querySelectorAll('[data-step]')
+          .forEach((b) =>
+            b.addEventListener('click', () => {
+              const i = Number(b.dataset.step);
+              dispatch(SCENARIOS[activeTab].steps[i]);
+              stepsDone = i + 1;
+              render();
+            }),
+          );
+      }
+
+      function startScenario() {
+        state = SCENARIOS[activeTab].setup();
+        previous = null;
+        log = [];
+        said = null;
+        stepsDone = 0;
+        note(`Starting the walkthrough: ${SCENARIOS[activeTab].name}.`);
+        renderTabs();
+        render();
+      }
+
+      el('reset').addEventListener('click', () => {
+        state = initialState();
+        previous = null;
+        log = [];
+        said = null;
+        stepsDone = 0;
+        render();
+      });
+
+      renderFreePlay();
+      renderTabs();
+      render();
+    </script>
+  </body>
+</html>
