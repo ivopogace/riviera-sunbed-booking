@@ -491,10 +491,12 @@ Test `frontend/src/app/operator/venue-tab.spec.ts`
   `npm run test:e2e:a11y -- operator-set-editing` → 11 passed.
 
 **Sonar note.** Gate green, and the list pulled from the API rather than read off the badge:
-0 new issues, 0 duplicated blocks, `new_lines` 6, `new_lines_to_cover` 0, `new_uncovered_lines` 0.
-The reported "0.0% coverage on new code" is an empty denominator, not a shortfall. The gate applies
-to the analysed paths only — the specs (`sonar.exclusions`), `frontend/e2e/` and `docs/plans/` lie
-outside `sonar.sources`, so its green speaks for the component `.ts`/`.html` lines alone.
+0 new issues, 0 code smells, 0 duplicated blocks, `new_lines` 139, `new_lines_to_cover` 21,
+`new_uncovered_lines` 0, `new_coverage` 100.0%. An earlier head reported 0.0% with
+`new_lines_to_cover` 0 — an empty denominator, not a shortfall; the review-gate fix added the
+coverable lines and its specs cover them. The gate applies to the analysed paths only: the specs
+(`sonar.exclusions`), `frontend/e2e/` and `docs/plans/` lie outside `sonar.sources`, so its green
+speaks for the component `.ts`/`.html` lines alone.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
