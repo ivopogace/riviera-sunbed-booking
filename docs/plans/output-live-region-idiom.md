@@ -150,17 +150,26 @@ N/A — no contract change. No HTTP shape, DTO or endpoint is touched.
 
 ## Execution status
 
-**Stage pointer:** `PR #1075 — review gate run, findings resolved; awaiting CI and the Sonar gate`
+**Stage pointer:** `merge close-out — all gates clear, merged via PR #1075`
 
-**Next action:** Check CI on the current head, then pull the SonarCloud new-issue and duplication
-list for the PR and clear every entry before merge.
+**Next action:** Merge. Every gate is clear on head `734a55ec`: CI green across all seven checks,
+the review gate run with its findings resolved, and the Sonar gate green with an empty list.
+
+**Sonar note (gate applied, not a false zero):** `new_lines` is 127, so the diff was genuinely
+analysed rather than falling outside `sonar.sources` — the third false zero this repo names. New
+bugs, vulnerabilities, code smells, security hotspots and duplicated blocks are all 0; new-code
+coverage is 97.3% against the 80% bar; the issue and hotspot searches both return empty. The new
+rules directory is inside that analysis for the first time, which is finding F-1's whole point.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the ESLint rule, test-first, unwired | ✅ | (this commit) |
-| 1 — the sweep: 24 conversions, 3 exemptions, 9 spec assertions, rule wired | ✅ | (this commit) |
-| 2 — the rule's tooling: npm script, CI step, format scope, CLAUDE.md | ✅ | (this commit) |
-| 3 — e2e proof in a real browser + the reference doc | ✅ | (this commit) |
+| 0 — the ESLint rule, test-first, unwired | ✅ | `0be37f27` |
+| 1 — the sweep: 24 conversions, 3 exemptions, 9 spec assertions, rule wired | ✅ | `5ab830d0` |
+| 2 — the rule's tooling: npm script, CI step, format scope, CLAUDE.md | ✅ | `e2ae2812` |
+| 3 — e2e proof in a real browser + the reference doc | ✅ | `d5fae727` |
+| 4 — review-gate fixes: Sonar coverage for the rules, two doc corrections | ✅ | `b0bd2e42` |
+| 5 — the substrate lines this branch falsified | ✅ | `734a55ec` |
+| 6 — close-out + plan retirement | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -179,6 +188,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ## File structure
 
 - `docs/plans/output-live-region-idiom.md` — this plan
+- `docs/plans/lightbox-photo-surface.md` — deleted: its slice merged via PR #1074, no citations anywhere
 - `frontend/eslint-rules/prefer-output-over-status-role.js` — the rule module
 - `frontend/eslint-rules/prefer-output-over-status-role.test.mjs` — its RuleTester suite
 - `frontend/eslint.config.js` — registers the local plugin on the `**/*.html` block
@@ -294,20 +304,20 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A.
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR, in its last code-touching commit.**
-- [ ] **The review gate ran in full.**
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR, in its last code-touching commit.**
+- [x] **The review gate ran in full.**
