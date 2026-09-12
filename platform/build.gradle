@@ -51,8 +51,8 @@ dependencies {
 	// resize + EXIF-orientation. Output is re-encoded JPEG, which drops all source metadata incl. GPS
 	// EXIF (ADR-0008 / privacy). Behind the venue module's PhotoProcessor.
 	implementation 'net.coobird:thumbnailator:0.4.21'
-	implementation 'com.twelvemonkeys.imageio:imageio-jpeg:3.14.0'
-	implementation 'com.twelvemonkeys.imageio:imageio-webp:3.14.0'
+	implementation 'com.twelvemonkeys.imageio:imageio-jpeg:3.15.0'
+	implementation 'com.twelvemonkeys.imageio:imageio-webp:3.15.0'
 	// Proof-of-work challenge (ADR-0016): the official ALTCHA v2 library issues and verifies the
 	// challenges the bundled widget solves; self-hosted, no ALTCHA service is ever called. Its pom
 	// declares org.json as `provided`, so the runtime classpath has to carry it explicitly.
