@@ -31,12 +31,19 @@ template — forced the per-site shape decision into the ACs, and the Behavior-p
 caught the `toBeHidden()` e2e assertions) · `tdd` (each site red-first: the spec asserts element
 identity or the focus move, both of which fail against today's shape) · `riviera-review-overlay`
 (RV-FE-10 is the rule under repair; its mutation-check requirement shaped every AC) ·
-`riviera-docs-freshness` (<pending — runs at close-out over the PR range>) · `riviera-frontend`
+`riviera-docs-freshness` (**ran** over `0c079160..fc42c418`, 1 finding — no substrate doc states anything this slice falsified, and no doc counts the load-announcer's adopters; the finding is a close-out obligation rather than drift: `docs/plans/output-live-region-idiom.md` is a merged slice's plan due for retirement, and its one deferred residual is issue #1076, which this PR closes) · `riviera-frontend`
 (placement: all five edits stay in the existing `auth/` feature folder, no new file, no import
-direction change) · `angular-developer` + angular-cli MCP (<pending — consulted at phase 0 for
-the v22 `afterNextRender`/signal posture>) · `playwright-cli` (<pending — the real-browser half
-of the mechanism, phase 4>) · `riviera-tailwind` (<pending — phase 3 only, the one class the
-hoisted region carries>) · `riviera-local-debug` (scoped Vitest runs; `PW_CHROMIUM_EXECUTABLE`
+direction change) · `angular-developer` + angular-cli MCP
+(`get_best_practices` for the v22 posture — **loaded late, at the review gate, not before phase 0**:
+RV-PROC-1 caught the placeholder. Re-vetted all four components against it and found nothing to
+change; the static `loadingLabel`/`readyLabel` attribute bindings onto `input.required<string>()`
+are the shape `set-password.ts` already uses) · `playwright-cli` (loaded before phase 4 — put the
+real-browser half in `frontend/e2e/`, the CI-safe mocked suite, and settled the promise-gated
+`page.route` registered last so it wins over the recovery mock) · `riviera-tailwind`
+(**also loaded late**, same finding. It changed the diff: its no-drift rule and the #828 precedent
+put a `toHaveCSS('margin-bottom', '20px')` pin on the hoisted region's reserved space, which
+nothing else was holding. Otherwise clean — no new token, no `@apply`, no SCSS to migrate, no new
+interactive control, no `outline-none`) · `riviera-local-debug` (scoped Vitest runs; `PW_CHROMIUM_EXECUTABLE`
 for the mocked e2e suite in this cloud session)
 
 **Branch:** `claude/sdlc-1076-yhknnr` — the cloud session's designated remote branch stands in
@@ -46,58 +53,65 @@ for `bugfix/auth-live-region-placement` (`riviera-sdlc` § *Remote / cloud sessi
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the forgot-password page with an email entered, when the request
+- [x] **AC-1:** Given the forgot-password page with an email entered, when the request
   succeeds and the form branch is replaced, then focus is on the `forgot-sent` notice (which
   is therefore announced) rather than stranded on `<body>` by the destroyed submit button.
   *Seam:* the rendered `ForgotPassword` component DOM at `/account/forgot`, by `data-testid` ·
   *Pinned by:* `forgot-password.spec.ts` › `parks focus on the sent confirmation, whose trigger the branch destroyed (#1076)`
 
-- [ ] **AC-2:** Given the reset-password page with a valid token and matching passwords, when
+- [x] **AC-2:** Given the reset-password page with a valid token and matching passwords, when
   the reset succeeds, then focus is on the `reset-done` notice and the submit button is gone.
   *Seam:* the rendered `ResetPassword` component DOM at `/account/reset`, by `data-testid` ·
   *Pinned by:* `reset-password.spec.ts` › `parks focus on the done confirmation, whose trigger the branch destroyed (#1076)`
 
-- [ ] **AC-3:** Given the verify-email page mounted in its `verifying` state, when verification
+- [x] **AC-3:** Given the verify-email page mounted in its `verifying` state, when verification
   succeeds, then the **same** `load-announcer` element that held `Verifying your email…` now
   holds `Your email is verified. Thanks!` — element identity asserted across the transition,
   not merely the presence of text. *Seam:* the rendered `VerifyEmail` component DOM at
   `/account/verify`, by `data-testid` · *Pinned by:* `verify-email.spec.ts` ›
   `announces through one region that survives verifying → verified (#1076)`
 
-- [ ] **AC-4:** Given the verify-email page in either announced state, then the visible copy
+- [x] **AC-4:** Given the verify-email page in either announced state, then the visible copy
   beside the announcer carries `aria-hidden="true"`, so the sentence has exactly one source
   (RV-FE-10). *Seam:* same as AC-3 · *Pinned by:* `verify-email.spec.ts` ›
   `announces through one region that survives verifying → verified (#1076)`
 
-- [ ] **AC-5:** Given a verification that fails (`invalid-token` or a transport error), when the
+- [x] **AC-5:** Given a verification that fails (`invalid-token` or a transport error), when the
   page settles, then the announcer is empty and the failure is carried by the branch's
   `role="alert"` panel — `[ready]` is true in exactly one of the four branches, so an exit
   nobody described is silent rather than lying. *Seam:* same as AC-3 · *Pinned by:*
-  `verify-email.spec.ts` › `leaves the announcer silent on every non-verified exit (#1076)`
+  `verify-email.spec.ts` › `leaves the announcer silent on an invalid token (#1076)`, ›
+  `… on a transport error (#1076)`, › `… on a link with no token at all (#1076)` (one `it.each`)
 
-- [ ] **AC-6:** Given the signed-in account page before any resend or save, when a resend
+- [x] **AC-6:** Given the signed-in account page before any resend or save, when a resend
   outcome or a password save lands, then the **same** `setpw-notice` element that was present
   and empty beforehand now holds the sentence. *Seam:* the rendered `SetPassword` component DOM
   at `/account/password`, by `data-testid` · *Pinned by:* `set-password.spec.ts` ›
   `announces the resend outcome through a region that predates it (#1076)`
 
-- [ ] **AC-7:** Given a repeated resend with the same outcome, when the second response lands,
+- [x] **AC-7:** Given a repeated resend with the same outcome, when the second response lands,
   then the notice text passed through empty in between, so the region mutates and re-announces
   instead of holding an unchanged string. *Seam:* same as AC-6 · *Pinned by:*
   `set-password.spec.ts` › `re-announces an identical resend outcome by clearing first (#1076)`
 
-- [ ] **AC-8:** Given a real Chromium browser, when each of the three flows runs against the
+- [x] **AC-8:** Given a real Chromium browser, when each of the three flows runs against the
   mocked API, then the region handle taken before the transition is still attached after it
   (verify-email) and focus lands on the notice (forgot, reset) — the half jsdom's hand-driven
   change detection cannot prove. *Seam:* the routes `/account/forgot`, `/account/reset`,
   `/account/verify` in the CI-safe mocked Playwright suite · *Pinned by:*
-  `frontend/e2e/loading-announcements.e2e.ts` › `Auth outcomes announce through a region that outlives the branch (#1076)`
+  `frontend/e2e/loading-announcements.e2e.ts` › `verify-email announces through a region that outlives the switch (#1076)`, ›
+  `the account notice announces through a region that predates it (#1076)`, ›
+  `the forgot and reset confirmations take focus when their form is replaced (#1076)`
 
 ## Non-goals
 
 - **No focus move on `setpw-notice`.** Its triggers (the resend button, the submit button)
-  both survive the transition, so focus is not stranded; moving it would be a behaviour
-  regression for sighted keyboard users that the announcement fix does not need.
+  both survive the transition, so nothing is stranded (WCAG 2.4.3) and the persistent region
+  alone makes it announce. That argument covers only the stranding half: `operator-password.ts`'s
+  `revealOutcome()` moves focus for a **second, older** reason — the notice sits above the form,
+  so on a phone a success message can land off-screen — and that reason does apply here. It is a
+  pre-existing sighted-visibility gap, not announcement timing, so it stays out of this slice and
+  is filed as **#1079** (review finding F-1).
 - **No change to `erase-done` or `oppw-notice`.** Both are already correct and pinned; the
   issue names the first, and the intake grill found the second.
 - **No copy changes.** Every sentence on these five pages is already correct; this is
@@ -185,10 +199,10 @@ N/A — no contract change. No request, response, or DTO shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `PR — marking ready for review`
+**Stage pointer:** `DONE — merged via PR #1077`
 
-**Next action:** Mark PR #1077 ready for review, then run the Review gate per
-`riviera-sdlc` `references/pr-gates.md` §1.
+**Next action:** None. CI green, Review gate run in full, Sonar gate green with an empty list,
+findings resolved or deferred with issue numbers.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -196,7 +210,8 @@ N/A — no contract change. No request, response, or DTO shape is touched.
 | 1 — reset-password: focus the done confirmation | ✅ | `effd8c2` |
 | 2 — verify-email: one announcer across the switch | ✅ | `d107278` |
 | 3 — set-password: hoist the notice out of its branch | ✅ | `75151fb` |
-| 4 — real-browser coverage + the e2e assertions R-1 names | ✅ | this commit |
+| 4 — real-browser coverage + the e2e assertions R-1 names | ✅ | `fc42c41` |
+| 5 — review-gate fixes (F-1, F-5, F-6) + close-out | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -205,7 +220,12 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (git-history reviewer) | This slice names `oppw-notice` as its model but copies only the persistent-region half. The model also moves focus, for a visibility reason (the notice sits above the form, so a phone can leave a success message off-screen) that applies to `set-password.ts` too, and the Non-goals rested only on the stranding argument | deferred → issue **#1079**. Pre-existing and unchanged by this diff — the notice sat in the same place before, merely absent until it had text — and it is sighted visibility, not the announcement timing this slice is scoped to. Non-goals corrected to name both halves rather than rest on the incomplete one |
+| F-2 | review gate (git-history reviewer) | Does making `setpw-notice` unconditional undo a deliberate earlier accessibility decision? | not a finding — verified: `git log -S` shows the `@if` came from the file's first commit (`bcd33a7`, the S8 slice), weeks before any of the a11y hardening, so there is no decision to undo |
+| F-3 | review gate (git-history reviewer) | Does replacing verify-email's two `<output>`s with `aria-hidden` `<p>`s regress #1042's `<output>` idiom sweep? | not a finding — verified: `0c079160`'s own commit message defers exactly these five sites to #1076, so this is that sweep's intended completion, and the region role moves to the announcer rather than disappearing |
+| F-5 | review gate (riviera overlay, RV-PROC-1) | Three `<pending>` placeholders on the *Skills consulted* line named phases that had already shipped, which reads as "written first, loaded after" | fixed in this commit — and the finding was right on the substance, not just the wording: `angular-developer` and `riviera-tailwind` genuinely had not been loaded. Both loaded and re-vetted at the gate. Angular found nothing to change; `riviera-tailwind` changed the diff, adding the reserved-space pin. `playwright-cli` had been loaded before phase 4 as claimed |
+| F-6 | review gate (riviera overlay) | Two *Pinned by* pointers named tests that do not exist (AC-5's `it.each` expands to three names; AC-8 named one test where three shipped), and the AC-verification section still held `<sha>` placeholders | fixed in this commit |
+| F-4 | Sonar gate | Quality gate green — and not a false zero: `new_lines` = 29, so the analysis read the diff | closed — 0 new issues, 0 bugs/vulnerabilities/smells, 0 duplicated blocks, 100.0% new-code coverage. Judged on the analysed paths only: the four component files. The specs are excluded by `sonar.exclusions=**/*.spec.ts`, and the two e2e files and this plan doc lie outside `sonar.sources` |
 
 ---
 
@@ -221,7 +241,11 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/auth/set-password.ts` — `setpw-notice` hoisted out of its `@if`; `resend()` clears the notice first
 - `frontend/src/app/auth/set-password.spec.ts` — AC-6, AC-7
 - `frontend/e2e/loading-announcements.e2e.ts` — AC-8
-- `frontend/e2e/customer-password.e2e.ts` — R-1: `toBeHidden()` → `toHaveText('')`
+- `frontend/e2e/customer-password.e2e.ts` — R-1: `toBeHidden()` → `toHaveText('')`; plus the
+  reserved-space pin `riviera-tailwind`'s no-drift rule put on the hoisted region
+- `docs/plans/output-live-region-idiom.md` — **deleted**: its PR merged as `0c079160`, so the next
+  close-out retires it (`riviera-docs-freshness` § *Plan-doc retirement*). Nothing outside
+  `docs/plans/` cites the slug, and its only deferred residual is issue #1076, which this PR closes
 
 ---
 
@@ -229,14 +253,14 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `frontend/src/app/auth/forgot-password.ts` · Test `frontend/src/app/auth/forgot-password.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — asserts the resting place of focus after the branch
+- [x] **Step 1: Write the failing test** — asserts the resting place of focus after the branch
   swap, not the presence of the text (presence passes for the broken shape too).
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- forgot-password` → FAIL (focus is on `<body>`)
-- [ ] **Step 3: Minimal implementation** — `tabindex="-1"` on the `<output>`; `focusMover()` field; `this.focusAfterRender('forgot-sent')` after `this.sent.set(true)`
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- forgot-password` → PASS
-- [ ] **Step 5: Generalization-audit pass** — recorded in the log below
-- [ ] **Step 6: Commit** — `git commit -m "Announce the forgot-password confirmation by focusing it (#1076)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 2: Run it, verify it fails** — `npm test -- forgot-password` → FAIL (focus is on `<body>`)
+- [x] **Step 3: Minimal implementation** — `tabindex="-1"` on the `<output>`; `focusMover()` field; `this.focusAfterRender('forgot-sent')` after `this.sent.set(true)`
+- [x] **Step 4: Run it, verify it passes** — `npm test -- forgot-password` → PASS
+- [x] **Step 5: Generalization-audit pass** — recorded in the log below
+- [x] **Step 6: Commit** — `git commit -m "Announce the forgot-password confirmation by focusing it (#1076)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — reset-password: focus the done confirmation
 
@@ -248,34 +272,34 @@ Same five steps as phase 0, against `reset-done` and `this.done.set(true)`.
 
 **Files:** Modify `frontend/src/app/auth/verify-email.ts` · Test `frontend/src/app/auth/verify-email.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — AC-3 (element identity across `verifying → verified`),
+- [x] **Step 1: Write the failing tests** — AC-3 (element identity across `verifying → verified`),
   AC-4 (`aria-hidden` on both visible copies), AC-5 (silent on every non-verified exit)
-- [ ] **Step 2: Run, verify they fail** — `npm test -- verify-email` → FAIL (no announcer exists)
-- [ ] **Step 3: Minimal implementation** — `app-load-announcer` above the `@switch`, bound
+- [x] **Step 2: Run, verify they fail** — `npm test -- verify-email` → FAIL (no announcer exists)
+- [x] **Step 3: Minimal implementation** — `app-load-announcer` above the `@switch`, bound
   `[loading]="state() === 'verifying'"` and `[ready]="state() === 'verified'"`; the two
   `<output>`s become `<p aria-hidden="true">`
-- [ ] **Step 4: Run, verify they pass**
-- [ ] **Step 5–7:** as phase 0.
+- [x] **Step 4: Run, verify they pass**
+- [x] **Step 5–7:** as phase 0.
 
 ## Phase 3 — set-password: hoist the notice out of its branch
 
 **Files:** Modify `frontend/src/app/auth/set-password.ts` · Test `frontend/src/app/auth/set-password.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — AC-6 (the region predates its text), AC-7 (a repeated
+- [x] **Step 1: Write the failing tests** — AC-6 (the region predates its text), AC-7 (a repeated
   identical outcome still mutates)
-- [ ] **Step 2: Run, verify they fail** — `npm test -- set-password`
-- [ ] **Step 3: Minimal implementation** — the `<output>` becomes unconditional, interpolating
+- [x] **Step 2: Run, verify they fail** — `npm test -- set-password`
+- [x] **Step 3: Minimal implementation** — the `<output>` becomes unconditional, interpolating
   `notice()`; `resend()` clears `notice` before awaiting, as `onSubmit()` already does
-- [ ] **Step 4–7:** as phase 0.
+- [x] **Step 4–7:** as phase 0.
 
 ## Phase 4 — real-browser coverage
 
 **Files:** Modify `frontend/e2e/loading-announcements.e2e.ts` · Modify `frontend/e2e/customer-password.e2e.ts`
 
-- [ ] **Step 1:** Add the AC-8 test; fix the four R-1 assertions
-- [ ] **Step 2:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`
-- [ ] **Step 3:** Full frontend gate — `npm run lint`, `npm run format:check`, `npm test`
-- [ ] **Step 4–5:** commit + execution status.
+- [x] **Step 1:** Add the AC-8 test; fix the four R-1 assertions
+- [x] **Step 2:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`
+- [x] **Step 3:** Full frontend gate — `npm run lint`, `npm run format:check`, `npm test`
+- [x] **Step 4–5:** commit + execution status.
 
 ---
 
@@ -292,25 +316,30 @@ Same five steps as phase 0, against `reset-done` and `this.done.set(true)`.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 … AC-7:** `npm test` (Vitest, jsdom) → all green, at commit `<sha>`.
-- [ ] **AC-8:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → green, at commit `<sha>`.
+- [x] **AC-1 … AC-7:** `npx ng test --watch=false` → 257 files / 3172 tests green, and green again
+  in CI's Frontend job on `fc42c41`. Each was red first, and each was mutation-checked: moving a
+  region back inside its branch, widening `[ready]` past the loaded branch, or dropping the clear
+  in `resend()` each fails its spec.
+- [x] **AC-8:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → green
+  (the four announcement tests plus the four `customer-password` tests re-run after the R-1 and
+  reserved-space edits).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A.
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.

@@ -60,6 +60,8 @@ test('a signed-in tourist changes their password, and the new credential replace
 
   await gotoAccount(page);
   await expect(page.getByTestId('setpw-email')).toContainText(EMAIL);
+  // The empty notice keeps its space, so an arriving outcome moves nothing (as oppw-notice does).
+  await expect(page.getByTestId('setpw-notice')).toHaveCSS('margin-bottom', '20px');
   await expectNoSeriousAxeViolations(page, 'customer account page');
 
   // Wrong current password: a named error, and nothing is rotated.
