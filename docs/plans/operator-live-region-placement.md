@@ -138,8 +138,7 @@ they have today.
 
 - **Focus management.** Accepting a request destroys the card holding the pressed Accept button,
   which strands focus on `<body>` (WCAG 2.4.3). That is a different defect from RV-FE-10, it is not
-  enumerated on #1078, and hoisting the notice fixes the announcement without it. Follow-up issue
-  at close-out.
+  enumerated on #1078, and hoisting the notice fixes the announcement without it. Filed as #1082.
 - Changing any visible copy, colour, spacing or layout. Every visible sentence on these nine
   surfaces reads exactly as it does today.
 - Extracting a shared announcer primitive. `shared/load-announcer.ts` is for loading surfaces;
@@ -179,8 +178,8 @@ None open.
   relied on.** Each notice got its own region, so a future change that lets two coexist cannot make
   one swallow the other's sentence. Phase 1.
 - **Open question:** does the stranded focus on request accept deserve its own issue? — **yes**,
-  filed at close-out. It is WCAG 2.4.3, not RV-FE-10: accepting a request destroys the card holding
-  the pressed button, and hoisting the notice fixes the announcement without touching focus.
+  filed as #1082. It is WCAG 2.4.3, not RV-FE-10: accepting a request destroys the card holding the
+  pressed button, and hoisting the notice fixes the announcement without touching focus.
 - **Found by the phase-4 sweep:** a tenth site (`operator-home-loading`) that #1078 did not
   enumerate. Fixed here rather than ticketed, since this PR is what closes that population.
 
