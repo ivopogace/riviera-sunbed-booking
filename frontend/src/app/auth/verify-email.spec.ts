@@ -38,11 +38,37 @@ async function render(
   return fixture;
 }
 
+function byId(fixture: ComponentFixture<VerifyEmail>, testid: string): HTMLElement | null {
+  return (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+    `[data-testid="${testid}"]`,
+  );
+}
+
 function text(fixture: ComponentFixture<VerifyEmail>, testid: string): string {
-  return (
-    (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testid}"]`)
-      ?.textContent ?? ''
-  ).trim();
+  return (byId(fixture, testid)?.textContent ?? '').trim();
+}
+
+/**
+ * An auth stub whose verification stays in flight until the returned `release` is called, so the
+ * `verifying` state is observable instead of raced past — the transition out of it is the half
+ * this page's announcement depends on.
+ */
+function heldAuth(result: VerifyEmailResult): {
+  auth: Partial<CustomerAuth>;
+  release: () => void;
+} {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  return {
+    auth: {
+      whenReady: vi.fn(() => Promise.resolve(undefined)),
+      verifyEmail: vi.fn(async () => {
+        await held;
+        return result;
+      }),
+    },
+    release,
+  };
 }
 
 describe('VerifyEmail', () => {
@@ -75,5 +101,41 @@ describe('VerifyEmail', () => {
 
     expect(text(fixture, 'verify-error')).toContain('Something went wrong');
     expect(text(fixture, 'verify-failed')).toBe(''); // not the invalid-link message
+  });
+
+  it('announces through one region that survives verifying → verified (#1076)', async () => {
+    const { auth, release } = heldAuth('verified');
+    const fixture = await render(auth, 'tok');
+
+    const announcer = byId(fixture, 'load-announcer');
+    expect(announcer?.textContent?.trim()).toBe('Verifying your email…');
+    // The visible copy is decoration; the announcer alone carries the words (RV-FE-10).
+    expect(byId(fixture, 'verify-pending')?.getAttribute('aria-hidden')).toBe('true');
+
+    release();
+    // Two settles, as render does: the promise resolves a hop before verify() writes the state.
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(byId(fixture, 'load-announcer')).toBe(announcer);
+    expect(announcer?.textContent?.trim()).toBe('Your email is verified. Thanks!');
+    expect(byId(fixture, 'verify-success')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  // ready names the verified branch alone; the failures speak through their own alert panels.
+  it.each([
+    ['an invalid token', 'invalid-token' as const, 'tok', 'verify-failed'],
+    ['a transport error', 'error' as const, 'tok', 'verify-error'],
+    ['a link with no token at all', 'verified' as const, null, 'verify-failed'],
+  ])('leaves the announcer silent on %s (#1076)', async (_case, result, token, panelTestId) => {
+    const fixture = await render(authStub(result), token);
+
+    // Present, not absent: an announcer that never mounted would read as empty too.
+    expect(byId(fixture, 'load-announcer')).not.toBeNull();
+    expect(text(fixture, 'load-announcer')).toBe('');
+    expect(byId(fixture, panelTestId)?.getAttribute('role')).toBe('alert');
   });
 });

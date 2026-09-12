@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CustomerAuth } from '../core/customer-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { focusMover } from '../shared/focus-after-render';
 import {
   PASSWORD_BLOCKED_MESSAGE,
   PASSWORD_LENGTH_MESSAGE,
@@ -50,7 +51,7 @@ const CLS = {
         <h1 id="reset-title" [class]="cls.title">Set a new password</h1>
 
         @if (done()) {
-          <output [class]="cls.intro" data-testid="reset-done">
+          <output [class]="cls.intro" tabindex="-1" data-testid="reset-done">
             Your password has been updated. You can sign in with it now.
           </output>
           <p [class]="cls.alt">
@@ -126,6 +127,7 @@ export class ResetPassword {
   private readonly auth = inject(CustomerAuth);
   private readonly route = inject(ActivatedRoute);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly focusAfterRender = focusMover();
 
   protected readonly cls = CLS;
   protected readonly policyHint = PASSWORD_POLICY_HINT;
@@ -167,6 +169,8 @@ export class ResetPassword {
     switch (result) {
       case 'reset':
         this.done.set(true);
+        // The branch destroys the trigger, so focus moves here — which is also what announces it.
+        this.focusAfterRender('reset-done');
         break;
       case 'invalid-token':
         this.error.set('This reset link is invalid or has expired. Request a new one.');

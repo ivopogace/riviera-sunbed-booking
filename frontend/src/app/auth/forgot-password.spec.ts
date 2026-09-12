@@ -57,6 +57,12 @@ async function submit(fixture: ComponentFixture<ForgotPassword>): Promise<void> 
   fixture.detectChanges();
 }
 
+function byId(fixture: ComponentFixture<ForgotPassword>, testid: string): HTMLElement | null {
+  return (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+    `[data-testid="${testid}"]`,
+  );
+}
+
 function text(fixture: ComponentFixture<ForgotPassword>, testid: string): string {
   return (
     (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testid}"]`)
@@ -78,6 +84,19 @@ describe('ForgotPassword', () => {
 
     expect(auth.forgotPassword).toHaveBeenCalledWith('ana@example.com', undefined);
     expect(text(fixture, 'forgot-sent')).toContain('If an account exists');
+  });
+
+  it('parks focus on the sent confirmation, whose trigger the branch destroyed (#1076)', async () => {
+    const fixture = await render(authStub('sent'));
+
+    setEmail(fixture, 'ana@example.com');
+    await submit(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Focus would sit on <body> otherwise, and landing here is what announces the outcome.
+    expect(byId(fixture, 'forgot-submit')).toBeNull();
+    expect(document.activeElement).toBe(byId(fixture, 'forgot-sent'));
   });
 
   it('requires an email before calling the service', async () => {
