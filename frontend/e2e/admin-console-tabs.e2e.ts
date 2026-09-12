@@ -108,6 +108,8 @@ test.describe('from sm up: one scrolling row', () => {
     await field.fill('zzz');
     await expect(dialog.getByRole('link')).toHaveCount(0);
     await expect(dialog.getByRole('status')).toHaveText('Nothing matches.');
+    // <output> is display: inline, so the empty state only keeps its box because a class says block.
+    await expect(dialog.getByRole('status')).toHaveCSS('display', 'block');
     await page.keyboard.press('Enter');
     await expect(dialog).toBeVisible();
     await expect(page).toHaveURL(/\/admin$/);

@@ -12,8 +12,8 @@ import { RequestsTab } from './requests-tab';
 /**
  * Structural a11y audit for the Requests tab. Accept/Decline/Confirm-decline are labelled
  * `<button>`s (`aria-label` names the guest + set + date), the urgency chip carries its "time left"
- * as text (not colour alone) with the ⏰ glyph `aria-hidden`, and the expired-race notice is a
- * `role="status"` with the ⚠ glyph `aria-hidden`. axe runs over the populated queue, an open
+ * as text (not colour alone) with the ⏰ glyph `aria-hidden`, and the expired-race notice is an
+ * `<output>` with the ⚠ glyph `aria-hidden`. axe runs over the populated queue, an open
  * decline-confirm, the expired-race card, and the empty state. (Contrast is proven by
  * `requests-tab.contrast.spec.ts` — axe can't measure it under jsdom.)
  */

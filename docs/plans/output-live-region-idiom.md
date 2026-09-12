@@ -49,9 +49,9 @@ for `feature/output-live-region-idiom`.
 - [x] **AC-1:** Given a template containing `role="status"` as a static attribute or as a literal binding, when ESLint runs, then the rule reports it once at that attribute and names `<output>`. *Seam:* the rule module's `create()` visitor, observed through ESLint's `RuleTester` · *Pinned by:* `prefer-output-over-status-role.test.mjs` › the four `invalid` cases
 - [x] **AC-2:** Given a template using `<output>`, or another role, or `role="status"` on an element behind `<!-- eslint-disable-next-line -->`, when ESLint runs, then nothing is reported. *Seam:* the rule module's valid cases through `RuleTester`, and the directive through the real `ESLint` API, which is the only harness that sees the name a component actually writes · *Pinned by:* `prefer-output-over-status-role.test.mjs` › the `valid` cases and `the eslint-disable door`
 - [x] **AC-3:** Given the whole frontend tree with the rule wired into `eslint.config.js`, when `npm run lint` runs, then it passes — proving all 24 conversions landed and the 3 remaining `role="status"` sites each carry a disable comment. *Seam:* the `npm run lint` script over `frontend/src` · *Pinned by:* the CI frontend job's lint step
-- [ ] **AC-4:** Given the command palette's empty-state region in a real browser, when no entry matches, then it still computes the accessible role `status` and paints as a block box. *Seam:* the rendered page, observed through Playwright role and computed-style locators · *Pinned by:* `admin-console-tabs.e2e.ts` › the existing `Meta+k` palette test
-- [ ] **AC-5:** Given the customer set-password notice after a successful save, when it renders, then it computes the accessible role `status`. *Seam:* the rendered page through `toHaveRole` · *Pinned by:* `customer-password.e2e.ts`
-- [ ] **AC-6:** Given a component whose live region became an `<output>`, when its unit spec asserts the region's identity, then it asserts the element is an `OUTPUT` rather than reading a `role` attribute that no longer exists. *Seam:* each component's rendered DOM through its existing spec · *Pinned by:* `load-announcer.spec.ts`, `console-palette.spec.ts`, `challenge-widget.a11y.spec.ts`, `operator-password.spec.ts`, `operator-password.a11y.spec.ts`, `booking-pay.a11y.spec.ts`, `admin-mail-outbox.a11y.spec.ts`, `admin-mail-delivery.a11y.spec.ts`, `admin-refund-outbox.a11y.spec.ts`
+- [x] **AC-4:** Given the command palette's empty-state region in a real browser, when no entry matches, then it still computes the accessible role `status` and paints as a block box. *Seam:* the rendered page, observed through Playwright role and computed-style locators · *Pinned by:* `admin-console-tabs.e2e.ts` › the existing `Meta+k` palette test
+- [x] **AC-5:** Given the customer set-password notice after a successful save, when it renders, then it computes the accessible role `status`. *Seam:* the rendered page through `toHaveRole` · *Pinned by:* `customer-password.e2e.ts`
+- [x] **AC-6:** Given a component whose live region became an `<output>`, when its unit spec asserts the region's identity, then it asserts the element is an `OUTPUT` rather than reading a `role` attribute that no longer exists. *Seam:* each component's rendered DOM through its existing spec · *Pinned by:* `load-announcer.spec.ts`, `console-palette.spec.ts`, `challenge-widget.a11y.spec.ts`, `operator-password.spec.ts`, `operator-password.a11y.spec.ts`, `booking-pay.a11y.spec.ts`, `admin-mail-outbox.a11y.spec.ts`, `admin-mail-delivery.a11y.spec.ts`, `admin-refund-outbox.a11y.spec.ts`
 
 ## Non-goals
 
@@ -149,17 +149,17 @@ N/A — no contract change. No HTTP shape, DTO or endpoint is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `PR #1075 — ready for review, awaiting the review and Sonar gates`
 
-**Next action:** Add the two mocked-e2e assertions, rewrite `load-announcer`'s class doc so the shape
-it describes is the shape it renders, and fix `requests-tab.a11y.spec.ts`'s stale doc line.
+**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then check the
+push's CI run and clear the Sonar new-issue list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the ESLint rule, test-first, unwired | ✅ | (this commit) |
 | 1 — the sweep: 24 conversions, 3 exemptions, 9 spec assertions, rule wired | ✅ | (this commit) |
 | 2 — the rule's tooling: npm script, CI step, format scope, CLAUDE.md | ✅ | (this commit) |
-| 3 — e2e proof in a real browser + the reference doc | ⏳ | |
+| 3 — e2e proof in a real browser + the reference doc | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -259,10 +259,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/e2e/admin-console-tabs.e2e.ts` · `frontend/e2e/customer-password.e2e.ts` · `frontend/src/app/shared/load-announcer.ts` · `frontend/src/app/operator/requests-tab.a11y.spec.ts`
 
-- [ ] **Step 1:** Assert the palette's empty-state region computes `display: block` beside the existing `getByRole('status')` assertion; assert `toHaveRole('status')` on the set-password notice.
-- [ ] **Step 2: Run the mocked suite** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` scoped to the two specs → PASS.
-- [ ] **Step 3:** Rewrite `load-announcer`'s class doc so the shape it describes is the shape it renders, and fix `requests-tab.a11y.spec.ts`'s doc line, which describes an `<output>` as `role="status"`.
-- [ ] **Step 4: Commit** and finalize the execution status in this commit.
+- [x] **Step 1:** Assert the palette's empty-state region computes `display: block` beside the existing `getByRole('status')` assertion; assert `toHaveRole('status')` on the set-password notice.
+- [x] **Step 2: Run the mocked suite** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` scoped to the two specs → PASS.
+- [x] **Step 3:** Rewrite `load-announcer`'s class doc so the shape it describes is the shape it renders, and fix `requests-tab.a11y.spec.ts`'s doc line, which describes an `<output>` as `role="status"`.
+- [x] **Step 4: Commit** and finalize the execution status in this commit.
 
 ---
 
@@ -270,6 +270,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-12 | phase 3 | Prose that describes a live region by the role it writes — the doc half of the same split, which a markup grep does not reach | `grep -rn 'role="status"' frontend/src docs --include=*.ts --include=*.md` | 3 doc sites over converted or already-converted regions, 3 over the exemptions | rewrote the 3 stale ones, including the reference class doc other components are pointed at; the exemption docs were already accurate |
 | 2026-09-12 | phase 1 | Every element declaring the ARIA `status` role in an Angular template, `.html` and inline `.ts` alike — the mechanism the analyzer gap hides, not "components that look like announcers" | `grep -rn 'role="status"' frontend/src/app --include=*.ts --include=*.html` | 28 hits: 24 markup regions, 2 markup exemptions, 2 doc comments describing the exemptions | converted the 24; the 2 exemptions keep the role behind a disable comment; a spec-fixture site the same grep missed (it excludes nothing) was found by running the wired lint |
 | 2026-09-12 | phase 1 | Specs reading the region's identity — any assertion on `role` or `tagName` over a converted element, which the swap silently changes | `grep -rn "role=.status\|getByRole('status')\|'status'" frontend/src --include=*.spec.ts` | 19 hits: 9 role assertions to convert, 1 absence selector to widen, 1 contradicting `toBe('P')`, the rest describing exempt or unrelated regions | all converted; `toBe('OUTPUT')` turned out to be the tree's existing idiom |
 
@@ -277,10 +278,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 / AC-2:** Run `cd frontend && node --test "eslint-rules/*.test.mjs"` → all pass.
+- [x] **AC-1 / AC-2:** Run `cd frontend && node --test "eslint-rules/*.test.mjs"` → all pass.
 - [x] **AC-3:** Run `cd frontend && npm run lint` → passes with the rule wired.
-- [ ] **AC-4 / AC-5:** Run the two mocked e2e specs → pass.
-- [ ] **AC-6:** Run `cd frontend && npm test` → passes.
+- [x] **AC-4 / AC-5:** Run the two mocked e2e specs → pass.
+- [x] **AC-6:** Run `cd frontend && npm test` → passes.
 
 ## Self-review checklist (before merge / PR)
 

@@ -12,8 +12,10 @@ import { Component, computed, input } from '@angular/core';
  * deferred content loads", and the fix is a live region that wraps the transition. Its example puts
  * the region around the content with `aria-atomic`; that shape suits a small profile card, not a
  * venue grid, so this takes the sibling form `booking/booking-pay.ts`'s `pay-status` region already
- * uses: one persistent `sr-only` paragraph, mounted OUTSIDE the caller's loading branch, whose text
- * is all that changes.
+ * uses: one persistent `sr-only` `<output>`, mounted OUTSIDE the caller's loading branch, whose text
+ * is all that changes. `<output>` is the house element for a live region — its implicit ARIA role is
+ * already `status`, so nothing here writes that role unless the region cannot be an `<output>`: its
+ * content is not phrasing content, or it reports standing state rather than the result of an action.
  *
  * <p>**Mount it outside the `@if`.** Inside, it is the very bug it exists to fix, and nothing in
  * jsdom would tell you — which is why each adopting surface's spec asserts element identity across
@@ -46,7 +48,7 @@ import { Component, computed, input } from '@angular/core';
  * do announce it, and the loading→loaded transition — the half that tells a user the wait is over —
  * announces in every case.
  *
- * <p>Host is `display: contents` and the paragraph is `sr-only` (absolutely positioned), so mounting
+ * <p>Host is `display: contents` and the region is `sr-only` (absolutely positioned), so mounting
  * it costs no layout: it becomes neither a flex item nor a grid item wherever a call site puts it.
  */
 @Component({

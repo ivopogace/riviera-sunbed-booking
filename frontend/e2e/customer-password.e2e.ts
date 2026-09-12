@@ -75,6 +75,8 @@ test('a signed-in tourist changes their password, and the new credential replace
   await page.getByTestId('setpw-new').fill(NEW_PASSWORD);
   await page.getByTestId('setpw-submit').click();
   await expect(page.getByTestId('setpw-notice')).toContainText('Your password has been saved.');
+  // The notice is an <output>; only a real browser computes the role it inherits from the element.
+  await expect(page.getByTestId('setpw-notice')).toHaveRole('status');
   await expect(page.getByTestId('setpw-error')).toBeHidden();
   await expect(page.getByTestId('setpw-current')).toHaveValue('');
   await expect(page.getByTestId('setpw-new')).toHaveValue('');
