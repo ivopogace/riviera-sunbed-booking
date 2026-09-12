@@ -589,6 +589,22 @@ describe('Home (venue discovery)', () => {
     expect(el().querySelectorAll('[data-testid="venue-card"]').length).toBe(0);
   });
 
+  it('leaves the empty panel silent, since the count region speaks the outcome (#1078)', async () => {
+    listRequest().flush([]);
+    await fixture.whenStable();
+
+    // Born holding its text inside @if (isEmpty()), it never announced — and a second source for
+    // one outcome is what RV-FE-10 forbids, so the persistent count region keeps it alone.
+    const empty = el().querySelector('[data-testid="empty"]')!;
+    expect(empty.getAttribute('aria-live')).toBeNull();
+    expect(empty.getAttribute('role')).toBeNull();
+    expect(empty.tagName).toBe('P');
+
+    const results = el().querySelector('[data-testid="results"]')!;
+    expect(results.getAttribute('aria-live')).toBe('polite');
+    expect(results.querySelector('.count-number')?.textContent?.trim()).toBe('0');
+  });
+
   it('shows the designed failure panel (alert semantics + retry) when the request fails', async () => {
     listRequest().error(new ProgressEvent('error'));
     await fixture.whenStable();

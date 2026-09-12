@@ -214,10 +214,10 @@ N/A — no contract change. No request or response shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `implement (phase 6)`
 
-**Next action:** Phase 5 — drop the `aria-live` from Discover's empty panel (AC-9), pinned by the
-persistent count region.
+**Next action:** Phase 6 — extend `loading-announcements.e2e.ts` with the console (AC-10), then the
+full frontend gate and close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -226,7 +226,7 @@ persistent count region.
 | 2 — venue-tab (S5, Shape B) | ✅ | this commit |
 | 3 — layout-editor (S6, S7, Shape B) | ✅ | this commit |
 | 4 — pricing-tab (S8, Shape B) + S10 operator-home | ✅ | this commit |
-| 5 — Discover (S9, Shape C) | | |
+| 5 — Discover (S9, Shape C) | ✅ | this commit |
 | 6 — e2e in real Chromium + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

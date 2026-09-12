@@ -131,11 +131,11 @@
     </div>
   } @else if (venuesView(); as list) {
     @if (isEmpty()) {
+      <!-- Not a live region: born holding its text it announced nothing, and the persistent count region above already speaks this outcome. -->
       <p
         class="state mt-6 rounded-[26px] px-5 py-12 text-center text-[15px] text-riv-ink-soft"
         appPanelGlass
         data-testid="empty"
-        aria-live="polite"
       >
         No venues match these filters. Try another beach, region, or date.
       </p>
