@@ -7,17 +7,16 @@
     </p>
   </header>
 
-  @if (notice(); as msg) {
-    <!-- One neutral notice serves both success ("asked to pay") and failure ("you don't manage this
-         venue") copy — card-ink over the light panel is AA-proven, and a green success box would
-         misread on a failure. -->
-    <output
-      class="mt-3 block rounded-[12px] border border-riv-card-border bg-riv-console-inset/70 px-3.5 py-2.5 text-[13.5px] font-semibold text-riv-card-ink"
-      aria-live="polite"
-      data-testid="requests-notice"
-      >{{ msg }}</output
-    >
-  }
+  <!-- Above the @if on purpose: a live region must outlive the branch it describes; the box is the inner span, so an empty region paints nothing. -->
+  <output aria-live="polite" data-testid="requests-notice">
+    @if (notice(); as msg) {
+      <!-- One neutral notice for both the success and the failure copy: a green success box would misread on a failure. -->
+      <span
+        class="mt-3 block rounded-[12px] border border-riv-card-border bg-riv-console-inset/70 px-3.5 py-2.5 text-[13.5px] font-semibold text-riv-card-ink"
+        >{{ msg }}</span
+      >
+    }
+  </output>
 
   <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
   <app-load-announcer

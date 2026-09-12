@@ -208,14 +208,14 @@ N/A — no contract change. No request or response shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write the red `requests-tab.spec.ts` identity spec, then hoist
-`requests-notice`.
+**Next action:** Phase 1 — write the three red set-editor specs (AC-2, AC-3, AC-4), then hoist
+`set-saved` + `batch-saved` and add the move-armed announcer.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — requests-tab (S1, Shape A) | | |
+| 0 — requests-tab (S1, Shape A) | ✅ | `1764ad1` (plan), this commit |
 | 1 — set-editor (S2, S3 Shape A; S4 Shape B) | | |
 | 2 — venue-tab (S5, Shape B) | | |
 | 3 — layout-editor (S6, S7, Shape B) | | |
