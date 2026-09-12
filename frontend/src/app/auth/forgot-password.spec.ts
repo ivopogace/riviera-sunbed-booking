@@ -57,6 +57,12 @@ async function submit(fixture: ComponentFixture<ForgotPassword>): Promise<void> 
   fixture.detectChanges();
 }
 
+function byId(fixture: ComponentFixture<ForgotPassword>, testid: string): HTMLElement | null {
+  return (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+    `[data-testid="${testid}"]`,
+  );
+}
+
 function text(fixture: ComponentFixture<ForgotPassword>, testid: string): string {
   return (
     (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testid}"]`)
@@ -78,6 +84,21 @@ describe('ForgotPassword', () => {
 
     expect(auth.forgotPassword).toHaveBeenCalledWith('ana@example.com', undefined);
     expect(text(fixture, 'forgot-sent')).toContain('If an account exists');
+  });
+
+  it('parks focus on the sent confirmation, whose trigger the branch destroyed (#1076)', async () => {
+    const fixture = await render(authStub('sent'));
+
+    setEmail(fixture, 'ana@example.com');
+    await submit(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The submit button that was activated no longer exists, so focus would otherwise sit on
+    // <body>. Landing on the confirmation both rescues it (WCAG 2.4.3) and is what announces the
+    // outcome: the region is born holding its text, which a live region alone does not speak.
+    expect(byId(fixture, 'forgot-submit')).toBeNull();
+    expect(document.activeElement).toBe(byId(fixture, 'forgot-sent'));
   });
 
   it('requires an email before calling the service', async () => {

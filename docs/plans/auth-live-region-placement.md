@@ -181,14 +181,13 @@ N/A — no contract change. No request, response, or DTO shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write the failing `forgot-password.spec.ts` focus spec and watch it
-fail against today's shape.
+**Next action:** Phase 1 — write the failing `reset-password.spec.ts` focus spec for `reset-done`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — forgot-password: focus the sent confirmation | | |
+| 0 — forgot-password: focus the sent confirmation | ✅ | this commit |
 | 1 — reset-password: focus the done confirmation | | |
 | 2 — verify-email: one announcer across the switch | | |
 | 3 — set-password: hoist the notice out of its branch | | |

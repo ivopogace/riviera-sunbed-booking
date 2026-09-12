@@ -8,6 +8,7 @@ import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { challengeRejectionMessage, isChallengeRejection } from '../shared/challenge';
 import { ChallengeWidget } from '../shared/challenge-widget';
+import { focusMover } from '../shared/focus-after-render';
 
 import { TouchTarget } from '../shared/touch-target';
 
@@ -50,7 +51,7 @@ const CLS = {
         <h1 id="forgot-title" [class]="cls.title">Reset your password</h1>
 
         @if (sent()) {
-          <output [class]="cls.intro" data-testid="forgot-sent">
+          <output [class]="cls.intro" tabindex="-1" data-testid="forgot-sent">
             If an account exists for that email, we've sent a link to set a new password. Check your
             inbox.
           </output>
@@ -127,6 +128,7 @@ export class ForgotPassword {
   protected readonly proofOfWork = inject(ProofOfWork);
 
   private readonly challenge = viewChild<ChallengeWidget>('challenge');
+  private readonly focusAfterRender = focusMover();
 
   protected readonly cls = CLS;
   protected readonly submitting = signal(false);
@@ -161,6 +163,11 @@ export class ForgotPassword {
     this.submitting.set(false);
     if (result === 'sent') {
       this.sent.set(true);
+      // The submit button that was just activated is destroyed with the form branch, stranding
+      // focus on <body> (WCAG 2.4.3). Moving it onto the confirmation is also what announces the
+      // outcome: the region enters the DOM already holding its text, and a live region generally
+      // speaks only text that MUTATES after it is mounted (#1076, RV-FE-10).
+      this.focusAfterRender('forgot-sent');
     } else if (isChallengeRejection(result)) {
       this.error.set(challengeRejectionMessage(result));
       this.challenge()?.refresh();
