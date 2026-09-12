@@ -87,7 +87,7 @@ for `feature/output-live-region-idiom`.
 | R-4 | The rule fires on spec fixtures too (`processInlineTemplates` covers `*.spec.ts`), so `cancellation-terms-note.a11y.spec.ts`'s `<div role="status">` fixture breaks the lint | high | low | that fixture mirrors the exempt `booking-dialog` shape, so it takes the same disable comment; phase 1 runs the full lint to find any other fixture | claude | closed in phase 1 — that was the only fixture |
 | R-5 | An `eslint-disable` naming a rule that is not yet registered is reported as an unused directive, so phases that split the sweep from the wiring go red | med | med | the disable comments and the wiring land in phases 1 and 2 respectively, and phase 1 ends by running the full lint; if a warning appears, the wiring moves into phase 1 | claude | fired — it is a hard error, not a warning, so the wiring moved into phase 1 as planned |
 | R-6 | `scripts/check-inline-comments.mjs` fails the build on an issue number in an added or touched comment | med | low | no exemption comment or doc rewrite cites `#1042`; each states the mechanism instead | claude | closed in phase 1 — also forced dropping a stale `#828` from the one touched doc comment, and shortening a two-line config comment |
-| R-7 | Adding `frontend/eslint-rules/` outside the Prettier scope leaves the tree's newest directory unformatted | med | low | extend `format`/`format:check` to cover it and update the `CLAUDE.md` command block in the same phase | claude | open |
+| R-7 | Adding `frontend/eslint-rules/` outside the Prettier scope leaves the tree's newest directory unformatted | med | low | extend `format`/`format:check` to cover it and update the `CLAUDE.md` command block in the same phase | claude | closed in phase 2 — the CI step carries its own scope, so it was widened too, and lint-staged gained the directory |
 
 ## Open questions / Assumptions
 
@@ -149,17 +149,17 @@ N/A — no contract change. No HTTP shape, DTO or endpoint is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Add the `test:eslint-rules` npm script, widen the Prettier scope to `eslint-rules`,
-add the CI step to the frontend job, and update the `CLAUDE.md` frontend command block.
+**Next action:** Add the two mocked-e2e assertions, rewrite `load-announcer`'s class doc so the shape
+it describes is the shape it renders, and fix `requests-tab.a11y.spec.ts`'s stale doc line.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the ESLint rule, test-first, unwired | ✅ | (this commit) |
 | 1 — the sweep: 24 conversions, 3 exemptions, 9 spec assertions, rule wired | ✅ | (this commit) |
-| 2 — the rule's tooling: npm script, CI step, format scope, CLAUDE.md | ⏳ | |
-| 3 — e2e proof in a real browser + the reference doc | | |
+| 2 — the rule's tooling: npm script, CI step, format scope, CLAUDE.md | ✅ | (this commit) |
+| 3 — e2e proof in a real browser + the reference doc | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -248,10 +248,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 > Registering the rule moved into phase 1 (risk R-5). What is left here is the tooling that keeps
 > the rule's own suite running and the new directory formatted.
 
-- [ ] **Step 1:** Add the `test:eslint-rules` npm script and widen `format`/`format:check` to cover `eslint-rules`.
-- [ ] **Step 2:** Add the CI step to the frontend job — the rule suite needs `node_modules`, so it cannot live with the `scripts/*.test.mjs` guards in the hygiene job.
-- [ ] **Step 3:** Update the `CLAUDE.md` frontend command block for both.
-- [ ] **Step 4: Commit** and update the execution status.
+- [x] **Step 1:** Add the `test:eslint-rules` npm script and widen `format`/`format:check` to cover `eslint-rules`.
+- [x] **Step 2:** Add the CI step to the frontend job — the rule suite needs `node_modules`, so it cannot live with the `scripts/*.test.mjs` guards in the hygiene job.
+- [x] **Step 3:** Update the `CLAUDE.md` frontend command block for both.
+- [x] **Step 4: Commit** and update the execution status.
 
 ---
 

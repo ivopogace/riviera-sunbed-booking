@@ -192,6 +192,12 @@ jobs:
         if: steps.restore.outputs.cache-hit != 'true'
         run: npm run lint
 
+      - name: Test the lint rules themselves
+        # Beside the frontend gates rather than in `Repo hygiene (diff-scoped)` because the suite
+        # drives ESLint itself, and that job installs nothing.
+        if: steps.restore.outputs.cache-hit != 'true'
+        run: npm run test:eslint-rules
+
       - name: Format (Prettier, hard gate)
         # Bare `prettier --check` over the whole scope — the tree has been clean since the one-time
         # reformat (#631, PR #634, recorded in .git-blame-ignore-revs), which retired the
@@ -209,7 +215,7 @@ jobs:
         # cheap post-merge invariant. On a cache hit the install step is `skipped`, which is not
         # `success`, so this gate skips with the rest — the identical tree already passed it.
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: npx prettier --check src e2e
+        run: npx prettier --check src e2e eslint-rules
 
       - name: Test (Vitest, once, with coverage)
         if: steps.restore.outputs.cache-hit != 'true'

@@ -75,8 +75,9 @@ record of a run that verified proxy trust.
 npm ci
 npm start                # dev server on :4200
 npm run lint             # ESLint (type-aware presets)
-npm run format:check     # Prettier over frontend/src + frontend/e2e + vitest-base.config.ts (`npm run format` to apply)
+npm run format:check     # Prettier over frontend/src + frontend/e2e + frontend/eslint-rules + vitest-base.config.ts (`npm run format` to apply)
 npm test                 # Vitest unit tests, runs once in jsdom
+npm run test:eslint-rules # node --test over frontend/eslint-rules/ — the local ESLint rules' own suite
 npm run test:a11y        # axe + contrast unit specs only
 npm run test:e2e         # Playwright — local-only REAL-backend suite (frontend/e2e/real-backend/)
 npm run test:e2e:a11y    # Playwright — the CI-safe mocked suite (frontend/e2e/); what CI runs
@@ -99,7 +100,9 @@ Line endings are pinned LF by the root `.gitattributes`.
   package per module below. Flyway: `platform/src/main/resources/db/migration`.
 - `frontend/` — the Angular app. Folder taxonomy and import rules are `riviera-frontend`'s
   call; Angular idioms live in `frontend/.claude/CLAUDE.md` (loads automatically for
-  frontend work). `frontend/e2e/` is the CI-safe mocked Playwright suite;
+  frontend work). `frontend/eslint-rules/` holds the repo's own ESLint rules — the place for a
+  template rule an off-the-shelf analyzer cannot express, since ESLint reads inline `template:`
+  literals and Sonar's web analyzer does not. `frontend/e2e/` is the CI-safe mocked Playwright suite;
   `frontend/e2e/real-backend/` the local-only real-backend suite.
 - `docs/` — `architecture/`, `adr/` (decisions), `design/`, `plans/` (in-flight plan docs
   only), `research/` (findings behind decisions), `agents/` (issue-tracker conventions +
