@@ -593,8 +593,7 @@ describe('Home (venue discovery)', () => {
     listRequest().flush([]);
     await fixture.whenStable();
 
-    // Born holding its text inside @if (isEmpty()), it never announced — and a second source for
-    // one outcome is what RV-FE-10 forbids, so the persistent count region keeps it alone.
+    // Born holding its text it never announced, and the count region already speaks this outcome.
     const empty = el().querySelector('[data-testid="empty"]')!;
     expect(empty.getAttribute('aria-live')).toBeNull();
     expect(empty.getAttribute('role')).toBeNull();

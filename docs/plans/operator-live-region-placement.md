@@ -28,7 +28,9 @@ e2e suites, which is what forced the shape split below rather than one uniform r
 analysis for identical repeat outcomes) · `tdd` (every spec red first, then mutation-checked
 by moving the region back inside its branch) · `riviera-review-overlay` (RV-FE-10's checklist
 is the acceptance criteria here; runs again at the review gate) · `riviera-docs-freshness`
-(N/A — no substrate doc states anything about these nine sites; re-checked at close-out) ·
+(**ran** over `d83f744..HEAD`, 0 findings — no substrate doc names any of the ten test ids, and
+RV-FE-10's own worked-example list still resolves; the counting sweep found no "the two/three X"
+sentence that the tenth `app-load-announcer` adopter falsifies) ·
 `riviera-frontend` (placement: the announcers are component-local, no new `shared/` primitive —
 `load-announcer.ts` is for loading surfaces and none of these nine is one) · `riviera-tailwind`
 (`sr-only` is the zero-layout-cost region; the visual classes move to the inner element so an
@@ -84,49 +86,49 @@ they have today.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the requests queue with no notice, when an accept resolves, then the
+- [x] **AC-1:** Given the requests queue with no notice, when an accept resolves, then the
   `requests-notice` element that was already in the DOM is the same node now holding the
   outcome sentence. *Seam:* the rendered `app-requests-tab` DOM (`[data-testid="requests-notice"]`) ·
   *Pinned by:* `requests-tab.spec.ts` › `announces the decision through a region that predates it (#1078)`
-- [ ] **AC-2:** Given a selected set, when a save resolves, then the `set-saved` node present
+- [x] **AC-2:** Given a selected set, when a save resolves, then the `set-saved` node present
   before the save is the same node holding "Saved.…". *Seam:* the rendered `app-set-editor` DOM
   (`[data-testid="set-saved"]`) · *Pinned by:* `set-editor.spec.ts` › `announces a set save through a region that predates it (#1078)`
-- [ ] **AC-3:** Given a swept batch, when Apply resolves, then the `batch-saved` node present
+- [x] **AC-3:** Given a swept batch, when Apply resolves, then the `batch-saved` node present
   before the apply is the same node holding "2 sets updated.…". *Seam:* the rendered
   `app-set-editor` DOM (`[data-testid="batch-saved"]`) · *Pinned by:* `set-editor.spec.ts` ›
   `announces a batch apply through a region that predates it (#1078)`
-- [ ] **AC-4:** Given a selected set, when Move is armed, then a persistent `sr-only` region that
+- [x] **AC-4:** Given a selected set, when Move is armed, then a persistent `sr-only` region that
   existed before the arm carries the "Pick an empty spot…" instruction, and the visible panel copy
   is `aria-hidden`. *Seam:* the rendered `app-set-editor` DOM (`[data-testid="set-move-armed-announce"]`) ·
   *Pinned by:* `set-editor.spec.ts` › `announces an armed move through a region that predates it (#1078)`
-- [ ] **AC-5:** Given the venue profile form, when Save resolves, then the persistent
+- [x] **AC-5:** Given the venue profile form, when Save resolves, then the persistent
   `venue-saved-announce` node that existed before the save holds the saved sentence and the
   visible `venue-saved` copy is `aria-hidden`. *Seam:* the rendered `app-venue-tab` DOM
   (`[data-testid="venue-saved-announce"]`) · *Pinned by:* `venue-tab.spec.ts` › `announces the
   profile save through a region that predates it (#1078)`
-- [ ] **AC-6:** Given a painted layout, when Save resolves, then the persistent
+- [x] **AC-6:** Given a painted layout, when Save resolves, then the persistent
   `layout-saved-announce` node that existed before the save holds the saved sentence. *Seam:* the
   rendered `app-layout-editor` DOM (`[data-testid="layout-saved-announce"]`) · *Pinned by:*
   `layout-editor.spec.ts` › `announces a layout save through a region that predates it (#1078)`
-- [ ] **AC-7:** Given two stored rows, when row A is renamed and then row B is renamed, then the
+- [x] **AC-7:** Given two stored rows, when row A is renamed and then row B is renamed, then the
   single `layout-row-name-saved-announce` region's text changes on the second rename because it
   names the row. *Seam:* the rendered `app-layout-editor` DOM
   (`[data-testid="layout-row-name-saved-announce"]`) · *Pinned by:* `layout-editor.spec.ts` ›
   `re-announces a second row rename by naming the row (#1078)`
-- [ ] **AC-8:** Given priced rows, when row A is repriced and then row B is repriced, then one
+- [x] **AC-8:** Given priced rows, when row A is repriced and then row B is repriced, then one
   table-level region — never one per row — carries both sentences, each naming its row. *Seam:*
   the rendered `app-pricing-tab` DOM (`[data-testid="pricing-saved-announce"]`) · *Pinned by:*
   `pricing-tab.spec.ts` › `announces each row's reprice through one table-level region (#1078)`
-- [ ] **AC-9:** Given Discover with filters that match nothing, when the empty panel renders, then
+- [x] **AC-9:** Given Discover with filters that match nothing, when the empty panel renders, then
   the panel carries no live-region semantics and the persistent `results` region speaks the zero
   count. *Seam:* the rendered `app-home` DOM (`[data-testid="empty"]`, `[data-testid="results"]`) ·
   *Pinned by:* `home.spec.ts` › `leaves the empty panel silent, since the count region speaks the outcome (#1078)`
-- [ ] **AC-11:** Given an operator with two venues, when the owned-venues read resolves, then the
+- [x] **AC-11:** Given an operator with two venues, when the owned-venues read resolves, then the
   `load-announcer` node that spoke "Opening your console…" is the same node that now speaks the
   picker, and the visible copy is `aria-hidden`. *Seam:* the rendered `app-operator-home` DOM
   (`[data-testid="load-announcer"]`) · *Pinned by:* `operator-home.spec.ts` › `announces through one
   region that survives opening → picker (#1078)`
-- [ ] **AC-10:** Given the operator console in a real Chromium, when a set save and a row reprice
+- [x] **AC-10:** Given the operator console in a real Chromium, when a set save and a row reprice
   resolve over a genuine round trip, then the element handle taken before each transition is still
   the element holding the text afterwards. *Seam:* the console routes under `/operator/:venueId`
   driven through the mocked e2e suite · *Pinned by:* `e2e/loading-announcements.e2e.ts` ›
@@ -160,20 +162,27 @@ they have today.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Hoisting (Shape A) makes an always-present element, breaking an existing absence assertion | high | low | Enumerated by grep over both spec suites and both e2e suites before writing: exactly one hit, `set-editor.spec.ts` on `batch-saved`. Updated to assert empty text, which is the stronger claim anyway | Claude | open |
-| R-2 | An empty hoisted `<output>` paints a box or spends a flex gap | med | med | Visual classes move to the inner `<span>`; the outer `<output>` is `display: inline` with no content. Parent verified block-flow per site — the three gapped flex parents take Shape B instead | Claude | open |
-| R-3 | Shape B duplicates a sentence, leaving two sources for one outcome | med | med | The sentence lives in one `computed()` bound by both the announcer and the visible copy; the visible copy carries `aria-hidden="true"` | Claude | open |
-| R-4 | A per-row announcer repeats an identical string across rows, so nothing mutates | high | high | S7/S8 announcer sentences name the row; pinned by AC-7 and AC-8, which rename/reprice two different rows in sequence | Claude | open |
-| R-5 | An e2e `toBeHidden()` starts failing because a region is now always mounted | med | med | The three ids asserted hidden (`venue-saved`, `layout-saved`) are Shape B, whose mounting is unchanged. No Shape A id is asserted hidden anywhere | Claude | open |
-| R-6 | A spec passes against the broken shape because it only asserts text is present | high | high | Every new spec asserts node identity across the transition, and each is mutation-checked by moving the region back inside its branch | Claude | open |
+| R-1 | Hoisting (Shape A) makes an always-present element, breaking an existing absence assertion | high | low | Enumerated by grep over both spec suites and both e2e suites before writing: exactly one hit, `set-editor.spec.ts` on `batch-saved`. Updated to assert empty text, which is the stronger claim anyway | Claude | closed |
+| R-2 | An empty hoisted `<output>` paints a box or spends a flex gap | med | med | Visual classes move to the inner `<span>`; the outer `<output>` is `display: inline` with no content. Parent verified block-flow per site — the three gapped flex parents take Shape B instead | Claude | closed |
+| R-3 | Shape B duplicates a sentence, leaving two sources for one outcome | med | med | The sentence lives in one `computed()` bound by both the announcer and the visible copy; the visible copy carries `aria-hidden="true"` | Claude | closed |
+| R-4 | A per-row announcer repeats an identical string across rows, so nothing mutates | high | high | S7/S8 announcer sentences name the row; pinned by AC-7 and AC-8, which rename/reprice two different rows in sequence | Claude | closed |
+| R-5 | An e2e `toBeHidden()` starts failing because a region is now always mounted | med | med | The three ids asserted hidden (`venue-saved`, `layout-saved`) are Shape B, whose mounting is unchanged. No Shape A id is asserted hidden anywhere | Claude | closed |
+| R-6 | A spec passes against the broken shape because it only asserts text is present | high | high | Every new spec asserts node identity across the transition, and each is mutation-checked by moving the region back inside its branch | Claude | closed |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `set-editor`'s three notices are mutually exclusive in practice (`armMove()`
-  clears `saved`, the batch and set panels are `@if`/`@else if`), but the plan gives each its own
-  region anyway rather than depending on that — *Owner:* Claude · *Resolves by:* phase 1
-- **Open question:** does the stranded focus on request accept deserve its own issue, or is it
-  covered by an existing one? — *Owner:* Claude · *Resolves by:* merge close-out
+None open.
+
+### Resolved
+
+- **Assumption:** `set-editor`'s three notices are mutually exclusive in practice — **held, and not
+  relied on.** Each notice got its own region, so a future change that lets two coexist cannot make
+  one swallow the other's sentence. Phase 1.
+- **Open question:** does the stranded focus on request accept deserve its own issue? — **yes**,
+  filed at close-out. It is WCAG 2.4.3, not RV-FE-10: accepting a request destroys the card holding
+  the pressed button, and hoisting the notice fixes the announcement without touching focus.
+- **Found by the phase-4 sweep:** a tenth site (`operator-home-loading`) that #1078 did not
+  enumerate. Fixed here rather than ticketed, since this PR is what closes that population.
 
 ## Availability & concurrency (invariant #2)
 
@@ -214,10 +223,10 @@ N/A — no contract change. No request or response shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 6)`
+**Stage pointer:** `review gate`
 
-**Next action:** Phase 6 — extend `loading-announcements.e2e.ts` with the console (AC-10), then the
-full frontend gate and close-out.
+**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then the Sonar
+gate, then merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -227,7 +236,7 @@ full frontend gate and close-out.
 | 3 — layout-editor (S6, S7, Shape B) | ✅ | this commit |
 | 4 — pricing-tab (S8, Shape B) + S10 operator-home | ✅ | this commit |
 | 5 — Discover (S9, Shape C) | ✅ | this commit |
-| 6 — e2e in real Chromium + close-out | | |
+| 6 — e2e in real Chromium + close-out | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -263,7 +272,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/operator/operator-home.spec.ts` — AC-11
 - `frontend/src/app/pages/home/home.html` — S9 drops `aria-live`
 - `frontend/src/app/pages/home/home.spec.ts` — AC-9
-- `frontend/e2e/loading-announcements.e2e.ts` — AC-10
+- `frontend/e2e/loading-announcements.e2e.ts` — AC-10 (the table announcer + Discover in Chromium)
+- `frontend/e2e/operator-set-editing.e2e.ts` — AC-10's other half: the hoisted region's node
+  identity across a real save, and its 0 × 0 box beforehand (the no-drift proof jsdom cannot make)
 
 ---
 
@@ -272,7 +283,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Modify `frontend/src/app/operator/requests-tab.html:10-20` · Test
 `frontend/src/app/operator/requests-tab.spec.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 it('announces the decision through a region that predates it (#1078)', async () => {
@@ -293,10 +304,10 @@ it('announces the decision through a region that predates it (#1078)', async () 
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- --run src/app/operator/requests-tab.spec.ts`
+- [x] **Step 2: Run it, verify it fails** — `npm test -- --run src/app/operator/requests-tab.spec.ts`
   → FAIL: `expected null not to be null` (the region does not exist before the decision).
 
-- [ ] **Step 3: Minimal implementation** — hoist the `<output>` out of `@if (notice(); as msg)`,
+- [x] **Step 3: Minimal implementation** — hoist the `<output>` out of `@if (notice(); as msg)`,
   moving the box's classes onto an inner `<span>` so an empty region paints nothing.
 
 ```html
@@ -311,14 +322,14 @@ it('announces the decision through a region that predates it (#1078)', async () 
 </output>
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- --run src/app/operator/requests-tab.spec.ts`
+- [x] **Step 4: Run it, verify it passes** — `npm test -- --run src/app/operator/requests-tab.spec.ts`
   → PASS, and the four existing `requests-notice` assertions still pass.
 
-- [ ] **Step 5: Mutation-check** — move the `<output>` back inside the `@if` → the new spec fails.
+- [x] **Step 5: Mutation-check** — move the `<output>` back inside the `@if` → the new spec fails.
 
-- [ ] **Step 6: Commit** — `git commit -m "Keep the requests notice mounted before its text (#1078)"`
+- [x] **Step 6: Commit** — `git commit -m "Keep the requests notice mounted before its text (#1078)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -327,12 +338,12 @@ it('announces the decision through a region that predates it (#1078)', async () 
 **Files:** Modify `frontend/src/app/operator/set-editor.html` · `frontend/src/app/operator/set-editor.ts` ·
 Test `frontend/src/app/operator/set-editor.spec.ts`
 
-- [ ] **Step 1: Write the three failing tests** (AC-2, AC-3, AC-4), each asserting node identity
+- [x] **Step 1: Write the three failing tests** (AC-2, AC-3, AC-4), each asserting node identity
   across the transition, plus `aria-hidden="true"` on the demoted move-armed copy.
 
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- --run src/app/operator/set-editor.spec.ts`
+- [x] **Step 2: Run them, verify they fail** — `npm test -- --run src/app/operator/set-editor.spec.ts`
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
   - `set-saved` and `batch-saved`: hoist as in phase 0, classes onto an inner `<span>`.
   - `set-move-armed`: add a `moveArmedMessage` computed, a persistent `sr-only` region above the
     panel chain, and demote the in-panel `<output>` to an `aria-hidden` `<p>` bound to the same
@@ -347,15 +358,15 @@ protected readonly moveArmedMessage = computed(() =>
 );
 ```
 
-- [ ] **Step 4: Run it, verify it passes**, then the R-1 update: `set-editor.spec.ts`'s
+- [x] **Step 4: Run it, verify it passes**, then the R-1 update: `set-editor.spec.ts`'s
   `expect(byId('batch-saved')).toBeFalsy()` becomes an empty-text assertion.
 
-- [ ] **Step 5: Run the component's neighbours** — `npm test -- --run src/app/operator/` →
+- [x] **Step 5: Run the component's neighbours** — `npm test -- --run src/app/operator/` →
   `set-editor.a11y.spec.ts` and `set-editor.contrast.spec.ts` green.
 
-- [ ] **Step 6: Commit** — `git commit -m "Give the set editor's three notices regions that outlive them (#1078)"`
+- [x] **Step 6: Commit** — `git commit -m "Give the set editor's three notices regions that outlive them (#1078)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -364,18 +375,18 @@ protected readonly moveArmedMessage = computed(() =>
 **Files:** Modify `frontend/src/app/operator/venue-tab.html` · `frontend/src/app/operator/venue-tab.ts` ·
 Test `frontend/src/app/operator/venue-tab.spec.ts`
 
-- [ ] **Step 1: Write the failing test** (AC-5) — the `venue-saved-announce` node exists and is
+- [x] **Step 1: Write the failing test** (AC-5) — the `venue-saved-announce` node exists and is
   empty before Save, is the same node holding the sentence after, and the visible `venue-saved`
   copy is `aria-hidden="true"`.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- --run src/app/operator/venue-tab.spec.ts`
-- [ ] **Step 3: Minimal implementation** — `savedMessage` computed; persistent `sr-only`
+- [x] **Step 2: Run it, verify it fails** — `npm test -- --run src/app/operator/venue-tab.spec.ts`
+- [x] **Step 3: Minimal implementation** — `savedMessage` computed; persistent `sr-only`
   `<output data-testid="venue-saved-announce">` above every branch at the component root; the
   visible copy becomes `<span aria-hidden="true">` bound to the same computed.
-- [ ] **Step 4: Run it, verify it passes** — existing `venue-saved` presence/absence assertions
+- [x] **Step 4: Run it, verify it passes** — existing `venue-saved` presence/absence assertions
   and `operator-venue.e2e.ts` untouched.
-- [ ] **Step 5: Mutation-check** — move the announcer inside `@if (saved())` → the spec fails.
-- [ ] **Step 6: Commit** — `git commit -m "Announce the venue profile save from a region that predates it (#1078)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Mutation-check** — move the announcer inside `@if (saved())` → the spec fails.
+- [x] **Step 6: Commit** — `git commit -m "Announce the venue profile save from a region that predates it (#1078)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -384,17 +395,17 @@ Test `frontend/src/app/operator/venue-tab.spec.ts`
 **Files:** Modify `frontend/src/app/operator/layout-editor.html` ·
 `frontend/src/app/operator/layout-editor.ts` · Test `frontend/src/app/operator/layout-editor.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** (AC-6, AC-7) — AC-7 renames row A then row B and asserts
+- [x] **Step 1: Write the failing tests** (AC-6, AC-7) — AC-7 renames row A then row B and asserts
   the single region's text changed, which fails against a row-agnostic sentence.
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- --run src/app/operator/layout-editor.spec.ts`
-- [ ] **Step 3: Minimal implementation** — two computeds, two persistent `sr-only` regions at the
+- [x] **Step 2: Run them, verify they fail** — `npm test -- --run src/app/operator/layout-editor.spec.ts`
+- [x] **Step 3: Minimal implementation** — two computeds, two persistent `sr-only` regions at the
   component root (separate, so a layout save and a row rename can never swallow each other's
   sentence), both visible copies demoted to `aria-hidden`. The rename sentence names the row.
-- [ ] **Step 4: Run it, verify it passes** — the eight existing `layout-saved` /
+- [x] **Step 4: Run it, verify it passes** — the eight existing `layout-saved` /
   `layout-row-name-saved` assertions still pass.
-- [ ] **Step 5: Mutation-check** — drop the row name from the rename sentence → AC-7 fails.
-- [ ] **Step 6: Commit** — `git commit -m "Announce layout saves and row renames from regions that predate them (#1078)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Mutation-check** — drop the row name from the rename sentence → AC-7 fails.
+- [x] **Step 6: Commit** — `git commit -m "Announce layout saves and row renames from regions that predate them (#1078)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -403,18 +414,18 @@ Test `frontend/src/app/operator/venue-tab.spec.ts`
 **Files:** Modify `frontend/src/app/operator/pricing-tab.html` ·
 `frontend/src/app/operator/pricing-tab.ts` · Test `frontend/src/app/operator/pricing-tab.spec.ts`
 
-- [ ] **Step 1: Write the failing test** (AC-8) — reprice row A, then row B, asserting one
+- [x] **Step 1: Write the failing test** (AC-8) — reprice row A, then row B, asserting one
   table-level region carried both, each naming its row, and that no per-row region is live.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- --run src/app/operator/pricing-tab.spec.ts`
-- [ ] **Step 3: Minimal implementation** — `savedRowMessage` computed naming the row; one
+- [x] **Step 2: Run it, verify it fails** — `npm test -- --run src/app/operator/pricing-tab.spec.ts`
+- [x] **Step 3: Minimal implementation** — `savedRowMessage` computed naming the row; one
   `sr-only` `<output data-testid="pricing-saved-announce">` above the `@for`; the per-row copies
   become `aria-hidden` `<span>`s keeping their `pricing-saved-<label>` test ids.
-- [ ] **Step 4: Run it, verify it passes** — `pricing-saved-A` presence assertions and
+- [x] **Step 4: Run it, verify it passes** — `pricing-saved-A` presence assertions and
   `operator-pricing.e2e.ts` untouched.
-- [ ] **Step 5: Generalization-audit pass** — re-run the RV-FE-10 enumeration command over the
+- [x] **Step 5: Generalization-audit pass** — re-run the RV-FE-10 enumeration command over the
   whole tree and record the result in the log below.
-- [ ] **Step 6: Commit** — `git commit -m "Give row pricing one live region for the table (#1078)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Give row pricing one live region for the table (#1078)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -423,14 +434,14 @@ Test `frontend/src/app/operator/venue-tab.spec.ts`
 **Files:** Modify `frontend/src/app/pages/home/home.html:130-142` · Test
 `frontend/src/app/pages/home/home.spec.ts`
 
-- [ ] **Step 1: Write the failing test** (AC-9) — the empty panel carries no `aria-live` and no
+- [x] **Step 1: Write the failing test** (AC-9) — the empty panel carries no `aria-live` and no
   live role, while `results` reads "0" and the date.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- --run src/app/pages/home/home.spec.ts`
-- [ ] **Step 3: Minimal implementation** — remove `aria-live="polite"` from the empty panel and
+- [x] **Step 2: Run it, verify it fails** — `npm test -- --run src/app/pages/home/home.spec.ts`
+- [x] **Step 3: Minimal implementation** — remove `aria-live="polite"` from the empty panel and
   say why in a comment pointing at the count region.
-- [ ] **Step 4: Run it, verify it passes** — `home.a11y.spec.ts` green.
-- [ ] **Step 5: Commit** — `git commit -m "Leave Discover's empty panel to the count region (#1078)"`
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — `home.a11y.spec.ts` green.
+- [x] **Step 5: Commit** — `git commit -m "Leave Discover's empty panel to the count region (#1078)"`
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -438,16 +449,16 @@ Test `frontend/src/app/operator/venue-tab.spec.ts`
 
 **Files:** Modify `frontend/e2e/loading-announcements.e2e.ts`
 
-- [ ] **Step 1: Write the failing e2e** (AC-10) — take an element handle on the console's regions,
+- [x] **Step 1: Write the failing e2e** (AC-10) — take an element handle on the console's regions,
   mark it with `data-identity-probe`, drive a set save and a row reprice over the mocked API, and
   assert the mark survives, exactly as the #1076 tests do.
-- [ ] **Step 2: Run it, verify it fails against the pre-fix shape** — `npm run test:e2e:a11y -- loading-announcements`
-- [ ] **Step 3: Confirm it passes against the fix.**
-- [ ] **Step 4: Full frontend gate** — `npm run lint && npm run format:check && npm test && npm run build`
-- [ ] **Step 5: Plan-doc guard** — `node scripts/check-plan-file-structure.mjs --diff origin/main`
-- [ ] **Step 6: Retire `docs/plans/account-outcome-reveal.md`** (PR #1079 merged) and finalize this
+- [x] **Step 2: Run it, verify it fails against the pre-fix shape** — `npm run test:e2e:a11y -- loading-announcements`
+- [x] **Step 3: Confirm it passes against the fix.**
+- [x] **Step 4: Full frontend gate** — `npm run lint && npm run format:check && npm test && npm run build`
+- [x] **Step 5: Plan-doc guard** — `node scripts/check-plan-file-structure.mjs --diff origin/main`
+- [x] **Step 6: Retire `docs/plans/account-outcome-reveal.md`** (PR #1079 merged) and finalize this
   doc's Execution status in the last code-touching commit.
-- [ ] **Step 7: Commit + push.**
+- [x] **Step 7: Commit + push.**
 
 ---
 
@@ -465,29 +476,30 @@ Test `frontend/src/app/operator/venue-tab.spec.ts`
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 – AC-9:** Run `npm test -- --run src/app/operator/ src/app/pages/home/` → all green.
-- [ ] **AC-10:** Run `npm run test:e2e:a11y -- loading-announcements` → green.
+- [x] **AC-1 – AC-9, AC-11:** `npm test` → 257 files, 3189 tests, all green.
+- [x] **AC-10:** `npm run test:e2e:a11y -- loading-announcements` → 6 passed;
+  `npm run test:e2e:a11y -- operator-set-editing` → 11 passed.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (N/A justified — no availability path in scope).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled (N/A — frontend-only).
-- [ ] **Payment/payout** section filled (N/A — no money path touched).
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — untouched.
-- [ ] Booking codes unguessable (invariant #7) — untouched.
-- [ ] Flyway migration present for schema changes (invariant #12) — none needed.
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (N/A justified — no availability path in scope).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled (N/A — frontend-only).
+- [x] **Payment/payout** section filled (N/A — no money path touched).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — untouched.
+- [x] Booking codes unguessable (invariant #7) — untouched.
+- [x] Flyway migration present for schema changes (invariant #12) — none needed.
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #1081`.
 - [ ] **The review gate ran in full** — the invocation ladder in `riviera-sdlc`
   `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
 
