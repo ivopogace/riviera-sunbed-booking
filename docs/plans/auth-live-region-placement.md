@@ -130,21 +130,25 @@ for `bugfix/auth-live-region-placement` (`riviera-sdlc` § *Remote / cloud sessi
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `customer-password.e2e.ts` asserts `toBeHidden()` on `setpw-notice` in four places; the region is now always in the DOM | high | med | An empty block box has zero height so `toBeHidden()` would likely still pass — do not rely on that. Switch all four to `toHaveText('')`, the assertion `operator-password.e2e.ts` already uses for the same shape | agent | open |
-| R-2 | The always-present empty notice reserves 20px above the set-password form — a visible layout change | high | low | Deliberate and precedented: #828 deleted `empty:mb-0` on the identical `oppw-notice` as a no-op, and reserving the space removes a content jump. Recorded in the parity ledger | agent | open |
-| R-3 | Moving focus on the forgot/reset success could fight the constructor's initial-render input focus | low | med | The two fire on different renders (mount vs. the success transition) and the input no longer exists by then. AC-1/AC-2 assert the final resting place; a separate existing spec asserts the mount focus | agent | open |
-| R-4 | Changing `verify-pending`/`verify-success` from `<output>` to `<p>` could break a spec or e2e asserting a role | low | low | Grepped: no role assertion exists on either testid (only `setpw-notice` has one, and it keeps `<output>`). `prefer-output-over-status-role` is not tripped — no `role="status"` is added | agent | open |
-| R-5 | The announcer duplicates the two verify sentences in the DOM | high | low | Required by the one-source rule only if both are exposed; the visible copies carry `aria-hidden="true"`, which AC-4 pins. Same shape `set-password.ts`'s `setpw-loading` already uses | agent | open |
-| R-6 | jsdom computes no live-region behaviour, so a green unit suite does not prove announcement | high | med | Accepted and bounded: the falsifiable half is the mechanism (element identity, focus, `aria-hidden`), asserted in jsdom and again in real Chromium (AC-8). That no screen reader was observed is stated, not papered over | agent | open |
+| R-1 | `customer-password.e2e.ts` asserts `toBeHidden()` on `setpw-notice` in four places; the region is now always in the DOM | high | med | An empty block box has zero height so `toBeHidden()` would likely still pass — do not rely on that. Switch all four to `toHaveText('')`, the assertion `operator-password.e2e.ts` already uses for the same shape | agent | closed — all four switched in `75151fb`..this commit; the mocked suite is green |
+| R-2 | The always-present empty notice reserves 20px above the set-password form — a visible layout change | high | low | Deliberate and precedented: #828 deleted `empty:mb-0` on the identical `oppw-notice` as a no-op, and reserving the space removes a content jump. Recorded in the parity ledger | agent | closed — accepted, ledger row written |
+| R-3 | Moving focus on the forgot/reset success could fight the constructor's initial-render input focus | low | med | The two fire on different renders (mount vs. the success transition) and the input no longer exists by then. AC-1/AC-2 assert the final resting place; a separate existing spec asserts the mount focus | agent | closed — both specs pass together |
+| R-4 | Changing `verify-pending`/`verify-success` from `<output>` to `<p>` could break a spec or e2e asserting a role | low | low | Grepped: no role assertion exists on either testid (only `setpw-notice` has one, and it keeps `<output>`). `prefer-output-over-status-role` is not tripped — no `role="status"` is added | agent | closed — `npm run lint` green, `verify-success` e2e unchanged |
+| R-5 | The announcer duplicates the two verify sentences in the DOM | high | low | Required by the one-source rule only if both are exposed; the visible copies carry `aria-hidden="true"`, which AC-4 pins. Same shape `set-password.ts`'s `setpw-loading` already uses | agent | closed — AC-4 pins both copies |
+| R-6 | jsdom computes no live-region behaviour, so a green unit suite does not prove announcement | high | med | Accepted and bounded: the falsifiable half is the mechanism (element identity, focus, `aria-hidden`), asserted in jsdom and again in real Chromium (AC-8). That no screen reader was observed is stated, not papered over | agent | closed — stated in the PR's Scope notes |
 
 ## Open questions / Assumptions
 
-- **Assumption:** Moving focus to an element announces its content on the target
-  screen-reader/browser matrix, which is what makes the `erase-done` shape a valid fix for
-  AC-1/AC-2. — *Basis:* the repo already relies on this in `set-password.ts` (`erase-done`),
-  `operator-password.ts` (`revealOutcome`) and `booking-view.ts`'s three result regions, each
-  pinned by a spec; `focus-after-render.ts`'s class doc is the written rationale. Not
-  re-litigated by this slice. — *Owner:* agent · *Resolves by:* phase 1
+None outstanding.
+
+### Resolved
+
+- **Assumption:** Moving focus to an element announces its content, which is what makes the
+  `erase-done` shape a valid fix for AC-1/AC-2. — *Outcome:* stands, and it is the repo's
+  settled position rather than this slice's: `frontend/.claude/CLAUDE.md` names
+  `shared/focus-after-render.ts`'s `focusMover()` as the required mechanism whenever a
+  transition destroys the focused element (RV-FE-9), and `set-password.ts`, `operator-password.ts`
+  and `booking-view.ts` each rely on it under a spec. Not re-litigated. Closed at `4f04964`.
 
 ## Availability & concurrency (invariant #2)
 
@@ -181,18 +185,18 @@ N/A — no contract change. No request, response, or DTO shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `PR — marking ready for review`
 
-**Next action:** Phase 4 — add the real-browser coverage to `loading-announcements.e2e.ts` and fix
-the four `toBeHidden()` assertions R-1 names.
+**Next action:** Mark PR #1077 ready for review, then run the Review gate per
+`riviera-sdlc` `references/pr-gates.md` §1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — forgot-password: focus the sent confirmation | ✅ | `4f04964` |
 | 1 — reset-password: focus the done confirmation | ✅ | `effd8c2` |
 | 2 — verify-email: one announcer across the switch | ✅ | `d107278` |
-| 3 — set-password: hoist the notice out of its branch | ✅ | this commit |
-| 4 — real-browser coverage + the e2e assertions R-1 names | | |
+| 3 — set-password: hoist the notice out of its branch | ✅ | `75151fb` |
+| 4 — real-browser coverage + the e2e assertions R-1 names | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -282,6 +286,7 @@ Same five steps as phase 0, against `reset-done` and `this.done.set(true)`.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-12 | phase 4 | A live region whose element mounts inside the `@if`/`@case` branch producing its text, with no persistent sibling region and no focus move onto it. Enumerated by listing every live region in the tree, resolving each to its nearest enclosing control-flow branch, then checking each branch-nested hit against its component's `focusMover()` targets — that last step is what separated the real findings from the lookalikes | `grep -rn 'aria-live\|role="status"\|<output' frontend/src` (the RV-FE-10 follow-up command), then a script mapping each hit to its enclosing branch, then `grep -o "focusAfterRender('[a-z0-9-]*'" <component>.ts` | 69 live regions; 21 branch-nested; of those, **the 5 auth sites this slice fixes**, 2 already correct by focus move (`payouts-notice`, `daily-notice`), 5 standing-state or per-row-by-design (`pending-approval-banner`, `venue-tab` season, `requests-tab` expiry, `home` photo position, `booking-pay` processing — the last has the persistent `pay-status` sibling), and **9 genuine defects outside `auth/`** | Fixed the 5 in scope. The 9 others are a slice of their own, not a "while I'm here": filed as **#1078** with the enumerated table, the two that need a judgement call rather than the same fix (`pricing-tab`'s per-row region, `home`'s `empty` panel), and the method above so the next session does not re-derive it |
 
 ---
 

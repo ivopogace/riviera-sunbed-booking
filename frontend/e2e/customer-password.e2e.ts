@@ -67,7 +67,7 @@ test('a signed-in tourist changes their password, and the new credential replace
   await page.getByTestId('setpw-new').fill(NEW_PASSWORD);
   await page.getByTestId('setpw-submit').click();
   await expect(page.getByTestId('setpw-error')).toContainText('current password is incorrect');
-  await expect(page.getByTestId('setpw-notice')).toBeHidden();
+  await expect(page.getByTestId('setpw-notice')).toHaveText('');
   await expectNoSeriousAxeViolations(page, 'wrong current password');
 
   // Right current password: the change lands and both secrets leave the DOM.
@@ -120,7 +120,7 @@ test('an SSO-only account sets its first password with no current password', asy
   await page.getByTestId('setpw-new').fill('elevenchars');
   await page.getByTestId('setpw-submit').click();
   await expect(page.getByTestId('setpw-error')).toContainText('12–72 characters');
-  await expect(page.getByTestId('setpw-notice')).toBeHidden();
+  await expect(page.getByTestId('setpw-notice')).toHaveText('');
   expect(setPasswordRequests).toBe(0);
   await expectNoSeriousAxeViolations(page, 'password below the policy minimum');
 
@@ -152,7 +152,7 @@ test('a blank current password is reported as missing, not incorrect', async ({ 
   await page.getByTestId('setpw-new').fill(NEW_PASSWORD);
   await page.getByTestId('setpw-submit').click();
   await expect(page.getByTestId('setpw-error')).toContainText('Enter your current password.');
-  await expect(page.getByTestId('setpw-notice')).toBeHidden();
+  await expect(page.getByTestId('setpw-notice')).toHaveText('');
   await expectNoSeriousAxeViolations(page, 'omitted current password');
 
   // And nothing rotated: the original password still signs in.
@@ -182,7 +182,7 @@ test('an exhausted change-password budget renders the rate-limit message', async
   await page.getByTestId('setpw-new').fill(NEW_PASSWORD);
   await page.getByTestId('setpw-submit').click();
   await expect(page.getByTestId('setpw-error')).toContainText('Too many attempts');
-  await expect(page.getByTestId('setpw-notice')).toBeHidden();
+  await expect(page.getByTestId('setpw-notice')).toHaveText('');
   await expectNoSeriousAxeViolations(page, 'rate-limited change attempt');
 
   // And nothing rotated: the original password still signs in.

@@ -279,8 +279,7 @@ describe('SetPassword', () => {
   });
 
   it('re-announces an identical resend outcome by clearing first (#1076)', async () => {
-    // Each resend stays in flight until its gate is opened, so the gap between the click and
-    // the response — where the region has to pass through empty — is observable.
+    // Each resend waits on its gate, so the gap where the region passes through empty is visible.
     const gates: (() => void)[] = [];
     const fixture = await render({
       ...authStub({ emailVerified: false }),
