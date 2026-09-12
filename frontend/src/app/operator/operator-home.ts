@@ -15,6 +15,7 @@ import { skip } from 'rxjs';
 import { OwnedVenue, OwnedVenues } from '../core/owned-venues';
 import { landingRouteFor, safeReturnUrl } from '../shared/auth-landing';
 import { CardGlass } from '../shared/card-glass';
+import { LoadAnnouncer } from '../shared/load-announcer';
 import { RetryButton } from '../shared/retry-button';
 import { PendingApprovalBanner } from './pending-approval-banner';
 import { TouchTarget } from '../shared/touch-target';
@@ -42,6 +43,7 @@ import { VenueCreateCard } from './venue-create-card';
   imports: [
     RouterLink,
     CardGlass,
+    LoadAnnouncer,
     RetryButton,
     PendingApprovalBanner,
     VenueCreateCard,
@@ -53,6 +55,13 @@ import { VenueCreateCard } from './venue-create-card';
       aria-labelledby="operator-home-title"
     >
       <app-pending-approval-banner />
+      <!-- Above the @if chain on purpose: a live region must outlive the branch it describes. -->
+      <app-load-announcer
+        [loading]="!loaded()"
+        [ready]="loaded() && venues().length > 1"
+        loadingLabel="Opening your console…"
+        readyLabel="Choose a venue."
+      />
       @if (failed()) {
         <div
           appCardGlass
@@ -122,11 +131,14 @@ import { VenueCreateCard } from './venue-create-card';
           >
         </div>
       } @else {
-        <output
+        <!-- Visible copy only; the announcer above owns the announcement. -->
+        <p
           class="text-center text-[15px] text-riv-card-ink-soft"
+          aria-hidden="true"
           data-testid="operator-home-loading"
-          >Opening your console…</output
         >
+          Opening your console…
+        </p>
       }
     </section>
   `,
@@ -143,7 +155,7 @@ export class OperatorHome implements OnInit {
 
   protected readonly venues = signal<readonly OwnedVenue[]>([]);
   protected readonly failed = signal(false);
-  private readonly loaded = signal(false);
+  protected readonly loaded = signal(false);
 
   /** The deliberate "Add another venue" entry — reactive: the router reuses this instance. */
   protected readonly creating = computed(

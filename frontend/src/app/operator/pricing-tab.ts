@@ -72,6 +72,15 @@ export class PricingTab {
   protected readonly saving = signal(false);
   /** The last row saved and the last per-row error — sequential edits, per-row so a fail is scoped. */
   protected readonly savedRow = signal<string | null>(null);
+
+  /**
+   * The reprice outcome as one sentence, or ''. One region serves the whole table rather than one
+   * per row, so the sentence names the row — repricing A then B must change the text to speak.
+   */
+  protected readonly savedRowMessage = computed(() => {
+    const label = this.savedRow();
+    return label === null ? '' : `Row ${label} saved. The public beach map reflects the new price.`;
+  });
   protected readonly errorRow = signal<{ label: string; code: RepriceErrorCode } | null>(null);
   /** The optimistic-concurrency token loaded with the map (`setVersion`), echoed back on each
    *  reprice and advanced on success; a `409 STALE_WRITE` sets {@link staleConflict}. */

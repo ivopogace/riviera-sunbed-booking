@@ -1,4 +1,8 @@
 <section class="mx-auto w-full max-w-[560px] px-5 py-4" data-testid="pricing-tab">
+  <!-- One region for the table, above every branch: RV-FE-10 rules a live region per list row out, and a region born holding its text announces nothing. -->
+  <output aria-live="polite" class="sr-only" data-testid="pricing-saved-announce">{{
+    savedRowMessage()
+  }}</output>
   <section appCardGlass class="rounded-[24px] px-[22px] py-5">
     <h2 class="text-[16px] font-bold text-riv-card-ink">Row pricing</h2>
     <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
@@ -42,11 +46,14 @@
           </div>
         </div>
         @if (savedRow() === row.label) {
-          <output
-            class="block py-1 text-right text-[11.5px] font-semibold text-riv-console-accent-ink"
+          <!-- Visible copy only; the table's persistent announcer above owns the announcement. -->
+          <p
+            class="py-1 text-right text-[11.5px] font-semibold text-riv-console-accent-ink"
+            aria-hidden="true"
             [attr.data-testid]="'pricing-saved-' + row.label"
-            >Saved. The public beach map reflects the new price.</output
           >
+            Saved. The public beach map reflects the new price.
+          </p>
         }
         @if (errorRow(); as err) {
           @if (err.label === row.label) {

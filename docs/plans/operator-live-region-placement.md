@@ -55,6 +55,7 @@ branch that produces its text, with no persistent sibling region and no focus mo
 | S6 | `operator/layout-editor.html` | `layout-saved` | **B — persistent `sr-only` announcer** | Parent is the save bar's `flex … gap-2.5`; same gap problem |
 | S7 | `operator/layout-editor.html` | `layout-row-name-saved` | **B — one announcer for the editor** | Mounted per `@for` row inside a gapped flex column; hoisting would give one region per row, which RV-FE-10 rules out outright |
 | S8 | `operator/pricing-tab.html` | `pricing-saved-<label>` | **B — one announcer for the table** | One region per row, the case RV-FE-10 names; the issue's own judgement call, and the evidence agrees |
+| S10 | `operator/operator-home.ts` | `operator-home-loading` | **`app-load-announcer`** | Found by this slice's own generalization sweep, not by #1078: the only one of the ten that is a *loading* surface, so it takes the shared announcer rather than a hand-rolled region |
 | S9 | `pages/home/home.html` | `empty` | **C — drop `aria-live`** | The persistent `results` count region sits above the whole `@if` chain and already says "0 venues · <date>"; a second source for one sentence is the thing the rule forbids |
 
 **Shape A** keeps one element: the `<output>` loses its `@if` and keeps its test id, the visual
@@ -120,6 +121,11 @@ they have today.
   the panel carries no live-region semantics and the persistent `results` region speaks the zero
   count. *Seam:* the rendered `app-home` DOM (`[data-testid="empty"]`, `[data-testid="results"]`) ·
   *Pinned by:* `home.spec.ts` › `leaves the empty panel silent, since the count region speaks the outcome (#1078)`
+- [ ] **AC-11:** Given an operator with two venues, when the owned-venues read resolves, then the
+  `load-announcer` node that spoke "Opening your console…" is the same node that now speaks the
+  picker, and the visible copy is `aria-hidden`. *Seam:* the rendered `app-operator-home` DOM
+  (`[data-testid="load-announcer"]`) · *Pinned by:* `operator-home.spec.ts` › `announces through one
+  region that survives opening → picker (#1078)`
 - [ ] **AC-10:** Given the operator console in a real Chromium, when a set save and a row reprice
   resolve over a genuine round trip, then the element handle taken before each transition is still
   the element holding the text afterwards. *Seam:* the console routes under `/operator/:venueId`
@@ -208,10 +214,10 @@ N/A — no contract change. No request or response shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** Phase 4 — write the red `pricing-tab.spec.ts` spec (AC-8), then replace the
-per-row regions with one table-level announcer.
+**Next action:** Phase 5 — drop the `aria-live` from Discover's empty panel (AC-9), pinned by the
+persistent count region.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -219,7 +225,7 @@ per-row regions with one table-level announcer.
 | 1 — set-editor (S2, S3 Shape A; S4 Shape B) | ✅ | this commit |
 | 2 — venue-tab (S5, Shape B) | ✅ | this commit |
 | 3 — layout-editor (S6, S7, Shape B) | ✅ | this commit |
-| 4 — pricing-tab (S8, Shape B) | | |
+| 4 — pricing-tab (S8, Shape B) + S10 operator-home | ✅ | this commit |
 | 5 — Discover (S9, Shape C) | | |
 | 6 — e2e in real Chromium + close-out | | |
 
@@ -253,6 +259,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/operator/pricing-tab.html` — S8 table-level announcer + demoted copies
 - `frontend/src/app/operator/pricing-tab.ts` — `savedRowMessage` computed
 - `frontend/src/app/operator/pricing-tab.spec.ts` — AC-8
+- `frontend/src/app/operator/operator-home.ts` — S10 takes `app-load-announcer`
+- `frontend/src/app/operator/operator-home.spec.ts` — AC-11
 - `frontend/src/app/pages/home/home.html` — S9 drops `aria-live`
 - `frontend/src/app/pages/home/home.spec.ts` — AC-9
 - `frontend/e2e/loading-announcements.e2e.ts` — AC-10
@@ -450,6 +458,7 @@ Test `frontend/src/app/operator/venue-tab.spec.ts`
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-12 | phase 4 | Re-ran the same mechanism over the whole tree now that eight sites were repaired, resolving every remaining hit to its enclosing branch and checking each against its component's focus moves | `grep -rn 'aria-live\|role="status"\|<output' frontend/src` | The eight `admin/*` notices are already unconditional regions whose content branches (`min-h-[1.5rem]` reserves the space) — correct, untouched. One new hit: `operator-home.ts`'s `operator-home-loading`, born holding "Opening your console…" inside the `@else`, with the component's only focus move gated behind `skip(1)` on the query params so it never fires on the first load | Fixed here as S10 rather than ticketed: #1078 claims to close this population, and a member left standing would make that claim false. It is a loading surface, so it takes `app-load-announcer` |
 | 2026-09-12 | plan (pre-phase-0) | A live region whose element mounts inside the `@if`/`@case` branch producing its text, with no persistent sibling region and no `focusMover()` target on it — every live region in the tree listed, each resolved to its nearest enclosing control-flow branch, each branch-nested hit checked against its component's focus moves | `grep -rn 'aria-live\|role="status"\|<output' frontend/src` | 9 in scope (S1–S9); `payouts-notice` + `daily-notice` cleared (focus-moved by `payouts-tab.ts` / `daily-view-tab.ts`); the auth five already repaired by #1077 | Fix all nine, per the shape table above |
 
 ---
