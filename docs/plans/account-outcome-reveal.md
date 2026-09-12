@@ -80,12 +80,16 @@ for `bugfix/account-outcome-reveal` (`riviera-sdlc` § *Remote / cloud session a
   failed save, when the customer resubmits without touching a field, then the error stays mounted
   and keeps focus for the whole request rather than stranding it on `<body>`. *Seam:* as AC-1 ·
   *Pinned by:* `set-password.spec.ts` → `keeps focus off the body while a retry is in flight`
+- [x] **AC-7** (added on the maintainer's scope decision, finding F-5): the same, on the operator's
+  password page. *Seam:* the rendered DOM of `/account/operator-password` · *Pinned by:*
+  `operator-password.spec.ts` → `keeps focus off the body while a retry is in flight`
 
 ## Non-goals
 
-- **Changing `operator-password.ts`.** Its `revealOutcome()` is a working duplicate of the
-  shared helper and collapsing it is a refactor of a page this issue does not report a bug in.
-  Recorded as a follow-up below rather than widened into a bug-fix slice.
+- **Refactoring `operator-password.ts`'s `revealOutcome()` onto the shared helper.** It is a
+  working duplicate, and collapsing it is a refactor rather than a fix. Still a follow-up.
+  (Its *focus-stranding defect* was originally a Non-goal too; the maintainer moved it into
+  scope when the review fix's generalization sweep confirmed it — see F-5.)
 - **Adding `scrollIntoView` to `focusMover()`.** That would change ~25 unrelated focus moves;
   the browser's own focus scroll covers this slice, and AC-5 is what proves it.
 - **Moving focus on the resend path** — decided against, see Resolved below.
@@ -179,7 +183,8 @@ N/A — no contract change. No request, response, or DTO is touched.
 |-------|--------|---------|
 | 0 — Clear the outcome up front, then reveal it | ✅ | `a7aa8c93` |
 | 1 — Prove the phone-viewport visibility in a real browser | ✅ | `8b851abb` |
-| 2 — Review-gate findings F-1..F-4 | ✅ | this commit |
+| 2 — Review-gate findings F-1..F-4 | ✅ | `826779ff` |
+| 3 — F-5, the sibling page's identical stranding | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -191,6 +196,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-1 | review gate (CLAUDE.md/overlay agent, RV-FE-9 caveat) | Clearing `error` before the await unmounts an `@if`-gated error that `revealOutcome()` had just focused, stranding focus on `<body>` for the whole request. Raised as unconfirmable statically; **confirmed in Chromium** with a delayed-response probe (`["BODY","BODY","BODY","BODY","BODY","setpw-error"]` over a 1.2s request) | **fixed** — the error clear now waits for the reply; re-probed as `setpw-error` throughout. Pinned by AC-6 |
 | F-2 | review gate (prior-PR agent, citing PR #832 on the sibling page's identically-named method) | `revealOutcome()`'s TSDoc carried decision archaeology and ran ~14 lines against §6d's ~3-line member budget | **fixed** — trimmed to the contract plus the one warning that stops the ordered lookup collapsing into a selector list |
 | F-3 | review gate (comment guard, advisory) | `set-password.spec.ts` resend-pin doc comment narrated the slice ("the decision this slice had to make") | **fixed** — reworded to state the rule, not the slice |
+| F-5 | generalization sweep on F-1 | `auth/operator-password.ts` carries the identical stranding, pre-existing since #342: it clears `error` before its own await while `revealOutcome()` focuses the `@if (error())` region | **fixed** — folded in on the maintainer's explicit scope decision, after being surfaced as a follow-up candidate. Same two-line shape as F-1, red-then-green on its own page, pinned by AC-7 |
 | F-4 | review gate (code-comment agent) | The TSDoc stated "the scroll is the browser's" as unqualified fact without reconciling that the sibling page spells the same effect out as `scrollIntoView` + `preventScroll`; and the e2e suite has no WebKit project, so the implicit form is proven only in Chromium | **resolved, decision recorded** — the over-claim is gone from the trimmed TSDoc. The implementation stands: the HTML focusing steps scroll with `nearest`, which is what the sibling spells out explicitly, and AC-5 proves it in the one engine this suite runs. The WebKit gap is the whole suite's, not this test's — recorded in R-5 and the PR rather than papered over |
 
 ---
@@ -202,6 +208,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
   and call it on both submit outcomes
 - `frontend/src/app/auth/set-password.spec.ts` — AC-1 to AC-4
 - `frontend/e2e/customer-password.e2e.ts` — AC-5, the phone-viewport visibility proof
+- `frontend/src/app/auth/operator-password.ts` — the same held-until-the-reply error clear (F-5)
+- `frontend/src/app/auth/operator-password.spec.ts` — AC-7, plus a non-settling `press()` helper
+  that makes the in-flight window inspectable
 - `docs/plans/auth-live-region-placement.md` — **deleted**: #1077 merged, so its plan doc
   retires at this close-out (`riviera-docs-freshness` § *Plan-doc retirement*)
 
@@ -260,7 +269,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-09-12 | Review-fix (F-1) | A component that **focuses a conditionally-mounted outcome region and clears that region before an `await`** — the clear unmounts the focused element for the length of the request. Enumerated by taking every component that moves focus, resolving its focus targets, and asking whether each target sits inside an `@if` | `for f in $(grep -rln "revealOutcome\|focusAfterRender\|moveFocus" frontend/src/app --include=*.ts \| grep -v spec); do ...` then per file an `awk` test of whether each focus target's `data-testid` sits inside an `@if` block | `auth/operator-password.ts` **confirmed** (clears `error` at :158, awaits at :174, focuses the `@if (error())` region at :98 — the identical defect, pre-existing since #342). Four further candidates surfaced with conditionally-mounted focus targets but NOT individually confirmed: `admin/admin-reviews.ts`, `admin/admin-venue-photos.ts`, `auth/forgot-password.ts`, `auth/reset-password.ts` (the latter two focus terminal regions with no resubmit after them, so they are likely non-members) | **Fix 1 (this slice), ticket the rest.** `operator-password.ts` is a pre-existing defect on a page this issue does not report and the plan's Non-goals exclude; the same two-line fix applies. Flagged in the PR and to the maintainer rather than folded in — widening a customer-page bug fix onto the operator page is the step #1079 itself declined to take |
+| 2026-09-12 | Review-fix (F-1) | A component that **focuses a conditionally-mounted outcome region and clears that region before an `await`** — the clear unmounts the focused element for the length of the request. Enumerated by taking every component that moves focus, resolving its focus targets, and asking whether each target sits inside an `@if` | `for f in $(grep -rln "revealOutcome\|focusAfterRender\|moveFocus" frontend/src/app --include=*.ts \| grep -v spec); do ...` then per file an `awk` test of whether each focus target's `data-testid` sits inside an `@if` block | `auth/operator-password.ts` **confirmed** (clears `error` at :158, awaits at :174, focuses the `@if (error())` region at :98 — the identical defect, pre-existing since #342). Four further candidates surfaced with conditionally-mounted focus targets but NOT individually confirmed: `admin/admin-reviews.ts`, `admin/admin-venue-photos.ts`, `auth/forgot-password.ts`, `auth/reset-password.ts` (the latter two focus terminal regions with no resubmit after them, so they are likely non-members) | **Fixed 2 of the 5 candidates.** `set-password.ts` in this slice, and `operator-password.ts` **folded in on the maintainer's decision** after being flagged rather than silently widened — the same two-line shape, red-then-green on its own page (AC-7). The four unconfirmed candidates stay out: `forgot-password.ts` and `reset-password.ts` focus terminal regions with no resubmit after them, and the two admin pages need their own verification, which is a sweep of its own rather than a rider on a bug fix |
 | 2026-09-12 | Phase 0 | A component that renders an outcome notice **separated from the control that produces it** and never moves focus to it. Enumerated by the signal that carries such an outcome, then each hit read for a focus move and for where its region sits relative to its trigger | `grep -rln "notice = signal" frontend/src/app --include=*.ts \| grep -v spec`, then per file `grep -c "focusAfterRender\|revealOutcome\|moveFocus"` | 12 components; 9 already move focus. 3 do not: `admin/admin-outbox-lever.ts`, `admin/admin-mail-delivery.ts`, `operator/requests-tab.ts` | **Fix 1 (this slice), skip 3, follow-up on 2.** `admin-outbox-lever.ts` is **not** a member on inspection — its notice renders directly beneath its own Resubmit button, so there is no separation to close. `operator/requests-tab.ts` is the true match (notice at the top of the template, accept/decline triggers in the cards below) and `admin-mail-delivery.ts` is the inverted one (notice below a list of per-row resend buttons). Both are console surfaces rather than the phone-first tourist page this issue reports, and `requests-tab`'s accept re-renders the queue and can destroy the trigger — an RV-FE-9 destroyed-trigger decision, not this slice's reveal. Widening a bug-fix slice across two console pages with a different focus question is what #1079 itself declined to do; carried to the PR as a follow-up |
 
 ---
