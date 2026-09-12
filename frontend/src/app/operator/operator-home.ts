@@ -15,6 +15,7 @@ import { skip } from 'rxjs';
 import { OwnedVenue, OwnedVenues } from '../core/owned-venues';
 import { landingRouteFor, safeReturnUrl } from '../shared/auth-landing';
 import { CardGlass } from '../shared/card-glass';
+import { LoadAnnouncer } from '../shared/load-announcer';
 import { RetryButton } from '../shared/retry-button';
 import { PendingApprovalBanner } from './pending-approval-banner';
 import { TouchTarget } from '../shared/touch-target';
@@ -42,6 +43,7 @@ import { VenueCreateCard } from './venue-create-card';
   imports: [
     RouterLink,
     CardGlass,
+    LoadAnnouncer,
     RetryButton,
     PendingApprovalBanner,
     VenueCreateCard,
@@ -53,6 +55,13 @@ import { VenueCreateCard } from './venue-create-card';
       aria-labelledby="operator-home-title"
     >
       <app-pending-approval-banner />
+      <!-- Above the @if chain on purpose: a live region must outlive the branch it describes. -->
+      <app-load-announcer
+        [loading]="showingOpening()"
+        [ready]="showingPicker()"
+        loadingLabel="Opening your console…"
+        readyLabel="Choose a venue."
+      />
       @if (failed()) {
         <div
           appCardGlass
@@ -83,7 +92,7 @@ import { VenueCreateCard } from './venue-create-card';
           }}
         </p>
         <app-venue-create-card />
-      } @else if (venues().length > 1) {
+      } @else if (showingPicker()) {
         <div
           appCardGlass
           class="rounded-[20px] p-6 shadow-[0_12px_44px_rgba(12,42,51,0.14)]"
@@ -122,11 +131,14 @@ import { VenueCreateCard } from './venue-create-card';
           >
         </div>
       } @else {
-        <output
+        <!-- Visible copy only; the announcer above owns the announcement. -->
+        <p
           class="text-center text-[15px] text-riv-card-ink-soft"
+          aria-hidden="true"
           data-testid="operator-home-loading"
-          >Opening your console…</output
         >
+          Opening your console…
+        </p>
       }
     </section>
   `,
@@ -150,6 +162,24 @@ export class OperatorHome implements OnInit {
     () => this.query().get('create') === '1' || (this.loaded() && this.venues().length === 0),
   );
   protected readonly zeroState = computed(() => this.loaded() && this.venues().length === 0);
+
+  /**
+   * Whether the picker is the branch rendering. The announcer's `ready` binds this rather than a
+   * venue count, so no other exit — the failure panel, the create card — can claim an outcome it
+   * did not reach.
+   */
+  protected readonly showingPicker = computed(
+    () => !this.failed() && !this.creating() && this.venues().length > 1,
+  );
+
+  /**
+   * Whether the "Opening your console…" branch is rendering: the read is still in flight, or a lone
+   * venue is being forwarded. Not `!loaded()`, which here also covers a failed read — this
+   * component's `loaded` means succeeded, unlike the console tabs' own, which settles either way.
+   */
+  protected readonly showingOpening = computed(
+    () => !this.failed() && !this.creating() && this.venues().length <= 1,
+  );
 
   constructor() {
     // Param-only navs (picker ⇄ create) re-decide AND re-anchor focus on the swapped-in title (WCAG 2.4.3).

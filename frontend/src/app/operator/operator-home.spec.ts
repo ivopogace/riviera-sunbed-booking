@@ -18,6 +18,7 @@ describe('OperatorHome (#277, create state #278)', () => {
   async function render(
     owned: OwnedVenuesResult,
     queryParams: Record<string, string> = {},
+    gate?: Promise<void>,
   ): Promise<void> {
     result = owned;
     loads = 0;
@@ -33,9 +34,12 @@ describe('OperatorHome (#277, create state #278)', () => {
         {
           provide: OwnedVenues,
           useValue: {
-            load: (): Promise<OwnedVenuesResult> => {
+            load: async (): Promise<OwnedVenuesResult> => {
               loads++;
-              return Promise.resolve(result);
+              if (gate) {
+                await gate; // hold the read open so the opening state is observable, not raced past
+              }
+              return result;
             },
             reset: (): void => undefined,
           },
@@ -51,7 +55,11 @@ describe('OperatorHome (#277, create state #278)', () => {
     });
     navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     fixture = TestBed.createComponent(OperatorHome);
-    await fixture.whenStable();
+    if (gate) {
+      fixture.detectChanges();
+    } else {
+      await fixture.whenStable();
+    }
   }
 
   function el(testId: string): HTMLElement {
@@ -84,6 +92,38 @@ describe('OperatorHome (#277, create state #278)', () => {
   it('forwards a single-venue operator straight into that console', async () => {
     await render({ status: 'loaded', venues: [{ id: 12, name: 'Miramar', beach: 'Dhërmi' }] });
     expect(navigate).toHaveBeenCalledWith('/operator/12');
+  });
+
+  it('announces through one region that survives opening → picker (#1078)', async () => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await render(
+      {
+        status: 'loaded',
+        venues: [
+          { id: 12, name: 'Miramar Beach Club', beach: 'Dhërmi' },
+          { id: 15, name: 'Sereno', beach: 'Jal' },
+        ],
+      },
+      {},
+      held,
+    );
+
+    const announcer = el('load-announcer');
+    expect(announcer.textContent?.trim()).toBe('Opening your console…');
+    // The visible copy is decoration; the announcer alone carries the words.
+    expect(el('operator-home-loading').getAttribute('aria-hidden')).toBe('true');
+
+    release();
+    // Two settles: the gate resolves a hop before load() writes the loaded state.
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(el('load-announcer')).toBe(announcer);
+    expect(announcer.textContent?.trim()).toBe('Choose a venue.');
   });
 
   it('renders a picker with every venue name — and the Add-another-venue entry (#278)', async () => {
@@ -144,6 +184,31 @@ describe('OperatorHome (#277, create state #278)', () => {
       { returnUrl: '/operator/15/payouts' },
     );
     expect(navigate).toHaveBeenCalledWith('/operator/15/payouts');
+  });
+
+  it('leaves the announcer silent when the read fails (#1078)', async () => {
+    await render({ status: 'error' });
+
+    // Silence is the safe exit: the announcer must never contradict the failure panel beside it.
+    expect(el('operator-home-error')).not.toBeNull();
+    expect(el('load-announcer').textContent?.trim()).toBe('');
+  });
+
+  it('leaves the announcer silent on the create card, which is not the picker (#1078)', async () => {
+    await render(
+      {
+        status: 'loaded',
+        venues: [
+          { id: 12, name: 'Miramar Beach Club', beach: 'Dhërmi' },
+          { id: 15, name: 'Sereno', beach: 'Jal' },
+        ],
+      },
+      { create: '1' },
+    );
+
+    // Two venues, but the create card is the branch rendering — announcing the picker would lie.
+    expect(el('venue-create-card')).not.toBeNull();
+    expect(el('load-announcer').textContent?.trim()).toBe('');
   });
 
   it('offers a retry instead of rendering the create zero state when the read fails', async () => {

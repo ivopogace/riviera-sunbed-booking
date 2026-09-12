@@ -1,4 +1,12 @@
 <section class="mx-auto w-full max-w-[1260px] px-5 py-4" data-testid="layout-editor">
+  <!-- Above every branch on purpose: a live region must outlive the branch it describes, and both visible copies sit in gapped flex containers where an empty element would still spend its gap. -->
+  <output aria-live="polite" class="sr-only" data-testid="layout-saved-announce">{{
+    savedMessage()
+  }}</output>
+  <!-- One region for the editor, never one per row: RV-FE-10 rules a live region per list row out. -->
+  <output aria-live="polite" class="sr-only" data-testid="layout-row-name-saved-announce">{{
+    renamedRowMessage()
+  }}</output>
   <!-- Mode-independent, so it sits above the branch: neither surface has a map when the read failed. -->
   @if (loadFailed()) {
     <p
@@ -193,12 +201,14 @@
                 }
               </div>
               @if (renamedRow() === y) {
-                <output
-                  class="ml-8 block text-[12.5px] font-semibold text-riv-card-ink-soft"
+                <!-- Visible copy only; the persistent announcer above owns the announcement. -->
+                <p
+                  class="ml-8 text-[12.5px] font-semibold text-riv-card-ink-soft"
+                  aria-hidden="true"
                   data-testid="layout-row-name-saved"
                 >
                   Row name saved.
-                </output>
+                </p>
               }
               @if (rowNameError(); as failure) {
                 @if (failure.y === y) {
@@ -405,13 +415,15 @@
               </button>
             </div>
 
-            @if (savedNotice()) {
-              <output
+            @if (savedMessage(); as msg) {
+              <!-- Visible copy only; the persistent announcer above owns the announcement. -->
+              <span
                 class="text-[13px] font-semibold text-riv-console-accent-ink sm:basis-full"
+                aria-hidden="true"
                 data-testid="layout-saved"
               >
-                Saved. The public beach map reflects your changes.
-              </output>
+                {{ msg }}
+              </span>
             }
             @if (errorMessage(); as message) {
               <span

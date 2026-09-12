@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { mockCustomerRecoveryApi } from './support/auth-mocks';
@@ -152,4 +152,130 @@ test('the forgot and reset confirmations take focus when their form is replaced 
 
   await expect(page.getByTestId('reset-done')).toBeFocused();
   await expectNoSeriousAxeViolations(page, 'reset-password confirmation');
+});
+
+/**
+ * The same contract on the operator console and Discover, in the two shapes a plain hoist cannot
+ * take: one region for a whole table, whose sentence names the row so that consecutive rows still
+ * mutate it, and a panel that gives its live semantics up because a persistent sibling already
+ * speaks the outcome.
+ */
+
+const CONSOLE_PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
+
+const CONSOLE_MAP = {
+  id: 1,
+  name: 'Miramar Beach Club',
+  beach: 'Ksamil',
+  region: 'Albanian Riviera',
+  description: 'Loungers on the shore.',
+  ratingTenths: 48,
+  reviewsCount: 12,
+  bookingMode: 'INSTANT',
+  fromPrice: { minorUnits: 2000, currency: 'EUR' },
+  sets: [seat(1, 'A', 1, 3500, 1, 1), seat(2, 'B', 1, 2000, 1, 2)],
+};
+
+function seat(
+  id: number,
+  rowLabel: string,
+  positionNo: number,
+  minorUnits: number,
+  gridX: number,
+  gridY: number,
+) {
+  return {
+    id,
+    rowLabel,
+    positionNo,
+    tier: 'STANDARD',
+    pool: 'ONLINE',
+    price: { minorUnits, currency: 'EUR' },
+    gridX,
+    gridY,
+    availability: 'FREE',
+  };
+}
+
+async function mockConsoleForPricing(page: Page): Promise<void> {
+  let sessionLive = false;
+  let setVersion = 0;
+  await page.route(/\/api\/auth\/me$/, (route) =>
+    sessionLive
+      ? route.fulfill({ json: CONSOLE_PRINCIPAL })
+      : route.fulfill({ status: 401, json: { code: 'UNAUTHENTICATED' } }),
+  );
+  await page.route(/\/api\/auth\/operator\/login$/, (route) => {
+    sessionLive = true;
+    return route.fulfill({ json: CONSOLE_PRINCIPAL });
+  });
+  await page.route(/\/api\/venues\/1\/rows\/[^/]+\/price$/, (route) => {
+    setVersion += 1;
+    return route.fulfill({ status: 204, body: '' });
+  });
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+    route.fulfill({ json: { ...CONSOLE_MAP, setVersion } }),
+  );
+  await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
+  await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
+  await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: {
+        gross: { minorUnits: 0, currency: 'EUR' },
+        net: { minorUnits: 0, currency: 'EUR' },
+        commissionBps: 1500,
+        date: '2026-07-08',
+      },
+    }),
+  );
+}
+
+test('row pricing announces every row through one region that outlives them (#1078)', async ({
+  page,
+}) => {
+  await mockConsoleForPricing(page);
+  await page.goto('/operator/1/pricing');
+  await page.getByLabel('Username', { exact: true }).fill('operator');
+  await page.getByLabel('Password', { exact: true }).fill('pw');
+  await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
+  await expect(page.getByTestId('pricing-tab')).toBeVisible();
+
+  // One region for the table, mounted before any reprice and costing no layout.
+  const announcer = page.getByTestId('pricing-saved-announce');
+  await expect(announcer).toHaveText('');
+  // A rebuilt region would be a fresh element, and a fresh element cannot carry this mark.
+  await announcer.evaluate((el) => el.setAttribute('data-identity-probe', 'same-node'));
+
+  await page.getByTestId('pricing-input-A').fill('42.5');
+  await page.getByTestId('pricing-input-A').blur();
+  await expect(announcer).toContainText('Row A');
+  // The visible per-row copy is decoration; the announcer alone carries the words.
+  await expect(page.getByTestId('pricing-saved-A')).toHaveAttribute('aria-hidden', 'true');
+
+  await page.getByTestId('pricing-input-B').fill('30');
+  await page.getByTestId('pricing-input-B').blur();
+
+  // Naming the row is what makes a second reprice a mutation rather than the same string again.
+  await expect(announcer).toContainText('Row B');
+  await expect(announcer).toHaveAttribute('data-identity-probe', 'same-node');
+
+  await expectNoSeriousAxeViolations(page, 'pricing tab, two rows repriced');
+});
+
+test('Discover leaves the empty outcome to its count region (#1078)', async ({ page }) => {
+  await page.route('**/api/venues*', (route) => route.fulfill({ json: [] }));
+
+  await page.goto('/');
+
+  // Born holding its text, it never announced — and the count region already speaks the outcome.
+  const empty = page.getByTestId('empty');
+  await expect(empty).toBeVisible();
+  expect(await empty.getAttribute('aria-live')).toBeNull();
+  expect(await empty.getAttribute('role')).toBeNull();
+  await expect(page.getByTestId('results')).toContainText('0');
 });

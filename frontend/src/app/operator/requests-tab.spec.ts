@@ -220,6 +220,27 @@ describe('RequestsTab (#176)', () => {
     expect(byId('requests-notice')?.textContent?.toLowerCase()).toContain('asked to pay');
   });
 
+  it('announces the decision through a region that predates it (#1078)', () => {
+    render([request({ bookingId: 11 })]);
+
+    // Present and empty beforehand: a region born holding its sentence announces nothing.
+    const notice = byId('requests-notice');
+    expect(notice).not.toBeNull();
+    expect(notice?.textContent?.trim()).toBe('');
+
+    button(/Accept/).click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/accept'))
+      .flush({ bookingId: 11, status: 'AWAITING_PAYMENT' });
+    fixture.detectChanges();
+    flushReconcile([]);
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(byId('requests-notice')).toBe(notice);
+    expect(notice?.textContent?.toLowerCase()).toContain('asked to pay');
+  });
+
   it('reconciles the whole queue after an action, dropping a card the sweep expired meanwhile', () => {
     render([request({ bookingId: 11 }), request({ bookingId: 12, setId: 2 })]);
     button(/Accept/).click();

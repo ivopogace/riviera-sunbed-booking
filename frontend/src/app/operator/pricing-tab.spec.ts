@@ -153,6 +153,36 @@ describe('PricingTab (#174)', () => {
     expect(byId('pricing-saved-A')).toBeTruthy();
   });
 
+  it("announces each row's reprice through one table-level region (#1078)", async () => {
+    render();
+
+    // One region for the table, never one per row: RV-FE-10 rules a live region per list row out.
+    const announce = byId('pricing-saved-announce');
+    expect(announce).toBeTruthy();
+    expect(announce.textContent?.trim()).toBe('');
+
+    editRow('A', '42.50');
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('pricing-saved-announce')).toBe(announce);
+    expect(announce.textContent).toContain('Row A');
+
+    editRow('B', '25');
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/B/price'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // A row-agnostic "Saved." would not have changed here, so nothing would be spoken.
+    expect(byId('pricing-saved-announce')).toBe(announce);
+    expect(announce.textContent).toContain('Row B');
+    expect(byId('pricing-saved-B').getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('rounds a whole-euro edit to exact minor units', () => {
     render();
     editRow('B', '25');

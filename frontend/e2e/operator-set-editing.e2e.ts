@@ -282,11 +282,19 @@ test('a venue with sets opens in per-set editing, and one set’s pool + price s
   await cell(page, 1, 2).click();
   await expect(page.getByTestId('set-selected')).toHaveText(/Row B · position 1/);
 
+  // Mounted before the save and painting nothing: hoisting must cost no layout.
+  const saved = page.getByTestId('set-saved');
+  await expect(saved).toBeAttached();
+  expect(await saved.boundingBox()).toMatchObject({ width: 0, height: 0 });
+  // A rebuilt region would be a fresh element, and a fresh element cannot carry this mark.
+  await saved.evaluate((el) => el.setAttribute('data-identity-probe', 'same-node'));
+
   await page.getByTestId('set-pool-WALK_IN').click();
   await page.getByTestId('set-price').fill('25');
   await page.getByTestId('set-save').click();
 
-  await expect(page.getByTestId('set-saved')).toBeVisible();
+  await expect(saved).toBeVisible();
+  await expect(saved).toHaveAttribute('data-identity-probe', 'same-node');
   const set12 = mock.sets().find((s) => s.id === 12)!;
   expect(set12.pool).toBe('WALK_IN');
   expect(set12.price.minorUnits).toBe(2500);

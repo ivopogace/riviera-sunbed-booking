@@ -475,6 +475,26 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-saved')).toBeTruthy();
   });
 
+  it('announces a set save through a region that predates it (#1078)', async () => {
+    render();
+    selectSet(12);
+
+    // Present and empty beforehand: a region born holding its sentence announces nothing.
+    const saved = byId('set-saved');
+    expect(saved).toBeTruthy();
+    expect(saved.textContent?.trim()).toBe('');
+
+    click(byId('set-pool-WALK_IN'));
+    click(byId('set-save'));
+    expectPatch(12).flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(byId('set-saved')).toBe(saved);
+    expect(saved.textContent).toContain('Saved.');
+  });
+
   it('keepsTheSetUnchangedOnSetInUse: a refused save leaves the grid as the server has it (AC-2)', async () => {
     render();
     selectSet(12);
@@ -781,6 +801,25 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-move-blocked')).toBeTruthy();
   });
 
+  it('announces an armed move through a region that predates it (#1078)', () => {
+    render();
+    selectSet(12);
+    click(byId('set-add-col'));
+
+    // The panel holds Cancel move, so it cannot be hoisted — a persistent region speaks instead.
+    const announce = byId('set-move-armed-announce');
+    expect(announce).toBeTruthy();
+    expect(announce.textContent?.trim()).toBe('');
+
+    click(byId('set-move'));
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(byId('set-move-armed-announce')).toBe(announce);
+    expect(announce.textContent).toContain('Pick an empty spot');
+    // The visible copy is decoration; the announcer alone carries the words.
+    expect(byId('set-move-armed-copy').getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('does not leave a move armed for a set that is gone, which would freeze the whole grid', async () => {
     render();
     selectSet(12);
@@ -1033,6 +1072,26 @@ describe('SetEditor (#600)', () => {
     expect(changed).toBe(1);
   });
 
+  it('announces a batch apply through a region that predates it (#1078)', async () => {
+    render();
+    dragSweep(1, 1, 2, 1);
+
+    // Present and empty beforehand: a region born holding its sentence announces nothing.
+    const saved = byId('batch-saved');
+    expect(saved).toBeTruthy();
+    expect(saved.textContent?.trim()).toBe('');
+
+    typeBatchPrice('40');
+    click(byId('batch-apply'));
+    expectBatchPatch().flush({ updated: 2 });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(byId('batch-saved')).toBe(saved);
+    expect(saved.textContent).toMatch(/2 sets updated/);
+  });
+
   it('sends only the tier for a tier-only touch', () => {
     render();
     dragSweep(1, 2, 2, 2); // row B: sets 12 (ONLINE) and 13 (WALK_IN)
@@ -1099,7 +1158,7 @@ describe('SetEditor (#600)', () => {
     // The abandoned apply's success must not stomp the operator's new, still-unsaved sweep.
     expect(byId('batch-count').textContent).toContain('2 sets selected');
     expect((byId('batch-price') as HTMLInputElement).value).toBe('45');
-    expect(byId('batch-saved')).toBeFalsy();
+    expect(byId('batch-saved').textContent?.trim()).toBe('');
   });
 
   it('Escape and Clear both empty the sweep and move focus back to the canvas (AC-5)', async () => {
