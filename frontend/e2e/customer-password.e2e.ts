@@ -192,3 +192,50 @@ test('an exhausted change-password budget renders the rate-limit message', async
   await signIn(page, OLD_PASSWORD);
   await expect(page.getByTestId('nav-user')).toHaveAccessibleName(`Account: ${EMAIL}`);
 });
+
+/**
+ * The half of the outcome contract that only a real viewport can prove. The notice renders ABOVE
+ * the form, so a customer working at the bottom of the page has scrolled it off the top by the time
+ * they submit; nothing else confirms the save, and the fields emptying themselves looks identical to
+ * nothing having happened.
+ *
+ * <p>The height is 520 rather than the suite's 780 `phone` because 780 is the whole device: the page
+ * is 922 tall, so at 780 it scrolls by 142px and the notice can never leave the viewport — the
+ * reported bug does not exist at that height. 520 is a phone whose on-screen keyboard is up, which
+ * is exactly the state a customer is in while filling this form, and there the notice sits 172px
+ * above the viewport while the submit button stays in view.
+ *
+ * <p>The `not.toBeInViewport()` before the click is what keeps this honest: if the layout ever puts
+ * the notice on screen anyway, the test fails loudly instead of passing vacuously.
+ *
+ * <p>The page is reached in-app as the other tests reach it and narrowed only afterwards: the phone
+ * width is the condition under test, not the route to it, and this entry point's header chip is a
+ * desktop control that the phone layout replaces with the tab bar.
+ */
+test('a password saved from the bottom of the form on a phone is confirmed on screen', async ({
+  page,
+}) => {
+  await mockCustomerRecoveryApi(page, {
+    email: EMAIL,
+    initialPassword: OLD_PASSWORD,
+    signedIn: true,
+    emailVerified: true,
+  });
+
+  await page.goto('/');
+  await gotoAccount(page);
+  await page.setViewportSize({ width: 390, height: 520 });
+
+  await page.getByTestId('setpw-current').fill(OLD_PASSWORD);
+  await page.getByTestId('setpw-new').fill(NEW_PASSWORD);
+
+  // Where a customer who has filled the whole form is, with the notice above the viewport.
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(page.getByTestId('setpw-submit')).toBeInViewport();
+  await expect(page.getByTestId('setpw-notice')).not.toBeInViewport();
+
+  await page.getByTestId('setpw-submit').click();
+
+  await expect(page.getByTestId('setpw-notice')).toContainText('Your password has been saved.');
+  await expect(page.getByTestId('setpw-notice')).toBeInViewport();
+});

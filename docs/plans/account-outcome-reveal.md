@@ -67,7 +67,7 @@ for `bugfix/account-outcome-reveal` (`riviera-sdlc` § *Remote / cloud session a
 - [x] **AC-4:** Given an unverified account, when the customer clicks resend, then the notice
   takes the resend outcome and focus **stays on the resend button**. *Seam:* as AC-1 ·
   *Pinned by:* `set-password.spec.ts` → `leaves focus on the resend button, which survives its own click`
-- [ ] **AC-5:** Given a 390x780 phone viewport scrolled so the notice is off-screen above, when
+- [x] **AC-5:** Given a 390x780 phone viewport scrolled so the notice is off-screen above, when
   the password saves, then `setpw-notice` is inside the viewport. *Seam:* the `/account` route
   in a real Chromium at phone width · *Pinned by:* `customer-password.e2e.ts` →
   `a password saved from the bottom of the form on a phone is confirmed on screen`
@@ -93,10 +93,10 @@ N/A — this adds behaviour to an existing surface and retires nothing.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The browser's focus-driven scroll is relied on instead of an explicit `scrollIntoView`; if it does not fire, the bug is not actually fixed | low | high | AC-5 proves it in a real Chromium at phone width with `toBeInViewport()` — a stronger check than any jsdom assertion. If it fails, fall back to the model page's explicit `scrollIntoView` + `focus({preventScroll:true})` | claude | open |
-| R-2 | Focusing the error steals focus from the submit button and leaves a keyboard user further from the fields they must fix | low | med | The error renders *above* the submit button, so the move puts focus nearer the fields, not further; AC-2 pins the target | claude | open |
+| R-1 | The browser's focus-driven scroll is relied on instead of an explicit `scrollIntoView`; if it does not fire, the bug is not actually fixed | low | high | AC-5 proves it in a real Chromium at phone width with `toBeInViewport()` — a stronger check than any jsdom assertion | claude | **closed** — AC-5 passes with the reveal and fails without it (`viewport ratio 0`), so the focus scroll does fire; no explicit `scrollIntoView` needed |
+| R-2 | Focusing the error steals focus from the submit button and leaves a keyboard user further from the fields they must fix | low | med | The error renders *above* the submit button, so the move puts focus nearer the fields, not further; AC-2 pins the target | claude | **closed** — AC-2 green on both error paths |
 | R-3 | The notice lands under the sticky header or the bottom tab bar on a phone | low | med | Verified: the tourist header is sticky only from `sm` up and the notice is scrolled to the **top** edge (it sits above the form), while the tab bar is bottom-fixed — no overlap, no `scroll-mt-*` needed. AC-5 would catch a regression | claude | closed — verified at plan time |
-| R-4 | Clearing the notice up front breaks the #1076 re-announcement contract (a live region speaks only text that CHANGES) | low | med | Clearing earlier only *lengthens* the empty gap the region passes through, which is what #1076's specs want; the existing `re-announces an identical resend outcome by clearing first` spec stays green | claude | open |
+| R-4 | Clearing the notice up front breaks the #1076 re-announcement contract (a live region speaks only text that CHANGES) | low | med | Clearing earlier only *lengthens* the empty gap the region passes through, which is what those specs want | claude | **closed** — the whole `auth/` suite is green (164 specs), the re-announcement spec included |
 
 ## Open questions / Assumptions
 
@@ -160,15 +160,15 @@ N/A — no contract change. No request, response, or DTO is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `PR open (#1080, draft) — both phases built, marking ready and running the review gate`
 
-**Next action:** Phase 1 — add the 390x780 phone-viewport proof (AC-5) to
-`frontend/e2e/customer-password.e2e.ts`, and verify it fails against the pre-fix component.
+**Next action:** Mark PR #1080 ready for review, then run the Review gate per
+`riviera-sdlc` `references/pr-gates.md` §1 with `riviera-review-overlay` layered on.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Clear the outcome up front, then reveal it | ✅ | see below |
-| 1 — Prove the phone-viewport visibility in a real browser | ⏳ | |
+| 0 — Clear the outcome up front, then reveal it | ✅ | `a7aa8c93` |
+| 1 — Prove the phone-viewport visibility in a real browser | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -256,27 +256,27 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - [ ] **AC-2:** Run `npm test -- set-password` → PASS. Verified at commit `<sha>`.
 - [ ] **AC-3:** Run `npm test -- set-password` → PASS. Verified at commit `<sha>`.
 - [ ] **AC-4:** Run `npm test -- set-password` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- customer-password` → PASS. Verified at commit `<sha>`.
+- [x] **AC-5:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts customer-password` → 5 passed. Verified at phase 1's commit. **Viewport corrected during the phase:** the plan assumed the suite's 390x780 `phone`, but measurement showed the page is 922 tall, so at 780 it scrolls by only 142px and the notice can never leave the viewport — the reported bug does not exist at that height. The spec uses 390x520 (a phone with its on-screen keyboard up), where the notice sits 172px above the viewport.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified N/A — frontend-only, no availability write).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking path touched.
-- [ ] **Modulith** section filled (justified N/A — frontend-only).
-- [ ] **Payment/payout** section filled (justified N/A — no money in scope).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A, no time arithmetic.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified N/A — frontend-only, no availability write).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking path touched.
+- [x] **Modulith** section filled (justified N/A — frontend-only).
+- [x] **Payment/payout** section filled (justified N/A — no money in scope).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A, no time arithmetic.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
 - [ ] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
   `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
