@@ -68,12 +68,13 @@ untouched comments.
 
 ## RV-STYLE-2 — formatting is `prettier --check`'s job, not the reviewer's
 
-The frontend job's Format step runs `prettier --check src e2e` whole-scope, so don't
-hand-flag `printWidth`, quote style, or wrapping in `frontend/src` or `frontend/e2e` — a
-misformatted line would have failed the PR. A dirty file is fixed with `npm run format`,
-never by a review comment. Outside that scope (`scripts/`, `docs/`, `platform/`, and
-`frontend/`'s root files — tool- or prose-owned, listed in `.prettierignore`), formatting
-is a matter of matching the surrounding file; judge by eye, lean toward leaving it alone.
+The frontend job's Format step runs `prettier --check src e2e eslint-rules` whole-scope, so
+don't hand-flag `printWidth`, quote style, or wrapping in `frontend/src`, `frontend/e2e` or
+`frontend/eslint-rules` — a misformatted line would have failed the PR. A dirty file is fixed
+with `npm run format`, never by a review comment. Outside that scope (`scripts/`, `docs/`,
+`platform/`, and `frontend/`'s root files — tool- or prose-owned, listed in `.prettierignore`),
+formatting is a matter of matching the surrounding file; judge by eye, lean toward leaving it
+alone.
 
 ## RV-PROC-1 — skill-routing gate honored (when a plan doc is in scope)
 

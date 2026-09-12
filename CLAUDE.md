@@ -85,10 +85,11 @@ npm run build
 ```
 
 **CI/CD** (`.github/workflows/`): `ci.yml` runs the backend build/test and the frontend
-lint/format/test/build + mocked e2e (both skipped on a pull-request push whose tree an earlier
-run already built green; the jobs still run and report), five of the seven `scripts/check-*.mjs`
-hygiene guards (three of those also run as a local `PostToolUse` hook; `check-comment-only.mjs`
-and `check-review-range.mjs` are by-hand verifiers, not CI gates), and a SonarCloud scan per PR.
+lint/format/test/build + mocked e2e + the local lint rules' own suite (both jobs skipped on a
+pull-request push whose tree an earlier run already built green; the jobs still run and report),
+five of the seven `scripts/check-*.mjs` hygiene guards (three of those also run as a local
+`PostToolUse` hook; `check-comment-only.mjs` and `check-review-range.mjs` are by-hand verifiers,
+not CI gates), and a SonarCloud scan per PR.
 The Sonar merge bar is **0 new issues, 0 duplicated blocks, ≥80% new-code coverage** —
 review the issue list, not just the pass/fail. `codeql.yml` scans; `deploy.yml` deploys the single
 backend image (which serves the SPA) to Render from `main` (ADR-0004; `docs/deploy/`).

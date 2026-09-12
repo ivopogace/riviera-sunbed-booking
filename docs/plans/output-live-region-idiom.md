@@ -28,8 +28,9 @@ issue's population list omits `auth/`, `booking/`, `venue/` and `operator/`, and
 behavior-parity ledger that separates the 24 conversions from the 2 exemptions) · `tdd` (the
 ESLint rule is written against a failing `RuleTester` suite before it is wired) ·
 `riviera-review-overlay` (review gate — runs at ready-for-review) · `riviera-docs-freshness`
-(ran at close-out over the PR range — the `load-announcer` class doc is the repo's reference
-description of this pattern and is rewritten here) · `riviera-frontend` (placement: the rule is
+(**ran** over `39c1be94..HEAD`, 3 findings, all patched — the two substrate lines this diff itself
+falsified, plus the CI paragraph it made incomplete; the `load-announcer` class doc was rewritten
+in phase 3 because it is the repo's reference description of this pattern) · `riviera-frontend` (placement: the rule is
 lint tooling, so it sits at `frontend/eslint-rules/`, outside the `app/` taxonomy) ·
 `riviera-tailwind` (`<output>` is `display: inline` and Preflight does not blockify it — every
 visible region gains an explicit `block`, which is inert on the `<p>` call sites that share the
@@ -149,10 +150,10 @@ N/A — no contract change. No HTTP shape, DTO or endpoint is touched.
 
 ## Execution status
 
-**Stage pointer:** `PR #1075 — ready for review, awaiting the review and Sonar gates`
+**Stage pointer:** `PR #1075 — review gate run, findings resolved; awaiting CI and the Sonar gate`
 
-**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then check the
-push's CI run and clear the Sonar new-issue list.
+**Next action:** Check CI on the current head, then pull the SonarCloud new-issue and duplication
+list for the PR and clear every entry before merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -170,7 +171,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | review gate | `frontend/eslint-rules/` sits outside `sonar.sources`, repeating the gap PR #963 closed for `scripts/` — gate machinery whose defects make a gate report clean rather than fail a build | fixed — the directory joins `sonar.sources` and the frontend job now emits its lcov into the same cached artifact |
 | F-2 | review gate | The rule module's doc comment ran to ~20 lines of motivation and history, over the §6d budget and into RV-STYLE-1's drop list | fixed — trimmed to what changes a reader's action |
 | F-3 | review gate | A rule test was titled "the shape both exemptions use", but only the pending-approval banner has a multi-line open tag; the booking dialog's is one line | fixed — retitled to the property the test actually pins |
-| F-4 | review gate | Five auth live regions are born holding their text inside the branch that mounts them (RV-FE-10), so the outcome may never be announced | deferred → follow-up issue. Pre-existing placement, unchanged by this slice, and out of its stated scope. The reviewer's sixth site, `erase-done`, is not a defect: `set-password.ts` focuses it explicitly, pinned by its spec |
+| F-4 | review gate | Five auth live regions are born holding their text inside the branch that mounts them (RV-FE-10), so the outcome may never be announced | deferred → issue #1076. Pre-existing placement, unchanged by this slice, and out of its stated scope. The reviewer called it six sites; `erase-done` is not one — `set-password.ts` focuses it explicitly, pinned by its spec |
+| F-5 | docs-freshness (RV-PROC-2) | This diff falsified two substrate lines that state these scopes as present fact: `pr-gates.md`'s `sonar.sources` list, and RV-STYLE-2's statement that CI formats `src e2e`. `CLAUDE.md`'s CI paragraph also no longer named everything the frontend job runs | fixed — all three patched in the same commit window |
 
 ---
 
@@ -183,7 +185,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/package.json` — the rule-test script; Prettier scope gains `eslint-rules`
 - `.github/workflows/ci.yml` — runs the rule suite in the frontend job, with coverage for Sonar
 - `sonar-project.properties` — the rules directory joins `sonar.sources`, its lcov joins the report paths
-- `CLAUDE.md` — the frontend command block gains the rule suite and the widened format scope
+- `CLAUDE.md` — the frontend command block gains the rule suite and the widened format scope; the CI paragraph names the new job step
+- `.claude/skills/riviera-sdlc/references/pr-gates.md` — the `sonar.sources` list this diff changed
+- `.claude/skills/riviera-review-overlay/SKILL.md` — RV-STYLE-2's statement of the CI format scope
 - `frontend/src/app/shared/load-announcer.ts|.spec.ts` — region + its identity assertion + the reference class doc
 - `frontend/src/app/shared/challenge-widget.ts` — region
 - `frontend/src/app/shared/challenge-widget.a11y.spec.ts` — identity assertion
