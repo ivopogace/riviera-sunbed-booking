@@ -3,6 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { CustomerAuth } from '../core/customer-auth';
 import { CardGlass } from '../shared/card-glass';
+import { LoadAnnouncer } from '../shared/load-announcer';
 
 import { TouchTarget } from '../shared/touch-target';
 
@@ -26,7 +27,7 @@ const CLS = {
  */
 @Component({
   selector: 'app-verify-email',
-  imports: [RouterLink, CardGlass, TouchTarget],
+  imports: [RouterLink, CardGlass, LoadAnnouncer, TouchTarget],
   template: `
     <section
       class="flex min-h-[60vh] items-center justify-center px-5 py-8"
@@ -35,16 +36,27 @@ const CLS = {
       <div [class]="cls.card" appCardGlass>
         <h1 id="verify-title" [class]="cls.title">Verify your email</h1>
 
+        <!-- Above the @switch on purpose: a live region must outlive the branch it describes
+             (#1076). Ready names the verified branch alone, so the two dead-ends stay silent
+             here and announce themselves through their own role="alert" panels. -->
+        <app-load-announcer
+          [loading]="state() === 'verifying'"
+          [ready]="state() === 'verified'"
+          loadingLabel="Verifying your email…"
+          readyLabel="Your email is verified. Thanks!"
+        />
+
         @switch (state()) {
           @case ('verifying') {
-            <output [class]="cls.intro" data-testid="verify-pending">
+            <!-- Visible copy only; the announcer above owns the announcement (#1076). -->
+            <p [class]="cls.intro" aria-hidden="true" data-testid="verify-pending">
               Verifying your email…
-            </output>
+            </p>
           }
           @case ('verified') {
-            <output [class]="cls.intro" data-testid="verify-success">
+            <p [class]="cls.intro" aria-hidden="true" data-testid="verify-success">
               Your email is verified. Thanks!
-            </output>
+            </p>
             <p [class]="cls.alt">
               <a appTouchTarget [class]="cls.altLink" routerLink="/" data-testid="verify-to-home"
                 >Continue</a
