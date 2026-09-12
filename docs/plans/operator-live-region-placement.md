@@ -208,15 +208,15 @@ N/A — no contract change. No request or response shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — write the three red set-editor specs (AC-2, AC-3, AC-4), then hoist
-`set-saved` + `batch-saved` and add the move-armed announcer.
+**Next action:** Phase 2 — write the red `venue-tab.spec.ts` announcer spec (AC-5), then add the
+profile-save announcer and demote the visible copy.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — requests-tab (S1, Shape A) | ✅ | `1764ad1` (plan), this commit |
-| 1 — set-editor (S2, S3 Shape A; S4 Shape B) | | |
+| 1 — set-editor (S2, S3 Shape A; S4 Shape B) | ✅ | this commit |
 | 2 — venue-tab (S5, Shape B) | | |
 | 3 — layout-editor (S6, S7, Shape B) | | |
 | 4 — pricing-tab (S8, Shape B) | | |

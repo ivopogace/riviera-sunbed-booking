@@ -510,6 +510,13 @@ export class SetEditor {
    */
   protected readonly armed = computed(() => this.moving() && this.selectedSet() !== undefined);
 
+  /** The armed-move instruction as one sentence, or '' — bound by both the announcer and the panel. */
+  protected readonly moveArmedMessage = computed(() =>
+    this.armed()
+      ? `Pick an empty spot on the map for ${this.selectedLabel()}. Its row and position follow the new spot.`
+      : '',
+  );
+
   /** Whether the panel has something to edit — a saved set, or an empty cell to add into. */
   protected readonly hasSelection = computed(
     () => this.selectedSet() !== undefined || this.selectedCell() !== undefined,

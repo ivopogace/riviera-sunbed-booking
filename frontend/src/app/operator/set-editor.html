@@ -12,6 +12,11 @@
     sweepAnnouncement()
   }}</output>
 
+  <!-- Above every branch too: the armed panel holds Cancel move, so it cannot be hoisted itself. -->
+  <output aria-live="polite" class="sr-only" data-testid="set-move-armed-announce">{{
+    moveArmedMessage()
+  }}</output>
+
   @if (loaded()) {
     <div
       class="grid grid-cols-1 items-start gap-[18px]"
@@ -259,15 +264,15 @@
             </button>
           </div>
 
-          @if (batchUpdated(); as updated) {
-            <output
-              class="mt-2.5 block text-[12.5px] font-semibold text-riv-console-accent-ink"
-              data-testid="batch-saved"
-            >
-              {{ updated }} set{{ updated === 1 ? '' : 's' }} updated. The public beach map reflects
-              your change.
-            </output>
-          }
+          <!-- Above the @if on purpose: a live region must outlive the branch it describes; the box is the inner span, so an empty region paints nothing. -->
+          <output data-testid="batch-saved">
+            @if (batchUpdated(); as updated) {
+              <span class="mt-2.5 block text-[12.5px] font-semibold text-riv-console-accent-ink">
+                {{ updated }} set{{ updated === 1 ? '' : 's' }} updated. The public beach map
+                reflects your change.
+              </span>
+            }
+          </output>
           @if (batchErrorMessage(); as message) {
             <p
               class="mt-2.5 text-[12.5px] font-semibold leading-[1.45] text-riv-error-ink"
@@ -463,15 +468,19 @@
               </p>
             }
 
-            @if (armed()) {
+            @if (moveArmedMessage(); as msg) {
               <div
                 class="mt-3 rounded-[12px] border border-riv-select-edge/50 bg-riv-select-tint/10 px-3 py-2.5"
                 data-testid="set-move-armed"
               >
-                <output class="block text-[12.5px] font-semibold leading-[1.45] text-riv-card-ink">
-                  Pick an empty spot on the map for {{ selectedLabel() }}. Its row and position
-                  follow the new spot.
-                </output>
+                <!-- Visible copy only; the persistent announcer above owns the announcement. -->
+                <p
+                  class="text-[12.5px] font-semibold leading-[1.45] text-riv-card-ink"
+                  aria-hidden="true"
+                  data-testid="set-move-armed-copy"
+                >
+                  {{ msg }}
+                </p>
                 <button
                   appTouchTarget
                   type="button"
@@ -498,14 +507,14 @@
             }
           }
 
-          @if (saved()) {
-            <output
-              class="mt-2.5 block text-[12.5px] font-semibold text-riv-console-accent-ink"
-              data-testid="set-saved"
-            >
-              Saved. The public beach map reflects your change.
-            </output>
-          }
+          <!-- Above the @if on purpose: a live region must outlive the branch it describes; the box is the inner span, so an empty region paints nothing. -->
+          <output data-testid="set-saved">
+            @if (saved()) {
+              <span class="mt-2.5 block text-[12.5px] font-semibold text-riv-console-accent-ink">
+                Saved. The public beach map reflects your change.
+              </span>
+            }
+          </output>
           @if (errorMessage(); as message) {
             <p
               class="mt-2.5 text-[12.5px] font-semibold leading-[1.45] text-riv-error-ink"
