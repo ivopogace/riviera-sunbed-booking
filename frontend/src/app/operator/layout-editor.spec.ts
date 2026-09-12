@@ -779,6 +779,29 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('layout-saved')).toBeTruthy();
   });
 
+  it('announces a layout save through a region that predates it (#1078)', async () => {
+    render();
+    generate('1', '1');
+
+    // Present and empty beforehand: a region born holding its sentence announces nothing.
+    const announce = byId('layout-saved-announce');
+    expect(announce).toBeTruthy();
+    expect(announce.textContent?.trim()).toBe('');
+
+    byId('layout-save').click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(byId('layout-saved-announce')).toBe(announce);
+    expect(announce.textContent).toContain('Saved.');
+    // The visible copy is decoration; the announcer alone carries the words.
+    expect(byId('layout-saved').getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('tracks the unsaved-change count and the latest-change description across paint/generate/save (#712)', async () => {
     render();
     expect(byId('layout-dirty-count').textContent).toContain('No unsaved changes');
@@ -983,6 +1006,38 @@ describe('LayoutEditor (#172)', () => {
     expect(next.request.body).toEqual({ newLabel: 'Front row', expectedVersion: 4 });
     next.flush(null);
     await fixture.whenStable();
+  });
+
+  it('re-announces a second row rename by naming the row (#1078)', async () => {
+    renderSaved();
+
+    // One region for the editor, never one per row: the sentence names the row instead.
+    const announce = byId('layout-row-name-saved-announce');
+    expect(announce).toBeTruthy();
+    expect(announce.textContent?.trim()).toBe('');
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('layout-row-name-saved-announce')).toBe(announce);
+    expect(announce.textContent).toContain('Row B');
+
+    setRowName(0, 'Front row');
+    rowNameSaves()[0].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/A/name'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // A row-agnostic "Row name saved." would not have changed here, so nothing would be spoken.
+    expect(byId('layout-row-name-saved-announce')).toBe(announce);
+    expect(announce.textContent).toContain('Row A');
+    expect(byId('layout-row-name-saved').getAttribute('aria-hidden')).toBe('true');
   });
 
   it('renames the row the URL names even after the draft changed twice (#726)', async () => {

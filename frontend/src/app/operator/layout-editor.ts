@@ -278,6 +278,20 @@ export class LayoutEditor {
   protected readonly saving = signal(false);
   /** Set after a successful save; cleared on the next edit. */
   protected readonly savedNotice = signal(false);
+
+  /** The bulk-save outcome as one sentence, or '' — bound by both the announcer and the save bar. */
+  protected readonly savedMessage = computed(() =>
+    this.savedNotice() ? 'Saved. The public beach map reflects your changes.' : '',
+  );
+
+  /**
+   * The row-rename outcome as one sentence, or ''. One region serves the whole editor rather than
+   * one per row, so the sentence names the row — renaming A then B must change the text to speak.
+   */
+  protected readonly renamedRowMessage = computed(() => {
+    const y = this.renamedRow();
+    return y === null ? '' : `Row ${this.rowCode(y)} name saved.`;
+  });
   /** The last write failure, mapped to operator-facing copy, or undefined. */
   protected readonly errorCode = signal<LayoutErrorCode | undefined>(undefined);
   /** True while awaiting confirmation of a destructive regenerate over an existing grid. */
