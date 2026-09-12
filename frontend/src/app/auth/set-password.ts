@@ -266,7 +266,6 @@ export class SetPassword {
       return;
     }
     // Up front, not per-branch: the early return below must not leave a stale notice on screen.
-    this.error.set(undefined);
     this.notice.set(undefined);
     const { newPassword, currentPassword } = this.model();
     const violation = passwordPolicyViolation(newPassword, emailLocalPart(this.auth.email() ?? ''));
@@ -281,6 +280,8 @@ export class SetPassword {
     // Only an empty field means "no current password" (an SSO-only account setting its first).
     const result = await this.auth.setPassword(newPassword, currentPassword || undefined);
     this.submitting.set(false);
+    // Held until the reply: clearing earlier unmounts a focused error, stranding focus on <body>.
+    this.error.set(undefined);
     switch (result) {
       case 'set':
         this.notice.set('Your password has been saved.');
@@ -309,19 +310,15 @@ export class SetPassword {
   }
 
   /**
-   * Bring the outcome just set into view and focus it. The notice renders above the form while the
-   * error renders below it, so on a phone a success message lands off-screen and is
-   * indistinguishable from the form merely emptying itself — the confirmation the customer
-   * submitted for, silently missed. The scroll is the browser's: focusing an element scrolls it
-   * into view.
+   * Focus the outcome just set, which is also what scrolls it into view: the notice renders above
+   * the form, so on a phone a success message otherwise lands off-screen and reads as the form
+   * merely emptying itself.
    *
-   * <p>Error first, notice second, because `focusMover` resolves its two arguments in the order
-   * given: a `querySelector` selector list resolves in DOCUMENT order and would hand back the
-   * notice above the form even when the error below it is what just spoke.
+   * <p>Error first, notice second — `focusMover` resolves its arguments in the order given, where a
+   * `querySelector` selector list would resolve in document order and return the notice every time.
    *
-   * <p>The resend path deliberately does not call this. Its button survives its own click and sits
-   * one line above the notice, so nothing is destroyed and nothing is off-screen; WCAG 4.1.3 wants
-   * a status message conveyed WITHOUT moving focus, which this page's live region already does.
+   * <p>Not called from `resend()`, whose trigger survives its own click: a status message is
+   * announced without a focus move.
    */
   private revealOutcome(): void {
     this.focusAfterRender('setpw-error', 'setpw-notice');

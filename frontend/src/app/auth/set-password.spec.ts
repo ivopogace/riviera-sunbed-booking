@@ -485,12 +485,12 @@ describe('SetPassword', () => {
   });
 
   /**
-   * The decision this slice had to make, pinned so it cannot regress silently. The save path moves
-   * focus because its notice can be off-screen; the resend path must NOT, and the grounds are
-   * WCAG rather than Angular — the framework's own guidance stops at "follow WCAG AA". 4.1.3 wants a
-   * status message conveyed without a focus move, which this page's live region already does, and
-   * 2.4.3 only compels a move when the focused element is destroyed, which this click does not do.
-   * Taking focus off a still-visible, repeatable trigger would cost the customer their place.
+   * The save path moves focus because its notice can be off-screen; the resend path must NOT, and
+   * the grounds are WCAG rather than Angular — the framework's own guidance stops at "follow WCAG
+   * AA". 4.1.3 wants a status message conveyed without a focus move, which this page's live region
+   * already does, and 2.4.3 only compels a move when the focused element is destroyed, which this
+   * click does not do. Taking focus off a still-visible, repeatable trigger costs the customer
+   * their place for nothing.
    */
   it('leaves focus on the resend button, which survives its own click', async () => {
     const fixture = await render(authStub({ emailVerified: false, requestVerification: 'sent' }));
@@ -501,5 +501,39 @@ describe('SetPassword', () => {
 
     expect(text(fixture, 'setpw-notice')).toContain('Verification email sent');
     expect(document.activeElement).toBe(resend);
+  });
+
+  /**
+   * Focus survives the round-trip of a retry. The error region is `@if`-gated, so clearing it before
+   * the request unmounts the very element the previous outcome focused, and nothing takes its place
+   * until the reply lands — focus sits on `<body>` for the whole request (WCAG 2.4.3), measured at
+   * about a second in Chromium. Holding the clear until the reply keeps the region mounted, and a
+   * resubmit that never touches a field is reachable: a tap does not focus a button on iOS Safari.
+   */
+  it('keeps focus off the body while a retry is in flight', async () => {
+    const gates: ((result: SetPasswordResult) => void)[] = [];
+    const fixture = await render({
+      ...authStub(),
+      setPassword: vi.fn(
+        () =>
+          new Promise<SetPasswordResult>((resolve) => {
+            gates.push(resolve);
+          }),
+      ),
+    });
+
+    setModel(fixture, 'brandnewpass2', 'wrong-current');
+    submit(fixture);
+    gates[0]('invalid-current');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(byId(fixture, 'setpw-error'));
+
+    submit(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId(fixture, 'setpw-error')).not.toBeNull();
+    expect(document.activeElement).toBe(byId(fixture, 'setpw-error'));
   });
 });

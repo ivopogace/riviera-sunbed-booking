@@ -33,8 +33,13 @@ defect on the same method) · `riviera-plan-doc` (this template — forced the r
 the stale-notice scope call to be settled *before* code, and named the seam for every AC) ·
 `tdd` (each behaviour red before green, one test at a time, at the rendered-DOM seam) ·
 `riviera-review-overlay` (review gate — RV-FE-9 focus-move item is the one this slice lives
-under; runs at ready-for-review) · `riviera-docs-freshness` (close-out — plus the retirement of
-#1077's merged plan doc, which is due at this close-out) · `riviera-frontend` (placement: this
+under; runs at ready-for-review) · `riviera-docs-freshness` (**ran** over
+`774c4080..8b851abb`, **0 findings**: nothing was renamed or removed, so step 2a had nothing to
+grep; the counting sweep matched no sentence this slice falsifies; and the two substrate lines that
+name `focusMover()` — `frontend/.claude/CLAUDE.md` and RV-FE-9 — require a focus move when a
+transition destroys the focused element rather than claiming that is its only use, so a
+non-destructive reveal leaves both true. It also retired #1077's merged plan doc, due at this
+close-out) · `riviera-frontend` (placement: this
 is an existing `auth/` feature file and an existing mocked-suite e2e spec, so no new folder and
 no new import edge) · `angular-developer` + angular-cli MCP (`get_best_practices` v22 posture +
 `search_documentation` on `afterNextRender` — confirmed the `earlyRead` → `write` phase split
@@ -71,6 +76,10 @@ for `bugfix/account-outcome-reveal` (`riviera-sdlc` § *Remote / cloud session a
   the password saves, then `setpw-notice` is inside the viewport. *Seam:* the `/account` route
   in a real Chromium at phone width · *Pinned by:* `customer-password.e2e.ts` →
   `a password saved from the bottom of the form on a phone is confirmed on screen`
+- [x] **AC-6** (added at the review gate, finding F-1): Given the error region holds focus after a
+  failed save, when the customer resubmits without touching a field, then the error stays mounted
+  and keeps focus for the whole request rather than stranding it on `<body>`. *Seam:* as AC-1 ·
+  *Pinned by:* `set-password.spec.ts` → `keeps focus off the body while a retry is in flight`
 
 ## Non-goals
 
@@ -96,6 +105,7 @@ N/A — this adds behaviour to an existing surface and retires nothing.
 | R-1 | The browser's focus-driven scroll is relied on instead of an explicit `scrollIntoView`; if it does not fire, the bug is not actually fixed | low | high | AC-5 proves it in a real Chromium at phone width with `toBeInViewport()` — a stronger check than any jsdom assertion | claude | **closed** — AC-5 passes with the reveal and fails without it (`viewport ratio 0`), so the focus scroll does fire; no explicit `scrollIntoView` needed |
 | R-2 | Focusing the error steals focus from the submit button and leaves a keyboard user further from the fields they must fix | low | med | The error renders *above* the submit button, so the move puts focus nearer the fields, not further; AC-2 pins the target | claude | **closed** — AC-2 green on both error paths |
 | R-3 | The notice lands under the sticky header or the bottom tab bar on a phone | low | med | Verified: the tourist header is sticky only from `sm` up and the notice is scrolled to the **top** edge (it sits above the form), while the tab bar is bottom-fixed — no overlap, no `scroll-mt-*` needed. AC-5 would catch a regression | claude | closed — verified at plan time |
+| R-5 | The focus-driven scroll is proven only in Chromium — `playwright.a11y.config.ts` has no WebKit project and no WebKit build is installed, so Safari, the engine the reported phone bug happens on, is untested | low | med | Spec-level equivalence (the HTML focusing steps scroll with `block`/`inline` `nearest`, which is exactly what the sibling page's explicit `scrollIntoView({block:'nearest'})` requests) plus the Chromium proof in AC-5. Adding a WebKit project is a suite-wide change, not this slice's | claude | **open — recorded, not closed.** Carried to the PR; if Safari ever proves otherwise, the fallback is the sibling's explicit `scrollIntoView` + `focus({preventScroll:true})` |
 | R-4 | Clearing the notice up front breaks the #1076 re-announcement contract (a live region speaks only text that CHANGES) | low | med | Clearing earlier only *lengthens* the empty gap the region passes through, which is what those specs want | claude | **closed** — the whole `auth/` suite is green (164 specs), the re-announcement spec included |
 
 ## Open questions / Assumptions
@@ -160,15 +170,16 @@ N/A — no contract change. No request, response, or DTO is touched.
 
 ## Execution status
 
-**Stage pointer:** `PR open (#1080, draft) — both phases built, marking ready and running the review gate`
+**Stage pointer:** `DONE — merged via PR #1080`
 
-**Next action:** Mark PR #1080 ready for review, then run the Review gate per
-`riviera-sdlc` `references/pr-gates.md` §1 with `riviera-review-overlay` layered on.
+**Next action:** None. CI green, Sonar green with an empty issue list, the Review gate run in full
+(five agents over the resolved range, four findings, all resolved), and the re-review clean.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Clear the outcome up front, then reveal it | ✅ | `a7aa8c93` |
-| 1 — Prove the phone-viewport visibility in a real browser | ✅ | this commit |
+| 1 — Prove the phone-viewport visibility in a real browser | ✅ | `8b851abb` |
+| 2 — Review-gate findings F-1..F-4 | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -177,7 +188,10 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (CLAUDE.md/overlay agent, RV-FE-9 caveat) | Clearing `error` before the await unmounts an `@if`-gated error that `revealOutcome()` had just focused, stranding focus on `<body>` for the whole request. Raised as unconfirmable statically; **confirmed in Chromium** with a delayed-response probe (`["BODY","BODY","BODY","BODY","BODY","setpw-error"]` over a 1.2s request) | **fixed** — the error clear now waits for the reply; re-probed as `setpw-error` throughout. Pinned by AC-6 |
+| F-2 | review gate (prior-PR agent, citing PR #832 on the sibling page's identically-named method) | `revealOutcome()`'s TSDoc carried decision archaeology and ran ~14 lines against §6d's ~3-line member budget | **fixed** — trimmed to the contract plus the one warning that stops the ordered lookup collapsing into a selector list |
+| F-3 | review gate (comment guard, advisory) | `set-password.spec.ts` resend-pin doc comment narrated the slice ("the decision this slice had to make") | **fixed** — reworded to state the rule, not the slice |
+| F-4 | review gate (code-comment agent) | The TSDoc stated "the scroll is the browser's" as unqualified fact without reconciling that the sibling page spells the same effect out as `scrollIntoView` + `preventScroll`; and the e2e suite has no WebKit project, so the implicit form is proven only in Chromium | **resolved, decision recorded** — the over-claim is gone from the trimmed TSDoc. The implementation stands: the HTML focusing steps scroll with `nearest`, which is what the sibling spells out explicitly, and AC-5 proves it in the one engine this suite runs. The WebKit gap is the whole suite's, not this test's — recorded in R-5 and the PR rather than papered over |
 
 ---
 
@@ -246,6 +260,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-12 | Review-fix (F-1) | A component that **focuses a conditionally-mounted outcome region and clears that region before an `await`** — the clear unmounts the focused element for the length of the request. Enumerated by taking every component that moves focus, resolving its focus targets, and asking whether each target sits inside an `@if` | `for f in $(grep -rln "revealOutcome\|focusAfterRender\|moveFocus" frontend/src/app --include=*.ts \| grep -v spec); do ...` then per file an `awk` test of whether each focus target's `data-testid` sits inside an `@if` block | `auth/operator-password.ts` **confirmed** (clears `error` at :158, awaits at :174, focuses the `@if (error())` region at :98 — the identical defect, pre-existing since #342). Four further candidates surfaced with conditionally-mounted focus targets but NOT individually confirmed: `admin/admin-reviews.ts`, `admin/admin-venue-photos.ts`, `auth/forgot-password.ts`, `auth/reset-password.ts` (the latter two focus terminal regions with no resubmit after them, so they are likely non-members) | **Fix 1 (this slice), ticket the rest.** `operator-password.ts` is a pre-existing defect on a page this issue does not report and the plan's Non-goals exclude; the same two-line fix applies. Flagged in the PR and to the maintainer rather than folded in — widening a customer-page bug fix onto the operator page is the step #1079 itself declined to take |
 | 2026-09-12 | Phase 0 | A component that renders an outcome notice **separated from the control that produces it** and never moves focus to it. Enumerated by the signal that carries such an outcome, then each hit read for a focus move and for where its region sits relative to its trigger | `grep -rln "notice = signal" frontend/src/app --include=*.ts \| grep -v spec`, then per file `grep -c "focusAfterRender\|revealOutcome\|moveFocus"` | 12 components; 9 already move focus. 3 do not: `admin/admin-outbox-lever.ts`, `admin/admin-mail-delivery.ts`, `operator/requests-tab.ts` | **Fix 1 (this slice), skip 3, follow-up on 2.** `admin-outbox-lever.ts` is **not** a member on inspection — its notice renders directly beneath its own Resubmit button, so there is no separation to close. `operator/requests-tab.ts` is the true match (notice at the top of the template, accept/decline triggers in the cards below) and `admin-mail-delivery.ts` is the inverted one (notice below a list of per-row resend buttons). Both are console surfaces rather than the phone-first tourist page this issue reports, and `requests-tab`'s accept re-renders the queue and can destroy the trigger — an RV-FE-9 destroyed-trigger decision, not this slice's reveal. Widening a bug-fix slice across two console pages with a different focus question is what #1079 itself declined to do; carried to the PR as a follow-up |
 
 ---
@@ -275,8 +290,8 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Booking codes unguessable (invariant #7) — N/A.
 - [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
   `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
