@@ -99,7 +99,7 @@ const CLS = {
   rowAmount: 'm-0 text-right font-bold text-riv-accent-ink',
   // `empty:hidden` twins the retired `.result:empty`; the outline shows where a settled cancel/withdraw/review parked a keyboard guest's focus.
   result:
-    'mx-0 mt-4 mb-0 text-[13.5px] leading-[1.5] font-semibold text-riv-accent-ink empty:hidden focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
+    'mx-0 mt-4 mb-0 block text-[13.5px] leading-[1.5] font-semibold text-riv-accent-ink empty:hidden focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
   confirmQ: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-riv-card-ink',
   confirmQOnBanner: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-riv-banner-body-ink',
   actions: 'flex flex-wrap gap-2.5',
@@ -434,13 +434,7 @@ const CLS = {
         </dl>
 
         <!-- Outside the status switch on purpose: scoped to PENDING_REQUEST it would unmount on success. -->
-        <p
-          [class]="cls.result"
-          role="status"
-          aria-live="polite"
-          tabindex="-1"
-          data-testid="withdraw-result"
-        >
+        <output [class]="cls.result" aria-live="polite" tabindex="-1" data-testid="withdraw-result">
           @if (withdrawn()) {
             Request withdrawn. The spot is free for other guests again.
           } @else if (withdrawNotPending()) {
@@ -448,16 +442,10 @@ const CLS = {
           } @else if (withdrawFailed()) {
             We couldn’t withdraw the request. Please try again.
           }
-        </p>
+        </output>
 
         <!-- Live result of a cancellation, announced to assistive tech. -->
-        <p
-          [class]="cls.result"
-          role="status"
-          aria-live="polite"
-          tabindex="-1"
-          data-testid="cancel-result"
-        >
+        <output [class]="cls.result" aria-live="polite" tabindex="-1" data-testid="cancel-result">
           @if (cancellation(); as c) {
             Booking cancelled.
             {{
@@ -468,7 +456,7 @@ const CLS = {
           } @else if (cancelFailed()) {
             We couldn’t cancel the booking. Please try again.
           }
-        </p>
+        </output>
 
         @if (b.cancellable && !cancellation()) {
           <section
@@ -533,19 +521,13 @@ const CLS = {
         }
 
         <!-- Outside the panel on purpose: scoped to it, the success message would unmount with it. -->
-        <p
-          [class]="cls.result"
-          role="status"
-          aria-live="polite"
-          tabindex="-1"
-          data-testid="review-result"
-        >
+        <output [class]="cls.result" aria-live="polite" tabindex="-1" data-testid="review-result">
           @if (reviewSuccess(); as msg) {
             {{ msg }}
           } @else if (reviewRejection(); as msg) {
             {{ msg }}
           }
-        </p>
+        </output>
 
         <app-review-panel
           [panel]="b.reviewPanel"

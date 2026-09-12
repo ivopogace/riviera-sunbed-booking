@@ -24,19 +24,19 @@ ruleTester.run('prefer-output-over-status-role', rule, {
   invalid: [
     {
       code: '<p class="sr-only" role="status" aria-live="polite">{{ message() }}</p>',
-      errors: [{ messageId: 'preferOutput', line: 1, column: 20 }],
+      errors: [{ messageId: 'preferOutput', line: 1, column: 1 }],
     },
     {
       code: ['<section>', '  <p role="status">{{ notice() }}</p>', '</section>'].join('\n'),
-      errors: [{ messageId: 'preferOutput', line: 2, column: 6 }],
+      errors: [{ messageId: 'preferOutput', line: 2, column: 3 }],
     },
     {
       code: '<div [attr.role]="\'status\'">{{ notice() }}</div>',
-      errors: [{ messageId: 'preferOutput', line: 1, column: 6 }],
+      errors: [{ messageId: 'preferOutput', line: 1, column: 1 }],
     },
     {
       code: '<div [role]="\'status\'">{{ notice() }}</div>',
-      errors: [{ messageId: 'preferOutput', line: 1, column: 6 }],
+      errors: [{ messageId: 'preferOutput', line: 1, column: 1 }],
     },
   ],
 });
@@ -72,6 +72,22 @@ describe('the eslint-disable door', () => {
 
     assert.equal(messages.length, 1);
     assert.equal(messages[0].ruleId, 'riviera/prefer-output-over-status-role');
+  });
+
+  it('stays silent above a multi-line open tag, the shape both exemptions use', async () => {
+    const messages = await lint(
+      [
+        '<!-- eslint-disable-next-line riviera/prefer-output-over-status-role -->',
+        '<div',
+        '  role="status"',
+        '  class="flex items-start gap-3"',
+        '>',
+        '  <p>Your account is awaiting approval.</p>',
+        '</div>',
+      ].join('\n'),
+    );
+
+    assert.deepEqual(messages, []);
   });
 
   it('stays silent behind a disable comment naming the rule', async () => {

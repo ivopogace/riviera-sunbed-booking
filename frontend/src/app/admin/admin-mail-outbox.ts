@@ -93,14 +93,13 @@ import { TouchTarget } from '../shared/touch-target';
         </button>
       </div>
 
-      <p
-        class="mt-4 min-h-[1.5rem] text-[15px] text-riv-ink-soft"
-        role="status"
+      <output
+        class="mt-4 block min-h-[1.5rem] text-[15px] text-riv-ink-soft"
         aria-live="polite"
         data-testid="admin-outbox-notice"
       >
         {{ lever.notice() }}
-      </p>
+      </output>
 
       <app-admin-mail-delivery />
     }

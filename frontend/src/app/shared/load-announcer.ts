@@ -52,9 +52,9 @@ import { Component, computed, input } from '@angular/core';
 @Component({
   selector: 'app-load-announcer',
   host: { class: 'contents' },
-  template: `<p class="sr-only" role="status" aria-live="polite" data-testid="load-announcer">
+  template: `<output class="sr-only" aria-live="polite" data-testid="load-announcer">
     {{ message() }}
-  </p>`,
+  </output>`,
 })
 export class LoadAnnouncer {
   /** True while the surface's content is in flight. */

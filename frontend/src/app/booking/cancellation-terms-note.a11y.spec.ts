@@ -13,7 +13,8 @@ import { CancellationTermsNote } from './cancellation-terms-note';
  */
 @Component({
   imports: [CancellationTermsNote],
-  template: `<div role="status"><p appCancellationTermsNote [terms]="terms"></p></div>`,
+  template: `<!-- eslint-disable-next-line riviera/prefer-output-over-status-role -->
+    <div role="status"><p appCancellationTermsNote [terms]="terms"></p></div>`,
 })
 class HostStub {
   terms: CancellationTerms = {

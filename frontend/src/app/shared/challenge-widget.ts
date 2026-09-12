@@ -109,9 +109,9 @@ function loadWidget(): Promise<unknown> {
         (expired)="onExpired()"
       ></altcha-widget>
     }
-    <p class="sr-only" role="status" aria-live="polite" data-testid="challenge-status">
+    <output class="sr-only" aria-live="polite" data-testid="challenge-status">
       {{ statusText() }}
-    </p>
+    </output>
   `,
 })
 export class ChallengeWidget {

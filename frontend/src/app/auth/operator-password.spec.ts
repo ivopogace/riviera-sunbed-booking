@@ -187,7 +187,7 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
     const fixture = await render(authStub('changed'));
 
     const notice = query(fixture, 'oppw-notice');
-    expect(notice?.getAttribute('role')).toBe('status');
+    expect(notice?.tagName).toBe('OUTPUT');
     expect(notice?.textContent?.trim()).toBe('');
   });
 

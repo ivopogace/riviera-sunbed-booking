@@ -19,6 +19,10 @@ const { getTemplateParserServices } = require('@angular-eslint/utils');
  * describes. A door that forces a written reason is the point — a rule with a silent allowance
  * would leave the same split it was written to remove.
  *
+ * <p>The report points at the element's open tag rather than the `role` attribute, because a
+ * multi-line open tag has no line a disable comment could sit above: an HTML comment cannot go
+ * inside an attribute list. It is also the more useful anchor — the element is what changes.
+ *
  * <p>Not fixable on purpose. `<output>` is `display: inline` where the `<p>` it replaces was
  * block, so a correct edit often has to add a `block` class as well; a fixer that renamed the tag
  * alone would collapse margins and `min-height` with no diff to read.
@@ -39,23 +43,20 @@ module.exports = {
   create(context) {
     const parserServices = getTemplateParserServices(context);
 
-    const report = (node) => {
-      context.report({
-        loc: parserServices.convertNodeSourceSpanToLoc(node.sourceSpan),
-        messageId: 'preferOutput',
-      });
-    };
+    const isStatusRole = (attribute) =>
+      attribute.name === 'role' &&
+      (attribute.value === 'status' || attribute.value?.ast?.value === 'status');
 
     return {
-      'Element > TextAttribute[name="role"]'(node) {
-        if (node.value === 'status') {
-          report(node);
+      Element(node) {
+        const attributes = [...(node.attributes ?? []), ...(node.inputs ?? [])];
+        if (!attributes.some(isStatusRole)) {
+          return;
         }
-      },
-      'Element > BoundAttribute[name="role"]'(node) {
-        if (node.value?.ast?.value === 'status') {
-          report(node);
-        }
+        context.report({
+          loc: parserServices.convertNodeSourceSpanToLoc(node.startSourceSpan ?? node.sourceSpan),
+          messageId: 'preferOutput',
+        });
       },
     };
   },

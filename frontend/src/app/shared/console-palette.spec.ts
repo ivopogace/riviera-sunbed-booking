@@ -233,7 +233,7 @@ describe('ConsolePalette', () => {
     expect(rows()).toEqual([]);
     const empty = byId('oc-palette-empty')!;
     expect(empty.textContent.trim()).toBe('Nothing matches.');
-    expect(empty.getAttribute('role')).toBe('status');
+    expect(empty.tagName).toBe('OUTPUT');
     await enter();
     expect(router.url).toBe('/admin/email');
     expect(dialog()).not.toBeNull();
@@ -342,7 +342,7 @@ describe('ConsolePalette', () => {
   it('the empty-state status region pre-exists its text, so the change is announced', async () => {
     await openByButton();
     const status = byId('oc-palette-empty')!;
-    expect(status.getAttribute('role')).toBe('status');
+    expect(status.tagName).toBe('OUTPUT');
     expect(status.textContent.trim()).toBe('');
 
     await type('zzz');

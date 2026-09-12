@@ -67,9 +67,8 @@ describe('LoadAnnouncer', () => {
   it('is a visually-hidden polite status region, not a visible one', () => {
     const region = mount().region();
 
-    expect(region.tagName).toBe('P');
+    expect(region.tagName).toBe('OUTPUT');
     expect(region.classList.contains('sr-only')).toBe(true);
-    expect(region.getAttribute('role')).toBe('status');
     expect(region.getAttribute('aria-live')).toBe('polite');
   });
 

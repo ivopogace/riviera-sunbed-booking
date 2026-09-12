@@ -19,7 +19,7 @@ import { TouchTarget } from '../shared/touch-target';
 const CLS = {
   card: 'w-full max-w-[400px] rounded-[26px] px-[26px] pt-[30px] pb-6 shadow-[0_30px_70px_rgba(6,30,40,0.28),inset_0_1px_0_rgba(255,255,255,0.7)]',
   title: 'm-0 mb-1.5 text-[24px] font-bold tracking-[-0.02em] text-riv-card-ink',
-  intro: 'm-0 mb-5 text-[13.5px] leading-[1.5] text-riv-card-ink-soft',
+  intro: 'm-0 mb-5 block text-[13.5px] leading-[1.5] text-riv-card-ink-soft',
   field: 'flex flex-col gap-1.5 mb-3.5',
   label: 'text-[11px] font-bold tracking-[0.08em] uppercase text-riv-card-ink-soft',
   input:
@@ -50,9 +50,9 @@ const CLS = {
         <h1 id="reset-title" [class]="cls.title">Set a new password</h1>
 
         @if (done()) {
-          <p [class]="cls.intro" role="status" data-testid="reset-done">
+          <output [class]="cls.intro" data-testid="reset-done">
             Your password has been updated. You can sign in with it now.
-          </p>
+          </output>
           <p [class]="cls.alt">
             <a
               appTouchTarget

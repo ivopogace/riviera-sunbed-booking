@@ -10,8 +10,8 @@ import { OperatorPassword } from './operator-password';
 /**
  * Structural a11y audit for the operator password-change page. Both outcome states are audited, not
  * just the clean form, because each speaks through a live region that says nothing until a submit
- * lands — and the two regions reach that point by opposite routes (#828). The success notice
- * (`role="status"`) is mounted from the first render and stays mounted: a polite region has to
+ * lands — and the two regions reach that point by opposite routes. The success notice
+ * (an `<output>`) is mounted from the first render and stays mounted: a polite region has to
  * pre-exist the text it announces. The failure message (`role="alert"`) is the reverse — an alert is
  * announced when it is **inserted**, so it exists only while it has something to say, and auditing
  * the initial render would not find it at all.
@@ -67,7 +67,7 @@ describe('OperatorPassword a11y (#326)', () => {
     const host = await render('changed');
     await submitWith(host, 'current-pass1', 'rotated-pass2');
 
-    expect(host.querySelector('[data-testid="oppw-notice"]')!.getAttribute('role')).toBe('status');
+    expect(host.querySelector('[data-testid="oppw-notice"]')!.tagName).toBe('OUTPUT');
     await expectNoAxeViolations(host);
   });
 

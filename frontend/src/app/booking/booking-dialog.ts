@@ -317,6 +317,8 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
             }
 
             <!-- Polite live region: the server-quoted terms may resolve after the step renders (R-6). -->
+            <!-- Not an output element: that permits phrasing content only, and this wrapper has to outlive the paragraph it announces. -->
+            <!-- eslint-disable-next-line riviera/prefer-output-over-status-role -->
             <div role="status" data-testid="terms-region">
               @if (terms.hasValue()) {
                 <p

@@ -48,7 +48,7 @@ for `feature/output-live-region-idiom`.
 
 - [x] **AC-1:** Given a template containing `role="status"` as a static attribute or as a literal binding, when ESLint runs, then the rule reports it once at that attribute and names `<output>`. *Seam:* the rule module's `create()` visitor, observed through ESLint's `RuleTester` · *Pinned by:* `prefer-output-over-status-role.test.mjs` › the four `invalid` cases
 - [x] **AC-2:** Given a template using `<output>`, or another role, or `role="status"` on an element behind `<!-- eslint-disable-next-line -->`, when ESLint runs, then nothing is reported. *Seam:* the rule module's valid cases through `RuleTester`, and the directive through the real `ESLint` API, which is the only harness that sees the name a component actually writes · *Pinned by:* `prefer-output-over-status-role.test.mjs` › the `valid` cases and `the eslint-disable door`
-- [ ] **AC-3:** Given the whole frontend tree with the rule wired into `eslint.config.js`, when `npm run lint` runs, then it passes — proving all 24 conversions landed and the 3 remaining `role="status"` sites each carry a disable comment. *Seam:* the `npm run lint` script over `frontend/src` · *Pinned by:* the CI frontend job's lint step
+- [x] **AC-3:** Given the whole frontend tree with the rule wired into `eslint.config.js`, when `npm run lint` runs, then it passes — proving all 24 conversions landed and the 3 remaining `role="status"` sites each carry a disable comment. *Seam:* the `npm run lint` script over `frontend/src` · *Pinned by:* the CI frontend job's lint step
 - [ ] **AC-4:** Given the command palette's empty-state region in a real browser, when no entry matches, then it still computes the accessible role `status` and paints as a block box. *Seam:* the rendered page, observed through Playwright role and computed-style locators · *Pinned by:* `admin-console-tabs.e2e.ts` › the existing `Meta+k` palette test
 - [ ] **AC-5:** Given the customer set-password notice after a successful save, when it renders, then it computes the accessible role `status`. *Seam:* the rendered page through `toHaveRole` · *Pinned by:* `customer-password.e2e.ts`
 - [ ] **AC-6:** Given a component whose live region became an `<output>`, when its unit spec asserts the region's identity, then it asserts the element is an `OUTPUT` rather than reading a `role` attribute that no longer exists. *Seam:* each component's rendered DOM through its existing spec · *Pinned by:* `load-announcer.spec.ts`, `console-palette.spec.ts`, `challenge-widget.a11y.spec.ts`, `operator-password.spec.ts`, `operator-password.a11y.spec.ts`, `booking-pay.a11y.spec.ts`, `admin-mail-outbox.a11y.spec.ts`, `admin-mail-delivery.a11y.spec.ts`, `admin-refund-outbox.a11y.spec.ts`
@@ -81,12 +81,12 @@ for `feature/output-live-region-idiom`.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `<output>` is `display: inline`, so a converted visible region silently loses its margins, `min-height` and block box | high | med | add `block` to every visible region's class set; `block` is inert on the `<p>` siblings sharing the same `cls.*` constant, so no call site drifts; AC-4 measures the computed value in a browser | claude | open |
-| R-2 | A spec asserting `getAttribute('role') === 'status'` passes today and fails silently-differently after the swap | high | low | AC-6 enumerates all nine and converts them to a `tagName` assertion in the same phase as the markup | claude | open |
-| R-3 | `withheld-email-notice.spec.ts` asserts the ABSENCE of a live region by selector; an `<output>` would slip past it | med | med | widen that selector to include `output` in the same phase | claude | open |
-| R-4 | The rule fires on spec fixtures too (`processInlineTemplates` covers `*.spec.ts`), so `cancellation-terms-note.a11y.spec.ts`'s `<div role="status">` fixture breaks the lint | high | low | that fixture mirrors the exempt `booking-dialog` shape, so it takes the same disable comment; phase 1 runs the full lint to find any other fixture | claude | open |
-| R-5 | An `eslint-disable` naming a rule that is not yet registered is reported as an unused directive, so phases that split the sweep from the wiring go red | med | med | the disable comments and the wiring land in phases 1 and 2 respectively, and phase 1 ends by running the full lint; if a warning appears, the wiring moves into phase 1 | claude | open |
-| R-6 | `scripts/check-inline-comments.mjs` fails the build on an issue number in an added or touched comment | med | low | no exemption comment or doc rewrite cites `#1042`; each states the mechanism instead | claude | open |
+| R-1 | `<output>` is `display: inline`, so a converted visible region silently loses its margins, `min-height` and block box | high | med | add `block` to every visible region's class set; `block` is inert on the `<p>` siblings sharing the same `cls.*` constant, so no call site drifts; AC-4 measures the computed value in a browser | claude | closed in phase 1 |
+| R-2 | A spec asserting `getAttribute('role') === 'status'` passes today and fails silently-differently after the swap | high | low | AC-6 enumerates all nine and converts them to a `tagName` assertion in the same phase as the markup | claude | closed in phase 1 — `toBe('OUTPUT')` was already the tree's idiom, and `load-announcer.spec.ts` held a contradicting `toBe('P')` that the suite caught |
+| R-3 | `withheld-email-notice.spec.ts` asserts the ABSENCE of a live region by selector; an `<output>` would slip past it | med | med | widen that selector to include `output` in the same phase | claude | closed in phase 1 |
+| R-4 | The rule fires on spec fixtures too (`processInlineTemplates` covers `*.spec.ts`), so `cancellation-terms-note.a11y.spec.ts`'s `<div role="status">` fixture breaks the lint | high | low | that fixture mirrors the exempt `booking-dialog` shape, so it takes the same disable comment; phase 1 runs the full lint to find any other fixture | claude | closed in phase 1 — that was the only fixture |
+| R-5 | An `eslint-disable` naming a rule that is not yet registered is reported as an unused directive, so phases that split the sweep from the wiring go red | med | med | the disable comments and the wiring land in phases 1 and 2 respectively, and phase 1 ends by running the full lint; if a warning appears, the wiring moves into phase 1 | claude | fired — it is a hard error, not a warning, so the wiring moved into phase 1 as planned |
+| R-6 | `scripts/check-inline-comments.mjs` fails the build on an issue number in an added or touched comment | med | low | no exemption comment or doc rewrite cites `#1042`; each states the mechanism instead | claude | closed in phase 1 — also forced dropping a stale `#828` from the one touched doc comment, and shortening a two-line config comment |
 | R-7 | Adding `frontend/eslint-rules/` outside the Prettier scope leaves the tree's newest directory unformatted | med | low | extend `format`/`format:check` to cover it and update the `CLAUDE.md` command block in the same phase | claude | open |
 
 ## Open questions / Assumptions
@@ -149,16 +149,16 @@ N/A — no contract change. No HTTP shape, DTO or endpoint is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Convert the 24 regions to `<output>`, add `block` to every visible one, write the
-three exemption comments, and update the nine role assertions.
+**Next action:** Add the `test:eslint-rules` npm script, widen the Prettier scope to `eslint-rules`,
+add the CI step to the frontend job, and update the `CLAUDE.md` frontend command block.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the ESLint rule, test-first, unwired | ✅ | (this commit) |
-| 1 — the sweep: 24 conversions, 3 exemptions, 9 spec assertions | ⏳ | |
-| 2 — wire the rule: config, npm script, CI step, format scope | | |
+| 1 — the sweep: 24 conversions, 3 exemptions, 9 spec assertions, rule wired | ✅ | (this commit) |
+| 2 — the rule's tooling: npm script, CI step, format scope, CLAUDE.md | ⏳ | |
 | 3 — e2e proof in a real browser + the reference doc | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -215,13 +215,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `frontend/eslint-rules/prefer-output-over-status-role.js` · Test `frontend/eslint-rules/prefer-output-over-status-role.test.mjs`
 
-- [ ] **Step 1: Write the failing test** — RuleTester over `@angular-eslint/template-parser`, with the invalid cases of AC-1 and the valid cases of AC-2.
-- [ ] **Step 2: Run it, verify it fails** — `cd frontend && node --test "eslint-rules/*.test.mjs"` → FAIL, cannot find the rule module.
-- [ ] **Step 3: Minimal implementation** — visit `Element > TextAttribute[name="role"]` and the bound forms; report when the value is `status`; no fixer.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population is every live region in the tree; enumerated in phase 1.
-- [ ] **Step 6: Commit** — `git commit -m "Add a lint rule preferring <output> over role=\"status\" (#1042)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 1: Write the failing test** — RuleTester over `@angular-eslint/template-parser`, with the invalid cases of AC-1 and the valid cases of AC-2.
+- [x] **Step 2: Run it, verify it fails** — `cd frontend && node --test "eslint-rules/*.test.mjs"` → FAIL, cannot find the rule module.
+- [x] **Step 3: Minimal implementation** — visit `Element > TextAttribute[name="role"]` and the bound forms; report when the value is `status`; no fixer.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 5: Generalization-audit pass** — population is every live region in the tree; enumerated in phase 1.
+- [x] **Step 6: Commit** — `git commit -m "Add a lint rule preferring <output> over role=\"status\" (#1042)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -229,23 +229,28 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify the 19 component files, 3 exemption sites, 10 spec files (see File structure).
 
-- [ ] **Step 1:** Convert each of the 24 regions to `<output>`, dropping `role="status"`, keeping `aria-live`, `tabindex`, `data-testid` and every class.
-- [ ] **Step 2:** Add `block` to the class set of every visible region (`console-palette`'s `empty`, the eight admin notices, the five auth `intro`/`notice` constants, `booking-view`'s `result`, `booking-pay`'s processing line). Leave the `sr-only` regions alone.
-- [ ] **Step 3:** Add the exemption comment at `booking-dialog.ts`, `pending-approval-banner.ts` and `cancellation-terms-note.a11y.spec.ts`'s fixture — each naming the mechanism, never the issue number.
-- [ ] **Step 4:** Update the nine `getAttribute('role')` assertions to assert `tagName`, and widen `withheld-email-notice.spec.ts`'s absence selector to include `output`.
-- [ ] **Step 5: Run the specs** — `cd frontend && npm test` → PASS; then `npm run lint` and `npm run format:check` → PASS.
-- [ ] **Step 6: Generalization-audit pass.**
-- [ ] **Step 7: Commit** and update the execution status.
+- [x] **Step 1:** Convert each of the 24 regions to `<output>`, dropping `role="status"`, keeping `aria-live`, `tabindex`, `data-testid` and every class.
+- [x] **Step 2:** Add `block` to the class set of every visible region (`console-palette`'s `empty`, the eight admin notices, the five auth `intro`/`notice` constants, `booking-view`'s `result`, `booking-pay`'s processing line). Leave the `sr-only` regions alone.
+- [x] **Step 3:** Add the exemption comment at `booking-dialog.ts`, `pending-approval-banner.ts` and `cancellation-terms-note.a11y.spec.ts`'s fixture — each naming the mechanism, never the issue number.
+- [x] **Step 4:** Update the nine `getAttribute('role')` assertions to assert `tagName`, and widen `withheld-email-notice.spec.ts`'s absence selector to include `output`.
+- [x] **Step 5: Register the rule** in `eslint.config.js`. Moved here from phase 2: an `eslint-disable` naming an unregistered rule is a hard ESLint error, not a warning, so the disable comments and the wiring cannot be split across commits.
+- [x] **Step 6: Verify it bites** — reintroduce one `role="status"` in an inline template by hand → `npx eslint` FAILS at that line; revert → clean.
+- [x] **Step 7: Run the specs** — `npm test` → 3164 pass; `npm run lint`, `npm run format:check`, and the three diff-scoped hygiene guards → PASS.
+- [x] **Step 8: Generalization-audit pass.**
+- [x] **Step 9: Commit** and update the execution status.
 
 ---
 
-## Phase 2 — Wire the rule
+## Phase 2 — The rule's tooling
 
 **Files:** Modify `frontend/eslint.config.js` · `frontend/package.json` · `.github/workflows/ci.yml` · `CLAUDE.md`
 
-- [ ] **Step 1:** Register the local plugin on the `**/*.html` block of `eslint.config.js`.
-- [ ] **Step 2: Verify it bites** — `npm run lint` → PASS on the swept tree; re-introduce one `role="status"` by hand and confirm it FAILS, then revert.
-- [ ] **Step 3:** Add the `test:eslint-rules` npm script, widen `format`/`format:check` to `eslint-rules`, add the CI step to the frontend job, and update the `CLAUDE.md` frontend command block.
+> Registering the rule moved into phase 1 (risk R-5). What is left here is the tooling that keeps
+> the rule's own suite running and the new directory formatted.
+
+- [ ] **Step 1:** Add the `test:eslint-rules` npm script and widen `format`/`format:check` to cover `eslint-rules`.
+- [ ] **Step 2:** Add the CI step to the frontend job — the rule suite needs `node_modules`, so it cannot live with the `scripts/*.test.mjs` guards in the hygiene job.
+- [ ] **Step 3:** Update the `CLAUDE.md` frontend command block for both.
 - [ ] **Step 4: Commit** and update the execution status.
 
 ---
@@ -265,13 +270,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-12 | phase 1 | Every element declaring the ARIA `status` role in an Angular template, `.html` and inline `.ts` alike — the mechanism the analyzer gap hides, not "components that look like announcers" | `grep -rn 'role="status"' frontend/src/app --include=*.ts --include=*.html` | 28 hits: 24 markup regions, 2 markup exemptions, 2 doc comments describing the exemptions | converted the 24; the 2 exemptions keep the role behind a disable comment; a spec-fixture site the same grep missed (it excludes nothing) was found by running the wired lint |
+| 2026-09-12 | phase 1 | Specs reading the region's identity — any assertion on `role` or `tagName` over a converted element, which the swap silently changes | `grep -rn "role=.status\|getByRole('status')\|'status'" frontend/src --include=*.spec.ts` | 19 hits: 9 role assertions to convert, 1 absence selector to widen, 1 contradicting `toBe('P')`, the rest describing exempt or unrelated regions | all converted; `toBe('OUTPUT')` turned out to be the tree's existing idiom |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
 - [ ] **AC-1 / AC-2:** Run `cd frontend && node --test "eslint-rules/*.test.mjs"` → all pass.
-- [ ] **AC-3:** Run `cd frontend && npm run lint` → passes with the rule wired.
+- [x] **AC-3:** Run `cd frontend && npm run lint` → passes with the rule wired.
 - [ ] **AC-4 / AC-5:** Run the two mocked e2e specs → pass.
 - [ ] **AC-6:** Run `cd frontend && npm test` → passes.
 

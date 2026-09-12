@@ -34,15 +34,14 @@ import { TouchTarget } from '../shared/touch-target';
   selector: 'app-admin-operators',
   imports: [CardGlass, AdminConsoleStats, ConfirmWithReason, BusyAction, TouchTarget],
   template: `
-    <p
-      class="mt-4 text-[15px] text-riv-ink-soft"
-      role="status"
+    <output
+      class="mt-4 block text-[15px] text-riv-ink-soft"
       aria-live="polite"
       tabindex="-1"
       data-testid="admin-ops-notice"
     >
       {{ notice() }}
-    </p>
+    </output>
     <app-admin-console-stats
       [pendingCount]="pendingCount()"
       [activeCount]="activeCount()"

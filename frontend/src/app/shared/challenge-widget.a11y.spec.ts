@@ -45,7 +45,7 @@ describe('ChallengeWidget a11y', () => {
   it('announces through a polite status region that outlives every state', async () => {
     const host = await render(true);
     const region = host.querySelector('[data-testid="challenge-status"]');
-    expect(region?.getAttribute('role')).toBe('status');
+    expect(region?.tagName).toBe('OUTPUT');
     expect(region?.getAttribute('aria-live')).toBe('polite');
   });
 });

@@ -70,7 +70,7 @@ describe('AdminRefundOutbox a11y', () => {
     const notice: HTMLElement = (fixture.nativeElement as HTMLElement).querySelector(
       '[data-testid="admin-refunds-notice"]',
     )!;
-    expect(notice.getAttribute('role')).toBe('status');
+    expect(notice.tagName).toBe('OUTPUT');
     expect(notice.getAttribute('aria-live')).toBe('polite');
   });
 });

@@ -4,6 +4,8 @@ const { defineConfig } = require('eslint/config');
 const tseslint = require('typescript-eslint');
 const angular = require('angular-eslint');
 
+const preferOutputOverStatusRole = require('./eslint-rules/prefer-output-over-status-role');
+
 module.exports = defineConfig([
   {
     files: ['**/*.ts'],
@@ -69,8 +71,11 @@ module.exports = defineConfig([
     },
   },
   {
+    // Inline templates reach this block too, extracted above — the surface Sonar cannot read.
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
+    plugins: { riviera: { rules: { 'prefer-output-over-status-role': preferOutputOverStatusRole } } },
+    rules: { 'riviera/prefer-output-over-status-role': 'error' },
   },
   {
     // Build tooling, outside every TS project: type-aware rules would only see `any`.

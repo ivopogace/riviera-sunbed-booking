@@ -128,9 +128,9 @@ const CLS = {
       }
 
       <!-- Its own region, apart from the page's load announcer: it also speaks each appended page. -->
-      <p class="sr-only" role="status" aria-live="polite" data-testid="venue-reviews-status">
+      <output class="sr-only" aria-live="polite" data-testid="venue-reviews-status">
         {{ status() }}
-      </p>
+      </output>
     </section>
   `,
 })

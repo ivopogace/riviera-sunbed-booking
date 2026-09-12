@@ -21,14 +21,14 @@ import { TouchTarget } from '../shared/touch-target';
 const CLS = {
   card: 'w-full max-w-[400px] rounded-[26px] px-[26px] pt-[30px] pb-6 shadow-[0_30px_70px_rgba(6,30,40,0.28),inset_0_1px_0_rgba(255,255,255,0.7)]',
   title: 'm-0 mb-1.5 text-[24px] font-bold tracking-[-0.02em] text-riv-card-ink',
-  intro: 'm-0 mb-5 text-[13.5px] leading-[1.5] text-riv-card-ink-soft',
+  intro: 'm-0 mb-5 block text-[13.5px] leading-[1.5] text-riv-card-ink-soft',
   field: 'flex flex-col gap-1.5 mb-3.5',
   label: 'text-[11px] font-bold tracking-[0.08em] uppercase text-riv-card-ink-soft',
   input:
     'font-[inherit] text-[16px] text-riv-card-ink bg-riv-field-fill border border-riv-field-border rounded-[14px] px-[14px] py-3 placeholder:text-riv-card-ink-soft focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink',
   hint: '-mt-1.5 text-[12px] text-riv-card-ink-soft',
   // Always mounted, so it keeps its resting margin while silent: an interpolation defeats `:empty`.
-  notice: 'm-0 mb-5 text-[13.5px] leading-[1.5] text-riv-card-ink-soft',
+  notice: 'm-0 mb-5 block text-[13.5px] leading-[1.5] text-riv-card-ink-soft',
   submitError: 'mt-3 text-[13px] font-semibold text-riv-error-ink',
   submit:
     'mt-4.5 w-full p-[13px] rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) text-white font-[inherit] font-bold text-[15px] cursor-pointer shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] motion-safe:[transition:filter_0.15s_ease] motion-reduce:transition-none aria-disabled:cursor-default aria-disabled:opacity-70 hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white',
@@ -62,9 +62,9 @@ const CLS = {
         <p [class]="cls.intro" data-testid="oppw-username">Signed in as {{ auth.username() }}.</p>
 
         <!-- Present but empty: a live region inserted together with its text is often not announced. -->
-        <p [class]="cls.notice" role="status" tabindex="-1" data-testid="oppw-notice">
+        <output [class]="cls.notice" tabindex="-1" data-testid="oppw-notice">
           {{ notice() }}
-        </p>
+        </output>
 
         <form (submit)="onSubmit(); $event.preventDefault()" novalidate>
           <label [class]="cls.field">

@@ -129,7 +129,7 @@ describe('BookingPay accessibility (axe)', () => {
     // confirmation after "Confirming…".
     const host = await renderInState('confirmed');
     const region = host.querySelector('[data-testid="pay-status"]');
-    expect(region?.getAttribute('role')).toBe('status');
+    expect(region?.tagName).toBe('OUTPUT');
     expect(region?.getAttribute('aria-live')).toBe('polite');
     expect(region?.textContent).toContain('confirmed');
     // It is a persistent root sibling — NOT nested inside the swapped state section.
