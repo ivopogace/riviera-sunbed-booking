@@ -186,6 +186,31 @@ describe('OperatorHome (#277, create state #278)', () => {
     expect(navigate).toHaveBeenCalledWith('/operator/15/payouts');
   });
 
+  it('leaves the announcer silent when the read fails (#1078)', async () => {
+    await render({ status: 'error' });
+
+    // Silence is the safe exit: the announcer must never contradict the failure panel beside it.
+    expect(el('operator-home-error')).not.toBeNull();
+    expect(el('load-announcer').textContent?.trim()).toBe('');
+  });
+
+  it('leaves the announcer silent on the create card, which is not the picker (#1078)', async () => {
+    await render(
+      {
+        status: 'loaded',
+        venues: [
+          { id: 12, name: 'Miramar Beach Club', beach: 'Dhërmi' },
+          { id: 15, name: 'Sereno', beach: 'Jal' },
+        ],
+      },
+      { create: '1' },
+    );
+
+    // Two venues, but the create card is the branch rendering — announcing the picker would lie.
+    expect(el('venue-create-card')).not.toBeNull();
+    expect(el('load-announcer').textContent?.trim()).toBe('');
+  });
+
   it('offers a retry instead of rendering the create zero state when the read fails', async () => {
     // "Couldn't load" must never be mistaken for "owns nothing".
     await render({ status: 'error' });

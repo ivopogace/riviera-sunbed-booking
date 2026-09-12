@@ -57,8 +57,8 @@ import { VenueCreateCard } from './venue-create-card';
       <app-pending-approval-banner />
       <!-- Above the @if chain on purpose: a live region must outlive the branch it describes. -->
       <app-load-announcer
-        [loading]="!loaded()"
-        [ready]="loaded() && venues().length > 1"
+        [loading]="showingOpening()"
+        [ready]="showingPicker()"
         loadingLabel="Opening your console…"
         readyLabel="Choose a venue."
       />
@@ -92,7 +92,7 @@ import { VenueCreateCard } from './venue-create-card';
           }}
         </p>
         <app-venue-create-card />
-      } @else if (venues().length > 1) {
+      } @else if (showingPicker()) {
         <div
           appCardGlass
           class="rounded-[20px] p-6 shadow-[0_12px_44px_rgba(12,42,51,0.14)]"
@@ -155,13 +155,31 @@ export class OperatorHome implements OnInit {
 
   protected readonly venues = signal<readonly OwnedVenue[]>([]);
   protected readonly failed = signal(false);
-  protected readonly loaded = signal(false);
+  private readonly loaded = signal(false);
 
   /** The deliberate "Add another venue" entry — reactive: the router reuses this instance. */
   protected readonly creating = computed(
     () => this.query().get('create') === '1' || (this.loaded() && this.venues().length === 0),
   );
   protected readonly zeroState = computed(() => this.loaded() && this.venues().length === 0);
+
+  /**
+   * Whether the picker is the branch rendering. The announcer's `ready` binds this rather than a
+   * venue count, so no other exit — the failure panel, the create card — can claim an outcome it
+   * did not reach.
+   */
+  protected readonly showingPicker = computed(
+    () => !this.failed() && !this.creating() && this.venues().length > 1,
+  );
+
+  /**
+   * Whether the "Opening your console…" branch is rendering: the read is still in flight, or a lone
+   * venue is being forwarded. Not `!loaded()`, which here also covers a failed read — this
+   * component's `loaded` means succeeded, unlike the console tabs' own, which settles either way.
+   */
+  protected readonly showingOpening = computed(
+    () => !this.failed() && !this.creating() && this.venues().length <= 1,
+  );
 
   constructor() {
     // Param-only navs (picker ⇄ create) re-decide AND re-anchor focus on the swapped-in title (WCAG 2.4.3).

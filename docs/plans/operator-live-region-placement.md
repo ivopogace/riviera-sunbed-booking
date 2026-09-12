@@ -76,8 +76,15 @@ bound by both, so there is one literal and one source per sentence.
 A live region speaks text that **changes**; setting the same string twice is not a change. Each
 site's handler already clears its notice signal before the write it will re-set — verified, not
 assumed: `requests-tab.decide()`, `set-editor.write()` / `applyBatch()` / `armMove()`,
-`venue-tab.onSave()`, `layout-editor.commitSave()` / `onRenameRow()`, `pricing-tab.onPriceChange()`.
-No handler needs a clear added.
+`venue-tab.onSave()`, `layout-editor.commitSave()` and `onRenameRow()`'s **write path**,
+`pricing-tab.onPriceChange()`. No handler needs a clear added.
+
+One branch is outside that claim, and the review gate is what narrowed it: `onRenameRow()`'s
+`to === from` shortcut sets `renamedRow` without a preceding clear, so saving the same row's
+unchanged name twice in a row re-announces nothing. Left as is (F-4), because the visible copy does
+not change either — the two stay in parity, which is the disparity this rule exists to prevent —
+and because the obvious fix does not work: signals are glitch-free, so clearing and re-setting in
+one synchronous branch never renders the empty state the announcement needs.
 
 The two per-row announcers (S7, S8) are the exception that needs new text rather than new
 clearing: "Row name saved." is the same string for every row, so renaming row A then row B
@@ -244,7 +251,11 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (CLAUDE.md adherence) | RV-STYLE-1: the doc comment added to `loading-announcements.e2e.ts` carried an issue number and narrated what the ticket required | fixed-in-`9d4f499` |
+| F-2 | review (comments, history, prior-PR — three agents) | `operator-home`'s announcer bound `[loading]="!loaded()"`, but this component's `loaded` means *succeeded*, so a failed read pinned it to "Opening your console…" over the error panel — the one thing `load-announcer`'s doc says the inputs must never do. The console tabs' own `loaded` settles either way, which is why the borrowed idiom looked right | fixed: `[loading]` and `[ready]` now bind computeds that mirror the rendered branches |
+| F-3 | review (comments agent) | `[ready]` omitted the `!creating()` gate the template's branch chain has, so a 2+-venue operator on `?create=1` was told "Choose a venue." over the create card | fixed with F-2; both pinned by new `operator-home.spec.ts` specs, red first |
+| F-4 | review (bugs + prior-PR agents) | `layout-editor.onRenameRow()`'s `to === from` shortcut re-sets `renamedRow` to the same value, so a repeated identical no-op rename re-announces nothing | declined, plan claim narrowed above — the visible copy does not change either, and a synchronous clear-then-set renders no intermediate state |
+| F-5 | review (history agent) | `batch-saved` / `set-saved` carry no explicit `aria-live`, claimed to be the tree's sole exceptions | declined — the count is 26 with, 19 without, and the regions without include `setpw-notice`, `forgot-sent` and `reset-done`, the predecessor slice's own hoists for this same rule. `<output>`'s implicit role is `status`, which is why it is the house element (#1042) |
 
 ---
 
@@ -478,6 +489,12 @@ Test `frontend/src/app/operator/venue-tab.spec.ts`
 - [x] **AC-1 – AC-9, AC-11:** `npm test` → 257 files, 3189 tests, all green.
 - [x] **AC-10:** `npm run test:e2e:a11y -- loading-announcements` → 6 passed;
   `npm run test:e2e:a11y -- operator-set-editing` → 11 passed.
+
+**Sonar note.** Gate green, and the list pulled from the API rather than read off the badge:
+0 new issues, 0 duplicated blocks, `new_lines` 6, `new_lines_to_cover` 0, `new_uncovered_lines` 0.
+The reported "0.0% coverage on new code" is an empty denominator, not a shortfall. The gate applies
+to the analysed paths only — the specs (`sonar.exclusions`), `frontend/e2e/` and `docs/plans/` lie
+outside `sonar.sources`, so its green speaks for the component `.ts`/`.html` lines alone.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
