@@ -226,10 +226,10 @@ N/A — no contract change. No endpoint, DTO, or error code is touched.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings resolved, awaiting CI`
+**Stage pointer:** `sonar gate — findings fixed, awaiting re-analysis`
 
-**Next action:** Confirm CI green on this head, then the Sonar gate
-(`riviera-sdlc` `references/pr-gates.md` §2 — pull the issue list, not just pass/fail), then merge.
+**Next action:** Confirm CI green and the Sonar list back to zero on this head, then merge
+close-out (`riviera-sdlc` `references/pr-gates.md` §3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -237,7 +237,8 @@ N/A — no contract change. No endpoint, DTO, or error code is touched.
 | 1 — the settled legs (accept, decline, stale drop, race, dismiss) + the in-flight confirm move | ✅ | this commit |
 | 2 — the venue-switch leg | ✅ | this commit |
 | 3 — generalization pass + e2e in real Chromium | ✅ | `e426a04` |
-| 4 — review-gate findings (F-1 … F-5) | ✅ | `2be2e22d`, this commit |
+| 4 — review-gate findings (F-1 … F-5) | ✅ | `2be2e22d`, `8693d63` |
+| 5 — sonar-gate findings (F-6) | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -251,6 +252,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-3 | review (git-history agent + comment agent, independently) | **Correctness, not just focus.** Keeping the confirm open through the request left **Keep it** live, with no `[appBusy]` — unlike `ConfirmPanel`, whose Cancel is bound busy precisely because "neither action is safe mid-write". An operator who backed out mid-flight got the panel dismissed and the request declined anyway, and was told so. Introduced by this slice's own F-in-flight change; `check-focus-posture.mjs` cannot see a *missing* `[appBusy]`, so nothing would have caught it | fixed: `[appBusy]="isDeciding(row.bookingId)"` + `aria-disabled:opacity-60` on **Keep it**, matching its two sibling buttons and `ConfirmPanel`'s contract. Pinned by `locks “Keep it” once the decline it would back out of is already in flight`; mutant H reddens it |
 | F-4 | review (CLAUDE.md adherence) | RV-PROC-1: `riviera-local-debug` was loaded and its cloud-session recipes were what the slice actually ran, but it was missing from **Skills consulted** | fixed: recorded, naming the two recipes used |
 | F-5 | review (CLAUDE.md adherence) | The plan asserted `docs/plans/operator-live-region-placement.md` was deleted and marked phase 3 ✅, but no commit deleted it — the state store claimed a step the diff did not carry | fixed: the file is deleted in this commit, and the retirement is no longer deferred to a step after the phase that claimed it |
+| F-6 | sonar (PR #1095, head `8693d63`) | Gate **passed** while reporting 2 new issues — the reason this gate reads the list, not the conclusion. Both in F-2's new code: `typescript:S7747` (MINOR) "Unnecessarily cloning an array" — `[...queue.slice(0, gone)]` spreads what `slice` already copied; `typescript:S7761` (MAJOR) "Prefer `.dataset` over `getAttribute(…)`". Analysis confirmed real before trusting the other zeros: `new_lines` = 145, so this is not one of the three false zeros | fixed in code (no SonarCloud resolve): the redundant spread dropped, and `closest<HTMLElement>()` + `dataset['testid']`. Mutant I (the id read broken) still reddens F-2's spec, so the rewrite stays load-bearing |
 
 ---
 

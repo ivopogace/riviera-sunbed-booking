@@ -414,7 +414,10 @@ export class RequestsTab {
     const queue = this.requests();
     const gone = queue.findIndex((r) => r.bookingId === focused);
     const below = queue.slice(gone + 1).find((r) => survives(r.bookingId));
-    const above = [...queue.slice(0, gone)].reverse().find((r) => survives(r.bookingId));
+    const above = queue
+      .slice(0, gone)
+      .reverse()
+      .find((r) => survives(r.bookingId));
     const neighbour = below ?? above;
     return neighbour === undefined ? EMPTY : rowTestId(neighbour.bookingId);
   }
@@ -422,8 +425,8 @@ export class RequestsTab {
   /** The booking id of the queue row keyboard focus is inside, if it is inside one at all. */
   private focusedRow(): number | undefined {
     const active = this.document.activeElement;
-    const row = active?.closest(`[data-testid^="${ROW_PREFIX}"]`);
-    const id = Number(row?.getAttribute('data-testid')?.slice(ROW_PREFIX.length));
+    const row = active?.closest<HTMLElement>(`[data-testid^="${ROW_PREFIX}"]`);
+    const id = Number(row?.dataset['testid']?.slice(ROW_PREFIX.length));
     return row == null || Number.isNaN(id) ? undefined : id;
   }
 
