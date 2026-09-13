@@ -334,6 +334,145 @@ describe('RequestsTab (#176)', () => {
     expect(document.activeElement).toBe(byId('request-decline-12'));
   });
 
+  it('lands focus on the next card when an accept empties the pressed one', async () => {
+    render([request({ bookingId: 11 }), request({ bookingId: 12, setId: 2 })]);
+
+    byId('request-row-11')!.querySelector('button')!.click(); // Accept on the first card
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/accept'))
+      .flush({ bookingId: 11, status: 'AWAITING_PAYMENT' });
+    fixture.detectChanges();
+    flushReconcile([request({ bookingId: 12, setId: 2 })]);
+    await settle();
+
+    // The row that took the pressed card's place — NOT the notice at the top of a long queue.
+    expect(document.activeElement).toBe(byId('request-row-12'));
+  });
+
+  it('falls back to the notice when the accepted card was the last one', async () => {
+    render([request({ bookingId: 11 })]);
+
+    button(/Accept/).click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/accept'))
+      .flush({ bookingId: 11, status: 'AWAITING_PAYMENT' });
+    fixture.detectChanges();
+    flushReconcile([]);
+    await settle();
+
+    expect(document.activeElement).toBe(byId('requests-notice'));
+    expect(byId('requests-notice')?.textContent?.toLowerCase()).toContain('asked to pay');
+  });
+
+  it('keeps the decline confirm mounted and focused while the decline is in flight', async () => {
+    render([request({ bookingId: 11 }), request({ bookingId: 12, setId: 2 })]);
+    byId('request-decline-11')!.click();
+    await settle();
+
+    byId('request-confirm-decline-11')!.click();
+    await settle();
+
+    // Snapshot the in-flight state, THEN settle the round trip: a failing assertion must not leave
+    // the POST open, or `http.verify()` fails every later test in the file instead of just this one.
+    const confirm = byId('request-confirm-decline-11');
+    const busy = confirm?.getAttribute('aria-disabled');
+    const focused = document.activeElement;
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/decline'))
+      .flush({ bookingId: 11, status: 'DECLINED' });
+    fixture.detectChanges();
+    flushReconcile([request({ bookingId: 12, setId: 2 })]);
+    await settle();
+
+    // The panel survives its own request (the payouts-tab shape) — so focus never leaves it.
+    expect(confirm).not.toBeNull();
+    expect(busy).toBe('true');
+    expect(focused).toBe(confirm);
+  });
+
+  it('lands focus on the next card when a decline settles', async () => {
+    render([request({ bookingId: 11 }), request({ bookingId: 12, setId: 2 })]);
+    byId('request-decline-11')!.click();
+    await settle();
+    byId('request-confirm-decline-11')!.click();
+    fixture.detectChanges();
+
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/decline'))
+      .flush({ bookingId: 11, status: 'DECLINED' });
+    fixture.detectChanges();
+    flushReconcile([request({ bookingId: 12, setId: 2 })]);
+    await settle();
+
+    expect(byId('decline-confirm')).toBeNull();
+    expect(document.activeElement).toBe(byId('request-row-12'));
+  });
+
+  it('parks focus on the expired-race copy when the sweep wins the race', async () => {
+    render([request({ bookingId: 11 }), request({ bookingId: 12, setId: 2 })]);
+
+    byId('request-row-11')!.querySelector('button')!.click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/accept'))
+      .flush({ code: 'REQUEST_EXPIRED' }, { status: 409, statusText: 'Conflict' });
+    await settle();
+
+    // The card stays, flipped to the expired copy — focus lands on the copy that explains why.
+    expect(document.activeElement).toBe(byId('expired-race-11'));
+    expect(byId('expired-race-11')?.textContent).toContain('just expired');
+  });
+
+  it('lands focus on the all-caught-up panel when the last expired card is dismissed', async () => {
+    render([request({ bookingId: 11 })]);
+    button(/Accept/).click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/accept'))
+      .flush({ code: 'REQUEST_EXPIRED' }, { status: 409, statusText: 'Conflict' });
+    await settle();
+
+    byId('dismiss-expired')!.click();
+    await settle();
+
+    // Dismiss sets no notice, so the empty region would be a silent landing — the empty state speaks.
+    expect(document.activeElement).toBe(byId('requests-empty'));
+  });
+
+  it('lands focus on the next card when a stale request is dropped', async () => {
+    render([request({ bookingId: 11 }), request({ bookingId: 12, setId: 2 })]);
+
+    byId('request-row-11')!.querySelector('button')!.click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/accept'))
+      .flush({ code: 'REQUEST_NOT_PENDING' }, { status: 409, statusText: 'Conflict' });
+    fixture.detectChanges();
+    flushReconcile([request({ bookingId: 12, setId: 2 })]);
+    await settle();
+
+    expect(document.activeElement).toBe(byId('request-row-12'));
+  });
+
+  it('leaves focus on the pressed button when a retryable failure destroys nothing', async () => {
+    render([request({ bookingId: 11 })]);
+    const accept = button(/Accept/);
+    accept.focus(); // jsdom's .click() does not focus; model the real activation
+    accept.click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/accept'))
+      .flush({ code: 'PAYMENT_INIT_FAILED' }, { status: 502, statusText: 'Bad Gateway' });
+    await settle();
+
+    // Nothing was destroyed, so nothing moves — stealing focus here would cost the retry affordance.
+    expect(cards()).toHaveLength(1);
+    expect(document.activeElement).toBe(button(/Accept/));
+    expect(byId('requests-notice')?.textContent?.toLowerCase()).toContain('payment');
+  });
+
   it('shows the dismissible expired-race copy when a decision loses the sweep race (409 REQUEST_EXPIRED)', () => {
     render([request({ bookingId: 11 })]);
     button(/Accept/).click();

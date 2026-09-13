@@ -187,10 +187,13 @@ export class RequestsTab {
     this.focusAfterRender(declineTestId(row.bookingId));
   }
 
-  /** Dismiss an expired-race card: drop it from the queue and re-sync the badge. */
+  /** Dismiss an expired-race card: drop it from the queue and re-sync the badge. Dismiss sets no
+   *  notice, so the empty region would be a silent landing — the all-caught-up panel speaks instead. */
   protected onDismissExpired(row: RequestRow): void {
     this.expired.update((s) => without(s, row.bookingId));
+    const landing = this.landingAfterRemoving(row.bookingId, EMPTY);
     this.removeCard(row.bookingId);
+    this.focusAfterRender(landing, EMPTY);
   }
 
   private decide(bookingId: number, action: 'accept' | 'decline'): void {
@@ -200,7 +203,9 @@ export class RequestsTab {
     }
     const epoch = this.epoch;
     this.notice.set(undefined);
-    this.declineConfirm.update((s) => without(s, bookingId));
+    // The confirm panel stays up for the whole round trip (the `payouts-tab` shape): tearing it down
+    // here would destroy the button that was just pressed and strand focus for the entire in-flight
+    // window — which is also what makes its own `[appBusy]` meaningful. It closes when this settles.
     this.deciding.update((s) => new Set(s).add(bookingId));
     const call =
       action === 'accept'
@@ -212,8 +217,12 @@ export class RequestsTab {
           return; // a venue switch superseded this decision's UI state (#180)
         }
         this.stopDeciding(bookingId);
+        this.closeDeclineConfirm(bookingId);
         this.notice.set(decisionNotice(action, decision.status));
+        // Read the landing spot BEFORE the queue loses the card, or the neighbour is off by one.
+        const landing = this.landingAfterRemoving(bookingId, NOTICE);
         this.removeCard(bookingId); // instant optimistic removal…
+        this.focusAfterRender(landing, NOTICE);
         this.reconcile(); // …then re-sync the rest of the queue with server truth
       },
       error: (e: unknown) => {
@@ -229,24 +238,55 @@ export class RequestsTab {
     this.stopDeciding(bookingId);
     const reason = requestErrorOf(e);
     switch (reason) {
-      case 'REQUEST_EXPIRED':
+      case 'REQUEST_EXPIRED': {
         // Keep the card, flipped to the dismissible expired-race copy — do NOT reconcile it away.
+        this.closeDeclineConfirm(bookingId);
         this.expired.update((s) => new Set(s).add(bookingId));
+        this.focusAfterRender(expiredRaceTestId(bookingId), NOTICE);
         break;
+      }
       case 'REQUEST_NOT_PENDING':
-      case 'NO_SUCH_REQUEST':
+      case 'NO_SUCH_REQUEST': {
+        this.closeDeclineConfirm(bookingId);
         this.notice.set('That request was already handled — the queue has moved on.');
+        const landing = this.landingAfterRemoving(bookingId, NOTICE);
         this.removeCard(bookingId);
+        this.focusAfterRender(landing, NOTICE);
         this.reconcile(); // other cards may be stale too
         break;
+      }
       case 'UNAUTHORIZED':
+        this.closeDeclineConfirm(bookingId);
         this.notice.set(SESSION_EXPIRED_MESSAGE);
         this.operator.sessionLost();
+        this.focusAfterRender(NOTICE);
         break;
       default:
+        // The retryable failure destroys nothing — the card and its confirm both stay, so focus is
+        // still on the button that was pressed and moving it would cost the retry affordance.
         this.notice.set(decisionFailureNotice(action, reason));
         break;
     }
+  }
+
+  private closeDeclineConfirm(bookingId: number): void {
+    this.declineConfirm.update((s) => without(s, bookingId));
+  }
+
+  /**
+   * The test id focus should land on once `bookingId` leaves the queue: the card below it, else the
+   * card above it, else `whenEmpty` — the queue is about to hold nothing to land on.
+   *
+   * <p>The neighbour rather than the notice at the top of the tab: this is a working queue an
+   * operator walks down, and angular.dev's a11y guidance is that the landing spot should leave the
+   * user able to move straight back into the content. The card's row, not its Accept button —
+   * Accept is a one-click, no-confirm money action.
+   */
+  private landingAfterRemoving(bookingId: number, whenEmpty: string): string {
+    const queue = this.requests();
+    const gone = queue.findIndex((r) => r.bookingId === bookingId);
+    const neighbour = gone < 0 ? undefined : (queue[gone + 1] ?? queue[gone - 1]);
+    return neighbour === undefined ? whenEmpty : rowTestId(neighbour.bookingId);
   }
 
   private stopDeciding(bookingId: number): void {
@@ -359,6 +399,17 @@ const REFRESH_MS = 60_000;
 
 // Focus targets. Each per-card id carries the booking id: `focusMover()` resolves by
 // `querySelector`, which takes the FIRST match, so a shared id would focus the wrong card (#1082).
+/** The hoisted outcome region — it carries the words for every leg that settles a decision. */
+const NOTICE = 'requests-notice';
+/** The all-caught-up panel — the fallback for the one leg that settles without writing a notice. */
+const EMPTY = 'requests-empty';
+
+function rowTestId(bookingId: number): string {
+  return `request-row-${bookingId}`;
+}
+function expiredRaceTestId(bookingId: number): string {
+  return `expired-race-${bookingId}`;
+}
 function declineTestId(bookingId: number): string {
   return `request-decline-${bookingId}`;
 }

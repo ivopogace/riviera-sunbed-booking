@@ -61,13 +61,13 @@ stands in for `bugfix/requests-tab-focus-after-decision`.
 > Frontend ACs name the seam they observe through: the rendered tab plus the mocked
 > `/api/venues/1/booking-requests` endpoints, never the private signal.
 
-- [ ] **AC-1 (settled — accept, queue not empty):** Given a two-card queue and the operator
+- [x] **AC-1 (settled — accept, queue not empty):** Given a two-card queue and the operator
   activates **Accept** on the first card, when the accept succeeds, then focus is on the
   `<li>` of the card that took its place (`request-row-12`), not `<body>` and not the notice.
   *Seam:* the rendered `app-requests-tab` + `POST /api/venues/1/booking-requests/11/accept` ·
   *Pinned by:* `RequestsTab (#176) › lands focus on the next card when an accept empties the pressed one`
 
-- [ ] **AC-2 (settled — accept, queue empties):** Given a one-card queue and the operator
+- [x] **AC-2 (settled — accept, queue empties):** Given a one-card queue and the operator
   activates **Accept**, when the accept succeeds, then focus is on `requests-notice`, which
   carries "asked to pay". *Seam:* as AC-1 · *Pinned by:*
   `RequestsTab (#176) › falls back to the notice when the accepted card was the last one`
@@ -80,35 +80,35 @@ stands in for `bugfix/requests-tab-focus-after-decision`.
   **Keep it**, then focus returns to that card's `request-decline-11` button. *Seam:* as AC-3
   · *Pinned by:* `RequestsTab (#176) › returns focus to the Decline trigger when the operator keeps the request`
 
-- [ ] **AC-5 (in-flight — the confirm survives its own request):** Given an open decline
+- [x] **AC-5 (in-flight — the confirm survives its own request):** Given an open decline
   confirm, when the operator activates **Confirm decline** and the request has not yet
   settled, then the confirm panel is still rendered, its confirm button carries
   `aria-disabled="true"`, and focus is still on it — not `<body>`. *Seam:* as AC-1
   (`…/11/decline`, unflushed) · *Pinned by:*
   `RequestsTab (#176) › keeps the decline confirm mounted and focused while the decline is in flight`
 
-- [ ] **AC-6 (settled — decline):** Given the in-flight decline of AC-5 over a two-card queue,
+- [x] **AC-6 (settled — decline):** Given the in-flight decline of AC-5 over a two-card queue,
   when it succeeds, then the confirm panel is gone, the card is gone, and focus is on the
   neighbouring card's `<li>`. *Seam:* as AC-1 · *Pinned by:*
   `RequestsTab (#176) › lands focus on the next card when a decline settles`
 
-- [ ] **AC-7 (settled — lost sweep race):** Given an accept that 409s `REQUEST_EXPIRED`, when
+- [x] **AC-7 (settled — lost sweep race):** Given an accept that 409s `REQUEST_EXPIRED`, when
   the card flips to the expired-race copy, then focus is on that card's
   `expired-race-11` output, which carries "just expired". *Seam:* as AC-1 ·
   *Pinned by:* `RequestsTab (#176) › parks focus on the expired-race copy when the sweep wins the race`
 
-- [ ] **AC-8 (settled — dismiss):** Given a dismissible expired-race card that is the only
+- [x] **AC-8 (settled — dismiss):** Given a dismissible expired-race card that is the only
   card, when the operator activates **Dismiss**, then focus is on `requests-empty` ("All
   caught up") — the notice is deliberately not the fallback here because dismiss sets no
   notice text. *Seam:* as AC-7 · *Pinned by:*
   `RequestsTab (#176) › lands focus on the all-caught-up panel when the last expired card is dismissed`
 
-- [ ] **AC-9 (settled — stale drop):** Given an accept that 409s `REQUEST_NOT_PENDING` over a
+- [x] **AC-9 (settled — stale drop):** Given an accept that 409s `REQUEST_NOT_PENDING` over a
   two-card queue, when the card is dropped with the "already handled" notice, then focus is on
   the neighbouring card's `<li>`. *Seam:* as AC-1 · *Pinned by:*
   `RequestsTab (#176) › lands focus on the next card when a stale request is dropped`
 
-- [ ] **AC-10 (no leg where nothing is destroyed):** Given an accept that fails with
+- [x] **AC-10 (no leg where nothing is destroyed):** Given an accept that fails with
   `PAYMENT_INIT_FAILED`, when the failure lands, then the card and its **Accept** button are
   still rendered and focus has NOT moved off that button. *Seam:* as AC-1 · *Pinned by:*
   `RequestsTab (#176) › leaves focus on the pressed button when a retryable failure destroys nothing`
@@ -162,12 +162,12 @@ stands in for `bugfix/requests-tab-focus-after-decision`.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The landing id is computed from `requests()` *after* `removeCard` mutates it, so the "neighbour" is off by one | med | med | Compute `neighbourTestId()` before `removeCard()`; AC-1/AC-6/AC-9 assert the *specific* neighbour id (`request-row-12`), not merely "focus is not body", so an off-by-one fails | claude | open |
+| R-1 | The landing id is computed from `requests()` *after* `removeCard` mutates it, so the "neighbour" is off by one | med | med | Compute `landingAfterRemoving()` before `removeCard()`; AC-1/AC-6/AC-9 assert the *specific* neighbour id (`request-row-12`), not merely "focus is not body", so an off-by-one fails | claude | closed — mutant B in phase 1 |
 | R-2 | `reconcile()` fires right after the focus move and its response re-renders the queue, stealing focus back to `<body>` | med | high | `@for` tracks `row.bookingId`, so a reconcile that returns the same ids reuses the same DOM nodes and focus survives. AC-1 flushes the reconcile GET before asserting; AC-12 proves it in a real browser | claude | open |
 | R-3 | The `<li>` / `<output>` / empty-panel landing spots get no focus ring — the `@layer base` rule is `button:focus-visible` only (`riviera-tailwind` rule 6), so a **sighted** keyboard operator sees no indicator of where focus went | high | low | Accepted, not mitigated with a new ring: every existing non-button landing spot in the tree behaves the same (`admin-review-{id}`, `admin-photo-slot-{slot}`, `payouts-tab`), and Tailwind's own docs define `focus-visible` as "focused using the keyboard" with no stated behaviour for programmatic focus on `tabindex="-1"`, so a ring built on it would be a browser-heuristic gamble. WCAG 2.4.7 governs keyboard-*reachable* controls; a `tabindex="-1"` waypoint is not one. Revisit as its own slice if the maintainer wants a ring convention for landing spots | claude | open (accepted) |
 | R-4 | Not adopting `shared/confirm-panel.ts` leaves a second confirm idiom in the operator console | low | low | Deliberate — see Non-goals. The inline confirm keeps the card's own visual family and adopting the shared panel would be a restyle inside a WCAG bug fix | claude | open (accepted) |
 | R-5 | Four new per-card `data-testid`s collide with, or shadow, the existing shared ones (`request-card`, `decline-confirm`, `expired-race`, `dismiss-expired`) that unit + e2e specs query | med | med | The new ids go on *different* elements (the `<li>`, the two buttons, the inner `<output>`), so every existing hook keeps its element and its meaning — `riviera-tailwind` rule 2's inert-marker rule. AC-13 is the whole existing suite passing unchanged | claude | open |
-| R-6 | `focusMover()` resolves by `querySelector`, which takes the **first** match — a shared id would focus the wrong card | high | high | Every per-card target id is suffixed with `bookingId`. AC-1/AC-3/AC-4/AC-7 all assert against a card that is *not* first in the queue where the shape allows it | claude | open |
+| R-6 | `focusMover()` resolves by `querySelector`, which takes the **first** match — a shared id would focus the wrong card | high | high | Every per-card target id is suffixed with `bookingId`. AC-3/AC-4 act on the *second* card, and AC-1/AC-6/AC-9 land on `request-row-12` while `request-row-11` is the one pressed | claude | closed — phase 0 + 1 |
 | R-7 | Moving focus at the same moment the polite live region updates makes a screen reader drop the outcome announcement that #1078 just repaired | low | med | The landing spot on the queue-empties leg **is** the notice, so its text is read as the focus target. On the neighbour-card leg the region is `aria-live="polite"`, which queues rather than interrupts. No regression to #1078's specs (AC-13) | claude | open |
 | R-8 | jsdom is not evidence for a focus claim | low | med | RV-FE-9's rule is that a claim about a *destroyed* control may be pinned in jsdom (only a *disabled*-control claim needs Chromium). Every leg here is a destroyed control. AC-12 adds the Chromium leg anyway | claude | open |
 
@@ -223,15 +223,14 @@ N/A — no contract change. No endpoint, DTO, or error code is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Push, open the draft PR (CI fires on `pull_request` only), then write
-phase 1's failing tests (AC-1, AC-2, AC-5 … AC-10).
+**Next action:** Write phase 2's failing test (AC-11, the venue-switch leg).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — per-card test hooks + the two synchronous legs (open, back-out) | ✅ | `71c425f` (plan), this commit |
-| 1 — the settled legs (accept, decline, stale drop, race, dismiss) + the in-flight confirm move | | |
+| 1 — the settled legs (accept, decline, stale drop, race, dismiss) + the in-flight confirm move | ✅ | this commit |
 | 2 — the venue-switch leg | | |
 | 3 — generalization pass + e2e in real Chromium + close-out | | |
 
@@ -285,16 +284,26 @@ Test `frontend/src/app/operator/requests-tab.spec.ts`
 **Files:** Modify `frontend/src/app/operator/requests-tab.ts` ·
 Test `frontend/src/app/operator/requests-tab.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — AC-1, AC-2, AC-5, AC-6, AC-7, AC-8, AC-9, AC-10.
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- requests-tab.spec` → FAIL.
-- [ ] **Step 3: Minimal implementation** — `neighbourTestId()`; move the `declineConfirm`
-      teardown out of `decide()`'s prologue into each settle handler; the focus move in the
+- [x] **Step 1: Write the failing tests** — AC-1, AC-2, AC-5, AC-6, AC-7, AC-8, AC-9, AC-10.
+- [x] **Step 2: Run them, verify they fail** —
+      `npm test -- --include src/app/operator/requests-tab.spec.ts` → 7 of 31 red
+      (`document.activeElement` is `<body>`). AC-10 asserts that focus does *not* move and is
+      therefore green by construction before the change — recorded as such rather than claimed
+      as red-green; it is a regression guard against a later over-eager leg, and mutant D below
+      (moving focus to the notice on the retryable path) turns it red.
+- [x] **Step 3: Minimal implementation** — `landingAfterRemoving()`; the `declineConfirm`
+      teardown moved out of `decide()`'s prologue into each settle handler; the focus move in the
       success handler, the three `onDecisionError` branches that destroy something, and
       `onDismissExpired`.
-- [ ] **Step 4: Run them, verify they pass** — `npm test -- requests-tab` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — deferred to phase 3.
-- [ ] **Step 6: Commit** — `git commit -m "Land focus on the neighbouring request card when a decision empties the pressed one (#1082)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run them, verify they pass** —
+      `npm test -- --include "src/app/operator/requests-tab*.spec.ts"` → 3 files, 55 tests, green.
+      Three mutants, each caught: **A** all settled-leg `focusAfterRender` calls removed → the 6
+      settled tests red; **B** the landing spot computed *after* `removeCard` (risk R-1's
+      off-by-one) → the 2 neighbour tests red; **C** the confirm teardown put back in `decide()`'s
+      prologue → AC-5 red.
+- [x] **Step 5: Generalization-audit pass** — deferred to phase 3.
+- [x] **Step 6: Commit** — `git commit -m "Land focus on the neighbouring request card when a decision empties the pressed one (#1082)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
