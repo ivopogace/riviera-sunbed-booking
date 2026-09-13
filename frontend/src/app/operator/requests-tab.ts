@@ -9,6 +9,7 @@ import { CardGlass } from '../shared/card-glass';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { SkeletonBlock } from '../shared/skeleton-block';
 import { formatDeadline, isUrgent, timeLeftLabel } from '../shared/deadline';
+import { focusMover } from '../shared/focus-after-render';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { formatCivilDate, todayBookingDate } from '../shared/booking-date';
@@ -67,6 +68,10 @@ export class RequestsTab {
   private readonly badge = inject(PendingRequestsStore);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly operator = inject(OperatorAuth);
+
+  /** Every decision here destroys the control that was just activated (WCAG 2.4.3) — the card leaves
+   *  the queue, or the confirm panel it sat in is torn down. */
+  private readonly focusAfterRender = focusMover();
 
   /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
    *  invalid) — reactive to in-place venue switches, which reuse this instance. */
@@ -164,18 +169,22 @@ export class RequestsTab {
     this.decide(row.bookingId, 'accept');
   }
 
-  /** Open the inline decline confirm (a two-step decline — no accidental cancellations). */
+  /** Open the inline decline confirm (a two-step decline — no accidental cancellations). The confirm
+   *  replaces the Decline button that opened it, so focus follows onto the destructive button. */
   protected onDecline(row: RequestRow): void {
     this.notice.set(undefined);
     this.declineConfirm.update((s) => new Set(s).add(row.bookingId));
+    this.focusAfterRender(confirmDeclineTestId(row.bookingId));
   }
 
   protected onConfirmDecline(row: RequestRow): void {
     this.decide(row.bookingId, 'decline');
   }
 
+  /** Back out of the confirm — focus returns to the Decline trigger the confirm replaced. */
   protected onCancelDecline(row: RequestRow): void {
     this.declineConfirm.update((s) => without(s, row.bookingId));
+    this.focusAfterRender(declineTestId(row.bookingId));
   }
 
   /** Dismiss an expired-race card: drop it from the queue and re-sync the badge. */
@@ -347,6 +356,15 @@ export class RequestsTab {
 
 /** How often the open Requests tab re-reads the queue + refreshes the urgency clock (60s). */
 const REFRESH_MS = 60_000;
+
+// Focus targets. Each per-card id carries the booking id: `focusMover()` resolves by
+// `querySelector`, which takes the FIRST match, so a shared id would focus the wrong card (#1082).
+function declineTestId(bookingId: number): string {
+  return `request-decline-${bookingId}`;
+}
+function confirmDeclineTestId(bookingId: number): string {
+  return `request-confirm-decline-${bookingId}`;
+}
 
 /** A new set with `id` removed (signals are replaced, never mutated). */
 function without(set: ReadonlySet<number>, id: number): ReadonlySet<number> {

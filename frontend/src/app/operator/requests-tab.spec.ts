@@ -168,6 +168,12 @@ describe('RequestsTab (#176)', () => {
     )!;
   }
 
+  /** Let `focusMover()`'s `afterNextRender` run, then paint — the shape every focus-leg spec uses. */
+  async function settle(): Promise<void> {
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
   /** Flush the queue re-read a post-action (or poll) reconcile fires, with the fresh server queue. */
   function flushReconcile(queue: PendingRequest[]): void {
     http
@@ -301,6 +307,31 @@ describe('RequestsTab (#176)', () => {
     expect(byId('decline-confirm')).toBeNull();
     expect(cards()).toHaveLength(1);
     http.expectNone((r) => r.method === 'POST');
+  });
+
+  // ---- Focus legs (#1082, WCAG 2.4.3 / RV-FE-9) ----
+  // Every transition below destroys the control the operator just pressed. The assertions name the
+  // exact landing element, not merely "not <body>": an off-by-one neighbour would pass the weaker form.
+
+  it('moves focus onto the confirm button when the decline confirm opens', async () => {
+    render([request({ bookingId: 11 }), request({ bookingId: 12, setId: 2 })]);
+
+    // The SECOND card, so a helper that focuses the first match would fail here.
+    byId('request-decline-12')!.click();
+    await settle();
+
+    expect(document.activeElement).toBe(byId('request-confirm-decline-12'));
+  });
+
+  it('returns focus to the Decline trigger when the operator keeps the request', async () => {
+    render([request({ bookingId: 11 }), request({ bookingId: 12, setId: 2 })]);
+    byId('request-decline-12')!.click();
+    await settle();
+
+    button(/Keep it/).click();
+    await settle();
+
+    expect(document.activeElement).toBe(byId('request-decline-12'));
   });
 
   it('shows the dismissible expired-race copy when a decision loses the sweep race (409 REQUEST_EXPIRED)', () => {

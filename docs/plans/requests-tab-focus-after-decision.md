@@ -72,11 +72,11 @@ stands in for `bugfix/requests-tab-focus-after-decision`.
   carries "asked to pay". *Seam:* as AC-1 · *Pinned by:*
   `RequestsTab (#176) › falls back to the notice when the accepted card was the last one`
 
-- [ ] **AC-3 (open leg):** Given a queue card, when the operator activates **Decline**, then
+- [x] **AC-3 (open leg):** Given a queue card, when the operator activates **Decline**, then
   focus is on that card's `request-confirm-decline-11` button. *Seam:* the rendered tab
   (no HTTP) · *Pinned by:* `RequestsTab (#176) › moves focus onto the confirm button when the decline confirm opens`
 
-- [ ] **AC-4 (back-out leg):** Given an open decline confirm, when the operator activates
+- [x] **AC-4 (back-out leg):** Given an open decline confirm, when the operator activates
   **Keep it**, then focus returns to that card's `request-decline-11` button. *Seam:* as AC-3
   · *Pinned by:* `RequestsTab (#176) › returns focus to the Decline trigger when the operator keeps the request`
 
@@ -223,14 +223,14 @@ N/A — no contract change. No endpoint, DTO, or error code is touched.
 
 ## Execution status
 
-**Stage pointer:** `plan`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Commit the plan doc, open the draft PR (CI fires on `pull_request` only),
-then start phase 0.
+**Next action:** Push, open the draft PR (CI fires on `pull_request` only), then write
+phase 1's failing tests (AC-1, AC-2, AC-5 … AC-10).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — per-card test hooks + the two synchronous legs (open, back-out) | | |
+| 0 — per-card test hooks + the two synchronous legs (open, back-out) | ✅ | `71c425f` (plan), this commit |
 | 1 — the settled legs (accept, decline, stale drop, race, dismiss) + the in-flight confirm move | | |
 | 2 — the venue-switch leg | | |
 | 3 — generalization pass + e2e in real Chromium + close-out | | |
@@ -264,16 +264,19 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 Modify `frontend/src/app/operator/requests-tab.ts` ·
 Test `frontend/src/app/operator/requests-tab.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — AC-3 and AC-4.
-- [ ] **Step 2: Run them, verify they fail** —
-      `npm test -- requests-tab.spec` → FAIL (`document.activeElement` is `<body>`).
-- [ ] **Step 3: Minimal implementation** — add `request-row-{id}`, `request-decline-{id}`,
+- [x] **Step 1: Write the failing tests** — AC-3 and AC-4.
+- [x] **Step 2: Run them, verify they fail** —
+      `npm test -- --include src/app/operator/requests-tab.spec.ts` → FAIL, 2 of 23
+      (`byId('request-decline-12')` is null — the per-card hook does not exist yet).
+- [x] **Step 3: Minimal implementation** — added `request-row-{id}`, `request-decline-{id}`,
       `request-confirm-decline-{id}`, `expired-race-{id}`; `focusMover()` on the component;
       the move in `onDecline` and `onCancelDecline`.
-- [ ] **Step 4: Run them, verify they pass** — `npm test -- requests-tab` → PASS (all four spec files).
-- [ ] **Step 5: Generalization-audit pass** — deferred to phase 3, once the pattern is whole.
-- [ ] **Step 6: Commit** — `git commit -m "Move focus across the decline confirm's two synchronous legs (#1082)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run them, verify they pass** — `npm test -- --include "src/app/operator/requests-tab*.spec.ts"`
+      → 3 files, 47 tests, green. Mutation-checked: with both `focusAfterRender` calls removed,
+      exactly those two tests go red and the other 21 stay green.
+- [x] **Step 5: Generalization-audit pass** — deferred to phase 3, once the pattern is whole.
+- [x] **Step 6: Commit** — `git commit -m "Move focus across the decline confirm's two synchronous legs (#1082)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
