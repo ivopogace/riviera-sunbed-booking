@@ -1,5 +1,14 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  Component,
+  DOCUMENT,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
 import { TouchTarget } from '../shared/touch-target';
@@ -9,6 +18,7 @@ import { CardGlass } from '../shared/card-glass';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { SkeletonBlock } from '../shared/skeleton-block';
 import { formatDeadline, isUrgent, timeLeftLabel } from '../shared/deadline';
+import { focusMover } from '../shared/focus-after-render';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { formatCivilDate, todayBookingDate } from '../shared/booking-date';
@@ -66,7 +76,12 @@ export class RequestsTab {
   private readonly console = inject(OperatorConsoleService);
   private readonly badge = inject(PendingRequestsStore);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly document = inject(DOCUMENT);
   protected readonly operator = inject(OperatorAuth);
+
+  /** Every decision here destroys the control that was just activated (WCAG 2.4.3) — the card leaves
+   *  the queue, or the confirm panel it sat in is torn down. */
+  private readonly focusAfterRender = focusMover();
 
   /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
    *  invalid) — reactive to in-place venue switches, which reuse this instance. */
@@ -116,8 +131,16 @@ export class RequestsTab {
     this.loadError.set(true);
   }
 
-  /** Drop every venue-scoped signal — queue, notice, transient card state — and load fresh. */
+  /**
+   * Drop every venue-scoped signal — queue, notice, transient card state — and load fresh.
+   *
+   * <p>A decline confirm is the one piece of that teardown which can be holding focus, so the
+   * switch moves focus off it first (WCAG 2.4.3), as `payouts-tab` does for its statement.
+   */
   private resetForVenue(): void {
+    if (this.declineConfirm().size > 0) {
+      this.focusAfterRender(TAB);
+    }
     this.epoch++;
     this.venue.set(undefined);
     this.requests.set([]);
@@ -164,26 +187,40 @@ export class RequestsTab {
     this.decide(row.bookingId, 'accept');
   }
 
-  /** Open the inline decline confirm (a two-step decline — no accidental cancellations). */
+  /** Open the inline decline confirm (a two-step decline — no accidental cancellations). The confirm
+   *  replaces the Decline button that opened it, so focus follows onto the destructive button. */
   protected onDecline(row: RequestRow): void {
     this.notice.set(undefined);
     this.declineConfirm.update((s) => new Set(s).add(row.bookingId));
+    this.focusAfterRender(confirmDeclineTestId(row.bookingId));
   }
 
   protected onConfirmDecline(row: RequestRow): void {
     this.decide(row.bookingId, 'decline');
   }
 
+  /** Back out of the confirm — focus returns to the Decline trigger the confirm replaced. */
   protected onCancelDecline(row: RequestRow): void {
     this.declineConfirm.update((s) => without(s, row.bookingId));
+    this.focusAfterRender(declineTestId(row.bookingId));
   }
 
-  /** Dismiss an expired-race card: drop it from the queue and re-sync the badge. */
+  /** Dismiss an expired-race card: drop it from the queue and re-sync the badge. Dismiss sets no
+   *  notice, so the empty region would be a silent landing — the all-caught-up panel speaks instead. */
   protected onDismissExpired(row: RequestRow): void {
     this.expired.update((s) => without(s, row.bookingId));
+    const landing = this.landingAfterRemoving(row.bookingId, EMPTY);
     this.removeCard(row.bookingId);
+    this.focusAfterRender(landing, EMPTY);
   }
 
+  /**
+   * Send the accept or decline and settle the card on the answer.
+   *
+   * <p>The decline confirm stays up for the whole round trip, and closes only when this settles:
+   * tearing it down here would destroy the button just pressed and strand focus (WCAG 2.4.3) for
+   * the entire in-flight window, and it is what makes the panel's own `[appBusy]` meaningful.
+   */
   private decide(bookingId: number, action: 'accept' | 'decline'): void {
     const venueId = this.venueId();
     if (venueId === undefined || this.isDeciding(bookingId)) {
@@ -191,7 +228,6 @@ export class RequestsTab {
     }
     const epoch = this.epoch;
     this.notice.set(undefined);
-    this.declineConfirm.update((s) => without(s, bookingId));
     this.deciding.update((s) => new Set(s).add(bookingId));
     const call =
       action === 'accept'
@@ -203,8 +239,12 @@ export class RequestsTab {
           return; // a venue switch superseded this decision's UI state (#180)
         }
         this.stopDeciding(bookingId);
+        this.closeDeclineConfirm(bookingId);
         this.notice.set(decisionNotice(action, decision.status));
+        // Read the landing spot BEFORE the queue loses the card, or the neighbour is off by one.
+        const landing = this.landingAfterRemoving(bookingId, NOTICE);
         this.removeCard(bookingId); // instant optimistic removal…
+        this.focusAfterRender(landing, NOTICE);
         this.reconcile(); // …then re-sync the rest of the queue with server truth
       },
       error: (e: unknown) => {
@@ -220,24 +260,54 @@ export class RequestsTab {
     this.stopDeciding(bookingId);
     const reason = requestErrorOf(e);
     switch (reason) {
-      case 'REQUEST_EXPIRED':
+      case 'REQUEST_EXPIRED': {
         // Keep the card, flipped to the dismissible expired-race copy — do NOT reconcile it away.
+        this.closeDeclineConfirm(bookingId);
         this.expired.update((s) => new Set(s).add(bookingId));
+        this.focusAfterRender(expiredRaceTestId(bookingId), NOTICE);
         break;
+      }
       case 'REQUEST_NOT_PENDING':
-      case 'NO_SUCH_REQUEST':
+      case 'NO_SUCH_REQUEST': {
+        this.closeDeclineConfirm(bookingId);
         this.notice.set('That request was already handled — the queue has moved on.');
+        const landing = this.landingAfterRemoving(bookingId, NOTICE);
         this.removeCard(bookingId);
+        this.focusAfterRender(landing, NOTICE);
         this.reconcile(); // other cards may be stale too
         break;
+      }
       case 'UNAUTHORIZED':
+        this.closeDeclineConfirm(bookingId);
         this.notice.set(SESSION_EXPIRED_MESSAGE);
         this.operator.sessionLost();
+        this.focusAfterRender(NOTICE);
         break;
       default:
+        // Destroys nothing, so nothing moves: the pressed button still holds focus, and holds the retry.
         this.notice.set(decisionFailureNotice(action, reason));
         break;
     }
+  }
+
+  private closeDeclineConfirm(bookingId: number): void {
+    this.declineConfirm.update((s) => without(s, bookingId));
+  }
+
+  /**
+   * The test id focus should land on once `bookingId` leaves the queue: the card below it, else the
+   * card above it, else `whenEmpty` — the queue is about to hold nothing to land on.
+   *
+   * <p>The neighbour rather than the notice at the top of the tab: this is a working queue an
+   * operator walks down, and angular.dev's a11y guidance is that the landing spot should leave the
+   * user able to move straight back into the content. The card's row, not its Accept button —
+   * Accept is a one-click, no-confirm money action.
+   */
+  private landingAfterRemoving(bookingId: number, whenEmpty: string): string {
+    const queue = this.requests();
+    const gone = queue.findIndex((r) => r.bookingId === bookingId);
+    const neighbour = gone < 0 ? undefined : (queue[gone + 1] ?? queue[gone - 1]);
+    return neighbour === undefined ? whenEmpty : rowTestId(neighbour.bookingId);
   }
 
   private stopDeciding(bookingId: number): void {
@@ -298,9 +368,13 @@ export class RequestsTab {
         if (this.epoch !== epoch) {
           return; // a venue switch superseded this read — never seed the new venue's queue/badge (#180)
         }
+        const landing = this.landingIfFocusLeaves(r);
         this.requests.set(r);
         this.badge.set(r.length);
         this.pruneTransient(r);
+        if (landing !== undefined) {
+          this.focusAfterRender(landing, TAB);
+        }
         if (initial) {
           this.loaded.set(true);
         }
@@ -319,6 +393,41 @@ export class RequestsTab {
         }
       },
     });
+  }
+
+  /**
+   * Where focus has to go when a read is about to drop the row it is sitting in, or undefined when
+   * it is not sitting in one that leaves.
+   *
+   * <p>The decision legs cover rows the operator removed. This covers the ones nobody here removed:
+   * the queue is re-read on a 60s poll and after every action, so the expiry sweep or another
+   * operator's device can take the row focus is in, with no local action behind it. `@for` tracks
+   * by booking id, so a row that survives the read keeps its node and its focus — only a row that
+   * leaves strands it (WCAG 2.4.3). Lands on the nearest row that survives, else the empty state.
+   */
+  private landingIfFocusLeaves(fresh: readonly PendingRequestItem[]): string | undefined {
+    const focused = this.focusedRow();
+    const survives = (id: number): boolean => fresh.some((r) => r.bookingId === id);
+    if (focused === undefined || survives(focused)) {
+      return undefined;
+    }
+    const queue = this.requests();
+    const gone = queue.findIndex((r) => r.bookingId === focused);
+    const below = queue.slice(gone + 1).find((r) => survives(r.bookingId));
+    const above = queue
+      .slice(0, gone)
+      .reverse()
+      .find((r) => survives(r.bookingId));
+    const neighbour = below ?? above;
+    return neighbour === undefined ? EMPTY : rowTestId(neighbour.bookingId);
+  }
+
+  /** The booking id of the queue row keyboard focus is inside, if it is inside one at all. */
+  private focusedRow(): number | undefined {
+    const active = this.document.activeElement;
+    const row = active?.closest<HTMLElement>(`[data-testid^="${ROW_PREFIX}"]`);
+    const id = Number(row?.dataset['testid']?.slice(ROW_PREFIX.length));
+    return row == null || Number.isNaN(id) ? undefined : id;
   }
 
   /** Drop stale ids from the transient sets once their card leaves the freshly-read queue (e.g. a poll
@@ -347,6 +456,31 @@ export class RequestsTab {
 
 /** How often the open Requests tab re-reads the queue + refreshes the urgency clock (60s). */
 const REFRESH_MS = 60_000;
+
+/** The hoisted outcome region — it carries the words for every leg that settles a decision. */
+const NOTICE = 'requests-notice';
+/** The all-caught-up panel — the fallback for the one leg that settles without writing a notice. */
+const EMPTY = 'requests-empty';
+/** The tab itself — where focus goes when a venue switch takes the whole surface with it. */
+const TAB = 'requests-tab';
+
+/**
+ * The per-card focus targets. Each carries the booking id because {@link focusMover} resolves by
+ * `querySelector`, which takes the first match — a queue-wide id would focus the wrong card.
+ */
+function rowTestId(bookingId: number): string {
+  return `${ROW_PREFIX}${bookingId}`;
+}
+const ROW_PREFIX = 'request-row-';
+function expiredRaceTestId(bookingId: number): string {
+  return `expired-race-${bookingId}`;
+}
+function declineTestId(bookingId: number): string {
+  return `request-decline-${bookingId}`;
+}
+function confirmDeclineTestId(bookingId: number): string {
+  return `request-confirm-decline-${bookingId}`;
+}
 
 /** A new set with `id` removed (signals are replaced, never mutated). */
 function without(set: ReadonlySet<number>, id: number): ReadonlySet<number> {
