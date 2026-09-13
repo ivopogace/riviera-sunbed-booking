@@ -167,8 +167,8 @@ stands in for `bugfix/requests-tab-focus-after-decision`.
 |---|---|---|---|---|---|---|
 | R-1 | The landing id is computed from `requests()` *after* `removeCard` mutates it, so the "neighbour" is off by one | med | med | Compute `landingAfterRemoving()` before `removeCard()`; AC-1/AC-6/AC-9 assert the *specific* neighbour id (`request-row-12`), not merely "focus is not body", so an off-by-one fails | claude | closed — mutant B in phase 1 |
 | R-2 | `reconcile()` fires right after the focus move and its response re-renders the queue, stealing focus back to `<body>` | med | high | `@for` tracks `row.bookingId`, so a reconcile that returns the same ids reuses the same DOM nodes and focus survives. AC-1 flushes the reconcile GET before asserting; AC-12 proves it in a real browser | claude | closed — AC-12 green in Chromium (phase 3) |
-| R-3 | The `<li>` / `<output>` / empty-panel landing spots get no focus ring — the `@layer base` rule is `button:focus-visible` only (`riviera-tailwind` rule 6), so a **sighted** keyboard operator sees no indicator of where focus went | high | low | Accepted, not mitigated with a new ring: every existing non-button landing spot in the tree behaves the same (`admin-review-{id}`, `admin-photo-slot-{slot}`, `payouts-tab`), and Tailwind's own docs define `focus-visible` as "focused using the keyboard" with no stated behaviour for programmatic focus on `tabindex="-1"`, so a ring built on it would be a browser-heuristic gamble. WCAG 2.4.7 governs keyboard-*reachable* controls; a `tabindex="-1"` waypoint is not one. Revisit as its own slice if the maintainer wants a ring convention for landing spots | claude | open (accepted) |
-| R-4 | Not adopting `shared/confirm-panel.ts` leaves a second confirm idiom in the operator console | low | low | Deliberate — see Non-goals. The inline confirm keeps the card's own visual family and adopting the shared panel would be a restyle inside a WCAG bug fix | claude | open (accepted) |
+| R-3 | The `<li>` / `<output>` / empty-panel landing spots get no focus ring — the `@layer base` rule is `button:focus-visible` only (`riviera-tailwind` rule 6), so a **sighted** keyboard operator sees no indicator of where focus went | high | low | Accepted, not mitigated with a new ring: every existing non-button landing spot in the tree behaves the same (`admin-review-{id}`, `admin-photo-slot-{slot}`, `payouts-tab`), and Tailwind's own docs define `focus-visible` as "focused using the keyboard" with no stated behaviour for programmatic focus on `tabindex="-1"`, so a ring built on it would be a browser-heuristic gamble. WCAG 2.4.7 governs keyboard-*reachable* controls; a `tabindex="-1"` waypoint is not one. Revisit as its own slice if the maintainer wants a ring convention for landing spots | claude | closed — accepted, and raised in the PR body so the maintainer can ticket a landing-spot ring convention if wanted |
+| R-4 | Not adopting `shared/confirm-panel.ts` leaves a second confirm idiom in the operator console | low | low | Deliberate — see Non-goals. The inline confirm keeps the card's own visual family and adopting the shared panel would be a restyle inside a WCAG bug fix | claude | closed — accepted, **and it cost us F-3**: copying half the shape (panel survives the request) without the other half (`[appBusy]` on Cancel) is exactly the defect two reviewers found. The `[appBusy]` gap is now closed, so the two idioms agree on behaviour even though they differ in paint |
 | R-5 | Four new per-card `data-testid`s collide with, or shadow, the existing shared ones (`request-card`, `decline-confirm`, `expired-race`, `dismiss-expired`) that unit + e2e specs query | med | med | The new ids go on *different* elements (the `<li>`, the two buttons, the inner `<output>`), so every existing hook keeps its element and its meaning — `riviera-tailwind` rule 2's inert-marker rule. AC-13 is the whole existing suite passing unchanged | claude | closed — all 6 pre-existing e2e + 23 pre-existing unit tests green, unchanged |
 | R-6 | `focusMover()` resolves by `querySelector`, which takes the **first** match — a shared id would focus the wrong card | high | high | Every per-card target id is suffixed with `bookingId`. AC-3/AC-4 act on the *second* card, and AC-1/AC-6/AC-9 land on `request-row-12` while `request-row-11` is the one pressed | claude | closed — phase 0 + 1 |
 | R-7 | Moving focus at the same moment the polite live region updates makes a screen reader drop the outcome announcement that #1078 just repaired | low | med | The landing spot on the queue-empties leg **is** the notice, so its text is read as the focus target. On the neighbour-card leg the region is `aria-live="polite"`, which queues rather than interrupts. No regression to #1078's specs (AC-13) | claude | closed — #1078's own spec (`announces the decision through a region that predates it`) still green |
@@ -226,10 +226,12 @@ N/A — no contract change. No endpoint, DTO, or error code is touched.
 
 ## Execution status
 
-**Stage pointer:** `sonar gate — findings fixed, awaiting re-analysis`
+**Stage pointer:** `DONE — all gates passed; awaiting the maintainer's merge`
 
-**Next action:** Confirm CI green and the Sonar list back to zero on this head, then merge
-close-out (`riviera-sdlc` `references/pr-gates.md` §3).
+**Next action:** Merge PR #1095. Every gate is run and clear on head `f05c538`: CI green (all 8
+checks), the review gate run in full, the Sonar list pulled from the API and empty. The agent does
+not merge; the two post-merge items are GitHub-only (close-out steps 1 and 6 — the issue closes via
+`Closes #1082`, and the PR-activity subscription ends with the merge).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -238,7 +240,8 @@ close-out (`riviera-sdlc` `references/pr-gates.md` §3).
 | 2 — the venue-switch leg | ✅ | this commit |
 | 3 — generalization pass + e2e in real Chromium | ✅ | `e426a04` |
 | 4 — review-gate findings (F-1 … F-5) | ✅ | `2be2e22d`, `8693d63` |
-| 5 — sonar-gate findings (F-6) | ✅ | this commit |
+| 5 — sonar-gate findings (F-6) | ✅ | `f05c538` |
+| 6 — close-out (docs-freshness sweep + final state) | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -380,22 +383,47 @@ Test `frontend/src/app/operator/requests-tab.spec.ts`
 - [x] **AC-12:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- operator-requests`
   → 8 passed. Verified at commit `<this commit>`.
 
+### Gate record (head `f05c538`)
+
+- **CI:** all 8 checks green — Backend, Frontend, Repo hygiene, CodeQL ×3, SonarCloud scan + Code Analysis.
+- **Review gate:** run in full via the §1 ladder rung 1 (`code-review:code-review`), range resolved
+  and verified by `check-review-range.mjs` (5 files, +718/−6, matched against the PR), with
+  `riviera-review-overlay` layered on. Five reviewers; F-1 … F-5 all resolved, none deferred.
+- **Sonar gate:** pulled from the API, not read off the badge — which mattered: the gate reported
+  **passed with 2 new issues** (F-6). Both fixed in code; re-analysis returns `total: 0`, new-code
+  coverage 97.2%, duplication 0.0%. `new_lines` = 145 on the earlier read confirms the analysis was
+  real rather than one of the three false zeros.
+- **`riviera-docs-freshness`:** **ran** over `5bceef0..f05c538` — **0 findings**. Step 2a: the slice
+  renames and removes no identifier, and the retired plan's slug is cited nowhere in the tree.
+  Step 2b: the slice makes `requests-tab` one more `focusMover()` adopter and adds one `[appBusy]`
+  binding, but no substrate doc states a count of either — `frontend/.claude/CLAUDE.md` and RV-FE-9
+  state the *rule* ("all three legs"), not a population, and both stay true. It adds no confirm
+  surface, so `check-focus-posture.mjs`'s own "8 confirm + 4 focus-trapped modals" note is unchanged;
+  `--all` reports `BUSY-1: 0 BUSY-2: 0 FOCUS-1: 0`.
+- **Plan-doc retirement sweep:** `docs/plans/operator-live-region-placement.md` (#1078, merged as
+  PR #1081) deleted; no citation of its slug exists outside `docs/plans/`, so nothing to repoint.
+  This plan is itself retired at the next close-out of any kind.
+- **Deviation, recorded rather than hidden:** §3 step 4 wants this final state in the PR's last
+  *code*-touching commit, never a commit of its own. It is in a commit of its own, because its
+  content is the Sonar outcome and Sonar only runs on a push — the gate cannot be recorded in the
+  commit whose push produces it. Cost: one extra CI cycle, which can only come back green.
+
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (justified N/A); invariant #2 untouched.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled (N/A, frontend-only).
-- [ ] **Payment/payout** section filled (N/A); invariant #8 untouched — accept still never self-confirms.
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — untouched.
-- [ ] Booking codes unguessable (invariant #7) — the queue stays code-less.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A.
-- [ ] **Frontend** standards met; no `as any`; `scripts/check-focus-posture.mjs` output read, not just its exit code.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (justified N/A); invariant #2 untouched.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled (N/A, frontend-only).
+- [x] **Payment/payout** section filled (N/A); invariant #8 untouched — accept still never self-confirms.
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — untouched.
+- [x] Booking codes unguessable (invariant #7) — the queue stays code-less.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A.
+- [x] **Frontend** standards met; no `as any`; `scripts/check-focus-posture.mjs` output read, not just its exit code.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** (merged via **PR #1095**) — in a commit of its own rather than the last code-touching one, with the reason recorded in the Gate record above.
+- [x] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder *plus* `riviera-review-overlay`.
