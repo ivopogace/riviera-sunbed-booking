@@ -121,10 +121,13 @@ export class RequestsTab {
     this.loadError.set(true);
   }
 
-  /** Drop every venue-scoped signal — queue, notice, transient card state — and load fresh. */
+  /**
+   * Drop every venue-scoped signal — queue, notice, transient card state — and load fresh.
+   *
+   * <p>A decline confirm is the one piece of that teardown which can be holding focus, so the
+   * switch moves focus off it first (WCAG 2.4.3), as `payouts-tab` does for its statement.
+   */
   private resetForVenue(): void {
-    // An in-place switch tears down whatever the old venue was showing. A confirm panel is the one
-    // piece of that which holds focus, so the teardown owes a leg like any other (RV-FE-9).
     if (this.declineConfirm().size > 0) {
       this.focusAfterRender(TAB);
     }
@@ -201,6 +204,13 @@ export class RequestsTab {
     this.focusAfterRender(landing, EMPTY);
   }
 
+  /**
+   * Send the accept or decline and settle the card on the answer.
+   *
+   * <p>The decline confirm stays up for the whole round trip, and closes only when this settles:
+   * tearing it down here would destroy the button just pressed and strand focus (WCAG 2.4.3) for
+   * the entire in-flight window, and it is what makes the panel's own `[appBusy]` meaningful.
+   */
   private decide(bookingId: number, action: 'accept' | 'decline'): void {
     const venueId = this.venueId();
     if (venueId === undefined || this.isDeciding(bookingId)) {
@@ -208,9 +218,6 @@ export class RequestsTab {
     }
     const epoch = this.epoch;
     this.notice.set(undefined);
-    // The confirm panel stays up for the whole round trip (the `payouts-tab` shape): tearing it down
-    // here would destroy the button that was just pressed and strand focus for the entire in-flight
-    // window — which is also what makes its own `[appBusy]` meaningful. It closes when this settles.
     this.deciding.update((s) => new Set(s).add(bookingId));
     const call =
       action === 'accept'
@@ -267,8 +274,7 @@ export class RequestsTab {
         this.focusAfterRender(NOTICE);
         break;
       default:
-        // The retryable failure destroys nothing — the card and its confirm both stay, so focus is
-        // still on the button that was pressed and moving it would cost the retry affordance.
+        // Destroys nothing, so nothing moves: the pressed button still holds focus, and holds the retry.
         this.notice.set(decisionFailureNotice(action, reason));
         break;
     }
@@ -402,8 +408,6 @@ export class RequestsTab {
 /** How often the open Requests tab re-reads the queue + refreshes the urgency clock (60s). */
 const REFRESH_MS = 60_000;
 
-// Focus targets. Each per-card id carries the booking id: `focusMover()` resolves by
-// `querySelector`, which takes the FIRST match, so a shared id would focus the wrong card (#1082).
 /** The hoisted outcome region — it carries the words for every leg that settles a decision. */
 const NOTICE = 'requests-notice';
 /** The all-caught-up panel — the fallback for the one leg that settles without writing a notice. */
@@ -411,6 +415,10 @@ const EMPTY = 'requests-empty';
 /** The tab itself — where focus goes when a venue switch takes the whole surface with it. */
 const TAB = 'requests-tab';
 
+/**
+ * The per-card focus targets. Each carries the booking id because {@link focusMover} resolves by
+ * `querySelector`, which takes the first match — a queue-wide id would focus the wrong card.
+ */
 function rowTestId(bookingId: number): string {
   return `request-row-${bookingId}`;
 }

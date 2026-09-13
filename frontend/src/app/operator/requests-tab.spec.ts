@@ -309,9 +309,7 @@ describe('RequestsTab (#176)', () => {
     http.expectNone((r) => r.method === 'POST');
   });
 
-  // ---- Focus legs (#1082, WCAG 2.4.3 / RV-FE-9) ----
-  // Every transition below destroys the control the operator just pressed. The assertions name the
-  // exact landing element, not merely "not <body>": an off-by-one neighbour would pass the weaker form.
+  // Each leg names its exact landing element: "not <body>" would pass on an off-by-one neighbour.
 
   it('moves focus onto the confirm button when the decline confirm opens', async () => {
     render([request({ bookingId: 11 }), request({ bookingId: 12, setId: 2 })]);
@@ -374,8 +372,7 @@ describe('RequestsTab (#176)', () => {
     byId('request-confirm-decline-11')!.click();
     await settle();
 
-    // Snapshot the in-flight state, THEN settle the round trip: a failing assertion must not leave
-    // the POST open, or `http.verify()` fails every later test in the file instead of just this one.
+    // Snapshot, THEN settle: a failing assertion here must not leave the POST open for afterEach.
     const confirm = byId('request-confirm-decline-11');
     const busy = confirm?.getAttribute('aria-disabled');
     const focused = document.activeElement;

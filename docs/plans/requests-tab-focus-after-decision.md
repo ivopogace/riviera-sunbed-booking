@@ -223,10 +223,10 @@ N/A — no contract change. No endpoint, DTO, or error code is touched.
 
 ## Execution status
 
-**Stage pointer:** `PR — ready for review`
+**Stage pointer:** `review gate — running`
 
-**Next action:** Mark PR #1095 ready for review, then run the Review gate per `riviera-sdlc`
-`references/pr-gates.md` §1, then the Sonar gate, then merge close-out.
+**Next action:** Collect the five review agents' findings, resolve them, then the Sonar gate,
+then merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -242,6 +242,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI — `Repo hygiene (diff-scoped)`, `check-inline-comments.mjs` | RV-STYLE-1, 11 hits across 4 files: seven multi-line inline comments (the rule is one line or not written) and two carrying `(#1082)` provenance. Root cause worth recording — the guard is also a local `PostToolUse` hook, but this session wrote every file through Python heredocs in Bash rather than Edit/Write, so the hook never fired and the first signal was CI. Running it by hand is the fix on that path | fixed: the load-bearing rationale moved into TSDoc (doc comments are exempt from the one-line rule, not from the provenance rule), the rest shortened to one line, provenance dropped |
 
 ---
 

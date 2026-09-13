@@ -302,8 +302,7 @@ test('keeps focus off body across every request decision (WCAG 2.4.3, #1082)', a
   await page.getByRole('button', { name: 'Keep it' }).click();
   await expect(page.getByTestId('request-decline-12')).toBeFocused();
 
-  // Settled, queue not empty: the pressed card leaves, so focus lands on the row that took its
-  // place — not the notice at the top, which would cost the operator their place in the queue.
+  // Settled with cards left: focus lands on the row that took the pressed one's place.
   await page.getByRole('button', { name: /Accept.*from Ana Guest/ }).click();
   await expect(page.getByTestId('request-card')).toHaveCount(1);
   await expect(page.getByTestId('request-row-12')).toBeFocused();
