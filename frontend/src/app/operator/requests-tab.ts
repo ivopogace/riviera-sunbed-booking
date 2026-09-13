@@ -1,5 +1,14 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  Component,
+  DOCUMENT,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
 import { TouchTarget } from '../shared/touch-target';
@@ -67,6 +76,7 @@ export class RequestsTab {
   private readonly console = inject(OperatorConsoleService);
   private readonly badge = inject(PendingRequestsStore);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly document = inject(DOCUMENT);
   protected readonly operator = inject(OperatorAuth);
 
   /** Every decision here destroys the control that was just activated (WCAG 2.4.3) — the card leaves
@@ -358,9 +368,13 @@ export class RequestsTab {
         if (this.epoch !== epoch) {
           return; // a venue switch superseded this read — never seed the new venue's queue/badge (#180)
         }
+        const landing = this.landingIfFocusLeaves(r);
         this.requests.set(r);
         this.badge.set(r.length);
         this.pruneTransient(r);
+        if (landing !== undefined) {
+          this.focusAfterRender(landing, TAB);
+        }
         if (initial) {
           this.loaded.set(true);
         }
@@ -379,6 +393,38 @@ export class RequestsTab {
         }
       },
     });
+  }
+
+  /**
+   * Where focus has to go when a read is about to drop the row it is sitting in, or undefined when
+   * it is not sitting in one that leaves.
+   *
+   * <p>The decision legs cover rows the operator removed. This covers the ones nobody here removed:
+   * the queue is re-read on a 60s poll and after every action, so the expiry sweep or another
+   * operator's device can take the row focus is in, with no local action behind it. `@for` tracks
+   * by booking id, so a row that survives the read keeps its node and its focus — only a row that
+   * leaves strands it (WCAG 2.4.3). Lands on the nearest row that survives, else the empty state.
+   */
+  private landingIfFocusLeaves(fresh: readonly PendingRequestItem[]): string | undefined {
+    const focused = this.focusedRow();
+    const survives = (id: number): boolean => fresh.some((r) => r.bookingId === id);
+    if (focused === undefined || survives(focused)) {
+      return undefined;
+    }
+    const queue = this.requests();
+    const gone = queue.findIndex((r) => r.bookingId === focused);
+    const below = queue.slice(gone + 1).find((r) => survives(r.bookingId));
+    const above = [...queue.slice(0, gone)].reverse().find((r) => survives(r.bookingId));
+    const neighbour = below ?? above;
+    return neighbour === undefined ? EMPTY : rowTestId(neighbour.bookingId);
+  }
+
+  /** The booking id of the queue row keyboard focus is inside, if it is inside one at all. */
+  private focusedRow(): number | undefined {
+    const active = this.document.activeElement;
+    const row = active?.closest(`[data-testid^="${ROW_PREFIX}"]`);
+    const id = Number(row?.getAttribute('data-testid')?.slice(ROW_PREFIX.length));
+    return row == null || Number.isNaN(id) ? undefined : id;
   }
 
   /** Drop stale ids from the transient sets once their card leaves the freshly-read queue (e.g. a poll
@@ -420,8 +466,9 @@ const TAB = 'requests-tab';
  * `querySelector`, which takes the first match — a queue-wide id would focus the wrong card.
  */
 function rowTestId(bookingId: number): string {
-  return `request-row-${bookingId}`;
+  return `${ROW_PREFIX}${bookingId}`;
 }
+const ROW_PREFIX = 'request-row-';
 function expiredRaceTestId(bookingId: number): string {
   return `expired-race-${bookingId}`;
 }

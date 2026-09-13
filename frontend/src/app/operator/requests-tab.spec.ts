@@ -617,6 +617,55 @@ describe('RequestsTab (#176)', () => {
     expect(store.count()).toBe(2);
   });
 
+  it('locks “Keep it” once the decline it would back out of is already in flight', async () => {
+    render([request({ bookingId: 11 })]);
+    byId('request-decline-11')!.click();
+    await settle();
+    byId('request-confirm-decline-11')!.click();
+    fixture.detectChanges();
+
+    // The POST is already gone; backing out now would say it was kept and decline it anyway.
+    const keep = button(/Keep it/);
+    const busy = keep.getAttribute('aria-disabled');
+    keep.click();
+    fixture.detectChanges();
+    const stillOpen = byId('decline-confirm') !== null;
+
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/decline'))
+      .flush({ bookingId: 11, status: 'DECLINED' });
+    fixture.detectChanges();
+    flushReconcile([]);
+    await settle();
+
+    expect(busy).toBe('true');
+    expect(stillOpen).toBe(true);
+  });
+
+  it('moves focus again when a re-read drops the row focus is sitting in', async () => {
+    render([
+      request({ bookingId: 11 }),
+      request({ bookingId: 12, setId: 2 }),
+      request({ bookingId: 13, setId: 1 }),
+    ]);
+
+    byId('request-row-11')!.querySelector('button')!.click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/accept'))
+      .flush({ bookingId: 11, status: 'AWAITING_PAYMENT' });
+    fixture.detectChanges();
+    await settle();
+    expect(document.activeElement).toBe(byId('request-row-12'));
+
+    // Server truth drops 12 as well — nobody here removed it. Same path the 60s poll takes.
+    flushReconcile([request({ bookingId: 13, setId: 1 })]);
+    await settle();
+
+    expect(byId('request-row-12')).toBeNull();
+    expect(document.activeElement).toBe(byId('request-row-13'));
+  });
+
   it('moves focus to the tab when a venue switch tears down an open confirm', async () => {
     render([request({ bookingId: 11 })]);
     byId('request-decline-11')!.click();

@@ -34,7 +34,10 @@ also caught that #1078's merged plan doc is still in `docs/plans/` awaiting its 
 jsdom, then mutation-checked by deleting the `focusAfterRender` call and watching only that
 leg go red) · `riviera-review-overlay` (RV-FE-9's six-item checklist **is** the acceptance
 criteria here; runs again at the review gate) · `riviera-docs-freshness` (<pending — runs at
-close-out over `5bceef0..HEAD`>) · `riviera-frontend` (placement: all four legs are
+close-out over `5bceef0..HEAD`>) · `riviera-local-debug` (loaded before the session's
+first `npm`; its cloud-session recipes are what this slice actually ran — `git fetch --unshallow`
+before any history or `--diff origin/main` claim, and `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium`
+for the mocked Playwright suite) · `riviera-frontend` (placement: the legs are
 component-local, no new `shared/` primitive — `focus-after-render.ts` already is the
 primitive; the e2e goes in the CI-safe mocked suite) · `riviera-tailwind` (rule 6 — the
 `@layer base` ring reaches `button:focus-visible` only, so the `<li>` landing spot paints no
@@ -223,17 +226,18 @@ N/A — no contract change. No endpoint, DTO, or error code is touched.
 
 ## Execution status
 
-**Stage pointer:** `review gate — running`
+**Stage pointer:** `review gate — findings resolved, awaiting CI`
 
-**Next action:** Collect the five review agents' findings, resolve them, then the Sonar gate,
-then merge close-out.
+**Next action:** Confirm CI green on this head, then the Sonar gate
+(`riviera-sdlc` `references/pr-gates.md` §2 — pull the issue list, not just pass/fail), then merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — per-card test hooks + the two synchronous legs (open, back-out) | ✅ | `71c425f` (plan), this commit |
 | 1 — the settled legs (accept, decline, stale drop, race, dismiss) + the in-flight confirm move | ✅ | this commit |
 | 2 — the venue-switch leg | ✅ | this commit |
-| 3 — generalization pass + e2e in real Chromium + close-out | ✅ | this commit |
+| 3 — generalization pass + e2e in real Chromium | ✅ | `e426a04` |
+| 4 — review-gate findings (F-1 … F-5) | ✅ | `2be2e22d`, this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -242,16 +246,20 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | CI — `Repo hygiene (diff-scoped)`, `check-inline-comments.mjs` | RV-STYLE-1, 11 hits across 4 files: seven multi-line inline comments (the rule is one line or not written) and two carrying `(#1082)` provenance. Root cause worth recording — the guard is also a local `PostToolUse` hook, but this session wrote every file through Python heredocs in Bash rather than Edit/Write, so the hook never fired and the first signal was CI. Running it by hand is the fix on that path | fixed: the load-bearing rationale moved into TSDoc (doc comments are exempt from the one-line rule, not from the provenance rule), the rest shortened to one line, provenance dropped |
+| F-1 | CI — `Repo hygiene (diff-scoped)`, `check-inline-comments.mjs` | RV-STYLE-1, 11 hits across 4 files: seven multi-line inline comments (the rule is one line or not written) and two carrying `(#1082)` provenance. Root cause worth recording — the guard is also a local `PostToolUse` hook, but this session wrote every file through Python heredocs in Bash rather than Edit/Write, so the hook never fired and the first signal was CI. Running it by hand is the fix on that path | fixed: the load-bearing rationale moved into TSDoc (doc comments are exempt from the one-line rule, not from the provenance rule), the rest shortened to one line, provenance dropped. Two review agents found the same thing independently, one noting PR #1081 carried an identical finding on this very file |
+| F-2 | review (shallow bug scan) | A **server-driven** read that drops the row focus is sitting in strands it on `<body>` — the same WCAG 2.4.3 defect this slice exists to fix, reached through `fetchQueue` (the 60s poll, or any post-action reconcile) instead of a decision. Partly pre-existing, but this slice's own change widens the window: the decline confirm now stays mounted, and focused, for the whole in-flight request. My phase-3 generalization sweep missed it because I framed the mechanism as "removes the row carrying the control that **invoked** it" — which excludes a removal nobody here invoked | fixed: `landingIfFocusLeaves()` on every `fetchQueue` success — it reads the focused row, and when the fresh queue drops it, lands on the nearest surviving row, else the empty state. Pinned by `moves focus again when a re-read drops the row focus is sitting in`; mutant G (leg removed) reddens it |
+| F-3 | review (git-history agent + comment agent, independently) | **Correctness, not just focus.** Keeping the confirm open through the request left **Keep it** live, with no `[appBusy]` — unlike `ConfirmPanel`, whose Cancel is bound busy precisely because "neither action is safe mid-write". An operator who backed out mid-flight got the panel dismissed and the request declined anyway, and was told so. Introduced by this slice's own F-in-flight change; `check-focus-posture.mjs` cannot see a *missing* `[appBusy]`, so nothing would have caught it | fixed: `[appBusy]="isDeciding(row.bookingId)"` + `aria-disabled:opacity-60` on **Keep it**, matching its two sibling buttons and `ConfirmPanel`'s contract. Pinned by `locks “Keep it” once the decline it would back out of is already in flight`; mutant H reddens it |
+| F-4 | review (CLAUDE.md adherence) | RV-PROC-1: `riviera-local-debug` was loaded and its cloud-session recipes were what the slice actually ran, but it was missing from **Skills consulted** | fixed: recorded, naming the two recipes used |
+| F-5 | review (CLAUDE.md adherence) | The plan asserted `docs/plans/operator-live-region-placement.md` was deleted and marked phase 3 ✅, but no commit deleted it — the state store claimed a step the diff did not carry | fixed: the file is deleted in this commit, and the retirement is no longer deferred to a step after the phase that claimed it |
 
 ---
 
 ## File structure
 
 - `docs/plans/requests-tab-focus-after-decision.md` — this plan.
-- `docs/plans/operator-live-region-placement.md` — **deleted** at close-out: #1078's plan, its
-  PR #1081 merged at `5bceef0`, and `riviera-docs-freshness` § *Plan-doc retirement* retires a
-  merged plan at the next close-out, which is this one.
+- `docs/plans/operator-live-region-placement.md` — **deleted**: #1078's plan, its PR #1081 merged
+  at `5bceef0`, and `riviera-docs-freshness` § *Plan-doc retirement* retires a merged plan at the
+  next close-out, which is this one.
 - `frontend/src/app/operator/requests-tab.ts` — `focusMover()` + the six focus legs.
 - `frontend/src/app/operator/requests-tab.html` — the four additive per-card `data-testid`s.
 - `frontend/src/app/operator/requests-tab.spec.ts` — AC-1 … AC-11.
@@ -332,8 +340,7 @@ Test `frontend/src/app/operator/requests-tab.spec.ts`
 
 ## Phase 3 — Generalization pass, real-browser proof, close-out
 
-**Files:** Modify `frontend/e2e/operator-requests.e2e.ts` · Delete
-`docs/plans/operator-live-region-placement.md` · Modify this plan
+**Files:** Modify `frontend/e2e/operator-requests.e2e.ts` · Modify this plan
 
 - [x] **Step 1: Write the failing test** — AC-12, split into two specs (the four-leg decision
       walk, and the lost-race + dismiss pair).
