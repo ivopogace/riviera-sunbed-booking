@@ -118,13 +118,13 @@ stands in for `bugfix/requests-tab-focus-after-decision`.
   `<body>`. *Seam:* the parent route's `paramMap` + the rendered tab · *Pinned by:*
   `RequestsTab (#176) › moves focus to the tab when a venue switch tears down an open confirm`
 
-- [ ] **AC-12 (real browser, all legs):** Given the mocked Requests tab in Chromium, when the
+- [x] **AC-12 (real browser, all legs):** Given the mocked Requests tab in Chromium, when the
   operator walks open → back-out → accept → decline → dismiss, then
   `document.activeElement` is never `<body>` at any leg and axe reports no serious violation.
   *Seam:* `frontend/e2e/operator-requests.e2e.ts` against the `page.route` mocks ·
   *Pinned by:* `operator-requests.e2e.ts › keeps focus off body across every request decision (WCAG 2.4.3)`
 
-- [ ] **AC-13 (no drift):** Given the existing Requests-tab unit, a11y, contrast and e2e
+- [x] **AC-13 (no drift):** Given the existing Requests-tab unit, a11y, contrast and e2e
   specs, when the change lands, then all of them still pass unchanged — the four new
   per-card `data-testid`s are additive and no existing test hook is renamed.
   *Seam:* the existing spec files · *Pinned by:* the suite itself (`npm test`, `npm run test:e2e:a11y -- operator-requests`)
@@ -163,13 +163,13 @@ stands in for `bugfix/requests-tab-focus-after-decision`.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | The landing id is computed from `requests()` *after* `removeCard` mutates it, so the "neighbour" is off by one | med | med | Compute `landingAfterRemoving()` before `removeCard()`; AC-1/AC-6/AC-9 assert the *specific* neighbour id (`request-row-12`), not merely "focus is not body", so an off-by-one fails | claude | closed — mutant B in phase 1 |
-| R-2 | `reconcile()` fires right after the focus move and its response re-renders the queue, stealing focus back to `<body>` | med | high | `@for` tracks `row.bookingId`, so a reconcile that returns the same ids reuses the same DOM nodes and focus survives. AC-1 flushes the reconcile GET before asserting; AC-12 proves it in a real browser | claude | open |
+| R-2 | `reconcile()` fires right after the focus move and its response re-renders the queue, stealing focus back to `<body>` | med | high | `@for` tracks `row.bookingId`, so a reconcile that returns the same ids reuses the same DOM nodes and focus survives. AC-1 flushes the reconcile GET before asserting; AC-12 proves it in a real browser | claude | closed — AC-12 green in Chromium (phase 3) |
 | R-3 | The `<li>` / `<output>` / empty-panel landing spots get no focus ring — the `@layer base` rule is `button:focus-visible` only (`riviera-tailwind` rule 6), so a **sighted** keyboard operator sees no indicator of where focus went | high | low | Accepted, not mitigated with a new ring: every existing non-button landing spot in the tree behaves the same (`admin-review-{id}`, `admin-photo-slot-{slot}`, `payouts-tab`), and Tailwind's own docs define `focus-visible` as "focused using the keyboard" with no stated behaviour for programmatic focus on `tabindex="-1"`, so a ring built on it would be a browser-heuristic gamble. WCAG 2.4.7 governs keyboard-*reachable* controls; a `tabindex="-1"` waypoint is not one. Revisit as its own slice if the maintainer wants a ring convention for landing spots | claude | open (accepted) |
 | R-4 | Not adopting `shared/confirm-panel.ts` leaves a second confirm idiom in the operator console | low | low | Deliberate — see Non-goals. The inline confirm keeps the card's own visual family and adopting the shared panel would be a restyle inside a WCAG bug fix | claude | open (accepted) |
-| R-5 | Four new per-card `data-testid`s collide with, or shadow, the existing shared ones (`request-card`, `decline-confirm`, `expired-race`, `dismiss-expired`) that unit + e2e specs query | med | med | The new ids go on *different* elements (the `<li>`, the two buttons, the inner `<output>`), so every existing hook keeps its element and its meaning — `riviera-tailwind` rule 2's inert-marker rule. AC-13 is the whole existing suite passing unchanged | claude | open |
+| R-5 | Four new per-card `data-testid`s collide with, or shadow, the existing shared ones (`request-card`, `decline-confirm`, `expired-race`, `dismiss-expired`) that unit + e2e specs query | med | med | The new ids go on *different* elements (the `<li>`, the two buttons, the inner `<output>`), so every existing hook keeps its element and its meaning — `riviera-tailwind` rule 2's inert-marker rule. AC-13 is the whole existing suite passing unchanged | claude | closed — all 6 pre-existing e2e + 23 pre-existing unit tests green, unchanged |
 | R-6 | `focusMover()` resolves by `querySelector`, which takes the **first** match — a shared id would focus the wrong card | high | high | Every per-card target id is suffixed with `bookingId`. AC-3/AC-4 act on the *second* card, and AC-1/AC-6/AC-9 land on `request-row-12` while `request-row-11` is the one pressed | claude | closed — phase 0 + 1 |
-| R-7 | Moving focus at the same moment the polite live region updates makes a screen reader drop the outcome announcement that #1078 just repaired | low | med | The landing spot on the queue-empties leg **is** the notice, so its text is read as the focus target. On the neighbour-card leg the region is `aria-live="polite"`, which queues rather than interrupts. No regression to #1078's specs (AC-13) | claude | open |
-| R-8 | jsdom is not evidence for a focus claim | low | med | RV-FE-9's rule is that a claim about a *destroyed* control may be pinned in jsdom (only a *disabled*-control claim needs Chromium). Every leg here is a destroyed control. AC-12 adds the Chromium leg anyway | claude | open |
+| R-7 | Moving focus at the same moment the polite live region updates makes a screen reader drop the outcome announcement that #1078 just repaired | low | med | The landing spot on the queue-empties leg **is** the notice, so its text is read as the focus target. On the neighbour-card leg the region is `aria-live="polite"`, which queues rather than interrupts. No regression to #1078's specs (AC-13) | claude | closed — #1078's own spec (`announces the decision through a region that predates it`) still green |
+| R-8 | jsdom is not evidence for a focus claim | low | med | RV-FE-9's rule is that a claim about a *destroyed* control may be pinned in jsdom (only a *disabled*-control claim needs Chromium). Every leg here is a destroyed control. AC-12 adds the Chromium leg anyway | claude | closed — AC-12 green, and mutant F turns it red |
 
 ## Open questions / Assumptions
 
@@ -223,17 +223,17 @@ N/A — no contract change. No endpoint, DTO, or error code is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `PR — ready for review`
 
-**Next action:** Write AC-12's five-leg walk in `frontend/e2e/operator-requests.e2e.ts`, run the
-generalization sweep, then close out.
+**Next action:** Mark PR #1095 ready for review, then run the Review gate per `riviera-sdlc`
+`references/pr-gates.md` §1, then the Sonar gate, then merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — per-card test hooks + the two synchronous legs (open, back-out) | ✅ | `71c425f` (plan), this commit |
 | 1 — the settled legs (accept, decline, stale drop, race, dismiss) + the in-flight confirm move | ✅ | this commit |
 | 2 — the venue-switch leg | ✅ | this commit |
-| 3 — generalization pass + e2e in real Chromium + close-out | | |
+| 3 — generalization pass + e2e in real Chromium + close-out | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -334,17 +334,20 @@ Test `frontend/src/app/operator/requests-tab.spec.ts`
 **Files:** Modify `frontend/e2e/operator-requests.e2e.ts` · Delete
 `docs/plans/operator-live-region-placement.md` · Modify this plan
 
-- [ ] **Step 1: Write the failing test** — AC-12, the five-leg walk.
-- [ ] **Step 2: Run it, verify it fails** —
-      `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- operator-requests` → FAIL.
-- [ ] **Step 3: (no implementation — phases 0–2 already satisfy it; a green-on-first-run e2e
-      is recorded as such rather than claimed as red-green.)**
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: *a handler that removes the row /
-      panel carrying the control that invoked it, in a component that imports no
-      `focusMover()`*. Enumerate, judge each, record below.
-- [ ] **Step 6: Commit** — `git commit -m "Pin the request-decision focus legs in Chromium (#1082)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 1: Write the failing test** — AC-12, split into two specs (the four-leg decision
+      walk, and the lost-race + dismiss pair).
+- [x] **Step 2: Run it, verify it fails** — **it did not**: phases 0–2 already satisfy it, so both
+      specs passed on their first run. Recorded as such rather than claimed as red-green. They were
+      instead proved non-vacuous by mutation: with the four settled/open `focusAfterRender` calls
+      removed (mutant **F**), both go red on `expect(locator).toBeFocused()`.
+- [x] **Step 3: (no implementation needed — see step 2.)**
+- [x] **Step 4: Run it, verify it passes** —
+      `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- operator-requests`
+      → 8 passed (25.8s). This is also what closes R-2 and R-8: jsdom cannot show that the
+      post-decision reconcile leaves focus alone, and Chromium does.
+- [x] **Step 5: Generalization-audit pass** — two shapes swept, both closed. See the log below.
+- [x] **Step 6: Commit** — `git commit -m "Pin the request-decision focus legs in Chromium (#1082)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -355,13 +358,17 @@ Test `frontend/src/app/operator/requests-tab.spec.ts`
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-13 | phase 3 | **Shape 1 — a handler that removes the row carrying the control that invoked it.** Enumerated by mechanism: every component signal typed as a list, then those with a remove/dismiss/delete/discard/withdraw/drop handler, then each checked for a `focusMover()` import. A first, narrower net (`.filter(` inside `update(`) found only 4 and was widened rather than trusted, because `removeCard`-by-reassignment would have escaped it | `grep -rln 'signal<readonly .*\[\]>\|signal<.*\[\]>' src/app --include=*.ts \| grep -v '\.spec\.ts'` then the remove-verb + `focus-after-render` filter | 17 list-holding components → 5 with a removal handler: `admin-venue-photos`, `my-bookings`, `daily-view-tab`, `layout-editor`, `requests-tab`. All five already import `focusMover()`. The one hit without it, `core/device-local-bookings.ts`, is a `@Service` with no template | None — the population is closed by this slice. `requests-tab` was the last member missing the primitive |
+| 2026-09-13 | phase 3 | **Shape 2 — a branch teardown that unmounts the focused control** (confirm surfaces, focus-trapped modals). Enumerated by the repo's own tree-wide audit rather than a hand-rolled grep, which is what `--all` exists for | `node scripts/check-focus-posture.mjs --all` | `BUSY-1: 0  BUSY-2: 0  FOCUS-1: 0` — no standing site in the tree | None |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 – AC-11, AC-13:** `npm test` → all green.
-- [ ] **AC-12:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- operator-requests` → all green.
+- [x] **AC-1 – AC-11, AC-13:** `npm test` → 257 files, 3202 tests, all green. This slice adds 11 unit
+  specs (2 in phase 0, 8 in phase 1, 1 in phase 2) and changes no existing one.
+- [x] **AC-12:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- operator-requests`
+  → 8 passed. Verified at commit `<this commit>`.
 
 ## Self-review checklist (before merge / PR)
 

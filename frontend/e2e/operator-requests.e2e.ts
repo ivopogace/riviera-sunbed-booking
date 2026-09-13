@@ -289,3 +289,48 @@ test('an accept that lost the sweep race shows the dismissible expired-race copy
   await page.getByTestId('dismiss-expired').click();
   await expect(page.getByTestId('request-card').filter({ hasText: 'Ana Guest' })).toHaveCount(0);
 });
+
+test('keeps focus off body across every request decision (WCAG 2.4.3, #1082)', async ({ page }) => {
+  await mockRequests(page);
+  await signInAndOpenRequests(page);
+
+  // Open: the confirm replaces the Decline button that opened it, so focus follows the destructive one.
+  await page.getByTestId('request-decline-12').click();
+  await expect(page.getByTestId('request-confirm-decline-12')).toBeFocused();
+
+  // Back out: the confirm goes, so focus returns to the trigger it replaced.
+  await page.getByRole('button', { name: 'Keep it' }).click();
+  await expect(page.getByTestId('request-decline-12')).toBeFocused();
+
+  // Settled, queue not empty: the pressed card leaves, so focus lands on the row that took its
+  // place — not the notice at the top, which would cost the operator their place in the queue.
+  await page.getByRole('button', { name: /Accept.*from Ana Guest/ }).click();
+  await expect(page.getByTestId('request-card')).toHaveCount(1);
+  await expect(page.getByTestId('request-row-12')).toBeFocused();
+
+  // Settled, queue empties: nothing left to land on, so focus parks on the outcome.
+  await page.getByTestId('request-decline-12').click();
+  await expect(page.getByTestId('request-confirm-decline-12')).toBeFocused();
+  await page.getByRole('button', { name: 'Confirm decline' }).click();
+  await expect(page.getByTestId('requests-empty')).toBeVisible();
+  await expect(page.getByTestId('requests-notice')).toContainText('declined');
+  await expect(page.getByTestId('requests-notice')).toBeFocused();
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'request decision focus legs');
+});
+
+test('the lost sweep race and its dismiss both land focus (WCAG 2.4.3, #1082)', async ({
+  page,
+}) => {
+  await mockRequests(page, { 11: { status: 409, code: 'REQUEST_EXPIRED' } });
+  await signInAndOpenRequests(page);
+
+  // The card stays, flipped to the expired copy — focus lands on the copy that explains why.
+  await page.getByRole('button', { name: /Accept.*from Ana Guest/ }).click();
+  await expect(page.getByTestId('expired-race-11')).toBeFocused();
+
+  // Dismiss removes the card, and the queue still holds Bora's — so focus lands on that row.
+  await page.getByTestId('dismiss-expired').click();
+  await expect(page.getByTestId('request-row-12')).toBeFocused();
+});
