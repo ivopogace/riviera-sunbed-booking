@@ -123,6 +123,11 @@ export class RequestsTab {
 
   /** Drop every venue-scoped signal — queue, notice, transient card state — and load fresh. */
   private resetForVenue(): void {
+    // An in-place switch tears down whatever the old venue was showing. A confirm panel is the one
+    // piece of that which holds focus, so the teardown owes a leg like any other (RV-FE-9).
+    if (this.declineConfirm().size > 0) {
+      this.focusAfterRender(TAB);
+    }
     this.epoch++;
     this.venue.set(undefined);
     this.requests.set([]);
@@ -403,6 +408,8 @@ const REFRESH_MS = 60_000;
 const NOTICE = 'requests-notice';
 /** The all-caught-up panel — the fallback for the one leg that settles without writing a notice. */
 const EMPTY = 'requests-empty';
+/** The tab itself — where focus goes when a venue switch takes the whole surface with it. */
+const TAB = 'requests-tab';
 
 function rowTestId(bookingId: number): string {
   return `request-row-${bookingId}`;

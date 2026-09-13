@@ -113,7 +113,7 @@ stands in for `bugfix/requests-tab-focus-after-decision`.
   still rendered and focus has NOT moved off that button. *Seam:* as AC-1 · *Pinned by:*
   `RequestsTab (#176) › leaves focus on the pressed button when a retryable failure destroys nothing`
 
-- [ ] **AC-11 (venue switch out of an open confirm):** Given an open decline confirm, when the
+- [x] **AC-11 (venue switch out of an open confirm):** Given an open decline confirm, when the
   parent route's `:venueId` changes in place, then focus is on `requests-tab` rather than
   `<body>`. *Seam:* the parent route's `paramMap` + the rendered tab · *Pinned by:*
   `RequestsTab (#176) › moves focus to the tab when a venue switch tears down an open confirm`
@@ -223,15 +223,16 @@ N/A — no contract change. No endpoint, DTO, or error code is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Write phase 2's failing test (AC-11, the venue-switch leg).
+**Next action:** Write AC-12's five-leg walk in `frontend/e2e/operator-requests.e2e.ts`, run the
+generalization sweep, then close out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — per-card test hooks + the two synchronous legs (open, back-out) | ✅ | `71c425f` (plan), this commit |
 | 1 — the settled legs (accept, decline, stale drop, race, dismiss) + the in-flight confirm move | ✅ | this commit |
-| 2 — the venue-switch leg | | |
+| 2 — the venue-switch leg | ✅ | this commit |
 | 3 — generalization pass + e2e in real Chromium + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -289,8 +290,9 @@ Test `frontend/src/app/operator/requests-tab.spec.ts`
       `npm test -- --include src/app/operator/requests-tab.spec.ts` → 7 of 31 red
       (`document.activeElement` is `<body>`). AC-10 asserts that focus does *not* move and is
       therefore green by construction before the change — recorded as such rather than claimed
-      as red-green; it is a regression guard against a later over-eager leg, and mutant D below
-      (moving focus to the notice on the retryable path) turns it red.
+      as red-green; it is a regression guard against a later over-eager leg. Mutant **D** — adding
+      `focusAfterRender(NOTICE)` to the retryable-failure branch — was run and turns exactly AC-10
+      red, so the guard is real rather than vacuous.
 - [x] **Step 3: Minimal implementation** — `landingAfterRemoving()`; the `declineConfirm`
       teardown moved out of `decide()`'s prologue into each settle handler; the focus move in the
       success handler, the three `onDecisionError` branches that destroy something, and
@@ -312,15 +314,18 @@ Test `frontend/src/app/operator/requests-tab.spec.ts`
 **Files:** Modify `frontend/src/app/operator/requests-tab.ts` ·
 Test `frontend/src/app/operator/requests-tab.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — AC-11.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- requests-tab.spec` → FAIL.
-- [ ] **Step 3: Minimal implementation** — in `resetForVenue()`, before the signals are
+- [x] **Step 1: Write the failing test** — AC-11.
+- [x] **Step 2: Run it, verify it fails** —
+      `npm test -- --include src/app/operator/requests-tab.spec.ts` → 1 of 32 red.
+- [x] **Step 3: Minimal implementation** — in `resetForVenue()`, before the signals are
       cleared, move focus to `requests-tab` when a decline confirm was open (the
       `payouts-tab.ts` `statementOpen()` shape).
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- requests-tab` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — deferred to phase 3.
-- [ ] **Step 6: Commit** — `git commit -m "Move focus off a decline confirm a venue switch tears down (#1082)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** —
+      `npm test -- --include "src/app/operator/requests-tab*.spec.ts"` → 3 files, 56 tests, green.
+      Mutant **E** (the `focusAfterRender(TAB)` call removed) turns exactly AC-11 red.
+- [x] **Step 5: Generalization-audit pass** — deferred to phase 3.
+- [x] **Step 6: Commit** — `git commit -m "Move focus off a decline confirm a venue switch tears down (#1082)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 

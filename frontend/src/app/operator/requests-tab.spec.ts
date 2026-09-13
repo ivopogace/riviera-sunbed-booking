@@ -620,6 +620,31 @@ describe('RequestsTab (#176)', () => {
     expect(store.count()).toBe(2);
   });
 
+  it('moves focus to the tab when a venue switch tears down an open confirm', async () => {
+    render([request({ bookingId: 11 })]);
+    byId('request-decline-11')!.click();
+    await settle();
+    expect(document.activeElement).toBe(byId('request-confirm-decline-11'));
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/booking-requests'))
+      .flush([]);
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/2') &&
+          !r.url.includes('/booking-requests'),
+      )
+      .flush({ id: 2, name: 'W', beach: 'Dhermi', region: 'Riviera', sets: SEED_SETS });
+    await settle();
+
+    // The switch destroyed the confirm focus was sitting in — a teardown owes a leg too (RV-FE-9).
+    expect(document.activeElement).toBe(byId('requests-tab'));
+  });
+
   it('ignores the old venue’s late queue response after a venue switch (#180)', () => {
     configure();
     params$.next(convertToParamMap({ venueId: '2' }));
