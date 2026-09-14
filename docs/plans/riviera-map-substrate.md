@@ -334,6 +334,9 @@ has zero citations outside `docs/plans/` and is `git rm`'d in the close-out comm
 - `docs/deploy/production-hardening.md` — CSP note names MapLibre
 - `RESPONSIBILITIES.md` — § *Platform edge* gains the map-resources paragraph
 - `CONTEXT.md` — **Riviera map**, **Venue location**
+- `CLAUDE.md` — the Platform-edge summary's `/map/**` clause (docs-freshness flag)
+- `.claude/skills/riviera-frontend/SKILL.md` — the third adapter swap and the `shared/` placement precedent (docs-freshness flag)
+- `docs/plans/requests-tab-focus-after-decision.md` — retired: its PR #1082 merged, no citations outside `docs/plans/`
 - `frontend/package.json`, `frontend/package-lock.json` — `maplibre-gl`, `pmtiles`
 - `frontend/angular.json` — copies MapLibre's stylesheet to `vendor/` as an asset
 - `frontend/src/tailwind.css` — the MapLibre stylesheet import
