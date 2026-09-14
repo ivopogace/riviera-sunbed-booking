@@ -124,10 +124,14 @@ stands in for `feature/riviera-map-substrate`.
 - [x] **AC-9:** Given the fake engine on a phone viewport, when the map is opened, then
   "© OpenStreetMap contributors" is visible, the zoom buttons are labelled and measure ≥ 44 × 44,
   the "Skip map" control is reachable by Tab and moves focus past the map, and axe reports no
-  serious violation with the map open; the switch buttons meet the floor on `phone` and `fold`.
-  *Seam:* the rendered page (Playwright + axe + `expectTouchTargets`) · *Pinned by:*
-  `discover-map.e2e.ts` › `map chrome is labelled, skippable and axe-clean`,
-  `touch-targets-tourist.e2e.ts` › `Discover with the map open`
+  serious violation with the map open; the switch and zoom buttons meet the floor at the tourist
+  sweep's phone width (390 px — that sweep runs at its own fixed width, not under the `phone`/`fold`
+  projects, which cover the consoles) and opt out of double-tap zoom. *Seam:* the rendered page
+  (Playwright + axe + `expectTouchTargets` + `expectTouchManipulation`) · *Pinned by:*
+  `discover-map.e2e.ts` › `map chrome is labelled, skippable and axe-clean; the switch alternates
+  the panels on a phone`, `touch-targets-tourist.e2e.ts` › `home — the map view, with its zoom
+  controls and the skip stop`, `mobile-zoom-tourist.e2e.ts` › `the Discover switch and the map zoom
+  controls keep their double-tap`
 - [x] **AC-10:** Given `/legal/privacy`, when it renders, then a section names the self-hosted map,
   OpenStreetMap, that tile requests hit our own origin and that no third party sees them; the
   legal-pages e2e and the privacy a11y spec stay green. *Seam:* the page's DOM · *Pinned by:*
@@ -270,9 +274,9 @@ component never reads inside it.
 
 ## Execution status
 
-**Stage pointer:** `CI gate → PR (phase 8)`
+**Stage pointer:** `DONE — merged via PR #1102`
 
-**Next action:** push, check the CI run on PR #1102, merge `origin/main` in, mark ready for review, then the review gate per `references/pr-gates.md` §1.
+**Next action:** none — merge close-out steps 1–3 (issue closed by the PR, the epic #806 checklist ticked with PR #1102, #1103 carries the archive run) are GitHub edits after the merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -284,7 +288,7 @@ component never reads inside it.
 | 5 — Discover list/map switch + `@defer` + home specs | ✅ | phase-5 commit |
 | 6 — mocked e2e: switch/a11y/touch (fake), ordering + network guard (real), fixture archive | ✅ | phase-6 commit |
 | 7 — ADR-0022, privacy paragraph + spec, CONTEXT.md, CSP note | ✅ | `e5935128` (+ the worker/Stripe corrections in the phase-6 commit) |
-| 8 — gates: CI green, merge main, ready-for-review, review + Sonar, docs-freshness | ⏳ | |
+| 8 — gates: CI green, merge main (already contained), ready-for-review, review gate (six findings, all fixed), Sonar list, docs-freshness | ✅ | review-fix commit; merged via PR #1102 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -310,6 +314,12 @@ has zero citations outside `docs/plans/` and is `git rm`'d in the close-out comm
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-6 | review gate (reviewer 1 and reviewer 5; RV-PROC-1) | AC-9 claimed the switch buttons were measured "on `phone` and `fold`" by a test name that does not exist; the tourist sweep runs at its own 390 px and the `phone`/`fold` projects cover the consoles | fixed — AC-9 and its verification line now name the real tests and widths (review-fix commit) |
+| F-5 | review gate (reviewer 1; RV-FE-9) | a resize across `lg` hides the panel the switch is not showing; focus inside it (a zoom button) was stranded on `<body>` with no `focusMover()` | fixed — `Home.rescueFocusFromHiddenPanel()` lands it on the count block; `home.spec.ts` › `moves focus off a panel that a resize below lg hides` (review-fix commit) |
+| F-4 | review gate (reviewer 2, bug scan) | `FakeMapHandle.destroy()` cleared the listener map but not the sets a queued `load` microtask still held, so a handler registered in the same tick still fired after destroy | fixed — the sets are emptied too; `fake-map-engine.spec.ts` › `never reports load after destroy…` (review-fix commit) |
+| F-3 | review gate (reviewer 2, bug scan) | `Path.toUri()` appends the trailing slash only for a directory that already exists, so a fresh checkout booting before `platform/map/` exists would resolve every map path one level up | fixed — `MapResourcesConfig.resourceLocation()` adds it by hand; `MapResourcesConfigTest` (review-fix commit) |
+| F-2b | review gate (reviewer 4, prior-PR comments #1047/#1063) | the four new tap-twice controls (List/Map, zoom ±) carried no `touch-manipulation`, so a fast second tap zooms the page — on a map whose own gesture is double-tap zoom | fixed — `touch-manipulation` on all four; `mobile-zoom-tourist.e2e.ts` › `the Discover switch and the map zoom controls keep their double-tap` (review-fix commit) |
+| F-2 | review gate (reviewer 3, git-history context; RV-FE-10) | below `lg` with the map open, a failed reload rendered the `role="alert"` failure panel inside the hidden list panel — out of the accessibility tree and invisible, on top of an unrelated map | fixed — the failure panel is hoisted above both panels; `home.spec.ts` › `keeps a failed reload visible while the map is open below lg` pins it (review-fix commit) |
 | F-1 | the network guard (AC-8), first real-engine run | `https://js.stripe.com/dahlia/stripe.js` is requested on Discover: importing `@stripe/stripe-js` injects the script as a side effect of the app booting, on every page — contradicting the "Stripe.js on the payment surface only" posture the privacy policy states | fixed — `booking/stripe-payment.gateway.ts` imports `loadStripe` from `@stripe/stripe-js/pure`, so the script loads only when a Payment Element mounts (phase-6 commit) |
 
 ---
@@ -320,6 +330,8 @@ has zero citations outside `docs/plans/` and is `git rm`'d in the close-out comm
 - `platform/src/main/java/ai/riviera/platform/MapResourcesConfig.java` — `/map/**` → `riviera.map.location` with cache control; root-package edge config
 - `platform/src/main/resources/application.properties` — `riviera.map.location=file:map/`
 - `platform/src/test/java/ai/riviera/platform/MapResourcesTest.java` — AC-1 (`@WebMvcTest` + temp-dir fixture)
+- `platform/src/test/java/ai/riviera/platform/MapResourcesConfigTest.java` — F-3: the served location keeps its trailing slash before the directory exists
+- `frontend/e2e/mobile-zoom-tourist.e2e.ts` — F-2b: the double-tap case for the switch and the zoom controls
 - `platform/src/test/java/ai/riviera/platform/MapStyleSelfHostedTest.java` — AC-2 over the shipped style
 - `platform/` — its `Dockerfile` (a direct child): `COPY platform/map/ /app/map/` in the runtime stage
 - `platform/map/style.json` — OSM Liberty rewritten to `/map/…`
@@ -449,26 +461,26 @@ has zero citations outside `docs/plans/` and is `git rm`'d in the close-out comm
 - [x] **AC-4:** `--include="src/app/shared/maplibre-map-engine.spec.ts"` → `absoluteMapUrl` / `absoluteMapStyle` / `ensureStylesheet`, 6/6. Verified at `d8915494`.
 - [x] **AC-5:** `--include="src/app/shared/riviera-map.spec.ts"` → 7/7 (+ a11y 2/2, contrast 2/2). Verified at `dc09d2f5`.
 - [x] **AC-6:** `--include="src/app/pages/home/home.spec.ts"` → `Home (list/map switch)` 4/4 (47/47 in the file). Verified at `896c8595`.
-- [x] **AC-7, AC-8, AC-9:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/discover-map.e2e.ts e2e/touch-targets-tourist.e2e.ts` → 4/4 + the phone/fold sweeps; the guard's strict same-origin set passes with Stripe.js deferred (F-1). Verified at `d8915494`.
+- [x] **AC-7, AC-8, AC-9:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/discover-map.e2e.ts e2e/touch-targets-tourist.e2e.ts e2e/mobile-zoom-tourist.e2e.ts` → 4/4, the tourist touch sweep at 390 px, and the double-tap case; the guard's strict same-origin set passes with Stripe.js deferred (F-1). Verified at the review-fix commit.
 - [x] **AC-10:** `--include="src/app/pages/legal/*.spec.ts"` → 19/19 incl. `describes the self-hosted map`; `e2e/legal-pages.e2e.ts` green. Verified at `e5935128`.
 - [x] **AC-11:** ADR-0022, the CSP note, CONTEXT.md, RESPONSIBILITIES.md § *Platform edge*, `docs/runbooks/riviera-map-tiles.md` — review-checked (RV-PROC), docs-freshness run recorded above.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2) — N/A, no availability change.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11) — root-package config only, structural net green.
+- [x] **Payment/payout** section filled (or N/A) — N/A; the only payment-side change is when Stripe.js loads (F-1).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — no time logic.
+- [x] Booking codes unguessable (invariant #7) — untouched.
+- [x] Flyway migration present for schema changes (invariant #12) — no schema change.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (R-1 and the Planetiler assumption deferred to issue #1103).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the review-fix commit, citing `merged via PR #1102`.
+- [x] **The review gate ran in full** — rung 1 (`code-review:code-review`, five reviewers + scoring) over `0a813c6b..454429ba` with `riviera-review-overlay` walked; six findings, all fixed in the review-fix commit, re-walked on that commit's diff by hand (RV-FE-9/10, RV-PROC-1/2, RV-STYLE-1).

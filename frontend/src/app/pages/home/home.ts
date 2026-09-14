@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
@@ -125,6 +126,7 @@ function closedStateText(
 export class Home {
   private readonly venueService = inject(VenueService);
   private readonly route = inject(ActivatedRoute);
+  private readonly document = inject(DOCUMENT);
 
   /** The displayed (filtered) venues; `undefined` while a request is in flight (loading). */
   protected readonly venues = signal<VenueSummary[] | undefined>(undefined);
@@ -230,9 +232,22 @@ export class Home {
     }
     const query = globalThis.matchMedia(WIDE_VIEWPORT);
     this.wide.set(query.matches);
-    const onChange = (event: MediaQueryListEvent): void => this.wide.set(event.matches);
+    const onChange = (event: MediaQueryListEvent): void => {
+      this.wide.set(event.matches);
+      if (!event.matches) {
+        this.rescueFocusFromHiddenPanel();
+      }
+    };
     query.addEventListener('change', onChange);
     inject(DestroyRef).onDestroy(() => query.removeEventListener('change', onChange));
+  }
+
+  /** Narrowing hides the panel the switch is not showing; focus stranded in it lands on the count block (WCAG 2.4.3). */
+  private rescueFocusFromHiddenPanel(): void {
+    const hidden = this.view() === 'list' ? 'map-panel' : 'list-panel';
+    if (this.document.activeElement?.closest(`[data-testid="${hidden}"]`)) {
+      this.focusAfterRender('results');
+    }
   }
 
   protected showList(): void {

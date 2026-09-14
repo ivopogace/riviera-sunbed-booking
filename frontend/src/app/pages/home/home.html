@@ -130,7 +130,7 @@
         type="button"
         appTouchTarget
         data-testid="view-list"
-        class="rounded-full px-[18px] text-[14px] font-semibold text-riv-card-ink aria-pressed:bg-riv-accent-ink aria-pressed:text-riv-on-accent-ink"
+        class="touch-manipulation rounded-full px-[18px] text-[14px] font-semibold text-riv-card-ink aria-pressed:bg-riv-accent-ink aria-pressed:text-riv-on-accent-ink"
         [attr.aria-pressed]="view() === 'list'"
         (click)="showList()"
       >
@@ -140,7 +140,7 @@
         type="button"
         appTouchTarget
         data-testid="view-map"
-        class="rounded-full px-[18px] text-[14px] font-semibold text-riv-card-ink aria-pressed:bg-riv-accent-ink aria-pressed:text-riv-on-accent-ink"
+        class="touch-manipulation rounded-full px-[18px] text-[14px] font-semibold text-riv-card-ink aria-pressed:bg-riv-accent-ink aria-pressed:text-riv-on-accent-ink"
         [attr.aria-pressed]="view() === 'map'"
         (click)="showMap()"
       >
@@ -149,20 +149,23 @@
     </div>
   </div>
 
+  <!-- Above both panels: the alert must stay in the accessibility tree whichever panel the switch is showing. -->
+  @if (failed()) {
+    <!-- Designed load-failure panel: the alert role and error test id preserve accessible semantics so assistive tech announces it; the warning glyph is decorative — the heading carries the meaning. -->
+    <div appFailurePanel role="alert" data-testid="error">
+      <span appFailureIcon aria-hidden="true">⚠</span>
+      <h2 appFailureTitle>We couldn’t load the beaches</h2>
+      <p appFailureText>
+        Something went wrong reaching Riviera. Check your connection and try again — your bookings
+        are safe.
+      </p>
+      <app-retry-button testId="retry" (retry)="onRetryDiscover()" />
+    </div>
+  }
+
   <div class="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] lg:items-start lg:gap-5">
     <div class="list-panel min-w-0" data-testid="list-panel" [hidden]="!listShown()">
-      @if (failed()) {
-        <!-- Designed load-failure panel: the alert role and error test id preserve accessible semantics so assistive tech announces it; the warning glyph is decorative — the heading carries the meaning. -->
-        <div appFailurePanel role="alert" data-testid="error">
-          <span appFailureIcon aria-hidden="true">⚠</span>
-          <h2 appFailureTitle>We couldn’t load the beaches</h2>
-          <p appFailureText>
-            Something went wrong reaching Riviera. Check your connection and try again — your
-            bookings are safe.
-          </p>
-          <app-retry-button testId="retry" (retry)="onRetryDiscover()" />
-        </div>
-      } @else if (venuesView(); as list) {
+      @if (venuesView(); as list) {
         @if (isEmpty()) {
           <!-- Not a live region: born holding its text it announced nothing, and the persistent count region above already speaks this outcome. -->
           <p
@@ -329,7 +332,7 @@
             }
           </ul>
         }
-      } @else {
+      } @else if (!failed()) {
         <!-- Skeletons mirror the grid so the layout doesn't jump; the announcer owns the words. -->
         <div data-testid="loading" aria-hidden="true">
           <ul class="venue-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5">

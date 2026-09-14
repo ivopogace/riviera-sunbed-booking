@@ -67,6 +67,8 @@ export class FakeMapHandle implements MapHandle {
 
   destroy(): void {
     this.isDestroyed = true;
+    // A queued load still holds its set, so the set itself is emptied, not just the map.
+    this.listeners.forEach((set) => set.clear());
     this.listeners.clear();
   }
 }

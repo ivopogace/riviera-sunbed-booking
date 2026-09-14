@@ -750,12 +750,16 @@ describe('Home (list/map switch)', () => {
   let httpMock: HttpTestingController;
   const originalMatchMedia = globalThis.matchMedia;
 
+  let viewportChange: ((event: { matches: boolean }) => void) | undefined;
+
   function stubViewport(wide: boolean): void {
     globalThis.matchMedia = (query: string) =>
       ({
         matches: wide,
         media: query,
-        addEventListener: () => undefined,
+        addEventListener: (_type: string, listener: (event: { matches: boolean }) => void) => {
+          viewportChange = listener;
+        },
         removeEventListener: () => undefined,
       }) as unknown as MediaQueryList;
   }
@@ -842,6 +846,45 @@ describe('Home (list/map switch)', () => {
     await settle(fixture);
 
     expect((fixture.nativeElement as HTMLElement).querySelector('app-riviera-map')).not.toBeNull();
+  });
+
+  it('keeps a failed reload visible while the map is open below lg', async () => {
+    const fixture = render(false);
+    flushVenues();
+    await settle(fixture);
+    byTestId(fixture, 'view-map')?.click();
+    await settle(fixture);
+
+    (byTestId(fixture, 'filter-beach') as HTMLSelectElement).value = 'Ksamil';
+    byTestId(fixture, 'filter-beach')?.dispatchEvent(new Event('change'));
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush('boom', { status: 500, statusText: 'Server Error' });
+    await settle(fixture);
+
+    const error = byTestId(fixture, 'error');
+    expect(error).not.toBeNull();
+    expect(error?.closest('[hidden]')).toBeNull();
+    expect(byTestId(fixture, 'map-panel')?.hidden).toBe(false);
+  });
+
+  it('moves focus off a panel that a resize below lg hides', async () => {
+    const fixture = render(true);
+    flushVenues();
+    await settle(fixture);
+    document.body.appendChild(fixture.nativeElement as HTMLElement);
+    try {
+      (byTestId(fixture, 'map-zoom-in') as HTMLButtonElement).focus();
+      expect(document.activeElement).toBe(byTestId(fixture, 'map-zoom-in'));
+
+      viewportChange?.({ matches: false });
+      await settle(fixture);
+
+      expect(byTestId(fixture, 'map-panel')?.hidden).toBe(true);
+      expect(document.activeElement).toBe(byTestId(fixture, 'results'));
+    } finally {
+      (fixture.nativeElement as HTMLElement).remove();
+    }
   });
 
   it('shows both panels side by side from lg up, without the switch', async () => {

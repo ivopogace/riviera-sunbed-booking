@@ -31,7 +31,13 @@ class MapResourcesConfig implements WebMvcConfigurer {
 	private final String location;
 
 	MapResourcesConfig(@Value("${riviera.map.dir}") String dir) {
-		this.location = Path.of(dir).toAbsolutePath().normalize().toUri().toString();
+		this.location = resourceLocation(dir);
+	}
+
+	/** The directory as a resource location; the trailing slash is added by hand because {@code toUri} adds it only for a directory that already exists. */
+	static String resourceLocation(String dir) {
+		String uri = Path.of(dir).toAbsolutePath().normalize().toUri().toString();
+		return uri.endsWith("/") ? uri : uri + "/";
 	}
 
 	@Override

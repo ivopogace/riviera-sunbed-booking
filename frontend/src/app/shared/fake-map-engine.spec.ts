@@ -49,6 +49,17 @@ describe('FakeMapEngine', () => {
     expect(handle.markers().size).toBe(0);
   });
 
+  it('never reports load after destroy, even to a listener registered in the same tick', async () => {
+    const handle = await new FakeMapEngine().create(document.createElement('div'), OPTIONS);
+    const onLoad = vi.fn();
+
+    handle.on('load', onLoad);
+    handle.destroy();
+    await Promise.resolve();
+
+    expect(onLoad).not.toHaveBeenCalled();
+  });
+
   it('reports load to a listener and lets it unsubscribe', async () => {
     const handle = await new FakeMapEngine().create(document.createElement('div'), OPTIONS);
     const onLoad = vi.fn();
