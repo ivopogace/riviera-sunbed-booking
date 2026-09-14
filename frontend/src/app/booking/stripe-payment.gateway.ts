@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { loadStripe, Stripe, StripeElements } from '@stripe/stripe-js';
+import type { Stripe, StripeElements } from '@stripe/stripe-js';
+import { loadStripe } from '@stripe/stripe-js/pure';
 
 import { environment } from '../../environments/environment';
 
@@ -45,9 +46,11 @@ export function assertPublishableKey(key: string): void {
 }
 
 /**
- * Real adapter: loads Stripe.js from js.stripe.com (PCI — never bundled or self-hosted), mounts a
- * Payment Element bound to the booking's PaymentIntent `clientSecret`, and confirms the card with
- * `redirect: 'if_required'`. Uses the **publishable** key from {@link environment} (a `pk_…`,
+ * Real adapter: loads Stripe.js from js.stripe.com (PCI — never bundled or self-hosted) — through
+ * the package's `pure` entry, so the script is fetched only when a Payment Element is mounted and
+ * never as a side effect of the app booting (the tourist surfaces make no third-party request,
+ * ADR-0022) — mounts a Payment Element bound to the booking's PaymentIntent `clientSecret`, and
+ * confirms the card with `redirect: 'if_required'`. Uses the **publishable** key from {@link environment} (a `pk_…`,
  * which is safe in the client bundle — the secret key never reaches the browser, invariant #8).
  */
 @Injectable()

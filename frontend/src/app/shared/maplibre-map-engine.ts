@@ -1,3 +1,5 @@
+import type { StyleSpecification } from 'maplibre-gl';
+
 import { environment } from '../../environments/environment';
 import {
   MapEngine,
@@ -10,29 +12,61 @@ import {
 
 /** MapLibre's own stylesheet, copied into the build by `angular.json` (`assets`) — never a CDN. */
 export const MAPLIBRE_STYLESHEET = '/vendor/maplibre-gl.css';
+/**
+ * MapLibre's worker, a module script it would otherwise resolve beside its own chunk via
+ * `import.meta.url` — a URL the bundle cannot serve. Copied next to the stylesheet (with the shared
+ * chunk it imports) and named explicitly, same-origin like every other map resource.
+ */
+export const MAPLIBRE_WORKER = '/vendor/maplibre-gl-worker.mjs';
 
 const MAP_PREFIX = '/map/';
 const PMTILES_SCHEME = 'pmtiles://';
 
 /**
- * The request transform that keeps every map resource on our origin (ADR-0022). The shipped
- * style names only `/map/…` paths; in production the SPA and the API share an origin so they
- * resolve as they are, while in development and the mocked e2e the API lives elsewhere
- * (`environment.apiBaseUrl`), so the transform prefixes them. Any other URL is left untouched —
- * including the archive-derived tile URLs, which are already absolute by then.
+ * Make one of the shipped style's same-origin paths absolute on the map origin (ADR-0022): the
+ * API origin where the SPA is served elsewhere (development, the mocked e2e), the page's own in
+ * production. `/map/…` and `pmtiles:///map/…` are rewritten; anything else passes through — the
+ * committed style never names a host, and MapLibre validates a style's sprite URL as absolute
+ * before any request hook runs, so the rewrite happens on the loaded style itself.
  */
-export function sameOriginMapRequest(
-  apiBaseUrl: string,
-): (url: string) => { url: string } | undefined {
-  return (url) => {
-    if (url.startsWith(MAP_PREFIX)) {
-      return { url: apiBaseUrl + url };
-    }
-    if (url.startsWith(PMTILES_SCHEME + MAP_PREFIX)) {
-      return { url: PMTILES_SCHEME + apiBaseUrl + url.slice(PMTILES_SCHEME.length) };
-    }
-    return undefined;
+export function absoluteMapUrl(url: string, origin: string): string {
+  if (url.startsWith(MAP_PREFIX)) {
+    return origin + url;
+  }
+  if (url.startsWith(PMTILES_SCHEME + MAP_PREFIX)) {
+    return PMTILES_SCHEME + origin + url.slice(PMTILES_SCHEME.length);
+  }
+  return url;
+}
+
+/** {@link absoluteMapUrl} over every place a style names a resource: sprite, glyphs, source URLs and tile templates. */
+export function absoluteMapStyle(style: StyleSpecification, origin: string): StyleSpecification {
+  const sources = Object.fromEntries(
+    Object.entries(style.sources).map(([id, source]) => {
+      if ('url' in source && typeof source.url === 'string') {
+        return [id, { ...source, url: absoluteMapUrl(source.url, origin) }];
+      }
+      if ('tiles' in source && Array.isArray(source.tiles)) {
+        return [id, { ...source, tiles: source.tiles.map((tile) => absoluteMapUrl(tile, origin)) }];
+      }
+      return [id, source];
+    }),
+  );
+  const sprite =
+    typeof style.sprite === 'string'
+      ? absoluteMapUrl(style.sprite, origin)
+      : style.sprite?.map((entry) => ({ ...entry, url: absoluteMapUrl(entry.url, origin) }));
+  return {
+    ...style,
+    sources,
+    ...(sprite === undefined ? {} : { sprite }),
+    ...(style.glyphs === undefined ? {} : { glyphs: absoluteMapUrl(style.glyphs, origin) }),
   };
+}
+
+/** The origin the map's resources live on: the API's where the SPA is served elsewhere, else the page's. */
+function mapOrigin(doc: Document): string {
+  return environment.apiBaseUrl || doc.location.origin;
 }
 
 /**
@@ -56,11 +90,12 @@ export function ensureStylesheet(doc: Document, href: string): Promise<void> {
 
 type MapLibre = typeof import('maplibre-gl');
 
-/** The pmtiles protocol is process-wide and caches archive headers, so it is registered once. */
+/** The worker URL and the pmtiles protocol are process-wide (the protocol caches archive headers), so both are set once. */
 let protocolReady: Promise<void> | undefined;
 
 async function registerPmtiles(maplibre: MapLibre): Promise<void> {
   protocolReady ??= import('pmtiles').then(({ Protocol }) => {
+    maplibre.setWorkerUrl(MAPLIBRE_WORKER);
     maplibre.addProtocol('pmtiles', new Protocol().tile);
   });
   await protocolReady;
@@ -114,7 +149,8 @@ class MapLibreHandle implements MapHandle {
 /**
  * Real adapter: MapLibre GL (BSD, no telemetry, no token) with the PMTiles protocol, both loaded
  * on first use so neither enters the initial bundle. Attribution is the component's own — the
- * library's control is off — and every request passes {@link sameOriginMapRequest}.
+ * library's control is off — and every URL the style names is made absolute on the map origin
+ * through {@link absoluteMapStyle}.
  */
 export class MapLibreMapEngine extends MapEngine {
   override async create(host: HTMLElement, options: MapEngineOptions): Promise<MapHandle> {
@@ -123,10 +159,10 @@ export class MapLibreMapEngine extends MapEngine {
       ensureStylesheet(host.ownerDocument, MAPLIBRE_STYLESHEET),
     ]);
     await registerPmtiles(maplibre);
+    const origin = mapOrigin(host.ownerDocument);
     const [southWest, northEast] = options.maxBounds;
     const map = new maplibre.Map({
       container: host,
-      style: options.styleUrl,
       center: [options.view.center.lng, options.view.center.lat],
       zoom: options.view.zoom,
       minZoom: options.minZoom,
@@ -136,7 +172,10 @@ export class MapLibreMapEngine extends MapEngine {
         [northEast.lng, northEast.lat],
       ],
       attributionControl: false,
-      transformRequest: sameOriginMapRequest(environment.apiBaseUrl),
+    });
+    // The style hook is a setStyle option, not a constructor one — so the style is set here.
+    map.setStyle(absoluteMapUrl(options.styleUrl, origin), {
+      transformStyle: (_previous, next) => absoluteMapStyle(next, origin),
     });
     return new MapLibreHandle(maplibre, map);
   }

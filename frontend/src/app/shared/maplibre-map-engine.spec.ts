@@ -1,37 +1,71 @@
+import type { StyleSpecification } from 'maplibre-gl';
 import { describe, expect, it } from 'vitest';
 
-import { ensureStylesheet, sameOriginMapRequest } from './maplibre-map-engine';
+import { absoluteMapStyle, absoluteMapUrl, ensureStylesheet } from './maplibre-map-engine';
 
 /**
- * The real adapter's two jsdom-testable parts: the request transform that keeps every map
- * resource on our origin (ADR-0022) and the one-time stylesheet link. MapLibre itself is WebGL and
- * runs only in the real-engine e2e (`discover-map.e2e.ts`).
+ * The real adapter's jsdom-testable parts: the style rewrite that keeps every map resource on our
+ * origin (ADR-0022) and the one-time stylesheet link. MapLibre itself is WebGL and runs only in the
+ * real-engine e2e (`discover-map.e2e.ts`).
  */
-describe('sameOriginMapRequest', () => {
-  it('leaves style-relative /map/ paths alone when the API is same-origin (production)', () => {
-    const transform = sameOriginMapRequest('');
-    expect(transform('/map/style.json')).toEqual({ url: '/map/style.json' });
-    expect(transform('pmtiles:///map/riviera.pmtiles')).toEqual({
-      url: 'pmtiles:///map/riviera.pmtiles',
-    });
-  });
+const ORIGIN = 'http://localhost:8080';
 
-  it('prefixes /map/ paths with the API origin when the SPA is served elsewhere (dev, e2e)', () => {
-    const transform = sameOriginMapRequest('http://localhost:8080');
-    expect(transform('/map/glyphs/Roboto%20Regular/0-255.pbf')).toEqual({
-      url: 'http://localhost:8080/map/glyphs/Roboto%20Regular/0-255.pbf',
-    });
-    expect(transform('pmtiles:///map/riviera.pmtiles')).toEqual({
-      url: 'pmtiles://http://localhost:8080/map/riviera.pmtiles',
-    });
-  });
+/** The shape `scripts/build-riviera-map.sh` writes: every URL a same-origin `/map/…` path. */
+const SHIPPED: StyleSpecification = {
+  version: 8,
+  sources: {
+    openmaptiles: { type: 'vector', url: 'pmtiles:///map/riviera.pmtiles' },
+  },
+  sprite: '/map/sprites/osm-liberty',
+  glyphs: '/map/glyphs/{fontstack}/{range}.pbf',
+  layers: [],
+};
 
-  it('touches nothing else — an already-absolute tile URL passes through', () => {
-    const transform = sameOriginMapRequest('http://localhost:8080');
-    expect(transform('pmtiles://http://localhost:8080/map/riviera.pmtiles/9/300/200')).toBe(
-      undefined,
+describe('absoluteMapUrl', () => {
+  it('puts a style-relative /map/ path on the map origin, keeping the pmtiles scheme in front', () => {
+    expect(absoluteMapUrl('/map/style.json', ORIGIN)).toBe(`${ORIGIN}/map/style.json`);
+    expect(absoluteMapUrl('pmtiles:///map/riviera.pmtiles', ORIGIN)).toBe(
+      `pmtiles://${ORIGIN}/map/riviera.pmtiles`,
     );
-    expect(transform('http://localhost:8080/map/sprites/osm-liberty.json')).toBe(undefined);
+  });
+
+  it('touches nothing else — an already-absolute URL passes through', () => {
+    expect(absoluteMapUrl(`pmtiles://${ORIGIN}/map/riviera.pmtiles/9/300/200`, ORIGIN)).toBe(
+      `pmtiles://${ORIGIN}/map/riviera.pmtiles/9/300/200`,
+    );
+    expect(absoluteMapUrl('https://example.test/x.png', ORIGIN)).toBe('https://example.test/x.png');
+  });
+});
+
+describe('absoluteMapStyle', () => {
+  it('rewrites the sprite, the glyphs and the vector source of the shipped style', () => {
+    const style = absoluteMapStyle(SHIPPED, ORIGIN);
+
+    expect(style.sprite).toBe(`${ORIGIN}/map/sprites/osm-liberty`);
+    expect(style.glyphs).toBe(`${ORIGIN}/map/glyphs/{fontstack}/{range}.pbf`);
+    expect(style.sources['openmaptiles']).toEqual({
+      type: 'vector',
+      url: `pmtiles://${ORIGIN}/map/riviera.pmtiles`,
+    });
+    expect(SHIPPED.sprite).toBe('/map/sprites/osm-liberty');
+  });
+
+  it('handles tile templates and a sprite list, and leaves a style without them alone', () => {
+    const style = absoluteMapStyle(
+      {
+        version: 8,
+        sources: { raster: { type: 'raster', tiles: ['/map/r/{z}/{x}/{y}.png'] } },
+        sprite: [{ id: 'default', url: '/map/sprites/osm-liberty' }],
+        layers: [],
+      },
+      ORIGIN,
+    );
+    expect(style.sources['raster']).toEqual({
+      type: 'raster',
+      tiles: [`${ORIGIN}/map/r/{z}/{x}/{y}.png`],
+    });
+    expect(style.sprite).toEqual([{ id: 'default', url: `${ORIGIN}/map/sprites/osm-liberty` }]);
+    expect('glyphs' in style).toBe(false);
   });
 });
 

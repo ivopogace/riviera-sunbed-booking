@@ -32,7 +32,7 @@
                 "input": "public"
               },
               {
-                "glob": "maplibre-gl.css",
+                "glob": "maplibre-gl{.css,-worker.mjs,-shared.mjs}",
                 "input": "node_modules/maplibre-gl/dist",
                 "output": "vendor"
               }

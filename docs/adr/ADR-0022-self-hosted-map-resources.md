@@ -90,7 +90,12 @@ or `<link>` the map chrome renders should treat it as a Blocker rather than a co
   blocks the venue list.
 - The repository carries ~2 MB of style, sprites and glyphs and, once generated, the archive; a
   regeneration adds another copy to history.
-- If a Content-Security-Policy header is ever added, MapLibre's Web Workers are spawned from Blob
-  URLs like ALTCHA's, so the policy needs `worker-src blob:` (`docs/deploy/production-hardening.md`).
+- If a Content-Security-Policy header is ever added, MapLibre's tile worker is a module worker
+  spawned from a same-origin script URL the adapter names (`/vendor/maplibre-gl-worker.mjs`) — not
+  a Blob URL, unlike ALTCHA's — so the policy needs `worker-src 'self'`
+  (`docs/deploy/production-hardening.md`).
 - The privacy policy can say, truthfully, that viewing the map sends nothing to a third party and
   that tile requests appear in our access logs like any page asset — and nowhere else.
+- The network guard's first run found Stripe.js loading on Discover as a side effect of importing
+  `@stripe/stripe-js`; the gateway now imports its `pure` entry, so Stripe.js is fetched only when
+  a Payment Element mounts and the "payment surface only" posture holds by construction.

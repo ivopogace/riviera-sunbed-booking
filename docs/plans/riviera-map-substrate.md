@@ -91,11 +91,12 @@ stands in for `feature/riviera-map-substrate`.
   factory runs, then it yields a `MapLibreMapEngine`; given the flag is `true`, a
   `FakeMapEngine`. *Seam:* the `MapEngine` provider in `app.config.ts` · *Pinned by:*
   `app.config.spec.ts` › `appConfig MapEngine factory`
-- [ ] **AC-4:** Given the real adapter's request transform and `environment.apiBaseUrl`, when a
-  style-relative `/map/glyphs/x.pbf` or `pmtiles:///map/riviera.pmtiles` URL is transformed,
-  then it is prefixed with the API origin (a no-op when the origin is empty), and any other URL
-  passes through untouched. *Seam:* `sameOriginMapRequest` (exported pure function of
-  `shared/maplibre-map-engine.ts`) · *Pinned by:* `maplibre-map-engine.spec.ts`
+- [ ] **AC-4:** Given the real adapter's style transform and the map origin (the API origin in
+  development, the page's own in production), when the shipped style's `/map/…` sprite, glyph and
+  source URLs (and the `pmtiles:///map/…` form) are transformed, then each becomes absolute on that
+  origin — MapLibre validates a style's sprite URL as absolute before any request hook runs — and
+  any other URL passes through untouched. *Seam:* `absoluteMapStyle` / `absoluteMapUrl` (exported
+  pure functions of `shared/maplibre-map-engine.ts`) · *Pinned by:* `maplibre-map-engine.spec.ts`
 - [ ] **AC-5:** Given `RivieraMap` rendered with the fake engine, when the view boots, then the
   engine is asked to create a map on the component's host with the `/map/style.json` style, the
   riviera centre and zoom; the zoom buttons call `zoomIn`/`zoomOut`; destroying the component
@@ -163,7 +164,7 @@ visible below `lg`.
 | R-1 | The sandbox cannot reach any OSM data host (Geofabrik, osmdata, Protomaps builds, Overpass all 403 at the proxy), so the PMTiles archive cannot be generated in this session; a deploy from this PR serves `404` for the archive and the map shows the style's background only | certain | med | The tile phase of `scripts/build-riviera-map.sh` is written against Planetiler's documented CLI and the runbook says exactly how to run it on a network-capable machine; the missing archive is a visible absence in the tree, never a silent config default; the frontend degrades to background + attribution, never an error page; the e2e exercises the real path with a tiny fixture archive | slice | open → runbook run |
 | R-2 | A jar-nested archive would make every tile request inflate up to the offset | high (if classpath) | high | File-system location `file:map/` (`riviera.map.location`), `COPY platform/map/ /app/map/`; AC-1 proves `206` slicing through the framework's `ResourceRegionHttpMessageConverter` on a `FileSystemResource` | slice | — |
 | R-3 | MapLibre in the initial bundle blows the budget (baseline initial is already 590 kB against a 500 kB warning, 1 MB error) | high | high | `await import('maplibre-gl')` + `import('pmtiles')` inside the real adapter only; the map component sits in a `@defer` block; AC-7 proves ordering; the build's initial-size line is recorded in Execution status before/after | slice | — |
-| R-4 | A relative style URL resolves against the SPA's origin, which in dev (`:4200 → :8080`) and the mocked e2e is not the backend | high | med | `transformRequest` prefixes `/map/…` and `pmtiles:///map/…` with `environment.apiBaseUrl` (AC-4); dev CORS already maps `/**` for the allowed origin | slice | — |
+| R-4 | A relative style URL resolves against the SPA's origin, which in dev (`:4200 → :8080`) and the mocked e2e is not the backend — and MapLibre refuses a relative sprite URL outright ("must be absolute", found by the real-engine e2e) | high | med | The adapter absolutises the style URL and, through MapLibre's `transformStyle` hook, every `/map/…` URL inside the loaded style against `environment.apiBaseUrl` or the page origin (AC-4); the committed style stays host-free; dev CORS already maps `/**` for the allowed origin | slice | — |
 | R-5 | Headless Chromium has no WebGL → the real-engine e2e is vacuous | low | high | Probed: the pinned Chromium renders WebGL2 via SwiftShader with default flags; the guard test additionally asserts the style, a sprite, a glyph and a tile were actually requested, so a WebGL-less run fails loudly instead of passing empty | slice | — |
 | R-6 | The pmtiles reader refuses a `200` answer to a `Range` request ("Check that your storage backend supports HTTP Byte Serving") | high (in e2e) | med | The e2e route slices the fixture by the `Range` header and answers `206` + `Content-Range`; the backend does this natively (AC-1) | slice | — |
 | R-7 | The review trap: a future style tweak points glyphs/sprites/tiles at a CDN | med | high | AC-2 (backend style test) + AC-8 (real-engine network guard) + ADR-0022 naming it | slice | — |
@@ -172,6 +173,7 @@ visible below `lg`.
 | R-10 | Focus and a11y: the map canvas is a focusable, keyboard-panning `tabindex=0` element that a screen-reader user could get stuck in | med | med | "Skip map" control before the canvas moves focus to the anchor after the region; the region is `aria-label`led; the list precedes the map in DOM order; AC-9 | slice | — |
 | R-11 | `@defer (when …)` never reverts, so toggling back to the list must hide, not unload | low | low | The switch drives `hidden` on the panels; the map handle survives and MapLibre's own ResizeObserver resizes on unhide | slice | — |
 | R-12 | The map chrome floats over imagery of unknown luminance | high | med | Opaque `--riv-solid-btn-fill` + `--riv-solid-btn-ink` (6.17:1, theme-invariant by design) for zoom buttons and the attribution pill; `riviera-map.contrast.spec.ts` recomputes the pair | slice | — |
+| R-13 | MapLibre 6 spawns its tile worker as a module script resolved beside its own chunk via `import.meta.url` — a URL neither the dev server's dependency optimizer nor the production bundle serves, so the map silently never reaches `load` (found by the real-engine e2e, not by any unit spec) | certain | high | The adapter calls `setWorkerUrl('/vendor/maplibre-gl-worker.mjs')` and `angular.json` copies the worker and its shared chunk beside the stylesheet; the CSP note and ADR-0022 say `worker-src 'self'` (the issue's "Blob-URL workers like Altcha's" premise held for MapLibre ≤ 5 and is corrected) | slice | — |
 
 ## Open questions / Assumptions
 
@@ -265,9 +267,9 @@ component never reads inside it.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 6)`
+**Stage pointer:** `CI gate → PR (phase 8)`
 
-**Next action:** phase 6 — run `discover-map.e2e.ts` and the touched sweeps under the mocked config; then phase 7.
+**Next action:** push, check the CI run on PR #1102, merge `origin/main` in, mark ready for review, then the review gate per `references/pr-gates.md` §1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -277,9 +279,9 @@ component never reads inside it.
 | 3 — frontend engine seam: token, real + fake adapters, `app.config` factory, deps, CSS | ✅ | phase-3 commit |
 | 4 — `riviera-map` component + unit/a11y/contrast specs | ✅ | phase-4 commit |
 | 5 — Discover list/map switch + `@defer` + home specs | ✅ | phase-5 commit |
-| 6 — mocked e2e: switch/a11y/touch (fake), ordering + network guard (real), fixture archive | ⏳ | |
-| 7 — ADR-0022, privacy paragraph + spec, CONTEXT.md, CSP note | | |
-| 8 — gates: CI green, merge main, ready-for-review, review + Sonar, docs-freshness | | |
+| 6 — mocked e2e: switch/a11y/touch (fake), ordering + network guard (real), fixture archive | ✅ | phase-6 commit |
+| 7 — ADR-0022, privacy paragraph + spec, CONTEXT.md, CSP note | ✅ | `e5935128` (+ the worker/Stripe corrections in the phase-6 commit) |
+| 8 — gates: CI green, merge main, ready-for-review, review + Sonar, docs-freshness | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -291,6 +293,7 @@ budget). After phase 3: initial total 592.70 kB (+2.7 kB, the factory and the ad
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | the network guard (AC-8), first real-engine run | `https://js.stripe.com/dahlia/stripe.js` is requested on Discover: importing `@stripe/stripe-js` injects the script as a side effect of the app booting, on every page — contradicting the "Stripe.js on the payment surface only" posture the privacy policy states | fixed — `booking/stripe-payment.gateway.ts` imports `loadStripe` from `@stripe/stripe-js/pure`, so the script loads only when a Payment Element mounts (phase-6 commit) |
 
 ---
 
@@ -301,7 +304,7 @@ budget). After phase 3: initial total 592.70 kB (+2.7 kB, the factory and the ad
 - `platform/src/main/resources/application.properties` — `riviera.map.location=file:map/`
 - `platform/src/test/java/ai/riviera/platform/MapResourcesTest.java` — AC-1 (`@WebMvcTest` + temp-dir fixture)
 - `platform/src/test/java/ai/riviera/platform/MapStyleSelfHostedTest.java` — AC-2 over the shipped style
-- `platform/Dockerfile` — `COPY platform/map/ /app/map/` in the runtime stage
+- `platform/` — its `Dockerfile` (a direct child): `COPY platform/map/ /app/map/` in the runtime stage
 - `platform/map/style.json` — OSM Liberty rewritten to `/map/…`
 - `platform/map/sprites/osm-liberty.json`, `platform/map/sprites/osm-liberty.png`, `platform/map/sprites/osm-liberty@2x.json`, `platform/map/sprites/osm-liberty@2x.png` — sprites
 - `platform/map/glyphs/**/*.pbf` — Roboto glyph ranges (three stacks × five ranges)
@@ -315,13 +318,14 @@ budget). After phase 3: initial total 592.70 kB (+2.7 kB, the factory and the ad
 - `RESPONSIBILITIES.md` — § *Platform edge* gains the map-resources paragraph
 - `CONTEXT.md` — **Riviera map**, **Venue location**
 - `frontend/package.json`, `frontend/package-lock.json` — `maplibre-gl`, `pmtiles`
+- `frontend/angular.json` — copies MapLibre's stylesheet to `vendor/` as an asset
 - `frontend/src/tailwind.css` — the MapLibre stylesheet import
 - `frontend/src/app/shared/map-engine.ts` — token + types
 - `frontend/src/app/shared/maplibre-map-engine.ts`, `frontend/src/app/shared/maplibre-map-engine.spec.ts` — real adapter + AC-4
 - `frontend/src/app/shared/fake-map-engine.ts`, `frontend/src/app/shared/fake-map-engine.spec.ts` — fake
 - `frontend/src/app/shared/riviera-map.ts`, `frontend/src/app/shared/riviera-map.html`, `frontend/src/app/shared/riviera-map.spec.ts`, `frontend/src/app/shared/riviera-map.a11y.spec.ts`, `frontend/src/app/shared/riviera-map.contrast.spec.ts` — the component
 - `frontend/src/app/app.config.ts`, `frontend/src/app/app.config.spec.ts` — AC-3
-- `frontend/src/app/pages/home/home.ts`, `frontend/src/app/pages/home/home.html`, `frontend/src/app/pages/home/home.spec.ts`, `frontend/src/app/pages/home/home.a11y.spec.ts` — AC-6
+- `frontend/src/app/pages/home/home.ts`, `frontend/src/app/pages/home/home.html`, `frontend/src/app/pages/home/home.spec.ts`, `frontend/src/app/pages/home/home.a11y.spec.ts`, `frontend/src/app/pages/home/home.contrast.spec.ts` — AC-6 and the switch's contrast pair
 - `frontend/src/app/pages/legal/privacy-policy.html`, `frontend/src/app/pages/legal/privacy-policy.spec.ts`, `frontend/src/app/pages/legal/privacy-policy.ts` — AC-10
 - `frontend/e2e/discover-map.e2e.ts` — AC-7, AC-8, AC-9
 - `frontend/e2e/touch-targets-tourist.e2e.ts` — the map-open sweep
@@ -412,6 +416,7 @@ budget). After phase 3: initial total 592.70 kB (+2.7 kB, the factory and the ad
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-14 | phase 6, F-1 | every module whose import injects a third-party script or opens a third-party connection as a side effect (the mechanism the guard caught) | `grep -rn "from '@stripe/stripe-js'\|from 'altcha'\|from 'jsqr'\|from 'qrcode'" frontend/src/app` | `@stripe/stripe-js` (side-effect script insertion on import — the only one; `altcha`, `jsqr`, `qrcode` are pure modules and the widget's own network calls go to our challenge endpoint) | the `pure` entry point; the guard now runs green with a strict same-origin set, no allow-list entry for Stripe |
 
 ---
 
