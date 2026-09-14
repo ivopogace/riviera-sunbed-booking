@@ -325,6 +325,7 @@ budget). After phase 3: initial total 592.70 kB (+2.7 kB, the factory and the ad
 - `frontend/src/app/shared/fake-map-engine.ts`, `frontend/src/app/shared/fake-map-engine.spec.ts` — fake
 - `frontend/src/app/shared/riviera-map.ts`, `frontend/src/app/shared/riviera-map.html`, `frontend/src/app/shared/riviera-map.spec.ts`, `frontend/src/app/shared/riviera-map.a11y.spec.ts`, `frontend/src/app/shared/riviera-map.contrast.spec.ts` — the component
 - `frontend/src/app/app.config.ts`, `frontend/src/app/app.config.spec.ts` — AC-3
+- `frontend/src/app/booking/stripe-payment.gateway.ts` — F-1: `loadStripe` from the `pure` entry, so Stripe.js loads on the payment surface only
 - `frontend/src/app/pages/home/home.ts`, `frontend/src/app/pages/home/home.html`, `frontend/src/app/pages/home/home.spec.ts`, `frontend/src/app/pages/home/home.a11y.spec.ts`, `frontend/src/app/pages/home/home.contrast.spec.ts` — AC-6 and the switch's contrast pair
 - `frontend/src/app/pages/legal/privacy-policy.html`, `frontend/src/app/pages/legal/privacy-policy.spec.ts`, `frontend/src/app/pages/legal/privacy-policy.ts` — AC-10
 - `frontend/e2e/discover-map.e2e.ts` — AC-7, AC-8, AC-9
