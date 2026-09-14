@@ -37,7 +37,7 @@ committed-vs-fetched decision into an Open Question resolved with rationale, and
 below) · `tdd` (each phase red first: the `Range` slice test against a temp-dir fixture, the
 style-host test against the shipped style, the engine seam through the fake, the network guard
 through the real engine) · `riviera-review-overlay` (review gate — runs at ready-for-review) ·
-`riviera-docs-freshness` (ran at close-out — see Execution status) · `riviera-local-debug`
+`riviera-docs-freshness` (**ran** over `0a813c6b..HEAD` at phase 8 — 3 patches, 3 flags, 0 counting findings; record in Execution status) · `riviera-local-debug`
 (loaded before the session's first `./gradlew`/`npm`; `JAVA_HOME=/opt/jdk-25`, `git fetch
 --unshallow` first, `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` for the mocked suite; its
 proxy note is what made the egress probe a step, not an assumption) · `grilling` (the intake
@@ -295,6 +295,16 @@ After phase 6: initial total 601.89 kB (144.13 kB compressed; +9 kB for the Stri
 the style transform the eager `app.config` factory pulls in), the lazy chunk unchanged, and
 `vendor/` carries the stylesheet plus MapLibre's worker and shared chunk. The budget itself
 (500 kB warning / 1 MB error) is unchanged.
+
+**Docs-freshness run** (phase 8, `0a813c6b..HEAD`, pre-merge smoke, delegated read): patched —
+`RESPONSIBILITIES.md` "venue map" → "beach map" in the `venue` routing line; the glossary's
+over-strict *Avoid* list (the issue itself says "map view", so only "venue map" stays avoided, and
+"map (alone)" is scoped to tourist surfaces); AC-11's record. Flags acted on — `CLAUDE.md`'s
+Platform-edge summary gains the `/map/**` clause (a pointer, not a restatement), and
+`riviera-frontend`'s app.config bullet names the third swap and the `shared/` placement precedent
+(RV-FE-8 territory the review re-checks). Counting sweep: 0 (every "two" is another subject;
+`discover-map.e2e.ts`'s "the two guards" is new and correct). Plan-doc retirement: PR #1082's plan
+has zero citations outside `docs/plans/` and is `git rm`'d in the close-out commit.
 
 **Findings register**
 

@@ -498,7 +498,7 @@ any other claim (invariant #2).
   never learn which gateway is behind it)
 - Computing the payout or commission → **`payout`** (my `BookingConfirmed` *triggers*
   accrual)
-- The venue map, pricing, or pool rules → **`venue`**
+- The beach map, pricing, or pool rules → **`venue`**
 - Storing guest contact details → **`customer`**
 - The **retention window** or the contact scrub → **`customer`**. I answer only the *fact*
   "does this guest have a booking on/after date D" via `customer.spi.GuestBookingHistory`.
