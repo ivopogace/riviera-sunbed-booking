@@ -26,3 +26,6 @@
 *.webp binary
 *.ico binary
 *.jar binary
+# The riviera map's tile archive and glyph ranges (platform/map/, ADR-0022).
+*.pmtiles binary
+*.pbf binary
