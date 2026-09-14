@@ -265,16 +265,16 @@ component never reads inside it.
 
 ## Execution status
 
-**Stage pointer:** `plan → implement (phase 0)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** commit this plan, push, open the draft PR, then phase 1.
+**Next action:** phase 3 — the engine seam (specs red first: `fake-map-engine.spec.ts`, `maplibre-map-engine.spec.ts`, `app.config.spec.ts`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc + draft PR | ⏳ | |
-| 1 — backend `/map/**` handler with `Range`, Dockerfile, gitattributes, RESPONSIBILITIES note | | |
-| 2 — map assets: build script (assets phase run here), style rewrite, glyphs, sprites, runbook, style-host test | | |
-| 3 — frontend engine seam: token, real + fake adapters, `app.config` factory, deps, CSS | | |
+| 0 — plan doc + draft PR | ✅ | `1ddf391f`, PR #1102 |
+| 1 — backend `/map/**` handler with `Range`, Dockerfile, gitattributes, RESPONSIBILITIES note | ✅ | `899a1a8a` |
+| 2 — map assets: build script (assets phase run here), style rewrite, glyphs, sprites, runbook, style-host test | ✅ | phase-2 commit |
+| 3 — frontend engine seam: token, real + fake adapters, `app.config` factory, deps, CSS | ⏳ | |
 | 4 — `riviera-map` component + unit/a11y/contrast specs | | |
 | 5 — Discover list/map switch + `@defer` + home specs | | |
 | 6 — mocked e2e: switch/a11y/touch (fake), ordering + network guard (real), fixture archive | | |
