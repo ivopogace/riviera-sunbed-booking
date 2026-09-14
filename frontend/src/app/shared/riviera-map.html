@@ -21,7 +21,8 @@
     The map can’t be shown in this browser. Every venue is in the list.
   </p>
 } @else {
-  <div class="absolute top-3 right-3 z-10 flex flex-col gap-2" role="group" aria-label="Zoom">
+  <fieldset class="absolute top-3 right-3 z-10 flex flex-col gap-2">
+    <legend class="sr-only">Zoom</legend>
     <button
       type="button"
       appTouchTarget
@@ -42,7 +43,7 @@
     >
       <span aria-hidden="true">−</span>
     </button>
-  </div>
+  </fieldset>
 }
 
 <!-- ODbL attribution, permanent: the pill outlives every map state. -->

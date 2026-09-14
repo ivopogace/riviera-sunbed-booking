@@ -89,19 +89,19 @@ build_tiles() {
   command -v java >/dev/null || { echo "java 21+ is required" >&2; exit 1; }
   local work="${RIVIERA_MAP_WORK:-$(mktemp -d)}"
   local jar="$work/planetiler-$PLANETILER_VERSION.jar"
-  [ -f "$jar" ] || fetch "$PLANETILER_JAR_URL" "$jar"
+  [[ -f "$jar" ]] || fetch "$PLANETILER_JAR_URL" "$jar"
   # Planetiler downloads the Geofabrik extract plus its water-polygon, Natural Earth and lake
   # centreline sources into $work/data/ (~1 GB, cached across runs when RIVIERA_MAP_WORK is set).
   (cd "$work" && java -Xmx2g -jar "$jar" \
       --download --area="$GEOFABRIK_AREA" --bounds="$BBOX" --maxzoom="$MAX_ZOOM" \
       --output="$MAP_DIR/riviera.pmtiles" --force)
   for src in "$work"/data/sources/*.osm.pbf; do
-    [ -f "$src" ] && printf '%s  %s  %s\n' "$(sha256sum "$src" | cut -d' ' -f1)" "geofabrik:$(basename "$src")" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$MANIFEST"
+    [[ -f "$src" ]] && printf '%s  %s  %s\n' "$(sha256sum "$src" | cut -d' ' -f1)" "geofabrik:$(basename "$src")" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$MANIFEST"
   done
   echo "   $(du -h "$MAP_DIR/riviera.pmtiles" | cut -f1) — bbox $BBOX, maxzoom $MAX_ZOOM, planetiler $PLANETILER_VERSION"
 }
 
-[ $# -eq 1 ] || usage
+[[ $# -eq 1 ]] || usage
 case "$1" in
   --assets) build_assets ;;
   --tiles) build_tiles ;;

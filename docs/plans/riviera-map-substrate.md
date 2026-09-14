@@ -288,7 +288,7 @@ component never reads inside it.
 | 5 — Discover list/map switch + `@defer` + home specs | ✅ | phase-5 commit |
 | 6 — mocked e2e: switch/a11y/touch (fake), ordering + network guard (real), fixture archive | ✅ | phase-6 commit |
 | 7 — ADR-0022, privacy paragraph + spec, CONTEXT.md, CSP note | ✅ | `e5935128` (+ the worker/Stripe corrections in the phase-6 commit) |
-| 8 — gates: CI green, merge main (already contained), ready-for-review, review gate (six findings, all fixed), Sonar list, docs-freshness | ✅ | review-fix commit; merged via PR #1102 |
+| 8 — gates: CI green, merge main (already contained), ready-for-review, review gate (six findings, all fixed), Sonar list (five, all fixed), docs-freshness | ✅ | review-fix + Sonar-fix commits; merged via PR #1102 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -314,6 +314,7 @@ has zero citations outside `docs/plans/` and is `git rm`'d in the close-out comm
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-7 | Sonar gate (analysis on `12cc250b`: gate passed, 81.4 % new-code coverage, 0 duplication, 5 new issues) | `Web:S6819` twice — the switch wrapper and the zoom group carried `role="group"` on a `<div>`; `shelldre:S7688` three times — `[ ]` tests in `scripts/build-riviera-map.sh` | fixed — both groups are `<fieldset>` + `sr-only` `<legend>`; the script uses `[[ ]]` (Sonar-fix commit, the last code-touching one) |
 | F-6 | review gate (reviewer 1 and reviewer 5; RV-PROC-1) | AC-9 claimed the switch buttons were measured "on `phone` and `fold`" by a test name that does not exist; the tourist sweep runs at its own 390 px and the `phone`/`fold` projects cover the consoles | fixed — AC-9 and its verification line now name the real tests and widths (review-fix commit) |
 | F-5 | review gate (reviewer 1; RV-FE-9) | a resize across `lg` hides the panel the switch is not showing; focus inside it (a zoom button) was stranded on `<body>` with no `focusMover()` | fixed — `Home.rescueFocusFromHiddenPanel()` lands it on the count block; `home.spec.ts` › `moves focus off a panel that a resize below lg hides` (review-fix commit) |
 | F-4 | review gate (reviewer 2, bug scan) | `FakeMapHandle.destroy()` cleared the listener map but not the sets a queued `load` microtask still held, so a handler registered in the same tick still fired after destroy | fixed — the sets are emptied too; `fake-map-engine.spec.ts` › `never reports load after destroy…` (review-fix commit) |
@@ -482,5 +483,5 @@ has zero citations outside `docs/plans/` and is `git rm`'d in the close-out comm
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (R-1 and the Planetiler assumption deferred to issue #1103).
-- [x] **Close-out written in THIS PR, in its last code-touching commit** — the review-fix commit, citing `merged via PR #1102`.
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the Sonar-fix commit, citing `merged via PR #1102`.
 - [x] **The review gate ran in full** — rung 1 (`code-review:code-review`, five reviewers + scoring) over `0a813c6b..454429ba` with `riviera-review-overlay` walked; six findings, all fixed in the review-fix commit, re-walked on that commit's diff by hand (RV-FE-9/10, RV-PROC-1/2, RV-STYLE-1).
