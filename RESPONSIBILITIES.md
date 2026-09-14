@@ -498,7 +498,7 @@ any other claim (invariant #2).
   never learn which gateway is behind it)
 - Computing the payout or commission → **`payout`** (my `BookingConfirmed` *triggers*
   accrual)
-- The venue map, pricing, or pool rules → **`venue`**
+- The beach map, pricing, or pool rules → **`venue`**
 - Storing guest contact details → **`customer`**
 - The **retention window** or the contact scrub → **`customer`**. I answer only the *fact*
   "does this guest have a booking on/after date D" via `customer.spi.GuestBookingHistory`.
@@ -1223,6 +1223,20 @@ token in a `preview` extension, so the operator re-decides on what is true now; 
 **each module port asserts venue ownership itself** (invariant #13), and every rule — the diff, the
 zone, the candidate, the status split, the token, the free exit — stays in its module: a rule growing
 at the root is the signal it belongs in one. The receipts read is `booking`'s own adapter.
+
+**Riviera map resources (ADR-0022)** — the geographic discovery map (the **riviera map**, as distinct
+from a venue's **beach map**) is drawn in the browser by MapLibre GL from four resources the platform
+hosts itself: the style, the PMTiles tile archive, the glyph ranges and the sprites, all served
+anonymously under `/map/**` by the root's `MapResourcesConfig` — an app-wide static-resource concern
+like the SPA shell, owned by no module. They live in a directory next to the jar (`riviera.map.dir`,
+`platform/map/` in the repo, `/app/map/` on the image), never on the classpath: the archive is read by
+HTTP `Range` and a deflated jar entry cannot seek, so a classpath copy would inflate up to the offset
+on every tile request. Every URL the style names is a `/map/…` path; no third-party map host, tile
+CDN, glyph host or geocoder is ever contacted from a tourist's browser — the DSGVO property the ADR
+records — and the shipped style is held to it by `MapStyleSelfHostedTest`, the real-engine e2e
+network guard being its second lock. The archive is a build-time artifact of
+`scripts/build-riviera-map.sh` from an OSM-derived source; regeneration is the runbook
+`docs/runbooks/riviera-map-tiles.md`, not automation.
 
 ## Invariants, long form
 

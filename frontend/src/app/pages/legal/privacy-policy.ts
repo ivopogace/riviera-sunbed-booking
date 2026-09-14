@@ -18,8 +18,9 @@ import { CardGlass } from '../../shared/card-glass';
  * security-measures section — the self-hosted proof-of-work challenge on the public writes
  * (ADR-0016) and the length-plus-blocklist password rule. That section's three "nots" (no cookie,
  * no fingerprinting, nothing to a third party) are the properties the challenge was chosen for, so
- * they are asserted, not decorative. Styled Tailwind-only on the shared card glass (contrast:
- * `legal-pages.contrast.spec.ts`).
+ * they are asserted, not decorative — and the map section (ADR-0022): OpenStreetMap-based, served
+ * by our own origin, nothing to a third party. Styled Tailwind-only on the shared card glass
+ * (contrast: `legal-pages.contrast.spec.ts`).
  */
 @Component({
   selector: 'app-privacy-policy',

@@ -150,7 +150,9 @@ and guest row never linked; auth endpoints non-enumerating and constant-time; mo
 profile-guarded out of prod; revocation edge-orchestrated and synchronous; the public writes that
 cost money or inventory fenced at the edge, verified by the `challenge` module's self-hosted
 proof-of-work challenge against a Postgres single-use registry (ADR-0016, ADR-0017); every mutating
-`/api/admin/**` action past the gate audited automatically by the edge's fence (ADR-0013).
+`/api/admin/**` action past the gate audited automatically by the edge's fence (ADR-0013); the
+riviera map's style, tiles, glyphs and sprites self-hosted under `/map/**` from a directory beside
+the jar, no third-party map host ever contacted (ADR-0022).
 
 ## Cross-cutting invariants
 

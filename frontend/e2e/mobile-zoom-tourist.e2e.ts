@@ -165,6 +165,24 @@ test.describe('tourist UI — mobile zoom', () => {
     await expectTouchManipulation(page, '[data-testid="nav-user"]', 'the account chip');
   });
 
+  test('the Discover switch and the map zoom controls keep their double-tap', async ({ page }) => {
+    // A toggle tapped back and forth, and +/− buttons on a map whose own gesture is double-tap-to-zoom.
+    await page.addInitScript(() => {
+      (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
+    });
+    await page.setViewportSize(PHONE);
+    await page.goto('/');
+    await expect(page.getByTestId('venue-card').first()).toBeVisible();
+    await page.getByTestId('view-map').click();
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+
+    await expectTouchManipulation(
+      page,
+      '[data-testid="view-list"], [data-testid="view-map"], [data-testid="map-zoom-in"], [data-testid="map-zoom-out"]',
+      'the list/map switch and the map zoom controls',
+    );
+  });
+
   test('the theme swatch keeps its double-tap at a phone width too', async ({ page }) => {
     // The only header trigger below `sm`, so a desktop-width assertion would never reach it.
     await page.setViewportSize(PHONE);

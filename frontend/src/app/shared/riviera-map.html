@@ -1,0 +1,66 @@
+<!-- Visually hidden until focused: the first stop inside the region, so a keyboard user can leave
+     before the engine's pan-and-zoom canvas takes the arrow keys. -->
+<button
+  type="button"
+  appTouchTarget
+  data-testid="map-skip"
+  class="sr-only m-0 focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-20 focus:inline-flex focus:items-center focus:rounded-full focus:border focus:border-riv-solid-btn-border focus:bg-riv-solid-btn-fill focus:px-[16px] focus:text-[14px] focus:font-semibold focus:text-riv-solid-btn-ink"
+  (click)="skipMap()"
+>
+  Skip map
+</button>
+
+<!-- The engine owns this subtree from create() on; nothing here reads inside it. -->
+<div #canvasHost data-testid="riviera-map-canvas" class="absolute inset-0"></div>
+
+@if (status() === 'unavailable') {
+  <p
+    data-testid="map-unavailable"
+    class="absolute inset-x-4 top-1/2 z-10 -translate-y-1/2 rounded-[18px] border border-riv-solid-btn-border bg-riv-solid-btn-fill px-4 py-3 text-center text-[14px] leading-[1.5] text-riv-solid-btn-ink"
+  >
+    The map can’t be shown in this browser. Every venue is in the list.
+  </p>
+} @else {
+  <fieldset class="absolute top-3 right-3 z-10 flex flex-col gap-2">
+    <legend class="sr-only">Zoom</legend>
+    <button
+      type="button"
+      appTouchTarget
+      data-testid="map-zoom-in"
+      aria-label="Zoom in"
+      class="inline-flex size-11 touch-manipulation items-center justify-center rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill text-[22px] leading-none font-semibold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.22)] hover:bg-riv-solid-btn-hover"
+      (click)="zoomIn()"
+    >
+      <span aria-hidden="true">+</span>
+    </button>
+    <button
+      type="button"
+      appTouchTarget
+      data-testid="map-zoom-out"
+      aria-label="Zoom out"
+      class="inline-flex size-11 touch-manipulation items-center justify-center rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill text-[22px] leading-none font-semibold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.22)] hover:bg-riv-solid-btn-hover"
+      (click)="zoomOut()"
+    >
+      <span aria-hidden="true">−</span>
+    </button>
+  </fieldset>
+}
+
+<!-- ODbL attribution, permanent: the pill outlives every map state. -->
+<p
+  data-testid="map-attribution"
+  class="absolute right-3 bottom-3 z-10 rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill px-[10px] py-[4px] text-[12px] leading-[16px] text-riv-solid-btn-ink"
+>
+  ©
+  <a
+    class="underline"
+    href="https://www.openstreetmap.org/copyright"
+    target="_blank"
+    rel="noopener noreferrer"
+    data-touch-exempt="a link inside a sentence (WCAG 2.5.5 inline exception)"
+    >OpenStreetMap</a
+  >
+  contributors
+</p>
+
+<span #mapEnd tabindex="-1" data-testid="map-end" class="sr-only">End of map</span>

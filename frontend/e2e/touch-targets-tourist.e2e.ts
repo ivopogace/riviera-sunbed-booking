@@ -56,6 +56,20 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await expectTouchTargets(page, 'tourist home');
   });
 
+  test('home — the map view, with its zoom controls and the skip stop', async ({ page }) => {
+    // The fake engine renders no canvas; the chrome around it is what the sweep measures.
+    await page.addInitScript(() => {
+      (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
+    });
+    await page.goto('/');
+    await expect(page.getByTestId('venue-card').first()).toBeVisible();
+    await page.getByTestId('view-map').click();
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+    await page.getByTestId('map-skip').focus();
+
+    await expectTouchTargets(page, 'tourist home, map view');
+  });
+
   test('venue detail — the beach map', async ({ page }) => {
     await page.goto('/venues/1');
     await expect(page.getByRole('button', { name: /Select to book/ }).first()).toBeVisible();
