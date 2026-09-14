@@ -118,210 +118,257 @@
   <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
   <app-load-announcer [loading]="loading()" loadingLabel="Loading venues…" />
 
-  @if (failed()) {
-    <!-- Designed load-failure panel: the alert role and error test id preserve accessible semantics so assistive tech announces it; the warning glyph is decorative — the heading carries the meaning. -->
-    <div appFailurePanel role="alert" data-testid="error">
-      <span appFailureIcon aria-hidden="true">⚠</span>
-      <h2 appFailureTitle>We couldn’t load the beaches</h2>
-      <p appFailureText>
-        Something went wrong reaching Riviera. Check your connection and try again — your bookings
-        are safe.
-      </p>
-      <app-retry-button testId="retry" (retry)="onRetryDiscover()" />
-    </div>
-  } @else if (venuesView(); as list) {
-    @if (isEmpty()) {
-      <!-- Not a live region: born holding its text it announced nothing, and the persistent count region above already speaks this outcome. -->
-      <p
-        class="state mt-6 rounded-[26px] px-5 py-12 text-center text-[15px] text-riv-ink-soft"
-        appPanelGlass
-        data-testid="empty"
+  <!-- Below lg the two panels alternate; from lg up both show side by side and the switch is gone. -->
+  <div
+    class="view-switch mt-6 flex justify-end lg:hidden"
+    role="group"
+    aria-label="View"
+    data-testid="view-switch"
+  >
+    <div appCardGlass class="inline-flex gap-1 rounded-full p-1">
+      <button
+        type="button"
+        appTouchTarget
+        data-testid="view-list"
+        class="rounded-full px-[18px] text-[14px] font-semibold text-riv-card-ink aria-pressed:bg-riv-accent-ink aria-pressed:text-riv-on-accent-ink"
+        [attr.aria-pressed]="view() === 'list'"
+        (click)="showList()"
       >
-        No venues match these filters. Try another beach, region, or date.
-      </p>
-    } @else {
-      <ul class="venue-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5">
-        @for (card of list; track card.id) {
-          <!-- Named group/card keys the hover lift on the li (the overlaid slideshow controls keep it) without tripping the controls' own unnamed group-hover chevron tint. -->
-          <li class="group/card relative">
-            <a
-              class="card flex h-full flex-col overflow-hidden rounded-[28px] no-underline shadow-[0_12px_40px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7] motion-safe:[transition:transform_0.2s_ease,box-shadow_0.2s_ease,border-color_0.2s_ease] group-hover/card:border-riv-card-hover-border group-hover/card:shadow-riv-card-hover motion-safe:group-hover/card:[transform:translateY(-5px)] focus-visible:shadow-[0_0_0_7px_color-mix(in_srgb,var(--riv-accent-ink)_90%,transparent)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
-              appCardGlass
-              data-testid="venue-card"
-              [routerLink]="['/venues', card.id]"
-              [queryParams]="{ date: selectedDate() }"
-              [attr.aria-label]="card.ariaLabel"
-            >
-              <!-- The <a> carries the full accessible name via aria-label, so its visible content
-                   is decorative to AT — the two inner blocks are aria-hidden. -->
-              <!-- The uploaded photos as a crossfading slideshow stack (cover first); the gradient + sun placeholder as the empty state. The scrim ALWAYS layers over it — the location text's AA floor must hold over ANY photo (home.contrast.spec.ts computes the white-photo worst case). -->
-              <span
-                class="card-photo relative block aspect-[3/2] bg-(image:--riv-photo-grad)"
-                aria-hidden="true"
-              >
-                <app-photo-slideshow
-                  #show
-                  [photos]="card.photos"
-                  [name]="card.name"
-                  testId="card-photo"
-                  sizes="(min-width: 1128px) 30vw, (min-width: 768px) 47vw, 92vw"
-                />
-                @if (card.photos.length === 0) {
-                  <!-- Opaque disc + translucent glow, matching the venue-map empty state's sun. -->
-                  <span
-                    class="photo-sun absolute top-[42%] left-1/2 size-[52px] rounded-[50%] bg-(image:--riv-sun-grad) shadow-[0_0_30px_10px_rgba(255,199,105,0.4)] [transform:translate(-50%,-50%)]"
-                  ></span>
-                }
-                <span appPhotoScrim></span>
-                <!-- The SEMANTIC chips (#705): platform claims about how booking will go, wearing the inverted accent pill (opaque fill — see shared/semantic-chip.ts). One flex row instead of two absolute corners: flex-wrap stacks the closed chip under the mode chip on a near-minimum-width card, where the two pills would otherwise collide. card.ariaLabel carries the closed state to AT — this band is aria-hidden. -->
-                <span
-                  class="absolute inset-x-[14px] top-[14px] flex flex-wrap items-start justify-between gap-[7px]"
+        List
+      </button>
+      <button
+        type="button"
+        appTouchTarget
+        data-testid="view-map"
+        class="rounded-full px-[18px] text-[14px] font-semibold text-riv-card-ink aria-pressed:bg-riv-accent-ink aria-pressed:text-riv-on-accent-ink"
+        [attr.aria-pressed]="view() === 'map'"
+        (click)="showMap()"
+      >
+        Map
+      </button>
+    </div>
+  </div>
+
+  <div class="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] lg:items-start lg:gap-5">
+    <div class="list-panel min-w-0" data-testid="list-panel" [hidden]="!listShown()">
+      @if (failed()) {
+        <!-- Designed load-failure panel: the alert role and error test id preserve accessible semantics so assistive tech announces it; the warning glyph is decorative — the heading carries the meaning. -->
+        <div appFailurePanel role="alert" data-testid="error">
+          <span appFailureIcon aria-hidden="true">⚠</span>
+          <h2 appFailureTitle>We couldn’t load the beaches</h2>
+          <p appFailureText>
+            Something went wrong reaching Riviera. Check your connection and try again — your
+            bookings are safe.
+          </p>
+          <app-retry-button testId="retry" (retry)="onRetryDiscover()" />
+        </div>
+      } @else if (venuesView(); as list) {
+        @if (isEmpty()) {
+          <!-- Not a live region: born holding its text it announced nothing, and the persistent count region above already speaks this outcome. -->
+          <p
+            class="state mt-6 rounded-[26px] px-5 py-12 text-center text-[15px] text-riv-ink-soft"
+            appPanelGlass
+            data-testid="empty"
+          >
+            No venues match these filters. Try another beach, region, or date.
+          </p>
+        } @else {
+          <ul class="venue-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5">
+            @for (card of list; track card.id) {
+              <!-- Named group/card keys the hover lift on the li (the overlaid slideshow controls keep it) without tripping the controls' own unnamed group-hover chevron tint. -->
+              <li class="group/card relative">
+                <a
+                  class="card flex h-full flex-col overflow-hidden rounded-[28px] no-underline shadow-[0_12px_40px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7] motion-safe:[transition:transform_0.2s_ease,box-shadow_0.2s_ease,border-color_0.2s_ease] group-hover/card:border-riv-card-hover-border group-hover/card:shadow-riv-card-hover motion-safe:group-hover/card:[transform:translateY(-5px)] focus-visible:shadow-[0_0_0_7px_color-mix(in_srgb,var(--riv-accent-ink)_90%,transparent)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
+                  appCardGlass
+                  data-testid="venue-card"
+                  [routerLink]="['/venues', card.id]"
+                  [queryParams]="{ date: selectedDate() }"
+                  [attr.aria-label]="card.ariaLabel"
                 >
+                  <!-- The <a> carries the full accessible name via aria-label, so its visible content is decorative to AT — the two inner blocks are aria-hidden. -->
+                  <!-- The uploaded photos as a crossfading slideshow stack (cover first); the gradient + sun placeholder as the empty state. The scrim ALWAYS layers over it — the location text's AA floor must hold over ANY photo (home.contrast.spec.ts computes the white-photo worst case). -->
                   <span
-                    appSemanticChip
-                    class="mode-chip inline-flex items-center px-[11px] py-[5px] text-[11px] tracking-[0.03em]"
-                    >{{ card.modeLabel }}</span
+                    class="card-photo relative block aspect-[3/2] bg-(image:--riv-photo-grad)"
+                    aria-hidden="true"
                   >
-                  @if (card.closedForSeason) {
-                    <app-closed-for-season-chip [reopensOn]="card.reopensOn" />
-                  } @else if (card.salesClosed) {
+                    <app-photo-slideshow
+                      #show
+                      [photos]="card.photos"
+                      [name]="card.name"
+                      testId="card-photo"
+                      sizes="(min-width: 1128px) 30vw, (min-width: 768px) 47vw, 92vw"
+                    />
+                    @if (card.photos.length === 0) {
+                      <!-- Opaque disc + translucent glow, matching the venue-map empty state's sun. -->
+                      <span
+                        class="photo-sun absolute top-[42%] left-1/2 size-[52px] rounded-[50%] bg-(image:--riv-sun-grad) shadow-[0_0_30px_10px_rgba(255,199,105,0.4)] [transform:translate(-50%,-50%)]"
+                      ></span>
+                    }
+                    <span appPhotoScrim></span>
+                    <!-- The SEMANTIC chips: platform claims about how booking will go, wearing the inverted accent pill (opaque fill — see shared/semantic-chip.ts). One flex row instead of two absolute corners: flex-wrap stacks the closed chip under the mode chip on a near-minimum-width card, where the two pills would otherwise collide. card.ariaLabel carries the closed state to AT — this band is aria-hidden. -->
                     <span
-                      appSemanticChip
-                      class="sales-closed-chip inline-flex items-center px-[11px] py-[5px] text-[11px] tracking-[0.03em]"
-                      >Sales closed for today</span
+                      class="absolute inset-x-[14px] top-[14px] flex flex-wrap items-start justify-between gap-[7px]"
                     >
-                  }
-                </span>
-                <!-- The location yields the dot rail's corner: 82px = the rail at its widest (3 dots, one of them the 18px active pill: 13px inset + 14px padding + 34px dots + 14px gaps = 75px) plus 7px clearance — it must be re-derived whenever the rail's metrics change. The explicit 15px line box is the scrim geometry home.contrast.spec.ts pins. -->
-                <span
-                  class="photo-location absolute bottom-[13px] left-[15px] text-[12.5px] leading-[15px] font-semibold text-riv-photo-ink [text-shadow:0_1px_6px_rgba(0,0,0,0.4)]"
-                  [class]="card.photos.length > 1 ? 'right-[82px] truncate' : ''"
-                  >{{ card.beach }} · {{ card.region }}</span
-                >
-              </span>
-
-              <span
-                class="card-body flex flex-1 flex-col gap-2 px-[18px] pt-[17px] pb-[18px]"
-                aria-hidden="true"
-              >
-                <span
-                  class="card-name text-[21px] leading-[1.08] font-bold tracking-[-0.01em] text-riv-card-ink"
-                  >{{ card.name }}</span
-                >
-
-                <span
-                  class="card-meta flex items-center gap-[7px] text-[13.5px] text-riv-card-ink-soft"
-                >
-                  @if (card.isRated) {
-                    <!-- The star is decorative; the numeric rating carries the value. -->
-                    <span class="star text-[#f4a939]">★</span>
-                    <span class="rating font-bold text-riv-card-ink">{{ card.rating }}</span>
-                    <span class="dot text-riv-card-ink opacity-30">·</span>
-                    {{ card.reviewsLabel }}
-                  } @else {
-                    <!-- "New" / unrated state — the second SEMANTIC chip (#705): like the mode chip it is a platform claim, not a venue self-description, so it takes the same inverted accent pill. Padding stays here; the row's 13.5px is inherited. -->
-                    <span appSemanticChip class="new-chip px-[9px] py-px" data-testid="new-chip"
-                      >New</span
+                      <span
+                        appSemanticChip
+                        class="mode-chip inline-flex items-center px-[11px] py-[5px] text-[11px] tracking-[0.03em]"
+                        >{{ card.modeLabel }}</span
+                      >
+                      @if (card.closedForSeason) {
+                        <app-closed-for-season-chip [reopensOn]="card.reopensOn" />
+                      } @else if (card.salesClosed) {
+                        <span
+                          appSemanticChip
+                          class="sales-closed-chip inline-flex items-center px-[11px] py-[5px] text-[11px] tracking-[0.03em]"
+                          >Sales closed for today</span
+                        >
+                      }
+                    </span>
+                    <!-- The location yields the dot rail's corner: 82px = the rail at its widest (3 dots, one of them the 18px active pill: 13px inset + 14px padding + 34px dots + 14px gaps = 75px) plus 7px clearance — it must be re-derived whenever the rail's metrics change. The explicit 15px line box is the scrim geometry home.contrast.spec.ts pins. -->
+                    <span
+                      class="photo-location absolute bottom-[13px] left-[15px] text-[12.5px] leading-[15px] font-semibold text-riv-photo-ink [text-shadow:0_1px_6px_rgba(0,0,0,0.4)]"
+                      [class]="card.photos.length > 1 ? 'right-[82px] truncate' : ''"
+                      >{{ card.beach }} · {{ card.region }}</span
                     >
-                  }
-                </span>
+                  </span>
 
-                <!-- To-water chip first, then ≤3 amenity chips in catalogue order. The card body is aria-hidden, so this text is also folded into card.ariaLabel; the slot collapses (empty:hidden) when the venue has no chips — a zero-height item would still cost an extra 8px column gap. -->
-                <span
-                  class="card-chips flex flex-wrap gap-1.5 empty:hidden"
-                  data-testid="card-chips"
-                >
-                  @if (card.water; as water) {
-                    <span appAmenityChip water>{{ water }}</span>
-                  }
-                  @for (amenity of card.amenities; track amenity.code) {
-                    <span appAmenityChip>{{ amenity.label }}</span>
-                  }
-                </span>
-
-                <span
-                  class="avail-track mt-2.5 block h-1.5 overflow-hidden rounded-full bg-riv-card-track"
-                >
                   <span
-                    class="avail-fill block h-full bg-(image:--riv-bar-grad)"
-                    [style.width.%]="card.freePercent"
-                  ></span>
-                </span>
-
-                <span
-                  class="card-footer mt-[3px] flex flex-wrap items-baseline justify-between gap-2"
-                >
-                  @if (card.priceLabel; as price) {
-                    <span class="price text-[14px] text-riv-card-ink-soft"
-                      >from
-                      <strong class="text-[16px] font-extrabold text-riv-accent-ink">{{
-                        price
-                      }}</strong>
-                      / set</span
-                    >
-                  } @else {
-                    <span class="price text-[14px] text-riv-card-ink-soft">No sets yet</span>
-                  }
-                  <span
-                    class="availability text-[12.5px] text-riv-card-ink-soft"
-                    data-testid="card-availability"
+                    class="card-body flex flex-1 flex-col gap-2 px-[18px] pt-[17px] pb-[18px]"
+                    aria-hidden="true"
                   >
-                    <strong class="text-riv-card-ink">{{ card.free }}</strong> of
-                    {{ card.total }} free
+                    <span
+                      class="card-name text-[21px] leading-[1.08] font-bold tracking-[-0.01em] text-riv-card-ink"
+                      >{{ card.name }}</span
+                    >
+
+                    <span
+                      class="card-meta flex items-center gap-[7px] text-[13.5px] text-riv-card-ink-soft"
+                    >
+                      @if (card.isRated) {
+                        <!-- The star is decorative; the numeric rating carries the value. -->
+                        <span class="star text-[#f4a939]">★</span>
+                        <span class="rating font-bold text-riv-card-ink">{{ card.rating }}</span>
+                        <span class="dot text-riv-card-ink opacity-30">·</span>
+                        {{ card.reviewsLabel }}
+                      } @else {
+                        <!-- "New" / unrated state — a SEMANTIC chip: like the mode chip it is a platform claim, not a venue self-description, so it takes the same inverted accent pill. Padding stays here; the row's 13.5px is inherited. -->
+                        <span appSemanticChip class="new-chip px-[9px] py-px" data-testid="new-chip"
+                          >New</span
+                        >
+                      }
+                    </span>
+
+                    <!-- To-water chip first, then ≤3 amenity chips in catalogue order. The card body is aria-hidden, so this text is also folded into card.ariaLabel; the slot collapses (empty:hidden) when the venue has no chips — a zero-height item would still cost an extra 8px column gap. -->
+                    <span
+                      class="card-chips flex flex-wrap gap-1.5 empty:hidden"
+                      data-testid="card-chips"
+                    >
+                      @if (card.water; as water) {
+                        <span appAmenityChip water>{{ water }}</span>
+                      }
+                      @for (amenity of card.amenities; track amenity.code) {
+                        <span appAmenityChip>{{ amenity.label }}</span>
+                      }
+                    </span>
+
+                    <span
+                      class="avail-track mt-2.5 block h-1.5 overflow-hidden rounded-full bg-riv-card-track"
+                    >
+                      <span
+                        class="avail-fill block h-full bg-(image:--riv-bar-grad)"
+                        [style.width.%]="card.freePercent"
+                      ></span>
+                    </span>
+
+                    <span
+                      class="card-footer mt-[3px] flex flex-wrap items-baseline justify-between gap-2"
+                    >
+                      @if (card.priceLabel; as price) {
+                        <span class="price text-[14px] text-riv-card-ink-soft"
+                          >from
+                          <strong class="text-[16px] font-extrabold text-riv-accent-ink">{{
+                            price
+                          }}</strong>
+                          / set</span
+                        >
+                      } @else {
+                        <span class="price text-[14px] text-riv-card-ink-soft">No sets yet</span>
+                      }
+                      <span
+                        class="availability text-[12.5px] text-riv-card-ink-soft"
+                        data-testid="card-availability"
+                      >
+                        <strong class="text-riv-card-ink">{{ card.free }}</strong> of
+                        {{ card.total }} free
+                      </span>
+                    </span>
+                  </span>
+                </a>
+                <!-- Slideshow controls live OUTSIDE the card <a> (nested interactive controls are invalid + an axe failure); this anchor shares the band's width and aspect-[3/2] so the button centre never drifts from it. The buttons re-enable their own pointer events (shared/photo-step-button.ts), so the card link stays clickable between them. -->
+                @if (card.photos.length > 1) {
+                  <span class="pointer-events-none absolute inset-x-0 top-0 aspect-[3/2]">
+                    <app-photo-step-button
+                      direction="prev"
+                      testId="card-photo-prev"
+                      [label]="'Previous photo, ' + card.name"
+                      (stepped)="show.prev()"
+                    />
+                    <app-photo-step-button
+                      direction="next"
+                      testId="card-photo-next"
+                      [label]="'Next photo, ' + card.name"
+                      (stepped)="show.next()"
+                    />
+                  </span>
+                  <!-- The slideshow's own live region cannot serve this placement: the whole band sits inside the card's aria-hidden <a>, so the announcement has to be mounted out here beside the controls that cause it. Persistent, per shared/load-announcer.ts — only its text changes. -->
+                  <output class="sr-only" aria-live="polite" data-testid="card-photo-position">
+                    {{ show.positionLabel() }}
+                  </output>
+                }
+              </li>
+            }
+          </ul>
+        }
+      } @else {
+        <!-- Skeletons mirror the grid so the layout doesn't jump; the announcer owns the words. -->
+        <div data-testid="loading" aria-hidden="true">
+          <ul class="venue-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5">
+            @for (slot of skeletons; track slot) {
+              <li>
+                <span
+                  appCardGlass
+                  class="flex h-full animate-pulse flex-col overflow-hidden rounded-[28px] motion-reduce:animate-none"
+                  data-testid="skeleton-card"
+                >
+                  <span class="block aspect-[3/2] bg-riv-card-track"></span>
+                  <span class="flex flex-1 flex-col gap-[10px] p-[18px]">
+                    <span class="h-[18px] w-3/4 rounded-[6px] bg-riv-card-track"></span>
+                    <span class="h-[10px] w-1/2 rounded-[6px] bg-riv-card-track"></span>
+                    <span class="grid grid-cols-3 gap-[8px]">
+                      <span class="col-span-2 h-[10px] rounded-[6px] bg-riv-card-track"></span>
+                      <span class="h-[10px] rounded-[6px] bg-riv-card-track"></span>
+                    </span>
+                    <span class="mt-auto h-[6px] rounded-full bg-riv-card-track"></span>
                   </span>
                 </span>
-              </span>
-            </a>
-            <!-- Slideshow controls live OUTSIDE the card <a> (nested interactive controls are invalid + an axe failure); this anchor shares the band's width and aspect-[3/2] so the button centre never drifts from it. The buttons re-enable their own pointer events (shared/photo-step-button.ts), so the card link stays clickable between them. -->
-            @if (card.photos.length > 1) {
-              <span class="pointer-events-none absolute inset-x-0 top-0 aspect-[3/2]">
-                <app-photo-step-button
-                  direction="prev"
-                  testId="card-photo-prev"
-                  [label]="'Previous photo, ' + card.name"
-                  (stepped)="show.prev()"
-                />
-                <app-photo-step-button
-                  direction="next"
-                  testId="card-photo-next"
-                  [label]="'Next photo, ' + card.name"
-                  (stepped)="show.next()"
-                />
-              </span>
-              <!-- The slideshow's own live region cannot serve this placement: the whole band sits inside the card's aria-hidden <a>, so the announcement has to be mounted out here beside the controls that cause it. Persistent, per shared/load-announcer.ts — only its text changes. -->
-              <output class="sr-only" aria-live="polite" data-testid="card-photo-position">
-                {{ show.positionLabel() }}
-              </output>
+              </li>
             }
-          </li>
-        }
-      </ul>
-    }
-  } @else {
-    <!-- Skeletons mirror the grid so the layout doesn't jump; the announcer owns the words (#741). -->
-    <div data-testid="loading" aria-hidden="true">
-      <ul class="venue-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5">
-        @for (slot of skeletons; track slot) {
-          <li>
-            <span
-              appCardGlass
-              class="flex h-full animate-pulse flex-col overflow-hidden rounded-[28px] motion-reduce:animate-none"
-              data-testid="skeleton-card"
-            >
-              <span class="block aspect-[3/2] bg-riv-card-track"></span>
-              <span class="flex flex-1 flex-col gap-[10px] p-[18px]">
-                <span class="h-[18px] w-3/4 rounded-[6px] bg-riv-card-track"></span>
-                <span class="h-[10px] w-1/2 rounded-[6px] bg-riv-card-track"></span>
-                <span class="grid grid-cols-3 gap-[8px]">
-                  <span class="col-span-2 h-[10px] rounded-[6px] bg-riv-card-track"></span>
-                  <span class="h-[10px] rounded-[6px] bg-riv-card-track"></span>
-                </span>
-                <span class="mt-auto h-[6px] rounded-full bg-riv-card-track"></span>
-              </span>
-            </span>
-          </li>
-        }
-      </ul>
+          </ul>
+        </div>
+      }
     </div>
-  }
+
+    <!-- Sticky beside the list from lg: the map keeps pace while the cards scroll. -->
+    <div class="map-panel mt-6 lg:sticky lg:top-6" data-testid="map-panel" [hidden]="!mapOpen()">
+      @defer (when mapDefer()) {
+        <app-riviera-map class="h-[calc(100dvh-220px)] max-h-[720px] min-h-[360px]" />
+      } @placeholder {
+        <div
+          class="h-[360px] animate-pulse rounded-[26px] bg-riv-card-track motion-reduce:animate-none"
+          aria-hidden="true"
+          data-testid="map-placeholder"
+        ></div>
+      }
+    </div>
+  </div>
 </section>

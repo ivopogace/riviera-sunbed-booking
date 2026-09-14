@@ -11,6 +11,8 @@ import { BehaviorSubject } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { photoView, photoViews } from '../../../testing/photo-views';
 import { defaultBookingDate } from '../../shared/booking-date';
+import { FakeMapEngine } from '../../shared/fake-map-engine';
+import { MapEngine } from '../../shared/map-engine';
 import { VenueSummary } from '../../shared/venue-views';
 import { Home } from './home';
 
@@ -736,5 +738,120 @@ describe('Home (venue discovery)', () => {
     const card = el().querySelector('[data-testid="venue-card"]')!;
     expect(card.textContent).toContain('1 review');
     expect(card.textContent).not.toContain('1 reviews');
+  });
+});
+
+/**
+ * The list/map switch. Below Tailwind's `lg` the two panels alternate and the map chunk loads only
+ * once the venue request has settled; from `lg` up both show and the switch is gone. `matchMedia`
+ * is stubbed per case (jsdom has none) and restored — the spec mutates a global.
+ */
+describe('Home (list/map switch)', () => {
+  let httpMock: HttpTestingController;
+  const originalMatchMedia = globalThis.matchMedia;
+
+  function stubViewport(wide: boolean): void {
+    globalThis.matchMedia = (query: string) =>
+      ({
+        matches: wide,
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }) as unknown as MediaQueryList;
+  }
+
+  function render(wide: boolean): ComponentFixture<Home> {
+    stubViewport(wide);
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [Home],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: MapEngine, useValue: new FakeMapEngine() },
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(Home);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function flushVenues(): void {
+    httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`).flush(venues());
+  }
+
+  async function settle(fixture: ComponentFixture<Home>): Promise<void> {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  function byTestId(fixture: ComponentFixture<Home>, id: string): HTMLElement | null {
+    return (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      `[data-testid="${id}"]`,
+    );
+  }
+
+  afterEach(() => {
+    httpMock.verify();
+    globalThis.matchMedia = originalMatchMedia;
+  });
+
+  it('starts on the list below lg, with the map panel hidden and no map chunk loaded', async () => {
+    const fixture = render(false);
+    flushVenues();
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'view-list')?.getAttribute('aria-pressed')).toBe('true');
+    expect(byTestId(fixture, 'view-map')?.getAttribute('aria-pressed')).toBe('false');
+    expect(byTestId(fixture, 'list-panel')?.hidden).toBe(false);
+    expect(byTestId(fixture, 'map-panel')?.hidden).toBe(true);
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-riviera-map')).toBeNull();
+  });
+
+  it('shows the map and hides the list when Map is pressed, and back again', async () => {
+    const fixture = render(false);
+    flushVenues();
+    await settle(fixture);
+
+    byTestId(fixture, 'view-map')?.click();
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'view-map')?.getAttribute('aria-pressed')).toBe('true');
+    expect(byTestId(fixture, 'map-panel')?.hidden).toBe(false);
+    expect(byTestId(fixture, 'list-panel')?.hidden).toBe(true);
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-riviera-map')).not.toBeNull();
+
+    byTestId(fixture, 'view-list')?.click();
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'list-panel')?.hidden).toBe(false);
+    expect(byTestId(fixture, 'map-panel')?.hidden).toBe(true);
+  });
+
+  it('never loads the map before the venue list has settled', async () => {
+    const fixture = render(false);
+    byTestId(fixture, 'view-map')?.click();
+    await settle(fixture);
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-riviera-map')).toBeNull();
+
+    flushVenues();
+    await settle(fixture);
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-riviera-map')).not.toBeNull();
+  });
+
+  it('shows both panels side by side from lg up, without the switch', async () => {
+    const fixture = render(true);
+    flushVenues();
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'list-panel')?.hidden).toBe(false);
+    expect(byTestId(fixture, 'map-panel')?.hidden).toBe(false);
+    expect(byTestId(fixture, 'view-switch')?.classList.contains('lg:hidden')).toBe(true);
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-riviera-map')).not.toBeNull();
   });
 });

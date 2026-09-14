@@ -265,9 +265,9 @@ component never reads inside it.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `implement (phase 6)`
 
-**Next action:** phase 5 — the Discover switch, red first in `home.spec.ts`.
+**Next action:** phase 6 — run `discover-map.e2e.ts` and the touched sweeps under the mocked config; then phase 7.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -276,8 +276,8 @@ component never reads inside it.
 | 2 — map assets: build script (assets phase run here), style rewrite, glyphs, sprites, runbook, style-host test | ✅ | phase-2 commit |
 | 3 — frontend engine seam: token, real + fake adapters, `app.config` factory, deps, CSS | ✅ | phase-3 commit |
 | 4 — `riviera-map` component + unit/a11y/contrast specs | ✅ | phase-4 commit |
-| 5 — Discover list/map switch + `@defer` + home specs | ⏳ | |
-| 6 — mocked e2e: switch/a11y/touch (fake), ordering + network guard (real), fixture archive | | |
+| 5 — Discover list/map switch + `@defer` + home specs | ✅ | phase-5 commit |
+| 6 — mocked e2e: switch/a11y/touch (fake), ordering + network guard (real), fixture archive | ⏳ | |
 | 7 — ADR-0022, privacy paragraph + spec, CONTEXT.md, CSP note | | |
 | 8 — gates: CI green, merge main, ready-for-review, review + Sonar, docs-freshness | | |
 

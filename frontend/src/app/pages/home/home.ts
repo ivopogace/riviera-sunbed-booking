@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
 
@@ -23,6 +23,7 @@ import { PhotoStepButton } from '../../shared/photo-step-button';
 import { slideshowPhotos } from '../../shared/photo-url';
 import { isRated, ratingScore, reviewsLabel } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
+import { RivieraMap } from '../../shared/riviera-map';
 import { ClosedForSeasonChip } from '../../shared/closed-for-season-chip';
 import { SemanticChip } from '../../shared/semantic-chip';
 import { defaultBookingDate, formatDayMonth, isIsoDate } from '../../shared/booking-date';
@@ -65,6 +66,12 @@ interface VenueCard {
   readonly ariaLabel: string;
 }
 
+/**
+ * Tailwind's `lg` breakpoint — the twin of the `lg:` utilities in `home.html` that lay the map
+ * beside the list. Both must move together.
+ */
+const WIDE_VIEWPORT = '(min-width: 1024px)';
+
 /** The closed-state clause of a card's accessible name; the season badge outranks today's sales close. */
 function closedStateText(
   closedForSeason: boolean,
@@ -87,6 +94,11 @@ function closedStateText(
  * drives the per-venue availability count (invariant #2). Money is rendered from integer minor
  * units (invariant #5); every card fact is conveyed as text, not colour alone (WCAG AA). Loading
  * (a pulsing skeleton grid), empty, and error states are distinct.
+ *
+ * <p>Beside the list sits the **riviera map** (ADR-0022): below `lg` a List/Map switch shows one
+ * panel at a time, from `lg` up both show side by side. The map component is a deferred chunk that
+ * loads only once the venue request has settled, so the list is never slower for it; once loaded
+ * it stays mounted and the switch only hides it. The list remains the fully accessible path.
  */
 @Component({
   selector: 'app-home',
@@ -104,6 +116,7 @@ function closedStateText(
     FieldGlass,
     LoadAnnouncer,
     TouchTarget,
+    RivieraMap,
     ...FAILURE_DIRECTIVES,
   ],
   host: { class: 'block text-riv-card-ink' },
@@ -150,6 +163,17 @@ export class Home {
   protected readonly beaches = signal<readonly string[]>([]);
   protected readonly regions = signal<readonly string[]>([]);
 
+  /** Which panel the switch shows below `lg`; irrelevant from `lg` up, where both show. */
+  protected readonly view = signal<'list' | 'map'>('list');
+  /** True from Tailwind's `lg` up, followed live so a rotated tablet re-lays out. */
+  protected readonly wide = signal(false);
+  protected readonly listShown = computed(() => this.wide() || this.view() === 'list');
+  protected readonly mapOpen = computed(() => this.wide() || this.view() === 'map');
+  /** The venue request has answered or failed: the list is drawn, so the map may load. */
+  protected readonly listSettled = computed(() => this.venues() !== undefined || this.failed());
+  /** The map chunk's one-way trigger: an open map, after the list settled. */
+  protected readonly mapDefer = computed(() => this.mapOpen() && this.listSettled());
+
   /** The skeleton grid renders this many placeholder cards while a request is in flight. */
   protected readonly skeletons = [0, 1, 2, 3, 4, 5] as const;
 
@@ -187,6 +211,7 @@ export class Home {
   private lastLoad!: () => void;
 
   constructor() {
+    this.followViewport();
     this.selectedDate.set(this.routeDate(this.route.snapshot.queryParamMap));
     this.loadInitial();
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
@@ -196,6 +221,26 @@ export class Home {
         this.reload();
       }
     });
+  }
+
+  // Guarded: jsdom has no matchMedia — then the page stays in its narrow, switched layout.
+  private followViewport(): void {
+    if (typeof globalThis.matchMedia !== 'function') {
+      return;
+    }
+    const query = globalThis.matchMedia(WIDE_VIEWPORT);
+    this.wide.set(query.matches);
+    const onChange = (event: MediaQueryListEvent): void => this.wide.set(event.matches);
+    query.addEventListener('change', onChange);
+    inject(DestroyRef).onDestroy(() => query.removeEventListener('change', onChange));
+  }
+
+  protected showList(): void {
+    this.view.set('list');
+  }
+
+  protected showMap(): void {
+    this.view.set('map');
   }
 
   /** The route-carried day: a well-formed `?date` on or after the floor, else the floor itself. */
