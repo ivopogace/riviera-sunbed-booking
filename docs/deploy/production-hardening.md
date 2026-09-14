@@ -63,7 +63,10 @@ Pinned by `platform/src/test/java/ai/riviera/platform/ActuatorHardeningIT.java`.
 > **Content-Security-Policy note.** No CSP header is set today. If one is ever added, the widget's Web
 > Workers are spawned from Blob URLs, so the policy needs `worker-src blob:` (and `child-src blob:` for
 > older engines) alongside `script-src 'self'`; nothing else about the widget needs an allowance — it
-> loads no third-party script, style, or image.
+> loads no third-party script, style, or image. The riviera map's MapLibre GL engine (ADR-0022) spawns
+> its workers the same way, so the same `worker-src blob:` covers it; its style, tiles, glyphs and
+> sprites are all same-origin (`/map/**`), so `connect-src 'self'` and `img-src 'self'` suffice, and it
+> needs no third-party allowance either.
 
 > **The webhook endpoint's event list is configuration too, and nothing in the app can check it.**
 > The endpoint at Stripe must send `payment_intent.succeeded`, `payment_intent.canceled` and
