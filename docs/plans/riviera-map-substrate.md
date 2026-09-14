@@ -265,17 +265,17 @@ component never reads inside it.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** phase 3 — the engine seam (specs red first: `fake-map-engine.spec.ts`, `maplibre-map-engine.spec.ts`, `app.config.spec.ts`).
+**Next action:** phase 4 — `riviera-map` component green against `riviera-map.spec.ts`, then phase 5.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR | ✅ | `1ddf391f`, PR #1102 |
 | 1 — backend `/map/**` handler with `Range`, Dockerfile, gitattributes, RESPONSIBILITIES note | ✅ | `899a1a8a` |
 | 2 — map assets: build script (assets phase run here), style rewrite, glyphs, sprites, runbook, style-host test | ✅ | phase-2 commit |
-| 3 — frontend engine seam: token, real + fake adapters, `app.config` factory, deps, CSS | ⏳ | |
-| 4 — `riviera-map` component + unit/a11y/contrast specs | | |
+| 3 — frontend engine seam: token, real + fake adapters, `app.config` factory, deps, CSS | ✅ | phase-3 commit |
+| 4 — `riviera-map` component + unit/a11y/contrast specs | ⏳ | |
 | 5 — Discover list/map switch + `@defer` + home specs | | |
 | 6 — mocked e2e: switch/a11y/touch (fake), ordering + network guard (real), fixture archive | | |
 | 7 — ADR-0022, privacy paragraph + spec, CONTEXT.md, CSP note | | |
@@ -283,8 +283,9 @@ component never reads inside it.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
-**Baseline** (before phase 3): production build initial total 589.97 kB (already over the 500 kB
-warning; 1 MB error budget).
+**Bundle** — before phase 3: initial total 589.97 kB (already over the 500 kB warning; 1 MB error
+budget). After phase 3: initial total 592.70 kB (+2.7 kB, the factory and the adapter shell);
+`maplibre-gl` is a 1.06 MB lazy chunk (235 kB compressed) and `vendor/maplibre-gl.css` an asset.
 
 **Findings register**
 
