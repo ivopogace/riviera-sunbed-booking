@@ -119,7 +119,12 @@ The only place providers are wired:
   `FakeStripePaymentGateway` (deterministic, no third-party JS), swapped by a factory
   reading a `window.__RIVIERA_FAKE_*__` flag that only the Playwright e2e sets. Reuse this
   exact shape for any new external dependency: abstract token + real/fake adapters +
-  factory in `app.config.ts`; unit specs override the token directly.
+  factory in `app.config.ts`; unit specs override the token directly. Three instances today:
+  `booking/stripe-payment.gateway.ts`, `operator/qr-scanner.ts`, and `shared/map-engine.ts` —
+  the map engine sits in `shared/` (not a feature folder) because its consumers span features
+  (Discover today, the operator pin-drop later) and `pages/` may import only `core`/`shared`;
+  an adapter that fetches its own resources (MapLibre's tiles) is still `shared/`-admissible —
+  the row's "no HTTP" means no `HttpClient`/API state, not no I/O behind the seam.
 
 ## Theming & design tokens (Liquid Glass)
 

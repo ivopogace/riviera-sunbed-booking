@@ -11,7 +11,10 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  ACCENT_INK,
   DARK_ACCENT_INK,
+  DARK_ON_ACCENT_INK,
+  ON_ACCENT_INK,
   DARK_CARD_GLASS,
   DARK_CARD_INK,
   DARK_CHIP,
@@ -250,5 +253,19 @@ describe('Discover photo-area contrast (theme-independent, issue #135; real phot
         `over stop ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }
+  });
+});
+
+/**
+ * The list/map switch's pressed pill paints the on-accent ink over the accent ink — opaque, so
+ * the pair is theme-keyed rather than composited over stops; the unpressed pill's card ink over
+ * the card glass is the "card ink" case above.
+ */
+describe('Discover list/map switch contrast', () => {
+  it.each([
+    ['light', ON_ACCENT_INK, ACCENT_INK],
+    ['dark', DARK_ON_ACCENT_INK, DARK_ACCENT_INK],
+  ])('pressed pill label meets AA on the accent fill (%s themes)', (_theme, ink, fill) => {
+    expect(contrastRatio(rgbToHex(ink), rgbToHex(fill))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });

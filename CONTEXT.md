@@ -60,7 +60,15 @@ model in `docs/architecture/domain-model.md`.
   **Venue visibility**, which is derived from the operator's status and hides the venue; closing is
   a stored choice, touches no booking, hold or request, and leaves the staff daily view and walk-in
   marks working.
-- **Beach map** — a venue's visual layout: rows and individual set positions.
+- **Beach map** — a venue's visual layout: rows and individual set positions. _Avoid_: map
+  (alone, on a tourist surface where the **riviera map** could be meant).
+- **Riviera map** — the geographic discovery map of the Albanian riviera on the Discover page,
+  drawn from map resources the platform hosts itself (ADR-0022). Not a beach map: it shows where
+  venues are, never a venue's sunbeds. _Avoid_: venue map.
+- **Venue location** — a venue's position on the riviera map as a latitude/longitude pin, placed
+  by its operator by hand; optional, and a venue without one is simply absent from the riviera map
+  while staying in the list. _Avoid_: address, coordinates (as the concept), geolocation (that is
+  the visitor's own position, which never leaves their browser).
 - **Set position** — one spot on the beach map (e.g. Row A, position 3), flagged
   by tier and pool, with its own price. It is **active** until it is retired or deleted; only a
   set position that has never been booked can be deleted.

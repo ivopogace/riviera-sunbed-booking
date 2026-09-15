@@ -9,6 +9,8 @@ import { provideRouter } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
 import { expectNoAxeViolations } from '../../../testing/axe';
+import { FakeMapEngine } from '../../shared/fake-map-engine';
+import { MapEngine } from '../../shared/map-engine';
 import { VenueSummary } from '../../shared/venue-views';
 import { Home } from './home';
 
@@ -52,7 +54,12 @@ describe('Home accessibility (axe)', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Home],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: MapEngine, useValue: new FakeMapEngine() },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(Home);
@@ -125,6 +132,21 @@ describe('Home accessibility (axe)', () => {
   it('has no violations in the error state', async () => {
     listRequest().error(new ProgressEvent('error'));
     await fixture.whenStable();
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no violations with the map view open (switch pressed, map chrome rendered)', async () => {
+    fixture.detectChanges();
+    listRequest().flush(venues());
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    host().querySelector<HTMLButtonElement>('[data-testid="view-map"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host().querySelector('app-riviera-map')).not.toBeNull();
     await expectNoAxeViolations(host());
   });
 });
