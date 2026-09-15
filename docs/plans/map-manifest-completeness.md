@@ -133,16 +133,15 @@ N/A — no API shape changes.
 
 ## Execution status
 
-**Stage pointer:** sonar gate — fixes pushed, awaiting the re-run to confirm the list is
-clear before merge.
+**Stage pointer:** ready to merge — CI green (8/8 checks), review gate run (1 finding fixed
+in `d0f4b798`), Sonar gate clean (0 issues, 0 duplicated blocks, 0 new code smells, re-verified
+against `74e21edb` via the API — `total: 0` on `issues/search`, all `new_*` measures
+`bestValue: true`).
 
-**Next action:** once the Sonar re-analysis on the latest push confirms the `S7679` findings
-are gone and nothing new appeared, this doc's close-out (below) is already final — ask the
-user to authorize the merge (per this session's own risk-confirmation rule for a
-shared-state action), then run the merge close-out checklist (`riviera-sdlc`
-`references/pr-gates.md` §3): verify #1108 closes via the PR, `git rm` this plan doc in the
-close-out commit... except this repo's convention removes it at the *next* close-out after
-merge, not in this PR — so nothing further to do here once merged.
+**Next action:** awaiting the user's explicit go-ahead to merge PR #1112 (a shared-state
+action this session doesn't take unilaterally). After merge: confirm #1108 auto-closes via
+the PR's `Closes #1108`, tick epic #806's checklist with the PR number. This plan doc is
+deleted at the *next* close-out after merge, per this repo's convention — not in this PR.
 
 Verification narrative (2026-09-15, this machine has full outbound access including
 Geofabrik — unlike the cloud-session proxy the runbook's Egress table describes):
