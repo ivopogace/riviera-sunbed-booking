@@ -15,7 +15,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MAP_DIR="$REPO_ROOT/platform/map"
 MANIFEST="$MAP_DIR/MANIFEST.txt"
 # MANIFEST.txt is split into two sections, one per run mode, so re-running one mode replaces
-# only its own lines and never the other mode's (#1108).
+# only its own lines and never the other mode's.
 MANIFEST_ASSETS_HEADER="# assets"
 MANIFEST_TILES_HEADER="# tiles"
 
@@ -34,9 +34,9 @@ GLYPH_RANGES=(0-255 256-511 512-767 768-1023 1024-1279)
 PLANETILER_VERSION="${PLANETILER_VERSION:-0.10.2}"
 PLANETILER_JAR_URL="https://github.com/onthegomap/planetiler/releases/download/v$PLANETILER_VERSION/planetiler.jar"
 # Planetiler's own compiled-in default source URLs (v0.10.2), used as a manifest fallback when
-# a run reuses a cached source with no sidecar yet to read the real origin from (#1108) — a
+# a run reuses a cached source with no sidecar yet to read the real origin from — a
 # PLANETILER_VERSION bump is a deliberate, reviewed pin change, so a drift here only shows up
-# as a stale URL on that one cache-hit run, self-correcting on the next fresh download.
+# as a stale URL on a cache-hit run, and only until the next fresh download writes a sidecar.
 WATER_POLYGONS_URL="https://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip"
 NATURAL_EARTH_URL="https://naciscdn.org/naturalearth/packages/natural_earth_vector.sqlite.zip"
 LAKE_CENTERLINES_URL="https://github.com/acalcutt/osm-lakelines/releases/download/v12/lake_centerline.shp.zip"
@@ -69,7 +69,7 @@ manifest_section() { # manifest_section <header>
 
 # Replace the named section wholesale with the lines in <lines-file>, rewriting MANIFEST.txt
 # with both sections in a fixed order — the other section (if any) is carried over verbatim,
-# so re-running one mode never touches or duplicates the other mode's lines (#1108).
+# so re-running one mode never touches or duplicates the other mode's lines.
 write_manifest_section() { # write_manifest_section <header> <lines-file>
   local header="$1" lines_file="$2"
   local other_header other_body
@@ -137,7 +137,7 @@ JS
 # A tiny sidecar file beside a cached Planetiler source, recording the exact URL (or, for the
 # OSM extract, just the dated basename) it was last fetched from. Planetiler logs nothing at
 # all on a cache hit — verified by running --tiles twice against a warm RIVIERA_MAP_WORK — so
-# this sidecar is the only way a later cache-hit run still knows what it's reusing (#1108).
+# this sidecar is the only way a later cache-hit run still knows what it's reusing.
 origin_sidecar() { printf '%s.origin-url' "$1"; }
 
 # The stable (pre-redirect) URL Planetiler's own log says it downloaded <name> from this run,

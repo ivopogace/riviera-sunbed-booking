@@ -175,6 +175,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (code-review, 5-agent fan-out) | Comment on `WATER_POLYGONS_URL` et al. overstated how quickly a stale fallback self-corrects (only on the *next fresh download*, not "that one" cache-hit run) | fixed-in-`<pending commit>` |
+| F-2 | review (RV-STYLE-1) | Four new inline comments cited `(#1108)` — provenance belongs in the commit/PR, not inline prose | fixed-in-`<pending commit>` |
 
 ---
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Unit tests for the manifest section-replace mechanism in build-riviera-map.sh (#1108):
-# --assets and --tiles must each own their own section of MANIFEST.txt and never touch the
-# other's. No network or JVM needed — these are pure functions over a temp MANIFEST file.
+# Unit tests for the manifest section-replace mechanism in build-riviera-map.sh: --assets and
+# --tiles must each own their own section of MANIFEST.txt and never touch the other's. No
+# network or JVM needed — these are pure functions over a temp MANIFEST file.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
