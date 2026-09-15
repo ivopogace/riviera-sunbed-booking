@@ -112,7 +112,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review | RV-STYLE-1: two new multi-line inline comments cited `(#1111)` — provenance belongs in the commit, not the code | fixed-in-`<next-sha>` |
+| F-1 | review | RV-STYLE-1: two new multi-line inline comments cited `(#1111)` — provenance belongs in the commit, not the code | fixed-in-`12d1b2b5` |
 
 ---
 
