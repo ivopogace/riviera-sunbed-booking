@@ -133,10 +133,16 @@ N/A — no API shape changes.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0 + phase 1 both done; about to commit and open the PR)
+**Stage pointer:** sonar gate — fixes pushed, awaiting the re-run to confirm the list is
+clear before merge.
 
-**Next action:** commit, push `bugfix/map-manifest-completeness`, open the PR against `main`
-referencing #1108, then run the review/Sonar gates.
+**Next action:** once the Sonar re-analysis on the latest push confirms the `S7679` findings
+are gone and nothing new appeared, this doc's close-out (below) is already final — ask the
+user to authorize the merge (per this session's own risk-confirmation rule for a
+shared-state action), then run the merge close-out checklist (`riviera-sdlc`
+`references/pr-gates.md` §3): verify #1108 closes via the PR, `git rm` this plan doc in the
+close-out commit... except this repo's convention removes it at the *next* close-out after
+merge, not in this PR — so nothing further to do here once merged.
 
 Verification narrative (2026-09-15, this machine has full outbound access including
 Geofabrik — unlike the cloud-session proxy the runbook's Egress table describes):
@@ -175,8 +181,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review (code-review, 5-agent fan-out) | Comment on `WATER_POLYGONS_URL` et al. overstated how quickly a stale fallback self-corrects (only on the *next fresh download*, not "that one" cache-hit run) | fixed-in-`<pending commit>` |
-| F-2 | review (RV-STYLE-1) | Four new inline comments cited `(#1108)` — provenance belongs in the commit/PR, not inline prose | fixed-in-`<pending commit>` |
+| F-1 | review (code-review, 5-agent fan-out) | Comment on `WATER_POLYGONS_URL` et al. overstated how quickly a stale fallback self-corrects (only on the *next fresh download*, not "that one" cache-hit run) | fixed-in-`d0f4b798` |
+| F-2 | review (RV-STYLE-1) | Four new inline comments cited `(#1108)` — provenance belongs in the commit/PR, not inline prose | fixed-in-`d0f4b798` |
+| F-3 | sonar (`shelldre:S7679`, MAJOR ×4) | Positional parameters (`$1`/`$2`/`$3`) used directly instead of assigned to a named local, in `manifest_line`, `assert_eq`, `with_temp_manifest` | fixed — also generalized to `origin_sidecar`, `planetiler_stable_url`, `osm_dated_basename`, which weren't flagged but had the same shape |
 
 ---
 
@@ -216,6 +223,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-15 | Phase 0 | Every place `MANIFEST.txt` is written or documented (mechanism: `grep` for the literal filename across the repo) | `grep -rn "MANIFEST" --include=*.sh --include=*.md .` | `scripts/build-riviera-map.sh`, `docs/runbooks/riviera-map-tiles.md` | both updated in this slice; no other writer/reader exists |
+| 2026-09-15 | Sonar finding F-3 | Every function in the two touched scripts using a positional parameter (`$1`/`$2`/…) directly rather than a named local | `grep -n '\$1\|\$2\|\$3' scripts/build-riviera-map.sh scripts/build-riviera-map.test.sh` | 2 more (`origin_sidecar`, `planetiler_stable_url`/`osm_dated_basename`) beyond Sonar's 4 reported lines; `main()`'s single-use `case "$1" in` left alone (idiomatic, not the rule's target, not flagged) | fixed the 2 unflagged ones for consistency |
 
 ---
 

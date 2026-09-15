@@ -52,7 +52,8 @@ STYLE_GLYPHS="/map/glyphs/{fontstack}/{range}.pbf"
 usage() { sed -n '2,12p' "${BASH_SOURCE[0]}"; exit 2; }
 
 manifest_line() { # manifest_line <file> <url-or-label> → "sha256  url  utc-timestamp"
-  printf '%s  %s  %s\n' "$(sha256sum "$1" | cut -d' ' -f1)" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  local file="$1" label="$2"
+  printf '%s  %s  %s\n' "$(sha256sum "$file" | cut -d' ' -f1)" "$label" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 
 # Read the named section's body (its lines, header excluded) from MANIFEST.txt, or nothing
@@ -138,15 +139,15 @@ JS
 # OSM extract, just the dated basename) it was last fetched from. Planetiler logs nothing at
 # all on a cache hit — verified by running --tiles twice against a warm RIVIERA_MAP_WORK — so
 # this sidecar is the only way a later cache-hit run still knows what it's reusing.
-origin_sidecar() { printf '%s.origin-url' "$1"; }
+origin_sidecar() { local file="$1"; printf '%s.origin-url' "$file"; }
 
 # The stable (pre-redirect) URL Planetiler's own log says it downloaded <name> from this run,
 # or nothing if <name> wasn't freshly downloaded (a cache hit produces no log line for it).
 # Deliberately never the redirect target: naciscdn.org/osmdata.openstreetmap.de don't redirect,
 # and GitHub release assets redirect to a signed, expiring blob URL that is useless to record.
 planetiler_stable_url() { # planetiler_stable_url <log> <name>
-  local raw
-  raw="$(sed -n "s/.*\[download:$2\] - Downloading \(.*\) to .*/\1/p" "$1" | tail -1)"
+  local log="$1" name="$2" raw
+  raw="$(sed -n "s/.*\[download:$name\] - Downloading \(.*\) to .*/\1/p" "$log" | tail -1)"
   [[ -n "$raw" ]] || return 1
   printf '%s\n' "${raw%% (redirected to *}"
 }
@@ -154,8 +155,8 @@ planetiler_stable_url() { # planetiler_stable_url <log> <name>
 # The dated basename Geofabrik's "-latest" redirect targeted this run (e.g.
 # "albania-260914.osm.pbf"), or nothing if the extract wasn't freshly downloaded this run.
 osm_dated_basename() { # osm_dated_basename <log>
-  local raw
-  raw="$(sed -n "s/.*\[download:osm\] - Downloading \(.*\) to .*/\1/p" "$1" | tail -1)"
+  local log="$1" raw
+  raw="$(sed -n "s/.*\[download:osm\] - Downloading \(.*\) to .*/\1/p" "$log" | tail -1)"
   [[ -n "$raw" ]] || return 1
   [[ "$raw" == *" (redirected to "* ]] || { printf '%s\n' "$(basename "$raw")"; return 0; }
   local redirected="${raw#*\(redirected to }"

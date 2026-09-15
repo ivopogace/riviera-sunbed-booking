@@ -15,20 +15,22 @@ pass=0
 fail=0
 
 assert_eq() { # <expected> <actual> <message>
-  if [[ "$1" == "$2" ]]; then
+  local expected="$1" actual="$2" message="$3"
+  if [[ "$expected" == "$actual" ]]; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
-    echo "FAIL: $3"
-    echo "  expected: $1"
-    echo "  actual:   $2"
+    echo "FAIL: $message"
+    echo "  expected: $expected"
+    echo "  actual:   $actual"
   fi
 }
 
 with_temp_manifest() { # <test-fn>: runs $1 with $MANIFEST pointed at a fresh temp file
-  local tmp; tmp="$(mktemp)"
+  local test_fn="$1" tmp
+  tmp="$(mktemp)"
   rm -f "$tmp" # write_manifest_section must work with no pre-existing file too
-  MANIFEST="$tmp" "$1"
+  MANIFEST="$tmp" "$test_fn"
   rm -f "$tmp"
 }
 
