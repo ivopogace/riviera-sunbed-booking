@@ -10,7 +10,7 @@ import { of } from 'rxjs';
 
 import { expectNoAxeViolations } from '../../testing/axe';
 import { LayoutEditor } from './layout-editor';
-import { FULL_PREVIEW } from './remodel-preview-panel.spec';
+import { FULL_PREVIEW } from './remodel-preview-panel.fixtures';
 
 /**
  * Structural a11y audit for the layout editor. The grid must be keyboard + AT operable
