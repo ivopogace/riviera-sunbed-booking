@@ -26,8 +26,8 @@ classpath — it is read by HTTP `Range`, and a deflated jar entry cannot seek.
 
 ## How
 
-Prerequisites: a machine with open egress (the cloud session's proxy denies every OSM data host),
-Java 21+, Node, `curl`, about 2 GB of free disk for Planetiler's source cache, ~5 minutes.
+Prerequisites: egress to the five hosts in § *Egress* below, Java 21+, Node, `curl`, about 2 GB
+of free disk for Planetiler's source cache, ~5 minutes.
 
 ```bash
 scripts/build-riviera-map.sh --assets   # style + sprites + glyphs; seconds
@@ -36,10 +36,11 @@ scripts/build-riviera-map.sh --tiles    # Planetiler; downloads ~1 GB of sources
 ```
 
 `RIVIERA_MAP_WORK=/some/dir` keeps Planetiler's downloads (the Geofabrik extract, water polygons,
-Natural Earth, lake centrelines) between runs. Geofabrik serves `albania-latest.osm.pbf`, which
-moves daily; the MANIFEST records the sha256 of the extract a run used, and exact reproduction is
-possible only while Geofabrik still offers that day's file — otherwise a regeneration is a
-refresh, which is the intended cadence.
+Natural Earth, lake centrelines) between runs. `RIVIERA_OSM_PBF=/path/to/albania-latest.osm.pbf`
+supplies the extract instead of downloading it — see § *Egress*. Geofabrik serves
+`albania-latest.osm.pbf`, which moves daily; the MANIFEST records the sha256 of the extract a run
+used, and exact reproduction is possible only while Geofabrik still offers that day's file —
+otherwise a regeneration is a refresh, which is the intended cadence.
 
 Then verify and commit:
 
@@ -52,6 +53,47 @@ The first test parses the shipped style and fails on any absolute host — the r
 names. Eyeball the result too: `./gradlew bootRun` from `platform/`, open the Discover page, switch
 to the map, pan to Himara and Ksamil. Labels rendering as blank boxes mean a glyph range is missing
 — extend `GLYPH_RANGES` in the script and re-run `--assets`.
+
+## Egress
+
+The tile build reaches exactly five hosts. A cloud session's proxy allows four of them; the
+Geofabrik one is the standing obstacle, and it is the only source with no reachable substitute.
+
+| Host | Wanted for | Cloud session (checked 2026-09-15) |
+|---|---|---|
+| `raw.githubusercontent.com` | style, sprites, glyphs (`--assets`) | reachable |
+| `github.com` → `release-assets.githubusercontent.com` | `planetiler.jar`; lake centrelines, which Planetiler 0.10.2 takes from `acalcutt/osm-lakelines` | reachable |
+| `osmdata.openstreetmap.de` | water polygons (~886 MB) | reachable |
+| `naciscdn.org` | Natural Earth (~414 MB) | reachable |
+| `download.geofabrik.de` | `index-v1-nogeom.json` (resolves `--area`) and the OSM extract | **fails** |
+
+So `--assets` runs in a cloud session today; `--tiles` does not, and stops at the first Geofabrik
+call — `Geofabrik.getAndCacheIndex` throwing `SocketException: Connection reset`, before any of the
+~1 GB is fetched. Planetiler honours the JVM proxy settings, so this is not a tool-configuration
+gap: the proxy accepts the `CONNECT` for `download.geofabrik.de` (it is allowlisted) and the
+upstream connection is then reset during the TLS handshake. That distinction matters — the proxy's
+`__agentproxy/status` logs it as `ws_closed_mid_exchange`, not the `connect_rejected` it reports for
+a host the policy actually denies, so **adding Geofabrik to an allowlist fixes nothing**. Raise the
+reset with the proxy's operators instead.
+
+Alternative extract mirrors do not help: `download.openstreetmap.fr`, `osm.download.movisda.io`,
+`planet.openstreetmap.org`, `download.bbbike.org` and `dev.maptiler.download` are all denied
+outright (`connect_rejected`).
+
+The way through is to bring the extract in yourself, from a machine with open egress:
+
+```bash
+# on a laptop, or anywhere that can reach Geofabrik
+curl -fLO https://download.geofabrik.de/europe/albania-latest.osm.pbf
+
+# then, wherever the build runs
+RIVIERA_OSM_PBF=/path/to/albania-latest.osm.pbf scripts/build-riviera-map.sh --tiles
+```
+
+`RIVIERA_OSM_PBF` passes Planetiler `--osm_path` in place of `--area`, so Geofabrik is never
+contacted and the other three sources download normally. The MANIFEST records the supplied file's
+sha256 under a `supplied:` prefix rather than `geofabrik:`, which is what tells a later reader the
+extract came in by hand — pair it with the upstream filename so the day it names stays legible.
 
 ## Where the pins live
 
