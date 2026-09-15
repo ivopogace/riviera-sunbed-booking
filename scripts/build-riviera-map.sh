@@ -121,13 +121,7 @@ build_assets() {
 rewrite_style() { # <input-style> <output-style> <source-url> <sprite> <glyphs>
   local input="$1" output="$2" source="$3" sprite="$4" glyphs="$5" params
   params="$(mktemp)"
-  # Values reach node as file *content*, written by bash itself — never as an env var or
-  # argv string handed to a native, non-MSYS exe. MSYS2 (Git Bash) auto-converts an env var
-  # or argv value shaped like a POSIX absolute path before node.exe ever sees it, mangling
-  # /map/... into a Windows path (#1111); a file bash writes and node only opens by path
-  # (a conversion that IS correct, since node needs a real Windows path to find the file)
-  # never goes through that heuristic. These three values are fixed script constants with no
-  # quote/backslash/newline in them, so plain printf interpolation is safe JSON.
+  # Bash writes these as file content, never as an env var or argv string a native exe like node.exe would see — MSYS2 mangles a path-shaped value handed either way, but not one read back from a file.
   printf '{"source":"%s","sprite":"%s","glyphs":"%s"}' "$source" "$sprite" "$glyphs" > "$params"
 
   # Rewrite the style: the vector source becomes our archive, the raster hillshade (an external

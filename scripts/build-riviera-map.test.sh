@@ -94,11 +94,7 @@ test_manifest_section_absent_returns_empty() {
     "reading a section from a file that doesn't exist yet returns nothing"
 }
 
-# rewrite_style must hand the /map/... constants to node as file *content*, never as an
-# env var or argv value that looks like a path — MSYS2 (Git Bash) auto-converts an env var
-# value shaped like a POSIX absolute path before a native, non-MSYS exe like node.exe ever
-# sees it, mangling /map/... into a Windows path (#1111). Running this test on Git Bash on
-# Windows is what makes it a real regression check, not just a logic check.
+# Run on Git Bash on Windows, this is a real MSYS path-mangling regression check, not just a logic check.
 test_rewrite_style_preserves_map_paths() {
   local input output
   input="$(mktemp)"; output="$(mktemp)"
@@ -116,8 +112,7 @@ JSON
   rewrite_style "$input" "$output" "pmtiles:///map/riviera.pmtiles" \
     "/map/sprites/osm-liberty" "/map/glyphs/{fontstack}/{range}.pbf"
 
-  # $output is passed as argv, not embedded in the -e source string, so MSYS's argv
-  # conversion (correctly) resolves it to a real path node can open.
+  # $output is passed as argv, not embedded in the -e source string, so node can open it directly.
   local read_field='const s=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); console.log(process.argv[2].split(".").reduce((o,k)=>o[k],s))'
   assert_eq "/map/sprites/osm-liberty" "$(node -e "$read_field" "$output" sprite)" \
     "rewrite_style must write the literal sprite path, unmangled by MSYS path conversion"

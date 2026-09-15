@@ -60,7 +60,7 @@ its inputs reach `node`, not what it produces on a non-MSYS shell, where it alre
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The temp-JSON-file approach still has some other MSYS conversion edge case (e.g. a value containing a literal `\` on Windows) | low | low | Values here are fixed constants (`/map/...`), not user input; JSON-encode them properly to escape any special chars | Ivo | resolved — `node -e` JSON.stringify used to build the params file, not manual string interpolation |
+| R-1 | The temp-JSON-file approach still has some other MSYS conversion edge case (e.g. a value containing a literal `\` on Windows) | low | low | Values here are fixed constants (`/map/...`), not user input, with no quote/backslash/newline in them, so plain `printf` interpolation into JSON is safe | Ivo | resolved — bash `printf` builds the params file directly, so no node/env-var hop is involved at all |
 | R-2 | Fix works on this machine but the generalization sweep misses a sibling call site with the same env-var-to-node pattern | low | med | Grep the whole script for `node -` invocations and env-var assignments preceding them | Ivo | resolved — single call site found (§ Generalization-audit log) |
 
 ## Open questions / Assumptions
@@ -112,6 +112,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review | RV-STYLE-1: two new multi-line inline comments cited `(#1111)` — provenance belongs in the commit, not the code | fixed-in-`<next-sha>` |
 
 ---
 
