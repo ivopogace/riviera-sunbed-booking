@@ -4,7 +4,11 @@ import { provideRouter } from '@angular/router';
 import { expectNoAxeViolations } from '../../testing/axe';
 import { RemodelPreview } from './operator-console.model';
 import { RemodelPreviewPanel } from './remodel-preview-panel';
-import { FULL_PREVIEW, MOVES_ONLY_PREVIEW, REFUNDING_PREVIEW } from './remodel-preview-panel.spec';
+import {
+  FULL_PREVIEW,
+  MOVES_ONLY_PREVIEW,
+  REFUNDING_PREVIEW,
+} from './remodel-preview-panel.fixtures';
 
 /**
  * Structural a11y audit for the remodel preview: an `alertdialog` with a name, headed lists per

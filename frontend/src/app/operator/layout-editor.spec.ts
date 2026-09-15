@@ -16,8 +16,12 @@ import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutEditor } from './layout-editor';
 import { RemodelPreview } from './operator-console.model';
-import { FULL_PREVIEW, MOVES_ONLY_PREVIEW, REFUNDING_PREVIEW } from './remodel-preview-panel.spec';
-import { RECEIPT } from './remodel-receipt-panel.spec';
+import {
+  FULL_PREVIEW,
+  MOVES_ONLY_PREVIEW,
+  REFUNDING_PREVIEW,
+} from './remodel-preview-panel.fixtures';
+import { RECEIPT } from './remodel-receipt-panel.fixtures';
 import { SetLock } from './operator-console.model';
 
 interface SentBody {
