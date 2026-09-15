@@ -8,7 +8,7 @@ The **riviera map** (ADR-0022) is drawn from four resources the platform hosts i
 | Style | `platform/map/style.json` | OSM Liberty (BSD-3, `maputnik/osm-liberty`) rewritten to `/map/…` URLs | ~75 kB |
 | Sprites | `platform/map/sprites/osm-liberty{,@2x}.{json,png}` | fetched from the same repo | ~150 kB |
 | Glyphs | `platform/map/glyphs/<font stack>/<range>.pbf` | `orangemug/font-glyphs` (Roboto, Apache-2.0): Roboto Regular, Roboto Medium, Roboto Condensed Italic × ranges 0–255 … 1024–1279 | ~1.4 MB |
-| Tiles | `platform/map/riviera.pmtiles` | Planetiler 0.10.2 (OpenMapTiles profile) over Geofabrik Albania, bounds `19.30,39.55,20.20,40.55` (west, south, east, north — Vlorë bay to Ksamil), max zoom 14, PMTiles output | ~7.6 MB |
+| Tiles | `platform/map/riviera.pmtiles` | Planetiler 0.10.2 (OpenMapTiles profile) over Geofabrik Albania, bounds `19.00,39.50,21.20,42.80` (west, south, east, north — all of Albania, with sea room), max zoom 14, PMTiles output | ~60 MB |
 
 `platform/map/MANIFEST.txt` lists the sha256, URL and fetch time of every upstream byte the
 last run pulled — a regeneration that changes it is an upstream change, and the diff says which.
@@ -28,7 +28,7 @@ classpath — it is read by HTTP `Range`, and a deflated jar entry cannot seek.
 
 Prerequisites: egress to the five hosts in § *Egress* below, Java 21+, Node, `curl`, about 3.5 GB
 of free disk (the work directory peaks at ~3.2 GB: ~1.5 GB of sources plus Planetiler's scratch
-files), and ~6 minutes cold — mostly downloads — or about a minute once `RIVIERA_MAP_WORK` holds them.
+files), and ~6 minutes cold — mostly downloads — or under two minutes once `RIVIERA_MAP_WORK` holds them.
 
 ```bash
 scripts/build-riviera-map.sh --assets   # style + sprites + glyphs; seconds
@@ -102,9 +102,11 @@ extract came in by hand — pair it with the upstream filename so the day it nam
 
 All in `scripts/build-riviera-map.sh`: `OSM_LIBERTY_REF` and `FONT_GLYPHS_REF` (branch refs;
 set a commit SHA to freeze upstream), `PLANETILER_VERSION`, `GEOFABRIK_AREA`, `BBOX`,
-`MAX_ZOOM`, `FONT_STACKS`, `GLYPH_RANGES`. The three `/map/…` URL constants the rewrite writes
-into the style are the same three the frontend's real adapter prefixes with the API origin in
-development; changing the prefix means changing both.
+`MAX_ZOOM`, `FONT_STACKS`, `GLYPH_RANGES`. `BBOX` has a twin in the frontend: the map's pan fence,
+`RIVIERA_MAP_OPTIONS.maxBounds` in `frontend/src/app/shared/riviera-map.ts`, is the same box —
+widen both together. The three `/map/…` URL constants the rewrite writes into the style are the
+same three the frontend's real adapter prefixes with the API origin in development; changing the
+prefix means changing both.
 
 ## What must never change
 

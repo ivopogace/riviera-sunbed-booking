@@ -19,4 +19,4 @@ e7fb956fb8c47e20bb72e75b08a89f7d87f7adf0b29ba1bd7a9cac70e2eff8b4  https://raw.gi
 90816c57dd08826cca66a4e4a47129324e80030c344726a4f3b1be53d062e588  https://raw.githubusercontent.com/orangemug/font-glyphs/gh-pages/glyphs/Roboto%20Condensed%20Italic/768-1023.pbf  2026-09-14T20:27:13Z
 abaae8827345e69da8881993e02a021b653a5c653968730e597652ccfea36b71  https://raw.githubusercontent.com/orangemug/font-glyphs/gh-pages/glyphs/Roboto%20Condensed%20Italic/1024-1279.pbf  2026-09-14T20:27:14Z
 f310bd0413e2e4512b27f4046d418664e8e1d3bf31603c2a70e23de06c167e4d  https://github.com/onthegomap/planetiler/releases/download/v0.10.2/planetiler.jar  2026-09-15T12:42:33Z
-85af3c50e35594d4075030cc061d263ed07eda4b11390a97d6cea93ed8c948fb  geofabrik:albania.osm.pbf  2026-09-15T12:54:49Z
+85af3c50e35594d4075030cc061d263ed07eda4b11390a97d6cea93ed8c948fb  geofabrik:albania.osm.pbf  2026-09-15T13:29:19Z

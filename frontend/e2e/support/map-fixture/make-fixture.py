@@ -24,7 +24,7 @@ from shapely import clip_by_rect
 from shapely.geometry import LineString, Point, Polygon
 
 OUT = Path(__file__).with_name("riviera-fixture.pmtiles")
-BBOX = (19.30, 39.55, 20.20, 40.55)  # west, south, east, north — the real extract's bounds
+BBOX = (19.30, 39.55, 20.20, 40.55)  # west, south, east, north — the riviera stretch the synthetic geometry covers
 MAX_ZOOM = 6
 EXTENT = 4096
 R = 6378137.0

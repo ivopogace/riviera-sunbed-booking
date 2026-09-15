@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds the riviera map's self-hosted resources into platform/map/ (ADR-0022): the OSM Liberty
 # style rewritten to same-origin /map/… URLs, its sprites, the Roboto glyph ranges, and the PMTiles
-# extract of the Albanian riviera. Repeatable by construction — pinned versions, a recorded bbox,
+# extract of Albania. Repeatable by construction — pinned versions, a recorded bbox,
 # and a MANIFEST of every upstream byte — and run by hand: docs/runbooks/riviera-map-tiles.md.
 #
 #   scripts/build-riviera-map.sh --assets   # style + sprites + glyphs (a few MB, seconds)
@@ -30,8 +30,8 @@ GLYPH_RANGES=(0-255 256-511 512-767 768-1023 1024-1279)
 PLANETILER_VERSION="${PLANETILER_VERSION:-0.10.2}"
 PLANETILER_JAR_URL="https://github.com/onthegomap/planetiler/releases/download/v$PLANETILER_VERSION/planetiler.jar"
 GEOFABRIK_AREA="albania"
-# west,south,east,north — Vlorë bay down to Ksamil, with sea room on both sides.
-BBOX="19.30,39.55,20.20,40.55"
+# west,south,east,north — all of Albania, Sazan to Lake Prespa and Konispol to Vërmosh, with sea room.
+BBOX="19.00,39.50,21.20,42.80"
 MAX_ZOOM=14
 
 STYLE_SOURCE="pmtiles:///map/riviera.pmtiles"
