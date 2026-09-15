@@ -11,7 +11,15 @@ The **riviera map** (ADR-0022) is drawn from four resources the platform hosts i
 | Tiles | `platform/map/riviera.pmtiles` | Planetiler 0.10.2 (OpenMapTiles profile) over Geofabrik Albania, bounds `19.00,39.50,21.20,42.80` (west, south, east, north — all of Albania, with sea room), max zoom 14, PMTiles output | ~60 MB |
 
 `platform/map/MANIFEST.txt` lists the sha256, URL and fetch time of every upstream byte the
-last run pulled — a regeneration that changes it is an upstream change, and the diff says which.
+last run pulled — a regeneration that changes it is an upstream change, and the diff says
+which. It has two sections, `# assets` and `# tiles`, one per run mode: `--assets` records the
+style, sprites and each glyph range; `--tiles` records `planetiler.jar` and Planetiler's four
+sources — the OSM extract (under its dated upstream name, e.g. `geofabrik:albania-260914.osm.pbf`,
+never the moving `-latest` name), water polygons, Natural Earth and lake centrelines. Each mode
+replaces only its own section — re-running one never erases or duplicates the other's lines —
+and an input reused from `RIVIERA_MAP_WORK`'s cache is still recorded (Planetiler itself logs
+nothing on a cache hit, so the script persists the origin URL/dated name to a small sidecar file
+next to the cached source the first time it's fetched, and reads it back on a later cache hit).
 
 **Regeneration is a manual action, never automation.** Nothing in CI or the deploy fetches map
 data: the files are committed, `platform/Dockerfile` copies `platform/map/` to `/app/map/`, and
