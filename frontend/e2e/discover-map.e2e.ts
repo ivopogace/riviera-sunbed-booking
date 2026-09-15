@@ -124,6 +124,23 @@ test.describe('Discover map — real engine', () => {
     await mockMapResources(page);
   });
 
+  test('the map fills its panel under the engine’s own stylesheet', async ({ page }) => {
+    await mockVenues(page);
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+    await expect(page.locator('app-riviera-map')).toHaveAttribute('data-status', 'ready', {
+      timeout: 20_000,
+    });
+
+    const heights = await page.getByTestId('riviera-map-canvas').evaluate((container) => ({
+      host: container.closest('app-riviera-map')!.clientHeight,
+      container: container.clientHeight,
+      canvas: container.querySelector('canvas')!.clientHeight,
+    }));
+    expect(heights.host).toBeGreaterThan(0);
+    expect(heights).toEqual({ host: heights.host, container: heights.host, canvas: heights.host });
+  });
+
   test('the list renders and works before the map asks for anything', async ({ page }) => {
     await mockVenues(page, 1200);
     let venuesAnsweredAt: number | undefined;
