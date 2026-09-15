@@ -63,4 +63,13 @@ describe('PrivacyPolicy (draft legal page)', () => {
     expect(controller?.textContent).toContain('[');
     expect(controller?.textContent).toContain('sh.p.k.');
   });
+
+  it('describes the self-hosted map: OpenStreetMap-based, served by us, nothing to a third party', () => {
+    const text = host().querySelector('[data-testid="privacy-map"]')?.textContent ?? '';
+    expect(text).toBeTruthy();
+    expect(text).toContain('OpenStreetMap');
+    expect(text.toLowerCase()).toContain('our own');
+    expect(text.toLowerCase()).toContain('third party');
+    expect(text.toLowerCase()).toContain('server logs');
+  });
 });

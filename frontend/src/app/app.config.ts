@@ -11,6 +11,9 @@ import { CameraQrScanner } from './operator/camera-qr-scanner';
 import { FakeQrScanner } from './operator/fake-qr-scanner';
 import { QrScanner } from './operator/qr-scanner';
 import { apiSessionInterceptor } from './core/api-session.interceptor';
+import { FakeMapEngine } from './shared/fake-map-engine';
+import { MapEngine } from './shared/map-engine';
+import { MapLibreMapEngine } from './shared/maplibre-map-engine';
 import { SsoRedirect, WindowSsoRedirect } from './core/sso-redirect';
 import { ThemeService } from './core/theme';
 
@@ -44,6 +47,16 @@ function qrScannerFactory(): QrScanner {
   return armed ? new FakeQrScanner() : new CameraQrScanner();
 }
 
+/**
+ * Real MapLibre in the browser. The Playwright e2e sets `window.__RIVIERA_FAKE_MAP__` to swap in
+ * the deterministic fake (no WebGL, no tiles) — the third instance of the Stripe swap above.
+ */
+function mapEngineFactory(): MapEngine {
+  const useFake =
+    (globalThis as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ === true;
+  return useFake ? new FakeMapEngine() : new MapLibreMapEngine();
+}
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
@@ -58,6 +71,7 @@ export const appConfig: ApplicationConfig = {
     }),
     { provide: StripePaymentGateway, useFactory: stripeGatewayFactory },
     { provide: QrScanner, useFactory: qrScannerFactory },
+    { provide: MapEngine, useFactory: mapEngineFactory },
     // SSO start is a full-page navigation out of the SPA; the seam lets unit specs record the
     // URL without a real navigation (mirrors the Stripe adapter swap). The e2e uses the real redirect and
     // intercepts the navigation with page.route.

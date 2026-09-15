@@ -60,6 +60,10 @@ WORKDIR /app
 RUN groupadd --system app && useradd --system --gid app --home /app app
 
 COPY --from=build /workspace/app.jar /app/app.jar
+# The riviera map's resources stay OUTSIDE the jar, next to it: MapResourcesConfig serves
+# /map/** from /app/map (riviera.map.dir), and the PMTiles archive is read by byte range, which a
+# deflated jar entry cannot seek (ADR-0022; docs/runbooks/riviera-map-tiles.md).
+COPY platform/map/ /app/map/
 USER app
 
 # Render injects $PORT; Spring Boot is told to bind it (see SERVER_PORT env in the CD docs).
