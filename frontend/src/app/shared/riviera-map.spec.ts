@@ -68,6 +68,15 @@ describe('RivieraMap', () => {
     expect(options.maxZoom).toBeGreaterThan(options.view.zoom);
   });
 
+  it('fences the whole of Albania, not just the coast', () => {
+    const [southWest, northEast] = RIVIERA_MAP_OPTIONS.maxBounds;
+    // Albania's extreme points: Sazan (west), Vërnik (east), Konispol (south), Vërmosh (north).
+    expect(southWest.lng).toBeLessThanOrEqual(19.27);
+    expect(northEast.lng).toBeGreaterThanOrEqual(21.07);
+    expect(southWest.lat).toBeLessThanOrEqual(39.64);
+    expect(northEast.lat).toBeGreaterThanOrEqual(42.66);
+  });
+
   it('zooms through the labelled controls', async () => {
     const fixture = await render(fake);
     const zoomIn = byTestId(fixture, 'map-zoom-in') as HTMLButtonElement;

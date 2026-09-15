@@ -30,7 +30,8 @@ the visitor's IP to whoever serves the tiles.
 The tiles are a few megabytes for the riviera, the glyphs and sprites a couple more, and the
 PMTiles container lets a static file serve vector tiles by HTTP `Range` with no tile server.
 Self-hosting is therefore cheap; what it costs is owning tile freshness and a first-load transfer
-of a few same-origin megabytes.
+of a few same-origin megabytes. *(Amended: the extract now covers all of Albania and weighs ~60 MB;
+a first load still fetches only the tiles in view — see the amendment log.)*
 
 ## Decision
 
@@ -86,10 +87,11 @@ or `<link>` the map chrome renders should treat it as a Blocker rather than a co
 ## Consequences
 
 - We own tile freshness: coastlines and place names update only when the runbook is run.
-- The first map load transfers a few same-origin megabytes, so the map is lazily loaded and never
-  blocks the venue list.
-- The repository carries ~2 MB of style, sprites and glyphs and, once generated, the archive; a
-  regeneration adds another copy to history.
+- The first map load transfers a few same-origin megabytes — the tiles in view, fetched by `Range`,
+  never the whole archive — so the map is lazily loaded and never blocks the venue list.
+- The repository carries ~2 MB of style, sprites and glyphs and the ~60 MB archive; a regeneration
+  adds another full copy to history, which is the growth the Git LFS option above is revisited
+  against.
 - If a Content-Security-Policy header is ever added, MapLibre's tile worker is a module worker
   spawned from a same-origin script URL the adapter names (`/vendor/maplibre-gl-worker.mjs`) — not
   a Blob URL, unlike ALTCHA's — so the policy needs `worker-src 'self'`
@@ -99,3 +101,10 @@ or `<link>` the map chrome renders should treat it as a Blocker rather than a co
 - The network guard's first run found Stripe.js loading on Discover as a side effect of importing
   `@stripe/stripe-js`; the gateway now imports its `pure` entry, so Stripe.js is fetched only when
   a Payment Element mounts and the "payment surface only" posture holds by construction.
+
+## Amendment log
+
+- 2026-09-15, #1105 — the extract's bounding box widened from the riviera (Vlorë bay to Ksamil) to
+  all of Albania, and the map's pan fence with it; the archive grew from ~7.6 MB to ~60 MB. The
+  decision is unaffected: the first-load transfer stays a few megabytes because the browser fetches
+  only the tiles in view.

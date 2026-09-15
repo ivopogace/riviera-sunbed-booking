@@ -10,8 +10,10 @@
   Skip map
 </button>
 
-<!-- The engine owns this subtree from create() on; nothing here reads inside it. -->
-<div #canvasHost data-testid="riviera-map-canvas" class="absolute inset-0"></div>
+<!-- The engine owns the inner box from create() on and its stylesheet repositions it, so the wrapper holds the placement. -->
+<div class="absolute inset-0">
+  <div #canvasHost data-testid="riviera-map-canvas" class="size-full"></div>
+</div>
 
 @if (status() === 'unavailable') {
   <p
