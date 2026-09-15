@@ -5,7 +5,7 @@
 # and a MANIFEST of every upstream byte — and run by hand: docs/runbooks/riviera-map-tiles.md.
 #
 #   scripts/build-riviera-map.sh --assets   # style + sprites + glyphs (a few MB, seconds)
-#   scripts/build-riviera-map.sh --tiles    # Planetiler over Geofabrik Albania (needs Java 21+, ~1 GB of downloads)
+#   scripts/build-riviera-map.sh --tiles    # Planetiler over Geofabrik Albania (needs Java 21+, ~1.5 GB of downloads)
 #   scripts/build-riviera-map.sh --all
 #
 # Every URL the shipped style names must stay a /map/… path — MapStyleSelfHostedTest holds it to that.
@@ -91,7 +91,7 @@ build_tiles() {
   local jar="$work/planetiler-$PLANETILER_VERSION.jar"
   [[ -f "$jar" ]] || fetch "$PLANETILER_JAR_URL" "$jar"
   # Planetiler downloads the Geofabrik extract plus its water-polygon, Natural Earth and lake
-  # centreline sources into $work/data/ (~1 GB, cached across runs when RIVIERA_MAP_WORK is set).
+  # centreline sources into $work/data/ (~1.5 GB, cached across runs when RIVIERA_MAP_WORK is set).
   # RIVIERA_OSM_PBF=<file> supplies the extract instead, so --area never contacts Geofabrik and
   # only the other three sources are fetched — for an environment whose egress cannot reach
   # Geofabrik but reaches the rest (docs/runbooks/riviera-map-tiles.md § Egress).
@@ -102,9 +102,12 @@ build_tiles() {
   else
     osm_source=(--area="$GEOFABRIK_AREA")
   fi
+  # Planetiler parses --output as a URI, so an absolute Windows path (C:/…) reads as the scheme "C";
+  # a name relative to $work parses on every OS, and the move keeps a failed run off the committed archive.
   (cd "$work" && java -Xmx2g -jar "$jar" \
       --download "${osm_source[@]}" --bounds="$BBOX" --maxzoom="$MAX_ZOOM" \
-      --output="$MAP_DIR/riviera.pmtiles" --force)
+      --output=riviera.pmtiles --force)
+  mv "$work/riviera.pmtiles" "$MAP_DIR/riviera.pmtiles"
   if [[ -n "${RIVIERA_OSM_PBF:-}" ]]; then
     printf '%s  %s  %s\n' "$(sha256sum "$RIVIERA_OSM_PBF" | cut -d' ' -f1)" "supplied:$(basename "$RIVIERA_OSM_PBF")" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$MANIFEST"
   else

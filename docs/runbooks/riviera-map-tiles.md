@@ -5,10 +5,10 @@ The **riviera map** (ADR-0022) is drawn from four resources the platform hosts i
 
 | Resource | Path | Produced by | Size |
 |---|---|---|---|
-| Style | `platform/map/style.json` | OSM Liberty (BSD-3, `maputnik/osm-liberty`) rewritten to `/map/…` URLs | ~50 kB |
-| Sprites | `platform/map/sprites/osm-liberty{,@2x}.{json,png}` | fetched from the same repo | ~250 kB |
-| Glyphs | `platform/map/glyphs/<font stack>/<range>.pbf` | `orangemug/font-glyphs` (Roboto, Apache-2.0): Roboto Regular, Roboto Medium, Roboto Condensed Italic × ranges 0–255 … 1024–1279 | ~1.2 MB |
-| Tiles | `platform/map/riviera.pmtiles` | Planetiler 0.10.2 (OpenMapTiles profile) over Geofabrik Albania, bounds `19.30,39.55,20.20,40.55` (west, south, east, north — Vlorë bay to Ksamil), max zoom 14, PMTiles output | expected 10–20 MB |
+| Style | `platform/map/style.json` | OSM Liberty (BSD-3, `maputnik/osm-liberty`) rewritten to `/map/…` URLs | ~75 kB |
+| Sprites | `platform/map/sprites/osm-liberty{,@2x}.{json,png}` | fetched from the same repo | ~150 kB |
+| Glyphs | `platform/map/glyphs/<font stack>/<range>.pbf` | `orangemug/font-glyphs` (Roboto, Apache-2.0): Roboto Regular, Roboto Medium, Roboto Condensed Italic × ranges 0–255 … 1024–1279 | ~1.4 MB |
+| Tiles | `platform/map/riviera.pmtiles` | Planetiler 0.10.2 (OpenMapTiles profile) over Geofabrik Albania, bounds `19.30,39.55,20.20,40.55` (west, south, east, north — Vlorë bay to Ksamil), max zoom 14, PMTiles output | ~7.6 MB |
 
 `platform/map/MANIFEST.txt` lists the sha256, URL and fetch time of every upstream byte the
 last run pulled — a regeneration that changes it is an upstream change, and the diff says which.
@@ -26,12 +26,13 @@ classpath — it is read by HTTP `Range`, and a deflated jar entry cannot seek.
 
 ## How
 
-Prerequisites: egress to the five hosts in § *Egress* below, Java 21+, Node, `curl`, about 2 GB
-of free disk for Planetiler's source cache, ~5 minutes.
+Prerequisites: egress to the five hosts in § *Egress* below, Java 21+, Node, `curl`, about 3.5 GB
+of free disk (the work directory peaks at ~3.2 GB: ~1.5 GB of sources plus Planetiler's scratch
+files), and ~6 minutes cold — mostly downloads — or about a minute once `RIVIERA_MAP_WORK` holds them.
 
 ```bash
 scripts/build-riviera-map.sh --assets   # style + sprites + glyphs; seconds
-scripts/build-riviera-map.sh --tiles    # Planetiler; downloads ~1 GB of sources into a temp dir
+scripts/build-riviera-map.sh --tiles    # Planetiler; downloads ~1.5 GB of sources into a temp dir
 # or both: scripts/build-riviera-map.sh --all
 ```
 
@@ -51,8 +52,10 @@ cd .. && git add platform/map && git commit -m "Regenerate the riviera map resou
 
 The first test parses the shipped style and fails on any absolute host — the review trap ADR-0022
 names. Eyeball the result too: `./gradlew bootRun` from `platform/`, open the Discover page, switch
-to the map, pan to Himara and Ksamil. Labels rendering as blank boxes mean a glyph range is missing
-— extend `GLYPH_RANGES` in the script and re-run `--assets`.
+to the map, pan to Himarë, Dhërmi and Ksamil. A missing glyph range does not draw blank boxes: MapLibre
+draws the character in a local font, and the tells are a `404` for `/map/glyphs/<stack>/<range>.pbf` and
+the console warning "Unable to load glyph range … Rendering codepoint … locally instead" — extend
+`GLYPH_RANGES` in the script and re-run `--assets`.
 
 ## Egress
 
@@ -69,7 +72,7 @@ Geofabrik one is the standing obstacle, and it is the only source with no reacha
 
 So `--assets` runs in a cloud session today; `--tiles` does not, and stops at the first Geofabrik
 call — `Geofabrik.getAndCacheIndex` throwing `SocketException: Connection reset`, before any of the
-~1 GB is fetched. Planetiler honours the JVM proxy settings, so this is not a tool-configuration
+~1.5 GB is fetched. Planetiler honours the JVM proxy settings, so this is not a tool-configuration
 gap: the proxy accepts the `CONNECT` for `download.geofabrik.de` (it is allowlisted) and the
 upstream connection is then reset during the TLS handshake. That distinction matters — the proxy's
 `__agentproxy/status` logs it as `ws_closed_mid_exchange`, not the `connect_rejected` it reports for
