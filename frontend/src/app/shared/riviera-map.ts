@@ -14,9 +14,10 @@ import { TouchTarget } from './touch-target';
 
 /**
  * The riviera as the map opens: centred on the coast between Vlorë and Ksamil, at a zoom that
- * shows the whole stretch, and fenced so a tourist cannot pan out of the extract into blank sea.
- * The style is a same-origin path (ADR-0022); the real adapter prefixes it with the API origin
- * where the SPA is served elsewhere.
+ * shows the whole stretch, and fenced to the extract — all of Albania, the same box as `BBOX` in
+ * `scripts/build-riviera-map.sh` — so a tourist cannot pan off the tiles into blank sea. The style
+ * is a same-origin path (ADR-0022); the real adapter prefixes it with the API origin where the SPA
+ * is served elsewhere.
  */
 export const RIVIERA_MAP_OPTIONS: MapEngineOptions = {
   styleUrl: '/map/style.json',
@@ -24,8 +25,8 @@ export const RIVIERA_MAP_OPTIONS: MapEngineOptions = {
   minZoom: 7,
   maxZoom: 16,
   maxBounds: [
-    { lng: 19.0, lat: 39.3 },
-    { lng: 20.5, lat: 40.8 },
+    { lng: 19.0, lat: 39.5 },
+    { lng: 21.2, lat: 42.8 },
   ],
 };
 
