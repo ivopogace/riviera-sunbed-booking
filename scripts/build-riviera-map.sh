@@ -92,12 +92,26 @@ build_tiles() {
   [[ -f "$jar" ]] || fetch "$PLANETILER_JAR_URL" "$jar"
   # Planetiler downloads the Geofabrik extract plus its water-polygon, Natural Earth and lake
   # centreline sources into $work/data/ (~1 GB, cached across runs when RIVIERA_MAP_WORK is set).
+  # RIVIERA_OSM_PBF=<file> supplies the extract instead, so --area never contacts Geofabrik and
+  # only the other three sources are fetched — for an environment whose egress cannot reach
+  # Geofabrik but reaches the rest (docs/runbooks/riviera-map-tiles.md § Egress).
+  local -a osm_source
+  if [[ -n "${RIVIERA_OSM_PBF:-}" ]]; then
+    [[ -f "$RIVIERA_OSM_PBF" ]] || { echo "RIVIERA_OSM_PBF is not a file: $RIVIERA_OSM_PBF" >&2; exit 1; }
+    osm_source=(--osm_path="$RIVIERA_OSM_PBF")
+  else
+    osm_source=(--area="$GEOFABRIK_AREA")
+  fi
   (cd "$work" && java -Xmx2g -jar "$jar" \
-      --download --area="$GEOFABRIK_AREA" --bounds="$BBOX" --maxzoom="$MAX_ZOOM" \
+      --download "${osm_source[@]}" --bounds="$BBOX" --maxzoom="$MAX_ZOOM" \
       --output="$MAP_DIR/riviera.pmtiles" --force)
-  for src in "$work"/data/sources/*.osm.pbf; do
-    [[ -f "$src" ]] && printf '%s  %s  %s\n' "$(sha256sum "$src" | cut -d' ' -f1)" "geofabrik:$(basename "$src")" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$MANIFEST"
-  done
+  if [[ -n "${RIVIERA_OSM_PBF:-}" ]]; then
+    printf '%s  %s  %s\n' "$(sha256sum "$RIVIERA_OSM_PBF" | cut -d' ' -f1)" "supplied:$(basename "$RIVIERA_OSM_PBF")" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$MANIFEST"
+  else
+    for src in "$work"/data/sources/*.osm.pbf; do
+      [[ -f "$src" ]] && printf '%s  %s  %s\n' "$(sha256sum "$src" | cut -d' ' -f1)" "geofabrik:$(basename "$src")" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$MANIFEST"
+    done
+  fi
   echo "   $(du -h "$MAP_DIR/riviera.pmtiles" | cut -f1) — bbox $BBOX, maxzoom $MAX_ZOOM, planetiler $PLANETILER_VERSION"
 }
 
