@@ -112,27 +112,38 @@ build_assets() {
   write_manifest_section "$MANIFEST_ASSETS_HEADER" "$lines"
   rm -f "$lines"
 
+  rewrite_style "$MAP_DIR/style.upstream.json" "$MAP_DIR/style.json" \
+    "$STYLE_SOURCE" "$STYLE_SPRITE" "$STYLE_GLYPHS"
+  rm "$MAP_DIR/style.upstream.json"
+  echo "   style, $(ls "$MAP_DIR/sprites" | wc -l) sprite files, $(find "$MAP_DIR/glyphs" -name '*.pbf' | wc -l) glyph ranges"
+}
+
+rewrite_style() { # <input-style> <output-style> <source-url> <sprite> <glyphs>
+  local input="$1" output="$2" source="$3" sprite="$4" glyphs="$5" params
+  params="$(mktemp)"
+  # Bash writes these as file content, never as an env var or argv string a native exe like node.exe would see — MSYS2 mangles a path-shaped value handed either way, but not one read back from a file.
+  printf '{"source":"%s","sprite":"%s","glyphs":"%s"}' "$source" "$sprite" "$glyphs" > "$params"
+
   # Rewrite the style: the vector source becomes our archive, the raster hillshade (an external
   # host) and its layer go, and sprite + glyphs become /map/… paths. Layers are otherwise untouched.
-  STYLE_SOURCE="$STYLE_SOURCE" STYLE_SPRITE="$STYLE_SPRITE" STYLE_GLYPHS="$STYLE_GLYPHS" \
-  node - "$MAP_DIR/style.upstream.json" "$MAP_DIR/style.json" <<'JS'
+  node - "$input" "$output" "$params" <<'JS'
     const fs = require('node:fs');
-    const [, , input, output] = process.argv;
+    const [, , input, output, paramsPath] = process.argv;
+    const params = JSON.parse(fs.readFileSync(paramsPath, 'utf8'));
     const style = JSON.parse(fs.readFileSync(input, 'utf8'));
     const vector = Object.entries(style.sources).filter(([, s]) => s.type === 'vector').map(([id]) => id);
     if (vector.length !== 1) throw new Error(`expected one vector source, found ${vector}`);
     const keep = vector[0];
     style.sources = {
-      [keep]: { type: 'vector', url: process.env.STYLE_SOURCE, attribution: '© OpenStreetMap contributors' },
+      [keep]: { type: 'vector', url: params.source, attribution: '© OpenStreetMap contributors' },
     };
     style.layers = style.layers.filter((l) => l.type === 'background' || l.source === keep);
-    style.sprite = process.env.STYLE_SPRITE;
-    style.glyphs = process.env.STYLE_GLYPHS;
+    style.sprite = params.sprite;
+    style.glyphs = params.glyphs;
     style.name = 'Riviera (OSM Liberty)';
     fs.writeFileSync(output, JSON.stringify(style, null, 2) + '\n');
 JS
-  rm "$MAP_DIR/style.upstream.json"
-  echo "   style, $(ls "$MAP_DIR/sprites" | wc -l) sprite files, $(find "$MAP_DIR/glyphs" -name '*.pbf' | wc -l) glyph ranges"
+  rm -f "$params"
 }
 
 # A tiny sidecar file beside a cached Planetiler source, recording the exact URL (or, for the
