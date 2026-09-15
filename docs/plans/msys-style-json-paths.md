@@ -22,8 +22,9 @@ it on Windows.
 scoped, still accurate; no drift, no fog) · `riviera-plan-doc` (this template — right-sized
 for a small tooling fix per Rule 4) · `tdd` (red-green on an extracted `rewrite_style()`
 seam, reproducing the real MSYS mangling on this machine) · `riviera-review-overlay` (review
-gate — run before merge) · `riviera-docs-freshness` (N/A — no substrate doc states the old
-env-var mechanism; the runbook only documents the CLI surface, unaffected).
+gate — ran full 5-agent `/code-review` fan-out, 1 finding ≥80 confidence, fixed in `12d1b2b5`)
+· `riviera-docs-freshness` (N/A — no substrate doc states the old env-var mechanism; the
+runbook only documents the CLI surface, unaffected).
 
 **Branch:** `bugfix/msys-style-json-paths` (exists).
 
@@ -97,14 +98,16 @@ N/A — no API shape changes.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0 done) — ready for PR / CI gate
+**Stage pointer:** ready to merge — CI green (8/8), review gate run (1 finding fixed in
+`12d1b2b5`), Sonar gate clean (0 new issues, 0% duplication).
 
-**Next action:** commit, push, open the PR as a draft, run it through CI, mark ready for
-review, run the review + Sonar gates.
+**Next action:** merge PR #1113, then close-out: confirm #1111 auto-closes, check the
+tracking source (#1111 was filed standalone, not under a tracking epic).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Extract `rewrite_style` + fix via temp-JSON-file param passing | ✅ | (this commit) |
+| 0 — Extract `rewrite_style` + fix via temp-JSON-file param passing | ✅ | `a6f76b8e` |
+| Review-fix — drop RV-STYLE-1 provenance/multi-line comments | ✅ | `12d1b2b5`, `41d28693` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -171,14 +174,15 @@ the mechanism.
 ## Acceptance-criteria verification (final)
 
 - [x] **AC-1:** Ran `bash scripts/build-riviera-map.test.sh` → `10 passed, 0 failed`
-  (includes `test_rewrite_style_preserves_map_paths`). Verified this commit, on this
-  machine's Git Bash / MSYS2.
+  (includes `test_rewrite_style_preserves_map_paths`). Verified at commit `a6f76b8e`, on this
+  machine's Git Bash / MSYS2; still passing at `41d28693`.
 - [x] **AC-2:** Ran `scripts/build-riviera-map.sh --assets` on this machine's Git Bash, then
   inspected `platform/map/style.json` — `sprite`/`glyphs`/source `url` all literal `/map/...`
   / `pmtiles:///map/...`, no Windows-path mangling — then
   `./gradlew test --tests "*MapStyleSelfHostedTest*"` from `platform/` → BUILD SUCCESSFUL.
-  Regenerated `platform/map/*` reverted afterward (not committed — same policy as #1108: no
-  regenerated map assets shipped in a script-only bugfix PR).
+  Verified at commit `a6f76b8e`. Regenerated `platform/map/*` reverted afterward (not
+  committed — same policy as #1108: no regenerated map assets shipped in a script-only
+  bugfix PR).
 
 ## Self-review checklist (before merge / PR)
 
@@ -197,9 +201,11 @@ the mechanism.
 - [x] Frontend standards — N/A.
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] Close-out written in THIS PR, in its last code-touching commit — pending (finalized
-  after review + Sonar gates, folded into the last code-touching commit per the rule this
-  session slipped on for #1108).
-- [ ] The review gate ran in full — pending, due at ready-for-review.
+- [x] Close-out written in THIS PR. Process note: it landed across two small commits
+  (`12d1b2b5` the review-fix, `41d28693` recording that fix's own sha in this doc) rather than
+  a single last code-touching commit — both pushed together in one push, so only one extra CI
+  cycle was spent, but the ideal per `pr-gates.md` §3 step 4 is still one commit.
+- [x] The review gate ran in full — `/code-review` 5-agent fan-out + `riviera-review-overlay`,
+  1 finding ≥80 confidence (RV-STYLE-1), fixed in `12d1b2b5`.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
