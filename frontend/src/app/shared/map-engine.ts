@@ -25,6 +25,8 @@ export interface MapMarker {
   readonly id: string;
   readonly lngLat: LngLat;
   readonly element: HTMLElement;
+  /** Draggable markers report their new position through {@link MapHandle.onMarkerDragEnd}. */
+  readonly draggable?: boolean;
 }
 
 /** `load`: the style and its first tiles are on screen. `error`: a resource failed to load. */
@@ -35,13 +37,24 @@ export type MapEventName = 'load' | 'error';
  * consumer that only uses this handle survives swapping MapLibre for another renderer.
  */
 export interface MapHandle {
+  /** Where the camera looks right now — it moves with every pan and zoom, `setView` or gesture. */
+  view(): MapView;
   setView(view: MapView): void;
   zoomIn(): void;
   zoomOut(): void;
   addMarker(marker: MapMarker): void;
+  /**
+   * Move a marker in place. Re-adding it detaches and re-attaches the caller's element instead,
+   * which interrupts a drag in progress and drops whatever focus it held.
+   */
+  moveMarker(id: string, lngLat: LngLat): void;
   removeMarker(id: string): void;
   /** Subscribe; the returned function unsubscribes. */
   on(event: MapEventName, handler: () => void): () => void;
+  /** Where the map surface was clicked. Subscribe; the returned function unsubscribes. */
+  onMapClick(handler: (at: LngLat) => void): () => void;
+  /** Where a draggable marker was let go. Subscribe; the returned function unsubscribes. */
+  onMarkerDragEnd(handler: (id: string, at: LngLat) => void): () => void;
   destroy(): void;
 }
 

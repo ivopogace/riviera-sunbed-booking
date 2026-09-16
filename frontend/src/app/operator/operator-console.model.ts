@@ -537,7 +537,7 @@ export type LayoutErrorCode =
 
 /** The three-value on-day close: the one definition lives with the tourist mirror in `shared/`. */
 export type { SalesCloseTime } from '../shared/venue-views';
-import type { SalesCloseTime } from '../shared/venue-views';
+import type { SalesCloseTime, VenueLocation } from '../shared/venue-views';
 
 /**
  * The operator's own view of a venue's admin profile (`GET /api/venues/{id}/profile`): the editable core
@@ -568,6 +568,11 @@ export interface VenueProfileView {
    * Optional because test doubles and older payloads may omit it; absent reads open.
    */
   readonly seasonClosure?: SeasonClosureView;
+  /**
+   * The venue's riviera-map pin, or `null`/absent when it has none. Editable here: the profile
+   * PATCH sets and clears it. Optional because test doubles and older payloads may omit it.
+   */
+  readonly location?: VenueLocation | null;
 }
 
 /**
@@ -632,14 +637,17 @@ export interface VenueProfileUpdate {
   readonly salesClose: SalesCloseTime;
   readonly amenities: readonly Amenity[];
   readonly distanceToWaterM: number | null;
+  /** The venue's riviera-map pin; `null` unpins it, as a full replace does with any cleared field. */
+  readonly location: VenueLocation | null;
   readonly expectedVersion: number;
 }
 
 /**
  * The full-replace {@link VenueProfileUpdate} that would re-save `view` unchanged: every editable
  * field mapped faithfully (photos are not profile-write fields; `expectedVersion` echoes the view's
- * `version`). The venue tab's save and the daily view's close-sales write both build on it, so the
- * profile→write mapping cannot drift between the two surfaces.
+ * `version`). The daily view's close-sales write builds on it; the venue tab builds its own body
+ * from the form, so what keeps the two in step is the {@link VenueProfileUpdate} type, which fails
+ * to compile if either forgets a field.
  */
 export function toProfileUpdate(view: VenueProfileView): VenueProfileUpdate {
   return {
@@ -652,6 +660,7 @@ export function toProfileUpdate(view: VenueProfileView): VenueProfileUpdate {
     salesClose: view.salesClose,
     amenities: view.amenities,
     distanceToWaterM: view.distanceToWaterM,
+    location: view.location ?? null,
     expectedVersion: view.version,
   };
 }

@@ -1,15 +1,19 @@
+import { DOCUMENT } from '@angular/common';
 import {
   afterNextRender,
   Component,
   DestroyRef,
+  effect,
   ElementRef,
   inject,
+  input,
+  output,
   PendingTasks,
   signal,
   viewChild,
 } from '@angular/core';
 
-import { MapEngine, MapEngineOptions, MapHandle } from './map-engine';
+import { LngLat, MapEngine, MapEngineOptions, MapHandle } from './map-engine';
 import { TouchTarget } from './touch-target';
 
 /**
@@ -32,6 +36,18 @@ export const RIVIERA_MAP_OPTIONS: MapEngineOptions = {
 
 type MapStatus = 'booting' | 'ready' | 'unavailable';
 
+/** The map carries at most one pin, so its marker id is a constant rather than an input. */
+const PIN_ID = 'venue-location-pin';
+
+/**
+ * The pin's own box: 44 px both axes, the floor a drag target needs, in the theme-invariant
+ * solid-button skin the rest of the map chrome wears — it sits on imagery, which never themes.
+ */
+const PIN_CLASSES =
+  'inline-flex size-11 touch-manipulation items-center justify-center rounded-full ' +
+  'border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill text-[20px] leading-none ' +
+  'text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)]';
+
 /**
  * The **riviera map** — the geographic discovery map, as distinct from a venue's beach map.
  * Renders whatever engine is provided (`MapEngine`) into its canvas host and owns the chrome
@@ -44,6 +60,10 @@ type MapStatus = 'booting' | 'ready' | 'unavailable';
  * <p>The host reports its state as `data-status` (`booting` → `ready` once the style has loaded,
  * or `unavailable` when the browser cannot render a map), which is what the e2e waits on. The
  * consumer sizes the host; the map fills it.
+ *
+ * <p>It carries at most one `pin`. A null pin is no marker at all, a changed pin moves the marker
+ * in place, and `mapClick`/`pinMoved` report positions so a placer above the seam can own where
+ * the pin belongs without knowing which engine drew it.
  */
 @Component({
   selector: 'app-riviera-map',
@@ -59,35 +79,114 @@ type MapStatus = 'booting' | 'ready' | 'unavailable';
 export class RivieraMap {
   private readonly engine = inject(MapEngine);
   private readonly pendingTasks = inject(PendingTasks);
+  private readonly document = inject(DOCUMENT);
   private readonly canvasHost = viewChild.required<ElementRef<HTMLElement>>('canvasHost');
   private readonly mapEnd = viewChild.required<ElementRef<HTMLElement>>('mapEnd');
 
+  /** The camera and fence; the riviera by default, so an unpinned consumer binds nothing. */
+  readonly options = input<MapEngineOptions>(RIVIERA_MAP_OPTIONS);
+  /** Where the single pin sits, or `null` for none. */
+  readonly pin = input<LngLat | null>(null);
+  readonly pinDraggable = input(false);
+  /** The pin marker's accessible name — the seam leaves the element's a11y to its caller. */
+  readonly pinLabel = input('Venue location');
+
+  readonly mapClick = output<LngLat>();
+  readonly pinMoved = output<LngLat>();
+
   protected readonly status = signal<MapStatus>('booting');
 
-  private handle: MapHandle | undefined;
+  private readonly live = signal<MapHandle | undefined>(undefined);
+  private marker: HTMLElement | undefined;
+  private markerOnMap = false;
+  private markerDraggable = false;
   private disposed = false;
+  private readonly unsubscribes: (() => void)[] = [];
 
   constructor() {
     afterNextRender(() => {
       void this.pendingTasks.run(() => this.boot());
     });
+    effect(() => this.syncPin());
     inject(DestroyRef).onDestroy(() => {
       this.disposed = true;
-      this.handle?.destroy();
+      this.unsubscribes.forEach((off) => off());
+      this.live()?.destroy();
     });
   }
 
   /** The live engine handle, for specs driving the fake; `undefined` until booted or when unavailable. */
   currentHandle(): MapHandle | undefined {
-    return this.handle;
+    return this.live();
+  }
+
+  /** Where the camera looks now, so a consumer can act on what the viewer is actually looking at. */
+  currentCenter(): LngLat | undefined {
+    return this.live()?.view().center;
+  }
+
+  private syncPin(): void {
+    const handle = this.live();
+    const pin = this.pin();
+    if (!handle) {
+      return;
+    }
+    if (!pin) {
+      if (this.markerOnMap) {
+        handle.removeMarker(PIN_ID);
+        this.markerOnMap = false;
+      }
+      return;
+    }
+    // Read every input before the branch below returns, so the effect keeps tracking them.
+    const draggable = this.pinDraggable();
+    const element = this.pinElement();
+    element.setAttribute('aria-label', this.pinLabel());
+    // Only a draggable pin advertises the grab cursor; an undraggable one would promise a gesture.
+    element.classList.toggle('cursor-grab', draggable);
+    if (this.markerOnMap && this.markerDraggable === draggable) {
+      handle.moveMarker(PIN_ID, pin);
+      return;
+    }
+    if (this.markerOnMap) {
+      // An engine binds draggability when the marker is added, so a change re-registers it.
+      handle.removeMarker(PIN_ID);
+    }
+    handle.addMarker({ id: PIN_ID, lngLat: pin, element, draggable });
+    this.markerOnMap = true;
+    this.markerDraggable = draggable;
+  }
+
+  /** One element for the life of the component, so a move never detaches what a drag is holding. */
+  private pinElement(): HTMLElement {
+    this.marker ??= this.buildPinElement();
+    return this.marker;
+  }
+
+  /**
+   * Not a control: the pin is dragged with a pointer, and every keyboard path to it lives in the
+   * consumer's own buttons. A focusable element here would announce an action it cannot perform.
+   */
+  private buildPinElement(): HTMLElement {
+    const element = this.document.createElement('div');
+    element.setAttribute('role', 'img');
+    element.className = PIN_CLASSES;
+    element.dataset['testid'] = 'map-pin';
+    const glyph = this.document.createElement('span');
+    glyph.setAttribute('aria-hidden', 'true');
+    glyph.textContent = '\u25cf';
+    element.appendChild(glyph);
+    // Both engines mount the marker inside the surface they read clicks from.
+    element.addEventListener('click', (event) => event.stopPropagation());
+    return element;
   }
 
   protected zoomIn(): void {
-    this.handle?.zoomIn();
+    this.live()?.zoomIn();
   }
 
   protected zoomOut(): void {
-    this.handle?.zoomOut();
+    this.live()?.zoomOut();
   }
 
   /** Bypass block (WCAG 2.4.1): land focus just past the map, on the way to whatever follows it. */
@@ -98,7 +197,7 @@ export class RivieraMap {
   private async boot(): Promise<void> {
     let handle: MapHandle;
     try {
-      handle = await this.engine.create(this.canvasHost().nativeElement, RIVIERA_MAP_OPTIONS);
+      handle = await this.engine.create(this.canvasHost().nativeElement, this.options());
     } catch {
       this.status.set('unavailable');
       return;
@@ -107,7 +206,11 @@ export class RivieraMap {
       handle.destroy();
       return;
     }
-    this.handle = handle;
-    handle.on('load', () => this.status.set('ready'));
+    this.unsubscribes.push(
+      handle.on('load', () => this.status.set('ready')),
+      handle.onMapClick((at) => this.mapClick.emit(at)),
+      handle.onMarkerDragEnd((_id, at) => this.pinMoved.emit(at)),
+    );
+    this.live.set(handle);
   }
 }

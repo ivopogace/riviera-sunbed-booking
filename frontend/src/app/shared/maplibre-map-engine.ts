@@ -2,6 +2,7 @@ import type { StyleSpecification } from 'maplibre-gl';
 
 import { environment } from '../../environments/environment';
 import {
+  LngLat,
   MapEngine,
   MapEngineOptions,
   MapEventName,
@@ -103,11 +104,17 @@ async function registerPmtiles(maplibre: MapLibre): Promise<void> {
 
 class MapLibreHandle implements MapHandle {
   private readonly markers = new Map<string, import('maplibre-gl').Marker>();
+  private readonly dragEndHandlers = new Set<(id: string, at: LngLat) => void>();
 
   constructor(
     private readonly maplibre: MapLibre,
     private readonly map: import('maplibre-gl').Map,
   ) {}
+
+  view(): MapView {
+    const { lng, lat } = this.map.getCenter();
+    return { center: { lng, lat }, zoom: this.map.getZoom() };
+  }
 
   setView(view: MapView): void {
     this.map.jumpTo({ center: [view.center.lng, view.center.lat], zoom: view.zoom });
@@ -123,10 +130,23 @@ class MapLibreHandle implements MapHandle {
 
   addMarker(marker: MapMarker): void {
     this.removeMarker(marker.id);
-    const pin = new this.maplibre.Marker({ element: marker.element })
+    const pin = new this.maplibre.Marker({
+      element: marker.element,
+      draggable: marker.draggable ?? false,
+    })
       .setLngLat([marker.lngLat.lng, marker.lngLat.lat])
       .addTo(this.map);
+    if (marker.draggable) {
+      pin.on('dragend', () => {
+        const { lng, lat } = pin.getLngLat();
+        this.dragEndHandlers.forEach((handler) => handler(marker.id, { lng, lat }));
+      });
+    }
     this.markers.set(marker.id, pin);
+  }
+
+  moveMarker(id: string, lngLat: LngLat): void {
+    this.markers.get(id)?.setLngLat([lngLat.lng, lngLat.lat]);
   }
 
   removeMarker(id: string): void {
@@ -139,9 +159,23 @@ class MapLibreHandle implements MapHandle {
     return () => subscription.unsubscribe();
   }
 
+  onMapClick(handler: (at: LngLat) => void): () => void {
+    const subscription = this.map.on('click', (event) => {
+      const { lng, lat } = event.lngLat;
+      handler({ lng, lat });
+    });
+    return () => subscription.unsubscribe();
+  }
+
+  onMarkerDragEnd(handler: (id: string, at: LngLat) => void): () => void {
+    this.dragEndHandlers.add(handler);
+    return () => this.dragEndHandlers.delete(handler);
+  }
+
   destroy(): void {
     this.markers.forEach((pin) => pin.remove());
     this.markers.clear();
+    this.dragEndHandlers.clear();
     this.map.remove();
   }
 }

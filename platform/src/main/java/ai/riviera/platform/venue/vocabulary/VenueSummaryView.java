@@ -34,10 +34,13 @@ import java.util.List;
  * <p>{@code closedForSeason} is whether the venue's season closure is in effect right now — the
  * "Closed for season" badge — and {@code reopensOn} its reopen day while it is, else {@code null}. A
  * closed venue stays listed, after every open one.
+ *
+ * <p>{@code location} is the venue's riviera-map pin, or {@code null} when it has none — an
+ * unpinned venue stays in this list and is simply absent from the map.
  */
 public record VenueSummaryView(long id, String name, String beach, String region,
 		int ratingTenths, int reviewsCount, String bookingMode,
 		MoneyView fromPrice, List<Amenity> amenities, Integer distanceToWaterM,
 		AvailabilitySummary availability, CoverPhotoView coverPhoto, List<PhotoView> photos,
-		boolean salesOpen, boolean closedForSeason, LocalDate reopensOn) {
+		boolean salesOpen, boolean closedForSeason, LocalDate reopensOn, VenueLocation location) {
 }

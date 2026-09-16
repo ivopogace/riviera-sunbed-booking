@@ -103,7 +103,7 @@ class VenueProfileConcurrencyIT {
 
 	private static VenueProfileCommand command(String name) {
 		return new VenueProfileCommand(name, "Ksamil", "Riviera", "desc", "INSTANT",
-				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null);
+				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null);
 	}
 
 	private long insertVenue() {

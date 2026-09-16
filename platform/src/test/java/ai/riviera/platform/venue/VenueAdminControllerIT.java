@@ -96,12 +96,23 @@ class VenueAdminControllerIT {
 	 */
 	private static String profileBody(String name, String mode, String cutoff, String salesClose,
 			String amenitiesJson, String distanceJson, long expectedVersion) {
+		return profileBody(name, mode, cutoff, salesClose, amenitiesJson, distanceJson, "null",
+				expectedVersion);
+	}
+
+	/** The same body carrying a {@code location}: {@code "null"} unpins, an object pins. */
+	private static String profileBody(String name, String mode, String cutoff, String salesClose,
+			String amenitiesJson, String distanceJson, String locationJson, long expectedVersion) {
 		return """
 				{"name":"%s","beach":"Ksamil","region":"Riviera","description":"edited",
 				 "bookingMode":"%s","bookingCutoff":"%s","salesClose":"%s","amenities":%s,
-				 "distanceToWaterM":%s,"expectedVersion":%d}
-				""".formatted(name, mode, cutoff, salesClose, amenitiesJson, distanceJson, expectedVersion);
+				 "distanceToWaterM":%s,"location":%s,"expectedVersion":%d}
+				""".formatted(name, mode, cutoff, salesClose, amenitiesJson, distanceJson, locationJson,
+						expectedVersion);
 	}
+
+	/** A whole, in-range pin off Dhërmi, as the PATCH body carries it. */
+	private static final String DHERMI_JSON = "{\"latitude\":40.1468,\"longitude\":19.6482}";
 
 	/** The venue's current optimistic-concurrency token, read from the owner profile endpoint. */
 	private long currentVersion(long venueId) throws Exception {
@@ -983,6 +994,88 @@ class VenueAdminControllerIT {
 						.content(profileBody("Ghost", "INSTANT", "18:00", "16:00", "[]", "null", 0)))
 				.andExpect(status().isForbidden())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
+	void locationEditSetsAndThenClearsThePin() throws Exception {
+		long venue = createVenue("Pin Club");
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("Pin Club", "INSTANT", "18:00", "16:00", "[]", "null",
+								DHERMI_JSON, currentVersion(venue))))
+				.andExpect(status().isNoContent());
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(jsonPath("$.location.latitude").value(40.146800))
+				.andExpect(jsonPath("$.location.longitude").value(19.648200));
+
+		// The edit replaces the profile, so a body with no location is how an operator unpins.
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("Pin Club", "INSTANT", "18:00", "16:00", "[]", "null", "null",
+								currentVersion(venue))))
+				.andExpect(status().isNoContent());
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(jsonPath("$.location").value((Object) null));
+	}
+
+	@Test
+	void halfPresentLocationIs400() throws Exception {
+		long venue = createVenue("Half Pin Club");
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("Half Pin Club", "INSTANT", "18:00", "16:00", "[]", "null",
+								"{\"latitude\":40.1468}", currentVersion(venue))))
+				.andExpect(status().isBadRequest())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
+	void outOfRangeLocationIs400() throws Exception {
+		long venue = createVenue("Off Planet Club");
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("Off Planet Club", "INSTANT", "18:00", "16:00", "[]", "null",
+								"{\"latitude\":90.000001,\"longitude\":19.6482}", currentVersion(venue))))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("Off Planet Club", "INSTANT", "18:00", "16:00", "[]", "null",
+								"{\"latitude\":40.1468,\"longitude\":-180.000001}", currentVersion(venue))))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
+	void staleLocationEditIs409() throws Exception {
+		long venue = createVenue("Stale Pin Club");
+		long loaded = currentVersion(venue);
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("Stale Pin Club", "INSTANT", "18:00", "16:00", "[]", "null",
+								DHERMI_JSON, loaded)))
+				.andExpect(status().isNoContent());
+
+		// A second write off the version the first one consumed loses — the pin does not bypass the lock.
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("Stale Pin Club", "INSTANT", "18:00", "16:00", "[]", "null",
+								"{\"latitude\":41.0,\"longitude\":20.0}", loaded)))
+				.andExpect(status().isConflict())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("STALE_WRITE"));
+	}
+
+	@Test
+	void locationEditUnownedVenueIs403() throws Exception {
+		// Ownership is asserted before existence (invariant #13), so an unknown venue is 403 too.
+		mvc.perform(patch("/api/venues/{v}", 999_999L).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("Ghost Pin", "INSTANT", "18:00", "16:00", "[]", "null",
+								DHERMI_JSON, 0)))
+				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
 	}
 }

@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue.adapter.in;
 
+import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -8,16 +9,18 @@ import java.util.stream.Collectors;
 
 import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.Amenity;
+import ai.riviera.platform.venue.vocabulary.VenueLocation;
 import ai.riviera.platform.venue.application.VenueProfileCommand;
 
 /**
- * The request body for editing a venue's profile ({@code PATCH /api/venues/{venueId}}, widened from
- * the original amenities + distance fields). It carries the operator-editable fields —
+ * The request body for editing a venue's profile ({@code PATCH /api/venues/{venueId}}). It carries
+ * the operator-editable fields —
  * {@code name}/{@code beach}/{@code region}/{@code description}, {@code bookingMode}
  * ({@code INSTANT}|{@code REQUEST}), {@code bookingCutoff} ({@code "HH:mm"} in {@code Europe/Tirane}),
  * {@code salesClose} (required; exactly {@code "00:01"}|{@code "16:00"}|{@code "23:59"}),
- * the full amenity set (codes from the fixed {@link Amenity} catalogue), and the optional
- * distance-to-water in metres. <strong>Commission and payout currency are read-only and absent</strong>
+ * the full amenity set (codes from the fixed {@link Amenity} catalogue), the optional
+ * distance-to-water in metres, and the optional {@code location} — the venue's riviera-map pin as
+ * {@code {latitude, longitude}}, or {@code null} for no pin. <strong>Commission and payout currency are read-only and absent</strong>
  * — the write cannot touch them.
  *
  * <p>{@link #toCommand()} parses each amenity code to {@link Amenity}, the cutoff to a
@@ -27,7 +30,8 @@ import ai.riviera.platform.venue.application.VenueProfileCommand;
  * (required text, known mode, positive distance) are delegated to {@link VenueProfileCommand}.
  *
  * <p><strong>The edit REPLACES the profile</strong> (the form always re-sends every field), so a
- * null/absent {@code amenities} clears them and a null {@code distanceToWaterM} clears the distance.
+ * null/absent {@code amenities} clears them, a null {@code distanceToWaterM} clears the distance,
+ * and a null {@code location} unpins the venue from the riviera map.
  *
  * <p>{@code expectedVersion} is the required optimistic-concurrency token — the {@code version}
  * the tab loaded with the profile. It is typed {@link Long} (not primitive) so an absent field is
@@ -36,14 +40,26 @@ import ai.riviera.platform.venue.application.VenueProfileCommand;
  */
 record UpdateVenueProfileRequest(String name, String beach, String region, String description,
 		String bookingMode, String bookingCutoff, String salesClose, List<String> amenities,
-		Integer distanceToWaterM, Long expectedVersion) {
+		Integer distanceToWaterM, LocationBody location, Long expectedVersion) {
+
+	/**
+	 * The raw coordinate pair off the wire. Unvalidated by design: {@link VenueLocation} owns the
+	 * bounds, so a half-present or out-of-range pair fails in one place for every caller.
+	 */
+	record LocationBody(BigDecimal latitude, BigDecimal longitude) {
+	}
 
 	VenueProfileCommand toCommand() {
 		Set<Amenity> parsed = (amenities == null ? List.<String>of() : amenities).stream()
 				.map(UpdateVenueProfileRequest::parseCode)
 				.collect(Collectors.toUnmodifiableSet());
 		return new VenueProfileCommand(name, beach, region, description, bookingMode,
-				parseCutoff(bookingCutoff), parseSalesClose(salesClose), parsed, distanceToWaterM);
+				parseCutoff(bookingCutoff), parseSalesClose(salesClose), parsed, distanceToWaterM,
+				parseLocation(location));
+	}
+
+	private static VenueLocation parseLocation(LocationBody body) {
+		return body == null ? null : new VenueLocation(body.latitude(), body.longitude());
 	}
 
 	private static Amenity parseCode(String code) {

@@ -1,5 +1,8 @@
 package ai.riviera.platform.venue.adapter.out;
 
+import java.math.BigDecimal;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -42,6 +45,7 @@ import ai.riviera.platform.venue.vocabulary.SetView;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueLocation;
 import ai.riviera.platform.venue.vocabulary.VenueMapView;
 import ai.riviera.platform.venue.api.VenueRates;
 import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
@@ -73,6 +77,8 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	private static final String COL_PRICE_CURRENCY = "price_currency";
 	private static final String COL_BOOKING_MODE = "booking_mode";
 	private static final String COL_DISTANCE_TO_WATER = "distance_to_water_m";
+	private static final String COL_LATITUDE = "latitude";
+	private static final String COL_LONGITUDE = "longitude";
 	private static final String COL_VENUE_ID = "venue_id";
 	private static final String COL_AMENITY = "amenity";
 	private static final String COL_SALES_CLOSE = "sales_close";
@@ -112,7 +118,8 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		}
 		Optional<VenueRow> venue = jdbc.sql("""
 				SELECT id, name, beach, region, description, rating_tenths, reviews_count, booking_mode,
-				       distance_to_water_m, set_version, sales_close, closed_at, reopen_on, advance_sales
+				       distance_to_water_m, set_version, sales_close, closed_at, reopen_on, advance_sales,
+				       latitude, longitude
 				FROM venue
 				WHERE id = :id
 				""")
@@ -124,7 +131,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 						rs.getString(COL_BOOKING_MODE),
 						rs.getObject(COL_DISTANCE_TO_WATER, Integer.class),
 						rs.getLong("set_version"),
-						rs.getObject(COL_SALES_CLOSE, LocalTime.class), seasonClosureOf(rs)))
+						rs.getObject(COL_SALES_CLOSE, LocalTime.class), seasonClosureOf(rs), locationOf(rs)))
 				.optional();
 
 		if (venue.isEmpty()) {
@@ -182,7 +189,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 				fromPrice, amenities, v.distanceToWaterM(), sets, v.setVersion(), coverPhoto,
 				photos, lightboxPhotos, salesWindow.isOpen(v.salesClose(), v.seasonClosure(), date, now),
 				SalesClose.WIRE.format(v.salesClose()), closedForSeason,
-				closedForSeason ? v.seasonClosure().reopenOn() : null));
+				closedForSeason ? v.seasonClosure().reopenOn() : null, v.location()));
 	}
 
 	@Override
@@ -191,7 +198,8 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		// type the bound NULL so "(:p IS NULL OR col = :p)" plans without an undetermined-type error.
 		List<SummaryRow> venues = jdbc.sql("""
 				SELECT id, name, beach, region, rating_tenths, reviews_count, booking_mode,
-				       distance_to_water_m, sales_close, closed_at, reopen_on, advance_sales
+				       distance_to_water_m, sales_close, closed_at, reopen_on, advance_sales,
+				       latitude, longitude
 				FROM venue
 				WHERE (CAST(:beach AS TEXT) IS NULL OR beach = :beach)
 				  AND (CAST(:region AS TEXT) IS NULL OR region = :region)
@@ -204,7 +212,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 						rs.getString(COL_REGION), rs.getInt("rating_tenths"),
 						rs.getInt("reviews_count"), rs.getString(COL_BOOKING_MODE),
 						rs.getObject(COL_DISTANCE_TO_WATER, Integer.class),
-						rs.getObject(COL_SALES_CLOSE, LocalTime.class), seasonClosureOf(rs)))
+						rs.getObject(COL_SALES_CLOSE, LocalTime.class), seasonClosureOf(rs), locationOf(rs)))
 				.list();
 
 		venues = onlyVisible(venues);
@@ -261,8 +269,14 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 				.toList();
 	}
 
+	/** A whole coordinate pair, or none: {@code venue_location_check} guarantees the two agree. */
+	private static VenueLocation locationOf(ResultSet rs) throws SQLException {
+		BigDecimal latitude = rs.getBigDecimal(COL_LATITUDE);
+		return latitude == null ? null : new VenueLocation(latitude, rs.getBigDecimal(COL_LONGITUDE));
+	}
+
 	/** The stored closure off a venue row; the three columns are read together or not at all. */
-	private static SeasonClosure seasonClosureOf(java.sql.ResultSet rs) throws java.sql.SQLException {
+	private static SeasonClosure seasonClosureOf(ResultSet rs) throws SQLException {
 		if (rs.getObject(COL_CLOSED_AT) == null) {
 			return SeasonClosure.open();
 		}
@@ -385,7 +399,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 				v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, ordered, v.distanceToWaterM(), new AvailabilitySummary(free, total),
 				coverPhoto, photos, salesOpen, closedForSeason,
-				closedForSeason ? v.seasonClosure().reopenOn() : null);
+				closedForSeason ? v.seasonClosure().reopenOn() : null, v.location());
 	}
 
 	@Override
@@ -438,7 +452,8 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 
 	private record VenueRow(long id, String name, String beach, String region,
 			String description, int ratingTenths, int reviewsCount, String bookingMode,
-			Integer distanceToWaterM, long setVersion, LocalTime salesClose, SeasonClosure seasonClosure) {
+			Integer distanceToWaterM, long setVersion, LocalTime salesClose, SeasonClosure seasonClosure,
+			VenueLocation location) {
 	}
 
 	/** The static set-position layout, before availability is overlaid for the chosen date. */
@@ -449,7 +464,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	/** A venue's discovery-list row, before its sets' price/availability are folded in. */
 	private record SummaryRow(long id, String name, String beach, String region,
 			int ratingTenths, int reviewsCount, String bookingMode, Integer distanceToWaterM,
-			LocalTime salesClose, SeasonClosure seasonClosure) {
+			LocalTime salesClose, SeasonClosure seasonClosure, VenueLocation location) {
 	}
 
 	/** A set's id, owning venue, and price — all the list view needs to count and price a venue. */

@@ -122,7 +122,7 @@ The only place providers are wired:
   factory in `app.config.ts`; unit specs override the token directly. Three instances today:
   `booking/stripe-payment.gateway.ts`, `operator/qr-scanner.ts`, and `shared/map-engine.ts` —
   the map engine sits in `shared/` (not a feature folder) because its consumers span features
-  (Discover today, the operator pin-drop later) and `pages/` may import only `core`/`shared`;
+  (Discover and the operator's venue-location field) and `pages/` may import only `core`/`shared`;
   an adapter that fetches its own resources (MapLibre's tiles) is still `shared/`-admissible —
   the row's "no HTTP" means no `HttpClient`/API state, not no I/O behind the seam.
 

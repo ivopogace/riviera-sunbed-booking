@@ -242,4 +242,23 @@ class VenueReadControllerIT {
 		}
 		return id;
 	}
+
+	@Test
+	void theVenueReadCarriesTheLocationAndNullWhenUnpinned() throws Exception {
+		mvc.perform(get("/api/venues/{id}", MIRAMAR))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.location").value(nullValue()));
+
+		jdbc.sql("UPDATE venue SET latitude = 40.146800, longitude = 19.648200 WHERE id = :id")
+				.param("id", MIRAMAR).update();
+		try {
+			mvc.perform(get("/api/venues/{id}", MIRAMAR))
+					.andExpect(jsonPath("$.location.latitude").value(40.146800))
+					.andExpect(jsonPath("$.location.longitude").value(19.648200));
+		}
+		finally {
+			jdbc.sql("UPDATE venue SET latitude = NULL, longitude = NULL WHERE id = :id")
+					.param("id", MIRAMAR).update();
+		}
+	}
 }

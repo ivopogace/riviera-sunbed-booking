@@ -313,4 +313,18 @@ class VenueListControllerIT {
 		assertEquals(noneList.size(), blankList.size(),
 				"blank filter must return the same venues as no filter");
 	}
+
+	@Test
+	void theListCarriesAPinnedVenuesLocationAndNullForAnUnpinnedOne() throws Exception {
+		jdbc.sql("UPDATE venue SET latitude = 40.146800, longitude = 19.648200 WHERE id = :id")
+				.param("id", aurora).update();
+
+		// An unpinned venue is still listed, so the riviera map omits it client-side.
+		mvc.perform(get("/api/venues").param("region", IT_REGION))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == " + aurora + ")].location.latitude").value(contains(40.146800)))
+				.andExpect(jsonPath("$[?(@.id == " + aurora + ")].location.longitude").value(contains(19.648200)))
+				.andExpect(jsonPath("$[?(@.id == " + zephyr + ")].name").value(contains("Zephyr Cove")))
+				.andExpect(jsonPath("$[?(@.id == " + zephyr + ")].location").value(contains((Object) null)));
+	}
 }

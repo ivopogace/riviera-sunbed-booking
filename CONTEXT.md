@@ -62,8 +62,9 @@ model in `docs/architecture/domain-model.md`.
   marks working.
 - **Beach map** — a venue's visual layout: rows and individual set positions. _Avoid_: map
   (alone, on a tourist surface where the **riviera map** could be meant).
-- **Riviera map** — the geographic discovery map of the Albanian riviera on the Discover page,
-  drawn from map resources the platform hosts itself (ADR-0022). Not a beach map: it shows where
+- **Riviera map** — the geographic discovery map of the Albanian riviera, drawn from map resources
+  the platform hosts itself (ADR-0022). It is the tourist's on the Discover page and the operator's
+  in the console, where they place their venue location on it. Not a beach map: it shows where
   venues are, never a venue's sunbeds. _Avoid_: venue map.
 - **Venue location** — a venue's position on the riviera map as a latitude/longitude pin, placed
   by its operator by hand; optional, and a venue without one is simply absent from the riviera map

@@ -15,6 +15,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -30,6 +31,7 @@ import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueLocation;
 import ai.riviera.platform.venue.application.CommissionRateStore;
 import ai.riviera.platform.venue.application.NewVenueCommand;
 import ai.riviera.platform.venue.application.OwnedVenueView;
@@ -79,6 +81,9 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	private static final String COL_DESCRIPTION = "description";
 	/** Bind-param name for the venue's {@code sales_close} column, shared by insert + profile update. */
 	private static final String P_SALES_CLOSE = "salesClose";
+	/** The venue-location column / bind-param names, shared by the profile read and update. */
+	private static final String COL_LATITUDE = "latitude";
+	private static final String COL_LONGITUDE = "longitude";
 	/**
 	 * The date a venue's first rate change pins its previous rate at. It predates the
 	 * platform, so once a venue has changed rate every service date it could have sold on is covered,
@@ -490,13 +495,16 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				UPDATE venue
 				SET name = :name, beach = :beach, region = :region, description = :description,
 				    booking_mode = :mode, booking_cutoff = :cutoff, sales_close = :salesClose,
-				    distance_to_water_m = :distance, version = version + 1
+				    distance_to_water_m = :distance, latitude = :latitude, longitude = :longitude,
+				    version = version + 1
 				WHERE id = :id AND version = :version
 				""")
 				.param(COL_NAME, command.name())
 				.param(COL_BEACH, command.beach())
 				.param(COL_REGION, command.region())
 				.param(COL_DESCRIPTION, command.description())
+				.param(COL_LATITUDE, command.location() == null ? null : command.location().latitude())
+				.param(COL_LONGITUDE, command.location() == null ? null : command.location().longitude())
 				.param("mode", command.bookingMode())
 				.param("cutoff", command.bookingCutoff())
 				.param(P_SALES_CLOSE, command.salesClose().time())
@@ -542,7 +550,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 		Optional<ProfileRow> venue = jdbc.sql("""
 				SELECT name, beach, region, description, booking_mode, booking_cutoff, sales_close,
 				       commission_bps, payout_currency, distance_to_water_m, version,
-				       closed_at, reopen_on, advance_sales
+				       closed_at, reopen_on, advance_sales, latitude, longitude
 				FROM venue
 				WHERE id = :id
 				""")
@@ -559,7 +567,8 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 						rs.getObject("closed_at") == null
 								? SeasonClosure.open()
 								: SeasonClosure.closed(rs.getObject("reopen_on", LocalDate.class),
-										rs.getBoolean("advance_sales"))))
+										rs.getBoolean("advance_sales")),
+						locationOf(rs.getBigDecimal(COL_LATITUDE), rs.getBigDecimal(COL_LONGITUDE))))
 				.optional();
 		if (venue.isEmpty()) {
 			return Optional.empty();
@@ -574,7 +583,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 		return Optional.of(new VenueProfileView(v.name(), v.beach(), v.region(), v.description(),
 				v.bookingMode(), v.bookingCutoff(), v.salesClose(), v.commissionBps(), v.payoutCurrency(),
 				amenities, v.distanceToWaterM(), v.version(), slotPhotos(venueId), v.seasonClosure(),
-				salesWindow.closedForSeason(v.seasonClosure(), clock.instant())));
+				salesWindow.closedForSeason(v.seasonClosure(), clock.instant()), v.location()));
 	}
 
 	@Override
@@ -624,10 +633,16 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				.toList();
 	}
 
+	/** A whole coordinate pair, or none: {@code venue_location_check} guarantees the two agree. */
+	private static VenueLocation locationOf(BigDecimal latitude, BigDecimal longitude) {
+		return latitude == null ? null : new VenueLocation(latitude, longitude);
+	}
+
 	/** The venue row backing a {@link VenueProfileView}, before its amenity set is folded in. */
 	private record ProfileRow(String name, String beach, String region, String description,
 			BookingMode bookingMode, LocalTime bookingCutoff, LocalTime salesClose, int commissionBps,
-			String payoutCurrency, Integer distanceToWaterM, long version, SeasonClosure seasonClosure) {
+			String payoutCurrency, Integer distanceToWaterM, long version, SeasonClosure seasonClosure,
+			VenueLocation location) {
 	}
 
 	private static Map<String, Object> setParams(SetCommand c) {

@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue.application;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -35,6 +36,7 @@ import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueLocation;
 import ai.riviera.platform.venue.application.AddSetOutcome;
 import ai.riviera.platform.venue.application.ChangeOutcome;
 import ai.riviera.platform.venue.application.NewVenueCommand;
@@ -44,6 +46,7 @@ import ai.riviera.platform.venue.application.Venues;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -440,8 +443,14 @@ class VenueAdminServiceTest {
 
 	/** A valid widened profile command with the given amenities + distance; core fields fixed. */
 	private static VenueProfileCommand profile(Set<Amenity> amenities, Integer distanceToWaterM) {
+		return profile(amenities, distanceToWaterM, null);
+	}
+
+	/** The same command carrying a venue location; {@code null} clears the pin. */
+	private static VenueProfileCommand profile(Set<Amenity> amenities, Integer distanceToWaterM,
+			VenueLocation location) {
 		return new VenueProfileCommand("Sunset", "Ksamil", "Riviera", "nice", "INSTANT",
-				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, amenities, distanceToWaterM);
+				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, amenities, distanceToWaterM, location);
 	}
 
 	@Test
@@ -487,6 +496,19 @@ class VenueAdminServiceTest {
 		assertThrows(NotVenueOwnerException.class,
 				() -> service.updateProfile(STRANGER, VENUE, 0L, profile(Set.of(Amenity.CAFE), 10)));
 		assertEquals(0, venues.updatedProfiles);
+	}
+
+	@Test
+	void profileEditSetsAndThenClearsTheVenueLocation() {
+		venues.venues.add(VENUE.value());
+		VenueLocation dhermi = new VenueLocation(new BigDecimal("40.146800"), new BigDecimal("19.648200"));
+
+		service.updateProfile(OWNER, VENUE, 0L, profile(Set.of(), null, dhermi));
+		assertEquals(dhermi, service.profileFor(OWNER, VENUE).orElseThrow().location());
+
+		// The PATCH replaces the profile, so a command with no location is how an operator unpins.
+		service.updateProfile(OWNER, VENUE, 0L, profile(Set.of(), null, null));
+		assertNull(service.profileFor(OWNER, VENUE).orElseThrow().location());
 	}
 
 	// ---- Owner-asserted profile READ ----
@@ -1314,9 +1336,12 @@ class VenueAdminServiceTest {
 			lastRetiredAt = retiredAt;
 		}
 
+		VenueLocation storedLocation;
+
 		@Override
 		public int updateVenueProfile(VenueId venueId, long expectedVersion, VenueProfileCommand command) {
 			updatedProfiles++;
+			storedLocation = command.location();
 			// The service checks venueExists first, so this is only reached for an existing venue; the
 			// default 1 models a version match. forceProfileUpdateRows = 0 models a stale-version loss.
 			return forceProfileUpdateRows != null ? forceProfileUpdateRows : 1;
@@ -1327,7 +1352,7 @@ class VenueAdminServiceTest {
 			return venues.contains(venueId.value())
 					? Optional.of(new VenueProfileView("Sunset", "Ksamil", "Riviera", "nice",
 							BookingMode.INSTANT, LocalTime.of(18, 0), LocalTime.of(16, 0), 1500, "EUR",
-							List.of(Amenity.WIFI), 20, 0, List.of(), SeasonClosure.open(), false))
+							List.of(Amenity.WIFI), 20, 0, List.of(), SeasonClosure.open(), false, storedLocation))
 					: Optional.empty();
 		}
 

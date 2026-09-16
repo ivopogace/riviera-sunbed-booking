@@ -5,6 +5,8 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { of } from 'rxjs';
 
 import { expectNoAxeViolations } from '../../testing/axe';
+import { FakeMapEngine } from '../shared/fake-map-engine';
+import { MapEngine } from '../shared/map-engine';
 import { VenueProfileView } from './operator-console.model';
 import { VenueTab } from './venue-tab';
 
@@ -46,6 +48,7 @@ describe('VenueTab a11y (#177)', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        { provide: MapEngine, useValue: new FakeMapEngine() },
         {
           provide: ActivatedRoute,
           useValue: {
