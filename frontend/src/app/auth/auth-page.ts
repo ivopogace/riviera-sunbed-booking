@@ -341,21 +341,14 @@ export class AuthPage {
   );
 
   protected readonly submitting = signal(false);
-  /**
-   * The one alert, cleared whenever the card changes shape — EITHER source, since a failure the
-   * tourist has stopped looking at is stale on both. Derived rather than written from an `effect`:
-   * angular.dev's effect guide names state propagation as the shape to replace with
-   * `computed()`/`linkedSignal()`, and deriving it also makes the reset pull-based, so it can
-   * never land after the render that read it.
-   */
+  /** The one alert, cleared on any `mode` or `audience` change: a failure the tourist has stopped
+   *  looking at is stale on both. */
   protected readonly error = linkedSignal({
     source: () => [this.mode(), this.audience()],
     computation: (): string | undefined => undefined,
   });
-  /** The widget's verified proof-of-work solution for whichever register card is showing. Reset on
-   *  the same pair as {@link error}: `showChallenge` destroys the widget on a mode change and the
-   *  audience picks the endpoint, so a remounted widget must start unverified rather than inherit
-   *  the previous card's solution. */
+  /** The widget's verified proof-of-work solution for whichever register card is showing. Cleared
+   *  on the same pair as {@link error}, so no card is ever submitted with another card's solution. */
   protected readonly challengePayload = linkedSignal({
     source: () => [this.mode(), this.audience()],
     computation: (): string | undefined => undefined,
@@ -372,11 +365,7 @@ export class AuthPage {
   /**
    * The card's fields. Sourced on `audience` ALONE, never the pair: a credential must not cross
    * principal types, but a sign-in/register toggle is not a principal change, so a mode toggle
-   * deliberately keeps what was typed. The documented "account for previous state" shape
-   * ({@link https://angular.dev/guide/signals/linked-signal#accounting-for-previous-state}, the
-   * same one `set-editor.ts` uses) is what lets it blank only `password` and carry the other two
-   * fields over; `previous` is absent only on the first computation, which is why the card the
-   * tourist lands on is not treated as a switch.
+   * keeps what was typed. Only `password` is blanked; `identifier` and `contactEmail` carry over.
    */
   protected readonly model = linkedSignal<Audience, AuthModel>({
     source: this.audience,
@@ -459,13 +448,12 @@ export class AuthPage {
 
   protected onAudienceChange(next: Audience): void {
     this.audience.set(next);
-    // The password and error resets are derived from `audience`/`mode`, not wired here.
+    // Password, error and challenge resets ride their own declarations, not this handler.
     // No refocus: arrows move focus WITHIN a radiogroup (caught by unified-auth.e2e.ts).
   }
 
   protected toggleMode(): void {
     this.mode.update((m) => (m === 'signin' ? 'register' : 'signin'));
-    this.error.set(undefined);
     this.refocusAfterRender();
   }
 

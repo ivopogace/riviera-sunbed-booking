@@ -188,8 +188,9 @@ describe('AuthPage', () => {
    * The card resets three things when it changes shape, and the rule is asymmetric: `error` and the
    * challenge solution go on EITHER a mode or an audience change, while the password goes only on
    * an audience change — carrying a credential across principal types is the security problem, and
-   * a sign-in/register toggle is not that. Both directions are pinned here; the negative leg
-   * (`keeps the password`) is the one that must never regress.
+   * a sign-in/register toggle is not that. This block pins the legs no other block covers — above
+   * all `keeps the password`, the negative leg. The clear legs sit with their own flows: the
+   * password's above, the challenge solution's in the two proof-of-work blocks below.
    */
   describe('resets what the card changed out from under', () => {
     it('keeps the password when only the mode changes', async () => {
@@ -217,7 +218,7 @@ describe('AuthPage', () => {
     });
 
     it('drops a stale error when the audience switches', async () => {
-      // onAudienceChange deliberately has no error.set — the reset is derived, not hand-wired.
+      // onAudienceChange carries no error.set of its own, so this leg rides the derivation.
       await render();
       await failSignIn();
       expect(el('auth-error')).not.toBeNull();
@@ -227,12 +228,48 @@ describe('AuthPage', () => {
       expect(el('auth-error')).toBeNull();
     });
 
+    it('carries the identifier across an audience switch, clearing only the password', async () => {
+      // The one spec that fails if `previous` stops arriving and both typed fields get wiped.
+      await render();
+      type('auth-identifier', 'ana@example.com');
+      type('auth-password', 'tourist-secret');
+
+      await chooseAudience('audience-operator');
+
+      expect(el<HTMLInputElement>('auth-identifier').value).toBe('ana@example.com');
+      expect(el<HTMLInputElement>('auth-password').value).toBe('');
+    });
+
+    it('drops a stale error when the in-card toggle changes the mode', async () => {
+      await render();
+      await failSignIn();
+      expect(el('auth-error')).not.toBeNull();
+
+      el('auth-toggle-mode').click();
+      await fixture.whenStable();
+
+      expect(el('auth-error')).toBeNull();
+    });
+
+    it('cannot submit a tourist credential to the operator endpoint in the same task', async () => {
+      // The tab click and the submit share a task, with no render pass between them to reset on.
+      await render();
+      type('auth-identifier', 'ana@example.com');
+      type('auth-password', 'tourist-secret');
+
+      el('audience-operator').click();
+      await submit();
+
+      expect(operator.signIn).not.toHaveBeenCalled();
+      expect(customer.signIn).not.toHaveBeenCalled();
+    });
+
     it('keeps the error while neither mode nor audience changes', async () => {
       // Leave both sources equal and the alert stays: the tourist is still reading it.
       await render();
       await failSignIn();
 
-      type('auth-identifier', 'ana@example.com');
+      type('auth-identifier', 'ana+edited@example.com');
       await fixture.whenStable();
       expect(el('auth-error')).not.toBeNull();
 
