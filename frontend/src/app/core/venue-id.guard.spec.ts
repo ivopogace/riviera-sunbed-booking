@@ -83,6 +83,17 @@ describe('venueIdGuard — the route owns :venueId validity (#1127)', () => {
     expect(router.url).toBe('/operator/7/pricing');
   });
 
+  it('redirects an in-place change from a valid id to a malformed one', async () => {
+    // The router reuses the tab on a param-only change, so a guard that skipped it would strand one.
+    const router = configure();
+    await router.navigateByUrl('/operator/7/pricing');
+    expect(router.url).toBe('/operator/7/pricing');
+
+    await router.navigateByUrl('/operator/not-a-venue/pricing');
+
+    expect(router.url).toBe('/operator/venue-not-found');
+  });
+
   it('does not redirect its own destination', async () => {
     // 'venue-not-found' is a legal :venueId segment: ordered below the param route, this loops.
     const router = configure();

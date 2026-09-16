@@ -14,7 +14,7 @@ import { FULL_PREVIEW } from './remodel-preview-panel.fixtures';
 
 /**
  * Structural a11y audit for the layout editor. The grid must be keyboard + AT operable
- * (an AC): every cell is a labelled `<button>`. axe runs over the invalid-link card, the bulk empty
+ * (an AC): every cell is a labelled `<button>`. axe runs over the bulk empty
  * state, the generated grid, a painted grid, Edit-sets mode on a venue with no sets, and the
  * failed-read state on both surfaces. (Colour contrast is proven by `layout-editor.contrast.spec.ts` — axe can't
  * measure it under jsdom.)

@@ -178,8 +178,9 @@ export class VenueTab {
   private readonly photos = inject(VenuePhotoService);
   protected readonly operator = inject(OperatorAuth);
 
-  /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
-   *  invalid) — reactive to in-place venue switches, which reuse this instance. */
+  /** The venue this tab manages, from the parent `/operator/:venueId` route — always a
+   *  real one (`venueIdGuard` gates it) and reactive to in-place switches, which reuse this
+   *  instance. */
   protected readonly venueId = parentVenueId(this.route);
 
   protected readonly loaded = signal(false);

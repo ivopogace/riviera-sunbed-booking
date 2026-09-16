@@ -241,43 +241,41 @@
     <!-- The mode-switched surface: the paint grid, or the per-set editor with S1's selection state. -->
     <div class="min-w-0">
       @if (mode() === 'sets') {
-        @if (venueId(); as id) {
-          <!-- Nothing at all when there is no map: rendering the paint grid instead would misstate the mode. -->
-          @if (!mapUnavailable()) {
-            <app-set-editor
-              [venueId]="id"
-              [sets]="loadedSets()"
-              [locks]="locks()"
-              [loaded]="mapLoaded()"
-              [expectedVersion]="loadedSetVersion()"
-              (changed)="onSetsChanged()"
-              (staleWrite)="onBatchStaleWrite()"
-            />
-            <!-- A batch apply's own 409 STALE_WRITE reuses the bulk save's recovery banner. -->
-            @if (errorCode() === 'STALE_WRITE') {
-              <app-stale-write-banner
-                class="mt-3 block"
-                data-testid="layout-stale-banner"
-                reloadTestId="layout-stale-reload"
-                [reloading]="reloading()"
-                (reload)="reloadAfterStale()"
-              >
-                This layout was changed somewhere else since you opened it. Your selection is kept —
-                reload the latest layout, then apply again.
-                <ng-container ngProjectAs="[bannerFooter]">
-                  @if (reloadFailed()) {
-                    <span
-                      class="text-[12px] font-semibold text-riv-error-ink"
-                      role="alert"
-                      data-testid="layout-reload-failed"
-                    >
-                      Couldn’t reload — your selection is still here. Check your connection and try
-                      again.
-                    </span>
-                  }
-                </ng-container>
-              </app-stale-write-banner>
-            }
+        <!-- Nothing at all when there is no map: rendering the paint grid instead would misstate the mode. -->
+        @if (!mapUnavailable()) {
+          <app-set-editor
+            [venueId]="venueId()"
+            [sets]="loadedSets()"
+            [locks]="locks()"
+            [loaded]="mapLoaded()"
+            [expectedVersion]="loadedSetVersion()"
+            (changed)="onSetsChanged()"
+            (staleWrite)="onBatchStaleWrite()"
+          />
+          <!-- A batch apply's own 409 STALE_WRITE reuses the bulk save's recovery banner. -->
+          @if (errorCode() === 'STALE_WRITE') {
+            <app-stale-write-banner
+              class="mt-3 block"
+              data-testid="layout-stale-banner"
+              reloadTestId="layout-stale-reload"
+              [reloading]="reloading()"
+              (reload)="reloadAfterStale()"
+            >
+              This layout was changed somewhere else since you opened it. Your selection is kept —
+              reload the latest layout, then apply again.
+              <ng-container ngProjectAs="[bannerFooter]">
+                @if (reloadFailed()) {
+                  <span
+                    class="text-[12px] font-semibold text-riv-error-ink"
+                    role="alert"
+                    data-testid="layout-reload-failed"
+                  >
+                    Couldn’t reload — your selection is still here. Check your connection and try
+                    again.
+                  </span>
+                }
+              </ng-container>
+            </app-stale-write-banner>
           }
         }
       } @else if (reading()) {
@@ -439,7 +437,7 @@
           @if (remodelPreview(); as preview) {
             <app-remodel-preview-panel
               [preview]="preview"
-              [venueId]="venueId() ?? 0"
+              [venueId]="venueId()"
               [stale]="previewStale()"
               [committing]="committing()"
               (cancelled)="cancelRemodel()"

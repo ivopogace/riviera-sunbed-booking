@@ -31,7 +31,8 @@ surfaced that the tabs' reset-on-invalid-param specs die while the valid→valid
 carry the behaviour) · `tdd` (each phase red-green at the seams named below) ·
 `riviera-review-overlay` (review gate — runs at ready-for-review) · `riviera-docs-freshness`
 (**ran** at phase 3 over `24a48bd3..HEAD`, 5 findings, all patched — the counting sweep caught
-three in files this slice never touched) ·
+three in files this slice never touched; the review gate then caught 11 more in *source* TSDoc,
+the half of the map my sweep under-read, logged as F-5..F-7) ·
 `riviera-frontend` (placement: the guard is cross-cutting → `core/`, the page is an operator
 surface → `operator/`, routes stay in the one `app.routes.ts`, literal above `:param`) ·
 `riviera-tailwind` (the new page re-uses the retiring card's exact utility classes, so the
@@ -186,10 +187,10 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `PR — ready for review; the Review and Sonar gates are next`
+**Stage pointer:** `review + sonar gates run; findings F-1..F-8 fixed, awaiting CI on the fix push`
 
-**Next action:** Mark PR #1129 ready for review, then run the Review gate per
-`riviera-sdlc` `references/pr-gates.md` §1.
+**Next action:** Confirm CI green on the fix push and re-read the Sonar list (each fix
+re-triggers the analysis), then the merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -205,6 +206,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (Repo hygiene, `check-inline-comments`) | A two-line inline comment in `frontend/e2e/venue-id-route-gate.e2e.ts` — RV-STYLE-1 allows one line. Missed locally because the check's exit code was read off a shell pipeline (`\| head`) instead of the guard itself; read the guard's own status from here on | fixed |
+| F-2 | Sonar (`typescript:S6353`, MINOR) | `[0-9]` in `CANONICAL_ID` where `\d` is the concise form. Fixed in code rather than dismissed — `\d` is exactly `[0-9]` in a non-unicode JS regex, proven equivalent over the spec's own case list before the swap | fixed |
+| F-3 | Review gate (agent 1, CLAUDE.md adherence) | `venue-id.guard.ts`'s TSDoc read "returns a `UrlTree` rather than `false` + an imperative `navigate`, as `operatorSessionGuard` does" — which asserts the opposite of what that file does (it also returns a `UrlTree`). One word: "also" | fixed |
+| F-4 | Review gate (agents 3 + 5, independently) | No spec drove the transition the narrowed contract actually rests on: a valid id changing **in place** to a malformed one. Every existing case was a fresh navigation. Agent 3 reasoned it safe from the router's guard-rerun semantics; pinned it with a test instead — `venue-id.guard.spec.ts` › `redirects an in-place change from a valid id to a malformed one` | fixed |
+| F-5 | Review gate (agents 3 + 5, independently) | Three `linkedSignal` TSDoc comments still said each notice is emptied by "every venue-context change, the invalid-param one included" — a leg this slice deleted (`layout-editor`, `pricing-tab`, `requests-tab`) | fixed |
+| F-6 | Review gate (agent 5) | All six tabs' `venueId` TSDoc still promised "(undefined if invalid)" after the contract narrowed to `Signal<number>`. The narrowing was never grepped through to the comments describing it | fixed |
+| F-7 | Review gate (agent 5) | `layout-editor.a11y.spec.ts` and `pricing-tab.a11y.spec.ts` file headers still enumerated "the invalid-link card" among the surfaces axe covers, after this slice deleted exactly that test from both — the mirror image of #1126's own F-8 | fixed |
+| F-8 | Review gate (agent 5) | `layout-editor.html` kept two conditionals the narrowing made unreachable: `@if (venueId(); as id)` and `[venueId]="venueId() ?? 0"`. Left in, this PR would ship the very thing it retires — an arm nothing can reach | fixed |
 | 2026-09-16 | phase 1 | Every spec whose only trigger for a behaviour was an invalid venue param (mechanism: a spec pushing a non-venue segment into the stub parent route) | `grep -n "it(" frontend/src/app/operator/*.spec.ts \| grep -iE "invalid\|no venue id"` | 12 specs across `venue-tab`, `pricing-tab`, `layout-editor`, `requests-tab`, `operator-console` and the two `*.a11y.spec.ts` | Judged one at a time against whether a valid→valid twin already pinned the same invariant: **converted 6** (the four announcer/notice specs, the layout draft-clearing, the row-name write-error A→B→A), **retired 6** (the three invalid-card renders, the two invalid-card axe runs, and three exact duplicates of an existing `venueId: '2'` spec). No invariant lost its only cover |
 | 2026-09-16 | phase 1 | Every drift sweep naming a file by path because of what it paints (mechanism: a spec asserting a token family at a literal source path) | `npm test` — the sweep failed on its own positive half, which is what named it | `shared/fixed-ink-tokens.contrast.spec.ts`'s `SITES` | Re-pointed at `operator/venue-not-found.ts`: the `--riv-console-card-border` family moved with the card. The spec's own comment says the positive half exists so a mistyped path cannot pass vacuously — it worked |
 

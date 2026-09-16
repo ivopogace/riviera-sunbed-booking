@@ -19,7 +19,7 @@ export const VENUE_NOT_FOUND_PATH = 'operator/venue-not-found';
  * never work.
  *
  * <p>Returns a `UrlTree` rather than `false` + an imperative `navigate`, as
- * {@link operatorSessionGuard} does, per the Angular router guide.
+ * {@link operatorSessionGuard} also does, per the Angular router guide.
  */
 export const venueIdGuard: CanActivateFn = (route) => {
   // inject() first: the injection context is only alive synchronously inside the guard call.

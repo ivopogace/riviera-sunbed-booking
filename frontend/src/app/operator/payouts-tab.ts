@@ -52,8 +52,9 @@ export class PayoutsTab {
   /** Every weather-refund transition destroys the control that was just activated (WCAG 2.4.3). */
   private readonly focusAfterRender = focusMover();
 
-  /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
-   *  invalid) — reactive to in-place venue switches, which reuse this instance. */
+  /** The venue this tab manages, from the parent `/operator/:venueId` route — always a
+   *  real one (`venueIdGuard` gates it) and reactive to in-place switches, which reuse this
+   *  instance. */
   private readonly venueId = parentVenueId(this.route);
 
   private readonly ledger = signal<PayoutLedgerView | undefined>(undefined);

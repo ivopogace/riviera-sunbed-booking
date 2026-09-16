@@ -59,7 +59,7 @@ export function parentVenueId(route: ActivatedRoute): Signal<number> {
  * URL segment naming a venue: it reads `7e2` as 700, `0x10` as 16, and `+7` / `7.0` / `007` /
  * `' 7 '` all as 7 — each aliasing a venue under a URL that disagrees with it.
  */
-const CANONICAL_ID = /^[1-9][0-9]*$/;
+const CANONICAL_ID = /^[1-9]\d*$/;
 
 /** The positive-integer id under `param` in `params`, or `undefined` — the rule the signals above apply. */
 export function idParam(params: ParamMap, param: string): number | undefined {

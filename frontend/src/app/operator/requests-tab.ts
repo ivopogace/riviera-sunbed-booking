@@ -84,8 +84,9 @@ export class RequestsTab {
    *  the queue, or the confirm panel it sat in is torn down. */
   private readonly focusAfterRender = focusMover();
 
-  /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
-   *  invalid) — reactive to in-place venue switches, which reuse this instance. */
+  /** The venue this tab manages, from the parent `/operator/:venueId` route — always a
+   *  real one (`venueIdGuard` gates it) and reactive to in-place switches, which reuse this
+   *  instance. */
   private readonly venueId = parentVenueId(this.route);
 
   /** The venue map, loaded best-effort for set labels + tiers (undefined until/if it loads). */
@@ -97,8 +98,7 @@ export class RequestsTab {
   /** True when the queue read failed — shows an error, not a false empty state. */
   protected readonly loadError = signal(false);
   /** A transient action notice (accept/decline outcome, or a non-race failure). Derived so it can
-   *  never outlive the venue it reports on: every venue-context change empties it, the invalid-param
-   *  one included, which loads nothing and so clears nothing of its own. */
+   *  never outlive the venue it reports on: every venue switch empties it. */
   protected readonly notice = linkedSignal({
     source: this.venueId,
     computation: (): string | undefined => undefined,

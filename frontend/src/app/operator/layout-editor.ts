@@ -214,8 +214,9 @@ export class LayoutEditor {
    *  without the operator having to scroll the mobile chip strip manually. */
   private readonly toolChips = viewChildren<ElementRef<HTMLButtonElement>>('toolChip');
 
-  /** The venue this editor manages, from the parent `/operator/:venueId` route (undefined if
-   *  invalid) — reactive to in-place venue switches, which reuse this instance. */
+  /** The venue this editor manages, from the parent `/operator/:venueId` route — always a
+   *  real one (`venueIdGuard` gates it) and reactive to in-place switches, which reuse this
+   *  instance. */
   protected readonly venueId = parentVenueId(this.route);
 
   /** Generate inputs: rows × positions. Clamped to the design maxima on generate. */
@@ -286,7 +287,7 @@ export class LayoutEditor {
   /** True while the save PUT is in flight (button disabled, no double submit). */
   protected readonly saving = signal(false);
   /** Set after a successful save; cleared on the next edit. Derived so it can never outlive the
-   *  venue it describes: every venue-context change empties it, the invalid-param one included. */
+   *  venue it describes: every venue switch empties it. */
   protected readonly savedNotice = linkedSignal({
     source: this.venueId,
     computation: (): boolean => false,
