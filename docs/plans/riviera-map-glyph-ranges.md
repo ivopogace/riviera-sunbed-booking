@@ -149,7 +149,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| (none yet — review/Sonar gates not yet run) | | | |
+| F-1 | sonar | `build-riviera-map.test.sh:129` shellcheck:S7679 — assign the positional parameter to a local variable | fixed-in-`(pending commit)` |
+| F-2 | sonar | `riviera-map-label-codepoints.mjs` javascript:S6582 — prefer optional chaining over `&&` | fixed-in-`(pending commit)` |
+| F-3 | sonar | `riviera-map-label-codepoints.mjs` javascript:S8786 — `{([^}]+)}` regex flagged for super-linear backtracking | fixed-in-`(pending commit)` — replaced with a non-regex `templateFields()` scanner |
+| F-4 | sonar | `riviera-map-label-codepoints.mjs` javascript:S3776 — `main()` cognitive complexity 44 > 15 | fixed-in-`(pending commit)` — decomposed into `scanArchive`/`collectTileCodepoints`/`collectFeatureCodepoints` |
+| F-5 | sonar | `riviera-map-label-codepoints.mjs` javascript:S7785 — prefer top-level await over an async `main()` call | fixed-in-`(pending commit)` — top-level `if (isMain) { … }` guard, no wrapper function |
+| F-6 | sonar | new-code coverage 0.0% (the script had no test file) | fixed-in-`(pending commit)` — `riviera-map-label-codepoints.test.mjs`, 9 tests, 84% line coverage on the script |
 
 ---
 
@@ -157,6 +162,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - `scripts/riviera-map-label-codepoints.mjs` — new committed audit script; decodes the
   archive and reports the needed glyph-range set.
+- `scripts/riviera-map-label-codepoints.test.mjs` — new unit tests for its pure functions
+  (added in the Sonar-gate fix round, see Findings register).
 - `scripts/build-riviera-map.sh` — `GLYPH_RANGES` widened; `fetch()`/`build_assets()` gain the
   reuse-unchanged-line mechanism (`reuse_manifest_line()`, new).
 - `scripts/build-riviera-map.test.sh` — three new unit tests for the reuse mechanism.

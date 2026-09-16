@@ -126,7 +126,10 @@ JSON
 
 # file:// URLs let fetch() run end-to-end (download + manifest-line decision) with no network —
 # curl needs an absolute path, and `pwd -W` gives one on Git Bash/MSYS where plain `pwd` doesn't.
-file_url() { printf 'file:///%s' "$(cd "$1" && pwd -W 2>/dev/null || pwd)"; } # file_url <dir>
+file_url() { # file_url <dir>
+  local dir="$1"
+  printf 'file:///%s' "$(cd "$dir" && pwd -W 2>/dev/null || pwd)"
+}
 
 
 test_fetch_reuses_old_line_byte_for_byte_when_content_unchanged() {
