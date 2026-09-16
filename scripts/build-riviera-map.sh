@@ -28,10 +28,7 @@ OSM_LIBERTY_RAW="https://raw.githubusercontent.com/maputnik/osm-liberty/$OSM_LIB
 FONT_GLYPHS_REF="${FONT_GLYPHS_REF:-gh-pages}"
 FONT_GLYPHS_RAW="https://raw.githubusercontent.com/orangemug/font-glyphs/$FONT_GLYPHS_REF/glyphs"
 FONT_STACKS=("Roboto Regular" "Roboto Medium" "Roboto Condensed Italic")
-# Basic Latin, Latin-1, Latin Extended-A/B, IPA, Greek, Cyrillic, General Punctuation (en/em
-# dash, curly quotes), and the two CJK blocks the archive's few Chinese POI names use — every
-# codepoint a label in the committed archive actually renders. Recomputed with
-# scripts/riviera-map-label-codepoints.mjs (docs/runbooks/riviera-map-tiles.md § glyph ranges).
+# Every codepoint a label in the committed archive renders; recompute with riviera-map-label-codepoints.mjs (docs/runbooks/riviera-map-tiles.md § glyph ranges).
 GLYPH_RANGES=(0-255 256-511 512-767 768-1023 1024-1279 8192-8447 21248-21503 33536-33791)
 # Planetiler (Apache-2.0) with its OpenMapTiles profile — the schema OSM Liberty is written for.
 PLANETILER_VERSION="${PLANETILER_VERSION:-0.10.2}"
@@ -79,6 +76,17 @@ write_manifest_section() { # write_manifest_section <header> <lines-file>
   local other_header other_body
   if [[ "$header" == "$MANIFEST_ASSETS_HEADER" ]]; then other_header="$MANIFEST_TILES_HEADER"
   else other_header="$MANIFEST_ASSETS_HEADER"; fi
+  # A pre-header-format MANIFEST.txt (content but neither header) would make manifest_section
+  # read the other mode's lines as empty and this function would silently drop them — refuse
+  # instead of guessing; docs/runbooks/riviera-map-tiles.md says how to retrofit the headers.
+  if [[ -s "$MANIFEST" ]] \
+    && ! grep -qF "$MANIFEST_ASSETS_HEADER" "$MANIFEST" \
+    && ! grep -qF "$MANIFEST_TILES_HEADER" "$MANIFEST"; then
+    echo "$MANIFEST exists but has neither '$MANIFEST_ASSETS_HEADER' nor" \
+      "'$MANIFEST_TILES_HEADER' — it predates the section-header format. Retrofit the two" \
+      "headers by hand before regenerating (docs/runbooks/riviera-map-tiles.md)." >&2
+    return 1
+  fi
   other_body="$(manifest_section "$other_header")"
   {
     if [[ "$header" == "$MANIFEST_ASSETS_HEADER" ]]; then
