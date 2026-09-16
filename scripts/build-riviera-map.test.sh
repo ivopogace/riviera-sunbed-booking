@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Unit tests for the manifest section-replace mechanism in build-riviera-map.sh: --assets and
-# --tiles must each own their own section of MANIFEST.txt and never touch the other's. No
-# network or JVM needed — these are pure functions over a temp MANIFEST file.
+# Unit tests for build-riviera-map.sh's MANIFEST.txt mechanism: --assets and --tiles must each
+# own their own section and never touch the other's, fetch() must reuse an unchanged line
+# byte-for-byte, and a pre-header legacy file must be refused rather than silently truncated.
+# No network or JVM needed — file_url()'s file:// URLs and temp MANIFEST files stand in.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -94,6 +95,21 @@ test_manifest_section_absent_returns_empty() {
     "reading a section from a file that doesn't exist yet returns nothing"
 }
 
+test_write_manifest_section_refuses_a_headerless_legacy_manifest() {
+  printf 'sha-legacy  url-legacy  ts-legacy\n' > "$MANIFEST" # pre-#1112 format: no header at all
+  local lines; lines="$(mktemp)"
+  printf 'sha-new  url-new  ts-new\n' > "$lines"
+
+  local status=0
+  write_manifest_section "$MANIFEST_ASSETS_HEADER" "$lines" 2>/dev/null || status=$?
+  rm -f "$lines"
+
+  assert_eq "1" "$status" \
+    "write_manifest_section must refuse (not silently drop) a MANIFEST with no section headers"
+  assert_eq "sha-legacy  url-legacy  ts-legacy" "$(cat "$MANIFEST")" \
+    "a refused write must leave the legacy file untouched"
+}
+
 # Run on Git Bash on Windows, this is a real MSYS path-mangling regression check, not just a logic check.
 test_rewrite_style_preserves_map_paths() {
   local input output
@@ -124,12 +140,69 @@ JSON
   rm -f "$input" "$output"
 }
 
+# file:// URLs let fetch() run end-to-end (download + manifest-line decision) with no network —
+# curl needs an absolute path, and `pwd -W` gives one on Git Bash/MSYS where plain `pwd` doesn't.
+file_url() { # file_url <dir>
+  local dir="$1"
+  printf 'file:///%s' "$(cd "$dir" && pwd -W 2>/dev/null || pwd)"
+}
+
+
+test_fetch_reuses_old_line_byte_for_byte_when_content_unchanged() {
+  local dir dest lines url old_sha
+  dir="$(mktemp -d)"
+  printf 'unchanged content\n' > "$dir/src.pbf"
+  dest="$dir/dest.pbf"; lines="$(mktemp)"
+  url="$(file_url "$dir")/src.pbf"
+  old_sha="$(sha256sum "$dir/src.pbf" | cut -d' ' -f1)"
+
+  fetch "$url" "$dest" "$lines" "$old_sha  $url  2020-01-01T00:00:00Z"
+
+  assert_eq "$old_sha  $url  2020-01-01T00:00:00Z" "$(cat "$lines")" \
+    "fetch reuses the old manifest line verbatim, timestamp included, when the sha256 still matches"
+  rm -rf "$dir" "$lines"
+}
+
+test_fetch_writes_a_fresh_line_when_content_drifted() {
+  local dir dest lines url new_sha
+  dir="$(mktemp -d)"
+  printf 'new content\n' > "$dir/src.pbf"
+  dest="$dir/dest.pbf"; lines="$(mktemp)"
+  url="$(file_url "$dir")/src.pbf"
+  new_sha="$(sha256sum "$dir/src.pbf" | cut -d' ' -f1)"
+
+  fetch "$url" "$dest" "$lines" "stale-sha-from-a-prior-run  $url  2020-01-01T00:00:00Z"
+
+  assert_eq "$new_sha" "$(awk '{print $1}' "$lines")" \
+    "fetch writes a fresh sha256 (not the stale recorded one) when upstream content drifted"
+  rm -rf "$dir" "$lines"
+}
+
+test_fetch_writes_a_fresh_line_when_theres_no_prior_entry() {
+  local dir dest lines url new_sha
+  dir="$(mktemp -d)"
+  printf 'brand new range\n' > "$dir/src.pbf"
+  dest="$dir/dest.pbf"; lines="$(mktemp)"
+  url="$(file_url "$dir")/src.pbf"
+  new_sha="$(sha256sum "$dir/src.pbf" | cut -d' ' -f1)"
+
+  fetch "$url" "$dest" "$lines" "some-other-sha  file:///elsewhere/other.pbf  2020-01-01T00:00:00Z"
+
+  assert_eq "$new_sha $url" "$(awk '{print $1, $2}' "$lines")" \
+    "fetch writes a fresh line for a url the old section has no entry for"
+  rm -rf "$dir" "$lines"
+}
+
 with_temp_manifest test_write_manifest_section_creates_new_file
 with_temp_manifest test_write_manifest_section_leaves_other_section_untouched
 with_temp_manifest test_write_manifest_section_reverse_order
 with_temp_manifest test_write_manifest_section_replaces_own_section_without_duplicating
 with_temp_manifest test_manifest_section_absent_returns_empty
+with_temp_manifest test_write_manifest_section_refuses_a_headerless_legacy_manifest
 test_rewrite_style_preserves_map_paths
+test_fetch_reuses_old_line_byte_for_byte_when_content_unchanged
+test_fetch_writes_a_fresh_line_when_content_drifted
+test_fetch_writes_a_fresh_line_when_theres_no_prior_entry
 
 echo "$pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]
