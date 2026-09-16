@@ -307,8 +307,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | sonar | `java:S8491` MAJOR — dangling Javadoc at `JdbcVenueCatalog.java:275`: the new `locationOf` helper was inserted between `seasonClosureOf` and its doc comment | fixed in `10cf75bf` |
-| F-2 | own generalization sweep off F-1 | the same insertion mechanism broke two more sites Sonar does not analyse: `fake-map-engine.ts` stacked two doc comments on `placeElement`, and `clampUnit` carried a doc describing a different function | fixed in `10cf75bf` |
+| F-1 | sonar | `java:S8491` MAJOR — dangling Javadoc at `JdbcVenueCatalog.java:275`: the new `locationOf` helper was inserted between `seasonClosureOf` and its doc comment | fixed — commit *Reattach the doc comments my inserted helpers orphaned* |
+| F-2 | own generalization sweep off F-1 | the same insertion mechanism broke two more sites Sonar does not analyse: `fake-map-engine.ts` stacked two doc comments on `placeElement`, and `clampUnit` carried a doc describing a different function | fixed — commit *Reattach the doc comments my inserted helpers orphaned* |
 
 ---
 
