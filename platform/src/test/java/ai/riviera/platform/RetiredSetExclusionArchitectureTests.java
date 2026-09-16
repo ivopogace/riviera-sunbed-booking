@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code ai.riviera.retirefixture}, never by breaking production code, and the two vacuity guards
  * assert that the exemption and the view path are both exercised by the production tree.
  *
- * <p>This test names its table and its exempt port, which {@code CLAUDE.md}'s structural-net
+ * <p>This test names its table and its exempt port, which the {@code riviera-modulith} skill's structural-net
  * membership rule otherwise excludes; it is the net's one admitted-by-decision member, because a
  * new JDBC adapter anywhere in the tree can break the rule it holds.
  */

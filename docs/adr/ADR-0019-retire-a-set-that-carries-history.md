@@ -4,8 +4,8 @@
 - **Date:** 2026-09-08
 - **Relates to:** ADR-0018 (the lifecycle is guarded SQL, per its §3), ADR-0007 (the adapter split
   it forces), invariants #2, #6, #12, `RESPONSIBILITIES.md` § `venue` (the exclude and exempt lists)
-  and § *Machine-checked vs review-checked* (the fitness function), `CLAUDE.md` § *Commands* (the
-  structural net's one admitted-by-decision member).
+  and § *Machine-checked vs review-checked* (the fitness function), `riviera-modulith` § *The structural net* (the
+  net's one admitted-by-decision member).
 
 ## Context
 
