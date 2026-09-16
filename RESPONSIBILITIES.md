@@ -268,6 +268,22 @@ over time. The standing rules:
   through; which reviews are listed, their order and the page size are `review`'s
   contract. The endpoint lives here because the fence is my catalogue rule and `review` is
   a leaf that cannot consult `operator` (ADR-0015).
+- **Venue location is mine, and it is optional.** The `latitude`/`longitude` pair on my row is a
+  venue's pin on the riviera map, placed by its operator by hand — no geocoder, no address, no
+  PostGIS and no spatial index (ADR-0022's epic; invariant #1). Validation is **range-only**
+  (−90…90 / −180…180) plus whole-or-absent, enforced by `venue_location_check` (V58) and mirrored
+  by `venue.vocabulary.VenueLocation`, whose constructor also normalises both coordinates to the
+  six decimals the columns store — so the pin a write echoes is the pin a later read returns. No
+  bounding-box geo-fence: an operator may place a venue anywhere, and a wrong pin is their own to
+  move. **A null location means "not on the riviera map, still in the list"** — the contract the
+  tourist map relies on to omit a venue client-side, which is what lets the feature ship without a
+  backfill; it is never an error state and never hides a venue. Location rides the surfaces that
+  already exist rather than a resource of its own: the tourist list and map reads carry it under
+  their unchanged visibility fence, and the operator profile `PATCH` sets and clears it under the
+  profile `version` token, ownership asserted first (invariant #13, `403` on mismatch). Because
+  that `PATCH` is a full replace, a body with no location unpins the venue — the same rule the
+  amenity set and the distance already follow. A half-present pair or an out-of-range coordinate is
+  a `400` at the edge, so the CHECK stays the race-safe backstop rather than the first guard.
 - **The signed-in operator's own-venues read model** (`GET /api/venues/mine`): I ask
   `operator::api` for the ownership set and join the names — naming venues is my job and
   `operator → venue` would cycle.
