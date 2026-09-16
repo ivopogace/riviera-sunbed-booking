@@ -79,9 +79,9 @@ N/A — new behavior, replaces nothing.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | The budget test passes vacuously (wrong working directory, archive absent) | low | med | assert existence first; red proof with the budget lowered below the real size | Claude | closed — red run failed on the size assertion (line 26), not on existence |
-| R-2 | The ADR states the Render-LFS behaviour as verified fact when it rests on a feature-tracker thread | med | low | phrase it as evidence with its source; the LFS rejection rests on the bandwidth arithmetic and production not being on Render, not on that claim | Claude | open |
-| R-3 | The count trigger under-counts on a shallow clone (cloud sessions) | med | low | runbook step unshallows first, as `riviera-local-debug` § *Git in a cloud session* prescribes | Claude | open |
-| R-4 | A future "fix" raises the budget constant instead of revisiting the decision | low | med | the test's Javadoc and failure message name ADR-0022 and say the budget is the ADR's trigger, not a tunable | Claude | open |
+| R-2 | The ADR states the Render-LFS behaviour as verified fact when it rests on a feature-tracker thread | med | low | phrase it as evidence with its source; the LFS rejection rests on the bandwidth arithmetic and production not being on Render, not on that claim | Claude | closed — ADR phrases it as "appears to fetch … not verified by a build of ours, and not what this rejection rests on" |
+| R-3 | The count trigger under-counts on a shallow clone (cloud sessions) | med | low | runbook step unshallows first, as `riviera-local-debug` § *Git in a cloud session* prescribes | Claude | closed — runbook count block unshallows and fetches `origin main` first |
+| R-4 | A future "fix" raises the budget constant instead of revisiting the decision | low | med | the test's Javadoc and failure message name ADR-0022 and say the budget is the ADR's trigger, not a tunable | Claude | closed — Javadoc, failure message and runbook all say revisit, never raise the budget |
 
 ## Open questions / Assumptions
 
@@ -144,15 +144,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** CI gate (phase 2 pushed) → then merge `origin/main`, mark ready for review
 
-**Next action:** amend ADR-0022 (storage clause, triggers, size levers, re-weighed options, amendment log), then the runbook and the RESPONSIBILITIES clause.
+**Next action:** confirm the phase-2 push's CI run is green, merge latest `origin/main`, mark PR #1117 ready for review, run the review gate (`references/pr-gates.md` §1).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR (#1117) | ✅ | `822f3e77` |
 | 1 — archive size-budget test | ✅ | this commit — red at a 60,000,000-byte budget (`…60364946 bytes, over the 60000000-byte budget: revisit ADR-0022…`), green at 80,000,000 with `MapStyleSelfHostedTest` + `MapResources*` (10 tests, 0 skipped) |
-| 2 — ADR-0022 amendment + runbook + RESPONSIBILITIES pointer | ⏳ | |
+| 2 — ADR-0022 amendment + runbook + RESPONSIBILITIES pointer | ✅ | this commit — decision 7 (storage, triggers, measured levers), re-weighed release-asset / LFS / split options, amendment log; runbook cadence, budget test, count step, GH001 note; RESPONSIBILITIES clause. Guards: plan-file-structure + inline-comments exit 0 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

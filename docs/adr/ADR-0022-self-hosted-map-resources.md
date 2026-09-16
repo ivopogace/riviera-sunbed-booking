@@ -63,6 +63,29 @@ a first load still fetches only the tiles in view — see the amendment log.)*
    rather than requests, exactly as the ALTCHA widget's footer is. The style's vector source carries
    the same credit as plain text, never a URL. *(Amended: OpenMapTiles added — see the amendment
    log.)*
+7. **The archive stays committed, sized against a yearly regeneration, until a trigger fires.**
+   A regeneration is expected about once a year before the season, plus a rare one-off such as a
+   wider bounding box; each adds a full copy of the archive to history, which every full-history
+   clone (the CI guard and Sonar checkouts included) then carries. The storage decision is
+   revisited, before the change that trips it merges, when:
+   - **the archive exceeds 80 MB** (80,000,000 bytes) — `MapArchiveBudgetTest` fails the build,
+     leaving headroom under GitHub's 100 MiB per-file push limit;
+   - **a regeneration would be the third in 12 months** — the runbook counts before committing;
+   - **the production deploy pipeline is chosen** — the Render service is the non-prod host
+     (ADR-0004), the production host is not settled, and the repository may not stay public;
+     a pipeline that builds its image in CI changes what the options below cost.
+
+   At a revisit the size levers come first, in this order (measured on the committed archive: its
+   tile directory, and every tile re-gzipped for the layer drop):
+
+   | Lever | Archive | What the map loses |
+   |---|---|---|
+   | As built: all of Albania, max zoom 14, every layer | 60.36 MB | — |
+   | 1. Drop the three layers the style never draws (`mountain_peak`, `housenumber`, `aerodrome_label`) | 56.99 MB | nothing visible |
+   | 2. Max zoom 13 | 27.16 MB | POIs and most buildings, and street geometry turns coarse past zoom 13 — on the coast too, and the map zooms to 16 |
+   | 3. Zoom 14 on the coast only, 13 inland | 48.80 MB (a coastal strip 60–90 km deep) · 30.96 MB (Vlorë to Ksamil only) | a second archive and source, every style layer duplicated, a seam where the two meet |
+
+   *(Amended: storage decision and triggers added — see the amendment log.)*
 
 ## The review trap
 
@@ -82,10 +105,26 @@ or `<link>` the map chrome renders should treat it as a Blocker rather than a co
   privacy reason; free changes nothing about where the IP goes.
 - **Raster tiles with Leaflet** — rejected: raster needs a tile server or gigabytes of pre-rendered
   PNGs; PMTiles vector tiles are one small file and stay crisp at every zoom.
-- **Fetching the archive at image build** (a release asset, Git LFS) — rejected for now: Render's
-  git build has no LFS, a release asset needs a network hop in every build and a token for a
-  private repo, and an absent artifact would become a silent config default instead of a visible
-  gap in the tree. Revisit if regeneration frequency makes the repo growth matter.
+- **A release asset fetched at image build** — rejected while decision 7's triggers hold: every
+  image build takes a network hop, local development needs a fetch step before the map draws, and
+  a regeneration becomes upload-the-asset-then-bump-the-pin. A missing asset need not be silent —
+  BuildKit's `ADD --checksum=sha256:…` fails the build on an absent or changed file, and the pin
+  keeps the dependency visible in the tree — and a public repository needs no token, though a
+  private one does (a secret in the image build). A candidate at a revisit, costed against the
+  pipeline of the day.
+- **Git LFS** — rejected: GitHub's free tier is 10 GiB of LFS bandwidth a month, the CD workflow
+  redeploys after every green CI run on `main` (about eight a day when this was weighed), and at
+  ~58 MiB a clone that exceeds the quota; past it LFS is blocked for the month and a build receives
+  the pointer file in place of the archive. Render's feature tracker carries a request to *skip*
+  LFS downloads during its clone, so its build appears to fetch LFS objects rather than lack LFS —
+  not verified by a build of ours, and not what this rejection rests on. A production pipeline
+  that builds in CI from a cached checkout could change the arithmetic, which is decision 7's
+  third trigger.
+- **Split archives, or zoom 14 on the coast only** — rejected: a PMTiles archive has one zoom
+  range, and MapLibre draws a missing tile inside a source's zoom range blank rather than
+  overzooming its parent, so coast-only detail needs two archives as two sources with every style
+  layer duplicated and a seam where they meet — to save 11.6 MB (a coastal strip) or 29.4 MB
+  (Vlorë to Ksamil). Kept as decision 7's third lever.
 
 ## Consequences
 
@@ -93,8 +132,9 @@ or `<link>` the map chrome renders should treat it as a Blocker rather than a co
 - The first map load transfers a few same-origin megabytes — the tiles in view, fetched by `Range`,
   never the whole archive — so the map is lazily loaded and never blocks the venue list.
 - The repository carries ~2 MB of style, sprites and glyphs and the ~60 MB archive; a regeneration
-  adds another full copy to history, which is the growth the Git LFS option above is revisited
-  against.
+  adds another full copy to history, bounded by decision 7's triggers. GitHub's push warns about
+  any file over 50 MiB, so every regeneration push prints a GH001 large-file warning; it is not an
+  error below 100 MiB.
 - If a Content-Security-Policy header is ever added, MapLibre's tile worker is a module worker
   spawned from a same-origin script URL the adapter names (`/vendor/maplibre-gl-worker.mjs`) — not
   a Blob URL, unlike ALTCHA's — so the policy needs `worker-src 'self'`
@@ -116,3 +156,11 @@ or `<link>` the map chrome renders should treat it as a Blocker rather than a co
   maps made from it for a visible credit linking to openmaptiles.org, so the map now reads
   "© OpenMapTiles © OpenStreetMap contributors" with both names linked. The self-hosting rule is
   unaffected: a hyperlink is not a request, and the style names the credit in plain text.
+- 2026-09-16, #1109 — decision 7 added: the archive stays committed, sized against a yearly
+  regeneration, with three revisit triggers (over 80 MB, held by `MapArchiveBudgetTest`; a third
+  regeneration in 12 months; the production deploy pipeline being chosen) and measured size
+  levers, with zoom 14 kept everywhere. The rejected fetch-at-build option split into a release
+  asset and Git LFS, re-weighed against facts the first text had wrong: the repository is public,
+  so a release asset needs no token until it goes private; `ADD --checksum` makes a missing asset
+  loud; and Render's clone appears to fetch LFS objects, so LFS is rejected on its bandwidth quota
+  instead. Split archives were added as a rejected option.
