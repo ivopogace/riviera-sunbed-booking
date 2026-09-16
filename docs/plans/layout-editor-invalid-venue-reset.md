@@ -176,15 +176,14 @@ N/A — no contract change. No endpoint, DTO or client type is touched.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 step 1 — write the failing spec for AC-1 in
-`frontend/src/app/operator/layout-editor.spec.ts`.
+**Next action:** Phase 1 step 1 — write the failing AC-2 spec for the `layout-invalid` card.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Clear venue-scoped state on an invalid param | | |
-| 1 — Render the invalid-link card | | |
+| 0 — Clear venue-scoped state on an invalid param | ✅ | `<phase-0-sha>` |
+| 1 — Render the invalid-link card | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -255,6 +254,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-16 | Phase 0 (#1125) | Every component whose venue `effect` has an `undefined` arm that flips a flag instead of clearing venue-scoped state, enumerated by the route-param helper each one calls rather than by resemblance | `grep -rln "parentVenueId(\|venueIdParam(" --include=*.ts frontend/src/app` then the `const id = this.venueId()` arm of each | 7 components: `layout-editor` (this fix), `venue-tab`, `pricing-tab`, `requests-tab`, `payouts-tab`, `daily-view-tab`, `operator-console` | **Subset — one real hit, filed not folded.** `pricing-tab` has the identical defect: its `undefined` arm sets only `loaded`, `rows` is `computed` off `sets` which nothing clears, and the template's *first* branch is `@if (rows().length > 0)`, so the previous venue's price rows stay on screen. It needs the same maintainer design decision #1125 needed (which surface renders), so it gets its own issue rather than widening this PR. `venue-tab` and `operator-console` gate on `venueId() === undefined` in the first template branch; `requests-tab`, `payouts-tab` and `daily-view-tab` render their `markInvalid()` error branch in place of the content. Those five leave stale signals in memory but nothing readable on screen. |
 
 ---
 

@@ -1111,6 +1111,82 @@ describe('LayoutEditor (#172)', () => {
     expect(announce.textContent?.trim()).toBe('');
   });
 
+  it("clears the previous venue's grid and row names when the venue param goes invalid (#1125)", () => {
+    renderSaved();
+    setRowName(1, 'Back terrace');
+    expect(cells().length).toBe(2);
+    expect(rowNameInputs().length).toBe(2);
+
+    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    fixture.detectChanges();
+
+    // #1124 emptied the two announcers; the grid itself kept the previous venue's state.
+    expect(host.querySelector('[data-testid="layout-cell"]')).toBeNull();
+    expect(host.querySelector('[data-testid="layout-row-name"]')).toBeNull();
+    // And no read is issued for a venue the URL no longer names: afterEach's http.verify() proves it.
+  });
+
+  it('drops a row-name write error on an invalid venue param, and never resurrects it (#1125)', async () => {
+    renderSaved();
+
+    setRowName(1, 'A');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('layout-row-name-write-error')).toBeTruthy();
+
+    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
+
+    // Back on the same venue the rows render again — and the stale failure must not ride back in
+    // with them. Two mechanisms hold that today (the venueId derivation, and the reload's own
+    // clearRenameNotices), so this pins the behaviour rather than which one delivered it.
+    params$.next(convertToParamMap({ venueId: '1' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({
+        map: {
+          id: 1,
+          name: 'V',
+          sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'A'), seat(2, 'STANDARD', 'ONLINE', 1, 2, 'B')],
+          setVersion: 4,
+        },
+        locks: [],
+      });
+    fixture.detectChanges();
+    useBulkMode();
+
+    expect(rowNameInputs().length).toBe(2);
+    expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
+  });
+
+  it('reloads the map when the venue is switched in place (#1125)', () => {
+    renderSaved();
+    expect(cells().length).toBe(2);
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({
+        map: { id: 2, name: 'W', sets: [seat(3, 'PREMIUM', 'ONLINE', 1, 1, 'A')], setVersion: 1 },
+        locks: [],
+      });
+    fixture.detectChanges();
+    // A venue that already has sets opens in per-set mode (#600); the bulk grid is one chip away.
+    useBulkMode();
+
+    // Re-seeded from the new venue, not merged with the old one's two rows.
+    expect(cells().length).toBe(1);
+    expect(rowNameInputs().length).toBe(1);
+  });
+
   it('renames the row the URL names even after the draft changed twice (#726)', async () => {
     renderSaved();
 

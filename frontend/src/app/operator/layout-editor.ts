@@ -255,14 +255,19 @@ export class LayoutEditor {
   /** The grid row whose rename is in flight, or null — drives `[appBusy]` on that row's button. */
   protected readonly renamingRow = signal<number | null>(null);
   /** The grid row whose rename last succeeded, cleared on the next edit of any row name. Derived on
-   *  the venue as well, because {@link clearRenameNotices} does not reach the invalid-param
-   *  transition — that one resets nothing of its own. */
+   *  the venue rather than cleared by hand: a notice that recomputes from `venueId` cannot outlive
+   *  the venue it describes by a reset path forgetting it (#1122). */
   protected readonly renamedRow = linkedSignal({
     source: this.venueId,
     computation: (): number | null => null,
   });
-  /** The last per-row rename failure. `STALE_WRITE` never lands here — the reload banner owns it. */
-  protected readonly rowNameError = signal<{ y: number; code: RowNameErrorCode } | null>(null);
+  /** The last per-row rename failure. `STALE_WRITE` never lands here — the reload banner owns it.
+   *  Derived on the venue for {@link renamedRow}'s reason — same shape, same venue-scoped lifetime,
+   *  so one mechanism rather than two for one rule (#1125). */
+  protected readonly rowNameError = linkedSignal({
+    source: this.venueId,
+    computation: (): { y: number; code: RowNameErrorCode } | null => null,
+  });
   /** The operator's explicit tool-rail choice, or null while the venue's own state decides. */
   private readonly armedTool = signal<EditorTool | null>(null);
   /** The brush painting will use once a brush is (re-)armed — survives arming Select, so
@@ -283,8 +288,7 @@ export class LayoutEditor {
   /** True while the save PUT is in flight (button disabled, no double submit). */
   protected readonly saving = signal(false);
   /** Set after a successful save; cleared on the next edit. Derived so it can never outlive the
-   *  venue it describes: every venue-context change empties it, the invalid-param one included,
-   *  which resets nothing of its own. */
+   *  venue it describes: every venue-context change empties it, the invalid-param one included. */
   protected readonly savedNotice = linkedSignal({
     source: this.venueId,
     computation: (): boolean => false,
@@ -518,12 +522,11 @@ export class LayoutEditor {
   });
 
   constructor() {
-    // Re-runs on an in-place venue switch: reset the draft + flags, then load the new venue.
+    // Re-runs on every venue-context change: drop the previous venue's draft + flags, then load the
+    // new venue — or, when the param names no venue, leave the editor cleared (#1125).
     effect(() => {
       const id = this.venueId();
-      if (id !== undefined) {
-        untracked(() => this.resetForVenue(id));
-      }
+      untracked(() => (id === undefined ? this.clearVenueState() : this.resetForVenue(id)));
     });
 
     // Scroll the armed chip into view on load/switch — the mobile rail scrolls, not wraps (#715).
@@ -537,6 +540,20 @@ export class LayoutEditor {
 
   /** Drop every venue-scoped draft/flag so nothing from the previous venue leaks, then load. */
   private resetForVenue(venueId: number): void {
+    this.clearVenueState();
+    this.loadExisting(venueId);
+  }
+
+  /**
+   * Drop every venue-scoped draft and flag, so nothing from the previous venue leaks into the next
+   * context — another venue, or no venue at all.
+   *
+   * <p>The two rename notices are absent on purpose: they derive from `venueId` (#1122, #1125), and
+   * every caller of this method is a `venueId` change, so clearing them here would be a second
+   * mechanism for one rule — the drift {@link clearRenameNotices} still guards on the in-venue edit
+   * paths, which no derivation reaches.
+   */
+  private clearVenueState(): void {
     this.epoch++;
     this.grid.set([]);
     this.rowNames.set([]);
@@ -560,9 +577,7 @@ export class LayoutEditor {
     this.baselineRowNames.set([]);
     this.lastChange.set(null);
     this.lastSavedAt.set(null);
-    this.clearRenameNotices();
     this.renamingRow.set(null);
-    this.loadExisting(venueId);
   }
 
   // ---- Tool rail ----
