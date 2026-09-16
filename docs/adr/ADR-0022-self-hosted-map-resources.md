@@ -54,7 +54,7 @@ a first load still fetches only the tiles in view — see the amendment log.)*
    OSM Liberty rewritten to same-origin URLs, pinned versions, a manifest of upstream checksums).
    Regeneration is a runbook action, not automation, and nothing at build or deploy time fetches
    map data.
-5. **Two machine locks hold the decision.** `MapStyleSelfHostedTest` parses the shipped style and
+5. **Two machine locks hold the self-hosting rule.** `MapStyleSelfHostedTest` parses the shipped style and
    fails on any absolute host; the mocked Playwright suite runs the real MapLibre adapter against
    the committed resources and fails on any request that leaves our origin.
 6. **Attribution** "© OpenMapTiles © OpenStreetMap contributors" is rendered permanently on the
@@ -92,7 +92,7 @@ a first load still fetches only the tiles in view — see the amendment log.)*
 This decision is deliberately made and cheap to reverse by accident. One pasted glyph URL, one
 "let's just use the demo tiles for now", one sprite path pointing back at the style's upstream
 host, and every visitor's IP flows to a third party again — silently, with the map looking
-identical. That is why the two locks in Decision 5 exist, why the runbook says it in bold, and why
+identical. That is why the two locks in Decision 5 exist, why the runbook repeats it, and why
 a reviewer who sees a hostname in `platform/map/style.json`, in the map adapter, or in an `<img>`
 or `<link>` the map chrome renders should treat it as a Blocker rather than a convenience.
 

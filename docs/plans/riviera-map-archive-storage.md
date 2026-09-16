@@ -26,7 +26,7 @@ ADR-0022 premises: the repo is public, and Render's own feature tracker indicate
 likely go private) · `riviera-plan-doc` (this template — forced the budget test's red proof and the
 empty Open-questions register) · `tdd` (budget test run red with the budget lowered below the
 current archive size before being set to the trigger) · `riviera-review-overlay` (review gate —
-at ready-for-review) · `riviera-docs-freshness` (close-out — pending) · `grilling` (three
+at ready-for-review) · `riviera-docs-freshness` (**ran** over `db4480d3..955bfc0c`, 2 in-range findings + 2 pre-existing stale lines + 1 ordering slip, all fixed in this PR — F-1..F-5) · `grilling` (three
 AskUserQuestion rounds: cadence, visibility, storage, triggers, enforcement, inland zoom, unused
 layers) · `riviera-java-conventions` (JUnit 5 plain assertions matching `MapStyleSelfHostedTest`,
 named constants for the path and budget, one-line comments) · `riviera-modulith` (test lives with
@@ -160,6 +160,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | docs-freshness | ADR-0022 decision 5 "Two machine locks hold the decision" reads ambiguously now decision 7 has its own lock | fixed — "hold the self-hosting rule" |
+| F-2 | docs-freshness | `docs/plans/map-openmaptiles-attribution.md` retired-eligible (PR #1116 merged) | fixed — `git rm` |
+| F-3 | docs-freshness (pre-existing) | ADR-0022 review trap: "the runbook says it in bold" — the runbook's rule is not bold | fixed — "the runbook repeats it" |
+| F-4 | docs-freshness (pre-existing) | `docs/architecture/multi-night-stays.md` "Proposed as ADR-0022" — the number went to the map ADR | fixed — "a new ADR (numbered when written)" |
+| F-5 | docs-freshness | runbook: the "Eyeball the result" paragraph landed after the commit step and joined an unwrapped line | fixed — moved back before the count step |
 
 ---
 
@@ -170,6 +175,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `docs/adr/ADR-0022-self-hosted-map-resources.md` — storage decision, triggers, levers, re-weighed options, amendment-log entry.
 - `docs/runbooks/riviera-map-tiles.md` — count-trigger step, budget test in the verify command, GH001 note.
 - `RESPONSIBILITIES.md` — one clause naming the budget and its test in § *Riviera map resources*.
+- `docs/plans/map-openmaptiles-attribution.md` — retired (PR #1116 merged; `riviera-docs-freshness` § *Plan-doc retirement*).
+- `docs/architecture/multi-night-stays.md` — stale "Proposed as ADR-0022" reference (docs-freshness F-4).
 
 ---
 

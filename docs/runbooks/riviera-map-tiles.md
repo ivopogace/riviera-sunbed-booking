@@ -84,6 +84,12 @@ ADR-0022 names. `MapArchiveBudgetTest` fails when the archive is over 80 MB: tha
 decision 7's size trigger, so the remedy is revisiting the storage decision (its size levers come
 first), never raising the budget.
 
+Eyeball the result too: `./gradlew bootRun` from `platform/`, open the Discover page, switch
+to the map, pan to Himarë, Dhërmi and Ksamil. A missing glyph range does not draw blank boxes: MapLibre
+draws the character in a local font, and the tells are a `404` for `/map/glyphs/<stack>/<range>.pbf` and
+the console warning "Unable to load glyph range … Rendering codepoint … locally instead" — extend
+`GLYPH_RANGES` in the script and re-run `--assets`.
+
 Before committing a new archive (a `--tiles` or `--all` run), count the regenerations of the last
 12 months — decision 7's second trigger:
 
@@ -102,11 +108,7 @@ git add platform/map && git commit -m "Regenerate the riviera map resources"
 ```
 
 The push prints GitHub's GH001 large-file warning, because the archive is over 50 MiB. That is
-expected below GitHub's 100 MiB limit, not an error. Eyeball the result too: `./gradlew bootRun` from `platform/`, open the Discover page, switch
-to the map, pan to Himarë, Dhërmi and Ksamil. A missing glyph range does not draw blank boxes: MapLibre
-draws the character in a local font, and the tells are a `404` for `/map/glyphs/<stack>/<range>.pbf` and
-the console warning "Unable to load glyph range … Rendering codepoint … locally instead" — extend
-`GLYPH_RANGES` in the script and re-run `--assets`.
+expected below GitHub's 100 MiB limit, not an error.
 
 ## Egress
 

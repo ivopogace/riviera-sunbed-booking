@@ -289,7 +289,7 @@ three problems rather than managing them:
 
 **An ADR is owed here** (hard to reverse once stay data exists; surprising to a future reader who
 will ask why a stay is not one booking; a genuine trade-off against the segments-in-one-booking
-alternative). Proposed as ADR-0022, to be written with the stitching slice.
+alternative). Proposed as a new ADR (numbered when written), to be written with the stitching slice.
 
 The booking **code** becomes stay-level: one bearer credential for the guest (invariant #7
 unchanged), with check-in resolving code → tonight's segment.
