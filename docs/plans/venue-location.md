@@ -275,14 +275,14 @@ is an `<output aria-live="polite">` — the `layout-last-change` precedent.
 
 ## Execution status
 
-**Stage pointer:** `plan — doc written, not yet committed`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Commit the plan doc on the designated branch, then start phase 0 (the V58
-migration, red-first via `VenueLocationMigrationIT`).
+**Next action:** Phase 1 — `VenueLocation` in `venue.vocabulary`, red-first via `VenueLocationTest`,
+then widen the profile command, view, DTOs and `JdbcVenues`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V58 migration + migration IT | | |
+| 0 — V58 migration + migration IT | ✅ | `d1e35001` (plan), phase commit below |
 | 1 — `VenueLocation` + profile read/write (command, view, DTOs, `JdbcVenues`) | | |
 | 2 — Tourist read models (`VenueSummaryView`, `VenueMapView`, `JdbcVenueCatalog`) | | |
 | 3 — Map-engine seam: draggable marker, `moveMarker`, click + drag-end hooks | | |
