@@ -30,8 +30,7 @@ test('a malformed venue id lands on the venue-not-found page', async ({ page }) 
     'href',
     '/operator?create=1',
   );
-  // The route is `plain`, so no section rail: the six venue tabs would have no venue to
-  // interpolate into their routerLinks.
+  // A `plain` route has no rail: the six tab links would have no venue to interpolate.
   await expect(page.getByTestId('oc-tabs')).toHaveCount(0);
   await expect(page.getByTestId('oc-phone-rail')).toHaveCount(0);
 

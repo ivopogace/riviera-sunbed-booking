@@ -204,7 +204,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI (Repo hygiene, `check-inline-comments`) | A two-line inline comment in `frontend/e2e/venue-id-route-gate.e2e.ts` — RV-STYLE-1 allows one line. Missed locally because the check's exit code was read off a shell pipeline (`\| head`) instead of the guard itself; read the guard's own status from here on | fixed |
 | 2026-09-16 | phase 1 | Every spec whose only trigger for a behaviour was an invalid venue param (mechanism: a spec pushing a non-venue segment into the stub parent route) | `grep -n "it(" frontend/src/app/operator/*.spec.ts \| grep -iE "invalid\|no venue id"` | 12 specs across `venue-tab`, `pricing-tab`, `layout-editor`, `requests-tab`, `operator-console` and the two `*.a11y.spec.ts` | Judged one at a time against whether a valid→valid twin already pinned the same invariant: **converted 6** (the four announcer/notice specs, the layout draft-clearing, the row-name write-error A→B→A), **retired 6** (the three invalid-card renders, the two invalid-card axe runs, and three exact duplicates of an existing `venueId: '2'` spec). No invariant lost its only cover |
 | 2026-09-16 | phase 1 | Every drift sweep naming a file by path because of what it paints (mechanism: a spec asserting a token family at a literal source path) | `npm test` — the sweep failed on its own positive half, which is what named it | `shared/fixed-ink-tokens.contrast.spec.ts`'s `SITES` | Re-pointed at `operator/venue-not-found.ts`: the `--riv-console-card-border` family moved with the card. The spec's own comment says the positive half exists so a mistyped path cannot pass vacuously — it worked |
 
