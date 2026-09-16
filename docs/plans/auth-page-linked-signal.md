@@ -186,16 +186,16 @@ N/A — no contract change. The same `CustomerAuth`/`OperatorAuth` calls with th
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR — marking ready for review, then the Review + Sonar gates`
 
-**Next action:** add the real-browser credential leg (AC-7) to `frontend/e2e/unified-auth.e2e.ts`,
-then re-run #1119's mechanism sweep to confirm the effect population is closed.
+**Next action:** confirm the push's CI run is green, mark PR #1123 ready for review, then run
+`/code-review` with `riviera-review-overlay` layered on.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — pin the reset legs with specs (AC-3, AC-4, AC-5) | ✅ | `b1600b70` |
 | 1 — replace the effect with linkedSignals (AC-1, AC-2, AC-6) | ✅ | `6b75c20a` |
-| 2 — real-browser leg (AC-7) + generalization audit | ⏳ | |
+| 2 — real-browser leg (AC-7) + generalization audit | ✅ | `46df2464` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -276,15 +276,18 @@ asymmetry's negative leg.
 
 **Files:** Modify `frontend/e2e/unified-auth.e2e.ts`
 
-- [ ] **Step 1: Write the e2e leg** (AC-7) in the CI-safe mocked suite, following the file's
+- [x] **Step 1: Write the e2e leg** (AC-7) in the CI-safe mocked suite, following the file's
   existing mocking idiom.
-- [ ] **Step 2: Run it** — `npm run test:e2e:a11y -- unified-auth` → PASS.
-- [ ] **Step 3: Generalization-audit pass.** Re-run #1119's mechanism sweep — *every `effect` /
+- [x] **Step 2: Run it** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test
+  --config playwright.a11y.config.ts unified-auth` → 12/12 PASS (the env var is required in a cloud
+  session; `riviera-local-debug` § *Playwright in a cloud session*). Mutation-checked too: dropping
+  the audience reset fails the new leg in a real browser.
+- [x] **Step 3: Generalization-audit pass.** Re-run #1119's mechanism sweep — *every `effect` /
   `afterRenderEffect` body that writes a signal and does no imperative work* — and confirm the
   population is now closed. Record the command that **found** the population, the sites, and the
   decision in the log below.
-- [ ] **Step 4: Commit** — `git commit -m "Prove the credential never survives the audience switch in a real browser (#1120)"`
-- [ ] **Step 5: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Commit** — `Prove the credential never survives the audience switch in a real browser (#1120)`
+- [x] **Step 5: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -295,6 +298,7 @@ asymmetry's negative leg.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-16 | phase 2 (#1120) | **Every `effect` / `afterRenderEffect` body under `frontend/src/app` that writes a signal and does no imperative work** — #1119's own population, re-enumerated to check it is now closed. Enumerated by parsing each call's balanced-paren body out of every non-spec `.ts` file `git ls-files` lists, then classifying: writes = `.set(`/`.update(` in the body, imperative = `await`/`void`/`untracked(`/DOM/`localStorage`/`ResizeObserver`/`setTimeout`/emit/subscribe. Bodies matching neither rule were judged by hand rather than assumed. | `python3 scratchpad/effect-sweep.py` (the parser above; its raw input is `git ls-files src/app`, and the sanity cross-check that it was not under-counting was <code>git ls-files 'src/app/**/*.ts' \| grep -v '\.spec\.ts$' \| xargs grep -ln "\beffect(\\\|afterRenderEffect("</code> → 26 files) | 33 effect bodies across 26 files. 2 write a signal (`pricing-tab.ts:120`, `venue-tab.ts:277`) — both `untracked`-wrapped route-param → HTTP loaders, the legitimate category. 5 more needed a hand call: focus reclaim (`set-editor`), DOM measurement (`beach-map-canvas`), `aria-describedby` writes (`field-error-for`), MapLibre pin sync (`riviera-map`), month fetch (`availability-calendar`). | **Population closed — no action.** Zero pure state-propagation effects remain: #1119 took `venue-tab`'s Saved notice, this slice took `auth-page`. The count differs from #1119's "21 files" because that audit counted any effect reaching a signal through a method; this one counts a direct signal write in the body, and both agree on the two that mattered. |
 
 ---
 

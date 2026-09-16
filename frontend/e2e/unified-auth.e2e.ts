@@ -205,3 +205,21 @@ test('an operator surface visited while signed out redirects to the operator tab
   await expect(page).toHaveURL(/\/account\/sign-in\?audience=operator&returnUrl=/);
   await expect(page.getByTestId('auth-identifier-label')).toHaveText('Username');
 });
+
+test('a credential never survives the audience switch, and a mode toggle keeps it (#1120)', async ({
+  page,
+}) => {
+  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
+  const auth = new CustomerAuthPage(page);
+
+  await page.goto('/account/sign-in');
+  await auth.password.fill('tourist-secret');
+
+  // Sign-in ↔ register is not a change of principal, so what was typed stays put.
+  await page.getByTestId('auth-toggle-mode').click();
+  await expect(auth.password).toHaveValue('tourist-secret');
+
+  // Tourist → operator is: the credential must never be carried to the operator endpoint.
+  await page.getByTestId('audience-operator').click();
+  await expect(auth.password).toHaveValue('');
+});
