@@ -105,7 +105,7 @@ changed line, plus every citation of anything this diff renamed, moved or delete
 **b. Every worked example still holds — code against the structural net, a command against
 its own coverage claims.** An example is code a session
 will copy, so it is held to the same rules as code — the structural net, whose membership rule
-and members are `CLAUDE.md` §Commands. The net is the right set because an example is
+is `riviera-modulith` § *The structural net* and whose members are `CLAUDE.md` §Commands. The net is the right set because an example is
 target-free code: it shows a shape, in a module that is often hypothetical, and the net's members
 are exactly the rules that reject a shape wherever it sits. Walk it both ways. First, every
 example on a changed line, against the net as it stands. Second, the way that bites: when the
@@ -114,7 +114,7 @@ diff adds or tightens a member of the net, re-walk **every** example in the subs
 the diff. A fitness function outside the net names its target (`ErrorContractArchitectureTests`
 the exception-handler annotations, `ResponsibilitiesArchitectureTests` a table or a module, an
 `*AuthPlacementTests` one module) — as does the net's one admitted-by-decision member,
-`RetiredSetExclusionArchitectureTests` (`CLAUDE.md` § *Commands*). Tightening a target-naming
+`RetiredSetExclusionArchitectureTests` (`riviera-modulith` § *The structural net*). Tightening a target-naming
 rule puts a narrower walk due, net member or not: grep the substrate
 for the names read out of the test and walk those hits alone — an example that never names the
 target cannot break. A diff that adds a rule of any other kind (a review item, a skill's prose

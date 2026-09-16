@@ -196,6 +196,34 @@ controller. Platform-wide admin (`/api/admin/**`) stays role-gated. The module's
 
 `./gradlew test --tests "*ModularityTests*"` — code and the other harnesses: `references/testing.md`.
 
+## The structural net
+
+Run after any backend structure change: the six-test command in `CLAUDE.md` § *Commands*
+(`riviera-local-debug` holds the cloud form).
+
+**The structural net** is every test whose one rule holds the whole tree to the same standard,
+keyed on a class's package, kind or imports alone (the classpath probe included): a member names
+no target — no module, table, class, port or bean it holds to the rule; the base package it scans,
+or the class it borrows to find that package, is an anchor, not a target — runs without a Spring
+context, and fails on a violation.
+That is exactly the set a structure change *anywhere* can break, which is why it runs after every
+one; five of the six in the command (`CLAUDE.md` § *Commands*) are today's members derived from the rule, not chosen. The
+sixth, `RetiredSetExclusionArchitectureTests`, names its table and its exempt port and is the one
+member admitted by decision (ADR-0019): a retired set's absence from every read is a forever tax
+that a new JDBC adapter anywhere in the tree can break, which is the property the net exists to
+catch. A fitness function that names its target (`CompositionRootDisciplineTests`' grant map,
+`ErrorContractArchitectureTests`, `ResponsibilitiesArchitectureTests`, the two
+`*AuthPlacementTests`, `VenueApiRoleSplitTests`, the `*ArchitectureTest` pool and scheduler
+guards) is context-free too, but only work on what it names can break it, so that work puts it
+due — and CI runs all of them regardless. `RESPONSIBILITIES.md` § *Machine-checked vs
+review-checked* lists the ones that enforce a clause of that file; the tree holds more, and no list
+is the population — a fitness function is recognised by what it does, not looked up.
+`riviera-local-debug` runs the same command, and `riviera-review-overlay` RV-PROC-2 holds
+substrate examples to the same set. Two lookalikes are
+not definitions and stay as they are: ADR-0017's "structural nets" is that ADR's own
+reopening-trigger list, and the three-test command in `docs/agents/gradle-proxy-trust.md` is the
+record of a run that verified proxy trust.
+
 ## Checklist before finishing a backend structural change
 
 - [ ] New class is in the right package (`api/`/`spi/`/`vocabulary/`/`events/` published;

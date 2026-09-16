@@ -85,7 +85,7 @@ On the fallback path above, substitute `gradle --no-daemon` for `./gradlew` in b
 there.
 
 ```bash
-# the structural net — run after any backend structure change; membership rule + members: CLAUDE.md §Commands
+# the structural net — run after any backend structure change; membership rule: riviera-modulith § The structural net; members: CLAUDE.md §Commands
 ./gradlew --console=plain test \
   --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" \
   --tests "*PackageShapeArchitectureTests*" --tests "*DomainPurityArchitectureTests*" \
