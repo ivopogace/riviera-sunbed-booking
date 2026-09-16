@@ -26,8 +26,8 @@ hazard the brief warns of already fixed by #1112, the licence's *link-or-".org"*
 makes plain "© OpenMapTiles" non-compliant, and the stale credit in epic #806's spec) ·
 `riviera-plan-doc` (this template — forced the chrome↔style agreement to be a named test rather
 than a review note) · `tdd` (each credit surface pinned red before its copy changes) ·
-`riviera-review-overlay` (review gate — at ready-for-review) · `riviera-docs-freshness` (**to run**
-at close-out over the PR range — also retires the merged `msys-style-json-paths` and
+`riviera-review-overlay` (review gate — ran at ready-for-review on `/code-review`, high) · `riviera-docs-freshness` (**ran**
+over `6394b465..960a0747`, 0 findings; retired the merged `msys-style-json-paths` and
 `riviera-map-glyph-ranges` plans) · `grilling` (the two human decisions: OpenMapTiles is a link;
 the privacy policy is unchanged) · `riviera-frontend` (placement unchanged — `shared/riviera-map`,
 the mocked `frontend/e2e/` suite for the agreement lock) · `riviera-tailwind` (rule 4: both links
@@ -136,14 +136,19 @@ N/A — no contract change (the style file is a static resource; its URL fields 
 
 ## Execution status
 
-**Stage pointer:** review gate — PR #1116 ready for review (phase 1 CI 8/8 green; branch level with `main`, no merge needed)
+**Stage pointer:** DONE — merged via PR #1116
 
-**Next action:** run `/code-review` over the resolved range (`pr-gates.md` §1) with `riviera-review-overlay`; then the Sonar gate (§2).
+**Next action:** none in the repo. Post-merge GitHub steps (`pr-gates.md` §3): confirm #1106 closed.
+
+**Review gate:** `/code-review` (rung 1, high) over `6394b4654b7b34811b395751e94ba50162152484..960a0747db90b18318cb4c1b8c5c6391ed5277de` (11 files, +365/−558, range verified by `check-review-range.mjs`) — five reviewers, one candidate finding (F-1), scored 0 and filtered, so no PR comment. `riviera-review-overlay` walked: RV-STYLE-1 guard clean; RV-PROC-1 *Skills consulted* covers the diff; RV-PROC-2 — the ADR's changed lines cite nothing stale, and neither the retired plan slugs nor "the one outbound reference" is stated anywhere else; RV-FE-E2E — both new specs are in the CI-run mocked suite.
+
+**Sonar gate:** 0 issues, 0 security hotspots, 0 duplicated blocks on an analysed PR (`new_lines` 37; check-run success). No `new_coverage` measure: the analysed new lines are a template, a TSDoc comment and shell, none coverage-measured; `frontend/e2e`, `docs/` and `platform/map` lie outside `sonar.sources`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 1 — the credit (chrome, style, script) test-first | ✅ | `f34053af` |
-| 2 — ADR-0022 amendment + epic #806 spec | ✅ | this commit (epic #806 body edited on GitHub) |
+| 2 — ADR-0022 amendment + epic #806 spec | ✅ | `252d9d8a` (epic #806 body edited on GitHub) |
+| close-out — retire merged plans, gates, final state | ✅ | `960a0747` + this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -151,6 +156,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (prior-PR-comments reviewer) | the two lines appended to `rewrite_style`'s `#` comment block make a multi-line inline comment (RV-STYLE-1) | no change — scored 0: RV-STYLE-1 puts `#` shell comments outside the guard, "judge by eye and lean toward leaving them alone" |
 
 ---
 
@@ -210,27 +216,27 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npm test -- --include src/app/shared/riviera-map.spec.ts` → pass.
-- [ ] **AC-2, AC-5, AC-6:** `npm run test:e2e:a11y -- discover-map` → pass (and CI's mocked e2e).
-- [ ] **AC-3:** `bash scripts/build-riviera-map.test.sh` → `0 failed`; regeneration diff recorded.
-- [ ] **AC-4:** ADR-0022 grep shows the amended decision and the log entry.
+- [x] **AC-1:** `ng test --include src/app/shared/riviera-map.spec.ts` → 8 passed. Verified at commit `f34053af`.
+- [x] **AC-2, AC-5, AC-6:** `npm run test:e2e:a11y -- discover-map touch-targets-tourist mobile-zoom-tourist` → 37 passed; CI's mocked e2e green. Verified at commit `f34053af`.
+- [x] **AC-3:** `bash scripts/build-riviera-map.test.sh` → 17 passed, 0 failed; `--assets` diff = the attribution line only (R-1). Verified at commit `f34053af`.
+- [x] **AC-4:** ADR-0022 decision 6 amended + the #1106 log entry. Verified at commit `252d9d8a`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, no Java.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy (invariant #10) — N/A.
-- [ ] Timezone (invariant #6) — N/A.
-- [ ] Booking codes (invariant #7) — N/A.
-- [ ] Flyway (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met; no `as any`.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` per `pr-gates.md` §1 plus `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, no Java.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy (invariant #10) — N/A.
+- [x] Timezone (invariant #6) — N/A.
+- [x] Booking codes (invariant #7) — N/A.
+- [x] Flyway (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met; no `as any`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #1116` (it rides the final commit: no code change followed the gates).
+- [x] **The review gate ran in full** — `/code-review` per `pr-gates.md` §1 plus `riviera-review-overlay`.
