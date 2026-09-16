@@ -25,6 +25,8 @@ export interface MapMarker {
   readonly id: string;
   readonly lngLat: LngLat;
   readonly element: HTMLElement;
+  /** Draggable markers report their new position through {@link MapHandle.onMarkerDragEnd}. */
+  readonly draggable?: boolean;
 }
 
 /** `load`: the style and its first tiles are on screen. `error`: a resource failed to load. */
@@ -39,9 +41,18 @@ export interface MapHandle {
   zoomIn(): void;
   zoomOut(): void;
   addMarker(marker: MapMarker): void;
+  /**
+   * Move a marker without replacing it: {@link addMarker} recreates the element, which would drop
+   * a drag mid-gesture and every listener the caller put on it.
+   */
+  moveMarker(id: string, lngLat: LngLat): void;
   removeMarker(id: string): void;
   /** Subscribe; the returned function unsubscribes. */
   on(event: MapEventName, handler: () => void): () => void;
+  /** Where the map surface was clicked. Subscribe; the returned function unsubscribes. */
+  onMapClick(handler: (at: LngLat) => void): () => void;
+  /** Where a draggable marker was let go. Subscribe; the returned function unsubscribes. */
+  onMarkerDragEnd(handler: (id: string, at: LngLat) => void): () => void;
   destroy(): void;
 }
 

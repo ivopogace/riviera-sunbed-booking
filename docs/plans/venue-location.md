@@ -275,17 +275,17 @@ is an `<output aria-live="polite">` — the `layout-last-change` precedent.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** Phase 3 — extend the map-engine seam (draggable marker, `moveMarker`,
-`onMapClick`, `onMarkerDragEnd`), red-first via `fake-map-engine.spec.ts`.
+**Next action:** Phase 4 — give `RivieraMap` its pin inputs/outputs, red-first via
+`riviera-map.spec.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V58 migration + migration IT | ✅ | `d1e35001` (plan), `3949b0ea` |
 | 1 — `VenueLocation` + profile read/write (command, view, DTOs, `JdbcVenues`) | ✅ | this commit |
 | 2 — Tourist read models (`VenueSummaryView`, `VenueMapView`, `JdbcVenueCatalog`) | ✅ | this commit — structural net green |
-| 3 — Map-engine seam: draggable marker, `moveMarker`, click + drag-end hooks | | |
+| 3 — Map-engine seam: draggable marker, `moveMarker`, click + drag-end hooks | ✅ | this commit |
 | 4 — `RivieraMap` pin inputs/outputs | | |
 | 5 — Operator pin placer + Venue-tab wiring + FE models | | |
 | 6 — Mocked Playwright e2e (incl. `console-dark`) | | |
@@ -827,6 +827,7 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-16 | phase 3 — the seam grew three members | every implementation of the `MapHandle` interface (a widened seam compiles in one adapter and not the other only until a consumer calls it) | `grep -rln "implements MapHandle" frontend/src frontend/e2e` | `maplibre-map-engine.ts`, `fake-map-engine.ts` | both implemented; the two `extends MapEngine` spec-local doubles (`riviera-map.spec.ts`, `riviera-map.a11y.spec.ts`) override `create` only and need no change |
 
 ---
 
