@@ -1,6 +1,14 @@
 import { NgOptimizedImage } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  linkedSignal,
+  signal,
+  untracked,
+} from '@angular/core';
 import { BookingCutoffField } from './booking-cutoff-field';
 import { BookingModeField } from './booking-mode-field';
 import { form, required, submit, FormField } from '@angular/forms/signals';
@@ -177,12 +185,6 @@ export class VenueTab {
   protected readonly loaded = signal(false);
   protected readonly loadError = signal(false);
   protected readonly saving = signal(false);
-  protected readonly saved = signal(false);
-
-  /** The save outcome as one sentence, or '' — bound by both the announcer and the visible copy. */
-  protected readonly savedMessage = computed(() =>
-    this.saved() ? 'Saved. Your venue card and beach-map page now show these details.' : '',
-  );
   protected readonly errorCode = signal<VenueProfileErrorCode | null>(null);
   /** A field-level error for the distance input (not a Signal-Form field), so a bad metres value points
    *  the operator at the right field instead of a generic form-wide message. */
@@ -223,6 +225,19 @@ export class VenueTab {
   /** The riviera-map pin, edited beside the form and saved with it; `null` = not on the map. */
   protected readonly locationDraft = signal<VenueLocation | null>(null);
 
+  /** The save confirmation, derived so it can never outlive the drafts it asserts. A new draft
+   *  signal belongs in `source` — that list is the whole of the draft reset rule; `onSave`'s clear
+   *  covers the one case it cannot, a re-save with no edit in between. */
+  protected readonly saved = linkedSignal({
+    source: () => [this.details(), this.locationDraft(), this.amenityDraft(), this.distanceDraft()],
+    computation: (): boolean => false,
+  });
+
+  /** The save outcome as one sentence, or '' — bound by both the announcer and the visible copy. */
+  protected readonly savedMessage = computed(() =>
+    this.saved() ? 'Saved. Your venue card and beach-map page now show these details.' : '',
+  );
+
   /** Every season transition destroys the control that was just activated (WCAG 2.4.3). */
   private readonly focusAfterRender = focusMover();
   /** The closed-for-season state as the server reads it now; seeded from the profile, replaced by each write. */
@@ -258,15 +273,6 @@ export class VenueTab {
   protected readonly slotUi = signal<Readonly<Record<PhotoSlotKey, SlotUi>>>(EMPTY_SLOTS);
 
   constructor() {
-    // Drop the "Saved" confirmation as soon as the operator edits any details field (a Signal-Form
-    // field, so it has no per-field handler like the amenity/distance ones) — otherwise the banner
-    // lingers after a save and a subsequent edit reads as already-persisted, a silent lost edit.
-    effect(() => {
-      this.details(); // track the form model: any edit re-fires this and clears the stale notice
-      this.locationDraft(); // the pin is bound straight through, so it has no handler either
-      this.saved.set(false);
-    });
-
     // Re-runs on an in-place venue switch: reset the form + flags, then load the new venue.
     effect(() => {
       const id = this.venueId();
@@ -294,7 +300,6 @@ export class VenueTab {
     this.loaded.set(false);
     this.loadError.set(false);
     this.saving.set(false);
-    this.saved.set(false);
     this.errorCode.set(null);
     this.distanceError.set(false);
     this.load(venueId);
@@ -308,7 +313,7 @@ export class VenueTab {
     return amenityLabel(code);
   }
 
-  /** Flip an amenity in the working set (persisted only on Save); clears the stale saved notice. */
+  /** Flip an amenity in the working set (persisted only on Save). */
   protected onToggleAmenity(code: Amenity): void {
     this.amenityDraft.update((current) => {
       const next = new Set(current);
@@ -319,12 +324,10 @@ export class VenueTab {
       }
       return next;
     });
-    this.saved.set(false);
   }
 
   protected onDistanceInput(value: string): void {
     this.distanceDraft.set(value);
-    this.saved.set(false);
     this.distanceError.set(false);
   }
 
