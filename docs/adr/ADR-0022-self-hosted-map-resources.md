@@ -57,9 +57,12 @@ a first load still fetches only the tiles in view — see the amendment log.)*
 5. **Two machine locks hold the decision.** `MapStyleSelfHostedTest` parses the shipped style and
    fails on any absolute host; the mocked Playwright suite runs the real MapLibre adapter against
    the committed resources and fails on any request that leaves our origin.
-6. **Attribution** "© OpenStreetMap contributors" is rendered permanently on the map (ODbL), as a
-   link to the licence page — the one outbound reference, and a hyperlink rather than a request,
-   exactly as the ALTCHA widget's footer is.
+6. **Attribution** "© OpenMapTiles © OpenStreetMap contributors" is rendered permanently on the
+   map — the credit the tiles' two licences require (the OpenMapTiles schema's CC-BY design licence,
+   OSM's ODbL) — with each name a link to its licence page: the two outbound references, hyperlinks
+   rather than requests, exactly as the ALTCHA widget's footer is. The style's vector source carries
+   the same credit as plain text, never a URL. *(Amended: OpenMapTiles added — see the amendment
+   log.)*
 
 ## The review trap
 
@@ -108,3 +111,8 @@ or `<link>` the map chrome renders should treat it as a Blocker rather than a co
   all of Albania, and the map's pan fence with it; the archive grew from ~7.6 MB to ~60 MB. The
   decision is unaffected: the first-load transfer stays a few megabytes because the browser fetches
   only the tiles in view.
+- 2026-09-16, #1106 — decision 6's credit gained OpenMapTiles. The archive is built with
+  Planetiler's OpenMapTiles profile, and the OpenMapTiles schema's design licence (CC-BY 4.0) asks
+  maps made from it for a visible credit linking to openmaptiles.org, so the map now reads
+  "© OpenMapTiles © OpenStreetMap contributors" with both names linked. The self-hosting rule is
+  unaffected: a hyperlink is not a request, and the style names the credit in plain text.

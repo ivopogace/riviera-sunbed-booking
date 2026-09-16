@@ -46,6 +46,8 @@ const VENUES = [
 const OUR_HOSTS = new Set(['localhost:4200', 'localhost:8080']);
 
 const PHONE = { width: 390, height: 780 };
+/** Narrow enough that the map's credit takes two lines. */
+const NARROWEST_PHONE = { width: 320, height: 640 };
 const WIDE = { width: 1280, height: 900 };
 
 async function mockVenues(page: Page, delayMs = 0): Promise<void> {
@@ -82,7 +84,9 @@ test.describe('Discover map — fake engine', () => {
     await expect(page.getByTestId('view-map')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
     await expect(page.getByTestId('venue-card').first()).toBeHidden();
-    await expect(page.getByTestId('map-attribution')).toHaveText(/© OpenStreetMap contributors/);
+    await expect(page.getByTestId('map-attribution')).toHaveText(
+      '© OpenMapTiles © OpenStreetMap contributors',
+    );
     await expect(page.getByRole('button', { name: 'Zoom in' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Zoom out' })).toBeVisible();
 
@@ -100,6 +104,22 @@ test.describe('Discover map — fake engine', () => {
     await page.getByTestId('view-list').click();
     await expect(page.getByTestId('venue-card')).toHaveCount(2);
     await expect(page.getByTestId('map-panel')).toBeHidden();
+  });
+
+  test('keeps the credit inset inside the map on the narrowest phone, where it wraps', async ({
+    page,
+  }) => {
+    await page.setViewportSize(NARROWEST_PHONE);
+    await page.goto('/');
+    await page.getByTestId('view-map').click();
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+
+    const map = (await page.locator('app-riviera-map').boundingBox())!;
+    const credit = (await page.getByTestId('map-attribution').boundingBox())!;
+    // The pill's own 12 px (right-3) inset, kept on both sides once the credit outgrows one line.
+    expect(credit.x - map.x).toBeGreaterThanOrEqual(12);
+    expect(map.x + map.width - (credit.x + credit.width)).toBeGreaterThanOrEqual(12);
+    expect(map.y + map.height - (credit.y + credit.height)).toBeGreaterThanOrEqual(12);
   });
 
   test('shows the list and the map side by side on a wide screen, with no switch', async ({
@@ -167,6 +187,26 @@ test.describe('Discover map — real engine', () => {
     });
     expect(firstMapRequestAt).toBeDefined();
     expect(firstMapRequestAt! >= venuesAnsweredAt!).toBe(true);
+  });
+
+  test('credits the tiles exactly as the committed style does', async ({ page }) => {
+    await mockVenues(page);
+    const styleResponse = page.waitForResponse(
+      (response) => response.url().endsWith('/map/style.json'),
+      {
+        timeout: 20_000,
+      },
+    );
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+
+    // The style the engine actually loaded, not a copy read beside it.
+    const style = (await (await styleResponse).json()) as {
+      sources: Record<string, { attribution?: string }>;
+    };
+    const credits = Object.values(style.sources).map((source) => source.attribution ?? '');
+    expect(credits).toHaveLength(1);
+    await expect(page.getByTestId('map-attribution')).toHaveText(credits[0]);
   });
 
   test('the map open on Discover makes no request to a third party', async ({ page }) => {

@@ -10,7 +10,7 @@
     "openmaptiles": {
       "type": "vector",
       "url": "pmtiles:///map/riviera.pmtiles",
-      "attribution": "© OpenStreetMap contributors"
+      "attribution": "© OpenMapTiles © OpenStreetMap contributors"
     }
   },
   "sprite": "/map/sprites/osm-liberty",
