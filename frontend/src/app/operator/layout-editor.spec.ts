@@ -1096,7 +1096,8 @@ describe('LayoutEditor (#172)', () => {
       .flush(null);
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(byId('layout-row-name-saved-announce').textContent).toContain('Row B');
+    const announce = byId('layout-row-name-saved-announce');
+    expect(announce.textContent).toContain('Row B');
 
     params$.next(convertToParamMap({ venueId: '2' }));
     fixture.detectChanges();
@@ -1105,7 +1106,9 @@ describe('LayoutEditor (#172)', () => {
       .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
     fixture.detectChanges();
 
-    expect(byId('layout-row-name-saved-announce').textContent?.trim()).toBe('');
+    // Emptied, never unmounted: a live region must keep outliving the branch it describes.
+    expect(byId('layout-row-name-saved-announce')).toBe(announce);
+    expect(announce.textContent?.trim()).toBe('');
   });
 
   it('renames the row the URL names even after the draft changed twice (#726)', async () => {
