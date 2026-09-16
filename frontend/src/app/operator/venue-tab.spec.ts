@@ -1,10 +1,15 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { FakeMapEngine } from '../shared/fake-map-engine';
+import { MapEngine } from '../shared/map-engine';
+import { VenueLocation } from '../shared/venue-views';
+import { VenueLocationField } from './venue-location-field';
 import { VenueProfileView } from './operator-console.model';
 import { VenueTab } from './venue-tab';
 
@@ -13,9 +18,16 @@ interface SentBody {
   amenities: string[];
   bookingMode: string;
   salesClose: string;
+  location: VenueLocation | null;
   expectedVersion: number;
   commissionBps?: number;
   payoutCurrency?: string;
+}
+
+/** The mounted pin placer, typed — `DebugElement.componentInstance` is `any`. */
+function placerOf(fixture: ComponentFixture<VenueTab>): VenueLocationField {
+  return fixture.debugElement.query(By.directive(VenueLocationField))
+    .componentInstance as VenueLocationField;
 }
 
 /** The captured request body, typed — Angular types `HttpRequest.body` as `any`. */
@@ -69,6 +81,7 @@ describe('VenueTab (#177)', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        { provide: MapEngine, useValue: new FakeMapEngine() },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -85,6 +98,10 @@ describe('VenueTab (#177)', () => {
     http
       .expectOne((r) => r.url.includes('/api/auth/me'))
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+  }
+
+  function placer(): VenueLocationField {
+    return placerOf(fixture);
   }
 
   function render(profile: VenueProfileView = PROFILE): void {
@@ -147,6 +164,7 @@ describe('VenueTab (#177)', () => {
       salesClose: '16:00',
       amenities: ['WIFI', 'BEACH_BAR'],
       distanceToWaterM: 20,
+      location: null, // an unpinned venue re-sends none; a full replace has no "absent means keep"
       expectedVersion: 7, // the loaded optimistic-concurrency token
     });
     // Read-only fields must not be on the wire.
@@ -741,5 +759,31 @@ describe('VenueTab (#177)', () => {
     host = fixture.nativeElement as HTMLElement;
 
     expect((byId('venue-name') as HTMLInputElement).value).toBe('Second Venue');
+  });
+
+  it('sends the pin the placer holds with the rest of the profile (#1099)', async () => {
+    render();
+    placer().location.set({ latitude: 40.1468, longitude: 19.6482 });
+    fixture.detectChanges();
+
+    await save();
+
+    const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+    expect(body(req).location).toEqual({ latitude: 40.1468, longitude: 19.6482 });
+    expect(body(req).expectedVersion).toBe(7);
+    req.flush(null);
+  });
+
+  it('clears the pin through the same save (#1099)', async () => {
+    render({ ...PROFILE, location: { latitude: 40.1468, longitude: 19.6482 } });
+    expect(placer().location()).toEqual({ latitude: 40.1468, longitude: 19.6482 });
+
+    placer().location.set(null);
+    fixture.detectChanges();
+    await save();
+
+    const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+    expect(body(req).location).toBeNull();
+    req.flush(null);
   });
 });

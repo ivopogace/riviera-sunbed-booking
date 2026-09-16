@@ -537,7 +537,7 @@ export type LayoutErrorCode =
 
 /** The three-value on-day close: the one definition lives with the tourist mirror in `shared/`. */
 export type { SalesCloseTime } from '../shared/venue-views';
-import type { SalesCloseTime } from '../shared/venue-views';
+import type { SalesCloseTime, VenueLocation } from '../shared/venue-views';
 
 /**
  * The operator's own view of a venue's admin profile (`GET /api/venues/{id}/profile`): the editable core
@@ -568,6 +568,11 @@ export interface VenueProfileView {
    * Optional because test doubles and older payloads may omit it; absent reads open.
    */
   readonly seasonClosure?: SeasonClosureView;
+  /**
+   * The venue's riviera-map pin, or `null`/absent when it has none. Editable here: the profile
+   * PATCH sets and clears it. Optional because test doubles and older payloads may omit it.
+   */
+  readonly location?: VenueLocation | null;
 }
 
 /**
@@ -632,6 +637,8 @@ export interface VenueProfileUpdate {
   readonly salesClose: SalesCloseTime;
   readonly amenities: readonly Amenity[];
   readonly distanceToWaterM: number | null;
+  /** The venue's riviera-map pin; `null` unpins it, as a full replace does with any cleared field. */
+  readonly location: VenueLocation | null;
   readonly expectedVersion: number;
 }
 
@@ -652,6 +659,7 @@ export function toProfileUpdate(view: VenueProfileView): VenueProfileUpdate {
     salesClose: view.salesClose,
     amenities: view.amenities,
     distanceToWaterM: view.distanceToWaterM,
+    location: view.location ?? null,
     expectedVersion: view.version,
   };
 }

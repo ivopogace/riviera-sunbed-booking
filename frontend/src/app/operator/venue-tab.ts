@@ -20,7 +20,7 @@ import { parentVenueId } from '../shared/parent-venue-id';
 import { plural } from '../shared/plural';
 import { SegmentedControl, SegmentedOption } from '../shared/segmented-control';
 import { parseWholeNumber } from '../shared/whole-number';
-import { BookingMode, PhotoSlotKey } from '../shared/venue-views';
+import { BookingMode, PhotoSlotKey, VenueLocation } from '../shared/venue-views';
 import {
   SalesCloseTime,
   SeasonClosureErrorCode,
@@ -35,6 +35,7 @@ import {
   venueProfileErrorOf,
 } from './operator-console.service';
 import { StaleWriteBanner } from './stale-write-banner';
+import { VenueLocationField } from './venue-location-field';
 import {
   PhotoErrorCode,
   VenuePhotoService,
@@ -159,6 +160,7 @@ const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
     StaleWriteBanner,
     BusyAction,
     TouchTarget,
+    VenueLocationField,
   ],
   templateUrl: './venue-tab.html',
 })
@@ -218,6 +220,8 @@ export class VenueTab {
   protected readonly amenityCatalogue = AMENITY_CATALOGUE;
   protected readonly amenityDraft = signal<ReadonlySet<Amenity>>(new Set());
   protected readonly distanceDraft = signal('');
+  /** The riviera-map pin, edited beside the form and saved with it; `null` = not on the map. */
+  protected readonly locationDraft = signal<VenueLocation | null>(null);
 
   /** Every season transition destroys the control that was just activated (WCAG 2.4.3). */
   private readonly focusAfterRender = focusMover();
@@ -275,6 +279,7 @@ export class VenueTab {
     this.details.set(EMPTY_DETAILS);
     this.amenityDraft.set(new Set());
     this.distanceDraft.set('');
+    this.locationDraft.set(null);
     this.commissionBps.set(null);
     this.payoutCurrency.set(null);
     this.loadedVersion.set(null);
@@ -368,6 +373,7 @@ export class VenueTab {
         salesClose: m.salesClose,
         amenities: [...this.amenityDraft()],
         distanceToWaterM,
+        location: this.locationDraft(),
         expectedVersion,
       };
       const epoch = this.epoch;
@@ -450,6 +456,7 @@ export class VenueTab {
     this.distanceDraft.set(
       profile.distanceToWaterM == null ? '' : String(profile.distanceToWaterM),
     );
+    this.locationDraft.set(profile.location ?? null);
     this.commissionBps.set(profile.commissionBps);
     this.payoutCurrency.set(profile.payoutCurrency);
     this.loadedVersion.set(profile.version);

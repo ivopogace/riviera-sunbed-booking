@@ -169,6 +169,15 @@ export interface DailyAvailability {
 }
 
 /**
+ * A venue's position on the riviera map, in WGS84 decimal degrees, at the six decimal places the
+ * server stores. A venue either has one or has none — `null`, never a half-filled pair.
+ */
+export interface VenueLocation {
+  readonly latitude: number;
+  readonly longitude: number;
+}
+
+/**
  * Typed view of the discovery list API (`GET /api/venues`). Mirrors the backend
  * `VenueSummaryView` exactly — money as integer minor units + currency (invariant #5), rating as
  * tenths (no float on the wire). `fromPrice` is `null` for a venue with no sets.
@@ -190,6 +199,11 @@ export interface VenueSummary {
   readonly amenities?: readonly Amenity[];
   /** Distance to the water in metres, or `null`/absent when not stated. */
   readonly distanceToWaterM?: number | null;
+  /**
+   * The venue's riviera-map pin, or `null`/absent when it has none — an unpinned venue stays in
+   * the list and is simply not drawn. Optional because test doubles and older payloads may omit it.
+   */
+  readonly location?: VenueLocation | null;
   readonly availability: AvailabilitySummary;
   /** The cover photo's serving URLs, or `null`/absent — the card then keeps its gradient. */
   readonly coverPhoto?: CoverPhotoView | null;

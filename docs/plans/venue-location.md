@@ -275,11 +275,10 @@ is an `<output aria-live="polite">` — the `layout-last-change` precedent.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `implement (phase 6)`
 
-**Next action:** Phase 5 — the operator pin placer (`venue-location-field`), the Venue-tab
-wiring and the FE models, red-first via `venue-location-field.spec.ts` and the
-`toProfileUpdate` guard (R-2).
+**Next action:** Phase 6 — the mocked Playwright e2e (`operator-venue-location.e2e.ts`),
+including the `console-dark` double opt-in (R-8).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -288,7 +287,7 @@ wiring and the FE models, red-first via `venue-location-field.spec.ts` and the
 | 2 — Tourist read models (`VenueSummaryView`, `VenueMapView`, `JdbcVenueCatalog`) | ✅ | this commit — structural net green |
 | 3 — Map-engine seam: draggable marker, `moveMarker`, click + drag-end hooks | ✅ | this commit |
 | 4 — `RivieraMap` pin inputs/outputs | ✅ | this commit |
-| 5 — Operator pin placer + Venue-tab wiring + FE models | | |
+| 5 — Operator pin placer + Venue-tab wiring + FE models | ✅ | this commit |
 | 6 — Mocked Playwright e2e (incl. `console-dark`) | | |
 | 7 — `RESPONSIBILITIES.md` location contract + close-out | | |
 
@@ -828,6 +827,8 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-16 | phase 5 — an invented `--riv-card-ink-muted` would have shipped unstyled ink | every `*-riv-*` Tailwind utility this diff adds (a utility naming an undeclared token compiles and paints nothing) | `git diff --cached origin/main -- 'frontend/src/**/*.{ts,html}' \| grep '^+' \| grep -oE '\b(bg\|text\|border\|outline\|shadow\|fill\|stroke\|ring\|from\|to\|via)-riv-[a-z0-9-]+'`, each checked against `--<token>:` in `tailwind.css` | 7 tokens across `riviera-map.ts` and `venue-location-field.ts` | the one miss fixed (`-muted` → `-soft`); the other six verified declared |
+| 2026-09-16 | phase 5 — `VenueTab` gained a child that injects `MapEngine` | every TestBed that mounts `VenueTab` (a new injection in a child breaks its parent's contexts, not its own spec) | `grep -rn "VenueTab" frontend/src --include=*.spec.ts -l` | `venue-tab.spec.ts`, `venue-tab.a11y.spec.ts`, `venue-tab.contrast.spec.ts`, `app.spec.ts` | the two constructing their own TestBed got the fake engine; the other two already resolve it and pass |
 | 2026-09-16 | phase 3 — the seam grew three members | every implementation of the `MapHandle` interface (a widened seam compiles in one adapter and not the other only until a consumer calls it) | `grep -rln "implements MapHandle" frontend/src frontend/e2e` | `maplibre-map-engine.ts`, `fake-map-engine.ts` | both implemented; the two `extends MapEngine` spec-local doubles (`riviera-map.spec.ts`, `riviera-map.a11y.spec.ts`) override `create` only and need no change |
 
 ---
