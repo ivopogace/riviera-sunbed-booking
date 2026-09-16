@@ -111,6 +111,11 @@ class MapLibreHandle implements MapHandle {
     private readonly map: import('maplibre-gl').Map,
   ) {}
 
+  view(): MapView {
+    const { lng, lat } = this.map.getCenter();
+    return { center: { lng, lat }, zoom: this.map.getZoom() };
+  }
+
   setView(view: MapView): void {
     this.map.jumpTo({ center: [view.center.lng, view.center.lat], zoom: view.zoom });
   }

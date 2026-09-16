@@ -37,13 +37,15 @@ export type MapEventName = 'load' | 'error';
  * consumer that only uses this handle survives swapping MapLibre for another renderer.
  */
 export interface MapHandle {
+  /** Where the camera looks right now — it moves with every pan and zoom, `setView` or gesture. */
+  view(): MapView;
   setView(view: MapView): void;
   zoomIn(): void;
   zoomOut(): void;
   addMarker(marker: MapMarker): void;
   /**
-   * Move a marker without replacing it: {@link addMarker} recreates the element, which would drop
-   * a drag mid-gesture and every listener the caller put on it.
+   * Move a marker in place. Re-adding it detaches and re-attaches the caller's element instead,
+   * which interrupts a drag in progress and drops whatever focus it held.
    */
   moveMarker(id: string, lngLat: LngLat): void;
   removeMarker(id: string): void;

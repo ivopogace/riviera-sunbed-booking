@@ -36,9 +36,11 @@ class VenueLocationMigrationIT {
 	}
 
 	@Test
-	void existingVenuesCarryNoLocation() {
+	void aVenueThatPredatesTheMigrationCarriesNoLocation() {
+		// Scoped to the seeded row: a table-wide count answers for sibling ITs' leftovers too.
 		Integer pinned = jdbc.queryForObject(
-				"SELECT COUNT(*) FROM venue WHERE latitude IS NOT NULL OR longitude IS NOT NULL", Integer.class);
+				"SELECT COUNT(*) FROM venue WHERE id = ? AND (latitude IS NOT NULL OR longitude IS NOT NULL)",
+				Integer.class, MIRAMAR);
 		assertThat(pinned).isZero();
 	}
 

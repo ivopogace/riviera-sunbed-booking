@@ -645,8 +645,9 @@ export interface VenueProfileUpdate {
 /**
  * The full-replace {@link VenueProfileUpdate} that would re-save `view` unchanged: every editable
  * field mapped faithfully (photos are not profile-write fields; `expectedVersion` echoes the view's
- * `version`). The venue tab's save and the daily view's close-sales write both build on it, so the
- * profile→write mapping cannot drift between the two surfaces.
+ * `version`). The daily view's close-sales write builds on it; the venue tab builds its own body
+ * from the form, so what keeps the two in step is the {@link VenueProfileUpdate} type, which fails
+ * to compile if either forgets a field.
  */
 export function toProfileUpdate(view: VenueProfileView): VenueProfileUpdate {
   return {

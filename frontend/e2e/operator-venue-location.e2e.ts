@@ -170,6 +170,44 @@ test('drops a pin, saves it, and finds it where it was left after a reload (+ ax
   await expect(page.getByTestId('venue-location-readout')).toHaveText(placed ?? '');
 });
 
+test('places and clears the pin from the keyboard alone, and saves it', async ({ page }) => {
+  const { patches } = await mockVenue(page);
+  await page.goto('/operator/1');
+  await signInAndOpenVenue(page);
+
+  // No coordinate input is offered, so this button is the whole keyboard path (WCAG 2.1.1).
+  await page.getByTestId('venue-location-place').focus();
+  await expect(page.getByTestId('venue-location-place')).toBeFocused();
+  await page.keyboard.press('Enter');
+
+  await expect(page.getByTestId('map-pin')).toBeVisible();
+  await expect(page.getByTestId('venue-location-readout')).toContainText('Latitude');
+
+  await page.getByTestId('venue-location-clear').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('map-pin')).toHaveCount(0);
+  // Clearing must not disable the control it was pressed on, or focus lands on <body> (WCAG 2.4.3).
+  await expect(page.getByTestId('venue-location-clear')).toBeFocused();
+  await expect(page.getByTestId('venue-location-clear')).toHaveAttribute('aria-disabled', 'true');
+
+  await page.getByTestId('venue-save').click();
+  await expect(page.getByTestId('venue-saved')).toBeVisible();
+  expect((patches[0].postDataJSON() as { location: unknown }).location).toBeNull();
+});
+
+test('does not move the venue when the pin itself is tapped', async ({ page }) => {
+  await mockVenue(page, DHERMI);
+  await page.goto('/operator/1');
+  await signInAndOpenVenue(page);
+  await expect(page.getByTestId('map-pin')).toBeVisible();
+  const before = await page.getByTestId('venue-location-readout').textContent();
+
+  // Tapping the pin is a grab, not a new position: it must not reach the map-click handler.
+  await page.getByTestId('map-pin').click();
+
+  await expect(page.getByTestId('venue-location-readout')).toHaveText(before ?? '');
+});
+
 test('clears the pin, saves, and reloads with the venue unpinned', async ({ page }) => {
   const { patches } = await mockVenue(page, DHERMI);
   await page.goto('/operator/1');

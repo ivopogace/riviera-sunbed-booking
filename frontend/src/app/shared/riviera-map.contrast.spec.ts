@@ -7,7 +7,8 @@ import { SOLID_BTN_FILL, SOLID_BTN_HOVER, SOLID_BTN_INK } from '../../testing/gl
  * theme-invariant `--riv-solid-btn-*` family: an opaque fill with a fixed ink, the same pair in
  * every theme (`booking/solid-btn-tokens.contrast.spec.ts` guards the invariance). This spec pins
  * the pair at the sizes the map paints: 12 px attribution and 14 px notice text at AA normal, the
- * 22 px zoom glyphs and the 20 px pin glyph at AA large.
+ * 22 px semibold zoom glyphs at AA large. The pin's 20 px glyph is normal weight, so it is held to
+ * the stricter AA-normal case rather than the large one.
  */
 describe('riviera map chrome contrast', () => {
   const ink = rgbToHex(SOLID_BTN_INK);

@@ -8,7 +8,11 @@ import {
   MapView,
 } from './map-engine';
 
-/** A fake map: an in-memory view and marker set, inspectable by the spec that drove it. */
+/**
+ * A fake map: an in-memory view and marker set, inspectable by the spec that drove it. It also owns
+ * a real DOM surface — it mounts the caller's marker elements and positions them — so a spec or an
+ * e2e can see and measure a pin, and click the map the way a person does.
+ */
 export class FakeMapHandle implements MapHandle {
   private current: MapView;
   private readonly markerSet = new Map<string, MapMarker>();
@@ -158,9 +162,9 @@ function clampUnit(value: number): number {
 
 /**
  * The deterministic {@link MapEngine} for Vitest and the mocked Playwright suite (armed by
- * `window.__RIVIERA_FAKE_MAP__`): no WebGL, no tiles, no network. It stamps the host with a
- * `riviera-map-fake` test id so an e2e can see the map "rendered" and click it, and records every
- * creation.
+ * `window.__RIVIERA_FAKE_MAP__`): no WebGL, no tiles, no network. It mounts a surface inside the
+ * host under a `riviera-map-fake` test id, so an e2e can see the map "rendered" and click it, and
+ * records every creation.
  */
 export class FakeMapEngine extends MapEngine {
   readonly created: { host: HTMLElement; options: MapEngineOptions }[] = [];

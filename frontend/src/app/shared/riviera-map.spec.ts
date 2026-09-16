@@ -204,7 +204,9 @@ describe('RivieraMap', () => {
       expect(markers[0].lngLat).toEqual({ lng: 19.6482, lat: 40.1468 });
       expect(markers[0].draggable).toBe(true);
       expect(markers[0].element.getAttribute('aria-label')).toBe('Venue location');
-      expect(markers[0].element.tagName).toBe('BUTTON');
+      // Not a control: it is dragged with a pointer, and the keyboard path lives in the consumer.
+      expect(markers[0].element.tagName).toBe('DIV');
+      expect(markers[0].element.getAttribute('role')).toBe('img');
     });
 
     it('moves the marker in place when the pin changes, keeping its element', async () => {

@@ -774,6 +774,21 @@ describe('VenueTab (#177)', () => {
     req.flush(null);
   });
 
+  it('drops the stale Saved notice when the pin is edited after a save (#1099)', async () => {
+    render();
+    await save();
+    http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1')).flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('venue-saved')).toBeTruthy();
+
+    placer().location.set({ latitude: 40.1468, longitude: 19.6482 });
+    fixture.detectChanges();
+
+    // Otherwise the banner keeps asserting a pin the server has never seen — a silent lost edit.
+    expect(byId('venue-saved')).toBeFalsy();
+  });
+
   it('clears the pin through the same save (#1099)', async () => {
     render({ ...PROFILE, location: { latitude: 40.1468, longitude: 19.6482 } });
     expect(placer().location()).toEqual({ latitude: 40.1468, longitude: 19.6482 });

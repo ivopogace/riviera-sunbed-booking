@@ -263,6 +263,7 @@ export class VenueTab {
     // lingers after a save and a subsequent edit reads as already-persisted, a silent lost edit.
     effect(() => {
       this.details(); // track the form model: any edit re-fires this and clears the stale notice
+      this.locationDraft(); // the pin is bound straight through, so it has no handler either
       this.saved.set(false);
     });
 

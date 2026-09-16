@@ -13,8 +13,8 @@ import ai.riviera.platform.venue.vocabulary.VenueLocation;
 import ai.riviera.platform.venue.application.VenueProfileCommand;
 
 /**
- * The request body for editing a venue's profile ({@code PATCH /api/venues/{venueId}}, widened from
- * the original amenities + distance fields). It carries the operator-editable fields —
+ * The request body for editing a venue's profile ({@code PATCH /api/venues/{venueId}}). It carries
+ * the operator-editable fields —
  * {@code name}/{@code beach}/{@code region}/{@code description}, {@code bookingMode}
  * ({@code INSTANT}|{@code REQUEST}), {@code bookingCutoff} ({@code "HH:mm"} in {@code Europe/Tirane}),
  * {@code salesClose} (required; exactly {@code "00:01"}|{@code "16:00"}|{@code "23:59"}),

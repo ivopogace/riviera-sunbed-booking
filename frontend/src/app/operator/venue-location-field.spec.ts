@@ -110,6 +110,58 @@ describe('VenueLocationField', () => {
     expect(longitude).toBe(Number(longitude.toFixed(6)));
   });
 
+  it('does not move the venue when the pin itself is tapped', async () => {
+    const fixture = await render({ latitude: 40.1468, longitude: 19.6482 });
+    const pin = byTestId(fixture, 'map-pin')!;
+
+    // A tap on the marker is a grab, not a new position: it must not reach the map-click handler.
+    pin.dispatchEvent(new MouseEvent('click', { clientX: 5, clientY: 5, bubbles: true }));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.location()).toEqual({ latitude: 40.1468, longitude: 19.6482 });
+  });
+
+  it('places the pin at the map centre without a pointer', async () => {
+    const fixture = await render(null);
+
+    byTestId(fixture, 'venue-location-place')?.click();
+    fixture.detectChanges();
+
+    // The map's own controls choose the spot; this is the keyboard twin of a tap (WCAG 2.1.1).
+    const centre = mapHandle(fixture).view().center;
+    expect(fixture.componentInstance.location()).toEqual({
+      latitude: Number(centre.lat.toFixed(6)),
+      longitude: Number(centre.lng.toFixed(6)),
+    });
+  });
+
+  it('moves an existing pin to the map centre rather than refusing', async () => {
+    const fixture = await render({ latitude: 40.1468, longitude: 19.6482 });
+
+    byTestId(fixture, 'venue-location-place')?.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.location()).not.toEqual({
+      latitude: 40.1468,
+      longitude: 19.6482,
+    });
+    expect(mapHandle(fixture).markers().size).toBe(1);
+  });
+
+  it('never disables the control it was pressed on, so focus is not stranded', async () => {
+    const fixture = await render({ latitude: 40.1468, longitude: 19.6482 });
+    const clear = byTestId(fixture, 'venue-location-clear')!;
+    expect(clear.getAttribute('aria-disabled')).toBeNull();
+
+    clear.click();
+    fixture.detectChanges();
+
+    // aria-disabled, never the disabled property: the pressed button keeps focus (WCAG 2.4.3).
+    expect(clear.hasAttribute('disabled')).toBe(false);
+    expect(clear.getAttribute('aria-disabled')).toBe('true');
+    expect(fixture.componentInstance.location()).toBeNull();
+  });
+
   it('keeps the read-out announced but never editable', async () => {
     const fixture = await render({ latitude: 40.1468, longitude: 19.6482 });
     const readout = byTestId(fixture, 'venue-location-readout');

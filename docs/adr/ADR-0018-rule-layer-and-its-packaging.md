@@ -124,7 +124,7 @@ this application writes, and only when every writer remembers to call it. That i
 `availability` has no `domain/` package and should not have one — its subject is one table with one
 constraint (`2026-09-04-where-the-business-rules-live.md` §C).
 
-This does **not** forbid a Java statement that mirrors a DB *bound or vocabulary*. Seven such
+This does **not** forbid a Java statement that mirrors a DB *bound or vocabulary*. Eight such
 mirrors exist, each naming its twin in Javadoc and calling the duplication deliberate: `Stars` ↔
 `review_stars_check` ("the only one of the two that also holds for a row written by anything but
 this application, so the duplication there is deliberate, not drift",
@@ -134,13 +134,15 @@ this application, so the duplication there is deliberate, not drift",
 `set_position_pool_check` (`venue/vocabulary/Pool.java` — published rather than `domain/`-internal,
 because the token crosses into `booking` and `availability`, which compare against it for
 invariant #3; `PoolTokenArchitectureTest` keeps it the only Java statement), and `Tier` ↔
-`set_position_tier_check` (`venue/vocabulary/Tier.java` — the second published mirror, because the
+`set_position_tier_check` (`venue/vocabulary/Tier.java` — published for the same reason, because the
 "same or better tier" order crosses into `booking`'s move ranking; `SetCommand` derives its accepted
 tokens from it), and `VenueChangeFeeAmount.MAX_FEE_MINOR` ↔ `platform_setting_amount_check` (the
 ceiling a stored venue-change fee may reach — the first of these to sit in `application/` rather
 than `domain/` or `vocabulary/`, because the value it bounds is a configured amount rather than a
 domain vocabulary; the console mirrors it a third time, since a bound the admin types against has to
-be stated where they type). The
+be stated where they type), and `VenueLocation` ↔ `venue_location_check` (`venue/vocabulary/VenueLocation.java`
+— the third published mirror, because the tourist read models carry the pin across the module
+boundary; it also normalises to the scale the columns store, so a written value equals a read one). The
 distinction is that a bound constrains one row's field and a set invariant constrains the
 relationship *between* rows; only the second is beyond Java's reach.
 

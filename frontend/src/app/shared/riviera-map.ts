@@ -40,11 +40,11 @@ type MapStatus = 'booting' | 'ready' | 'unavailable';
 const PIN_ID = 'venue-location-pin';
 
 /**
- * The pin's own box: 44 px both axes (the touch-target floor) in the theme-invariant solid-button
- * skin the rest of the map chrome wears — it sits on imagery, which never themes.
+ * The pin's own box: 44 px both axes, the floor a drag target needs, in the theme-invariant
+ * solid-button skin the rest of the map chrome wears — it sits on imagery, which never themes.
  */
 const PIN_CLASSES =
-  'inline-flex size-11 cursor-grab touch-manipulation items-center justify-center rounded-full ' +
+  'inline-flex size-11 touch-manipulation items-center justify-center rounded-full ' +
   'border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill text-[20px] leading-none ' +
   'text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)]';
 
@@ -97,7 +97,7 @@ export class RivieraMap {
   protected readonly status = signal<MapStatus>('booting');
 
   private readonly live = signal<MapHandle | undefined>(undefined);
-  private marker: HTMLButtonElement | undefined;
+  private marker: HTMLElement | undefined;
   private markerOnMap = false;
   private disposed = false;
   private readonly unsubscribes: (() => void)[] = [];
@@ -119,6 +119,11 @@ export class RivieraMap {
     return this.live();
   }
 
+  /** Where the camera looks now, so a consumer can act on what the viewer is actually looking at. */
+  currentCenter(): LngLat | undefined {
+    return this.live()?.view().center;
+  }
+
   private syncPin(): void {
     const handle = this.live();
     const pin = this.pin();
@@ -132,31 +137,41 @@ export class RivieraMap {
       }
       return;
     }
+    // Read every input before the branch below returns, so the effect keeps tracking them.
+    const draggable = this.pinDraggable();
     const element = this.pinElement();
     element.setAttribute('aria-label', this.pinLabel());
+    // Only a draggable pin advertises the grab cursor; an undraggable one would promise a gesture.
+    element.classList.toggle('cursor-grab', draggable);
     if (this.markerOnMap) {
       handle.moveMarker(PIN_ID, pin);
       return;
     }
-    handle.addMarker({ id: PIN_ID, lngLat: pin, element, draggable: this.pinDraggable() });
+    handle.addMarker({ id: PIN_ID, lngLat: pin, element, draggable });
     this.markerOnMap = true;
   }
 
-  /** One element for the life of the component, so a move never costs the pin its focus. */
-  private pinElement(): HTMLButtonElement {
+  /** One element for the life of the component, so a move never detaches what a drag is holding. */
+  private pinElement(): HTMLElement {
     this.marker ??= this.buildPinElement();
     return this.marker;
   }
 
-  private buildPinElement(): HTMLButtonElement {
-    const element = this.document.createElement('button');
-    element.type = 'button';
+  /**
+   * Not a control: the pin is dragged with a pointer, and every keyboard path to it lives in the
+   * consumer's own buttons. A focusable element here would announce an action it cannot perform.
+   */
+  private buildPinElement(): HTMLElement {
+    const element = this.document.createElement('div');
+    element.role = 'img';
     element.className = PIN_CLASSES;
     element.dataset['testid'] = 'map-pin';
     const glyph = this.document.createElement('span');
     glyph.setAttribute('aria-hidden', 'true');
     glyph.textContent = '\u25cf';
     element.appendChild(glyph);
+    // Both engines mount the marker inside the surface they read clicks from.
+    element.addEventListener('click', (event) => event.stopPropagation());
     return element;
   }
 

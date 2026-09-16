@@ -45,7 +45,9 @@ writer, one row, the profile PATCH already owns it) · `domain-modeling` (confir
 `angular-developer` + angular-cli MCP (signal `input()`/`output()`, Signal Forms, `effect` for the
 marker sync) · `riviera-tailwind` (token-first map chrome, the 44px floor on the clear action) ·
 `playwright-cli` (the mocked suite, `console-dark` double opt-in: file membership **and** a
-`dark console` title).
+`dark console` title; the review round added the keyboard and pin-tap legs) · `code-review` +
+`riviera-review-overlay` (the review gate over `45e3ff1d..2db59dfe` — four Major findings, all
+fixed and pinned; registers below).
 
 **Branch:** `claude/eloquent-meitner-hf4m23` — the cloud session's designated remote branch stands
 in for `feature/venue-location` (`riviera-sdlc` § *Remote / cloud session addendum*).
@@ -119,6 +121,22 @@ in for `feature/venue-location` (`riviera-sdlc` § *Remote / cloud session adden
   round-trip. *Seam:* `operator-console.model.ts`'s `toProfileUpdate` ·
   *Pinned by:* `operator-console.model.spec.ts` › `carries the venue location through the full-replace body` /
   `carries no location for an unpinned venue`
+- [ ] **AC-13:** Given an operator using only a keyboard, when they focus *Place pin at map centre*
+  and press Enter, then the venue is pinned at the camera's centre; and clearing never disables the
+  control that was pressed. *Seam:* the `app-venue-location-field` component API and the operator
+  console over a mocked `/api` · *Pinned by:* `venue-location-field.spec.ts` › `places the pin at the
+  map centre without a pointer` / `moves an existing pin to the map centre rather than refusing` /
+  `never disables the control it was pressed on, so focus is not stranded`, and
+  `operator-venue-location.e2e.ts` › `places and clears the pin from the keyboard alone, and saves it`
+- [ ] **AC-14:** Given a pinned venue, when the operator taps the pin itself, then the venue does not
+  move — the marker sits inside the surface the engine reads clicks from, and a tap on it is a grab,
+  not a new position. *Seam:* the `app-venue-location-field` component API ·
+  *Pinned by:* `venue-location-field.spec.ts` › `does not move the venue when the pin itself is
+  tapped`, and `operator-venue-location.e2e.ts` › `does not move the venue when the pin itself is tapped`
+- [ ] **AC-15:** Given a saved profile, when the operator then edits the pin, then the "Saved" notice
+  goes — the pin is a draft with no handler of its own, so it joins the notice-clearing effect.
+  *Seam:* the `app-venue-tab` component API · *Pinned by:* `venue-tab.spec.ts` › `drops the stale
+  Saved notice when the pin is edited after a save (#1099)`
 - [ ] **AC-12:** Given the mocked operator console, when the operator drops a pin, saves and
   reloads, then the pin is where it was left; when they clear, save and reload, there is no pin —
   and both run green under the `console-dark` project with axe, contrast and touch-target checks
@@ -308,6 +326,16 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | sonar | `java:S8491` MAJOR — dangling Javadoc at `JdbcVenueCatalog.java:275`: the new `locationOf` helper was inserted between `seasonClosureOf` and its doc comment | fixed — commit *Reattach the doc comments my inserted helpers orphaned* |
+| F-5 | review gate (CLAUDE.md pass, confirmed by the overlay pass as RV-FE-9) | **Major** — *Clear pin* bound `[disabled]="!location()"` to its own click, so pressing it disabled the pressed control and stranded focus on `<body>` (WCAG 2.4.3). `check-focus-posture.mjs` is silent here: `!location()` is not in BUSY-1's curated vocabulary | fixed — `aria-disabled` + a no-op `clear()`, pinned by a spec and an e2e `toBeFocused()` leg |
+| F-6 | review gate (CLAUDE.md pass, confirmed by the overlay pass as RV-FE-5) | **Major** — no keyboard path existed to place or adjust the pin (pointer click + pointer drag only), and the marker was a focusable `<button>` with no handler, announcing an action it could not perform. WCAG 2.1.1 is Level A; axe cannot see it | fixed — `MapHandle.view()` promoted to the seam, a *Place pin at map centre* button gives the keyboard twin, and the marker became a non-focusable `div role="img"` |
+| F-7 | review gate (bug scan, confirmed by the history pass) | **Major** — the marker mounts inside the surface both engines read clicks from, so a tap on the pin bubbled to the map-click handler and re-placed the venue at the pointer: up to ~6 km at the default zoom, then saved. The obvious "grab the pin" gesture corrupted the value | fixed — the marker stops click propagation; pinned by a mutation-probed spec and an e2e leg |
+| F-8 | review gate (comment pass, confirmed by the history pass) | **Major** — editing the pin after a save left the "Saved." banner and its live region asserting a pin the server had never seen, the exact "silent lost edit" the effect's own comment exists to prevent. `locationDraft` is a draft with no handler, and the effect tracked only `details()` | fixed — the effect tracks `locationDraft()` too; pinned by a mutation-probed spec |
+| F-9 | review gate (comment pass) | Comments my own change falsified: `moveMarker`'s rationale said `addMarker` "recreates the element" (the caller owns it), the fake's doc said it stamps *the host* (it stamps a surface inside it) and called itself in-memory (it now owns DOM), the contrast spec filed a 20 px normal-weight glyph as AA-large, `toProfileUpdate` claimed both writers call it (only one does), and a touched block still carried "widened from…" decision history | all six reworded |
+| F-10 | review gate (overlay pass, RV-PROC-2c counting sweep) | **Major** — ADR-0018 §3 says "Seven such mirrors exist" and enumerates them; `VenueLocation` cites §3 as its authority, making it an eighth the list did not know about. The docs-freshness sweep missed this one | fixed — count to eight, `VenueLocation` added, `Tier`'s "second published mirror" ordinal reworded |
+| F-11 | review gate (overlay pass, RV-PROC-2c) | `CONTEXT.md`'s **riviera map** entry placed the map on the Discover page only; the same component now also renders in the operator console | fixed |
+| F-12 | review gate (prior-PR pass) | `java.math.BigDecimal` inserted inside the `java.time` import run in `JdbcVenues` — the same slip a prior review caught one slice earlier in the sibling file | fixed |
+| F-13 | review gate (prior-PR pass) | `VenueLocationMigrationIT` asserted a table-wide count of pinned venues, which couples it to whatever sibling ITs leave in the shared container (`VenueAdminControllerIT` has no `@AfterEach` and leaves a pinned venue) | fixed — scoped to the seeded row, which is also the semantically correct subject |
+| F-14 | review gate (bug scan + history pass) | `syncPin` returned at the `moveMarker` branch before reading `pinDraggable()`, so the effect stopped tracking that input after the first add — latent today, a trap for #1101 | fixed — every input is read before the branch |
 | F-3 | docs-freshness | `riviera-frontend` SKILL and ADR-0022 both called the operator pin-drop a later slice; `playwright.a11y.config.ts` still said "three console tabs" after the fourth joined `CONSOLE_THEME_FILES`; `riviera-map.contrast.spec.ts`'s chrome enumeration and glyph sizes omitted the pin | fixed — commit *Fold in the docs-freshness patches* |
 | F-4 | docs-freshness (judgement calls, taken) | `CLAUDE.md`'s venue *Owns* cell and `domain-model.md`'s venue table omitted the new column pair; `VenueSummaryView`/`VenueMapView` documented every component except `location` | fixed — commit *Fold in the docs-freshness patches* |
 | F-2 | own generalization sweep off F-1 | the same insertion mechanism broke two more sites Sonar does not analyse: `fake-map-engine.ts` stacked two doc comments on `placeElement`, and `clampUnit` carried a doc describing a different function | fixed — commit *Reattach the doc comments my inserted helpers orphaned* |
@@ -365,6 +393,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `CLAUDE.md` — the `venue` module table's *Owns* cell names venue location
 - `docs/adr/ADR-0022-self-hosted-map-resources.md` — decision 2's "a later slice" is now shipped
 - `docs/architecture/domain-model.md` — the `venue` table block gains `latitude, longitude`
+- `docs/adr/ADR-0018-rule-layer-and-its-packaging.md` — §3's mirror count and enumeration (review finding F-10)
+- `CONTEXT.md` — the **riviera map** entry is no longer Discover-only (review finding F-11)
 - `.claude/skills/riviera-frontend/SKILL.md` — the map-engine seam's second consumer is no longer "later"
 - `frontend/src/app/shared/riviera-map.contrast.spec.ts` — the map-chrome enumeration and glyph sizes include the pin
 
