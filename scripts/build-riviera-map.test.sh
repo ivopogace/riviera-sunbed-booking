@@ -140,6 +140,25 @@ JSON
   rm -f "$input" "$output"
 }
 
+# The credit the tiles' licences require (OpenMapTiles CC-BY, OSM ODbL) — plain text, never a URL:
+# ADR-0022 treats any hostname in the shipped style as a Blocker.
+test_rewrite_style_credits_openmaptiles_and_osm() {
+  local input output credit="© OpenMapTiles © OpenStreetMap contributors"
+  input="$(mktemp)"; output="$(mktemp)"
+  printf '{ "sources": { "openmaptiles": { "type": "vector" } }, "layers": [] }\n' > "$input"
+
+  rewrite_style "$input" "$output" "pmtiles:///map/riviera.pmtiles" \
+    "/map/sprites/osm-liberty" "/map/glyphs/{fontstack}/{range}.pbf"
+
+  local read_attribution='const s=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); console.log(s.sources.openmaptiles.attribution)'
+  assert_eq "$credit" "$(node -e "$read_attribution" "$output")" \
+    "rewrite_style must credit OpenMapTiles and OpenStreetMap contributors"
+  assert_eq "$credit" "$(node -e "$read_attribution" "$REPO_ROOT/platform/map/style.json")" \
+    "the committed style must carry the credit rewrite_style writes — regenerate with --assets"
+
+  rm -f "$input" "$output"
+}
+
 # file:// URLs let fetch() run end-to-end (download + manifest-line decision) with no network —
 # curl needs an absolute path, and `pwd -W` gives one on Git Bash/MSYS where plain `pwd` doesn't.
 file_url() { # file_url <dir>
@@ -200,6 +219,7 @@ with_temp_manifest test_write_manifest_section_replaces_own_section_without_dupl
 with_temp_manifest test_manifest_section_absent_returns_empty
 with_temp_manifest test_write_manifest_section_refuses_a_headerless_legacy_manifest
 test_rewrite_style_preserves_map_paths
+test_rewrite_style_credits_openmaptiles_and_osm
 test_fetch_reuses_old_line_byte_for_byte_when_content_unchanged
 test_fetch_writes_a_fresh_line_when_content_drifted
 test_fetch_writes_a_fresh_line_when_theres_no_prior_entry

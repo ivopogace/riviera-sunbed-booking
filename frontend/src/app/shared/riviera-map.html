@@ -48,11 +48,20 @@
   </fieldset>
 }
 
-<!-- ODbL attribution, permanent: the pill outlives every map state. -->
+<!-- The tiles' licence credits (OpenMapTiles CC-BY, OSM ODbL) in every map state; 13 px radius: a full pill on one line, still rounded when it wraps. -->
 <p
   data-testid="map-attribution"
-  class="absolute right-3 bottom-3 z-10 rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill px-[10px] py-[4px] text-[12px] leading-[16px] text-riv-solid-btn-ink"
+  class="absolute right-3 bottom-3 z-10 max-w-[calc(100%-24px)] rounded-[13px] border border-riv-solid-btn-border bg-riv-solid-btn-fill px-[10px] py-[4px] text-[12px] leading-[16px] text-riv-solid-btn-ink"
 >
+  ©
+  <a
+    class="underline"
+    href="https://openmaptiles.org/"
+    target="_blank"
+    rel="noopener noreferrer"
+    data-touch-exempt="a link inside a sentence (WCAG 2.5.5 inline exception)"
+    >OpenMapTiles</a
+  >
   ©
   <a
     class="underline"

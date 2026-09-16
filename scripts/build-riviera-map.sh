@@ -159,6 +159,8 @@ rewrite_style() { # <input-style> <output-style> <source-url> <sprite> <glyphs>
 
   # Rewrite the style: the vector source becomes our archive, the raster hillshade (an external
   # host) and its layer go, and sprite + glyphs become /map/… paths. Layers are otherwise untouched.
+  # The source's attribution is the credit the tiles' licences require (OpenMapTiles CC-BY, OSM
+  # ODbL), as plain text — the map chrome renders it with the links, and no URL enters the style.
   node - "$input" "$output" "$params" <<'JS'
     const fs = require('node:fs');
     const [, , input, output, paramsPath] = process.argv;
@@ -168,7 +170,7 @@ rewrite_style() { # <input-style> <output-style> <source-url> <sprite> <glyphs>
     if (vector.length !== 1) throw new Error(`expected one vector source, found ${vector}`);
     const keep = vector[0];
     style.sources = {
-      [keep]: { type: 'vector', url: params.source, attribution: '© OpenStreetMap contributors' },
+      [keep]: { type: 'vector', url: params.source, attribution: '© OpenMapTiles © OpenStreetMap contributors' },
     };
     style.layers = style.layers.filter((l) => l.type === 'background' || l.source === keep);
     style.sprite = params.sprite;

@@ -37,8 +37,9 @@ type MapStatus = 'booting' | 'ready' | 'unavailable';
  * Renders whatever engine is provided (`MapEngine`) into its canvas host and owns the chrome
  * around it: a skip control for keyboard and screen-reader users (the map canvas is a focusable
  * pan-and-zoom surface, and the venue list stays the fully accessible path), labelled zoom
- * buttons at the touch-target floor, and the permanent "© OpenStreetMap contributors" attribution
- * (ODbL). Wears the theme-invariant solid-button skin: the imagery under it never themes.
+ * buttons at the touch-target floor, and the permanent "© OpenMapTiles © OpenStreetMap
+ * contributors" credit the tiles' licences require (CC-BY, ODbL). Wears the theme-invariant
+ * solid-button skin: the imagery under it never themes.
  *
  * <p>The host reports its state as `data-status` (`booting` → `ready` once the style has loaded,
  * or `unavailable` when the browser cannot render a map), which is what the e2e waits on. The

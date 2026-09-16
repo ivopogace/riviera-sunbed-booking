@@ -19,9 +19,8 @@ class NoWebGlEngine extends MapEngine {
 describe('RivieraMap', () => {
   let fake: FakeMapEngine;
 
-  async function render(
-    engine: MapEngine = new FakeMapEngine(),
-  ): Promise<ComponentFixture<RivieraMap>> {
+  /** First render only: the engine has not been asked yet, so the map is still booting. */
+  function mount(engine: MapEngine): ComponentFixture<RivieraMap> {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [RivieraMap],
@@ -29,6 +28,13 @@ describe('RivieraMap', () => {
     });
     const fixture = TestBed.createComponent(RivieraMap);
     fixture.detectChanges();
+    return fixture;
+  }
+
+  async function render(
+    engine: MapEngine = new FakeMapEngine(),
+  ): Promise<ComponentFixture<RivieraMap>> {
+    const fixture = mount(engine);
     await fixture.whenStable();
     fixture.detectChanges();
     return fixture;
@@ -40,6 +46,26 @@ describe('RivieraMap', () => {
 
   function byTestId(fixture: ComponentFixture<RivieraMap>, id: string): HTMLElement | null {
     return host(fixture).querySelector<HTMLElement>(`[data-testid="${id}"]`);
+  }
+
+  /**
+   * The credit the tiles' licences require (OpenMapTiles' CC-BY design licence, OSM's ODbL), in the
+   * order and with the links the OpenMapTiles licence gives as its example.
+   */
+  function expectCredit(attribution: HTMLElement | null): void {
+    expect(attribution?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      '© OpenMapTiles © OpenStreetMap contributors',
+    );
+    const links = [...(attribution?.querySelectorAll('a') ?? [])];
+    expect(links.map((a) => [a.textContent?.trim(), a.getAttribute('href')])).toEqual([
+      ['OpenMapTiles', 'https://openmaptiles.org/'],
+      ['OpenStreetMap', 'https://www.openstreetmap.org/copyright'],
+    ]);
+    for (const link of links) {
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toContain('noopener');
+      expect(link.hasAttribute('data-touch-exempt')).toBe(true);
+    }
   }
 
   beforeEach(() => {
@@ -93,15 +119,15 @@ describe('RivieraMap', () => {
     expect(handle.view().zoom).toBe(RIVIERA_MAP_OPTIONS.view.zoom + 1);
   });
 
-  it('always shows the OpenStreetMap attribution, as a link to the licence page', async () => {
-    const fixture = await render(fake);
-    const attribution = byTestId(fixture, 'map-attribution');
-    expect(attribution?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      '© OpenStreetMap contributors',
-    );
-    const link = attribution?.querySelector('a');
-    expect(link?.getAttribute('href')).toBe('https://www.openstreetmap.org/copyright');
-    expect(link?.getAttribute('rel')).toContain('noopener');
+  it('always credits OpenMapTiles and OpenStreetMap, each as a link to its licence page', async () => {
+    const booting = mount(new FakeMapEngine());
+    expect(host(booting).dataset['status']).toBe('booting');
+    expectCredit(byTestId(booting, 'map-attribution'));
+    booting.destroy();
+
+    const ready = await render(fake);
+    expect(host(ready).dataset['status']).toBe('ready');
+    expectCredit(byTestId(ready, 'map-attribution'));
   });
 
   it('destroys the engine handle with the component', async () => {
@@ -120,7 +146,7 @@ describe('RivieraMap', () => {
     expect(host(fixture).dataset['status']).toBe('unavailable');
     expect(byTestId(fixture, 'map-unavailable')?.textContent).toContain('list');
     expect(byTestId(fixture, 'map-zoom-in')).toBeNull();
-    expect(byTestId(fixture, 'map-attribution')).not.toBeNull();
+    expectCredit(byTestId(fixture, 'map-attribution'));
   });
 
   it('lets a keyboard user skip past the map', async () => {

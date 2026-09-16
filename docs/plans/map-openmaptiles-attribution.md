@@ -31,10 +31,10 @@ at close-out over the PR range — also retires the merged `msys-style-json-path
 `riviera-map-glyph-ranges` plans) · `grilling` (the two human decisions: OpenMapTiles is a link;
 the privacy policy is unchanged) · `riviera-frontend` (placement unchanged — `shared/riviera-map`,
 the mocked `frontend/e2e/` suite for the agreement lock) · `riviera-tailwind` (rule 4: both links
-keep the inline `data-touch-exempt`; the longer pill must still fit the 360 px phone) ·
+keep the inline `data-touch-exempt`; the longer pill wraps at 320 px, so it takes a both-sides inset and a 13 px radius that is still a full pill on one line) ·
 `angular-developer` + angular-cli MCP `get_best_practices` (template-only change; nothing to
-modernise in the touched block) · `playwright-cli` (the agreement e2e reads the committed style from
-disk through `support/map-resources.ts`) · `domain-modeling` (ADR-0022 corrected by amendment, no
+modernise in the touched block) · `playwright-cli` (the agreement e2e compares the pill with the style response the
+engine actually loaded, served from `platform/map/` by `support/map-resources.ts`) · `domain-modeling` (ADR-0022 corrected by amendment, no
 new ADR — not a new trade-off) · `riviera-local-debug` (Vitest + mocked e2e via
 `test:e2e:a11y` on Windows)
 
@@ -44,7 +44,7 @@ new ADR — not a new trade-off) · `riviera-local-debug` (Vitest + mocked e2e v
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the riviera map chrome in each state (booting, ready, unavailable), when it
+- [x] **AC-1:** Given the riviera map chrome in each state (booting, ready, unavailable), when it
   renders, then the attribution reads exactly "© OpenMapTiles © OpenStreetMap contributors", with
   "OpenMapTiles" linking to `https://openmaptiles.org/` and "OpenStreetMap" to
   `https://www.openstreetmap.org/copyright`, each opening in a new tab with `noopener` and carrying
@@ -52,11 +52,11 @@ new ADR — not a new trade-off) · `riviera-local-debug` (Vitest + mocked e2e v
   through the `MapEngine` DI token (fake / no-WebGL engines) · *Pinned by:*
   `riviera-map.spec.ts › always credits OpenMapTiles and OpenStreetMap, each as a link to its licence page`
   and `› tells a WebGL-less browser the list has every venue, and offers no zoom`.
-- [ ] **AC-2:** Given the committed `platform/map/style.json` served under `/map/**`, when the real
+- [x] **AC-2:** Given the committed `platform/map/style.json` served under `/map/**`, when the real
   MapLibre adapter renders Discover's map, then the pill's text equals the style's vector-source
-  `attribution` exactly. *Seam:* the served `/map/style.json` resource and the rendered chrome in a
+  `attribution` exactly (verified red against the pre-fix `style.json`). *Seam:* the served `/map/style.json` resource and the rendered chrome in a
   real browser · *Pinned by:* `discover-map.e2e.ts › Discover map — real engine › credits the tiles exactly as the committed style does`.
-- [ ] **AC-3:** Given an upstream style, when `rewrite_style` rewrites it, then the output's vector
+- [x] **AC-3:** Given an upstream style, when `rewrite_style` rewrites it, then the output's vector
   source carries `attribution: "© OpenMapTiles © OpenStreetMap contributors"`, identical to the
   committed style's — and re-running `scripts/build-riviera-map.sh --assets` changes nothing under
   `platform/map/` but that line. *Seam:* the sourced `rewrite_style` function · *Pinned by:*
@@ -65,13 +65,15 @@ new ADR — not a new trade-off) · `riviera-local-debug` (Vitest + mocked e2e v
 - [ ] **AC-4:** Given ADR-0022, when read, then decision 6 names both credits and both outbound
   links, marked amended, and the amendment log carries a #1106 entry. *Seam:* the ADR text ·
   *Pinned by:* review (`grep -n "OpenMapTiles" docs/adr/ADR-0022-self-hosted-map-resources.md`).
-- [ ] **AC-5:** Given the map open on Discover with the real adapter, when every request is
+- [x] **AC-5:** Given the map open on Discover with the real adapter, when every request is
   observed, then none leaves our origin. *Seam:* the page's network traffic · *Pinned by:* the
   existing `discover-map.e2e.ts › Discover map — real engine › the map open on Discover makes no request to a third party`.
-- [ ] **AC-6:** Given a 360 px phone with the map open, when the pill renders, then it sits wholly
-  inside the map's box, stays axe-clean, and passes the touch-target sweep. *Seam:* the rendered
-  chrome's bounding boxes · *Pinned by:* `discover-map.e2e.ts › Discover map — fake engine › map chrome is labelled, skippable and axe-clean; the switch alternates the panels on a phone`
-  (its viewport, tightened to assert containment) — contrast unchanged, `riviera-map.contrast.spec.ts`.
+- [x] **AC-6:** Given a 320 px phone with the map open, where the credit takes two lines, when the
+  pill renders, then it keeps its 12 px inset from the map's left, right and bottom edges; on a
+  390 px phone the map chrome stays axe-clean and passes the touch-target sweep. *Seam:* the
+  rendered chrome's bounding boxes · *Pinned by:* `discover-map.e2e.ts › Discover map — fake engine › keeps the credit inset inside the map on the narrowest phone, where it wraps`
+  and `› map chrome is labelled, skippable and axe-clean; the switch alternates the panels on a phone`
+  — contrast unchanged, `riviera-map.contrast.spec.ts`.
 
 ## Non-goals
 
@@ -89,9 +91,9 @@ N/A — new behavior, replaces nothing (the pill gains a credit; nothing is reti
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Re-running `--assets` pulls upstream `gh-pages` drift (OSM Liberty style/sprites, glyph ranges) into an attribution-only PR | low (regenerated 2026-09-16 by #1114) | med | inspect `git diff --stat platform/map`; any change beyond the attribution line → revert those files, record the drift, file a follow-up | Claude | open |
-| R-2 | The longer pill wraps or overflows the map on a narrow phone | med | low | measure at 360 px in the mocked e2e (AC-6); cap its width inside the map if needed | Claude | open |
-| R-3 | A URL pasted into `style.json`'s attribution trips the ADR-0022 review trap | low | high | the style carries plain text only; AC-3 pins the exact string | Claude | open |
+| R-1 | Re-running `--assets` pulls upstream `gh-pages` drift (OSM Liberty style/sprites, glyph ranges) into an attribution-only PR | low (regenerated by #1114) | med | inspect `git diff --stat platform/map`; any change beyond the attribution line → revert those files, record the drift, file a follow-up | Claude | closed — the run changed `style.json`'s attribution line only; MANIFEST, sprites and glyphs byte-identical (phase 1) |
+| R-2 | The longer pill wraps or overflows the map on a narrow phone | med | low | measured: one line from 360 px; at 320 px it wrapped flush with the map's left edge → `max-w-[calc(100%-24px)]` + `rounded-[13px]`, pinned by AC-6 | Claude | closed (phase 1) |
+| R-3 | A URL pasted into `style.json`'s attribution trips the ADR-0022 review trap | low | high | the style carries plain text only; AC-3 pins the exact string | Claude | closed — pinned by AC-3 (phase 1) |
 
 ## Open questions / Assumptions
 
@@ -134,13 +136,13 @@ N/A — no contract change (the style file is a static resource; its URL fields 
 
 ## Execution status
 
-**Stage pointer:** plan — doc written, awaiting commit
+**Stage pointer:** implement (phase 2)
 
-**Next action:** commit this plan, then phase 1 — write the red unit spec for AC-1.
+**Next action:** open the draft PR; then amend ADR-0022 decision 6 + its log (AC-4) and correct epic #806's spec.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 1 — the credit (chrome, style, script) test-first | | |
+| 1 — the credit (chrome, style, script) test-first | ✅ | this commit |
 | 2 — ADR-0022 amendment + doc comments + epic #806 spec | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -159,7 +161,6 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/riviera-map.ts` — the component doc comment's credit wording.
 - `frontend/src/app/shared/riviera-map.spec.ts` — AC-1.
 - `frontend/e2e/discover-map.e2e.ts` — AC-2 (new real-engine test), AC-6 (containment), exact text.
-- `frontend/e2e/support/map-resources.ts` — export the committed style's attribution for AC-2.
 - `scripts/build-riviera-map.sh` — `rewrite_style`'s attribution string.
 - `scripts/build-riviera-map.test.sh` — AC-3.
 - `platform/map/style.json` — regenerated: the vector source's attribution.
@@ -172,23 +173,23 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ## Phase 1 — the credit, test-first
 
 **Files:** Modify `riviera-map.html`, `riviera-map.spec.ts`, `discover-map.e2e.ts`,
-`support/map-resources.ts`, `build-riviera-map.sh`, `build-riviera-map.test.sh`,
+`riviera-map.ts`, `build-riviera-map.sh`, `build-riviera-map.test.sh`,
 `platform/map/style.json`
 
-- [ ] **Step 1:** AC-1 red — rewrite the unit test for the combined credit and both links; extend
+- [x] **Step 1:** AC-1 red — rewrite the unit test for the combined credit and both links; extend
   the no-WebGL test to assert the same text. `npx vitest run src/app/shared/riviera-map.spec.ts`
   (via `npm test -- --include`) → FAIL on the text.
-- [ ] **Step 2:** AC-3 red — `test_rewrite_style_credits_openmaptiles_and_osm` in the script test,
+- [x] **Step 2:** AC-3 red — `test_rewrite_style_credits_openmaptiles_and_osm` in the script test,
   asserting the exact string and equality with the committed style. `bash scripts/build-riviera-map.test.sh` → FAIL.
-- [ ] **Step 3:** AC-2 red — the real-engine e2e comparing the pill with the committed style's
+- [x] **Step 3:** AC-2 red — the real-engine e2e comparing the pill with the committed style's
   attribution; tighten the fake-engine phone test to the exact text + containment (AC-6).
   `npm run test:e2e:a11y -- discover-map` → FAIL.
-- [ ] **Step 4:** Green — the pill's copy and links; `rewrite_style`'s string; regenerate with
+- [x] **Step 4:** Green — the pill's copy and links; `rewrite_style`'s string; regenerate with
   `scripts/build-riviera-map.sh --assets` and check R-1 (`git diff --stat platform/map`).
-- [ ] **Step 5:** Re-run all three → PASS; `npm run lint`, `npm run format:check`, `npm run test:a11y`.
-- [ ] **Step 6:** Generalization-audit pass — population: every surface that states the map's
+- [x] **Step 5:** Re-run all three → PASS; `npm run lint`, `npm run format:check`, `npm run test:a11y`.
+- [x] **Step 6:** Generalization-audit pass — population: every surface that states the map's
   credit, enumerated by `git grep -n "OpenStreetMap contributors"`.
-- [ ] **Step 7:** Commit `Credit OpenMapTiles alongside OpenStreetMap on the riviera map (#1106)` +
+- [x] **Step 7:** Commit `Credit OpenMapTiles alongside OpenStreetMap on the riviera map (#1106)` +
   Execution status; open the draft PR.
 
 ## Phase 2 — the record
@@ -204,6 +205,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-16 | phase 1 | every tracked file that states the map's credit or its licence | `git grep -n "OpenStreetMap contributors|OpenStreetMap attribution|ODbL" -- ':!platform/map/style.json'` | pill, unit spec, e2e, component TSDoc, build script + test (all updated); ADR-0022 decision 6 | ADR → phase 2; epic #806's spec (GitHub, not tracked) → phase 2 |
 
 ---
 
