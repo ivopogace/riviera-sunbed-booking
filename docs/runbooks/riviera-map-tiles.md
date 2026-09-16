@@ -28,7 +28,8 @@ classpath — it is read by HTTP `Range`, and a deflated jar entry cannot seek.
 
 ## When to regenerate
 
-- Coastline or place-name changes worth showing (rare; a season at most).
+- Coastline or place-name changes worth showing — about once a year, before the season (the cadence
+  ADR-0022 decision 7 sizes the committed archive against).
 - A style, sprite or glyph change upstream that we want (check the MANIFEST diff).
 - A widening of the bounding box or of the glyph ranges (edit the pins in the script first).
 
@@ -71,19 +72,43 @@ the new range's `.pbf` files and their MANIFEST lines: `fetch()` reuses every un
 byte-for-byte (sha256 match against the old section), so a genuine upstream drift is the only
 other thing that can appear in the diff.
 
-Then verify and commit:
+Then verify:
 
 ```bash
-cd platform && ./gradlew test --tests "*MapStyleSelfHostedTest*" --tests "*MapResourcesTest*"
-cd .. && git add platform/map && git commit -m "Regenerate the riviera map resources"
+cd platform && ./gradlew test --tests "*MapStyleSelfHostedTest*" --tests "*MapResourcesTest*" \
+  --tests "*MapArchiveBudgetTest*"
 ```
 
-The first test parses the shipped style and fails on any absolute host — the review trap ADR-0022
-names. Eyeball the result too: `./gradlew bootRun` from `platform/`, open the Discover page, switch
+`MapStyleSelfHostedTest` parses the shipped style and fails on any absolute host — the review trap
+ADR-0022 names. `MapArchiveBudgetTest` fails when the archive is over 80 MB: that is ADR-0022
+decision 7's size trigger, so the remedy is revisiting the storage decision (its size levers come
+first), never raising the budget.
+
+Eyeball the result too: `./gradlew bootRun` from `platform/`, open the Discover page, switch
 to the map, pan to Himarë, Dhërmi and Ksamil. A missing glyph range does not draw blank boxes: MapLibre
 draws the character in a local font, and the tells are a `404` for `/map/glyphs/<stack>/<range>.pbf` and
 the console warning "Unable to load glyph range … Rendering codepoint … locally instead" — extend
 `GLYPH_RANGES` in the script and re-run `--assets`.
+
+Before committing a new archive (a `--tiles` or `--all` run), count the regenerations of the last
+12 months — decision 7's second trigger:
+
+```bash
+cd ..   # back to the repo root; the paths below are root-relative
+if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unshallow; fi
+git fetch origin main
+git log origin/main --since="12 months ago" --oneline -- platform/map/riviera.pmtiles
+```
+
+Two lines already means this regeneration would be the third in 12 months: stop and revisit
+ADR-0022's storage decision first. Otherwise commit:
+
+```bash
+git add platform/map && git commit -m "Regenerate the riviera map resources"
+```
+
+The push prints GitHub's GH001 large-file warning, because the archive is over 50 MiB. That is
+expected below GitHub's 100 MiB limit, not an error.
 
 ## Egress
 

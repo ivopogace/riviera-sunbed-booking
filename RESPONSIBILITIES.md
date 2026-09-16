@@ -1236,7 +1236,8 @@ CDN, glyph host or geocoder is ever contacted from a tourist's browser — the D
 records — and the shipped style is held to it by `MapStyleSelfHostedTest`, the real-engine e2e
 network guard being its second lock. The archive is a build-time artifact of
 `scripts/build-riviera-map.sh` from an OSM-derived source; regeneration is the runbook
-`docs/runbooks/riviera-map-tiles.md`, not automation.
+`docs/runbooks/riviera-map-tiles.md`, not automation. It is committed, not fetched at build, under
+the size trigger ADR-0022 decision 7 sets for revisiting that storage, held by `MapArchiveBudgetTest`.
 
 ## Invariants, long form
 
