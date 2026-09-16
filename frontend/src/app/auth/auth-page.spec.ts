@@ -184,11 +184,13 @@ describe('AuthPage', () => {
     });
   });
 
-  // The card resets three things when it changes shape, and the rule is asymmetric: error and the
-  // challenge solution go on EITHER a mode or an audience change, while the password goes only on
-  // an audience change, because carrying a credential across principal types is the security
-  // problem and a mode toggle is not. Both directions are pinned here — the negative leg
-  // ('keeps the password') is the one that must never regress.
+  /**
+   * The card resets three things when it changes shape, and the rule is asymmetric: `error` and the
+   * challenge solution go on EITHER a mode or an audience change, while the password goes only on
+   * an audience change — carrying a credential across principal types is the security problem, and
+   * a sign-in/register toggle is not that. Both directions are pinned here; the negative leg
+   * (`keeps the password`) is the one that must never regress.
+   */
   describe('resets what the card changed out from under', () => {
     it('keeps the password when only the mode changes', async () => {
       // The in-card toggle and a live mode nav are separate legs: only the former has a handler.
@@ -226,8 +228,7 @@ describe('AuthPage', () => {
     });
 
     it('keeps the error while neither mode nor audience changes', async () => {
-      // A render pass, and even a query-param nav, that leaves both sources equal must not reset:
-      // the card would otherwise swallow the failure the tourist is still reading.
+      // Leave both sources equal and the alert stays: the tourist is still reading it.
       await render();
       await failSignIn();
 
