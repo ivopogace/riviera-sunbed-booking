@@ -206,11 +206,24 @@ N/A — no contract change. No endpoint, DTO or client type is touched.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed; awaiting CI + Sonar on the fix push`
+**Stage pointer:** `DONE — CI green, review gate run and resolved, Sonar gate green with an
+empty list. Awaiting the maintainer's merge.`
 
-**Next action:** Confirm CI and the Sonar gate are green on the review-fix push; the PR is
-then the maintainer's to merge. Do not merge, and leave the Contribution-terms declaration
-to them.
+**Next action:** None for the agent. PR #1126 is the maintainer's to merge; the
+Contribution-terms declaration is theirs to make. On merge, the close-out's remaining items
+are GitHub-only: confirm #1125 closed, and retire this plan doc at the next close-out.
+
+**Gate evidence** (head `52e2efc4`): all 8 checks green. Sonar verified against the API
+rather than the badge — `new_lines` 87 (so the analysis read the diff and this is not one of
+the three false zeros), 0 open issues, 0 duplicated blocks, 0 new bugs/vulns/smells, 100%
+coverage on new code. Review gate: `code-review:code-review` rung 1 at high effort over
+`8f7c58ed..58a85ccd` with the overlay, 11 findings, 9 fixed in `52e2efc4`, 2 deferred to
+#1127/#1128.
+
+**Process note for the next slice:** the two follow-up issues were filed *after* the fix
+commit, so their numbers could not ride in it and this register needed a docs-only push to
+cite them — the one thing `pr-gates.md` §3 step 4 says to avoid. File deferred findings'
+issues *before* the last code-touching commit, not after.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -235,8 +248,8 @@ over `8f7c58ed..58a85ccd` with `riviera-review-overlay` layered on, six agents.
 | F-7 | review (agents 1, 4) | Four new doc comments were over §6d's ~3-line member budget and carried rejected-alternative archaeology ("rather than cleared by hand", "one mechanism rather than two"). | fixed-in-this-commit |
 | F-8 | review (agents 1, 4, overlay) | Three spec inline comments restated the assertions beneath them; two a11y file-header enumerations did not list the new case; one a11y title carried an issue number its twin did not. | fixed-in-this-commit |
 | F-9 | review (overlay, RV-PROC-1, Major) | `riviera-local-debug` was loaded and used but missing from *Skills consulted*. | fixed-in-this-commit |
-| F-10 | review (agent 3) | The tab-level invalid-link cards are unreachable while `operator-console.html` gates the outlet, and the new card's copy disagrees with the shell's ("Open the console from your venue list" vs "Venue not found … create a venue"). | deferred → follow-up issue (maintainer approved); the copy divergence is recorded there, not silently left |
-| F-11 | review (agent 5) | This PR's own new comment indicts `requests-tab`, which still shows "Refresh the page" for a bad link. | deferred → follow-up issue (maintainer approved) |
+| F-10 | review (agent 3) | The tab-level invalid-link cards are unreachable while `operator-console.html` gates the outlet, and the new card's copy disagrees with the shell's ("Open the console from your venue list" vs "Venue not found … create a venue"). | deferred → **#1127** (maintainer approved); the copy divergence is recorded there, not silently left |
+| F-11 | review (agent 5) | This PR's own new comment indicts `requests-tab`, which still shows "Refresh the page" for a bad link. | deferred → **#1128** (maintainer approved); closes with #1127 if that retires the pattern |
 
 ---
 
