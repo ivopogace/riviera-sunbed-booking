@@ -81,11 +81,13 @@ before this plan was written; where angular.dev is silent, the shipped runtime
   still reads `tourist-secret`. *Seam:* `[data-testid="auth-password"]` + `[data-testid="auth-toggle-mode"]`
   + `queryParamMap` · *Pinned by:* `auth-page.spec.ts` › `keeps the password when only the mode
   changes` **(new — this is the security asymmetry's negative leg, unpinned today)**.
-- [ ] **AC-4:** Given a card showing a sign-in failure in `[data-testid="auth-error"]`, when the mode
-  changes, and separately when the audience changes, then the error element is gone. *Seam:*
-  `[data-testid="auth-error"]` · *Pinned by:* `auth-page.spec.ts` › `drops a stale error when the
-  card changes mode or audience` **(new — the error reset is unpinned today; only the challenge
-  reset is covered)**.
+- [ ] **AC-4:** Given a card showing a sign-in failure in `[data-testid="auth-error"]`, when a live
+  nav changes the mode, and separately when the audience switches, then the error element is gone.
+  Both legs are chosen because neither has an explicit call site — `toggleMode()` clears the error
+  itself, so it would pass whatever the derivation did. *Seam:* `[data-testid="auth-error"]` ·
+  *Pinned by:* `auth-page.spec.ts` › `drops a stale error when a live nav changes the mode` and ›
+  `drops a stale error when the audience switches` **(new — the error reset is unpinned today;
+  only the challenge reset is covered)**.
 - [ ] **AC-5:** Given a card showing a sign-in failure, when a render pass happens with **no** change
   to mode or audience (a keystroke in the identifier field), then the error is still shown — no
   reset fires without a source change, matching today's early-return guard. *Seam:*
@@ -184,15 +186,16 @@ N/A — no contract change. The same `CustomerAuth`/`OperatorAuth` calls with th
 
 ## Execution status
 
-**Stage pointer:** `plan — doc written, awaiting phase 0`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** commit this plan doc, then open the draft PR so CI has a vehicle, then write the
-three new unit specs (AC-3, AC-4, AC-5) against the *current* effect implementation.
+**Next action:** replace `error`/`challengePayload`/`model` with the three `linkedSignal`s and
+delete the constructor `effect` and both `previous*` variables, then re-run
+`npx ng test --watch=false --include="src/app/auth/auth-page.spec.ts"` (50 specs, all must stay green).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — pin the reset legs with specs (AC-3, AC-4, AC-5) | | |
-| 1 — replace the effect with linkedSignals (AC-1, AC-2, AC-6) | | |
+| 0 — pin the reset legs with specs (AC-3, AC-4, AC-5) | ✅ | `b1600b70` |
+| 1 — replace the effect with linkedSignals (AC-1, AC-2, AC-6) | ⏳ | |
 | 2 — real-browser leg (AC-7) + generalization audit | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -223,13 +226,20 @@ so they must go **green against the unchanged component**. That is what makes th
 for phase 1 rather than a restatement of it. AC-3 is the one that matters most — the security
 asymmetry's negative leg.
 
-- [ ] **Step 1: Write the specs** (AC-3, AC-4, AC-5) using the file's existing helpers
+- [x] **Step 1: Write the specs** (AC-3, AC-4, AC-5) using the file's existing helpers
   (`render`, `type`, `el`, `chooseAudience`, `navigateQueryParams`, `submit`).
-- [ ] **Step 2: Run them against the unchanged component** —
-  `npm test -- --run src/app/auth/auth-page.spec.ts` → all PASS (characterization).
-  A failure here means the behaviour is not what the issue claims; stop and reconcile.
-- [ ] **Step 3: Commit** — `git commit -m "Pin the auth card's reset legs before deriving them (#1120)"`
-- [ ] **Step 4: Update plan-doc execution status** in the same commit window.
+- [x] **Step 2: Run them against the unchanged component** —
+  `npx ng test --watch=false --include="src/app/auth/auth-page.spec.ts"` → 50/50 PASS
+  (characterization; the bare `npx vitest` form fails on the jsdom environment — use `ng test`).
+- [x] **Step 2a: Mutation-check them, so a passing characterization spec is not a vacuous one.**
+  Two mutations of the *current* effect, each reverted after:
+  `if (audience !== previousAudience)` → `if (true)` fails **only** `keeps the password when only
+  the mode changes` (1 failed / 49 passed); deleting the effect's `this.error.set(undefined)`
+  fails **only** the two new error specs (2 failed / 48 passed) — no pre-existing spec notices,
+  which is the coverage gap this phase closes. AC-5's mutation needs the new source list and is
+  run in phase 1.
+- [x] **Step 3: Commit** — `Pin the auth card's reset legs before deriving them (#1120)`
+- [x] **Step 4: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Derive the resets, delete the effect
 

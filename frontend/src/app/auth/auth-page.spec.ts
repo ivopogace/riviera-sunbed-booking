@@ -129,6 +129,14 @@ describe('AuthPage', () => {
     await fixture.whenStable();
   }
 
+  /** Drive the sign-in card to a visible error, so a reset has something to clear. */
+  async function failSignIn(): Promise<void> {
+    customer.signIn.mockResolvedValue('invalid-credentials');
+    type('auth-identifier', 'ana@example.com');
+    type('auth-password', 'wrong');
+    await submit();
+  }
+
   describe('routes sign-in by audience', () => {
     it('signs a tourist in through CustomerAuth only', async () => {
       await render();
@@ -173,6 +181,63 @@ describe('AuthPage', () => {
 
       expect(el('auth-identifier-label').textContent).toContain('Username');
       expect(el('auth-contact-email')).not.toBeNull();
+    });
+  });
+
+  // The card resets three things when it changes shape, and the rule is asymmetric: error and the
+  // challenge solution go on EITHER a mode or an audience change, while the password goes only on
+  // an audience change, because carrying a credential across principal types is the security
+  // problem and a mode toggle is not. Both directions are pinned here — the negative leg
+  // ('keeps the password') is the one that must never regress.
+  describe('resets what the card changed out from under', () => {
+    it('keeps the password when only the mode changes', async () => {
+      // The in-card toggle and a live mode nav are separate legs: only the former has a handler.
+      await render();
+      type('auth-password', 'tourist-secret');
+
+      el('auth-toggle-mode').click();
+      await fixture.whenStable();
+      expect(el<HTMLInputElement>('auth-password').value).toBe('tourist-secret');
+
+      await navigateQueryParams({});
+      expect(el<HTMLInputElement>('auth-password').value).toBe('tourist-secret');
+    });
+
+    it('drops a stale error when a live nav changes the mode', async () => {
+      // No handler covers this leg — onSubmit set the error and the nav is what clears it.
+      await render();
+      await failSignIn();
+      expect(el('auth-error')).not.toBeNull();
+
+      await navigateQueryParams({ mode: 'register' });
+
+      expect(el('auth-error')).toBeNull();
+    });
+
+    it('drops a stale error when the audience switches', async () => {
+      // onAudienceChange deliberately has no error.set — the reset is derived, not hand-wired.
+      await render();
+      await failSignIn();
+      expect(el('auth-error')).not.toBeNull();
+
+      await chooseAudience('audience-operator');
+
+      expect(el('auth-error')).toBeNull();
+    });
+
+    it('keeps the error while neither mode nor audience changes', async () => {
+      // A render pass, and even a query-param nav, that leaves both sources equal must not reset:
+      // the card would otherwise swallow the failure the tourist is still reading.
+      await render();
+      await failSignIn();
+
+      type('auth-identifier', 'ana@example.com');
+      await fixture.whenStable();
+      expect(el('auth-error')).not.toBeNull();
+
+      await navigateQueryParams({ returnUrl: '/my-bookings' });
+
+      expect(el('auth-error')).not.toBeNull();
     });
   });
 
