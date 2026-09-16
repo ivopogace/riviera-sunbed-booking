@@ -30,7 +30,8 @@ weaker than a route gate, and that #1126's plan doc was never retired at close-o
 surfaced that the tabs' reset-on-invalid-param specs die while the valid→valid switch specs
 carry the behaviour) · `tdd` (each phase red-green at the seams named below) ·
 `riviera-review-overlay` (review gate — runs at ready-for-review) · `riviera-docs-freshness`
-(ran at phase 3 over `origin/main..HEAD` — see Execution status for findings) ·
+(**ran** at phase 3 over `24a48bd3..HEAD`, 5 findings, all patched — the counting sweep caught
+three in files this slice never touched) ·
 `riviera-frontend` (placement: the guard is cross-cutting → `core/`, the page is an operator
 surface → `operator/`, routes stay in the one `app.routes.ts`, literal above `:param`) ·
 `riviera-tailwind` (the new page re-uses the retiring card's exact utility classes, so the
@@ -84,7 +85,7 @@ branch stands in for `bugfix/venue-id-route-gate` (`riviera-sdlc` § Remote/clou
       spell. *Seam:* `shared/parent-venue-id.ts`'s `idParam` (and the route table above it) ·
       *Pinned by:* `parent-venue-id.spec.ts` › `returns undefined for the non-canonical segment %o`
       and `venue-id.guard.spec.ts` › `rejects the non-positive-integer :venueId %o`
-- [ ] **AC-8:** Given a real browser in the mocked suite, when it navigates to `/operator/abc`,
+- [x] **AC-8:** Given a real browser in the mocked suite, when it navigates to `/operator/abc`,
       then the venue-not-found card is visible and axe reports no serious violations.
       *Seam:* the running app at the route · *Pinned by:*
       `frontend/e2e/venue-id-route-gate.e2e.ts` › `a malformed venue id lands on the venue-not-found page`
@@ -123,20 +124,24 @@ branch stands in for `bugfix/venue-id-route-gate` (`riviera-sdlc` § Remote/clou
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Redirect loop: `venue-not-found` is itself a legal `:venueId` *segment*, so if the literal route were ordered below `operator/:venueId` the guard would redirect its own destination forever | med | high | Literal route placed above `operator/:venueId` (Angular's documented first-match-wins ordering, already the file's convention for `operator/register` and `operator`); AC-4 pins it by driving the real table | agent | open |
-| R-2 | The narrowed `parentVenueId` throws when a spec's stub parent route omits `venueId`, surfacing as an effect error rather than a readable assertion | med | med | The thrown message names the guard and the route contract; the only specs that pushed a malformed param are the ones this slice retires; all remaining tab specs supply `venueId` | agent | open |
-| R-3 | Narrowing too far — `app.ts` / `console-shell.ts` read `venueId` as legitimately `undefined` on plain and admin routes | low | high | Only `venueIdParam` + `parentVenueId` narrow; `idParam` and `routeIdParam` keep their nullable contract. `console-shell.spec.ts` and `app.spec.ts` stay untouched and green | agent | open |
-| R-4 | Guard order changes what a signed-out visitor sees at a dead link | low | low | Deliberate: `validVenueIdGuard` runs before `operatorSessionGuard`, so the visitor is sent to sign-in *for the page*, not back to a URL that can never work. Pinned by AC-5 | agent | open |
-| R-5 | In-flight collision with another branch | low | low | Only open PR is #1093 (dependabot, `frontend/package.json` + lockfile) — no overlap. No Flyway migration in this slice, so no `V<n>` to claim | agent | open |
-| R-6 | `canActivate` + `UrlTree` might not be the best mechanism (`canMatch` runs earlier, before the lazy chunk resolves) | low | low | Angular docs consulted: `CanMatch` false *skips* the route and needs a fallback config, which would require a `**` or a segment-consuming matcher (Non-goals). `canActivate` + `UrlTree` is the in-tree precedent (`core/operator-session.guard.ts`, "per the Angular router guide"). Recorded as the chosen trade-off, not an oversight | agent | open |
+| R-1 | Redirect loop: `venue-not-found` is itself a legal `:venueId` *segment*, so if the literal route were ordered below `operator/:venueId` the guard would redirect its own destination forever | med | high | Literal route placed above `operator/:venueId` (Angular's documented first-match-wins ordering, already the file's convention for `operator/register` and `operator`); AC-4 pins it by driving the real table | agent | closed — pinned by AC-4 |
+| R-2 | The narrowed `parentVenueId` throws when a spec's stub parent route omits `venueId`, surfacing as an effect error rather than a readable assertion | med | med | The thrown message names the guard and the route contract; the only specs that pushed a malformed param are the ones this slice retires; all remaining tab specs supply `venueId` | agent | closed — every remaining tab spec supplies `venueId`; the throw names the guard |
+| R-3 | Narrowing too far — `app.ts` / `console-shell.ts` read `venueId` as legitimately `undefined` on plain and admin routes | low | high | Only `venueIdParam` + `parentVenueId` narrow; `idParam` and `routeIdParam` keep their nullable contract. `console-shell.spec.ts` and `app.spec.ts` stay untouched and green | agent | closed — `idParam`/`routeIdParam` kept their nullable contract; `console-shell.spec.ts` and `app.spec.ts` green |
+| R-4 | Guard order changes what a signed-out visitor sees at a dead link | low | low | Deliberate: `venueIdGuard` runs before `operatorSessionGuard`, so the visitor is sent to sign-in *for the page*, not back to a URL that can never work. Pinned by AC-5 | agent | closed — intended behaviour, pinned by AC-5 |
+| R-5 | In-flight collision with another branch | low | low | Only open PR is #1093 (dependabot, `frontend/package.json` + lockfile) — no overlap. No Flyway migration in this slice, so no `V<n>` to claim | agent | closed — no overlap with #1093 |
+| R-6 | `canActivate` + `UrlTree` might not be the best mechanism (`canMatch` runs earlier, before the lazy chunk resolves) | low | low | Angular docs consulted: `CanMatch` false *skips* the route and needs a fallback config, which would require a `**` or a segment-consuming matcher (Non-goals). `canActivate` + `UrlTree` is the in-tree precedent (`core/operator-session.guard.ts`, "per the Angular router guide"). Recorded as the chosen trade-off, not an oversight | agent | closed — the trade-off is written up in ADR-0023 § *Considered options* |
 
 ## Open questions / Assumptions
 
-- **Assumption:** Deleting the six tab arms does not lose the venue-switch reset, because
-  valid→valid switch specs (`venueId: '2'`) already cover `resetForVenue` in every tab —
-  *Owner:* agent · *Resolves by:* phase 1 (AC-7 re-run).
+*(empty)*
 
 ### Resolved
+
+- **Assumption:** deleting the six tab arms does not lose the venue-switch reset. →
+  **Resolved in phase 1, partly wrong and corrected.** `resetForVenue` itself was covered by
+  existing `venueId: '2'` specs, but four announcer/notice invariants and two layout-draft
+  assertions had *no* valid-switch twin. Those six specs were converted rather than deleted;
+  only genuine duplicates were retired. The Behavior-parity ledger's row records the outcome.
 
 - **Open question:** #1127 offered only "keep + align copy" or "retire repo-wide". →
   **Resolved at the plan gate by the maintainer: neither — fix it at the route**, and fold
@@ -181,17 +186,17 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR — ready for review; the Review and Sonar gates are next`
 
-**Next action:** Phase 2, step 1 — the mocked e2e for `/operator/abc`, plus the new page's axe
-and contrast specs.
+**Next action:** Mark PR #1129 ready for review, then run the Review gate per
+`riviera-sdlc` `references/pr-gates.md` §1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The route gate (guard + page + wiring) | ✅ | see phase-0 commit |
 | 1 — Narrow the contract, delete the seven dead arms | ✅ | see phase-1 commit |
-| 2 — e2e + a11y/contrast for the new page | ⏳ | |
-| 3 — Close-out (ADR-0023, docs freshness, stale plan-doc retirement) | | |
+| 2 — e2e + a11y/contrast for the new page | ✅ | see phase-2/3 commit |
+| 3 — Close-out (ADR-0023, docs freshness, stale plan-doc retirement) | ✅ | see phase-2/3 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -207,8 +212,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## File structure
 
-- `docs/adr/ADR-0023-route-owns-venue-id-validity.md` — the decision: the route table, not a
-  component template, owns `:venueId` validity
+- `docs/adr/ADR-0023-route-owns-route-param-validity.md` — the decision: the route table, not a
+  component template, owns a route param's validity
 - `docs/plans/layout-editor-invalid-venue-reset.md` — **deleted**: #1126 merged, its plan doc
   was never retired at close-out (`riviera-docs-freshness` § Plan-doc retirement)
 - `.claude/skills/riviera-frontend/SKILL.md` — routing section gains the route-owns-param-validity rule
@@ -233,6 +238,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/parent-venue-id.ts|.spec.ts` — the console helpers narrow to `Signal<number>`
 - `frontend/src/app/shared/fixed-ink-tokens.contrast.spec.ts` — its positive-half sweep names the file that paints `--riv-console-card-border`, which the card took with it
 - `frontend/e2e/venue-id-route-gate.e2e.ts` — AC-8, the CI-safe mocked suite
+- `frontend/src/app/app.ts` — docs-freshness: "the two plain operator pages" is three
+- `frontend/src/app/console-shell.ts` — docs-freshness: the `plain` enumeration gains the new page
+- `frontend/src/app/operator/operator-venue-switch.ts` — docs-freshness: the same enumeration
+- `frontend/src/app/core/operator-session.guard.ts` — docs-freshness: the surfaces it gates
+- `frontend/src/app/operator/venue-not-found.contrast.spec.ts` — the card's contrast proofs, moved
+  wholesale from `operator-console.contrast.spec.ts` (every assertion in it was the card's)
 
 ---
 
@@ -286,11 +297,11 @@ deletion is phase 1, so a red phase 0 never leaves the tree without a fallback.
 **Files:** Create `frontend/e2e/venue-id-route-gate.e2e.ts`,
 `frontend/src/app/operator/venue-not-found.a11y.spec.ts|.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — the mocked e2e (AC-8) plus the axe and contrast specs.
-- [ ] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- venue-id-route-gate`.
-- [ ] **Step 3: Minimal implementation** — whatever the specs surface (likely nothing but copy/aria).
+- [x] **Step 1: Write the failing test** — the mocked e2e (AC-8) plus the axe and contrast specs.
+- [x] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- venue-id-route-gate`.
+- [x] **Step 3: Minimal implementation** — whatever the specs surface (likely nothing but copy/aria).
 - [x] **Step 4: Run it, verify it passes** — the same command, plus `npm run test:a11y`.
-- [ ] **Step 5: Generalization-audit pass** — population: *console surfaces reachable only by
+- [x] **Step 5: Generalization-audit pass** — population: *console surfaces reachable only by
       a malformed URL* (this slice's whole subject).
 - [ ] **Step 6: Commit** — `git commit -m "Cover the venue-not-found page end to end (#1127)"`
 - [ ] **Step 7: Update plan-doc execution status.**
@@ -302,13 +313,13 @@ deletion is phase 1, so a red phase 0 never leaves the tree without a fallback.
 **Files:** Create `docs/adr/ADR-0023-route-owns-venue-id-validity.md` · Modify
 `.claude/skills/riviera-frontend/SKILL.md` · Delete `docs/plans/layout-editor-invalid-venue-reset.md`
 
-- [ ] **Step 1:** Write ADR-0023 — hard to reverse (three merged slices built the retired
+- [x] **Step 1:** Write ADR-0023 — hard to reverse (three merged slices built the retired
       pattern), surprising (it deletes defence-in-depth), a real trade-off (per-component
       guarantee traded for one owner).
-- [ ] **Step 2:** Add the routing rule to `riviera-frontend`.
-- [ ] **Step 3:** Run `riviera-docs-freshness` over `origin/main..HEAD`.
-- [ ] **Step 4:** Delete #1126's stale plan doc (its close-out tick was missed).
-- [ ] **Step 5:** `node scripts/check-plan-file-structure.mjs --diff origin/main`.
+- [x] **Step 2:** Add the routing rule to `riviera-frontend`.
+- [x] **Step 3:** Run `riviera-docs-freshness` over `origin/main..HEAD`.
+- [x] **Step 4:** Delete #1126's stale plan doc (its close-out tick was missed).
+- [x] **Step 5:** `node scripts/check-plan-file-structure.mjs --diff origin/main`.
 - [ ] **Step 6: Commit** — the close-out lands in the PR's last code-touching commit.
 
 ---
@@ -318,6 +329,7 @@ deletion is phase 1, so a red phase 0 never leaves the tree without a fallback.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-16 | phase 0 | Every consumer of the route-param→id rule (mechanism: an id read out of a `ParamMap` through `shared/parent-venue-id.ts`) | `grep -rn "parentVenueId\|venueIdParam\|routeIdParam\|idParam" --include=*.ts frontend/src/app \| grep -v '\.spec\.ts'` | `operator/:venueId` (shell + 6 tabs), `venues/:id` (`venue/venue-map.ts`), `app.ts`'s root→leaf chrome walk, `console-shell.ts` | **Fixed the rule itself**, which reaches every member: `idParam` demanded only `Number.isInteger(…) && > 0`, so `7e2` read 700, `0x10` read 16 and `+7`/`7.0`/`007`/`' 7 '` all read 7 — each aliasing a venue under a URL that disagreed with it. It now demands a canonical decimal integer inside the safe-integer range. Route-gated `operator/:venueId` only: `venues/:id` has one owner and no duplicated arm to retire, and `app.ts`/`console-shell` read `undefined` legitimately on every route that names no venue |
+| 2026-09-16 | phase 3 | Every stated fact that enumerates or counts the routes carrying `data.console` (mechanism: prose listing the `plain` operator pages, which this slice made three) | `grep -rniE "four (operator\|console)\|three plain\|two plain" …` then `grep -rn "password page" …` over the substrate set + `frontend/src/app` | `app.ts:234`, `console-shell.ts:61`, `operator-venue-switch.ts:34`, `core/operator-session.guard.ts:8`, `.claude/skills/riviera-frontend/SKILL.md:93-101` | All five patched. Three sit in files the diff never touched, which is the sweep's whole point — reviewing changed files could not have found them |
 
 ---
 
@@ -326,7 +338,7 @@ deletion is phase 1, so a red phase 0 never leaves the tree without a fallback.
 - [ ] **AC-1…AC-5:** `npx vitest run src/app/core/venue-id.guard.spec.ts` → all pass.
 - [x] **AC-6:** `npx vitest run src/app/operator/venue-not-found.spec.ts` → pass.
 - [x] **AC-7:** `npx vitest run src/app/operator` → the `venueId: '2'` switch specs still pass.
-- [ ] **AC-8:** `npm run test:e2e:a11y -- venue-id-route-gate` → pass.
+- [x] **AC-8:** `npm run test:e2e:a11y -- venue-id-route-gate` → pass.
 
 ## Self-review checklist (before merge / PR)
 

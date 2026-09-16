@@ -31,7 +31,8 @@ const NAME = 'min-w-0 max-w-full truncate text-[17px] font-bold tracking-[-0.01e
  * (`/operator/7/daily` → `/operator/9/daily`, the router then reuses the console instance and its
  * reactive `venueId` reload does the rest), and ends in `Add another venue`; with exactly one venue
  * the name is plain text — a label, not a control. Off the console (no `venueId`: the `/admin`
- * tabs, the `/operator` landing, the password page) the slot reads `Your venues`: the same
+ * tabs, the `/operator` landing, the password page, the venue-not-found page) the slot reads
+ * `Your venues`: the same
  * disclosure for two or more venues, its rows linking to `/operator/<id>` (the console's index
  * redirect picks the tab), and a plain link to `/operator` otherwise — the landing forwards a
  * one-venue operator straight into the console. Signed out it renders nothing.

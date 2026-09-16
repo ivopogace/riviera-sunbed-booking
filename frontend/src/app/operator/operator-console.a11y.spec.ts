@@ -13,8 +13,9 @@ import { OperatorConsole } from './operator-console';
 /**
  * Automated axe-core audit of the venue console's page: the stats strip, the banner and the tab
  * outlet. The chrome around it is the console shell's (`console-shell.a11y.spec.ts`); sign-in
- * lives behind `operatorSessionGuard`, not here. Colour contrast is proven deterministically in
- * `operator-console.contrast.spec.ts` — axe cannot measure contrast under jsdom.
+ * lives behind `operatorSessionGuard`, not here, and a malformed `:venueId` behind `venueIdGuard`.
+ * The page paints no colour of its own: every surface it composes is proven in its own contrast
+ * spec, and axe cannot measure contrast under jsdom anyway.
  */
 const BASE = environment.apiBaseUrl;
 const VENUE = 1;

@@ -5,7 +5,8 @@ import { OperatorAuth } from './operator-auth';
 
 /**
  * Gate for every operator surface: `/operator` (incl. its create state),
- * `/operator/:venueId/**` and the operator password page. A signed-in operator passes; anyone else
+ * `/operator/:venueId/**`, the venue-not-found page and the operator password page. A signed-in
+ * operator passes; anyone else
  * is redirected to the unified auth page with the operator audience preselected and a `returnUrl`
  * back to where they were headed.
  *

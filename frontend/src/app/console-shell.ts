@@ -58,7 +58,8 @@ import { TouchTarget } from './shared/touch-target';
  * Which console section a route belongs to, carried as `data.console` on the route
  * (`app.routes.ts`) and read by the app shell on its root→leaf walk: `venue` is the venue
  * console (`/operator/:venueId/*`), `admin` the admin console (`/admin/*`), `plain` an operator
- * page with no rail (the `/operator` landing, the password page). Any value makes the app shell
+ * page with no rail (the `/operator` landing, the password page, the venue-not-found page). Any
+ * value makes the app shell
  * wear {@link ConsoleShell} instead of the tourist chrome and pin the subtree porcelain.
  */
 export type ConsoleSection = 'venue' | 'admin' | 'plain';
