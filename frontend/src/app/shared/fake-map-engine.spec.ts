@@ -74,6 +74,20 @@ describe('FakeMapEngine', () => {
     expect(handle.destroyed()).toBe(true);
   });
 
+  it('puts the marker element on its surface and takes it off again', async () => {
+    const host = document.createElement('div');
+    const handle = await new FakeMapEngine().create(host, OPTIONS);
+    const surface = host.querySelector<HTMLElement>('[data-testid="riviera-map-fake"]')!;
+    const element = document.createElement('button');
+
+    handle.addMarker({ id: 'pin', lngLat: { lng: 20, lat: 39.8 }, element });
+    expect(element.parentElement).toBe(surface);
+    expect(element.style.position).toBe('absolute');
+
+    handle.removeMarker('pin');
+    expect(element.parentElement).toBeNull();
+  });
+
   it('records whether a marker is draggable and moves one in place', async () => {
     const handle = await new FakeMapEngine().create(document.createElement('div'), OPTIONS);
     const element = document.createElement('button');

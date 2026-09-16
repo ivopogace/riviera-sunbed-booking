@@ -19,7 +19,7 @@ export class FakeMapHandle implements MapHandle {
 
   constructor(
     private readonly options: MapEngineOptions,
-    surface?: HTMLElement,
+    private readonly surface?: HTMLElement,
   ) {
     this.current = options.view;
     surface?.addEventListener('click', (event) => this.reportClick(event));
@@ -51,16 +51,21 @@ export class FakeMapHandle implements MapHandle {
 
   addMarker(marker: MapMarker): void {
     this.markerSet.set(marker.id, marker);
+    // A real engine puts the element on the map; so must this one, or nothing can see or measure it.
+    this.surface?.appendChild(marker.element);
+    this.placeElement(marker.element, marker.lngLat);
   }
 
   moveMarker(id: string, lngLat: LngLat): void {
     const marker = this.markerSet.get(id);
     if (marker) {
       this.markerSet.set(id, { ...marker, lngLat });
+      this.placeElement(marker.element, lngLat);
     }
   }
 
   removeMarker(id: string): void {
+    this.markerSet.get(id)?.element.remove();
     this.markerSet.delete(id);
   }
 
@@ -100,6 +105,8 @@ export class FakeMapHandle implements MapHandle {
 
   destroy(): void {
     this.isDestroyed = true;
+    this.markerSet.forEach((marker) => marker.element.remove());
+    this.markerSet.clear();
     // A queued load still holds its set, so the set itself is emptied, not just the map.
     this.listeners.forEach((set) => set.clear());
     this.listeners.clear();
@@ -112,6 +119,17 @@ export class FakeMapHandle implements MapHandle {
    * gesture. The position interpolates the click across `maxBounds`, clamped for a zero-sized box
    * (jsdom reports no layout), so it is deterministic and always inside the map.
    */
+  /** Absolutely positioned inside the surface, so a dropped pin is where it was clicked. */
+  private placeElement(element: HTMLElement, at: LngLat): void {
+    const [southWest, northEast] = this.options.maxBounds;
+    const acrossX = clampUnit((at.lng - southWest.lng) / (northEast.lng - southWest.lng));
+    const acrossY = clampUnit((northEast.lat - at.lat) / (northEast.lat - southWest.lat));
+    element.style.position = 'absolute';
+    element.style.left = `${acrossX * 100}%`;
+    element.style.top = `${acrossY * 100}%`;
+    element.style.transform = 'translate(-50%, -50%)';
+  }
+
   private reportClick(event: MouseEvent): void {
     if (this.isDestroyed) {
       return;
@@ -131,6 +149,7 @@ export class FakeMapHandle implements MapHandle {
   }
 }
 
+/** The inverse of {@link FakeMapHandle.reportClick}: a position back to a spot on the surface. */
 function clampUnit(value: number): number {
   return Math.min(1, Math.max(0, value));
 }

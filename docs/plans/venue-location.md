@@ -275,10 +275,10 @@ is an `<output aria-live="polite">` — the `layout-last-change` precedent.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 6)`
+**Stage pointer:** `implement (phase 7)`
 
-**Next action:** Phase 6 — the mocked Playwright e2e (`operator-venue-location.e2e.ts`),
-including the `console-dark` double opt-in (R-8).
+**Next action:** Phase 7 — `RESPONSIBILITIES.md` §`venue` gains the location contract, confirm
+`CONTEXT.md`'s entry, then the PR gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -288,7 +288,7 @@ including the `console-dark` double opt-in (R-8).
 | 3 — Map-engine seam: draggable marker, `moveMarker`, click + drag-end hooks | ✅ | this commit |
 | 4 — `RivieraMap` pin inputs/outputs | ✅ | this commit |
 | 5 — Operator pin placer + Venue-tab wiring + FE models | ✅ | this commit |
-| 6 — Mocked Playwright e2e (incl. `console-dark`) | | |
+| 6 — Mocked Playwright e2e (incl. `console-dark`) | ✅ | this commit — 638/638 mocked e2e green, 3215/3215 unit |
 | 7 — `RESPONSIBILITIES.md` location contract + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -337,8 +337,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/operator/venue-location-field.ts` — the pin placer (inline template; `.html` if it outgrows it)
 - `frontend/src/app/operator/venue-location-field.html` — only if the template outgrows inline
 - `frontend/src/app/operator/venue-location-field.spec.ts` — AC-10
-- `frontend/src/app/operator/venue-location-field.a11y.spec.ts` — axe over the placer
-- `frontend/src/app/operator/venue-location-field.contrast.spec.ts` — the three-theme contrast proof
+- (no `venue-location-field.a11y.spec.ts` / `.contrast.spec.ts`: the placer renders inside the Venue tab, whose own `venue-tab.a11y.spec.ts` and `venue-tab.contrast.spec.ts` audit it — the `booking-mode-field` / `booking-cutoff-field` precedent, both spec-only for the same reason; the e2e adds the themed paint and the 44 px measurement)
 - `frontend/src/app/operator/venue-tab.ts|.html` — hosts the placer inside the existing form + save
 - `frontend/src/app/operator/venue-tab.spec.ts` — AC-10 (the save leg)
 - `frontend/src/app/operator/venue-tab.a11y.spec.ts` — the widened tab stays axe-clean
@@ -827,6 +826,7 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-16 | phase 6 — the fake engine recorded markers but never rendered them, so the e2e could not see a dropped pin | every `MapHandle` member whose real adapter has a DOM side effect the fake omits (an in-memory-only fake passes a unit spec that asserts only its own recorder) | read `addMarker`/`moveMarker`/`removeMarker`/`destroy` in `maplibre-map-engine.ts` against their `fake-map-engine.ts` twins | 4 members: add (appends), move (repositions), remove (detaches), destroy (detaches all) | all four given the DOM effect and pinned by a unit assertion on `element.parentElement`, so the gap cannot reopen unseen |
 | 2026-09-16 | phase 5 — an invented `--riv-card-ink-muted` would have shipped unstyled ink | every `*-riv-*` Tailwind utility this diff adds (a utility naming an undeclared token compiles and paints nothing) | `git diff --cached origin/main -- 'frontend/src/**/*.{ts,html}' \| grep '^+' \| grep -oE '\b(bg\|text\|border\|outline\|shadow\|fill\|stroke\|ring\|from\|to\|via)-riv-[a-z0-9-]+'`, each checked against `--<token>:` in `tailwind.css` | 7 tokens across `riviera-map.ts` and `venue-location-field.ts` | the one miss fixed (`-muted` → `-soft`); the other six verified declared |
 | 2026-09-16 | phase 5 — `VenueTab` gained a child that injects `MapEngine` | every TestBed that mounts `VenueTab` (a new injection in a child breaks its parent's contexts, not its own spec) | `grep -rn "VenueTab" frontend/src --include=*.spec.ts -l` | `venue-tab.spec.ts`, `venue-tab.a11y.spec.ts`, `venue-tab.contrast.spec.ts`, `app.spec.ts` | the two constructing their own TestBed got the fake engine; the other two already resolve it and pass |
 | 2026-09-16 | phase 3 — the seam grew three members | every implementation of the `MapHandle` interface (a widened seam compiles in one adapter and not the other only until a consumer calls it) | `grep -rln "implements MapHandle" frontend/src frontend/e2e` | `maplibre-map-engine.ts`, `fake-map-engine.ts` | both implemented; the two `extends MapEngine` spec-local doubles (`riviera-map.spec.ts`, `riviera-map.a11y.spec.ts`) override `create` only and need no change |

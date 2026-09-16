@@ -39,6 +39,7 @@ const CONSOLE_THEME_FILES = [
   '**/operator-daily.e2e.ts',
   '**/operator-requests.e2e.ts',
   '**/layout-editor.e2e.ts',
+  '**/operator-venue-location.e2e.ts',
 ];
 
 /** The console's storage key, as `core/console-theme.ts` reads it. */
