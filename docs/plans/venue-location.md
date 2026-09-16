@@ -275,10 +275,11 @@ is an `<output aria-live="polite">` — the `layout-last-change` precedent.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** Phase 4 — give `RivieraMap` its pin inputs/outputs, red-first via
-`riviera-map.spec.ts`.
+**Next action:** Phase 5 — the operator pin placer (`venue-location-field`), the Venue-tab
+wiring and the FE models, red-first via `venue-location-field.spec.ts` and the
+`toProfileUpdate` guard (R-2).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -286,7 +287,7 @@ is an `<output aria-live="polite">` — the `layout-last-change` precedent.
 | 1 — `VenueLocation` + profile read/write (command, view, DTOs, `JdbcVenues`) | ✅ | this commit |
 | 2 — Tourist read models (`VenueSummaryView`, `VenueMapView`, `JdbcVenueCatalog`) | ✅ | this commit — structural net green |
 | 3 — Map-engine seam: draggable marker, `moveMarker`, click + drag-end hooks | ✅ | this commit |
-| 4 — `RivieraMap` pin inputs/outputs | | |
+| 4 — `RivieraMap` pin inputs/outputs | ✅ | this commit |
 | 5 — Operator pin placer + Venue-tab wiring + FE models | | |
 | 6 — Mocked Playwright e2e (incl. `console-dark`) | | |
 | 7 — `RESPONSIBILITIES.md` location contract + close-out | | |
