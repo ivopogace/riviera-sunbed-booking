@@ -191,6 +191,7 @@ classDiagram
         booking_cutoff, sales_close
         closed_at, reopen_on, advance_sales
         distance_to_water_m
+        latitude, longitude
         version
     }
     class venue_commission_rate {

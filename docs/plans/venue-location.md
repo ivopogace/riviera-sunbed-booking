@@ -30,7 +30,7 @@ is a seam *extension*; and that `toProfileUpdate` is a second writer to the prof
 `riviera-plan-doc` (this template — forced the module-ownership table, the seam per AC, and the
 behavior-parity ledger judgement) · `tdd` (every phase red-first at the seams named below) ·
 `riviera-review-overlay` (review gate — runs at ready-for-review) · `riviera-docs-freshness`
-(**ran** over `origin/main..HEAD` at close-out; findings recorded in Execution status) ·
+(**ran** over `origin/main..HEAD` — 5 staleness findings + 3 judgement calls, all patched in this PR) ·
 `riviera-local-debug` (JDK 25 at `/opt/jdk-25`, scoped `--tests` runs, `PW_CHROMIUM_EXECUTABLE`
 for the mocked e2e; unshallowed the clone before any history claim) · `postgres` (NUMERIC over
 float for an exact decimal-degree bound; `(a IS NULL) = (b IS NULL)` for both-or-neither, which is
@@ -308,6 +308,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | sonar | `java:S8491` MAJOR — dangling Javadoc at `JdbcVenueCatalog.java:275`: the new `locationOf` helper was inserted between `seasonClosureOf` and its doc comment | fixed — commit *Reattach the doc comments my inserted helpers orphaned* |
+| F-3 | docs-freshness | `riviera-frontend` SKILL and ADR-0022 both called the operator pin-drop a later slice; `playwright.a11y.config.ts` still said "three console tabs" after the fourth joined `CONSOLE_THEME_FILES`; `riviera-map.contrast.spec.ts`'s chrome enumeration and glyph sizes omitted the pin | fixed — commit *Fold in the docs-freshness patches* |
+| F-4 | docs-freshness (judgement calls, taken) | `CLAUDE.md`'s venue *Owns* cell and `domain-model.md`'s venue table omitted the new column pair; `VenueSummaryView`/`VenueMapView` documented every component except `location` | fixed — commit *Fold in the docs-freshness patches* |
 | F-2 | own generalization sweep off F-1 | the same insertion mechanism broke two more sites Sonar does not analyse: `fake-map-engine.ts` stacked two doc comments on `placeElement`, and `clampUnit` carried a doc describing a different function | fixed — commit *Reattach the doc comments my inserted helpers orphaned* |
 
 ---
@@ -356,7 +358,15 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/operator/operator-console.model.spec.ts` — AC-11 (new file if absent)
 - `frontend/e2e/operator-venue-location.e2e.ts` — AC-12
 - `frontend/e2e/support/operator-console.mocks.ts` — the shared console profile fixture gains `location`
-- `frontend/playwright.a11y.config.ts` — the new spec joins `CONSOLE_THEME_FILES`
+- `frontend/playwright.a11y.config.ts` — the new spec joins `CONSOLE_THEME_FILES` (and its "three console tabs" prose becomes four)
+
+**Docs-freshness patches** (the staleness the slice created, folded in here rather than a follow-up):
+
+- `CLAUDE.md` — the `venue` module table's *Owns* cell names venue location
+- `docs/adr/ADR-0022-self-hosted-map-resources.md` — decision 2's "a later slice" is now shipped
+- `docs/architecture/domain-model.md` — the `venue` table block gains `latitude, longitude`
+- `.claude/skills/riviera-frontend/SKILL.md` — the map-engine seam's second consumer is no longer "later"
+- `frontend/src/app/shared/riviera-map.contrast.spec.ts` — the map-chrome enumeration and glyph sizes include the pin
 
 ---
 

@@ -634,7 +634,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	}
 
 	/** A whole coordinate pair, or none: {@code venue_location_check} guarantees the two agree. */
-	static VenueLocation locationOf(BigDecimal latitude, BigDecimal longitude) {
+	private static VenueLocation locationOf(BigDecimal latitude, BigDecimal longitude) {
 		return latitude == null ? null : new VenueLocation(latitude, longitude);
 	}
 

@@ -3,11 +3,11 @@ import { SOLID_BTN_FILL, SOLID_BTN_HOVER, SOLID_BTN_INK } from '../../testing/gl
 
 /**
  * The map chrome — zoom buttons, the attribution pill, the unavailable notice, the revealed skip
- * control — floats over imagery of unknown luminance, so it wears the theme-invariant
- * `--riv-solid-btn-*` family: an opaque fill with a fixed ink, the same pair in every theme
- * (`booking/solid-btn-tokens.contrast.spec.ts` guards the invariance). This spec pins the pair at
- * the sizes the map paints: 12 px attribution and 14 px notice text at AA normal, the 22 px zoom
- * glyphs at AA large.
+ * control, the location pin — floats over imagery of unknown luminance, so it wears the
+ * theme-invariant `--riv-solid-btn-*` family: an opaque fill with a fixed ink, the same pair in
+ * every theme (`booking/solid-btn-tokens.contrast.spec.ts` guards the invariance). This spec pins
+ * the pair at the sizes the map paints: 12 px attribution and 14 px notice text at AA normal, the
+ * 22 px zoom glyphs and the 20 px pin glyph at AA large.
  */
 describe('riviera map chrome contrast', () => {
   const ink = rgbToHex(SOLID_BTN_INK);

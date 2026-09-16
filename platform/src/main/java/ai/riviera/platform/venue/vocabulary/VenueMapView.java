@@ -42,6 +42,8 @@ import java.util.List;
  * <p>{@code salesClose} is the venue's own sales-close setting as {@code HH:mm} — one of
  * {@code 00:01}, {@code 16:00}, {@code 23:59}. A display-copy key only: clients branch wording on
  * the value and never compare it with a clock; {@code salesOpen} stays the open/closed verdict.
+ *
+ * <p>{@code location} is the venue's riviera-map pin, or {@code null} when it has none.
  */
 public record VenueMapView(long id, String name, String beach, String region,
 		String description, int ratingTenths, int reviewsCount, String bookingMode,

@@ -101,7 +101,7 @@ tables, and the lifecycles are guarded SQL (ADR-0018).
 
 | Module | Owns | Tables it owns (sole writer) |
 |---|---|---|
-| `venue` | venue profile, beach map (sets, pools, positions), pricing, booking mode, sales-close setting, season closure, photos + moderation (ADR-0008/0013), commission-rate schedule | `venue`, `set_position`, `venue_amenity`, `venue_photo(_variant)`, `venue_commission_rate` |
+| `venue` | venue profile, beach map (sets, pools, positions), pricing, booking mode, sales-close setting, season closure, venue location (the riviera-map pin), photos + moderation (ADR-0008/0013), commission-rate schedule | `venue`, `set_position`, `venue_amenity`, `venue_photo(_variant)`, `venue_commission_rate` |
 | `availability` | the per-`(set, date)` source-of-truth state; the only writer of that table | `set_availability` |
 | `booking` | bookings and codes, the whole lifecycle and its sweeps, request accept/decline, cancellation policy, driving refunds via `payment.api.RefundPort`, the remodel's claim classification and its commit receipt | `booking`, `remodel_receipt(_move/_outcome)` |
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `payment`, `stripe_webhook_event` |

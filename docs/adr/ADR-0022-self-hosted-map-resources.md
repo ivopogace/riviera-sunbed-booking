@@ -43,7 +43,7 @@ a first load still fetches only the tiles in view — see the amendment log.)*
    tourist's browser**, and the engine is MapLibre GL (BSD, no telemetry, no token), bundled from
    npm, never a CDN.
 2. **No geocoding service, in either direction.** Venue positions are placed by hand on this same
-   map in the operator console (a later slice); no address is ever sent to a geocoder, and no
+   map in the operator console (shipped in #1099); no address is ever sent to a geocoder, and no
    visitor position is ever sent to us or to anyone (the "near me" control, also later, consumes
    the browser Geolocation API in the browser only).
 3. **The archive lives on the file system, not the classpath.** A jar entry is deflated, so a
