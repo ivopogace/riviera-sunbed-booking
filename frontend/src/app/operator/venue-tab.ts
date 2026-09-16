@@ -225,11 +225,17 @@ export class VenueTab {
   /** The riviera-map pin, edited beside the form and saved with it; `null` = not on the map. */
   protected readonly locationDraft = signal<VenueLocation | null>(null);
 
-  /** The save confirmation, derived so it can never outlive the drafts it asserts. A new draft
-   *  signal belongs in `source` — that list is the whole of the draft reset rule; `onSave`'s clear
-   *  covers the one case it cannot, a re-save with no edit in between. */
+  /** The save confirmation, derived so it can never outlive what it asserts — the drafts, and the
+   *  venue they were saved against. Every draft and venue-context input belongs in `source`; that
+   *  list is the whole reset rule, bar a re-save with no edit, which `onSave`'s clear covers. */
   protected readonly saved = linkedSignal({
-    source: () => [this.details(), this.locationDraft(), this.amenityDraft(), this.distanceDraft()],
+    source: () => [
+      this.venueId(),
+      this.details(),
+      this.locationDraft(),
+      this.amenityDraft(),
+      this.distanceDraft(),
+    ],
     computation: (): boolean => false,
   });
 

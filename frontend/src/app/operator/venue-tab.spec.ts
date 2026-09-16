@@ -459,6 +459,25 @@ describe('VenueTab (#177)', () => {
     fixture.detectChanges();
   });
 
+  it('empties the Saved announcer when the venue param goes invalid (#1122)', async () => {
+    render();
+
+    await save();
+    http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1')).flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const announce = byId('venue-saved-announce');
+    expect(announce.textContent).toContain('Saved.');
+
+    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    fixture.detectChanges();
+
+    expect(byId('venue-invalid')).toBeTruthy();
+    // Emptied, never unmounted: a live region must keep outliving the branch it describes.
+    expect(byId('venue-saved-announce')).toBe(announce);
+    expect(announce.textContent?.trim()).toBe('');
+  });
+
   it('shows a field-level distance error (not the generic message) for a bad metres value and sends no PATCH', async () => {
     render();
 

@@ -1,5 +1,13 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  linkedSignal,
+  signal,
+  untracked,
+} from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
@@ -70,8 +78,13 @@ export class PricingTab {
    *  go **`readonly`** — not `disabled`, which would blur the field the commit came from — and a
    *  `change` that slips through anyway is ignored. Why: RV-FE-9 in `riviera-review-overlay`. */
   protected readonly saving = signal(false);
-  /** The last row saved and the last per-row error — sequential edits, per-row so a fail is scoped. */
-  protected readonly savedRow = signal<string | null>(null);
+  /** The last row saved — sequential edits, per-row so a fail is scoped. Derived so it can never
+   *  outlive the venue it names: every venue-context change empties it, the invalid-param one
+   *  included, which loads nothing and so clears nothing of its own. */
+  protected readonly savedRow = linkedSignal({
+    source: this.venueId,
+    computation: (): string | null => null,
+  });
 
   /**
    * The reprice outcome as one sentence, or ''. One region serves the whole table rather than one
@@ -130,7 +143,6 @@ export class PricingTab {
     this.loaded.set(false);
     this.loadError.set(false);
     this.saving.set(false);
-    this.savedRow.set(null);
     this.errorRow.set(null);
     this.loadedSetVersion.set(null);
     this.staleConflict.set(false);

@@ -183,6 +183,26 @@ describe('PricingTab (#174)', () => {
     expect(byId('pricing-saved-B').getAttribute('aria-hidden')).toBe('true');
   });
 
+  it('empties the row-saved announcer when the venue param goes invalid (#1122)', async () => {
+    render();
+
+    editRow('A', '42.50');
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const announce = byId('pricing-saved-announce');
+    expect(announce.textContent).toContain('Row A');
+
+    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    fixture.detectChanges();
+
+    // Emptied, never unmounted: a live region must keep outliving the branch it describes.
+    expect(byId('pricing-saved-announce')).toBe(announce);
+    expect(announce.textContent?.trim()).toBe('');
+  });
+
   it('rounds a whole-euro edit to exact minor units', () => {
     render();
     editRow('B', '25');

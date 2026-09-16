@@ -6,6 +6,7 @@ import {
   computed,
   effect,
   inject,
+  linkedSignal,
   signal,
   untracked,
 } from '@angular/core';
@@ -95,8 +96,13 @@ export class RequestsTab {
   protected readonly loaded = signal(false);
   /** True when the queue read failed — shows an error, not a false empty state. */
   protected readonly loadError = signal(false);
-  /** A transient action notice (accept/decline outcome, or a non-race failure). */
-  protected readonly notice = signal<string | undefined>(undefined);
+  /** A transient action notice (accept/decline outcome, or a non-race failure). Derived so it can
+   *  never outlive the venue it reports on: every venue-context change empties it, the invalid-param
+   *  one included, which loads nothing and so clears nothing of its own. */
+  protected readonly notice = linkedSignal({
+    source: this.venueId,
+    computation: (): string | undefined => undefined,
+  });
 
   /** The in-flight skeleton's placeholder cards — a queue long enough to read as a list (#744). */
   protected readonly skeletonCards = [1, 2, 3] as const;
@@ -146,7 +152,6 @@ export class RequestsTab {
     this.requests.set([]);
     this.loaded.set(false);
     this.loadError.set(false);
-    this.notice.set(undefined);
     this.deciding.set(new Set());
     this.declineConfirm.set(new Set());
     this.expired.set(new Set());
