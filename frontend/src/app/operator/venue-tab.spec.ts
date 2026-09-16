@@ -423,6 +423,42 @@ describe('VenueTab (#177)', () => {
     expect(byId('venue-saved')).toBeFalsy();
   });
 
+  it('keeps the Saved notice when a distance input re-enters the same value (#1119)', async () => {
+    render(); // the fixture profile carries distanceToWaterM: 20
+
+    await save();
+    http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1')).flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('venue-saved')).toBeTruthy();
+
+    // A no-op edit leaves the draft equal to what was saved, so the notice is still true.
+    setValue('venue-distance', '20');
+
+    expect(byId('venue-saved')).toBeTruthy();
+  });
+
+  it('drops the Saved notice when the venue is switched in place (#1119)', async () => {
+    render();
+
+    await save();
+    http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1')).flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('venue-saved-announce').textContent).toContain('Saved.');
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    // Asserted on the announcer, which outlives the @if chain the banner is unmounted with.
+    expect(byId('venue-saved-announce').textContent?.trim()).toBe('');
+
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/profile'))
+      .flush({ ...PROFILE, name: 'Second Venue', version: 9 });
+    fixture.detectChanges();
+  });
+
   it('shows a field-level distance error (not the generic message) for a bad metres value and sends no PATCH', async () => {
     render();
 

@@ -213,6 +213,16 @@ test('pre-fills the form, saves the widened profile without commission/currency,
   expect(body.commissionBps).toBeUndefined();
   expect(body.payoutCurrency).toBeUndefined();
 
+  // The notice is derived from the drafts, so the two edited outside the Signal Form drop it too.
+  await page.getByTestId('amenity-toggle-RESTAURANT').click();
+  await expect(page.getByTestId('venue-saved')).toBeHidden();
+
+  // A second consecutive save rides the bumped version, then a distance edit drops the notice again.
+  await page.getByTestId('venue-save').click();
+  await expect(page.getByTestId('venue-saved')).toBeVisible();
+  await page.getByTestId('venue-distance').fill('35');
+  await expect(page.getByTestId('venue-saved')).toBeHidden();
+
   // The re-render AC: the tourist beach-map page now shows the edited name.
   await page.goto('/venues/1');
   await expect(page.getByText('Miramar Renamed').first()).toBeVisible();

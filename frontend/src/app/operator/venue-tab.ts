@@ -225,10 +225,9 @@ export class VenueTab {
   /** The riviera-map pin, edited beside the form and saved with it; `null` = not on the map. */
   protected readonly locationDraft = signal<VenueLocation | null>(null);
 
-  /** The save confirmation, derived from the drafts so it can never outlive the state it asserts:
-   *  editing any source below drops it, which is what stops a lingering notice reading as
-   *  already-persisted — a silent lost edit. A new draft signal belongs in `source`; that list is
-   *  the entire reset rule. `onSave`'s clear is the one deliberate action, not a derivation. */
+  /** The save confirmation, derived so it can never outlive the drafts it asserts. A new draft
+   *  signal belongs in `source` — that list is the whole of the draft reset rule; `onSave`'s clear
+   *  covers the one case it cannot, a re-save with no edit in between. */
   protected readonly saved = linkedSignal({
     source: () => [this.details(), this.locationDraft(), this.amenityDraft(), this.distanceDraft()],
     computation: (): boolean => false,
@@ -314,7 +313,7 @@ export class VenueTab {
     return amenityLabel(code);
   }
 
-  /** Flip an amenity in the working set (persisted only on Save); clears the stale saved notice. */
+  /** Flip an amenity in the working set (persisted only on Save). */
   protected onToggleAmenity(code: Amenity): void {
     this.amenityDraft.update((current) => {
       const next = new Set(current);
