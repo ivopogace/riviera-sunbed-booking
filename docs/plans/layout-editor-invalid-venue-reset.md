@@ -206,12 +206,22 @@ N/A — no contract change. No endpoint, DTO or client type is touched.
 
 ## Execution status
 
-**Stage pointer:** `DONE — CI green, review gate run and resolved, Sonar gate green with an
-empty list. Awaiting the maintainer's merge.`
+**Stage pointer:** `DONE — merged via PR #1126.` CI green, review gate run and resolved,
+Sonar gate green with an empty list.
 
-**Next action:** None for the agent. PR #1126 is the maintainer's to merge; the
-Contribution-terms declaration is theirs to make. On merge, the close-out's remaining items
-are GitHub-only: confirm #1125 closed, and retire this plan doc at the next close-out.
+**Next action:** None. Merged via PR #1126 on the maintainer's instruction; the
+Contribution-terms declaration stayed theirs. Remaining close-out items are GitHub-only:
+confirm #1125 closed, and retire this plan doc at the next close-out
+(`riviera-docs-freshness` § *Plan-doc retirement*).
+
+**Docs-freshness (close-out step 5): N/A, checked rather than assumed.** The slice retired
+no name — `clearRenameNotices`, `resetForVenue`, `loadFailed`, `savedNotice`, `renamedRow`
+and `rowNameError` all still exist, appearing on `-` lines only because the template move
+shifted them — and a grep of the whole substrate set (`.claude/skills`, `CLAUDE.md`,
+`frontend/.claude/CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, `docs/adr`, `docs/agents`)
+for those names and for the two components returns nothing. The counting sweep is N/A too:
+no doc counts the venue-scoped `linkedSignal` notices, so making `rowNameError` the third
+falsifies no "the two …" claim.
 
 **Gate evidence** (head `52e2efc4`): all 8 checks green. Sonar verified against the API
 rather than the badge — `new_lines` 87 (so the analysis read the diff and this is not one of
@@ -372,20 +382,20 @@ observable difference. AC-4 pins the behaviour, which is what it can honestly pi
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking path.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A, no time arithmetic.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** per `riviera-sdlc` `references/pr-gates.md` §1 plus `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking path.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A, no time arithmetic.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** per `riviera-sdlc` `references/pr-gates.md` §1 plus `riviera-review-overlay`.
