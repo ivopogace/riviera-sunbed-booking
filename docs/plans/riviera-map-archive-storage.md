@@ -78,7 +78,7 @@ N/A — new behavior, replaces nothing.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The budget test passes vacuously (wrong working directory, archive absent) | low | med | assert existence first; red proof with the budget lowered below the real size | Claude | open |
+| R-1 | The budget test passes vacuously (wrong working directory, archive absent) | low | med | assert existence first; red proof with the budget lowered below the real size | Claude | closed — red run failed on the size assertion (line 26), not on existence |
 | R-2 | The ADR states the Render-LFS behaviour as verified fact when it rests on a feature-tracker thread | med | low | phrase it as evidence with its source; the LFS rejection rests on the bandwidth arithmetic and production not being on Render, not on that claim | Claude | open |
 | R-3 | The count trigger under-counts on a shallow clone (cloud sessions) | med | low | runbook step unshallows first, as `riviera-local-debug` § *Git in a cloud session* prescribes | Claude | open |
 | R-4 | A future "fix" raises the budget constant instead of revisiting the decision | low | med | the test's Javadoc and failure message name ADR-0022 and say the budget is the ADR's trigger, not a tunable | Claude | open |
@@ -144,15 +144,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** write `MapArchiveBudgetTest`, run it red with the budget lowered, then green at 80 MB.
+**Next action:** amend ADR-0022 (storage clause, triggers, size levers, re-weighed options, amendment log), then the runbook and the RESPONSIBILITIES clause.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc + draft PR | ✅ | |
-| 1 — archive size-budget test | ⏳ | |
-| 2 — ADR-0022 amendment + runbook + RESPONSIBILITIES pointer | | |
+| 0 — plan doc + draft PR (#1117) | ✅ | `822f3e77` |
+| 1 — archive size-budget test | ✅ | this commit — red at a 60,000,000-byte budget (`…60364946 bytes, over the 60000000-byte budget: revisit ADR-0022…`), green at 80,000,000 with `MapStyleSelfHostedTest` + `MapResources*` (10 tests, 0 skipped) |
+| 2 — ADR-0022 amendment + runbook + RESPONSIBILITIES pointer | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
