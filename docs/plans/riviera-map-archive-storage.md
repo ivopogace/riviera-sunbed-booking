@@ -26,7 +26,7 @@ ADR-0022 premises: the repo is public, and Render's own feature tracker indicate
 likely go private) · `riviera-plan-doc` (this template — forced the budget test's red proof and the
 empty Open-questions register) · `tdd` (budget test run red with the budget lowered below the
 current archive size before being set to the trigger) · `riviera-review-overlay` (review gate —
-at ready-for-review) · `riviera-docs-freshness` (**ran** over `db4480d3..955bfc0c`, 2 in-range findings + 2 pre-existing stale lines + 1 ordering slip, all fixed in this PR — F-1..F-5) · `grilling` (three
+ran at ready-for-review over `db4480d3..2a929b1e`: RV-PROC-1/2, RV-STYLE-1/2, RV-BE-11/12 ✅, 0 findings) · `riviera-docs-freshness` (**ran** over `db4480d3..955bfc0c`, 2 in-range findings + 2 pre-existing stale lines + 1 ordering slip, all fixed in this PR — F-1..F-5; the review overlay's RV-PROC-2 (c) re-walked the retired names over the fixed tree, clean) · `grilling` (three
 AskUserQuestion rounds: cadence, visibility, storage, triggers, enforcement, inland zoom, unused
 layers) · `riviera-java-conventions` (JUnit 5 plain assertions matching `MapStyleSelfHostedTest`,
 named constants for the path and budget, one-line comments) · `riviera-modulith` (test lives with
@@ -40,13 +40,13 @@ re-weighed options)
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the committed archive `platform/map/riviera.pmtiles`, when the backend test
+- [x] **AC-1:** Given the committed archive `platform/map/riviera.pmtiles`, when the backend test
   suite runs, then it passes while the archive is at most 80,000,000 bytes and fails with a message
   naming ADR-0022's size trigger when it is larger (or missing). *Seam:* the committed file under
   `riviera.map.dir` (`platform/map/`) that the image copies and `MapResourcesConfig` serves ·
   *Pinned by:* `MapArchiveBudgetTest.committedArchiveStaysUnderTheRevisitBudget` (red proof: budget
   temporarily set to 60,000,000 → FAIL with the ADR-naming message).
-- [ ] **AC-2:** Given ADR-0022, when a reader asks how the archive is stored and when that is
+- [x] **AC-2:** Given ADR-0022, when a reader asks how the archive is stored and when that is
   reconsidered, then the ADR states: committed storage kept, sized against a yearly regeneration
   cadence; the three revisit triggers (archive over 80 MB, more than 2 regenerations in any
   12 months, the production deploy pipeline being chosen); the measured size levers in order
@@ -54,7 +54,7 @@ re-weighed options)
   48.80 MB or 30.96 MB); and re-weighed rejections of a release asset, Git LFS and split archives
   whose reasons match today's facts. *Seam:* `docs/adr/ADR-0022-self-hosted-map-resources.md` ·
   *Pinned by:* review gate + `riviera-docs-freshness` (doc AC — no executable seam).
-- [ ] **AC-3:** Given an operator regenerating per the runbook, when they reach the commit step,
+- [x] **AC-3:** Given an operator regenerating per the runbook, when they reach the commit step,
   then the runbook has them count the archive's commits on `origin/main` in the last 12 months
   (unshallowing first) and revisit ADR-0022 before committing if two already exist; it names the
   size-budget test in the verify command and says GitHub's GH001 large-file warning is expected
@@ -144,15 +144,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** CI gate (phase 2 pushed) → then merge `origin/main`, mark ready for review
+**Stage pointer:** DONE — all gates cleared; merged via PR #1117
 
-**Next action:** confirm the phase-2 push's CI run is green, merge latest `origin/main`, mark PR #1117 ready for review, run the review gate (`references/pr-gates.md` §1).
+**Next action:** none in the repo — merge close-out GitHub steps only (issue #1109 closes via the PR; epic #806 carries no checklist line for it). Retire this plan at the next close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR (#1117) | ✅ | `822f3e77` |
-| 1 — archive size-budget test | ✅ | this commit — red at a 60,000,000-byte budget (`…60364946 bytes, over the 60000000-byte budget: revisit ADR-0022…`), green at 80,000,000 with `MapStyleSelfHostedTest` + `MapResources*` (10 tests, 0 skipped) |
-| 2 — ADR-0022 amendment + runbook + RESPONSIBILITIES pointer | ✅ | this commit — decision 7 (storage, triggers, measured levers), re-weighed release-asset / LFS / split options, amendment log; runbook cadence, budget test, count step, GH001 note; RESPONSIBILITIES clause. Guards: plan-file-structure + inline-comments exit 0 |
+| 1 — archive size-budget test | ✅ | `fb63d745` — red at a 60,000,000-byte budget (`…60364946 bytes, over the 60000000-byte budget: revisit ADR-0022…`), green at 80,000,000 with `MapStyleSelfHostedTest` + `MapResources*` (10 tests, 0 skipped) |
+| 2 — ADR-0022 amendment + runbook + RESPONSIBILITIES pointer | ✅ | `955bfc0c` — decision 7 (storage, triggers, measured levers), re-weighed release-asset / LFS / split options, amendment log; runbook cadence, budget test, count step, GH001 note; RESPONSIBILITIES clause. Guards: plan-file-structure + inline-comments exit 0; CI 8/8 green |
+| 3 — docs-freshness fixes (F-1..F-5) + retire the #1106 plan | ✅ | `2a929b1e` — CI 8/8 green |
+| 4 — review gate, Sonar gate, close-out | ✅ | review: 0 findings; Sonar: did not apply (below); close-out in this PR's final commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -165,6 +167,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | docs-freshness (pre-existing) | ADR-0022 review trap: "the runbook says it in bold" — the runbook's rule is not bold | fixed — "the runbook repeats it" |
 | F-4 | docs-freshness (pre-existing) | `docs/architecture/multi-night-stays.md` "Proposed as ADR-0022" — the number went to the map ADR | fixed — "a new ADR (numbered when written)" |
 | F-5 | docs-freshness | runbook: the "Eyeball the result" paragraph landed after the commit step and joined an unwrapped line | fixed — moved back before the count step |
+
+**Review gate:** `Skill(code-review:code-review)` (rung 1), medium effort — a docs + one-test slice touching no invariant — over `db4480d3..2a929b1e` (7 files, +407/−258, verified by `check-review-range.mjs`): eligibility/CLAUDE.md/summary preflight, five reviewers (CLAUDE.md compliance, bug scan, git history, prior-PR comments, code-comment compliance) plus the `riviera-review-overlay` walk. Zero issues from all six, so nothing reached scoring and no PR comment was posted (the command's step 6).
+
+**Sonar gate:** did not apply. Every changed path lies outside `sonar.sources` (`platform/src/test/java/**`, `docs/**`, `RESPONSIBILITIES.md`); the analysis on `2a929b1e` concluded `success` with 0 issues and no `new_lines`, `new_coverage` or duplication measure — an unanalysed diff, not a clean one.
 
 ---
 
@@ -184,7 +190,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `platform/src/test/java/ai/riviera/platform/MapArchiveBudgetTest.java`
 
-- [ ] **Step 1: Write the test with the budget below the current archive (red proof)**
+- [x] **Step 1: Write the test with the budget below the current archive (red proof)**
 
 ```java
 package ai.riviera.platform;
@@ -218,24 +224,24 @@ class MapArchiveBudgetTest {
 }
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*MapArchiveBudgetTest*"` → FAIL
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*MapArchiveBudgetTest*"` → FAIL
   with `the riviera map archive is 60364946 bytes, over the 60000000-byte budget: revisit ADR-0022…`
 
-- [ ] **Step 3: Set the budget to the ADR's trigger** — `REVISIT_BUDGET_BYTES = 80_000_000L`.
+- [x] **Step 3: Set the budget to the ADR's trigger** — `REVISIT_BUDGET_BYTES = 80_000_000L`.
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*MapArchiveBudgetTest*" --tests "*MapStyleSelfHostedTest*" --tests "*MapResources*"` → PASS
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*MapArchiveBudgetTest*" --tests "*MapStyleSelfHostedTest*" --tests "*MapResources*"` → PASS
 
-- [ ] **Step 5: Generalization-audit pass** — N/A: a new fitness check, not a bug fix.
+- [x] **Step 5: Generalization-audit pass** — N/A: a new fitness check, not a bug fix.
 
-- [ ] **Step 6: Commit** — `git commit -m "Hold the riviera map archive to ADR-0022's 80 MB revisit budget (#1109)"`
+- [x] **Step 6: Commit** — `git commit -m "Hold the riviera map archive to ADR-0022's 80 MB revisit budget (#1109)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 2 — ADR-0022 amendment, runbook, RESPONSIBILITIES
 
 **Files:** Modify `docs/adr/ADR-0022-self-hosted-map-resources.md` · `docs/runbooks/riviera-map-tiles.md` · `RESPONSIBILITIES.md`
 
-- [ ] **Step 1: ADR-0022** — Decision 4 gains the storage clause (committed, yearly cadence, the
+- [x] **Step 1: ADR-0022** — decision 7 added (appended, so decision 5's cited number holds) for the storage clause (committed, yearly cadence, the
   three triggers, the budget test); a *Size levers* list with the measured sizes; *Considered
   options* re-weighs the release asset (no token while public, `ADD --checksum` makes absence loud;
   costs a build-time hop, a local fetch step, a token once private), Git LFS (bandwidth at the
@@ -243,14 +249,14 @@ class MapArchiveBudgetTest {
   cannot hold z14 on the coast only — MapLibre draws a missing in-range tile blank — so two sources
   and a duplicated style); the Consequences growth bullet points at the triggers; amendment-log
   entry for #1109.
-- [ ] **Step 2: Runbook** — verify command gains `*MapArchiveBudgetTest*`; a pre-commit step counts
+- [x] **Step 2: Runbook** — verify command gains `*MapArchiveBudgetTest*`; a pre-commit step counts
   `git log origin/main --since="12 months ago" -- platform/map/riviera.pmtiles` after unshallowing,
   and stops to revisit ADR-0022 at two; the GH001 note.
-- [ ] **Step 3: RESPONSIBILITIES.md** — one clause: the archive is committed within ADR-0022's size
+- [x] **Step 3: RESPONSIBILITIES.md** — one clause: the archive is committed within ADR-0022's size
   budget, held by `MapArchiveBudgetTest`.
-- [ ] **Step 4: Verify** — `node scripts/check-plan-file-structure.mjs --diff origin/main`;
+- [x] **Step 4: Verify** — `node scripts/check-plan-file-structure.mjs --diff origin/main`;
   `node scripts/check-inline-comments.mjs --diff origin/main`; the backend `ResponsibilitiesArchitectureTests` if it parses test names.
-- [ ] **Step 5: Commit + update Execution status.**
+- [x] **Step 5: Commit + update Execution status.**
 
 ---
 
@@ -263,26 +269,26 @@ class MapArchiveBudgetTest {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `./gradlew test --tests "*MapArchiveBudgetTest*"` → PASS at 80 MB budget; FAIL at 60 MB budget. Verified at commit `<sha>`.
-- [ ] **AC-2:** ADR-0022 diff reviewed at the review gate. Verified at commit `<sha>`.
-- [ ] **AC-3:** Runbook diff reviewed at the review gate. Verified at commit `<sha>`.
+- [x] **AC-1:** Run `./gradlew test --tests "*MapArchiveBudgetTest*"` → PASS at 80 MB budget; FAIL at 60 MB budget. Verified at commit `fb63d745` (locally, both directions) and by CI on `2a929b1e`.
+- [x] **AC-2:** ADR-0022 diff reviewed at the review gate (numbers cross-checked against the archive's 60,364,946 bytes). Verified at commit `2a929b1e`.
+- [x] **AC-3:** Runbook diff reviewed at the review gate; the count command run from the repo root returns one line (`34c69cb0`). Verified at commit `2a929b1e`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #1117`, and no docs-only commit follows it. *Deviation:* the slice's only code commit is `fb63d745`; the close-out rides the final docs commit after the review gate, costing one extra CI cycle — no post-merge PR follows.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
