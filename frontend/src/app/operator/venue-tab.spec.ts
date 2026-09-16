@@ -394,6 +394,35 @@ describe('VenueTab (#177)', () => {
     expect(host.querySelector('[data-testid="venue-saved"]')).toBeNull();
   });
 
+  it('drops the stale Saved notice when an amenity is toggled after a save (#1119)', async () => {
+    render();
+
+    await save();
+    http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1')).flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('venue-saved')).toBeTruthy();
+
+    byId('amenity-toggle-RESTAURANT').click();
+    fixture.detectChanges();
+
+    expect(byId('venue-saved')).toBeFalsy();
+  });
+
+  it('drops the stale Saved notice when the distance is edited after a save (#1119)', async () => {
+    render();
+
+    await save();
+    http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1')).flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('venue-saved')).toBeTruthy();
+
+    setValue('venue-distance', '35');
+
+    expect(byId('venue-saved')).toBeFalsy();
+  });
+
   it('shows a field-level distance error (not the generic message) for a bad metres value and sends no PATCH', async () => {
     render();
 

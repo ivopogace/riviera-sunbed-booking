@@ -177,16 +177,16 @@ untouched.
 
 ## Execution status
 
-**Stage pointer:** `plan — committing the plan doc`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** phase 0 — add the two characterization specs (AC-1, AC-2) and prove they
-pass on the *unrefactored* component, then revert-check that each fails when its manual
-`saved.set(false)` is removed without the `linkedSignal`.
+**Next action:** phase 1 — replace `saved` with a `linkedSignal` over the four drafts and
+delete the reset `effect` plus the three redundant `saved.set(false)` sites; the phase-0 net
+must stay green, R-1's canaries included.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — characterization specs for the two uncovered reset paths | | |
-| 1 — `linkedSignal` replaces the effect + the three redundant clears | | |
+| 0 — characterization specs for the two uncovered reset paths | ✅ | phase-0 commit |
+| 1 — `linkedSignal` replaces the effect + the three redundant clears | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -212,20 +212,25 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Test `frontend/src/app/operator/venue-tab.spec.ts`
 
-- [ ] **Step 1: Write the tests** — two cases beside the existing `#1099` pin, at the same
+- [x] **Step 1: Write the tests** — two cases beside the existing `#1099` pin, at the same
   seam (rendered DOM, `venue-saved`), following that spec's save-then-edit shape.
 
-- [ ] **Step 2: Run them** — `npm test -- venue-tab` → **PASS** on the unrefactored
-  component. That is the point: they characterize behavior that the manual
-  `saved.set(false)` calls provide today, so phase 1 has a net before it removes them.
+- [x] **Step 2: Run them** — `npm test -- --include="src/app/operator/venue-tab.spec.ts"` →
+  **41 passed** on the unrefactored component. That is the point: they characterize behavior
+  the manual `saved.set(false)` calls provide today, so phase 1 has a net before it removes
+  them. (The documented `npm test` goes through the Angular builder; invoking `vitest` against
+  `vitest-base.config.ts` directly fails with a JIT/`@angular/compiler` error — the builder is
+  what AOT-compiles the specs.)
 
-- [ ] **Step 3: Prove they are meaningful (revert-check, not committed)** — delete
-  `onToggleAmenity`'s `this.saved.set(false)`, re-run → AC-1's case FAILS; restore. Same for
-  `onDistanceInput` / AC-2. A characterization test that cannot fail is not a net.
+- [x] **Step 3: Prove they are meaningful (revert-check, not committed)** — with
+  `onToggleAmenity`'s and `onDistanceInput`'s `this.saved.set(false)` deleted, the run was
+  **2 failed | 39 passed**, and the two failures were exactly the two new cases. That also
+  confirms the issue's gap analysis: nothing else in the suite covered those two reset paths.
+  Both lines restored before committing.
 
-- [ ] **Step 4: Commit** — `git commit -m "Pin the amenity + distance Saved-notice resets before deriving them (#1119)"`
+- [x] **Step 4: Commit** — `git commit -m "Pin the amenity + distance Saved-notice resets before deriving them (#1119)"`
 
-- [ ] **Step 5: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Update plan-doc execution status** in the same commit window.
 
 ---
 
