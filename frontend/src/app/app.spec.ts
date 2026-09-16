@@ -1249,7 +1249,7 @@ describe('app.routes chrome flags (issue #134)', () => {
    * three plain operator pages — the `/operator` picker, the password page, which used to wear
    * the tourist chrome ("Sign in / Register" while signed in as an operator) or none at all, and
    * the venue-not-found page. That page is deliberately `plain`, not `venue`: it names no venue,
-   * so the venue rail would render tab links with nothing to interpolate (#1127).
+   * so the venue rail would render tab links with nothing to interpolate.
    */
   const CONSOLE_SECTIONS = [
     ['operator/:venueId', 'venue'],

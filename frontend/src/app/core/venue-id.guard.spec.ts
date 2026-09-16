@@ -63,8 +63,7 @@ describe('venueIdGuard — the route owns :venueId validity (#1127)', () => {
     expect(router.url).toBe('/operator/venue-not-found');
   });
 
-  // idParam's rule, at the route: anything that is not a positive integer names no venue. A tab
-  // is named on each so the child's activation is covered too, not just the shell's.
+  // A tab is named on each, so the child's activation is covered too — not just the shell's.
   it.each(['0', '-3', '1.5', 'not-a-venue', '7e2', ' ', 'NaN'])(
     'rejects the non-positive-integer :venueId %o',
     async (venueId) => {
@@ -85,8 +84,7 @@ describe('venueIdGuard — the route owns :venueId validity (#1127)', () => {
   });
 
   it('does not redirect its own destination', async () => {
-    // 'venue-not-found' is itself a legal :venueId segment. Were the literal route ordered below
-    // the param route, the guard would answer this navigation with the same redirect, forever.
+    // 'venue-not-found' is a legal :venueId segment: ordered below the param route, this loops.
     const router = configure();
 
     await router.navigateByUrl('/operator/venue-not-found');

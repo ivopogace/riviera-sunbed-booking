@@ -18,8 +18,7 @@ describe('VenueNotFound', () => {
   }
 
   it('offers the venue list and create-a-venue', () => {
-    // #1127: the shell's copy sent the operator to create a venue, the tabs' to their venue list.
-    // One surface owns the answer now, so it offers both rather than picking a side.
+    // The retired copies disagreed — create a venue vs. the venue list — so one surface offers both.
     const host = render();
 
     expect(byId(host, 'oc-invalid-venue').textContent?.trim()).toBe('Venue not found');

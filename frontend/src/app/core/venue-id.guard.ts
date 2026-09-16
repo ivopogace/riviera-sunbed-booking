@@ -11,8 +11,8 @@ export const VENUE_NOT_FOUND_PATH = 'operator/venue-not-found';
  * redirected to the venue-not-found page — so no console component ever sees an id it cannot use.
  *
  * <p>It applies {@link idParam}, the same rule the console's own signals apply, at the only place
- * that can act on the answer. Before #1127 the shell's template owned the answer and its six tabs
- * each carried their own unreachable copy of it; the route owns it now (ADR-0023).
+ * that can act on the answer: the route owns `:venueId` validity, not a component template
+ * (ADR-0023).
  *
  * <p>Ordered BEFORE `operatorSessionGuard` on the route: the segment is malformed whoever is
  * asking, so a signed-out visitor is sent to sign in for the page rather than for a link that can

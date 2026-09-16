@@ -7,7 +7,7 @@ import { RouterLink } from '@angular/router';
  * <p>`core/venue-id.guard.ts` redirects every malformed `/operator/:venueId` here. The card is the
  * console shell's retired invalid-venue arm verbatim — same utilities, same test ids, so the
  * surface did not change, only where it lives — and it offers BOTH destinations the shell's copy
- * and the tabs' copy disagreed about before #1127 (ADR-0023).
+ * and the retired tab copies disagreed about (ADR-0023).
  */
 @Component({
   selector: 'app-venue-not-found',

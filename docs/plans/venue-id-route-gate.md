@@ -73,7 +73,7 @@ branch stands in for `bugfix/venue-id-route-gate` (`riviera-sdlc` § Remote/clou
       about — the venue list (`/operator`) and create-a-venue (`/operator?create=1`).
       *Seam:* the rendered `/operator/venue-not-found` route ·
       *Pinned by:* `venue-not-found.spec.ts` › `offers the venue list and create-a-venue`
-- [ ] **AC-7:** Given a console tab on `/operator/7/pricing`, when the parent param changes in
+- [x] **AC-7:** Given a console tab on `/operator/7/pricing`, when the parent param changes in
       place to a *valid* `8`, then the tab still resets and reloads for venue 8 — the
       behaviour #1122/#1125 built survives the deletion of the invalid arms.
       *Seam:* the tab's parent `ActivatedRoute.paramMap` ·
@@ -114,7 +114,7 @@ branch stands in for `bugfix/venue-id-route-gate` (`riviera-sdlc` § Remote/clou
 | Card link `create a venue` → `/operator?create=1` | preserved | Verbatim on the new page (AC-6) |
 | Tabs' copy `Open the console from your venue list.` (venue/pricing/layout) | changed | Merged into the one page, which now links to the venue list **and** create-a-venue — this is #1127's copy disagreement resolved by giving both destinations one owner |
 | `requests`/`payouts`/`daily-view` `markInvalid()` → the load-error card (`Refresh the page…`) | dropped | #1128's defect. The state cannot occur: the guard redirects before any tab activates |
-| Tabs reset their venue-scoped state when the param goes invalid in place (#1122, #1125) | dropped | A valid→invalid in-place change now redirects and destroys the console, so no tab observes it. Reset on a valid→valid switch is untouched and stays covered (AC-7) |
+| Tabs reset their venue-scoped state when the param goes invalid in place (#1122, #1125) | changed | The *trigger* is gone — a valid→invalid change now redirects, so no tab observes it — but the *behaviour* (drop the venue-scoped state, empty the live region, never unmount it) is unchanged and re-pinned on a valid→valid switch. Four specs whose invariant had no valid-switch twin were **converted** (`venue-tab` Saved announcer, `pricing-tab` row-saved announcer, `requests-tab` decision notice, `layout-editor` layout-saved announcer + draft clearing + row-name write error); five that duplicated an existing valid-switch spec or drove the deleted card were retired |
 | Shell renders no `router-outlet` on a bad id (`operator-console.spec.ts` › `#170 review finding 1`) | changed | Stronger: the console is never activated at all. Re-pinned by `venue-id.guard.spec.ts` (AC-1) |
 | No venue reads fire on a bad id | preserved | The console never activates, so no read can be issued; asserted in the guard spec |
 | Bad id showed the **venue** console chrome (a rail whose tab links interpolated `undefined`) | changed → **fixed** | The new route carries `data: { console: 'plain' }`, so the page wears the section row with no venue rail |
@@ -181,16 +181,16 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1, step 1 — pin the narrowed `parentVenueId` contract red, then delete
-the shell's invalid arm and the six tab arms.
+**Next action:** Phase 2, step 1 — the mocked e2e for `/operator/abc`, plus the new page's axe
+and contrast specs.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The route gate (guard + page + wiring) | ✅ | see phase-0 commit |
-| 1 — Narrow the contract, delete the seven dead arms | ⏳ | |
-| 2 — e2e + a11y/contrast for the new page | | |
+| 1 — Narrow the contract, delete the seven dead arms | ✅ | see phase-1 commit |
+| 2 — e2e + a11y/contrast for the new page | ⏳ | |
 | 3 — Close-out (ADR-0023, docs freshness, stale plan-doc retirement) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -200,6 +200,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | — | — | none yet | — |
+| 2026-09-16 | phase 1 | Every spec whose only trigger for a behaviour was an invalid venue param (mechanism: a spec pushing a non-venue segment into the stub parent route) | `grep -n "it(" frontend/src/app/operator/*.spec.ts \| grep -iE "invalid\|no venue id"` | 12 specs across `venue-tab`, `pricing-tab`, `layout-editor`, `requests-tab`, `operator-console` and the two `*.a11y.spec.ts` | Judged one at a time against whether a valid→valid twin already pinned the same invariant: **converted 6** (the four announcer/notice specs, the layout draft-clearing, the row-name write-error A→B→A), **retired 6** (the three invalid-card renders, the two invalid-card axe runs, and three exact duplicates of an existing `venueId: '2'` spec). No invariant lost its only cover |
+| 2026-09-16 | phase 1 | Every drift sweep naming a file by path because of what it paints (mechanism: a spec asserting a token family at a literal source path) | `npm test` — the sweep failed on its own positive half, which is what named it | `shared/fixed-ink-tokens.contrast.spec.ts`'s `SITES` | Re-pointed at `operator/venue-not-found.ts`: the `--riv-console-card-border` family moved with the card. The spec's own comment says the positive half exists so a mistyped path cannot pass vacuously — it worked |
 
 ---
 
@@ -229,6 +231,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/payouts-tab.ts|.spec.ts` — `markInvalid()` retires
 - `frontend/src/app/operator/daily-view-tab.ts|.spec.ts` — `markInvalid()` retires
 - `frontend/src/app/shared/parent-venue-id.ts|.spec.ts` — the console helpers narrow to `Signal<number>`
+- `frontend/src/app/shared/fixed-ink-tokens.contrast.spec.ts` — its positive-half sweep names the file that paints `--riv-console-card-border`, which the card took with it
 - `frontend/e2e/venue-id-route-gate.e2e.ts` — AC-8, the CI-safe mocked suite
 
 ---
@@ -264,14 +267,14 @@ deletion is phase 1, so a red phase 0 never leaves the tree without a fallback.
 `…/{venue-tab,pricing-tab,layout-editor}.ts|.html|.spec.ts|.a11y.spec.ts`,
 `…/{requests-tab,payouts-tab,daily-view-tab}.ts|.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — `parent-venue-id.spec.ts` pins the narrowed
+- [x] **Step 1: Write the failing test** — `parent-venue-id.spec.ts` pins the narrowed
       contract (a malformed param throws, naming the guard).
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/shared/parent-venue-id.spec.ts`.
-- [ ] **Step 3: Minimal implementation** — narrow the two console helpers; delete the shell
+- [x] **Step 2: Run it, verify it fails** — `npx vitest run src/app/shared/parent-venue-id.spec.ts`.
+- [x] **Step 3: Minimal implementation** — narrow the two console helpers; delete the shell
       arm, the three tab cards, the three `markInvalid()`s and the `=== undefined` guards;
       retire the specs the ledger marks dropped.
-- [ ] **Step 4: Run it, verify it passes** — `npx vitest run src/app/shared src/app/operator`.
-- [ ] **Step 5: Generalization-audit pass** — population: *every signal helper whose
+- [x] **Step 4: Run it, verify it passes** — `npx vitest run src/app/shared src/app/operator`.
+- [x] **Step 5: Generalization-audit pass** — population: *every signal helper whose
       `undefined` branch exists only for a state a route guard now prevents*.
 - [ ] **Step 6: Commit** — `git commit -m "Let the console assume a valid venue id (#1127, #1128)"`
 - [ ] **Step 7: Update plan-doc execution status.**
@@ -322,7 +325,7 @@ deletion is phase 1, so a red phase 0 never leaves the tree without a fallback.
 
 - [ ] **AC-1…AC-5:** `npx vitest run src/app/core/venue-id.guard.spec.ts` → all pass.
 - [x] **AC-6:** `npx vitest run src/app/operator/venue-not-found.spec.ts` → pass.
-- [ ] **AC-7:** `npx vitest run src/app/operator` → the `venueId: '2'` switch specs still pass.
+- [x] **AC-7:** `npx vitest run src/app/operator` → the `venueId: '2'` switch specs still pass.
 - [ ] **AC-8:** `npm run test:e2e:a11y -- venue-id-route-gate` → pass.
 
 ## Self-review checklist (before merge / PR)

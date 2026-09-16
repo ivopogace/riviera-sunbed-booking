@@ -24,24 +24,40 @@ export function routeIdParam(
 }
 
 /**
- * {@link routeIdParam} for the operator console's `:venueId`. The console page reads its OWN
- * route (the console shell takes the id from the app shell's route walk, {@link idParam}); console
- * tab child routes read the PARENT route via {@link parentVenueId} — child routes do not inherit
- * the param under the router's default `emptyOnly` strategy.
+ * {@link routeIdParam} for the operator console's `:venueId`, **required**. The console page reads
+ * its OWN route; console tab child routes read the PARENT route via {@link parentVenueId} — child
+ * routes do not inherit the param under the router's default `emptyOnly` strategy. (The app shell
+ * takes the id off its route walk with {@link idParam}, which stays optional: most routes name no
+ * venue.)
+ *
+ * <p>Required because the route decides: `venueIdGuard` (`core/venue-id.guard.ts`) redirects a
+ * malformed `/operator/:venueId` to the venue-not-found page before anything under it activates.
+ * A console component reading no valid id is therefore a routing bug — it throws, rather than
+ * returning `undefined` for an arm no operator can reach (ADR-0023).
  */
-export function venueIdParam(route: ActivatedRoute | null): Signal<number | undefined> {
-  return routeIdParam(route, 'venueId');
+export function venueIdParam(route: ActivatedRoute | null): Signal<number> {
+  const id = routeIdParam(route, 'venueId');
+  return computed(() => {
+    const venueId = id();
+    if (venueId === undefined) {
+      throw new Error(
+        'No valid :venueId on the route. venueIdGuard redirects a malformed one to the ' +
+          'venue-not-found page, so a console component never mounts without one.',
+      );
+    }
+    return venueId;
+  });
 }
 
 /** {@link venueIdParam} against the parent route — the console-tab case. */
-export function parentVenueId(route: ActivatedRoute): Signal<number | undefined> {
+export function parentVenueId(route: ActivatedRoute): Signal<number> {
   return venueIdParam(route.parent);
 }
 
 /**
  * A canonical decimal positive integer, and nothing else. `Number()` alone is far wider than a
  * URL segment naming a venue: it reads `7e2` as 700, `0x10` as 16, and `+7` / `7.0` / `007` /
- * `' 7 '` all as 7 — each aliasing a venue under a URL that disagrees with it (#1127).
+ * `' 7 '` all as 7 — each aliasing a venue under a URL that disagrees with it.
  */
 const CANONICAL_ID = /^[1-9][0-9]*$/;
 

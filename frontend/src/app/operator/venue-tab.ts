@@ -282,7 +282,7 @@ export class VenueTab {
     // Re-runs on an in-place venue switch: reset the form + flags, then load the new venue.
     effect(() => {
       const id = this.venueId();
-      untracked(() => (id === undefined ? this.loaded.set(true) : this.resetForVenue(id)));
+      untracked(() => this.resetForVenue(id));
     });
   }
 
@@ -345,7 +345,7 @@ export class VenueTab {
    */
   protected onSave(): void {
     const venueId = this.venueId();
-    if (venueId === undefined || this.saving()) {
+    if (this.saving()) {
       return;
     }
     this.saved.set(false);
@@ -500,7 +500,7 @@ export class VenueTab {
    */
   protected onConfirmSeasonClose(): void {
     const venueId = this.venueId();
-    if (venueId === undefined || this.seasonBusy()) {
+    if (this.seasonBusy()) {
       return;
     }
     const model = this.seasonModel();
@@ -541,7 +541,7 @@ export class VenueTab {
   /** Reopen by hand: clears the closure; the card returns to open with the close trigger focused. */
   protected onReopen(): void {
     const venueId = this.venueId();
-    if (venueId === undefined || this.seasonBusy()) {
+    if (this.seasonBusy()) {
       return;
     }
     const epoch = this.epoch;
@@ -607,7 +607,7 @@ export class VenueTab {
     const file = input.files?.[0];
     input.value = ''; // re-picking the same file later must re-fire (change)
     const venueId = this.venueId();
-    if (!file || venueId === undefined || this.slotUi()[slot].busy) {
+    if (!file || this.slotUi()[slot].busy) {
       return;
     }
     const epoch = this.epoch;
@@ -635,7 +635,7 @@ export class VenueTab {
   /** Remove the slot's photo — a single-transaction erasure server-side (metadata + bytes). */
   protected async onPhotoRemove(slot: PhotoSlotKey): Promise<void> {
     const venueId = this.venueId();
-    if (venueId === undefined || this.slotUi()[slot].busy) {
+    if (this.slotUi()[slot].busy) {
       return;
     }
     const epoch = this.epoch;
@@ -693,9 +693,6 @@ export class VenueTab {
    */
   protected reloadAfterStale(): void {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     this.errorCode.set(null);
     this.load(venueId);
   }

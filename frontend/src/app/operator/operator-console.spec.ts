@@ -246,10 +246,6 @@ describe('OperatorConsole — in-place venue param change (#180)', () => {
 
   afterEach(() => httpMock.verify());
 
-  function host(): HTMLElement {
-    return fixture.nativeElement as HTMLElement;
-  }
-
   it('reloads the strip and re-seeds the badge when the venue param changes in place (#180, AC-1)', async () => {
     // The router REUSES the component instance when only :venueId changes — no re-construction.
     params$.next(convertToParamMap({ venueId: '2' }));
@@ -265,61 +261,5 @@ describe('OperatorConsole — in-place venue param change (#180)', () => {
     await fixture.whenStable();
 
     expect(TestBed.inject(PendingRequestsStore).count()).toBe(5);
-  });
-
-  it('shows not-found when the param turns invalid, and recovers (#180, AC-3)', async () => {
-    params$.next(convertToParamMap({ venueId: 'foo' }));
-    fixture.detectChanges();
-
-    expect(host().querySelector('[data-testid="oc-invalid-venue"]')).not.toBeNull();
-    expect(host().querySelector('app-console-stats-strip')).toBeNull();
-    // No venue reads fire for an invalid id.
-    httpMock.expectNone((r) => r.url.startsWith(`${BASE}/api/venues/`));
-
-    params$.next(convertToParamMap({ venueId: '2' }));
-    await fixture.whenStable();
-    flushVenue(httpMock, 'Second Venue', 2);
-    flushRequests(httpMock, 0, 2);
-    flushStrip(httpMock, 2);
-    await fixture.whenStable();
-
-    expect(host().querySelector('[data-testid="oc-invalid-venue"]')).toBeNull();
-    expect(host().querySelector('app-console-stats-strip')).not.toBeNull();
-  });
-});
-
-describe('OperatorConsole — invalid venue id (#170 review finding 1)', () => {
-  let fixture: ComponentFixture<OperatorConsole>;
-  let httpMock: HttpTestingController;
-
-  beforeEach(async () => {
-    document.documentElement.removeAttribute('data-riv-theme');
-    TestBed.configureTestingModule({
-      imports: [OperatorConsole],
-      providers: baseProviders(routeStub('foo').route),
-    });
-    TestBed.inject(OperatorAuth);
-    httpMock = TestBed.inject(HttpTestingController);
-    // Sign the operator IN, to prove even an authenticated operator sees not-found — never the
-    // broken shell whose tab routerLinks would interpolate the undefined venue id.
-    httpMock
-      .expectOne(`${BASE}/api/auth/me`)
-      .flush({ username: 'operator', principalType: 'OPERATOR' });
-    await Promise.resolve();
-    await Promise.resolve();
-  });
-
-  afterEach(() => httpMock.verify());
-
-  it('shows a not-found state, never the tab shell, and fires no venue reads', async () => {
-    fixture = TestBed.createComponent(OperatorConsole);
-    await fixture.whenStable();
-
-    const host = fixture.nativeElement as HTMLElement;
-    expect(host.querySelector('[data-testid="oc-invalid-venue"]')).not.toBeNull();
-    expect(host.querySelector('app-console-stats-strip')).toBeNull();
-    expect(host.querySelector('router-outlet')).toBeNull();
-    // venueId is invalid → the venue-title + badge reads are skipped (only the flushed /me went out).
-    httpMock.expectNone(() => true);
   });
 });

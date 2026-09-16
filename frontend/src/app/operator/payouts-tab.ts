@@ -83,14 +83,9 @@ export class PayoutsTab {
   constructor() {
     // Re-runs on an in-place venue switch: reset to the fresh-mount state, then load.
     effect(() => {
-      const id = this.venueId();
-      untracked(() => (id === undefined ? this.markInvalid() : this.resetForVenue()));
+      this.venueId();
+      untracked(() => this.resetForVenue());
     });
-  }
-
-  private markInvalid(): void {
-    this.loaded.set(true);
-    this.loadErrorMsg.set(loadFailureNotice('UNKNOWN'));
   }
 
   /** Drop every venue-scoped signal — ledger, notice, refund/statement state — and load fresh, on
@@ -211,7 +206,7 @@ export class PayoutsTab {
    */
   protected onConfirmWeather(): void {
     const venueId = this.venueId();
-    if (venueId === undefined || this.refunding()) {
+    if (this.refunding()) {
       return;
     }
     const epoch = this.epoch;
@@ -259,9 +254,6 @@ export class PayoutsTab {
    *  current view (the action notice already reported the outcome). */
   private reloadLedger(): void {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     const epoch = this.epoch;
     this.console.payoutLedger(venueId).subscribe({
       next: (l) => {
@@ -277,9 +269,6 @@ export class PayoutsTab {
 
   private load(): void {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     const epoch = this.epoch;
     this.console.payoutLedger(venueId).subscribe({
       next: (l) => {

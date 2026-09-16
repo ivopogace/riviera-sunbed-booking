@@ -129,10 +129,10 @@ export class PricingTab {
   });
 
   constructor() {
-    // Every venue-context change: clear the previous venue's rows, then load the new venue if any.
+    // Every venue switch: clear the previous venue's rows, then load the new one.
     effect(() => {
       const id = this.venueId();
-      untracked(() => (id === undefined ? this.clearVenueState() : this.resetForVenue(id)));
+      untracked(() => this.resetForVenue(id));
     });
   }
 
@@ -166,9 +166,6 @@ export class PricingTab {
    */
   protected async onPriceChange(row: PriceRow, input: HTMLInputElement): Promise<void> {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     if (this.saving()) {
       // Backstop for a change slipping past the readonly lock; a second write would false-conflict.
       input.value = row.priceEur;
@@ -255,9 +252,6 @@ export class PricingTab {
    */
   protected reloadAfterStale(): void {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     this.staleConflict.set(false);
     this.errorRow.set(null);
     this.savedRow.set(null);

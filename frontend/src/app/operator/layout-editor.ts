@@ -520,10 +520,10 @@ export class LayoutEditor {
   });
 
   constructor() {
-    // Every venue-context change: clear the previous venue's draft, then load the new venue if any.
+    // Every venue switch: clear the previous venue's draft, then load the new one.
     effect(() => {
       const id = this.venueId();
-      untracked(() => (id === undefined ? this.clearVenueState() : this.resetForVenue(id)));
+      untracked(() => this.resetForVenue(id));
     });
 
     // Scroll the armed chip into view on load/switch — the mobile rail scrolls, not wraps (#715).
@@ -612,9 +612,6 @@ export class LayoutEditor {
    */
   protected onSetsChanged(): void {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     this.grid.set([]);
     this.priceByCoord.clear();
     this.savedNotice.set(false);
@@ -726,7 +723,7 @@ export class LayoutEditor {
     const from = this.storedRowName(y);
     const typed = (this.rowNames()[y] ?? '').trim();
     const expectedVersion = this.loadedSetVersion();
-    if (venueId === undefined || from === undefined || expectedVersion === null) {
+    if (from === undefined || expectedVersion === null) {
       return; // defensive: the button renders only for a stored row, which implies a loaded token
     }
     if (typed === '') {
@@ -993,9 +990,6 @@ export class LayoutEditor {
 
   protected async onSave(): Promise<void> {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     if (this.duplicateRowName() !== undefined) {
       return; // the row-names panel is already showing the clash; the server would refuse it anyway
     }
@@ -1069,7 +1063,7 @@ export class LayoutEditor {
     const venueId = this.venueId();
     const preview = this.remodelPreview();
     const pending = this.pendingRemodel;
-    if (venueId === undefined || preview === null || pending === null || this.committing()) {
+    if (preview === null || pending === null || this.committing()) {
       return;
     }
     const epoch = this.epoch;
@@ -1128,7 +1122,6 @@ export class LayoutEditor {
     const venueId = this.venueId();
     if (
       !(event.target as HTMLDetailsElement).open ||
-      venueId === undefined ||
       this.receiptsLoading() ||
       this.receipts() !== null
     ) {
@@ -1157,9 +1150,6 @@ export class LayoutEditor {
 
   protected async openReceipt(receiptId: number): Promise<void> {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     const epoch = this.epoch;
     try {
       const receipt = await firstValueFrom(this.console.remodelReceipt(venueId, receiptId));
@@ -1294,7 +1284,7 @@ export class LayoutEditor {
    */
   protected reloadAfterStale(): void {
     const venueId = this.venueId();
-    if (venueId === undefined || this.reloading()) {
+    if (this.reloading()) {
       return;
     }
     const epoch = this.epoch;

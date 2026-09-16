@@ -1,33 +1,9 @@
-@if (venueId() === undefined) {
-  <section class="oc-signin mx-auto w-full max-w-[440px] px-6 py-[72px]">
-    <div
-      class="oc-signin-card flex flex-col gap-3.5 rounded-[22px] border border-riv-console-card-border bg-riv-console-inset px-[26px] py-7 shadow-[0_20px_50px_rgba(7,42,58,0.14)]"
-      data-testid="oc-invalid-venue-card"
-    >
-      <h1
-        class="oc-signin-title text-[24px] font-bold tracking-[-0.02em] text-riv-ink"
-        data-testid="oc-invalid-venue"
-      >
-        Venue not found
-      </h1>
-      <p class="oc-signin-intro mb-1 text-[14px] leading-[1.55] text-riv-ink-soft">
-        This operator console link isn’t valid. Check the address, or
-        <a
-          class="oc-create-venue inline-flex min-h-11 items-center text-[13px] font-semibold text-riv-ink no-underline hover:underline"
-          routerLink="/operator"
-          [queryParams]="{ create: '1' }"
-          >create a venue</a
-        >.
-      </p>
-    </div>
-  </section>
-} @else {
-  <!-- No sign-in gate here: operatorSessionGuard owns it and awaits the session restore, so this page only renders signed-in. -->
-  <app-console-stats-strip [venueId]="venueId()!" [venue]="venue()" />
+<!-- No sign-in gate here: operatorSessionGuard owns it and awaits the session restore, so this page only renders signed-in. -->
+<!-- No invalid-venue arm either: venueIdGuard redirects a malformed :venueId away, so venueId() is always a real one. -->
+<app-console-stats-strip [venueId]="venueId()" [venue]="venue()" />
 
-  <!-- Wider than the 1120px shell rows so the beach-map tab's grid can fit-to-width; every other tab's own narrower section max-width keeps it visually unchanged. -->
-  <div class="oc-main mx-auto w-full max-w-[1300px] px-6 pt-5 pb-10">
-    <app-pending-approval-banner />
-    <router-outlet />
-  </div>
-}
+<!-- Wider than the 1120px shell rows so the beach-map tab's grid can fit-to-width; every other tab's own narrower section max-width keeps it visually unchanged. -->
+<div class="oc-main mx-auto w-full max-w-[1300px] px-6 pt-5 pb-10">
+  <app-pending-approval-banner />
+  <router-outlet />
+</div>

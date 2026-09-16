@@ -3,16 +3,7 @@
   <output aria-live="polite" class="sr-only" data-testid="venue-saved-announce">{{
     savedMessage()
   }}</output>
-  @if (venueId() === undefined) {
-    <p
-      appCardGlass
-      class="rounded-[24px] px-[22px] py-10 text-center text-[13px] text-riv-card-ink-soft"
-      role="alert"
-      data-testid="venue-invalid"
-    >
-      This console link is missing a valid venue. Open the console from your venue list.
-    </p>
-  } @else if (loadError()) {
+  @if (loadError()) {
     <p
       appCardGlass
       class="rounded-[24px] px-[22px] py-10 text-center text-[13px] text-riv-error-ink"

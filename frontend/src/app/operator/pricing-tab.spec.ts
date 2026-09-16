@@ -183,7 +183,7 @@ describe('PricingTab (#174)', () => {
     expect(byId('pricing-saved-B').getAttribute('aria-hidden')).toBe('true');
   });
 
-  it('empties the row-saved announcer when the venue param goes invalid (#1122)', async () => {
+  it('empties the row-saved announcer when the venue switches in place (#1122)', async () => {
     render();
 
     editRow('A', '42.50');
@@ -195,33 +195,15 @@ describe('PricingTab (#174)', () => {
     const announce = byId('pricing-saved-announce');
     expect(announce.textContent).toContain('Row A');
 
-    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    params$.next(convertToParamMap({ venueId: '2' }));
     fixture.detectChanges();
 
     // Emptied, never unmounted: a live region must keep outliving the branch it describes.
     expect(byId('pricing-saved-announce')).toBe(announce);
     expect(announce.textContent?.trim()).toBe('');
-  });
-
-  it("clears the previous venue's price rows when the venue param goes invalid (#1125)", () => {
-    render();
-    expect(rows().length).toBe(2);
-    const announce = byId('pricing-saved-announce');
-
-    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
-    fixture.detectChanges();
-
-    expect(rows()).toEqual([]);
-    expect(host.querySelector('[data-testid="pricing-projected"]')).toBeNull();
-    // The DOM above is unmounted either way; the price rows are the seam that sees the reset.
-    const state = fixture.componentInstance as unknown as { rows: () => readonly unknown[] };
-    expect(state.rows()).toEqual([]);
-    expect(byId('pricing-invalid').textContent).toContain('Open the console from your venue list.');
-    // A bad link is not a failed read, and it is not an empty venue either.
-    expect(host.querySelector('[data-testid="pricing-load-error"]')).toBeNull();
-    expect(host.querySelector('[data-testid="pricing-empty"]')).toBeNull();
-    // The same node goes on outliving every branch (RV-FE-10).
-    expect(byId('pricing-saved-announce')).toBe(announce);
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({ id: 2, name: 'W', sets: [], setVersion: 2 });
   });
 
   it('rounds a whole-euro edit to exact minor units', () => {

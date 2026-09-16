@@ -84,15 +84,6 @@ describe('LayoutEditor a11y (#172)', () => {
     fixture.detectChanges();
   }
 
-  it('has no axe violations on the invalid-link card', async () => {
-    // A param naming no venue issues no map read, so there is nothing to flush here.
-    configure('not-a-venue');
-    fixture.detectChanges();
-
-    expect(byId('layout-invalid')).toBeTruthy();
-    await expectNoAxeViolations(host());
-  });
-
   it('has no axe violations in the empty state', async () => {
     render();
     await expectNoAxeViolations(host());

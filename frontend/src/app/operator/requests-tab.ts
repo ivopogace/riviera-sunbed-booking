@@ -124,17 +124,12 @@ export class RequestsTab {
   constructor() {
     // Re-runs on an in-place venue switch: reset to the fresh-mount state, then load.
     effect(() => {
-      const id = this.venueId();
-      untracked(() => (id === undefined ? this.markInvalid() : this.resetForVenue()));
+      this.venueId();
+      untracked(() => this.resetForVenue());
     });
     // One lifetime poll: the expiry sweep + urgency clock reconcile whatever venue is current.
     const poll = setInterval(() => this.reconcile(), REFRESH_MS);
     this.destroyRef.onDestroy(() => clearInterval(poll));
-  }
-
-  private markInvalid(): void {
-    this.loaded.set(true);
-    this.loadError.set(true);
   }
 
   /**
@@ -228,7 +223,7 @@ export class RequestsTab {
    */
   private decide(bookingId: number, action: 'accept' | 'decline'): void {
     const venueId = this.venueId();
-    if (venueId === undefined || this.isDeciding(bookingId)) {
+    if (this.isDeciding(bookingId)) {
       return;
     }
     const epoch = this.epoch;
@@ -327,9 +322,6 @@ export class RequestsTab {
 
   private load(): void {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     this.refreshNow();
     const epoch = this.epoch;
     // Best-effort labels/tiers, read once per venue — a failure degrades to "Set {id}".
@@ -364,9 +356,6 @@ export class RequestsTab {
    */
   private fetchQueue(initial: boolean): void {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     const epoch = this.epoch;
     this.console.pendingRequests(venueId).subscribe({
       next: (r) => {

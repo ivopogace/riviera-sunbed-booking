@@ -316,9 +316,7 @@ export const routes: Routes = [
     data: { console: 'plain' } satisfies ConsoleRouteData,
   },
   {
-    // Where venueIdGuard sends a malformed console link. A literal segment, so it MUST stay above
-    // 'operator/:venueId': matched by the param route instead, the guard would redirect it to
-    // itself forever.
+    // MUST stay above 'operator/:venueId': matched by it, the guard would redirect this forever.
     path: VENUE_NOT_FOUND_PATH,
     loadComponent: () => import('./operator/venue-not-found').then((m) => m.VenueNotFound),
     title: 'Venue not found — Riviera',

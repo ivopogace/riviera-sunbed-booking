@@ -59,15 +59,6 @@ describe('PricingTab a11y (#174)', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('has no axe violations on the invalid-link card', async () => {
-    // A param naming no venue issues no map read, so there is nothing to flush here.
-    configure('not-a-venue');
-    fixture.detectChanges();
-
-    expect(host().querySelector('[data-testid="pricing-invalid"]')).toBeTruthy();
-    await expectNoAxeViolations(host());
-  });
-
   it('has no axe violations with priced rows', async () => {
     render([
       seat(1, 'A', 'PREMIUM', 'ONLINE', 1, 1),
