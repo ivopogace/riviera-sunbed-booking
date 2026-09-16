@@ -226,10 +226,8 @@ export class VenueTab {
   protected readonly locationDraft = signal<VenueLocation | null>(null);
 
   /** The save confirmation, derived so it can never outlive what it asserts — the drafts, and the
-   *  venue they were saved against. A new draft signal belongs in `source`, and so does any further
-   *  venue-context input: that list is the whole of the reset rule, including the invalid-param
-   *  transition, which loads nothing and so moves no draft. `onSave`'s clear covers the one case
-   *  the list cannot, a re-save with no edit in between. */
+   *  venue they were saved against. Every draft and venue-context input belongs in `source`; that
+   *  list is the whole reset rule, bar a re-save with no edit, which `onSave`'s clear covers. */
   protected readonly saved = linkedSignal({
     source: () => [
       this.venueId(),
