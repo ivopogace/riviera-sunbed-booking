@@ -162,6 +162,21 @@ describe('VenueLocationField', () => {
     expect(fixture.componentInstance.location()).toBeNull();
   });
 
+  it('does nothing when asked to place before the map has booted', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [VenueLocationField],
+      providers: [{ provide: MapEngine, useValue: new FakeMapEngine() }],
+    });
+    const fixture = TestBed.createComponent(VenueLocationField);
+    fixture.componentRef.setInput('location', null);
+    fixture.detectChanges(); // rendered, but the engine has not resolved yet
+
+    byTestId(fixture, 'venue-location-place')?.click();
+
+    expect(fixture.componentInstance.location()).toBeNull();
+  });
+
   it('keeps the read-out announced but never editable', async () => {
     const fixture = await render({ latitude: 40.1468, longitude: 19.6482 });
     const readout = byTestId(fixture, 'venue-location-readout');

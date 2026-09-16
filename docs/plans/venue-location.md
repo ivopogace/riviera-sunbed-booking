@@ -47,7 +47,11 @@ marker sync) · `riviera-tailwind` (token-first map chrome, the 44px floor on th
 `playwright-cli` (the mocked suite, `console-dark` double opt-in: file membership **and** a
 `dark console` title; the review round added the keyboard and pin-tap legs) · `code-review` +
 `riviera-review-overlay` (the review gate over `45e3ff1d..2db59dfe` — four Major findings, all
-fixed and pinned; registers below).
+fixed and pinned; registers below) · `angular-developer` + the angular-cli MCP and the Tailwind v4
+docs (verified the v22 signal APIs — `viewChild.required` timing, `model()` two-way onto a plain
+`signal`, signal writes in `effect`, `OutputRef.subscribe` — and that `aria-disabled:`,
+`size-11` = 44 px, `touch-manipulation` and the `classList.toggle`'d `cursor-grab` all survive v4's
+source detection, proven by compiling the real stylesheet; the pass also caught F-15).
 
 **Branch:** `claude/eloquent-meitner-hf4m23` — the cloud session's designated remote branch stands
 in for `feature/venue-location` (`riviera-sdlc` § *Remote / cloud session addendum*).
@@ -336,6 +340,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-12 | review gate (prior-PR pass) | `java.math.BigDecimal` inserted inside the `java.time` import run in `JdbcVenues` — the same slip a prior review caught one slice earlier in the sibling file | fixed |
 | F-13 | review gate (prior-PR pass) | `VenueLocationMigrationIT` asserted a table-wide count of pinned venues, which couples it to whatever sibling ITs leave in the shared container (`VenueAdminControllerIT` has no `@AfterEach` and leaves a pinned venue) | fixed — scoped to the seeded row, which is also the semantically correct subject |
 | F-14 | review gate (bug scan + history pass) | `syncPin` returned at the `moveMarker` branch before reading `pinDraggable()`, so the effect stopped tracking that input after the first add — latent today, a trap for #1101 | fixed — every input is read before the branch |
+| F-15 | docs verification pass (Angular v22 + Tailwind v4 against the official docs) | My F-14 fix was **incomplete**: making the effect re-track `pinDraggable` updated the cursor class but never re-registered the marker, and an engine binds draggability at add time — so the flag stayed stale in the engine. Latent today (the one pinned consumer binds a literal `true`), a trap for #1101 | fixed — a changed flag removes and re-adds the marker; pinned by a mutation-probed spec. Also added the untested pre-boot guard case and made the marker's ARIA one style |
 | F-3 | docs-freshness | `riviera-frontend` SKILL and ADR-0022 both called the operator pin-drop a later slice; `playwright.a11y.config.ts` still said "three console tabs" after the fourth joined `CONSOLE_THEME_FILES`; `riviera-map.contrast.spec.ts`'s chrome enumeration and glyph sizes omitted the pin | fixed — commit *Fold in the docs-freshness patches* |
 | F-4 | docs-freshness (judgement calls, taken) | `CLAUDE.md`'s venue *Owns* cell and `domain-model.md`'s venue table omitted the new column pair; `VenueSummaryView`/`VenueMapView` documented every component except `location` | fixed — commit *Fold in the docs-freshness patches* |
 | F-2 | own generalization sweep off F-1 | the same insertion mechanism broke two more sites Sonar does not analyse: `fake-map-engine.ts` stacked two doc comments on `placeElement`, and `clampUnit` carried a doc describing a different function | fixed — commit *Reattach the doc comments my inserted helpers orphaned* |

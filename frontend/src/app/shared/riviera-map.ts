@@ -99,6 +99,7 @@ export class RivieraMap {
   private readonly live = signal<MapHandle | undefined>(undefined);
   private marker: HTMLElement | undefined;
   private markerOnMap = false;
+  private markerDraggable = false;
   private disposed = false;
   private readonly unsubscribes: (() => void)[] = [];
 
@@ -143,12 +144,17 @@ export class RivieraMap {
     element.setAttribute('aria-label', this.pinLabel());
     // Only a draggable pin advertises the grab cursor; an undraggable one would promise a gesture.
     element.classList.toggle('cursor-grab', draggable);
-    if (this.markerOnMap) {
+    if (this.markerOnMap && this.markerDraggable === draggable) {
       handle.moveMarker(PIN_ID, pin);
       return;
     }
+    if (this.markerOnMap) {
+      // An engine binds draggability when the marker is added, so a change re-registers it.
+      handle.removeMarker(PIN_ID);
+    }
     handle.addMarker({ id: PIN_ID, lngLat: pin, element, draggable });
     this.markerOnMap = true;
+    this.markerDraggable = draggable;
   }
 
   /** One element for the life of the component, so a move never detaches what a drag is holding. */
@@ -163,7 +169,7 @@ export class RivieraMap {
    */
   private buildPinElement(): HTMLElement {
     const element = this.document.createElement('div');
-    element.role = 'img';
+    element.setAttribute('role', 'img');
     element.className = PIN_CLASSES;
     element.dataset['testid'] = 'map-pin';
     const glyph = this.document.createElement('span');

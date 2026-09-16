@@ -225,6 +225,22 @@ describe('RivieraMap', () => {
       expect(markers[0].element).toBe(before);
     });
 
+    it('re-registers the marker when pinDraggable flips, so the engine sees it', async () => {
+      const fixture = await renderPinned({
+        pin: { lng: 19.6482, lat: 40.1468 },
+        pinDraggable: false,
+      });
+      expect([...handleOf(fixture).markers().values()][0].draggable).toBe(false);
+
+      fixture.componentRef.setInput('pinDraggable', true);
+      fixture.detectChanges();
+
+      // An engine binds draggability at add time, so moving alone would leave it stale.
+      const markers = [...handleOf(fixture).markers().values()];
+      expect(markers).toHaveLength(1);
+      expect(markers[0].draggable).toBe(true);
+    });
+
     it('removes the marker when the pin is cleared', async () => {
       const fixture = await renderPinned({ pin: { lng: 19.6482, lat: 40.1468 } });
 
