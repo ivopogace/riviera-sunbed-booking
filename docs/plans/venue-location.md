@@ -60,41 +60,41 @@ in for `feature/venue-location` (`riviera-sdlc` § *Remote / cloud session adden
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the V58 migration has run, when a `venue` row is written with exactly one of
+- [x] **AC-1:** Given the V58 migration has run, when a `venue` row is written with exactly one of
   `latitude`/`longitude`, then Postgres rejects it naming `venue_location_check`; both-absent and
   both-present-in-range are accepted, and every pre-existing venue reads both-null.
   *Seam:* the `venue` table under Flyway · *Pinned by:*
   `VenueLocationMigrationIT.checkRefusesAHalfPresentPair` / `.theBoundsThemselvesAreAccepted` / `.aWholePairInRangeIsAcceptedAndReadsBackAtSixDecimals` / `.existingVenuesCarryNoLocation`
-- [ ] **AC-2:** Given the V58 migration has run, when a latitude outside −90…90 or a longitude
+- [x] **AC-2:** Given the V58 migration has run, when a latitude outside −90…90 or a longitude
   outside −180…180 is written, then Postgres rejects it naming `venue_location_check`.
   *Seam:* the `venue` table under Flyway · *Pinned by:*
   `VenueLocationMigrationIT.checkRefusesALatitudeOutOfRange` / `.checkRefusesALongitudeOutOfRange`
-- [ ] **AC-3:** Given a `VenueLocation` is constructed, when either coordinate is null or out of
+- [x] **AC-3:** Given a `VenueLocation` is constructed, when either coordinate is null or out of
   range, then it throws; when both are in range, it normalizes to scale 6 so a saved value equals
   the value read back. *Seam:* `venue.vocabulary.VenueLocation` (the published value type) ·
   *Pinned by:* `VenueLocationTest.eitherCoordinateAloneIsRefused` / `.aCoordinateOutOfRangeIsRefused` / `.theBoundsThemselvesAreInRange` / `.bothCoordinatesAreNormalisedToSixDecimals`, plus `VenueProfileCommandTest.aNullLocationIsAllowedAndMeansNoPin` / `.anOffShapeLocationIsRejectedByItsOwnType`
-- [ ] **AC-4:** Given an operator owns a venue, when they PATCH the profile with a `location`, then
+- [x] **AC-4:** Given an operator owns a venue, when they PATCH the profile with a `location`, then
   `EditVenueProfile#updateProfile` answers `APPLIED` and a subsequent `ViewVenueProfile#profileFor`
   carries that location; when they PATCH with `location: null`, the profile reads back with none.
   *Seam:* `venue.application.EditVenueProfile` / `ViewVenueProfile` (the inner hexagon) ·
   *Pinned by:* `VenueAdminServiceTest.profileEditSetsAndThenClearsTheVenueLocation` (and end-to-end at the HTTP seam by `VenueAdminControllerIT.locationEditSetsAndThenClearsThePin`)
-- [ ] **AC-5:** Given an operator who does **not** own the venue, when they PATCH a location, then
+- [x] **AC-5:** Given an operator who does **not** own the venue, when they PATCH a location, then
   ownership is asserted before any read or write and the request answers `403` (invariant #13).
   *Seam:* `PATCH /api/venues/{venueId}` · *Pinned by:*
   `VenueAdminControllerIT.locationEditUnownedVenueIs403`
-- [ ] **AC-6:** Given an owning operator, when the PATCH body carries a half-present pair or an
+- [x] **AC-6:** Given an owning operator, when the PATCH body carries a half-present pair or an
   out-of-range coordinate, then the response is `400 application/problem+json` with
   `code = INVALID_REQUEST`; when it carries a stale `expectedVersion`, the response is still
   `409 STALE_WRITE`. *Seam:* `PATCH /api/venues/{venueId}` · *Pinned by:*
   `VenueAdminControllerIT.halfPresentLocationIs400` / `.outOfRangeLocationIs400` /
   `.staleLocationEditIs409`
-- [ ] **AC-7:** Given a pinned and an unpinned venue, when a tourist reads the venue list and the
+- [x] **AC-7:** Given a pinned and an unpinned venue, when a tourist reads the venue list and the
   venue map read, then the pinned venue carries `location.latitude`/`location.longitude` and the
   unpinned one carries `location: null` on both surfaces, and both remain listed.
   *Seam:* `GET /api/venues` and `GET /api/venues/{venueId}` · *Pinned by:*
   `VenueListControllerIT.theListCarriesAPinnedVenuesLocationAndNullForAnUnpinnedOne` and
   `VenueReadControllerIT.theVenueReadCarriesTheLocationAndNullWhenUnpinned`
-- [ ] **AC-8:** Given a map handle with a draggable marker, when the marker is dragged, then the
+- [x] **AC-8:** Given a map handle with a draggable marker, when the marker is dragged, then the
   registered drag-end handler receives the marker id and the new `LngLat`; when the map surface is
   clicked, the registered click handler receives the clicked `LngLat`; and moving a marker keeps
   the same element (no destroy/recreate). *Seam:* the `MapHandle` seam (`shared/map-engine.ts`) ·
@@ -102,7 +102,7 @@ in for `feature/venue-location` (`riviera-sdlc` § *Remote / cloud session adden
   `turns a click on its surface into a map click inside the bounds` / `records whether a marker is
   draggable and moves one in place` / `puts the marker element on its surface and takes it off again` /
   `stops reporting clicks and drags once destroyed`
-- [ ] **AC-9:** Given `RivieraMap` with `pinDraggable` armed, when a `pin` input is set, changed or
+- [x] **AC-9:** Given `RivieraMap` with `pinDraggable` armed, when a `pin` input is set, changed or
   cleared, then exactly one marker is fed to the handle, moved in place, and removed — and a map
   click or a marker drag-end emits `mapClick` / `pinMoved` with the position.
   *Seam:* the `app-riviera-map` component API · *Pinned by:* `riviera-map.spec.ts` › `feeds one labelled,
@@ -110,7 +110,7 @@ in for `feature/venue-location` (`riviera-sdlc` § *Remote / cloud session adden
   when the pin changes, keeping its element` / `removes the marker when the pin is cleared` / `emits
   mapClick with the clicked position` / `emits pinMoved when the marker is dragged` / `takes a caller
   camera over the riviera default`
-- [ ] **AC-10:** Given the operator's Venue tab for an unpinned venue, when the operator clicks the
+- [x] **AC-10:** Given the operator's Venue tab for an unpinned venue, when the operator clicks the
   map, then a pin appears and the read-only coordinate read-out shows it; when they use Clear, the
   pin and the read-out go; and in both cases the tab's existing save sends the profile PATCH with
   the new `location` and the existing `expectedVersion`.
@@ -120,28 +120,28 @@ in for `feature/venue-location` (`riviera-sdlc` § *Remote / cloud session adden
   its marker` / `rounds what it stores to the six decimals the server keeps` / `keeps the read-out
   announced but never editable`, and `venue-tab.spec.ts` › `sends the pin the placer holds with the
   rest of the profile (#1099)` / `clears the pin through the same save (#1099)`
-- [ ] **AC-11:** Given a venue with a location, when `toProfileUpdate` maps the loaded profile to a
+- [x] **AC-11:** Given a venue with a location, when `toProfileUpdate` maps the loaded profile to a
   write body (the read-modify-write behind "Close online sales now"), then the location survives the
   round-trip. *Seam:* `operator-console.model.ts`'s `toProfileUpdate` ·
   *Pinned by:* `operator-console.model.spec.ts` › `carries the venue location through the full-replace body` /
   `carries no location for an unpinned venue`
-- [ ] **AC-13:** Given an operator using only a keyboard, when they focus *Place pin at map centre*
+- [x] **AC-13:** Given an operator using only a keyboard, when they focus *Place pin at map centre*
   and press Enter, then the venue is pinned at the camera's centre; and clearing never disables the
   control that was pressed. *Seam:* the `app-venue-location-field` component API and the operator
   console over a mocked `/api` · *Pinned by:* `venue-location-field.spec.ts` › `places the pin at the
   map centre without a pointer` / `moves an existing pin to the map centre rather than refusing` /
   `never disables the control it was pressed on, so focus is not stranded`, and
   `operator-venue-location.e2e.ts` › `places and clears the pin from the keyboard alone, and saves it`
-- [ ] **AC-14:** Given a pinned venue, when the operator taps the pin itself, then the venue does not
+- [x] **AC-14:** Given a pinned venue, when the operator taps the pin itself, then the venue does not
   move — the marker sits inside the surface the engine reads clicks from, and a tap on it is a grab,
   not a new position. *Seam:* the `app-venue-location-field` component API ·
   *Pinned by:* `venue-location-field.spec.ts` › `does not move the venue when the pin itself is
   tapped`, and `operator-venue-location.e2e.ts` › `does not move the venue when the pin itself is tapped`
-- [ ] **AC-15:** Given a saved profile, when the operator then edits the pin, then the "Saved" notice
+- [x] **AC-15:** Given a saved profile, when the operator then edits the pin, then the "Saved" notice
   goes — the pin is a draft with no handler of its own, so it joins the notice-clearing effect.
   *Seam:* the `app-venue-tab` component API · *Pinned by:* `venue-tab.spec.ts` › `drops the stale
   Saved notice when the pin is edited after a save (#1099)`
-- [ ] **AC-12:** Given the mocked operator console, when the operator drops a pin, saves and
+- [x] **AC-12:** Given the mocked operator console, when the operator drops a pin, saves and
   reloads, then the pin is where it was left; when they clear, save and reload, there is no pin —
   and both run green under the `console-dark` project with axe, contrast and touch-target checks
   passing. *Seam:* the operator console over a mocked `/api` (Playwright) ·
@@ -175,33 +175,32 @@ defaults to `null` and `pinDraggable` to `false`, so Discover's `<app-riviera-ma
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **`V58` collides with another branch's migration.** | low | high | Verified free on `main` (highest is `V57`) and unclaimed by every remote branch (`git ls-tree` sweep over all of `origin/*`; the one open PR, #1093, is a Dependabot npm bump with no migration). **This branch renumbers if it merges second** (the default in `riviera-sdlc`'s intake gate), which means a merge-from-main before ready-for-review and a rename of the file + the IT's constraint assertions. | this branch | open |
-| R-2 | **`toProfileUpdate` silently clears the pin.** `closeOnlineSalesNow` (the daily view's "close online sales now" kill switch) does a read-modify-write through `toProfileUpdate`; the PATCH is a full replace, so a field missing from that mapper is written as null. | high if unguarded | high — an operator loses their pin by using an unrelated button | Add `location` to `VenueProfileUpdate` **and** `toProfileUpdate`, pinned by AC-11 as its own spec rather than left to the tab's own save path. | this branch | open |
-| R-3 | **The map-engine seam cannot express a pin placer.** `MapMarker` has no `draggable`, `MapEventName` is only `load`/`error`, `on()`'s handler takes no payload so it cannot carry an `LngLat`, there is no map-click hook, and `addMarker` is a destructive remove-then-add upsert that would break a drag mid-gesture and drop the element's listeners. | certain | med — the slice is a seam change, not pure reuse | Extend the seam minimally and engine-agnostically: `draggable?` on `MapMarker`, plus `moveMarker(id, lngLat)`, `onMapClick(h)` and `onMarkerDragEnd(h)` on `MapHandle`. Both adapters implement them; the fake gains a `dragMarkerTo` driver for specs and translates a real DOM click on its stamped surface into a map click so the e2e is a genuine gesture. | this branch | open |
-| R-4 | **Coordinate round-trip drift.** A `double` or an unnormalized `BigDecimal` makes "the pin is where it was left" assert against a value that differs in the last places, and `BigDecimal.equals` is scale-sensitive. | med | med — flaky ACs, a pin that appears to move on reload | `NUMERIC(8,6)`/`NUMERIC(9,6)` in the DB and `setScale(6, HALF_UP)` in `VenueLocation`'s compact constructor, so the value the server echoes is byte-for-byte the value a re-read returns (AC-3). | this branch | open |
-| R-5 | **BOLA on a venue-scoped write** (invariant #13, RV-BE-9). | low | high | Location rides `VenueAdminService#updateProfile`, whose **first** statement is already `ownership.assertOwns(...)` via `operator.api.VenueOwnership`; no new entry point is added, and AC-5 pins the 403-before-read/write ordering. | this branch | open |
-| R-6 | **Widening shared test helpers breaks unrelated tests.** `VenueProfileCommand` gains a component, so `VenueProfileConcurrencyIT.command(...)`, `VenueAdminControllerIT.profileBody(...)` and `VenueAdminServiceTest`'s fake `Venues` all stop compiling. | certain | low | Widen each in the same phase as the record; run the venue package's tests, not only the new class. | this branch | open |
-| R-7 | **New request/response shape vs. the error contract** (`riviera-java-conventions` §6b). | low | med | No new code and no new handler: a bad location throws `IllegalArgumentException` from `VenueLocation`'s constructor, reaches the wire through the controller's existing `InvalidApiRequestException.parsing(request::toCommand)`, and is rendered by the one `ApiErrorHandler` as `400 INVALID_REQUEST`. AC-6 asserts the shape (`application/problem+json` + `code`), not just the status. | this branch | open |
-| R-8 | **The `console-dark` e2e never runs.** That project matches on file membership in `CONSOLE_THEME_FILES` **and** a `dark console` title — satisfying only one silently skips the dark run. | med | low | Do both, and assert the dark-console paint in a test whose title contains `dark console` (AC-12). | this branch | open |
+| R-1 | **`V58` collides with another branch's migration.** | low | high | Verified free on `main` (highest is `V57`) and unclaimed by every remote branch (`git ls-tree` sweep over all of `origin/*`; the one open PR, #1093, is a Dependabot npm bump with no migration). **This branch renumbers if it merges second** (the default in `riviera-sdlc`'s intake gate), which means a merge-from-main before ready-for-review and a rename of the file + the IT's constraint assertions. | this branch | closed |
+| R-2 | **`toProfileUpdate` silently clears the pin.** `closeOnlineSalesNow` (the daily view's "close online sales now" kill switch) does a read-modify-write through `toProfileUpdate`; the PATCH is a full replace, so a field missing from that mapper is written as null. | high if unguarded | high — an operator loses their pin by using an unrelated button | Add `location` to `VenueProfileUpdate` **and** `toProfileUpdate`, pinned by AC-11 as its own spec rather than left to the tab's own save path. | this branch | closed |
+| R-3 | **The map-engine seam cannot express a pin placer.** `MapMarker` has no `draggable`, `MapEventName` is only `load`/`error`, `on()`'s handler takes no payload so it cannot carry an `LngLat`, there is no map-click hook, and `addMarker` is a destructive remove-then-add upsert that would break a drag mid-gesture and drop the element's listeners. | certain | med — the slice is a seam change, not pure reuse | Extend the seam minimally and engine-agnostically: `draggable?` on `MapMarker`, plus `moveMarker(id, lngLat)`, `onMapClick(h)` and `onMarkerDragEnd(h)` on `MapHandle`. Both adapters implement them; the fake gains a `dragMarkerTo` driver for specs and translates a real DOM click on its stamped surface into a map click so the e2e is a genuine gesture. | this branch | closed |
+| R-4 | **Coordinate round-trip drift.** A `double` or an unnormalized `BigDecimal` makes "the pin is where it was left" assert against a value that differs in the last places, and `BigDecimal.equals` is scale-sensitive. | med | med — flaky ACs, a pin that appears to move on reload | `NUMERIC(8,6)`/`NUMERIC(9,6)` in the DB and `setScale(6, HALF_UP)` in `VenueLocation`'s compact constructor, so the value the server echoes is byte-for-byte the value a re-read returns (AC-3). | this branch | closed |
+| R-5 | **BOLA on a venue-scoped write** (invariant #13, RV-BE-9). | low | high | Location rides `VenueAdminService#updateProfile`, whose **first** statement is already `ownership.assertOwns(...)` via `operator.api.VenueOwnership`; no new entry point is added, and AC-5 pins the 403-before-read/write ordering. | this branch | closed |
+| R-6 | **Widening shared test helpers breaks unrelated tests.** `VenueProfileCommand` gains a component, so `VenueProfileConcurrencyIT.command(...)`, `VenueAdminControllerIT.profileBody(...)` and `VenueAdminServiceTest`'s fake `Venues` all stop compiling. | certain | low | Widen each in the same phase as the record; run the venue package's tests, not only the new class. | this branch | closed |
+| R-7 | **New request/response shape vs. the error contract** (`riviera-java-conventions` §6b). | low | med | No new code and no new handler: a bad location throws `IllegalArgumentException` from `VenueLocation`'s constructor, reaches the wire through the controller's existing `InvalidApiRequestException.parsing(request::toCommand)`, and is rendered by the one `ApiErrorHandler` as `400 INVALID_REQUEST`. AC-6 asserts the shape (`application/problem+json` + `code`), not just the status. | this branch | closed |
+| R-8 | **The `console-dark` e2e never runs.** That project matches on file membership in `CONSOLE_THEME_FILES` **and** a `dark console` title — satisfying only one silently skips the dark run. | med | low | Do both, and assert the dark-console paint in a test whose title contains `dark console` (AC-12). | this branch | closed |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the wire shape is a nested, nullable `location: { latitude, longitude }` object on
-  all three views and on the PATCH body, not two flat sibling fields — the issue says the views
-  "carry a nullable `location`" and the PATCH takes it "as set (both coordinates) or cleared
-  (null)", which a nested object expresses structurally; `seasonClosure` is the in-tree precedent
-  for a nested nullable object on this exact profile surface. — *Owner:* this branch · *Resolves
-  by:* phase 1 (fixed by AC-6/AC-7 once the ITs assert the shape)
-- **Assumption:** six decimal places (~0.11 m) is ample precision for a beach venue's pin, so
-  `NUMERIC(8,6)`/`NUMERIC(9,6)` costs nothing real and buys an exact, assertable round-trip. —
-  *Owner:* this branch · *Resolves by:* phase 0
-- **Assumption:** the pin placer needs no `@defer`. The Venue tab is already a lazy route and
-  `MapLibreMapEngine` already `import()`s MapLibre and PMTiles inside `create()`, so the heavy
-  chunk is fetched only when a map actually boots. Discover's `@defer` exists to let the venue list
-  render first; the Venue tab has no such ordering requirement. — *Owner:* this branch ·
-  *Resolves by:* phase 5
+**None open.** The three assumptions below were all discharged; the one review finding not fixed
+here cites its follow-up (#1119, findings register F-16).
 
 ### Resolved
+
+- **Assumption → confirmed:** the wire shape is a nested, nullable
+  `location: { latitude, longitude }` on all three views and the PATCH body. Shipped and asserted at
+  the HTTP seam by `VenueAdminControllerIT.locationEditSetsAndThenClearsThePin`,
+  `VenueListControllerIT` and `VenueReadControllerIT` (`6529bea6`).
+- **Assumption → confirmed:** six decimal places is ample, and buys an exact round-trip.
+  `NUMERIC(8,6)`/`NUMERIC(9,6)` plus `setScale(6, HALF_UP)` in `VenueLocation` make the record's
+  `equals` scale-stable, which the "the pin is where it was left" e2e depends on (`3949b0ea`).
+- **Assumption → confirmed:** no `@defer` is needed. `MapLibreMapEngine` `import()`s MapLibre and
+  PMTiles inside `create()`, so the heavy chunk is fetched only when a map boots; the frontend
+  build's initial-bundle budget is unchanged and the tab's e2e renders in the CI suite (`a44a7f2f`).
 
 - **Open question:** is the seam gap in R-3 drift (reconcile here) or fog (escalate to
   `wayfinder`)? — **Resolved at plan time: drift.** The question is sharply stateable and fully
@@ -306,21 +305,23 @@ is an `<output aria-live="polite">` — the `layout-last-change` precedent.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 7)`
+**Stage pointer:** `ready for review — CI green, review gate run, Sonar gate cleared`
 
-**Next action:** Phase 7 — `RESPONSIBILITIES.md` §`venue` gains the location contract, confirm
-`CONTEXT.md`'s entry, then the PR gates.
+**Next action:** Nothing is owed by this branch. Merge is the maintainer's call; on merge, the
+close-out steps that remain are GitHub-side only (tick epic #806's checklist with this PR number,
+and close #1099 — deliberately not automated here, see the PR's Scope notes).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V58 migration + migration IT | ✅ | `d1e35001` (plan), `3949b0ea` |
-| 1 — `VenueLocation` + profile read/write (command, view, DTOs, `JdbcVenues`) | ✅ | this commit |
-| 2 — Tourist read models (`VenueSummaryView`, `VenueMapView`, `JdbcVenueCatalog`) | ✅ | this commit — structural net green |
-| 3 — Map-engine seam: draggable marker, `moveMarker`, click + drag-end hooks | ✅ | this commit |
-| 4 — `RivieraMap` pin inputs/outputs | ✅ | this commit |
-| 5 — Operator pin placer + Venue-tab wiring + FE models | ✅ | this commit |
-| 6 — Mocked Playwright e2e (incl. `console-dark`) | ✅ | this commit — 638/638 mocked e2e green, 3215/3215 unit |
-| 7 — `RESPONSIBILITIES.md` location contract + close-out | | |
+| 1 — `VenueLocation` + profile read/write (command, view, DTOs, `JdbcVenues`) | ✅ | `3f81f01c` |
+| 2 — Tourist read models (`VenueSummaryView`, `VenueMapView`, `JdbcVenueCatalog`) | ✅ | `6529bea6` — structural net green |
+| 3 — Map-engine seam: draggable marker, `moveMarker`, click + drag-end hooks | ✅ | `9ef9b5bd` |
+| 4 — `RivieraMap` pin inputs/outputs | ✅ | `5f55c237` |
+| 5 — Operator pin placer + Venue-tab wiring + FE models | ✅ | `a44a7f2f` |
+| 6 — Mocked Playwright e2e (incl. `console-dark`) | ✅ | `55a6ba88` |
+| 7 — `RESPONSIBILITIES.md` location contract + close-out | ✅ | `1f1db07a`, `49f09928` |
+| Gate fixes — Sonar, docs-freshness, review, docs verification | ✅ | `4961de36`, `a0b52fc4`, `2db59dfe`, `8a342cc0`, `fad6b3bd`, `441ab1b0`, this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -411,7 +412,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Create `platform/src/main/resources/db/migration/V58__venue_location.sql` · Test
 `platform/src/test/java/ai/riviera/platform/venue/VenueLocationMigrationIT.java`
 
-- [ ] **Step 1: Write the failing test** (mirrors `SeasonClosureMigrationIT`, the in-tree model for
+- [x] **Step 1: Write the failing test** (mirrors `SeasonClosureMigrationIT`, the in-tree model for
   a multi-column CHECK: mutate the seeded venue, reset in `@AfterEach`, assert the constraint by name)
 
 ```java
@@ -502,13 +503,13 @@ class VenueLocationMigrationIT {
 }
 ```
 
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `./gradlew --console=plain test --tests "*VenueLocationMigrationIT*"` → FAIL with
   `ERROR: column "latitude" of relation "venue" does not exist`
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```sql
 -- #1099 (epic #806): the venue's optional location — its lat/lng pin on the riviera map, placed by
@@ -530,17 +531,17 @@ ALTER TABLE venue
            AND (longitude IS NULL OR longitude BETWEEN -180 AND 180));
 ```
 
-- [ ] **Step 4: Run it, verify it passes** —
+- [x] **Step 4: Run it, verify it passes** —
   `./gradlew --console=plain test --tests "*VenueLocationMigrationIT*"` → PASS
 
 > Scope (end-of-phase regression): broaden to the touched module's package.
 
-- [ ] **Step 5: Generalization-audit pass** (after any bug fix / new pattern) — none expected in
+- [x] **Step 5: Generalization-audit pass** (after any bug fix / new pattern) — none expected in
   this phase; record "no defect fixed, no pattern introduced" if so.
 
-- [ ] **Step 6: Commit** — `git commit -m "Add the venue location columns and their CHECK (#1099)"`
+- [x] **Step 6: Commit** — `git commit -m "Add the venue location columns and their CHECK (#1099)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window. **Open the draft PR
+- [x] **Step 7: Update plan-doc execution status** in the same commit window. **Open the draft PR
   here** — CI fires on the `pull_request` event only, so the branch gets no CI until it exists.
 
 ---
@@ -553,7 +554,7 @@ ALTER TABLE venue
 `venue/application/VenueProfileCommandTest.java`, `venue/application/VenueAdminServiceTest.java`,
 `venue/VenueAdminControllerIT.java`, `venue/VenueProfileConcurrencyIT.java`
 
-- [ ] **Step 1: Write the failing test** — the value type first, because every other surface
+- [x] **Step 1: Write the failing test** — the value type first, because every other surface
   inherits its guarantees (AC-3)
 
 ```java
@@ -602,10 +603,10 @@ class VenueLocationTest {
 }
 ```
 
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `./gradlew --console=plain test --tests "*VenueLocationTest*"` → FAIL, the type does not exist
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```java
 package ai.riviera.platform.venue.vocabulary;
@@ -655,9 +656,9 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
 }
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew --console=plain test --tests "*VenueLocationTest*"` → PASS
+- [x] **Step 4: Run it, verify it passes** — `./gradlew --console=plain test --tests "*VenueLocationTest*"` → PASS
 
-- [ ] **Step 5: Widen the profile write path, red-first at each seam**
+- [x] **Step 5: Widen the profile write path, red-first at each seam**
   - `VenueProfileCommand` gains `VenueLocation location` (nullable = no pin; the type enforces the
     rest, so `VenueFieldValidation` needs no new helper). Widen `VenueProfileCommandTest`.
   - `UpdateVenueProfileRequest` gains `LocationBody location` (a nested record of two raw
@@ -671,10 +672,10 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
   - `VenueAdminServiceTest` gets AC-4; `VenueAdminControllerIT` gets AC-5 and AC-6 (widen
     `profileBody(...)`); `VenueProfileConcurrencyIT.command(...)` is widened (R-6).
 
-- [ ] **Step 6: Run the phase's tests** —
+- [x] **Step 6: Run the phase's tests** —
   `./gradlew --console=plain test --tests "*VenueLocation*" --tests "*VenueProfile*" --tests "*VenueAdmin*"` → PASS
 
-- [ ] **Step 7: Commit** — `git commit -m "Carry the venue location on the operator profile read and write (#1099)"`
+- [x] **Step 7: Commit** — `git commit -m "Carry the venue location on the operator profile read and write (#1099)"`
   and update the Execution status in the same commit window.
 
 ---
@@ -685,7 +686,7 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
 `venue/adapter/out/JdbcVenueCatalog.java` · Test `venue/VenueListControllerIT.java`,
 `venue/VenueReadControllerIT.java`
 
-- [ ] **Step 1: Write the failing test** — AC-7, in `VenueListControllerIT`, using its existing
+- [x] **Step 1: Write the failing test** — AC-7, in `VenueListControllerIT`, using its existing
   self-seeding `IT_REGION` fixture so a pinned and an unpinned venue are both listed:
 
 ```java
@@ -706,19 +707,19 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
 	}
 ```
 
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `./gradlew --console=plain test --tests "*VenueListControllerIT*"` → FAIL, `location` is absent
 
-- [ ] **Step 3: Minimal implementation** — add the `VenueLocation location` component to
+- [x] **Step 3: Minimal implementation** — add the `VenueLocation location` component to
   `VenueSummaryView` and `VenueMapView`; add `latitude, longitude` to `JdbcVenueCatalog`'s
   `listVenues` and `findVenueMap` SELECT lists, to `SummaryRow`/`VenueRow`, and to `toSummary`,
   reading them with `rs.getBigDecimal(...)` and mapping a null pair to a null location (the
   `distanceToWaterM` boxed-nullable precedent). New `COL_LATITUDE`/`COL_LONGITUDE` constants.
 
-- [ ] **Step 4: Run it, verify it passes** —
+- [x] **Step 4: Run it, verify it passes** —
   `./gradlew --console=plain test --tests "*VenueListControllerIT*" --tests "*VenueReadControllerIT*"` → PASS
 
-- [ ] **Step 5: Run the structural net** (a published `vocabulary` type was added) —
+- [x] **Step 5: Run the structural net** (a published `vocabulary` type was added) —
 
 ```bash
 ./gradlew --console=plain test \
@@ -728,7 +729,7 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
   --tests "*RetiredSetExclusionArchitectureTests*"
 ```
 
-- [ ] **Step 6: Commit** — `git commit -m "Carry the venue location on the tourist list and venue reads (#1099)"`
+- [x] **Step 6: Commit** — `git commit -m "Carry the venue location on the tourist list and venue reads (#1099)"`
   and update the Execution status.
 
 ---
@@ -738,7 +739,7 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
 **Files:** Modify `frontend/src/app/shared/map-engine.ts`, `maplibre-map-engine.ts`,
 `fake-map-engine.ts` · Test `fake-map-engine.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — AC-8 against the fake, whose recorders are the assertion
+- [x] **Step 1: Write the failing test** — AC-8 against the fake, whose recorders are the assertion
   surface (the house style in `riviera-map.spec.ts`):
 
 ```ts
@@ -762,10 +763,10 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
   });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `npx vitest run src/app/shared/fake-map-engine.spec.ts` → FAIL, `onMarkerDragEnd is not a function`
 
-- [ ] **Step 3: Minimal implementation** — the seam gains exactly four things, all
+- [x] **Step 3: Minimal implementation** — the seam gains exactly four things, all
   engine-agnostic:
   - `MapMarker.draggable?: boolean`
   - `MapHandle.moveMarker(id: string, lngLat: LngLat): void` — moves in place; the existing
@@ -781,14 +782,14 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
   offset across `options.maxBounds` — so the e2e drops a pin with a genuine gesture rather than
   reaching into the component.
 
-- [ ] **Step 4: Run it, verify it passes** —
+- [x] **Step 4: Run it, verify it passes** —
   `npx vitest run src/app/shared/fake-map-engine.spec.ts src/app/shared/maplibre-map-engine.spec.ts` → PASS
 
-- [ ] **Step 5: Generalization-audit pass** — population: *every implementation of the `MapHandle`
+- [x] **Step 5: Generalization-audit pass** — population: *every implementation of the `MapHandle`
   interface* (a seam widened in one adapter and not the other compiles only until a consumer calls
   it). Enumerate with `rg -l "implements MapHandle" frontend/src`. Fix all members.
 
-- [ ] **Step 6: Commit** — `git commit -m "Give the map-engine seam a draggable marker and its events (#1099)"`
+- [x] **Step 6: Commit** — `git commit -m "Give the map-engine seam a draggable marker and its events (#1099)"`
 
 ---
 
@@ -797,17 +798,17 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
 **Files:** Modify `frontend/src/app/shared/riviera-map.ts|.html` · Test `riviera-map.spec.ts`,
 `riviera-map.a11y.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — AC-9, in `riviera-map.spec.ts`'s existing
+- [x] **Step 1: Write the failing test** — AC-9, in `riviera-map.spec.ts`'s existing
   `render(engine)` idiom.
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/shared/riviera-map.spec.ts` → FAIL
-- [ ] **Step 3: Minimal implementation** — `options = input(RIVIERA_MAP_OPTIONS)`,
+- [x] **Step 2: Run it, verify it fails** — `npx vitest run src/app/shared/riviera-map.spec.ts` → FAIL
+- [x] **Step 3: Minimal implementation** — `options = input(RIVIERA_MAP_OPTIONS)`,
   `pin = input<LngLat | null>(null)`, `pinDraggable = input(false)`, `pinLabel = input('Venue location')`,
   `mapClick = output<LngLat>()`, `pinMoved = output<LngLat>()`. An `effect` syncs the single marker
   to the handle once `status() === 'ready'`: add on first pin, `moveMarker` on a change, `removeMarker`
   on clear. Discover's `<app-riviera-map />` keeps working unchanged — every input has a default.
-- [ ] **Step 4: Run it, verify it passes** —
+- [x] **Step 4: Run it, verify it passes** —
   `npx vitest run src/app/shared/riviera-map.spec.ts src/app/shared/riviera-map.a11y.spec.ts` → PASS
-- [ ] **Step 5: Commit** — `git commit -m "Let the riviera map carry and report one pin (#1099)"`
+- [x] **Step 5: Commit** — `git commit -m "Let the riviera map carry and report one pin (#1099)"`
 
 ---
 
@@ -817,22 +818,22 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
 `venue-tab.ts|.html`, `operator-console.model.ts`, `shared/venue-views.ts` · Test
 `venue-location-field.spec.ts`, `venue-tab.spec.ts`, `operator-console.model.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — AC-10 (the placer: click drops, Clear removes, the
+- [x] **Step 1: Write the failing tests** — AC-10 (the placer: click drops, Clear removes, the
   read-out announces) and AC-11 (`toProfileUpdate` carries the location — R-2's guard, written as
   its own spec so the trap is pinned independently of the tab).
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
   `npx vitest run src/app/operator/venue-location-field.spec.ts src/app/operator/operator-console.model.spec.ts` → FAIL
-- [ ] **Step 3: Minimal implementation** — `VenueLocation` joins `shared/venue-views.ts` and the
+- [x] **Step 3: Minimal implementation** — `VenueLocation` joins `shared/venue-views.ts` and the
   tourist types; `VenueProfileView`, `VenueProfileUpdate` **and `toProfileUpdate`** gain `location`;
   `venue-location-field.ts` wraps `<app-riviera-map [pin] [pinDraggable]="true" (mapClick) (pinMoved)>`
   with a `<output aria-live="polite">` read-out and a Clear `<button>`; `venue-tab` seeds a
   `locationDraft` signal in `seed(profile)` and reads it in `onSave()`, inside the existing
   `expectedVersion` path so the stale-write banner needs no change.
-- [ ] **Step 4: Run them, verify they pass** — `npx vitest run src/app/operator` → PASS
-- [ ] **Step 5: Generalization-audit pass** — population: *every producer of a
+- [x] **Step 4: Run them, verify they pass** — `npx vitest run src/app/operator` → PASS
+- [x] **Step 5: Generalization-audit pass** — population: *every producer of a
   `VenueProfileUpdate` body* (a full-replace PATCH silently nulls any field a producer forgets).
   Enumerate with `rg -n "VenueProfileUpdate|toProfileUpdate" frontend/src`. Judge each site.
-- [ ] **Step 6: Commit** — `git commit -m "Place, move and clear the venue pin in the operator console (#1099)"`
+- [x] **Step 6: Commit** — `git commit -m "Place, move and clear the venue pin in the operator console (#1099)"`
 
 ---
 
@@ -841,18 +842,18 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
 **Files:** Create `frontend/e2e/operator-venue-location.e2e.ts` · Modify
 `frontend/playwright.a11y.config.ts`, `frontend/e2e/support/operator-console.mocks.ts`
 
-- [ ] **Step 1: Write the failing test** — AC-12, modelled on `operator-venue.e2e.ts`'s stateful
+- [x] **Step 1: Write the failing test** — AC-12, modelled on `operator-venue.e2e.ts`'s stateful
   `mockVenue(page)` (closure `profile`/`serverVersion`, a `patches` recorder, `bump()` for the
   stale case), arming `__RIVIERA_FAKE_MAP__` via `page.addInitScript`. Three tests: drop → save →
   reload → pin present at the dropped position; clear → save → reload → no pin; and a
   `dark console` titled test asserting the placer's paint plus `expectNoSeriousAxeViolations`.
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts operator-venue-location` → FAIL
-- [ ] **Step 3: Minimal implementation** — add the spec file to `CONSOLE_THEME_FILES` in
+- [x] **Step 3: Minimal implementation** — add the spec file to `CONSOLE_THEME_FILES` in
   `playwright.a11y.config.ts` (R-8: membership **and** the `dark console` title are both required),
   and give the shared console profile fixture a `location`.
-- [ ] **Step 4: Run it, verify it passes** — the same command, plus the `console-dark` project → PASS
-- [ ] **Step 5: Commit** — `git commit -m "Cover the operator pin placer in the mocked e2e suite (#1099)"`
+- [x] **Step 4: Run it, verify it passes** — the same command, plus the `console-dark` project → PASS
+- [x] **Step 5: Commit** — `git commit -m "Cover the operator pin placer in the mocked e2e suite (#1099)"`
 
 ---
 
@@ -860,18 +861,18 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
 
 **Files:** Modify `RESPONSIBILITIES.md`, `docs/plans/venue-location.md`
 
-- [ ] **Step 1:** `RESPONSIBILITIES.md` §`venue` gains the venue-location contract: owned by
+- [x] **Step 1:** `RESPONSIBILITIES.md` §`venue` gains the venue-location contract: owned by
   `venue`; validation is range-only (−90…90 / −180…180, both-present-or-both-absent), mirrored by
   `VenueLocation` over `venue_location_check`; **null means "not on the riviera map, still in the
   list"** — the contract #1101 relies on to omit a venue client-side, so no operator is forced
   through a backfill; the write is the ownership-fenced profile PATCH under the `version` token,
   never a resource of its own.
-- [ ] **Step 2:** Confirm `CONTEXT.md`'s **venue location** entry (added by #1098) still describes
+- [x] **Step 2:** Confirm `CONTEXT.md`'s **venue location** entry (added by #1098) still describes
   what shipped; correct it if not.
-- [ ] **Step 3:** Run `riviera-docs-freshness` over `origin/main..HEAD` and record the findings.
-- [ ] **Step 4:** Finalize the Execution status **in this PR's last code-touching commit** — stage
+- [x] **Step 3:** Run `riviera-docs-freshness` over `origin/main..HEAD` and record the findings.
+- [x] **Step 4:** Finalize the Execution status **in this PR's last code-touching commit** — stage
   pointer, phase rows ✅ with commits, ACs verified, risk rows closed, Open Questions empty.
-- [ ] **Step 5:** `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
+- [x] **Step 5:** `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
 
 ---
 
@@ -892,38 +893,39 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `./gradlew test --tests "*VenueLocationMigrationIT*"` → PASS.
-- [ ] **AC-2:** `./gradlew test --tests "*VenueLocationMigrationIT*"` → PASS.
-- [ ] **AC-3:** `./gradlew test --tests "*VenueLocationTest*"` → PASS.
-- [ ] **AC-4:** `./gradlew test --tests "*VenueAdminServiceTest*"` → PASS.
-- [ ] **AC-5:** `./gradlew test --tests "*VenueAdminControllerIT*"` → PASS.
-- [ ] **AC-6:** `./gradlew test --tests "*VenueAdminControllerIT*"` → PASS.
-- [ ] **AC-7:** `./gradlew test --tests "*VenueListControllerIT*" --tests "*VenueReadControllerIT*"` → PASS.
-- [ ] **AC-8:** `npx vitest run src/app/shared/fake-map-engine.spec.ts` → PASS.
-- [ ] **AC-9:** `npx vitest run src/app/shared/riviera-map.spec.ts` → PASS.
-- [ ] **AC-10:** `npx vitest run src/app/operator` → PASS.
-- [ ] **AC-11:** `npx vitest run src/app/operator/operator-console.model.spec.ts` → PASS.
-- [ ] **AC-12:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → PASS
+Every AC is verified by a passing test on `441ab1b0`; CI is green on that head and the Sonar gate is
+clear (0 issues, 90.66% new-code coverage over 540 new lines, 0 duplication).
+
+- [x] **AC-1, AC-2:** `./gradlew test --tests "*VenueLocationMigrationIT*"` → PASS (6 cases, `skipped=0`).
+- [x] **AC-3:** `./gradlew test --tests "*VenueLocationTest*" --tests "*VenueProfileCommandTest*"` → PASS.
+- [x] **AC-4:** `./gradlew test --tests "*VenueAdminServiceTest*"` → PASS.
+- [x] **AC-5, AC-6:** `./gradlew test --tests "*VenueAdminControllerIT*"` → PASS (55 cases, `skipped=0`).
+- [x] **AC-7:** `./gradlew test --tests "*VenueListControllerIT*" --tests "*VenueReadControllerIT*"` → PASS.
+- [x] **AC-8, AC-9:** `npx ng test --include="src/app/shared/*map*.spec.ts"` → PASS.
+- [x] **AC-10, AC-11, AC-13, AC-14, AC-15:** `npx ng test --include="src/app/operator/*.spec.ts"` → PASS.
+- [x] **AC-12:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → 638 passed,
+  including the `console-dark` project; the map specs re-run green after the review fixes (13 passed).
+- [x] **Structural net:** the six-test command in `CLAUDE.md` § *Commands* → PASS after the backend change.
   (incl. the `console-dark` project).
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
