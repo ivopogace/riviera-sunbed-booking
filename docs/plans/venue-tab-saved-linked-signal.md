@@ -115,10 +115,10 @@ branch stands in for `bugfix/venue-tab-saved-linked-signal`.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `saved.set(true)` happens **after** an `await` inside `submit()`. If Signal Forms writes back to the `details` model signal when the submit action resolves, the new source list would reset `saved` to `false` and the notice would never appear — a regression the issue does not name. | med | high | The pre-existing `announces the profile save through a region that predates it (#1078)` and `reflects an amenity toggle + a name edit in the saved body` specs assert the notice **appears** after a PATCH; they fail loudly if this bites. Run them as the phase-1 gate. | this slice | open |
-| R-2 | `computation: () => false` may infer the literal type `false` for `D`, making `saved.set(true)` a compile error. | med | low | Pin `D` explicitly with `linkedSignal<S, boolean>` generics, matching `set-editor.ts`'s existing style; `npm run lint` + `npm test` (Vitest type-checks through the Angular compiler) prove it. | this slice | open |
-| R-3 | A source that is a fresh array literal is never `Object.is`-equal to the previous one, so the reset could fire on reads that changed nothing. | low | low | Harmless by construction: the source computed only re-evaluates when one of the four drafts actually changes, and re-applying `false` to an already-`false` signal notifies nobody (default `Object.is` equality on `D`). | this slice | open |
-| R-4 | Dropping `resetForVenue`'s clear leaves a venue switch showing a stale notice. | low | med | The same method sets all four drafts to empty immediately above, which resets `saved` through the source list. The existing in-place venue-switch specs cover it. | this slice | open |
+| R-1 | `saved.set(true)` happens **after** an `await` inside `submit()`. If Signal Forms writes back to the `details` model signal when the submit action resolves, the new source list would reset `saved` to `false` and the notice would never appear — a regression the issue does not name. | med | high | The pre-existing `announces the profile save through a region that predates it (#1078)` and `reflects an amenity toggle + a name edit in the saved body` specs assert the notice **appears** after a PATCH; they fail loudly if this bites. Run them as the phase-1 gate. | this slice | **closed** — did not bite: `submit()` does not write back to the model signal, and both canaries pass (41/41 in `venue-tab.spec.ts`, 842/842 across `operator/`). |
+| R-2 | `computation: () => false` may infer the literal type `false` for `D`, making `saved.set(true)` a compile error. | med | low | Pin `D` explicitly with `linkedSignal<S, boolean>` generics, matching `set-editor.ts`'s existing style; `npm run lint` + `npm test` (Vitest type-checks through the Angular compiler) prove it. | this slice | **closed** — pinned with a return-type annotation (`computation: (): boolean => false`) instead of explicit generics: it fixes `D` just as firmly while letting `S` stay inferred from the real source tuple. Builds and lints clean. |
+| R-3 | A source that is a fresh array literal is never `Object.is`-equal to the previous one, so the reset could fire on reads that changed nothing. | low | low | Harmless by construction: the source computed only re-evaluates when one of the four drafts actually changes, and re-applying `false` to an already-`false` signal notifies nobody (default `Object.is` equality on `D`). | this slice | **closed** — no observable effect; the whole operator suite is green. |
+| R-4 | Dropping `resetForVenue`'s clear leaves a venue switch showing a stale notice. | low | med | The same method sets all four drafts to empty immediately above, which resets `saved` through the source list. The existing in-place venue-switch specs cover it. | this slice | **closed** — the in-place venue-switch specs pass unchanged. |
 
 ## Open questions / Assumptions
 
@@ -177,16 +177,15 @@ untouched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `PR — draft open, awaiting CI`
 
-**Next action:** phase 1 — replace `saved` with a `linkedSignal` over the four drafts and
-delete the reset `effect` plus the three redundant `saved.set(false)` sites; the phase-0 net
-must stay green, R-1's canaries included.
+**Next action:** push the branch, open the draft PR as the CI vehicle, then mark it ready for
+review so the Review + Sonar gates become due.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — characterization specs for the two uncovered reset paths | ✅ | phase-0 commit |
-| 1 — `linkedSignal` replaces the effect + the three redundant clears | ⏳ | |
+| 0 — characterization specs for the two uncovered reset paths | ✅ | `25736a97` |
+| 1 — `linkedSignal` replaces the effect + the three redundant clears | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -238,25 +237,30 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/app/operator/venue-tab.ts`
 
-- [ ] **Step 1: Replace `saved`** with a `linkedSignal` over the four drafts, `D` pinned to
-  `boolean` (R-2), carrying a TSDoc that states the rule for the next draft added.
+- [x] **Step 1: Replace `saved`** with a `linkedSignal` over the four drafts, `D` pinned to
+  `boolean` (R-2), carrying a TSDoc that states the rule for the next draft added. `saved` and
+  `savedMessage` also **move** down beside the drafts: a field initializer reading `this.details`
+  before its declaration is only safe because signal computations are lazy, and a declaration
+  order that has to be defended is worse than one that doesn't.
 
-- [ ] **Step 2: Delete** the constructor reset `effect`, `onToggleAmenity`'s clear,
+- [x] **Step 2: Delete** the constructor reset `effect`, `onToggleAmenity`'s clear,
   `onDistanceInput`'s `saved` clear (keeping its `distanceError` clear) and `resetForVenue`'s
   clear. Keep `onSave`'s.
 
-- [ ] **Step 3: Drop the now-dead `effect` import** only if the second `effect` is also gone
+- [x] **Step 3: Drop the now-dead `effect` import** only if the second `effect` is also gone
   — it is not, so the import stays.
 
-- [ ] **Step 4: Run** — `npm test -- venue-tab` → all three venue-tab suites PASS, including
-  the R-1 canaries (`#1078` announcement, `reflects an amenity toggle + a name edit in the
-  saved body`). Then `npm run lint` + `npm run format:check`.
+- [x] **Step 4: Run** — `npm test -- --include="src/app/operator/venue-tab.spec.ts"` → **41
+  passed**, R-1's canaries included; `--include="src/app/operator/**/*.spec.ts"` → **842 passed
+  across 64 files** (the a11y + contrast suites with it). `npm run lint` clean;
+  `npm run format:check` flagged the new import block, fixed with `prettier --write`.
 
-- [ ] **Step 5: Generalization-audit pass** — record below.
+- [x] **Step 5: Generalization-audit pass** — recorded below; it found a second site and it is
+  filed as **#1120** rather than fixed here.
 
-- [ ] **Step 6: Commit** — `git commit -m "Derive the venue tab's Saved notice with linkedSignal (#1119)"`
+- [x] **Step 6: Commit** — `git commit -m "Derive the venue tab's Saved notice with linkedSignal (#1119)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -267,6 +271,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-16 | phase 1 — replacing a state-propagation `effect` | **Every `effect` / `afterRenderEffect` body that writes a signal and does no imperative work.** Not "components that look like `VenueTab`": the body of every effect under `frontend/src/app` was parsed by brace-matching, kept only if it contains `.set(`/`.update(`, then discarded if it also contains `await`, `void `, `untracked(`, DOM / `nativeElement` / `localStorage` / `ResizeObserver` / `setTimeout` / `navigator` access, a `.subscribe(`, an injected-service call, or **any** method call that is not a bare tracking read. What survives is a pure signal→signal copy. | the python sweep in the phase-1 transcript (parse `effect(`/`afterRenderEffect(` bodies → filter). A first, cruder pass (`rg` for `effect(` + `.set(`) returned **21 files** and was too coarse to act on — it counts every route-param→HTTP-load effect; the narrower bare-read grep (`^\s*this\.\w+\(\);$`) returned 88 lines that are nearly all ordinary method calls. Both are recorded because the **useful** command is the third one. | **2**: `operator/venue-tab.ts` (this slice) and `auth/auth-page.ts:423`. Two near-misses judged legitimate: `shared/beach-map-canvas.ts:425` (a bare `this.rows()` read, but inside `afterRenderEffect({read})` doing a real DOM measurement — the sanctioned "sync to a non-reactive API" use) and `pages/home/home.ts:354` (not in an effect at all — a stored-thunk call in a click handler). | Fixed `venue-tab.ts` here. Filed **#1120** for `auth-page.ts` rather than folding it in: its reset clears a **password** on an audience change only (not on a mode change), so it is security-adjacent and asymmetric between its two sources, and it hand-rolls `previousMode`/`previousAudience` bookkeeping that wants `linkedSignal`'s documented `previous` parameter. Its own specs, its own decision — the same reasoning that kept this refactor out of PR #1118. |
 
 ---
 
