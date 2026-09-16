@@ -7,7 +7,7 @@ The **riviera map** (ADR-0022) is drawn from four resources the platform hosts i
 |---|---|---|---|
 | Style | `platform/map/style.json` | OSM Liberty (BSD-3, `maputnik/osm-liberty`) rewritten to `/map/…` URLs | ~75 kB |
 | Sprites | `platform/map/sprites/osm-liberty{,@2x}.{json,png}` | fetched from the same repo | ~150 kB |
-| Glyphs | `platform/map/glyphs/<font stack>/<range>.pbf` | `orangemug/font-glyphs` (Roboto, Apache-2.0): Roboto Regular, Roboto Medium, Roboto Condensed Italic × ranges 0–255 … 1024–1279 | ~1.4 MB |
+| Glyphs | `platform/map/glyphs/<font stack>/<range>.pbf` | `orangemug/font-glyphs` (Roboto, Apache-2.0): Roboto Regular, Roboto Medium, Roboto Condensed Italic × the ranges in `GLYPH_RANGES` (§ *Glyph ranges* below) | ~2.1 MB |
 | Tiles | `platform/map/riviera.pmtiles` | Planetiler 0.10.2 (OpenMapTiles profile) over Geofabrik Albania, bounds `19.00,39.50,21.20,42.80` (west, south, east, north — all of Albania, with sea room), max zoom 14, PMTiles output | ~60 MB |
 
 `platform/map/MANIFEST.txt` lists the sha256, URL and fetch time of every upstream byte the
@@ -50,6 +50,26 @@ supplies the extract instead of downloading it — see § *Egress*. Geofabrik se
 `albania-latest.osm.pbf`, which moves daily; the MANIFEST records the sha256 of the extract a run
 used, and exact reproduction is possible only while Geofabrik still offers that day's file —
 otherwise a regeneration is a refresh, which is the intended cadence.
+
+## Glyph ranges
+
+MapLibre only draws a codepoint from the self-hosted glyphs if `GLYPH_RANGES` (in the build
+script) ships the 256-wide range it falls in, for every font stack the style names; a missing
+range 404s and MapLibre silently substitutes the visitor's local font instead (issue #1107). The
+set the archive actually needs — not a guess — comes from decoding every tile and reading the
+label text the style renders, per `#{text-field}` layout property, from its source-layer:
+
+```bash
+npm ci --prefix frontend   # once, so the script's pmtiles/pbf/@mapbox/vector-tile deps exist
+node scripts/riviera-map-label-codepoints.mjs
+```
+
+It prints the exact ranges `GLYPH_RANGES` must cover. Recompute it whenever the archive is
+regenerated (a wider bbox or a newer OSM extract can add scripts) — diff its output against the
+current pin before touching `GLYPH_RANGES` by hand. Widening the pin, then `--assets`, only adds
+the new range's `.pbf` files and their MANIFEST lines: `fetch()` reuses every unchanged line
+byte-for-byte (sha256 match against the old section), so a genuine upstream drift is the only
+other thing that can appear in the diff.
 
 Then verify and commit:
 

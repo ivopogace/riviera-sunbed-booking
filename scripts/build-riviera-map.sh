@@ -28,8 +28,11 @@ OSM_LIBERTY_RAW="https://raw.githubusercontent.com/maputnik/osm-liberty/$OSM_LIB
 FONT_GLYPHS_REF="${FONT_GLYPHS_REF:-gh-pages}"
 FONT_GLYPHS_RAW="https://raw.githubusercontent.com/orangemug/font-glyphs/$FONT_GLYPHS_REF/glyphs"
 FONT_STACKS=("Roboto Regular" "Roboto Medium" "Roboto Condensed Italic")
-# Basic Latin, Latin-1, Latin Extended-A/B, IPA, Greek, Cyrillic — every script a riviera label uses.
-GLYPH_RANGES=(0-255 256-511 512-767 768-1023 1024-1279)
+# Basic Latin, Latin-1, Latin Extended-A/B, IPA, Greek, Cyrillic, General Punctuation (en/em
+# dash, curly quotes), and the two CJK blocks the archive's few Chinese POI names use — every
+# codepoint a label in the committed archive actually renders. Recomputed with
+# scripts/riviera-map-label-codepoints.mjs (docs/runbooks/riviera-map-tiles.md § glyph ranges).
+GLYPH_RANGES=(0-255 256-511 512-767 768-1023 1024-1279 8192-8447 21248-21503 33536-33791)
 # Planetiler (Apache-2.0) with its OpenMapTiles profile — the schema OSM Liberty is written for.
 PLANETILER_VERSION="${PLANETILER_VERSION:-0.10.2}"
 PLANETILER_JAR_URL="https://github.com/onthegomap/planetiler/releases/download/v$PLANETILER_VERSION/planetiler.jar"
@@ -89,24 +92,46 @@ write_manifest_section() { # write_manifest_section <header> <lines-file>
   mv "$MANIFEST.new" "$MANIFEST"
 }
 
-fetch() { # fetch <url> <dest> <lines-file>: download, then append a manifest line
-  local url="$1" dest="$2" lines_file="$3"
+# Returns (on stdout) the previous manifest line for <url> in <old-section>, but only if the
+# freshly-fetched <dest> still hashes to that line's recorded sha256 — i.e. upstream did not
+# drift. Exit 1 (nothing printed) when there's no prior line for <url>, or its content changed.
+reuse_manifest_line() { # reuse_manifest_line <dest> <url> <old-section>
+  local dest="$1" url="$2" old_section="$3"
+  local old_line; old_line="$(awk -v url="$url" '$2 == url { print; exit }' <<<"$old_section")"
+  [[ -n "$old_line" ]] || return 1
+  local old_sha; old_sha="$(awk '{ print $1 }' <<<"$old_line")"
+  [[ "$old_sha" == "$(sha256sum "$dest" | cut -d' ' -f1)" ]] || return 1
+  printf '%s\n' "$old_line"
+}
+
+fetch() { # fetch <url> <dest> <lines-file> [<old-section>]: download, then append a manifest
+  # line — the exact previous line, unchanged, when <old-section> has one for <url> whose
+  # sha256 still matches (so re-running --assets to add a glyph range leaves every other line,
+  # timestamp included, byte-for-byte untouched); a fresh line (new sha256/timestamp) otherwise,
+  # which is also how real upstream drift on a mutable branch ref shows up in the MANIFEST diff.
+  local url="$1" dest="$2" lines_file="$3" old_section="${4:-}"
   mkdir -p "$(dirname "$dest")"
   curl --fail --silent --show-error --location --output "$dest" "$url"
-  manifest_line "$dest" "$url" >> "$lines_file"
+  local reused
+  if [[ -n "$old_section" ]] && reused="$(reuse_manifest_line "$dest" "$url" "$old_section")"; then
+    printf '%s\n' "$reused" >> "$lines_file"
+  else
+    manifest_line "$dest" "$url" >> "$lines_file"
+  fi
 }
 
 build_assets() {
   echo "== assets → $MAP_DIR"
   mkdir -p "$MAP_DIR"
   local lines; lines="$(mktemp)"
-  fetch "$OSM_LIBERTY_RAW/style.json" "$MAP_DIR/style.upstream.json" "$lines"
+  local old_assets; old_assets="$(manifest_section "$MANIFEST_ASSETS_HEADER")"
+  fetch "$OSM_LIBERTY_RAW/style.json" "$MAP_DIR/style.upstream.json" "$lines" "$old_assets"
   for f in osm-liberty.json osm-liberty.png osm-liberty@2x.json osm-liberty@2x.png; do
-    fetch "$OSM_LIBERTY_RAW/sprites/$f" "$MAP_DIR/sprites/$f" "$lines"
+    fetch "$OSM_LIBERTY_RAW/sprites/$f" "$MAP_DIR/sprites/$f" "$lines" "$old_assets"
   done
   for stack in "${FONT_STACKS[@]}"; do
     for range in "${GLYPH_RANGES[@]}"; do
-      fetch "$FONT_GLYPHS_RAW/${stack// /%20}/$range.pbf" "$MAP_DIR/glyphs/$stack/$range.pbf" "$lines"
+      fetch "$FONT_GLYPHS_RAW/${stack// /%20}/$range.pbf" "$MAP_DIR/glyphs/$stack/$range.pbf" "$lines" "$old_assets"
     done
   done
   write_manifest_section "$MANIFEST_ASSETS_HEADER" "$lines"
