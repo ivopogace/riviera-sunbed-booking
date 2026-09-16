@@ -136,9 +136,9 @@ N/A — no contract change (the style file is a static resource; its URL fields 
 
 ## Execution status
 
-**Stage pointer:** CI gate — draft PR #1116, phase 2 pushed
+**Stage pointer:** review gate — PR #1116 ready for review (phase 1 CI 8/8 green; branch level with `main`, no merge needed)
 
-**Next action:** confirm phase 2's CI run is green, then merge latest `origin/main` and mark #1116 ready for review (review gate, `pr-gates.md` §1).
+**Next action:** run `/code-review` over the resolved range (`pr-gates.md` §1) with `riviera-review-overlay`; then the Sonar gate (§2).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
