@@ -133,15 +133,19 @@ N/A — no API shape change.
 
 ## Execution status
 
-**Stage pointer:** implement — done; ready for CI/PR.
+**Stage pointer:** merge close-out — CI green, Sonar gate green (0 issues, 86.24% new-code
+coverage, 0 duplication), review gate run (5-agent fan-out + overlay), all findings
+resolved. Ready to merge.
 
-**Next action:** open the PR (draft as soon as pushed, per `riviera-sdlc`), let CI run, then
-the review + Sonar gates.
+**Next action:** merge PR #1114, then run the merge close-out checklist (tick #1107's
+completion, no tracking epic to update, no deferred findings to propagate).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Audit script + GLYPH_RANGES + fetch() reuse mechanism (TDD) | ✅ | (pending commit) |
-| 1 — Regenerate assets, verify, docs | ✅ | (pending commit) |
+| 0 — Audit script + GLYPH_RANGES + fetch() reuse mechanism (TDD) | ✅ | `c051c78c` |
+| 1 — Regenerate assets, verify, docs | ✅ | `c051c78c` |
+| 2 — Sonar-gate fix round | ✅ | `a9c1f89c` |
+| 3 — Review-gate fix round | ✅ | `5829ee7c` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -149,15 +153,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | sonar | `build-riviera-map.test.sh:129` shellcheck:S7679 — assign the positional parameter to a local variable | fixed-in-`(pending commit)` |
-| F-2 | sonar | `riviera-map-label-codepoints.mjs` javascript:S6582 — prefer optional chaining over `&&` | fixed-in-`(pending commit)` |
-| F-3 | sonar | `riviera-map-label-codepoints.mjs` javascript:S8786 — `{([^}]+)}` regex flagged for super-linear backtracking | fixed-in-`(pending commit)` — replaced with a non-regex `templateFields()` scanner |
-| F-4 | sonar | `riviera-map-label-codepoints.mjs` javascript:S3776 — `main()` cognitive complexity 44 > 15 | fixed-in-`(pending commit)` — decomposed into `scanArchive`/`collectTileCodepoints`/`collectFeatureCodepoints` |
-| F-5 | sonar | `riviera-map-label-codepoints.mjs` javascript:S7785 — prefer top-level await over an async `main()` call | fixed-in-`(pending commit)` — top-level `if (isMain) { … }` guard, no wrapper function |
-| F-6 | sonar | new-code coverage 0.0% (the script had no test file) | fixed-in-`(pending commit)` — `riviera-map-label-codepoints.test.mjs`, 9 tests, 84% line coverage on the script |
-| F-7 | review | `write_manifest_section()` silently drops the other mode's lines when `MANIFEST.txt` predates the `# assets`/`# tiles` header format (exactly the R-2 hazard hit and hand-fixed during Phase 1, but the mechanism itself had no guard) | fixed-in-`(pending commit)` — refuses (exit 1, file untouched) when the file has content but neither header; regression test added, verified red on the pre-fix code |
-| F-8 | review | `GLYPH_RANGES` comment called `21248-21503`/`33536-33791` "two CJK blocks" — both fall inside the single CJK Unified Ideographs block | fixed-in-`(pending commit)` — reworded to "two 256-wide ranges inside CJK Unified Ideographs"; also collapsed the same comment from 5 lines to 1 (RV-STYLE-1 — an inline comment is one line or it is not written; missed by `check-inline-comments.mjs` because it doesn't cover `.sh` files, caught by the review agent's #6c pass) |
-| F-9 | review | false positive — an agent claimed `{ PbfReader: Pbf } = require('pbf')` binds `undefined` because `pbf`'s `module.exports` is the class itself | no fix — verified directly (`node -e "console.log(Object.keys(require('./frontend/node_modules/pbf')))"` → `['PbfReader','PbfWriter']`) and by the script's own successful real-archive runs throughout this PR; the installed pbf 5.1.2 uses the newer named-export API, not the one the agent assumed |
+| F-1 | sonar | `build-riviera-map.test.sh:129` shellcheck:S7679 — assign the positional parameter to a local variable | fixed-in-`a9c1f89c` |
+| F-2 | sonar | `riviera-map-label-codepoints.mjs` javascript:S6582 — prefer optional chaining over `&&` | fixed-in-`a9c1f89c` |
+| F-3 | sonar | `riviera-map-label-codepoints.mjs` javascript:S8786 — `{([^}]+)}` regex flagged for super-linear backtracking | fixed-in-`a9c1f89c` — replaced with a non-regex `templateFields()` scanner |
+| F-4 | sonar | `riviera-map-label-codepoints.mjs` javascript:S3776 — `main()` cognitive complexity 44 > 15 | fixed-in-`a9c1f89c` — decomposed into `scanArchive`/`collectTileCodepoints`/`collectFeatureCodepoints` |
+| F-5 | sonar | `riviera-map-label-codepoints.mjs` javascript:S7785 — prefer top-level await over an async `main()` call | fixed-in-`a9c1f89c` — top-level `if (isMain) { … }` guard, no wrapper function |
+| F-6 | sonar | new-code coverage 0.0% (the script had no test file) | fixed-in-`a9c1f89c` — `riviera-map-label-codepoints.test.mjs`, 9 tests, 84% line coverage on the script (86.24% on the PR's overall new-code) |
+| F-7 | review | `write_manifest_section()` silently drops the other mode's lines when `MANIFEST.txt` predates the `# assets`/`# tiles` header format (exactly the R-2 hazard hit and hand-fixed during Phase 1, but the mechanism itself had no guard) | fixed-in-`5829ee7c` — refuses (exit 1, file untouched) when the file has content but neither header; regression test added, verified red on the pre-fix code |
+| F-8 | review | `GLYPH_RANGES` comment called `21248-21503`/`33536-33791` "two CJK blocks" — both fall inside the single CJK Unified Ideographs block | fixed-in-`5829ee7c` — reworded to "two 256-wide ranges inside CJK Unified Ideographs"; also collapsed the same comment from 5 lines to 1 (RV-STYLE-1 — an inline comment is one line or it is not written; missed by `check-inline-comments.mjs` because it doesn't cover `.sh` files, caught by the review agent's #6c pass) |
+| F-9 | review | false positive — an agent claimed `{ PbfReader: Pbf } = require('pbf')` binds `undefined` because `pbf`'s `module.exports` is the class itself | no fix needed — verified directly (`node -e "console.log(Object.keys(require('./frontend/node_modules/pbf')))"` → `['PbfReader','PbfWriter']`) and by the script's own successful real-archive runs throughout this PR; the installed pbf 5.1.2 uses the newer named-export API, not the one the agent assumed |
 
 ---
 
@@ -212,7 +216,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   issue — its own sources already have cache-hit/sidecar handling from #1108 and don't share
   `fetch()`'s curl-download shape, so extending the same mechanism there is a separate,
   unscoped change.
-- [x] **Step 6: Commit** — pending.
+- [x] **Step 6: Commit** — `c051c78c`.
 - [x] **Step 7: Update plan-doc execution status** — this document.
 
 ---
@@ -250,8 +254,32 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Step 6:** Documented the recompute procedure in
   `docs/runbooks/riviera-map-tiles.md` § *Glyph ranges*; generalized the glyph-row table
   description off the old hardcoded `0-255…1024-1279` list.
-- [x] **Step 7: Commit** — pending.
+- [x] **Step 7: Commit** — `c051c78c`.
 - [x] **Step 8: Update plan-doc execution status** — this document.
+
+---
+
+## Phase 2 — Sonar-gate fix round
+
+Sonar's quality gate failed on the first push: 5 code smells on the new
+`riviera-map-label-codepoints.mjs` (F-1..F-5) and 0.0% new-code coverage (F-6, no test file).
+Fixed by refactoring `main()` into small, independently-testable functions
+(`scanArchive`/`collectTileCodepoints`/`collectFeatureCodepoints`/`templateFields`), dropping
+the async-`main()`-wrapper pattern for a top-level `if (isMain)` guard, and adding
+`riviera-map-label-codepoints.test.mjs` (9 cases). Re-verified the script's real-archive
+output was unchanged after the refactor before pushing. Commit `a9c1f89c`; re-ran CI/Sonar —
+green, 0 issues, 86.24% new-code coverage.
+
+## Phase 3 — Review-gate fix round
+
+`riviera-sdlc`'s review gate (5-agent fan-out + `riviera-review-overlay`) found one real bug
+(F-7 — the MANIFEST section mechanism had no guard against a headerless legacy file, the exact
+hazard R-2 hit by hand) and one stale/over-long comment (F-8); one flagged issue (F-9) was
+verified as a false positive against the actually-installed `pbf` package version and
+rejected with evidence. Fixed in `5829ee7c`, with a new regression test verified red against
+the pre-fix code. Posted the findings + resolution as a PR comment
+(github.com/ivopogace/riviera-sunbed-booking/pull/1114#issuecomment-5695468673). Re-ran
+CI/Sonar after the push — green, 0 issues.
 
 ---
 
@@ -288,7 +316,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   code-touching commit, once CI/review/Sonar have run.
 - [x] Risk register has no stale `open` rows; Open Questions have no unresolved blocking
   entries.
-- [ ] Close-out written in THIS PR's last code-touching commit — pending PR creation.
-- [ ] The review gate ran in full — pending.
+- [x] Close-out written in THIS PR's last code-touching commit (`5829ee7c`).
+- [x] The review gate ran in full — `Skill("code-review:code-review")`, 5-agent fan-out +
+  `riviera-review-overlay`, findings resolved (F-7/F-8 fixed, F-9 rejected with evidence),
+  posted as PR comment.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
