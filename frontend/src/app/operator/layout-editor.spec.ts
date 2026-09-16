@@ -1111,6 +1111,23 @@ describe('LayoutEditor (#172)', () => {
     expect(announce.textContent?.trim()).toBe('');
   });
 
+  it('renders an invalid-link card, not the load-failure copy, on an invalid venue param (#1125)', () => {
+    renderSaved();
+
+    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    fixture.detectChanges();
+
+    // A bad link is not a failed read: "Refresh the page and try again" would be wrong copy for it.
+    expect(byId('layout-invalid').textContent).toContain('Open the console from your venue list.');
+    expect(host.querySelector('[data-testid="layout-load-failed"]')).toBeNull();
+    // The editor itself is gone — rail, grid and save bar alike.
+    expect(host.querySelector('[data-testid="layout-tool-rail"]')).toBeNull();
+    expect(host.querySelector('[data-testid="layout-save-bar"]')).toBeNull();
+    // The new branch goes BELOW the live regions, which outlive every branch (RV-FE-10).
+    expect(byId('layout-saved-announce')).toBeTruthy();
+    expect(byId('layout-row-name-saved-announce')).toBeTruthy();
+  });
+
   it("clears the previous venue's grid and row names when the venue param goes invalid (#1125)", () => {
     renderSaved();
     setRowName(1, 'Back terrace');
@@ -1120,10 +1137,10 @@ describe('LayoutEditor (#172)', () => {
     params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
     fixture.detectChanges();
 
-    // #1124 emptied the two announcers; the grid itself kept the previous venue's state.
+    // The announcer sweep emptied the two live regions; the grid kept the previous venue's state.
     expect(host.querySelector('[data-testid="layout-cell"]')).toBeNull();
     expect(host.querySelector('[data-testid="layout-row-name"]')).toBeNull();
-    // And no read is issued for a venue the URL no longer names: afterEach's http.verify() proves it.
+    // No read is issued for a venue the URL does not name: afterEach's http.verify() proves it.
   });
 
   it('drops a row-name write error on an invalid venue param, and never resurrects it (#1125)', async () => {
@@ -1143,9 +1160,7 @@ describe('LayoutEditor (#172)', () => {
 
     expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
 
-    // Back on the same venue the rows render again — and the stale failure must not ride back in
-    // with them. Two mechanisms hold that today (the venueId derivation, and the reload's own
-    // clearRenameNotices), so this pins the behaviour rather than which one delivered it.
+    // Back on the same venue the rows render again; the stale failure must not ride back in.
     params$.next(convertToParamMap({ venueId: '1' }));
     fixture.detectChanges();
     http
@@ -1179,7 +1194,7 @@ describe('LayoutEditor (#172)', () => {
         locks: [],
       });
     fixture.detectChanges();
-    // A venue that already has sets opens in per-set mode (#600); the bulk grid is one chip away.
+    // A venue that already has sets opens in per-set mode; the bulk grid is one chip away.
     useBulkMode();
 
     // Re-seeded from the new venue, not merged with the old one's two rows.

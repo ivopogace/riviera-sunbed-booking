@@ -256,14 +256,14 @@ export class LayoutEditor {
   protected readonly renamingRow = signal<number | null>(null);
   /** The grid row whose rename last succeeded, cleared on the next edit of any row name. Derived on
    *  the venue rather than cleared by hand: a notice that recomputes from `venueId` cannot outlive
-   *  the venue it describes by a reset path forgetting it (#1122). */
+   *  the venue it describes by a reset path forgetting it. */
   protected readonly renamedRow = linkedSignal({
     source: this.venueId,
     computation: (): number | null => null,
   });
   /** The last per-row rename failure. `STALE_WRITE` never lands here — the reload banner owns it.
    *  Derived on the venue for {@link renamedRow}'s reason — same shape, same venue-scoped lifetime,
-   *  so one mechanism rather than two for one rule (#1125). */
+   *  so one mechanism rather than two for one rule. */
   protected readonly rowNameError = linkedSignal({
     source: this.venueId,
     computation: (): { y: number; code: RowNameErrorCode } | null => null,
@@ -522,8 +522,7 @@ export class LayoutEditor {
   });
 
   constructor() {
-    // Re-runs on every venue-context change: drop the previous venue's draft + flags, then load the
-    // new venue — or, when the param names no venue, leave the editor cleared (#1125).
+    // Every venue-context change: clear the previous venue's draft, then load the new venue if any.
     effect(() => {
       const id = this.venueId();
       untracked(() => (id === undefined ? this.clearVenueState() : this.resetForVenue(id)));
@@ -548,10 +547,10 @@ export class LayoutEditor {
    * Drop every venue-scoped draft and flag, so nothing from the previous venue leaks into the next
    * context — another venue, or no venue at all.
    *
-   * <p>The two rename notices are absent on purpose: they derive from `venueId` (#1122, #1125), and
-   * every caller of this method is a `venueId` change, so clearing them here would be a second
-   * mechanism for one rule — the drift {@link clearRenameNotices} still guards on the in-venue edit
-   * paths, which no derivation reaches.
+   * <p>The two rename notices are absent on purpose: they derive from `venueId`, and every caller
+   * of this method is a `venueId` change, so clearing them here would be a second mechanism for one
+   * rule — the drift {@link clearRenameNotices} still guards on the in-venue edit paths, which no
+   * derivation reaches.
    */
   private clearVenueState(): void {
     this.epoch++;

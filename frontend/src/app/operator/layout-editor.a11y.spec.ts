@@ -23,7 +23,7 @@ describe('LayoutEditor a11y (#172)', () => {
   let fixture: ComponentFixture<LayoutEditor>;
   let http: HttpTestingController;
 
-  function configure(): void {
+  function configure(venueId = '1'): void {
     TestBed.configureTestingModule({
       imports: [LayoutEditor],
       providers: [
@@ -35,8 +35,8 @@ describe('LayoutEditor a11y (#172)', () => {
           useValue: {
             snapshot: { paramMap: convertToParamMap({}) },
             parent: {
-              snapshot: { paramMap: convertToParamMap({ venueId: '1' }) },
-              paramMap: of(convertToParamMap({ venueId: '1' })),
+              snapshot: { paramMap: convertToParamMap({ venueId }) },
+              paramMap: of(convertToParamMap({ venueId })),
             },
           },
         },
@@ -83,6 +83,15 @@ describe('LayoutEditor a11y (#172)', () => {
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
   }
+
+  it('has no axe violations on the invalid-link card (#1125)', async () => {
+    // A param naming no venue issues no map read, so there is nothing to flush here.
+    configure('not-a-venue');
+    fixture.detectChanges();
+
+    expect(byId('layout-invalid')).toBeTruthy();
+    await expectNoAxeViolations(host());
+  });
 
   it('has no axe violations in the empty state', async () => {
     render();

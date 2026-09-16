@@ -51,33 +51,33 @@ branch, standing in for `bugfix/layout-editor-invalid-venue-reset` per `riviera-
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the editor has loaded venue 1 and the operator has generated a grid
+- [x] **AC-1:** Given the editor has loaded venue 1 and the operator has generated a grid
   and typed row names, when the parent `:venueId` param goes invalid, then no previous-venue
   state is readable — no `layout-row-name` input and no beach cell is rendered, and no new
   map GET is issued. *Seam:* the rendered `LayoutEditor` DOM by `data-testid`, plus
   `HttpTestingController` for the absent request · *Pinned by:*
   `layout-editor.spec.ts` › `clears the previous venue's grid and row names when the venue param goes invalid (#1125)`
-- [ ] **AC-2:** Given an invalid parent `:venueId`, when the editor renders, then
+- [x] **AC-2:** Given an invalid parent `:venueId`, when the editor renders, then
   `layout-invalid` is shown carrying the console-link copy, and neither `layout-tool-rail`
   nor `layout-load-failed` is rendered. *Seam:* the rendered `LayoutEditor` DOM by
   `data-testid` · *Pinned by:* `layout-editor.spec.ts` ›
   `renders an invalid-link card, not the load-failure copy, on an invalid venue param (#1125)`
-- [ ] **AC-3:** Given a layout save and a row rename have both been announced, when the
+- [x] **AC-3:** Given a layout save and a row rename have both been announced, when the
   parent `:venueId` param goes invalid, then both `<output>` live regions are the **same DOM
   nodes** and both are empty. *Seam:* the two live-region `data-testid`s
   (`layout-saved-announce`, `layout-row-name-saved-announce`) · *Pinned by:* the existing
   `layout-editor.spec.ts` › `empties the layout-saved announcer when the venue param goes invalid (#1122)`
   and `empties the row-name announcer when the venue param goes invalid (#1122)`, which must
   keep passing unchanged (#1078, RV-FE-10).
-- [ ] **AC-4:** Given a row rename has failed and `layout-row-name-write-error` is on
+- [x] **AC-4:** Given a row rename has failed and `layout-row-name-write-error` is on
   screen, when the parent `:venueId` param goes invalid, then that error is gone. *Seam:*
   the rendered `LayoutEditor` DOM by `data-testid` · *Pinned by:* `layout-editor.spec.ts` ›
   `drops a row-name write error when the venue param goes invalid (#1125)`
-- [ ] **AC-5:** Given the editor has loaded venue 1, when the parent param switches
+- [x] **AC-5:** Given the editor has loaded venue 1, when the parent param switches
   in place to venue 2, then the editor issues the map GET for venue 2 and re-seeds from it —
   exactly as today. *Seam:* `HttpTestingController` + the rendered DOM · *Pinned by:*
   `layout-editor.spec.ts` › `reloads the map when the venue is switched in place (#1125)`
-- [ ] **AC-6:** Given an invalid parent `:venueId`, when axe audits the rendered editor,
+- [x] **AC-6:** Given an invalid parent `:venueId`, when axe audits the rendered editor,
   then there are no violations. *Seam:* `expectNoAxeViolations` over the component's host
   element · *Pinned by:* `layout-editor.a11y.spec.ts` ›
   `the invalid-venue card is clean`
@@ -117,11 +117,11 @@ structural" claim the ledger exists to verify, so the affected behaviors are enu
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Wrapping a 540-line template in a new `@else` silently drops or re-nests a branch | med | high | Do the move as an indent-only edit, then diff with `git diff -w` to prove no content changed; the full `layout-editor` spec suite (2467 lines) plus the a11y and contrast specs re-run | Claude | open |
-| R-2 | The new branch is placed above the live regions, unmounting them and regressing #1124/#1078 (RV-FE-10) | low | high | AC-3 keeps the two existing #1122 specs unchanged as the regression guard; they assert node identity across the transition | Claude | open |
-| R-3 | `rowNameError`'s `linkedSignal` conversion changes in-venue behavior (the error should survive unrelated re-renders, and still clear on the next edit) | low | med | `clearRenameNotices()` keeps setting it; the existing rename-failure specs re-run untouched | Claude | open |
-| R-4 | An in-flight map load from the previous venue lands after the invalid transition and re-seeds the grid | med | med | `clearVenueState()` bumps `epoch`, the existing identity guard every continuation already compares; AC-1 asserts no cell is rendered after the transition | Claude | open |
-| R-5 | Frontend-only slice, but the console tabs share `parentVenueId` — a change there would reach six tabs | low | high | The slice does not touch `shared/parent-venue-id.ts`; the generalization audit records the sweep | Claude | open |
+| R-1 | Wrapping a 540-line template in a new `@else` silently drops or re-nests a branch | med | high | Done as an indent-only move. `git diff -w` was **not** sufficient — Prettier re-wraps prose at the deeper indent — so the proof used is stronger: the whole template with the new card and braces removed is byte-identical to `HEAD`'s once whitespace is normalized. 855 operator specs green | Claude | closed — whitespace-normalized template identity |
+| R-2 | The new branch is placed above the live regions, unmounting them and regressing #1124/#1078 (RV-FE-10) | low | high | The two #1122 specs pass unchanged (AC-3), and AC-2 additionally asserts both regions are still mounted inside the invalid branch | Claude | closed |
+| R-3 | `rowNameError`'s `linkedSignal` conversion changes in-venue behavior (the error should survive unrelated re-renders, and still clear on the next edit) | low | med | `clearRenameNotices()` still sets it on the in-venue edit paths; all nine existing rename-failure specs pass untouched | Claude | closed |
+| R-4 | An in-flight map load from the previous venue lands after the invalid transition and re-seeds the grid | med | med | `clearVenueState()` bumps `epoch`, the identity guard every continuation already compares; AC-1 asserts no cell renders after the transition | Claude | closed |
+| R-5 | Frontend-only slice, but the console tabs share `parentVenueId` — a change there would reach six tabs | low | high | `shared/parent-venue-id.ts` is untouched; the generalization audit swept all seven callers and found one real hit (`pricing-tab`), filed as its own issue | Claude | closed |
 
 ## Open questions / Assumptions
 
@@ -176,14 +176,15 @@ N/A — no contract change. No endpoint, DTO or client type is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `PR — draft open, awaiting CI`
 
-**Next action:** Phase 1 step 1 — write the failing AC-2 spec for the `layout-invalid` card.
+**Next action:** Open the draft PR so CI fires, then mark ready for review and run the
+Review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Clear venue-scoped state on an invalid param | ✅ | `<phase-0-sha>` |
-| 1 — Render the invalid-link card | ⏳ | |
+| 0 — Clear venue-scoped state on an invalid param | ✅ | `7ce301ae` |
+| 1 — Render the invalid-link card | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -212,19 +213,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Modify `frontend/src/app/operator/layout-editor.ts` · Test
 `frontend/src/app/operator/layout-editor.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — AC-1, AC-4, AC-5 in `layout-editor.spec.ts`.
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 1: Write the failing tests** — AC-1, AC-4, AC-5 in `layout-editor.spec.ts`.
+- [x] **Step 2: Run them, verify they fail** —
   `npm test -- --run layout-editor.spec.ts` → AC-1/AC-4 FAIL (previous venue's grid and
   row-name error still rendered).
-- [ ] **Step 3: Minimal implementation** — extract `clearVenueState()` (every reset in
+- [x] **Step 3: Minimal implementation** — extract `clearVenueState()` (every reset in
   `resetForVenue` except `loadExisting`, including `epoch++`), give the effect its
   `undefined` arm, convert `rowNameError` to `linkedSignal({source: venueId})`.
-- [ ] **Step 4: Run them, verify they pass** — `npm test -- --run layout-editor.spec.ts`.
-- [ ] **Step 5: Generalization-audit pass** — population: every console tab whose
+- [x] **Step 4: Run them, verify they pass** — `npm test -- --run layout-editor.spec.ts`.
+- [x] **Step 5: Generalization-audit pass** — population: every console tab whose
   `:venueId` effect has an `undefined` arm that only flips a flag rather than clearing
   venue-scoped draft state.
-- [ ] **Step 6: Commit** — `git commit -m "Clear the layout editor's venue state on an invalid param (#1125)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Clear the layout editor's venue state on an invalid param (#1125)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -233,17 +234,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Modify `frontend/src/app/operator/layout-editor.html` · Test
 `frontend/src/app/operator/layout-editor.spec.ts`, `layout-editor.a11y.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — AC-2 and AC-6.
-- [ ] **Step 2: Run them, verify they fail** — `layout-invalid` absent.
-- [ ] **Step 3: Minimal implementation** — the `@if (venueId() === undefined)` card
+- [x] **Step 1: Write the failing tests** — AC-2 and AC-6.
+- [x] **Step 2: Run them, verify they fail** — `layout-invalid` absent.
+- [x] **Step 3: Minimal implementation** — the `@if (venueId() === undefined)` card
   (`appCardGlass`, `role="alert"`, `data-testid="layout-invalid"`, `venue-tab`'s copy) with
   the existing body under `@else`, live regions left above.
-- [ ] **Step 4: Run them, verify they pass** — the three `layout-editor*` spec files, then
+- [x] **Step 4: Run them, verify they pass** — the three `layout-editor*` spec files, then
   `git diff -w` on the template to prove the move was indent-only (R-1).
-- [ ] **Step 5: Generalization-audit pass** — population: console tabs with a venue-scoped
+- [x] **Step 5: Generalization-audit pass** — population: console tabs with a venue-scoped
   failure branch but no invalid-link branch.
-- [ ] **Step 6: Commit** — `git commit -m "Render an invalid-link card in the layout editor (#1125)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Render an invalid-link card in the layout editor (#1125)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -260,12 +261,22 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `npm test -- --run layout-editor.spec.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run `npm test -- --run layout-editor.spec.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** Run `npm test -- --run layout-editor.spec.ts` → the two #1122 specs PASS unchanged. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `npm test -- --run layout-editor.spec.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `npm test -- --run layout-editor.spec.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `npm test -- --run layout-editor.a11y.spec.ts` → PASS. Verified at commit `<sha>`.
+All six verified by one command from `frontend/`:
+`npx ng test --watch=false --include="src/app/operator/**/*.spec.ts"` → **855 passed**.
+
+- [x] **AC-1:** `clears the previous venue's grid and row names…` PASS.
+- [x] **AC-2:** `renders an invalid-link card, not the load-failure copy…` PASS.
+- [x] **AC-3:** the two #1122 announcer specs PASS **unchanged** — no edit to either.
+- [x] **AC-4:** `drops a row-name write error on an invalid venue param, and never resurrects it` PASS.
+- [x] **AC-5:** `reloads the map when the venue is switched in place` PASS.
+- [x] **AC-6:** `has no axe violations on the invalid-link card` PASS.
+
+**A note on AC-4's strength, recorded because the code comment originally overclaimed it:**
+the round-trip assertion does *not* discriminate the `linkedSignal` from an imperative
+clear. Both counterfactuals were run and both passed, because `loadExisting` already calls
+`clearRenameNotices()` on re-seed. At this seam the three mechanisms are behaviourally
+identical; the derivation was chosen for consistency with its two siblings, not for an
+observable difference. AC-4 pins the behaviour, which is what it can honestly pin.
 
 ## Self-review checklist (before merge / PR)
 
