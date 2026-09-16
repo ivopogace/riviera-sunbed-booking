@@ -2,7 +2,6 @@ import {
   afterNextRender,
   Component,
   computed,
-  effect,
   ElementRef,
   inject,
   Injector,
@@ -43,6 +42,15 @@ import { TouchTarget } from '../shared/touch-target';
 /** Who is signing in. Picks the client service, never a shared endpoint. */
 type Audience = 'tourist' | 'operator';
 type Mode = 'signin' | 'register';
+
+/** What the one card collects; `contactEmail` is the operator register's second field. */
+interface AuthModel {
+  identifier: string;
+  contactEmail: string;
+  password: string;
+}
+
+const EMPTY_AUTH_MODEL: AuthModel = { identifier: '', contactEmail: '', password: '' };
 
 const AUDIENCE_TABS: readonly SegmentedOption<Audience>[] = [
   { value: 'tourist', label: 'Tourist', testId: 'audience-tourist' },
@@ -333,9 +341,25 @@ export class AuthPage {
   );
 
   protected readonly submitting = signal(false);
-  protected readonly error = signal<string | undefined>(undefined);
-  /** The widget's verified proof-of-work solution for whichever register card is showing. */
-  protected readonly challengePayload = signal<string | undefined>(undefined);
+  /**
+   * The one alert, cleared whenever the card changes shape — EITHER source, since a failure the
+   * tourist has stopped looking at is stale on both. Derived rather than written from an `effect`:
+   * angular.dev's effect guide names state propagation as the shape to replace with
+   * `computed()`/`linkedSignal()`, and deriving it also makes the reset pull-based, so it can
+   * never land after the render that read it.
+   */
+  protected readonly error = linkedSignal({
+    source: () => [this.mode(), this.audience()],
+    computation: (): string | undefined => undefined,
+  });
+  /** The widget's verified proof-of-work solution for whichever register card is showing. Reset on
+   *  the same pair as {@link error}: `showChallenge` destroys the widget on a mode change and the
+   *  audience picks the endpoint, so a remounted widget must start unverified rather than inherit
+   *  the previous card's solution. */
+  protected readonly challengePayload = linkedSignal({
+    source: () => [this.mode(), this.audience()],
+    computation: (): string | undefined => undefined,
+  });
   protected readonly policyHint = PASSWORD_POLICY_HINT;
   private readonly submittedForApproval = signal(false);
   /**
@@ -345,7 +369,20 @@ export class AuthPage {
    */
   private readonly handingOff = signal(false);
 
-  protected readonly model = signal({ identifier: '', contactEmail: '', password: '' });
+  /**
+   * The card's fields. Sourced on `audience` ALONE, never the pair: a credential must not cross
+   * principal types, but a sign-in/register toggle is not a principal change, so a mode toggle
+   * deliberately keeps what was typed. The documented "account for previous state" shape
+   * ({@link https://angular.dev/guide/signals/linked-signal#accounting-for-previous-state}, the
+   * same one `set-editor.ts` uses) is what lets it blank only `password` and carry the other two
+   * fields over; `previous` is absent only on the first computation, which is why the card the
+   * tourist lands on is not treated as a switch.
+   */
+  protected readonly model = linkedSignal<Audience, AuthModel>({
+    source: this.audience,
+    computation: (_audience, previous) =>
+      previous ? { ...previous.value, password: '' } : EMPTY_AUTH_MODEL,
+  });
   // Validity is gated in onSubmit and shown by the one alert — the retired cards' exact behaviour.
   protected readonly authForm = form(this.model);
 
@@ -417,31 +454,12 @@ export class AuthPage {
   );
 
   constructor() {
-    // One place owns the reset-on-change behaviour, so it fires for the in-card toggle AND a live nav.
-    let previousMode = this.mode();
-    let previousAudience = this.audience();
-    effect(() => {
-      const mode = this.mode();
-      const audience = this.audience();
-      if (mode === previousMode && audience === previousAudience) {
-        return;
-      }
-      if (audience !== previousAudience) {
-        // Never carry a credential across principal types, even on a live query-param nav.
-        this.model.update((m) => ({ ...m, password: '' }));
-      }
-      previousMode = mode;
-      previousAudience = audience;
-      this.error.set(undefined);
-      // A remounted widget starts unverified, never from the previous card's solution.
-      this.challengePayload.set(undefined);
-    });
     afterNextRender({ write: () => this.focusFirstField() });
   }
 
   protected onAudienceChange(next: Audience): void {
     this.audience.set(next);
-    // Password + error reset is owned by the audience/mode effect above.
+    // The password and error resets are derived from `audience`/`mode`, not wired here.
     // No refocus: arrows move focus WITHIN a radiogroup (caught by unified-auth.e2e.ts).
   }
 
@@ -454,7 +472,7 @@ export class AuthPage {
   protected backToSignIn(): void {
     this.submittedForApproval.set(false);
     this.mode.set('signin');
-    this.model.set({ identifier: '', contactEmail: '', password: '' });
+    this.model.set(EMPTY_AUTH_MODEL);
     this.error.set(undefined);
     this.refocusAfterRender();
   }
@@ -564,7 +582,7 @@ export class AuthPage {
     }
     // Auto-sign-in: fresh registration lands in the console; a duplicate fails like any sign-in (D-8).
     const signIn = await this.operatorAuth.signIn(identifier, password);
-    this.model.set({ identifier: '', contactEmail: '', password: '' });
+    this.model.set(EMPTY_AUTH_MODEL);
     if (signIn === 'signed-in') {
       await this.land(this.operatorLandingRoute());
       return;

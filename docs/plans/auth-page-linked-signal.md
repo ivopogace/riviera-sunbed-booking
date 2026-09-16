@@ -186,17 +186,16 @@ N/A — no contract change. The same `CustomerAuth`/`OperatorAuth` calls with th
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** replace `error`/`challengePayload`/`model` with the three `linkedSignal`s and
-delete the constructor `effect` and both `previous*` variables, then re-run
-`npx ng test --watch=false --include="src/app/auth/auth-page.spec.ts"` (50 specs, all must stay green).
+**Next action:** add the real-browser credential leg (AC-7) to `frontend/e2e/unified-auth.e2e.ts`,
+then re-run #1119's mechanism sweep to confirm the effect population is closed.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — pin the reset legs with specs (AC-3, AC-4, AC-5) | ✅ | `b1600b70` |
-| 1 — replace the effect with linkedSignals (AC-1, AC-2, AC-6) | ⏳ | |
-| 2 — real-browser leg (AC-7) + generalization audit | | |
+| 1 — replace the effect with linkedSignals (AC-1, AC-2, AC-6) | ✅ | `6b75c20a` |
+| 2 — real-browser leg (AC-7) + generalization audit | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -245,19 +244,33 @@ asymmetry's negative leg.
 
 **Files:** Modify `frontend/src/app/auth/auth-page.ts`
 
-- [ ] **Step 1: Replace `error` and `challengePayload`** with `linkedSignal`s sourced on
+- [x] **Step 1: Replace `error` and `challengePayload`** with `linkedSignal`s sourced on
   `[this.mode(), this.audience()]`, computation `() => undefined`.
-- [ ] **Step 2: Replace `model`** with the `previous`-aware form, generics explicit per F1:
+- [x] **Step 2: Replace `model`** with the `previous`-aware form, generics explicit per F1:
   sourced on `this.audience`, computation returns the empty model when `previous` is `undefined`
   (first run, F2) and `{ ...previous.value, password: '' }` otherwise (F3).
-- [ ] **Step 3: Delete the constructor `effect`**, both `previous*` variables, and the now-stale
+- [x] **Step 3: Delete the constructor `effect`**, both `previous*` variables, and the now-stale
   `// Password + error reset is owned by the audience/mode effect above.` comment in
   `onAudienceChange`; drop `effect` from the `@angular/core` import if unused.
-- [ ] **Step 4: Run the full auth spec set** —
-  `npm test -- --run src/app/auth/` → PASS, including the phase-0 three and every pre-existing case.
-- [ ] **Step 5: Lint + format** — `npm run lint && npm run format:check`.
-- [ ] **Step 6: Commit** — `git commit -m "Derive the auth card's mode/audience reset with linkedSignal (#1120)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run the full auth spec set** —
+  `npx ng test --watch=false --include="src/app/auth/**/*.spec.ts"` → 170/170 PASS across 11 files,
+  including the phase-0 four and every pre-existing case.
+- [x] **Step 4a: The mutation check phase 0 deferred**, now that the source lists exist. Sourcing
+  `error` on `queryParams()` instead of the pair fails `keeps the error while neither mode nor
+  audience changes` (and the in-card audience leg) — AC-5 earns its place. Sourcing `model` on the
+  pair instead of `audience` alone fails `keeps the password when only the mode changes` and
+  nothing else — the asymmetry is pinned from both sides. Both reverted.
+- [x] **Step 5: Lint + format** — `npm run lint` → all files pass; `npm run format:check` → clean.
+- [x] **Step 6: Commit** — `Derive the auth card's mode/audience reset with linkedSignal (#1120)`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
+
+> **One addition the plan did not anticipate, recorded per the routing gate's step 3.** The empty
+> model is now a named `EMPTY_AUTH_MODEL` beside an `AuthModel` interface, and the two imperative
+> `model.set({…})` clears in `backToSignIn`/`onSubmit` use it. This follows `set-editor.ts`'s
+> `EMPTY_BATCH_DRAFT` precedent exactly (module-level constant + explicit `linkedSignal` generics +
+> reuse at the imperative call site). It does **not** breach the "don't touch those calls"
+> non-goal: the calls stay, deliberate as before, with the identical value now named once instead
+> of spelled out three times.
 
 ## Phase 2 — The real-browser leg, then the generalization sweep
 
