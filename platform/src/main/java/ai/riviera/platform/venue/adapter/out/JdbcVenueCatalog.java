@@ -269,15 +269,14 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 				.toList();
 	}
 
-	/** The stored closure off a venue row; the three columns are read together or not at all. */
-
 	/** A whole coordinate pair, or none: {@code venue_location_check} guarantees the two agree. */
 	private static VenueLocation locationOf(ResultSet rs) throws SQLException {
 		BigDecimal latitude = rs.getBigDecimal(COL_LATITUDE);
 		return latitude == null ? null : new VenueLocation(latitude, rs.getBigDecimal(COL_LONGITUDE));
 	}
 
-	private static SeasonClosure seasonClosureOf(java.sql.ResultSet rs) throws java.sql.SQLException {
+	/** The stored closure off a venue row; the three columns are read together or not at all. */
+	private static SeasonClosure seasonClosureOf(ResultSet rs) throws SQLException {
 		if (rs.getObject(COL_CLOSED_AT) == null) {
 			return SeasonClosure.open();
 		}

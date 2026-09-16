@@ -307,7 +307,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | sonar | `java:S8491` MAJOR — dangling Javadoc at `JdbcVenueCatalog.java:275`: the new `locationOf` helper was inserted between `seasonClosureOf` and its doc comment | fixed in `10cf75bf` |
+| F-2 | own generalization sweep off F-1 | the same insertion mechanism broke two more sites Sonar does not analyse: `fake-map-engine.ts` stacked two doc comments on `placeElement`, and `clampUnit` carried a doc describing a different function | fixed in `10cf75bf` |
 
 ---
 
@@ -835,6 +836,7 @@ public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-16 | sonar gate — `java:S8491` "dangling Javadoc" at `JdbcVenueCatalog.java:275` | every member this slice inserted by text anchor (an anchor on a member's declaration line lands *between* that member and its doc comment, orphaning it — the compiler and every test stay green) | `git diff origin/main -- '*.java' '*.ts' \| grep -n -B6 'locationOf\|placeElement\|clampUnit'`, then read each insertion site whole | 4 sites: `JdbcVenueCatalog.locationOf` (orphaned `seasonClosureOf`'s doc), `fake-map-engine.placeElement` (stacked two doc comments on one member), `clampUnit` (took a doc describing a different function), `JdbcVenues.locationOf` (correct — anchored above the doc) | the three broken sites repaired; Sonar saw only the Java one, so the two TypeScript ones would have shipped |
 | 2026-09-16 | phase 6 — the fake engine recorded markers but never rendered them, so the e2e could not see a dropped pin | every `MapHandle` member whose real adapter has a DOM side effect the fake omits (an in-memory-only fake passes a unit spec that asserts only its own recorder) | read `addMarker`/`moveMarker`/`removeMarker`/`destroy` in `maplibre-map-engine.ts` against their `fake-map-engine.ts` twins | 4 members: add (appends), move (repositions), remove (detaches), destroy (detaches all) | all four given the DOM effect and pinned by a unit assertion on `element.parentElement`, so the gap cannot reopen unseen |
 | 2026-09-16 | phase 5 — an invented `--riv-card-ink-muted` would have shipped unstyled ink | every `*-riv-*` Tailwind utility this diff adds (a utility naming an undeclared token compiles and paints nothing) | `git diff --cached origin/main -- 'frontend/src/**/*.{ts,html}' \| grep '^+' \| grep -oE '\b(bg\|text\|border\|outline\|shadow\|fill\|stroke\|ring\|from\|to\|via)-riv-[a-z0-9-]+'`, each checked against `--<token>:` in `tailwind.css` | 7 tokens across `riviera-map.ts` and `venue-location-field.ts` | the one miss fixed (`-muted` → `-soft`); the other six verified declared |
 | 2026-09-16 | phase 5 — `VenueTab` gained a child that injects `MapEngine` | every TestBed that mounts `VenueTab` (a new injection in a child breaks its parent's contexts, not its own spec) | `grep -rn "VenueTab" frontend/src --include=*.spec.ts -l` | `venue-tab.spec.ts`, `venue-tab.a11y.spec.ts`, `venue-tab.contrast.spec.ts`, `app.spec.ts` | the two constructing their own TestBed got the fake engine; the other two already resolve it and pass |

@@ -115,11 +115,9 @@ export class FakeMapHandle implements MapHandle {
   }
 
   /**
-   * A real click on the fake surface becomes a map click, so an e2e drops a pin with a genuine
-   * gesture. The position interpolates the click across `maxBounds`, clamped for a zero-sized box
-   * (jsdom reports no layout), so it is deterministic and always inside the map.
+   * The inverse of {@link FakeMapHandle.reportClick}: a position back to a spot on the surface, so a
+   * dropped pin renders where it was clicked and an e2e can measure it.
    */
-  /** Absolutely positioned inside the surface, so a dropped pin is where it was clicked. */
   private placeElement(element: HTMLElement, at: LngLat): void {
     const [southWest, northEast] = this.options.maxBounds;
     const acrossX = clampUnit((at.lng - southWest.lng) / (northEast.lng - southWest.lng));
@@ -130,6 +128,11 @@ export class FakeMapHandle implements MapHandle {
     element.style.transform = 'translate(-50%, -50%)';
   }
 
+  /**
+   * A real click on the fake surface becomes a map click, so an e2e drops a pin with a genuine
+   * gesture. The position interpolates the click across `maxBounds`, clamped for a zero-sized box
+   * (jsdom reports no layout), so it is deterministic and always inside the map.
+   */
   private reportClick(event: MouseEvent): void {
     if (this.isDestroyed) {
       return;
@@ -149,7 +152,6 @@ export class FakeMapHandle implements MapHandle {
   }
 }
 
-/** The inverse of {@link FakeMapHandle.reportClick}: a position back to a spot on the surface. */
 function clampUnit(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
