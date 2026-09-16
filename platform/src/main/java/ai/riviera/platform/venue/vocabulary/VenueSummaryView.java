@@ -39,5 +39,5 @@ public record VenueSummaryView(long id, String name, String beach, String region
 		int ratingTenths, int reviewsCount, String bookingMode,
 		MoneyView fromPrice, List<Amenity> amenities, Integer distanceToWaterM,
 		AvailabilitySummary availability, CoverPhotoView coverPhoto, List<PhotoView> photos,
-		boolean salesOpen, boolean closedForSeason, LocalDate reopensOn) {
+		boolean salesOpen, boolean closedForSeason, LocalDate reopensOn, VenueLocation location) {
 }

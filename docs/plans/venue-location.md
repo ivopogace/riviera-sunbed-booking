@@ -275,16 +275,16 @@ is an `<output aria-live="polite">` — the `layout-last-change` precedent.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Phase 2 — carry `location` on `VenueSummaryView`/`VenueMapView` through
-`JdbcVenueCatalog`, red-first via `VenueListControllerIT`, then run the structural net.
+**Next action:** Phase 3 — extend the map-engine seam (draggable marker, `moveMarker`,
+`onMapClick`, `onMarkerDragEnd`), red-first via `fake-map-engine.spec.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V58 migration + migration IT | ✅ | `d1e35001` (plan), `3949b0ea` |
 | 1 — `VenueLocation` + profile read/write (command, view, DTOs, `JdbcVenues`) | ✅ | this commit |
-| 2 — Tourist read models (`VenueSummaryView`, `VenueMapView`, `JdbcVenueCatalog`) | | |
+| 2 — Tourist read models (`VenueSummaryView`, `VenueMapView`, `JdbcVenueCatalog`) | ✅ | this commit — structural net green |
 | 3 — Map-engine seam: draggable marker, `moveMarker`, click + drag-end hooks | | |
 | 4 — `RivieraMap` pin inputs/outputs | | |
 | 5 — Operator pin placer + Venue-tab wiring + FE models | | |
@@ -324,6 +324,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/test/java/ai/riviera/platform/venue/VenueProfileConcurrencyIT.java` — command factory widened (R-6)
 - `platform/src/test/java/ai/riviera/platform/venue/VenueReadControllerIT.java` — AC-7 (venue read)
 - `platform/src/test/java/ai/riviera/platform/venue/VenueListControllerIT.java` — AC-7 (list)
+- `platform/src/test/java/ai/riviera/platform/venue/application/BeachMapReadServiceTest.java` — its `VenueMapView` factory widened (R-6)
 - `frontend/src/app/shared/map-engine.ts` — `draggable` marker, `moveMarker`, `onMapClick`, `onMarkerDragEnd`
 - `frontend/src/app/shared/maplibre-map-engine.ts` — the real adapter implements them non-destructively
 - `frontend/src/app/shared/fake-map-engine.ts` — the fake implements them + the `dragMarkerTo` spec driver and click translation

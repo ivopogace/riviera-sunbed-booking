@@ -48,5 +48,5 @@ public record VenueMapView(long id, String name, String beach, String region,
 		MoneyView fromPrice, List<Amenity> amenities, Integer distanceToWaterM,
 		List<SetView> sets, long setVersion, CoverPhotoView coverPhoto, List<PhotoView> photos,
 		List<PhotoView> lightboxPhotos, boolean salesOpen, String salesClose, boolean closedForSeason,
-		LocalDate reopensOn) {
+		LocalDate reopensOn, VenueLocation location) {
 }
