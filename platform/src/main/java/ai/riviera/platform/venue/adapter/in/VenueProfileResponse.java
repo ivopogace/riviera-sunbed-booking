@@ -9,6 +9,7 @@ import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.VenueProfileView;
 import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.Amenity;
+import ai.riviera.platform.venue.vocabulary.VenueLocation;
 
 /**
  * The wire response for {@code GET /api/venues/{venueId}/profile}: the owner's venue-admin
@@ -29,11 +30,14 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
  *
  * <p>{@code seasonClosure} is read-only here too: it is written through
  * {@code PUT}/{@code DELETE …/season-closure}, never the {@code PATCH}.
+ *
+ * <p>{@code location} is the venue's riviera-map pin, {@code null} when it has none; the
+ * {@code PATCH} takes the same shape back.
  */
 record VenueProfileResponse(String name, String beach, String region, String description,
 		String bookingMode, String bookingCutoff, String salesClose, int commissionBps,
 		String payoutCurrency, List<String> amenities, Integer distanceToWaterM, long version,
-		Map<String, SlotPhoto> photos, SeasonClosureView seasonClosure) {
+		Map<String, SlotPhoto> photos, SeasonClosureView seasonClosure, VenueLocation location) {
 
 	record SlotPhoto(String previewUrl) {
 	}
@@ -48,6 +52,6 @@ record VenueProfileResponse(String name, String beach, String region, String des
 				v.salesClose().format(SalesClose.WIRE),
 				v.commissionBps(), v.payoutCurrency(), v.amenities().stream().map(Amenity::name).toList(),
 				v.distanceToWaterM(), v.version(), photos,
-				SeasonClosureView.of(v.seasonClosure(), v.closedForSeason()));
+				SeasonClosureView.of(v.seasonClosure(), v.closedForSeason()), v.location());
 	}
 }

@@ -275,15 +275,15 @@ is an `<output aria-live="polite">` — the `layout-last-change` precedent.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — `VenueLocation` in `venue.vocabulary`, red-first via `VenueLocationTest`,
-then widen the profile command, view, DTOs and `JdbcVenues`.
+**Next action:** Phase 2 — carry `location` on `VenueSummaryView`/`VenueMapView` through
+`JdbcVenueCatalog`, red-first via `VenueListControllerIT`, then run the structural net.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V58 migration + migration IT | ✅ | `d1e35001` (plan), phase commit below |
-| 1 — `VenueLocation` + profile read/write (command, view, DTOs, `JdbcVenues`) | | |
+| 0 — V58 migration + migration IT | ✅ | `d1e35001` (plan), `3949b0ea` |
+| 1 — `VenueLocation` + profile read/write (command, view, DTOs, `JdbcVenues`) | ✅ | this commit |
 | 2 — Tourist read models (`VenueSummaryView`, `VenueMapView`, `JdbcVenueCatalog`) | | |
 | 3 — Map-engine seam: draggable marker, `moveMarker`, click + drag-end hooks | | |
 | 4 — `RivieraMap` pin inputs/outputs | | |

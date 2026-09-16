@@ -5,16 +5,19 @@ import java.util.Set;
 
 import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.Amenity;
+import ai.riviera.platform.venue.vocabulary.VenueLocation;
 
 /**
- * The validated command to replace a venue's editable profile fields (O8, issue #177; widened from
- * the T7 #140 amenities + distance). It carries the operator-editable core —
+ * The validated command to replace a venue's editable profile fields. It carries the
+ * operator-editable core —
  * {@code name}/{@code beach}/{@code region} (required text), {@code description} (optional),
  * {@code bookingMode} ({@code INSTANT}|{@code REQUEST}), {@code bookingCutoff} (a
  * {@code Europe/Tirane} wall-clock {@code LocalTime}, invariant #4/#6), {@code salesClose} (the
  * required three-value {@link SalesClose} choice) — plus the amenity set (an order-insensitive
  * subset of the fixed {@link Amenity} catalogue) and the optional distance-to-water in metres
- * ({@code null} = not stated).
+ * ({@code null} = not stated) and the optional {@link VenueLocation} ({@code null} = no pin, so
+ * the venue is absent from the riviera map and still in the list). The location's own bounds are
+ * enforced by its type, not here.
  *
  * <p><strong>Commission and payout currency are intentionally NOT here.</strong> They are read-only
  * for operators (commission is the platform's cut — invariant #9; payout currency is a standing
@@ -28,7 +31,7 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
  */
 public record VenueProfileCommand(String name, String beach, String region, String description,
 		String bookingMode, LocalTime bookingCutoff, SalesClose salesClose, Set<Amenity> amenities,
-		Integer distanceToWaterM) {
+		Integer distanceToWaterM, VenueLocation location) {
 
 	public VenueProfileCommand {
 		VenueFieldValidation.requireText(name, "name");
