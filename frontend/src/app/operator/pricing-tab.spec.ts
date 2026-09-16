@@ -203,6 +203,27 @@ describe('PricingTab (#174)', () => {
     expect(announce.textContent?.trim()).toBe('');
   });
 
+  it("clears the previous venue's price rows when the venue param goes invalid (#1125)", () => {
+    render();
+    expect(rows().length).toBe(2);
+    const announce = byId('pricing-saved-announce');
+
+    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    fixture.detectChanges();
+
+    expect(rows()).toEqual([]);
+    expect(host.querySelector('[data-testid="pricing-projected"]')).toBeNull();
+    // The DOM above is unmounted either way; the price rows are the seam that sees the reset.
+    const state = fixture.componentInstance as unknown as { rows: () => readonly unknown[] };
+    expect(state.rows()).toEqual([]);
+    expect(byId('pricing-invalid').textContent).toContain('Open the console from your venue list.');
+    // A bad link is not a failed read, and it is not an empty venue either.
+    expect(host.querySelector('[data-testid="pricing-load-error"]')).toBeNull();
+    expect(host.querySelector('[data-testid="pricing-empty"]')).toBeNull();
+    // The same node goes on outliving every branch (RV-FE-10).
+    expect(byId('pricing-saved-announce')).toBe(announce);
+  });
+
   it('rounds a whole-euro edit to exact minor units', () => {
     render();
     editRow('B', '25');

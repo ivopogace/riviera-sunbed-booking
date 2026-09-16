@@ -14,16 +14,16 @@ import { FULL_PREVIEW } from './remodel-preview-panel.fixtures';
 
 /**
  * Structural a11y audit for the layout editor. The grid must be keyboard + AT operable
- * (an AC): every cell is a labelled `<button>`. axe runs over the bulk empty state, the generated
- * grid, a painted grid, Edit-sets mode on a venue with no sets, and the failed-read state on both
- * surfaces. (Colour contrast is proven by `layout-editor.contrast.spec.ts` — axe can't
+ * (an AC): every cell is a labelled `<button>`. axe runs over the invalid-link card, the bulk empty
+ * state, the generated grid, a painted grid, Edit-sets mode on a venue with no sets, and the
+ * failed-read state on both surfaces. (Colour contrast is proven by `layout-editor.contrast.spec.ts` — axe can't
  * measure it under jsdom.)
  */
 describe('LayoutEditor a11y (#172)', () => {
   let fixture: ComponentFixture<LayoutEditor>;
   let http: HttpTestingController;
 
-  function configure(): void {
+  function configure(venueId = '1'): void {
     TestBed.configureTestingModule({
       imports: [LayoutEditor],
       providers: [
@@ -35,8 +35,8 @@ describe('LayoutEditor a11y (#172)', () => {
           useValue: {
             snapshot: { paramMap: convertToParamMap({}) },
             parent: {
-              snapshot: { paramMap: convertToParamMap({ venueId: '1' }) },
-              paramMap: of(convertToParamMap({ venueId: '1' })),
+              snapshot: { paramMap: convertToParamMap({ venueId }) },
+              paramMap: of(convertToParamMap({ venueId })),
             },
           },
         },
@@ -83,6 +83,15 @@ describe('LayoutEditor a11y (#172)', () => {
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
   }
+
+  it('has no axe violations on the invalid-link card', async () => {
+    // A param naming no venue issues no map read, so there is nothing to flush here.
+    configure('not-a-venue');
+    fixture.detectChanges();
+
+    expect(byId('layout-invalid')).toBeTruthy();
+    await expectNoAxeViolations(host());
+  });
 
   it('has no axe violations in the empty state', async () => {
     render();
