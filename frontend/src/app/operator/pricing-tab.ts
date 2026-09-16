@@ -80,7 +80,7 @@ export class PricingTab {
   protected readonly saving = signal(false);
   /** The last row saved — sequential edits, per-row so a fail is scoped. Derived so it can never
    *  outlive the venue it names: every venue-context change empties it, the invalid-param one
-   *  included, which loads nothing and so clears nothing of its own. */
+   *  included. */
   protected readonly savedRow = linkedSignal({
     source: this.venueId,
     computation: (): string | null => null,

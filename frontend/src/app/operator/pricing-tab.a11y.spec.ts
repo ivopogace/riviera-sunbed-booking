@@ -11,7 +11,7 @@ import { PricingTab } from './pricing-tab';
 /**
  * Structural a11y audit for the Pricing tab. Each row's € field is a labelled number
  * `<input>` (`aria-label` names the row), so the grid of prices is keyboard + AT operable. axe runs
- * over the populated rows and the empty state. (Colour contrast is proven by
+ * over the invalid-link card, the populated rows and the empty state. (Colour contrast is proven by
  * `pricing-tab.contrast.spec.ts` — axe can't measure it under jsdom.)
  */
 describe('PricingTab a11y (#174)', () => {

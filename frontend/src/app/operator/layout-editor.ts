@@ -255,15 +255,13 @@ export class LayoutEditor {
   /** The grid row whose rename is in flight, or null — drives `[appBusy]` on that row's button. */
   protected readonly renamingRow = signal<number | null>(null);
   /** The grid row whose rename last succeeded, cleared on the next edit of any row name. Derived on
-   *  the venue rather than cleared by hand: a notice that recomputes from `venueId` cannot outlive
-   *  the venue it describes by a reset path forgetting it. */
+   *  the venue: a notice that recomputes from `venueId` cannot outlive the venue it describes. */
   protected readonly renamedRow = linkedSignal({
     source: this.venueId,
     computation: (): number | null => null,
   });
   /** The last per-row rename failure. `STALE_WRITE` never lands here — the reload banner owns it.
-   *  Derived on the venue for {@link renamedRow}'s reason — same shape, same venue-scoped lifetime,
-   *  so one mechanism rather than two for one rule. */
+   *  Derived on the venue for {@link renamedRow}'s reason: same shape, same venue-scoped lifetime. */
   protected readonly rowNameError = linkedSignal({
     source: this.venueId,
     computation: (): { y: number; code: RowNameErrorCode } | null => null,
@@ -544,13 +542,12 @@ export class LayoutEditor {
   }
 
   /**
-   * Drop every venue-scoped draft and flag, so nothing from the previous venue leaks into the next
-   * context — another venue, or no venue at all.
-   *
-   * <p>The two rename notices are absent on purpose: they derive from `venueId`, and every caller
-   * of this method is a `venueId` change, so clearing them here would be a second mechanism for one
-   * rule — the drift {@link clearRenameNotices} still guards on the in-venue edit paths, which no
-   * derivation reaches.
+   * Drop every venue-scoped draft and flag — the bulk draft, the per-set reads, and the remodel
+   * preview/receipt — so nothing from the previous venue leaks into the next context, another venue
+   * or no venue at all. The remodel half matters beyond display: {@link commitRemodel} reads the
+   * venue fresh but the body from state, so a surviving `pendingRemodel` would post one venue's
+   * sets to another. The two rename notices are the deliberate omission — they derive from
+   * `venueId`, which every caller of this method changes.
    */
   private clearVenueState(): void {
     this.epoch++;
@@ -577,6 +574,16 @@ export class LayoutEditor {
     this.lastChange.set(null);
     this.lastSavedAt.set(null);
     this.renamingRow.set(null);
+    this.reading.set(false);
+    this.previewing.set(false);
+    this.remodelPreview.set(null);
+    this.previewStale.set(false);
+    this.committing.set(false);
+    this.pendingRemodel = null;
+    this.receipt.set(null);
+    this.receipts.set(null);
+    this.receiptsLoading.set(false);
+    this.receiptsFailed.set(false);
   }
 
   // ---- Tool rail ----
@@ -697,7 +704,8 @@ export class LayoutEditor {
   }
 
   /** Drop both per-row notices. They are pinned to a grid index, so anything that re-indexes the
-   *  rows — a re-seed, a reload, a venue switch — must clear them or they describe another row. */
+   *  rows must clear them or they describe another row: the in-venue paths call this, and a
+   *  venue-context change is covered by the notices' own `venueId` derivation. */
   private clearRenameNotices(): void {
     this.renamedRow.set(null);
     this.rowNameError.set(null);

@@ -1113,6 +1113,8 @@ describe('LayoutEditor (#172)', () => {
 
   it('renders an invalid-link card, not the load-failure copy, on an invalid venue param (#1125)', () => {
     renderSaved();
+    const saved = byId('layout-saved-announce');
+    const renamed = byId('layout-row-name-saved-announce');
 
     params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
     fixture.detectChanges();
@@ -1120,12 +1122,11 @@ describe('LayoutEditor (#172)', () => {
     // A bad link is not a failed read: "Refresh the page and try again" would be wrong copy for it.
     expect(byId('layout-invalid').textContent).toContain('Open the console from your venue list.');
     expect(host.querySelector('[data-testid="layout-load-failed"]')).toBeNull();
-    // The editor itself is gone — rail, grid and save bar alike.
     expect(host.querySelector('[data-testid="layout-tool-rail"]')).toBeNull();
     expect(host.querySelector('[data-testid="layout-save-bar"]')).toBeNull();
-    // The new branch goes BELOW the live regions, which outlive every branch (RV-FE-10).
-    expect(byId('layout-saved-announce')).toBeTruthy();
-    expect(byId('layout-row-name-saved-announce')).toBeTruthy();
+    // The SAME nodes outlive the new branch: mere presence would pass an unmount-and-recreate.
+    expect(byId('layout-saved-announce')).toBe(saved);
+    expect(byId('layout-row-name-saved-announce')).toBe(renamed);
   });
 
   it("clears the previous venue's grid and row names when the venue param goes invalid (#1125)", () => {
@@ -1137,9 +1138,20 @@ describe('LayoutEditor (#172)', () => {
     params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
     fixture.detectChanges();
 
-    // The announcer sweep emptied the two live regions; the grid kept the previous venue's state.
+    // The grid and its row names go with the venue, not just the announcers #1124 already emptied.
     expect(host.querySelector('[data-testid="layout-cell"]')).toBeNull();
     expect(host.querySelector('[data-testid="layout-row-name"]')).toBeNull();
+    // The DOM above is unmounted either way; the draft itself is the seam that sees the reset.
+    const draft = fixture.componentInstance as unknown as {
+      grid: () => readonly unknown[];
+      rowNames: () => readonly string[];
+      loadedSets: () => readonly unknown[];
+      storedRowNames: () => readonly unknown[];
+    };
+    expect(draft.grid()).toEqual([]);
+    expect(draft.rowNames()).toEqual([]);
+    expect(draft.loadedSets()).toEqual([]);
+    expect(draft.storedRowNames()).toEqual([]);
     // No read is issued for a venue the URL does not name: afterEach's http.verify() proves it.
   });
 
@@ -1181,6 +1193,40 @@ describe('LayoutEditor (#172)', () => {
     expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
   });
 
+  it("drops venue A's remodel receipt and preview when the venue switches (#1125)", async () => {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1), seat(2, 'STANDARD', 'ONLINE', 2, 1)], 3);
+    useBulkMode();
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+    cells()[1].click();
+    fixture.detectChanges();
+    byId('layout-save').click();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/beach-map/preview'))
+      .flush(MOVES_ONLY_PREVIEW);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    byId('layout-remodel-commit').click();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/beach-map/commit'))
+      .flush(RECEIPT);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('layout-remodel-receipt-title')).toBeTruthy();
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 9 }, locks: [] });
+    fixture.detectChanges();
+
+    // A remodel belongs to the venue it was made on: receipt, open preview and Save alike.
+    expect(host.querySelector('[data-testid="layout-remodel-receipt-title"]')).toBeNull();
+    expect(host.querySelector('[data-testid="layout-remodel-preview"]')).toBeNull();
+    expect(byId('layout-save').getAttribute('aria-disabled')).not.toBe('true');
+  });
+
   it('reloads the map when the venue is switched in place (#1125)', () => {
     renderSaved();
     expect(cells().length).toBe(2);
@@ -1197,7 +1243,6 @@ describe('LayoutEditor (#172)', () => {
     // A venue that already has sets opens in per-set mode; the bulk grid is one chip away.
     useBulkMode();
 
-    // Re-seeded from the new venue, not merged with the old one's two rows.
     expect(cells().length).toBe(1);
     expect(rowNameInputs().length).toBe(1);
   });

@@ -41,7 +41,9 @@ new token) · `angular-developer` + angular-cli MCP (`list_projects` → Angular
 must stay synchronized", native `@if`/`@else`; `search_documentation` → the
 `linkedSignal({source, computation})` overload this repo already uses) · `playwright-cli`
 (N/A — see Non-goals: the state is unreachable through the app shell, so no e2e can drive
-it).
+it) · `riviera-local-debug` (loaded before the session's first `npm` invocation — the cloud
+clone is shallow, so it was unshallowed before any git-history claim, and test runs stayed
+scoped to the touched specs rather than the full suite).
 
 **Branch:** `claude/angular-tailwind-docs-zfcami` — the cloud session's designated remote
 branch, standing in for `bugfix/layout-editor-invalid-venue-reset` per `riviera-sdlc`
@@ -91,6 +93,11 @@ branch, standing in for `bugfix/layout-editor-invalid-venue-reset` per `riviera-
   tab, then there are no violations. *Seam:* `expectNoAxeViolations` over the component's
   host element · *Pinned by:* `pricing-tab.a11y.spec.ts` ›
   `has no axe violations on the invalid-link card`
+- [x] **AC-9 (added at the review gate):** Given venue 1's remodel has been committed and its
+  receipt is on screen, when the venue switches in place to venue 2, then neither the receipt
+  nor the preview panel renders and venue 2's Save is not held inert. *Seam:* the rendered
+  `LayoutEditor` DOM by `data-testid` · *Pinned by:* `layout-editor.spec.ts` ›
+  `drops venue A's remodel receipt and preview when the venue switches (#1125)`
 
 ## Non-goals
 
@@ -113,6 +120,11 @@ branch, standing in for `bugfix/layout-editor-invalid-venue-reset` per `riviera-
   `venueId() === undefined` in its first branch.
 - **No new design token, no new shared primitive.** The card reuses `appCardGlass` and
   `text-riv-card-ink-soft` verbatim from `venue-tab`.
+- ~~**Only the invalid-param path is reset.**~~ **Superseded by the maintainer at the review
+  gate:** the review proved nine venue-scoped remodel fields (plus `reading`) survived *any*
+  venue change, so venue 1's commit receipt rendered under venue 2 and `commitRemodel` could
+  post venue 1's body to venue 2. Pre-existing, but this slice's own `clearVenueState()` doc
+  claimed to cover it; the call was to fix rather than downgrade the claim.
 
 ## Behavior-parity ledger (retirement / replacement slices only)
 
@@ -128,6 +140,8 @@ structural" claim the ledger exists to verify, so the affected behaviors are enu
 | An invalid venue rendered the previous venue's grid and issued no load | changed → **fixed** | This is the bug. The new `undefined` arm clears the state; the new branch renders `layout-invalid`. |
 | `resetForVenue()` resets ~20 fields then loads | preserved | Split into `clearVenueState()` + `loadExisting()`; `resetForVenue()` calls both, so the valid path is byte-for-byte the same sequence. AC-5 pins it. |
 | `rowNameError` cleared by `clearRenameNotices()` on every reset path | preserved | Becomes a `linkedSignal` on `venueId`; `clearRenameNotices()` still sets it null for the in-venue edit paths. |
+| A remodel preview/receipt stayed on screen across a venue switch | changed → **fixed** | Added at the review gate. `clearVenueState()` now drops the remodel preview, receipt, their flags and `pendingRemodel`, so a remodel belongs to the venue it was made on. AC-9 pins it. |
+| `reading` was only ever cleared by the load that set it | changed | The split created the first caller that clears without loading, so a superseded in-flight read left `reading` true forever on the invalid arm. `clearVenueState()` now clears it. |
 
 ## Risk register
 
@@ -192,24 +206,37 @@ N/A — no contract change. No endpoint, DTO or client type is touched.
 
 ## Execution status
 
-**Stage pointer:** `PR #1126 — draft, phase 2 pushed, awaiting CI`
+**Stage pointer:** `review gate — findings fixed; awaiting CI + Sonar on the fix push`
 
-**Next action:** Check CI on the phase-2 push; when green, mark PR #1126 ready for review,
-then run the Review gate (`references/pr-gates.md` §1) and the Sonar gate.
+**Next action:** Confirm CI and the Sonar gate are green on the review-fix push; the PR is
+then the maintainer's to merge. Do not merge, and leave the Contribution-terms declaration
+to them.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Clear venue-scoped state on an invalid param | ✅ | `7ce301ae` |
 | 1 — Render the invalid-link card | ✅ | `42502442` |
-| 2 — The same fix for `pricing-tab` (folded in by the maintainer) | ✅ | this commit |
+| 2 — The same fix for `pricing-tab` (folded in by the maintainer) | ✅ | `58a85ccd` |
+| 3 — Review-gate findings | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
-**Findings register**
+**Findings register** — the review gate ran `code-review:code-review` (rung 1) at high effort
+over `8f7c58ed..58a85ccd` with `riviera-review-overlay` layered on, six agents.
 
-| # | Source (review / sonar / CI) | Finding | Status |
+| # | Source | Finding | Status |
 |---|---|---|---|
-| *(none yet)* | | | |
+| F-1 | review (agents 1, 4, 5) | **The whole TS half was untested.** Once phase 1's card existed, AC-1/AC-4/AC-7 were satisfied by the template branch alone — removing the state clearing entirely left every spec green. The specs were genuinely red-then-green at phase 0; phase 1 then made them pass for a different reason and nothing re-checked that they still discriminated. | fixed-in-this-commit — the ACs now assert the draft signals themselves, and both were mutation-checked: removing the clearing fails `[['premium'],['standard']] to deeply equal []` (layout) and the price rows (pricing) |
+| F-2 | review (agents 2, 3, 5) | `clearVenueState()`'s doc claimed "every venue-scoped draft and flag" while ten fields survived; venue 1's commit receipt rendered under venue 2 and `commitRemodel` could post venue 1's body to venue 2. Pre-existing; the new doc made it a live misstatement. | fixed-in-this-commit — maintainer chose to fix rather than downgrade; AC-9 pins it |
+| F-3 | review (agents 1, 4, 5) | `pricing-tab`'s `savedRow` TSDoc kept the "clears nothing of its own" clause this diff falsified — the twin clauses in `layout-editor` were fixed in the same diff, so the sweep was inconsistent. | fixed-in-this-commit |
+| F-4 | review (agents 1, 4, 5) | `layout-editor.spec.ts`'s comment said "the grid kept the previous venue's state" directly above two assertions proving it did not. | fixed-in-this-commit |
+| F-5 | review (agents 3, 4, 5) | `clearRenameNotices()`'s doc still listed "a venue switch" as a path that must call it, which this diff removed — two doc comments stating one rule, disagreeing. | fixed-in-this-commit |
+| F-6 | review (agent 4) | The AC-2/AC-7 announcer assertions used `toBeTruthy()` while their comment claimed RV-FE-10 node identity — the bar #1124 set. An unmount-and-recreate would have passed. | fixed-in-this-commit — now `toBe(node)` captured before the transition |
+| F-7 | review (agents 1, 4) | Four new doc comments were over §6d's ~3-line member budget and carried rejected-alternative archaeology ("rather than cleared by hand", "one mechanism rather than two"). | fixed-in-this-commit |
+| F-8 | review (agents 1, 4, overlay) | Three spec inline comments restated the assertions beneath them; two a11y file-header enumerations did not list the new case; one a11y title carried an issue number its twin did not. | fixed-in-this-commit |
+| F-9 | review (overlay, RV-PROC-1, Major) | `riviera-local-debug` was loaded and used but missing from *Skills consulted*. | fixed-in-this-commit |
+| F-10 | review (agent 3) | The tab-level invalid-link cards are unreachable while `operator-console.html` gates the outlet, and the new card's copy disagrees with the shell's ("Open the console from your venue list" vs "Venue not found … create a venue"). | deferred → follow-up issue (maintainer approved); the copy divergence is recorded there, not silently left |
+| F-11 | review (agent 5) | This PR's own new comment indicts `requests-tab`, which still shows "Refresh the page" for a bad link. | deferred → follow-up issue (maintainer approved) |
 
 ---
 
@@ -303,8 +330,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-All six verified by one command from `frontend/`:
-`npx ng test --watch=false --include="src/app/operator/**/*.spec.ts"` → **855 passed**.
+All nine verified by one command from `frontend/`:
+`npx ng test --watch=false --include="src/app/operator/**/*.spec.ts"` → **858 passed**.
 
 - [x] **AC-1:** `clears the previous venue's grid and row names…` PASS.
 - [x] **AC-2:** `renders an invalid-link card, not the load-failure copy…` PASS.
@@ -312,6 +339,16 @@ All six verified by one command from `frontend/`:
 - [x] **AC-4:** `drops a row-name write error on an invalid venue param, and never resurrects it` PASS.
 - [x] **AC-5:** `reloads the map when the venue is switched in place` PASS.
 - [x] **AC-6:** `has no axe violations on the invalid-link card` PASS.
+- [x] **AC-7:** `clears the previous venue's price rows when the venue param goes invalid (#1125)` PASS.
+- [x] **AC-8:** `has no axe violations on the invalid-link card` (pricing) PASS.
+- [x] **AC-9:** `drops venue A's remodel receipt and preview when the venue switches (#1125)` PASS.
+
+**A note on AC-1/AC-7's strength, and how it was caught.** As first written these asserted
+only the DOM, which phase 1's invalid-link branch unmounts regardless — so they passed with
+the state clearing removed entirely, and covered none of it. The review caught it; they now
+assert the draft signals, and each was mutation-checked by removing the clearing and
+confirming the spec fails. The lesson is recorded rather than the fix alone: a spec written
+red-then-green in one phase can be silently de-fanged by a later phase in the same slice.
 
 **A note on AC-4's strength, recorded because the code comment originally overclaimed it:**
 the round-trip assertion does *not* discriminate the `linkedSignal` from an imperative
