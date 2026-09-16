@@ -5,6 +5,7 @@ import {
   effect,
   ElementRef,
   inject,
+  linkedSignal,
   signal,
   untracked,
   viewChild,
@@ -253,8 +254,13 @@ export class LayoutEditor {
   protected readonly storedRowNames = signal<readonly (string | undefined)[]>([]);
   /** The grid row whose rename is in flight, or null — drives `[appBusy]` on that row's button. */
   protected readonly renamingRow = signal<number | null>(null);
-  /** The grid row whose rename last succeeded, cleared on the next edit of any row name. */
-  protected readonly renamedRow = signal<number | null>(null);
+  /** The grid row whose rename last succeeded, cleared on the next edit of any row name. Derived on
+   *  the venue as well, because {@link clearRenameNotices} does not reach the invalid-param
+   *  transition — that one resets nothing of its own. */
+  protected readonly renamedRow = linkedSignal({
+    source: this.venueId,
+    computation: (): number | null => null,
+  });
   /** The last per-row rename failure. `STALE_WRITE` never lands here — the reload banner owns it. */
   protected readonly rowNameError = signal<{ y: number; code: RowNameErrorCode } | null>(null);
   /** The operator's explicit tool-rail choice, or null while the venue's own state decides. */
@@ -276,8 +282,13 @@ export class LayoutEditor {
 
   /** True while the save PUT is in flight (button disabled, no double submit). */
   protected readonly saving = signal(false);
-  /** Set after a successful save; cleared on the next edit. */
-  protected readonly savedNotice = signal(false);
+  /** Set after a successful save; cleared on the next edit. Derived so it can never outlive the
+   *  venue it describes: every venue-context change empties it, the invalid-param one included,
+   *  which resets nothing of its own. */
+  protected readonly savedNotice = linkedSignal({
+    source: this.venueId,
+    computation: (): boolean => false,
+  });
 
   /** The bulk-save outcome as one sentence, or '' — bound by both the announcer and the save bar. */
   protected readonly savedMessage = computed(() =>
@@ -538,7 +549,6 @@ export class LayoutEditor {
     this.priceByCoord.clear();
     this.activeBrush.set('premium');
     this.saving.set(false);
-    this.savedNotice.set(false);
     this.errorCode.set(undefined);
     this.confirmRegen.set(false);
     this.loadedSetVersion.set(null);

@@ -247,6 +247,27 @@ describe('RequestsTab (#176)', () => {
     expect(notice?.textContent?.toLowerCase()).toContain('asked to pay');
   });
 
+  it('empties the decision notice when the venue param goes invalid (#1122)', () => {
+    render([request({ bookingId: 11 })]);
+
+    button(/Accept/).click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/accept'))
+      .flush({ bookingId: 11, status: 'AWAITING_PAYMENT' });
+    fixture.detectChanges();
+    flushReconcile([]);
+    const notice = byId('requests-notice');
+    expect(notice?.textContent?.toLowerCase()).toContain('asked to pay');
+
+    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    fixture.detectChanges();
+
+    // Emptied, never unmounted: a live region must keep outliving the branch it describes.
+    expect(byId('requests-notice')).toBe(notice);
+    expect(notice?.textContent?.trim()).toBe('');
+  });
+
   it('reconciles the whole queue after an action, dropping a card the sweep expired meanwhile', () => {
     render([request({ bookingId: 11 }), request({ bookingId: 12, setId: 2 })]);
     button(/Accept/).click();

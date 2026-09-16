@@ -806,6 +806,27 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('layout-saved').getAttribute('aria-hidden')).toBe('true');
   });
 
+  it('empties the layout-saved announcer when the venue param goes invalid (#1122)', async () => {
+    render();
+    generate('1', '1');
+
+    byId('layout-save').click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const announce = byId('layout-saved-announce');
+    expect(announce.textContent).toContain('Saved.');
+
+    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    fixture.detectChanges();
+
+    // Emptied, never unmounted: a live region must keep outliving the branch it describes.
+    expect(byId('layout-saved-announce')).toBe(announce);
+    expect(announce.textContent?.trim()).toBe('');
+  });
+
   it('tracks the unsaved-change count and the latest-change description across paint/generate/save (#712)', async () => {
     render();
     expect(byId('layout-dirty-count').textContent).toContain('No unsaved changes');
@@ -1042,6 +1063,49 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('layout-row-name-saved-announce')).toBe(announce);
     expect(announce.textContent).toContain('Row A');
     expect(byId('layout-row-name-saved').getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('empties the row-name announcer when the venue param goes invalid (#1122)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const announce = byId('layout-row-name-saved-announce');
+    expect(announce.textContent).toContain('Row B');
+
+    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    fixture.detectChanges();
+
+    // Emptied, never unmounted: a live region must keep outliving the branch it describes.
+    expect(byId('layout-row-name-saved-announce')).toBe(announce);
+    expect(announce.textContent?.trim()).toBe('');
+  });
+
+  it('drops the row-name notice when the venue is switched in place (#1122)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('layout-row-name-saved-announce').textContent).toContain('Row B');
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
+    fixture.detectChanges();
+
+    expect(byId('layout-row-name-saved-announce').textContent?.trim()).toBe('');
   });
 
   it('renames the row the URL names even after the draft changed twice (#726)', async () => {
