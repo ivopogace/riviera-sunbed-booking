@@ -62,7 +62,7 @@ new ADR — not a new trade-off) · `riviera-local-debug` (Vitest + mocked e2e v
   `platform/map/` but that line. *Seam:* the sourced `rewrite_style` function · *Pinned by:*
   `build-riviera-map.test.sh › test_rewrite_style_credits_openmaptiles_and_osm` (by-hand verifier,
   not a CI gate) + the regeneration run recorded in Execution status.
-- [ ] **AC-4:** Given ADR-0022, when read, then decision 6 names both credits and both outbound
+- [x] **AC-4:** Given ADR-0022, when read, then decision 6 names both credits and both outbound
   links, marked amended, and the amendment log carries a #1106 entry. *Seam:* the ADR text ·
   *Pinned by:* review (`grep -n "OpenMapTiles" docs/adr/ADR-0022-self-hosted-map-resources.md`).
 - [x] **AC-5:** Given the map open on Discover with the real adapter, when every request is
@@ -136,14 +136,14 @@ N/A — no contract change (the style file is a static resource; its URL fields 
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** CI gate — draft PR #1116, phase 2 pushed
 
-**Next action:** open the draft PR; then amend ADR-0022 decision 6 + its log (AC-4) and correct epic #806's spec.
+**Next action:** confirm phase 2's CI run is green, then merge latest `origin/main` and mark #1116 ready for review (review gate, `pr-gates.md` §1).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 1 — the credit (chrome, style, script) test-first | ✅ | this commit |
-| 2 — ADR-0022 amendment + doc comments + epic #806 spec | | |
+| 1 — the credit (chrome, style, script) test-first | ✅ | `f34053af` |
+| 2 — ADR-0022 amendment + epic #806 spec | ✅ | this commit (epic #806 body edited on GitHub) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -194,10 +194,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 2 — the record
 
-- [ ] **Step 1:** ADR-0022 decision 6 amended in place + amendment-log entry (AC-4); the
-  `riviera-map.ts` doc comment; epic #806's spec (story 13 + Implementation Decisions) edited on
+- [x] **Step 1:** ADR-0022 decision 6 amended in place + amendment-log entry (AC-4); epic #806's spec (story 13 + Implementation Decisions) edited on
   GitHub.
-- [ ] **Step 2:** Commit + Execution status; push; check the run.
+- [x] **Step 2:** Commit + Execution status; push; check the run.
 
 ---
 
