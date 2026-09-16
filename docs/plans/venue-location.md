@@ -58,20 +58,20 @@ in for `feature/venue-location` (`riviera-sdlc` § *Remote / cloud session adden
   `latitude`/`longitude`, then Postgres rejects it naming `venue_location_check`; both-absent and
   both-present-in-range are accepted, and every pre-existing venue reads both-null.
   *Seam:* the `venue` table under Flyway · *Pinned by:*
-  `VenueLocationMigrationIT.rejectsHalfPresentPair` / `.acceptsBothAbsent` / `.existingVenuesCarryNoLocation`
+  `VenueLocationMigrationIT.checkRefusesAHalfPresentPair` / `.theBoundsThemselvesAreAccepted` / `.aWholePairInRangeIsAcceptedAndReadsBackAtSixDecimals` / `.existingVenuesCarryNoLocation`
 - [ ] **AC-2:** Given the V58 migration has run, when a latitude outside −90…90 or a longitude
   outside −180…180 is written, then Postgres rejects it naming `venue_location_check`.
   *Seam:* the `venue` table under Flyway · *Pinned by:*
-  `VenueLocationMigrationIT.rejectsLatitudeOutOfRange` / `.rejectsLongitudeOutOfRange`
+  `VenueLocationMigrationIT.checkRefusesALatitudeOutOfRange` / `.checkRefusesALongitudeOutOfRange`
 - [ ] **AC-3:** Given a `VenueLocation` is constructed, when either coordinate is null or out of
   range, then it throws; when both are in range, it normalizes to scale 6 so a saved value equals
   the value read back. *Seam:* `venue.vocabulary.VenueLocation` (the published value type) ·
-  *Pinned by:* `VenueLocationTest.rejectsHalfPresentPair` / `.rejectsOutOfRange` / `.normalizesToSixDecimals`
+  *Pinned by:* `VenueLocationTest.eitherCoordinateAloneIsRefused` / `.aCoordinateOutOfRangeIsRefused` / `.theBoundsThemselvesAreInRange` / `.bothCoordinatesAreNormalisedToSixDecimals`, plus `VenueProfileCommandTest.aNullLocationIsAllowedAndMeansNoPin` / `.anOffShapeLocationIsRejectedByItsOwnType`
 - [ ] **AC-4:** Given an operator owns a venue, when they PATCH the profile with a `location`, then
   `EditVenueProfile#updateProfile` answers `APPLIED` and a subsequent `ViewVenueProfile#profileFor`
   carries that location; when they PATCH with `location: null`, the profile reads back with none.
   *Seam:* `venue.application.EditVenueProfile` / `ViewVenueProfile` (the inner hexagon) ·
-  *Pinned by:* `VenueAdminServiceTest.setsAndClearsLocation`
+  *Pinned by:* `VenueAdminServiceTest.profileEditSetsAndThenClearsTheVenueLocation` (and end-to-end at the HTTP seam by `VenueAdminControllerIT.locationEditSetsAndThenClearsThePin`)
 - [ ] **AC-5:** Given an operator who does **not** own the venue, when they PATCH a location, then
   ownership is asserted before any read or write and the request answers `403` (invariant #13).
   *Seam:* `PATCH /api/venues/{venueId}` · *Pinned by:*
@@ -86,37 +86,46 @@ in for `feature/venue-location` (`riviera-sdlc` § *Remote / cloud session adden
   venue map read, then the pinned venue carries `location.latitude`/`location.longitude` and the
   unpinned one carries `location: null` on both surfaces, and both remain listed.
   *Seam:* `GET /api/venues` and `GET /api/venues/{venueId}` · *Pinned by:*
-  `VenueListControllerIT.listCarriesLocationForPinnedAndNullForUnpinned` and
-  `VenueReadControllerIT.venueReadCarriesLocation`
+  `VenueListControllerIT.theListCarriesAPinnedVenuesLocationAndNullForAnUnpinnedOne` and
+  `VenueReadControllerIT.theVenueReadCarriesTheLocationAndNullWhenUnpinned`
 - [ ] **AC-8:** Given a map handle with a draggable marker, when the marker is dragged, then the
   registered drag-end handler receives the marker id and the new `LngLat`; when the map surface is
   clicked, the registered click handler receives the clicked `LngLat`; and moving a marker keeps
   the same element (no destroy/recreate). *Seam:* the `MapHandle` seam (`shared/map-engine.ts`) ·
-  *Pinned by:* `fake-map-engine.spec.ts` › `drag-end reports the marker id and its new position` /
-  `map click reports a position` / `moveMarker keeps the marker element`
+  *Pinned by:* `fake-map-engine.spec.ts` › `reports a drag-end with the marker id and its new position` /
+  `turns a click on its surface into a map click inside the bounds` / `records whether a marker is
+  draggable and moves one in place` / `puts the marker element on its surface and takes it off again` /
+  `stops reporting clicks and drags once destroyed`
 - [ ] **AC-9:** Given `RivieraMap` with `pinDraggable` armed, when a `pin` input is set, changed or
   cleared, then exactly one marker is fed to the handle, moved in place, and removed — and a map
   click or a marker drag-end emits `mapClick` / `pinMoved` with the position.
-  *Seam:* the `app-riviera-map` component API · *Pinned by:* `riviera-map.spec.ts` › `feeds the pin
-  marker to the handle` / `moves the marker in place when the pin changes` / `removes the marker
-  when the pin is cleared` / `emits mapClick` / `emits pinMoved on drag-end`
+  *Seam:* the `app-riviera-map` component API · *Pinned by:* `riviera-map.spec.ts` › `feeds one labelled,
+  draggable marker for the pin` / `feeds no marker when there is no pin` / `moves the marker in place
+  when the pin changes, keeping its element` / `removes the marker when the pin is cleared` / `emits
+  mapClick with the clicked position` / `emits pinMoved when the marker is dragged` / `takes a caller
+  camera over the riviera default`
 - [ ] **AC-10:** Given the operator's Venue tab for an unpinned venue, when the operator clicks the
   map, then a pin appears and the read-only coordinate read-out shows it; when they use Clear, the
   pin and the read-out go; and in both cases the tab's existing save sends the profile PATCH with
   the new `location` and the existing `expectedVersion`.
   *Seam:* the `app-venue-location-field` component API and `OperatorConsoleService#updateVenueProfile` ·
-  *Pinned by:* `venue-location-field.spec.ts` › `drops a pin on a map click` / `clears the pin` /
-  `announces the coordinates read-only`, and `venue-tab.spec.ts` › `saves the placed location with the profile`
+  *Pinned by:* `venue-location-field.spec.ts` › `drops a pin where the map was clicked and reads the
+  coordinates back` / `follows the pin when it is dragged` / `clears the pin and tells the map to drop
+  its marker` / `rounds what it stores to the six decimals the server keeps` / `keeps the read-out
+  announced but never editable`, and `venue-tab.spec.ts` › `sends the pin the placer holds with the
+  rest of the profile (#1099)` / `clears the pin through the same save (#1099)`
 - [ ] **AC-11:** Given a venue with a location, when `toProfileUpdate` maps the loaded profile to a
   write body (the read-modify-write behind "Close online sales now"), then the location survives the
   round-trip. *Seam:* `operator-console.model.ts`'s `toProfileUpdate` ·
-  *Pinned by:* `operator-console.model.spec.ts` › `toProfileUpdate carries the venue location through`
+  *Pinned by:* `operator-console.model.spec.ts` › `carries the venue location through the full-replace body` /
+  `carries no location for an unpinned venue`
 - [ ] **AC-12:** Given the mocked operator console, when the operator drops a pin, saves and
   reloads, then the pin is where it was left; when they clear, save and reload, there is no pin —
   and both run green under the `console-dark` project with axe, contrast and touch-target checks
   passing. *Seam:* the operator console over a mocked `/api` (Playwright) ·
-  *Pinned by:* `frontend/e2e/operator-venue-location.e2e.ts` › `drops a pin, saves and reloads it` /
-  `clears the pin, saves and reloads empty` / `paints the pin placer on the dark console`
+  *Pinned by:* `frontend/e2e/operator-venue-location.e2e.ts` › `drops a pin, saves it, and finds it where it
+  was left after a reload (+ axe)` / `clears the pin, saves, and reloads with the venue unpinned` /
+  `paints the pin placer under porcelain and the dark console (#1099, + axe)`
 
 ## Non-goals
 
