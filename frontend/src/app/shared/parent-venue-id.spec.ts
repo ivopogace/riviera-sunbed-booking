@@ -36,6 +36,15 @@ describe('parentVenueId', () => {
     expect(read(routeWithParent('-3'))).toBeUndefined();
   });
 
+  // Number() accepts far more than a URL segment naming a venue: '7e2' reads 700, '0x10' reads 16,
+  // '+7'/'7.0'/' 7 ' all read 7. Each would alias a venue under a URL that disagrees with it.
+  it.each(['7e2', '0x10', '+7', '7.0', ' 7 ', '007', '99999999999999999999'])(
+    'returns undefined for the non-canonical segment %o',
+    (segment) => {
+      expect(read(routeWithParent(segment))).toBeUndefined();
+    },
+  );
+
   it('returns undefined when the parent has no venueId', () => {
     expect(read(routeWithParent(null))).toBeUndefined();
   });

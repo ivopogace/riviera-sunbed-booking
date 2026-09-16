@@ -5,6 +5,7 @@ import type { AdminTabRouteData } from './admin/admin-console';
 import type { TouristRouteData } from './app';
 import type { ConsoleRouteData } from './console-shell';
 import { operatorSessionGuard } from './core/operator-session.guard';
+import { venueIdGuard, VENUE_NOT_FOUND_PATH } from './core/venue-id.guard';
 import { VENUE_CONSOLE_LANDING_TAB } from './shared/console-destination';
 
 /**
@@ -315,6 +316,16 @@ export const routes: Routes = [
     data: { console: 'plain' } satisfies ConsoleRouteData,
   },
   {
+    // Where venueIdGuard sends a malformed console link. A literal segment, so it MUST stay above
+    // 'operator/:venueId': matched by the param route instead, the guard would redirect it to
+    // itself forever.
+    path: VENUE_NOT_FOUND_PATH,
+    loadComponent: () => import('./operator/venue-not-found').then((m) => m.VenueNotFound),
+    title: 'Venue not found — Riviera',
+    canActivate: [operatorSessionGuard],
+    data: { console: 'plain' } satisfies ConsoleRouteData,
+  },
+  {
     // The AdminConsole shell owns the tab strip + auth gate; tabs are children.
     path: 'admin',
     loadComponent: () => import('./admin/admin-console').then((m) => m.AdminConsole),
@@ -329,7 +340,7 @@ export const routes: Routes = [
     loadComponent: () => import('./operator/operator-console').then((m) => m.OperatorConsole),
     title: 'Operator console — Riviera',
     data: { console: 'venue' } satisfies ConsoleRouteData,
-    canActivate: [operatorSessionGuard],
+    canActivate: [venueIdGuard, operatorSessionGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: VENUE_CONSOLE_LANDING_TAB },
       ...consoleTabRoutes,

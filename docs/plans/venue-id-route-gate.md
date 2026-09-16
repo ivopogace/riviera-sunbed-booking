@@ -47,28 +47,28 @@ branch stands in for `bugfix/venue-id-route-gate` (`riviera-sdlc` § Remote/clou
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a signed-in operator, when the router navigates to `/operator/not-a-venue`,
+- [x] **AC-1:** Given a signed-in operator, when the router navigates to `/operator/not-a-venue`,
       then the URL settles on `/operator/venue-not-found` and `OperatorConsole` is never
       activated. *Seam:* the real route table (`app.routes.ts`) driven through
       `RouterTestingHarness` · *Pinned by:* `venue-id.guard.spec.ts` ›
       `redirects a malformed :venueId to the venue-not-found page`
-- [ ] **AC-2:** Given a signed-in operator, when the router navigates to `/operator/0/pricing`,
+- [x] **AC-2:** Given a signed-in operator, when the router navigates to `/operator/0/pricing`,
       `/operator/-3/daily` or `/operator/1.5`, then each settles on `/operator/venue-not-found`
       and no tab component is activated. *Seam:* the real route table ·
       *Pinned by:* `venue-id.guard.spec.ts` › `rejects every non-positive-integer :venueId`
-- [ ] **AC-3:** Given a signed-in operator, when the router navigates to `/operator/7/pricing`,
+- [x] **AC-3:** Given a signed-in operator, when the router navigates to `/operator/7/pricing`,
       then the guard passes and `PricingTab` activates under `OperatorConsole` — the gate
       does not over-reject. *Seam:* the real route table ·
       *Pinned by:* `venue-id.guard.spec.ts` › `lets a positive-integer :venueId through`
-- [ ] **AC-4:** Given the route table, when the router navigates to `/operator/venue-not-found`,
+- [x] **AC-4:** Given the route table, when the router navigates to `/operator/venue-not-found`,
       then the page activates once and does not redirect to itself (the literal segment is
       matched by the literal route, not by `:venueId`). *Seam:* the real route table ·
       *Pinned by:* `venue-id.guard.spec.ts` › `does not redirect its own destination`
-- [ ] **AC-5:** Given a signed-out visitor, when they open `/operator/not-a-venue`, then they
+- [x] **AC-5:** Given a signed-out visitor, when they open `/operator/not-a-venue`, then they
       reach the auth page with `audience=operator` and `returnUrl=/operator/venue-not-found` —
       never a `returnUrl` back to the dead link. *Seam:* the real route table ·
       *Pinned by:* `venue-id.guard.spec.ts` › `sends a signed-out visitor to sign-in for the page, not the dead link`
-- [ ] **AC-6:** Given the venue-not-found page, when it renders, then it shows the
+- [x] **AC-6:** Given the venue-not-found page, when it renders, then it shows the
       `Venue not found` heading and offers BOTH destinations the two old copies disagreed
       about — the venue list (`/operator`) and create-a-venue (`/operator?create=1`).
       *Seam:* the rendered `/operator/venue-not-found` route ·
@@ -78,6 +78,12 @@ branch stands in for `bugfix/venue-id-route-gate` (`riviera-sdlc` § Remote/clou
       behaviour #1122/#1125 built survives the deletion of the invalid arms.
       *Seam:* the tab's parent `ActivatedRoute.paramMap` ·
       *Pinned by:* the existing `pricing-tab.spec.ts` › `re-loads for the new venue when the parent param changes in place` (and its `venueId: '2'` siblings in `layout-editor.spec.ts`, `daily-view-tab.spec.ts`)
+- [x] **AC-9:** Given a `:venueId` segment that `Number()` would coerce but that does not spell a
+      venue — `7e2`, `0x10`, `+7`, `7.0`, `007`, `' 7 '`, a value past 2^53 — when the rule reads
+      it, then it yields `undefined` and the guard redirects, so no URL aliases a venue it does not
+      spell. *Seam:* `shared/parent-venue-id.ts`'s `idParam` (and the route table above it) ·
+      *Pinned by:* `parent-venue-id.spec.ts` › `returns undefined for the non-canonical segment %o`
+      and `venue-id.guard.spec.ts` › `rejects the non-positive-integer :venueId %o`
 - [ ] **AC-8:** Given a real browser in the mocked suite, when it navigates to `/operator/abc`,
       then the venue-not-found card is visible and axe reports no serious violations.
       *Seam:* the running app at the route · *Pinned by:*
@@ -175,15 +181,15 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `plan — doc written, awaiting phase 0`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0, step 1 — write `core/venue-id.guard.spec.ts` red against the real
-route table.
+**Next action:** Phase 1, step 1 — pin the narrowed `parentVenueId` contract red, then delete
+the shell's invalid arm and the six tab arms.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The route gate (guard + page + wiring) | | |
-| 1 — Narrow the contract, delete the seven dead arms | | |
+| 0 — The route gate (guard + page + wiring) | ✅ | see phase-0 commit |
+| 1 — Narrow the contract, delete the seven dead arms | ⏳ | |
 | 2 — e2e + a11y/contrast for the new page | | |
 | 3 — Close-out (ADR-0023, docs freshness, stale plan-doc retirement) | | |
 
@@ -206,7 +212,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `.claude/skills/riviera-frontend/SKILL.md` — routing section gains the route-owns-param-validity rule
 - `frontend/src/app/app.routes.ts` — the guard on `operator/:venueId`, the literal
   `operator/venue-not-found` route above it
-- `frontend/src/app/app.routes.spec.ts` — route-table expectations, if the new route needs one
+- `frontend/src/app/app.routes.spec.ts` — the lazy-target count (33 → 34)
+- `frontend/src/app/app.spec.ts` — the console-section table gains the new plain route (4 → 5 surfaces)
 - `frontend/src/app/core/venue-id.guard.ts` — the guard
 - `frontend/src/app/core/venue-id.guard.spec.ts` — AC-1…AC-5
 - `frontend/src/app/operator/venue-not-found.ts` — the page
@@ -235,15 +242,15 @@ Modify `frontend/src/app/app.routes.ts`
 Phase 0 leaves every existing invalid arm in place — they simply become provably dead. The
 deletion is phase 1, so a red phase 0 never leaves the tree without a fallback.
 
-- [ ] **Step 1: Write the failing test** — `venue-id.guard.spec.ts`, driving the REAL
+- [x] **Step 1: Write the failing test** — `venue-id.guard.spec.ts`, driving the REAL
       `routes` table through `RouterTestingHarness` (AC-1…AC-5), and `venue-not-found.spec.ts`
       (AC-6).
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/core/venue-id.guard.spec.ts`
+- [x] **Step 2: Run it, verify it fails** — `npx vitest run src/app/core/venue-id.guard.spec.ts`
       → FAIL (module not found).
-- [ ] **Step 3: Minimal implementation** — the guard, the page, the two route entries.
-- [ ] **Step 4: Run it, verify it passes** — the same command → PASS; then broaden to
+- [x] **Step 3: Minimal implementation** — the guard, the page, the two route entries.
+- [x] **Step 4: Run it, verify it passes** — the same command → PASS; then broaden to
       `npx vitest run src/app/core src/app/operator/venue-not-found.spec.ts`.
-- [ ] **Step 5: Generalization-audit pass** — population: *every route in `app.routes.ts`
+- [x] **Step 5: Generalization-audit pass** — population: *every route in `app.routes.ts`
       carrying an id param a component then re-validates*. Enumerate, judge each, append below.
 - [ ] **Step 6: Commit** — `git commit -m "Gate /operator/:venueId on a valid id at the route (#1127)"`
 - [ ] **Step 7: Update plan-doc execution status** in the same commit window.
@@ -279,7 +286,7 @@ deletion is phase 1, so a red phase 0 never leaves the tree without a fallback.
 - [ ] **Step 1: Write the failing test** — the mocked e2e (AC-8) plus the axe and contrast specs.
 - [ ] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- venue-id-route-gate`.
 - [ ] **Step 3: Minimal implementation** — whatever the specs surface (likely nothing but copy/aria).
-- [ ] **Step 4: Run it, verify it passes** — the same command, plus `npm run test:a11y`.
+- [x] **Step 4: Run it, verify it passes** — the same command, plus `npm run test:a11y`.
 - [ ] **Step 5: Generalization-audit pass** — population: *console surfaces reachable only by
       a malformed URL* (this slice's whole subject).
 - [ ] **Step 6: Commit** — `git commit -m "Cover the venue-not-found page end to end (#1127)"`
@@ -307,13 +314,14 @@ deletion is phase 1, so a red phase 0 never leaves the tree without a fallback.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-16 | phase 0 | Every consumer of the route-param→id rule (mechanism: an id read out of a `ParamMap` through `shared/parent-venue-id.ts`) | `grep -rn "parentVenueId\|venueIdParam\|routeIdParam\|idParam" --include=*.ts frontend/src/app \| grep -v '\.spec\.ts'` | `operator/:venueId` (shell + 6 tabs), `venues/:id` (`venue/venue-map.ts`), `app.ts`'s root→leaf chrome walk, `console-shell.ts` | **Fixed the rule itself**, which reaches every member: `idParam` demanded only `Number.isInteger(…) && > 0`, so `7e2` read 700, `0x10` read 16 and `+7`/`7.0`/`007`/`' 7 '` all read 7 — each aliasing a venue under a URL that disagreed with it. It now demands a canonical decimal integer inside the safe-integer range. Route-gated `operator/:venueId` only: `venues/:id` has one owner and no duplicated arm to retire, and `app.ts`/`console-shell` read `undefined` legitimately on every route that names no venue |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
 - [ ] **AC-1…AC-5:** `npx vitest run src/app/core/venue-id.guard.spec.ts` → all pass.
-- [ ] **AC-6:** `npx vitest run src/app/operator/venue-not-found.spec.ts` → pass.
+- [x] **AC-6:** `npx vitest run src/app/operator/venue-not-found.spec.ts` → pass.
 - [ ] **AC-7:** `npx vitest run src/app/operator` → the `venueId: '2'` switch specs still pass.
 - [ ] **AC-8:** `npm run test:e2e:a11y -- venue-id-route-gate` → pass.
 

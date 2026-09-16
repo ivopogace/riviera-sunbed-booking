@@ -1246,13 +1246,16 @@ describe('app.routes chrome flags (issue #134)', () => {
   /**
    * The operator/admin surfaces and the console section each names for the app shell
    * (`data.console`, read on the root→leaf walk): the venue console, the admin console, and the
-   * two plain operator pages — the `/operator` picker and the password page, which used to wear
-   * the tourist chrome ("Sign in / Register" while signed in as an operator) or none at all.
+   * three plain operator pages — the `/operator` picker, the password page, which used to wear
+   * the tourist chrome ("Sign in / Register" while signed in as an operator) or none at all, and
+   * the venue-not-found page. That page is deliberately `plain`, not `venue`: it names no venue,
+   * so the venue rail would render tab links with nothing to interpolate (#1127).
    */
   const CONSOLE_SECTIONS = [
     ['operator/:venueId', 'venue'],
     ['admin', 'admin'],
     ['operator', 'plain'],
+    ['operator/venue-not-found', 'plain'],
     ['account/operator-password', 'plain'],
   ] as const;
 
@@ -1269,7 +1272,7 @@ describe('app.routes chrome flags (issue #134)', () => {
     'audit',
   ];
 
-  it('names the console section on the four operator/admin surfaces and nowhere else (#1011)', () => {
+  it('names the console section on the five operator/admin surfaces and nowhere else (#1011)', () => {
     for (const [path, section] of CONSOLE_SECTIONS) {
       const route = routes.find((r) => r.path === path);
       expect(route?.data?.['console'], `route '${path}' console section`).toBe(section);

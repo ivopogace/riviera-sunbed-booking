@@ -38,8 +38,20 @@ export function parentVenueId(route: ActivatedRoute): Signal<number | undefined>
   return venueIdParam(route.parent);
 }
 
+/**
+ * A canonical decimal positive integer, and nothing else. `Number()` alone is far wider than a
+ * URL segment naming a venue: it reads `7e2` as 700, `0x10` as 16, and `+7` / `7.0` / `007` /
+ * `' 7 '` all as 7 — each aliasing a venue under a URL that disagrees with it (#1127).
+ */
+const CANONICAL_ID = /^[1-9][0-9]*$/;
+
 /** The positive-integer id under `param` in `params`, or `undefined` — the rule the signals above apply. */
 export function idParam(params: ParamMap, param: string): number | undefined {
-  const id = Number(params.get(param));
-  return Number.isInteger(id) && id > 0 ? id : undefined;
+  const raw = params.get(param);
+  if (raw === null || !CANONICAL_ID.test(raw)) {
+    return undefined;
+  }
+  const id = Number(raw);
+  // A segment longer than 2^53 would land on a rounded float, naming a venue it did not spell.
+  return Number.isSafeInteger(id) ? id : undefined;
 }
