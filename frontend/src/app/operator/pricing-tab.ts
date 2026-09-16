@@ -129,15 +129,26 @@ export class PricingTab {
   });
 
   constructor() {
-    // Re-runs on an in-place venue switch: reset the rows + flags, then load the new venue.
+    // Every venue-context change: clear the previous venue's rows, then load the new venue if any.
     effect(() => {
       const id = this.venueId();
-      untracked(() => (id === undefined ? this.loaded.set(true) : this.resetForVenue(id)));
+      untracked(() => (id === undefined ? this.clearVenueState() : this.resetForVenue(id)));
     });
   }
 
   /** Drop every venue-scoped row/flag so nothing from the previous venue leaks, then load. */
   private resetForVenue(venueId: number): void {
+    this.clearVenueState();
+    this.load(venueId);
+  }
+
+  /**
+   * Drop every venue-scoped row and flag, so nothing from the previous venue leaks into the next
+   * context — another venue, or no venue at all. `rows` is computed off `sets`, and the template's
+   * first branch renders whenever `rows` is non-empty, so leaving `sets` alone here would keep the
+   * previous venue's prices on screen under a URL that names no venue.
+   */
+  private clearVenueState(): void {
     this.epoch++;
     this.sets.set([]);
     this.loaded.set(false);
@@ -146,7 +157,6 @@ export class PricingTab {
     this.errorRow.set(null);
     this.loadedSetVersion.set(null);
     this.staleConflict.set(false);
-    this.load(venueId);
   }
 
   /**

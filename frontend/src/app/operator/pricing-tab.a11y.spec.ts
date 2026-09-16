@@ -18,7 +18,7 @@ describe('PricingTab a11y (#174)', () => {
   let fixture: ComponentFixture<PricingTab>;
   let http: HttpTestingController;
 
-  function render(sets: SetView[]): void {
+  function configure(venueId: string): void {
     TestBed.configureTestingModule({
       imports: [PricingTab],
       providers: [
@@ -30,8 +30,8 @@ describe('PricingTab a11y (#174)', () => {
           useValue: {
             snapshot: { paramMap: convertToParamMap({}) },
             parent: {
-              snapshot: { paramMap: convertToParamMap({ venueId: '1' }) },
-              paramMap: of(convertToParamMap({ venueId: '1' })),
+              snapshot: { paramMap: convertToParamMap({ venueId }) },
+              paramMap: of(convertToParamMap({ venueId })),
             },
           },
         },
@@ -43,6 +43,10 @@ describe('PricingTab a11y (#174)', () => {
     http
       .expectOne((r) => r.url.includes('/api/auth/me'))
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+  }
+
+  function render(sets: SetView[]): void {
+    configure('1');
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
       .flush({ id: 1, name: 'V', sets });
@@ -54,6 +58,15 @@ describe('PricingTab a11y (#174)', () => {
   function host(): HTMLElement {
     return fixture.nativeElement as HTMLElement;
   }
+
+  it('has no axe violations on the invalid-link card', async () => {
+    // A param naming no venue issues no map read, so there is nothing to flush here.
+    configure('not-a-venue');
+    fixture.detectChanges();
+
+    expect(host().querySelector('[data-testid="pricing-invalid"]')).toBeTruthy();
+    await expectNoAxeViolations(host());
+  });
 
   it('has no axe violations with priced rows', async () => {
     render([

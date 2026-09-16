@@ -3,106 +3,117 @@
   <output aria-live="polite" class="sr-only" data-testid="pricing-saved-announce">{{
     savedRowMessage()
   }}</output>
-  <section appCardGlass class="rounded-[24px] px-[22px] py-5">
-    <h2 class="text-[16px] font-bold text-riv-card-ink">Row pricing</h2>
-    <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
-      Full-day price per set (2 loungers + umbrella), charged in EUR. Applies to every set in the
-      row.
+  @if (venueId() === undefined) {
+    <p
+      appCardGlass
+      class="rounded-[24px] px-[22px] py-10 text-center text-[13px] text-riv-card-ink-soft"
+      role="alert"
+      data-testid="pricing-invalid"
+    >
+      This console link is missing a valid venue. Open the console from your venue list.
     </p>
+  } @else {
+    <section appCardGlass class="rounded-[24px] px-[22px] py-5">
+      <h2 class="text-[16px] font-bold text-riv-card-ink">Row pricing</h2>
+      <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
+        Full-day price per set (2 loungers + umbrella), charged in EUR. Applies to every set in the
+        row.
+      </p>
 
-    @if (rows().length > 0) {
-      @for (row of rows(); track row.label) {
-        <div
-          class="flex items-center gap-3 border-b border-riv-card-border py-2"
-          data-testid="pricing-row"
-          [attr.data-row]="row.label"
-        >
-          <span
-            class="inline-flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-[8px] bg-riv-chip-bg text-[12px] font-bold text-riv-card-ink"
-            >{{ row.label }}</span
+      @if (rows().length > 0) {
+        @for (row of rows(); track row.label) {
+          <div
+            class="flex items-center gap-3 border-b border-riv-card-border py-2"
+            data-testid="pricing-row"
+            [attr.data-row]="row.label"
           >
-          <span class="flex-1 text-[13px] text-riv-card-ink-soft"
-            >{{ row.desc }}
-            @if (row.mixed) {
-              <strong class="text-riv-card-ink"> · mixed prices</strong>
-            }
-          </span>
-          <div class="flex items-center gap-1.5">
-            <span class="text-[14px] text-riv-card-ink-soft" aria-hidden="true">€</span>
-            <input
-              type="number"
-              min="0"
-              step="0.5"
-              [value]="row.priceEur"
-              [readonly]="saving()"
-              [attr.placeholder]="row.mixed ? 'Set one price' : null"
-              (change)="onPriceChange(row, $any($event.target))"
-              [attr.data-testid]="'pricing-input-' + row.label"
-              [attr.aria-label]="'Full-day price for row ' + row.label + ', in euros'"
-              appTouchTarget
-              class="w-[88px] rounded-[11px] border border-riv-card-border bg-riv-console-inset/60 px-2.5 py-2 text-right text-[16px] font-semibold text-riv-card-ink read-only:opacity-60"
-              #priceControl
-            />
-          </div>
-        </div>
-        @if (savedRow() === row.label) {
-          <!-- Visible copy only; the table's persistent announcer above owns the announcement. -->
-          <p
-            class="py-1 text-right text-[11.5px] font-semibold text-riv-console-accent-ink"
-            aria-hidden="true"
-            [attr.data-testid]="'pricing-saved-' + row.label"
-          >
-            Saved. The public beach map reflects the new price.
-          </p>
-        }
-        @if (errorRow(); as err) {
-          @if (err.label === row.label) {
             <span
-              [appFieldErrorFor]="priceControl"
-              [appFieldErrorForInvalidValue]="valueIsInvalid(err.code)"
-              class="block py-1 text-right text-[11.5px] font-semibold text-riv-error-ink"
-              role="alert"
-              [attr.data-testid]="'pricing-error-' + row.label"
-              >{{ errorMessage(err.code) }}</span
+              class="inline-flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-[8px] bg-riv-chip-bg text-[12px] font-bold text-riv-card-ink"
+              >{{ row.label }}</span
             >
+            <span class="flex-1 text-[13px] text-riv-card-ink-soft"
+              >{{ row.desc }}
+              @if (row.mixed) {
+                <strong class="text-riv-card-ink"> · mixed prices</strong>
+              }
+            </span>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[14px] text-riv-card-ink-soft" aria-hidden="true">€</span>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                [value]="row.priceEur"
+                [readonly]="saving()"
+                [attr.placeholder]="row.mixed ? 'Set one price' : null"
+                (change)="onPriceChange(row, $any($event.target))"
+                [attr.data-testid]="'pricing-input-' + row.label"
+                [attr.aria-label]="'Full-day price for row ' + row.label + ', in euros'"
+                appTouchTarget
+                class="w-[88px] rounded-[11px] border border-riv-card-border bg-riv-console-inset/60 px-2.5 py-2 text-right text-[16px] font-semibold text-riv-card-ink read-only:opacity-60"
+                #priceControl
+              />
+            </div>
+          </div>
+          @if (savedRow() === row.label) {
+            <!-- Visible copy only; the table's persistent announcer above owns the announcement. -->
+            <p
+              class="py-1 text-right text-[11.5px] font-semibold text-riv-console-accent-ink"
+              aria-hidden="true"
+              [attr.data-testid]="'pricing-saved-' + row.label"
+            >
+              Saved. The public beach map reflects the new price.
+            </p>
+          }
+          @if (errorRow(); as err) {
+            @if (err.label === row.label) {
+              <span
+                [appFieldErrorFor]="priceControl"
+                [appFieldErrorForInvalidValue]="valueIsInvalid(err.code)"
+                class="block py-1 text-right text-[11.5px] font-semibold text-riv-error-ink"
+                role="alert"
+                [attr.data-testid]="'pricing-error-' + row.label"
+                >{{ errorMessage(err.code) }}</span
+              >
+            }
           }
         }
-      }
 
-      <!-- A stale-write 409 is recoverable, not a per-row error — the value reverted; explain, offer Reload. -->
-      @if (staleConflict()) {
-        <app-stale-write-banner
-          class="mt-3"
-          data-testid="pricing-stale-banner"
-          reloadTestId="pricing-stale-reload"
-          (reload)="reloadAfterStale()"
+        <!-- A stale-write 409 is recoverable, not a per-row error — the value reverted; explain, offer Reload. -->
+        @if (staleConflict()) {
+          <app-stale-write-banner
+            class="mt-3"
+            data-testid="pricing-stale-banner"
+            reloadTestId="pricing-stale-reload"
+            (reload)="reloadAfterStale()"
+          >
+            These prices were changed somewhere else since you opened this tab. Your edit was not
+            applied — reload the latest prices and try again.
+          </app-stale-write-banner>
+        }
+
+        <p class="mt-3 text-[12px] text-riv-card-ink-soft">
+          Projected full-day take if every online set sells:
+          <strong class="text-riv-console-accent-ink" data-testid="pricing-projected">{{
+            projected()
+          }}</strong>
+        </p>
+      } @else if (loadError()) {
+        <p
+          class="px-3 py-10 text-center text-[13px] text-riv-error-ink"
+          role="alert"
+          data-testid="pricing-load-error"
         >
-          These prices were changed somewhere else since you opened this tab. Your edit was not
-          applied — reload the latest prices and try again.
-        </app-stale-write-banner>
+          We couldn’t load this venue’s pricing. Refresh the page to try again.
+        </p>
+      } @else if (loaded()) {
+        <p
+          class="px-3 py-10 text-center text-[13px] text-riv-card-ink-soft"
+          data-testid="pricing-empty"
+        >
+          No sets yet. Generate a layout in the Beach map tab, then set row prices here.
+        </p>
       }
-
-      <p class="mt-3 text-[12px] text-riv-card-ink-soft">
-        Projected full-day take if every online set sells:
-        <strong class="text-riv-console-accent-ink" data-testid="pricing-projected">{{
-          projected()
-        }}</strong>
-      </p>
-    } @else if (loadError()) {
-      <p
-        class="px-3 py-10 text-center text-[13px] text-riv-error-ink"
-        role="alert"
-        data-testid="pricing-load-error"
-      >
-        We couldn’t load this venue’s pricing. Refresh the page to try again.
-      </p>
-    } @else if (loaded()) {
-      <p
-        class="px-3 py-10 text-center text-[13px] text-riv-card-ink-soft"
-        data-testid="pricing-empty"
-      >
-        No sets yet. Generate a layout in the Beach map tab, then set row prices here.
-      </p>
-    }
-  </section>
+    </section>
+  }
 </section>

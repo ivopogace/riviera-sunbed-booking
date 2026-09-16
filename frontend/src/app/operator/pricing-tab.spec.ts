@@ -203,6 +203,24 @@ describe('PricingTab (#174)', () => {
     expect(announce.textContent?.trim()).toBe('');
   });
 
+  it("clears the previous venue's price rows when the venue param goes invalid (#1125)", () => {
+    render();
+    expect(rows().length).toBe(2);
+
+    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    fixture.detectChanges();
+
+    // rows() is computed off sets, and the first template branch renders whenever rows is non-empty.
+    expect(rows()).toEqual([]);
+    expect(host.querySelector('[data-testid="pricing-projected"]')).toBeNull();
+    expect(byId('pricing-invalid').textContent).toContain('Open the console from your venue list.');
+    // A bad link is not a failed read, and it is not an empty venue either.
+    expect(host.querySelector('[data-testid="pricing-load-error"]')).toBeNull();
+    expect(host.querySelector('[data-testid="pricing-empty"]')).toBeNull();
+    // The live region goes on outliving every branch (RV-FE-10).
+    expect(byId('pricing-saved-announce')).toBeTruthy();
+  });
+
   it('rounds a whole-euro edit to exact minor units', () => {
     render();
     editRow('B', '25');

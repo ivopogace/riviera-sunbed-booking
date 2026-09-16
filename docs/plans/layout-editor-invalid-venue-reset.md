@@ -80,7 +80,17 @@ branch, standing in for `bugfix/layout-editor-invalid-venue-reset` per `riviera-
 - [x] **AC-6:** Given an invalid parent `:venueId`, when axe audits the rendered editor,
   then there are no violations. *Seam:* `expectNoAxeViolations` over the component's host
   element · *Pinned by:* `layout-editor.a11y.spec.ts` ›
-  `the invalid-venue card is clean`
+  `has no axe violations on the invalid-link card`
+- [x] **AC-7:** Given `PricingTab` has loaded venue 1's price rows, when the parent
+  `:venueId` param goes invalid, then no `pricing-row` and no `pricing-projected` remains,
+  `pricing-invalid` renders, neither `pricing-load-error` nor `pricing-empty` does, and the
+  `pricing-saved-announce` region is still mounted. *Seam:* the rendered `PricingTab` DOM by
+  `data-testid` · *Pinned by:* `pricing-tab.spec.ts` ›
+  `clears the previous venue's price rows when the venue param goes invalid (#1125)`
+- [x] **AC-8:** Given an invalid parent `:venueId`, when axe audits the rendered pricing
+  tab, then there are no violations. *Seam:* `expectNoAxeViolations` over the component's
+  host element · *Pinned by:* `pricing-tab.a11y.spec.ts` ›
+  `has no axe violations on the invalid-link card`
 
 ## Non-goals
 
@@ -93,8 +103,14 @@ branch, standing in for `bugfix/layout-editor-invalid-venue-reset` per `riviera-
   sees the reasoning rather than an omission.)
 - **Not changing the console shell's gate** to make the state reachable. That is what keeps
   the bug latent, and removing it is a separate product question.
-- **Not touching the other five console tabs.** #1124 swept them; `payouts-tab` and
-  `daily-view-tab` render their notice inside the `@else`, so `markInvalid()` unmounts it.
+- ~~**Not touching the other five console tabs.**~~ **Superseded by the maintainer on
+  2026-09-16:** the generalization sweep found the identical defect in `pricing-tab`, and the
+  call was to fold its fix into this PR rather than file it. Its surface was not re-asked —
+  the same option-1 card this slice's own question settled, applied to the parallel case; had
+  the two tabs wanted different answers, that would have been a second question.
+  The remaining four tabs stay out: `requests-tab`, `payouts-tab` and `daily-view-tab` render
+  their `markInvalid()` branch in place of the content, and `venue-tab` already gates on
+  `venueId() === undefined` in its first branch.
 - **No new design token, no new shared primitive.** The card reuses `appCardGlass` and
   `text-riv-card-ink-soft` verbatim from `venue-tab`.
 
@@ -176,15 +192,16 @@ N/A — no contract change. No endpoint, DTO or client type is touched.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft open, awaiting CI`
+**Stage pointer:** `PR #1126 — draft, phase 2 pushed, awaiting CI`
 
-**Next action:** Open the draft PR so CI fires, then mark ready for review and run the
-Review + Sonar gates.
+**Next action:** Check CI on the phase-2 push; when green, mark PR #1126 ready for review,
+then run the Review gate (`references/pr-gates.md` §1) and the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Clear venue-scoped state on an invalid param | ✅ | `7ce301ae` |
-| 1 — Render the invalid-link card | ✅ | this commit |
+| 1 — Render the invalid-link card | ✅ | `42502442` |
+| 2 — The same fix for `pricing-tab` (folded in by the maintainer) | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -205,6 +222,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   `@else` around the editor body
 - `frontend/src/app/operator/layout-editor.spec.ts` — AC-1, AC-2, AC-4, AC-5
 - `frontend/src/app/operator/layout-editor.a11y.spec.ts` — AC-6
+- `frontend/src/app/operator/pricing-tab.ts` — the same `undefined` arm and
+  `clearVenueState()` split (phase 2)
+- `frontend/src/app/operator/pricing-tab.html` — the invalid-link card branch around the
+  pricing card
+- `frontend/src/app/operator/pricing-tab.spec.ts` — AC-7
+- `frontend/src/app/operator/pricing-tab.a11y.spec.ts` — AC-8
 
 ---
 
@@ -248,6 +271,25 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ---
 
+## Phase 2 — The same fix for `pricing-tab`
+
+**Files:** Modify `frontend/src/app/operator/pricing-tab.ts|.html` · Test
+`frontend/src/app/operator/pricing-tab.spec.ts`, `pricing-tab.a11y.spec.ts`
+
+- [x] **Step 1: Write the failing tests** — AC-7 and AC-8.
+- [x] **Step 2: Run them, verify they fail** — the previous venue's two rows survive.
+- [x] **Step 3: Minimal implementation** — `clearVenueState()` split out of `resetForVenue`,
+  the effect's `undefined` arm, and the `@if (venueId() === undefined)` card around the
+  pricing card (the live region stays above it).
+- [x] **Step 4: Run them, verify they pass** — 857 operator specs green; the template move
+  verified content-identical under whitespace normalization.
+- [x] **Step 5: Generalization-audit pass** — this phase *is* the audit's action; the
+  population was enumerated in phase 0 and the remaining four callers were judged there.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
+
+---
+
 ## Generalization-audit log
 
 > Append-only. One row per bug-fix / pattern-introducing phase. **Population** names the
@@ -255,7 +297,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-09-16 | Phase 0 (#1125) | Every component whose venue `effect` has an `undefined` arm that flips a flag instead of clearing venue-scoped state, enumerated by the route-param helper each one calls rather than by resemblance | `grep -rln "parentVenueId(\|venueIdParam(" --include=*.ts frontend/src/app` then the `const id = this.venueId()` arm of each | 7 components: `layout-editor` (this fix), `venue-tab`, `pricing-tab`, `requests-tab`, `payouts-tab`, `daily-view-tab`, `operator-console` | **Subset — one real hit, filed not folded.** `pricing-tab` has the identical defect: its `undefined` arm sets only `loaded`, `rows` is `computed` off `sets` which nothing clears, and the template's *first* branch is `@if (rows().length > 0)`, so the previous venue's price rows stay on screen. It needs the same maintainer design decision #1125 needed (which surface renders), so it gets its own issue rather than widening this PR. `venue-tab` and `operator-console` gate on `venueId() === undefined` in the first template branch; `requests-tab`, `payouts-tab` and `daily-view-tab` render their `markInvalid()` error branch in place of the content. Those five leave stale signals in memory but nothing readable on screen. |
+| 2026-09-16 | Phase 0 (#1125) | Every component whose venue `effect` has an `undefined` arm that flips a flag instead of clearing venue-scoped state, enumerated by the route-param helper each one calls rather than by resemblance | `grep -rln "parentVenueId(\|venueIdParam(" --include=*.ts frontend/src/app` then the `const id = this.venueId()` arm of each | 7 components: `layout-editor` (this fix), `venue-tab`, `pricing-tab`, `requests-tab`, `payouts-tab`, `daily-view-tab`, `operator-console` | **Subset — one real hit, fixed here.** `pricing-tab` has the identical defect: its `undefined` arm sets only `loaded`, `rows` is `computed` off `sets` which nothing clears, and the template's *first* branch is `@if (rows().length > 0)`, so the previous venue's price rows stay on screen. **The maintainer chose to fold the fix into this PR** (phase 2) rather than file it. `venue-tab` and `operator-console` gate on `venueId() === undefined` in the first template branch; `requests-tab`, `payouts-tab` and `daily-view-tab` render their `markInvalid()` error branch in place of the content. Those five leave stale signals in memory but nothing readable on screen. |
 
 ---
 
