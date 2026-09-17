@@ -481,7 +481,7 @@ function disjoint(
 }
 
 /**
- * Crowded pins (#1134): venues whose pins bury each other at the current camera become one place
+ * Crowded pins: venues whose pins bury each other at the current camera become one place
  * pill, and every venue stays reachable — by pointer through the pill, by keyboard through its own
  * button. The fake engine projects Web Mercator around its camera, so the fit is real here.
  */

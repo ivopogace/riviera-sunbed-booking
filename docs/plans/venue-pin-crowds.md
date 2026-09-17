@@ -375,6 +375,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (repo hygiene, phase-3 push) | `check-plan-file-structure`: `venue-preview-card.spec.ts` touched but not listed | fixed-in-`d6c0ac9c` |
+| F-3 | CI (repo hygiene, close-out push) | `check-inline-comments`: provenance `(#1134)` in the crowd describe's doc comment | fixed-in-the-next-commit |
 | F-2 | the e2e sweep (phase 4, local) | `preview-link` 39 px tall with a preview open at ≥ 390 px; a lone pin cut by the map's edge 26 px wide at 320 px | fixed-in-`d6c0ac9c` (`appTouchTarget`; `data-touch-pans`) |
 
 ---
