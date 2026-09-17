@@ -56,12 +56,23 @@ const DARK_CONSOLE_STORAGE = {
 // The real-backend U7 suite has its own config/servers — never run it under the mocked, backend-less one.
 const REAL_BACKEND = '**/real-backend/**';
 
+/**
+ * Headless Chromium can show no permission prompt, so an ungranted ask does not fail — it hangs
+ * forever (the W3C timeout excludes the time a prompt is pending). This flag makes the answer a
+ * real `PERMISSION_DENIED`, which is what a browser gives when someone dismisses the prompt, so a
+ * spec can drive the declined path; `grantPermissions` still overrides it per test.
+ */
+const DENY_UNGRANTED_PERMISSIONS = '--deny-permission-prompts';
+
 const chromium = {
   ...devices['Desktop Chrome'],
   // CI installs the matching browser; a pre-installed Chromium of another revision is named by PW_CHROMIUM_EXECUTABLE.
-  launchOptions: process.env.PW_CHROMIUM_EXECUTABLE
-    ? { executablePath: process.env.PW_CHROMIUM_EXECUTABLE }
-    : {},
+  launchOptions: {
+    args: [DENY_UNGRANTED_PERMISSIONS],
+    ...(process.env.PW_CHROMIUM_EXECUTABLE
+      ? { executablePath: process.env.PW_CHROMIUM_EXECUTABLE }
+      : {}),
+  },
 };
 
 export default defineConfig({

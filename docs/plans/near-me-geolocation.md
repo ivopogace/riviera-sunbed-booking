@@ -154,12 +154,12 @@ gains a wrapping control column, which moves no rendered box: same `top-3 right-
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A coordinate leaks off the device through a request, a storage entry or a log line — the one risk the whole slice exists to avoid (story 8, DSGVO) | low | high | The position lives in a component signal and the engine handle only; AC-9 extends #1098's real-engine guard to URLs, headers, bodies, both storages and console output with a distinctive fixture coordinate | plan | open |
+| R-1 | A coordinate leaks off the device through a request, a storage entry or a log line — the one risk the whole slice exists to avoid (story 8, DSGVO) | low | high | The position lives in a component signal and the engine handle only; AC-9 extends #1098's real-engine guard to URLs, headers, bodies, both storages and console output with a distinctive fixture coordinate | plan | closed in phase 3 — and the guard was mutation-tested twice (a probe request and a probe storage write each failed it), so it is known to have teeth rather than assumed to |
 | R-2 | `RivieraMap` now requires a `GeolocationGateway`, so the six existing specs that mount it (directly or through `VenueLocationField`) fail with `NullInjectorError` | high | low | Each gains one provider line stating its geolocation posture — `supported: false` where near-me is not the subject, the fake where it is; caught by the first scoped Vitest run in phase 1 | plan | closed — it was 5 configs across 5 files (60 tests), all green again |
 | R-3 | The here-marker mounts inside the surface both engines read map clicks from, so a tap on it would re-place the operator's venue pin — exactly the defect #1099's review caught for the venue pin (up to ~6 km, then saved) | med | high | The here-marker is built by the same factory path and stops click propagation; AC-7 pins it on the console surface | plan | closed in phase 1 — pinned by `riviera-map.spec.ts` "keeps a tap on the you-are-here marker off the map underneath"; AC-7 adds the console leg |
 | R-4 | A granted position outside the Albania fence clamps the camera to a corner with the marker unreachable | med | med | AC-5: bounds-checked above the seam, message instead of a move | plan | open |
-| R-5 | Playwright's denied path behaves differently than assumed (no prompt in headless ⇒ possibly `PERMISSION_DENIED`, possibly a hang) | med | low | Phase 3 measures it before asserting it; if clearing permissions hangs rather than denying, the denied e2e leg falls back to the fake gateway posture and the plan records the substitution — the Vitest specs already own all five outcomes | plan | open |
-| R-6 | #1101 (venue pins) will touch the same marker code on `RivieraMap`; both slices change `syncPin`'s neighbourhood | med | low | #1101 is open and unstarted, this slice merges first and keeps the here-marker on its own id with no change to `PIN_ID`'s handling; whoever merges second rebases | plan | open |
+| R-5 | Playwright's denied path behaves differently than assumed (no prompt in headless ⇒ possibly `PERMISSION_DENIED`, possibly a hang) | med | low | Phase 3 measures it before asserting it; if clearing permissions hangs rather than denying, the denied e2e leg falls back to the fake gateway posture and the plan records the substitution — the Vitest specs already own all five outcomes | plan | closed in phase 3 — it hangs, and `--deny-permission-prompts` in the suite config gives a genuine denial instead; no fake was needed (measurement in phase 3 step 3) |
+| R-6 | #1101 (venue pins) will touch the same marker code on `RivieraMap`; both slices change `syncPin`'s neighbourhood | med | low | #1101 is open and unstarted, this slice merges first and keeps the here-marker on its own id with no change to `PIN_ID`'s handling; whoever merges second rebases | plan | closed — `syncPin` is untouched; the here-marker is additive |
 | R-7 | The new control is map chrome over imagery of unknown luminance, so a themed token would drift light-on-light | low | med | It wears the theme-invariant `--riv-solid-btn-*` family already proven by the zoom buttons; AC-11 pins the ratios | plan | closed in phase 1 — the control wears the pill skin, and the here-dot's ring is cut from the same opaque fill so its 3:1 pair is internal to the graphic |
 | R-8 | Turning near-me on in the console (maintainer's call, beyond the issue text) widens the slice to a second surface's sweeps | — | low | AC-7/AC-10 cover it; the console's sweep (`touch-targets.e2e.ts`, "operator venue tab") already measures whatever the tab renders | maintainer | accepted at plan time |
 
@@ -241,17 +241,17 @@ is the machine proof that the wire is untouched.
 
 ## Execution status
 
-**Stage pointer:** `implement — phases 0–2 done, phase 3 (e2e) next`
+**Stage pointer:** `implement — phases 0–3 done, phase 4 (integration + gates) next`
 
-**Next action:** phase 3 — the mocked-suite legs: granted/denied on Discover, the extended no-leak
-guard against the real engine, the console flow, and the two sweep touch-ups.
+**Next action:** phase 4 — merge latest `origin/main`, confirm this push's CI is green, mark the PR
+ready for review, then the review and Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The geolocation gateway seam + app wiring | ✅ | (this commit) |
 | 1 — The near-me control on the map component | ✅ | (this commit) |
 | 2 — The two surfaces + the privacy paragraph | ✅ | (this commit) |
-| 3 — e2e: the granted/denied flows and the extended no-leak guard | | |
+| 3 — e2e: the granted/denied flows and the extended no-leak guard | ✅ | (this commit) |
 | 4 — Integration, CI green, review + Sonar gates, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -261,7 +261,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI (frontend job, run 35185427051) | `venue-tab.a11y.spec.ts` mounts the pin placer transitively, so it needed the gateway provider too — a spec my phase-1 search by symbol name never listed | fixed in this commit; the full local suite (3289 tests) is now the enumerator, not a grep |
 
 ---
 
@@ -291,6 +291,10 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/operator/venue-location-field.ts` — `[nearMe]="true"` on the placer's map.
 - `frontend/src/app/operator/venue-location-field.spec.ts` — AC-7.
 - `frontend/src/app/operator/venue-tab.spec.ts` — the provider (it mounts the placer).
+- `frontend/src/app/operator/venue-tab.a11y.spec.ts` — the provider; it mounts the placer
+  transitively, which a search by symbol name missed and CI caught (F-1).
+- `frontend/playwright.a11y.config.ts` — `--deny-permission-prompts`, so an ungranted permission
+  is a real `PERMISSION_DENIED` instead of a hang.
 - `scripts/check-focus-posture.mjs` — `locating` joins `BUSY_STEMS`, so the guard can catch a
   future `[disabled]="locating()"` (the sanctioned move for a novel busy-flag name).
 - `frontend/src/app/pages/legal/privacy-policy.html` — the geolocation sentence in the map section.
@@ -395,14 +399,18 @@ Modify `frontend/src/app/pages/home/home.spec.ts`, `frontend/src/app/pages/home/
   distinctive fixture position), AC-10 (console), plus the two sweep touch-ups.
 - [ ] **Step 2: Run it, verify it fails** —
   `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts discover-map` → FAIL.
-- [ ] **Step 3: Minimal implementation** — no app change expected; if the denied leg behaves
-  differently than R-5 assumes, record the measurement here and take the fallback.
+- [x] **Step 3: Minimal implementation** — no app change was needed, but R-5 **did** materialize and
+  the measurement is worth keeping: headless Chromium shows no permission prompt, so an ungranted
+  `getCurrentPosition` never calls either callback — it hangs, and the W3C `timeout` option does not
+  run while a prompt is pending (the spec excludes that wait). `clearPermissions()` and a CDP
+  `Browser.setPermission` denial both hang; Chromium's `--deny-permission-prompts` produces a real
+  `PERMISSION_DENIED` ("User denied Geolocation"), which an explicit `grantPermissions` still
+  overrides per test. The flag went into the mocked suite's config, where a hang is the worst
+  failure mode any spec can have.
 - [ ] **Step 4: Run it, verify it passes** — the discover-map, operator-venue-location,
   touch-targets-tourist and mobile-zoom-tourist specs → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: *every mocked-suite spec that asserts
-  the page's request set* (the network-guard mechanism); enumerate
-  `grep -rln "page.on('request'" frontend/e2e`; judge whether each should also refuse a leaked
-  coordinate.
+- [x] **Step 5: Generalization-audit pass** — done, logged below (two passes: the request-watching
+  specs, and the spec population a symbol-name grep had mis-enumerated in phase 1).
 - [ ] **Step 6: Commit** — `git commit -m "Prove a granted Near me sends the position nowhere (#1100)"`
 - [ ] **Step 7: Update plan-doc execution status** in the same commit window.
 
@@ -431,6 +439,8 @@ Modify `frontend/src/app/pages/home/home.spec.ts`, `frontend/src/app/pages/home/
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-17 | phase 3 — F-1's miss | every spec whose component tree contains `app-riviera-map`, transitively — the mechanism is "the injector must supply `GeolocationGateway`", which a search for `RivieraMap`/`VenueLocationField` by name cannot enumerate (`venue-tab.a11y.spec.ts` names neither) | the full suite itself: `npm test` (268 files, 3289 tests) | 6 spec configs across 6 files | all 6 provide the gateway; the lesson recorded here is that the enumerator for an injector requirement is the suite, not a grep |
+| 2026-09-17 | phase 3 — a leak guard | every mocked-suite spec that watches the page's own request set | `grep -rln "page.on('request'\|page.on('response'" frontend/e2e` | 3: `discover-map` (origin + position guard), `customer-password` and `operator-set-editing` (both count one endpoint's calls for idempotence) | only `discover-map` guards what leaves the page; the other two watch a single endpoint on surfaces with no position in play, so neither gains an assertion |
 | 2026-09-17 | phase 2 — a new map input | every `app-riviera-map` call site, since a per-consumer opt-in is only right if each consumer was judged | `grep -rn "app-riviera-map" frontend/src --include=*.html --include=*.ts` | 2: `pages/home/home.html` (Discover) and `operator/venue-location-field.ts` (the pin placer) | both take `[nearMe]="true"` — Discover per the issue, the placer per the maintainer's plan-gate answer; no third site exists to judge |
 | 2026-09-17 | phase 1 — a second marker element | every marker element the app mounts into the surface an engine reads map clicks from (#1099's ~6 km mis-placement mechanism) | `grep -rn "addMarker(" frontend/src frontend/e2e` | 2 production call sites (`PIN_ID`, `HERE_MARKER`), both in `riviera-map.ts`; the other 5 are `fake-map-engine.spec.ts` fixtures | none — both builders already stop click propagation (`riviera-map.ts:234`, `:293`); the here-marker was written that way for this reason |
 | 2026-09-17 | phase 0 — a new capability seam | every abstract-class DI token over an external capability, and how each is wired | `grep -rn "^export abstract class" frontend/src/app --include=*.ts` + `grep -n "provide:" frontend/src/app/app.config.ts` | 6 tokens: `MapEngine`, `QrScanner`, `StripePaymentGateway`, `SessionAuth`, `SsoRedirect`, + the new `GeolocationGateway` | none — the three `useFactory` ones need a `globalThis` fake flag because their real adapter cannot run under the e2e; geolocation's can (Playwright grants the permission), so it takes `SsoRedirect`'s `useClass` shape. No existing site changes. |

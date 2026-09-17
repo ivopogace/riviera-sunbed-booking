@@ -165,8 +165,8 @@ test.describe('tourist UI — mobile zoom', () => {
     await expectTouchManipulation(page, '[data-testid="nav-user"]', 'the account chip');
   });
 
-  test('the Discover switch and the map zoom controls keep their double-tap', async ({ page }) => {
-    // A toggle tapped back and forth, and +/− buttons on a map whose own gesture is double-tap-to-zoom.
+  test('the Discover switch and the map controls keep their double-tap', async ({ page }) => {
+    // A toggle tapped back and forth, and buttons on a map whose own gesture is double-tap-to-zoom.
     await page.addInitScript(() => {
       (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
     });
@@ -178,8 +178,8 @@ test.describe('tourist UI — mobile zoom', () => {
 
     await expectTouchManipulation(
       page,
-      '[data-testid="view-list"], [data-testid="view-map"], [data-testid="map-zoom-in"], [data-testid="map-zoom-out"]',
-      'the list/map switch and the map zoom controls',
+      '[data-testid="view-list"], [data-testid="view-map"], [data-testid="map-zoom-in"], [data-testid="map-zoom-out"], [data-testid="map-near-me"]',
+      'the list/map switch and the map controls',
     );
   });
 
