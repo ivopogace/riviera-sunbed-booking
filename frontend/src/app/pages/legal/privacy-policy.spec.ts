@@ -86,4 +86,19 @@ describe('PrivacyPolicy (draft legal page)', () => {
     expect(text).toContain('stored');
     expect(text).toContain('logged');
   });
+
+  /**
+   * The console's pin placer offers the same control, and an operator who then saves the pin does
+   * send that spot — as the venue's published location. The paragraph says so rather than leaving
+   * the sentence above reading as the whole truth for everyone.
+   */
+  it('says what reaches us when an operator pins their venue from Near me', () => {
+    const text = (host().querySelector('[data-testid="privacy-map"]')?.textContent ?? '')
+      .replace(/\s+/g, ' ')
+      .toLowerCase();
+
+    expect(text).toContain('operators');
+    expect(text).toContain('place and save');
+    expect(text).toContain('venue');
+  });
 });

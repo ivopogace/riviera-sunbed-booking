@@ -18,17 +18,13 @@ describe('riviera map chrome contrast', () => {
     expect(contrastRatio(ink, rgbToHex(SOLID_BTN_FILL))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
-  it('zoom glyphs clear AA-large over both the resting and the hover fill', () => {
+  /**
+   * The you-are-here dot rides this case rather than one of its own: it is an ink disc inside a
+   * ring cut from that same opaque fill, so the pair WCAG 1.4.11 asks 3:1 of is the pair below,
+   * internal to the graphic — the ring is what separates it from imagery, whatever the imagery is.
+   */
+  it('zoom glyphs and the you-are-here dot clear AA-large over both the resting and the hover fill', () => {
     expect(contrastRatio(ink, rgbToHex(SOLID_BTN_FILL))).toBeGreaterThanOrEqual(AA_LARGE);
     expect(contrastRatio(ink, rgbToHex(SOLID_BTN_HOVER))).toBeGreaterThanOrEqual(AA_LARGE);
-  });
-
-  /**
-   * The you-are-here dot is an ink disc inside a ring cut from the same opaque fill, so the pair
-   * that has to clear WCAG 1.4.11's 3:1 is internal to the graphic — the ring is what separates
-   * it from imagery, whatever the imagery is. Its near-me control wears the pill skin above.
-   */
-  it('the you-are-here dot clears non-text contrast against its own ring', () => {
-    expect(contrastRatio(ink, rgbToHex(SOLID_BTN_FILL))).toBeGreaterThanOrEqual(AA_LARGE);
   });
 });

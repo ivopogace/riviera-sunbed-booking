@@ -292,8 +292,8 @@ test.describe('Discover map — real engine', () => {
   });
 
   /**
-   * The #1098 guard, extended past the map's own resources to the one thing on this page that is
-   * personal: where the visitor is. A granted near-me must reach the camera and nothing else — not
+   * The same-origin guard above, extended past the map's own resources to the one thing on this
+   * page that is personal: where the visitor is. A granted near-me must reach the camera and nothing else — not
    * a URL, not a header, not a body, not a stored value, not a console line. The position's digits
    * are unround on purpose, so a match is a leak rather than a coincidence.
    */

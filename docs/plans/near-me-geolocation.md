@@ -111,7 +111,7 @@ even with `origin/main` at `7eaef545`.
   same-origin, and no request URL, request header or request body, no `localStorage` /
   `sessionStorage` entry and no console message contains either coordinate — the #1098 guard
   extended to the granted path. *Seam:* `discover-map.e2e.ts` (real-engine describe) ·
-  *Pinned by:* `discover-map.e2e.ts` ("a granted near-me sends nothing anywhere")
+  *Pinned by:* `discover-map.e2e.ts` ("a granted near-me sends the position nowhere")
 - [ ] **AC-10:** Given the operator console's venue tab with geolocation granted, when Near me is
   pressed and then *Place pin at map centre*, then the read-out shows the granted coordinates and
   saving persists them. *Seam:* `frontend/e2e/operator-venue-location.e2e.ts` (mocked suite) ·
@@ -157,11 +157,11 @@ gains a wrapping control column, which moves no rendered box: same `top-3 right-
 | R-1 | A coordinate leaks off the device through a request, a storage entry or a log line — the one risk the whole slice exists to avoid (story 8, DSGVO) | low | high | The position lives in a component signal and the engine handle only; AC-9 extends #1098's real-engine guard to URLs, headers, bodies, both storages and console output with a distinctive fixture coordinate | plan | closed in phase 3 — and the guard was mutation-tested twice (a probe request and a probe storage write each failed it), so it is known to have teeth rather than assumed to |
 | R-2 | `RivieraMap` now requires a `GeolocationGateway`, so the six existing specs that mount it (directly or through `VenueLocationField`) fail with `NullInjectorError` | high | low | Each gains one provider line stating its geolocation posture — `supported: false` where near-me is not the subject, the fake where it is; caught by the first scoped Vitest run in phase 1 | plan | closed — it was 5 configs across 5 files (60 tests), all green again |
 | R-3 | The here-marker mounts inside the surface both engines read map clicks from, so a tap on it would re-place the operator's venue pin — exactly the defect #1099's review caught for the venue pin (up to ~6 km, then saved) | med | high | The here-marker is built by the same factory path and stops click propagation; AC-7 pins it on the console surface | plan | closed in phase 1 — pinned by `riviera-map.spec.ts` "keeps a tap on the you-are-here marker off the map underneath"; AC-7 adds the console leg |
-| R-4 | A granted position outside the Albania fence clamps the camera to a corner with the marker unreachable | med | med | AC-5: bounds-checked above the seam, message instead of a move | plan | open |
+| R-4 | A granted position outside the Albania fence clamps the camera to a corner with the marker unreachable | med | med | AC-5: bounds-checked above the seam, message instead of a move | plan | closed in phase 1 — pinned by `riviera-map.spec.ts` "refuses a position off the riviera" |
 | R-5 | Playwright's denied path behaves differently than assumed (no prompt in headless ⇒ possibly `PERMISSION_DENIED`, possibly a hang) | med | low | Phase 3 measures it before asserting it; if clearing permissions hangs rather than denying, the denied e2e leg falls back to the fake gateway posture and the plan records the substitution — the Vitest specs already own all five outcomes | plan | closed in phase 3 — it hangs, and `--deny-permission-prompts` in the suite config gives a genuine denial instead; no fake was needed (measurement in phase 3 step 3) |
 | R-6 | #1101 (venue pins) will touch the same marker code on `RivieraMap`; both slices change `syncPin`'s neighbourhood | med | low | #1101 is open and unstarted, this slice merges first and keeps the here-marker on its own id with no change to `PIN_ID`'s handling; whoever merges second rebases | plan | closed — `syncPin` is untouched; the here-marker is additive |
 | R-7 | The new control is map chrome over imagery of unknown luminance, so a themed token would drift light-on-light | low | med | It wears the theme-invariant `--riv-solid-btn-*` family already proven by the zoom buttons; AC-11 pins the ratios | plan | closed in phase 1 — the control wears the pill skin, and the here-dot's ring is cut from the same opaque fill so its 3:1 pair is internal to the graphic |
-| R-8 | Turning near-me on in the console (maintainer's call, beyond the issue text) widens the slice to a second surface's sweeps | — | low | AC-7/AC-10 cover it; the console's sweep (`touch-targets.e2e.ts`, "operator venue tab") already measures whatever the tab renders | maintainer | accepted at plan time |
+| R-8 | Turning near-me on in the console (maintainer's call, beyond the issue text) widens the slice to a second surface's sweeps | — | low | AC-7/AC-10 cover it; the console's sweep (`touch-targets.e2e.ts`, "operator venue tab") already measures whatever the tab renders | maintainer | closed at the review gate — and it cost more than the sweeps: F-2 and F-3 are both second-surface findings the Discover-only slice would never have had |
 
 ## Open questions / Assumptions
 
@@ -241,10 +241,10 @@ is the machine proof that the wire is untouched.
 
 ## Execution status
 
-**Stage pointer:** `implement — phases 0–3 done, phase 4 (integration + gates) next`
+**Stage pointer:** `phase 4 — review gate run, five findings fixed; re-verifying, then merge close-out`
 
-**Next action:** phase 4 — merge latest `origin/main`, confirm this push's CI is green, mark the PR
-ready for review, then the review and Sonar gates.
+**Next action:** push the review-fix commit, re-resolve the range and re-walk the overlay for what
+the fixes touched, re-check CI + Sonar on the new head.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -252,7 +252,7 @@ ready for review, then the review and Sonar gates.
 | 1 — The near-me control on the map component | ✅ | (this commit) |
 | 2 — The two surfaces + the privacy paragraph | ✅ | (this commit) |
 | 3 — e2e: the granted/denied flows and the extended no-leak guard | ✅ | (this commit) |
-| 4 — Integration, CI green, review + Sonar gates, close-out | | |
+| 4 — Integration, CI green, review + Sonar gates, close-out | ⏳ | CI green on `4ea879f2`; Sonar clean (0 issues, 0 duplication, 90.6% new-code coverage); review gate run, F-2…F-6 fixed in this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -261,7 +261,12 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | CI (frontend job, run 35185427051) | `venue-tab.a11y.spec.ts` mounts the pin placer transitively, so it needed the gateway provider too — a spec my phase-1 search by symbol name never listed | fixed in this commit; the full local suite (3289 tests) is now the enumerator, not a grep |
+| F-1 | CI (frontend job, run 35185427051) | `venue-tab.a11y.spec.ts` mounts the pin placer transitively, so it needed the gateway provider too — a spec my phase-1 search by symbol name never listed | fixed in `4ea879f2`; the full local suite (3290 tests) is now the enumerator, not a grep |
+| F-2 | Review gate (history reviewer + overlay reviewer, independently) | **The decorative dot outranked the draggable pin.** Neither engine orders markers (MapLibre sets no `z-index`; grep count 0), so DOM order decided, and the here-dot is added last — an operator pressing Near me at their already-pinned venue got a 20 px dead zone over the pin's centre, where a drag fell through to the map and panned it. Confirmed with a browser probe (`elementFromPoint` returned `map-here` at the pin's centre), not reasoned about | fixed in this commit: the markers name a paint order (`z-[2]`/`z-[1]`, both far below the chrome's `z-10`), pinned by `operator-venue-location.e2e.ts` "keeps the venue pin on top when the you-are-here dot lands on it" — red before the fix, green after |
+| F-3 | Review gate (comment-contract reviewer) | **The privacy paragraph was false for the console.** It said the Near-me position "is never sent to us" without qualification, while this same PR lets an operator commit that position as their venue's pin and save it — the flow AC-10 itself asserts. The seam's TSDoc overclaimed the same way | fixed in this commit: the paragraph now says what reaches us when an operator places and saves a pin from Near me, and the TSDoc scopes its promise to the seam. Pinned by `privacy-policy.spec.ts` "says what reaches us when an operator pins their venue from Near me" |
+| F-4 | Review gate (prior-PR reviewer) | The console renders the same map chrome as Discover, but the console's double-tap sweep (`mobile-zoom.e2e.ts`) covered no map control at all — the CSS was right, the surface unproven, which is the coverage half of the #1063/#1102 lesson | fixed in this commit: `mobile-zoom.e2e.ts` gains "venue tab — the pin placer's map controls keep their double-tap", covering near-me and both zoom buttons (closing the pre-existing zoom gap in the same assertion) |
+| F-5 | Review gate (overlay, RV-STYLE-1) | Provenance (`#1098`) in a doc comment the diff added — a shape the comment guard's regex does not catch, so a clean guard run was not the answer | fixed in this commit: the comment names the guard instead of the issue |
+| F-6 | Review gate (overlay, observation) | The new contrast test asserted the same constant pair as the zoom-glyph test byte for byte — documentation, not proof, and a duplicate block for Sonar to find | fixed in this commit: one assertion now names both positions, with the dot's 1.4.11 case in its doc comment |
 
 ---
 
@@ -305,6 +310,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
   screen before measuring, so it cannot silently stop covering it.
 - `frontend/e2e/mobile-zoom-tourist.e2e.ts` — the control joins the double-tap-opt-out selector
   list beside the zoom buttons.
+- `frontend/e2e/mobile-zoom.e2e.ts` — the same proof on the console surface, which rendered the map
+  chrome but swept none of it (F-4).
 - `frontend/e2e/legal-pages.e2e.ts` — checked in phase 2: it asserts no map copy, so it is
   untouched. The paragraph's own proof is `privacy-policy.spec.ts`.
 - `CONTEXT.md` — only if the close-out's freshness sweep finds the glossary needs the near-me

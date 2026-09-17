@@ -170,6 +170,21 @@ test.describe('operator console — mobile zoom', () => {
     await expectTouchManipulation(page, '[data-testid^="amenity-toggle-"]', 'the amenity chips');
   });
 
+  test('venue tab — the pin placer’s map controls keep their double-tap', async ({ page }) => {
+    // The same chrome the tourist sweep measures, on the other surface that renders it.
+    await page.addInitScript(() => {
+      (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
+    });
+    await openConsoleTab(page, 'venue', 'venue-name');
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+
+    await expectTouchManipulation(
+      page,
+      '[data-testid="map-near-me"], [data-testid="map-zoom-in"], [data-testid="map-zoom-out"]',
+      'the pin placer’s map controls',
+    );
+  });
+
   test('the header disclosure triggers keep their double-tap', async ({ page }) => {
     // The venue name is only a disclosure button on two or more owned venues.
     await mockOwnedVenues(page, [

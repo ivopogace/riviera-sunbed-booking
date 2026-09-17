@@ -45,11 +45,16 @@ const PIN_ID = 'venue-location-pin';
 /**
  * The pin's own box: 44 px both axes, the floor a drag target needs, in the theme-invariant
  * solid-button skin the rest of the map chrome wears — it sits on imagery, which never themes.
+ *
+ * <p>The two markers can coincide — an operator pressing near-me while standing at their pinned
+ * venue — and neither engine orders them, so the draggable one names a paint order rather than
+ * inheriting DOM order: a dot over its middle would swallow the drag and pan the map instead. Both
+ * stay far below the chrome column's `z-10`.
  */
 const PIN_CLASSES =
   'inline-flex size-11 touch-manipulation items-center justify-center rounded-full ' +
   'border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill text-[20px] leading-none ' +
-  'text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)]';
+  'text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] z-[2]';
 
 /** The visitor's own position, which is never the venue pin — a second marker, its own id. */
 export const HERE_MARKER = 'you-are-here';
@@ -78,11 +83,12 @@ const NEAR_ME_MESSAGES: Record<NearMeProblem, string> = {
 /**
  * The you-are-here dot: an ink disc inside a light ring, the shape every map uses for "you", so
  * it is not read as another venue pin beside the placer's. Same theme-invariant solid-button pair
- * as the rest of the chrome, and no touch floor — it is a graphic, not a control.
+ * as the rest of the chrome, and no touch floor — it is a graphic, not a control. It paints under
+ * the pin (see {@link PIN_CLASSES}), which is the one a pointer has business reaching.
  */
 const HERE_CLASSES =
   'block size-5 rounded-full border-[3px] border-riv-solid-btn-fill bg-riv-solid-btn-ink ' +
-  'shadow-[0_4px_12px_rgba(7,42,58,0.35)]';
+  'shadow-[0_4px_12px_rgba(7,42,58,0.35)] z-[1]';
 
 /**
  * The **riviera map** — the geographic discovery map, as distinct from a venue's beach map.

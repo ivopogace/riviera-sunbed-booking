@@ -304,3 +304,31 @@ test('tells the operator when their browser declines, leaving the map and the pi
   await expect(page.getByTestId('venue-location-readout')).toHaveText(before ?? '');
   await expectNoSeriousAxeViolations(page, 'venue tab with a declined near-me');
 });
+
+/**
+ * Both markers can end up on the same spot — a pinned venue whose operator then presses Near me
+ * while standing at it. The pin is the draggable one, so it has to stay the one a pointer reaches:
+ * a decorative dot over its middle would swallow the drag and pan the map instead.
+ */
+test('keeps the venue pin on top when the you-are-here dot lands on it', async ({
+  page,
+  context,
+}) => {
+  await mockVenue(page, DHERMI);
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: DHERMI.latitude, longitude: DHERMI.longitude });
+  await page.goto('/operator/1');
+  await signInAndOpenVenue(page);
+  await expect(page.getByTestId('map-pin')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Near me' }).click();
+  await expect(page.getByTestId('map-here')).toBeVisible();
+
+  const owner = await page.getByTestId('map-pin').evaluate((pin) => {
+    const box = pin.getBoundingClientRect();
+    const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+    return (top as HTMLElement | null)?.closest('[data-testid]')?.getAttribute('data-testid');
+  });
+
+  expect(owner).toBe('map-pin');
+});
