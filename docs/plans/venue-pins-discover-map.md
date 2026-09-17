@@ -43,7 +43,10 @@ derived from reactive sources that must stay synchronized; `search_documentation
 `linkedSignal`'s `{source, computation, previous}` form, which is what resets the selection
 when the pin set changes) · `playwright-cli` (mocked-suite e2e authoring) ·
 `riviera-java-conventions` + `riviera-modulith` (the IT extension — both fire on any
-backend Java, tests included)
+backend Java, tests included) · `domain-modeling` (loaded at the review gate, where RV-PROC-1
+caught it missing: `CONTEXT.md` is the domain glossary, and re-vetting the entry against
+CONTEXT-FORMAT's "define what it IS, one or two sentences, no implementation detail" cut the
+data-flow mechanism and the a11y note out of it)
 
 **Branch:** `claude/venue-pins-discover-map-t9fupc` — the cloud session's designated remote
 branch stands in for `feature/venue-pins-discover-map` (`riviera-sdlc` § Remote/cloud
@@ -147,16 +150,13 @@ existing single `pin`/`pinDraggable`/`pinMoved` placement contract (the operator
 | R-3 | A pin tap bubbles to the map surface and is read as the map tap that closes previews — the pin would open and instantly close | high | high | Pin elements `stopPropagation()` on click, the prior art the existing placement pin already uses (`buildPinElement`); AC-3 pins it at the seam | plan | **closed** — `riviera-map.spec.ts` › *selects a pin on press, without reporting a map click underneath it* |
 | R-4 | #1098's network guard runs against the **real** engine, whose `VENUES` fixture has no `location` and no `coverPhoto` — extending it naively would assert "no third-party requests" on a map with zero pins, i.e. vacuously | high | med | The fixture gains locations **and** a mocked same-origin cover photo; the guard opens a preview and waits for the cover `<img>` to complete before reading the request log | plan | **closed** — AC-11 |
 | R-5 | Moving `VenueCard` out of `home.ts` for the preview card creates a `home.ts` ↔ `venue-preview-card.ts` import cycle | med | med | `VenueCard` lands in its own `pages/home/venue-card.ts`; both import it, neither imports the other | plan | **closed** — no cycle; lint and build clean |
-| R-6 | Focus moves into a non-modal preview dialog and is stranded when the preview closes because its list re-fetched underneath it | med | med | Selection is a `linkedSignal` over the pin set: a re-fetch empties `venuesView`, which resets the selection to `null` and closes the preview. `focusPin` is a no-op for a pin the map no longer holds, so a vanished venue cannot throw | plan | **closed** — `home.spec.ts` › *re-feeds the pins and drops the preview when a filter changes the result set*; `riviera-map.spec.ts` › *ignores a focus request for a pin that is no longer on the map* |
+| R-6 | Focus moves into a non-modal preview dialog and is stranded when the preview closes because its list re-fetched underneath it | med | med | **The plan's first mitigation here was wrong, and the review gate caught it** (F-5): it argued only that `focusPin` cannot throw on a vanished pin, and cited a test that never asserts where focus lands. Where focus actually goes is now the mitigation — an `activeElement`-guarded effect lands it on the count block when the card is torn down while holding it — and the citation is a test that asserts it | plan | **closed** — `home.spec.ts` › *never strands focus when the previewed venue leaves the list under an open card* (asserts `document.activeElement`), with `riviera-map.spec.ts` › *ignores a focus request for a pin that is no longer on the map* covering the throw case it originally claimed |
 | R-7 | Open PR #1093 bumps Vitest 4.1.11 → **5.0.0** (a major) under this slice's new specs | low | med | No Flyway migration here, so no `V<n>` collision; if #1093 merges first, merge `main` in with full phase discipline and re-run `npm test` before ready-for-review | plan | open |
 | R-8 | Adding pins to Discover puts 2–N new tab stops inside the map region, degrading keyboard bypass | med | med | `mapEnd` is already the template's last element and markers mount into the canvas host above it, so `Skip map` bypasses every pin; AC-9's axe run and the existing `map-skip` e2e assertion both stay green | plan | **closed** — the `map-skip` → `map-end` e2e still passes with pins drawn |
 
 ## Open questions / Assumptions
 
-- **Assumption:** A filter/date change **closes** an open preview rather than preserving it.
-  Not a free choice — `beginRequest()` sets `venues` to `undefined` before every re-fetch, so
-  the pin set empties and R-6's `linkedSignal` resets the selection. Recorded so a reviewer
-  reads it as designed, not incidental. — *Owner:* plan · *Resolves by:* phase 4
+
 - **Assumption:** The epic's "checklist" is #806's **native GitHub sub-issue list** — the
   issue body has no markdown checklist and #806 carries no comments at all, so #1099's
   close-out "tick" was its sub-issue closing as completed (3/4 done). AC "ticked with the PR
@@ -164,6 +164,16 @@ existing single `pin`/`pinDraggable`/`pinMoved` placement contract (the operator
   that comment names all four slice PRs. — *Owner:* plan · *Resolves by:* merge close-out
 
 ### Resolved
+
+- **Assumption (written at plan time, DISPROVEN at the review gate):** "a filter/date change
+  always closes an open preview, because `beginRequest()` empties `venues` first." It does
+  not. Signals are lazy: nothing reads `selectedVenue` between `venues.set(undefined)` and the
+  response, so the intermediate empty pin set is never observed and the linked selection is
+  only recomputed once the new list has landed. The real rule is the better one — **the
+  preview survives a reload that still carries its venue, and closes only when the venue
+  leaves the result set.** Both halves are now pinned (`home.spec.ts` › *keeps the preview
+  open when a reload still carries its venue* / *re-feeds the pins and drops the preview when
+  a filter changes the result set*), and the focus consequence is F-5.
 
 - **Open question (resolved at plan time):** the issue body says "Selecting a pin highlights
   the matching card in the list where both are visible", but no acceptance criterion covers
@@ -260,6 +270,13 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | phase 5 e2e (real browser) | An open preview covers the lower map, and the credit pill covers whatever pin sits under it, so those pins cannot be *tapped* — the same behaviour any map's bottom sheet and attribution have. Accepted, not worked around: making the credit `pointer-events-none` would turn a press on it into a map press, which in the operator console **places a venue pin**. Panning frees the pin, and Tab reaches it regardless — which the e2e now proves by activating those pins with `Enter`. | closed — accepted, covered by keyboard activation |
+| F-9 | Review gate — prior-PR guidance (reviewer 4) | `touch-manipulation` on the new pin buttons was unproven: `mobile-zoom-tourist.e2e.ts`'s double-tap sweep does not reach them, the same coverage half PR #1130 was corrected for one slice ago. Proven where the pins actually exist (`discover-map.e2e.ts`) rather than by putting a `location` on the shared `TOURIST_VENUE` fixture, which feeds many specs. | fixed-in-`<review-fix-2>` |
+| F-8 | Review gate — prior-PR guidance (reviewer 4) | Two new contrast assertions restated existing ones over the same constants — the map's "selected pin" case is `contrastRatio`'s order-independent twin of the file's first case, and the pin-preview `describe` was byte-identical to the switch pill's. Documentation rather than proof, and duplicated blocks against the Sonar merge bar; PR #1130 was corrected for exactly this. Both collapsed, each reused case named in the surviving test's doc comment (the file's own you-are-here precedent). | fixed-in-`<review-fix-2>` |
+| F-7 | Review gate — doc-contract review (reviewer 5) | The preview's `<app-photo-slideshow>` passed no `sizes`, against that input's stated contract that a host in a breakout column passes its own — it is a fixed 112 px band, so the unset fallback is `100vw`. A pixel value is refused by `NgOptimizedImage` (NG02952), so the fallback is the widest share the band ever takes, `35vw`; lazy images get `auto,` prefixed ahead of it either way. | fixed-in-`<review-fix-2>` |
+| F-6 | Review gate — bug scan + doc-contract review (reviewers 2 and 5, independently) | **Stale marker position.** `syncVenuePins`' identity key hashed `id`+`label` but not `at`, and there was no move branch: a venue whose operator corrected its pin kept drawing at the old coordinates for the life of the SPA session, since a later fetch produced a byte-identical key. Fixed with a `moveMarker` pass mirroring the placement pin's, which also keeps the button a keyboard may be standing on — a rebuild would detach it, the very thing `MapHandle.moveMarker`'s contract warns about. | fixed-in-`<review-fix-2>` |
+| F-5 | Review gate — RV-FE-9 (self-found; independently confirmed by reviewers 1 and 5) | The preview can be torn down without anyone closing it: the previewed venue leaves the result set (a route-carried `?date=` change, Back) while the card holds focus, stranding focus on `<body>` — a WCAG 2.4.3 failure the bank names ("a route change ... also moves focus when what it tore down held it"). `closePreview()` never ran, so nothing moved focus. Fixed with an effect that lands focus on the count block when the card goes while holding it, reading before the view is patched; a user-driven close is unaffected because `closePreview()` has already moved focus to the pin by then. | fixed-in-`<review-fix-2>` |
+| F-4b | Review gate — doc-contract review (reviewer 5) | `RivieraMap`'s class TSDoc still read "It carries at most one `pin`" — the contract a reader relies on, falsified by this very diff. Rewritten to state the two independent marker sets, which a page binds one of and never both. | fixed-in-`<review-fix-2>` |
+| F-4 | Review gate — RV-PROC-1 (self-found, overlay bank) | The diff edits `CONTEXT.md`, the domain glossary, but *Skills consulted* did not list `domain-modeling`, whose job that file is. Loading it and re-vetting the entry against `CONTEXT-FORMAT.md` found the addition carried implementation detail ("fed from the same fetched list… the map never queries on its own") and an a11y note, against the rule that the glossary defines what a term IS in one or two sentences. Entry tightened; the line now lists the skill. | fixed-in-`<review-fix-2>` |
 | F-3 | CI — Repo hygiene (diff-scoped) | `check-inline-comments.mjs` failed on four multi-line inline comments in `discover-map.e2e.ts` (RV-STYLE-1). The per-file guard runs during the phase had been pointed at the source files, not the spec; the diff-scoped run is the one that covers everything. | fixed-in-`<review-fix-1>` |
 | F-2 | phase 5 e2e (real browser) | axe flagged the preview's call to action at 2.26:1 — the card was read mid-fade, its ink composited over the backdrop through a partial `opacity`. The documented false positive (`riviera-frontend` § e2e split); fixed by awaiting `getAnimations().finished` before the audit, not by changing a colour. | fixed-in-`<phase-5>` |
 

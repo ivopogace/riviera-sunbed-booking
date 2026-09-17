@@ -133,9 +133,14 @@ const HERE_CLASSES =
  * or `unavailable` when the browser cannot render a map), which is what the e2e waits on. The
  * consumer sizes the host; the map fills it.
  *
- * <p>It carries at most one `pin`. A null pin is no marker at all, a changed pin moves the marker
- * in place, and `mapClick`/`pinMoved` report positions so a placer above the seam can own where
- * the pin belongs without knowing which engine drew it.
+ * <p>It draws two independent marker sets, and a page binds one or the other, never both. The
+ * single `pin` is a PLACEMENT marker: a null pin is no marker at all, a changed pin moves the
+ * marker in place, and `mapClick`/`pinMoved` report positions so a placer above the seam can own
+ * where the pin belongs without knowing which engine drew it. The `pins` list is a set of
+ * SELECTABLE markers: labelled buttons a keyboard walks in feed order, reporting the pressed id
+ * through `pinSelected`, with `selectedPin` marking whichever one has something open and
+ * `focusPin` handing focus back when that closes. Venue vocabulary stays above the seam — a pin
+ * is an id, a position and a name.
  */
 @Component({
   selector: 'app-riviera-map',
@@ -200,6 +205,8 @@ export class RivieraMap {
   private markerOnMap = false;
   private markerDraggable = false;
   private readonly venuePinButtons = new Map<string, HTMLElement>();
+  /** Where each drawn venue pin currently sits, so a moved one is moved rather than rebuilt. */
+  private readonly venuePinPlaces = new Map<string, LngLat>();
   /** The identity of the pin set currently drawn; a change of it, and only that, rebuilds. */
   private venuePinKey = '';
   private disposed = false;
@@ -282,17 +289,35 @@ export class RivieraMap {
     }
     const key = pins.map((pin) => `${pin.id}\u0000${pin.label}`).join('\u0001');
     if (key === this.venuePinKey) {
+      this.moveVenuePins(handle, pins);
       return;
     }
     this.venuePinKey = key;
     this.venuePinButtons.forEach((_button, id) => handle.removeMarker(VENUE_PIN_PREFIX + id));
     this.venuePinButtons.clear();
+    this.venuePinPlaces.clear();
     for (const pin of pins) {
       const element = this.buildVenuePinElement(pin);
       this.venuePinButtons.set(pin.id, element);
+      this.venuePinPlaces.set(pin.id, pin.at);
       handle.addMarker({ id: VENUE_PIN_PREFIX + pin.id, lngLat: pin.at, element });
     }
     this.paintSelection();
+  }
+
+  /**
+   * The same venues at new coordinates — an operator corrected a pin — so each one is moved in
+   * place rather than re-added, for the reason {@link MapHandle.moveMarker} gives: re-adding
+   * detaches the caller's element and drops whatever focus it held.
+   */
+  private moveVenuePins(handle: MapHandle, pins: readonly MapPin[]): void {
+    for (const pin of pins) {
+      const placed = this.venuePinPlaces.get(pin.id);
+      if (placed && (placed.lng !== pin.at.lng || placed.lat !== pin.at.lat)) {
+        this.venuePinPlaces.set(pin.id, pin.at);
+        handle.moveMarker(VENUE_PIN_PREFIX + pin.id, pin.at);
+      }
+    }
   }
 
   /** Selection is an attribute flip on buttons that are already mounted — never a rebuild. */

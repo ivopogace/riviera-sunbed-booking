@@ -260,27 +260,16 @@ describe('Discover photo-area contrast (theme-independent, issue #135; real phot
  * The list/map switch's pressed pill paints the on-accent ink over the accent ink — opaque, so
  * the pair is theme-keyed rather than composited over stops; the unpressed pill's card ink over
  * the card glass is the "card ink" case above.
+ *
+ * <p>The pin preview's "View beach map" call to action rides this case: it wears the same pair.
+ * The rest of that card sits on the card glass with the card inks, already covered above — it is
+ * fed the very record a list card renders.
  */
 describe('Discover list/map switch contrast', () => {
   it.each([
     ['light', ON_ACCENT_INK, ACCENT_INK],
     ['dark', DARK_ON_ACCENT_INK, DARK_ACCENT_INK],
   ])('pressed pill label meets AA on the accent fill (%s themes)', (_theme, ink, fill) => {
-    expect(contrastRatio(rgbToHex(ink), rgbToHex(fill))).toBeGreaterThanOrEqual(AA_NORMAL);
-  });
-});
-
-/**
- * The pin preview. Its name, meta and price sit on the SAME card glass as a list card, so the
- * "card ink" / "card ink-soft" / "accent ink" cases above already cover them — it is fed the very
- * record the list card renders. The one pair it adds is its "View beach map" call to action,
- * which paints the on-accent ink over the accent fill exactly as the switch's pressed pill does.
- */
-describe('Discover pin-preview contrast', () => {
-  it.each([
-    ['light', ON_ACCENT_INK, ACCENT_INK],
-    ['dark', DARK_ON_ACCENT_INK, DARK_ACCENT_INK],
-  ])('the beach-map call to action meets AA on the accent fill (%s themes)', (_t, ink, fill) => {
     expect(contrastRatio(rgbToHex(ink), rgbToHex(fill))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });

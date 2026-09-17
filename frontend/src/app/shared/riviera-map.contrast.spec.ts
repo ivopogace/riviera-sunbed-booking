@@ -14,6 +14,11 @@ import { SOLID_BTN_FILL, SOLID_BTN_HOVER, SOLID_BTN_INK } from '../../testing/gl
 describe('riviera map chrome contrast', () => {
   const ink = rgbToHex(SOLID_BTN_INK);
 
+  /**
+   * A selected venue pin rides this case rather than a test of its own: it inverts this very pair
+   * — the imagery under it never themes, so a switching accent fill under a fixed ink would drift
+   * — and `contrastRatio` is order-independent, so an inverted assertion would restate this one.
+   */
   it('attribution and notice text clear AA over the resting fill', () => {
     expect(contrastRatio(ink, rgbToHex(SOLID_BTN_FILL))).toBeGreaterThanOrEqual(AA_NORMAL);
   });

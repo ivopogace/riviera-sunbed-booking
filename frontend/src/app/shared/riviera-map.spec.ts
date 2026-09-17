@@ -405,6 +405,20 @@ describe('RivieraMap', () => {
       ]);
     });
 
+    it('moves a pin that kept its name but changed position, without rebuilding it', async () => {
+      const fixture = await renderPins([KSAMIL, DHERMI_PIN]);
+      const before = pinButtons(fixture);
+      const moved: MapPin = { ...KSAMIL, at: { lng: 20.1, lat: 39.9 } };
+
+      fixture.componentRef.setInput('pins', [moved, DHERMI_PIN]);
+      fixture.detectChanges();
+
+      const markers = [...handleOf(fixture).markers().values()];
+      expect(markers.map((marker) => marker.lngLat)).toEqual([moved.at, DHERMI_PIN.at]);
+      // Moved in place, exactly as the placement pin is: a rebuild would drop the focus on it.
+      expect(pinButtons(fixture)).toEqual(before);
+    });
+
     it('keeps the pin elements across a selection change, so focus survives it', async () => {
       const fixture = await renderPins([KSAMIL, DHERMI_PIN]);
       const before = pinButtons(fixture);

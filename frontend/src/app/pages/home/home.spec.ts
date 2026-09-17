@@ -925,6 +925,7 @@ describe('Home (venue pins and the preview)', () => {
   const scrollable = Element.prototype as { scrollIntoView?: (options?: unknown) => void };
   const originalScrollIntoView = scrollable.scrollIntoView;
   let scrolled: HTMLElement[];
+  let routeParams: BehaviorSubject<ParamMap>;
 
   /** Two located venues and one without a pin, which stays in the list and draws nothing. */
   function pinnedVenues(): VenueSummary[] {
@@ -959,12 +960,17 @@ describe('Home (venue pins and the preview)', () => {
   function render(): ComponentFixture<Home> {
     stubViewport(true);
     TestBed.resetTestingModule();
+    routeParams = new BehaviorSubject<ParamMap>(convertToParamMap({}));
     TestBed.configureTestingModule({
       imports: [Home],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: { queryParamMap: routeParams, snapshot: { queryParamMap: routeParams.value } },
+        },
         { provide: MapEngine, useValue: new FakeMapEngine() },
         { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
       ],
@@ -1121,6 +1127,41 @@ describe('Home (venue pins and the preview)', () => {
 
     const cards = [...el(fixture).querySelectorAll('[data-testid="venue-card"]')];
     expect(cards.map((card) => card.getAttribute('aria-current'))).toEqual([null, null, null]);
+  });
+
+  it('keeps the preview open when a reload still carries its venue', async () => {
+    const fixture = await withPins();
+    pins(fixture)[0].click();
+    await settle(fixture);
+
+    routeParams.next(convertToParamMap({ date: '2099-08-14' }));
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush(pinnedVenues());
+    await settle(fixture);
+
+    expect(preview(fixture)).not.toBeNull();
+    expect(
+      preview(fixture)?.querySelector('[data-testid="preview-name"]')?.textContent?.trim(),
+    ).toBe('Miramar Beach Club');
+  });
+
+  it('never strands focus when the previewed venue leaves the list under an open card', async () => {
+    const fixture = await withPins();
+    pins(fixture)[0].click();
+    await settle(fixture);
+    expect(document.activeElement).toBe(preview(fixture));
+
+    // Nobody closed it: the day changed under the open card and the venue left the result set.
+    routeParams.next(convertToParamMap({ date: '2099-08-14' }));
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush(pinnedVenues().slice(1));
+    await settle(fixture);
+
+    expect(preview(fixture)).toBeNull();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toBe(el(fixture).querySelector('[data-testid="results"]'));
   });
 
   it('re-feeds the pins and drops the preview when a filter changes the result set', async () => {

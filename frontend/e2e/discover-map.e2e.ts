@@ -2,6 +2,7 @@ import { expect, Locator, Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { mockMapResources } from './support/map-resources';
+import { expectTouchManipulation } from './support/mobile-zoom';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
@@ -337,6 +338,17 @@ test.describe('Discover map — fake engine', () => {
     await expect(page.getByTestId('venue-preview')).toHaveCount(0);
     // The map asks for nothing of its own: one list request answered both surfaces.
     expect(venueRequests() - before).toBe(1);
+  });
+
+  test('venue pins keep their double-tap on a map whose own gesture is double-tap-to-zoom', async ({
+    page,
+  }) => {
+    await page.setViewportSize(PHONE);
+    await page.goto('/');
+    await page.getByTestId('view-map').click();
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+
+    await expectTouchManipulation(page, '[data-testid="map-venue-pin"]', 'the venue pins');
   });
 
   test('pins and an open preview stay accessible, and leave the tile credit visible', async ({

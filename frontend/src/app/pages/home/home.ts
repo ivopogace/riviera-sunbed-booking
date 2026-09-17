@@ -4,6 +4,7 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   ElementRef,
   inject,
   Injector,
@@ -225,6 +226,7 @@ export class Home {
   private lastLoad!: () => void;
 
   constructor() {
+    this.rescueFocusFromClosingPreview();
     this.followViewport();
     this.selectedDate.set(this.routeDate(this.route.snapshot.queryParamMap));
     this.loadInitial();
@@ -252,6 +254,29 @@ export class Home {
     };
     query.addEventListener('change', onChange);
     inject(DestroyRef).onDestroy(() => query.removeEventListener('change', onChange));
+  }
+
+  /**
+   * The preview can also close without anyone closing it: the selected venue leaves the result
+   * set — a route-carried date change, a venue that stopped selling — and the linked selection
+   * drops with it. Focus inside the card would strand on `<body>` (WCAG 2.4.3), so it lands on
+   * the count block, the same place the narrowing rescue uses.
+   *
+   * <p>A user-driven close needs nothing here: {@link closePreview} moves focus to the pin
+   * before this runs, so the card it finds is not the one holding focus.
+   */
+  private rescueFocusFromClosingPreview(): void {
+    effect(() => {
+      // Read before the view is patched, so a card about to be removed is still mounted.
+      if (this.selectedCard() === null && this.previewHoldsFocus()) {
+        this.focusAfterRender('results');
+      }
+    });
+  }
+
+  private previewHoldsFocus(): boolean {
+    const preview = this.host.nativeElement.querySelector('[data-testid="venue-preview"]');
+    return preview?.contains(this.document.activeElement) ?? false;
   }
 
   /** Narrowing hides the panel the switch is not showing; focus stranded in it lands on the count block (WCAG 2.4.3). */
