@@ -134,6 +134,7 @@ const MEMBER_CLASSES =
   imports: [TouchTarget],
   host: {
     class: 'pointer-events-none absolute inset-0 z-[4] block overflow-hidden rounded-[26px]',
+    'data-touch-pans': 'the map pans: a pin cut by its edge is reached whole by panning',
   },
   templateUrl: './venue-pin-layer.html',
 })

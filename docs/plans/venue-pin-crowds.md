@@ -286,13 +286,14 @@ The retired surface is the engine's venue-pin marker set in `shared/riviera-map.
 | R-1 | A reload empties the list, destroying every pin button → focus lost, card closed, the prototype's "focus survives a filter narrowing" (measured on a synchronous fixture) fails in production | high | high | `shownCards` (`linkedSignal` holding the last non-undefined `venuesView`) feeds the pins and the preview; AC-16 pins it | agent | closed — phase 3 |
 | R-2 | The fake's `project` ignoring the camera (bounds interpolation) would make the fit untestable and every fixture crowd permanent | high | med | the fake projects Web Mercator around its camera and re-places markers on move; clicks unproject (AC-1/2) | agent | closed — `fa2857e5` |
 | R-3 | jsdom has no layout: boxes are 0 × 0, no `ResizeObserver`, no canvas | high | med | box unknown → `null` (nothing hangs for the edge, no fit cap); text width via `OffscreenCanvas` when present else a per-glyph estimate; `ResizeObserver` guarded | agent | closed — phases 1–2 |
-| R-4 | Pill text width mis-measured → pills overlap or hang needlessly | med | low | measured in the page's own family at the pill's weight/size; e2e asserts separated pins' boxes do not intersect | agent | open |
+| R-4 | Pill text width mis-measured → pills overlap or hang needlessly | med | low | measured in the page's own family at the pill's weight/size; e2e asserts separated pins' boxes do not intersect | agent | closed — phase 4 (`disjoint` in the e2e) |
 | R-5 | Money: the crowd's from-price parsed from a label | low | high | `lowestFromPrice` takes `VenueCard.fromPrice` (new field, `MoneyView`) and formats with `formatMoney` (invariant #5; AC-7) | agent | closed — `afe80432` |
-| R-6 | The layer's buttons intercept map gestures | med | med | host `pointer-events-none`; only the buttons re-arm; e2e "closes the preview when the map itself is tapped" | agent | open |
+| R-6 | The layer's buttons intercept map gestures | med | med | host `pointer-events-none`; only the buttons re-arm; e2e "closes the preview when the map itself is tapped" | agent | closed — phase 4 |
 | R-7 | Removing the engine's pin layer breaks a consumer we did not see | low | high | `git ls-files` + grep: the only binders are `home.html` and the two spec callers of `currentHandle()`; the operator field binds `pin` only | agent | closed (grep in intake) |
 | R-8 | Sonar: duplicated class strings between the retired `VENUE_PIN_*` and the layer | med | low | the strings move, they are not copied; `riviera-map.ts` loses them | agent | closed — phase 3 |
 | R-9 | Coverage: the MapLibre adapter's three methods are not unit-testable | certain | low | ~12 lines against ~700 new; they run in the real-engine e2e | agent | accepted |
-| R-10 | A member button `opacity-0` is still "visible" to the touch-target sweep and to axe | certain | low | it is a 44 × 44 button with a name — it passes both; the sweep proves it (AC-22) | agent | open |
+| R-10 | A member button `opacity-0` is still "visible" to the touch-target sweep and to axe | certain | low | it is a 44 × 44 button with a name — it passes both; the sweep proves it (AC-22) | agent | closed — phase 4 |
+| R-11 | A lone pin cut by the map's edge measures under the floor in the sweep (a 320 px phone puts Ksamil at the opening view's right edge) | certain | low | the layer is a pannable surface: `data-touch-pans` ends the sweep's clipping walk there, as a scrolling ancestor does; the pin's own box stays 44 × 44 | agent | closed — phase 4 |
 
 ## Open questions / Assumptions
 
@@ -344,17 +345,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)` — phases 0–3 green and committed; draft PR #1138 open; full unit suite, lint, format and build green at phase 3.
+**Stage pointer:** `implement (phase 5)` — phases 0–4 green and committed; draft PR #1138 open.
 
-**Next action:** Phase 4, step 1: the crowd describe in `discover-map.e2e.ts` (AC-19..21) and the sweep case (AC-22).
+**Next action:** Phase 5: retire the #1135 plan, the glossary entries, the slice-2 issue, the docs-freshness sweep; then merge `origin/main` in and mark ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the port: `project`, `onMove`, `easeTo` in both adapters | ✅ | `fa2857e5` |
 | 1 — the crowd geometry (`pin-crowding.ts`) | ✅ | `afe80432` |
 | 2 — the pin layer (`venue-pin-layer.ts`) + a11y + contrast | ✅ | `e6c3753a` |
-| 3 — Discover wiring, the crumb, `shownCards`; the engine layer retired | ✅ | phase-3 commit |
-| 4 — mocked e2e: the crowd describe + the touch-target sweep | | |
+| 3 — Discover wiring, the crumb, `shownCards`; the engine layer retired | ✅ | `30dd404c` |
+| 4 — mocked e2e: the crowd describe + the touch-target sweep | ✅ | phase-4 commit |
 | 5 — close-out: glossary, the stale #1135 plan retired, the slice-2 issue | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -388,6 +389,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/pages/home/venue-pin-layer.a11y.spec.ts`, `venue-pin-layer.contrast.spec.ts` — AC-14
 - `frontend/src/testing/venue-cards.ts` — the `VenueCard` fixture the new specs share
 - `frontend/src/app/pages/home/venue-card.ts` — `fromPrice`
+- `frontend/src/app/pages/home/venue-preview-card.spec.ts` — its card fixture carries `fromPrice`
 - `frontend/src/app/pages/home/venue-pins.ts`, `venue-pins.spec.ts` — deleted
 - `frontend/src/app/pages/home/home.ts` / `home.html` — the layer, `shownCards`, travel/narrowing, the crumb
 - `frontend/src/app/pages/home/home.spec.ts` — AC-15..18
@@ -395,6 +397,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/pages/home/home.contrast.spec.ts` — unchanged unless the crumb needs a case (it wears the map chrome's pair, already pinned)
 - `frontend/e2e/discover-map.e2e.ts` — the crowd describe (AC-19..21)
 - `frontend/e2e/touch-targets-tourist.e2e.ts` — AC-22
+- `frontend/e2e/support/touch-targets.ts` — the walk ends at a `data-touch-pans` ancestor, as at a scrolling one
+- `frontend/src/app/pages/home/venue-preview-card.html` — `appTouchTarget` on the beach-map link (39 px tall before; the sweep with a preview open at ≥ 390 px never ran until now)
 
 ---
 
@@ -493,6 +497,8 @@ it('turns a click on its surface into the position under it', async () => { /* c
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-17 | phase 0 | every `MapHandle` implementer | `grep -rln "implements MapHandle" frontend/src` | `fake-map-engine.ts`, `maplibre-map-engine.ts` | both carry `project`/`onMove`/`easeTo`; no other implementer |
+| 2026-09-17 | phase 4 | every e2e that presses a venue pin | `grep -rln "map-venue-pin" frontend/e2e` | `discover-map.e2e.ts` only | every existing case still presses a lone pin under its fixture; green in the browser |
+| 2026-09-17 | phase 4 (the sweep) | every control the sweep measures with a preview open, at any width | the sweep itself: `expectTouchTargets` with `venue-preview` open at 320, 390 and 1280 | `preview-link` (39 px tall at ≥ 390, never swept there before) | `appTouchTarget` on the link; the pin cut by the map's edge is the pannable-surface case, `data-touch-pans` |
 | 2026-09-17 | phase 3 | every reader of the list for the map or the preview | `grep -n "venuesView()\|shownCards()" frontend/src/app/pages/home/home.ts` | `venuesView`: the list panel (`home.html`) and `shownCards`'s source; `shownCards`: `pins`, `selectedCard` | the list keeps its skeletons; the map and the preview read the held list |
 | 2026-09-17 | phase 2 | every control on the map surface | `grep -n "<button" frontend/src/app/pages/home/venue-pin-layer.html frontend/src/app/shared/riviera-map.html` | the layer's one `<button>` template (three faces), the map's skip, near-me, zoom ×2, dismiss | every one carries `appTouchTarget`; `check-touch-target.mjs` green on the layer |
 | 2026-09-17 | phase 1 | every place a from-price is derived for display | `grep -rn "fromPrice" frontend/src/app --include=*.ts \| grep -v spec` | `home.ts` `toCard`, `venue/venue-map.ts`, `pin-crowding.ts` `lowestFromPrice` | all three take the `MoneyView` and format with `formatMoney`; none parses a label |
