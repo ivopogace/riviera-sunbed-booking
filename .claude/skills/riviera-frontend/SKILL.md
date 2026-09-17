@@ -129,8 +129,12 @@ The only place providers are wired:
   `StripePaymentGateway` (abstract class token) with `StripeJsPaymentGateway` (real) vs
   `FakeStripePaymentGateway` (deterministic, no third-party JS), swapped by a factory
   reading a `window.__RIVIERA_FAKE_*__` flag that only the Playwright e2e sets. Reuse this
-  exact shape for any new external dependency: abstract token + real/fake adapters +
-  factory in `app.config.ts`; unit specs override the token directly. Three instances today:
+  exact shape for any new external dependency **the e2e cannot drive for real**; when it can,
+  the seam keeps the token and the fake for unit specs but takes a plain `useClass` and no flag,
+  as `SsoRedirect` does (the e2e intercepts the navigation) and `shared/geolocation.ts` does
+  (Playwright grants the permission and sets the position itself) — a flag no e2e arms is a
+  production branch nothing exercises. Unit specs override the token directly either way.
+  Three flag-swapped instances today:
   `booking/stripe-payment.gateway.ts`, `operator/qr-scanner.ts`, and `shared/map-engine.ts` —
   the map engine sits in `shared/` (not a feature folder) because its consumers span features
   (Discover and the operator's venue-location field) and `pages/` may import only `core`/`shared`;

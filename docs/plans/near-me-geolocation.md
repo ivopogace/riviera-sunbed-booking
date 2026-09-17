@@ -33,8 +33,14 @@ one pin so "you are here" is a *second* marker, and that AC-4's "phone and fold 
 stale) · `riviera-plan-doc` (this template — forced the off-riviera fifth outcome into the ACs
 instead of leaving it as a surprise at implement time) · `tdd` (every phase red-green at the
 seams named below; no test at an unconfirmed seam) · `riviera-review-overlay` (review gate — runs
-at ready-for-review, per `pr-gates.md` §1) · `riviera-docs-freshness` (**runs** at close-out over
-`origin/main..HEAD`; the privacy-policy paragraph ships in this slice, not after it) ·
+at ready-for-review, per `pr-gates.md` §1) · `riviera-docs-freshness` (**ran** at close-out over `7eaef545..299f233c`, 2 findings, both
+patched: `CONTEXT.md`'s **Venue location** entry asserted the visitor's geolocation "never leaves
+their browser" without qualification — the same overclaim the review gate caught in the privacy
+policy, in a file this diff never touched — and `riviera-frontend` told the next session to reuse
+the fake-flag seam shape "for any new external dependency", which this slice showed is the wrong
+call when the e2e can drive the real adapter; it now names the `useClass` sibling and the test
+between them. `domain-modeling` was loaded for the `CONTEXT.md` edit, as that skill's boundary
+requires) ·
 `riviera-frontend` (placement: the gateway is `shared/`-admissible — a browser capability behind a
 token, like `MapEngine`; the fake is test-only so it lives in `src/testing/`, not `shared/`;
 wiring goes in `app.config.ts`) · `riviera-tailwind` (the theme-invariant `--riv-solid-btn-*`
@@ -242,10 +248,11 @@ is the machine proof that the wire is untouched.
 
 ## Execution status
 
-**Stage pointer:** `DONE for this session — ready for review, all gates run and clear; merge is the maintainer's`
+**Stage pointer:** `merge close-out — steps 4 and 5 done in this commit; merging on the maintainer's go-ahead`
 
-**Next action:** none from this session. The PR is green, reviewed, re-reviewed and Sonar-clear. At
-merge, tick the epic checklist and close #1100 — this session was asked not to.
+**Next action:** merge (squash) once this commit's CI is green, then close-out steps 1, 2, 6 and 7
+— verify #1100 closed by `Closes #1100`, the epic's sub-issue progress, end the PR subscription,
+notify.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -269,7 +276,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-5 | Review gate (overlay, RV-STYLE-1) | Provenance (`#1098`) in a doc comment the diff added — a shape the comment guard's regex does not catch, so a clean guard run was not the answer | fixed in this commit: the comment names the guard instead of the issue |
 | F-6 | Review gate (overlay, observation) | The new contrast test asserted the same constant pair as the zoom-glyph test byte for byte — documentation, not proof, and a duplicate block for Sonar to find | fixed in `3305b95f`: one assertion, with the dot's 1.4.11 case in its doc comment |
 | F-7 | Re-review of the fix round | The merged contrast test's title claimed the you-are-here dot clears the **hover** fill too; the dot is a static graphic with no hover state, so the title overclaimed what the doc comment correctly hedged | fixed in this commit: the title names the glyphs, the doc comment carries the dot's narrower resting-pair case |
-| F-8 | Re-review of the fix round | F-1's row cited "3290 tests" — a count measured mid-round, before the contrast merge removed one. The reviewer's arithmetic (net 0 across the round) beat my stale measurement | fixed in this commit: re-measured at 268 files / 3289 tests |
+| F-8 | Re-review of the fix round | F-1's row cited "3290 tests" — a count measured mid-round, before the contrast merge removed one. The reviewer's arithmetic (net 0 across the round) beat my stale measurement | fixed in `299f233c`: re-measured at 268 files / 3289 tests |
+| F-9 | Close-out sweep (`riviera-docs-freshness`) | `CONTEXT.md`'s **Venue location** entry carried the same unqualified "never leaves their browser" claim the review gate had already caught in the privacy policy — in a file no reviewer read, because the diff never touched it | patched in this commit, via `domain-modeling` |
+| F-10 | Close-out sweep (`riviera-docs-freshness`) | `riviera-frontend` instructed "reuse this exact shape for any new external dependency" — the fake-flag seam. This slice (and `SsoRedirect` before it) showed that a capability the e2e can drive for real takes `useClass` and no flag, since a flag no e2e arms is a production branch nothing exercises | patched in this commit; the "three instances" count itself stayed true, as it counts the flag-swapped shape |
 
 **Sonar note** — the gate applied and is clear. The analysis is real, not a false zero: `new_lines`
 is 291 and the `SonarCloud Code Analysis` check-run concluded `success` on both reviewed heads.
@@ -329,6 +338,10 @@ roots, so they were not analysed — their proof is the suites themselves, not t
   behaviour (the **Venue location** entry already says geolocation "is the visitor's own position,
   which never leaves their browser").
 - `docs/plans/near-me-geolocation.md` — this plan; deleted at the next close-out after merge.
+- `docs/plans/venue-id-route-gate.md` — **deleted**: its PR (#1128) merged in `7eaef545`, and a
+  close-out retires every plan whose PR has already merged. No citation outside the file itself
+  (the only `venue-id-route-gate` hit in the tree is the e2e spec of that name, which is code).
+- `CONTEXT.md` · `.claude/skills/riviera-frontend/SKILL.md` — the two docs-freshness patches above.
 
 ---
 
