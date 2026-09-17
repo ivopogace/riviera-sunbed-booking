@@ -214,8 +214,8 @@ class BookingCreateChallengeIT {
 	/** A throwaway Instant-Book venue with one ONLINE set, so no other test's claim can decide a case. */
 	private long freshOnlineSet() {
 		long venue = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency, sales_close)
-				VALUES (:name, 'Fence Beach', 'Fence Region', 'INSTANT', 1500, 'EUR', TIME '23:59')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency, sales_close)
+				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR', TIME '23:59')
 				RETURNING id
 				""")
 				.param("name", VENUE_MARKER + " " + SessionLoginSupport.uniqueClientIp())

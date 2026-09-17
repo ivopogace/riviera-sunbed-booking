@@ -11,8 +11,8 @@ import { OwnedVenue, OwnedVenues, OwnedVenuesResult } from './core/owned-venues'
 import { ConsoleVenueMap } from './operator/console-venue-map';
 
 const TWO: readonly OwnedVenue[] = [
-  { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
-  { id: 2, name: 'Sereno', beach: 'Jal' },
+  { id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' },
+  { id: 2, name: 'Sereno', beach: 'JALE' },
 ];
 
 @Component({

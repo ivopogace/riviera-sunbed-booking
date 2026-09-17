@@ -11,7 +11,7 @@ import { VenuePinLayer } from './venue-pin-layer';
 const MIRAMAR: VenuePin = {
   id: '1',
   at: { lng: 20.0021, lat: 39.7712 },
-  card: venueCard({ id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' }),
+  card: venueCard({ id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' }),
 };
 const LORI: VenuePin = {
   id: '2',
@@ -19,7 +19,7 @@ const LORI: VenuePin = {
   card: venueCard({
     id: 2,
     name: 'Lori Beach',
-    beach: 'Ksamil',
+    beach: 'KSAMIL',
     priceLabel: '€21',
     fromPrice: { minorUnits: 2100, currency: 'EUR' },
   }),
@@ -31,7 +31,7 @@ const AURORA: VenuePin = {
   card: venueCard({
     id: 3,
     name: 'Aurora Bay',
-    beach: 'Dhërmi',
+    beach: 'DHERMI',
     priceLabel: '€30',
     fromPrice: { minorUnits: 3000, currency: 'EUR' },
   }),
@@ -45,7 +45,7 @@ const HAVANA: VenuePin = {
   card: venueCard({
     id: 11,
     name: 'Havana Beach',
-    beach: 'Dhërmi',
+    beach: 'DHERMI',
     priceLabel: '€24',
     fromPrice: { minorUnits: 2400, currency: 'EUR' },
   }),
@@ -56,7 +56,7 @@ const FOLIE: VenuePin = {
   card: venueCard({
     id: 12,
     name: 'Folie Marine',
-    beach: 'Dhërmi',
+    beach: 'DHERMI',
     priceLabel: '€39',
     fromPrice: { minorUnits: 3900, currency: 'EUR' },
   }),
@@ -67,7 +67,7 @@ const SUN_CLUB: VenuePin = {
   card: venueCard({
     id: 13,
     name: 'Dhërmi Sun Club',
-    beach: 'Dhërmi',
+    beach: 'DHERMI',
     priceLabel: '€18',
     fromPrice: { minorUnits: 1800, currency: 'EUR' },
   }),
@@ -195,11 +195,11 @@ describe('VenuePinLayer', () => {
     });
 
     it('names a crowd across two beaches by both, and beyond that by their count', async () => {
-      const elsewhere = { ...LORI, card: { ...LORI.card, beach: 'Dhërmi' } };
+      const elsewhere = { ...LORI, card: { ...LORI.card, beach: 'DHERMI' as const } };
       await render([MIRAMAR, elsewhere]);
       expect(text(buttons('map-place-pill')[0])).toContain('Ksamil & Dhërmi');
 
-      const third = { ...AURORA, at: MIRAMAR.at, card: { ...AURORA.card, beach: 'Jale' } };
+      const third = { ...AURORA, at: MIRAMAR.at, card: { ...AURORA.card, beach: 'JALE' as const } };
       await render([MIRAMAR, elsewhere, third]);
       expect(text(buttons('map-place-pill')[0])).toContain('3 beaches');
     });
@@ -239,7 +239,7 @@ describe('VenuePinLayer', () => {
         expect(zoom).toBeLessThan(RIVIERA_MAP_OPTIONS.maxZoom);
         expect(center.lng).toBeCloseTo((MIRAMAR.at.lng + LORI.at.lng) / 2, 9);
         expect(center.lat).toBeCloseTo((MIRAMAR.at.lat + LORI.at.lat) / 2, 9);
-        expect(narrowed).toEqual(['Ksamil']);
+        expect(narrowed).toEqual(['KSAMIL']);
         expect(chosen).toEqual([]);
 
         // The members separate into production's own pins, prices side by side; nothing was rebuilt.
@@ -257,7 +257,7 @@ describe('VenuePinLayer', () => {
     });
 
     it('a crowd spanning beaches narrows nothing when pressed', async () => {
-      await render([MIRAMAR, { ...LORI, card: { ...LORI.card, beach: 'Dhërmi' } }]);
+      await render([MIRAMAR, { ...LORI, card: { ...LORI.card, beach: 'DHERMI' as const } }]);
 
       buttons('map-place-pill')[0].click();
 
@@ -306,7 +306,7 @@ describe('VenuePinLayer', () => {
 
       buttons('map-place-pill')[0].click();
 
-      expect(narrowed).toEqual(['Dhërmi']);
+      expect(narrowed).toEqual(['DHERMI']);
       expect(chosen).toEqual(['11']);
       expect(handle.view().zoom).toBe(RIVIERA_MAP_OPTIONS.maxZoom);
     });

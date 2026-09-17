@@ -7,7 +7,7 @@ import { VenueCard } from './venue-card';
 import { VenuePreviewCard } from './venue-preview-card';
 
 /** Folie Marine, second of the three at Dhërmi that no zoom separates. */
-const FOLIE = venueCard({ id: 12, name: 'Folie Marine', beach: 'Dhërmi' });
+const FOLIE = venueCard({ id: 12, name: 'Folie Marine', beach: 'DHERMI' });
 const FOLIE_STACK: CrowdStack = { index: 1, count: 3, place: 'Dhërmi', prevId: '11', nextId: '13' };
 
 function card(overrides: Partial<VenueCard> = {}): VenueCard {
@@ -73,7 +73,7 @@ describe('VenuePreviewCard', () => {
     const fixture = render();
 
     expect(byTestId(fixture, 'preview-name')?.textContent?.trim()).toBe('Miramar Beach Club');
-    expect(text(byTestId(fixture, 'preview-location'))).toBe('Ksamil · Albanian Riviera');
+    expect(text(byTestId(fixture, 'preview-location'))).toBe('Ksamil · Sarandë');
     expect(byTestId(fixture, 'preview-rating')?.textContent).toContain('4.8');
     expect(text(byTestId(fixture, 'preview-price'))).toContain('€25');
   });

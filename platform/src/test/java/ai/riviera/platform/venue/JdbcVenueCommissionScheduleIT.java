@@ -133,8 +133,8 @@ class JdbcVenueCommissionScheduleIT {
 	/** Raw SQL on purpose — see the class Javadoc. */
 	private VenueId venueAt(int commissionBps) {
 		return new VenueId(jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('A7 rate venue', 'Test beach', 'Test region', 'INSTANT', :bps, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('A7 rate venue', 'KSAMIL', 'INSTANT', :bps, 'EUR')
 				RETURNING id
 				""")
 				.param("bps", commissionBps)

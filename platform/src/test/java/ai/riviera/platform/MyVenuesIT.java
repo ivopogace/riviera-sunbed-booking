@@ -70,9 +70,9 @@ class MyVenuesIT {
 				.param("a", M_FIRST_BY_NAME).param("z", M_LAST_BY_NAME).param("n", N_VENUE).update();
 
 		// Inserted last-by-name FIRST, so ids run counter to alphabetical order (see the ORDER BY assert).
-		mZeta = newVenue(M_LAST_BY_NAME, "Jal");
-		mAlpha = newVenue(M_FIRST_BY_NAME, "Dhërmi");
-		long nVenue = newVenue(N_VENUE, "Borsh");
+		mZeta = newVenue(M_LAST_BY_NAME, "JALE");
+		mAlpha = newVenue(M_FIRST_BY_NAME, "DHERMI");
+		long nVenue = newVenue(N_VENUE, "BORSH");
 		operatorM = insertOperator("s9-op-m");
 		operatorN = insertOperator("s9-op-n");
 		grant(operatorM, mZeta);
@@ -91,7 +91,7 @@ class MyVenuesIT {
 				// ...ordered by name, not by id: Alpha (inserted second, higher id) comes first.
 				.andExpect(jsonPath("$[0].id").value(mAlpha))
 				.andExpect(jsonPath("$[0].name").value(M_FIRST_BY_NAME))
-				.andExpect(jsonPath("$[0].beach").value("Dhërmi"))
+				.andExpect(jsonPath("$[0].beach").value("DHERMI"))
 				.andExpect(jsonPath("$[1].id").value(mZeta))
 				.andExpect(jsonPath("$[1].name").value(M_LAST_BY_NAME));
 	}
@@ -119,8 +119,8 @@ class MyVenuesIT {
 
 	private long newVenue(String name, String beach) {
 		return jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES (:name, :beach, 'Test Region', 'INSTANT', 1500, 'EUR') RETURNING id
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, :beach, 'INSTANT', 1500, 'EUR') RETURNING id
 				""").param("name", name).param("beach", beach).query(Long.class).single();
 	}
 

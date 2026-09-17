@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 
 import { NgOptimizedImage } from '@angular/common';
 
+import { beachLabel } from '../shared/beaches';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmWithReason } from '../shared/confirm-with-reason';
@@ -68,7 +69,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
       >
         <option value="">Choose a venue…</option>
         @for (venue of picker.venues(); track venue.id) {
-          <option [value]="venue.id">{{ venue.name }} — {{ venue.beach }}</option>
+          <option [value]="venue.id">{{ venue.name }} — {{ beachLabel(venue.beach) }}</option>
         }
       </select>
     </div>
@@ -167,6 +168,8 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
   `,
 })
 export class AdminVenuePhotos {
+  /** The beach as the operator or admin reads it, off the catalogue mirror. */
+  protected readonly beachLabel = beachLabel;
   private readonly service = inject(AdminVenuePhotosService);
   private readonly focusAfterRender = focusMover();
 

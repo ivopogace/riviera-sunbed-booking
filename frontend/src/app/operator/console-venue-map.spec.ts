@@ -26,8 +26,8 @@ describe('ConsoleVenueMap (#486)', () => {
     return {
       id: VENUE,
       name,
-      beach: 'Ksamil',
-      region: 'Albanian Riviera',
+      beach: 'KSAMIL',
+      region: 'SARANDE',
       description: 'Loungers on the shore.',
       ratingTenths: 48,
       reviewsCount: 12,

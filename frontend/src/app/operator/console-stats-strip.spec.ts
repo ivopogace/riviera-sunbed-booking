@@ -30,8 +30,8 @@ function venueMap(sets: SetView[]): VenueMapView {
   return {
     id: VENUE,
     name: 'Miramar',
-    beach: 'Ksamil',
-    region: 'Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     description: '',
     ratingTenths: 48,
     reviewsCount: 1,

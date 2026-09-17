@@ -15,7 +15,8 @@ import ai.riviera.platform.venue.application.VenueProfileCommand;
 /**
  * The request body for editing a venue's profile ({@code PATCH /api/venues/{venueId}}). It carries
  * the operator-editable fields —
- * {@code name}/{@code beach}/{@code region}/{@code description}, {@code bookingMode}
+ * {@code name}, {@code beach} (a catalogue code; the region is derived from it, never sent),
+ * {@code description}, {@code bookingMode}
  * ({@code INSTANT}|{@code REQUEST}), {@code bookingCutoff} ({@code "HH:mm"} in {@code Europe/Tirane}),
  * {@code salesClose} (required; exactly {@code "00:01"}|{@code "16:00"}|{@code "23:59"}),
  * the full amenity set (codes from the fixed {@link Amenity} catalogue), the optional
@@ -23,7 +24,7 @@ import ai.riviera.platform.venue.application.VenueProfileCommand;
  * {@code {latitude, longitude}}, or {@code null} for no pin. <strong>Commission and payout currency are read-only and absent</strong>
  * — the write cannot touch them.
  *
- * <p>{@link #toCommand()} parses each amenity code to {@link Amenity}, the cutoff to a
+ * <p>{@link #toCommand()} parses the beach code ({@link BeachCode}), each amenity code to {@link Amenity}, the cutoff to a
  * {@link LocalTime}, and the sales close to a {@link SalesClose}; a bad/null amenity code, a
  * malformed time, or an off-vocabulary sales close is an {@link IllegalArgumentException}
  * → {@code 400 INVALID_REQUEST} (the one error contract, §6b). The remaining edge invariants
@@ -38,7 +39,7 @@ import ai.riviera.platform.venue.application.VenueProfileCommand;
  * {@code null}, not a silent {@code 0}: {@link ExpectedVersion#require(Long)} rejects the null with a
  * {@code 400} rather than letting it match a fresh venue and re-open the last-write-wins hole.
  */
-record UpdateVenueProfileRequest(String name, String beach, String region, String description,
+record UpdateVenueProfileRequest(String name, String beach, String description,
 		String bookingMode, String bookingCutoff, String salesClose, List<String> amenities,
 		Integer distanceToWaterM, LocationBody location, Long expectedVersion) {
 
@@ -53,7 +54,7 @@ record UpdateVenueProfileRequest(String name, String beach, String region, Strin
 		Set<Amenity> parsed = (amenities == null ? List.<String>of() : amenities).stream()
 				.map(UpdateVenueProfileRequest::parseCode)
 				.collect(Collectors.toUnmodifiableSet());
-		return new VenueProfileCommand(name, beach, region, description, bookingMode,
+		return new VenueProfileCommand(name, BeachCode.parse(beach), description, bookingMode,
 				parseCutoff(bookingCutoff), parseSalesClose(salesClose), parsed, distanceToWaterM,
 				parseLocation(location));
 	}

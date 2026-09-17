@@ -47,7 +47,7 @@ async function render(
       },
       {
         provide: AdminVenuesService,
-        useValue: { venues: () => Promise.resolve([{ id: 3, name: 'Miramar', beach: 'Ksamil' }]) },
+        useValue: { venues: () => Promise.resolve([{ id: 3, name: 'Miramar', beach: 'KSAMIL' }]) },
       },
     ],
   }).compileComponents();

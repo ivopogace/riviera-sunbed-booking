@@ -1,9 +1,10 @@
 package ai.riviera.platform.venue.vocabulary;
 
 /**
- * The optional discovery filters a tourist narrows the venue list by: an exact-match
- * {@code beach} and/or {@code region}. A {@code null} dimension means "no constraint" — both null
- * lists every venue. Filters are AND-combined (a venue must match every non-null dimension).
+ * The optional discovery filters a tourist narrows the venue list by: a {@link Beach} code and/or
+ * a {@link Beach.Region} code, as wire strings. A {@code null} dimension means "no constraint" — both
+ * null lists every venue; a code off the catalogue matches nothing. Filters are AND-combined (a venue
+ * must match every non-null dimension).
  *
  * <p>Construct via {@link #of(String, String)}, which normalises blank/whitespace input to
  * {@code null} so an empty query param ({@code ?beach=}) is treated as "unfiltered", not "match

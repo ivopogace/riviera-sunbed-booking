@@ -136,9 +136,9 @@ class SeasonClosureReserveIT {
 
 	private long closedVenue(String name, String mode, LocalDate reopenOn, boolean advanceSales) {
 		long id = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency,
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency,
 				                   closed_at, reopen_on, advance_sales)
-				VALUES (:name, 'Season reserve beach IT', 'Season region IT', :mode, 1500, 'EUR',
+				VALUES (:name, 'KSAMIL', :mode, 1500, 'EUR',
 				        :closedAt, :reopenOn, :advanceSales)
 				RETURNING id
 				""")

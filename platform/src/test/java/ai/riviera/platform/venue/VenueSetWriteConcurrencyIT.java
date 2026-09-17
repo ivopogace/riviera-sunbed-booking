@@ -147,8 +147,8 @@ class VenueSetWriteConcurrencyIT {
 
 	private long insertVenue() {
 		return jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Cross-write Concurrency Club', 'Ksamil', 'Riviera', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Cross-write Concurrency Club', 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
 	}

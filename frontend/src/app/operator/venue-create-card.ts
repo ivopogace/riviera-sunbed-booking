@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { BeachField } from './beach-field';
 import { BookingCutoffField } from './booking-cutoff-field';
 import { BookingModeField } from './booking-mode-field';
 import { form, required, submit, FormField } from '@angular/forms/signals';
@@ -12,6 +13,7 @@ import { TouchTarget } from '../shared/touch-target';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { formatCommissionPercent } from '../shared/commission-rate';
+import { BeachCode } from '../shared/beaches';
 import { BookingMode } from '../shared/venue-views';
 import { VenueAdminErrorCode, VenueDefaults } from './venue-admin.model';
 import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
@@ -20,8 +22,7 @@ import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
  *  is the union the server accepts instead of a bare string the submit path has to assert. */
 interface VenueDraft {
   name: string;
-  beach: string;
-  region: string;
+  beach: BeachCode | '';
   description: string;
   bookingMode: BookingMode;
   payoutCurrency: string;
@@ -42,6 +43,7 @@ interface VenueDraft {
 @Component({
   selector: 'app-venue-create-card',
   imports: [
+    BeachField,
     BookingCutoffField,
     BookingModeField,
     CardGlass,
@@ -80,7 +82,6 @@ export class VenueCreateCard {
   protected readonly venueModel = signal<VenueDraft>({
     name: '',
     beach: '',
-    region: '',
     description: '',
     bookingMode: 'INSTANT',
     payoutCurrency: 'EUR',
@@ -89,7 +90,6 @@ export class VenueCreateCard {
   protected readonly venueForm = form(this.venueModel, (path) => {
     required(path.name, { message: 'Venue name is required' });
     required(path.beach, { message: 'Beach is required' });
-    required(path.region, { message: 'Region is required' });
     required(path.payoutCurrency, { message: 'Payout currency is required' });
     required(path.bookingCutoff, { message: 'Free-cancellation deadline is required' });
   });
@@ -98,13 +98,15 @@ export class VenueCreateCard {
     this.errorCode.set(undefined);
     void submit(this.venueForm, async () => {
       const m = this.venueModel();
+      if (m.beach === '') {
+        return;
+      }
       this.saving.set(true);
       try {
         const created = await firstValueFrom(
           this.admin.createVenue({
             name: m.name,
             beach: m.beach,
-            region: m.region,
             description: m.description,
             bookingMode: m.bookingMode,
             payoutCurrency: m.payoutCurrency,

@@ -2,8 +2,7 @@ import { toProfileUpdate, VenueProfileView } from './operator-console.model';
 
 const PINNED: VenueProfileView = {
   name: 'Miramar',
-  beach: 'Dhërmi',
-  region: 'Vlorë',
+  beach: 'DHERMI',
   description: 'Sunbeds on the pebbles',
   bookingMode: 'INSTANT',
   bookingCutoff: '18:00',

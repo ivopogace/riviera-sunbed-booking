@@ -65,7 +65,7 @@ class VenueReadControllerIT {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.id").value((int) MIRAMAR))
 				.andExpect(jsonPath("$.name").value("Miramar Beach Club"))
-				.andExpect(jsonPath("$.beach").value("Ksamil"))
+				.andExpect(jsonPath("$.beach").value("KSAMIL"))
 				// V45 superseded the seed's fabricated 4.8/326: unreviewed venues read 0/0 ("New").
 				.andExpect(jsonPath("$.ratingTenths").value(0))
 				.andExpect(jsonPath("$.bookingMode").value("INSTANT"))
@@ -216,9 +216,9 @@ class VenueReadControllerIT {
 	/** A visible venue at the 00:01 sales-close opt-out — deterministically closed for today. */
 	private long insertOptOutVenue() {
 		long id = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency,
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency,
 				                   sales_close)
-				VALUES ('Sales-closed map venue IT', 'Sales close beach IT', 'Sales close IT region',
+				VALUES ('Sales-closed map venue IT', 'KSAMIL',
 				        'INSTANT', 1500, 'EUR', '00:01')
 				RETURNING id
 				""").query(Long.class).single();
@@ -229,9 +229,9 @@ class VenueReadControllerIT {
 	/** Owned by the bootstrap ACTIVE operator — the tourist map read hides ownerless venues (#693). */
 	private long insertVenueWithAmenities(int distanceToWaterM, String... amenities) {
 		long id = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency,
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency,
 				                   distance_to_water_m)
-				VALUES ('T7 detail venue', 'Amenity beach IT', 'T7 read IT region', 'INSTANT', 1500,
+				VALUES ('T7 detail venue', 'KSAMIL', 'INSTANT', 1500,
 				        'EUR', :d)
 				RETURNING id
 				""").param("d", distanceToWaterM).query(Long.class).single();

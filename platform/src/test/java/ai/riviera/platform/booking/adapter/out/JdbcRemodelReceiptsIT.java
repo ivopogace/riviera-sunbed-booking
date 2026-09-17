@@ -125,8 +125,8 @@ class JdbcRemodelReceiptsIT {
 
 	private long insertVenue() {
 		return jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES (:name, 'Ksamil', 'Riviera', 'INSTANT', 1500, 'EUR') RETURNING id
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR') RETURNING id
 				""").param("name", "Receipts " + System.nanoTime()).query(Long.class).single();
 	}
 

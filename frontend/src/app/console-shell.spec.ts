@@ -15,16 +15,16 @@ import { VenueMapView } from './shared/venue-views';
 class BlankPage {}
 
 const TWO: readonly OwnedVenue[] = [
-  { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
-  { id: 2, name: 'Sereno', beach: 'Jal' },
+  { id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' },
+  { id: 2, name: 'Sereno', beach: 'JALE' },
 ];
 
 function venueMap(id: number, name: string): VenueMapView {
   return {
     id,
     name,
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     description: 'Loungers on the shore.',
     ratingTenths: 48,
     reviewsCount: 12,

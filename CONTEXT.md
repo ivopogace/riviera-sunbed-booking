@@ -60,6 +60,12 @@ model in `docs/architecture/domain-model.md`.
   **Venue visibility**, which is derived from the operator's status and hides the venue; closing is
   a stored choice, touches no booking, hold or request, and leaves the staff daily view and walk-in
   marks working.
+- **Beach catalogue** — the fixed platform list of every named beach on the Albanian coast, north to
+  south, each in its **region** (Shkodër, Lezhë, Durrës, Fier, Vlorë, Himarë, Sarandë). A venue sits on
+  exactly one catalogue beach, chosen by its operator from the list, never typed; its region is
+  derived from the beach and never stored. Codes travel the wire (`DHERMI`), labels are the
+  spelling the riviera map draws (`Dhërmi`), and each entry carries the map view the Discover
+  filters ease to. _Avoid_: area, location (that is the venue location pin), free-text beach.
 - **Beach map** — a venue's visual layout: rows and individual set positions. _Avoid_: map
   (alone, on a tourist surface where the **riviera map** could be meant).
 - **Riviera map** — the geographic discovery map of the Albanian riviera, drawn from map resources

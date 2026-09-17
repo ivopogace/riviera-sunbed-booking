@@ -64,8 +64,8 @@ class ConcurrentRequestTerminationIT {
 	@BeforeEach
 	void seedRequestVenue() {
 		venueId = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Withdraw Club', 'Withdraw Beach', 'Withdraw Region', 'REQUEST', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Withdraw Club', 'KSAMIL', 'REQUEST', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
 		setId = jdbc.sql("""

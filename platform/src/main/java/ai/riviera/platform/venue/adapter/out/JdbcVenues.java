@@ -77,7 +77,6 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	 *  (named once — Sonar S1192; mirrors JdbcVenueCatalog's COL_* constants). */
 	private static final String COL_NAME = "name";
 	private static final String COL_BEACH = "beach";
-	private static final String COL_REGION = "region";
 	private static final String COL_DESCRIPTION = "description";
 	/** Bind-param name for the venue's {@code sales_close} column, shared by insert + profile update. */
 	private static final String P_SALES_CLOSE = "salesClose";
@@ -119,14 +118,13 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	@Override
 	public long insertVenue(NewVenueCommand c, int commissionBps) {
 		return jdbc.sql("""
-				INSERT INTO venue (name, beach, region, description, booking_mode,
+				INSERT INTO venue (name, beach, description, booking_mode,
 				                   commission_bps, payout_currency, booking_cutoff, sales_close)
-				VALUES (:name, :beach, :region, :description, :mode, :bps, :currency, :cutoff, :salesClose)
+				VALUES (:name, :beach, :description, :mode, :bps, :currency, :cutoff, :salesClose)
 				RETURNING id
 				""")
 				.param(COL_NAME, c.name())
-				.param(COL_BEACH, c.beach())
-				.param(COL_REGION, c.region())
+				.param(COL_BEACH, c.beach().name())
 				.param(COL_DESCRIPTION, c.description())
 				.param("mode", c.bookingMode())
 				.param("bps", commissionBps)
@@ -493,15 +491,14 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 		// field, so a crafted request cannot reach them; updateLiveRate is a separate write, separate surface.
 		int rows = jdbc.sql("""
 				UPDATE venue
-				SET name = :name, beach = :beach, region = :region, description = :description,
+				SET name = :name, beach = :beach, description = :description,
 				    booking_mode = :mode, booking_cutoff = :cutoff, sales_close = :salesClose,
 				    distance_to_water_m = :distance, latitude = :latitude, longitude = :longitude,
 				    version = version + 1
 				WHERE id = :id AND version = :version
 				""")
 				.param(COL_NAME, command.name())
-				.param(COL_BEACH, command.beach())
-				.param(COL_REGION, command.region())
+				.param(COL_BEACH, command.beach().name())
 				.param(COL_DESCRIPTION, command.description())
 				.param(COL_LATITUDE, command.location() == null ? null : command.location().latitude())
 				.param(COL_LONGITUDE, command.location() == null ? null : command.location().longitude())
@@ -548,7 +545,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 		// currency. Two reads inside the caller's read-only tx — the venue row, then its amenity set
 		// (catalogue-ordered) — mirroring findVenueMap's shape. Ownership is asserted by the caller.
 		Optional<ProfileRow> venue = jdbc.sql("""
-				SELECT name, beach, region, description, booking_mode, booking_cutoff, sales_close,
+				SELECT name, beach, description, booking_mode, booking_cutoff, sales_close,
 				       commission_bps, payout_currency, distance_to_water_m, version,
 				       closed_at, reopen_on, advance_sales, latitude, longitude
 				FROM venue
@@ -556,7 +553,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				""")
 				.param("id", venueId.value())
 				.query((rs, rowNum) -> new ProfileRow(
-						rs.getString(COL_NAME), rs.getString(COL_BEACH), rs.getString(COL_REGION),
+						rs.getString(COL_NAME), rs.getString(COL_BEACH),
 						rs.getString(COL_DESCRIPTION),
 						BookingMode.valueOf(rs.getString("booking_mode")),
 						rs.getObject("booking_cutoff", LocalTime.class),
@@ -580,7 +577,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				.list().stream()
 				.sorted() // enum natural order == canonical catalogue order (as findVenueMap)
 				.toList();
-		return Optional.of(new VenueProfileView(v.name(), v.beach(), v.region(), v.description(),
+		return Optional.of(new VenueProfileView(v.name(), v.beach(), v.description(),
 				v.bookingMode(), v.bookingCutoff(), v.salesClose(), v.commissionBps(), v.payoutCurrency(),
 				amenities, v.distanceToWaterM(), v.version(), slotPhotos(venueId), v.seasonClosure(),
 				salesWindow.closedForSeason(v.seasonClosure(), clock.instant()), v.location()));
@@ -639,7 +636,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	}
 
 	/** The venue row backing a {@link VenueProfileView}, before its amenity set is folded in. */
-	private record ProfileRow(String name, String beach, String region, String description,
+	private record ProfileRow(String name, String beach, String description,
 			BookingMode bookingMode, LocalTime bookingCutoff, LocalTime salesClose, int commissionBps,
 			String payoutCurrency, Integer distanceToWaterM, long version, SeasonClosure seasonClosure,
 			VenueLocation location) {

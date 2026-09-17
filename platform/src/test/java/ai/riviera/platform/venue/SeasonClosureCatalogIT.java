@@ -44,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class SeasonClosureCatalogIT {
 
-	private static final String BEACH = "Season closure beach IT";
+	private static final String BEACH = "VELIPOJE";
 	private static final LocalDate REOPEN = LocalDate.of(2027, 5, 15);
 	/** 2027-05-14 23:59 in Tirane (CEST): the closure's last minute. */
 	private static final Instant BEFORE_REOPEN = Instant.parse("2027-05-14T21:59:00Z");
@@ -222,9 +222,9 @@ class SeasonClosureCatalogIT {
 
 	private long venue(String name, int ratingTenths, Instant closedAt, LocalDate reopenOn, boolean advanceSales) {
 		long id = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, rating_tenths, reviews_count, booking_mode,
+				INSERT INTO venue (name, beach, rating_tenths, reviews_count, booking_mode,
 				                   commission_bps, payout_currency, closed_at, reopen_on, advance_sales)
-				VALUES (:name, :beach, 'Season region IT', :rating, 3, 'INSTANT', 1500, 'EUR',
+				VALUES (:name, :beach, :rating, 3, 'INSTANT', 1500, 'EUR',
 				        :closedAt, :reopenOn, :advanceSales)
 				RETURNING id
 				""")

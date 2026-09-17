@@ -537,6 +537,7 @@ export type LayoutErrorCode =
 
 /** The three-value on-day close: the one definition lives with the tourist mirror in `shared/`. */
 export type { SalesCloseTime } from '../shared/venue-views';
+import type { BeachCode } from '../shared/beaches';
 import type { SalesCloseTime, VenueLocation } from '../shared/venue-views';
 
 /**
@@ -548,8 +549,8 @@ import type { SalesCloseTime, VenueLocation } from '../shared/venue-views';
  */
 export interface VenueProfileView {
   readonly name: string;
-  readonly beach: string;
-  readonly region: string;
+  /** A catalogue code (`shared/beaches.ts`); its region is derived, never carried. */
+  readonly beach: BeachCode;
   readonly description: string;
   readonly bookingMode: BookingMode;
   readonly bookingCutoff: string;
@@ -629,8 +630,7 @@ export interface SlotPhotoView {
  */
 export interface VenueProfileUpdate {
   readonly name: string;
-  readonly beach: string;
-  readonly region: string;
+  readonly beach: BeachCode;
   readonly description: string;
   readonly bookingMode: BookingMode;
   readonly bookingCutoff: string;
@@ -653,7 +653,6 @@ export function toProfileUpdate(view: VenueProfileView): VenueProfileUpdate {
   return {
     name: view.name,
     beach: view.beach,
-    region: view.region,
     description: view.description,
     bookingMode: view.bookingMode,
     bookingCutoff: view.bookingCutoff,

@@ -72,8 +72,8 @@ class HiddenVenueSoldBookingRegressionIT {
 				""").param("u", OWNER).query(Long.class).single();
 		owner = new OperatorId(operatorId);
 		venueId = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Hidden Sold Club', 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Hidden Sold Club', 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")

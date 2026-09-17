@@ -116,7 +116,7 @@ export async function mockAuthApi(
 
   await mockOwnedVenues(
     page,
-    options.venues ?? [{ id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' }],
+    options.venues ?? [{ id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' }],
   );
 
   await page.route(/\/api\/auth\/logout$/, (route) => {

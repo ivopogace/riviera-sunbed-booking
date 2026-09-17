@@ -175,8 +175,8 @@ class SetBatchApplyIT {
 	void nonOwnerIsForbidden() throws Exception {
 		// A venue owned by another operator: the acting session is denied before any read or write (invariant #13).
 		long venue = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Someone Else''s Club', 'Ksamil', 'Riviera', 'INSTANT', 1500, 'EUR') RETURNING id
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Someone Else''s Club', 'KSAMIL', 'INSTANT', 1500, 'EUR') RETURNING id
 				""").query(Long.class).single();
 		long other = jdbc.sql("INSERT INTO operator (username, status) "
 						+ "VALUES ('batch-other-owner-' || :v, 'ACTIVE') RETURNING id")
@@ -223,7 +223,7 @@ class SetBatchApplyIT {
 		MvcResult result = mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
-								{"name":"%s","beach":"Ksamil","region":"Riviera","description":"on the shore",
+								{"name":"%s","beach":"KSAMIL","description":"on the shore",
 								 "bookingMode":"INSTANT","payoutCurrency":"EUR","bookingCutoff":"18:00"}
 								""".formatted(name)))
 				.andExpect(status().isCreated())

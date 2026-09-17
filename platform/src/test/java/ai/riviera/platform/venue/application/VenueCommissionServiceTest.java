@@ -150,7 +150,7 @@ class VenueCommissionServiceTest {
 	void theListIsTheStoresOrderedAnswer() {
 		FakeCommissionRateStore store = storeWith(VENUE, 1500);
 		store.listed = List.of(new VenueCommissionView(2, "Aurora", "Dhermi", 1000, "EUR"),
-				new VenueCommissionView(3, "Sunset", "Ksamil", 1500, "EUR"));
+				new VenueCommissionView(3, "Sunset", "KSAMIL", 1500, "EUR"));
 		VenueCommissionService service = new VenueCommissionService(store, MIDDAY);
 
 		assertEquals(store.listed, service.venueCommissions(),
@@ -197,7 +197,7 @@ class VenueCommissionServiceTest {
 				return Optional.empty();
 			}
 			liveRates.put(venueId.value(), commissionBps);
-			return Optional.of(new VenueCommissionView(venueId.value(), "Sunset", "Ksamil",
+			return Optional.of(new VenueCommissionView(venueId.value(), "Sunset", "KSAMIL",
 					commissionBps, "EUR"));
 		}
 

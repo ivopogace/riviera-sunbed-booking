@@ -24,8 +24,8 @@ public final class ReviewFixtures {
 
 	public long venue(String name) {
 		return jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES (:name, 'Ksamil', 'Review IT', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""")
 				.param("name", name + " " + SEQ.incrementAndGet()).query(Long.class).single();

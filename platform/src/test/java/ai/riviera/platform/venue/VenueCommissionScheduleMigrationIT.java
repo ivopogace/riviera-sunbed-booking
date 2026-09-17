@@ -44,8 +44,8 @@ class VenueCommissionScheduleMigrationIT {
 
 	private long newVenue() {
 		return jdbc.queryForObject("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('A7 schedule test', 'Test beach', 'Test region', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('A7 schedule test', 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""", Long.class);
 	}

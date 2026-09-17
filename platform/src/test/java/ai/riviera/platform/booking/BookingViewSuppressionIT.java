@@ -110,8 +110,8 @@ class BookingViewSuppressionIT {
 	/** A booking on its own freshly-created venue + set, so no sibling IT can observe or collide. */
 	private String seedBooking(String code, String email, String status) {
 		long venueId = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Suppression Club ' || :code, 'Test Beach', 'Riviera', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Suppression Club ' || :code, 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").param("code", code).query(Long.class).single();
 		long setId = jdbc.sql("""

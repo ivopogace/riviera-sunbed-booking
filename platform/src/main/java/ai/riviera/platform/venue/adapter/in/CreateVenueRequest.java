@@ -9,7 +9,7 @@ import ai.riviera.platform.venue.application.NewVenueCommand;
 /**
  * The {@code POST /api/venues} request body (U7). A transport DTO of wire primitives;
  * {@link #toCommand()} maps it onto the typed {@link NewVenueCommand}, which validates ranges /
- * tokens / ISO currency. The project has no {@code spring-boot-starter-validation}, so presence
+ * tokens / ISO currency; the beach code is parsed to the catalogue by {@link BeachCode}. The project has no {@code spring-boot-starter-validation}, so presence
  * and shape are checked explicitly here and any bad input surfaces as {@link IllegalArgumentException}
  * (the controller maps it to {@code 400}).
  *
@@ -23,7 +23,7 @@ import ai.riviera.platform.venue.application.NewVenueCommand;
  * value is rejected {@code 400} rather than silently overridden — a client must never believe it
  * chose a rate.
  */
-record CreateVenueRequest(String name, String beach, String region, String description,
+record CreateVenueRequest(String name, String beach, String description,
 		String bookingMode, Integer commissionBps, String payoutCurrency, String bookingCutoff,
 		String salesClose) {
 
@@ -37,7 +37,7 @@ record CreateVenueRequest(String name, String beach, String region, String descr
 		}
 		String currency = (payoutCurrency == null || payoutCurrency.isBlank())
 				? DEFAULT_PAYOUT_CURRENCY : payoutCurrency;
-		return new NewVenueCommand(name, beach, region, description, bookingMode,
+		return new NewVenueCommand(name, BeachCode.parse(beach), description, bookingMode,
 				currency, parseCutoff(bookingCutoff), parseSalesClose(salesClose));
 	}
 

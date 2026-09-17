@@ -160,8 +160,8 @@ class CheckInFlowIT {
 		long venue = newOwnedVenue("CI Foreign Base");
 		String foreign = uniqueCode("CIFOREIGN");
 		long otherVenue = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Foreign Club', 'Foreign Beach', 'Foreign Region', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Foreign Club', 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
 		jdbc.sql("""
@@ -225,8 +225,8 @@ class CheckInFlowIT {
 	/** A fresh venue granted to the bootstrap operator — isolates money/list assertions (AC-7/8). */
 	private long newOwnedVenue(String name) {
 		long venue = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES (:n, 'CI Beach', 'CI Region', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES (:n, 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").param("n", name).query(Long.class).single();
 		jdbc.sql("""

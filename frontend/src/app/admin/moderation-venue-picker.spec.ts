@@ -7,8 +7,8 @@ import { AdminVenuesService, ModerationVenue } from './admin-venues.service';
 import { ModerationVenuePicker, moderationVenuePicker } from './moderation-venue-picker';
 
 const VENUES: readonly ModerationVenue[] = [
-  { id: 7, name: 'Bora Bora Beach', beach: 'Dhërmi' },
-  { id: 9, name: 'Folie Marine', beach: 'Gjipe' },
+  { id: 7, name: 'Bora Bora Beach', beach: 'DHERMI' },
+  { id: 9, name: 'Folie Marine', beach: 'GJIPE' },
 ];
 
 @Component({ selector: 'app-picker-host', template: '' })

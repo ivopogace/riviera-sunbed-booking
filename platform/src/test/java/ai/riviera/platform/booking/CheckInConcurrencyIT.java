@@ -57,8 +57,8 @@ class CheckInConcurrencyIT {
 	@BeforeEach
 	void seedVenue() {
 		venueId = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('CheckIn Club', 'CheckIn Beach', 'CheckIn Region', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('CheckIn Club', 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
 		setId = jdbc.sql("""

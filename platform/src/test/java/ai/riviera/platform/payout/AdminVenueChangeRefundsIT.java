@@ -76,9 +76,9 @@ class AdminVenueChangeRefundsIT {
 
 	private long newVenue(String name) {
 		return jdbc.sql("""
-				INSERT INTO venue (name, beach, region, description, booking_mode, payout_currency,
+				INSERT INTO venue (name, beach, description, booking_mode, payout_currency,
 				                   commission_bps)
-				VALUES (:n, 'Ksamil', 'Riviera', 'x', 'INSTANT', 'EUR', 1500)
+				VALUES (:n, 'KSAMIL', 'x', 'INSTANT', 'EUR', 1500)
 				RETURNING id
 				""").param("n", name + " " + System.nanoTime()).query(Long.class).single();
 	}

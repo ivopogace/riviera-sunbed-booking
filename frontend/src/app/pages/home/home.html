@@ -45,8 +45,8 @@
         (change)="onBeachChange($event)"
       >
         <option value="">All beaches</option>
-        @for (b of beaches(); track b) {
-          <option [value]="b">{{ b }}</option>
+        @for (b of beaches(); track b.code) {
+          <option [value]="b.code">{{ b.label }}</option>
         }
       </select>
     </p>
@@ -67,8 +67,8 @@
         (change)="onRegionChange($event)"
       >
         <option value="">All regions</option>
-        @for (r of regions(); track r) {
-          <option [value]="r">{{ r }}</option>
+        @for (r of regions(); track r.code) {
+          <option [value]="r.code">{{ r.label }}</option>
         }
       </select>
     </p>
@@ -228,7 +228,7 @@
                     <span
                       class="photo-location absolute bottom-[13px] left-[15px] text-[12.5px] leading-[15px] font-semibold text-riv-photo-ink [text-shadow:0_1px_6px_rgba(0,0,0,0.4)]"
                       [class]="card.photos.length > 1 ? 'right-[82px] truncate' : ''"
-                      >{{ card.beach }} · {{ card.region }}</span
+                      >{{ card.beachLabel }} · {{ card.regionLabel }}</span
                     >
                   </span>
 
@@ -378,17 +378,17 @@
           (chosen)="onPinSelected($event)"
           (narrowed)="onBeachNarrowed($event)"
         />
-        @if (beach(); as narrowed) {
+        @if (beach()) {
           <!-- The way back, on the map, from a beach the list is narrowed to; the select shows it too. -->
           <button
             type="button"
             appTouchTarget
             class="absolute top-3 left-3 z-[5] inline-flex touch-manipulation items-center gap-[8px] rounded-full border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill pr-[10px] pl-[14px] text-[14px] leading-none font-bold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] hover:bg-riv-solid-btn-hover"
             data-testid="map-beach-crumb"
-            [attr.aria-label]="'Showing ' + narrowed + ' only; press to show all beaches'"
+            [attr.aria-label]="'Showing ' + narrowedLabel() + ' only; press to show all beaches'"
             (click)="showAllBeaches()"
           >
-            {{ narrowed }}
+            {{ narrowedLabel() }}
             <span class="text-[17px] opacity-70" aria-hidden="true">&#x00d7;</span>
           </button>
         }

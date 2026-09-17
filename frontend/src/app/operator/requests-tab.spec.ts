@@ -93,7 +93,7 @@ describe('RequestsTab (#176)', () => {
           r.url.includes('/api/venues/1') &&
           !r.url.includes('/booking-requests'),
       )
-      .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets });
+      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets });
     fixture.detectChanges();
   }
 
@@ -274,7 +274,7 @@ describe('RequestsTab (#176)', () => {
           r.url.includes('/api/venues/2') &&
           !r.url.includes('/booking-requests'),
       )
-      .flush({ id: 2, name: 'W', beach: 'Ksamil', region: 'Riviera', sets: SEED_SETS });
+      .flush({ id: 2, name: 'W', beach: 'KSAMIL', region: 'SARANDE', sets: SEED_SETS });
     http
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/booking-requests'))
       .flush([]);
@@ -580,7 +580,7 @@ describe('RequestsTab (#176)', () => {
           r.url.includes('/api/venues/1') &&
           !r.url.includes('/booking-requests'),
       )
-      .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets: SEED_SETS });
+      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED_SETS });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
     expect(byId('requests-load-error')).toBeTruthy();
@@ -643,7 +643,7 @@ describe('RequestsTab (#176)', () => {
           r.url.includes('/api/venues/2') &&
           !r.url.includes('/booking-requests'),
       )
-      .flush({ id: 2, name: 'W', beach: 'Dhermi', region: 'Riviera', sets: SEED_SETS });
+      .flush({ id: 2, name: 'W', beach: 'DHERMI', region: 'HIMARE', sets: SEED_SETS });
     fixture.detectChanges();
 
     expect(cards()).toHaveLength(2);
@@ -717,7 +717,7 @@ describe('RequestsTab (#176)', () => {
           r.url.includes('/api/venues/2') &&
           !r.url.includes('/booking-requests'),
       )
-      .flush({ id: 2, name: 'W', beach: 'Dhermi', region: 'Riviera', sets: SEED_SETS });
+      .flush({ id: 2, name: 'W', beach: 'DHERMI', region: 'HIMARE', sets: SEED_SETS });
     await settle();
 
     // The switch destroyed the confirm focus was sitting in — a teardown owes a leg too (RV-FE-9).
@@ -739,7 +739,7 @@ describe('RequestsTab (#176)', () => {
           r.url.includes('/api/venues/2') &&
           !r.url.includes('/booking-requests'),
       )
-      .flush({ id: 2, name: 'W', beach: 'Dhermi', region: 'Riviera', sets: SEED_SETS });
+      .flush({ id: 2, name: 'W', beach: 'DHERMI', region: 'HIMARE', sets: SEED_SETS });
     // The superseded venue-1 reads resolve late — they must not replace venue 2's queue or badge.
     http
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
@@ -751,7 +751,7 @@ describe('RequestsTab (#176)', () => {
           r.url.includes('/api/venues/1') &&
           !r.url.includes('/booking-requests'),
       )
-      .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets: SEED_SETS });
+      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED_SETS });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
 

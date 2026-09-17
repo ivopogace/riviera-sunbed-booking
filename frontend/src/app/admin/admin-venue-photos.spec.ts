@@ -30,8 +30,8 @@ function authStub(state: AuthState = {}): OperatorAuth {
 }
 
 const VENUES = [
-  { id: 7, name: 'Bora Bora Beach', beach: 'Dhërmi' },
-  { id: 9, name: 'Folie Marine', beach: 'Gjipe' },
+  { id: 7, name: 'Bora Bora Beach', beach: 'DHERMI' },
+  { id: 9, name: 'Folie Marine', beach: 'GJIPE' },
 ];
 
 function photosOf(coverUrl: string | null, venueId = 7): AdminVenuePhotosView {

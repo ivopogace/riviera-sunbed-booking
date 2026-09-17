@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CsrfProtectionIT {
 
 	private static final String VENUE_BODY = """
-			{"name":"Csrf Venue","beach":"Ksamil","region":"Riviera","description":"x",
+			{"name":"Csrf Venue","beach":"KSAMIL","description":"x",
 			 "bookingMode":"INSTANT","payoutCurrency":"EUR","bookingCutoff":"18:00"}
 			""";
 

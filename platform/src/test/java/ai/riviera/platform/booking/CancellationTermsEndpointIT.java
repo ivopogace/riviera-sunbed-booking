@@ -48,9 +48,9 @@ class CancellationTermsEndpointIT {
 	/** A midnight-cutoff venue offering a 40% late share, with one online set; returns the set id. */
 	private long seedMidnightCutoffSet(String venueName) {
 		long venueId = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency,
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency,
 				                   late_cancel_refund_bps, booking_cutoff)
-				VALUES (:name, 'Test Beach', 'Riviera', 'INSTANT', 1500, 'EUR', 4000, TIME '00:00')
+				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR', 4000, TIME '00:00')
 				RETURNING id
 				""").param("name", venueName).query(Long.class).single();
 		return jdbc.sql("""

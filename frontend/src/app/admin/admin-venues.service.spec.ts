@@ -30,15 +30,15 @@ describe('AdminVenuesService', () => {
     expect(req.request.method).toBe('GET');
     req.flush({
       venues: [
-        { venueId: 1, name: 'Miramar Beach Club', beach: 'Ksamil', commissionBps: 500 },
-        { venueId: 9, name: 'Hidden Cove', beach: 'Dhërmi', commissionBps: 500 },
+        { venueId: 1, name: 'Miramar Beach Club', beach: 'KSAMIL', commissionBps: 500 },
+        { venueId: 9, name: 'Hidden Cove', beach: 'DHERMI', commissionBps: 500 },
       ],
     });
 
     const venues = await promise;
     expect(venues).toEqual([
-      { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
-      { id: 9, name: 'Hidden Cove', beach: 'Dhërmi' },
+      { id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' },
+      { id: 9, name: 'Hidden Cove', beach: 'DHERMI' },
     ]);
   });
 });

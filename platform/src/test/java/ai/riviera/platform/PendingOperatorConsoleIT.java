@@ -119,7 +119,7 @@ class PendingOperatorConsoleIT {
 		MvcResult created = mvc.perform(post("/api/venues").cookie(session).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
-								{"name": "%s", "beach": "Test Beach", "region": "Test Region",
+								{"name": "%s", "beach":"KSAMIL",
 								 "bookingMode": "INSTANT", "payoutCurrency": "EUR"}""".formatted(VENUE_NAME)))
 				.andExpect(status().isCreated())
 				.andReturn();

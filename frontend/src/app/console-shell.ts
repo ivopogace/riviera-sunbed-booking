@@ -24,6 +24,7 @@ import { ConsoleVenueMap } from './operator/console-venue-map';
 import { OperatorAccountChip } from './operator/operator-account-chip';
 import { OperatorVenueSwitch } from './operator/operator-venue-switch';
 import { PendingRequestsStore } from './operator/pending-requests-store';
+import { beachLabel } from './shared/beaches';
 import { todayBookingDate } from './shared/booking-date';
 import { ConsoleDestination, VENUE_CONSOLE_LANDING_TAB } from './shared/console-destination';
 import {
@@ -581,7 +582,7 @@ export class ConsoleShell {
         key: `v:${venue.id}`,
         glyph: VenuesGlyph,
         label: venue.name,
-        hint: `Open ${venue.beach}`,
+        hint: `Open ${beachLabel(venue.beach)}`,
         group: 'Venue',
         link: ['/operator', venue.id, keep],
         current: this.venueCurrent() && venue.id === this.venueId(),

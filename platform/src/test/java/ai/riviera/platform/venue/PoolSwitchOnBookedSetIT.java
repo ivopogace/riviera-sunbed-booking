@@ -118,7 +118,7 @@ class PoolSwitchOnBookedSetIT {
 		MvcResult result = mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
-								{"name":"%s","beach":"Ksamil","region":"Riviera","description":"on the shore",
+								{"name":"%s","beach":"KSAMIL","description":"on the shore",
 								 "bookingMode":"INSTANT","payoutCurrency":"EUR","bookingCutoff":"18:00"}
 								""".formatted(name)))
 				.andExpect(status().isCreated())

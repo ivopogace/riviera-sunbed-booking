@@ -10,8 +10,8 @@ const TINY_IMAGE = Buffer.from(
 );
 
 const VENUES = [
-  { venueId: 7, name: 'Miramar', beach: 'Dhërmi', commissionBps: 1500, payoutCurrency: 'EUR' },
-  { venueId: 11, name: 'Kalypso', beach: 'Jal', commissionBps: 1000, payoutCurrency: 'EUR' },
+  { venueId: 7, name: 'Miramar', beach: 'DHERMI', commissionBps: 1500, payoutCurrency: 'EUR' },
+  { venueId: 11, name: 'Kalypso', beach: 'JALE', commissionBps: 1000, payoutCurrency: 'EUR' },
 ];
 
 /**
@@ -46,7 +46,7 @@ export async function mockWholeAdminConsole(page: Page): Promise<void> {
       json: VENUES.map((venue) => ({
         ...venue,
         id: venue.venueId,
-        region: 'Vlorë',
+        region: 'HIMARE',
         ratingTenths: 47,
         reviewsCount: 12,
         bookingMode: 'INSTANT',

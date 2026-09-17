@@ -182,7 +182,7 @@ classDiagram
     class venue {
         <<table>>
         id
-        name, beach, region, description
+        name, beach (catalogue code), description
         rating_tenths, reviews_count
         booking_mode
         commission_bps

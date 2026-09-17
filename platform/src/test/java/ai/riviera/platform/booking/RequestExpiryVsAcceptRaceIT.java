@@ -53,8 +53,8 @@ class RequestExpiryVsAcceptRaceIT {
 	@BeforeEach
 	void seedRequestVenue() {
 		venueId = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Race Club', 'Race Beach', 'Race Region', 'REQUEST', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Race Club', 'KSAMIL', 'REQUEST', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
 		setId = jdbc.sql("""

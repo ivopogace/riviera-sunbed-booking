@@ -34,7 +34,7 @@ import ai.riviera.platform.venue.vocabulary.VenueLocation;
  * <p>{@code location} is the venue's riviera-map pin, {@code null} when it has none; the
  * {@code PATCH} takes the same shape back.
  */
-record VenueProfileResponse(String name, String beach, String region, String description,
+record VenueProfileResponse(String name, String beach, String description,
 		String bookingMode, String bookingCutoff, String salesClose, int commissionBps,
 		String payoutCurrency, List<String> amenities, Integer distanceToWaterM, long version,
 		Map<String, SlotPhoto> photos, SeasonClosureView seasonClosure, VenueLocation location) {
@@ -47,7 +47,7 @@ record VenueProfileResponse(String name, String beach, String region, String des
 		for (PhotoSlotView slot : v.photos()) {
 			photos.put(slot.slot().name().toLowerCase(Locale.ROOT), new SlotPhoto(slot.previewUrl()));
 		}
-		return new VenueProfileResponse(v.name(), v.beach(), v.region(), v.description(),
+		return new VenueProfileResponse(v.name(), v.beach(), v.description(),
 				v.bookingMode().name(), v.bookingCutoff().format(SalesClose.WIRE),
 				v.salesClose().format(SalesClose.WIRE),
 				v.commissionBps(), v.payoutCurrency(), v.amenities().stream().map(Amenity::name).toList(),

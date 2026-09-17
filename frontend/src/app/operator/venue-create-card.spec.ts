@@ -77,14 +77,13 @@ describe('VenueCreateCard (#278)', () => {
 
   async function fillRequiredAndSubmit(): Promise<void> {
     setField('Name', 'Sunset Bar');
-    setField('Beach', 'Ksamil');
-    setField('Region', 'Riviera');
+    setField('Beach', 'KSAMIL');
     fixture.detectChanges();
     submitButton().click();
     await fixture.whenStable();
   }
 
-  it('renders the 7 fields with the defaults (INSTANT / EUR / 18:00) and no commission control', () => {
+  it('renders the 6 fields with the defaults (INSTANT / EUR / 18:00) and no commission control', () => {
     // Every field's own <label>, marker-class-free: two of them come from shared components.
     const labels = Array.from(host().querySelectorAll('label')).map((l) =>
       l.querySelector('span')?.textContent?.replace(/\s+/g, ' ').trim(),
@@ -92,13 +91,14 @@ describe('VenueCreateCard (#278)', () => {
     expect(labels).toEqual([
       'Name',
       'Beach',
-      'Region',
       'Description',
       'Booking mode',
       'Payout currency (ISO 4217)',
       'Free-cancellation deadline (Europe/Tirane)',
     ]);
-    expect(host().querySelector<HTMLSelectElement>('select')?.value).toBe('INSTANT');
+    expect(
+      host().querySelector<HTMLSelectElement>('[data-testid="venue-create-booking-mode"]')?.value,
+    ).toBe('INSTANT');
     // The commission input is gone (#692): the platform stamps the rate; nothing to type into.
     expect(host().querySelector('input[inputmode="numeric"]')).toBeNull();
     expect(host().querySelector('[data-testid="venue-create-commission"]')).toBeNull();
@@ -153,14 +153,14 @@ describe('VenueCreateCard (#278)', () => {
   });
 
   it('describes each field by its own error once touched', () => {
-    for (const testId of ['venue-create-name', 'venue-create-beach', 'venue-create-region']) {
+    for (const testId of ['venue-create-name', 'venue-create-beach']) {
       const control = host().querySelector<HTMLInputElement>(`[data-testid="${testId}"]`)!;
       control.dispatchEvent(new Event('focus'));
       control.dispatchEvent(new Event('blur'));
     }
     fixture.detectChanges();
 
-    for (const testId of ['venue-create-name', 'venue-create-beach', 'venue-create-region']) {
+    for (const testId of ['venue-create-name', 'venue-create-beach']) {
       const control = host().querySelector<HTMLInputElement>(`[data-testid="${testId}"]`)!;
       const errorId = control.getAttribute('aria-describedby');
       expect(errorId).toBeTruthy();
@@ -179,8 +179,7 @@ describe('VenueCreateCard (#278)', () => {
     );
     expect(createReq.request.body).toMatchObject({
       name: 'Sunset Bar',
-      beach: 'Ksamil',
-      region: 'Riviera',
+      beach: 'KSAMIL',
       bookingMode: 'INSTANT',
       payoutCurrency: 'EUR',
       bookingCutoff: '18:00',

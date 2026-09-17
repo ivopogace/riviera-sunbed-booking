@@ -54,8 +54,7 @@ describe('VenueTab (#177)', () => {
 
   const PROFILE: VenueProfileView = {
     name: 'Miramar',
-    beach: 'Ksamil',
-    region: 'Riviera',
+    beach: 'KSAMIL',
     description: 'lovely',
     bookingMode: 'INSTANT',
     bookingCutoff: '18:00',
@@ -159,8 +158,7 @@ describe('VenueTab (#177)', () => {
     const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
     expect(req.request.body).toEqual({
       name: 'Miramar',
-      beach: 'Ksamil',
-      region: 'Riviera',
+      beach: 'KSAMIL',
       description: 'lovely',
       bookingMode: 'INSTANT',
       bookingCutoff: '18:00',
@@ -502,13 +500,13 @@ describe('VenueTab (#177)', () => {
   it('describes each required details field by its own error once touched', () => {
     render();
 
-    for (const testId of ['venue-name', 'venue-beach', 'venue-region']) {
+    for (const testId of ['venue-name', 'venue-beach']) {
       setValue(testId, '');
       byId(testId).dispatchEvent(new Event('blur'));
     }
     fixture.detectChanges();
 
-    for (const testId of ['venue-name', 'venue-beach', 'venue-region']) {
+    for (const testId of ['venue-name', 'venue-beach']) {
       const control = byId(testId);
       const errorId = control.getAttribute('aria-describedby');
       expect(errorId).toBeTruthy();

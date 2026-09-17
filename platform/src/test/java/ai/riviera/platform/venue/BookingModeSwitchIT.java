@@ -67,7 +67,7 @@ class BookingModeSwitchIT {
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
-								{"name":"Mode Switch Club","beach":"Ksamil","region":"Riviera",
+								{"name":"Mode Switch Club","beach":"KSAMIL",
 								 "description":"x","bookingMode":"REQUEST","bookingCutoff":"18:00",
 								 "salesClose":"16:00","amenities":[],"distanceToWaterM":null,
 								 "expectedVersion":0}
@@ -83,7 +83,7 @@ class BookingModeSwitchIT {
 		MvcResult result = mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
-								{"name":"%s","beach":"Ksamil","region":"Riviera","description":"x",
+								{"name":"%s","beach":"KSAMIL","description":"x",
 								 "bookingMode":"INSTANT","payoutCurrency":"EUR",
 								 "bookingCutoff":"18:00"}
 								""".formatted(name)))

@@ -1,3 +1,4 @@
+import { BeachCode } from '../shared/beaches';
 import { BookingMode } from '../shared/venue-views';
 
 /**
@@ -14,8 +15,8 @@ import { BookingMode } from '../shared/venue-views';
  */
 export interface CreateVenueRequest {
   readonly name: string;
-  readonly beach: string;
-  readonly region: string;
+  /** A catalogue code (`shared/beaches.ts`); the region is derived server-side, never sent. */
+  readonly beach: BeachCode;
   readonly description: string;
   readonly bookingMode: BookingMode;
   readonly payoutCurrency: string;

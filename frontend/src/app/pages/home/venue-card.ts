@@ -1,4 +1,5 @@
 import { Amenity } from '../../shared/amenities';
+import { BeachCode } from '../../shared/beaches';
 import { MoneyView } from '../../shared/money';
 import { PhotoView, VenueLocation } from '../../shared/venue-views';
 
@@ -14,8 +15,11 @@ import { PhotoView, VenueLocation } from '../../shared/venue-views';
 export interface VenueCard {
   readonly id: number;
   readonly name: string;
-  readonly beach: string;
-  readonly region: string;
+  /** The catalogue code — what the pins group on and the filter narrows to. */
+  readonly beach: BeachCode;
+  /** The beach and region as the tourist reads them (`shared/beaches.ts`). */
+  readonly beachLabel: string;
+  readonly regionLabel: string;
   /** The slideshow's photo URLs in slot order (cover first); empty → the gradient placeholder. */
   readonly photos: readonly PhotoView[];
   readonly modeLabel: string;

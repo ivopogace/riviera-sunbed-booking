@@ -151,7 +151,7 @@ class OperatorSuspensionRevocationIT {
 		return post("/api/venues")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-						{"name": "%s", "beach": "Test Beach", "region": "Test Region",
+						{"name": "%s", "beach":"KSAMIL",
 						 "bookingMode": "INSTANT", "payoutCurrency": "EUR"}"""
 						.formatted(name));
 	}

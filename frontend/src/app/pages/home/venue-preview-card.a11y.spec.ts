@@ -13,7 +13,7 @@ import { VenuePreviewCard } from './venue-preview-card';
  * sales for today have closed. Colour contrast is proven deterministically in
  * `venue-preview-card.contrast.spec.ts` — axe cannot measure it under jsdom.
  */
-const FOLIE = venueCard({ id: 12, name: 'Folie Marine', beach: 'Dhërmi' });
+const FOLIE = venueCard({ id: 12, name: 'Folie Marine', beach: 'DHERMI' });
 const FOLIE_STACK: CrowdStack = { index: 1, count: 3, place: 'Dhërmi', prevId: '11', nextId: '13' };
 
 describe('VenuePreviewCard accessibility', () => {

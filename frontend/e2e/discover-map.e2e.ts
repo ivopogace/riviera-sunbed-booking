@@ -532,7 +532,7 @@ test.describe('Discover map — crowded pins, fake engine', () => {
 
     await ksamil.click();
 
-    await expect(page.getByTestId('filter-beach')).toHaveValue('Ksamil');
+    await expect(page.getByTestId('filter-beach')).toHaveValue('KSAMIL');
     await expect(page.getByTestId('venue-card')).toHaveCount(2);
     const crumb = page.getByTestId('map-beach-crumb');
     await expect(crumb).toHaveText('Ksamil ×');
@@ -575,7 +575,7 @@ test.describe('Discover map — crowded pins, fake engine', () => {
       'aria-label',
       '3 venues at Dhërmi, from €24; press to open Aurora Bay',
     );
-    await expect(page.getByTestId('filter-beach')).toHaveValue('Dhërmi');
+    await expect(page.getByTestId('filter-beach')).toHaveValue('DHERMI');
     await expect(page.getByTestId('venue-card')).toHaveCount(3);
     await settleAnimations(pill);
     await expectNoSeriousAxeViolations(page, 'Discover with an inverted place pill');

@@ -16,8 +16,9 @@ import { VenueCard } from './venue-card';
 
 function card(overrides: Partial<VenueCard> & Pick<VenueCard, 'id' | 'name'>): VenueCard {
   return {
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    beachLabel: 'Ksamil',
+    regionLabel: 'Sarandë',
     photos: [],
     modeLabel: 'Instant Book',
     isRated: true,

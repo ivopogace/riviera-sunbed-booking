@@ -159,7 +159,7 @@ class RemodelReceiptIT {
 
 	private long createVenue(String name) throws Exception {
 		String body = """
-				{"name":"%s","beach":"Ksamil","region":"Riviera","description":"x",
+				{"name":"%s","beach":"KSAMIL","description":"x",
 				 "bookingMode":"INSTANT","payoutCurrency":"EUR","bookingCutoff":"18:00"}
 				""".formatted(name + " " + System.nanoTime());
 		MvcResult result = mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())

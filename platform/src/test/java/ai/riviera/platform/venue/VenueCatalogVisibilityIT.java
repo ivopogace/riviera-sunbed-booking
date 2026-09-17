@@ -71,8 +71,8 @@ class VenueCatalogVisibilityIT {
 
 	private VenueId ownedVenue(String name, OperatorId owner) {
 		long id = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES (:name, 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR') RETURNING id
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR') RETURNING id
 				""").param("name", name).query(Long.class).single();
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:venue, :operator)")
 				.param("venue", id)
@@ -159,8 +159,8 @@ class VenueCatalogVisibilityIT {
 	@Test
 	void unownedVenueIsHiddenFailClosed() {
 		long id = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('viscat orphan venue', 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR') RETURNING id
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('viscat orphan venue', 'KSAMIL', 'INSTANT', 1500, 'EUR') RETURNING id
 				""").query(Long.class).single();
 
 		assertFalse(isListed("viscat orphan venue"));

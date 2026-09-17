@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import ai.riviera.platform.venue.domain.SalesClose;
+import ai.riviera.platform.venue.vocabulary.Beach;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 
 /**
@@ -65,6 +66,13 @@ final class VenueFieldValidation {
 	static void requireCutoff(LocalTime cutoff) {
 		if (cutoff == null) {
 			throw new IllegalArgumentException("bookingCutoff is required");
+		}
+	}
+
+	/** Presence only — off-catalogue values are already unrepresentable in the {@link Beach} type. */
+	static void requireBeach(Beach beach) {
+		if (beach == null) {
+			throw new IllegalArgumentException("beach is required");
 		}
 	}
 

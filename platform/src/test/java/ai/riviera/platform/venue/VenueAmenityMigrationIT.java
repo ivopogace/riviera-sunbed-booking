@@ -33,8 +33,8 @@ class VenueAmenityMigrationIT {
 	/** A fresh, minimal venue so each test isolates the amenity/distance constraint it targets. */
 	private long newVenue() {
 		return jdbc.queryForObject("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('T7 amenity test', 'Test beach', 'Test region', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('T7 amenity test', 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""", Long.class);
 	}
