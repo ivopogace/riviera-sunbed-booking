@@ -245,7 +245,7 @@ The list card's inline footer count and its inline sales-closed chip are replace
 
 ## Open questions / Assumptions
 
-- **Assumption:** the inactive dots are decorative (the current slot is the accent pill at 3:1 and
+- **Assumption (resolved in phase 2, recorded in `venue-preview-card.contrast.spec.ts`'s header):** the inactive dots are decorative (the current slot is the accent pill at 3:1 and
   the `k/n` on the pill states the count), so their `card-ink-soft/35` tint is not held to 1.4.11 —
   the same reading `photo-slideshow.contrast.spec.ts` records for the inert Discover rail. —
   *Owner:* agent · *Resolves by:* phase 2 (recorded in the contrast spec's header).
@@ -287,15 +287,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** phase 2 step 1 — the failing `venue-preview-card*.spec.ts` stepper cases (AC-6..10).
+**Next action:** phase 3 step 1 — the failing `home.spec.ts` / `home.a11y.spec.ts` cases (AC-11..13).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The shared footer pieces; sets free and sales closed on the preview | ✅ | `d2cac6d0` |
-| 1 — The layer's stack | ✅ | the phase-1 commit (`Pin layer: expose the open crowd's stack for the preview card`) |
-| 2 — The card's stepper | | |
+| 1 — The layer's stack | ✅ | `680abbf7` |
+| 2 — The card's stepper | ✅ | the phase-2 commit (`Pin preview: the crowd stepper — dots, chevrons and the position announcement`) |
 | 3 — Discover wiring | | |
 | 4 — Mocked e2e | | |
 | 5 — Close-out | | |
@@ -373,13 +373,13 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `venue-preview-card.ts`, `.html` · Test `venue-preview-card.spec.ts`, `.a11y.spec.ts`, `.contrast.spec.ts`
 
-- [ ] **Step 1: Failing tests** — AC-6..10.
-- [ ] **Step 2: Run, verify FAIL** — `--include="src/app/pages/home/venue-preview-card*.spec.ts"`.
-- [ ] **Step 3: Minimal implementation** — `stack` input, `stepped` output, `stackDots`, `stackPosition`; the template block from the prototype with the `‹`/`›` glyphs, `appTouchTarget` on both, one `CHEVRON_CLASSES` constant, the live region mounted for the card's life.
-- [ ] **Step 4: Run, verify PASS**, then `npm run test:a11y`.
-- [ ] **Step 5: Generalization audit** — population: every control on the card (`grep -n "<button\|<a " frontend/src/app/pages/home/venue-preview-card.html`) → close, `‹`, `›`, the link; every one carries `appTouchTarget`; `node scripts/check-touch-target.mjs --files frontend/src/app/pages/home/venue-preview-card.html` green.
-- [ ] **Step 6: Commit** — `Pin preview: the crowd stepper — dots, chevrons and the position announcement (#1139)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Failing tests** — AC-6..10.
+- [x] **Step 2: Run, verify FAIL** — `--include="src/app/pages/home/venue-preview-card*.spec.ts"`.
+- [x] **Step 3: Minimal implementation** — `stack` input, `stepped` output, `stackDots`, `stackPosition`; the template block from the prototype with the `‹`/`›` glyphs, `appTouchTarget` on both, one `CHEVRON_CLASSES` constant, the live region mounted for the card's life.
+- [x] **Step 4: Run, verify PASS**, then `npm run test:a11y`.
+- [x] **Step 5: Generalization audit** — population: every control on the card (`grep -n "<button\|<a " frontend/src/app/pages/home/venue-preview-card.html`) → close, `‹`, `›`, the link; every one carries `appTouchTarget`; `node scripts/check-touch-target.mjs --files frontend/src/app/pages/home/venue-preview-card.html` green.
+- [x] **Step 6: Commit** — `Pin preview: the crowd stepper — dots, chevrons and the position announcement (#1139)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 3 — Discover wiring
 
@@ -418,6 +418,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 |---|---|---|---|---|---|
 | 2026-09-17 | phase 0 | every renderer of the footer's count or the sales-closed chip | `grep -rn "of {{ card.total }} free\|Sales closed for today" frontend/src/app --include=*.html --include=*.ts \| grep -v spec` | `shared/sales-closed-chip.ts` only (the list band and the preview both render it; the count is `app-sets-free` on both) | done — `venue-map.html`'s `map-sales-closed` is an alert with its own copy, not the chip, and stays |
 | 2026-09-17 | phase 1 | every reader of the crowd's neighbour rule (index modulo the member count) | `grep -n "members\[(" frontend/src/app/pages/home/venue-pin-layer.ts` | `describe`'s `next`, the stack's `prevId` | the stack's `nextId` reuses the place's `next`; only `prevId` indexes on its own, against the same `crowd.members` |
+| 2026-09-17 | phase 2 | every control on the preview card | `grep -n "<button\|<a " frontend/src/app/pages/home/venue-preview-card.html` | close, `‹`, `›`, the beach-map link | every one carries `appTouchTarget`; `check-touch-target.mjs` green over the diff |
 
 ---
 

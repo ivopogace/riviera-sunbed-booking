@@ -2,8 +2,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { venueCard } from '../../../testing/venue-cards';
+import { CrowdStack } from './pin-crowding';
 import { VenueCard } from './venue-card';
 import { VenuePreviewCard } from './venue-preview-card';
+
+/** Folie Marine, second of the three at Dhërmi that no zoom separates. */
+const FOLIE = venueCard({ id: 12, name: 'Folie Marine', beach: 'Dhërmi' });
+const FOLIE_STACK: CrowdStack = { index: 1, count: 3, place: 'Dhërmi', prevId: '11', nextId: '13' };
 
 function card(overrides: Partial<VenueCard> = {}): VenueCard {
   return venueCard({
@@ -28,6 +33,7 @@ describe('VenuePreviewCard', () => {
   function render(
     view: VenueCard = card(),
     date = '2026-07-01',
+    stack: CrowdStack | null = null,
   ): ComponentFixture<VenuePreviewCard> {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -37,6 +43,7 @@ describe('VenuePreviewCard', () => {
     const fixture = TestBed.createComponent(VenuePreviewCard);
     fixture.componentRef.setInput('card', view);
     fixture.componentRef.setInput('date', date);
+    fixture.componentRef.setInput('stack', stack);
     fixture.detectChanges();
     return fixture;
   }
@@ -156,5 +163,86 @@ describe('VenuePreviewCard', () => {
     const close = byTestId(render(), 'preview-close') as HTMLButtonElement;
 
     expect(close.getAttribute('aria-label')).toBe('Close preview');
+  });
+
+  describe('the crowd stepper', () => {
+    it('carries the crowd stepper while its venue is one of an inseparable crowd', () => {
+      const fixture = render(FOLIE, '2026-07-01', FOLIE_STACK);
+
+      const stepper = byTestId(fixture, 'preview-stack');
+      expect(stepper?.getAttribute('role')).toBe('group');
+      expect(stepper?.getAttribute('aria-label')).toBe('3 venues at Dhërmi');
+      const prev = byTestId(fixture, 'preview-stack-prev') as HTMLButtonElement;
+      const next = byTestId(fixture, 'preview-stack-next') as HTMLButtonElement;
+      expect(prev.type).toBe('button');
+      expect(prev.getAttribute('aria-label')).toBe('Previous venue at Dhërmi');
+      expect(next.getAttribute('aria-label')).toBe('Next venue at Dhërmi');
+      expect(text(prev)).toBe('‹');
+      expect(text(next)).toBe('›');
+      const dots = byTestId(fixture, 'preview-stack-dots');
+      expect(dots?.getAttribute('aria-hidden')).toBe('true');
+      const marks = [...dots!.children].map((dot) => dot.hasAttribute('data-current'));
+      expect(marks).toEqual([false, true, false]);
+      expect(byTestId(fixture, 'preview-stack-count')).toBeNull();
+      const position = byTestId(fixture, 'preview-stack-position');
+      expect(position?.getAttribute('aria-live')).toBe('polite');
+      expect(text(position)).toBe('2 of 3 here, Folie Marine');
+    });
+
+    it('carries no stepper for a venue on its own, keeping the live region mounted', () => {
+      const fixture = render();
+
+      expect(byTestId(fixture, 'preview-stack')).toBeNull();
+      const position = byTestId(fixture, 'preview-stack-position');
+      expect(position).not.toBeNull();
+      expect(text(position)).toBe('');
+    });
+
+    it('steps to the neighbour on either side', () => {
+      const fixture = render(FOLIE, '2026-07-01', FOLIE_STACK);
+      const stepped: string[] = [];
+      fixture.componentInstance.stepped.subscribe((id) => stepped.push(id));
+
+      (byTestId(fixture, 'preview-stack-prev') as HTMLButtonElement).click();
+      (byTestId(fixture, 'preview-stack-next') as HTMLButtonElement).click();
+
+      expect(stepped).toEqual(['11', '13']);
+    });
+
+    it('keeps its controls across a step', () => {
+      const fixture = render(FOLIE, '2026-07-01', FOLIE_STACK);
+      const next = byTestId(fixture, 'preview-stack-next');
+
+      fixture.componentRef.setInput('card', venueCard({ id: 13, name: 'Dhërmi Sun Club' }));
+      fixture.componentRef.setInput('stack', {
+        ...FOLIE_STACK,
+        index: 2,
+        prevId: '12',
+        nextId: '11',
+      });
+      fixture.detectChanges();
+
+      expect(byTestId(fixture, 'preview-stack-next')).toBe(next);
+      expect(text(byTestId(fixture, 'preview-stack-position'))).toBe(
+        '3 of 3 here, Dhërmi Sun Club',
+      );
+      const marks = [...byTestId(fixture, 'preview-stack-dots')!.children].map((dot) =>
+        dot.hasAttribute('data-current'),
+      );
+      expect(marks).toEqual([false, false, true]);
+    });
+
+    it('shows a count instead of dots past six venues', () => {
+      const six = render(FOLIE, '2026-07-01', { ...FOLIE_STACK, count: 6 });
+      expect(byTestId(six, 'preview-stack-dots')?.children.length).toBe(6);
+      expect(byTestId(six, 'preview-stack-count')).toBeNull();
+
+      const seven = render(FOLIE, '2026-07-01', { ...FOLIE_STACK, index: 2, count: 7 });
+      expect(byTestId(seven, 'preview-stack-dots')).toBeNull();
+      const count = byTestId(seven, 'preview-stack-count');
+      expect(text(count)).toBe('3 / 7');
+      expect(count?.getAttribute('aria-hidden')).toBe('true');
+      expect(text(byTestId(seven, 'preview-stack-position'))).toBe('3 of 7 here, Folie Marine');
+    });
   });
 });
