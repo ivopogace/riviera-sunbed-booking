@@ -5,6 +5,7 @@ import {
   TestRequest,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
@@ -13,6 +14,7 @@ import { FakeMapEngine } from '../../shared/fake-map-engine';
 import { FakeGeolocationGateway } from '../../../testing/fake-geolocation';
 import { GeolocationGateway } from '../../shared/geolocation';
 import { MapEngine } from '../../shared/map-engine';
+import { RIVIERA_MAP_OPTIONS, RivieraMap } from '../../shared/riviera-map';
 import { VenueSummary } from '../../shared/venue-views';
 import { Home } from './home';
 
@@ -220,6 +222,31 @@ describe('Home accessibility (axe)', () => {
     fixture.detectChanges();
 
     expect(host().querySelector('[data-testid="preview-closed"]')).not.toBeNull();
+    await expectNoAxeViolations(host());
+  });
+
+  it("has no violations with an inseparable crowd's preview and its stepper open over the map", async () => {
+    const [, aurora] = pinnedVenues();
+    const dhermi = [
+      aurora,
+      { ...aurora, id: 5, name: 'Folie Marine' },
+      { ...aurora, id: 6, name: 'Dhërmi Sun Club' },
+    ];
+    await openMap(dhermi);
+    const map = fixture.debugElement.query(By.directive(RivieraMap))
+      .componentInstance as RivieraMap;
+    map
+      .handle()!
+      .setView({ center: { lng: 19.6401, lat: 40.1573 }, zoom: RIVIERA_MAP_OPTIONS.maxZoom });
+    fixture.detectChanges();
+
+    host().querySelector<HTMLButtonElement>('[data-testid="map-place-pill"]')!.click();
+    fixture.detectChanges();
+    listRequest().flush(dhermi);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host().querySelector('[data-testid="preview-stack-dots"]')).not.toBeNull();
     await expectNoAxeViolations(host());
   });
 });

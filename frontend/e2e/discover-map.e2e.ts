@@ -602,13 +602,43 @@ test.describe('Discover map — crowded pins, fake engine', () => {
     await expectTouchTargets(page, 'Discover pressed through a crowd');
     await expectNoSeriousAxeViolations(page, 'Discover pressed through a crowd');
 
+    // The card's own stepper walks the same crowd: the pressed chevron keeps focus, the pill follows.
+    const stepper = preview.getByRole('group', { name: '3 venues at Dhërmi' });
+    await expect(stepper).toBeVisible();
+    const next = preview.getByRole('button', { name: 'Next venue at Dhërmi' });
+    const prev = preview.getByRole('button', { name: 'Previous venue at Dhërmi' });
+    const position = preview.getByTestId('preview-stack-position');
+    await expect(position).toHaveText('2 of 3 here, Folie Marine');
+    await expect(preview.getByTestId('preview-availability')).toHaveText('2 of 34 free');
+    // Pressed again and again to walk the crowd: the chevrons keep their double-tap, like the pill.
+    await expectTouchManipulation(
+      page,
+      '[data-testid="preview-stack-prev"], [data-testid="preview-stack-next"]',
+      "the stepper's chevrons",
+    );
+
+    await next.click();
+    await expect(preview.getByTestId('preview-name')).toHaveText('Dhërmi Sun Club');
+    await expect(open).toHaveText('Dhërmi Sun Club from €24 3/3');
+    await expect(position).toHaveText('3 of 3 here, Dhërmi Sun Club');
+    await expect(preview.getByTestId('preview-availability')).toHaveText('19 of 22 free');
+    await expect(next).toBeFocused();
+
+    // Wrapping at both ends, as the pill does.
+    await next.click();
+    await expect(preview.getByTestId('preview-name')).toHaveText('Aurora Bay');
+    await expect(position).toHaveText('1 of 3 here, Aurora Bay');
+    await prev.click();
+    await expect(preview.getByTestId('preview-name')).toHaveText('Dhërmi Sun Club');
+    await expect(open).toHaveText('Dhërmi Sun Club from €24 3/3');
+
     await page.keyboard.press('Escape');
 
     // Focus goes back to the venue's own button; with nothing open the pill is the first venue's again.
     await expect(preview).toHaveCount(0);
-    const folie = page.getByRole('button', { name: 'Folie Marine, 2 of 3 venues at Dhërmi' });
-    await expect(folie).toBeFocused();
-    await expect(folie).toHaveCSS('opacity', '1');
+    const sunClub = page.getByRole('button', { name: 'Dhërmi Sun Club, 3 of 3 venues at Dhërmi' });
+    await expect(sunClub).toBeFocused();
+    await expect(sunClub).toHaveCSS('opacity', '1');
     await expect(open).toHaveText('Dhërmi See each venue 3');
   });
 

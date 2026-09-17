@@ -33,7 +33,9 @@ import { isRated, ratingScore, reviewsLabel } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
 import { RIVIERA_MAP_OPTIONS, RivieraMap } from '../../shared/riviera-map';
 import { ClosedForSeasonChip } from '../../shared/closed-for-season-chip';
+import { SalesClosedChip } from '../../shared/sales-closed-chip';
 import { SemanticChip } from '../../shared/semantic-chip';
+import { SetsFree } from '../../shared/sets-free';
 import { defaultBookingDate, formatDayMonth, isIsoDate } from '../../shared/booking-date';
 import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
@@ -93,7 +95,9 @@ function closedStateText(
     CardGlass,
     AmenityChip,
     ClosedForSeasonChip,
+    SalesClosedChip,
     SemanticChip,
+    SetsFree,
     FieldGlass,
     LoadAnnouncer,
     TouchTarget,
@@ -250,6 +254,12 @@ export class Home {
     return this.shownCards().find((card) => String(card.id) === open) ?? null;
   });
 
+  /**
+   * The open venue's place in a crowd the camera cannot separate, from the layer that draws it,
+   * for the preview's stepper; `null` for a venue on its own, so the card draws no stepper.
+   */
+  protected readonly crowdStack = computed(() => this.pinLayer()?.stack() ?? null);
+
   /** Guards against an earlier slow response overwriting a newer one (last-writer-wins). */
   private lastRequest = '';
 
@@ -326,9 +336,16 @@ export class Home {
     }
   }
 
+  /**
+   * Open a venue's preview: from a pin (or a pill's press-again), which moves focus into the
+   * dialog, or from the open preview's own stepper, which leaves focus where it is — the dialog
+   * stays mounted across a step, so the pressed chevron keeps it.
+   */
   protected onPinSelected(id: string): void {
     this.selectedVenue.set(id);
-    this.focusAfterRender('venue-preview');
+    if (!this.previewHoldsFocus()) {
+      this.focusAfterRender('venue-preview');
+    }
     this.revealCard(id);
   }
 

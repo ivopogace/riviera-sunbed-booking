@@ -69,16 +69,20 @@ model in `docs/architecture/domain-model.md`.
   result set that has a venue location, so it and the card list always show the same venues.
   _Avoid_: venue map.
 - **Pin preview** — the compact card a tourist opens from a venue's pin on the Discover riviera
-  map, showing what that venue's card shows and leading to its beach map. _Avoid_: popup,
-  tooltip, info window.
+  map, showing what that venue's card shows — its sets free (`18 of 24 free`) and its
+  sales-closed or closed-for-season badge included — and leading to its beach map. Opened from a
+  **pin crowd** the camera cannot separate, it also carries the **crowd stepper**: `‹` dots `›`,
+  walking that crowd's previews in the list's order, wrapping, exactly as the place pill's
+  press-again does. _Avoid_: popup, tooltip, info window.
 - **Pin crowd** — venues whose pins would bury each other on the Discover riviera map at the
   current camera: their pills overlap on screen, which is a property of the camera, not of the
   coordinates. A crowd is drawn as one **place pill** — the beach (or beaches), the crowd's
   lowest from-price and the count — whose press eases the camera to the zoom that separates the
   venues and, when they share one beach, narrows the Beach filter (undone by the crumb on the
   map). Where no zoom the map offers separates them the pill inverts and its presses walk the
-  crowd's previews one by one. A crowd stays one real button per venue, in the list's order, so a
-  keyboard walks exactly what it walks for lone pins. _Avoid_: cluster, marker cluster, spider.
+  crowd's previews one by one, and the open **pin preview**'s crowd stepper walks the same crowd
+  the same way. A crowd stays one real button per venue, in the list's order, so a keyboard walks
+  exactly what it walks for lone pins. _Avoid_: cluster, marker cluster, spider.
 - **Venue location** — a venue's position on the riviera map as a latitude/longitude pin, placed
   by its operator by hand; optional, and a venue without one is simply absent from the riviera map
   while staying in the list. _Avoid_: address, coordinates (as the concept), geolocation (that is

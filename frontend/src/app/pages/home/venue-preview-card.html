@@ -39,6 +39,66 @@
       {{ card().beach }} · {{ card().region }}
     </p>
 
+    @if (stack(); as stack) {
+      <!-- The other venues at this exact spot, one press each way; the chevrons' 44 px boxes overhang the 32 px pill. -->
+      <fieldset
+        class="-my-[6px] inline-flex h-[32px] items-center self-start rounded-full border-0 bg-riv-card-track px-[2px] py-0"
+        data-testid="preview-stack"
+      >
+        <legend class="sr-only">{{ stack.count }} venues at {{ stack.place }}</legend>
+        <button
+          type="button"
+          appTouchTarget
+          [class]="chevronClasses"
+          data-testid="preview-stack-prev"
+          [attr.aria-label]="'Previous venue at ' + stack.place"
+          (click)="stepped.emit(stack.prevId)"
+        >
+          <span aria-hidden="true">‹</span>
+        </button>
+        @if (stackDots().length > 0) {
+          <span
+            class="flex items-center gap-[6px] px-[3px]"
+            aria-hidden="true"
+            data-testid="preview-stack-dots"
+          >
+            @for (dot of stackDots(); track dot) {
+              <span
+                class="h-[8px] rounded-full [transition:background_0.15s_ease,width_0.15s_ease] motion-reduce:transition-none"
+                [class]="
+                  dot === stack.index
+                    ? 'w-[18px] bg-riv-accent-ink'
+                    : 'w-[8px] bg-riv-card-ink-soft/35'
+                "
+                [attr.data-current]="dot === stack.index ? '' : null"
+              ></span>
+            }
+          </span>
+        } @else {
+          <span
+            class="px-[6px] text-[12.5px] font-semibold text-riv-card-ink tabular-nums"
+            aria-hidden="true"
+            data-testid="preview-stack-count"
+            >{{ stack.index + 1 }} / {{ stack.count }}</span
+          >
+        }
+        <button
+          type="button"
+          appTouchTarget
+          [class]="chevronClasses"
+          data-testid="preview-stack-next"
+          [attr.aria-label]="'Next venue at ' + stack.place"
+          (click)="stepped.emit(stack.nextId)"
+        >
+          <span aria-hidden="true">›</span>
+        </button>
+      </fieldset>
+    }
+    <!-- Rationale: shared/load-announcer.ts — mounted for the card's life, so a step is announced and an open is not. -->
+    <output class="sr-only" aria-live="polite" data-testid="preview-stack-position">
+      {{ stackPosition() }}
+    </output>
+
     <p
       class="flex items-center gap-[6px] text-[13px] text-riv-card-ink-soft"
       data-testid="preview-rating"
@@ -58,6 +118,10 @@
       <span class="self-start" data-testid="preview-closed">
         <app-closed-for-season-chip [reopensOn]="card().reopensOn" />
       </span>
+    } @else if (card().salesClosed) {
+      <span class="self-start" data-testid="preview-sales-closed">
+        <app-sales-closed-chip />
+      </span>
     }
 
     <p
@@ -73,6 +137,9 @@
       } @else {
         <span class="text-[13px] text-riv-card-ink-soft">No sets yet</span>
       }
+      <span class="text-[12.5px] text-riv-card-ink-soft" data-testid="preview-availability">
+        <app-sets-free [free]="card().free" [total]="card().total" />
+      </span>
     </p>
 
     <a

@@ -17,6 +17,19 @@ export interface VenuePin {
   readonly card: VenueCard;
 }
 
+/**
+ * Where the open venue stands in a crowd the camera cannot separate — what the pin preview's
+ * stepper shows (`k of n here`) and the two neighbours its chevrons step to, wrapping. Absent for
+ * a venue on its own or in a crowd the camera can still separate; never `1 of 1`.
+ */
+export interface CrowdStack {
+  readonly index: number;
+  readonly count: number;
+  readonly place: string;
+  readonly prevId: string;
+  readonly nextId: string;
+}
+
 /** A pin resolved to the map's own box for the current camera. */
 export interface PlacedPin extends ScreenPoint {
   readonly pin: VenuePin;
