@@ -96,6 +96,9 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
 
     await pill.click();
     await expect(page.getByTestId('venue-preview')).toBeVisible();
+    // Named so the sweep cannot quietly stop covering the card's two chevrons.
+    await expect(page.getByTestId('preview-stack-prev')).toBeVisible();
+    await expect(page.getByTestId('preview-stack-next')).toBeVisible();
     await expectTouchTargets(page, 'tourist home, map view, pressed through a crowd');
   });
 

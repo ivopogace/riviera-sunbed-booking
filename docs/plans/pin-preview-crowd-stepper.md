@@ -287,17 +287,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5 — close-out)`
 
-**Next action:** phase 4 step 1 — extend the mocked press-through e2e and the touch-target sweep (AC-14, AC-15).
+**Next action:** phase 5 — retire slice 1's plan doc, CONTEXT.md, the docs-freshness sweep, merge latest `main`, ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The shared footer pieces; sets free and sales closed on the preview | ✅ | `d2cac6d0` |
 | 1 — The layer's stack | ✅ | `680abbf7` |
 | 2 — The card's stepper | ✅ | `2e4c42d3` |
-| 3 — Discover wiring | ✅ | the phase-3 commit (`Discover: the preview's stepper walks the crowd through the page`) |
-| 4 — Mocked e2e | | |
+| 3 — Discover wiring | ✅ | `81de5bd3` |
+| 4 — Mocked e2e | ✅ | the phase-4 commit (`Discover e2e: the card's stepper walks the crowd; the sweep measures its chevrons`) |
 | 5 — Close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -397,12 +397,12 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `frontend/e2e/discover-map.e2e.ts`, `frontend/e2e/touch-targets-tourist.e2e.ts`
 
-- [ ] **Step 1: Failing tests** — AC-14, AC-15.
-- [ ] **Step 2: Run, verify** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/discover-map.e2e.ts e2e/touch-targets-tourist.e2e.ts`.
-- [ ] **Step 3–4:** fix anything the browser shows that jsdom could not.
-- [ ] **Step 5: Generalization audit** — population: every e2e that opens a pin preview (`grep -rln "venue-preview" frontend/e2e`) → still green; the sweep's pressed-through state now measures the chevrons.
-- [ ] **Step 6: Commit** — `Discover e2e: the card's stepper walks the crowd; the sweep measures its chevrons (#1139)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Failing tests** — AC-14, AC-15.
+- [x] **Step 2: Run, verify** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/discover-map.e2e.ts e2e/touch-targets-tourist.e2e.ts`.
+- [x] **Step 3–4:** fix anything the browser shows that jsdom could not.
+- [x] **Step 5: Generalization audit** — population: every e2e that opens a pin preview (`grep -rln "venue-preview" frontend/e2e`) → still green; the sweep's pressed-through state now measures the chevrons.
+- [x] **Step 6: Commit** — `Discover e2e: the card's stepper walks the crowd; the sweep measures its chevrons (#1139)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 5 — Close-out
 
@@ -420,6 +420,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | 2026-09-17 | phase 1 | every reader of the crowd's neighbour rule (index modulo the member count) | `grep -n "members\[(" frontend/src/app/pages/home/venue-pin-layer.ts` | `describe`'s `next`, the stack's `prevId` | the stack's `nextId` reuses the place's `next`; only `prevId` indexes on its own, against the same `crowd.members` |
 | 2026-09-17 | phase 2 | every control on the preview card | `grep -n "<button\|<a " frontend/src/app/pages/home/venue-preview-card.html` | close, `‹`, `›`, the beach-map link | every one carries `appTouchTarget`; `check-touch-target.mjs` green over the diff |
 | 2026-09-17 | phase 3 | every caller of `onPinSelected` | `grep -n "onPinSelected" frontend/src/app/pages/home/home.html frontend/src/app/pages/home/home.ts` | the layer's `chosen`, the card's `stepped` | one focus rule serves both: move into the dialog unless it already holds focus |
+| 2026-09-17 | phase 4 | every e2e that opens a pin preview | `grep -rln "venue-preview" frontend/e2e` | `discover-map.e2e.ts`, `touch-targets-tourist.e2e.ts` | both green in Chromium with the stepper on the card; the sweep's pressed-through state names the chevrons |
 
 ---
 
