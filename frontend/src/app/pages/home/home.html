@@ -398,7 +398,9 @@
             class="absolute inset-x-3 bottom-[58px] z-[5]"
             [card]="selected"
             [date]="selectedDate()"
+            [stack]="crowdStack()"
             (closed)="closePreview()"
+            (stepped)="onPinSelected($event)"
           />
         }
       } @placeholder {

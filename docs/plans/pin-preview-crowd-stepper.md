@@ -234,14 +234,14 @@ The list card's inline footer count and its inline sales-closed chip are replace
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `onPinSelected`'s focus move pulls focus off the pressed chevron, so a keyboard user steps once and lands on the dialog | certain | high | the move is skipped when the preview already holds focus (`previewHoldsFocus()`); AC-11 and AC-14 assert the chevron stays focused | agent | open |
-| R-2 | The live region announces nothing on the first open (born with its text) or twice on a step | low | med | one `<output aria-live="polite">` mounted for the card's whole life (`shared/load-announcer.ts` shape), text empty without a stack; RV-FE-10 | agent | open |
-| R-3 | The stepper's inks fail AA on the card track in the dark theme (light ink on a light track over dark glass) | med | med | `venue-preview-card.contrast.spec.ts` composites the track over the glass over every stop per theme, chevrons at AA normal, active dot at 3:1; alphas retuned if any fails | agent | open |
-| R-4 | Sonar duplication: the two chevron buttons share a class string | med | low | one `CHEVRON_CLASSES` constant bound with `[class]` on both | agent | open |
+| R-1 | `onPinSelected`'s focus move pulls focus off the pressed chevron, so a keyboard user steps once and lands on the dialog | certain | high | the move is skipped when the preview already holds focus (`previewHoldsFocus()`); AC-11 and AC-14 assert the chevron stays focused | agent | closed — phase 3 |
+| R-2 | The live region announces nothing on the first open (born with its text) or twice on a step | low | med | one `<output aria-live="polite">` mounted for the card's whole life (`shared/load-announcer.ts` shape), text empty without a stack; RV-FE-10 | agent | closed — phase 2 |
+| R-3 | The stepper's inks fail AA on the card track in the dark theme (light ink on a light track over dark glass) | med | med | `venue-preview-card.contrast.spec.ts` composites the track over the glass over every stop per theme, chevrons at AA normal, active dot at 3:1; alphas retuned if any fails | agent | closed — phase 2 (every pair clears in all three themes without a retune) |
+| R-4 | Sonar duplication: the two chevron buttons share a class string | med | low | one `CHEVRON_CLASSES` constant bound with `[class]` on both | agent | closed — phase 2 |
 | R-5 | `check-inline-comments` rejects provenance inside a touched doc comment | med | low | no issue/PR number in any doc comment; the `venueCard()` TSDoc touched here cites none | agent | open |
-| R-6 | The list's swap to `app-sets-free` shifts the footer (a `contents` host, no box) | low | low | the host is `display: contents`, the wrapping span keeps its classes; `home.spec.ts`'s footer assertions unchanged | agent | open |
-| R-7 | A `stack` for a lone pin renders `1/1` | low | med | `here` is false for a crowd of one, so `current` is null and `stack()` is `null`; AC-5 pins the lone case | agent | open |
-| R-8 | Stepping past the last member re-renders the card and drops focus | low | high | the page's `@if (selectedCard(); as selected)` keeps the branch while the value changes; AC-8 asserts the same element survives an input change, AC-11 the page-level focus | agent | open |
+| R-6 | The list's swap to `app-sets-free` shifts the footer (a `contents` host, no box) | low | low | the host is `display: contents`, the wrapping span keeps its classes; `home.spec.ts`'s footer assertions unchanged | agent | closed — phase 0 |
+| R-7 | A `stack` for a lone pin renders `1/1` | low | med | `here` is false for a crowd of one, so `current` is null and `stack()` is `null`; AC-5 pins the lone case | agent | closed — phase 1 |
+| R-8 | Stepping past the last member re-renders the card and drops focus | low | high | the page's `@if (selectedCard(); as selected)` keeps the branch while the value changes; AC-8 asserts the same element survives an input change, AC-11 the page-level focus | agent | closed — phase 3 |
 
 ## Open questions / Assumptions
 
@@ -287,16 +287,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** phase 3 step 1 — the failing `home.spec.ts` / `home.a11y.spec.ts` cases (AC-11..13).
+**Next action:** phase 4 step 1 — extend the mocked press-through e2e and the touch-target sweep (AC-14, AC-15).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The shared footer pieces; sets free and sales closed on the preview | ✅ | `d2cac6d0` |
 | 1 — The layer's stack | ✅ | `680abbf7` |
-| 2 — The card's stepper | ✅ | the phase-2 commit (`Pin preview: the crowd stepper — dots, chevrons and the position announcement`) |
-| 3 — Discover wiring | | |
+| 2 — The card's stepper | ✅ | `2e4c42d3` |
+| 3 — Discover wiring | ✅ | the phase-3 commit (`Discover: the preview's stepper walks the crowd through the page`) |
 | 4 — Mocked e2e | | |
 | 5 — Close-out | | |
 
@@ -385,13 +385,13 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `home.ts`, `home.html` · Test `home.spec.ts`, `home.a11y.spec.ts`
 
-- [ ] **Step 1: Failing tests** — AC-11..13.
-- [ ] **Step 2: Run, verify FAIL** — `--include="src/app/pages/home/home.spec.ts"`.
-- [ ] **Step 3: Minimal implementation** — `crowdStack`; `[stack]`/`(stepped)` on the card; `onPinSelected` skips the focus move when `previewHoldsFocus()`.
-- [ ] **Step 4: Run, verify PASS** — `home*.spec.ts`; then `npm run lint`, `npm run format:check`, `npm test`.
-- [ ] **Step 5: Generalization audit** — population: every caller of `onPinSelected` (`grep -n "onPinSelected" frontend/src/app/pages/home/home.html frontend/src/app/pages/home/home.ts`) → the layer's `chosen` and the card's `stepped`; the focus rule serves both.
-- [ ] **Step 6: Commit** — `Discover: the preview's stepper walks the crowd through the page (#1139)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Failing tests** — AC-11..13.
+- [x] **Step 2: Run, verify FAIL** — `--include="src/app/pages/home/home.spec.ts"`.
+- [x] **Step 3: Minimal implementation** — `crowdStack`; `[stack]`/`(stepped)` on the card; `onPinSelected` skips the focus move when `previewHoldsFocus()`.
+- [x] **Step 4: Run, verify PASS** — `home*.spec.ts`; then `npm run lint`, `npm run format:check`, `npm test`.
+- [x] **Step 5: Generalization audit** — population: every caller of `onPinSelected` (`grep -n "onPinSelected" frontend/src/app/pages/home/home.html frontend/src/app/pages/home/home.ts`) → the layer's `chosen` and the card's `stepped`; the focus rule serves both.
+- [x] **Step 6: Commit** — `Discover: the preview's stepper walks the crowd through the page (#1139)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 4 — Mocked e2e
 
@@ -419,6 +419,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | 2026-09-17 | phase 0 | every renderer of the footer's count or the sales-closed chip | `grep -rn "of {{ card.total }} free\|Sales closed for today" frontend/src/app --include=*.html --include=*.ts \| grep -v spec` | `shared/sales-closed-chip.ts` only (the list band and the preview both render it; the count is `app-sets-free` on both) | done — `venue-map.html`'s `map-sales-closed` is an alert with its own copy, not the chip, and stays |
 | 2026-09-17 | phase 1 | every reader of the crowd's neighbour rule (index modulo the member count) | `grep -n "members\[(" frontend/src/app/pages/home/venue-pin-layer.ts` | `describe`'s `next`, the stack's `prevId` | the stack's `nextId` reuses the place's `next`; only `prevId` indexes on its own, against the same `crowd.members` |
 | 2026-09-17 | phase 2 | every control on the preview card | `grep -n "<button\|<a " frontend/src/app/pages/home/venue-preview-card.html` | close, `‹`, `›`, the beach-map link | every one carries `appTouchTarget`; `check-touch-target.mjs` green over the diff |
+| 2026-09-17 | phase 3 | every caller of `onPinSelected` | `grep -n "onPinSelected" frontend/src/app/pages/home/home.html frontend/src/app/pages/home/home.ts` | the layer's `chosen`, the card's `stepped` | one focus rule serves both: move into the dialog unless it already holds focus |
 
 ---
 

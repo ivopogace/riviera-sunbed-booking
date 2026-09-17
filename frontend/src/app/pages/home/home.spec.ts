@@ -1045,6 +1045,14 @@ describe('Home (venue pins and the preview)', () => {
     expect(
       preview(fixture)?.querySelector('[data-testid="preview-name"]')?.textContent?.trim(),
     ).toBe('Aurora Bay');
+    // A venue on its own walks nowhere; the deciding fact the list card carries is here too.
+    expect(preview(fixture)?.querySelector('[data-testid="preview-stack"]')).toBeNull();
+    expect(
+      preview(fixture)
+        ?.querySelector('[data-testid="preview-availability"]')
+        ?.textContent?.replace(/\s+/g, ' ')
+        .trim(),
+    ).toBe('5 of 10 free');
   });
 
   it('opens one preview at a time', async () => {
@@ -1367,5 +1375,72 @@ describe('Home (venue pins and the preview)', () => {
 
     expect(preview(fixture)).toBeNull();
     expect(document.activeElement).toBe(folie);
+  });
+
+  it("walks an inseparable crowd from the preview card's stepper, wrapping, with focus kept on the chevron", async () => {
+    const fixture = await withVenues(inseparableVenues());
+    document.body.appendChild(el(fixture));
+    try {
+      mapHandle(fixture).setView({
+        center: { lng: 19.6401, lat: 40.1573 },
+        zoom: RIVIERA_MAP_OPTIONS.maxZoom,
+      });
+      await settle(fixture);
+      const pill = el(fixture).querySelector<HTMLButtonElement>('[data-testid="map-place-pill"]')!;
+      pill.click();
+      await settle(fixture);
+      httpMock
+        .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+        .flush(inseparableVenues());
+      await settle(fixture);
+      const card = preview(fixture)!;
+      const name = (): string =>
+        card.querySelector('[data-testid="preview-name"]')?.textContent?.trim() ?? '';
+      const position = (): string =>
+        card
+          .querySelector('[data-testid="preview-stack-position"]')
+          ?.textContent?.replace(/\s+/g, ' ')
+          .trim() ?? '';
+      expect(name()).toBe('Aurora Bay');
+      expect(position()).toBe('1 of 3 here, Aurora Bay');
+      const next = card.querySelector<HTMLButtonElement>('[data-testid="preview-stack-next"]')!;
+      const prev = card.querySelector<HTMLButtonElement>('[data-testid="preview-stack-prev"]')!;
+
+      next.focus();
+      next.click();
+      await settle(fixture);
+
+      // The same dialog, re-fed: the pressed chevron is still the focused element.
+      expect(preview(fixture)).toBe(card);
+      expect(name()).toBe('Folie Marine');
+      expect(position()).toBe('2 of 3 here, Folie Marine');
+      expect(document.activeElement).toBe(next);
+      // The pill follows the open venue: it is now Folie's own button, wearing its name and place.
+      const face = el(fixture).querySelector<HTMLButtonElement>('[data-testid="map-place-pill"]')!;
+      expect(face).not.toBe(pill);
+      expect(face.textContent?.replace(/\s+/g, ' ').trim()).toBe('Folie Marine from €39 2/3');
+
+      next.click();
+      await settle(fixture);
+      expect(name()).toBe('Dhërmi Sun Club');
+      next.click();
+      await settle(fixture);
+      expect(name()).toBe('Aurora Bay');
+      expect(position()).toBe('1 of 3 here, Aurora Bay');
+
+      prev.click();
+      await settle(fixture);
+      expect(name()).toBe('Dhërmi Sun Club');
+      expect(position()).toBe('3 of 3 here, Dhërmi Sun Club');
+      expect(document.activeElement).toBe(next);
+
+      el(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settle(fixture);
+
+      expect(preview(fixture)).toBeNull();
+      expect(document.activeElement?.getAttribute('data-pin')).toBe('6');
+    } finally {
+      el(fixture).remove();
+    }
   });
 });
