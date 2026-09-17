@@ -90,6 +90,27 @@ Measured, not eyeballed (`npm run prototype:1134:shots` prints them):
 | D's chip press, then the card's `›` three times                                         | Havana Beach → Folie Marine → Dhërmi Sun Club → Havana Beach                    |
 | Focus on the `6` crowd's control, then a wheel zoom that splits it (`6` → `5` + Livadh) | **B:** the button is rebuilt, focus is lost. **D:** same element, still focused |
 
+## Since the first pass: `main` now writes the price on every pin (#1137)
+
+The branch carries `main` as of #1137, merged after the verdicts below were written. That change
+alters the premise the prototype started from, in three ways the verdicts should be read with:
+
+- **The production pin is no longer an anonymous 44 px dot.** It is a 44 px-high pill wearing the
+  venue's from-price (`€24`), widening with its text; `MapPin` gained an optional `badge`. A, B and
+  C still draw the pre-#1137 disc (`MAP_CHROME_DISC` is that skin, lifted before the change), so
+  their screenshots understate today's crowding: a pill 60–70 px wide overlaps its neighbour
+  sooner than a 44 px disc does, and `CROWD_PX` would have to grow with the widest badge.
+- **D's "pin itself" axis is now partly spent on `main`**, and in the direction of price rather
+  than name. D's coin-and-lozenge is the natural home for both: the coin keeps the count, the
+  lozenge can carry the venue's name and its from-price — which also closes D's "the card has no
+  sets-free count" gap only if the card gains it too. That is a refinement of D, not a new variant.
+- **B's one remaining advantage narrows.** With the price already on every pin, B's side-by-side
+  price comparison is something the map now offers for free where pins do not crowd; the sheet's
+  case rests on sets free and on crowds of four or more alone.
+
+Nothing in this section was re-measured; it is the reading of a merge, and the next pass should
+re-take the matrix with pins drawn at #1137's width before trusting any overlap number above 44 px.
+
 ## The first pass's claims, checked
 
 Each line of the first pass's verdict was taken as a claim. Where the second pass disagrees, it says so.
