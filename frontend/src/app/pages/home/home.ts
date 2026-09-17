@@ -485,6 +485,7 @@ export class Home {
       amenities,
       freePercent,
       priceLabel,
+      fromPrice: venue.fromPrice ?? null,
       free,
       total,
       salesClosed,

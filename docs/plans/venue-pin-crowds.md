@@ -343,14 +343,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)` — phase 0 green and committed.
+**Stage pointer:** `implement (phase 2)` — phases 0–1 green and committed; draft PR #1138 open.
 
-**Next action:** Phase 1, step 1: the failing `pin-crowding.spec.ts` (AC-4..8).
+**Next action:** Phase 2, step 1: the failing `venue-pin-layer.spec.ts` (AC-9..13).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the port: `project`, `onMove`, `easeTo` in both adapters | ✅ | phase-0 commit (this one) |
-| 1 — the crowd geometry (`pin-crowding.ts`) | | |
+| 0 — the port: `project`, `onMove`, `easeTo` in both adapters | ✅ | `fa2857e5` |
+| 1 — the crowd geometry (`pin-crowding.ts`) | ✅ | phase-1 commit |
 | 2 — the pin layer (`venue-pin-layer.ts`) + a11y + contrast | | |
 | 3 — Discover wiring, the crumb, `shownCards`; the engine layer retired | | |
 | 4 — mocked e2e: the crowd describe + the touch-target sweep | | |
@@ -491,6 +491,7 @@ it('turns a click on its surface into the position under it', async () => { /* c
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-17 | phase 0 | every `MapHandle` implementer | `grep -rln "implements MapHandle" frontend/src` | `fake-map-engine.ts`, `maplibre-map-engine.ts` | both carry `project`/`onMove`/`easeTo`; no other implementer |
+| 2026-09-17 | phase 1 | every place a from-price is derived for display | `grep -rn "fromPrice" frontend/src/app --include=*.ts \| grep -v spec` | `home.ts` `toCard`, `venue/venue-map.ts`, `pin-crowding.ts` `lowestFromPrice` | all three take the `MoneyView` and format with `formatMoney`; none parses a label |
 
 ---
 

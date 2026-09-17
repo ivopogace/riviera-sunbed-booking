@@ -14,6 +14,7 @@ function card(overrides: Partial<VenueCard> & Pick<VenueCard, 'id' | 'name'>): V
     amenities: [],
     freePercent: 75,
     priceLabel: '€25.00',
+    fromPrice: { minorUnits: 2500, currency: 'EUR' },
     free: 18,
     total: 24,
     salesClosed: false,
