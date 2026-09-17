@@ -1,8 +1,10 @@
 package ai.riviera.platform.venue;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,8 +21,10 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueLocation;
 import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -77,13 +81,26 @@ class VenueCatalogVisibilityIT {
 		return new VenueId(id);
 	}
 
+	private void ownedPinnedVenue(String name, OperatorId owner, VenueLocation pin) {
+		VenueId venue = ownedVenue(name, owner);
+		jdbc.sql("UPDATE venue SET latitude = :latitude, longitude = :longitude WHERE id = :id")
+				.param("latitude", pin.latitude())
+				.param("longitude", pin.longitude())
+				.param("id", venue.value())
+				.update();
+	}
+
 	private LocalDate tomorrow() {
 		return LocalDate.now(TIRANE).plusDays(1);
 	}
 
-	private boolean listedByName(String name) {
+	private Optional<VenueSummaryView> listedByName(String name) {
 		List<VenueSummaryView> venues = catalog.listVenues(VenueFilter.of(null, null), tomorrow());
-		return venues.stream().anyMatch(v -> name.equals(v.name()));
+		return venues.stream().filter(v -> name.equals(v.name())).findFirst();
+	}
+
+	private boolean isListed(String name) {
+		return listedByName(name).isPresent();
 	}
 
 	@Test
@@ -91,11 +108,11 @@ class VenueCatalogVisibilityIT {
 		OperatorId owner = insertOperator("viscat-pending", "PENDING");
 		ownedVenue("viscat pending venue", owner);
 
-		assertFalse(listedByName("viscat pending venue"));
+		assertFalse(isListed("viscat pending venue"));
 
 		lifecycle.approve(owner);
 
-		assertTrue(listedByName("viscat pending venue"));
+		assertTrue(isListed("viscat pending venue"));
 	}
 
 	@Test
@@ -115,15 +132,15 @@ class VenueCatalogVisibilityIT {
 		OperatorId owner = insertOperator("viscat-season", "ACTIVE");
 		VenueId venue = ownedVenue("viscat season venue", owner);
 
-		assertTrue(listedByName("viscat season venue"));
+		assertTrue(isListed("viscat season venue"));
 		assertTrue(catalog.findVenueMap(venue, tomorrow()).isPresent());
 
 		lifecycle.suspend(owner);
-		assertFalse(listedByName("viscat season venue"));
+		assertFalse(isListed("viscat season venue"));
 		assertTrue(catalog.findVenueMap(venue, tomorrow()).isEmpty());
 
 		lifecycle.reinstate(owner);
-		assertTrue(listedByName("viscat season venue"));
+		assertTrue(isListed("viscat season venue"));
 		assertTrue(catalog.findVenueMap(venue, tomorrow()).isPresent());
 	}
 
@@ -146,7 +163,21 @@ class VenueCatalogVisibilityIT {
 				VALUES ('viscat orphan venue', 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR') RETURNING id
 				""").query(Long.class).single();
 
-		assertFalse(listedByName("viscat orphan venue"));
+		assertFalse(isListed("viscat orphan venue"));
 		assertTrue(catalog.findVenueMap(new VenueId(id), tomorrow()).isEmpty());
+	}
+
+	@Test
+	void listOmitsPinnedVenueOfSuspendedOperator() {
+		OperatorId owner = insertOperator("viscat-pinned", "ACTIVE");
+		VenueLocation pin = new VenueLocation(new BigDecimal("40.157300"), new BigDecimal("19.640100"));
+		ownedPinnedVenue("viscat pinned venue", owner, pin);
+
+		// The pin is really on the listed row, so the absence below is the fence and not a missing location.
+		assertEquals(pin, listedByName("viscat pinned venue").orElseThrow().location());
+
+		lifecycle.suspend(owner);
+
+		assertTrue(listedByName("viscat pinned venue").isEmpty());
 	}
 }

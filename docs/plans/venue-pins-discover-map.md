@@ -237,15 +237,14 @@ code or error shape moves.
 
 ## Execution status
 
-**Stage pointer:** `plan — doc written, awaiting phase 0`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Run the Skill-routing gate for backend Java (`riviera-java-conventions` +
-`riviera-modulith`), then start phase 0 red: extend `VenueCatalogVisibilityIT` with
-`listOmitsPinnedVenueOfSuspendedOperator`.
+**Next action:** Phase 1 red — `venue-pins.spec.ts` over the pure `venuePins()` derivation,
+after moving `VenueCard` out of `home.ts` into `pages/home/venue-card.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Backend: the fence proven for a pinned venue (AC-10) | | |
+| 0 — Backend: the fence proven for a pinned venue (AC-10) | ✅ | `<phase-0>` |
 | 1 — Pure pin derivation + `VenueCard` extraction (AC-1) | | |
 | 2 — `RivieraMap` grows multi-pin (AC-2, AC-3) | | |
 | 3 — The Liquid Glass preview card (AC-6) | | |
@@ -294,13 +293,17 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
   *with* its location; suspending the owner removes the row entirely.
 - [ ] **Step 2: Run it, verify it fails** — `./gradlew --console=plain test --tests
   "*VenueCatalogVisibilityIT*"` → FAIL (the helper/assertions do not exist yet)
-- [ ] **Step 3: Minimal implementation** — no production change is expected; the fence
-  already holds. If it passes on first write, that is the point of AC-10 (prove, don't
-  assume) — record it as such rather than inventing a change.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS
-- [ ] **Step 5: Generalization-audit pass**
-- [ ] **Step 6: Commit** — `git commit -m "Prove the catalogue fence hides a pinned venue (#1101)"`
-- [ ] **Step 7: Open the draft PR** (first phase commit — CI fires on `pull_request` only)
+- [x] **Step 3: Minimal implementation** — **no production change was needed: the fence
+  already held.** That is AC-10's point (prove, don't assume), so nothing was invented to
+  make it go green. The case is falsifiable in both directions: `assertEquals(pin, …
+  .location())` fails if the list stops carrying the pin, and `…isEmpty()` fails if a
+  suspended owner's venue ever came back as a row with a null location.
+- [x] **Step 4: Run it, verify it passes** — `./gradlew --console=plain test --tests
+  "*VenueCatalogVisibilityIT*"` → 6 tests, 0 failures, **0 skipped** (Docker was up, so the
+  `@EnabledIfDockerAvailable` gate did not silently pass the class).
+- [x] **Step 5: Generalization-audit pass** — see the log below.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Open the draft PR** (first phase commit — CI fires on `pull_request` only)
   and update the execution status in the same commit window.
 
 ## Phase 1 — Pure pin derivation + `VenueCard` extraction
@@ -384,6 +387,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-17 | phase 0 | Tourist reads that could leak a hidden venue as a row rather than omitting it — every `VenueCatalog` method the fence covers | `grep -n "catalog\." platform/src/test/java/ai/riviera/platform/venue/VenueCatalogVisibilityIT.java` | `listVenues`, `findVenueMap`, `availabilityBetween` | No new sites: all three were already covered by the IT's existing cases; the pinned-venue case adds the "row absent, not row-with-null-location" distinction to `listVenues`, which is the only read the map consumes. |
 
 ---
 
