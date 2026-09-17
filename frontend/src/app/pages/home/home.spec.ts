@@ -12,6 +12,8 @@ import { environment } from '../../../environments/environment';
 import { photoView, photoViews } from '../../../testing/photo-views';
 import { defaultBookingDate } from '../../shared/booking-date';
 import { FakeMapEngine } from '../../shared/fake-map-engine';
+import { FakeGeolocationGateway } from '../../../testing/fake-geolocation';
+import { GeolocationGateway } from '../../shared/geolocation';
 import { MapEngine } from '../../shared/map-engine';
 import { VenueSummary } from '../../shared/venue-views';
 import { Home } from './home';
@@ -774,6 +776,7 @@ describe('Home (list/map switch)', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: MapEngine, useValue: new FakeMapEngine() },
+        { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
       ],
     });
     httpMock = TestBed.inject(HttpTestingController);
@@ -833,6 +836,17 @@ describe('Home (list/map switch)', () => {
 
     expect(byTestId(fixture, 'list-panel')?.hidden).toBe(false);
     expect(byTestId(fixture, 'map-panel')?.hidden).toBe(true);
+  });
+
+  it('offers Near me on the discovery map', async () => {
+    const fixture = render(false);
+    flushVenues();
+    await settle(fixture);
+
+    byTestId(fixture, 'view-map')?.click();
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'map-near-me')?.textContent?.trim()).toBe('Near me');
   });
 
   it('never loads the map before the venue list has settled', async () => {

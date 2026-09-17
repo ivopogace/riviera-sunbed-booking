@@ -2,6 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import {
   afterNextRender,
   Component,
+  computed,
   DestroyRef,
   effect,
   ElementRef,
@@ -13,6 +14,8 @@ import {
   viewChild,
 } from '@angular/core';
 
+import { BusyAction } from './busy-action';
+import { GeolocationFailure, GeolocationGateway, GeolocationOutcome } from './geolocation';
 import { LngLat, MapEngine, MapEngineOptions, MapHandle } from './map-engine';
 import { TouchTarget } from './touch-target';
 
@@ -42,11 +45,50 @@ const PIN_ID = 'venue-location-pin';
 /**
  * The pin's own box: 44 px both axes, the floor a drag target needs, in the theme-invariant
  * solid-button skin the rest of the map chrome wears — it sits on imagery, which never themes.
+ *
+ * <p>The two markers can coincide — an operator pressing near-me while standing at their pinned
+ * venue — and neither engine orders them, so the draggable one names a paint order rather than
+ * inheriting DOM order: a dot over its middle would swallow the drag and pan the map instead. Both
+ * stay far below the chrome column's `z-10`.
  */
 const PIN_CLASSES =
   'inline-flex size-11 touch-manipulation items-center justify-center rounded-full ' +
   'border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill text-[20px] leading-none ' +
-  'text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)]';
+  'text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] z-[2]';
+
+/** The visitor's own position, which is never the venue pin — a second marker, its own id. */
+export const HERE_MARKER = 'you-are-here';
+
+/**
+ * Town scale: near enough to tell which beach the visitor is on, wide enough to still show the
+ * ones along from it. Inside the map's own 7…16 fence.
+ */
+export const NEAR_ME_ZOOM = 12;
+
+/**
+ * Why the map did not move. The browser's three, plus the one the map's own fence adds: a position
+ * outside `maxBounds` would be clamped to a corner with the visitor's marker unreachable, so it is
+ * refused rather than half-honoured.
+ */
+type NearMeProblem = GeolocationFailure | 'off-map';
+
+/** One short sentence each, all of them saying the map stayed where the visitor left it. */
+const NEAR_ME_MESSAGES: Record<NearMeProblem, string> = {
+  denied: 'Location permission was declined. The map hasn’t moved.',
+  unavailable: 'Your location isn’t available right now.',
+  timeout: 'Finding your location took too long. Try again.',
+  'off-map': 'You don’t seem to be on the Albanian riviera — the map hasn’t moved.',
+};
+
+/**
+ * The you-are-here dot: an ink disc inside a light ring, the shape every map uses for "you", so
+ * it is not read as another venue pin beside the placer's. Same theme-invariant solid-button pair
+ * as the rest of the chrome, and no touch floor — it is a graphic, not a control. It paints under
+ * the pin (see {@link PIN_CLASSES}), which is the one a pointer has business reaching.
+ */
+const HERE_CLASSES =
+  'block size-5 rounded-full border-[3px] border-riv-solid-btn-fill bg-riv-solid-btn-ink ' +
+  'shadow-[0_4px_12px_rgba(7,42,58,0.35)] z-[1]';
 
 /**
  * The **riviera map** — the geographic discovery map, as distinct from a venue's beach map.
@@ -67,7 +109,7 @@ const PIN_CLASSES =
  */
 @Component({
   selector: 'app-riviera-map',
-  imports: [TouchTarget],
+  imports: [BusyAction, TouchTarget],
   host: {
     class: 'relative block overflow-hidden rounded-[26px] bg-riv-solid-btn-fill',
     role: 'region',
@@ -78,6 +120,7 @@ const PIN_CLASSES =
 })
 export class RivieraMap {
   private readonly engine = inject(MapEngine);
+  private readonly geolocation = inject(GeolocationGateway);
   private readonly pendingTasks = inject(PendingTasks);
   private readonly document = inject(DOCUMENT);
   private readonly canvasHost = viewChild.required<ElementRef<HTMLElement>>('canvasHost');
@@ -90,13 +133,30 @@ export class RivieraMap {
   readonly pinDraggable = input(false);
   /** The pin marker's accessible name — the seam leaves the element's a11y to its caller. */
   readonly pinLabel = input('Venue location');
+  /**
+   * Offer the near-me control. Off by default: a map embedded for a purpose of its own says so,
+   * and a browser without the Geolocation API gets no control either way.
+   */
+  readonly nearMe = input(false);
 
   readonly mapClick = output<LngLat>();
   readonly pinMoved = output<LngLat>();
 
   protected readonly status = signal<MapStatus>('booting');
 
+  /** Asked once: a browser does not grow the API mid-session. */
+  private readonly canLocate = this.geolocation.supported();
+  protected readonly nearMeShown = computed(() => this.nearMe() && this.canLocate);
+  protected readonly locating = signal(false);
+  private readonly problem = signal<NearMeProblem | null>(null);
+  protected readonly nearMeMessage = computed(() => {
+    const problem = this.problem();
+    return problem === null ? null : NEAR_ME_MESSAGES[problem];
+  });
+
   private readonly live = signal<MapHandle | undefined>(undefined);
+  private hereMarker: HTMLElement | undefined;
+  private hereOnMap = false;
   private marker: HTMLElement | undefined;
   private markerOnMap = false;
   private markerDraggable = false;
@@ -181,6 +241,65 @@ export class RivieraMap {
     return element;
   }
 
+  /**
+   * Ask the browser where the visitor is and centre there. Does nothing before the engine is up,
+   * exactly as the zoom buttons do — with no map there is nothing to centre and no prompt worth
+   * raising. The position is used here and discarded; it is never sent, stored or logged.
+   */
+  protected async findMe(): Promise<void> {
+    const handle = this.live();
+    if (!handle || this.locating()) {
+      return;
+    }
+    this.locating.set(true);
+    this.problem.set(null);
+    try {
+      const outcome = await this.geolocation.locate();
+      if (!this.disposed) {
+        this.apply(handle, outcome);
+      }
+    } finally {
+      this.locating.set(false);
+    }
+  }
+
+  private apply(handle: MapHandle, outcome: GeolocationOutcome): void {
+    if (outcome.kind !== 'located') {
+      this.problem.set(outcome.kind);
+    } else if (!withinBounds(outcome.at, this.options().maxBounds)) {
+      this.problem.set('off-map');
+    } else {
+      this.showHere(handle, outcome.at);
+    }
+  }
+
+  private showHere(handle: MapHandle, at: LngLat): void {
+    if (this.hereOnMap) {
+      handle.moveMarker(HERE_MARKER, at);
+    } else {
+      handle.addMarker({ id: HERE_MARKER, lngLat: at, element: this.hereElement() });
+      this.hereOnMap = true;
+    }
+    handle.setView({ center: at, zoom: NEAR_ME_ZOOM });
+  }
+
+  /** One element for the life of the component, for the same reason the pin has one. */
+  private hereElement(): HTMLElement {
+    this.hereMarker ??= this.buildHereElement();
+    return this.hereMarker;
+  }
+
+  private buildHereElement(): HTMLElement {
+    const element = this.document.createElement('div');
+    element.setAttribute('role', 'img');
+    element.setAttribute('aria-label', 'You are here');
+    element.className = HERE_CLASSES;
+    element.dataset['testid'] = 'map-here';
+    // Both engines mount the marker inside the surface they read clicks from.
+    element.addEventListener('click', (event) => event.stopPropagation());
+    return element;
+  }
+
   protected zoomIn(): void {
     this.live()?.zoomIn();
   }
@@ -213,4 +332,14 @@ export class RivieraMap {
     );
     this.live.set(handle);
   }
+}
+
+function withinBounds(at: LngLat, bounds: readonly [LngLat, LngLat]): boolean {
+  const [southWest, northEast] = bounds;
+  return (
+    at.lng >= southWest.lng &&
+    at.lng <= northEast.lng &&
+    at.lat >= southWest.lat &&
+    at.lat <= northEast.lat
+  );
 }

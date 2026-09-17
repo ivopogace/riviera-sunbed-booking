@@ -69,7 +69,9 @@ model in `docs/architecture/domain-model.md`.
 - **Venue location** — a venue's position on the riviera map as a latitude/longitude pin, placed
   by its operator by hand; optional, and a venue without one is simply absent from the riviera map
   while staying in the list. _Avoid_: address, coordinates (as the concept), geolocation (that is
-  the visitor's own position, which never leaves their browser).
+  the visitor's own position, which the platform never receives — an operator who centres the map
+  on themselves and then saves the pin has published a venue location, which is business data, not
+  their geolocation).
 - **Set position** — one spot on the beach map (e.g. Row A, position 3), flagged
   by tier and pool, with its own price. It is **active** until it is retired or deleted; only a
   set position that has never been booked can be deleted.

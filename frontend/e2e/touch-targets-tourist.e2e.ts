@@ -65,6 +65,8 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await expect(page.getByTestId('venue-card').first()).toBeVisible();
     await page.getByTestId('view-map').click();
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+    // Named so the sweep cannot quietly stop covering it; the skip stop only shows once focused.
+    await expect(page.getByTestId('map-near-me')).toBeVisible();
     await page.getByTestId('map-skip').focus();
 
     await expectTouchTargets(page, 'tourist home, map view');

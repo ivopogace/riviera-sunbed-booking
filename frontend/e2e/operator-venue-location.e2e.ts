@@ -17,6 +17,9 @@ const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 /** A whole, in-range pin off Dhërmi, at the six decimals the server stores. */
 const DHERMI = { latitude: 40.1468, longitude: 19.6482 };
 
+/** Where the operator is standing, for the near-me leg — on the coast, inside the map's fence. */
+const AT_THE_VENUE = { latitude: 39.874231, longitude: 20.007412 };
+
 const INITIAL_PROFILE = {
   name: 'Miramar Beach Club',
   beach: 'Ksamil',
@@ -255,4 +258,77 @@ test('paints the pin placer under porcelain and the dark console (#1099, + axe)'
 
   await settle(page);
   await expectNoSeriousAxeViolations(page, `venue location placer (${theme})`);
+});
+
+/**
+ * The operator standing on their own beach: the map's own near-me control centres on them, and the
+ * placer's keyboard twin commits it — no coordinates typed, no map tapped, and the pin that reaches
+ * the server is where they are.
+ */
+test('centres on the operator and pins the venue where they stand', async ({ page, context }) => {
+  const { patches } = await mockVenue(page);
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation(AT_THE_VENUE);
+  await page.goto('/operator/1');
+  await signInAndOpenVenue(page);
+
+  await page.getByRole('button', { name: 'Near me' }).click();
+  await expect(page.getByTestId('map-here')).toBeVisible();
+  await expect(page.getByTestId('map-near-me-message')).toHaveCount(0);
+
+  await page.getByTestId('venue-location-place').click();
+
+  await expect(page.getByTestId('venue-location-readout')).toContainText('39.874231');
+  await expect(page.getByTestId('venue-location-readout')).toContainText('20.007412');
+
+  await page.getByTestId('venue-save').click();
+  await expect(page.getByTestId('venue-saved')).toBeVisible();
+  const sent = patches[0].postDataJSON() as { location: { latitude: number; longitude: number } };
+  expect(sent.location).toEqual(AT_THE_VENUE);
+});
+
+test('tells the operator when their browser declines, leaving the map and the pin alone', async ({
+  page,
+}) => {
+  await mockVenue(page, DHERMI);
+  await page.goto('/operator/1');
+  await signInAndOpenVenue(page);
+  const before = await page.getByTestId('venue-location-readout').textContent();
+
+  await page.getByRole('button', { name: 'Near me' }).click();
+
+  await expect(page.getByTestId('map-near-me-message')).toHaveText(
+    'Location permission was declined. The map hasn\u2019t moved.',
+  );
+  await expect(page.getByTestId('map-here')).toHaveCount(0);
+  await expect(page.getByTestId('venue-location-readout')).toHaveText(before ?? '');
+  await expectNoSeriousAxeViolations(page, 'venue tab with a declined near-me');
+});
+
+/**
+ * Both markers can end up on the same spot — a pinned venue whose operator then presses Near me
+ * while standing at it. The pin is the draggable one, so it has to stay the one a pointer reaches:
+ * a decorative dot over its middle would swallow the drag and pan the map instead.
+ */
+test('keeps the venue pin on top when the you-are-here dot lands on it', async ({
+  page,
+  context,
+}) => {
+  await mockVenue(page, DHERMI);
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: DHERMI.latitude, longitude: DHERMI.longitude });
+  await page.goto('/operator/1');
+  await signInAndOpenVenue(page);
+  await expect(page.getByTestId('map-pin')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Near me' }).click();
+  await expect(page.getByTestId('map-here')).toBeVisible();
+
+  const owner = await page.getByTestId('map-pin').evaluate((pin) => {
+    const box = pin.getBoundingClientRect();
+    const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+    return (top as HTMLElement | null)?.closest('[data-testid]')?.getAttribute('data-testid');
+  });
+
+  expect(owner).toBe('map-pin');
 });

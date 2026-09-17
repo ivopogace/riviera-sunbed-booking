@@ -1,8 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
+import { FakeGeolocationGateway } from '../../testing/fake-geolocation';
 import { FakeMapEngine, FakeMapHandle } from './fake-map-engine';
+import { GeolocationGateway, GeolocationOutcome } from './geolocation';
 import { LngLat, MapEngine, MapEngineOptions, MapHandle } from './map-engine';
-import { RIVIERA_MAP_OPTIONS, RivieraMap } from './riviera-map';
+import { HERE_MARKER, NEAR_ME_ZOOM, RIVIERA_MAP_OPTIONS, RivieraMap } from './riviera-map';
 
 /** An engine no browser can satisfy — what a WebGL-less tourist gets. */
 class NoWebGlEngine extends MapEngine {
@@ -18,13 +20,20 @@ class NoWebGlEngine extends MapEngine {
  */
 describe('RivieraMap', () => {
   let fake: FakeMapEngine;
+  let geolocation: FakeGeolocationGateway;
 
   /** First render only: the engine has not been asked yet, so the map is still booting. */
-  function mount(engine: MapEngine): ComponentFixture<RivieraMap> {
+  function mount(
+    engine: MapEngine,
+    gateway: GeolocationGateway = geolocation,
+  ): ComponentFixture<RivieraMap> {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [RivieraMap],
-      providers: [{ provide: MapEngine, useValue: engine }],
+      providers: [
+        { provide: MapEngine, useValue: engine },
+        { provide: GeolocationGateway, useValue: gateway },
+      ],
     });
     const fixture = TestBed.createComponent(RivieraMap);
     fixture.detectChanges();
@@ -33,8 +42,9 @@ describe('RivieraMap', () => {
 
   async function render(
     engine: MapEngine = new FakeMapEngine(),
+    gateway: GeolocationGateway = geolocation,
   ): Promise<ComponentFixture<RivieraMap>> {
-    const fixture = mount(engine);
+    const fixture = mount(engine, gateway);
     await fixture.whenStable();
     fixture.detectChanges();
     return fixture;
@@ -70,6 +80,7 @@ describe('RivieraMap', () => {
 
   beforeEach(() => {
     fake = new FakeMapEngine();
+    geolocation = new FakeGeolocationGateway();
   });
 
   it('boots the engine on its canvas host with the riviera view and reports ready once loaded', async () => {
@@ -173,7 +184,10 @@ describe('RivieraMap', () => {
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
         imports: [RivieraMap],
-        providers: [{ provide: MapEngine, useValue: engine }],
+        providers: [
+          { provide: MapEngine, useValue: engine },
+          { provide: GeolocationGateway, useValue: new FakeGeolocationGateway(false) },
+        ],
       });
       const fixture = TestBed.createComponent(RivieraMap);
       Object.entries(inputs).forEach(([name, value]) => fixture.componentRef.setInput(name, value));
@@ -281,5 +295,197 @@ describe('RivieraMap', () => {
 
       expect(engine.created[0].options).toBe(custom);
     });
+  });
+});
+
+/**
+ * The near-me control: the visitor's own position, asked for through the geolocation seam and
+ * consumed here and nowhere else. Every outcome the browser can give is driven through the fake
+ * gateway, so none of it needs a real prompt — what a granted position must NOT do (reach a
+ * request, a store or a log) is the mocked e2e's network guard, not a jsdom assertion.
+ */
+const SARANDE: LngLat = { lng: 20.0053, lat: 39.8756 };
+const DHERMI: LngLat = { lng: 19.6482, lat: 40.1468 };
+/** Well outside the map's own fence — a tourist who pressed the control before arriving. */
+const MUNICH: LngLat = { lng: 11.5755, lat: 48.1374 };
+
+describe('RivieraMap near me', () => {
+  let geolocation: FakeGeolocationGateway;
+
+  function mount(gateway: GeolocationGateway, nearMe = true): ComponentFixture<RivieraMap> {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [RivieraMap],
+      providers: [
+        { provide: MapEngine, useValue: new FakeMapEngine() },
+        { provide: GeolocationGateway, useValue: gateway },
+      ],
+    });
+    const fixture = TestBed.createComponent(RivieraMap);
+    fixture.componentRef.setInput('nearMe', nearMe);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  async function render(
+    gateway: GeolocationGateway = geolocation,
+    nearMe = true,
+  ): Promise<ComponentFixture<RivieraMap>> {
+    const fixture = mount(gateway, nearMe);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function control(fixture: ComponentFixture<RivieraMap>): HTMLButtonElement | null {
+    return (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      '[data-testid="map-near-me"]',
+    );
+  }
+
+  function handleOf(fixture: ComponentFixture<RivieraMap>): FakeMapHandle {
+    return fixture.componentInstance.currentHandle() as FakeMapHandle;
+  }
+
+  function message(fixture: ComponentFixture<RivieraMap>): HTMLElement | null {
+    return (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      '[data-testid="map-near-me-message"]',
+    );
+  }
+
+  /** Press the control and let the browser answer, as one act. */
+  async function press(
+    fixture: ComponentFixture<RivieraMap>,
+    outcome: GeolocationOutcome,
+  ): Promise<void> {
+    control(fixture)?.click();
+    geolocation.answerWith(outcome);
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  beforeEach(() => {
+    geolocation = new FakeGeolocationGateway();
+  });
+
+  it('offers the control only where it is asked for and the browser can answer', async () => {
+    expect(control(await render(geolocation, true))).not.toBeNull();
+    expect(control(await render(geolocation, false))).toBeNull();
+    expect(control(await render(new FakeGeolocationGateway(false), true))).toBeNull();
+  });
+
+  it('names the control for every reader', async () => {
+    const button = control(await render());
+
+    expect(button?.textContent?.trim()).toBe('Near me');
+    expect(button?.tagName).toBe('BUTTON');
+    expect(button?.hasAttribute('disabled')).toBe(false);
+  });
+
+  it('centres on the visitor and marks the spot', async () => {
+    const fixture = await render();
+
+    await press(fixture, { kind: 'located', at: SARANDE });
+
+    const handle = handleOf(fixture);
+    expect(handle.view()).toEqual({ center: SARANDE, zoom: NEAR_ME_ZOOM });
+    const marker = handle.markers().get(HERE_MARKER);
+    expect(marker?.lngLat).toEqual(SARANDE);
+    expect(marker?.draggable).toBeFalsy();
+    expect(marker?.element.getAttribute('role')).toBe('img');
+    expect(marker?.element.getAttribute('aria-label')).toBe('You are here');
+    expect(marker?.element.tabIndex).toBeLessThan(0);
+  });
+
+  it('re-centres and moves the one marker on a second press', async () => {
+    const fixture = await render();
+    await press(fixture, { kind: 'located', at: SARANDE });
+    const first = handleOf(fixture).markers().get(HERE_MARKER)?.element;
+
+    handleOf(fixture).setView({ center: { lng: 19.5, lat: 41.3 }, zoom: 9 });
+    await press(fixture, { kind: 'located', at: DHERMI });
+
+    const handle = handleOf(fixture);
+    expect(handle.view()).toEqual({ center: DHERMI, zoom: NEAR_ME_ZOOM });
+    expect(handle.markers().size).toBe(1);
+    expect(handle.markers().get(HERE_MARKER)?.lngLat).toEqual(DHERMI);
+    // The same element: re-adding it would detach whatever the map had mounted.
+    expect(handle.markers().get(HERE_MARKER)?.element).toBe(first);
+  });
+
+  it.each([
+    ['denied' as const, 'Location permission was declined. The map hasn’t moved.'],
+    ['unavailable' as const, 'Your location isn’t available right now.'],
+    ['timeout' as const, 'Finding your location took too long. Try again.'],
+  ])('reports a %s answer without moving the map', async (kind, expected) => {
+    const fixture = await render();
+    const before = handleOf(fixture).view();
+
+    await press(fixture, { kind });
+
+    expect(message(fixture)?.textContent?.trim()).toBe(expected);
+    expect(message(fixture)?.getAttribute('role')).toBe('alert');
+    expect(handleOf(fixture).view()).toEqual(before);
+    expect(handleOf(fixture).markers().size).toBe(0);
+    // Still pressable: a declined permission is fixable in the browser, a timeout is worth retrying.
+    expect(control(fixture)?.getAttribute('aria-disabled')).toBeNull();
+  });
+
+  it('refuses a position off the riviera rather than letting the fence clamp the camera', async () => {
+    const fixture = await render();
+    const before = handleOf(fixture).view();
+
+    await press(fixture, { kind: 'located', at: MUNICH });
+
+    expect(message(fixture)?.textContent?.trim()).toBe(
+      'You don’t seem to be on the Albanian riviera — the map hasn’t moved.',
+    );
+    expect(handleOf(fixture).view()).toEqual(before);
+    expect(handleOf(fixture).markers().size).toBe(0);
+  });
+
+  it('clears the message once a retry succeeds', async () => {
+    const fixture = await render();
+    await press(fixture, { kind: 'denied' });
+    expect(message(fixture)).not.toBeNull();
+
+    await press(fixture, { kind: 'located', at: SARANDE });
+
+    expect(message(fixture)).toBeNull();
+    expect(handleOf(fixture).view().center).toEqual(SARANDE);
+  });
+
+  it('is busy rather than disabled while the browser is answering', async () => {
+    const fixture = await render();
+    const button = control(fixture)!;
+    button.focus();
+
+    button.click();
+    fixture.detectChanges();
+
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(button.hasAttribute('disabled')).toBe(false);
+    // Disabling the pressed control would blur it to <body> (WCAG 2.4.3).
+    expect((fixture.nativeElement as HTMLElement).ownerDocument.activeElement).toBe(button);
+
+    button.click();
+    expect(geolocation.calls).toBe(1);
+
+    geolocation.answerWith({ kind: 'located', at: SARANDE });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(button.getAttribute('aria-disabled')).toBeNull();
+  });
+
+  it('keeps a tap on the you-are-here marker off the map underneath', async () => {
+    const fixture = await render();
+    const clicked: LngLat[] = [];
+    fixture.componentInstance.mapClick.subscribe((at: LngLat) => clicked.push(at));
+    await press(fixture, { kind: 'located', at: SARANDE });
+
+    handleOf(fixture).markers().get(HERE_MARKER)?.element.click();
+
+    expect(clicked).toEqual([]);
   });
 });

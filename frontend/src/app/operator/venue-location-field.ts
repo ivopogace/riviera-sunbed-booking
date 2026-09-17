@@ -14,8 +14,9 @@ const STORED_DECIMALS = 6;
  * a venue by looking at the coast, not by typing degrees.
  *
  * <p>Every pointer gesture has a keyboard twin, because typing coordinates is not offered (WCAG
- * 2.1.1): the map's own controls pan and zoom it, and <em>Place pin at map centre</em> then drops
- * or moves the pin to whatever the operator has centred. Neither button is ever `disabled` — the
+ * 2.1.1): the map's own controls pan, zoom and — for an operator standing at their own venue —
+ * centre on where they are, and <em>Place pin at map centre</em> then drops or moves the pin to
+ * whatever the operator has centred. Neither button is ever `disabled` — the
  * one that clears would otherwise disable the control it was just pressed on, stranding focus
  * (WCAG 2.4.3) — so Clear carries `aria-disabled` and does nothing when there is no pin.
  *
@@ -57,6 +58,7 @@ const STORED_DECIMALS = 6;
       data-testid="venue-location-map"
       [pin]="pin()"
       [pinDraggable]="true"
+      [nearMe]="true"
       pinLabel="Venue location"
       (mapClick)="place($event)"
       (pinMoved)="place($event)"

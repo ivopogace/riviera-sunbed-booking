@@ -4,6 +4,7 @@ import { appConfig } from './app.config';
 import { CameraQrScanner } from './operator/camera-qr-scanner';
 import { FakeQrScanner } from './operator/fake-qr-scanner';
 import { QrScanner } from './operator/qr-scanner';
+import { BrowserGeolocationGateway, GeolocationGateway } from './shared/geolocation';
 import { FakeMapEngine } from './shared/fake-map-engine';
 import { MapEngine } from './shared/map-engine';
 import { MapLibreMapEngine } from './shared/maplibre-map-engine';
@@ -11,6 +12,11 @@ import { MapLibreMapEngine } from './shared/maplibre-map-engine';
 interface FactoryProvider {
   readonly provide?: unknown;
   readonly useFactory?: () => unknown;
+}
+
+interface ClassProvider {
+  readonly provide?: unknown;
+  readonly useClass?: unknown;
 }
 
 /** A registered factory provider — the swap seam the Stripe gateway, the QR scanner and the map engine share. */
@@ -55,5 +61,20 @@ describe('appConfig MapEngine factory', () => {
     } finally {
       delete (globalThis as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__;
     }
+  });
+});
+
+/**
+ * No fake to swap in: the mocked Playwright suite drives the real adapter through
+ * `context.grantPermissions` + `setGeolocation`, and jsdom has no `navigator.geolocation` at all,
+ * so the adapter reports itself unsupported there and no near-me control renders.
+ */
+describe('appConfig GeolocationGateway provider', () => {
+  it('serves the browser adapter', () => {
+    const entry = (appConfig.providers as ClassProvider[]).find(
+      (provider) => provider.provide === GeolocationGateway,
+    );
+
+    expect(entry?.useClass).toBe(BrowserGeolocationGateway);
   });
 });

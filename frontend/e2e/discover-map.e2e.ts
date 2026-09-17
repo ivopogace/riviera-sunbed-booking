@@ -45,6 +45,12 @@ const VENUES = [
  */
 const OUR_HOSTS = new Set(['localhost:4200', 'localhost:8080']);
 
+/**
+ * Sarandë, to six decimals. Deliberately unround: the no-leak guard greps every request, storage
+ * entry and console line for these digits, and a round number could match something innocent.
+ */
+const VISITOR = { latitude: 39.874231, longitude: 20.007412 };
+
 const PHONE = { width: 390, height: 780 };
 /** Narrow enough that the map's credit takes two lines. */
 const NARROWEST_PHONE = { width: 320, height: 640 };
@@ -120,6 +126,44 @@ test.describe('Discover map — fake engine', () => {
     expect(credit.x - map.x).toBeGreaterThanOrEqual(12);
     expect(map.x + map.width - (credit.x + credit.width)).toBeGreaterThanOrEqual(12);
     expect(map.y + map.height - (credit.y + credit.height)).toBeGreaterThanOrEqual(12);
+  });
+
+  test('centres on a granted position and marks the spot', async ({ page, context }) => {
+    await context.grantPermissions(['geolocation']);
+    await context.setGeolocation(VISITOR);
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Near me' }).click();
+
+    // The fake engine lays its markers out across the map's own fence, so a real box means a real centre.
+    const here = page.getByTestId('map-here');
+    await expect(here).toBeVisible();
+    await expect(here).toHaveAttribute('aria-label', 'You are here');
+    await expect(page.getByTestId('map-near-me-message')).toHaveCount(0);
+  });
+
+  test('reports a declined permission and leaves the map where it was', async ({
+    page,
+    context,
+  }) => {
+    await context.clearPermissions();
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Near me' }).click();
+
+    await expect(page.getByTestId('map-near-me-message')).toHaveText(
+      'Location permission was declined. The map hasn\u2019t moved.',
+    );
+    await expect(page.getByTestId('map-here')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Near me' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    await expectNoSeriousAxeViolations(page, 'Discover with a declined near-me');
   });
 
   test('shows the list and the map side by side on a wide screen, with no switch', async ({
@@ -245,5 +289,71 @@ test.describe('Discover map — real engine', () => {
 
     expect(offOrigin, 'every map resource must come from our origin (ADR-0022)').toEqual([]);
     await expectNoSeriousAxeViolations(page, 'Discover with the real map rendered');
+  });
+
+  /**
+   * The same-origin guard above, extended past the map's own resources to the one thing on this
+   * page that is personal: where the visitor is. A granted near-me must reach the camera and nothing else — not
+   * a URL, not a header, not a body, not a stored value, not a console line. The position's digits
+   * are unround on purpose, so a match is a leak rather than a coincidence.
+   */
+  test('a granted near-me sends the position nowhere', async ({ page, context }) => {
+    await mockVenues(page);
+    await context.grantPermissions(['geolocation']);
+    await context.setGeolocation(VISITOR);
+
+    const offOrigin: string[] = [];
+    const carrying: string[] = [];
+    const digits = [
+      String(VISITOR.latitude),
+      String(VISITOR.longitude),
+      VISITOR.latitude.toFixed(4),
+      VISITOR.longitude.toFixed(4),
+    ];
+    const leaks = (text: string): boolean => digits.some((digit) => text.includes(digit));
+
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (!/^https?:$/.test(url.protocol)) {
+        return;
+      }
+      if (!OUR_HOSTS.has(url.host)) {
+        offOrigin.push(request.url());
+      }
+      const headers = Object.entries(request.headers())
+        .map(([name, value]) => `${name}: ${value}`)
+        .join('\n');
+      const body = request.postData() ?? '';
+      if (leaks(request.url()) || leaks(headers) || leaks(body)) {
+        carrying.push(`${request.method()} ${request.url()}`);
+      }
+    });
+    const console_: string[] = [];
+    page.on('console', (message) => console_.push(message.text()));
+
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+    await expect(page.locator('app-riviera-map')).toHaveAttribute('data-status', 'ready', {
+      timeout: 20_000,
+    });
+
+    await page.getByRole('button', { name: 'Near me' }).click();
+    await expect(page.getByTestId('map-here')).toBeVisible();
+    await expect(page.getByTestId('map-near-me-message')).toHaveCount(0);
+    // Let the engine finish fetching whatever the new camera position needs.
+    await page.waitForLoadState('networkidle');
+
+    expect(carrying, 'the visitor’s position must not ride any request').toEqual([]);
+    expect(offOrigin, 'every request must stay same-origin (ADR-0022)').toEqual([]);
+
+    const stored = await page.evaluate(() => {
+      const dump = (store: Storage): string =>
+        Object.keys(store)
+          .map((key) => `${key}=${store.getItem(key) ?? ''}`)
+          .join('|');
+      return `${dump(localStorage)}|${dump(sessionStorage)}`;
+    });
+    expect(leaks(stored), `nothing may store the position — found in: ${stored}`).toBe(false);
+    expect(console_.filter(leaks), 'nothing may log the position').toEqual([]);
   });
 });

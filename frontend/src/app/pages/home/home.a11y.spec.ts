@@ -10,6 +10,8 @@ import { provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { expectNoAxeViolations } from '../../../testing/axe';
 import { FakeMapEngine } from '../../shared/fake-map-engine';
+import { FakeGeolocationGateway } from '../../../testing/fake-geolocation';
+import { GeolocationGateway } from '../../shared/geolocation';
 import { MapEngine } from '../../shared/map-engine';
 import { VenueSummary } from '../../shared/venue-views';
 import { Home } from './home';
@@ -59,6 +61,7 @@ describe('Home accessibility (axe)', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: MapEngine, useValue: new FakeMapEngine() },
+        { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
       ],
     }).compileComponents();
 
