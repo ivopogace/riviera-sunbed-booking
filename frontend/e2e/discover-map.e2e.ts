@@ -224,6 +224,29 @@ test.describe('Discover map — fake engine', () => {
     await expectNoSeriousAxeViolations(page, 'Discover with a declined near-me');
   });
 
+  test('the near-me message is dismissible and stays gone until pressed again', async ({
+    page,
+    context,
+  }) => {
+    await context.clearPermissions();
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Near me' }).click();
+    await expect(page.getByTestId('map-near-me-message')).toBeVisible();
+
+    await page.getByTestId('map-near-me-dismiss').click();
+
+    await expect(page.getByTestId('map-near-me-message')).toHaveCount(0);
+    await expect(page.getByTestId('map-here')).toHaveCount(0);
+    // The teardown takes the dismiss button itself, which just held focus (WCAG 2.4.3).
+    await expect(page.getByRole('button', { name: 'Near me' })).toBeFocused();
+
+    await page.getByRole('button', { name: 'Near me' }).click();
+    await expect(page.getByTestId('map-near-me-message')).toBeVisible();
+  });
+
   test('draws a pin per pinned venue and none for the venue without a location', async ({
     page,
   }) => {

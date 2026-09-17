@@ -79,5 +79,11 @@ describe('RivieraMap accessibility', () => {
 
     expect(host.querySelector('[data-testid="map-near-me-message"]')).not.toBeNull();
     await expectNoAxeViolations(host);
+
+    host.querySelector<HTMLButtonElement>('[data-testid="map-near-me-dismiss"]')?.click();
+    TestBed.tick();
+
+    expect(host.querySelector('[data-testid="map-near-me-message"]')).toBeNull();
+    await expectNoAxeViolations(host);
   });
 });
