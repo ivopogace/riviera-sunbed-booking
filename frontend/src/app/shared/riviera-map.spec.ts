@@ -4,7 +4,7 @@ import { FakeGeolocationGateway } from '../../testing/fake-geolocation';
 import { FakeMapEngine, FakeMapHandle } from './fake-map-engine';
 import { GeolocationGateway, GeolocationOutcome } from './geolocation';
 import { LngLat, MapEngine, MapEngineOptions, MapHandle } from './map-engine';
-import { HERE_MARKER, MapPin, NEAR_ME_ZOOM, RIVIERA_MAP_OPTIONS, RivieraMap } from './riviera-map';
+import { HERE_MARKER, NEAR_ME_ZOOM, RIVIERA_MAP_OPTIONS, RivieraMap } from './riviera-map';
 
 /** An engine no browser can satisfy — what a WebGL-less tourist gets. */
 class NoWebGlEngine extends MapEngine {
@@ -126,7 +126,7 @@ describe('RivieraMap', () => {
     zoomOut.click();
     fixture.detectChanges();
 
-    const handle = fixture.componentInstance.currentHandle() as FakeMapHandle;
+    const handle = fixture.componentInstance.handle() as FakeMapHandle;
     expect(handle.view().zoom).toBe(RIVIERA_MAP_OPTIONS.view.zoom + 1);
   });
 
@@ -143,7 +143,7 @@ describe('RivieraMap', () => {
 
   it('destroys the engine handle with the component', async () => {
     const fixture = await render(fake);
-    const handle = fixture.componentInstance.currentHandle() as FakeMapHandle;
+    const handle = fixture.componentInstance.handle() as FakeMapHandle;
     expect(handle.destroyed()).toBe(false);
 
     fixture.destroy();
@@ -198,7 +198,7 @@ describe('RivieraMap', () => {
     }
 
     function handleOf(fixture: ComponentFixture<RivieraMap>): FakeMapHandle {
-      return fixture.componentInstance.currentHandle() as FakeMapHandle;
+      return fixture.componentInstance.handle() as FakeMapHandle;
     }
 
     it('feeds no marker when there is no pin', async () => {
@@ -296,195 +296,6 @@ describe('RivieraMap', () => {
       expect(engine.created[0].options).toBe(custom);
     });
   });
-
-  /**
-   * The venue pins, which are a different animal from the placement pin above: many, selectable,
-   * and controls rather than graphics. The two marker sets share a map and nothing else.
-   */
-  describe('venue pins', () => {
-    const KSAMIL: MapPin = {
-      id: '7',
-      at: { lng: 20.0021, lat: 39.7712 },
-      label: 'Miramar Beach Club',
-    };
-    const DHERMI_PIN: MapPin = { id: '9', at: { lng: 19.6401, lat: 40.1573 }, label: 'Aurora Bay' };
-    const VLORE: MapPin = { id: '11', at: { lng: 19.4833, lat: 40.4667 }, label: 'Pelican Shore' };
-
-    async function renderPins(
-      pins: readonly MapPin[],
-      engine: FakeMapEngine = new FakeMapEngine(),
-    ): Promise<ComponentFixture<RivieraMap>> {
-      TestBed.resetTestingModule();
-      TestBed.configureTestingModule({
-        imports: [RivieraMap],
-        providers: [
-          { provide: MapEngine, useValue: engine },
-          { provide: GeolocationGateway, useValue: new FakeGeolocationGateway(false) },
-        ],
-      });
-      const fixture = TestBed.createComponent(RivieraMap);
-      fixture.componentRef.setInput('pins', pins);
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
-      return fixture;
-    }
-
-    function handleOf(fixture: ComponentFixture<RivieraMap>): FakeMapHandle {
-      return fixture.componentInstance.currentHandle() as FakeMapHandle;
-    }
-
-    /** The pin buttons as the DOM holds them, which is the order a keyboard walks them in. */
-    function pinButtons(fixture: ComponentFixture<RivieraMap>): HTMLElement[] {
-      return [...host(fixture).querySelectorAll<HTMLElement>('[data-testid="map-venue-pin"]')];
-    }
-
-    it('draws one marker per pin, in feed order, named by its label', async () => {
-      const fixture = await renderPins([KSAMIL, DHERMI_PIN, VLORE]);
-
-      const markers = [...handleOf(fixture).markers().values()];
-      expect(markers).toHaveLength(3);
-      expect(markers.map((marker) => marker.lngLat)).toEqual([KSAMIL.at, DHERMI_PIN.at, VLORE.at]);
-      expect(pinButtons(fixture).map((button) => button.getAttribute('aria-label'))).toEqual([
-        'Miramar Beach Club',
-        'Aurora Bay',
-        'Pelican Shore',
-      ]);
-    });
-
-    it('makes each pin a real button, so a keyboard reaches it', async () => {
-      const fixture = await renderPins([KSAMIL]);
-
-      const [button] = pinButtons(fixture);
-      expect(button.tagName).toBe('BUTTON');
-      expect(button.getAttribute('type')).toBe('button');
-      expect(button.tabIndex).toBeGreaterThanOrEqual(0);
-    });
-
-    it('drops the marker of a pin that leaves the set and keeps the rest', async () => {
-      const fixture = await renderPins([KSAMIL, DHERMI_PIN, VLORE]);
-
-      fixture.componentRef.setInput('pins', [KSAMIL, VLORE]);
-      fixture.detectChanges();
-
-      const markers = [...handleOf(fixture).markers().values()];
-      expect(markers.map((marker) => marker.lngLat)).toEqual([KSAMIL.at, VLORE.at]);
-      expect(pinButtons(fixture).map((button) => button.getAttribute('aria-label'))).toEqual([
-        'Miramar Beach Club',
-        'Pelican Shore',
-      ]);
-    });
-
-    it('draws nothing for an empty pin set', async () => {
-      const fixture = await renderPins([]);
-      expect(handleOf(fixture).markers().size).toBe(0);
-    });
-
-    it('selects a pin on press, without reporting a map click underneath it', async () => {
-      const fixture = await renderPins([KSAMIL, DHERMI_PIN]);
-      const selected: string[] = [];
-      const clicks: LngLat[] = [];
-      fixture.componentInstance.pinSelected.subscribe((id) => selected.push(id));
-      fixture.componentInstance.mapClick.subscribe((at) => clicks.push(at));
-
-      pinButtons(fixture)[1].click();
-
-      expect(selected).toEqual(['9']);
-      expect(clicks).toEqual([]);
-    });
-
-    it('marks the selected pin as expanded and leaves the others alone', async () => {
-      const fixture = await renderPins([KSAMIL, DHERMI_PIN]);
-
-      fixture.componentRef.setInput('selectedPin', '9');
-      fixture.detectChanges();
-
-      expect(pinButtons(fixture).map((button) => button.getAttribute('aria-expanded'))).toEqual([
-        'false',
-        'true',
-      ]);
-    });
-
-    it('moves a pin that kept its name but changed position, without rebuilding it', async () => {
-      const fixture = await renderPins([KSAMIL, DHERMI_PIN]);
-      const before = pinButtons(fixture);
-      const moved: MapPin = { ...KSAMIL, at: { lng: 20.1, lat: 39.9 } };
-
-      fixture.componentRef.setInput('pins', [moved, DHERMI_PIN]);
-      fixture.detectChanges();
-
-      const markers = [...handleOf(fixture).markers().values()];
-      expect(markers.map((marker) => marker.lngLat)).toEqual([moved.at, DHERMI_PIN.at]);
-      // Moved in place, exactly as the placement pin is: a rebuild would drop the focus on it.
-      expect(pinButtons(fixture)).toEqual(before);
-    });
-
-    it('keeps the pin elements across a selection change, so focus survives it', async () => {
-      const fixture = await renderPins([KSAMIL, DHERMI_PIN]);
-      const before = pinButtons(fixture);
-
-      fixture.componentRef.setInput('selectedPin', '7');
-      fixture.detectChanges();
-
-      expect(pinButtons(fixture)).toEqual(before);
-    });
-
-    it('focuses a pin on request, so a closing preview can hand focus back', async () => {
-      const fixture = await renderPins([KSAMIL, DHERMI_PIN]);
-
-      fixture.componentInstance.focusPin('9');
-
-      expect(document.activeElement).toBe(pinButtons(fixture)[1]);
-    });
-
-    it('ignores a focus request for a pin that is no longer on the map', async () => {
-      const fixture = await renderPins([KSAMIL]);
-
-      expect(() => fixture.componentInstance.focusPin('404')).not.toThrow();
-    });
-
-    it("shows a pin's badge on its face and keeps its name for assistive tech", async () => {
-      const priced: MapPin = { ...KSAMIL, label: 'Miramar Beach Club, from €25', badge: '€25' };
-      const fixture = await renderPins([priced, DHERMI_PIN]);
-
-      const [pill, dot] = pinButtons(fixture);
-      expect(pill.textContent?.trim()).toBe('€25');
-      expect(pill.getAttribute('aria-label')).toBe('Miramar Beach Club, from €25');
-      expect(dot.textContent?.trim()).toBe('\u25cf');
-
-      fixture.componentRef.setInput('selectedPin', '7');
-      fixture.detectChanges();
-
-      expect(pill.getAttribute('aria-expanded')).toBe('true');
-    });
-
-    it('draws a plain dot for a pin with nothing to say', async () => {
-      const fixture = await renderPins([KSAMIL]);
-
-      const [button] = pinButtons(fixture);
-      expect(button.textContent?.trim()).toBe('\u25cf');
-      expect(button.getAttribute('aria-label')).toBe('Miramar Beach Club');
-    });
-
-    it('redraws a pin whose badge changed, so a repriced date shows its new price', async () => {
-      const fixture = await renderPins([{ ...KSAMIL, badge: '€25' }]);
-
-      fixture.componentRef.setInput('pins', [{ ...KSAMIL, badge: '€30' }]);
-      fixture.detectChanges();
-
-      expect(pinButtons(fixture).map((button) => button.textContent?.trim())).toEqual(['€30']);
-    });
-
-    it('keeps the venue pins clear of the placement pin and the you-are-here dot', async () => {
-      const fixture = await renderPins([KSAMIL]);
-
-      fixture.componentRef.setInput('pin', { lng: 19.6482, lat: 40.1468 });
-      fixture.detectChanges();
-
-      expect(handleOf(fixture).markers().size).toBe(2);
-      expect(pinButtons(fixture)).toHaveLength(1);
-    });
-  });
 });
 
 /**
@@ -533,7 +344,7 @@ describe('RivieraMap near me', () => {
   }
 
   function handleOf(fixture: ComponentFixture<RivieraMap>): FakeMapHandle {
-    return fixture.componentInstance.currentHandle() as FakeMapHandle;
+    return fixture.componentInstance.handle() as FakeMapHandle;
   }
 
   function message(fixture: ComponentFixture<RivieraMap>): HTMLElement | null {

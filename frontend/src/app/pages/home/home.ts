@@ -31,15 +31,16 @@ import { PhotoStepButton } from '../../shared/photo-step-button';
 import { slideshowPhotos } from '../../shared/photo-url';
 import { isRated, ratingScore, reviewsLabel } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
-import { MapPin, RivieraMap } from '../../shared/riviera-map';
+import { RIVIERA_MAP_OPTIONS, RivieraMap } from '../../shared/riviera-map';
 import { ClosedForSeasonChip } from '../../shared/closed-for-season-chip';
 import { SemanticChip } from '../../shared/semantic-chip';
 import { defaultBookingDate, formatDayMonth, isIsoDate } from '../../shared/booking-date';
 import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
+import { VenuePin } from './pin-crowding';
 import { VenueCard } from './venue-card';
-import { venuePins } from './venue-pins';
+import { VenuePinLayer } from './venue-pin-layer';
 import { VenuePreviewCard } from './venue-preview-card';
 
 /**
@@ -75,6 +76,10 @@ function closedStateText(
  * panel at a time, from `lg` up both show side by side. The map component is a deferred chunk that
  * loads only once the venue request has settled, so the list is never slower for it; once loaded
  * it stays mounted and the switch only hides it. The list remains the fully accessible path.
+ *
+ * <p>The venue pins over the map are the page's own overlay (`VenuePinLayer`), fed the very cards
+ * the list renders. Pins that bury each other form a place pill: pressing it goes there, and when
+ * the place is one beach the Beach filter follows, with a crumb on the map as the way back.
  */
 @Component({
   selector: 'app-home',
@@ -93,6 +98,7 @@ function closedStateText(
     LoadAnnouncer,
     TouchTarget,
     RivieraMap,
+    VenuePinLayer,
     VenuePreviewCard,
     ...FAILURE_DIRECTIVES,
   ],
@@ -110,6 +116,7 @@ export class Home {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
   private readonly map = viewChild(RivieraMap);
+  private readonly pinLayer = viewChild(VenuePinLayer);
 
   /** The displayed (filtered) venues; `undefined` while a request is in flight (loading). */
   protected readonly venues = signal<VenueSummary[] | undefined>(undefined);
@@ -182,19 +189,51 @@ export class Home {
   });
 
   /**
-   * The map's pins, derived from the very cards the list renders. The map therefore issues no
-   * query of its own: a beach, region or date change re-feeds these from the one list response
-   * it was going to fetch anyway, and the two surfaces cannot disagree.
+   * The cards the map draws and the preview reads: the list's own while it has one, else the last
+   * it had. A reload empties `venuesView` for its skeletons; if the map followed, every pin button
+   * would be destroyed under whatever focus it held and an open card would close for the request's
+   * duration — the very moment a place pill has just narrowed the list. So the map keeps the last
+   * list until the next one lands (the first load still draws nothing), and a filter or date
+   * change closes the preview iff its venue leaves the result set.
    */
-  protected readonly pins = computed<readonly MapPin[]>(() => venuePins(this.venuesView()));
+  private readonly shownCards = linkedSignal<
+    readonly VenueCard[] | undefined,
+    readonly VenueCard[]
+  >({
+    source: this.venuesView,
+    computation: (cards, previous) => cards ?? previous?.value ?? [],
+  });
+
+  /**
+   * The map's pins, derived from the very cards the list renders — one per card with a venue
+   * location, in list order. The map therefore issues no query of its own: a beach, region or
+   * date change re-feeds these from the one list response it was going to fetch anyway, and the
+   * two surfaces cannot disagree. A pin's id is its venue's id as a string.
+   */
+  protected readonly pins = computed<readonly VenuePin[]>(() =>
+    this.shownCards().flatMap((card) =>
+      card.location
+        ? [
+            {
+              id: String(card.id),
+              at: { lng: card.location.longitude, lat: card.location.latitude },
+              card,
+            },
+          ]
+        : [],
+    ),
+  );
+
+  /** The live engine handle the pin layer projects through; `undefined` until the map has booted. */
+  protected readonly mapHandle = computed(() => this.map()?.handle());
+  /** The map's zoom ceiling, which decides when a crowd is one the camera cannot separate. */
+  protected readonly mapMaxZoom = RIVIERA_MAP_OPTIONS.maxZoom;
 
   /**
    * The pin whose preview is open, or `null`. Linked to the pin set so a venue that leaves the
-   * result set takes its preview with it — and since every re-fetch empties the list first, a
-   * filter or date change always closes the preview rather than leaving a stale card over a new
-   * map.
+   * result set takes its preview with it.
    */
-  protected readonly selectedVenue = linkedSignal<readonly MapPin[], string | null>({
+  protected readonly selectedVenue = linkedSignal<readonly VenuePin[], string | null>({
     source: this.pins,
     computation: (pins, previous) => {
       const open = previous?.value ?? null;
@@ -208,7 +247,7 @@ export class Home {
     if (open === null) {
       return null;
     }
-    return this.venuesView()?.find((card) => String(card.id) === open) ?? null;
+    return this.shownCards().find((card) => String(card.id) === open) ?? null;
   });
 
   /** Guards against an earlier slow response overwriting a newer one (last-writer-wins). */
@@ -294,6 +333,28 @@ export class Home {
   }
 
   /**
+   * A place on the map was pressed and it is one beach: the list narrows to it, so the cards
+   * beside the map — the List tab on a phone — are the venues the camera went to.
+   */
+  protected onBeachNarrowed(beach: string): void {
+    if (beach !== this.beach()) {
+      this.beach.set(beach);
+      this.reload();
+    }
+  }
+
+  /**
+   * The map's own way back from a beach the list is narrowed to. The crumb takes itself down, so
+   * focus moves to the control beside it (WCAG 2.4.3): Near me, or Zoom in where no near-me is
+   * offered.
+   */
+  protected showAllBeaches(): void {
+    this.beach.set('');
+    this.reload();
+    this.focusAfterRender('map-near-me', 'map-zoom-in');
+  }
+
+  /**
    * Close the preview and hand focus back to the pin that opened it (WCAG 2.4.3) — the pin is
    * where the interaction started, and on Escape it is the only place focus can sensibly land.
    */
@@ -303,7 +364,7 @@ export class Home {
       return;
     }
     this.selectedVenue.set(null);
-    this.map()?.focusPin(open);
+    this.pinLayer()?.focusPin(open);
   }
 
   /** Bring the selected venue's card into view, where the list is on screen beside the map. */
@@ -485,6 +546,7 @@ export class Home {
       amenities,
       freePercent,
       priceLabel,
+      fromPrice: venue.fromPrice ?? null,
       free,
       total,
       salesClosed,

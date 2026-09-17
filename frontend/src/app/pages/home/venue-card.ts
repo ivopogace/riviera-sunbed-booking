@@ -1,4 +1,5 @@
 import { Amenity } from '../../shared/amenities';
+import { MoneyView } from '../../shared/money';
 import { PhotoView, VenueLocation } from '../../shared/venue-views';
 
 /**
@@ -27,6 +28,8 @@ export interface VenueCard {
   readonly freePercent: number;
   /** The "from €X / set" price string, or `null` when the venue has no sets ("No sets yet"). */
   readonly priceLabel: string | null;
+  /** The same from-price in integer minor units, for anything that compares prices (invariant #5). */
+  readonly fromPrice: MoneyView | null;
   readonly free: number;
   readonly total: number;
   /** True when the server's verdict says online sales for the selected date have closed. */

@@ -17,7 +17,10 @@ const FLOOR = 44;
  * <p>Two things it has to get right, each of which it got wrong once:
  * animations are settled first, because `getBoundingClientRect()` returns the TRANSFORMED box and a
  * surface measured mid-entry reads ~5% small; and what it measures is the box a **clipping** ancestor
- * leaves behind, which is not the same as what a **scrolling** ancestor currently shows.
+ * leaves behind, which is not the same as what a **scrolling** ancestor currently shows. A surface
+ * that scrolls by panning rather than by CSS overflow — the riviera map's pin layer — says so with
+ * `data-touch-pans`, and the walk ends there exactly as it ends at a scrollable ancestor: a pin cut
+ * by the map's edge is reached whole by panning, like a scrolled-away control.
  */
 export async function expectTouchTargets(page: Page, label: string): Promise<void> {
   await settle(page);
@@ -35,6 +38,7 @@ export async function expectTouchTargets(page: Page, label: string): Promise<voi
         const scrolls = (o: string) => o === 'auto' || o === 'scroll';
         const clips = (o: string) => o === 'hidden' || o === 'clip';
         for (let parent = el.parentElement; parent; parent = parent.parentElement) {
+          if (parent.hasAttribute('data-touch-pans')) break;
           const style = getComputedStyle(parent);
           const edge = parent.getBoundingClientRect();
           // Per axis: a clipping axis clamps, a scrolling axis does not.

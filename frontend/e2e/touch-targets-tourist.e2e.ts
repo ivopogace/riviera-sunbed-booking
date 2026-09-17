@@ -4,7 +4,7 @@ import { mockCustomerAuthApi, mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
 import { openShellOverlay } from './support/shell';
 import { expectTouchTargets } from './support/touch-targets';
-import { TOURIST_BOOKING, mockTourist } from './support/tourist.mocks';
+import { TOURIST_BOOKING, TOURIST_VENUE, mockTourist } from './support/tourist.mocks';
 
 /**
  * The 44 px touch-target floor (#605) over the tourist, auth and booking surfaces — the third and
@@ -70,6 +70,33 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await page.getByTestId('map-skip').focus();
 
     await expectTouchTargets(page, 'tourist home, map view');
+  });
+
+  test('home — the map view with a place pill, its pressed-through state and the beach crumb', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
+    });
+    // Two venues on one spot: a crowd no zoom separates, so every face of the pill gets measured.
+    const pinned = { ...TOURIST_VENUE, location: { latitude: 39.7712, longitude: 20.0021 } };
+    const twin = { ...pinned, id: 2, name: 'Lori Beach' };
+    await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [pinned, twin] }));
+    await page.goto('/');
+    await expect(page.getByTestId('venue-card').first()).toBeVisible();
+    await page.getByTestId('view-map').click();
+    const pill = page.getByTestId('map-place-pill');
+    await expect(pill).toBeVisible();
+    await expectTouchTargets(page, 'tourist home, map view, a place pill');
+
+    await pill.click();
+    await expect(pill).toHaveAttribute('data-here', '');
+    await expect(page.getByTestId('map-beach-crumb')).toBeVisible();
+    await expectTouchTargets(page, 'tourist home, map view, an inverted pill and the crumb');
+
+    await pill.click();
+    await expect(page.getByTestId('venue-preview')).toBeVisible();
+    await expectTouchTargets(page, 'tourist home, map view, pressed through a crowd');
   });
 
   test('home — the map view, near-me failure message with its dismiss control', async ({

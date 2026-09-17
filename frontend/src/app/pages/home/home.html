@@ -372,11 +372,31 @@
         <app-riviera-map
           class="h-[calc(100dvh-220px)] max-h-[720px] min-h-[360px]"
           [nearMe]="true"
-          [pins]="pins()"
-          [selectedPin]="selectedVenue()"
-          (pinSelected)="onPinSelected($event)"
           (mapClick)="closePreview()"
         />
+        <!-- The page's own pins over the map's box: one real button per venue, a place pill per crowd. -->
+        <app-venue-pin-layer
+          [pins]="pins()"
+          [map]="mapHandle()"
+          [selected]="selectedVenue()"
+          [maxZoom]="mapMaxZoom"
+          (chosen)="onPinSelected($event)"
+          (narrowed)="onBeachNarrowed($event)"
+        />
+        @if (beach(); as narrowed) {
+          <!-- The way back, on the map, from a beach the list is narrowed to; the select shows it too. -->
+          <button
+            type="button"
+            appTouchTarget
+            class="absolute top-3 left-3 z-[5] inline-flex touch-manipulation items-center gap-[8px] rounded-full border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill pr-[10px] pl-[14px] text-[14px] leading-none font-bold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] hover:bg-riv-solid-btn-hover"
+            data-testid="map-beach-crumb"
+            [attr.aria-label]="'Showing ' + narrowed + ' only; press to show all beaches'"
+            (click)="showAllBeaches()"
+          >
+            {{ narrowed }}
+            <span class="text-[17px] opacity-70" aria-hidden="true">&#x00d7;</span>
+          </button>
+        }
         @if (selectedCard(); as selected) {
           <!-- Bottom-anchored, clearing the credit pill the tiles' licences require to stay visible. -->
           <app-venue-preview-card

@@ -1,0 +1,49 @@
+@for (slot of slots(); track slot.member.pin.id) {
+  <button
+    type="button"
+    appTouchTarget
+    [class]="slotClass(slot)"
+    [style.left.px]="slot.place.crowd.x"
+    [style.top.px]="slot.place.crowd.y"
+    [style.translate]="translate(slot)"
+    [attr.data-testid]="testId(slot)"
+    [attr.data-pin]="slot.member.pin.id"
+    [attr.data-here]="slot.kind === 'place' && slot.place.here ? '' : null"
+    [attr.aria-label]="label(slot)"
+    [attr.aria-expanded]="expanded(slot)"
+    (click)="press(slot)"
+  >
+    @switch (slot.kind) {
+      @case ('lone') {
+        <!-- The label carries the price's meaning; the face alone would announce a bare `€25` or a dot. -->
+        <span aria-hidden="true">{{ slot.member.pin.card.priceLabel ?? '●' }}</span>
+      }
+      @case ('place') {
+        @if (!slot.place.placement.compact) {
+          <!-- &ngsp; keeps a real space between the two lines' text, as the count block does. -->
+          <span class="flex flex-col whitespace-nowrap" aria-hidden="true">
+            <span class="text-[12.5px] leading-[14px] font-semibold">{{ title(slot.place) }}</span
+            >&ngsp;
+            @if (subtitle(slot.place); as line) {
+              <span class="text-[11px] leading-[13px] font-extrabold tabular-nums">{{ line }}</span>
+            }
+          </span>
+        }
+        <!-- The count in an inverted disc; while a venue is open, its place in the crowd. -->
+        <span
+          class="inline-flex h-[26px] min-w-[26px] shrink-0 items-center justify-center rounded-full bg-riv-solid-btn-ink px-[7px] text-[12.5px] leading-none font-bold text-riv-solid-btn-fill tabular-nums group-data-here:bg-riv-solid-btn-fill group-data-here:text-riv-solid-btn-ink"
+          aria-hidden="true"
+        >
+          @if (slot.place.current) {
+            {{ slot.place.index + 1 }}/{{ slot.place.crowd.members.length }}
+          } @else {
+            {{ slot.place.crowd.members.length }}
+          }
+        </span>
+      }
+      @default {
+        <span aria-hidden="true">{{ slot.position }}</span>
+      }
+    }
+  </button>
+}

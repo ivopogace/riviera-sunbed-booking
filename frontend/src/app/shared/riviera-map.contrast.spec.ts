@@ -15,9 +15,9 @@ describe('riviera map chrome contrast', () => {
   const ink = rgbToHex(SOLID_BTN_INK);
 
   /**
-   * A selected venue pin rides this case rather than a test of its own: it inverts this very pair
-   * — the imagery under it never themes, so a switching accent fill under a fixed ink would drift
-   * — and `contrastRatio` is order-independent, so an inverted assertion would restate this one.
+   * Discover's venue pins and place pills (`pages/home/venue-pin-layer.contrast.spec.ts`) wear this
+   * same pair and invert it for selection and for "here" — the imagery under them never themes, so
+   * a switching accent fill under a fixed ink would drift — and `contrastRatio` is order-independent.
    */
   it('attribution and notice text clear AA over the resting fill', () => {
     expect(contrastRatio(ink, rgbToHex(SOLID_BTN_FILL))).toBeGreaterThanOrEqual(AA_NORMAL);
@@ -35,11 +35,12 @@ describe('riviera map chrome contrast', () => {
   });
 
   /**
-   * A selected venue pin INVERTS the same fixed pair instead of taking the themed accent: the
-   * imagery under it never themes, so a switching fill under a fixed ink would drift. Inversion
-   * preserves the ratio, and asserting it keeps that true if either half is ever retuned.
+   * The inverted pair — a selected pin, a place pill the camera cannot separate, the crowd's
+   * count disc — instead of the themed accent: the imagery under it never themes, so a switching
+   * fill under a fixed ink would drift. Inversion preserves the ratio, and asserting it keeps that
+   * true if either half is ever retuned.
    */
-  it('a selected pin clears AA with the pair inverted', () => {
+  it('the inverted pair clears AA', () => {
     expect(contrastRatio(rgbToHex(SOLID_BTN_FILL), rgbToHex(SOLID_BTN_INK))).toBeGreaterThanOrEqual(
       AA_NORMAL,
     );
