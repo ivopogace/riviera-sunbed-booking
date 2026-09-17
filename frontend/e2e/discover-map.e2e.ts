@@ -275,8 +275,7 @@ test.describe('Discover map — fake engine', () => {
     const pins = page.getByTestId('map-venue-pin');
 
     await pins.nth(0).click();
-    // By keyboard on purpose: the open card covers the lower map, exactly as a bottom sheet does
-    // on any map, so the pin under it is reachable by Tab rather than by tap.
+    // The open card covers the lower map, as any bottom sheet does; Tab still reaches the pin.
     await pins.nth(1).press('Enter');
 
     await expect(page.getByTestId('venue-preview')).toHaveCount(1);
@@ -348,15 +347,13 @@ test.describe('Discover map — fake engine', () => {
     await page.getByTestId('view-map').click();
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
 
-    // By keyboard: on the narrowest phone this pin sits under the credit pill, which is opaque
-    // and must stay so — panning is what frees it for a tap, and Tab reaches it either way.
+    // Here this pin sits under the opaque credit pill: panning frees a tap, Tab works regardless.
     await page.getByTestId('map-venue-pin').first().press('Enter');
     const preview = page.getByTestId('venue-preview');
     await expect(preview).toBeVisible();
     await settleAnimations(preview);
 
-    // The licences (OpenMapTiles CC-BY, OSM ODbL) require the credit to stay legible, so the
-    // preview must clear it even on the narrowest phone, where the credit wraps to two lines.
+    // The tiles' licences need the credit legible, so the card clears it even where it wraps.
     const credit = (await page.getByTestId('map-attribution').boundingBox())!;
     const card = (await preview.boundingBox())!;
     expect(card.y + card.height).toBeLessThanOrEqual(credit.y);
@@ -486,8 +483,7 @@ test.describe('Discover map — real engine', () => {
     await page.mouse.up();
     await expect.poll(() => Object.values(seen).every(Boolean), { timeout: 20_000 }).toBe(true);
 
-    // ...and then open a pin preview, whose cover photo is the one image this surface fetches.
-    // By keyboard, since a pin's real geographic spot may land under the credit pill.
+    // Then a preview, whose cover photo is the one image here; by keyboard, per the credit pill.
     await page.getByTestId('map-venue-pin').first().press('Enter');
     const preview = page.getByTestId('venue-preview');
     await expect(preview).toBeVisible();

@@ -260,6 +260,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | phase 5 e2e (real browser) | An open preview covers the lower map, and the credit pill covers whatever pin sits under it, so those pins cannot be *tapped* — the same behaviour any map's bottom sheet and attribution have. Accepted, not worked around: making the credit `pointer-events-none` would turn a press on it into a map press, which in the operator console **places a venue pin**. Panning frees the pin, and Tab reaches it regardless — which the e2e now proves by activating those pins with `Enter`. | closed — accepted, covered by keyboard activation |
+| F-3 | CI — Repo hygiene (diff-scoped) | `check-inline-comments.mjs` failed on four multi-line inline comments in `discover-map.e2e.ts` (RV-STYLE-1). The per-file guard runs during the phase had been pointed at the source files, not the spec; the diff-scoped run is the one that covers everything. | fixed-in-`<review-fix-1>` |
 | F-2 | phase 5 e2e (real browser) | axe flagged the preview's call to action at 2.26:1 — the card was read mid-fade, its ink composited over the backdrop through a partial `opacity`. The documented false positive (`riviera-frontend` § e2e split); fixed by awaiting `getAnimations().finished` before the audit, not by changing a colour. | fixed-in-`<phase-5>` |
 
 ---
