@@ -58,6 +58,10 @@
       <span class="self-start" data-testid="preview-closed">
         <app-closed-for-season-chip [reopensOn]="card().reopensOn" />
       </span>
+    } @else if (card().salesClosed) {
+      <span class="self-start" data-testid="preview-sales-closed">
+        <app-sales-closed-chip />
+      </span>
     }
 
     <p
@@ -73,6 +77,9 @@
       } @else {
         <span class="text-[13px] text-riv-card-ink-soft">No sets yet</span>
       }
+      <span class="text-[12.5px] text-riv-card-ink-soft" data-testid="preview-availability">
+        <app-sets-free [free]="card().free" [total]="card().total" />
+      </span>
     </p>
 
     <a

@@ -2,7 +2,8 @@ import { VenueCard } from '../app/pages/home/venue-card';
 
 /**
  * A ready-to-render {@link VenueCard} for specs of the surfaces that consume one — the riviera
- * map's pin layer and its geometry — with every field filled and the venue's own facts overridable.
+ * map's pin layer, its geometry and the pin preview — with every field filled and the venue's own
+ * facts overridable.
  * Priced at €25 with 18 of 24 sets free on Ksamil; a spec passes `priceLabel: null, fromPrice:
  * null` together for an unpriced venue, since the two are one fact in two forms.
  */

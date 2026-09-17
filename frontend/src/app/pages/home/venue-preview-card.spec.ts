@@ -1,15 +1,14 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { venueCard } from '../../../testing/venue-cards';
 import { VenueCard } from './venue-card';
 import { VenuePreviewCard } from './venue-preview-card';
 
 function card(overrides: Partial<VenueCard> = {}): VenueCard {
-  return {
+  return venueCard({
     id: 7,
     name: 'Miramar Beach Club',
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
     photos: [
       {
         url: '/api/venues/7/photos/aaa',
@@ -20,24 +19,9 @@ function card(overrides: Partial<VenueCard> = {}): VenueCard {
         sources: [{ url: '/api/venues/7/photos/bbb', width: 720 }],
       },
     ],
-    modeLabel: 'Instant Book',
-    isRated: true,
-    rating: '4.8',
-    reviewsLabel: '326 reviews',
-    water: null,
-    amenities: [],
-    freePercent: 75,
-    priceLabel: '€25.00',
-    fromPrice: { minorUnits: 2500, currency: 'EUR' },
-    free: 18,
-    total: 24,
-    salesClosed: false,
-    closedForSeason: false,
-    reopensOn: null,
     location: { latitude: 39.7712, longitude: 20.0021 },
-    ariaLabel: 'Miramar Beach Club, …',
     ...overrides,
-  };
+  });
 }
 
 describe('VenuePreviewCard', () => {
@@ -65,6 +49,10 @@ describe('VenuePreviewCard', () => {
     return host(fixture).querySelector<HTMLElement>(`[data-testid="${id}"]`);
   }
 
+  function text(element: Element | null | undefined): string {
+    return element?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  }
+
   it('is a dialog named by the venue it previews', () => {
     const fixture = render();
 
@@ -78,13 +66,17 @@ describe('VenuePreviewCard', () => {
     const fixture = render();
 
     expect(byTestId(fixture, 'preview-name')?.textContent?.trim()).toBe('Miramar Beach Club');
-    expect(byTestId(fixture, 'preview-location')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      'Ksamil · Albanian Riviera',
-    );
+    expect(text(byTestId(fixture, 'preview-location'))).toBe('Ksamil · Albanian Riviera');
     expect(byTestId(fixture, 'preview-rating')?.textContent).toContain('4.8');
-    expect(byTestId(fixture, 'preview-price')?.textContent?.replace(/\s+/g, ' ')).toContain(
-      '€25.00',
-    );
+    expect(text(byTestId(fixture, 'preview-price'))).toContain('€25');
+  });
+
+  it('says how many sets are free, as the list card’s footer does', () => {
+    const fixture = render();
+
+    const line = byTestId(fixture, 'preview-availability');
+    expect(text(line)).toBe('18 of 24 free');
+    expect(line?.querySelector('app-sets-free strong')?.textContent?.trim()).toBe('18');
   });
 
   it('shows the cover photo alone, not the whole slideshow', () => {
@@ -122,10 +114,25 @@ describe('VenuePreviewCard', () => {
     expect(byTestId(render(), 'preview-closed')).toBeNull();
   });
 
-  it('says "No sets yet" where a venue has no price', () => {
-    const fixture = render(card({ priceLabel: null }));
+  it('badges sales closed for today, outranked by the season closure', () => {
+    const closedToday = render(card({ salesClosed: true }));
+    const chip = byTestId(closedToday, 'preview-sales-closed');
+    expect(text(chip)).toBe('Sales closed for today');
+    expect(chip?.querySelector('.sales-closed-chip')).not.toBeNull();
+    expect(byTestId(closedToday, 'preview-closed')).toBeNull();
 
-    expect(byTestId(fixture, 'preview-price')?.textContent?.trim()).toBe('No sets yet');
+    const closedForSeason = render(card({ salesClosed: true, closedForSeason: true }));
+    expect(byTestId(closedForSeason, 'preview-closed')).not.toBeNull();
+    expect(byTestId(closedForSeason, 'preview-sales-closed')).toBeNull();
+
+    expect(byTestId(render(), 'preview-sales-closed')).toBeNull();
+  });
+
+  it('says No sets yet and 0 of 0 free where a venue has no sets', () => {
+    const fixture = render(card({ priceLabel: null, fromPrice: null, free: 0, total: 0 }));
+
+    expect(text(byTestId(fixture, 'preview-price'))).toContain('No sets yet');
+    expect(text(byTestId(fixture, 'preview-availability'))).toBe('0 of 0 free');
   });
 
   it('shows the unrated state instead of a score', () => {

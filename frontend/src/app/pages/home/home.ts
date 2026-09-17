@@ -33,7 +33,9 @@ import { isRated, ratingScore, reviewsLabel } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
 import { RIVIERA_MAP_OPTIONS, RivieraMap } from '../../shared/riviera-map';
 import { ClosedForSeasonChip } from '../../shared/closed-for-season-chip';
+import { SalesClosedChip } from '../../shared/sales-closed-chip';
 import { SemanticChip } from '../../shared/semantic-chip';
+import { SetsFree } from '../../shared/sets-free';
 import { defaultBookingDate, formatDayMonth, isIsoDate } from '../../shared/booking-date';
 import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
@@ -93,7 +95,9 @@ function closedStateText(
     CardGlass,
     AmenityChip,
     ClosedForSeasonChip,
+    SalesClosedChip,
     SemanticChip,
+    SetsFree,
     FieldGlass,
     LoadAnnouncer,
     TouchTarget,

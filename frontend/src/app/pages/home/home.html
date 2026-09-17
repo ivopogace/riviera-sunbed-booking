@@ -221,11 +221,7 @@
                       @if (card.closedForSeason) {
                         <app-closed-for-season-chip [reopensOn]="card.reopensOn" />
                       } @else if (card.salesClosed) {
-                        <span
-                          appSemanticChip
-                          class="sales-closed-chip inline-flex items-center px-[11px] py-[5px] text-[11px] tracking-[0.03em]"
-                          >Sales closed for today</span
-                        >
+                        <app-sales-closed-chip />
                       }
                     </span>
                     <!-- The location yields the dot rail's corner: 82px = the rail at its widest (3 dots, one of them the 18px active pill: 13px inset + 14px padding + 34px dots + 14px gaps = 75px) plus 7px clearance — it must be re-derived whenever the rail's metrics change. The explicit 15px line box is the scrim geometry home.contrast.spec.ts pins. -->
@@ -302,8 +298,7 @@
                         class="availability text-[12.5px] text-riv-card-ink-soft"
                         data-testid="card-availability"
                       >
-                        <strong class="text-riv-card-ink">{{ card.free }}</strong> of
-                        {{ card.total }} free
+                        <app-sets-free [free]="card.free" [total]="card.total" />
                       </span>
                     </span>
                   </span>

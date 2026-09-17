@@ -5,7 +5,9 @@ import { CardGlass } from '../../shared/card-glass';
 import { ClosedForSeasonChip } from '../../shared/closed-for-season-chip';
 import { PhotoScrim } from '../../shared/photo-scrim';
 import { PhotoSlideshow } from '../../shared/photo-slideshow';
+import { SalesClosedChip } from '../../shared/sales-closed-chip';
 import { SemanticChip } from '../../shared/semantic-chip';
+import { SetsFree } from '../../shared/sets-free';
 import { TouchTarget } from '../../shared/touch-target';
 import { VenueCard } from './venue-card';
 
@@ -29,7 +31,9 @@ const HEADING_ID = 'venue-preview-heading';
     PhotoScrim,
     PhotoSlideshow,
     ClosedForSeasonChip,
+    SalesClosedChip,
     SemanticChip,
+    SetsFree,
     TouchTarget,
   ],
   host: {
