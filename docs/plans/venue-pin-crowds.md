@@ -343,15 +343,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)` — phases 0–1 green and committed; draft PR #1138 open.
+**Stage pointer:** `implement (phase 3)` — phases 0–2 green and committed; draft PR #1138 open.
 
-**Next action:** Phase 2, step 1: the failing `venue-pin-layer.spec.ts` (AC-9..13).
+**Next action:** Phase 3, step 1: the failing `home.spec.ts` cases (AC-15..18) and the `riviera-map.spec.ts` trim.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the port: `project`, `onMove`, `easeTo` in both adapters | ✅ | `fa2857e5` |
-| 1 — the crowd geometry (`pin-crowding.ts`) | ✅ | phase-1 commit |
-| 2 — the pin layer (`venue-pin-layer.ts`) + a11y + contrast | | |
+| 1 — the crowd geometry (`pin-crowding.ts`) | ✅ | `afe80432` |
+| 2 — the pin layer (`venue-pin-layer.ts`) + a11y + contrast | ✅ | phase-2 commit |
 | 3 — Discover wiring, the crumb, `shownCards`; the engine layer retired | | |
 | 4 — mocked e2e: the crowd describe + the touch-target sweep | | |
 | 5 — close-out: glossary, the stale #1135 plan retired, the slice-2 issue | | |
@@ -385,6 +385,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/pages/home/venue-pin-layer.ts` / `.html` — the overlay
 - `frontend/src/app/pages/home/venue-pin-layer.spec.ts` — AC-9..13
 - `frontend/src/app/pages/home/venue-pin-layer.a11y.spec.ts`, `venue-pin-layer.contrast.spec.ts` — AC-14
+- `frontend/src/testing/venue-cards.ts` — the `VenueCard` fixture the new specs share
 - `frontend/src/app/pages/home/venue-card.ts` — `fromPrice`
 - `frontend/src/app/pages/home/venue-pins.ts`, `venue-pins.spec.ts` — deleted
 - `frontend/src/app/pages/home/home.ts` / `home.html` — the layer, `shownCards`, travel/narrowing, the crumb
@@ -491,6 +492,7 @@ it('turns a click on its surface into the position under it', async () => { /* c
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-17 | phase 0 | every `MapHandle` implementer | `grep -rln "implements MapHandle" frontend/src` | `fake-map-engine.ts`, `maplibre-map-engine.ts` | both carry `project`/`onMove`/`easeTo`; no other implementer |
+| 2026-09-17 | phase 2 | every control on the map surface | `grep -n "<button" frontend/src/app/pages/home/venue-pin-layer.html frontend/src/app/shared/riviera-map.html` | the layer's one `<button>` template (three faces), the map's skip, near-me, zoom ×2, dismiss | every one carries `appTouchTarget`; `check-touch-target.mjs` green on the layer |
 | 2026-09-17 | phase 1 | every place a from-price is derived for display | `grep -rn "fromPrice" frontend/src/app --include=*.ts \| grep -v spec` | `home.ts` `toCard`, `venue/venue-map.ts`, `pin-crowding.ts` `lowestFromPrice` | all three take the `MoneyView` and format with `formatMoney`; none parses a label |
 
 ---
