@@ -240,6 +240,8 @@ test.describe('Discover map — fake engine', () => {
 
     await expect(page.getByTestId('map-near-me-message')).toHaveCount(0);
     await expect(page.getByTestId('map-here')).toHaveCount(0);
+    // The teardown takes the dismiss button itself, which just held focus (WCAG 2.4.3).
+    await expect(page.getByRole('button', { name: 'Near me' })).toBeFocused();
 
     await page.getByRole('button', { name: 'Near me' }).click();
     await expect(page.getByTestId('map-near-me-message')).toBeVisible();

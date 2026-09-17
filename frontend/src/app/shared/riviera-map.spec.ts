@@ -625,6 +625,7 @@ describe('RivieraMap near me', () => {
     expect(message(fixture)).not.toBeNull();
 
     dismissButton(fixture)?.click();
+    await fixture.whenStable();
     fixture.detectChanges();
 
     expect(message(fixture)).toBeNull();
@@ -632,10 +633,24 @@ describe('RivieraMap near me', () => {
     expect(handleOf(fixture).view()).toEqual(before);
   });
 
+  // The teardown takes the dismiss button itself, which just held focus (WCAG 2.4.3).
+  it('moves focus onto Near me rather than stranding it on the dismissed button', async () => {
+    const fixture = await render();
+    await press(fixture, { kind: 'denied' });
+    dismissButton(fixture)!.focus();
+
+    dismissButton(fixture)?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(control(fixture));
+  });
+
   it('can raise the message again after a dismissal', async () => {
     const fixture = await render();
     await press(fixture, { kind: 'denied' });
     dismissButton(fixture)?.click();
+    await fixture.whenStable();
     fixture.detectChanges();
     expect(message(fixture)).toBeNull();
 

@@ -15,6 +15,7 @@ import {
 } from '@angular/core';
 
 import { BusyAction } from './busy-action';
+import { focusMover } from './focus-after-render';
 import { GeolocationFailure, GeolocationGateway, GeolocationOutcome } from './geolocation';
 import { LngLat, MapEngine, MapEngineOptions, MapHandle } from './map-engine';
 import { TouchTarget } from './touch-target';
@@ -160,6 +161,7 @@ export class RivieraMap {
   private readonly document = inject(DOCUMENT);
   private readonly canvasHost = viewChild.required<ElementRef<HTMLElement>>('canvasHost');
   private readonly mapEnd = viewChild.required<ElementRef<HTMLElement>>('mapEnd');
+  private readonly moveFocus = focusMover();
 
   /** The camera and fence; the riviera by default, so an unpinned consumer binds nothing. */
   readonly options = input<MapEngineOptions>(RIVIERA_MAP_OPTIONS);
@@ -448,10 +450,12 @@ export class RivieraMap {
 
   /**
    * Dismiss the near-me message without moving the map — a later "Near me" press can raise it
-   * again. The only other writer of {@link problem} is `findMe()` itself.
+   * again. The teardown takes the dismiss button itself, which just held focus, so it is moved
+   * back to the control beside it rather than stranding it on `<body>` (WCAG 2.4.3).
    */
   protected dismissNearMeMessage(): void {
     this.problem.set(null);
+    this.moveFocus('map-near-me');
   }
 
   private async boot(): Promise<void> {
