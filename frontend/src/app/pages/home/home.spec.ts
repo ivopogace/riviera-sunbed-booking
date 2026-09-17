@@ -838,6 +838,17 @@ describe('Home (list/map switch)', () => {
     expect(byTestId(fixture, 'map-panel')?.hidden).toBe(true);
   });
 
+  it('offers Near me on the discovery map', async () => {
+    const fixture = render(false);
+    flushVenues();
+    await settle(fixture);
+
+    byTestId(fixture, 'view-map')?.click();
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'map-near-me')?.textContent?.trim()).toBe('Near me');
+  });
+
   it('never loads the map before the venue list has settled', async () => {
     const fixture = render(false);
     byTestId(fixture, 'view-map')?.click();

@@ -241,16 +241,16 @@ is the machine proof that the wire is untouched.
 
 ## Execution status
 
-**Stage pointer:** `implement — phases 0 and 1 done, phase 2 next`
+**Stage pointer:** `implement — phases 0–2 done, phase 3 (e2e) next`
 
-**Next action:** phase 2 — turn the control on for Discover and the console placer, and add the
-privacy-policy geolocation sentence.
+**Next action:** phase 3 — the mocked-suite legs: granted/denied on Discover, the extended no-leak
+guard against the real engine, the console flow, and the two sweep touch-ups.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The geolocation gateway seam + app wiring | ✅ | (this commit) |
 | 1 — The near-me control on the map component | ✅ | (this commit) |
-| 2 — The two surfaces + the privacy paragraph | | |
+| 2 — The two surfaces + the privacy paragraph | ✅ | (this commit) |
 | 3 — e2e: the granted/denied flows and the extended no-leak guard | | |
 | 4 — Integration, CI green, review + Sonar gates, close-out | | |
 
@@ -301,8 +301,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
   screen before measuring, so it cannot silently stop covering it.
 - `frontend/e2e/mobile-zoom-tourist.e2e.ts` — the control joins the double-tap-opt-out selector
   list beside the zoom buttons.
-- `frontend/e2e/legal-pages.e2e.ts` — only if the privacy page's rendered text is asserted there
-  (checked in phase 2).
+- `frontend/e2e/legal-pages.e2e.ts` — checked in phase 2: it asserts no map copy, so it is
+  untouched. The paragraph's own proof is `privacy-policy.spec.ts`.
 - `CONTEXT.md` — only if the close-out's freshness sweep finds the glossary needs the near-me
   behaviour (the **Venue location** entry already says geolocation "is the visitor's own position,
   which never leaves their browser").
@@ -379,8 +379,7 @@ Modify `frontend/src/app/pages/home/home.spec.ts`, `frontend/src/app/pages/home/
   → FAIL.
 - [ ] **Step 3: Minimal implementation** — one attribute per consumer; the policy sentence.
 - [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: *every `app-riviera-map` call site*;
-  enumerate `grep -rn "app-riviera-map" frontend/src`; judge near-me on/off per surface.
+- [x] **Step 5: Generalization-audit pass** — done, logged below: both call sites take the control.
 - [ ] **Step 6: Commit** — `git commit -m "Offer Near me on Discover and the pin placer, and say so in the privacy policy (#1100)"`
 - [ ] **Step 7: Update plan-doc execution status** in the same commit window.
 
@@ -432,6 +431,7 @@ Modify `frontend/src/app/pages/home/home.spec.ts`, `frontend/src/app/pages/home/
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-17 | phase 2 — a new map input | every `app-riviera-map` call site, since a per-consumer opt-in is only right if each consumer was judged | `grep -rn "app-riviera-map" frontend/src --include=*.html --include=*.ts` | 2: `pages/home/home.html` (Discover) and `operator/venue-location-field.ts` (the pin placer) | both take `[nearMe]="true"` — Discover per the issue, the placer per the maintainer's plan-gate answer; no third site exists to judge |
 | 2026-09-17 | phase 1 — a second marker element | every marker element the app mounts into the surface an engine reads map clicks from (#1099's ~6 km mis-placement mechanism) | `grep -rn "addMarker(" frontend/src frontend/e2e` | 2 production call sites (`PIN_ID`, `HERE_MARKER`), both in `riviera-map.ts`; the other 5 are `fake-map-engine.spec.ts` fixtures | none — both builders already stop click propagation (`riviera-map.ts:234`, `:293`); the here-marker was written that way for this reason |
 | 2026-09-17 | phase 0 — a new capability seam | every abstract-class DI token over an external capability, and how each is wired | `grep -rn "^export abstract class" frontend/src/app --include=*.ts` + `grep -n "provide:" frontend/src/app/app.config.ts` | 6 tokens: `MapEngine`, `QrScanner`, `StripePaymentGateway`, `SessionAuth`, `SsoRedirect`, + the new `GeolocationGateway` | none — the three `useFactory` ones need a `globalThis` fake flag because their real adapter cannot run under the e2e; geolocation's can (Playwright grants the permission), so it takes `SsoRedirect`'s `useClass` shape. No existing site changes. |
 

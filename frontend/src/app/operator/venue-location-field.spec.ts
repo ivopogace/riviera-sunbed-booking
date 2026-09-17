@@ -15,15 +15,18 @@ import { VenueLocationField } from './venue-location-field';
  * only ever sees the seam.
  */
 describe('VenueLocationField', () => {
+  let geolocation: FakeGeolocationGateway;
+
   async function render(
     location: VenueLocation | null = null,
   ): Promise<ComponentFixture<VenueLocationField>> {
+    geolocation = new FakeGeolocationGateway();
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [VenueLocationField],
       providers: [
         { provide: MapEngine, useValue: new FakeMapEngine() },
-        { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
+        { provide: GeolocationGateway, useValue: geolocation },
       ],
     });
     const fixture = TestBed.createComponent(VenueLocationField);
@@ -192,5 +195,47 @@ describe('VenueLocationField', () => {
     expect(readout?.tagName).toBe('OUTPUT');
     expect(readout?.getAttribute('aria-live')).toBe('polite');
     expect(host(fixture).querySelectorAll('input')).toHaveLength(0);
+  });
+
+  /**
+   * The operator standing on their own beach: the map's near-me control centres on them, and the
+   * placer's keyboard twin then drops the pin on what the map is showing. Two controls that know
+   * nothing about each other, composing through the camera.
+   */
+  it('places the pin where Near me centred the map', async () => {
+    const fixture = await render(null);
+
+    byTestId(fixture, 'map-near-me')?.click();
+    geolocation.answerWith({ kind: 'located', at: { lng: 20.0053, lat: 39.8756 } });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    byTestId(fixture, 'venue-location-place')?.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.location()).toEqual({
+      latitude: 39.8756,
+      longitude: 20.0053,
+    });
+    expect(byTestId(fixture, 'venue-location-readout')?.textContent).toContain('39.875600');
+  });
+
+  it('leaves the venue pin alone when the you-are-here dot is tapped', async () => {
+    const fixture = await render({ latitude: 40.1468, longitude: 19.6482 });
+
+    byTestId(fixture, 'map-near-me')?.click();
+    geolocation.answerWith({ kind: 'located', at: { lng: 20.0053, lat: 39.8756 } });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Without this the click below would be a no-op and the assertion a false green.
+    expect(byTestId(fixture, 'map-here')).not.toBeNull();
+    byTestId(fixture, 'map-here')?.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.location()).toEqual({
+      latitude: 40.1468,
+      longitude: 19.6482,
+    });
   });
 });

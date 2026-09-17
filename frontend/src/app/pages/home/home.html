@@ -360,7 +360,10 @@
     <!-- Sticky beside the list from lg: the map keeps pace while the cards scroll. -->
     <div class="map-panel mt-6 lg:sticky lg:top-6" data-testid="map-panel" [hidden]="!mapOpen()">
       @defer (when mapDefer()) {
-        <app-riviera-map class="h-[calc(100dvh-220px)] max-h-[720px] min-h-[360px]" />
+        <app-riviera-map
+          class="h-[calc(100dvh-220px)] max-h-[720px] min-h-[360px]"
+          [nearMe]="true"
+        />
       } @placeholder {
         <div
           class="h-[360px] animate-pulse rounded-[26px] bg-riv-card-track motion-reduce:animate-none"
