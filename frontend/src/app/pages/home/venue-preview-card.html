@@ -39,6 +39,34 @@
       {{ card().beach }} · {{ card().region }}
     </p>
 
+    @if (stack(); as stack) {
+      <!-- PROTOTYPE, variant D: the other venues at this exact spot, one press each way. -->
+      <p
+        class="-my-[6px] flex items-center gap-1 text-[12.5px] font-semibold text-riv-card-ink"
+        data-testid="preview-stack"
+      >
+        <button
+          type="button"
+          appTouchTarget
+          class="-ml-[12px] inline-flex touch-manipulation items-center justify-center rounded-full text-[24px] leading-none text-riv-card-ink hover:text-riv-accent-ink"
+          [attr.aria-label]="'Previous venue at ' + stack.place"
+          (click)="stepped.emit(stack.prevId)"
+        >
+          <span aria-hidden="true">&#x2039;</span>
+        </button>
+        <span class="tabular-nums">{{ stack.index + 1 }} of {{ stack.count }} here</span>
+        <button
+          type="button"
+          appTouchTarget
+          class="inline-flex touch-manipulation items-center justify-center rounded-full text-[24px] leading-none text-riv-card-ink hover:text-riv-accent-ink"
+          [attr.aria-label]="'Next venue at ' + stack.place"
+          (click)="stepped.emit(stack.nextId)"
+        >
+          <span aria-hidden="true">&#x203a;</span>
+        </button>
+      </p>
+    }
+
     <p
       class="flex items-center gap-[6px] text-[13px] text-riv-card-ink-soft"
       data-testid="preview-rating"

@@ -126,6 +126,8 @@ export class Home {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
   private readonly map = viewChild(RivieraMap);
+  /** PROTOTYPE: the overlay under test, for variant D's crowd stepper. */
+  private readonly prototype = viewChild(PinCrowdingPrototype);
 
   /** The displayed (filtered) venues; `undefined` while a request is in flight (loading). */
   protected readonly venues = signal<VenueSummary[] | undefined>(undefined);
@@ -252,6 +254,9 @@ export class Home {
   /** The live engine handle the overlay projects through; `undefined` until the map has booted. */
   protected readonly mapHandle = computed(() => this.map()?.handle());
 
+  /** PROTOTYPE, variant D: the open crowd's "k of n here" stepper, or `null`. */
+  protected readonly prototypeStack = computed(() => this.prototype()?.stack() ?? null);
+
   /**
    * PROTOTYPE: `?at=lng,lat,zoom` opens the map on a named case rather than the riviera-wide view,
    * so each crowding scale is a shareable URL — the Dhërmi three at `maxZoom` is the one that
@@ -363,6 +368,15 @@ export class Home {
   protected onPinSelected(id: string): void {
     this.selectedVenue.set(id);
     this.focusAfterRender('venue-preview');
+    this.revealCard(id);
+  }
+
+  /**
+   * PROTOTYPE, variant D: the card steps to a crowd neighbour. The card stays mounted and
+   * the pressed stepper button with it, so focus is left where it is.
+   */
+  protected onPrototypeStep(id: string): void {
+    this.selectedVenue.set(id);
     this.revealCard(id);
   }
 

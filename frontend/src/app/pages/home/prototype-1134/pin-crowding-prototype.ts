@@ -18,6 +18,7 @@ import { PrototypeVariantKey } from './prototype-variant';
 import { VariantStackFan } from './variant-stack-fan';
 import { VariantStackSheet } from './variant-stack-sheet';
 import { VariantTetheredFan } from './variant-tethered-fan';
+import { CrowdStack, VariantNamedCycle } from './variant-named-cycle';
 
 /**
  * THROWAWAY PROTOTYPE (issue #1134) — the plumbing the three variants sit on, and nothing that
@@ -34,7 +35,7 @@ import { VariantTetheredFan } from './variant-tethered-fan';
  */
 @Component({
   selector: 'app-pin-crowding-prototype',
-  imports: [VariantStackFan, VariantStackSheet, VariantTetheredFan],
+  imports: [VariantStackFan, VariantStackSheet, VariantTetheredFan, VariantNamedCycle],
   host: {
     class: 'pointer-events-none absolute inset-0 z-[4] block',
     '(document:keydown.escape)': 'dismiss()',
@@ -62,6 +63,14 @@ import { VariantTetheredFan } from './variant-tethered-fan';
           (chosen)="chosen.emit($event)"
         />
       }
+      @case ('D') {
+        <app-variant-named-cycle
+          [clusters]="clusters()"
+          [selected]="selected()"
+          [bounds]="size()"
+          (chosen)="chosen.emit($event)"
+        />
+      }
     }
   `,
 })
@@ -69,6 +78,7 @@ export class PinCrowdingPrototype {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly fan = viewChild(VariantStackFan);
   private readonly sheet = viewChild(VariantStackSheet);
+  private readonly cycle = viewChild(VariantNamedCycle);
 
   readonly pins = input.required<readonly PrototypePin[]>();
   readonly map = input<MapHandle | undefined>(undefined);
@@ -76,8 +86,14 @@ export class PinCrowdingPrototype {
   readonly selected = input<string | null>(null);
   readonly chosen = output<string>();
 
+  /** Variant D's stepper for the open crowd, which the page hands to its preview card; else `null`. */
+  readonly stack = computed<CrowdStack | null>(() => this.cycle()?.stack() ?? null);
+
   /** Bumped whenever the projection could have changed; the only thing `clusters` recomputes on. */
   private readonly tick = signal(0);
+
+  /** The map box's current size, for a variant that must know where the box ends. */
+  protected readonly size = signal({ x: Infinity, y: Infinity });
 
   protected readonly clusters = computed(() => {
     const handle = this.map();
@@ -105,7 +121,10 @@ export class PinCrowdingPrototype {
 
   /** A resized map re-projects every pin, and no engine reports that as a camera move. */
   private watchSize(): void {
-    const observer = new ResizeObserver(() => this.bump());
+    const observer = new ResizeObserver(([entry]) => {
+      this.size.set({ x: entry.contentRect.width, y: entry.contentRect.height });
+      this.bump();
+    });
     observer.observe(this.host.nativeElement);
     this.destroyRef.onDestroy(() => observer.disconnect());
   }
@@ -114,8 +133,15 @@ export class PinCrowdingPrototype {
     this.tick.update((value) => value + 1);
   }
 
+  /**
+   * Escape. The page closes the preview itself; here the pin that opened it takes focus back,
+   * because the engine holds no pins in prototype mode for the page's own `focusPin` to reach.
+   */
   protected dismiss(): void {
     this.fan()?.restack();
     this.sheet()?.close();
+    if (this.selected() !== null) {
+      this.host.nativeElement.querySelector<HTMLElement>('button[aria-expanded="true"]')?.focus();
+    }
   }
 }

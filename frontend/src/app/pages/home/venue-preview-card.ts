@@ -8,6 +8,7 @@ import { PhotoSlideshow } from '../../shared/photo-slideshow';
 import { SemanticChip } from '../../shared/semantic-chip';
 import { TouchTarget } from '../../shared/touch-target';
 import { VenueCard } from './venue-card';
+import { CrowdStack } from './prototype-1134/variant-named-cycle';
 
 /** The heading the dialog is named by; one preview is open at a time, so one id is enough. */
 const HEADING_ID = 'venue-preview-heading';
@@ -49,6 +50,11 @@ export class VenuePreviewCard {
   readonly date = input.required<string>();
 
   readonly closed = output<void>();
+
+  /** PROTOTYPE, variant D: the crowd this venue shares its spot with, or `null` alone. */
+  readonly stack = input<CrowdStack | null>(null);
+  /** PROTOTYPE, variant D: the tourist stepped to this neighbour at the same spot. */
+  readonly stepped = output<string>();
 
   protected readonly headingId = HEADING_ID;
 

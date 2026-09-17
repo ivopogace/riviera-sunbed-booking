@@ -16,7 +16,8 @@
     "format": "prettier --write src e2e eslint-rules vitest-base.config.ts",
     "format:check": "prettier --check src e2e eslint-rules vitest-base.config.ts",
     "prepare": "cd .. && husky .husky",
-    "prototype:1134": "node prototype-1134-map-link.mjs && ng serve --configuration prototype"
+    "prototype:1134": "node prototype-1134-map-link.mjs && ng serve --configuration prototype",
+    "prototype:1134:shots": "node src/app/pages/home/prototype-1134/screenshots.mjs"
   },
   "lint-staged": {
     "{src,e2e}/**/*.ts": [
