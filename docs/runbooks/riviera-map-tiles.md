@@ -20,8 +20,7 @@ replaces only its own section — re-running one never erases or duplicates the 
 and an input reused from `RIVIERA_MAP_WORK`'s cache is still recorded (Planetiler itself logs
 nothing on a cache hit, so the script persists the origin URL/dated name to a small sidecar file
 next to the cached source the first time it's fetched, and reads it back on a later cache hit).
-The committed `# tiles` section is older than that recording: it was written before #1112 added
-the extract and source lines, so it still holds only `planetiler.jar` and an undated
+The committed `# tiles` section is short of that: it holds only `planetiler.jar` and an undated
 `geofabrik:albania.osm.pbf`. The next `--tiles` run fills the rest in — three added lines and a
 dated extract name are that catch-up, not an upstream change.
 
