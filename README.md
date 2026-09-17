@@ -54,7 +54,7 @@ backend Testcontainers integration tests — they skip cleanly without a daemon)
 npm ci
 npm start                           # dev server
 npm run lint                        # ESLint (type-aware presets)
-npm run format:check                # Prettier over src + e2e
+npm run format:check                # Prettier over src + e2e + eslint-rules + vitest-base.config.ts
 npm test                            # unit tests (Vitest, jsdom)
 npm run test:e2e:a11y               # Playwright — the CI-safe mocked suite (frontend/e2e/)
 npm run test:e2e                    # Playwright — the local-only REAL-backend suite

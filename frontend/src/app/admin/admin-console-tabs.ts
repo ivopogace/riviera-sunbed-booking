@@ -134,9 +134,9 @@ interface TabRow {
  *
  * <p><strong>Routed tabs, not local state.</strong> Each tab is its own child route of
  * {@code AdminConsole}, so it is deep-linkable, back-button-correct, and only the tab you opened is
- * downloaded — the operator console's own shape (`riviera-frontend`: "the one nested child-route
- * tree... follow that shape for further tabbed sub-apps"). Mounted once by the shell and kept alive
- * across tab switches, so its scroll position is never lost or reset.
+ * downloaded — the operator console's own shape, which `riviera-frontend` § Routing names as the
+ * one to follow for a tabbed sub-app. Mounted once by the shell and kept alive across tab
+ * switches, so its scroll position is never lost or reset.
  *
  * <p><strong>Scrolls, doesn't wrap, from `sm` up.</strong> A single scrolling row, matching the
  * operator console's own rail so the two navs behave the same; no edge mask — the cut-off tab at

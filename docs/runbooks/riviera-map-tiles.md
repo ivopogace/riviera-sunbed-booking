@@ -7,7 +7,7 @@ The **riviera map** (ADR-0022) is drawn from four resources the platform hosts i
 |---|---|---|---|
 | Style | `platform/map/style.json` | OSM Liberty (BSD-3, `maputnik/osm-liberty`) rewritten to `/map/…` URLs | ~75 kB |
 | Sprites | `platform/map/sprites/osm-liberty{,@2x}.{json,png}` | fetched from the same repo | ~150 kB |
-| Glyphs | `platform/map/glyphs/<font stack>/<range>.pbf` | `orangemug/font-glyphs` (Roboto, Apache-2.0): Roboto Regular, Roboto Medium, Roboto Condensed Italic × the ranges in `GLYPH_RANGES` (§ *Glyph ranges* below) | ~2.1 MB |
+| Glyphs | `platform/map/glyphs/<font stack>/<range>.pbf` | `orangemug/font-glyphs` (Roboto, Apache-2.0): Roboto Regular, Roboto Medium, Roboto Condensed Italic × the ranges in `GLYPH_RANGES` (§ *Glyph ranges* below) | ~1.6 MB |
 | Tiles | `platform/map/riviera.pmtiles` | Planetiler 0.10.2 (OpenMapTiles profile) over Geofabrik Albania, bounds `19.00,39.50,21.20,42.80` (west, south, east, north — all of Albania, with sea room), max zoom 14, PMTiles output | ~60 MB |
 
 `platform/map/MANIFEST.txt` lists the sha256, URL and fetch time of every upstream byte the
@@ -20,6 +20,9 @@ replaces only its own section — re-running one never erases or duplicates the 
 and an input reused from `RIVIERA_MAP_WORK`'s cache is still recorded (Planetiler itself logs
 nothing on a cache hit, so the script persists the origin URL/dated name to a small sidecar file
 next to the cached source the first time it's fetched, and reads it back on a later cache hit).
+The committed `# tiles` section is short of that: it holds only `planetiler.jar` and an undated
+`geofabrik:albania.osm.pbf`. The next `--tiles` run fills the rest in — three added lines and a
+dated extract name are that catch-up, not an upstream change.
 
 **Regeneration is a manual action, never automation.** Nothing in CI or the deploy fetches map
 data: the files are committed, `platform/Dockerfile` copies `platform/map/` to `/app/map/`, and

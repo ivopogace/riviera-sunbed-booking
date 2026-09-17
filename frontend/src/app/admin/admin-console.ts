@@ -43,8 +43,8 @@ const FALLBACK_TAB: AdminTabRouteData = {
  *
  * <p><strong>Why a persistent host, not per-page duplication.</strong> Before this, every
  * `/admin/*` route was its own top-level page, so the gate and title were rebuilt on every tab
- * click. A host wrapping child routes is the venue console's own shape (`riviera-frontend`: "the
- * one nested child-route tree... follow that shape for further tabbed sub-apps").
+ * click. A host wrapping child routes is the venue console's own shape, which `riviera-frontend`
+ * § Routing names as the one to follow for a tabbed sub-app.
  *
  * <p>The gate stays here as an `@if` chain, not a route guard: unlike {@code operatorSessionGuard}
  * (which redirects), a signed-out visitor is allowed to LAND on any `/admin/*` URL — just not
