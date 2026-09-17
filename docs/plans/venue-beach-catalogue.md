@@ -366,7 +366,7 @@ N/A — no payment in scope.
 | 0 — issue + plan | ✅ | |
 | 1 — backend: `Beach`, V59, commands, adapters, ITs | ✅ | (this PR's first commit) |
 | 2 — frontend: mirror, field, forms, Discover + map, labels | ✅ | (same commit) |
-| 3 — docs + close-out | ⏳ | |
+| 3 — docs + close-out | ⏳ | plan doc finalised; CI on the PR runs the two Testcontainers ITs |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -392,6 +392,6 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] Flyway migration present; the CHECK tested by its IT (invariant #12).
 - [x] No JPA; `JdbcClient` SQL only (invariant #1).
 - [x] `ModularityTests` + the structural net green (session).
-- [x] `npm run lint`, `format:check`, `test` green (session); `test:e2e:a11y` — see the PR's CI run and the session note in Execution status.
+- [x] `npm run lint`, `format:check`, `test` (3407 specs) and `test:e2e:a11y` (665 tests) green in the session.
 - [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` green.
 - [x] `check-inline-comments`, `check-touch-target`, `check-focus-posture` over the touched files: clean.
