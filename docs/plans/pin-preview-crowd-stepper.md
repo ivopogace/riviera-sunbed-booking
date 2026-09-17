@@ -294,9 +294,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `sonar gate — awaiting the analysis on the ready-for-review head; F-1 fixed locally, batched with any Sonar fix`
+**Stage pointer:** `DONE — merged via PR #1140` (CI green, the review gate run, the Sonar list cleared at F-2; awaiting the maintainer's merge)
 
-**Next action:** read the SonarCloud list for PR #1140 once `SonarCloud Code Analysis` concludes; fix every entry; push F-1 and the Sonar fixes with this close-out in one commit.
+**Next action:** none in the repo — the merge close-out's remaining items are GitHub edits (the issue closes via `Closes #1139`; no epic checklist; nothing deferred).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -314,7 +314,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review (bank #4, prior-PR context; confidence 50, under the 80 posting bar) | the stepper's chevrons declare `touch-manipulation` with no `expectTouchManipulation` proof in `discover-map.e2e.ts`, the class PR #1131's review set for map-area controls | fixed — the press-through case proves both chevrons; rides the next push |
+| F-1 | review (bank #4, prior-PR context; confidence 50, under the 80 posting bar) | the stepper's chevrons declare `touch-manipulation` with no `expectTouchManipulation` proof in `discover-map.e2e.ts`, the class PR #1131's review set for map-area controls | fixed-in-`87d22ca3` — the press-through case proves both chevrons |
+| F-2 | sonar (`Web:S6819`, MAJOR, the one entry on the PR's list; gate green, 98.3 % new-code coverage, 0 % duplication) | the stepper's `<div role="group">` should be the native element | fixed — a `<fieldset>` with an `sr-only` `<legend>`, the shape `riviera-map.html`'s zoom controls already use; rides the close-out commit |
 
 ---
 

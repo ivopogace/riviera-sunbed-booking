@@ -170,8 +170,8 @@ describe('VenuePreviewCard', () => {
       const fixture = render(FOLIE, '2026-07-01', FOLIE_STACK);
 
       const stepper = byTestId(fixture, 'preview-stack');
-      expect(stepper?.getAttribute('role')).toBe('group');
-      expect(stepper?.getAttribute('aria-label')).toBe('3 venues at Dhërmi');
+      expect(stepper?.tagName).toBe('FIELDSET');
+      expect(stepper?.querySelector('legend')?.textContent?.trim()).toBe('3 venues at Dhërmi');
       const prev = byTestId(fixture, 'preview-stack-prev') as HTMLButtonElement;
       const next = byTestId(fixture, 'preview-stack-next') as HTMLButtonElement;
       expect(prev.type).toBe('button');

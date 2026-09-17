@@ -41,12 +41,11 @@
 
     @if (stack(); as stack) {
       <!-- The other venues at this exact spot, one press each way; the chevrons' 44 px boxes overhang the 32 px pill. -->
-      <div
-        class="-my-[6px] inline-flex h-[32px] items-center self-start rounded-full bg-riv-card-track px-[2px]"
-        role="group"
+      <fieldset
+        class="-my-[6px] inline-flex h-[32px] items-center self-start rounded-full border-0 bg-riv-card-track px-[2px] py-0"
         data-testid="preview-stack"
-        [attr.aria-label]="stack.count + ' venues at ' + stack.place"
       >
+        <legend class="sr-only">{{ stack.count }} venues at {{ stack.place }}</legend>
         <button
           type="button"
           appTouchTarget
@@ -93,7 +92,7 @@
         >
           <span aria-hidden="true">›</span>
         </button>
-      </div>
+      </fieldset>
     }
     <!-- Rationale: shared/load-announcer.ts — mounted for the card's life, so a step is announced and an open is not. -->
     <output class="sr-only" aria-live="polite" data-testid="preview-stack-position">
