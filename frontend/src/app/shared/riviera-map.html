@@ -23,29 +23,53 @@
     The map can’t be shown in this browser. Every venue is in the list.
   </p>
 } @else {
-  <fieldset class="absolute top-3 right-3 z-10 flex flex-col gap-2">
-    <legend class="sr-only">Zoom</legend>
-    <button
-      type="button"
-      appTouchTarget
-      data-testid="map-zoom-in"
-      aria-label="Zoom in"
-      class="inline-flex size-11 touch-manipulation items-center justify-center rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill text-[22px] leading-none font-semibold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.22)] hover:bg-riv-solid-btn-hover"
-      (click)="zoomIn()"
-    >
-      <span aria-hidden="true">+</span>
-    </button>
-    <button
-      type="button"
-      appTouchTarget
-      data-testid="map-zoom-out"
-      aria-label="Zoom out"
-      class="inline-flex size-11 touch-manipulation items-center justify-center rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill text-[22px] leading-none font-semibold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.22)] hover:bg-riv-solid-btn-hover"
-      (click)="zoomOut()"
-    >
-      <span aria-hidden="true">−</span>
-    </button>
-  </fieldset>
+  <!-- One column for every map control, so nothing has to be placed around the credit pill below. -->
+  <div class="absolute top-3 right-3 z-10 flex max-w-[calc(100%-24px)] flex-col items-end gap-2">
+    @if (nearMeShown()) {
+      <button
+        type="button"
+        appTouchTarget
+        data-testid="map-near-me"
+        class="inline-flex touch-manipulation items-center rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill px-[16px] text-[14px] font-semibold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.22)] hover:bg-riv-solid-btn-hover aria-disabled:opacity-60"
+        [appBusy]="locating()"
+        (click)="findMe()"
+      >
+        Near me
+      </button>
+    }
+    <fieldset class="flex flex-col gap-2">
+      <legend class="sr-only">Zoom</legend>
+      <button
+        type="button"
+        appTouchTarget
+        data-testid="map-zoom-in"
+        aria-label="Zoom in"
+        class="inline-flex size-11 touch-manipulation items-center justify-center rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill text-[22px] leading-none font-semibold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.22)] hover:bg-riv-solid-btn-hover"
+        (click)="zoomIn()"
+      >
+        <span aria-hidden="true">+</span>
+      </button>
+      <button
+        type="button"
+        appTouchTarget
+        data-testid="map-zoom-out"
+        aria-label="Zoom out"
+        class="inline-flex size-11 touch-manipulation items-center justify-center rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill text-[22px] leading-none font-semibold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.22)] hover:bg-riv-solid-btn-hover"
+        (click)="zoomOut()"
+      >
+        <span aria-hidden="true">−</span>
+      </button>
+    </fieldset>
+    @if (nearMeMessage(); as text) {
+      <p
+        role="alert"
+        data-testid="map-near-me-message"
+        class="rounded-[18px] border border-riv-solid-btn-border bg-riv-solid-btn-fill px-[12px] py-[6px] text-right text-[14px] leading-[1.45] text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.22)]"
+      >
+        {{ text }}
+      </p>
+    }
+  </div>
 }
 
 <!-- The tiles' licence credits (OpenMapTiles CC-BY, OSM ODbL) in every map state; 13 px radius: a full pill on one line, still rounded when it wraps. -->

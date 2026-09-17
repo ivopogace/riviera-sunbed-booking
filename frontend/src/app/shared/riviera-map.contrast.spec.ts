@@ -2,8 +2,9 @@ import { AA_LARGE, AA_NORMAL, contrastRatio, rgbToHex } from '../../testing/cont
 import { SOLID_BTN_FILL, SOLID_BTN_HOVER, SOLID_BTN_INK } from '../../testing/glass-tokens';
 
 /**
- * The map chrome — zoom buttons, the attribution pill, the unavailable notice, the revealed skip
- * control, the location pin — floats over imagery of unknown luminance, so it wears the
+ * The map chrome — zoom buttons, the near-me control and its message, the attribution pill, the
+ * unavailable notice, the revealed skip control, the location pin, the you-are-here dot — floats
+ * over imagery of unknown luminance, so it wears the
  * theme-invariant `--riv-solid-btn-*` family: an opaque fill with a fixed ink, the same pair in
  * every theme (`booking/solid-btn-tokens.contrast.spec.ts` guards the invariance). This spec pins
  * the pair at the sizes the map paints: 12 px attribution and 14 px notice text at AA normal, the
@@ -20,5 +21,14 @@ describe('riviera map chrome contrast', () => {
   it('zoom glyphs clear AA-large over both the resting and the hover fill', () => {
     expect(contrastRatio(ink, rgbToHex(SOLID_BTN_FILL))).toBeGreaterThanOrEqual(AA_LARGE);
     expect(contrastRatio(ink, rgbToHex(SOLID_BTN_HOVER))).toBeGreaterThanOrEqual(AA_LARGE);
+  });
+
+  /**
+   * The you-are-here dot is an ink disc inside a ring cut from the same opaque fill, so the pair
+   * that has to clear WCAG 1.4.11's 3:1 is internal to the graphic — the ring is what separates
+   * it from imagery, whatever the imagery is. Its near-me control wears the pill skin above.
+   */
+  it('the you-are-here dot clears non-text contrast against its own ring', () => {
+    expect(contrastRatio(ink, rgbToHex(SOLID_BTN_FILL))).toBeGreaterThanOrEqual(AA_LARGE);
   });
 });

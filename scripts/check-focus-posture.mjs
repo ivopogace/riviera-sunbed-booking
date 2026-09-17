@@ -80,6 +80,7 @@ export const BUSY_STEMS = [
   'reloading',
   'reading',
   'searching',
+  'locating',
   'deciding',
   'acting',
   'deleting',

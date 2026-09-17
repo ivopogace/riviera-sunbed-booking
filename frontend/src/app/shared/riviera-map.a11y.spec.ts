@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 
 import { expectNoAxeViolations } from '../../testing/axe';
+import { FakeGeolocationGateway } from '../../testing/fake-geolocation';
 import { FakeMapEngine } from './fake-map-engine';
+import { GeolocationGateway } from './geolocation';
 import { MapEngine, MapHandle } from './map-engine';
 import { RivieraMap } from './riviera-map';
 
@@ -19,14 +21,20 @@ class NoWebGlEngine extends MapEngine {
  * mocked e2e.
  */
 describe('RivieraMap accessibility', () => {
+  let geolocation: FakeGeolocationGateway;
+
   async function renderWith(
     engine: MapEngine,
     inputs: Record<string, unknown> = {},
   ): Promise<HTMLElement> {
+    geolocation = new FakeGeolocationGateway();
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [RivieraMap],
-      providers: [{ provide: MapEngine, useValue: engine }],
+      providers: [
+        { provide: MapEngine, useValue: engine },
+        { provide: GeolocationGateway, useValue: geolocation },
+      ],
     });
     const fixture = TestBed.createComponent(RivieraMap);
     Object.entries(inputs).forEach(([name, value]) => fixture.componentRef.setInput(name, value));
@@ -56,5 +64,20 @@ describe('RivieraMap accessibility', () => {
 
   it('has no serious violations when the map is unavailable', async () => {
     await expectNoAxeViolations(await renderWith(new NoWebGlEngine()));
+  });
+
+  it('has no serious violations with the near-me control, before and after it reports a problem', async () => {
+    const host = await renderWith(new FakeMapEngine(), { nearMe: true });
+    const control = host.querySelector<HTMLButtonElement>('[data-testid="map-near-me"]');
+    expect(control).not.toBeNull();
+    await expectNoAxeViolations(host);
+
+    control?.click();
+    geolocation.answerWith({ kind: 'denied' });
+    await Promise.resolve();
+    TestBed.tick();
+
+    expect(host.querySelector('[data-testid="map-near-me-message"]')).not.toBeNull();
+    await expectNoAxeViolations(host);
   });
 });

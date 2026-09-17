@@ -2,6 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
 import { FakeMapEngine, FakeMapHandle } from '../shared/fake-map-engine';
+import { FakeGeolocationGateway } from '../../testing/fake-geolocation';
+import { GeolocationGateway } from '../shared/geolocation';
 import { MapEngine } from '../shared/map-engine';
 import { RivieraMap } from '../shared/riviera-map';
 import { VenueLocation } from '../shared/venue-views';
@@ -19,7 +21,10 @@ describe('VenueLocationField', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [VenueLocationField],
-      providers: [{ provide: MapEngine, useValue: new FakeMapEngine() }],
+      providers: [
+        { provide: MapEngine, useValue: new FakeMapEngine() },
+        { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
+      ],
     });
     const fixture = TestBed.createComponent(VenueLocationField);
     fixture.componentRef.setInput('location', location);
@@ -166,7 +171,10 @@ describe('VenueLocationField', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [VenueLocationField],
-      providers: [{ provide: MapEngine, useValue: new FakeMapEngine() }],
+      providers: [
+        { provide: MapEngine, useValue: new FakeMapEngine() },
+        { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
+      ],
     });
     const fixture = TestBed.createComponent(VenueLocationField);
     fixture.componentRef.setInput('location', null);

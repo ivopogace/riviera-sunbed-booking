@@ -155,12 +155,12 @@ gains a wrapping control column, which moves no rendered box: same `top-3 right-
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | A coordinate leaks off the device through a request, a storage entry or a log line — the one risk the whole slice exists to avoid (story 8, DSGVO) | low | high | The position lives in a component signal and the engine handle only; AC-9 extends #1098's real-engine guard to URLs, headers, bodies, both storages and console output with a distinctive fixture coordinate | plan | open |
-| R-2 | `RivieraMap` now requires a `GeolocationGateway`, so the six existing specs that mount it (directly or through `VenueLocationField`) fail with `NullInjectorError` | high | low | Each gains one provider line stating its geolocation posture — `supported: false` where near-me is not the subject, the fake where it is; caught by the first scoped Vitest run in phase 1 | plan | open |
-| R-3 | The here-marker mounts inside the surface both engines read map clicks from, so a tap on it would re-place the operator's venue pin — exactly the defect #1099's review caught for the venue pin (up to ~6 km, then saved) | med | high | The here-marker is built by the same factory path and stops click propagation; AC-7 pins it on the console surface | plan | open |
+| R-2 | `RivieraMap` now requires a `GeolocationGateway`, so the six existing specs that mount it (directly or through `VenueLocationField`) fail with `NullInjectorError` | high | low | Each gains one provider line stating its geolocation posture — `supported: false` where near-me is not the subject, the fake where it is; caught by the first scoped Vitest run in phase 1 | plan | closed — it was 5 configs across 5 files (60 tests), all green again |
+| R-3 | The here-marker mounts inside the surface both engines read map clicks from, so a tap on it would re-place the operator's venue pin — exactly the defect #1099's review caught for the venue pin (up to ~6 km, then saved) | med | high | The here-marker is built by the same factory path and stops click propagation; AC-7 pins it on the console surface | plan | closed in phase 1 — pinned by `riviera-map.spec.ts` "keeps a tap on the you-are-here marker off the map underneath"; AC-7 adds the console leg |
 | R-4 | A granted position outside the Albania fence clamps the camera to a corner with the marker unreachable | med | med | AC-5: bounds-checked above the seam, message instead of a move | plan | open |
 | R-5 | Playwright's denied path behaves differently than assumed (no prompt in headless ⇒ possibly `PERMISSION_DENIED`, possibly a hang) | med | low | Phase 3 measures it before asserting it; if clearing permissions hangs rather than denying, the denied e2e leg falls back to the fake gateway posture and the plan records the substitution — the Vitest specs already own all five outcomes | plan | open |
 | R-6 | #1101 (venue pins) will touch the same marker code on `RivieraMap`; both slices change `syncPin`'s neighbourhood | med | low | #1101 is open and unstarted, this slice merges first and keeps the here-marker on its own id with no change to `PIN_ID`'s handling; whoever merges second rebases | plan | open |
-| R-7 | The new control is map chrome over imagery of unknown luminance, so a themed token would drift light-on-light | low | med | It wears the theme-invariant `--riv-solid-btn-*` family already proven by the zoom buttons; AC-11 pins the ratios | plan | open |
+| R-7 | The new control is map chrome over imagery of unknown luminance, so a themed token would drift light-on-light | low | med | It wears the theme-invariant `--riv-solid-btn-*` family already proven by the zoom buttons; AC-11 pins the ratios | plan | closed in phase 1 — the control wears the pill skin, and the here-dot's ring is cut from the same opaque fill so its 3:1 pair is internal to the graphic |
 | R-8 | Turning near-me on in the console (maintainer's call, beyond the issue text) widens the slice to a second surface's sweeps | — | low | AC-7/AC-10 cover it; the console's sweep (`touch-targets.e2e.ts`, "operator venue tab") already measures whatever the tab renders | maintainer | accepted at plan time |
 
 ## Open questions / Assumptions
@@ -241,16 +241,15 @@ is the machine proof that the wire is untouched.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, phase 1 next`
+**Stage pointer:** `implement — phases 0 and 1 done, phase 2 next`
 
-**Next action:** phase 1 — the near-me control on `shared/riviera-map.ts`, starting with the
-fake gateway its first spec needs (moved here from phase 0: TDD writes no test double before the
-spec that consumes it).
+**Next action:** phase 2 — turn the control on for Discover and the console placer, and add the
+privacy-policy geolocation sentence.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The geolocation gateway seam + app wiring | ✅ | (this commit) |
-| 1 — The near-me control on the map component | | |
+| 1 — The near-me control on the map component | ✅ | (this commit) |
 | 2 — The two surfaces + the privacy paragraph | | |
 | 3 — e2e: the granted/denied flows and the extended no-leak guard | | |
 | 4 — Integration, CI green, review + Sonar gates, close-out | | |
@@ -292,6 +291,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/operator/venue-location-field.ts` — `[nearMe]="true"` on the placer's map.
 - `frontend/src/app/operator/venue-location-field.spec.ts` — AC-7.
 - `frontend/src/app/operator/venue-tab.spec.ts` — the provider (it mounts the placer).
+- `scripts/check-focus-posture.mjs` — `locating` joins `BUSY_STEMS`, so the guard can catch a
+  future `[disabled]="locating()"` (the sanctioned move for a novel busy-flag name).
 - `frontend/src/app/pages/legal/privacy-policy.html` — the geolocation sentence in the map section.
 - `frontend/src/app/pages/legal/privacy-policy.spec.ts` — AC-12.
 - `frontend/e2e/discover-map.e2e.ts` — AC-8 and AC-9.
@@ -358,10 +359,8 @@ Modify `frontend/src/app/pages/home/home.spec.ts`, `frontend/src/app/pages/home/
   R-3), and the control column in the template.
 - [ ] **Step 4: Run it, verify it passes** — `npx vitest run src/app/shared/ src/app/pages/home src/app/operator/venue-location-field.spec.ts src/app/operator/venue-tab.spec.ts`
   → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: *every marker element mounted into the
-  engine surface* (the R-3 mechanism); enumerate
-  `grep -rn "addMarker(" frontend/src/app frontend/e2e`; judge whether each stops click
-  propagation.
+- [x] **Step 5: Generalization-audit pass** — done, logged below: both production marker builders
+  stop click propagation; the rest of the population is spec fixtures.
 - [ ] **Step 6: Commit** — `git commit -m "Centre the riviera map on the visitor with a Near me control (#1100)"`
 - [ ] **Step 7: Update plan-doc execution status** in the same commit window.
 
@@ -433,6 +432,7 @@ Modify `frontend/src/app/pages/home/home.spec.ts`, `frontend/src/app/pages/home/
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-17 | phase 1 — a second marker element | every marker element the app mounts into the surface an engine reads map clicks from (#1099's ~6 km mis-placement mechanism) | `grep -rn "addMarker(" frontend/src frontend/e2e` | 2 production call sites (`PIN_ID`, `HERE_MARKER`), both in `riviera-map.ts`; the other 5 are `fake-map-engine.spec.ts` fixtures | none — both builders already stop click propagation (`riviera-map.ts:234`, `:293`); the here-marker was written that way for this reason |
 | 2026-09-17 | phase 0 — a new capability seam | every abstract-class DI token over an external capability, and how each is wired | `grep -rn "^export abstract class" frontend/src/app --include=*.ts` + `grep -n "provide:" frontend/src/app/app.config.ts` | 6 tokens: `MapEngine`, `QrScanner`, `StripePaymentGateway`, `SessionAuth`, `SsoRedirect`, + the new `GeolocationGateway` | none — the three `useFactory` ones need a `globalThis` fake flag because their real adapter cannot run under the e2e; geolocation's can (Playwright grants the permission), so it takes `SsoRedirect`'s `useClass` shape. No existing site changes. |
 
 ---

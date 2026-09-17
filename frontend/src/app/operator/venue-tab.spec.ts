@@ -7,6 +7,8 @@ import { BehaviorSubject } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { FakeMapEngine } from '../shared/fake-map-engine';
+import { FakeGeolocationGateway } from '../../testing/fake-geolocation';
+import { GeolocationGateway } from '../shared/geolocation';
 import { MapEngine } from '../shared/map-engine';
 import { VenueLocation } from '../shared/venue-views';
 import { VenueLocationField } from './venue-location-field';
@@ -82,6 +84,7 @@ describe('VenueTab (#177)', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: MapEngine, useValue: new FakeMapEngine() },
+        { provide: GeolocationGateway, useValue: new FakeGeolocationGateway(false) },
         {
           provide: ActivatedRoute,
           useValue: {
