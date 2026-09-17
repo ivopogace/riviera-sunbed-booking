@@ -11,6 +11,7 @@ import { CameraQrScanner } from './operator/camera-qr-scanner';
 import { FakeQrScanner } from './operator/fake-qr-scanner';
 import { QrScanner } from './operator/qr-scanner';
 import { apiSessionInterceptor } from './core/api-session.interceptor';
+import { BrowserGeolocationGateway, GeolocationGateway } from './shared/geolocation';
 import { FakeMapEngine } from './shared/fake-map-engine';
 import { MapEngine } from './shared/map-engine';
 import { MapLibreMapEngine } from './shared/maplibre-map-engine';
@@ -72,6 +73,8 @@ export const appConfig: ApplicationConfig = {
     { provide: StripePaymentGateway, useFactory: stripeGatewayFactory },
     { provide: QrScanner, useFactory: qrScannerFactory },
     { provide: MapEngine, useFactory: mapEngineFactory },
+    // No fake to swap in: the e2e drives the real prompt through Playwright's permissions.
+    { provide: GeolocationGateway, useClass: BrowserGeolocationGateway },
     // SSO start is a full-page navigation out of the SPA; the seam lets unit specs record the
     // URL without a real navigation (mirrors the Stripe adapter swap). The e2e uses the real redirect and
     // intercepts the navigation with page.route.

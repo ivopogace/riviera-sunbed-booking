@@ -241,14 +241,15 @@ is the machine proof that the wire is untouched.
 
 ## Execution status
 
-**Stage pointer:** `plan — doc written, awaiting the plan-gate commit; then implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, phase 1 next`
 
-**Next action:** commit this plan doc on `claude/issue-1100-near-me-tcai84`, then start phase 0
-(the gateway seam, test-first).
+**Next action:** phase 1 — the near-me control on `shared/riviera-map.ts`, starting with the
+fake gateway its first spec needs (moved here from phase 0: TDD writes no test double before the
+spec that consumes it).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The geolocation gateway seam + app wiring | | |
+| 0 — The geolocation gateway seam + app wiring | ✅ | (this commit) |
 | 1 — The near-me control on the map component | | |
 | 2 — The two surfaces + the privacy paragraph | | |
 | 3 — e2e: the granted/denied flows and the extended no-leak guard | | |
@@ -328,9 +329,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - [ ] **Step 3: Minimal implementation** — the token, the union, the adapter (bare-global
   `navigator` guarded, the house pattern `CameraQrScanner` uses), the fake, the provider.
 - [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: *every seam over a browser capability
-  behind a DI token*; enumerate `grep -rln "abstract class .*\(Gateway\|Scanner\|Engine\)" frontend/src/app`;
-  judge whether the new one matches their shape (token, real adapter, fake, `app.config` wiring).
+- [x] **Step 5: Generalization-audit pass** — done, logged below: the seam matches `SsoRedirect`'s
+  `useClass` shape (a real adapter the e2e drives directly), not the three `useFactory` ones that
+  need a `globalThis` fake flag. No other site to change.
 - [ ] **Step 6: Commit** — `git commit -m "Put the Geolocation API behind a gateway seam (#1100)"`
 - [ ] **Step 7: Open the draft PR** (CI fires on `pull_request` only) and update the execution
   status in the same commit window.
@@ -432,6 +433,7 @@ Modify `frontend/src/app/pages/home/home.spec.ts`, `frontend/src/app/pages/home/
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-17 | phase 0 — a new capability seam | every abstract-class DI token over an external capability, and how each is wired | `grep -rn "^export abstract class" frontend/src/app --include=*.ts` + `grep -n "provide:" frontend/src/app/app.config.ts` | 6 tokens: `MapEngine`, `QrScanner`, `StripePaymentGateway`, `SessionAuth`, `SsoRedirect`, + the new `GeolocationGateway` | none — the three `useFactory` ones need a `globalThis` fake flag because their real adapter cannot run under the e2e; geolocation's can (Playwright grants the permission), so it takes `SsoRedirect`'s `useClass` shape. No existing site changes. |
 
 ---
 
