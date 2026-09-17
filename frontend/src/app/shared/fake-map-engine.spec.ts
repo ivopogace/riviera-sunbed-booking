@@ -158,6 +158,21 @@ describe('FakeMapEngine', () => {
     expect(handle.project(east)).toEqual({ x: 0, y: 0 });
   });
 
+  it('holds a click inside the fence, as a real engine holds its camera', async () => {
+    const host = document.createElement('div');
+    const handle = await new FakeMapEngine().create(host, OPTIONS);
+    const clicks: LngLat[] = [];
+    handle.onMapClick((at) => clicks.push(at));
+    handle.setView({ center: OPTIONS.maxBounds[1], zoom: OPTIONS.minZoom });
+
+    // The box is a point in jsdom, so a far offset from it would run past the north-east corner.
+    host
+      .querySelector<HTMLElement>('[data-testid="riviera-map-fake"]')!
+      .dispatchEvent(new MouseEvent('click', { clientX: 5000, clientY: -5000, bubbles: true }));
+
+    expect(clicks).toEqual([OPTIONS.maxBounds[1]]);
+  });
+
   it('projects and unprojects as inverses', async () => {
     const host = document.createElement('div');
     const handle = await new FakeMapEngine().create(host, OPTIONS);

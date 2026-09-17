@@ -66,7 +66,7 @@ const FIT_MARGIN_PX = 150;
 export const HANG_PX = 22;
 /** The priced pin's chrome beyond its glyphs: 12 px padding each side and the 2 px borders. */
 const PIN_CHROME_PX = 28;
-/** The priced face: `font-extrabold` at 14 px, as `VENUE_PIN_BADGE_CLASSES` paints it. */
+/** The priced face: `font-extrabold` at 14 px, as the lone pin's badge paints it (`venue-pin-layer.ts`). */
 const BADGE_FONT = { weight: 800, sizePx: 14 };
 /** Without a canvas to measure on, a glyph of this font is about this many em wide. */
 const GLYPH_EM = 0.69;

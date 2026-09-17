@@ -63,8 +63,8 @@ interface Slot {
 
 /** Closer than this to the crowd's own zoom, a press would not visibly move the camera. */
 const SAME_ZOOM = 0.05;
-/** The pill's chrome beyond its text: padding, the count disc and the gap to it, borders. */
-const PILL_CHROME_PX = 13 + 8 + 26 + 6 + 4;
+/** The pill's chrome beyond its text: `pl-[13px]` + `pr-[6px]`, the 26 px count disc, its 6 px gap, two 2 px borders. */
+const PILL_CHROME_PX = 13 + 6 + 26 + 6 + 4;
 const NAME_FONT = { weight: 600, sizePx: 12.5 };
 const FROM_FONT = { weight: 800, sizePx: 11 };
 

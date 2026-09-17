@@ -518,6 +518,8 @@ test.describe('Discover map — crowded pins, fake engine', () => {
 
     await expectTouchTargets(page, 'Discover with place pills');
     await expectNoSeriousAxeViolations(page, 'Discover with place pills');
+    // Pressed again and again to walk a crowd: the pill keeps its double-tap, like a lone pin.
+    await expectTouchManipulation(page, '[data-testid="map-place-pill"]', 'the place pills');
   });
 
   test('press a place to go there: the pins separate, the Beach filter follows, the crumb is the way back', async ({
@@ -575,6 +577,7 @@ test.describe('Discover map — crowded pins, fake engine', () => {
     );
     await expect(page.getByTestId('filter-beach')).toHaveValue('Dhërmi');
     await expect(page.getByTestId('venue-card')).toHaveCount(3);
+    await settleAnimations(pill);
     await expectNoSeriousAxeViolations(page, 'Discover with an inverted place pill');
 
     // The next press opens the first venue; the pill becomes that venue's.

@@ -181,7 +181,9 @@ export class FakeMapHandle implements MapHandle {
 
   /**
    * A real click on the fake surface becomes a map click at the position under the pointer, so an
-   * e2e drops a pin with a genuine gesture and it lands where the click was.
+   * e2e drops a pin with a genuine gesture and it lands where the click was. Held inside
+   * `maxBounds` as a real engine's fence would hold its camera: in a document with no layout the
+   * box is a point, so an offset that would otherwise run off the map still lands on it.
    */
   private reportClick(event: MouseEvent): void {
     if (this.isDestroyed) {
@@ -189,7 +191,13 @@ export class FakeMapHandle implements MapHandle {
     }
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     const at = this.unproject({ x: event.clientX - rect.left, y: event.clientY - rect.top });
-    this.clickHandlers.forEach((handler) => handler(at));
+    const [southWest, northEast] = this.options.maxBounds;
+    this.clickHandlers.forEach((handler) =>
+      handler({
+        lng: Math.min(northEast.lng, Math.max(southWest.lng, at.lng)),
+        lat: Math.min(northEast.lat, Math.max(southWest.lat, at.lat)),
+      }),
+    );
   }
 }
 

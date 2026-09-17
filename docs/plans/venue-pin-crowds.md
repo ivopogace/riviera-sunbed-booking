@@ -375,7 +375,14 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (repo hygiene, phase-3 push) | `check-plan-file-structure`: `venue-preview-card.spec.ts` touched but not listed | fixed-in-`d6c0ac9c` |
-| F-3 | CI (repo hygiene, close-out push) | `check-inline-comments`: provenance `(#1134)` in the crowd describe's doc comment | fixed-in-the-next-commit |
+| F-3 | CI (repo hygiene, close-out push) | `check-inline-comments`: provenance `(#1134)` in the crowd describe's doc comment | fixed-in-`5ffb6a76` |
+| F-4 | review (prior-PR comments) | `venue-pin-layer.contrast.spec.ts` restated the resting pair with the arguments swapped — `contrastRatio` is order-independent (the #1130/#1131 correction) | fixed-in-the-review-fix commit (one assertion per pair; the doc comment says why the inverted states ride it) |
+| F-5 | review (prior-PR comments) | the place pill's `touch-manipulation` unproven by the double-tap sweep (the #1130/#1131 coverage half) | fixed-in-the-review-fix commit (`expectTouchManipulation` on `map-place-pill`) |
+| F-6 | review (git history) | the fake's click unprojection lost the "always inside `maxBounds`" guarantee its predecessor stated; in jsdom a far offset could leave the fence | fixed-in-the-review-fix commit (clamped to the fence; `fake-map-engine.spec.ts` "holds a click inside the fence") |
+| F-7 | review (code comments) | `pin-crowding.ts` cited `VENUE_PIN_BADGE_CLASSES`, which this PR deleted | fixed-in-the-review-fix commit |
+| F-8 | review (code comments) | `PILL_CHROME_PX = 13 + 8 + 26 + 6 + 4` did not decompose into the pill's classes (55, not 57) | fixed-in-the-review-fix commit (the breakdown named, the sum 55) |
+| F-9 | review (code comments) | the inverted-pill axe check ran before the pill's colour transition settled | fixed-in-the-review-fix commit (`settleAnimations(pill)` first) |
+| F-10 | review (bug scan) | anchor-based grouping splits a chain A–B–C where only A–B and B–C overlap | not a defect: the doc comment states the rule as deliberate, and `layoutPills` places lone pins first so a neighbouring pin is never buried under the pill — left as is |
 | F-2 | the e2e sweep (phase 4, local) | `preview-link` 39 px tall with a preview open at ≥ 390 px; a lone pin cut by the map's edge 26 px wide at 320 px | fixed-in-`d6c0ac9c` (`appTouchTarget`; `data-touch-pans`) |
 
 ---
