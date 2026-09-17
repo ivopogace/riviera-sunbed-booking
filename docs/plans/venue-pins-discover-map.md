@@ -237,10 +237,10 @@ code or error shape moves.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 6)`
+**Stage pointer:** `CI gate — awaiting the run for the phase 5/6 push`
 
-**Next action:** Phase 6 — `CONTEXT.md`'s **riviera map** entry gains the pin and the
-preview card, run the plan file-structure guard, then write the close-out.
+**Next action:** Check CI on this push; then mark the PR ready for review, which makes the
+Review gate and the Sonar gate due (`riviera-sdlc` `references/pr-gates.md`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -250,7 +250,7 @@ preview card, run the plan file-structure guard, then write the close-out.
 | 3 — The Liquid Glass preview card (AC-6) | ✅ | `<phase-3>` |
 | 4 — Wire Discover: pins, selection, preview, card highlight (AC-7, AC-8) | ✅ | `<phase-4>` |
 | 5 — e2e: pin → preview → venue page, filters, the network guard (AC-4, AC-5, AC-9, AC-11) | ✅ | `<phase-5>` |
-| 6 — `CONTEXT.md` + close-out | | |
+| 6 — `CONTEXT.md` + close-out | ⏳ | `<phase-6>` (close-out written at the last code commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

@@ -65,7 +65,14 @@ model in `docs/architecture/domain-model.md`.
 - **Riviera map** — the geographic discovery map of the Albanian riviera, drawn from map resources
   the platform hosts itself (ADR-0022). It is the tourist's on the Discover page and the operator's
   in the console, where they place their venue location on it. Not a beach map: it shows where
-  venues are, never a venue's sunbeds. _Avoid_: venue map.
+  venues are, never a venue's sunbeds. On Discover it carries one **pin** per venue in the current
+  result set that has a venue location — fed from the same fetched list the cards render, so the
+  filters and the from-price agree with the list and the map never queries on its own. _Avoid_:
+  venue map.
+- **Pin preview** — the compact card a Discover pin opens: cover photo, name, beach · region,
+  rating, the from-price for the chosen date and the closed-for-season state, linking to that
+  venue's beach map with the date carried. One is open at a time, and the card list stays the
+  fully accessible path to every venue. _Avoid_: popup, tooltip, info window.
 - **Venue location** — a venue's position on the riviera map as a latitude/longitude pin, placed
   by its operator by hand; optional, and a venue without one is simply absent from the riviera map
   while staying in the list. _Avoid_: address, coordinates (as the concept), geolocation (that is
