@@ -610,6 +610,12 @@ test.describe('Discover map — crowded pins, fake engine', () => {
     const position = preview.getByTestId('preview-stack-position');
     await expect(position).toHaveText('2 of 3 here, Folie Marine');
     await expect(preview.getByTestId('preview-availability')).toHaveText('2 of 34 free');
+    // Pressed again and again to walk the crowd: the chevrons keep their double-tap, like the pill.
+    await expectTouchManipulation(
+      page,
+      '[data-testid="preview-stack-prev"], [data-testid="preview-stack-next"]',
+      "the stepper's chevrons",
+    );
 
     await next.click();
     await expect(preview.getByTestId('preview-name')).toHaveText('Dhërmi Sun Club');

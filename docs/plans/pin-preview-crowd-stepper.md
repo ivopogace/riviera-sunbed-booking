@@ -39,7 +39,9 @@ slice 1's plan doc is stale — its PR #1138 merged — and is retired in this P
 `riviera-plan-doc` (this template — forced a seam per AC, the four "settle in the plan" decisions
 recorded under *Decisions*, and every touched spec into the file table) · `tdd` (each AC red at its
 seam before the primitive, the layer, the card or the page changed) · `riviera-review-overlay`
-(review gate — due at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD` at close-out, `main` @ `37bb891f`:
+(review gate — **ran** at ready-for-review on PR #1140 over `37bb891f..04138d8f`: `/code-review`
+via the plugin (rung 1, effort high) with the overlay's RV-FE-1/7/8/9/10/E2E, RV-STYLE-1 and
+RV-PROC-1/2 walked; five reviewers, one sub-threshold finding, F-1, fixed) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD` at close-out, `main` @ `37bb891f`:
 the rename/removal grep — nothing renamed, 0 hits; the substrate grep for *pin preview* / *sets
 free* / *sales closed* facts — 0 hits outside CONTEXT.md; the counting sweep — 0 findings: every
 "the two"/"five" hit is another subject, and the semantic chip's five box recipes are unchanged
@@ -292,9 +294,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR — ready for review; review gate next`
+**Stage pointer:** `sonar gate — awaiting the analysis on the ready-for-review head; F-1 fixed locally, batched with any Sonar fix`
 
-**Next action:** run the review gate (`/code-review` + `riviera-review-overlay`) on PR #1140; findings re-enter at Implement; then the Sonar list.
+**Next action:** read the SonarCloud list for PR #1140 once `SonarCloud Code Analysis` concludes; fix every entry; push F-1 and the Sonar fixes with this close-out in one commit.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -312,6 +314,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (bank #4, prior-PR context; confidence 50, under the 80 posting bar) | the stepper's chevrons declare `touch-manipulation` with no `expectTouchManipulation` proof in `discover-map.e2e.ts`, the class PR #1131's review set for map-area controls | fixed — the press-through case proves both chevrons; rides the next push |
 
 ---
 
@@ -455,6 +458,6 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
