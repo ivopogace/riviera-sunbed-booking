@@ -34,9 +34,13 @@ overlap; `docs/plans/venue-pin-price.md` is stale — its PR #1137 merged — an
 PR's close-out) · `riviera-plan-doc` (this template — forced the parity ledger for the retired
 engine layer, and a seam for every AC) · `tdd` (each AC red at its seam before the adapter, the
 geometry, the layer or the page changed) · `riviera-review-overlay` (review gate — due at
-ready-for-review) · `riviera-docs-freshness` (**ran** at close-out: CONTEXT.md gains the
-_pin crowd_ / _place pill_ entries; the stale #1135 plan retired; no substrate doc cites `MapPin`,
-`venue-pins` or `focusPin`) · `riviera-local-debug` (`git fetch --unshallow` before any history
+ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD` at close-out: the rename/removal
+grep for `MapPin`, `venuePins`, `focusPin`, `syncVenuePins`, `selectedPin`, `pinSelected`,
+`currentHandle`, `venue-pin-price` over the substrate — 0 findings; the counting sweep — 0 (every
+"the two" hit is another subject: the placement pin and the here dot, the two panels); reverse walk —
+CONTEXT.md's "one pin per venue" still holds (one button per venue), so the glossary *gains* _pin
+crowd_ / _place pill_ rather than changing a fact; the stale #1135 plan retired, no citation outside
+`docs/plans/`) · `riviera-local-debug` (`git fetch --unshallow` before any history
 claim; scoped Vitest via `--include`; mocked e2e with `PW_CHROMIUM_EXECUTABLE`) · `riviera-frontend`
 (the map port and its two adapters stay in `shared/`; the crowd geometry, the layer and every
 venue word live in `pages/home/`; the mocked suite is the CI-run one) · `angular-developer` +
@@ -97,14 +101,13 @@ number in play (frontend-only). No epic checklist to tick (#1134 is a standalone
    map with one crumb to undo it is a contract a tourist can predict. The second press — the
    beaches having come apart — narrows to the beach.
 4. **Sets free on the preview card rides slice 2**, with the card's stepper: both are card-side,
-   both are what the walk needs, and neither touches the map. Filed as the slice-2 issue at
-   close-out.
+   both are what the walk needs, and neither touches the map. Filed as issue #1139 at close-out.
 5. **Slicing: two slices, each demoable, one PR each.** **Slice 1 (this PR):** the port additions,
    the overlay pin layer replacing the engine's, the place pill with travel, the Beach filter
    follow and its crumb, and press-through *from the pill* (invert, open first, press again walks)
    — so an inseparable crowd is never a regression on the day it ships. **Slice 2 (its own issue
    and PR):** the preview card's dot-rail stepper walking the same crowd, and the card's sets-free
-   count. Splitting the crumb or press-through out of slice 1 would ship a filter with no way back
+   count (#1139). Splitting the crumb or press-through out of slice 1 would ship a filter with no way back
    on the map, or a Dhërmi pill whose press reaches nothing — both worse than today.
 
 ---
@@ -116,19 +119,19 @@ number in play (frontend-only). No epic checklist to tick (#1134 is a standalone
 
 **The port**
 
-- [ ] **AC-1:** Given the fake handle at any camera, when `project(at)` is asked for a point, then
+- [x] **AC-1:** Given the fake handle at any camera, when `project(at)` is asked for a point, then
   it answers Web-Mercator px relative to the surface's box for that camera — the camera centre
   lands at the box's centre, a `setView`/`easeTo`/`zoomIn`/`zoomOut` re-projects (a point 0.01°
   east lands twice as far right at one zoom more), and every camera move reports to `onMove`
   subscribers until they unsubscribe. *Seam:* `MapHandle.project` / `MapHandle.onMove` on
   `FakeMapHandle` · *Pinned by:* `fake-map-engine.spec.ts` "projects a point relative to the
   camera and re-projects after every move" and "reports every camera move until unsubscribed".
-- [ ] **AC-2:** Given a marker on the fake, when the camera moves, then its element is re-placed at
+- [x] **AC-2:** Given a marker on the fake, when the camera moves, then its element is re-placed at
   the same projection the pins use, and a click on the surface reports the inverse of it (a click
   on the box's centre is the camera's centre). *Seam:* `FakeMapHandle` markers + `onMapClick` ·
   *Pinned by:* `fake-map-engine.spec.ts` "re-places markers when the camera moves" and "turns a
   click on its surface into the position under it".
-- [ ] **AC-3:** Given the fake, when `easeTo(view)` is called, then the view is `view` at once (a
+- [x] **AC-3:** Given the fake, when `easeTo(view)` is called, then the view is `view` at once (a
   cut) and `onMove` fired. *Seam:* `MapHandle.easeTo` · *Pinned by:* `fake-map-engine.spec.ts`
   "eases as a cut and reports the move". (The MapLibre adapter's three methods are ~12 lines over
   `map.project`, `map.on('move')` and `map.easeTo({duration: 700})` — MapLibre 6.9 itself sets
@@ -137,28 +140,28 @@ number in play (frontend-only). No epic checklist to tick (#1134 is a standalone
 
 **The geometry** (`pages/home/pin-crowding.ts`)
 
-- [ ] **AC-4:** Given two placed pins, when their rendered pills overlap (across, closer than half
+- [x] **AC-4:** Given two placed pins, when their rendered pills overlap (across, closer than half
   their widths together; down, closer than 44 px), then they crowd; two pins exactly that far apart
   do not. *Seam:* `crowds(a, b)` · *Pinned by:* `pin-crowding.spec.ts` "two pins crowd when their
   pills overlap on both axes".
-- [ ] **AC-5:** Given pins in feed order and a projection, when they are grouped, then each pin
+- [x] **AC-5:** Given pins in feed order and a projection, when they are grouped, then each pin
   joins the first crowd whose anchor it overlaps, the crowd's key is its member ids joined, its
   members keep feed order, and a lone pin is a crowd of one. *Seam:* `crowdPins(pins, project)` ·
   *Pinned by:* `pin-crowding.spec.ts` "groups pins by where they land, in feed order".
-- [ ] **AC-6:** Given a crowd at zoom `z`, when the separation zoom is computed, then it is the
+- [x] **AC-6:** Given a crowd at zoom `z`, when the separation zoom is computed, then it is the
   smallest zoom at which every pair clears half their widths together + 12 px across or 44 + 12 px
   down (Web Mercator: offsets scale by `2^Δz`), never below `z`, capped at `maxZoom`, and — when the
   box is known — at the zoom where the crowd's span still fits inside the box less a 150 px
   margin. A crowd whose members coincide asks for `maxZoom`. *Seam:* `separationZoom(crowd, zoom,
   maxZoom, box)` · *Pinned by:* `pin-crowding.spec.ts` "names the smallest zoom that separates a
   pair", "is capped by maxZoom and the box", "asks for maxZoom for coinciding pins".
-- [ ] **AC-7:** Given a crowd's members, when the pill's words are derived, then the place is the
+- [x] **AC-7:** Given a crowd's members, when the pill's words are derived, then the place is the
   one beach, `A & B` for two, `N beaches` beyond; the from-price is the least of the members'
   integer minor units formatted by `formatMoney` (never a parsed label), or absent when no member is
   priced. *Seam:* `placeName(beaches)`, `lowestFromPrice(cards)` · *Pinned by:*
   `pin-crowding.spec.ts` "names the place by its beaches" and "takes the lowest from-price in minor
   units" (invariant #5).
-- [ ] **AC-8:** Given pills laid out largest crowd first, when a pill would run over a lone pin,
+- [x] **AC-8:** Given pills laid out largest crowd first, when a pill would run over a lone pin,
   another pill or the box's edge centred, then it hangs off its point to the right, else the left,
   else collapses to its bare count; with no box known nothing hangs for the edge. *Seam:*
   `layoutPills(crowds, widths, box)` · *Pinned by:* `pin-crowding.spec.ts` "hangs a pill right,
@@ -166,90 +169,90 @@ number in play (frontend-only). No epic checklist to tick (#1134 is a standalone
 
 **The layer** (`pages/home/venue-pin-layer.ts`)
 
-- [ ] **AC-9:** Given located cards that do not crowd, when the layer draws them, then each is
+- [x] **AC-9:** Given located cards that do not crowd, when the layer draws them, then each is
   production's priced pin: a `<button>` `[data-testid="map-venue-pin"]` in feed order with the price
   (or `●`) on its face and `<name>, from <price>` (or the name) as its accessible name, keyed by
   venue id, `aria-expanded` following `selected`, and a press emits `chosen(id)`. *Seam:* the
   layer's `pins`/`selected` inputs → rendered buttons → `chosen` · *Pinned by:*
   `venue-pin-layer.spec.ts` "draws production's priced pin for a venue on its own" (#1135's AC-1/3/4
   carried over).
-- [ ] **AC-10:** Given a crowd, when the layer draws it, then it is n real buttons in feed order:
+- [x] **AC-10:** Given a crowd, when the layer draws it, then it is n real buttons in feed order:
   the face member's button is the place pill (`[data-testid="map-place-pill"]`, showing the place,
   `from €X` and the count in a disc, named `<n> venues at <place>, from €X; press to zoom to them`)
   and the others are invisible members at the same spot (`[data-testid="map-crowd-member"]`, named
   `<venue>, k of n venues at <place>`, `pointer-events-none`, painted only when focused), each of
   which opens its own venue on press. *Seam:* as AC-9 · *Pinned by:* `venue-pin-layer.spec.ts`
   "draws a crowd as one place pill and n real buttons" and "a crowd member opens its venue directly".
-- [ ] **AC-11:** Given a place pill the camera can separate, when it is pressed, then the layer
+- [x] **AC-11:** Given a place pill the camera can separate, when it is pressed, then the layer
   eases the handle to the crowd's centre at its separation zoom and emits `narrowed(beach)` only
   when every member shares one beach; after the ease the members are lone pins and the pressed
   element is still the same element (focus kept). *Seam:* the pill's press → `MapHandle.easeTo` +
   `narrowed` · *Pinned by:* `venue-pin-layer.spec.ts` "pressing a place goes there, narrows to its
   one beach and keeps focus on the same element" and "a crowd spanning beaches narrows nothing".
-- [ ] **AC-12:** Given a crowd the camera cannot separate (separation zoom within 0.05 of the
+- [x] **AC-12:** Given a crowd the camera cannot separate (separation zoom within 0.05 of the
   current zoom), when the layer draws it, then the pill inverts (`data-here`), reads `See each
   venue`, and is named `…; press to open <first>`; its press emits `narrowed(beach)` then
   `chosen(first)`; with `selected` a member, the pill reads that venue's name, its price and `k/n`,
   is `aria-expanded`, and its press emits `chosen(next)`, wrapping. *Seam:* as AC-11 · *Pinned by:*
   `venue-pin-layer.spec.ts` "an inseparable crowd inverts its pill and presses through its venues,
   wrapping".
-- [ ] **AC-13:** Given any pin, when `focusPin(id)` is called, then that venue's button takes focus,
+- [x] **AC-13:** Given any pin, when `focusPin(id)` is called, then that venue's button takes focus,
   whatever it currently shows (pill, lone pin or member); an unknown id is a no-op. *Seam:*
   `VenuePinLayer.focusPin` · *Pinned by:* `venue-pin-layer.spec.ts` "focuses a venue's button on
   request, whichever face it wears".
-- [ ] **AC-14:** Given the layer rendered in every state (lone, pill, inverted pill, walking, a
+- [x] **AC-14:** Given the layer rendered in every state (lone, pill, inverted pill, walking, a
   focused member), when axe runs, then no violation; and the pill's inks clear AA on the resting,
   hover and inverted fills. *Seam:* the rendered DOM; the `--riv-solid-btn-*` pair · *Pinned by:*
   `venue-pin-layer.a11y.spec.ts`, `venue-pin-layer.contrast.spec.ts`.
 
 **The page** (`pages/home/`)
 
-- [ ] **AC-15:** Given Discover with located venues, when the map is shown, then the engine holds no
+- [x] **AC-15:** Given Discover with located venues, when the map is shown, then the engine holds no
   venue markers and the layer draws the pins from the same cards the list renders; a pin press opens
   its preview and moves focus into it; Escape closes it and hands focus back to that venue's button
   in the layer; a map tap closes it. *Seam:* the Discover DOM (`map-venue-pin`, `venue-preview`) ·
   *Pinned by:* `home.spec.ts` (the existing "venue pins and the preview" block, re-pinned on the
   layer) and `riviera-map.spec.ts` (the venue-pins block removed; the placement-pin block kept).
-- [ ] **AC-16:** Given a reload in flight (filter, date), when the list shows its skeletons, then the
+- [x] **AC-16:** Given a reload in flight (filter, date), when the list shows its skeletons, then the
   map keeps the last list's pins and an open preview, and once the new list lands the preview stays
   iff its venue is still in the result set. *Seam:* the Discover DOM across a `/api/venues` reload ·
   *Pinned by:* `home.spec.ts` "keeps the pins and the open preview while a reload is in flight" and
   the existing "re-feeds the pins and drops the preview when a filter changes the result set".
-- [ ] **AC-17:** Given a place pill whose crowd is one beach, when it is pressed, then the Beach
+- [x] **AC-17:** Given a place pill whose crowd is one beach, when it is pressed, then the Beach
   select reads that beach, exactly one further `/api/venues?beach=` request is made, the crumb
   `<beach> ×` (`[data-testid="map-beach-crumb"]`, named `Showing <beach> only; press to show all
   beaches`) appears on the map, and pressing the crumb clears the filter, re-requests, removes the
   crumb and moves focus to Near me (else Zoom in). *Seam:* the Discover DOM + the HTTP seam ·
   *Pinned by:* `home.spec.ts` "narrows the Beach filter when a place is pressed and the crumb undoes
   it".
-- [ ] **AC-18:** Given an inseparable crowd, when its inverted pill is pressed, then the Beach filter
+- [x] **AC-18:** Given an inseparable crowd, when its inverted pill is pressed, then the Beach filter
   narrows, the first venue's preview opens with focus inside it, and the next press of the pill
   opens the next venue's preview. *Seam:* the Discover DOM · *Pinned by:* `home.spec.ts` "presses
   through an inseparable crowd's previews from the map".
 
 **End to end** (`frontend/e2e/discover-map.e2e.ts`, the mocked suite, fake engine)
 
-- [ ] **AC-19:** Given a fixture with a Ksamil pair (~120 m) and a Dhërmi trio (~20 m), when the
+- [x] **AC-19:** Given a fixture with a Ksamil pair (~120 m) and a Dhërmi trio (~20 m), when the
   map opens wide, then two place pills read `Ksamil · from €21 · 2` and `Dhërmi · from €24 · 3`,
   every control is ≥ 44 × 44 and the page is axe-clean. *Seam:* the mocked Discover page ·
   *Pinned by:* "groups pins that bury each other into a place pill…".
-- [ ] **AC-20:** Given the Ksamil pill, when pressed, then Beach = Ksamil, the list is its two
+- [x] **AC-20:** Given the Ksamil pill, when pressed, then Beach = Ksamil, the list is its two
   venues, the crumb shows, two priced pins sit at least their widths apart, and the pressed element
   is still focused; the crumb press restores every venue and focuses Near me. *Seam:* as AC-19 ·
   *Pinned by:* "press a place to go there…".
-- [ ] **AC-21:** Given the Dhërmi pill, when pressed, then it inverts to `See each venue`; the next
+- [x] **AC-21:** Given the Dhërmi pill, when pressed, then it inverts to `See each venue`; the next
   press opens Aurora Bay's preview with the pill reading `Aurora Bay … 1/3`; pressing again walks
   to Folie Marine `2/3`; Escape closes the preview and focuses the pill; Tab reaches each of the
   three member buttons, and Enter on one opens that venue. *Seam:* as AC-19 · *Pinned by:*
   "where nowhere is closer, press through the venues…" and "a keyboard still reaches every venue in
   a crowd".
-- [ ] **AC-22:** Given the phone width, when the map view shows a place pill, an inverted pill and
+- [x] **AC-22:** Given the phone width, when the map view shows a place pill, an inverted pill and
   the crumb, then the touch-target sweep passes. *Seam:* `touch-targets-tourist.e2e.ts` · *Pinned
   by:* "home — the map view with a crowd, its pressed-through pill and the beach crumb".
 
 ## Non-goals
 
-- The preview card's stepper and its sets-free count (slice 2, its own issue).
+- The preview card's stepper and its sets-free count (slice 2 — issue #1139).
 - Sorting the crowd, or the list, by sets free then price (a catalogue-order decision; see §1).
 - Setting the Region filter from a multi-beach crowd (§3).
 - Any backend or API change; any change to the operator console's placement pin.
@@ -297,11 +300,13 @@ The retired surface is the engine's venue-pin marker set in `shared/riviera-map.
 
 ## Open questions / Assumptions
 
-- **Assumption:** the maintainer accepts *feed order* (the catalogue's rating-then-name) as the one
-  crowd order for this slice, per §1 — *Owner:* maintainer · *Resolves by:* PR review (flagged in
-  the PR body; a veto is one sort in `shownCards` and leaves every AC intact).
+None open.
 
 ### Resolved
+
+- Feed order (the catalogue's rating-then-name) is the one crowd order — decided in §1 and
+  flagged in PR #1138's Scope notes for the maintainer's veto, which would be one sort of
+  `shownCards` with every AC intact.
 
 - The crowd's order, the engine layer's fate, the multi-beach press, sets free on the card, the
   slicing — all five above (intake, `daff4679`).
@@ -345,9 +350,13 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)` — phases 0–4 green and committed; draft PR #1138 open.
+**Stage pointer:** `review gate` — every phase green and committed; `origin/main` unchanged since
+the branch's base (`240af40b`, nothing to merge in); PR #1138 marked ready for review; merges via
+PR #1138.
 
-**Next action:** Phase 5: retire the #1135 plan, the glossary entries, the slice-2 issue, the docs-freshness sweep; then merge `origin/main` in and mark ready for review.
+**Next action:** the review gate per `riviera-sdlc` `references/pr-gates.md` §1 (range check, then
+`/code-review` + `riviera-review-overlay`), then the Sonar list; every finding re-enters at
+Implement and lands in the findings register below.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -355,8 +364,8 @@ N/A — no contract change.
 | 1 — the crowd geometry (`pin-crowding.ts`) | ✅ | `afe80432` |
 | 2 — the pin layer (`venue-pin-layer.ts`) + a11y + contrast | ✅ | `e6c3753a` |
 | 3 — Discover wiring, the crumb, `shownCards`; the engine layer retired | ✅ | `30dd404c` |
-| 4 — mocked e2e: the crowd describe + the touch-target sweep | ✅ | phase-4 commit |
-| 5 — close-out: glossary, the stale #1135 plan retired, the slice-2 issue | | |
+| 4 — mocked e2e: the crowd describe + the touch-target sweep | ✅ | `d6c0ac9c` |
+| 5 — close-out: glossary, the stale #1135 plan retired, the slice-2 issue (#1139) | ✅ | phase-5 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -365,6 +374,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (repo hygiene, phase-3 push) | `check-plan-file-structure`: `venue-preview-card.spec.ts` touched but not listed | fixed-in-`d6c0ac9c` |
+| F-2 | the e2e sweep (phase 4, local) | `preview-link` 39 px tall with a preview open at ≥ 390 px; a lone pin cut by the map's edge 26 px wide at 320 px | fixed-in-`d6c0ac9c` (`appTouchTarget`; `data-touch-pans`) |
 
 ---
 
@@ -406,7 +417,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `shared/map-engine.ts`, `shared/fake-map-engine.ts`, `shared/maplibre-map-engine.ts` · Test `shared/fake-map-engine.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** (`fake-map-engine.spec.ts`)
+- [x] **Step 1: Write the failing tests** (`fake-map-engine.spec.ts`)
 
 ```ts
 it('projects a point relative to the camera and re-projects after every move', async () => {
@@ -429,66 +440,66 @@ it('re-places markers when the camera moves', async () => { /* element.style.lef
 it('turns a click on its surface into the position under it', async () => { /* click at the box centre → the camera centre */ });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `cd frontend && npx ng test --watch=false --include="src/app/shared/fake-map-engine.spec.ts"` → FAIL: `handle.project is not a function`.
-- [ ] **Step 3: Minimal implementation** — `ScreenPoint` + the three methods on `MapHandle`; the fake: `project`/`unproject` (Web Mercator: world = 512·2^zoom px; `x = box.w/2 + (mx(lng) − mx(c.lng))·world`, `y = box.h/2 + (my(lat) − my(c.lat))·world`), `moveHandlers` notified from `setView`/`easeTo`/`zoomIn`/`zoomOut`, markers re-placed in px on every move, `reportClick` through `unproject`; MapLibre: `map.project`, `map.on('move')`, `map.easeTo({center, zoom, duration: 700})`.
-- [ ] **Step 4: Run it, verify it passes** — the same command → PASS; then `--include="src/app/shared/*map*.spec.ts" --include="src/app/operator/venue-location-field.spec.ts"` (the click and marker consumers).
-- [ ] **Step 5: Generalization-audit pass** — population: every `MapHandle` implementer (`grep -rln "implements MapHandle" frontend/src`) → both adapters carry all three; no other implementer.
-- [ ] **Step 6: Commit** — `Riviera map port: project, onMove and easeTo in both adapters (#1134)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 2: Run it, verify it fails** — `cd frontend && npx ng test --watch=false --include="src/app/shared/fake-map-engine.spec.ts"` → FAIL: `handle.project is not a function`.
+- [x] **Step 3: Minimal implementation** — `ScreenPoint` + the three methods on `MapHandle`; the fake: `project`/`unproject` (Web Mercator: world = 512·2^zoom px; `x = box.w/2 + (mx(lng) − mx(c.lng))·world`, `y = box.h/2 + (my(lat) − my(c.lat))·world`), `moveHandlers` notified from `setView`/`easeTo`/`zoomIn`/`zoomOut`, markers re-placed in px on every move, `reportClick` through `unproject`; MapLibre: `map.project`, `map.on('move')`, `map.easeTo({center, zoom, duration: 700})`.
+- [x] **Step 4: Run it, verify it passes** — the same command → PASS; then `--include="src/app/shared/*map*.spec.ts" --include="src/app/operator/venue-location-field.spec.ts"` (the click and marker consumers).
+- [x] **Step 5: Generalization-audit pass** — population: every `MapHandle` implementer (`grep -rln "implements MapHandle" frontend/src`) → both adapters carry all three; no other implementer.
+- [x] **Step 6: Commit** — `Riviera map port: project, onMove and easeTo in both adapters (#1134)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 1 — The crowd geometry
 
 **Files:** Create `pages/home/pin-crowding.ts` · Test `pages/home/pin-crowding.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — AC-4..8, one `it` per AC clause, with literal expected values: two 57 px pills 56 px apart across crowd, 57 px apart do not; a pair 1 px apart at zoom 8.6 with 57 px pills separates at `8.6 + log2(69)` ≈ 14.7; coinciding pins ask for `maxZoom`; `placeName(['Jale','Livadh'])` = `Jale & Livadh`; `lowestFromPrice` over `{minorUnits: 2400}`, `{2000}`, `null` = `€20`; layout: a pill at x = 20 in a 300-wide box hangs right, at x = 280 hangs left, in a 60-wide box collapses.
-- [ ] **Step 2: Run, verify FAIL** — `npx ng test --watch=false --include="src/app/pages/home/pin-crowding.spec.ts"`.
-- [ ] **Step 3: Minimal implementation** — pure functions; `textWidth` via `OffscreenCanvas` (absent in jsdom → `0.62 × size` per glyph estimate).
-- [ ] **Step 4: Run, verify PASS.**
-- [ ] **Step 5: Generalization audit** — population: every place a from-price is derived for display (`grep -rn "fromPrice" frontend/src/app --include=*.ts | grep -v spec`) → `home.ts` `toCard` (`formatMoney`) and now `lowestFromPrice`; both minor-unit based.
-- [ ] **Step 6: Commit** — `Discover: the crowd geometry behind the place pill (#1134)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Write the failing tests** — AC-4..8, one `it` per AC clause, with literal expected values: two 57 px pills 56 px apart across crowd, 57 px apart do not; a pair 1 px apart at zoom 8.6 with 57 px pills separates at `8.6 + log2(69)` ≈ 14.7; coinciding pins ask for `maxZoom`; `placeName(['Jale','Livadh'])` = `Jale & Livadh`; `lowestFromPrice` over `{minorUnits: 2400}`, `{2000}`, `null` = `€20`; layout: a pill at x = 20 in a 300-wide box hangs right, at x = 280 hangs left, in a 60-wide box collapses.
+- [x] **Step 2: Run, verify FAIL** — `npx ng test --watch=false --include="src/app/pages/home/pin-crowding.spec.ts"`.
+- [x] **Step 3: Minimal implementation** — pure functions; `textWidth` via `OffscreenCanvas` (absent in jsdom → `0.62 × size` per glyph estimate).
+- [x] **Step 4: Run, verify PASS.**
+- [x] **Step 5: Generalization audit** — population: every place a from-price is derived for display (`grep -rn "fromPrice" frontend/src/app --include=*.ts | grep -v spec`) → `home.ts` `toCard` (`formatMoney`) and now `lowestFromPrice`; both minor-unit based.
+- [x] **Step 6: Commit** — `Discover: the crowd geometry behind the place pill (#1134)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 2 — The pin layer
 
 **Files:** Create `pages/home/venue-pin-layer.ts`, `.html`; `venue-card.ts` gains `fromPrice` · Test `venue-pin-layer.spec.ts`, `.a11y.spec.ts`, `.contrast.spec.ts`
 
-- [ ] **Step 1: Failing tests** — AC-9..14 against the layer rendered with a `FakeMapHandle` (from `FakeMapEngine.create` on a detached host) as its `map` input; lone/crowd fixtures: Miramar + Lori (Ksamil, 0.001° apart → crowd at 8.6), Aurora (Dhërmi, 0.4° away → lone); the inseparable case: three cards at the same coordinates.
-- [ ] **Step 2: Run, verify FAIL** — `--include="src/app/pages/home/venue-pin-layer*.spec.ts"`.
-- [ ] **Step 3: Minimal implementation** — inputs `pins`, `map`, `selected`, `maxZoom`; outputs `chosen`, `narrowed`; `focusPin`; the tick on `onMove` + `ResizeObserver` (guarded); slots computed from `crowdPins` + `layoutPills`; the template from the prototype, with the test ids above.
-- [ ] **Step 4: Run, verify PASS**, then `npm run test:a11y`.
-- [ ] **Step 5: Generalization audit** — population: every control on the map surface (`grep -n "appTouchTarget\|<button" venue-pin-layer.html riviera-map.html`) → every button carries `appTouchTarget`; the crumb (phase 3) too.
-- [ ] **Step 6: Commit** — `Discover: the venue pin layer — lone pins, the place pill, press-through (#1134)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Failing tests** — AC-9..14 against the layer rendered with a `FakeMapHandle` (from `FakeMapEngine.create` on a detached host) as its `map` input; lone/crowd fixtures: Miramar + Lori (Ksamil, 0.001° apart → crowd at 8.6), Aurora (Dhërmi, 0.4° away → lone); the inseparable case: three cards at the same coordinates.
+- [x] **Step 2: Run, verify FAIL** — `--include="src/app/pages/home/venue-pin-layer*.spec.ts"`.
+- [x] **Step 3: Minimal implementation** — inputs `pins`, `map`, `selected`, `maxZoom`; outputs `chosen`, `narrowed`; `focusPin`; the tick on `onMove` + `ResizeObserver` (guarded); slots computed from `crowdPins` + `layoutPills`; the template from the prototype, with the test ids above.
+- [x] **Step 4: Run, verify PASS**, then `npm run test:a11y`.
+- [x] **Step 5: Generalization audit** — population: every control on the map surface (`grep -n "appTouchTarget\|<button" venue-pin-layer.html riviera-map.html`) → every button carries `appTouchTarget`; the crumb (phase 3) too.
+- [x] **Step 6: Commit** — `Discover: the venue pin layer — lone pins, the place pill, press-through (#1134)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 3 — Discover wiring; the engine layer retired
 
 **Files:** Modify `home.ts`, `home.html`, `riviera-map.ts`, specs; delete `venue-pins.ts` + spec
 
-- [ ] **Step 1: Failing tests** — AC-15..18 in `home.spec.ts` (the existing block re-pinned: `pins()` now finds the layer's buttons; new cases for the reload hold, the narrowing + crumb, the press-through); `riviera-map.spec.ts` loses the venue-pins block and uses `handle()`.
-- [ ] **Step 2: Run, verify FAIL** — `--include="src/app/pages/home/home.spec.ts"`.
-- [ ] **Step 3: Minimal implementation** — `shownCards`, `pins`, `selectedVenue` linked to `pins`, `onPinChosen`, `onBeachNarrowed`, `showAllBeaches`, `closePreview` → `pinLayer.focusPin`; the template; `riviera-map.ts` trimmed; `venue-pins.ts` removed.
-- [ ] **Step 4: Run, verify PASS** — `home*.spec.ts`, `riviera-map*.spec.ts`, `venue-location-field.spec.ts`; then `npm run lint`, `npm run format:check`, `npm test`.
-- [ ] **Step 5: Generalization audit** — population: every reader of `venuesView()` for the map (`grep -n "venuesView()" home.ts`) → the list keeps `venuesView` (skeletons), the map and the preview read `shownCards`.
-- [ ] **Step 6: Commit** — `Discover: the overlay owns the venue pins; the place pill narrows the beach, the crumb undoes it (#1134)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Failing tests** — AC-15..18 in `home.spec.ts` (the existing block re-pinned: `pins()` now finds the layer's buttons; new cases for the reload hold, the narrowing + crumb, the press-through); `riviera-map.spec.ts` loses the venue-pins block and uses `handle()`.
+- [x] **Step 2: Run, verify FAIL** — `--include="src/app/pages/home/home.spec.ts"`.
+- [x] **Step 3: Minimal implementation** — `shownCards`, `pins`, `selectedVenue` linked to `pins`, `onPinChosen`, `onBeachNarrowed`, `showAllBeaches`, `closePreview` → `pinLayer.focusPin`; the template; `riviera-map.ts` trimmed; `venue-pins.ts` removed.
+- [x] **Step 4: Run, verify PASS** — `home*.spec.ts`, `riviera-map*.spec.ts`, `venue-location-field.spec.ts`; then `npm run lint`, `npm run format:check`, `npm test`.
+- [x] **Step 5: Generalization audit** — population: every reader of `venuesView()` for the map (`grep -n "venuesView()" home.ts`) → the list keeps `venuesView` (skeletons), the map and the preview read `shownCards`.
+- [x] **Step 6: Commit** — `Discover: the overlay owns the venue pins; the place pill narrows the beach, the crumb undoes it (#1134)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 4 — Mocked e2e
 
 **Files:** Modify `frontend/e2e/discover-map.e2e.ts`, `frontend/e2e/touch-targets-tourist.e2e.ts`
 
-- [ ] **Step 1: Failing tests** — AC-19..22 (a `CROWDED_VENUES` fixture: the three existing plus Lori Beach at Ksamil and Folie Marine + Dhërmi Sun Club at Dhërmi).
-- [ ] **Step 2: Run, verify** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/discover-map.e2e.ts e2e/touch-targets-tourist.e2e.ts` (the crowd tests fail only if phases 2–3 missed something; e2e here is the proof in a real browser, not the red).
-- [ ] **Step 3–4:** fix anything the browser shows that jsdom could not (widths, hanging, the sweep).
-- [ ] **Step 5: Generalization audit** — population: every e2e that presses `map-venue-pin` (`grep -rln "map-venue-pin" frontend/e2e`) → all still lone pins under their fixtures; verified green.
-- [ ] **Step 6: Commit** — `Discover e2e: crowds, the place pill, press-through and the crumb (#1134)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Failing tests** — AC-19..22 (a `CROWDED_VENUES` fixture: the three existing plus Lori Beach at Ksamil and Folie Marine + Dhërmi Sun Club at Dhërmi).
+- [x] **Step 2: Run, verify** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/discover-map.e2e.ts e2e/touch-targets-tourist.e2e.ts` (the crowd tests fail only if phases 2–3 missed something; e2e here is the proof in a real browser, not the red).
+- [x] **Step 3–4:** fix anything the browser shows that jsdom could not (widths, hanging, the sweep).
+- [x] **Step 5: Generalization audit** — population: every e2e that presses `map-venue-pin` (`grep -rln "map-venue-pin" frontend/e2e`) → all still lone pins under their fixtures; verified green.
+- [x] **Step 6: Commit** — `Discover e2e: crowds, the place pill, press-through and the crumb (#1134)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 5 — Close-out
 
-- [ ] `git rm docs/plans/venue-pin-price.md`; grep `venue-pin-price` outside `docs/plans/` → repoint or nothing.
-- [ ] `CONTEXT.md`: *pin crowd*, *place pill* under the riviera-map entries.
-- [ ] File the slice-2 issue (the card's stepper + sets free), `enhancement`, `area:frontend`, `ready-for-agent`, citing #1134.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main`; the docs-freshness sweep; execution status finalized in the last code-touching commit.
+- [x] `git rm docs/plans/venue-pin-price.md`; grep `venue-pin-price` outside `docs/plans/` → nothing to repoint.
+- [x] `CONTEXT.md`: *pin crowd* (with *place pill*) under the riviera-map entries.
+- [x] Filed the slice-2 issue #1139 (the card's stepper + sets free), `enhancement`, `area:frontend`, `ready-for-agent`, citing #1134.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` green; the docs-freshness sweep recorded in *Skills consulted*; execution status finalized.
 
 ---
 
@@ -507,30 +518,30 @@ it('turns a click on its surface into the position under it', async () => { /* c
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..3:** `npx ng test --watch=false --include="src/app/shared/fake-map-engine.spec.ts"` → PASS.
-- [ ] **AC-4..8:** `--include="src/app/pages/home/pin-crowding.spec.ts"` → PASS.
-- [ ] **AC-9..14:** `--include="src/app/pages/home/venue-pin-layer*.spec.ts"` → PASS.
-- [ ] **AC-15..18:** `--include="src/app/pages/home/home*.spec.ts"` → PASS.
-- [ ] **AC-19..22:** the mocked e2e command above → PASS; CI green.
+- [x] **AC-1..3:** `npx ng test --watch=false --include="src/app/shared/fake-map-engine.spec.ts"` → PASS (16 tests). Verified at `fa2857e5`.
+- [x] **AC-4..8:** `--include="src/app/pages/home/pin-crowding.spec.ts"` → PASS (23). Verified at `afe80432`.
+- [x] **AC-9..14:** `--include="src/app/pages/home/venue-pin-layer*.spec.ts"` → PASS (19 + 3 axe + 3 contrast). Verified at `e6c3753a`.
+- [x] **AC-15..18:** `--include="src/app/pages/home/home*.spec.ts"` → PASS (67 + 13 axe + the contrast cases); the full suite 3378 green. Verified at `30dd404c`.
+- [x] **AC-19..22:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/discover-map.e2e.ts e2e/touch-targets-tourist.e2e.ts` → 41 passed. Verified at `d6c0ac9c`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
