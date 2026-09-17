@@ -237,17 +237,17 @@ code or error shape moves.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** Phase 3 red — `venue-preview-card.spec.ts`, then the Liquid Glass
-`VenuePreviewCard` component.
+**Next action:** Phase 4 red — `home.spec.ts` cases for AC-7/AC-8, then wire the pins,
+the selection linkedSignal, the preview and the selected-card marking into Discover.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend: the fence proven for a pinned venue (AC-10) | ✅ | `<phase-0>` |
 | 1 — Pure pin derivation + `VenueCard` extraction (AC-1) | ✅ | `<phase-1>` |
 | 2 — `RivieraMap` grows multi-pin (AC-2, AC-3) | ✅ | `<phase-2>` |
-| 3 — The Liquid Glass preview card (AC-6) | | |
+| 3 — The Liquid Glass preview card (AC-6) | ✅ | `<phase-3>` |
 | 4 — Wire Discover: pins, selection, preview, card highlight (AC-7, AC-8) | | |
 | 5 — e2e: pin → preview → venue page, filters, the network guard (AC-4, AC-5, AC-9, AC-11) | | |
 | 6 — `CONTEXT.md` + close-out | | |
