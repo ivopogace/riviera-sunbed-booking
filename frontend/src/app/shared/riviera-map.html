@@ -73,6 +73,7 @@
 }
 
 <!-- The tiles' licence credits (OpenMapTiles CC-BY, OSM ODbL) in every map state; 13 px radius: a full pill on one line, still rounded when it wraps. -->
+<!-- It covers whatever sits under it, and stays that way: `pointer-events-none` would read a press on the pill as a press on the map, which places a pin in the operator console. -->
 <p
   data-testid="map-attribution"
   class="absolute right-3 bottom-3 z-10 max-w-[calc(100%-24px)] rounded-[13px] border border-riv-solid-btn-border bg-riv-solid-btn-fill px-[10px] py-[4px] text-[12px] leading-[16px] text-riv-solid-btn-ink"
