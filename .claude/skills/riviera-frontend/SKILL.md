@@ -79,14 +79,14 @@ Colocate everything the feature owns, flat (no `components/`/`services/` subfold
 ## Routing
 
 - **All routes live in `app.routes.ts`** — one array, no per-feature route files. Mostly
-  flat; the operator console (`/operator/:venueId`) is the one nested child-route tree — a
-  layout component with a child route per tab so each tab is deep-linkable. Follow that
-  shape for further tabbed sub-apps. An operator or admin route carries `data.console`
-  naming its section (`venue` · `admin` · `plain`): the app shell then wears the root-level
-  `console-shell.ts` (the section row, the section's text rail from `sm` up and, below it,
-  the four-slot phone rail with its More sheet, and the ⌘K palette — `shared/console-palette.ts`,
-  fed the rows the shell computes) instead of the tourist header — root-level
-  because it composes `operator/` and `admin/`, which no feature folder may.
+  flat; the operator console (`/operator/:venueId`) and the admin console (`/admin`) are the
+  two nested child-route trees — a layout component with a child route per tab so each tab is
+  deep-linkable. Follow that shape for further tabbed sub-apps. An operator or admin route
+  carries `data.console` naming its section (`venue` · `admin` · `plain`): the app shell then
+  wears the root-level `console-shell.ts` (the section row, the section's text rail from `sm`
+  up and, below it, the four-slot phone rail with its More sheet, and the ⌘K palette —
+  `shared/console-palette.ts`, fed the rows the shell computes) instead of the tourist header
+  — root-level because it composes `operator/` and `admin/`, which no feature folder may.
 - Every route is lazy (`loadComponent: () => import(...)`) and carries a `title`.
 - Order matters for parameterized paths (`booking/confirmation` before `booking/:code`) —
   keep literal segments above `:param` siblings.
