@@ -9,6 +9,7 @@ import {
   MapHandle,
   MapMarker,
   MapView,
+  ScreenPoint,
 } from './map-engine';
 
 /** MapLibre's own stylesheet, copied into the build by `angular.json` (`assets`) — never a CDN. */
@@ -91,6 +92,9 @@ export function ensureStylesheet(doc: Document, href: string): Promise<void> {
 
 type MapLibre = typeof import('maplibre-gl');
 
+/** Long enough to read as travel across the coast, short enough that a second press never waits on it. */
+const EASE_MS = 700;
+
 /** The worker URL and the pmtiles protocol are process-wide (the protocol caches archive headers), so both are set once. */
 let protocolReady: Promise<void> | undefined;
 
@@ -118,6 +122,15 @@ class MapLibreHandle implements MapHandle {
 
   setView(view: MapView): void {
     this.map.jumpTo({ center: [view.center.lng, view.center.lat], zoom: view.zoom });
+  }
+
+  /** MapLibre itself drops the duration to zero under `prefers-reduced-motion`. */
+  easeTo(view: MapView): void {
+    this.map.easeTo({
+      center: [view.center.lng, view.center.lat],
+      zoom: view.zoom,
+      duration: EASE_MS,
+    });
   }
 
   zoomIn(): void {
@@ -152,6 +165,16 @@ class MapLibreHandle implements MapHandle {
   removeMarker(id: string): void {
     this.markers.get(id)?.remove();
     this.markers.delete(id);
+  }
+
+  project(at: LngLat): ScreenPoint {
+    const { x, y } = this.map.project([at.lng, at.lat]);
+    return { x, y };
+  }
+
+  onMove(handler: () => void): () => void {
+    const subscription = this.map.on('move', () => handler());
+    return () => subscription.unsubscribe();
   }
 
   on(event: MapEventName, handler: () => void): () => void {

@@ -6,12 +6,21 @@ import {
   MapHandle,
   MapMarker,
   MapView,
+  ScreenPoint,
 } from './map-engine';
 
+/** The Web Mercator world at zoom 0, in CSS px — what every tile engine uses. */
+const WORLD_PX = 512;
+
 /**
- * A fake map: an in-memory view and marker set, inspectable by the spec that drove it. It also owns
+ * A fake map: an in-memory camera and marker set, inspectable by the spec that drove it. It also owns
  * a real DOM surface — it mounts the caller's marker elements and positions them — so a spec or an
  * e2e can see and measure a pin, and click the map the way a person does.
+ *
+ * <p>Its geometry is the real thing in miniature: Web Mercator around its own camera, so a zoom
+ * really doubles every offset and a point projects where a real engine would put it. That is what
+ * lets an overlay's crowding, its fit and its press-through be proven here, in jsdom and in the
+ * mocked e2e, with no WebGL. In jsdom the surface has no box, so the camera's centre is its corner.
  */
 export class FakeMapHandle implements MapHandle {
   private current: MapView;
@@ -19,6 +28,7 @@ export class FakeMapHandle implements MapHandle {
   private readonly listeners = new Map<MapEventName, Set<() => void>>();
   private readonly clickHandlers = new Set<(at: LngLat) => void>();
   private readonly dragEndHandlers = new Set<(id: string, at: LngLat) => void>();
+  private readonly moveHandlers = new Set<() => void>();
   private isDestroyed = false;
 
   constructor(
@@ -42,15 +52,20 @@ export class FakeMapHandle implements MapHandle {
   }
 
   setView(view: MapView): void {
-    this.current = view;
+    this.moveCamera(view);
+  }
+
+  /** The fake has no frames to animate over, so an eased move is a cut. */
+  easeTo(view: MapView): void {
+    this.moveCamera(view);
   }
 
   zoomIn(): void {
-    this.current = { ...this.current, zoom: this.current.zoom + 1 };
+    this.moveCamera({ ...this.current, zoom: this.current.zoom + 1 });
   }
 
   zoomOut(): void {
-    this.current = { ...this.current, zoom: this.current.zoom - 1 };
+    this.moveCamera({ ...this.current, zoom: this.current.zoom - 1 });
   }
 
   addMarker(marker: MapMarker): void {
@@ -71,6 +86,20 @@ export class FakeMapHandle implements MapHandle {
   removeMarker(id: string): void {
     this.markerSet.get(id)?.element.remove();
     this.markerSet.delete(id);
+  }
+
+  project(at: LngLat): ScreenPoint {
+    const box = this.box();
+    const scale = WORLD_PX * 2 ** this.current.zoom;
+    return {
+      x: box.width / 2 + (mercatorX(at.lng) - mercatorX(this.current.center.lng)) * scale,
+      y: box.height / 2 + (mercatorY(at.lat) - mercatorY(this.current.center.lat)) * scale,
+    };
+  }
+
+  onMove(handler: () => void): () => void {
+    this.moveHandlers.add(handler);
+    return () => this.moveHandlers.delete(handler);
   }
 
   on(event: MapEventName, handler: () => void): () => void {
@@ -116,48 +145,71 @@ export class FakeMapHandle implements MapHandle {
     this.listeners.clear();
     this.clickHandlers.clear();
     this.dragEndHandlers.clear();
+    this.moveHandlers.clear();
   }
 
-  /**
-   * The inverse of {@link FakeMapHandle.reportClick}: a position back to a spot on the surface, so a
-   * dropped pin renders where it was clicked and an e2e can measure it.
-   */
+  /** Every camera change comes through here, so the markers follow and the move is reported. */
+  private moveCamera(view: MapView): void {
+    this.current = view;
+    this.markerSet.forEach((marker) => this.placeElement(marker.element, marker.lngLat));
+    this.moveHandlers.forEach((handler) => handler());
+  }
+
+  private box(): { width: number; height: number } {
+    const rect = this.surface?.getBoundingClientRect();
+    return { width: rect?.width ?? 0, height: rect?.height ?? 0 };
+  }
+
+  /** The inverse of {@link FakeMapHandle.project}: a spot on the surface back to a position. */
+  private unproject({ x, y }: ScreenPoint): LngLat {
+    const box = this.box();
+    const scale = WORLD_PX * 2 ** this.current.zoom;
+    return {
+      lng: lngOf(mercatorX(this.current.center.lng) + (x - box.width / 2) / scale),
+      lat: latOf(mercatorY(this.current.center.lat) + (y - box.height / 2) / scale),
+    };
+  }
+
+  /** A marker sits where its position projects, so it moves with the camera like a real one. */
   private placeElement(element: HTMLElement, at: LngLat): void {
-    const [southWest, northEast] = this.options.maxBounds;
-    const acrossX = clampUnit((at.lng - southWest.lng) / (northEast.lng - southWest.lng));
-    const acrossY = clampUnit((northEast.lat - at.lat) / (northEast.lat - southWest.lat));
+    const { x, y } = this.project(at);
     element.style.position = 'absolute';
-    element.style.left = `${acrossX * 100}%`;
-    element.style.top = `${acrossY * 100}%`;
+    element.style.left = `${x}px`;
+    element.style.top = `${y}px`;
     element.style.transform = 'translate(-50%, -50%)';
   }
 
   /**
-   * A real click on the fake surface becomes a map click, so an e2e drops a pin with a genuine
-   * gesture. The position interpolates the click across `maxBounds`, clamped for a zero-sized box
-   * (jsdom reports no layout), so it is deterministic and always inside the map.
+   * A real click on the fake surface becomes a map click at the position under the pointer, so an
+   * e2e drops a pin with a genuine gesture and it lands where the click was.
    */
   private reportClick(event: MouseEvent): void {
     if (this.isDestroyed) {
       return;
     }
-    const surface = event.currentTarget as HTMLElement;
-    const box = surface.getBoundingClientRect();
-    const [southWest, northEast] = this.options.maxBounds;
-    const acrossX = box.width > 0 ? clampUnit((event.clientX - box.left) / box.width) : 0.5;
-    const acrossY = box.height > 0 ? clampUnit((event.clientY - box.top) / box.height) : 0.5;
-    this.clickHandlers.forEach((handler) =>
-      handler({
-        lng: southWest.lng + (northEast.lng - southWest.lng) * acrossX,
-        // Screen y grows downward; latitude grows upward.
-        lat: northEast.lat - (northEast.lat - southWest.lat) * acrossY,
-      }),
-    );
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const at = this.unproject({ x: event.clientX - rect.left, y: event.clientY - rect.top });
+    this.clickHandlers.forEach((handler) => handler(at));
   }
 }
 
-function clampUnit(value: number): number {
-  return Math.min(1, Math.max(0, value));
+/** Longitude to the unit Web Mercator square's x (0 at the antimeridian, 1 at the other side). */
+function mercatorX(lng: number): number {
+  return (lng + 180) / 360;
+}
+
+/** Latitude to the unit square's y, growing southward as screen y does. */
+function mercatorY(lat: number): number {
+  const sin = Math.sin((lat * Math.PI) / 180);
+  return 0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI);
+}
+
+function lngOf(x: number): number {
+  return x * 360 - 180;
+}
+
+function latOf(y: number): number {
+  return (Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180) / Math.PI;
 }
 
 /**

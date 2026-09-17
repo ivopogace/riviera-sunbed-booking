@@ -343,13 +343,13 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan` — plan doc committed; next is phase 0.
+**Stage pointer:** `implement (phase 1)` — phase 0 green and committed.
 
-**Next action:** Phase 0, step 1: the failing `fake-map-engine.spec.ts` tests for `project`/`onMove`/`easeTo`.
+**Next action:** Phase 1, step 1: the failing `pin-crowding.spec.ts` (AC-4..8).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the port: `project`, `onMove`, `easeTo` in both adapters | | |
+| 0 — the port: `project`, `onMove`, `easeTo` in both adapters | ✅ | phase-0 commit (this one) |
 | 1 — the crowd geometry (`pin-crowding.ts`) | | |
 | 2 — the pin layer (`venue-pin-layer.ts`) + a11y + contrast | | |
 | 3 — Discover wiring, the crumb, `shownCards`; the engine layer retired | | |
@@ -490,6 +490,7 @@ it('turns a click on its surface into the position under it', async () => { /* c
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-17 | phase 0 | every `MapHandle` implementer | `grep -rln "implements MapHandle" frontend/src` | `fake-map-engine.ts`, `maplibre-map-engine.ts` | both carry `project`/`onMove`/`easeTo`; no other implementer |
 
 ---
 

@@ -122,21 +122,96 @@ describe('FakeMapEngine', () => {
     expect(dragged).toHaveLength(1);
   });
 
-  it('turns a click on its surface into a map click inside the bounds', async () => {
+  it('turns a click on its surface into the position under it', async () => {
     const host = document.createElement('div');
     const handle = await new FakeMapEngine().create(host, OPTIONS);
     const clicks: LngLat[] = [];
     handle.onMapClick((at) => clicks.push(at));
 
+    // jsdom lays nothing out, so the surface's box is 0 × 0 at (0, 0) and its centre is its corner.
     const surface = host.querySelector<HTMLElement>('[data-testid="riviera-map-fake"]')!;
     surface.dispatchEvent(new MouseEvent('click', { clientX: 0, clientY: 0, bubbles: true }));
 
     expect(clicks).toHaveLength(1);
-    const [{ lng, lat }] = clicks;
-    expect(lng).toBeGreaterThanOrEqual(OPTIONS.maxBounds[0].lng);
-    expect(lng).toBeLessThanOrEqual(OPTIONS.maxBounds[1].lng);
-    expect(lat).toBeGreaterThanOrEqual(OPTIONS.maxBounds[0].lat);
-    expect(lat).toBeLessThanOrEqual(OPTIONS.maxBounds[1].lat);
+    expect(clicks[0].lng).toBeCloseTo(OPTIONS.view.center.lng, 9);
+    expect(clicks[0].lat).toBeCloseTo(OPTIONS.view.center.lat, 9);
+  });
+
+  it('projects a point relative to the camera and re-projects after every move', async () => {
+    const handle = await new FakeMapEngine().create(document.createElement('div'), OPTIONS);
+    const { center } = OPTIONS.view;
+    const east = { lng: center.lng + 0.01, lat: center.lat };
+    const north = { lng: center.lng, lat: center.lat + 0.01 };
+
+    expect(handle.project(center)).toEqual({ x: 0, y: 0 });
+    const eastAt9 = handle.project(east);
+    expect(eastAt9.x).toBeGreaterThan(0);
+    expect(eastAt9.y).toBeCloseTo(0, 6);
+    expect(handle.project(north).y).toBeLessThan(0);
+
+    // Web Mercator: one zoom in doubles every offset from the centre.
+    handle.zoomIn();
+    expect(handle.project(east).x).toBeCloseTo(eastAt9.x * 2, 6);
+
+    // A moved camera puts its new centre at the box's centre.
+    handle.setView({ center: east, zoom: 10 });
+    expect(handle.project(east)).toEqual({ x: 0, y: 0 });
+  });
+
+  it('projects and unprojects as inverses', async () => {
+    const host = document.createElement('div');
+    const handle = await new FakeMapEngine().create(host, OPTIONS);
+    const clicks: LngLat[] = [];
+    handle.onMapClick((at) => clicks.push(at));
+    const there = { lng: 19.92, lat: 39.97 };
+
+    const { x, y } = handle.project(there);
+    host
+      .querySelector<HTMLElement>('[data-testid="riviera-map-fake"]')!
+      .dispatchEvent(new MouseEvent('click', { clientX: x, clientY: y, bubbles: true }));
+
+    expect(clicks[0].lng).toBeCloseTo(there.lng, 9);
+    expect(clicks[0].lat).toBeCloseTo(there.lat, 9);
+  });
+
+  it('reports every camera move until unsubscribed', async () => {
+    const handle = await new FakeMapEngine().create(document.createElement('div'), OPTIONS);
+    const onMove = vi.fn();
+
+    const off = handle.onMove(onMove);
+    handle.setView({ center: { lng: 20, lat: 39.8 }, zoom: 12 });
+    handle.easeTo({ center: { lng: 20, lat: 39.9 }, zoom: 13 });
+    handle.zoomIn();
+    handle.zoomOut();
+    expect(onMove).toHaveBeenCalledTimes(4);
+
+    off();
+    handle.zoomIn();
+    expect(onMove).toHaveBeenCalledTimes(4);
+  });
+
+  it('eases as a cut: the camera is at the view at once', async () => {
+    const handle = await new FakeMapEngine().create(document.createElement('div'), OPTIONS);
+
+    handle.easeTo({ center: { lng: 20, lat: 39.9 }, zoom: 13 });
+
+    expect(handle.view()).toEqual({ center: { lng: 20, lat: 39.9 }, zoom: 13 });
+  });
+
+  it('re-places its markers when the camera moves, keeping their elements', async () => {
+    const host = document.createElement('div');
+    const handle = await new FakeMapEngine().create(host, OPTIONS);
+    const element = document.createElement('button');
+    handle.addMarker({ id: 'pin', lngLat: { lng: 20, lat: 39.8 }, element });
+    const before = { left: element.style.left, top: element.style.top };
+
+    handle.setView({ center: { lng: 20, lat: 39.8 }, zoom: 12 });
+
+    expect(element.style.left).not.toBe(before.left);
+    expect(element.style.top).not.toBe(before.top);
+    expect(element.style.left).toBe('0px');
+    expect(element.style.top).toBe('0px');
+    expect(handle.markers().get('pin')?.element).toBe(element);
   });
 
   it('stops reporting clicks and drags once destroyed', async () => {
