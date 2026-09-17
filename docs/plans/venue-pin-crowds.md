@@ -350,15 +350,20 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `sonar gate` — the review gate ran in full on `240af40b..cbf816c9` (range
+**Stage pointer:** `done — merge close-out pending` — the Sonar gate passed on head `478bc204`
+(analysis accepted 20:24 UTC, after a SonarCloud incident — *Increased errors affecting analysis
+and CI*, status.sonarqube.com, identified 19:22 UTC — had failed the scan eight times with an
+HTTP 500 on `batch/project.protobuf`; not this PR's, recorded on the PR): quality gate OK, 0 open
+issues, new-code coverage 92.8 %, duplicated lines 0.0 %, security hotspots reviewed 100 %,
+reliability/security/maintainability A. The review gate ran in full on `240af40b..cbf816c9` (range
 verified by `check-review-range.mjs`: 31 files, +2865/−788, matched to the PR): `/code-review`'s
 five reviewers plus the overlay's frontend bank; seven findings scored, two above the bar, all
 seven resolved in `2361f2a1` (F-4..F-10 below); the gate's comment is
 https://github.com/ivopogace/riviera-sunbed-booking/pull/1138#issuecomment-5719352322.
 `origin/main` unchanged since the branch's base (`240af40b`). Merges via PR #1138.
 
-**Next action:** CI and the SonarCloud re-analysis on the Sonar-fix commit; the gate is done when
-the check-run reads success with an empty list (F-11 was its one entry).
+**Next action:** the maintainer's review and merge of PR #1138; at merge close-out this plan is
+retired, #1134 closes via the PR, and slice 2 continues on #1139.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -384,7 +389,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-7 | review (code comments) | `pin-crowding.ts` cited `VENUE_PIN_BADGE_CLASSES`, which this PR deleted | fixed-in-`2361f2a1` |
 | F-8 | review (code comments) | `PILL_CHROME_PX = 13 + 8 + 26 + 6 + 4` did not decompose into the pill's classes (55, not 57) | fixed-in-`2361f2a1` (the breakdown named, the sum 55) |
 | F-9 | review (code comments) | the inverted-pill axe check ran before the pill's colour transition settled | fixed-in-`2361f2a1` (`settleAnimations(pill)` first) |
-| F-11 | sonar (PR 1138 analysis of `1c326886`: new lines 1009, new-code coverage 92.8 %, duplicated blocks 0, smells 0, bugs 1 → Reliability C) | `typescript:S6959` — `reduce()` without an initial value in `lowestFromPrice` | fixed-in-this-commit (the first priced card seeds the fold) |
+| F-11 | sonar (PR 1138 analysis of `1c326886`: new lines 1009, new-code coverage 92.8 %, duplicated blocks 0, smells 0, bugs 1 → Reliability C) | `typescript:S6959` — `reduce()` without an initial value in `lowestFromPrice` | fixed-in-`478bc204` (the first priced card seeds the fold; the 20:24 UTC analysis of that head lists 0 issues) |
 | F-10 | review (bug scan) | anchor-based grouping splits a chain A–B–C where only A–B and B–C overlap | not a defect: the doc comment states the rule as deliberate, and `layoutPills` places lone pins first so a neighbouring pin is never buried under the pill — left as is |
 | F-2 | the e2e sweep (phase 4, local) | `preview-link` 39 px tall with a preview open at ≥ 390 px; a lone pin cut by the map's edge 26 px wide at 320 px | fixed-in-`d6c0ac9c` (`appTouchTarget`; `data-touch-pans`) |
 
