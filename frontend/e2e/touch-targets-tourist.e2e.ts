@@ -72,6 +72,24 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await expectTouchTargets(page, 'tourist home, map view');
   });
 
+  test('home — the map view, near-me failure message with its dismiss control', async ({
+    page,
+    context,
+  }) => {
+    await context.clearPermissions();
+    await page.addInitScript(() => {
+      (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
+    });
+    await page.goto('/');
+    await expect(page.getByTestId('venue-card').first()).toBeVisible();
+    await page.getByTestId('view-map').click();
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+    await page.getByRole('button', { name: 'Near me' }).click();
+    await expect(page.getByTestId('map-near-me-message')).toBeVisible();
+
+    await expectTouchTargets(page, 'tourist home, map view, near-me message');
+  });
+
   test('venue detail — the beach map', async ({ page }) => {
     await page.goto('/venues/1');
     await expect(page.getByRole('button', { name: /Select to book/ }).first()).toBeVisible();

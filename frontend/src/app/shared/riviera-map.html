@@ -61,13 +61,28 @@
       </button>
     </fieldset>
     @if (nearMeMessage(); as text) {
-      <p
-        role="alert"
-        data-testid="map-near-me-message"
-        class="rounded-[18px] border border-riv-solid-btn-border bg-riv-solid-btn-fill px-[12px] py-[6px] text-right text-[14px] leading-[1.45] text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.22)]"
+      <!-- The dismiss button sits outside the alert paragraph, so it never joins what is announced. -->
+      <div
+        class="flex items-center gap-1 rounded-[18px] border border-riv-solid-btn-border bg-riv-solid-btn-fill py-[6px] pr-[6px] pl-[12px] shadow-[0_6px_18px_rgba(7,42,58,0.22)]"
       >
-        {{ text }}
-      </p>
+        <p
+          role="alert"
+          data-testid="map-near-me-message"
+          class="text-right text-[14px] leading-[1.45] text-riv-solid-btn-ink"
+        >
+          {{ text }}
+        </p>
+        <button
+          type="button"
+          appTouchTarget
+          data-testid="map-near-me-dismiss"
+          aria-label="Dismiss message"
+          class="-my-[9px] inline-flex shrink-0 touch-manipulation items-center justify-center rounded-full text-[19px] leading-none text-riv-solid-btn-ink hover:bg-riv-solid-btn-hover"
+          (click)="dismissNearMeMessage()"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
     }
   </div>
 }

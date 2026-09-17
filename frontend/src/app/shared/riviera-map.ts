@@ -446,6 +446,14 @@ export class RivieraMap {
     this.mapEnd().nativeElement.focus();
   }
 
+  /**
+   * Dismiss the near-me message without moving the map — a later "Near me" press can raise it
+   * again. The only other writer of {@link problem} is `findMe()` itself.
+   */
+  protected dismissNearMeMessage(): void {
+    this.problem.set(null);
+  }
+
   private async boot(): Promise<void> {
     let handle: MapHandle;
     try {

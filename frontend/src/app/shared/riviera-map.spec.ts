@@ -510,6 +510,12 @@ describe('RivieraMap near me', () => {
     );
   }
 
+  function dismissButton(fixture: ComponentFixture<RivieraMap>): HTMLButtonElement | null {
+    return (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      '[data-testid="map-near-me-dismiss"]',
+    );
+  }
+
   /** Press the control and let the browser answer, as one act. */
   async function press(
     fixture: ComponentFixture<RivieraMap>,
@@ -610,6 +616,34 @@ describe('RivieraMap near me', () => {
 
     expect(message(fixture)).toBeNull();
     expect(handleOf(fixture).view().center).toEqual(SARANDE);
+  });
+
+  it('is dismissible, and leaves the map exactly where it was', async () => {
+    const fixture = await render();
+    const before = handleOf(fixture).view();
+    await press(fixture, { kind: 'denied' });
+    expect(message(fixture)).not.toBeNull();
+
+    dismissButton(fixture)?.click();
+    fixture.detectChanges();
+
+    expect(message(fixture)).toBeNull();
+    expect(dismissButton(fixture)).toBeNull();
+    expect(handleOf(fixture).view()).toEqual(before);
+  });
+
+  it('can raise the message again after a dismissal', async () => {
+    const fixture = await render();
+    await press(fixture, { kind: 'denied' });
+    dismissButton(fixture)?.click();
+    fixture.detectChanges();
+    expect(message(fixture)).toBeNull();
+
+    await press(fixture, { kind: 'denied' });
+
+    expect(message(fixture)?.textContent?.trim()).toBe(
+      'Location permission was declined. The map hasn’t moved.',
+    );
   });
 
   it('is busy rather than disabled while the browser is answering', async () => {
