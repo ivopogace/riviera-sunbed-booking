@@ -3,12 +3,7 @@ import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
 
-import {
-  Amenity,
-  amenityLabel,
-  distanceToWaterLabel,
-  orderedAmenities,
-} from '../../shared/amenities';
+import { amenityLabel, distanceToWaterLabel, orderedAmenities } from '../../shared/amenities';
 import { AmenityChip } from '../../shared/amenity-chip';
 import { CardGlass } from '../../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
@@ -29,43 +24,9 @@ import { ClosedForSeasonChip } from '../../shared/closed-for-season-chip';
 import { SemanticChip } from '../../shared/semantic-chip';
 import { defaultBookingDate, formatDayMonth, isIsoDate } from '../../shared/booking-date';
 import { TouchTarget } from '../../shared/touch-target';
-import { PhotoView, VenueSummary } from '../../shared/venue-views';
+import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
-
-/**
- * A discovery card's ready-to-render view: every per-venue display value the
- * template needs, precomputed once from a {@link VenueSummary} by {@link Home.venuesView} rather
- * than re-derived per item on each change-detection tick. The pure `shared/` helpers stay
- * signal-free; this record is where their outputs are memoized off the `venues` signal.
- */
-interface VenueCard {
-  readonly id: number;
-  readonly name: string;
-  readonly beach: string;
-  readonly region: string;
-  /** The slideshow's photo URLs in slot order (cover first); empty → the gradient placeholder. */
-  readonly photos: readonly PhotoView[];
-  readonly modeLabel: string;
-  readonly isRated: boolean;
-  readonly rating: string;
-  /** The count with its noun already agreed — "1 review", "2 reviews" (shared/rating.ts). */
-  readonly reviewsLabel: string;
-  readonly water: string | null;
-  readonly amenities: readonly { readonly code: Amenity; readonly label: string }[];
-  readonly freePercent: number;
-  /** The "from €X / set" price string, or `null` when the venue has no sets ("No sets yet"). */
-  readonly priceLabel: string | null;
-  readonly free: number;
-  readonly total: number;
-  /** True when the server's verdict says online sales for the selected date have closed. */
-  readonly salesClosed: boolean;
-  /** True when the venue is closed for the season — the badge outranks the sales-closed chip. */
-  readonly closedForSeason: boolean;
-  /** The reopen day while closed with one set, for the badge's copy; else `null`. */
-  readonly reopensOn: string | null;
-  /** The single accessible name carrying every card fact (nothing conveyed by layout alone). */
-  readonly ariaLabel: string;
-}
+import { VenueCard } from './venue-card';
 
 /**
  * Tailwind's `lg` breakpoint — the twin of the `lg:` utilities in `home.html` that lay the map
@@ -415,6 +376,7 @@ export class Home {
       salesClosed,
       closedForSeason,
       reopensOn,
+      location: venue.location ?? null,
       ariaLabel,
     };
   }

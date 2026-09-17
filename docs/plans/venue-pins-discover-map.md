@@ -237,15 +237,15 @@ code or error shape moves.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 red — `venue-pins.spec.ts` over the pure `venuePins()` derivation,
-after moving `VenueCard` out of `home.ts` into `pages/home/venue-card.ts`.
+**Next action:** Phase 2 red — `riviera-map.spec.ts` cases for AC-2/AC-3 against
+`FakeMapEngine`, then grow `RivieraMap` with the `pins`/`selectedPin` inputs.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend: the fence proven for a pinned venue (AC-10) | ✅ | `<phase-0>` |
-| 1 — Pure pin derivation + `VenueCard` extraction (AC-1) | | |
+| 1 — Pure pin derivation + `VenueCard` extraction (AC-1) | ✅ | `<phase-1>` |
 | 2 — `RivieraMap` grows multi-pin (AC-2, AC-3) | | |
 | 3 — The Liquid Glass preview card (AC-6) | | |
 | 4 — Wire Discover: pins, selection, preview, card highlight (AC-7, AC-8) | | |

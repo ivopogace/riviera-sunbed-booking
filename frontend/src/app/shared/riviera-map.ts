@@ -37,6 +37,17 @@ export const RIVIERA_MAP_OPTIONS: MapEngineOptions = {
   ],
 };
 
+/**
+ * One selectable pin the map draws: a stable id the consumer keys its own data by, where it
+ * sits, and the name it announces. Deliberately free of any venue vocabulary — the map draws
+ * pins, and what a pin stands for is its consumer's business.
+ */
+export interface MapPin {
+  readonly id: string;
+  readonly at: LngLat;
+  readonly label: string;
+}
+
 type MapStatus = 'booting' | 'ready' | 'unavailable';
 
 /** The map carries at most one pin, so its marker id is a constant rather than an input. */
