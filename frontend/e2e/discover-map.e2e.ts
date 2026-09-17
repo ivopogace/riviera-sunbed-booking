@@ -247,7 +247,7 @@ test.describe('Discover map — fake engine', () => {
     await expect(page.getByTestId('map-near-me-message')).toBeVisible();
   });
 
-  test('draws a pin per pinned venue and none for the venue without a location', async ({
+  test('draws a pin per pinned venue, priced on its face, and none for the venue without a location', async ({
     page,
   }) => {
     await page.setViewportSize(WIDE);
@@ -257,8 +257,16 @@ test.describe('Discover map — fake engine', () => {
     await expect(page.getByTestId('venue-card')).toHaveCount(3);
     const pins = page.getByTestId('map-venue-pin');
     await expect(pins).toHaveCount(2);
-    await expect(pins.nth(0)).toHaveAttribute('aria-label', 'Miramar Beach Club');
-    await expect(pins.nth(1)).toHaveAttribute('aria-label', 'Aurora Bay');
+    // The from-price the list card shows, read straight off the pin — and off its name.
+    await expect(pins.nth(0)).toHaveText('€25');
+    await expect(pins.nth(0)).toHaveAttribute('aria-label', 'Miramar Beach Club, from €25');
+    await expect(pins.nth(1)).toHaveText('€30');
+    await expect(pins.nth(1)).toHaveAttribute('aria-label', 'Aurora Bay, from €30');
+
+    // A pill, not a disc: it widened for the price and kept the 44 px floor on both axes.
+    const box = (await pins.nth(0).boundingBox())!;
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(box.width).toBeGreaterThan(box.height);
   });
 
   test('a pin opens its preview, which leads to the beach map with the date carried', async ({
@@ -357,7 +365,7 @@ test.describe('Discover map — fake engine', () => {
     await expect(page.getByTestId('venue-card')).toHaveCount(1);
     const pins = page.getByTestId('map-venue-pin');
     await expect(pins).toHaveCount(1);
-    await expect(pins.first()).toHaveAttribute('aria-label', 'Aurora Bay');
+    await expect(pins.first()).toHaveAttribute('aria-label', 'Aurora Bay, from €30');
     await expect(page.getByTestId('venue-preview')).toHaveCount(0);
     // The map asks for nothing of its own: one list request answered both surfaces.
     expect(venueRequests() - before).toBe(1);
