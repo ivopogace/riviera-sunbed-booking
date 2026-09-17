@@ -39,9 +39,13 @@ slice 1's plan doc is stale — its PR #1138 merged — and is retired in this P
 `riviera-plan-doc` (this template — forced a seam per AC, the four "settle in the plan" decisions
 recorded under *Decisions*, and every touched spec into the file table) · `tdd` (each AC red at its
 seam before the primitive, the layer, the card or the page changed) · `riviera-review-overlay`
-(review gate — due at ready-for-review) · `riviera-docs-freshness` (due at close-out over
-`origin/main..HEAD`: CONTEXT.md's *Pin crowd* and *Pin preview* entries gain the stepper and the
-sets-free line; the counting sweep for "the two" glass chips) · `riviera-local-debug`
+(review gate — due at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD` at close-out, `main` @ `37bb891f`:
+the rename/removal grep — nothing renamed, 0 hits; the substrate grep for *pin preview* / *sets
+free* / *sales closed* facts — 0 hits outside CONTEXT.md; the counting sweep — 0 findings: every
+"the two"/"five" hit is another subject, and the semantic chip's five box recipes are unchanged
+since the sales-closed chip still wears the band's box wherever it renders; reverse walk —
+CONTEXT.md's *Pin preview* and *Pin crowd* entries patched to name the sets-free line, the badges
+and the stepper; slice 1's plan retired, no citation outside `docs/plans/`) · `riviera-local-debug`
 (`git fetch --unshallow` before any history claim; scoped Vitest via `--include`; mocked e2e with
 `PW_CHROMIUM_EXECUTABLE`) · `riviera-frontend` (the two new primitives are pure presentational
 elements → `shared/`, following `closed-for-season-chip.ts`; `CrowdStack` is Discover vocabulary →
@@ -118,7 +122,7 @@ number in play (frontend-only). No epic checklist: #1134 is closed; slice 1's cl
 
 **The shared footer pieces** (`shared/`)
 
-- [ ] **AC-1:** Given `free` 18 and `total` 24, when `app-sets-free` renders, then it reads
+- [x] **AC-1:** Given `free` 18 and `total` 24, when `app-sets-free` renders, then it reads
   `18 of 24 free` with the count in a `<strong>`; the list card's footer and the pin preview both
   render it, so the preview's `[data-testid="preview-availability"]` reads `18 of 24 free` and the
   list card's `[data-testid="card-availability"]` still does. *Seam:* `SetsFree` inputs → rendered
@@ -126,7 +130,7 @@ number in play (frontend-only). No epic checklist: #1134 is closed; slice 1's cl
   bold", `venue-preview-card.spec.ts` "says how many sets are free, as the list card's footer does",
   `home.spec.ts` "renders a card per venue with name, location, rating, from-price and availability"
   (existing, unchanged).
-- [ ] **AC-2:** Given a venue whose online sales for today have closed and which is not closed for
+- [x] **AC-2:** Given a venue whose online sales for today have closed and which is not closed for
   the season, when it is previewed, then the preview carries `[data-testid="preview-sales-closed"]`
   reading `Sales closed for today` (the `app-sales-closed-chip` the list band renders, keeping the
   `.sales-closed-chip` marker); a venue closed for the season shows the season chip and no sales
@@ -134,27 +138,27 @@ number in play (frontend-only). No epic checklist: #1134 is closed; slice 1's cl
   `sales-closed-chip.spec.ts` "wears the semantic-chip skin and says sales closed for today",
   `venue-preview-card.spec.ts` "badges sales closed for today, outranked by the season closure",
   `home.spec.ts` "badges a venue whose online sales for today have closed" (existing, unchanged).
-- [ ] **AC-3:** Given a venue with no sets (`priceLabel` null, 0 of 0), when it is previewed, then
+- [x] **AC-3:** Given a venue with no sets (`priceLabel` null, 0 of 0), when it is previewed, then
   the price line reads `No sets yet` and the count `0 of 0 free`, as the footer does. *Seam:* the
   card's DOM · *Pinned by:* `venue-preview-card.spec.ts` "says No sets yet and 0 of 0 free where a
   venue has no sets".
 
 **The layer** (`pages/home/venue-pin-layer.ts`)
 
-- [ ] **AC-4:** Given the inseparable Dhërmi trio at `maxZoom` (Havana `11`, Folie `12`, Sun Club
+- [x] **AC-4:** Given the inseparable Dhërmi trio at `maxZoom` (Havana `11`, Folie `12`, Sun Club
   `13`), when `selected` is `12`, then `stack()` is `{ index: 1, count: 3, place: 'Dhërmi', prevId:
   '11', nextId: '13' }`; when `11`, `prevId` is `13` (wrapping) and `nextId` `12`; when `13`,
   `prevId` is `12` and `nextId` `11`. *Seam:* `VenuePinLayer.stack` · *Pinned by:*
   `venue-pin-layer.spec.ts` "exposes the open venue's place in an inseparable crowd, wrapping at
   both ends".
-- [ ] **AC-5:** Given nothing selected, a lone pin selected, or a member of a crowd the camera can
+- [x] **AC-5:** Given nothing selected, a lone pin selected, or a member of a crowd the camera can
   still separate selected (the Ksamil pair at the opening view), when `stack()` is read, then it is
   `null`. *Seam:* as AC-4 · *Pinned by:* `venue-pin-layer.spec.ts` "exposes no stack for nothing
   open, a lone pin, or a crowd the camera can still separate".
 
 **The card** (`pages/home/venue-preview-card.ts`)
 
-- [ ] **AC-6:** Given Folie Marine's card and `stack` `{ index: 1, count: 3, place: 'Dhërmi',
+- [x] **AC-6:** Given Folie Marine's card and `stack` `{ index: 1, count: 3, place: 'Dhërmi',
   prevId: '11', nextId: '13' }`, when the preview renders, then `[data-testid="preview-stack"]` is
   a `group` named `3 venues at Dhërmi` holding a `‹` button named `Previous venue at Dhërmi`
   (`preview-stack-prev`), three decorative dots (`preview-stack-dots`, the second `data-current`),
@@ -162,18 +166,18 @@ number in play (frontend-only). No epic checklist: #1134 is closed; slice 1's cl
   `preview-stack-position` reads `2 of 3 here, Folie Marine`. *Seam:* the card's `stack` input →
   rendered DOM · *Pinned by:* `venue-preview-card.spec.ts` "carries the crowd stepper while its
   venue is one of an inseparable crowd".
-- [ ] **AC-7:** Given no `stack`, when the preview renders, then no `preview-stack` exists and the
+- [x] **AC-7:** Given no `stack`, when the preview renders, then no `preview-stack` exists and the
   live region is mounted and empty. *Seam:* as AC-6 · *Pinned by:* `venue-preview-card.spec.ts`
   "carries no stepper for a venue on its own, keeping the live region mounted".
-- [ ] **AC-8:** Given the stack of AC-6, when `‹` is pressed, then `stepped` emits `11`; when `›`
+- [x] **AC-8:** Given the stack of AC-6, when `‹` is pressed, then `stepped` emits `11`; when `›`
   is pressed, `13`; and when the card and stack inputs then change to the neighbour's, the `›`
   button is the same element (the card stays mounted). *Seam:* the card's `stepped` output; its
   DOM · *Pinned by:* `venue-preview-card.spec.ts` "steps to the neighbour on either side" and
   "keeps its controls across a step".
-- [ ] **AC-9:** Given a stack of six, when the preview renders, then six dots show; given seven,
+- [x] **AC-9:** Given a stack of six, when the preview renders, then six dots show; given seven,
   no dots and `preview-stack-count` reading `3 / 7` for index 2. *Seam:* as AC-6 · *Pinned by:*
   `venue-preview-card.spec.ts` "shows a count instead of dots past six venues".
-- [ ] **AC-10:** Given the preview rendered with a stepper (three and seven members) and with the
+- [x] **AC-10:** Given the preview rendered with a stepper (three and seven members) and with the
   sales-closed chip, when axe runs, then no violation; and the chevrons' ink clears AA normal on the
   track over the card glass over every worst-case stop in all three themes, and the active dot
   clears 3:1 on the track. *Seam:* the rendered DOM; the `--riv-card-*` / `--riv-accent-ink`
@@ -181,30 +185,30 @@ number in play (frontend-only). No epic checklist: #1134 is closed; slice 1's cl
 
 **The page** (`pages/home/`)
 
-- [ ] **AC-11:** Given the inseparable crowd pressed through from the map (Aurora Bay open), when
+- [x] **AC-11:** Given the inseparable crowd pressed through from the map (Aurora Bay open), when
   the preview's `›` is pressed, then Folie Marine's preview shows in the same dialog element, the
   pressed `›` is still the focused element, the pill reads `Folie Marine from €39 2/3`; two more
   `›` presses wrap to Aurora Bay; one `‹` press from Aurora Bay wraps to Dhërmi Sun Club; Escape
   then focuses Dhërmi Sun Club's own button. *Seam:* the Discover DOM (`venue-preview`,
   `preview-stack-*`, `map-place-pill`) · *Pinned by:* `home.spec.ts` "walks an inseparable crowd
   from the preview card's stepper, wrapping, with focus kept on the chevron".
-- [ ] **AC-12:** Given a lone pin's preview, when it renders, then it carries no stepper and says
+- [x] **AC-12:** Given a lone pin's preview, when it renders, then it carries no stepper and says
   its sets free. *Seam:* the Discover DOM · *Pinned by:* `home.spec.ts` "opens the preview for the
   pin that was pressed" (extended).
-- [ ] **AC-13:** Given the preview open over the map with its stepper, when axe runs, then no
+- [x] **AC-13:** Given the preview open over the map with its stepper, when axe runs, then no
   violation. *Seam:* the Discover DOM · *Pinned by:* `home.a11y.spec.ts` "has no violations with an
   inseparable crowd's preview and its stepper open over the map".
 
 **End to end** (`frontend/e2e/`, the mocked suite, fake engine)
 
-- [ ] **AC-14:** Given the Dhërmi pill pressed through to Folie Marine, when the card's `›` is
+- [x] **AC-14:** Given the Dhërmi pill pressed through to Folie Marine, when the card's `›` is
   pressed, then Dhërmi Sun Club's preview shows with the pill at `3/3`, the `›` keeps focus, the
   position region reads `3 of 3 here, Dhërmi Sun Club`, the card says `19 of 22 free`; `›` again
   wraps to Aurora Bay and `‹` back to Dhërmi Sun Club; Escape focuses Dhërmi Sun Club's button;
   the page is axe-clean and every control clears 44 px with the stepper open. *Seam:* the mocked
   Discover page · *Pinned by:* `discover-map.e2e.ts` "where nowhere is closer, press through the
   venues…" (extended).
-- [ ] **AC-15:** Given the phone width with a crowd pressed through, when the sweep runs, then the
+- [x] **AC-15:** Given the phone width with a crowd pressed through, when the sweep runs, then the
   card's two chevrons are measured (named before the sweep) and pass. *Seam:*
   `touch-targets-tourist.e2e.ts` · *Pinned by:* "home — the map view with a place pill, its
   pressed-through state and the beach crumb" (extended).
@@ -245,14 +249,15 @@ The list card's inline footer count and its inline sales-closed chip are replace
 
 ## Open questions / Assumptions
 
-- **Assumption (resolved in phase 2, recorded in `venue-preview-card.contrast.spec.ts`'s header):** the inactive dots are decorative (the current slot is the accent pill at 3:1 and
-  the `k/n` on the pill states the count), so their `card-ink-soft/35` tint is not held to 1.4.11 —
-  the same reading `photo-slideshow.contrast.spec.ts` records for the inert Discover rail. —
-  *Owner:* agent · *Resolves by:* phase 2 (recorded in the contrast spec's header).
+None open.
 
 ### Resolved
 
-- The five decisions above (intake).
+- The inactive dots are decorative (the current slot is the accent pill at 3:1, the pill's `k/n`
+  states the count), so their `card-ink-soft/35` tint is not held to 1.4.11 — the reading
+  `photo-slideshow.contrast.spec.ts` records for the inert Discover rail; written into
+  `venue-preview-card.contrast.spec.ts`'s header (phase 2, `2e4c42d3`).
+- The six decisions above (intake, `d2cac6d0`).
 
 ## Availability & concurrency (invariant #2)
 
@@ -287,9 +292,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5 — close-out)`
+**Stage pointer:** `PR — ready for review; review gate next`
 
-**Next action:** phase 5 — retire slice 1's plan doc, CONTEXT.md, the docs-freshness sweep, merge latest `main`, ready for review.
+**Next action:** run the review gate (`/code-review` + `riviera-review-overlay`) on PR #1140; findings re-enter at Implement; then the Sonar list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -297,8 +302,8 @@ N/A — no contract change.
 | 1 — The layer's stack | ✅ | `680abbf7` |
 | 2 — The card's stepper | ✅ | `2e4c42d3` |
 | 3 — Discover wiring | ✅ | `81de5bd3` |
-| 4 — Mocked e2e | ✅ | the phase-4 commit (`Discover e2e: the card's stepper walks the crowd; the sweep measures its chevrons`) |
-| 5 — Close-out | | |
+| 4 — Mocked e2e | ✅ | `e34b2a07` |
+| 5 — Close-out | ✅ | the close-out commit; `main` @ `37bb891f` unchanged since the branch point, nothing to merge in |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -406,9 +411,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Phase 5 — Close-out
 
-- [ ] `git rm docs/plans/venue-pin-crowds.md`; grep `venue-pin-crowds` outside `docs/plans/` → repoint any citation to PR #1138.
-- [ ] `CONTEXT.md`: *Pin preview* and *Pin crowd* entries.
-- [ ] `riviera-docs-freshness` over `origin/main..HEAD`; `node scripts/check-plan-file-structure.mjs --diff origin/main` green; execution status finalized in the last code-touching commit.
+- [x] `git rm docs/plans/venue-pin-crowds.md`; grep `venue-pin-crowds` outside `docs/plans/` → repoint any citation to PR #1138.
+- [x] `CONTEXT.md`: *Pin preview* and *Pin crowd* entries.
+- [x] `riviera-docs-freshness` over `origin/main..HEAD`; `node scripts/check-plan-file-structure.mjs --diff origin/main` green; execution status finalized in the last code-touching commit.
 
 ---
 
@@ -426,30 +431,30 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..3:** `npx ng test --watch=false --include="src/app/shared/sets-free.spec.ts" --include="src/app/shared/sales-closed-chip.spec.ts" --include="src/app/pages/home/venue-preview-card.spec.ts"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4..5:** `--include="src/app/pages/home/venue-pin-layer.spec.ts"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6..10:** `--include="src/app/pages/home/venue-preview-card*.spec.ts"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-11..13:** `--include="src/app/pages/home/home*.spec.ts"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-14..15:** the Playwright command above → PASS. Verified at commit `<sha>`.
+- [x] **AC-1..3:** `npx ng test --watch=false --include="src/app/shared/sets-free.spec.ts" --include="src/app/shared/sales-closed-chip.spec.ts" --include="src/app/pages/home/venue-preview-card.spec.ts"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-4..5:** `--include="src/app/pages/home/venue-pin-layer.spec.ts"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-6..10:** `--include="src/app/pages/home/venue-preview-card*.spec.ts"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-11..13:** `--include="src/app/pages/home/home*.spec.ts"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-14..15:** the Playwright command above → PASS. Verified at commit `<sha>`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
