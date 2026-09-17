@@ -247,7 +247,7 @@ describe('RequestsTab (#176)', () => {
     expect(notice?.textContent?.toLowerCase()).toContain('asked to pay');
   });
 
-  it('empties the decision notice when the venue param goes invalid (#1122)', () => {
+  it('empties the decision notice when the venue switches in place (#1122)', () => {
     render([request({ bookingId: 11 })]);
 
     button(/Accept/).click();
@@ -260,12 +260,24 @@ describe('RequestsTab (#176)', () => {
     const notice = byId('requests-notice');
     expect(notice?.textContent?.toLowerCase()).toContain('asked to pay');
 
-    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    params$.next(convertToParamMap({ venueId: '2' }));
     fixture.detectChanges();
 
     // Emptied, never unmounted: a live region must keep outliving the branch it describes.
     expect(byId('requests-notice')).toBe(notice);
     expect(notice?.textContent?.trim()).toBe('');
+    // Venue 2's own map + queue reads, which the switch starts.
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/2') &&
+          !r.url.includes('/booking-requests'),
+      )
+      .flush({ id: 2, name: 'W', beach: 'Ksamil', region: 'Riviera', sets: SEED_SETS });
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/booking-requests'))
+      .flush([]);
   });
 
   it('reconciles the whole queue after an action, dropping a card the sweep expired meanwhile', () => {

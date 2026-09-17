@@ -231,7 +231,7 @@ export class App {
   /**
    * The active route's chrome flags, computed once per successful navigation from a SINGLE
    * root→leaf walk: `console` (every operator/admin surface — the venue console, the admin
-   * console, the two plain operator pages — names its section, and the console shell replaces the
+   * console, the three plain operator pages — names its section, and the console shell replaces the
    * tourist header, so an admin is never shown the customer session's "Sign in / Register" while
    * signed in) with the `:venueId` beside it, and the tourist `section` / `tabBar` flags. A flag
    * sits on a PARENT route and is not inherited into a child snapshot, so the leaf-most value on

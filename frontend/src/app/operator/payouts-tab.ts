@@ -52,8 +52,9 @@ export class PayoutsTab {
   /** Every weather-refund transition destroys the control that was just activated (WCAG 2.4.3). */
   private readonly focusAfterRender = focusMover();
 
-  /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
-   *  invalid) — reactive to in-place venue switches, which reuse this instance. */
+  /** The venue this tab manages, from the parent `/operator/:venueId` route — always a
+   *  real one (`venueIdGuard` gates it) and reactive to in-place switches, which reuse this
+   *  instance. */
   private readonly venueId = parentVenueId(this.route);
 
   private readonly ledger = signal<PayoutLedgerView | undefined>(undefined);
@@ -83,14 +84,9 @@ export class PayoutsTab {
   constructor() {
     // Re-runs on an in-place venue switch: reset to the fresh-mount state, then load.
     effect(() => {
-      const id = this.venueId();
-      untracked(() => (id === undefined ? this.markInvalid() : this.resetForVenue()));
+      this.venueId();
+      untracked(() => this.resetForVenue());
     });
-  }
-
-  private markInvalid(): void {
-    this.loaded.set(true);
-    this.loadErrorMsg.set(loadFailureNotice('UNKNOWN'));
   }
 
   /** Drop every venue-scoped signal — ledger, notice, refund/statement state — and load fresh, on
@@ -211,7 +207,7 @@ export class PayoutsTab {
    */
   protected onConfirmWeather(): void {
     const venueId = this.venueId();
-    if (venueId === undefined || this.refunding()) {
+    if (this.refunding()) {
       return;
     }
     const epoch = this.epoch;
@@ -259,9 +255,6 @@ export class PayoutsTab {
    *  current view (the action notice already reported the outcome). */
   private reloadLedger(): void {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     const epoch = this.epoch;
     this.console.payoutLedger(venueId).subscribe({
       next: (l) => {
@@ -277,9 +270,6 @@ export class PayoutsTab {
 
   private load(): void {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     const epoch = this.epoch;
     this.console.payoutLedger(venueId).subscribe({
       next: (l) => {

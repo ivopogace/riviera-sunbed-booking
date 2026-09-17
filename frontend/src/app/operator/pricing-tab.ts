@@ -62,8 +62,9 @@ export class PricingTab {
   private readonly console = inject(OperatorConsoleService);
   protected readonly operator = inject(OperatorAuth);
 
-  /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
-   *  invalid) — reactive to in-place venue switches, which reuse this instance. */
+  /** The venue this tab manages, from the parent `/operator/:venueId` route — always a
+   *  real one (`venueIdGuard` gates it) and reactive to in-place switches, which reuse this
+   *  instance. */
   protected readonly venueId = parentVenueId(this.route);
 
   /** The venue's sets, from the public venue-map read; the source of the rows + the projected take. */
@@ -79,8 +80,7 @@ export class PricingTab {
    *  `change` that slips through anyway is ignored. Why: RV-FE-9 in `riviera-review-overlay`. */
   protected readonly saving = signal(false);
   /** The last row saved — sequential edits, per-row so a fail is scoped. Derived so it can never
-   *  outlive the venue it names: every venue-context change empties it, the invalid-param one
-   *  included. */
+   *  outlive the venue it names: every venue switch empties it. */
   protected readonly savedRow = linkedSignal({
     source: this.venueId,
     computation: (): string | null => null,
@@ -129,10 +129,10 @@ export class PricingTab {
   });
 
   constructor() {
-    // Every venue-context change: clear the previous venue's rows, then load the new venue if any.
+    // Every venue switch: clear the previous venue's rows, then load the new one.
     effect(() => {
       const id = this.venueId();
-      untracked(() => (id === undefined ? this.clearVenueState() : this.resetForVenue(id)));
+      untracked(() => this.resetForVenue(id));
     });
   }
 
@@ -166,9 +166,6 @@ export class PricingTab {
    */
   protected async onPriceChange(row: PriceRow, input: HTMLInputElement): Promise<void> {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     if (this.saving()) {
       // Backstop for a change slipping past the readonly lock; a second write would false-conflict.
       input.value = row.priceEur;
@@ -255,9 +252,6 @@ export class PricingTab {
    */
   protected reloadAfterStale(): void {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     this.staleConflict.set(false);
     this.errorRow.set(null);
     this.savedRow.set(null);

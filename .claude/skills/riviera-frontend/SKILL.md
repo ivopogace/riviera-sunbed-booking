@@ -95,11 +95,22 @@ Colocate everything the feature owns, flat (no `components/`/`services/` subfold
   `route.parent`, and reads it **reactively** via `shared/parent-venue-id.ts`'s signal
   helpers: the router reuses the component instance when only the param changes, so a
   constructor snapshot read pins the old venue.
+- **A route param's validity is the route's job, not a component's** (ADR-0023). The console's
+  two helpers therefore return `Signal<number>` and throw: a component that reads no valid id
+  is a routing bug, not a user state, so no console template carries an invalid-id arm. Give a
+  new id-carrying route the same shape — a guard plus one page that owns the answer — rather
+  than a not-found branch per component. The generic `routeIdParam` stays optional for a route
+  with no gate (the tourist map's `:id`, which owns its own not-found state).
 - Route guards are cross-cutting → they live in `core/` and are applied in
-  `app.routes.ts` (`canActivate`/`canMatch`), not inside feature components. Worked
-  example: `core/operator-session.guard.ts` — restore-aware (awaits
-  `SessionAuth.whenReady()` before deciding), applied on `/operator` (incl. its create
-  state), `/operator/:venueId` and `/account/operator-password`.
+  `app.routes.ts` (`canActivate`/`canMatch`), not inside feature components. Two today, and
+  their ORDER on `/operator/:venueId` is load-bearing:
+  - `core/venue-id.guard.ts` runs first — `:venueId` must be a canonical positive integer, or
+    the navigation is redirected to `/operator/venue-not-found`. First, because a malformed
+    segment is malformed whoever is asking: a signed-out visitor should sign in for the page,
+    not for a link that can never work.
+  - `core/operator-session.guard.ts` — restore-aware (awaits `SessionAuth.whenReady()` before
+    deciding), applied on `/operator` (incl. its create state), `/operator/:venueId`,
+    `/operator/venue-not-found` and `/account/operator-password`.
 - **A lazy target's import lines only count as covered once its module actually loads** —
   Vitest's v8 coverage provider registers a `loadComponent` target's chunk boundary as soon
   as any spec imports `app.routes.ts`, but its import lines stay at 0 hits until something

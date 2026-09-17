@@ -1,5 +1,5 @@
 import { Component, effect, inject, signal, untracked } from '@angular/core';
-import { ActivatedRoute, RouterLink, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, RouterOutlet } from '@angular/router';
 import { Observable } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
@@ -29,7 +29,7 @@ import { PendingRequestsStore } from './pending-requests-store';
  */
 @Component({
   selector: 'app-operator-console',
-  imports: [RouterOutlet, RouterLink, ConsoleStatsStrip, PendingApprovalBanner],
+  imports: [RouterOutlet, ConsoleStatsStrip, PendingApprovalBanner],
   templateUrl: './operator-console.html',
   host: { class: 'block' },
 })
@@ -54,7 +54,7 @@ export class OperatorConsole {
     // Load per session (the async /me restore resolves late) AND per venue param.
     effect(() => {
       const id = this.venueId();
-      if (this.operator.signedIn() && id !== undefined) {
+      if (this.operator.signedIn()) {
         untracked(() => this.load(id));
       }
     });

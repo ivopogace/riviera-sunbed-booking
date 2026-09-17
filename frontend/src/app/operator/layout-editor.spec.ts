@@ -806,7 +806,7 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('layout-saved').getAttribute('aria-hidden')).toBe('true');
   });
 
-  it('empties the layout-saved announcer when the venue param goes invalid (#1122)', async () => {
+  it('empties the layout-saved announcer when the venue switches in place (#1122)', async () => {
     render();
     generate('1', '1');
 
@@ -819,12 +819,15 @@ describe('LayoutEditor (#172)', () => {
     const announce = byId('layout-saved-announce');
     expect(announce.textContent).toContain('Saved.');
 
-    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    params$.next(convertToParamMap({ venueId: '2' }));
     fixture.detectChanges();
 
     // Emptied, never unmounted: a live region must keep outliving the branch it describes.
     expect(byId('layout-saved-announce')).toBe(announce);
     expect(announce.textContent?.trim()).toBe('');
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
   });
 
   it('tracks the unsaved-change count and the latest-change description across paint/generate/save (#712)', async () => {
@@ -1065,27 +1068,6 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('layout-row-name-saved').getAttribute('aria-hidden')).toBe('true');
   });
 
-  it('empties the row-name announcer when the venue param goes invalid (#1122)', async () => {
-    renderSaved();
-
-    setRowName(1, 'Back row');
-    rowNameSaves()[1].click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
-      .flush(null);
-    await fixture.whenStable();
-    fixture.detectChanges();
-    const announce = byId('layout-row-name-saved-announce');
-    expect(announce.textContent).toContain('Row B');
-
-    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
-    fixture.detectChanges();
-
-    // Emptied, never unmounted: a live region must keep outliving the branch it describes.
-    expect(byId('layout-row-name-saved-announce')).toBe(announce);
-    expect(announce.textContent?.trim()).toBe('');
-  });
-
   it('drops the row-name notice when the venue is switched in place (#1122)', async () => {
     renderSaved();
 
@@ -1111,34 +1093,16 @@ describe('LayoutEditor (#172)', () => {
     expect(announce.textContent?.trim()).toBe('');
   });
 
-  it('renders an invalid-link card, not the load-failure copy, on an invalid venue param (#1125)', () => {
-    renderSaved();
-    const saved = byId('layout-saved-announce');
-    const renamed = byId('layout-row-name-saved-announce');
-
-    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
-    fixture.detectChanges();
-
-    // A bad link is not a failed read: "Refresh the page and try again" would be wrong copy for it.
-    expect(byId('layout-invalid').textContent).toContain('Open the console from your venue list.');
-    expect(host.querySelector('[data-testid="layout-load-failed"]')).toBeNull();
-    expect(host.querySelector('[data-testid="layout-tool-rail"]')).toBeNull();
-    expect(host.querySelector('[data-testid="layout-save-bar"]')).toBeNull();
-    // The SAME nodes outlive the new branch: mere presence would pass an unmount-and-recreate.
-    expect(byId('layout-saved-announce')).toBe(saved);
-    expect(byId('layout-row-name-saved-announce')).toBe(renamed);
-  });
-
-  it("clears the previous venue's grid and row names when the venue param goes invalid (#1125)", () => {
+  it("clears the previous venue's grid and row names when the venue switches", () => {
     renderSaved();
     setRowName(1, 'Back terrace');
     expect(cells().length).toBe(2);
     expect(rowNameInputs().length).toBe(2);
 
-    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    params$.next(convertToParamMap({ venueId: '2' }));
     fixture.detectChanges();
 
-    // The grid and its row names go with the venue, not just the announcers #1124 already emptied.
+    // Asserted mid-flight: the draft drops on the switch, not on venue 2's response.
     expect(host.querySelector('[data-testid="layout-cell"]')).toBeNull();
     expect(host.querySelector('[data-testid="layout-row-name"]')).toBeNull();
     // The DOM above is unmounted either way; the draft itself is the seam that sees the reset.
@@ -1152,10 +1116,12 @@ describe('LayoutEditor (#172)', () => {
     expect(draft.rowNames()).toEqual([]);
     expect(draft.loadedSets()).toEqual([]);
     expect(draft.storedRowNames()).toEqual([]);
-    // No read is issued for a venue the URL does not name: afterEach's http.verify() proves it.
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
   });
 
-  it('drops a row-name write error on an invalid venue param, and never resurrects it (#1125)', async () => {
+  it('drops a row-name write error when the venue switches, and never resurrects it (#1125)', async () => {
     renderSaved();
 
     setRowName(1, 'A');
@@ -1167,12 +1133,15 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
     expect(byId('layout-row-name-write-error')).toBeTruthy();
 
-    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    params$.next(convertToParamMap({ venueId: '2' }));
     fixture.detectChanges();
 
     expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
 
-    // Back on the same venue the rows render again; the stale failure must not ride back in.
+    // Back on the first venue the rows render again; the stale failure must not ride back in.
     params$.next(convertToParamMap({ venueId: '1' }));
     fixture.detectChanges();
     http

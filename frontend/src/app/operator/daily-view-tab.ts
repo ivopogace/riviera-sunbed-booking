@@ -154,8 +154,9 @@ export class DailyViewTab {
   private readonly console = inject(OperatorConsoleService);
   protected readonly operator = inject(OperatorAuth);
 
-  /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
-   *  invalid) — reactive to in-place venue switches, which reuse this instance. */
+  /** The venue this tab manages, from the parent `/operator/:venueId` route — always a
+   *  real one (`venueIdGuard` gates it) and reactive to in-place switches, which reuse this
+   *  instance. */
   protected readonly venueId = parentVenueId(this.route);
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
@@ -208,8 +209,8 @@ export class DailyViewTab {
   constructor() {
     // Re-runs on an in-place venue switch: reset to the fresh-mount state, then load.
     effect(() => {
-      const id = this.venueId();
-      untracked(() => (id === undefined ? this.markInvalid() : this.resetForVenue()));
+      this.venueId();
+      untracked(() => this.resetForVenue());
     });
     // Start only once the panel is open AND its <video> exists — the first run precedes the render.
     effect(() => {
@@ -267,7 +268,7 @@ export class DailyViewTab {
 
   private checkIn(code: string): void {
     const venueId = this.venueId();
-    if (venueId === undefined || this.checkInBusy()) {
+    if (this.checkInBusy()) {
       return;
     }
     this.checkInBusy.set(true);
@@ -284,11 +285,6 @@ export class DailyViewTab {
         this.checkInNotice.set({ tone: 'error', text: checkInMessage(error) });
       },
     });
-  }
-
-  private markInvalid(): void {
-    this.loaded.set(true);
-    this.loadError.set(true);
   }
 
   /** Drop every venue-scoped signal — grid, codes, optimistic/pending state — and load fresh, on
@@ -371,7 +367,7 @@ export class DailyViewTab {
    */
   protected onTile(set: SetView): void {
     const venueId = this.venueId();
-    if (venueId === undefined || this.isPending(set)) {
+    if (this.isPending(set)) {
       return;
     }
     const epoch = this.epoch;
@@ -455,7 +451,7 @@ export class DailyViewTab {
    */
   protected onConfirmCloseSales(): void {
     const venueId = this.venueId();
-    if (venueId === undefined || this.closeSalesBusy()) {
+    if (this.closeSalesBusy()) {
       return;
     }
     const epoch = this.epoch;
@@ -520,9 +516,6 @@ export class DailyViewTab {
   /** Fetch the map + bookings + availability states for the selected date; `onSettled` runs after ALL settle. */
   private load(onSettled?: () => void): void {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     const requested = this.selectedDate();
     const epoch = this.epoch;
     // Continuations re-check venue + date so a superseded venue/day never writes here.

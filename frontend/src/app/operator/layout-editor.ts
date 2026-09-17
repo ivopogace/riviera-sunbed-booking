@@ -214,8 +214,9 @@ export class LayoutEditor {
    *  without the operator having to scroll the mobile chip strip manually. */
   private readonly toolChips = viewChildren<ElementRef<HTMLButtonElement>>('toolChip');
 
-  /** The venue this editor manages, from the parent `/operator/:venueId` route (undefined if
-   *  invalid) — reactive to in-place venue switches, which reuse this instance. */
+  /** The venue this editor manages, from the parent `/operator/:venueId` route — always a
+   *  real one (`venueIdGuard` gates it) and reactive to in-place switches, which reuse this
+   *  instance. */
   protected readonly venueId = parentVenueId(this.route);
 
   /** Generate inputs: rows × positions. Clamped to the design maxima on generate. */
@@ -286,7 +287,7 @@ export class LayoutEditor {
   /** True while the save PUT is in flight (button disabled, no double submit). */
   protected readonly saving = signal(false);
   /** Set after a successful save; cleared on the next edit. Derived so it can never outlive the
-   *  venue it describes: every venue-context change empties it, the invalid-param one included. */
+   *  venue it describes: every venue switch empties it. */
   protected readonly savedNotice = linkedSignal({
     source: this.venueId,
     computation: (): boolean => false,
@@ -520,10 +521,10 @@ export class LayoutEditor {
   });
 
   constructor() {
-    // Every venue-context change: clear the previous venue's draft, then load the new venue if any.
+    // Every venue switch: clear the previous venue's draft, then load the new one.
     effect(() => {
       const id = this.venueId();
-      untracked(() => (id === undefined ? this.clearVenueState() : this.resetForVenue(id)));
+      untracked(() => this.resetForVenue(id));
     });
 
     // Scroll the armed chip into view on load/switch — the mobile rail scrolls, not wraps (#715).
@@ -612,9 +613,6 @@ export class LayoutEditor {
    */
   protected onSetsChanged(): void {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     this.grid.set([]);
     this.priceByCoord.clear();
     this.savedNotice.set(false);
@@ -726,7 +724,7 @@ export class LayoutEditor {
     const from = this.storedRowName(y);
     const typed = (this.rowNames()[y] ?? '').trim();
     const expectedVersion = this.loadedSetVersion();
-    if (venueId === undefined || from === undefined || expectedVersion === null) {
+    if (from === undefined || expectedVersion === null) {
       return; // defensive: the button renders only for a stored row, which implies a loaded token
     }
     if (typed === '') {
@@ -993,9 +991,6 @@ export class LayoutEditor {
 
   protected async onSave(): Promise<void> {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     if (this.duplicateRowName() !== undefined) {
       return; // the row-names panel is already showing the clash; the server would refuse it anyway
     }
@@ -1069,7 +1064,7 @@ export class LayoutEditor {
     const venueId = this.venueId();
     const preview = this.remodelPreview();
     const pending = this.pendingRemodel;
-    if (venueId === undefined || preview === null || pending === null || this.committing()) {
+    if (preview === null || pending === null || this.committing()) {
       return;
     }
     const epoch = this.epoch;
@@ -1128,7 +1123,6 @@ export class LayoutEditor {
     const venueId = this.venueId();
     if (
       !(event.target as HTMLDetailsElement).open ||
-      venueId === undefined ||
       this.receiptsLoading() ||
       this.receipts() !== null
     ) {
@@ -1157,9 +1151,6 @@ export class LayoutEditor {
 
   protected async openReceipt(receiptId: number): Promise<void> {
     const venueId = this.venueId();
-    if (venueId === undefined) {
-      return;
-    }
     const epoch = this.epoch;
     try {
       const receipt = await firstValueFrom(this.console.remodelReceipt(venueId, receiptId));
@@ -1294,7 +1285,7 @@ export class LayoutEditor {
    */
   protected reloadAfterStale(): void {
     const venueId = this.venueId();
-    if (venueId === undefined || this.reloading()) {
+    if (this.reloading()) {
       return;
     }
     const epoch = this.epoch;

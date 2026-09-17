@@ -11,7 +11,7 @@ import { PricingTab } from './pricing-tab';
 /**
  * Structural a11y audit for the Pricing tab. Each row's € field is a labelled number
  * `<input>` (`aria-label` names the row), so the grid of prices is keyboard + AT operable. axe runs
- * over the invalid-link card, the populated rows and the empty state. (Colour contrast is proven by
+ * over the populated rows and the empty state. (Colour contrast is proven by
  * `pricing-tab.contrast.spec.ts` — axe can't measure it under jsdom.)
  */
 describe('PricingTab a11y (#174)', () => {
@@ -58,15 +58,6 @@ describe('PricingTab a11y (#174)', () => {
   function host(): HTMLElement {
     return fixture.nativeElement as HTMLElement;
   }
-
-  it('has no axe violations on the invalid-link card', async () => {
-    // A param naming no venue issues no map read, so there is nothing to flush here.
-    configure('not-a-venue');
-    fixture.detectChanges();
-
-    expect(host().querySelector('[data-testid="pricing-invalid"]')).toBeTruthy();
-    await expectNoAxeViolations(host());
-  });
 
   it('has no axe violations with priced rows', async () => {
     render([

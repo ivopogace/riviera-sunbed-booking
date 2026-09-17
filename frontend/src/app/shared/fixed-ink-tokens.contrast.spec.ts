@@ -199,7 +199,7 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
   });
 
   describe('the sites', () => {
-    const SITES = ['booking/booking-view.ts', 'operator/operator-console.html'];
+    const SITES = ['booking/booking-view.ts', 'operator/venue-not-found.ts'];
 
     it.each(SITES)('%s paints no migrated literal', (path) => {
       const source = read(path).toLowerCase().replaceAll(' ', '');

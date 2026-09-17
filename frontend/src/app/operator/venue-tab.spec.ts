@@ -459,7 +459,7 @@ describe('VenueTab (#177)', () => {
     fixture.detectChanges();
   });
 
-  it('empties the Saved announcer when the venue param goes invalid (#1122)', async () => {
+  it('empties the Saved announcer when the venue switches in place (#1122)', async () => {
     render();
 
     await save();
@@ -469,13 +469,15 @@ describe('VenueTab (#177)', () => {
     const announce = byId('venue-saved-announce');
     expect(announce.textContent).toContain('Saved.');
 
-    params$.next(convertToParamMap({ venueId: 'not-a-venue' }));
+    params$.next(convertToParamMap({ venueId: '2' }));
     fixture.detectChanges();
 
-    expect(byId('venue-invalid')).toBeTruthy();
     // Emptied, never unmounted: a live region must keep outliving the branch it describes.
     expect(byId('venue-saved-announce')).toBe(announce);
     expect(announce.textContent?.trim()).toBe('');
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/profile'))
+      .flush({ ...PROFILE, name: 'Second Venue', version: 9 });
   });
 
   it('shows a field-level distance error (not the generic message) for a bad metres value and sends no PATCH', async () => {
@@ -798,16 +800,6 @@ describe('VenueTab (#177)', () => {
     fixture.detectChanges();
     expect(lost).toHaveBeenCalled();
     expect(byId('venue-season-error').textContent?.toLowerCase()).toContain('session');
-  });
-
-  it('shows an invalid-link state when the parent route has no venue id', () => {
-    configure({});
-    fixture.detectChanges();
-    host = fixture.nativeElement as HTMLElement;
-
-    expect(byId('venue-invalid')).toBeTruthy();
-    // No profile read is attempted without a venue id (afterEach http.verify() asserts none).
-    expect(host.querySelector('form')).toBeNull();
   });
 
   it('re-loads for the new venue when the parent param changes in place (#180)', () => {
