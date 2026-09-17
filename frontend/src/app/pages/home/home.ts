@@ -45,9 +45,8 @@ import { VenuePreviewCard } from './venue-preview-card';
 import { CROWD_FIXTURE } from './prototype-1134/crowd-fixture';
 import { PinCrowdingPrototype } from './prototype-1134/pin-crowding-prototype';
 import { PrototypePin } from './prototype-1134/pin-crowding';
-import { PrototypeSwitcher } from './prototype-1134/prototype-switcher';
 import { readVariant } from './prototype-1134/prototype-variant';
-import { PlaceList, PlaceTravel } from './prototype-1134/variant-place-pill';
+import { PlaceLanding, PlaceTravel } from './prototype-1134/variant-place-pill';
 
 /**
  * Tailwind's `lg` breakpoint — the twin of the `lg:` utilities in `home.html` that lay the map
@@ -110,7 +109,6 @@ function closedStateText(
     RivieraMap,
     VenuePreviewCard,
     PinCrowdingPrototype,
-    PrototypeSwitcher,
     ...FAILURE_DIRECTIVES,
   ],
   host: {
@@ -127,7 +125,7 @@ export class Home {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
   private readonly map = viewChild(RivieraMap);
-  /** PROTOTYPE: the overlay under test, for variant D's crowd stepper. */
+  /** PROTOTYPE: the overlay under test, for the crowd stepper. */
   private readonly prototype = viewChild(PinCrowdingPrototype);
 
   /** The displayed (filtered) venues; `undefined` while a request is in flight (loading). */
@@ -258,7 +256,7 @@ export class Home {
   /** The live engine handle the overlay projects through; `undefined` until the map has booted. */
   protected readonly mapHandle = computed(() => this.map()?.handle());
 
-  /** PROTOTYPE, variant D: the open crowd's "k of n here" stepper, or `null`. */
+  /** PROTOTYPE: the open crowd's "k of n here" stepper, or `null`. */
   protected readonly prototypeStack = computed(() => this.prototype()?.stack() ?? null);
 
   /**
@@ -376,8 +374,8 @@ export class Home {
   }
 
   /**
-   * PROTOTYPE, variant D: the card steps to a crowd neighbour. The card stays mounted and
-   * the pressed stepper button with it, so focus is left where it is.
+   * PROTOTYPE: the card steps to a crowd neighbour. The card stays mounted and the pressed
+   * stepper button with it, so focus is left where it is.
    */
   protected onPrototypeStep(id: string): void {
     this.selectedVenue.set(id);
@@ -385,40 +383,35 @@ export class Home {
   }
 
   /**
-   * PROTOTYPE, variant E: a place was pressed. The camera eases to the zoom that separates its
-   * venues, and when they all share one beach the Beach filter follows, so the list beside the map
-   * becomes that beach's venues. The pressed pill keeps focus: its button is keyed by pin.
+   * PROTOTYPE: a place was pressed. The camera eases to the zoom that separates its venues, and
+   * when they all share one beach the Beach filter follows, so the list beside the map becomes
+   * that beach's venues. The pressed pill keeps focus: its button is keyed by pin.
    */
   protected onPrototypeTravel({ view, beach }: PlaceTravel): void {
     this.mapHandle()?.easeTo(view);
-    if (beach !== null && beach !== this.beach()) {
-      this.beach.set(beach);
-      this.reload();
-    }
+    this.narrowToBeach(beach);
   }
 
   /**
-   * PROTOTYPE, variant E: a place the camera cannot separate hands the choice to the list — the
-   * panel beside the map from `lg`, the List tab below it — with focus on the first venue's card.
+   * PROTOTYPE: a place the camera cannot separate opens its first venue's preview, the list
+   * narrowed to the beach beside it; the pill's next press walks to the next venue there.
    */
-  protected onPrototypeList({ first, beach }: PlaceList): void {
+  protected onPrototypeLanding({ first, beach }: PlaceLanding): void {
+    this.narrowToBeach(beach);
+    this.onPinSelected(first);
+  }
+
+  /** PROTOTYPE: the map's own way back from a beach the map narrowed to. */
+  protected onPrototypeShowAllBeaches(): void {
+    this.narrowToBeach('');
+    this.focusAfterRender('map-near-me');
+  }
+
+  private narrowToBeach(beach: string | null): void {
     if (beach !== null && beach !== this.beach()) {
       this.beach.set(beach);
       this.reload();
     }
-    this.showList();
-    afterNextRender(
-      {
-        write: () => {
-          const card = this.host.nativeElement.querySelector<HTMLElement>(
-            `[data-venue-pin="${first}"] a`,
-          );
-          card?.scrollIntoView?.({ block: 'center' });
-          card?.focus();
-        },
-      },
-      { injector: this.injector },
-    );
   }
 
   /**

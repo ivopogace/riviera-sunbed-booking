@@ -8,7 +8,7 @@ import { PhotoSlideshow } from '../../shared/photo-slideshow';
 import { SemanticChip } from '../../shared/semantic-chip';
 import { TouchTarget } from '../../shared/touch-target';
 import { VenueCard } from './venue-card';
-import { CrowdStack } from './prototype-1134/variant-named-cycle';
+import { CrowdStack } from './prototype-1134/variant-place-pill';
 
 /** The heading the dialog is named by; one preview is open at a time, so one id is enough. */
 const HEADING_ID = 'venue-preview-heading';
@@ -51,12 +51,12 @@ export class VenuePreviewCard {
 
   readonly closed = output<void>();
 
-  /** PROTOTYPE, variant D: the crowd this venue shares its spot with, or `null` alone. */
+  /** PROTOTYPE: the crowd this venue shares its spot with, or `null` alone. */
   readonly stack = input<CrowdStack | null>(null);
-  /** PROTOTYPE, variant D: the tourist stepped to this neighbour at the same spot. */
+  /** PROTOTYPE: the tourist stepped to this neighbour at the same spot. */
   readonly stepped = output<string>();
 
-  /** PROTOTYPE, variant D: one dot per crowd member while the rail fits; past six, a count. */
+  /** PROTOTYPE: one dot per crowd member while the rail fits; past six, a count. */
   protected readonly stackDots = computed(() => {
     const count = this.stack()?.count ?? 0;
     return count <= 6 ? Array.from({ length: count }, (_unused, at) => at) : [];

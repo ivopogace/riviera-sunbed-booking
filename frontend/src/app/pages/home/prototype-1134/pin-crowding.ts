@@ -133,38 +133,6 @@ export function clusterPins(
   }));
 }
 
-/**
- * How far out a fan of `count` pins has to sit for neighbours on the ring to clear each other. The
- * chord between adjacent pins is `2r·sin(π/n)`, so the ring grows with the crowd rather than
- * being a fixed radius that a five-venue beach would overflow — and with the pill, whose width is
- * what two neighbours side by side must clear, not the finger alone.
- *
- * <p>`minimum` is the caller's, and the two callers want opposite things: a fan opened ON A PRESS
- * can afford to be generous, because it is temporary and sits over a scrim; a fan that is ALWAYS
- * on has to stay as tight as the finger allows, or the displacement out-measures the geography it
- * is drawn over.
- */
-export function fanRadius(count: number, minimum: number, chord = CROWD_PX): number {
-  const needed = count < 2 ? 0 : chord / 2 / Math.sin(Math.PI / count) + 5;
-  return Math.max(minimum, needed);
-}
-
-/**
- * Where each member of a fan sits relative to its anchor. Starts straight up and runs clockwise,
- * so a pair reads as one above the other rather than as an arbitrary diagonal.
- */
-export function fanOffsets(
-  count: number,
-  minimum: number,
-  chord = CROWD_PX,
-): readonly ScreenPoint[] {
-  const radius = fanRadius(count, minimum, chord);
-  return Array.from({ length: count }, (_unused, index) => {
-    const angle = -Math.PI / 2 + (index * 2 * Math.PI) / count;
-    return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) };
-  });
-}
-
 let measurer: CanvasRenderingContext2D | null | undefined;
 
 /** A run of text's rendered width in the page's own family, at `font` (a CSS weight and size). */

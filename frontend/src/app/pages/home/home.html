@@ -388,8 +388,22 @@
             [maxZoom]="prototypeMapOptions().maxZoom"
             (chosen)="onPinSelected($event)"
             (travelled)="onPrototypeTravel($event)"
-            (listed)="onPrototypeList($event)"
+            (landed)="onPrototypeLanding($event)"
           />
+          @if (beach(); as narrowed) {
+            <!-- PROTOTYPE: the crumb for a beach the map narrowed to — one press back to all of them, in the chrome's own skin. -->
+            <button
+              type="button"
+              appTouchTarget
+              class="absolute top-3 left-3 z-[5] inline-flex touch-manipulation items-center gap-[8px] rounded-full border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill pr-[10px] pl-[14px] text-[14px] leading-none font-bold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] hover:bg-riv-solid-btn-hover"
+              data-testid="prototype-beach-crumb"
+              [attr.aria-label]="'Showing ' + narrowed + ' only; press to show all beaches'"
+              (click)="onPrototypeShowAllBeaches()"
+            >
+              {{ narrowed }}
+              <span class="text-[17px] opacity-70" aria-hidden="true">&#x00d7;</span>
+            </button>
+          }
         }
         @if (selectedCard(); as selected) {
           <!-- Bottom-anchored, clearing the credit pill the tiles' licences require to stay visible. -->
@@ -411,8 +425,4 @@
       }
     </div>
   </div>
-
-  @if (prototypeVariant(); as variant) {
-    <app-prototype-switcher [variant]="variant" />
-  }
 </section>
