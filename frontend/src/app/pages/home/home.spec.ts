@@ -5,16 +5,18 @@ import {
   TestRequest,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { photoView, photoViews } from '../../../testing/photo-views';
 import { defaultBookingDate } from '../../shared/booking-date';
-import { FakeMapEngine } from '../../shared/fake-map-engine';
+import { FakeMapEngine, FakeMapHandle } from '../../shared/fake-map-engine';
 import { FakeGeolocationGateway } from '../../../testing/fake-geolocation';
 import { GeolocationGateway } from '../../shared/geolocation';
 import { MapEngine } from '../../shared/map-engine';
+import { RIVIERA_MAP_OPTIONS, RivieraMap } from '../../shared/riviera-map';
 import { VenueSummary } from '../../shared/venue-views';
 import { Home } from './home';
 
@@ -1181,5 +1183,189 @@ describe('Home (venue pins and the preview)', () => {
       'Miramar Beach Club, from €25',
     ]);
     expect(preview(fixture)).toBeNull();
+  });
+
+  function mapHandle(fixture: ComponentFixture<Home>): FakeMapHandle {
+    const map = fixture.debugElement.query(By.directive(RivieraMap))
+      .componentInstance as RivieraMap;
+    return map.handle() as FakeMapHandle;
+  }
+
+  /** The Ksamil pair — ~120 m apart, one blob at the opening view — beside the lone Dhërmi venue. */
+  function crowdedVenues(): VenueSummary[] {
+    const [miramar, aurora] = pinnedVenues();
+    return [
+      miramar,
+      {
+        ...miramar,
+        id: 4,
+        name: 'Lori Beach',
+        fromPrice: { minorUnits: 2100, currency: 'EUR' },
+        location: { latitude: 39.77227, longitude: 20.00317 },
+      },
+      aurora,
+    ];
+  }
+
+  /** Three venues on one spot at Dhërmi: no zoom the map offers separates them. */
+  function inseparableVenues(): VenueSummary[] {
+    const [, aurora] = pinnedVenues();
+    return [
+      aurora,
+      { ...aurora, id: 5, name: 'Folie Marine', fromPrice: { minorUnits: 3900, currency: 'EUR' } },
+      {
+        ...aurora,
+        id: 6,
+        name: 'Dhërmi Sun Club',
+        fromPrice: { minorUnits: 1800, currency: 'EUR' },
+      },
+    ];
+  }
+
+  async function withVenues(list: VenueSummary[]): Promise<ComponentFixture<Home>> {
+    const fixture = render();
+    httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`).flush(list);
+    await settle(fixture);
+    return fixture;
+  }
+
+  function beachSelect(fixture: ComponentFixture<Home>): HTMLSelectElement {
+    return el(fixture).querySelector<HTMLSelectElement>('[data-testid="filter-beach"]')!;
+  }
+
+  it('hands the engine no venue markers: the layer draws the pins from the cards the list renders', async () => {
+    const fixture = await withPins();
+
+    expect(mapHandle(fixture).markers().size).toBe(0);
+    expect(pins(fixture).map((pin) => pin.closest('app-venue-pin-layer'))).not.toContain(null);
+  });
+
+  it('keeps the pins and the open preview while a reload is in flight', async () => {
+    const fixture = await withPins();
+    pins(fixture)[0].click();
+    await settle(fixture);
+    const [before] = pins(fixture);
+
+    routeParams.next(convertToParamMap({ date: '2099-08-14' }));
+    await settle(fixture);
+
+    expect(el(fixture).querySelector('[data-testid="loading"]')).not.toBeNull();
+    expect(pins(fixture)[0]).toBe(before);
+    expect(preview(fixture)).not.toBeNull();
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush(pinnedVenues());
+    await settle(fixture);
+    expect(pins(fixture)[0]).toBe(before);
+    expect(preview(fixture)).not.toBeNull();
+  });
+
+  it('narrows the Beach filter when a place is pressed and the crumb undoes it', async () => {
+    const fixture = await withVenues(crowdedVenues());
+    document.body.appendChild(el(fixture));
+    try {
+      const pill = el(fixture).querySelector<HTMLButtonElement>('[data-testid="map-place-pill"]')!;
+      expect(pill.getAttribute('aria-label')).toBe(
+        '2 venues at Ksamil, from €21; press to zoom to them',
+      );
+      expect(el(fixture).querySelector('[data-testid="map-beach-crumb"]')).toBeNull();
+      pill.focus();
+
+      pill.click();
+      await settle(fixture);
+
+      const request = httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`);
+      expect(request.request.params.get('beach')).toBe('Ksamil');
+      request.flush(crowdedVenues().slice(0, 2));
+      await settle(fixture);
+
+      expect(beachSelect(fixture).value).toBe('Ksamil');
+      const crumb = el(fixture).querySelector<HTMLButtonElement>(
+        '[data-testid="map-beach-crumb"]',
+      )!;
+      expect(crumb.textContent?.replace(/\s+/g, ' ').trim()).toBe('Ksamil ×');
+      expect(crumb.getAttribute('aria-label')).toBe(
+        'Showing Ksamil only; press to show all beaches',
+      );
+      expect(pins(fixture).map((pin) => pin.getAttribute('aria-label'))).toEqual([
+        'Miramar Beach Club, from €25',
+        'Lori Beach, from €21',
+      ]);
+      expect(pins(fixture)[0]).toBe(pill);
+      expect(document.activeElement).toBe(pill);
+      expect(el(fixture).querySelectorAll('[data-testid="venue-card"]').length).toBe(2);
+
+      crumb.click();
+      await settle(fixture);
+      const all = httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`);
+      expect(all.request.params.has('beach')).toBe(false);
+      all.flush(crowdedVenues());
+      await settle(fixture);
+
+      expect(beachSelect(fixture).value).toBe('');
+      expect(el(fixture).querySelector('[data-testid="map-beach-crumb"]')).toBeNull();
+      expect(el(fixture).querySelectorAll('[data-testid="venue-card"]').length).toBe(3);
+      expect(document.activeElement).toBe(el(fixture).querySelector('[data-testid="map-near-me"]'));
+    } finally {
+      el(fixture).remove();
+    }
+  });
+
+  it('shows the crumb for a beach chosen in the select too, since the map shows what the list is narrowed to', async () => {
+    const fixture = await withPins();
+
+    beachSelect(fixture).value = 'Ksamil';
+    beachSelect(fixture).dispatchEvent(new Event('change'));
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush([pinnedVenues()[0]]);
+    await settle(fixture);
+
+    expect(
+      el(fixture).querySelector('[data-testid="map-beach-crumb"]')?.textContent?.trim(),
+    ).toContain('Ksamil');
+  });
+
+  it("presses through an inseparable crowd's previews from the map", async () => {
+    const fixture = await withVenues(inseparableVenues());
+    mapHandle(fixture).setView({
+      center: { lng: 19.6401, lat: 40.1573 },
+      zoom: RIVIERA_MAP_OPTIONS.maxZoom,
+    });
+    await settle(fixture);
+    const pill = el(fixture).querySelector<HTMLButtonElement>('[data-testid="map-place-pill"]')!;
+    expect(pill.hasAttribute('data-here')).toBe(true);
+
+    pill.click();
+    await settle(fixture);
+    httpMock
+      .expectOne(
+        (r) =>
+          r.url === `${environment.apiBaseUrl}/api/venues` && r.params.get('beach') === 'Dhërmi',
+      )
+      .flush(inseparableVenues());
+    await settle(fixture);
+
+    expect(
+      preview(fixture)?.querySelector('[data-testid="preview-name"]')?.textContent?.trim(),
+    ).toBe('Aurora Bay');
+    expect(document.activeElement).toBe(preview(fixture));
+    expect(pill.getAttribute('aria-expanded')).toBe('true');
+    expect(pill.textContent?.replace(/\s+/g, ' ').trim()).toBe('Aurora Bay from €30 1/3');
+
+    pill.click();
+    await settle(fixture);
+
+    expect(
+      preview(fixture)?.querySelector('[data-testid="preview-name"]')?.textContent?.trim(),
+    ).toBe('Folie Marine');
+    const [, folie] = el(fixture).querySelectorAll<HTMLButtonElement>('app-venue-pin-layer button');
+    expect(folie.dataset['testid']).toBe('map-place-pill');
+
+    el(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle(fixture);
+
+    expect(preview(fixture)).toBeNull();
+    expect(document.activeElement).toBe(folie);
   });
 });

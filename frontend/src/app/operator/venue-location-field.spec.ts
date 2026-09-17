@@ -48,7 +48,7 @@ describe('VenueLocationField', () => {
   function mapHandle(fixture: ComponentFixture<VenueLocationField>): FakeMapHandle {
     const map = fixture.debugElement.query(By.directive(RivieraMap))
       .componentInstance as RivieraMap;
-    return map.currentHandle() as FakeMapHandle;
+    return map.handle() as FakeMapHandle;
   }
 
   it('starts with no pin and says so', async () => {

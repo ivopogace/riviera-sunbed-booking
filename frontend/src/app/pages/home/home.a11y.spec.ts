@@ -185,6 +185,29 @@ describe('Home accessibility (axe)', () => {
     await expectNoAxeViolations(host());
   });
 
+  it('has no violations with a place pill, its members, and the crumb after a press', async () => {
+    const [miramar, aurora] = pinnedVenues();
+    const lori: VenueSummary = {
+      ...miramar,
+      id: 4,
+      name: 'Lori Beach',
+      location: { latitude: 39.77227, longitude: 20.00317 },
+    };
+    await openMap([miramar, lori, aurora]);
+    expect(host().querySelectorAll('[data-testid="map-place-pill"]').length).toBe(1);
+    expect(host().querySelectorAll('[data-testid="map-crowd-member"]').length).toBe(1);
+    await expectNoAxeViolations(host());
+
+    host().querySelector<HTMLButtonElement>('[data-testid="map-place-pill"]')!.click();
+    fixture.detectChanges();
+    listRequest().flush([miramar, lori]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host().querySelector('[data-testid="map-beach-crumb"]')).not.toBeNull();
+    await expectNoAxeViolations(host());
+  });
+
   it('has no violations with a closed-for-season venue previewed', async () => {
     const [pinned] = pinnedVenues();
     await openMap([

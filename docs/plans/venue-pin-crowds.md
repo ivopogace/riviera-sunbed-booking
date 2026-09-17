@@ -283,14 +283,14 @@ The retired surface is the engine's venue-pin marker set in `shared/riviera-map.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A reload empties the list, destroying every pin button → focus lost, card closed, the prototype's "focus survives a filter narrowing" (measured on a synchronous fixture) fails in production | high | high | `shownCards` (`linkedSignal` holding the last non-undefined `venuesView`) feeds the pins and the preview; AC-16 pins it | agent | open |
-| R-2 | The fake's `project` ignoring the camera (bounds interpolation) would make the fit untestable and every fixture crowd permanent | high | med | the fake projects Web Mercator around its camera and re-places markers on move; clicks unproject (AC-1/2) | agent | open |
-| R-3 | jsdom has no layout: boxes are 0 × 0, no `ResizeObserver`, no canvas | high | med | box unknown → `null` (nothing hangs for the edge, no fit cap); text width via `OffscreenCanvas` when present else a per-glyph estimate; `ResizeObserver` guarded | agent | open |
+| R-1 | A reload empties the list, destroying every pin button → focus lost, card closed, the prototype's "focus survives a filter narrowing" (measured on a synchronous fixture) fails in production | high | high | `shownCards` (`linkedSignal` holding the last non-undefined `venuesView`) feeds the pins and the preview; AC-16 pins it | agent | closed — phase 3 |
+| R-2 | The fake's `project` ignoring the camera (bounds interpolation) would make the fit untestable and every fixture crowd permanent | high | med | the fake projects Web Mercator around its camera and re-places markers on move; clicks unproject (AC-1/2) | agent | closed — `fa2857e5` |
+| R-3 | jsdom has no layout: boxes are 0 × 0, no `ResizeObserver`, no canvas | high | med | box unknown → `null` (nothing hangs for the edge, no fit cap); text width via `OffscreenCanvas` when present else a per-glyph estimate; `ResizeObserver` guarded | agent | closed — phases 1–2 |
 | R-4 | Pill text width mis-measured → pills overlap or hang needlessly | med | low | measured in the page's own family at the pill's weight/size; e2e asserts separated pins' boxes do not intersect | agent | open |
-| R-5 | Money: the crowd's from-price parsed from a label | low | high | `lowestFromPrice` takes `VenueCard.fromPrice` (new field, `MoneyView`) and formats with `formatMoney` (invariant #5; AC-7) | agent | open |
+| R-5 | Money: the crowd's from-price parsed from a label | low | high | `lowestFromPrice` takes `VenueCard.fromPrice` (new field, `MoneyView`) and formats with `formatMoney` (invariant #5; AC-7) | agent | closed — `afe80432` |
 | R-6 | The layer's buttons intercept map gestures | med | med | host `pointer-events-none`; only the buttons re-arm; e2e "closes the preview when the map itself is tapped" | agent | open |
 | R-7 | Removing the engine's pin layer breaks a consumer we did not see | low | high | `git ls-files` + grep: the only binders are `home.html` and the two spec callers of `currentHandle()`; the operator field binds `pin` only | agent | closed (grep in intake) |
-| R-8 | Sonar: duplicated class strings between the retired `VENUE_PIN_*` and the layer | med | low | the strings move, they are not copied; `riviera-map.ts` loses them | agent | open |
+| R-8 | Sonar: duplicated class strings between the retired `VENUE_PIN_*` and the layer | med | low | the strings move, they are not copied; `riviera-map.ts` loses them | agent | closed — phase 3 |
 | R-9 | Coverage: the MapLibre adapter's three methods are not unit-testable | certain | low | ~12 lines against ~700 new; they run in the real-engine e2e | agent | accepted |
 | R-10 | A member button `opacity-0` is still "visible" to the touch-target sweep and to axe | certain | low | it is a 44 × 44 button with a name — it passes both; the sweep proves it (AC-22) | agent | open |
 
@@ -299,13 +299,14 @@ The retired surface is the engine's venue-pin marker set in `shared/riviera-map.
 - **Assumption:** the maintainer accepts *feed order* (the catalogue's rating-then-name) as the one
   crowd order for this slice, per §1 — *Owner:* maintainer · *Resolves by:* PR review (flagged in
   the PR body; a veto is one sort in `shownCards` and leaves every AC intact).
-- **Assumption:** the crumb shows whenever the Beach filter is set, whichever control set it (the
-  map shows what the list is narrowed to) — *Owner:* agent · *Resolves by:* phase 3.
 
 ### Resolved
 
 - The crowd's order, the engine layer's fate, the multi-beach press, sets free on the card, the
-  slicing — all five above (intake, this commit).
+  slicing — all five above (intake, `daff4679`).
+- The crumb shows whenever the Beach filter is set, whichever control set it — the map shows what
+  the list is narrowed to (phase 3; `home.spec.ts` "shows the crumb for a beach chosen in the
+  select too").
 
 ## Availability & concurrency (invariant #2)
 
@@ -343,16 +344,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)` — phases 0–2 green and committed; draft PR #1138 open.
+**Stage pointer:** `implement (phase 4)` — phases 0–3 green and committed; draft PR #1138 open; full unit suite, lint, format and build green at phase 3.
 
-**Next action:** Phase 3, step 1: the failing `home.spec.ts` cases (AC-15..18) and the `riviera-map.spec.ts` trim.
+**Next action:** Phase 4, step 1: the crowd describe in `discover-map.e2e.ts` (AC-19..21) and the sweep case (AC-22).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the port: `project`, `onMove`, `easeTo` in both adapters | ✅ | `fa2857e5` |
 | 1 — the crowd geometry (`pin-crowding.ts`) | ✅ | `afe80432` |
-| 2 — the pin layer (`venue-pin-layer.ts`) + a11y + contrast | ✅ | phase-2 commit |
-| 3 — Discover wiring, the crumb, `shownCards`; the engine layer retired | | |
+| 2 — the pin layer (`venue-pin-layer.ts`) + a11y + contrast | ✅ | `e6c3753a` |
+| 3 — Discover wiring, the crumb, `shownCards`; the engine layer retired | ✅ | phase-3 commit |
 | 4 — mocked e2e: the crowd describe + the touch-target sweep | | |
 | 5 — close-out: glossary, the stale #1135 plan retired, the slice-2 issue | | |
 
@@ -492,6 +493,7 @@ it('turns a click on its surface into the position under it', async () => { /* c
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-17 | phase 0 | every `MapHandle` implementer | `grep -rln "implements MapHandle" frontend/src` | `fake-map-engine.ts`, `maplibre-map-engine.ts` | both carry `project`/`onMove`/`easeTo`; no other implementer |
+| 2026-09-17 | phase 3 | every reader of the list for the map or the preview | `grep -n "venuesView()\|shownCards()" frontend/src/app/pages/home/home.ts` | `venuesView`: the list panel (`home.html`) and `shownCards`'s source; `shownCards`: `pins`, `selectedCard` | the list keeps its skeletons; the map and the preview read the held list |
 | 2026-09-17 | phase 2 | every control on the map surface | `grep -n "<button" frontend/src/app/pages/home/venue-pin-layer.html frontend/src/app/shared/riviera-map.html` | the layer's one `<button>` template (three faces), the map's skip, near-me, zoom ×2, dismiss | every one carries `appTouchTarget`; `check-touch-target.mjs` green on the layer |
 | 2026-09-17 | phase 1 | every place a from-price is derived for display | `grep -rn "fromPrice" frontend/src/app --include=*.ts \| grep -v spec` | `home.ts` `toCard`, `venue/venue-map.ts`, `pin-crowding.ts` `lowestFromPrice` | all three take the `MoneyView` and format with `formatMoney`; none parses a label |
 
