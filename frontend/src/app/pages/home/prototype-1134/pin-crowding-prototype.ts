@@ -19,9 +19,10 @@ import { VariantStackFan } from './variant-stack-fan';
 import { VariantStackSheet } from './variant-stack-sheet';
 import { VariantTetheredFan } from './variant-tethered-fan';
 import { CrowdStack, VariantNamedCycle } from './variant-named-cycle';
+import { PlaceList, PlaceTravel, VariantPlacePill } from './variant-place-pill';
 
 /**
- * THROWAWAY PROTOTYPE (issue #1134) — the plumbing the three variants sit on, and nothing that
+ * THROWAWAY PROTOTYPE — the plumbing the variants sit on, and nothing that
  * decides how any of them looks.
  *
  * <p>It is a plain Angular overlay stretched over the map's own box, drawing every pin itself in
@@ -35,7 +36,13 @@ import { CrowdStack, VariantNamedCycle } from './variant-named-cycle';
  */
 @Component({
   selector: 'app-pin-crowding-prototype',
-  imports: [VariantStackFan, VariantStackSheet, VariantTetheredFan, VariantNamedCycle],
+  imports: [
+    VariantStackFan,
+    VariantStackSheet,
+    VariantTetheredFan,
+    VariantNamedCycle,
+    VariantPlacePill,
+  ],
   host: {
     class: 'pointer-events-none absolute inset-0 z-[4] block',
     '(document:keydown.escape)': 'dismiss()',
@@ -71,6 +78,18 @@ import { CrowdStack, VariantNamedCycle } from './variant-named-cycle';
           (chosen)="chosen.emit($event)"
         />
       }
+      @case ('E') {
+        <app-variant-place-pill
+          [clusters]="clusters()"
+          [selected]="selected()"
+          [bounds]="size()"
+          [zoom]="zoom()"
+          [maxZoom]="maxZoom()"
+          (chosen)="chosen.emit($event)"
+          (travelled)="travelled.emit($event)"
+          (listed)="listed.emit($event)"
+        />
+      }
     }
   `,
 })
@@ -84,7 +103,13 @@ export class PinCrowdingPrototype {
   readonly map = input<MapHandle | undefined>(undefined);
   readonly variant = input.required<PrototypeVariantKey>();
   readonly selected = input<string | null>(null);
+  /** The map's zoom ceiling, for a variant that moves the camera. */
+  readonly maxZoom = input.required<number>();
   readonly chosen = output<string>();
+  /** Variant E: a place was pressed — the page moves the camera and narrows the list. */
+  readonly travelled = output<PlaceTravel>();
+  /** Variant E: a place that cannot separate further hands the choice to the list. */
+  readonly listed = output<PlaceList>();
 
   /** Variant D's stepper for the open crowd, which the page hands to its preview card; else `null`. */
   readonly stack = computed<CrowdStack | null>(() => this.cycle()?.stack() ?? null);
@@ -99,6 +124,12 @@ export class PinCrowdingPrototype {
     const handle = this.map();
     this.tick();
     return handle ? clusterPins(this.pins(), (at) => handle.project(at)) : [];
+  });
+
+  /** The camera's zoom as of the last tick. */
+  protected readonly zoom = computed(() => {
+    this.tick();
+    return this.map()?.view().zoom ?? 0;
   });
 
   private readonly destroyRef = inject(DestroyRef);

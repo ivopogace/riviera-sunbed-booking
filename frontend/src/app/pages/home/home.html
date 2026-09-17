@@ -385,7 +385,10 @@
             [map]="mapHandle()"
             [variant]="variant"
             [selected]="selectedVenue()"
+            [maxZoom]="prototypeMapOptions().maxZoom"
             (chosen)="onPinSelected($event)"
+            (travelled)="onPrototypeTravel($event)"
+            (listed)="onPrototypeList($event)"
           />
         }
         @if (selectedCard(); as selected) {

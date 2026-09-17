@@ -67,6 +67,12 @@ export interface MapHandle {
    * unsubscribes.
    */
   onMove(handler: () => void): () => void;
+  /**
+   * PROTOTYPE — move the camera to `view` with a short animation, so the tourist sees the
+   * map travel rather than cut; a viewer preferring reduced motion gets the cut. The camera is at
+   * `view` when the move ends and `onMove` fires throughout.
+   */
+  easeTo(view: MapView): void;
   /** Subscribe; the returned function unsubscribes. */
   on(event: MapEventName, handler: () => void): () => void;
   /** Where the map surface was clicked. Subscribe; the returned function unsubscribes. */

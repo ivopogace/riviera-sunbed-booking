@@ -47,6 +47,7 @@ import { PinCrowdingPrototype } from './prototype-1134/pin-crowding-prototype';
 import { PrototypePin } from './prototype-1134/pin-crowding';
 import { PrototypeSwitcher } from './prototype-1134/prototype-switcher';
 import { readVariant } from './prototype-1134/prototype-variant';
+import { PlaceList, PlaceTravel } from './prototype-1134/variant-place-pill';
 
 /**
  * Tailwind's `lg` breakpoint — the twin of the `lg:` utilities in `home.html` that lay the map
@@ -381,6 +382,43 @@ export class Home {
   protected onPrototypeStep(id: string): void {
     this.selectedVenue.set(id);
     this.revealCard(id);
+  }
+
+  /**
+   * PROTOTYPE, variant E: a place was pressed. The camera eases to the zoom that separates its
+   * venues, and when they all share one beach the Beach filter follows, so the list beside the map
+   * becomes that beach's venues. The pressed pill keeps focus: its button is keyed by pin.
+   */
+  protected onPrototypeTravel({ view, beach }: PlaceTravel): void {
+    this.mapHandle()?.easeTo(view);
+    if (beach !== null && beach !== this.beach()) {
+      this.beach.set(beach);
+      this.reload();
+    }
+  }
+
+  /**
+   * PROTOTYPE, variant E: a place the camera cannot separate hands the choice to the list — the
+   * panel beside the map from `lg`, the List tab below it — with focus on the first venue's card.
+   */
+  protected onPrototypeList({ first, beach }: PlaceList): void {
+    if (beach !== null && beach !== this.beach()) {
+      this.beach.set(beach);
+      this.reload();
+    }
+    this.showList();
+    afterNextRender(
+      {
+        write: () => {
+          const card = this.host.nativeElement.querySelector<HTMLElement>(
+            `[data-venue-pin="${first}"] a`,
+          );
+          card?.scrollIntoView?.({ block: 'center' });
+          card?.focus();
+        },
+      },
+      { injector: this.injector },
+    );
   }
 
   /**

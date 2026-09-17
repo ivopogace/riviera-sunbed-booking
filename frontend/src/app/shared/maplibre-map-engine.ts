@@ -121,6 +121,18 @@ class MapLibreHandle implements MapHandle {
     this.map.jumpTo({ center: [view.center.lng, view.center.lat], zoom: view.zoom });
   }
 
+  easeTo(view: MapView): void {
+    const camera = {
+      center: [view.center.lng, view.center.lat] as [number, number],
+      zoom: view.zoom,
+    };
+    if (globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      this.map.jumpTo(camera);
+      return;
+    }
+    this.map.easeTo({ ...camera, duration: 700 });
+  }
+
   zoomIn(): void {
     this.map.zoomIn();
   }

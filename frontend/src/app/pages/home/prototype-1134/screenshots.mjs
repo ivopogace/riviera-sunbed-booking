@@ -1,6 +1,6 @@
 /**
  * THROWAWAY PROTOTYPE — the evidence driver. Against a running
- * `npm run prototype:1134`, it walks the four variants over the four cases on a phone viewport
+ * `npm run prototype:1134`, it walks the five variants over the four cases on a phone viewport
  * (plus the opening view on a desktop one), writes the PNGs the README cites into
  * `screenshots/`, and prints the measurements the verdict rests on.
  *
@@ -48,6 +48,40 @@ async function open(context, variant, kase, onPhone) {
 const shoot = (page, name) =>
   page.locator('[data-testid="map-panel"]').screenshot({ path: join(OUT, `${name}.png`) });
 
+const shootPage = (page, name) => page.screenshot({ path: join(OUT, `${name}.png`) });
+
+/** Press a control by its accessible name and let the camera, the list and the focus settle. */
+async function press(page, name) {
+  await page.getByRole('button', { name }).first().click({ force: true });
+  await page.waitForTimeout(1_500);
+}
+
+/** The page's state variant E acts on: the beach filter, the count block, and where focus is. */
+async function pageState(page) {
+  return {
+    beachFilter: await page.getByTestId('filter-beach').inputValue(),
+    results: (await page.getByTestId('results').innerText()).replace(/\s+/g, ' ').trim(),
+    listVisible: await page.getByTestId('list-panel').isVisible(),
+    mapVisible: await page.getByTestId('map-panel').isVisible(),
+    focus: await page.evaluate(
+      () =>
+        `${document.activeElement?.tagName ?? ''} ${(document.activeElement?.getAttribute('aria-label') ?? '').split(';')[0]}`,
+    ),
+  };
+}
+
+/** The closest two visible controls on the map, in px between their centres. */
+function closestPair(pins) {
+  let closest = { px: Infinity };
+  for (const a of pins) {
+    for (const b of pins) {
+      const px = Math.hypot(a.x - b.x, a.y - b.y);
+      if (a !== b && px < closest.px) closest = { px, a: a.label, b: b.label };
+    }
+  }
+  return closest;
+}
+
 /** Every visible overlay control: its box in map-panel px and its accessible name. */
 async function controls(page) {
   return page.evaluate(() => {
@@ -94,7 +128,7 @@ const phone = await browser.newContext({
   hasTouch: true,
   deviceScaleFactor: 1,
 });
-for (const variant of ['A', 'B', 'C', 'D']) {
+for (const variant of ['A', 'B', 'C', 'D', 'E']) {
   for (const kase of Object.keys(CASES)) {
     const page = await open(phone, variant, kase, true);
     await shoot(page, `${variant.toLowerCase()}-${kase}-phone`);
@@ -132,15 +166,54 @@ for (const variant of ['A', 'B', 'C', 'D']) {
       await shoot(page, 'b-jale-sheet-phone');
     }
     if (variant === 'C' && kase === 'riviera') {
-      const pins = (await controls(page)).filter((c) => c.x > 0 && c.y > 0);
-      let closest = { px: Infinity };
-      for (const a of pins) {
-        for (const b of pins) {
-          const px = Math.hypot(a.x - b.x, a.y - b.y);
-          if (a !== b && px < closest.px) closest = { px, a: a.label, b: b.label };
-        }
-      }
+      const closest = closestPair((await controls(page)).filter((c) => c.x > 0 && c.y > 0));
       findings.cOpeningViewClosestPins = `${closest.px.toFixed(1)} px between "${closest.a}" and "${closest.b}"`;
+    }
+    if (variant === 'E' && kase === 'riviera') {
+      const onMap = (c) => c.x > -50 && c.y > 0 && c.x < 420 && c.y < 700;
+      findings.eOpeningViewPills = (await controls(page))
+        .filter(onMap)
+        .map((c) => `${c.w.toFixed(0)}×${c.h.toFixed(0)} ${c.label}`);
+      await press(page, /^9 venues at 3 beaches/);
+      await shoot(page, 'e-riviera-pressed-phone');
+      findings.eAfterPressingTheNine = {
+        ...(await pageState(page)),
+        pins: (await controls(page)).filter(onMap).map((c) => c.label.split(';')[0]),
+      };
+      await press(page, /^6 venues at Jale & Livadh/);
+      await press(page, /^5 venues at Jale/);
+      await shoot(page, 'e-jale-narrowed-phone');
+      const pins = (await controls(page)).filter(onMap);
+      findings.eAfterThreePressesJale = {
+        ...(await pageState(page)),
+        pins: pins.map((c) => c.label),
+        closestPins: `${closestPair(pins).px.toFixed(1)} px`,
+      };
+      await press(page, /^Blue Bay Jale/);
+      findings.eOpeningViewToAJaleCard = {
+        presses: 4,
+        ...(await pageState(page)),
+        previewOpen: await page.getByTestId('venue-preview').isVisible(),
+      };
+    }
+    if (variant === 'E' && kase === 'dhermi') {
+      await press(page, /^3 venues at Dhërmi, from €18; press to open the list/);
+      await shootPage(page, 'e-dhermi-list-phone');
+      findings.eDhermiHandsOverToTheList = { presses: 1, ...(await pageState(page)) };
+    }
+    if (variant === 'E' && kase === 'ksamil') {
+      await press(page, /^2 venues at Ksamil/);
+      await shoot(page, 'e-ksamil-pressed-phone');
+      const pins = (await controls(page)).filter((c) => c.x > 0 && c.y > 0 && c.x < 400);
+      findings.eKsamilAfterOnePress = {
+        ...(await pageState(page)),
+        pins: pins.map((c) => c.label),
+        closestPins: `${closestPair(pins).px.toFixed(1)} px`,
+      };
+    }
+    if (variant === 'E' && kase === 'jale') {
+      await press(page, /^5 venues at Jale/);
+      await shoot(page, 'e-jale-pressed-phone');
     }
     if (variant === 'D' && kase === 'riviera') {
       findings.dOpeningViewChips = (await controls(page))
@@ -172,10 +245,10 @@ for (const variant of ['A', 'B', 'C', 'D']) {
 await phone.close();
 
 const desktop = await browser.newContext({ viewport: DESKTOP, deviceScaleFactor: 1 });
-for (const variant of ['A', 'B', 'C', 'D']) {
+for (const variant of ['A', 'B', 'C', 'D', 'E']) {
   const page = await open(desktop, variant, 'riviera', false);
   await shoot(page, `${variant.toLowerCase()}-riviera-desktop`);
-  if (variant === 'B' || variant === 'D') {
+  if (variant === 'B' || variant === 'D' || variant === 'E') {
     const jale = page.getByRole('button', { name: /^9 venues/ });
     await jale.evaluate((button) => {
       button.dataset.probe = 'focused-before-zoom';
@@ -198,6 +271,13 @@ for (const variant of ['A', 'B', 'C', 'D']) {
       ),
     };
   }
+  await page.close();
+}
+{
+  const page = await open(desktop, 'E', 'dhermi', false);
+  await press(page, /^3 venues at Dhërmi, from €18; press to open the list/);
+  await shootPage(page, 'e-dhermi-list-desktop');
+  findings.eDhermiHandsOverToTheListDesktop = { presses: 1, ...(await pageState(page)) };
   await page.close();
 }
 await desktop.close();

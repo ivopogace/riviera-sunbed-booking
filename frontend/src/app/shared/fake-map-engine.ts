@@ -48,6 +48,11 @@ export class FakeMapHandle implements MapHandle {
     this.moveHandlers.forEach((handler) => handler());
   }
 
+  /** The fake has no frames to animate over, so an eased move is a cut. */
+  easeTo(view: MapView): void {
+    this.setView(view);
+  }
+
   zoomIn(): void {
     this.current = { ...this.current, zoom: this.current.zoom + 1 };
     this.moveHandlers.forEach((handler) => handler());

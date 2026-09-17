@@ -3,7 +3,7 @@
  * One line per variant, so the switcher bar, the route param and the READMEs cannot drift.
  */
 
-export type PrototypeVariantKey = 'A' | 'B' | 'C' | 'D';
+export type PrototypeVariantKey = 'A' | 'B' | 'C' | 'D' | 'E';
 
 export interface PrototypeVariant {
   readonly key: PrototypeVariantKey;
@@ -18,6 +18,7 @@ export const PROTOTYPE_VARIANTS: readonly PrototypeVariant[] = [
   { key: 'B', name: 'Stack sheet', claim: 'Leave the map alone, choose from a list' },
   { key: 'C', name: 'Tethered fan', claim: 'Push them apart, tether them to the truth' },
   { key: 'D', name: 'Named pins', claim: 'Say what is there; press again for the next one' },
+  { key: 'E', name: 'Place pill', claim: 'A crowd is a place; press it to go there' },
 ];
 
 /** The `?variant=` value, or `null` when the page is not in prototype mode at all. */
