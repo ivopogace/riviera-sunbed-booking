@@ -165,18 +165,19 @@ gains a wrapping control column, which moves no rendered box: same `top-3 right-
 
 ## Open questions / Assumptions
 
-- **Assumption:** Chromium under Playwright answers `getCurrentPosition` with `PERMISSION_DENIED`
-  when the permission was never granted (no prompt can be shown headless). — *Owner:* plan ·
-  *Resolves by:* phase 3, by running it (R-5 names the fallback).
-- **Assumption:** zoom 12 is the right "sensible zoom" for "where I am" on a map fenced to
-  minZoom 7 / maxZoom 16 — town-scale, not street-scale, because the venue set a tourist is
-  looking for is a beach away, not a doorway away. — *Owner:* plan · *Resolves by:* phase 1 (a
-  named constant; trivially re-tuned).
-- **Assumption:** a 10 s timeout with `enableHighAccuracy: false` and a 60 s `maximumAge` is the
-  right ask — a map centring wants a quick coarse fix, not a GPS-grade one, and a cached minute-old
-  position is still "here". — *Owner:* plan · *Resolves by:* phase 0.
+None open.
 
 ### Resolved
+
+- **Assumption (phase 3, measured):** Chromium under Playwright would answer `PERMISSION_DENIED`
+  when the permission was never granted. **Wrong, and worth knowing:** it answers nothing at all —
+  headless shows no prompt, and the W3C `timeout` does not run while a prompt is pending, so the
+  call hangs. `--deny-permission-prompts` on the suite's Chromium produces a real denial instead
+  (`3305b95f`'s parent, `4ea879f2`).
+- **Assumption (phase 1):** zoom 12 is the right "where I am" scale — shipped as `NEAR_ME_ZOOM`, a
+  named constant inside the map's own 7…16 fence, trivially re-tuned.
+- **Assumption (phase 0):** a 10 s timeout, `enableHighAccuracy: false`, 60 s `maximumAge` — shipped
+  as named constants in `shared/geolocation.ts`; the spec pins that a finite deadline is asked for.
 
 - **Where does the control live?** → Inside `RivieraMap` behind an opt-in `nearMe` input, not on
   the Discover page. Maintainer's answer at the plan gate: it is map chrome, it drives the map's
@@ -241,10 +242,10 @@ is the machine proof that the wire is untouched.
 
 ## Execution status
 
-**Stage pointer:** `phase 4 — review gate run, five findings fixed; re-verifying, then merge close-out`
+**Stage pointer:** `DONE for this session — ready for review, all gates run and clear; merge is the maintainer's`
 
-**Next action:** push the review-fix commit, re-resolve the range and re-walk the overlay for what
-the fixes touched, re-check CI + Sonar on the new head.
+**Next action:** none from this session. The PR is green, reviewed, re-reviewed and Sonar-clear. At
+merge, tick the epic checklist and close #1100 — this session was asked not to.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -252,7 +253,7 @@ the fixes touched, re-check CI + Sonar on the new head.
 | 1 — The near-me control on the map component | ✅ | (this commit) |
 | 2 — The two surfaces + the privacy paragraph | ✅ | (this commit) |
 | 3 — e2e: the granted/denied flows and the extended no-leak guard | ✅ | (this commit) |
-| 4 — Integration, CI green, review + Sonar gates, close-out | ⏳ | CI green on `4ea879f2`; Sonar clean (0 issues, 0 duplication, 90.6% new-code coverage); review gate run, F-2…F-6 fixed in this commit |
+| 4 — Integration, CI green, review + Sonar gates, close-out | ✅ | `3305b95f` + this commit; CI green on every head, Sonar clean (0 issues, 0 duplicated blocks, 90.6% new-code coverage), review gate run at high effort and its fix round re-reviewed |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -261,12 +262,22 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | CI (frontend job, run 35185427051) | `venue-tab.a11y.spec.ts` mounts the pin placer transitively, so it needed the gateway provider too — a spec my phase-1 search by symbol name never listed | fixed in `4ea879f2`; the full local suite (3290 tests) is now the enumerator, not a grep |
+| F-1 | CI (frontend job, run 35185427051) | `venue-tab.a11y.spec.ts` mounts the pin placer transitively, so it needed the gateway provider too — a spec my phase-1 search by symbol name never listed | fixed in `4ea879f2`; the full local suite (268 files, 3289 tests) is now the enumerator, not a grep |
 | F-2 | Review gate (history reviewer + overlay reviewer, independently) | **The decorative dot outranked the draggable pin.** Neither engine orders markers (MapLibre sets no `z-index`; grep count 0), so DOM order decided, and the here-dot is added last — an operator pressing Near me at their already-pinned venue got a 20 px dead zone over the pin's centre, where a drag fell through to the map and panned it. Confirmed with a browser probe (`elementFromPoint` returned `map-here` at the pin's centre), not reasoned about | fixed in this commit: the markers name a paint order (`z-[2]`/`z-[1]`, both far below the chrome's `z-10`), pinned by `operator-venue-location.e2e.ts` "keeps the venue pin on top when the you-are-here dot lands on it" — red before the fix, green after |
 | F-3 | Review gate (comment-contract reviewer) | **The privacy paragraph was false for the console.** It said the Near-me position "is never sent to us" without qualification, while this same PR lets an operator commit that position as their venue's pin and save it — the flow AC-10 itself asserts. The seam's TSDoc overclaimed the same way | fixed in this commit: the paragraph now says what reaches us when an operator places and saves a pin from Near me, and the TSDoc scopes its promise to the seam. Pinned by `privacy-policy.spec.ts` "says what reaches us when an operator pins their venue from Near me" |
 | F-4 | Review gate (prior-PR reviewer) | The console renders the same map chrome as Discover, but the console's double-tap sweep (`mobile-zoom.e2e.ts`) covered no map control at all — the CSS was right, the surface unproven, which is the coverage half of the #1063/#1102 lesson | fixed in this commit: `mobile-zoom.e2e.ts` gains "venue tab — the pin placer's map controls keep their double-tap", covering near-me and both zoom buttons (closing the pre-existing zoom gap in the same assertion) |
 | F-5 | Review gate (overlay, RV-STYLE-1) | Provenance (`#1098`) in a doc comment the diff added — a shape the comment guard's regex does not catch, so a clean guard run was not the answer | fixed in this commit: the comment names the guard instead of the issue |
-| F-6 | Review gate (overlay, observation) | The new contrast test asserted the same constant pair as the zoom-glyph test byte for byte — documentation, not proof, and a duplicate block for Sonar to find | fixed in this commit: one assertion now names both positions, with the dot's 1.4.11 case in its doc comment |
+| F-6 | Review gate (overlay, observation) | The new contrast test asserted the same constant pair as the zoom-glyph test byte for byte — documentation, not proof, and a duplicate block for Sonar to find | fixed in `3305b95f`: one assertion, with the dot's 1.4.11 case in its doc comment |
+| F-7 | Re-review of the fix round | The merged contrast test's title claimed the you-are-here dot clears the **hover** fill too; the dot is a static graphic with no hover state, so the title overclaimed what the doc comment correctly hedged | fixed in this commit: the title names the glyphs, the doc comment carries the dot's narrower resting-pair case |
+| F-8 | Re-review of the fix round | F-1's row cited "3290 tests" — a count measured mid-round, before the contrast merge removed one. The reviewer's arithmetic (net 0 across the round) beat my stale measurement | fixed in this commit: re-measured at 268 files / 3289 tests |
+
+**Sonar note** — the gate applied and is clear. The analysis is real, not a false zero: `new_lines`
+is 291 and the `SonarCloud Code Analysis` check-run concluded `success` on both reviewed heads.
+`api/issues/search` returns `total: 0`, and the measures return 0 new bugs, 0 vulnerabilities,
+0 code smells, 0 duplicated blocks and 90.6% coverage on new code. What it judged is the part of
+the diff inside `sonar.sources`: `frontend/src/**` and `scripts/**`. The e2e specs
+(`frontend/e2e/**`), `frontend/playwright.a11y.config.ts` and this plan doc lie outside those
+roots, so they were not analysed — their proof is the suites themselves, not this gate.
 
 ---
 
@@ -456,31 +467,39 @@ Modify `frontend/src/app/pages/home/home.spec.ts`, `frontend/src/app/pages/home/
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 … AC-7, AC-11 (unit), AC-12:** `npm test` → all green. Verified at commit `<sha>`.
-- [ ] **AC-8 … AC-11 (e2e):** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`
-  → all green. Verified at commit `<sha>`.
-- [ ] **All:** the PR's CI run green. Verified at commit `<sha>`.
+- [x] **AC-1 … AC-7, AC-11 (unit), AC-12:** `npm test` → 268 files, 3289 tests, all green.
+- [x] **AC-8 … AC-11 (e2e):** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`
+  → 648 passed (the whole mocked suite, since the `--deny-permission-prompts` config change reaches
+  every spec); re-run per-spec after each fix round.
+- [x] **All:** CI green on every pushed head, latest `3305b95f` — frontend, backend, repo hygiene,
+  CodeQL and both SonarCloud checks.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced — N/A, no Java file in the diff (invariant #1).
+- [x] **Availability** section filled — N/A with its reason; nothing writes `set_availability` (invariant #2).
+- [x] Pool + cutoff rules honored — N/A (invariants #3, #4).
+- [x] **Modulith** section filled — N/A, frontend-only (invariant #11).
+- [x] **Payment/payout** section filled — N/A (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side — N/A (invariant #10).
+- [x] Timezone correct — N/A, no time reasoning (invariant #6).
+- [x] Booking codes unguessable — N/A (invariant #7).
+- [x] Flyway migration present for schema changes — N/A, no schema change (invariant #12).
+- [x] **Frontend** standards met, the two deviations documented in the Angular section (no
+  `PendingTasks` around the locate call; the marker element built imperatively); no `as any`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register F-1…F-8 all closed.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — this commit. It cites
+  PR #1130; the merge itself is the maintainer's (this session was asked not to close #1100 or
+  touch #806), so the epic checklist tick and the issue close go with that merge.
+- [x] **The review gate ran in full** — `Skill("code-review:code-review")` (rung 1 of the ladder) at
+  high effort over `7eaef545..4ea879f2` with `riviera-review-overlay` layered on: six reviewers
+  (the workflow's five plus an overlay bank walk), five findings, all fixed; then the fix round
+  re-reviewed over `4ea879f2..3305b95f`, which found two more, fixed here.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

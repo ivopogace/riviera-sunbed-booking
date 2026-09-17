@@ -19,11 +19,12 @@ describe('riviera map chrome contrast', () => {
   });
 
   /**
-   * The you-are-here dot rides this case rather than one of its own: it is an ink disc inside a
-   * ring cut from that same opaque fill, so the pair WCAG 1.4.11 asks 3:1 of is the pair below,
-   * internal to the graphic — the ring is what separates it from imagery, whatever the imagery is.
+   * The you-are-here dot rides the resting half of this case rather than a test of its own: it is
+   * an ink disc inside a ring cut from that same opaque fill, so the pair WCAG 1.4.11 asks 3:1 of
+   * is the resting pair below, internal to the graphic — the ring is what separates it from
+   * imagery, whatever the imagery is. It has no hover state; only the buttons do.
    */
-  it('zoom glyphs and the you-are-here dot clear AA-large over both the resting and the hover fill', () => {
+  it('zoom glyphs clear AA-large over both the resting and the hover fill', () => {
     expect(contrastRatio(ink, rgbToHex(SOLID_BTN_FILL))).toBeGreaterThanOrEqual(AA_LARGE);
     expect(contrastRatio(ink, rgbToHex(SOLID_BTN_HOVER))).toBeGreaterThanOrEqual(AA_LARGE);
   });
