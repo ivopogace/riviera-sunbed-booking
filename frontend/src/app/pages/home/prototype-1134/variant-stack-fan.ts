@@ -1,7 +1,14 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 
 import { TouchTarget } from '../../../shared/touch-target';
-import { fanOffsets, MAP_CHROME_DISC, PinCluster, PlacedPin } from './pin-crowding';
+import {
+  fanOffsets,
+  MAP_CHROME_DISC,
+  PinCluster,
+  pinFaceClass,
+  pinFaceText,
+  PlacedPin,
+} from './pin-crowding';
 
 /**
  * THROWAWAY PROTOTYPE — variant A, **Stack & fan**.
@@ -59,7 +66,9 @@ import { fanOffsets, MAP_CHROME_DISC, PinCluster, PlacedPin } from './pin-crowdi
           [attr.aria-expanded]="selected() === cluster.members[0].pin.id"
           (click)="chosen.emit(cluster.members[0].pin.id)"
         >
-          <span aria-hidden="true">&#x25cf;</span>
+          <span aria-hidden="true" [class]="face(cluster.members[0])">{{
+            faceText(cluster.members[0])
+          }}</span>
         </button>
       } @else if (openKey() === cluster.key) {
         @for (member of fanned(cluster); track member.pin.id) {
@@ -75,7 +84,7 @@ import { fanOffsets, MAP_CHROME_DISC, PinCluster, PlacedPin } from './pin-crowdi
             [attr.aria-expanded]="selected() === member.pin.id"
             (click)="chosen.emit(member.pin.id)"
           >
-            <span aria-hidden="true">&#x25cf;</span>
+            <span aria-hidden="true" [class]="face(member)">{{ faceText(member) }}</span>
           </button>
         }
         <button
@@ -157,9 +166,10 @@ export class VariantStackFan {
   }
 
   protected fanned(cluster: PinCluster): readonly PlacedPin[] {
-    const offsets = fanOffsets(cluster.members.length, 62);
+    const offsets = fanOffsets(cluster.members.length, 62, cluster.width);
     return cluster.members.map((member, index) => ({
       pin: member.pin,
+      width: member.width,
       x: cluster.x + offsets[index].x,
       y: cluster.y + offsets[index].y,
     }));
@@ -167,5 +177,13 @@ export class VariantStackFan {
 
   protected label(member: PlacedPin): string {
     return `${member.pin.card.name}, ${member.pin.card.beach}`;
+  }
+
+  protected face(member: PlacedPin): string {
+    return pinFaceClass(member.pin);
+  }
+
+  protected faceText(member: PlacedPin): string {
+    return pinFaceText(member.pin);
   }
 }

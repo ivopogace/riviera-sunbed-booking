@@ -2,7 +2,7 @@ import { Component, computed, input, output, signal } from '@angular/core';
 
 import { CardGlass } from '../../../shared/card-glass';
 import { TouchTarget } from '../../../shared/touch-target';
-import { MAP_CHROME_DISC, PinCluster } from './pin-crowding';
+import { MAP_CHROME_DISC, PinCluster, pinFaceClass, pinFaceText, PlacedPin } from './pin-crowding';
 
 /**
  * THROWAWAY PROTOTYPE — variant B, **Stack sheet**.
@@ -31,7 +31,7 @@ import { MAP_CHROME_DISC, PinCluster } from './pin-crowding';
           [style.top.px]="member.y"
           [style.translate]="'-50% -50%'"
           aria-hidden="true"
-          ><span>&#x25cf;</span></span
+          ><span [class]="face(member)">{{ faceText(member) }}</span></span
         >
       }
       <button
@@ -137,12 +137,20 @@ export class VariantStackSheet {
     this.openKey.set(null);
   }
 
-  /** The blob's own width, never below the finger — a two-pin crowd is still a 44 px target. */
+  /** The blob's own width, never below the widest pill — a two-pin crowd is still one target. */
   protected hitSize(cluster: PinCluster): number {
     const spread = Math.max(
       ...cluster.members.map((member) => Math.hypot(member.x - cluster.x, member.y - cluster.y)),
     );
-    return Math.max(44, Math.round(spread * 2 + 44));
+    return Math.max(cluster.width, Math.round(spread * 2 + cluster.width));
+  }
+
+  protected face(member: PlacedPin): string {
+    return pinFaceClass(member.pin);
+  }
+
+  protected faceText(member: PlacedPin): string {
+    return pinFaceText(member.pin);
   }
 
   protected hitLabel(cluster: PinCluster): string {

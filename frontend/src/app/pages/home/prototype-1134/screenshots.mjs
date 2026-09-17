@@ -146,7 +146,7 @@ for (const variant of ['A', 'B', 'C', 'D']) {
       findings.dOpeningViewChips = (await controls(page))
         .filter((c) => c.x > -50 && c.y > 0)
         .map((c) => `${c.w.toFixed(0)}×${c.h.toFixed(0)} ${c.label}`);
-      await page.getByRole('button', { name: /^3 venues at Dhërmi/ }).click({ force: true });
+      await page.getByRole('button', { name: /^9 venues at 3 beaches/ }).click({ force: true });
       await page.waitForTimeout(500);
       await shoot(page, 'd-riviera-open-phone');
     }
@@ -176,7 +176,7 @@ for (const variant of ['A', 'B', 'C', 'D']) {
   const page = await open(desktop, variant, 'riviera', false);
   await shoot(page, `${variant.toLowerCase()}-riviera-desktop`);
   if (variant === 'B' || variant === 'D') {
-    const jale = page.getByRole('button', { name: /^6 venues/ });
+    const jale = page.getByRole('button', { name: /^9 venues/ });
     await jale.evaluate((button) => {
       button.dataset.probe = 'focused-before-zoom';
       button.focus();
@@ -190,7 +190,7 @@ for (const variant of ['A', 'B', 'C', 'D']) {
     await page.waitForTimeout(1_200);
     findings[`focusSurvivesRegroup${variant}`] = {
       jaleCrowdNow: (await controls(page))
-        .filter((c) => /Jale/.test(c.label))
+        .filter((c) => /Jale|beaches/.test(c.label))
         .map((c) => c.label.split(';')[0]),
       probedElementStillInDom: (await page.locator('[data-probe]').count()) === 1,
       stillFocused: await page.evaluate(

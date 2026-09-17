@@ -245,6 +245,9 @@ export class Home {
               id: String(card.id),
               at: { lng: card.location.longitude, lat: card.location.latitude },
               card,
+              ...(card.priceLabel ? { badge: card.priceLabel } : {}),
+              fromMinor:
+                this.venues()?.find((venue) => venue.id === card.id)?.fromPrice?.minorUnits ?? null,
             },
           ]
         : [],

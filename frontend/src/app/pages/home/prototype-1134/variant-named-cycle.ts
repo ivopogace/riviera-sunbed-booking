@@ -2,7 +2,7 @@ import { Component, computed, input, output } from '@angular/core';
 
 import { TouchTarget } from '../../../shared/touch-target';
 import { ScreenPoint } from '../../../shared/map-engine';
-import { CROWD_PX, PinCluster, PlacedPin } from './pin-crowding';
+import { CROWD_PX, MAP_CHROME_BADGE, PinCluster, PlacedPin, textWidth } from './pin-crowding';
 
 /** The pin's tail: which way it runs from the disc, or nowhere when the space is spoken for. */
 type TailSide = 'right' | 'left' | 'none';
@@ -19,6 +19,8 @@ interface Chip {
   readonly index: number;
   readonly text: string;
   readonly tail: TailSide;
+  /** The coin's width: production's priced pill for a lone venue, the 44 px count disc for a crowd. */
+  readonly coin: number;
 }
 
 /** One member's button: the chip when it is the crowd's face, an invisible disc otherwise. */
@@ -37,10 +39,10 @@ export interface CrowdStack {
   readonly nextId: string;
 }
 
-/** The tail past the coin's edge: 8 px of tuck, 13 px of end padding; jsdom has no canvas, so a fallback. */
+/** The tail past the coin's edge: 8 px of tuck, 13 px of end padding. */
 const TAIL_PADDING = 21;
 const TAIL_TEXT_MAX = 137;
-const FALLBACK_CHAR_PX = 7.4;
+const TAIL_FONT = '600 13px';
 
 /**
  * THROWAWAY PROTOTYPE — variant D, **Named pins, press again**.
@@ -75,14 +77,18 @@ const FALLBACK_CHAR_PX = 7.4;
           [class.flex-row-reverse]="slot.chip.tail === 'left'"
           [style.left.px]="slot.chip.cluster.x"
           [style.top.px]="slot.chip.cluster.y"
-          [style.translate]="slot.chip.tail === 'left' ? 'calc(-100% + 22px) -50%' : '-22px -50%'"
+          [style.translate]="
+            slot.chip.tail === 'left'
+              ? 'calc(-100% + ' + slot.chip.coin / 2 + 'px) -50%'
+              : -slot.chip.coin / 2 + 'px -50%'
+          "
           [attr.aria-label]="chipLabel(slot.chip)"
           [attr.aria-expanded]="slot.chip.current !== null"
           (click)="chosen.emit(slot.chip.next.pin.id)"
         >
-          <!-- The coin sits exactly on the venue; a crowd's coin wears a rim, a stack's silhouette. -->
+          <!-- The coin sits exactly on the venue: a lone venue's is production's priced pill; a crowd's wears a rim, a stack's silhouette. -->
           <span
-            class="relative z-[1] inline-flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] group-hover:bg-riv-solid-btn-hover group-aria-expanded:border-riv-solid-btn-fill group-aria-expanded:bg-riv-solid-btn-ink group-aria-expanded:text-riv-solid-btn-fill motion-safe:[transition:background-color_0.15s_ease,color_0.15s_ease]"
+            class="relative z-[1] inline-flex h-11 min-w-11 shrink-0 items-center justify-center rounded-full border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] group-hover:bg-riv-solid-btn-hover group-aria-expanded:border-riv-solid-btn-fill group-aria-expanded:bg-riv-solid-btn-ink group-aria-expanded:text-riv-solid-btn-fill motion-safe:[transition:background-color_0.15s_ease,color_0.15s_ease]"
             [class]="
               slot.chip.cluster.members.length > 1
                 ? 'inset-ring-2 inset-ring-riv-solid-btn-ink/16 group-aria-expanded:inset-ring-riv-solid-btn-fill/25'
@@ -90,7 +96,9 @@ const FALLBACK_CHAR_PX = 7.4;
             "
             aria-hidden="true"
           >
-            @if (slot.chip.current !== null) {
+            @if (slot.chip.cluster.members.length === 1 && slot.chip.face.pin.badge; as badge) {
+              <span [class]="badgeClass">{{ badge }}</span>
+            } @else if (slot.chip.current !== null) {
               <span class="text-[13px] leading-none font-bold tabular-nums"
                 >{{ slot.chip.index + 1 }}<span class="opacity-55">/</span
                 >{{ slot.chip.cluster.members.length }}</span
@@ -106,11 +114,11 @@ const FALLBACK_CHAR_PX = 7.4;
           @if (slot.chip.tail !== 'none') {
             <span
               class="h-[34px] max-w-[180px] truncate rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill text-[13px] leading-[32px] font-semibold text-riv-solid-btn-ink shadow-[0_4px_14px_rgba(7,42,58,0.28)] group-hover:bg-riv-solid-btn-hover group-aria-expanded:font-bold motion-safe:[transition:background-color_0.15s_ease]"
-              [class]="
-                slot.chip.tail === 'left'
-                  ? '-mr-[22px] pr-[30px] pl-[13px]'
-                  : '-ml-[22px] pr-[13px] pl-[30px]'
-              "
+              [class]="slot.chip.tail === 'left' ? 'pl-[13px]' : 'pr-[13px]'"
+              [style.margin-left.px]="slot.chip.tail === 'left' ? null : -slot.chip.coin / 2"
+              [style.padding-left.px]="slot.chip.tail === 'left' ? null : slot.chip.coin / 2 + 8"
+              [style.margin-right.px]="slot.chip.tail === 'left' ? -slot.chip.coin / 2 : null"
+              [style.padding-right.px]="slot.chip.tail === 'left' ? slot.chip.coin / 2 + 8 : null"
               aria-hidden="true"
               >{{ slot.chip.text }}</span
             >
@@ -139,6 +147,8 @@ export class VariantNamedCycle {
   /** The map box's size: a tail that would run off it yields, since the box clips it. */
   readonly bounds = input<ScreenPoint>({ x: Infinity, y: Infinity });
   readonly chosen = output<string>();
+
+  protected readonly badgeClass = MAP_CHROME_BADGE;
 
   /**
    * The stepper the preview card shows while a crowd member is open, or `null` for a lone pin —
@@ -184,19 +194,20 @@ export class VariantNamedCycle {
       const current = index >= 0 ? cluster.members[index] : null;
       const next = cluster.members[(index + 1) % cluster.members.length];
       const face = current ?? cluster.members[0];
+      const coin = cluster.members.length === 1 ? face.width : CROWD_PX;
       const own = disc(cluster);
       const others = obstacles.filter((box) => box !== own);
       const text = current ? current.pin.card.name : chipText(cluster);
       let tail: TailSide = 'none';
       for (const side of ['right', 'left'] as const) {
-        const box = tailBox(cluster, tailWidth(text), side);
+        const box = tailBox(cluster, coin, tailWidth(text), side);
         if (inside(box, bounds) && !others.some((other) => intersects(box, other))) {
           obstacles.push(box);
           tail = side;
           break;
         }
       }
-      placed.set(cluster.key, { cluster, face, next, current, index, text, tail });
+      placed.set(cluster.key, { cluster, face, next, current, index, text, tail, coin });
     }
     return this.clusters().map((cluster) => placed.get(cluster.key)!);
   });
@@ -226,27 +237,29 @@ interface Box {
 
 function disc(cluster: PinCluster): Box {
   const half = CROWD_PX / 2;
+  const across = (cluster.members.length === 1 ? cluster.width : CROWD_PX) / 2;
   return {
-    left: cluster.x - half,
+    left: cluster.x - across,
     top: cluster.y - half,
-    right: cluster.x + half,
+    right: cluster.x + across,
     bottom: cluster.y + half,
   };
 }
 
-function tailBox(cluster: PinCluster, width: number, side: 'right' | 'left'): Box {
+function tailBox(cluster: PinCluster, coin: number, width: number, side: 'right' | 'left'): Box {
   const half = CROWD_PX / 2;
+  const across = coin / 2;
   return side === 'right'
     ? {
-        left: cluster.x + half,
+        left: cluster.x + across,
         top: cluster.y - half,
-        right: cluster.x + half + width,
+        right: cluster.x + across + width,
         bottom: cluster.y + half,
       }
     : {
-        left: cluster.x - half - width,
+        left: cluster.x - across - width,
         top: cluster.y - half,
-        right: cluster.x - half,
+        right: cluster.x - across,
         bottom: cluster.y + half,
       };
 }
@@ -276,16 +289,6 @@ function beachesOf(cluster: PinCluster): readonly string[] {
   return [...new Set(cluster.members.map((member) => member.pin.card.beach))];
 }
 
-let measurer: CanvasRenderingContext2D | null | undefined;
-
 function tailWidth(text: string): number {
-  if (measurer === undefined) {
-    measurer = globalThis.document?.createElement('canvas').getContext('2d') ?? null;
-    if (measurer) {
-      const family = getComputedStyle(document.body).fontFamily || 'sans-serif';
-      measurer.font = `600 13px ${family}`;
-    }
-  }
-  const glyphs = measurer ? measurer.measureText(text).width : text.length * FALLBACK_CHAR_PX;
-  return Math.min(TAIL_TEXT_MAX, glyphs) + TAIL_PADDING;
+  return Math.min(TAIL_TEXT_MAX, textWidth(text, TAIL_FONT)) + TAIL_PADDING;
 }

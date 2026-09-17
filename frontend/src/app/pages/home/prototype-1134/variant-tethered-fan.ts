@@ -1,7 +1,14 @@
 import { Component, computed, input, output } from '@angular/core';
 
 import { TouchTarget } from '../../../shared/touch-target';
-import { fanOffsets, MAP_CHROME_DISC, PinCluster, PlacedPin } from './pin-crowding';
+import {
+  fanOffsets,
+  MAP_CHROME_DISC,
+  PinCluster,
+  pinFaceClass,
+  pinFaceText,
+  PlacedPin,
+} from './pin-crowding';
 
 /** One crowd, already displaced: where each pin is drawn, and the true point it belongs to. */
 interface Fan {
@@ -71,7 +78,7 @@ interface Fan {
           [attr.aria-expanded]="selected() === pin.pin.id"
           (click)="chosen.emit(pin.pin.id)"
         >
-          <span aria-hidden="true">&#x25cf;</span>
+          <span aria-hidden="true" [class]="face(pin)">{{ faceText(pin) }}</span>
         </button>
       }
     }
@@ -95,7 +102,7 @@ export class VariantTetheredFan {
           tethered: false,
         };
       }
-      const offsets = fanOffsets(cluster.members.length, 30);
+      const offsets = fanOffsets(cluster.members.length, 30, cluster.width);
       return {
         key: cluster.key,
         anchorX: cluster.x,
@@ -103,6 +110,7 @@ export class VariantTetheredFan {
         tethered: true,
         pins: cluster.members.map((member, index) => ({
           pin: member.pin,
+          width: member.width,
           x: cluster.x + offsets[index].x,
           y: cluster.y + offsets[index].y,
         })),
@@ -114,5 +122,13 @@ export class VariantTetheredFan {
   protected label(pin: PlacedPin, fan: Fan): string {
     const moved = fan.tethered ? ', moved clear of a crowded spot' : '';
     return `${pin.pin.card.name}, ${pin.pin.card.beach}${moved}`;
+  }
+
+  protected face(pin: PlacedPin): string {
+    return pinFaceClass(pin.pin);
+  }
+
+  protected faceText(pin: PlacedPin): string {
+    return pinFaceText(pin.pin);
   }
 }
