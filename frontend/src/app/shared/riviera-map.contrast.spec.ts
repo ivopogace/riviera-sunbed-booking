@@ -14,6 +14,11 @@ import { SOLID_BTN_FILL, SOLID_BTN_HOVER, SOLID_BTN_INK } from '../../testing/gl
 describe('riviera map chrome contrast', () => {
   const ink = rgbToHex(SOLID_BTN_INK);
 
+  /**
+   * A selected venue pin rides this case rather than a test of its own: it inverts this very pair
+   * — the imagery under it never themes, so a switching accent fill under a fixed ink would drift
+   * — and `contrastRatio` is order-independent, so an inverted assertion would restate this one.
+   */
   it('attribution and notice text clear AA over the resting fill', () => {
     expect(contrastRatio(ink, rgbToHex(SOLID_BTN_FILL))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
@@ -27,5 +32,16 @@ describe('riviera map chrome contrast', () => {
   it('zoom glyphs clear AA-large over both the resting and the hover fill', () => {
     expect(contrastRatio(ink, rgbToHex(SOLID_BTN_FILL))).toBeGreaterThanOrEqual(AA_LARGE);
     expect(contrastRatio(ink, rgbToHex(SOLID_BTN_HOVER))).toBeGreaterThanOrEqual(AA_LARGE);
+  });
+
+  /**
+   * A selected venue pin INVERTS the same fixed pair instead of taking the themed accent: the
+   * imagery under it never themes, so a switching fill under a fixed ink would drift. Inversion
+   * preserves the ratio, and asserting it keeps that true if either half is ever retuned.
+   */
+  it('a selected pin clears AA with the pair inverted', () => {
+    expect(contrastRatio(rgbToHex(SOLID_BTN_FILL), rgbToHex(SOLID_BTN_INK))).toBeGreaterThanOrEqual(
+      AA_NORMAL,
+    );
   });
 });

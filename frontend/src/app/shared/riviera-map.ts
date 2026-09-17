@@ -37,6 +37,17 @@ export const RIVIERA_MAP_OPTIONS: MapEngineOptions = {
   ],
 };
 
+/**
+ * One selectable pin the map draws: a stable id the consumer keys its own data by, where it
+ * sits, and the name it announces. Deliberately free of any venue vocabulary — the map draws
+ * pins, and what a pin stands for is its consumer's business.
+ */
+export interface MapPin {
+  readonly id: string;
+  readonly at: LngLat;
+  readonly label: string;
+}
+
 type MapStatus = 'booting' | 'ready' | 'unavailable';
 
 /** The map carries at most one pin, so its marker id is a constant rather than an input. */
@@ -58,6 +69,25 @@ const PIN_CLASSES =
 
 /** The visitor's own position, which is never the venue pin — a second marker, its own id. */
 export const HERE_MARKER = 'you-are-here';
+
+/**
+ * Venue-pin marker ids live in their own namespace, so a consumer's pin id can be anything it
+ * likes without ever colliding with {@link PIN_ID} or {@link HERE_MARKER} on the same map.
+ */
+const VENUE_PIN_PREFIX = 'venue-pin:';
+
+/**
+ * A venue pin's box: the same 44 px theme-invariant solid-button skin the placement pin wears,
+ * but a real control — it opens something, so it is a `<button>` and takes the focus ring. The
+ * selected pin INVERTS that same fixed pair rather than reaching for the accent: it sits on
+ * imagery, which never themes, so a theme-switching fill under a fixed ink would drift.
+ * Paints above the you-are-here dot and below the chrome column's `z-10`.
+ */
+const VENUE_PIN_CLASSES =
+  'inline-flex size-11 touch-manipulation items-center justify-center rounded-full ' +
+  'border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill text-[20px] leading-none ' +
+  'text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] z-[2] ' +
+  'aria-expanded:bg-riv-solid-btn-ink aria-expanded:text-riv-solid-btn-fill';
 
 /**
  * Town scale: near enough to tell which beach the visitor is on, wide enough to still show the
@@ -103,9 +133,14 @@ const HERE_CLASSES =
  * or `unavailable` when the browser cannot render a map), which is what the e2e waits on. The
  * consumer sizes the host; the map fills it.
  *
- * <p>It carries at most one `pin`. A null pin is no marker at all, a changed pin moves the marker
- * in place, and `mapClick`/`pinMoved` report positions so a placer above the seam can own where
- * the pin belongs without knowing which engine drew it.
+ * <p>It draws two independent marker sets, and a page binds one or the other, never both. The
+ * single `pin` is a PLACEMENT marker: a null pin is no marker at all, a changed pin moves the
+ * marker in place, and `mapClick`/`pinMoved` report positions so a placer above the seam can own
+ * where the pin belongs without knowing which engine drew it. The `pins` list is a set of
+ * SELECTABLE markers: labelled buttons a keyboard walks in feed order, reporting the pressed id
+ * through `pinSelected`, with `selectedPin` marking whichever one has something open and
+ * `focusPin` handing focus back when that closes. Venue vocabulary stays above the seam — a pin
+ * is an id, a position and a name.
  */
 @Component({
   selector: 'app-riviera-map',
@@ -139,8 +174,17 @@ export class RivieraMap {
    */
   readonly nearMe = input(false);
 
+  /**
+   * The selectable pins the map draws, in the order a keyboard should walk them — the consumer's
+   * own list order. Each becomes a labelled button on the map surface.
+   */
+  readonly pins = input<readonly MapPin[]>([]);
+  /** Which pin is currently showing whatever it opens, or `null` for none. */
+  readonly selectedPin = input<string | null>(null);
+
   readonly mapClick = output<LngLat>();
   readonly pinMoved = output<LngLat>();
+  readonly pinSelected = output<string>();
 
   protected readonly status = signal<MapStatus>('booting');
 
@@ -160,6 +204,11 @@ export class RivieraMap {
   private marker: HTMLElement | undefined;
   private markerOnMap = false;
   private markerDraggable = false;
+  private readonly venuePinButtons = new Map<string, HTMLElement>();
+  /** Where each drawn venue pin currently sits, so a moved one is moved rather than rebuilt. */
+  private readonly venuePinPlaces = new Map<string, LngLat>();
+  /** The identity of the pin set currently drawn; a change of it, and only that, rebuilds. */
+  private venuePinKey = '';
   private disposed = false;
   private readonly unsubscribes: (() => void)[] = [];
 
@@ -168,6 +217,8 @@ export class RivieraMap {
       void this.pendingTasks.run(() => this.boot());
     });
     effect(() => this.syncPin());
+    effect(() => this.syncVenuePins());
+    effect(() => this.paintSelection());
     inject(DestroyRef).onDestroy(() => {
       this.disposed = true;
       this.unsubscribes.forEach((off) => off());
@@ -183,6 +234,15 @@ export class RivieraMap {
   /** Where the camera looks now, so a consumer can act on what the viewer is actually looking at. */
   currentCenter(): LngLat | undefined {
     return this.live()?.view().center;
+  }
+
+  /**
+   * Put focus on a venue pin. A consumer closing whatever a pin opened calls this to hand focus
+   * back (WCAG 2.4.3). A pin the map does not hold is a no-op — a list that moved under the
+   * viewer is exactly when that is asked for.
+   */
+  focusPin(id: string): void {
+    this.venuePinButtons.get(id)?.focus();
   }
 
   private syncPin(): void {
@@ -215,6 +275,79 @@ export class RivieraMap {
     handle.addMarker({ id: PIN_ID, lngLat: pin, element, draggable });
     this.markerOnMap = true;
     this.markerDraggable = draggable;
+  }
+
+  /**
+   * Redraw the venue markers when the pin set itself changes, and only then: a rebuild detaches
+   * every button, which would drop focus and scramble the order a keyboard walks.
+   */
+  private syncVenuePins(): void {
+    const handle = this.live();
+    const pins = this.pins();
+    if (!handle) {
+      return;
+    }
+    const key = pins.map((pin) => `${pin.id}\u0000${pin.label}`).join('\u0001');
+    if (key === this.venuePinKey) {
+      this.moveVenuePins(handle, pins);
+      return;
+    }
+    this.venuePinKey = key;
+    this.venuePinButtons.forEach((_button, id) => handle.removeMarker(VENUE_PIN_PREFIX + id));
+    this.venuePinButtons.clear();
+    this.venuePinPlaces.clear();
+    for (const pin of pins) {
+      const element = this.buildVenuePinElement(pin);
+      this.venuePinButtons.set(pin.id, element);
+      this.venuePinPlaces.set(pin.id, pin.at);
+      handle.addMarker({ id: VENUE_PIN_PREFIX + pin.id, lngLat: pin.at, element });
+    }
+    this.paintSelection();
+  }
+
+  /**
+   * The same venues at new coordinates — an operator corrected a pin — so each one is moved in
+   * place rather than re-added, for the reason {@link MapHandle.moveMarker} gives: re-adding
+   * detaches the caller's element and drops whatever focus it held.
+   */
+  private moveVenuePins(handle: MapHandle, pins: readonly MapPin[]): void {
+    for (const pin of pins) {
+      const placed = this.venuePinPlaces.get(pin.id);
+      if (placed && (placed.lng !== pin.at.lng || placed.lat !== pin.at.lat)) {
+        this.venuePinPlaces.set(pin.id, pin.at);
+        handle.moveMarker(VENUE_PIN_PREFIX + pin.id, pin.at);
+      }
+    }
+  }
+
+  /**
+   * Selection is an attribute flip on buttons that are already mounted — never a rebuild, which
+   * would detach the one a keyboard is standing on. Tracks `selectedPin` through the read below.
+   */
+  private paintSelection(): void {
+    const selected = this.selectedPin();
+    this.venuePinButtons.forEach((button, id) =>
+      button.setAttribute('aria-expanded', String(id === selected)),
+    );
+  }
+
+  private buildVenuePinElement(pin: MapPin): HTMLElement {
+    const element = this.document.createElement('button');
+    element.type = 'button';
+    element.setAttribute('aria-label', pin.label);
+    element.setAttribute('aria-expanded', 'false');
+    element.className = VENUE_PIN_CLASSES;
+    element.dataset['testid'] = 'map-venue-pin';
+    const glyph = this.document.createElement('span');
+    glyph.setAttribute('aria-hidden', 'true');
+    glyph.textContent = '\u25cf';
+    element.appendChild(glyph);
+    element.addEventListener('click', (event) => {
+      // Mounted inside the surface the engines read clicks from: a pin press is not a map press.
+      event.stopPropagation();
+      this.pinSelected.emit(pin.id);
+    });
+    return element;
   }
 
   /** One element for the life of the component, so a move never detaches what a drag is holding. */

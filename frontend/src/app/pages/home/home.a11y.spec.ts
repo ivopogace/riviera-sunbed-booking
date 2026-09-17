@@ -49,6 +49,15 @@ function venues(): VenueSummary[] {
   ];
 }
 
+/** The same two venues, each carrying a riviera-map pin. */
+function pinnedVenues(): VenueSummary[] {
+  const [miramar, aurora] = venues();
+  return [
+    { ...miramar, location: { latitude: 39.7712, longitude: 20.0021 } },
+    { ...aurora, location: { latitude: 40.1573, longitude: 19.6401 } },
+  ];
+}
+
 describe('Home accessibility (axe)', () => {
   let fixture: ComponentFixture<Home>;
   let httpMock: HttpTestingController;
@@ -77,6 +86,18 @@ describe('Home accessibility (axe)', () => {
 
   function host(): HTMLElement {
     return fixture.nativeElement as HTMLElement;
+  }
+
+  async function openMap(list: VenueSummary[] = venues()): Promise<void> {
+    fixture.detectChanges();
+    listRequest().flush(list);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    host().querySelector<HTMLButtonElement>('[data-testid="view-map"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
   }
 
   it('has no violations with a venue closed for the season badged and sorted last', async () => {
@@ -139,17 +160,43 @@ describe('Home accessibility (axe)', () => {
   });
 
   it('has no violations with the map view open (switch pressed, map chrome rendered)', async () => {
-    fixture.detectChanges();
-    listRequest().flush(venues());
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    host().querySelector<HTMLButtonElement>('[data-testid="view-map"]')!.click();
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
+    await openMap();
 
     expect(host().querySelector('app-riviera-map')).not.toBeNull();
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no violations with venue pins drawn on the map', async () => {
+    await openMap(pinnedVenues());
+
+    expect(host().querySelectorAll('[data-testid="map-venue-pin"]').length).toBe(2);
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no violations with a pin preview open over the map', async () => {
+    await openMap(pinnedVenues());
+
+    host().querySelector<HTMLButtonElement>('[data-testid="map-venue-pin"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host().querySelector('[data-testid="venue-preview"]')).not.toBeNull();
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no violations with a closed-for-season venue previewed', async () => {
+    const [pinned] = pinnedVenues();
+    await openMap([
+      { ...pinned, salesOpen: false, closedForSeason: true, reopensOn: '2027-05-15' },
+    ]);
+
+    host().querySelector<HTMLButtonElement>('[data-testid="map-venue-pin"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host().querySelector('[data-testid="preview-closed"]')).not.toBeNull();
     await expectNoAxeViolations(host());
   });
 });

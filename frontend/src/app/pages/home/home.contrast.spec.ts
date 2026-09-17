@@ -260,6 +260,10 @@ describe('Discover photo-area contrast (theme-independent, issue #135; real phot
  * The list/map switch's pressed pill paints the on-accent ink over the accent ink — opaque, so
  * the pair is theme-keyed rather than composited over stops; the unpressed pill's card ink over
  * the card glass is the "card ink" case above.
+ *
+ * <p>The pin preview's "View beach map" call to action rides this case: it wears the same pair.
+ * The rest of that card sits on the card glass with the card inks, already covered above — it is
+ * fed the very record a list card renders.
  */
 describe('Discover list/map switch contrast', () => {
   it.each([

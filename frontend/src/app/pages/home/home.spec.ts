@@ -912,3 +912,274 @@ describe('Home (list/map switch)', () => {
     expect((fixture.nativeElement as HTMLElement).querySelector('app-riviera-map')).not.toBeNull();
   });
 });
+
+/**
+ * The venue pins and the preview they open. The map is driven through the real seam — the fake
+ * engine mounts the pin buttons into its surface, so these press the very elements a tourist
+ * presses. `matchMedia` is stubbed per case and restored; the spec mutates two globals.
+ */
+describe('Home (venue pins and the preview)', () => {
+  let httpMock: HttpTestingController;
+  const originalMatchMedia = globalThis.matchMedia;
+  /** Typed as a plain slot, so restoring it is not read as detaching a class method. */
+  const scrollable = Element.prototype as { scrollIntoView?: (options?: unknown) => void };
+  const originalScrollIntoView = scrollable.scrollIntoView;
+  let scrolled: HTMLElement[];
+  let routeParams: BehaviorSubject<ParamMap>;
+
+  /** Two located venues and one without a pin, which stays in the list and draws nothing. */
+  function pinnedVenues(): VenueSummary[] {
+    const [miramar, aurora] = venues();
+    return [
+      { ...miramar, location: { latitude: 39.7712, longitude: 20.0021 } },
+      { ...aurora, location: { latitude: 40.1573, longitude: 19.6401 } },
+      {
+        id: 3,
+        name: 'Palasa Sands',
+        beach: 'Palasë',
+        region: 'Albanian Riviera',
+        ratingTenths: 44,
+        reviewsCount: 12,
+        bookingMode: 'INSTANT',
+        fromPrice: { minorUnits: 2000, currency: 'EUR' },
+        availability: { free: 4, total: 8 },
+      },
+    ];
+  }
+
+  function stubViewport(wide: boolean): void {
+    globalThis.matchMedia = (query: string) =>
+      ({
+        matches: wide,
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }) as unknown as MediaQueryList;
+  }
+
+  function render(): ComponentFixture<Home> {
+    stubViewport(true);
+    TestBed.resetTestingModule();
+    routeParams = new BehaviorSubject<ParamMap>(convertToParamMap({}));
+    TestBed.configureTestingModule({
+      imports: [Home],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: { queryParamMap: routeParams, snapshot: { queryParamMap: routeParams.value } },
+        },
+        { provide: MapEngine, useValue: new FakeMapEngine() },
+        { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(Home);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  async function settle(fixture: ComponentFixture<Home>): Promise<void> {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  async function withPins(): Promise<ComponentFixture<Home>> {
+    const fixture = render();
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush(pinnedVenues());
+    await settle(fixture);
+    return fixture;
+  }
+
+  function el(fixture: ComponentFixture<Home>): HTMLElement {
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  function pins(fixture: ComponentFixture<Home>): HTMLElement[] {
+    return [...el(fixture).querySelectorAll<HTMLElement>('[data-testid="map-venue-pin"]')];
+  }
+
+  function preview(fixture: ComponentFixture<Home>): HTMLElement | null {
+    return el(fixture).querySelector<HTMLElement>('[data-testid="venue-preview"]');
+  }
+
+  beforeEach(() => {
+    scrolled = [];
+    scrollable.scrollIntoView = function scrollIntoViewStub(this: HTMLElement) {
+      scrolled.push(this);
+    };
+  });
+
+  afterEach(() => {
+    httpMock.verify();
+    globalThis.matchMedia = originalMatchMedia;
+    scrollable.scrollIntoView = originalScrollIntoView;
+  });
+
+  it('draws a pin for each located venue and none for the one without a location', async () => {
+    const fixture = await withPins();
+
+    expect(pins(fixture).map((pin) => pin.getAttribute('aria-label'))).toEqual([
+      'Miramar Beach Club',
+      'Aurora Bay',
+    ]);
+    expect(el(fixture).querySelectorAll('[data-testid="venue-card"]').length).toBe(3);
+  });
+
+  it('opens the preview for the pin that was pressed', async () => {
+    const fixture = await withPins();
+
+    pins(fixture)[1].click();
+    await settle(fixture);
+
+    expect(preview(fixture)).not.toBeNull();
+    expect(
+      preview(fixture)?.querySelector('[data-testid="preview-name"]')?.textContent?.trim(),
+    ).toBe('Aurora Bay');
+  });
+
+  it('opens one preview at a time', async () => {
+    const fixture = await withPins();
+
+    pins(fixture)[0].click();
+    await settle(fixture);
+    pins(fixture)[1].click();
+    await settle(fixture);
+
+    expect(el(fixture).querySelectorAll('[data-testid="venue-preview"]').length).toBe(1);
+    expect(
+      preview(fixture)?.querySelector('[data-testid="preview-name"]')?.textContent?.trim(),
+    ).toBe('Aurora Bay');
+  });
+
+  it('moves focus into the preview when it opens', async () => {
+    const fixture = await withPins();
+
+    pins(fixture)[0].click();
+    await settle(fixture);
+
+    expect(document.activeElement).toBe(preview(fixture));
+  });
+
+  it('closes on Escape and hands focus back to the pin that opened it', async () => {
+    const fixture = await withPins();
+    pins(fixture)[1].click();
+    await settle(fixture);
+
+    el(fixture)
+      .querySelector('[data-testid="map-panel"]')!
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle(fixture);
+
+    expect(preview(fixture)).toBeNull();
+    expect(document.activeElement).toBe(pins(fixture)[1]);
+  });
+
+  it('closes when the map itself is tapped', async () => {
+    const fixture = await withPins();
+    pins(fixture)[0].click();
+    await settle(fixture);
+
+    el(fixture)
+      .querySelector('[data-testid="riviera-map-fake"]')!
+      .dispatchEvent(new MouseEvent('click', { clientX: 4, clientY: 4, bubbles: true }));
+    await settle(fixture);
+
+    expect(preview(fixture)).toBeNull();
+  });
+
+  it('closes on its own close control', async () => {
+    const fixture = await withPins();
+    pins(fixture)[0].click();
+    await settle(fixture);
+
+    preview(fixture)!.querySelector<HTMLButtonElement>('[data-testid="preview-close"]')!.click();
+    await settle(fixture);
+
+    expect(preview(fixture)).toBeNull();
+  });
+
+  it('marks the selected venue’s card and scrolls it into view', async () => {
+    const fixture = await withPins();
+
+    pins(fixture)[1].click();
+    await settle(fixture);
+
+    const cards = [...el(fixture).querySelectorAll('[data-testid="venue-card"]')];
+    expect(cards.map((card) => card.getAttribute('aria-current'))).toEqual([null, 'true', null]);
+    expect(scrolled).toContain(cards[1].closest('li'));
+  });
+
+  it('marks no card once the preview is closed', async () => {
+    const fixture = await withPins();
+    pins(fixture)[1].click();
+    await settle(fixture);
+
+    preview(fixture)!.querySelector<HTMLButtonElement>('[data-testid="preview-close"]')!.click();
+    await settle(fixture);
+
+    const cards = [...el(fixture).querySelectorAll('[data-testid="venue-card"]')];
+    expect(cards.map((card) => card.getAttribute('aria-current'))).toEqual([null, null, null]);
+  });
+
+  it('keeps the preview open when a reload still carries its venue', async () => {
+    const fixture = await withPins();
+    pins(fixture)[0].click();
+    await settle(fixture);
+
+    routeParams.next(convertToParamMap({ date: '2099-08-14' }));
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush(pinnedVenues());
+    await settle(fixture);
+
+    expect(preview(fixture)).not.toBeNull();
+    expect(
+      preview(fixture)?.querySelector('[data-testid="preview-name"]')?.textContent?.trim(),
+    ).toBe('Miramar Beach Club');
+  });
+
+  it('never strands focus when the previewed venue leaves the list under an open card', async () => {
+    const fixture = await withPins();
+    pins(fixture)[0].click();
+    await settle(fixture);
+    expect(document.activeElement).toBe(preview(fixture));
+
+    // Nobody closed it: the day changed under the open card and the venue left the result set.
+    routeParams.next(convertToParamMap({ date: '2099-08-14' }));
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush(pinnedVenues().slice(1));
+    await settle(fixture);
+
+    expect(preview(fixture)).toBeNull();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toBe(el(fixture).querySelector('[data-testid="results"]'));
+  });
+
+  it('re-feeds the pins and drops the preview when a filter changes the result set', async () => {
+    const fixture = await withPins();
+    pins(fixture)[1].click();
+    await settle(fixture);
+
+    const select = el(fixture).querySelector<HTMLSelectElement>('[data-testid="filter-beach"]')!;
+    select.value = 'Ksamil';
+    select.dispatchEvent(new Event('change'));
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush([pinnedVenues()[0]]);
+    await settle(fixture);
+
+    expect(pins(fixture).map((pin) => pin.getAttribute('aria-label'))).toEqual([
+      'Miramar Beach Club',
+    ]);
+    expect(preview(fixture)).toBeNull();
+  });
+});
