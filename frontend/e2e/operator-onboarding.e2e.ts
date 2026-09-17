@@ -32,8 +32,8 @@ async function mockNewVenueConsole(page: import('@playwright/test').Page): Promi
       json: {
         id: NEW_VENUE_ID,
         name: 'Sunset Bar',
-        beach: 'Ksamil',
-        region: 'Albanian Riviera',
+        beach: 'KSAMIL',
+        region: 'SARANDE',
         description: 'Loungers on the shore.',
         ratingTenths: 0,
         reviewsCount: 0,
@@ -87,8 +87,7 @@ test('a first-time operator creates their venue inline on /operator and lands in
   await expectNoSeriousAxeViolations(page, 'operator zero state — inline create form');
 
   await page.getByLabel('Name', { exact: true }).fill('Sunset Bar');
-  await page.getByLabel('Beach', { exact: true }).fill('Ksamil');
-  await page.getByLabel('Region', { exact: true }).fill('Albanian Riviera');
+  await page.getByTestId('venue-create-beach').selectOption('KSAMIL');
   await page.getByRole('button', { name: 'Create venue' }).click();
 
   // Straight into the new console's beach-map tab — laying out the map is the next real step.
@@ -102,8 +101,8 @@ test('the picker’s Add-another-venue link swaps to the create form and keeps k
   await mockAuthApi(page, {
     validPassword: 'good-pw',
     venues: [
-      { id: 7, name: 'Sereno', beach: 'Jal' },
-      { id: 9, name: 'Miramar Beach Club', beach: 'Ksamil' },
+      { id: 7, name: 'Sereno', beach: 'JALE' },
+      { id: 9, name: 'Miramar Beach Club', beach: 'KSAMIL' },
     ],
   });
   await mockNewVenueConsole(page);

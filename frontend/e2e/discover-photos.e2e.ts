@@ -48,8 +48,8 @@ const VENUES = [
   {
     id: 1,
     name: 'Miramar Beach Club',
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     ratingTenths: 48,
     reviewsCount: 326,
     bookingMode: 'INSTANT',
@@ -63,8 +63,8 @@ const VENUES = [
   {
     id: 2,
     name: 'Aurora Bay',
-    beach: 'Dhërmi',
-    region: 'Albanian Riviera',
+    beach: 'DHERMI',
+    region: 'HIMARE',
     ratingTenths: 41,
     reviewsCount: 88,
     bookingMode: 'REQUEST',
@@ -78,8 +78,8 @@ const VENUES = [
 const VENUE_MAP = {
   id: 1,
   name: 'Miramar Beach Club',
-  beach: 'Ksamil',
-  region: 'Albanian Riviera',
+  beach: 'KSAMIL',
+  region: 'SARANDE',
   description: 'Premium loungers on the Ksamil shoreline.',
   ratingTenths: 48,
   reviewsCount: 326,

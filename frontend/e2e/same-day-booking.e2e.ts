@@ -27,8 +27,8 @@ const VENUES = [
   {
     id: 1,
     name: 'Miramar Beach Club',
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     ratingTenths: 48,
     reviewsCount: 326,
     bookingMode: 'INSTANT',
@@ -40,8 +40,8 @@ const VENUES = [
 const VENUE_MAP = {
   id: 1,
   name: 'Miramar Beach Club',
-  beach: 'Ksamil',
-  region: 'Albanian Riviera',
+  beach: 'KSAMIL',
+  region: 'SARANDE',
   description: 'Premium loungers on the Ksamil shoreline.',
   ratingTenths: 48,
   reviewsCount: 326,
@@ -189,8 +189,8 @@ test("browse today after a venue's close shows the badge and the closed-map path
         {
           id: 3,
           name: 'Luna Palasë',
-          beach: 'Palasë',
-          region: 'Albanian Riviera',
+          beach: 'PALASE',
+          region: 'HIMARE',
           ratingTenths: 44,
           reviewsCount: 102,
           bookingMode: 'INSTANT',

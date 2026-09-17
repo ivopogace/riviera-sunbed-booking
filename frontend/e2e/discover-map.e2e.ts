@@ -30,8 +30,8 @@ const VENUES = [
   {
     id: 1,
     name: 'Miramar Beach Club',
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     ratingTenths: 48,
     reviewsCount: 326,
     bookingMode: 'INSTANT',
@@ -48,8 +48,8 @@ const VENUES = [
   {
     id: 2,
     name: 'Aurora Bay',
-    beach: 'Dhërmi',
-    region: 'Albanian Riviera',
+    beach: 'DHERMI',
+    region: 'HIMARE',
     ratingTenths: 41,
     reviewsCount: 88,
     bookingMode: 'REQUEST',
@@ -61,8 +61,8 @@ const VENUES = [
   {
     id: 3,
     name: 'Palasa Sands',
-    beach: 'Palasë',
-    region: 'Albanian Riviera',
+    beach: 'PALASE',
+    region: 'HIMARE',
     ratingTenths: 44,
     reviewsCount: 12,
     bookingMode: 'INSTANT',
@@ -82,8 +82,8 @@ const CROWDED_VENUES = [
   {
     id: 4,
     name: 'Lori Beach',
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     ratingTenths: 40,
     reviewsCount: 15,
     bookingMode: 'INSTANT',
@@ -95,8 +95,8 @@ const CROWDED_VENUES = [
   {
     id: 5,
     name: 'Folie Marine',
-    beach: 'Dhërmi',
-    region: 'Albanian Riviera',
+    beach: 'DHERMI',
+    region: 'HIMARE',
     ratingTenths: 39,
     reviewsCount: 40,
     bookingMode: 'INSTANT',
@@ -108,8 +108,8 @@ const CROWDED_VENUES = [
   {
     id: 6,
     name: 'Dhërmi Sun Club',
-    beach: 'Dhërmi',
-    region: 'Albanian Riviera',
+    beach: 'DHERMI',
+    region: 'HIMARE',
     ratingTenths: 38,
     reviewsCount: 9,
     bookingMode: 'REQUEST',
@@ -330,7 +330,7 @@ test.describe('Discover map — fake engine', () => {
     const preview = page.getByTestId('venue-preview');
     await expect(preview).toBeVisible();
     await expect(preview.getByTestId('preview-name')).toHaveText('Miramar Beach Club');
-    await expect(preview.getByTestId('preview-location')).toHaveText('Ksamil · Albanian Riviera');
+    await expect(preview.getByTestId('preview-location')).toHaveText('Ksamil · Sarandë');
     await expect(preview.getByTestId('preview-rating')).toContainText('4.8');
     await expect(preview.getByTestId('preview-price')).toContainText('€25');
     // The cover really renders: a broken <img> would report zero natural width.

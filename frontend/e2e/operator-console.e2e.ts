@@ -32,8 +32,8 @@ function seat(id: number, availability: 'FREE' | 'TAKEN', pool: 'ONLINE' | 'WALK
 const VENUE_MAP = {
   id: 1,
   name: 'Miramar Beach Club',
-  beach: 'Ksamil',
-  region: 'Albanian Riviera',
+  beach: 'KSAMIL',
+  region: 'SARANDE',
   description: 'Loungers on the shore.',
   ratingTenths: 48,
   reviewsCount: 12,
@@ -51,15 +51,15 @@ const VENUE_MAP = {
 
 /** The operator's own venues as `GET /api/venues/mine` lists them: one by default, so the header
  *  renders the name as plain text; two for the switcher cases. */
-const OWNED_ONE = [{ id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' }];
-const OWNED_TWO = [...OWNED_ONE, { id: 2, name: 'Sereno', beach: 'Jal' }];
+const OWNED_ONE = [{ id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' }];
+const OWNED_TWO = [...OWNED_ONE, { id: 2, name: 'Sereno', beach: 'JALE' }];
 
 /** Venue 2 — 3 sets, 1 free — so every venue-scoped surface reads differently from venue 1. */
 const SECOND_VENUE_MAP = {
   ...VENUE_MAP,
   id: 2,
   name: 'Sereno',
-  beach: 'Jal',
+  beach: 'JALE',
   sets: [seat(1, 'FREE'), seat(2, 'TAKEN'), seat(3, 'TAKEN')],
 };
 
@@ -313,7 +313,7 @@ test('Ctrl-K: typing a venue name leaves its row, Enter opens that venue on the 
 }) => {
   await mockConsole(page, 2);
   await mockSecondVenue(page);
-  await mockOwnedVenues(page, [...OWNED_ONE, { id: 2, name: 'Aurora Bay', beach: 'Dhërmi' }]);
+  await mockOwnedVenues(page, [...OWNED_ONE, { id: 2, name: 'Aurora Bay', beach: 'DHERMI' }]);
   await page.goto('/operator/1/daily');
   await signIn(page);
   await expect(page.getByTestId('daily-view-tab')).toBeVisible();

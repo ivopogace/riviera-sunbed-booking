@@ -194,8 +194,8 @@ async function mockConsole(
   const venueMap = () => ({
     id: 1,
     name: 'Miramar Beach Club',
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     description: '',
     ratingTenths: 48,
     reviewsCount: 12,

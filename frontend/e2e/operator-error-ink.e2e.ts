@@ -61,8 +61,7 @@ async function openCreateError(page: Page): Promise<void> {
 
   await expect(page.getByTestId('venue-create-card')).toBeVisible();
   await page.getByTestId('venue-create-name').fill('Sunset Bar');
-  await page.getByTestId('venue-create-beach').fill('Ksamil');
-  await page.getByTestId('venue-create-region').fill('Albanian Riviera');
+  await page.getByTestId('venue-create-beach').selectOption('KSAMIL');
   await page.getByTestId('venue-create-description').fill('Loungers on the shore.');
   await page.getByTestId('venue-create-submit').click();
 }

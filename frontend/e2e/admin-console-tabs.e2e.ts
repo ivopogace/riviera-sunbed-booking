@@ -21,7 +21,7 @@ import { expectPhoneRailFits, openMoreSheet, openPalette } from './support/shell
 /** Sign in as the platform admin and open the console at `path`. */
 async function openConsole(page: Page, path = '/admin'): Promise<void> {
   await mockWholeAdminConsole(page);
-  await mockOwnedVenues(page, [{ id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' }]);
+  await mockOwnedVenues(page, [{ id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' }]);
   await page.goto('/operator');
   await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
   await page.goto(path);

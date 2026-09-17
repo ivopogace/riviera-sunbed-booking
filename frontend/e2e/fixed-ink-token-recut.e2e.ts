@@ -149,8 +149,8 @@ function venue() {
   return {
     id: VENUE_ID,
     name: 'Token Cove',
-    beach: 'Dhërmi',
-    region: 'Albanian Riviera',
+    beach: 'DHERMI',
+    region: 'HIMARE',
     description: 'A venue that exists so the calendar popover can be rendered and measured.',
     ratingTenths: 45,
     reviewsCount: 88,

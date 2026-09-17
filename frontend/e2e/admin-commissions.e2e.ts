@@ -35,14 +35,14 @@ async function mockCommissions(page: Page): Promise<void> {
     {
       venueId: 7,
       name: 'Bora Bora Beach',
-      beach: 'Dhërmi',
+      beach: 'DHERMI',
       commissionBps: 1500,
       payoutCurrency: 'EUR',
     },
     {
       venueId: 9,
       name: 'Folie Marine',
-      beach: 'Gjipe',
+      beach: 'GJIPE',
       commissionBps: 1000,
       payoutCurrency: 'EUR',
     },

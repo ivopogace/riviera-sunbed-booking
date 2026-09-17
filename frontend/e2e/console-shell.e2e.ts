@@ -21,8 +21,8 @@ import { expectTouchTargets } from './support/touch-targets';
 
 const ADMIN = { username: 'operator', password: 'admin-pw' };
 const TWO_VENUES = [
-  { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
-  { id: 2, name: 'Sunset Lido', beach: 'Dhërmi' },
+  { id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' },
+  { id: 2, name: 'Sunset Lido', beach: 'DHERMI' },
 ];
 
 test('an admin on /admin gets the section row with Your venues, Admin current and the chip, over the admin rail (#1011)', async ({

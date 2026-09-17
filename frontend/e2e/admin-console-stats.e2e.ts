@@ -48,12 +48,12 @@ const VENUES = [
   {
     venueId: 7,
     name: 'Bora Bora Beach',
-    beach: 'Dhërmi',
+    beach: 'DHERMI',
     commissionBps: 1500,
     payoutCurrency: 'EUR',
   },
-  { venueId: 9, name: 'Folie Marine', beach: 'Gjipe', commissionBps: 1000, payoutCurrency: 'EUR' },
-  { venueId: 11, name: 'Kalypso', beach: 'Jal', commissionBps: 1000, payoutCurrency: 'EUR' },
+  { venueId: 9, name: 'Folie Marine', beach: 'GJIPE', commissionBps: 1000, payoutCurrency: 'EUR' },
+  { venueId: 11, name: 'Kalypso', beach: 'JALE', commissionBps: 1000, payoutCurrency: 'EUR' },
 ];
 
 /**

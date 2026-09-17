@@ -16,8 +16,8 @@ const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
 const INITIAL_PROFILE = {
   name: 'Miramar Beach Club',
-  beach: 'Ksamil',
-  region: 'Albanian Riviera',
+  beach: 'KSAMIL',
+  region: 'SARANDE',
   description: 'Loungers on the shore.',
   bookingMode: 'INSTANT',
   bookingCutoff: '18:00',
@@ -39,8 +39,8 @@ function venueMap(name: string, bookingMode: string) {
   return {
     id: 1,
     name,
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     description: 'Loungers on the shore.',
     ratingTenths: 48,
     reviewsCount: 12,
