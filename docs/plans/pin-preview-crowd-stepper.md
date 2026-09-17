@@ -287,14 +287,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** phase 1 step 1 — the failing `venue-pin-layer.spec.ts` stack cases (AC-4, AC-5).
+**Next action:** phase 2 step 1 — the failing `venue-preview-card*.spec.ts` stepper cases (AC-6..10).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The shared footer pieces; sets free and sales closed on the preview | ✅ | the phase-0 commit (`Pin preview: sets free and sales closed, shared with the list card`) |
-| 1 — The layer's stack | | |
+| 0 — The shared footer pieces; sets free and sales closed on the preview | ✅ | `d2cac6d0` |
+| 1 — The layer's stack | ✅ | the phase-1 commit (`Pin layer: expose the open crowd's stack for the preview card`) |
 | 2 — The card's stepper | | |
 | 3 — Discover wiring | | |
 | 4 — Mocked e2e | | |
@@ -361,13 +361,13 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `pin-crowding.ts`, `venue-pin-layer.ts` · Test `venue-pin-layer.spec.ts`
 
-- [ ] **Step 1: Failing tests** — AC-4, AC-5 against the Dhërmi trio at `maxZoom` and the Ksamil pair at the opening view.
-- [ ] **Step 2: Run, verify FAIL** — `--include="src/app/pages/home/venue-pin-layer.spec.ts"` → `stack is not a function`.
-- [ ] **Step 3: Minimal implementation** — `CrowdStack` in `pin-crowding.ts`; `stack = computed(...)` over `places()` finding the place whose `current` is the selected pin.
-- [ ] **Step 4: Run, verify PASS** — the same, then `--include="src/app/pages/home/venue-pin-layer*.spec.ts"`.
-- [ ] **Step 5: Generalization audit** — population: every reader of the crowd's neighbour rule (`grep -n "members\[(" frontend/src/app/pages/home/venue-pin-layer.ts`) → `describe`'s `next` and the stack's `prevId`/`nextId`; both index the same `crowd.members` modulo its length.
-- [ ] **Step 6: Commit** — `Pin layer: expose the open crowd's stack for the preview card (#1139)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Failing tests** — AC-4, AC-5 against the Dhërmi trio at `maxZoom` and the Ksamil pair at the opening view.
+- [x] **Step 2: Run, verify FAIL** — `--include="src/app/pages/home/venue-pin-layer.spec.ts"` → `stack is not a function`.
+- [x] **Step 3: Minimal implementation** — `CrowdStack` in `pin-crowding.ts`; `stack = computed(...)` over `places()` finding the place whose `current` is the selected pin.
+- [x] **Step 4: Run, verify PASS** — the same, then `--include="src/app/pages/home/venue-pin-layer*.spec.ts"`.
+- [x] **Step 5: Generalization audit** — population: every reader of the crowd's neighbour rule (`grep -n "members\[(" frontend/src/app/pages/home/venue-pin-layer.ts`) → `describe`'s `next` and the stack's `prevId`/`nextId`; both index the same `crowd.members` modulo its length.
+- [x] **Step 6: Commit** — `Pin layer: expose the open crowd's stack for the preview card (#1139)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 2 — The card's stepper
 
@@ -417,6 +417,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-17 | phase 0 | every renderer of the footer's count or the sales-closed chip | `grep -rn "of {{ card.total }} free\|Sales closed for today" frontend/src/app --include=*.html --include=*.ts \| grep -v spec` | `shared/sales-closed-chip.ts` only (the list band and the preview both render it; the count is `app-sets-free` on both) | done — `venue-map.html`'s `map-sales-closed` is an alert with its own copy, not the chip, and stays |
+| 2026-09-17 | phase 1 | every reader of the crowd's neighbour rule (index modulo the member count) | `grep -n "members\[(" frontend/src/app/pages/home/venue-pin-layer.ts` | `describe`'s `next`, the stack's `prevId` | the stack's `nextId` reuses the place's `next`; only `prevId` indexes on its own, against the same `crowd.members` |
 
 ---
 

@@ -17,6 +17,7 @@ import {
   anchorLeft,
   crowdCentre,
   crowdPins,
+  CrowdStack,
   HANG_PX,
   layoutPills,
   lowestFromPrice,
@@ -189,6 +190,26 @@ export class VenuePinLayer {
       ...drafts.get(crowd.key)!,
       placement: placements.get(crowd.key)!,
     }));
+  });
+
+  /**
+   * The open venue's place in its inseparable crowd, for the preview card's stepper; `null` while
+   * nothing is open, or the open venue is on its own or in a crowd the camera can still separate.
+   */
+  readonly stack = computed<CrowdStack | null>(() => {
+    const place = this.places().find((candidate) => candidate.current !== null);
+    if (!place) {
+      return null;
+    }
+    const { members } = place.crowd;
+    const count = members.length;
+    return {
+      index: place.index,
+      count,
+      place: place.name,
+      prevId: members[(place.index - 1 + count) % count].pin.id,
+      nextId: place.next.pin.id,
+    };
   });
 
   /** Every venue's button in feed order, keyed by the pin — never by the crowd. */

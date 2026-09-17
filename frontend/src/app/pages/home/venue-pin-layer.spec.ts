@@ -331,6 +331,43 @@ describe('VenuePinLayer', () => {
       expect(narrowed).toEqual([]);
     });
 
+    it('exposes the open venue’s place in an inseparable crowd, wrapping at both ends', async () => {
+      await renderDhermi('12');
+      expect(fixture.componentInstance.stack()).toEqual({
+        index: 1,
+        count: 3,
+        place: 'Dhërmi',
+        prevId: '11',
+        nextId: '13',
+      });
+
+      select('11');
+      expect(fixture.componentInstance.stack()).toMatchObject({
+        index: 0,
+        prevId: '13',
+        nextId: '12',
+      });
+
+      select('13');
+      expect(fixture.componentInstance.stack()).toMatchObject({
+        index: 2,
+        prevId: '12',
+        nextId: '11',
+      });
+    });
+
+    it('exposes no stack for nothing open, a lone pin, or a crowd the camera can still separate', async () => {
+      await renderDhermi();
+      expect(fixture.componentInstance.stack()).toBeNull();
+
+      await render([AURORA], '3');
+      expect(fixture.componentInstance.stack()).toBeNull();
+
+      await render([MIRAMAR, LORI], '1');
+      expect(buttons('map-place-pill')[0].hasAttribute('data-here')).toBe(false);
+      expect(fixture.componentInstance.stack()).toBeNull();
+    });
+
     it('makes the open venue’s own button the pill, so the element that opened it keeps focus', async () => {
       await renderDhermi();
       const [havana, folie] = buttons();
