@@ -443,6 +443,38 @@ describe('RivieraMap', () => {
       expect(() => fixture.componentInstance.focusPin('404')).not.toThrow();
     });
 
+    it("shows a pin's badge on its face and keeps its name for assistive tech", async () => {
+      const priced: MapPin = { ...KSAMIL, label: 'Miramar Beach Club, from €25', badge: '€25' };
+      const fixture = await renderPins([priced, DHERMI_PIN]);
+
+      const [pill, dot] = pinButtons(fixture);
+      expect(pill.textContent?.trim()).toBe('€25');
+      expect(pill.getAttribute('aria-label')).toBe('Miramar Beach Club, from €25');
+      expect(dot.textContent?.trim()).toBe('\u25cf');
+
+      fixture.componentRef.setInput('selectedPin', '7');
+      fixture.detectChanges();
+
+      expect(pill.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('draws a plain dot for a pin with nothing to say', async () => {
+      const fixture = await renderPins([KSAMIL]);
+
+      const [button] = pinButtons(fixture);
+      expect(button.textContent?.trim()).toBe('\u25cf');
+      expect(button.getAttribute('aria-label')).toBe('Miramar Beach Club');
+    });
+
+    it('redraws a pin whose badge changed, so a repriced date shows its new price', async () => {
+      const fixture = await renderPins([{ ...KSAMIL, badge: '€25' }]);
+
+      fixture.componentRef.setInput('pins', [{ ...KSAMIL, badge: '€30' }]);
+      fixture.detectChanges();
+
+      expect(pinButtons(fixture).map((button) => button.textContent?.trim())).toEqual(['€30']);
+    });
+
     it('keeps the venue pins clear of the placement pin and the you-are-here dot', async () => {
       const fixture = await renderPins([KSAMIL]);
 

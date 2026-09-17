@@ -37,9 +37,51 @@ describe('venuePins', () => {
     ]);
 
     expect(pins).toEqual([
-      { id: '7', at: { lng: 20.0021, lat: 39.7712 }, label: 'Miramar Beach Club' },
-      { id: '9', at: { lng: 19.6401, lat: 40.1573 }, label: 'Aurora Bay' },
+      {
+        id: '7',
+        at: { lng: 20.0021, lat: 39.7712 },
+        label: 'Miramar Beach Club, from €25.00',
+        badge: '€25.00',
+      },
+      {
+        id: '9',
+        at: { lng: 19.6401, lat: 40.1573 },
+        label: 'Aurora Bay, from €25.00',
+        badge: '€25.00',
+      },
     ]);
+  });
+
+  it("carries the from-price onto the pin's face and into its name", () => {
+    const [pin] = venuePins([
+      card({
+        id: 7,
+        name: 'Miramar Beach Club',
+        priceLabel: '€12',
+        location: { latitude: 39.7712, longitude: 20.0021 },
+      }),
+    ]);
+
+    // The same string the list card and the preview card show — one record feeds all three.
+    expect(pin.badge).toBe('€12');
+    expect(pin.label).toBe('Miramar Beach Club, from €12');
+  });
+
+  it('draws a plain pin for a venue with no priced set', () => {
+    const [pin] = venuePins([
+      card({
+        id: 8,
+        name: 'Empty Cove',
+        priceLabel: null,
+        location: { latitude: 39.7712, longitude: 20.0021 },
+      }),
+    ]);
+
+    expect(pin).toEqual({
+      id: '8',
+      at: { lng: 20.0021, lat: 39.7712 },
+      label: 'Empty Cove',
+    });
   });
 
   it('omits a venue with no location, which stays in the list', () => {
@@ -48,7 +90,7 @@ describe('venuePins', () => {
       card({ id: 2, name: 'Unpinned' }),
     ]);
 
-    expect(pins.map((pin) => pin.label)).toEqual(['Pinned']);
+    expect(pins.map((pin) => pin.label)).toEqual(['Pinned, from €25.00']);
   });
 
   it('omits a venue whose payload carries no location key at all', () => {

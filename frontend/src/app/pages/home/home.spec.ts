@@ -1027,8 +1027,8 @@ describe('Home (venue pins and the preview)', () => {
     const fixture = await withPins();
 
     expect(pins(fixture).map((pin) => pin.getAttribute('aria-label'))).toEqual([
-      'Miramar Beach Club',
-      'Aurora Bay',
+      'Miramar Beach Club, from €25',
+      'Aurora Bay, from €30',
     ]);
     expect(el(fixture).querySelectorAll('[data-testid="venue-card"]').length).toBe(3);
   });
@@ -1178,7 +1178,7 @@ describe('Home (venue pins and the preview)', () => {
     await settle(fixture);
 
     expect(pins(fixture).map((pin) => pin.getAttribute('aria-label'))).toEqual([
-      'Miramar Beach Club',
+      'Miramar Beach Club, from €25',
     ]);
     expect(preview(fixture)).toBeNull();
   });
