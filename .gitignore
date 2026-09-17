@@ -32,3 +32,6 @@ replay_pid*.log
 
 # Claude Code isolated-worktree agent scratch space (not team-wide)
 .claude/worktrees/
+
+# THROWAWAY PROTOTYPE (#1134): the map assets the prototype dev server links into public/
+/frontend/public/map

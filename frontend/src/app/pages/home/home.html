@@ -369,14 +369,25 @@
       [hidden]="!mapOpen()"
     >
       @defer (when mapDefer()) {
+        <!-- PROTOTYPE (#1134): in variant mode the engine draws no pins — the overlay owns them. -->
         <app-riviera-map
           class="h-[calc(100dvh-220px)] max-h-[720px] min-h-[360px]"
           [nearMe]="true"
-          [pins]="pins()"
+          [options]="prototypeMapOptions()"
+          [pins]="prototypeVariant() ? [] : pins()"
           [selectedPin]="selectedVenue()"
           (pinSelected)="onPinSelected($event)"
           (mapClick)="closePreview()"
         />
+        @if (prototypeVariant(); as variant) {
+          <app-pin-crowding-prototype
+            [pins]="prototypePins()"
+            [map]="mapHandle()"
+            [variant]="variant"
+            [selected]="selectedVenue()"
+            (chosen)="onPinSelected($event)"
+          />
+        }
         @if (selectedCard(); as selected) {
           <!-- Bottom-anchored, clearing the credit pill the tiles' licences require to stay visible. -->
           <app-venue-preview-card
@@ -395,4 +406,8 @@
       }
     </div>
   </div>
+
+  @if (prototypeVariant(); as variant) {
+    <app-prototype-switcher [variant]="variant" />
+  }
 </section>

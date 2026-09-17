@@ -201,6 +201,8 @@ export class RivieraMap {
   });
 
   private readonly live = signal<MapHandle | undefined>(undefined);
+  /** PROTOTYPE (#1134): the live handle as a signal, so a consumer can react to the boot itself. */
+  readonly handle = this.live.asReadonly();
   private hereMarker: HTMLElement | undefined;
   private hereOnMap = false;
   private marker: HTMLElement | undefined;

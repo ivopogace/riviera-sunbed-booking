@@ -32,6 +32,12 @@ export interface MapMarker {
 /** `load`: the style and its first tiles are on screen. `error`: a resource failed to load. */
 export type MapEventName = 'load' | 'error';
 
+/** A point on the map's own box, in CSS px from its top-left corner. */
+export interface ScreenPoint {
+  readonly x: number;
+  readonly y: number;
+}
+
 /**
  * One live map. Everything the app needs from an engine, and nothing engine-specific: a
  * consumer that only uses this handle survives swapping MapLibre for another renderer.
@@ -49,6 +55,18 @@ export interface MapHandle {
    */
   moveMarker(id: string, lngLat: LngLat): void;
   removeMarker(id: string): void;
+  /**
+   * PROTOTYPE (#1134) — where a geographic point currently lands on the map's own box. Two pins
+   * overlap when this says they do, which is a function of the camera, so anything that reasons
+   * about crowding needs it together with {@link MapHandle.onMove}.
+   */
+  project(at: LngLat): ScreenPoint;
+  /**
+   * PROTOTYPE (#1134) — the camera moved: pan, zoom, gesture or `setView`. Fires continuously
+   * during a gesture, so a consumer recomputes per frame. Subscribe; the returned function
+   * unsubscribes.
+   */
+  onMove(handler: () => void): () => void;
   /** Subscribe; the returned function unsubscribes. */
   on(event: MapEventName, handler: () => void): () => void;
   /** Where the map surface was clicked. Subscribe; the returned function unsubscribes. */

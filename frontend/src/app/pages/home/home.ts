@@ -31,7 +31,8 @@ import { PhotoStepButton } from '../../shared/photo-step-button';
 import { slideshowPhotos } from '../../shared/photo-url';
 import { isRated, ratingScore, reviewsLabel } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
-import { MapPin, RivieraMap } from '../../shared/riviera-map';
+import { MapPin, RIVIERA_MAP_OPTIONS, RivieraMap } from '../../shared/riviera-map';
+import { MapEngineOptions, MapView } from '../../shared/map-engine';
 import { ClosedForSeasonChip } from '../../shared/closed-for-season-chip';
 import { SemanticChip } from '../../shared/semantic-chip';
 import { defaultBookingDate, formatDayMonth, isIsoDate } from '../../shared/booking-date';
@@ -41,12 +42,25 @@ import { VenueService } from '../../venue/venue.service';
 import { VenueCard } from './venue-card';
 import { venuePins } from './venue-pins';
 import { VenuePreviewCard } from './venue-preview-card';
+import { CROWD_FIXTURE } from './prototype-1134/crowd-fixture';
+import { PinCrowdingPrototype } from './prototype-1134/pin-crowding-prototype';
+import { PrototypePin } from './prototype-1134/pin-crowding';
+import { PrototypeSwitcher } from './prototype-1134/prototype-switcher';
+import { readVariant } from './prototype-1134/prototype-variant';
 
 /**
  * Tailwind's `lg` breakpoint — the twin of the `lg:` utilities in `home.html` that lay the map
  * beside the list. Both must move together.
  */
 const WIDE_VIEWPORT = '(min-width: 1024px)';
+
+/** PROTOTYPE: `?at=lng,lat,zoom`, or `null` when absent or malformed — then the riviera-wide view. */
+function readCamera(raw: string | null): MapView | null {
+  const parts = (raw ?? '').split(',').map(Number);
+  return parts.length === 3 && parts.every(Number.isFinite)
+    ? { center: { lng: parts[0], lat: parts[1] }, zoom: parts[2] }
+    : null;
+}
 
 /** The closed-state clause of a card's accessible name; the season badge outranks today's sales close. */
 function closedStateText(
@@ -94,6 +108,8 @@ function closedStateText(
     TouchTarget,
     RivieraMap,
     VenuePreviewCard,
+    PinCrowdingPrototype,
+    PrototypeSwitcher,
     ...FAILURE_DIRECTIVES,
   ],
   host: {
@@ -211,6 +227,43 @@ export class Home {
     return this.venuesView()?.find((card) => String(card.id) === open) ?? null;
   });
 
+  /**
+   * THROWAWAY PROTOTYPE (issue #1134): the `?variant=` key, or `null` for the real page. When set,
+   * the list comes from `CROWD_FIXTURE` instead of the API — so the prototype runs with no backend
+   * — and the map's own pin layer is handed over to the overlay under test.
+   */
+  protected readonly prototypeVariant = signal(readVariant(null));
+
+  /** The prototype overlay's pins: the map seam's id and position, plus the card it stands for. */
+  protected readonly prototypePins = computed<readonly PrototypePin[]>(() =>
+    (this.venuesView() ?? []).flatMap((card) =>
+      card.location
+        ? [
+            {
+              id: String(card.id),
+              at: { lng: card.location.longitude, lat: card.location.latitude },
+              card,
+            },
+          ]
+        : [],
+    ),
+  );
+
+  /** The live engine handle the overlay projects through; `undefined` until the map has booted. */
+  protected readonly mapHandle = computed(() => this.map()?.handle());
+
+  /**
+   * PROTOTYPE: `?at=lng,lat,zoom` opens the map on a named case rather than the riviera-wide view,
+   * so each crowding scale is a shareable URL — the Dhërmi three at `maxZoom` is the one that
+   * proves zooming cannot fix this.
+   */
+  private readonly prototypeCamera = signal<MapView | null>(null);
+
+  protected readonly prototypeMapOptions = computed<MapEngineOptions>(() => {
+    const view = this.prototypeCamera();
+    return view ? { ...RIVIERA_MAP_OPTIONS, view } : RIVIERA_MAP_OPTIONS;
+  });
+
   /** Guards against an earlier slow response overwriting a newer one (last-writer-wins). */
   private lastRequest = '';
 
@@ -229,14 +282,34 @@ export class Home {
     this.rescueFocusFromClosingPreview();
     this.followViewport();
     this.selectedDate.set(this.routeDate(this.route.snapshot.queryParamMap));
-    this.loadInitial();
+    this.prototypeVariant.set(readVariant(this.route.snapshot.queryParamMap.get('variant')));
+    this.prototypeCamera.set(readCamera(this.route.snapshot.queryParamMap.get('at')));
+    if (this.prototypeVariant()) {
+      this.loadPrototypeFixture();
+    } else {
+      this.loadInitial();
+    }
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      this.prototypeVariant.set(readVariant(params.get('variant')));
       const date = this.routeDate(params);
       if (date !== this.selectedDate()) {
         this.selectedDate.set(date);
-        this.reload();
+        if (this.prototypeVariant()) {
+          this.loadPrototypeFixture();
+        } else {
+          this.reload();
+        }
       }
     });
+  }
+
+  /** PROTOTYPE (issue #1134): the crowded venue list, in place of any API call at all. */
+  private loadPrototypeFixture(): void {
+    this.lastLoad = () => this.loadPrototypeFixture();
+    const byLocale = (a: string, b: string): number => a.localeCompare(b);
+    this.beaches.set([...new Set(CROWD_FIXTURE.map((v) => v.beach))].sort(byLocale));
+    this.regions.set([...new Set(CROWD_FIXTURE.map((v) => v.region))].sort(byLocale));
+    this.venues.set([...CROWD_FIXTURE]);
   }
 
   // Guarded: jsdom has no matchMedia — then the page stays in its narrow, switched layout.
@@ -366,6 +439,16 @@ export class Home {
   /** Re-fetch the list for the current filter + date. */
   private reload(): void {
     this.lastLoad = () => this.reload();
+    if (this.prototypeVariant()) {
+      this.venues.set(
+        CROWD_FIXTURE.filter(
+          (venue) =>
+            (!this.beach() || venue.beach === this.beach()) &&
+            (!this.region() || venue.region === this.region()),
+        ),
+      );
+      return;
+    }
     const token = this.beginRequest();
     this.venueService
       .listVenues(

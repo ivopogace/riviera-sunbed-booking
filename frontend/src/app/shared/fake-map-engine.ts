@@ -6,6 +6,7 @@ import {
   MapHandle,
   MapMarker,
   MapView,
+  ScreenPoint,
 } from './map-engine';
 
 /**
@@ -19,6 +20,7 @@ export class FakeMapHandle implements MapHandle {
   private readonly listeners = new Map<MapEventName, Set<() => void>>();
   private readonly clickHandlers = new Set<(at: LngLat) => void>();
   private readonly dragEndHandlers = new Set<(id: string, at: LngLat) => void>();
+  private readonly moveHandlers = new Set<() => void>();
   private isDestroyed = false;
 
   constructor(
@@ -43,14 +45,17 @@ export class FakeMapHandle implements MapHandle {
 
   setView(view: MapView): void {
     this.current = view;
+    this.moveHandlers.forEach((handler) => handler());
   }
 
   zoomIn(): void {
     this.current = { ...this.current, zoom: this.current.zoom + 1 };
+    this.moveHandlers.forEach((handler) => handler());
   }
 
   zoomOut(): void {
     this.current = { ...this.current, zoom: this.current.zoom - 1 };
+    this.moveHandlers.forEach((handler) => handler());
   }
 
   addMarker(marker: MapMarker): void {
@@ -71,6 +76,21 @@ export class FakeMapHandle implements MapHandle {
   removeMarker(id: string): void {
     this.markerSet.get(id)?.element.remove();
     this.markerSet.delete(id);
+  }
+
+  /** The same interpolation {@link FakeMapHandle.placeElement} uses, in px rather than percent. */
+  project(at: LngLat): ScreenPoint {
+    const box = this.surface?.getBoundingClientRect();
+    const [southWest, northEast] = this.options.maxBounds;
+    const acrossX = clampUnit((at.lng - southWest.lng) / (northEast.lng - southWest.lng));
+    const acrossY = clampUnit((northEast.lat - at.lat) / (northEast.lat - southWest.lat));
+    return { x: acrossX * (box?.width ?? 0), y: acrossY * (box?.height ?? 0) };
+  }
+
+  /** The fake camera only moves when someone calls it, and every caller here reports afterwards. */
+  onMove(handler: () => void): () => void {
+    this.moveHandlers.add(handler);
+    return () => this.moveHandlers.delete(handler);
   }
 
   on(event: MapEventName, handler: () => void): () => void {
@@ -116,6 +136,7 @@ export class FakeMapHandle implements MapHandle {
     this.listeners.clear();
     this.clickHandlers.clear();
     this.dragEndHandlers.clear();
+    this.moveHandlers.clear();
   }
 
   /**

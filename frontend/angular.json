@@ -72,6 +72,28 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "prototype": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prototype.ts"
+                }
+              ],
+              "assets": [
+                {
+                  "glob": "**/*",
+                  "input": "public"
+                },
+                {
+                  "glob": "maplibre-gl{.css,-worker.mjs,-shared.mjs}",
+                  "input": "node_modules/maplibre-gl/dist",
+                  "output": "vendor"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -84,6 +106,9 @@
             },
             "development": {
               "buildTarget": "frontend:build:development"
+            },
+            "prototype": {
+              "buildTarget": "frontend:build:prototype"
             }
           },
           "defaultConfiguration": "development"

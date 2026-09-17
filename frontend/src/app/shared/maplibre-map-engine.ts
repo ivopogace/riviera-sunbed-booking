@@ -9,6 +9,7 @@ import {
   MapHandle,
   MapMarker,
   MapView,
+  ScreenPoint,
 } from './map-engine';
 
 /** MapLibre's own stylesheet, copied into the build by `angular.json` (`assets`) — never a CDN. */
@@ -152,6 +153,16 @@ class MapLibreHandle implements MapHandle {
   removeMarker(id: string): void {
     this.markers.get(id)?.remove();
     this.markers.delete(id);
+  }
+
+  project(at: LngLat): ScreenPoint {
+    const { x, y } = this.map.project([at.lng, at.lat]);
+    return { x, y };
+  }
+
+  onMove(handler: () => void): () => void {
+    const subscription = this.map.on('move', () => handler());
+    return () => subscription.unsubscribe();
   }
 
   on(event: MapEventName, handler: () => void): () => void {
