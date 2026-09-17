@@ -40,13 +40,17 @@ export const RIVIERA_MAP_OPTIONS: MapEngineOptions = {
 
 /**
  * One selectable pin the map draws: a stable id the consumer keys its own data by, where it
- * sits, and the name it announces. Deliberately free of any venue vocabulary — the map draws
- * pins, and what a pin stands for is its consumer's business.
+ * sits, the name it announces, and optionally a few characters written on its face. Deliberately
+ * free of any venue vocabulary — the map draws pins, and what a pin stands for is its consumer's
+ * business: the map does not know that a badge is a price, so the consumer puts that meaning
+ * into the label as well, which is what assistive tech reads.
  */
 export interface MapPin {
   readonly id: string;
   readonly at: LngLat;
   readonly label: string;
+  /** Short text shown on the pin's face — a price, a count. Absent, the pin is a plain dot. */
+  readonly badge?: string;
 }
 
 type MapStatus = 'booting' | 'ready' | 'unavailable';
@@ -78,17 +82,29 @@ export const HERE_MARKER = 'you-are-here';
 const VENUE_PIN_PREFIX = 'venue-pin:';
 
 /**
- * A venue pin's box: the same 44 px theme-invariant solid-button skin the placement pin wears,
- * but a real control — it opens something, so it is a `<button>` and takes the focus ring. The
+ * A venue pin's box: the same theme-invariant solid-button skin the placement pin wears, but a
+ * real control — it opens something, so it is a `<button>` and takes the focus ring. 44 px tall
+ * and at least 44 px wide (WCAG 2.5.5 on both axes), growing with whatever is written on it. The
  * selected pin INVERTS that same fixed pair rather than reaching for the accent: it sits on
  * imagery, which never themes, so a theme-switching fill under a fixed ink would drift.
  * Paints above the you-are-here dot and below the chrome column's `z-10`.
  */
 const VENUE_PIN_CLASSES =
-  'inline-flex size-11 touch-manipulation items-center justify-center rounded-full ' +
-  'border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill text-[20px] leading-none ' +
+  'inline-flex h-11 min-w-11 touch-manipulation items-center justify-center rounded-full ' +
+  'border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill leading-none ' +
   'text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] z-[2] ' +
   'aria-expanded:bg-riv-solid-btn-ink aria-expanded:text-riv-solid-btn-fill';
+
+/** The dot a pin with no badge shows: the placement pin's glyph, at its size. */
+const VENUE_PIN_DOT_CLASSES = 'text-[20px]';
+
+/**
+ * A badged pin is a pill: the text at the card price's weight, tabular so `€25` and `€30` sit
+ * the same width side by side, and never wrapped — a pin that grew a second line would drop
+ * below the floor.
+ */
+const VENUE_PIN_BADGE_CLASSES =
+  'px-[12px] text-[14px] font-extrabold tabular-nums whitespace-nowrap';
 
 /**
  * Town scale: near enough to tell which beach the visitor is on, wide enough to still show the
@@ -141,7 +157,7 @@ const HERE_CLASSES =
  * SELECTABLE markers: labelled buttons a keyboard walks in feed order, reporting the pressed id
  * through `pinSelected`, with `selectedPin` marking whichever one has something open and
  * `focusPin` handing focus back when that closes. Venue vocabulary stays above the seam — a pin
- * is an id, a position and a name.
+ * is an id, a position, a name and, at most, a few characters on its face.
  */
 @Component({
   selector: 'app-riviera-map',
@@ -291,7 +307,9 @@ export class RivieraMap {
     if (!handle) {
       return;
     }
-    const key = pins.map((pin) => `${pin.id}\u0000${pin.label}`).join('\u0001');
+    const key = pins
+      .map((pin) => `${pin.id}\u0000${pin.label}\u0000${pin.badge ?? ''}`)
+      .join('\u0001');
     if (key === this.venuePinKey) {
       this.moveVenuePins(handle, pins);
       return;
@@ -340,12 +358,14 @@ export class RivieraMap {
     element.type = 'button';
     element.setAttribute('aria-label', pin.label);
     element.setAttribute('aria-expanded', 'false');
-    element.className = VENUE_PIN_CLASSES;
+    element.className =
+      `${VENUE_PIN_CLASSES} ` + (pin.badge ? VENUE_PIN_BADGE_CLASSES : VENUE_PIN_DOT_CLASSES);
     element.dataset['testid'] = 'map-venue-pin';
-    const glyph = this.document.createElement('span');
-    glyph.setAttribute('aria-hidden', 'true');
-    glyph.textContent = '\u25cf';
-    element.appendChild(glyph);
+    const face = this.document.createElement('span');
+    // The label carries the badge's meaning; the face alone would announce a bare `€25` or a dot.
+    face.setAttribute('aria-hidden', 'true');
+    face.textContent = pin.badge ?? '\u25cf';
+    element.appendChild(face);
     element.addEventListener('click', (event) => {
       // Mounted inside the surface the engines read clicks from: a pin press is not a map press.
       event.stopPropagation();
