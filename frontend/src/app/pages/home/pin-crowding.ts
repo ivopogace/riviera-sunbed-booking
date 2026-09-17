@@ -184,12 +184,12 @@ export function placeName(beaches: readonly string[]): string {
  * chosen in integer minor units and formatted once (invariant #5), or absent when none is priced.
  */
 export function lowestFromPrice(cards: readonly VenueCard[]): string | null {
-  const priced = cards.flatMap((card) => (card.fromPrice ? [card.fromPrice] : []));
-  if (priced.length === 0) {
+  const [first, ...rest] = cards.flatMap((card) => (card.fromPrice ? [card.fromPrice] : []));
+  if (!first) {
     return null;
   }
   return formatMoney(
-    priced.reduce((low, price) => (price.minorUnits < low.minorUnits ? price : low)),
+    rest.reduce((low, price) => (price.minorUnits < low.minorUnits ? price : low), first),
   );
 }
 
