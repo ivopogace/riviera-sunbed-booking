@@ -56,6 +56,12 @@ export class VenuePreviewCard {
   /** PROTOTYPE, variant D: the tourist stepped to this neighbour at the same spot. */
   readonly stepped = output<string>();
 
+  /** PROTOTYPE, variant D: one dot per crowd member while the rail fits; past six, a count. */
+  protected readonly stackDots = computed(() => {
+    const count = this.stack()?.count ?? 0;
+    return count <= 6 ? Array.from({ length: count }, (_unused, at) => at) : [];
+  });
+
   protected readonly headingId = HEADING_ID;
 
   /** The cover alone: a preview is one photo, never the card's whole crossfading stack. */

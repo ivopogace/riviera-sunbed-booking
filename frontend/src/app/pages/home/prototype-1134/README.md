@@ -41,15 +41,19 @@ MapLibre tiles itself; the venue list is `crowd-fixture.ts`, so no `/api` call i
 A, B and C occupy _merge_, _defer to a list_ and _displace_. D takes two axes none of them use —
 **the pin itself** and **time**:
 
-- **The pin is a chip, never an anonymous dot.** Alone it carries the venue's name; a crowd carries
-  its beach and the count (`Dhërmi 3`), or both beaches when it spans two (`Borsh & Qeparo`). The map
-  informs before anyone presses. Labels declutter greedily, biggest crowd first: a tail that would run
-  over another pin's disc, an already-placed tail or the map's edge tries the other side, then yields
-  to a bare counted disc. The disc — the control — never moves and never yields.
+- **The pin is a chip, never an anonymous dot.** A coin sits exactly on the venue, in the map
+  chrome's own solid skin, and a label lozenge tucks in behind it: the venue's name when alone, the
+  beach and count when several share the spot (`Dhërmi 3`), or both beaches when the crowd spans two
+  (`Borsh & Qeparo`). A crowd's coin wears an inner rim — a stack's silhouette before the numeral is
+  read. The map informs before anyone presses. Labels declutter greedily, biggest crowd first: a
+  lozenge that would run over another coin, an already-placed lozenge or the map's edge tries the
+  other side, then yields; the coin — the control — never moves and never yields.
 - **A press opens a venue, not a menu.** Pressing a crowd opens the first member's preview at once,
-  the same card a lone pin opens; pressing the chip again walks to the next member (wrapping), and the
-  card carries a `k of n here ‹ ›` stepper doing the same. Nothing on the map moves or merges away,
-  and nothing covers the map beyond the card the page already has.
+  the same card a lone pin opens; the coin flips to teal and reads `1/3`, the lozenge names the venue.
+  Pressing the chip again walks to the next member (wrapping), and the card carries a glass stepper
+  pill — the app's own dot rail between two chevrons, announcing each step politely — doing the
+  same. Nothing on the map moves or merges away, and nothing covers the map beyond the card the page
+  already has.
 - **Keyboard parity is kept, not approximated.** A crowd stays n real buttons in feed order, exactly
   as production draws them: the chip is the current member's button, the others are invisible at the
   same spot until focused. The buttons are tracked by pin, never by crowd, which is what makes them
@@ -140,7 +144,7 @@ an answer.
 
 **D — Named pins, press again.** The strongest at the scale the report is about — a pair or a
 triple: one press opens a venue's full card (photo, rating, price, the funnel link), one more flips
-to the other, the pin said who was there before either press, and the map stays 65 % visible. It is
+to the other, the pin said who was there before either press, and the map stays two-thirds visible. It is
 also the only variant whose controls are the pins themselves, so nothing is rebuilt on a re-group
 and the keyboard walks exactly what it walks today. Its costs are real and they grow with n: choosing
 between five venues means five cards in sequence rather than one list, the preview card carries no

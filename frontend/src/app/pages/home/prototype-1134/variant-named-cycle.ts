@@ -37,8 +37,9 @@ export interface CrowdStack {
   readonly nextId: string;
 }
 
-/** The tail's own text metrics at `text-[13px] font-bold`; jsdom has no canvas, so a fallback. */
-const TAIL_PADDING = 14;
+/** The tail past the coin's edge: 8 px of tuck, 13 px of end padding; jsdom has no canvas, so a fallback. */
+const TAIL_PADDING = 21;
+const TAIL_TEXT_MAX = 137;
 const FALLBACK_CHAR_PX = 7.4;
 
 /**
@@ -70,7 +71,7 @@ const FALLBACK_CHAR_PX = 7.4;
         <button
           type="button"
           appTouchTarget
-          class="pointer-events-auto absolute inline-flex h-11 touch-manipulation items-center rounded-full border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] aria-expanded:bg-riv-solid-btn-ink aria-expanded:text-riv-solid-btn-fill"
+          class="group pointer-events-auto absolute inline-flex h-11 touch-manipulation items-center rounded-full"
           [class.flex-row-reverse]="slot.chip.tail === 'left'"
           [style.left.px]="slot.chip.cluster.x"
           [style.top.px]="slot.chip.cluster.y"
@@ -79,20 +80,37 @@ const FALLBACK_CHAR_PX = 7.4;
           [attr.aria-expanded]="slot.chip.current !== null"
           (click)="chosen.emit(slot.chip.next.pin.id)"
         >
+          <!-- The coin sits exactly on the venue; a crowd's coin wears a rim, a stack's silhouette. -->
           <span
-            class="inline-flex size-10 shrink-0 items-center justify-center text-[17px] leading-none font-bold tabular-nums"
+            class="relative z-[1] inline-flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] group-hover:bg-riv-solid-btn-hover group-aria-expanded:border-riv-solid-btn-fill group-aria-expanded:bg-riv-solid-btn-ink group-aria-expanded:text-riv-solid-btn-fill motion-safe:[transition:background-color_0.15s_ease,color_0.15s_ease]"
+            [class]="
+              slot.chip.cluster.members.length > 1
+                ? 'inset-ring-2 inset-ring-riv-solid-btn-ink/16 group-aria-expanded:inset-ring-riv-solid-btn-fill/25'
+                : ''
+            "
             aria-hidden="true"
           >
-            @if (slot.chip.cluster.members.length > 1) {
-              {{ slot.chip.cluster.members.length }}
+            @if (slot.chip.current !== null) {
+              <span class="text-[13px] leading-none font-bold tabular-nums"
+                >{{ slot.chip.index + 1 }}<span class="opacity-55">/</span
+                >{{ slot.chip.cluster.members.length }}</span
+              >
+            } @else if (slot.chip.cluster.members.length > 1) {
+              <span class="text-[17px] leading-none font-bold tabular-nums">{{
+                slot.chip.cluster.members.length
+              }}</span>
             } @else {
-              <span class="text-[20px]">&#x25cf;</span>
+              <span class="text-[20px] leading-none">&#x25cf;</span>
             }
           </span>
           @if (slot.chip.tail !== 'none') {
             <span
-              class="max-w-[160px] truncate text-[13px] leading-none font-bold"
-              [class]="slot.chip.tail === 'left' ? 'pr-1 pl-3' : 'pr-3 pl-1'"
+              class="h-[34px] max-w-[180px] truncate rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill text-[13px] leading-[32px] font-semibold text-riv-solid-btn-ink shadow-[0_4px_14px_rgba(7,42,58,0.28)] group-hover:bg-riv-solid-btn-hover group-aria-expanded:font-bold motion-safe:[transition:background-color_0.15s_ease]"
+              [class]="
+                slot.chip.tail === 'left'
+                  ? '-mr-[22px] pr-[30px] pl-[13px]'
+                  : '-ml-[22px] pr-[13px] pl-[30px]'
+              "
               aria-hidden="true"
               >{{ slot.chip.text }}</span
             >
@@ -102,7 +120,7 @@ const FALLBACK_CHAR_PX = 7.4;
         <button
           type="button"
           appTouchTarget
-          class="pointer-events-none absolute inline-flex size-11 items-center justify-center rounded-full border-2 border-riv-solid-btn-fill bg-riv-solid-btn-ink text-[13px] leading-none font-bold text-riv-solid-btn-fill opacity-0 focus-visible:z-[1] focus-visible:opacity-100"
+          class="pointer-events-none absolute inline-flex size-11 items-center justify-center rounded-full border-2 border-riv-solid-btn-fill bg-riv-solid-btn-ink text-[13px] leading-none font-bold text-riv-solid-btn-fill opacity-0 inset-ring-2 inset-ring-riv-solid-btn-fill/25 focus-visible:z-[2] focus-visible:opacity-100"
           [style.left.px]="slot.chip.cluster.x"
           [style.top.px]="slot.chip.cluster.y"
           [style.translate]="'-50% -50%'"
@@ -265,9 +283,9 @@ function tailWidth(text: string): number {
     measurer = globalThis.document?.createElement('canvas').getContext('2d') ?? null;
     if (measurer) {
       const family = getComputedStyle(document.body).fontFamily || 'sans-serif';
-      measurer.font = `700 13px ${family}`;
+      measurer.font = `600 13px ${family}`;
     }
   }
   const glyphs = measurer ? measurer.measureText(text).width : text.length * FALLBACK_CHAR_PX;
-  return Math.min(160, glyphs) + TAIL_PADDING;
+  return Math.min(TAIL_TEXT_MAX, glyphs) + TAIL_PADDING;
 }
