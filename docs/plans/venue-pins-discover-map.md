@@ -31,8 +31,14 @@ issue body of #806). Last of the epic's four slices.
 sub-issues with no markdown checklist) · `riviera-plan-doc` (this template — forced the
 Module-ownership table for a slice with no production Java, and the seam per AC) · `tdd`
 (every phase red-first at the seams named below) · `riviera-review-overlay` (review gate —
-due at ready-for-review) · `riviera-docs-freshness` (**due** at merge close-out, and again
-over the epic's full merge span — #1101 is the last slice of #806) · `riviera-frontend`
+due at ready-for-review) · `riviera-docs-freshness` (**ran** over both ranges: the slice's pre-merge
+smoke `30034202..8173065e`, and — #1101 being the last slice of epic #806 — the epic's full
+merge span `ceb53387^..8173065e`. **Zero false-statement findings.** The counting sweep held:
+`riviera-frontend`'s "three flag-swapped instances today" is still exact (`shared/geolocation.ts`
+is deliberately not a fourth — it takes a plain `useClass`, as that same paragraph says). One
+action item, done here: `docs/plans/near-me-geolocation.md` retired, its PR #1130 having merged.
+This plan is NOT retired here — the rule deletes plans whose PR has **already** merged, and this
+is the PR being closed out; it retires at the next close-out) · `riviera-frontend`
 (placement: the generic pin input stays on `shared/riviera-map.ts`; `VenueCard`, the pin
 derivation and the preview card are colocated flat in `pages/home/`; `VenueCard` moves to
 its own file to break the `home.ts` ↔ preview-card import cycle) · `riviera-tailwind`
@@ -56,66 +62,66 @@ session addendum). Exists at `origin/main` (3003420) before phase 0.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue list of two located venues and one with a null location, when
+- [x] **AC-1:** Given a venue list of two located venues and one with a null location, when
   the pins are derived, then exactly two pins are produced, in list order, each carrying the
   venue's id and its name as the label. *Seam:* `venuePins(cards)` — the pure derivation
   function `pages/home/venue-pins.ts` exports · *Pinned by:*
   `venue-pins.spec.ts` › `venuePins omits a venue with no location` / `keeps list order`
 
-- [ ] **AC-2:** Given a `RivieraMap` fed three `pins`, when it renders against the fake
+- [x] **AC-2:** Given a `RivieraMap` fed three `pins`, when it renders against the fake
   engine, then the engine holds one marker per pin whose element is a `<button>` named by
   the pin's label, mounted in feed order; and when the `pins` input drops one, then its
   marker is gone. *Seam:* the `MapEngine` token (`MapHandle.markers()` on the fake) ·
   *Pinned by:* `riviera-map.spec.ts` › `draws one marker per pin, in feed order`
 
-- [ ] **AC-3:** Given a rendered pin button, when it is activated, then `RivieraMap` emits
+- [x] **AC-3:** Given a rendered pin button, when it is activated, then `RivieraMap` emits
   `pinSelected` with that pin's id and the click does **not** also reach the map surface (so
   a pin tap never counts as the map tap that closes a preview). *Seam:* the `MapEngine`
   token + the component's `pinSelected` output · *Pinned by:* `riviera-map.spec.ts` ›
   `a pin press selects it without reporting a map click`
 
-- [ ] **AC-4:** Given Discover with a preview open for venue 1, when the beach filter
+- [x] **AC-4:** Given Discover with a preview open for venue 1, when the beach filter
   changes, then exactly one further `GET /api/venues` request is made, the pin set becomes
   the new result's located venues, and the preview is closed. *Seam:* `GET /api/venues` (the
   mocked route) + the rendered pin/preview DOM · *Pinned by:* `discover-map.e2e.ts` ›
   `a filter change re-feeds the pins from one request and closes the preview`
 
-- [ ] **AC-5:** Given Discover with pins, when a pin is tapped, then a preview card opens
+- [x] **AC-5:** Given Discover with pins, when a pin is tapped, then a preview card opens
   showing the venue's cover photo, name, `beach · region`, rating and the from-price for the
   chosen date, and its link navigates to `/venues/:id?date=<selected>`. *Seam:* the rendered
   Discover DOM + the router URL · *Pinned by:* `discover-map.e2e.ts` › `a pin opens its
   preview and the preview leads to the beach map with the date carried`
 
-- [ ] **AC-6:** Given a venue closed for the season, when its pin is tapped, then the preview
+- [x] **AC-6:** Given a venue closed for the season, when its pin is tapped, then the preview
   card carries the closed-for-season state the list card shows. *Seam:* the
   `VenuePreviewCard` component input · *Pinned by:* `venue-preview-card.spec.ts` › `shows the
   closed-for-season state`
 
-- [ ] **AC-7:** Given one preview open, when another pin is tapped, then only the newer
+- [x] **AC-7:** Given one preview open, when another pin is tapped, then only the newer
   preview is present; and when Escape is pressed or the map surface is tapped, then the
   preview closes and focus returns to the pin that opened it. *Seam:* the rendered Discover
   DOM (`document.activeElement`) · *Pinned by:* `home.spec.ts` › `opens one preview at a
   time` / `Escape closes the preview and returns focus to its pin`
 
-- [ ] **AC-8:** Given Discover on a wide viewport with a preview open, when a pin is
+- [x] **AC-8:** Given Discover on a wide viewport with a preview open, when a pin is
   selected, then the matching list card is marked `aria-current="true"` and scrolled into
   view, and no other card is. *Seam:* the rendered Discover DOM · *Pinned by:* `home.spec.ts`
   › `marks and reveals the selected venue's card`
 
-- [ ] **AC-9:** Given Discover with pins and a preview open, when axe, the contrast sweep and
+- [x] **AC-9:** Given Discover with pins and a preview open, when axe, the contrast sweep and
   the touch-target sweep run on chromium, phone and fold, then no serious violation is
   reported, every pin measures ≥ 44 × 44 px, and the map's OpenMapTiles/OpenStreetMap credit
   is **not** covered by the preview card. *Seam:* the rendered Discover DOM ·
   *Pinned by:* `discover-map.e2e.ts` › `pins and an open preview stay accessible and leave
   the credit visible`, `home.a11y.spec.ts`, `home.contrast.spec.ts`
 
-- [ ] **AC-10:** Given a venue that carries a location and whose owning operator is then
+- [x] **AC-10:** Given a venue that carries a location and whose owning operator is then
   suspended, when the tourist catalogue is listed, then the venue is **absent from the
   response entirely** — not present with a null location — and while the operator is `ACTIVE`
   the same venue is listed *with* its location. *Seam:* `venue.api.VenueCatalog#listVenues` ·
   *Pinned by:* `VenueCatalogVisibilityIT.listOmitsPinnedVenueOfSuspendedOperator`
 
-- [ ] **AC-11:** Given the **real** MapLibre engine on Discover with pins and a preview open
+- [x] **AC-11:** Given the **real** MapLibre engine on Discover with pins and a preview open
   (cover photo included), when every request is inspected, then none leaves our origin.
   *Seam:* Playwright's `page.on('request')` against the real adapter · *Pinned by:*
   `discover-map.e2e.ts` › `the map open on Discover makes no request to a third party`
@@ -151,7 +157,7 @@ existing single `pin`/`pinDraggable`/`pinMoved` placement contract (the operator
 | R-4 | #1098's network guard runs against the **real** engine, whose `VENUES` fixture has no `location` and no `coverPhoto` — extending it naively would assert "no third-party requests" on a map with zero pins, i.e. vacuously | high | med | The fixture gains locations **and** a mocked same-origin cover photo; the guard opens a preview and waits for the cover `<img>` to complete before reading the request log | plan | **closed** — AC-11 |
 | R-5 | Moving `VenueCard` out of `home.ts` for the preview card creates a `home.ts` ↔ `venue-preview-card.ts` import cycle | med | med | `VenueCard` lands in its own `pages/home/venue-card.ts`; both import it, neither imports the other | plan | **closed** — no cycle; lint and build clean |
 | R-6 | Focus moves into a non-modal preview dialog and is stranded when the preview closes because its list re-fetched underneath it | med | med | **The plan's first mitigation here was wrong, and the review gate caught it** (F-5): it argued only that `focusPin` cannot throw on a vanished pin, and cited a test that never asserts where focus lands. Where focus actually goes is now the mitigation — an `activeElement`-guarded effect lands it on the count block when the card is torn down while holding it — and the citation is a test that asserts it | plan | **closed** — `home.spec.ts` › *never strands focus when the previewed venue leaves the list under an open card* (asserts `document.activeElement`), with `riviera-map.spec.ts` › *ignores a focus request for a pin that is no longer on the map* covering the throw case it originally claimed |
-| R-7 | Open PR #1093 bumps Vitest 4.1.11 → **5.0.0** (a major) under this slice's new specs | low | med | No Flyway migration here, so no `V<n>` collision; if #1093 merges first, merge `main` in with full phase discipline and re-run `npm test` before ready-for-review | plan | open |
+| R-7 | Open PR #1093 bumps Vitest 4.1.11 → **5.0.0** (a major) under this slice's new specs | low | med | No Flyway migration here, so no `V<n>` collision; if #1093 merges first, merge `main` in with full phase discipline and re-run `npm test` before ready-for-review | plan | **closed** — #1093 did not merge during this slice; `main` never moved off `30034202`, so nothing was merged in and the suite ran throughout on Vitest 4.1.11 |
 | R-8 | Adding pins to Discover puts 2–N new tab stops inside the map region, degrading keyboard bypass | med | med | `mapEnd` is already the template's last element and markers mount into the canvas host above it, so `Skip map` bypasses every pin; AC-9's axe run and the existing `map-skip` e2e assertion both stay green | plan | **closed** — the `map-skip` → `map-end` e2e still passes with pins drawn |
 
 ## Open questions / Assumptions
@@ -247,20 +253,38 @@ code or error shape moves.
 
 ## Execution status
 
-**Stage pointer:** `CI gate — awaiting the run for the phase 5/6 push`
+**Stage pointer:** `merge close-out — gates run, awaiting merge`
 
-**Next action:** Check CI on this push; then mark the PR ready for review, which makes the
-Review gate and the Sonar gate due (`riviera-sdlc` `references/pr-gates.md`).
+**Next action:** Merge **PR #1131**. Then the three post-merge GitHub steps, which are the only
+ones left and need no repo commit: confirm #1101 closed by the PR's `Closes`, comment the epic
+close-out on #806 naming all four slice PRs (there is no markdown checklist on it — see the
+Assumption below), and confirm the PR-activity subscription ended.
+
+**Review gate:** ran in full at **high** effort — `code-review` plugin command (rung 1 of the
+`riviera-sdlc` ladder) with `riviera-review-overlay` layered on, over
+`30034202..21a1f328`, the range verified against the PR by `scripts/check-review-range.mjs`
+(18 files / +1818 / -66). Seven findings, all fixed in `8173065e`; recorded on the PR at
+comment #5711143304 and as F-4b…F-9 below.
+
+**Sonar gate:** the reported list, not the gate conclusion. On the PR analysis: `new_bugs` 0,
+`new_vulnerabilities` 0, `new_duplicated_blocks` 0, `new_duplicated_lines_density` 0.0,
+`new_coverage` **96.4%** (bar: ≥80%), `new_lines` 454 — so the diff was genuinely analysed, not
+a false zero from paths outside `sonar.sources`. One new code smell, cleared:
+`typescript:S7770` on `venue-pins.ts` — a `pinId()` wrapper Sonar read as equivalent to
+`String`. It was: the conversion is one token either way, so it is inlined at its three call
+sites and the fact it carried ("a pin's id is its venue's id as a string, which is how a
+selected pin is matched back to its card") moved into `venuePins`' own TSDoc. Fixed in code
+rather than resolved in the UI, so the list reaches zero without token access.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Backend: the fence proven for a pinned venue (AC-10) | ✅ | `<phase-0>` |
-| 1 — Pure pin derivation + `VenueCard` extraction (AC-1) | ✅ | `<phase-1>` |
-| 2 — `RivieraMap` grows multi-pin (AC-2, AC-3) | ✅ | `<phase-2>` |
-| 3 — The Liquid Glass preview card (AC-6) | ✅ | `<phase-3>` |
-| 4 — Wire Discover: pins, selection, preview, card highlight (AC-7, AC-8) | ✅ | `<phase-4>` |
-| 5 — e2e: pin → preview → venue page, filters, the network guard (AC-4, AC-5, AC-9, AC-11) | ✅ | `<phase-5>` |
-| 6 — `CONTEXT.md` + close-out | ⏳ | `<phase-6>` (close-out written at the last code commit) |
+| 0 — Backend: the fence proven for a pinned venue (AC-10) | ✅ | `864f3f0d` |
+| 1 — Pure pin derivation + `VenueCard` extraction (AC-1) | ✅ | `f5bb6d49` |
+| 2 — `RivieraMap` grows multi-pin (AC-2, AC-3) | ✅ | `55d29706` |
+| 3 — The Liquid Glass preview card (AC-6) | ✅ | `03895b3f` |
+| 4 — Wire Discover: pins, selection, preview, card highlight (AC-7, AC-8) | ✅ | `08be8aae` |
+| 5 — e2e: pin → preview → venue page, filters, the network guard (AC-4, AC-5, AC-9, AC-11) | ✅ | `86b8c955` |
+| 6 — `CONTEXT.md` + close-out | ✅ | `1032d250` · close-out in `8173065e` (the last code-touching commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -270,21 +294,23 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | phase 5 e2e (real browser) | An open preview covers the lower map, and the credit pill covers whatever pin sits under it, so those pins cannot be *tapped* — the same behaviour any map's bottom sheet and attribution have. Accepted, not worked around: making the credit `pointer-events-none` would turn a press on it into a map press, which in the operator console **places a venue pin**. Panning frees the pin, and Tab reaches it regardless — which the e2e now proves by activating those pins with `Enter`. | closed — accepted, covered by keyboard activation |
-| F-9 | Review gate — prior-PR guidance (reviewer 4) | `touch-manipulation` on the new pin buttons was unproven: `mobile-zoom-tourist.e2e.ts`'s double-tap sweep does not reach them, the same coverage half PR #1130 was corrected for one slice ago. Proven where the pins actually exist (`discover-map.e2e.ts`) rather than by putting a `location` on the shared `TOURIST_VENUE` fixture, which feeds many specs. | fixed-in-`<review-fix-2>` |
-| F-8 | Review gate — prior-PR guidance (reviewer 4) | Two new contrast assertions restated existing ones over the same constants — the map's "selected pin" case is `contrastRatio`'s order-independent twin of the file's first case, and the pin-preview `describe` was byte-identical to the switch pill's. Documentation rather than proof, and duplicated blocks against the Sonar merge bar; PR #1130 was corrected for exactly this. Both collapsed, each reused case named in the surviving test's doc comment (the file's own you-are-here precedent). | fixed-in-`<review-fix-2>` |
-| F-7 | Review gate — doc-contract review (reviewer 5) | The preview's `<app-photo-slideshow>` passed no `sizes`, against that input's stated contract that a host in a breakout column passes its own — it is a fixed 112 px band, so the unset fallback is `100vw`. A pixel value is refused by `NgOptimizedImage` (NG02952), so the fallback is the widest share the band ever takes, `35vw`; lazy images get `auto,` prefixed ahead of it either way. | fixed-in-`<review-fix-2>` |
-| F-6 | Review gate — bug scan + doc-contract review (reviewers 2 and 5, independently) | **Stale marker position.** `syncVenuePins`' identity key hashed `id`+`label` but not `at`, and there was no move branch: a venue whose operator corrected its pin kept drawing at the old coordinates for the life of the SPA session, since a later fetch produced a byte-identical key. Fixed with a `moveMarker` pass mirroring the placement pin's, which also keeps the button a keyboard may be standing on — a rebuild would detach it, the very thing `MapHandle.moveMarker`'s contract warns about. | fixed-in-`<review-fix-2>` |
-| F-5 | Review gate — RV-FE-9 (self-found; independently confirmed by reviewers 1 and 5) | The preview can be torn down without anyone closing it: the previewed venue leaves the result set (a route-carried `?date=` change, Back) while the card holds focus, stranding focus on `<body>` — a WCAG 2.4.3 failure the bank names ("a route change ... also moves focus when what it tore down held it"). `closePreview()` never ran, so nothing moved focus. Fixed with an effect that lands focus on the count block when the card goes while holding it, reading before the view is patched; a user-driven close is unaffected because `closePreview()` has already moved focus to the pin by then. | fixed-in-`<review-fix-2>` |
-| F-4b | Review gate — doc-contract review (reviewer 5) | `RivieraMap`'s class TSDoc still read "It carries at most one `pin`" — the contract a reader relies on, falsified by this very diff. Rewritten to state the two independent marker sets, which a page binds one of and never both. | fixed-in-`<review-fix-2>` |
-| F-4 | Review gate — RV-PROC-1 (self-found, overlay bank) | The diff edits `CONTEXT.md`, the domain glossary, but *Skills consulted* did not list `domain-modeling`, whose job that file is. Loading it and re-vetting the entry against `CONTEXT-FORMAT.md` found the addition carried implementation detail ("fed from the same fetched list… the map never queries on its own") and an a11y note, against the rule that the glossary defines what a term IS in one or two sentences. Entry tightened; the line now lists the skill. | fixed-in-`<review-fix-2>` |
-| F-3 | CI — Repo hygiene (diff-scoped) | `check-inline-comments.mjs` failed on four multi-line inline comments in `discover-map.e2e.ts` (RV-STYLE-1). The per-file guard runs during the phase had been pointed at the source files, not the spec; the diff-scoped run is the one that covers everything. | fixed-in-`<review-fix-1>` |
-| F-2 | phase 5 e2e (real browser) | axe flagged the preview's call to action at 2.26:1 — the card was read mid-fade, its ink composited over the backdrop through a partial `opacity`. The documented false positive (`riviera-frontend` § e2e split); fixed by awaiting `getAnimations().finished` before the audit, not by changing a colour. | fixed-in-`<phase-5>` |
+| F-10 | Sonar gate | `typescript:S7770` (MINOR) on `venue-pins.ts`: `pinId()` is equivalent to `String`. Fair — a one-token conversion behind a named function. Inlined at its three call sites, with the contract it carried moved into `venuePins`' TSDoc; fixed in code so the reported list reaches zero without SonarCloud UI access. | fixed-in-`<sonar-fix>` |
+| F-9 | Review gate — prior-PR guidance (reviewer 4) | `touch-manipulation` on the new pin buttons was unproven: `mobile-zoom-tourist.e2e.ts`'s double-tap sweep does not reach them, the same coverage half PR #1130 was corrected for one slice ago. Proven where the pins actually exist (`discover-map.e2e.ts`) rather than by putting a `location` on the shared `TOURIST_VENUE` fixture, which feeds many specs. | fixed-in-`8173065e` |
+| F-8 | Review gate — prior-PR guidance (reviewer 4) | Two new contrast assertions restated existing ones over the same constants — the map's "selected pin" case is `contrastRatio`'s order-independent twin of the file's first case, and the pin-preview `describe` was byte-identical to the switch pill's. Documentation rather than proof, and duplicated blocks against the Sonar merge bar; PR #1130 was corrected for exactly this. Both collapsed, each reused case named in the surviving test's doc comment (the file's own you-are-here precedent). | fixed-in-`8173065e` |
+| F-7 | Review gate — doc-contract review (reviewer 5) | The preview's `<app-photo-slideshow>` passed no `sizes`, against that input's stated contract that a host in a breakout column passes its own — it is a fixed 112 px band, so the unset fallback is `100vw`. A pixel value is refused by `NgOptimizedImage` (NG02952), so the fallback is the widest share the band ever takes, `35vw`; lazy images get `auto,` prefixed ahead of it either way. | fixed-in-`8173065e` |
+| F-6 | Review gate — bug scan + doc-contract review (reviewers 2 and 5, independently) | **Stale marker position.** `syncVenuePins`' identity key hashed `id`+`label` but not `at`, and there was no move branch: a venue whose operator corrected its pin kept drawing at the old coordinates for the life of the SPA session, since a later fetch produced a byte-identical key. Fixed with a `moveMarker` pass mirroring the placement pin's, which also keeps the button a keyboard may be standing on — a rebuild would detach it, the very thing `MapHandle.moveMarker`'s contract warns about. | fixed-in-`8173065e` |
+| F-5 | Review gate — RV-FE-9 (self-found; independently confirmed by reviewers 1 and 5) | The preview can be torn down without anyone closing it: the previewed venue leaves the result set (a route-carried `?date=` change, Back) while the card holds focus, stranding focus on `<body>` — a WCAG 2.4.3 failure the bank names ("a route change ... also moves focus when what it tore down held it"). `closePreview()` never ran, so nothing moved focus. Fixed with an effect that lands focus on the count block when the card goes while holding it, reading before the view is patched; a user-driven close is unaffected because `closePreview()` has already moved focus to the pin by then. | fixed-in-`8173065e` |
+| F-4b | Review gate — doc-contract review (reviewer 5) | `RivieraMap`'s class TSDoc still read "It carries at most one `pin`" — the contract a reader relies on, falsified by this very diff. Rewritten to state the two independent marker sets, which a page binds one of and never both. | fixed-in-`8173065e` |
+| F-4 | Review gate — RV-PROC-1 (self-found, overlay bank) | The diff edits `CONTEXT.md`, the domain glossary, but *Skills consulted* did not list `domain-modeling`, whose job that file is. Loading it and re-vetting the entry against `CONTEXT-FORMAT.md` found the addition carried implementation detail ("fed from the same fetched list… the map never queries on its own") and an a11y note, against the rule that the glossary defines what a term IS in one or two sentences. Entry tightened; the line now lists the skill. | fixed-in-`8173065e` |
+| F-3 | CI — Repo hygiene (diff-scoped) | `check-inline-comments.mjs` failed on four multi-line inline comments in `discover-map.e2e.ts` (RV-STYLE-1). The per-file guard runs during the phase had been pointed at the source files, not the spec; the diff-scoped run is the one that covers everything. | fixed-in-`21a1f328` |
+| F-2 | phase 5 e2e (real browser) | axe flagged the preview's call to action at 2.26:1 — the card was read mid-fade, its ink composited over the backdrop through a partial `opacity`. The documented false positive (`riviera-frontend` § e2e split); fixed by awaiting `getAnimations().finished` before the audit, not by changing a colour. | fixed-in-`86b8c955` |
 
 ---
 
 ## File structure
 
 - `docs/plans/venue-pins-discover-map.md` — this plan
+- `docs/plans/near-me-geolocation.md` — **deleted**: its PR (#1130) merged as `30034202`, so it retires at this close-out (`riviera-docs-freshness` § *Plan-doc retirement*). Nothing outside the file cited it.
 - `platform/src/test/java/ai/riviera/platform/venue/VenueCatalogVisibilityIT.java` — AC-10: the pinned-venue fence case + its fixture helper
 - `frontend/src/app/shared/riviera-map.ts` — the generic `pins`/`selectedPin` inputs, `pinSelected` output, `MapPin`, pin-button build + marker sync, `focusPin()`
 - `frontend/src/app/shared/riviera-map.spec.ts` — AC-2, AC-3
@@ -309,9 +335,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `platform/src/test/java/ai/riviera/platform/venue/VenueCatalogVisibilityIT.java`
 
-- [ ] **Step 1: Write the failing test** — a pinned venue of an ACTIVE operator is listed
+- [x] **Step 1: Write the failing test** — a pinned venue of an ACTIVE operator is listed
   *with* its location; suspending the owner removes the row entirely.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew --console=plain test --tests
+- [x] **Step 2: Run it, verify it fails** — `./gradlew --console=plain test --tests
   "*VenueCatalogVisibilityIT*"` → FAIL (the helper/assertions do not exist yet)
 - [x] **Step 3: Minimal implementation** — **no production change was needed: the fence
   already held.** That is AC-10's point (prove, don't assume), so nothing was invented to
@@ -331,72 +357,73 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Create `frontend/src/app/pages/home/venue-card.ts`, `venue-pins.ts`,
 `venue-pins.spec.ts` · Modify `home.ts`
 
-- [ ] **Step 1:** `venue-pins.spec.ts` red — list order kept, null/absent location omitted,
+- [x] **Step 1:** `venue-pins.spec.ts` red — list order kept, null/absent location omitted,
   label is the venue name, id is the venue id as a string.
-- [ ] **Step 2:** `npm test -- venue-pins` → FAIL
-- [ ] **Step 3:** Move `VenueCard` to `venue-card.ts` (adding `location`), write `venuePins()`.
-- [ ] **Step 4:** `npm test -- venue-pins home` → PASS
-- [ ] **Step 5–7:** audit · commit · status
+- [x] **Step 2:** `npx ng test --watch=false --include="src/app/pages/home/venue-pins.spec.ts"` → FAIL
+- [x] **Step 3:** Move `VenueCard` to `venue-card.ts` (adding `location`), write `venuePins()`.
+- [x] **Step 4:** `npx ng test --watch=false --include="src/app/pages/home/*.spec.ts"` → PASS
+- [x] **Step 5–7:** audit · commit · status
 
 ## Phase 2 — `RivieraMap` grows multi-pin
 
 **Files:** Modify `frontend/src/app/shared/riviera-map.ts`, `riviera-map.spec.ts`
 
-- [ ] **Step 1:** Spec red for AC-2 and AC-3 against `FakeMapEngine` — one marker per pin in
+- [x] **Step 1:** Spec red for AC-2 and AC-3 against `FakeMapEngine` — one marker per pin in
   feed order, button element named by the label, removal on drop, `pinSelected` on activation,
   no map click.
-- [ ] **Step 2:** `npm test -- riviera-map` → FAIL
-- [ ] **Step 3:** `MapPin`, the `pins`/`selectedPin` inputs, `pinSelected`, identity-keyed
+- [x] **Step 2:** `npx ng test --watch=false --include="src/app/shared/riviera-map.spec.ts"` → FAIL
+- [x] **Step 3:** `MapPin`, the `pins`/`selectedPin` inputs, `pinSelected`, identity-keyed
   marker sync (R-2), `stopPropagation` (R-3), `focusPin()`. The single-pin placement contract
   is left exactly as it is.
-- [ ] **Step 4:** `npm test -- riviera-map console-venue-map` → PASS (the operator console is
+- [x] **Step 4:** `npx ng test --watch=false --include="src/app/shared/riviera-map.spec.ts" --include="src/app/operator/console-venue-map.spec.ts"` → PASS (the operator console is
   the existing single-pin consumer and must not move)
-- [ ] **Step 5–7:** audit · commit · status
+- [x] **Step 5–7:** audit · commit · status
 
 ## Phase 3 — The Liquid Glass preview card
 
 **Files:** Create `venue-preview-card.ts|.html|.spec.ts`
 
-- [ ] **Step 1:** Spec red for AC-6 and the card's content contract.
-- [ ] **Step 2:** `npm test -- venue-preview-card` → FAIL
-- [ ] **Step 3:** The component: `role="dialog"` labelled by its heading, cover photo through
+- [x] **Step 1:** Spec red for AC-6 and the card's content contract.
+- [x] **Step 2:** `npx ng test --watch=false --include="src/app/pages/home/venue-preview-card.spec.ts"` → FAIL
+- [x] **Step 3:** The component: `role="dialog"` labelled by its heading, cover photo through
   the existing slideshow + `appPhotoScrim`, name, `beach · region`, rating, from-price,
   closed-for-season chip, a `routerLink` to `/venues/:id` with the date, a close button at the
   touch floor.
-- [ ] **Step 4:** `npm test -- venue-preview-card` → PASS
-- [ ] **Step 5–7:** audit · commit · status
+- [x] **Step 4:** `npx ng test --watch=false --include="src/app/pages/home/venue-preview-card.spec.ts"` → PASS
+- [x] **Step 5–7:** audit · commit · status
 
 ## Phase 4 — Wire Discover
 
 **Files:** Modify `home.ts`, `home.html`, `home.spec.ts`, `home.a11y.spec.ts`, `home.contrast.spec.ts`
 
-- [ ] **Step 1:** Spec red for AC-7 and AC-8 (+ the a11y/contrast additions of AC-9).
-- [ ] **Step 2:** `npm test -- home` → FAIL
-- [ ] **Step 3:** `pins` computed, `selectedVenueId` linkedSignal, preview render, Escape on
+- [x] **Step 1:** Spec red for AC-7 and AC-8 (+ the a11y/contrast additions of AC-9).
+- [x] **Step 2:** `npx ng test --watch=false --include="src/app/pages/home/home.spec.ts"` → FAIL
+- [x] **Step 3:** `pins` computed, `selectedVenueId` linkedSignal, preview render, Escape on
   the map panel, map-tap close, focus return, selected-card `aria-current` + scroll.
-- [ ] **Step 4:** `npm test -- home` then `npm run test:a11y` → PASS
-- [ ] **Step 5–7:** audit · commit · status
+- [x] **Step 4:** `npx ng test --watch=false --include="src/app/pages/home/home.spec.ts"` then `npm run test:a11y` → PASS
+- [x] **Step 5–7:** audit · commit · status
 
 ## Phase 5 — e2e
 
 **Files:** Modify `frontend/e2e/discover-map.e2e.ts`
 
-- [ ] **Step 1:** Specs red for AC-4, AC-5, AC-9 (credit clearance, touch targets) and AC-11
+- [x] **Step 1:** Specs red for AC-4, AC-5, AC-9 (credit clearance, touch targets) and AC-11
   (the extended real-engine guard, with the fixture gaining locations + a mocked same-origin
   cover photo per R-4).
-- [ ] **Step 2:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y --
-  discover-map` → FAIL
-- [ ] **Step 3:** Fix whatever the real browser disagrees with (clearance values, tab order).
-- [ ] **Step 4:** same command → PASS
-- [ ] **Step 5–7:** audit · commit · status
+- [x] **Step 2:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test
+  --config=playwright.a11y.config.ts discover-map` → FAIL (`npm run test:e2e:a11y` runs the whole
+  suite; the spec filter needs the direct `playwright test` form)
+- [x] **Step 3:** Fix whatever the real browser disagrees with (clearance values, tab order).
+- [x] **Step 4:** same command → PASS
+- [x] **Step 5–7:** audit · commit · status
 
 ## Phase 6 — `CONTEXT.md` + close-out
 
 **Files:** Modify `CONTEXT.md`, this plan
 
-- [ ] **Step 1:** The **riviera map** entry gains the pin and the preview card.
-- [ ] **Step 2:** Run `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] **Step 3:** Write the close-out into this, the last code-touching commit.
+- [x] **Step 1:** The **riviera map** entry gains the pin and the preview card.
+- [x] **Step 2:** Run `node scripts/check-plan-file-structure.mjs --diff origin/main`.
+- [x] **Step 3:** Write the close-out into this, the last code-touching commit.
 
 ---
 
@@ -413,38 +440,45 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npm test -- venue-pins` → green. Verified at commit `<sha>`.
-- [ ] **AC-2:** `npm test -- riviera-map` → green. Verified at commit `<sha>`.
-- [ ] **AC-3:** `npm test -- riviera-map` → green. Verified at commit `<sha>`.
-- [ ] **AC-4:** `npm run test:e2e:a11y -- discover-map` → green. Verified at commit `<sha>`.
-- [ ] **AC-5:** `npm run test:e2e:a11y -- discover-map` → green. Verified at commit `<sha>`.
-- [ ] **AC-6:** `npm test -- venue-preview-card` → green. Verified at commit `<sha>`.
-- [ ] **AC-7:** `npm test -- home` → green. Verified at commit `<sha>`.
-- [ ] **AC-8:** `npm test -- home` → green. Verified at commit `<sha>`.
-- [ ] **AC-9:** `npm run test:a11y` + `npm run test:e2e:a11y -- discover-map` → green. Verified at commit `<sha>`.
-- [ ] **AC-10:** `./gradlew test --tests "*VenueCatalogVisibilityIT*"` → green. Verified at commit `<sha>`.
-- [ ] **AC-11:** `npm run test:e2e:a11y -- discover-map` → green. Verified at commit `<sha>`.
+Frontend unit = `npx ng test --watch=false --include="<spec>"` (the Angular builder supplies the
+Vitest globals; `vitest-base.config.ts` alone does not). Mocked e2e =
+`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts discover-map`.
+
+- [x] **AC-1:** `venue-pins.spec.ts` → 6 green. Verified at `f5bb6d49`.
+- [x] **AC-2:** `riviera-map.spec.ts` › *draws one marker per pin, in feed order, named by its label* → green. Verified at `55d29706`.
+- [x] **AC-3:** `riviera-map.spec.ts` › *selects a pin on press, without reporting a map click underneath it* → green. Verified at `55d29706`.
+- [x] **AC-4:** `discover-map.e2e.ts` › *re-feeds the pins from one further request when a filter changes, and drops the preview* → green (asserts the request delta is exactly 1). Verified at `86b8c955`.
+- [x] **AC-5:** `discover-map.e2e.ts` › *a pin opens its preview, which leads to the beach map with the date carried* → green. Verified at `86b8c955`.
+- [x] **AC-6:** `venue-preview-card.spec.ts` › *shows the closed-for-season state* → green (11 in the file). Verified at `03895b3f`.
+- [x] **AC-7:** `home.spec.ts` › *opens one preview at a time* / *closes on Escape and hands focus back to the pin that opened it* / *closes when the map itself is tapped*, and `discover-map.e2e.ts`'s Escape case in a real browser → green. Verified at `08be8aae`.
+- [x] **AC-8:** `home.spec.ts` › *marks the selected venue's card and scrolls it into view*; `discover-map.e2e.ts` › *marks the selected venue's card in the list beside the map* → green. Verified at `08be8aae`.
+- [x] **AC-9:** `npm run test:a11y` → 101 files / 1032 green; `discover-map.e2e.ts` › *pins and an open preview stay accessible, and leave the tile credit visible* (axe + touch targets + the credit-clearance measurement on the 320 px phone) and › *venue pins keep their double-tap…* → green. Verified at `86b8c955`, extended at `8173065e`.
+- [x] **AC-10:** `./gradlew --console=plain test --tests "*VenueCatalogVisibilityIT*"` → 6 tests, 0 failures, **0 skipped** (Docker up, so the class was not silently gated out). Verified at `864f3f0d`.
+- [x] **AC-11:** `discover-map.e2e.ts` › *the map open on Discover makes no request to a third party*, now opening a preview and waiting for its same-origin cover photo before reading the request log → green. Verified at `86b8c955`.
+
+Full suites at the final head: `npm test` → 270 files / 3333 green; the mocked e2e `discover-map`
+→ 18 green; `npm run lint` and `npm run format:check` clean; all four diff-scoped guards exit 0.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1) — no production Java at all.
+- [x] **Availability** section filled — justified N/A, no write path in scope.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A; the preview only displays the server's verdicts.
+- [x] **Modulith** section filled; no port, event or package moved; the IT observes `venue.api.VenueCatalog` and drives `operator.api.OperatorLifecycle`.
+- [x] **Payment/payout** section filled — N/A; no money arithmetic, the preview renders the list's existing `formatMoney` string.
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A; the date travels as the existing ISO `YYYY-MM-DD` param, and the IT reuses the file's `Europe/Tirane` helper.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway (invariant #12) — N/A, no schema change; the columns shipped with #1099 (`V58`).
+- [x] **Frontend** standards met, no deviation, no `as any`; RV-FE-1's greppables and RV-FE-8's cross-feature grep both clean.
+- [x] Execution status matches reality — stage pointer, phase table with real SHAs, and ten findings each with a decision.
+- [x] Risk register has no `open` rows; Open Questions empty (both entries resolved, one of them disproven and recorded as such).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the Sonar fix's commit carries it; no docs-only commit follows.
+- [x] **The review gate ran in full** — rung 1 of the ladder (the `code-review` plugin command) plus `riviera-review-overlay`, at high effort, over a verified range; nothing was substituted.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

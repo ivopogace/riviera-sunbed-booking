@@ -218,7 +218,7 @@ export class RivieraMap {
     });
     effect(() => this.syncPin());
     effect(() => this.syncVenuePins());
-    effect(() => this.syncPinSelection());
+    effect(() => this.paintSelection());
     inject(DestroyRef).onDestroy(() => {
       this.disposed = true;
       this.unsubscribes.forEach((off) => off());
@@ -320,12 +320,10 @@ export class RivieraMap {
     }
   }
 
-  /** Selection is an attribute flip on buttons that are already mounted — never a rebuild. */
-  private syncPinSelection(): void {
-    this.selectedPin();
-    this.paintSelection();
-  }
-
+  /**
+   * Selection is an attribute flip on buttons that are already mounted — never a rebuild, which
+   * would detach the one a keyboard is standing on. Tracks `selectedPin` through the read below.
+   */
   private paintSelection(): void {
     const selected = this.selectedPin();
     this.venuePinButtons.forEach((button, id) =>

@@ -39,7 +39,7 @@ import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
 import { VenueCard } from './venue-card';
-import { pinId, venuePins } from './venue-pins';
+import { venuePins } from './venue-pins';
 import { VenuePreviewCard } from './venue-preview-card';
 
 /**
@@ -208,7 +208,7 @@ export class Home {
     if (open === null) {
       return null;
     }
-    return this.venuesView()?.find((card) => pinId(card.id) === open) ?? null;
+    return this.venuesView()?.find((card) => String(card.id) === open) ?? null;
   });
 
   /** Guards against an earlier slow response overwriting a newer one (last-writer-wins). */
@@ -322,7 +322,7 @@ export class Home {
   }
 
   protected isSelected(card: VenueCard): boolean {
-    return this.selectedVenue() === pinId(card.id);
+    return this.selectedVenue() === String(card.id);
   }
 
   protected showList(): void {

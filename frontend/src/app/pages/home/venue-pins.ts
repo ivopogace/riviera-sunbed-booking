@@ -2,16 +2,11 @@ import { MapPin } from '../../shared/riviera-map';
 import { VenueCard } from './venue-card';
 
 /**
- * A pin's id, keyed by the venue it stands for, so a pin and its card can be matched without a
- * second lookup table. The map speaks strings; the catalogue speaks numbers.
- */
-export function pinId(venueId: number): string {
-  return String(venueId);
-}
-
-/**
  * The riviera-map pins a result set contributes: one per card that carries a venue location, in
  * list order, labelled by the venue's name.
+ *
+ * <p>A pin's id is its venue's id as a string — the map seam speaks strings, the catalogue
+ * numbers — which is how a selected pin is matched back to the card it stands for.
  *
  * <p>Derived from the very cards the list renders, so the map cannot drift from the list — the
  * beach/region/date filters and the availability-aware from-price are already baked into the
@@ -23,7 +18,7 @@ export function venuePins(cards: readonly VenueCard[] | undefined): readonly Map
     card.location
       ? [
           {
-            id: pinId(card.id),
+            id: String(card.id),
             at: { lng: card.location.longitude, lat: card.location.latitude },
             label: card.name,
           },

@@ -1,5 +1,5 @@
 import { VenueCard } from './venue-card';
-import { pinId, venuePins } from './venue-pins';
+import { venuePins } from './venue-pins';
 
 function card(overrides: Partial<VenueCard> & Pick<VenueCard, 'id' | 'name'>): VenueCard {
   return {
@@ -67,6 +67,9 @@ describe('venuePins', () => {
   });
 
   it('keys a pin by its venue id, so a pin and its card agree', () => {
-    expect(pinId(42)).toBe('42');
+    expect(
+      venuePins([card({ id: 42, name: 'Keyed', location: { latitude: 39.9, longitude: 20.1 } })])[0]
+        .id,
+    ).toBe('42');
   });
 });
