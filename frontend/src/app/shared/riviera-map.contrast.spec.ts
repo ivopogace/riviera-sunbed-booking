@@ -28,4 +28,15 @@ describe('riviera map chrome contrast', () => {
     expect(contrastRatio(ink, rgbToHex(SOLID_BTN_FILL))).toBeGreaterThanOrEqual(AA_LARGE);
     expect(contrastRatio(ink, rgbToHex(SOLID_BTN_HOVER))).toBeGreaterThanOrEqual(AA_LARGE);
   });
+
+  /**
+   * A selected venue pin INVERTS the same fixed pair instead of taking the themed accent: the
+   * imagery under it never themes, so a switching fill under a fixed ink would drift. Inversion
+   * preserves the ratio, and asserting it keeps that true if either half is ever retuned.
+   */
+  it('a selected pin clears AA with the pair inverted', () => {
+    expect(contrastRatio(rgbToHex(SOLID_BTN_FILL), rgbToHex(SOLID_BTN_INK))).toBeGreaterThanOrEqual(
+      AA_NORMAL,
+    );
+  });
 });

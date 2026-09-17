@@ -175,7 +175,11 @@
           <ul class="venue-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5">
             @for (card of list; track card.id) {
               <!-- Named group/card keys the hover lift on the li (the overlaid slideshow controls keep it) without tripping the controls' own unnamed group-hover chevron tint. -->
-              <li class="group/card relative">
+              <li
+                class="group/card relative rounded-[28px] [&[data-selected]]:outline-[3px] [&[data-selected]]:outline-offset-[3px] [&[data-selected]]:outline-riv-accent-ink"
+                [attr.data-venue-pin]="card.id"
+                [attr.data-selected]="isSelected(card) ? '' : null"
+              >
                 <a
                   class="card flex h-full flex-col overflow-hidden rounded-[28px] no-underline shadow-[0_12px_40px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7] motion-safe:[transition:transform_0.2s_ease,box-shadow_0.2s_ease,border-color_0.2s_ease] group-hover/card:border-riv-card-hover-border group-hover/card:shadow-riv-card-hover motion-safe:group-hover/card:[transform:translateY(-5px)] focus-visible:shadow-[0_0_0_7px_color-mix(in_srgb,var(--riv-accent-ink)_90%,transparent)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
                   appCardGlass
@@ -183,6 +187,7 @@
                   [routerLink]="['/venues', card.id]"
                   [queryParams]="{ date: selectedDate() }"
                   [attr.aria-label]="card.ariaLabel"
+                  [attr.aria-current]="isSelected(card) ? 'true' : null"
                 >
                   <!-- The <a> carries the full accessible name via aria-label, so its visible content is decorative to AT — the two inner blocks are aria-hidden. -->
                   <!-- The uploaded photos as a crossfading slideshow stack (cover first); the gradient + sun placeholder as the empty state. The scrim ALWAYS layers over it — the location text's AA floor must hold over ANY photo (home.contrast.spec.ts computes the white-photo worst case). -->
@@ -358,12 +363,29 @@
     </div>
 
     <!-- Sticky beside the list from lg: the map keeps pace while the cards scroll. -->
-    <div class="map-panel mt-6 lg:sticky lg:top-6" data-testid="map-panel" [hidden]="!mapOpen()">
+    <div
+      class="map-panel relative mt-6 lg:sticky lg:top-6"
+      data-testid="map-panel"
+      [hidden]="!mapOpen()"
+    >
       @defer (when mapDefer()) {
         <app-riviera-map
           class="h-[calc(100dvh-220px)] max-h-[720px] min-h-[360px]"
           [nearMe]="true"
+          [pins]="pins()"
+          [selectedPin]="selectedVenue()"
+          (pinSelected)="onPinSelected($event)"
+          (mapClick)="closePreview()"
         />
+        @if (selectedCard(); as selected) {
+          <!-- Bottom-anchored, clearing the credit pill the tiles' licences require to stay visible. -->
+          <app-venue-preview-card
+            class="absolute inset-x-3 bottom-[58px] z-[5]"
+            [card]="selected"
+            [date]="selectedDate()"
+            (closed)="closePreview()"
+          />
+        }
       } @placeholder {
         <div
           class="h-[360px] animate-pulse rounded-[26px] bg-riv-card-track motion-reduce:animate-none"

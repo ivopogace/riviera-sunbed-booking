@@ -269,3 +269,18 @@ describe('Discover list/map switch contrast', () => {
     expect(contrastRatio(rgbToHex(ink), rgbToHex(fill))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });
+
+/**
+ * The pin preview. Its name, meta and price sit on the SAME card glass as a list card, so the
+ * "card ink" / "card ink-soft" / "accent ink" cases above already cover them — it is fed the very
+ * record the list card renders. The one pair it adds is its "View beach map" call to action,
+ * which paints the on-accent ink over the accent fill exactly as the switch's pressed pill does.
+ */
+describe('Discover pin-preview contrast', () => {
+  it.each([
+    ['light', ON_ACCENT_INK, ACCENT_INK],
+    ['dark', DARK_ON_ACCENT_INK, DARK_ACCENT_INK],
+  ])('the beach-map call to action meets AA on the accent fill (%s themes)', (_t, ink, fill) => {
+    expect(contrastRatio(rgbToHex(ink), rgbToHex(fill))).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+});

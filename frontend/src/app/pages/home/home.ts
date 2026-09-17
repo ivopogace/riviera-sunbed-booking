@@ -1,5 +1,16 @@
 import { DOCUMENT } from '@angular/common';
-import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  DestroyRef,
+  ElementRef,
+  inject,
+  Injector,
+  linkedSignal,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
 
@@ -19,7 +30,7 @@ import { PhotoStepButton } from '../../shared/photo-step-button';
 import { slideshowPhotos } from '../../shared/photo-url';
 import { isRated, ratingScore, reviewsLabel } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
-import { RivieraMap } from '../../shared/riviera-map';
+import { MapPin, RivieraMap } from '../../shared/riviera-map';
 import { ClosedForSeasonChip } from '../../shared/closed-for-season-chip';
 import { SemanticChip } from '../../shared/semantic-chip';
 import { defaultBookingDate, formatDayMonth, isIsoDate } from '../../shared/booking-date';
@@ -27,6 +38,8 @@ import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
 import { VenueCard } from './venue-card';
+import { pinId, venuePins } from './venue-pins';
+import { VenuePreviewCard } from './venue-preview-card';
 
 /**
  * Tailwind's `lg` breakpoint — the twin of the `lg:` utilities in `home.html` that lay the map
@@ -79,15 +92,23 @@ function closedStateText(
     LoadAnnouncer,
     TouchTarget,
     RivieraMap,
+    VenuePreviewCard,
     ...FAILURE_DIRECTIVES,
   ],
-  host: { class: 'block text-riv-card-ink' },
+  host: {
+    class: 'block text-riv-card-ink',
+    // On the page host, not the map panel: a preview is closable wherever Escape is pressed,
+    '(keydown.escape)': 'closePreview()',
+  },
   templateUrl: './home.html',
 })
 export class Home {
   private readonly venueService = inject(VenueService);
   private readonly route = inject(ActivatedRoute);
   private readonly document = inject(DOCUMENT);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+  private readonly map = viewChild(RivieraMap);
 
   /** The displayed (filtered) venues; `undefined` while a request is in flight (loading). */
   protected readonly venues = signal<VenueSummary[] | undefined>(undefined);
@@ -159,6 +180,36 @@ export class Home {
     return list.map((venue) => this.toCard(venue, dateLabel));
   });
 
+  /**
+   * The map's pins, derived from the very cards the list renders. The map therefore issues no
+   * query of its own: a beach, region or date change re-feeds these from the one list response
+   * it was going to fetch anyway, and the two surfaces cannot disagree.
+   */
+  protected readonly pins = computed<readonly MapPin[]>(() => venuePins(this.venuesView()));
+
+  /**
+   * The pin whose preview is open, or `null`. Linked to the pin set so a venue that leaves the
+   * result set takes its preview with it — and since every re-fetch empties the list first, a
+   * filter or date change always closes the preview rather than leaving a stale card over a new
+   * map.
+   */
+  protected readonly selectedVenue = linkedSignal<readonly MapPin[], string | null>({
+    source: this.pins,
+    computation: (pins, previous) => {
+      const open = previous?.value ?? null;
+      return open !== null && pins.some((pin) => pin.id === open) ? open : null;
+    },
+  });
+
+  /** The card behind the open preview — the same record the list is rendering for that venue. */
+  protected readonly selectedCard = computed<VenueCard | null>(() => {
+    const open = this.selectedVenue();
+    if (open === null) {
+      return null;
+    }
+    return this.venuesView()?.find((card) => pinId(card.id) === open) ?? null;
+  });
+
   /** Guards against an earlier slow response overwriting a newer one (last-writer-wins). */
   private lastRequest = '';
 
@@ -209,6 +260,44 @@ export class Home {
     if (this.document.activeElement?.closest(`[data-testid="${hidden}"]`)) {
       this.focusAfterRender('results');
     }
+  }
+
+  protected onPinSelected(id: string): void {
+    this.selectedVenue.set(id);
+    this.focusAfterRender('venue-preview');
+    this.revealCard(id);
+  }
+
+  /**
+   * Close the preview and hand focus back to the pin that opened it (WCAG 2.4.3) — the pin is
+   * where the interaction started, and on Escape it is the only place focus can sensibly land.
+   */
+  protected closePreview(): void {
+    const open = this.selectedVenue();
+    if (open === null) {
+      return;
+    }
+    this.selectedVenue.set(null);
+    this.map()?.focusPin(open);
+  }
+
+  /** Bring the selected venue's card into view, where the list is on screen beside the map. */
+  private revealCard(id: string): void {
+    afterNextRender(
+      {
+        write: () => {
+          const card = this.host.nativeElement.querySelector<HTMLElement>(
+            `[data-venue-pin="${id}"]`,
+          );
+          card?.scrollIntoView?.({ block: 'nearest' });
+        },
+      },
+      { injector: this.injector },
+    );
+  }
+
+  protected isSelected(card: VenueCard): boolean {
+    return this.selectedVenue() === pinId(card.id);
   }
 
   protected showList(): void {

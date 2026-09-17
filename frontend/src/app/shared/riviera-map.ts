@@ -78,15 +78,16 @@ const VENUE_PIN_PREFIX = 'venue-pin:';
 
 /**
  * A venue pin's box: the same 44 px theme-invariant solid-button skin the placement pin wears,
- * but a real control — it opens something, so it is a `<button>` and takes the focus ring.
+ * but a real control — it opens something, so it is a `<button>` and takes the focus ring. The
+ * selected pin INVERTS that same fixed pair rather than reaching for the accent: it sits on
+ * imagery, which never themes, so a theme-switching fill under a fixed ink would drift.
  * Paints above the you-are-here dot and below the chrome column's `z-10`.
  */
 const VENUE_PIN_CLASSES =
   'inline-flex size-11 touch-manipulation items-center justify-center rounded-full ' +
   'border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill text-[20px] leading-none ' +
   'text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] z-[2] ' +
-  'aria-expanded:border-riv-accent-ink aria-expanded:bg-riv-accent-ink ' +
-  'aria-expanded:text-riv-solid-btn-fill';
+  'aria-expanded:bg-riv-solid-btn-ink aria-expanded:text-riv-solid-btn-fill';
 
 /**
  * Town scale: near enough to tell which beach the visitor is on, wide enough to still show the

@@ -237,10 +237,11 @@ code or error shape moves.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** Phase 4 red — `home.spec.ts` cases for AC-7/AC-8, then wire the pins,
-the selection linkedSignal, the preview and the selected-card marking into Discover.
+**Next action:** Phase 5 red — the mocked Playwright e2e in `discover-map.e2e.ts`: pin →
+preview → venue page, the filter-change request count, the credit clearance, and the
+real-engine network guard extended to a pin and an open preview.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -248,7 +249,7 @@ the selection linkedSignal, the preview and the selected-card marking into Disco
 | 1 — Pure pin derivation + `VenueCard` extraction (AC-1) | ✅ | `<phase-1>` |
 | 2 — `RivieraMap` grows multi-pin (AC-2, AC-3) | ✅ | `<phase-2>` |
 | 3 — The Liquid Glass preview card (AC-6) | ✅ | `<phase-3>` |
-| 4 — Wire Discover: pins, selection, preview, card highlight (AC-7, AC-8) | | |
+| 4 — Wire Discover: pins, selection, preview, card highlight (AC-7, AC-8) | ✅ | `<phase-4>` |
 | 5 — e2e: pin → preview → venue page, filters, the network guard (AC-4, AC-5, AC-9, AC-11) | | |
 | 6 — `CONTEXT.md` + close-out | | |
 
@@ -269,6 +270,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/test/java/ai/riviera/platform/venue/VenueCatalogVisibilityIT.java` — AC-10: the pinned-venue fence case + its fixture helper
 - `frontend/src/app/shared/riviera-map.ts` — the generic `pins`/`selectedPin` inputs, `pinSelected` output, `MapPin`, pin-button build + marker sync, `focusPin()`
 - `frontend/src/app/shared/riviera-map.spec.ts` — AC-2, AC-3
+- `frontend/src/app/shared/riviera-map.contrast.spec.ts` — the selected pin's inverted fixed pair
 - `frontend/src/app/pages/home/venue-card.ts` — the `VenueCard` view model, moved out of `home.ts` (R-5)
 - `frontend/src/app/pages/home/venue-pins.ts` — AC-1: the pure `venuePins()` derivation
 - `frontend/src/app/pages/home/venue-pins.spec.ts` — AC-1
