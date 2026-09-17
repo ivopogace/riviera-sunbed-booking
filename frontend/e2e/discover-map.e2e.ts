@@ -1,4 +1,4 @@
-import { expect, Page, test } from '@playwright/test';
+import { expect, Locator, Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { mockMapResources } from './support/map-resources';
@@ -12,6 +12,19 @@ import { expectTouchTargets } from './support/touch-targets';
  * resource is ever requested and a pasted CDN URL would go unseen.
  */
 
+/** A 1×1 PNG for the mocked serving endpoint — the preview's `<img>` genuinely loads. */
+const TINY_IMAGE = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+const COVER_URL = '/api/venues/1/photos/aa01';
+
+/**
+ * Two pinned venues and one without a location. The unpinned one is the point of the third row:
+ * it stays in the list and draws no pin, so "one pin per PINNED venue" is asserted against a list
+ * that actually contains a counter-example.
+ */
 const VENUES = [
   {
     id: 1,
@@ -24,6 +37,12 @@ const VENUES = [
     fromPrice: { minorUnits: 2500, currency: 'EUR' },
     availability: { free: 18, total: 24 },
     salesOpen: true,
+    location: { latitude: 39.7712, longitude: 20.0021 },
+    coverPhoto: {
+      card: { url: COVER_URL, sources: [{ url: COVER_URL, width: 576 }] },
+      banner: { url: COVER_URL, sources: [{ url: COVER_URL, width: 1440 }] },
+    },
+    photos: [{ url: COVER_URL, sources: [{ url: COVER_URL, width: 576 }] }],
   },
   {
     id: 2,
@@ -35,6 +54,19 @@ const VENUES = [
     bookingMode: 'REQUEST',
     fromPrice: { minorUnits: 3000, currency: 'EUR' },
     availability: { free: 5, total: 10 },
+    salesOpen: true,
+    location: { latitude: 40.1573, longitude: 19.6401 },
+  },
+  {
+    id: 3,
+    name: 'Palasa Sands',
+    beach: 'Palasë',
+    region: 'Albanian Riviera',
+    ratingTenths: 44,
+    reviewsCount: 12,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 2000, currency: 'EUR' },
+    availability: { free: 4, total: 8 },
     salesOpen: true,
   },
 ];
@@ -56,9 +88,34 @@ const PHONE = { width: 390, height: 780 };
 const NARROWEST_PHONE = { width: 320, height: 640 };
 const WIDE = { width: 1280, height: 900 };
 
+/**
+ * Let a surface finish fading in before axe or a colour is read: a half-faded element composites
+ * its ink over the backdrop and reads as a contrast failure that is not there.
+ */
+async function settleAnimations(target: Locator): Promise<void> {
+  await target.evaluate((el) =>
+    Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
+  );
+}
+
+/** Every `/api/venues` request the page made, so a filter change can be shown to cost exactly one. */
+function countVenueRequests(page: Page): () => number {
+  let seen = 0;
+  page.on('request', (request) => {
+    if (/\/api\/venues(\?.*)?$/.test(request.url())) {
+      seen += 1;
+    }
+  });
+  return () => seen;
+}
+
 async function mockVenues(page: Page, delayMs = 0): Promise<void> {
   await page.route(/\/api\/auth\/me$/, (route) =>
     route.fulfill({ status: 401, json: { code: 'UNAUTHENTICATED' } }),
+  );
+  // Registered before the list route, so the more specific photo path wins where both could match.
+  await page.route(/\/api\/venues\/\d+\/photos\/[0-9a-z]+$/, (route) =>
+    route.fulfill({ body: TINY_IMAGE, contentType: 'image/png' }),
   );
   await page.route(/\/api\/venues(\?.*)?$/, async (route) => {
     if (delayMs) {
@@ -82,7 +139,7 @@ test.describe('Discover map — fake engine', () => {
   }) => {
     await page.setViewportSize(PHONE);
     await page.goto('/');
-    await expect(page.getByTestId('venue-card')).toHaveCount(2);
+    await expect(page.getByTestId('venue-card')).toHaveCount(3);
     await expect(page.getByTestId('view-list')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('map-panel')).toBeHidden();
 
@@ -108,7 +165,7 @@ test.describe('Discover map — fake engine', () => {
     await expectNoSeriousAxeViolations(page, 'Discover with the map open');
 
     await page.getByTestId('view-list').click();
-    await expect(page.getByTestId('venue-card')).toHaveCount(2);
+    await expect(page.getByTestId('venue-card')).toHaveCount(3);
     await expect(page.getByTestId('map-panel')).toBeHidden();
   });
 
@@ -166,12 +223,154 @@ test.describe('Discover map — fake engine', () => {
     await expectNoSeriousAxeViolations(page, 'Discover with a declined near-me');
   });
 
+  test('draws a pin per pinned venue and none for the venue without a location', async ({
+    page,
+  }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+
+    await expect(page.getByTestId('venue-card')).toHaveCount(3);
+    const pins = page.getByTestId('map-venue-pin');
+    await expect(pins).toHaveCount(2);
+    await expect(pins.nth(0)).toHaveAttribute('aria-label', 'Miramar Beach Club');
+    await expect(pins.nth(1)).toHaveAttribute('aria-label', 'Aurora Bay');
+  });
+
+  test('a pin opens its preview, which leads to the beach map with the date carried', async ({
+    page,
+  }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+    const date = await page.getByTestId('filter-date').inputValue();
+
+    await page.getByTestId('map-venue-pin').first().click();
+
+    const preview = page.getByTestId('venue-preview');
+    await expect(preview).toBeVisible();
+    await expect(preview.getByTestId('preview-name')).toHaveText('Miramar Beach Club');
+    await expect(preview.getByTestId('preview-location')).toHaveText('Ksamil · Albanian Riviera');
+    await expect(preview.getByTestId('preview-rating')).toContainText('4.8');
+    await expect(preview.getByTestId('preview-price')).toContainText('€25');
+    // The cover really renders: a broken <img> would report zero natural width.
+    await expect
+      .poll(() =>
+        preview
+          .getByTestId('preview-photo-img')
+          .evaluate((img: HTMLImageElement) => img.naturalWidth),
+      )
+      .toBeGreaterThan(0);
+
+    await preview.getByTestId('preview-link').click();
+    await expect(page).toHaveURL(new RegExp(`/venues/1\\?date=${date}$`));
+  });
+
+  test('shows one preview at a time, and closes it on Escape with focus back on the pin', async ({
+    page,
+  }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+    const pins = page.getByTestId('map-venue-pin');
+
+    await pins.nth(0).click();
+    // By keyboard on purpose: the open card covers the lower map, exactly as a bottom sheet does
+    // on any map, so the pin under it is reachable by Tab rather than by tap.
+    await pins.nth(1).press('Enter');
+
+    await expect(page.getByTestId('venue-preview')).toHaveCount(1);
+    await expect(page.getByTestId('preview-name')).toHaveText('Aurora Bay');
+    await expect(pins.nth(1)).toHaveAttribute('aria-expanded', 'true');
+    await expect(pins.nth(0)).toHaveAttribute('aria-expanded', 'false');
+
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByTestId('venue-preview')).toHaveCount(0);
+    await expect(pins.nth(1)).toBeFocused();
+  });
+
+  test('closes the preview when the map itself is tapped', async ({ page }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+
+    await page.getByTestId('map-venue-pin').first().click();
+    await expect(page.getByTestId('venue-preview')).toBeVisible();
+
+    await page.getByTestId('riviera-map-fake').click({ position: { x: 8, y: 8 } });
+
+    await expect(page.getByTestId('venue-preview')).toHaveCount(0);
+  });
+
+  test('marks the selected venue’s card in the list beside the map', async ({ page }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+
+    await page.getByTestId('map-venue-pin').nth(1).click();
+
+    const cards = page.getByTestId('venue-card');
+    await expect(cards.nth(1)).toHaveAttribute('aria-current', 'true');
+    await expect(cards.nth(0)).not.toHaveAttribute('aria-current', 'true');
+    await expect(cards.nth(2)).not.toHaveAttribute('aria-current', 'true');
+  });
+
+  test('re-feeds the pins from one further request when a filter changes, and drops the preview', async ({
+    page,
+  }) => {
+    const venueRequests = countVenueRequests(page);
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+    await expect(page.getByTestId('map-venue-pin')).toHaveCount(2);
+
+    await page.getByTestId('map-venue-pin').first().click();
+    await expect(page.getByTestId('venue-preview')).toBeVisible();
+    const before = venueRequests();
+
+    await page.getByTestId('filter-beach').selectOption('Dhërmi');
+
+    await expect(page.getByTestId('venue-card')).toHaveCount(1);
+    const pins = page.getByTestId('map-venue-pin');
+    await expect(pins).toHaveCount(1);
+    await expect(pins.first()).toHaveAttribute('aria-label', 'Aurora Bay');
+    await expect(page.getByTestId('venue-preview')).toHaveCount(0);
+    // The map asks for nothing of its own: one list request answered both surfaces.
+    expect(venueRequests() - before).toBe(1);
+  });
+
+  test('pins and an open preview stay accessible, and leave the tile credit visible', async ({
+    page,
+  }) => {
+    await page.setViewportSize(NARROWEST_PHONE);
+    await page.goto('/');
+    await page.getByTestId('view-map').click();
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+
+    // By keyboard: on the narrowest phone this pin sits under the credit pill, which is opaque
+    // and must stay so — panning is what frees it for a tap, and Tab reaches it either way.
+    await page.getByTestId('map-venue-pin').first().press('Enter');
+    const preview = page.getByTestId('venue-preview');
+    await expect(preview).toBeVisible();
+    await settleAnimations(preview);
+
+    // The licences (OpenMapTiles CC-BY, OSM ODbL) require the credit to stay legible, so the
+    // preview must clear it even on the narrowest phone, where the credit wraps to two lines.
+    const credit = (await page.getByTestId('map-attribution').boundingBox())!;
+    const card = (await preview.boundingBox())!;
+    expect(card.y + card.height).toBeLessThanOrEqual(credit.y);
+
+    await expectTouchTargets(page, 'Discover with a pin preview open');
+    await expectNoSeriousAxeViolations(page, 'Discover with a pin preview open');
+  });
+
   test('shows the list and the map side by side on a wide screen, with no switch', async ({
     page,
   }) => {
     await page.setViewportSize(WIDE);
     await page.goto('/');
-    await expect(page.getByTestId('venue-card')).toHaveCount(2);
+    await expect(page.getByTestId('venue-card')).toHaveCount(3);
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
     await expect(page.getByTestId('view-switch')).toBeHidden();
 
@@ -222,7 +421,7 @@ test.describe('Discover map — real engine', () => {
 
     await page.setViewportSize(WIDE);
     await page.goto('/');
-    await expect(page.getByTestId('venue-card')).toHaveCount(2);
+    await expect(page.getByTestId('venue-card')).toHaveCount(3);
     expect(venuesAnsweredAt).toBeDefined();
     expect(firstMapRequestAt === undefined || firstMapRequestAt >= venuesAnsweredAt!).toBe(true);
 
@@ -286,6 +485,19 @@ test.describe('Discover map — real engine', () => {
     await page.mouse.move(box.x + box.width / 2 - 120, box.y + box.height / 2 - 80, { steps: 8 });
     await page.mouse.up();
     await expect.poll(() => Object.values(seen).every(Boolean), { timeout: 20_000 }).toBe(true);
+
+    // ...and then open a pin preview, whose cover photo is the one image this surface fetches.
+    // By keyboard, since a pin's real geographic spot may land under the credit pill.
+    await page.getByTestId('map-venue-pin').first().press('Enter');
+    const preview = page.getByTestId('venue-preview');
+    await expect(preview).toBeVisible();
+    await settleAnimations(preview);
+    await expect
+      .poll(() =>
+        preview.getByTestId('preview-photo-img').evaluate((img: HTMLImageElement) => img.complete),
+      )
+      .toBe(true);
+    await page.waitForLoadState('networkidle');
 
     expect(offOrigin, 'every map resource must come from our origin (ADR-0022)').toEqual([]);
     await expectNoSeriousAxeViolations(page, 'Discover with the real map rendered');

@@ -142,14 +142,14 @@ existing single `pin`/`pinDraggable`/`pinMoved` placement contract (the operator
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The preview card overlays the map and covers the OpenMapTiles/OpenStreetMap credit, breaking the ODbL + CC-BY attribution obligation ADR-0022 and story 13 rest on | high | high | Card is bottom-anchored with a clearance above the credit pill; an e2e measures both boxes on the **narrowest** phone (320 px, where the credit wraps to two lines) and asserts they do not intersect — the same shape as #1098's existing credit-inset test | plan | open |
-| R-2 | Pin markers are appended into the engine's surface, so a rebuild on every selection change would drop focus mid-interaction and scramble tab order | med | med | Rebuild only when the pin *identity* changes (`id`+`label` key); a selection change only re-writes `aria-expanded`/`data-selected` on the existing buttons | plan | open |
-| R-3 | A pin tap bubbles to the map surface and is read as the map tap that closes previews — the pin would open and instantly close | high | high | Pin elements `stopPropagation()` on click, the prior art the existing placement pin already uses (`buildPinElement`); AC-3 pins it at the seam | plan | open |
-| R-4 | #1098's network guard runs against the **real** engine, whose `VENUES` fixture has no `location` and no `coverPhoto` — extending it naively would assert "no third-party requests" on a map with zero pins, i.e. vacuously | high | med | The fixture gains locations **and** a mocked same-origin cover photo, and the guard's test taps a pin and asserts the preview is open *before* reading the request log (AC-11) | plan | open |
-| R-5 | Moving `VenueCard` out of `home.ts` for the preview card creates a `home.ts` ↔ `venue-preview-card.ts` import cycle | med | med | `VenueCard` lands in its own `pages/home/venue-card.ts`; both import it, neither imports the other | plan | open |
-| R-6 | Focus moves into a non-modal preview dialog and is stranded when the preview closes because its list re-fetched underneath it | med | med | Selection is a `linkedSignal` over the pin set: a re-fetch empties `venuesView`, which resets the selection to `null`, closes the preview and returns focus to the pin — and when the pin is gone too, to the map's own end marker | plan | open |
+| R-1 | The preview card overlays the map and covers the OpenMapTiles/OpenStreetMap credit, breaking the ODbL + CC-BY attribution obligation ADR-0022 and story 13 rest on | high | high | Card is bottom-anchored (`bottom-[58px]`) with a clearance above the credit pill; the e2e measures both boxes on the **narrowest** phone (320 px, where the credit wraps to two lines) and asserts the card's bottom edge stays above the credit's top | plan | **closed** — pinned by `discover-map.e2e.ts` › *pins and an open preview stay accessible, and leave the tile credit visible* |
+| R-2 | Pin markers are appended into the engine's surface, so a rebuild on every selection change would drop focus mid-interaction and scramble tab order | med | med | Rebuild only when the pin *identity* changes (`id`+`label` key); a selection change only re-writes `aria-expanded` on the existing buttons | plan | **closed** — `riviera-map.spec.ts` › *keeps the pin elements across a selection change, so focus survives it* |
+| R-3 | A pin tap bubbles to the map surface and is read as the map tap that closes previews — the pin would open and instantly close | high | high | Pin elements `stopPropagation()` on click, the prior art the existing placement pin already uses (`buildPinElement`); AC-3 pins it at the seam | plan | **closed** — `riviera-map.spec.ts` › *selects a pin on press, without reporting a map click underneath it* |
+| R-4 | #1098's network guard runs against the **real** engine, whose `VENUES` fixture has no `location` and no `coverPhoto` — extending it naively would assert "no third-party requests" on a map with zero pins, i.e. vacuously | high | med | The fixture gains locations **and** a mocked same-origin cover photo; the guard opens a preview and waits for the cover `<img>` to complete before reading the request log | plan | **closed** — AC-11 |
+| R-5 | Moving `VenueCard` out of `home.ts` for the preview card creates a `home.ts` ↔ `venue-preview-card.ts` import cycle | med | med | `VenueCard` lands in its own `pages/home/venue-card.ts`; both import it, neither imports the other | plan | **closed** — no cycle; lint and build clean |
+| R-6 | Focus moves into a non-modal preview dialog and is stranded when the preview closes because its list re-fetched underneath it | med | med | Selection is a `linkedSignal` over the pin set: a re-fetch empties `venuesView`, which resets the selection to `null` and closes the preview. `focusPin` is a no-op for a pin the map no longer holds, so a vanished venue cannot throw | plan | **closed** — `home.spec.ts` › *re-feeds the pins and drops the preview when a filter changes the result set*; `riviera-map.spec.ts` › *ignores a focus request for a pin that is no longer on the map* |
 | R-7 | Open PR #1093 bumps Vitest 4.1.11 → **5.0.0** (a major) under this slice's new specs | low | med | No Flyway migration here, so no `V<n>` collision; if #1093 merges first, merge `main` in with full phase discipline and re-run `npm test` before ready-for-review | plan | open |
-| R-8 | Adding pins to Discover puts 2–N new tab stops inside the map region, degrading keyboard bypass | med | med | `mapEnd` is already the template's last element and markers mount into the canvas host above it, so `Skip map` bypasses every pin; AC-9's axe run and the existing `map-skip` e2e assertion both stay green | plan | open |
+| R-8 | Adding pins to Discover puts 2–N new tab stops inside the map region, degrading keyboard bypass | med | med | `mapEnd` is already the template's last element and markers mount into the canvas host above it, so `Skip map` bypasses every pin; AC-9's axe run and the existing `map-skip` e2e assertion both stay green | plan | **closed** — the `map-skip` → `map-end` e2e still passes with pins drawn |
 
 ## Open questions / Assumptions
 
@@ -237,11 +237,10 @@ code or error shape moves.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `implement (phase 6)`
 
-**Next action:** Phase 5 red — the mocked Playwright e2e in `discover-map.e2e.ts`: pin →
-preview → venue page, the filter-change request count, the credit clearance, and the
-real-engine network guard extended to a pin and an open preview.
+**Next action:** Phase 6 — `CONTEXT.md`'s **riviera map** entry gains the pin and the
+preview card, run the plan file-structure guard, then write the close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -250,7 +249,7 @@ real-engine network guard extended to a pin and an open preview.
 | 2 — `RivieraMap` grows multi-pin (AC-2, AC-3) | ✅ | `<phase-2>` |
 | 3 — The Liquid Glass preview card (AC-6) | ✅ | `<phase-3>` |
 | 4 — Wire Discover: pins, selection, preview, card highlight (AC-7, AC-8) | ✅ | `<phase-4>` |
-| 5 — e2e: pin → preview → venue page, filters, the network guard (AC-4, AC-5, AC-9, AC-11) | | |
+| 5 — e2e: pin → preview → venue page, filters, the network guard (AC-4, AC-5, AC-9, AC-11) | ✅ | `<phase-5>` |
 | 6 — `CONTEXT.md` + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -260,7 +259,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| | *(none yet)* | | |
+| F-1 | phase 5 e2e (real browser) | An open preview covers the lower map, and the credit pill covers whatever pin sits under it, so those pins cannot be *tapped* — the same behaviour any map's bottom sheet and attribution have. Accepted, not worked around: making the credit `pointer-events-none` would turn a press on it into a map press, which in the operator console **places a venue pin**. Panning frees the pin, and Tab reaches it regardless — which the e2e now proves by activating those pins with `Enter`. | closed — accepted, covered by keyboard activation |
+| F-2 | phase 5 e2e (real browser) | axe flagged the preview's call to action at 2.26:1 — the card was read mid-fade, its ink composited over the backdrop through a partial `opacity`. The documented false positive (`riviera-frontend` § e2e split); fixed by awaiting `getAnimations().finished` before the audit, not by changing a colour. | fixed-in-`<phase-5>` |
 
 ---
 
