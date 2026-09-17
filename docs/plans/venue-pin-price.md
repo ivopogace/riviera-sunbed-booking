@@ -83,16 +83,19 @@ N/A — the pin face changes, no surface is retired. The dot survives as the no-
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The wider pill shrinks below 44 px on one axis (a `min-w` without a height, or vice versa) | low | high | `h-11 min-w-11` on the pill; the e2e touch-target sweep measures every pin box in the map-open tests | session | open |
-| R-2 | `MapPin` leaks venue/money vocabulary | low | med | the field is `badge: string` — text on a face; the consumer composes it and the "from" wording | session | open |
-| R-3 | A price change rebuilds the pin set and drops focus | low | low | it already rebuilds on a label change today; a reprice comes from the date field, which holds focus, never a pin | session | open |
-| R-4 | 14 px bold ink fails AA on the fill or its inversion | low | med | the `--riv-solid-btn-ink`/`-fill` pair is AA-proven both ways (`solid-btn-tokens.contrast.spec.ts`); the pin adds no new colour | session | open |
+| R-1 | The wider pill shrinks below 44 px on one axis (a `min-w` without a height, or vice versa) | low | high | `h-11 min-w-11` on the pill; the e2e touch-target sweep measures every pin box in the map-open tests | session | closed — `discover-map.e2e.ts` measures height ≥ 44 and width > height; 19/19 green locally and in CI |
+| R-2 | `MapPin` leaks venue/money vocabulary | low | med | the field is `badge: string` — text on a face; the consumer composes it and the "from" wording | session | closed — review gate (RV-FE-8 and the `MapPin` doc walk) found no leak |
+| R-3 | A price change rebuilds the pin set and drops focus | low | low | it already rebuilds on a label change today; a reprice comes from the date field, which holds focus, never a pin | session | closed — see F-1: every reload empties `venues` first, so the rebuild predates this slice |
+| R-4 | 14 px bold ink fails AA on the fill or its inversion | low | med | the `--riv-solid-btn-ink`/`-fill` pair is AA-proven both ways (`solid-btn-tokens.contrast.spec.ts`); the pin adds no new colour | session | closed — no new colour position; Sonar reports 0 new issues |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the no-price fallback is the plain dot, not a "—" pill — a venue with
-  nothing to sell says nothing, which the issue's "sensible fallback" allows. — *Owner:*
-  session · *Resolves by:* the review gate.
+None open.
+
+### Resolved
+
+- **Assumption:** the no-price fallback is the plain dot, not a "—" pill. — *Outcome:* kept;
+  the review gate raised no objection and the PR's Scope notes record the choice (PR #1137).
 
 ## Availability & concurrency (invariant #2)
 
@@ -127,13 +130,23 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** PR — draft open, merging latest `main` then ready-for-review; review gate due.
+**Stage pointer:** DONE — merged via PR #1137 (CI green, review gate run, Sonar gate green with an
+empty list); the merge close-out (`references/pr-gates.md` §3) retires this doc.
 
-**Next action:** run the review gate (`references/pr-gates.md` §1) over the PR's resolved range.
+**Next action:** none — after the merge, verify #1135 closed and retire this plan at the next close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — price on the pin face + name, dot fallback | ✅ | the PR's first commit (#1135) |
+| 0 — price on the pin face + name, dot fallback | ✅ | merged via PR #1137 |
+
+**Review note:** the gate ran in full — `code-review:code-review` (rung 1) at medium effort with
+`riviera-review-overlay` layered on, over `5c1c981e..b434d734` (7 files, +338/−27, verified by
+`check-review-range.mjs`). Five reviewers; two candidate findings, both rejected below the bar
+(F-1, F-2). Posted on the PR.
+
+**Sonar note:** `SonarCloud Code Analysis` concluded `success`; the API list for
+`pullRequest=1137` is empty (`total: 0`) and the measures are real — `new_lines` 42, new
+coverage 100.0 %, new duplication 0.0 %, 0 hotspots — so the zero is analysed, not unanalysed.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -141,6 +154,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (git-history reviewer) | folding `badge` into the rebuild key tears every pin down on a reprice and drops focus | rejected (scored 40) — pre-existing: `Home.beginRequest()` sets `venues` to `undefined` before every list request, so a date change already rebuilt every pin at the base commit, with focus on the date field, never a pin; the key already carried `label` |
+| F-2 | review (prior-PR-comments reviewer) | the wider pill makes the open #1134 overlap more visible | rejected (scored 0) — a documented non-goal; #1134 stays its own slice |
 
 ---
 
@@ -185,20 +200,20 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1) — no backend change.
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2) — N/A, justified.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11) — N/A, frontend-only.
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9) — N/A; display only, from minor units.
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6) — untouched.
+- [x] Booking codes unguessable (invariant #7) — untouched.
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12) — no schema change.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #1137`. The close-out is a second, docs-only commit: the review and Sonar outcomes it records could only exist after the first push, and no code fix was needed to carry it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
