@@ -1,389 +1,125 @@
 # Riviera backend overlay items
 
-Repo-specific backend bank items, layered onto the active review engine's generic backend
-bank and walked after it. Item format: gate → follow-up → default severity. **Item IDs are
-not sequential — never renumber.** Invariant numbers reference `CLAUDE.md`.
-
-## Always-run (when scope is BE or Full-stack)
-
-### RV-BE-1. Availability single-source-of-truth & concurrency (invariant #2)
-**Gate:** For any write to `availability(set_id, booking_date)`, is a set provably
-holdable by at most one party per date, even under concurrent requests?
-- [ ] no availability write
-- [ ] DB unique constraint on `(set_id, booking_date)` present
-- [ ] reservation uses `SELECT … FOR UPDATE` or atomic `INSERT … ON CONFLICT DO NOTHING`
-- [ ] check-then-insert with no lock (race — violation)
-- [ ] concurrent-reservation test present
-
-**Follow-up:**
-- The online-booking path and the staff tap-to-mark path write the same row through the
-  same guarded write.
-- A read-modify-write without a row lock or an atomic claim races. Require `FOR UPDATE` on
-  the row, or an `INSERT … ON CONFLICT DO NOTHING` whose 0-row result means "already taken."
-- The losing request returns a clean conflict (`409 SET_TAKEN`), not a 500.
-- A test fires two reservations of the same `(set, date)` concurrently and asserts exactly one wins.
-- Request-to-Book adds guarded write paths on the same row: a **pending hold** when the
-  request is placed (blocks like a confirmed booking) and a **release** on each terminal leg
-  — venue decline, expiry sweep, guest withdraw. The legs are separated by the row lock, not
-  by predicate: only *accept* is deadline-disjoint from expire; decline and withdraw guard on
-  `status` alone, so on an overdue row their `WHERE` clauses and expire's all match.
-
-**Default severity:** **Blocker** for any unguarded availability write; Major for a
-missing concurrency test on a guarded path.
-
----
-
-### RV-BE-2. JDBC only — no JPA (invariant #1)
-**Gate:** Does the change stay on Spring Data JDBC / `JdbcTemplate` with zero JPA?
-- [ ] JDBC only
-- [ ] `spring-boot-starter-data-jpa` added to the build (violation)
-- [ ] `@Entity`/`@OneToMany`/`@ManyToOne`/`mappedBy`/`EntityManager` used (violation)
-- [ ] `JpaRepository` extended (violation)
-
-The structural half is machine-enforced — `JdbcOnlyArchitectureTests` probes the classpath
-for JPA/Hibernate types; verify it is green. Spend eyes on a JPA dependency in the
-build-file diff (a finding even if unused) and on mapping staying explicit (`RowMapper` /
-aggregate mapping), not ORM-managed.
-
-**Default severity:** **Blocker** for a JPA starter on the classpath or any `@Entity`;
-Major for `JpaRepository`.
-
----
-
-### RV-BE-3. Spring Modulith boundaries (invariant #11)
-**Gate:** Does any file import another module's `application.*`, `adapter.*`, or
-`domain.*` instead of going through its published surfaces or an event?
-- [ ] no cross-module import outside the published surfaces (`api`/`spi`/`vocabulary`/`events`)
-- [ ] cross-module import of `application.*` / `adapter.*` / `domain.*` (violation)
-- [ ] new module without `package-info.java` `@ApplicationModule`
-
-Illegal cross-module imports and the `allowedDependencies` grants are machine-enforced by
-`ModularityTests` (`ApplicationModules.verify()`); verify it is green. Spend eyes on the
-semantic calls: query vs event (sync answer → `api/` port; state-change reaction → domain
-event) and the api-vs-spi direction (RV-BE-3b). Layout mechanics: `riviera-modulith`.
-
-**Default severity:** **Blocker** for a cross-module non-`api/` import; Major for a
-missing `@ApplicationModule`.
-
----
-
-### RV-BE-3b. API vs SPI for cross-module ports (invariant #11)
-**Gate:** Is each cross-module port in the correct named interface — inbound ports others
-*call* in `api/`, a *driven* port another module *implements* in `spi/`?
-- [ ] no new cross-module port
-- [ ] inbound port (others call) in `api/`
-- [ ] driven port implemented by ANOTHER module in `spi/` (`@NamedInterface("spi")`), not `api/`
-- [ ] an `api/` interface that another module *implements* rather than calls (misfiled — belongs in `spi/`)
-- [ ] `<provider>::spi` granted only to the implementor; call-only modules granted `<provider>::api` only
-- [ ] a driven port implemented by the module's OWN adapters wrongly published instead of staying internal in `application/`
-
-`api` = "call me"; `spi` = "implement me". Example: `venue.spi.SetAvailabilityLookup` is
-implemented by `availability` (granted `venue::api` + `venue::spi`); `booking`, which only
-calls venue, is granted `venue::api` only.
-
-**Default severity:** Major for a driven cross-module port in `api/` (or `::spi` granted
-too broadly); Minor for an internal driven port that leaked out of `application/`. Both are
-`verify()`-legal, so the review is the only thing that catches them.
-
----
-
-### RV-BE-3c. Published-surface placement — ports vs vocabulary vs events
-
-*Check when the published surface or domain tagging changes.* A typed id / value record or
-a published event must not be added to `api/`; events go in the events surface, vocabulary
-in the vocabulary surface. A new **sibling-facing** method piled onto `VenueCatalog`
-(instead of the role-named `SetBookingFacts`/`VenueRates` split) is a finding, default
-**Major** — a further **tourist read** on `VenueCatalog` is not (the rule asserts
-dependency direction, not a frozen method list; `VenueApiRoleSplitTests` states this).
-`PublishedSurfacePlacementArchitectureTests` enforces api/spi = non-sealed interfaces only,
-events = records only, vocabulary = no plain interfaces, cross-module listener params in
-the owner's events surface — verify it passes and judge what it can't (is a new type
-genuinely vocabulary?). An event class move must ship an `event_type` Flyway rewrite for
-the Event Publication Registry (see V18).
-
----
-
-### RV-BE-4. Domain events carry ids, not aggregates (invariant #11)
-**Gate:** Do domain-event payloads carry technical ids only?
-- [ ] no events
-- [ ] payload is ids (`BookingId`, `SetId`, `VenueId`, `bookingDate`)
-- [ ] payload embeds a full aggregate / foreign module type (violation)
-- [ ] payload carries mutable business fields (email, name) as identity (smell)
-
-**Follow-up:** `@TransactionalEventListener(phase = AFTER_COMMIT)` for async side effects
-so a rolled-back transaction publishes nothing.
-
-**Default severity:** Major for a non-id payload; Minor for an over-broad payload.
-
----
-
-### RV-BE-5. Money is integer minor units (invariant #5)
-**Gate:** Are all monetary amounts integer minor units with an explicit currency?
-- [ ] money as `long`/`int` minor units + currency
-- [ ] `double`/`float` amount (violation)
-- [ ] `BigDecimal` of euros flowing through domain (smell — convert at the edge)
-- [ ] commission/payout division without a written rounding rule
-
-**Follow-up:** where commission introduces a division, the rounding rule is explicit and
-tested (who absorbs the half-cent). Grep for `double`/`float`/`BigDecimal` near
-price/amount/commission.
-
-**Default severity:** Major for floating-point money; Minor for unstated rounding.
-
----
-
-### RV-BE-6. Timezone: store UTC, reason in Europe/Tirane (invariant #6)
-**Gate:** Is date/cutoff logic computed in `Europe/Tirane` with UTC storage, never the JVM
-default zone?
-- [ ] no time logic
-- [ ] booking date is `LocalDate` in `Europe/Tirane`
-- [ ] cutoff computed in `Europe/Tirane`
-- [ ] `LocalDateTime.now()` / `new Date()` / JVM-default-zone arithmetic (violation)
-- [ ] timestamp persisted as local time instead of UTC `Instant` (violation)
-
-**Default severity:** Major for JVM-default-zone logic on cutoff/booking-date; Minor for
-cosmetic local-time persistence.
-
----
-
-### RV-BE-7. Stripe webhook is the source of truth + idempotent (invariant #8)
-**Gate:** Is payment state driven by signature-verified webhooks, idempotently?
-- [ ] no payment change
-- [ ] booking confirmed on verified webhook
-- [ ] booking confirmed from client redirect / client-reported success (violation)
-- [ ] webhook signature not verified (violation)
-- [ ] handler not idempotent on duplicate event delivery (violation)
-- [ ] missing idempotency key on charge/refund creation
-
-**Follow-up:** verify the signature on every webhook; dedupe on the Stripe event id (the
-transition is a no-op if already applied — Stripe re-delivers); idempotency key on
-charge/refund derived from `BookingId` + operation. Replay the same event twice in a test.
-
-**Default severity:** **Blocker** for confirming off the client or an unverified webhook;
-Major for a non-idempotent handler.
-
----
-
-### RV-BE-8. Payout ledger is exactly-once and reversible (invariant #9)
-**Gate:** Does each booking accrue to a venue's payout exactly once, with refunds reversing it?
-- [ ] no payout change
-- [ ] accrual on confirm, keyed so it can't double
-- [ ] accrual not idempotent (double-pay risk — violation)
-- [ ] refund does not reverse the accrual (over-pay — violation)
-- [ ] commission rate read from a hardcoded constant instead of the venue setting
-
-**Follow-up:** accrual is keyed by `BookingId` so a re-delivered confirmation can't accrue twice.
-
-**Default severity:** **Blocker** for double-accrual or missing reversal; Major for
-hardcoded commission.
-
----
-
-### RV-BE-9. Per-venue authorization / BOLA (invariant #13)
-
-Any diff touching a venue-scoped endpoint or service (`/api/venues/{venueId}/**`, the
-payout ledger, staff bookings, beach-map edit, staff availability, weather refund) must
-verify the authenticated operator owns the path `venueId` — in the **application service**,
-via the `operator` module's `assertOwns` (pinned by `CrossVenueDenialIT`) — so no driving
-adapter bypasses it. Verify any new venue-scoped surface calls it. Default **Blocker**
-whenever a venue-scoped surface is touched. Platform-wide `/api/admin/**` is role-gated and
-exempt; `AdminSurfaceRoleGateTest` discovers the mapped `/api/admin/**` endpoints and
-fails unless each refuses both non-admin principal types, so a new admin endpoint needs its
-`hasRole(ADMIN_ROLE)` matcher. The denial is uniform: `403 NOT_VENUE_OWNER` **before any
-existence check**, even for a nonexistent venue — a 404 that leaks the existence of an
-unowned venue is a finding.
-
----
-
-### RV-BE-10. Error contract (`riviera-java-conventions` §6b)
-
-A controller introducing a bespoke `{"error": …}` body or a per-controller
-`@ExceptionHandler` instead of the centralized `@RestControllerAdvice` / `ProblemDetail`
-contract is a finding. Default **Minor** (Major if it diverges the wire shape).
-
-**Also check the `detail` string's voice**, which nothing machine-checks: it states the
-**condition**, not the remedy. A `detail` written as user-facing copy — a remedy ("Reload
-and try again"), a consequence ("…so it can't be removed"), UI navigation ("Switch to Edit
-sets…") — duplicates wording the client owns and drifts. **No call site is exempt**; a
-`detail` in remedy voice is a finding wherever it appears. Default **Minor**. Two traps when
-a diff *fixes* one: shortening it into a restatement of the `code`, and shortening it into
-something untrue of the broadest arm the code serves. Also:
-- **A code emitted from more than one call site carries one string**, pinned on the pair
-  (`CurrentPasswordDetailTwinTest` compares two live responses). A diff that changes one arm
-  of `MISSING_CURRENT_PASSWORD`, `REQUEST_NOT_PENDING` or `STALE_WRITE` without the others
-  is the finding.
-- **A shortened string stays true of the broadest arm.** A withdrawn request reaches
-  `REQUEST_NOT_PENDING`; the two `STALE_WRITE` set-writes share one `venue.set_version`
-  token, so neither may name prices or layout. Check the guard, not the sentence.
-
-Authority: `riviera-java-conventions` `references/error-contract.md`.
-
----
-
-### RV-BE-11. Module responsibility placement (`RESPONSIBILITIES.md`)
-
-*Check whenever the diff adds or moves behavior.* Each changed file's logic belongs to
-**that** module per `RESPONSIBILITIES.md`: it serves the module's **Job** and is not on
-its **Not My Job** list. If the plan doc carries a Module-ownership table (§4a), diff the
-code against it.
-
-The structural half is enforced by `ModularityTests` and the ArchUnit fitness functions —
-if green, don't re-verify by eye. The semantic half — a *policy*, *decision*, or
-*calculation* reimplemented in the wrong module with no illegal import — needs judgment.
-Tells to scan for:
-- **A calculation or policy in an "executor" module.** Refund-amount or
-  cancellation-policy logic inside `payment` (it executes; `booking` decides).
-  Commission/payout arithmetic inside `venue` or `booking` (`payout` computes; `venue`
-  stores the rate). The highest-value tell; no rule catches it.
-- **A new writer to another module's table** — code outside `availability` writing the
-  `(set, date)` state. *(ArchUnit-catchable.)*
-- **A forbidden cross-module reach** — `booking` importing the Stripe SDK or
-  `payment.adapter`; any module reaching into another's `domain`/`internal`. *(ArchUnit-catchable.)*
-- **An event payload carrying a foreign aggregate or business field** instead of ids (a
-  `payout`/`availability` listener receiving tourist identity, a `Customer`, a full `Booking`).
-- **A capability `RESPONSIBILITIES.md` assigns elsewhere** showing up in this module — e.g.
-  `customer` growing a login/MFA subsystem (auth is an edge concern), or `operator` sitting
-  in every request path instead of owning the mapping and answering the ownership question.
-
-**Default severity:** **Major** (Blocker when the misplacement also breaks a Blocker
-invariant — a non-`availability` writer to the set table is RV-BE-1; a missing ownership
-check is RV-BE-9).
-
----
-
-### RV-BE-12. Package-shape conformance (ADR-0007)
-
-For any diff that adds or moves packages: verify `PackageShapeArchitectureTests` is green
-(allowed top-level set, adapter split by direction not technology, named interfaces
-top-level, no `application`/`domain` → `adapter.*` import) — don't hand-grep it. Spend eyes
-on what it can't see:
-- an `in`/`out` split *below* the application top level (internal ports live in
-  `application/` next to their service);
-- ghost packages / graduation — a thin (serviceless) module grown an empty `application/`
-  or `domain/`; conversely a module that gained a service but kept the thin shape should
-  graduate to full;
-- the use-case-slicing call — only `booking` is sliced.
-
-`vocabulary` and `events` are in the allowed set — flagging either is a false finding.
-Default **Major** (Minor for a cosmetic mis-slice inside a module). Authority: ADR-0007 +
-`riviera-modulith`.
-
----
-
-### RV-BE-19. Rule-layer placement (ADR-0018)
-
-*Check whenever the diff adds or changes a choice, a calculation, or a lifecycle statement.*
-ADR-0018 §1 makes those three the rule layer's contents; §2 puts a pure rule in `domain/` and
-a rule needing a `Clock`, a port or bound configuration in `application/`, as a named,
-separately unit-tested holder. Placement authority is `riviera-modulith`.
-
-The structural half is enforced — `DomainPurityArchitectureTests` rejects Spring, JDBC, the
-Stripe SDK, an `adapter/` or any port from a `domain/` class; if green, don't re-verify by
-eye. Note precisely what it leaves uncovered: `java.time.Clock` is JDK, so the rule **passes**
-a clock-backed statement sitting in `domain/`. Spend eyes on the semantic half:
-
-- **A choice or calculation inlined in a service with two or more callers.** The tell is a
-  condition or an arithmetic expression in a method body that a second call site has to keep
-  in step by hand. Two callers that must agree is what earns a named holder; **one caller does
-  not** — a single-caller inline rule is correct placement (ADR-0018 §1) and flagging it is a
-  false finding.
-- **A `Clock`- or port-backed rule in `domain/`.** It reads as pure and silently is not;
-  `BookingCutoff`'s Javadoc argues exactly this line for its own static method. The port case
-  reddens the purity rule, the `Clock` case is invisible to it and is this item's to catch.
-  The fix is `application/`, not threading the instant through as a parameter.
-- **A Java statement of a set invariant.** Code counting or scanning rows to decide whether a
-  write is allowed, where a unique/exclusion constraint is the enforcement (§3): it holds only
-  for rows this application writes, and only while every writer remembers to call it. A Java
-  mirror of a DB *bound or vocabulary* is **not** this — `Stars` ↔ `review_stars_check` and
-  `SalesClose` ↔ `venue_sales_close_check` name their twin in Javadoc and treat the
-  duplication as intended.
-
-**Default severity:** **Major**; **Blocker** when a Java set invariant stands in for a
-constraint enforcing invariant #2, #7 or #9 (then it is also RV-BE-1, RV-BE-14 or RV-BE-8
-respectively — and RV-BE-17 when the constraint is missing from SQL altogether); Minor for a
-rule in the wrong one of `domain/`/`application/` with no correctness effect. Authority:
-ADR-0018 + `riviera-modulith`.
-
----
-
-### RV-BE-14. Booking codes are unguessable (invariant #7)
-**Gate:** Are booking codes high-entropy and treated as bearer credentials?
-- [ ] random ≥8-char (e.g. base32) code from a CSPRNG
-- [ ] sequential / predictable id used as the code (violation)
-- [ ] code logged in plaintext at info level (smell)
-
-**Default severity:** Major for a predictable code; Minor for logging it.
-
----
-
-### RV-BE-15. Pool and cutoff enforced server-side (invariants #3, #4)
-**Gate:** Are the online-pool restriction and the sales-close cutoff enforced on the
-server, not just hidden in the UI?
-- [ ] online booking restricted to online-pool sets server-side
-- [ ] pool only enforced in the frontend (violation)
-- [ ] same-day booking rejected server-side at the cutoff
-- [ ] cutoff only enforced in the UI (violation)
-
-**Follow-up:** a crafted request must not be able to book a walk-in-pool set or a slot past
-the cutoff. Cutoff time + zone come from config, never a literal.
-
-**Default severity:** Major for UI-only enforcement of either rule.
-
----
-
-### RV-BE-16. Refund policy computed server-side (invariant #10)
-**Gate:** Is refund eligibility/amount decided on the server from the policy?
-- [ ] refund decision server-side from booking state + policy
-- [ ] client supplies the refund amount (violation)
-- [ ] weather refund modeled as an explicit admin action
-- [ ] policy thresholds hardcoded in two places (drift risk)
-
-**Default severity:** Major for client-supplied refund amounts; Minor for duplicated thresholds.
-
----
-
-### RV-BE-13. No injection: SQL, log, deserialization
-**Gate:** Is untrusted input kept out of SQL string-building, log lines, and unsafe
-deserialization?
-- [ ] SQL uses bound params (`:name`), never string concatenation of input
-- [ ] user-controlled text logged without neutralizing `\r\n` (log forging — violation)
-- [ ] booking code / secret / PII logged in clear (violation — invariant #7)
-- [ ] untrusted bytes deserialized without an allowlist (violation)
-
-Trace any user-controlled string into SQL, into a log line, and into any deserializer.
-Mechanics: `riviera-java-conventions` (rule 10) and `postgres`. Sonar flags all three.
-
-**Default severity:** **Blocker** for SQL injection or a secret in logs; Major for
-unsanitized untrusted text in logs or unguarded deserialization.
-
----
-
-### RV-BE-18. Session lifecycle bracketing
-
-*Check when the diff touches a credential change, an account-lifecycle transition, or
-session machinery.* The ordering guarantees: (a) the principal's sessions are revoked at
-the edge, synchronously (`PrincipalSessionRevoker`) — not via an event; (b) the revoke
-**brackets** the state change — before it (keyed by a status-guarded pre-read:
-`OperatorLifecycle#usernameInStatus`, `CustomerAccountRecovery#emailForResetToken`) AND
-after — so a transient revoke failure is retry-recoverable; (c) a self-service password
-change revokes the *other* sessions before the hash write and re-issues the surviving
-session under a new id via `SessionIdentity#rotate` (carries attributes over, hard-DELETEs
-the old row, creates a fresh one — pinned by `SessionIdentityTest`); (d) a rate-limit
-budget guarding **authenticated** work refunds a request denied 401/403 before the work,
-while login budgets still charge. Default **Blocker**.
-
----
-
-## Deep (opt-in)
-
-### RV-BE-17. Flyway migrations enforce the invariants (invariant #12)
-**Gate:** Do schema changes go through versioned Flyway migrations, and do the constraints
-that enforce invariants exist in SQL (not just app code)?
-- [ ] no schema change
-- [ ] versioned forward migration under `db/migration`
-- [ ] schema changed via app code / hand-run DDL (violation)
-- [ ] availability uniqueness exists only in app logic, not as a DB constraint (violation)
-- [ ] migration not tested
-
-**Default severity:** Blocker for the availability uniqueness missing at the DB level;
-Major for unversioned schema change.
+Gate → follow-up → default severity. Ids are not sequential — never renumber. Invariant
+numbers: `CLAUDE.md`.
+
+### RV-BE-1. Availability single source of truth (#2) — **Blocker**
+Any write to `availability(set_id, booking_date)`: unique constraint present; the reservation
+uses `SELECT … FOR UPDATE` or `INSERT … ON CONFLICT DO NOTHING` (0 rows = taken); no
+check-then-insert; loser gets `409 SET_TAKEN`, not a 500; a concurrent-reservation test exists
+(Major if missing). Online booking and staff tap-to-mark share the same guarded write.
+Request-to-Book adds a pending hold on place and a release on decline / expiry sweep / guest
+withdraw; those legs are separated by the row lock, not by predicate (decline and withdraw
+guard on `status` alone).
+
+### RV-BE-2. JDBC only (#1) — **Blocker**
+No `spring-boot-starter-data-jpa` (a finding even if unused), no `@Entity`/`EntityManager`/
+`JpaRepository` (Major). `JdbcOnlyArchitectureTests` probes the classpath; eyes go to the
+build-file diff and to mapping staying explicit.
+
+### RV-BE-3. Modulith boundaries (#11) — **Blocker**
+No cross-module import of `application.*`/`adapter.*`/`domain.*`; new module has
+`package-info.java` `@ApplicationModule` (Major). `ModularityTests` enforces the imports; eyes
+go to query-vs-event (sync answer → `api/` port; state change → event) and RV-BE-3b.
+
+### RV-BE-3b. API vs SPI — Major
+Others *call* it → `api/`; another module *implements* it → `spi/` (`@NamedInterface("spi")`),
+granted only to the implementor; the module's own adapter implements it → internal in
+`application/` (Minor if published). Example: `venue.spi.SetAvailabilityLookup` implemented by
+`availability` (granted `venue::api` + `venue::spi`); `booking` gets `venue::api` only. Both
+misfilings are `verify()`-legal — review is the only catch.
+
+### RV-BE-3c. Published-surface placement — Major
+Ids/value records → `vocabulary/`, events → `events/`, ports only in `api/`/`spi/`
+(`PublishedSurfacePlacementArchitectureTests`). A new sibling-facing method on `VenueCatalog`
+instead of `SetBookingFacts`/`VenueRates` is a finding; a further tourist read is not. An event
+class move ships an `event_type` Flyway rewrite (see `V18`).
+
+### RV-BE-4. Events carry ids (#11) — Major
+Payload = typed ids + immutable value facts; no aggregate or foreign module type; mutable
+business fields as identity is a smell (Minor). Async side effects use
+`@TransactionalEventListener(AFTER_COMMIT)`.
+
+### RV-BE-5. Money is integer minor units (#5) — Major
+`long`/`int` + currency; no `double`/`float`; `BigDecimal` euros in the domain is a smell;
+any commission/payout division has a written, tested rounding rule (Minor if unstated).
+
+### RV-BE-6. Timezone (#6) — Major
+Booking date `LocalDate` in `Europe/Tirane`, cutoff computed there; no `LocalDateTime.now()`
+/ JVM-default-zone arithmetic; timestamps stored as UTC `Instant` (Minor if cosmetic).
+
+### RV-BE-7. Webhook is truth + idempotent (#8) — **Blocker**
+Confirm only on a signature-verified webhook; dedupe on Stripe event id (no-op when already
+applied); idempotency key on charge/refund from `BookingId` + operation; a test replays the
+same event twice. Non-idempotent handler: Major.
+
+### RV-BE-8. Payout ledger exactly-once (#9) — **Blocker**
+Accrual keyed by `BookingId` so redelivery can't double; refund reverses; commission read from
+the venue setting, never a constant (Major).
+
+### RV-BE-9. Per-venue authorization / BOLA (#13) — **Blocker**
+Any venue-scoped surface (`/api/venues/{venueId}/**`, payout ledger, staff bookings, beach-map
+edit, staff availability, weather refund) calls `operator`'s `assertOwns` in the
+**application service** (pinned by `CrossVenueDenialIT`). Denial is `403 NOT_VENUE_OWNER`
+**before any existence check** — a 404 for an unowned venue leaks existence. `/api/admin/**`
+is role-gated; `AdminSurfaceRoleGateTest` fails unless every mapped admin endpoint refuses
+both non-admin principal types, so a new one needs its `hasRole(ADMIN_ROLE)` matcher.
+
+### RV-BE-10. Error contract (`riviera-java-conventions` §6b) — Minor (Major if the wire shape diverges)
+No bespoke `{"error": …}` body, no per-controller `@ExceptionHandler`. `detail` states the
+**condition**, never a remedy, consequence or UI navigation; no call site is exempt. A code
+emitted from several call sites carries one string (`MISSING_CURRENT_PASSWORD`,
+`REQUEST_NOT_PENDING`, `STALE_WRITE`; `CurrentPasswordDetailTwinTest` pins one pair) that
+stays true of the broadest arm. Authority: `references/error-contract.md`.
+
+### RV-BE-11. Responsibility placement (`RESPONSIBILITIES.md`) — Major
+Whenever behaviour is added or moved: each file's logic serves its module's **Job** and is not
+on its **Not My Job** list; diff the plan's Module-ownership table against the code. The tells
+no rule catches: refund/cancellation policy in `payment` (executor; `booking` decides);
+commission/payout arithmetic in `venue` or `booking` (`payout` computes); `customer` growing a
+login subsystem (edge concern); `operator` sitting in every request path. Blocker when the
+misplacement also breaks a Blocker invariant.
+
+### RV-BE-12. Package shape (ADR-0007) — Major
+On any package add/move, `PackageShapeArchitectureTests` must be green; eyes go to an
+`in`/`out` split under `application/`, a serviceless module with an empty `application/` or
+`domain/` (or a module with a service still in the thin shape), and use-case slicing outside
+`booking`. `vocabulary` and `events` are allowed — flagging them is a false finding.
+
+### RV-BE-19. Rule-layer placement (ADR-0018) — Major
+On any new/changed choice, calculation or lifecycle statement. `DomainPurityArchitectureTests`
+enforces the structural half but passes a `Clock`-backed statement in `domain/` — that is this
+item's catch (fix: `application/`, not threading the instant through). A choice or calculation
+inlined in a service with **two or more callers** needs a named holder; **one caller does
+not** (flagging it is a false finding). A Java statement of a set invariant (counting rows to
+decide a write) where a unique/exclusion constraint is the enforcement is a finding; a Java
+mirror of a DB bound or vocabulary (`Stars` ↔ `review_stars_check`) is not. Blocker when the
+Java invariant stands in for a constraint enforcing #2, #7 or #9.
+
+### RV-BE-14. Booking codes (#7) — Major
+≥ 8-char CSPRNG base32 code; never a sequential id; not logged in clear (Minor).
+
+### RV-BE-15. Pool and cutoff server-side (#3, #4) — Major
+Online-pool restriction and the sales-close cutoff rejected on the server, not only in the UI;
+cutoff time + zone from config, never a literal.
+
+### RV-BE-16. Refund policy server-side (#10) — Major
+Refund eligibility/amount from booking state + policy; client never supplies the amount;
+weather refund is an explicit admin action; thresholds not duplicated (Minor).
+
+### RV-BE-13. No injection — **Blocker**
+SQL via bound params only; user-controlled text logged only with `\r\n` neutralized (Major);
+no booking code / secret / PII in logs; no untrusted deserialization without an allowlist.
+
+### RV-BE-18. Session lifecycle bracketing — **Blocker**
+On any credential change, account-lifecycle transition or session machinery: sessions are
+revoked at the edge, synchronously (`PrincipalSessionRevoker`), not via an event; the revoke
+**brackets** the state change (before, keyed by a status-guarded pre-read such as
+`OperatorLifecycle#usernameInStatus` / `CustomerAccountRecovery#emailForResetToken`, AND after);
+a self-service password change revokes the *other* sessions before the hash write and rotates
+the surviving session id via `SessionIdentity#rotate` (`SessionIdentityTest`); a rate-limit
+budget on authenticated work refunds a 401/403-denied request, login budgets still charge.
+
+### RV-BE-17. Flyway enforces the invariants (#12) — Blocker for availability uniqueness missing in SQL, Major otherwise
+Versioned forward migration under `db/migration`; invariant-enforcing constraints exist in SQL,
+not only in app code; migration tested.

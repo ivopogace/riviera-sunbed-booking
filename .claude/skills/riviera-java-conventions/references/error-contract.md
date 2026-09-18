@@ -1,89 +1,59 @@
 # Request validation & the error contract
 
-Every API error is an RFC-7807 `ProblemDetail` (`application/problem+json`) carrying a
-stable machine-readable `code` extension. The shape is built in exactly two places.
+Every API error is an RFC-7807 `ProblemDetail` (`application/problem+json`) with a stable
+`code` extension, built in exactly two places.
 
 ## `ApiProblem` (`ai.riviera.platform.shared`)
 
-The one factory for the wire shape. Controllers use it when an exhaustive typed-outcome
-`switch` rejects (typed outcomes are returned, not thrown — SKILL.md §6 — so an advice
-never sees them). `detail` must be safe for any caller: never a booking code (invariant
-#7), an exception message, or another internal echo.
+The one factory for the wire shape; controllers use it when a typed-outcome `switch` rejects.
+`detail` never carries a booking code (#7), an exception message or any internal echo.
 
-**`detail` states the condition, not the remedy.** The stable contract a client switches
-on is `code`; the wording a human reads belongs to the client rendering it. A `detail`
-written as user-facing copy is a second copy of wording the client owns, kept in sync by
-nothing.
+**`detail` states the condition, not the remedy.** `code` is the contract; wording a human
+reads belongs to the client. Write the fact about server state (*"Another set already
+occupies this grid cell."*), never a consequence, a remedy or UI navigation.
 
-- **Write the condition, and only the condition.** *"Another set already occupies this grid
-  cell."*, *"No set on this venue has that row label."*, *"This set has a booking or a
-  current hold."* — a fact about server state. Not a consequence (*"…so it can't be moved,
-  repooled or removed"*), not a remedy (*"Reload the latest and try again"*), never UI
-  navigation (*"Switch to Edit sets…"*).
-- **Name the condition class, not the arm — and make sure the class is true.** A code that
-  serves several guards (`SET_IN_USE` serves a move, a save that moves, and a remove) gets a
-  `detail` that names no arm, and the ITs assert the same string at every arm. Two traps:
-  *too short and untrue* ("This set is in use." reads as occupied right now, which a guest
-  booked for next month is not) and *too broad to characterize* ("has a booking or a hold" is
-  true of sets the server happily edits, since a hold whose day has passed locks nothing, and
-  of sets it retires, since a finished booking refuses nothing — ADR-0019). "has a booking or
-  a **current** hold" is the narrowest statement true at every arm.
-- **None is exempt**, whether or not a client mapper duplicates it (`RATE_LIMITED` and
-  `CANNOT_SUSPEND_SELF` have no client `code`→copy mapper and are still in scope). Enumerate
-  call sites by mechanism, not phrase: `grep -rn "ApiProblem\." platform/src/main` unrolled
-  through each controller's local `problem(...)`/`error(...)` helper — a literal in a
-  `switch` arm behind a helper, a *consequence* clause with no banned phrase, and the
-  hand-built JSON in `RateLimitFilter` all escape a phrase grep.
-- **One code, one string — pin the pair, not the sentence.** Codes emitted from more than
-  one call site: `MISSING_CURRENT_PASSWORD` (operator + customer password change — the
-  client owns that sentence as `CURRENT_PASSWORD_REQUIRED_MESSAGE`), `REQUEST_NOT_PENDING`
-  (accept, decline, withdraw — the shared wording may not say "already been decided",
-  false of the withdrawn route), and `STALE_WRITE`'s token-guarded set-writes — reprice, rename,
-  batch apply, replace (one `venue.set_version` token, so none may claim *prices* or *layout*
-  changed).
-  `CurrentPasswordDetailTwinTest` asserts its pair's two live responses equal each other,
-  so a one-sided edit is red even when the new wording is fine alone.
-- **Not findings:** `UNSUPPORTED_FORMAT` (matches `venue-tab.ts`'s copy, but states what
-  the server accepts, not a remedy), `BOOTSTRAP_CREDENTIAL_MANAGED` (trailing "…and cannot
-  be changed here"), `SET_NOT_BOOKABLE_ONLINE` (a transliteration of its code),
-  `RATE_LIMITED`'s *"Too many requests."* (every truthful widening either leaks which of the
-  four rate-limit dimensions fired or is false at one of them).
+- **Name the condition class, not the arm, and keep the class true.** A code serving several
+  guards (`SET_IN_USE`: move, save-that-moves, remove) gets one `detail` naming no arm, and
+  the ITs assert the same string at every arm. Too short is untrue ("This set is in use."
+  reads as occupied now); too broad is uncharacterizing. *"has a booking or a **current**
+  hold"* is the narrowest statement true at every arm.
+- **No call site is exempt**, mapper or not (`RATE_LIMITED`, `CANNOT_SUSPEND_SELF` have none).
+  Enumerate by mechanism: `grep -rn "ApiProblem\." platform/src/main` unrolled through each
+  controller's local `problem(...)`/`error(...)` helper, plus the hand-built JSON in
+  `RateLimitFilter` — a phrase grep misses all of those.
+- **One code, one string.** `MISSING_CURRENT_PASSWORD` (operator + customer),
+  `REQUEST_NOT_PENDING` (accept, decline, withdraw — may not say "already been decided"),
+  `STALE_WRITE` (reprice, rename, batch apply, replace share one `venue.set_version` token —
+  may not claim *prices* or *layout*). `CurrentPasswordDetailTwinTest` pins its pair live.
+- **Not findings:** `UNSUPPORTED_FORMAT` (states what the server accepts),
+  `BOOTSTRAP_CREDENTIAL_MANAGED`, `SET_NOT_BOOKABLE_ONLINE`, `RATE_LIMITED`'s *"Too many
+  requests."* (any widening leaks which of four dimensions fired).
 
 ## `ApiErrorHandler` (root package)
 
-The single `@RestControllerAdvice` for everything thrown: `shared.InvalidApiRequestException`
-(typed edge validation) → `400 INVALID_REQUEST`, `DuplicateKeyException` → `409 CONFLICT`
-(the unique-constraint-race backstop, invariant #12), `NotVenueOwnerException` /
-`AccessDeniedException` → `403` (invariant #13); it extends
-`ResponseEntityExceptionHandler` so framework errors carry the same shape. Raw
-`IllegalArgumentException` and non-duplicate `DataIntegrityViolationException` are
-deliberately unmapped — they signal server bugs (a domain invariant on stored data, a
-schema/FK/NOT-NULL fault) and propagate to the framework's logged 500; edge code throws the
-typed exception directly, and a controller feeding request input into IAE-throwing guards
+The single `@RestControllerAdvice`, extending `ResponseEntityExceptionHandler`:
+`shared.InvalidApiRequestException` → `400 INVALID_REQUEST`; `DuplicateKeyException` →
+`409 CONFLICT` (unique-constraint race backstop); `NotVenueOwnerException` /
+`AccessDeniedException` → `403`. Raw `IllegalArgumentException` and non-duplicate
+`DataIntegrityViolationException` are deliberately unmapped — they are server bugs and reach
+the framework's logged 500. A controller feeding request input into IAE-throwing guards
 (`toCommand()`, `PeriodKey.of`, enum parses) translates at the conversion boundary via
-`InvalidApiRequestException.parsing(...)`. Per-controller `@ExceptionHandler`s are
-forbidden — machine-locked by `ErrorContractArchitectureTests`. (`RateLimitFilter` mirrors
-the shape by hand: it rejects before MVC dispatch.)
+`InvalidApiRequestException.parsing(...)`. `ErrorContractArchitectureTests` forbids
+per-controller `@ExceptionHandler`s. `RateLimitFilter` mirrors the shape by hand (rejects before
+MVC dispatch).
 
-- **Where validation lives.** Presence/shape/format checks at the edge (the DTO's
-  `toCommand()`), domain invariants in the value object's canonical constructor (`Money`,
-  ids) and the application service. Keep HTTP-status mapping out of the domain.
-- **Status mapping:** availability/uniqueness conflicts → `409`; not-bookable/cutoff →
-  `422`; unknown id → `404`; malformed body → `400`; ownership → `403`; rate limit →
-  `429`. Framework-raised errors carry a derived stable code: `400` → `INVALID_REQUEST`,
-  `413` → `PAYLOAD_TOO_LARGE` (pinned literally — the base class's
-  `MaxUploadSizeExceededException` handler is `final`, so no same-advice
-  `@ExceptionHandler`, and the 413 `HttpStatus` constant name is unstable across framework
-  versions), otherwise the HTTP status name (`METHOD_NOT_ALLOWED`,
-  `UNSUPPORTED_MEDIA_TYPE`, …) — pinned by `ApiErrorHandlerTest`.
-- **`instance` is redacted by construction.** Spring auto-fills a null ProblemDetail
-  `instance` with the raw request URI — on `/api/bookings/{code}` paths that is the bearer
-  credential (invariant #7). `ApiProblem` pins every body to `about:blank` (the advice
-  re-applies it to framework-built bodies); a controller may override with a known-safe URI
-  (`BookingController` uses its collection path).
+- Validation: presence/shape/format at the edge (`toCommand()`); domain invariants in the value
+  object's constructor and the application service; no HTTP status in the domain.
+- Status map: availability/uniqueness conflict `409`; not-bookable/cutoff `422`; unknown id
+  `404`; malformed body `400`; ownership `403`; rate limit `429`. Framework errors: `400` →
+  `INVALID_REQUEST`, `413` → `PAYLOAD_TOO_LARGE` (pinned literally — the base handler is
+  `final` and the 413 constant name is unstable), otherwise the HTTP status name
+  (`ApiErrorHandlerTest`).
+- `instance` is `about:blank` by construction (Spring would auto-fill the request URI, which
+  on `/api/bookings/{code}` is the bearer credential); a controller may override with a
+  known-safe URI.
 
-**Validation decision: centralized-explicit** — hand-rolled checks in `toCommand()`
-throwing `IllegalArgumentException`, translated at the controller's conversion boundary and
-mapped once by the advice. `spring-boot-starter-validation`/`@Valid` is deliberately not
-used: the checks are parse/cross-field logic, and annotations would split validation across
-two mechanisms.
+**Validation is centralized-explicit:** hand-rolled checks in `toCommand()`, translated at the
+controller, mapped once by the advice. No `spring-boot-starter-validation`/`@Valid` — the
+checks are parse/cross-field logic, and annotations would split validation across two
+mechanisms.

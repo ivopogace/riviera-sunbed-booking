@@ -1,27 +1,17 @@
-# Persistence — `JdbcClient` + explicit SQL, and where it sits in the hexagon
+# Persistence — `JdbcClient` + explicit SQL
 
-JPA/Hibernate is forbidden (invariant #1). Persistence is `JdbcClient` + explicit text-block
-SQL, with no `CrudRepository`, `@Table` or `@Id` anywhere in the tree. Language-level detail:
-`riviera-java-conventions` §1 (§1a for the Spring Data JDBC aggregate question); SQL/schema/
-index craft: `postgres`. This file covers where persistence sits in the hexagon.
-
-## The pattern: `JdbcClient` + explicit SQL (what every existing adapter does)
-
-A driven adapter in `adapter/out`, package-private, implementing an `api/` port (thin
-module) or an internal `application/` port directly with named-parameter SQL in a text
-block. No repository interface, no aggregate, no `@Id`/`@Table`. This is `JdbcVenueCatalog`,
-`JdbcAvailabilityClaim`, `JdbcCustomerDirectory`, `JdbcBookings`.
+A package-private driven adapter in `adapter/out` implements an `api/` port (thin module) or
+an internal `application/` port with named-parameter SQL in a text block. No repository
+interface, no aggregate, no `@Id`/`@Table` (`JdbcVenueCatalog`, `JdbcAvailabilityClaim`,
+`JdbcCustomerDirectory`, `JdbcBookings`). Language detail: `riviera-java-conventions` §1/§1a;
+schema craft: `postgres`.
 
 ```java
-// ai.riviera.platform.<module>.adapter.out — package-private adapter
 @Repository
-class JdbcBookings implements Bookings {                 // implements an internal application/ port
-
+class JdbcBookings implements Bookings {
     private final JdbcClient jdbc;
 
-    JdbcBookings(JdbcClient jdbc) {                       // constructor injection, final field
-        this.jdbc = jdbc;
-    }
+    JdbcBookings(JdbcClient jdbc) { this.jdbc = jdbc; }
 
     @Override
     public OptionalLong insertAwaitingPayment(NewBooking b) {
@@ -41,27 +31,21 @@ class JdbcBookings implements Bookings {                 // implements an intern
 }
 ```
 
-- **Map typed ids to primitives** at the SQL boundary (`setId.value()`); reconstruct typed
-  ids / records in the `RowMapper`.
-- **The atomic claim / upsert is `INSERT ... ON CONFLICT (...) DO NOTHING`** — the
-  concurrency primitive for invariant #2 (`JdbcAvailabilityClaim`) and for unique-code
-  retries (`JdbcBookings`). A thrown unique violation would poison the surrounding
-  transaction; `ON CONFLICT` makes a collision a normal empty result.
-- **Schema is Flyway only** (invariant #12) — no `ddl-auto`, no generated schema.
+- Typed ids become primitives at the SQL edge; the `RowMapper` reconstructs them.
+- The atomic claim/upsert is `INSERT … ON CONFLICT (...) DO NOTHING` (#2,
+  `JdbcAvailabilityClaim`): a thrown unique violation would poison the transaction; `ON
+  CONFLICT` makes a collision an empty result.
+- Schema is Flyway only (#12); no `ddl-auto`.
 
-## JPA anti-patterns to REFUSE (convert and say why)
-
-| JPA (refuse) | Use instead |
+| Refuse | Use instead |
 |---|---|
-| `@jakarta.persistence.Entity` / that pkg's `@Table` | `JdbcClient` + explicit SQL in a package-private `adapter/out` class |
-| `extends JpaRepository<...>` | no repository interface at all — `JdbcClient` behind the module's own port |
-| `@OneToMany`/`@ManyToOne`/`@ManyToMany` | a typed-id column and a second query; a join is written in the SQL |
-| lazy loading / `FetchType` / persistence context / dirty checking | an explicit `JdbcClient` query, and an explicit `INSERT`/`UPDATE` |
-| `spring-boot-starter-data-jpa` | `spring-boot-starter-data-jdbc` (already on the classpath) |
-| MapStruct entity↔DTO mappers | hand-map at the adapter edge; keep `domain` free of DTOs |
-| bidirectional associations across modules | publish a domain event; reference by id |
+| `@jakarta.persistence.Entity` / `@Table` | `JdbcClient` + SQL in a package-private `adapter/out` class |
+| `extends JpaRepository` | no repository interface; `JdbcClient` behind the module's port |
+| `@OneToMany`/`@ManyToOne` | a typed-id column and a second query, or a SQL join |
+| lazy loading / dirty checking | explicit query, explicit `INSERT`/`UPDATE` |
+| `spring-boot-starter-data-jpa` | `spring-boot-starter-data-jdbc` (already present) |
+| MapStruct entity↔DTO | hand-map at the adapter edge |
+| cross-module associations | an event, and a reference by id |
 
-Because a row is reached only by a query this module wrote — no association to traverse, no
-lazy load to trigger — a `booking`-module write physically cannot drag `venue` rows into its
-object graph. When `booking` needs venue data it calls `venue.api.VenueCatalog` with the id
-(`setBookingInfo(SetId)`). The boundary is real at the persistence layer.
+A row is reached only by a query this module wrote, so a `booking` write cannot drag `venue`
+rows into its graph; `booking` calls `venue.api.VenueCatalog` with the id.

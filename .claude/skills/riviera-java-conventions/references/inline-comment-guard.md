@@ -1,55 +1,32 @@
-# The comment-and-prose guard — scope, exemptions, and the deliberate false negative
+# The comment-and-prose guard — `scripts/check-inline-comments.mjs`
 
-Read when `scripts/check-inline-comments.mjs` fires on an edit, or before touching its
-scope. The authoring rule it enforces is SKILL.md §6c. Every scope gap below is deliberate —
-don't "fix" one.
+Read when it fires or before touching its scope. Every gap below is deliberate — don't "fix" one.
 
-Three rules, one guard:
+Three rules:
 
-- **`multiline`** (gates) — an inline comment the diff added spans more than one line.
-- **`provenance`** (gates) — an issue or PR number in an added skill line, an added inline
-  comment, or anywhere in a doc comment the diff touched. `issue N` and `PR N` always count; a
-  bare `#NNN` counts only in a citing position — after `(`, a comma, a `NNN/`, a citing
-  word: `issue`, `PR`, `epic`, `since`, `until`, `before`, `after`, `by`, `at`, `in`, `from`,
-  `fix`/`fixes`/`fixed`, `closes`, `see` — the whole list, read out of `CITING` in the guard —
-  or opening the comment's own text (`// #923's widget pushed Review past a phone's height`).
-  `: #123` reads as a colour and `the #404 error` as prose; both are left to review — a false
-  negative, by design. A colour written as a sentence's subject (`// #123 is the emphasis
-  colour`) is the one accepted false positive: rewrite it as `the #123 colour`.
-- **`history`** (advises) — `no longer`, `previously`, `used to be`, `this change` and the
-  like. Printed, never failing: a port that "releases a `previously` claimed set" is stating
-  its contract.
+- **`multiline`** (gates) — an added inline comment spans more than one line.
+- **`provenance`** (gates) — an issue/PR number in an added skill line, an added inline
+  comment, or anywhere in a touched doc comment. `issue N` / `PR N` always count; a bare `#NNN`
+  only in a citing position (after `(`, a comma, `NNN/`, a citing word from `CITING` in the
+  guard, or opening the comment). `: #123` (a colour) and `the #404 error` are left to review.
+  A colour as sentence subject (`// #123 is the emphasis colour`) is the one false positive —
+  rewrite as `the #123 colour`.
+- **`history`** (advises only) — `no longer`, `previously`, `used to be`, `this change`.
 
 Scope:
 
-- **Diff-scoped for anything git already tracks.** It judges only lines a diff added; the
-  existing tree carries many pre-existing multi-line inline comments and issue-numbered doc
-  comments that a repo-wide gate would go red on. Don't reflow untouched comments. The
-  exception is a file git has never seen, which `--files` and the hook judge whole — a new
-  file has no diff against `HEAD`, and every line in it is the author's.
-- **A touched doc comment is judged whole** — every line of a `/** … */` block with at least
-  one added line, including the lines the diff never wrote. That is the rule, not a gap:
-  editing an old Javadoc means re-reading it. Only the comment's own text is read; code on the
-  same line before the opener or after the closer never is.
-- **Skill markdown:** `.claude/skills/<skill>/SKILL.md` and its `references/*.md` — added
-  lines only, outside fenced code and with code spans removed. Not the triage skill's
-  `OUT-OF-SCOPE.md` (a ledger of issue numbers by design), and not `CLAUDE.md`, `docs/` or
-  the ADRs — those are RV-PROC-2's. There is no path-based exemption beyond that: a file the
-  extension table below covers is in scope wherever in the tree it sits, `docs/` included.
-- **Four languages, by comment syntax:** `.java`, `.ts`/`.tsx`/`.js`/`.mjs`/`.cjs`,
-  `.scss`/`.css`, `.html`. In a `.ts`/`.tsx` file the template literal after `template:` is an
-  Angular inline template, and an `<!-- … -->` inside it is judged exactly as one in an `.html`
-  file, while a `${…}` interpolation inside it is code; any other template literal (a spec's HTML
-  fixture, a SQL string, a `template:` key in a `.js` file) is opaque string content.
-  `check-comment-only.mjs` draws the same line, so removing a template comment is comment-only
-  and changing a fixture is not. **Not** `#` files (shell, YAML, `.properties`) — every one of
-  those in this repo carries multi-line `#` header prose by convention — and **not** SQL
-  `--`.
-- **Two exemptions from the one-line rule beyond doc comments:** a block comment standing
-  before any code is the file's header (`tailwind.css` opens with one), and only whole-line
-  comments merge into a block, so a trailing comment never pairs with the next line's.
-- **One deliberate false negative.** The one-line rule groups only added comment lines,
-  and flags a block comment only when the diff wrote its opening line, so appending a second
-  line to an existing comment passes. Grouping every adjacent comment line instead would flag
-  a whole pre-existing block for one compliant one-liner parked beneath it; that case is left
-  to review (RV-STYLE-1).
+- **Added lines only** for tracked files; a file git has never seen is judged whole.
+- **A touched doc comment is judged whole** — every line of a `/** … */` block with any added
+  line.
+- **Skill markdown:** `.claude/skills/<skill>/SKILL.md` and `references/*.md`, outside fenced
+  code, code spans removed. Not `OUT-OF-SCOPE.md`, not `CLAUDE.md`, `docs/` or ADRs
+  (RV-PROC-2's).
+- **Languages by comment syntax:** `.java`, `.ts`/`.tsx`/`.js`/`.mjs`/`.cjs`, `.scss`/`.css`,
+  `.html`. In `.ts`, the template literal after `template:` is an Angular inline template
+  (an `<!-- -->` there is a comment, `${…}` is code); any other template literal is opaque.
+  **Not** `#` files (shell, YAML, `.properties`) and **not** SQL `--`.
+- **Exempt from one-line:** doc comments; a block comment before any code (file header).
+  Only whole-line comments merge into a block.
+- **Deliberate false negative:** a block is flagged only when the diff wrote its opening
+  line, so appending a line to an existing comment passes. Grouping every adjacent line would
+  flag whole pre-existing blocks; that case is left to review (RV-STYLE-1).
