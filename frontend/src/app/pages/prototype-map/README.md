@@ -1,8 +1,9 @@
 # PROTOTYPE — where the riviera map goes on desktop
 
 **Throwaway. Spike branch only (`claude/map-design-prototype-417sh1`); nothing here merges to
-`main`.** Four desktop layouts for the riviera map on Discover, on one route, so they can be
-judged against each other and against what ships today.
+`main`.** Seven desktop layouts for the riviera map on Discover, on one route, so they can be
+judged against each other and against what ships today: round 1's four (A–D, below) and round 2's
+three (E–G, § _Round 2_), which start from what round 1's screenshots showed.
 
 ```
 npm start           # from frontend/
@@ -219,10 +220,199 @@ map (peek → half → full). The toggle currently makes the map an either/or; t
 ground. Today's first phone screen contains no map, no venue and no card — that is the thing worth
 fixing, not the toggle's styling.
 
+## Round 2
+
+Round 1's geometry and camera findings stand and are built on. Its verdict does not, and the
+reason is in its own screenshots.
+
+### What round 1 got wrong
+
+**Every whole-coast frame is mostly not the coast.** In `A-shoreline-1440.png` and
+`C-coastindex-1440.png` the pins hug the left edge and roughly two thirds of the pane is inland
+Albania — Elbasan, Berat, Korçë, Pogradec. That is not the camera's fault (round 1 fixed the
+camera); it is geometry: the coast is a **line**, a rectangle that contains a line is mostly not
+the line, and a north-up line running nearly north–south fills a portrait rectangle's height while
+leaving most of its width empty. At region scale the same thing happens diagonally
+(`B-charttable-1440.png`: the Himarë coast crosses from top-left to bottom-right and the two
+other corners are mountains and open sea).
+
+So round 1's aspect-ratio finding is right but it was used backwards. "h/w ≥ 1.25 or the whole
+coast cannot be framed" only says which panes can show the _orientation shot_ — and round 1 itself
+concluded the orientation shot is not where anyone books from (its consequence 2). It then ranked
+A first for being the one that can show it. A layout should not be chosen for the view that
+matters least.
+
+**The verdict was never rendered.** "A's geometry with C's rail" was argued in prose. Variant G
+builds it (`G-verdict-1440.png`): the rail takes 224 px of the left column, which leaves two card
+columns in 560 px at 1440; the rail's twenty-two rows do not fit a 900 px viewport (Sarandë is
+below the fold) exactly as C's did not; and the map is A's, still two thirds inland. It is C's
+weaknesses without C's third column. At 1920 it is fine — but so is everything at 1920.
+
+**Nobody asked which way up the map should be.** Three of the four variants moved the map around
+the page; none turned it. That is the axis round 2 spends its boldness on.
+
+### E · Horizon — _the coast turned to run left → right_
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ header                                                                   │
+├──────────────────────────────────────────────────────────────────────────┤
+│ Find your spot on the Riviera.  26 venues on [date]   [Whole coast][Shkodër 1][Lezhë 2] … │ glass strip
+├──────────────────────────────────────────────────────────────────────────┤
+│ ↖N        Tirana   Elbasan   Berat        Gjirokastra          [Near me] │
+│  Shëngjin●  ●€21 ●€16  Golem&Qerret●4                    Borsh●2  ●Ksamil│ MAP BAND, full width
+│ €14●                                          ●€24 ●€22   5 beaches●9    │ sea at the foot,
+│ ~~~~~~~~~~~~~~~~~~~~~~~~~~~ sea ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ │ north on the left
+├──────────────────────────────────────────────────────────────────────────┤
+│ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐   five columns at 1440,     │
+│ │ card │ │ card │ │ card │ │ card │ │ card │   six at 1920; the page     │
+│ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘   scrolls, the band stays   │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+The map is rotated so the sea lies at the bottom and the coast runs left to right, north on the
+left — the view from the water, which is how a riviera is pictured anyway. With the line
+horizontal, a **landscape** pane is finally the right shape, and that frees the layout: the map
+becomes a full-width band in the hero's slot (46 vh, 414 px at 1440 × 900) under a one-row glass
+strip, both sticky under the header, with the cards taking the whole width below in five columns.
+Nothing is a pane beside anything, so no column is squeezed to make room for the map.
+
+The coast index (round 1's strongest idea) is drawn _on the geography_ instead of beside it: in
+`E-horizon-1440.png` all twenty-six venues sit along one line as the shipped place pills —
+Shëngjin, Velipojë, Lalëz, Durrës, Golem & Qerret, Vlorë, Himarë's five beaches, Borsh, Ksamil —
+readable left to right in the catalogue's own order, and the strip's region chips move the camera
+along it. The Beach select goes: a beach is a pill on the band, and pressing one narrows the list
+as shipped (`E-horizon-preview.png` shows a pin's preview, glass over water, in the band's corner).
+
+Per region the band turns to that stretch's own bearing (`REGION_BEARING` in
+`prototype-raw-map.ts`: 84–90° on the Adriatic where the sea is west, 36° on the riviera proper
+where it is south-west), so the sea is always at the foot. `E-horizon-himare.png` is the case that
+matters: Palasë to Borsh across the full 1440 with the bay of Himarë in the middle, nothing wasted
+on either corner.
+
+What it costs, honestly:
+
+- **North is not up.** A compass pill says so and every ease keeps the sea at the foot, so the
+  rule is learnable in one glance — but it is a rule, and a tourist who reads maps by north will
+  notice. This is the one thing to user-test before committing.
+- **The port has to grow.** `MapView` needs a `bearing`; the handle needs a fit that works in the
+  rotated frame and a rotation-aware fence (both findings below); `beaches.ts` needs a recorded
+  bearing per region beside its recorded views. `prototype-raw-map.ts` reaches past the port for
+  all three today. No engine change, no new dependency.
+- **The band is sticky, and that has a price at 900 px tall**: strip + band take 470 px, so
+  scrolled cards get about 360 px of window (`E-horizon-scrolled.png`, one row visible). A
+  non-sticky band is the alternative — the map scrolls away like a hero would — at the cost of the
+  hover-a-card-light-its-pin link.
+- **A full-width band eats the page's wheel.** Scrolling over it zoomed the map instead of the
+  page (the first `E-scrolled` shot was a zoomed-out map and unmoved cards). MapLibre's
+  cooperative gestures fix it — ctrl/⌘ + wheel zooms, plain wheel scrolls — and E enables them.
+  The shipped 42 % panel has the same problem in smaller form.
+- **The whole coast is fence-bound at the west** (finding 3 below): at 1440 the band's rotated
+  footprint pushes the camera about 60 px of coast lower than the fit asks, so the fit leaves the
+  band's foot free. On a phone the fence plus `minZoom: 7` make the whole-coast band impossible,
+  so the phone opens on a region.
+
+### F · Callouts — _the map is the list_
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ header                                                       │
+├──────────────────────────────────────────────────────────────┤
+│ ┌────────────┐  MAP, FULL BLEED, north up    [Near me]        │
+│ │ 11 venues  │       ○────────────────────  ▦ Palasa Sands €26│
+│ │ Shkodër  1 │  Palasë ○──────────────────  ▦ Palasa Pine  €22│
+│ │ Lezhë    2 │           ○────────────────  ▦ Drymades … €32 │
+│ │ Durrës   6 │      Dhërmi ○──────────────  ▦ Aurora Bay  €30│
+│ │ Vlorë    2 │                Jalë ○───────  ▦ Folie Marine   │
+│ │[Himarë  11]│                      ○─────  ▦ Dhërmi Sun Club│
+│ │ Sarandë  4 │   ~~~ sea ~~~      Himarë ○─  ▦ Jalë Cove      │
+│ │ [date]     │                         Borsh ○ ▦ Borsh …      │
+│ └────────────┘                                                │
+└──────────────────────────────────────────────────────────────┘
+```
+
+Round 1's B without the rail: the venues are drawn on the chart as callouts, each a compact card
+anchored to its spot by a leader line, stacked in one column on the land side where B's screenshot
+showed only empty inland. That is how a nautical chart labels a shoreline, and it turns the
+inland waste into the label field. The callouts are laid out in the anchors' top-to-bottom order
+so no two leaders cross (`layoutCallouts` in `variant-callouts.ts`), and they shrink from 78 px
+rows to fit — Himarë's eleven come out at 58 px at 900 tall (`F-callouts-1440.png`), 78 at 1080
+(`F-callouts-1920.png`).
+
+Where it stops: it is one scale, not a page. A north-up 1440-wide pane cannot frame the coast
+(round 1's fence floor, inherited straight from B — built first with a whole-coast state whose
+callouts were the regions, the camera pinned itself to the fence's centre with the coast off it),
+so F opens on Himarë and the left rail moves between regions. The leaders get long at the ends of
+a diagonal coast (Palasë's runs 900 px in `F-callouts-1440.png`), the column caps at about eleven
+venues before rows lose their photo, and below `lg` there is no land side wide enough — the phone
+would need round 1's sheet. Strong as the _region view_ of a map-first page; not the page.
+
+### G · Verdict — _round 1's verdict, rendered_
+
+A's two full-bleed panes with C's rail leading the left column, built as the control so the
+verdict is judged by the same rule as everything else. Read above; `G-verdict-1440.png` and
+`G-verdict-1920.png`.
+
+### Findings (camera, all three measured)
+
+1. **MapLibre's bounds fence ignores rotation.** `defaultConstrain` in
+   `maplibre-gl/src/geo/projection/mercator_transform.ts` (6.9.1) clamps `this.size` — the
+   unrotated width × height — against the lng/lat ranges whatever the bearing. So a rotated band is
+   still held to the 2.2° fence by its 1440 px _width_, and the camera is pinned to the fence's
+   centre longitude where the coast is not: the first `E-coast` shot was inland Albania with the
+   coast under the chip row. `map.setTransformConstrain` (public API) takes a replacement;
+   `constrainRotated` fences the rotated viewport's axis-aligned extent instead, which is what lets
+   the band frame the coast at all. This is the one piece the shipped adapter would need to add.
+2. **`fitBounds` with a bearing fits the wrong box.** It rotates the corners of the pins'
+   _geographic_ bounding box, and for a diagonal coast those corners sit out at sea and inland, so
+   the fit is limited by a spread the pins do not have — two zoom levels too wide, coast at the
+   foot. `fitRotated` measures the extent in the rotated frame itself (every pin into the screen
+   frame at the bearing, min/max there, zoom from that box, centre turned back); its output matches
+   MapLibre's projection to the pixel, checked with `map.project` after the ease.
+3. **The whole-coast band is fence-bound at the west even with (1).** The band's rotated
+   footprint is 704 px wide east–west at 78° (mostly its 414 px height turned), and the coast's
+   mean longitude is only ~0.6° inside the fence's west edge, so at 1440 the clamp moves the camera
+   ~0.12° east — the coast lands ~60 px lower than asked. Absorbed by giving the fit more room at
+   the foot (`bottom: 124`); on a 390 px phone at `minZoom: 7` it cannot be absorbed
+   (`E-phone-coast` in the working set: camera at the fence centre, coast off the band). Widening
+   the ADR-0022 bbox westward would remove it — into sea, so at tile cost only.
+
+Two more, not camera: cooperative gestures are a must for any map that spans the page's scroll
+column (E above); and Playwright runs the **last** registered `page.route` first, so a range-slicing
+archive route registered before a catch-all `/map/**` route never runs — round 1's helper says
+"registered last, so it wins" and means it.
+
+### What I'd ship, and why
+
+**E.** It is the only variant that gives the map the whole width _and_ the fold _and_ leaves the
+cards their grid, and it does it with one move that comes from the subject: the riviera is a line
+with the sea on one side, so draw it as one. It absorbs C (the coast index becomes the band's own
+pills and the strip's chips), keeps B's material argument where it earns it (the preview card and
+the strip are glass over water and over cards), and its costs are a compass, four port additions
+and a user test on "north is left". Ship it non-sticky if the 900 px window test says so.
+
+**Not A + C** (round 1's verdict): rendered, it is C with a smaller list, and its map is two
+thirds inland on the very view it was chosen for.
+
+**F is the region-scale mode to build next** once E is in — the callout column is the best
+region view in either round — and it slots in without a layout change: at region scale E's band
+could carry callouts instead of a card grid below. Not in this round.
+
+**D stays a separate product decision**, as round 1 said.
+
+**Mobile:** E's band on the phone (`E-horizon-phone.png`, 250 px band under a two-row strip) puts
+the map and the first venue on the first screen with no List/Map toggle and no sheet gesture to
+learn — the shipped phone's first screen has neither. Open on a region (the fence forbids the
+whole coast at 390 px): Near me when granted, else Himarë. Round 1's sheet remains the alternative
+if the band's 340 px of chrome on a 844 px phone tests as too much; the two are not exclusive
+(sheet for the list, band for the map).
+
 ## Screenshots
 
 `shots/` holds the set these notes are written from (1440 × 900 unless stated), captured against
-the real tiles with the fixture venues:
+the real tiles with the fixture venues. Round 2 was shot by a `playwright-core` driver serving
+`platform/map/riviera.pmtiles` from disk with range slicing and answering the fixture photo paths
+with generated SVG stand-ins — judge photo mass, not the pictures:
 
 | File                                                | What                                                           |
 | --------------------------------------------------- | -------------------------------------------------------------- |
@@ -231,17 +421,26 @@ the real tiles with the fixture venues:
 | `B-charttable-1440.png` · `B-charttable-phone.png`  | B at region scale, where its camera works; and the phone sheet |
 | `C-coastindex-1440.png` · `C-coastindex-dhermi.png` | C, whole coast and with a beach chosen from the rail           |
 | `D-bothmaps-1440.png`                               | D with a venue open, beach map inline                          |
+| `E-horizon-1440.png` · `E-horizon-1920.png`         | E, the whole coast on one band; 1920 shows six card columns    |
+| `E-horizon-himare.png` · `E-horizon-preview.png`    | E at Himarë, the band turned to 36°; and a pin's preview open  |
+| `E-horizon-scrolled.png` · `E-horizon-phone.png`    | E scrolled 700 px (the sticky cost); and the 390 × 844 phone   |
+| `F-callouts-1440.png` · `F-callouts-1920.png`       | F at Himarë, eleven callouts at 58 px rows, then at 78         |
+| `F-callouts-durres.png`                             | F at Durrës: short leaders where the coast runs straight       |
+| `G-verdict-1440.png` · `G-verdict-1920.png`         | round 1's verdict rendered, at both widths                     |
 
 ## Files
 
-| File                                                                                                  | What                                                                 |
-| ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `prototype-map-page.ts`                                                                               | the host: fixture data, filters from the URL, the `?variant=` switch |
-| `variant-shoreline.ts` · `variant-chart-table.ts` · `variant-coast-index.ts` · `variant-both-maps.ts` | A · B · C · D — no shared layout, on purpose                         |
-| `prototype-camera.ts`                                                                                 | fit the camera to the pane and the pins — the finding above          |
-| `prototype-filter-bar.ts`                                                                             | the selects, shared by A, B and D (C replaces them)                  |
-| `prototype-venues.ts` · `prototype-sets.ts`                                                           | 26 fixture venues; a plausible set grid for D                        |
-| `prototype-switcher.ts`                                                                               | the floating bar — deliberately ugly, so it reads as scaffolding     |
+| File                                                                                                  | What                                                                                         |
+| ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `prototype-map-page.ts`                                                                               | the host: fixture data, filters from the URL, the `?variant=` switch                         |
+| `variant-shoreline.ts` · `variant-chart-table.ts` · `variant-coast-index.ts` · `variant-both-maps.ts` | A · B · C · D — no shared layout, on purpose                                                 |
+| `variant-horizon.ts` · `variant-callouts.ts` · `variant-verdict.ts`                                   | E · F · G — round 2                                                                          |
+| `prototype-camera.ts`                                                                                 | fit the camera to the pane and the pins — round 1's finding                                  |
+| `prototype-raw-map.ts`                                                                                | past the port: bearing, the rotated-frame fit, the rotation-aware fence — round 2's findings |
+| `prototype-coast.ts` · `prototype-venue-card.ts`                                                      | the coast as an index (regions, beaches, counts, from-prices); the card E and G share        |
+| `prototype-filter-bar.ts`                                                                             | the selects, shared by A, B and D (C replaces them)                                          |
+| `prototype-venues.ts` · `prototype-sets.ts`                                                           | 26 fixture venues; a plausible set grid for D                                                |
+| `prototype-switcher.ts`                                                                               | the floating bar — deliberately ugly, so it reads as scaffolding                             |
 
 Written under prototype rules: no tests, no error handling, no a11y or contrast specs. If a
 variant wins it gets rebuilt test-first through the normal loop — do not promote this code.

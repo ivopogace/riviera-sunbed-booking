@@ -1,11 +1,14 @@
 /**
- * PROTOTYPE — throwaway. Four desktop layouts for the riviera map on Discover, on one route,
- * switched by `?variant=`:
+ * PROTOTYPE — throwaway. Seven desktop layouts for the riviera map on Discover, on one route,
+ * switched by `?variant=` — round 1's four and round 2's three:
  *
  *   A  shoreline    full-bleed two-pane, the map full height beside the list
  *   B  chart-table  the map IS the page; one glass rail floats over it
  *   C  coast-index  the coast north-to-south as the navigation instrument
  *   D  both-maps    the riviera map and the venue's own beach map on one canvas
+ *   E  horizon      the map turned to run along the coast: a full-width band, cards below
+ *   F  callouts     the map is the list: venues drawn on the chart, anchored by leader lines
+ *   G  verdict      round 1's verdict (A's panes + C's rail) rendered, as the control
  *
  * Route: `/prototype/map-desktop?variant=A`. Spike branch only — never merges. The design
  * question, the wireframes and the verdict are in this folder's README.md.
@@ -30,6 +33,9 @@ import { VariantShoreline } from './variant-shoreline';
 import { VariantChartTable } from './variant-chart-table';
 import { VariantCoastIndex } from './variant-coast-index';
 import { VariantBothMaps } from './variant-both-maps';
+import { VariantHorizon } from './variant-horizon';
+import { VariantCallouts } from './variant-callouts';
+import { VariantVerdict } from './variant-verdict';
 
 const VARIANTS: readonly PrototypeVariant[] = [
   {
@@ -44,6 +50,21 @@ const VARIANTS: readonly PrototypeVariant[] = [
     claim: 'The coast, north to south, as the navigation instrument',
   },
   { key: 'D', name: 'Both maps', claim: 'Coast to exact sunbed without leaving the page' },
+  {
+    key: 'E',
+    name: 'Horizon',
+    claim: 'Round 2 — the coast turned to run left→right: a full-width band, cards below',
+  },
+  {
+    key: 'F',
+    name: 'Callouts',
+    claim: 'Round 2 — the map is the list: venues drawn on the chart, anchored by leaders',
+  },
+  {
+    key: 'G',
+    name: 'Verdict',
+    claim: 'Round 1’s verdict rendered: A’s panes with C’s rail — the control',
+  },
 ];
 
 @Component({
@@ -54,9 +75,21 @@ const VARIANTS: readonly PrototypeVariant[] = [
     VariantChartTable,
     VariantCoastIndex,
     VariantBothMaps,
+    VariantHorizon,
+    VariantCallouts,
+    VariantVerdict,
   ],
   template: `
     @switch (variant()) {
+      @case ('E') {
+        <app-variant-horizon [state]="state()" (filtered)="onFilter($event)" />
+      }
+      @case ('F') {
+        <app-variant-callouts [state]="state()" (filtered)="onFilter($event)" />
+      }
+      @case ('G') {
+        <app-variant-verdict [state]="state()" (filtered)="onFilter($event)" />
+      }
       @case ('B') {
         <app-variant-chart-table [state]="state()" (filtered)="onFilter($event)" />
       }
