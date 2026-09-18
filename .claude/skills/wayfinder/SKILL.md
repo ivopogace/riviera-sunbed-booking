@@ -3,21 +3,12 @@ name: wayfinder
 description: Plan a huge chunk of work (more than one agent session can hold) as a shared map of decision tickets on your issue tracker, and resolve them one at a time until the way to the destination is clear. Load ONLY for a genuinely foggy epic (destination clear, route not, decisions spanning sessions); when clean vertical slices can already be cut, skip straight to to-spec / to-issues.
 ---
 
-> **In riviera-sunbed-booking (localization):**
-> - **Use it only for a genuinely foggy epic** — destination clear, route not; when
->   `to-issues` can already cut clean vertical slices (the common case here), skip
->   straight to `to-spec` / `to-issues`. The trigger, the handoff chain, and the
->   altitude + state-store boundaries: `riviera-sdlc` SKILL.md § *Epic front-end*.
-> - **Tracker ops** (map issue, sub-issue tickets, native blocking, frontier query) =
->   GitHub. The **"Wayfinding operations" section the body below asks for** is
->   `docs/agents/issue-tracker.md` § *Wayfinding operations* (including the `gh api`
->   blocking call and its `issue_id` trap); the **labels** are
->   `docs/agents/triage-labels.md` § *Wayfinding*. Ignore the "default to local-markdown
->   tracker" fallback below — this repo has a real tracker.
-> - **Ticket-type skills:** `grilling`, `domain-modeling`, `research` and `prototype` are
->   all vendored here, so every ticket type resolves through the skill upstream names —
->   no substitution. A **prototype** ticket's throwaway code follows that skill's own
->   spike-branch rule. The upstream `agents/openai.yaml` config is dropped.
+> **Riviera:** only for a genuinely foggy epic; when `to-issues` can already cut slices,
+> skip to `to-spec`/`to-issues` (`riviera-sdlc` § *Epic front-end*). Tracker ops:
+> `docs/agents/issue-tracker.md` § *Wayfinding operations* (the `gh api` blocking call takes
+> the numeric `issue_id`, not `#NN`); labels: `docs/agents/triage-labels.md` § *Wayfinding*.
+> Ignore the local-markdown fallback below. `grilling`, `domain-modeling`, `research`,
+> `prototype` are all vendored; a prototype ticket follows that skill's spike-branch rule.
 
 A loose idea has arrived, too big for one agent session, and wrapped in fog: the way from here to the **destination** isn't visible yet. Wayfinding is about finding that way, not charging at the destination. This skill charts the way as a **shared map** on the repo's issue tracker, then works its **decision tickets** (questions whose resolution is a decision, not slices of a build to execute) one at a time until the route is clear.
 

@@ -5,24 +5,14 @@ description: Build a throwaway prototype to answer a design question. Use when t
 
 # Prototype
 
-> **In riviera-sunbed-booking (localization):**
-> - **Branch:** a spike branch, `spike/<slug>`, never `feature/`|`bugfix/`. It carries **no
->   plan doc** and **never opens a PR** — `riviera-sdlc` exempts spikes from the ceremony,
->   and the repo's CI hygiene checks would judge throwaway code as if it were shipping.
->   Nothing here merges to `main`; the validated *decision* is what graduates, re-built
->   test-first through the normal loop.
-> - **Task runner** (rule 2): npm scripts from `frontend/` — `npm start` for a UI
->   prototype on a throwaway route, and a logic demo stays a single HTML file the user
->   double-clicks. The `pnpm`/`bun` examples below are upstream's, not ours.
-> - **The invariants still hold in what you learn from it.** A prototype may fake
->   persistence and skip tests (rules 3–4), but never *validate* a shape that breaks a
->   spine invariant — a float euro amount (#5), a check-then-insert availability claim
->   (#2), a client-confirmed payment (#8). Prototyping the wrong shape convincingly is
->   the failure mode; the throwaway code is not.
-> - **Capture** (rule 6): push the spike branch and record the verdict + the question it
->   settled — on the `wayfinder` decision ticket when one exists (it links the branch as
->   the ticket's asset), otherwise in the asking plan doc's Open Questions register. A
->   spike fired from a slice plan needs no map (`riviera-sdlc`'s Plan row routes it).
+> **Riviera:** branch `spike/<slug>`, no plan doc, never a PR, never merged — only the
+> validated decision graduates, rebuilt test-first. Task runner: `npm start` from
+> `frontend/` for a UI prototype on a throwaway route; a logic demo is one HTML file (the
+> `pnpm`/`bun` examples below are upstream's). A prototype may fake persistence and skip
+> tests but must never *validate* a shape that breaks a spine invariant (float euros #5,
+> check-then-insert claim #2, client-confirmed payment #8). Capture: push the branch and
+> record verdict + question on the `wayfinder` ticket if one exists, else in the plan's Open
+> Questions.
 
 A prototype is **throwaway code that answers a question**. The question decides the shape.
 

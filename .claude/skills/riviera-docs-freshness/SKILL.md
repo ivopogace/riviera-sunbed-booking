@@ -9,50 +9,38 @@ description: >-
 
 # Riviera docs freshness
 
-**Announce at start:** "Running riviera-docs-freshness over `<range>`."
+Announce: "Running riviera-docs-freshness over `<range>`."
 
-Docs the agents load every session are load-bearing — a stale fact there propagates into
-every future plan and review.
+## Range
 
-## Inputs
+A slice's own diff, `<last-audit-sha>..main`, or an epic's merge span (default: the slice's
+diff if on a branch, else ask). **Never a bare `origin/main...HEAD`** — a cloud session never
+refetches it. Always: `git fetch --unshallow` if shallow, `git fetch --no-tags origin
+<base-ref>`, then the merge base. Only a slice's own diff can also be verified against the
+PR's counts (`riviera-sdlc` `references/pr-gates.md` §1).
 
-A git range — a slice's own diff pre-merge, `<last-audit-sha>..main`, or an epic's merge
-span. When unspecified, default to the slice's own diff if on a branch, else ask for the
-range.
+## What can go stale
 
-**Resolve the range; never name it as a bare `origin/main...HEAD`** — that is a local ref a cloud
-session never refetches, so the sweep silently widens and reports another slice's files as this
-one's. For **every** shape above: `git fetch --unshallow` if the clone is shallow, then `git fetch
---no-tags origin <base-ref>`, then take the merge base. Only the slice's-own-diff shape can go
-further and verify itself against a PR's reported counts (`riviera-sdlc` `references/pr-gates.md`
-§1 step 2) — `check-review-range.mjs` needs a PR to check against, so that half does not apply at
-epic close-out or to a `<sha>..main` audit.
-
-## The substrate-doc map (what can go stale)
-
-| Doc | Stated facts that rot | Typical invalidators |
-|---|---|---|
-| `CLAUDE.md` (+ `frontend/.claude/CLAUDE.md`) | module table + shipped/planned notes, invariant wording, the skills list, provisional decisions; frontend idioms/styling posture in the nested file | a module ships/graduates, an auth/payment mechanism changes, a new skill lands, a frontend idiom is re-decided |
-| `CONTEXT.md` | glossary terms, canonical value sets (statuses, pools), flow descriptions | a new domain term, a renamed status, a changed flow |
-| `RESPONSIBILITIES.md` | each module's Job / Not-My-Job lists, shipped-state notes, the invariants' long form, the platform-edge rules | behavior moves between modules, an edge concern changes shape |
-| `docs/adr/*` | decision + consequences paragraphs | a decision gets re-decided (needs an amendment note, never silent contradiction) |
-| `docs/plans/*` | the in-flight slice's execution-status table | only the CURRENT slice's plan exists; a merged slice's plan is deleted at the next close-out of any kind (*Plan-doc retirement*, below), never audited as history |
-| `docs/design/*` — the two maintained files (`colour-literal-token-audit.md`, `non-text-contrast.md`) and the `README.md` that states what the folder holds | ledger rows still marked open for a family that shipped; a rule's family table citing a spec that does not measure what it claims | all three are maintained — correct them in place. No drawn artboard is consultable; the executable design spec is the `*.contrast.spec.ts` guards and the token-drift specs |
-| `.claude/skills/riviera-*/SKILL.md` **and `.claude/skills/riviera-*/references/*.md`** | concrete file names, class names, endpoints, and example tables inside skills; a reference file's worked example that the tree or a fitness function has since ruled out | a rename/removal of anything a skill cites as an example; a new ArchUnit/fitness rule an existing example would now fail |
-| `docs/agents/*`, `README.md`, `CONTRIBUTING.md` | run recipes, label sets, env vars | build/tooling changes |
-| `docs/deploy/*`, `docs/runbooks/*` | deploy-pipeline shape, hosting/service names, env vars, ops procedures | a CD/hosting change, a rotated secret's name, a new or changed operational mechanism |
-| `platform/src/**` and `frontend/src/**` — Javadoc/TSDoc, `package-info.java`, template comments, and test-assertion descriptions | counts and enumerations of things the code owns ("the two booking kinds", "not just the two that exist today"); a comment reasoning against a document absent from the tree | the counting sweep's territory (step 2b). Source prose is in the map because it is what the next reader believes; the rest of the code is the reviewer's job |
+| Doc | Facts that rot |
+|---|---|
+| `CLAUDE.md`, `frontend/.claude/CLAUDE.md` | module table, invariant wording, skills list, provisional decisions, frontend idioms |
+| `CONTEXT.md` | glossary terms, canonical value sets, flows |
+| `RESPONSIBILITIES.md` | Job / Not-My-Job lists, shipped-state notes, invariant long form, platform-edge rules |
+| `docs/adr/*` | decision + consequences (a re-decision needs an amendment note, never silent contradiction) |
+| `docs/plans/*` | only the current slice's plan exists; merged ones are deleted, never audited |
+| `docs/design/*` (`colour-literal-token-audit.md`, `non-text-contrast.md`, `README.md`) | ledger rows still open for a shipped family; a family table citing a spec that doesn't measure what it claims |
+| `.claude/skills/riviera-*/SKILL.md` + `references/*.md` | file/class/endpoint names, example tables, worked examples a fitness function now rejects |
+| `docs/agents/*`, `README.md`, `CONTRIBUTING.md` | run recipes, label sets, env vars |
+| `docs/deploy/*`, `docs/runbooks/*` | pipeline shape, service names, env vars, ops procedures |
+| `platform/src/**`, `frontend/src/**` prose (Javadoc/TSDoc, `package-info.java`, test descriptions) | counts and enumerations ("the two booking kinds") — step 2b |
 
 ## Procedure
 
-1. **Summarize the diff's fact-changes.** `git diff --stat <range>` for shape, then read
-   the diff for renames, removals, mechanism swaps, new modules/endpoints/skills, changed
-   value sets. Note each as "fact F changed: old → new."
-2. **Grep the substrate — twice: once for what got renamed, once for what got counted.**
+1. Summarize the diff's fact-changes ("fact F: old → new") — renames, removals, mechanism
+   swaps, new modules/endpoints/skills, changed value sets.
+2. Grep twice.
 
-   **2a — the rename/removal grep.** For every renamed/removed identifier or superseded
-   mechanism, grep the substrate-doc set for the OLD name/wording — every file the map
-   above names, which is wider than the set one thinks of first:
+   **2a — renames/removals:** for every old name or wording:
 
    ```bash
    grep -rn "<old>" CLAUDE.md frontend/.claude/CLAUDE.md CONTEXT.md RESPONSIBILITIES.md \
@@ -60,81 +48,48 @@ epic close-out or to a `<sha>..main` audit.
      .claude/skills
    ```
 
-   A hit in a historical record (an old plan doc, a PR body, an ADR's history section) is
-   fine; a hit in a stated present-tense fact is a finding. `platform/src` is deliberately
-   absent — source prose is step 2b's sweep — and so is `docs/plans`, which is history by
-   construction.
+   A hit in historical narrative is fine; a present-tense fact is a finding. `platform/src` and
+   `docs/plans` are deliberately absent.
 
-   **2b — the counting sweep.** Trigger: this slice made the **Nth** instance of something
-   that previously had N−1 — a listener, a metric/counter, an event, a module, a profile, a
-   transport, a scheduled sweep, an endpoint in a named set. Every sentence that said "the
-   two X", "both X", "the first of the two", "five mail counters" is now false, and by
-   definition it lives in a file the slice never touched — reviewing the changed files
-   cannot find it. Grep the words, not the new identifier, in two steps (the phrasings alone
-   are too broad repo-wide):
+   **2b — the counting sweep.** Trigger: the slice made the Nth of something (listener,
+   counter, event, module, profile, transport, sweep, endpoint in a named set). Every "the
+   two X" / "both X" / "five mail counters" is now false and lives in a file the diff never
+   touched. Grep the phrasings, then narrow to the vocabulary of what grew:
 
    ```bash
-   # 1. phrasings of N−1 — ordinal and cardinal, spelled-out and digit
-   # 2. narrowed to the vocabulary of what just grew (here: the mail lineage)
    grep -rniE '\b(the|both|only) (two|2)\b|\bof the two\b|\b(five|5) mail counters\b' \
      platform/src CLAUDE.md CONTEXT.md RESPONSIBILITIES.md \
      docs/adr docs/agents docs/runbooks .claude/skills \
      | grep -iE 'mail|listener|counter'
    ```
 
-   Read every hit — this is judgement, not a lint: most hits are "two" of some other
-   subject and stay true, and historical narrative legitimately keeps saying "two". Javadoc
-   and test-assertion descriptions count as stated facts. **Re-run the sweep after the fix
-   round** — a fix round routinely makes a test's Javadoc stale.
-3. **Walk the map top-down for the reverse direction.** Skim each substrate doc's claims
-   that touch the diff's area (the module table row, the skill's example table, the
-   glossary entries) and ask: does the diff make any stated sentence false, even where no
-   identifier matches (e.g. "operators authenticate per request" after a session switch)?
-4. **Patch or flag.** Small factual fixes (a filename in a skill's example table, a
-   shipped-note, a mechanism phrase) → patch in place, same commit window. Anything that
-   changes a decision's substance (an ADR consequence, an invariant's wording) → flag to
-   the human with the exact sentence and the contradiction; never silently rewrite decisions.
-5. **Report.** One line per finding: `doc:line — stated fact — contradicted by — action
-   (patched/flagged)`. Zero findings is a valid result — say so explicitly. Record the run
-   (range + findings) in the slice's plan doc or the epic close-out comment.
+   Read every hit — judgement, not lint. Re-run after the fix round.
+3. Walk the map top-down: does the diff falsify any stated sentence in its area even where
+   no identifier matches ("operators authenticate per request" after a session switch)?
+4. Patch small factual fixes in place, same commit window. Anything touching a decision's
+   substance → flag to the human with the exact sentence; never silently rewrite decisions.
+5. Report one line per finding: `doc:line — stated fact — contradicted by — action`. Zero
+   findings is a valid result — say so. Record range + findings in the plan or the epic
+   close-out comment.
 
-## Scope discipline
-
-- **Present-tense facts only.** Historical narrative stays true forever; don't churn it.
-- **In-repo docs only.** GitHub issue bodies are records of intent at creation time — the
-  issue-intake grill gate owns those.
-- **Don't restate, verify.** This skill never adds new documentation; it only reconciles
-  existing statements with reality.
+Present-tense facts only; in-repo docs only (issue bodies are the intake gate's); verify,
+never add documentation. `domain-modeling` owns changing `CONTEXT.md`/ADRs.
 
 ## Plan-doc retirement (every close-out)
 
-A plan doc is working state: it carries the slice from plan to merge, and afterwards it
-only costs every later search tokens. It cannot be deleted in its own PR (a review or merge
-session reads it until the merge), so the trigger is **the next close-out of any kind** —
-any later slice's merge close-out or an epic close-out. Whoever runs a close-out deletes
-every plan in `docs/plans/` whose PR has already merged, in the code PR being closed out:
+A merged plan cannot be deleted in its own PR, so whoever runs any later close-out deletes
+every `docs/plans/` plan whose PR already merged, in the code PR being closed out:
 
-1. `git rm` the plan doc and any `docs/plans/<slug>/` asset directory.
-2. Repoint every citation: grep the slug across the tree outside `docs/plans/` — Javadoc,
-   TSDoc, `tailwind.css`, the skills, ADRs and runbooks all cite plans by path or by bare
-   slug. Markdown docs and e2e/spec headers cite the issue or PR; a Javadoc/TSDoc citation
-   becomes a one-line pointer to the `RESPONSIBILITIES.md` section, ADR or skill that holds
-   the rationale — never an issue number there (`riviera-java-conventions` §6d).
-3. Anything only the plan recorded that a later slice needs (a deferred-residual
-   disposition, a rejected alternative, an operational list) moves first — to the
-   `RESPONSIBILITIES.md` section or ADR that owns it, with a pointer from the Javadoc it
-   constrains (§6d: the contract, not the history), or to the issue — in the same commit.
-4. Note the sweep in the close-out comment. The file stays recoverable by slug:
-   `git log --all --diff-filter=D -- 'docs/plans/<slug>.md'` — silent, not an error, on a shallow
-   clone, so `git fetch --unshallow` first (`riviera-local-debug` § *Git in a cloud session*).
+1. `git rm` the plan and any `docs/plans/<slug>/` assets.
+2. Repoint every citation of the path or bare slug outside `docs/plans/`: docs and spec
+   headers → the issue or PR; Javadoc/TSDoc → a one-line pointer to the `RESPONSIBILITIES.md`
+   section, ADR or skill holding the rationale, never an issue number (`riviera-java-conventions` §6d).
+3. Anything only the plan recorded that a later slice needs moves first to the owning
+   `RESPONSIBILITIES.md` section, ADR or issue.
+4. Note the sweep in the close-out comment. Recover a plan with
+   `git log --all --diff-filter=D -- 'docs/plans/<slug>.md'` after `git fetch --unshallow`.
 
 ## When to run
 
-- **Merge close-out step 5** (`riviera-sdlc`) — over the merged PR's range, when the slice
-  changed something a substrate doc states.
-- **Epic close-out** — over the epic's full merge span.
-- **Pre-merge smoke** — over the slice's own diff, resolved per *Inputs* above rather than
-  named as a bare `origin/main...HEAD`, when a slice knowingly renames/moves things (the
-  cheapest moment to catch the skill/table references).
-
-`domain-modeling` owns changing `CONTEXT.md`/ADRs; this skill only detects the drift.
+Merge close-out step 5 (over the merged PR's range); epic close-out (full merge span);
+pre-merge smoke over the slice's diff when it knowingly renames or moves things.
