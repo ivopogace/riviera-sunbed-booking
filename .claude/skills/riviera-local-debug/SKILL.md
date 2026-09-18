@@ -22,6 +22,9 @@ silently, tags below the graft are absent. Before any history claim:
 if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unshallow; fi
 ```
 
+A history claim made on the shallow graph is not evidence: re-run the trace after deepening
+before you report a cause, name an introducing commit, or write one into an issue or PR.
+
 The `scripts/check-*.mjs` guards exit 2 on a shallow clone.
 
 **Remote-tracking refs are frozen** at container start: `origin/main` does not follow `main`.
@@ -64,19 +67,23 @@ A `dockerd` is normally provided by the hook (`scripts/start-dockerd.sh`;
 they skip (`@EnabledIfDockerAvailable`). CI owns the full suite. Contributor laptop: `./gradlew
 test` is fine.
 
-**Full-suite-only failures.** CI runs every test through cached, long-lived contexts in one
-JVM, so shared-state infrastructure fails only there. Known: the per-IP login rate limiter
-(every MockMvc login shares one client IP) — each test login presents a unique
-`X-Forwarded-For` via `SessionLoginSupport.uniqueClientIp()`, which mints `198.18.x.y` because
-RFC1918/loopback values are skipped as trusted proxy hops; the ITs never set the
-`CF-Connecting-IP` header, which would take over the key. An unconditional `@Scheduled` sweep
-interfering with a race IT's window — fix with a long `initial-delay`. When a change touches
+### Full-suite-only failures
+
+CI runs every test through cached, long-lived contexts in one JVM, so shared-state
+infrastructure fails only there. Known: the per-IP login rate limiter (every MockMvc login
+shares one client IP) — each test login presents a unique `X-Forwarded-For` via
+`SessionLoginSupport.uniqueClientIp()`, which mints `198.18.x.y` because RFC1918/loopback
+values are skipped as trusted proxy hops; the ITs never set the `CF-Connecting-IP` header,
+which would take over the key — never set both in one test. An unconditional `@Scheduled`
+sweep interfering with a race IT's window — fix with a long `initial-delay`. When a change touches
 a filter, rate limiter, `@Scheduled` job, cache or shared bean in the web chain, design the
 tests to isolate (unique key per test, initial-delay, per-test reset) and check the push's CI
 run before building on it.
 
-**Blast radius.** `@ApplicationModuleTest` bootstraps its module plus the root package's beans,
-but another module's beans only when that module is bootstrapped. Moving a port the root
+### Blast radius
+
+`@ApplicationModuleTest` bootstraps its module plus the root package's beans, but another
+module's beans only when that module is bootstrapped. Moving a port the root
 `SecurityConfig` chain needs out of the root fails every other module's `@ApplicationModuleTest`
 with `NoSuchBeanDefinitionException` while web slices stay green (`WebSliceStubs` supplies
 it). Fix: the moved port joins each such test's `@MockitoBean` list. After any bean move

@@ -34,10 +34,12 @@ get CI green, re-review the changed surface. Size is not an exemption.
 | **Sonar gate** | Mandatory. Pull the new-issue + duplication list from the API and clear every entry (`references/pr-gates.md` §2). | SonarCloud |
 | **Merge** | Green CI + review gate run + Sonar list cleared + findings resolved → merge → close-out (`references/pr-gates.md` §3). | |
 
-**Epic front-end** (multi-slice only): `wayfinder` (a `wayfinder:map` issue of decision
-tickets, one resolved per session) → `to-spec` (one epic issue: Problem / Solution / User
-Stories / Implementation Decisions / Testing Seams / Out of scope; no slice ACs) → `to-issues`.
-Once a slice executes, the plan doc's Execution status is the state store, not the map.
+### Epic front-end (multi-slice only)
+
+`wayfinder` (a `wayfinder:map` issue of decision tickets, one resolved per session) →
+`to-spec` (one epic issue: Problem / Solution / User Stories / Implementation Decisions /
+Testing Seams / Out of scope; no slice ACs) → `to-issues`. Once a slice executes, the plan
+doc's Execution status is the state store, not the map.
 
 ## Skill-routing gate (mandatory — load *before* you write)
 

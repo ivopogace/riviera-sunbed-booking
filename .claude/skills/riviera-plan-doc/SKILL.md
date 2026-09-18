@@ -10,7 +10,8 @@ description: >-
 # Riviera Plan Doc
 
 `references/plan-doc-template.md` is the single home of section guidance. Load at the plan
-stage and again when picking up a plan in a fresh session.
+stage and again when picking up a plan in a fresh session. The plan is preventive: its
+sections are built from the risks the design surfaced, not from post-mortems.
 
 ## Required artifacts
 
