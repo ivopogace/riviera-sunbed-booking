@@ -1,6 +1,6 @@
 /**
- * PROTOTYPE — throwaway. Seven desktop layouts for the riviera map on Discover, on one route,
- * switched by `?variant=` — round 1's four and round 2's three:
+ * PROTOTYPE — throwaway. Ten desktop layouts for the riviera map on Discover, on one route,
+ * switched by `?variant=` — round 1's four, round 2's three and round 3's three:
  *
  *   A  shoreline    full-bleed two-pane, the map full height beside the list
  *   B  chart-table  the map IS the page; one glass rail floats over it
@@ -9,6 +9,9 @@
  *   E  horizon      the map turned to run along the coast: a full-width band, cards below
  *   F  callouts     the map is the list: venues drawn on the chart, anchored by leader lines
  *   G  verdict      round 1's verdict (A's panes + C's rail) rendered, as the control
+ *   H  tide-table   round 3 — the coast × the week: seven days of availability drawn in the sea
+ *   I  dive         round 3 — one continuous zoom from the riviera to one lounger
+ *   J  sundial      round 3 — today, hour by hour: sales close as the light on the coast
  *
  * Route: `/prototype/map-desktop?variant=A`. Spike branch only — never merges. The design
  * question, the wireframes and the verdict are in this folder's README.md.
@@ -36,6 +39,9 @@ import { VariantBothMaps } from './variant-both-maps';
 import { VariantHorizon } from './variant-horizon';
 import { VariantCallouts } from './variant-callouts';
 import { VariantVerdict } from './variant-verdict';
+import { VariantTideTable } from './variant-tide-table';
+import { VariantDive } from './variant-dive';
+import { VariantSundial } from './variant-sundial';
 
 const VARIANTS: readonly PrototypeVariant[] = [
   {
@@ -65,6 +71,21 @@ const VARIANTS: readonly PrototypeVariant[] = [
     name: 'Verdict',
     claim: 'Round 1’s verdict rendered: A’s panes with C’s rail — the control',
   },
+  {
+    key: 'H',
+    name: 'Tide table',
+    claim: 'Round 3 — the coast × the week: seven days of availability, drawn in the sea',
+  },
+  {
+    key: 'I',
+    name: 'Dive',
+    claim: 'Round 3 — one continuous zoom from the whole riviera to one lounger',
+  },
+  {
+    key: 'J',
+    name: 'Sundial',
+    claim: 'Round 3 — today, hour by hour: sales close as the light on the coast',
+  },
 ];
 
 @Component({
@@ -78,9 +99,21 @@ const VARIANTS: readonly PrototypeVariant[] = [
     VariantHorizon,
     VariantCallouts,
     VariantVerdict,
+    VariantTideTable,
+    VariantDive,
+    VariantSundial,
   ],
   template: `
     @switch (variant()) {
+      @case ('H') {
+        <app-variant-tide-table [state]="state()" (filtered)="onFilter($event)" />
+      }
+      @case ('I') {
+        <app-variant-dive [state]="state()" (filtered)="onFilter($event)" />
+      }
+      @case ('J') {
+        <app-variant-sundial [state]="state()" (filtered)="onFilter($event)" />
+      }
       @case ('E') {
         <app-variant-horizon [state]="state()" (filtered)="onFilter($event)" />
       }

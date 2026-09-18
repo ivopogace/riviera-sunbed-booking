@@ -1,9 +1,10 @@
 # PROTOTYPE — where the riviera map goes on desktop
 
 **Throwaway. Spike branch only (`claude/map-design-prototype-417sh1`); nothing here merges to
-`main`.** Seven desktop layouts for the riviera map on Discover, on one route, so they can be
-judged against each other and against what ships today: round 1's four (A–D, below) and round 2's
-three (E–G, § _Round 2_), which start from what round 1's screenshots showed.
+`main`.** Ten desktop layouts for the riviera map on Discover, on one route, so they can be
+judged against each other and against what ships today: round 1's four (A–D, below), round 2's
+three (E–G, § _Round 2_), which start from what round 1's screenshots showed, and round 3's three
+(H–J, § _Round 3_), which start from the subject instead of from a layout.
 
 ```
 npm start           # from frontend/
@@ -407,12 +408,224 @@ whole coast at 390 px): Near me when granted, else Himarë. Round 1's sheet rema
 if the band's 340 px of chrome on a 844 px phone tests as too much; the two are not exclusive
 (sheet for the list, band for the map).
 
+## Round 3
+
+Rounds 1 and 2 answered "where does the map go". Round 3 takes E's orientation as settled — the
+coast turned to run left → right, the sea at the foot — and asks what the band is _for_ once it
+is there. The subject: a 230 km coast, one sunbed set for one day, a tourist who has already
+decided to go to the beach and only needs to choose where. Three things a map of hotels never
+needs, built on one shared band (`prototype-band.ts`, E as a component) so each is judged by the
+same camera. Two are instruments in the sea; one is the zoom itself.
+
+### H · Tide table — _the coast × the week, drawn in the sea_
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ header                                                                   │
+│ Find your spot on the Riviera.  430 sets free at 26 venues on Fri 18 Sep │ glass strip
+│                                        [Whole coast][Shkodër 1][Lezhë 2]…│
+├──────────────────────────────────────────────────────────────────────────┤
+│ ↖N   Shëngjin●2   €14   €21  Golem&Qerret●4        5 beaches●9  Ksamil●4 │ MAP BAND
+│  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ sea ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ │ 66 vh
+│ [Fri 18 Sep 430 free│10 close 16:00] ▆ ▆     █  █ ▆▆      ▆  █   ▆▆▆ ░ ▆ │
+│ [Sat 19 Sep 152 free]               ▂ ▂     ▂  ▂ ▂▂      ▂  ▂   ▂▂▂   ▂ │ THE TIDE TABLE
+│ [Sun 20 Sep 188 free]               ▂ ▂     ▃  ▂ ▂▂      ▃  ▂   ▂▂▂   ▂ │ in the water:
+│ [Mon 21 Sep 572 free]               ▆ ▅     ▆  ▆ ▅▅      ▆  ▆   ▆▆▆   ▆ │ one bar per venue
+│ [Tue 22 Sep 662 free]               ▇ ▆     ▇  ▇ ▆▆      ▇  ▇   ▇▇▇   ▇ │ under its own pin,
+│ [Wed 23 Sep 749 free]               █ ▇     █  █ ▇▇      █  █   ███   █ │ seven days deep
+│ [Thu 24 Sep 760 free]               █ █     █  █ ██      █  █   ███   █ │
+├──────────────────────────────────────────────────────────────────────────┤
+│ cards, five columns — the band scrolls away (not sticky)                 │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+Availability is per set **per date** (invariant #2), so the coast has a different shape every day
+of the week, and no layout in rounds 1–2 could show more than one of them. H draws seven: in the
+water under the pins, one row per day, one bar per venue at the venue's own x on the band, the
+bar's height how much of it is still free that day. The columns are the map's x axis carried down
+through the sea — the table pans and zooms with the map, and nothing has to say which bar is which
+because it is under its pin (`H-tide-1440.png`; at Himarë, `H-tide-himare.png`). Venues too close
+to draw apart merge into one bar exactly as their pins merge into one place pill.
+
+The row is the date control. Press a day and the pins, the preview and the cards recount for it
+(`H-tide-sunday.png`: Sunday chosen, 188 free against Friday's 430 — the weekend dip is the whole
+point). The `<input type="date">` goes. Today's row carries the day's second fact (invariant #4):
+venues whose online sales have already closed for today are hatched, and the label says when the
+next ones close ("10 close 16:00").
+
+What it costs, honestly:
+
+- **A read that does not exist.** `/api/venues?date=` answers one day; the table needs seven. A
+  week-at-once summary is a new backend read (one per venue per day, integers — small, but new).
+  `prototype-days.ts` invents it.
+- **The band is deep — 594 px at 1440 × 900 — and cannot be sticky.** Strip + band are 654 px
+  under a 72 px header; a sticky version leaves the cards 174 px. So H scrolls the band away
+  (`H-tide-scrolled.png`) and loses E's hover-a-card-light-its-pin link below the fold. At 1920 it
+  is 712 px and fine (`H-tide-1920.png`).
+- **The whole coast is a texture, not a table.** At coast scale Himarë's eleven venues are three
+  merged bars; the instrument reads at region scale and up. That is E's own finding about the
+  whole-coast view (an orientation shot, not where anyone books from) restated for the sea.
+
+### I · Dive — _one continuous zoom from the whole riviera to one lounger_
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ header                                                                   │
+│ ↖N        [Whole coast][Shkodër][Lezhë][Durrës][Vlorë][Himarë][Sarandë]  │ THE MAP IS THE
+│ ┌────────────┐                                                           │ WINDOW; wheel zooms
+│ │● The coast │                 ┌──────────────────────────┐              │
+│ │            │                 │ Palasa Pine  24 of 28    │              │ past zoom 13 the
+│ │○ A region  │                 │ H ▢▢▢▢▢▢▢▢▢▢             │              │ venue under the
+│ │            │                 │ …                        │              │ camera unfolds its
+│ │○ A beach   │                 │ C ▢▨▢▢▢▢▢▨▢▢  €29 Middle │              │ own grid from its
+│ │            │                 │ B ▢▨▢▢▨▢▢▨▨▨             │              │ pin — front row at
+│ │● Your set  │                 │ A ▨▨▨▨▨▨▢▨▨▨  €40 Front  │              │ the foot, on the
+│ │ Scroll to  │                 │ ▼ the water   [Book A5]  │              │ water, because the
+│ │ dive.      │                 └───────────┬──────────────┘              │ sea is down
+│ └────────────┘                          (€22)                            │
+│      DEPTH GAUGE                          ~~~~~~~~ sea ~~~~~~~~          │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+The riviera map and a venue's beach map are the same subject at two scales, and today the change
+of scale is a page change. Round 1's D put the two maps side by side and its own screenshot showed
+the cost (a 520 px panel panning a 12-set beach). I puts them on **one camera**: the map is the
+window, the wheel zooms, and past beach scale the venue nearest the centre unfolds its set grid
+from its pin — rows parallel to the shore, the front row at the foot, because the band is turned
+with the sea at the foot so "facing the sea" is simply down (`I-dive-set.png`; mid-unfold at zoom
+14, `I-dive-unfolding.png`). A depth gauge on the left names the four scales — the coast, a
+region, a beach, your set — and shows where the camera is; press a stop to go there. A pin press
+is a dive. The preview card goes; the grid is the preview.
+
+What it costs, honestly:
+
+- **It is a lens, not a projection — measured.** A sunbed set is ~2.5 m across; at the map's own
+  ceiling (zoom 16, 512 px tiles, latitude 40°) a pixel is ~0.9 m, so a set to scale is three
+  pixels. The grid holds a fixed screen size and grows into place between zoom 13 and 15. The zoom
+  is continuous; the scale is not, and a tourist will feel the seam.
+- **The venue pin's accuracy becomes a product requirement.** `I-dive-set.png` at zoom 15.2 shows
+  no water at all: the fixture pin for Palasa Pine sits a few hundred metres inland of the OSM
+  shoreline, as an operator's rough drop will. "Front row on the water" is only true if the pin is
+  on the beach to ~10 m. The operator console's placer would need a shoreline snap, or the grid's
+  anchor its own field.
+- **A map that is the window has no scroll column** — so I is a region-and-beach mode, not
+  Discover. Its coast view (`I-dive-1440.png`) is the orientation shot with nothing under it.
+
+### J · Sundial — _today, hour by hour: sales close as the light on the coast_
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ header                                                                   │
+│ Today on the Riviera.  At 15:30, 21 of 26 venues still take a booking    │ glass strip
+│ for today.                    [Whole coast][Shkodër][Lezhë][Durrës]…     │
+├──────────────────────────────────────────────────────────────────────────┤
+│ ↖N  Shëngjin●2  €14  €21 (Golem&Qerret·4)   (Borsh·2)  Ksamil&Pasqyra●4  │ MAP BAND 54 vh
+│         lit = still selling today   ( ) = dusk: closed, or advance only  │ darkens after 18:00
+│ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ sea ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ │
+│                        [10 close at 16:00]           [11 close at midnight] THE DAY LINE
+│ 06 ━━━━━━━━━ 09 ━━━━━━━━━ 12 ━━━━━━━ 15 ☀───── 18 ────── 21 ────── 24   │ in the water; the
+│                                        15:30 · now                       │ sun is draggable
+├──────────────────────────────────────────────────────────────────────────┤
+│ Still selling for today  21     cards …                                  │
+│ Tomorrow onward  5 — closed for today, or selling in advance only        │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+A tourist already on the riviera at half past three has one question the shipped page cannot
+answer at a glance: which of these still take a booking for **today**? Online sales close per
+venue on the day itself — 16:00 by default, midnight for some, in advance only for a few
+(invariant #4) — and the product keeps that in a note on the venue page. J makes it the map's
+light. The sea holds the day as a line from 06:00 to midnight with every close marked and counted;
+the sun sits on it at the hour and can be dragged; every venue whose close the sun has passed
+drops into dusk on the map (`J-sundial-1630.png`: the 16:00 ten have gone grey, eleven remain),
+and the band itself darkens toward evening (`J-sundial-2030.png`). The cards split the same way.
+
+The one orchestrated moment: on load the sun rises from 06:00 to now in a second and a half and
+the coast's pins go to dusk one close at a time as it passes them — the day so far, played once.
+A cut under `prefers-reduced-motion`. It is the only motion in three rounds that is not a camera
+ease, and it is there because it shows what the instrument does before anyone touches it.
+
+What it costs, honestly: **nothing on the backend.** `VenueSummary` already carries `salesOpen`
+and `salesClose`; the dusk state is a comparison of the venue's close with the clock, which the
+shipped card already makes for its sales-closed chip. The shipped pin layer needs a per-pin state
+(today it draws one kind of pin), and the band needs E's four port additions. The sun's clock is
+the browser's, reasoned in Europe/Tirane (invariant #6) — the server still fences the pay path.
+
+### Findings (measured)
+
+1. **A deep band at the coast bearing loses the coast to the fence — and no padding absorbs it.**
+   Round 2 measured the whole-coast band as fence-bound at the west by ~60 px on a 414 px band and
+   absorbed it with a deeper foot. The rotated footprint's east–west width grows with the band's
+   height (mostly the height turned through 78°): at 594 px it is ~900 px, and the ADR-0022 clamp
+   then moves the camera so far east that the coast falls off the band's foot entirely — the first
+   H, I and J shots were all inland Albania with the pins below the frame. So a band deep enough to
+   hold an instrument in the sea needs the fence's **west edge at 18.0°, not 19.0°**
+   (`WIDER_FENCE` in `prototype-band.ts`); with it the whole coast frames on any depth up to the
+   window. Round 2's "into sea, at tile cost only" was right about the direction and wrong about
+   the cost: the tiles end at 19.0° and beyond them the style paints its **grey** background — the
+   corner at the foot of `I-dive-1440.png`. It cannot be painted water: in an OpenMapTiles style
+   the land _is_ the background and water is a fill over it (tried; the whole map turned blue).
+   The extract itself has to grow westward (`scripts/build-riviera-map.sh` BBOX 19.0 → 18.0; empty
+   sea, a few kB of tiles). This is the change `RIVIERA_MAP_OPTIONS` needs whichever variant ships.
+2. **The dive is a lens.** Three pixels per set at the zoom ceiling (I above). A continuous zoom
+   to a lounger is a continuous _camera_ with a staged _scale_, and the venue pin's placement
+   accuracy becomes the product's problem.
+3. **A state per pin is one layer's job.** J first drew dusk venues as a second `app-venue-pin-layer`
+   over the first; each layer crowded its own pins, and their pills overlapped. The state has to be
+   a property of the one layer's pins (the prototype sets a class on the rendered buttons by
+   `data-pin`); the shipped layer would take a per-pin `state`.
+4. **The crowding rule is needed twice.** H's columns merge neighbours nearer than 14 px, which is
+   the pin layer's own rule (`crowdPins`) re-derived for bars. An instrument under the pins should
+   read the layer's crowds rather than recompute them.
+5. **The band refits on a new result set, never on a new bearing.** I turns the band to an opened
+   venue's stretch; a fit effect that also tracked the bearing undid every dive. `untracked` on the
+   bearing, and `fitTo` for a variant whose pins change without the result set changing (J's
+   scrub).
+6. **The instruments are desktop instruments.** All three are `lg`-only; below `lg` H, I and J
+   are E's band with E's phone verdict. Not shot this round.
+
+### What I'd ship, and why
+
+**J's day line into E's band, now.** It is the smallest of the three and the truest to the
+product: invariant #4 is the one rule a tourist meets on the beach, it is already on the wire, and
+J is the only variant in three rounds that changes what the map _says_ rather than where it sits.
+Its cost is E's port work plus a pin state. If the moment tests as decoration, cut the sunrise and
+keep the line — the instrument stands without it.
+
+**H when the week read exists.** It is the biggest idea in the spike — the coast as a day-by-day
+instrument is what "pick the exact spot for one day" looks like as a picture — and it needs one
+new read and a non-sticky band. Worth its own issue with the read in it; not before.
+
+**I replaces D as the product decision, and D should not be built.** Round 1 said D was "a
+separate product decision"; round 2 agreed. Both were right that it is a product decision and wrong
+about the form: `D-bothmaps-1440.png` is a 520 px panel panning a 12-set beach, and
+`I-dive-set.png` is the same beach whole, on the same camera as the coast, with nothing beside it.
+The lens seam and the pin-accuracy requirement are I's real costs, and they are the costs of the
+_decision_, not of the layout — D has them too and hides the first behind a scroll hint. So the
+issue that D was going to be should be I, and its first slice is the shoreline snap.
+
+**Where round 3 disagrees with rounds 1 and 2, with the shots that say so:**
+
+- Round 2: "ship E non-sticky if the 900 px window test says so." Round 3: any band that holds an
+  instrument is non-sticky, no test needed — `H-tide-scrolled.png` is the only honest scrolled
+  state at that depth, and J at 54 vh is the most a sticky band can carry.
+- Round 2's finding 3 costed the wider fence at "tiles only." `I-dive-1440.png`'s grey corner says
+  it costs the extract, and finding 1 above says why the style cannot paper over it.
+- Round 1's "the map pane has to be portrait" and round 2's "the band is the right shape" are both
+  now beside the point: with the fence widened, the band's depth is _free_, and the question is
+  what the depth holds. Round 3's answer is the sea.
+- Round 2's "F is the region-scale mode to build next." Round 3: region scale is a stop on I's
+  gauge, not a mode; the callout column is a way to label a region view, and the lens is what the
+  region view is _for_.
+
 ## Screenshots
 
 `shots/` holds the set these notes are written from (1440 × 900 unless stated), captured against
-the real tiles with the fixture venues. Round 2 was shot by a `playwright-core` driver serving
-`platform/map/riviera.pmtiles` from disk with range slicing and answering the fixture photo paths
-with generated SVG stand-ins — judge photo mass, not the pictures:
+the real tiles with the fixture venues. Rounds 2 and 3 were shot by a `playwright-core` driver
+serving `platform/map/riviera.pmtiles` from disk with range slicing and answering the fixture photo
+paths with generated SVG stand-ins — judge photo mass, not the pictures. Round 3's states are
+URL-seeded: `?now=15:30` sets the day's clock, `&still` skips J's sunrise, `?open=23&depth=14`
+dives I to a venue at a zoom:
 
 | File                                                | What                                                           |
 | --------------------------------------------------- | -------------------------------------------------------------- |
@@ -427,6 +640,13 @@ with generated SVG stand-ins — judge photo mass, not the pictures:
 | `F-callouts-1440.png` · `F-callouts-1920.png`       | F at Himarë, eleven callouts at 58 px rows, then at 78         |
 | `F-callouts-durres.png`                             | F at Durrës: short leaders where the coast runs straight       |
 | `G-verdict-1440.png` · `G-verdict-1920.png`         | round 1's verdict rendered, at both widths                     |
+| `H-tide-1440.png` · `H-tide-1920.png`               | H, the whole coast over seven days; at 1920, six card columns  |
+| `H-tide-himare.png` · `H-tide-sunday.png`           | H at Himarë; and with Sunday chosen from the table             |
+| `H-tide-scrolled.png`                               | H scrolled 700 px: the band gone, the cards the whole window   |
+| `I-dive-1440.png` · `I-dive-himare.png`             | I at coast and region depth (note the grey corner: finding 1)  |
+| `I-dive-unfolding.png` · `I-dive-set.png`           | I diving on Palasa Pine: the grid at zoom 14, then whole at 15 |
+| `J-sundial-1440.png` · `J-sundial-1920.png`         | J at 15:30, at both widths                                     |
+| `J-sundial-1630.png` · `J-sundial-2030.png`         | J after the 16:00 close (ten at dusk), and at 20:30 (evening)  |
 
 ## Files
 
@@ -435,6 +655,9 @@ with generated SVG stand-ins — judge photo mass, not the pictures:
 | `prototype-map-page.ts`                                                                               | the host: fixture data, filters from the URL, the `?variant=` switch                         |
 | `variant-shoreline.ts` · `variant-chart-table.ts` · `variant-coast-index.ts` · `variant-both-maps.ts` | A · B · C · D — no shared layout, on purpose                                                 |
 | `variant-horizon.ts` · `variant-callouts.ts` · `variant-verdict.ts`                                   | E · F · G — round 2                                                                          |
+| `variant-tide-table.ts` · `variant-dive.ts` · `variant-sundial.ts`                                    | H · I · J — round 3                                                                          |
+| `prototype-band.ts`                                                                                   | E's turned band as one element H, I and J compose; the wider fence — round 3's finding 1     |
+| `prototype-days.ts`                                                                                   | the fixture's time: free sets per venue per day, and each venue's sales close                |
 | `prototype-camera.ts`                                                                                 | fit the camera to the pane and the pins — round 1's finding                                  |
 | `prototype-raw-map.ts`                                                                                | past the port: bearing, the rotated-frame fit, the rotation-aware fence — round 2's findings |
 | `prototype-coast.ts` · `prototype-venue-card.ts`                                                      | the coast as an index (regions, beaches, counts, from-prices); the card E and G share        |
