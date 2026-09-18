@@ -105,18 +105,20 @@ stands in for `feature/venue-beach-catalogue`).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A stored beach the enum does not know (drift between CHECK and enum) breaks every read | low | high | the enum is the one source; the CHECK lists its names verbatim; `VenueBeachCatalogueMigrationIT` inserts every enum name and asserts the CHECK accepts them all | session | open |
-| R-2 | The 60-odd ITs that insert venue rows with `region` fail to compile or violate the CHECK | high | med | a scripted rewrite of the test SQL (drop the region column/value, map beach literals to `KSAMIL` unless a test needs its own); `compileTestJava` proves the shape, CI the rows | session | open |
-| R-3 | The region column drop breaks `VenueListControllerIT`'s isolation (it keyed on a marker region) | high | med | fixtures move to `SHENGJIN`/`TALE`/`PATOK` (region `LEZHE`), which no other test uses; teardown keys on those beach codes | session | open |
-| R-4 | Camera coordinates recorded by hand are off | med | low | town-scale zoom (13) tolerates a few hundred metres; the coordinates are constants, one line each to correct | maintainer | open |
-| R-5 | The `venue.region` drop and V3's seed values | low | low | V59 UPDATEs every row to `KSAMIL` before the CHECK; the app is not live (maintainer's call) | session | open |
-| R-6 | Wire change on `POST /api/venues` and `PATCH /api/venues/{id}` (no `region`) | — | low | an extra `region` property is ignored by Jackson (`FAIL_ON_UNKNOWN_PROPERTIES` is off in Boot); the FE types drop the field so the compiler enforces it | session | open |
+| R-1 | A stored beach the enum does not know (drift between CHECK and enum) breaks every read | low | high | the enum is the one source; the CHECK lists its names verbatim; `VenueBeachCatalogueMigrationIT` inserts every enum name and asserts the CHECK accepts them all | session | closed — the IT ships; the review gate diffed enum, CHECK and mirror name for name |
+| R-2 | The 60-odd ITs that insert venue rows with `region` fail to compile or violate the CHECK | high | med | a scripted rewrite of the test SQL (drop the region column/value, map beach literals to `KSAMIL` unless a test needs its own); `compileTestJava` proves the shape, CI the rows | session | closed — `compileTestJava` green; the ITs run on the PR's CI |
+| R-3 | The region column drop breaks `VenueListControllerIT`'s isolation (it keyed on a marker region) | high | med | fixtures move to `SHENGJIN`/`TALE`/`PATOK` (region `LEZHE`); teardown keys on those beach codes; the reserved codes live in one registry, `IsolationBeaches`, that `SeasonClosureCatalogIT` shares | session | closed — the registry is the one place a collision shows |
+| R-4 | Camera coordinates recorded by hand are off | med | low | town-scale zoom (13) tolerates a few hundred metres; the coordinates are constants, one line each to correct | maintainer | accepted — corrected on sight, one line each |
+| R-5 | The `venue.region` drop and V3's seed values | low | low | V59 UPDATEs every row to `KSAMIL` before the CHECK; the app is not live (maintainer's call) | session | closed — the maintainer's decision, on the issue |
+| R-6 | Wire change on `POST /api/venues` and `PATCH /api/venues/{id}` (no `region`) | — | low | an extra `region` property is ignored by Jackson (`FAIL_ON_UNKNOWN_PROPERTIES` is off in Boot); the FE types drop the field so the compiler enforces it | session | closed — `tsc` over app and spec trees green |
 
 ## Open questions / Assumptions
 
-- **Assumption:** existing rows on the Render dev database may all become `KSAMIL`; the
-  maintainer said so on the issue's conversation and will re-point them by hand. — *Owner:*
-  maintainer · *Resolves by:* merge
+### Resolved
+
+- **Assumption:** existing rows on the Render dev database may all become `KSAMIL`; the maintainer
+  said so in the conversation that produced #1141 and re-points them by hand. — resolved: V59 does
+  exactly that, noted on PR #1142.
 
 ## Availability & concurrency (invariant #2)
 
@@ -338,6 +340,7 @@ N/A — no payment in scope.
 - `platform/src/test/java/ai/riviera/platform/venue/VenueBeachCatalogueMigrationIT.java` — pins the CHECK, the dropped column, the seed mapping (AC-4)
 - `platform/src/test/java/ai/riviera/platform/venue/VenueCatalogVisibilityIT.java` — venue fixture: `region` dropped, beach → `KSAMIL`
 - `platform/src/test/java/ai/riviera/platform/venue/VenueCommissionScheduleMigrationIT.java` — venue fixture: `region` dropped, beach → `KSAMIL`
+- `platform/src/test/java/ai/riviera/platform/venue/IsolationBeaches.java` — the registry of beach codes reserved for list-reading ITs
 - `platform/src/test/java/ai/riviera/platform/venue/VenueListControllerIT.java` — fixtures re-keyed on the `LEZHE` beaches; region filter by code (AC-2/3)
 - `platform/src/test/java/ai/riviera/platform/venue/VenuePhotoReadModelIT.java` — venue fixture: `region` dropped, beach → `KSAMIL`
 - `platform/src/test/java/ai/riviera/platform/venue/VenuePhotoServingIT.java` — venue fixture: `region` dropped, beach → `KSAMIL`
@@ -357,16 +360,16 @@ N/A — no payment in scope.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3 — docs + close-out), then PR + CI gate
+**Stage pointer:** review gate run on PR #1142 (findings fixed) → Sonar gate → merge
 
-**Next action:** push the branch; open the PR so CI runs the Testcontainers ITs this session could not (no Docker); then the review gate.
+**Next action:** read the SonarCloud list for PR #1142 once CI is green on the head, clear it, merge, then the close-out steps 1–7.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — issue + plan | ✅ | |
 | 1 — backend: `Beach`, V59, commands, adapters, ITs | ✅ | (this PR's first commit) |
 | 2 — frontend: mirror, field, forms, Discover + map, labels | ✅ | (same commit) |
-| 3 — docs + close-out | ⏳ | plan doc finalised; CI on the PR runs the two Testcontainers ITs |
+| 3 — docs + close-out | ⏳ | PR #1142; review gate: 5 reviewers, 4 findings fixed (e2e for AC-6, plan-doc claim, half-width field, the `IsolationBeaches` registry) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

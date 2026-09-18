@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * units (invariant #5), the today-Europe/Tirane date default (invariant #6), empty results,
  * and public access. Testcontainers Postgres (runs in CI; skipped without Docker).
  *
- * <p>Fixtures are isolated on the three {@code LEZHE} beaches no other IT uses ({@link #IT_REGION}) and torn down in
+ * <p>Fixtures are isolated on the three {@code LEZHE} beaches {@link IsolationBeaches} reserves for this class and torn down in
  * {@link #cleanup()}, so the class is independent of the Miramar seed and of sibling ITs that
  * insert their own venues into the shared container.
  */
@@ -46,10 +46,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class VenueListControllerIT {
 
-	private static final String IT_REGION = "LEZHE";
-	private static final String BEACH_DHERMI = "SHENGJIN";
-	private static final String BEACH_PALASE = "TALE";
-	private static final String BEACH_SALES_CLOSE = "PATOK";
+	private static final String IT_REGION = IsolationBeaches.LIST_IT_REGION;
+	private static final String BEACH_DHERMI = IsolationBeaches.LIST_IT_BEACH_A;
+	private static final String BEACH_PALASE = IsolationBeaches.LIST_IT_BEACH_B;
+	private static final String BEACH_SALES_CLOSE = IsolationBeaches.LIST_IT_SALES_CLOSE_BEACH;
 	private static final List<String> IT_BEACHES = List.of(BEACH_DHERMI, BEACH_PALASE, BEACH_SALES_CLOSE);
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 

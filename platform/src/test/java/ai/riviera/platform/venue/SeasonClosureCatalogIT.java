@@ -44,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class SeasonClosureCatalogIT {
 
-	private static final String BEACH = "VELIPOJE";
+	private static final String BEACH = IsolationBeaches.SEASON_CLOSURE_IT_BEACH;
 	private static final LocalDate REOPEN = LocalDate.of(2027, 5, 15);
 	/** 2027-05-14 23:59 in Tirane (CEST): the closure's last minute. */
 	private static final Instant BEFORE_REOPEN = Instant.parse("2027-05-14T21:59:00Z");
