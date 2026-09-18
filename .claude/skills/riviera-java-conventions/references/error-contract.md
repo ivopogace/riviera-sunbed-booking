@@ -11,10 +11,9 @@ never sees them). `detail` must be safe for any caller: never a booking code (in
 #7), an exception message, or another internal echo.
 
 **`detail` states the condition, not the remedy.** The stable contract a client switches
-on is `code`; the wording a human reads belongs to the client rendering it, which alone
-knows the surface, the audience, and what the user can do next. A `detail` written as
-user-facing copy becomes a second copy of wording the client owns, reaching no user and
-kept in sync by nothing.
+on is `code`; the wording a human reads belongs to the client rendering it. A `detail`
+written as user-facing copy is a second copy of wording the client owns, kept in sync by
+nothing.
 
 - **Write the condition, and only the condition.** *"Another set already occupies this grid
   cell."*, *"No set on this venue has that row label."*, *"This set has a booking or a
@@ -29,13 +28,12 @@ kept in sync by nothing.
   true of sets the server happily edits, since a hold whose day has passed locks nothing, and
   of sets it retires, since a finished booking refuses nothing — ADR-0019). "has a booking or
   a **current** hold" is the narrowest statement true at every arm.
-- **No remedy-voiced `detail` is left in the tree, and none is exempt.** Scope is every
-  `detail` in remedy voice, whether or not a client mapper duplicates it
-  (`RATE_LIMITED` and `CANNOT_SUSPEND_SELF` have no client `code`→copy mapper and are still
-  in scope). Enumerate call sites by mechanism, not phrase: `grep -rn "ApiProblem\."
-  platform/src/main` unrolled through each controller's local `problem(...)`/`error(...)`
-  helper — a literal in a `switch` arm behind a helper, a *consequence* clause with no
-  banned phrase, and the hand-built JSON in `RateLimitFilter` all escape a phrase grep.
+- **None is exempt**, whether or not a client mapper duplicates it (`RATE_LIMITED` and
+  `CANNOT_SUSPEND_SELF` have no client `code`→copy mapper and are still in scope). Enumerate
+  call sites by mechanism, not phrase: `grep -rn "ApiProblem\." platform/src/main` unrolled
+  through each controller's local `problem(...)`/`error(...)` helper — a literal in a
+  `switch` arm behind a helper, a *consequence* clause with no banned phrase, and the
+  hand-built JSON in `RateLimitFilter` all escape a phrase grep.
 - **One code, one string — pin the pair, not the sentence.** Codes emitted from more than
   one call site: `MISSING_CURRENT_PASSWORD` (operator + customer password change — the
   client owns that sentence as `CURRENT_PASSWORD_REQUIRED_MESSAGE`), `REQUEST_NOT_PENDING`
@@ -45,12 +43,11 @@ kept in sync by nothing.
   changed).
   `CurrentPasswordDetailTwinTest` asserts its pair's two live responses equal each other,
   so a one-sided edit is red even when the new wording is fine alone.
-- **Examined and deliberately left:** `UNSUPPORTED_FORMAT` (byte-identical to
-  `venue-tab.ts`'s copy, but a true statement of what the server accepts, not a remedy),
-  `BOOTSTRAP_CREDENTIAL_MANAGED` (trailing "…and cannot be changed here"),
-  `SET_NOT_BOOKABLE_ONLINE` (a prose transliteration of its own code). `RATE_LIMITED`'s
-  *"Too many requests."* is a knowing restatement: every truthful widening either leaks
-  which of the four rate-limit dimensions fired or is false at one of them.
+- **Not findings:** `UNSUPPORTED_FORMAT` (matches `venue-tab.ts`'s copy, but states what
+  the server accepts, not a remedy), `BOOTSTRAP_CREDENTIAL_MANAGED` (trailing "…and cannot
+  be changed here"), `SET_NOT_BOOKABLE_ONLINE` (a transliteration of its code),
+  `RATE_LIMITED`'s *"Too many requests."* (every truthful widening either leaks which of the
+  four rate-limit dimensions fired or is false at one of them).
 
 ## `ApiErrorHandler` (root package)
 
@@ -87,7 +84,6 @@ the shape by hand: it rejects before MVC dispatch.)
 
 **Validation decision: centralized-explicit** — hand-rolled checks in `toCommand()`
 throwing `IllegalArgumentException`, translated at the controller's conversion boundary and
-mapped once by the advice. `spring-boot-starter-validation`/`@Valid` was deliberately not
-adopted (the checks are parse/cross-field logic; annotations would split validation across
-two mechanisms; explicit code in records is the house idiom). Reversible in one dependency
-line if the DTO count ever makes annotations pay — #97.
+mapped once by the advice. `spring-boot-starter-validation`/`@Valid` is deliberately not
+used: the checks are parse/cross-field logic, and annotations would split validation across
+two mechanisms.

@@ -27,7 +27,7 @@ here means the plan is not ready.>
 > The five leading entries are pre-filled — extend them, don't replace them. Fill every
 > parenthesis with what the skill actually did; RV-PROC-1 checks the line against the diff.
 > Keep `riviera-docs-freshness`'s parenthesis explicit — `ran` (range + findings) or
-> `N/A — <reason>` — "not listed" and "not applicable" read the same in a diff.
+> `N/A — <reason>`.
 
 **Branch:** `<feature|bugfix>/<short-slug>` <must exist in git before phase 0>
 
@@ -201,11 +201,11 @@ signal APIs, `NgOptimizedImage` for new images. Document any deviation.
 > following one) at every phase boundary and SDLC stage transition.
 >
 > **Finalize BEFORE the merge, in the PR's last code-touching commit — never in a commit
-> of its own** (CI bills per push, and a docs-only last push is a full cycle that can only
-> come back green; a later code fix rewrites the close-out in that commit) — stage pointer
-> DONE, phase rows ✅ with commits, Open Questions empty, risk rows closed, AC pin-names
-> matching the shipped tests. Record **`merged via PR #NN`, never a merge SHA**
-> (`riviera-sdlc` `references/pr-gates.md` §3 step 4).
+> of its own** (a docs-only last push is a full CI cycle that can only come back green; a
+> later code fix rewrites the close-out in that commit) — stage pointer DONE, phase rows ✅
+> with commits, Open Questions empty, risk rows closed, AC pin-names matching the shipped
+> tests. Record **`merged via PR #NN`, never a merge SHA** (`riviera-sdlc`
+> `references/pr-gates.md` §3 step 4).
 
 **Stage pointer:** <current `riviera-sdlc` stage, e.g. `implement (phase 2)` /
 `review gate — fixing findings` / `sonar gate` / `merge close-out step 3`>
@@ -242,11 +242,11 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 > with the doc merely written, the guard short-circuits and passes. A file you never intend
 > to commit belongs behind an ignore rule (`.git/info/exclude` or `.gitignore`).
 >
-> The guard reads paths written any way real plans write them — repo-relative, sibling
-> extensions (`` `privacy-policy.ts` `` then `` `.html` ``), brace sets, `a.ts|.html`, a bare
-> directory, and globs (`frontend/src/app/**/*.contrast.spec.ts`). It never flags the
-> reverse (a listed path you did not need), and it exempts the plan doc itself and
-> lockfiles. A slice with no plan doc is not checked at all.
+> The guard reads paths written repo-relative, as sibling extensions (`` `privacy-policy.ts` ``
+> then `` `.html` ``), brace sets, `a.ts|.html`, a bare directory, or globs
+> (`frontend/src/app/**/*.contrast.spec.ts`). It never flags the reverse (a listed path you
+> did not need), and it exempts the plan doc itself and lockfiles. A slice with no plan doc
+> is not checked at all.
 
 - `<path>` — <responsibility>
 

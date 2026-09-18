@@ -37,11 +37,11 @@ epic close-out or to a `<sha>..main` audit.
 | `RESPONSIBILITIES.md` | each module's Job / Not-My-Job lists, shipped-state notes, the invariants' long form, the platform-edge rules | behavior moves between modules, an edge concern changes shape |
 | `docs/adr/*` | decision + consequences paragraphs | a decision gets re-decided (needs an amendment note, never silent contradiction) |
 | `docs/plans/*` | the in-flight slice's execution-status table | only the CURRENT slice's plan exists; a merged slice's plan is deleted at the next close-out of any kind (*Plan-doc retirement*, below), never audited as history |
-| `docs/design/*` — the two maintained files (`colour-literal-token-audit.md`, `non-text-contrast.md`) and the `README.md` that states what the folder holds | ledger rows still marked open for a family that shipped; a rule's family table citing a spec that does not measure what it claims | all three are maintained — correct them in place. No drawn artboard is consultable; the executable design spec is the `*.contrast.spec.ts` guards and the token-drift specs |
+| `docs/design/*` — `colour-literal-token-audit.md`, `non-text-contrast.md`, and the `README.md` that states what the folder holds | ledger rows still marked open for a family that shipped; a rule's family table citing a spec that does not measure what it claims | all three are maintained — correct them in place. The executable design spec is the `*.contrast.spec.ts` guards and the token-drift specs |
 | `.claude/skills/riviera-*/SKILL.md` **and `.claude/skills/riviera-*/references/*.md`** | concrete file names, class names, endpoints, and example tables inside skills; a reference file's worked example that the tree or a fitness function has since ruled out | a rename/removal of anything a skill cites as an example; a new ArchUnit/fitness rule an existing example would now fail |
 | `docs/agents/*`, `README.md`, `CONTRIBUTING.md` | run recipes, label sets, env vars | build/tooling changes |
 | `docs/deploy/*`, `docs/runbooks/*` | deploy-pipeline shape, hosting/service names, env vars, ops procedures | a CD/hosting change, a rotated secret's name, a new or changed operational mechanism |
-| `platform/src/**` and `frontend/src/**` — Javadoc/TSDoc, `package-info.java`, template comments, and test-assertion descriptions | counts and enumerations of things the code owns ("the two booking kinds", "not just the two that exist today"); a comment reasoning against a document absent from the tree | the counting sweep's territory (step 2b). Source prose is in the map because it is what the next reader believes; the rest of the code is the reviewer's job |
+| `platform/src/**` and `frontend/src/**` — Javadoc/TSDoc, `package-info.java`, template comments, and test-assertion descriptions | counts and enumerations of things the code owns ("the two booking kinds", "not just the two that exist today"); a comment reasoning against a document absent from the tree | the counting sweep's territory (step 2b) |
 
 ## Procedure
 
@@ -52,7 +52,7 @@ epic close-out or to a `<sha>..main` audit.
 
    **2a — the rename/removal grep.** For every renamed/removed identifier or superseded
    mechanism, grep the substrate-doc set for the OLD name/wording — every file the map
-   above names, which is wider than the set one thinks of first:
+   above names:
 
    ```bash
    grep -rn "<old>" CLAUDE.md frontend/.claude/CLAUDE.md CONTEXT.md RESPONSIBILITIES.md \
@@ -60,18 +60,16 @@ epic close-out or to a `<sha>..main` audit.
      .claude/skills
    ```
 
-   A hit in a historical record (an old plan doc, a PR body, an ADR's history section) is
-   fine; a hit in a stated present-tense fact is a finding. `platform/src` is deliberately
-   absent — source prose is step 2b's sweep — and so is `docs/plans`, which is history by
-   construction.
+   A hit in a historical record (a PR body, an ADR's history section) is fine; a hit in a
+   stated present-tense fact is a finding. `platform/src` is deliberately absent — source
+   prose is step 2b's sweep — and so is `docs/plans`, which is history by construction.
 
    **2b — the counting sweep.** Trigger: this slice made the **Nth** instance of something
    that previously had N−1 — a listener, a metric/counter, an event, a module, a profile, a
    transport, a scheduled sweep, an endpoint in a named set. Every sentence that said "the
    two X", "both X", "the first of the two", "five mail counters" is now false, and by
-   definition it lives in a file the slice never touched — reviewing the changed files
-   cannot find it. Grep the words, not the new identifier, in two steps (the phrasings alone
-   are too broad repo-wide):
+   definition it lives in a file the slice never touched. Grep the words, not the new
+   identifier, in two steps (the phrasings alone are too broad repo-wide):
 
    ```bash
    # 1. phrasings of N−1 — ordinal and cardinal, spelled-out and digit

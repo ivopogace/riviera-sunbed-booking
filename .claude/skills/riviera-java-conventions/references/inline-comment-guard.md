@@ -1,7 +1,8 @@
 # The comment-and-prose guard — scope, exemptions, and the deliberate false negative
 
 Read when `scripts/check-inline-comments.mjs` fires on an edit, or before touching its
-scope. The authoring rule it enforces is SKILL.md §6c. Every scope gap below is deliberate.
+scope. The authoring rule it enforces is SKILL.md §6c. Every scope gap below is deliberate —
+don't "fix" one.
 
 Three rules, one guard:
 
@@ -43,14 +44,12 @@ Scope:
   `check-comment-only.mjs` draws the same line, so removing a template comment is comment-only
   and changing a fixture is not. **Not** `#` files (shell, YAML, `.properties`) — every one of
   those in this repo carries multi-line `#` header prose by convention — and **not** SQL
-  `--` (declined by review precedent, `V9__payout_ledger.sql`).
+  `--`.
 - **Two exemptions from the one-line rule beyond doc comments:** a block comment standing
   before any code is the file's header (`tailwind.css` opens with one), and only whole-line
   comments merge into a block, so a trailing comment never pairs with the next line's.
-- **One deliberate false negative — do not "fix" it.** The one-line rule groups only added
-  comment lines, and flags a block comment only when the diff wrote its opening line. So
-  appending a second line to a comment that was already there reads as a one-line addition
-  and passes. The alternative — grouping every adjacent comment line and asking whether any
-  was added — flags a whole pre-existing block because you parked one compliant one-liner
-  beneath it (`SecurityConfig` alone carries dozens). That false positive is how a
-  gate gets switched off; the false negative leaves the case to review (RV-STYLE-1).
+- **One deliberate false negative.** The one-line rule groups only added comment lines,
+  and flags a block comment only when the diff wrote its opening line, so appending a second
+  line to an existing comment passes. Grouping every adjacent comment line instead would flag
+  a whole pre-existing block for one compliant one-liner parked beneath it; that case is left
+  to review (RV-STYLE-1).

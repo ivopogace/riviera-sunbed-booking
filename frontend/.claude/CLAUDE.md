@@ -87,8 +87,8 @@ enforced by `scripts/check-inline-comments.mjs`.
   with `freezeClock()` (`src/testing/freeze-clock.ts`), never `vi.useRealTimers()` — a lint
   rule and the setup file's `afterEach` both fail it.
 - **The setup file is registered in `vitest-base.config.ts`, not `angular.json`** — the
-  builder would run it once per worker instead of per file (ADR-0014; `freeze-clock.spec.ts`
-  fails if moved). Shared helpers live in `src/testing/`; `freeze-clock.ts` stays stateless.
+  builder would run it once per worker instead of per file (ADR-0014). Shared helpers live in
+  `src/testing/`; `freeze-clock.ts` stays stateless.
 - **`isolate` stays `false`**: files in a worker share one jsdom and module graph. The setup
   file resets the global posture per file; anything else a spec mutates globally, it
   restores itself.

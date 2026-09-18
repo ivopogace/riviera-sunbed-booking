@@ -45,10 +45,9 @@ deliberately does not carry mutable configuration: the commission rate is re-rea
 > `V18__event_publication_event_type_moves.sql` with any such move, or outstanding
 > publications dead-letter on the post-deploy republish.
 
-Why ids, not aggregates: the listener is in another module and must not depend on
-`booking`'s internal aggregate; an async listener runs after commit and the aggregate may
-have changed — an id forces it to re-load current state through its own `api/` port; it
-keeps the payload serializable and stable for the registry.
+Ids, not aggregates: an async listener runs after commit and the aggregate may have
+changed — an id forces it to re-load current state through the owner's `api/` port, and the
+payload stays serializable and stable for the registry.
 
 ## Publishing
 

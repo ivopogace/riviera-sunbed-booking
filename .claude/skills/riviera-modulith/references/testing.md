@@ -122,5 +122,5 @@ void writeDocumentation() {
 
 ## Hexagonal layering is already enforced
 
-`PackageShapeArchitectureTests` (Assertion 4) enforces the hexagon's dependency direction
-on top of `ModularityTests`' module boundaries; no jMolecules adoption needed.
+`PackageShapeArchitectureTests` enforces the hexagon's dependency direction on top of
+`ModularityTests`' module boundaries; don't add jMolecules.

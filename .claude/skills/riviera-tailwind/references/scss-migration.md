@@ -1,8 +1,8 @@
 # SCSS→Tailwind migration checklist
 
 Read when a slice migrates a `.scss` file to Tailwind, including via the migrate-on-touch
-rule (SKILL.md). There is no shared SCSS left (`shared/_glass.scss` is retired), so step 1
-finds a shared recipe only if a new one has been added since.
+rule (SKILL.md). There is no shared SCSS in the tree, so step 1 finds a shared recipe only
+if a new one has been added.
 
 1. Inventory the shared SCSS recipes the file uses and their blast radius (grep every
    `@include`/`@extend`). This decides scope.

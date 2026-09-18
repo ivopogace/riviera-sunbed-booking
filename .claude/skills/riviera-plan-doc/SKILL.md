@@ -9,10 +9,9 @@ description: >-
 
 # Riviera Plan Doc
 
-Plan-doc discipline layered on `riviera-sdlc` driving `tdd`. It is **preventive** — built
-from the risks the design surfaced, not from post-mortems.
-`references/plan-doc-template.md` is the single home of section guidance. Load at the plan
-stage, and again when picking up a plan to execute in a fresh session.
+Plan-doc discipline layered on `riviera-sdlc` driving `tdd`. `references/plan-doc-template.md`
+is the single home of section guidance. Load at the plan stage, and again when picking up a
+plan to execute in a fresh session.
 
 ## Required artifacts
 
@@ -44,9 +43,7 @@ in commits and the plan doc.
 1. **Acceptance criteria before phase 0:** convert the user stories (or issue) into testable
    ACs per the template (Given/When/Then, named test class, written at the inner hexagon).
    **Each AC names its seam** — `tdd` writes no test at an unconfirmed seam, and this section
-   is where seams are confirmed; an unnamed seam blocks phase 0 like a missing AC. (Plan docs
-   agreed before 2026-08-31 predate the *Seam* field — when re-entering one, name the seam
-   for the AC you are about to pin; don't halt over the rest.)
+   is where seams are confirmed; an unnamed seam blocks phase 0 like a missing AC.
 2. **Risk register + Open Questions before phase 0.** An open question the slice itself can
    answer may be discharged directly — `research` for docs/API legwork, `prototype` for a
    shape that has to be felt — closing the entry with the note or verdict as its citation.

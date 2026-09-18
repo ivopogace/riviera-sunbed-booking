@@ -19,10 +19,9 @@ template) and **`audit`** (thin template + a driving adapter). Spring Boot 4, Sp
 `ai.riviera.platform` holds `PlatformApplication`, app-wide config, and the platform's own
 adapters (controllers, the SSO/auth edge — no module listeners at the root, pinned by
 `CompositionRootDisciplineTests`), so it depends on modules. Types that modules need go in
-`shared`, never at the root: a package that is both depended-on and depending closes
-cycles. If a module needs a type from the root, move the type to `shared`; don't weaken
-`ModularityTests`. Keep `shared` tiny — no business logic, no module-owned state, no
-dependency on a module that depends back.
+`shared`, never at the root. If a module needs a type from the root, move the type to
+`shared`; don't weaken `ModularityTests`. Keep `shared` tiny — no business logic, no
+module-owned state, no dependency on a module that depends back.
 
 Hands off: Java idioms → `riviera-java-conventions`; seam shape/depth → `codebase-design`;
 SQL/schema/Flyway → `postgres`; payment/payout structure → `riviera-stripe-payments`.
@@ -33,8 +32,8 @@ literally (it names the offending class and the broken rule) and fix the structu
 
 ## Hard constraints
 
-- **No JPA, ever** (invariant #1): persistence is `JdbcClient` + explicit text-block SQL by
-  default (`references/persistence-jdbc.md`) — enforced by `JdbcOnlyArchitectureTests`.
+- **No JPA, ever** (invariant #1): persistence is `JdbcClient` + explicit text-block SQL
+  (`references/persistence-jdbc.md`) — enforced by `JdbcOnlyArchitectureTests`.
 - **Cross-module references by typed id, never object** (invariant #11) — a `Booking` holds
   a `SetId`, not a `Set`; same for event payloads. Ids live in the owner's `vocabulary/`
   (e.g. `venue.vocabulary.SetId`).
@@ -44,15 +43,12 @@ literally (it names the offending class and the broken rule) and fix the structu
 - **The package shape is machine-locked** — `PackageShapeArchitectureTests` (the package
   sets) + `PublishedSurfacePlacementArchitectureTests` (kind-per-surface).
 - **Is it a rule, and does it move?** (ADR-0018 §1) It is a rule when it is a **choice** (a
-  window, tier, bound, rate, rounding direction — decidable otherwise without anything else
-  breaking), a **calculation** (deriving money or a rating), or a **lifecycle** (what may
-  follow what); anything else is procedure and stays in the service. **A rule with exactly one
-  caller also stays where it is used** — two or more callers that must agree is what earns the
-  extraction. Naming is not free: a name reading more general than the rule is worse than an
-  inline condition, which is why `BookingStatus.canStillBeHonoured()` is "deliberately narrow
-  and narrowly named" and its Javadoc says a general-sounding predicate would be a trap
-  (`booking/domain/BookingStatus.java:36–41`).
-- **`domain/` is framework-free** (ADR-0018): a rule that is pure goes there; a rule needing a
+  window, tier, bound, rate, rounding direction), a **calculation** (deriving money or a
+  rating), or a **lifecycle** (what may follow what); anything else is procedure and stays in
+  the service. **A rule with exactly one caller also stays where it is used** — two or more
+  callers that must agree is what earns the extraction. A name reading more general than the
+  rule is worse than an inline condition: name the rule narrowly (`BookingStatus.canStillBeHonoured()`).
+- **`domain/` is framework-free** (ADR-0018): a pure rule goes there; a rule needing a
   `Clock`, a port or bound configuration goes in `application/` as a named, separately
   unit-tested holder (`BookingCutoff`, `CancellationPolicy`, `RequestWindows`). Both are the
   rule layer — the split is packaging, not status — and a set invariant belongs in a DB
@@ -60,27 +56,25 @@ literally (it names the offending class and the broken rule) and fix the structu
   the JDK and any module's `vocabulary/`/`domain/`, and nothing else. A Java **mirror** of a DB
   *bound or vocabulary* is legitimate where a set invariant is not — `Stars` ↔
   `review_stars_check`, `SalesClose` ↔ `venue_sales_close_check` — provided its Javadoc names
-  the twin and treats the duplication as intended; only a rule constraining the relationship
-  *between* rows is beyond Java's reach (ADR-0018 §3).
+  the twin; only a rule constraining the relationship *between* rows is beyond Java's reach
+  (ADR-0018 §3).
 
 ## Module layout — two templates by weight (ADR-0007)
 
-Each module is a direct sub-package of `ai.riviera.platform`; structure tracks weight. The
-asymmetry the templates enforce is inside vs outside: `domain` + `application` are the
-inside, `adapter/in` + `adapter/out` the outside. Driving adapters stay thin so the inside
-never knows whether a real HTTP client, an `@ApplicationModuleTest`, or a future caller is
-on the other side.
+Each module is a direct sub-package of `ai.riviera.platform`; structure tracks weight.
+`domain` + `application` are the inside, `adapter/in` + `adapter/out` the outside. Driving
+adapters stay thin so the inside never knows whether a real HTTP client, an
+`@ApplicationModuleTest`, or a future caller is on the other side.
 
 **Assignment rule: a module is THIN iff it has no application service** — its `api/` port
-is implemented directly by a JDBC adapter. Otherwise it is FULL. Today all nine
-domain modules are full, and so is the non-context `challenge`; the non-context `audit`
-is the one thin module — its JDBC adapter implements the published port directly. Small LOC does
-not make a module thin (`availability` is small but full); having no service does.
+is implemented directly by a JDBC adapter. Otherwise it is FULL. All nine domain modules are
+full, and so is `challenge`; `audit` is the one thin module. Small LOC does not make a module
+thin (`availability` is small but full); having no service does.
 
 **`challenge` uses the full template** minus `domain/` — it owns table-backed state, not an
 aggregate — with `allowedDependencies = {}`: a mechanism that knew a domain type would be a
-domain module in disguise. **A thin module may still own an `adapter/in`** (`audit` does): the
-tree below shows the common serviceless case, not a ban. **`shared` fits neither template:** `@ApplicationModule(type = OPEN)`, a handful of flat
+domain module in disguise. **A thin module may still own an `adapter/in`** (`audit` does).
+**`shared` fits neither template:** `@ApplicationModule(type = OPEN)`, a handful of flat
 classes at the module root, no published surface (OPEN means consumers reference its types
 directly), no `application`/`domain`/`adapter`. `PackageShapeArchitectureTests` skips
 types at a module root. Don't copy the shape for a context, and don't grow `shared` into one.
@@ -122,8 +116,7 @@ All four published surfaces are optional; the current inventory is each module's
 module. Published surfaces stay top-level — nesting under `application` hides them from
 Modulith. Notes the trees can't carry:
 
-- The repository port stays an interface in `application/`, implemented by `adapter/out`
-  (the inversion enables fakes in tests; it doesn't need an `in`/`out` package to prove it).
+- The repository port stays an interface in `application/`, implemented by `adapter/out`.
   A port graduates to `api/` only when another module must call it; to `spi/` only for a
   cross-module inversion. Both a `@RestController` and an `@ApplicationModuleListener` are
   driving adapters → `adapter/in`; if a technology axis is ever needed it's a sub-package
@@ -175,7 +168,7 @@ flags. Worked example: `references/boundaries.md`.
 - **Inbound `api/` port (synchronous)** when the caller needs an answer now — a query or a
   command whose result it must act on transactionally. `booking` calls
   `availability.api.AvailabilityClaim.claim(...)` and branches on the `ClaimOutcome` in the
-  same transaction (invariant #2; documented on `AvailabilityClaim`).
+  same transaction (invariant #2).
 - **Domain event (async, decoupled)** when the module just announces a fact — the
   write-side spine is CLAUDE.md's event inventory. No `availability` listener exists — the
   claim/release is the synchronous port. Sync-vs-async listener choice + the registry:
@@ -201,28 +194,25 @@ controller. Platform-wide admin (`/api/admin/**`) stays role-gated. The module's
 Run after any backend structure change: the six-test command in `CLAUDE.md` § *Commands*
 (`riviera-local-debug` holds the cloud form).
 
-**The structural net** is every test whose one rule holds the whole tree to the same standard,
-keyed on a class's package, kind or imports alone (the classpath probe included): a member names
-no target — no module, table, class, port or bean it holds to the rule; the base package it scans,
-or the class it borrows to find that package, is an anchor, not a target — runs without a Spring
-context, and fails on a violation.
-That is exactly the set a structure change *anywhere* can break, which is why it runs after every
-one; five of the six in the command (`CLAUDE.md` § *Commands*) are today's members derived from the rule, not chosen. The
-sixth, `RetiredSetExclusionArchitectureTests`, names its table and its exempt port and is the one
-member admitted by decision (ADR-0019): a retired set's absence from every read is a forever tax
-that a new JDBC adapter anywhere in the tree can break, which is the property the net exists to
-catch. A fitness function that names its target (`CompositionRootDisciplineTests`' grant map,
+**Membership rule:** a test whose one rule holds the whole tree to the same standard, keyed
+on a class's package, kind or imports alone (the classpath probe included) — it names no
+target (no module, table, class, port or bean; the base package it scans is an anchor, not a
+target), runs without a Spring context, and fails on a violation. That is exactly the set a
+structure change *anywhere* can break. Five of the six members are derived from the rule; the
+sixth, `RetiredSetExclusionArchitectureTests`, names its table and its exempt port and is
+admitted by decision (ADR-0019): a retired set's absence from every read is a forever tax
+that a new JDBC adapter anywhere in the tree can break.
+
+A fitness function that names its target (`CompositionRootDisciplineTests`' grant map,
 `ErrorContractArchitectureTests`, `ResponsibilitiesArchitectureTests`, the two
 `*AuthPlacementTests`, `VenueApiRoleSplitTests`, the `*ArchitectureTest` pool and scheduler
-guards) is context-free too, but only work on what it names can break it, so that work puts it
-due — and CI runs all of them regardless. `RESPONSIBILITIES.md` § *Machine-checked vs
-review-checked* lists the ones that enforce a clause of that file; the tree holds more, and no list
-is the population — a fitness function is recognised by what it does, not looked up.
-`riviera-local-debug` runs the same command, and `riviera-review-overlay` RV-PROC-2 holds
-substrate examples to the same set. Two lookalikes are
-not definitions and stay as they are: ADR-0017's "structural nets" is that ADR's own
-reopening-trigger list, and the three-test command in `docs/agents/gradle-proxy-trust.md` is the
-record of a run that verified proxy trust.
+guards) is not a member: only work on what it names can break it, so that work puts it due —
+and CI runs all of them regardless. `RESPONSIBILITIES.md` § *Machine-checked vs
+review-checked* lists the ones that enforce a clause of that file; the tree holds more, and
+a fitness function is recognised by what it does, not looked up in a list. `riviera-review-overlay`
+RV-PROC-2 holds substrate examples to the same set. Two lookalikes are not definitions:
+ADR-0017's "structural nets" is that ADR's own reopening-trigger list, and the three-test
+command in `docs/agents/gradle-proxy-trust.md` is the record of a proxy-trust check.
 
 ## Checklist before finishing a backend structural change
 

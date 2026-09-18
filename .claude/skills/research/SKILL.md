@@ -4,8 +4,8 @@ description: Investigate a question against high-trust primary sources and captu
 ---
 
 > **In riviera-sunbed-booking (localization):**
-> - **Where findings go** (the skill's step 3 asks for the repo's convention; there was no
->   prior one, so this is it): `docs/research/<slug>.md`. Keep it on the branch of the
+> - **Where findings go** (the skill's step 3 asks for the repo's convention):
+>   `docs/research/<slug>.md`. Keep it on the branch of the
 >   ticket that asked the question — a `wayfinder` research ticket's own
 >   `research/<slug>` branch, otherwise the feature branch. It is a **primary source, not
 >   a decision**: when the decision lands, the durable form is an ADR (`docs/adr/`, if

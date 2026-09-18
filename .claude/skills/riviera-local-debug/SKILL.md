@@ -12,7 +12,7 @@ description: >-
 
 ## Git in a cloud session — the clone is shallow, and it is never refetched
 
-Two properties of a cloud session's repository, both silent (issue #942):
+Two properties of a cloud session's repository, both silent:
 
 **It is shallow.** `git rev-parse --is-shallow-repository` returns `true`. Git answers from
 the truncated graph rather than erroring, so these are all unreliable until you deepen it:
@@ -22,7 +22,7 @@ the truncated graph rather than erroring, so these are all unreliable until you 
 | `git log` (esp. `-S`, `--follow`, `<range>`) | history stops at the graft; "the commit that introduced this" is whatever is nearest the boundary |
 | `git blame` | every line older than the graft is attributed to the boundary commit |
 | `git show <sha> -- <path>` | on the boundary commit a *modified* file renders as a whole-file addition |
-| `git merge-base` | it answers from the truncated graph — a **wrong base, no error, no warning** — or it fails outright. Neither is safe, which is why `git-diff.mjs`'s `resolveBase()` refuses on a shallow clone rather than resolving at all (#952) |
+| `git merge-base` | answers from the truncated graph — a **wrong base, no error, no warning** — or fails outright; `git-diff.mjs`'s `resolveBase()` refuses on a shallow clone for this reason |
 | `git describe`, `git tag --merged` | tags below the graft were never fetched |
 
 The remedy is one command, and it is a precondition, not a cleanup:
@@ -34,29 +34,27 @@ if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unsha
 **A history claim made without it is not evidence.** Re-run the trace after deepening before
 you report a cause, name an introducing commit, or write one into an issue or PR.
 
-**The `scripts/check-*.mjs` guards enforce this rather than warn about it.** Every one that
-resolves a diff range exits 2 on a shallow clone, naming the command above — so in a fresh
-session the unshallow comes before the first `--diff` run, not after a confusing report (#952).
+**The `scripts/check-*.mjs` guards enforce this.** Every one that resolves a diff range exits
+2 on a shallow clone, naming the command above.
 
 **Remote-tracking refs are frozen too.** The clone is made once at container start and never
-refetched, so `origin/main` is whatever `main` was then — it does not follow the branch.
-Anything diffed against it silently widens as `main` moves. Fetch the branch you intend to
-diff (`git fetch --no-tags origin <ref>`) rather than trusting the ref; for the review gate
-specifically that is not optional, and the scope check that enforces it is `riviera-sdlc`
-`references/pr-gates.md` §1 step 2.
+refetched, so `origin/main` is whatever `main` was then. Anything diffed against it silently
+widens as `main` moves. Fetch the branch you intend to diff (`git fetch --no-tags origin
+<ref>`) rather than trusting the ref; for the review gate that is not optional, and the scope
+check that enforces it is `riviera-sdlc` `references/pr-gates.md` §1 step 2.
 
-The `check-*.mjs` guards no longer need that fetch spelled ahead of them: since #952 each one
-fetches its `<remote>/<branch>` base itself and refuses when it cannot, so a documented
-`--diff origin/main` is correct as typed. The two forms they accept are that one and a commit
-SHA — a bare `main` is refused, because a local branch in a session-old clone is a snapshot
-exactly as a tracking ref is. Reach for the SHA form when there is no network.
+The `check-*.mjs` guards fetch their `<remote>/<branch>` base themselves and refuse when they
+cannot, so a documented `--diff origin/main` is correct as typed. The two forms they accept
+are that one and a commit SHA — a bare `main` is refused, because a local branch in a
+session-old clone is a snapshot exactly as a tracking ref is. Use the SHA form when there is
+no network.
 
 ## Backend (Spring Boot, `platform/`)
 
 ### Cloud session (Claude Code on the web)
 
 Use the pinned wrapper. The SessionStart hook installs a JDK 25 at `/opt/jdk-25`
-(`scripts/cloud-session-setup.sh` step 2); point `JAVA_HOME` at it and `./gradlew` runs and
+(`scripts/cloud-session-setup.sh`); point `JAVA_HOME` at it and `./gradlew` runs and
 compiles on the same JVM, so no toolchain registration is needed:
 
 ```bash
@@ -71,18 +69,16 @@ Do NOT change the wrapper's `distributionUrl` — CI depends on the pinned versi
 which cannot itself run on JDK 25 — its daemon goes on JDK 21 while the toolchain still
 compiles and tests on 25. That recipe is in `docs/agents/gradle-proxy-trust.md`, which is also
 what to read on any TLS/PKIX or 403 error. Whether you need it is **per-session**: the proxy
-allowlist and GitHub scope are per-environment, and two sessions on 2026-09-10 disagreed about
-whether the wrapper and even `corretto.aws` were reachable. Measure, don't assume.
+allowlist and GitHub scope are per-environment. Measure, don't assume.
 
 ### Scoped tests (any environment)
 
 Run the smallest set that proves the change; never the bare `test` task in a cloud sandbox
 (it boots several Spring contexts and can OOM-kill the container, exit 137; broad IT sweeps
-are slow on the vfs storage driver):
+are slow on the vfs storage driver).
 
 On the fallback path above, substitute `gradle --no-daemon` for `./gradlew` in both commands
-(the flags and `--tests` filters are identical) — `./gradlew` is precisely what is unavailable
-there.
+(the flags and `--tests` filters are identical).
 
 ```bash
 # the structural net — run after any backend structure change; membership rule: riviera-modulith § The structural net; members: CLAUDE.md §Commands
@@ -118,7 +114,7 @@ accumulating state across tests fails only in the full suite. Known instances:
   (`riviera.ratelimit.client-ip-header`, shipped `CF-Connecting-IP`) ahead of the
   `X-Forwarded-For` walk — the ITs deliberately do not set it. A test that does set that
   header takes over the key outright; don't mix the two in one test.
-- An unconditional `@EnableScheduling` background sweep interfered with a race IT's timing
+- An unconditional `@EnableScheduling` background sweep interfering with a race IT's timing
   window. Fix: a long `initial-delay` pushes the sweep out of test windows.
 
 **The rule:** when a change adds or touches a filter, rate limiter, `@Scheduled` job,
@@ -129,18 +125,17 @@ answer is verified only by the push's CI run — check it before building the ne
 
 ### The other way scoped runs mislead: blast radius
 
-The class above is about *state*; this one is about *wiring*, and it needs no full suite to
-bite — only a test you did not think to name. Moving a bean changes which contexts can still be
-built, and that set is not the set of tests whose subject you touched.
+The class above is about *state*; this one is about *wiring*, and it bites on any test you
+did not think to name. Moving a bean changes which contexts can still be built, and that set
+is not the set of tests whose subject you touched.
 
 - **A bean the root edge depends on moved into a module.** `@ApplicationModuleTest` bootstraps
   its own module plus the **root package's** beans — but a module's beans only when that module
-  is bootstrapped. Moving the proof-of-work port out of the root left `SecurityConfig`'s filter
-  chain asking for a bean `payout` isolation does not supply, so `PayoutModuleTest` failed with
-  `NoSuchBeanDefinitionException` while every challenge test and every web slice stayed green
-  (`WebSliceStubs` supplies the port). Fix: the moved port joins that test's `@MockitoBean`
-  list, exactly as the `shared` kernel's two principal accessors already do — that file's own
-  comments explain the pattern, one module earlier.
+  is bootstrapped. So moving a port the root `SecurityConfig` filter chain needs out of the
+  root fails every other module's `@ApplicationModuleTest` with `NoSuchBeanDefinitionException`
+  while every web slice stays green (`WebSliceStubs` supplies the port). Fix: the moved port
+  joins each such test's `@MockitoBean` list, as the `shared` kernel's two principal
+  accessors already do.
 
 **The rule:** when a change moves a bean between the root package and a module, or gives the root
 edge a new module dependency, run the module tests before pushing. `grep -rl
@@ -168,7 +163,7 @@ auto-falls-back to that path when `PW_CHROMIUM_EXECUTABLE` is unset; the mocked 
 `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`.
 
 Leave the pinned 2 workers alone — the sandbox saturates at two Chromiums and more only slows
-the run (measurements in the config header). A full run takes ~5 min.
+the run. A full run takes ~5 min.
 
 ## Running the stack
 

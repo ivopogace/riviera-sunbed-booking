@@ -2,7 +2,7 @@
 
 Repo-specific backend bank items, layered onto the active review engine's generic backend
 bank and walked after it. Item format: gate → follow-up → default severity. **Item IDs are
-historical, not sequential — never renumber.** Invariant numbers reference `CLAUDE.md`.
+not sequential — never renumber.** Invariant numbers reference `CLAUDE.md`.
 
 ## Always-run (when scope is BE or Full-stack)
 
@@ -204,9 +204,8 @@ contract is a finding. Default **Minor** (Major if it diverges the wire shape).
 **Also check the `detail` string's voice**, which nothing machine-checks: it states the
 **condition**, not the remedy. A `detail` written as user-facing copy — a remedy ("Reload
 and try again"), a consequence ("…so it can't be removed"), UI navigation ("Switch to Edit
-sets…") — duplicates wording the client owns and drifts. **No call site is exempt** — the
-tree is already clean, so a `detail` in remedy voice is a fresh finding wherever it appears,
-never inherited debt. Default **Minor**. Two traps when
+sets…") — duplicates wording the client owns and drifts. **No call site is exempt**; a
+`detail` in remedy voice is a finding wherever it appears. Default **Minor**. Two traps when
 a diff *fixes* one: shortening it into a restatement of the `code`, and shortening it into
 something untrue of the broadest arm the code serves. Also:
 - **A code emitted from more than one call site carries one string**, pinned on the pair
@@ -371,8 +370,7 @@ change revokes the *other* sessions before the hash write and re-issues the surv
 session under a new id via `SessionIdentity#rotate` (carries attributes over, hard-DELETEs
 the old row, creates a fresh one — pinned by `SessionIdentityTest`); (d) a rate-limit
 budget guarding **authenticated** work refunds a request denied 401/403 before the work,
-while login budgets still charge. Default **Blocker**. (Slices: the session-revocation slice,
-#344, #359, PR #361, PR #363.)
+while login budgets still charge. Default **Blocker**.
 
 ---
 

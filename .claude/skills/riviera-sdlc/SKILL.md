@@ -8,8 +8,8 @@ description: >-
 
 # Riviera SDLC workflow
 
-The orchestrator: it names which skill drives each stage and how the stages connect.
-Stage procedures live in `references/` — read each when its stage arrives.
+The orchestrator: which skill drives each stage and how the stages connect. Stage procedures
+live in `references/` — read each when its stage arrives.
 
 **Announce at start:** "Using riviera-sdlc to drive the workflow."
 
@@ -22,18 +22,18 @@ refine → issue → plan → implement → CI gate → PR → review → sonar 
 ```
 
 **Re-entry rule.** Any fix — a review finding, a Sonar finding, a red-CI fix, a later
-reviewer comment — is a change and re-enters the loop at Implement: run the Skill-routing
-gate for what the fix touches (load those skills *before* editing), build it test-first
-(`tdd`), get CI green again, re-review the changed surface. Being small, or arriving after
-green CI or a finished review, is not an exemption.
+reviewer comment — re-enters the loop at Implement: run the Skill-routing gate for what the
+fix touches (load those skills *before* editing), build it test-first (`tdd`), get CI green
+again, re-review the changed surface. Being small, or arriving after green CI or a finished
+review, is not an exemption.
 
 | Stage | What happens | Driving skill(s) |
 |---|---|---|
 | **Refine** | Sharpen a fuzzy idea into a precise, sliceable use case. Ground the interview in what exists — read the substrate docs and grep the real code. A **foggy epic** (destination clear, route not) may first be charted with `wayfinder`. | `grilling`, `domain-modeling`; `wayfinder` (foggy epics only) |
 | **Issue** | Break the use case into vertical-slice tracer-bullet issues on GitHub. For a multi-slice epic, optionally first commit an epic **spec** (user stories + testing seams + out-of-scope) with `to-spec`, then slice its user stories. Any strategic document the issues reference is committed to the repo before or with them. | `to-spec` (optional) → `to-issues` |
 | **Plan** | Write the plan doc: testable ACs, risk register, and — if booking/availability/money is touched — how the invariant holds. Map the affected surface (modules, events, blast radius) by grepping the modules and their published surfaces (an Explore agent for anything broad). Entering at an existing issue → run `references/issue-intake-gate.md` first. An open question the slice itself can answer goes to `research` (docs/API legwork) or `prototype` (spike); a cross-session decision is fog and escalates to `wayfinder`. Then the Skill-routing gate. | `riviera-plan-doc` (owner) + `grilling` + `research`/`prototype` |
-| **Implement** | Build the slice test-first, one behavior at a time, at the seams the plan names. Re-run the Skill-routing gate for each area touched. `/implement` is the human's entry command (model invocation is disabled on it); it hands off to this row — never route to it or re-enact it. | `tdd` + the Skill-routing gate |
-| **CI gate** | Every push to an open PR runs the whole check suite — the two build jobs skip build and tests only on a tree identical to one already built green, everything else runs — and scans (CodeQL, Dependabot, SonarCloud). After any push that claims a phase green, check that push's run before starting the next phase (red-TDD and labeled-partial pushes exempt) — full-suite-only failures surface only here. | GitHub Actions; red → `diagnosing-bugs` |
+| **Implement** | Build the slice test-first, one behavior at a time, at the seams the plan names. Re-run the Skill-routing gate for each area touched. `/implement` is the human's entry command (model invocation disabled); never route to it or re-enact it. | `tdd` + the Skill-routing gate |
+| **CI gate** | Every push to an open PR runs the whole check suite and the scans (CodeQL, Dependabot, SonarCloud). After any push that claims a phase green, check that push's run before starting the next phase (red-TDD and labeled-partial pushes exempt) — full-suite-only failures surface only here. | GitHub Actions; red → `diagnosing-bugs` |
 | **PR** | Open the PR **as a draft as soon as the first phase commit exists** — CI fires on the `pull_request` event only (`push` is scoped to `main`), so a branch with no PR gets no CI. A draft is a CI vehicle, not a review request. When the slice is built: merge latest `origin/main` in with full phase discipline (routing gate for what the integration touches, scoped tests, honest commit), then mark **ready for review** — that is what makes the Review and Sonar gates due. | `triage` (issue lifecycle — issues only; PRs go through normal review) |
 | **Review** | Mandatory gate, due at ready-for-review. Start `/code-review` via the invocation ladder in `references/pr-gates.md` §1 — the overlay alone is NOT the review, and a blocked rung is declared in the PR, never silently substituted. Each fix re-enters at Implement. Green CI is not a substitute. | `riviera-review-overlay` + `/code-review` |
 | **Sonar gate** | Mandatory gate (PR-time; Sonar analyzes PRs + `main` only). A green gate is not the check — pull the reported new-issue + duplication list from the API and fix every entry before merge (`references/pr-gates.md` §2). | SonarCloud + `diagnosing-bugs` for a genuine defect |
@@ -41,13 +41,13 @@ green CI or a finished review, is not an exemption.
 
 ### Epic front-end (multi-slice epics only)
 
-`wayfinder` (foggy epics: a `wayfinder:map`
-issue of *decision* tickets, one resolved per session) → `to-spec` (one committed epic issue:
-Problem / Solution / numbered User Stories / Implementation Decisions / Testing Seams / Out of
-scope) → `to-issues` (the normal Issue stage, slicing the spec's user stories). Two
-boundaries: `to-spec` stays epic-level (no slice ACs — those are `riviera-plan-doc`'s), and
-the `wayfinder:map` issue governs charting only — once a slice executes, the plan doc's
-Execution status is the state store. A single slice skips all of this.
+`wayfinder` (foggy epics: a `wayfinder:map` issue of *decision* tickets, one resolved per
+session) → `to-spec` (one committed epic issue: Problem / Solution / numbered User Stories /
+Implementation Decisions / Testing Seams / Out of scope) → `to-issues` (the normal Issue
+stage, slicing the spec's user stories). Two boundaries: `to-spec` stays epic-level (no slice
+ACs — those are `riviera-plan-doc`'s), and the `wayfinder:map` issue governs charting only —
+once a slice executes, the plan doc's Execution status is the state store. A single slice
+skips all of this.
 
 ## Skill-routing gate (mandatory — load *before* you write)
 
@@ -98,9 +98,9 @@ compaction, is a new area-entry: re-load. When in doubt, load it.
    skips Refine (`references/issue-intake-gate.md`).
 6. **Source-of-intent documents live in the repo, not the conversation.** Any spec or
    improvement plan that issues or ADRs reference is committed (`docs/architecture/`) before
-   or with the artifacts that cite it. A plan doc lives in `docs/plans/` only
-   until the next close-out after its PR merges, so durable artifacts never cite a plan path
-   (docs cite the issue or PR; doc comments point at `RESPONSIBILITIES.md` or an ADR, §6d).
+   or with the artifacts that cite it. A plan doc lives in `docs/plans/` only until the next
+   close-out after its PR merges, so durable artifacts never cite a plan path (docs cite the
+   issue or PR; doc comments point at `RESPONSIBILITIES.md` or an ADR, §6d).
 7. **The conversation is never the state store** — progress lives in the plan doc's
    Execution status section (Context hygiene, below).
 
@@ -130,16 +130,13 @@ compaction, is a new area-entry: re-load. When in doubt, load it.
   designated branch's PR already merged, restart the branch from latest `main` (same name).
 - **Local builds & tests:** load `riviera-local-debug` before the session's first `./gradlew`
   or `npm` invocation.
-- **Toolset drift:** verify a tool can do what a skill assumes before promising it (Gmail is
-  draft-only → push is the only notification channel; `gh` is proxy-restricted —
-  substitution table in `references/pr-gates.md` §1; the GitHub MCP tools substitute when
-  `gh` is missing). When an instruction is impossible in the current toolset, do the nearest
-  honest thing and say so in the reply.
-- **Notifications:** the user typically starts from the iOS app and walks away. Push via
-  `PushNotification` *before* any `AskUserQuestion` (a question prompt alone does not buzz
-  the phone) and when work finishes. Email backstop only if a send-capable tool exists — a
-  short mail to the maintainer address from the session context. Never ping during live
-  back-and-forth.
+- **Toolset drift:** verify a tool can do what a skill assumes before promising it (`gh` is
+  proxy-restricted — substitution table in `references/pr-gates.md` §1; the GitHub MCP tools
+  substitute when `gh` is missing). When an instruction is impossible in the current toolset,
+  do the nearest honest thing and say so in the reply.
+- **Notifications:** push via `PushNotification` *before* any `AskUserQuestion` (a question
+  prompt alone does not reach the phone) and when work finishes. Email backstop only if a
+  send-capable tool exists. Never ping during live back-and-forth.
 
 ## IntelliJ IDEA sessions (`idea` MCP)
 
@@ -148,9 +145,9 @@ IntelliJ. Use `get_file_problems` / `lint_files` after an edit for the IDE's ins
 verdict, `rename_refactoring` for symbol renames, `analyze_calls` + `get_symbol_info` when
 mapping blast radius, the `xdebug_*` tools when `diagnosing-bugs` needs runtime state. They
 supplement, never replace, scoped test runs and CI. If the tools are absent, skip this
-entirely: never connect, enable, add, or deny the `idea` server yourself — it is defined in
-`.mcp.json` at a machine-local `127.0.0.1` port, deliberately absent from the committed
-`enabledMcpjsonServers`, and a deny at any scope wins over every enable.
+entirely: never connect, enable, add, or deny the `idea` server yourself — it is a
+machine-local `127.0.0.1` server in `.mcp.json`, deliberately absent from the committed
+`enabledMcpjsonServers`.
 
 ## The substrate these skills read
 
@@ -159,8 +156,7 @@ entirely: never connect, enable, add, or deny the `idea` server yourself — it 
   it (`domain-modeling` updates it inline).
 - `docs/adr/` — locked decisions; `domain-modeling` offers a new ADR only when a choice is
   hard-to-reverse **and** surprising **and** a real trade-off. **ADR-0018** is the one every
-  backend slice reads: what the rule layer holds, which package a rule sits in, and the
-  aggregate-root vocabulary the docs no longer use.
+  backend slice reads: what the rule layer holds and which package a rule sits in.
 - `docs/agents/` — issue-tracker, triage-label, and domain-doc config.
 - `docs/architecture/domain-model.md` — tables and types per module, flows, state machines.
 

@@ -17,9 +17,8 @@ rejected alternatives). If a task seems to want Connect (`Account`, `Transfer`,
 `application_fee`, `on_behalf_of`, destination charges), stop — that path cannot reach
 Albanian venues. Surface it as an open question, don't build it.
 
-ADR-0009 (Proposed, deferred) would re-decide the gateway/entity to Paysera + an Albanian
-sh.p.k.; collect-only is reaffirmed there, and the Stripe model in this skill stays
-authoritative until that work starts.
+ADR-0009 (Proposed, deferred) would re-decide the gateway/entity; the Stripe model in this
+skill stays authoritative until that work starts.
 
 The internal `PaymentGateway` port (`payment.application`) keeps the app gateway-agnostic —
 the domain never touches Stripe types.
@@ -30,11 +29,11 @@ Invariant numbers reference `CLAUDE.md`.
 
 ### Collection (the `payment` module)
 
-- **PaymentIntents (or Checkout Sessions) — collection only.** `payment` exposes the
-  inbound `api/` port `CheckoutPort` — `PaymentOutcome pay(BookingRef, Money)` — that
-  `booking` calls; the Stripe SDK sits behind the outbound `PaymentGateway` port (internal,
-  `payment.application`, implemented by `adapter/out/StripePaymentGateway`). Keep the two
-  ports distinct (invariant #11) and neither leaks payout concerns.
+- **PaymentIntents — collection only.** `payment` exposes the inbound `api/` port
+  `CheckoutPort` — `PaymentOutcome pay(BookingRef, Money)` — that `booking` calls; the Stripe
+  SDK sits behind the outbound `PaymentGateway` port (internal, `payment.application`,
+  implemented by `adapter/out/StripePaymentGateway`). Keep the two ports distinct (invariant
+  #11) and neither leaks payout concerns.
 - **Webhooks are the source of truth (invariant #8):** confirm only on the
   signature-verified `payment_intent.succeeded` / `checkout.session.completed` event — the
   client redirect is never a confirmation.
@@ -65,8 +64,7 @@ Venues choose the mode per venue (`venue` module); the two charge differently:
   two caps differ; invariant #4, `RESPONSIBILITIES.md` §`booking`). `ExpireRequestsService`
   + `RequestSweepScheduler` run lockless (guarded `UPDATE … RETURNING`; single-instance
   posture per `docs/deploy/production-hardening.md`); ShedLock only when scaling out.
-- Do NOT model this as auth-and-capture; treat any older doc implying manual capture/void
-  as stale.
+- Do NOT model this as auth-and-capture; treat any doc implying manual capture/void as stale.
 
 ### Refunds & cancellation
 

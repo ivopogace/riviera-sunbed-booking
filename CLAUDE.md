@@ -11,13 +11,13 @@ day) at an Albanian-riviera venue, pick the exact spot on a visual beach map, an
 in-app; the platform takes a per-booking commission and pays venues out manually. Spring
 serves the Angular SPA same-origin at riviera-sunbed-booking.onrender.com. Product spec:
 `docs/superpowers/specs/`; the Liquid Glass colour ledger and the non-text-contrast rule:
-`docs/design/` (the drawn artboards are retired — the specs beside each component are the
-visual spec now); current work: the issue tracker.
+`docs/design/` (the specs beside each component are the visual spec); current work: the
+issue tracker.
 
 ## Tech stack (locked)
 
-- **Frontend:** Angular 22 (responsive web), Tailwind 4 (SCSS retired), signals, standalone
-  components. Unit tests are Vitest in jsdom (not Karma); e2e is Playwright.
+- **Frontend:** Angular 22 (responsive web), Tailwind 4 (no SCSS), signals, standalone
+  components. Unit tests are Vitest in jsdom; e2e is Playwright.
 - **Backend:** Spring Boot 4 REST API on Java 25, a **Spring Modulith** of hexagonal
   (ports/adapters) modules. No Lombok.
 - **Persistence:** PostgreSQL via **Spring Data JDBC / `JdbcTemplate` only** (invariant #1);
@@ -46,10 +46,8 @@ hook-provisioned there and the full test task can OOM the sandbox.
 ./gradlew bootRun                      # run the API on :8080
 ```
 
-**The structural net** is the six-test command above: every test whose one rule holds the whole
-tree to the same standard and names no target, plus one member admitted by decision (ADR-0019).
-The membership rule in full — what qualifies, what a target-naming fitness function is instead,
-and the two lookalikes that are not definitions — is `riviera-modulith` § *The structural net*.
+**The structural net** is the six-test command above. Membership rule: `riviera-modulith`
+§ *The structural net*.
 
 **Frontend** (from `frontend/`):
 
@@ -66,16 +64,14 @@ npm run test:e2e:a11y    # Playwright — the CI-safe mocked suite (frontend/e2e
 npm run build
 ```
 
-**CI/CD** (`.github/workflows/`): `ci.yml` runs the backend build/test and the frontend
-lint/format/test/build + mocked e2e + the local lint rules' own suite (both jobs skipped on a
-pull-request push whose tree an earlier run already built green; the jobs still run and report),
-five of the seven `scripts/check-*.mjs` hygiene guards (three of those also run as a local
-`PostToolUse` hook; `check-comment-only.mjs` and `check-review-range.mjs` are by-hand verifiers,
-not CI gates), and a SonarCloud scan per PR.
-The Sonar merge bar is **0 new issues, 0 duplicated blocks, ≥80% new-code coverage** —
-review the issue list, not just the pass/fail. `codeql.yml` scans; `deploy.yml` deploys the single
-backend image (which serves the SPA) to Render from `main` (ADR-0004; `docs/deploy/`).
-Line endings are pinned LF by the root `.gitattributes`.
+**CI/CD** (`.github/workflows/`): `ci.yml` runs the backend build/test, the frontend
+lint/format/test/build + mocked e2e + the local lint rules' suite, five of the seven
+`scripts/check-*.mjs` hygiene guards (three also run as a local `PostToolUse` hook;
+`check-comment-only.mjs` and `check-review-range.mjs` are by-hand verifiers, not CI gates),
+and a SonarCloud scan per PR. The Sonar merge bar is **0 new issues, 0 duplicated blocks,
+≥80% new-code coverage** — review the issue list, not just the pass/fail. `codeql.yml` scans;
+`deploy.yml` deploys the single backend image (which serves the SPA) to Render from `main`
+(ADR-0004; `docs/deploy/`). Line endings are pinned LF by the root `.gitattributes`.
 
 ## Repo map
 
@@ -84,9 +80,9 @@ Line endings are pinned LF by the root `.gitattributes`.
 - `frontend/` — the Angular app. Folder taxonomy and import rules are `riviera-frontend`'s
   call; Angular idioms live in `frontend/.claude/CLAUDE.md` (loads automatically for
   frontend work). `frontend/eslint-rules/` holds the repo's own ESLint rules — the place for a
-  template rule an off-the-shelf analyzer cannot express, since ESLint reads inline `template:`
-  literals and Sonar's web analyzer does not. `frontend/e2e/` is the CI-safe mocked Playwright suite;
-  `frontend/e2e/real-backend/` the local-only real-backend suite.
+  template rule Sonar cannot express (ESLint reads inline `template:` literals). `frontend/e2e/`
+  is the CI-safe mocked Playwright suite; `frontend/e2e/real-backend/` the local-only
+  real-backend suite.
 - `docs/` — `architecture/`, `adr/` (decisions), `design/`, `plans/` (in-flight plan docs
   only), `research/` (findings behind decisions), `agents/` (issue-tracker conventions +
   runbooks), `deploy/` + `runbooks/`, `superpowers/specs/` (product design).
@@ -96,7 +92,7 @@ Line endings are pinned LF by the root `.gitattributes`.
 Each module lives at `ai.riviera.platform.<module>` with the hexagonal layout of invariant
 #11. **Read the module's § in `RESPONSIBILITIES.md` before changing it** — it holds the
 per-module contract and the settled rules. The platform is **one bounded context** with twelve
-modules, and it has no aggregate-root classes: `domain/` holds the rules, the state is in the
+modules and no aggregate-root classes: `domain/` holds the rules, the state is in the
 tables, and the lifecycles are guarded SQL (ADR-0018).
 
 | Module | Owns | Tables it owns (sole writer) |
@@ -120,11 +116,10 @@ the root (ADR-0017). Their surfaces and contracts are `RESPONSIBILITIES.md` §s.
 
 **Collaboration:** events for state changes, `api/` ports for queries (invariant #11); the
 availability claim, the erasure reach into reviews, and the remodel's gate and claim settlement
-(ADR-0020) are synchronous ports. The nine
-events: `PaymentConfirmed`/`PaymentCanceled` → `booking`; `BookingConfirmed`/
-`BookingCancelled` → `payout`, `notification` (and `booking`'s own refund and intent-void listeners);
-`BookingPaymentDue`, `BookingRequestDeclined`, `BookingRequestExpired`, `BookingMoved` →
-`notification`; `ReviewsChanged` → `venue`.
+(ADR-0020) are synchronous ports. The nine events: `PaymentConfirmed`/`PaymentCanceled` →
+`booking`; `BookingConfirmed`/`BookingCancelled` → `payout`, `notification` (and `booking`'s
+own refund and intent-void listeners); `BookingPaymentDue`, `BookingRequestDeclined`,
+`BookingRequestExpired`, `BookingMoved` → `notification`; `ReviewsChanged` → `venue`.
 
 **Platform edge** (settled; `RESPONSIBILITIES.md` § *Platform edge*): server-side sessions
 with two principal types; login machinery at the edge, never in modules; customer account
@@ -138,16 +133,14 @@ the jar, no third-party map host ever contacted (ADR-0022).
 
 ## Cross-cutting invariants
 
-The rules every plan, implementation, and review checks. Skills cite them by number — the
-numbering is stable; **never renumber**. Mechanisms and edge cases: `RESPONSIBILITIES.md`
-§ *Invariants, long form*.
+The rules every plan, implementation, and review checks. Skills cite them by number —
+**never renumber**. Mechanisms and edge cases: `RESPONSIBILITIES.md` § *Invariants, long form*.
 
 1. **No JPA/Hibernate — JDBC only.** `spring-boot-starter-data-jpa` never on the
    classpath; no `@Entity`/`EntityManager`. Every driven adapter is hand-written `JdbcClient`
-   SQL — there is not one `CrudRepository`, `@Table` or `@Id` in the tree. The Spring Data JDBC
-   starter is on the classpath and its aggregate mapping stays available, but reaching for it is
-   a departure from the tree's one uniform choice, not a coin flip (`riviera-java-conventions`
-   §1a says when it would earn its keep).
+   SQL — not one `CrudRepository`, `@Table` or `@Id` in the tree. The Spring Data JDBC
+   starter is on the classpath, but an aggregate mapping is a departure that owes a stated
+   reason (`riviera-java-conventions` §1a).
 2. **Availability is the single source of truth, per `(set, date)`.** One
    `availability(set_id, booking_date)` row per set and date, enforced by a unique constraint
    AND in the reservation transaction (`FOR UPDATE` or `INSERT … ON CONFLICT DO NOTHING`).
@@ -211,9 +204,8 @@ package. Confirm any negative with `git ls-files '*/adapter/out/*.java'` before 
 a class doesn't exist.
 
 **`docs/plans/` holds only in-flight work.** A plan doc is deleted at the next close-out
-after its PR merges (`riviera-docs-freshness` § *Plan-doc retirement*); docs cite the issue or PR and
-doc comments point at `RESPONSIBILITIES.md` or an ADR, never a plan path. Don't read old plans for rationale — it is on the issue, the PR,
-the ADRs, and the Javadoc/TSDoc. A retired plan is recoverable by slug:
-`git log --all --diff-filter=D -- 'docs/plans/<slug>.md'` — which answers with **silence** on a
-shallow clone rather than an error, so `git fetch --unshallow` first (`riviera-local-debug`
-§ *Git in a cloud session*).
+after its PR merges (`riviera-docs-freshness` § *Plan-doc retirement*); durable docs cite the
+issue or PR, doc comments point at `RESPONSIBILITIES.md` or an ADR, never a plan path. Rationale
+lives on the issue, the PR, the ADRs, and the Javadoc/TSDoc, not in old plans. A retired plan
+is recoverable by slug: `git log --all --diff-filter=D -- 'docs/plans/<slug>.md'` — silent on a
+shallow clone, so `git fetch --unshallow` first (`riviera-local-debug` § *Git in a cloud session*).

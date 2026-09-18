@@ -9,10 +9,9 @@ description: >-
 
 # Riviera Tailwind conventions
 
-Tailwind v4 is the go-forward for styling; component SCSS is retired. The `shared/*-glass`,
+Tailwind v4 is the styling stack; there is no component SCSS. The `shared/*-glass`,
 `amenity-chip`, `status-chip`, `failure-panel`, `retry-button` files are the worked
-examples: read the nearest one before styling, don't re-derive the pattern. This skill
-states the decisions and traps the code can't show you.
+examples: read the nearest one before styling, don't re-derive the pattern.
 
 ## The rules
 
@@ -32,9 +31,8 @@ states the decisions and traps the code can't show you.
      `p[appLegalConsent]`, `div[appLegalFooter]`). An `<a>` or a `<label>` does not: written
      empty at the call site with content supplied by the component, it is indistinguishable
      to `elements-content` and `label-has-associated-control` from a genuinely empty link or
-     label, and silencing those per file blinds them elsewhere in the same file. Those
-     primitives take an element selector with a `class: 'contents'` host and render the
-     native element in their own template (`app-manage-booking-link`,
+     label. Those primitives take an element selector with a `class: 'contents'` host and
+     render the native element in their own template (`app-manage-booking-link`,
      `app-booking-mode-field`, `app-booking-cutoff-field`). The host `class` string is
      scanned by Tailwind, so the utilities generate normally.
 2. **Keep the old semantic class as an inert marker when a test queries it.** Specs query
@@ -44,13 +42,11 @@ states the decisions and traps the code can't show you.
    competing `border-radius` utilities by stylesheet order, not `class` order, so a
    directive `rounded-[26px]` + a consumer `rounded-full` is a coin-flip. Each consumer
    sets its own radius.
-   - The stylesheet-order trap is the mechanism, not the list — it catches any property two
-     classes can both set, so every other property a directive might bundle takes the same
-     test. What keeps one out is consumers legitimately wanting different values. Radius is
-     the settled case and stays unbundled whatever a new directive's own argument looks
-     like: cards, panels and the back pill all differ. A property the surface is *defined*
-     by has no such spread and stays bundled, so the recipe cannot drift — a scrim's
-     full-bleed `absolute inset-0` (`shared/photo-scrim.ts`). State that decision at the
+   - The stylesheet-order trap catches any property two classes can both set, so every
+     other property a directive might bundle takes the same test: keep it out when consumers
+     legitimately want different values (radius: cards, panels and the back pill all differ);
+     bundle a property the surface is *defined* by, which has no such spread (a scrim's
+     full-bleed `absolute inset-0`, `shared/photo-scrim.ts`). State the decision at the
      directive, so a call site wanting a different value re-opens it rather than losing a
      coin-flip.
 4. **Every interactive control meets a 44 × 44 CSS px floor** (WCAG 2.5.5) — set it with
@@ -63,30 +59,27 @@ states the decisions and traps the code can't show you.
      check would miss the inline case and a grid tile squeezed by its column, and flag
      correct code (`py-[11px] text-[14px]` in a wrapping flex row measures 64 px).
    - Exemptions are marked, not assumed: `data-touch-exempt="<reason>"` on the control or
-     an ancestor. Four documented classes — a link inside a sentence (2.5.5's inline
-     exception), anything rendered by a third party in an iframe (the Stripe Payment
-     Element), a control that renders no box at all whose visible proxy carries the
-     target (`venue-tab.html`'s `<input type="file" class="hidden">`, whose labelled button
-     is the real control; putting `[appTouchTarget]` on a `display: none` element would
-     declare a floor it cannot have), and a control the **maintainer has explicitly held to
-     WCAG 2.5.8's AA 24 px minimum** instead of this AAA floor (the ALTCHA checkbox, #920:
-     `--altcha-checkbox-size` drives the widget's paint and hit box from one value, so 44 px
-     bought the target by inflating the graphic). Anything else that "can't" meet the floor
-     is a layout to fix.
+     an ancestor. Four classes — a link inside a sentence (2.5.5's inline exception),
+     anything rendered by a third party in an iframe (the Stripe Payment Element), a control
+     that renders no box at all whose visible proxy carries the target (`venue-tab.html`'s
+     `<input type="file" class="hidden">`, whose labelled button is the real control), and a
+     control the **maintainer has explicitly held to WCAG 2.5.8's AA 24 px minimum** instead
+     of this AAA floor (the ALTCHA checkbox: `--altcha-checkbox-size` drives the widget's
+     paint and hit box from one value). Anything else that "can't" meet the floor is a
+     layout to fix.
    - **The fourth class is the maintainer's call, never self-granted.** Record the reason on
      the control and pin the chosen size in an e2e — the sweep skips an exempt control, so
      nothing else would. Rule it out first by splitting paint from target: hold the control's
      own box at the floor and paint a smaller one over it (a pseudo-element on the wrapper,
-     where the control is light DOM), which costs conformance nothing. "The design looks
-     better small" is not this class.
+     where the control is light DOM). "The design looks better small" is not this class.
    - The guard `scripts/check-touch-target.mjs` (`PostToolUse` hook + CI; by hand `--files
      <path…>` or `--all`) gates the *declaration* only (TT-1/TT-2) — a green guard is not a
-     measured box, and `<a>` is out of its scope. Slices: #605 (the floor), #648 (the guard).
+     measured box, and `<a>` is out of its scope.
 5. **Idiom quick-reference** (match the exemplars):
    - `text-[14px]`, not `text-sm` — named sizes bundle a `line-height` and drift.
    - Arbitrary variants for what utilities don't cover (no plugins — locked stack):
-     `[&.premium]:bg-[#…]`. Scrollbars are first-party since v4.3: `scrollbar-none|thin|auto`,
-     `scrollbar-thumb-*`/`scrollbar-track-*`, `scrollbar-gutter-*` — use those, not the old
+     `[&.premium]:bg-[#…]`. Scrollbars are first-party: `scrollbar-none|thin|auto`,
+     `scrollbar-thumb-*`/`scrollbar-track-*`, `scrollbar-gutter-*` — not the
      `[scrollbar-width:none] [&::-webkit-scrollbar]:hidden` pair. They set
      `scrollbar-width` only, so Safari paints its own bar before 18.2.
    - `[transition:background_0.15s_ease,transform_0.12s_ease]` to keep per-property
@@ -100,14 +93,12 @@ states the decisions and traps the code can't show you.
    `src/tailwind.css`, so a button carries `focus-visible:` utilities only to change the
    colour (a host that does not theme: `outline-white` on fixed dark, `outline-current` on the
    fixed-white sign-out bar) or the offset (an inset ring inside an `overflow-hidden` clip, or
-   on a slot of an edge-to-edge bar — the tourist tab bar, the console's phone rail — where an
-   outside ring runs off the viewport: `shared/tab-rail.ts`'s `EDGE_SLOT_RING`).
-   Never `outline-none`, `outline-hidden`, `outline-0` or `[outline:none]` on a control —
-   `app/shared/focus-ring-baseline.spec.ts` fails the build naming the path. Keep the rule
-   inside `@layer base`. Rationale: issue #890.
-   The base rule reaches `<button>` only: a row skin an `<a>` wears carries the same ring
-   explicitly (`shared/popover-skin.ts`'s `POP_ROW_RING`), so one surface never shows two
-   ring skins.
+   on a slot of an edge-to-edge bar where an outside ring runs off the viewport:
+   `shared/tab-rail.ts`'s `EDGE_SLOT_RING`). Never `outline-none`, `outline-hidden`,
+   `outline-0` or `[outline:none]` on a control — `app/shared/focus-ring-baseline.spec.ts`
+   fails the build naming the path. Keep the rule inside `@layer base`. The base rule reaches
+   `<button>` only: a row skin an `<a>` wears carries the same ring explicitly
+   (`shared/popover-skin.ts`'s `POP_ROW_RING`), so one surface never shows two ring skins.
 
 ## Icons — inline SVG, shared as a component
 
@@ -119,11 +110,11 @@ picked from a descriptor by `NgComponentOutlet`, swept by one spec) — read the
 before adding a glyph.
 
 - **ICON-1. A shared glyph is a `@Component`, not a directive** — a directive only adds
-  classes and attributes to an element that already exists; anything supplying markup
-  (geometry, a sentence) is rule 1's "reused element" branch.
+  classes and attributes to an element that already exists; anything supplying markup is
+  rule 1's "reused element" branch.
 - **ICON-2. `stroke="currentColor"` (or `stroke-current`)** lets one copy serve any call
-  site's ink — the surrounding `color` cascades in. A shared glyph needs no colour input
-  and no variant.
+  site's ink. A shared glyph needs no colour input and no variant (a `name` input on one
+  component is the variant this rules out).
 - **ICON-3. Size with presentation attributes, override with a class.** `width="13"` /
   `stroke-width="2"` on the element sit below author stylesheets in the cascade, so any
   utility beats them: the component's attributes are defaults, and a call site resizes with
@@ -143,13 +134,12 @@ before adding a glyph.
 - **ICON-6. `aria-hidden` goes on the host AND the inner `<svg>`.** Redundant but free:
   specs query the inner one, and a call site that never looks at the SVG is still covered.
 
-Rejected: the esbuild `import clock from './clock.svg' with { loader: 'text' }` route — it
-needs `innerHTML` (sanitizer friction), loses per-call-site sizing and `class` control, and
-re-applies `aria-hidden` at the host anyway. The console's eighteen-glyph set stayed on
-inline components for the same reasons; a `name` input on one component was rejected as the
-variant ICON-2 rules out. One trap: a shared `<svg …>` attribute block interpolated into each
-`template` compiles under the Angular compiler but not under angular-eslint's template parser
-(it reads `${…}` as an unescaped brace), so each glyph writes its attributes out.
+Not the esbuild `import clock from './clock.svg' with { loader: 'text' }` route — it needs
+`innerHTML` (sanitizer friction), loses per-call-site sizing and `class` control, and
+re-applies `aria-hidden` at the host anyway. One trap: a shared `<svg …>` attribute block
+interpolated into each `template` compiles under the Angular compiler but not under
+angular-eslint's template parser (it reads `${…}` as an unescaped brace), so each glyph
+writes its attributes out.
 
 ## Styling across the themes
 
@@ -166,38 +156,38 @@ section owns how a component styles across themes. In order of preference:
    `var(--riv-*)` remains right inside a composite arbitrary value (a `color-mix(…)` ring, a
    hand-built gradient). Reach for a token first; add one if none fits — mapped in `@theme
    inline`, declared per theme unless the value deliberately does not switch. The
-   theme-invariant cases, each declared once in the base block with the reason at the
-   declaration:
-   - a token painted over a surface that itself does not theme (`--riv-solid-btn-ink` on
-     the outline-button fill, fixed at `#f4f6f7`) would drift light-on-light if it switched;
-   - a tint family that painted one literal in every theme before it was tokenised
-     (`--riv-accent-*`) gains a silent restyle the day someone adds a dark override.
-   The console is not a pinned-porcelain subtree: it has its own two-way theme (porcelain |
-   dark, `core/console-theme.ts`), so a console-only token (`--riv-console-*`, `--riv-select-*`, `--riv-alert-tint`, …) declares in
-   the base block AND the `dark` block and nowhere else — never `riviera`, which the console
-   never wears — and its guard holds it to exactly those two. A console position wanting a
-   treatment in one console theme only takes a treatment-off token, as the hero scrim does
-   (`--riv-console-avatar-ring`: `transparent` in porcelain, a white ring in dark). Named
-   `white`/`black` utilities (`bg-white/60`) are literals too, and the console paints none:
-   its inset fills are `bg-riv-console-inset/α` (`operator/console-literal-sweep.spec.ts`).
-   The unit is the whole skin, not one position: a fixed fill pins every ink and border on
-   it (the form-error banners' `--riv-form-error-fill`/`-ink` move as a pair; the
-   `--riv-solid-btn-*` set), and the pinning runs in whichever direction the fixed position
-   sits (at `--riv-solid-fill-*` the fixed ink `text-white` pins its fills). Group such a
-   family by form, not value; reject a coincidental token on its role before its value; and
-   take a per-state class ternary whole — tokenising one branch leaves a named utility
-   beside a hex literal in one expression. This is Tailwind's documented multi-theme
-   pattern (plain vars per `:root`/attribute scope, mapped via `@theme inline` — `inline`
-   is what keeps the utility emitting `var(--riv-*)` so per-scope overrides and the
-   porcelain subtree pinning still resolve). The `dark:`-variant approach is deliberately
-   NOT used: it names a theme in the component and cannot express three themes.
+   theme-invariant cases are declared once in the base block with the reason at the
+   declaration: a token painted over a surface that itself does not theme
+   (`--riv-solid-btn-ink` on the outline-button fill, fixed at `#f4f6f7`) would drift
+   light-on-light if it switched; a tint family that paints one literal in every theme
+   (`--riv-accent-*`) gains a silent restyle the day someone adds a dark override.
+   - The console has its own two-way theme (porcelain | dark, `core/console-theme.ts`), so a
+     console-only token (`--riv-console-*`, `--riv-select-*`, `--riv-alert-tint`, …) declares
+     in the base block AND the `dark` block and nowhere else — never `riviera`, which the
+     console never wears — and its guard holds it to exactly those two. A console position
+     wanting a treatment in one console theme only takes a treatment-off token, as the hero
+     scrim does (`--riv-console-avatar-ring`: `transparent` in porcelain, a white ring in
+     dark). Named `white`/`black` utilities (`bg-white/60`) are literals too, and the console
+     paints none: its inset fills are `bg-riv-console-inset/α`
+     (`operator/console-literal-sweep.spec.ts`).
+   - The unit is the whole skin, not one position: a fixed fill pins every ink and border on
+     it (the form-error banners' `--riv-form-error-fill`/`-ink` move as a pair; the
+     `--riv-solid-btn-*` set), in whichever direction the fixed position sits (at
+     `--riv-solid-fill-*` the fixed ink `text-white` pins its fills). Group such a family by
+     form, not value; reject a coincidental token on its role before its value; and take a
+     per-state class ternary whole — tokenising one branch leaves a named utility beside a
+     hex literal in one expression.
+   - This is Tailwind's multi-theme pattern (plain vars per `:root`/attribute scope, mapped
+     via `@theme inline` — `inline` is what keeps the utility emitting `var(--riv-*)` so
+     per-scope overrides and subtree pinning still resolve). The `dark:` variant is NOT
+     used: it names a theme in the component and cannot express three themes.
 2. **`:host-context([data-riv-theme='riviera'])` is the escape hatch.** Only when a whole
    *treatment* differs AND no single property's value can carry it. Before reaching for it,
    check whether one property CAN carry the whole treatment as a token — `treatment-off`
    themes hold `none`, like `--riv-hero-shadow` and `--riv-hero-scrim` (the home-hero wash:
    a feathered dark gradient in riviera, `background-image: none` in porcelain and dark,
    consumed unconditionally as `bg-(image:--riv-hero-scrim)`). No in-tree case needs the
-   hatch today. The scrim stays the hero only — every other dark riviera surface keeps the
+   hatch. The scrim stays the hero only — every other dark riviera surface keeps the
    `appPanelGlass` frosted panel.
 
 **Keep content position identical across themes.** When a surface is treated-in-one-theme
@@ -206,9 +196,7 @@ background theme-conditional; otherwise the same element sits at a different
 `getBoundingClientRect().top` per theme. Verify by measuring that anchor in both themes.
 
 SCSS stays legitimate for what Tailwind can't express cleanly, with the justification
-stated; a holdout's justification is only as durable as the alternatives it weighed —
-re-check one when the styling substrate shifts (the last holdout, the `home.scss` scrim,
-retired once the `@theme` token registry made it a per-theme token).
+stated; re-check a holdout's justification when the styling substrate shifts.
 
 ## No visual/colour drift (the hard rule)
 
@@ -217,13 +205,12 @@ Prove no drift by diffing computed styles (`getComputedStyle` in Playwright /
 can't catch a colour that's wrong-but-still-AA, or a dropped `cursor`/`transition`.
 
 **Border-width snapping:** Chromium's `getComputedStyle` returns the device-pixel-snapped
-used value for `border-width`, so a `1.5px` border reads `"1px"` — identical to the old
-SCSS. Assert the snapped value.
+used value for `border-width`, so a `1.5px` border reads `"1px"`. Assert the snapped value.
 
 ## SCSS→Tailwind migration
 
-There is no SCSS left under `frontend/src`. A new justified holdout may still be written,
-with its stated why.
+There is no SCSS under `frontend/src`. A new justified holdout may still be written, with
+its stated why.
 
 **Migrate on touch.** A slice that touches a component still carrying legacy component
 SCSS (any of its `.ts`/`.html`/`.scss`) migrates that component's styling to Tailwind in
@@ -242,7 +229,7 @@ way. Checklist: `references/scss-migration.md`.
 | "Drop the `.set-tile` class, it's just styling now." | A spec queries it — keep it as an inert marker. |
 | "Bundle `rounded-[26px]` into the glass directive." | Radius resolves by stylesheet order — unbundle it. |
 | "`text-sm` is 14px, close enough." | It also sets line-height → drift. Use `text-[14px]`. |
-| "border-width is 1px now — I broke it." | Chromium snaps 1.5px→"1px"; the SCSS did too. |
+| "border-width is 1px now — I broke it." | Chromium snaps 1.5px→"1px". Assert the snapped value. |
 | "Branch the component on `data-riv-theme` for this colour." | Colours switch via `--riv-*` tokens; components stay theme-agnostic. `:host-context` is only for whole-treatment differences. |
 | "Same padding, I'll just add the riviera background." | Shared layout on the base rule; theme-conditional *background* only — else content shifts between themes. |
 | "Classes look right, ship it." | Diff computed styles; contrast specs can't see drift. |

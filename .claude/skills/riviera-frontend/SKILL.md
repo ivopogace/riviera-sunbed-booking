@@ -32,18 +32,15 @@ importing from another feature is the FE version of a Modulith boundary violatio
 
 **`environments/` sits beneath the taxonomy, not inside it.** It is public build-time
 config, not app code: any stratum — including `shared/` (`shared/photo-url.ts` resolving
-against `apiBaseUrl`) — may read `environments/environment`. That does not loosen
-`shared/`'s purity: frozen config is not app state.
+against `apiBaseUrl`) — may read `environments/environment`. Frozen config is not app state.
 
 ### The residual cross-feature imports — frozen
 
 The published API-view vocabulary lives in `shared/` (`venue-views.ts`, `money.ts`,
 `booking-date.ts`, `photo-url.ts`); the `venue` feature remains editor of record for its
-mirror, per the `amenities.ts`/`booking-status.ts` precedent
-(#489, PR #494). What remains is frozen by
-`riviera-review-overlay` RV-FE-8 (a *new* edge is a Major finding, Blocker if `shared/`-
-or `core/`-directed; a pre-existing edge moved or consolidated is not; shrink this table in
-the same PR that shrinks the code):
+mirror. What remains is frozen by `riviera-review-overlay` RV-FE-8 (a *new* edge is a Major
+finding, Blocker if `shared/`- or `core/`-directed; a pre-existing edge moved or consolidated
+is not; shrink this table in the same PR that shrinks the code):
 
 | Edge | Files | What crosses |
 |---|---|---|
@@ -51,15 +48,14 @@ the same PR that shrinks the code):
 | `pages/home` → `venue/` | 1 | `venue.service` (`pages/` may take only `core`/`shared`) |
 | `venue/venue-map` → `booking/` | 1 | `booking-dialog` — the reverse edge, the one feature→feature *component* import |
 
-These four carry behavior, not vocabulary — a shared HTTP service and a component edge —
-and each needs its own argument on its merits (e.g. promoting `VenueService` to `core/`,
-or inverting the dialog edge); never a blanket "features may import features" rule. No
-ESLint rule pins this today.
+These four carry behavior, not vocabulary, and each needs its own argument on its merits
+(e.g. promoting `VenueService` to `core/`, or inverting the dialog edge); never a blanket
+"features may import features" rule. No ESLint rule pins this.
 
 **New feature = new folder.** `auth/` holds the audience-aware sign-in card
-(`auth/auth-page.ts` at `/account/sign-in`; redirect routes for the retired
-`auth/sign-in`, `auth/register`, `operator/operator-register` pages remain for one
-release), the forgot/reset/verify/set-password pages, and `operator-password.ts` at
+(`auth/auth-page.ts` at `/account/sign-in`, plus redirect routes for the retired
+`auth/sign-in`, `auth/register`, `operator/operator-register` paths), the
+forgot/reset/verify/set-password pages, and `operator-password.ts` at
 `/account/operator-password`. The session/CSRF machinery they use lives in `core/`,
 mirroring the backend rule that login machinery sits at the platform edge, not in a domain
 module.
@@ -83,10 +79,9 @@ Colocate everything the feature owns, flat (no `components/`/`services/` subfold
   two nested child-route trees — a layout component with a child route per tab so each tab is
   deep-linkable. Follow that shape for further tabbed sub-apps. An operator or admin route
   carries `data.console` naming its section (`venue` · `admin` · `plain`): the app shell then
-  wears the root-level `console-shell.ts` (the section row, the section's text rail from `sm`
-  up and, below it, the four-slot phone rail with its More sheet, and the ⌘K palette —
-  `shared/console-palette.ts`, fed the rows the shell computes) instead of the tourist header
-  — root-level because it composes `operator/` and `admin/`, which no feature folder may.
+  wears the root-level `console-shell.ts` (section row, text rail, phone rail, and the ⌘K
+  palette `shared/console-palette.ts`) instead of the tourist header — root-level because it
+  composes `operator/` and `admin/`, which no feature folder may.
 - Every route is lazy (`loadComponent: () => import(...)`) and carries a `title`.
 - Order matters for parameterized paths (`booking/confirmation` before `booking/:code`) —
   keep literal segments above `:param` siblings.
@@ -96,28 +91,24 @@ Colocate everything the feature owns, flat (no `components/`/`services/` subfold
   helpers: the router reuses the component instance when only the param changes, so a
   constructor snapshot read pins the old venue.
 - **A route param's validity is the route's job, not a component's** (ADR-0023). The console's
-  two helpers therefore return `Signal<number>` and throw: a component that reads no valid id
-  is a routing bug, not a user state, so no console template carries an invalid-id arm. Give a
-  new id-carrying route the same shape — a guard plus one page that owns the answer — rather
-  than a not-found branch per component. The generic `routeIdParam` stays optional for a route
+  two helpers return `Signal<number>` and throw: a component that reads no valid id is a
+  routing bug, not a user state, so no console template carries an invalid-id arm. Give a new
+  id-carrying route the same shape — a guard plus one page that owns the answer — rather than
+  a not-found branch per component. The generic `routeIdParam` stays optional for a route
   with no gate (the tourist map's `:id`, which owns its own not-found state).
 - Route guards are cross-cutting → they live in `core/` and are applied in
   `app.routes.ts` (`canActivate`/`canMatch`), not inside feature components. Two today, and
   their ORDER on `/operator/:venueId` is load-bearing:
   - `core/venue-id.guard.ts` runs first — `:venueId` must be a canonical positive integer, or
     the navigation is redirected to `/operator/venue-not-found`. First, because a malformed
-    segment is malformed whoever is asking: a signed-out visitor should sign in for the page,
-    not for a link that can never work.
+    segment is malformed whoever is asking.
   - `core/operator-session.guard.ts` — restore-aware (awaits `SessionAuth.whenReady()` before
     deciding), applied on `/operator` (incl. its create state), `/operator/:venueId`,
     `/operator/venue-not-found` and `/account/operator-password`.
-- **A lazy target's import lines only count as covered once its module actually loads** —
-  Vitest's v8 coverage provider registers a `loadComponent` target's chunk boundary as soon
-  as any spec imports `app.routes.ts`, but its import lines stay at 0 hits until something
-  resolves the dynamic `import()` (real navigation, or a direct `loadComponent()` call).
+- **A lazy target's import lines count as covered only once its module actually loads.**
   `app.routes.spec.ts`'s `app.routes — every lazy route target resolves its module` test
   walks the whole real table (including `consoleTabRoutes`/`adminTabRoutes`) and resolves
-  every target, so a new lazy route gets this for free — no per-component deep-link spec
+  every target, so a new lazy route gets coverage for free — no per-component deep-link spec
   needed for coverage alone.
 
 ## `app.config.ts` (the composition root)
@@ -134,11 +125,10 @@ The only place providers are wired:
   as `SsoRedirect` does (the e2e intercepts the navigation) and `shared/geolocation.ts` does
   (Playwright grants the permission and sets the position itself) — a flag no e2e arms is a
   production branch nothing exercises. Unit specs override the token directly either way.
-  Three flag-swapped instances today:
-  `booking/stripe-payment.gateway.ts`, `operator/qr-scanner.ts`, and `shared/map-engine.ts` —
-  the map engine sits in `shared/` (not a feature folder) because its consumers span features
-  (Discover and the operator's venue-location field) and `pages/` may import only `core`/`shared`;
-  an adapter that fetches its own resources (MapLibre's tiles) is still `shared/`-admissible —
+  Three flag-swapped instances today: `booking/stripe-payment.gateway.ts`,
+  `operator/qr-scanner.ts`, and `shared/map-engine.ts` — the map engine sits in `shared/`
+  because its consumers span features and `pages/` may import only `core`/`shared`; an
+  adapter that fetches its own resources (MapLibre's tiles) is still `shared/`-admissible —
   the row's "no HTTP" means no `HttpClient`/API state, not no I/O behind the seam.
 
 ## Theming & design tokens (Liquid Glass)
@@ -150,15 +140,15 @@ The only place providers are wired:
   theme registry lives there as data). The one non-runtime writer is the `index.html`
   inline seed, which pre-paints the same value before Angular boots with the same
   resolution order — drift-pinned by `core/theme-boot.spec.ts`; extend `ThemeService`'s
-  resolution only together with the seed. **A subtree may pin its own theme** by setting
-  `data-riv-theme` on its own host element: every operator and admin route wears the
-  operator's own console theme — porcelain by default or dark, two by decision, never
-  `riviera` — via the app shell's host binding (`app.ts`, keyed on the route's `data.console`)
-  reading `core/console-theme.ts` (`ConsoleTheme`: a signal + its own storage key
-  `riviera-console-theme`, chosen in the account chip's `Console theme` rows, no OS follow),
-  which does not touch the document attribute / `ThemeService`; the pinned subtree
-  re-resolves the ink on the shell's root box, since `body` resolves it once at document
-  scope. Writing the document attribute stays `ThemeService`-only.
+  resolution only together with the seed.
+- **A subtree may pin its own theme** by setting `data-riv-theme` on its own host element:
+  every operator and admin route wears the operator's own console theme — porcelain by
+  default or dark, never `riviera` — via the app shell's host binding (`app.ts`, keyed on the
+  route's `data.console`) reading `core/console-theme.ts` (`ConsoleTheme`: a signal + its own
+  storage key `riviera-console-theme`, chosen in the account chip's `Console theme` rows, no
+  OS follow), which does not touch the document attribute / `ThemeService`; the pinned
+  subtree re-resolves the ink on the shell's root box, since `body` resolves it once at
+  document scope.
 - **The token registry lives in two places, and only two**: a palette change is one CSS
   block in `tailwind.css` + one registry row in `core/theme.ts`, zero component edits. A
   new token additionally gets a `@theme inline` mapping in `tailwind.css`, which makes it a
@@ -191,12 +181,10 @@ The only place providers are wired:
   `support/` helpers). Never wired into CI.
 - Which suite a new spec belongs in, and what RV-FE-E2E checks, is in `riviera-review-overlay`.
 
-## External reference
+## Deliberate deltas from the common Angular taxonomy
 
-[Ismaestro/angular-example-app](https://github.com/Ismaestro/angular-example-app) shares
-this taxonomy. Two deliberate deltas: adopt its `features/` wrapper only past ~8–10
-top-level feature folders, and never its JWT-auth pattern
-(`docs/architecture/auth-signin-register.md` D-1).
+Adopt a `features/` wrapper folder only past ~8–10 top-level feature folders; never a
+JWT-auth pattern (`docs/architecture/auth-signin-register.md` D-1).
 
 ## When NOT to apply
 

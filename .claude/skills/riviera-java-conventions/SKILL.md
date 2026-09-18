@@ -9,8 +9,7 @@ description: >-
 # Riviera Java conventions
 
 Language-level "how we write Java": JDBC-only, records-first, no Lombok, hexagonal Spring
-Modulith on Java 25. The numbered invariants stay in `CLAUDE.md`; this skill references
-them by number where they bite.
+Modulith on Java 25. Invariant numbers reference `CLAUDE.md`.
 
 ## The rules
 
@@ -23,8 +22,8 @@ them by number where they bite.
 - **`@Table`/`@Id` are package-sensitive:** `jakarta.persistence` = JPA = forbidden;
   `org.springframework.data.relational.core.mapping.@Table` /
   `org.springframework.data.annotation.@Id` = Spring Data JDBC = permitted, but only on a
-  genuine aggregate root (§1a) — and there is none in the tree today, so an annotated type
-  would be the first. `JdbcOnlyArchitectureTests` probes the packages.
+  genuine aggregate root (§1a) — there is none in the tree. `JdbcOnlyArchitectureTests`
+  probes the packages.
 - **No Lombok.** No `@Data`/`@Getter`/`@Builder`/`@RequiredArgsConstructor`. Records give
   immutability + accessors + equals/hashCode; for the rare mutable holder, write the
   constructor by hand.
@@ -34,13 +33,11 @@ them by number where they bite.
 ### 1a. If a Spring Data JDBC aggregate earns it
 
 Reach for an aggregate only when a cluster of rows is genuinely one consistency unit —
-loaded, mutated and saved together, by one writer, under an invariant spanning them. Nothing
-in the tree is that, so an annotated type would be the first and owes a stated reason, not a
-preference. Two constraints if one ever earns it: the mapping is
-`org.springframework.data.relational`, never `jakarta.persistence` (the `@Table`/`@Id` simple
-names collide), and it may **not** live in `domain/` — ADR-0018 §4 holds that package
-framework-free and `DomainPurityArchitectureTests` rejects any `org.springframework` import
-there.
+loaded, mutated and saved together, by one writer, under an invariant spanning them — and
+state the reason. Two constraints: the mapping is `org.springframework.data.relational`,
+never `jakarta.persistence` (the `@Table`/`@Id` simple names collide), and it may **not** live
+in `domain/` — ADR-0018 §4 holds that package framework-free and
+`DomainPurityArchitectureTests` rejects any `org.springframework` import there.
 
 ### 2. Data shapes: records for DTOs, value objects, and ids
 
@@ -119,7 +116,7 @@ leak internals into `detail` (no booking code — invariant #7 — no exception 
 One test for every line of prose a diff adds or touches — in a `riviera-*` skill or its
 `references/`, a Javadoc/TSDoc, an inline comment: **keep it only if a fresh session reading
 it would act differently. Otherwise drop it.** The next reader has no "before" to compare
-against, so text written for the author's own session costs context and changes nothing.
+against.
 
 - **Drop:** provenance (`#NNN`, `PR N`, `since #`); history (`used to`, `no longer`,
   `previously`, `before this change`, `the alternative would have been`); narration of the
@@ -137,16 +134,15 @@ against, so text written for the author's own session costs context and changes 
 The guard: `scripts/check-inline-comments.mjs` runs from a `PostToolUse` hook on every
 `Write`/`Edit` and again in CI over the PR diff. It fails on a multi-line inline comment the
 diff added and on a provenance tell in an added skill line, an added inline comment, or
-anywhere in a touched doc comment; it advises on history phrasing, which is contract language
-often enough to leave to review. By hand: `node scripts/check-inline-comments.mjs --files
-<path…>` or `--diff origin/main`. Its scope is deliberately bounded —
-`references/inline-comment-guard.md` before "fixing" any gap. The guard is a floor: it cannot
-see a line that says nothing.
+anywhere in a touched doc comment; it advises on history phrasing. By hand: `node
+scripts/check-inline-comments.mjs --files <path…>` or `--diff origin/main`. Its scope is
+deliberately bounded — read `references/inline-comment-guard.md` before "fixing" any gap. The
+guard is a floor: it cannot see a line that says nothing.
 
 ### 6d. Javadoc: the contract, not the changelog
 
 Javadoc answers what a caller must know — what this is, what it guarantees, what would
-surprise someone using it. Not how it came to be; §6c's test decides line by line.
+surprise someone using it. Not how it came to be.
 
 - **No issue numbers.** Provenance is `git blame`'s job and the tracker's.
 - **No decision history.** "It began…", "widened by…", "used to…", "the alternative would
@@ -173,9 +169,8 @@ Money is integer minor units + ISO currency; time is UTC `Instant`, with booking
 
 - Don't hand-roll thread pools in application code. The concurrency guarantees come from
   the DB (unique constraint + `INSERT … ON CONFLICT`), not Java locks (invariant #2).
-- Virtual threads are a deliberate, deferred config decision
-  (#395) — the real scaling knob is the Hikari pool.
-  Don't flip `spring.threads.virtual.enabled` casually.
+- Virtual threads are a deliberate, deferred config decision — the real scaling knob is
+  the Hikari pool. Don't flip `spring.threads.virtual.enabled` casually.
 - In tests, `ExecutorService` is `AutoCloseable` — use try-with-resources.
 
 ### 9. Tests

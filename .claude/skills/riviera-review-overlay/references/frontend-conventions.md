@@ -209,9 +209,9 @@ hook + CI step) carries rules in two opposite postures:
   vocabulary: `loading`, `pending`, `processing`, `updating`, `creating` are excluded by
   name, so `[disabled]="loading()"` is green and yours. A flag renamed in the `.ts` while
   the template's `[disabled]` line stays untouched context is also unjudged (the guard
-  judges added lines only; a re-indented line counts as added). Silence means "not a shape
-  I match", never "checked and fine". **BUSY-2** gates a `(change)`/`(blur)` +
-  busy-`[disabled]` pairing on the `readonly`-lockable input kinds.
+  judges added lines only). Silence means "not a shape I match", never "checked and fine".
+  **BUSY-2** gates a `(change)`/`(blur)` + busy-`[disabled]` pairing on the
+  `readonly`-lockable input kinds.
 - **FOCUS-1 prints and returns 0** — advisory. A green hygiene job can sit on top of unread
   FOCUS-1 findings: read the step's output, not its exit code. Don't promote it to gating.
 
@@ -235,7 +235,7 @@ hook + CI step) carries rules in two opposite postures:
    settle-time focus move there. `(input)` is excluded as draft-sync.
 
 **Follow-up:**
-- The convention: `frontend/.claude/CLAUDE.md`. Recurring instances: #604, #614, #616, #621.
+- The convention: `frontend/.claude/CLAUDE.md`.
 - A jsdom spec is not evidence for a busy-window claim — jsdom does not implement
   unfocus-on-disable. A claim about a *disabled* control needs a Chromium leg; a claim about
   a *destroyed* one may be pinned in jsdom.

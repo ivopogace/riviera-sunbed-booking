@@ -1,10 +1,9 @@
 # Issue-intake grill gate (mandatory when entering at an existing issue)
 
 Read at plan entry whenever work starts from an already-written GitHub issue. A written
-issue is a snapshot of intent at creation time, not ground truth: the code may have moved,
-a sibling slice may have changed a contract, an ADR may have landed. Refining a brand-new
-idea already runs `grilling` at Refine and is exempt; this gate catches work that skips
-Refine by starting from a ticket. "The issue looked complete" is never a reason to skip.
+issue is a snapshot of intent at creation time: the code may have moved, a sibling slice may
+have changed a contract, an ADR may have landed. Refining a brand-new idea already runs
+`grilling` at Refine and is exempt. "The issue looked complete" is never a reason to skip.
 
 ## Procedure
 
@@ -36,13 +35,13 @@ Refine by starting from a ticket. "The issue looked complete" is never a reason 
 
 ## Escalation — drift vs. fog
 
-Most of what the grill surfaces is **drift** (the code moved, an AC went stale): reconcile
-and plan. If it surfaces **fog** — an unresolved decision the slice depends on that cannot
-be settled within this slice's own session(s) — do not plan against it and do not park it as
-a plan-doc open question (that section is for questions the slice itself will answer).
-Escalate to `wayfinder` — a decision ticket on the epic's existing map, or a fresh map — and
-hold the slice until the decision closes. The test: can you state the question sharply
-*and* resolve it inside this slice? Drift reconciles here; fog gets a ticket.
+**Drift** (the code moved, an AC went stale): reconcile and plan. **Fog** (an unresolved
+decision the slice depends on that cannot be settled within this slice's own sessions): do not
+plan against it and do not park it as a plan-doc open question (that section is for questions
+the slice itself will answer). Escalate to `wayfinder` — a decision ticket on the epic's
+existing map, or a fresh map — and hold the slice until the decision closes. The test: can you
+state the question sharply *and* resolve it inside this slice? Drift reconciles here; fog gets
+a ticket.
 
 ## Proportional, never skipped
 

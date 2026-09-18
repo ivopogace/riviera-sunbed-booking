@@ -1,10 +1,9 @@
 # Persistence — `JdbcClient` + explicit SQL, and where it sits in the hexagon
 
 JPA/Hibernate is forbidden (invariant #1). Persistence is `JdbcClient` + explicit text-block
-SQL — the tree's one uniform choice, with no `CrudRepository`, `@Table` or `@Id` anywhere in
-it. Language-level detail: `riviera-java-conventions` §1, and its §1a for the Spring Data JDBC
-aggregate question the tree has never answered yes; SQL/schema/index craft: `postgres`. This
-file covers where persistence sits in the hexagon.
+SQL, with no `CrudRepository`, `@Table` or `@Id` anywhere in the tree. Language-level detail:
+`riviera-java-conventions` §1 (§1a for the Spring Data JDBC aggregate question); SQL/schema/
+index craft: `postgres`. This file covers where persistence sits in the hexagon.
 
 ## The pattern: `JdbcClient` + explicit SQL (what every existing adapter does)
 
