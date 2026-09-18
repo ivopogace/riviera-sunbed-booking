@@ -134,7 +134,16 @@ export class VariantDrive {
 
   private urlTimer: ReturnType<typeof setTimeout> | undefined;
 
+  /** Bumped on every camera move, so the readout reports the LIVE camera and not the target. */
+  private readonly tick = signal(0);
+
   constructor() {
+    effect((onCleanup) => {
+      const handle = this.mapHandle();
+      if (handle) {
+        onCleanup(handle.onMove(() => this.tick.update((value) => value + 1)));
+      }
+    });
     effect(() => {
       const box = this.pane()?.box();
       if (box) {
@@ -151,12 +160,14 @@ export class VariantDrive {
     });
     effect(() => {
       const box = this.box();
+      const handle = this.mapHandle();
       const view = this.travelView();
+      this.tick();
       if (box && view) {
         this.state.measurement.set({
           width: box.width,
           height: box.height,
-          frame: frameOf(box, view),
+          frame: frameOf(box, handle?.view() ?? view),
         });
       }
     });

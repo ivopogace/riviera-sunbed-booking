@@ -58,6 +58,16 @@ whole spike turns on:
 > **A pane can frame the whole catalogued coast if and only if its width is at most
 > 0.801 × its height.** Wider than that, no camera exists that shows the riviera.
 
+Three screenshots show the fence doing it, rather than the arithmetic claiming it — variant A
+with its own zoom-out button held down until MapLibre stops obeying, so the floor in the picture
+is the engine's and not ours:
+
+|                | shot                   | pane     | at the floor                                                                 |
+| -------------- | ---------------------- | -------- | ---------------------------------------------------------------------------- |
+| desktop        | `shots/floor-1440.png` | 1340×745 | z8.74, **104 km** — Velipojë, Shëngjin, Durrës and Golem are all off the top |
+| bigger desktop | `shots/floor-1920.png` | 1820×925 | z9.18, **95 km** — the same view, with less of it                            |
+| phone          | `shots/floor-390.png`  | 290×628  | z7.00, **291 km** — the whole coast, on the smallest screen here             |
+
 Everything below is measured on the real panes, at the camera's own latitude (Mercator stretches
 away from the equator — measuring a pane's coverage around 0° overstates it at 40.8 N by ~24%,
 which is a mistake this spike made and corrected; `frameOf` now takes the camera, not just a
@@ -101,7 +111,8 @@ Two findings fall straight out:
   At 433×680 its floor is z7.11, good for 291 km. It opens at `RIVIERA_MAP_OPTIONS.view.zoom`
   = 8.6, which frames **104 km**. The constant, not the container, is what loses the riviera.
 - **The obvious fix — give the map the width — is the one thing that cannot work.** A full-bleed
-  1440×900 map frames 103 km; at 1920×1080, 94 km. More pixels, less coast.
+  1440×900 map frames 104 km; at 1920×1080, 95 km. More pixels, less coast
+  (`shots/floor-1440.png`, `shots/floor-1920.png`).
 
 ---
 
@@ -304,9 +315,9 @@ the sheet rises, so scrubbing really wants the sheet down.
 All measured on the running prototype, not reasoned about.
 
 1. **The fence gives the map an aspect ratio, not a size.** `W ≤ 0.801 × H`, or the riviera
-   cannot be framed at any camera. This is the single most useful number to come out of the
+   cannot be framed at any camera — `shots/floor-*.png` are the engine's own proof. This is the single most useful number to come out of the
    spike and it belongs in `RIVIERA_MAP_OPTIONS`' own documentation whatever ships.
-2. **More pixels, less coast.** Full-bleed: 1440×900 → 103 km; 1920×1080 → 94 km. Widening a map
+2. **More pixels, less coast.** Full-bleed: 1440×900 → 104 km; 1920×1080 → 95 km. Widening a map
    pane on this product actively destroys its subject. Nothing in the codebase says so today.
 3. **A map column should be sized from the coast, not from the window.** `width: calc(height ×
 0.78)` holds at every viewport; `flex-1` broke at 1920 (1118×991, 14 km lost off each end)

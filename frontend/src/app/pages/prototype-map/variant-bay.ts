@@ -192,7 +192,17 @@ export class VariantBay {
     });
   });
 
+  /** Bumped on every camera move, so the switcher's readout reports the LIVE camera — including
+   *  one a hand has panned or zoomed, which is the only way to see the fence clamp for real. */
+  private readonly tick = signal(0);
+
   constructor() {
+    effect((onCleanup) => {
+      const handle = this.mapHandle();
+      if (handle) {
+        onCleanup(handle.onMove(() => this.tick.update((value) => value + 1)));
+      }
+    });
     // The camera follows the bay in focus; the pane never changes, so only the fit moves.
     effect(() => {
       const handle = this.mapHandle();
@@ -211,6 +221,7 @@ export class VariantBay {
     effect(() => {
       const box = this.box();
       const handle = this.mapHandle();
+      this.tick();
       if (box) {
         this.state.measurement.set({
           width: box.width,

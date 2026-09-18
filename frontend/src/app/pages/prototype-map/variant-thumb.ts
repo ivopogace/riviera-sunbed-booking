@@ -190,12 +190,14 @@ export class VariantThumb {
     });
     effect(() => {
       const box = this.box();
+      const handle = this.mapHandle();
       const view = this.view();
+      this.tick();
       if (box && view) {
         this.state.measurement.set({
           width: box.width,
           height: box.height,
-          frame: frameOf(box, view),
+          frame: frameOf(box, handle?.view() ?? view),
         });
       }
     });
