@@ -1,0 +1,185 @@
+<!-- PROTOTYPE C — Coast gazetteer. Index · chart · venues. The map is a column, not a canvas. -->
+<section
+  class="flex h-[var(--riv-proto-h)] flex-col gap-2 p-2 lg:flex-row"
+  aria-label="Coast gazetteer"
+>
+  <!-- 1. The index. The catalogue in its own order, with prices on it — this is the filter. -->
+  <nav
+    appPanelGlass
+    class="flex shrink-0 flex-row gap-1 overflow-x-auto rounded-[24px] p-2 scrollbar-none lg:w-[268px] lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto lg:scrollbar-thin"
+    aria-label="Beaches, north to south"
+  >
+    @for (group of groups(); track group.region.code) {
+      <p
+        class="sticky top-0 z-[1] hidden bg-riv-header-glass px-2 pt-2.5 pb-1 text-[10.5px] font-bold tracking-[0.14em] uppercase text-riv-ink-faint backdrop-blur-[10px] lg:block"
+      >
+        {{ group.region.label }}
+      </p>
+      @for (row of group.rows; track row.entry.code) {
+        <button
+          type="button"
+          appTouchTarget
+          class="flex shrink-0 touch-manipulation flex-col justify-center gap-[3px] rounded-[15px] px-3 py-1.5 text-left text-riv-ink aria-[current]:bg-riv-ink aria-[current]:text-riv-solid-btn-fill"
+          [attr.aria-current]="row.current ? 'true' : null"
+          (click)="chooseBeach(row)"
+        >
+          <span class="flex items-baseline gap-2 whitespace-nowrap">
+            <span class="text-[14.5px] leading-[17px] font-semibold">{{ row.entry.label }}</span>
+            <span class="ml-auto text-[12px] font-bold tabular-nums opacity-80">{{
+              row.from
+            }}</span>
+          </span>
+          <span class="flex items-center gap-2 whitespace-nowrap">
+            <span class="text-[11px] opacity-70">{{ row.count }}</span>
+            <span class="block h-[3px] w-[52px] overflow-hidden rounded-full bg-riv-track-bg">
+              <span
+                class="block h-full bg-(image:--riv-bar-grad)"
+                [style.width.%]="row.freePercent"
+              ></span>
+            </span>
+          </span>
+        </button>
+      }
+    }
+  </nav>
+
+  <!-- 2. The chart. Fitted once to all 36 catalogued beaches and left alone. -->
+  <div class="flex h-[38%] shrink-0 flex-col gap-1.5 lg:h-auto lg:w-[430px] lg:flex-none">
+    <p
+      class="flex items-baseline gap-2 px-2 text-[10.5px] tracking-[0.12em] uppercase text-riv-ink-faint"
+    >
+      <span class="font-bold">North</span>
+      <span class="ml-auto normal-case tracking-normal"
+        >the coast, whole — this column may be {{ widestPane() }} px wide at most</span
+      >
+    </p>
+    <div appPane #pane="pane" class="relative min-h-0 flex-1">
+      @if (pane.box(); as measured) {
+        <app-riviera-map class="h-full w-full" [options]="options()" />
+        <app-venue-pin-layer
+          [pins]="state.pins()"
+          [map]="mapHandle()"
+          [selected]="state.venue() !== null ? state.venue() + '' : null"
+          [maxZoom]="maxZoom"
+          (chosen)="openVenue($event)"
+          (narrowed)="narrowTo($event)"
+        />
+      }
+      <!-- The bracket: where the index's focus sits on the chart. A mark, not a control. -->
+      @if (bracketTop(); as top) {
+        <span
+          class="pointer-events-none absolute inset-x-0 z-[6] flex items-center gap-1 px-1.5"
+          [style.top.px]="top"
+          aria-hidden="true"
+        >
+          <span class="h-[2px] flex-1 bg-riv-ink opacity-45"></span>
+          <span
+            class="rounded-full bg-riv-ink px-2 py-[3px] text-[10.5px] font-bold text-riv-solid-btn-fill"
+            >{{ heading() }}</span
+          >
+          <span class="h-[2px] flex-1 bg-riv-ink opacity-45"></span>
+        </span>
+      }
+      @if (zoomed() || focus()) {
+        <button
+          type="button"
+          appTouchTarget
+          class="absolute bottom-3 left-3 z-[7] inline-flex touch-manipulation items-center gap-2 rounded-full border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill px-[14px] text-[13px] font-bold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)]"
+          (click)="wholeCoast()"
+        >
+          Whole coast
+        </button>
+      }
+    </div>
+    <p class="px-2 text-[10.5px] font-bold tracking-[0.12em] uppercase text-riv-ink-faint">South</p>
+  </div>
+
+  <!-- 3. The venues. Everything needed to decide, with nothing needed to search. -->
+  <div class="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+    <div
+      appPanelGlass
+      class="flex shrink-0 flex-wrap items-baseline gap-x-3 gap-y-1 rounded-[22px] px-4 py-3"
+    >
+      <h2 class="text-[22px] leading-[25px] font-bold tracking-[-0.02em] text-riv-ink">
+        {{ heading() }}
+      </h2>
+      <p class="text-[13px] text-riv-ink-soft">
+        {{ venues().length }} {{ venues().length === 1 ? 'venue' : 'venues' }} ·
+        {{ state.dateLabel() }}
+      </p>
+      <p class="ml-auto text-[12.5px] text-riv-ink-soft">
+        A set is two loungers and an umbrella, for the whole day.
+      </p>
+    </div>
+
+    <ul
+      class="grid min-h-0 flex-1 list-none auto-rows-min grid-cols-[repeat(auto-fill,minmax(236px,1fr))] gap-2 overflow-y-auto pr-1 scrollbar-thin"
+    >
+      @for (card of venues(); track card.id) {
+        <li
+          appCardGlass
+          class="flex flex-col overflow-hidden rounded-[22px] [&[data-open]]:outline-[3px] [&[data-open]]:outline-offset-[2px] [&[data-open]]:outline-riv-accent-ink"
+          [attr.data-open]="state.venue() === card.id ? '' : null"
+        >
+          <span class="relative block aspect-[16/9] bg-(image:--riv-photo-grad)" aria-hidden="true">
+            <app-photo-slideshow
+              [photos]="card.photos"
+              [name]="card.name"
+              sizes="(min-width: 1024px) 18vw, 46vw"
+            />
+            <span appPhotoScrim></span>
+            <span class="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5">
+              <span appSemanticChip class="px-2.5 py-[3px] text-[10.5px]">{{
+                card.modeLabel
+              }}</span>
+              @if (card.closedForSeason) {
+                <app-closed-for-season-chip [reopensOn]="card.reopensOn" />
+              } @else if (card.salesClosed) {
+                <app-sales-closed-chip />
+              }
+            </span>
+            <span
+              class="absolute bottom-2 left-2.5 text-[11.5px] font-semibold text-riv-photo-ink [text-shadow:0_1px_6px_rgba(0,0,0,0.45)]"
+              >{{ card.beachLabel }}</span
+            >
+          </span>
+          <span class="flex flex-1 flex-col gap-1.5 px-3.5 pt-3 pb-3.5">
+            <a
+              appTouchTarget
+              class="inline-flex items-center text-[17px] leading-[20px] font-bold text-riv-card-ink no-underline"
+              href="/venues/{{ card.id }}"
+              >{{ card.name }}</a
+            >
+            <span class="flex items-center gap-2 text-[12.5px] text-riv-card-ink-soft">
+              @if (card.isRated) {
+                <span class="font-bold text-riv-card-ink">★ {{ card.rating }}</span>
+                <span>{{ card.reviewsLabel }}</span>
+              } @else {
+                <span appSemanticChip class="px-2 py-px text-[10.5px]">New</span>
+              }
+            </span>
+            <span class="flex flex-wrap gap-1.5 empty:hidden">
+              @if (card.water; as water) {
+                <span appAmenityChip water>{{ water }}</span>
+              }
+              @for (amenity of card.amenities; track amenity.code) {
+                <span appAmenityChip>{{ amenity.label }}</span>
+              }
+            </span>
+            <span class="mt-auto flex items-baseline justify-between gap-2 pt-2">
+              <span class="text-[13px] text-riv-card-ink-soft"
+                >from
+                <strong class="text-[18px] font-extrabold text-riv-accent-ink">{{
+                  card.priceLabel
+                }}</strong></span
+              >
+              <span class="text-[12px] text-riv-card-ink-soft"
+                ><app-sets-free [free]="card.free" [total]="card.total"
+              /></span>
+            </span>
+          </span>
+        </li>
+      }
+    </ul>
+  </div>
+</section>

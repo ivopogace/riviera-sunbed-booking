@@ -1,0 +1,222 @@
+<!-- PROTOTYPE D — Thumb coast. 390×844 first: map + scrubber + sheet, always all three. -->
+<section
+  class="relative flex h-[var(--riv-proto-h)] flex-col overflow-hidden lg:flex-row lg:gap-2 lg:p-2"
+  aria-label="Thumb coast"
+>
+  <!-- Grown up, the scrubber's notches become this labelled rail; the phone gets the slider below. -->
+  <nav
+    appPanelGlass
+    class="hidden shrink-0 flex-col overflow-y-auto rounded-[24px] p-2 scrollbar-thin lg:flex lg:w-[210px]"
+    aria-label="Beaches, north to south"
+  >
+    @for (entry of stops(); track entry.code; let at = $index) {
+      <button
+        type="button"
+        appTouchTarget
+        class="flex touch-manipulation items-center gap-2 rounded-[14px] px-3 text-left text-[13.5px] font-semibold text-riv-ink aria-[current]:bg-riv-ink aria-[current]:text-riv-solid-btn-fill"
+        [attr.aria-current]="at === index() ? 'true' : null"
+        (click)="narrowTo(entry.code)"
+      >
+        <span class="truncate">{{ entry.label }}</span>
+        <span class="ml-auto text-[11px] tabular-nums opacity-70">{{
+          state.countByBeach().get(entry.code)
+        }}</span>
+      </button>
+    }
+  </nav>
+
+  <!-- Sized from the COAST's ratio, not the window's: past 0.80 × its height the fence crops it. -->
+  <div
+    appPane
+    #pane="pane"
+    class="relative min-h-0 flex-1 lg:w-[calc(var(--riv-proto-h)*0.78)] lg:flex-none"
+  >
+    @if (pane.box(); as measured) {
+      <app-riviera-map class="h-full w-full" [options]="options()" />
+      <app-venue-pin-layer
+        [pins]="state.pins()"
+        [map]="mapHandle()"
+        [selected]="state.venue() !== null ? state.venue() + '' : null"
+        [maxZoom]="maxZoom"
+        (chosen)="openVenue($event)"
+        (narrowed)="narrowTo($event)"
+      />
+    }
+
+    <!-- The scrubber: one control, 56 px wide and the height of the map, under the right thumb. -->
+    <div
+      #track
+      class="absolute top-[116px] right-2 z-[8] w-[56px] touch-none rounded-full border border-riv-header-border bg-riv-header-glass backdrop-blur-[22px] lg:hidden"
+      [style.bottom.px]="scrubberBottom()"
+      role="slider"
+      tabindex="0"
+      aria-label="Coast, north to south"
+      [attr.aria-valuemin]="0"
+      [attr.aria-valuemax]="stops().length - 1"
+      [attr.aria-valuenow]="index()"
+      [attr.aria-valuetext]="focus().label"
+      (pointerdown)="onScrub($event)"
+      (pointermove)="onScrub($event)"
+      (keydown.arrowUp)="onScrubKey($event, -1)"
+      (keydown.arrowDown)="onScrubKey($event, 1)"
+    >
+      @for (entry of stops(); track entry.code; let at = $index) {
+        <span
+          class="absolute left-1/2 h-[2px] -translate-x-1/2 rounded-full bg-riv-ink"
+          [class]="at === index() ? 'w-[26px] opacity-0' : 'w-[16px] opacity-35'"
+          [style.top]="'calc(' + notchPercent(at) + '% * 0.88 + 6%)'"
+        ></span>
+      }
+      <span
+        class="absolute left-1/2 flex size-[46px] -translate-x-1/2 items-center justify-center rounded-full bg-riv-ink text-[11px] font-bold text-riv-solid-btn-fill shadow-[0_6px_18px_rgba(7,42,58,0.4)] [transition:top_0.18s_ease] motion-reduce:transition-none"
+        [style.top]="'calc(' + thumbPercent() + '% * 0.88 + 6% - 23px)'"
+        aria-hidden="true"
+        >{{ index() + 1 }}</span
+      >
+    </div>
+
+    <!-- The pill the scrubber carries: it names where the thumb is and drops into that bay. -->
+    <button
+      type="button"
+      appTouchTarget
+      class="absolute right-[68px] z-[8] inline-flex max-w-[220px] touch-manipulation lg:hidden items-center gap-2 rounded-full border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill pr-3 pl-4 text-left text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] [transition:top_0.18s_ease] motion-reduce:transition-none"
+      [style.top]="'calc(' + thumbPercent() + '% * 0.88 + 6% - 22px)'"
+      (click)="toggleBay()"
+    >
+      <span class="flex flex-col leading-none">
+        <span class="text-[14px] font-bold whitespace-nowrap">{{ focus().label }}</span>
+        <span class="mt-[3px] text-[11px] whitespace-nowrap opacity-70"
+          >{{ here().length }} · from {{ fromHere() }}</span
+        >
+      </span>
+      <span class="text-[15px] opacity-60" aria-hidden="true">{{ state.bay() ? '⤢' : '⌕' }}</span>
+    </button>
+
+    @if (state.bay()) {
+      <p
+        appCardGlass
+        class="absolute top-3 left-3 z-[8] rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-riv-card-ink"
+      >
+        In the bay — press {{ focus().label }} again for the whole coast
+      </p>
+    }
+  </div>
+
+  <!-- The sheet. Three steps, all in the URL; on the phone it never leaves the screen. -->
+  <div
+    appPanelGlass
+    class="absolute inset-x-0 bottom-0 z-[20] flex flex-col overflow-hidden rounded-t-[26px] lg:static lg:min-w-[520px] lg:flex-1 lg:rounded-[24px]"
+    [class]="sheetClass()"
+  >
+    <button
+      type="button"
+      appTouchTarget
+      class="flex shrink-0 touch-manipulation flex-col items-center gap-1.5 pt-2.5 lg:hidden"
+      [attr.aria-expanded]="state.sheet() !== 'peek'"
+      (click)="stepSheet()"
+    >
+      <span
+        class="block h-[5px] w-[44px] rounded-full bg-riv-ink opacity-30"
+        aria-hidden="true"
+      ></span>
+      <span class="sr-only">Show more venues</span>
+    </button>
+
+    <div class="flex shrink-0 items-baseline gap-2 px-4 pt-2 pb-2.5">
+      <h2 class="text-[19px] leading-[22px] font-bold tracking-[-0.01em] text-riv-ink">
+        {{ focus().label }}
+      </h2>
+      <p class="text-[12.5px] text-riv-ink-soft">
+        {{ here().length }} {{ here().length === 1 ? 'venue' : 'venues' }} · {{ state.dateLabel() }}
+      </p>
+      <!-- Grown up, the sheet's three steps become density rather than height. -->
+      <div class="ml-auto hidden gap-1 lg:flex" role="group" aria-label="How many venues">
+        <button
+          type="button"
+          appTouchTarget
+          class="touch-manipulation rounded-full px-3 text-[12px] font-bold text-riv-ink aria-pressed:bg-riv-ink aria-pressed:text-riv-solid-btn-fill"
+          [attr.aria-pressed]="state.sheet() === 'peek'"
+          (click)="setStep('peek')"
+        >
+          Top pick
+        </button>
+        <button
+          type="button"
+          appTouchTarget
+          class="touch-manipulation rounded-full px-3 text-[12px] font-bold text-riv-ink aria-pressed:bg-riv-ink aria-pressed:text-riv-solid-btn-fill"
+          [attr.aria-pressed]="state.sheet() === 'half'"
+          (click)="setStep('half')"
+        >
+          Three
+        </button>
+        <button
+          type="button"
+          appTouchTarget
+          class="touch-manipulation rounded-full px-3 text-[12px] font-bold text-riv-ink aria-pressed:bg-riv-ink aria-pressed:text-riv-solid-btn-fill"
+          [attr.aria-pressed]="state.sheet() === 'full'"
+          (click)="setStep('full')"
+        >
+          All
+        </button>
+      </div>
+    </div>
+
+    <!-- One column under the thumb; only a very wide sheet has room for the second. -->
+    <ul
+      class="grid min-h-0 flex-1 list-none auto-rows-min grid-cols-1 gap-2 overflow-y-auto px-3 pb-3 scrollbar-thin min-[1700px]:grid-cols-2"
+    >
+      @for (card of shown(); track card.id) {
+        <li
+          appCardGlass
+          class="flex shrink-0 gap-3 overflow-hidden rounded-[20px] p-2 [&[data-open]]:outline-[3px] [&[data-open]]:outline-offset-[2px] [&[data-open]]:outline-riv-accent-ink"
+          [attr.data-open]="state.venue() === card.id ? '' : null"
+        >
+          <span
+            class="relative block size-[96px] shrink-0 overflow-hidden rounded-[15px] bg-(image:--riv-photo-grad)"
+            aria-hidden="true"
+          >
+            <app-photo-slideshow
+              [photos]="card.photos"
+              [name]="card.name"
+              sizes="(min-width: 1024px) 7vw, 26vw"
+            />
+            <span appPhotoScrim></span>
+          </span>
+          <span class="flex min-w-0 flex-1 flex-col gap-[3px] pr-1">
+            <span class="flex items-baseline gap-2">
+              <a
+                appTouchTarget
+                class="inline-flex min-w-0 items-center truncate text-[16.5px] leading-[19px] font-bold text-riv-card-ink no-underline"
+                href="/venues/{{ card.id }}"
+                >{{ card.name }}</a
+              >
+              <span
+                class="ml-auto text-[17px] font-extrabold whitespace-nowrap text-riv-accent-ink"
+                >{{ card.priceLabel }}</span
+              >
+            </span>
+            <span class="flex flex-wrap items-center gap-x-2 text-[12px] text-riv-card-ink-soft">
+              @if (card.isRated) {
+                <span class="font-bold text-riv-card-ink">★ {{ card.rating }}</span>
+              } @else {
+                <span appSemanticChip class="px-2 py-px text-[10.5px]">New</span>
+              }
+              <span><app-sets-free [free]="card.free" [total]="card.total" /></span>
+              @if (card.salesClosed) {
+                <app-sales-closed-chip />
+              }
+            </span>
+            <span class="flex flex-wrap gap-1.5 empty:hidden">
+              @if (card.water; as water) {
+                <span appAmenityChip water>{{ water }}</span>
+              }
+              @for (amenity of card.amenities.slice(0, 2); track amenity.code) {
+                <span appAmenityChip>{{ amenity.label }}</span>
+              }
+            </span>
+          </span>
+        </li>
+      }
+    </ul>
+  </div>
+</section>

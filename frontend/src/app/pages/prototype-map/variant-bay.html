@@ -1,0 +1,131 @@
+<!-- PROTOTYPE A — Bay theatre. Region ruler (left) · beach dial (top) · one bay, full bleed. -->
+<section class="flex h-[var(--riv-proto-h)] gap-2 px-2 pt-2 pb-2" aria-label="Bay theatre">
+  <!-- The 230 km the map cannot frame, as a ruler. Seven stretches, each a real 44 px control. -->
+  <nav
+    appPanelGlass
+    class="flex w-[76px] shrink-0 flex-col overflow-hidden rounded-[26px] py-1"
+    aria-label="Coast"
+  >
+    @for (stretch of ruler(); track stretch.entry.code) {
+      <button
+        type="button"
+        appTouchTarget
+        class="group relative flex touch-manipulation flex-col items-center justify-center gap-1.5 px-1 text-riv-ink"
+        [style.flex-grow]="stretch.span"
+        [style.flex-basis.px]="0"
+        [attr.aria-current]="stretch.current ? 'true' : null"
+        (click)="chooseRegion(stretch.entry)"
+      >
+        <span
+          class="text-[10px] leading-[12px] font-bold tracking-[0.06em] uppercase opacity-60 group-aria-[current]:opacity-100"
+          >{{ stretch.entry.label }}</span
+        >
+        <!-- The beaches of the stretch as ticks: a graphic, so it carries no target of its own. -->
+        <span class="flex w-full flex-col items-center gap-[3px]" aria-hidden="true">
+          @for (tick of stretch.beaches; track tick.code) {
+            <span
+              class="block h-[2px] rounded-full bg-riv-ink"
+              [class]="tick.has ? 'w-[26px] opacity-70' : 'w-[10px] opacity-25'"
+            ></span>
+          }
+        </span>
+      </button>
+    }
+  </nav>
+
+  <div class="flex min-w-0 flex-1 flex-col gap-2">
+    <!-- The catalogue's own north-to-south order, as a dial. Scrolls; the current beach inverts. -->
+    <div
+      appPanelGlass
+      class="flex shrink-0 items-stretch gap-1 overflow-x-auto rounded-[26px] px-2 py-1.5 scrollbar-none"
+      role="group"
+      aria-label="Beaches, north to south"
+    >
+      @for (stop of dial(); track stop.entry.code) {
+        <button
+          type="button"
+          appTouchTarget
+          class="flex shrink-0 touch-manipulation flex-col justify-center rounded-[18px] px-[13px] text-left text-riv-ink aria-[current]:bg-riv-ink aria-[current]:text-riv-solid-btn-fill"
+          [attr.aria-current]="stop.current ? 'true' : null"
+          (click)="chooseBeach(stop.entry)"
+        >
+          <span class="text-[14px] leading-[16px] font-bold whitespace-nowrap">{{
+            stop.entry.label
+          }}</span>
+          <span class="text-[11px] leading-[13px] whitespace-nowrap opacity-70"
+            >{{ stop.count }} · from {{ stop.from }}</span
+          >
+        </button>
+      }
+    </div>
+
+    <!-- The bay itself. The pane is measured first; the camera is fitted to the bay's own venues. -->
+    <div appPane #pane="pane" class="relative min-h-0 flex-1">
+      @if (pane.box(); as measured) {
+        <app-riviera-map class="h-full w-full" [options]="options()" [nearMe]="true" />
+        <app-venue-pin-layer
+          [pins]="state.pins()"
+          [map]="mapHandle()"
+          [selected]="state.venue() !== null ? state.venue() + '' : null"
+          [maxZoom]="maxZoom"
+          (chosen)="openVenue($event)"
+          (narrowed)="narrowTo($event)"
+        />
+      }
+
+      <!-- The bay's own header, over the map: where you are and what it costs to sit down here. -->
+      <div
+        appCardGlass
+        class="absolute top-4 left-4 z-[6] max-w-[320px] rounded-[22px] px-[18px] py-3.5 shadow-[0_14px_44px_rgba(7,42,58,0.26)] backdrop-blur-[26px]"
+      >
+        <p class="text-[26px] leading-[28px] font-bold tracking-[-0.02em] text-riv-card-ink">
+          {{ focus().label }}
+        </p>
+        <p class="mt-1 text-[13px] text-riv-card-ink-soft">
+          {{ venues().length }} {{ venues().length === 1 ? 'venue' : 'venues' }} ·
+          {{ state.dateLabel() }}
+        </p>
+        <p class="mt-1.5 text-[12.5px] leading-[16px] text-riv-card-ink-soft">
+          A set is two loungers and an umbrella, for the whole day. Each venue stops selling at its
+          own hour today.
+        </p>
+      </div>
+
+      @if (state.openCard(); as card) {
+        <!-- The dock: the preview the pins already open, and beside it the sunbeds it is selling. -->
+        <div class="absolute inset-x-4 bottom-4 z-[7] flex items-end gap-3">
+          <app-venue-preview-card
+            class="w-[330px] shrink-0"
+            [card]="card"
+            [date]="state.date()"
+            (closed)="closePreview()"
+            (stepped)="openVenue($event)"
+          />
+          <app-beach-map-canvas
+            class="w-[352px] shrink-0 max-[1280px]:hidden"
+            [label]="'Beach map — ' + card.name"
+            railCodes="letters"
+            priceChips="capped-phrases"
+          >
+            <ng-template [appBeachMapRow]="setRows()" let-row>
+              <ul
+                class="set-row grid h-full list-none grid-cols-[repeat(4,var(--riv-tile))] gap-1.5"
+              >
+                @for (tile of row.tiles; track tile.id) {
+                  <li
+                    class="rounded-[10px] border"
+                    [class]="
+                      tile.free
+                        ? 'border-riv-select-edge bg-riv-accent-fill'
+                        : 'border-riv-card-border bg-riv-walkin-hatch'
+                    "
+                  ></li>
+                }
+              </ul>
+            </ng-template>
+          </app-beach-map-canvas>
+        </div>
+      }
+    </div>
+  </div>
+</section>

@@ -345,6 +345,14 @@ export const routes: Routes = [
     ],
   },
   {
+    // THROWAWAY SPIKE (branch claude/riviera-map-desktop-spike-*): four candidate Discover
+    // layouts for the riviera map. Fixture-fed, no backend, never merged to main.
+    path: 'prototype/map-desktop',
+    loadComponent: () => import('./pages/prototype-map/prototype-map').then((m) => m.PrototypeMap),
+    title: 'Map layout spike — Riviera',
+    data: { section: 'beaches' } satisfies TouristRouteData,
+  },
+  {
     path: 'venues/:id',
     loadComponent: () => import('./venue/venue-map').then((m) => m.VenueMap),
     title: 'Beach map — Riviera',

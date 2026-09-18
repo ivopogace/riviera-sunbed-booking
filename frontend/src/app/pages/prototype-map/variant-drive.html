@@ -1,0 +1,128 @@
+<!-- PROTOTYPE B — Drive south. The rail's scroll IS the camera; one gesture, 230 km. -->
+<section
+  class="flex h-[var(--riv-proto-h)] flex-col-reverse gap-2 p-2 lg:flex-row"
+  aria-label="Drive south"
+>
+  <!-- The road, as a list. Scrolling it travels; tabbing through it travels too. -->
+  <div
+    #rail
+    class="min-h-0 w-full flex-1 overflow-y-auto scrollbar-thin lg:w-[404px] lg:flex-none"
+    (scroll)="onRailScroll()"
+  >
+    @for (stop of stops(); track stop.entry.code) {
+      <h2
+        #heading
+        appPanelGlass
+        class="sticky top-0 z-[2] mb-2 flex items-baseline gap-2 rounded-[18px] px-4 py-2.5 text-riv-ink"
+        [attr.data-current]="isCurrent(stop) ? '' : null"
+      >
+        <span class="text-[19px] leading-[22px] font-bold tracking-[-0.01em]">{{
+          stop.entry.label
+        }}</span>
+        <span class="text-[12px] opacity-70">{{ stop.regionLabel }}</span>
+        <span class="ml-auto text-[12px] font-bold tabular-nums opacity-70">km {{ stop.km }}</span>
+      </h2>
+      <ul class="mb-5 flex list-none flex-col gap-2">
+        @for (card of stop.cards; track card.id) {
+          <li
+            appCardGlass
+            class="flex gap-3 overflow-hidden rounded-[20px] p-2 [&[data-open]]:outline-[3px] [&[data-open]]:outline-offset-[2px] [&[data-open]]:outline-riv-accent-ink"
+            [attr.data-row]="card.id"
+            [attr.data-open]="state.venue() === card.id ? '' : null"
+          >
+            <span
+              class="relative block size-[82px] shrink-0 overflow-hidden rounded-[14px] bg-(image:--riv-photo-grad)"
+              aria-hidden="true"
+            >
+              <app-photo-slideshow
+                [photos]="card.photos"
+                [name]="card.name"
+                sizes="(min-width: 1024px) 6vw, 24vw"
+              />
+              <span appPhotoScrim></span>
+            </span>
+            <span class="flex min-w-0 flex-1 flex-col gap-[3px] pt-0.5 pr-1">
+              <span class="flex items-baseline gap-2">
+                <a
+                  appTouchTarget
+                  class="inline-flex min-w-0 items-center truncate text-[16px] leading-[19px] font-bold text-riv-card-ink no-underline"
+                  href="/venues/{{ card.id }}"
+                  >{{ card.name }}</a
+                >
+                <span
+                  class="ml-auto text-[15px] font-extrabold whitespace-nowrap text-riv-accent-ink"
+                  >{{ card.priceLabel }}</span
+                >
+              </span>
+              <span
+                class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-riv-card-ink-soft"
+              >
+                @if (card.isRated) {
+                  <span class="font-bold text-riv-card-ink">★ {{ card.rating }}</span>
+                } @else {
+                  <span appSemanticChip class="px-2 py-px text-[10.5px]">New</span>
+                }
+                <span><app-sets-free [free]="card.free" [total]="card.total" /></span>
+                @if (card.water) {
+                  <span>{{ card.water }}</span>
+                }
+              </span>
+              <span class="mt-0.5 block h-1.5 overflow-hidden rounded-full bg-riv-card-track">
+                <span
+                  class="block h-full bg-(image:--riv-bar-grad)"
+                  [style.width.%]="card.freePercent"
+                ></span>
+              </span>
+            </span>
+          </li>
+        }
+      </ul>
+    }
+    <p class="px-4 pt-2 pb-10 text-center text-[12px] text-riv-ink-soft">
+      Ksamil. The coast ends here — the border is 3 km on.
+    </p>
+  </div>
+
+  <!-- The odometer: the 230 km a camera at this scale can never hold. A readout, not a control. -->
+  <div class="relative hidden w-[58px] shrink-0 lg:block" aria-hidden="true">
+    <span class="absolute inset-y-4 left-1/2 w-px -translate-x-1/2 bg-riv-ink opacity-20"></span>
+    @for (stop of stops(); track stop.entry.code) {
+      <span
+        class="absolute left-1/2 h-px -translate-x-1/2 bg-riv-ink"
+        [class]="isCurrent(stop) ? 'w-[34px] opacity-90' : 'w-[14px] opacity-30'"
+        [style.top.%]="(stop.km / coastKm) * 92 + 4"
+      ></span>
+    }
+    <span
+      class="absolute left-1/2 flex h-[26px] w-[52px] -translate-x-1/2 items-center justify-center rounded-full bg-riv-ink text-[11px] font-bold text-riv-solid-btn-fill tabular-nums [transition:top_0.25s_ease] motion-reduce:transition-none"
+      [style.top]="'calc(' + (travelledKm() / coastKm) * 92 + 4 + '% - 13px)'"
+      >{{ travelledKm() }}</span
+    >
+  </div>
+
+  <!-- The windscreen. Wide on purpose: at 13 km of coast in shot the fence is nowhere near it. -->
+  <div appPane #pane="pane" class="relative h-[44%] min-h-0 shrink-0 lg:h-auto lg:flex-1">
+    @if (pane.box(); as measured) {
+      <app-riviera-map class="h-full w-full" [options]="options()" />
+      <app-venue-pin-layer
+        [pins]="state.pins()"
+        [map]="mapHandle()"
+        [selected]="state.venue() !== null ? state.venue() + '' : null"
+        [maxZoom]="maxZoom"
+        (chosen)="openVenue($event)"
+      />
+    }
+    <p
+      appCardGlass
+      class="absolute top-4 left-4 z-[6] rounded-[20px] px-4 py-2.5 text-riv-card-ink shadow-[0_14px_44px_rgba(7,42,58,0.24)] backdrop-blur-[26px]"
+    >
+      <span class="block text-[22px] leading-[25px] font-bold tracking-[-0.02em]">{{
+        current().entry.label
+      }}</span>
+      <span class="mt-0.5 block text-[12.5px] text-riv-card-ink-soft tabular-nums"
+        >km {{ travelledKm() }} of {{ coastKm }} · {{ current().regionLabel }} ·
+        {{ state.dateLabel() }}</span
+      >
+    </p>
+  </div>
+</section>
