@@ -1,0 +1,124 @@
+<section
+  class="flex flex-col gap-2 px-2 pt-2 pb-2 max-sm:h-[calc(100dvh-var(--proto-top)-61px)] sm:h-[calc(100dvh-var(--proto-top))]"
+  aria-label="Discover, variant A"
+>
+  <!-- One slim bar: what day, which beach, how many. The headline is gone; the map is the headline. -->
+  <form
+    appCardGlass
+    class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[18px] px-3 py-1.5 backdrop-blur-[22px] backdrop-saturate-[1.7]"
+    (submit)="$event.preventDefault()"
+  >
+    <label class="flex items-center gap-2 text-[12px] font-semibold text-riv-card-ink-soft">
+      Day
+      <input
+        appTouchTarget
+        appFieldGlass
+        type="date"
+        class="rounded-[12px] px-[10px] text-[15px]"
+        [value]="date()"
+        (change)="onDate($event)"
+      />
+    </label>
+    <label class="flex items-center gap-2 text-[12px] font-semibold text-riv-card-ink-soft">
+      Beach
+      <select
+        appTouchTarget
+        appFieldGlass
+        class="max-w-[190px] rounded-[12px] px-[10px] text-[15px]"
+        [value]="beach()"
+        (change)="onBeachFilter($event)"
+      >
+        <option value="">All 21 beaches</option>
+        @for (g of groups; track g.code) {
+          <option [value]="g.code">{{ g.label }} ({{ g.cards.length }})</option>
+        }
+      </select>
+    </label>
+    <p class="ml-auto text-[13px] text-riv-card-ink-soft">
+      <strong class="text-[20px] font-bold text-riv-accent-ink">{{ cards().length }}</strong> venues
+      · one set, the whole day
+    </p>
+  </form>
+
+  <!-- The coast scrubber: the 36 beaches north→south as one strip. A wide pane cannot show the coast, so this is the coast. -->
+  <nav
+    appCardGlass
+    class="hidden rounded-[14px] px-2 py-1 sm:block"
+    aria-label="The coast, north to south"
+  >
+    <ol class="flex items-end gap-[2px] overflow-x-auto scrollbar-none">
+      @for (entry of catalogue; track entry.code; let i = $index) {
+        <li
+          class="min-w-0"
+          [class]="
+            (hasVenues(entry.code) ? 'flex-1 ' : 'w-[10px] ') +
+            (i >= covered().from && i <= covered().to
+              ? 'bg-riv-accent-chip-fill rounded-[8px]'
+              : '')
+          "
+        >
+          @if (hasVenues(entry.code)) {
+            <button
+              type="button"
+              appTouchTarget
+              class="flex w-full cursor-pointer flex-col items-center justify-end gap-[2px] rounded-[8px] px-[2px] text-[10.5px] leading-[1.1] font-semibold text-riv-card-ink hover:bg-riv-wash-hover"
+              [class]="entry.code === beach() ? 'text-riv-accent-ink' : ''"
+              (click)="goBeach(entry.code)"
+            >
+              <span class="block h-[10px] w-[3px] rounded-full bg-riv-accent-ink"></span>
+              <span class="max-w-full truncate">{{ entry.label }}</span>
+            </button>
+          } @else {
+            <span
+              class="flex h-11 flex-col items-center justify-end pb-[14px]"
+              [attr.title]="entry.label"
+              aria-hidden="true"
+            >
+              <span class="block h-[5px] w-[2px] rounded-full bg-riv-card-ink-faint"></span>
+            </span>
+          }
+        </li>
+      }
+    </ol>
+  </nav>
+
+  <!-- The pane. Its width is the window's, which is the whole argument for and against this variant. -->
+  <div appProtoPane class="relative min-h-[260px] flex-1">
+    <app-riviera-map class="h-full" [nearMe]="true" (mapClick)="select(null)" />
+    <app-venue-pin-layer
+      [pins]="pins()"
+      [map]="mapHandle()"
+      [selected]="selected()"
+      [maxZoom]="maxZoom"
+      (chosen)="select($event)"
+    />
+    @if (selectedCard(); as card) {
+      <app-venue-preview-card
+        class="absolute right-3 bottom-[58px] z-[5] w-[min(420px,calc(100%-24px))]"
+        [card]="card"
+        [date]="date()"
+        [stack]="crowdStack()"
+        (closed)="select(null)"
+        (stepped)="select($event)"
+      />
+    }
+  </div>
+
+  <!-- The shelf: the venues in coast order; the selected one scrolls into the centre. -->
+  <ul
+    data-rail
+    class="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 scrollbar-none"
+    aria-label="Venues, north to south"
+  >
+    @for (card of cards(); track card.id) {
+      <li class="w-[min(320px,86vw)] shrink-0 snap-center">
+        <app-proto-venue-row
+          [card]="card"
+          [date]="date()"
+          [selected]="isSelected(card)"
+          (chosen)="select($event)"
+        />
+      </li>
+    }
+  </ul>
+</section>

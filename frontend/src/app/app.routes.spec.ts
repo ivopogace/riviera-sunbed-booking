@@ -126,9 +126,9 @@ describe('app.routes — every lazy route target resolves its module', () => {
     return names;
   }
 
-  it('resolves all 34 loadComponent targets, including the nested tab-route trees (#999)', async () => {
+  it('resolves all 35 loadComponent targets, including the nested tab-route trees (#999; 35 = 34 + the map-desktop prototype route, spike only)', async () => {
     const names = await loadedComponentNames(routes);
-    expect(names).toHaveLength(34);
+    expect(names).toHaveLength(35);
     expect(names.every((name) => name.length > 0)).toBe(true);
   });
 });

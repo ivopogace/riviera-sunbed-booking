@@ -276,6 +276,13 @@ export const routes: Routes = [
     data: { console: 'plain' } satisfies ConsoleRouteData,
   },
   {
+    // PROTOTYPE (spike, never merges): the desktop map-design variants, `?variant=a|b|c|d`.
+    path: 'prototype/map-desktop',
+    loadComponent: () => import('./pages/prototype-map/prototype-map').then((m) => m.PrototypeMap),
+    title: 'Map prototype — Riviera',
+    data: { section: 'beaches' } satisfies TouristRouteData,
+  },
+  {
     // Draft privacy policy — checkout agreement + footer link target.
     path: 'legal/privacy',
     loadComponent: () => import('./pages/legal/privacy-policy').then((m) => m.PrivacyPolicy),

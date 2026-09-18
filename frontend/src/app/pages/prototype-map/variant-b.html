@@ -1,0 +1,245 @@
+<section
+  class="grid gap-3 px-3 pt-2 pb-2 max-sm:h-[calc(100dvh-var(--proto-top)-61px)] sm:h-[calc(100dvh-var(--proto-top))] max-md:grid-rows-[minmax(0,52%)_minmax(0,1fr)] md:grid-cols-[var(--spine)_minmax(0,1fr)] xl:grid-cols-[var(--spine)_minmax(0,1fr)_minmax(300px,360px)]"
+  [style.--spine.px]="spineWidth()"
+  aria-label="Discover, variant B"
+>
+  <!-- The spine: north at the top, south at the bottom, the whole coast in one portrait pane. -->
+  <div appProtoPane class="relative min-h-0">
+    <app-riviera-map class="h-full" [nearMe]="true" (mapClick)="select(null)" />
+    <app-venue-pin-layer
+      [pins]="pins()"
+      [map]="mapHandle()"
+      [selected]="selected()"
+      [maxZoom]="maxZoom"
+      (chosen)="select($event)"
+    />
+    <!-- Where the list is being read: a line across the spine at that beach's latitude. -->
+    @if (readingY(); as y) {
+      <div
+        class="pointer-events-none absolute inset-x-0 z-[3] flex items-center gap-2 px-2"
+        [style.top.px]="y"
+        aria-hidden="true"
+      >
+        <span class="h-[2px] flex-1 bg-riv-accent-ink/70"></span>
+        <span
+          class="rounded-full bg-riv-solid-btn-fill px-[9px] py-[2px] text-[11px] font-bold text-riv-solid-btn-ink shadow-[0_2px_8px_rgba(7,42,58,0.3)]"
+          >{{ readingLabel() }}</span
+        >
+        <span class="h-[2px] w-4 bg-riv-accent-ink/70"></span>
+      </div>
+    }
+    <div class="pointer-events-none absolute top-3 left-3 z-[5] flex flex-col gap-2">
+      <span
+        class="rounded-full bg-riv-solid-btn-fill px-[10px] py-[3px] text-[11px] font-bold tracking-[0.06em] text-riv-solid-btn-ink shadow-[0_2px_8px_rgba(7,42,58,0.3)]"
+        >N ↑ Velipojë</span
+      >
+      @if (zoomed() !== 'coast') {
+        <button
+          type="button"
+          appTouchTarget
+          class="pointer-events-auto inline-flex cursor-pointer items-center gap-2 rounded-full border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill pr-[10px] pl-[14px] text-[14px] font-bold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)]"
+          (click)="wholeCoast()"
+        >
+          {{ zoomedLabel() }} <span aria-hidden="true">×</span>
+          <span class="font-semibold opacity-80">whole coast</span>
+        </button>
+      }
+    </div>
+    <span
+      class="pointer-events-none absolute bottom-[46px] left-3 z-[5] rounded-full bg-riv-solid-btn-fill px-[10px] py-[3px] text-[11px] font-bold tracking-[0.06em] text-riv-solid-btn-ink shadow-[0_2px_8px_rgba(7,42,58,0.3)]"
+      aria-hidden="true"
+      >S ↓ Ksamil</span
+    >
+    <!-- Below xl the preview sits over the spine; from xl the pick column carries it. -->
+    @if (selectedCard(); as card) {
+      <app-venue-preview-card
+        class="absolute inset-x-3 bottom-[58px] z-[5] xl:hidden"
+        [card]="card"
+        [date]="date()"
+        [stack]="crowdStack()"
+        (closed)="select(null)"
+        (stepped)="select($event)"
+      />
+    }
+  </div>
+
+  <!-- The itinerary: a rail down the left, a stop per beach, the venues at each stop. -->
+  <div class="flex min-h-0 flex-col gap-2">
+    <form
+      appCardGlass
+      class="flex items-center gap-3 rounded-[16px] px-3 py-1.5 backdrop-blur-[22px] backdrop-saturate-[1.7]"
+      (submit)="$event.preventDefault()"
+    >
+      <label class="flex items-center gap-2 text-[12px] font-semibold text-riv-card-ink-soft">
+        Day
+        <input
+          appTouchTarget
+          appFieldGlass
+          type="date"
+          class="rounded-[12px] px-[10px] text-[15px]"
+          [value]="date()"
+          (change)="onDate($event)"
+        />
+      </label>
+      <p class="ml-auto text-[13px] text-riv-card-ink-soft">
+        <strong class="text-[20px] font-bold text-riv-accent-ink">{{ cards().length }}</strong>
+        venues on {{ groups().length }} beaches
+      </p>
+    </form>
+    <div
+      #list
+      data-rail
+      class="min-h-0 flex-1 overflow-y-auto pr-1 scrollbar-thin"
+      (scroll)="onListScroll()"
+    >
+      <ol class="relative ml-[14px] border-l-2 border-riv-accent-ink/40 pl-4">
+        @for (group of groups(); track group.code) {
+          <li class="pb-5" [attr.data-stop]="group.code">
+            <div class="sticky top-0 z-[2] -ml-4 flex items-center gap-3 bg-transparent py-1 pl-4">
+              <span
+                class="absolute -left-[9px] size-4 rounded-full border-[3px] border-riv-accent-ink bg-riv-card-glass"
+                aria-hidden="true"
+              ></span>
+              <button
+                type="button"
+                appTouchTarget
+                appCardGlass
+                class="inline-flex cursor-pointer items-center gap-2 rounded-full px-[14px] text-left text-[15px] font-bold text-riv-card-ink shadow-[0_6px_18px_rgba(7,42,58,0.18)] backdrop-blur-[22px] hover:border-riv-card-hover-border"
+                [attr.aria-label]="'Fly to ' + group.label"
+                (click)="flyTo(group.code)"
+              >
+                {{ group.label }}
+                <span class="text-[12px] font-semibold text-riv-card-ink-soft"
+                  >{{ group.region }} · {{ group.cards.length }} · from
+                  {{ group.from ?? '—' }}</span
+                >
+              </button>
+            </div>
+            <ul class="mt-2 flex flex-col gap-2">
+              @for (card of group.cards; track card.id) {
+                <li [attr.data-venue-row]="card.id">
+                  <article
+                    appCardGlass
+                    class="relative flex overflow-hidden rounded-[18px] shadow-[0_10px_30px_rgba(7,42,58,0.18)] backdrop-blur-[22px] backdrop-saturate-[1.7] [&[data-selected]]:outline-[3px] [&[data-selected]]:outline-offset-2 [&[data-selected]]:outline-riv-accent-ink"
+                    [attr.data-selected]="isSelected(card) ? '' : null"
+                  >
+                    <span
+                      class="relative block w-[132px] shrink-0 self-stretch bg-(image:--riv-photo-grad)"
+                      aria-hidden="true"
+                    >
+                      <app-photo-slideshow
+                        [photos]="card.photos.slice(0, 1)"
+                        [name]="card.name"
+                        testId="stop-photo"
+                      />
+                      <span appPhotoScrim></span>
+                      <span
+                        appSemanticChip
+                        class="absolute top-[8px] left-[8px] px-[8px] py-[3px] text-[10px] tracking-[0.03em]"
+                        >{{ card.modeLabel }}</span
+                      >
+                    </span>
+                    <button
+                      type="button"
+                      appTouchTarget
+                      class="flex min-w-0 flex-1 cursor-pointer flex-col gap-[3px] px-[14px] py-[10px] text-left"
+                      [attr.aria-pressed]="isSelected(card)"
+                      [attr.aria-label]="card.ariaLabel"
+                      (click)="select(idOf(card))"
+                    >
+                      <span class="flex items-baseline justify-between gap-2">
+                        <span
+                          class="truncate text-[17px] leading-[1.1] font-bold text-riv-card-ink"
+                          >{{ card.name }}</span
+                        >
+                        <span class="shrink-0 text-[15px] font-extrabold text-riv-accent-ink">{{
+                          card.priceLabel ?? 'No sets yet'
+                        }}</span>
+                      </span>
+                      <span
+                        class="flex items-center gap-[8px] text-[12.5px] text-riv-card-ink-soft"
+                      >
+                        @if (card.isRated) {
+                          <span
+                            ><span class="text-[#f4a939]" aria-hidden="true">★</span>
+                            {{ card.rating }} · {{ card.reviewsLabel }}</span
+                          >
+                        } @else {
+                          <span appSemanticChip class="px-[8px] py-px text-[10.5px]">New</span>
+                        }
+                        <span><app-sets-free [free]="card.free" [total]="card.total" /></span>
+                      </span>
+                      <span class="flex flex-wrap gap-1.5 empty:hidden">
+                        @if (card.water; as water) {
+                          <span appAmenityChip water>{{ water }}</span>
+                        }
+                        @for (amenity of card.amenities; track amenity.code) {
+                          <span appAmenityChip>{{ amenity.label }}</span>
+                        }
+                      </span>
+                    </button>
+                  </article>
+                </li>
+              }
+            </ul>
+          </li>
+        }
+      </ol>
+    </div>
+  </div>
+
+  <!-- The pick, xl only: the desktop's spare width shows the sunbeds before the tourist leaves the page. -->
+  <aside class="hidden min-h-0 flex-col gap-3 overflow-y-auto xl:flex" aria-label="Your pick">
+    @if (selectedCard(); as card) {
+      <app-venue-preview-card
+        class="shrink-0"
+        [card]="card"
+        [date]="date()"
+        [stack]="crowdStack()"
+        (closed)="select(null)"
+        (stepped)="select($event)"
+      />
+      <div appCardGlass class="rounded-[22px] p-3 backdrop-blur-[22px] backdrop-saturate-[1.7]">
+        <p class="mb-2 text-[13px] text-riv-card-ink-soft">
+          Sunbeds at {{ card.name }} — front row first
+        </p>
+        <app-beach-map-canvas [label]="'Beach map — ' + card.name" [fitWidth]="true">
+          <ng-template [appBeachMapRow]="pickRows()" let-row>
+            <ul
+              class="grid h-full list-none grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
+            >
+              @for (tile of row.tiles; track tile.id) {
+                <li
+                  class="flex h-full items-center justify-center rounded-[10px] border-[1.5px] text-[12.5px] font-bold"
+                  [class]="
+                    tile.state === 'taken'
+                      ? 'border-riv-card-border bg-riv-card-track text-riv-card-ink-faint line-through'
+                      : tile.state === 'premium'
+                        ? 'border-riv-tile-premium-border bg-riv-tile-premium-fill text-riv-tile-premium-ink'
+                        : 'border-riv-tile-available-border bg-riv-tile-available-fill text-riv-tile-available-ink'
+                  "
+                >
+                  {{ tile.id }}
+                </li>
+              }
+            </ul>
+          </ng-template>
+        </app-beach-map-canvas>
+        <a
+          appTouchTarget
+          class="mt-3 inline-flex w-full items-center justify-center rounded-full bg-riv-accent-ink px-[16px] text-[14px] font-semibold text-riv-on-accent-ink no-underline"
+          [routerLink]="['/venues', card.id]"
+          [queryParams]="{ date: date() }"
+          >Pick a set</a
+        >
+      </div>
+    } @else {
+      <p
+        appCardGlass
+        class="rounded-[22px] px-5 py-10 text-center text-[15px] text-riv-card-ink-soft backdrop-blur-[22px]"
+      >
+        Press a venue — on the coast or in the list — to see its sunbeds here.
+      </p>
+    }
+  </aside>
+</section>
