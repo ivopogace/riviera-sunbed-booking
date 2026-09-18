@@ -126,9 +126,9 @@ describe('app.routes — every lazy route target resolves its module', () => {
     return names;
   }
 
-  it('resolves all 34 loadComponent targets, including the nested tab-route trees (#999)', async () => {
+  it('resolves all 35 loadComponent targets, including the nested tab-route trees (#999)', async () => {
     const names = await loadedComponentNames(routes);
-    expect(names).toHaveLength(34);
+    expect(names).toHaveLength(35);
     expect(names.every((name) => name.length > 0)).toBe(true);
   });
 });
@@ -164,8 +164,8 @@ describe('app.routes — the phone tab bar reads its section and checkout flag o
     }
   });
 
-  it('hides the tab bar on booking/pay and nowhere else', () => {
+  it('hides the tab bar on booking/pay and the prototype spike, and nowhere else', () => {
     const chromeless = routes.filter((r) => r.data?.['tabBar'] === false).map((r) => r.path);
-    expect(chromeless).toEqual(['booking/pay']);
+    expect(chromeless).toEqual(['prototype/map-desktop', 'booking/pay']);
   });
 });

@@ -219,6 +219,14 @@ export const routes: Routes = [
     data: { section: 'beaches' } satisfies TouristRouteData,
   },
   {
+    // PROTOTYPE spike (pages/prototype-map/README.md) — tabBar: false, own the whole viewport.
+    path: 'prototype/map-desktop',
+    loadComponent: () =>
+      import('./pages/prototype-map/prototype-map-page').then((m) => m.PrototypeMapPage),
+    title: 'Prototype — riviera map placement',
+    data: { tabBar: false } satisfies TouristRouteData,
+  },
+  {
     // Device-local guest bookings list.
     path: 'my-bookings',
     loadComponent: () => import('./booking/my-bookings').then((m) => m.MyBookings),
