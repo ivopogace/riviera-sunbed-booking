@@ -12,6 +12,9 @@
  *   H  tide-table   round 3 — the coast × the week: seven days of availability drawn in the sea
  *   I  dive         round 3 — one continuous zoom from the riviera to one lounger
  *   J  sundial      round 3 — today, hour by hour: sales close as the light on the coast
+ *   K  locator      round 4 — the map's BOX is derived from the result set's own aspect
+ *   L  map-mode     round 4 — the maintainer's List/Map toggle, built so it can be judged
+ *   M  ledger       round 4 — one row per beach, each with its own small map of its stretch
  *
  * Route: `/prototype/map-desktop?variant=A`. Spike branch only — never merges. The design
  * question, the wireframes and the verdict are in this folder's README.md.
@@ -42,6 +45,9 @@ import { VariantVerdict } from './variant-verdict';
 import { VariantTideTable } from './variant-tide-table';
 import { VariantDive } from './variant-dive';
 import { VariantSundial } from './variant-sundial';
+import { VariantLocator } from './variant-locator';
+import { VariantMapMode } from './variant-map-mode';
+import { VariantLedger } from './variant-ledger';
 
 const VARIANTS: readonly PrototypeVariant[] = [
   {
@@ -86,6 +92,21 @@ const VARIANTS: readonly PrototypeVariant[] = [
     name: 'Sundial',
     claim: 'Round 3 — today, hour by hour: sales close as the light on the coast',
   },
+  {
+    key: 'K',
+    name: 'Locator',
+    claim: 'Round 4 — the map is a ribbon the shape of the result set, never a mode',
+  },
+  {
+    key: 'L',
+    name: 'Map mode',
+    claim: 'Round 4 — the List/Map toggle brought to the desktop, built so it can be judged',
+  },
+  {
+    key: 'M',
+    name: 'Ledger',
+    claim: 'Round 4 — the beach is the unit: one row each, with its own map of its stretch',
+  },
 ];
 
 @Component({
@@ -102,9 +123,25 @@ const VARIANTS: readonly PrototypeVariant[] = [
     VariantTideTable,
     VariantDive,
     VariantSundial,
+    VariantLocator,
+    VariantMapMode,
+    VariantLedger,
   ],
   template: `
     @switch (variant()) {
+      @case ('K') {
+        <app-variant-locator [state]="state()" (filtered)="onFilter($event)" />
+      }
+      @case ('L') {
+        <app-variant-map-mode
+          [state]="state()"
+          [startOnMap]="startOnMap()"
+          (filtered)="onFilter($event)"
+        />
+      }
+      @case ('M') {
+        <app-variant-ledger [state]="state()" (filtered)="onFilter($event)" />
+      }
       @case ('H') {
         <app-variant-tide-table [state]="state()" (filtered)="onFilter($event)" />
       }
@@ -156,6 +193,9 @@ export class PrototypeMapPage {
    * Seeded from the URL so any state is shareable and screenshot-able:
    * `?variant=C&region=HIMARE`, `?variant=D&open=22`. A control then owns the signal.
    */
+  /** Variant L's map state, so both halves of the toggle are screenshot-able: `?variant=L&map=1`. */
+  protected readonly startOnMap = computed(() => this.params().get('map') === '1');
+
   private readonly beach = linkedSignal(() => this.params().get('beach') ?? '');
   private readonly region = linkedSignal(() => this.params().get('region') ?? '');
   private readonly date = linkedSignal(

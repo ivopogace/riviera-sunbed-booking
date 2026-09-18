@@ -44,9 +44,10 @@ function mercatorY(lat: number): number {
 /**
  * The camera that shows every one of `at` inside a `width` × `height` pane.
  *
- * <p>`insetLeft` is chrome that COVERS the map rather than sitting beside it (variant B's glass
- * rail): the fit then frames the pins in what is actually visible and shifts the centre west→east
- * by half the inset, instead of parking the coast behind the rail.
+ * <p>`insetLeft` / `insetRight` is chrome that COVERS the map rather than sitting beside it
+ * (variant B's glass rail; variant K's label gutter): the fit then frames the pins in what is
+ * actually left over and shifts the centre by half the imbalance, instead of parking the coast
+ * behind the chrome.
  *
  * <p>Clamped twice: to the map's own `minZoom`/`maxZoom`, and to the zoom at which the viewport
  * still fits inside `maxBounds` — the ADR-0022 tile fence is only 2.2° of longitude wide, so a
@@ -58,8 +59,9 @@ export function fitPins(
   width: number,
   height: number,
   insetLeft = 0,
+  insetRight = 0,
 ): MapView | null {
-  if (at.length === 0 || width - insetLeft <= PAD_PX || height <= PAD_PX) {
+  if (at.length === 0 || width - insetLeft - insetRight <= PAD_PX || height <= PAD_PX) {
     return null;
   }
   const lngs = at.map((p) => p.lng);
@@ -69,7 +71,7 @@ export function fitPins(
   const north = Math.max(...lats);
   const south = Math.min(...lats);
 
-  const usableW = width - insetLeft - PAD_PX;
+  const usableW = width - insetLeft - insetRight - PAD_PX;
   const usableH = height - PAD_PX;
 
   const lngSpan = east - west;
@@ -93,7 +95,7 @@ export function fitPins(
   const perPixel = 360 / (TILE * 2 ** zoom);
   return {
     center: {
-      lng: (west + east) / 2 - (insetLeft / 2) * perPixel,
+      lng: (west + east) / 2 - ((insetLeft - insetRight) / 2) * perPixel,
       lat: (north + south) / 2,
     },
     zoom,
@@ -106,8 +108,9 @@ export function fitHandleToPins(
   at: readonly LngLat[],
   pane: HTMLElement,
   insetLeft = 0,
+  insetRight = 0,
 ): void {
-  const view = fitPins(at, pane.clientWidth, pane.clientHeight, insetLeft);
+  const view = fitPins(at, pane.clientWidth, pane.clientHeight, insetLeft, insetRight);
   if (view !== null) {
     handle.easeTo(view);
   }
