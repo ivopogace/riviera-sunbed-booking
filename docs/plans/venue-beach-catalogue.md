@@ -360,16 +360,16 @@ N/A — no payment in scope.
 
 ## Execution status
 
-**Stage pointer:** review gate run on PR #1142 (findings fixed) → Sonar gate → merge
+**Stage pointer:** DONE — merged via PR #1142
 
-**Next action:** read the SonarCloud list for PR #1142 once CI is green on the head, clear it, merge, then the close-out steps 1–7.
+**Next action:** none; the plan doc retires at the next close-out after this PR merges.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — issue + plan | ✅ | |
+| 0 — issue + plan | ✅ | issue #1141; merged via PR #1142 |
 | 1 — backend: `Beach`, V59, commands, adapters, ITs | ✅ | (this PR's first commit) |
 | 2 — frontend: mirror, field, forms, Discover + map, labels | ✅ | (same commit) |
-| 3 — docs + close-out | ⏳ | PR #1142; review gate: 5 reviewers, 4 findings fixed (e2e for AC-6, plan-doc claim, half-width field, the `IsolationBeaches` registry) |
+| 3 — docs + close-out | ✅ | merged via PR #1142; review gate: 5 reviewers over `3a577d22..96ee9380`, 4 findings fixed (e2e for AC-6, the plan-doc claim, the half-width field, the `IsolationBeaches` registry); Sonar on PR #1142: 549 new lines analysed, 0 issues, 0 duplicated blocks, 97.3% new-code coverage |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -383,7 +383,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ### Acceptance-criteria verification
 
 - [x] **AC-1:** `./gradlew test --tests "*NewVenueCommandTest*" --tests "*VenueProfileCommandTest*" --tests "*BeachCodeTest*"` → 16 pass (session).
-- [ ] **AC-2/AC-3/AC-4:** `VenueListControllerIT`, `VenueBeachCatalogueMigrationIT` — Testcontainers; skipped in the session (no Docker), verified by the PR's CI run.
+- [x] **AC-2/AC-3/AC-4:** `VenueListControllerIT`, `VenueBeachCatalogueMigrationIT` — Testcontainers; skipped in the session (no Docker), green on PR #1142's CI (Sonar's 97.3% new-code coverage includes the adapter lines only those ITs reach).
 - [x] **AC-5:** `venue-create-card.spec.ts`, `venue-tab.spec.ts` → pass (session).
 - [x] **AC-6:** `home.spec.ts` "eases the map to the chosen beach, then its region, then back to the riviera" (unit, all three legs) and `discover-map.e2e.ts` "the map follows the Beach filter" (mocked e2e: the chosen beach's pin comes to the map's centre, "All beaches" sends it back) → pass (session).
 - [x] **AC-7:** `venue-pin-layer.spec.ts` (narrows to `KSAMIL` / `DHERMI`, pill reads the label) → pass (session).
