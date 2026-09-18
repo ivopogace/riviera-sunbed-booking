@@ -176,7 +176,7 @@ N/A — no payment in scope.
 
 - `CONTEXT.md` — glossary: Beach catalogue + region
 - `docs/architecture/domain-model.md` — `venue` column list
-- `frontend/e2e/discover-map.e2e.ts` — mocked venues carry codes; filter values are codes
+- `frontend/e2e/*.e2e.ts`, `frontend/e2e/support/*.ts` — mocked venues carry codes; filter values are codes; the create steps pick from the select
 - `frontend/e2e/support/admin-console.mocks.ts` — beach shown through `beachLabel`
 - `frontend/e2e/support/auth-mocks.ts` — beach shown through `beachLabel`
 - `frontend/e2e/support/operator-console.mocks.ts` — beach shown through `beachLabel`
