@@ -419,6 +419,34 @@ test.describe('Discover map — fake engine', () => {
     expect(venueRequests() - before).toBe(1);
   });
 
+  test('the map follows the Beach filter: a chosen beach comes to the centre, "All beaches" goes back', async ({
+    page,
+  }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+    const miramar = page.getByRole('button', { name: 'Miramar Beach Club, from €25' });
+    await expect(miramar).toHaveCount(1);
+    const surface = page.getByTestId('riviera-map-fake');
+    const offCentre = async (): Promise<number> => {
+      const [box, pin] = await Promise.all([surface.boundingBox(), miramar.boundingBox()]);
+      const dx = pin!.x + pin!.width / 2 - (box!.x + box!.width / 2);
+      const dy = pin!.y + pin!.height / 2 - (box!.y + box!.height / 2);
+      return Math.hypot(dx, dy);
+    };
+    // The riviera view opens between Vlorë and Ksamil, so Ksamil's pin sits well off the centre.
+    const atRiviera = await offCentre();
+    expect(atRiviera).toBeGreaterThan(60);
+
+    await page.getByTestId('filter-beach').selectOption('Ksamil');
+    await expect(page.getByTestId('venue-card')).toHaveCount(1);
+    await expect.poll(offCentre).toBeLessThan(40);
+
+    await page.getByTestId('filter-beach').selectOption('');
+    await expect(page.getByTestId('venue-card')).toHaveCount(3);
+    await expect.poll(offCentre).toBeGreaterThan(60);
+  });
+
   test('venue pins keep their double-tap on a map whose own gesture is double-tap-to-zoom', async ({
     page,
   }) => {

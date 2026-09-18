@@ -1096,8 +1096,8 @@ class VenueAdminServiceTest {
 		// AC-1: "Aurora" (P's) sorts BEFORE both of O's, so a leak would land first and fail the assert.
 		FakeVenues store = new FakeVenues(new ArrayList<>());
 		store.summaries.put(12L, new OwnedVenueView(12, "Miramar Beach Club", "DHERMI"));
-		store.summaries.put(15L, new OwnedVenueView(15, "Sereno", "Jal"));
-		store.summaries.put(20L, new OwnedVenueView(20, "Aurora", "Borsh"));
+		store.summaries.put(15L, new OwnedVenueView(15, "Sereno", "JALE"));
+		store.summaries.put(20L, new OwnedVenueView(20, "Aurora", "BORSH"));
 		VenueAdminService owned = new VenueAdminService(store, new MultiOwnership(Map.of(
 				MULTI_OWNER, Set.of(new VenueRef(12), new VenueRef(15)),
 				OTHER_OWNER, Set.of(new VenueRef(20)))));

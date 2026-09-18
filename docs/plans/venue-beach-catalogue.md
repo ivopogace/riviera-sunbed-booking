@@ -382,7 +382,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **AC-1:** `./gradlew test --tests "*NewVenueCommandTest*" --tests "*VenueProfileCommandTest*" --tests "*BeachCodeTest*"` → 16 pass (session).
 - [ ] **AC-2/AC-3/AC-4:** `VenueListControllerIT`, `VenueBeachCatalogueMigrationIT` — Testcontainers; skipped in the session (no Docker), verified by the PR's CI run.
 - [x] **AC-5:** `venue-create-card.spec.ts`, `venue-tab.spec.ts` → pass (session).
-- [x] **AC-6:** `home.spec.ts` "eases the map to the chosen beach, then its region, then back to the riviera" → pass (session).
+- [x] **AC-6:** `home.spec.ts` "eases the map to the chosen beach, then its region, then back to the riviera" (unit, all three legs) and `discover-map.e2e.ts` "the map follows the Beach filter" (mocked e2e: the chosen beach's pin comes to the map's centre, "All beaches" sends it back) → pass (session).
 - [x] **AC-7:** `venue-pin-layer.spec.ts` (narrows to `KSAMIL` / `DHERMI`, pill reads the label) → pass (session).
 - [x] **AC-8:** `beaches.spec.ts` + the touched surface specs → pass (session).
 
