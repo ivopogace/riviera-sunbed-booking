@@ -126,9 +126,10 @@ describe('app.routes — every lazy route target resolves its module', () => {
     return names;
   }
 
-  it('resolves all 34 loadComponent targets, including the nested tab-route trees (#999)', async () => {
+  // The 35th is this spike's throwaway route; back to 34 when pages/prototype-map/ goes.
+  it('resolves all 35 loadComponent targets, including the nested tab-route trees (#999)', async () => {
     const names = await loadedComponentNames(routes);
-    expect(names).toHaveLength(34);
+    expect(names).toHaveLength(35);
     expect(names.every((name) => name.length > 0)).toBe(true);
   });
 });

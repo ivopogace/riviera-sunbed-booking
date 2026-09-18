@@ -219,6 +219,14 @@ export const routes: Routes = [
     data: { section: 'beaches' } satisfies TouristRouteData,
   },
   {
+    // PROTOTYPE — throwaway; four desktop map layouts (pages/prototype-map/README.md).
+    path: 'prototype/map-desktop',
+    loadComponent: () =>
+      import('./pages/prototype-map/prototype-map-page').then((m) => m.PrototypeMapPage),
+    title: 'Prototype — desktop map layouts',
+    data: { section: 'beaches' } satisfies TouristRouteData,
+  },
+  {
     // Device-local guest bookings list.
     path: 'my-bookings',
     loadComponent: () => import('./booking/my-bookings').then((m) => m.MyBookings),
