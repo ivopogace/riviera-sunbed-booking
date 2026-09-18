@@ -17,8 +17,8 @@ function venueMap(name: string, id = VENUE): VenueMapView {
   return {
     id,
     name,
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     description: 'Loungers on the shore.',
     ratingTenths: 48,
     reviewsCount: 12,

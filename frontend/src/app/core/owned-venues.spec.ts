@@ -8,8 +8,8 @@ import { OwnedVenues } from './owned-venues';
 const MINE = `${environment.apiBaseUrl}/api/venues/mine`;
 
 const VENUES = [
-  { id: 12, name: 'Miramar Beach Club', beach: 'Dhërmi' },
-  { id: 15, name: 'Sereno', beach: 'Jal' },
+  { id: 12, name: 'Miramar Beach Club', beach: 'DHERMI' },
+  { id: 15, name: 'Sereno', beach: 'JALE' },
 ];
 
 describe('OwnedVenues', () => {
@@ -81,10 +81,10 @@ describe('OwnedVenues', () => {
 
     expect(service.venues()).toBeUndefined();
     const reloaded = service.load();
-    http.expectOne(MINE).flush([{ id: 20, name: 'Aurora', beach: 'Borsh' }]);
+    http.expectOne(MINE).flush([{ id: 20, name: 'Aurora', beach: 'BORSH' }]);
     expect(await reloaded).toEqual({
       status: 'loaded',
-      venues: [{ id: 20, name: 'Aurora', beach: 'Borsh' }],
+      venues: [{ id: 20, name: 'Aurora', beach: 'BORSH' }],
     });
   });
 });

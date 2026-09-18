@@ -42,46 +42,7 @@
             }
           </label>
 
-          <div class="grid grid-cols-2 gap-3">
-            <label class="flex flex-col gap-1">
-              <span class="text-[12.5px] font-semibold text-riv-card-ink">Beach</span>
-              <input
-                type="text"
-                [formField]="detailsForm.beach"
-                data-testid="venue-beach"
-                appTouchTarget
-                class="rounded-[11px] border border-riv-card-border bg-riv-console-inset/60 px-3 py-2 text-[16px] text-riv-card-ink"
-                #beachControl
-              />
-              @if (detailsForm.beach().touched() && detailsForm.beach().errors().length) {
-                <span
-                  [appFieldErrorFor]="beachControl"
-                  class="text-[11.5px] font-semibold text-riv-error-ink"
-                  role="alert"
-                  >{{ detailsForm.beach().errors()[0].message }}</span
-                >
-              }
-            </label>
-            <label class="flex flex-col gap-1">
-              <span class="text-[12.5px] font-semibold text-riv-card-ink">Region</span>
-              <input
-                type="text"
-                [formField]="detailsForm.region"
-                data-testid="venue-region"
-                appTouchTarget
-                class="rounded-[11px] border border-riv-card-border bg-riv-console-inset/60 px-3 py-2 text-[16px] text-riv-card-ink"
-                #regionControl
-              />
-              @if (detailsForm.region().touched() && detailsForm.region().errors().length) {
-                <span
-                  [appFieldErrorFor]="regionControl"
-                  class="text-[11.5px] font-semibold text-riv-error-ink"
-                  role="alert"
-                  >{{ detailsForm.region().errors()[0].message }}</span
-                >
-              }
-            </label>
-          </div>
+          <app-beach-field [field]="detailsForm.beach" testId="venue-beach" />
 
           <label class="flex flex-col gap-1">
             <span class="text-[12.5px] font-semibold text-riv-card-ink">Description</span>

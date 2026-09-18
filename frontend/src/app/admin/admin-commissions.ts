@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { beachLabel } from '../shared/beaches';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import {
@@ -109,7 +110,7 @@ import { TouchTarget } from '../shared/touch-target';
                   {{ venue.name }}
                 </h2>
                 <p class="mt-0.5 text-[13.5px] text-riv-card-ink-soft">
-                  {{ venue.beach }} · paid out in {{ venue.payoutCurrency }}
+                  {{ beachLabel(venue.beach) }} · paid out in {{ venue.payoutCurrency }}
                 </p>
               </div>
               <p class="text-right">
@@ -335,6 +336,8 @@ import { TouchTarget } from '../shared/touch-target';
   `,
 })
 export class AdminCommissions {
+  /** The beach as the operator or admin reads it, off the catalogue mirror. */
+  protected readonly beachLabel = beachLabel;
   private readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminCommissionsService);
   private readonly focusAfterRender = focusMover();

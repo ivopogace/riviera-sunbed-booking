@@ -54,8 +54,8 @@ class JdbcBookingsDailyTakingsIT {
 	 */
 	private SetRef ownVenueWithOnlineSet(String name) {
 		long venueId = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES (:name, 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").param("name", "Takings " + name).query(Long.class).single();
 		long setId = jdbc.sql("""
@@ -84,8 +84,8 @@ class JdbcBookingsDailyTakingsIT {
 
 	private long insertSecondVenue() {
 		return jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Takings Decoy Venue', 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Takings Decoy Venue', 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
 	}

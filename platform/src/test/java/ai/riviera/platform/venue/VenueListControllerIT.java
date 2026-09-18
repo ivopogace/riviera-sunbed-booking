@@ -30,13 +30,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Verifies the discovery list API ({@code GET /api/venues?beach=&region=&date=}, issue #61):
+ * Verifies the discovery list API ({@code GET /api/venues?beach=&region=&date=}):
  * filtering by beach/region, the rating-then-name sort, the per-{@code (set, date)} free/total
  * count sourced from {@code set_availability} (invariant #2), the "from" price in integer minor
  * units (invariant #5), the today-Europe/Tirane date default (invariant #6), empty results,
  * and public access. Testcontainers Postgres (runs in CI; skipped without Docker).
  *
- * <p>Fixtures are isolated under a marker {@code region} ({@link #IT_REGION}) and torn down in
+ * <p>Fixtures are isolated on the three {@code LEZHE} beaches {@link IsolationBeaches} reserves for this class and torn down in
  * {@link #cleanup()}, so the class is independent of the Miramar seed and of sibling ITs that
  * insert their own venues into the shared container.
  */
@@ -46,10 +46,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class VenueListControllerIT {
 
-	private static final String IT_REGION = "IT Discovery Riviera";
-	private static final String BEACH_DHERMI = "Dhërmi IT";
-	private static final String BEACH_PALASE = "Palasë IT";
-	private static final String BEACH_SALES_CLOSE = "Sales Close IT";
+	private static final String IT_REGION = IsolationBeaches.LIST_IT_REGION;
+	private static final String BEACH_DHERMI = IsolationBeaches.LIST_IT_BEACH_A;
+	private static final String BEACH_PALASE = IsolationBeaches.LIST_IT_BEACH_B;
+	private static final String BEACH_SALES_CLOSE = IsolationBeaches.LIST_IT_SALES_CLOSE_BEACH;
+	private static final List<String> IT_BEACHES = List.of(BEACH_DHERMI, BEACH_PALASE, BEACH_SALES_CLOSE);
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	@Autowired
@@ -58,9 +59,9 @@ class VenueListControllerIT {
 	@Autowired
 	JdbcClient jdbc;
 
-	private long aurora; // Dhërmi, rating 47, 3 sets @ 4500/3500/3000 → fromPrice 3000
-	private long zephyr; // Palasë, rating 47 (name tie-break: Aurora before Zephyr)
-	private long borsh;  // Palasë, rating 30 (sorts last)
+	private long aurora; // Shëngjin, rating 47, 3 sets @ 4500/3500/3000 → fromPrice 3000
+	private long zephyr; // Tale, rating 47 (name tie-break: Aurora before Zephyr)
+	private long borsh;  // Tale, rating 30 (sorts last)
 
 	@BeforeEach
 	void seedFixtures() {
@@ -79,19 +80,19 @@ class VenueListControllerIT {
 		// operator_venue has no cascade from venue, so drop the ownership rows first; then
 		// ON DELETE CASCADE removes set_position, and set_availability cascades from set_position.
 		jdbc.sql("DELETE FROM operator_venue WHERE venue_id IN "
-				+ "(SELECT id FROM venue WHERE region = :r)").param("r", IT_REGION).update();
-		jdbc.sql("DELETE FROM venue WHERE region = :r").param("r", IT_REGION).update();
+				+ "(SELECT id FROM venue WHERE beach IN (:b))").param("b", IT_BEACHES).update();
+		jdbc.sql("DELETE FROM venue WHERE beach IN (:b)").param("b", IT_BEACHES).update();
 	}
 
 	/** Owned by the bootstrap ACTIVE operator — the tourist list hides ownerless venues (#693). */
 	private long insertVenue(String name, String beach, int ratingTenths) {
 		long id = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, rating_tenths, reviews_count, booking_mode,
+				INSERT INTO venue (name, beach, rating_tenths, reviews_count, booking_mode,
 				                   commission_bps, payout_currency)
-				VALUES (:name, :beach, :region, :rating, 10, 'INSTANT', 1500, 'EUR')
+				VALUES (:name, :beach, :rating, 10, 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""")
-				.param("name", name).param("beach", beach).param("region", IT_REGION)
+				.param("name", name).param("beach", beach)
 				.param("rating", ratingTenths)
 				.query(Long.class).single();
 		OwnershipFixtures.grantToBootstrap(jdbc, id);
@@ -165,7 +166,7 @@ class VenueListControllerIT {
 
 	@Test
 	void combinesBeachAndRegionFilters() throws Exception {
-		// AC-2: filters AND-combine — the shared beach narrowed by region returns both Palasë venues, sorted.
+		// AC-2: filters AND-combine — the shared beach narrowed by its region returns both Tale venues, sorted.
 		mvc.perform(get("/api/venues").param("beach", BEACH_PALASE).param("region", IT_REGION))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(2))
@@ -217,7 +218,7 @@ class VenueListControllerIT {
 	@Test
 	void unmatchedFilterReturnsEmptyArray() throws Exception {
 		// AC-6: a filter that matches nothing is 200 + [], never 404.
-		mvc.perform(get("/api/venues").param("region", "No Such Region IT"))
+		mvc.perform(get("/api/venues").param("region", "NO_SUCH_REGION"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(0));
 	}
@@ -231,7 +232,7 @@ class VenueListControllerIT {
 
 	@Test
 	void listCarriesAmenitiesAndDistance() throws Exception {
-		// T7 (#140), AC-2: aurora (Dhërmi — a beach unique to one fixture) gains a distance + two
+		// AC-2: aurora (Shëngjin — a beach unique to one fixture) gains a distance + two
 		// amenities inserted OUT of catalogue order (WIFI, BEACH_BAR); the list card carries them
 		// back catalogue-ordered. Cleaned up by the region @AfterEach (venue_amenity cascades).
 		jdbc.sql("UPDATE venue SET distance_to_water_m = 25 WHERE id = :v").param("v", aurora).update();
@@ -253,12 +254,12 @@ class VenueListControllerIT {
 	 */
 	private long insertVenueAtSalesClose(String name, LocalTime salesClose) {
 		long id = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, rating_tenths, reviews_count, booking_mode,
+				INSERT INTO venue (name, beach, rating_tenths, reviews_count, booking_mode,
 				                   commission_bps, payout_currency, sales_close)
-				VALUES (:name, :beach, :region, 40, 10, 'INSTANT', 1500, 'EUR', :close)
+				VALUES (:name, :beach, 40, 10, 'INSTANT', 1500, 'EUR', :close)
 				RETURNING id
 				""")
-				.param("name", name).param("beach", BEACH_SALES_CLOSE).param("region", IT_REGION)
+				.param("name", name).param("beach", BEACH_SALES_CLOSE)
 				.param("close", salesClose)
 				.query(Long.class).single();
 		OwnershipFixtures.grantToBootstrap(jdbc, id);

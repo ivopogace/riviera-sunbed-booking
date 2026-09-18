@@ -30,8 +30,8 @@ const VENUES = [
   {
     id: 1,
     name: 'Miramar Beach Club',
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     ratingTenths: 48,
     reviewsCount: 326,
     bookingMode: 'INSTANT',
@@ -48,8 +48,8 @@ const VENUES = [
   {
     id: 2,
     name: 'Aurora Bay',
-    beach: 'Dhërmi',
-    region: 'Albanian Riviera',
+    beach: 'DHERMI',
+    region: 'HIMARE',
     ratingTenths: 41,
     reviewsCount: 88,
     bookingMode: 'REQUEST',
@@ -61,8 +61,8 @@ const VENUES = [
   {
     id: 3,
     name: 'Palasa Sands',
-    beach: 'Palasë',
-    region: 'Albanian Riviera',
+    beach: 'PALASE',
+    region: 'HIMARE',
     ratingTenths: 44,
     reviewsCount: 12,
     bookingMode: 'INSTANT',
@@ -82,8 +82,8 @@ const CROWDED_VENUES = [
   {
     id: 4,
     name: 'Lori Beach',
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     ratingTenths: 40,
     reviewsCount: 15,
     bookingMode: 'INSTANT',
@@ -95,8 +95,8 @@ const CROWDED_VENUES = [
   {
     id: 5,
     name: 'Folie Marine',
-    beach: 'Dhërmi',
-    region: 'Albanian Riviera',
+    beach: 'DHERMI',
+    region: 'HIMARE',
     ratingTenths: 39,
     reviewsCount: 40,
     bookingMode: 'INSTANT',
@@ -108,8 +108,8 @@ const CROWDED_VENUES = [
   {
     id: 6,
     name: 'Dhërmi Sun Club',
-    beach: 'Dhërmi',
-    region: 'Albanian Riviera',
+    beach: 'DHERMI',
+    region: 'HIMARE',
     ratingTenths: 38,
     reviewsCount: 9,
     bookingMode: 'REQUEST',
@@ -330,7 +330,7 @@ test.describe('Discover map — fake engine', () => {
     const preview = page.getByTestId('venue-preview');
     await expect(preview).toBeVisible();
     await expect(preview.getByTestId('preview-name')).toHaveText('Miramar Beach Club');
-    await expect(preview.getByTestId('preview-location')).toHaveText('Ksamil · Albanian Riviera');
+    await expect(preview.getByTestId('preview-location')).toHaveText('Ksamil · Sarandë');
     await expect(preview.getByTestId('preview-rating')).toContainText('4.8');
     await expect(preview.getByTestId('preview-price')).toContainText('€25');
     // The cover really renders: a broken <img> would report zero natural width.
@@ -417,6 +417,34 @@ test.describe('Discover map — fake engine', () => {
     await expect(page.getByTestId('venue-preview')).toHaveCount(0);
     // The map asks for nothing of its own: one list request answered both surfaces.
     expect(venueRequests() - before).toBe(1);
+  });
+
+  test('the map follows the Beach filter: a chosen beach comes to the centre, "All beaches" goes back', async ({
+    page,
+  }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+    const miramar = page.getByRole('button', { name: 'Miramar Beach Club, from €25' });
+    await expect(miramar).toHaveCount(1);
+    const surface = page.getByTestId('riviera-map-fake');
+    const offCentre = async (): Promise<number> => {
+      const [box, pin] = await Promise.all([surface.boundingBox(), miramar.boundingBox()]);
+      const dx = pin!.x + pin!.width / 2 - (box!.x + box!.width / 2);
+      const dy = pin!.y + pin!.height / 2 - (box!.y + box!.height / 2);
+      return Math.hypot(dx, dy);
+    };
+    // The riviera view opens between Vlorë and Ksamil, so Ksamil's pin sits well off the centre.
+    const atRiviera = await offCentre();
+    expect(atRiviera).toBeGreaterThan(60);
+
+    await page.getByTestId('filter-beach').selectOption('Ksamil');
+    await expect(page.getByTestId('venue-card')).toHaveCount(1);
+    await expect.poll(offCentre).toBeLessThan(40);
+
+    await page.getByTestId('filter-beach').selectOption('');
+    await expect(page.getByTestId('venue-card')).toHaveCount(3);
+    await expect.poll(offCentre).toBeGreaterThan(60);
   });
 
   test('venue pins keep their double-tap on a map whose own gesture is double-tap-to-zoom', async ({
@@ -532,7 +560,7 @@ test.describe('Discover map — crowded pins, fake engine', () => {
 
     await ksamil.click();
 
-    await expect(page.getByTestId('filter-beach')).toHaveValue('Ksamil');
+    await expect(page.getByTestId('filter-beach')).toHaveValue('KSAMIL');
     await expect(page.getByTestId('venue-card')).toHaveCount(2);
     const crumb = page.getByTestId('map-beach-crumb');
     await expect(crumb).toHaveText('Ksamil ×');
@@ -575,7 +603,7 @@ test.describe('Discover map — crowded pins, fake engine', () => {
       'aria-label',
       '3 venues at Dhërmi, from €24; press to open Aurora Bay',
     );
-    await expect(page.getByTestId('filter-beach')).toHaveValue('Dhërmi');
+    await expect(page.getByTestId('filter-beach')).toHaveValue('DHERMI');
     await expect(page.getByTestId('venue-card')).toHaveCount(3);
     await settleAnimations(pill);
     await expectNoSeriousAxeViolations(page, 'Discover with an inverted place pill');

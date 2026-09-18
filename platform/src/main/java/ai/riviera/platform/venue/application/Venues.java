@@ -204,7 +204,7 @@ public interface Venues {
 	void insertSets(VenueId venueId, List<SetCommand> sets);
 
 	/**
-	 * Replace a venue's editable profile fields in one unit of work: name/beach/region/description,
+	 * Replace a venue's editable profile fields in one unit of work: name/beach/description,
 	 * booking mode, booking cutoff, the amenity set, and distance-to-water. Commission and payout
 	 * currency are read-only and never written. The
 	 * write is <strong>conditional on {@code expectedVersion}</strong> — the optimistic-concurrency

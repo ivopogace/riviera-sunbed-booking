@@ -44,8 +44,8 @@ describe('OperatorHome a11y (#277/#278)', () => {
       await render({
         status: 'loaded',
         venues: [
-          { id: 12, name: 'Miramar Beach Club', beach: 'Dhërmi' },
-          { id: 15, name: 'Sereno', beach: 'Jal' },
+          { id: 12, name: 'Miramar Beach Club', beach: 'DHERMI' },
+          { id: 15, name: 'Sereno', beach: 'JALE' },
         ],
       }),
     );

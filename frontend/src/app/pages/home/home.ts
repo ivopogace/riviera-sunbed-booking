@@ -16,6 +16,16 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
 
 import { amenityLabel, distanceToWaterLabel, orderedAmenities } from '../../shared/amenities';
+import {
+  BeachEntry,
+  RegionEntry,
+  beachEntry,
+  beachLabel,
+  presentBeaches,
+  presentRegions,
+  regionEntry,
+  regionLabel,
+} from '../../shared/beaches';
 import { AmenityChip } from '../../shared/amenity-chip';
 import { CardGlass } from '../../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
@@ -155,9 +165,11 @@ export class Home {
    */
   protected readonly selectedDate = signal(this.minDate);
 
-  /** Distinct beaches/regions for the filter selects, captured once from the unfiltered catalogue. */
-  protected readonly beaches = signal<readonly string[]>([]);
-  protected readonly regions = signal<readonly string[]>([]);
+  /** The catalogue beaches/regions with a venue, for the filter selects, captured once from the unfiltered list. */
+  protected readonly beaches = signal<readonly BeachEntry[]>([]);
+  protected readonly regions = signal<readonly RegionEntry[]>([]);
+  /** The narrowed beach as the tourist reads it, for the crumb on the map. */
+  protected readonly narrowedLabel = computed(() => beachLabel(this.beach()));
 
   /** Which panel the switch shows below `lg`; irrelevant from `lg` up, where both show. */
   protected readonly view = signal<'list' | 'map'>('list');
@@ -367,6 +379,7 @@ export class Home {
    */
   protected showAllBeaches(): void {
     this.beach.set('');
+    this.followFilter();
     this.reload();
     this.focusAfterRender('map-near-me', 'map-zoom-in');
   }
@@ -426,11 +439,9 @@ export class Home {
         if (this.lastRequest !== token) {
           return;
         }
-        // Explicit locale comparator: sorts accented place names (e.g. "Dhërmi") correctly and
-        // avoids the default coerce-to-string sort (Sonar S2871).
-        const byLocale = (a: string, b: string): number => a.localeCompare(b);
-        this.beaches.set([...new Set(list.map((v) => v.beach))].sort(byLocale));
-        this.regions.set([...new Set(list.map((v) => v.region))].sort(byLocale));
+        const codes = list.map((v) => v.beach);
+        this.beaches.set(presentBeaches(codes));
+        this.regions.set(presentRegions(codes));
         this.venues.set(list);
       },
       error: () => {
@@ -475,12 +486,26 @@ export class Home {
 
   protected onBeachChange(event: Event): void {
     this.beach.set((event.target as HTMLSelectElement).value);
+    this.followFilter();
     this.reload();
   }
 
   protected onRegionChange(event: Event): void {
     this.region.set((event.target as HTMLSelectElement).value);
+    this.followFilter();
     this.reload();
+  }
+
+  /**
+   * The map goes where the filter points: the chosen beach at town scale, else the chosen region,
+   * else the whole riviera. The catalogue's recorded views are the only geography involved (ADR-0022).
+   */
+  private followFilter(): void {
+    const view =
+      beachEntry(this.beach())?.view ??
+      regionEntry(this.region())?.view ??
+      RIVIERA_MAP_OPTIONS.view;
+    this.map()?.handle()?.easeTo(view);
   }
 
   protected onDateChange(event: Event): void {
@@ -544,7 +569,7 @@ export class Home {
     // The card body is aria-hidden, so the closed state must ride the accessible name too.
     const closedText = closedStateText(closedForSeason, reopensOn, salesClosed);
     const ariaLabel =
-      `${venue.name}, ${venue.beach} · ${venue.region}, ${ratingText}${price}, ` +
+      `${venue.name}, ${beachLabel(venue.beach)} · ${regionLabel(venue.region)}, ${ratingText}${price}, ` +
       `${free} of ${total} sets free on ${dateLabel}${closedText}. ` +
       `${waterText}${amenitiesText}` +
       `View beach map.`;
@@ -553,7 +578,8 @@ export class Home {
       id: venue.id,
       name: venue.name,
       beach: venue.beach,
-      region: venue.region,
+      beachLabel: beachLabel(venue.beach),
+      regionLabel: regionLabel(venue.region),
       photos,
       modeLabel: venue.bookingMode === 'INSTANT' ? 'Instant Book' : 'Request to Book',
       isRated: rated,

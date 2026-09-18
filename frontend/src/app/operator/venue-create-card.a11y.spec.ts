@@ -46,8 +46,7 @@ describe('VenueCreateCard a11y (#278)', () => {
   it('the failed-submit state (server rejection alert) has no axe violations', async () => {
     for (const [testid, value] of [
       ['venue-create-name', 'Sunset Bar'],
-      ['venue-create-beach', 'Ksamil'],
-      ['venue-create-region', 'Riviera'],
+      ['venue-create-beach', 'KSAMIL'],
     ]) {
       const input = host().querySelector<HTMLInputElement>(`[data-testid="${testid}"]`)!;
       input.value = value;

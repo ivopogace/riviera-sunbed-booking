@@ -32,8 +32,8 @@ function venue(setCount = 12) {
   return {
     id: VENUE_ID,
     name: 'Calendar Cove',
-    beach: 'Dhërmi',
-    region: 'Albanian Riviera',
+    beach: 'DHERMI',
+    region: 'HIMARE',
     description: 'A venue whose days differ, so the calendar has something to say.',
     ratingTenths: 45,
     reviewsCount: 88,

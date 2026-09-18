@@ -91,8 +91,8 @@ class BookingControllerIT {
 
 	private long boundaryVenue(String salesClose) {
 		return jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency, sales_close)
-				VALUES (:name, 'Boundary Beach', 'Boundary Region', 'INSTANT', 1500, 'EUR', TIME '%s')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency, sales_close)
+				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR', TIME '%s')
 				RETURNING id
 				""".formatted(salesClose))
 				.param("name", "Boundary Club " + salesClose)
@@ -128,7 +128,7 @@ class BookingControllerIT {
 	/** The owner's full-replace PATCH body flipping only {@code salesClose} (#794 AC-4/AC-5). */
 	private static String closeSalesBody(String salesClose) {
 		return """
-				{"name":"Boundary Club","beach":"Boundary Beach","region":"Boundary Region",
+				{"name":"Boundary Club","beach":"KSAMIL",
 				 "description":null,"bookingMode":"INSTANT","bookingCutoff":"18:00",
 				 "salesClose":"%s","amenities":[],"distanceToWaterM":null,"expectedVersion":0}
 				""".formatted(salesClose);

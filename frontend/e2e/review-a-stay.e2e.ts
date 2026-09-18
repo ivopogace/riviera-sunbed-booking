@@ -21,8 +21,8 @@ const CODE = 'RVWE234567';
 const UNRATED_VENUE = {
   id: 1,
   name: 'Miramar Beach Club',
-  beach: 'Ksamil',
-  region: 'Albanian Riviera',
+  beach: 'KSAMIL',
+  region: 'SARANDE',
   description: 'Premium loungers on the Ksamil shoreline.',
   ratingTenths: 0,
   reviewsCount: 0,

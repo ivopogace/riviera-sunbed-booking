@@ -33,7 +33,7 @@ export async function mockWholeConsole(page: Page): Promise<void> {
   });
 
   await page.route(/\/api\/venues\/mine$/, (route) =>
-    route.fulfill({ json: [{ id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' }] }),
+    route.fulfill({ json: [{ id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' }] }),
   );
 
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
@@ -62,8 +62,8 @@ export async function mockWholeConsole(page: Page): Promise<void> {
   const venueMap = {
     id: 1,
     name: 'Miramar Beach Club',
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     description: 'A quiet cove.',
     ratingTenths: 48,
     reviewsCount: 12,
@@ -139,8 +139,8 @@ function accrual(bookingId: number, netMinor: number) {
 function profile() {
   return {
     name: 'Miramar Beach Club',
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     description: 'A quiet cove.',
     bookingMode: 'INSTANT',
     bookingCutoff: '18:00',

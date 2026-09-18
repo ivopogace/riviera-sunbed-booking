@@ -20,8 +20,8 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 const ADMIN = { username: 'operator', password: 'admin-pw' };
 
 const VENUES = [
-  { id: 7, name: 'Bora Bora Beach', beach: 'Dhërmi' },
-  { id: 9, name: 'Folie Marine', beach: 'Gjipe' },
+  { id: 7, name: 'Bora Bora Beach', beach: 'DHERMI' },
+  { id: 9, name: 'Folie Marine', beach: 'GJIPE' },
 ];
 
 /**

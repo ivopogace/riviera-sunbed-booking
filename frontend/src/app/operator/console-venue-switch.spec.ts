@@ -75,8 +75,8 @@ describe('Operator console — in-place venue switch over the real routes (#180)
       .match((r) => r.method === 'GET' && r.url === `${BASE}/api/venues/mine`)
       .forEach((req) =>
         req.flush([
-          { id: 1, name: 'First Venue', beach: 'Ksamil' },
-          { id: 2, name: 'Second Venue', beach: 'Jal' },
+          { id: 1, name: 'First Venue', beach: 'KSAMIL' },
+          { id: 2, name: 'Second Venue', beach: 'JALE' },
         ]),
       );
   }
@@ -88,7 +88,7 @@ describe('Operator console — in-place venue switch over the real routes (#180)
       .match((r) => r.method === 'GET' && r.url === `${BASE}/api/venues/${id}/beach-map`)
       .forEach((req) =>
         req.flush({
-          map: { id, name, beach: 'Ksamil', region: 'Riviera', sets: [], setVersion: 1 },
+          map: { id, name, beach: 'KSAMIL', region: 'SARANDE', sets: [], setVersion: 1 },
           locks: [],
         }),
       );
@@ -98,8 +98,8 @@ describe('Operator console — in-place venue switch over the real routes (#180)
         req.flush({
           id,
           name,
-          beach: 'Ksamil',
-          region: 'Riviera',
+          beach: 'KSAMIL',
+          region: 'SARANDE',
           description: '',
           ratingTenths: 40,
           reviewsCount: 1,

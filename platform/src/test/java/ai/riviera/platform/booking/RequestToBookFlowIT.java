@@ -51,8 +51,8 @@ class RequestToBookFlowIT {
 	@BeforeEach
 	void seedRequestVenue() {
 		long venueId = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Request Flow Club', 'Flow Beach', 'Flow Region', 'REQUEST', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Request Flow Club', 'KSAMIL', 'REQUEST', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
 		OwnershipFixtures.grantToBootstrap(jdbc, venueId);

@@ -11,6 +11,7 @@ import {
   signal,
 } from '@angular/core';
 
+import { beachLabel } from '../../shared/beaches';
 import { MapHandle } from '../../shared/map-engine';
 import { TouchTarget } from '../../shared/touch-target';
 import {
@@ -37,7 +38,7 @@ interface Place {
   readonly crowd: PinCrowd;
   readonly name: string;
   readonly from: string | null;
-  /** The one beach every member is on, or `null` when the crowd spans several. */
+  /** The one beach (its catalogue code) every member is on, or `null` when the crowd spans several. */
   readonly beach: string | null;
   /** The zoom that separates the members as far as the map and its box allow. */
   readonly zoom: number;
@@ -325,7 +326,7 @@ export class VenuePinLayer {
     const index = crowd.members.findIndex((member) => member.pin.id === open);
     return {
       crowd,
-      name: placeName(beaches),
+      name: placeName(beaches.map(beachLabel)),
       from: lowestFromPrice(crowd.members.map((member) => member.pin.card)),
       beach: beaches.length === 1 ? beaches[0] : null,
       zoom: target,

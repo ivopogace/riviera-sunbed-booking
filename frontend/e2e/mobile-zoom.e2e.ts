@@ -188,8 +188,8 @@ test.describe('operator console — mobile zoom', () => {
   test('the header disclosure triggers keep their double-tap', async ({ page }) => {
     // The venue name is only a disclosure button on two or more owned venues.
     await mockOwnedVenues(page, [
-      { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
-      { id: 2, name: 'Sereno', beach: 'Jal' },
+      { id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' },
+      { id: 2, name: 'Sereno', beach: 'JALE' },
     ]);
     await openConsoleTab(page, 'daily', 'daily-view-tab');
 

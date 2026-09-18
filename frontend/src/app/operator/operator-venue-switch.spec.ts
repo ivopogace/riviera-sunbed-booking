@@ -11,8 +11,8 @@ import { OperatorVenueSwitch } from './operator-venue-switch';
 class BlankPage {}
 
 const TWO: readonly OwnedVenue[] = [
-  { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
-  { id: 2, name: 'Sereno', beach: 'Jal' },
+  { id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' },
+  { id: 2, name: 'Sereno', beach: 'JALE' },
 ];
 
 /**
@@ -126,7 +126,7 @@ describe('OperatorVenueSwitch', () => {
     ]);
     expect(rows().map((row) => lines(row))).toEqual([
       ['Miramar Beach Club', 'Ksamil'],
-      ['Sereno', 'Jal'],
+      ['Sereno', 'Jalë'],
       ['Add another venue'],
     ]);
     const current = [...menu()!.querySelectorAll('[aria-current="page"]')];

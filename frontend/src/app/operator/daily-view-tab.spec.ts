@@ -94,7 +94,7 @@ describe('DailyViewTab (#175)', () => {
           !r.url.includes('/bookings') &&
           !r.url.includes('/availability'),
       )
-      .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets });
+      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets });
     fixture.detectChanges();
   }
 
@@ -652,7 +652,7 @@ describe('DailyViewTab (#175)', () => {
           !r.url.includes('/bookings') &&
           !r.url.includes('/availability'),
       )
-      .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets: SEED });
+      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED });
     fixture.detectChanges();
     expect(host.querySelector('[data-testid="daily-view-tab"]')).toBeTruthy();
   });
@@ -693,7 +693,7 @@ describe('DailyViewTab (#175)', () => {
           !r.url.includes('/bookings') &&
           !r.url.includes('/availability'),
       )
-      .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets: SEED });
+      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
     expect(byId('daily-load-error')).toBeTruthy();
@@ -723,8 +723,8 @@ describe('DailyViewTab (#175)', () => {
       .flush({
         id: 2,
         name: 'W',
-        beach: 'Dhermi',
-        region: 'Riviera',
+        beach: 'DHERMI',
+        region: 'HIMARE',
         sets: [seat(9, 'A', 1, 'STANDARD', 'ONLINE', 'FREE')],
       });
     fixture.detectChanges();
@@ -753,8 +753,8 @@ describe('DailyViewTab (#175)', () => {
       .flush({
         id: 2,
         name: 'W',
-        beach: 'Dhermi',
-        region: 'Riviera',
+        beach: 'DHERMI',
+        region: 'HIMARE',
         sets: [seat(9, 'A', 1, 'STANDARD', 'ONLINE', 'FREE')],
       });
     // The superseded venue-1 reads resolve late — they must not replace venue 2's grid.
@@ -772,7 +772,7 @@ describe('DailyViewTab (#175)', () => {
           !r.url.includes('/bookings') &&
           !r.url.includes('/availability'),
       )
-      .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets: SEED });
+      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
 
@@ -815,8 +815,8 @@ describe('DailyViewTab (#175)', () => {
 
   const PROFILE = {
     name: 'Miramar',
-    beach: 'Ksamil',
-    region: 'Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     description: 'lovely',
     bookingMode: 'INSTANT',
     bookingCutoff: '18:00',
@@ -883,8 +883,8 @@ describe('DailyViewTab (#175)', () => {
       .flush({
         id: 1,
         name: 'V',
-        beach: 'Ksamil',
-        region: 'Riviera',
+        beach: 'KSAMIL',
+        region: 'SARANDE',
         sets: SEED,
         salesOpen: false,
       });

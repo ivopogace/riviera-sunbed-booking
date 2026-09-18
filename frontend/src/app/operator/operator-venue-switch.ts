@@ -15,6 +15,7 @@ import { filter } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { OwnedVenues } from '../core/owned-venues';
+import { beachLabel } from '../shared/beaches';
 import { POP_BACKDROP, POP_ITEM, POP_SKIN } from '../shared/popover-skin';
 import { TouchTarget } from '../shared/touch-target';
 
@@ -105,7 +106,7 @@ const NAME = 'min-w-0 max-w-full truncate text-[17px] font-bold tracking-[-0.01e
               >
                 <span class="block truncate">{{ venue.name }}</span>
                 <span class="block truncate text-[12px] font-medium text-riv-pop-ink-soft">{{
-                  venue.beach
+                  beachLabel(venue.beach)
                 }}</span>
               </a>
             }
@@ -132,6 +133,8 @@ const NAME = 'min-w-0 max-w-full truncate text-[17px] font-bold tracking-[-0.01e
   `,
 })
 export class OperatorVenueSwitch {
+  /** The beach as the operator or admin reads it, off the catalogue mirror. */
+  protected readonly beachLabel = beachLabel;
   /** The venue the console manages — its row is the current one; `undefined` off the console. */
   readonly venueId = input<number | undefined>(undefined);
   /** The name from the best-effort venue read; `Your venue` until it lands. */

@@ -21,8 +21,8 @@ const CLOSES_AT = '2026-07-31T16:00:00Z';
 const VENUE = {
   id: 1,
   name: 'Miramar Beach Club',
-  beach: 'Ksamil',
-  region: 'Albanian Riviera',
+  beach: 'KSAMIL',
+  region: 'SARANDE',
   description: 'Premium loungers on the Ksamil shoreline.',
   ratingTenths: 40,
   reviewsCount: 1,

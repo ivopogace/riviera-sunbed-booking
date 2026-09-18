@@ -151,8 +151,8 @@ class MoveVsReserveConcurrencyIT {
 
 	private long insertVenue(String name) {
 		return jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES (:name, 'Ksamil', 'Riviera', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").param("name", name).query(Long.class).single();
 	}

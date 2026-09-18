@@ -61,8 +61,8 @@ class VenuePhotoReadModelIT {
 	 */
 	private VenueId newVenue(String name) {
 		long id = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES (:name, 'ReadModel Beach', 'ReadModel Region', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").param("name", name).query(Long.class).single();
 		OwnershipFixtures.grantToBootstrap(jdbc, id);

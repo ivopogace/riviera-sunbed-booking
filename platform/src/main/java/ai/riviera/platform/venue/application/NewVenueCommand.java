@@ -3,10 +3,12 @@ package ai.riviera.platform.venue.application;
 import java.time.LocalTime;
 
 import ai.riviera.platform.venue.domain.SalesClose;
+import ai.riviera.platform.venue.vocabulary.Beach;
 
 /**
  * The validated intent to onboard a venue (U7). A typed command at the application boundary —
- * the REST adapter maps wire strings onto this; its compact constructor enforces the domain
+ * the REST adapter maps wire strings onto this (the beach code parsed to the catalogue
+ * {@link Beach}); its compact constructor enforces the domain
  * invariants so an invalid command can never reach persistence (the DB CHECK constraints in V2
  * are the backstop, not the only guard). {@code payoutCurrency} is an ISO-4217 code (per-venue,
  * default EUR decided at the slice); {@code bookingCutoff} is a {@code Europe/Tirane} local time
@@ -17,13 +19,12 @@ import ai.riviera.platform.venue.domain.SalesClose;
  * {@link VenueCreationProperties}, so no driving adapter can supply one. The edge validators are
  * shared with {@link VenueProfileCommand} via {@link VenueFieldValidation}.
  */
-public record NewVenueCommand(String name, String beach, String region, String description,
+public record NewVenueCommand(String name, Beach beach, String description,
 		String bookingMode, String payoutCurrency, LocalTime bookingCutoff, SalesClose salesClose) {
 
 	public NewVenueCommand {
 		VenueFieldValidation.requireText(name, "name");
-		VenueFieldValidation.requireText(beach, "beach");
-		VenueFieldValidation.requireText(region, "region");
+		VenueFieldValidation.requireBeach(beach);
 		VenueFieldValidation.requireBookingMode(bookingMode);
 		VenueFieldValidation.requireIsoCurrency(payoutCurrency, "payoutCurrency");
 		VenueFieldValidation.requireCutoff(bookingCutoff);

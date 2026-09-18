@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -29,6 +30,7 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.application.PhotoServingUrls;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.AvailabilitySummary;
+import ai.riviera.platform.venue.vocabulary.Beach;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
 import ai.riviera.platform.venue.vocabulary.CoverPhotoView;
@@ -72,7 +74,6 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	// Column / bind-parameter names shared across the read queries below (named so the same SQL
 	// identifier is written once — invariant-style "name your literals", and silences Sonar S1192).
 	private static final String COL_BEACH = "beach";
-	private static final String COL_REGION = "region";
 	private static final String COL_PRICE_MINOR = "price_minor";
 	private static final String COL_PRICE_CURRENCY = "price_currency";
 	private static final String COL_BOOKING_MODE = "booking_mode";
@@ -117,7 +118,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 			return Optional.empty();
 		}
 		Optional<VenueRow> venue = jdbc.sql("""
-				SELECT id, name, beach, region, description, rating_tenths, reviews_count, booking_mode,
+				SELECT id, name, beach, description, rating_tenths, reviews_count, booking_mode,
 				       distance_to_water_m, set_version, sales_close, closed_at, reopen_on, advance_sales,
 				       latitude, longitude
 				FROM venue
@@ -126,7 +127,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 				.param("id", id.value())
 				.query((rs, rowNum) -> new VenueRow(
 						rs.getLong("id"), rs.getString("name"), rs.getString(COL_BEACH),
-						rs.getString(COL_REGION), rs.getString("description"),
+						rs.getString("description"),
 						rs.getInt("rating_tenths"), rs.getInt("reviews_count"),
 						rs.getString(COL_BOOKING_MODE),
 						rs.getObject(COL_DISTANCE_TO_WATER, Integer.class),
@@ -184,7 +185,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 
 		Instant now = clock.instant();
 		boolean closedForSeason = salesWindow.closedForSeason(v.seasonClosure(), now);
-		return Optional.of(new VenueMapView(v.id(), v.name(), v.beach(), v.region(),
+		return Optional.of(new VenueMapView(v.id(), v.name(), v.beach(), regionOf(v.beach()),
 				v.description(), v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, amenities, v.distanceToWaterM(), sets, v.setVersion(), coverPhoto,
 				photos, lightboxPhotos, salesWindow.isOpen(v.salesClose(), v.seasonClosure(), date, now),
@@ -194,22 +195,25 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 
 	@Override
 	public List<VenueSummaryView> listVenues(VenueFilter filter, LocalDate date) {
-		// Optional filters: a null dimension drops its predicate. CAST(:p AS TEXT) lets Postgres
-		// type the bound NULL so "(:p IS NULL OR col = :p)" plans without an undetermined-type error.
+		List<String> regionBeaches = beachesIn(filter.region());
+		if (regionBeaches.isEmpty()) {
+			return List.of();
+		}
+		// CAST(:beach AS TEXT) types the bound NULL so the no-constraint branch plans without an undetermined-type error.
 		List<SummaryRow> venues = jdbc.sql("""
-				SELECT id, name, beach, region, rating_tenths, reviews_count, booking_mode,
+				SELECT id, name, beach, rating_tenths, reviews_count, booking_mode,
 				       distance_to_water_m, sales_close, closed_at, reopen_on, advance_sales,
 				       latitude, longitude
 				FROM venue
 				WHERE (CAST(:beach AS TEXT) IS NULL OR beach = :beach)
-				  AND (CAST(:region AS TEXT) IS NULL OR region = :region)
+				  AND beach IN (:regionBeaches)
 				ORDER BY rating_tenths DESC, name ASC
 				""")
 				.param(COL_BEACH, filter.beach())
-				.param(COL_REGION, filter.region())
+				.param("regionBeaches", regionBeaches)
 				.query((rs, rowNum) -> new SummaryRow(
 						rs.getLong("id"), rs.getString("name"), rs.getString(COL_BEACH),
-						rs.getString(COL_REGION), rs.getInt("rating_tenths"),
+						rs.getInt("rating_tenths"),
 						rs.getInt("reviews_count"), rs.getString(COL_BOOKING_MODE),
 						rs.getObject(COL_DISTANCE_TO_WATER, Integer.class),
 						rs.getObject(COL_SALES_CLOSE, LocalTime.class), seasonClosureOf(rs), locationOf(rs)))
@@ -395,7 +399,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 				.map(s -> new MoneyView(s.priceMinor(), s.priceCurrency()))
 				.orElse(null);
 		List<Amenity> ordered = amenities.stream().sorted().toList(); // canonical catalogue order
-		return new VenueSummaryView(v.id(), v.name(), v.beach(), v.region(),
+		return new VenueSummaryView(v.id(), v.name(), v.beach(), regionOf(v.beach()),
 				v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, ordered, v.distanceToWaterM(), new AvailabilitySummary(free, total),
 				coverPhoto, photos, salesOpen, closedForSeason,
@@ -450,7 +454,22 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 				.orElseGet(OptionalInt::empty);
 	}
 
-	private record VenueRow(long id, String name, String beach, String region,
+	/** The region's beach codes, the whole catalogue for no region, nothing for an unknown code. */
+	private static List<String> beachesIn(String regionCode) {
+		if (regionCode == null) {
+			return Arrays.stream(Beach.values()).map(Enum::name).toList();
+		}
+		return Beach.Region.fromCode(regionCode)
+				.map(region -> region.beaches().stream().map(Enum::name).toList())
+				.orElse(List.of());
+	}
+
+	/** The wire region a stored beach code derives to; the catalogue CHECK keeps every stored code known. */
+	private static String regionOf(String beachCode) {
+		return Beach.valueOf(beachCode).region().name();
+	}
+
+	private record VenueRow(long id, String name, String beach,
 			String description, int ratingTenths, int reviewsCount, String bookingMode,
 			Integer distanceToWaterM, long setVersion, LocalTime salesClose, SeasonClosure seasonClosure,
 			VenueLocation location) {
@@ -462,7 +481,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	}
 
 	/** A venue's discovery-list row, before its sets' price/availability are folded in. */
-	private record SummaryRow(long id, String name, String beach, String region,
+	private record SummaryRow(long id, String name, String beach,
 			int ratingTenths, int reviewsCount, String bookingMode, Integer distanceToWaterM,
 			LocalTime salesClose, SeasonClosure seasonClosure, VenueLocation location) {
 	}

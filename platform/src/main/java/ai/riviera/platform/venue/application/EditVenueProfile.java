@@ -5,7 +5,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * Driving (inbound) port for editing a venue's profile fields —
- * name/beach/region/description, booking mode, booking cutoff, the amenity set, and
+ * name/beach/description, booking mode, booking cutoff, the amenity set, and
  * distance-to-water. Commission and payout currency are read-only for operators and are never part
  * of this write. Internal to the {@code venue} module (REST-only caller), so it lives in
  * {@code application}, not {@code api/} (invariant #11), exactly like {@link EditBeachMap}.

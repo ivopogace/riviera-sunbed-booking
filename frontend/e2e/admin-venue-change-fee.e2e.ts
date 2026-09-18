@@ -46,7 +46,7 @@ async function mockVenueChanges(page: Page): Promise<void> {
           {
             venueId: 3,
             name: 'Miramar Beach Club',
-            beach: 'Ksamil',
+            beach: 'KSAMIL',
             commissionBps: 1500,
             payoutCurrency: 'EUR',
           },

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.Amenity;
+import ai.riviera.platform.venue.vocabulary.Beach;
 import ai.riviera.platform.venue.vocabulary.VenueLocation;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -17,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Validation of the widened venue-profile command. The command now carries the
- * editable core fields (name/beach/region/description/bookingMode/bookingCutoff/salesClose)
+ * editable core fields (name/beach/description/bookingMode/bookingCutoff/salesClose)
  * alongside the T7 amenities + distance; commission and payout currency are read-only and
  * deliberately absent (a crafted write can never set them). The compact constructor enforces the
  * same edge invariants as {@link NewVenueCommand} (shared via {@code VenueFieldValidation});
@@ -30,7 +31,7 @@ class VenueProfileCommandTest {
 			new VenueLocation(new BigDecimal("40.146800"), new BigDecimal("19.648200"));
 
 	private static VenueProfileCommand valid() {
-		return new VenueProfileCommand("Sunset", "Ksamil", "Riviera", "nice", "INSTANT",
+		return new VenueProfileCommand("Sunset", Beach.KSAMIL, "nice", "INSTANT",
 				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(Amenity.WIFI), 20, DHERMI);
 	}
 
@@ -38,8 +39,7 @@ class VenueProfileCommandTest {
 	void holdsAllEditableFields() {
 		VenueProfileCommand c = valid();
 		assertEquals("Sunset", c.name());
-		assertEquals("Ksamil", c.beach());
-		assertEquals("Riviera", c.region());
+		assertEquals(Beach.KSAMIL, c.beach());
 		assertEquals("nice", c.description());
 		assertEquals("INSTANT", c.bookingMode());
 		assertEquals(LocalTime.of(18, 0), c.bookingCutoff());
@@ -51,7 +51,7 @@ class VenueProfileCommandTest {
 
 	@Test
 	void aNullLocationIsAllowedAndMeansNoPin() {
-		assertDoesNotThrow(() -> new VenueProfileCommand("Sunset", "Ksamil", "Riviera", "nice",
+		assertDoesNotThrow(() -> new VenueProfileCommand("Sunset", Beach.KSAMIL, "nice",
 				"INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), 20, null));
 	}
 
@@ -66,53 +66,52 @@ class VenueProfileCommandTest {
 
 	@Test
 	void blankNameIsRejected() {
-		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("  ", "Ksamil",
-				"Riviera", "nice", "INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null));
+		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("  ", Beach.KSAMIL,
+				 "nice", "INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null));
 	}
 
 	@Test
-	void blankBeachOrRegionIsRejected() {
-		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", "",
-				"Riviera", "nice", "INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null));
-		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", "Ksamil",
-				null, "nice", "INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null));
+	void nullBeachIsRejected() {
+		// AC-1: the catalogue type makes an off-catalogue beach unrepresentable; absence is the one edge case left.
+		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", null,
+				"nice", "INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null));
 	}
 
 	@Test
 	void unknownBookingModeIsRejected() {
-		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", "Ksamil",
-				"Riviera", "nice", "MAYBE", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null));
+		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", Beach.KSAMIL,
+				 "nice", "MAYBE", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null));
 	}
 
 	@Test
 	void nullCutoffIsRejected() {
-		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", "Ksamil",
-				"Riviera", "nice", "INSTANT", null, SalesClose.MID_AFTERNOON, Set.of(), null, null));
+		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", Beach.KSAMIL,
+				 "nice", "INSTANT", null, SalesClose.MID_AFTERNOON, Set.of(), null, null));
 	}
 
 	@Test
 	void nullSalesCloseIsRejected() {
 		// AC-2 (#794): the full-replace edit must always state the choice — null never means "keep".
-		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", "Ksamil",
-				"Riviera", "nice", "INSTANT", LocalTime.of(18, 0), null, Set.of(), null, null));
+		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", Beach.KSAMIL,
+				 "nice", "INSTANT", LocalTime.of(18, 0), null, Set.of(), null, null));
 	}
 
 	@Test
 	void nonPositiveDistanceIsRejected() {
-		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", "Ksamil",
-				"Riviera", "nice", "INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), 0, null));
+		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", Beach.KSAMIL,
+				 "nice", "INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), 0, null));
 	}
 
 	@Test
 	void nullDescriptionAndNullDistanceAreAllowed() {
-		assertDoesNotThrow(() -> new VenueProfileCommand("Sunset", "Ksamil", "Riviera", null,
+		assertDoesNotThrow(() -> new VenueProfileCommand("Sunset", Beach.KSAMIL, null,
 				"REQUEST", LocalTime.of(17, 30), SalesClose.DAY_END, Set.of(), null, null));
 	}
 
 	@Test
 	void amenitiesAreDefensivelyCopiedAndOrderInsensitive() {
 		Set<Amenity> source = new HashSet<>(Set.of(Amenity.WIFI, Amenity.CAFE));
-		VenueProfileCommand c = new VenueProfileCommand("N", "B", "R", null, "INSTANT",
+		VenueProfileCommand c = new VenueProfileCommand("N", Beach.DHERMI, null, "INSTANT",
 				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, source, null, null);
 		source.clear(); // must not affect the command's copy
 		assertEquals(Set.of(Amenity.WIFI, Amenity.CAFE), c.amenities());

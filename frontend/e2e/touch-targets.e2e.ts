@@ -152,8 +152,8 @@ test.describe('44px touch targets at a phone width', () => {
   test('operator console — daily view, venue switcher open (#1009)', async ({ page }) => {
     // Registered after the whole-console mock, so this two-venue list wins.
     await mockOwnedVenues(page, [
-      { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
-      { id: 2, name: 'Sereno', beach: 'Jal' },
+      { id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' },
+      { id: 2, name: 'Sereno', beach: 'JALE' },
     ]);
     await openConsoleTab(page, 'daily');
     await expect(page.getByTestId('daily-view-tab')).toBeVisible();

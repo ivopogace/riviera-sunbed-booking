@@ -16,8 +16,8 @@ const VENUES = [
   {
     id: 1,
     name: 'Miramar Beach Club',
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     ratingTenths: 48,
     reviewsCount: 326,
     bookingMode: 'INSTANT',
@@ -32,8 +32,8 @@ const VENUES = [
 const VENUE_MAP = {
   id: 1,
   name: 'Miramar Beach Club',
-  beach: 'Ksamil',
-  region: 'Albanian Riviera',
+  beach: 'KSAMIL',
+  region: 'SARANDE',
   description: 'Premium loungers on the Ksamil shoreline.',
   ratingTenths: 48,
   reviewsCount: 326,

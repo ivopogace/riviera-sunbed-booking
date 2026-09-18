@@ -52,8 +52,8 @@ class VenueAvailabilityCalendarIT {
 	void seed() {
 		clearFixtures();
 		long id = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES (:name, 'Avcal Beach', 'Avcal Region', 'INSTANT', 1500, 'EUR') RETURNING id
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR') RETURNING id
 				""").param("name", FIXTURE).query(Long.class).single();
 		for (int i = 1; i <= TOTAL_SETS; i++) {
 			jdbc.sql("""

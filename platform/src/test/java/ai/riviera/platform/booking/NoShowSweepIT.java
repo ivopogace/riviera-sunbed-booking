@@ -51,8 +51,8 @@ class NoShowSweepIT {
 	@BeforeEach
 	void seedVenueAndDrain() {
 		venueId = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('No-Show Club', 'NS Beach', 'NS Region', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('No-Show Club', 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
 		jdbc.sql("""

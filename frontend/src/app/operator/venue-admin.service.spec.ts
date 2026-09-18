@@ -8,8 +8,7 @@ import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
 
 const VENUE: CreateVenueRequest = {
   name: 'Sunset Bar',
-  beach: 'Ksamil',
-  region: 'Riviera',
+  beach: 'KSAMIL',
   description: 'on the shore',
   bookingMode: 'INSTANT',
   payoutCurrency: 'EUR',

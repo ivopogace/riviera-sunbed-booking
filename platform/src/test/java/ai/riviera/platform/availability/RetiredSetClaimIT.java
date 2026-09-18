@@ -51,8 +51,8 @@ class RetiredSetClaimIT {
 
 	private SetId retiredSetOnANewVenue(String venueName) {
 		long venue = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES (:name, 'Ksamil', 'Riviera', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").param("name", venueName).query(Long.class).single();
 		OwnershipFixtures.grantToBootstrap(jdbc, venue);

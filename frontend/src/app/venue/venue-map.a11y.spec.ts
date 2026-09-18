@@ -63,8 +63,8 @@ function fixture(): VenueMapView {
   return {
     id: 1,
     name: 'Miramar Beach Club',
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     description: 'Premium loungers on the Ksamil shoreline.',
     ratingTenths: 48,
     reviewsCount: 326,

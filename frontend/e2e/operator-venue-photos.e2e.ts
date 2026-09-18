@@ -21,8 +21,8 @@ const TINY_IMAGE = Buffer.from(
 
 const PROFILE = {
   name: 'Miramar Beach Club',
-  beach: 'Ksamil',
-  region: 'Albanian Riviera',
+  beach: 'KSAMIL',
+  region: 'SARANDE',
   description: 'Loungers on the shore.',
   bookingMode: 'INSTANT',
   bookingCutoff: '18:00',

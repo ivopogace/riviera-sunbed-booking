@@ -104,8 +104,8 @@ class AdminPhotoModerationIT {
 	/** A venue owned by the plain operator, carrying a COVER photo with a PREVIEW variant. */
 	private VenueId venueOwnedByThePlainOperator(String previewHash) {
 		long id = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Moderation IT Venue', 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Moderation IT Venue', 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
 		ownership.assignOwner(new OperatorId(plainOperatorId()), new VenueRef(id));
@@ -169,8 +169,8 @@ class AdminPhotoModerationIT {
 
 	private long emptyVenue() {
 		return jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Moderation IT Photoless', 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Moderation IT Photoless', 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
 	}

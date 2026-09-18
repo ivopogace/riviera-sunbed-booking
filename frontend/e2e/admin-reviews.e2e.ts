@@ -19,8 +19,8 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 const ADMIN = { username: 'operator', password: 'admin-pw' };
 
 const VENUES = [
-  { id: 7, name: 'Bora Bora Beach', beach: 'Dhërmi' },
-  { id: 9, name: 'Folie Marine', beach: 'Gjipe' },
+  { id: 7, name: 'Bora Bora Beach', beach: 'DHERMI' },
+  { id: 9, name: 'Folie Marine', beach: 'GJIPE' },
 ];
 
 interface MockReview {
@@ -77,8 +77,8 @@ function venueDetail(reviews: MockReview[]) {
   return {
     id: 7,
     name: 'Bora Bora Beach',
-    beach: 'Dhërmi',
-    region: 'Albanian Riviera',
+    beach: 'DHERMI',
+    region: 'HIMARE',
     description: 'Loungers on the Dhërmi shore.',
     ...aggregateOf(reviews),
     bookingMode: 'INSTANT',

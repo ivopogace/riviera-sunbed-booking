@@ -22,8 +22,8 @@ const REPORT: VenueChangeRefundsView = {
 };
 
 const VENUES = [
-  { id: 3, name: 'Miramar Beach Club', beach: 'Ksamil' },
-  { id: 7, name: 'Bora Bora', beach: 'Dhërmi' },
+  { id: 3, name: 'Miramar Beach Club', beach: 'KSAMIL' },
+  { id: 7, name: 'Bora Bora', beach: 'DHERMI' },
 ];
 
 const FEE: VenueChangeFeeView = { amountMinor: 500, currency: 'EUR' };

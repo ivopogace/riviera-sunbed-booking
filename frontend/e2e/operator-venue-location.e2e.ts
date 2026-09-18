@@ -22,8 +22,8 @@ const AT_THE_VENUE = { latitude: 39.874231, longitude: 20.007412 };
 
 const INITIAL_PROFILE = {
   name: 'Miramar Beach Club',
-  beach: 'Ksamil',
-  region: 'Albanian Riviera',
+  beach: 'KSAMIL',
+  region: 'SARANDE',
   description: 'Loungers on the shore.',
   bookingMode: 'INSTANT',
   bookingCutoff: '18:00',

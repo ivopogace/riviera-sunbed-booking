@@ -76,8 +76,8 @@ class RequestAcceptPayIT {
 	void seedRequestVenueWithOwner() throws Exception {
 		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
 		venueId = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Accept Club', 'Accept Beach', 'Accept Region', 'REQUEST', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Accept Club', 'KSAMIL', 'REQUEST', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
 		setId = jdbc.sql("""

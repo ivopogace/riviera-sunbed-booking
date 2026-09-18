@@ -80,7 +80,7 @@ describe('DailyViewTab a11y (#175)', () => {
           !r.url.includes('/bookings') &&
           !r.url.includes('/availability'),
       )
-      .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets });
+      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets });
     fixture.detectChanges();
   }
 

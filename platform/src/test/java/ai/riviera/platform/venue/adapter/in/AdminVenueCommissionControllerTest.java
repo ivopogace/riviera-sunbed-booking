@@ -73,7 +73,7 @@ class AdminVenueCommissionControllerTest {
 	@Test
 	void listsVenuesWithTheirRatesInThePortsOrder() throws Exception {
 		listed = List.of(new VenueCommissionView(2, "Aurora", "Dhermi", 1000, "EUR"),
-				new VenueCommissionView(3, "Sunset", "Ksamil", 1500, "EUR"));
+				new VenueCommissionView(3, "Sunset", "KSAMIL", 1500, "EUR"));
 
 		mvc.perform(get("/api/admin/venues"))
 				.andExpect(status().isOk())
@@ -95,7 +95,7 @@ class AdminVenueCommissionControllerTest {
 
 	@Test
 	void answersTheUpdatedVenueOnAWrite() throws Exception {
-		writeOutcome = Optional.of(new VenueCommissionView(3, "Sunset", "Ksamil", 2000, "EUR"));
+		writeOutcome = Optional.of(new VenueCommissionView(3, "Sunset", "KSAMIL", 2000, "EUR"));
 
 		mvc.perform(put(COMMISSION_PATH, 3).contentType(MediaType.APPLICATION_JSON)
 						.content("{\"commissionBps\":2000}"))
@@ -128,7 +128,7 @@ class AdminVenueCommissionControllerTest {
 
 	@Test
 	void acceptsBothEndsOfTheBasisPointRange() throws Exception {
-		writeOutcome = Optional.of(new VenueCommissionView(3, "Sunset", "Ksamil", 0, "EUR"));
+		writeOutcome = Optional.of(new VenueCommissionView(3, "Sunset", "KSAMIL", 0, "EUR"));
 		mvc.perform(put(COMMISSION_PATH, 3).contentType(MediaType.APPLICATION_JSON)
 						.content("{\"commissionBps\":0}"))
 				.andExpect(status().isOk());

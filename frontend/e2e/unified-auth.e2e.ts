@@ -98,7 +98,7 @@ test('the header Create an account / Sign-in links switch the card mode via soft
 test('an operator signs in and lands in its only venue’s console', async ({ page }) => {
   await mockAuthApi(page, {
     validPassword: 'good-pw',
-    venues: [{ id: 7, name: 'Sereno', beach: 'Jal' }],
+    venues: [{ id: 7, name: 'Sereno', beach: 'JALE' }],
   });
   const signIn = new OperatorSignInPage(page);
 
@@ -118,8 +118,8 @@ test('a multi-venue operator picks a venue on the /operator home', async ({ page
   await mockAuthApi(page, {
     validPassword: 'good-pw',
     venues: [
-      { id: 7, name: 'Sereno', beach: 'Jal' },
-      { id: 12, name: 'Miramar Beach Club', beach: 'Dhërmi' },
+      { id: 7, name: 'Sereno', beach: 'JALE' },
+      { id: 12, name: 'Miramar Beach Club', beach: 'DHERMI' },
     ],
   });
   const signIn = new OperatorSignInPage(page);
@@ -152,7 +152,7 @@ test('an operator with no venue lands on the inline create form (#278)', async (
 test('a returnUrl outranks the venue-count rule', async ({ page }) => {
   await mockAuthApi(page, {
     validPassword: 'good-pw',
-    venues: [{ id: 7, name: 'Sereno', beach: 'Jal' }],
+    venues: [{ id: 7, name: 'Sereno', beach: 'JALE' }],
   });
   const signIn = new OperatorSignInPage(page);
 

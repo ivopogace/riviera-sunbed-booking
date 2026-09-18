@@ -13,6 +13,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { skip } from 'rxjs';
 
 import { OwnedVenue, OwnedVenues } from '../core/owned-venues';
+import { beachLabel } from '../shared/beaches';
 import { landingRouteFor, safeReturnUrl } from '../shared/auth-landing';
 import { CardGlass } from '../shared/card-glass';
 import { LoadAnnouncer } from '../shared/load-announcer';
@@ -116,7 +117,9 @@ import { VenueCreateCard } from './venue-create-card';
                   class="flex flex-col gap-0.5 rounded-[14px] border border-riv-field-border bg-riv-field-fill px-4 py-3 no-underline transition-colors hover:bg-riv-console-inset motion-reduce:transition-none"
                 >
                   <span class="text-[15px] font-semibold text-riv-card-ink">{{ venue.name }}</span>
-                  <span class="text-[13px] text-riv-card-ink-faint">{{ venue.beach }}</span>
+                  <span class="text-[13px] text-riv-card-ink-faint">{{
+                    beachLabel(venue.beach)
+                  }}</span>
                 </a>
               </li>
             }
@@ -144,6 +147,8 @@ import { VenueCreateCard } from './venue-create-card';
   `,
 })
 export class OperatorHome implements OnInit {
+  /** The beach as the operator or admin reads it, off the catalogue mirror. */
+  protected readonly beachLabel = beachLabel;
   private readonly ownedVenues = inject(OwnedVenues);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);

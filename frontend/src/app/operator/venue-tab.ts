@@ -9,6 +9,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { BeachField } from './beach-field';
 import { BookingCutoffField } from './booking-cutoff-field';
 import { BookingModeField } from './booking-mode-field';
 import { form, required, submit, FormField } from '@angular/forms/signals';
@@ -20,6 +21,7 @@ import { FieldErrorFor } from '../shared/field-error-for';
 import { focusMover } from '../shared/focus-after-render';
 import { TouchTarget } from '../shared/touch-target';
 import { Amenity, AMENITY_CATALOGUE, amenityLabel } from '../shared/amenities';
+import { BeachCode, beachEntry } from '../shared/beaches';
 import { formatCivilDate } from '../shared/booking-date';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
@@ -55,8 +57,7 @@ import {
  *  currency are display-only signals, never part of the form/write). */
 interface VenueDetailsModel {
   name: string;
-  beach: string;
-  region: string;
+  beach: BeachCode | '';
   description: string;
   bookingMode: BookingMode;
   bookingCutoff: string; // "HH:mm" Europe/Tirane
@@ -66,7 +67,6 @@ interface VenueDetailsModel {
 const EMPTY_DETAILS: VenueDetailsModel = {
   name: '',
   beach: '',
-  region: '',
   description: '',
   bookingMode: 'INSTANT',
   bookingCutoff: '18:00',
@@ -143,7 +143,7 @@ const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
 
 /**
  * The Venue &amp; commodities tab — the operator's venue-details form
- * (name/beach/region/description, booking mode, evening-before cutoff), the commodities amenity
+ * (name/beach/description, booking mode, evening-before cutoff), the commodities amenity
  * toggle-chip row over the fixed catalogue, and the three photo slots with real upload / replace /
  * delete (pick = upload = replace, previewed from the returned PREVIEW variant URL).
  *
@@ -158,6 +158,7 @@ const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
 @Component({
   selector: 'app-venue-tab',
   imports: [
+    BeachField,
     BookingCutoffField,
     BookingModeField,
     FieldErrorFor,
@@ -212,7 +213,6 @@ export class VenueTab {
   protected readonly detailsForm = form(this.details, (path) => {
     required(path.name, { message: 'Venue name is required' });
     required(path.beach, { message: 'Beach is required' });
-    required(path.region, { message: 'Region is required' });
     required(path.bookingCutoff, { message: 'Free-cancellation deadline is required' });
   });
 
@@ -374,10 +374,12 @@ export class VenueTab {
         return;
       }
       const m = this.details();
+      if (m.beach === '') {
+        return;
+      }
       const request: VenueProfileUpdate = {
         name: m.name,
         beach: m.beach,
-        region: m.region,
         description: m.description,
         bookingMode: m.bookingMode,
         bookingCutoff: m.bookingCutoff,
@@ -456,8 +458,7 @@ export class VenueTab {
   private seed(profile: VenueProfileView): void {
     this.details.set({
       name: profile.name,
-      beach: profile.beach,
-      region: profile.region,
+      beach: beachEntry(profile.beach)?.code ?? '',
       description: profile.description ?? '',
       bookingMode: profile.bookingMode,
       bookingCutoff: profile.bookingCutoff,

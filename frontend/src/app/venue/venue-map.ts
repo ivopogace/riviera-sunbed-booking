@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { BookingDialog } from '../booking/booking-dialog';
 import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '../shared/amenities';
+import { beachLabel, regionLabel } from '../shared/beaches';
 import { AmenityChip } from '../shared/amenity-chip';
 import { ClosedForSeasonChip } from '../shared/closed-for-season-chip';
 import { SemanticChip } from '../shared/semantic-chip';
@@ -244,8 +245,8 @@ export class VenueMap {
     return {
       id: v.id,
       name: v.name,
-      beach: v.beach,
-      region: v.region,
+      beach: beachLabel(v.beach),
+      region: regionLabel(v.region),
       description: v.description,
       photos,
       // Absent only on an older payload or a double; the server resolves its own fallback.

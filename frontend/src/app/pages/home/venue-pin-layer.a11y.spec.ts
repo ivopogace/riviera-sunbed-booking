@@ -26,7 +26,7 @@ const PINS: readonly VenuePin[] = [
   {
     id: '3',
     at: DHERMI,
-    card: venueCard({ id: 3, name: 'Aurora Bay', beach: 'Dhërmi' }),
+    card: venueCard({ id: 3, name: 'Aurora Bay', beach: 'DHERMI' }),
   },
   {
     id: '4',
@@ -34,7 +34,7 @@ const PINS: readonly VenuePin[] = [
     card: venueCard({
       id: 4,
       name: 'Quiet Cove',
-      beach: 'Palasë',
+      beach: 'PALASE',
       priceLabel: null,
       fromPrice: null,
     }),

@@ -49,8 +49,8 @@ class JdbcPhotoStorageIT {
 
 	private VenueId newVenue() {
 		long id = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Photo Test Venue', 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Photo Test Venue', 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
 		return new VenueId(id);

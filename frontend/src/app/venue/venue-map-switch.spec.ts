@@ -43,8 +43,8 @@ describe('Tourist beach map — in-place venue switch over the real routes (#499
       .flush({
         id,
         name,
-        beach: 'Ksamil',
-        region: 'Riviera',
+        beach: 'KSAMIL',
+        region: 'SARANDE',
         description: '',
         ratingTenths: 40,
         reviewsCount: 1,

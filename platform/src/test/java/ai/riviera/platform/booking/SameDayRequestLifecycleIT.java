@@ -67,9 +67,9 @@ class SameDayRequestLifecycleIT {
 	void seedLateCloseRequestVenueWithOwner() throws Exception {
 		operatorSession = SessionLoginSupport.operatorSession(mvc, "operator", "test-sameday-pw");
 		venueId = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency,
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency,
 				                   sales_close)
-				VALUES ('Same-Day Club', 'Late Beach', 'Late Region', 'REQUEST', 1500, 'EUR', '23:59')
+				VALUES ('Same-Day Club', 'KSAMIL', 'REQUEST', 1500, 'EUR', '23:59')
 				RETURNING id
 				""").query(Long.class).single();
 		setId = jdbc.sql("""

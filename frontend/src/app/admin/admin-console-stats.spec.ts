@@ -8,7 +8,7 @@ function venue(venueId: number, commissionBps: number): VenueCommissionView {
   return {
     venueId,
     name: `Venue ${venueId}`,
-    beach: 'Dhërmi',
+    beach: 'DHERMI',
     commissionBps,
     payoutCurrency: 'EUR',
   };

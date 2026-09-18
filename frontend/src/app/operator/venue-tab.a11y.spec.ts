@@ -25,8 +25,7 @@ describe('VenueTab a11y (#177)', () => {
 
   const PROFILE: VenueProfileView = {
     name: 'Miramar',
-    beach: 'Ksamil',
-    region: 'Riviera',
+    beach: 'KSAMIL',
     description: 'lovely',
     bookingMode: 'INSTANT',
     bookingCutoff: '18:00',

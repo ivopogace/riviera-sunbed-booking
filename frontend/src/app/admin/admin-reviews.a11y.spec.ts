@@ -61,7 +61,7 @@ async function renderWithVenuePicked(): Promise<ComponentFixture<AdminReviews>> 
       {
         provide: AdminVenuesService,
         useValue: {
-          venues: () => Promise.resolve([{ id: 7, name: 'Bora Bora Beach', beach: 'Dhërmi' }]),
+          venues: () => Promise.resolve([{ id: 7, name: 'Bora Bora Beach', beach: 'DHERMI' }]),
         },
       },
       {

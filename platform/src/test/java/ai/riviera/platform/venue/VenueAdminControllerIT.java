@@ -73,7 +73,7 @@ class VenueAdminControllerIT {
 
 	private static String venueBody(String name, String mode, String currency) {
 		return """
-				{"name":"%s","beach":"Ksamil","region":"Riviera","description":"on the shore",
+				{"name":"%s","beach":"KSAMIL","description":"on the shore",
 				 "bookingMode":"%s","payoutCurrency":"%s","bookingCutoff":"18:00"}
 				""".formatted(name, mode, currency);
 	}
@@ -104,7 +104,7 @@ class VenueAdminControllerIT {
 	private static String profileBody(String name, String mode, String cutoff, String salesClose,
 			String amenitiesJson, String distanceJson, String locationJson, long expectedVersion) {
 		return """
-				{"name":"%s","beach":"Ksamil","region":"Riviera","description":"edited",
+				{"name":"%s","beach":"KSAMIL","description":"edited",
 				 "bookingMode":"%s","bookingCutoff":"%s","salesClose":"%s","amenities":%s,
 				 "distanceToWaterM":%s,"location":%s,"expectedVersion":%d}
 				""".formatted(name, mode, cutoff, salesClose, amenitiesJson, distanceJson, locationJson,
@@ -190,7 +190,7 @@ class VenueAdminControllerIT {
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
-								{"name":"Still Default","beach":"Ksamil","region":"Riviera","description":"x",
+								{"name":"Still Default","beach":"KSAMIL","description":"x",
 								 "bookingMode":"INSTANT","bookingCutoff":"18:00","amenities":[],
 								 "distanceToWaterM":null,"expectedVersion":0}
 								"""))
@@ -209,7 +209,7 @@ class VenueAdminControllerIT {
 		MvcResult result = mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
-								{"name":"All Day Club","beach":"Ksamil","region":"Riviera",
+								{"name":"All Day Club","beach":"KSAMIL",
 								 "description":"on the shore","bookingMode":"INSTANT",
 								 "payoutCurrency":"EUR","bookingCutoff":"18:00","salesClose":"23:59"}
 								"""))
@@ -227,7 +227,7 @@ class VenueAdminControllerIT {
 		mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
-								{"name":"Odd Close Club","beach":"Ksamil","region":"Riviera",
+								{"name":"Odd Close Club","beach":"KSAMIL",
 								 "description":"on the shore","bookingMode":"INSTANT",
 								 "payoutCurrency":"EUR","bookingCutoff":"18:00","salesClose":"12:00"}
 								"""))
@@ -246,7 +246,7 @@ class VenueAdminControllerIT {
 		mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
-								{"name":"Chosen Rate Club","beach":"Ksamil","region":"Riviera",
+								{"name":"Chosen Rate Club","beach":"KSAMIL",
 								 "bookingMode":"INSTANT","commissionBps":0,"payoutCurrency":"EUR",
 								 "bookingCutoff":"18:00"}
 								"""))
@@ -702,7 +702,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void widenedProfileEditPersistsCoreFieldsAndReadsBack() throws Exception {
-		// AC-1/AC-2/AC-6: the widened write persists name/beach/region/description/mode/cutoff.
+		// AC-1/AC-2/AC-6: the widened write persists name/beach/description/mode/cutoff.
 		// The tourist read reflects the new name + mode; the owner profile read reflects the cutoff too.
 		long venue = createVenue("Before Name");
 
@@ -720,8 +720,7 @@ class VenueAdminControllerIT {
 		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.name").value("After Name"))
-				.andExpect(jsonPath("$.beach").value("Ksamil"))
-				.andExpect(jsonPath("$.region").value("Riviera"))
+				.andExpect(jsonPath("$.beach").value("KSAMIL"))
 				.andExpect(jsonPath("$.description").value("edited"))
 				.andExpect(jsonPath("$.bookingMode").value("REQUEST"))
 				.andExpect(jsonPath("$.bookingCutoff").value("12:30"))
@@ -814,7 +813,7 @@ class VenueAdminControllerIT {
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
-								{"name":"No Version Club","beach":"Ksamil","region":"Riviera","description":"x",
+								{"name":"No Version Club","beach":"KSAMIL","description":"x",
 								 "bookingMode":"INSTANT","bookingCutoff":"18:00","amenities":[],
 								 "distanceToWaterM":null}
 								"""))
@@ -916,7 +915,7 @@ class VenueAdminControllerIT {
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
-								{"name":"Still Mine","beach":"Ksamil","region":"Riviera","description":"x",
+								{"name":"Still Mine","beach":"KSAMIL","description":"x",
 								 "bookingMode":"INSTANT","bookingCutoff":"18:00","salesClose":"16:00",
 								 "amenities":[],"distanceToWaterM":null,"commissionBps":9999,
 								 "payoutCurrency":"USD","expectedVersion":0}

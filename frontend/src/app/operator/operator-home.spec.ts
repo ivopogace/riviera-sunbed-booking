@@ -78,7 +78,7 @@ describe('OperatorHome (#277, create state #278)', () => {
 
   it('?create=1 renders the create card instead of forwarding a venue owner (#278)', async () => {
     await render(
-      { status: 'loaded', venues: [{ id: 12, name: 'Miramar', beach: 'Dhërmi' }] },
+      { status: 'loaded', venues: [{ id: 12, name: 'Miramar', beach: 'DHERMI' }] },
       { create: '1' },
     );
 
@@ -90,7 +90,7 @@ describe('OperatorHome (#277, create state #278)', () => {
   });
 
   it('forwards a single-venue operator straight into that console', async () => {
-    await render({ status: 'loaded', venues: [{ id: 12, name: 'Miramar', beach: 'Dhërmi' }] });
+    await render({ status: 'loaded', venues: [{ id: 12, name: 'Miramar', beach: 'DHERMI' }] });
     expect(navigate).toHaveBeenCalledWith('/operator/12');
   });
 
@@ -101,8 +101,8 @@ describe('OperatorHome (#277, create state #278)', () => {
       {
         status: 'loaded',
         venues: [
-          { id: 12, name: 'Miramar Beach Club', beach: 'Dhërmi' },
-          { id: 15, name: 'Sereno', beach: 'Jal' },
+          { id: 12, name: 'Miramar Beach Club', beach: 'DHERMI' },
+          { id: 15, name: 'Sereno', beach: 'JALE' },
         ],
       },
       {},
@@ -130,8 +130,8 @@ describe('OperatorHome (#277, create state #278)', () => {
     await render({
       status: 'loaded',
       venues: [
-        { id: 12, name: 'Miramar Beach Club', beach: 'Dhërmi' },
-        { id: 15, name: 'Sereno', beach: 'Jal' },
+        { id: 12, name: 'Miramar Beach Club', beach: 'DHERMI' },
+        { id: 15, name: 'Sereno', beach: 'JALE' },
       ],
     });
 
@@ -153,8 +153,8 @@ describe('OperatorHome (#277, create state #278)', () => {
     await render({
       status: 'loaded',
       venues: [
-        { id: 12, name: 'Miramar Beach Club', beach: 'Dhërmi' },
-        { id: 15, name: 'Sereno', beach: 'Jal' },
+        { id: 12, name: 'Miramar Beach Club', beach: 'DHERMI' },
+        { id: 15, name: 'Sereno', beach: 'JALE' },
       ],
     });
     fixture.detectChanges();
@@ -172,7 +172,7 @@ describe('OperatorHome (#277, create state #278)', () => {
 
   it('a safe returnUrl outranks even the create state (the landingRouteFor contract)', async () => {
     await render(
-      { status: 'loaded', venues: [{ id: 12, name: 'Miramar', beach: 'Dhërmi' }] },
+      { status: 'loaded', venues: [{ id: 12, name: 'Miramar', beach: 'DHERMI' }] },
       { create: '1', returnUrl: '/operator/15/payouts' },
     );
     expect(navigate).toHaveBeenCalledWith('/operator/15/payouts');
@@ -180,7 +180,7 @@ describe('OperatorHome (#277, create state #278)', () => {
 
   it('honors a returnUrl over the venue-count rule', async () => {
     await render(
-      { status: 'loaded', venues: [{ id: 12, name: 'Miramar', beach: 'Dhërmi' }] },
+      { status: 'loaded', venues: [{ id: 12, name: 'Miramar', beach: 'DHERMI' }] },
       { returnUrl: '/operator/15/payouts' },
     );
     expect(navigate).toHaveBeenCalledWith('/operator/15/payouts');
@@ -199,8 +199,8 @@ describe('OperatorHome (#277, create state #278)', () => {
       {
         status: 'loaded',
         venues: [
-          { id: 12, name: 'Miramar Beach Club', beach: 'Dhërmi' },
-          { id: 15, name: 'Sereno', beach: 'Jal' },
+          { id: 12, name: 'Miramar Beach Club', beach: 'DHERMI' },
+          { id: 15, name: 'Sereno', beach: 'JALE' },
         ],
       },
       { create: '1' },
@@ -219,7 +219,7 @@ describe('OperatorHome (#277, create state #278)', () => {
     expect(el('operator-home-error')).not.toBeNull();
     expect(el('venue-create-card')).toBeNull();
 
-    result = { status: 'loaded', venues: [{ id: 12, name: 'Miramar', beach: 'Dhërmi' }] };
+    result = { status: 'loaded', venues: [{ id: 12, name: 'Miramar', beach: 'DHERMI' }] };
     el('operator-home-retry').click();
     await fixture.whenStable();
 

@@ -201,9 +201,9 @@ class BookingViewIT {
 	 */
 	private void seedLateCancelBooking(String code, String email, LocalDate date) {
 		long venueId = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency,
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency,
 				                   late_cancel_refund_bps, booking_cutoff)
-				VALUES (:name, 'Test Beach', 'Riviera', 'INSTANT', 1500, 'EUR', 5000, TIME '00:00')
+				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR', 5000, TIME '00:00')
 				RETURNING id
 				""").param("name", "Late Refund Club " + code).query(Long.class).single();
 		OwnershipFixtures.grantToBootstrap(jdbc, venueId);

@@ -157,7 +157,7 @@ class AdminVenueCommissionIT {
 		mvc.perform(patch("/api/venues/{v}", venueId).cookie(owner).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
-								{"name":"A7 Owner Venue","beach":"Test Beach","region":"Test Region",
+								{"name":"A7 Owner Venue","beach":"KSAMIL",
 								 "description":null,"bookingMode":"INSTANT","bookingCutoff":"18:00",
 								 "salesClose":"16:00","amenities":[],"distanceToWaterM":null,
 								 "commissionBps":100,"expectedVersion":0}
@@ -204,8 +204,8 @@ class AdminVenueCommissionIT {
 
 	private long venueOwnedByThePlainOperator(String name, int commissionBps) {
 		long id = jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES (:name, 'Test Beach', 'Test Region', 'INSTANT', :bps, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, 'KSAMIL', 'INSTANT', :bps, 'EUR')
 				RETURNING id
 				""")
 				.param("name", name)

@@ -26,8 +26,8 @@ function venues(): VenueSummary[] {
     {
       id: 1,
       name: 'Miramar Beach Club',
-      beach: 'Ksamil',
-      region: 'Albanian Riviera',
+      beach: 'KSAMIL',
+      region: 'SARANDE',
       ratingTenths: 48,
       reviewsCount: 326,
       bookingMode: 'INSTANT',
@@ -41,8 +41,8 @@ function venues(): VenueSummary[] {
     {
       id: 2,
       name: 'Aurora Bay',
-      beach: 'Dhërmi',
-      region: 'Albanian Riviera',
+      beach: 'DHERMI',
+      region: 'HIMARE',
       ratingTenths: 41,
       reviewsCount: 88,
       bookingMode: 'REQUEST',
@@ -321,7 +321,7 @@ describe('Home (venue discovery)', () => {
 
     const first = cards[0];
     expect(first.textContent).toContain('Miramar Beach Club');
-    expect(first.textContent).toContain('Ksamil · Albanian Riviera');
+    expect(first.textContent).toContain('Ksamil · Sarandë');
     expect(first.textContent).toContain('4.8'); // rating tenths → display
     expect(first.textContent).toContain('€25'); // fromPrice 2500 minor units
     expect(first.querySelector('[data-testid="card-availability"]')?.textContent).toContain(
@@ -408,7 +408,7 @@ describe('Home (venue discovery)', () => {
     const beachOptions = [...el().querySelectorAll('[data-testid="filter-beach"] option')].map(
       (o) => o.textContent?.trim(),
     );
-    expect(beachOptions).toEqual(['All beaches', 'Dhërmi', 'Ksamil']); // sorted, with the "all" default
+    expect(beachOptions).toEqual(['All beaches', 'Dhërmi', 'Ksamil']); // catalogue order (north to south), with the "all" default
   });
 
   it('re-queries with the chosen beach filter (sending the beach param)', async () => {
@@ -416,12 +416,12 @@ describe('Home (venue discovery)', () => {
     await fixture.whenStable();
 
     const select = el().querySelector<HTMLSelectElement>('[data-testid="filter-beach"]')!;
-    select.value = 'Dhërmi';
+    select.value = 'DHERMI';
     select.dispatchEvent(new Event('change'));
     await fixture.whenStable();
 
     const req = listRequest();
-    expect(req.request.params.get('beach')).toBe('Dhërmi');
+    expect(req.request.params.get('beach')).toBe('DHERMI');
     req.flush([venues()[1]]);
     await fixture.whenStable();
     expect(el().querySelectorAll('[data-testid="venue-card"]').length).toBe(1);
@@ -667,7 +667,7 @@ describe('Home (venue discovery)', () => {
     await fixture.whenStable();
 
     const select = el().querySelector<HTMLSelectElement>('[data-testid="filter-beach"]')!;
-    select.value = 'Dhërmi';
+    select.value = 'DHERMI';
     select.dispatchEvent(new Event('change'));
     await fixture.whenStable();
     listRequest().error(new ProgressEvent('error')); // the filtered reload fails
@@ -679,7 +679,7 @@ describe('Home (venue discovery)', () => {
 
     // The retry carries the active beach filter — it re-ran reload(), not the unfiltered loadInitial().
     const req = listRequest();
-    expect(req.request.params.get('beach')).toBe('Dhërmi');
+    expect(req.request.params.get('beach')).toBe('DHERMI');
     req.flush([venues()[1]]);
     await fixture.whenStable();
     expect(el().querySelectorAll('[data-testid="venue-card"]').length).toBe(1);
@@ -871,7 +871,7 @@ describe('Home (list/map switch)', () => {
     byTestId(fixture, 'view-map')?.click();
     await settle(fixture);
 
-    (byTestId(fixture, 'filter-beach') as HTMLSelectElement).value = 'Ksamil';
+    (byTestId(fixture, 'filter-beach') as HTMLSelectElement).value = 'KSAMIL';
     byTestId(fixture, 'filter-beach')?.dispatchEvent(new Event('change'));
     httpMock
       .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
@@ -938,8 +938,8 @@ describe('Home (venue pins and the preview)', () => {
       {
         id: 3,
         name: 'Palasa Sands',
-        beach: 'Palasë',
-        region: 'Albanian Riviera',
+        beach: 'PALASE',
+        region: 'HIMARE',
         ratingTenths: 44,
         reviewsCount: 12,
         bookingMode: 'INSTANT',
@@ -1180,7 +1180,7 @@ describe('Home (venue pins and the preview)', () => {
     await settle(fixture);
 
     const select = el(fixture).querySelector<HTMLSelectElement>('[data-testid="filter-beach"]')!;
-    select.value = 'Ksamil';
+    select.value = 'KSAMIL';
     select.dispatchEvent(new Event('change'));
     httpMock
       .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
@@ -1241,6 +1241,10 @@ describe('Home (venue pins and the preview)', () => {
     return el(fixture).querySelector<HTMLSelectElement>('[data-testid="filter-beach"]')!;
   }
 
+  function regionSelect(fixture: ComponentFixture<Home>): HTMLSelectElement {
+    return el(fixture).querySelector<HTMLSelectElement>('[data-testid="filter-region"]')!;
+  }
+
   it('hands the engine no venue markers: the layer draws the pins from the cards the list renders', async () => {
     const fixture = await withPins();
 
@@ -1283,11 +1287,11 @@ describe('Home (venue pins and the preview)', () => {
       await settle(fixture);
 
       const request = httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`);
-      expect(request.request.params.get('beach')).toBe('Ksamil');
+      expect(request.request.params.get('beach')).toBe('KSAMIL');
       request.flush(crowdedVenues().slice(0, 2));
       await settle(fixture);
 
-      expect(beachSelect(fixture).value).toBe('Ksamil');
+      expect(beachSelect(fixture).value).toBe('KSAMIL');
       const crumb = el(fixture).querySelector<HTMLButtonElement>(
         '[data-testid="map-beach-crumb"]',
       )!;
@@ -1322,7 +1326,7 @@ describe('Home (venue pins and the preview)', () => {
   it('shows the crumb for a beach chosen in the select too, since the map shows what the list is narrowed to', async () => {
     const fixture = await withPins();
 
-    beachSelect(fixture).value = 'Ksamil';
+    beachSelect(fixture).value = 'KSAMIL';
     beachSelect(fixture).dispatchEvent(new Event('change'));
     httpMock
       .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
@@ -1332,6 +1336,54 @@ describe('Home (venue pins and the preview)', () => {
     expect(
       el(fixture).querySelector('[data-testid="map-beach-crumb"]')?.textContent?.trim(),
     ).toContain('Ksamil');
+  });
+
+  it('eases the map to the chosen beach, then its region, then back to the riviera as the filters change', async () => {
+    const fixture = await withPins();
+    const list = () =>
+      httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`).flush([]);
+
+    beachSelect(fixture).value = 'DHERMI';
+    beachSelect(fixture).dispatchEvent(new Event('change'));
+    list();
+    await settle(fixture);
+    expect(mapHandle(fixture).view()).toEqual({ center: { lng: 19.645, lat: 40.145 }, zoom: 13 });
+
+    regionSelect(fixture).value = 'HIMARE';
+    regionSelect(fixture).dispatchEvent(new Event('change'));
+    list();
+    beachSelect(fixture).value = '';
+    beachSelect(fixture).dispatchEvent(new Event('change'));
+    list();
+    await settle(fixture);
+    expect(mapHandle(fixture).view()).toEqual({ center: { lng: 19.75, lat: 40.08 }, zoom: 10 });
+
+    regionSelect(fixture).value = '';
+    regionSelect(fixture).dispatchEvent(new Event('change'));
+    list();
+    await settle(fixture);
+    expect(mapHandle(fixture).view()).toEqual(RIVIERA_MAP_OPTIONS.view);
+  });
+
+  it('lists only catalogue beaches and regions that have a venue, in coast order, by label', async () => {
+    const fixture = await withPins();
+
+    const options = (id: string) =>
+      [...el(fixture).querySelectorAll(`[data-testid="${id}"] option`)].map((o) => [
+        (o as HTMLOptionElement).value,
+        o.textContent?.trim(),
+      ]);
+    expect(options('filter-beach')).toEqual([
+      ['', 'All beaches'],
+      ['PALASE', 'Palasë'],
+      ['DHERMI', 'Dhërmi'],
+      ['KSAMIL', 'Ksamil'],
+    ]);
+    expect(options('filter-region')).toEqual([
+      ['', 'All regions'],
+      ['HIMARE', 'Himarë'],
+      ['SARANDE', 'Sarandë'],
+    ]);
   });
 
   it("presses through an inseparable crowd's previews from the map", async () => {
@@ -1349,7 +1401,7 @@ describe('Home (venue pins and the preview)', () => {
     httpMock
       .expectOne(
         (r) =>
-          r.url === `${environment.apiBaseUrl}/api/venues` && r.params.get('beach') === 'Dhërmi',
+          r.url === `${environment.apiBaseUrl}/api/venues` && r.params.get('beach') === 'DHERMI',
       )
       .flush(inseparableVenues());
     await settle(fixture);

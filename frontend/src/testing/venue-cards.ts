@@ -11,8 +11,9 @@ export function venueCard(
   overrides: Partial<VenueCard> & Pick<VenueCard, 'id' | 'name'>,
 ): VenueCard {
   return {
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    beachLabel: 'Ksamil',
+    regionLabel: 'Sarandë',
     photos: [],
     modeLabel: 'Instant Book',
     isRated: true,
@@ -29,7 +30,7 @@ export function venueCard(
     closedForSeason: false,
     reopensOn: null,
     location: null,
-    ariaLabel: `${overrides.name}, Ksamil · Albanian Riviera`,
+    ariaLabel: `${overrides.name}, Ksamil · Sarandë`,
     ...overrides,
   };
 }

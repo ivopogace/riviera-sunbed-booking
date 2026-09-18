@@ -53,8 +53,8 @@ function wideVenue(name: string, availability: 'FREE' | 'TAKEN') {
   return {
     id: 1,
     name,
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     description: '',
     ratingTenths: 48,
     reviewsCount: 12,
@@ -121,8 +121,8 @@ async function mockDaily(page: Page): Promise<{ patches: import('@playwright/tes
     route.fulfill({
       json: {
         name: 'Miramar Beach Club',
-        beach: 'Ksamil',
-        region: 'Albanian Riviera',
+        beach: 'KSAMIL',
+        region: 'SARANDE',
         description: 'Loungers on the shore.',
         bookingMode: 'INSTANT',
         bookingCutoff: '18:00',
@@ -151,8 +151,8 @@ async function mockDaily(page: Page): Promise<{ patches: import('@playwright/tes
       json: {
         id: 1,
         name: 'Miramar Beach Club',
-        beach: 'Ksamil',
-        region: 'Albanian Riviera',
+        beach: 'KSAMIL',
+        region: 'SARANDE',
         description: 'Loungers on the shore.',
         ratingTenths: 48,
         reviewsCount: 12,

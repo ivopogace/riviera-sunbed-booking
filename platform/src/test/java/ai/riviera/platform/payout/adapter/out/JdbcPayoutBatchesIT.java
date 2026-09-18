@@ -36,8 +36,8 @@ class JdbcPayoutBatchesIT {
 
 	private long newVenue() {
 		return jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Batch Adapter Venue', 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Batch Adapter Venue', 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
 	}

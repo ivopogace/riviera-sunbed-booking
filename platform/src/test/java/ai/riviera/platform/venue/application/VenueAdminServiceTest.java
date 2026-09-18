@@ -29,6 +29,7 @@ import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.vocabulary.Amenity;
+import ai.riviera.platform.venue.vocabulary.Beach;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.LiveBookingCounts;
 import ai.riviera.platform.venue.vocabulary.Pool;
@@ -111,7 +112,7 @@ class VenueAdminServiceTest {
 	@Test
 	void onboardReturnsTheInsertedVenueId() {
 		venues.nextVenueId = 99;
-		NewVenueCommand command = new NewVenueCommand("Sunset", "Ksamil", "Riviera", "nice",
+		NewVenueCommand command = new NewVenueCommand("Sunset", Beach.KSAMIL, "nice",
 				"INSTANT", "EUR", LocalTime.of(18, 0), null);
 
 		// Creator-owns-on-create writes ownership too; the ownership write + non-owner denial is
@@ -125,7 +126,7 @@ class VenueAdminServiceTest {
 		// A non-500 configured rate proves the stamp reads configuration, never a literal (AC-4).
 		OnboardVenueService configured = new OnboardVenueService(venues,
 				new FakeOwnership(OWNER, VENUE), new VenueCreationProperties(700));
-		NewVenueCommand command = new NewVenueCommand("Sunset", "Ksamil", "Riviera", "nice",
+		NewVenueCommand command = new NewVenueCommand("Sunset", Beach.KSAMIL, "nice",
 				"INSTANT", "EUR", LocalTime.of(18, 0), null);
 
 		configured.onboard(OWNER, command);
@@ -449,7 +450,7 @@ class VenueAdminServiceTest {
 	/** The same command carrying a venue location; {@code null} clears the pin. */
 	private static VenueProfileCommand profile(Set<Amenity> amenities, Integer distanceToWaterM,
 			VenueLocation location) {
-		return new VenueProfileCommand("Sunset", "Ksamil", "Riviera", "nice", "INSTANT",
+		return new VenueProfileCommand("Sunset", Beach.KSAMIL, "nice", "INSTANT",
 				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, amenities, distanceToWaterM, location);
 	}
 
@@ -1094,9 +1095,9 @@ class VenueAdminServiceTest {
 	void ownedByReturnsOnlyTheOperatorsOwnVenues() {
 		// AC-1: "Aurora" (P's) sorts BEFORE both of O's, so a leak would land first and fail the assert.
 		FakeVenues store = new FakeVenues(new ArrayList<>());
-		store.summaries.put(12L, new OwnedVenueView(12, "Miramar Beach Club", "Dhërmi"));
-		store.summaries.put(15L, new OwnedVenueView(15, "Sereno", "Jal"));
-		store.summaries.put(20L, new OwnedVenueView(20, "Aurora", "Borsh"));
+		store.summaries.put(12L, new OwnedVenueView(12, "Miramar Beach Club", "DHERMI"));
+		store.summaries.put(15L, new OwnedVenueView(15, "Sereno", "JALE"));
+		store.summaries.put(20L, new OwnedVenueView(20, "Aurora", "BORSH"));
 		VenueAdminService owned = new VenueAdminService(store, new MultiOwnership(Map.of(
 				MULTI_OWNER, Set.of(new VenueRef(12), new VenueRef(15)),
 				OTHER_OWNER, Set.of(new VenueRef(20)))));
@@ -1350,7 +1351,7 @@ class VenueAdminServiceTest {
 		@Override
 		public Optional<VenueProfileView> findProfile(VenueId venueId) {
 			return venues.contains(venueId.value())
-					? Optional.of(new VenueProfileView("Sunset", "Ksamil", "Riviera", "nice",
+					? Optional.of(new VenueProfileView("Sunset", "KSAMIL", "nice",
 							BookingMode.INSTANT, LocalTime.of(18, 0), LocalTime.of(16, 0), 1500, "EUR",
 							List.of(Amenity.WIFI), 20, 0, List.of(), SeasonClosure.open(), false, storedLocation))
 					: Optional.empty();

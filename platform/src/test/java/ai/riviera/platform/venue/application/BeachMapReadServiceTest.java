@@ -50,7 +50,7 @@ class BeachMapReadServiceTest {
 	}
 
 	private static VenueMapView map(List<SetView> sets) {
-		return new VenueMapView(VENUE.value(), "V", "Ksamil", "Riviera", null, 0, 0, "INSTANT",
+		return new VenueMapView(VENUE.value(), "V", "KSAMIL", "SARANDE", null, 0, 0, "INSTANT",
 				PRICE, List.of(), null, sets, 4L, null, List.of(), List.of(), true, "16:00", false, null,
 				null);
 	}

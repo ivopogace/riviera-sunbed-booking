@@ -24,8 +24,8 @@ const VENUES = [
   {
     id: 1,
     name: 'Miramar Beach Club',
-    beach: 'Ksamil',
-    region: 'Albanian Riviera',
+    beach: 'KSAMIL',
+    region: 'SARANDE',
     ratingTenths: 48,
     reviewsCount: 326,
     bookingMode: 'INSTANT',
@@ -396,8 +396,8 @@ test.describe('console routes under a tourist theme', () => {
     await mockWholeConsole(page);
     await mockWholeAdminConsole(page);
     await mockOwnedVenues(page, [
-      { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
-      { id: 2, name: 'Sunset Lido', beach: 'Dhërmi' },
+      { id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' },
+      { id: 2, name: 'Sunset Lido', beach: 'DHERMI' },
     ]);
     await new OperatorSignInPage(page).goto('/operator/1/daily');
     await new OperatorSignInPage(page).signIn('operator', 'admin-pw');
@@ -445,8 +445,8 @@ test.describe('console routes under a tourist theme', () => {
     await mockWholeConsole(page);
     await mockWholeAdminConsole(page);
     await mockOwnedVenues(page, [
-      { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
-      { id: 2, name: 'Sunset Lido', beach: 'Dhërmi' },
+      { id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' },
+      { id: 2, name: 'Sunset Lido', beach: 'DHERMI' },
     ]);
     await new OperatorSignInPage(page).goto('/operator/1/daily');
     await new OperatorSignInPage(page).signIn('operator', 'admin-pw');
@@ -485,7 +485,7 @@ test.describe('console routes under a tourist theme', () => {
   }) => {
     await page.addInitScript(() => localStorage.setItem('riviera-theme', 'riviera'));
     await mockWholeConsole(page);
-    await mockOwnedVenues(page, [{ id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' }]);
+    await mockOwnedVenues(page, [{ id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' }]);
     await new OperatorSignInPage(page).goto('/operator/1/daily');
     await new OperatorSignInPage(page).signIn('operator', 'admin-pw');
     await expect(page.getByTestId('daily-view-tab')).toBeVisible();

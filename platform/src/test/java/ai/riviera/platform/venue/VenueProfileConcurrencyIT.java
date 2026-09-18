@@ -25,6 +25,7 @@ import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.ProfileUpdateOutcome;
 import ai.riviera.platform.venue.application.VenueProfileCommand;
 import ai.riviera.platform.venue.domain.SalesClose;
+import ai.riviera.platform.venue.vocabulary.Beach;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -102,14 +103,14 @@ class VenueProfileConcurrencyIT {
 	}
 
 	private static VenueProfileCommand command(String name) {
-		return new VenueProfileCommand(name, "Ksamil", "Riviera", "desc", "INSTANT",
+		return new VenueProfileCommand(name, Beach.KSAMIL, "desc", "INSTANT",
 				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null);
 	}
 
 	private long insertVenue() {
 		return jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES ('Concurrency Club', 'Ksamil', 'Riviera', 'INSTANT', 1500, 'EUR')
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Concurrency Club', 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
 	}

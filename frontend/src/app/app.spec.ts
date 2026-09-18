@@ -42,7 +42,7 @@ const operatorAuth = {
 };
 
 /** The console shell's two reads, faked so no request leaves: the owned list and the venue snapshot. */
-const ONE_VENUE: readonly OwnedVenue[] = [{ id: 7, name: 'Miramar Beach Club', beach: 'Ksamil' }];
+const ONE_VENUE: readonly OwnedVenue[] = [{ id: 7, name: 'Miramar Beach Club', beach: 'KSAMIL' }];
 const ownedVenues = {
   venues: signal<readonly OwnedVenue[] | undefined>(ONE_VENUE),
   load: vi.fn((): Promise<OwnedVenuesResult> =>

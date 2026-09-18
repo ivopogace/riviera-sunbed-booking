@@ -48,8 +48,7 @@ test('a registering operator lands straight in the console and works it while PE
 
   // 2. Still PENDING, the operator creates its venue and lands in that console — notice included.
   await page.getByLabel('Name', { exact: true }).fill('Sunset Club');
-  await page.getByLabel('Beach', { exact: true }).fill('Ksamil');
-  await page.getByLabel('Region', { exact: true }).fill('Albanian Riviera');
+  await page.getByTestId('venue-create-beach').selectOption('KSAMIL');
   await page.getByRole('button', { name: 'Create venue' }).click();
   await expect(page).toHaveURL(/\/operator\/100\/beach-map/);
   await expect(page.getByTestId('pending-approval-banner')).toBeVisible();

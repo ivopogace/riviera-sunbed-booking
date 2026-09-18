@@ -31,9 +31,9 @@ class SetRetireMigrationIT {
 
 	private long newVenue(String name) {
 		return jdbc.queryForObject("""
-				INSERT INTO venue (name, beach, region, description, booking_mode,
+				INSERT INTO venue (name, beach, description, booking_mode,
 				                   commission_bps, payout_currency, booking_cutoff)
-				VALUES (?, 'Ksamil', 'Riviera', 'retire migration', 'INSTANT', 1500, 'EUR', TIME '18:00')
+				VALUES (?, 'KSAMIL', 'retire migration', 'INSTANT', 1500, 'EUR', TIME '18:00')
 				RETURNING id
 				""", Long.class, name);
 	}

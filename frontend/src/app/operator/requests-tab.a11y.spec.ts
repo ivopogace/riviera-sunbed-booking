@@ -81,8 +81,8 @@ describe('RequestsTab a11y (#176)', () => {
       .flush({
         id: 1,
         name: 'V',
-        beach: 'Ksamil',
-        region: 'Riviera',
+        beach: 'KSAMIL',
+        region: 'SARANDE',
         sets: [seat(1, 'A', 1, 'PREMIUM')],
       });
     fixture.detectChanges();

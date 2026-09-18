@@ -106,8 +106,8 @@ class CrossVenueDenialIT {
 
 	private long newVenue(String name) {
 		return jdbc.sql("""
-				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
-				VALUES (:name, 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR') RETURNING id
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR') RETURNING id
 				""").param("name", name).query(Long.class).single();
 	}
 
@@ -243,7 +243,7 @@ class CrossVenueDenialIT {
 	 *  403 comes from the service's ownership check, not from body/version validation (parse-then-authorize).
 	 *  The owning-venue counterpart edits a fresh venue, so {@code expectedVersion} 0 matches. */
 	private static final String FULL_PROFILE_BODY = """
-			{"name":"Edited","beach":"Ksamil","region":"Riviera","description":"x",
+			{"name":"Edited","beach":"KSAMIL","description":"x",
 			 "bookingMode":"INSTANT","bookingCutoff":"18:00","salesClose":"16:00",
 			 "amenities":["BEACH_BAR"],"distanceToWaterM":15,"expectedVersion":0}
 			""";
@@ -540,7 +540,7 @@ class CrossVenueDenialIT {
 	void venueCreationIsNotOwnershipChecked() throws Exception {
 		actingAs(operatorA);
 		String venueBody = """
-				{"name":"A New Venue","beach":"Ksamil","region":"Riviera","description":"x",
+				{"name":"A New Venue","beach":"KSAMIL","description":"x",
 				 "bookingMode":"INSTANT","payoutCurrency":"EUR","bookingCutoff":"18:00"}
 				""";
 		// Any ACTIVE operator may create (role-gated, no prior owner to check) → 201.
@@ -556,7 +556,7 @@ class CrossVenueDenialIT {
 		// insert), so the creator's venue-scoped reads pass and a DIFFERENT operator gets 403.
 		actingAs(operatorA);
 		String venueBody = """
-				{"name":"A Owned-On-Create Venue","beach":"Ksamil","region":"Riviera","description":"x",
+				{"name":"A Owned-On-Create Venue","beach":"KSAMIL","description":"x",
 				 "bookingMode":"INSTANT","payoutCurrency":"EUR","bookingCutoff":"18:00"}
 				""";
 		MvcResult created = mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())

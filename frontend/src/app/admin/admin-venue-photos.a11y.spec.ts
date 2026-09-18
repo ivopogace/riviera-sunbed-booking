@@ -36,7 +36,7 @@ const PHOTOS: AdminVenuePhotosView = {
 };
 
 const venuesStub: Partial<AdminVenuesService> = {
-  venues: () => Promise.resolve([{ id: 7, name: 'Bora Bora Beach', beach: 'Dhërmi' }]),
+  venues: () => Promise.resolve([{ id: 7, name: 'Bora Bora Beach', beach: 'DHERMI' }]),
 };
 
 function serviceStub(): Partial<AdminVenuePhotosService> {

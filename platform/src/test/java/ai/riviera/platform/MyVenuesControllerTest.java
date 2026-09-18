@@ -59,7 +59,7 @@ class MyVenuesControllerTest {
 	void returnsTheSessionOperatorsVenuesAsJson() throws Exception {
 		// WebSliceStubs' OperatorDirectory resolves any principal to operator 1.
 		when(listOwnedVenues.ownedBy(new OperatorId(1))).thenReturn(List.of(
-				new OwnedVenueView(12, "Miramar Beach Club", "Dhërmi"),
+				new OwnedVenueView(12, "Miramar Beach Club", "DHERMI"),
 				new OwnedVenueView(15, "Sereno", "Jal")));
 
 		mvc.perform(get(MINE).with(user("op").roles("OPERATOR")))
@@ -67,7 +67,7 @@ class MyVenuesControllerTest {
 				.andExpect(jsonPath("$.length()").value(2))
 				.andExpect(jsonPath("$[0].id").value(12))
 				.andExpect(jsonPath("$[0].name").value("Miramar Beach Club"))
-				.andExpect(jsonPath("$[0].beach").value("Dhërmi"))
+				.andExpect(jsonPath("$[0].beach").value("DHERMI"))
 				.andExpect(jsonPath("$[1].id").value(15));
 	}
 

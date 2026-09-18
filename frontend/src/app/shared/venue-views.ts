@@ -1,4 +1,5 @@
 import { Amenity } from './amenities';
+import type { BeachCode, RegionCode } from './beaches';
 import { MoneyView } from './money';
 
 /**
@@ -67,8 +68,9 @@ export interface SetView {
 export interface VenueMapView {
   readonly id: number;
   readonly name: string;
-  readonly beach: string;
-  readonly region: string;
+  /** The catalogue code (`beaches.ts`) and the region code it derives to; labels are the client's. */
+  readonly beach: BeachCode;
+  readonly region: RegionCode;
   readonly description: string;
   readonly ratingTenths: number;
   readonly reviewsCount: number;
@@ -185,8 +187,9 @@ export interface VenueLocation {
 export interface VenueSummary {
   readonly id: number;
   readonly name: string;
-  readonly beach: string;
-  readonly region: string;
+  /** The catalogue code (`beaches.ts`) and the region code it derives to; labels are the client's. */
+  readonly beach: BeachCode;
+  readonly region: RegionCode;
   readonly ratingTenths: number;
   readonly reviewsCount: number;
   readonly bookingMode: BookingMode;

@@ -82,8 +82,8 @@ function sets() {
 const RICH_VENUE = {
   id: 1,
   name: 'Miramar Beach Club',
-  beach: 'Ksamil',
-  region: 'Albanian Riviera',
+  beach: 'KSAMIL',
+  region: 'SARANDE',
   description: 'Loungers on the Ksamil shoreline.',
   ratingTenths: 48,
   reviewsCount: 326,

@@ -44,7 +44,7 @@ const VENUES = [
   {
     venueId: 7,
     name: 'Bora Bora Beach',
-    beach: 'Dhërmi',
+    beach: 'DHERMI',
     commissionBps: 1500,
     payoutCurrency: 'EUR',
   },
