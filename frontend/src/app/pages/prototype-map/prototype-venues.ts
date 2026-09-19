@@ -410,8 +410,42 @@ function photos(id: number, count: number): VenueCard['photos'] {
   });
 }
 
+/**
+ * `?dense=30`: Himarë padded to that many venues for the density question (round 8) — clones
+ * interpolated between its existing pins in coast order, so the bounding box, and with it the
+ * poster's camera, stay exactly what the real fixture's are.
+ */
+function densified(seeds: readonly Seed[]): readonly Seed[] {
+  const wanted = Number(new URLSearchParams(globalThis.location?.search ?? '').get('dense') ?? 0);
+  const himare = seeds.filter((s) => beachEntry(s.beach)?.region === 'HIMARE');
+  if (wanted <= himare.length || himare.length < 2) return seeds;
+  const sorted = [...himare].sort((a, b) => a.lng - b.lng);
+  const gaps = sorted.length - 1;
+  const perGap = Math.ceil((wanted - himare.length) / gaps);
+  const extra: Seed[] = [];
+  for (let k = 0; extra.length < wanted - himare.length; k += 1) {
+    const gap = k % gaps;
+    const step = Math.floor(k / gaps) + 1;
+    const t = step / (perGap + 1);
+    const a = sorted[gap];
+    const b = sorted[gap + 1];
+    extra.push({
+      ...a,
+      name: `${a.beach.charAt(0)}${a.beach.slice(1).toLowerCase()} Club ${k + 1}`,
+      lng: a.lng + (b.lng - a.lng) * t,
+      lat: a.lat + (b.lat - a.lat) * t,
+      rating: 35 + ((k * 7) % 13),
+      reviews: 5 + ((k * 31) % 90),
+      price: 1500 + ((k * 300) % 2000),
+      free: (k * 5) % 20,
+      total: 20 + ((k * 3) % 30),
+    });
+  }
+  return [...seeds, ...extra];
+}
+
 /** The fixture as ready-made Discover cards — the same view model `pages/home` renders. */
-export const PROTOTYPE_VENUES: readonly VenueCard[] = SEEDS.map((seed, i) => {
+export const PROTOTYPE_VENUES: readonly VenueCard[] = densified(SEEDS).map((seed, i) => {
   const id = i + 1;
   return {
     id,

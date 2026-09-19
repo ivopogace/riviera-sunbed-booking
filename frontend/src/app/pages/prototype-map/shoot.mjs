@@ -148,6 +148,16 @@ const SHOTS = [
   { name: 'Q-shore-1200-line', v: WIDE_MID, url: 'variant=Q&desk=line&now=10:30' },
   { name: 'Q-shore-1024-line', v: NARROW, url: 'variant=Q&desk=line&now=10:30' },
   { name: 'Q-shore-1920-line', v: DESK, url: 'variant=Q&desk=line&now=10:30' },
+  // round 8, the density question: Himarë padded to 30 venues (`?dense=30`)
+  { name: 'Q-shore-phone-dense', v: PHONE, url: 'variant=Q&dense=30&now=10:30' },
+  { name: 'Q-shore-phone-dense-pin', v: PHONE, url: 'variant=Q&dense=30&now=10:30', pin: 0 },
+  { name: 'Q-shore-phone-dense-full', v: PHONE, url: 'variant=Q&dense=30&sheet=full&now=10:30' },
+  { name: 'Q-shore-1440-line-dense', v: LAPTOP, url: 'variant=Q&desk=line&dense=30&now=10:30' },
+  {
+    name: 'Q-shore-1440-line-dense-beach',
+    v: LAPTOP,
+    url: 'variant=Q&desk=line&dense=30&beach=DHERMI&now=10:30',
+  },
 ];
 
 function svgPhoto(id) {
