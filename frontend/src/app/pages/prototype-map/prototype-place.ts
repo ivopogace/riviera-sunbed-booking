@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — throwaway. Round 5's model of WHERE THE TOURIST IS: the phone's first question is
+ * PROTOTYPE — throwaway. The model of WHERE THE TOURIST IS: the phone's first question is
  * not "show me the coast" but "what is near me, today", so the position becomes a first-class
  * input beside the beach and region filters, and the list learns to sort and caption by distance.
  *

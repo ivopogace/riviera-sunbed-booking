@@ -1,14 +1,14 @@
 /**
- * PROTOTYPE — throwaway. Round 5's coast picker: the whole coast as a CHOOSER, not as the page.
+ * PROTOTYPE — throwaway. The coast picker: the whole coast as a CHOOSER, not as the page.
  *
- * <p>Round 4 measured that the whole coast cannot be framed on a 390 px phone (the ADR-0022
- * fence plus `minZoom: 7`), and `K-locator-phone.png` showed the one phone screen in four rounds
- * on which all sixteen beaches were legible at once — K's ribbon, alone, full-height. So the
- * ribbon becomes the thing a phone opens ON DEMAND to choose a place: a sheet with the coast as a
- * 96 px ribbon down its left edge and, beside it, C's coast index as 44 px rows — every region
- * and every beach that has a venue, its count and its from-price — each row tied to its dot by
- * K's leader. Near me and Whole coast head the list. The ribbon's WebGL context exists only while
- * the sheet is open, which is the cost a first screen on 4G should not carry.
+ * <p>The whole coast cannot be framed on a 390 px phone inside a scroll column (the ADR-0022
+ * fence plus `minZoom: 7`), and the one phone screen on which all sixteen beaches are legible at
+ * once is a narrow ribbon alone, full-height. So the ribbon is the thing a phone opens ON DEMAND
+ * to choose a place: a sheet with the coast as a 150 px ribbon down its left edge and, beside it,
+ * the coast index as 44 px rows — every region and every beach that has a venue, its count and
+ * its from-price — each row tied to its dot by a leader. Near me and Whole coast head the list.
+ * The ribbon's WebGL context exists only while the sheet is open, which is the cost a first
+ * screen on 4G should not carry.
  *
  * <p>From `lg` up the same element is a popover under the place button, so the desktop picks a
  * place the same way the phone does.

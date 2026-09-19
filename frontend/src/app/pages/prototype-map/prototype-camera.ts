@@ -4,15 +4,14 @@
  *
  * <p>This is a FINDING, not decoration. `RIVIERA_MAP_OPTIONS` opens at zoom 8.6 on
  * {19.75, 40.05} — a camera tuned for the 430 × 560 px portrait pane the shipped page gives it.
- * Every layout here makes the pane bigger or a different shape, and at that fixed camera the
- * extra area goes to inland Albania (Përmet, Gjirokastra) and open sea instead of to the coast.
- * So whichever layout wins, the camera has to be derived from the pane and the result set rather
- * than pinned in a constant.
+ * Q's panes are other sizes and shapes, and at that fixed camera the extra area goes to inland
+ * Albania (Përmet, Gjirokastra) and open sea instead of to the coast. So the camera is derived
+ * from the pane and the result set rather than pinned in a constant.
  *
  * <p>Web Mercator, both axes, then the tighter of the two zooms. Only `easeTo(view)` is needed,
  * which `MapHandle` already publishes — no port change.
  */
-import { LngLat, MapHandle, MapView } from '../../shared/map-engine';
+import { LngLat, MapView } from '../../shared/map-engine';
 import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map';
 
 /**
@@ -44,10 +43,9 @@ function mercatorY(lat: number): number {
 /**
  * The camera that shows every one of `at` inside a `width` × `height` pane.
  *
- * <p>`insetLeft` / `insetRight` is chrome that COVERS the map rather than sitting beside it
- * (variant B's glass rail; variant K's label gutter): the fit then frames the pins in what is
- * actually left over and shifts the centre by half the imbalance, instead of parking the coast
- * behind the chrome.
+ * <p>`insetLeft` / `insetRight` is chrome that COVERS the map rather than sitting beside it: the
+ * fit then frames the pins in what is actually left over and shifts the centre by half the
+ * imbalance, instead of parking the coast behind the chrome.
  *
  * <p>Clamped twice: to the map's own `minZoom`/`maxZoom`, and to the zoom at which the viewport
  * still fits inside `maxBounds` — the ADR-0022 tile fence is only 2.2° of longitude wide, so a
@@ -101,18 +99,4 @@ export function fitPins(
     },
     zoom,
   };
-}
-
-/** Apply {@link fitPins} to a live handle; a `null` fit leaves the camera where it is. */
-export function fitHandleToPins(
-  handle: MapHandle,
-  at: readonly LngLat[],
-  pane: HTMLElement,
-  insetLeft = 0,
-  insetRight = 0,
-): void {
-  const view = fitPins(at, pane.clientWidth, pane.clientHeight, insetLeft, insetRight);
-  if (view !== null) {
-    handle.easeTo(view);
-  }
 }

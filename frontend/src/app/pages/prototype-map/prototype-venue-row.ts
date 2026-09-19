@@ -1,12 +1,11 @@
 /**
- * PROTOTYPE — throwaway. Round 5's phone card: one row per venue, the photo a 72 px square on the
- * left, the three facts a tourist on the beach decides on — name, price, sets free — at a size
- * that reads in glare, and the whole row the link. It is B's rail row re-cut for 390 px and given
- * back the free bar, and on a phone it is also the pin's PREVIEW: a pin press scrolls to its row
- * and lights it, because a second card floating over a 250 px map has nowhere to go.
+ * PROTOTYPE — throwaway. The phone row: one per venue, the photo a 72 px square on the left, the
+ * three facts a tourist on the beach decides on — name, price, sets free — at a size that reads
+ * in glare, and the whole row the link. It is also the pin's PREVIEW: a pin press scrolls to its
+ * row and lights it, because a second card over the map has nowhere to go.
  *
- * <p>A venue whose sales for today have closed (invariant #4, J's instrument) keeps its row but
- * drops into dusk and says so, and the row's price gives way to the fact that matters more.
+ * <p>A venue whose sales for today have closed (invariant #4) keeps its row but drops into dusk
+ * and says so, and the row's price gives way to the fact that matters more.
  */
 import { Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';

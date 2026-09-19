@@ -1,29 +1,12 @@
 /**
- * PROTOTYPE — throwaway. Round 4's finding, as the number the layouts are built from: **the
- * result set has an aspect ratio of its own, and it is not a constant.**
+ * PROTOTYPE — throwaway. **The result set has an aspect ratio of its own, and it is not a
+ * constant** — the number Q's desktop map pane is sized from.
  *
- * <p>Round 1 measured the *fence* floor — `h/w ≥ 1.25` or the camera cannot zoom out far enough
- * to frame the whole coast at all — and ranked the layouts by it. That answers "can this pane
- * show the coast", not "how much of this pane does the coast use", and the second question is the
- * one every screenshot in rounds 1–3 was actually complaining about. The answer is below: the
- * 26 venues' own bounding box, in Mercator, is **1 : 4.51** (w : h) north-up. A pane at any other
- * aspect spends the difference on padding — which on this coast is inland Albania.
- *
- * <p>So the fraction of a pane the result set can ever fill is
- * `min(paneAspect, contentAspect) / max(paneAspect, contentAspect)`, and it is brutal:
- *
- * <pre>
- *   pane                          h : w     whole coast fills
- *   shipped 430 × 560             1.30      29 % of the width
- *   A / G  two-pane 634 × 832     1.31      29 % of the width
- *   B / L  full bleed 1440 × 832  0.58      13 % of the width
- *   E      band 1440 × 414        0.29      66 % of the width (at bearing 78°)
- *   K      ribbon 190 × 770       4.05      90 % of the height
- * </pre>
- *
- * <p>And the set's aspect swings by a factor of seven with the filters — 4.51 for the whole
- * coast, 0.60 for Himarë, 2.07 for Sarandë — so **no fixed pane shape is right twice**. That is
- * the finding that outranks where the map goes, and it is what K is built on.
+ * <p>The 26 venues' own bounding box, in Mercator, is **1 : 4.51** (w : h) north-up; Himarë's is
+ * 0.60, Sarandë's 2.07. A pane at any other aspect spends the difference on padding — which on
+ * this coast is inland Albania — so the desktop gives the map the width its set needs (the pane's
+ * height over this aspect) and the list keeps the rest. The phone needs no such rule: its window's
+ * height is the thumb's, through the sheet.
  */
 import { LngLat } from '../../shared/map-engine';
 
@@ -65,12 +48,3 @@ export function contentAspect(at: readonly LngLat[], bearing = 0): number | null
 const MAX_ASPECT = 6;
 /** And one on a parallel would ask for an infinitely deep one. */
 const MIN_ASPECT = 0.15;
-
-/**
- * How much of a `paneW × paneH` box the set can fill, 0…1 — the number the table above is. The
- * unfilled remainder is not a rounding error: on a coast it is the inland the screenshots show.
- */
-export function paneFill(aspect: number, paneW: number, paneH: number): number {
-  const pane = paneH / paneW;
-  return Math.min(pane, aspect) / Math.max(pane, aspect);
-}

@@ -1,6 +1,6 @@
 /**
  * PROTOTYPE — throwaway. The screenshot + measurement driver the README's shots and cost tables
- * come from (round 6 commits it so the next round does not rewrite it).
+ * come from.
  *
  *   node src/app/pages/prototype-map/shoot.mjs [--only Q] [--out shots/]   (from frontend/, with
  *   `npm start` serving :4200)

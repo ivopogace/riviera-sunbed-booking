@@ -1,8 +1,7 @@
 /**
- * PROTOTYPE — throwaway. The riviera map on Discover, phone first: round 6's **Q** (Shore) on one
- * route. Sixteen other layouts (A–P) were built across six rounds and cut; the README's
- * § *Tried and cut* says what each proved and why it went, and their code is recoverable from
- * this branch's history.
+ * PROTOTYPE — throwaway. The riviera map on Discover, phone first: **Q** (Shore) on one route.
+ * Sixteen other layouts were built and cut; their code and verdicts are in this branch's history
+ * (commit 2e53109 and before).
  *
  * Route: `/prototype/map`. Spike branch only — never merges. The design question, the research,
  * the wireframes and the verdicts are in this folder's README.md.

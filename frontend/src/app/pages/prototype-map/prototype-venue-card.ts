@@ -1,6 +1,6 @@
 /**
- * PROTOTYPE — throwaway. The Discover card as round 1's variant A drew it, as one element the
- * round 2 variants share: hovering it reports the venue so the map can light its pin.
+ * PROTOTYPE — throwaway. The Discover card, for Q's desktop grid: hovering it reports the venue so
+ * the map can light its pin.
  */
 import { Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -84,7 +84,7 @@ import { VenueCard } from '../home/venue-card';
 export class PrototypeVenueCard {
   readonly card = input.required<VenueCard>();
   readonly selected = input(false);
-  /** A shorter photo band for a denser grid (variant E's four columns). */
+  /** The photo band's shape. */
   readonly photoClass = input('aspect-[3/2]');
   /** The hovered venue's id, or `null` as the pointer leaves. */
   readonly hovered = output<number | null>();

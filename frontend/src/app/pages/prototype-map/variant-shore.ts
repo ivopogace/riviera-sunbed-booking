@@ -1,6 +1,6 @@
 /**
- * PROTOTYPE variant Q — **Shore**. Round 6, built from the research rather than from memory: the
- * map is the GROUND and the list is a SHEET over it with three resting heights — the grammar
+ * PROTOTYPE variant Q — **Shore**. Built from the research rather than from memory: the map is
+ * the GROUND and the list is a SHEET over it with three resting heights — the grammar
  * Airbnb's mobile search actually uses (measured: a 390 × 307 map band under a sheet resting at
  * y ≈ 441, the list being that same sheet pulled to the top), the one Google Maps and Apple Maps
  * settled on, and the one the HIG and Material both specify (medium/large detents, a grabber, a
@@ -9,26 +9,25 @@
  * <p>What it takes, and from where:
  *
  * <ul>
- *   <li><b>One screen, three heights</b> (Airbnb 2026, Google Maps): no List/Map switch (P), no
- *       fixed band (N, O). The thumb sets the split; the map is never traded away and never in
- *       the way.
+ *   <li><b>One screen, three heights</b> (Airbnb 2026, Google Maps): no List/Map switch, no fixed
+ *       band. The thumb sets the split; the map is never traded away and never in the way.
  *   <li><b>The first screen's map is a poster</b> (`prototype-poster.ts`): a still image of the
  *       region's fitted camera with the shipped pins live over it, so the first paint costs one
  *       image rather than a WebGL context, 341 kB of glyphs and a tile fetch — the research's cost
  *       tables (Airbnb 14.8 MB; a vector map's first view 0.8–2 MB; a static image, one request).
  *       The live map arrives at the poster's camera the moment the camera has to move.
  *   <li><b>The sheet's head carries the query</b> — where, when, and the region's beaches as a
- *       chip rail (SunEasy's town → beach → club, C's index as chips) — and stays visible at every
+ *       chip rail (SunEasy's town → beach → club) — and stays visible at every
  *       height, so the day is never out of sight (invariant #4).
- *   <li><b>The row is the preview</b> (N): a pin press raises the sheet to half and brings the row
- *       to its top, lit. No second card over the map.
+ *   <li><b>The row is the preview</b>: a pin press raises the sheet to half and brings the row to
+ *       its top, lit. No second card over the map.
  *   <li><b>Sun rules</b> from the glare research: dark ink on light glass, no text under 12.5 px,
  *       nothing thinner than semibold on the map, 44 px pins with room around them.
  * </ul>
  *
- * <p>From `lg` up the sheet becomes the left panel and the ground the right pane, sized by round
- * 4's rule — the map takes the width the set's shape needs (a 360 px column for the whole coast,
- * up to 60 % for Himarë) and the list keeps the rest. Desktop is the same page with the sheet
+ * <p>From `lg` up the sheet becomes the left panel and the ground the right pane — the map takes
+ * the width the set's shape needs (a 360 px column for the whole coast, up to 60 % for Himarë)
+ * and the list keeps the rest. Desktop is the same page with the sheet
  * pinned open beside the map, not a second design.
  *
  * <p>URL: `?variant=Q` · `&sheet=peek|half|full` · `&live=1` (the live map from the first paint,
@@ -214,7 +213,7 @@ const MAP_BUTTON =
       }
     </ng-template>
 
-    <!-- ── The list: the beach as the unit (M), the row as the preview (N). ── -->
+    <!-- ── The list: the beach as the unit, the row as the preview. ── -->
     <ng-template #list>
       <div [class]="cardsGrid() ? 'grid gap-3 ' + gridCols() : 'flex flex-col'">
         @for (group of groups(); track group.code) {
@@ -719,8 +718,9 @@ export class VariantShore {
 
   // ── the desktop pane ─────────────────────────────────────────────────────────────────────
   /**
-   * Round 4's rule: the map takes the width its set needs — the pane's height over the set's own
-   * aspect — between a 360 px column and 60 % of the window; the panel keeps the rest.
+   * The map takes the width its set needs — the pane's height over the set's own aspect
+   * (`prototype-aspect.ts`) — between a 360 px column and 60 % of the window; the panel keeps
+   * the rest.
    */
   protected readonly panelWidth = computed(() => {
     const { w, h } = this.viewport();

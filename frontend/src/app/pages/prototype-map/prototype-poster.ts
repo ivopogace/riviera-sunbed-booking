@@ -2,10 +2,9 @@
  * PROTOTYPE — throwaway. Round 6's map POSTER: the region map a phone's first screen shows before
  * anyone touches it, as one image — no style, no glyph ranges, no tile ranges, no WebGL context.
  *
- * <p>Round 5 measured what a live map costs a first screen (341 kB of style and glyphs, ~100 kB of
- * tiles, one context); round 6's research measured what the reference products pay (Airbnb's
- * search page: 14.8 MB, of which the Google map is 1.9 MB) and what a static image costs instead
- * (one request). The poster is that image: the fitted region camera rendered ONCE by the real map
+ * <p>Measured, a live map costs a first screen 341 kB of style and glyphs, ~100 kB of tiles and
+ * one WebGL context; the reference products pay more (Airbnb's search page: 14.8 MB, of which the
+ * Google map is 1.9 MB); a static image costs one request. The poster is that image: the fitted region camera rendered ONCE by the real map
  * (`shoot.mjs --posters` opens `?variant=Q&poster=<key>` and screenshots it), served from
  * `public/prototype-posters/`, and drawn under the shipped pin layer through a {@link MapHandle}
  * whose `project` is Web Mercator arithmetic for that camera. The pins are live DOM: they crowd,

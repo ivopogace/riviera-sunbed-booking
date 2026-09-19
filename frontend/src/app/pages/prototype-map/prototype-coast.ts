@@ -2,7 +2,7 @@
  * PROTOTYPE — throwaway. The coast as an index: every region and beach that has a venue, in the
  * catalogue's north-to-south order, with its count and its lowest from-price. Counted off the
  * WHOLE fixture, never the narrowed list, so the instrument's numbers do not collapse to the one
- * place already picked. Round 1's variant C computed this inline; round 2's E, F and G share it.
+ * place already picked.
  */
 import { beachesInRegion, BeachCode, REGION_CATALOGUE, RegionCode } from '../../shared/beaches';
 import { VenueCard } from '../home/venue-card';
