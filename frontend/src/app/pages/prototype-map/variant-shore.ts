@@ -16,30 +16,34 @@
  *       image rather than a WebGL context, 341 kB of glyphs and a tile fetch — the research's cost
  *       tables (Airbnb 14.8 MB; a vector map's first view 0.8–2 MB; a static image, one request).
  *       The live map arrives at the poster's camera the moment the camera has to move.
- *   <li><b>The sheet's head carries the query</b> — where, when, and the region's beaches as a
- *       chip rail (SunEasy's town → beach → club) — and stays visible at every
- *       height, so the day is never out of sight (invariant #4).
- *   <li><b>The row is the preview</b>: a pin press raises the sheet to half and brings the row to
- *       its top, lit. No second card over the map.
+ *   <li><b>The sheet's head is one row</b> — where, which beach, when — 78 px at every height
+ *       (Airbnb's collapsed header is ~80), so the day is never out of sight (invariant #4) and the
+ *       first row lands 40 px higher than round 6's two-row head put it.
+ *   <li><b>The row is the preview</b>: a pin press raises the sheet to half and scrolls the venue's
+ *       own row to the top of the list, lit. No copy in the head, no second card over the map.
  *   <li><b>Sun rules</b> from the glare research: dark ink on light glass, no text under 12.5 px,
  *       nothing thinner than semibold on the map, 44 px pins with room around them.
  * </ul>
  *
  * <p>From `lg` up the sheet becomes the left panel and the ground the right pane — the map takes
- * the width the set's shape needs (a 360 px column for the whole coast, up to 60 % for Himarë)
- * and the list keeps the rest. Desktop is the same page with the sheet
- * pinned open beside the map, not a second design.
+ * the width its set needs and the list keeps the rest; under ~560 px of pane the pins become dots
+ * with their pills in a label gutter. Desktop is the same page with the sheet pinned open beside
+ * the map, not a second design.
  *
- * <p>The phone sheet is a CSS scroll-snap container that starts at the full line, so nothing it
- * holds paints over the map's sliver: a transparent spacer the height of peek-to-full, the peek
- * and half rest points as zero-height snap targets inside it, and the sheet itself snapping at
- * full. Past full the sheet covers the snapport, which the spec lets rest anywhere — one finger
- * raises the sheet, keeps scrolling the list, and lowers it again by pulling the list down.
- * Touches on the spacer fall through to the map.
+ * <p>The phone sheet is two scrollers, not one. The OUTER is a CSS scroll-snap container from the
+ * full line down: a transparent spacer holding the peek and half rest points as zero-height snap
+ * targets, then the sheet itself, exactly the snapport's height, snapping at full — so a flick
+ * stops at full instead of running 700 px into the list (round 7 measured round 6's single
+ * scroller doing exactly that). The INNER is the list, a scroller at full and `overflow: clip`
+ * below it (a hidden overflow is still a scroll container, and Chrome latches the touch to it and
+ * drops the gesture — measured); at its top a pull latches to the outer and lowers the sheet, the
+ * browser's own scroll latching, no arithmetic. Touches on the spacer fall through to the map.
  *
  * <p>URL: `?variant=Q` · `&sheet=peek|half|full` · `&live=1` (the live map from the first paint,
  * for the cost row) · `&here=lng,lat` · `&region=` · `&beach=` · `&now=16:30` ·
- * `&poster=<key>` (the driver's poster-rendering mode: the bare fitted map at 440 × 380).
+ * `&head=subtitle` (the beach in the subtitle instead of a chip) · `&pane=free` (the desktop
+ * pane's height follows the set too) · `&poster=<key>` (the driver's poster-rendering mode: the
+ * bare fitted map at 440 × 380).
  */
 import { NgTemplateOutlet } from '@angular/common';
 import {
@@ -64,6 +68,14 @@ import { LngLat, MapHandle, MapView } from '../../shared/map-engine';
 import { PanelGlass } from '../../shared/panel-glass';
 import { RivieraMap, RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map';
 import { TouchTarget } from '../../shared/touch-target';
+import {
+  crowdCentre,
+  crowdPins,
+  lowestFromPrice,
+  PinCrowd,
+  placeName,
+  separationZoom,
+} from '../home/pin-crowding';
 import { VenuePinLayer } from '../home/venue-pin-layer';
 import { VenueCard } from '../home/venue-card';
 import { contentAspect } from './prototype-aspect';
@@ -98,13 +110,42 @@ const PHONE_DEFAULT_REGION = 'HIMARE';
 const WIDE_PX = 1024;
 /** The shipped phone tab bar. */
 const TAB_BAR = 61;
-/** The sheet's head at peek: the grabber and the place row only — Airbnb's collapsed header is ~80. */
-const HEAD_PEEK = 80;
+/** The sheet's head: the grabber and the one-row strip — 78, against Airbnb's ~80 collapsed header. */
+const HEAD = 78;
 /** At full the map keeps a sliver under the header — Google Maps' rule; the sliver is the way back. */
 const FULL_SLIVER = 44;
 /** Chrome the fit keeps clear of, on the live map. */
 const PAD = 76;
-const DUSK_CLASSES = ['opacity-45', 'saturate-50'];
+/** Under this pane width a place pill lands on the zoom column; the pins become dots and a gutter. */
+const PILLS_FROM_PX = 560;
+/**
+ * The desktop label gutter: the coast picker's ribbon logic inside the pane, down its RIGHT edge —
+ * at 360 px the fence pins the camera to zoom 7 with the coast at x 78–200, and no inset can move
+ * it (measured: a left gutter put the labels on the dots). The rows start under the zoom column
+ * and end above Near me.
+ */
+const GUTTER_W = 172;
+const GUTTER_ROW = 46;
+const GUTTER_TOP = 118;
+const GUTTER_BOTTOM = 64;
+/**
+ * A dusk pin keeps its ink and loses its colour: desaturated, on the fixed hover fill, its price
+ * struck. Round 6 faded the whole button to 45 %, which put `Borsh · from €15` under 2:1 on the
+ * map in every theme; and it reached the crowd members, whose `opacity-0` it overrode by
+ * stylesheet order — the "member discs" round 6 blamed on the crowd rule.
+ */
+const DUSK_CLASSES = ['saturate-0', 'bg-riv-solid-btn-hover!', '[&_.font-extrabold]:line-through'];
+/**
+ * The merged-crowd DEMONSTRATION: what the pin layer would draw if `crowdPins` tested a pin
+ * against its crowd's running mean rather than its first member. The compact disc that collided
+ * disappears and the pill it collided with wears the union's name and count through `attr()`.
+ */
+const MERGED_HIDE = 'invisible';
+const MERGED_FACE =
+  'relative text-transparent after:absolute after:inset-0 after:flex after:items-center after:justify-center ' +
+  'after:content-[attr(data-merged)]';
+const MERGED_NAME = MERGED_FACE + ' after:text-riv-solid-btn-ink';
+const MERGED_COUNT = MERGED_FACE + ' after:text-riv-solid-btn-fill';
 
 type Detent = 'peek' | 'half' | 'full';
 
@@ -114,9 +155,23 @@ interface Focus {
   readonly beach: string;
 }
 
+/** One gutter row: a crowd's pill in the gutter and its dot on the map, tied by a leader. */
+interface GutterRow {
+  readonly crowd: PinCrowd;
+  readonly key: string;
+  readonly name: string;
+  readonly from: string | null;
+  readonly count: number;
+  readonly x: number;
+  readonly y: number;
+  /** The row's centre in the gutter, pushed clear of its neighbours. */
+  readonly rowY: number;
+  readonly loneId: string | null;
+}
+
 /** A rail entering: from a little above and transparent; leaving: back the same way, held until it ends. */
 const RAIL =
-  'flex gap-1.5 overflow-x-auto px-3 pt-1 pb-1 scrollbar-none starting:-translate-y-1 starting:opacity-0 ' +
+  'flex gap-1.5 overflow-x-auto px-3 pt-1 pb-2 scrollbar-none starting:-translate-y-1 starting:opacity-0 ' +
   'motion-safe:[transition:opacity_0.18s_ease,translate_0.18s_ease]';
 const RAIL_LEAVE = 'opacity-0 -translate-y-1';
 
@@ -124,13 +179,19 @@ const CHIP =
   'inline-flex h-11 shrink-0 touch-manipulation items-center gap-1.5 rounded-full border px-[13px] text-[14px] font-semibold ' +
   'motion-safe:[transition:background-color_0.15s_ease,color_0.15s_ease] ' +
   'aria-[current]:border-riv-accent-ink aria-[current]:bg-riv-accent-ink aria-[current]:text-riv-on-accent-ink ' +
-  'border-riv-field-border bg-riv-field-fill text-riv-ink';
+  'border-riv-field-border bg-riv-field-fill text-riv-card-ink';
 const COUNT =
   'inline-flex h-[20px] min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11.5px] font-bold ' +
   'bg-riv-accent-ink text-riv-on-accent-ink group-aria-[current]:bg-riv-on-accent-ink group-aria-[current]:text-riv-accent-ink';
 const MAP_BUTTON =
   'inline-flex h-11 touch-manipulation items-center gap-1.5 rounded-full border-2 px-[14px] text-[14px] font-bold ' +
   'shadow-[0_6px_18px_rgba(7,42,58,0.3)]';
+/** The gutter's row: the place pill's skin without its count disc, so a two-beach name fits 150 px. */
+const GUTTER_PILL =
+  'pointer-events-auto absolute right-2 flex h-11 items-center rounded-[14px] border-2 ' +
+  'border-riv-solid-btn-border bg-riv-solid-btn-fill px-2 text-left text-riv-solid-btn-ink ' +
+  'shadow-[0_6px_18px_rgba(7,42,58,0.35)] -translate-y-1/2 hover:bg-riv-solid-btn-hover ' +
+  'aria-[current]:border-riv-solid-btn-fill aria-[current]:bg-riv-solid-btn-ink aria-[current]:text-riv-solid-btn-fill';
 
 @Component({
   selector: 'app-variant-shore',
@@ -146,7 +207,7 @@ const MAP_BUTTON =
   ],
   host: { class: 'block' },
   template: `
-    <!-- ── The head: where, when, which beach. The phone sheet's and the desktop panel's. ── -->
+    <!-- ── The head: one row — where, which beach, when. The phone sheet's and the desktop panel's. ── -->
     <ng-template #head>
       <div class="flex items-center gap-2 px-3" data-strip>
         <button
@@ -174,16 +235,32 @@ const MAP_BUTTON =
             }}</span>
           </span>
         </button>
+        @if (!subtitleHead()) {
+          <!-- The region's beaches gathered into one chip: lit when one is chosen; press for the rail. -->
+          <button
+            type="button"
+            appTouchTarget
+            data-ctl="beaches"
+            [class]="CHIP + ' group px-[11px]'"
+            [attr.aria-current]="focus().beach !== '' ? 'true' : null"
+            [attr.aria-expanded]="beachesOpen()"
+            [attr.aria-label]="beachChipLabel()"
+            (click)="beachesOpen() ? beachesOpen.set(false) : openBeaches()"
+          >
+            <span aria-hidden="true">⛱</span>
+            <span [class]="COUNT">{{ beachChipCount() }}</span>
+          </button>
+        }
         <button
           type="button"
           appTouchTarget
           data-ctl="day"
-          class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-riv-field-border bg-riv-field-fill px-3 text-[14px] font-semibold text-riv-ink"
+          class="inline-flex shrink-0 items-center gap-1 rounded-full border border-riv-field-border bg-riv-field-fill px-3 text-[14px] font-semibold text-riv-card-ink"
           [attr.aria-expanded]="dayOpen()"
           (click)="dayOpen.set(!dayOpen()); beachesOpen.set(false)"
         >
-          <span aria-hidden="true">📅</span>{{ dayWord() }}
-          <span class="text-[11px] text-riv-ink-faint" aria-hidden="true">▾</span>
+          {{ dayWord() }}
+          <span class="text-[11px] text-riv-card-ink-faint" aria-hidden="true">▾</span>
         </button>
       </div>
       @if (railsShown()) {
@@ -224,46 +301,13 @@ const MAP_BUTTON =
               </button>
             }
           </div>
-        } @else {
-          <!-- The rail gathered into one chip: the beach that is chosen, or all of them; press to open it. -->
-          <div [class]="RAIL" [animate.leave]="RAIL_LEAVE">
-            <button
-              type="button"
-              appTouchTarget
-              data-ctl="beaches"
-              [class]="CHIP + ' group'"
-              [attr.aria-current]="focus().beach !== '' ? 'true' : null"
-              aria-expanded="false"
-              (click)="openBeaches()"
-            >
-              <span aria-hidden="true">⛱</span>
-              {{ beachChipLabel() }}
-              <span [class]="COUNT">{{ beachChipCount() }}</span>
-              <span class="text-[11px] opacity-70" aria-hidden="true">▾</span>
-            </button>
-          </div>
-        }
-        @if (selectedCard(); as card) {
-          <!-- The pin's preview: its row, in the head, until the map is tapped clear. -->
-          <div
-            class="px-3 pt-1 pb-2 starting:opacity-0 motion-safe:[transition:opacity_0.18s_ease]"
-            [animate.leave]="'opacity-0'"
-          >
-            <app-prototype-venue-row
-              [card]="card"
-              [date]="state().date"
-              [selected]="true"
-              [dusk]="duskIds().has('' + card.id)"
-              [km]="rowKm(card)"
-            />
-          </div>
         }
       }
     </ng-template>
 
     <!-- ── The list: the beach as the unit, the row as the preview. ── -->
     <ng-template #list>
-      <div [class]="cardsGrid() ? 'grid gap-3 ' + gridCols() : 'flex flex-col'">
+      <div [class]="'grid ' + gridCols()">
         @for (group of groups(); track group.code) {
           <h2
             class="col-span-full mt-3 mb-1.5 flex items-baseline gap-2 px-1 text-[13px] text-riv-ink-soft first:mt-1"
@@ -341,15 +385,65 @@ const MAP_BUTTON =
           <app-riviera-map class="size-full" [nearMe]="false" (mapClick)="selected.set(null)" />
         </div>
       }
-      <app-venue-pin-layer
-        class="rounded-none!"
-        [pins]="pins()"
-        [map]="handle()"
-        [selected]="litPin()"
-        [maxZoom]="maxZoom"
-        (chosen)="choose($event)"
-        (narrowed)="filtered.emit({ beach: $event })"
-      />
+      @if (dotsMode()) {
+        <!-- Dots and a label gutter: the pills would land on the zoom column at this width. -->
+        <div class="pointer-events-none absolute inset-0 z-[4]" data-gutter>
+          <svg class="absolute inset-0 size-full" aria-hidden="true">
+            @for (row of gutter(); track row.key) {
+              <path
+                class="fill-none stroke-riv-solid-btn-ink/45"
+                stroke-width="1.5"
+                [attr.d]="leader(row)"
+              />
+            }
+          </svg>
+          @for (row of gutter(); track row.key) {
+            <span
+              class="absolute block size-3 -translate-1/2 rounded-full border-2 border-riv-solid-btn-fill bg-riv-solid-btn-ink shadow-[0_2px_6px_rgba(7,42,58,0.45)]"
+              [class.scale-150]="litPin() === row.loneId"
+              [style.left.px]="row.x"
+              [style.top.px]="row.y"
+              aria-hidden="true"
+            ></span>
+            <button
+              type="button"
+              appTouchTarget
+              [class]="GUTTER_PILL"
+              [style.top.px]="row.rowY"
+              [style.width.px]="GUTTER_W - 8"
+              [attr.aria-current]="row.loneId !== null && litPin() === row.loneId ? 'true' : null"
+              [attr.aria-label]="gutterLabel(row)"
+              (click)="pressGutter(row)"
+              (mouseenter)="hovered.set(row.loneId === null ? null : +row.loneId)"
+              (mouseleave)="hovered.set(null)"
+            >
+              <span class="flex min-w-0 flex-col whitespace-nowrap" aria-hidden="true">
+                <span class="truncate text-[12.5px] leading-[14px] font-semibold">{{
+                  row.name
+                }}</span>
+                <span class="text-[11px] leading-[13px] font-extrabold tabular-nums">
+                  @if (row.from; as from) {
+                    from {{ from }}
+                  }
+                  @if (row.count > 1) {
+                    <span class="font-semibold opacity-80">· {{ row.count }} venues</span>
+                  }
+                </span>
+              </span>
+            </button>
+          }
+        </div>
+      } @else {
+        <app-venue-pin-layer
+          class="rounded-none!"
+          [pins]="pins()"
+          [map]="handle()"
+          [selected]="litPin()"
+          [maxZoom]="maxZoom"
+          (chosen)="choose($event)"
+          (narrowed)="filtered.emit({ beach: $event })"
+        />
+      }
       @if (hereDot(); as dot) {
         <span
           class="pointer-events-none absolute z-[3] block size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-riv-solid-btn-fill bg-riv-solid-btn-ink shadow-[0_0_0_6px_rgba(10,79,94,0.18),0_4px_12px_rgba(7,42,58,0.35)]"
@@ -401,7 +495,7 @@ const MAP_BUTTON =
           class="flex shrink-0 flex-col overflow-hidden rounded-[22px] shadow-[0_10px_32px_rgba(7,42,58,0.16)]"
           [style.width.px]="panelWidth()"
         >
-          <div class="relative shrink-0 border-b border-riv-header-border pt-3 pb-1">
+          <div class="relative shrink-0 border-b border-riv-header-border pt-3 pb-2">
             <ng-container *ngTemplateOutlet="head" />
             @if (pickerOpen()) {
               <app-prototype-coast-picker
@@ -421,6 +515,8 @@ const MAP_BUTTON =
         <div
           #pane
           class="relative min-w-0 flex-1 overflow-hidden rounded-l-[22px] bg-riv-solid-btn-fill"
+          [class.self-start]="paneHeight() !== null"
+          [style.height.px]="paneHeight()"
         >
           <ng-container *ngTemplateOutlet="ground" />
         </div>
@@ -431,7 +527,7 @@ const MAP_BUTTON =
         <ng-container *ngTemplateOutlet="ground" />
       </div>
 
-      <!-- The sheet: a scroll-snap container from the full line down (see the class doc). -->
+      <!-- The outer scroller: snap points at peek, half and full; the sheet is exactly one snapport tall. -->
       <div
         #scroller
         class="pointer-events-none fixed inset-x-0 z-[10] overflow-y-auto overscroll-contain scrollbar-none motion-safe:scroll-smooth snap-y snap-mandatory"
@@ -449,13 +545,13 @@ const MAP_BUTTON =
         </div>
         <div
           appPanelGlass
-          class="pointer-events-auto snap-start snap-always rounded-t-[26px] shadow-[0_-12px_40px_rgba(7,42,58,0.28)]"
-          [style.min-height.px]="viewport().h - TAB_BAR - tops().full"
+          class="pointer-events-auto flex snap-start snap-always flex-col rounded-t-[26px] shadow-[0_-12px_40px_rgba(7,42,58,0.28)]"
+          [style.height.px]="sheetHeight()"
           role="region"
           aria-label="Venues"
         >
           <div
-            class="sticky top-0 z-[2] rounded-t-[26px] bg-riv-pop-surface backdrop-blur-[22px]"
+            class="shrink-0 rounded-t-[26px] bg-riv-tabbar-glass pb-3 backdrop-blur-[22px]"
             data-head
           >
             <button
@@ -473,8 +569,16 @@ const MAP_BUTTON =
             </button>
             <ng-container *ngTemplateOutlet="head" />
           </div>
-          <div data-body class="px-3 pb-6">
-            <ng-container *ngTemplateOutlet="list" />
+          <!-- The inner scroller: the list, scrollable at full only; at its top a pull lowers the sheet. -->
+          <div
+            #body
+            data-body
+            class="min-h-0 flex-1 px-3 pb-6 scrollbar-none"
+            [class]="detent() === 'full' ? 'overflow-y-auto' : 'overflow-clip'"
+          >
+            <div [style.translate]="detent() === 'full' ? null : '0 ' + -listShift() + 'px'">
+              <ng-container *ngTemplateOutlet="list" />
+            </div>
           </div>
         </div>
       </div>
@@ -518,6 +622,8 @@ export class VariantShore {
   protected readonly RAIL_LEAVE = RAIL_LEAVE;
   protected readonly COUNT = COUNT;
   protected readonly MAP_BUTTON = MAP_BUTTON;
+  protected readonly GUTTER_PILL = GUTTER_PILL;
+  protected readonly GUTTER_W = GUTTER_W;
   protected readonly TAB_BAR = TAB_BAR;
   protected readonly POSTER_W = POSTER_W;
   protected readonly POSTER_H = POSTER_H;
@@ -529,6 +635,7 @@ export class VariantShore {
   private readonly map = viewChild(RivieraMap);
   private readonly pane = viewChild<ElementRef<HTMLElement>>('pane');
   private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
+  private readonly body = viewChild<ElementRef<HTMLElement>>('body');
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly document = inject(DOCUMENT);
   private readonly geolocation = inject(GeolocationGateway);
@@ -537,29 +644,34 @@ export class VariantShore {
   protected readonly wide = signal(false);
   protected readonly viewport = signal({ w: 390, h: 844 });
   protected readonly poster = computed(() => this.params().get('poster'));
+  /** `?head=subtitle`: the beach named in the subtitle instead of a chip in the row. */
+  protected readonly subtitleHead = computed(() => this.params().get('head') === 'subtitle');
+  /** `?pane=free`: the desktop pane's height follows the set as its width does. */
+  private readonly freePane = computed(() => this.params().get('pane') === 'free');
   private readonly askedDetent = (this.params().get('sheet') as Detent | null) ?? 'half';
   /** The scroller's `scrollTop`, mirrored on every scroll event: the one number the sheet is. */
   private readonly scrolled = signal(0);
+  /**
+   * How far the list is pulled up inside the sheet below full: a translate, because a clipped box
+   * has no scroll position; at full it becomes the list's real `scrollTop`, and coming back down
+   * the `scrollTop` becomes the translate again, so the rows never jump.
+   */
+  protected readonly listShift = signal(0);
   protected readonly live = signal(this.params().get('live') === '1');
   protected readonly liveReady = signal(false);
   protected readonly pickerOpen = signal(false);
   protected readonly dayOpen = signal(false);
   protected readonly beachesOpen = signal(false);
-  /** The rails and the preview row hide at peek: the head is the place row alone there. */
+  /** The rails hide at peek: the head is the one row there. */
   protected readonly railsShown = computed(() => this.wide() || this.detent() !== 'peek');
   protected readonly beachChipLabel = computed(() => {
     const beach = this.focus().beach;
-    if (beach !== '') return this.groups()[0]?.label ?? '';
-    const n = this.beaches().length;
-    return n === 1 ? 'One beach' : 'All beaches';
+    if (beach !== '') return `${this.groups()[0]?.label ?? ''}: change the beach`;
+    return `All ${this.beaches().length} beaches: choose one`;
   });
   protected readonly beachChipCount = computed(() =>
     this.focus().beach !== '' ? this.focus().cards.length : this.beaches().length,
   );
-  protected readonly selectedCard = computed(() => {
-    const id = this.selected();
-    return id === null ? null : (this.focus().cards.find((c) => String(c.id) === id) ?? null);
-  });
   protected readonly selected = signal<string | null>(null);
   protected readonly hovered = signal<number | null>(null);
   protected readonly litPin = computed(() => {
@@ -633,19 +745,24 @@ export class VariantShore {
     }
     return region === '' ? 'The whole coast' : regionLabel(region);
   });
+  /**
+   * One sentence that fits 176 px beside two chips: `8 of 11 selling today` (invariant #4 as the
+   * head's light), or the count on another day. The place is the title, the located state is
+   * the accent glyph, so neither is repeated here; the desktop's whole coast can afford its span.
+   */
   protected readonly subtitle = computed(() => {
     const { cards, region, beach } = this.focus();
-    const n = `${cards.length} ${cards.length === 1 ? 'venue' : 'venues'}`;
-    const still = this.isToday() ? ` · ${this.selling()} selling today` : '';
-    const located = this.state().here !== null && this.state().region === '';
-    const where = located
-      ? `Near you · ${regionLabel(region)} · `
-      : beach !== ''
+    const n = cards.length;
+    const fact = this.isToday()
+      ? `${this.selling()} of ${n} selling today`
+      : `${n} ${n === 1 ? 'venue' : 'venues'}`;
+    const beachesWord = this.subtitleHead()
+      ? beach !== ''
         ? `${regionLabel(region)} · `
-        : region === ''
-          ? 'Velipojë to Ksamil · '
-          : '';
-    return `${where}${n}${still}`;
+        : `${this.beaches().length === 1 ? 'One beach' : 'All beaches'} · `
+      : '';
+    const span = region === '' && beach === '' ? 'Velipojë to Ksamil · ' : '';
+    return `${span}${beachesWord}${fact}`;
   });
 
   // ── the ground ──────────────────────────────────────────────────────────────────────────
@@ -672,13 +789,86 @@ export class VariantShore {
   });
   protected readonly nearMeTop = computed(() => Math.max(HEADER_H + 8, this.sheetTop() - 56));
 
+  // ── the dots and the gutter (desktop, a narrow pane) ─────────────────────────────────────
+  protected readonly dotsMode = computed(() => this.wide() && this.mapWidth() < PILLS_FROM_PX);
+  /** The pin layer's own crowds, projected through the live map, laid out as gutter rows. */
+  protected readonly gutter = computed<readonly GutterRow[]>(() => {
+    this.moved();
+    const handle = this.handle();
+    if (!this.dotsMode() || handle === undefined) return [];
+    const crowds = crowdPins(this.pins(), (at) => handle.project(at));
+    const rows = crowds
+      .map((crowd) => {
+        const beaches = [...new Set(crowd.members.map((m) => m.pin.card.beach))];
+        const lone = crowd.members.length === 1 ? crowd.members[0].pin : null;
+        return {
+          crowd,
+          key: crowd.key,
+          name: lone ? lone.card.name : placeName(beaches.map((b) => beachEntry(b)?.label ?? b)),
+          from: lowestFromPrice(crowd.members.map((m) => m.pin.card)),
+          count: crowd.members.length,
+          x: crowd.x,
+          y: crowd.y,
+          rowY: crowd.y,
+          loneId: lone ? lone.id : null,
+        };
+      })
+      .sort((a, b) => a.y - b.y);
+    const height = this.pane()?.nativeElement.clientHeight ?? 0;
+    // Push rows apart down the gutter, then pull the chain back up if it ran off the bottom.
+    let last = -Infinity;
+    const placed = rows.map((row) => {
+      const rowY = Math.max(row.rowY, last + GUTTER_ROW, GUTTER_TOP + GUTTER_ROW / 2);
+      last = rowY;
+      return { ...row, rowY };
+    });
+    if (height === 0) return placed;
+    let next = height - GUTTER_BOTTOM - GUTTER_ROW / 2 + GUTTER_ROW;
+    for (let i = placed.length - 1; i >= 0; i -= 1) {
+      const rowY = Math.min(placed[i].rowY, next - GUTTER_ROW);
+      placed[i] = { ...placed[i], rowY };
+      next = rowY;
+    }
+    return placed;
+  });
+
+  protected leader(row: GutterRow): string {
+    const width = this.pane()?.nativeElement.clientWidth ?? 0;
+    const from = width - GUTTER_W;
+    return `M ${from} ${row.rowY} H ${from - 10} L ${row.x + 8} ${row.y}`;
+  }
+
+  protected gutterLabel(row: GutterRow): string {
+    if (row.loneId !== null) return `${row.name}${row.from ? `, from ${row.from}` : ''}`;
+    return `${row.count} venues at ${row.name}${row.from ? `, from ${row.from}` : ''}; press to zoom to them`;
+  }
+
+  protected pressGutter(row: GutterRow): void {
+    const handle = this.handle();
+    if (row.loneId !== null) {
+      this.choose(row.loneId);
+      return;
+    }
+    if (handle === undefined) return;
+    const pane = this.pane()?.nativeElement;
+    const box = pane ? { width: pane.clientWidth, height: pane.clientHeight } : null;
+    handle.easeTo({
+      center: crowdCentre(row.crowd),
+      zoom: separationZoom(row.crowd, handle.view().zoom, this.maxZoom, box),
+    });
+    const beaches = new Set(row.crowd.members.map((m) => m.pin.card.beach));
+    if (beaches.size === 1) this.filtered.emit({ beach: [...beaches][0] });
+  }
+
   // ── the sheet ────────────────────────────────────────────────────────────────────────────
   /** Where the sheet's top rests, in viewport px, at each height. */
   protected readonly tops = computed(() => ({
     full: HEADER_H + FULL_SLIVER,
     half: POSTER_H,
-    peek: this.viewport().h - TAB_BAR - HEAD_PEEK,
+    peek: this.viewport().h - TAB_BAR - HEAD,
   }));
+  /** The sheet is exactly the snapport: nothing to fling past full into. */
+  protected readonly sheetHeight = computed(() => this.viewport().h - TAB_BAR - this.tops().full);
   /** The scroller's offset for a height: the spacer's height less where the sheet's top rests. */
   private offsetFor(detent: Detent): number {
     return this.tops().peek - this.tops()[detent];
@@ -697,7 +887,11 @@ export class VariantShore {
   protected onScroll(): void {
     const scroller = this.scroller()?.nativeElement;
     if (scroller === undefined) return;
+    const wasFull = this.detent() === 'full';
     this.scrolled.set(scroller.scrollTop);
+    if (wasFull && this.detent() !== 'full') {
+      this.listShift.set(this.body()?.nativeElement.scrollTop ?? 0);
+    }
     if (this.detent() === 'peek') this.wake(null);
   }
 
@@ -707,12 +901,12 @@ export class VariantShore {
     if (detent === 'peek') this.wake(null);
   }
 
+  /** The grabber's tap cycles half and full only; peek is a drag's, never a tap's. */
   protected cycle(): void {
-    const next: Record<Detent, Detent> = { half: 'full', full: 'peek', peek: 'half' };
-    this.go(next[this.detent()]);
+    this.go(this.detent() === 'half' ? 'full' : 'half');
   }
 
-  /** A pin press: the venue's row joins the head as the preview, and a lowered sheet rises to half. */
+  /** A pin press: the venue's row becomes the preview (lit, scrolled to the top), and a lowered sheet rises to half. */
   protected choose(id: string): void {
     this.selected.set(id);
     if (this.detent() === 'peek') this.go('half');
@@ -773,17 +967,37 @@ export class VariantShore {
    * (`prototype-aspect.ts`) — between a 360 px column and 60 % of the window; the panel keeps
    * the rest.
    */
-  protected readonly panelWidth = computed(() => {
-    const { w, h } = this.viewport();
-    const aspect = contentAspect(this.pins().map((p) => p.at)) ?? 1;
-    const wanted = (h - 68 - 24 - PAD) / aspect + PAD;
-    const map = Math.round(Math.max(360, Math.min(w * 0.6, wanted)));
-    return Math.max(420, w - map - 24);
+  private readonly aspect = computed(() => contentAspect(this.pins().map((p) => p.at)) ?? 1);
+  private readonly columnHeight = computed(() => this.viewport().h - 68 - 24);
+  private readonly mapWidth = computed(() => {
+    const { w } = this.viewport();
+    const wanted = (this.columnHeight() - PAD) / this.aspect() + PAD;
+    return Math.round(Math.max(360, Math.min(w * 0.6, wanted)));
   });
-  protected readonly cardsGrid = computed(() => this.wide() && this.panelWidth() >= 760);
+  protected readonly panelWidth = computed(() =>
+    Math.max(420, this.viewport().w - this.mapWidth() - 24),
+  );
+  /**
+   * `?pane=free`: when the 60 % cap decides the width, the height follows the set instead of the
+   * column — a wide set gets a shorter pane, and the pins fill it in both axes.
+   */
+  protected readonly paneHeight = computed(() => {
+    if (!this.freePane()) return null;
+    const wanted = Math.round((this.mapWidth() - PAD) * this.aspect() + PAD);
+    return wanted < this.columnHeight() ? wanted : null;
+  });
+  /**
+   * Cards from 900 px, not round 6's 760: at 816 (a 1200 window) two card columns show two venues
+   * where two row columns show four, and the panel's job beside a map is scanning.
+   */
+  protected readonly cardsGrid = computed(() => this.wide() && this.panelWidth() >= 900);
+  /** Cards: two, three, four columns as the panel widens; rows: two columns from 600 px, else one. */
   protected readonly gridCols = computed(() => {
     const w = this.panelWidth();
-    return w >= 1400 ? 'grid-cols-4' : w >= 1000 ? 'grid-cols-3' : 'grid-cols-2';
+    if (this.cardsGrid()) {
+      return 'gap-3 ' + (w >= 1400 ? 'grid-cols-4' : w >= 1000 ? 'grid-cols-3' : 'grid-cols-2');
+    }
+    return this.wide() && w >= 600 ? 'grid-cols-2 gap-x-3' : 'grid-cols-1';
   });
 
   protected kmLabel(km: number): string {
@@ -810,6 +1024,34 @@ export class VariantShore {
       this.scrolled.set(scroller.scrollTop);
       if (this.askedDetent === 'peek') this.wake(null);
     });
+    // The preview: the chosen row goes to the list's top (phone) or the panel's middle (desktop).
+    afterRenderEffect(() => {
+      const id = this.selected();
+      const body = this.body()?.nativeElement;
+      this.groups();
+      if (id === null || body === undefined) return;
+      const row = body.querySelector<HTMLElement>(`[data-row="${CSS.escape(id)}"]`);
+      if (row === null) return;
+      const box = body.getBoundingClientRect();
+      const at = row.getBoundingClientRect();
+      const lead = this.wide() ? (box.height - at.height) / 2 : 8;
+      if (this.wide() || this.detent() === 'full') {
+        body.scrollTo({ top: body.scrollTop + at.top - box.top - lead });
+      } else {
+        // Clamped as a scroller would be: a short list is not lifted into blank glass.
+        const room = this.viewport().h - TAB_BAR - box.top;
+        const max = Math.max(0, (body.firstElementChild as HTMLElement).offsetHeight - room);
+        this.listShift.update((shift) =>
+          Math.min(max, Math.max(0, shift + at.top - box.top - lead)),
+        );
+      }
+    });
+    // Arriving at full, the translate becomes the real scroll position, in the same frame.
+    afterRenderEffect(() => {
+      const body = this.body()?.nativeElement;
+      if (body === undefined || this.detent() !== 'full') return;
+      body.scrollTop = this.listShift();
+    });
     let wired: MapHandle | undefined;
     afterRenderEffect(() => {
       const handle = this.liveHandle();
@@ -817,6 +1059,7 @@ export class VariantShore {
       const pins = this.pins().map((p) => p.at);
       const detent = this.detent();
       const poster = this.poster();
+      this.paneHeight();
       if (handle === undefined) return;
       if (poster !== null) {
         if (wired === handle) return;
@@ -858,11 +1101,67 @@ export class VariantShore {
       this.pins();
       this.handle();
       this.moved();
-      for (const button of this.element.nativeElement.querySelectorAll<HTMLElement>('[data-pin]')) {
+      const buttons = [
+        ...this.element.nativeElement.querySelectorAll<HTMLElement>(
+          '[data-pin]:not([data-testid="map-crowd-member"])',
+        ),
+      ];
+      for (const button of buttons) {
         const at = dusk.has(button.dataset['pin'] ?? '');
         for (const cls of DUSK_CLASSES) button.classList.toggle(cls, at);
       }
+      mergeCollidingPills(buttons.filter((b) => b.dataset['testid'] === 'map-place-pill'));
     });
+  }
+}
+
+/**
+ * The merged-crowd rule, demonstrated on the rendered pills (see `MERGED_FACE`): a compact disc
+ * whose 44 px box lands on a neighbouring pill is hidden, and that pill shows the union — the
+ * first and last beach in coast order, the lower from-price, the summed count. The shipped
+ * `placeName` would say `3 beaches`; the span reads better with its ends named.
+ */
+function mergeCollidingPills(pills: readonly HTMLElement[]): void {
+  const box = (el: HTMLElement) => el.getBoundingClientRect();
+  const hits = (a: DOMRect, b: DOMRect) =>
+    a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+  const facts = (el: HTMLElement) => {
+    const label = el.getAttribute('aria-label') ?? '';
+    const beaches = (/venues at (.+?)(?:,|;)/.exec(label)?.[1] ?? '')
+      .split(/ & |, /)
+      .filter((b) => b !== '');
+    const count = Number(/^(\d+) venues/.exec(label)?.[1] ?? 0);
+    const from = Number(/from €(\d+)/.exec(label)?.[1] ?? Infinity);
+    return { beaches, count, from };
+  };
+  for (const pill of pills) {
+    pill.classList.remove(MERGED_HIDE);
+    for (const span of pill.querySelectorAll<HTMLElement>('[data-merged]')) {
+      span.classList.remove(...MERGED_NAME.split(' '), ...MERGED_COUNT.split(' '));
+      delete span.dataset['merged'];
+    }
+  }
+  const compact = pills.filter((p) => p.clientWidth <= 44);
+  for (const disc of compact) {
+    const host = pills.find((p) => p !== disc && p.clientWidth > 44 && hits(box(disc), box(p)));
+    if (host === undefined) continue;
+    disc.classList.add(MERGED_HIDE);
+    const a = facts(host);
+    const b = facts(disc);
+    const beaches = [...a.beaches, ...b.beaches];
+    const name =
+      beaches.length > 2 ? `${beaches[0]} – ${beaches[beaches.length - 1]}` : beaches.join(' & ');
+    const from = Math.min(a.from, b.from);
+    const [text, count] = host.querySelectorAll<HTMLElement>(':scope > span');
+    const [title, subtitle] = text.querySelectorAll<HTMLElement>('span');
+    title.dataset['merged'] = name;
+    title.classList.add(...MERGED_NAME.split(' '));
+    if (subtitle !== undefined && Number.isFinite(from)) {
+      subtitle.dataset['merged'] = `from €${from}`;
+      subtitle.classList.add(...MERGED_NAME.split(' '));
+    }
+    count.dataset['merged'] = String(a.count + b.count);
+    count.classList.add(...MERGED_COUNT.split(' '));
   }
 }
 

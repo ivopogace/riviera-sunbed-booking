@@ -6,7 +6,8 @@
  * once is a narrow ribbon alone, full-height. So the ribbon is the thing a phone opens ON DEMAND
  * to choose a place: a sheet with the coast as a 150 px ribbon down its left edge and, beside it,
  * the coast index as 44 px rows — every region and every beach that has a venue, its count and
- * its from-price — each row tied to its dot by a leader. Near me and Whole coast head the list.
+ * its from-price — each row tied to its dot by a leader. Near me heads the list; Whole coast joins it from `lg`,
+ * because the coast is not a phone state (a region is the phone's widest frame).
  * The ribbon's WebGL context exists only while the sheet is open, which is the cost a first
  * screen on 4G should not carry.
  *
@@ -96,7 +97,7 @@ interface IndexRow {
         <button
           type="button"
           appTouchTarget
-          class="inline-flex flex-1 items-center justify-center rounded-full border border-riv-field-border bg-riv-field-fill px-4 text-[14px] font-semibold text-riv-ink"
+          class="hidden flex-1 items-center justify-center rounded-full border border-riv-field-border bg-riv-field-fill px-4 text-[14px] font-semibold text-riv-ink lg:inline-flex"
           [class.bg-riv-accent-ink]="region() === '' && beach() === '' && !located()"
           [class.text-riv-on-accent-ink]="region() === '' && beach() === '' && !located()"
           (click)="pick({ region: '', beach: '', here: null })"

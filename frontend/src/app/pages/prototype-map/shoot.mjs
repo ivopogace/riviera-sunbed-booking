@@ -38,10 +38,33 @@ const DESK = { width: 1920, height: 1080 };
 
 const HERE_DHERMI = '19.641,40.147';
 
-/** The shot list: name → url + viewport + optional actions. */
+const NARROW = { width: 1024, height: 768 };
+const MID = { width: 1100, height: 800 };
+const WIDE_MID = { width: 1200, height: 800 };
+
+/**
+ * The shot list: name → url + viewport + optional actions (`click` a selector, `pin` an index or
+ * 'lone', `scroll` the list, `theme` = data-riv-theme on <html>, `swipe` = a touchscreen flick
+ * `[x, fromY, toY, ms]` dispatched through CDP as real touch events).
+ */
 const SHOTS = [
   // Q — the page
   { name: 'Q-shore-phone', v: PHONE, url: 'variant=Q&now=10:30' },
+  { name: 'Q-shore-phone-subtitle', v: PHONE, url: 'variant=Q&head=subtitle&now=10:30' },
+  { name: 'Q-shore-phone-riviera', v: PHONE, url: 'variant=Q&now=10:30', theme: 'riviera' },
+  { name: 'Q-shore-phone-dark', v: PHONE, url: 'variant=Q&now=10:30', theme: 'dark' },
+  {
+    name: 'Q-shore-phone-flick-up',
+    v: PHONE,
+    url: 'variant=Q&now=10:30',
+    swipe: [195, 700, 300, 150],
+  },
+  {
+    name: 'Q-shore-phone-flick-down',
+    v: PHONE,
+    url: 'variant=Q&sheet=full&now=10:30',
+    swipe: [195, 400, 750, 150],
+  },
   { name: 'Q-shore-phone-full', v: PHONE, url: 'variant=Q&sheet=full&now=10:30' },
   {
     name: 'Q-shore-phone-full-scrolled',
@@ -91,8 +114,17 @@ const SHOTS = [
   { name: 'Q-shore-phone-live', v: PHONE, url: 'variant=Q&live=1&now=10:30' },
   { name: 'Q-shore-tall', v: TALL, url: 'variant=Q&now=10:30' },
   { name: 'Q-shore-tall-peek', v: TALL, url: 'variant=Q&sheet=peek&now=10:30' },
+  { name: 'Q-shore-1024', v: NARROW, url: 'variant=Q&now=10:30' },
+  { name: 'Q-shore-1100', v: MID, url: 'variant=Q&now=10:30' },
+  { name: 'Q-shore-1200', v: WIDE_MID, url: 'variant=Q&now=10:30' },
   { name: 'Q-shore-1440', v: LAPTOP, url: 'variant=Q&now=10:30' },
+  { name: 'Q-shore-1440-pin', v: LAPTOP, url: 'variant=Q&region=HIMARE&now=10:30', pin: 'lone' },
   { name: 'Q-shore-1440-himare', v: LAPTOP, url: 'variant=Q&region=HIMARE&now=10:30' },
+  {
+    name: 'Q-shore-1440-himare-free',
+    v: LAPTOP,
+    url: 'variant=Q&region=HIMARE&pane=free&now=10:30',
+  },
   { name: 'Q-shore-1440-here', v: LAPTOP, url: `variant=Q&here=${HERE_DHERMI}&now=10:30` },
   { name: 'Q-shore-1920', v: DESK, url: 'variant=Q&now=10:30' },
 ];
@@ -174,6 +206,9 @@ const GEOMETRY = `(() => {
     sheet: r(document.querySelector('[data-detent]')),
     poster: r(document.querySelector('[data-poster]')),
     controls: all('[data-ctl]').map((e) => ({ t: e.dataset.ctl, ...r(e) })),
+    gutter: all('[data-gutter] button').map((e) => ({ t: e.textContent.trim().replace(/\\s+/g, ' ').slice(0, 24), ...r(e) })),
+    pane: r(document.querySelector('app-riviera-map')?.parentElement ?? null),
+    listScroll: document.querySelector('[data-body]')?.scrollTop ?? null,
     webgl: window.__glContexts ?? null,
   };
 })()`;
@@ -188,6 +223,13 @@ async function shoot(browser, shot) {
     reducedMotion: 'reduce',
   });
   const page = await context.newPage();
+  if (shot.theme) {
+    await page.addInitScript((theme) => {
+      document.addEventListener('DOMContentLoaded', () =>
+        document.documentElement.setAttribute('data-riv-theme', theme),
+      );
+    }, shot.theme);
+  }
   await page.addInitScript(() => {
     window.__glContexts = 0;
     const orig = HTMLCanvasElement.prototype.getContext;
@@ -206,6 +248,30 @@ async function shoot(browser, shot) {
     timeout: 90_000,
   });
   await page.waitForTimeout(1200);
+  if (shot.theme) {
+    await page.evaluate(
+      (theme) => document.documentElement.setAttribute('data-riv-theme', theme),
+      shot.theme,
+    );
+    await page.waitForTimeout(400);
+  }
+  if (shot.swipe) {
+    const [x, fromY, toY, ms] = shot.swipe;
+    const cdp = await context.newCDPSession(page);
+    const touch = (type, y) =>
+      cdp.send('Input.dispatchTouchEvent', {
+        type,
+        touchPoints: type === 'touchEnd' ? [] : [{ x, y }],
+      });
+    const steps = 10;
+    await touch('touchStart', fromY);
+    for (let i = 1; i <= steps; i += 1) {
+      await touch('touchMove', fromY + ((toY - fromY) * i) / steps);
+      await page.waitForTimeout(ms / steps);
+    }
+    await touch('touchEnd', toY);
+    await page.waitForTimeout(2500);
+  }
   if (shot.click) {
     await page
       .click(shot.click, { timeout: 5000 })
@@ -327,7 +393,11 @@ for (const shot of SHOTS) {
     console.log(
       `map ${c.map}/${(c.mapBytes / 1024).toFixed(0)}kB tiles ${c.tiles}/${(c.tileBytes / 1024).toFixed(0)}kB ` +
         `photos ${c.photos}/${(c.photoBytes / 1024).toFixed(0)}kB gl ${g.webgl} canvases ${g.canvases.length} page ${g.page}px ` +
-        `pins ${g.pins ? `${g.pins.w}×${g.pins.h}@${g.pins.x},${g.pins.y}` : '-'} firstRow ${g.firstRow ? `y${g.firstRow.y} h${g.firstRow.h}` : '-'}`,
+        `pins ${g.pins ? `${g.pins.w}×${g.pins.h}@${g.pins.x},${g.pins.y}` : '-'} firstRow ${g.firstRow ? `y${g.firstRow.y} h${g.firstRow.h}` : '-'}` +
+        (g.pane && g.pins
+          ? ` fill ${Math.round((100 * g.pins.w) / g.pane.w)}%×${Math.round((100 * g.pins.h) / g.pane.h)}%`
+          : '') +
+        (g.sheet ? ` sheet ${g.sheet.y}` : ''),
     );
   } catch (e) {
     console.log(`FAILED ${e.message.split('\n')[0]}`);

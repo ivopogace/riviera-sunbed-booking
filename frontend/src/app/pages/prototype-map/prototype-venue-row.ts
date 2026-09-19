@@ -5,7 +5,8 @@
  * row and lights it, because a second card over the map has nowhere to go.
  *
  * <p>A venue whose sales for today have closed (invariant #4) keeps its row but drops into dusk
- * and says so, and the row's price gives way to the fact that matters more.
+ * and says so, and the row's price gives way to the fact that matters more. Dusk is desaturation
+ * and a flat card, never a faded one: a 60 % row put its name under 3:1 in every theme (round 7).
  */
 import { Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -23,8 +24,8 @@ import { VenueCard } from '../home/venue-card';
     <a
       appCardGlass
       class="flex items-stretch gap-3 rounded-[18px] p-2 no-underline shadow-[0_6px_20px_rgba(7,42,58,0.14),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[20px] motion-safe:[transition:background_0.15s_ease,outline-color_0.15s_ease] aria-[current]:outline-[3px] aria-[current]:-outline-offset-[3px] aria-[current]:outline-riv-accent-ink"
-      [class.opacity-60]="dusk()"
-      [class.saturate-50]="dusk()"
+      [class.saturate-0]="dusk()"
+      [class.shadow-none]="dusk()"
       [attr.data-row]="card().id"
       [routerLink]="['/venues', card().id]"
       [queryParams]="{ date: date() }"
