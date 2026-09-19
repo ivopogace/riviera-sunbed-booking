@@ -11,7 +11,7 @@
  * records the first screen's cost (map style/sprite/glyph requests, tile ranges, live WebGL
  * contexts, photos) and the geometry of the pieces the README argues from.
  */
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -41,33 +41,51 @@ const HERE_DHERMI = '19.641,40.147';
 /** The shot list: name → url + viewport + optional actions. Round 6's Q first. */
 const SHOTS = [
   // Q — the page
-  { name: 'Q-shore-phone', v: PHONE, url: 'variant=Q' },
-  { name: 'Q-shore-phone-scrolled', v: PHONE, url: 'variant=Q', scroll: 700 },
-  { name: 'Q-shore-phone-scrolled-2', v: PHONE, url: 'variant=Q', scroll: 1500 },
-  { name: 'Q-shore-phone-pin', v: PHONE, url: 'variant=Q', pin: 1 },
-  { name: 'Q-shore-phone-here', v: PHONE, url: `variant=Q&here=${HERE_DHERMI}` },
-  { name: 'Q-shore-phone-here-pin', v: PHONE, url: `variant=Q&here=${HERE_DHERMI}`, pin: 0 },
-  { name: 'Q-shore-phone-sarande', v: PHONE, url: 'variant=Q&region=SARANDE' },
-  { name: 'Q-shore-phone-himare', v: PHONE, url: 'variant=Q&region=HIMARE' },
-  { name: 'Q-shore-phone-beach', v: PHONE, url: 'variant=Q&beach=DHERMI' },
+  { name: 'Q-shore-phone', v: PHONE, url: 'variant=Q&now=10:30' },
+  { name: 'Q-shore-phone-full', v: PHONE, url: 'variant=Q&sheet=full&now=10:30' },
+  {
+    name: 'Q-shore-phone-full-scrolled',
+    v: PHONE,
+    url: 'variant=Q&sheet=full&now=10:30',
+    scroll: 700,
+  },
+  { name: 'Q-shore-phone-pin', v: PHONE, url: 'variant=Q&now=10:30', pin: 1 },
+  {
+    name: 'Q-shore-phone-pin-lone',
+    v: PHONE,
+    url: 'variant=Q&region=SARANDE&now=10:30',
+    pin: 'lone',
+  },
+  { name: 'Q-shore-phone-here', v: PHONE, url: `variant=Q&here=${HERE_DHERMI}&now=10:30` },
+  {
+    name: 'Q-shore-phone-here-pin',
+    v: PHONE,
+    url: `variant=Q&here=${HERE_DHERMI}&now=10:30`,
+    pin: 0,
+  },
+  { name: 'Q-shore-phone-sarande', v: PHONE, url: 'variant=Q&region=SARANDE&now=10:30' },
+  { name: 'Q-shore-phone-himare', v: PHONE, url: 'variant=Q&region=HIMARE&now=10:30' },
+  { name: 'Q-shore-phone-beach', v: PHONE, url: 'variant=Q&beach=DHERMI&now=10:30' },
   { name: 'Q-shore-phone-1630', v: PHONE, url: 'variant=Q&now=16:30' },
-  { name: 'Q-shore-phone-picker', v: PHONE, url: 'variant=Q', click: '[data-open-picker]' },
-  { name: 'Q-shore-phone-map', v: PHONE, url: 'variant=Q', click: '[data-expand-map]' },
-  { name: 'Q-shore-phone-map-pin', v: PHONE, url: 'variant=Q', click: '[data-expand-map]', pin: 1 },
-  { name: 'Q-shore-tall', v: TALL, url: 'variant=Q' },
-  { name: 'Q-shore-tall-map', v: TALL, url: 'variant=Q', click: '[data-expand-map]' },
-  { name: 'Q-shore-1440', v: LAPTOP, url: 'variant=Q' },
-  { name: 'Q-shore-1440-himare', v: LAPTOP, url: 'variant=Q&region=HIMARE' },
-  { name: 'Q-shore-1440-here', v: LAPTOP, url: `variant=Q&here=${HERE_DHERMI}` },
-  { name: 'Q-shore-1920', v: DESK, url: 'variant=Q' },
-  // the survivors, same shots, for the comparison table
+  {
+    name: 'Q-shore-phone-picker',
+    v: PHONE,
+    url: 'variant=Q&now=10:30',
+    click: '[data-open-picker]',
+  },
+  { name: 'Q-shore-phone-day', v: PHONE, url: 'variant=Q&now=10:30', click: '[data-ctl="day"]' },
+  { name: 'Q-shore-phone-peek', v: PHONE, url: 'variant=Q&sheet=peek&now=10:30' },
+  { name: 'Q-shore-phone-peek-pin', v: PHONE, url: 'variant=Q&sheet=peek&now=10:30', pin: 1 },
+  { name: 'Q-shore-phone-live', v: PHONE, url: 'variant=Q&live=1&now=10:30' },
+  { name: 'Q-shore-tall', v: TALL, url: 'variant=Q&now=10:30' },
+  { name: 'Q-shore-tall-peek', v: TALL, url: 'variant=Q&sheet=peek&now=10:30' },
+  { name: 'Q-shore-1440', v: LAPTOP, url: 'variant=Q&now=10:30' },
+  { name: 'Q-shore-1440-himare', v: LAPTOP, url: 'variant=Q&region=HIMARE&now=10:30' },
+  { name: 'Q-shore-1440-here', v: LAPTOP, url: `variant=Q&here=${HERE_DHERMI}&now=10:30` },
+  { name: 'Q-shore-1920', v: DESK, url: 'variant=Q&now=10:30' },
+  // P, the control, same shots
   { name: 'P-search-phone', v: PHONE, url: 'variant=P' },
   { name: 'P-search-phone-map', v: PHONE, url: 'variant=P&mode=map' },
-  { name: 'N-here-phone', v: PHONE, url: `variant=N&here=${HERE_DHERMI}` },
-  { name: 'O-thumb-phone', v: PHONE, url: `variant=O&here=${HERE_DHERMI}` },
-  { name: 'B-charttable-phone', v: PHONE, url: 'variant=B&region=HIMARE' },
-  { name: 'K-locator-phone', v: PHONE, url: 'variant=K' },
-  { name: 'M-ledger-phone', v: PHONE, url: 'variant=M' },
 ];
 
 function svgPhoto(id) {
@@ -143,6 +161,9 @@ const GEOMETRY = `(() => {
     firstRow: r(document.querySelector('[data-row]')),
     tabBar: r(document.querySelector('.riv-tab-bar')),
     strip: r(document.querySelector('[data-strip]')),
+    header: r(document.querySelector('header')),
+    sheet: r(document.querySelector('[data-detent]')),
+    poster: r(document.querySelector('[data-poster]')),
     controls: all('[data-ctl]').map((e) => ({ t: e.dataset.ctl, ...r(e) })),
     webgl: window.__glContexts ?? null,
   };
@@ -183,18 +204,33 @@ async function shoot(browser, shot) {
     await page.waitForTimeout(1400);
   }
   if (shot.pin !== undefined) {
-    const pins = page.locator('[data-pin]:visible');
-    const n = await pins.count();
-    if (n > shot.pin) {
-      await pins
-        .nth(shot.pin)
-        .click({ timeout: 5000 })
-        .catch((e) => console.warn(`  pin: ${e.message.split('\n')[0]}`));
-      await page.waitForTimeout(1600);
+    // The pins that can be pressed: painted (a crowd's members are opacity-0) and, for 'lone', a single venue's.
+    const targets = await page.evaluate(() =>
+      [...document.querySelectorAll('[data-pin]')]
+        .filter(
+          (e) =>
+            getComputedStyle(e).opacity !== '0' && getComputedStyle(e).pointerEvents !== 'none',
+        )
+        .map((e) => {
+          const b = e.getBoundingClientRect();
+          return { x: b.x + b.width / 2, y: b.y + b.height / 2, text: e.textContent.trim() };
+        }),
+    );
+    const pick =
+      shot.pin === 'lone' ? targets.find((t) => /^€\d+$/.test(t.text)) : targets[shot.pin];
+    if (pick) {
+      await page.mouse.click(pick.x, pick.y);
+      await page.waitForTimeout(1800);
+    } else {
+      console.warn(`  pin: none for ${shot.pin} among ${targets.map((t) => t.text).join(' | ')}`);
     }
   }
   if (shot.scroll) {
-    await page.evaluate((y) => window.scrollTo(0, y), shot.scroll);
+    await page.evaluate((y) => {
+      const body = document.querySelector('[data-body]');
+      if (body) body.scrollTo(0, y);
+      else window.scrollTo(0, y);
+    }, shot.scroll);
     await page.waitForTimeout(600);
   }
   await page.waitForLoadState('networkidle').catch(() => {});
@@ -213,6 +249,64 @@ async function shoot(browser, shot) {
 }
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+
+/** `--posters`: render Q's still posters — one per region and beach with venues — into public/. */
+if (args.includes('--posters')) {
+  const POSTER_DIR = path.resolve(HERE, '../../../../public/prototype-posters');
+  mkdirSync(POSTER_DIR, { recursive: true });
+  const REGIONS = ['SHKODER', 'LEZHE', 'DURRES', 'VLORE', 'HIMARE', 'SARANDE'];
+  const BEACHES = [
+    'VELIPOJE',
+    'SHENGJIN',
+    'LALEZ',
+    'CURRILA',
+    'GOLEM',
+    'QERRET',
+    'ZVERNEC',
+    'RADHIME',
+    'PALASE',
+    'DRYMADES',
+    'DHERMI',
+    'JALE',
+    'LIVADHI',
+    'BORSH',
+    'KSAMIL',
+    'PASQYRA',
+  ];
+  const keys = args.includes('--key')
+    ? [args[args.indexOf('--key') + 1]]
+    : [...REGIONS, ...BEACHES.map((b) => `beach-${b}`)];
+  for (const key of keys) {
+    const context = await browser.newContext({
+      viewport: { width: 480, height: 420 },
+      deviceScaleFactor: 2,
+    });
+    const page = await context.newPage();
+    await wire(page, { map: 0, mapBytes: 0, tiles: 0, tileBytes: 0, photos: 0, photoBytes: 0 });
+    await page.goto(`${BASE}/prototype/map?variant=Q&poster=${key}`, {
+      waitUntil: 'networkidle',
+      timeout: 90_000,
+    });
+    await page.addStyleTag({ content: 'app-prototype-switcher{display:none!important}' });
+    await page
+      .waitForFunction(() => window.__rivPosterReady === true, null, { timeout: 60_000 })
+      .catch(() => console.warn(`  ${key}: not ready`));
+    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForTimeout(800);
+    const file = path.join(POSTER_DIR, `${key}.jpg`);
+    await page.screenshot({
+      path: file,
+      type: 'jpeg',
+      quality: 84,
+      clip: { x: 0, y: 0, width: 440, height: 380 },
+    });
+    console.log(`${key} → ${(statSync(file).size / 1024).toFixed(0)} kB`);
+    await context.close();
+  }
+  await browser.close();
+  process.exit(0);
+}
+
 const results = [];
 for (const shot of SHOTS) {
   if (only && !shot.name.startsWith(only)) continue;
@@ -232,7 +326,9 @@ for (const shot of SHOTS) {
   }
 }
 await browser.close();
-writeFileSync(
-  path.join(OUT, `measurements${only ? '-' + only : ''}.json`),
-  JSON.stringify(results, null, 2),
-);
+if (args.includes('--json')) {
+  writeFileSync(
+    path.join(OUT, `measurements${only ? '-' + only : ''}.json`),
+    JSON.stringify(results, null, 2),
+  );
+}

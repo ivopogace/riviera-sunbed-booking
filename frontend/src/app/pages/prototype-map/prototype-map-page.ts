@@ -1,16 +1,14 @@
 /**
- * PROTOTYPE — throwaway. The layouts for the riviera map on Discover that survived rounds 1–5,
+ * PROTOTYPE — throwaway. The layouts for the riviera map on Discover that survived rounds 1–6,
  * on one route, switched by `?variant=`:
  *
- *   B  chart-table  the map IS the page; one glass rail floats over it, a sheet on a phone
- *   K  locator      the map's BOX is derived from the result set's own aspect (desktop)
- *   M  ledger       one card per beach, each with its own small map of its stretch
- *   N  here         round 5, phone-first: opens where the tourist is; the map at the head
- *   O  thumb        round 5's alternative: the same page with the map at the FOOT, in thumb reach
- *   P  search       round 5, the Airbnb pattern: list first, a Map pill, a full-bleed map + carousel
+ *   Q  shore        round 6, from the research: the map is the ground, the list a three-height
+ *                   sheet over it, the first screen's map a still poster with live pins
+ *   P  search       round 5, the Airbnb pattern from memory — kept as the control Q is judged
+ *                   against: list first, a Map pill, a map screen with a carousel
  *
- * Ten others (A, C–J, L) were built and cut; the README's § *Tried and cut* says what each
- * proved and why it went, and their code is recoverable from this branch's history.
+ * Fifteen others (A–O) were built and cut; the README's § *Tried and cut* says what each proved
+ * and why it went, and their code is recoverable from this branch's history.
  *
  * Route: `/prototype/map?variant=N`. Spike branch only — never merges. The design question, the
  * wireframes and the verdicts are in this folder's README.md.
@@ -33,72 +31,33 @@ import { VenuePin } from '../home/pin-crowding';
 import { parseHere } from './prototype-place';
 import { PROTOTYPE_VENUES } from './prototype-venues';
 import { PrototypeSwitcher, PrototypeVariant } from './prototype-switcher';
-import { VariantChartTable } from './variant-chart-table';
-import { VariantHere } from './variant-here';
-import { VariantLocator } from './variant-locator';
-import { VariantLedger } from './variant-ledger';
 import { VariantSearch } from './variant-search';
-import { VariantThumb } from './variant-thumb';
+import { VariantShore } from './variant-shore';
 
 const VARIANTS: readonly PrototypeVariant[] = [
+  {
+    key: 'Q',
+    name: 'Shore',
+    claim:
+      'Round 6 — the map is the ground, the list a sheet with three heights, the first map a poster',
+  },
   {
     key: 'P',
     name: 'Search',
     claim: 'Round 5 — the Airbnb pattern: list first, a Map pill, a full-bleed map with a carousel',
   },
-  {
-    key: 'N',
-    name: 'Here',
-    claim: 'Round 5 — the phone opens where you are: one region, today, nearest first',
-  },
-  {
-    key: 'O',
-    name: 'Thumb',
-    claim: 'Round 5 — the same page with the map at the foot, every pin in thumb reach',
-  },
-  { key: 'B', name: 'Chart table', claim: 'The map is the page; the list floats over it as glass' },
-  {
-    key: 'K',
-    name: 'Locator',
-    claim: 'Round 4 — the map is a ribbon the shape of the result set, never a mode',
-  },
-  {
-    key: 'M',
-    name: 'Ledger',
-    claim: 'Round 4 — the beach is the unit: one card each, with its own map of its stretch',
-  },
 ];
 
 @Component({
   selector: 'app-prototype-map-page',
-  imports: [
-    PrototypeSwitcher,
-    VariantChartTable,
-    VariantHere,
-    VariantLocator,
-    VariantLedger,
-    VariantSearch,
-    VariantThumb,
-  ],
+  imports: [PrototypeSwitcher, VariantSearch, VariantShore],
   template: `
     @switch (variant()) {
-      @case ('N') {
-        <app-variant-here [state]="state()" (filtered)="onFilter($event)" />
-      }
-      @case ('O') {
-        <app-variant-thumb [state]="state()" (filtered)="onFilter($event)" />
-      }
-      @case ('B') {
-        <app-variant-chart-table [state]="state()" (filtered)="onFilter($event)" />
-      }
-      @case ('K') {
-        <app-variant-locator [state]="state()" (filtered)="onFilter($event)" />
-      }
-      @case ('M') {
-        <app-variant-ledger [state]="state()" (filtered)="onFilter($event)" />
+      @case ('P') {
+        <app-variant-search [state]="state()" (filtered)="onFilter($event)" />
       }
       @default {
-        <app-variant-search [state]="state()" (filtered)="onFilter($event)" />
+        <app-variant-shore [state]="state()" (filtered)="onFilter($event)" />
       }
     }
     <app-prototype-switcher [variants]="variants" [currentKey]="variant()" (picked)="go($event)" />
@@ -113,8 +72,8 @@ export class PrototypeMapPage {
   private readonly params = toSignal(this.route.queryParamMap, { requireSync: true });
 
   protected readonly variant = computed(() => {
-    const asked = (this.params().get('variant') ?? 'P').toUpperCase();
-    return VARIANTS.some((v) => v.key === asked) ? asked : 'P';
+    const asked = (this.params().get('variant') ?? 'Q').toUpperCase();
+    return VARIANTS.some((v) => v.key === asked) ? asked : 'Q';
   });
 
   /**
