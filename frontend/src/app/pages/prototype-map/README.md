@@ -1,7 +1,7 @@
 # PROTOTYPE — Q · Shore: where the riviera map goes on a phone
 
-**Throwaway. Spike branch only (`claude/map-design-prototype-417sh1`); nothing here merges to
-`main`.** Q is the layout for the riviera map on Discover, phone first (390 × 844, one hand,
+**Throwaway prototype, on `main` by the maintainer's decision so it can be reviewed and driven
+there; not production code and never promoted as is.** Q is the layout for the riviera map on Discover, phone first (390 × 844, one hand,
 glare, 4G, the shipped tab bar on screen), built from what the reference products are measured to
 do rather than from what they were remembered to do. Sixteen earlier layouts were built across six
 rounds and cut; their code, screenshots and verdicts are in this branch's history (commit 2e53109

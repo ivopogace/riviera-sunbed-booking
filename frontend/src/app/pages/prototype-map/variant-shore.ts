@@ -30,6 +30,13 @@
  * and the list keeps the rest. Desktop is the same page with the sheet
  * pinned open beside the map, not a second design.
  *
+ * <p>The phone sheet is a CSS scroll-snap container that starts at the full line, so nothing it
+ * holds paints over the map's sliver: a transparent spacer the height of peek-to-full, the peek
+ * and half rest points as zero-height snap targets inside it, and the sheet itself snapping at
+ * full. Past full the sheet covers the snapport, which the spec lets rest anywhere — one finger
+ * raises the sheet, keeps scrolling the list, and lowers it again by pulling the list down.
+ * Touches on the spacer fall through to the map.
+ *
  * <p>URL: `?variant=Q` · `&sheet=peek|half|full` · `&live=1` (the live map from the first paint,
  * for the cost row) · `&here=lng,lat` · `&region=` · `&beach=` · `&now=16:30` ·
  * `&poster=<key>` (the driver's poster-rendering mode: the bare fitted map at 440 × 380).
@@ -424,14 +431,7 @@ const MAP_BUTTON =
         <ng-container *ngTemplateOutlet="ground" />
       </div>
 
-      <!--
-        The sheet is a scroll-snap container that starts at the full line, so nothing it holds ever
-        paints over the map's sliver: a transparent spacer the height of peek-to-full, the peek and
-        half rest points as zero-height snap targets inside it, and the sheet itself snapping at
-        full. Past full the sheet covers the snapport, which the spec lets rest anywhere — so the
-        same finger that raises the sheet keeps scrolling the list, and pulling the list down
-        lowers it again. Touches on the spacer fall through to the map.
-      -->
+      <!-- The sheet: a scroll-snap container from the full line down (see the class doc). -->
       <div
         #scroller
         class="pointer-events-none fixed inset-x-0 z-[10] overflow-y-auto overscroll-contain scrollbar-none motion-safe:scroll-smooth snap-y snap-mandatory"
@@ -874,14 +874,16 @@ function posterPins(key: string): LngLat[] {
   return cards.map(locationOf);
 }
 
-/** Fit into the map visible between the header and `sheetTop`, then centre on that window. */
+/**
+ * Fit into the map visible between the header and `sheetTop`, then centre on that window: the
+ * pane is the whole viewport, so the camera looks as far south of the pins as the pane's centre
+ * sits below the window's, and the pins land in the window.
+ */
 function fitUnderHeader(pins: readonly LngLat[], width: number, sheetTop: number): MapView | null {
   const visible = sheetTop - HEADER_H;
   const view = fitPins(pins, width, visible);
   if (view === null) return null;
   const perPixel = (360 / (512 * 2 ** view.zoom)) * Math.cos((view.center.lat * Math.PI) / 180);
-  // The pane is the whole viewport, so its centre sits below the window's; the camera looks that
-  // far south of the pins so that they land in the window.
   const shift = window.innerHeight / 2 - (HEADER_H + visible / 2);
   return {
     center: { lng: view.center.lng, lat: view.center.lat - shift * perPixel },
