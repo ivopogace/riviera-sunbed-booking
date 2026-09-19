@@ -1,23 +1,18 @@
 /**
- * PROTOTYPE — throwaway. Ten desktop layouts for the riviera map on Discover, on one route,
- * switched by `?variant=` — round 1's four, round 2's three and round 3's three:
+ * PROTOTYPE — throwaway. The five layouts for the riviera map on Discover that survived rounds
+ * 1–4, on one route, switched by `?variant=`:
  *
- *   A  shoreline    full-bleed two-pane, the map full height beside the list
- *   B  chart-table  the map IS the page; one glass rail floats over it
- *   C  coast-index  the coast north-to-south as the navigation instrument
- *   D  both-maps    the riviera map and the venue's own beach map on one canvas
- *   E  horizon      the map turned to run along the coast: a full-width band, cards below
- *   F  callouts     the map is the list: venues drawn on the chart, anchored by leader lines
- *   G  verdict      round 1's verdict (A's panes + C's rail) rendered, as the control
- *   H  tide-table   round 3 — the coast × the week: seven days of availability drawn in the sea
- *   I  dive         round 3 — one continuous zoom from the riviera to one lounger
- *   J  sundial      round 3 — today, hour by hour: sales close as the light on the coast
- *   K  locator      round 4 — the map's BOX is derived from the result set's own aspect
- *   L  map-mode     round 4 — the maintainer's List/Map toggle, built so it can be judged
- *   M  ledger       round 4 — one row per beach, each with its own small map of its stretch
+ *   B  chart-table  the map IS the page; one glass rail floats over it, a sheet on a phone
+ *   I  dive         one continuous zoom from the whole riviera to one lounger
+ *   J  sundial      today, hour by hour: sales close as the light on the coast
+ *   K  locator      the map's BOX is derived from the result set's own aspect
+ *   M  ledger       one card per beach, each with its own small map of its stretch
  *
- * Route: `/prototype/map-desktop?variant=A`. Spike branch only — never merges. The design
- * question, the wireframes and the verdict are in this folder's README.md.
+ * Eight others (A, C–H, L) were built and cut; the README's § *Tried and cut* says what each
+ * proved and why it went, and their code is recoverable from this branch's history.
+ *
+ * Route: `/prototype/map-desktop?variant=B`. Spike branch only — never merges. The design
+ * question, the wireframes and the verdicts are in this folder's README.md.
  *
  * <p>The host owns only what every variant needs (the fixture cards, the beach/region/date
  * filters, which pin is open) so a variant is free to throw out the whole layout — including the
@@ -35,53 +30,14 @@ import { VenueCard } from '../home/venue-card';
 import { VenuePin } from '../home/pin-crowding';
 import { PROTOTYPE_VENUES } from './prototype-venues';
 import { PrototypeSwitcher, PrototypeVariant } from './prototype-switcher';
-import { VariantShoreline } from './variant-shoreline';
 import { VariantChartTable } from './variant-chart-table';
-import { VariantCoastIndex } from './variant-coast-index';
-import { VariantBothMaps } from './variant-both-maps';
-import { VariantHorizon } from './variant-horizon';
-import { VariantCallouts } from './variant-callouts';
-import { VariantVerdict } from './variant-verdict';
-import { VariantTideTable } from './variant-tide-table';
 import { VariantDive } from './variant-dive';
 import { VariantSundial } from './variant-sundial';
 import { VariantLocator } from './variant-locator';
-import { VariantMapMode } from './variant-map-mode';
 import { VariantLedger } from './variant-ledger';
 
 const VARIANTS: readonly PrototypeVariant[] = [
-  {
-    key: 'A',
-    name: 'Shoreline',
-    claim: 'Two panes, full bleed — the map finally big enough to read',
-  },
   { key: 'B', name: 'Chart table', claim: 'The map is the page; the list floats over it as glass' },
-  {
-    key: 'C',
-    name: 'Coast index',
-    claim: 'The coast, north to south, as the navigation instrument',
-  },
-  { key: 'D', name: 'Both maps', claim: 'Coast to exact sunbed without leaving the page' },
-  {
-    key: 'E',
-    name: 'Horizon',
-    claim: 'Round 2 — the coast turned to run left→right: a full-width band, cards below',
-  },
-  {
-    key: 'F',
-    name: 'Callouts',
-    claim: 'Round 2 — the map is the list: venues drawn on the chart, anchored by leaders',
-  },
-  {
-    key: 'G',
-    name: 'Verdict',
-    claim: 'Round 1’s verdict rendered: A’s panes with C’s rail — the control',
-  },
-  {
-    key: 'H',
-    name: 'Tide table',
-    claim: 'Round 3 — the coast × the week: seven days of availability, drawn in the sea',
-  },
   {
     key: 'I',
     name: 'Dive',
@@ -98,14 +54,9 @@ const VARIANTS: readonly PrototypeVariant[] = [
     claim: 'Round 4 — the map is a ribbon the shape of the result set, never a mode',
   },
   {
-    key: 'L',
-    name: 'Map mode',
-    claim: 'Round 4 — the List/Map toggle brought to the desktop, built so it can be judged',
-  },
-  {
     key: 'M',
     name: 'Ledger',
-    claim: 'Round 4 — the beach is the unit: one row each, with its own map of its stretch',
+    claim: 'Round 4 — the beach is the unit: one card each, with its own map of its stretch',
   },
 ];
 
@@ -113,64 +64,28 @@ const VARIANTS: readonly PrototypeVariant[] = [
   selector: 'app-prototype-map-page',
   imports: [
     PrototypeSwitcher,
-    VariantShoreline,
     VariantChartTable,
-    VariantCoastIndex,
-    VariantBothMaps,
-    VariantHorizon,
-    VariantCallouts,
-    VariantVerdict,
-    VariantTideTable,
     VariantDive,
     VariantSundial,
     VariantLocator,
-    VariantMapMode,
     VariantLedger,
   ],
   template: `
     @switch (variant()) {
-      @case ('K') {
-        <app-variant-locator [state]="state()" (filtered)="onFilter($event)" />
-      }
-      @case ('L') {
-        <app-variant-map-mode
-          [state]="state()"
-          [startOnMap]="startOnMap()"
-          (filtered)="onFilter($event)"
-        />
-      }
-      @case ('M') {
-        <app-variant-ledger [state]="state()" (filtered)="onFilter($event)" />
-      }
-      @case ('H') {
-        <app-variant-tide-table [state]="state()" (filtered)="onFilter($event)" />
-      }
       @case ('I') {
         <app-variant-dive [state]="state()" (filtered)="onFilter($event)" />
       }
       @case ('J') {
         <app-variant-sundial [state]="state()" (filtered)="onFilter($event)" />
       }
-      @case ('E') {
-        <app-variant-horizon [state]="state()" (filtered)="onFilter($event)" />
+      @case ('K') {
+        <app-variant-locator [state]="state()" (filtered)="onFilter($event)" />
       }
-      @case ('F') {
-        <app-variant-callouts [state]="state()" (filtered)="onFilter($event)" />
-      }
-      @case ('G') {
-        <app-variant-verdict [state]="state()" (filtered)="onFilter($event)" />
-      }
-      @case ('B') {
-        <app-variant-chart-table [state]="state()" (filtered)="onFilter($event)" />
-      }
-      @case ('C') {
-        <app-variant-coast-index [state]="state()" (filtered)="onFilter($event)" />
-      }
-      @case ('D') {
-        <app-variant-both-maps [state]="state()" (filtered)="onFilter($event)" />
+      @case ('M') {
+        <app-variant-ledger [state]="state()" (filtered)="onFilter($event)" />
       }
       @default {
-        <app-variant-shoreline [state]="state()" (filtered)="onFilter($event)" />
+        <app-variant-chart-table [state]="state()" (filtered)="onFilter($event)" />
       }
     }
     <app-prototype-switcher [variants]="variants" [currentKey]="variant()" (picked)="go($event)" />
@@ -185,17 +100,14 @@ export class PrototypeMapPage {
   private readonly params = toSignal(this.route.queryParamMap, { requireSync: true });
 
   protected readonly variant = computed(() => {
-    const asked = (this.params().get('variant') ?? 'A').toUpperCase();
-    return VARIANTS.some((v) => v.key === asked) ? asked : 'A';
+    const asked = (this.params().get('variant') ?? 'B').toUpperCase();
+    return VARIANTS.some((v) => v.key === asked) ? asked : 'B';
   });
 
   /**
    * Seeded from the URL so any state is shareable and screenshot-able:
    * `?variant=C&region=HIMARE`, `?variant=D&open=22`. A control then owns the signal.
    */
-  /** Variant L's map state, so both halves of the toggle are screenshot-able: `?variant=L&map=1`. */
-  protected readonly startOnMap = computed(() => this.params().get('map') === '1');
-
   private readonly beach = linkedSignal(() => this.params().get('beach') ?? '');
   private readonly region = linkedSignal(() => this.params().get('region') ?? '');
   private readonly date = linkedSignal(
