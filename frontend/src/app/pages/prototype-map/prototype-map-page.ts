@@ -1,27 +1,20 @@
 /**
- * PROTOTYPE — throwaway. The layouts for the riviera map on Discover that survived rounds 1–6,
- * on one route, switched by `?variant=`:
+ * PROTOTYPE — throwaway. The riviera map on Discover, phone first: round 6's **Q** (Shore) on one
+ * route. Sixteen other layouts (A–P) were built across six rounds and cut; the README's
+ * § *Tried and cut* says what each proved and why it went, and their code is recoverable from
+ * this branch's history.
  *
- *   Q  shore        round 6, from the research: the map is the ground, the list a three-height
- *                   sheet over it, the first screen's map a still poster with live pins
- *   P  search       round 5, the Airbnb pattern from memory — kept as the control Q is judged
- *                   against: list first, a Map pill, a map screen with a carousel
+ * Route: `/prototype/map`. Spike branch only — never merges. The design question, the research,
+ * the wireframes and the verdicts are in this folder's README.md.
  *
- * Fifteen others (A–O) were built and cut; the README's § *Tried and cut* says what each proved
- * and why it went, and their code is recoverable from this branch's history.
- *
- * Route: `/prototype/map?variant=N`. Spike branch only — never merges. The design question, the
- * wireframes and the verdicts are in this folder's README.md.
- *
- * <p>The host owns only what every variant needs (the fixture cards, the beach/region/date
- * filters, which pin is open) so a variant is free to throw out the whole layout — including the
- * hero and where the map goes. No shared layout component, on purpose.
+ * <p>The host owns only what the variant needs (the fixture cards, the beach/region/date filters,
+ * the tourist's position), seeded from the URL so any state is shareable and screenshot-able.
  */
 import { Component, computed, linkedSignal } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 
 import { defaultBookingDate, formatCivilDate } from '../../shared/booking-date';
 import { presentBeaches, presentRegions } from '../../shared/beaches';
@@ -30,55 +23,21 @@ import { VenueCard } from '../home/venue-card';
 import { VenuePin } from '../home/pin-crowding';
 import { parseHere } from './prototype-place';
 import { PROTOTYPE_VENUES } from './prototype-venues';
-import { PrototypeSwitcher, PrototypeVariant } from './prototype-switcher';
-import { VariantSearch } from './variant-search';
 import { VariantShore } from './variant-shore';
-
-const VARIANTS: readonly PrototypeVariant[] = [
-  {
-    key: 'Q',
-    name: 'Shore',
-    claim:
-      'Round 6 — the map is the ground, the list a sheet with three heights, the first map a poster',
-  },
-  {
-    key: 'P',
-    name: 'Search',
-    claim: 'Round 5 — the Airbnb pattern: list first, a Map pill, a full-bleed map with a carousel',
-  },
-];
 
 @Component({
   selector: 'app-prototype-map-page',
-  imports: [PrototypeSwitcher, VariantSearch, VariantShore],
-  template: `
-    @switch (variant()) {
-      @case ('P') {
-        <app-variant-search [state]="state()" (filtered)="onFilter($event)" />
-      }
-      @default {
-        <app-variant-shore [state]="state()" (filtered)="onFilter($event)" />
-      }
-    }
-    <app-prototype-switcher [variants]="variants" [currentKey]="variant()" (picked)="go($event)" />
-  `,
+  imports: [VariantShore],
+  template: `<app-variant-shore [state]="state()" (filtered)="onFilter($event)" />`,
 })
 export class PrototypeMapPage {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
-
-  protected readonly variants = VARIANTS;
 
   private readonly params = toSignal(this.route.queryParamMap, { requireSync: true });
 
-  protected readonly variant = computed(() => {
-    const asked = (this.params().get('variant') ?? 'Q').toUpperCase();
-    return VARIANTS.some((v) => v.key === asked) ? asked : 'Q';
-  });
-
   /**
-   * Seeded from the URL so any state is shareable and screenshot-able:
-   * `?variant=C&region=HIMARE`, `?variant=D&open=22`. A control then owns the signal.
+   * Seeded from the URL so any state is shareable and screenshot-able: `?region=HIMARE`,
+   * `?beach=DHERMI&date=2026-09-20`. A control then owns the signal.
    */
   private readonly beach = linkedSignal(() => this.params().get('beach') ?? '');
   private readonly region = linkedSignal(() => this.params().get('region') ?? '');
@@ -135,15 +94,6 @@ export class PrototypeMapPage {
     }
     if (change.date !== undefined) this.date.set(change.date);
     if (change.here !== undefined) this.here.set(change.here);
-  }
-
-  protected go(key: string): void {
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { variant: key },
-      queryParamsHandling: 'merge',
-      replaceUrl: true,
-    });
   }
 }
 

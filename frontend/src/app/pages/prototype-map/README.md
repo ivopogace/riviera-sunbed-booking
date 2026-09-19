@@ -4,9 +4,9 @@
 `main`.** Six rounds built seventeen layouts for the riviera map on Discover, on one route, so
 they could be judged against each other and against what ships today. Rounds 1–4 were
 desktop-first; round 5 flipped the target to a 390 × 844 phone; **round 6 researched the reference
-products first — measured, not remembered — and built Q from that.** Two are left: **Q**, and
-**P** as the control it is judged against. The other fifteen were cut; § _Tried and cut_ says what
-each of them proved and why it went, so nothing has to be re-derived. Their code is in this
+products first — measured, not remembered — and built Q from that.** **Q is what is left**: the
+maintainer took the recommendation and the other sixteen were cut, code and screenshots; § _Tried
+and cut_ says what each of them proved and why it went, so nothing has to be re-derived. Their code is in this
 branch's history (`git log --diff-filter=D -- 'frontend/src/app/pages/prototype-map/variant-*.ts'`).
 
 The findings below are kept in full and are the point of the spike: the camera fit, the rotated
@@ -15,17 +15,18 @@ what the reference products actually do on a phone (round 6).
 
 ```
 npm start           # from frontend/
-open http://localhost:4200/prototype/map?variant=Q
+open http://localhost:4200/prototype/map
 node src/app/pages/prototype-map/shoot.mjs            # the shots + the cost/geometry log
 node src/app/pages/prototype-map/shoot.mjs --posters  # re-render Q's still posters
 ```
 
 The route was `/prototype/map-desktop` until round 5; the phone is the design target now, so the
-path stopped saying otherwise. `←` / `→` or the floating bar cycles the variants. Every state is
-in the URL: `?variant=Q&sheet=peek` (Q's sheet pulled down to the map), `?variant=Q&sheet=full`,
-`?variant=Q&here=19.641,40.147` (the tourist standing on Dhërmi beach), `?variant=Q&region=SARANDE`,
-`?variant=Q&beach=DHERMI`, `?variant=Q&now=16:30` (the clock, for the sales-close state),
-`?variant=Q&live=1` (the live map from the first paint, for the cost row), `?variant=P&mode=map`.
+path stopped saying otherwise. The `?variant=` switch and its floating bar went with the last
+cut. Every state is in the URL: `?sheet=peek` (the sheet pulled down to the map), `?sheet=full`,
+`?here=19.641,40.147` (the tourist standing on Dhërmi beach), `?region=SARANDE`, `?beach=DHERMI`,
+`?now=16:30` (the clock, for the sales-close state), `?live=1` (the live map from the first
+paint, for the cost row). The `variant=Q` in the shot names and the URLs below is accepted and
+ignored.
 Venues come from `prototype-venues.ts` (26 fixtures along the real coast), so no backend is
 needed; the map itself is the real `app-riviera-map` against the real `platform/map` tiles, which
 `./gradlew bootRun` serves at `/map/**` (the driver serves them from disk).
@@ -59,7 +60,7 @@ primary affordance is, and whether the filters stay a row of selects.
 
 ## Tried and cut
 
-Fifteen layouts were built, shot, argued over and then cut — eight after round 4, two on a phone in round 5, five after round 6. Each is here in two or
+Sixteen layouts were built, shot, argued over and then cut — eight after round 4, two on a phone in round 5, five after round 6, and P once Q was taken. Each is here in two or
 three lines so a later round does not rebuild one by accident — and so the findings below, which
 still cite them by letter, keep making sense. **Their screenshots went with them**, so where a
 finding names an `A-…png` or `E-…png` the claim itself is recorded in the prose, not in a file.
@@ -81,6 +82,7 @@ finding names an `A-…png` or `E-…png` the claim itself is recorded in the pr
 | **M** · Ledger      | Round 4: the beach is the unit — one card per beach with its own small map of its stretch                               | Cut in round 6. The beach as the unit is Q's list (grouped by beach, captioned with distance) and Q's chip rail (the region's beaches with counts); sixteen maps never survived round 5's cost table (2.8 MB, nine contexts, a 7,146 px scroll starting 200 km from the riviera).                                                                                                                                                                                                                                            |
 | **N** · Here        | Round 5: the phone opens where you are; a full-width map band at the head whose depth is the set's shape, rows under it | Cut in round 6; Q keeps everything in it but the band. The opening rule (a region, never the coast; nearest first when located), the row as the pin's preview, J's sentence and dusk, the picker — all in Q. The band is Q's half detent when the thumb cannot move it: N chose the split (263 px) and the tourist had to live with it; Q's sheet gives the split to the thumb. The maintainer rejected N on sight, and the shots agree it read as a dashboard: a date `<input>` dressed as a pill, a strip, a band, a list. |
 | **O** · Thumb       | Round 5: N with the map fixed at the foot, every pin in the thumb's arc                                                 | Cut in round 6. What O wanted — the pins in reach — is Q at peek (the map fills the window, the head sits in the thumb's zone) without O's cost (324 px of permanent chrome letterboxing a 390 px list). Rejected on sight in round 5; superseded now.                                                                                                                                                                                                                                                                       |
+| **P** · Search      | Round 5: the Airbnb pattern from memory — list first, a `Map` pill, a full-bleed map with a snapping carousel           | Kept through round 6 as the control Q was judged against, then cut when the maintainer took Q. It was the right instinct (Airbnb) with the wrong structure: measured, Airbnb is a sheet on a map, the pill exists only once the sheet is up, and a pin tap is one card, not a carousel (round 6 § _The research_). Its one lasting number: a list-only first paint costs nothing, which Q matches with the poster.                                                                                                           |
 
 ## Round 1
 
@@ -1103,7 +1105,8 @@ archive range-sliced as the backend does, and every fixture photo answered with 
 stand-in — judge photo mass, not the pictures. The driver logs each shot's first-screen cost (map
 style/sprite/glyph requests, tile ranges, live WebGL contexts) and the geometry the notes argue
 from; `--json` keeps the raw numbers. Phone shots are 390 × 844 at 1×; the cut variants'
-screenshots went with them, and the claims about them are recorded in the prose.
+screenshots went with them (P's, and round 5's I/J evidence, with the last cut), and the claims
+about them are recorded in the prose.
 
 | File                                                                                          | What                                                                                            |
 | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
@@ -1120,8 +1123,6 @@ screenshots went with them, and the claims about them are recorded in the prose.
 | `Q-shore-phone-live.png`                                                                      | the control: the live map from the first paint, pins where the poster's were                    |
 | `Q-shore-tall.png` · `Q-shore-tall-peek.png`                                                  | Q at 430 × 932, half and peek                                                                   |
 | `Q-shore-1440.png` · `Q-shore-1440-himare.png` · `Q-shore-1440-here.png` · `Q-shore-1920.png` | the desktop: the whole coast (360 px pane, three columns); Himarë; located; 1920 (four columns) |
-| `P-search-phone.png` · `P-search-phone-map.png` · the other `P-*.png`                         | P, the control, round 5's shots re-taken by the driver where the state matched                  |
-| `I-dive-phone.png` · `J-sundial-phone.png`                                                    | round 5's evidence for the two cuts: inland Albania, pins off-frame                             |
 
 ## Files
 
@@ -1130,7 +1131,6 @@ screenshots went with them, and the claims about them are recorded in the prose.
 | `prototype-map-page.ts`                              | the host: fixture data, filters from the URL, the `?variant=` switch                                 |
 | `variant-shore.ts`                                   | Q — round 6: the ground, the three-height sheet, the poster/live swap, the desktop panel rule        |
 | `prototype-poster.ts`                                | the still poster: its box, its camera, and the `MapHandle` over an image the pin layer draws through |
-| `variant-search.ts`                                  | P — round 5's control: list first, a Map pill, a map screen with a carousel                          |
 | `prototype-coast-picker.ts`                          | the coast as a chooser: K's ribbon + C's index as a sheet (a popover from `lg`)                      |
 | `prototype-venue-row.ts` · `prototype-venue-card.ts` | the phone row (the pin's preview) and the desktop card                                               |
 | `prototype-place.ts`                                 | the tourist's position, distances, the beach grouping                                                |
@@ -1139,7 +1139,6 @@ screenshots went with them, and the claims about them are recorded in the prose.
 | `prototype-days.ts`                                  | the fixture's time: each venue's sales close (J's instrument, now the head's sentence and the dusk)  |
 | `prototype-coast.ts`                                 | the coast as an index: regions, beaches, counts, from-prices                                         |
 | `prototype-venues.ts`                                | 26 fixture venues                                                                                    |
-| `prototype-switcher.ts`                              | the floating bar — deliberately ugly, so it reads as scaffolding                                     |
 | `shoot.mjs`                                          | the screenshot + cost/geometry driver, and the poster renderer (`--posters`)                         |
 | `research/`                                          | round 6's two raw reports: the measured references (bytes by host, geometry) and the web research    |
 | `../../../../public/prototype-posters/*.jpg`         | Q's 22 still posters, one per region and beach with venues — rendered, not drawn                     |

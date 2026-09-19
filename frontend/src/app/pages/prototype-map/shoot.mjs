@@ -38,7 +38,7 @@ const DESK = { width: 1920, height: 1080 };
 
 const HERE_DHERMI = '19.641,40.147';
 
-/** The shot list: name → url + viewport + optional actions. Round 6's Q first. */
+/** The shot list: name → url + viewport + optional actions. */
 const SHOTS = [
   // Q — the page
   { name: 'Q-shore-phone', v: PHONE, url: 'variant=Q&now=10:30' },
@@ -83,9 +83,6 @@ const SHOTS = [
   { name: 'Q-shore-1440-himare', v: LAPTOP, url: 'variant=Q&region=HIMARE&now=10:30' },
   { name: 'Q-shore-1440-here', v: LAPTOP, url: `variant=Q&here=${HERE_DHERMI}&now=10:30` },
   { name: 'Q-shore-1920', v: DESK, url: 'variant=Q&now=10:30' },
-  // P, the control, same shots
-  { name: 'P-search-phone', v: PHONE, url: 'variant=P' },
-  { name: 'P-search-phone-map', v: PHONE, url: 'variant=P&mode=map' },
 ];
 
 function svgPhoto(id) {
@@ -287,7 +284,6 @@ if (args.includes('--posters')) {
       waitUntil: 'networkidle',
       timeout: 90_000,
     });
-    await page.addStyleTag({ content: 'app-prototype-switcher{display:none!important}' });
     await page
       .waitForFunction(() => window.__rivPosterReady === true, null, { timeout: 60_000 })
       .catch(() => console.warn(`  ${key}: not ready`));
