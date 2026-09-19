@@ -42,11 +42,13 @@
  * <p>URL: `?variant=Q` · `&sheet=peek|half|full` · `&live=1` (the live map from the first paint,
  * for the cost row) · `&here=lng,lat` · `&region=` · `&beach=` · `&now=16:30` ·
  * `&head=subtitle` (the beach in the subtitle instead of a chip) · `&pane=free` (the desktop
- * pane's height follows the set too) · `&poster=<key>` (the driver's poster-rendering mode: the
- * bare fitted map at 440 × 380).
+ * pane's height follows the set too) · `&desk=line` (round 8: the desktop opens on a region and
+ * the whole coast is a line chooser over the panel, never a map) · `&poster=<key>` (the driver's
+ * poster-rendering mode: the bare fitted map at 440 × 380).
  */
 import { NgTemplateOutlet } from '@angular/common';
 import {
+  afterNextRender,
   afterRenderEffect,
   Component,
   computed,
@@ -81,6 +83,7 @@ import { VenueCard } from '../home/venue-card';
 import { contentAspect } from './prototype-aspect';
 import { fitPins } from './prototype-camera';
 import { COAST } from './prototype-coast';
+import { PrototypeCoastLine } from './prototype-coast-line';
 import { PrototypeCoastPicker } from './prototype-coast-picker';
 import { closedForTodayAt, daysFrom, parseClock } from './prototype-days';
 import { PrototypeFilter, PrototypeState } from './prototype-map-page';
@@ -201,6 +204,7 @@ const GUTTER_PILL =
     TouchTarget,
     RivieraMap,
     VenuePinLayer,
+    PrototypeCoastLine,
     PrototypeCoastPicker,
     PrototypeVenueRow,
     PrototypeVenueCard,
@@ -496,12 +500,22 @@ const GUTTER_PILL =
           [style.width.px]="panelWidth()"
         >
           <div class="relative shrink-0 border-b border-riv-header-border pt-3 pb-2">
+            @if (lineDesk()) {
+              <!-- Round 8: the coast as a line over the panel; the pane below is always a region. -->
+              <app-prototype-coast-line
+                class="mb-1 border-b border-riv-header-border"
+                [region]="focus().region"
+                [beach]="focus().beach"
+                (picked)="filtered.emit($event)"
+              />
+            }
             <ng-container *ngTemplateOutlet="head" />
             @if (pickerOpen()) {
               <app-prototype-coast-picker
                 [region]="state().region"
                 [beach]="state().beach"
                 [located]="state().here !== null"
+                [wholeCoast]="!lineDesk()"
                 (picked)="filtered.emit($event)"
                 (nearMe)="locate()"
                 (closed)="pickerOpen.set(false)"
@@ -648,6 +662,8 @@ export class VariantShore {
   protected readonly subtitleHead = computed(() => this.params().get('head') === 'subtitle');
   /** `?pane=free`: the desktop pane's height follows the set as its width does. */
   private readonly freePane = computed(() => this.params().get('pane') === 'free');
+  /** `?desk=line`: the desktop opens on a region, like the phone, under a coast-line chooser. */
+  protected readonly lineDesk = computed(() => this.params().get('desk') === 'line');
   private readonly askedDetent = (this.params().get('sheet') as Detent | null) ?? 'half';
   /** The scroller's `scrollTop`, mirrored on every scroll event: the one number the sheet is. */
   private readonly scrolled = signal(0);
@@ -699,7 +715,11 @@ export class VariantShore {
     }
     if (s.region !== '') return { cards: s.cards, region: s.region, beach: '' };
     const region =
-      s.here !== null ? nearestRegion(s.here, s.cards) : this.wide() ? '' : PHONE_DEFAULT_REGION;
+      s.here !== null
+        ? nearestRegion(s.here, s.cards)
+        : this.wide() && !this.lineDesk()
+          ? ''
+          : PHONE_DEFAULT_REGION;
     if (region === '') return { cards: s.cards, region: '', beach: '' };
     return {
       cards: s.cards.filter((c) => beachEntry(c.beach)?.region === region),
@@ -943,6 +963,18 @@ export class VariantShore {
   }
 
   private pending: MapView | null = null;
+  private watcher: MutationObserver | undefined;
+
+  /** The merge demonstration over the rendered pills; its own mutations are discarded, not watched. */
+  private mergePills(): void {
+    const pills = [
+      ...this.element.nativeElement.querySelectorAll<HTMLElement>(
+        '[data-pin][data-testid="map-place-pill"]',
+      ),
+    ];
+    mergeCollidingPills(pills);
+    this.watcher?.takeRecords();
+  }
 
   /**
    * Swap the live map in at the poster's camera, then honour the move that asked for it — aimed
@@ -972,7 +1004,9 @@ export class VariantShore {
   private readonly mapWidth = computed(() => {
     const { w } = this.viewport();
     const wanted = (this.columnHeight() - PAD) / this.aspect() + PAD;
-    return Math.round(Math.max(360, Math.min(w * 0.6, wanted)));
+    // The line desk always frames a region: a floor of 40 %, or a two-pin region gets the 360 column.
+    const floor = this.lineDesk() ? Math.max(360, w * 0.4) : 360;
+    return Math.round(Math.max(floor, Math.min(w * 0.6, wanted)));
   });
   protected readonly panelWidth = computed(() =>
     Math.max(420, this.viewport().w - this.mapWidth() - 24),
@@ -1110,7 +1144,21 @@ export class VariantShore {
         const at = dusk.has(button.dataset['pin'] ?? '');
         for (const cls of DUSK_CLASSES) button.classList.toggle(cls, at);
       }
-      mergeCollidingPills(buttons.filter((b) => b.dataset['testid'] === 'map-place-pill'));
+      this.mergePills();
+    });
+    // The layer re-groups on its own resize tick, which no map move announces; watch its DOM.
+    afterNextRender(() => {
+      let frame = 0;
+      this.watcher = new MutationObserver(() => {
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => this.mergePills());
+      });
+      this.watcher.observe(this.element.nativeElement, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['class', 'style', 'aria-label'],
+      });
     });
   }
 }

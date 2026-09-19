@@ -97,7 +97,8 @@ interface IndexRow {
         <button
           type="button"
           appTouchTarget
-          class="hidden flex-1 items-center justify-center rounded-full border border-riv-field-border bg-riv-field-fill px-4 text-[14px] font-semibold text-riv-ink lg:inline-flex"
+          class="hidden flex-1 items-center justify-center rounded-full border border-riv-field-border bg-riv-field-fill px-4 text-[14px] font-semibold text-riv-ink"
+          [class.lg:inline-flex]="wholeCoast()"
           [class.bg-riv-accent-ink]="region() === '' && beach() === '' && !located()"
           [class.text-riv-on-accent-ink]="region() === '' && beach() === '' && !located()"
           (click)="pick({ region: '', beach: '', here: null })"
@@ -196,6 +197,8 @@ export class PrototypeCoastPicker {
   readonly region = input.required<string>();
   readonly beach = input.required<string>();
   readonly located = input(false);
+  /** Whether the coast itself is a state the desktop can show; round 8's line desk says no. */
+  readonly wholeCoast = input(true);
   readonly picked = output<PrototypeFilter>();
   readonly nearMe = output<void>();
   readonly closed = output<void>();

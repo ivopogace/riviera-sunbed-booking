@@ -127,6 +127,27 @@ const SHOTS = [
   },
   { name: 'Q-shore-1440-here', v: LAPTOP, url: `variant=Q&here=${HERE_DHERMI}&now=10:30` },
   { name: 'Q-shore-1920', v: DESK, url: 'variant=Q&now=10:30' },
+  // round 8: the line desk — a region in the pane, the coast as a line over the panel
+  { name: 'Q-shore-1440-line', v: LAPTOP, url: 'variant=Q&desk=line&now=10:30' },
+  {
+    name: 'Q-shore-1440-line-sarande',
+    v: LAPTOP,
+    url: 'variant=Q&desk=line&region=SARANDE&now=10:30',
+  },
+  {
+    name: 'Q-shore-1440-line-beach',
+    v: LAPTOP,
+    url: 'variant=Q&desk=line&beach=DHERMI&now=10:30',
+  },
+  {
+    name: 'Q-shore-1440-line-picker',
+    v: LAPTOP,
+    url: 'variant=Q&desk=line&now=10:30',
+    click: '[data-open-picker]',
+  },
+  { name: 'Q-shore-1200-line', v: WIDE_MID, url: 'variant=Q&desk=line&now=10:30' },
+  { name: 'Q-shore-1024-line', v: NARROW, url: 'variant=Q&desk=line&now=10:30' },
+  { name: 'Q-shore-1920-line', v: DESK, url: 'variant=Q&desk=line&now=10:30' },
 ];
 
 function svgPhoto(id) {
