@@ -98,46 +98,53 @@
             </div>
           </div>
 
-          <button
-            type="submit"
-            appTouchTarget
-            class="mt-1 self-start rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
-            data-testid="venue-save"
-            [disabled]="detailsForm().invalid()"
-            [appBusy]="saving()"
-          >
-            {{ saving() ? 'Saving…' : 'Save changes' }}
-          </button>
+          <!-- Persistent save bar: pinned to the viewport bottom so it's reachable without scrolling. -->
+          <div class="sticky bottom-3 z-10 mt-1" data-testid="venue-save-bar">
+            <div
+              appCardGlass
+              class="flex flex-col items-start gap-2 rounded-[16px] px-4 py-3 shadow-[0_10px_30px_rgba(12,42,51,0.25)]"
+            >
+              <button
+                type="submit"
+                appTouchTarget
+                class="self-start rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
+                data-testid="venue-save"
+                [disabled]="detailsForm().invalid()"
+                [appBusy]="saving()"
+              >
+                {{ saving() ? 'Saving…' : 'Save changes' }}
+              </button>
 
-          @if (savedMessage(); as msg) {
-            <!-- Visible copy only; the persistent announcer above owns the announcement. -->
-            <span
-              class="text-[11.5px] font-semibold text-riv-console-accent-ink"
-              aria-hidden="true"
-              data-testid="venue-saved"
-              >{{ msg }}</span
-            >
-          }
-          @if (errorMessage(); as msg) {
-            <span
-              class="text-[11.5px] font-semibold text-riv-error-ink"
-              role="alert"
-              data-testid="venue-error"
-              >{{ msg }}</span
-            >
-          }
-          <!-- A stale-write 409 is a recoverable conflict: keep edits, explain, offer a Reload (never a silent discard). -->
-          @if (errorCode() === 'STALE_WRITE') {
-            <app-stale-write-banner
-              class="mt-1"
-              data-testid="venue-stale-banner"
-              reloadTestId="venue-stale-reload"
-              (reload)="reloadAfterStale()"
-            >
-              This venue was changed somewhere else since you opened it. Your edits are kept —
-              reload the latest details, re-apply your changes, then Save again.
-            </app-stale-write-banner>
-          }
+              @if (savedMessage(); as msg) {
+                <!-- Visible copy only; the persistent announcer above owns the announcement. -->
+                <span
+                  class="text-[11.5px] font-semibold text-riv-console-accent-ink"
+                  aria-hidden="true"
+                  data-testid="venue-saved"
+                  >{{ msg }}</span
+                >
+              }
+              @if (errorMessage(); as msg) {
+                <span
+                  class="text-[11.5px] font-semibold text-riv-error-ink"
+                  role="alert"
+                  data-testid="venue-error"
+                  >{{ msg }}</span
+                >
+              }
+              <!-- A stale-write 409 is a recoverable conflict: keep edits, explain, offer a Reload (never a silent discard). -->
+              @if (errorCode() === 'STALE_WRITE') {
+                <app-stale-write-banner
+                  data-testid="venue-stale-banner"
+                  reloadTestId="venue-stale-reload"
+                  (reload)="reloadAfterStale()"
+                >
+                  This venue was changed somewhere else since you opened it. Your edits are kept —
+                  reload the latest details, re-apply your changes, then Save again.
+                </app-stale-write-banner>
+              }
+            </div>
+          </div>
         </form>
       </section>
 
