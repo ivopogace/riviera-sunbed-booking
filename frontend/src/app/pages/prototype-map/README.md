@@ -1,23 +1,27 @@
-# PROTOTYPE — where the riviera map goes on desktop
+# PROTOTYPE — where the riviera map goes, phone first
 
 **Throwaway. Spike branch only (`claude/map-design-prototype-417sh1`); nothing here merges to
-`main`.** Four rounds built thirteen layouts for the riviera map on Discover, on one route, so
-they could be judged against each other and against what ships today. **Five are left** — B, I,
-J, K and M — and the other eight were cut after round 4; § _Tried and cut_ says what each of
-them proved and why it went, so nothing has to be re-derived. Their code is in this branch's
-history (`git log --diff-filter=D -- 'frontend/src/app/pages/prototype-map/variant-*.ts'`).
+`main`.** Five rounds built fifteen layouts for the riviera map on Discover, on one route, so
+they could be judged against each other and against what ships today. Rounds 1–4 were
+desktop-first; **round 5 flips the target to a 390 × 844 phone** and judges everything from
+phone screenshots. **Five are left** — B, K, M and round 5's N and O — and the other ten were
+cut; § _Tried and cut_ says what each of them proved and why it went, so nothing has to be
+re-derived. Their code is in this branch's history
+(`git log --diff-filter=D -- 'frontend/src/app/pages/prototype-map/variant-*.ts'`).
 
 The findings below are kept in full and are the point of the spike: the camera fit, the rotated
-band's fence, and the result set's own aspect ratio.
+band's fence, the result set's own aspect ratio, and (round 5) what a phone's first screen costs.
 
 ```
 npm start           # from frontend/
-open http://localhost:4200/prototype/map-desktop?variant=K
+open http://localhost:4200/prototype/map?variant=N
 ```
 
-`←` / `→` or the floating bar cycles the variants. Every state is in the URL:
-`?variant=K&beach=DHERMI`, `?variant=I&open=22&depth=14`, `?variant=B&region=HIMARE`,
-`?variant=J&now=15:30&still`.
+The route was `/prototype/map-desktop` until round 5; the phone is the design target now, so the
+path stopped saying otherwise. `←` / `→` or the floating bar cycles the variants. Every state is
+in the URL: `?variant=N&here=19.641,40.147` (the tourist standing on Dhërmi beach),
+`?variant=N&region=SARANDE`, `?variant=N&now=16:30` (the clock, for the sales-close state),
+`?variant=K&beach=DHERMI`, `?variant=B&region=HIMARE`.
 Venues come from `prototype-venues.ts` (26 fixtures along the real coast), so no backend is
 needed; the map itself is the real `app-riviera-map` against the real `platform/map` tiles, which
 `./gradlew bootRun` serves at `/map/**`.
@@ -51,21 +55,23 @@ primary affordance is, and whether the filters stay a row of selects.
 
 ## Tried and cut
 
-Eight layouts were built, shot, argued over and then cut after round 4. Each is here in two or
+Ten layouts were built, shot, argued over and then cut — eight after round 4, two on a phone in round 5. Each is here in two or
 three lines so a later round does not rebuild one by accident — and so the findings below, which
 still cite them by letter, keep making sense. **Their screenshots went with them**, so where a
 finding names an `A-…png` or `E-…png` the claim itself is recorded in the prose, not in a file.
 
-| Cut                 | What it was                                                                                                     | What it proved, and why it went                                                                                                                                                                                                                                      |
-| ------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **A** · Shoreline   | Two full-bleed panes, list left, map right — the expected pattern with the shipped page's faults fixed          | Measured at 1440: the pins are 286 × 823 px in a 610 × 808 pane, so 47 % of the width is used and the coast runs 15 px off the foot. It is the right idea at the wrong width; **K's column is this pane sized by measurement**.                                      |
-| **C** · Coast index | Three columns, the left one the coast itself: region by region, every beach with its count and from-price       | The rail was the strongest single idea in round 1 and still is — it **survives as K's label gutter**, drawn on the coast instead of beside it at a quarter of the width. The three-column geometry was the weakest.                                                  |
-| **D** · Both maps   | The riviera map and the venue's own beach map side by side, so picking a set costs no page change               | Its own screenshot was the argument against it: a ~520 px panel panning a 12–20-set beach with "drag to see the rest" doing real work. **Round 3 replaced it with I**, which puts both scales on one camera.                                                         |
-| **E** · Horizon     | The map turned so the coast runs left → right with the sea at the foot; a full-width band, cards below          | The orientation is right and is **kept — it is K's band shape, and `prototype-band.ts` is E as a component**. E's own band was 414 px deep where the turned set measures 272; round 4 computes the depth instead of choosing it.                                     |
-| **F** · Callouts    | The venues drawn on the chart as a column of callouts, each anchored to its spot by a leader line               | "The inland waste is the label field" is a real insight and **survives vertically in K's gutter**. F itself is one scale, not a page: it can only open on a region, and the column caps at about eleven callouts.                                                    |
-| **G** · Verdict     | Round 1's verdict (A's panes with C's rail) built as a control rather than argued                               | Did exactly its job: rendered, it is C with a smaller list and A's mostly-inland map. Round 1's verdict is disproven, so the control has nothing left to control for. The practice is what to keep — **build the verdict**.                                          |
-| **H** · Tide table  | The coast × seven days: one bar per venue per day, drawn in the sea under its own pin, the row the date control | The biggest idea in the spike, and not a layout question. It needs a backend read that does not exist (a week of availability per venue), its 594 px band cannot be sticky, and it reads only at region scale. **Worth its own issue with the read in it.**          |
-| **L** · Map mode    | A desktop List / Map toggle: list with no map at all, or B's full-bleed map with the rail                       | Its **list state is the best list page in the spike** — four columns at 1440 with nothing stealing the width — and that argument is carried into round 4's verdict. Its map state at whole-coast scale is 55 % of the coast off-screen and six pins behind the rail. |
+| Cut                 | What it was                                                                                                       | What it proved, and why it went                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A** · Shoreline   | Two full-bleed panes, list left, map right — the expected pattern with the shipped page's faults fixed            | Measured at 1440: the pins are 286 × 823 px in a 610 × 808 pane, so 47 % of the width is used and the coast runs 15 px off the foot. It is the right idea at the wrong width; **K's column is this pane sized by measurement**.                                                                                                                                                                                                                                                                 |
+| **C** · Coast index | Three columns, the left one the coast itself: region by region, every beach with its count and from-price         | The rail was the strongest single idea in round 1 and still is — it **survives as K's label gutter**, drawn on the coast instead of beside it at a quarter of the width. The three-column geometry was the weakest.                                                                                                                                                                                                                                                                             |
+| **D** · Both maps   | The riviera map and the venue's own beach map side by side, so picking a set costs no page change                 | Its own screenshot was the argument against it: a ~520 px panel panning a 12–20-set beach with "drag to see the rest" doing real work. **Round 3 replaced it with I**, which puts both scales on one camera.                                                                                                                                                                                                                                                                                    |
+| **E** · Horizon     | The map turned so the coast runs left → right with the sea at the foot; a full-width band, cards below            | The orientation is right and is **kept — it is K's band shape, and `prototype-band.ts` is E as a component**. E's own band was 414 px deep where the turned set measures 272; round 4 computes the depth instead of choosing it.                                                                                                                                                                                                                                                                |
+| **F** · Callouts    | The venues drawn on the chart as a column of callouts, each anchored to its spot by a leader line                 | "The inland waste is the label field" is a real insight and **survives vertically in K's gutter**. F itself is one scale, not a page: it can only open on a region, and the column caps at about eleven callouts.                                                                                                                                                                                                                                                                               |
+| **G** · Verdict     | Round 1's verdict (A's panes with C's rail) built as a control rather than argued                                 | Did exactly its job: rendered, it is C with a smaller list and A's mostly-inland map. Round 1's verdict is disproven, so the control has nothing left to control for. The practice is what to keep — **build the verdict**.                                                                                                                                                                                                                                                                     |
+| **H** · Tide table  | The coast × seven days: one bar per venue per day, drawn in the sea under its own pin, the row the date control   | The biggest idea in the spike, and not a layout question. It needs a backend read that does not exist (a week of availability per venue), its 594 px band cannot be sticky, and it reads only at region scale. **Worth its own issue with the read in it.**                                                                                                                                                                                                                                     |
+| **L** · Map mode    | A desktop List / Map toggle: list with no map at all, or B's full-bleed map with the rail                         | Its **list state is the best list page in the spike** — four columns at 1440 with nothing stealing the width — and that argument is carried into round 4's verdict. Its map state at whole-coast scale is 55 % of the coast off-screen and six pins behind the rail.                                                                                                                                                                                                                            |
+| **I** · Dive        | Round 3: one continuous zoom from the whole riviera to one lounger, on E's turned band, a depth gauge on the left | Cut in round 5, on a phone. `I-dive-phone.png`: at 390 px its coast view is inland Albania with the pins 782 px wide in a 390 px pane (measured: −248 … 534), no scroll column and no list; its gauge is `lg`-only. The **idea** — one camera from coast to lounger — is a product decision that still stands (round 3), and its costs (the lens seam, the pin-accuracy requirement) are unchanged; as a page it was a desktop instrument, which round 3 said.                                  |
+| **J** · Sundial     | Round 3: today hour by hour, sales close as the light on the coast, a day line in the sea                         | Cut in round 5 as a **layout**, kept as an **instrument**. `J-sundial-phone.png`: a 420 px band at the coast bearing on a 390 px phone puts the pins at −105 … 438, the day line is `lg`-only, and 26 shipped cards under it make a 10,855 px page. What survives is the per-pin, per-row "closed for today" state and the sentence "8 of 11 still take a booking for today" — round 5's strip and rows carry both, because a tourist on the beach at half past three is exactly who J was for. |
 
 ## Round 1
 
@@ -588,6 +594,152 @@ wants the **column**, not the band and not a toggle. `K-locator-phone.png` shows
 alone filling a phone screen with all sixteen beaches legible; the work K does not do is the
 responsive half, where the ribbon becomes a short header strip with the cards under it.
 
+## Round 5 — the phone is the target
+
+Rounds 1–4 designed for 1440 × 900 and wrote mobile as a closing paragraph, on four phone
+screenshots in total. Round 5 starts from the phone: 390 × 844, one hand, glare, 4G, the shipped
+tab bar taking the last 61 px, and a tourist who is very often already standing on the riviera.
+Every judgement below is from a screenshot at that size or a number measured off the live page,
+never from the desktop shots or the earlier prose.
+
+### What the earlier rounds said about the phone, checked
+
+- **"The whole coast is impossible to frame at 390 px."** Half right. It is impossible for the
+  _turned band_ — round 2's finding 3, confirmed: `I-dive-phone.png` and `J-sundial-phone.png`
+  both show the fence pushing the camera inland with the pins off both edges. North up it frames
+  fine on a portrait pane: `B-charttable-phone-coast.png` measures the 26 pins at 306 × 733 in a
+  390 × 776 pane at zoom 7.49, well above the `minZoom: 7` floor. The real limit is depth: any
+  pane under ~520 px is fence-bound at 390 wide, so a whole-coast map **in a scroll column** is
+  impossible and a whole-coast map **as the page** is not. Either way round 1's own consequence
+  2 holds harder on a phone: nobody books from the orientation shot.
+- **"On a phone the rail becomes B's sheet over the full-bleed map"** (rounds 1, 2). Rendered,
+  the sheet's peek plus the tab bar cover the foot from y ≈ 600, the fit does not know it, and
+  the southern pins (Sarandë, Ksamil, bottom edge at y = 827) sit behind the sheet with the
+  licence credit under the tab bar. Fixable bugs, not the design — but the design costs the page
+  its scroll and asks a thumb to learn a detent, and its peek carries two 188 px cards and no
+  filter. At region scale (`B-charttable-phone.png`) the map itself is the best-looking phone map
+  in the spike, which is why N keeps its pills.
+- **"K's ribbon alone fills a phone screen with all sixteen beaches legible"** (round 4). True,
+  and the only phone screen in four rounds on which the whole coast is readable — but its labels
+  are 22 px tall (sixteen controls under the 44 px floor), and the column state's responsive
+  half is not "undone", it is broken: at 390 px the aside is 396 px wide and the card grid is
+  squeezed off the right edge (the card links measure **2 px** wide; `K-locator-phone.png`,
+  `K-locator-tall.png` shows the chips peeking in). Its Himarë state switches to the band and a
+  two-column grid of the desktop card, which at 166 px per card wraps every name and stacks
+  three chips deep (`K-locator-phone-himare.png`). The ribbon is a chooser, not a page.
+- **"M is already the phone layout; it needed zero responsive work"** (round 4). A coincidence
+  of stacking, not a signal. `M-ledger-phone.png`: the first screen is a heading panel, one
+  260 px map of **Velipojë** — the northernmost beach, 200 km from most tourists — and one
+  venue row at y ≈ 600. The whole coast is a **7,146 px** scroll in geographic order, so a
+  tourist at Dhërmi scrolls ~4,500 px to reach their beach. Nine of the sixteen beaches have one
+  venue, so nine of the sixteen "portraits" are the catalogue's fallback camera framing open
+  water or a village. And the cost below is the highest on the page by an order of magnitude.
+
+### What a first screen costs on 4G (measured)
+
+Served from disk by the screenshot driver, counted per page load at 390 × 844: the style,
+sprites and glyphs (`map`), the tile ranges (`tiles`), and live WebGL contexts (`canvases`).
+
+| First screen                  | map requests / bytes | tiles / bytes | canvases | map on it? | first venue on it? |
+| ----------------------------- | -------------------- | ------------- | -------- | ---------- | ------------------ |
+| shipped Discover              | 0 / 0                | 0 / 0         | 0        | no         | no                 |
+| **B** at Himarë               | 6 / 341 kB           | 6 / 110 kB    | 1        | yes        | two peek cards     |
+| **K** whole coast             | 6 / 344 kB           | 6 / 127 kB    | 1        | ribbon     | no (off-screen)    |
+| **M** whole coast             | **50 / 2,795 kB**    | 16 / 214 kB   | **9**    | Velipojë   | one row            |
+| **N** near Dhërmi (or Himarë) | 6 / 341 kB           | 4 / 83 kB     | 1        | yes        | three rows         |
+| N with the coast picker open  | 12 / 685 kB          | 8 / 184 kB    | 2        | —          | —                  |
+
+The 341 kB every map pays is mostly glyph ranges and the 75 kB style — the tiles are the cheap
+part. M pays it nine times over. The picker's second context is paid only when it is opened,
+which is the argument for keeping the whole-coast map out of the first screen.
+
+### Verdict on the five, as phone designs
+
+**I and J die** (their rows in § _Tried and cut_). **K dies as a page** and lives as a chooser.
+**M dies as a page**: the beach as the unit is right and is kept as the list's grouping; sixteen
+maps are not. **B survives at region scale as a map** and dies as a page structure: the sheet is
+the wrong container for the list on a phone whose page can simply scroll.
+
+### N · Here — _the phone opens where you are_
+
+```
+┌──────────────────────────────┐
+│ ◎ Dhërmi                 [📅]│  the strip: where (press → the coast picker), when
+│   Near you · Himarë · nearest│  J's sentence: 8 of 11 still take a booking for today
+├──────────────────────────────┤
+│  MAP, full width, 236–400 px │  depth = the set's own shape (K's rule on the phone's one
+│  shipped pills · [You're here]│  free axis); a tall region is turned (Sarandë, Durrës);
+├──────────────────────────────┤  one finger scrolls the page, two move the map
+│ Dhërmi · 0.4 km      3 venues│  the beach as the unit (M), captioned with distance
+│ ▦ Aurora Bay   €30  5 free   │  the row IS the pin's preview — a pin press scrolls to
+│ ▦ Dhërmi Sun…  €24 19 free   │  it and lights it; no card floats over a 260 px map
+│ Drymades · 1.5 km    1 venue │
+│ ▦ Drymades D… [Closed today] │  J's state on the row and on its pin
+├──────────────────────────────┤
+│ Beaches · My bookings · Menu │  the shipped tab bar
+└──────────────────────────────┘
+```
+
+Opens on a region, never the coast: the tourist's own when located, Himarë (11 of the 26 venues,
+the riviera proper) otherwise, with **Near me** bottom-left in the map — the thumb's corner, not
+the shipped top-right. The whole coast lives one press away in the **coast picker**
+(`N-here-phone-picker.png`): K's ribbon down the sheet's left edge and C's index beside it as
+44 px rows, each beach tied to its dot by a leader — the one place the whole coast is legible on
+a phone, paid for on demand.
+
+Measured on the first screen (`N-here-phone.png`): strip 92 px, map 263 px, the first row at
+y = 470 and three rows above the tab bar; 11 venues make a 1,846 px page. The map's depth is
+the set's own: 263 for Himarë (0.60), 236 for a turned Sarandë or Durrës, 236 for one beach
+whose three venues are one pill. The credit moves to the map's top-right below `lg` so the foot
+is Near me's.
+
+**Desktop** (`N-here-1440.png`, `N-here-1920.png`): the phone's map pane becomes the left
+column at the phone's own width, 390 px, the strip above it and the region's coast index under
+it when the set leaves room; the rows become the shipped-style card grid, grouped by beach, two
+columns at 1440 and three at 1920. At the whole coast the column takes the full height and
+frames all 26 pins (295 × 664 in 390 × 706 at 1440; 325 × 842 in 390 × 886 at 1920) with the
+shipped pills crowding them into readable places — no dots, no gutter. Desktop is the phone plus
+a list beside it, not a second page.
+
+### O · Thumb — _the same page with the map at the foot_
+
+Built to answer one question from a picture: do the pins belong in the thumb's arc? The map is
+fixed above the tab bar and the list scrolls between the strip and it (`O-thumb-phone.png`,
+`O-thumb-phone-scrolled.png`). Measured: the map plus the tab bar are **324 px of permanent
+chrome**, the scrolling list window is ~390 px, and the map never leaves — every scroll is
+letterboxed between two fixed bands. It reads as a docked widget, not as the ground. The pins
+are reachable; the rows, which are the primary act, lose half their screen for it.
+
+### What I would ship, and where the trades are
+
+**N, on the phone; N's column on the desktop.** The trades, stated:
+
+- The map is 236–400 px and scrolls away. It is an orientation instrument, not the surface the
+  booking happens on; the row is. A thumb that wants the map flicks once to the top.
+- Pins are the shipped pills, so a crowd is one press away from separating (the shipped
+  behaviour); on a 390 px map that is often a two-step. Dots were the alternative and are
+  untouchable at 44 px.
+- No preview card. The row already carries every fact the card did; a second card over a
+  260 px map covered half of it.
+- The whole coast is never the first screen on a phone. It is in the picker, at a second WebGL
+  context's cost, when asked for.
+- Two-finger panning on the in-page map (cooperative gestures). One-finger panning on a 260 px
+  map inside a scroll column captures the page's scroll, which is worse.
+- **Round 5's own status:** N and O are under review by the maintainer, who did not like either
+  on first sight; the phone verdicts on B, I, J, K and M and the cost table above are measured
+  and stand regardless.
+
+**Where round 5 disagrees with rounds 1–4, with the shots that say so:**
+
+- Round 1 and 2: "the sheet over B's full-bleed map is the phone answer." The sheet hides the
+  southern pins and the credit (`B-charttable-phone-coast.png`), and the page loses its scroll.
+- Round 4: "M as it stands, with no changes, is the phone." `M-ledger-phone.png` is one beach
+  200 km away at the head of a 7,146 px scroll, nine contexts deep.
+- Round 4: "the phone wants the column, not the band." The phone wants neither as a page: a
+  full-width pane whose depth follows the set, turned only when the set is tall.
+- Round 3: "the instruments are desktop instruments." J's is the one that matters more on a
+  phone; only its band was a desktop instrument.
+
 ## Screenshots
 
 `shots/` holds the set these notes are written from (1440 × 900 unless stated), captured against
@@ -597,37 +749,47 @@ paths with generated SVG stand-ins — judge photo mass, not the pictures. Round
 URL-seeded: `?now=15:30` sets the day's clock, `&still` skips J's sunrise, `?open=23&depth=14`
 dives I to a venue at a zoom:
 
-| File                                               | What                                                                  |
-| -------------------------------------------------- | --------------------------------------------------------------------- |
-| `00-shipped-1440.png` · `00-shipped-phone.png`     | what ships today, for comparison                                      |
-| `B-charttable-1440.png` · `B-charttable-phone.png` | B at region scale, where its camera works; and the phone sheet        |
-| `I-dive-1440.png` · `I-dive-himare.png`            | I at coast and region depth (note the grey corner: finding 1)         |
-| `I-dive-unfolding.png` · `I-dive-set.png`          | I diving on Palasa Pine: the grid at zoom 14, then whole at 15        |
-| `J-sundial-1440.png` · `J-sundial-1920.png`        | J at 15:30, at both widths                                            |
-| `J-sundial-1630.png` · `J-sundial-2030.png`        | J after the 16:00 close (ten at dusk), and at 20:30 (evening)         |
-| `K-locator-1440.png` · `K-locator-1920.png`        | K, whole coast: a 344 px column, three card columns; then four        |
-| `K-locator-sarande.png` · `K-locator-himare.png`   | K's rule at 2.07 (a 556 px column) and at 0.60 (the band)             |
-| `K-locator-phone.png`                              | K's ribbon alone on a 390 × 844 phone — the responsive half is undone |
-| `M-ledger-1440.png` · `M-ledger-1920.png`          | M, sixteen beach portraits; at 1920 the same grid, wider              |
-| `M-ledger-himare.png` · `M-ledger-phone.png`       | M at Himarë, six stretches side by side; and the phone, unchanged     |
+| File                                                                              | What                                                                              |
+| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `00-shipped-1440.png` · `00-shipped-phone.png`                                    | what ships today, for comparison                                                  |
+| `B-charttable-1440.png` · `B-charttable-phone.png`                                | B at region scale, where its camera works; and the phone sheet                    |
+| `B-charttable-phone-coast.png`                                                    | B's phone at the whole coast: the sheet over the southern pins                    |
+| `I-dive-phone.png` · `J-sundial-phone.png`                                        | round 5's evidence for the two cuts: inland Albania, pins off-frame               |
+| `K-locator-1440.png` · `K-locator-1920.png`                                       | K, whole coast: a 344 px column, three card columns; then four                    |
+| `K-locator-sarande.png` · `K-locator-himare.png`                                  | K's rule at 2.07 (a 556 px column) and at 0.60 (the band)                         |
+| `K-locator-phone.png` · `K-locator-phone-himare.png`                              | K on a phone: the ribbon (the grid is off the right edge); the band + 2-col cards |
+| `M-ledger-1440.png` · `M-ledger-1920.png`                                         | M, sixteen beach portraits; at 1920 the same grid, wider                          |
+| `M-ledger-himare.png` · `M-ledger-phone.png`                                      | M at Himarë, six stretches side by side; and the phone, unchanged                 |
+| `M-ledger-phone-scrolled.png`                                                     | M's phone 900 px down: Shëngjin, Lalëz, still 5,000 px from Himarë                |
+| `N-here-phone.png` · `N-here-phone-default.png`                                   | N located at Dhërmi (nearest first); and with nothing granted (Himarë)            |
+| `N-here-phone-1630.png`                                                           | N at 16:30: the 16:00 closers at dusk on pins and rows                            |
+| `N-here-phone-beach.png` · `N-here-phone-sarande.png` · `N-here-phone-durres.png` | one beach (shallow, north up); two tall regions, turned                           |
+| `N-here-phone-picker.png` · `N-here-phone-pin.png`                                | the coast picker; a pill press separating a crowd                                 |
+| `N-here-tall.png`                                                                 | N at 430 × 932                                                                    |
+| `N-here-1440.png` · `N-here-1440-himare.png` · `N-here-1440-here.png`             | N's desktop: the coast column; Himarë with the index; located                     |
+| `N-here-1920.png` · `N-here-1440-picker.png`                                      | N at 1920 (three card columns); the picker as a popover                           |
+| `O-thumb-phone.png` · `O-thumb-phone-scrolled.png` · `O-thumb-phone-sarande.png`  | O: the map docked at the foot, first paint and scrolled                           |
 
 ## Files
 
-| File                                             | What                                                                                         |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------- |
-| `prototype-map-page.ts`                          | the host: fixture data, filters from the URL, the `?variant=` switch                         |
-| `variant-chart-table.ts`                         | B — round 1's survivor; no shared layout with the rest, on purpose                           |
-| `variant-dive.ts` · `variant-sundial.ts`         | I · J — round 3                                                                              |
-| `variant-locator.ts` · `variant-ledger.ts`       | K · M — round 4                                                                              |
-| `prototype-aspect.ts`                            | the result set's own aspect ratio — round 4's finding, and the number K is built from        |
-| `prototype-band.ts`                              | E's turned band as one element H, I and J compose; the wider fence — round 3's finding 1     |
-| `prototype-days.ts`                              | the fixture's time: free sets per venue per day, and each venue's sales close                |
-| `prototype-camera.ts`                            | fit the camera to the pane and the pins — round 1's finding                                  |
-| `prototype-raw-map.ts`                           | past the port: bearing, the rotated-frame fit, the rotation-aware fence — round 2's findings |
-| `prototype-coast.ts` · `prototype-venue-card.ts` | the coast as an index (regions, beaches, counts, from-prices); the card J and K share        |
-| `prototype-filter-bar.ts`                        | the beach/region/date selects; B keeps them, K and M replace them                            |
-| `prototype-venues.ts` · `prototype-sets.ts`      | 26 fixture venues; a plausible set grid for I's dive                                         |
-| `prototype-switcher.ts`                          | the floating bar — deliberately ugly, so it reads as scaffolding                             |
+| File                                                     | What                                                                                         |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `prototype-map-page.ts`                                  | the host: fixture data, filters from the URL, the `?variant=` switch                         |
+| `variant-chart-table.ts`                                 | B — round 1's survivor; no shared layout with the rest, on purpose                           |
+| `variant-locator.ts` · `variant-ledger.ts`               | K · M — round 4                                                                              |
+| `variant-here.ts` · `variant-thumb.ts`                   | N · O — round 5; O is N with the map at the foot, and is N from `lg` up                      |
+| `prototype-here-map.ts`                                  | round 5's map pane: depth from the set, turned when tall, Near me bottom-left, dusk pins     |
+| `prototype-place-strip.ts` · `prototype-coast-picker.ts` | the strip (where, when, still selling) and the picker (K's ribbon + C's index as a sheet)    |
+| `prototype-venue-row.ts` · `prototype-place.ts`          | the phone row card; the tourist's position, distances, the beach grouping                    |
+| `prototype-aspect.ts`                                    | the result set's own aspect ratio — round 4's finding, and the number K is built from        |
+| `prototype-band.ts`                                      | E's turned band as one element H, I and J compose; the wider fence — round 3's finding 1     |
+| `prototype-days.ts`                                      | the fixture's time: each venue's sales close (J's instrument, now N's rows and pins)         |
+| `prototype-camera.ts`                                    | fit the camera to the pane and the pins — round 1's finding                                  |
+| `prototype-raw-map.ts`                                   | past the port: bearing, the rotated-frame fit, the rotation-aware fence — round 2's findings |
+| `prototype-coast.ts` · `prototype-venue-card.ts`         | the coast as an index (regions, beaches, counts, from-prices); the card J and K share        |
+| `prototype-filter-bar.ts`                                | the beach/region/date selects; B keeps them, K and M replace them                            |
+| `prototype-venues.ts`                                    | 26 fixture venues                                                                            |
+| `prototype-switcher.ts`                                  | the floating bar — deliberately ugly, so it reads as scaffolding                             |
 
 Written under prototype rules: no tests, no error handling, no a11y or contrast specs. If a
 variant wins it gets rebuilt test-first through the normal loop — do not promote this code.

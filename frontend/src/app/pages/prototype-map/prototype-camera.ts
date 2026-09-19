@@ -60,8 +60,9 @@ export function fitPins(
   height: number,
   insetLeft = 0,
   insetRight = 0,
+  pad = PAD_PX,
 ): MapView | null {
-  if (at.length === 0 || width - insetLeft - insetRight <= PAD_PX || height <= PAD_PX) {
+  if (at.length === 0 || width - insetLeft - insetRight <= pad || height <= pad) {
     return null;
   }
   const lngs = at.map((p) => p.lng);
@@ -71,8 +72,8 @@ export function fitPins(
   const north = Math.max(...lats);
   const south = Math.min(...lats);
 
-  const usableW = width - insetLeft - insetRight - PAD_PX;
-  const usableH = height - PAD_PX;
+  const usableW = width - insetLeft - insetRight - pad;
+  const usableH = height - pad;
 
   const lngSpan = east - west;
   const ySpan = Math.abs(mercatorY(north) - mercatorY(south));

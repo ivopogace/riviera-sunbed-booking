@@ -219,11 +219,11 @@ export const routes: Routes = [
     data: { section: 'beaches' } satisfies TouristRouteData,
   },
   {
-    // PROTOTYPE — throwaway; four desktop map layouts (pages/prototype-map/README.md).
-    path: 'prototype/map-desktop',
+    // PROTOTYPE — throwaway; the riviera map layouts, phone first (pages/prototype-map/README.md).
+    path: 'prototype/map',
     loadComponent: () =>
       import('./pages/prototype-map/prototype-map-page').then((m) => m.PrototypeMapPage),
-    title: 'Prototype — desktop map layouts',
+    title: 'Prototype — riviera map layouts',
     data: { section: 'beaches' } satisfies TouristRouteData,
   },
   {

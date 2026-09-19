@@ -1,18 +1,18 @@
 /**
- * PROTOTYPE — throwaway. The five layouts for the riviera map on Discover that survived rounds
- * 1–4, on one route, switched by `?variant=`:
+ * PROTOTYPE — throwaway. The layouts for the riviera map on Discover that survived rounds 1–5,
+ * on one route, switched by `?variant=`:
  *
  *   B  chart-table  the map IS the page; one glass rail floats over it, a sheet on a phone
- *   I  dive         one continuous zoom from the whole riviera to one lounger
- *   J  sundial      today, hour by hour: sales close as the light on the coast
- *   K  locator      the map's BOX is derived from the result set's own aspect
+ *   K  locator      the map's BOX is derived from the result set's own aspect (desktop)
  *   M  ledger       one card per beach, each with its own small map of its stretch
+ *   N  here         round 5, phone-first: opens where the tourist is; the map at the head
+ *   O  thumb        round 5's alternative: the same page with the map at the FOOT, in thumb reach
  *
- * Eight others (A, C–H, L) were built and cut; the README's § *Tried and cut* says what each
+ * Ten others (A, C–J, L) were built and cut; the README's § *Tried and cut* says what each
  * proved and why it went, and their code is recoverable from this branch's history.
  *
- * Route: `/prototype/map-desktop?variant=B`. Spike branch only — never merges. The design
- * question, the wireframes and the verdicts are in this folder's README.md.
+ * Route: `/prototype/map?variant=N`. Spike branch only — never merges. The design question, the
+ * wireframes and the verdicts are in this folder's README.md.
  *
  * <p>The host owns only what every variant needs (the fixture cards, the beach/region/date
  * filters, which pin is open) so a variant is free to throw out the whole layout — including the
@@ -26,28 +26,30 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { defaultBookingDate, formatCivilDate } from '../../shared/booking-date';
 import { presentBeaches, presentRegions } from '../../shared/beaches';
+import { LngLat } from '../../shared/map-engine';
 import { VenueCard } from '../home/venue-card';
 import { VenuePin } from '../home/pin-crowding';
+import { parseHere } from './prototype-place';
 import { PROTOTYPE_VENUES } from './prototype-venues';
 import { PrototypeSwitcher, PrototypeVariant } from './prototype-switcher';
 import { VariantChartTable } from './variant-chart-table';
-import { VariantDive } from './variant-dive';
-import { VariantSundial } from './variant-sundial';
+import { VariantHere } from './variant-here';
 import { VariantLocator } from './variant-locator';
 import { VariantLedger } from './variant-ledger';
+import { VariantThumb } from './variant-thumb';
 
 const VARIANTS: readonly PrototypeVariant[] = [
+  {
+    key: 'N',
+    name: 'Here',
+    claim: 'Round 5 — the phone opens where you are: one region, today, nearest first',
+  },
+  {
+    key: 'O',
+    name: 'Thumb',
+    claim: 'Round 5 — the same page with the map at the foot, every pin in thumb reach',
+  },
   { key: 'B', name: 'Chart table', claim: 'The map is the page; the list floats over it as glass' },
-  {
-    key: 'I',
-    name: 'Dive',
-    claim: 'Round 3 — one continuous zoom from the whole riviera to one lounger',
-  },
-  {
-    key: 'J',
-    name: 'Sundial',
-    claim: 'Round 3 — today, hour by hour: sales close as the light on the coast',
-  },
   {
     key: 'K',
     name: 'Locator',
@@ -65,18 +67,18 @@ const VARIANTS: readonly PrototypeVariant[] = [
   imports: [
     PrototypeSwitcher,
     VariantChartTable,
-    VariantDive,
-    VariantSundial,
+    VariantHere,
     VariantLocator,
     VariantLedger,
+    VariantThumb,
   ],
   template: `
     @switch (variant()) {
-      @case ('I') {
-        <app-variant-dive [state]="state()" (filtered)="onFilter($event)" />
+      @case ('O') {
+        <app-variant-thumb [state]="state()" (filtered)="onFilter($event)" />
       }
-      @case ('J') {
-        <app-variant-sundial [state]="state()" (filtered)="onFilter($event)" />
+      @case ('B') {
+        <app-variant-chart-table [state]="state()" (filtered)="onFilter($event)" />
       }
       @case ('K') {
         <app-variant-locator [state]="state()" (filtered)="onFilter($event)" />
@@ -85,7 +87,7 @@ const VARIANTS: readonly PrototypeVariant[] = [
         <app-variant-ledger [state]="state()" (filtered)="onFilter($event)" />
       }
       @default {
-        <app-variant-chart-table [state]="state()" (filtered)="onFilter($event)" />
+        <app-variant-here [state]="state()" (filtered)="onFilter($event)" />
       }
     }
     <app-prototype-switcher [variants]="variants" [currentKey]="variant()" (picked)="go($event)" />
@@ -100,8 +102,8 @@ export class PrototypeMapPage {
   private readonly params = toSignal(this.route.queryParamMap, { requireSync: true });
 
   protected readonly variant = computed(() => {
-    const asked = (this.params().get('variant') ?? 'B').toUpperCase();
-    return VARIANTS.some((v) => v.key === asked) ? asked : 'B';
+    const asked = (this.params().get('variant') ?? 'N').toUpperCase();
+    return VARIANTS.some((v) => v.key === asked) ? asked : 'N';
   });
 
   /**
@@ -113,6 +115,8 @@ export class PrototypeMapPage {
   private readonly date = linkedSignal(
     () => this.params().get('date') ?? defaultBookingDate(new Date()),
   );
+  /** Where the tourist is (`?here=lng,lat`), or `null` until Near me is pressed and granted. */
+  private readonly here = linkedSignal(() => parseHere(this.params().get('here')));
 
   private readonly cards = computed<readonly VenueCard[]>(() => {
     const beach = this.beach();
@@ -142,10 +146,11 @@ export class PrototypeMapPage {
     region: this.region(),
     date: this.date(),
     dateLabel: formatCivilDate(this.date()),
+    here: this.here(),
   }));
 
   constructor() {
-    inject(Title).setTitle('Prototype — desktop map layouts');
+    inject(Title).setTitle('Prototype — riviera map layouts');
   }
 
   protected onFilter(change: PrototypeFilter): void {
@@ -159,6 +164,7 @@ export class PrototypeMapPage {
       if (change.region !== '') this.beach.set('');
     }
     if (change.date !== undefined) this.date.set(change.date);
+    if (change.here !== undefined) this.here.set(change.here);
   }
 
   protected go(key: string): void {
@@ -181,6 +187,7 @@ export interface PrototypeState {
   readonly region: string;
   readonly date: string;
   readonly dateLabel: string;
+  readonly here: LngLat | null;
 }
 
 /** A filter change a variant asks for; absent keys are left alone. */
@@ -188,6 +195,7 @@ export interface PrototypeFilter {
   readonly beach?: string;
   readonly region?: string;
   readonly date?: string;
+  readonly here?: LngLat | null;
 }
 
 function regionOf(card: VenueCard): string {

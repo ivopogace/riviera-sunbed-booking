@@ -119,6 +119,8 @@ export class PrototypeBand {
   readonly bearing = input.required<number>();
   /** Room the fit keeps clear: a variant with an instrument in the sea asks for a deep foot. */
   readonly padding = input.required<RotatedPadding>();
+  /** The room below `lg`; round 5's phone band names its own instead of the desktop fallback. */
+  readonly narrowPadding = input<RotatedPadding | null>(null);
   /** The tightest the fit goes; I's dive wants deeper than the coast's 14. */
   readonly fitMaxZoom = input(14);
   /** Plain wheel scrolls the page (a band in a scroll column) — or zooms (a map that IS the page). */
@@ -215,13 +217,13 @@ export class PrototypeBand {
         fenced = true;
       }
       const wide = this.element.nativeElement.clientWidth >= 1024;
-      fitRotated(
-        raw,
-        pins,
-        bearing,
-        wide ? padding : { top: 28, bottom: Math.min(padding.bottom, 48), left: 64, right: 130 },
-        maxZoom,
-      );
+      const narrow = this.narrowPadding() ?? {
+        top: 28,
+        bottom: Math.min(padding.bottom, 48),
+        left: 64,
+        right: 130,
+      };
+      fitRotated(raw, pins, bearing, wide ? padding : narrow, maxZoom);
     });
   }
 }

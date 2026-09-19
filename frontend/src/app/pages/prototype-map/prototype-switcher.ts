@@ -13,7 +13,7 @@ export interface PrototypeVariant {
   selector: 'app-prototype-switcher',
   host: {
     class:
-      'fixed top-[76px] left-1/2 z-[999] -translate-x-1/2 flex items-center gap-1 rounded-full ' +
+      'fixed top-2.5 left-1/2 z-[999] -translate-x-1/2 flex items-center gap-1 rounded-full ' +
       'border-2 border-[#1f2937] bg-[#0b1220] px-2 py-1 shadow-[0_10px_30px_rgba(0,0,0,0.45)] ' +
       'lg:top-auto lg:bottom-4 lg:py-1.5',
   },
