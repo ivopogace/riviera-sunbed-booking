@@ -174,10 +174,17 @@ What it is, in the order it was decided:
   material finally has something to blur. The sheet is `appPanelGlass` over it.
 - **Three resting heights**, Airbnb's and Google's: **half** (the sheet's top at y 380: 312 px of
   map under the 68 px header — Airbnb rests at 441 with a 134 px bar, so its band is 307), **peek**
-  (the head only, 132 px above the tab bar: the map fills 68 → 651), **full** (the top at 112: a
-  44 px sliver of map stays, Google's rule, and a `Map` pill at the foot is Airbnb's way back).
-  Drag the head, or anything on the sheet below full; tap the grabber to cycle. The tab bar stays
-  in every state, because this product has one; Airbnb hides its own.
+  (the place row alone, 80 px above the tab bar: the map fills 68 → 703), **full** (the top at
+  112: a 44 px sliver of map stays, Google's rule, and a `Map` pill at the foot is Airbnb's way
+  back). The tab bar stays in every state, because this product has one; Airbnb hides its own.
+- **The sheet is a CSS scroll-snap container, not a pointer-drag** (Tailwind's `snap-y
+snap-mandatory`, `snap-start`, `snap-always`): a transparent spacer over the map holds the peek
+  and half rest points as zero-height snap targets, the sheet itself snaps at full, and past full
+  the sheet covers the snapport, which the spec lets rest anywhere — so one finger raises the
+  sheet, keeps scrolling the list, and lowers the sheet again by pulling the list down. The
+  container starts at the full line, so nothing it holds paints over the map's sliver. Native
+  inertia, no drag arithmetic, `motion-safe:scroll-smooth` for the programmatic moves, a grabber
+  tap cycles. The head is `sticky` at the sheet's top, on the popover surface over the list.
 - **The first screen's map is a poster** (`prototype-poster.ts`): the region's fitted camera
   rendered once by the real map (`shoot.mjs --posters` opens `?poster=<key>` and screenshots
   440 × 380 at 2×; 22 JPEGs, 10–129 kB, Himarë 38 kB) and served from `public/prototype-posters/`.
@@ -189,20 +196,26 @@ What it is, in the order it was decided:
   the pixel (348 × 219 at 24, 120 in both).
 - **The sheet's head carries the query and stays visible at every height**: the place (press → the
   coast picker), the sentence `11 venues · 8 selling today` (invariant #4 as the map's light: a
-  venue whose sales for today have closed wears dusk on its pin and on its row), the day (a pill;
-  press → seven day chips in the same rail), and the region's beaches as chips with counts. The
-  head is 132 px; Airbnb's collapsed header is about 80 — ours carries the query, by decision.
-- **The row is the preview**: a pin press raises the sheet to half if it was down and scrolls the
-  row to the sheet's top, lit. No card over the map (Airbnb's replaces the sheet; here the sheet
-  is the card).
+  venue whose sales for today have closed wears dusk on its pin and on its row), the day, and the
+  beach. **The rails are gathered into buttons**: the day is a pill (`📅 Today ▾`) and the region's
+  beaches one chip (`⛱ All beaches · 6 ▾`, or the chosen beach, lit); a press opens the rail of
+  chips in place, with the lit chip scrolled into view, and a pick closes it. The rail enters
+  through Tailwind's `starting:` variant (`@starting-style`) and leaves through Angular's
+  `animate.leave` class binding, which holds the element until its transition ends; both are
+  `motion-safe`. At peek the head is the place row alone (80 px — Airbnb's collapsed header is
+  about the same); at half and full the beach chip joins it (122 px).
+- **The row is the preview**: a pin press raises the sheet to half if it was down and the venue's
+  row joins the head, lit, above the list, until the map is tapped clear. No card over the map
+  (Airbnb's replaces the sheet; here the sheet's head is the card).
 - **A region, never the coast, on a phone**: the tourist's own when located, Himarë otherwise;
   north up always — with the split the thumb's, a tall region (Sarandë) simply gets a taller
   window at peek. The whole coast lives in the coast picker (`prototype-coast-picker.ts`): a
   150 px ribbon down a sheet's left edge with the coast index beside it as 44 px rows, each beach
   tied to its dot by a leader — the one phone screen on which all sixteen beaches are legible,
   and a second WebGL context paid only on demand.
-- **Near me sits at the map's foot at half** (y 324, left) — mid-screen, the thumb's natural
-  zone, not the bottom edge Hoober measures at 12 mm. It hides at full.
+- **Near me sits at the map's foot at half** (y 324, right — the coast and its pins run down
+  the left) — mid-screen, the thumb's natural zone, not the bottom edge Hoober measures at
+  12 mm. It hides at full.
 - **Desktop from `lg`**: the sheet is the left panel, pinned open, with the same head; the map is
   the rest, sized by the set's own shape (`prototype-aspect.ts`) — the pane takes the width the
   set needs (360 px for the whole coast, 864 for Himarë at 1440) and the panel keeps the rest,
@@ -216,8 +229,8 @@ Phone, 390 × 844, by `shoot.mjs` (photos are SVG stand-ins — judge mass, not 
 | State                  | Map on it                                                       | First row                       | Map requests / bytes               | Tiles / bytes | Contexts |
 | ---------------------- | --------------------------------------------------------------- | ------------------------------- | ---------------------------------- | ------------- | -------- |
 | **half** (first paint) | 68–380 (312 px); Himarë pins 348 × 219 at 24, 120               | y 533, two whole rows + a group | **0 / 0 + one poster JPEG, 38 kB** | **0 / 0**     | **0**    |
-| full                   | 68–112, a sliver                                                | y 265, 5 rows                   | 0 / 0                              | 0 / 0         | 0        |
-| peek                   | 68–651 (583 px), live                                           | under the head                  | 6 / 333 kB                         | 6 / 108 kB    | 1        |
+| full                   | 68–112, a sliver                                                | y 213, 6 rows                   | 0 / 0                              | 0 / 0         | 0        |
+| peek                   | 68–703 (635 px), live                                           | under the head                  | 6 / 333 kB                         | 6 / 108 kB    | 1        |
 | pin press at half      | crowd separated inside the window (Dhërmi's three at y 135–325) | lit, scrolled                   | 6 / 326 kB                         | 6 / 57 kB     | 1        |
 | the picker open        | poster + the ribbon                                             | —                               | 6 / 336 kB                         | 6 / 124 kB    | 1        |
 | `live=1` (the control) | 68–380 live, pins at 24, 120                                    | y 533                           | 6 / 333 kB                         | 6 / 108 kB    | 1        |
@@ -226,7 +239,7 @@ Phone, 390 × 844, by `shoot.mjs` (photos are SVG stand-ins — judge mass, not 
 
 430 × 932: the same layout; the poster's 440 px width covers it with a 5 px crop, the first row is
 still at y 533 and the tall phone gets its extra 88 px as list (`Q-shore-tall.png`); at peek the
-window is 68 → 739 (`Q-shore-tall-peek.png`). Desktop: panel 1,080 + map 360 at 1440 (whole coast,
+window is 68 → 791 (`Q-shore-tall-peek.png`). Desktop: panel 1,080 + map 360 at 1440 (whole coast,
 pins 311 × 765 in 360 × 816, three card columns); panel 576 + map 864 at Himarë (pins 827 × 509);
 panel 1,536 + map 360 at 1920 (four columns).
 
@@ -238,26 +251,24 @@ panel 1,536 + map 360 at 1920 (four columns).
    screenshot driver.
 2. **The pin layer still crowds at 390 px** — Himarë's "Palasë & Drymades" pill overlaps its
    own member discs. Shipped behaviour, unchanged; the crowd rule is not this spike's.
-3. **Near me at the map's foot sits among the pins at beach scale** (`Q-shore-phone-pin.png`:
-   next to a €30). It wants the map's bottom-right at beach zoom, or to hide while a beach is
-   chosen.
-4. **The desktop whole-coast column at 360 px** puts a place pill over the zoom buttons; that
+3. **The desktop whole-coast column at 360 px** puts a place pill over the zoom buttons; that
    width wants dots and a label gutter instead of pills.
-5. **Body drag at full does not lower the sheet**; only the head does. Airbnb and Google lower it
-   when the list is scrolled to its top. A shipped sheet does that.
-6. **The fixture pins are inland** (the Dhërmi poster is the village, `You are here` at 0.4 km):
+4. **The preview row is a copy**: the venue's row appears in the head and stays in the list. Airbnb
+   replaces the sheet with the card; a shipped version could dim the list's copy.
+5. **The fixture pins are inland** (the Dhërmi poster is the village, `You are here` at 0.4 km):
    a venue pin's placement accuracy is a product requirement once the map is the ground, and the
    operator's pin placer wants a shoreline snap.
-7. **Whole coast is not a phone state**: the picker's `Whole coast` falls back to the default
+6. **Whole coast is not a phone state**: the picker's `Whole coast` falls back to the default
    region below `lg`; it should be hidden there.
 
 ## What to ship, and why
 
 **Q, with the poster.** It is the Airbnb pattern as measured — a sheet over a map, one screen —
 and it is a phone first screen with a map, a venue and a row on it for the price of one image.
-Its port cost is small and named: a sheet with three heights (no library), a `MapHandle` over a
-still image (`project` only), a fit that aims at the window the sheet leaves (`fitUnderHeader`,
-and the same aim on a crowd press), a poster renderer on the backend, and the desktop pane rule.
+Its port cost is small and named: a scroll-snap sheet with three heights (CSS, no library, no
+pointer arithmetic), a `MapHandle` over a still image (`project` only), a fit that aims at the
+window the sheet leaves (`fitUnderHeader`, and the same aim on a crowd press), a poster renderer
+on the backend, and the desktop pane rule.
 The shipped tab bar, header, pin layer, card tokens and picker are used as they are. Without the
 poster Q's first screen costs what any live map does (341 kB + tiles + a context), and a
 list-first page would be the cheaper first paint; with it, that argument is over.
@@ -307,6 +318,7 @@ contexts) and the geometry the notes argue from; `--json` keeps the raw numbers.
 | `Q-shore-phone-here.png` · `Q-shore-phone-here-pin.png`                                       | located at Dhërmi: nearest first, `You are here`; a crowd press while located                   |
 | `Q-shore-phone-sarande.png` · `Q-shore-phone-beach.png`                                       | a tall region north up on the poster; one beach (Dhërmi) at the zoom cap                        |
 | `Q-shore-phone-1630.png` · `Q-shore-phone-day.png` · `Q-shore-phone-picker.png`               | dusk at 16:30; the day chips; the coast picker                                                  |
+| `Q-shore-phone-beaches.png` · `Q-shore-phone-beach-chosen.png`                                | the beach chip opened into its rail; the same with Dhërmi chosen, its chip lit and in view      |
 | `Q-shore-phone-live.png`                                                                      | the control: the live map from the first paint, pins where the poster's were                    |
 | `Q-shore-tall.png` · `Q-shore-tall-peek.png`                                                  | 430 × 932, half and peek                                                                        |
 | `Q-shore-1440.png` · `Q-shore-1440-himare.png` · `Q-shore-1440-here.png` · `Q-shore-1920.png` | the desktop: the whole coast (360 px pane, three columns); Himarë; located; 1920 (four columns) |

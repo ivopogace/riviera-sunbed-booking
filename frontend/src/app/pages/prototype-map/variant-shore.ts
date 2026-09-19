@@ -91,8 +91,8 @@ const PHONE_DEFAULT_REGION = 'HIMARE';
 const WIDE_PX = 1024;
 /** The shipped phone tab bar. */
 const TAB_BAR = 61;
-/** The sheet's head: grabber, the place row, the beach rail. Measured, then pinned. */
-const HEAD_H = 132;
+/** The sheet's head at peek: the grabber and the place row only — Airbnb's collapsed header is ~80. */
+const HEAD_PEEK = 80;
 /** At full the map keeps a sliver under the header — Google Maps' rule; the sliver is the way back. */
 const FULL_SLIVER = 44;
 /** Chrome the fit keeps clear of, on the live map. */
@@ -106,6 +106,12 @@ interface Focus {
   readonly region: string;
   readonly beach: string;
 }
+
+/** A rail entering: from a little above and transparent; leaving: back the same way, held until it ends. */
+const RAIL =
+  'flex gap-1.5 overflow-x-auto px-3 pt-1 pb-1 scrollbar-none starting:-translate-y-1 starting:opacity-0 ' +
+  'motion-safe:[transition:opacity_0.18s_ease,translate_0.18s_ease]';
+const RAIL_LEAVE = 'opacity-0 -translate-y-1';
 
 const CHIP =
   'inline-flex h-11 shrink-0 touch-manipulation items-center gap-1.5 rounded-full border px-[13px] text-[14px] font-semibold ' +
@@ -167,49 +173,84 @@ const MAP_BUTTON =
           data-ctl="day"
           class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-riv-field-border bg-riv-field-fill px-3 text-[14px] font-semibold text-riv-ink"
           [attr.aria-expanded]="dayOpen()"
-          (click)="dayOpen.set(!dayOpen())"
+          (click)="dayOpen.set(!dayOpen()); beachesOpen.set(false)"
         >
           <span aria-hidden="true">📅</span>{{ dayWord() }}
           <span class="text-[11px] text-riv-ink-faint" aria-hidden="true">▾</span>
         </button>
       </div>
-      @if (dayOpen()) {
-        <div class="flex gap-1.5 overflow-x-auto px-3 pt-1 pb-1 scrollbar-none" role="group">
-          @for (day of days(); track day.date) {
-            <button
-              type="button"
-              appTouchTarget
-              [class]="CHIP"
-              [attr.aria-current]="day.date === state().date ? 'true' : null"
-              (click)="pickDay(day.date)"
-            >
-              {{ day.isToday ? 'Today' : day.weekday + ' ' + day.label }}
-            </button>
-          }
-        </div>
-      } @else {
-        <div class="flex gap-1.5 overflow-x-auto px-3 pt-1 pb-1 scrollbar-none" role="group">
-          <button
-            type="button"
-            appTouchTarget
-            [class]="CHIP + ' group'"
-            [attr.aria-current]="focus().beach === '' ? 'true' : null"
-            (click)="filtered.emit({ beach: '', region: focus().region })"
-          >
-            All <span [class]="COUNT">{{ regionCards().length }}</span>
-          </button>
-          @for (b of beaches(); track b.code) {
+      @if (railsShown()) {
+        @if (dayOpen()) {
+          <div [class]="RAIL" [animate.leave]="RAIL_LEAVE" role="group" aria-label="Day">
+            @for (day of days(); track day.date) {
+              <button
+                type="button"
+                appTouchTarget
+                [class]="CHIP"
+                [attr.aria-current]="day.date === state().date ? 'true' : null"
+                (click)="pickDay(day.date)"
+              >
+                {{ day.isToday ? 'Today' : day.weekday + ' ' + day.label }}
+              </button>
+            }
+          </div>
+        } @else if (beachesOpen()) {
+          <div [class]="RAIL" [animate.leave]="RAIL_LEAVE" role="group" aria-label="Beach">
             <button
               type="button"
               appTouchTarget
               [class]="CHIP + ' group'"
-              [attr.aria-current]="focus().beach === b.code ? 'true' : null"
-              (click)="filtered.emit({ beach: b.code })"
+              [attr.aria-current]="focus().beach === '' ? 'true' : null"
+              (click)="pickBeach('')"
             >
-              {{ b.label }} <span [class]="COUNT">{{ b.venues }}</span>
+              All <span [class]="COUNT">{{ regionCards().length }}</span>
             </button>
-          }
-        </div>
+            @for (b of beaches(); track b.code) {
+              <button
+                type="button"
+                appTouchTarget
+                [class]="CHIP + ' group'"
+                [attr.aria-current]="focus().beach === b.code ? 'true' : null"
+                (click)="pickBeach(b.code)"
+              >
+                {{ b.label }} <span [class]="COUNT">{{ b.venues }}</span>
+              </button>
+            }
+          </div>
+        } @else {
+          <!-- The rail gathered into one chip: the beach that is chosen, or all of them; press to open it. -->
+          <div [class]="RAIL" [animate.leave]="RAIL_LEAVE">
+            <button
+              type="button"
+              appTouchTarget
+              data-ctl="beaches"
+              [class]="CHIP + ' group'"
+              [attr.aria-current]="focus().beach !== '' ? 'true' : null"
+              aria-expanded="false"
+              (click)="openBeaches()"
+            >
+              <span aria-hidden="true">⛱</span>
+              {{ beachChipLabel() }}
+              <span [class]="COUNT">{{ beachChipCount() }}</span>
+              <span class="text-[11px] opacity-70" aria-hidden="true">▾</span>
+            </button>
+          </div>
+        }
+        @if (selectedCard(); as card) {
+          <!-- The pin's preview: its row, in the head, until the map is tapped clear. -->
+          <div
+            class="px-3 pt-1 pb-2 starting:opacity-0 motion-safe:[transition:opacity_0.18s_ease]"
+            [animate.leave]="'opacity-0'"
+          >
+            <app-prototype-venue-row
+              [card]="card"
+              [date]="state().date"
+              [selected]="true"
+              [dusk]="duskIds().has('' + card.id)"
+              [km]="rowKm(card)"
+            />
+          </div>
+        }
       }
     </ng-template>
 
@@ -317,7 +358,7 @@ const MAP_BUTTON =
           type="button"
           appTouchTarget
           data-ctl="near-me"
-          class="absolute left-3 z-[8]"
+          class="absolute right-3 z-[8]"
           [class]="
             MAP_BUTTON +
             ' ' +
@@ -383,47 +424,58 @@ const MAP_BUTTON =
         <ng-container *ngTemplateOutlet="ground" />
       </div>
 
+      <!--
+        The sheet is a scroll-snap container that starts at the full line, so nothing it holds ever
+        paints over the map's sliver: a transparent spacer the height of peek-to-full, the peek and
+        half rest points as zero-height snap targets inside it, and the sheet itself snapping at
+        full. Past full the sheet covers the snapport, which the spec lets rest anywhere — so the
+        same finger that raises the sheet keeps scrolling the list, and pulling the list down
+        lowers it again. Touches on the spacer fall through to the map.
+      -->
       <div
-        #sheet
-        appPanelGlass
-        class="fixed inset-x-0 z-[10] flex flex-col rounded-t-[26px] shadow-[0_-12px_40px_rgba(7,42,58,0.28)]"
-        [class]="
-          dragY() === null ? 'motion-safe:[transition:top_0.28s_cubic-bezier(0.2,0.8,0.2,1)]' : ''
-        "
-        [style.top.px]="sheetTop()"
+        #scroller
+        class="pointer-events-none fixed inset-x-0 z-[10] overflow-y-auto overscroll-contain scrollbar-none motion-safe:scroll-smooth snap-y snap-mandatory"
+        [style.top.px]="tops().full"
         [style.bottom.px]="TAB_BAR"
-        role="region"
-        aria-label="Venues"
         [attr.data-detent]="detent()"
-        (pointerdown)="sheetDown($event)"
-        (pointermove)="sheetMove($event)"
-        (pointerup)="sheetUp($event)"
-        (pointercancel)="sheetUp($event)"
+        (scroll)="onScroll()"
       >
-        <div class="relative shrink-0 touch-none select-none" data-head>
-          <button
-            type="button"
-            class="flex h-[22px] w-full items-center justify-center"
-            data-ctl="grabber"
-            data-touch-exempt="the whole head is the drag surface; the bar is its cue"
-            aria-label="Resize the list"
-            (click)="cycle()"
-          >
-            <span class="block h-[5px] w-9 rounded-full bg-riv-ink-faint" aria-hidden="true"></span>
-          </button>
-          <ng-container *ngTemplateOutlet="head" />
+        <div class="relative" [style.height.px]="tops().peek - tops().full">
+          <div class="absolute inset-x-0 top-0 h-0 snap-start snap-always"></div>
+          <div
+            class="absolute inset-x-0 h-0 snap-start snap-always"
+            [style.top.px]="tops().peek - tops().half"
+          ></div>
         </div>
         <div
-          #body
-          data-body
-          class="min-h-0 flex-1 px-3 pb-3"
-          [class]="
-            detent() === 'full'
-              ? 'overflow-y-auto touch-pan-y scrollbar-none'
-              : 'overflow-hidden touch-none'
-          "
+          appPanelGlass
+          class="pointer-events-auto snap-start snap-always rounded-t-[26px] shadow-[0_-12px_40px_rgba(7,42,58,0.28)]"
+          [style.min-height.px]="viewport().h - TAB_BAR - tops().full"
+          role="region"
+          aria-label="Venues"
         >
-          <ng-container *ngTemplateOutlet="list" />
+          <div
+            class="sticky top-0 z-[2] rounded-t-[26px] bg-riv-pop-surface backdrop-blur-[22px]"
+            data-head
+          >
+            <button
+              type="button"
+              class="flex h-[22px] w-full items-center justify-center"
+              data-ctl="grabber"
+              data-touch-exempt="the whole head is the drag surface; the bar is its cue"
+              aria-label="Resize the list"
+              (click)="cycle()"
+            >
+              <span
+                class="block h-[5px] w-9 rounded-full bg-riv-ink-faint"
+                aria-hidden="true"
+              ></span>
+            </button>
+            <ng-container *ngTemplateOutlet="head" />
+          </div>
+          <div data-body class="px-3 pb-6">
+            <ng-container *ngTemplateOutlet="list" />
+          </div>
         </div>
       </div>
 
@@ -437,7 +489,7 @@ const MAP_BUTTON =
             appTouchTarget
             data-ctl="map-pill"
             class="pointer-events-auto inline-flex h-11 touch-manipulation items-center gap-2 rounded-full bg-riv-accent-ink px-5 text-[15px] font-bold text-riv-on-accent-ink shadow-[0_10px_28px_rgba(7,42,58,0.35)]"
-            (click)="detent.set('half')"
+            (click)="go('half')"
           >
             <span aria-hidden="true">⌖</span> Map
           </button>
@@ -462,6 +514,8 @@ export class VariantShore {
   readonly filtered = output<PrototypeFilter>();
 
   protected readonly CHIP = CHIP;
+  protected readonly RAIL = RAIL;
+  protected readonly RAIL_LEAVE = RAIL_LEAVE;
   protected readonly COUNT = COUNT;
   protected readonly MAP_BUTTON = MAP_BUTTON;
   protected readonly TAB_BAR = TAB_BAR;
@@ -474,26 +528,38 @@ export class VariantShore {
 
   private readonly map = viewChild(RivieraMap);
   private readonly pane = viewChild<ElementRef<HTMLElement>>('pane');
-  private readonly sheet = viewChild<ElementRef<HTMLElement>>('sheet');
-  private readonly body = viewChild<ElementRef<HTMLElement>>('body');
+  private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly document = inject(DOCUMENT);
   private readonly geolocation = inject(GeolocationGateway);
   private readonly params = toSignal(inject(ActivatedRoute).queryParamMap, { requireSync: true });
 
   protected readonly wide = signal(false);
-  private readonly viewport = signal({ w: 390, h: 844 });
+  protected readonly viewport = signal({ w: 390, h: 844 });
   protected readonly poster = computed(() => this.params().get('poster'));
-  protected readonly detent = signal<Detent>(
-    (this.params().get('sheet') as Detent | null) ?? 'half',
-  );
-  protected readonly dragY = signal<number | null>(null);
-  protected readonly live = signal(
-    this.params().get('live') === '1' || this.params().get('sheet') === 'peek',
-  );
+  private readonly askedDetent = (this.params().get('sheet') as Detent | null) ?? 'half';
+  /** The scroller's `scrollTop`, mirrored on every scroll event: the one number the sheet is. */
+  private readonly scrolled = signal(0);
+  protected readonly live = signal(this.params().get('live') === '1');
   protected readonly liveReady = signal(false);
   protected readonly pickerOpen = signal(false);
   protected readonly dayOpen = signal(false);
+  protected readonly beachesOpen = signal(false);
+  /** The rails and the preview row hide at peek: the head is the place row alone there. */
+  protected readonly railsShown = computed(() => this.wide() || this.detent() !== 'peek');
+  protected readonly beachChipLabel = computed(() => {
+    const beach = this.focus().beach;
+    if (beach !== '') return this.groups()[0]?.label ?? '';
+    const n = this.beaches().length;
+    return n === 1 ? 'One beach' : 'All beaches';
+  });
+  protected readonly beachChipCount = computed(() =>
+    this.focus().beach !== '' ? this.focus().cards.length : this.beaches().length,
+  );
+  protected readonly selectedCard = computed(() => {
+    const id = this.selected();
+    return id === null ? null : (this.focus().cards.find((c) => String(c.id) === id) ?? null);
+  });
   protected readonly selected = signal<string | null>(null);
   protected readonly hovered = signal<number | null>(null);
   protected readonly litPin = computed(() => {
@@ -604,85 +670,70 @@ export class VariantShore {
     if (here === null || handle === undefined) return null;
     return handle.project(here);
   });
-  protected readonly nearMeTop = computed(() => this.sheetTop() - 56);
+  protected readonly nearMeTop = computed(() => Math.max(HEADER_H + 8, this.sheetTop() - 56));
 
   // ── the sheet ────────────────────────────────────────────────────────────────────────────
-  private readonly tops = computed(() => ({
+  /** Where the sheet's top rests, in viewport px, at each height. */
+  protected readonly tops = computed(() => ({
     full: HEADER_H + FULL_SLIVER,
     half: POSTER_H,
-    peek: this.viewport().h - TAB_BAR - HEAD_H,
+    peek: this.viewport().h - TAB_BAR - HEAD_PEEK,
   }));
-  protected readonly sheetTop = computed(() => this.dragY() ?? this.tops()[this.detent()]);
-  private drag: { startY: number; startTop: number; moved: boolean; pointer: number } | null = null;
+  /** The scroller's offset for a height: the spacer's height less where the sheet's top rests. */
+  private offsetFor(detent: Detent): number {
+    return this.tops().peek - this.tops()[detent];
+  }
+  protected readonly sheetTop = computed(() =>
+    Math.max(this.tops().full, this.tops().peek - this.scrolled()),
+  );
+  /** The nearest rest: half way between two rests decides, and anything past full is full. */
+  protected readonly detent = computed<Detent>(() => {
+    const at = this.scrolled();
+    const half = this.offsetFor('half');
+    const full = this.offsetFor('full');
+    return at < half / 2 ? 'peek' : at < (half + full) / 2 ? 'half' : 'full';
+  });
 
-  protected sheetDown(event: PointerEvent): void {
-    const inHead = (event.target as HTMLElement).closest('[data-head]') !== null;
-    if (this.detent() === 'full' && !inHead) return;
-    this.drag = {
-      startY: event.clientY,
-      startTop: this.sheetTop(),
-      moved: false,
-      pointer: event.pointerId,
-    };
+  protected onScroll(): void {
+    const scroller = this.scroller()?.nativeElement;
+    if (scroller === undefined) return;
+    this.scrolled.set(scroller.scrollTop);
+    if (this.detent() === 'peek') this.wake(null);
   }
 
-  protected sheetMove(event: PointerEvent): void {
-    if (this.drag === null) return;
-    const dy = event.clientY - this.drag.startY;
-    if (!this.drag.moved && Math.abs(dy) < 8) return;
-    if (!this.drag.moved) {
-      this.drag.moved = true;
-      this.sheet()?.nativeElement.setPointerCapture(this.drag.pointer);
-    }
-    const { full, peek } = this.tops();
-    this.dragY.set(Math.max(full, Math.min(peek, this.drag.startTop + dy)));
-  }
-
-  protected sheetUp(event: PointerEvent): void {
-    if (this.drag === null) return;
-    const { startTop, moved } = this.drag;
-    this.drag = null;
-    if (!moved) return;
-    const top = this.dragY() ?? startTop;
-    const dy = event.clientY - top + (top - startTop);
-    const order: Detent[] = ['full', 'half', 'peek'];
-    const tops = this.tops();
-    let nearest: Detent = 'half';
-    let best = Infinity;
-    for (const d of order) {
-      const dist = Math.abs(tops[d] - top);
-      if (dist < best) {
-        best = dist;
-        nearest = d;
-      }
-    }
-    // A decisive flick goes one stop in its direction even if the sheet is still nearer home.
-    const from = order.find((d) => tops[d] === startTop) ?? 'half';
-    if (nearest === from && Math.abs(dy) > 60) {
-      const at = order.indexOf(from) + (dy > 0 ? 1 : -1);
-      nearest = order[Math.max(0, Math.min(order.length - 1, at))];
-    }
-    this.detent.set(nearest);
-    this.dragY.set(null);
-    if (nearest === 'peek') this.wake(null);
+  /** Rest the sheet at a height; the container's own `scroll-behavior` decides whether it glides. */
+  protected go(detent: Detent): void {
+    this.scroller()?.nativeElement.scrollTo({ top: this.offsetFor(detent) });
+    if (detent === 'peek') this.wake(null);
   }
 
   protected cycle(): void {
     const next: Record<Detent, Detent> = { half: 'full', full: 'peek', peek: 'half' };
-    this.detent.set(next[this.detent()]);
-    if (this.detent() === 'peek') this.wake(null);
+    this.go(next[this.detent()]);
   }
 
-  /** A pin press: the sheet rises to half if it was down, and the row comes to its top, lit. */
+  /** A pin press: the venue's row joins the head as the preview, and a lowered sheet rises to half. */
   protected choose(id: string): void {
     this.selected.set(id);
-    if (this.detent() === 'peek') this.detent.set('half');
-    const body = this.body()?.nativeElement;
-    const row = this.document.querySelector<HTMLElement>(`[data-row="${id}"]`);
-    if (body === undefined || row === null) return;
-    const target =
-      row.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 8;
-    body.scrollTo({ top: target, behavior: 'smooth' });
+    if (this.detent() === 'peek') this.go('half');
+  }
+
+  /** A rail opens with its lit chip in view, wherever along the coast it sits. */
+  private revealCurrentChip(): void {
+    this.element.nativeElement
+      .querySelector('[role="group"] [aria-current]')
+      ?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }
+
+  protected openBeaches(): void {
+    this.beachesOpen.set(true);
+    this.dayOpen.set(false);
+    setTimeout(() => this.revealCurrentChip());
+  }
+
+  protected pickBeach(code: string): void {
+    this.filtered.emit(code === '' ? { beach: '', region: this.focus().region } : { beach: code });
+    this.beachesOpen.set(false);
   }
 
   protected pickDay(date: string): void {
@@ -748,6 +799,16 @@ export class VariantShore {
     afterRenderEffect(() => {
       this.viewport.set({ w: window.innerWidth, h: window.innerHeight });
       this.wide.set(window.innerWidth >= WIDE_PX);
+    });
+    let rested = false;
+    afterRenderEffect(() => {
+      const scroller = this.scroller()?.nativeElement;
+      this.viewport();
+      if (scroller === undefined || rested) return;
+      rested = true;
+      scroller.scrollTo({ top: this.offsetFor(this.askedDetent), behavior: 'instant' });
+      this.scrolled.set(scroller.scrollTop);
+      if (this.askedDetent === 'peek') this.wake(null);
     });
     let wired: MapHandle | undefined;
     afterRenderEffect(() => {

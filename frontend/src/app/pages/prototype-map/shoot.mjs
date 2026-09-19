@@ -74,6 +74,18 @@ const SHOTS = [
     click: '[data-open-picker]',
   },
   { name: 'Q-shore-phone-day', v: PHONE, url: 'variant=Q&now=10:30', click: '[data-ctl="day"]' },
+  {
+    name: 'Q-shore-phone-beaches',
+    v: PHONE,
+    url: 'variant=Q&now=10:30',
+    click: '[data-ctl="beaches"]',
+  },
+  {
+    name: 'Q-shore-phone-beach-chosen',
+    v: PHONE,
+    url: 'variant=Q&beach=DHERMI&now=10:30',
+    click: '[data-ctl="beaches"]',
+  },
   { name: 'Q-shore-phone-peek', v: PHONE, url: 'variant=Q&sheet=peek&now=10:30' },
   { name: 'Q-shore-phone-peek-pin', v: PHONE, url: 'variant=Q&sheet=peek&now=10:30', pin: 1 },
   { name: 'Q-shore-phone-live', v: PHONE, url: 'variant=Q&live=1&now=10:30' },
@@ -224,8 +236,8 @@ async function shoot(browser, shot) {
   }
   if (shot.scroll) {
     await page.evaluate((y) => {
-      const body = document.querySelector('[data-body]');
-      if (body) body.scrollTo(0, y);
+      const sheet = document.querySelector('[data-detent]');
+      if (sheet) sheet.scrollTo(0, sheet.scrollTop + y);
       else window.scrollTo(0, y);
     }, shot.scroll);
     await page.waitForTimeout(600);
