@@ -7,6 +7,7 @@
  *   M  ledger       one card per beach, each with its own small map of its stretch
  *   N  here         round 5, phone-first: opens where the tourist is; the map at the head
  *   O  thumb        round 5's alternative: the same page with the map at the FOOT, in thumb reach
+ *   P  search       round 5, the Airbnb pattern: list first, a Map pill, a full-bleed map + carousel
  *
  * Ten others (A, C–J, L) were built and cut; the README's § *Tried and cut* says what each
  * proved and why it went, and their code is recoverable from this branch's history.
@@ -36,9 +37,15 @@ import { VariantChartTable } from './variant-chart-table';
 import { VariantHere } from './variant-here';
 import { VariantLocator } from './variant-locator';
 import { VariantLedger } from './variant-ledger';
+import { VariantSearch } from './variant-search';
 import { VariantThumb } from './variant-thumb';
 
 const VARIANTS: readonly PrototypeVariant[] = [
+  {
+    key: 'P',
+    name: 'Search',
+    claim: 'Round 5 — the Airbnb pattern: list first, a Map pill, a full-bleed map with a carousel',
+  },
   {
     key: 'N',
     name: 'Here',
@@ -70,10 +77,14 @@ const VARIANTS: readonly PrototypeVariant[] = [
     VariantHere,
     VariantLocator,
     VariantLedger,
+    VariantSearch,
     VariantThumb,
   ],
   template: `
     @switch (variant()) {
+      @case ('N') {
+        <app-variant-here [state]="state()" (filtered)="onFilter($event)" />
+      }
       @case ('O') {
         <app-variant-thumb [state]="state()" (filtered)="onFilter($event)" />
       }
@@ -87,7 +98,7 @@ const VARIANTS: readonly PrototypeVariant[] = [
         <app-variant-ledger [state]="state()" (filtered)="onFilter($event)" />
       }
       @default {
-        <app-variant-here [state]="state()" (filtered)="onFilter($event)" />
+        <app-variant-search [state]="state()" (filtered)="onFilter($event)" />
       }
     }
     <app-prototype-switcher [variants]="variants" [currentKey]="variant()" (picked)="go($event)" />
@@ -102,8 +113,8 @@ export class PrototypeMapPage {
   private readonly params = toSignal(this.route.queryParamMap, { requireSync: true });
 
   protected readonly variant = computed(() => {
-    const asked = (this.params().get('variant') ?? 'N').toUpperCase();
-    return VARIANTS.some((v) => v.key === asked) ? asked : 'N';
+    const asked = (this.params().get('variant') ?? 'P').toUpperCase();
+    return VARIANTS.some((v) => v.key === asked) ? asked : 'P';
   });
 
   /**

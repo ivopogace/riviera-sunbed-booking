@@ -4,7 +4,7 @@
 `main`.** Five rounds built fifteen layouts for the riviera map on Discover, on one route, so
 they could be judged against each other and against what ships today. Rounds 1–4 were
 desktop-first; **round 5 flips the target to a 390 × 844 phone** and judges everything from
-phone screenshots. **Five are left** — B, K, M and round 5's N and O — and the other ten were
+phone screenshots. **Six are left** — B, K, M and round 5's N, O and P — and the other ten were
 cut; § _Tried and cut_ says what each of them proved and why it went, so nothing has to be
 re-derived. Their code is in this branch's history
 (`git log --diff-filter=D -- 'frontend/src/app/pages/prototype-map/variant-*.ts'`).
@@ -14,12 +14,13 @@ band's fence, the result set's own aspect ratio, and (round 5) what a phone's fi
 
 ```
 npm start           # from frontend/
-open http://localhost:4200/prototype/map?variant=N
+open http://localhost:4200/prototype/map?variant=P
 ```
 
 The route was `/prototype/map-desktop` until round 5; the phone is the design target now, so the
 path stopped saying otherwise. `←` / `→` or the floating bar cycles the variants. Every state is
-in the URL: `?variant=N&here=19.641,40.147` (the tourist standing on Dhërmi beach),
+in the URL: `?variant=P&mode=map` (P's map screen), `?variant=N&here=19.641,40.147` (the tourist
+standing on Dhërmi beach),
 `?variant=N&region=SARANDE`, `?variant=N&now=16:30` (the clock, for the sales-close state),
 `?variant=K&beach=DHERMI`, `?variant=B&region=HIMARE`.
 Venues come from `prototype-venues.ts` (26 fixtures along the real coast), so no backend is
@@ -710,9 +711,63 @@ chrome**, the scrolling list window is ~390 px, and the map never leaves — eve
 letterboxed between two fixed bands. It reads as a docked widget, not as the ground. The pins
 are reachable; the rows, which are the primary act, lose half their screen for it.
 
+### P · Search — _the Airbnb pattern, copied on purpose_
+
+Built after the maintainer rejected N and O on sight and asked for a design worth copying. The
+reference sites are blocked from this session's network, so P is the pattern from memory —
+Airbnb's mobile search, the most-tested answer to "browse places, then pick one on a map" — and
+a later session with the domains allowed should check it against the real screens.
+
+```
+  list screen (opens here)            map screen (the Map pill)
+┌──────────────────────────────┐    ┌──────────────────────────────┐
+│ [⌕ Himarë · Sat 19 · 11 ▾]   │    │ [⌕ Himarë · Sat 19 · 11 ▾]   │  the same bar, floating
+│ ┌──────────────────────────┐ │    │ ░░ MAP, FULL BLEED ░░░░░░░░░ │
+│ │ photo 3:2                │ │    │   (Palasë & Drymades 3)      │  the shipped price pills
+│ │ Palasë · Himarë          │ │    │      (Jalë & Livadhi 3)      │
+│ │ Palasa Sands  ★4.6       │ │    │ ~~~~~~~ sea ~~~~~~~~   (◎)   │  locate, bottom-right
+│ │ from €26   11 of 26 free │ │    │ ┌──────────────┐┌──────────  │  the carousel: one card
+│ └──────────────────────────┘ │    │ │▦ Palasa Sands ││▦ Drymade  │  per pin, snapping; a
+│ ┌──────────────────────────┐ │    │ │  ★4.6 11 free ││          │  pill press slides its
+│ │ photo   [ ✦ Map ]        │ │    │ └──────────────┘└──────────  │  card in, a swipe
+│ └──────────────────────────┘ │    │          [ ☰ List ]          │  lights its pin
+├──────────────────────────────┤    ├──────────────────────────────┤
+│ Beaches · My bookings · Menu │    │ Beaches · My bookings · Menu │
+└──────────────────────────────┘    └──────────────────────────────┘
+```
+
+Two screens and one cheap switch, and neither screen tries to hold the other — which is the
+thing N and O both tried and both lost on 390 px. The list screen is the shipped-style card at
+full width with no hero and **no map at all**: the first screen pays for no WebGL context and no
+tiles (the table above), which no other variant in five rounds can say. The Map pill is the
+shipped List / Map toggle moved to where a thumb is and given one word. The map screen is B's
+region-scale map, the one phone map in the spike that read well, with the carousel doing what
+B's peek sheet and the shipped preview card did — without a detent to learn and without covering
+half the map. `P-search-phone-map-pin.png`: a pill press separates the Dhërmi crowd and the
+carousel stays on the nearest card.
+
+Opens on a region (the fence rule), the tourist's own when located — `P-search-phone-here.png`,
+nearest first, distances on the carousel cards. The coast picker is the same sheet N uses.
+
+Measured: list screen, bar 44 px and the first card whole at y = 140 … 545, a second card's
+photo under it; map screen, the 11 pins at y = 211 … 430 in a 390 × 783 pane with the carousel at
+613 … 717 and the pill at 727 … 771, nothing overlapping the tab bar. Desktop
+(`P-search-1440.png`, `P-search-1920.png`): Airbnb's desktop is the shipped page's own shape —
+grid left, map sticky right — with the hero and the 1080 px cap gone and the map held to a
+400 px column (round 4's aspect finding) rather than the shipped 42 %; at 1920 the whole coast's
+26 pins are 314 × 944 in 400 × 980, the southern pill 28 px under the fold, so the column wants
+the header's height back.
+
 ### What I would ship, and where the trades are
 
-**N, on the phone; N's column on the desktop.** The trades, stated:
+**P on the phone, as of the maintainer's call; N was this round's own answer before it.** The
+trades in P, stated: the map and the list never share a screen, so "where is this card on the
+map" is a switch, not a glance; the carousel shows one card and a sliver, so browsing on the map
+is a swipe per venue; and the list screen's first paint is one card and a half, as Airbnb's is.
+Against that: zero map cost on the first screen, a pattern tourists already know, and the
+smallest change from what ships — the toggle moves, the hero goes, the carousel is new.
+
+N's trades, for the record:
 
 - The map is 236–400 px and scrolls away. It is an orientation instrument, not the surface the
   booking happens on; the row is. A thumb that wants the map flicks once to the top.
