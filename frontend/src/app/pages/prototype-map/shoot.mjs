@@ -1,0 +1,238 @@
+/**
+ * PROTOTYPE — throwaway. The screenshot + measurement driver the README's shots and cost tables
+ * come from (round 6 commits it so the next round does not rewrite it).
+ *
+ *   node src/app/pages/prototype-map/shoot.mjs [--only Q] [--out shots/]   (from frontend/, with
+ *   `npm start` serving :4200)
+ *
+ * playwright-core from node_modules, the image's Chromium (never `playwright install`), `/map/**`
+ * served from `platform/map/` with the archive range-sliced as the backend does, and every fixture
+ * photo answered with a ~1.4 kB SVG stand-in — judge photo mass, not the pictures. Per shot it
+ * records the first screen's cost (map style/sprite/glyph requests, tile ranges, live WebGL
+ * contexts, photos) and the geometry of the pieces the README argues from.
+ */
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const { chromium } = require('playwright-core');
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const MAP_DIR = path.resolve(HERE, '../../../../../platform/map');
+const ARCHIVE = readFileSync(path.join(MAP_DIR, 'riviera.pmtiles'));
+const BASE = process.env.BASE ?? 'http://127.0.0.1:4200';
+
+const args = process.argv.slice(2);
+const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : null;
+const OUT = args.includes('--out')
+  ? path.resolve(args[args.indexOf('--out') + 1])
+  : path.join(HERE, 'shots');
+mkdirSync(OUT, { recursive: true });
+
+const PHONE = { width: 390, height: 844 };
+const TALL = { width: 430, height: 932 };
+const LAPTOP = { width: 1440, height: 900 };
+const DESK = { width: 1920, height: 1080 };
+
+const HERE_DHERMI = '19.641,40.147';
+
+/** The shot list: name → url + viewport + optional actions. Round 6's Q first. */
+const SHOTS = [
+  // Q — the page
+  { name: 'Q-shore-phone', v: PHONE, url: 'variant=Q' },
+  { name: 'Q-shore-phone-scrolled', v: PHONE, url: 'variant=Q', scroll: 700 },
+  { name: 'Q-shore-phone-scrolled-2', v: PHONE, url: 'variant=Q', scroll: 1500 },
+  { name: 'Q-shore-phone-pin', v: PHONE, url: 'variant=Q', pin: 1 },
+  { name: 'Q-shore-phone-here', v: PHONE, url: `variant=Q&here=${HERE_DHERMI}` },
+  { name: 'Q-shore-phone-here-pin', v: PHONE, url: `variant=Q&here=${HERE_DHERMI}`, pin: 0 },
+  { name: 'Q-shore-phone-sarande', v: PHONE, url: 'variant=Q&region=SARANDE' },
+  { name: 'Q-shore-phone-himare', v: PHONE, url: 'variant=Q&region=HIMARE' },
+  { name: 'Q-shore-phone-beach', v: PHONE, url: 'variant=Q&beach=DHERMI' },
+  { name: 'Q-shore-phone-1630', v: PHONE, url: 'variant=Q&now=16:30' },
+  { name: 'Q-shore-phone-picker', v: PHONE, url: 'variant=Q', click: '[data-open-picker]' },
+  { name: 'Q-shore-phone-map', v: PHONE, url: 'variant=Q', click: '[data-expand-map]' },
+  { name: 'Q-shore-phone-map-pin', v: PHONE, url: 'variant=Q', click: '[data-expand-map]', pin: 1 },
+  { name: 'Q-shore-tall', v: TALL, url: 'variant=Q' },
+  { name: 'Q-shore-tall-map', v: TALL, url: 'variant=Q', click: '[data-expand-map]' },
+  { name: 'Q-shore-1440', v: LAPTOP, url: 'variant=Q' },
+  { name: 'Q-shore-1440-himare', v: LAPTOP, url: 'variant=Q&region=HIMARE' },
+  { name: 'Q-shore-1440-here', v: LAPTOP, url: `variant=Q&here=${HERE_DHERMI}` },
+  { name: 'Q-shore-1920', v: DESK, url: 'variant=Q' },
+  // the survivors, same shots, for the comparison table
+  { name: 'P-search-phone', v: PHONE, url: 'variant=P' },
+  { name: 'P-search-phone-map', v: PHONE, url: 'variant=P&mode=map' },
+  { name: 'N-here-phone', v: PHONE, url: `variant=N&here=${HERE_DHERMI}` },
+  { name: 'O-thumb-phone', v: PHONE, url: `variant=O&here=${HERE_DHERMI}` },
+  { name: 'B-charttable-phone', v: PHONE, url: 'variant=B&region=HIMARE' },
+  { name: 'K-locator-phone', v: PHONE, url: 'variant=K' },
+  { name: 'M-ledger-phone', v: PHONE, url: 'variant=M' },
+];
+
+function svgPhoto(id) {
+  const hue = 170 + ((id * 37) % 40);
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="576" height="384" viewBox="0 0 576 384">` +
+    `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="hsl(${hue},55%,55%)"/>` +
+    `<stop offset="1" stop-color="hsl(${hue + 10},60%,28%)"/></linearGradient></defs>` +
+    `<rect width="576" height="384" fill="url(#g)"/>` +
+    `<ellipse cx="288" cy="330" rx="420" ry="90" fill="hsl(45,70%,80%)" opacity=".85"/>` +
+    `<circle cx="470" cy="80" r="34" fill="hsl(45,95%,70%)"/>` +
+    `<text x="24" y="60" font-family="sans-serif" font-size="28" fill="rgba(255,255,255,.7)">venue ${id}</text></svg>`
+  );
+}
+
+async function wire(page, cost) {
+  await page.route(/\/api\//, (route) =>
+    route.fulfill({ status: 404, body: '{}', contentType: 'application/json' }),
+  );
+  await page.route(/\/api\/venues\/\d+\/photos\//, (route) => {
+    const id = Number(/venues\/(\d+)\//.exec(route.request().url())?.[1] ?? 0);
+    const body = svgPhoto(id);
+    cost.photos += 1;
+    cost.photoBytes += body.length;
+    return route.fulfill({ status: 200, body, contentType: 'image/svg+xml' });
+  });
+  await page.route(/\/map\/.+$/, (route) => {
+    const rel = decodeURIComponent(new URL(route.request().url()).pathname.slice('/map/'.length));
+    const file = path.resolve(MAP_DIR, rel);
+    if (!file.startsWith(MAP_DIR + path.sep) || !existsSync(file))
+      return route.fulfill({ status: 404 });
+    const bytes = readFileSync(file);
+    cost.map += 1;
+    cost.mapBytes += bytes.length;
+    return route.fulfill({ path: file, headers: { 'cache-control': 'no-store' } });
+  });
+  await page.route(/\/map\/riviera\.pmtiles$/, (route) => {
+    const range = /^bytes=(\d+)-(\d*)$/.exec(route.request().headers()['range'] ?? '');
+    if (!range) {
+      cost.tiles += 1;
+      cost.tileBytes += ARCHIVE.length;
+      return route.fulfill({ status: 200, body: ARCHIVE, contentType: 'application/octet-stream' });
+    }
+    const start = Number(range[1]);
+    const end = range[2] ? Math.min(Number(range[2]), ARCHIVE.length - 1) : ARCHIVE.length - 1;
+    const slice = ARCHIVE.subarray(start, end + 1);
+    cost.tiles += 1;
+    cost.tileBytes += slice.length;
+    return route.fulfill({
+      status: 206,
+      body: slice,
+      contentType: 'application/octet-stream',
+      headers: {
+        'accept-ranges': 'bytes',
+        'content-range': `bytes ${start}-${end}/${ARCHIVE.length}`,
+      },
+    });
+  });
+}
+
+const GEOMETRY = `(() => {
+  const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) }; };
+  const all = (sel) => [...document.querySelectorAll(sel)].filter((e) => e.getBoundingClientRect().width > 0);
+  const bbox = (els) => { if (!els.length) return null; let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9; for (const e of els) { const b=e.getBoundingClientRect(); x1=Math.min(x1,b.left); y1=Math.min(y1,b.top); x2=Math.max(x2,b.right); y2=Math.max(y2,b.bottom);} return { x: Math.round(x1), y: Math.round(y1), w: Math.round(x2-x1), h: Math.round(y2-y1), n: els.length }; };
+  const canvases = all('canvas').map(r);
+  return {
+    page: Math.round(document.documentElement.scrollHeight),
+    scrollY: Math.round(window.scrollY),
+    canvases,
+    pins: bbox(all('[data-pin]')),
+    pinButtons: all('[data-pin]').filter((e) => getComputedStyle(e).opacity !== '0').map((e) => ({ t: e.textContent.trim().replace(/\\s+/g, ' ').slice(0, 24), ...r(e) })),
+    rows: all('[data-row]').slice(0, 4).map(r),
+    firstRow: r(document.querySelector('[data-row]')),
+    tabBar: r(document.querySelector('.riv-tab-bar')),
+    strip: r(document.querySelector('[data-strip]')),
+    controls: all('[data-ctl]').map((e) => ({ t: e.dataset.ctl, ...r(e) })),
+    webgl: window.__glContexts ?? null,
+  };
+})()`;
+
+async function shoot(browser, shot) {
+  const cost = { map: 0, mapBytes: 0, tiles: 0, tileBytes: 0, photos: 0, photoBytes: 0 };
+  const context = await browser.newContext({
+    viewport: shot.v,
+    deviceScaleFactor: 1,
+    isMobile: shot.v.width < 600,
+    hasTouch: shot.v.width < 600,
+    reducedMotion: 'reduce',
+  });
+  const page = await context.newPage();
+  await page.addInitScript(() => {
+    window.__glContexts = 0;
+    const orig = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (kind, ...rest) {
+      const ctx = orig.call(this, kind, ...rest);
+      if (ctx && /webgl/.test(kind) && !this.__counted) {
+        this.__counted = true;
+        window.__glContexts += 1;
+      }
+      return ctx;
+    };
+  });
+  await wire(page, cost);
+  await page.goto(`${BASE}/prototype/map?${shot.url}`, {
+    waitUntil: 'networkidle',
+    timeout: 90_000,
+  });
+  await page.waitForTimeout(1200);
+  if (shot.click) {
+    await page
+      .click(shot.click, { timeout: 5000 })
+      .catch((e) => console.warn(`  click ${shot.click}: ${e.message.split('\n')[0]}`));
+    await page.waitForTimeout(1400);
+  }
+  if (shot.pin !== undefined) {
+    const pins = page.locator('[data-pin]:visible');
+    const n = await pins.count();
+    if (n > shot.pin) {
+      await pins
+        .nth(shot.pin)
+        .click({ timeout: 5000 })
+        .catch((e) => console.warn(`  pin: ${e.message.split('\n')[0]}`));
+      await page.waitForTimeout(1600);
+    }
+  }
+  if (shot.scroll) {
+    await page.evaluate((y) => window.scrollTo(0, y), shot.scroll);
+    await page.waitForTimeout(600);
+  }
+  await page.waitForLoadState('networkidle').catch(() => {});
+  await page.waitForTimeout(400);
+  const geometry = await page.evaluate(GEOMETRY);
+  const file = path.join(OUT, `${shot.name}.png`);
+  await page.screenshot({ path: file });
+  await context.close();
+  return {
+    name: shot.name,
+    url: shot.url,
+    viewport: `${shot.v.width}×${shot.v.height}`,
+    cost,
+    geometry,
+  };
+}
+
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const results = [];
+for (const shot of SHOTS) {
+  if (only && !shot.name.startsWith(only)) continue;
+  process.stdout.write(`${shot.name} … `);
+  try {
+    const r = await shoot(browser, shot);
+    results.push(r);
+    const c = r.cost;
+    const g = r.geometry;
+    console.log(
+      `map ${c.map}/${(c.mapBytes / 1024).toFixed(0)}kB tiles ${c.tiles}/${(c.tileBytes / 1024).toFixed(0)}kB ` +
+        `photos ${c.photos}/${(c.photoBytes / 1024).toFixed(0)}kB gl ${g.webgl} canvases ${g.canvases.length} page ${g.page}px ` +
+        `pins ${g.pins ? `${g.pins.w}×${g.pins.h}@${g.pins.x},${g.pins.y}` : '-'} firstRow ${g.firstRow ? `y${g.firstRow.y} h${g.firstRow.h}` : '-'}`,
+    );
+  } catch (e) {
+    console.log(`FAILED ${e.message.split('\n')[0]}`);
+  }
+}
+await browser.close();
+writeFileSync(
+  path.join(OUT, `measurements${only ? '-' + only : ''}.json`),
+  JSON.stringify(results, null, 2),
+);
