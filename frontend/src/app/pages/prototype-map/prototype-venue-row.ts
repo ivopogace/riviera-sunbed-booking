@@ -4,6 +4,9 @@
  * in glare, and the whole row the link. It is also the pin's PREVIEW: a pin press scrolls to its
  * row and lights it, because a second card over the map has nowhere to go.
  *
+ * <p>On the desktop the row is `flat`: the panel is already a surface, so a card on it was a third
+ * nested rounded box (round 10 — the "SaaS-card kit" tell), and the rows become a list.
+ *
  * <p>A venue whose sales for today have closed (invariant #4) keeps its row but drops into dusk
  * and says so, and the row's price gives way to the fact that matters more. Dusk is desaturation
  * and a flat card, never a faded one: a 60 % row put its name under 3:1 in every theme (round 7).
@@ -12,18 +15,16 @@ import { Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { AmenityChip } from '../../shared/amenity-chip';
-import { CardGlass } from '../../shared/card-glass';
 import { SemanticChip } from '../../shared/semantic-chip';
 import { VenueCard } from '../home/venue-card';
 
 @Component({
   selector: 'app-prototype-venue-row',
-  imports: [RouterLink, CardGlass, SemanticChip, AmenityChip],
+  imports: [RouterLink, SemanticChip, AmenityChip],
   host: { class: 'block' },
   template: `
     <a
-      appCardGlass
-      class="flex items-stretch gap-3 rounded-[18px] p-2 no-underline shadow-[0_6px_20px_rgba(7,42,58,0.14),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[20px] motion-safe:[transition:background_0.15s_ease,outline-color_0.15s_ease] aria-[current]:outline-[3px] aria-[current]:-outline-offset-[3px] aria-[current]:outline-riv-accent-ink"
+      [class]="flat() ? FLAT : CARD"
       [class.saturate-0]="dusk()"
       [class.shadow-none]="dusk()"
       [attr.data-row]="card().id"
@@ -68,15 +69,16 @@ import { VenueCard } from '../home/venue-card';
             <span class="shrink-0">{{ km() }}</span>
           }
         </span>
+        <!-- The third fact, sized as one: a 72 px bar beside the number, not a bar the row's width. -->
         <span class="flex items-center gap-2">
-          <span class="block h-1.5 flex-1 overflow-hidden rounded-full bg-riv-card-track">
+          <span class="shrink-0 text-[12.5px] text-riv-card-ink-soft">
+            <strong class="text-riv-card-ink">{{ card().free }}</strong> of {{ card().total }} free
+          </span>
+          <span class="block h-1.5 w-[72px] overflow-hidden rounded-full bg-riv-card-track">
             <span
               class="block h-full bg-(image:--riv-bar-grad)"
               [style.width.%]="card().freePercent"
             ></span>
-          </span>
-          <span class="shrink-0 text-[12.5px] text-riv-card-ink-soft">
-            <strong class="text-riv-card-ink">{{ card().free }}</strong> of {{ card().total }} free
           </span>
         </span>
       </span>
@@ -91,7 +93,21 @@ import { VenueCard } from '../home/venue-card';
   `,
 })
 export class PrototypeVenueRow {
+  /** The phone's row: the shipped card-glass skin, since the sheet's rows are its only surfaces. */
+  protected readonly CARD =
+    'flex items-stretch gap-3 rounded-[18px] p-2 no-underline bg-riv-card-glass border border-riv-card-border text-riv-card-ink ' +
+    'shadow-[0_6px_20px_rgba(7,42,58,0.14),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[20px] ' +
+    'motion-safe:[transition:background_0.15s_ease,outline-color_0.15s_ease] ' +
+    'aria-[current]:outline-[3px] aria-[current]:-outline-offset-[3px] aria-[current]:outline-riv-accent-ink';
+  /** The desktop's row: a list entry on the panel, a hairline under it, no card of its own (round 10). */
+  protected readonly FLAT =
+    'flex items-stretch gap-3 rounded-[12px] px-1.5 py-2.5 no-underline text-riv-card-ink ' +
+    'motion-safe:[transition:background_0.15s_ease,outline-color_0.15s_ease] hover:bg-riv-field-fill ' +
+    'aria-[current]:outline-[3px] aria-[current]:-outline-offset-[3px] aria-[current]:outline-riv-accent-ink';
+
   readonly card = input.required<VenueCard>();
+  /** A list entry rather than a card: the desktop panel is already a surface. */
+  readonly flat = input(false);
   readonly date = input.required<string>();
   readonly selected = input(false);
   /** Sales for today have closed: the row stays, faded, and says so. */

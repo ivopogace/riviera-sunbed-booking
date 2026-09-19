@@ -222,12 +222,9 @@ const GUTTER_PILL =
           [attr.aria-expanded]="pickerOpen()"
           (click)="pickerOpen.set(!pickerOpen())"
         >
-          <span
-            class="text-[19px] leading-none"
-            [class]="state().here !== null ? 'text-riv-accent-ink' : 'text-riv-ink-faint'"
-            aria-hidden="true"
-            >{{ state().here !== null ? '◎' : '⌖' }}</span
-          >
+          @if (state().here !== null) {
+            <span class="text-[19px] leading-none text-riv-accent-ink" aria-hidden="true">◎</span>
+          }
           <span class="flex min-w-0 flex-col">
             <span
               class="truncate text-[19px] leading-[1.1] font-bold tracking-[-0.01em] text-riv-ink"
@@ -252,7 +249,13 @@ const GUTTER_PILL =
             (click)="beachesOpen() ? beachesOpen.set(false) : openBeaches()"
           >
             <span aria-hidden="true">⛱</span>
+            @if (chipSpelled()) {
+              {{ focus().beach !== '' ? (groups()[0]?.label ?? '') : 'All beaches' }}
+            }
             <span [class]="COUNT">{{ beachChipCount() }}</span>
+            @if (chipSpelled()) {
+              <span class="text-[11px] opacity-70" aria-hidden="true">▾</span>
+            }
           </button>
         }
         <button
@@ -316,10 +319,17 @@ const GUTTER_PILL =
           <h2
             class="col-span-full mt-3 mb-1.5 flex items-baseline gap-2 px-1 text-[13px] text-riv-ink-soft first:mt-1"
             [class.mb-0]="cardsGrid()"
+            [class]="wide() ? 'mt-5 mb-0 border-b border-riv-header-border pb-1.5 first:mt-2' : ''"
           >
-            <span class="text-[16px] font-bold tracking-[-0.01em] text-riv-ink">{{
-              group.label
-            }}</span>
+            <!-- On the desktop the beach is a running head over its list entries, not a card-sized title. -->
+            <span
+              [class]="
+                wide()
+                  ? 'text-[13px] font-semibold tracking-[0.01em] text-riv-ink-soft'
+                  : 'text-[16px] font-bold tracking-[-0.01em] text-riv-ink'
+              "
+              >{{ group.label }}</span
+            >
             @if (group.km !== null) {
               <span class="font-semibold text-riv-accent-ink">{{ kmLabel(group.km) }}</span>
             }
@@ -338,12 +348,13 @@ const GUTTER_PILL =
               </div>
             } @else {
               <app-prototype-venue-row
-                class="mb-2"
+                [class]="wide() ? 'border-b border-riv-header-border' : 'mb-2'"
                 [card]="card"
                 [date]="state().date"
                 [selected]="selected() === '' + card.id"
                 [dusk]="duskIds().has('' + card.id)"
                 [km]="rowKm(card)"
+                [flat]="wide()"
                 (pressed)="selected.set('' + $event)"
               />
             }
@@ -463,7 +474,9 @@ const GUTTER_PILL =
           type="button"
           appTouchTarget
           data-ctl="near-me"
-          class="absolute right-3 z-[8]"
+          class="absolute z-[8]"
+          [class.left-3]="wide()"
+          [class.right-3]="!wide()"
           [class]="
             MAP_BUTTON +
             ' ' +
@@ -673,6 +686,8 @@ export class VariantShore {
     if (beach !== '') return `${this.groups()[0]?.label ?? ''}: change the beach`;
     return `All ${this.beaches().length} beaches: choose one`;
   });
+  /** The chip spells its beach out where the panel has room for it and the subtitle (480 px). */
+  protected readonly chipSpelled = computed(() => this.wide() && this.panelWidth() >= 480);
   protected readonly beachChipCount = computed(() =>
     this.focus().beach !== '' ? this.focus().cards.length : this.beaches().length,
   );
@@ -978,21 +993,17 @@ export class VariantShore {
 
   // ── the desktop pane ─────────────────────────────────────────────────────────────────────
   /**
-   * The map takes the width its set needs — the pane's height over the set's own aspect
-   * (`prototype-aspect.ts`) — between a 360 px column and 60 % of the window; the panel keeps
-   * the rest.
+   * Round 10: the ROW is the unit with a natural width (a 72 px photo, a name, a price, one line
+   * of facts: 480–540 px), so the panel is clamped to it — 38 % of the window between 420 and
+   * 540 — and the map takes everything else. Rounds 7–9 sized the pane from the set's aspect,
+   * which stretched a four-venue region's rows to 814 px beside a 576 px bay.
    */
   private readonly aspect = computed(() => contentAspect(this.pins().map((p) => p.at)) ?? 1);
   private readonly columnHeight = computed(() => this.viewport().h - 68 - 24);
-  private readonly mapWidth = computed(() => {
-    const { w } = this.viewport();
-    const wanted = (this.columnHeight() - PAD) / this.aspect() + PAD;
-    // The pane always frames a region: a floor of 40 %, or a two-pin region would get a 360 column.
-    return Math.round(Math.max(360, w * 0.4, Math.min(w * 0.6, wanted)));
-  });
   protected readonly panelWidth = computed(() =>
-    Math.max(420, this.viewport().w - this.mapWidth() - 24),
+    Math.round(Math.max(420, Math.min(540, this.viewport().w * 0.38))),
   );
+  private readonly mapWidth = computed(() => this.viewport().w - this.panelWidth() - 24);
   /**
    * `?pane=free`: when the 60 % cap decides the width, the height follows the set instead of the
    * column — a wide set gets a shorter pane, and the pins fill it in both axes.

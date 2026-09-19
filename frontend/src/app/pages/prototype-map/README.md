@@ -9,8 +9,10 @@ screenshots and verdicts are in this branch's history (commit 2e53109 and before
 `git log --diff-filter=D -- 'frontend/src/app/pages/prototype-map/'`). What they established and
 Q rests on is in § _What Q rests on_. Round 7 (§ _Round 7_) improved Q on the phone and the
 desktop before the decision whether to implement it; round 8 (§ _Round 8_) replaced the desktop's
-whole-coast opening with a region, and round 9 (§ _Round 9_) cut the coast-line strip it had put
-over the panel and the two-column rows. The verdict and the first slices are at the end.
+whole-coast opening with a region, round 9 (§ _Round 9_) cut the coast-line strip it had put
+over the panel and the two-column rows, and round 10 (§ _Round 10_) is a design critique of the
+desktop taken to code: a list instead of cards, the panel clamped to the row's width. The verdict
+and the first slices are at the end.
 
 ```
 npm start           # from frontend/
@@ -226,12 +228,12 @@ snap-mandatory`, `snap-start`, `snap-always`): the OUTER holds a transparent spa
 - **Near me sits at the map's foot at half** (y 324, right — the coast and its pins run down
   the left) — mid-screen, the thumb's natural zone, not the bottom edge Hoober measures at
   12 mm. It hides at full.
-- **Desktop from `lg`**: the sheet is the left panel, pinned open, with the same head; the map is
-  the rest, sized by the set's own shape (`prototype-aspect.ts`) — the pane takes the width the
-  set needs between 40 and 60 % of the window (864 px for Himarë at 1440, 576 for Sarandë) and
-  the panel keeps the rest, one venue a row, a card grid only from 900 px of panel. The desktop
-  opens on a region as the phone does — the whole coast is an index no pane can frame — and the
-  coast picker under the place button is its chooser. Under 560 px of pane the pins are **dots
+- **Desktop from `lg`**: the sheet is the left panel, pinned open, with the same head, and the
+  map is everything else. The panel is clamped to the row's own width (38 % of the window between
+  420 and 540 px), the rows are a list on it — a hairline under each, the beach as a small
+  running head, a 72 px availability bar beside its number — and the pane takes the rest (876 px
+  at 1440, 1,356 at 1920). The desktop opens on a region as the phone does — the whole coast is
+  an index no pane can frame — and the coast picker under the place button is its chooser. Under 560 px of pane the pins are **dots
   with a label gutter** down the pane's right edge — each crowd's name, from-price and count as a
   44 px row tied to its dot by a leader, under the zoom column and above Near me — for a narrow
   region's crowds on a small window.
@@ -254,9 +256,11 @@ Phone, 390 × 844, by `shoot.mjs` (photos are SVG stand-ins — judge mass, not 
 
 430 × 932: the same layout; the poster's 440 px width covers it with a 5 px crop, the first row is
 still at y 493 and the tall phone gets its extra 88 px as list (`Q-shore-tall.png`); at peek the
-window is 68 → 793 (`Q-shore-tall-peek.png`). Desktop (Himarë, the opening region): panel 552 +
-map 864 at 1440, pins 829 × 514, six rows on screen; panel 744 + map 1,152 at 1920, seven rows;
-panel 420 + map 580 at 1024; a narrow region (Sarandë) gets the 40 % floor, 576, and a panel of 840. Rounds 7 to 9 for how the desktop got here.
+window is 68 → 793 (`Q-shore-tall-peek.png`). Desktop (Himarë, the opening region): panel 540 +
+map 876 at 1440, the first row at y 192, 514 px wide; panel 540 + map 1,356 at 1920; panel 420
+
+- map 580 at 1024; Sarandë gets the same panel and the same 876 px of bay. Rounds 7 to 10 for
+  how the desktop got here.
 
 ## Q's faults, the honest list
 
@@ -578,6 +582,44 @@ by side. Cards remain only from 900 px of panel (a window of about 1,540 px besi
 which on this desk is rare and is where a card grid earns its columns. Everything else measured
 in rounds 7 and 8 holds: the phone is untouched, and the density findings apply as written.
 
+## Round 10 — the desktop under the design critique
+
+Round 9's Himarë and Sarandë screens were put to the `frontend-design` skill's questions —
+where is the one memorable thing, what is structure and what is decoration, which defaults are
+the templated tells — and five findings were taken to code (`Q-shore-1440.png`,
+`Q-shore-1440-sarande.png`, `Q-shore-1920.png`; the round-9 versions are in the history at
+`14d38152`):
+
+1. **The rows were the SaaS-card tell.** Every venue was an identical white rounded card with the
+   same soft shadow on a glass panel on a page — three nested rounded surfaces (22, 18, 12 px),
+   with the card edge doing the work of telling a beach title from a venue name (both 16 px
+   bold). On the desktop the row is now `flat` (`prototype-venue-row.ts`): photo, name, price,
+   one line of facts, a hairline under it, a hover fill, no background and no shadow of its own;
+   the beach becomes a 13 px semibold running head in soft ink with a rule. The phone keeps the
+   card, because on the sheet the rows are the only surfaces and the sheet's edge needs them.
+2. **The availability bar was sized like the first fact.** It ran the row's width — 330 px at
+   1440, 620 beside a stretched Sarandë row — and turned the panel into a bar chart for a
+   third-rank number. It is 72 px now, after `11 of 26 free`, on both screens.
+3. **The pane rule was the wrong invariant.** Rounds 7–9 sized the pane from the set's aspect and
+   gave the panel the remainder, which stretched a four-venue region's rows to 814 px beside a
+   576 px bay. The row is the thing with a natural width (photo, name, price, one line: 480–540
+   px), so the **panel is clamped to it** — 38 % of the window between 420 and 540 — and the map
+   takes everything else: 876 px at 1440 for Himarë _and_ Sarandë, 1,356 at 1920, 580 at 1024.
+   The card grid can no longer occur on the desktop; the `?pane=free` flag is kept only for the
+   record.
+4. **`⛱ 6` was cryptic where there is room.** From a 480 px panel the chip reads
+   `⛱ All beaches 6 ▾`, or the beach's name lit when one is chosen; at 1024 (a 420 px panel)
+   and on the phone it keeps the short form, because the spelled-out chip squeezed the
+   subtitle to `8 of 11 selling …`. The `⌖` glyph before the place, faint and meaningless to a
+   tourist, is gone; the accent `◎` still marks the located state.
+5. **A defect, not taste:** Near me at the pane's bottom right sat under the map's attribution
+   line and was clipped. It is at the bottom left now; measured, the two boxes no longer
+   intersect (Near me 576–693 × 837–881, the credit 1115–1428 × 855–881 at 1440).
+
+Not taken: a footer under a short list naming the neighbouring regions with counts (round 9's
+strip in another place), and the shipped header's tracked-out `ALBANIAN COAST` eyebrow, which
+is the design system's, not this prototype's.
+
 ## Screenshots
 
 `shots/` holds the set these notes are written from, captured by `shoot.mjs`: `playwright-core`
@@ -614,26 +656,26 @@ contexts) and the geometry the notes argue from; `--json` keeps the raw numbers.
 
 ## Files
 
-| File                                                 | What                                                                                                                                            |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `prototype-map-page.ts`                              | the host: fixture data, the filters and the tourist's position from the URL                                                                     |
-| `variant-shore.ts`                                   | Q: the ground, the two-scroller sheet, the poster/live swap, the dusk and merged-crowd classes, the desktop panel rule, the dots and the gutter |
-| `prototype-poster.ts`                                | the still poster: its box, its camera, and the `MapHandle` over an image the pin layer draws through                                            |
-| `prototype-coast-picker.ts`                          | the coast as a chooser: the ribbon + the index as a sheet (a popover from `lg`) — the desktop's only way to another region                      |
-| `prototype-venue-row.ts` · `prototype-venue-card.ts` | the phone row (the pin's preview) and the desktop card                                                                                          |
-| `prototype-place.ts`                                 | the tourist's position, distances, the beach grouping                                                                                           |
-| `prototype-aspect.ts`                                | the result set's own aspect ratio — the number the desktop pane is sized from                                                                   |
-| `prototype-camera.ts`                                | fit the camera to the pane and the pins                                                                                                         |
-| `prototype-days.ts`                                  | the fixture's time: each venue's sales close, and the seven days the day chips offer                                                            |
-| `prototype-coast.ts`                                 | the coast as an index: regions, beaches, counts, from-prices                                                                                    |
-| `prototype-venues.ts`                                | 26 fixture venues, on the shoreline: round 7 snapped each to the map's own water edge (§ _Round 7_ § 1)                                         |
-| `shoot.mjs`                                          | the screenshot + cost/geometry driver (themes, CDP touch flicks, the pane's pin fill), and the poster renderer (`--posters`)                    |
-| `research/`                                          | the two raw research reports: the measured references (bytes by host, geometry) and the web research                                            |
-| `../../../../public/prototype-posters/*.jpg`         | the 22 still posters, one per region and beach with venues — rendered, not drawn                                                                |
+| File                                                 | What                                                                                                                                                    |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prototype-map-page.ts`                              | the host: fixture data, the filters and the tourist's position from the URL                                                                             |
+| `variant-shore.ts`                                   | Q: the ground, the two-scroller sheet, the poster/live swap, the dusk and merged-crowd classes, the desktop panel rule, the dots and the gutter         |
+| `prototype-poster.ts`                                | the still poster: its box, its camera, and the `MapHandle` over an image the pin layer draws through                                                    |
+| `prototype-coast-picker.ts`                          | the coast as a chooser: the ribbon + the index as a sheet (a popover from `lg`) — the desktop's only way to another region                              |
+| `prototype-venue-row.ts` · `prototype-venue-card.ts` | the row (the pin's preview): a card on the phone's sheet, a flat list entry on the desktop panel; and the card grid, no longer reachable on the desktop |
+| `prototype-place.ts`                                 | the tourist's position, distances, the beach grouping                                                                                                   |
+| `prototype-aspect.ts`                                | the result set's own aspect ratio — the number the desktop pane is sized from                                                                           |
+| `prototype-camera.ts`                                | fit the camera to the pane and the pins                                                                                                                 |
+| `prototype-days.ts`                                  | the fixture's time: each venue's sales close, and the seven days the day chips offer                                                                    |
+| `prototype-coast.ts`                                 | the coast as an index: regions, beaches, counts, from-prices                                                                                            |
+| `prototype-venues.ts`                                | 26 fixture venues, on the shoreline: round 7 snapped each to the map's own water edge (§ _Round 7_ § 1)                                                 |
+| `shoot.mjs`                                          | the screenshot + cost/geometry driver (themes, CDP touch flicks, the pane's pin fill), and the poster renderer (`--posters`)                            |
+| `research/`                                          | the two raw research reports: the measured references (bytes by host, geometry) and the web research                                                    |
+| `../../../../public/prototype-posters/*.jpg`         | the 22 still posters, one per region and beach with venues — rendered, not drawn                                                                        |
 
 ## Recommendation
 
-**Implement Q with round 7's changes and the desktop of rounds 8 and 9**, not as round 6 left it
+**Implement Q with round 7's changes and the desktop of rounds 8 to 10**, not as round 6 left it
 and not another round: the two
 open questions that would justify more prototyping — whether a sheet over a poster can be the
 first paint for the price of one image, and whether the sheet's feel survives a real thumb — are
@@ -646,9 +688,10 @@ positions; **(2) the poster** — a backend renderer for one still per region an
 3× from the map extract, the `MapHandle` over an image, `fitUnderHeader`, and the live map's
 swap-in at the poster's camera, with the first-paint cost asserted (0 map requests, 0 contexts);
 **(3) the pin layer and the desktop** — a `dusk` input on the layer, the one-line crowd-mean rule
-with its spec, and the desktop as rounds 8 and 9 left it: region-first with the picker as the
-chooser, the pane rule between 40 and 60 % of the window, one venue a row with cards only from
-900 px of panel, the gutter for a region's crowds under 560 px, no whole-coast state anywhere. A fourth, a product requirement rather than a slice
+with its spec, and the desktop as rounds 8 to 10 left it: region-first with the picker as the
+chooser, the panel clamped to the row's width and the map taking the rest, the rows a flat list
+with the beach as a running head, the gutter for a region's crowds under 560 px, no whole-coast
+state anywhere. A fourth, a product requirement rather than a slice
 of Q: a shoreline snap in the operator's pin placer, because the map is the ground now.
 
 Written under prototype rules: no tests, no error handling, no a11y or contrast specs. If Q ships
