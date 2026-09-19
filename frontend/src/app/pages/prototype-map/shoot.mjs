@@ -115,49 +115,26 @@ const SHOTS = [
   { name: 'Q-shore-tall', v: TALL, url: 'variant=Q&now=10:30' },
   { name: 'Q-shore-tall-peek', v: TALL, url: 'variant=Q&sheet=peek&now=10:30' },
   { name: 'Q-shore-1024', v: NARROW, url: 'variant=Q&now=10:30' },
-  { name: 'Q-shore-1100', v: MID, url: 'variant=Q&now=10:30' },
   { name: 'Q-shore-1200', v: WIDE_MID, url: 'variant=Q&now=10:30' },
   { name: 'Q-shore-1440', v: LAPTOP, url: 'variant=Q&now=10:30' },
-  { name: 'Q-shore-1440-pin', v: LAPTOP, url: 'variant=Q&region=HIMARE&now=10:30', pin: 'lone' },
-  { name: 'Q-shore-1440-himare', v: LAPTOP, url: 'variant=Q&region=HIMARE&now=10:30' },
-  {
-    name: 'Q-shore-1440-himare-free',
-    v: LAPTOP,
-    url: 'variant=Q&region=HIMARE&pane=free&now=10:30',
-  },
+  { name: 'Q-shore-1440-pin', v: LAPTOP, url: 'variant=Q&now=10:30', pin: 'lone' },
+  { name: 'Q-shore-1440-free', v: LAPTOP, url: 'variant=Q&pane=free&now=10:30' },
   { name: 'Q-shore-1440-here', v: LAPTOP, url: `variant=Q&here=${HERE_DHERMI}&now=10:30` },
-  { name: 'Q-shore-1920', v: DESK, url: 'variant=Q&now=10:30' },
-  // round 8: the line desk — a region in the pane, the coast as a line over the panel
-  { name: 'Q-shore-1440-line', v: LAPTOP, url: 'variant=Q&desk=line&now=10:30' },
+  { name: 'Q-shore-1440-sarande', v: LAPTOP, url: 'variant=Q&region=SARANDE&now=10:30' },
+  { name: 'Q-shore-1440-beach', v: LAPTOP, url: 'variant=Q&beach=DHERMI&now=10:30' },
   {
-    name: 'Q-shore-1440-line-sarande',
+    name: 'Q-shore-1440-picker',
     v: LAPTOP,
-    url: 'variant=Q&desk=line&region=SARANDE&now=10:30',
-  },
-  {
-    name: 'Q-shore-1440-line-beach',
-    v: LAPTOP,
-    url: 'variant=Q&desk=line&beach=DHERMI&now=10:30',
-  },
-  {
-    name: 'Q-shore-1440-line-picker',
-    v: LAPTOP,
-    url: 'variant=Q&desk=line&now=10:30',
+    url: 'variant=Q&now=10:30',
     click: '[data-open-picker]',
   },
-  { name: 'Q-shore-1200-line', v: WIDE_MID, url: 'variant=Q&desk=line&now=10:30' },
-  { name: 'Q-shore-1024-line', v: NARROW, url: 'variant=Q&desk=line&now=10:30' },
-  { name: 'Q-shore-1920-line', v: DESK, url: 'variant=Q&desk=line&now=10:30' },
+  { name: 'Q-shore-1920', v: DESK, url: 'variant=Q&now=10:30' },
   // round 8, the density question: Himarë padded to 30 venues (`?dense=30`)
   { name: 'Q-shore-phone-dense', v: PHONE, url: 'variant=Q&dense=30&now=10:30' },
   { name: 'Q-shore-phone-dense-pin', v: PHONE, url: 'variant=Q&dense=30&now=10:30', pin: 0 },
   { name: 'Q-shore-phone-dense-full', v: PHONE, url: 'variant=Q&dense=30&sheet=full&now=10:30' },
-  { name: 'Q-shore-1440-line-dense', v: LAPTOP, url: 'variant=Q&desk=line&dense=30&now=10:30' },
-  {
-    name: 'Q-shore-1440-line-dense-beach',
-    v: LAPTOP,
-    url: 'variant=Q&desk=line&dense=30&beach=DHERMI&now=10:30',
-  },
+  { name: 'Q-shore-1440-dense', v: LAPTOP, url: 'variant=Q&dense=30&now=10:30' },
+  { name: 'Q-shore-1440-dense-beach', v: LAPTOP, url: 'variant=Q&dense=30&beach=DHERMI&now=10:30' },
 ];
 
 function svgPhoto(id) {

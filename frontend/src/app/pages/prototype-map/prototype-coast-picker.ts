@@ -6,8 +6,8 @@
  * once is a narrow ribbon alone, full-height. So the ribbon is the thing a phone opens ON DEMAND
  * to choose a place: a sheet with the coast as a 150 px ribbon down its left edge and, beside it,
  * the coast index as 44 px rows — every region and every beach that has a venue, its count and
- * its from-price — each row tied to its dot by a leader. Near me heads the list; Whole coast joins it from `lg`,
- * because the coast is not a phone state (a region is the phone's widest frame).
+ * its from-price — each row tied to its dot by a leader. Near me heads the list; there is no `Whole coast`,
+ * because the coast is not a state on any screen (a region is the widest frame a pane can hold).
  * The ribbon's WebGL context exists only while the sheet is open, which is the cost a first
  * screen on 4G should not carry.
  *
@@ -93,17 +93,6 @@ interface IndexRow {
           (click)="nearMe.emit()"
         >
           <span aria-hidden="true">◎</span> Near me
-        </button>
-        <button
-          type="button"
-          appTouchTarget
-          class="hidden flex-1 items-center justify-center rounded-full border border-riv-field-border bg-riv-field-fill px-4 text-[14px] font-semibold text-riv-ink"
-          [class.lg:inline-flex]="wholeCoast()"
-          [class.bg-riv-accent-ink]="region() === '' && beach() === '' && !located()"
-          [class.text-riv-on-accent-ink]="region() === '' && beach() === '' && !located()"
-          (click)="pick({ region: '', beach: '', here: null })"
-        >
-          Whole coast
         </button>
       </div>
 
@@ -197,8 +186,6 @@ export class PrototypeCoastPicker {
   readonly region = input.required<string>();
   readonly beach = input.required<string>();
   readonly located = input(false);
-  /** Whether the coast itself is a state the desktop can show; round 8's line desk says no. */
-  readonly wholeCoast = input(true);
   readonly picked = output<PrototypeFilter>();
   readonly nearMe = output<void>();
   readonly closed = output<void>();

@@ -26,9 +26,12 @@
  * </ul>
  *
  * <p>From `lg` up the sheet becomes the left panel and the ground the right pane — the map takes
- * the width its set needs and the list keeps the rest; under ~560 px of pane the pins become dots
- * with their pills in a label gutter. Desktop is the same page with the sheet pinned open beside
- * the map, not a second design.
+ * the width its set needs, never under 40 % of the window, and the list keeps the rest, one venue
+ * a row; under ~560 px of pane the pins become dots with their pills in a label gutter. The
+ * desktop opens on a region as the phone does (round 8: the whole coast is an index no pane can
+ * frame) and the coast picker is its chooser (round 9: a coast-line strip over the panel was
+ * tried and cut). Desktop is the same page with the sheet pinned open beside the map, not a
+ * second design.
  *
  * <p>The phone sheet is two scrollers, not one. The OUTER is a CSS scroll-snap container from the
  * full line down: a transparent spacer holding the peek and half rest points as zero-height snap
@@ -42,9 +45,8 @@
  * <p>URL: `?variant=Q` · `&sheet=peek|half|full` · `&live=1` (the live map from the first paint,
  * for the cost row) · `&here=lng,lat` · `&region=` · `&beach=` · `&now=16:30` ·
  * `&head=subtitle` (the beach in the subtitle instead of a chip) · `&pane=free` (the desktop
- * pane's height follows the set too) · `&desk=line` (round 8: the desktop opens on a region and
- * the whole coast is a line chooser over the panel, never a map) · `&poster=<key>` (the driver's
- * poster-rendering mode: the bare fitted map at 440 × 380).
+ * pane's height follows the set too) · `&poster=<key>` (the driver's poster-rendering mode: the
+ * bare fitted map at 440 × 380).
  */
 import { NgTemplateOutlet } from '@angular/common';
 import {
@@ -83,7 +85,6 @@ import { VenueCard } from '../home/venue-card';
 import { contentAspect } from './prototype-aspect';
 import { fitPins } from './prototype-camera';
 import { COAST } from './prototype-coast';
-import { PrototypeCoastLine } from './prototype-coast-line';
 import { PrototypeCoastPicker } from './prototype-coast-picker';
 import { closedForTodayAt, daysFrom, parseClock } from './prototype-days';
 import { PrototypeFilter, PrototypeState } from './prototype-map-page';
@@ -204,7 +205,6 @@ const GUTTER_PILL =
     TouchTarget,
     RivieraMap,
     VenuePinLayer,
-    PrototypeCoastLine,
     PrototypeCoastPicker,
     PrototypeVenueRow,
     PrototypeVenueCard,
@@ -500,22 +500,12 @@ const GUTTER_PILL =
           [style.width.px]="panelWidth()"
         >
           <div class="relative shrink-0 border-b border-riv-header-border pt-3 pb-2">
-            @if (lineDesk()) {
-              <!-- Round 8: the coast as a line over the panel; the pane below is always a region. -->
-              <app-prototype-coast-line
-                class="mb-1 border-b border-riv-header-border"
-                [region]="focus().region"
-                [beach]="focus().beach"
-                (picked)="filtered.emit($event)"
-              />
-            }
             <ng-container *ngTemplateOutlet="head" />
             @if (pickerOpen()) {
               <app-prototype-coast-picker
                 [region]="state().region"
                 [beach]="state().beach"
                 [located]="state().here !== null"
-                [wholeCoast]="!lineDesk()"
                 (picked)="filtered.emit($event)"
                 (nearMe)="locate()"
                 (closed)="pickerOpen.set(false)"
@@ -662,8 +652,6 @@ export class VariantShore {
   protected readonly subtitleHead = computed(() => this.params().get('head') === 'subtitle');
   /** `?pane=free`: the desktop pane's height follows the set as its width does. */
   private readonly freePane = computed(() => this.params().get('pane') === 'free');
-  /** `?desk=line`: the desktop opens on a region, like the phone, under a coast-line chooser. */
-  protected readonly lineDesk = computed(() => this.params().get('desk') === 'line');
   private readonly askedDetent = (this.params().get('sheet') as Detent | null) ?? 'half';
   /** The scroller's `scrollTop`, mirrored on every scroll event: the one number the sheet is. */
   private readonly scrolled = signal(0);
@@ -707,19 +695,14 @@ export class VariantShore {
     return day ? `${day.weekday} ${day.label}` : this.state().dateLabel;
   });
 
-  /** A region, never the coast, on a phone; the desktop can frame the coast and opens on it. */
+  /** A region, never the coast, on every screen: the tourist's own when located, Himarë otherwise. */
   protected readonly focus = computed<Focus>(() => {
     const s = this.state();
     if (s.beach !== '') {
       return { cards: s.cards, region: beachEntry(s.beach)?.region ?? '', beach: s.beach };
     }
     if (s.region !== '') return { cards: s.cards, region: s.region, beach: '' };
-    const region =
-      s.here !== null
-        ? nearestRegion(s.here, s.cards)
-        : this.wide() && !this.lineDesk()
-          ? ''
-          : PHONE_DEFAULT_REGION;
+    const region = s.here !== null ? nearestRegion(s.here, s.cards) : PHONE_DEFAULT_REGION;
     if (region === '') return { cards: s.cards, region: '', beach: '' };
     return {
       cards: s.cards.filter((c) => beachEntry(c.beach)?.region === region),
@@ -1004,9 +987,8 @@ export class VariantShore {
   private readonly mapWidth = computed(() => {
     const { w } = this.viewport();
     const wanted = (this.columnHeight() - PAD) / this.aspect() + PAD;
-    // The line desk always frames a region: a floor of 40 %, or a two-pin region gets the 360 column.
-    const floor = this.lineDesk() ? Math.max(360, w * 0.4) : 360;
-    return Math.round(Math.max(floor, Math.min(w * 0.6, wanted)));
+    // The pane always frames a region: a floor of 40 %, or a two-pin region would get a 360 column.
+    return Math.round(Math.max(360, w * 0.4, Math.min(w * 0.6, wanted)));
   });
   protected readonly panelWidth = computed(() =>
     Math.max(420, this.viewport().w - this.mapWidth() - 24),
@@ -1025,13 +1007,13 @@ export class VariantShore {
    * where two row columns show four, and the panel's job beside a map is scanning.
    */
   protected readonly cardsGrid = computed(() => this.wide() && this.panelWidth() >= 900);
-  /** Cards: two, three, four columns as the panel widens; rows: two columns from 600 px, else one. */
+  /** Cards: two, three, four columns as the panel widens; rows: always one venue a row (round 9). */
   protected readonly gridCols = computed(() => {
     const w = this.panelWidth();
     if (this.cardsGrid()) {
       return 'gap-3 ' + (w >= 1400 ? 'grid-cols-4' : w >= 1000 ? 'grid-cols-3' : 'grid-cols-2');
     }
-    return this.wide() && w >= 600 ? 'grid-cols-2 gap-x-3' : 'grid-cols-1';
+    return 'grid-cols-1';
   });
 
   protected kmLabel(km: number): string {

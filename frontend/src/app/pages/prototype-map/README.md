@@ -9,8 +9,8 @@ screenshots and verdicts are in this branch's history (commit 2e53109 and before
 `git log --diff-filter=D -- 'frontend/src/app/pages/prototype-map/'`). What they established and
 Q rests on is in § _What Q rests on_. Round 7 (§ _Round 7_) improved Q on the phone and the
 desktop before the decision whether to implement it; round 8 (§ _Round 8_) replaced the desktop's
-whole-coast opening with a region under a coast-line chooser. The verdict and the first slices
-are at the end.
+whole-coast opening with a region, and round 9 (§ _Round 9_) cut the coast-line strip it had put
+over the panel and the two-column rows. The verdict and the first slices are at the end.
 
 ```
 npm start           # from frontend/
@@ -23,7 +23,7 @@ Every state is in the URL: `?sheet=peek` (the sheet pulled down to the map), `?s
 `?here=19.641,40.147` (the tourist standing on Dhërmi beach), `?region=SARANDE`, `?beach=DHERMI`,
 `?now=16:30` (the clock, for the sales-close state), `?live=1` (the live map from the first paint,
 for the cost row), `?head=subtitle` (round 7's other head), `?pane=free` (round 7's other desktop
-pane), `?desk=line` (round 8's desktop: a region in the pane, the coast as a line over the panel). Venues come from `prototype-venues.ts` (26 fixtures on the real shoreline — snapped there in
+pane), `?dense=30` (round 8's density question: Himarë padded to 30 venues). Venues come from `prototype-venues.ts` (26 fixtures on the real shoreline — snapped there in
 round 7), so no backend is needed; the map is the real `app-riviera-map` against the real
 `platform/map` tiles, which `./gradlew bootRun` serves at `/map/**` (the driver serves them from
 disk).
@@ -228,13 +228,13 @@ snap-mandatory`, `snap-start`, `snap-always`): the OUTER holds a transparent spa
   12 mm. It hides at full.
 - **Desktop from `lg`**: the sheet is the left panel, pinned open, with the same head; the map is
   the rest, sized by the set's own shape (`prototype-aspect.ts`) — the pane takes the width the
-  set needs (360 px for the whole coast, 864 for Himarë at 1440) and the panel keeps the rest:
-  one row column below 600 px, two row columns to 900, a card grid above (two columns, three
-  from 1,000, four from 1,400). Under 560 px of pane the pins are **dots with a label gutter** down
-  the pane's right edge — each crowd's name, from-price and count as a 44 px row tied to its dot
-  by a leader, under the zoom column and above Near me — because at 360 px the ADR-0022 fence
-  pins the camera to zoom 7 and a pill has nowhere to hang. The desktop opens on the whole coast,
-  which its column can frame.
+  set needs between 40 and 60 % of the window (864 px for Himarë at 1440, 576 for Sarandë) and
+  the panel keeps the rest, one venue a row, a card grid only from 900 px of panel. The desktop
+  opens on a region as the phone does — the whole coast is an index no pane can frame — and the
+  coast picker under the place button is its chooser. Under 560 px of pane the pins are **dots
+  with a label gutter** down the pane's right edge — each crowd's name, from-price and count as a
+  44 px row tied to its dot by a leader, under the zoom column and above Near me — for a narrow
+  region's crowds on a small window.
 
 ## Measured: geometry and cost
 
@@ -254,10 +254,9 @@ Phone, 390 × 844, by `shoot.mjs` (photos are SVG stand-ins — judge mass, not 
 
 430 × 932: the same layout; the poster's 440 px width covers it with a 5 px crop, the first row is
 still at y 493 and the tall phone gets its extra 88 px as list (`Q-shore-tall.png`); at peek the
-window is 68 → 793 (`Q-shore-tall-peek.png`). Desktop: panel 1,056 + map 360 at 1440 (whole
-coast, dots and the gutter, three card columns); panel 552 + map 864 at Himarë (pins 829 × 514,
-one row column); panel 1,536 + map 360 at 1920 (four columns); the 1024–1300 range is in
-§ _Round 7_.
+window is 68 → 793 (`Q-shore-tall-peek.png`). Desktop (Himarë, the opening region): panel 552 +
+map 864 at 1440, pins 829 × 514, six rows on screen; panel 744 + map 1,152 at 1920, seven rows;
+panel 420 + map 580 at 1024; a narrow region (Sarandë) gets the 40 % floor, 576, and a panel of 840. Rounds 7 to 9 for how the desktop got here.
 
 ## Q's faults, the honest list
 
@@ -514,7 +513,8 @@ removes the state rather than restyling it:
 - **The gutter is kept for a region's crowds under 560 px of pane** only; it never carries the
   coast.
 
-Measured (`Q-shore-*-line*.png`):
+Measured (the line shots were cut with the strip in round 9; they are in the branch's history at
+`259c9454`):
 
 | Window                         | Panel · pane               | Line: run widths, truncation | Panel form                                                | Pins in the pane                                                                              |
 | ------------------------------ | -------------------------- | ---------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -532,7 +532,7 @@ own resize tick, which no map move announces, so the classes are now applied fro
 ### Density: Himarë at 30 venues
 
 `?dense=30` pads Himarë from 11 to 30 by interpolating clones between its pins in coast order,
-so the bounding box and the poster's camera are the real fixture's (`Q-shore-*-dense*.png`):
+so the bounding box and the poster's camera are the real fixture's (`Q-shore-phone-dense*.png`, `Q-shore-1440-dense*.png`):
 
 - **The phone's first paint holds.** Still 0 map requests and 0 contexts, the first row at 493,
   and four pills with no collision — but the names give way to counts: `3 beaches · from €15 ·
@@ -555,13 +555,28 @@ so the bounding box and the poster's camera are the real fixture's (`Q-shore-*-d
   that close, so a beach with more than four or five needs either a cap of 15 at the beach
   level (a 700 m window, the sea still on one side) or the list as the only way in.
 
-**Verdict: the line desk replaces the whole-coast desk.** Every desktop screen is now a region
-with a wide map (40–60 % of the window), the panel's groups are two to eleven venues, the coast
-stays one glance away in a 77 px strip that never truncates down to 1024, and the desktop is
-the phone's own logic with more room rather than a second design. What it costs: 77 px of panel
-height, and the "26 venues from Velipojë to Ksamil" overview, which the line's counts and
-from-prices carry instead. The `?desk=line` flag is only so the two can be shot side by side;
-implemented, it is the desktop.
+**Verdict, as round 8 left it: the line desk replaces the whole-coast desk.** Every desktop
+screen is now a region with a wide map (40–60 % of the window), the panel's groups are two to
+eleven venues, and the desktop is the phone's own logic with more room rather than a second
+design. Round 9 kept the region-first opening and cut the strip itself (§ _Round 9_); its shots
+live in the branch's history at `259c9454`.
+
+## Round 9 — the coast line cut, one venue a row
+
+Two maintainer calls on round 8's desktop, both taken: the coast-line strip over the panel is
+gone, and rows are one venue wide everywhere. What stays from round 8 is the part the numbers
+argued for — the desktop opens on a region, the pane is 40–60 % of the window, and the whole
+coast is never a map — and the coast picker under the place button (the ribbon and the index,
+`Q-shore-1440-picker.png`) is now the desktop's only coast chooser, as it is the phone's. The
+picker no longer offers `Whole coast` at all, and the `desk=line` flag and `prototype-coast-line.ts`
+are deleted rather than kept as an option.
+
+Measured against round 8: the first row is back at y 185 at every desktop width (the strip had
+cost 77 px); 1440 shows six rows, 1920 seven; a row is 526 px wide beside Himarë's 864 px pane
+at 1440 and 814 wide beside Sarandë's 576 px pane, where round 8 had put two 395 px rows side
+by side. Cards remain only from 900 px of panel (a window of about 1,540 px beside a 40 % pane),
+which on this desk is rare and is where a card grid earns its columns. Everything else measured
+in rounds 7 and 8 holds: the phone is untouched, and the density findings apply as written.
 
 ## Screenshots
 
@@ -573,30 +588,29 @@ driver logs each shot's first-screen cost (map style/sprite/glyph requests, tile
 contexts) and the geometry the notes argue from; `--json` keeps the raw numbers. Phone shots are
 390 × 844 at 1×.
 
-| File                                                                                                                                                             | What                                                                                                                                                            |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ref-airbnb-phone.png` · `ref-airbnb-phone-list.png` · `ref-airbnb-phone-pin.png`                                                                                | the reference: Airbnb's mobile search at Himarë — the sheet on the map; pulled up; a pin                                                                        |
-| `ref-spiagge-phone.png`                                                                                                                                          | spiagge.it's first screen: where, when, Cerca — no map                                                                                                          |
-| `Q-shore-phone.png` · `Q-shore-phone-himare.png`                                                                                                                 | the first paint: the Himarë poster, the sheet at half, the one-row head (the default, and asked for by region)                                                  |
-| `Q-shore-phone-subtitle.png`                                                                                                                                     | round 7's other head: the beach in the subtitle, no chip (`?head=subtitle`)                                                                                     |
-| `Q-shore-phone-riviera.png` · `Q-shore-phone-dark.png`                                                                                                           | the same first paint in the `riviera` and `dark` themes (glare)                                                                                                 |
-| `Q-shore-phone-flick-up.png` · `Q-shore-phone-flick-down.png`                                                                                                    | a real touch flick: 400 px up from half rests at full; 350 px down from full rests at peek                                                                      |
-| `Q-shore-phone-full.png` · `Q-shore-phone-full-scrolled.png`                                                                                                     | the sheet at full: the sliver, the Map pill; and scrolled 700 px inside                                                                                         |
-| `Q-shore-phone-peek.png` · `Q-shore-phone-peek-pin.png`                                                                                                          | the sheet at peek: the live map fills the window; a crowd press at peek                                                                                         |
-| `Q-shore-phone-pin.png` · `Q-shore-phone-pin-lone.png`                                                                                                           | a crowd press at half (the north end separates inside the window); a lone pin press lifts its row, lit                                                          |
-| `Q-shore-phone-pins-inland-merged.png`                                                                                                                           | round 6's inland fixture with the merged-crowd classes firing: the compact Dhërmi disc gone, `Palasë – Dhërmi · 6`                                              |
-| `Q-shore-phone-here.png` · `Q-shore-phone-here-pin.png`                                                                                                          | located at Dhërmi: nearest first, `You are here`; a crowd press while located                                                                                   |
-| `Q-shore-phone-sarande.png` · `Q-shore-phone-beach.png`                                                                                                          | a tall region north up on the poster; one beach (Dhërmi) at the zoom cap — on the shoreline now                                                                 |
-| `Q-shore-phone-1630.png` · `Q-shore-phone-day.png` · `Q-shore-phone-picker.png`                                                                                  | dusk at 16:30 (legible now); the day chips; the coast picker without `Whole coast`                                                                              |
-| `Q-shore-phone-beaches.png` · `Q-shore-phone-beach-chosen.png`                                                                                                   | the beach chip opened into its rail; the same with Dhërmi chosen, its chip lit and in view                                                                      |
-| `Q-shore-phone-live.png`                                                                                                                                         | the control: the live map from the first paint, pins where the poster's were                                                                                    |
-| `Q-shore-tall.png` · `Q-shore-tall-peek.png`                                                                                                                     | 430 × 932, half and peek                                                                                                                                        |
-| `Q-shore-1024.png` · `Q-shore-1100.png` · `Q-shore-1200.png`                                                                                                     | the narrowest panels: two row columns beside the 360 px pane with dots and the gutter                                                                           |
-| `Q-shore-1440.png` · `Q-shore-1440-here.png` · `Q-shore-1920.png`                                                                                                | the desktop: the whole coast (360 px pane, dots and the gutter, three columns); located; 1920 (four columns)                                                    |
-| `Q-shore-1440-himare.png` · `Q-shore-1440-himare-free.png` · `Q-shore-1440-pin.png`                                                                              | Himarë's 864 px pane at the column's height and at the set's own (`?pane=free`); a lone pin press lights and centres its row                                    |
-| `Q-shore-1440-line.png` · `Q-shore-1920-line.png` · `Q-shore-1200-line.png` · `Q-shore-1024-line.png`                                                            | round 8: the line desk — Himarë in the pane under the coast line, at four widths (the merge classes fire at 1024)                                               |
-| `Q-shore-1440-line-sarande.png` · `Q-shore-1440-line-beach.png` · `Q-shore-1440-line-picker.png`                                                                 | round 8: a narrow region on the 40 % floor with two row columns; Dhërmi chosen (its dot lit); the picker without `Whole coast`                                  |
-| `Q-shore-phone-dense.png` · `Q-shore-phone-dense-pin.png` · `Q-shore-phone-dense-full.png` · `Q-shore-1440-line-dense.png` · `Q-shore-1440-line-dense-beach.png` | round 8's density question: Himarë padded to 30 (`?dense=30`) at half, after a crowd press, at full; the line desk at 1440 and its Dhërmi beach at the zoom cap |
+| File                                                                                                                                                   | What                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ref-airbnb-phone.png` · `ref-airbnb-phone-list.png` · `ref-airbnb-phone-pin.png`                                                                      | the reference: Airbnb's mobile search at Himarë — the sheet on the map; pulled up; a pin                                                                      |
+| `ref-spiagge-phone.png`                                                                                                                                | spiagge.it's first screen: where, when, Cerca — no map                                                                                                        |
+| `Q-shore-phone.png` · `Q-shore-phone-himare.png`                                                                                                       | the first paint: the Himarë poster, the sheet at half, the one-row head (the default, and asked for by region)                                                |
+| `Q-shore-phone-subtitle.png`                                                                                                                           | round 7's other head: the beach in the subtitle, no chip (`?head=subtitle`)                                                                                   |
+| `Q-shore-phone-riviera.png` · `Q-shore-phone-dark.png`                                                                                                 | the same first paint in the `riviera` and `dark` themes (glare)                                                                                               |
+| `Q-shore-phone-flick-up.png` · `Q-shore-phone-flick-down.png`                                                                                          | a real touch flick: 400 px up from half rests at full; 350 px down from full rests at peek                                                                    |
+| `Q-shore-phone-full.png` · `Q-shore-phone-full-scrolled.png`                                                                                           | the sheet at full: the sliver, the Map pill; and scrolled 700 px inside                                                                                       |
+| `Q-shore-phone-peek.png` · `Q-shore-phone-peek-pin.png`                                                                                                | the sheet at peek: the live map fills the window; a crowd press at peek                                                                                       |
+| `Q-shore-phone-pin.png` · `Q-shore-phone-pin-lone.png`                                                                                                 | a crowd press at half (the north end separates inside the window); a lone pin press lifts its row, lit                                                        |
+| `Q-shore-phone-pins-inland-merged.png`                                                                                                                 | round 6's inland fixture with the merged-crowd classes firing: the compact Dhërmi disc gone, `Palasë – Dhërmi · 6`                                            |
+| `Q-shore-phone-here.png` · `Q-shore-phone-here-pin.png`                                                                                                | located at Dhërmi: nearest first, `You are here`; a crowd press while located                                                                                 |
+| `Q-shore-phone-sarande.png` · `Q-shore-phone-beach.png`                                                                                                | a tall region north up on the poster; one beach (Dhërmi) at the zoom cap — on the shoreline now                                                               |
+| `Q-shore-phone-1630.png` · `Q-shore-phone-day.png` · `Q-shore-phone-picker.png`                                                                        | dusk at 16:30 (legible now); the day chips; the coast picker without `Whole coast`                                                                            |
+| `Q-shore-phone-beaches.png` · `Q-shore-phone-beach-chosen.png`                                                                                         | the beach chip opened into its rail; the same with Dhërmi chosen, its chip lit and in view                                                                    |
+| `Q-shore-phone-live.png`                                                                                                                               | the control: the live map from the first paint, pins where the poster's were                                                                                  |
+| `Q-shore-tall.png` · `Q-shore-tall-peek.png`                                                                                                           | 430 × 932, half and peek                                                                                                                                      |
+| `Q-shore-1024.png` · `Q-shore-1200.png`                                                                                                                | the narrowest windows: Himarë in a 40–60 % pane, one venue a row (the merge classes fire at 1024)                                                             |
+| `Q-shore-1440.png` · `Q-shore-1440-here.png` · `Q-shore-1920.png`                                                                                      | the desktop: Himarë, the opening region, at 1440; located; 1920                                                                                               |
+| `Q-shore-1440-free.png` · `Q-shore-1440-pin.png`                                                                                                       | Himarë's 864 px pane at the set's own height (`?pane=free`); a lone pin press lights and centres its row                                                      |
+| `Q-shore-1440-sarande.png` · `Q-shore-1440-beach.png` · `Q-shore-1440-picker.png`                                                                      | a narrow region on the 40 % floor; Dhërmi chosen; the coast picker, the desktop's chooser                                                                     |
+| `Q-shore-phone-dense.png` · `Q-shore-phone-dense-pin.png` · `Q-shore-phone-dense-full.png` · `Q-shore-1440-dense.png` · `Q-shore-1440-dense-beach.png` | round 8's density question: Himarë padded to 30 (`?dense=30`) at half, after a crowd press, at full; the desktop at 1440 and its Dhërmi beach at the zoom cap |
 
 ## Files
 
@@ -605,8 +619,7 @@ contexts) and the geometry the notes argue from; `--json` keeps the raw numbers.
 | `prototype-map-page.ts`                              | the host: fixture data, the filters and the tourist's position from the URL                                                                     |
 | `variant-shore.ts`                                   | Q: the ground, the two-scroller sheet, the poster/live swap, the dusk and merged-crowd classes, the desktop panel rule, the dots and the gutter |
 | `prototype-poster.ts`                                | the still poster: its box, its camera, and the `MapHandle` over an image the pin layer draws through                                            |
-| `prototype-coast-picker.ts`                          | the coast as a chooser: the ribbon + the index as a sheet (a popover from `lg`)                                                                 |
-| `prototype-coast-line.ts`                            | round 8: the coast as a line over the desktop panel — six region runs, sixteen beach dots, a press focuses the region                           |
+| `prototype-coast-picker.ts`                          | the coast as a chooser: the ribbon + the index as a sheet (a popover from `lg`) — the desktop's only way to another region                      |
 | `prototype-venue-row.ts` · `prototype-venue-card.ts` | the phone row (the pin's preview) and the desktop card                                                                                          |
 | `prototype-place.ts`                                 | the tourist's position, distances, the beach grouping                                                                                           |
 | `prototype-aspect.ts`                                | the result set's own aspect ratio — the number the desktop pane is sized from                                                                   |
@@ -620,8 +633,8 @@ contexts) and the geometry the notes argue from; `--json` keeps the raw numbers.
 
 ## Recommendation
 
-**Implement Q with round 7's changes and round 8's desktop**, not as round 6 left it and not
-another round: the two
+**Implement Q with round 7's changes and the desktop of rounds 8 and 9**, not as round 6 left it
+and not another round: the two
 open questions that would justify more prototyping — whether a sheet over a poster can be the
 first paint for the price of one image, and whether the sheet's feel survives a real thumb — are
 answered by measurement (0 map requests, 0 contexts, 37 kB; a flick that rests where it should),
@@ -633,9 +646,9 @@ positions; **(2) the poster** — a backend renderer for one still per region an
 3× from the map extract, the `MapHandle` over an image, `fitUnderHeader`, and the live map's
 swap-in at the poster's camera, with the first-paint cost asserted (0 map requests, 0 contexts);
 **(3) the pin layer and the desktop** — a `dusk` input on the layer, the one-line crowd-mean rule
-with its spec, and round 8's desktop: region-first, the coast line over the panel, the pane rule
-between 40 and 60 % of the window, the panel's column steps, the gutter for a region's crowds
-under 560 px, no whole-coast state anywhere. A fourth, a product requirement rather than a slice
+with its spec, and the desktop as rounds 8 and 9 left it: region-first with the picker as the
+chooser, the pane rule between 40 and 60 % of the window, one venue a row with cards only from
+900 px of panel, the gutter for a region's crowds under 560 px, no whole-coast state anywhere. A fourth, a product requirement rather than a slice
 of Q: a shoreline snap in the operator's pin placer, because the map is the ground now.
 
 Written under prototype rules: no tests, no error handling, no a11y or contrast specs. If Q ships
