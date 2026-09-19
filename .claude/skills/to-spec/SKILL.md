@@ -3,19 +3,11 @@ name: to-spec
 description: "Turn the current conversation into a spec and publish it to the project issue tracker: no interview, just synthesis of what you've already discussed. Epic/feature altitude (user stories + testing seams + out-of-scope), the optional step ahead of to-issues; slice-level detail stays in riviera-plan-doc."
 ---
 
-> **In riviera-sunbed-booking (localization):**
-> - **Tracker** = GitHub via the MCP tools (not `gh`); **labels** per `docs/agents/triage-labels.md`.
-> - **Altitude — this is the epic/feature spec, not the slice plan.** User stories +
->   testing seams + out-of-scope, committed **once** as the epic issue (a `riviera-sdlc`
->   source-of-intent doc); per-**slice** detail stays in `riviera-plan-doc`. The
->   altitude boundary and the `wayfinder` → here → `to-issues` chain:
->   `riviera-sdlc` SKILL.md § *Epic front-end*.
-> - **Label:** the spec is the **epic issue** (source of intent). The `ready-for-agent`
->   AFK-ready tickets are the **slices** `to-issues` cuts from it — do **not** blanket
->   `ready-for-agent` on the epic itself; that label belongs on the implementable slices.
-> - Use `CONTEXT.md` vocabulary and respect `docs/adr/`. The `/setup-matt-pocock-skills`
->   line below is upstream boilerplate — this repo's substrate already provides the
->   tracker + label vocabulary.
+> **Riviera:** tracker = GitHub via the MCP tools; labels per `docs/agents/triage-labels.md`.
+> This is the **epic** spec (user stories + testing seams + out-of-scope), committed once as
+> the epic issue; slice detail is `riviera-plan-doc`'s (`riviera-sdlc` § *Epic front-end*).
+> Do **not** label the epic `ready-for-agent` — that goes on the slices `to-issues` cuts.
+> Use `CONTEXT.md` vocabulary; respect `docs/adr/`. Ignore the `/setup-matt-pocock-skills` line.
 
 This skill takes the current conversation context and codebase understanding and produces a spec. Do NOT interview the user; just synthesize what you already know.
 

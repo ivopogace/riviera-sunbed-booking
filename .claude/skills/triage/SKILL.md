@@ -3,13 +3,9 @@ name: triage
 description: Move issues through a state machine of triage roles, categorise, verify, grill if needed, and write agent-ready briefs. Load when sorting or labelling incoming issues. In this repo PRs are NOT a triage surface — they go through the normal review pipeline.
 ---
 
-> **In riviera-sunbed-booking (localization):**
-> - **Tracker** = GitHub via the MCP tools (not `gh`) per `docs/agents/issue-tracker.md`;
->   **label mapping** per `docs/agents/triage-labels.md`. The `/setup-matt-pocock-skills`
->   line below is upstream boilerplate — this repo's substrate already provides both;
->   ignore it.
-> - **Issues only in this repo:** PRs are not a triage surface here (see the tracker doc) —
->   they go through the normal review pipeline; leave in-flight collaborator PRs alone.
+> **Riviera:** tracker = GitHub via the MCP tools (`docs/agents/issue-tracker.md`); label
+> mapping per `docs/agents/triage-labels.md`; ignore the `/setup-matt-pocock-skills` line.
+> **Issues only** — PRs are not a triage surface here; leave collaborator PRs alone.
 
 # Triage
 
