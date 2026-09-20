@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { BEACH_CATALOGUE } from '../../shared/beaches';
 import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map';
 import { fitInWindow, fitPins } from './camera-fit';
 
@@ -33,6 +34,14 @@ describe('camera fit', () => {
   it('caps three venues 20 m apart at 14, where the bay is still in frame', () => {
     const view = fitPins([himare, { lng: 19.7442, lat: 40.1001 }], 390, 251)!;
     expect(view.zoom).toBe(14);
+  });
+
+  it('fits the whole catalogue into a 150 × 618 ribbon at a dot-sized pad, where the pins’ pad would not', () => {
+    const coast = BEACH_CATALOGUE.map((entry) => entry.view.center);
+    // 0.65° of longitude across 122 usable px: log2(360 · 122 / (512 · 0.65)) ≈ 7.04, the tighter axis.
+    expect(fitPins(coast, 150, 618, 14, 28)!.zoom).toBeCloseTo(7.04, 2);
+    // At the pins' 76 px pad the same ask is 6.32, under the map's floor of 7.
+    expect(fitPins(coast, 150, 618)!.zoom).toBe(7);
   });
 
   it('never asks for a viewport wider than the fence, which the engine would undo', () => {
