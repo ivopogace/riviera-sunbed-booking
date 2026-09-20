@@ -178,9 +178,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5 — the mocked e2e)`
+**Stage pointer:** `PR — draft open, CI gate`
 
-**Next action:** phase 5 red in Chromium, then the draft PR.
+**Next action:** check CI on the push, merge `origin/main` in, mark ready for review, run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -189,7 +189,7 @@ N/A — no contract change.
 | 2 — the picker's ribbon: mount, teardown, fit | ✅ | phases 2–4 in one commit (one component, one red set) |
 | 3 — dots, leaders, lit states | ✅ | same |
 | 4 — the popover skin from `lg` | ✅ | same |
-| 5 — the mocked e2e: contexts, geometry, press, names | ⏳ | |
+| 5 — the mocked e2e: contexts, geometry, press, names | ✅ | (this commit) — 21/21 in `discover-sheet.e2e.ts` locally |
 | 6 — close-out: CONTEXT.md, retire the #1157 plan, docs-freshness | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
