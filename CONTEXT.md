@@ -106,6 +106,13 @@ model in `docs/architecture/domain-model.md`.
 - **Foot row** — the phone's map chrome on one row at the map's foot, over the venue sheet at
   rest: Near me on one side, the tile credit on the other; no zoom column (a pinch zooms). The
   pins are fitted into the map above it. _Avoid_: bottom bar.
+- **Map poster** — the still the venue sheet opens on instead of a live map: one JPEG per
+  catalogue region and beach, per width bucket and pixel density, rendered from the self-hosted
+  extract and shipped as a static file, with the pin layer live over it through a still-image
+  handle so the pins crowd, price and press as on the live map. The first thing that has to move
+  the camera — a crowd press, a finger on the ground, the sheet pulled below half, a located dot
+  the poster does not frame — swaps the live map in at the poster's camera. Above the widest
+  bucket the ground is live from the first paint. _Avoid_: static map, screenshot, placeholder.
 - **Coast picker** — the whole coast as a chooser, never as the page: every region with a venue
   and, under it, its beaches, each with its venue count and lowest from-price, Near me at the
   head; a pick moves the venue sheet to that place. Down its left edge runs the **coast ribbon**,

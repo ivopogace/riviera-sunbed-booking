@@ -249,9 +249,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 6 — close-out docs)`
+**Stage pointer:** `PR — merge main in, ready for review; review gate due`
 
-**Next action:** the runbook, the ADR amendment, the glossary; then ready-for-review.
+**Next action:** merge `origin/main`, run the scoped tests, mark ready for review, run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -261,7 +261,7 @@ N/A — no contract change.
 | 3 — the page: the poster ground, the pins through the still handle, the swap | ✅ | this commit |
 | 4 — the renderer, the poster set, the completeness spec | ✅ | this commit — 172 files, 21.6 MB at quality 80 |
 | 5 — the mocked e2e: cost, parity, swaps, buckets | ✅ | this commit — 26/26 in `discover-sheet.e2e.ts` locally |
-| 6 — close-out: runbook, ADR-0022 amendment, CONTEXT.md, retire the #1161 plan, docs-freshness | | |
+| 6 — close-out: runbook, ADR-0022 amendment, CONTEXT.md, retire the #1161 plan, docs-freshness | ⏳ | docs in this commit; docs-freshness before ready-for-review |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -284,15 +284,18 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/scripts/render-map-posters.mjs` — the renderer
 - `frontend/public/posters/` — the poster set (`<KEY>-<bucket>@<dpr>x.jpg`)
 - `frontend/src/app/shared/riviera-map-options.ts` — `RIVIERA_MAP_OPTIONS`, moved
+- `frontend/src/app/shared/web-mercator.ts` — the one Web Mercator the fake engine, the fit and the still handle share
 - `frontend/src/app/shared/riviera-map.ts|.html|.spec.ts` — imports the options; `loaded`; the credit component
 - `frontend/src/app/shared/map-credit.ts` — the credit pill
 - `frontend/src/app/shared/poster-handle.ts|.spec.ts` — the still-image `MapHandle`
-- `frontend/src/app/shared/fake-map-engine.ts` — only if the spec needs a surface size hook
+- `frontend/src/app/shared/fake-map-engine.ts` — projects through `web-mercator.ts`
 - `frontend/src/app/pages/home/camera-fit.ts|.spec.ts` — imports the options
 - `frontend/src/app/pages/home/map-poster.ts|.spec.ts` — the poster catalogue
 - `frontend/src/app/pages/home/map-poster-set.spec.ts` — completeness + budget
 - `frontend/src/app/pages/home/home.ts|.html|.spec.ts|.a11y.spec.ts|.contrast.spec.ts` — the ground, the swap
-- `frontend/src/app/pages/home/venue-pin-layer.spec.ts|.a11y.spec.ts` — imports the options
+- `frontend/src/app/pages/home/venue-pin-layer.spec.ts` — imports the options
+- `frontend/src/app/pages/home/venue-pin-layer.a11y.spec.ts` — imports the options
+- `frontend/src/app/pages/home/discover-sheet.ts` — `opened` as a signal, so the page wakes the map only on the tourist's own pull
 - `frontend/e2e/discover-sheet.e2e.ts` — the poster describes
 - `frontend/e2e/support/map-resources.ts` — only if the cost test needs a request hook
 
@@ -379,8 +382,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 6 — Close-out
 
-- [ ] Runbook § *Posters*; ADR-0022 amendment; `CONTEXT.md`; `RESPONSIBILITIES.md`;
-  `git rm docs/plans/coast-picker-ribbon.md`; docs-freshness over the resolved range.
+- [x] Runbook § *Posters*; ADR-0022 amendment; `CONTEXT.md`; `RESPONSIBILITIES.md`;
+  `git rm docs/plans/coast-picker-ribbon.md`. · [ ] docs-freshness over the resolved range.
 - [ ] The plan's final state; the epic checklist is ticked after the merge.
 
 ---
