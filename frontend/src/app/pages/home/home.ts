@@ -68,12 +68,11 @@ import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
 import { fitInWindow, fitPins } from './camera-fit';
-import { footSwap, PIN_HEIGHT_PX, Rect } from './pin-crowding';
 import { CoastPicker, coastIndex, PickedPlace } from './coast-picker';
 import { BeachOption, DiscoverHead } from './discover-head';
 import { DiscoverSheet, HEADER_SELECTOR } from './discover-sheet';
 import { Poster, posterFor, posterFrames } from './map-poster';
-import { VenuePin } from './pin-crowding';
+import { footSwap, PIN_HEIGHT_PX, Rect, VenuePin } from './pin-crowding';
 import {
   distanceLabel,
   groupByBeach,
@@ -1157,7 +1156,12 @@ export class Home {
   /** The list answering the map: a row under the pointer lights its venue's pin, and only its own. */
   protected onRowPointed(card: VenueCard, on: boolean): void {
     const id = String(card.id);
-    this.pointedVenue.update((lit) => (on ? id : lit === id ? null : lit));
+    if (on) {
+      this.pointedVenue.set(id);
+      return;
+    }
+    // Only this row lets go: the pointer can already have lit the next one.
+    this.pointedVenue.update((lit) => (lit === id ? null : lit));
   }
 
   protected isSelected(card: VenueCard): boolean {

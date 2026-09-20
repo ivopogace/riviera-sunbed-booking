@@ -283,17 +283,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Findings register** — one row per review, Sonar or CI finding; each fix re-enters at Implement.
 
-| #   | Source               | Finding                                                                                                                                                                                                               | Status                                                                                 |
-| --- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| F-1 | e2e (own)            | The panel's `overflow-hidden` made it a scroll container, so opening the coast picker scrolled the head 23 px out of view and its controls measured 34 px against the 44 floor                                        | fixed in phase 6                                                                       |
-| F-2 | e2e (axe)            | `app-venue-row`'s host is `display: contents`, so its `<li>` was not a child of the `<ul>` in the accessibility tree                                                                                                  | fixed in phase 6 — the list item is the page's, as the sheet's card's is               |
-| F-3 | contrast maths (own) | `--riv-accent-ink` is redeclared for the dark theme but not riviera, so the row's price and a group's distance read 1.1:1 on the panel's glass. The same pairing already shipped on the sheet's group head from #1157 | fixed in phase 6 — both take the page ink; the token gap itself deferred → issue #1165 |
-| F-4 | home.spec (own)      | The pin layer was fed every venue on the coast whenever the page was not in sheet mode, so the desktop panel would have drawn pins for regions it does not list                                                       | fixed in phase 4                                                                       |
-| F-5 | review gate r1       | A crowd press on a single-beach place took the filter bar's branch on the panel (`sheetMode()` for `mapFlag()`): it set the shipped beach filter and refetched, collapsing the coast with no crumb back               | fixed in `54028fd4` — it narrows in the head, client-side, on both flagged surfaces    |
-| F-6 | review gate r1       | Escape closed the head's rails on the sheet only, so the panel could not dismiss an open beach or day rail — undoing #1157's own a11y fix on the new surface                                                          | fixed in `54028fd4`, mutation-checked                                                  |
-| F-7 | review gate r1       | The selected row's outline wore `--riv-accent-ink`, the pairing this PR's own contrast case rules out; it is the only cue for a row with no chips, so in riviera the selection read ≈ 1.1:1                           | fixed in `54028fd4` — the page ink; the token gap itself is #1165                      |
-| F-8 | review gate r1       | The row's hairline and availability track wore `--riv-card-track`, which riviera does not redeclare: a 12 % dark line on a dark panel                                                                                 | fixed in `54028fd4` — both follow the page ink                                         |
-| F-9 | review gate r1       | `PANE_CHROME_PAD_PX` was measured to a pin's point while its comment claimed the pin's box, and it replaced `fitPins`' default 76 that had reserved that box — the fit was 10 px short on the down axis               | fixed in `54028fd4` — the pad carries the half-height; the comment claims one axis     |
+| #    | Source               | Finding                                                                                                                                                                                                               | Status                                                                                 |
+| ---- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| F-1  | e2e (own)            | The panel's `overflow-hidden` made it a scroll container, so opening the coast picker scrolled the head 23 px out of view and its controls measured 34 px against the 44 floor                                        | fixed in phase 6                                                                       |
+| F-2  | e2e (axe)            | `app-venue-row`'s host is `display: contents`, so its `<li>` was not a child of the `<ul>` in the accessibility tree                                                                                                  | fixed in phase 6 — the list item is the page's, as the sheet's card's is               |
+| F-3  | contrast maths (own) | `--riv-accent-ink` is redeclared for the dark theme but not riviera, so the row's price and a group's distance read 1.1:1 on the panel's glass. The same pairing already shipped on the sheet's group head from #1157 | fixed in phase 6 — both take the page ink; the token gap itself deferred → issue #1165 |
+| F-4  | home.spec (own)      | The pin layer was fed every venue on the coast whenever the page was not in sheet mode, so the desktop panel would have drawn pins for regions it does not list                                                       | fixed in phase 4                                                                       |
+| F-5  | review gate r1       | A crowd press on a single-beach place took the filter bar's branch on the panel (`sheetMode()` for `mapFlag()`): it set the shipped beach filter and refetched, collapsing the coast with no crumb back               | fixed in `54028fd4` — it narrows in the head, client-side, on both flagged surfaces    |
+| F-6  | review gate r1       | Escape closed the head's rails on the sheet only, so the panel could not dismiss an open beach or day rail — undoing #1157's own a11y fix on the new surface                                                          | fixed in `54028fd4`, mutation-checked                                                  |
+| F-7  | review gate r1       | The selected row's outline wore `--riv-accent-ink`, the pairing this PR's own contrast case rules out; it is the only cue for a row with no chips, so in riviera the selection read ≈ 1.1:1                           | fixed in `54028fd4` — the page ink; the token gap itself is #1165                      |
+| F-8  | review gate r1       | The row's hairline and availability track wore `--riv-card-track`, which riviera does not redeclare: a 12 % dark line on a dark panel                                                                                 | fixed in `54028fd4` — both follow the page ink                                         |
+| F-9  | review gate r1       | `PANE_CHROME_PAD_PX` was measured to a pin's point while its comment claimed the pin's box, and it replaced `fitPins`' default 76 that had reserved that box — the fit was 10 px short on the down axis               | fixed in `54028fd4` — the pad carries the half-height; the comment claims one axis     |
+| F-10 | Sonar                | `typescript:S3863` — `./pin-crowding` imported twice in `home.ts`, the second import added by this slice                                                                                                              | fixed — one import statement                                                           |
+| F-11 | Sonar                | `typescript:S3358` — the nested ternary in `onRowPointed`                                                                                                                                                             | fixed — an early return for the lit arm                                                |
 
 ---
 
@@ -336,12 +338,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Step 1: Write the failing tests** — `crowdPins` against the running mean and widest member;
       `layoutPills` trying above/below/diagonal; `layoutPills` honouring `space.noGo` and
       `space.window`; a pill that fits nowhere keeping its layer placement; `footSwap`'s five cases.
-- [x] **Step 2: Run it, verify it fails** — `npx vitest run src/app/pages/home/pin-crowding.spec.ts`
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include="src/app/pages/home/pin-crowding.spec.ts"`
 - [x] **Step 3: Minimal implementation** — the running anchor in `crowdPins`; `PillRise` on
       `PillPlacement`; `SPOTS` as the nine (dx, dy) pairs in the record's order; `PillSpace` as
       `layoutPills`' third argument; `footSwap`.
 - [x] **Step 4: Run it, verify it passes** — the same command, then
-      `npx vitest run src/app/pages/home` for the package.
+      the same with `--include="src/app/pages/home/*.spec.ts"` for the package.
 - [x] **Step 5: Generalization-audit pass** — appended below.
 - [x] **Step 6: Commit** — `git commit -m "Group pin crowds on their mean and give a pill nine spots in a window (#1159)"`
 - [x] **Step 7: Update Execution status** in the same commit window.
@@ -352,7 +354,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - [x] Inputs `noGo` and `window` in viewport coordinates, converted by the layer's own measured
       origin; `translate()` carries the rise; `loneBoxes()` exposed in viewport coordinates.
-- [x] `npx vitest run src/app/pages/home/venue-pin-layer.spec.ts`
+- [x] `npx ng test --watch=false --include="src/app/pages/home/venue-pin-layer.spec.ts"`
 - [x] Commit — `Hand the pin layer its no-go boxes and its window (#1159)`
 
 ## Phase 2 — Dusk per crowd
@@ -423,12 +425,16 @@ Run at the close-out commit, from `frontend/`, with `PW_CHROMIUM_EXECUTABLE=/opt
 | `node scripts/check-focus-posture.mjs --diff origin/main`       | the BUSY rules gate                                        | clean            |
 | `node scripts/check-plan-file-structure.mjs --diff origin/main` | this doc's File structure                                  | clean            |
 
-- **AC-1 … AC-5** — `npx vitest run src/app/pages/home/pin-crowding.spec.ts src/app/pages/home/venue-pin-layer.spec.ts src/app/pages/home/venue-pin-layer.contrast.spec.ts`.
+- **AC-1 … AC-5** — `npx ng test --watch=false` with an `--include` per spec over
+  `pin-crowding.spec.ts`, `venue-pin-layer.spec.ts`, `venue-pin-layer.contrast.spec.ts` and
+  `venue-row.spec.ts`: 88 passing. A scoped run goes through the Angular builder, never
+  `npx vitest run <file>` — the builder is what supplies `@angular/compiler`, and without it the
+  file fails to load at all.
 - **AC-6** — the six-width intersection count; `chromeHits(page)` returns `[]` at every width,
   located and not, so the assertion is on the intersecting pairs themselves, not a number.
 - **AC-7, AC-8, AC-10, AC-11, AC-12** — `Discover map — the desktop panel`, at the three widths
   plus the picker and the axe/touch pass.
-- **AC-9** — `npx vitest run src/app/pages/home/home.spec.ts -t "from lg: the panel"`.
+- **AC-9** — `npx ng test --watch=false --include="src/app/pages/home/home.spec.ts"`: 110 passing.
 
 ## Self-review checklist
 
