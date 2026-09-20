@@ -194,7 +194,7 @@ extract came in by hand — pair it with the upstream filename so the day it nam
 All in `scripts/build-riviera-map.sh`: `OSM_LIBERTY_REF` and `FONT_GLYPHS_REF` (branch refs;
 set a commit SHA to freeze upstream), `PLANETILER_VERSION`, `GEOFABRIK_AREA`, `BBOX`,
 `MAX_ZOOM`, `FONT_STACKS`, `GLYPH_RANGES`. `BBOX` has a twin in the frontend: the map's pan fence,
-`RIVIERA_MAP_OPTIONS.maxBounds` in `frontend/src/app/shared/riviera-map.ts`, is the same box —
+`RIVIERA_MAP_OPTIONS.maxBounds` in `frontend/src/app/shared/riviera-map-options.ts`, is the same box —
 widen both together. The three `/map/…` URL constants the rewrite writes into the style are the
 same three the frontend's real adapter prefixes with the API origin in development; changing the
 prefix means changing both.

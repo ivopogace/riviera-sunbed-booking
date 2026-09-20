@@ -66,7 +66,7 @@ seams, and the parity ledger for the sheet's ground as #1157 shipped it) · `tdd
 first at the named seam: the still handle by projection arithmetic against the fake engine's,
 the poster set by the catalogue, the page's swap by the fake engine's `created` and the pins'
 positions, the cost in Chromium by the e2e) · `riviera-review-overlay` (review gate: due at
-ready-for-review) · `riviera-docs-freshness` (due at close-out) · `riviera-local-debug`
+ready-for-review) · `riviera-docs-freshness` (**ran** over `197f0fb5..HEAD`: step 2a found one present-tense fact — the runbook § *Where the pins live* placed `RIVIERA_MAP_OPTIONS.maxBounds` in `riviera-map.ts`, now `riviera-map-options.ts`, patched in place; step 2b's counting sweep: ADR-0022's "two locks" and "two outbound references" still hold, `map-engine.ts`'s "a real and a fake adapter" counts engines, not handles; the retired ribbon plan is cited nowhere outside `docs/plans/`; 0 other findings) · `riviera-local-debug`
 (unshallowed the clone; Vitest through `npx ng test --include`; Playwright's Chromium at
 `/opt/pw-browsers/chromium` via `PW_CHROMIUM_EXECUTABLE`, 2 workers; the renderer uses the same
 binary) · `riviera-frontend` (the still handle is a pure Mercator adapter → `shared/`; the poster
@@ -249,9 +249,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR — merge main in, ready for review; review gate due`
+**Stage pointer:** `review gate — running`
 
-**Next action:** merge `origin/main`, run the scoped tests, mark ready for review, run the review gate.
+**Next action:** the review gate over the resolved range, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -261,7 +261,7 @@ N/A — no contract change.
 | 3 — the page: the poster ground, the pins through the still handle, the swap | ✅ | this commit |
 | 4 — the renderer, the poster set, the completeness spec | ✅ | this commit — 172 files, 21.6 MB at quality 80 |
 | 5 — the mocked e2e: cost, parity, swaps, buckets | ✅ | this commit — 26/26 in `discover-sheet.e2e.ts` locally |
-| 6 — close-out: runbook, ADR-0022 amendment, CONTEXT.md, retire the #1161 plan, docs-freshness | ⏳ | docs in this commit; docs-freshness before ready-for-review |
+| 6 — close-out: runbook, ADR-0022 amendment, CONTEXT.md, retire the #1161 plan, docs-freshness | ✅ | `825dd8bb`; the freshness patch in this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -383,7 +383,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ## Phase 6 — Close-out
 
 - [x] Runbook § *Posters*; ADR-0022 amendment; `CONTEXT.md`; `RESPONSIBILITIES.md`;
-  `git rm docs/plans/coast-picker-ribbon.md`. · [ ] docs-freshness over the resolved range.
+  `git rm docs/plans/coast-picker-ribbon.md`; docs-freshness over the resolved range (one runbook path patched).
 - [ ] The plan's final state; the epic checklist is ticked after the merge.
 
 ---
