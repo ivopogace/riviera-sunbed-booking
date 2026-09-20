@@ -457,6 +457,168 @@ test.describe('Discover sheet — Near me’s three arms', () => {
   });
 });
 
+/** The picker open on the sheet, its ribbon's map booted: every index beach has its dot. */
+async function openPicker(page: Page, viewport = PHONE): Promise<Locator> {
+  await openSheet(page, viewport);
+  await page.getByTestId('head-place').click();
+  const picker = page.getByTestId('coast-picker');
+  await expect(picker).toBeVisible();
+  await expect(page.getByTestId('ribbon-dot')).toHaveCount(7);
+  await settle(page);
+  return picker;
+}
+
+/** A leader's path as the picker writes it: `M x0 y0 H 144 L 158 rowY H 166`, in the body's px. */
+function leaderEnds(d: string | null): { x0: number; y0: number; rowY: number; xEnd: number } {
+  const match = /^M ([\d.-]+) ([\d.-]+) H [\d.-]+ L [\d.-]+ ([\d.-]+) H ([\d.-]+)$/.exec(d ?? '');
+  expect(match, d ?? 'no path').not.toBeNull();
+  const [, x0, y0, rowY, xEnd] = match!;
+  return { x0: Number(x0), y0: Number(y0), rowY: Number(rowY), xEnd: Number(xEnd) };
+}
+
+test.describe('Discover sheet — the coast picker’s ribbon', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
+    });
+    await mockApi(page);
+  });
+
+  test('opens one more map and closes it: the fake surfaces count 1, 2, 1', async ({ page }) => {
+    await openSheet(page);
+    const maps = page.getByTestId('riviera-map-fake');
+    await expect(maps).toHaveCount(1);
+
+    await page.getByTestId('head-place').click();
+    await expect(maps).toHaveCount(2);
+    await expect(page.getByTestId('picker-ribbon').getByTestId('riviera-map-fake')).toBeVisible();
+
+    await page.getByTestId('picker-close').click();
+    await expect(page.getByTestId('coast-picker')).toHaveCount(0);
+    await expect(maps).toHaveCount(1);
+  });
+
+  test('every beach has a dot in the ribbon and a leader from it to its row, clear of the row’s text', async ({
+    page,
+  }) => {
+    await openPicker(page);
+    const ribbon = (await page.getByTestId('picker-ribbon').boundingBox())!;
+    expect(Math.round(ribbon.width)).toBe(150);
+    const svg = (await page.getByTestId('picker-leaders').boundingBox())!;
+    await expect(page.getByTestId('ribbon-leader')).toHaveCount(7);
+
+    const centreY = new Map<string, number>();
+    for (const beach of ['PALASE', 'DHERMI', 'JALE', 'BORSH', 'GOLEM', 'QERRET', 'KSAMIL']) {
+      const dot = (await page
+        .locator(`[data-testid="ribbon-dot"][data-beach="${beach}"]`)
+        .boundingBox())!;
+      expect(dot.x, beach).toBeGreaterThanOrEqual(ribbon.x);
+      expect(dot.x + dot.width, beach).toBeLessThanOrEqual(ribbon.x + ribbon.width);
+      expect(dot.y, beach).toBeGreaterThanOrEqual(ribbon.y);
+      expect(dot.y + dot.height, beach).toBeLessThanOrEqual(ribbon.y + ribbon.height);
+      centreY.set(beach, dot.y + dot.height / 2);
+
+      const ends = leaderEnds(
+        await page
+          .locator(`[data-testid="ribbon-leader"][data-beach="${beach}"]`)
+          .getAttribute('d'),
+      );
+      // The leader starts at the dot's edge, level with its middle …
+      expect(Math.abs(svg.y + ends.y0 - (dot.y + dot.height / 2)), beach).toBeLessThanOrEqual(1);
+      expect(Math.abs(svg.x + ends.x0 - (dot.x + dot.width / 2 + 5)), beach).toBeLessThanOrEqual(1);
+      // … ends level with its row's middle, and short of the row's text.
+      const row = (await page.locator(`[data-beach-row="${beach}"]`).boundingBox())!;
+      expect(svg.y + ends.rowY, beach).toBeGreaterThanOrEqual(row.y);
+      expect(svg.y + ends.rowY, beach).toBeLessThanOrEqual(row.y + row.height);
+      const label = (await page.locator(`[data-beach-row="${beach}"] span`).first().boundingBox())!;
+      expect(svg.x + ends.xEnd, beach).toBeLessThan(label.x);
+    }
+    // North to south down the ribbon, as the coast runs.
+    expect(centreY.get('GOLEM')!).toBeLessThan(centreY.get('PALASE')!);
+    expect(centreY.get('PALASE')!).toBeLessThan(centreY.get('KSAMIL')!);
+  });
+
+  test('at 320 the ribbon keeps its 150 px and the rows narrow to what is left', async ({
+    page,
+  }) => {
+    await openPicker(page, VIEWPORTS[0]);
+
+    expect(Math.round((await page.getByTestId('picker-ribbon').boundingBox())!.width)).toBe(150);
+    const rows = await page.getByTestId('picker-row').all();
+    for (const row of rows) {
+      const box = (await row.boundingBox())!;
+      expect(Math.round(box.height)).toBeGreaterThanOrEqual(44);
+      // 320 − the ribbon − the gutter − the right inset, at most; a region row is the widest.
+      expect(box.width).toBeLessThanOrEqual(320 - 150 - 20 - 12);
+      expect(box.width).toBeGreaterThanOrEqual(100);
+    }
+    await expectTouchTargets(page, 'the coast picker at 320');
+  });
+
+  test('a held press lights the dot, focus lights the leader, and the release picks', async ({
+    page,
+  }) => {
+    await openPicker(page);
+    const row = page.locator('[data-beach-row="DHERMI"]');
+    const dot = page.locator('[data-testid="ribbon-dot"][data-beach="DHERMI"]');
+    const leader = page.locator('[data-testid="ribbon-leader"][data-beach="DHERMI"]');
+    const stroke = () => leader.evaluate((el) => getComputedStyle(el).stroke);
+    const width = () => leader.evaluate((el) => getComputedStyle(el).strokeWidth);
+    const size = () => dot.evaluate((el) => getComputedStyle(el).width);
+    const restingStroke = await stroke();
+    const restingWidth = await width();
+    expect(await size()).toBe('9px');
+
+    await row.focus();
+    await expect(leader).toHaveAttribute('data-lit', '');
+    expect(await stroke()).not.toBe(restingStroke);
+    expect(await width()).not.toBe(restingWidth);
+    await row.blur();
+    await expect(leader).not.toHaveAttribute('data-lit', '');
+    expect(await stroke()).toBe(restingStroke);
+
+    const box = (await row.boundingBox())!;
+    await page.mouse.move(box.x + 24, box.y + box.height / 2);
+    await expect(dot).toHaveAttribute('data-lit', '');
+    await page.mouse.down();
+    await expect(dot).toHaveAttribute('data-lit', '');
+    await expect.poll(size).toBe('13px');
+    await page.mouse.up();
+
+    await expect(page.getByTestId('coast-picker')).toHaveCount(0);
+    await expect(page.getByTestId('head-title')).toHaveText('Dhërmi');
+  });
+
+  test('is hidden from assistive technology, takes no pointer, and leaves the index’s names and tab order alone', async ({
+    page,
+  }) => {
+    const picker = await openPicker(page);
+
+    const ribbon = page.getByTestId('picker-ribbon');
+    await expect(ribbon).toHaveAttribute('aria-hidden', 'true');
+    await expect(ribbon).toHaveCSS('pointer-events', 'none');
+    await expect(picker.getByRole('button')).toHaveCount(12);
+    await expect(picker.getByRole('link')).toHaveCount(0);
+    await expect(picker.getByRole('button').nth(0)).toHaveAccessibleName('Close');
+    await expect(picker.getByRole('button').nth(1)).toHaveAccessibleName('Near me');
+    await expect(picker.getByRole('button').nth(2)).toHaveAccessibleName(
+      'Durrës 2 venues from €15',
+    );
+
+    // Tab walks Close, Near me, the first row: never into the ribbon.
+    await expect(picker).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.getByTestId('picker-close')).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.getByTestId('picker-near-me')).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.getByTestId('picker-row').first()).toBeFocused();
+
+    await expectNoSeriousAxeViolations(page, 'the coast picker with its ribbon');
+    await expectTouchTargets(page, 'the coast picker with its ribbon');
+  });
+});
+
 test.describe('Discover sheet — accessibility', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {

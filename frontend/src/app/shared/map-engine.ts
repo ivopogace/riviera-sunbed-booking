@@ -18,6 +18,12 @@ export interface MapEngineOptions {
   readonly maxZoom: number;
   /** South-west and north-east corners the camera may not leave. */
   readonly maxBounds: readonly [LngLat, LngLat];
+  /**
+   * Whether the map takes pointer and keyboard input at all; `true` when absent. A purely visual
+   * map says `false`, and an engine then mounts no focusable surface — a canvas that takes the
+   * arrow keys would be a keyboard stop inside `aria-hidden` (WCAG 2.4.3).
+   */
+  readonly interactive?: boolean;
 }
 
 /** A DOM element pinned to a position; the caller owns the element and its accessibility. */

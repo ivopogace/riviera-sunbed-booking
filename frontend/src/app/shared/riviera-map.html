@@ -1,21 +1,24 @@
-<!-- Visually hidden until focused: the first stop inside the region, so a keyboard user can leave
-     before the engine's pan-and-zoom canvas takes the arrow keys. -->
-<button
-  type="button"
-  appTouchTarget
-  data-testid="map-skip"
-  class="sr-only m-0 focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-20 focus:inline-flex focus:items-center focus:rounded-full focus:border focus:border-riv-solid-btn-border focus:bg-riv-solid-btn-fill focus:px-[16px] focus:text-[14px] focus:font-semibold focus:text-riv-solid-btn-ink"
-  (click)="skipMap()"
->
-  Skip map
-</button>
+@if (!ribbon()) {
+  <!-- Visually hidden until focused: the first stop inside the region, so a keyboard user can leave before the canvas takes the arrow keys. -->
+  <button
+    type="button"
+    appTouchTarget
+    data-testid="map-skip"
+    class="sr-only m-0 focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-20 focus:inline-flex focus:items-center focus:rounded-full focus:border focus:border-riv-solid-btn-border focus:bg-riv-solid-btn-fill focus:px-[16px] focus:text-[14px] focus:font-semibold focus:text-riv-solid-btn-ink"
+    (click)="skipMap()"
+  >
+    Skip map
+  </button>
+}
 
 <!-- The engine owns the inner box from create() on and its stylesheet repositions it, so the wrapper holds the placement. -->
 <div class="absolute inset-0">
   <div #canvasHost data-testid="riviera-map-canvas" class="size-full"></div>
 </div>
 
-@if (status() === 'unavailable') {
+@if (ribbon()) {
+  <!-- A ribbon is a picture: no controls, and no notice either — the consumer's own structure stands beside it. -->
+} @else if (status() === 'unavailable') {
   <p
     data-testid="map-unavailable"
     class="absolute inset-x-4 top-1/2 z-10 -translate-y-1/2 rounded-[18px] border border-riv-solid-btn-border bg-riv-solid-btn-fill px-4 py-3 text-center text-[14px] leading-[1.5] text-riv-solid-btn-ink"
@@ -91,9 +94,10 @@
 
 <!-- The tiles' licence credits (OpenMapTiles CC-BY, OSM ODbL) in every map state; 13 px radius: a full pill on one line, still rounded when it wraps. -->
 <!-- It covers whatever sits under it, and stays that way: `pointer-events-none` would read a press on the pill as a press on the map, which places a pin in the operator console. -->
+<!-- A ribbon's links leave the tab order: focusable content inside aria-hidden is a stop on nothing. -->
 <p
   data-testid="map-attribution"
-  class="absolute z-10 rounded-[13px] border border-riv-solid-btn-border bg-riv-solid-btn-fill px-[10px] py-[4px] leading-[16px] text-riv-solid-btn-ink"
+  class="absolute z-10 rounded-[13px] border border-riv-solid-btn-border bg-riv-solid-btn-fill text-riv-solid-btn-ink"
   [class]="creditPlacement()"
   [style.bottom.px]="foot()"
 >
@@ -104,6 +108,7 @@
     target="_blank"
     rel="noopener noreferrer"
     data-touch-exempt="a link inside a sentence (WCAG 2.5.5 inline exception)"
+    [attr.tabindex]="ribbon() ? -1 : null"
     >OpenMapTiles</a
   >
   ©
@@ -113,6 +118,7 @@
     target="_blank"
     rel="noopener noreferrer"
     data-touch-exempt="a link inside a sentence (WCAG 2.5.5 inline exception)"
+    [attr.tabindex]="ribbon() ? -1 : null"
     >OpenStreetMap</a
   >
   contributors

@@ -12,7 +12,7 @@ import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map';
  * which shows driveways and no sea — and the sea is the context the whole decision rests on.
  */
 const TILE_PX = 512;
-/** The pins' own 44 px boxes and their pills, kept inside the frame. */
+/** The pins' own 44 px boxes and their pills, kept inside the frame — the default pad. */
 const PAD_PX = 76;
 /** A lone pin has no span to fit, so it gets town scale. */
 const SINGLE_PIN_ZOOM = 12.5;
@@ -39,15 +39,17 @@ function latPerPixel(view: MapView): number {
  * The camera that shows every one of `at` inside a `width` × `height` box, clamped to the
  * map's own zoom range and to the zoom at which the box still fits inside `maxBounds` — the
  * ADR-0022 fence is only 2.2° wide, so a wider ask is re-clamped by the engine anyway. `null`
- * when there is nothing to fit or no room to fit it in.
+ * when there is nothing to fit or no room to fit it in. `pad` is what the marks drawn at `at`
+ * need kept inside the frame: the pins' boxes by default, less for a ribbon of bare dots.
  */
 export function fitPins(
   at: readonly LngLat[],
   width: number,
   height: number,
   ceiling = FIT_MAX_ZOOM,
+  pad = PAD_PX,
 ): MapView | null {
-  if (at.length === 0 || width <= PAD_PX || height <= PAD_PX) {
+  if (at.length === 0 || width <= pad || height <= pad) {
     return null;
   }
   const lngs = at.map((p) => p.lng);
@@ -61,8 +63,8 @@ export function fitPins(
   const lngSpan = east - west;
   const ySpan = Math.abs(mercatorY(north) - mercatorY(south));
   const zoomForLng =
-    lngSpan > 0 ? Math.log2((360 * (width - PAD_PX)) / (TILE_PX * lngSpan)) : Infinity;
-  const zoomForLat = ySpan > 0 ? Math.log2((height - PAD_PX) / (TILE_PX * ySpan)) : Infinity;
+    lngSpan > 0 ? Math.log2((360 * (width - pad)) / (TILE_PX * lngSpan)) : Infinity;
+  const zoomForLat = ySpan > 0 ? Math.log2((height - pad) / (TILE_PX * ySpan)) : Infinity;
   const wanted = lngSpan <= 0 && ySpan <= 0 ? SINGLE_PIN_ZOOM : Math.min(zoomForLng, zoomForLat);
 
   const [southWest, northEast] = RIVIERA_MAP_OPTIONS.maxBounds;

@@ -229,6 +229,7 @@ export class MapLibreMapEngine extends MapEngine {
         [northEast.lng, northEast.lat],
       ],
       attributionControl: false,
+      interactive: options.interactive ?? true,
     });
     // The style hook is a setStyle option, not a constructor one — so the style is set here.
     map.setStyle(absoluteMapUrl(options.styleUrl, origin), {

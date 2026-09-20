@@ -108,8 +108,11 @@ model in `docs/architecture/domain-model.md`.
   pins are fitted into the map above it. _Avoid_: bottom bar.
 - **Coast picker** — the whole coast as a chooser, never as the page: every region with a venue
   and, under it, its beaches, each with its venue count and lowest from-price, Near me at the
-  head; a pick moves the venue sheet to that place. There is no whole-coast choice, because the
-  coast is not a state on any phone screen. _Avoid_: region filter, dropdown.
+  head; a pick moves the venue sheet to that place. Down its left edge runs the **coast ribbon**,
+  the whole coast as a narrow map with a dot for every beach in the index, each beach's row tied
+  to its dot by a **leader**; the ribbon is a picture beside the index, never a control, and lives
+  only while the picker is open. There is no whole-coast choice, because the coast is not a state
+  on any phone screen. _Avoid_: region filter, dropdown, minimap.
 - **Near me (Discover)** — the tourist's own position as an input to the venue sheet, decided by
   the riviera map's fence: off the fence, nothing moves and the map's own words stand in the sheet
   head; inside it, the list is sorted nearest first with distances, the map frames the tourist's
