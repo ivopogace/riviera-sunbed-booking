@@ -89,6 +89,33 @@ model in `docs/architecture/domain-model.md`.
   crowd's previews one by one, and the open **pin preview**'s crowd stepper walks the same crowd
   the same way. A crowd stays one real button per venue, in the list's order, so a keyboard walks
   exactly what it walks for lone pins. _Avoid_: cluster, marker cluster, spider.
+- **Venue sheet** — on a phone or tablet, the Discover list as a sheet over the riviera map with
+  three **rest heights**: **half** (opens here: a band of map under the header, the first rows
+  below), **peek** (the sheet's head alone above the tab bar, the map filling the rest) and
+  **full** (the list, a sliver of map kept under the header, a `Map` pill as the way back). A
+  finger moves it as it scrolls a page; the grabber's tap cycles half and full, and peek is a
+  drag's only. Behind the map flag on Discover; the desktop keeps its panel. _Avoid_: drawer,
+  bottom sheet (as a term), modal.
+- **Sheet head** — the venue sheet's one row carrying the query: the **place** (a press opens the
+  **coast picker**) over the selling line (`8 of 11 selling today`, each venue's sales close for
+  today), the region's beaches gathered into one chip, and the day. A press on a chip opens its
+  rail of chips under the row; at peek the sheet rises to half first. The answer to Near me when
+  it is not a position stands in the same slot. On the venue sheet the **row is the pin's
+  preview**: a pin press lights the venue's row and brings it to the list's top, and no pin
+  preview card opens. _Avoid_: toolbar, filter bar (that is the desktop's).
+- **Foot row** — the phone's map chrome on one row at the map's foot, over the venue sheet at
+  rest: Near me on one side, the tile credit on the other; no zoom column (a pinch zooms). The
+  pins are fitted into the map above it. _Avoid_: bottom bar.
+- **Coast picker** — the whole coast as a chooser, never as the page: every region with a venue
+  and, under it, its beaches, each with its venue count and lowest from-price, Near me at the
+  head; a pick moves the venue sheet to that place. There is no whole-coast choice, because the
+  coast is not a state on any phone screen. _Avoid_: region filter, dropdown.
+- **Near me (Discover)** — the tourist's own position as an input to the venue sheet, decided by
+  the riviera map's fence: off the fence, nothing moves and the map's own words stand in the sheet
+  head; inside it, the list is sorted nearest first with distances, the map frames the tourist's
+  dot with the venues, and the place is the beach within 3 km of it or else the region; the
+  position reaches the camera, the sort and the captions and nothing else. _Avoid_: geolocation
+  (as the feature's name), GPS.
 - **Venue location** — a venue's position on the riviera map as a latitude/longitude pin, placed
   by its operator by hand; optional, and a venue without one is simply absent from the riviera map
   while staying in the list. _Avoid_: address, coordinates (as the concept), geolocation (that is
