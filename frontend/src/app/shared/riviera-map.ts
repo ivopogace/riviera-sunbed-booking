@@ -142,6 +142,12 @@ export class RivieraMap {
    * and a browser without the Geolocation API gets no control either way.
    */
   readonly nearMe = input(false);
+  /**
+   * The phone chrome: the map's controls on one row at its foot, this many px up from the map's
+   * bottom edge — the credit at the left, wrapped to 200 px, no zoom column (a pinch zooms), and
+   * the consumer's own control at the right. `null` is the shipped column.
+   */
+  readonly foot = input<number | null>(null);
 
   readonly mapClick = output<LngLat>();
   readonly pinMoved = output<LngLat>();
@@ -157,6 +163,12 @@ export class RivieraMap {
     const problem = this.problem();
     return problem === null ? null : NEAR_ME_MESSAGES[problem];
   });
+
+  protected readonly footChrome = computed(() => this.foot() !== null);
+  /** The credit's place: the shipped bottom-right corner, or the foot's left, wrapped. */
+  protected readonly creditPlacement = computed(() =>
+    this.footChrome() ? 'left-3 max-w-[200px] text-[11px]' : 'right-3 bottom-3',
+  );
 
   private readonly live = signal<MapHandle | undefined>(undefined);
   /**

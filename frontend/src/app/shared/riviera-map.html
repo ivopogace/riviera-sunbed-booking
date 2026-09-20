@@ -37,29 +37,31 @@
         Near me
       </button>
     }
-    <fieldset class="flex flex-col gap-2">
-      <legend class="sr-only">Zoom</legend>
-      <button
-        type="button"
-        appTouchTarget
-        data-testid="map-zoom-in"
-        aria-label="Zoom in"
-        class="inline-flex size-11 touch-manipulation items-center justify-center rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill text-[22px] leading-none font-semibold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.22)] hover:bg-riv-solid-btn-hover"
-        (click)="zoomIn()"
-      >
-        <span aria-hidden="true">+</span>
-      </button>
-      <button
-        type="button"
-        appTouchTarget
-        data-testid="map-zoom-out"
-        aria-label="Zoom out"
-        class="inline-flex size-11 touch-manipulation items-center justify-center rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill text-[22px] leading-none font-semibold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.22)] hover:bg-riv-solid-btn-hover"
-        (click)="zoomOut()"
-      >
-        <span aria-hidden="true">−</span>
-      </button>
-    </fieldset>
+    @if (!footChrome()) {
+      <fieldset class="flex flex-col gap-2">
+        <legend class="sr-only">Zoom</legend>
+        <button
+          type="button"
+          appTouchTarget
+          data-testid="map-zoom-in"
+          aria-label="Zoom in"
+          class="inline-flex size-11 touch-manipulation items-center justify-center rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill text-[22px] leading-none font-semibold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.22)] hover:bg-riv-solid-btn-hover"
+          (click)="zoomIn()"
+        >
+          <span aria-hidden="true">+</span>
+        </button>
+        <button
+          type="button"
+          appTouchTarget
+          data-testid="map-zoom-out"
+          aria-label="Zoom out"
+          class="inline-flex size-11 touch-manipulation items-center justify-center rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill text-[22px] leading-none font-semibold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.22)] hover:bg-riv-solid-btn-hover"
+          (click)="zoomOut()"
+        >
+          <span aria-hidden="true">−</span>
+        </button>
+      </fieldset>
+    }
     @if (nearMeMessage(); as text) {
       <!-- The dismiss button sits outside the alert paragraph, so it never joins what is announced. -->
       <div
@@ -91,7 +93,9 @@
 <!-- It covers whatever sits under it, and stays that way: `pointer-events-none` would read a press on the pill as a press on the map, which places a pin in the operator console. -->
 <p
   data-testid="map-attribution"
-  class="absolute right-3 bottom-3 z-10 max-w-[calc(100%-24px)] rounded-[13px] border border-riv-solid-btn-border bg-riv-solid-btn-fill px-[10px] py-[4px] text-[12px] leading-[16px] text-riv-solid-btn-ink"
+  class="absolute z-10 max-w-[calc(100%-24px)] rounded-[13px] border border-riv-solid-btn-border bg-riv-solid-btn-fill px-[10px] py-[4px] text-[12px] leading-[16px] text-riv-solid-btn-ink"
+  [class]="creditPlacement()"
+  [style.bottom.px]="foot()"
 >
   ©
   <a

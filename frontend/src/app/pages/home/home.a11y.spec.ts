@@ -6,7 +6,8 @@ import {
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { expectNoAxeViolations } from '../../../testing/axe';
@@ -247,6 +248,114 @@ describe('Home accessibility (axe)', () => {
     fixture.detectChanges();
 
     expect(host().querySelector('[data-testid="preview-stack-dots"]')).not.toBeNull();
+    await expectNoAxeViolations(host());
+  });
+});
+
+/**
+ * The riviera map sheet (`?map=sheet`, below `lg`): the head, the rails, the rows on the sheet,
+ * the coast picker and the foot's Near me, each audited in the state the page reaches.
+ */
+describe('Home accessibility (the riviera map sheet)', () => {
+  let fixture: ComponentFixture<Home>;
+  let httpMock: HttpTestingController;
+  const originalMatchMedia = globalThis.matchMedia;
+  const scrollable = Element.prototype as { scrollTo?: (options: ScrollToOptions) => void };
+  const originalScrollTo = scrollable.scrollTo;
+
+  beforeEach(async () => {
+    globalThis.matchMedia = (query: string) =>
+      ({
+        matches: false,
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }) as unknown as MediaQueryList;
+    scrollable.scrollTo = function scrollToStub(this: HTMLElement, options: ScrollToOptions) {
+      this.scrollTop = options.top ?? 0;
+      this.dispatchEvent(new Event('scroll'));
+    };
+    const params = new BehaviorSubject<ParamMap>(convertToParamMap({ map: 'sheet' }));
+    await TestBed.configureTestingModule({
+      imports: [Home],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: { queryParamMap: params, snapshot: { queryParamMap: params.value } },
+        },
+        { provide: MapEngine, useValue: new FakeMapEngine() },
+        { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
+      ],
+    }).compileComponents();
+    fixture = TestBed.createComponent(Home);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    globalThis.matchMedia = originalMatchMedia;
+    scrollable.scrollTo = originalScrollTo;
+    httpMock.verify();
+  });
+
+  function host(): HTMLElement {
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  async function settle(): Promise<void> {
+    for (let pass = 0; pass < 3; pass += 1) {
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
+    fixture.detectChanges();
+  }
+
+  async function openSheet(): Promise<void> {
+    fixture.detectChanges();
+    const [miramar, aurora] = pinnedVenues();
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush([miramar, { ...aurora, salesOpen: false }]);
+    await settle();
+  }
+
+  it('has no violations at half with the head, the rows and the foot’s Near me', async () => {
+    await openSheet();
+
+    expect(host().querySelector('[data-testid="sheet-scroller"]')).not.toBeNull();
+    expect(host().querySelector('[data-testid="sheet-near-me"]')).not.toBeNull();
+    expect(host().querySelectorAll('[data-testid="venue-card"]').length).toBe(1);
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no violations with the beach rail open and a row lit by its pin', async () => {
+    await openSheet();
+    host().querySelector<HTMLButtonElement>('[data-testid="head-beaches"]')!.click();
+    host().querySelector<HTMLButtonElement>('[data-pin]')!.click();
+    await settle();
+
+    expect(host().querySelector('[role="group"][aria-label="Beach"]')).not.toBeNull();
+    expect(host().querySelector('[data-selected]')).not.toBeNull();
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no violations at full with the Map pill', async () => {
+    await openSheet();
+    host().querySelector<HTMLButtonElement>('[data-testid="sheet-grabber"]')!.click();
+    await settle();
+
+    expect(host().querySelector('[data-testid="sheet-map-pill"]')).not.toBeNull();
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no violations with the coast picker open', async () => {
+    await openSheet();
+    host().querySelector<HTMLButtonElement>('[data-testid="head-place"]')!.click();
+    await settle();
+
+    expect(host().querySelector('[data-testid="coast-picker"]')).not.toBeNull();
     await expectNoAxeViolations(host());
   });
 });

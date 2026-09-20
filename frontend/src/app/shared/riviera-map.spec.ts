@@ -546,6 +546,52 @@ describe('RivieraMap near me', () => {
   });
 });
 
+describe('RivieraMap phone chrome (foot)', () => {
+  function render(foot: number | null): ComponentFixture<RivieraMap> {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [RivieraMap],
+      providers: [
+        { provide: MapEngine, useValue: new FakeMapEngine() },
+        { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
+      ],
+    });
+    const fixture = TestBed.createComponent(RivieraMap);
+    fixture.componentRef.setInput('foot', foot);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function byTestId(fixture: ComponentFixture<RivieraMap>, id: string): HTMLElement | null {
+    return (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      `[data-testid="${id}"]`,
+    );
+  }
+
+  it('keeps the zoom column and the bottom-right credit by default', () => {
+    const fixture = render(null);
+    expect(byTestId(fixture, 'map-zoom-in')).not.toBeNull();
+    const credit = byTestId(fixture, 'map-attribution')!;
+    expect(credit.classList.contains('right-3')).toBe(true);
+    expect(credit.classList.contains('bottom-3')).toBe(true);
+    expect(credit.style.bottom).toBe('');
+  });
+
+  it('with a foot, drops the zoom column and puts the credit at the foot’s left, wrapped to 200 px', () => {
+    const fixture = render(476);
+    expect(byTestId(fixture, 'map-zoom-in')).toBeNull();
+    expect(byTestId(fixture, 'map-zoom-out')).toBeNull();
+    const credit = byTestId(fixture, 'map-attribution')!;
+    expect(credit.classList.contains('left-3')).toBe(true);
+    expect(credit.classList.contains('right-3')).toBe(false);
+    expect(credit.classList.contains('max-w-[200px]')).toBe(true);
+    expect(credit.style.bottom).toBe('476px');
+    expect(credit.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      '© OpenMapTiles © OpenStreetMap contributors',
+    );
+  });
+});
+
 describe('the fence rule', () => {
   const bounds = RIVIERA_MAP_OPTIONS.maxBounds;
 

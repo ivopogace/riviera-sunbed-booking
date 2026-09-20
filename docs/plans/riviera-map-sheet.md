@@ -251,16 +251,16 @@ N/A — no contract change; `GET /api/venues?date=` as today.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** the sheet component, red first.
+**Next action:** the mocked e2e at 390, 430, 768 and 820.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — pure helpers + the map's exports | ✅ | `Add the sheet's geometry, camera fit and place helpers (#1157)` |
-| 1 — the sheet component | | |
-| 2 — the head and the coast picker | | |
-| 3 — Home behind the flag: ground, foot chrome, rows, pins, Near me | | |
+| 1 — the sheet component | ✅ | `Add the discover sheet: two snap scrollers on measured chrome (#1157)` |
+| 2 — the head and the coast picker | ✅ | `Add the one-row head and the coast picker (#1157)` |
+| 3 — Home behind the flag: ground, foot chrome, rows, pins, Near me | ✅ | `Put the riviera map under the sheet on Discover behind ?map=sheet (#1157)` |
 | 4 — the mocked e2e | | |
 | 5 — gates and close-out | | |
 
