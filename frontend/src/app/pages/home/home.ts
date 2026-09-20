@@ -689,8 +689,8 @@ export class Home {
         return;
       }
       const { viewportW, viewportH, header } = sheet.chrome();
-      const keyAt = (at: string): string =>
-        `${at}|${viewportW}x${viewportH}|${header}|${targets.map((p) => `${p.lng},${p.lat}`).join(';')}`;
+      const spots = targets.map((p) => `${p.lng},${p.lat}`).join(';');
+      const keyAt = (at: string): string => `${at}|${viewportW}x${viewportH}|${header}|${spots}`;
       if (this.posterShown()) {
         // The poster frames the pins at half; a live map loading under it must not move away.
         this.framedByPoster = keyAt('half');
