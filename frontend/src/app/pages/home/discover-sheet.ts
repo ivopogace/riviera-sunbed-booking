@@ -11,7 +11,15 @@ import {
 
 import { PanelGlass } from '../../shared/panel-glass';
 import { TouchTarget } from '../../shared/touch-target';
-import { clampLift, Detent, detentAt, offsetFor, sheetTop, sheetTops } from './sheet-geometry';
+import {
+  clampLift,
+  Detent,
+  detentAt,
+  HEAD_PX,
+  offsetFor,
+  sheetTop,
+  sheetTops,
+} from './sheet-geometry';
 
 /** The shell's chrome the sheet measures: its class names are `app.html`'s, pinned by `app.spec.ts`. */
 const HEADER_SELECTOR = 'header.riv-header';
@@ -20,6 +28,10 @@ const TAB_BAR_SELECTOR = '.riv-tab-bar';
 const REVEAL_LEAD_PX = 8;
 /** The Map pill floats this far above the tab bar (or the window's bottom where there is none). */
 const MAP_PILL_LIFT_PX = 12;
+/** How many frames the opening rest is retaken while the browser's snapping carries it elsewhere. */
+const REST_ATTEMPTS = 8;
+/** The list's bottom padding: the Map pill's 44, its 12 px lift and 12 px of air, so the last row clears it. */
+const LIST_PAD_BOTTOM_PX = 68;
 
 /**
  * The Discover venue sheet: the list as a sheet over the riviera map with three resting heights
@@ -52,59 +64,68 @@ const MAP_PILL_LIFT_PX = 12;
     '(window:resize)': 'remeasure()',
   },
   template: `
-    <div
-      #scroller
-      data-testid="sheet-scroller"
-      class="pointer-events-none fixed inset-x-0 z-[10] snap-y snap-mandatory overflow-y-auto overscroll-contain scrollbar-none motion-safe:scroll-smooth"
-      [style.top.px]="tops().full"
-      [style.bottom.px]="chrome().tabBar"
-      [attr.data-detent]="detent()"
-      (scroll)="onScroll()"
-    >
-      <!-- The spacer over the map: peek at its top, half part-way down, both zero-height rests. -->
-      <div class="relative" [style.height.px]="tops().peek - tops().full">
-        <div class="absolute inset-x-0 top-0 h-0 snap-start snap-always"></div>
-        <div
-          class="absolute inset-x-0 h-0 snap-start snap-always"
-          [style.top.px]="tops().peek - tops().half"
-        ></div>
-      </div>
-      <section
-        appPanelGlass
-        data-testid="sheet"
-        class="pointer-events-auto flex snap-start snap-always flex-col rounded-t-[26px] shadow-[0_-12px_40px_rgba(7,42,58,0.28)]"
-        [style.height.px]="tops().sheetHeight"
-        aria-label="Venues"
+    <!-- Rendered only once the chrome is measured: at a first layout with every rest at offset 0, Chrome keeps the sheet as its snap target and re-snaps to it — full — once the heights land. -->
+    @if (measuredOnce()) {
+      <div
+        #scroller
+        data-testid="sheet-scroller"
+        class="pointer-events-none fixed inset-x-0 z-[10] snap-y snap-mandatory overflow-y-auto overscroll-contain [overflow-anchor:none] scrollbar-none motion-safe:scroll-smooth"
+        [style.top.px]="tops().full"
+        [style.bottom.px]="chrome().tabBar"
+        [attr.data-detent]="detent()"
+        (scroll)="onScroll()"
       >
-        <div
-          data-testid="sheet-head"
-          class="shrink-0 rounded-t-[26px] bg-riv-tabbar-glass pb-3 backdrop-blur-[22px]"
+        <!-- overflow-anchor none: the spacer's height lands a pass after the first rest, and Chrome's scroll anchoring would carry the sheet to full with it. -->
+        <!-- The spacer over the map: peek at its top, half part-way down, both zero-height rests. -->
+        <div class="relative" [style.height.px]="tops().peek - tops().full">
+          <div class="absolute inset-x-0 top-0 h-0 snap-start snap-always"></div>
+          <div
+            class="absolute inset-x-0 h-0 snap-start snap-always"
+            [style.top.px]="tops().peek - tops().half"
+          ></div>
+        </div>
+        <section
+          appPanelGlass
+          data-testid="sheet"
+          class="pointer-events-auto flex snap-start snap-always flex-col rounded-t-[26px] shadow-[0_-12px_40px_rgba(7,42,58,0.28)]"
+          [style.height.px]="tops().sheetHeight"
+          aria-label="Venues"
         >
-          <button
-            type="button"
-            data-testid="sheet-grabber"
-            data-touch-exempt="the whole head is the drag surface; the bar is its cue"
-            class="flex h-[22px] w-full items-center justify-center"
-            aria-label="Resize the list"
-            (click)="cycle()"
+          <div
+            data-testid="sheet-head"
+            class="shrink-0 rounded-t-[26px] bg-riv-tabbar-glass pb-3 backdrop-blur-[22px]"
           >
-            <span class="block h-[5px] w-9 rounded-full bg-riv-ink-faint" aria-hidden="true"></span>
-          </button>
-          <ng-content select="[sheetHead]" />
-        </div>
-        <div
-          #list
-          data-testid="sheet-list"
-          class="min-h-0 flex-1 px-3 pb-[68px] scrollbar-none"
-          [class.overflow-y-auto]="atFull()"
-          [class.overflow-clip]="!atFull()"
-        >
-          <div #lifted [style.translate]="atFull() ? null : '0 ' + -lift() + 'px'">
-            <ng-content />
+            <button
+              type="button"
+              data-testid="sheet-grabber"
+              data-touch-exempt="the whole head is the drag surface; the bar is its cue"
+              class="flex h-[22px] w-full items-center justify-center"
+              aria-label="Resize the list"
+              (click)="cycle()"
+            >
+              <span
+                class="block h-[5px] w-9 rounded-full bg-riv-ink-faint"
+                aria-hidden="true"
+              ></span>
+            </button>
+            <ng-content select="[sheetHead]" />
           </div>
-        </div>
-      </section>
-    </div>
+          <!-- Below full the list is clipped, not scrolled: a row cut by the sheet's edge is reached whole by raising the sheet, which is what data-touch-pans tells the touch-target sweep. -->
+          <div
+            #list
+            data-testid="sheet-list"
+            data-touch-pans="the sheet rises: a row cut by its edge is reached whole by pulling the sheet up"
+            class="min-h-0 flex-1 px-3 pb-[68px] scrollbar-none"
+            [class.overflow-y-auto]="atFull()"
+            [class.overflow-clip]="!atFull()"
+          >
+            <div #lifted [style.translate]="atFull() ? null : '0 ' + -lift() + 'px'">
+              <ng-content />
+            </div>
+          </div>
+        </section>
+      </div>
+    }
 
     @if (atFull()) {
       <div
@@ -126,15 +147,17 @@ const MAP_PILL_LIFT_PX = 12;
 })
 export class DiscoverSheet {
   private readonly document = inject(DOCUMENT);
-  private readonly scroller = viewChild.required<ElementRef<HTMLElement>>('scroller');
-  private readonly list = viewChild.required<ElementRef<HTMLElement>>('list');
-  private readonly lifted = viewChild.required<ElementRef<HTMLElement>>('lifted');
+  private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
+  private readonly list = viewChild<ElementRef<HTMLElement>>('list');
+  private readonly lifted = viewChild<ElementRef<HTMLElement>>('lifted');
 
   protected readonly MAP_PILL_LIFT_PX = MAP_PILL_LIFT_PX;
 
   private readonly measured = signal(0);
   /** The viewport and the shell's chrome as last measured. */
   readonly chrome = signal({ viewportW: 0, viewportH: 0, header: 0, tabBar: 0 });
+  /** The viewport has been measured, so the scrollers can take their first layout at the real heights. */
+  protected readonly measuredOnce = computed(() => this.chrome().viewportH > 0);
   /** Where the sheet's top rests at each height, and its one-snapport height. */
   readonly tops = computed(() => sheetTops(this.chrome()));
   /** The outer scroller's `scrollTop`, mirrored on every scroll event: the one number the sheet is. */
@@ -165,27 +188,20 @@ export class DiscoverSheet {
     let restedAt = -1;
     afterRenderEffect({
       write: () => {
-        const scroller = this.scroller().nativeElement;
+        const scroller = this.scroller()?.nativeElement;
         const want = offsetFor(this.tops(), 'half');
-        if (want === restedAt) {
+        if (scroller === undefined || want === restedAt) {
           return;
         }
         restedAt = want;
-        const rest = (): void => {
-          scrollScroller(scroller, want, 'instant');
-          this.scrolled.set(scroller.scrollTop);
-        };
-        rest();
-        // The measured sheet reaches the DOM next pass, so a rest taken now clamps short.
-        if (scroller.scrollTop !== want) {
-          this.document.defaultView?.requestAnimationFrame(rest);
-        }
+        this.restAtHalf(scroller, want, 0);
       },
     });
     afterRenderEffect({
       write: () => {
-        if (this.atFull()) {
-          this.list().nativeElement.scrollTop = this.lift();
+        const list = this.list()?.nativeElement;
+        if (list !== undefined && this.atFull()) {
+          list.scrollTop = this.lift();
         }
       },
     });
@@ -195,17 +211,43 @@ export class DiscoverSheet {
     this.measured.update((n) => n + 1);
   }
 
+  /**
+   * Rest at half, cut, and confirm on the next frame that the rest held: a rest taken before the
+   * scroller's geometry has settled is carried elsewhere by the browser's own snapping (Round 11's
+   * tablet gap), so it is retaken, a few frames at most.
+   */
+  private restAtHalf(scroller: HTMLElement, want: number, attempt: number): void {
+    scrollScroller(scroller, want, 'instant');
+    this.scrolled.set(scroller.scrollTop);
+    if (attempt >= REST_ATTEMPTS) {
+      return;
+    }
+    this.document.defaultView?.requestAnimationFrame(() => {
+      if (scroller.scrollTop !== want) {
+        this.restAtHalf(scroller, want, attempt + 1);
+      }
+    });
+  }
+
   protected onScroll(): void {
+    const scroller = this.scroller()?.nativeElement;
+    const list = this.list()?.nativeElement;
+    if (scroller === undefined || list === undefined) {
+      return;
+    }
     const wasFull = this.atFull();
-    this.scrolled.set(this.scroller().nativeElement.scrollTop);
+    this.scrolled.set(scroller.scrollTop);
     if (wasFull && !this.atFull()) {
-      this.lift.set(this.list().nativeElement.scrollTop);
+      this.lift.set(list.scrollTop);
     }
   }
 
   /** Rest the sheet at a height; the scroller's own `scroll-behavior` decides whether it glides. */
   go(detent: Detent): void {
-    const scroller = this.scroller().nativeElement;
+    const scroller = this.scroller()?.nativeElement;
+    if (scroller === undefined) {
+      return;
+    }
     scrollScroller(scroller, offsetFor(this.tops(), detent));
     this.onScroll();
   }
@@ -220,16 +262,22 @@ export class DiscoverSheet {
    * scroller would be so a short list is never lifted into blank glass.
    */
   reveal(row: HTMLElement): void {
-    const list = this.list().nativeElement;
+    const list = this.list()?.nativeElement;
+    const lifted = this.lifted()?.nativeElement;
+    if (list === undefined || lifted === undefined) {
+      return;
+    }
     const box = list.getBoundingClientRect();
     const offset = row.getBoundingClientRect().top - box.top - REVEAL_LEAD_PX;
     if (this.atFull()) {
       list.scrollTop = list.scrollTop + offset;
       return;
     }
-    const room = this.chrome().viewportH - this.chrome().tabBar - box.top;
-    const listHeight = this.lifted().nativeElement.offsetHeight;
-    this.lift.update((lift) => clampLift(lift + offset, listHeight, room));
+    // The clamp is the list's own at full — its overflow there — so the handoff never jumps.
+    const room = this.tops().sheetHeight - HEAD_PX;
+    this.lift.update((lift) =>
+      clampLift(lift + offset, lifted.offsetHeight + LIST_PAD_BOTTOM_PX, room),
+    );
   }
 }
 

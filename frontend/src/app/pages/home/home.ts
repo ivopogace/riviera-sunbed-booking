@@ -35,7 +35,7 @@ import { FieldGlass } from '../../shared/field-glass';
 import { LoadAnnouncer } from '../../shared/load-announcer';
 import { focusMover } from '../../shared/focus-after-render';
 import { GeolocationGateway, GeolocationOutcome } from '../../shared/geolocation';
-import { LngLat, MapHandle } from '../../shared/map-engine';
+import { LngLat } from '../../shared/map-engine';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
@@ -556,8 +556,14 @@ export class Home {
    * at full, where the map is a sliver.
    */
   private followSheet(): void {
-    let wired: MapHandle | undefined;
-    afterRenderEffect((onCleanup) => {
+    // The dot re-projects on every camera move; its own effect, so a re-fit never drops the subscription.
+    effect((onCleanup) => {
+      const handle = this.mapHandle();
+      if (handle !== undefined) {
+        onCleanup(handle.onMove(() => this.moved.update((n) => n + 1)));
+      }
+    });
+    afterRenderEffect(() => {
       if (!this.sheetMode()) {
         return;
       }
@@ -567,10 +573,6 @@ export class Home {
       const detent = this.detent();
       if (handle === undefined || sheet === undefined) {
         return;
-      }
-      if (wired !== handle) {
-        wired = handle;
-        onCleanup(handle.onMove(() => this.moved.update((n) => n + 1)));
       }
       if (detent === 'full') {
         return;

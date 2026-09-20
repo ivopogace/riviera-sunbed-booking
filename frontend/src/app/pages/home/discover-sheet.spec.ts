@@ -156,14 +156,14 @@ describe('DiscoverSheet', () => {
     sheet().reveal(row);
     await settle();
 
-    // 1180 − 380 − 8 = 792 wanted, inside the ceiling: the list's 1500 less the room below its top.
+    // 1180 − 380 − 8 = 792 wanted, inside the ceiling: the list's overflow at full, the real scroller's own clamp.
     expect(sheet().lift()).toBe(792);
     expect(lifted.style.translate).toBe('0 -792px');
 
     row.getBoundingClientRect = () => new DOMRect(0, 2000, 390, 120);
     sheet().reveal(row);
     await settle();
-    expect(sheet().lift()).toBe(1500 - (window.innerHeight - 380));
+    expect(sheet().lift()).toBe(1500 + 68 - (sheet().tops().sheetHeight - 78));
   });
 
   it('hands the lift to the list’s real scroll position at full, and takes it back on the way down', async () => {

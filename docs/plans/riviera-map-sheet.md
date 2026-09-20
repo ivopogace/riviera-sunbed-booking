@@ -92,12 +92,18 @@ stands in for `feature/riviera-map-sheet`).
   phone and tablet").
 - [ ] **AC-2 (the browser's own latching):** Given the sheet at half, when a CDP touch flicks
   400 px up in 150 ms, then the outer scroller rests at full and the list's `scrollTop` is 0;
-  given full, a 350 px flick down in 150 ms rests at half, a slow 350 px drag (600 ms) rests at
-  half, and at full a drag on a list scrolled inside scrolls the list, never the sheet; below full
-  the list's `overflow` is `clip`. The hard-fling pass-through (≥ 4 px/ms passes half either way,
-  README Round 14 § 3) is recorded in the spec's header, not asserted. *Seam:* the outer scroller
-  (`data-testid="sheet-scroller"`, `data-detent`) · *Pinned by:* `discover-sheet.e2e.ts`
-  ("flicks rest at full and at half; the list scrolls only at full").
+  given full, a 200 px flick down in 100 ms rests at half (the half rest is 263 px away and holds
+  a fling that has not passed it), a slow 350 px drag (600 ms) rests at half (no fling: the
+  nearest rest wins from 87 px past it), and at full a drag on a list scrolled inside scrolls the
+  list, never the sheet; below full the list's `overflow` is `clip`. **Rewritten on evidence**
+  (F-1): the issue's "350 px down from full rests at half" and the record's "held to about
+  3 px/ms" were the prototype's list flipping its overflow mid-gesture, a layout change that cut
+  the touch sequence short; a static page with the same scrollers shows Chrome snaps a fling to
+  the position nearest its natural end and cannot hold one the finger has already carried past —
+  so a 350 px flick down from full rests at peek, by the specification. The hard fling stays
+  recorded, not asserted. *Seam:* the outer scroller (`data-testid="sheet-scroller"`,
+  `data-detent`) · *Pinned by:* `discover-sheet.e2e.ts` ("flicks rest at full and at half; the
+  list scrolls only at full").
 - [ ] **AC-3 (grabber and Map pill):** Given half, when the grabber is pressed, then the sheet
   goes to full; pressed again, to half; peek is never a press's target. Given full, the `Map`
   pill is rendered 12 px above the measured tab bar, pressing it rests at half, and the list's
@@ -189,14 +195,14 @@ bar, the List/Map switch and the preview card:
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Nested scroll-snap latching (outer sheet, inner list at `overflow: clip` below full) behaves differently outside Chromium | med | med | the mocked e2e proves Chromium; the mechanism is standard CSS (`scroll-snap-stop: always` on zero-height targets); WebKit noted as unverified in the PR | session | open |
-| R-2 | jsdom lays nothing out, so a component spec cannot prove a rest point or a lift | high | med | geometry lives in pure helpers with literal expected values from the README's tables; the e2e measures the rendered page | session | open |
-| R-3 | The chrome is measured through the shell's `.riv-header` / `.riv-tab-bar` class names, a contract across `app.html` and `pages/home` | low | med | one spec pins the two selectors against `app.html` (`app.spec.ts` already queries `.riv-header`); a missing element measures 0, which is the tablet's correct answer | session | open |
-| R-4 | CDP touch flicks flake on the CI runner | med | med | 10 steps over 150 ms as the prototype's driver; `expect.poll` on the scroller's `data-detent`; the suite's `retries: 1`; a hard fling is recorded, not asserted | session | open |
-| R-5 | Extracting the card `<li>` into an `ng-template` changes the shipped DOM | low | high | the 1,498-line `home.spec.ts` suite runs untouched and green; `ng-template` + `NgTemplateOutlet` keep the markup byte-identical | session | open |
+| R-1 | Nested scroll-snap latching (outer sheet, inner list at `overflow: clip` below full) behaves differently outside Chromium | med | med | the mocked e2e proves Chromium; the mechanism is standard CSS (`scroll-snap-stop: always` on zero-height targets); WebKit noted as unverified in the PR | session | closed — Chromium proven at 390/430/768/820; the record's speed threshold shown to be an artefact (F-1), the e2e asserts only what the specification promises; WebKit stays unverified, stated in the PR |
+| R-2 | jsdom lays nothing out, so a component spec cannot prove a rest point or a lift | high | med | geometry lives in pure helpers with literal expected values from the README's tables; the e2e measures the rendered page | session | closed — `sheet-geometry.spec.ts` + the e2e's four viewports |
+| R-3 | The chrome is measured through the shell's `.riv-header` / `.riv-tab-bar` class names, a contract across `app.html` and `pages/home` | low | med | one spec pins the two selectors against `app.html` (`app.spec.ts` already queries `.riv-header`); a missing element measures 0, which is the tablet's correct answer | session | closed — `app.spec.ts` ("carries the class names the Discover sheet measures its chrome by") |
+| R-4 | CDP touch flicks flake on the CI runner | med | med | 10 steps over 150 ms as the prototype's driver; `expect.poll` on the scroller's `data-detent`; the suite's `retries: 1`; a hard fling is recorded, not asserted | session | open — the flicks assert only rests the specification guarantees regardless of velocity (a 200 px flick cannot pass a rest 263 px away; a slow drag has no fling); watched on CI |
+| R-5 | Extracting the card `<li>` into an `ng-template` changes the shipped DOM | low | high | the 1,498-line `home.spec.ts` suite runs untouched and green; `ng-template` + `NgTemplateOutlet` keep the markup byte-identical | session | closed — the shipped describes pass unchanged (only the geolocation fake was added to two providers lists, since the page now injects the gateway); the flag-off e2e case pins the filter bar and switch |
 | R-6 | Sonar counts the sheet's list and the grid as duplicated blocks | med | low | one template for the card; the sheet reuses the shipped loading/empty/error blocks | session | open |
-| R-7 | The measured rest lands before the DOM has the measured geometry (Round 11's tablet gap) | med | med | the rest is repeated on the next frame when `scrollTop` did not land; pinned at 768 and 820 by the e2e | session | open |
-| R-8 | Timezone: the head's "today" | low | med | `defaultBookingDate(new Date())` is the shipped Tirane day (#6); the Vitest clock is frozen at Monday 2026-06-15 | session | open |
+| R-7 | The measured rest lands before the DOM has the measured geometry (Round 11's tablet gap) | med | med | the rest is repeated on the next frame when `scrollTop` did not land; pinned at 768 and 820 by the e2e | session | closed — two mechanisms found and fixed (F-2): Chrome's scroll anchoring carried the sheet to full when the spacer's height landed (`overflow-anchor: none`), and a first layout with every rest at offset 0 made the sheet Chrome's tracked snap target (the scroller renders only once the chrome is measured; the rest is confirmed on the next frame) |
+| R-8 | Timezone: the head's "today" | low | med | `defaultBookingDate(new Date())` is the shipped Tirane day (#6); the Vitest clock is frozen at Monday 2026-06-15 | session | closed — `discover-head.spec.ts` names the week from the frozen clock |
 | R-9 | A focus stranded by a transition (the picker closing, the note dismissed, the Map pill leaving at half) | med | med | `focusMover()` on each leg; axe + the keyboard walk in the e2e | session | open |
 
 ## Open questions / Assumptions
@@ -251,9 +257,9 @@ N/A — no contract change; `GET /api/venues?date=` as today.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5 — gates)`
 
-**Next action:** the mocked e2e at 390, 430, 768 and 820.
+**Next action:** merge `origin/main`, ready for review, the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -261,7 +267,7 @@ N/A — no contract change; `GET /api/venues?date=` as today.
 | 1 — the sheet component | ✅ | `Add the discover sheet: two snap scrollers on measured chrome (#1157)` |
 | 2 — the head and the coast picker | ✅ | `Add the one-row head and the coast picker (#1157)` |
 | 3 — Home behind the flag: ground, foot chrome, rows, pins, Near me | ✅ | `Put the riviera map under the sheet on Discover behind ?map=sheet (#1157)` |
-| 4 — the mocked e2e | | |
+| 4 — the mocked e2e | ✅ | `Prove the sheet in Chromium: flicks, rails, pins, Near me (#1157)` |
 | 5 — gates and close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -270,6 +276,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-1 | the e2e (Chromium) | a 350 px flick down from full rests at peek, not half: Chrome cannot hold a snap position the finger has already passed; the record's speed threshold was the prototype's mid-gesture overflow flip | fixed-in-phase-4 — AC-2 rewritten on the evidence, the e2e asserts the specification's rests |
+| F-2 | the e2e (Chromium) | the sheet opened at full on every viewport: scroll anchoring on the spacer's late height, and a first layout with all rests at offset 0 | fixed-in-phase-4 — `overflow-anchor: none`; the scroller renders after the first measurement; the rest confirmed next frame |
+| F-3 | the e2e (Chromium) | the credit intercepted Near me: the shipped `max-w-[calc(100%-24px)]` and `text-[12px]` out-ranked the foot's utilities by stylesheet order | fixed-in-phase-4 — both placements are one `[class]` value, no competing utilities |
+| F-4 | the e2e (Chromium) | the dot kept its pre-fit projection: the fit effect's `onCleanup` dropped the map's move subscription on its second run | fixed-in-phase-4 — the subscription in its own effect; `home.spec.ts` asserts the dot against a fresh projection |
+| F-5 | the e2e (Chromium) | the lift at half could exceed the list's own overflow at full, so the handoff jumped | fixed-in-phase-4 — the lift clamps to the list's overflow at full (the real scroller's clamp) |
 
 ---
 
@@ -358,6 +369,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-20 | F-3 | a `[class]` binding adding utilities beside static utilities for the same property (`max-w-*`, `text-[..px]`), resolved by stylesheet order | `grep -rn '\[class\]=' frontend/src/app --include=*.html --include=*.ts` then read each for a static twin of the bound property | `riviera-map.html` (the credit — fixed); `home.html` card location `right-[82px]`/`truncate` (no static twin); the head's chips (`CHIP + …`, no static class attr) | one fix; the rest carry no competing static utility |
+| 2026-09-20 | F-4 | an effect that subscribes with `onCleanup` while guarding the subscription by identity, so a re-run unsubscribes without re-subscribing | `grep -rn 'onCleanup(' frontend/src/app --include=*.ts` | `venue-pin-layer.ts` (subscribes on every run — correct), `home.ts` (fixed) | one fix |
 
 ---
 

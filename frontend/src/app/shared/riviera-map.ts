@@ -167,7 +167,9 @@ export class RivieraMap {
   protected readonly footChrome = computed(() => this.foot() !== null);
   /** The credit's place: the shipped bottom-right corner, or the foot's left, wrapped. */
   protected readonly creditPlacement = computed(() =>
-    this.footChrome() ? 'left-3 max-w-[200px] text-[11px]' : 'right-3 bottom-3',
+    this.footChrome()
+      ? 'left-3 max-w-[200px] text-[11px]'
+      : 'right-3 bottom-3 max-w-[calc(100%-24px)] text-[12px]',
   );
 
   private readonly live = signal<MapHandle | undefined>(undefined);

@@ -1797,9 +1797,16 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
     expect(groupHeads(fixture)).toEqual(['Golem 28 km 1 venue', 'Qerret 29 km 1 venue']);
     expect(cardNames(fixture)).toEqual(['Golem Beach Bar', 'Qerret Loungers']);
     expect(byTestId(fixture, 'here-dot')).not.toBeNull();
-    // The camera re-fits to the dot and the pins together, under the fit's ceiling of 14.
-    expect(map.handle()!.view()).not.toEqual(before);
-    expect(map.handle()!.view().zoom).toBeLessThanOrEqual(14);
+    // The camera re-fits to the dot and the pins together: a 27 km span, so well under the ceiling of 14.
+    const view = map.handle()!.view();
+    expect(view).not.toEqual(before);
+    expect(view.zoom).toBeLessThan(12);
+    expect(view.center.lat).toBeGreaterThan(41.0);
+    // And the dot is projected through that camera, not the one before it.
+    const dot = byTestId(fixture, 'here-dot')!;
+    const at = map.handle()!.project(TIRANA);
+    expect(Number.parseFloat(dot.style.left)).toBeCloseTo(at.x, 3);
+    expect(Number.parseFloat(dot.style.top)).toBeCloseTo(at.y, 3);
     expect(text(byTestId(fixture, 'sheet-near-me'))).toBe('◎ You are here');
   });
 
