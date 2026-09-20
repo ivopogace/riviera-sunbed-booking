@@ -261,7 +261,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | e2e (own) | The panel's `overflow-hidden` made it a scroll container, so opening the coast picker scrolled the head 23 px out of view and its controls measured 34 px against the 44 floor | fixed in phase 6 |
 | F-2 | e2e (axe) | `app-venue-row`'s host is `display: contents`, so its `<li>` was not a child of the `<ul>` in the accessibility tree | fixed in phase 6 — the list item is the page's, as the sheet's card's is |
-| F-3 | contrast maths (own) | `--riv-accent-ink` is redeclared for the dark theme but not riviera, so the row's price and a group's distance read 1.1:1 on the panel's glass. The same pairing already shipped on the sheet's group head from #1157 | fixed in phase 6 — both take the page ink |
+| F-3 | contrast maths (own) | `--riv-accent-ink` is redeclared for the dark theme but not riviera, so the row's price and a group's distance read 1.1:1 on the panel's glass. The same pairing already shipped on the sheet's group head from #1157 | fixed in phase 6 — both take the page ink; the token gap itself deferred → issue #1165 |
 | F-4 | home.spec (own) | The pin layer was fed every venue on the coast whenever the page was not in sheet mode, so the desktop panel would have drawn pins for regions it does not list | fixed in phase 4 |
 
 ---
