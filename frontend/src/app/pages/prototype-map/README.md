@@ -14,8 +14,9 @@ over the panel and the two-column rows, round 10 (§ _Round 10_) is a design cri
 desktop taken to code (a list instead of cards, the panel clamped to the row's width), and
 round 11 (§ _Round 11_) measures the shipped chrome instead of assuming it — the tab bar that is
 not there from `sm`, the header that is 73 px and not 68 — gives the header the page's edges on
-this route, and closes three of the open faults, and round 12 (§ _Round 12_) settles what a
-desktop row says and what the selected one says. The verdict and the first slices are at the end.
+this route, and closes three of the open faults, round 12 (§ _Round 12_) settles what a desktop
+row says and what the selected one says, and round 13 (§ _Round 13_) settles the map's own edges.
+The verdict and the first slices are at the end.
 
 ```
 npm start           # from frontend/
@@ -868,7 +869,7 @@ decorative — it is the row's whole fact set — but a tighter form (`★ 4.6 (
 convention) would need the raw count, and the shipped view model deliberately exposes only the
 agreed-noun label.
 
-## Round 13 — what the map's own edges do (open)
+## Round 13 — what the map's own edges do
 
 Noticed from the shots, not from the code: the desktop pane is rounded on its LEFT corners only.
 That was deliberate — `p-3 pr-0` puts a 12 px gutter left, top and bottom and none on the right,
@@ -888,21 +889,25 @@ the map's own chrome is already inset 12 px from the right (the zoom column 1384
 the credit 1115–1428 × 850–876), and a 22 px corner only bites the outer ~10 px of the curve, so
 neither is clipped. It is a taste call, not a collision.
 
-**The recommendation is `bleed`, and the shots are why.** `round` is tidier than what is there now
-— two matching rounded surfaces instead of one and a half — but it turns the map into a card, and
-the page then has a frame around everything, which is the dashboard look rounds 8–11 kept removing.
-`bleed` is the only one that agrees with the rest of the design: the map reaches the window's edges
-as it does on the phone (where the ground is `fixed inset-0` under the glass header), the panel
-floats ON it with its own shadow rather than sitting beside it in a frame, the single rounded edge
-is the one that faces the panel and therefore means something, and it is the only option that GAINS
-map (+21,024 px² at 1440, +32,544 at 1920) rather than spending it on a frame. At 1920 the case is
-clearer still: the panel's bottom ends at 1068 with the map continuing beneath it to 1080, so the
-panel is visibly on the ground rather than in a grid with it.
+**The call is `round`, and it is the default from this round on.** Both the panel and the map are
+now 12 px off every edge with all four corners at 22 px: two matching surfaces, nothing to
+explain, and the filed-corner asymmetry gone. Every desktop shot in `shots/` is `round` now;
+`Q-shore-1440-edge-*.png` and `Q-shore-1920-edge-*.png` keep all three side by side for the record.
 
-Still `half` by default until the call is made; `Q-shore-1440-edge-*.png` and
-`Q-shore-1920-edge-*.png` are the three, at both widths. Not tried: sending the pane UP under the
-glass header too, as the phone's ground runs under it — the most consistent version of all, and
-the one that would need the zoom column moved off the header's 73 px.
+**The prototype's own recommendation was `bleed`, and it is kept here as the dissent**, because a
+later round may want to reopen it: `bleed` is the only one of the three that agrees with the
+phone, where the ground is `fixed inset-0` under the glass header; the panel floats ON the map
+with its own shadow instead of sitting beside it in a frame; its single rounded edge is the one
+that faces the panel and therefore means something; and it is the only option that GAINS map
+(+21,024 px² at 1440, +32,544 at 1920) rather than spending it on a frame. At 1920 the panel's
+bottom ends at 1068 with the map running under it to 1080, which is the clearest picture of the
+panel being on the ground rather than in a grid with it. The counter-argument the call rests on is
+just as real: the design system is rounded glass surfaces, and a map that matches the panel is one
+system rather than two ideas sharing a screen.
+
+Not tried: sending the pane UP under the glass header, as the phone's ground runs under it — the
+most consistent version of all, and the one that would need the zoom column moved off the
+header's 73 px.
 
 ## Screenshots
 
@@ -939,7 +944,7 @@ contexts) and the geometry the notes argue from; `--json` keeps the raw numbers.
 | `Q-shore-1440-hdr-wide.png` · `-hdr-lower` · `-hdr-noeyebrow`                                                                                          | the header treatments one at a time: the page's edges; the 12.5 px lowercase eyebrow; the eyebrow gone                                                        |
 | `Q-shore-1440-menu.png` · `Q-shore-1440-menu-shell.png`                                                                                                | the theme swatch as a labelled menu row, and the shipped menu beside it                                                                                       |
 | `Q-shore-1440-free.png` · `Q-shore-1440-pin.png` · `Q-shore-1920-pin.png`                                                                              | Himarë's 864 px pane at the set's own height (`?pane=free`); a lone pin press lights and centres its row, and the lit row expands (round 12)                  |
-| `Q-shore-1440-edge-half.png` · `-edge-round` · `-edge-bleed` · `Q-shore-1920-edge-*.png`                                                               | round 13's open question: the map's own edges — the half-bleed of rounds 8–12, a rounded card, a full bleed                                                   |
+| `Q-shore-1440-edge-half.png` · `-edge-round` · `-edge-bleed` · `Q-shore-1920-edge-*.png`                                                               | round 13's three: the half-bleed of rounds 8–12, the rounded card that was chosen, the full bleed that was not                                                |
 | `Q-shore-1440-sarande-pin.png`                                                                                                                         | round 12's clearest case: `Pasqyra Blue` lit, `Request to Book · Snorkelling · Quiet bay` under its facts                                                     |
 | `Q-shore-1440-sarande.png` · `Q-shore-1440-beach.png` · `Q-shore-1440-picker.png`                                                                      | a narrow region on the 40 % floor; Dhërmi chosen; the coast picker, the desktop's chooser                                                                     |
 | `Q-shore-phone-dense.png` · `Q-shore-phone-dense-pin.png` · `Q-shore-phone-dense-full.png` · `Q-shore-1440-dense.png` · `Q-shore-1440-dense-beach.png` | round 8's density question: Himarë padded to 30 (`?dense=30`) at half, after a crowd press, at full; the desktop at 1440 and its Dhërmi beach at the zoom cap |
@@ -998,7 +1003,8 @@ Discover page behind a flag, test-first:
    desktop as rounds 8 to 11 left it — region-first with the picker as the chooser, the panel
    clamped to the row's width (38 %, 420–540) with the map taking the rest, the rows a flat list
    with the beach as a running head, sticky past 15 venues, the gutter for a region's crowds under
-   560 px of pane, and no whole-coast state anywhere. The row carries its review count, and the
+   560 px of pane, no whole-coast state anywhere, and the map inset 12 px with all four corners at
+   22 px, matching the panel beside it (round 13). The row carries its review count, and the
    SELECTED row — the pin's preview — expands to its amenities and its booking mode when that is
    not the default (round 12: 26 px on one row, no visible rows lost).
 

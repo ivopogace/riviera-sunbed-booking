@@ -707,13 +707,13 @@ export class VariantShore {
   /** `?pane=free`: the desktop pane's height follows the set as its width does. */
   private readonly freePane = computed(() => this.params().get('pane') === 'free');
   /**
-   * `?edge=`: what the map's own edges do on the desktop (round 12's open question).
-   * `half` is what rounds 8–12 shipped — a 12 px gutter left, top and bottom, flush right, so the
-   * pane is rounded on its left corners only; `round` insets it on all four sides and rounds them
-   * all, making the map a card beside the panel; `bleed` sends it to the right, top and bottom
-   * edges, leaving the one rounded edge that faces the panel.
+   * `?edge=`: what the map's own edges do on the desktop. `round` is the maintainer's call and the
+   * default — a 12 px gutter on all four sides and all four corners at 22 px, so the map and the
+   * panel are two matching surfaces. `half` is what rounds 8–12 had (gutter left, top and bottom,
+   * flush right, so only the left corners are rounded); `bleed` sends the pane to the right, top
+   * and bottom edges. Round 13 shot all three at 1440 and 1920.
    */
-  protected readonly paneEdgeMode = computed(() => this.params().get('edge') ?? 'half');
+  protected readonly paneEdgeMode = computed(() => this.params().get('edge') ?? 'round');
   protected readonly frameEdge = computed(() => {
     const mode = this.paneEdgeMode();
     return mode === 'round' ? 'p-3' : mode === 'bleed' ? 'pl-3' : 'p-3 pr-0';
