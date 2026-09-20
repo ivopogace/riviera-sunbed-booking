@@ -40,8 +40,11 @@ picker as shipped by #1157) · `tdd` (each phase red first at the named seam: th
 state in `riviera-map.spec.ts`, the pad by a worked example in `camera-fit.spec.ts`, the
 picker's ribbon, dots, lit states and teardown by DOM state and the fake handle in
 `coast-picker.spec.ts`, the geometry in Chromium by the e2e) · `riviera-review-overlay` (review
-gate — due at ready-for-review) · `riviera-docs-freshness` (due at close-out; `CONTEXT.md`'s
-coast-picker entry gains the ribbon) · `riviera-local-debug` (unshallowed the clone; Vitest runs
+gate — due at ready-for-review) · `riviera-docs-freshness` (**ran** over `565d83cb..HEAD`: step
+2a found no present-tense contradiction — the glossary's riviera-map entry and ADR-0022's credit
+decision hold, the ribbon's credit keeps its links; step 2b's counting sweep found no "the two
+maps / contexts" claim; `CONTEXT.md`'s coast-picker entry gains the ribbon and the leader via
+`domain-modeling`; 0 other findings) · `domain-modeling` (the glossary edit) · `riviera-local-debug` (unshallowed the clone; Vitest runs
 through `ng test --include`, not bare `vitest`; Playwright's Chromium at
 `/opt/pw-browsers/chromium` via `PW_CHROMIUM_EXECUTABLE`, 2 workers) · `riviera-frontend` (the
 ribbon mode stays in `shared/riviera-map.ts`, the dots and leaders in `pages/home/`; no new
@@ -190,7 +193,7 @@ N/A — no contract change.
 | 3 — dots, leaders, lit states | ✅ | same |
 | 4 — the popover skin from `lg` | ✅ | same |
 | 5 — the mocked e2e: contexts, geometry, press, names | ✅ | (this commit) — 21/21 in `discover-sheet.e2e.ts` locally |
-| 6 — close-out: CONTEXT.md, retire the #1157 plan, docs-freshness | | |
+| 6 — close-out: CONTEXT.md, retire the #1157 plan, docs-freshness | ⏳ | docs committed; final state at the last code commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -286,8 +289,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 6 — Close-out
 
-- [ ] `CONTEXT.md` coast-picker entry; `git rm docs/plans/riviera-map-sheet.md`; docs-freshness
-  over the resolved range; the epic checklist; the plan's final state in the last code commit.
+- [x] `CONTEXT.md` coast-picker entry; `git rm docs/plans/riviera-map-sheet.md`; docs-freshness
+  over the resolved range.
+- [ ] The epic checklist; the plan's final state in the last code commit.
 
 ---
 
