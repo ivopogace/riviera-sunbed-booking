@@ -273,3 +273,37 @@ describe('Discover list/map switch contrast', () => {
     expect(contrastRatio(rgbToHex(ink), rgbToHex(fill))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });
+
+/**
+ * A dusk row is `saturate(0)` over the whole card — the Filter Effects `saturate` matrix, applied
+ * to the ink and to the card glass alike (over each theme's stops), which keeps luminance and so
+ * keeps contrast; a faded row (opacity) would not. The matrix rows are the specification's.
+ */
+function desaturate([r, g, b]: Rgb): Rgb {
+  const lum = 0.213 * r + 0.715 * g + 0.072 * b;
+  return [Math.round(lum), Math.round(lum), Math.round(lum)];
+}
+
+describe.each(THEMES)('Discover dusk row contrast — $name theme', (theme) => {
+  it('card ink still meets AA on the card glass once both are desaturated', () => {
+    for (const stop of theme.stops) {
+      const glass = desaturate(surfaceOver(theme.cardGlass, stop));
+      const ink = desaturate(theme.cardInk);
+      expect(
+        contrastRatio(rgbToHex(ink), rgbToHex(glass)),
+        `over ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  it('the accent price still meets AA on the desaturated card glass', () => {
+    for (const stop of theme.stops) {
+      const glass = desaturate(surfaceOver(theme.cardGlass, stop));
+      const accent = desaturate(theme.accent);
+      expect(
+        contrastRatio(rgbToHex(accent), rgbToHex(glass)),
+        `over ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+});

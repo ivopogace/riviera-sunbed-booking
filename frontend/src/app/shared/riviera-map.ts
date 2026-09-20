@@ -71,10 +71,10 @@ export const NEAR_ME_ZOOM = 12;
  * outside `maxBounds` would be clamped to a corner with the visitor's marker unreachable, so it is
  * refused rather than half-honoured.
  */
-type NearMeProblem = GeolocationFailure | 'off-map';
+export type NearMeProblem = GeolocationFailure | 'off-map';
 
 /** One short sentence each, all of them saying the map stayed where the visitor left it. */
-const NEAR_ME_MESSAGES: Record<NearMeProblem, string> = {
+export const NEAR_ME_MESSAGES: Record<NearMeProblem, string> = {
   denied: 'Location permission was declined. The map hasn’t moved.',
   unavailable: 'Your location isn’t available right now.',
   timeout: 'Finding your location took too long. Try again.',
@@ -142,6 +142,12 @@ export class RivieraMap {
    * and a browser without the Geolocation API gets no control either way.
    */
   readonly nearMe = input(false);
+  /**
+   * The phone chrome: the map's controls on one row at its foot, this many px up from the map's
+   * bottom edge — the credit at the left, wrapped to 200 px, no zoom column (a pinch zooms), and
+   * the consumer's own control at the right. `null` is the shipped column.
+   */
+  readonly foot = input<number | null>(null);
 
   readonly mapClick = output<LngLat>();
   readonly pinMoved = output<LngLat>();
@@ -157,6 +163,18 @@ export class RivieraMap {
     const problem = this.problem();
     return problem === null ? null : NEAR_ME_MESSAGES[problem];
   });
+
+  protected readonly footChrome = computed(() => this.foot() !== null);
+  /**
+   * The credit's place: the shipped bottom-right corner, or the foot's left, wrapped to 200 px —
+   * less on the narrowest phone, where it leaves the consumer's control at the right its 150 px
+   * (`You are here`), the two insets and a 10 px gap.
+   */
+  protected readonly creditPlacement = computed(() =>
+    this.footChrome()
+      ? 'left-3 max-w-[min(200px,calc(100%-184px))] text-[11px]'
+      : 'right-3 bottom-3 max-w-[calc(100%-24px)] text-[12px]',
+  );
 
   private readonly live = signal<MapHandle | undefined>(undefined);
   /**
@@ -348,7 +366,8 @@ export class RivieraMap {
   }
 }
 
-function withinBounds(at: LngLat, bounds: readonly [LngLat, LngLat]): boolean {
+/** The fence rule: inside the ADR-0022 extract or not a place the map can open on. */
+export function withinBounds(at: LngLat, bounds: readonly [LngLat, LngLat]): boolean {
   const [southWest, northEast] = bounds;
   return (
     at.lng >= southWest.lng &&

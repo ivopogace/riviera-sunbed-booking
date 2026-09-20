@@ -18,7 +18,9 @@ import { GeolocationGateway } from '../../shared/geolocation';
 import { MapEngine } from '../../shared/map-engine';
 import { RIVIERA_MAP_OPTIONS, RivieraMap } from '../../shared/riviera-map';
 import { VenueSummary } from '../../shared/venue-views';
+import { DiscoverSheet } from './discover-sheet';
 import { Home } from './home';
+import { VenuePinLayer } from './venue-pin-layer';
 
 /** Two venues across two beaches/regions, mirroring the discovery summary shape. */
 function venues(): VenueSummary[] {
@@ -74,6 +76,7 @@ describe('Home (the route-carried date)', () => {
           provide: ActivatedRoute,
           useValue: { queryParamMap: params, snapshot: { queryParamMap: params.value } },
         },
+        { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
       ],
     });
     httpMock = TestBed.inject(HttpTestingController);
@@ -125,7 +128,12 @@ describe('Home (venue discovery)', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Home],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(Home);
@@ -1494,5 +1502,449 @@ describe('Home (venue pins and the preview)', () => {
     } finally {
       el(fixture).remove();
     }
+  });
+});
+
+/**
+ * The riviera map sheet behind `?map=sheet`: below `lg` the map is the
+ * ground, the list a sheet over it, the head one row carrying the query, the row the pin's
+ * preview, and Near me three arms decided by the map's own fence rule. What jsdom cannot lay out
+ * — the rest points, the flicks, the first row's y — is `discover-sheet.e2e.ts`'s.
+ */
+describe('Home (the riviera map sheet, ?map=sheet)', () => {
+  let httpMock: HttpTestingController;
+  let geolocation: FakeGeolocationGateway;
+  const originalMatchMedia = globalThis.matchMedia;
+  const scrollable = Element.prototype as { scrollTo?: (options: ScrollToOptions) => void };
+  const originalScrollTo = scrollable.scrollTo;
+  /** Every `scrollTo` asked of any element, in order — the sheet's rests among them. */
+  let asked: number[];
+
+  const ROME = { lng: 12.5, lat: 41.9 };
+  const TIRANA = { lng: 19.82, lat: 41.33 };
+  const ON_DHERMI = { lng: 19.64, lat: 40.15 };
+
+  /** Five pinned venues over three regions; Palasa Sands has closed its sales for today. */
+  function sheetVenues(): VenueSummary[] {
+    const [miramar, aurora] = venues();
+    return [
+      { ...miramar, location: { latitude: 39.7712, longitude: 20.0021 } },
+      { ...aurora, location: { latitude: 40.1573, longitude: 19.6401 } },
+      {
+        id: 3,
+        name: 'Palasa Sands',
+        beach: 'PALASE',
+        region: 'HIMARE',
+        ratingTenths: 44,
+        reviewsCount: 12,
+        bookingMode: 'INSTANT',
+        fromPrice: { minorUnits: 2000, currency: 'EUR' },
+        availability: { free: 4, total: 8 },
+        salesOpen: false,
+        location: { latitude: 40.175, longitude: 19.607 },
+      },
+      {
+        id: 7,
+        name: 'Golem Beach Bar',
+        beach: 'GOLEM',
+        region: 'DURRES',
+        ratingTenths: 40,
+        reviewsCount: 5,
+        bookingMode: 'INSTANT',
+        fromPrice: { minorUnits: 1500, currency: 'EUR' },
+        availability: { free: 9, total: 12 },
+        location: { latitude: 41.24, longitude: 19.51 },
+      },
+      {
+        id: 8,
+        name: 'Qerret Loungers',
+        beach: 'QERRET',
+        region: 'DURRES',
+        ratingTenths: 39,
+        reviewsCount: 3,
+        bookingMode: 'REQUEST',
+        fromPrice: { minorUnits: 1800, currency: 'EUR' },
+        availability: { free: 6, total: 10 },
+        location: { latitude: 41.21, longitude: 19.51 },
+      },
+    ];
+  }
+
+  function stubViewport(wide: boolean): void {
+    globalThis.matchMedia = (query: string) =>
+      ({
+        matches: wide,
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }) as unknown as MediaQueryList;
+  }
+
+  function render(query: Record<string, string>, wide = false): ComponentFixture<Home> {
+    stubViewport(wide);
+    TestBed.resetTestingModule();
+    const params = new BehaviorSubject<ParamMap>(convertToParamMap(query));
+    geolocation = new FakeGeolocationGateway();
+    TestBed.configureTestingModule({
+      imports: [Home],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: { queryParamMap: params, snapshot: { queryParamMap: params.value } },
+        },
+        { provide: MapEngine, useValue: new FakeMapEngine() },
+        { provide: GeolocationGateway, useValue: geolocation },
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(Home);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  async function settle(fixture: ComponentFixture<Home>): Promise<void> {
+    for (let pass = 0; pass < 3; pass += 1) {
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
+    fixture.detectChanges();
+  }
+
+  async function sheetPage(): Promise<ComponentFixture<Home>> {
+    const fixture = render({ map: 'sheet' });
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush(sheetVenues());
+    await settle(fixture);
+    return fixture;
+  }
+
+  function el(fixture: ComponentFixture<Home>): HTMLElement {
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  function byTestId(fixture: ComponentFixture<Home>, id: string): HTMLElement | null {
+    return el(fixture).querySelector<HTMLElement>(`[data-testid="${id}"]`);
+  }
+
+  function text(node: Element | null | undefined): string {
+    return node?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  }
+
+  function cardNames(fixture: ComponentFixture<Home>): string[] {
+    return [...el(fixture).querySelectorAll('[data-testid="venue-card"] .card-name')].map(text);
+  }
+
+  function groupHeads(fixture: ComponentFixture<Home>): string[] {
+    return [...el(fixture).querySelectorAll('[data-testid="sheet-group"]')].map(text);
+  }
+
+  function sheet(fixture: ComponentFixture<Home>): DiscoverSheet {
+    return fixture.debugElement.query(By.directive(DiscoverSheet))
+      .componentInstance as DiscoverSheet;
+  }
+
+  async function locateAt(
+    fixture: ComponentFixture<Home>,
+    outcome: Parameters<FakeGeolocationGateway['answerWith']>[0],
+  ): Promise<void> {
+    byTestId(fixture, 'sheet-near-me')!.click();
+    geolocation.answerWith(outcome);
+    await settle(fixture);
+  }
+
+  beforeEach(() => {
+    asked = [];
+    scrollable.scrollTo = function scrollToStub(this: HTMLElement, options: ScrollToOptions) {
+      const top = options.top ?? 0;
+      asked.push(top);
+      this.scrollTop = top;
+      this.dispatchEvent(new Event('scroll'));
+    };
+  });
+
+  afterEach(() => {
+    globalThis.matchMedia = originalMatchMedia;
+    scrollable.scrollTo = originalScrollTo;
+    httpMock.verify();
+  });
+
+  it('without ?map=sheet the page is today’s Discover', async () => {
+    const fixture = render({});
+    httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`).flush(venues());
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'sheet-scroller')).toBeNull();
+    expect(byTestId(fixture, 'filter-beach')).not.toBeNull();
+    expect(byTestId(fixture, 'view-switch')).not.toBeNull();
+  });
+
+  it('keeps the shipped layout from lg up even with the flag', async () => {
+    const fixture = render({ map: 'sheet' }, true);
+    httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`).flush(venues());
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'sheet-scroller')).toBeNull();
+    expect(byTestId(fixture, 'filter-beach')).not.toBeNull();
+  });
+
+  it('with the flag below lg, the map is the ground and the list is the sheet; the filter bar, the switch and the preview card are gone', async () => {
+    const fixture = await sheetPage();
+
+    expect(byTestId(fixture, 'sheet-scroller')).not.toBeNull();
+    expect(byTestId(fixture, 'riviera-map-fake')).not.toBeNull();
+    expect(byTestId(fixture, 'filter-beach')).toBeNull();
+    expect(byTestId(fixture, 'view-switch')).toBeNull();
+    expect(byTestId(fixture, 'map-zoom-in')).toBeNull();
+    expect(byTestId(fixture, 'map-near-me')).toBeNull();
+    expect(byTestId(fixture, 'sheet-near-me')).not.toBeNull();
+    expect(byTestId(fixture, 'map-attribution')).not.toBeNull();
+  });
+
+  it('opens on Himarë: its venues by beach, its beaches in the chip, the selling line from the server’s verdict', async () => {
+    const fixture = await sheetPage();
+
+    expect(text(byTestId(fixture, 'head-title'))).toBe('Himarë');
+    expect(text(byTestId(fixture, 'head-subtitle'))).toBe('1 of 2 selling today');
+    expect(byTestId(fixture, 'head-beaches')?.getAttribute('aria-label')).toBe(
+      'All 2 beaches: choose one',
+    );
+    expect(groupHeads(fixture)).toEqual(['Palasë 1 venue', 'Dhërmi 1 venue']);
+    expect(cardNames(fixture)).toEqual(['Palasa Sands', 'Aurora Bay']);
+    // The pins are the region's, not the coast's.
+    expect(el(fixture).querySelectorAll('[data-pin]').length).toBe(2);
+  });
+
+  it('wears dusk on a row whose sales for today have closed, desaturated and badged, never faded', async () => {
+    const fixture = await sheetPage();
+    const rows = [...el(fixture).querySelectorAll<HTMLElement>('[data-testid="venue-card"]')];
+
+    expect(rows[0].classList.contains('saturate-0')).toBe(true);
+    expect(rows[0].querySelector('app-sales-closed-chip')).not.toBeNull();
+    expect(rows[1].classList.contains('saturate-0')).toBe(false);
+    expect([...rows[0].classList].some((cls) => cls.startsWith('opacity-'))).toBe(false);
+  });
+
+  it('a pin press lights its row, hands it to the sheet to lift, and opens no preview card', async () => {
+    const fixture = await sheetPage();
+    const reveal = vi.spyOn(sheet(fixture), 'reveal');
+
+    el(fixture).querySelector<HTMLButtonElement>('[data-pin="2"]')!.click();
+    await settle(fixture);
+
+    const lit = el(fixture).querySelector('[data-venue-pin="2"]')!;
+    expect(lit.hasAttribute('data-selected')).toBe(true);
+    expect(lit.querySelector('[data-testid="venue-card"]')?.getAttribute('aria-current')).toBe(
+      'true',
+    );
+    expect(reveal).toHaveBeenCalledWith(lit);
+    expect(byTestId(fixture, 'venue-preview')).toBeNull();
+  });
+
+  it('a chip pressed at peek raises the sheet to half before its rail opens', async () => {
+    const fixture = await sheetPage();
+    const scroller = byTestId(fixture, 'sheet-scroller')!;
+    scroller.scrollTop = 0;
+    scroller.dispatchEvent(new Event('scroll'));
+    await settle(fixture);
+    expect(sheet(fixture).detent()).toBe('peek');
+    expect(el(fixture).querySelector('[role="group"][aria-label="Day"]')).toBeNull();
+    asked = [];
+
+    byTestId(fixture, 'head-day')!.click();
+    await settle(fixture);
+
+    const tops = sheet(fixture).tops();
+    expect(asked).toContain(tops.peek - tops.half);
+    expect(sheet(fixture).detent()).toBe('half');
+    expect(el(fixture).querySelector('[role="group"][aria-label="Day"]')).not.toBeNull();
+  });
+
+  it('Near me from outside the fence leaves the map and the list unchanged and shows the map’s words in the head', async () => {
+    const fixture = await sheetPage();
+    const map = fixture.debugElement.query(By.directive(RivieraMap))
+      .componentInstance as RivieraMap;
+    const before = map.handle()!.view();
+
+    await locateAt(fixture, { kind: 'located', at: ROME });
+
+    expect(text(byTestId(fixture, 'head-note'))).toBe(
+      'You don’t seem to be on the Albanian riviera — the map hasn’t moved.',
+    );
+    expect(text(byTestId(fixture, 'head-title'))).toBe('Himarë');
+    expect(cardNames(fixture)).toEqual(['Palasa Sands', 'Aurora Bay']);
+    expect(byTestId(fixture, 'here-dot')).toBeNull();
+    expect(map.handle()!.view()).toEqual(before);
+
+    byTestId(fixture, 'head-note-dismiss')!.click();
+    await settle(fixture);
+    expect(byTestId(fixture, 'head-note')).toBeNull();
+  });
+
+  it('Near me from Tirana frames the tourist with the coast nearest first, titled by the region', async () => {
+    const fixture = await sheetPage();
+    const map = fixture.debugElement.query(By.directive(RivieraMap))
+      .componentInstance as RivieraMap;
+    const before = map.handle()!.view();
+
+    await locateAt(fixture, { kind: 'located', at: TIRANA });
+
+    expect(text(byTestId(fixture, 'head-title'))).toBe('Durrës');
+    expect(byTestId(fixture, 'head-located')).not.toBeNull();
+    expect(groupHeads(fixture)).toEqual(['Golem 28 km 1 venue', 'Qerret 29 km 1 venue']);
+    expect(cardNames(fixture)).toEqual(['Golem Beach Bar', 'Qerret Loungers']);
+    expect(byTestId(fixture, 'here-dot')).not.toBeNull();
+    // The camera re-fits to the dot and the pins together: a 27 km span, so well under the ceiling of 14.
+    const view = map.handle()!.view();
+    expect(view).not.toEqual(before);
+    expect(view.zoom).toBeLessThan(12);
+    expect(view.center.lat).toBeGreaterThan(41.0);
+    // And the dot is projected through that camera, not the one before it.
+    const dot = byTestId(fixture, 'here-dot')!;
+    const at = map.handle()!.project(TIRANA);
+    expect(Number.parseFloat(dot.style.left)).toBeCloseTo(at.x, 3);
+    expect(Number.parseFloat(dot.style.top)).toBeCloseTo(at.y, 3);
+    expect(text(byTestId(fixture, 'sheet-near-me'))).toBe('◎ You are here');
+  });
+
+  it('Near me on the beach titles the beach', async () => {
+    const fixture = await sheetPage();
+
+    await locateAt(fixture, { kind: 'located', at: ON_DHERMI });
+
+    expect(text(byTestId(fixture, 'head-title'))).toBe('Dhërmi');
+    expect(groupHeads(fixture)[0]).toMatch(/^Dhërmi 0\.\d km 1 venue$/);
+  });
+
+  it('a declined position shows the map’s words for it', async () => {
+    const fixture = await sheetPage();
+
+    await locateAt(fixture, { kind: 'denied' });
+
+    expect(text(byTestId(fixture, 'head-note'))).toBe(
+      'Location permission was declined. The map hasn’t moved.',
+    );
+  });
+
+  it('a crowd press narrows to its beach: the chip lights, the rows are the beach’s, the title is the beach', async () => {
+    const fixture = await sheetPage();
+    const layer = fixture.debugElement.query(By.directive(VenuePinLayer))
+      .componentInstance as VenuePinLayer;
+
+    layer.narrowed.emit('DHERMI');
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'head-beaches')?.getAttribute('aria-current')).toBe('true');
+    expect(text(byTestId(fixture, 'head-title'))).toBe('Dhërmi');
+    expect(cardNames(fixture)).toEqual(['Aurora Bay']);
+
+    byTestId(fixture, 'head-beaches')!.click();
+    await settle(fixture);
+    el(fixture)
+      .querySelector<HTMLButtonElement>('[role="group"][aria-label="Beach"] button')!
+      .click();
+    await settle(fixture);
+    expect(cardNames(fixture)).toEqual(['Palasa Sands', 'Aurora Bay']);
+  });
+
+  it('the place opens the coast picker; a pick moves the region and hands focus back to the place', async () => {
+    const fixture = await sheetPage();
+
+    byTestId(fixture, 'head-place')!.click();
+    await settle(fixture);
+    const rows = [...el(fixture).querySelectorAll<HTMLElement>('[data-testid="picker-row"]')];
+    expect(rows.map(text)).toEqual([
+      'Durrës 2 venues from €15',
+      'Golem 1 venue from €15',
+      'Qerret 1 venue from €18',
+      'Himarë 2 venues from €20',
+      'Palasë 1 venue from €20',
+      'Dhërmi 1 venue from €30',
+      'Sarandë 1 venue from €25',
+      'Ksamil 1 venue from €25',
+    ]);
+
+    rows[0].click();
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'coast-picker')).toBeNull();
+    expect(text(byTestId(fixture, 'head-title'))).toBe('Durrës');
+    expect(cardNames(fixture)).toEqual(['Golem Beach Bar', 'Qerret Loungers']);
+    expect(document.activeElement).toBe(byTestId(fixture, 'head-place'));
+  });
+
+  it('a day pick re-counts the day with one unfiltered request, keeping the place', async () => {
+    const fixture = await sheetPage();
+    byTestId(fixture, 'head-day')!.click();
+    await settle(fixture);
+    const chips = [
+      ...el(fixture).querySelectorAll<HTMLButtonElement>('[role="group"][aria-label="Day"] button'),
+    ];
+
+    chips[1].click();
+    await settle(fixture);
+
+    const request = httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`);
+    expect(request.request.params.get('date')).toBe('2026-06-16');
+    expect(request.request.params.has('beach')).toBe(false);
+    expect(request.request.params.has('region')).toBe(false);
+    request.flush(sheetVenues());
+    await settle(fixture);
+    expect(text(byTestId(fixture, 'head-subtitle'))).toBe('2 venues');
+    expect(text(byTestId(fixture, 'head-day'))).toBe('Tomorrow ▾');
+    expect(text(byTestId(fixture, 'head-title'))).toBe('Himarë');
+  });
+
+  it('speaks the landed list and every narrowing from one persistent outcome region', async () => {
+    const fixture = await sheetPage();
+    const outcome = byTestId(fixture, 'sheet-outcome')!;
+    expect(outcome.getAttribute('aria-live')).toBe('polite');
+    expect(text(outcome)).toBe('Himarë: 1 of 2 selling today');
+
+    byTestId(fixture, 'head-beaches')!.click();
+    await settle(fixture);
+    [
+      ...el(fixture).querySelectorAll<HTMLButtonElement>(
+        '[role="group"][aria-label="Beach"] button',
+      ),
+    ]
+      .find((chip) => text(chip).startsWith('Dhërmi'))!
+      .click();
+    await settle(fixture);
+    expect(byTestId(fixture, 'sheet-outcome')).toBe(outcome);
+    expect(text(outcome)).toBe('Dhërmi: 1 of 1 selling today');
+
+    // A reload empties the words and the same element speaks the next list.
+    byTestId(fixture, 'head-day')!.click();
+    await settle(fixture);
+    el(fixture)
+      .querySelectorAll<HTMLButtonElement>('[role="group"][aria-label="Day"] button')[1]
+      .click();
+    await settle(fixture);
+    expect(byTestId(fixture, 'sheet-outcome')).toBe(outcome);
+    expect(text(outcome)).toBe('');
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush(sheetVenues());
+    await settle(fixture);
+    expect(byTestId(fixture, 'sheet-outcome')).toBe(outcome);
+    expect(text(outcome)).toBe('Dhërmi: 1 venue');
+  });
+
+  it('Escape clears the lit row and closes an open rail', async () => {
+    const fixture = await sheetPage();
+    el(fixture).querySelector<HTMLButtonElement>('[data-pin="2"]')!.click();
+    byTestId(fixture, 'head-day')!.click();
+    await settle(fixture);
+    expect(el(fixture).querySelector('[data-selected]')).not.toBeNull();
+
+    el(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle(fixture);
+
+    expect(el(fixture).querySelector('[data-selected]')).toBeNull();
+    expect(el(fixture).querySelector('[role="group"][aria-label="Day"]')).toBeNull();
   });
 });

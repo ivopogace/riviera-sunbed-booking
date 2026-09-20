@@ -1,415 +1,593 @@
-<section class="discover mx-auto max-w-[1080px] px-6 pt-10 pb-20" aria-labelledby="discover-title">
-  <!-- Hero padding is theme-SHARED so the headline never shifts; the riviera-only scrim (--riv-hero-scrim, none elsewhere) px-anchors its fades to exactly this 34px/40px padding. -->
-  <div class="hero bg-(image:--riv-hero-scrim) px-[26px] pt-[34px] pb-10 text-riv-ink">
-    <p
-      class="hero-chip mb-[18px] inline-flex items-center gap-[9px] rounded-full border border-riv-chip-border bg-riv-chip-bg px-[14px] py-[7px] text-[12px] font-bold tracking-[0.16em] uppercase backdrop-blur-[10px]"
-    >
-      <span
-        class="hero-chip-dash inline-block h-px w-[18px] bg-riv-ink-faint"
-        aria-hidden="true"
-      ></span>
-      Sunbeds by the sea
-    </p>
-    <!-- The 680px cap keeps the headline breaking over two lines, matching the drawn hero width. -->
-    <h1
-      id="discover-title"
-      class="hero-title mb-4 max-w-[680px] text-[clamp(40px,6vw,66px)] leading-[1.02] font-bold tracking-[-0.025em] text-shadow-riv-hero"
-    >
-      Find your spot on the Riviera.
-    </h1>
-    <!-- Intro capped to a comfortable reading measure; the title uses the full width, the copy doesn't. -->
-    <p class="hero-intro max-w-[520px] text-[17px] leading-[1.5] text-riv-ink-soft">
-      Pick a beach and a date, then choose your sunbed straight from the venue’s map — front row to
-      promenade.
-    </p>
-  </div>
-
-  <form
-    class="filter-bar mt-[34px] mb-1 flex flex-wrap items-end gap-[18px] rounded-[26px] px-[22px] py-5 shadow-[0_14px_44px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[28px] backdrop-saturate-[1.7]"
-    appCardGlass
-    (submit)="$event.preventDefault()"
+<!-- One card, one skeleton grid and one failure panel, shared by the sheet (flag on) and the shipped page (flag off): the same DOM either way. -->
+<ng-template #venueCardTpl let-card let-km="km">
+  <!-- Named group/card keys the hover lift on the li (the overlaid slideshow controls keep it) without tripping the controls' own unnamed group-hover chevron tint. -->
+  <li
+    class="group/card relative rounded-[28px] [&[data-selected]]:outline-[3px] [&[data-selected]]:outline-offset-[3px] [&[data-selected]]:outline-riv-accent-ink"
+    [attr.data-venue-pin]="card.id"
+    [attr.data-selected]="isSelected(card) ? '' : null"
   >
-    <p class="field flex flex-col gap-[7px]">
-      <label
-        class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-faint"
-        for="filter-beach"
-        >Beach</label
-      >
-      <select
-        appTouchTarget
-        appFieldGlass
-        class="min-w-[168px] cursor-pointer rounded-[14px] px-[13px] py-[10px] text-[16px] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
-        id="filter-beach"
-        data-testid="filter-beach"
-        [value]="beach()"
-        (change)="onBeachChange($event)"
-      >
-        <option value="">All beaches</option>
-        @for (b of beaches(); track b.code) {
-          <option [value]="b.code">{{ b.label }}</option>
-        }
-      </select>
-    </p>
-
-    <p class="field flex flex-col gap-[7px]">
-      <label
-        class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-faint"
-        for="filter-region"
-        >Region</label
-      >
-      <select
-        appTouchTarget
-        appFieldGlass
-        class="min-w-[168px] cursor-pointer rounded-[14px] px-[13px] py-[10px] text-[16px] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
-        id="filter-region"
-        data-testid="filter-region"
-        [value]="region()"
-        (change)="onRegionChange($event)"
-      >
-        <option value="">All regions</option>
-        @for (r of regions(); track r.code) {
-          <option [value]="r.code">{{ r.label }}</option>
-        }
-      </select>
-    </p>
-
-    <p class="field flex flex-col gap-[7px]">
-      <label
-        class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-faint"
-        for="filter-date"
-        >Date</label
-      >
-      <input
-        appTouchTarget
-        appFieldGlass
-        class="min-w-[168px] cursor-pointer rounded-[14px] px-[13px] py-[10px] text-[16px] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
-        id="filter-date"
-        type="date"
-        data-testid="filter-date"
-        [min]="minDate"
-        [value]="selectedDate()"
-        (change)="onDateChange($event)"
-      />
-    </p>
-
-    <!-- aria-live: changing a filter swaps the grid silently, so announce the new count to AT.
-         The count stays visible whenever a list has loaded — including 0.
-         min-h reserves the loaded block's exact height so the bar doesn't jump when the count
-         lands: 34px number line + 5px margin + 14px subline (both line-heights explicit). -->
-    <p
-      class="bar-count ml-auto min-h-[53px] min-w-12 self-center pl-2 text-right"
-      data-testid="results"
-      aria-live="polite"
+    <!-- In sheet mode a venue whose sales for today have closed wears dusk: desaturated, never faded — a faded row put its name under 3:1. -->
+    <a
+      class="card flex h-full flex-col overflow-hidden rounded-[28px] no-underline shadow-[0_12px_40px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7] motion-safe:[transition:transform_0.2s_ease,box-shadow_0.2s_ease,border-color_0.2s_ease] group-hover/card:border-riv-card-hover-border group-hover/card:shadow-riv-card-hover motion-safe:group-hover/card:[transform:translateY(-5px)] focus-visible:shadow-[0_0_0_7px_color-mix(in_srgb,var(--riv-accent-ink)_90%,transparent)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
+      appCardGlass
+      data-testid="venue-card"
+      [class.saturate-0]="sheetMode() && card.salesClosed"
+      [routerLink]="['/venues', card.id]"
+      [queryParams]="{ date: selectedDate() }"
+      [attr.aria-label]="card.ariaLabel"
+      [attr.aria-current]="isSelected(card) ? 'true' : null"
     >
-      @if (venues(); as list) {
-        <!-- &ngsp; keeps a real space in the text content ("1 venue", not "1venue") for AT and
-             text assertions — the compiler strips the inter-element whitespace otherwise. -->
-        <strong
-          class="count-number text-[34px] leading-none font-bold tracking-[-0.02em] text-riv-accent-ink"
-          >{{ list.length }}</strong
-        >&ngsp;
-        <span class="count-sub mt-[5px] block text-[12px] leading-[14px] text-riv-card-ink-faint"
-          >{{ list.length === 1 ? 'venue' : 'venues' }} · {{ dateLabel() }}</span
+      <!-- The <a> carries the full accessible name via aria-label, so its visible content is decorative to AT — the two inner blocks are aria-hidden. -->
+      <!-- The uploaded photos as a crossfading slideshow stack (cover first); the gradient + sun placeholder as the empty state. The scrim ALWAYS layers over it — the location text's AA floor must hold over ANY photo (home.contrast.spec.ts computes the white-photo worst case). -->
+      <span
+        class="card-photo relative block aspect-[3/2] bg-(image:--riv-photo-grad)"
+        aria-hidden="true"
+      >
+        <app-photo-slideshow
+          #show
+          [photos]="card.photos"
+          [name]="card.name"
+          testId="card-photo"
+          sizes="(min-width: 1128px) 30vw, (min-width: 768px) 47vw, 92vw"
+        />
+        @if (card.photos.length === 0) {
+          <!-- Opaque disc + translucent glow, matching the venue-map empty state's sun. -->
+          <span
+            class="photo-sun absolute top-[42%] left-1/2 size-[52px] rounded-[50%] bg-(image:--riv-sun-grad) shadow-[0_0_30px_10px_rgba(255,199,105,0.4)] [transform:translate(-50%,-50%)]"
+          ></span>
+        }
+        <span appPhotoScrim></span>
+        <!-- The SEMANTIC chips: platform claims about how booking will go, wearing the inverted accent pill (opaque fill — see shared/semantic-chip.ts). One flex row instead of two absolute corners: flex-wrap stacks the closed chip under the mode chip on a near-minimum-width card, where the two pills would otherwise collide. card.ariaLabel carries the closed state to AT — this band is aria-hidden. -->
+        <span
+          class="absolute inset-x-[14px] top-[14px] flex flex-wrap items-start justify-between gap-[7px]"
         >
-      }
-    </p>
-  </form>
-
-  <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
-  <app-load-announcer [loading]="loading()" loadingLabel="Loading venues…" />
-
-  <!-- Below lg the two panels alternate; from lg up both show side by side and the switch is gone. -->
-  <fieldset class="view-switch mt-6 flex justify-end lg:hidden" data-testid="view-switch">
-    <legend class="sr-only">View</legend>
-    <div appCardGlass class="inline-flex gap-1 rounded-full p-1">
-      <button
-        type="button"
-        appTouchTarget
-        data-testid="view-list"
-        class="touch-manipulation rounded-full px-[18px] text-[14px] font-semibold text-riv-card-ink aria-pressed:bg-riv-accent-ink aria-pressed:text-riv-on-accent-ink"
-        [attr.aria-pressed]="view() === 'list'"
-        (click)="showList()"
-      >
-        List
-      </button>
-      <button
-        type="button"
-        appTouchTarget
-        data-testid="view-map"
-        class="touch-manipulation rounded-full px-[18px] text-[14px] font-semibold text-riv-card-ink aria-pressed:bg-riv-accent-ink aria-pressed:text-riv-on-accent-ink"
-        [attr.aria-pressed]="view() === 'map'"
-        (click)="showMap()"
-      >
-        Map
-      </button>
-    </div>
-  </fieldset>
-
-  <!-- Above both panels: the alert must stay in the accessibility tree whichever panel the switch is showing. -->
-  @if (failed()) {
-    <!-- Designed load-failure panel: the alert role and error test id preserve accessible semantics so assistive tech announces it; the warning glyph is decorative — the heading carries the meaning. -->
-    <div appFailurePanel role="alert" data-testid="error">
-      <span appFailureIcon aria-hidden="true">⚠</span>
-      <h2 appFailureTitle>We couldn’t load the beaches</h2>
-      <p appFailureText>
-        Something went wrong reaching Riviera. Check your connection and try again — your bookings
-        are safe.
-      </p>
-      <app-retry-button testId="retry" (retry)="onRetryDiscover()" />
-    </div>
-  }
-
-  <div class="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] lg:items-start lg:gap-5">
-    <div class="list-panel min-w-0" data-testid="list-panel" [hidden]="!listShown()">
-      @if (venuesView(); as list) {
-        @if (isEmpty()) {
-          <!-- Not a live region: born holding its text it announced nothing, and the persistent count region above already speaks this outcome. -->
-          <p
-            class="state mt-6 rounded-[26px] px-5 py-12 text-center text-[15px] text-riv-ink-soft"
-            appPanelGlass
-            data-testid="empty"
+          <span
+            appSemanticChip
+            class="mode-chip inline-flex items-center px-[11px] py-[5px] text-[11px] tracking-[0.03em]"
+            >{{ card.modeLabel }}</span
           >
-            No venues match these filters. Try another beach, region, or date.
-          </p>
-        } @else {
-          <ul class="venue-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5">
-            @for (card of list; track card.id) {
-              <!-- Named group/card keys the hover lift on the li (the overlaid slideshow controls keep it) without tripping the controls' own unnamed group-hover chevron tint. -->
-              <li
-                class="group/card relative rounded-[28px] [&[data-selected]]:outline-[3px] [&[data-selected]]:outline-offset-[3px] [&[data-selected]]:outline-riv-accent-ink"
-                [attr.data-venue-pin]="card.id"
-                [attr.data-selected]="isSelected(card) ? '' : null"
-              >
-                <a
-                  class="card flex h-full flex-col overflow-hidden rounded-[28px] no-underline shadow-[0_12px_40px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7] motion-safe:[transition:transform_0.2s_ease,box-shadow_0.2s_ease,border-color_0.2s_ease] group-hover/card:border-riv-card-hover-border group-hover/card:shadow-riv-card-hover motion-safe:group-hover/card:[transform:translateY(-5px)] focus-visible:shadow-[0_0_0_7px_color-mix(in_srgb,var(--riv-accent-ink)_90%,transparent)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
-                  appCardGlass
-                  data-testid="venue-card"
-                  [routerLink]="['/venues', card.id]"
-                  [queryParams]="{ date: selectedDate() }"
-                  [attr.aria-label]="card.ariaLabel"
-                  [attr.aria-current]="isSelected(card) ? 'true' : null"
-                >
-                  <!-- The <a> carries the full accessible name via aria-label, so its visible content is decorative to AT — the two inner blocks are aria-hidden. -->
-                  <!-- The uploaded photos as a crossfading slideshow stack (cover first); the gradient + sun placeholder as the empty state. The scrim ALWAYS layers over it — the location text's AA floor must hold over ANY photo (home.contrast.spec.ts computes the white-photo worst case). -->
-                  <span
-                    class="card-photo relative block aspect-[3/2] bg-(image:--riv-photo-grad)"
-                    aria-hidden="true"
-                  >
-                    <app-photo-slideshow
-                      #show
-                      [photos]="card.photos"
-                      [name]="card.name"
-                      testId="card-photo"
-                      sizes="(min-width: 1128px) 30vw, (min-width: 768px) 47vw, 92vw"
-                    />
-                    @if (card.photos.length === 0) {
-                      <!-- Opaque disc + translucent glow, matching the venue-map empty state's sun. -->
-                      <span
-                        class="photo-sun absolute top-[42%] left-1/2 size-[52px] rounded-[50%] bg-(image:--riv-sun-grad) shadow-[0_0_30px_10px_rgba(255,199,105,0.4)] [transform:translate(-50%,-50%)]"
-                      ></span>
-                    }
-                    <span appPhotoScrim></span>
-                    <!-- The SEMANTIC chips: platform claims about how booking will go, wearing the inverted accent pill (opaque fill — see shared/semantic-chip.ts). One flex row instead of two absolute corners: flex-wrap stacks the closed chip under the mode chip on a near-minimum-width card, where the two pills would otherwise collide. card.ariaLabel carries the closed state to AT — this band is aria-hidden. -->
-                    <span
-                      class="absolute inset-x-[14px] top-[14px] flex flex-wrap items-start justify-between gap-[7px]"
-                    >
-                      <span
-                        appSemanticChip
-                        class="mode-chip inline-flex items-center px-[11px] py-[5px] text-[11px] tracking-[0.03em]"
-                        >{{ card.modeLabel }}</span
-                      >
-                      @if (card.closedForSeason) {
-                        <app-closed-for-season-chip [reopensOn]="card.reopensOn" />
-                      } @else if (card.salesClosed) {
-                        <app-sales-closed-chip />
-                      }
-                    </span>
-                    <!-- The location yields the dot rail's corner: 82px = the rail at its widest (3 dots, one of them the 18px active pill: 13px inset + 14px padding + 34px dots + 14px gaps = 75px) plus 7px clearance — it must be re-derived whenever the rail's metrics change. The explicit 15px line box is the scrim geometry home.contrast.spec.ts pins. -->
-                    <span
-                      class="photo-location absolute bottom-[13px] left-[15px] text-[12.5px] leading-[15px] font-semibold text-riv-photo-ink [text-shadow:0_1px_6px_rgba(0,0,0,0.4)]"
-                      [class]="card.photos.length > 1 ? 'right-[82px] truncate' : ''"
-                      >{{ card.beachLabel }} · {{ card.regionLabel }}</span
-                    >
-                  </span>
+          @if (card.closedForSeason) {
+            <app-closed-for-season-chip [reopensOn]="card.reopensOn" />
+          } @else if (card.salesClosed) {
+            <app-sales-closed-chip />
+          }
+        </span>
+        <!-- The location yields the dot rail's corner: 82px = the rail at its widest (3 dots, one of them the 18px active pill: 13px inset + 14px padding + 34px dots + 14px gaps = 75px) plus 7px clearance — it must be re-derived whenever the rail's metrics change. The explicit 15px line box is the scrim geometry home.contrast.spec.ts pins. -->
+        <span
+          class="photo-location absolute bottom-[13px] left-[15px] text-[12.5px] leading-[15px] font-semibold text-riv-photo-ink [text-shadow:0_1px_6px_rgba(0,0,0,0.4)]"
+          [class]="card.photos.length > 1 ? 'right-[82px] truncate' : ''"
+          >{{ card.beachLabel }} · {{ card.regionLabel }}</span
+        >
+      </span>
 
-                  <span
-                    class="card-body flex flex-1 flex-col gap-2 px-[18px] pt-[17px] pb-[18px]"
-                    aria-hidden="true"
-                  >
-                    <span
-                      class="card-name text-[21px] leading-[1.08] font-bold tracking-[-0.01em] text-riv-card-ink"
-                      >{{ card.name }}</span
-                    >
+      <span
+        class="card-body flex flex-1 flex-col gap-2 px-[18px] pt-[17px] pb-[18px]"
+        aria-hidden="true"
+      >
+        <span
+          class="card-name text-[21px] leading-[1.08] font-bold tracking-[-0.01em] text-riv-card-ink"
+          >{{ card.name }}</span
+        >
 
-                    <span
-                      class="card-meta flex items-center gap-[7px] text-[13.5px] text-riv-card-ink-soft"
-                    >
-                      @if (card.isRated) {
-                        <!-- The star is decorative; the numeric rating carries the value. -->
-                        <span class="star text-[#f4a939]">★</span>
-                        <span class="rating font-bold text-riv-card-ink">{{ card.rating }}</span>
-                        <span class="dot text-riv-card-ink opacity-30">·</span>
-                        {{ card.reviewsLabel }}
-                      } @else {
-                        <!-- "New" / unrated state — a SEMANTIC chip: like the mode chip it is a platform claim, not a venue self-description, so it takes the same inverted accent pill. Padding stays here; the row's 13.5px is inherited. -->
-                        <span appSemanticChip class="new-chip px-[9px] py-px" data-testid="new-chip"
-                          >New</span
-                        >
-                      }
-                    </span>
+        <span class="card-meta flex items-center gap-[7px] text-[13.5px] text-riv-card-ink-soft">
+          @if (card.isRated) {
+            <!-- The star is decorative; the numeric rating carries the value. -->
+            <span class="star text-[#f4a939]">★</span>
+            <span class="rating font-bold text-riv-card-ink">{{ card.rating }}</span>
+            <span class="dot text-riv-card-ink opacity-30">·</span>
+            {{ card.reviewsLabel }}
+          } @else {
+            <!-- "New" / unrated state — a SEMANTIC chip: like the mode chip it is a platform claim, not a venue self-description, so it takes the same inverted accent pill. Padding stays here; the row's 13.5px is inherited. -->
+            <span appSemanticChip class="new-chip px-[9px] py-px" data-testid="new-chip">New</span>
+          }
+          @if (km) {
+            <!-- How far the venue is from the located tourist; the group head says it for AT. -->
+            <span class="card-km ml-auto font-semibold text-riv-accent-ink" data-testid="card-km">{{
+              km
+            }}</span>
+          }
+        </span>
 
-                    <!-- To-water chip first, then ≤3 amenity chips in catalogue order. The card body is aria-hidden, so this text is also folded into card.ariaLabel; the slot collapses (empty:hidden) when the venue has no chips — a zero-height item would still cost an extra 8px column gap. -->
-                    <span
-                      class="card-chips flex flex-wrap gap-1.5 empty:hidden"
-                      data-testid="card-chips"
-                    >
-                      @if (card.water; as water) {
-                        <span appAmenityChip water>{{ water }}</span>
-                      }
-                      @for (amenity of card.amenities; track amenity.code) {
-                        <span appAmenityChip>{{ amenity.label }}</span>
-                      }
-                    </span>
+        <!-- To-water chip first, then ≤3 amenity chips in catalogue order. The card body is aria-hidden, so this text is also folded into card.ariaLabel; the slot collapses (empty:hidden) when the venue has no chips — a zero-height item would still cost an extra 8px column gap. -->
+        <span class="card-chips flex flex-wrap gap-1.5 empty:hidden" data-testid="card-chips">
+          @if (card.water; as water) {
+            <span appAmenityChip water>{{ water }}</span>
+          }
+          @for (amenity of card.amenities; track amenity.code) {
+            <span appAmenityChip>{{ amenity.label }}</span>
+          }
+        </span>
 
-                    <span
-                      class="avail-track mt-2.5 block h-1.5 overflow-hidden rounded-full bg-riv-card-track"
-                    >
-                      <span
-                        class="avail-fill block h-full bg-(image:--riv-bar-grad)"
-                        [style.width.%]="card.freePercent"
-                      ></span>
-                    </span>
+        <span class="avail-track mt-2.5 block h-1.5 overflow-hidden rounded-full bg-riv-card-track">
+          <span
+            class="avail-fill block h-full bg-(image:--riv-bar-grad)"
+            [style.width.%]="card.freePercent"
+          ></span>
+        </span>
 
-                    <span
-                      class="card-footer mt-[3px] flex flex-wrap items-baseline justify-between gap-2"
-                    >
-                      @if (card.priceLabel; as price) {
-                        <span class="price text-[14px] text-riv-card-ink-soft"
-                          >from
-                          <strong class="text-[16px] font-extrabold text-riv-accent-ink">{{
-                            price
-                          }}</strong>
-                          / set</span
-                        >
-                      } @else {
-                        <span class="price text-[14px] text-riv-card-ink-soft">No sets yet</span>
-                      }
-                      <span
-                        class="availability text-[12.5px] text-riv-card-ink-soft"
-                        data-testid="card-availability"
-                      >
-                        <app-sets-free [free]="card.free" [total]="card.total" />
-                      </span>
-                    </span>
-                  </span>
-                </a>
-                <!-- Slideshow controls live OUTSIDE the card <a> (nested interactive controls are invalid + an axe failure); this anchor shares the band's width and aspect-[3/2] so the button centre never drifts from it. The buttons re-enable their own pointer events (shared/photo-step-button.ts), so the card link stays clickable between them. -->
-                @if (card.photos.length > 1) {
-                  <span class="pointer-events-none absolute inset-x-0 top-0 aspect-[3/2]">
-                    <app-photo-step-button
-                      direction="prev"
-                      testId="card-photo-prev"
-                      [label]="'Previous photo, ' + card.name"
-                      (stepped)="show.prev()"
-                    />
-                    <app-photo-step-button
-                      direction="next"
-                      testId="card-photo-next"
-                      [label]="'Next photo, ' + card.name"
-                      (stepped)="show.next()"
-                    />
-                  </span>
-                  <!-- The slideshow's own live region cannot serve this placement: the whole band sits inside the card's aria-hidden <a>, so the announcement has to be mounted out here beside the controls that cause it. Persistent, per shared/load-announcer.ts — only its text changes. -->
-                  <output class="sr-only" aria-live="polite" data-testid="card-photo-position">
-                    {{ show.positionLabel() }}
-                  </output>
-                }
-              </li>
-            }
-          </ul>
-        }
-      } @else if (!failed()) {
-        <!-- Skeletons mirror the grid so the layout doesn't jump; the announcer owns the words. -->
-        <div data-testid="loading" aria-hidden="true">
-          <ul class="venue-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5">
-            @for (slot of skeletons; track slot) {
-              <li>
-                <span
-                  appCardGlass
-                  class="flex h-full animate-pulse flex-col overflow-hidden rounded-[28px] motion-reduce:animate-none"
-                  data-testid="skeleton-card"
-                >
-                  <span class="block aspect-[3/2] bg-riv-card-track"></span>
-                  <span class="flex flex-1 flex-col gap-[10px] p-[18px]">
-                    <span class="h-[18px] w-3/4 rounded-[6px] bg-riv-card-track"></span>
-                    <span class="h-[10px] w-1/2 rounded-[6px] bg-riv-card-track"></span>
-                    <span class="grid grid-cols-3 gap-[8px]">
-                      <span class="col-span-2 h-[10px] rounded-[6px] bg-riv-card-track"></span>
-                      <span class="h-[10px] rounded-[6px] bg-riv-card-track"></span>
-                    </span>
-                    <span class="mt-auto h-[6px] rounded-full bg-riv-card-track"></span>
-                  </span>
-                </span>
-              </li>
-            }
-          </ul>
-        </div>
+        <span class="card-footer mt-[3px] flex flex-wrap items-baseline justify-between gap-2">
+          @if (card.priceLabel; as price) {
+            <span class="price text-[14px] text-riv-card-ink-soft"
+              >from
+              <strong class="text-[16px] font-extrabold text-riv-accent-ink">{{ price }}</strong>
+              / set</span
+            >
+          } @else {
+            <span class="price text-[14px] text-riv-card-ink-soft">No sets yet</span>
+          }
+          <span
+            class="availability text-[12.5px] text-riv-card-ink-soft"
+            data-testid="card-availability"
+          >
+            <app-sets-free [free]="card.free" [total]="card.total" />
+          </span>
+        </span>
+      </span>
+    </a>
+    <!-- Slideshow controls live OUTSIDE the card <a> (nested interactive controls are invalid + an axe failure); this anchor shares the band's width and aspect-[3/2] so the button centre never drifts from it. The buttons re-enable their own pointer events (shared/photo-step-button.ts), so the card link stays clickable between them. -->
+    @if (card.photos.length > 1) {
+      <span class="pointer-events-none absolute inset-x-0 top-0 aspect-[3/2]">
+        <app-photo-step-button
+          direction="prev"
+          testId="card-photo-prev"
+          [label]="'Previous photo, ' + card.name"
+          (stepped)="show.prev()"
+        />
+        <app-photo-step-button
+          direction="next"
+          testId="card-photo-next"
+          [label]="'Next photo, ' + card.name"
+          (stepped)="show.next()"
+        />
+      </span>
+      <!-- The slideshow's own live region cannot serve this placement: the whole band sits inside the card's aria-hidden <a>, so the announcement has to be mounted out here beside the controls that cause it. Persistent, per shared/load-announcer.ts — only its text changes. -->
+      <output class="sr-only" aria-live="polite" data-testid="card-photo-position">
+        {{ show.positionLabel() }}
+      </output>
+    }
+  </li>
+</ng-template>
+
+<ng-template #skeletonTpl>
+  <!-- Skeletons mirror the grid so the layout doesn't jump; the announcer owns the words. -->
+  <div data-testid="loading" aria-hidden="true">
+    <ul class="venue-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5">
+      @for (slot of skeletons; track slot) {
+        <li>
+          <span
+            appCardGlass
+            class="flex h-full animate-pulse flex-col overflow-hidden rounded-[28px] motion-reduce:animate-none"
+            data-testid="skeleton-card"
+          >
+            <span class="block aspect-[3/2] bg-riv-card-track"></span>
+            <span class="flex flex-1 flex-col gap-[10px] p-[18px]">
+              <span class="h-[18px] w-3/4 rounded-[6px] bg-riv-card-track"></span>
+              <span class="h-[10px] w-1/2 rounded-[6px] bg-riv-card-track"></span>
+              <span class="grid grid-cols-3 gap-[8px]">
+                <span class="col-span-2 h-[10px] rounded-[6px] bg-riv-card-track"></span>
+                <span class="h-[10px] rounded-[6px] bg-riv-card-track"></span>
+              </span>
+              <span class="mt-auto h-[6px] rounded-full bg-riv-card-track"></span>
+            </span>
+          </span>
+        </li>
       }
-    </div>
+    </ul>
+  </div>
+</ng-template>
 
-    <!-- Sticky beside the list from lg: the map keeps pace while the cards scroll. -->
-    <div
-      class="map-panel relative mt-6 lg:sticky lg:top-6"
-      data-testid="map-panel"
-      [hidden]="!mapOpen()"
-    >
-      @defer (when mapDefer()) {
+<ng-template #failureTpl>
+  <!-- Designed load-failure panel: the alert role and error test id preserve accessible semantics so assistive tech announces it; the warning glyph is decorative — the heading carries the meaning. -->
+  <div appFailurePanel role="alert" data-testid="error">
+    <span appFailureIcon aria-hidden="true">⚠</span>
+    <h2 appFailureTitle>We couldn’t load the beaches</h2>
+    <p appFailureText>
+      Something went wrong reaching Riviera. Check your connection and try again — your bookings are
+      safe.
+    </p>
+    <app-retry-button testId="retry" (retry)="onRetryDiscover()" />
+  </div>
+</ng-template>
+
+@if (sheetMode()) {
+  <!-- ── The ground: the live riviera map under the glass header, the whole viewport. ── -->
+  <div class="fixed inset-0 z-[1] overflow-hidden bg-riv-solid-btn-fill" data-testid="sheet-ground">
+    @defer (when mapDefer()) {
+      <div class="absolute inset-0 [&>app-riviera-map]:rounded-none">
         <app-riviera-map
-          class="h-[calc(100dvh-220px)] max-h-[720px] min-h-[360px]"
-          [nearMe]="true"
+          class="size-full"
+          [nearMe]="false"
+          [foot]="footBottom()"
           (mapClick)="closePreview()"
         />
-        <!-- The page's own pins over the map's box: one real button per venue, a place pill per crowd. -->
-        <app-venue-pin-layer
-          [pins]="pins()"
-          [map]="mapHandle()"
-          [selected]="selectedVenue()"
-          [maxZoom]="mapMaxZoom"
-          (chosen)="onPinSelected($event)"
-          (narrowed)="onBeachNarrowed($event)"
-        />
-        @if (beach()) {
-          <!-- The way back, on the map, from a beach the list is narrowed to; the select shows it too. -->
-          <button
-            type="button"
-            appTouchTarget
-            class="absolute top-3 left-3 z-[5] inline-flex touch-manipulation items-center gap-[8px] rounded-full border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill pr-[10px] pl-[14px] text-[14px] leading-none font-bold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] hover:bg-riv-solid-btn-hover"
-            data-testid="map-beach-crumb"
-            [attr.aria-label]="'Showing ' + narrowedLabel() + ' only; press to show all beaches'"
-            (click)="showAllBeaches()"
-          >
-            {{ narrowedLabel() }}
-            <span class="text-[17px] opacity-70" aria-hidden="true">&#x00d7;</span>
-          </button>
-        }
-        @if (selectedCard(); as selected) {
-          <!-- Bottom-anchored, clearing the credit pill the tiles' licences require to stay visible. -->
-          <app-venue-preview-card
-            class="absolute inset-x-3 bottom-[58px] z-[5]"
-            [card]="selected"
-            [date]="selectedDate()"
-            [stack]="crowdStack()"
-            (closed)="closePreview()"
-            (stepped)="onPinSelected($event)"
+      </div>
+      <!-- The page's own pins over the map: one real button per venue, a place pill per crowd. -->
+      <app-venue-pin-layer
+        class="rounded-none!"
+        [pins]="pins()"
+        [map]="mapHandle()"
+        [selected]="selectedVenue()"
+        [maxZoom]="mapMaxZoom"
+        (chosen)="onPinSelected($event)"
+        (narrowed)="onBeachNarrowed($event)"
+      />
+      <!-- The tourist's own dot paints over the pins (z-[5] to the layer's 4), as Google's blue dot does: an ink disc in a light ring, the shape every map uses for "you". -->
+      @if (hereDot(); as dot) {
+        <svg
+          data-testid="here-dot"
+          class="pointer-events-none absolute z-[5] size-5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[0_0_0_6px_rgba(10,79,94,0.18),0_4px_12px_rgba(7,42,58,0.35)]"
+          viewBox="0 0 20 20"
+          role="img"
+          aria-label="You are here"
+          [style.left.px]="dot.x"
+          [style.top.px]="dot.y"
+        >
+          <title>You are here</title>
+          <circle
+            cx="10"
+            cy="10"
+            r="8.5"
+            class="fill-riv-solid-btn-ink stroke-riv-solid-btn-fill"
+            stroke-width="3"
           />
-        }
-      } @placeholder {
-        <div
-          class="h-[360px] animate-pulse rounded-[26px] bg-riv-card-track motion-reduce:animate-none"
-          aria-hidden="true"
-          data-testid="map-placeholder"
-        ></div>
+        </svg>
       }
-    </div>
+      <!-- Near me on the map's foot row at the right — mid-screen at half, the thumb's zone — in the fixed solid pair, inverted once placed; hidden at full, where the map is a sliver. -->
+      @if (nearMeShown && detent() !== 'full') {
+        <button
+          type="button"
+          appTouchTarget
+          data-testid="sheet-near-me"
+          class="absolute right-3 z-[8] inline-flex h-11 touch-manipulation items-center gap-1.5 rounded-full border-2 px-[14px] text-[14px] font-bold shadow-[0_6px_18px_rgba(7,42,58,0.3)] aria-disabled:opacity-60"
+          [class]="
+            here() !== null
+              ? 'border-riv-solid-btn-fill bg-riv-solid-btn-ink text-riv-solid-btn-fill'
+              : 'border-riv-solid-btn-border bg-riv-solid-btn-fill text-riv-solid-btn-ink hover:bg-riv-solid-btn-hover'
+          "
+          [style.bottom.px]="footBottom()"
+          [attr.aria-pressed]="here() !== null"
+          [appBusy]="locating()"
+          (click)="locate()"
+        >
+          <span aria-hidden="true">◎</span>&ngsp;{{ here() !== null ? 'You are here' : 'Near me' }}
+        </button>
+      }
+    } @placeholder {
+      <div
+        class="absolute inset-0 animate-pulse bg-riv-card-track motion-reduce:animate-none"
+        aria-hidden="true"
+        data-testid="map-placeholder"
+      ></div>
+    }
   </div>
-</section>
+
+  <!-- Above the sheet on purpose: a live region must outlive the branch it describes. -->
+  <app-load-announcer [loading]="loading()" loadingLabel="Loading venues…" />
+  <!-- The sheet's persistent count region, the shipped count block's twin: only its text changes, so every landed list and every narrowing is spoken. -->
+  <output class="sr-only" aria-live="polite" data-testid="sheet-outcome">
+    @if (venuesView()) {
+      {{ title() }}: {{ subtitle() }}
+    }
+  </output>
+
+  <!-- ── The sheet: the head is one row carrying the query; the rows are the shipped cards, by beach. ── -->
+  <app-discover-sheet>
+    <app-discover-head
+      sheetHead
+      [title]="title()"
+      [subtitle]="subtitle()"
+      [located]="here() !== null"
+      [beaches]="beachOptions()"
+      [beach]="focus().beach"
+      [spelled]="wideSheet()"
+      [today]="minDate"
+      [date]="selectedDate()"
+      [railsShown]="railsShown()"
+      [note]="note()"
+      [pickerOpen]="pickerOpen()"
+      (placePressed)="openPicker()"
+      (beachPicked)="onBeachPicked($event)"
+      (dayPicked)="onDayPicked($event)"
+      (noteDismissed)="dismissNote()"
+      (railOpened)="onRailOpened()"
+    />
+
+    @if (failed()) {
+      <ng-container *ngTemplateOutlet="failureTpl" />
+    }
+    @if (venuesView()) {
+      @if (focus().cards.length === 0) {
+        <!-- Not a live region: born holding its text it announced nothing, and the persistent outcome region above already speaks it. -->
+        <p
+          class="state mt-4 rounded-[26px] px-5 py-12 text-center text-[15px] text-riv-ink-soft"
+          appPanelGlass
+          data-testid="empty"
+        >
+          No venues here for this day. Pick another place on the coast.
+        </p>
+      } @else {
+        <!-- 34 px from the head to the first row (a 24 px group head + the 10 px row gap), under the sheet's 1 px glass border, puts it at y 493, the design record's number. -->
+        <div
+          data-testid="sheet-rows"
+          class="grid gap-x-2 gap-y-[10px]"
+          [class]="wideSheet() ? 'grid-cols-2' : 'grid-cols-1'"
+        >
+          @for (group of groups(); track group.code) {
+            <!-- The beach as the unit: its name, its distance when located, its count — the one place AT hears the km. -->
+            <h2
+              data-testid="sheet-group"
+              class="col-span-full mt-2 mb-0 flex h-6 items-baseline gap-2 px-1 text-[13px] leading-[24px] text-riv-ink-soft first:mt-0"
+            >
+              <span class="text-[16px] font-bold tracking-[-0.01em] text-riv-ink">{{
+                group.label
+              }}</span>
+              @if (group.km !== null) {
+                &ngsp;<span class="font-semibold text-riv-accent-ink">{{ kmLabel(group.km) }}</span>
+              }
+              <span class="ml-auto shrink-0"
+                >&ngsp;{{ group.cards.length }}
+                {{ group.cards.length === 1 ? 'venue' : 'venues' }}</span
+              >
+            </h2>
+            <ul class="contents">
+              @for (card of group.cards; track card.id) {
+                <ng-container
+                  *ngTemplateOutlet="
+                    venueCardTpl;
+                    context: { $implicit: card, km: rowKms().get(card.id) }
+                  "
+                />
+              }
+            </ul>
+          }
+        </div>
+      }
+    } @else if (!failed()) {
+      <ng-container *ngTemplateOutlet="skeletonTpl" />
+    }
+  </app-discover-sheet>
+
+  @if (pickerOpen()) {
+    <app-coast-picker
+      [regions]="pickerRegions()"
+      [region]="focus().region"
+      [beach]="focus().beach"
+      [located]="here() !== null"
+      (picked)="onPlacePicked($event)"
+      (nearMe)="locateFromPicker()"
+      (closed)="closePicker()"
+    />
+  }
+} @else {
+  <section
+    class="discover mx-auto max-w-[1080px] px-6 pt-10 pb-20"
+    aria-labelledby="discover-title"
+  >
+    <!-- Hero padding is theme-SHARED so the headline never shifts; the riviera-only scrim (--riv-hero-scrim, none elsewhere) px-anchors its fades to exactly this 34px/40px padding. -->
+    <div class="hero bg-(image:--riv-hero-scrim) px-[26px] pt-[34px] pb-10 text-riv-ink">
+      <p
+        class="hero-chip mb-[18px] inline-flex items-center gap-[9px] rounded-full border border-riv-chip-border bg-riv-chip-bg px-[14px] py-[7px] text-[12px] font-bold tracking-[0.16em] uppercase backdrop-blur-[10px]"
+      >
+        <span
+          class="hero-chip-dash inline-block h-px w-[18px] bg-riv-ink-faint"
+          aria-hidden="true"
+        ></span>
+        Sunbeds by the sea
+      </p>
+      <!-- The 680px cap keeps the headline breaking over two lines, matching the drawn hero width. -->
+      <h1
+        id="discover-title"
+        class="hero-title mb-4 max-w-[680px] text-[clamp(40px,6vw,66px)] leading-[1.02] font-bold tracking-[-0.025em] text-shadow-riv-hero"
+      >
+        Find your spot on the Riviera.
+      </h1>
+      <!-- Intro capped to a comfortable reading measure; the title uses the full width, the copy doesn't. -->
+      <p class="hero-intro max-w-[520px] text-[17px] leading-[1.5] text-riv-ink-soft">
+        Pick a beach and a date, then choose your sunbed straight from the venue’s map — front row
+        to promenade.
+      </p>
+    </div>
+
+    <form
+      class="filter-bar mt-[34px] mb-1 flex flex-wrap items-end gap-[18px] rounded-[26px] px-[22px] py-5 shadow-[0_14px_44px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[28px] backdrop-saturate-[1.7]"
+      appCardGlass
+      (submit)="$event.preventDefault()"
+    >
+      <p class="field flex flex-col gap-[7px]">
+        <label
+          class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-faint"
+          for="filter-beach"
+          >Beach</label
+        >
+        <select
+          appTouchTarget
+          appFieldGlass
+          class="min-w-[168px] cursor-pointer rounded-[14px] px-[13px] py-[10px] text-[16px] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
+          id="filter-beach"
+          data-testid="filter-beach"
+          [value]="beach()"
+          (change)="onBeachChange($event)"
+        >
+          <option value="">All beaches</option>
+          @for (b of beaches(); track b.code) {
+            <option [value]="b.code">{{ b.label }}</option>
+          }
+        </select>
+      </p>
+
+      <p class="field flex flex-col gap-[7px]">
+        <label
+          class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-faint"
+          for="filter-region"
+          >Region</label
+        >
+        <select
+          appTouchTarget
+          appFieldGlass
+          class="min-w-[168px] cursor-pointer rounded-[14px] px-[13px] py-[10px] text-[16px] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
+          id="filter-region"
+          data-testid="filter-region"
+          [value]="region()"
+          (change)="onRegionChange($event)"
+        >
+          <option value="">All regions</option>
+          @for (r of regions(); track r.code) {
+            <option [value]="r.code">{{ r.label }}</option>
+          }
+        </select>
+      </p>
+
+      <p class="field flex flex-col gap-[7px]">
+        <label
+          class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-faint"
+          for="filter-date"
+          >Date</label
+        >
+        <input
+          appTouchTarget
+          appFieldGlass
+          class="min-w-[168px] cursor-pointer rounded-[14px] px-[13px] py-[10px] text-[16px] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
+          id="filter-date"
+          type="date"
+          data-testid="filter-date"
+          [min]="minDate"
+          [value]="selectedDate()"
+          (change)="onDateChange($event)"
+        />
+      </p>
+
+      <!-- aria-live: a filter swaps the grid silently, so the count is announced; min-h reserves the loaded block's height (34px number + 5px + 14px subline) so the bar never jumps. -->
+      <p
+        class="bar-count ml-auto min-h-[53px] min-w-12 self-center pl-2 text-right"
+        data-testid="results"
+        aria-live="polite"
+      >
+        @if (venues(); as list) {
+          <!-- &ngsp; keeps a real space in the text content ("1 venue", not "1venue") for AT and text assertions. -->
+          <strong
+            class="count-number text-[34px] leading-none font-bold tracking-[-0.02em] text-riv-accent-ink"
+            >{{ list.length }}</strong
+          >&ngsp;
+          <span class="count-sub mt-[5px] block text-[12px] leading-[14px] text-riv-card-ink-faint"
+            >{{ list.length === 1 ? 'venue' : 'venues' }} · {{ dateLabel() }}</span
+          >
+        }
+      </p>
+    </form>
+
+    <!-- Above the @if on purpose: a live region must outlive the branch it describes. -->
+    <app-load-announcer [loading]="loading()" loadingLabel="Loading venues…" />
+
+    <!-- Below lg the two panels alternate; from lg up both show side by side and the switch is gone. -->
+    <fieldset class="view-switch mt-6 flex justify-end lg:hidden" data-testid="view-switch">
+      <legend class="sr-only">View</legend>
+      <div appCardGlass class="inline-flex gap-1 rounded-full p-1">
+        <button
+          type="button"
+          appTouchTarget
+          data-testid="view-list"
+          class="touch-manipulation rounded-full px-[18px] text-[14px] font-semibold text-riv-card-ink aria-pressed:bg-riv-accent-ink aria-pressed:text-riv-on-accent-ink"
+          [attr.aria-pressed]="view() === 'list'"
+          (click)="showList()"
+        >
+          List
+        </button>
+        <button
+          type="button"
+          appTouchTarget
+          data-testid="view-map"
+          class="touch-manipulation rounded-full px-[18px] text-[14px] font-semibold text-riv-card-ink aria-pressed:bg-riv-accent-ink aria-pressed:text-riv-on-accent-ink"
+          [attr.aria-pressed]="view() === 'map'"
+          (click)="showMap()"
+        >
+          Map
+        </button>
+      </div>
+    </fieldset>
+
+    <!-- Above both panels: the alert must stay in the accessibility tree whichever panel the switch is showing. -->
+    @if (failed()) {
+      <ng-container *ngTemplateOutlet="failureTpl" />
+    }
+
+    <div class="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] lg:items-start lg:gap-5">
+      <div class="list-panel min-w-0" data-testid="list-panel" [hidden]="!listShown()">
+        @if (venuesView(); as list) {
+          @if (isEmpty()) {
+            <!-- Not a live region: born holding its text it announced nothing, and the persistent count region above already speaks this outcome. -->
+            <p
+              class="state mt-6 rounded-[26px] px-5 py-12 text-center text-[15px] text-riv-ink-soft"
+              appPanelGlass
+              data-testid="empty"
+            >
+              No venues match these filters. Try another beach, region, or date.
+            </p>
+          } @else {
+            <ul class="venue-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5">
+              @for (card of list; track card.id) {
+                <ng-container *ngTemplateOutlet="venueCardTpl; context: { $implicit: card }" />
+              }
+            </ul>
+          }
+        } @else if (!failed()) {
+          <ng-container *ngTemplateOutlet="skeletonTpl" />
+        }
+      </div>
+
+      <!-- Sticky beside the list from lg: the map keeps pace while the cards scroll. -->
+      <div
+        class="map-panel relative mt-6 lg:sticky lg:top-6"
+        data-testid="map-panel"
+        [hidden]="!mapOpen()"
+      >
+        @defer (when mapDefer()) {
+          <app-riviera-map
+            class="h-[calc(100dvh-220px)] max-h-[720px] min-h-[360px]"
+            [nearMe]="true"
+            (mapClick)="closePreview()"
+          />
+          <!-- The page's own pins over the map's box: one real button per venue, a place pill per crowd. -->
+          <app-venue-pin-layer
+            [pins]="pins()"
+            [map]="mapHandle()"
+            [selected]="selectedVenue()"
+            [maxZoom]="mapMaxZoom"
+            (chosen)="onPinSelected($event)"
+            (narrowed)="onBeachNarrowed($event)"
+          />
+          @if (beach()) {
+            <!-- The way back, on the map, from a beach the list is narrowed to; the select shows it too. -->
+            <button
+              type="button"
+              appTouchTarget
+              class="absolute top-3 left-3 z-[5] inline-flex touch-manipulation items-center gap-[8px] rounded-full border-2 border-riv-solid-btn-border bg-riv-solid-btn-fill pr-[10px] pl-[14px] text-[14px] leading-none font-bold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] hover:bg-riv-solid-btn-hover"
+              data-testid="map-beach-crumb"
+              [attr.aria-label]="'Showing ' + narrowedLabel() + ' only; press to show all beaches'"
+              (click)="showAllBeaches()"
+            >
+              {{ narrowedLabel() }}
+              <span class="text-[17px] opacity-70" aria-hidden="true">&#x00d7;</span>
+            </button>
+          }
+          @if (selectedCard(); as selected) {
+            <!-- Bottom-anchored, clearing the credit pill the tiles' licences require to stay visible. -->
+            <app-venue-preview-card
+              class="absolute inset-x-3 bottom-[58px] z-[5]"
+              [card]="selected"
+              [date]="selectedDate()"
+              [stack]="crowdStack()"
+              (closed)="closePreview()"
+              (stepped)="onPinSelected($event)"
+            />
+          }
+        } @placeholder {
+          <div
+            class="h-[360px] animate-pulse rounded-[26px] bg-riv-card-track motion-reduce:animate-none"
+            aria-hidden="true"
+            data-testid="map-placeholder"
+          ></div>
+        }
+      </div>
+    </div>
+  </section>
+}

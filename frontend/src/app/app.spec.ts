@@ -170,6 +170,15 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(nav.textContent).not.toContain('Find a booking');
   });
 
+  it('carries the class names the Discover sheet measures its chrome by: header.riv-header and .riv-tab-bar', () => {
+    const { el } = shell();
+
+    expect(el.querySelector('header.riv-header')).not.toBeNull();
+    expect(el.querySelector('[data-testid="tab-bar"]')?.classList.contains('riv-tab-bar')).toBe(
+      true,
+    );
+  });
+
   it('lists a My bookings nav entry on desktop and in the phone tab bar (T6 #139, #1003)', () => {
     const { el } = shell();
 

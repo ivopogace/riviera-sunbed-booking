@@ -17,8 +17,9 @@ export type GeolocationOutcome =
  * The mocked Playwright suite drives the REAL adapter through `context.grantPermissions` and
  * `setGeolocation` — a fake there would prove nothing about the browser's own prompt.
  *
- * <p>A position obtained through this seam reaches the map's camera and nothing else — never a
- * request, a URL, storage or a log. That is what the privacy policy's map section promises, and
+ * <p>A position obtained through this seam reaches the map's camera — and, on Discover's sheet,
+ * the list's order and its distance captions — and nothing else: never a request, a URL,
+ * storage or a log. That is what the privacy policy's map section promises, and
  * what the mocked suite's `discover-map` network guard fails the build over. What a consumer then
  * does with the camera is its own: the operator's pin placer publishes a venue location the
  * operator commits by hand, which is the venue's business data rather than this position.

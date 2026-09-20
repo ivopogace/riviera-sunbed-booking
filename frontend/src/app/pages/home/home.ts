@@ -1,6 +1,7 @@
-import { DOCUMENT } from '@angular/common';
+import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
 import {
   afterNextRender,
+  afterRenderEffect,
   Component,
   computed,
   DestroyRef,
@@ -27,11 +28,14 @@ import {
   regionLabel,
 } from '../../shared/beaches';
 import { AmenityChip } from '../../shared/amenity-chip';
+import { BusyAction } from '../../shared/busy-action';
 import { CardGlass } from '../../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
 import { FieldGlass } from '../../shared/field-glass';
 import { LoadAnnouncer } from '../../shared/load-announcer';
 import { focusMover } from '../../shared/focus-after-render';
+import { GeolocationGateway, GeolocationOutcome } from '../../shared/geolocation';
+import { LngLat } from '../../shared/map-engine';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
@@ -41,7 +45,13 @@ import { PhotoStepButton } from '../../shared/photo-step-button';
 import { slideshowPhotos } from '../../shared/photo-url';
 import { isRated, ratingScore, reviewsLabel } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
-import { RIVIERA_MAP_OPTIONS, RivieraMap } from '../../shared/riviera-map';
+import {
+  NEAR_ME_MESSAGES,
+  NearMeProblem,
+  RIVIERA_MAP_OPTIONS,
+  RivieraMap,
+  withinBounds,
+} from '../../shared/riviera-map';
 import { ClosedForSeasonChip } from '../../shared/closed-for-season-chip';
 import { SalesClosedChip } from '../../shared/sales-closed-chip';
 import { SemanticChip } from '../../shared/semantic-chip';
@@ -50,7 +60,19 @@ import { defaultBookingDate, formatDayMonth, isIsoDate } from '../../shared/book
 import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
+import { fitInWindow } from './camera-fit';
+import { CoastPicker, coastIndex, PickedPlace } from './coast-picker';
+import { BeachOption, DiscoverHead } from './discover-head';
+import { DiscoverSheet } from './discover-sheet';
 import { VenuePin } from './pin-crowding';
+import {
+  distanceLabel,
+  groupByBeach,
+  nearestRegion,
+  placeTitle,
+  rowDistance,
+} from './place-groups';
+import { FOOT_ROW_PX } from './sheet-geometry';
 import { VenueCard } from './venue-card';
 import { VenuePinLayer } from './venue-pin-layer';
 import { VenuePreviewCard } from './venue-preview-card';
@@ -60,6 +82,22 @@ import { VenuePreviewCard } from './venue-preview-card';
  * beside the list. Both must move together.
  */
 const WIDE_VIEWPORT = '(min-width: 1024px)';
+
+/** `?map=sheet` puts the riviera map under the list as a sheet below `lg`; off, nothing moves. */
+const SHEET_FLAG = 'sheet';
+/** The region the sheet opens on when the tourist is not placed: the coast's middle stretch. */
+const DEFAULT_REGION = 'HIMARE';
+/** From this much sheet width the rows are two columns and the beach chip spells itself out. */
+const TWO_COLUMN_PX = 600;
+/** The Near me button's foot row keeps this much clear of the header at peek. */
+const NEAR_ME_TOP_CLEARANCE_PX = 8 + 44;
+
+/** The sheet's query: the region and beach the list is narrowed to, and their cards. */
+interface Focus {
+  readonly cards: readonly VenueCard[];
+  readonly region: string;
+  readonly beach: string;
+}
 
 /** The closed-state clause of a card's accessible name; the season badge outranks today's sales close. */
 function closedStateText(
@@ -92,12 +130,24 @@ function closedStateText(
  * <p>The venue pins over the map are the page's own overlay (`VenuePinLayer`), fed the very cards
  * the list renders. Pins that bury each other form a place pill: pressing it goes there, and when
  * the place is one beach the Beach filter follows, with a crumb on the map as the way back.
+ *
+ * <p>Behind `?map=sheet`, below `lg`, the page is the **riviera map sheet**: the map is the
+ * ground under the glass header, the cards are a sheet over it with three resting heights
+ * (`DiscoverSheet`), the head is one row carrying the query (`DiscoverHead`), the row is the pin's
+ * preview, and Near me has three arms decided by the map's own fence rule. Sheet mode keeps the
+ * one whole-coast request per date and narrows to a region client-side, so the chips and the
+ * coast picker can count every beach. The flag off, the page is the one described above.
  */
 @Component({
   selector: 'app-home',
   imports: [
+    NgTemplateOutlet,
     RouterLink,
     RetryButton,
+    BusyAction,
+    DiscoverSheet,
+    DiscoverHead,
+    CoastPicker,
     PanelGlass,
     PhotoScrim,
     PhotoSlideshow,
@@ -119,7 +169,7 @@ function closedStateText(
   host: {
     class: 'block text-riv-card-ink',
     // On the page host, not the map panel: a preview is closable wherever Escape is pressed,
-    '(keydown.escape)': 'closePreview()',
+    '(keydown.escape)': 'onEscape()',
   },
   templateUrl: './home.html',
 })
@@ -129,8 +179,11 @@ export class Home {
   private readonly document = inject(DOCUMENT);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
+  private readonly geolocation = inject(GeolocationGateway);
   private readonly map = viewChild(RivieraMap);
   private readonly pinLayer = viewChild(VenuePinLayer);
+  private readonly sheet = viewChild(DiscoverSheet);
+  private readonly head = viewChild(DiscoverHead);
 
   /** The displayed (filtered) venues; `undefined` while a request is in flight (loading). */
   protected readonly venues = signal<VenueSummary[] | undefined>(undefined);
@@ -179,8 +232,14 @@ export class Home {
   protected readonly mapOpen = computed(() => this.wide() || this.view() === 'map');
   /** The venue request has answered or failed: the list is drawn, so the map may load. */
   protected readonly listSettled = computed(() => this.venues() !== undefined || this.failed());
-  /** The map chunk's one-way trigger: an open map, after the list settled. */
-  protected readonly mapDefer = computed(() => this.mapOpen() && this.listSettled());
+  /** The map chunk's one-way trigger: an open map (the ground, in sheet mode), after the list settled. */
+  protected readonly mapDefer = computed(
+    () => (this.sheetMode() || this.mapOpen()) && this.listSettled(),
+  );
+
+  /** The route carries `?map=sheet`; the layout follows it only below `lg`. */
+  private readonly mapFlag = signal(false);
+  protected readonly sheetMode = computed(() => this.mapFlag() && !this.wide());
 
   /** The skeleton grid renders this many placeholder cards while a request is in flight. */
   protected readonly skeletons = [0, 1, 2, 3, 4, 5] as const;
@@ -227,7 +286,7 @@ export class Home {
    * two surfaces cannot disagree. A pin's id is its venue's id as a string.
    */
   protected readonly pins = computed<readonly VenuePin[]>(() =>
-    this.shownCards().flatMap((card) =>
+    (this.sheetMode() ? this.focus().cards : this.shownCards()).flatMap((card) =>
       card.location
         ? [
             {
@@ -272,6 +331,145 @@ export class Home {
    */
   protected readonly crowdStack = computed(() => this.pinLayer()?.stack() ?? null);
 
+  // ── the sheet's query (sheet mode only) ─────────────────────────────────────────────────
+  /** A region picked on the coast picker, `''` for the derived one (the tourist's, else Himarë). */
+  protected readonly focusRegion = signal('');
+  /** A beach picked on the rail, the picker or a crowd press; `''` for the whole region. */
+  protected readonly focusBeach = signal('');
+  /**
+   * Where the tourist is, when that is somewhere on the riviera: a position outside the map's
+   * fence is refused (the `off-map` arm), so this is never a place the page cannot open on. The
+   * position reaches the camera, the sort and the captions and nothing else.
+   */
+  protected readonly here = signal<LngLat | null>(null);
+  private readonly nearMeProblem = signal<NearMeProblem | null>(null);
+  protected readonly locating = signal(false);
+  /** Asked once: a browser does not grow the API mid-session. */
+  protected readonly nearMeShown = this.geolocation.supported();
+  /** Dismissed until the next answer: the source is the problem, the value resets with it. */
+  private readonly noteDismissed = linkedSignal({
+    source: this.nearMeProblem,
+    computation: () => false,
+  });
+  /** The map's own words for a Near me that is not a position, in the head's rail slot. */
+  protected readonly note = computed(() => {
+    const problem = this.nearMeProblem();
+    return problem === null || this.noteDismissed() ? null : NEAR_ME_MESSAGES[problem];
+  });
+  protected readonly pickerOpen = signal(false);
+  protected readonly detent = computed(() => this.sheet()?.detent() ?? 'half');
+  /** The rails hide at peek: the head is the one row there. */
+  protected readonly railsShown = computed(() => this.detent() !== 'peek');
+  /** The tablet band: two row columns and the beach chip spelled out. */
+  protected readonly wideSheet = computed(
+    () => (this.sheet()?.chrome().viewportW ?? 0) >= TWO_COLUMN_PX,
+  );
+  /**
+   * The foot row's height above the map's bottom edge: 12 px over the sheet's top, following a
+   * drag, and never up into the header at peek. Near me sits on it at the right, the credit at
+   * the left — all the phone's map chrome on one row.
+   */
+  protected readonly footBottom = computed(() => {
+    const sheet = this.sheet();
+    if (sheet === undefined) {
+      return 0;
+    }
+    const { viewportH, header } = sheet.chrome();
+    return Math.min(
+      viewportH - header - NEAR_ME_TOP_CLEARANCE_PX,
+      viewportH - sheet.sheetTop() + 12,
+    );
+  });
+
+  /** A region, never the coast: the chosen beach or region, else the tourist's, else Himarë. */
+  protected readonly focus = computed<Focus>(() => {
+    const cards = this.shownCards();
+    const beach = this.focusBeach();
+    if (beach !== '') {
+      return {
+        cards: cards.filter((card) => card.beach === beach),
+        region: beachEntry(beach)?.region ?? '',
+        beach,
+      };
+    }
+    const here = this.here();
+    const region =
+      this.focusRegion() ||
+      (here === null ? '' : nearestRegion(here, cards)) ||
+      defaultRegion(cards);
+    if (region === '') {
+      return { cards, region: '', beach: '' };
+    }
+    return {
+      cards: cards.filter((card) => beachEntry(card.beach)?.region === region),
+      region,
+      beach: '',
+    };
+  });
+  /** The whole region's cards, for the beach chip's counts while one beach is chosen. */
+  private readonly regionCards = computed(() => {
+    const region = this.focus().region;
+    return region === ''
+      ? this.shownCards()
+      : this.shownCards().filter((card) => beachEntry(card.beach)?.region === region);
+  });
+  protected readonly groups = computed(() => groupByBeach(this.focus().cards, this.here()));
+  protected readonly title = computed(() =>
+    placeTitle({
+      region: this.focus().region,
+      beach: this.focus().beach,
+      here: this.here(),
+      groups: this.groups(),
+    }),
+  );
+  private readonly isToday = computed(() => this.selectedDate() === this.minDate);
+  /**
+   * The selling line: `8 of 11 selling today` (invariant #4 as the head's light, from the
+   * server's per-date verdict), or the count on another day.
+   */
+  protected readonly subtitle = computed(() => {
+    const cards = this.focus().cards;
+    const n = cards.length;
+    if (!this.isToday()) {
+      return `${n} ${n === 1 ? 'venue' : 'venues'}`;
+    }
+    const selling = cards.filter((card) => !card.salesClosed).length;
+    return `${selling} of ${n} selling today`;
+  });
+  /** The region's beaches with a venue, in coast order, each with its count. */
+  protected readonly beachOptions = computed<readonly BeachOption[]>(() =>
+    presentBeaches(this.regionCards().map((card) => card.beach)).map((entry) => ({
+      code: entry.code,
+      label: entry.label,
+      count: this.regionCards().filter((card) => card.beach === entry.code).length,
+    })),
+  );
+  protected readonly pickerRegions = computed(() => coastIndex(this.shownCards()));
+  /** Each card's distance caption while located, by venue id. */
+  protected readonly rowKms = computed<ReadonlyMap<number, string>>(() => {
+    const here = this.here();
+    return new Map(
+      this.focus()
+        .cards.map((card) => [card.id, rowDistance(card, here)] as const)
+        .filter((entry): entry is readonly [number, string] => entry[1] !== null),
+    );
+  });
+  /** The frame includes the tourist: the fit is to the pins AND the dot, so `27 km` is on the map. */
+  private readonly fitTargets = computed<readonly LngLat[]>(() => {
+    const here = this.here();
+    const pins = this.pins().map((pin) => pin.at);
+    return here === null ? pins : [...pins, here];
+  });
+  /** Bumped on every camera move, so the dot re-projects. */
+  private readonly moved = signal(0);
+  /** The tourist's own dot over the pins, projected through the live map. */
+  protected readonly hereDot = computed(() => {
+    this.moved();
+    const here = this.here();
+    const handle = this.mapHandle();
+    return here === null || handle === undefined ? null : handle.project(here);
+  });
+
   /** Guards against an earlier slow response overwriting a newer one (last-writer-wins). */
   private lastRequest = '';
 
@@ -290,8 +488,11 @@ export class Home {
     this.rescueFocusFromClosingPreview();
     this.followViewport();
     this.selectedDate.set(this.routeDate(this.route.snapshot.queryParamMap));
+    this.mapFlag.set(this.route.snapshot.queryParamMap.get('map') === SHEET_FLAG);
+    this.followSheet();
     this.loadInitial();
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      this.mapFlag.set(params.get('map') === SHEET_FLAG);
       const date = this.routeDate(params);
       if (date !== this.selectedDate()) {
         this.selectedDate.set(date);
@@ -349,13 +550,157 @@ export class Home {
   }
 
   /**
+   * The camera is derived from the pane and the result set, never `RIVIERA_MAP_OPTIONS`' fixed
+   * zoom: the pins (and the dot, when located) are fitted into the window between the header and
+   * the foot row above the sheet's rest, capped at 14 so the sea stays in frame. Nothing re-fits
+   * at full, where the map is a sliver.
+   */
+  private followSheet(): void {
+    // The dot re-projects on every camera move; its own effect, so a re-fit never drops the subscription.
+    effect((onCleanup) => {
+      const handle = this.mapHandle();
+      if (handle !== undefined) {
+        onCleanup(handle.onMove(() => this.moved.update((n) => n + 1)));
+      }
+    });
+    afterRenderEffect(() => {
+      if (!this.sheetMode()) {
+        return;
+      }
+      const handle = this.mapHandle();
+      const sheet = this.sheet();
+      const targets = this.fitTargets();
+      const detent = this.detent();
+      if (handle === undefined || sheet === undefined) {
+        return;
+      }
+      if (detent === 'full') {
+        return;
+      }
+      const { viewportW, viewportH, header } = sheet.chrome();
+      const view = fitInWindow(
+        targets,
+        { width: viewportW, height: viewportH },
+        header,
+        sheet.tops()[detent] - FOOT_ROW_PX,
+      );
+      if (view !== null) {
+        handle.easeTo(view);
+      }
+    });
+  }
+
+  /**
+   * Near me, the page's own in sheet mode. Three arms, decided by the map's fence rule: off the
+   * fence nothing moves and the map's words stand in the head; inside it the tourist is placed,
+   * the region becomes theirs and the fit includes the dot; on a beach the beach is the title.
+   * A browser's refusal shows its own words. The position is used here and never sent or stored.
+   */
+  protected async locate(): Promise<void> {
+    if (this.locating()) {
+      return;
+    }
+    this.locating.set(true);
+    this.nearMeProblem.set(null);
+    try {
+      this.placeAt(await this.geolocation.locate());
+    } finally {
+      this.locating.set(false);
+    }
+  }
+
+  private placeAt(outcome: GeolocationOutcome): void {
+    if (outcome.kind !== 'located') {
+      this.nearMeProblem.set(outcome.kind);
+    } else if (!withinBounds(outcome.at, RIVIERA_MAP_OPTIONS.maxBounds)) {
+      this.nearMeProblem.set('off-map');
+    } else {
+      this.here.set(outcome.at);
+      this.focusRegion.set('');
+      this.focusBeach.set('');
+    }
+    // The answer lives in the head's rail slot, which peek does not show.
+    if (this.nearMeProblem() !== null) {
+      this.raiseFromPeek();
+    }
+  }
+
+  protected async locateFromPicker(): Promise<void> {
+    this.closePicker();
+    await this.locate();
+  }
+
+  protected dismissNote(): void {
+    this.noteDismissed.set(true);
+    this.focusAfterRender('head-day');
+  }
+
+  /** A rail opened while the sheet was at peek: the sheet rises so the rail has room. */
+  protected onRailOpened(): void {
+    this.raiseFromPeek();
+  }
+
+  private raiseFromPeek(): void {
+    if (this.detent() === 'peek') {
+      this.sheet()?.go('half');
+    }
+  }
+
+  protected onBeachPicked(code: string): void {
+    this.focusBeach.set(code);
+  }
+
+  protected onDayPicked(date: string): void {
+    if (date === this.selectedDate()) {
+      return;
+    }
+    this.selectedDate.set(date);
+    this.reload();
+  }
+
+  protected openPicker(): void {
+    this.head()?.closeRails();
+    this.pickerOpen.set(true);
+  }
+
+  protected onPlacePicked({ region, beach }: PickedPlace): void {
+    this.focusRegion.set(region);
+    this.focusBeach.set(beach);
+    this.closePicker();
+  }
+
+  /** The picker takes its own focus down with it, so focus returns to the place that opened it. */
+  protected closePicker(): void {
+    if (!this.pickerOpen()) {
+      return;
+    }
+    this.pickerOpen.set(false);
+    this.focusAfterRender('head-place');
+  }
+
+  protected onEscape(): void {
+    this.closePreview();
+    if (this.sheetMode()) {
+      this.head()?.closeRails();
+      this.closePicker();
+    }
+  }
+
+  protected kmLabel(km: number): string {
+    return distanceLabel(km);
+  }
+
+  /**
    * Open a venue's preview: from a pin (or a pill's press-again), which moves focus into the
    * dialog, or from the open preview's own stepper, which leaves focus where it is — the dialog
-   * stays mounted across a step, so the pressed chevron keeps it.
+   * stays mounted across a step, so the pressed chevron keeps it. In sheet mode the row is the
+   * preview: it lights and goes to the list's top, and a sheet at peek rises to half.
    */
   protected onPinSelected(id: string): void {
     this.selectedVenue.set(id);
-    if (!this.previewHoldsFocus()) {
+    if (this.sheetMode()) {
+      this.raiseFromPeek();
+    } else if (!this.previewHoldsFocus()) {
       this.focusAfterRender('venue-preview');
     }
     this.revealCard(id);
@@ -363,10 +708,13 @@ export class Home {
 
   /**
    * A place on the map was pressed and it is one beach: the list narrows to it, so the cards
-   * beside the map — the List tab on a phone — are the venues the camera went to.
+   * beside the map — the List tab on a phone — are the venues the camera went to. On the sheet
+   * the narrowing is the head's beach, client-side, with no request.
    */
   protected onBeachNarrowed(beach: string): void {
-    if (beach !== this.beach()) {
+    if (this.sheetMode()) {
+      this.focusBeach.set(beach);
+    } else if (beach !== this.beach()) {
       this.beach.set(beach);
       this.reload();
     }
@@ -397,7 +745,7 @@ export class Home {
     this.pinLayer()?.focusPin(open);
   }
 
-  /** Bring the selected venue's card into view, where the list is on screen beside the map. */
+  /** Bring the selected venue's card into view: to the sheet's top, or beside the map. */
   private revealCard(id: string): void {
     afterNextRender(
       {
@@ -405,7 +753,15 @@ export class Home {
           const card = this.host.nativeElement.querySelector<HTMLElement>(
             `[data-venue-pin="${id}"]`,
           );
-          card?.scrollIntoView?.({ block: 'nearest' });
+          if (card === null) {
+            return;
+          }
+          const sheet = this.sheet();
+          if (sheet !== undefined) {
+            sheet.reveal(card);
+          } else {
+            card.scrollIntoView?.({ block: 'nearest' });
+          }
         },
       },
       { injector: this.injector },
@@ -599,4 +955,12 @@ export class Home {
       ariaLabel,
     };
   }
+}
+
+/** Himarë when it has a venue, else the northernmost region that has one, else nothing (the coast). */
+function defaultRegion(cards: readonly VenueCard[]): string {
+  const present = presentRegions(cards.map((card) => card.beach));
+  return present.some((region) => region.code === DEFAULT_REGION)
+    ? DEFAULT_REGION
+    : (present[0]?.code ?? '');
 }

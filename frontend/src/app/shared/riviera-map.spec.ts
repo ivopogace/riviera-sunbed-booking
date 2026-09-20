@@ -4,7 +4,14 @@ import { FakeGeolocationGateway } from '../../testing/fake-geolocation';
 import { FakeMapEngine, FakeMapHandle } from './fake-map-engine';
 import { GeolocationGateway, GeolocationOutcome } from './geolocation';
 import { LngLat, MapEngine, MapEngineOptions, MapHandle } from './map-engine';
-import { HERE_MARKER, NEAR_ME_ZOOM, RIVIERA_MAP_OPTIONS, RivieraMap } from './riviera-map';
+import {
+  HERE_MARKER,
+  NEAR_ME_MESSAGES,
+  NEAR_ME_ZOOM,
+  RIVIERA_MAP_OPTIONS,
+  RivieraMap,
+  withinBounds,
+} from './riviera-map';
 
 /** An engine no browser can satisfy — what a WebGL-less tourist gets. */
 class NoWebGlEngine extends MapEngine {
@@ -536,5 +543,72 @@ describe('RivieraMap near me', () => {
     handleOf(fixture).markers().get(HERE_MARKER)?.element.click();
 
     expect(clicked).toEqual([]);
+  });
+});
+
+describe('RivieraMap phone chrome (foot)', () => {
+  function render(foot: number | null): ComponentFixture<RivieraMap> {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [RivieraMap],
+      providers: [
+        { provide: MapEngine, useValue: new FakeMapEngine() },
+        { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
+      ],
+    });
+    const fixture = TestBed.createComponent(RivieraMap);
+    fixture.componentRef.setInput('foot', foot);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function byTestId(fixture: ComponentFixture<RivieraMap>, id: string): HTMLElement | null {
+    return (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      `[data-testid="${id}"]`,
+    );
+  }
+
+  it('keeps the zoom column and the bottom-right credit by default', () => {
+    const fixture = render(null);
+    expect(byTestId(fixture, 'map-zoom-in')).not.toBeNull();
+    const credit = byTestId(fixture, 'map-attribution')!;
+    expect(credit.classList.contains('right-3')).toBe(true);
+    expect(credit.classList.contains('bottom-3')).toBe(true);
+    expect(credit.style.bottom).toBe('');
+  });
+
+  it('with a foot, drops the zoom column and puts the credit at the foot’s left, wrapped to 200 px', () => {
+    const fixture = render(476);
+    expect(byTestId(fixture, 'map-zoom-in')).toBeNull();
+    expect(byTestId(fixture, 'map-zoom-out')).toBeNull();
+    const credit = byTestId(fixture, 'map-attribution')!;
+    expect(credit.classList.contains('left-3')).toBe(true);
+    expect(credit.classList.contains('right-3')).toBe(false);
+    expect(credit.classList.contains('max-w-[min(200px,calc(100%-184px))]')).toBe(true);
+    expect(credit.style.bottom).toBe('476px');
+    expect(credit.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      '© OpenMapTiles © OpenStreetMap contributors',
+    );
+  });
+});
+
+describe('the fence rule', () => {
+  const bounds = RIVIERA_MAP_OPTIONS.maxBounds;
+
+  it('accepts a position on the fence and refuses one a step outside it', () => {
+    expect(withinBounds({ lng: 19.0, lat: 39.5 }, bounds)).toBe(true);
+    expect(withinBounds({ lng: 21.2, lat: 42.8 }, bounds)).toBe(true);
+    expect(withinBounds({ lng: 19.82, lat: 41.33 }, bounds)).toBe(true);
+    expect(withinBounds({ lng: 12.5, lat: 41.9 }, bounds)).toBe(false);
+    expect(withinBounds({ lng: 19.5, lat: 42.81 }, bounds)).toBe(false);
+  });
+
+  it('publishes the words the map answers Near me with, so a page can say the same thing', () => {
+    expect(NEAR_ME_MESSAGES['off-map']).toBe(
+      'You don’t seem to be on the Albanian riviera — the map hasn’t moved.',
+    );
+    expect(Object.keys(NEAR_ME_MESSAGES).sort()).toEqual(
+      ['denied', 'off-map', 'timeout', 'unavailable'].sort(),
+    );
   });
 });
