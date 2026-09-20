@@ -213,7 +213,7 @@ bar, the List/Map switch and the preview card:
 
 - **Assumption A-1:** the issue's "existing coast picker" does not exist in the shipped tree;
   built here as the coast index without the ribbon map. — resolved: shipped in PR #1160, stated in
-  its scope notes; the ribbon is a follow-up issue filed at close-out.
+  its scope notes; the ribbon is #1161, filed at close-out.
 - **Assumption A-2:** the flag is `?map=sheet`. — resolved: PR #1160.
 - **Assumption A-3:** one unfiltered request per date, narrowed client-side. — resolved: PR #1160.
 - **Assumption A-4:** the pin's dusk is #1159's; the row's dusk is here. — resolved: PR #1160.
@@ -257,7 +257,7 @@ N/A — no contract change; `GET /api/venues?date=` as today.
 
 **Stage pointer:** `DONE — merged via PR #1160`
 
-**Next action:** none; close-out steps 1–3 (issue, epic tick, follow-up issue for the picker's ribbon) after the merge.
+**Next action:** none; close-out steps 1–3 (issue, epic tick, the picker's ribbon is #1161) after the merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
