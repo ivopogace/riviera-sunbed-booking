@@ -71,10 +71,10 @@ export const NEAR_ME_ZOOM = 12;
  * outside `maxBounds` would be clamped to a corner with the visitor's marker unreachable, so it is
  * refused rather than half-honoured.
  */
-type NearMeProblem = GeolocationFailure | 'off-map';
+export type NearMeProblem = GeolocationFailure | 'off-map';
 
 /** One short sentence each, all of them saying the map stayed where the visitor left it. */
-const NEAR_ME_MESSAGES: Record<NearMeProblem, string> = {
+export const NEAR_ME_MESSAGES: Record<NearMeProblem, string> = {
   denied: 'Location permission was declined. The map hasn’t moved.',
   unavailable: 'Your location isn’t available right now.',
   timeout: 'Finding your location took too long. Try again.',
@@ -348,7 +348,8 @@ export class RivieraMap {
   }
 }
 
-function withinBounds(at: LngLat, bounds: readonly [LngLat, LngLat]): boolean {
+/** The fence rule: inside the ADR-0022 extract or not a place the map can open on. */
+export function withinBounds(at: LngLat, bounds: readonly [LngLat, LngLat]): boolean {
   const [southWest, northEast] = bounds;
   return (
     at.lng >= southWest.lng &&

@@ -4,7 +4,14 @@ import { FakeGeolocationGateway } from '../../testing/fake-geolocation';
 import { FakeMapEngine, FakeMapHandle } from './fake-map-engine';
 import { GeolocationGateway, GeolocationOutcome } from './geolocation';
 import { LngLat, MapEngine, MapEngineOptions, MapHandle } from './map-engine';
-import { HERE_MARKER, NEAR_ME_ZOOM, RIVIERA_MAP_OPTIONS, RivieraMap } from './riviera-map';
+import {
+  HERE_MARKER,
+  NEAR_ME_MESSAGES,
+  NEAR_ME_ZOOM,
+  RIVIERA_MAP_OPTIONS,
+  RivieraMap,
+  withinBounds,
+} from './riviera-map';
 
 /** An engine no browser can satisfy — what a WebGL-less tourist gets. */
 class NoWebGlEngine extends MapEngine {
@@ -536,5 +543,26 @@ describe('RivieraMap near me', () => {
     handleOf(fixture).markers().get(HERE_MARKER)?.element.click();
 
     expect(clicked).toEqual([]);
+  });
+});
+
+describe('the fence rule', () => {
+  const bounds = RIVIERA_MAP_OPTIONS.maxBounds;
+
+  it('accepts a position on the fence and refuses one a step outside it', () => {
+    expect(withinBounds({ lng: 19.0, lat: 39.5 }, bounds)).toBe(true);
+    expect(withinBounds({ lng: 21.2, lat: 42.8 }, bounds)).toBe(true);
+    expect(withinBounds({ lng: 19.82, lat: 41.33 }, bounds)).toBe(true);
+    expect(withinBounds({ lng: 12.5, lat: 41.9 }, bounds)).toBe(false);
+    expect(withinBounds({ lng: 19.5, lat: 42.81 }, bounds)).toBe(false);
+  });
+
+  it('publishes the words the map answers Near me with, so a page can say the same thing', () => {
+    expect(NEAR_ME_MESSAGES['off-map']).toBe(
+      'You don’t seem to be on the Albanian riviera — the map hasn’t moved.',
+    );
+    expect(Object.keys(NEAR_ME_MESSAGES).sort()).toEqual(
+      ['denied', 'off-map', 'timeout', 'unavailable'].sort(),
+    );
   });
 });
