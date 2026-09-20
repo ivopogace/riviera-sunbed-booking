@@ -52,6 +52,8 @@ interface Place {
   readonly index: number;
   /** The member a press opens once the place is here: the open one's successor, or the first. */
   readonly next: PlacedPin;
+  /** Every member's sales for the chosen day have closed: the face greys, the price is struck. */
+  readonly dusk: boolean;
   readonly placement: PillPlacement;
 }
 
@@ -88,6 +90,17 @@ const LONE_CLASSES =
 
 /** The dot a pin with no price shows: the placement pin's glyph, at its size. */
 const LONE_DOT_CLASSES = 'text-[20px]';
+
+/**
+ * Dusk: this venue, or every venue in this crowd, has stopped selling for the chosen day
+ * (invariant #4, rendered). Desaturation over the fixed hover fill with the price struck, and the
+ * ink untouched — a faded button would drop the face under AA over imagery of unknown luminance,
+ * and the strike keeps the state off colour alone. The `data-dusk:` fill outranks the resting one
+ * by specificity, not by class order.
+ */
+const DUSK_CLASSES =
+  'data-dusk:saturate-0 data-dusk:bg-riv-solid-btn-hover ' +
+  'data-dusk:[&_.pin-price]:line-through';
 
 /**
  * The priced face: the card price's weight, tabular so `€25` and `€30` sit the same width side by
@@ -311,12 +324,21 @@ export class VenuePinLayer {
   protected slotClass(slot: Slot): string {
     switch (slot.kind) {
       case 'lone':
-        return `${LONE_CLASSES} ${slot.member.pin.card.priceLabel ? LONE_BADGE_CLASSES : LONE_DOT_CLASSES}`;
+        return `${LONE_CLASSES} ${DUSK_CLASSES} ${slot.member.pin.card.priceLabel ? LONE_BADGE_CLASSES : LONE_DOT_CLASSES}`;
       case 'place':
-        return `${PLACE_CLASSES} ${slot.place.placement.compact ? 'pl-[6px]' : 'pl-[13px]'}`;
+        return `${PLACE_CLASSES} ${DUSK_CLASSES} ${slot.place.placement.compact ? 'pl-[6px]' : 'pl-[13px]'}`;
       default:
         return MEMBER_CLASSES;
     }
+  }
+
+  /**
+   * Whether this face is at dusk. A lone pin answers for itself; a crowd's pill answers for the
+   * whole crowd, so `Borsh · 2` greys at 16:30 while `3 beaches · 6` keeps its colour with four of
+   * six still selling. The invisible member discs never grey: nothing of them is painted.
+   */
+  protected dusk({ kind, place, member }: Slot): boolean {
+    return kind === 'lone' ? member.pin.card.salesClosed : kind === 'place' && place.dusk;
   }
 
   /** The pill hangs off its point when it cannot sit centred; every other face sits centred. */
@@ -374,6 +396,7 @@ export class VenuePinLayer {
     const index = crowd.members.findIndex((member) => member.pin.id === open);
     return {
       crowd,
+      dusk: crowd.members.every((member) => member.pin.card.salesClosed),
       name: placeName(beaches.map(beachLabel)),
       from: lowestFromPrice(crowd.members.map((member) => member.pin.card)),
       beach: beaches.length === 1 ? beaches[0] : null,

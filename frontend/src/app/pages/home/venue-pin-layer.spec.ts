@@ -380,6 +380,38 @@ describe('VenuePinLayer', () => {
     });
   });
 
+  describe('dusk', () => {
+    function closed(pin: VenuePin): VenuePin {
+      return { ...pin, card: { ...pin.card, salesClosed: true } };
+    }
+
+    it('greys a lone pin whose own sales for the day have closed', async () => {
+      await render([closed(AURORA)]);
+      expect(buttons('map-venue-pin')[0].hasAttribute('data-dusk')).toBe(true);
+    });
+
+    it('leaves a lone pin still selling alone', async () => {
+      await render([AURORA]);
+      expect(buttons('map-venue-pin')[0].hasAttribute('data-dusk')).toBe(false);
+    });
+
+    it('greys a crowd only when every member has closed', async () => {
+      await render([closed(MIRAMAR), LORI]);
+      expect(buttons('map-place-pill')[0].hasAttribute('data-dusk')).toBe(false);
+
+      await render([closed(MIRAMAR), closed(LORI)]);
+      expect(buttons('map-place-pill')[0].hasAttribute('data-dusk')).toBe(true);
+    });
+
+    it('strikes the price and leaves the name, so dusk is never carried by colour alone', async () => {
+      await render([closed(MIRAMAR), closed(LORI)]);
+
+      const [pill] = buttons('map-place-pill');
+      expect(pill.querySelector('.pin-price')?.textContent?.trim()).toBe('from €21');
+      expect(pill.className).toContain('data-dusk:[&_.pin-price]:line-through');
+    });
+  });
+
   describe('the placement inputs the host hands in', () => {
     /** The trio sits on the camera's centre, which in jsdom is the layer's own corner. */
     async function renderDhermi(): Promise<void> {
