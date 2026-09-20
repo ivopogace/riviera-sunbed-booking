@@ -257,7 +257,7 @@ N/A — no contract change; `GET /api/venues?date=` as today.
 
 **Stage pointer:** `DONE — merged via PR #1160`
 
-**Next action:** none; close-out steps 1–3 (issue, epic tick, the picker's ribbon is #1161) after the merge.
+**Next action:** none; close-out steps 1–3 (issue, epic tick, the picker's ribbon is #1161) after the merge. The retirement sweep removed the merged plans of PR #1140 and PR #1142.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -281,13 +281,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-5 | the e2e (Chromium) | the lift at half could exceed the list's own overflow at full, so the handoff jumped | fixed-in-phase-4 — the lift clamps to the list's overflow at full (the real scroller's clamp) |
 | F-6 | review gate (RV-FE-9) | a pick on a rail chip destroyed the rail and the focused chip with no focus move; Escape did the same to a keyboard user inside a rail | fixed — `DiscoverHead` moves focus to the chip that opened the rail via `focusMover()`, pinned by `discover-head.spec.ts` |
 | F-7 | review gate (RV-STYLE-1) | added comments cited design-record rounds and a commit hash | fixed — restated as present-tense contracts |
-| F-8 | review gate (bug scan) | a re-measured chrome (a phone's toolbar hiding) rested the sheet back at half, discarding the tourist's detent | fixed — after the opening rest, a re-measure rests at the current detent's new offset (`untracked`), pinned by `discover-sheet.spec.ts` |
+| F-8 | review gate (bug scan) | a re-measured chrome (a phone's toolbar hiding) rested the sheet back at half, discarding the tourist's detent | fixed — after the opening rest has landed, a re-measure rests at the current detent's new offset (`untracked`), pinned by `discover-sheet.spec.ts`; the fix reached the tree in the review's second round only (F-15) |
 | F-9 | review gate (history) | at 320 px the credit's 200 px cap overlapped `You are here` on the foot row | fixed — one `min()` cap leaves the button its width, the insets and a gap; 320 × 640 joins the e2e's viewports with a gap assertion |
 | F-10 | review gate (prior PRs) | the new controls carried `touch-manipulation` without the e2e proof earlier reviews set for map-area controls; the grabber lacked it | fixed — `expectTouchManipulation` over the head, foot, rails, picker and Map pill; the grabber wears it |
 | F-11 | Sonar `Web:S6819` | the tourist's dot was a `span` with `role="img"` | fixed — an inline `svg` with a title |
 | F-12 | review gate (RV-FE-10) | sheet mode had no persistent live region speaking the landed or narrowed list: the announcer's `readyLabel` was empty and the head's subtitle is not live | fixed — a persistent `<output aria-live="polite">` outcome region above the sheet (`Himarë: 8 of 11 selling today`), the shipped count block's twin, pinned by `home.spec.ts` |
 | F-13 | review gate (comments) | `onBeachNarrowed`'s doc comment described only the shipped branch | fixed |
 | F-14 | review gate (comments) | `shared/geolocation.ts` promised the position reaches the camera and nothing else, while the sheet also sorts and captions by it | fixed — the promise names the sort and the captions |
+| F-15 | review gate, round 2 (overlay) | the round-1 commit recorded F-8 as fixed and `discover-sheet.spec.ts` at 18 tests, but the sheet still rested at half on every re-measure and the spec had 10 | fixed — the F-8 change and its test landed; below the bar in the same commit: the day rail's own `expectTouchManipulation` proof, the credit comment's 184 px arithmetic |
 
 ---
 
@@ -386,7 +387,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - [x] **AC-1:** `npx ng test --watch=false --include='src/app/pages/home/sheet-geometry.spec.ts'` → 6 passed; `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/discover-sheet.e2e.ts` → 16 passed (first row at y 493 at 320, 390, 430, 768 and 820). Verified on PR #1160's head.
 - [x] **AC-2:** the same e2e run ("flicks rest at full and at half; the list scrolls only at full").
-- [x] **AC-3:** `discover-sheet.spec.ts` (18 passed) + the e2e's grabber and Map pill case.
+- [x] **AC-3:** `discover-sheet.spec.ts` (11 passed) + the e2e's grabber and Map pill case.
 - [x] **AC-4:** `discover-head.spec.ts` (14 passed), `home.spec.ts` ("a chip pressed at peek…"), the e2e's rails case.
 - [x] **AC-5:** `home.spec.ts` ("a pin press lights its row…"), the e2e's pin case.
 - [x] **AC-6:** `place-groups.spec.ts`, `riviera-map.spec.ts`, `home.spec.ts` (Rome, Tirana, Dhërmi, denied), the e2e's three arms.
@@ -407,4 +408,4 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
 - [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #1160`.
-- [x] The review gate ran in full (`code-review:code-review` over `da25734c..4af7d3f5` at high effort with `riviera-review-overlay`; findings F-6…F-10 and F-12…F-14, all fixed in the same PR).
+- [x] The review gate ran in full (`code-review:code-review` at high effort with `riviera-review-overlay`: round 1 over `da25734c..4af7d3f5`, findings F-6…F-10 and F-12…F-14; round 2 over `da25734c..2cdc2bc8`, finding F-15; all fixed in the same PR).

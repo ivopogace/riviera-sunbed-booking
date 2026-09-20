@@ -491,6 +491,15 @@ test.describe('Discover sheet — accessibility', () => {
         'the beach rail',
       );
 
+      await page.getByTestId('head-day').click();
+      await expect(page.getByRole('group', { name: 'Day' })).toBeVisible();
+      await settle(page);
+      await expectTouchManipulation(
+        page,
+        '[role="group"][aria-label="Day"] button',
+        'the day rail',
+      );
+
       await page.getByTestId('head-place').click();
       const picker = page.getByTestId('coast-picker');
       await expect(picker).toBeVisible();

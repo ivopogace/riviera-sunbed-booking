@@ -168,7 +168,7 @@ export class RivieraMap {
   /**
    * The credit's place: the shipped bottom-right corner, or the foot's left, wrapped to 200 px —
    * less on the narrowest phone, where it leaves the consumer's control at the right its 150 px
-   * (`You are here`), the two insets and an 8 px gap.
+   * (`You are here`), the two insets and a 10 px gap.
    */
   protected readonly creditPlacement = computed(() =>
     this.footChrome()

@@ -2,6 +2,7 @@ import { Component, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { DiscoverSheet } from './discover-sheet';
+import { offsetFor } from './sheet-geometry';
 
 /**
  * The sheet in jsdom, which lays nothing out: what can be proven here is the state machine —
@@ -202,4 +203,27 @@ describe('DiscoverSheet', () => {
 
     expect(list.scrollTop).toBe(392);
   });
+
+  it('keeps the detent across a re-measure once opened, resting at its new offset', async () => {
+    const window = el().ownerDocument.defaultView!;
+    await nextFrame(window);
+    sheet().go('full');
+    await settle();
+    await nextFrame(window);
+    expect(sheet().detent()).toBe('full');
+
+    Object.defineProperty(window, 'innerHeight', {
+      value: window.innerHeight - 60,
+      configurable: true,
+    });
+    window.dispatchEvent(new Event('resize'));
+    await settle();
+
+    expect(sheet().detent()).toBe('full');
+    expect(scroller().scrollTop).toBe(offsetFor(sheet().tops(), 'full'));
+  });
+
+  function nextFrame(window: Window): Promise<void> {
+    return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+  }
 });

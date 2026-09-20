@@ -6,6 +6,7 @@ import {
   ElementRef,
   inject,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 
@@ -189,12 +190,12 @@ export class DiscoverSheet {
     afterRenderEffect({
       write: () => {
         const scroller = this.scroller()?.nativeElement;
-        const want = offsetFor(this.tops(), 'half');
+        const want = offsetFor(this.tops(), this.opened ? untracked(this.detent) : 'half');
         if (scroller === undefined || want === restedAt) {
           return;
         }
         restedAt = want;
-        this.restAtHalf(scroller, want, 0);
+        this.rest(scroller, want, 0);
       },
     });
     afterRenderEffect({
@@ -211,20 +212,26 @@ export class DiscoverSheet {
     this.measured.update((n) => n + 1);
   }
 
+  /** Whether the opening rest has landed; from then on a re-measure keeps the tourist's detent. */
+  private opened = false;
+
   /**
-   * Rest at half, cut, and confirm on the next frame that the rest held: a rest taken before the
-   * scroller's geometry has settled is carried elsewhere by the browser's own snapping, so it is
-   * retaken, a few frames at most.
+   * Rest at an offset, cut, and confirm on the next frame that the rest held: a rest taken before
+   * the scroller's geometry has settled is carried elsewhere by the browser's own snapping, so it
+   * is retaken, a few frames at most.
    */
-  private restAtHalf(scroller: HTMLElement, want: number, attempt: number): void {
+  private rest(scroller: HTMLElement, want: number, attempt: number): void {
     scrollScroller(scroller, want, 'instant');
     this.scrolled.set(scroller.scrollTop);
     if (attempt >= REST_ATTEMPTS) {
+      this.opened = true;
       return;
     }
     this.document.defaultView?.requestAnimationFrame(() => {
-      if (scroller.scrollTop !== want) {
-        this.restAtHalf(scroller, want, attempt + 1);
+      if (scroller.scrollTop === want) {
+        this.opened = true;
+      } else {
+        this.rest(scroller, want, attempt + 1);
       }
     });
   }
