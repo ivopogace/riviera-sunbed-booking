@@ -29,7 +29,8 @@ const SINGLE_PIN_ZOOM = 12.5;
  * The tightest the fit will go, whatever the pins allow. Three venues 20 m apart would otherwise
  * fit at the map's own ceiling of 16, which shows driveways and no sea — and on THIS product the
  * sea is the context the whole decision rests on. 14 keeps the bay and the shoreline in frame;
- * `shared/beaches.ts` picks 13 for the same reason when a beach is chosen from the filter.
+ * `shared/beaches.ts` picks 13 for the same reason when a beach is chosen from the filter. One
+ * beach asks for its own ceiling — round 11 measured 15 — which callers pass as `ceiling`.
  */
 const FIT_MAX_ZOOM = 14;
 
@@ -59,6 +60,7 @@ export function fitPins(
   insetLeft = 0,
   insetRight = 0,
   pad = PAD_PX,
+  ceiling = FIT_MAX_ZOOM,
 ): MapView | null {
   if (at.length === 0 || width - insetLeft - insetRight <= pad || height <= pad) {
     return null;
@@ -86,7 +88,7 @@ export function fitPins(
 
   const zoom = Math.min(
     RIVIERA_MAP_OPTIONS.maxZoom,
-    FIT_MAX_ZOOM,
+    ceiling,
     Math.max(RIVIERA_MAP_OPTIONS.minZoom, fenceFloor, wanted),
   );
 

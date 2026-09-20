@@ -39,6 +39,9 @@ const DESK = { width: 1920, height: 1080 };
 const HERE_DHERMI = '19.641,40.147';
 
 const NARROW = { width: 1024, height: 768 };
+/** The tablet band the sheet runs in with no tab bar under it: sm (640) to lg (1024). */
+const TABLET = { width: 768, height: 1024 };
+const TABLET_TALL = { width: 820, height: 1180 };
 const MID = { width: 1100, height: 800 };
 const WIDE_MID = { width: 1200, height: 800 };
 
@@ -114,6 +117,13 @@ const SHOTS = [
   { name: 'Q-shore-phone-live', v: PHONE, url: 'variant=Q&live=1&now=10:30' },
   { name: 'Q-shore-tall', v: TALL, url: 'variant=Q&now=10:30' },
   { name: 'Q-shore-tall-peek', v: TALL, url: 'variant=Q&sheet=peek&now=10:30' },
+  // round 11: the tablet band — the sheet layout with the tab bar gone (`sm:hidden`)
+  { name: 'Q-shore-768', v: TABLET, touch: true, url: 'variant=Q&now=10:30' },
+  { name: 'Q-shore-768-peek', v: TABLET, touch: true, url: 'variant=Q&sheet=peek&now=10:30' },
+  { name: 'Q-shore-768-full', v: TABLET, touch: true, url: 'variant=Q&sheet=full&now=10:30' },
+  { name: 'Q-shore-820', v: TABLET_TALL, touch: true, url: 'variant=Q&now=10:30' },
+  { name: 'Q-shore-820-peek', v: TABLET_TALL, touch: true, url: 'variant=Q&sheet=peek&now=10:30' },
+  { name: 'Q-shore-820-full', v: TABLET_TALL, touch: true, url: 'variant=Q&sheet=full&now=10:30' },
   { name: 'Q-shore-1024', v: NARROW, url: 'variant=Q&now=10:30' },
   { name: 'Q-shore-1200', v: WIDE_MID, url: 'variant=Q&now=10:30' },
   { name: 'Q-shore-1440', v: LAPTOP, url: 'variant=Q&now=10:30' },
@@ -129,12 +139,62 @@ const SHOTS = [
     click: '[data-open-picker]',
   },
   { name: 'Q-shore-1920', v: DESK, url: 'variant=Q&now=10:30' },
+  // round 11: the phone's cards as the desktop's flat list, for the comparison at half and full
+  { name: 'Q-shore-phone-flat', v: PHONE, url: 'variant=Q&rows=flat&now=10:30' },
+  { name: 'Q-shore-phone-flat-full', v: PHONE, url: 'variant=Q&rows=flat&sheet=full&now=10:30' },
+  // round 11: the header on the map route — the shipped 1080 px clamp, and the treatments
+  { name: 'Q-shore-1440-hdr-shell', v: LAPTOP, url: 'variant=Q&hdr=shell&now=10:30' },
+  { name: 'Q-shore-1440-hdr-wide', v: LAPTOP, url: 'variant=Q&hdr=wide&now=10:30' },
+  { name: 'Q-shore-1440-hdr-noeyebrow', v: LAPTOP, url: 'variant=Q&hdr=wide,noeyebrow&now=10:30' },
+  { name: 'Q-shore-1440-hdr-lower', v: LAPTOP, url: 'variant=Q&hdr=wide,lower&now=10:30' },
+  {
+    name: 'Q-shore-1440-menu',
+    v: LAPTOP,
+    url: 'variant=Q&now=10:30',
+    click: '[data-testid="nav-menu"]',
+  },
+  {
+    name: 'Q-shore-1440-menu-shell',
+    v: LAPTOP,
+    url: 'variant=Q&hdr=shell&now=10:30',
+    click: '[data-testid="nav-menu"]',
+  },
+  { name: 'Q-shore-1920-hdr-shell', v: DESK, url: 'variant=Q&hdr=shell&now=10:30' },
   // round 8, the density question: Himarë padded to 30 venues (`?dense=30`)
   { name: 'Q-shore-phone-dense', v: PHONE, url: 'variant=Q&dense=30&now=10:30' },
   { name: 'Q-shore-phone-dense-pin', v: PHONE, url: 'variant=Q&dense=30&now=10:30', pin: 0 },
   { name: 'Q-shore-phone-dense-full', v: PHONE, url: 'variant=Q&dense=30&sheet=full&now=10:30' },
+  {
+    name: 'Q-shore-phone-dense-full-scrolled',
+    v: PHONE,
+    url: 'variant=Q&dense=30&sheet=full&now=10:30',
+    scroll: 900,
+  },
+  {
+    name: 'Q-shore-1440-dense-scrolled',
+    v: LAPTOP,
+    url: 'variant=Q&dense=30&now=10:30',
+    scroll: 900,
+  },
   { name: 'Q-shore-1440-dense', v: LAPTOP, url: 'variant=Q&dense=30&now=10:30' },
   { name: 'Q-shore-1440-dense-beach', v: LAPTOP, url: 'variant=Q&dense=30&beach=DHERMI&now=10:30' },
+  // round 11: one beach at a ceiling of 15 instead of 14 (live, since the posters are cut at 14)
+  {
+    name: 'Q-shore-phone-beach-cap15',
+    v: PHONE,
+    url: 'variant=Q&beach=DHERMI&cap=15&live=1&now=10:30',
+  },
+  { name: 'Q-shore-phone-beach-live', v: PHONE, url: 'variant=Q&beach=DHERMI&live=1&now=10:30' },
+  {
+    name: 'Q-shore-phone-dense-beach',
+    v: PHONE,
+    url: 'variant=Q&dense=30&beach=DHERMI&live=1&now=10:30',
+  },
+  {
+    name: 'Q-shore-phone-dense-beach-cap15',
+    v: PHONE,
+    url: 'variant=Q&dense=30&beach=DHERMI&cap=15&live=1&now=10:30',
+  },
 ];
 
 function svgPhoto(id) {
@@ -209,8 +269,13 @@ const GEOMETRY = `(() => {
     rows: all('[data-row]').slice(0, 4).map(r),
     firstRow: r(document.querySelector('[data-row]')),
     tabBar: r(document.querySelector('.riv-tab-bar')),
+    mapPill: r(document.querySelector('[data-ctl="map-pill"]')),
     strip: r(document.querySelector('[data-strip]')),
     header: r(document.querySelector('header')),
+    headerInner: r(document.querySelector('header.riv-header > div')),
+    brand: r(document.querySelector('[data-testid="brand-home"]')),
+    nav: r(document.querySelector('.riv-nav-desktop')),
+    panel: r(document.querySelector('aside')),
     sheet: r(document.querySelector('[data-detent]')),
     poster: r(document.querySelector('[data-poster]')),
     controls: all('[data-ctl]').map((e) => ({ t: e.dataset.ctl, ...r(e) })),
@@ -227,7 +292,7 @@ async function shoot(browser, shot) {
     viewport: shot.v,
     deviceScaleFactor: 1,
     isMobile: shot.v.width < 600,
-    hasTouch: shot.v.width < 600,
+    hasTouch: shot.touch ?? shot.v.width < 600,
     reducedMotion: 'reduce',
   });
   const page = await context.newPage();
@@ -309,9 +374,10 @@ async function shoot(browser, shot) {
     }
   }
   if (shot.scroll) {
+    // The list is the INNER scroller (the sheet's body, the panel's body); the outer one is the sheet.
     await page.evaluate((y) => {
-      const sheet = document.querySelector('[data-detent]');
-      if (sheet) sheet.scrollTo(0, sheet.scrollTop + y);
+      const list = document.querySelector('[data-body]');
+      if (list) list.scrollTo(0, list.scrollTop + y);
       else window.scrollTo(0, y);
     }, shot.scroll);
     await page.waitForTimeout(600);

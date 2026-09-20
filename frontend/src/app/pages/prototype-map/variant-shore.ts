@@ -75,7 +75,9 @@ import { TouchTarget } from '../../shared/touch-target';
 import {
   crowdCentre,
   crowdPins,
+  HANG_PX,
   lowestFromPrice,
+  PIN_HEIGHT_PX,
   PinCrowd,
   placeName,
   separationZoom,
@@ -84,6 +86,7 @@ import { VenuePinLayer } from '../home/venue-pin-layer';
 import { VenueCard } from '../home/venue-card';
 import { contentAspect } from './prototype-aspect';
 import { fitPins } from './prototype-camera';
+import { applyHeaderTreatment, headerTreatment } from './prototype-header';
 import { COAST } from './prototype-coast';
 import { PrototypeCoastPicker } from './prototype-coast-picker';
 import { closedForTodayAt, daysFrom, parseClock } from './prototype-days';
@@ -98,6 +101,7 @@ import {
 } from './prototype-place';
 import {
   HEADER_H,
+  BEACH_MAX_ZOOM,
   POSTER_H,
   POSTER_W,
   PosterHandle,
@@ -112,7 +116,9 @@ import { PrototypeVenueRow } from './prototype-venue-row';
 const PHONE_DEFAULT_REGION = 'HIMARE';
 /** Tailwind's `lg`. */
 const WIDE_PX = 1024;
-/** The shipped phone tab bar. */
+/** Two row columns in the sheet from here: 600 px of sheet is two rows inside round 7's 300–400. */
+const TWO_COLUMN_PX = 600;
+/** The shipped phone tab bar's height while it is on screen; it hides at `sm` and is measured. */
 const TAB_BAR = 61;
 /** The sheet's head: the grabber and the one-row strip — 78, against Airbnb's ~80 collapsed header. */
 const HEAD = 78;
@@ -145,11 +151,24 @@ const DUSK_CLASSES = ['saturate-0', 'bg-riv-solid-btn-hover!', '[&_.font-extrabo
  * disappears and the pill it collided with wears the union's name and count through `attr()`.
  */
 const MERGED_HIDE = 'invisible';
-const MERGED_FACE =
-  'relative text-transparent after:absolute after:inset-0 after:flex after:items-center after:justify-center ' +
-  'after:content-[attr(data-merged)]';
-const MERGED_NAME = MERGED_FACE + ' after:text-riv-solid-btn-ink';
-const MERGED_COUNT = MERGED_FACE + ' after:text-riv-solid-btn-fill';
+/**
+ * The repaint has to let the pill GROW (round 8: `Dhërmi & Drymades` ran 34 px out of a 111 px
+ * pill and under its count disc). So the old face is zeroed rather than made transparent, and the
+ * new one is an ordinary inline `::after` that the flex row measures — not an `absolute` overlay.
+ */
+const MERGED_FACE = 'text-[0px]! after:content-[attr(data-merged)] after:whitespace-nowrap';
+const MERGED_NAME =
+  MERGED_FACE +
+  ' after:text-[12.5px] after:leading-[14px] after:font-semibold after:text-riv-solid-btn-ink';
+const MERGED_FROM =
+  MERGED_FACE +
+  ' after:text-[11px] after:leading-[13px] after:font-extrabold after:text-riv-solid-btn-ink';
+const MERGED_COUNT =
+  MERGED_FACE +
+  ' after:text-[12.5px] after:leading-none after:font-bold after:text-riv-solid-btn-fill';
+/** A compact disc rescued by the vertical anchor, and how far it hangs off its point. */
+const HUNG_FACE = 'flex flex-col whitespace-nowrap text-left';
+const HUNG_PX = 34;
 
 type Detent = 'peek' | 'half' | 'full';
 
@@ -319,7 +338,10 @@ const GUTTER_PILL =
           <h2
             class="col-span-full mt-3 mb-1.5 flex items-baseline gap-2 px-1 text-[13px] text-riv-ink-soft first:mt-1"
             [class.mb-0]="cardsGrid()"
-            [class]="wide() ? 'mt-5 mb-0 border-b border-riv-header-border pb-1.5 first:mt-2' : ''"
+            [class]="
+              (wide() ? 'mt-5 mb-0 border-b border-riv-header-border pb-1.5 first:mt-2 ' : '') +
+              (stickyGroups() ? 'sticky top-0 z-[1] bg-riv-tabbar-glass backdrop-blur-[22px]' : '')
+            "
           >
             <!-- On the desktop the beach is a running head over its list entries, not a card-sized title. -->
             <span
@@ -333,9 +355,12 @@ const GUTTER_PILL =
             @if (group.km !== null) {
               <span class="font-semibold text-riv-accent-ink">{{ kmLabel(group.km) }}</span>
             }
-            <span class="ml-auto shrink-0"
-              >{{ group.cards.length }} {{ group.cards.length === 1 ? 'venue' : 'venues' }}</span
-            >
+            <!-- The count where the group cannot be seen whole: always on the sheet, on the panel only once the heads stick. -->
+            @if (!wide() || stickyGroups()) {
+              <span class="ml-auto shrink-0"
+                >{{ group.cards.length }} {{ group.cards.length === 1 ? 'venue' : 'venues' }}</span
+              >
+            }
           </h2>
           @for (card of group.cards; track card.id) {
             @if (cardsGrid()) {
@@ -348,13 +373,13 @@ const GUTTER_PILL =
               </div>
             } @else {
               <app-prototype-venue-row
-                [class]="wide() ? 'border-b border-riv-header-border' : 'mb-2'"
+                [class]="flatRows() ? 'border-b border-riv-header-border' : 'mb-2'"
                 [card]="card"
                 [date]="state().date"
                 [selected]="selected() === '' + card.id"
                 [dusk]="duskIds().has('' + card.id)"
                 [km]="rowKm(card)"
-                [flat]="wide()"
+                [flat]="flatRows()"
                 (pressed)="selected.set('' + $event)"
               />
             }
@@ -370,7 +395,7 @@ const GUTTER_PILL =
 
     <!-- ── The ground: the poster, then the live map when the camera has to move. ── -->
     <ng-template #ground>
-      @if (!wide() && !liveReady()) {
+      @if (!wide() && !liveReady() && posterCovers()) {
         <!-- The poster's touch surface is a control: a finger on it is a pan, and wakes the live map. -->
         <button
           type="button"
@@ -506,7 +531,7 @@ const GUTTER_PILL =
       </div>
     } @else if (wide()) {
       <!-- ── Desktop: the sheet is the left panel, pinned open; the map is the rest. ── -->
-      <div class="flex h-[calc(100dvh-68px)] gap-3 p-3 pr-0">
+      <div class="flex h-[calc(100dvh-73px)] gap-3 p-3 pr-0">
         <aside
           appPanelGlass
           class="flex shrink-0 flex-col overflow-hidden rounded-[22px] shadow-[0_10px_32px_rgba(7,42,58,0.16)]"
@@ -525,7 +550,7 @@ const GUTTER_PILL =
               />
             }
           </div>
-          <div #body class="min-h-0 flex-1 overflow-y-auto px-3 pb-4 scrollbar-thin">
+          <div #body data-body class="min-h-0 flex-1 overflow-y-auto px-3 pb-4 scrollbar-thin">
             <ng-container *ngTemplateOutlet="list" />
           </div>
         </aside>
@@ -540,7 +565,11 @@ const GUTTER_PILL =
       </div>
     } @else {
       <!-- ── Phone: the ground under the glass header, the sheet over it, the tab bar under all. ── -->
-      <div #pane class="fixed inset-0 z-[1] overflow-hidden bg-riv-solid-btn-fill">
+      <div
+        #pane
+        class="fixed inset-0 z-[1] overflow-hidden bg-riv-solid-btn-fill"
+        [style.background]="paneTone()"
+      >
         <ng-container *ngTemplateOutlet="ground" />
       </div>
 
@@ -549,7 +578,7 @@ const GUTTER_PILL =
         #scroller
         class="pointer-events-none fixed inset-x-0 z-[10] overflow-y-auto overscroll-contain scrollbar-none motion-safe:scroll-smooth snap-y snap-mandatory"
         [style.top.px]="tops().full"
-        [style.bottom.px]="TAB_BAR"
+        [style.bottom.px]="tabBar()"
         [attr.data-detent]="detent()"
         (scroll)="onScroll()"
       >
@@ -591,7 +620,10 @@ const GUTTER_PILL =
             #body
             data-body
             class="min-h-0 flex-1 px-3 pb-6 scrollbar-none"
-            [class]="detent() === 'full' ? 'overflow-y-auto' : 'overflow-clip'"
+            [class]="
+              (detent() === 'full' ? 'overflow-y-auto' : 'overflow-clip') +
+              (seam() === 'opaque' ? ' bg-riv-tabbar-glass' : '')
+            "
           >
             <div [style.translate]="detent() === 'full' ? null : '0 ' + -listShift() + 'px'">
               <ng-container *ngTemplateOutlet="list" />
@@ -603,7 +635,7 @@ const GUTTER_PILL =
       @if (detent() === 'full') {
         <div
           class="pointer-events-none fixed inset-x-0 z-[11] flex justify-center"
-          [style.bottom.px]="TAB_BAR + 12"
+          [style.bottom.px]="tabBar() + 12"
         >
           <button
             type="button"
@@ -641,7 +673,11 @@ export class VariantShore {
   protected readonly MAP_BUTTON = MAP_BUTTON;
   protected readonly GUTTER_PILL = GUTTER_PILL;
   protected readonly GUTTER_W = GUTTER_W;
-  protected readonly TAB_BAR = TAB_BAR;
+  /**
+   * The shipped tab bar is `sm:hidden`, and the sheet runs to `lg` — so from 640 to 1023 px the
+   * bar is not there. Measured, never assumed: 61 on a phone, 0 on a tablet (round 11).
+   */
+  protected readonly tabBar = signal(TAB_BAR);
   protected readonly POSTER_W = POSTER_W;
   protected readonly POSTER_H = POSTER_H;
   protected readonly maxZoom = RIVIERA_MAP_OPTIONS.maxZoom;
@@ -656,7 +692,9 @@ export class VariantShore {
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly document = inject(DOCUMENT);
   private readonly geolocation = inject(GeolocationGateway);
-  private readonly params = toSignal(inject(ActivatedRoute).queryParamMap, { requireSync: true });
+  protected readonly params = toSignal(inject(ActivatedRoute).queryParamMap, {
+    requireSync: true,
+  });
 
   protected readonly wide = signal(false);
   protected readonly viewport = signal({ w: 390, h: 844 });
@@ -665,6 +703,20 @@ export class VariantShore {
   protected readonly subtitleHead = computed(() => this.params().get('head') === 'subtitle');
   /** `?pane=free`: the desktop pane's height follows the set as its width does. */
   private readonly freePane = computed(() => this.params().get('pane') === 'free');
+  /** `?hdr=`: the page-scoped header treatment (`shell` = the shipped header, untouched). */
+  private readonly header = headerTreatment(this.params().get('hdr'));
+  /**
+   * `?seam=`: round 7's fault 7 — at full the poster's lower edge shows through the glass, because
+   * the ground under the sheet is a 380 px still over a flat fill. `glass` is the fault;
+   * `opaque` gives the sheet's body the head's own near-opaque token, so the sheet is one
+   * material; `tone` leaves the glass and paints the pane in the poster's own bottom-edge colour.
+   */
+  protected readonly seam = computed(() => this.params().get('seam') ?? 'tone');
+  /** The poster's bottom edge, sampled once per poster: what `seam=tone` fills the pane with. */
+  private readonly tone = signal<string | null>(null);
+  protected readonly paneTone = computed(() =>
+    this.seam() === 'tone' && !this.wide() ? this.tone() : null,
+  );
   private readonly askedDetent = (this.params().get('sheet') as Detent | null) ?? 'half';
   /** The scroller's `scrollTop`, mirrored on every scroll event: the one number the sheet is. */
   private readonly scrolled = signal(0);
@@ -687,7 +739,9 @@ export class VariantShore {
     return `All ${this.beaches().length} beaches: choose one`;
   });
   /** The chip spells its beach out where the panel has room for it and the subtitle (480 px). */
-  protected readonly chipSpelled = computed(() => this.wide() && this.panelWidth() >= 480);
+  protected readonly chipSpelled = computed(() =>
+    this.wide() ? this.panelWidth() >= 480 : this.viewport().w >= TWO_COLUMN_PX,
+  );
   protected readonly beachChipCount = computed(() =>
     this.focus().beach !== '' ? this.focus().cards.length : this.beaches().length,
   );
@@ -754,6 +808,13 @@ export class VariantShore {
     );
   });
   protected readonly selling = computed(() => this.focus().cards.length - this.duskIds().size);
+  /**
+   * Past ~15 venues a region's list is several screens and the beach titles scroll away (round 8
+   * measured 5.4 screens for 30). From there each title sticks to the top of its scroller.
+   */
+  /** `?rows=flat`: the phone's cards as the desktop's flat list, for round 11's comparison. */
+  protected readonly flatRows = computed(() => this.wide() || this.params().get('rows') === 'flat');
+  protected readonly stickyGroups = computed(() => this.focus().cards.length > 15);
 
   protected readonly title = computed(() => {
     const { region, beach } = this.focus();
@@ -784,18 +845,36 @@ export class VariantShore {
   });
 
   // ── the ground ──────────────────────────────────────────────────────────────────────────
+  /**
+   * `?cap=15`: one beach fitted at 15 instead of the fit's own 14 (round 8 asked for it; round 11
+   * shot it with `live=1`, since the still posters are cut at the default ceiling).
+   */
+  protected readonly fitCeiling = computed(() =>
+    this.params().get('cap') === '15' && this.focus().beach !== '' ? BEACH_MAX_ZOOM : undefined,
+  );
   private readonly posterHandle = computed<PosterHandle | null>(() => {
-    const camera = posterCamera(this.pins().map((p) => p.at));
+    const camera = posterCamera(
+      this.pins().map((p) => p.at),
+      this.fitCeiling(),
+    );
     if (camera === null) return null;
     return new PosterHandle(camera, this.viewport().w, (view) => this.wake(view));
   });
+  /**
+   * The poster is one 440 px still — it covers a phone and nothing wider, so above that the
+   * ground is the live map from the first paint (round 11: the tablet band showed the solid
+   * pane either side of it). Shipped, the renderer would cut a poster per width bucket too.
+   */
+  protected readonly posterCovers = computed(() => this.viewport().w <= POSTER_W);
   protected readonly posterSrc = computed(() =>
     posterUrl(posterKey(this.focus().region, this.focus().beach)),
   );
   private readonly liveHandle = computed(() => this.map()?.handle());
   /** The pins project through the live map once it is up, the poster's camera until then. */
   protected readonly handle = computed<MapHandle | undefined>(() =>
-    this.wide() || this.liveReady() ? this.liveHandle() : (this.posterHandle() ?? undefined),
+    this.wide() || this.liveReady() || !this.posterCovers()
+      ? this.liveHandle()
+      : (this.posterHandle() ?? undefined),
   );
   private readonly moved = signal(0);
   protected readonly hereDot = computed(() => {
@@ -883,10 +962,12 @@ export class VariantShore {
   protected readonly tops = computed(() => ({
     full: HEADER_H + FULL_SLIVER,
     half: POSTER_H,
-    peek: this.viewport().h - TAB_BAR - HEAD,
+    peek: this.viewport().h - this.tabBar() - HEAD,
   }));
   /** The sheet is exactly the snapport: nothing to fling past full into. */
-  protected readonly sheetHeight = computed(() => this.viewport().h - TAB_BAR - this.tops().full);
+  protected readonly sheetHeight = computed(
+    () => this.viewport().h - this.tabBar() - this.tops().full,
+  );
   /** The scroller's offset for a height: the spacer's height less where the sheet's top rests. */
   private offsetFor(detent: Detent): number {
     return this.tops().peek - this.tops()[detent];
@@ -962,15 +1043,18 @@ export class VariantShore {
 
   private pending: MapView | null = null;
   private watcher: MutationObserver | undefined;
+  private chrome: MutationObserver | undefined;
 
-  /** The merge demonstration over the rendered pills; its own mutations are discarded, not watched. */
-  private mergePills(): void {
+  /** The pin demonstrations over the rendered buttons; their own mutations are discarded, not watched. */
+  private repaintPins(): void {
+    const host = this.element.nativeElement;
+    const layer = host.querySelector('app-venue-pin-layer');
     const pills = [
-      ...this.element.nativeElement.querySelectorAll<HTMLElement>(
-        '[data-pin][data-testid="map-place-pill"]',
-      ),
+      ...host.querySelectorAll<HTMLElement>('[data-pin][data-testid="map-place-pill"]'),
     ];
+    unplacePills(pills);
     mergeCollidingPills(pills);
+    if (layer !== null) placePills(pills, host, layer.getBoundingClientRect());
     this.watcher?.takeRecords();
   }
 
@@ -999,7 +1083,7 @@ export class VariantShore {
    * which stretched a four-venue region's rows to 814 px beside a 576 px bay.
    */
   private readonly aspect = computed(() => contentAspect(this.pins().map((p) => p.at)) ?? 1);
-  private readonly columnHeight = computed(() => this.viewport().h - 68 - 24);
+  private readonly columnHeight = computed(() => this.viewport().h - HEADER_H - 24);
   protected readonly panelWidth = computed(() =>
     Math.round(Math.max(420, Math.min(540, this.viewport().w * 0.38))),
   );
@@ -1024,6 +1108,8 @@ export class VariantShore {
     if (this.cardsGrid()) {
       return 'gap-3 ' + (w >= 1400 ? 'grid-cols-4' : w >= 1000 ? 'grid-cols-3' : 'grid-cols-2');
     }
+    // A tablet's sheet is the window wide: two row columns, not one 742 px row (round 7's 300–400).
+    if (!this.wide() && this.viewport().w >= TWO_COLUMN_PX) return 'grid-cols-2 gap-x-2';
     return 'grid-cols-1';
   });
 
@@ -1040,15 +1126,24 @@ export class VariantShore {
     afterRenderEffect(() => {
       this.viewport.set({ w: window.innerWidth, h: window.innerHeight });
       this.wide.set(window.innerWidth >= WIDE_PX);
+      const bar = this.document.querySelector('.riv-tab-bar');
+      this.tabBar.set(bar === null ? 0 : Math.round(bar.getBoundingClientRect().height));
+      if (!this.posterCovers()) this.live.set(true);
     });
-    let rested = false;
+    // Rest again when the measured geometry moves the target: a tablet is a whole tab bar taller.
+    let restedAt = -1;
     afterRenderEffect(() => {
       const scroller = this.scroller()?.nativeElement;
-      this.viewport();
-      if (scroller === undefined || rested) return;
-      rested = true;
-      scroller.scrollTo({ top: this.offsetFor(this.askedDetent), behavior: 'instant' });
-      this.scrolled.set(scroller.scrollTop);
+      const want = this.offsetFor(this.askedDetent);
+      if (scroller === undefined || want === restedAt) return;
+      restedAt = want;
+      const rest = () => {
+        scroller.scrollTo({ top: want, behavior: 'instant' });
+        this.scrolled.set(scroller.scrollTop);
+      };
+      rest();
+      // The measured sheet reaches the DOM next pass, so this rest clamps and snaps to the end.
+      if (scroller.scrollTop !== want) requestAnimationFrame(rest);
       if (this.askedDetent === 'peek') this.wake(null);
     });
     // The preview: the chosen row goes to the list's top (phone) or the panel's middle (desktop).
@@ -1066,7 +1161,7 @@ export class VariantShore {
         body.scrollTo({ top: body.scrollTop + at.top - box.top - lead });
       } else {
         // Clamped as a scroller would be: a short list is not lifted into blank glass.
-        const room = this.viewport().h - TAB_BAR - box.top;
+        const room = this.viewport().h - this.tabBar() - box.top;
         const max = Math.max(0, (body.firstElementChild as HTMLElement).offsetHeight - room);
         this.listShift.update((shift) =>
           Math.min(max, Math.max(0, shift + at.top - box.top - lead)),
@@ -1107,7 +1202,12 @@ export class VariantShore {
         handle.onMove(() => this.moved.update((n) => n + 1));
         handle.on('load', () => this.liveReady.set(true));
         if (!this.wide()) {
-          const camera = fitUnderHeader(pins, pane.clientWidth, this.tops().half);
+          const camera = fitUnderHeader(
+            pins,
+            pane.clientWidth,
+            this.tops().half,
+            this.fitCeiling(),
+          );
           if (camera !== null) handle.setView(camera);
           if (this.pending !== null) {
             handle.easeTo(this.pending);
@@ -1117,10 +1217,10 @@ export class VariantShore {
         }
       }
       const view = this.wide()
-        ? fitPins(pins, pane.clientWidth, pane.clientHeight)
+        ? fitPins(pins, pane.clientWidth, pane.clientHeight, 0, 0, undefined, this.fitCeiling())
         : detent === 'full'
           ? null
-          : fitUnderHeader(pins, pane.clientWidth, this.tops()[detent]);
+          : fitUnderHeader(pins, pane.clientWidth, this.tops()[detent], this.fitCeiling());
       if (view !== null) handle.easeTo(view);
     });
     afterRenderEffect(() => {
@@ -1128,23 +1228,28 @@ export class VariantShore {
       this.pins();
       this.handle();
       this.moved();
-      const buttons = [
-        ...this.element.nativeElement.querySelectorAll<HTMLElement>(
-          '[data-pin]:not([data-testid="map-crowd-member"])',
-        ),
-      ];
-      for (const button of buttons) {
-        const at = dusk.has(button.dataset['pin'] ?? '');
-        for (const cls of DUSK_CLASSES) button.classList.toggle(cls, at);
-      }
-      this.mergePills();
+      duskPins(this.element.nativeElement, dusk);
+      this.repaintPins();
+    });
+    // `seam=tone`: the poster's own bottom edge, averaged, so the pane below it is the same ground.
+    afterRenderEffect(() => {
+      const src = this.posterSrc();
+      if (this.seam() !== 'tone' || this.wide()) return;
+      const image = new Image();
+      image.src = src;
+      void image.decode().then(() => this.tone.set(bottomEdgeColour(image)));
+    });
+    // The header is the shell's, so the treatment is applied to it and re-applied when the menu opens.
+    afterRenderEffect(() => {
+      this.wide();
+      applyHeaderTreatment(this.document, this.header);
     });
     // The layer re-groups on its own resize tick, which no map move announces; watch its DOM.
     afterNextRender(() => {
       let frame = 0;
       this.watcher = new MutationObserver(() => {
         cancelAnimationFrame(frame);
-        frame = requestAnimationFrame(() => this.mergePills());
+        frame = requestAnimationFrame(() => this.repaintPins());
       });
       this.watcher.observe(this.element.nativeElement, {
         subtree: true,
@@ -1152,7 +1257,52 @@ export class VariantShore {
         attributes: true,
         attributeFilter: ['class', 'style', 'aria-label'],
       });
+      const chrome = this.document.querySelector('header.riv-header');
+      if (chrome !== null) {
+        // The menu's popover renders inside the header, so the treatment follows it there.
+        this.chrome = new MutationObserver(() => {
+          applyHeaderTreatment(this.document, this.header);
+          this.chrome?.takeRecords();
+        });
+        this.chrome.observe(chrome, { childList: true, subtree: true });
+      }
     });
+  }
+}
+
+/** The poster's bottom strip averaged to one colour — the ground the pane goes on carrying. */
+function bottomEdgeColour(image: HTMLImageElement): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1;
+  canvas.height = 1;
+  const context = canvas.getContext('2d', { willReadFrequently: true })!;
+  const strip = Math.max(1, Math.round(image.naturalHeight * 0.04));
+  context.drawImage(image, 0, image.naturalHeight - strip, image.naturalWidth, strip, 0, 0, 1, 1);
+  const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
+  return `rgb(${r} ${g} ${b})`;
+}
+
+/**
+ * Dusk on the rendered pins, per CROWD rather than per face member (round 7's fault 6: the classes
+ * followed the pill's first member, so `3 beaches` greyed at 16:30 while four of its six still
+ * sold). A crowd is the buttons sharing one point — the layer puts every member at the crowd's own
+ * `left`/`top` — so the DOM names the membership without re-running `crowdPins`. The invisible
+ * member discs never take the classes: their `opacity-0` loses to them by stylesheet order.
+ */
+function duskPins(host: HTMLElement, dusk: ReadonlySet<string>): void {
+  const crowds = new Map<string, HTMLElement[]>();
+  for (const button of host.querySelectorAll<HTMLElement>('[data-pin]')) {
+    const key = `${button.style.left}|${button.style.top}`;
+    const members = crowds.get(key) ?? [];
+    members.push(button);
+    crowds.set(key, members);
+  }
+  for (const members of crowds.values()) {
+    const closed = members.every((member) => dusk.has(member.dataset['pin'] ?? ''));
+    for (const member of members) {
+      if (member.dataset['testid'] === 'map-crowd-member') continue;
+      for (const cls of DUSK_CLASSES) member.classList.toggle(cls, closed);
+    }
   }
 }
 
@@ -1178,7 +1328,11 @@ function mergeCollidingPills(pills: readonly HTMLElement[]): void {
   for (const pill of pills) {
     pill.classList.remove(MERGED_HIDE);
     for (const span of pill.querySelectorAll<HTMLElement>('[data-merged]')) {
-      span.classList.remove(...MERGED_NAME.split(' '), ...MERGED_COUNT.split(' '));
+      span.classList.remove(
+        ...MERGED_NAME.split(' '),
+        ...MERGED_FROM.split(' '),
+        ...MERGED_COUNT.split(' '),
+      );
       delete span.dataset['merged'];
     }
   }
@@ -1199,11 +1353,131 @@ function mergeCollidingPills(pills: readonly HTMLElement[]): void {
     title.classList.add(...MERGED_NAME.split(' '));
     if (subtitle !== undefined && Number.isFinite(from)) {
       subtitle.dataset['merged'] = `from €${from}`;
-      subtitle.classList.add(...MERGED_NAME.split(' '));
+      subtitle.classList.add(...MERGED_FROM.split(' '));
     }
     count.dataset['merged'] = String(a.count + b.count);
     count.classList.add(...MERGED_COUNT.split(' '));
   }
+}
+
+/**
+ * The pills PLACED again over the rendered DOM, with a vertical anchor the shipped layout does not
+ * have. `layoutPills` tries centred, then hung right, then hung left, and collapses to a bare count
+ * when none fits — which at `?dense=30` and 1440 left a nameless `6` that collides with nothing
+ * (round 8). This pass adds ABOVE and BELOW (and the four diagonals), gives a collapsed disc its
+ * face back, and re-places a pill the merge repaint has grown — the one thing the class
+ * demonstration cannot do by widening alone, since the layer sized it before the repaint.
+ *
+ * <p>Lone pins are never moved, exactly as the shipped rule has it; a pill that finds nowhere keeps
+ * its disc.
+ */
+function placePills(pills: readonly HTMLElement[], host: HTMLElement, box: DOMRect): void {
+  const taken = [...host.querySelectorAll<HTMLElement>('[data-testid="map-venue-pin"]')].map(
+    (pin) => pin.getBoundingClientRect(),
+  );
+  for (const pill of pills) {
+    if (pill.classList.contains(MERGED_HIDE)) continue;
+    const gaveFace = pill.clientWidth <= PIN_HEIGHT_PX && giveFaceBack(pill);
+    let spot = findSpot(pill, box, taken);
+    if (spot === null && gaveFace) {
+      stripFace(pill);
+      spot = findSpot(pill, box, taken);
+    }
+    pill.dataset['placed'] = '';
+    pill.style.translate = `calc(-50% + ${Math.round(spot?.dx ?? 0)}px) calc(-50% + ${spot?.dy ?? 0}px)`;
+    taken.push(pill.getBoundingClientRect());
+  }
+}
+
+/** Centred, hung the two shipped ways, then above and below and the four diagonals. */
+function findSpot(pill: HTMLElement, box: DOMRect, taken: readonly DOMRect[]): Spot | null {
+  const width = pill.getBoundingClientRect().width;
+  const point = pointOf(pill, box);
+  const hang = width / 2 - HANG_PX;
+  const spots: Spot[] = [
+    { dx: 0, dy: 0 },
+    { dx: hang, dy: 0 },
+    { dx: -hang, dy: 0 },
+    { dx: 0, dy: HUNG_PX },
+    { dx: 0, dy: -HUNG_PX },
+    { dx: hang, dy: HUNG_PX },
+    { dx: -hang, dy: HUNG_PX },
+    { dx: hang, dy: -HUNG_PX },
+    { dx: -hang, dy: -HUNG_PX },
+  ];
+  return (
+    spots.find(({ dx, dy }) => {
+      const rect = {
+        left: point.x + dx - width / 2,
+        right: point.x + dx + width / 2,
+        top: point.y + dy - PIN_HEIGHT_PX / 2,
+        bottom: point.y + dy + PIN_HEIGHT_PX / 2,
+      };
+      const inBox =
+        rect.left >= box.left &&
+        rect.top >= box.top &&
+        rect.right <= box.right &&
+        rect.bottom <= box.bottom;
+      return inBox && !taken.some((other) => overlaps(rect, other));
+    }) ?? null
+  );
+}
+
+interface Spot {
+  readonly dx: number;
+  readonly dy: number;
+}
+
+/** The crowd's own point in the viewport: the layer writes it as the button's `left`/`top`. */
+function pointOf(pill: HTMLElement, box: DOMRect): { x: number; y: number } {
+  return {
+    x: box.left + Number.parseFloat(pill.style.left),
+    y: box.top + Number.parseFloat(pill.style.top),
+  };
+}
+
+/** A collapsed disc gets its name and from-price back, read off the label the layer wrote. */
+function giveFaceBack(pill: HTMLElement): boolean {
+  const label = pill.getAttribute('aria-label') ?? '';
+  const name = /venues at (.+?)(?:,|;)/.exec(label)?.[1];
+  if (name === undefined) return false;
+  const from = /from (\u20ac\d+)/.exec(label)?.[1] ?? null;
+  const face = pill.ownerDocument.createElement('span');
+  face.dataset['hungFace'] = '';
+  face.className = HUNG_FACE;
+  face.setAttribute('aria-hidden', 'true');
+  face.innerHTML =
+    `<span class="text-[12.5px] leading-[14px] font-semibold">${name}</span> ` +
+    (from === null
+      ? ''
+      : `<span class="text-[11px] leading-[13px] font-extrabold tabular-nums">from ${from}</span>`);
+  pill.prepend(face);
+  pill.classList.remove('pl-[6px]');
+  pill.classList.add('pl-[13px]');
+  return true;
+}
+
+function stripFace(pill: HTMLElement): void {
+  pill.querySelector('[data-hung-face]')?.remove();
+  pill.classList.remove('pl-[13px]');
+  pill.classList.add('pl-[6px]');
+}
+
+/** Put every pill back the way the layer drew it, so the pass can run again from scratch. */
+function unplacePills(pills: readonly HTMLElement[]): void {
+  for (const pill of pills) {
+    if (pill.querySelector('[data-hung-face]') !== null) stripFace(pill);
+    if (pill.dataset['placed'] === undefined) continue;
+    delete pill.dataset['placed'];
+    pill.style.removeProperty('translate');
+  }
+}
+
+function overlaps(
+  a: { left: number; right: number; top: number; bottom: number },
+  b: DOMRect,
+): boolean {
+  return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
 }
 
 /** The pins of a poster key: a region's, or `beach-<code>`'s. */
@@ -1219,9 +1493,14 @@ function posterPins(key: string): LngLat[] {
  * pane is the whole viewport, so the camera looks as far south of the pins as the pane's centre
  * sits below the window's, and the pins land in the window.
  */
-function fitUnderHeader(pins: readonly LngLat[], width: number, sheetTop: number): MapView | null {
+function fitUnderHeader(
+  pins: readonly LngLat[],
+  width: number,
+  sheetTop: number,
+  ceiling?: number,
+): MapView | null {
   const visible = sheetTop - HEADER_H;
-  const view = fitPins(pins, width, visible);
+  const view = fitPins(pins, width, visible, 0, 0, undefined, ceiling);
   if (view === null) return null;
   const perPixel = (360 / (512 * 2 ** view.zoom)) * Math.cos((view.center.lat * Math.PI) / 180);
   const shift = window.innerHeight / 2 - (HEADER_H + visible / 2);

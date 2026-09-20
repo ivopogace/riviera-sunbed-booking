@@ -20,25 +20,35 @@ import { fitPins } from './prototype-camera';
 
 /**
  * The poster's own box: 440 wide so it covers a 360–440 px phone with `object-fit: none` and a
- * centred crop, 380 deep = the 68 px glass header the ground runs under plus the 312 px of map the
+ * centred crop, 380 deep = the 73 px glass header the ground runs under plus the 307 px of map the
  * half sheet leaves (`variant-shore.ts` § detents).
  */
 export const POSTER_W = 440;
 export const POSTER_H = 380;
-/** The shipped tourist header on a phone, which the ground runs under (glass over the coast). */
-export const HEADER_H = 68;
-/** What the half sheet leaves of the map below the header — Airbnb's rest position, measured 307. */
+/**
+ * The shipped tourist header, which the ground runs under (glass over the coast): MEASURED at
+ * 73 (72 + its hairline) at 390, 768 and 1440, not the 68 rounds 6–10 assumed — round 11's
+ * tab-bar defect was the same mistake about the other piece of shipped chrome.
+ */
+export const HEADER_H = 73;
+/** What the half sheet leaves of the map below the header — Airbnb's own band, measured at 307. */
 export const MAP_AT_HALF = POSTER_H - HEADER_H;
 /** 512 px tiles: `platform/map/style.json` declares no `tileSize` and MapLibre defaults a vector source to 512. */
 const TILE = 512;
+/**
+ * One beach's own ceiling. The fit stops at 14 so the sea stays in frame, which at a beach with
+ * nine venues leaves them 14 px apart (round 8). 15 halves the metres per pixel — a ~700 m window
+ * — and round 11 shot it to see whether the sea is still on one side.
+ */
+export const BEACH_MAX_ZOOM = 15;
 
 /**
- * The camera a poster is rendered at: the pins fitted into the 390 × 312 window the half sheet
+ * The camera a poster is rendered at: the pins fitted into the 390 × 307 window the half sheet
  * leaves under the header, then the centre dropped by half the header so the frame is the window,
  * not the poster. Deterministic on the fixtures, so the page and the driver agree without a file.
  */
-export function posterCamera(pins: readonly LngLat[]): MapView | null {
-  const view = fitPins(pins, 390, MAP_AT_HALF);
+export function posterCamera(pins: readonly LngLat[], ceiling?: number): MapView | null {
+  const view = fitPins(pins, 390, MAP_AT_HALF, 0, 0, undefined, ceiling);
   if (view === null) return null;
   const perPixel = degreesPerPixel(view.zoom, view.center.lat);
   return {
