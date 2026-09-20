@@ -296,6 +296,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-9  | review gate r1       | `PANE_CHROME_PAD_PX` was measured to a pin's point while its comment claimed the pin's box, and it replaced `fitPins`' default 76 that had reserved that box — the fit was 10 px short on the down axis               | fixed in `54028fd4` — the pad carries the half-height; the comment claims one axis     |
 | F-10 | Sonar                | `typescript:S3863` — `./pin-crowding` imported twice in `home.ts`, the second import added by this slice                                                                                                              | fixed — one import statement                                                           |
 | F-11 | Sonar                | `typescript:S3358` — the nested ternary in `onRowPointed`                                                                                                                                                             | fixed — an early return for the lit arm                                                |
+| F-12 | CI (own)             | The row-hover e2e released the pointer onto the map at 5 px, 5 px — inside its 22 px rounded corner, where the hit test lands on whatever has painted there; green locally and on one CI head, red on the next        | fixed — the pointer leaves the list entirely                                           |
 
 ---
 

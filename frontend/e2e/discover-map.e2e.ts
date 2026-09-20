@@ -1152,7 +1152,9 @@ test.describe('Discover map — the desktop panel', () => {
     // The fill is a 0.15s transition, so poll it rather than catching it mid-flight.
     await expect.poll(fill).not.toBe(resting);
 
-    await page.getByTestId('desk-map').hover({ position: { x: 5, y: 5 } });
+    // Off the list entirely, rather than a point on the map: the map's corner is rounded 22 px, so
+    // a hover near it hit-tests to whatever has painted there and the pane can take it instead.
+    await page.mouse.move(0, 0);
     await expect(pill).not.toHaveAttribute('data-hover', '');
     await expect.poll(fill).toBe(resting);
   });
