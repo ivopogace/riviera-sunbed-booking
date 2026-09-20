@@ -265,6 +265,23 @@ export class VenuePinLayer {
     };
   });
 
+  /**
+   * Every lone pin's box in VIEWPORT coordinates: the pins the layout never moves. A host whose
+   * own chrome shares this box reads them to decide where that chrome goes, since between a lone
+   * pin and a control it is the control that moves.
+   */
+  readonly loneBoxes = computed<readonly Rect[]>(() => {
+    const frame = this.frame();
+    return this.crowds()
+      .filter((crowd) => crowd.members.length === 1)
+      .map((crowd) => ({
+        left: (frame?.left ?? 0) + crowd.x - crowd.width / 2,
+        top: (frame?.top ?? 0) + crowd.y - PIN_HEIGHT_PX / 2,
+        right: (frame?.left ?? 0) + crowd.x + crowd.width / 2,
+        bottom: (frame?.top ?? 0) + crowd.y + PIN_HEIGHT_PX / 2,
+      }));
+  });
+
   /** Every venue's button in feed order, keyed by the pin — never by the crowd. */
   protected readonly slots = computed<readonly Slot[]>(() =>
     this.places().flatMap((place) =>

@@ -2,6 +2,7 @@ import { LngLat, ScreenPoint } from '../../shared/map-engine';
 import {
   crowdPins,
   crowds,
+  footSwap,
   layoutPills,
   lowestFromPrice,
   PIN_HEIGHT_PX,
@@ -204,6 +205,43 @@ describe('separationZoom', () => {
   it('is the largest of every pair’s need', () => {
     const trio = crowdOf([placed('a', 0, 0), placed('b', 20, 0), placed('c', 21, 0)]);
     expect(separationZoom(trio, 8.6, 16, null)).toBeCloseTo(8.6 + Math.log2(69), 6);
+  });
+});
+
+describe('footSwap', () => {
+  const pane: Rect = { left: 0, top: 0, right: 390, bottom: 500 };
+  /** The 44 px Near me at the foot's right; the shorter wrapped credit at its left. */
+  const nearMe: Rect = { left: 240, top: 440, right: 378, bottom: 484 };
+  const credit: Rect = { left: 12, top: 452, right: 212, bottom: 484 };
+  const foot = [nearMe, credit];
+  /** Mirrored in the pane, Near me takes 12–150 at the left and the credit 178–378 at the right. */
+  const pinAt = (left: number, top: number): Rect => ({
+    left,
+    top,
+    right: left + 57,
+    bottom: top + 44,
+  });
+  const onNearMe = pinAt(300, 400);
+
+  it('swaps the foot when a lone pin sits under it and the mirrored spots are free', () => {
+    expect(footSwap(foot, [onNearMe], pane, false)).toBe(true);
+  });
+
+  it('holds when a lone pin waits under the swapped spots too, so it cannot oscillate', () => {
+    expect(footSwap(foot, [onNearMe, pinAt(100, 400)], pane, false)).toBe(false);
+  });
+
+  it('holds when nothing is under the foot at all', () => {
+    expect(footSwap(foot, [pinAt(160, 300)], pane, false)).toBe(false);
+  });
+
+  it('swaps back once the pin that moved the chrome has gone', () => {
+    expect(footSwap(foot, [pinAt(160, 300)], pane, true)).toBe(true);
+    expect(footSwap(foot, [onNearMe], pane, true)).toBe(false);
+  });
+
+  it('holds when the foot has not been drawn yet', () => {
+    expect(footSwap([], [onNearMe], pane, true)).toBe(true);
   });
 });
 

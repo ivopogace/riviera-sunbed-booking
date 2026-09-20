@@ -17,7 +17,7 @@ import {
 import { BusyAction } from './busy-action';
 import { focusMover } from './focus-after-render';
 import { GeolocationFailure, GeolocationGateway, GeolocationOutcome } from './geolocation';
-import { FOOT_CREDIT_PLACEMENT, MapCredit } from './map-credit';
+import { FOOT_CREDIT_PLACEMENT, FOOT_CREDIT_PLACEMENT_SWAPPED, MapCredit } from './map-credit';
 import { LngLat, MapEngine, MapEngineOptions, MapHandle } from './map-engine';
 import { RIVIERA_MAP_OPTIONS } from './riviera-map-options';
 import { TouchTarget } from './touch-target';
@@ -43,6 +43,15 @@ const PIN_CLASSES =
 
 /** The visitor's own position, which is never the venue pin — a second marker, its own id. */
 export const HERE_MARKER = 'you-are-here';
+
+/**
+ * The controls the map draws over its own imagery. A consumer drawing its own marks over this box
+ * (Discover's pin layer) has to keep them off these, and asks for their boxes rather than reaching
+ * into this component's DOM for them.
+ */
+const CHROME_SELECTOR =
+  '[data-testid="map-near-me"], [data-testid="map-attribution"], ' +
+  '[data-testid="map-zoom-in"], [data-testid="map-zoom-out"]';
 
 /**
  * Town scale: near enough to tell which beach the visitor is on, wide enough to still show the
@@ -112,6 +121,7 @@ export class RivieraMap {
   private readonly geolocation = inject(GeolocationGateway);
   private readonly pendingTasks = inject(PendingTasks);
   private readonly document = inject(DOCUMENT);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly canvasHost = viewChild.required<ElementRef<HTMLElement>>('canvasHost');
   private readonly mapEnd = viewChild.required<ElementRef<HTMLElement>>('mapEnd');
   private readonly moveFocus = focusMover();
@@ -134,6 +144,8 @@ export class RivieraMap {
    * the consumer's own control at the right. `null` is the shipped column.
    */
   readonly foot = input<number | null>(null);
+  /** The foot row has changed sides for a lone pin under it: the credit goes right (`footSwap`). */
+  readonly footSwapped = input(false);
   /**
    * A bare ribbon: the map as a picture, for a consumer that draws its own marks over it and
    * hides the whole thing from assistive technology — no skip control, no control column, no
@@ -173,9 +185,10 @@ export class RivieraMap {
     if (this.ribbon()) {
       return 'left-2 bottom-2 max-w-[calc(100%-16px)] px-[6px] py-[2px] text-[10px] leading-[14px]';
     }
-    return this.footChrome()
-      ? FOOT_CREDIT_PLACEMENT
-      : 'right-3 bottom-3 max-w-[calc(100%-24px)] px-[10px] py-[4px] text-[12px] leading-[16px]';
+    if (this.footChrome()) {
+      return this.footSwapped() ? FOOT_CREDIT_PLACEMENT_SWAPPED : FOOT_CREDIT_PLACEMENT;
+    }
+    return 'right-3 bottom-3 max-w-[calc(100%-24px)] px-[10px] py-[4px] text-[12px] leading-[16px]';
   });
 
   private readonly live = signal<MapHandle | undefined>(undefined);
@@ -207,6 +220,18 @@ export class RivieraMap {
   /** Where the camera looks now, so a consumer can act on what the viewer is actually looking at. */
   currentCenter(): LngLat | undefined {
     return this.live()?.view().center;
+  }
+
+  /**
+   * Every control this map currently draws over its imagery, in viewport coordinates — what a
+   * consumer overlaying its own marks has to keep them off. Measured on the call rather than
+   * watched: the consumer knows when its own geometry moved, and a control a browser has laid out
+   * to nothing (every one of them under jsdom) is left out rather than reported as a box at 0.
+   */
+  chromeBoxes(): readonly DOMRect[] {
+    return [...this.host.nativeElement.querySelectorAll<HTMLElement>(CHROME_SELECTOR)]
+      .map((control) => control.getBoundingClientRect())
+      .filter((box) => box.width > 0 && box.height > 0);
   }
 
   private syncPin(): void {

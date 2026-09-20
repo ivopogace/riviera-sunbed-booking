@@ -2226,4 +2226,46 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
       expect(Number.parseFloat(dot.style.top)).toBeCloseTo(at.y, 3);
     });
   });
+
+  /**
+   * The chrome's own geometry is the browser's, so what a jsdom spec can hold is the arithmetic
+   * the page does with it: the window it confines the pills to, and the side its foot takes. The
+   * boxes themselves, and the 0 intersections they buy, are measured in `discover-map.e2e.ts`.
+   */
+  describe('on a phone: the pills’ room', () => {
+    function layer(fixture: ComponentFixture<Home>): VenuePinLayer {
+      return fixture.debugElement.query(By.directive(VenuePinLayer))
+        .componentInstance as VenuePinLayer;
+    }
+
+    it('hands the layer the map the header and the sheet leave', async () => {
+      const fixture = await sheetPage();
+      const { header, viewportW } = sheet(fixture).chrome();
+
+      expect(layer(fixture).window()).toEqual({
+        left: 0,
+        top: header,
+        right: viewportW,
+        bottom: sheet(fixture).tops().half,
+      });
+    });
+
+    it('leaves the layer its own box at full, where nothing re-fits', async () => {
+      const fixture = await sheetPage();
+      sheet(fixture).go('full');
+      await settle(fixture);
+
+      expect(sheet(fixture).detent()).toBe('full');
+      expect(layer(fixture).window()).toBeNull();
+    });
+
+    it('opens with the foot row unswapped: Near me right, the credit left', async () => {
+      const fixture = await sheetPage();
+
+      const nearMe = byTestId(fixture, 'sheet-near-me')!;
+      expect(nearMe.classList.contains('right-3')).toBe(true);
+      expect(nearMe.classList.contains('left-3')).toBe(false);
+      expect(byTestId(fixture, 'map-attribution')!.classList.contains('left-3')).toBe(true);
+    });
+  });
 });

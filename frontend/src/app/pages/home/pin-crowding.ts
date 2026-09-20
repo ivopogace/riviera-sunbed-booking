@@ -338,6 +338,36 @@ export function anchorLeft(x: number, width: number, anchor: PillAnchor): number
   }
 }
 
+/**
+ * Whether the map's foot row should change sides. A lone pin is never moved — that is the shipped
+ * rule and the whole reason the pills clear the chrome rather than the other way round — so when
+ * one sits under Near me or the credit it is the chrome that moves, both pieces together.
+ *
+ * <p>It swaps only when the pieces' CURRENT boxes are covered and their mirrored ones are not, so
+ * a pin waiting on the far side holds everything still and the decision cannot oscillate: the
+ * answer is a function of where the pins are, not of how it was reached. The two pieces differ in
+ * box, so the mirror is a real second chance rather than the same cover flipped over.
+ *
+ * @param pieces the foot row's rendered boxes, in the pane's own coordinates
+ * @param lonePins every lone pin's box, the ones that will not move
+ * @param pane the box the pieces are mirrored inside
+ * @param swapped whether the foot is currently on the swapped side
+ */
+export function footSwap(
+  pieces: readonly Rect[],
+  lonePins: readonly Rect[],
+  pane: Rect,
+  swapped: boolean,
+): boolean {
+  const under = (rect: Rect): boolean => lonePins.some((pin) => intersects(rect, pin));
+  const mirrored = pieces.map((piece) => ({
+    ...piece,
+    left: pane.left + pane.right - piece.right,
+    right: pane.left + pane.right - piece.left,
+  }));
+  return pieces.some(under) && !mirrored.some(under) ? !swapped : swapped;
+}
+
 /** Where the pill's middle sits relative to its point, down the screen's own axis. */
 export function riseOffset(rise: PillRise): number {
   switch (rise) {

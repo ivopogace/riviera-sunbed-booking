@@ -222,7 +222,7 @@
       }
       @if (posterCredit()) {
         <!-- The tiles' credit stands on the foot row over the poster until the live map, which carries its own, is mounted. -->
-        <app-map-credit [placement]="FOOT_CREDIT_PLACEMENT" [bottom]="footBottom()" />
+        <app-map-credit [placement]="footCreditPlacement()" [bottom]="footBottom()" />
       }
     }
     @defer (when mapDefer()) {
@@ -233,6 +233,7 @@
           [options]="groundOptions()"
           [nearMe]="false"
           [foot]="footBottom()"
+          [footSwapped]="nearMeLeft()"
           (mapClick)="closePreview()"
         />
       </div>
@@ -252,6 +253,8 @@
       [map]="groundHandle()"
       [selected]="selectedVenue()"
       [maxZoom]="mapMaxZoom"
+      [noGo]="mapChrome()"
+      [window]="pinWindow()"
       (chosen)="onPinSelected($event)"
       (narrowed)="onBeachNarrowed($event)"
     />
@@ -282,7 +285,9 @@
         type="button"
         appTouchTarget
         data-testid="sheet-near-me"
-        class="absolute right-3 z-[8] inline-flex h-11 touch-manipulation items-center gap-1.5 rounded-full border-2 px-[14px] text-[14px] font-bold shadow-[0_6px_18px_rgba(7,42,58,0.3)] aria-disabled:opacity-60"
+        class="absolute z-[8] inline-flex h-11 touch-manipulation items-center gap-1.5 rounded-full border-2 px-[14px] text-[14px] font-bold shadow-[0_6px_18px_rgba(7,42,58,0.3)] aria-disabled:opacity-60"
+        [class.left-3]="nearMeLeft()"
+        [class.right-3]="!nearMeLeft()"
         [class]="
           here() !== null
             ? 'border-riv-solid-btn-fill bg-riv-solid-btn-ink text-riv-solid-btn-fill'

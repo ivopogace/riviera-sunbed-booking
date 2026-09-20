@@ -36,7 +36,11 @@ import { FieldGlass } from '../../shared/field-glass';
 import { LoadAnnouncer } from '../../shared/load-announcer';
 import { focusMover } from '../../shared/focus-after-render';
 import { GeolocationGateway, GeolocationOutcome } from '../../shared/geolocation';
-import { FOOT_CREDIT_PLACEMENT, MapCredit } from '../../shared/map-credit';
+import {
+  FOOT_CREDIT_PLACEMENT,
+  FOOT_CREDIT_PLACEMENT_SWAPPED,
+  MapCredit,
+} from '../../shared/map-credit';
 import { LngLat, MapEngineOptions, MapHandle, MapView } from '../../shared/map-engine';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
@@ -64,6 +68,7 @@ import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
 import { fitInWindow } from './camera-fit';
+import { footSwap, Rect } from './pin-crowding';
 import { CoastPicker, coastIndex, PickedPlace } from './coast-picker';
 import { BeachOption, DiscoverHead } from './discover-head';
 import { DiscoverSheet } from './discover-sheet';
@@ -95,6 +100,16 @@ const DEFAULT_REGION = 'HIMARE';
 const TWO_COLUMN_PX = 600;
 /** The Near me button's foot row keeps this much clear of the header at peek. */
 const NEAR_ME_TOP_CLEARANCE_PX = 8 + 44;
+/** The page's own control over the ground, which the map component does not draw or report. */
+const PAGE_CHROME = '[data-testid="sheet-near-me"]';
+/** The tourist's dot: a pill that sits on it hides the one mark saying where the tourist is. */
+const HERE_DOT = '[data-testid="here-dot"]';
+/** The tile credit while the poster carries it and no map component is mounted to report it. */
+const POSTER_CREDIT = '[data-testid="map-attribution"]';
+/** The two pieces of the phone's foot row, which change sides together. */
+const FOOT_ROW = '[data-testid="sheet-near-me"], [data-testid="map-attribution"]';
+/** The dot's own ring is its margin; a pill may come this close to it and no closer. */
+const DOT_MARGIN_PX = 2;
 
 /** The sheet's query: the region and beach the list is narrowed to, and their cards. */
 interface Focus {
@@ -382,7 +397,10 @@ export class Home {
       view: still.liveView({ width: viewportW, height: viewportH }),
     };
   });
-  protected readonly FOOT_CREDIT_PLACEMENT = FOOT_CREDIT_PLACEMENT;
+  /** The poster's own credit stands where the live map's would, and changes sides with it. */
+  protected readonly footCreditPlacement = computed(() =>
+    this.nearMeLeft() ? FOOT_CREDIT_PLACEMENT_SWAPPED : FOOT_CREDIT_PLACEMENT,
+  );
 
   /**
    * The pin whose preview is open, or `null`. Linked to the pin set so a venue that leaves the
@@ -437,6 +455,22 @@ export class Home {
     return problem === null || this.noteDismissed() ? null : NEAR_ME_MESSAGES[problem];
   });
   protected readonly pickerOpen = signal(false);
+  /**
+   * The boxes no pill may sit on, in viewport coordinates: the page's own chrome, the tourist's
+   * dot with its margin, and whatever the map component draws for itself. Measured, because their
+   * geometry is the browser's; a value, because the placement rule is arithmetic (`layoutPills`).
+   */
+  protected readonly mapChrome = signal<readonly Rect[]>([]);
+  /** The foot row's two pieces as last measured, which is what decides whether they change sides. */
+  private readonly footPieces = signal<readonly Rect[]>([]);
+  /**
+   * Near me on the foot's LEFT and the credit on its right, the swapped arrangement. A lone pin is
+   * never moved, so when one sits under the foot it is the foot that moves — both pieces together,
+   * and only when the other side is free (`footSwap`).
+   */
+  protected readonly nearMeLeft = signal(false);
+  /** Bumped by everything that can move the chrome; the one thing the measurement re-runs on. */
+  private readonly chromeTick = signal(0);
   protected readonly detent = computed(() => this.sheet()?.detent() ?? 'half');
   /** The rails hide at peek: the head is the one row there. */
   protected readonly railsShown = computed(() => this.detent() !== 'peek');
@@ -459,6 +493,25 @@ export class Home {
       viewportH - header - NEAR_ME_TOP_CLEARANCE_PX,
       viewportH - sheet.sheetTop() + 12,
     );
+  });
+
+  /**
+   * Where a pill may sit on the phone: the map the glass header and the sheet leave, since a pill
+   * under the glass of either is a smudge. At full nothing re-fits and the pills are under the
+   * sheet anyway, so the layer keeps its own box.
+   */
+  protected readonly pinWindow = computed<Rect | null>(() => {
+    const sheet = this.sheet();
+    if (!this.sheetMode() || sheet === undefined || this.detent() === 'full') {
+      return null;
+    }
+    const { viewportW, viewportH, header } = sheet.chrome();
+    return {
+      left: 0,
+      top: header,
+      right: viewportW,
+      bottom: Math.min(viewportH, sheet.tops()[this.detent()]),
+    };
   });
 
   /** A region, never the coast: the chosen beach or region, else the tourist's, else Himarë. */
@@ -577,6 +630,7 @@ export class Home {
     this.selectedDate.set(this.routeDate(this.route.snapshot.queryParamMap));
     this.mapFlag.set(this.route.snapshot.queryParamMap.get('map') === SHEET_FLAG);
     this.followSheet();
+    this.followMapChrome();
     this.loadInitial();
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       this.mapFlag.set(params.get('map') === SHEET_FLAG);
@@ -728,6 +782,71 @@ export class Home {
         live.easeTo(view);
       }
     });
+  }
+
+  /**
+   * Keep the pin layer's no-go boxes and the foot row's side in step with the rendered chrome.
+   *
+   * <p>The measurement is an `earlyRead` off one tick, and the tick is bumped by the things that
+   * genuinely move chrome — the viewport, the sheet's rest, the located state, a camera move
+   * (which moves the dot) and the swap itself. Pills moving bumps nothing, so a re-layout cannot
+   * feed back into a re-measure; and the swap settles after one pass, because `footSwap` only ever
+   * moves the foot to a side it has found free.
+   */
+  private followMapChrome(): void {
+    effect(() => {
+      this.sheet()?.chrome();
+      this.detent();
+      this.footBottom();
+      this.here();
+      this.nearMeLeft();
+      this.wide();
+      this.moved();
+      untracked(() => this.chromeTick.update((tick) => tick + 1));
+    });
+    afterRenderEffect({
+      earlyRead: () => {
+        this.chromeTick();
+        untracked(() => this.remeasureChrome());
+      },
+    });
+  }
+
+  private remeasureChrome(): void {
+    const host = this.host.nativeElement;
+    const map = this.map();
+    // The map component reports its own controls; the poster carries the credit while it stands in.
+    const pageDrawn = [
+      ...host.querySelectorAll<HTMLElement>(
+        map === undefined ? `${PAGE_CHROME}, ${POSTER_CREDIT}` : PAGE_CHROME,
+      ),
+    ].map((element) => element.getBoundingClientRect());
+    const dot = host.querySelector<HTMLElement>(HERE_DOT)?.getBoundingClientRect();
+
+    this.mapChrome.set([
+      ...laidOut([...pageDrawn, ...(map?.chromeBoxes() ?? [])]),
+      ...laidOut(dot ? [dot] : []).map((box) => inflate(box, DOT_MARGIN_PX)),
+    ]);
+    this.footPieces.set(
+      laidOut(
+        [...host.querySelectorAll<HTMLElement>(FOOT_ROW)].map((el) => el.getBoundingClientRect()),
+      ),
+    );
+    this.swapFootForLonePins();
+  }
+
+  /** The foot moves for a lone pin, never the other way round: the shipped rule never moves a pin. */
+  private swapFootForLonePins(): void {
+    const layer = this.pinLayer();
+    const sheet = this.sheet();
+    if (!this.sheetMode() || layer === undefined || sheet === undefined) {
+      return;
+    }
+    const { viewportW, viewportH } = sheet.chrome();
+    const pane: Rect = { left: 0, top: 0, right: viewportW, bottom: viewportH };
+    this.nearMeLeft.update((swapped) =>
+      footSwap(this.footPieces(), layer.loneBoxes(), pane, swapped),
+    );
   }
 
   /**
@@ -1114,6 +1233,22 @@ export class Home {
 }
 
 /** Himarë when it has a venue, else the northernmost region that has one, else nothing (the coast). */
+/** Only what the browser has actually laid out: jsdom gives every element a box of nothing. */
+function laidOut(boxes: readonly DOMRect[]): Rect[] {
+  return boxes
+    .filter((box) => box.width > 0 && box.height > 0)
+    .map(({ left, top, right, bottom }) => ({ left, top, right, bottom }));
+}
+
+function inflate(box: Rect, margin: number): Rect {
+  return {
+    left: box.left - margin,
+    top: box.top - margin,
+    right: box.right + margin,
+    bottom: box.bottom + margin,
+  };
+}
+
 function defaultRegion(cards: readonly VenueCard[]): string {
   const present = presentRegions(cards.map((card) => card.beach));
   return present.some((region) => region.code === DEFAULT_REGION)

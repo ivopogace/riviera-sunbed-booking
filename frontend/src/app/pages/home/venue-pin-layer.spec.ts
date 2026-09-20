@@ -426,6 +426,20 @@ describe('VenuePinLayer', () => {
       return buttons('map-place-pill')[0];
     }
 
+    it('reports every lone pin’s box, for a host deciding where its own chrome goes', async () => {
+      await render([AURORA]);
+      const { x, y } = handle.project(AURORA.at);
+
+      expect(fixture.componentInstance.loneBoxes()).toEqual([
+        { left: x - 28.5, top: y - 22, right: x + 28.5, bottom: y + 22 },
+      ]);
+    });
+
+    it('reports no box for a crowd, whose pill is free to move around the chrome', async () => {
+      await render([MIRAMAR, LORI]);
+      expect(fixture.componentInstance.loneBoxes()).toEqual([]);
+    });
+
     it('sits a pill on its point when the host hands nothing', async () => {
       await renderDhermi();
       const [pill] = buttons('map-place-pill');
