@@ -190,74 +190,108 @@
 </ng-template>
 
 @if (sheetMode()) {
-  <!-- ── The ground: the live riviera map under the glass header, the whole viewport. ── -->
+  <!-- ── The ground: the poster, then the live riviera map under the glass header, the whole viewport. ── -->
   <div class="fixed inset-0 z-[1] overflow-hidden bg-riv-solid-btn-fill" data-testid="sheet-ground">
+    @if (poster(); as poster) {
+      @if (posterShown()) {
+        <!-- The still, centred and cropped to the pane, anchored to the top where its pins are fitted; a finger on it is a pan, which is the live map's. It fades out under the loaded map. -->
+        <button
+          type="button"
+          appTouchTarget
+          data-testid="sheet-poster"
+          class="absolute inset-0 z-[2] block cursor-grab touch-none select-none motion-safe:transition-opacity motion-safe:duration-300"
+          animate.leave="opacity-0"
+          aria-label="Move the map"
+          (pointerdown)="onGroundPointerDown()"
+          (click)="closePreview()"
+        >
+          <img
+            data-testid="poster-image"
+            class="pointer-events-none absolute top-0 left-1/2 max-w-none -translate-x-1/2 select-none"
+            [attr.width]="poster.bucket.width"
+            [attr.height]="poster.bucket.height"
+            [src]="poster.src"
+            [srcset]="poster.srcset"
+            alt=""
+            draggable="false"
+            fetchpriority="high"
+            loading="eager"
+            decoding="async"
+          />
+        </button>
+        <!-- The tiles' credit stands on the foot row over the poster as it does over the live map. -->
+        <app-map-credit [placement]="FOOT_CREDIT_PLACEMENT" [bottom]="footBottom()" />
+      }
+    }
     @defer (when mapDefer()) {
       <div class="absolute inset-0 [&>app-riviera-map]:rounded-none">
         <app-riviera-map
           class="size-full"
+          [options]="groundOptions()"
           [nearMe]="false"
           [foot]="footBottom()"
           (mapClick)="closePreview()"
         />
       </div>
-      <!-- The page's own pins over the map: one real button per venue, a place pill per crowd. -->
-      <app-venue-pin-layer
-        class="rounded-none!"
-        [pins]="pins()"
-        [map]="mapHandle()"
-        [selected]="selectedVenue()"
-        [maxZoom]="mapMaxZoom"
-        (chosen)="onPinSelected($event)"
-        (narrowed)="onBeachNarrowed($event)"
-      />
-      <!-- The tourist's own dot paints over the pins (z-[5] to the layer's 4), as Google's blue dot does: an ink disc in a light ring, the shape every map uses for "you". -->
-      @if (hereDot(); as dot) {
-        <svg
-          data-testid="here-dot"
-          class="pointer-events-none absolute z-[5] size-5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[0_0_0_6px_rgba(10,79,94,0.18),0_4px_12px_rgba(7,42,58,0.35)]"
-          viewBox="0 0 20 20"
-          role="img"
-          aria-label="You are here"
-          [style.left.px]="dot.x"
-          [style.top.px]="dot.y"
-        >
-          <title>You are here</title>
-          <circle
-            cx="10"
-            cy="10"
-            r="8.5"
-            class="fill-riv-solid-btn-ink stroke-riv-solid-btn-fill"
-            stroke-width="3"
-          />
-        </svg>
-      }
-      <!-- Near me on the map's foot row at the right — mid-screen at half, the thumb's zone — in the fixed solid pair, inverted once placed; hidden at full, where the map is a sliver. -->
-      @if (nearMeShown && detent() !== 'full') {
-        <button
-          type="button"
-          appTouchTarget
-          data-testid="sheet-near-me"
-          class="absolute right-3 z-[8] inline-flex h-11 touch-manipulation items-center gap-1.5 rounded-full border-2 px-[14px] text-[14px] font-bold shadow-[0_6px_18px_rgba(7,42,58,0.3)] aria-disabled:opacity-60"
-          [class]="
-            here() !== null
-              ? 'border-riv-solid-btn-fill bg-riv-solid-btn-ink text-riv-solid-btn-fill'
-              : 'border-riv-solid-btn-border bg-riv-solid-btn-fill text-riv-solid-btn-ink hover:bg-riv-solid-btn-hover'
-          "
-          [style.bottom.px]="footBottom()"
-          [attr.aria-pressed]="here() !== null"
-          [appBusy]="locating()"
-          (click)="locate()"
-        >
-          <span aria-hidden="true">◎</span>&ngsp;{{ here() !== null ? 'You are here' : 'Near me' }}
-        </button>
-      }
     } @placeholder {
-      <div
-        class="absolute inset-0 animate-pulse bg-riv-card-track motion-reduce:animate-none"
-        aria-hidden="true"
-        data-testid="map-placeholder"
-      ></div>
+      @if (!posterShown()) {
+        <div
+          class="absolute inset-0 animate-pulse bg-riv-card-track motion-reduce:animate-none"
+          aria-hidden="true"
+          data-testid="map-placeholder"
+        ></div>
+      }
+    }
+    <!-- The page's own pins over the ground: one real button per venue, a place pill per crowd, projected through the still or the live map. -->
+    <app-venue-pin-layer
+      class="rounded-none!"
+      [pins]="pins()"
+      [map]="groundHandle()"
+      [selected]="selectedVenue()"
+      [maxZoom]="mapMaxZoom"
+      (chosen)="onPinSelected($event)"
+      (narrowed)="onBeachNarrowed($event)"
+    />
+    <!-- The tourist's own dot paints over the pins (z-[5] to the layer's 4), as Google's blue dot does: an ink disc in a light ring, the shape every map uses for "you". -->
+    @if (hereDot(); as dot) {
+      <svg
+        data-testid="here-dot"
+        class="pointer-events-none absolute z-[5] size-5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[0_0_0_6px_rgba(10,79,94,0.18),0_4px_12px_rgba(7,42,58,0.35)]"
+        viewBox="0 0 20 20"
+        role="img"
+        aria-label="You are here"
+        [style.left.px]="dot.x"
+        [style.top.px]="dot.y"
+      >
+        <title>You are here</title>
+        <circle
+          cx="10"
+          cy="10"
+          r="8.5"
+          class="fill-riv-solid-btn-ink stroke-riv-solid-btn-fill"
+          stroke-width="3"
+        />
+      </svg>
+    }
+    <!-- Near me on the map's foot row at the right — mid-screen at half, the thumb's zone — in the fixed solid pair, inverted once placed; hidden at full, where the map is a sliver. -->
+    @if (nearMeShown && detent() !== 'full') {
+      <button
+        type="button"
+        appTouchTarget
+        data-testid="sheet-near-me"
+        class="absolute right-3 z-[8] inline-flex h-11 touch-manipulation items-center gap-1.5 rounded-full border-2 px-[14px] text-[14px] font-bold shadow-[0_6px_18px_rgba(7,42,58,0.3)] aria-disabled:opacity-60"
+        [class]="
+          here() !== null
+            ? 'border-riv-solid-btn-fill bg-riv-solid-btn-ink text-riv-solid-btn-fill'
+            : 'border-riv-solid-btn-border bg-riv-solid-btn-fill text-riv-solid-btn-ink hover:bg-riv-solid-btn-hover'
+        "
+        [style.bottom.px]="footBottom()"
+        [attr.aria-pressed]="here() !== null"
+        [appBusy]="locating()"
+        (click)="locate()"
+      >
+        <span aria-hidden="true">◎</span>&ngsp;{{ here() !== null ? 'You are here' : 'Near me' }}
+      </button>
     }
   </div>
 

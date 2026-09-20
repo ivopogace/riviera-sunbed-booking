@@ -178,7 +178,7 @@ and tablet by the poster until the first camera move; every shipped behaviour is
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The pins jump at the swap: the live map's camera differs from the poster's | medium | high (the whole point of the poster) | the live view is `PosterHandle.liveView(pane)` — the geography at the pane's centre — and the camera effect skips a fit whose key (detent, targets, viewport) the poster already framed; AC-2/AC-3 pin it at the fake engine and in Chromium | agent | open |
+| R-1 | The pins jump at the swap: the live map's camera differs from the poster's | medium | high (the whole point of the poster) | the live view is `PosterHandle.liveView(pane)` — the geography at the pane's centre — and the camera effect skips a fit whose key (detent, targets, viewport) the poster already framed; AC-2/AC-3 pin it at the fake engine and in Chromium | agent | unit-pinned in phase 3 (`home.spec.ts` › "a finger on the ground …"); Chromium in phase 5 |
 | R-2 | A poster with pane fill either side (the round-11 tablet defect) | low | medium | buckets cover 320–834; `posterFor` returns none above; AC-5 | agent | open |
 | R-3 | The poster set's weight in the repository (172 JPEGs per regeneration) | medium | medium (history grows per regeneration, like the archive) | measured before committing; a budget in `map-poster-set.spec.ts`; the runbook counts regenerations with the archive's; ADR-0022 amendment records the size and the levers (tablet 3× first) | agent | open |
 | R-4 | The renderer drifts from the page (a different camera, tile size or window) | low | high | one module (`map-poster.ts`) computes the camera for both; the renderer bundles it with esbuild rather than re-implementing it; `map-poster.spec.ts` pins the worked example | agent | open |
@@ -249,16 +249,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** phase 3 red: the poster describe in `home.spec.ts`.
+**Next action:** phase 4 red: `map-poster-set.spec.ts`, then the renderer.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `RIVIERA_MAP_OPTIONS` to its own module; `PosterHandle` | ✅ | this commit |
 | 1 — the poster catalogue: buckets, cameras, keys, URLs, the frame test | ✅ | this commit |
 | 2 — the credit as a shared pill; `RivieraMap.loaded` | ✅ | this commit |
-| 3 — the page: the poster ground, the pins through the still handle, the swap | | |
+| 3 — the page: the poster ground, the pins through the still handle, the swap | ✅ | this commit |
 | 4 — the renderer, the poster set, the completeness spec | | |
 | 5 — the mocked e2e: cost, parity, swaps, buckets | | |
 | 6 — close-out: runbook, ADR-0022 amendment, CONTEXT.md, retire the #1161 plan, docs-freshness | | |
@@ -350,12 +350,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Modify `pages/home/home.ts|.html` · Test `pages/home/home.spec.ts`,
 `home.a11y.spec.ts`
 
-- [ ] Red (viewport stubbed to 390 × 844): AC-1's unit pin, AC-3's three, AC-5's unit pin, AC-6's
+- [x] Red (viewport stubbed to 390 × 844): AC-1's unit pin, AC-3's three, AC-5's unit pin, AC-6's
   two, AC-7.
-- [ ] Green: `poster`/`posterHandle`/`posterShown`/`woken`/`pendingMove`; `groundHandle`; the
+- [x] Green: `poster`/`posterHandle`/`posterShown`/`woken`/`pendingMove`; `groundHandle`; the
   `@defer` condition; the ground button; the pin layer, the dot and Near me outside the block;
   the camera effect's framed key; `[options]` on the live map.
-- [ ] Commit — `Open the sheet on a poster and swap the live map in at its camera (#1158)`.
+- [x] Commit — `Open the sheet on a poster and swap the live map in at its camera (#1158)`.
 
 ## Phase 4 — The renderer, the poster set, the completeness spec
 
@@ -389,6 +389,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-20 | phase 3: the fake engine's handle and its `load` land in one tick, so an effect keyed on "the live map arrived under the poster" never sees that state | every effect that reads a state the fake collapses (booting → loaded) | `grep -rn "loaded()\|status() === 'ready'" frontend/src/app --include=*.ts` | `home.ts` (the camera effect) only | the poster records what it framed while it shows (`framedByPoster`), not when the handle appears |
+| 2026-09-20 | phase 3: a beach's venues lie a kilometre off the catalogue centre, outside a lone-pin fit's window | every poster camera fitted to catalogue points | `posterCamera` (one function) | the beach arm; the one-beach region (Shkodër) | every catalogue point gets `REACH_DEG` of reach before the fit |
 | 2026-09-20 | phase 0: a third copy of the Web Mercator arithmetic (the fake engine's, the camera fit's, the still handle's) | every module doing `512 · 2^zoom` projection | `grep -rln 'mercator\|mercY\|mercX\|2 \*\* .*zoom' frontend/src/app --include=*.ts` | `fake-map-engine.ts`, `camera-fit.ts` (+ the new handle) | one `shared/web-mercator.ts`; all three project through it |
 
 ---

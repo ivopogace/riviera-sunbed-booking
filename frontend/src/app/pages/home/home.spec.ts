@@ -13,14 +13,16 @@ import { environment } from '../../../environments/environment';
 import { photoView, photoViews } from '../../../testing/photo-views';
 import { defaultBookingDate } from '../../shared/booking-date';
 import { FakeMapEngine, FakeMapHandle } from '../../shared/fake-map-engine';
+import { PosterHandle } from '../../shared/poster-handle';
 import { FakeGeolocationGateway } from '../../../testing/fake-geolocation';
 import { GeolocationGateway } from '../../shared/geolocation';
-import { MapEngine } from '../../shared/map-engine';
+import { MapEngine, MapEngineOptions } from '../../shared/map-engine';
 import { RivieraMap } from '../../shared/riviera-map';
 import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map-options';
 import { VenueSummary } from '../../shared/venue-views';
 import { DiscoverSheet } from './discover-sheet';
 import { Home } from './home';
+import { posterFor } from './map-poster';
 import { VenuePinLayer } from './venue-pin-layer';
 
 /** Two venues across two beaches/regions, mirroring the discovery summary shape. */
@@ -1515,6 +1517,8 @@ describe('Home (venue pins and the preview)', () => {
 describe('Home (the riviera map sheet, ?map=sheet)', () => {
   let httpMock: HttpTestingController;
   let geolocation: FakeGeolocationGateway;
+  let engine: FakeMapEngine;
+  let makeEngine: () => FakeMapEngine = () => new FakeMapEngine();
   const originalMatchMedia = globalThis.matchMedia;
   const scrollable = Element.prototype as { scrollTo?: (options: ScrollToOptions) => void };
   const originalScrollTo = scrollable.scrollTo;
@@ -1586,6 +1590,7 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
     TestBed.resetTestingModule();
     const params = new BehaviorSubject<ParamMap>(convertToParamMap(query));
     geolocation = new FakeGeolocationGateway();
+    engine = makeEngine();
     TestBed.configureTestingModule({
       imports: [Home],
       providers: [
@@ -1596,7 +1601,7 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
           provide: ActivatedRoute,
           useValue: { queryParamMap: params, snapshot: { queryParamMap: params.value } },
         },
-        { provide: MapEngine, useValue: new FakeMapEngine() },
+        { provide: MapEngine, useValue: engine },
         { provide: GeolocationGateway, useValue: geolocation },
       ],
     });
@@ -1947,5 +1952,235 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
 
     expect(el(fixture).querySelector('[data-selected]')).toBeNull();
     expect(el(fixture).querySelector('[role="group"][aria-label="Day"]')).toBeNull();
+  });
+
+  /**
+   * On a phone the sheet opens on the **map poster**: a still of the region under the pins,
+   * projected through the still handle, with no engine created until something has to move
+   * the camera — then the live map takes over at the poster's own camera.
+   */
+  describe('on a phone: the poster', () => {
+    const PHONE = { width: 390, height: 844 };
+    const originalSize = { width: window.innerWidth, height: window.innerHeight };
+
+    /** The fake's surface with the phone's box, since jsdom lays nothing out: the live map projects around the pane's centre as in a browser. */
+    class BoxedFakeMapEngine extends FakeMapEngine {
+      override create(host: HTMLElement, options: MapEngineOptions): Promise<FakeMapHandle> {
+        const created = super.create(host, options);
+        const surface = host.querySelector<HTMLElement>('[data-testid="riviera-map-fake"]')!;
+        surface.getBoundingClientRect = () =>
+          ({ x: 0, y: 0, left: 0, top: 0, width: PHONE.width, height: PHONE.height }) as DOMRect;
+        return created;
+      }
+    }
+
+    function useViewport({ width, height }: { width: number; height: number }): void {
+      window.innerWidth = width;
+      window.innerHeight = height;
+    }
+
+    function pinBoxes(fixture: ComponentFixture<Home>): [number, number][] {
+      return [...el(fixture).querySelectorAll<HTMLElement>('[data-pin]')].map((pin) => [
+        Number.parseFloat(pin.style.left),
+        Number.parseFloat(pin.style.top),
+      ]);
+    }
+
+    /** The still handle the page projects through for Himarë, rebuilt here from the same catalogue. */
+    function himareStill(): PosterHandle {
+      const poster = posterFor('HIMARE', '', PHONE)!;
+      return new PosterHandle(poster.camera, PHONE.width, poster.bucket.height, () => undefined);
+    }
+
+    async function loaded(fixture: ComponentFixture<Home>): Promise<FakeMapHandle> {
+      await settle(fixture);
+      const map = fixture.debugElement.query(By.directive(RivieraMap))
+        .componentInstance as RivieraMap;
+      await settle(fixture);
+      expect(map.loaded()).toBe(true);
+      return map.handle() as FakeMapHandle;
+    }
+
+    beforeEach(() => {
+      useViewport(PHONE);
+      makeEngine = () => new BoxedFakeMapEngine();
+    });
+    afterEach(() => {
+      useViewport(originalSize);
+      makeEngine = () => new FakeMapEngine();
+    });
+
+    it('opens on the poster: no engine created, the pins drawn through the still handle, the credit on the foot row', async () => {
+      const fixture = await sheetPage();
+
+      expect(engine.created).toHaveLength(0);
+      expect(byTestId(fixture, 'riviera-map-fake')).toBeNull();
+      expect(byTestId(fixture, 'map-placeholder')).toBeNull();
+      const image = byTestId(fixture, 'poster-image') as HTMLImageElement;
+      expect(image.getAttribute('src')).toBe('/posters/HIMARE-440@2x.jpg');
+      expect(image.getAttribute('srcset')).toBe(
+        '/posters/HIMARE-440@2x.jpg 2x, /posters/HIMARE-440@3x.jpg 3x',
+      );
+      expect(image.getAttribute('fetchpriority')).toBe('high');
+      expect(image.getAttribute('alt')).toBe('');
+      expect(byTestId(fixture, 'sheet-poster')?.getAttribute('aria-label')).toBe('Move the map');
+
+      // Himarë's two pins crowd at the poster's zoom, so the layer draws one place pill at the crowd's spot.
+      const still = himareStill();
+      const pins = [...el(fixture).querySelectorAll<HTMLElement>('[data-pin]')];
+      expect(pins).toHaveLength(2);
+      expect(byTestId(fixture, 'map-place-pill')).not.toBeNull();
+      const palase = still.project({ lng: 19.607, lat: 40.175 });
+      const dhermi = still.project({ lng: 19.6401, lat: 40.1573 });
+      const [x, y] = pinBoxes(fixture)[0];
+      expect(x).toBeCloseTo((palase.x + dhermi.x) / 2, 3);
+      expect(y).toBeCloseTo((palase.y + dhermi.y) / 2, 3);
+
+      const credit = byTestId(fixture, 'map-attribution')!;
+      expect(credit.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+        '© OpenMapTiles © OpenStreetMap contributors',
+      );
+      expect(credit.querySelectorAll('a')).toHaveLength(2);
+      expect(byTestId(fixture, 'sheet-near-me')).not.toBeNull();
+    });
+
+    it('a finger on the ground wakes the live map at the poster’s camera, and nothing moves', async () => {
+      const fixture = await sheetPage();
+      const before = pinBoxes(fixture);
+
+      byTestId(fixture, 'sheet-poster')!.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+      const handle = await loaded(fixture);
+
+      expect(engine.created).toHaveLength(1);
+      expect(engine.created[0].options.view).toEqual(himareStill().liveView(PHONE));
+      expect(handle.view()).toEqual(himareStill().liveView(PHONE));
+      expect(byTestId(fixture, 'sheet-poster')).toBeNull();
+      expect(byTestId(fixture, 'riviera-map-fake')).not.toBeNull();
+      const after = pinBoxes(fixture);
+      expect(after).toHaveLength(before.length);
+      for (const [index, [x, y]] of after.entries()) {
+        expect(Math.abs(x - before[index][0])).toBeLessThanOrEqual(1);
+        expect(Math.abs(y - before[index][1])).toBeLessThanOrEqual(1);
+      }
+    });
+
+    it('a crowd press wakes the live map at the poster’s camera and replays the press', async () => {
+      const fixture = await sheetPage();
+      const still = himareStill();
+
+      byTestId(fixture, 'map-place-pill')!.click();
+      const handle = await loaded(fixture);
+
+      expect(engine.created[0].options.view).toEqual(still.liveView(PHONE));
+      // The crowd's separation zoom, centred between Palasë and Dhërmi.
+      const view = handle.view();
+      expect(view.zoom).toBeGreaterThan(still.view().zoom + 1);
+      expect(view.center.lng).toBeCloseTo((19.607 + 19.6401) / 2, 3);
+      expect(view.center.lat).toBeCloseTo((40.175 + 40.1573) / 2, 3);
+      expect(byTestId(fixture, 'sheet-poster')).toBeNull();
+    });
+
+    it('the sheet pulled below half wakes the live map and fits the window it leaves', async () => {
+      const fixture = await sheetPage();
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      const scroller = byTestId(fixture, 'sheet-scroller')!;
+      const tops = sheet(fixture).tops();
+      expect(engine.created).toHaveLength(0);
+
+      // A finger's first pixels down from half: the live map is asked for, the camera stays.
+      scroller.scrollTop = tops.peek - tops.half - 30;
+      scroller.dispatchEvent(new Event('scroll'));
+      const handle = await loaded(fixture);
+      expect(handle.view()).toEqual(himareStill().liveView(PHONE));
+
+      // At peek the fit aims at the taller window: two pins 0.034° apart fill it at ~12.7.
+      scroller.scrollTop = 0;
+      scroller.dispatchEvent(new Event('scroll'));
+      await settle(fixture);
+      expect(sheet(fixture).detent()).toBe('peek');
+      expect(handle.view().zoom).toBeGreaterThan(12);
+    });
+
+    it('a tap on the ground clears the lit row', async () => {
+      const fixture = await sheetPage();
+      // Narrowed to Dhërmi, Aurora Bay's pin stands alone, so its press lights its row.
+      byTestId(fixture, 'head-beaches')!.click();
+      await settle(fixture);
+      [
+        ...el(fixture).querySelectorAll<HTMLButtonElement>(
+          '[role="group"][aria-label="Beach"] button',
+        ),
+      ]
+        .find((chip) => text(chip).startsWith('Dhërmi'))!
+        .click();
+      await settle(fixture);
+      expect(byTestId(fixture, 'poster-image')?.getAttribute('src')).toBe(
+        '/posters/beach-DHERMI-440@2x.jpg',
+      );
+      el(fixture).querySelector<HTMLButtonElement>('[data-pin="2"]')!.click();
+      await settle(fixture);
+      expect(el(fixture).querySelector('[data-selected]')).not.toBeNull();
+      expect(engine.created).toHaveLength(0);
+
+      byTestId(fixture, 'sheet-poster')!.click();
+      await settle(fixture);
+
+      expect(el(fixture).querySelector('[data-selected]')).toBeNull();
+    });
+
+    it('above the widest bucket the live map is the ground from the first paint', async () => {
+      useViewport({ width: 900, height: 1100 });
+      const fixture = await sheetPage();
+
+      expect(byTestId(fixture, 'sheet-poster')).toBeNull();
+      expect(engine.created).toHaveLength(1);
+      expect(byTestId(fixture, 'riviera-map-fake')).not.toBeNull();
+    });
+
+    it('located at Tirana keeps the Durrës poster and draws the dot on it', async () => {
+      const fixture = await sheetPage();
+
+      await locateAt(fixture, { kind: 'located', at: TIRANA });
+
+      expect(engine.created).toHaveLength(0);
+      expect(text(byTestId(fixture, 'head-title'))).toBe('Durrës');
+      const image = byTestId(fixture, 'poster-image') as HTMLImageElement;
+      expect(image.getAttribute('src')).toBe('/posters/DURRES-440@2x.jpg');
+      const poster = posterFor('DURRES', '', PHONE)!;
+      const still = new PosterHandle(
+        poster.camera,
+        PHONE.width,
+        poster.bucket.height,
+        () => undefined,
+      );
+      const dot = byTestId(fixture, 'here-dot')!;
+      const at = still.project(TIRANA);
+      expect(Number.parseFloat(dot.style.left)).toBeCloseTo(at.x, 3);
+      expect(Number.parseFloat(dot.style.top)).toBeCloseTo(at.y, 3);
+    });
+
+    it('located off the poster opens the live map at the fit that holds the dot', async () => {
+      const fixture = await sheetPage();
+      // Shkodër town: inside the fence, nearest to Durrës's venues, 70 km north of its poster's window.
+      const SHKODER_TOWN = { lng: 19.51, lat: 42.07 };
+
+      await locateAt(fixture, { kind: 'located', at: SHKODER_TOWN });
+      const handle = await loaded(fixture);
+
+      expect(text(byTestId(fixture, 'head-title'))).toBe('Durrës');
+      expect(byTestId(fixture, 'sheet-poster')).toBeNull();
+      expect(byTestId(fixture, 'here-dot')).not.toBeNull();
+      expect(handle.view().zoom).toBeLessThan(posterFor('DURRES', '', PHONE)!.camera.zoom);
+      // The dot is in the window the fit aims at: the map between the header and the foot row.
+      const at = handle.project(SHKODER_TOWN);
+      const { header } = sheet(fixture).chrome();
+      expect(at.y).toBeGreaterThanOrEqual(header);
+      expect(at.y).toBeLessThanOrEqual(sheet(fixture).tops().half - 56);
+      expect(at.x).toBeGreaterThanOrEqual(0);
+      expect(at.x).toBeLessThanOrEqual(PHONE.width);
+      const dot = byTestId(fixture, 'here-dot')!;
+      expect(Number.parseFloat(dot.style.left)).toBeCloseTo(at.x, 3);
+      expect(Number.parseFloat(dot.style.top)).toBeCloseTo(at.y, 3);
+    });
   });
 });

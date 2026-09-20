@@ -17,7 +17,7 @@ import {
 import { BusyAction } from './busy-action';
 import { focusMover } from './focus-after-render';
 import { GeolocationFailure, GeolocationGateway, GeolocationOutcome } from './geolocation';
-import { MapCredit } from './map-credit';
+import { FOOT_CREDIT_PLACEMENT, MapCredit } from './map-credit';
 import { LngLat, MapEngine, MapEngineOptions, MapHandle } from './map-engine';
 import { RIVIERA_MAP_OPTIONS } from './riviera-map-options';
 import { TouchTarget } from './touch-target';
@@ -166,17 +166,15 @@ export class RivieraMap {
   );
   /**
    * The credit's place, padding and leading together (two utilities for one property would
-   * resolve by stylesheet order): the shipped bottom-right corner; the foot's left, wrapped to
-   * 200 px — less on the narrowest phone, where it leaves the consumer's control at the right its
-   * 150 px (`You are here`), the two insets and a 10 px gap; or a ribbon's foot, at 10 px so it
-   * wraps to three lines in 150 px.
+   * resolve by stylesheet order): the shipped bottom-right corner; the foot row's left; or a
+   * ribbon's foot, at 10 px so it wraps to three lines in 150 px.
    */
   protected readonly creditPlacement = computed(() => {
     if (this.ribbon()) {
       return 'left-2 bottom-2 max-w-[calc(100%-16px)] px-[6px] py-[2px] text-[10px] leading-[14px]';
     }
     return this.footChrome()
-      ? 'left-3 max-w-[min(200px,calc(100%-184px))] px-[10px] py-[4px] text-[11px] leading-[16px]'
+      ? FOOT_CREDIT_PLACEMENT
       : 'right-3 bottom-3 max-w-[calc(100%-24px)] px-[10px] py-[4px] text-[12px] leading-[16px]';
   });
 

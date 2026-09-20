@@ -11,6 +11,7 @@ import {
   Injector,
   linkedSignal,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -35,10 +36,12 @@ import { FieldGlass } from '../../shared/field-glass';
 import { LoadAnnouncer } from '../../shared/load-announcer';
 import { focusMover } from '../../shared/focus-after-render';
 import { GeolocationGateway, GeolocationOutcome } from '../../shared/geolocation';
-import { LngLat } from '../../shared/map-engine';
+import { FOOT_CREDIT_PLACEMENT, MapCredit } from '../../shared/map-credit';
+import { LngLat, MapEngineOptions, MapHandle, MapView } from '../../shared/map-engine';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
+import { PosterHandle } from '../../shared/poster-handle';
 import { PhotoScrim } from '../../shared/photo-scrim';
 import { PhotoSlideshow } from '../../shared/photo-slideshow';
 import { PhotoStepButton } from '../../shared/photo-step-button';
@@ -64,6 +67,7 @@ import { fitInWindow } from './camera-fit';
 import { CoastPicker, coastIndex, PickedPlace } from './coast-picker';
 import { BeachOption, DiscoverHead } from './discover-head';
 import { DiscoverSheet } from './discover-sheet';
+import { Poster, posterFor, posterFrames } from './map-poster';
 import { VenuePin } from './pin-crowding';
 import {
   distanceLabel,
@@ -137,6 +141,13 @@ function closedStateText(
  * preview, and Near me has three arms decided by the map's own fence rule. Sheet mode keeps the
  * one whole-coast request per date and narrows to a region client-side, so the chips and the
  * coast picker can count every beach. The flag off, the page is the one described above.
+ *
+ * <p>On a phone or tablet the sheet opens on the **map poster** (`map-poster.ts`): a still of the
+ * region under the pins, which are projected through a still-image handle, so the first paint
+ * costs one image and no engine. The first thing that has to move the camera — a crowd press, a
+ * finger on the ground, the sheet pulled below half, a located dot outside the picture — wakes the
+ * live map at the poster's own camera; it fades in under the poster once loaded, the pins switch
+ * to it where they stood, and the move wanted is replayed on it.
  */
 @Component({
   selector: 'app-home',
@@ -160,6 +171,7 @@ function closedStateText(
     SetsFree,
     FieldGlass,
     LoadAnnouncer,
+    MapCredit,
     TouchTarget,
     RivieraMap,
     VenuePinLayer,
@@ -232,9 +244,12 @@ export class Home {
   protected readonly mapOpen = computed(() => this.wide() || this.view() === 'map');
   /** The venue request has answered or failed: the list is drawn, so the map may load. */
   protected readonly listSettled = computed(() => this.venues() !== undefined || this.failed());
-  /** The map chunk's one-way trigger: an open map (the ground, in sheet mode), after the list settled. */
+  /**
+   * The map chunk's one-way trigger: an open map (the ground, in sheet mode, once the poster no
+   * longer stands in for it), after the list settled.
+   */
   protected readonly mapDefer = computed(
-    () => (this.sheetMode() || this.mapOpen()) && this.listSettled(),
+    () => (this.sheetMode() ? this.groundLive() : this.mapOpen()) && this.listSettled(),
   );
 
   /** The route carries `?map=sheet`; the layout follows it only below `lg`. */
@@ -299,10 +314,73 @@ export class Home {
     ),
   );
 
-  /** The live engine handle the pin layer projects through; `undefined` until the map has booted. */
+  /** The live engine handle the shipped panel's pins project through; `undefined` until the map has booted. */
   protected readonly mapHandle = computed(() => this.map()?.handle());
   /** The map's zoom ceiling, which decides when a crowd is one the camera cannot separate. */
   protected readonly mapMaxZoom = RIVIERA_MAP_OPTIONS.maxZoom;
+
+  // ── the poster (sheet mode only) ────────────────────────────────────────────────────────
+  /** The still for the place on this viewport, or none: a viewport wider or taller than every bucket. */
+  protected readonly poster = computed<Poster | undefined>(() => {
+    const sheet = this.sheet();
+    if (!this.sheetMode() || sheet === undefined) {
+      return undefined;
+    }
+    const { viewportW, viewportH } = sheet.chrome();
+    if (viewportW === 0) {
+      return undefined;
+    }
+    const { region, beach } = this.focus();
+    return posterFor(region, beach, { width: viewportW, height: viewportH });
+  });
+  /** The still handle the pins project through while the poster is the ground. */
+  private readonly posterHandle = computed<PosterHandle | undefined>(() => {
+    const poster = this.poster();
+    const sheet = this.sheet();
+    if (poster === undefined || sheet === undefined) {
+      return undefined;
+    }
+    return new PosterHandle(poster.camera, sheet.chrome().viewportW, poster.bucket.height, (view) =>
+      this.wake(view),
+    );
+  });
+  /** The poster can be the ground: it exists and frames every pin and the tourist's dot. */
+  private readonly posterCovers = computed(() => {
+    const still = this.posterHandle();
+    const sheet = this.sheet();
+    return (
+      still !== undefined &&
+      sheet !== undefined &&
+      posterFrames(still, this.fitTargets(), sheet.chrome().viewportW)
+    );
+  });
+  /** Something had to move the camera, so the live map was asked for; never unasked. */
+  private readonly woken = signal(false);
+  /** The move the poster could not make, to replay on the live map once it has loaded. */
+  private readonly pendingMove = signal<MapView | null>(null);
+  /** The live map is the ground, or is on its way to being it. */
+  private readonly groundLive = computed(() => this.woken() || !this.posterCovers());
+  private readonly liveLoaded = computed(() => this.map()?.loaded() ?? false);
+  /** The poster is on screen: it covers, and no live map has loaded under it yet. */
+  protected readonly posterShown = computed(() => this.posterCovers() && !this.liveLoaded());
+  /** What the pins and the dot project through: the still while it shows, the live map after. */
+  protected readonly groundHandle = computed<MapHandle | undefined>(() =>
+    this.posterShown() ? this.posterHandle() : this.mapHandle(),
+  );
+  /** The live map opens where the poster stood: the poster's camera for the pane, so nothing jumps. */
+  protected readonly groundOptions = computed<MapEngineOptions>(() => {
+    const still = this.posterHandle();
+    const sheet = this.sheet();
+    if (still === undefined || sheet === undefined) {
+      return RIVIERA_MAP_OPTIONS;
+    }
+    const { viewportW, viewportH } = sheet.chrome();
+    return {
+      ...RIVIERA_MAP_OPTIONS,
+      view: still.liveView({ width: viewportW, height: viewportH }),
+    };
+  });
+  protected readonly FOOT_CREDIT_PLACEMENT = FOOT_CREDIT_PLACEMENT;
 
   /**
    * The pin whose preview is open, or `null`. Linked to the pin set so a venue that leaves the
@@ -462,13 +540,20 @@ export class Home {
   });
   /** Bumped on every camera move, so the dot re-projects. */
   private readonly moved = signal(0);
-  /** The tourist's own dot over the pins, projected through the live map. */
+  /** The tourist's own dot over the pins, projected through the ground — the still or the live map. */
   protected readonly hereDot = computed(() => {
     this.moved();
     const here = this.here();
-    const handle = this.mapHandle();
+    const handle = this.groundHandle();
     return here === null || handle === undefined ? null : handle.project(here);
   });
+  /** What the camera effect last aimed the live map at, so it is not re-aimed at the same thing. */
+  private framed: { readonly handle: MapHandle; readonly key: string } | undefined;
+  /**
+   * What the poster framed while it showed, in the same key: a live map that loads under it
+   * (the fake's handle and its load land in one tick) is left where the poster stood.
+   */
+  private framedByPoster: string | undefined;
 
   /** Guards against an earlier slow response overwriting a newer one (last-writer-wins). */
   private lastRequest = '';
@@ -554,30 +639,72 @@ export class Home {
    * zoom: the pins (and the dot, when located) are fitted into the window between the header and
    * the foot row above the sheet's rest, capped at 14 so the sea stays in frame. Nothing re-fits
    * at full, where the map is a sliver.
+   *
+   * <p>The poster is that fit at half, rendered: while it shows, the live map arriving under it
+   * is left at the poster's camera, and afterwards only a change the poster did not frame — a
+   * new detent, a new target, a new viewport — or a move the poster could not make re-aims it.
    */
   private followSheet(): void {
     // The dot re-projects on every camera move; its own effect, so a re-fit never drops the subscription.
     effect((onCleanup) => {
-      const handle = this.mapHandle();
+      const handle = this.groundHandle();
       if (handle !== undefined) {
         onCleanup(handle.onMove(() => this.moved.update((n) => n + 1)));
+      }
+    });
+    // The sheet pulled down from half uncovers the ground: that is the live map's, not the still's.
+    effect(() => {
+      const sheet = this.sheet();
+      if (
+        sheet !== undefined &&
+        this.posterShown() &&
+        sheet.opened() &&
+        sheet.sheetTop() > sheet.tops().half
+      ) {
+        this.wake(null);
       }
     });
     afterRenderEffect(() => {
       if (!this.sheetMode()) {
         return;
       }
-      const handle = this.mapHandle();
+      const live = this.mapHandle();
       const sheet = this.sheet();
       const targets = this.fitTargets();
       const detent = this.detent();
-      if (handle === undefined || sheet === undefined) {
+      if (sheet === undefined) {
+        return;
+      }
+      const { viewportW, viewportH, header } = sheet.chrome();
+      const keyAt = (at: string): string =>
+        `${at}|${viewportW}x${viewportH}|${header}|${targets.map((p) => `${p.lng},${p.lat}`).join(';')}`;
+      if (this.posterShown()) {
+        // The poster frames the pins at half; a live map loading under it must not move away.
+        this.framedByPoster = keyAt('half');
+        return;
+      }
+      if (live === undefined) {
+        return;
+      }
+      const wanted = this.pendingMove();
+      const key = keyAt(detent);
+      if (wanted !== null) {
+        untracked(() => this.pendingMove.set(null));
+        this.framed = { handle: live, key };
+        live.easeTo(wanted);
+        return;
+      }
+      if (this.framed?.handle === live && this.framed.key === key) {
+        return;
+      }
+      const stood = this.framed?.handle !== live && this.framedByPoster === key;
+      this.framed = { handle: live, key };
+      if (stood) {
         return;
       }
       if (detent === 'full') {
         return;
       }
-      const { viewportW, viewportH, header } = sheet.chrome();
       const view = fitInWindow(
         targets,
         { width: viewportW, height: viewportH },
@@ -585,9 +712,25 @@ export class Home {
         sheet.tops()[detent] - FOOT_ROW_PX,
       );
       if (view !== null) {
-        handle.easeTo(view);
+        live.easeTo(view);
       }
     });
+  }
+
+  /**
+   * The poster cannot move: the live map is asked for, and the move it could not make — a
+   * crowd's ease, a zoom — waits to be replayed once the map has loaded; a finger on the ground
+   * asks for nothing more than the map.
+   */
+  private wake(view: MapView | null): void {
+    if (view !== null) {
+      this.pendingMove.set(view);
+    }
+    this.woken.set(true);
+  }
+
+  protected onGroundPointerDown(): void {
+    this.wake(null);
   }
 
   /**

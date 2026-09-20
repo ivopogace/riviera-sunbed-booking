@@ -1,6 +1,14 @@
 import { Component, input } from '@angular/core';
 
 /**
+ * The credit on the phone's foot row: the map's left, wrapped to 200 px — less on the narrowest
+ * phone, where it leaves the consumer's control at the right its 150 px (`You are here`), the two
+ * insets and a 10 px gap.
+ */
+export const FOOT_CREDIT_PLACEMENT =
+  'left-3 max-w-[min(200px,calc(100%-184px))] px-[10px] py-[4px] text-[11px] leading-[16px]';
+
+/**
  * The tiles' licence credits (OpenMapTiles CC-BY, OSM ODbL) — ADR-0022 decision 6 — as the pill
  * every map state carries, and the poster carries in the live map's place: "© OpenMapTiles ©
  * OpenStreetMap contributors", each name a link to its licence page, in the theme-invariant

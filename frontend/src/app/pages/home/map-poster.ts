@@ -32,6 +32,12 @@ const WINDOW_TOP_PX = POSTER_HEADER_PX;
 const WINDOW_BOTTOM_PX = POSTER_HEADER_PX + HALF_MAP_BAND_PX - FOOT_ROW_PX;
 /** Where the sheet rests at half: a point below it is under the glass, not on the map. */
 const HALF_TOP_PX = POSTER_HEADER_PX + HALF_MAP_BAND_PX;
+/**
+ * A beach's venues lie around its catalogue centre, not on it: a kilometre of reach either way
+ * (0.01° is 1.1 km of latitude, 0.85 km of longitude here) is what the fit frames, so a lone
+ * beach gets town scale with its venues inside the window rather than a point at its middle.
+ */
+const REACH_DEG = 0.01;
 
 /** One width bucket: the still's box, and the viewport width its pins are fitted for. */
 export interface PosterBucket {
@@ -88,15 +94,20 @@ export function posterUrl(key: string, bucket: PosterBucket, density: number): s
 
 /**
  * The camera a poster is rendered at, and the pins projected through: the entry's catalogue
- * geometry fitted into the pin window of a `fitWidth` × `height` pane. `null` off the catalogue.
+ * geometry, each point with its reach, fitted into the pin window of a `fitWidth` × `height`
+ * pane. `null` off the catalogue.
  */
 export function posterCamera(region: string, beach: string, bucket: PosterBucket): MapView | null {
   const points = catalogueGeometry(region, beach);
   if (points === null) {
     return null;
   }
+  const reach = points.flatMap(({ lng, lat }) => [
+    { lng: lng - REACH_DEG, lat: lat - REACH_DEG },
+    { lng: lng + REACH_DEG, lat: lat + REACH_DEG },
+  ]);
   return fitInWindow(
-    points,
+    reach,
     { width: bucket.fitWidth, height: bucket.height },
     WINDOW_TOP_PX,
     WINDOW_BOTTOM_PX,
