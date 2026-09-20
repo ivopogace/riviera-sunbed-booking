@@ -249,14 +249,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** phase 1 red: `map-poster.spec.ts`.
+**Next action:** phase 2 red: `RivieraMap.loaded` in `riviera-map.spec.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `RIVIERA_MAP_OPTIONS` to its own module; `PosterHandle` | ✅ | this commit |
-| 1 — the poster catalogue: buckets, cameras, keys, URLs, the frame test | | |
+| 1 — the poster catalogue: buckets, cameras, keys, URLs, the frame test | ✅ | this commit |
 | 2 — the credit as a shared pill; `RivieraMap.loaded` | | |
 | 3 — the page: the poster ground, the pins through the still handle, the swap | | |
 | 4 — the renderer, the poster set, the completeness spec | | |
@@ -325,14 +325,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `pages/home/map-poster.ts` · Test `pages/home/map-poster.spec.ts`
 
-- [ ] Red: "one poster per catalogue region and beach at both buckets and densities: 172, keyed
+- [x] Red: "one poster per catalogue region and beach at both buckets and densities: 172, keyed
   `HIMARE-440@2x.jpg` / `beach-DHERMI-834@3x.jpg`", "a region's camera is the fit of its beach
   centres into the 390 × 251 window of a 960 px pane (worked example: Himarë ≈ 8.59)", "a beach's
   camera is town scale at its centre", "picks the narrowest bucket that covers the viewport, none
   above 834 or taller than the bucket", "frames a point inside the window, not one outside".
-- [ ] Green: `POSTER_BUCKETS`, `posterKey`, `posterCamera`, `posterUrl`, `POSTER_SET`,
+- [x] Green: `POSTER_BUCKETS`, `posterKey`, `posterCamera`, `posterUrl`, `POSTER_SET`,
   `posterFor(region, beach, viewport)`, `posterFrames(handle, points, viewportW)`.
-- [ ] Commit — `Catalogue the posters: buckets, cameras and files (#1158)`.
+- [x] Commit — `Catalogue the posters: buckets, cameras and files (#1158)`.
 
 ## Phase 2 — The credit as a shared pill; `RivieraMap.loaded`
 
