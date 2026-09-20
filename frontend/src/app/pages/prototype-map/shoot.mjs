@@ -131,6 +131,12 @@ const SHOTS = [
   { name: 'Q-shore-1440-free', v: LAPTOP, url: 'variant=Q&pane=free&now=10:30' },
   { name: 'Q-shore-1440-here', v: LAPTOP, url: `variant=Q&here=${HERE_DHERMI}&now=10:30` },
   { name: 'Q-shore-1440-sarande', v: LAPTOP, url: 'variant=Q&region=SARANDE&now=10:30' },
+  {
+    name: 'Q-shore-1440-sarande-pin',
+    v: LAPTOP,
+    url: 'variant=Q&region=SARANDE&now=10:30',
+    pin: 'lone',
+  },
   { name: 'Q-shore-1440-beach', v: LAPTOP, url: 'variant=Q&beach=DHERMI&now=10:30' },
   {
     name: 'Q-shore-1440-picker',
@@ -139,6 +145,7 @@ const SHOTS = [
     click: '[data-open-picker]',
   },
   { name: 'Q-shore-1920', v: DESK, url: 'variant=Q&now=10:30' },
+  { name: 'Q-shore-1920-pin', v: DESK, url: 'variant=Q&now=10:30', pin: 'lone' },
   // round 11: the phone's cards as the desktop's flat list, for the comparison at half and full
   { name: 'Q-shore-phone-flat', v: PHONE, url: 'variant=Q&rows=flat&now=10:30' },
   { name: 'Q-shore-phone-flat-full', v: PHONE, url: 'variant=Q&rows=flat&sheet=full&now=10:30' },

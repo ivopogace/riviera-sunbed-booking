@@ -14,7 +14,8 @@ over the panel and the two-column rows, round 10 (§ _Round 10_) is a design cri
 desktop taken to code (a list instead of cards, the panel clamped to the row's width), and
 round 11 (§ _Round 11_) measures the shipped chrome instead of assuming it — the tab bar that is
 not there from `sm`, the header that is 73 px and not 68 — gives the header the page's edges on
-this route, and closes three of the open faults. The verdict and the first slices are at the end.
+this route, and closes three of the open faults, and round 12 (§ _Round 12_) settles what a
+desktop row says and what the selected one says. The verdict and the first slices are at the end.
 
 ```
 npm start           # from frontend/
@@ -817,6 +818,56 @@ round 10's five desktop findings were taken as the desktop's whole critique, but
 the panel was never in the frame and it is the first thing on the screen; (4) `TAB_BAR` and
 `HEADER_H` were carried from round 6 unexamined through five rounds of "measure, don't assume".
 
+## Round 12 — what a desktop row says, and what the selected one says
+
+A design question after round 11: should the panel's rows carry more, and be taller for it? The
+panel is already 1.8 screens at 1440 for an 11-venue region (736 px of body, 6 rows visible; 916
+and 7 at 1920), and every round that put weight back into a row has been reversed — round 7 cut
+cards for rows because two 395 px rows showed twice the venues, round 10 cut the availability bar
+from 330 px to 72. So the answer is not a taller row everywhere. Two changes instead, both of
+which the view model already supported:
+
+- **The review count, on every desktop row.** `VenueCard.reviewsLabel` existed and only the card
+  rendered it. A 4.6 from 3 reviews is not a 4.6 from 300, and in the fixture the spread is real:
+  Lori Beach is `★ 4.0 · 15 reviews`, Ksamil Three Islands `★ 4.6 · 511 reviews`, Dhërmi Sun Club
+  `★ 3.8 · 9 reviews`. It costs no height — it joins the facts line the row already had. Only the
+  514 px desktop row takes it; the phone's 364 px card keeps `★ 4.6 · 20 m to water`, which the
+  distance chip already fills.
+- **The selected row expands, and only it.** The row IS the pin's preview — that is the spine of
+  the design on both surfaces — so the panel spends the height on the one venue being decided on:
+  the amenity chips (`prototype-venue-row.ts` has had a `chips` input all along, off everywhere)
+  plus the booking mode. `Q-shore-1440-sarande-pin.png` is the clearest of the three:
+  `Pasqyra Blue` lit, with `Request to Book · Snorkelling · Quiet bay` under its facts.
+
+**The mode chip appears only when the mode is not the default.** `Instant Book` on twenty rows of
+twenty-six is noise; `Request to Book` is the fact a tourist needs, and it is the exception (6 of
+26 in the fixture). If a real venue population is mostly request-mode, the rule inverts — it is
+the exception that gets named, not one particular value.
+
+Measured, at 1440 × 900 and 1920 × 1080:
+
+|                           | Nothing selected | One row selected                                |
+| ------------------------- | ---------------- | ----------------------------------------------- |
+| Row height                | 92 px            | **118 px** (the selected one; the rest stay 92) |
+| List height               | 1,342 px         | 1,368 px (**+1.9 %**)                           |
+| Rows visible, 1440 / 1920 | 6 / 7            | **6 / 7 — unchanged**                           |
+| Screens to scroll, 1440   | 1.82             | 1.86                                            |
+
+One build defect, found in the shots and fixed: the chips were first rendered as a sibling AFTER
+the row's `<a>`, so they fell outside the selected row's outline and read as belonging to the next
+beach group. They live inside the anchor's text column now, aligned with the name, and the outline
+contains them.
+
+**Not taken, held for evidence:** a uniformly taller row driven by a 96–112 px photo (72 × 72 is a
+thumbnail, and for a beach club the picture is much of the decision). It would take 6 visible rows
+to 5 and 1.8 screens to 2.1–2.3. Worth doing only if the rows still read thin with the review
+count on them — from these shots they do not. **Noted, not fixed:** the facts line is now three
+items chained by middle dots (`★ 4.6 · 143 reviews · 20 m to water`), which is on the
+`frontend-design` skill's list of generated-page tells. It is load-bearing here rather than
+decorative — it is the row's whole fact set — but a tighter form (`★ 4.6 (143)`, the map-listing
+convention) would need the raw count, and the shipped view model deliberately exposes only the
+agreed-noun label.
+
 ## Screenshots
 
 `shots/` holds the set these notes are written from, captured by `shoot.mjs`: `playwright-core`
@@ -851,7 +902,8 @@ contexts) and the geometry the notes argue from; `--json` keeps the raw numbers.
 | `Q-shore-1440-hdr-shell.png` · `Q-shore-1920-hdr-shell.png`                                                                                            | the before: the shipped header's 1,080 px clamp over a page that runs to the window's edges                                                                   |
 | `Q-shore-1440-hdr-wide.png` · `-hdr-lower` · `-hdr-noeyebrow`                                                                                          | the header treatments one at a time: the page's edges; the 12.5 px lowercase eyebrow; the eyebrow gone                                                        |
 | `Q-shore-1440-menu.png` · `Q-shore-1440-menu-shell.png`                                                                                                | the theme swatch as a labelled menu row, and the shipped menu beside it                                                                                       |
-| `Q-shore-1440-free.png` · `Q-shore-1440-pin.png`                                                                                                       | Himarë's 864 px pane at the set's own height (`?pane=free`); a lone pin press lights and centres its row                                                      |
+| `Q-shore-1440-free.png` · `Q-shore-1440-pin.png` · `Q-shore-1920-pin.png`                                                                              | Himarë's 864 px pane at the set's own height (`?pane=free`); a lone pin press lights and centres its row, and the lit row expands (round 12)                  |
+| `Q-shore-1440-sarande-pin.png`                                                                                                                         | round 12's clearest case: `Pasqyra Blue` lit, `Request to Book · Snorkelling · Quiet bay` under its facts                                                     |
 | `Q-shore-1440-sarande.png` · `Q-shore-1440-beach.png` · `Q-shore-1440-picker.png`                                                                      | a narrow region on the 40 % floor; Dhërmi chosen; the coast picker, the desktop's chooser                                                                     |
 | `Q-shore-phone-dense.png` · `Q-shore-phone-dense-pin.png` · `Q-shore-phone-dense-full.png` · `Q-shore-1440-dense.png` · `Q-shore-1440-dense-beach.png` | round 8's density question: Himarë padded to 30 (`?dense=30`) at half, after a crowd press, at full; the desktop at 1440 and its Dhërmi beach at the zoom cap |
 | `Q-shore-phone-dense-full-scrolled.png` · `Q-shore-1440-dense-scrolled.png`                                                                            | round 11's sticky beach heads: the list scrolled 900 px, the current beach pinned at the top of the phone's sheet and of the desktop panel                    |
@@ -860,23 +912,23 @@ contexts) and the geometry the notes argue from; `--json` keeps the raw numbers.
 
 ## Files
 
-| File                                                 | What                                                                                                                                                       |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `prototype-map-page.ts`                              | the host: fixture data, the filters and the tourist's position from the URL                                                                                |
-| `variant-shore.ts`                                   | Q: the ground, the two-scroller sheet, the poster/live swap, the dusk and merged-crowd classes, the desktop panel rule, the dots and the gutter            |
-| `prototype-poster.ts`                                | the still poster: its box, its camera, and the `MapHandle` over an image the pin layer draws through                                                       |
-| `prototype-coast-picker.ts`                          | the coast as a chooser: the ribbon + the index as a sheet (a popover from `lg`) — the desktop's only way to another region                                 |
-| `prototype-header.ts`                                | round 11's page-scoped treatment of the SHELL's header (`?hdr=`): the page's edges, the eyebrow, the theme swatch as a menu row — never an `app.html` edit |
-| `prototype-venue-row.ts` · `prototype-venue-card.ts` | the row (the pin's preview): a card on the phone's sheet, a flat list entry on the desktop panel; and the card grid, no longer reachable on the desktop    |
-| `prototype-place.ts`                                 | the tourist's position, distances, the beach grouping                                                                                                      |
-| `prototype-aspect.ts`                                | the result set's own aspect ratio — the number the desktop pane is sized from                                                                              |
-| `prototype-camera.ts`                                | fit the camera to the pane and the pins                                                                                                                    |
-| `prototype-days.ts`                                  | the fixture's time: each venue's sales close, and the seven days the day chips offer                                                                       |
-| `prototype-coast.ts`                                 | the coast as an index: regions, beaches, counts, from-prices                                                                                               |
-| `prototype-venues.ts`                                | 26 fixture venues, on the shoreline: round 7 snapped each to the map's own water edge (§ _Round 7_ § 1)                                                    |
-| `shoot.mjs`                                          | the screenshot + cost/geometry driver (themes, CDP touch flicks, the pane's pin fill), and the poster renderer (`--posters`)                               |
-| `research/`                                          | the two raw research reports: the measured references (bytes by host, geometry) and the web research                                                       |
-| `../../../../public/prototype-posters/*.jpg`         | the 22 still posters, one per region and beach with venues — rendered, not drawn                                                                           |
+| File                                                 | What                                                                                                                                                                                                                                     |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prototype-map-page.ts`                              | the host: fixture data, the filters and the tourist's position from the URL                                                                                                                                                              |
+| `variant-shore.ts`                                   | Q: the ground, the two-scroller sheet, the poster/live swap, the dusk and merged-crowd classes, the desktop panel rule, the dots and the gutter                                                                                          |
+| `prototype-poster.ts`                                | the still poster: its box, its camera, and the `MapHandle` over an image the pin layer draws through                                                                                                                                     |
+| `prototype-coast-picker.ts`                          | the coast as a chooser: the ribbon + the index as a sheet (a popover from `lg`) — the desktop's only way to another region                                                                                                               |
+| `prototype-header.ts`                                | round 11's page-scoped treatment of the SHELL's header (`?hdr=`): the page's edges, the eyebrow, the theme swatch as a menu row — never an `app.html` edit                                                                               |
+| `prototype-venue-row.ts` · `prototype-venue-card.ts` | the row (the pin's preview): a card on the phone's sheet, a flat list entry on the desktop panel that carries the review count and expands when it is the selected one (round 12); and the card grid, no longer reachable on the desktop |
+| `prototype-place.ts`                                 | the tourist's position, distances, the beach grouping                                                                                                                                                                                    |
+| `prototype-aspect.ts`                                | the result set's own aspect ratio — the number the desktop pane is sized from                                                                                                                                                            |
+| `prototype-camera.ts`                                | fit the camera to the pane and the pins                                                                                                                                                                                                  |
+| `prototype-days.ts`                                  | the fixture's time: each venue's sales close, and the seven days the day chips offer                                                                                                                                                     |
+| `prototype-coast.ts`                                 | the coast as an index: regions, beaches, counts, from-prices                                                                                                                                                                             |
+| `prototype-venues.ts`                                | 26 fixture venues, on the shoreline: round 7 snapped each to the map's own water edge (§ _Round 7_ § 1)                                                                                                                                  |
+| `shoot.mjs`                                          | the screenshot + cost/geometry driver (themes, CDP touch flicks, the pane's pin fill), and the poster renderer (`--posters`)                                                                                                             |
+| `research/`                                          | the two raw research reports: the measured references (bytes by host, geometry) and the web research                                                                                                                                     |
+| `../../../../public/prototype-posters/*.jpg`         | the 22 still posters, one per region and beach with venues — rendered, not drawn                                                                                                                                                         |
 
 ## Recommendation
 
@@ -909,7 +961,9 @@ Discover page behind a flag, test-first:
    desktop as rounds 8 to 11 left it — region-first with the picker as the chooser, the panel
    clamped to the row's width (38 %, 420–540) with the map taking the rest, the rows a flat list
    with the beach as a running head, sticky past 15 venues, the gutter for a region's crowds under
-   560 px of pane, and no whole-coast state anywhere.
+   560 px of pane, and no whole-coast state anywhere. The row carries its review count, and the
+   SELECTED row — the pin's preview — expands to its amenities and its booking mode when that is
+   not the default (round 12: 26 px on one row, no visible rows lost).
 
 Then two smaller pieces of the same work, neither a slice of the sheet: **the header on the map
 route** — a `data.wide` route flag and `data-wide:max-w-none` on `app.html`'s inner wrapper, the

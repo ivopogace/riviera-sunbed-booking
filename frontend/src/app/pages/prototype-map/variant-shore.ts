@@ -378,6 +378,7 @@ const GUTTER_PILL =
                 [date]="state().date"
                 [selected]="selected() === '' + card.id"
                 [dusk]="duskIds().has('' + card.id)"
+                [chips]="wide() && selected() === '' + card.id"
                 [km]="rowKm(card)"
                 [flat]="flatRows()"
                 (pressed)="selected.set('' + $event)"

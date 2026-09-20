@@ -57,6 +57,11 @@ import { VenueCard } from '../home/venue-card';
           @if (card().isRated) {
             <span class="text-[#f4a939]" aria-hidden="true">★</span>
             <span class="font-bold text-riv-card-ink">{{ card().rating }}</span>
+            <!-- A 4.6 from 3 reviews is not a 4.6 from 300; only the 514 px desktop row has the room. -->
+            @if (flat()) {
+              <span class="opacity-30" aria-hidden="true">·</span>
+              <span class="shrink-0">{{ card().reviewsLabel }}</span>
+            }
           } @else {
             <span appSemanticChip class="px-[7px] py-px text-[10.5px]">New</span>
           }
@@ -81,15 +86,19 @@ import { VenueCard } from '../home/venue-card';
             ></span>
           </span>
         </span>
-      </span>
-    </a>
-    @if (chips()) {
-      <span class="mt-1.5 flex flex-wrap gap-1.5 px-1" aria-hidden="true">
-        @for (a of card().amenities.slice(0, 3); track a.code) {
-          <span appAmenityChip>{{ a.label }}</span>
+        @if (chips()) {
+          <span class="flex flex-wrap items-center gap-1.5 pt-2">
+            <!-- The mode only when it is NOT the default: Instant Book on every row is noise; the exception is the fact. -->
+            @if (card().modeLabel !== INSTANT) {
+              <span appSemanticChip class="px-[9px] py-px text-[11px]">{{ card().modeLabel }}</span>
+            }
+            @for (a of card().amenities.slice(0, 3); track a.code) {
+              <span appAmenityChip>{{ a.label }}</span>
+            }
+          </span>
         }
       </span>
-    }
+    </a>
   `,
 })
 export class PrototypeVenueRow {
@@ -105,6 +114,9 @@ export class PrototypeVenueRow {
     'motion-safe:[transition:background_0.15s_ease,outline-color_0.15s_ease] hover:bg-riv-field-fill ' +
     'aria-[current]:outline-[3px] aria-[current]:-outline-offset-[3px] aria-[current]:outline-riv-accent-ink';
 
+  /** The booking mode every venue has unless it is the exception. */
+  protected readonly INSTANT = 'Instant Book';
+
   readonly card = input.required<VenueCard>();
   /** A list entry rather than a card: the desktop panel is already a surface. */
   readonly flat = input(false);
@@ -114,7 +126,11 @@ export class PrototypeVenueRow {
   readonly dusk = input(false);
   /** `1.8 km` from the tourist, when located. */
   readonly km = input<string | null>(null);
-  /** The amenity chips under the row — off on the phone, where the row is the whole card. */
+  /**
+   * The row's second half, under its facts: the amenity chips and the booking mode when it is not
+   * the default. The row is the pin's preview, so the panel spends this height on the ONE venue
+   * being decided on rather than on all of them (round 12).
+   */
   readonly chips = input(false);
   readonly pressed = output<number>();
 }
