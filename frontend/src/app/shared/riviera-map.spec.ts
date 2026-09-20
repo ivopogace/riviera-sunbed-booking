@@ -8,10 +8,10 @@ import {
   HERE_MARKER,
   NEAR_ME_MESSAGES,
   NEAR_ME_ZOOM,
-  RIVIERA_MAP_OPTIONS,
   RivieraMap,
   withinBounds,
 } from './riviera-map';
+import { RIVIERA_MAP_OPTIONS } from './riviera-map-options';
 
 /** An engine no browser can satisfy — what a WebGL-less tourist gets. */
 class NoWebGlEngine extends MapEngine {

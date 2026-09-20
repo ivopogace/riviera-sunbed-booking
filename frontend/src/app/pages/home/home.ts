@@ -48,10 +48,10 @@ import { RetryButton } from '../../shared/retry-button';
 import {
   NEAR_ME_MESSAGES,
   NearMeProblem,
-  RIVIERA_MAP_OPTIONS,
   RivieraMap,
   withinBounds,
 } from '../../shared/riviera-map';
+import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map-options';
 import { ClosedForSeasonChip } from '../../shared/closed-for-season-chip';
 import { SalesClosedChip } from '../../shared/sales-closed-chip';
 import { SemanticChip } from '../../shared/semantic-chip';

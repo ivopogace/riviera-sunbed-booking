@@ -249,13 +249,13 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan → implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** phase 0 red: `poster-handle.spec.ts`.
+**Next action:** phase 1 red: `map-poster.spec.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `RIVIERA_MAP_OPTIONS` to its own module; `PosterHandle` | | |
+| 0 — `RIVIERA_MAP_OPTIONS` to its own module; `PosterHandle` | ✅ | this commit |
 | 1 — the poster catalogue: buckets, cameras, keys, URLs, the frame test | | |
 | 2 — the credit as a shared pill; `RivieraMap.loaded` | | |
 | 3 — the page: the poster ground, the pins through the still handle, the swap | | |
@@ -304,22 +304,22 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `shared/riviera-map.ts`, `pages/home/camera-fit.ts` and the importing specs · Test
 `shared/poster-handle.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — "projects a point where the fake engine projects it for
+- [x] **Step 1: Write the failing tests** — "projects a point where the fake engine projects it for
   the live view it hands over" (a FakeMapHandle on a 390 × 844 box at `liveView({390, 844})`
   against the still handle on a 390 px pane, 960 px poster: same x, y within 1e-6 for the
   catalogue's Himarë beaches and Tirana), "reports a crowd's ease and a zoom as a wanted move
   instead of moving", "fires onMove on a pane resize", "answers load at once, holds markers
   without drawing them".
-- [ ] **Step 2: Run, verify red** — `npx ng test --watch=false --include='**/poster-handle.spec.ts'`
-- [ ] **Step 3: Minimal implementation** — the options module (a move; every importer re-pointed);
+- [x] **Step 2: Run, verify red** — `npx ng test --watch=false --include='**/poster-handle.spec.ts'`
+- [x] **Step 3: Minimal implementation** — the options module (a move; every importer re-pointed);
   `PosterHandle(camera, paneWidth, posterHeight, onWanted)`; `project`/`unproject` with the
   shared Mercator; `liveView(pane)`.
-- [ ] **Step 4: Run, verify green** — same; then `--include='**/shared/*.spec.ts'` and
+- [x] **Step 4: Run, verify green** — same; then `--include='**/shared/*.spec.ts'` and
   `--include='**/camera-fit.spec.ts'`.
-- [ ] **Step 5: Generalization-audit** — mechanism: Mercator arithmetic duplicated across
+- [x] **Step 5: Generalization-audit** — mechanism: Mercator arithmetic duplicated across
   adapters; population: `grep -rln 'mercator\|mercY\|mercX' frontend/src/app`.
-- [ ] **Step 6: Commit** — `Add the still-image map handle for the poster (#1158)`
-- [ ] **Step 7: Update Execution status**
+- [x] **Step 6: Commit** — `Add the still-image map handle for the poster (#1158)`
+- [x] **Step 7: Update Execution status**
 
 ## Phase 1 — The poster catalogue
 
@@ -389,6 +389,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-20 | phase 0: a third copy of the Web Mercator arithmetic (the fake engine's, the camera fit's, the still handle's) | every module doing `512 · 2^zoom` projection | `grep -rln 'mercator\|mercY\|mercX\|2 \*\* .*zoom' frontend/src/app --include=*.ts` | `fake-map-engine.ts`, `camera-fit.ts` (+ the new handle) | one `shared/web-mercator.ts`; all three project through it |
 
 ---
 

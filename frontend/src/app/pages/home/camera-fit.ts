@@ -1,5 +1,6 @@
-import { LngLat, MapView } from '../../shared/map-engine';
-import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map';
+import type { LngLat, MapView } from '../../shared/map-engine';
+import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map-options';
+import { latPerPixel, mercatorY, WORLD_PX as TILE_PX } from '../../shared/web-mercator';
 
 /**
  * The riviera map's camera, derived from the pane and the result set rather than read from
@@ -11,7 +12,6 @@ import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map';
  * capped at 14 because three venues 20 m apart would otherwise fit at the map's own ceiling,
  * which shows driveways and no sea — and the sea is the context the whole decision rests on.
  */
-const TILE_PX = 512;
 /** The pins' own 44 px boxes and their pills, kept inside the frame — the default pad. */
 const PAD_PX = 76;
 /** A lone pin has no span to fit, so it gets town scale. */
@@ -21,18 +21,6 @@ const FIT_MAX_ZOOM = 14;
 export interface PaneSize {
   readonly width: number;
   readonly height: number;
-}
-
-/** Mercator y for a latitude, as a 0…1 fraction of the world square. */
-function mercatorY(lat: number): number {
-  const clamped = Math.max(-85, Math.min(85, lat));
-  const rad = (clamped * Math.PI) / 180;
-  return (1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2;
-}
-
-/** Degrees of latitude one pixel spans at `view`, for shifting a centre by pixels. */
-function latPerPixel(view: MapView): number {
-  return (360 / (TILE_PX * 2 ** view.zoom)) * Math.cos((view.center.lat * Math.PI) / 180);
 }
 
 /**

@@ -8,9 +8,7 @@ import {
   MapView,
   ScreenPoint,
 } from './map-engine';
-
-/** The Web Mercator world at zoom 0, in CSS px — what every tile engine uses. */
-const WORLD_PX = 512;
+import { projectAround, unprojectAround } from './web-mercator';
 
 /**
  * A fake map: an in-memory camera and marker set, inspectable by the spec that drove it. It also owns
@@ -89,12 +87,7 @@ export class FakeMapHandle implements MapHandle {
   }
 
   project(at: LngLat): ScreenPoint {
-    const box = this.box();
-    const scale = WORLD_PX * 2 ** this.current.zoom;
-    return {
-      x: box.width / 2 + (mercatorX(at.lng) - mercatorX(this.current.center.lng)) * scale,
-      y: box.height / 2 + (mercatorY(at.lat) - mercatorY(this.current.center.lat)) * scale,
-    };
+    return projectAround(this.current, this.origin(), at);
   }
 
   onMove(handler: () => void): () => void {
@@ -155,19 +148,15 @@ export class FakeMapHandle implements MapHandle {
     this.moveHandlers.forEach((handler) => handler());
   }
 
-  private box(): { width: number; height: number } {
+  /** The surface's centre, where the camera's centre shows; a point in a document with no layout. */
+  private origin(): ScreenPoint {
     const rect = this.surface?.getBoundingClientRect();
-    return { width: rect?.width ?? 0, height: rect?.height ?? 0 };
+    return { x: (rect?.width ?? 0) / 2, y: (rect?.height ?? 0) / 2 };
   }
 
   /** The inverse of {@link FakeMapHandle.project}: a spot on the surface back to a position. */
-  private unproject({ x, y }: ScreenPoint): LngLat {
-    const box = this.box();
-    const scale = WORLD_PX * 2 ** this.current.zoom;
-    return {
-      lng: lngOf(mercatorX(this.current.center.lng) + (x - box.width / 2) / scale),
-      lat: latOf(mercatorY(this.current.center.lat) + (y - box.height / 2) / scale),
-    };
+  private unproject(point: ScreenPoint): LngLat {
+    return unprojectAround(this.current, this.origin(), point);
   }
 
   /** A marker sits where its position projects, so it moves with the camera like a real one. */
@@ -199,25 +188,6 @@ export class FakeMapHandle implements MapHandle {
       }),
     );
   }
-}
-
-/** Longitude to the unit Web Mercator square's x (0 at the antimeridian, 1 at the other side). */
-function mercatorX(lng: number): number {
-  return (lng + 180) / 360;
-}
-
-/** Latitude to the unit square's y, growing southward as screen y does. */
-function mercatorY(lat: number): number {
-  const sin = Math.sin((lat * Math.PI) / 180);
-  return 0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI);
-}
-
-function lngOf(x: number): number {
-  return x * 360 - 180;
-}
-
-function latOf(y: number): number {
-  return (Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180) / Math.PI;
 }
 
 /**

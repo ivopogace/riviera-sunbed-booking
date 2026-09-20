@@ -15,7 +15,8 @@ import { FakeMapEngine } from '../../shared/fake-map-engine';
 import { FakeGeolocationGateway } from '../../../testing/fake-geolocation';
 import { GeolocationGateway } from '../../shared/geolocation';
 import { MapEngine } from '../../shared/map-engine';
-import { RIVIERA_MAP_OPTIONS, RivieraMap } from '../../shared/riviera-map';
+import { RivieraMap } from '../../shared/riviera-map';
+import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map-options';
 import { VenueSummary } from '../../shared/venue-views';
 import { Home } from './home';
 
