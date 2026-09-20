@@ -164,3 +164,15 @@ or `<link>` the map chrome renders should treat it as a Blocker rather than a co
   so a release asset needs no token until it goes private; `ADD --checksum` makes a missing asset
   loud; and Render's clone appears to fetch LFS objects, so LFS is rejected on its bandwidth quota
   instead. Split archives were added as a rejected option.
+- 2026-09-20, #1158 — the **map posters**: on a phone or tablet the Discover sheet opens on a
+  still of the region rendered from this same extract by `frontend/scripts/render-map-posters.mjs`
+  (Chromium over MapLibre + pmtiles, fed from `platform/map/` alone) and committed under
+  `frontend/public/posters/` — 172 JPEGs, one per catalogue region and beach at two width buckets
+  and two densities, ~22 MB at quality 80 — served as SPA static assets under `/posters/**`, so
+  the first paint makes no `/map/**` request and creates no WebGL context; the live map swaps in
+  at the poster's camera the first time the camera has to move. Decision 1 holds: the posters are
+  drawn against our own resources and served by our own origin. Decision 4 holds: the set is a
+  committed build artefact of a documented script, regenerated with the extract by the runbook
+  (§ *Posters*), never at build or deploy time. Decision 7's storage sizing gains the set: a
+  40 MB budget held by `map-poster-set.spec.ts`, the tablet 3× density as the first lever, and
+  each regeneration counted with the archive's under the 12-month tally.

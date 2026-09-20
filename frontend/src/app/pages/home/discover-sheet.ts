@@ -190,7 +190,10 @@ export class DiscoverSheet {
     afterRenderEffect({
       write: () => {
         const scroller = this.scroller()?.nativeElement;
-        const want = offsetFor(this.tops(), this.opened ? untracked(this.detent) : 'half');
+        const want = offsetFor(
+          this.tops(),
+          untracked(this.opened) ? untracked(this.detent) : 'half',
+        );
         if (scroller === undefined || want === restedAt) {
           return;
         }
@@ -212,8 +215,8 @@ export class DiscoverSheet {
     this.measured.update((n) => n + 1);
   }
 
-  /** Whether the opening rest has landed; from then on a re-measure keeps the tourist's detent. */
-  private opened = false;
+  /** Whether the opening rest has landed; from then on a re-measure keeps the tourist's detent, and a scroll is the tourist's. */
+  readonly opened = signal(false);
 
   /**
    * Rest at an offset, cut, and confirm on the next frame that the rest held: a rest taken before
@@ -224,12 +227,12 @@ export class DiscoverSheet {
     scrollScroller(scroller, want, 'instant');
     this.scrolled.set(scroller.scrollTop);
     if (attempt >= REST_ATTEMPTS) {
-      this.opened = true;
+      this.opened.set(true);
       return;
     }
     this.document.defaultView?.requestAnimationFrame(() => {
       if (scroller.scrollTop === want) {
-        this.opened = true;
+        this.opened.set(true);
       } else {
         this.rest(scroller, want, attempt + 1);
       }

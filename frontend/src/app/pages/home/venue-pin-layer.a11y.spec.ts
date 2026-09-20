@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { expectNoAxeViolations } from '../../../testing/axe';
 import { venueCard } from '../../../testing/venue-cards';
 import { FakeMapEngine, FakeMapHandle } from '../../shared/fake-map-engine';
-import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map';
+import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map-options';
 import { VenuePin } from './pin-crowding';
 import { VenuePinLayer } from './venue-pin-layer';
 

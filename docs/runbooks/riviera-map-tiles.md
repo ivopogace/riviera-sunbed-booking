@@ -113,6 +113,41 @@ git add platform/map && git commit -m "Regenerate the riviera map resources"
 The push prints GitHub's GH001 large-file warning, because the archive is over 50 MiB. That is
 expected below GitHub's 100 MiB limit, not an error.
 
+## Posters
+
+The **map posters** — the stills the venue sheet opens on instead of a live map (issue #1158) —
+are rendered from this same directory and committed under `frontend/public/posters/`: one JPEG per
+catalogue region and beach (`frontend/src/app/shared/beaches.ts`), per width bucket and device
+pixel ratio (`frontend/src/app/pages/home/map-poster.ts` names the set, the buckets and each
+camera). The SPA build ships them as static files under `/posters/**` — never `/map/**`, whose
+request count the first paint holds at zero.
+
+Regenerate them **after every `--assets` or `--tiles` run**, after a change to the catalogue, and
+after a change to the buckets or the camera rule in `map-poster.ts`:
+
+```bash
+cd frontend
+npm run posters                        # every poster; ~5 minutes, 172 files, ~22 MB
+npm run posters -- --key HIMARE --key beach-DHERMI   # a few, by key
+```
+
+A cloud session names the image's Chromium as the Playwright config does:
+`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run posters`. The renderer drives Chromium
+over MapLibre and the pmtiles protocol, answering the style, sprites, glyphs and archive from
+`platform/map/` with `Range` slicing exactly as `MapResourcesConfig` does; nothing is fetched from
+anywhere else, so the posters carry the same self-hosting property the live map does.
+
+`frontend/src/app/pages/home/map-poster-set.spec.ts` holds the set in CI: a catalogue entry
+without its four files, a stray file, or a set over **40 MB** fails the frontend job. Past the
+budget the levers are, in order: drop the tablet bucket's 3× density (no tablet has it), lower
+the renderer's JPEG quality, then a narrower bucket set — never a raised budget. Every
+regeneration adds a full copy of the set to history, as the archive does, so it counts under the
+same 12-month tally before you commit (§ *How*).
+
+Eyeball a render before committing: the pins' window is the top 73–324 px of the still (the
+header's foot to the foot row above the sheet's half rest); road shields and place labels should
+draw — a blank where a shield belongs means the sprite URL was not made absolute.
+
 ## Egress
 
 The tile build reaches exactly five hosts. A cloud session's proxy allows four of them; the
@@ -159,7 +194,7 @@ extract came in by hand — pair it with the upstream filename so the day it nam
 All in `scripts/build-riviera-map.sh`: `OSM_LIBERTY_REF` and `FONT_GLYPHS_REF` (branch refs;
 set a commit SHA to freeze upstream), `PLANETILER_VERSION`, `GEOFABRIK_AREA`, `BBOX`,
 `MAX_ZOOM`, `FONT_STACKS`, `GLYPH_RANGES`. `BBOX` has a twin in the frontend: the map's pan fence,
-`RIVIERA_MAP_OPTIONS.maxBounds` in `frontend/src/app/shared/riviera-map.ts`, is the same box —
+`RIVIERA_MAP_OPTIONS.maxBounds` in `frontend/src/app/shared/riviera-map-options.ts`, is the same box —
 widen both together. The three `/map/…` URL constants the rewrite writes into the style are the
 same three the frontend's real adapter prefixes with the API origin in development; changing the
 prefix means changing both.

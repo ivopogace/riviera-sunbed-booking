@@ -8,10 +8,10 @@ import {
   HERE_MARKER,
   NEAR_ME_MESSAGES,
   NEAR_ME_ZOOM,
-  RIVIERA_MAP_OPTIONS,
   RivieraMap,
   withinBounds,
 } from './riviera-map';
+import { RIVIERA_MAP_OPTIONS } from './riviera-map-options';
 
 /** An engine no browser can satisfy — what a WebGL-less tourist gets. */
 class NoWebGlEngine extends MapEngine {
@@ -98,6 +98,16 @@ describe('RivieraMap', () => {
     expect(canvas).toBe(byTestId(fixture, 'riviera-map-canvas'));
     expect(options).toBe(RIVIERA_MAP_OPTIONS);
     expect(host(fixture).dataset['status']).toBe('ready');
+  });
+
+  it('says it is loaded only once the style has loaded, so a consumer can hold a still until then', async () => {
+    const fixture = mount(fake);
+    expect(fixture.componentInstance.loaded()).toBe(false);
+
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.loaded()).toBe(true);
   });
 
   it('asks for a same-origin style and a view that covers the riviera', () => {

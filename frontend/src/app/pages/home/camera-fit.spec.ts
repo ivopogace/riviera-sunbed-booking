@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { BEACH_CATALOGUE } from '../../shared/beaches';
-import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map';
+import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map-options';
 import { fitInWindow, fitPins } from './camera-fit';
 
 /**

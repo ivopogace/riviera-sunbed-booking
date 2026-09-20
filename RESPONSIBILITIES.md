@@ -1254,6 +1254,10 @@ network guard being its second lock. The archive is a build-time artifact of
 `scripts/build-riviera-map.sh` from an OSM-derived source; regeneration is the runbook
 `docs/runbooks/riviera-map-tiles.md`, not automation. It is committed, not fetched at build, under
 the size trigger ADR-0022 decision 7 sets for revisiting that storage, held by `MapArchiveBudgetTest`.
+The **map posters** — the stills the venue sheet opens on — are rendered from the same directory by
+`frontend/scripts/render-map-posters.mjs` and shipped as SPA static assets under `/posters/**`, so a
+phone's first paint makes no `/map/**` request; they are regenerated with the extract by the same
+runbook, and `map-poster-set.spec.ts` holds the set complete under its budget.
 
 ## Invariants, long form
 

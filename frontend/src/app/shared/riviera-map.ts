@@ -17,26 +17,10 @@ import {
 import { BusyAction } from './busy-action';
 import { focusMover } from './focus-after-render';
 import { GeolocationFailure, GeolocationGateway, GeolocationOutcome } from './geolocation';
+import { FOOT_CREDIT_PLACEMENT, MapCredit } from './map-credit';
 import { LngLat, MapEngine, MapEngineOptions, MapHandle } from './map-engine';
+import { RIVIERA_MAP_OPTIONS } from './riviera-map-options';
 import { TouchTarget } from './touch-target';
-
-/**
- * The riviera as the map opens: centred on the coast between Vlorë and Ksamil, at a zoom that
- * shows the whole stretch, and fenced to the extract — all of Albania, the same box as `BBOX` in
- * `scripts/build-riviera-map.sh` — so a tourist cannot pan off the tiles into blank sea. The style
- * is a same-origin path (ADR-0022); the real adapter prefixes it with the API origin where the SPA
- * is served elsewhere.
- */
-export const RIVIERA_MAP_OPTIONS: MapEngineOptions = {
-  styleUrl: '/map/style.json',
-  view: { center: { lng: 19.75, lat: 40.05 }, zoom: 8.6 },
-  minZoom: 7,
-  maxZoom: 16,
-  maxBounds: [
-    { lng: 19.0, lat: 39.5 },
-    { lng: 21.2, lat: 42.8 },
-  ],
-};
 
 type MapStatus = 'booting' | 'ready' | 'unavailable';
 
@@ -96,9 +80,8 @@ const HERE_CLASSES =
  * Renders whatever engine is provided (`MapEngine`) into its canvas host and owns the chrome
  * around it: a skip control for keyboard and screen-reader users (the map canvas is a focusable
  * pan-and-zoom surface, and the venue list stays the fully accessible path), labelled zoom
- * buttons at the touch-target floor, and the permanent "© OpenMapTiles © OpenStreetMap
- * contributors" credit the tiles' licences require (CC-BY, ODbL) — or, as a `ribbon`, none of
- * that chrome but the credit. Wears the theme-invariant solid-button skin: the imagery under it
+ * buttons at the touch-target floor, and the permanent credit the tiles' licences require
+ * (`MapCredit`) — or, as a `ribbon`, none of that chrome but the credit. Wears the theme-invariant solid-button skin: the imagery under it
  * never themes.
  *
  * <p>The host reports its state as `data-status` (`booting` → `ready` once the style has loaded,
@@ -113,7 +96,7 @@ const HERE_CLASSES =
  */
 @Component({
   selector: 'app-riviera-map',
-  imports: [BusyAction, TouchTarget],
+  imports: [BusyAction, MapCredit, TouchTarget],
   host: {
     class: 'relative block overflow-hidden bg-riv-solid-btn-fill',
     // A ribbon's corners are its consumer's: the map's own would round the imagery inside them.
@@ -163,6 +146,8 @@ export class RivieraMap {
   readonly pinMoved = output<LngLat>();
 
   protected readonly status = signal<MapStatus>('booting');
+  /** The style and its first tiles are on screen — what a consumer holding a still over the map waits for. */
+  readonly loaded = computed(() => this.status() === 'ready');
 
   /** Asked once: a browser does not grow the API mid-session. */
   private readonly canLocate = this.geolocation.supported();
@@ -181,17 +166,15 @@ export class RivieraMap {
   );
   /**
    * The credit's place, padding and leading together (two utilities for one property would
-   * resolve by stylesheet order): the shipped bottom-right corner; the foot's left, wrapped to
-   * 200 px — less on the narrowest phone, where it leaves the consumer's control at the right its
-   * 150 px (`You are here`), the two insets and a 10 px gap; or a ribbon's foot, at 10 px so it
-   * wraps to three lines in 150 px.
+   * resolve by stylesheet order): the shipped bottom-right corner; the foot row's left; or a
+   * ribbon's foot, at 10 px so it wraps to three lines in 150 px.
    */
   protected readonly creditPlacement = computed(() => {
     if (this.ribbon()) {
       return 'left-2 bottom-2 max-w-[calc(100%-16px)] px-[6px] py-[2px] text-[10px] leading-[14px]';
     }
     return this.footChrome()
-      ? 'left-3 max-w-[min(200px,calc(100%-184px))] px-[10px] py-[4px] text-[11px] leading-[16px]'
+      ? FOOT_CREDIT_PLACEMENT
       : 'right-3 bottom-3 max-w-[calc(100%-24px)] px-[10px] py-[4px] text-[12px] leading-[16px]';
   });
 
