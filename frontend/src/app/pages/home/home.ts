@@ -101,8 +101,8 @@ const DEFAULT_REGION = 'HIMARE';
 const TWO_COLUMN_PX = 600;
 /** The Near me button's foot row keeps this much clear of the header at peek. */
 const NEAR_ME_TOP_CLEARANCE_PX = 8 + 44;
-/** The page's own control over the ground, which the map component does not draw or report. */
-const PAGE_CHROME = '[data-testid="sheet-near-me"]';
+/** The page's own controls over the ground, which the map component does not draw or report. */
+const PAGE_CHROME = '[data-testid="sheet-near-me"], [data-testid="desk-near-me"]';
 /** The tourist's dot: a pill that sits on it hides the one mark saying where the tourist is. */
 const HERE_DOT = '[data-testid="here-dot"]';
 /** The tile credit while the poster carries it and no map component is mounted to report it. */

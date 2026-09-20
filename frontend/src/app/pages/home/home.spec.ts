@@ -1648,6 +1648,16 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
     return [...el(fixture).querySelectorAll('[data-testid="sheet-group"]')].map(text);
   }
 
+  /** jsdom gives every element a box of nothing; this is the box a browser would give it. */
+  function lay(element: Element, box: (self: Element) => DOMRect): void {
+    vi.spyOn(element, 'getBoundingClientRect').mockImplementation(() => box(element));
+  }
+
+  function layer(fixture: ComponentFixture<Home>): VenuePinLayer {
+    return fixture.debugElement.query(By.directive(VenuePinLayer))
+      .componentInstance as VenuePinLayer;
+  }
+
   function sheet(fixture: ComponentFixture<Home>): DiscoverSheet {
     return fixture.debugElement.query(By.directive(DiscoverSheet))
       .componentInstance as DiscoverSheet;
@@ -2239,16 +2249,6 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
    * boxes themselves, and the 0 intersections they buy, are measured in `discover-map.e2e.ts`.
    */
   describe('on a phone: the pills’ room', () => {
-    /** jsdom gives every element a box of nothing; this is the box a browser would give it. */
-    function lay(element: Element, box: (self: Element) => DOMRect): void {
-      vi.spyOn(element, 'getBoundingClientRect').mockImplementation(() => box(element));
-    }
-
-    function layer(fixture: ComponentFixture<Home>): VenuePinLayer {
-      return fixture.debugElement.query(By.directive(VenuePinLayer))
-        .componentInstance as VenuePinLayer;
-    }
-
     it('hands the layer the map the header and the sheet leave', async () => {
       const fixture = await sheetPage();
       const { header, viewportW } = sheet(fixture).chrome();
@@ -2404,6 +2404,21 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
       await settle(fixture);
 
       expect(rows().filter((row) => row.hasAttribute('aria-current'))).toHaveLength(1);
+    });
+
+    it('hands the layer the panel’s own Near me, which the map component does not draw', async () => {
+      const fixture = await panelPage();
+      const nearMe = byTestId(fixture, 'desk-near-me')!;
+      lay(nearMe, () => new DOMRect(24, 700, 138, 44));
+      window.dispatchEvent(new Event('resize'));
+      await settle(fixture);
+
+      expect(layer(fixture).noGo()).toContainEqual({
+        left: 24,
+        top: 700,
+        right: 162,
+        bottom: 744,
+      });
     });
 
     it('leaves focus on the pressed pin: the row is the preview, so nothing is destroyed', async () => {
