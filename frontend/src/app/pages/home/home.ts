@@ -635,7 +635,7 @@ export class Home {
     this.focusAfterRender('head-day');
   }
 
-  /** A rail opened while the sheet was at peek: the sheet rises so the rail has room (fault 11). */
+  /** A rail opened while the sheet was at peek: the sheet rises so the rail has room. */
   protected onRailOpened(): void {
     this.raiseFromPeek();
   }
@@ -708,7 +708,8 @@ export class Home {
 
   /**
    * A place on the map was pressed and it is one beach: the list narrows to it, so the cards
-   * beside the map — the List tab on a phone — are the venues the camera went to.
+   * beside the map — the List tab on a phone — are the venues the camera went to. On the sheet
+   * the narrowing is the head's beach, client-side, with no request.
    */
   protected onBeachNarrowed(beach: string): void {
     if (this.sheetMode()) {

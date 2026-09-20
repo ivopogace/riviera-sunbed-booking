@@ -1898,6 +1898,42 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
     expect(text(byTestId(fixture, 'head-title'))).toBe('Himarë');
   });
 
+  it('speaks the landed list and every narrowing from one persistent outcome region', async () => {
+    const fixture = await sheetPage();
+    const outcome = byTestId(fixture, 'sheet-outcome')!;
+    expect(outcome.getAttribute('aria-live')).toBe('polite');
+    expect(text(outcome)).toBe('Himarë: 1 of 2 selling today');
+
+    byTestId(fixture, 'head-beaches')!.click();
+    await settle(fixture);
+    [
+      ...el(fixture).querySelectorAll<HTMLButtonElement>(
+        '[role="group"][aria-label="Beach"] button',
+      ),
+    ]
+      .find((chip) => text(chip).startsWith('Dhërmi'))!
+      .click();
+    await settle(fixture);
+    expect(byTestId(fixture, 'sheet-outcome')).toBe(outcome);
+    expect(text(outcome)).toBe('Dhërmi: 1 of 1 selling today');
+
+    // A reload empties the words and the same element speaks the next list.
+    byTestId(fixture, 'head-day')!.click();
+    await settle(fixture);
+    el(fixture)
+      .querySelectorAll<HTMLButtonElement>('[role="group"][aria-label="Day"] button')[1]
+      .click();
+    await settle(fixture);
+    expect(byTestId(fixture, 'sheet-outcome')).toBe(outcome);
+    expect(text(outcome)).toBe('');
+    httpMock
+      .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+      .flush(sheetVenues());
+    await settle(fixture);
+    expect(byTestId(fixture, 'sheet-outcome')).toBe(outcome);
+    expect(text(outcome)).toBe('Dhërmi: 1 venue');
+  });
+
   it('Escape clears the lit row and closes an open rail', async () => {
     const fixture = await sheetPage();
     el(fixture).querySelector<HTMLButtonElement>('[data-pin="2"]')!.click();

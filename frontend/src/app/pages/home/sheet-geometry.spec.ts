@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { clampLift, detentAt, offsetFor, sheetTop, sheetTops } from './sheet-geometry';
 
 /**
- * The sheet's rest points, from the chrome as measured at runtime — the numbers are the design
- * record's tables (README @ 2cf675da, § Measured; Round 11 § 1–2), never constants of their own.
+ * The sheet's rest points, from the chrome as measured at runtime: a 44 px sliver of map at
+ * full, Airbnb's measured 307 px band at half, the 78 px head alone at peek.
  */
 describe('sheet geometry', () => {
   const phone = sheetTops({ viewportH: 844, header: 73, tabBar: 61 });

@@ -49,9 +49,9 @@ const LIST_PAD_BOTTOM_PX = 68;
  * rows never jump.
  *
  * <p>The shipped chrome is **measured at runtime, never a constant**: the tab bar's rendered
- * height (61 on a phone, 0 from `sm` where it is hidden) and the header's (73). The first rest is
- * taken again on the next frame when it did not land, because the measured geometry reaches the
- * DOM one pass later than the signals that carry it.
+ * height (61 on a phone, 0 from `sm` where it is hidden) and the header's (73). The scrollers
+ * render only once the chrome is measured, and the first rest is confirmed on the next frame,
+ * because a rest taken at a layout with every rest at offset 0 is carried to full.
  *
  * <p>The head goes in through `[sheetHead]`, the rows through the default slot; the page keeps
  * every word and every row, this component keeps the physics.
@@ -99,7 +99,7 @@ const LIST_PAD_BOTTOM_PX = 68;
               type="button"
               data-testid="sheet-grabber"
               data-touch-exempt="the whole head is the drag surface; the bar is its cue"
-              class="flex h-[22px] w-full items-center justify-center"
+              class="flex h-[22px] w-full touch-manipulation items-center justify-center"
               aria-label="Resize the list"
               (click)="cycle()"
             >
@@ -213,8 +213,8 @@ export class DiscoverSheet {
 
   /**
    * Rest at half, cut, and confirm on the next frame that the rest held: a rest taken before the
-   * scroller's geometry has settled is carried elsewhere by the browser's own snapping (Round 11's
-   * tablet gap), so it is retaken, a few frames at most.
+   * scroller's geometry has settled is carried elsewhere by the browser's own snapping, so it is
+   * retaken, a few frames at most.
    */
   private restAtHalf(scroller: HTMLElement, want: number, attempt: number): void {
     scrollScroller(scroller, want, 'instant');

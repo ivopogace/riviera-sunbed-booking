@@ -2,26 +2,23 @@ import { CDPSession, expect, Locator, Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import { expectTouchManipulation } from './support/mobile-zoom';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
  * The riviera map sheet on Discover behind `?map=sheet`: the map as the ground under the
  * glass header, the cards as a sheet with three resting heights, the head one row carrying the
  * query, the row the pin's preview, Near me's three arms. The fake engine draws the ground, so
- * the geometry the design record argues from is measured here in a real Chromium: the sheet
- * rests at half with the first row at y 493 at 390, 430, 768 and 820, and the flicks are real
- * CDP touch, 10 steps over 150 ms, as the prototype's driver sent them.
+ * the geometry is measured here in a real Chromium: the sheet rests at half with the first row
+ * at y 493 at 390, 430, 768 and 820, and the flicks are real CDP touch, 10 steps over 150 ms.
  *
- * <p>What the flicks prove, measured here rather than taken from the design record: a
- * `snap-always` target holds a fling that has not yet passed it, and cannot hold one the finger
- * has already carried the sheet past — Chrome then snaps to the position nearest the fling's
- * natural end. So a 200 px flick down from full rests at half (the target is 263 px away), a
- * slow 350 px drag rests at half (no fling: the nearest rest wins from 87 px past it), and a
- * 350 px flick down from full rests at peek. The record's "held to about 3 px/ms" (Round 14 § 3)
- * was the prototype's list flipping its overflow mid-gesture, a layout change that cut the touch
- * sequence short; a static page with the same scrollers shows the speed threshold does not
- * exist, so the flicks here assert the rests the specification promises. Recorded, not asserted:
- * the hard fling.
+ * <p>What the flicks prove: a `snap-always` target holds a fling that has not yet passed it,
+ * and cannot hold one the finger has already carried the sheet past — Chrome then snaps to the
+ * position nearest the fling's natural end, whatever its speed. So a 200 px flick down from full
+ * rests at half (the target is 263 px away), a slow 350 px drag rests at half (no fling: the
+ * nearest rest wins from 87 px past it), and a 350 px flick down from full rests at peek. A
+ * mid-gesture layout change is the one thing that cuts a fling short, and this sheet makes none.
+ * Recorded, not asserted: the hard fling.
  */
 
 const HEADER_PX = 73;
@@ -29,14 +26,15 @@ const HALF_TOP_PX = 380;
 const FIRST_ROW_PX = 493;
 const FULL_TOP_PX = 117;
 
-/** The four phones and tablets the design record measured, with the tab bar each has. */
+/** The four phones and tablets the design record measured, plus the narrowest phone, with the tab bar each has. */
 const VIEWPORTS = [
+  { width: 320, height: 640, tabBar: 61 },
   { width: 390, height: 844, tabBar: 61 },
   { width: 430, height: 932, tabBar: 61 },
   { width: 768, height: 1024, tabBar: 0 },
   { width: 820, height: 1180, tabBar: 0 },
 ];
-const PHONE = VIEWPORTS[0];
+const PHONE = VIEWPORTS[1];
 
 const ROME = { latitude: 41.9, longitude: 12.5 };
 const TIRANA = { latitude: 41.33, longitude: 19.82 };
@@ -196,7 +194,7 @@ test.describe('Discover sheet — rests on measured chrome', () => {
       expect(Math.round(nearMe.y + nearMe.height)).toBe(HALF_TOP_PX - 12);
       expect(Math.round(credit.y + credit.height)).toBe(HALF_TOP_PX - 12);
       expect(credit.width).toBeLessThanOrEqual(200);
-      expect(credit.x).toBeLessThan(nearMe.x);
+      expect(credit.x + credit.width + 8).toBeLessThanOrEqual(nearMe.x);
       await expect(page.getByTestId('map-zoom-in')).toHaveCount(0);
       await expect(page.getByTestId('sheet-map-pill')).toHaveCount(0);
 
@@ -431,6 +429,22 @@ test.describe('Discover sheet — Near me’s three arms', () => {
     expect(leaks).toEqual([]);
   });
 
+  test('keeps the credit clear of You are here on the narrowest phone', async ({
+    page,
+    context,
+  }) => {
+    await context.setGeolocation(ON_DHERMI);
+    await openSheet(page, VIEWPORTS[0]);
+
+    await page.getByTestId('sheet-near-me').click();
+    await expect(page.getByTestId('sheet-near-me')).toHaveText(/You are here/);
+
+    const nearMe = (await page.getByTestId('sheet-near-me').boundingBox())!;
+    const credit = (await page.getByTestId('map-attribution').boundingBox())!;
+    expect(credit.x + credit.width + 8).toBeLessThanOrEqual(nearMe.x);
+    expect(credit.x).toBeGreaterThanOrEqual(12);
+  });
+
   test('on the beach: the beach is the title', async ({ page, context }) => {
     await context.setGeolocation(ON_DHERMI);
     await openSheet(page);
@@ -459,12 +473,23 @@ test.describe('Discover sheet — accessibility', () => {
       await settle(page);
       await expectTouchTargets(page, 'the sheet at half');
       await expectNoSeriousAxeViolations(page, 'the sheet at half');
+      // Every control on the map or the sheet drops the double-tap: one is pressed twice in quick succession.
+      await expectTouchManipulation(
+        page,
+        '[data-testid="sheet-grabber"], [data-testid="head-place"], [data-testid="head-beaches"], [data-testid="head-day"], [data-testid="sheet-near-me"]',
+        'the head and the foot',
+      );
 
       await page.getByTestId('head-beaches').click();
       await expect(page.getByRole('group', { name: 'Beach' })).toBeVisible();
       await settle(page);
       await expectTouchTargets(page, 'the sheet with the beach rail open');
       await expectNoSeriousAxeViolations(page, 'the sheet with the beach rail open');
+      await expectTouchManipulation(
+        page,
+        '[role="group"][aria-label="Beach"] button',
+        'the beach rail',
+      );
 
       await page.getByTestId('head-place').click();
       const picker = page.getByTestId('coast-picker');
@@ -474,6 +499,11 @@ test.describe('Discover sheet — accessibility', () => {
       await settle(page);
       await expectTouchTargets(page, 'the coast picker');
       await expectNoSeriousAxeViolations(page, 'the coast picker');
+      await expectTouchManipulation(
+        page,
+        '[data-testid="picker-row"], [data-testid="picker-near-me"], [data-testid="picker-close"]',
+        'the coast picker',
+      );
       await page.keyboard.press('Escape');
       await expect(picker).toHaveCount(0);
       await expect(page.getByTestId('head-place')).toBeFocused();
@@ -483,6 +513,7 @@ test.describe('Discover sheet — accessibility', () => {
       await settle(page);
       await expectTouchTargets(page, 'the sheet at full');
       await expectNoSeriousAxeViolations(page, 'the sheet at full');
+      await expectTouchManipulation(page, '[data-testid="sheet-map-pill"]', 'the Map pill');
     });
   }
 });

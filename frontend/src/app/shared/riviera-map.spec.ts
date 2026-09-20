@@ -584,7 +584,7 @@ describe('RivieraMap phone chrome (foot)', () => {
     const credit = byTestId(fixture, 'map-attribution')!;
     expect(credit.classList.contains('left-3')).toBe(true);
     expect(credit.classList.contains('right-3')).toBe(false);
-    expect(credit.classList.contains('max-w-[200px]')).toBe(true);
+    expect(credit.classList.contains('max-w-[min(200px,calc(100%-184px))]')).toBe(true);
     expect(credit.style.bottom).toBe('476px');
     expect(credit.textContent?.replace(/\s+/g, ' ').trim()).toBe(
       '© OpenMapTiles © OpenStreetMap contributors',

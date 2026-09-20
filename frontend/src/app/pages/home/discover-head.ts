@@ -12,6 +12,7 @@ import {
 
 import { addDays } from '../../shared/booking-date';
 import { formatBookingDate } from '../../shared/booking-date-label';
+import { focusMover } from '../../shared/focus-after-render';
 import { TouchTarget } from '../../shared/touch-target';
 
 /** One beach of the focused region, as the beach rail offers it. */
@@ -196,6 +197,7 @@ const COUNT =
 export class DiscoverHead {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
+  private readonly moveFocus = focusMover();
 
   protected readonly CHIP = CHIP;
   protected readonly COUNT = COUNT;
@@ -291,20 +293,47 @@ export class DiscoverHead {
     }
   }
 
-  /** Both rails shut — Escape, a pick elsewhere, the picker opening. */
+  /**
+   * Both rails shut — Escape, a pick elsewhere, the picker opening. A rail takes its chips with
+   * it, so focus held inside one lands on the chip that opened it (WCAG 2.4.3).
+   */
   closeRails(): void {
+    const focused = this.railHoldsFocus();
     this.dayOpen.set(false);
     this.beachesOpen.set(false);
+    if (focused === 'day') {
+      this.moveFocus('head-day');
+    } else if (focused === 'beach') {
+      this.moveFocus('head-beaches');
+    }
   }
 
+  /** Which open rail holds focus, if any — the pressed chip is about to be destroyed with it. */
+  private railHoldsFocus(): 'day' | 'beach' | null {
+    const active = this.host.nativeElement.ownerDocument.activeElement;
+    if (this.dayOpen() && this.rail('Day')?.contains(active)) {
+      return 'day';
+    }
+    return this.beachesOpen() && this.rail('Beach')?.contains(active) ? 'beach' : null;
+  }
+
+  private rail(name: string): HTMLElement | null {
+    return this.host.nativeElement.querySelector<HTMLElement>(
+      `[role="group"][aria-label="${name}"]`,
+    );
+  }
+
+  /** A pick closes the rail under the pressed chip, so focus goes back to the day chip. */
   protected pickDay(date: string): void {
     this.dayPicked.emit(date);
     this.dayOpen.set(false);
+    this.moveFocus('head-day');
   }
 
   protected pickBeach(code: string): void {
     this.beachPicked.emit(code);
     this.beachesOpen.set(false);
+    this.moveFocus('head-beaches');
   }
 
   /** A rail opens with its lit chip in view, wherever along the coast or the week it sits. */

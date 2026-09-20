@@ -211,16 +211,26 @@
         (chosen)="onPinSelected($event)"
         (narrowed)="onBeachNarrowed($event)"
       />
-      <!-- The tourist's own dot paints over the pins (z-[5] to the layer's 4), as Google's blue dot does. -->
+      <!-- The tourist's own dot paints over the pins (z-[5] to the layer's 4), as Google's blue dot does: an ink disc in a light ring, the shape every map uses for "you". -->
       @if (hereDot(); as dot) {
-        <span
+        <svg
+          data-testid="here-dot"
+          class="pointer-events-none absolute z-[5] size-5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[0_0_0_6px_rgba(10,79,94,0.18),0_4px_12px_rgba(7,42,58,0.35)]"
+          viewBox="0 0 20 20"
           role="img"
           aria-label="You are here"
-          data-testid="here-dot"
-          class="pointer-events-none absolute z-[5] block size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-riv-solid-btn-fill bg-riv-solid-btn-ink shadow-[0_0_0_6px_rgba(10,79,94,0.18),0_4px_12px_rgba(7,42,58,0.35)]"
           [style.left.px]="dot.x"
           [style.top.px]="dot.y"
-        ></span>
+        >
+          <title>You are here</title>
+          <circle
+            cx="10"
+            cy="10"
+            r="8.5"
+            class="fill-riv-solid-btn-ink stroke-riv-solid-btn-fill"
+            stroke-width="3"
+          />
+        </svg>
       }
       <!-- Near me on the map's foot row at the right — mid-screen at half, the thumb's zone — in the fixed solid pair, inverted once placed; hidden at full, where the map is a sliver. -->
       @if (nearMeShown && detent() !== 'full') {
@@ -253,6 +263,12 @@
 
   <!-- Above the sheet on purpose: a live region must outlive the branch it describes. -->
   <app-load-announcer [loading]="loading()" loadingLabel="Loading venues…" />
+  <!-- The sheet's persistent count region, the shipped count block's twin: only its text changes, so every landed list and every narrowing is spoken. -->
+  <output class="sr-only" aria-live="polite" data-testid="sheet-outcome">
+    @if (venuesView()) {
+      {{ title() }}: {{ subtitle() }}
+    }
+  </output>
 
   <!-- ── The sheet: the head is one row carrying the query; the rows are the shipped cards, by beach. ── -->
   <app-discover-sheet>
@@ -281,7 +297,7 @@
     }
     @if (venuesView()) {
       @if (focus().cards.length === 0) {
-        <!-- Not a live region: born holding its text it announced nothing, and the announcer already spoke the outcome. -->
+        <!-- Not a live region: born holding its text it announced nothing, and the persistent outcome region above already speaks it. -->
         <p
           class="state mt-4 rounded-[26px] px-5 py-12 text-center text-[15px] text-riv-ink-soft"
           appPanelGlass

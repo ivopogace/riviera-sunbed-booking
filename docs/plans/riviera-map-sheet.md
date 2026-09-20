@@ -35,9 +35,11 @@ prototype draft #1155, no shared frontend file claimed, no Flyway number in play
 and the geometry ACs to name a pure seam each) · `tdd` (each phase red first at the named seam:
 the pure helpers by literal worked examples from the README's tables, the components by DOM
 state, the geometry in Chromium by the e2e) · `riviera-review-overlay` (review gate — due at
-ready-for-review) · `riviera-docs-freshness` (**to run** at close-out over the PR range:
-`CONTEXT.md` gains sheet/detent/head; `RESPONSIBILITIES.md` states nothing about Discover's
-layout) · `riviera-local-debug` (unshallowed the clone before reading history; Playwright's
+ready-for-review) · `riviera-docs-freshness` (**ran** over `da25734c..4af7d3f5`: step 2a found no
+present-tense contradiction — the substrate never described Discover's layout below `lg`, and
+the riviera-map glossary entry's "one pin per venue in the current result set" holds for the
+sheet's region; `CONTEXT.md` gains the venue sheet, its rest heights, the sheet head, the foot
+row, the coast picker and Near me on Discover; 0 other findings) · `riviera-local-debug` (unshallowed the clone before reading history; Playwright's
 Chromium at `/opt/pw-browsers/chromium` via `PW_CHROMIUM_EXECUTABLE`, 2 workers) ·
 `riviera-frontend` (every new file is flat under `pages/home/`, pure helpers beside their
 component; `withinBounds` and the near-me words are promoted to exports of
@@ -198,30 +200,26 @@ bar, the List/Map switch and the preview card:
 | R-1 | Nested scroll-snap latching (outer sheet, inner list at `overflow: clip` below full) behaves differently outside Chromium | med | med | the mocked e2e proves Chromium; the mechanism is standard CSS (`scroll-snap-stop: always` on zero-height targets); WebKit noted as unverified in the PR | session | closed — Chromium proven at 390/430/768/820; the record's speed threshold shown to be an artefact (F-1), the e2e asserts only what the specification promises; WebKit stays unverified, stated in the PR |
 | R-2 | jsdom lays nothing out, so a component spec cannot prove a rest point or a lift | high | med | geometry lives in pure helpers with literal expected values from the README's tables; the e2e measures the rendered page | session | closed — `sheet-geometry.spec.ts` + the e2e's four viewports |
 | R-3 | The chrome is measured through the shell's `.riv-header` / `.riv-tab-bar` class names, a contract across `app.html` and `pages/home` | low | med | one spec pins the two selectors against `app.html` (`app.spec.ts` already queries `.riv-header`); a missing element measures 0, which is the tablet's correct answer | session | closed — `app.spec.ts` ("carries the class names the Discover sheet measures its chrome by") |
-| R-4 | CDP touch flicks flake on the CI runner | med | med | 10 steps over 150 ms as the prototype's driver; `expect.poll` on the scroller's `data-detent`; the suite's `retries: 1`; a hard fling is recorded, not asserted | session | open — the flicks assert only rests the specification guarantees regardless of velocity (a 200 px flick cannot pass a rest 263 px away; a slow drag has no fling); watched on CI |
+| R-4 | CDP touch flicks flake on the CI runner | med | med | 10 steps over 150 ms as the prototype's driver; `expect.poll` on the scroller's `data-detent`; the suite's `retries: 1`; a hard fling is recorded, not asserted | session | closed — the flicks assert only rests the specification guarantees regardless of velocity (a 200 px flick cannot pass a rest 263 px away; a slow drag has no fling); green on CI at every push |
 | R-5 | Extracting the card `<li>` into an `ng-template` changes the shipped DOM | low | high | the 1,498-line `home.spec.ts` suite runs untouched and green; `ng-template` + `NgTemplateOutlet` keep the markup byte-identical | session | closed — the shipped describes pass unchanged (only the geolocation fake was added to two providers lists, since the page now injects the gateway); the flag-off e2e case pins the filter bar and switch |
-| R-6 | Sonar counts the sheet's list and the grid as duplicated blocks | med | low | one template for the card; the sheet reuses the shipped loading/empty/error blocks | session | open |
+| R-6 | Sonar counts the sheet's list and the grid as duplicated blocks | med | low | one template for the card; the sheet reuses the shipped loading/empty/error blocks | session | closed — 0.0 % duplication on new code, 95.7 % coverage (Sonar on PR #1160) |
 | R-7 | The measured rest lands before the DOM has the measured geometry (Round 11's tablet gap) | med | med | the rest is repeated on the next frame when `scrollTop` did not land; pinned at 768 and 820 by the e2e | session | closed — two mechanisms found and fixed (F-2): Chrome's scroll anchoring carried the sheet to full when the spacer's height landed (`overflow-anchor: none`), and a first layout with every rest at offset 0 made the sheet Chrome's tracked snap target (the scroller renders only once the chrome is measured; the rest is confirmed on the next frame) |
 | R-8 | Timezone: the head's "today" | low | med | `defaultBookingDate(new Date())` is the shipped Tirane day (#6); the Vitest clock is frozen at Monday 2026-06-15 | session | closed — `discover-head.spec.ts` names the week from the frozen clock |
-| R-9 | A focus stranded by a transition (the picker closing, the note dismissed, the Map pill leaving at half) | med | med | `focusMover()` on each leg; axe + the keyboard walk in the e2e | session | open |
+| R-9 | A focus stranded by a transition (the picker closing, the note dismissed, the Map pill leaving at half) | med | med | `focusMover()` on each leg; axe + the keyboard walk in the e2e | session | closed — the review gate found the rails' leg (F-6), now moved and pinned; the picker, the note and the Map pill were pinned from the start |
 
 ## Open questions / Assumptions
 
-- **Assumption A-1:** the issue's "existing coast picker" does not exist in the shipped tree (only
-  `prototype-coast-picker.ts` on the never-merged branch); this slice builds the picker as the
-  coast index — region rows with their beaches, counts and from-prices, Near me on top, no
-  `Whole coast` — and defers the ribbon map (a second WebGL context) to a follow-up issue filed at
-  close-out. — *Owner:* maintainer · *Resolves by:* PR review.
-- **Assumption A-2:** the flag is the query parameter `?map=sheet` on `/` (no build-time or
-  storage flag exists in the tree; a route-data flag cannot vary on one route). — *Owner:*
-  maintainer · *Resolves by:* PR review.
-- **Assumption A-3:** sheet mode keeps one unfiltered request per date and narrows client-side
-  (the prototype's `focus`), so no API change. — *Owner:* session · *Resolves by:* phase 3.
-- **Assumption A-4:** the pin's dusk is #1159's ("dusk per crowd"); this slice desaturates the
-  row and keeps the shipped `Sales closed` chip on the card. — *Owner:* maintainer · *Resolves
-  by:* PR review.
-- **Assumption A-5:** the rows are the shipped cards (the issue: "the rows stay cards on the
-  sheet"); the README's compact rows are not rebuilt. — *Owner:* session · *Resolves by:* phase 3.
+### Resolved
+
+- **Assumption A-1:** the issue's "existing coast picker" does not exist in the shipped tree;
+  built here as the coast index without the ribbon map. — resolved: shipped in PR #1160, stated in
+  its scope notes; the ribbon is a follow-up issue filed at close-out.
+- **Assumption A-2:** the flag is `?map=sheet`. — resolved: PR #1160.
+- **Assumption A-3:** one unfiltered request per date, narrowed client-side. — resolved: PR #1160.
+- **Assumption A-4:** the pin's dusk is #1159's; the row's dusk is here. — resolved: PR #1160.
+- **Assumption A-5:** the rows are the shipped cards. — resolved: PR #1160.
+- **AC-2's 350 px flick:** rewritten on the measured behaviour (F-1). — resolved: PR #1160, scope
+  notes.
 
 ## Availability & concurrency (invariant #2)
 
@@ -257,9 +255,9 @@ N/A — no contract change; `GET /api/venues?date=` as today.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5 — gates)`
+**Stage pointer:** `DONE — merged via PR #1160`
 
-**Next action:** merge `origin/main`, ready for review, the review gate.
+**Next action:** none; close-out steps 1–3 (issue, epic tick, follow-up issue for the picker's ribbon) after the merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -268,7 +266,7 @@ N/A — no contract change; `GET /api/venues?date=` as today.
 | 2 — the head and the coast picker | ✅ | `Add the one-row head and the coast picker (#1157)` |
 | 3 — Home behind the flag: ground, foot chrome, rows, pins, Near me | ✅ | `Put the riviera map under the sheet on Discover behind ?map=sheet (#1157)` |
 | 4 — the mocked e2e | ✅ | `Prove the sheet in Chromium: flicks, rails, pins, Near me (#1157)` |
-| 5 — gates and close-out | | |
+| 5 — gates and close-out | ✅ | review gate (F-6…F-10, F-12…F-14) + Sonar (F-11) fixes, glossary, close-out |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -281,6 +279,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | the e2e (Chromium) | the credit intercepted Near me: the shipped `max-w-[calc(100%-24px)]` and `text-[12px]` out-ranked the foot's utilities by stylesheet order | fixed-in-phase-4 — both placements are one `[class]` value, no competing utilities |
 | F-4 | the e2e (Chromium) | the dot kept its pre-fit projection: the fit effect's `onCleanup` dropped the map's move subscription on its second run | fixed-in-phase-4 — the subscription in its own effect; `home.spec.ts` asserts the dot against a fresh projection |
 | F-5 | the e2e (Chromium) | the lift at half could exceed the list's own overflow at full, so the handoff jumped | fixed-in-phase-4 — the lift clamps to the list's overflow at full (the real scroller's clamp) |
+| F-6 | review gate (RV-FE-9) | a pick on a rail chip destroyed the rail and the focused chip with no focus move; Escape did the same to a keyboard user inside a rail | fixed — `DiscoverHead` moves focus to the chip that opened the rail via `focusMover()`, pinned by `discover-head.spec.ts` |
+| F-7 | review gate (RV-STYLE-1) | added comments cited design-record rounds and a commit hash | fixed — restated as present-tense contracts |
+| F-8 | review gate (bug scan) | a re-measured chrome (a phone's toolbar hiding) rested the sheet back at half, discarding the tourist's detent | fixed — after the opening rest, a re-measure rests at the current detent's new offset (`untracked`), pinned by `discover-sheet.spec.ts` |
+| F-9 | review gate (history) | at 320 px the credit's 200 px cap overlapped `You are here` on the foot row | fixed — one `min()` cap leaves the button its width, the insets and a gap; 320 × 640 joins the e2e's viewports with a gap assertion |
+| F-10 | review gate (prior PRs) | the new controls carried `touch-manipulation` without the e2e proof earlier reviews set for map-area controls; the grabber lacked it | fixed — `expectTouchManipulation` over the head, foot, rails, picker and Map pill; the grabber wears it |
+| F-11 | Sonar `Web:S6819` | the tourist's dot was a `span` with `role="img"` | fixed — an inline `svg` with a title |
+| F-12 | review gate (RV-FE-10) | sheet mode had no persistent live region speaking the landed or narrowed list: the announcer's `readyLabel` was empty and the head's subtitle is not live | fixed — a persistent `<output aria-live="polite">` outcome region above the sheet (`Himarë: 8 of 11 selling today`), the shipped count block's twin, pinned by `home.spec.ts` |
+| F-13 | review gate (comments) | `onBeachNarrowed`'s doc comment described only the shipped branch | fixed |
+| F-14 | review gate (comments) | `shared/geolocation.ts` promised the position reaches the camera and nothing else, while the sheet also sorts and captions by it | fixed — the promise names the sort and the captions |
 
 ---
 
@@ -295,6 +302,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/pages/home/coast-picker.ts|.spec.ts|.a11y.spec.ts` — the coast index dialog
 - `frontend/src/app/pages/home/home.ts|.html|.spec.ts|.a11y.spec.ts|.contrast.spec.ts` — the flag, the sheet layout, Near me's arms, the card template shared with the grid
 - `frontend/src/app/shared/riviera-map.ts|.html|.spec.ts` — `withinBounds` + `NEAR_ME_MESSAGES` exported; the `foot` chrome input
+- `frontend/src/app/shared/geolocation.ts` — the seam's promise names the sheet's sort and captions
 - `frontend/src/app/app.spec.ts` — pins the two chrome selectors the sheet measures
 - `frontend/e2e/discover-sheet.e2e.ts` — the mocked e2e at 390, 430, 768, 820
 - `CONTEXT.md` — glossary: sheet, detent, head, foot row
@@ -376,19 +384,27 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-9:** to be filled with the commands and the commit at verification.
+- [x] **AC-1:** `npx ng test --watch=false --include='src/app/pages/home/sheet-geometry.spec.ts'` → 6 passed; `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/discover-sheet.e2e.ts` → 16 passed (first row at y 493 at 320, 390, 430, 768 and 820). Verified on PR #1160's head.
+- [x] **AC-2:** the same e2e run ("flicks rest at full and at half; the list scrolls only at full").
+- [x] **AC-3:** `discover-sheet.spec.ts` (18 passed) + the e2e's grabber and Map pill case.
+- [x] **AC-4:** `discover-head.spec.ts` (14 passed), `home.spec.ts` ("a chip pressed at peek…"), the e2e's rails case.
+- [x] **AC-5:** `home.spec.ts` ("a pin press lights its row…"), the e2e's pin case.
+- [x] **AC-6:** `place-groups.spec.ts`, `riviera-map.spec.ts`, `home.spec.ts` (Rome, Tirana, Dhërmi, denied), the e2e's three arms.
+- [x] **AC-7:** `camera-fit.spec.ts` (6 passed).
+- [x] **AC-8:** `npm run test:a11y` → the three contrast specs pass in every theme.
+- [x] **AC-9:** the a11y specs, `home.spec.ts` ("without ?map=sheet…"), the e2e's axe + `expectTouchTargets` + `expectTouchManipulation` cases.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section justified N/A.
-- [ ] Pool + cutoff honoured (#3, #4 rendered from `salesOpen`). Money minor units (#5, the cards). `Europe/Tirane` reasoned (#6).
-- [ ] Modulith section N/A — frontend-only.
-- [ ] Payment section N/A.
-- [ ] Flyway N/A.
-- [ ] Frontend standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability section justified N/A.
+- [x] Pool + cutoff honoured (#3, #4 rendered from `salesOpen`). Money minor units (#5, the cards). `Europe/Tirane` reasoned (#6).
+- [x] Modulith section N/A — frontend-only.
+- [x] Payment section N/A.
+- [x] Flyway N/A.
+- [x] Frontend standards met; the one deviation (AC-2's numbers) documented in the PR.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #1160`.
+- [x] The review gate ran in full (`code-review:code-review` over `da25734c..4af7d3f5` at high effort with `riviera-review-overlay`; findings F-6…F-10 and F-12…F-14, all fixed in the same PR).

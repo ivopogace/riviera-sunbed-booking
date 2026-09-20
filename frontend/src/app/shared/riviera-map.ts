@@ -165,10 +165,14 @@ export class RivieraMap {
   });
 
   protected readonly footChrome = computed(() => this.foot() !== null);
-  /** The credit's place: the shipped bottom-right corner, or the foot's left, wrapped. */
+  /**
+   * The credit's place: the shipped bottom-right corner, or the foot's left, wrapped to 200 px —
+   * less on the narrowest phone, where it leaves the consumer's control at the right its 150 px
+   * (`You are here`), the two insets and an 8 px gap.
+   */
   protected readonly creditPlacement = computed(() =>
     this.footChrome()
-      ? 'left-3 max-w-[200px] text-[11px]'
+      ? 'left-3 max-w-[min(200px,calc(100%-184px))] text-[11px]'
       : 'right-3 bottom-3 max-w-[calc(100%-24px)] text-[12px]',
   );
 

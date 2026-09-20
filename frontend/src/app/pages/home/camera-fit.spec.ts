@@ -4,9 +4,9 @@ import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map';
 import { fitInWindow, fitPins } from './camera-fit';
 
 /**
- * The camera is derived from the pane and the result set (README @ 2cf675da, § What Q rests on):
- * Web Mercator on both axes over 512 px tiles, capped at 14 so the sea stays in frame, never
- * below the zoom at which the viewport would be wider than the ADR-0022 fence.
+ * The camera is derived from the pane and the result set: Web Mercator on both axes over 512 px
+ * tiles, capped at 14 so the sea stays in frame, never below the zoom at which the viewport
+ * would be wider than the ADR-0022 fence.
  */
 describe('camera fit', () => {
   const dhermi = { lng: 19.645, lat: 40.145 };

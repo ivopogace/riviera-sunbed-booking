@@ -1,8 +1,8 @@
 /**
  * Where the venue sheet rests over the riviera map, from the shipped chrome as measured at
  * runtime — the tab bar's rendered height (61 on a phone, 0 from `sm` where it is hidden) and
- * the header's (73). Nothing here is a viewport constant: Round 11 of the design record put both
- * in constants and the tablet opened at full.
+ * the header's (73). Nothing here is a viewport constant: a constant tab bar reserves 61 px on a
+ * tablet that has none, and the sheet opens at full instead of half.
  *
  * <p>The sheet is the last child of an outer scroll-snap scroller whose first child is a
  * transparent spacer over the map, so a rest is a `scrollTop`: 0 at peek, the spacer's height at

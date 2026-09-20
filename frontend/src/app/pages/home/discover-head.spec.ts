@@ -211,6 +211,57 @@ describe('DiscoverHead', () => {
     expect(dismissed).toHaveBeenCalledTimes(1);
   });
 
+  it('hands focus back to the chip whose rail a pick closed (WCAG 2.4.3)', async () => {
+    render();
+    byTestId('head-day')!.click();
+    fixture.detectChanges();
+    const tomorrow = rail('Day')!.querySelectorAll('button')[1];
+    tomorrow.focus();
+    expect(document.activeElement).toBe(tomorrow);
+
+    tomorrow.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(rail('Day')).toBeNull();
+    expect(document.activeElement).toBe(byTestId('head-day'));
+
+    byTestId('head-beaches')!.click();
+    fixture.detectChanges();
+    const chip = rail('Beach')!.querySelectorAll('button')[2];
+    chip.focus();
+    chip.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(byTestId('head-beaches'));
+  });
+
+  it('moves focus off a rail closed from outside only when the rail held it', async () => {
+    render();
+    byTestId('head-day')!.click();
+    fixture.detectChanges();
+    const chip = rail('Day')!.querySelector('button')!;
+    chip.focus();
+
+    fixture.componentInstance.closeRails();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(rail('Day')).toBeNull();
+    expect(document.activeElement).toBe(byTestId('head-day'));
+
+    byTestId('head-beaches')!.click();
+    fixture.detectChanges();
+    byTestId('head-place')!.focus();
+    fixture.componentInstance.closeRails();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(byTestId('head-place'));
+  });
+
   it('declares the touch floor on every control', () => {
     render({ note: 'Location permission was declined. The map hasn’t moved.' });
     byTestId('head-day')!.click();
