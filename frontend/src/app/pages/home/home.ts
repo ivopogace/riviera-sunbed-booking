@@ -125,6 +125,13 @@ const PANEL_SPELLED_PX = 480;
 /** The gutter around and between the panel and the map; their corners match it at 22 px. */
 const FRAME_GAP_PX = 12;
 /**
+ * What the desktop fit keeps clear on every side, so no pin is FITTED onto the map's own chrome in
+ * the first place: a control is a 44 px box 12 px off an edge, and 12 px of air past it. A lone pin
+ * is never moved by the placement pass, so for it the fit is the only defence; a crowd's pill has
+ * the pass as well.
+ */
+const PANE_CHROME_PAD_PX = 2 * (FRAME_GAP_PX + 44 + FRAME_GAP_PX);
+/**
  * Past this many venues a region is longer than the panel, so its beach heads stick — and only
  * then do they carry a count, because a count is only worth saying where the group cannot be seen
  * whole. The phone's sheet, which shows two rows, always says it.
@@ -882,7 +889,7 @@ export class Home {
         return;
       }
       this.framed = { handle: live, key };
-      const view = fitPins(targets, width, height);
+      const view = fitPins(targets, width, height, undefined, PANE_CHROME_PAD_PX);
       if (view !== null) {
         live.easeTo(view);
       }

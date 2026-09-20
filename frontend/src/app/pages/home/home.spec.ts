@@ -2239,6 +2239,11 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
    * boxes themselves, and the 0 intersections they buy, are measured in `discover-map.e2e.ts`.
    */
   describe('on a phone: the pills’ room', () => {
+    /** jsdom gives every element a box of nothing; this is the box a browser would give it. */
+    function lay(element: Element, box: (self: Element) => DOMRect): void {
+      vi.spyOn(element, 'getBoundingClientRect').mockImplementation(() => box(element));
+    }
+
     function layer(fixture: ComponentFixture<Home>): VenuePinLayer {
       return fixture.debugElement.query(By.directive(VenuePinLayer))
         .componentInstance as VenuePinLayer;
@@ -2263,6 +2268,30 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
 
       expect(sheet(fixture).detent()).toBe('full');
       expect(layer(fixture).window()).toBeNull();
+    });
+
+    it('moves the foot row for a lone pin under it, both pieces together', async () => {
+      const fixture = await sheetPage();
+      const [pin] = layer(fixture).loneBoxes();
+      const { viewportW } = sheet(fixture).chrome();
+      // The stubbed boxes MOVE with the side they are on; a fixed one would ask for an endless swap.
+      const mirrored = (box: { left: number; right: number }): [number, number] => [
+        viewportW - box.right,
+        viewportW - box.left,
+      ];
+      lay(byTestId(fixture, 'sheet-near-me')!, (self) => {
+        const [left, right] = self.classList.contains('left-3')
+          ? mirrored(pin)
+          : [pin.left, pin.right];
+        return new DOMRect(left, pin.top, right - left, pin.bottom - pin.top);
+      });
+      lay(byTestId(fixture, 'map-attribution')!, () => new DOMRect(0, 0, 40, 10));
+
+      window.dispatchEvent(new Event('resize'));
+      await settle(fixture);
+
+      expect(byTestId(fixture, 'sheet-near-me')!.classList.contains('left-3')).toBe(true);
+      expect(byTestId(fixture, 'map-attribution')!.classList.contains('right-3')).toBe(true);
     });
 
     it('opens with the foot row unswapped: Near me right, the credit left', async () => {

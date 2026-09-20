@@ -758,9 +758,9 @@ test.describe('Discover sheet — the poster', () => {
 
     test('a crowd press swaps the live map in and separates the crowd', async ({ page }) => {
       await openSheet(page);
-      // Palasë and Dhërmi crowd at the region's scale; Jalë and Borsh stand alone.
+      // Palasë, Dhërmi and Jalë crowd on the pair's own mean, where their pill is drawn; Borsh alone.
       await expect(page.getByTestId('map-place-pill')).toHaveCount(1);
-      await expect(page.getByTestId('map-venue-pin')).toHaveCount(2);
+      await expect(page.getByTestId('map-venue-pin')).toHaveCount(1);
 
       await page.getByTestId('map-place-pill').click();
 

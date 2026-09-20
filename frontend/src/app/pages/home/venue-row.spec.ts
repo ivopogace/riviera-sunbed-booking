@@ -91,7 +91,7 @@ describe('VenueRow', () => {
     const row = render(PALASA).querySelector('[data-testid="venue-row"]')!;
 
     expect(row.classList.contains('border-b')).toBe(true);
-    expect(row.classList.contains('last:border-b-0')).toBe(true);
+    expect(row.classList.contains('group-last/row:border-b-0')).toBe(true);
   });
 
   it('shows no amenity chips and no mode until it is the selected row', () => {

@@ -367,7 +367,8 @@
                 group.label
               }}</span>
               @if (group.km !== null) {
-                &ngsp;<span class="font-semibold text-riv-accent-ink">{{ kmLabel(group.km) }}</span>
+                <!-- The page ink, not the accent: `--riv-accent-ink` is not redeclared for riviera and reads 1.1:1 on this glass. -->
+                &ngsp;<span class="font-semibold text-riv-ink">{{ kmLabel(group.km) }}</span>
               }
               <span class="ml-auto shrink-0"
                 >&ngsp;{{ group.cards.length }}
@@ -413,12 +414,13 @@
     <aside
       appPanelGlass
       data-testid="desk-panel"
-      class="flex min-h-0 shrink-0 flex-col overflow-hidden rounded-[22px]"
+      class="flex min-h-0 shrink-0 flex-col rounded-[22px]"
       [style.width.px]="panelWidth()"
       aria-label="Venues"
     >
+      <!-- The sheet's own 78 px head, its grabber's 22 px kept as the head's top air so the first row lands where the phone's does. -->
       <app-discover-head
-        class="shrink-0 py-3"
+        class="shrink-0 pt-[22px] pb-3"
         [title]="title()"
         [subtitle]="subtitle()"
         [located]="here() !== null"
@@ -475,9 +477,7 @@
               >
                 <span>{{ group.label }}</span>
                 @if (group.km !== null) {
-                  &ngsp;<span class="font-semibold text-riv-accent-ink">{{
-                    kmLabel(group.km)
-                  }}</span>
+                  &ngsp;<span class="font-semibold text-riv-ink">{{ kmLabel(group.km) }}</span>
                 }
                 @if (stickyHeads()) {
                   <!-- Only where the group cannot be seen whole is its count worth the second thing to read. -->
@@ -489,12 +489,19 @@
               </h2>
               <ul class="block">
                 @for (card of group.cards; track card.id) {
-                  <app-venue-row
-                    [card]="card"
-                    [date]="selectedDate()"
-                    [selected]="isSelected(card)"
-                    (pointed)="onRowPointed(card, $event)"
-                  />
+                  <!-- The list item is the page's, as the sheet's card's is: `display: contents` on the row would leave this <li> outside its <ul> for assistive technology. -->
+                  <li
+                    class="group/row relative rounded-[14px] [&[data-selected]]:outline-[2px] [&[data-selected]]:outline-offset-[-2px] [&[data-selected]]:outline-riv-accent-ink"
+                    [attr.data-venue-pin]="card.id"
+                    [attr.data-selected]="isSelected(card) ? '' : null"
+                  >
+                    <app-venue-row
+                      [card]="card"
+                      [date]="selectedDate()"
+                      [selected]="isSelected(card)"
+                      (pointed)="onRowPointed(card, $event)"
+                    />
+                  </li>
                 }
               </ul>
             }

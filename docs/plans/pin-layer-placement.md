@@ -235,9 +235,9 @@ flag.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 6)`
+**Stage pointer:** `implement (phase 7)`
 
-**Next action:** Extend `discover-map.e2e.ts` with the pill-on-chrome intersection count.
+**Next action:** Close out — docs-freshness over the range, retire `map-poster.md`, tick the epic.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -246,9 +246,9 @@ flag.
 | 2 — Dusk per crowd | ✅ | `07783031` |
 | 3 — The host hands the chrome in; the lone-pin foot swap | ✅ | `797f524b` |
 | 4 — The desktop panel: frame, head, rows, sticky heads, the selected row | ✅ | `4d8c566a` |
-| 5 — The desktop's pin↔row lighting and the picker popover | ⏳ | |
-| 6 — The mocked e2e: intersections, the panel's geometry, the popover | | |
-| 7 — a11y, contrast, touch targets, close-out | | |
+| 5 — The desktop's pin↔row lighting and the picker popover | ✅ | `e79b934e` |
+| 6 — The mocked e2e: intersections, the panel's geometry, the popover | ✅ | this commit |
+| 7 — a11y, contrast, touch targets, close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -256,7 +256,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
-| — | | | |
+| F-1 | e2e (own) | The panel's `overflow-hidden` made it a scroll container, so opening the coast picker scrolled the head 23 px out of view and its controls measured 34 px against the 44 floor | fixed in phase 6 |
+| F-2 | e2e (axe) | `app-venue-row`'s host is `display: contents`, so its `<li>` was not a child of the `<ul>` in the accessibility tree | fixed in phase 6 — the list item is the page's, as the sheet's card's is |
+| F-3 | contrast maths (own) | `--riv-accent-ink` is redeclared for the dark theme but not riviera, so the row's price and a group's distance read 1.1:1 on the panel's glass. The same pairing already shipped on the sheet's group head from #1157 | fixed in phase 6 — both take the page ink |
+| F-4 | home.spec (own) | The pin layer was fed every venue on the coast whenever the page was not in sheet mode, so the desktop panel would have drawn pins for regions it does not list | fixed in phase 4 |
 
 ---
 
@@ -286,6 +289,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/map-credit.ts` — the foot credit's swapped placement
 - `frontend/src/app/shared/riviera-map.ts|.spec.ts` — `chromeBoxes()`
 - `frontend/e2e/discover-map.e2e.ts` — the intersection count, the panel's geometry, the popover
+- `frontend/e2e/discover-sheet.e2e.ts` — the crowd count its fixture now groups to under the mean rule
 
 ---
 
