@@ -26,8 +26,11 @@ import {
   PIN_HEIGHT_PX,
   PinCrowd,
   PillPlacement,
+  PillSpace,
   PlacedPin,
   placeName,
+  Rect,
+  riseOffset,
   separationZoom,
   textWidth,
   VenuePin,
@@ -49,6 +52,8 @@ interface Place {
   readonly index: number;
   /** The member a press opens once the place is here: the open one's successor, or the first. */
   readonly next: PlacedPin;
+  /** Every member's sales for the chosen day have closed: the face greys, the price is struck. */
+  readonly dusk: boolean;
   readonly placement: PillPlacement;
 }
 
@@ -87,6 +92,17 @@ const LONE_CLASSES =
 const LONE_DOT_CLASSES = 'text-[20px]';
 
 /**
+ * Dusk: this venue, or every venue in this crowd, has stopped selling for the chosen day
+ * (invariant #4, rendered). Desaturation over the fixed hover fill with the price struck, and the
+ * ink untouched — a faded button would drop the face under AA over imagery of unknown luminance,
+ * and the strike keeps the state off colour alone. The `data-dusk:` fill outranks the resting one
+ * by specificity, not by class order.
+ */
+const DUSK_CLASSES =
+  'data-dusk:saturate-0 data-dusk:bg-riv-solid-btn-hover ' +
+  'data-dusk:[&_.pin-price]:line-through';
+
+/**
  * The priced face: the card price's weight, tabular so `€25` and `€30` sit the same width side by
  * side, and never wrapped — a pin that grew a second line would drop below the floor.
  */
@@ -103,6 +119,9 @@ const PLACE_CLASSES =
   'text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] hover:bg-riv-solid-btn-hover ' +
   'motion-safe:[transition:background-color_0.15s_ease,color_0.15s_ease] ' +
   'data-here:border-riv-solid-btn-fill data-here:bg-riv-solid-btn-ink data-here:text-riv-solid-btn-fill';
+
+/** The list answering the map: the same fill a pointer over the pin itself would give it. */
+const HOVER_CLASSES = 'data-hover:bg-riv-solid-btn-hover';
 
 /**
  * The rest of a crowd: real 44 px buttons at the crowd's spot, invisible until focused, when each
@@ -150,8 +169,24 @@ export class VenuePinLayer {
   readonly map = input<MapHandle | undefined>(undefined);
   /** Which venue is currently showing its preview, or `null` for none. */
   readonly selected = input<string | null>(null);
+  /**
+   * The venue whose row the pointer (or the keyboard) is on, so the map answers the list: the
+   * pin lights exactly as a pointer over the pin itself lights it. A crowd's pill lights for any
+   * of its members, since the pill is the only thing drawn for them.
+   */
+  readonly highlighted = input<string | null>(null);
   /** The map's own zoom ceiling: a crowd that needs more than this is one the camera cannot separate. */
   readonly maxZoom = input.required<number>();
+  /**
+   * Boxes no pill may sit on — the page's chrome over the map and the tourist's own dot, the dot
+   * already carrying its margin — in VIEWPORT coordinates, as the host measured them.
+   */
+  readonly noGo = input<readonly Rect[]>([]);
+  /**
+   * Where a pill may sit, in VIEWPORT coordinates: on the phone the map the glass header and the
+   * sheet leave. `null` is the layer's own box, which is every pixel it draws on.
+   */
+  readonly window = input<Rect | null>(null);
 
   /** A venue to open the preview of: a lone pin, a crowd member, or the walk's next venue. */
   readonly chosen = output<string>();
@@ -160,8 +195,34 @@ export class VenuePinLayer {
 
   /** Bumped whenever the projection could have changed; the only thing the geometry recomputes on. */
   private readonly tick = signal(0);
+  /** The layer's own box in the viewport once measured; `null` in a document that lays nothing out. */
+  private readonly frame = signal<Rect | null>(null);
   /** The map box's size once measured; `null` in a document that lays nothing out. */
-  private readonly box = signal<MapBox | null>(null);
+  private readonly box = computed<MapBox | null>(() => {
+    const frame = this.frame();
+    return frame && { width: frame.right - frame.left, height: frame.bottom - frame.top };
+  });
+
+  /**
+   * The room the pills have, in the layer's own coordinates: the host measures the chrome and the
+   * window where it draws them — the viewport — and the layer's own origin is what turns the two
+   * spaces into one. On the phone the layer IS the viewport and the shift is zero; on the desktop
+   * it is the pane, inset from both.
+   */
+  private readonly space = computed<PillSpace>(() => {
+    const frame = this.frame();
+    const shift = (rect: Rect): Rect => ({
+      left: rect.left - (frame?.left ?? 0),
+      top: rect.top - (frame?.top ?? 0),
+      right: rect.right - (frame?.left ?? 0),
+      bottom: rect.bottom - (frame?.top ?? 0),
+    });
+    const asked = this.window();
+    return {
+      window: asked ? shift(asked) : frame && shift(frame),
+      noGo: this.noGo().map(shift),
+    };
+  });
 
   private readonly crowds = computed(() => {
     const map = this.map();
@@ -185,7 +246,7 @@ export class VenuePinLayer {
     const placements = layoutPills(
       this.crowds(),
       (crowd) => pillWidth(drafts.get(crowd.key)!),
-      box,
+      this.space(),
     );
     return this.crowds().map((crowd) => ({
       ...drafts.get(crowd.key)!,
@@ -211,6 +272,23 @@ export class VenuePinLayer {
       prevId: members[(place.index - 1 + count) % count].pin.id,
       nextId: place.next.pin.id,
     };
+  });
+
+  /**
+   * Every lone pin's box in VIEWPORT coordinates: the pins the layout never moves. A host whose
+   * own chrome shares this box reads them to decide where that chrome goes, since between a lone
+   * pin and a control it is the control that moves.
+   */
+  readonly loneBoxes = computed<readonly Rect[]>(() => {
+    const frame = this.frame();
+    return this.crowds()
+      .filter((crowd) => crowd.members.length === 1)
+      .map((crowd) => ({
+        left: (frame?.left ?? 0) + crowd.x - crowd.width / 2,
+        top: (frame?.top ?? 0) + crowd.y - PIN_HEIGHT_PX / 2,
+        right: (frame?.left ?? 0) + crowd.x + crowd.width / 2,
+        bottom: (frame?.top ?? 0) + crowd.y + PIN_HEIGHT_PX / 2,
+      }));
   });
 
   /** Every venue's button in feed order, keyed by the pin — never by the crowd. */
@@ -272,12 +350,29 @@ export class VenuePinLayer {
   protected slotClass(slot: Slot): string {
     switch (slot.kind) {
       case 'lone':
-        return `${LONE_CLASSES} ${slot.member.pin.card.priceLabel ? LONE_BADGE_CLASSES : LONE_DOT_CLASSES}`;
+        return `${LONE_CLASSES} ${DUSK_CLASSES} ${HOVER_CLASSES} ${slot.member.pin.card.priceLabel ? LONE_BADGE_CLASSES : LONE_DOT_CLASSES}`;
       case 'place':
-        return `${PLACE_CLASSES} ${slot.place.placement.compact ? 'pl-[6px]' : 'pl-[13px]'}`;
+        return `${PLACE_CLASSES} ${DUSK_CLASSES} ${HOVER_CLASSES} ${slot.place.placement.compact ? 'pl-[6px]' : 'pl-[13px]'}`;
       default:
         return MEMBER_CLASSES;
     }
+  }
+
+  /**
+   * Whether this face is at dusk. A lone pin answers for itself; a crowd's pill answers for the
+   * whole crowd, so `Borsh · 2` greys at 16:30 while `3 beaches · 6` keeps its colour with four of
+   * six still selling. The invisible member discs never grey: nothing of them is painted.
+   */
+  protected dusk({ kind, place, member }: Slot): boolean {
+    return kind === 'lone' ? member.pin.card.salesClosed : kind === 'place' && place.dusk;
+  }
+
+  /** The face drawn for the highlighted venue: its own pin, or the pill its crowd is drawn as. */
+  protected lit({ kind, place }: Slot): boolean {
+    const id = this.highlighted();
+    return (
+      id !== null && kind !== 'member' && place.crowd.members.some((member) => member.pin.id === id)
+    );
   }
 
   /** The pill hangs off its point when it cannot sit centred; every other face sits centred. */
@@ -286,6 +381,15 @@ export class VenuePinLayer {
       return '-50% -50%';
     }
     return `${anchorLeft(0, place.placement.width, place.placement.anchor)}px -50%`;
+  }
+
+  /**
+   * Down the screen: the crowd's own point, and for a pill hung clear of it, that point moved. The
+   * rise rides the button's `top` rather than a `calc()` inside its translate, so the hang is a
+   * number both a spec and a screenshot can read off the element.
+   */
+  protected top({ kind, place }: Slot): number {
+    return place.crowd.y + (kind === 'place' ? riseOffset(place.placement.rise) : 0);
   }
 
   protected expanded(slot: Slot): boolean {
@@ -326,6 +430,7 @@ export class VenuePinLayer {
     const index = crowd.members.findIndex((member) => member.pin.id === open);
     return {
       crowd,
+      dusk: crowd.members.every((member) => member.pin.card.salesClosed),
       name: placeName(beaches.map(beachLabel)),
       from: lowestFromPrice(crowd.members.map((member) => member.pin.card)),
       beach: beaches.length === 1 ? beaches[0] : null,
@@ -348,8 +453,9 @@ export class VenuePinLayer {
     if (typeof ResizeObserver !== 'function') {
       return;
     }
-    const observer = new ResizeObserver(([entry]) => {
-      this.box.set({ width: entry.contentRect.width, height: entry.contentRect.height });
+    const observer = new ResizeObserver(() => {
+      const { left, top, right, bottom } = this.host.nativeElement.getBoundingClientRect();
+      this.frame.set({ left, top, right, bottom });
       this.bump();
     });
     observer.observe(this.host.nativeElement);

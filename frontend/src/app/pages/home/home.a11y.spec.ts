@@ -359,4 +359,49 @@ describe('Home accessibility (the riviera map sheet)', () => {
     expect(host().querySelector('[data-testid="coast-picker"]')).not.toBeNull();
     await expectNoAxeViolations(host());
   });
+
+  describe('from lg: the panel', () => {
+    // The page reads the viewport and asks for venues in its constructor: a wide one replaces it.
+    beforeEach(() => {
+      for (const request of httpMock.match(() => true)) {
+        request.flush([]);
+      }
+      fixture.destroy();
+      globalThis.matchMedia = (query: string) =>
+        ({
+          matches: true,
+          media: query,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        }) as unknown as MediaQueryList;
+      fixture = TestBed.createComponent(Home);
+    });
+
+    it('has no violations with the panel’s rows, its head and Near me beside the map', async () => {
+      await openSheet();
+
+      expect(host().querySelector('[data-testid="desk-panel"]')).not.toBeNull();
+      expect(host().querySelectorAll('[data-testid="venue-row"]').length).toBe(1);
+      expect(host().querySelector('[data-testid="desk-near-me"]')).not.toBeNull();
+      await expectNoAxeViolations(host());
+    });
+
+    it('has no violations with a row selected and expanded by its pin', async () => {
+      await openSheet();
+      host().querySelector<HTMLButtonElement>('[data-testid="map-venue-pin"]')!.click();
+      await settle();
+
+      expect(host().querySelector('[data-testid="venue-row"][aria-current="true"]')).not.toBeNull();
+      await expectNoAxeViolations(host());
+    });
+
+    it('has no violations with the coast picker hanging off the place button', async () => {
+      await openSheet();
+      host().querySelector<HTMLButtonElement>('[data-testid="head-place"]')!.click();
+      await settle();
+
+      expect(host().querySelector('[data-testid="coast-picker"]')).not.toBeNull();
+      await expectNoAxeViolations(host());
+    });
+  });
 });

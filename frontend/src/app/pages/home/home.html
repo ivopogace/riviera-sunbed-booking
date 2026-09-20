@@ -222,7 +222,7 @@
       }
       @if (posterCredit()) {
         <!-- The tiles' credit stands on the foot row over the poster until the live map, which carries its own, is mounted. -->
-        <app-map-credit [placement]="FOOT_CREDIT_PLACEMENT" [bottom]="footBottom()" />
+        <app-map-credit [placement]="footCreditPlacement()" [bottom]="footBottom()" />
       }
     }
     @defer (when mapDefer()) {
@@ -233,6 +233,7 @@
           [options]="groundOptions()"
           [nearMe]="false"
           [foot]="footBottom()"
+          [footSwapped]="nearMeLeft()"
           (mapClick)="closePreview()"
         />
       </div>
@@ -252,6 +253,8 @@
       [map]="groundHandle()"
       [selected]="selectedVenue()"
       [maxZoom]="mapMaxZoom"
+      [noGo]="mapChrome()"
+      [window]="pinWindow()"
       (chosen)="onPinSelected($event)"
       (narrowed)="onBeachNarrowed($event)"
     />
@@ -276,13 +279,15 @@
         />
       </svg>
     }
-    <!-- Near me on the map's foot row at the right — mid-screen at half, the thumb's zone — in the fixed solid pair, inverted once placed; hidden at full, where the map is a sliver. -->
+    <!-- Near me on the map's foot row, mid-screen at half — the thumb's zone — in the fixed solid pair, inverted once placed; it and the credit change ends for a lone pin. Hidden at full, where the map is a sliver. -->
     @if (nearMeShown && detent() !== 'full') {
       <button
         type="button"
         appTouchTarget
         data-testid="sheet-near-me"
-        class="absolute right-3 z-[8] inline-flex h-11 touch-manipulation items-center gap-1.5 rounded-full border-2 px-[14px] text-[14px] font-bold shadow-[0_6px_18px_rgba(7,42,58,0.3)] aria-disabled:opacity-60"
+        class="absolute z-[8] inline-flex h-11 touch-manipulation items-center gap-1.5 rounded-full border-2 px-[14px] text-[14px] font-bold shadow-[0_6px_18px_rgba(7,42,58,0.3)] aria-disabled:opacity-60"
+        [class.left-3]="nearMeLeft()"
+        [class.right-3]="!nearMeLeft()"
         [class]="
           here() !== null
             ? 'border-riv-solid-btn-fill bg-riv-solid-btn-ink text-riv-solid-btn-fill'
@@ -354,12 +359,16 @@
             <h2
               data-testid="sheet-group"
               class="col-span-full mt-2 mb-0 flex h-6 items-baseline gap-2 px-1 text-[13px] leading-[24px] text-riv-ink-soft first:mt-0"
+              [class]="
+                stickyHeads() ? 'sticky top-0 z-[1] bg-riv-tabbar-glass backdrop-blur-[22px]' : ''
+              "
             >
               <span class="text-[16px] font-bold tracking-[-0.01em] text-riv-ink">{{
                 group.label
               }}</span>
               @if (group.km !== null) {
-                &ngsp;<span class="font-semibold text-riv-accent-ink">{{ kmLabel(group.km) }}</span>
+                <!-- The page ink, not the accent: `--riv-accent-ink` is not redeclared for riviera and reads 1.1:1 on this glass. -->
+                &ngsp;<span class="font-semibold text-riv-ink">{{ kmLabel(group.km) }}</span>
               }
               <span class="ml-auto shrink-0"
                 >&ngsp;{{ group.cards.length }}
@@ -395,6 +404,189 @@
       (closed)="closePicker()"
     />
   }
+} @else if (panelMode()) {
+  <!-- ── From lg: the sheet's list as a pinned left panel, the map inset beside it. Same head, same rows, same preview. ── -->
+  <div
+    class="fixed inset-x-0 bottom-0 z-[1] flex gap-3 p-3"
+    data-testid="desk-frame"
+    [style.top.px]="shell().header"
+  >
+    <aside
+      appPanelGlass
+      data-testid="desk-panel"
+      class="flex min-h-0 shrink-0 flex-col rounded-[22px]"
+      [style.width.px]="panelWidth()"
+      aria-label="Venues"
+    >
+      <!-- The sheet's own 78 px head, its grabber's 22 px kept as the head's top air so the first row lands where the phone's does. -->
+      <app-discover-head
+        class="shrink-0 pt-[22px] pb-3"
+        [title]="title()"
+        [subtitle]="subtitle()"
+        [located]="here() !== null"
+        [beaches]="beachOptions()"
+        [beach]="focus().beach"
+        [spelled]="panelSpelled()"
+        [today]="minDate"
+        [date]="selectedDate()"
+        [railsShown]="true"
+        [note]="note()"
+        [pickerOpen]="pickerOpen()"
+        (placePressed)="openPicker()"
+        (beachPicked)="onBeachPicked($event)"
+        (dayPicked)="onDayPicked($event)"
+        (noteDismissed)="dismissNote()"
+        (railOpened)="onRailOpened()"
+      >
+        @if (pickerOpen()) {
+          <!-- The coast picker is the desktop's only chooser, and hangs off the place button it opened from. -->
+          <app-coast-picker
+            placePopover
+            [regions]="pickerRegions()"
+            [region]="focus().region"
+            [beach]="focus().beach"
+            [located]="here() !== null"
+            (picked)="onPlacePicked($event)"
+            (nearMe)="locateFromPicker()"
+            (closed)="closePicker()"
+          />
+        }
+      </app-discover-head>
+
+      <div data-testid="desk-rows" class="min-h-0 flex-1 overflow-y-auto px-3 pb-3 scrollbar-thin">
+        @if (failed()) {
+          <ng-container *ngTemplateOutlet="failureTpl" />
+        }
+        @if (venuesView()) {
+          @if (focus().cards.length === 0) {
+            <p
+              class="state mt-4 rounded-[18px] px-5 py-12 text-center text-[15px] text-riv-ink-soft"
+              data-testid="empty"
+            >
+              No venues here for this day. Pick another place on the coast.
+            </p>
+          } @else {
+            @for (group of groups(); track group.code) {
+              <!-- A 13 px running head with a rule, which on a panel the rows do not card is the whole separation the list needs. -->
+              <h2
+                data-testid="desk-group"
+                class="mt-4 mb-1 flex items-baseline gap-2 border-b border-riv-ink-faint/20 px-2 pb-1 text-[13px] leading-[18px] font-semibold text-riv-ink-soft first:mt-0"
+                [class]="
+                  stickyHeads() ? 'sticky top-0 z-[1] bg-riv-header-glass backdrop-blur-[22px]' : ''
+                "
+              >
+                <span>{{ group.label }}</span>
+                @if (group.km !== null) {
+                  &ngsp;<span class="font-semibold text-riv-ink">{{ kmLabel(group.km) }}</span>
+                }
+                @if (stickyHeads()) {
+                  <!-- Only where the group cannot be seen whole is its count worth the second thing to read. -->
+                  <span class="ml-auto shrink-0 font-normal"
+                    >&ngsp;{{ group.cards.length }}
+                    {{ group.cards.length === 1 ? 'venue' : 'venues' }}</span
+                  >
+                }
+              </h2>
+              <ul class="block">
+                @for (card of group.cards; track card.id) {
+                  <!-- The list item is the page's, as the sheet's card's is: `display: contents` on the row would leave this <li> outside its <ul> for assistive technology. -->
+                  <li
+                    class="group/row relative rounded-[14px] [&[data-selected]]:outline-[2px] [&[data-selected]]:outline-offset-[-2px] [&[data-selected]]:outline-riv-ink"
+                    [attr.data-venue-pin]="card.id"
+                    [attr.data-selected]="isSelected(card) ? '' : null"
+                  >
+                    <app-venue-row
+                      [card]="card"
+                      [date]="selectedDate()"
+                      [selected]="isSelected(card)"
+                      (pointed)="onRowPointed(card, $event)"
+                    />
+                  </li>
+                }
+              </ul>
+            }
+          }
+        } @else if (!failed()) {
+          <ng-container *ngTemplateOutlet="skeletonTpl" />
+        }
+      </div>
+    </aside>
+
+    <!-- The map takes the rest: 12 px off every edge, 22 px corners matching the panel's. -->
+    <div class="relative min-w-0 flex-1" data-testid="desk-pane">
+      @defer (when mapDefer()) {
+        <app-riviera-map
+          class="size-full rounded-[22px]!"
+          data-testid="desk-map"
+          [nearMe]="false"
+          (mapClick)="closePreview()"
+        />
+      } @placeholder {
+        <div
+          class="size-full animate-pulse rounded-[22px] bg-riv-card-track motion-reduce:animate-none"
+          aria-hidden="true"
+          data-testid="map-placeholder"
+        ></div>
+      }
+      <app-venue-pin-layer
+        class="rounded-[22px]!"
+        [pins]="pins()"
+        [map]="mapHandle()"
+        [selected]="selectedVenue()"
+        [maxZoom]="mapMaxZoom"
+        [noGo]="mapChrome()"
+        [highlighted]="pointedVenue()"
+        (chosen)="onPinSelected($event)"
+        (narrowed)="onBeachNarrowed($event)"
+      />
+      @if (hereDot(); as dot) {
+        <svg
+          data-testid="here-dot"
+          class="pointer-events-none absolute z-[5] size-5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[0_0_0_6px_rgba(10,79,94,0.18),0_4px_12px_rgba(7,42,58,0.35)]"
+          viewBox="0 0 20 20"
+          role="img"
+          aria-label="You are here"
+          [style.left.px]="dot.x"
+          [style.top.px]="dot.y"
+        >
+          <title>You are here</title>
+          <circle
+            cx="10"
+            cy="10"
+            r="8.5"
+            class="fill-riv-solid-btn-ink stroke-riv-solid-btn-fill"
+            stroke-width="3"
+          />
+        </svg>
+      }
+      <!-- Near me at the pane's bottom LEFT: at the bottom right it sat under the tile credit and was clipped. -->
+      @if (nearMeShown) {
+        <button
+          type="button"
+          appTouchTarget
+          data-testid="desk-near-me"
+          class="absolute bottom-3 left-3 z-[8] inline-flex h-11 touch-manipulation items-center gap-1.5 rounded-full border-2 px-[14px] text-[14px] font-bold shadow-[0_6px_18px_rgba(7,42,58,0.3)] aria-disabled:opacity-60"
+          [class]="
+            here() !== null
+              ? 'border-riv-solid-btn-fill bg-riv-solid-btn-ink text-riv-solid-btn-fill'
+              : 'border-riv-solid-btn-border bg-riv-solid-btn-fill text-riv-solid-btn-ink hover:bg-riv-solid-btn-hover'
+          "
+          [attr.aria-pressed]="here() !== null"
+          [appBusy]="locating()"
+          (click)="locate()"
+        >
+          <span aria-hidden="true">◎</span>&ngsp;{{ here() !== null ? 'You are here' : 'Near me' }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <app-load-announcer [loading]="loading()" loadingLabel="Loading venues…" />
+  <output class="sr-only" aria-live="polite" data-testid="desk-outcome">
+    @if (venuesView()) {
+      {{ title() }}: {{ subtitle() }}
+    }
+  </output>
 } @else {
   <section
     class="discover mx-auto max-w-[1080px] px-6 pt-10 pb-20"

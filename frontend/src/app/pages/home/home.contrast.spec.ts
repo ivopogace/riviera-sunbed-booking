@@ -195,6 +195,14 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
     expectAaOverStops(theme.heroInk, theme.heroInkSoftAlpha, theme.headerGlass, theme.stops);
   });
 
+  // `--riv-accent-ink` is redeclared for the dark theme but not riviera, whose glass is as dark.
+  it('the accent ink would not clear AA on the header glass, which is why nothing there wears it', () => {
+    const surface = surfaceOver(theme.headerGlass, theme.stops[0]);
+    const accentFails = contrastRatio(rgbToHex(theme.accent), rgbToHex(surface)) < AA_NORMAL;
+    expect(accentFails).toBe(theme.name === 'riviera');
+    expectAaOverStops(theme.heroInk, 1, theme.headerGlass, theme.stops);
+  });
+
   it('card ink (names, ratings, free count) meets AA on the card glass', () => {
     expectAaOverStops(theme.cardInk, 1, theme.cardGlass, theme.stops);
   });

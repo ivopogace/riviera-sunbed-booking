@@ -69,36 +69,41 @@ const COUNT =
   host: { class: 'block' },
   template: `
     <div class="flex h-11 items-center gap-2 px-3">
-      <button
-        type="button"
-        appTouchTarget
-        data-testid="head-place"
-        class="flex min-w-0 flex-1 touch-manipulation items-center gap-2 rounded-[12px] px-1.5 text-left"
-        [attr.aria-expanded]="pickerOpen()"
-        (click)="placePressed.emit()"
-      >
-        @if (located()) {
-          <span
-            data-testid="head-located"
-            class="text-[19px] leading-none text-riv-accent-ink"
-            aria-hidden="true"
-            >◎</span
-          >
-        }
-        <span class="flex min-w-0 flex-col">
-          <span class="truncate text-[19px] leading-[1.1] font-bold tracking-[-0.01em] text-riv-ink"
-            ><span data-testid="head-title">{{ title() }}</span
-            >&ngsp;<span class="text-[13px] font-normal text-riv-ink-faint" aria-hidden="true"
-              >▾</span
-            ></span
-          >
-          <span
-            data-testid="head-subtitle"
-            class="truncate text-[12.5px] leading-[1.25] text-riv-ink-soft"
-            >{{ subtitle() }}</span
-          >
-        </span>
-      </button>
+      <!-- Holds the place's share of the row, and is what the coast picker's lg popover hangs off. -->
+      <div class="relative flex min-w-0 flex-1">
+        <button
+          type="button"
+          appTouchTarget
+          data-testid="head-place"
+          class="flex w-full min-w-0 touch-manipulation items-center gap-2 rounded-[12px] px-1.5 text-left"
+          [attr.aria-expanded]="pickerOpen()"
+          (click)="placePressed.emit()"
+        >
+          @if (located()) {
+            <span
+              data-testid="head-located"
+              class="text-[19px] leading-none text-riv-accent-ink"
+              aria-hidden="true"
+              >◎</span
+            >
+          }
+          <span class="flex min-w-0 flex-col">
+            <span
+              class="truncate text-[19px] leading-[1.1] font-bold tracking-[-0.01em] text-riv-ink"
+              ><span data-testid="head-title">{{ title() }}</span
+              >&ngsp;<span class="text-[13px] font-normal text-riv-ink-faint" aria-hidden="true"
+                >▾</span
+              ></span
+            >
+            <span
+              data-testid="head-subtitle"
+              class="truncate text-[12.5px] leading-[1.25] text-riv-ink-soft"
+              >{{ subtitle() }}</span
+            >
+          </span>
+        </button>
+        <ng-content select="[placePopover]" />
+      </div>
       <button
         type="button"
         appTouchTarget

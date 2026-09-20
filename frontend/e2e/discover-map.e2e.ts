@@ -1,6 +1,7 @@
 import { expect, Locator, Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { settle } from './support/booking-dialog';
 import { mockMapResources } from './support/map-resources';
 import { expectTouchManipulation } from './support/mobile-zoom';
 import { expectTouchTargets } from './support/touch-targets';
@@ -882,5 +883,333 @@ test.describe('Discover map — real engine', () => {
     });
     expect(leaks(stored), `nothing may store the position — found in: ${stored}`).toBe(false);
     expect(console_.filter(leaks), 'nothing may log the position').toEqual([]);
+  });
+});
+
+/**
+ * Six venues over two regions. Himarë's four northern ones are a CHAIN up the shore: each is clear
+ * of the first by more than a pill's width but not of the pair's running mean, so they group into
+ * one `Palasë & Dhërmi` pill under the mean rule and would have split under the old first-member
+ * one. Borsh sits alone 20 km south-east, closed for the day — the dusk case beside a crowd whose
+ * own closed member must not grey it.
+ */
+const FLAGGED = [
+  flagged(21, 'Palasa Sands', 'PALASE', 'HIMARE', 40.18, 19.58, 2000, false),
+  flagged(22, 'Palasa Pine', 'PALASE', 'HIMARE', 40.178, 19.583, 2200),
+  flagged(23, 'Aurora Bay', 'DHERMI', 'HIMARE', 40.176, 19.586, 3000),
+  flagged(24, 'Folie Marine', 'DHERMI', 'HIMARE', 40.174, 19.589, 3900),
+  flagged(25, 'Borsh Kilometre', 'BORSH', 'HIMARE', 40.06, 19.86, 1500, false),
+  flagged(26, 'Miramar Beach Club', 'KSAMIL', 'SARANDE', 39.7712, 20.0021, 2500),
+];
+
+function flagged(
+  id: number,
+  name: string,
+  beach: string,
+  region: string,
+  latitude: number,
+  longitude: number,
+  minorUnits: number,
+  salesOpen = true,
+): Record<string, unknown> {
+  return {
+    id,
+    name,
+    beach,
+    region,
+    ratingTenths: 46,
+    reviewsCount: 143,
+    bookingMode: 'REQUEST',
+    amenities: ['BEACH_BAR', 'SNORKELLING'],
+    fromPrice: { minorUnits, currency: 'EUR' },
+    availability: { free: 11, total: 26 },
+    salesOpen,
+    location: { latitude, longitude },
+  };
+}
+
+/** Every width the design record measured the pins at, phone through desktop. */
+const FLAG_VIEWPORTS = [
+  { width: 390, height: 844 },
+  { width: 430, height: 932 },
+  { width: 768, height: 1024 },
+  { width: 1024, height: 768 },
+  { width: 1440, height: 900 },
+  { width: 1920, height: 1080 },
+];
+
+/** A tourist on Dhërmi: the located arm that puts the dot among the pins. */
+const ON_DHERMI = { latitude: 40.15, longitude: 19.64 };
+
+/**
+ * Every drawn pin face sitting on a piece of the page's map chrome, named so a failure says which.
+ * Crowd members are left out on purpose: they are invisible discs at the crowd's own point, and
+ * the pill drawn for them is what a tourist can actually see covered.
+ */
+const DRAWN_FACES = '[data-testid="map-place-pill"], [data-testid="map-venue-pin"]';
+const MAP_CHROME =
+  '[data-testid="sheet-near-me"], [data-testid="desk-near-me"], ' +
+  '[data-testid="map-attribution"], [data-testid="map-zoom-in"], [data-testid="map-zoom-out"]';
+
+async function chromeHits(
+  page: Page,
+  chrome = MAP_CHROME,
+  faceSelector = DRAWN_FACES,
+): Promise<string[]> {
+  return page.evaluate(
+    ({ faces, pieces }) => {
+      const hits: string[] = [];
+      for (const face of document.querySelectorAll(faces)) {
+        const a = face.getBoundingClientRect();
+        for (const piece of document.querySelectorAll(pieces)) {
+          const b = piece.getBoundingClientRect();
+          if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) {
+            hits.push(
+              `${face.textContent?.replace(/\s+/g, ' ').trim()} on ${piece.getAttribute('data-testid')}`,
+            );
+          }
+        }
+      }
+      return hits;
+    },
+    { faces: faceSelector, pieces: chrome },
+  );
+}
+
+async function openFlagged(page: Page, viewport: { width: number; height: number }): Promise<void> {
+  await page.setViewportSize(viewport);
+  await page.goto('/?map=sheet');
+  await expect(page.locator(DRAWN_FACES).first()).toBeVisible();
+  await settle(page);
+}
+
+/**
+ * The pins behind `?map=sheet` and the desktop panel from `lg`. The pin layer places its
+ * pills from values the page measures — the chrome's boxes and the window the sheet leaves — so
+ * what is proven here is the thing only a browser can answer: that after the fit and the placement
+ * pass, nothing a tourist can see is covered, at every width the design record measured.
+ */
+test.describe('Discover map — the flag’s pins keep off the chrome', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
+    });
+    await mockVenues(page, 0, FLAGGED);
+  });
+
+  for (const viewport of FLAG_VIEWPORTS) {
+    test(`no pin face sits on the map chrome at ${viewport.width} × ${viewport.height}, placed or not`, async ({
+      page,
+      context,
+    }) => {
+      await openFlagged(page, viewport);
+      expect(await chromeHits(page)).toEqual([]);
+
+      await context.grantPermissions(['geolocation']);
+      await context.setGeolocation(ON_DHERMI);
+      await page.getByTestId(viewport.width >= 1024 ? 'desk-near-me' : 'sheet-near-me').click();
+      await expect(page.getByTestId('here-dot')).toBeVisible();
+      await settle(page);
+
+      expect(await chromeHits(page)).toEqual([]);
+    });
+  }
+
+  test('the tourist’s dot paints over the pins, for the case no pill can be moved off it', async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(['geolocation']);
+    await context.setGeolocation(ON_DHERMI);
+    await openFlagged(page, FLAG_VIEWPORTS[0]);
+    await page.getByTestId('sheet-near-me').click();
+    await expect(page.getByTestId('here-dot')).toBeVisible();
+    await settle(page);
+
+    // A dot on a crowd's own point buries all nine spots, so the paint order is what always holds.
+    const [dot, pins] = await Promise.all([
+      page.getByTestId('here-dot').evaluate((el) => Number(getComputedStyle(el).zIndex)),
+      page.locator('app-venue-pin-layer').evaluate((el) => Number(getComputedStyle(el).zIndex)),
+    ]);
+    expect(dot).toBeGreaterThan(pins);
+  });
+
+  test('a crowd keeps its colour while one member still sells, and a closed lone pin greys', async ({
+    page,
+  }) => {
+    await openFlagged(page, FLAG_VIEWPORTS[4]);
+
+    // Palasa Sands has closed inside the crowd of four; Borsh has closed on its own.
+    await expect(page.getByTestId('map-place-pill')).not.toHaveAttribute('data-dusk', '');
+    await expect(page.getByTestId('map-venue-pin')).toHaveAttribute('data-dusk', '');
+  });
+});
+
+/** The desktop panel's own geometry, which only a browser lays out. */
+test.describe('Discover map — the desktop panel', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
+    });
+    await mockVenues(page, 0, FLAGGED);
+  });
+
+  async function box(locator: Locator): Promise<DOMRect> {
+    return locator.evaluate((el) => el.getBoundingClientRect().toJSON() as DOMRect);
+  }
+
+  for (const [width, panelPx, panePx] of [
+    [1024, 420, 568],
+    [1440, 540, 864],
+    [1920, 540, 1344],
+  ] as const) {
+    test(`at ${width} the panel is ${panelPx} and the map takes the remaining ${panePx}`, async ({
+      page,
+    }) => {
+      await openFlagged(page, { width, height: 900 });
+
+      const panel = await box(page.getByTestId('desk-panel'));
+      const map = await box(page.getByTestId('desk-map'));
+      expect(Math.round(panel.width)).toBe(panelPx);
+      expect(Math.round(map.width)).toBe(panePx);
+      // 12 px off every edge, panel and map alike, with 12 px between them.
+      expect(Math.round(panel.left)).toBe(12);
+      expect(Math.round(map.left - panel.right)).toBe(12);
+      expect(Math.round(width - map.right)).toBe(12);
+      expect(Math.round(900 - map.bottom)).toBe(12);
+      expect(Math.round(panel.top)).toBe(Math.round(map.top));
+    });
+  }
+
+  test('the panel opens on its head with the first row where the phone’s sheet puts it', async ({
+    page,
+  }) => {
+    await openFlagged(page, { width: 1440, height: 900 });
+
+    // 73 header + 12 gutter + 1 panel border + 78 head + 27 running head and its rule.
+    const first = await box(page.getByTestId('venue-row').first());
+    expect(Math.round(first.top)).toBe(191);
+    expect(Math.round(first.height)).toBe(92);
+  });
+
+  test('the map’s corners match the panel’s at 22 px, on all four', async ({ page }) => {
+    await openFlagged(page, { width: 1440, height: 900 });
+
+    for (const testId of ['desk-panel', 'desk-map']) {
+      const radii = await page
+        .getByTestId(testId)
+        .evaluate((el) => [
+          getComputedStyle(el).borderTopLeftRadius,
+          getComputedStyle(el).borderTopRightRadius,
+          getComputedStyle(el).borderBottomRightRadius,
+          getComputedStyle(el).borderBottomLeftRadius,
+        ]);
+      expect(radii).toEqual(['22px', '22px', '22px', '22px']);
+    }
+  });
+
+  test('the selected row expands, and no other row moves or leaves the panel', async ({ page }) => {
+    await openFlagged(page, { width: 1440, height: 900 });
+    const rows = page.getByTestId('venue-row');
+    /** Whole rows inside the panel's own scroller, which is what "visible" means here. */
+    const visible = async (): Promise<number> =>
+      page.getByTestId('desk-rows').evaluate((list) => {
+        const box = list.getBoundingClientRect();
+        return [...list.querySelectorAll('[data-testid="venue-row"]')].filter((row) => {
+          const rect = row.getBoundingClientRect();
+          return rect.top >= box.top && rect.bottom <= box.bottom;
+        }).length;
+      });
+    const heights = async (): Promise<number[]> =>
+      rows.evaluateAll((all) => all.map((row) => Math.round(row.getBoundingClientRect().height)));
+
+    const before = await heights();
+    const seen = await visible();
+    expect(new Set(before)).toEqual(new Set([92]));
+
+    await page.getByTestId('map-venue-pin').click();
+    await expect(rows.filter({ hasText: 'Borsh' })).toHaveAttribute('aria-current', 'true');
+    await settle(page);
+
+    // 29, not the record's 26: the shipped amenity chip is 26 px tall where the prototype's was 23.
+    const after = await heights();
+    expect(after.filter((height) => height !== 92)).toEqual([121]);
+    expect(await visible()).toBe(seen);
+  });
+
+  test('a row under the pointer lights its venue’s face, and lets go when the pointer leaves', async ({
+    page,
+  }) => {
+    await openFlagged(page, { width: 1440, height: 900 });
+    // The crowd's pill, not the lone Borsh pin: dusk already paints that one the hover fill.
+    const pill = page.getByTestId('map-place-pill');
+    const fill = async (): Promise<string> =>
+      pill.evaluate((face) => getComputedStyle(face).backgroundColor);
+    const resting = await fill();
+
+    await page.getByTestId('venue-row').filter({ hasText: 'Aurora Bay' }).hover();
+    await expect(pill).toHaveAttribute('data-hover', '');
+    // The fill is a 0.15s transition, so poll it rather than catching it mid-flight.
+    await expect.poll(fill).not.toBe(resting);
+
+    // Off the list, not onto the map: a hover inside its 22 px corner can hit the pane instead.
+    await page.mouse.move(0, 0);
+    await expect(pill).not.toHaveAttribute('data-hover', '');
+    await expect.poll(fill).toBe(resting);
+  });
+
+  test('the shore’s chain groups into one pill, which the first-member rule would have split', async ({
+    page,
+  }) => {
+    await openFlagged(page, { width: 1024, height: 768 });
+
+    // Four venues up the shore, each clear of the first but not of the crowd's running mean.
+    const pills = page.getByTestId('map-place-pill');
+    await expect(pills).toHaveCount(1);
+    await expect(pills).toContainText('Palasë & Dhërmi');
+    await expect(page.getByTestId('map-venue-pin')).toHaveCount(1);
+  });
+
+  test('the coast picker opens as a popover under the place button, with its ribbon', async ({
+    page,
+  }) => {
+    await openFlagged(page, { width: 1440, height: 900 });
+    await page.getByTestId('head-place').click();
+
+    const panel = page.getByTestId('coast-picker');
+    await expect(panel).toBeVisible();
+    await settleAnimations(panel);
+    const anchor = await box(page.getByTestId('head-place'));
+    const popover = await box(panel);
+    expect(Math.round(popover.width)).toBe(420);
+    expect(Math.round(popover.top - anchor.bottom)).toBe(8);
+    expect(Math.round((await box(page.getByTestId('picker-ribbon'))).width)).toBe(150);
+  });
+
+  test('is axe clean with every control at the touch floor, listing and with the picker open', async ({
+    page,
+  }) => {
+    await openFlagged(page, { width: 1440, height: 900 });
+    await settleAnimations(page.getByTestId('desk-panel'));
+    await expectNoSeriousAxeViolations(page);
+    await expectTouchTargets(page, 'the desktop panel');
+
+    await expectTouchManipulation(page, '[data-testid="desk-near-me"]', 'the panel’s Near me');
+
+    await page.getByTestId('head-place').click();
+    await expect(page.getByTestId('coast-picker')).toBeVisible();
+    await settleAnimations(page.getByTestId('coast-picker'));
+    await expectNoSeriousAxeViolations(page);
+    await expectTouchTargets(page, 'the desktop panel with its coast picker');
+  });
+
+  test('the flag off leaves today’s Discover at the same width', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+    await expect(page.getByTestId('venue-card').first()).toBeVisible();
+
+    await expect(page.getByTestId('desk-panel')).toHaveCount(0);
+    await expect(page.getByTestId('filter-beach')).toBeVisible();
+    await expect(page.getByTestId('map-panel')).toBeVisible();
   });
 });

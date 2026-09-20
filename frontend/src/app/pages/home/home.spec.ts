@@ -1648,6 +1648,16 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
     return [...el(fixture).querySelectorAll('[data-testid="sheet-group"]')].map(text);
   }
 
+  /** jsdom gives every element a box of nothing; this is the box a browser would give it. */
+  function lay(element: Element, box: (self: Element) => DOMRect): void {
+    vi.spyOn(element, 'getBoundingClientRect').mockImplementation(() => box(element));
+  }
+
+  function layer(fixture: ComponentFixture<Home>): VenuePinLayer {
+    return fixture.debugElement.query(By.directive(VenuePinLayer))
+      .componentInstance as VenuePinLayer;
+  }
+
   function sheet(fixture: ComponentFixture<Home>): DiscoverSheet {
     return fixture.debugElement.query(By.directive(DiscoverSheet))
       .componentInstance as DiscoverSheet;
@@ -1688,13 +1698,19 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
     expect(byTestId(fixture, 'view-switch')).not.toBeNull();
   });
 
-  it('keeps the shipped layout from lg up even with the flag', async () => {
+  it('with the flag from lg up, the list is a pinned panel beside the map: no sheet, no filter bar', async () => {
     const fixture = render({ map: 'sheet' }, true);
     httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`).flush(venues());
     await settle(fixture);
 
+    expect(byTestId(fixture, 'desk-panel')).not.toBeNull();
+    expect(byTestId(fixture, 'desk-pane')).not.toBeNull();
     expect(byTestId(fixture, 'sheet-scroller')).toBeNull();
-    expect(byTestId(fixture, 'filter-beach')).not.toBeNull();
+    expect(byTestId(fixture, 'filter-beach')).toBeNull();
+    expect(byTestId(fixture, 'view-switch')).toBeNull();
+    // The same head as the phone's, carrying the same query.
+    expect(byTestId(fixture, 'head-place')).not.toBeNull();
+    expect(byTestId(fixture, 'head-day')).not.toBeNull();
   });
 
   it('with the flag below lg, the map is the ground and the list is the sheet; the filter bar, the switch and the preview card are gone', async () => {
@@ -2224,6 +2240,251 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
       const dot = byTestId(fixture, 'here-dot')!;
       expect(Number.parseFloat(dot.style.left)).toBeCloseTo(at.x, 3);
       expect(Number.parseFloat(dot.style.top)).toBeCloseTo(at.y, 3);
+    });
+  });
+
+  /**
+   * The chrome's own geometry is the browser's, so what a jsdom spec can hold is the arithmetic
+   * the page does with it: the window it confines the pills to, and the side its foot takes. The
+   * boxes themselves, and the 0 intersections they buy, are measured in `discover-map.e2e.ts`.
+   */
+  describe('on a phone: the pills’ room', () => {
+    it('hands the layer the map the header and the sheet leave', async () => {
+      const fixture = await sheetPage();
+      const { header, viewportW } = sheet(fixture).chrome();
+
+      expect(layer(fixture).window()).toEqual({
+        left: 0,
+        top: header,
+        right: viewportW,
+        bottom: sheet(fixture).tops().half,
+      });
+    });
+
+    it('leaves the layer its own box at full, where nothing re-fits', async () => {
+      const fixture = await sheetPage();
+      sheet(fixture).go('full');
+      await settle(fixture);
+
+      expect(sheet(fixture).detent()).toBe('full');
+      expect(layer(fixture).window()).toBeNull();
+    });
+
+    it('moves the foot row for a lone pin under it, both pieces together', async () => {
+      const fixture = await sheetPage();
+      const [pin] = layer(fixture).loneBoxes();
+      const { viewportW } = sheet(fixture).chrome();
+      // The stubbed boxes MOVE with the side they are on; a fixed one would ask for an endless swap.
+      const mirrored = (box: { left: number; right: number }): [number, number] => [
+        viewportW - box.right,
+        viewportW - box.left,
+      ];
+      lay(byTestId(fixture, 'sheet-near-me')!, (self) => {
+        const [left, right] = self.classList.contains('left-3')
+          ? mirrored(pin)
+          : [pin.left, pin.right];
+        return new DOMRect(left, pin.top, right - left, pin.bottom - pin.top);
+      });
+      lay(byTestId(fixture, 'map-attribution')!, () => new DOMRect(0, 0, 40, 10));
+
+      window.dispatchEvent(new Event('resize'));
+      await settle(fixture);
+
+      expect(byTestId(fixture, 'sheet-near-me')!.classList.contains('left-3')).toBe(true);
+      expect(byTestId(fixture, 'map-attribution')!.classList.contains('right-3')).toBe(true);
+    });
+
+    it('opens with the foot row unswapped: Near me right, the credit left', async () => {
+      const fixture = await sheetPage();
+
+      const nearMe = byTestId(fixture, 'sheet-near-me')!;
+      expect(nearMe.classList.contains('right-3')).toBe(true);
+      expect(nearMe.classList.contains('left-3')).toBe(false);
+      expect(byTestId(fixture, 'map-attribution')!.classList.contains('left-3')).toBe(true);
+    });
+  });
+
+  /**
+   * The desktop panel: the sheet's own content, pinned open beside the map. The frame's pixels are
+   * a browser fact (`discover-map.e2e.ts`); what a jsdom spec holds is the arithmetic and the two
+   * rules that depend on how long the region is.
+   */
+  describe('from lg: the panel', () => {
+    /** A Himarë long enough to outrun the panel, for the rule that turns on past fifteen. */
+    function denseVenues(count: number): VenueSummary[] {
+      const [miramar] = venues();
+      return Array.from({ length: count }, (_unused, index) => ({
+        ...miramar,
+        id: 100 + index,
+        name: `Himarë Venue ${index + 1}`,
+        beach: index % 2 === 0 ? 'DHERMI' : 'JALE',
+        region: 'HIMARE',
+        location: { latitude: 40.15 + index / 1000, longitude: 19.64 },
+      }));
+    }
+
+    async function panelPage(
+      body: VenueSummary[] = sheetVenues(),
+      width = 1440,
+    ): Promise<ComponentFixture<Home>> {
+      window.innerWidth = width;
+      window.innerHeight = 900;
+      const fixture = render({ map: 'sheet' }, true);
+      httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`).flush(body);
+      await settle(fixture);
+      return fixture;
+    }
+
+    const originalSize = { width: window.innerWidth, height: window.innerHeight };
+    afterEach(() => {
+      window.innerWidth = originalSize.width;
+      window.innerHeight = originalSize.height;
+    });
+
+    function heads(fixture: ComponentFixture<Home>): HTMLElement[] {
+      return [...el(fixture).querySelectorAll<HTMLElement>('[data-testid="desk-group"]')];
+    }
+
+    it('clamps the panel to the row’s own width: 38 % of the window between 420 and 540', async () => {
+      // The map takes what is left, which only a browser lays out (`discover-map.e2e.ts`).
+      expect(byTestId(await panelPage(sheetVenues(), 1920), 'desk-panel')!.style.width).toBe(
+        '540px',
+      );
+      expect(byTestId(await panelPage(sheetVenues(), 1300), 'desk-panel')!.style.width).toBe(
+        '494px',
+      );
+      expect(byTestId(await panelPage(sheetVenues(), 1024), 'desk-panel')!.style.width).toBe(
+        '420px',
+      );
+    });
+
+    it('spells the beach chip out from a 480 px panel, and keeps the short form under it', async () => {
+      expect(text(byTestId(await panelPage(sheetVenues(), 1440), 'head-beaches'))).toContain(
+        'All beaches',
+      );
+      expect(text(byTestId(await panelPage(sheetVenues(), 1024), 'head-beaches'))).not.toContain(
+        'All beaches',
+      );
+    });
+
+    it('runs the beaches as heads with a rule and no count, while the region fits the panel', async () => {
+      const fixture = await panelPage();
+
+      expect(heads(fixture).length).toBeGreaterThan(0);
+      for (const head of heads(fixture)) {
+        expect(head.classList.contains('border-b')).toBe(true);
+        expect(head.classList.contains('sticky')).toBe(false);
+        expect(text(head)).not.toContain('venue');
+      }
+    });
+
+    it('sticks the heads past fifteen venues, and only then gives them their counts', async () => {
+      const fixture = await panelPage(denseVenues(16));
+
+      expect(heads(fixture).length).toBeGreaterThan(0);
+      for (const head of heads(fixture)) {
+        expect(head.classList.contains('sticky')).toBe(true);
+        expect(text(head)).toContain('venues');
+      }
+    });
+
+    it('draws a row per venue and marks only the selected one current', async () => {
+      const fixture = await panelPage();
+      const rows = (): HTMLElement[] => [
+        ...el(fixture).querySelectorAll<HTMLElement>('[data-testid="venue-row"]'),
+      ];
+      // Himarë's own: the two Palasë/Dhërmi venues the sheet fixture puts in the opening region.
+      expect(rows().map((row) => row.getAttribute('aria-label')?.split(',')[0])).toEqual([
+        'Palasa Sands',
+        'Aurora Bay',
+      ]);
+      expect(rows().filter((row) => row.hasAttribute('aria-current'))).toEqual([]);
+
+      byTestId(fixture, 'map-venue-pin')!.click();
+      await settle(fixture);
+
+      expect(rows().filter((row) => row.hasAttribute('aria-current'))).toHaveLength(1);
+    });
+
+    it('hands the layer the panel’s own Near me, which the map component does not draw', async () => {
+      const fixture = await panelPage();
+      const nearMe = byTestId(fixture, 'desk-near-me')!;
+      lay(nearMe, () => new DOMRect(24, 700, 138, 44));
+      window.dispatchEvent(new Event('resize'));
+      await settle(fixture);
+
+      expect(layer(fixture).noGo()).toContainEqual({
+        left: 24,
+        top: 700,
+        right: 162,
+        bottom: 744,
+      });
+    });
+
+    it('leaves focus on the pressed pin: the row is the preview, so nothing is destroyed', async () => {
+      const fixture = await panelPage();
+      const pin = byTestId(fixture, 'map-venue-pin')!;
+      pin.focus();
+
+      pin.click();
+      await settle(fixture);
+
+      expect(document.activeElement).toBe(pin);
+    });
+
+    it('narrows to a pressed place in the head, client-side, exactly as the sheet does', async () => {
+      // Two venues on ONE beach at one spot: a pressed place that names a beach to narrow to.
+      const onDhermi = denseVenues(2).map((venue) => ({ ...venue, beach: 'DHERMI' as const }));
+      const fixture = await panelPage(onDhermi);
+      byTestId(fixture, 'map-place-pill')!.click();
+      await settle(fixture);
+
+      expect(text(byTestId(fixture, 'head-beaches'))).toContain('Dhërmi');
+      // The panel draws no filter bar and no crumb, so a request here would have no way back.
+      httpMock.expectNone((r) => r.url === `${environment.apiBaseUrl}/api/venues`);
+    });
+
+    it('closes the head’s rails on Escape, as the sheet does', async () => {
+      const fixture = await panelPage();
+      const rail = (): Element | null => el(fixture).querySelector('[aria-label="Beach"]');
+      byTestId(fixture, 'head-beaches')!.click();
+      await settle(fixture);
+      expect(rail()).not.toBeNull();
+
+      el(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settle(fixture);
+
+      expect(rail()).toBeNull();
+    });
+
+    it('lights a venue’s pin while the pointer is on its row, and only its own', async () => {
+      const fixture = await panelPage();
+      const rows = [...el(fixture).querySelectorAll<HTMLElement>('[data-testid="venue-row"]')];
+      const lit = (): string[] =>
+        [...el(fixture).querySelectorAll<HTMLElement>('[data-hover]')].map(
+          (pin) => pin.dataset['pin'] ?? '',
+        );
+      expect(lit()).toEqual([]);
+
+      rows[0].dispatchEvent(new MouseEvent('mouseenter'));
+      await settle(fixture);
+      expect(lit()).toHaveLength(1);
+
+      rows[0].dispatchEvent(new MouseEvent('mouseleave'));
+      await settle(fixture);
+      expect(lit()).toEqual([]);
+    });
+
+    it('hangs the coast picker off the place button, which is the desktop’s only chooser', async () => {
+      const fixture = await panelPage();
+      expect(byTestId(fixture, 'coast-picker')).toBeNull();
+
+      byTestId(fixture, 'head-place')!.click();
+      await settle(fixture);
+
+      const anchor = byTestId(fixture, 'head-place')!.parentElement!;
+      expect(anchor.classList.contains('relative')).toBe(true);
+      expect(anchor.querySelector('app-coast-picker')).not.toBeNull();
     });
   });
 });

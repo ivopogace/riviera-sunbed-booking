@@ -79,6 +79,24 @@ describe('VenuePinLayer accessibility', () => {
     await expectNoAxeViolations(host);
   });
 
+  it('has no serious violations at dusk, whose accessible names never mention it', async () => {
+    const host = await render();
+    fixture.componentRef.setInput(
+      'pins',
+      PINS.map((pin) => ({ ...pin, card: { ...pin.card, salesClosed: true } })),
+    );
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="map-place-pill"]')?.hasAttribute('data-dusk')).toBe(
+      true,
+    );
+    // The face carries dusk; the name carries the venue, as the list's own row does.
+    expect(host.querySelector('[data-testid="map-venue-pin"]')?.getAttribute('aria-label')).toBe(
+      'Aurora Bay, from €25',
+    );
+    await expectNoAxeViolations(host);
+  });
+
   it('has no serious violations with the pill inverted, and then wearing an open venue', async () => {
     const host = await render();
     handle.setView({ center: { lng: 20.00264, lat: 39.77174 }, zoom: 13 });

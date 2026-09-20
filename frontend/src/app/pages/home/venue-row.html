@@ -1,0 +1,110 @@
+<a
+  data-testid="venue-row"
+  class="row flex items-center gap-3 border-b border-riv-ink-faint/20 px-2 py-[10px] no-underline last:border-b-0 group-last/row:border-b-0 motion-safe:[transition:background_0.12s_ease] hover:bg-riv-wash-hover focus-visible:outline-offset-[-2px]"
+  [routerLink]="['/venues', card().id]"
+  [queryParams]="{ date: date() }"
+  [attr.aria-label]="card().ariaLabel"
+  [attr.aria-current]="selected() ? 'true' : null"
+  (mouseenter)="pointed.emit(true)"
+  (mouseleave)="pointed.emit(false)"
+  (focus)="pointed.emit(true)"
+  (blur)="pointed.emit(false)"
+>
+  <!-- The anchor carries every fact as its accessible name, so its visible content is decorative. -->
+  <span
+    class="row-photo relative block size-[72px] shrink-0 overflow-hidden rounded-[14px] bg-(image:--riv-photo-grad)"
+    aria-hidden="true"
+  >
+    @if (cover(); as photo) {
+      <!-- Not NgOptimizedImage: it rejects a pixel `sizes`, and without one a 72 px box pulls the 576 px candidate. -->
+      <img
+        data-testid="row-photo"
+        class="size-full object-cover"
+        alt=""
+        width="72"
+        height="72"
+        decoding="async"
+        loading="lazy"
+        [src]="photo.url"
+        [attr.srcset]="srcset()"
+        sizes="72px"
+      />
+    } @else {
+      <span
+        data-testid="row-photo-empty"
+        class="photo-sun absolute top-[42%] left-1/2 size-[26px] rounded-[50%] bg-(image:--riv-sun-grad) [transform:translate(-50%,-50%)]"
+      ></span>
+    }
+  </span>
+
+  <span
+    class="flex min-h-[72px] min-w-0 flex-1 flex-col justify-center gap-[3px]"
+    aria-hidden="true"
+  >
+    <span class="flex items-baseline gap-2">
+      <span
+        data-testid="row-name"
+        class="row-name min-w-0 flex-1 truncate text-[16px] leading-[1.15] font-bold tracking-[-0.01em] text-riv-ink"
+        >{{ card().name }}</span
+      >
+      @if (card().priceLabel; as price) {
+        <span
+          data-testid="row-price"
+          class="row-price shrink-0 text-[16px] font-extrabold text-riv-ink"
+          >{{ price }}</span
+        >
+      } @else {
+        <span data-testid="row-price" class="row-price shrink-0 text-[13px] text-riv-ink-soft"
+          >No sets yet</span
+        >
+      }
+    </span>
+
+    <span
+      data-testid="row-facts"
+      class="row-facts flex items-center gap-[6px] truncate text-[13px] text-riv-ink-soft"
+    >
+      @if (card().isRated) {
+        <span class="star text-[#f4a939]">★</span>
+        <span class="rating font-bold text-riv-ink">{{ card().rating }}</span>
+        <span class="dot text-riv-ink opacity-30">·</span>
+        {{ card().reviewsLabel }}
+      } @else {
+        <span appSemanticChip class="new-chip px-[9px] py-px">New</span>
+      }
+      @if (card().water; as water) {
+        <span class="dot text-riv-ink opacity-30">·</span>
+        <span class="truncate">{{ water }}</span>
+      }
+    </span>
+
+    <span class="flex items-center gap-2 text-[12.5px] text-riv-ink-soft">
+      <span data-testid="row-availability"
+        ><app-sets-free [free]="card().free" [total]="card().total"
+      /></span>
+      <span
+        data-testid="row-avail-track"
+        class="avail-track block h-1.5 w-[72px] shrink-0 overflow-hidden rounded-full bg-riv-ink-faint/15"
+      >
+        <span
+          data-testid="row-avail-fill"
+          class="avail-fill block h-full bg-(image:--riv-bar-grad)"
+          [style.width.%]="card().freePercent"
+        ></span>
+      </span>
+    </span>
+
+    @if (selected() && hasChips()) {
+      <span data-testid="row-chips" class="mt-[3px] flex flex-wrap items-center gap-1.5">
+        @if (!card().instantBook) {
+          <span appSemanticChip class="mode-chip px-[9px] py-px text-[11px] tracking-[0.03em]">{{
+            card().modeLabel
+          }}</span>
+        }
+        @for (amenity of card().amenities; track amenity.code) {
+          <span appAmenityChip>{{ amenity.label }}</span>
+        }
+      </span>
+    }
+  </span>
+</a>

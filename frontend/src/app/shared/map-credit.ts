@@ -1,12 +1,19 @@
 import { Component, input } from '@angular/core';
 
 /**
- * The credit on the phone's foot row: the map's left, wrapped to 200 px — less on the narrowest
- * phone, where it leaves the consumer's control at the right its 150 px (`You are here`), the two
- * insets and a 10 px gap.
+ * The credit on the phone's foot row, whichever side it is on: wrapped to 200 px — less on the
+ * narrowest phone, where it leaves the consumer's control at the other end its 150 px
+ * (`You are here`), the two insets and a 10 px gap. Symmetric, so the mirror needs no second sum.
  */
-export const FOOT_CREDIT_PLACEMENT =
-  'left-3 max-w-[min(200px,calc(100%-184px))] px-[10px] py-[4px] text-[11px] leading-[16px]';
+const FOOT_CREDIT_BOX =
+  'max-w-[min(200px,calc(100%-184px))] px-[10px] py-[4px] text-[11px] leading-[16px]';
+export const FOOT_CREDIT_PLACEMENT = `left-3 ${FOOT_CREDIT_BOX}`;
+/**
+ * The foot credit on the other side. A lone venue pin is never moved, so when one sits under the
+ * foot row the row changes sides — the credit and the consumer's control together, never one of
+ * them, or they would land on each other.
+ */
+export const FOOT_CREDIT_PLACEMENT_SWAPPED = `right-3 ${FOOT_CREDIT_BOX}`;
 
 /**
  * The tiles' licence credits (OpenMapTiles CC-BY, OSM ODbL) — ADR-0022 decision 6 — as the pill

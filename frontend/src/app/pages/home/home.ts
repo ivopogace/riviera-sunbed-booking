@@ -36,7 +36,11 @@ import { FieldGlass } from '../../shared/field-glass';
 import { LoadAnnouncer } from '../../shared/load-announcer';
 import { focusMover } from '../../shared/focus-after-render';
 import { GeolocationGateway, GeolocationOutcome } from '../../shared/geolocation';
-import { FOOT_CREDIT_PLACEMENT, MapCredit } from '../../shared/map-credit';
+import {
+  FOOT_CREDIT_PLACEMENT,
+  FOOT_CREDIT_PLACEMENT_SWAPPED,
+  MapCredit,
+} from '../../shared/map-credit';
 import { LngLat, MapEngineOptions, MapHandle, MapView } from '../../shared/map-engine';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
@@ -63,12 +67,12 @@ import { defaultBookingDate, formatDayMonth, isIsoDate } from '../../shared/book
 import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
-import { fitInWindow } from './camera-fit';
+import { fitInWindow, fitPins } from './camera-fit';
 import { CoastPicker, coastIndex, PickedPlace } from './coast-picker';
 import { BeachOption, DiscoverHead } from './discover-head';
-import { DiscoverSheet } from './discover-sheet';
+import { DiscoverSheet, HEADER_SELECTOR } from './discover-sheet';
 import { Poster, posterFor, posterFrames } from './map-poster';
-import { VenuePin } from './pin-crowding';
+import { footSwap, PIN_HEIGHT_PX, Rect, VenuePin } from './pin-crowding';
 import {
   distanceLabel,
   groupByBeach,
@@ -79,6 +83,7 @@ import {
 import { FOOT_ROW_PX } from './sheet-geometry';
 import { VenueCard } from './venue-card';
 import { VenuePinLayer } from './venue-pin-layer';
+import { VenueRow } from './venue-row';
 import { VenuePreviewCard } from './venue-preview-card';
 
 /**
@@ -95,6 +100,47 @@ const DEFAULT_REGION = 'HIMARE';
 const TWO_COLUMN_PX = 600;
 /** The Near me button's foot row keeps this much clear of the header at peek. */
 const NEAR_ME_TOP_CLEARANCE_PX = 8 + 44;
+/** The page's own controls over the ground, which the map component does not draw or report. */
+const PAGE_CHROME = '[data-testid="sheet-near-me"], [data-testid="desk-near-me"]';
+/** The tourist's dot: a pill that sits on it hides the one mark saying where the tourist is. */
+const HERE_DOT = '[data-testid="here-dot"]';
+/** The tile credit while the poster carries it and no map component is mounted to report it. */
+const POSTER_CREDIT = '[data-testid="map-attribution"]';
+/** The two pieces of the phone's foot row, which change sides together. */
+const FOOT_ROW = '[data-testid="sheet-near-me"], [data-testid="map-attribution"]';
+/** The dot's own ring is its margin; a pill may come this close to it and no closer. */
+const DOT_MARGIN_PX = 2;
+/**
+ * The desktop panel is clamped to the ROW's own natural width — a row is happy between about 300
+ * and 400 px of text beside a 72 px thumbnail — and the map takes everything else. Sizing the map
+ * from the result set's aspect instead stretched a four-venue region's rows to 814 px beside a
+ * 576 px bay, which is the wrong invariant: the row is the thing with a natural width.
+ */
+const PANEL_SHARE = 0.38;
+const PANEL_MIN_PX = 420;
+const PANEL_MAX_PX = 540;
+/** From this much panel the beach chip spells itself out, as the tablet's sheet does. */
+const PANEL_SPELLED_PX = 480;
+/** The gutter around and between the panel and the map; their corners match it at 22 px. */
+const FRAME_GAP_PX = 12;
+/**
+ * What the desktop fit keeps clear on every side. `fitPins` takes this off the whole axis and
+ * measures it to a pin's POINT, so half of it has to cover the control band (a 44 px box 12 px off
+ * an edge), the 12 px of air past it AND the pin's own half-height — which is why it replaces
+ * rather than extends the default 76 that only reserved the box.
+ *
+ * <p>It is a guarantee on the down axis only. Across, `You are here` is 150 px where a pin's half
+ * is 30, and a pad wide enough for that would leave a 1024 px window nothing to fit into. A crowd's
+ * pill is kept off those boxes by the placement pass, which takes them as no-go; a lone pin, which
+ * never moves, is drawn under the chrome's own z-order rather than over it.
+ */
+const PANE_CHROME_PAD_PX = 2 * (FRAME_GAP_PX + 44 + FRAME_GAP_PX + PIN_HEIGHT_PX / 2);
+/**
+ * Past this many venues a region is longer than the panel, so its beach heads stick — and only
+ * then do they carry a count, because a count is only worth saying where the group cannot be seen
+ * whole. The phone's sheet, which shows two rows, always says it.
+ */
+const STICKY_HEADS_AFTER = 15;
 
 /** The sheet's query: the region and beach the list is narrowed to, and their cards. */
 interface Focus {
@@ -176,12 +222,14 @@ function closedStateText(
     RivieraMap,
     VenuePinLayer,
     VenuePreviewCard,
+    VenueRow,
     ...FAILURE_DIRECTIVES,
   ],
   host: {
     class: 'block text-riv-card-ink',
     // On the page host, not the map panel: a preview is closable wherever Escape is pressed,
     '(keydown.escape)': 'onEscape()',
+    '(window:resize)': 'remeasureShell()',
   },
   templateUrl: './home.html',
 })
@@ -255,6 +303,25 @@ export class Home {
   /** The route carries `?map=sheet`; the layout follows it only below `lg`. */
   private readonly mapFlag = signal(false);
   protected readonly sheetMode = computed(() => this.mapFlag() && !this.wide());
+  /** From `lg` the same flag lays the list out as a pinned left panel beside an inset map. */
+  protected readonly panelMode = computed(() => this.mapFlag() && this.wide());
+  /** The window and the shell header, which the desktop frame is measured from; the sheet owns its own. */
+  protected readonly shell = signal({ viewportW: 0, viewportH: 0, header: 0 });
+  /** 38 % of the window, never narrower than a row is happy nor wider than a row needs. */
+  protected readonly panelWidth = computed(() =>
+    Math.min(
+      PANEL_MAX_PX,
+      Math.max(PANEL_MIN_PX, Math.round(this.shell().viewportW * PANEL_SHARE)),
+    ),
+  );
+  /** What the map is left, once the frame's three gutters are taken out of the window. */
+  protected readonly paneSize = computed(() => ({
+    width: Math.max(0, this.shell().viewportW - this.panelWidth() - 3 * FRAME_GAP_PX),
+    height: Math.max(0, this.shell().viewportH - this.shell().header - 2 * FRAME_GAP_PX),
+  }));
+  /** The region is longer than the panel: its heads stick, and only then do they count. */
+  protected readonly stickyHeads = computed(() => this.focus().cards.length > STICKY_HEADS_AFTER);
+  protected readonly panelSpelled = computed(() => this.panelWidth() >= PANEL_SPELLED_PX);
 
   /** The skeleton grid renders this many placeholder cards while a request is in flight. */
   protected readonly skeletons = [0, 1, 2, 3, 4, 5] as const;
@@ -299,9 +366,12 @@ export class Home {
    * location, in list order. The map therefore issues no query of its own: a beach, region or
    * date change re-feeds these from the one list response it was going to fetch anyway, and the
    * two surfaces cannot disagree. A pin's id is its venue's id as a string.
+   *
+   * <p>Behind the flag the map holds ONE region on every surface: there is no whole-coast state,
+   * so the pins are the focused region's cards and not the whole coast's.
    */
   protected readonly pins = computed<readonly VenuePin[]>(() =>
-    (this.sheetMode() ? this.focus().cards : this.shownCards()).flatMap((card) =>
+    (this.mapFlag() ? this.focus().cards : this.shownCards()).flatMap((card) =>
       card.location
         ? [
             {
@@ -382,7 +452,10 @@ export class Home {
       view: still.liveView({ width: viewportW, height: viewportH }),
     };
   });
-  protected readonly FOOT_CREDIT_PLACEMENT = FOOT_CREDIT_PLACEMENT;
+  /** The poster's own credit stands where the live map's would, and changes sides with it. */
+  protected readonly footCreditPlacement = computed(() =>
+    this.nearMeLeft() ? FOOT_CREDIT_PLACEMENT_SWAPPED : FOOT_CREDIT_PLACEMENT,
+  );
 
   /**
    * The pin whose preview is open, or `null`. Linked to the pin set so a venue that leaves the
@@ -437,6 +510,24 @@ export class Home {
     return problem === null || this.noteDismissed() ? null : NEAR_ME_MESSAGES[problem];
   });
   protected readonly pickerOpen = signal(false);
+  /** The venue whose row the pointer or the keyboard is on, for the map to light its pin. */
+  protected readonly pointedVenue = signal<string | null>(null);
+  /**
+   * The boxes no pill may sit on, in viewport coordinates: the page's own chrome, the tourist's
+   * dot with its margin, and whatever the map component draws for itself. Measured, because their
+   * geometry is the browser's; a value, because the placement rule is arithmetic (`layoutPills`).
+   */
+  protected readonly mapChrome = signal<readonly Rect[]>([]);
+  /** The foot row's two pieces as last measured, which is what decides whether they change sides. */
+  private readonly footPieces = signal<readonly Rect[]>([]);
+  /**
+   * Near me on the foot's LEFT and the credit on its right, the swapped arrangement. A lone pin is
+   * never moved, so when one sits under the foot it is the foot that moves — both pieces together,
+   * and only when the other side is free (`footSwap`).
+   */
+  protected readonly nearMeLeft = signal(false);
+  /** Bumped by everything that can move the chrome; the one thing the measurement re-runs on. */
+  private readonly chromeTick = signal(0);
   protected readonly detent = computed(() => this.sheet()?.detent() ?? 'half');
   /** The rails hide at peek: the head is the one row there. */
   protected readonly railsShown = computed(() => this.detent() !== 'peek');
@@ -446,8 +537,9 @@ export class Home {
   );
   /**
    * The foot row's height above the map's bottom edge: 12 px over the sheet's top, following a
-   * drag, and never up into the header at peek. Near me sits on it at the right, the credit at
-   * the left — all the phone's map chrome on one row.
+   * drag, and never up into the header at peek. All the phone's map chrome rides it — Near me at
+   * one end and the credit at the other, the two changing sides together for a lone pin
+   * ({@link footSwap}).
    */
   protected readonly footBottom = computed(() => {
     const sheet = this.sheet();
@@ -459,6 +551,25 @@ export class Home {
       viewportH - header - NEAR_ME_TOP_CLEARANCE_PX,
       viewportH - sheet.sheetTop() + 12,
     );
+  });
+
+  /**
+   * Where a pill may sit on the phone: the map the glass header and the sheet leave, since a pill
+   * under the glass of either is a smudge. At full nothing re-fits and the pills are under the
+   * sheet anyway, so the layer keeps its own box.
+   */
+  protected readonly pinWindow = computed<Rect | null>(() => {
+    const sheet = this.sheet();
+    if (!this.sheetMode() || sheet === undefined || this.detent() === 'full') {
+      return null;
+    }
+    const { viewportW, viewportH, header } = sheet.chrome();
+    return {
+      left: 0,
+      top: header,
+      right: viewportW,
+      bottom: Math.min(viewportH, sheet.tops()[this.detent()]),
+    };
   });
 
   /** A region, never the coast: the chosen beach or region, else the tourist's, else Himarë. */
@@ -577,6 +688,8 @@ export class Home {
     this.selectedDate.set(this.routeDate(this.route.snapshot.queryParamMap));
     this.mapFlag.set(this.route.snapshot.queryParamMap.get('map') === SHEET_FLAG);
     this.followSheet();
+    this.followPanel();
+    this.followMapChrome();
     this.loadInitial();
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       this.mapFlag.set(params.get('map') === SHEET_FLAG);
@@ -731,6 +844,114 @@ export class Home {
   }
 
   /**
+   * Keep the pin layer's no-go boxes and the foot row's side in step with the rendered chrome.
+   *
+   * <p>The measurement is an `earlyRead` off one tick, and the tick is bumped by the things that
+   * genuinely move chrome — the viewport, the sheet's rest, the located state, a camera move
+   * (which moves the dot) and the swap itself. Pills moving bumps nothing, so a re-layout cannot
+   * feed back into a re-measure; and the swap settles after one pass, because `footSwap` only ever
+   * moves the foot to a side it has found free.
+   */
+  private followMapChrome(): void {
+    effect(() => {
+      this.sheet()?.chrome();
+      this.detent();
+      this.footBottom();
+      this.here();
+      this.nearMeLeft();
+      this.wide();
+      this.moved();
+      untracked(() => this.chromeTick.update((tick) => tick + 1));
+    });
+    afterRenderEffect({
+      earlyRead: () => {
+        this.chromeTick();
+        untracked(() => this.remeasureChrome());
+      },
+    });
+  }
+
+  /** The desktop frame is the window's, so a resize re-measures it — and the chrome standing on it. */
+  protected remeasureShell(): void {
+    this.chromeTick.update((tick) => tick + 1);
+  }
+
+  /**
+   * The desktop opens on a region, as the phone does: the pins (and the dot, when located) fitted
+   * into the pane the panel leaves. There is no whole-coast state — 26 venues over 300 km are an
+   * index, not a choice, and no pane frames them — so the coast picker is the only way to another
+   * region, and this is the only thing that aims the camera.
+   */
+  private followPanel(): void {
+    afterRenderEffect(() => {
+      const live = this.mapHandle();
+      const { width, height } = this.paneSize();
+      const targets = this.fitTargets();
+      if (!this.panelMode() || live === undefined) {
+        return;
+      }
+      const spots = targets.map((at) => `${at.lng},${at.lat}`).join(';');
+      const key = `panel|${width}x${height}|${spots}`;
+      if (this.framed?.handle === live && this.framed.key === key) {
+        return;
+      }
+      this.framed = { handle: live, key };
+      const view = fitPins(targets, width, height, undefined, PANE_CHROME_PAD_PX);
+      if (view !== null) {
+        live.easeTo(view);
+      }
+    });
+  }
+
+  private remeasureChrome(): void {
+    const host = this.host.nativeElement;
+    const map = this.map();
+    // The map component reports its own controls; the poster carries the credit while it stands in.
+    const pageDrawn = [
+      ...host.querySelectorAll<HTMLElement>(
+        map === undefined ? `${PAGE_CHROME}, ${POSTER_CREDIT}` : PAGE_CHROME,
+      ),
+    ].map((element) => element.getBoundingClientRect());
+    const dot = host.querySelector<HTMLElement>(HERE_DOT)?.getBoundingClientRect();
+
+    this.shell.set(this.measureShell());
+    this.mapChrome.set([
+      ...laidOut([...pageDrawn, ...(map?.chromeBoxes() ?? [])]),
+      ...laidOut(dot ? [dot] : []).map((box) => inflate(box, DOT_MARGIN_PX)),
+    ]);
+    this.footPieces.set(
+      laidOut(
+        [...host.querySelectorAll<HTMLElement>(FOOT_ROW)].map((el) => el.getBoundingClientRect()),
+      ),
+    );
+    this.swapFootForLonePins();
+  }
+
+  private measureShell(): { viewportW: number; viewportH: number; header: number } {
+    const view = this.document.defaultView;
+    const header = this.document.querySelector(HEADER_SELECTOR);
+    return {
+      viewportW: view?.innerWidth ?? 0,
+      viewportH: view?.innerHeight ?? 0,
+      header: Math.round(header?.getBoundingClientRect().height ?? 0),
+    };
+  }
+
+  /** The foot moves for a lone pin, never the other way round: the shipped rule never moves a pin. */
+  private swapFootForLonePins(): void {
+    const layer = this.pinLayer();
+    const sheet = this.sheet();
+    if (!this.sheetMode() || layer === undefined || sheet === undefined) {
+      return;
+    }
+    const { viewportW, viewportH } = sheet.chrome();
+    const pane: Rect = { left: 0, top: 0, right: viewportW, bottom: viewportH };
+    this.nearMeLeft.update((swapped) =>
+      footSwap(this.footPieces(), layer.loneBoxes(), pane, swapped),
+    );
+  }
+
+  /**
    * The poster cannot move: the live map is asked for, and the move it could not make — a
    * crowd's ease, a zoom — waits to be replayed once the map has loaded; a finger on the ground
    * asks for nothing more than the map.
@@ -836,7 +1057,7 @@ export class Home {
 
   protected onEscape(): void {
     this.closePreview();
-    if (this.sheetMode()) {
+    if (this.mapFlag()) {
       this.head()?.closeRails();
       this.closePicker();
     }
@@ -849,14 +1070,19 @@ export class Home {
   /**
    * Open a venue's preview: from a pin (or a pill's press-again), which moves focus into the
    * dialog, or from the open preview's own stepper, which leaves focus where it is — the dialog
-   * stays mounted across a step, so the pressed chevron keeps it. In sheet mode the row is the
-   * preview: it lights and goes to the list's top, and a sheet at peek rises to half.
+   * stays mounted across a step, so the pressed chevron keeps it.
+   *
+   * <p>Behind the flag the ROW is the preview on both surfaces: it lights and comes into view, a
+   * sheet at peek rises to half, and a press destroys nothing, so focus stays on the pin that took
+   * it. Only the unflagged page opens a card, and only there is focus moved into it — `focusMover`
+   * lands on the page host when its target is absent, which here would take focus off the pressed
+   * pin for nothing (WCAG 2.4.3).
    */
   protected onPinSelected(id: string): void {
     this.selectedVenue.set(id);
     if (this.sheetMode()) {
       this.raiseFromPeek();
-    } else if (!this.previewHoldsFocus()) {
+    } else if (!this.panelMode() && !this.previewHoldsFocus()) {
       this.focusAfterRender('venue-preview');
     }
     this.revealCard(id);
@@ -864,11 +1090,13 @@ export class Home {
 
   /**
    * A place on the map was pressed and it is one beach: the list narrows to it, so the cards
-   * beside the map — the List tab on a phone — are the venues the camera went to. On the sheet
-   * the narrowing is the head's beach, client-side, with no request.
+   * beside the map — the List tab on a phone — are the venues the camera went to. Behind the flag,
+   * on either surface, the narrowing is the head's beach and client-side, with no request: the
+   * flagged page holds one whole-coast response and narrows inside it, and neither the filter bar
+   * nor the crumb that undoes a filter-bar narrowing is drawn there.
    */
   protected onBeachNarrowed(beach: string): void {
-    if (this.sheetMode()) {
+    if (this.mapFlag()) {
       this.focusBeach.set(beach);
     } else if (beach !== this.beach()) {
       this.beach.set(beach);
@@ -916,12 +1144,24 @@ export class Home {
           if (sheet !== undefined) {
             sheet.reveal(card);
           } else {
-            card.scrollIntoView?.({ block: 'nearest' });
+            // The panel spends its height on the chosen venue: its row comes to the middle.
+            card.scrollIntoView?.({ block: this.panelMode() ? 'center' : 'nearest' });
           }
         },
       },
       { injector: this.injector },
     );
+  }
+
+  /** The list answering the map: a row under the pointer lights its venue's pin, and only its own. */
+  protected onRowPointed(card: VenueCard, on: boolean): void {
+    const id = String(card.id);
+    if (on) {
+      this.pointedVenue.set(id);
+      return;
+    }
+    // Only this row lets go: the pointer can already have lit the next one.
+    this.pointedVenue.update((lit) => (lit === id ? null : lit));
   }
 
   protected isSelected(card: VenueCard): boolean {
@@ -1094,6 +1334,7 @@ export class Home {
       regionLabel: regionLabel(venue.region),
       photos,
       modeLabel: venue.bookingMode === 'INSTANT' ? 'Instant Book' : 'Request to Book',
+      instantBook: venue.bookingMode === 'INSTANT',
       isRated: rated,
       rating,
       reviewsLabel: reviewsLabel(venue.reviewsCount),
@@ -1111,6 +1352,22 @@ export class Home {
       ariaLabel,
     };
   }
+}
+
+/** Only what the browser has actually laid out: jsdom gives every element a box of nothing. */
+function laidOut(boxes: readonly DOMRect[]): Rect[] {
+  return boxes
+    .filter((box) => box.width > 0 && box.height > 0)
+    .map(({ left, top, right, bottom }) => ({ left, top, right, bottom }));
+}
+
+function inflate(box: Rect, margin: number): Rect {
+  return {
+    left: box.left - margin,
+    top: box.top - margin,
+    right: box.right + margin,
+    bottom: box.bottom + margin,
+  };
 }
 
 /** Himarë when it has a venue, else the northernmost region that has one, else nothing (the coast). */

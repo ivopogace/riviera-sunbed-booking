@@ -16,6 +16,7 @@ export function venueCard(
     regionLabel: 'Sarandë',
     photos: [],
     modeLabel: 'Instant Book',
+    instantBook: true,
     isRated: true,
     rating: '4.8',
     reviewsLabel: '326 reviews',

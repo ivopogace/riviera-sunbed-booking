@@ -603,6 +603,59 @@ describe('RivieraMap phone chrome (foot)', () => {
   });
 });
 
+describe('RivieraMap chrome boxes', () => {
+  function render(nearMe: boolean, foot: number | null): ComponentFixture<RivieraMap> {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [RivieraMap],
+      providers: [
+        { provide: MapEngine, useValue: new FakeMapEngine() },
+        { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
+      ],
+    });
+    const fixture = TestBed.createComponent(RivieraMap);
+    fixture.componentRef.setInput('nearMe', nearMe);
+    fixture.componentRef.setInput('foot', foot);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  /** jsdom lays nothing out, so each control is given the box a browser would give it. */
+  function lay(fixture: ComponentFixture<RivieraMap>, boxes: Record<string, DOMRect>): void {
+    for (const [id, box] of Object.entries(boxes)) {
+      const element = (fixture.nativeElement as HTMLElement).querySelector(
+        `[data-testid="${id}"]`,
+      )!;
+      vi.spyOn(element, 'getBoundingClientRect').mockReturnValue(box);
+    }
+  }
+
+  it('reports every control it draws over its own imagery', () => {
+    const fixture = render(true, null);
+    lay(fixture, {
+      'map-near-me': new DOMRect(1284, 97, 100, 44),
+      'map-zoom-in': new DOMRect(1384, 149, 44, 44),
+      'map-zoom-out': new DOMRect(1384, 197, 44, 44),
+      'map-attribution': new DOMRect(1115, 850, 313, 26),
+    });
+
+    expect(fixture.componentInstance.chromeBoxes().map((box) => box.left)).toEqual([
+      1284, 1384, 1384, 1115,
+    ]);
+  });
+
+  it('reports only what is drawn: no zoom column with a foot, no near-me unasked', () => {
+    const fixture = render(false, 476);
+    lay(fixture, { 'map-attribution': new DOMRect(12, 440, 200, 32) });
+
+    expect(fixture.componentInstance.chromeBoxes()).toHaveLength(1);
+  });
+
+  it('leaves out a control a browser has given no box, which is every one in jsdom', () => {
+    expect(render(true, null).componentInstance.chromeBoxes()).toEqual([]);
+  });
+});
+
 describe('RivieraMap ribbon mode', () => {
   let fake: FakeMapEngine;
 

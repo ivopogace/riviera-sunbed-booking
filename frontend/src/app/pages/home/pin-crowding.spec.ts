@@ -2,13 +2,16 @@ import { LngLat, ScreenPoint } from '../../shared/map-engine';
 import {
   crowdPins,
   crowds,
+  footSwap,
   layoutPills,
   lowestFromPrice,
   PIN_HEIGHT_PX,
   pinWidth,
   PinCrowd,
+  PillSpace,
   placeName,
   PlacedPin,
+  Rect,
   separationZoom,
   VenuePin,
 } from './pin-crowding';
@@ -21,6 +24,7 @@ function card(overrides: Partial<VenueCard> & Pick<VenueCard, 'id' | 'name'>): V
     regionLabel: 'Sarandë',
     photos: [],
     modeLabel: 'Instant Book',
+    instantBook: true,
     isRated: true,
     rating: '4.8',
     reviewsLabel: '326 reviews',
@@ -125,6 +129,36 @@ describe('crowdPins', () => {
   it('draws nothing for no pins', () => {
     expect(crowdPins([], project)).toEqual([]);
   });
+
+  /** Projected straight off the longitude, so a spec reads the screen position in the pin list. */
+  const atX = (id: string, x: number, price: string): VenuePin => ({
+    id,
+    at: { lng: x, lat: 39.8 },
+    card: card({ id: Number(id), name: `Venue ${id}`, priceLabel: price }),
+  });
+  const byLng = (at: LngLat): ScreenPoint => ({ x: at.lng, y: 0 });
+
+  it('tests a pin against the crowd’s running mean, not its first member', () => {
+    // 80 is 80 px from the first member and 55 from the pair's mean, inside their 62 px reach.
+    const grouped = crowdPins(
+      [atX('1', 0, '€25'), atX('2', 50, '€25'), atX('3', 80, '€250')],
+      byLng,
+    );
+
+    expect(grouped).toHaveLength(1);
+    expect(grouped[0].members.map((member) => member.pin.id)).toEqual(['1', '2', '3']);
+  });
+
+  it('tests a pin against the crowd’s widest member, not its first', () => {
+    // Two at one spot, the second wider: 60 across clears the narrow first member and not the pair.
+    const grouped = crowdPins(
+      [atX('1', 0, '€25'), atX('2', 0, '€250'), atX('3', 60, '€25')],
+      byLng,
+    );
+
+    expect(grouped).toHaveLength(1);
+    expect(grouped[0].width).toBe(pinWidth('€250'));
+  });
 });
 
 describe('separationZoom', () => {
@@ -175,6 +209,43 @@ describe('separationZoom', () => {
   });
 });
 
+describe('footSwap', () => {
+  const pane: Rect = { left: 0, top: 0, right: 390, bottom: 500 };
+  /** The 44 px Near me at the foot's right; the shorter wrapped credit at its left. */
+  const nearMe: Rect = { left: 240, top: 440, right: 378, bottom: 484 };
+  const credit: Rect = { left: 12, top: 452, right: 212, bottom: 484 };
+  const foot = [nearMe, credit];
+  /** Mirrored in the pane, Near me takes 12–150 at the left and the credit 178–378 at the right. */
+  const pinAt = (left: number, top: number): Rect => ({
+    left,
+    top,
+    right: left + 57,
+    bottom: top + 44,
+  });
+  const onNearMe = pinAt(300, 400);
+
+  it('swaps the foot when a lone pin sits under it and the mirrored spots are free', () => {
+    expect(footSwap(foot, [onNearMe], pane, false)).toBe(true);
+  });
+
+  it('holds when a lone pin waits under the swapped spots too, so it cannot oscillate', () => {
+    expect(footSwap(foot, [onNearMe, pinAt(100, 400)], pane, false)).toBe(false);
+  });
+
+  it('holds when nothing is under the foot at all', () => {
+    expect(footSwap(foot, [pinAt(160, 300)], pane, false)).toBe(false);
+  });
+
+  it('swaps back once the pin that moved the chrome has gone', () => {
+    expect(footSwap(foot, [pinAt(160, 300)], pane, true)).toBe(true);
+    expect(footSwap(foot, [onNearMe], pane, true)).toBe(false);
+  });
+
+  it('holds when the foot has not been drawn yet', () => {
+    expect(footSwap([], [onNearMe], pane, true)).toBe(true);
+  });
+});
+
 describe('placeName', () => {
   it('names the place by its beaches: one, both, or a count', () => {
     expect(placeName(['Dhërmi'])).toBe('Dhërmi');
@@ -202,13 +273,18 @@ describe('lowestFromPrice', () => {
 });
 
 describe('layoutPills', () => {
-  const box = { width: 300, height: 200 };
+  const pane = (right: number, bottom: number, noGo: readonly Rect[] = []): PillSpace => ({
+    window: { left: 0, top: 0, right, bottom },
+    noGo,
+  });
+  const box = pane(300, 200);
   const full = (): number => 120;
 
   it('sits a pill centred on its place when it fits', () => {
     const crowd = crowdOf([placed('a', 150, 100), placed('b', 151, 100)]);
     expect(layoutPills([crowd], full, box).get(crowd.key)).toEqual({
       anchor: 'centre',
+      rise: 'level',
       compact: false,
       width: 120,
     });
@@ -220,8 +296,13 @@ describe('layoutPills', () => {
     expect(layoutPills([nearLeft], full, box).get(nearLeft.key)?.anchor).toBe('right');
     expect(layoutPills([nearRight], full, box).get(nearRight.key)?.anchor).toBe('left');
 
-    const cramped = layoutPills([nearLeft], full, { width: 60, height: 200 }).get(nearLeft.key);
-    expect(cramped).toEqual({ anchor: 'centre', compact: true, width: PIN_HEIGHT_PX });
+    const cramped = layoutPills([nearLeft], full, pane(60, 200)).get(nearLeft.key);
+    expect(cramped).toEqual({
+      anchor: 'centre',
+      rise: 'level',
+      compact: true,
+      width: PIN_HEIGHT_PX,
+    });
   });
 
   it('hangs a pill off a lone pin it would run over', () => {
@@ -229,19 +310,123 @@ describe('layoutPills', () => {
     const crowd = crowdOf([placed('a', 160, 100), placed('b', 161, 100)]);
     const placements = layoutPills([lone, crowd], full, box);
     expect(placements.get(crowd.key)?.anchor).toBe('right');
-    expect(placements.get(lone.key)).toEqual({ anchor: 'centre', compact: false, width: 57 });
+    expect(placements.get(lone.key)).toEqual({
+      anchor: 'centre',
+      rise: 'level',
+      compact: false,
+      width: 57,
+    });
   });
 
   it('places the larger crowd first, so the smaller one is the one that hangs', () => {
     const small = crowdOf([placed('a', 100, 100), placed('b', 100, 100)]);
     const large = crowdOf([placed('c', 200, 100), placed('d', 200, 100), placed('e', 200, 100)]);
     const placements = layoutPills([small, large], full, box);
-    expect(placements.get(large.key)).toEqual({ anchor: 'centre', compact: false, width: 120 });
-    expect(placements.get(small.key)).toEqual({ anchor: 'left', compact: false, width: 120 });
+    expect(placements.get(large.key)).toEqual({
+      anchor: 'centre',
+      rise: 'level',
+      compact: false,
+      width: 120,
+    });
+    expect(placements.get(small.key)).toEqual({
+      anchor: 'left',
+      rise: 'level',
+      compact: false,
+      width: 120,
+    });
   });
 
   it('never hangs for the box’s edge when the box is unknown', () => {
     const nearLeft = crowdOf([placed('a', 30, 100), placed('b', 31, 100)]);
-    expect(layoutPills([nearLeft], full, null).get(nearLeft.key)?.anchor).toBe('centre');
+    const unmeasured: PillSpace = { window: null, noGo: [] };
+    expect(layoutPills([nearLeft], full, unmeasured).get(nearLeft.key)?.anchor).toBe('centre');
+  });
+
+  /** A 120 px pill at x 150 reaches 90–210 centred, 128–248 hung right and 52–172 hung left. */
+  const crowded = crowdOf([placed('x', 150, 100), placed('y', 150, 100)]);
+
+  it('hangs a pill below its point when every level spot is taken', () => {
+    // Two lone pins at y 70 span 30–270 across the level band and the band a pill above would use.
+    const left = crowdOf([placed('p', 90, 70, 120)]);
+    const right = crowdOf([placed('q', 210, 70, 120)]);
+
+    expect(layoutPills([left, right, crowded], full, box).get(crowded.key)).toEqual({
+      anchor: 'centre',
+      rise: 'below',
+      compact: false,
+      width: 120,
+    });
+  });
+
+  it('hangs a pill diagonally before collapsing it', () => {
+    const level = [crowdOf([placed('p', 90, 70, 120)]), crowdOf([placed('q', 210, 70, 120)])];
+    // 172–300 at y 160 leaves only the left of the three below spots free.
+    const below = crowdOf([placed('r', 236, 160, 128)]);
+
+    expect(layoutPills([...level, below, crowded], full, box).get(crowded.key)).toEqual({
+      anchor: 'left',
+      rise: 'below',
+      compact: false,
+      width: 120,
+    });
+  });
+
+  it('tries the nine spots again as a bare disc before it stands its ground', () => {
+    // A wall across the level and above bands, and two pins leaving only 120–180 free below.
+    const wall = crowdOf([placed('w', 150, 70, 300)]);
+    const gap = [crowdOf([placed('g1', 60, 132, 120)]), crowdOf([placed('g2', 240, 132, 120)])];
+
+    expect(layoutPills([wall, ...gap, crowded], full, box).get(crowded.key)).toEqual({
+      anchor: 'centre',
+      rise: 'below',
+      compact: true,
+      width: PIN_HEIGHT_PX,
+    });
+  });
+
+  it('leaves a pill that fits nowhere at its layer placement', () => {
+    const buried = crowdOf([placed('b1', 150, 100, 300)]);
+
+    expect(layoutPills([buried, crowded], full, box).get(crowded.key)).toEqual({
+      anchor: 'centre',
+      rise: 'level',
+      compact: true,
+      width: PIN_HEIGHT_PX,
+    });
+  });
+
+  it('hangs a pill clear of the page’s chrome at the map’s foot', () => {
+    const atFoot = crowdOf([placed('x', 150, 160), placed('y', 150, 160)]);
+    const nearMe: Rect = { left: 100, top: 156, right: 300, bottom: 200 };
+
+    expect(layoutPills([atFoot], full, pane(300, 200, [nearMe])).get(atFoot.key)).toEqual({
+      anchor: 'centre',
+      rise: 'above',
+      compact: false,
+      width: 120,
+    });
+  });
+
+  it('hangs a pill clear of the tourist’s own dot', () => {
+    // The 20 px dot with its 2 px margin, just above the crowd — the record's Dhërmi case.
+    const dot: Rect = { left: 138, top: 66, right: 162, bottom: 90 };
+
+    expect(layoutPills([crowded], full, pane(300, 200, [dot])).get(crowded.key)).toEqual({
+      anchor: 'centre',
+      rise: 'below',
+      compact: false,
+      width: 120,
+    });
+  });
+
+  it('confines a pill to the window, which need not start at the box’s own top', () => {
+    const underHeader = { window: { left: 0, top: 90, right: 300, bottom: 200 }, noGo: [] };
+
+    expect(layoutPills([crowded], full, underHeader).get(crowded.key)).toEqual({
+      anchor: 'centre',
+      rise: 'below',
+      compact: false,
+      width: 120,
+    });
   });
 });

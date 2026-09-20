@@ -380,6 +380,139 @@ describe('VenuePinLayer', () => {
     });
   });
 
+  describe('dusk', () => {
+    function closed(pin: VenuePin): VenuePin {
+      return { ...pin, card: { ...pin.card, salesClosed: true } };
+    }
+
+    it('greys a lone pin whose own sales for the day have closed', async () => {
+      await render([closed(AURORA)]);
+      expect(buttons('map-venue-pin')[0].hasAttribute('data-dusk')).toBe(true);
+    });
+
+    it('leaves a lone pin still selling alone', async () => {
+      await render([AURORA]);
+      expect(buttons('map-venue-pin')[0].hasAttribute('data-dusk')).toBe(false);
+    });
+
+    it('greys a crowd only when every member has closed', async () => {
+      await render([closed(MIRAMAR), LORI]);
+      expect(buttons('map-place-pill')[0].hasAttribute('data-dusk')).toBe(false);
+
+      await render([closed(MIRAMAR), closed(LORI)]);
+      expect(buttons('map-place-pill')[0].hasAttribute('data-dusk')).toBe(true);
+    });
+
+    it('strikes the price and leaves the name, so dusk is never carried by colour alone', async () => {
+      await render([closed(MIRAMAR), closed(LORI)]);
+
+      const [pill] = buttons('map-place-pill');
+      expect(pill.querySelector('.pin-price')?.textContent?.trim()).toBe('from €21');
+      expect(pill.className).toContain('data-dusk:[&_.pin-price]:line-through');
+    });
+  });
+
+  describe('the row the pointer is on', () => {
+    function light(id: string | null): void {
+      fixture.componentRef.setInput('highlighted', id);
+      fixture.detectChanges();
+    }
+
+    it('lights the lone pin of the venue whose row is under the pointer', async () => {
+      await render([AURORA]);
+      expect(buttons('map-venue-pin')[0].hasAttribute('data-hover')).toBe(false);
+
+      light('3');
+
+      expect(buttons('map-venue-pin')[0].hasAttribute('data-hover')).toBe(true);
+    });
+
+    it('lights a crowd’s pill for any one of its members, since the pill is what is drawn', async () => {
+      await render([MIRAMAR, LORI]);
+
+      light('2');
+
+      expect(buttons('map-place-pill')[0].hasAttribute('data-hover')).toBe(true);
+    });
+
+    it('lights nothing once the pointer has left the list', async () => {
+      await render([AURORA]);
+      light('3');
+
+      light(null);
+
+      expect(buttons('map-venue-pin')[0].hasAttribute('data-hover')).toBe(false);
+    });
+  });
+
+  describe('the placement inputs the host hands in', () => {
+    /** The trio sits on the camera's centre, which in jsdom is the layer's own corner. */
+    async function renderDhermi(): Promise<void> {
+      await render([HAVANA, FOLIE, SUN_CLUB]);
+      handle.setView({ center: DHERMI, zoom: RIVIERA_MAP_OPTIONS.maxZoom });
+      fixture.detectChanges();
+    }
+
+    function place(input: 'noGo' | 'window', value: unknown): HTMLButtonElement {
+      fixture.componentRef.setInput(input, value);
+      fixture.detectChanges();
+      return buttons('map-place-pill')[0];
+    }
+
+    it('reports every lone pin’s box, for a host deciding where its own chrome goes', async () => {
+      await render([AURORA]);
+      const { x, y } = handle.project(AURORA.at);
+
+      expect(fixture.componentInstance.loneBoxes()).toEqual([
+        { left: x - 28.5, top: y - 22, right: x + 28.5, bottom: y + 22 },
+      ]);
+    });
+
+    it('reports no box for a crowd, whose pill is free to move around the chrome', async () => {
+      await render([MIRAMAR, LORI]);
+      expect(fixture.componentInstance.loneBoxes()).toEqual([]);
+    });
+
+    it('sits a pill on its point when the host hands nothing', async () => {
+      await renderDhermi();
+      const [pill] = buttons('map-place-pill');
+
+      expect(pill.style.translate).toBe('-50% -50%');
+      expect(pill.style.top).toBe('0px');
+    });
+
+    it('hangs a pill clear of a no-go box', async () => {
+      await renderDhermi();
+      // Over the pill's own line and the one above it, leaving the line below free.
+      const chrome = { left: -100, top: -60, right: 100, bottom: -10 };
+
+      expect(place('noGo', [chrome]).style.top).toBe('32px');
+    });
+
+    it('confines a pill to the window', async () => {
+      await renderDhermi();
+      const underHeader = { left: -200, top: -10, right: 200, bottom: 100 };
+
+      expect(place('window', underHeader).style.top).toBe('32px');
+    });
+
+    it('leaves the crowd’s own members on its point while the pill hangs', async () => {
+      await renderDhermi();
+      place('window', { left: -200, top: -10, right: 200, bottom: 100 });
+
+      expect(buttons('map-crowd-member').map((member) => member.style.top)).toEqual(['0px', '0px']);
+    });
+
+    it('collapses a pill the window leaves no room for at all', async () => {
+      await renderDhermi();
+      const sliver = { left: -200, top: -10, right: 200, bottom: 0 };
+      const pill = place('window', sliver);
+
+      expect(pill.style.top).toBe('0px');
+      expect(text(pill)).toBe('3');
+    });
+  });
+
   describe('focus', () => {
     it("focuses a venue's button on request, whichever face it wears", async () => {
       await render([MIRAMAR, LORI, AURORA]);

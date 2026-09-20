@@ -4,11 +4,13 @@
     appTouchTarget
     [class]="slotClass(slot)"
     [style.left.px]="slot.place.crowd.x"
-    [style.top.px]="slot.place.crowd.y"
+    [style.top.px]="top(slot)"
     [style.translate]="translate(slot)"
     [attr.data-testid]="testId(slot)"
     [attr.data-pin]="slot.member.pin.id"
     [attr.data-here]="slot.kind === 'place' && slot.place.here ? '' : null"
+    [attr.data-dusk]="dusk(slot) ? '' : null"
+    [attr.data-hover]="lit(slot) ? '' : null"
     [attr.aria-label]="label(slot)"
     [attr.aria-expanded]="expanded(slot)"
     (click)="press(slot)"
@@ -16,7 +18,9 @@
     @switch (slot.kind) {
       @case ('lone') {
         <!-- The label carries the price's meaning; the face alone would announce a bare `€25` or a dot. -->
-        <span aria-hidden="true">{{ slot.member.pin.card.priceLabel ?? '●' }}</span>
+        <span aria-hidden="true" [class.pin-price]="slot.member.pin.card.priceLabel !== null">{{
+          slot.member.pin.card.priceLabel ?? '●'
+        }}</span>
       }
       @case ('place') {
         @if (!slot.place.placement.compact) {
@@ -25,7 +29,9 @@
             <span class="text-[12.5px] leading-[14px] font-semibold">{{ title(slot.place) }}</span
             >&ngsp;
             @if (subtitle(slot.place); as line) {
-              <span class="text-[11px] leading-[13px] font-extrabold tabular-nums">{{ line }}</span>
+              <span class="pin-price text-[11px] leading-[13px] font-extrabold tabular-nums">{{
+                line
+              }}</span>
             }
           </span>
         }
