@@ -2,15 +2,18 @@ import { CDPSession, expect, Locator, Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import { mockMapResources } from './support/map-resources';
 import { expectTouchManipulation } from './support/mobile-zoom';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
  * The riviera map sheet on Discover behind `?map=sheet`: the map as the ground under the
  * glass header, the cards as a sheet with three resting heights, the head one row carrying the
- * query, the row the pin's preview, Near me's three arms. The fake engine draws the ground, so
- * the geometry is measured here in a real Chromium: the sheet rests at half with the first row
- * at y 493 at 390, 430, 768 and 820, and the flicks are real CDP touch, 10 steps over 150 ms.
+ * query, the row the pin's preview, Near me's three arms. The ground opens as the **map
+ * poster** — a still under the pins, no engine — and the fake engine takes over when something
+ * has to move the camera, so the geometry is measured here in a real Chromium: the sheet rests
+ * at half with the first row at y 493 at 390, 430, 768 and 820, and the flicks are real CDP
+ * touch, 10 steps over 150 ms. The first paint's cost is counted against the REAL adapter.
  *
  * <p>What the flicks prove: a `snap-always` target holds a fling that has not yet passed it,
  * and cannot hold one the finger has already carried the sheet past — Chrome then snaps to the
@@ -91,12 +94,54 @@ async function mockApi(page: Page): Promise<() => number> {
   return () => venueRequests;
 }
 
+/** The ground: the poster on a phone or tablet, the fake's surface above the widest bucket or once woken. */
+function ground(page: Page): Locator {
+  return page.locator('[data-testid="sheet-poster"], [data-testid="riviera-map-fake"]').first();
+}
+
 async function openSheet(page: Page, viewport = PHONE): Promise<void> {
   await page.setViewportSize({ width: viewport.width, height: viewport.height });
   await page.goto('/?map=sheet');
   await expect(page.getByTestId('venue-card')).toHaveCount(4);
-  await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+  await expect(ground(page)).toBeVisible();
   await expectDetent(page, 'half');
+}
+
+/** Every pin's box, crowd members included, so a swap can be shown to move none of them. */
+async function pinBoxes(page: Page): Promise<{ x: number; y: number }[]> {
+  return page.locator('[data-pin]').evaluateAll((pins) =>
+    pins.map((pin) => {
+      const box = pin.getBoundingClientRect();
+      return { x: box.x, y: box.y };
+    }),
+  );
+}
+
+/** Counts the WebGL contexts the page creates, one per canvas, from before any script runs. */
+async function countWebGl(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const counted = new WeakSet<HTMLCanvasElement>();
+    (window as unknown as { __glContexts: number }).__glContexts = 0;
+    type GetContext = (this: HTMLCanvasElement, ...args: unknown[]) => unknown;
+    const prototype = HTMLCanvasElement.prototype as unknown as Record<string, GetContext>;
+    const original = prototype['getContext'];
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      kind: string,
+      ...rest: unknown[]
+    ) {
+      const context = original.call(this, kind, ...rest);
+      if (context && kind.includes('webgl') && !counted.has(this)) {
+        counted.add(this);
+        (window as unknown as { __glContexts: number }).__glContexts += 1;
+      }
+      return context;
+    } as typeof HTMLCanvasElement.prototype.getContext;
+  });
+}
+
+function webGlContexts(page: Page): Promise<number> {
+  return page.evaluate(() => (window as unknown as { __glContexts: number }).__glContexts);
 }
 
 function scroller(page: Page): Locator {
@@ -197,6 +242,15 @@ test.describe('Discover sheet — rests on measured chrome', () => {
       expect(credit.x + credit.width + 8).toBeLessThanOrEqual(nearMe.x);
       await expect(page.getByTestId('map-zoom-in')).toHaveCount(0);
       await expect(page.getByTestId('sheet-map-pill')).toHaveCount(0);
+
+      // The ground is the poster, centred and cropped to the pane with no fill either side, anchored at the top.
+      await expect(page.getByTestId('sheet-poster')).toBeVisible();
+      const poster = (await page.getByTestId('poster-image').boundingBox())!;
+      expect(poster.x).toBeLessThanOrEqual(0);
+      expect(poster.x + poster.width).toBeGreaterThanOrEqual(viewport.width);
+      expect(Math.round(poster.y)).toBe(0);
+      expect(poster.height).toBeGreaterThanOrEqual(viewport.height);
+      await expect(page.getByTestId('riviera-map-fake')).toHaveCount(0);
 
       // The tablet band lays the rows in two columns; a phone in one.
       const columns = await page
@@ -299,8 +353,8 @@ test.describe('Discover sheet — the browser’s own latching', () => {
     await openSheet(page);
     const list = page.getByTestId('sheet-list');
 
-    // Aurora Bay's pin: the second row, which can reach the top (the last row cannot, as a scroller clamps).
-    await page.locator('[data-pin="2"]').click();
+    // Aurora Bay's pin: the second row, which can reach the top (the last row cannot, as a scroller clamps). At the poster's zoom it is a crowd member, so the keyboard opens it.
+    await page.locator('[data-pin="2"]').press('Enter');
     const row = page.locator('[data-venue-pin="2"]');
     await expect(row).toHaveAttribute('data-selected', '');
     await expect(row.getByTestId('venue-card')).toHaveAttribute('aria-current', 'true');
@@ -484,18 +538,21 @@ test.describe('Discover sheet — the coast picker’s ribbon', () => {
     await mockApi(page);
   });
 
-  test('opens one more map and closes it: the fake surfaces count 1, 2, 1', async ({ page }) => {
+  test('opens the only map and closes it: the ground is a poster, so the fake surfaces count 0, 1, 0', async ({
+    page,
+  }) => {
     await openSheet(page);
     const maps = page.getByTestId('riviera-map-fake');
-    await expect(maps).toHaveCount(1);
+    await expect(maps).toHaveCount(0);
 
     await page.getByTestId('head-place').click();
-    await expect(maps).toHaveCount(2);
+    await expect(maps).toHaveCount(1);
     await expect(page.getByTestId('picker-ribbon').getByTestId('riviera-map-fake')).toBeVisible();
 
     await page.getByTestId('picker-close').click();
     await expect(page.getByTestId('coast-picker')).toHaveCount(0);
-    await expect(maps).toHaveCount(1);
+    await expect(maps).toHaveCount(0);
+    await expect(page.getByTestId('sheet-poster')).toBeVisible();
   });
 
   test('every beach has a dot in the ribbon and a leader from it to its row, clear of the row’s text', async ({
@@ -616,6 +673,144 @@ test.describe('Discover sheet — the coast picker’s ribbon', () => {
 
     await expectNoSeriousAxeViolations(page, 'the coast picker with its ribbon');
     await expectTouchTargets(page, 'the coast picker with its ribbon');
+  });
+});
+
+test.describe('Discover sheet — the poster', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockApi(page);
+  });
+
+  test('the first paint is a poster: 0 map requests, 0 WebGL contexts, one image — and the counters are live', async ({
+    page,
+  }) => {
+    // The REAL adapter, fed the committed resources: a mounted map would show in both counts.
+    await countWebGl(page);
+    await mockMapResources(page);
+    let mapRequests = 0;
+    let posterRequests = 0;
+    page.on('request', (request) => {
+      const pathname = new URL(request.url()).pathname;
+      if (pathname.startsWith('/map/')) mapRequests += 1;
+      if (pathname.startsWith('/posters/')) posterRequests += 1;
+    });
+    await page.setViewportSize({ width: PHONE.width, height: PHONE.height });
+    await page.goto('/?map=sheet');
+    await expect(page.getByTestId('venue-card')).toHaveCount(4);
+    await expectDetent(page, 'half');
+    const image = page.getByTestId('poster-image');
+    await expect(image).toHaveAttribute('src', '/posters/HIMARE-440@2x.jpg');
+    await expect
+      .poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth))
+      .toBeGreaterThan(0);
+    await expect(page.locator('[data-pin]')).toHaveCount(4);
+    await expect(page.getByTestId('map-attribution')).toHaveText(
+      '© OpenMapTiles © OpenStreetMap contributors',
+    );
+    await expect(page.getByTestId('map-attribution').getByRole('link')).toHaveCount(2);
+
+    expect(mapRequests).toBe(0);
+    expect(posterRequests).toBe(1);
+    expect(await webGlContexts(page)).toBe(0);
+    await expect(page.getByTestId('riviera-map-canvas')).toHaveCount(0);
+
+    // A finger on the ground wakes the real map, which costs what a live map costs.
+    await page.mouse.move(195, 200);
+    await page.mouse.down();
+    await expect(page.locator('[data-testid="riviera-map-canvas"] canvas')).toHaveCount(1);
+    await expect.poll(() => mapRequests).toBeGreaterThan(0);
+    await expect.poll(() => webGlContexts(page)).toBe(1);
+    await page.mouse.up();
+  });
+
+  test.describe('fake engine', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => {
+        (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
+      });
+    });
+
+    test('a drag on the ground swaps the live map in with the pins where they were', async ({
+      page,
+    }) => {
+      await openSheet(page);
+      await expect(page.getByTestId('riviera-map-fake')).toHaveCount(0);
+      const before = await pinBoxes(page);
+      expect(before).toHaveLength(4);
+
+      await page.mouse.move(195, 200);
+      await page.mouse.down();
+
+      await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+      await expect(page.getByTestId('sheet-poster')).toHaveCount(0);
+      await settle(page);
+      const after = await pinBoxes(page);
+      expect(after).toHaveLength(before.length);
+      for (const [index, box] of after.entries()) {
+        expect(Math.abs(box.x - before[index].x), `pin ${index} x`).toBeLessThanOrEqual(1);
+        expect(Math.abs(box.y - before[index].y), `pin ${index} y`).toBeLessThanOrEqual(1);
+      }
+      await page.mouse.up();
+    });
+
+    test('a crowd press swaps the live map in and separates the crowd', async ({ page }) => {
+      await openSheet(page);
+      // Palasë and Dhërmi crowd at the region's scale; Jalë and Borsh stand alone.
+      await expect(page.getByTestId('map-place-pill')).toHaveCount(1);
+      await expect(page.getByTestId('map-venue-pin')).toHaveCount(2);
+
+      await page.getByTestId('map-place-pill').click();
+
+      await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+      await expect(page.getByTestId('sheet-poster')).toHaveCount(0);
+      await expect(page.getByTestId('map-place-pill')).toHaveCount(0);
+      await expect(page.getByTestId('map-venue-pin')).toHaveCount(4);
+      await expect(page.getByTestId('head-title')).toHaveText('Himarë');
+    });
+
+    test('at 900 wide, above the widest bucket, the ground is live from the first paint', async ({
+      page,
+    }) => {
+      await openSheet(page, { width: 900, height: 1100, tabBar: 0 });
+
+      await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+      await expect(page.getByTestId('sheet-poster')).toHaveCount(0);
+      await expect(page.getByTestId('poster-image')).toHaveCount(0);
+    });
+  });
+
+  test.describe('fake engine, touch', () => {
+    test.use({ hasTouch: true });
+
+    test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => {
+        (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
+      });
+    });
+
+    test('the sheet pulled to peek swaps the live map in and fits the window it leaves', async ({
+      page,
+    }) => {
+      await openSheet(page);
+      await expect(page.getByTestId('riviera-map-fake')).toHaveCount(0);
+      const cdp = await page.context().newCDPSession(page);
+
+      await flick(cdp, page, 200, 400, 750, 150);
+
+      await expectDetent(page, 'peek');
+      await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+      await expect(page.getByTestId('sheet-poster')).toHaveCount(0);
+      // The pins are fitted into the window the sheet leaves: the header to the foot row above peek.
+      const peekTop = PHONE.height - PHONE.tabBar - 78;
+      const boxes = await page
+        .locator('[data-pin]')
+        .evaluateAll((pins) => pins.map((pin) => pin.getBoundingClientRect().toJSON() as DOMRect));
+      expect(boxes.length).toBe(4);
+      for (const box of boxes) {
+        expect(box.y).toBeGreaterThanOrEqual(HEADER_PX);
+        expect(box.y + box.height).toBeLessThanOrEqual(peekTop - 56);
+      }
+    });
   });
 });
 

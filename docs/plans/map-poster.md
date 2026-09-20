@@ -178,12 +178,12 @@ and tablet by the poster until the first camera move; every shipped behaviour is
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The pins jump at the swap: the live map's camera differs from the poster's | medium | high (the whole point of the poster) | the live view is `PosterHandle.liveView(pane)` — the geography at the pane's centre — and the camera effect skips a fit whose key (detent, targets, viewport) the poster already framed; AC-2/AC-3 pin it at the fake engine and in Chromium | agent | unit-pinned in phase 3 (`home.spec.ts` › "a finger on the ground …"); Chromium in phase 5 |
-| R-2 | A poster with pane fill either side (the round-11 tablet defect) | low | medium | buckets cover 320–834; `posterFor` returns none above; AC-5 | agent | open |
+| R-1 | The pins jump at the swap: the live map's camera differs from the poster's | medium | high (the whole point of the poster) | the live view is `PosterHandle.liveView(pane)` — the geography at the pane's centre — and the camera effect skips a fit whose key (detent, targets, viewport) the poster already framed; AC-2/AC-3 pin it at the fake engine and in Chromium | agent | closed — `home.spec.ts` › "a finger on the ground …" and the e2e › "a drag on the ground …": every pin within 1 px |
+| R-2 | A poster with pane fill either side (the round-11 tablet defect) | low | medium | buckets cover 320–834; `posterFor` returns none above; AC-5 | agent | closed — the first-paint block asserts the poster's box spans the pane at 320/390/430/768/820; 900 is live |
 | R-3 | The poster set's weight in the repository (172 JPEGs per regeneration) | medium | medium (history grows per regeneration, like the archive) | measured before committing; a budget in `map-poster-set.spec.ts`; the runbook counts regenerations with the archive's; ADR-0022 amendment records the size and the levers (tablet 3× first) | agent | measured: 21.6 MB at quality 80, budget 40 MB in the spec; the amendment and runbook are phase 6 |
-| R-4 | The renderer drifts from the page (a different camera, tile size or window) | low | high | one module (`map-poster.ts`) computes the camera for both; the renderer bundles it with esbuild rather than re-implementing it; `map-poster.spec.ts` pins the worked example | agent | open |
-| R-5 | The `/map/**` count is asserted with the fake engine, which never requests anything | medium | high (a wrong green) | the cost test runs the REAL adapter under `mockMapResources`, and proves the counter by waking the map and seeing both counts rise | agent | open |
-| R-6 | `animate.leave` in jsdom: no transition events, the poster never leaves | low | low | TestBed disables animations by default (docs), so the element is removed at once in specs; Chromium proves the fade | agent | open |
+| R-4 | The renderer drifts from the page (a different camera, tile size or window) | low | high | one module (`map-poster.ts`) computes the camera for both; the renderer bundles it with esbuild rather than re-implementing it; `map-poster.spec.ts` pins the worked example | agent | closed — the renderer imports the esbuild bundle of `map-poster.ts`; no second camera exists |
+| R-5 | The `/map/**` count is asserted with the fake engine, which never requests anything | medium | high (a wrong green) | the cost test runs the REAL adapter under `mockMapResources`, and proves the counter by waking the map and seeing both counts rise | agent | closed — `discover-sheet.e2e.ts` › "the first paint is a poster …": 0/0 before the wake, >0 and 1 after |
+| R-6 | `animate.leave` in jsdom: no transition events, the poster never leaves | low | low | TestBed disables animations by default (docs), so the element is removed at once in specs; Chromium proves the fade | agent | closed — the specs see the poster gone after the load; the e2e sees it leave after the fade |
 | R-7 | Sprites missing on the posters (the absolute-URL validation) | high | medium (icons blank) | `transformStyle` in the render page, as the adapter does; verified by eye on a render | agent | closed — the render page rewrites the style; road shields drawn on the Himarë render |
 
 ## Open questions / Assumptions
@@ -249,9 +249,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `implement (phase 6 — close-out docs)`
 
-**Next action:** phase 5 red: the poster describes in `discover-sheet.e2e.ts`.
+**Next action:** the runbook, the ADR amendment, the glossary; then ready-for-review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -260,7 +260,7 @@ N/A — no contract change.
 | 2 — the credit as a shared pill; `RivieraMap.loaded` | ✅ | this commit |
 | 3 — the page: the poster ground, the pins through the still handle, the swap | ✅ | this commit |
 | 4 — the renderer, the poster set, the completeness spec | ✅ | this commit — 172 files, 21.6 MB at quality 80 |
-| 5 — the mocked e2e: cost, parity, swaps, buckets | | |
+| 5 — the mocked e2e: cost, parity, swaps, buckets | ✅ | this commit — 26/26 in `discover-sheet.e2e.ts` locally |
 | 6 — close-out: runbook, ADR-0022 amendment, CONTEXT.md, retire the #1161 plan, docs-freshness | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -372,10 +372,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/e2e/discover-sheet.e2e.ts`
 
-- [ ] Red (Chromium): the tests named in AC-1, AC-2, AC-3, AC-5 —
+- [x] Red (Chromium): the tests named in AC-1, AC-2, AC-3, AC-5 —
   `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts e2e/discover-sheet.e2e.ts`.
-- [ ] Green; then the whole file and `touch-targets-tourist.e2e.ts`.
-- [ ] Commit — `Prove the poster's first paint costs nothing under /map and swaps without a jump (#1158)`.
+- [x] Green; then the whole file (`touch-targets-tourist.e2e.ts` never visits the sheet route).
+- [x] Commit — `Prove the poster's first paint costs nothing under /map and swaps without a jump (#1158)`.
 
 ## Phase 6 — Close-out
 
