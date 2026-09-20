@@ -1066,11 +1066,17 @@ export class Home {
    * stays mounted across a step, so the pressed chevron keeps it. In sheet mode the row is the
    * preview: it lights and goes to the list's top, and a sheet at peek rises to half.
    */
+  /**
+   * Behind the flag the ROW is the preview, so a press destroys nothing and focus stays on the pin
+   * that took it. Only the unflagged page opens a preview card, and only there is focus moved into
+   * it — `focusMover` lands on the page host when its target is absent, which on the panel would
+   * take focus off the pressed pin for nothing (WCAG 2.4.3).
+   */
   protected onPinSelected(id: string): void {
     this.selectedVenue.set(id);
     if (this.sheetMode()) {
       this.raiseFromPeek();
-    } else if (!this.previewHoldsFocus()) {
+    } else if (!this.panelMode() && !this.previewHoldsFocus()) {
       this.focusAfterRender('venue-preview');
     }
     this.revealCard(id);

@@ -2406,6 +2406,17 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
       expect(rows().filter((row) => row.hasAttribute('aria-current'))).toHaveLength(1);
     });
 
+    it('leaves focus on the pressed pin: the row is the preview, so nothing is destroyed', async () => {
+      const fixture = await panelPage();
+      const pin = byTestId(fixture, 'map-venue-pin')!;
+      pin.focus();
+
+      pin.click();
+      await settle(fixture);
+
+      expect(document.activeElement).toBe(pin);
+    });
+
     it('lights a venue’s pin while the pointer is on its row, and only its own', async () => {
       const fixture = await panelPage();
       const rows = [...el(fixture).querySelectorAll<HTMLElement>('[data-testid="venue-row"]')];

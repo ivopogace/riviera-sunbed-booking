@@ -30,7 +30,7 @@ model in `docs/architecture/domain-model.md`.
   single-transaction erase as the operator's own delete, driven through the same storage call, but
   role-gated on the platform-admin flag (`is_admin`) instead of venue ownership: it exists precisely
   to reach a venue the actor does **not** own, which the venue-scoped delete refuses with `403
-  NOT_VENUE_OWNER`. Scoped to one **slot**, not one image — the same picture published in a second
+NOT_VENUE_OWNER`. Scoped to one **slot**, not one image — the same picture published in a second
   slot keeps serving from that slot's variants, so each published slot is its own takedown.
 - **Photo moderation** — the platform admin's read-then-remove pair over any venue's photos:
   the **Photo takedown** above plus the slot read that makes it operable
@@ -94,19 +94,19 @@ model in `docs/architecture/domain-model.md`.
   below), **peek** (the sheet's head alone above the tab bar, the map filling the rest) and
   **full** (the list, a sliver of map kept under the header, a `Map` pill as the way back). A
   finger moves it as it scrolls a page; the grabber's tap cycles half and full, and peek is a
-  drag's only. Behind the map flag on Discover; from `lg` the same flag pins the same list open as
-  the **venue panel** down the window's left, beside a map inset from the other three edges.
-  _Avoid_: drawer, bottom sheet (as a term), modal.
+  drag's only. Behind the map flag on Discover, below `lg`; from `lg` the same flag lays the same
+  list out as the **venue panel**. _Avoid_: drawer, bottom sheet (as a term), modal.
 - **Sheet head** — the venue sheet's one row carrying the query: the **place** (a press opens the
   **coast picker**) over the selling line (`8 of 11 selling today`, each venue's sales close for
   today), the region's beaches gathered into one chip, and the day. A press on a chip opens its
   rail of chips under the row; at peek the sheet rises to half first. The answer to Near me when
   it is not a position stands in the same slot. On the venue sheet the **row is the pin's
-  preview**: a pin press lights the venue's row and brings it to the list's top — to the panel's
-  middle on the venue panel — and no pin preview card opens. The panel's rows are flat, carry the
-  review count the phone's card has no room for, and the selected one expands to its amenities and
-  its booking mode when that is not the default. _Avoid_: toolbar, filter bar (that is the
-  unflagged desktop's).
+  preview**: a pin press lights the venue's row and brings it into view, and no pin preview card
+  opens. _Avoid_: toolbar, filter bar (that is the unflagged desktop's).
+- **Venue panel** — from `lg`, the Discover list pinned open down the window's left beside a map
+  of one region inset from the other three edges: the venue sheet's own head and groups, its rows
+  flat rather than carded, and the **row is the pin's preview** there too. The one selected row
+  expands. _Avoid_: sidebar, split view, master-detail.
 - **Foot row** — the phone's map chrome on one row at the map's foot, over the venue sheet at
   rest: Near me on one side, the tile credit on the other; no zoom column (a pinch zooms). The
   pins are fitted into the map above it. _Avoid_: bottom bar.
@@ -197,7 +197,7 @@ model in `docs/architecture/domain-model.md`.
 - **Pool** — which channel a set belongs to: **online pool** (bookable in the app)
   or **walk-in pool** (held back for guests who arrive in person). A given set is in
   exactly one pool. Online bookings can only ever target online-pool sets — a rule about
-  *new* bookings: a set can change pool at any time, and its existing bookings stay on their
+  _new_ bookings: a set can change pool at any time, and its existing bookings stay on their
   dates.
 - **Walk-in** — a guest who takes a set in person, without an app booking. Staff
   mark walk-in sets taken in the app.
@@ -211,8 +211,8 @@ model in `docs/architecture/domain-model.md`.
   beach map renders. Keyed by `(set, date)`.
 - **Availability calendar** — how many of a venue's sets are free on each day across a
   window of dates, as counts rather than per-set state. A different question from
-  **Availability** above, which is one set on one date: the calendar answers *which days
-  are worth choosing*, so a tourist picks a date already knowing the answer instead of
+  **Availability** above, which is one set on one date: the calendar answers _which days
+  are worth choosing_, so a tourist picks a date already knowing the answer instead of
   learning it after the map redraws. **A snapshot, never a hold** — a day showing free
   capacity can be full by the time a set is claimed; only the claim decides.
 - **Booking** — a tourist's reservation of a specific set for a specific date, with
@@ -234,7 +234,7 @@ model in `docs/architecture/domain-model.md`.
   before the abandoned sweep cancels — never past the day's end, because once the day is
   over there is nothing left to buy (invariant #4).
 - **Withdraw** — the guest's own retraction of their pending request, before the venue has
-  decided (`WITHDRAWN`). Distinct from **cancel**, which ends a *confirmed* booking and carries
+  decided (`WITHDRAWN`). Distinct from **cancel**, which ends a _confirmed_ booking and carries
   a refund decision: a withdrawn request was never charged, so there is nothing to refund.
   Distinct from **decline** (the venue's no) and **expire** (nobody's answer) only in who acted.
 - **Booking code** — the unguessable bearer credential staff verify on arrival.
@@ -261,7 +261,7 @@ model in `docs/architecture/domain-model.md`.
 
 - **Commission** — the platform's per-booking cut; rate stored per venue, in exact-integer basis
   points. Two readings of "the rate", and which one applies depends on the question:
-  the **live rate** governs every *decision* made from now on (an accrual, a refund computation),
+  the **live rate** governs every _decision_ made from now on (an accrual, a refund computation),
   while the **rate schedule** records which service dates a rate applied to, for figures that
   describe days already sold. Only the platform admin may change it — a venue does not set its own
   commission.
@@ -307,8 +307,8 @@ model in `docs/architecture/domain-model.md`.
   server-side, and only within the **cancellation window**.
 - **Cancellation window** — how long a confirmed booking may be cancelled at all:
   from booking until `00:00 Europe/Tirane` on the service date, in three named phases
-  (`booking.vocabulary.CancellationWindow`): **FREE** (before the cutoff — the *full*
-  refund tier), **LATE** (cutoff passed, service day not open — the *partial*/*none*
+  (`booking.vocabulary.CancellationWindow`): **FREE** (before the cutoff — the _full_
+  refund tier), **LATE** (cutoff passed, service day not open — the _partial_/_none_
   tier), **CLOSED** (the service day has opened — the cancellation is refused outright,
   not refunded at a tier, because the guest can already be consuming the stay). The
   venue's own weather refund is outside the window and stays available for past dates.
@@ -358,7 +358,7 @@ model in `docs/architecture/domain-model.md`.
   booking still produced a financial record). When no basis remains, the contact must go — the
   storage-limitation duty (GDPR Art 5(1)(e)), the mirror image of the statutory-retention exception.
 - **Retention window** — how far back a retention basis may reach; configuration, not a constant, and a
-  **legal** determination rather than an engineering one. The cutoff is *today in `Europe/Tirane`* minus
+  **legal** determination rather than an engineering one. The cutoff is _today in `Europe/Tirane`_ minus
   the window (invariant #6).
 - **Retention sweep** — the scheduled job that tombstones guest contacts with no remaining retention
   basis. Proactive where **erasure** is reactive, but it writes the same **tombstone**
@@ -370,7 +370,7 @@ model in `docs/architecture/domain-model.md`.
 - **Review** — a tourist's verdict on one delivered stay: a star rating of 1–5, an optional bounded
   comment, and the **display name** it is attributed to, recorded against the booking that stay was
   made under. **One per booking** — a stay carries at most one, enforced by the database. It is a
-  *verified-stay* review: only a booking the venue actually checked in can carry one, which is what
+  _verified-stay_ review: only a booking the venue actually checked in can carry one, which is what
   makes the aggregate resistant to gaming.
 - **Display name** — the name a review is shown under, chosen by its author rather than read off
   their account. It is required on every review, defaults
@@ -414,17 +414,17 @@ model in `docs/architecture/domain-model.md`.
   deliverability record, not a cache** — entries are never deleted, and deliberately survive a
   tourist's **erasure** (ADR-0012), so someone who objected and later re-books with the same
   address stays protected. Stored non-identifiably (a peppered hash plus the bare domain), so
-  nobody can read *who* is on it.
+  nobody can read _who_ is on it.
 - **Suppressed address** — an address currently on that list. The one invariant the whole
-  `notification` context exists to keep is *no send to a suppressed address*.
+  `notification` context exists to keep is _no send to a suppressed address_.
 - **Reinstatement** — a platform admin deliberately lifting a suppression, so the address is
   mailable again. The remedy for a bounce that turned out to be temporary (a full mailbox, a
   domain that came back). It is **not a deletion**: the entry stays and is marked lifted, so the
   history survives and a later bounce simply suppresses it again. Always an ops judgment call,
   never self-service and never a side-effect of erasure.
 
-  > Not to be confused with **operator reinstatement** below, which returns a *suspended operator
-  > account* to `ACTIVE`. Same verb, unrelated subjects: one acts on an email address in the
+  > Not to be confused with **operator reinstatement** below, which returns a _suspended operator
+  > account_ to `ACTIVE`. Same verb, unrelated subjects: one acts on an email address in the
   > do-not-mail record, the other on a person's ability to sign in.
 
 ## Operators (venue management side)
@@ -432,8 +432,8 @@ model in `docs/architecture/domain-model.md`.
 - **Operator** — an account that manages one or more venues (the venue's people, not the
   tourist). Owns the venues mapped to it; may act only on those. Distinct from the
   platform-wide admin surface.
-- **Venue ownership** — the operator↔venue mapping that answers *"does this operator own
-  this venue?"*. Every venue-scoped operation (beach-map edit, staff bookings, staff
+- **Venue ownership** — the operator↔venue mapping that answers _"does this operator own
+  this venue?"_. Every venue-scoped operation (beach-map edit, staff bookings, staff
   availability, weather refund, payout ledger) verifies it in the application service and
   returns **403** on a mismatch (object-level authorization, not role-level — invariant #13).
 - **Operator approval** — a platform admin's decision on a self-registered (`PENDING`) operator:
@@ -451,7 +451,7 @@ model in `docs/architecture/domain-model.md`.
   live sessions immediately, so a suspension takes effect now rather than at their next sign-in —
   and flips their venues' **venue visibility** (hidden while suspended, shown again
   on reinstatement; bookings already sold keep working either way).
-  An admin cannot suspend itself. Distinct from **reinstatement** in *Transactional mail* above,
+  An admin cannot suspend itself. Distinct from **reinstatement** in _Transactional mail_ above,
   which lifts a suppressed email address and has nothing to do with sign-in.
 
 ## Abuse hardening (both sides)
