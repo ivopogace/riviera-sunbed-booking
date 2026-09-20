@@ -33,6 +33,13 @@ export const POSTER_H = 380;
 export const HEADER_H = 73;
 /** What the half sheet leaves of the map below the header — Airbnb's own band, measured at 307. */
 export const MAP_AT_HALF = POSTER_H - HEADER_H;
+/**
+ * The phone map's foot row: Near me and the credit, 44 px, 12 px above the sheet. The fit keeps
+ * the pins above it (round 14: a lone pin under the chrome cannot be moved, and a pill boxed in
+ * between the chrome and the sheet had nowhere to go), so the window a poster or a live fit
+ * frames the pins in is the band less this row.
+ */
+export const FOOT = 56;
 /** 512 px tiles: `platform/map/style.json` declares no `tileSize` and MapLibre defaults a vector source to 512. */
 const TILE = 512;
 /**
@@ -43,16 +50,17 @@ const TILE = 512;
 export const BEACH_MAX_ZOOM = 15;
 
 /**
- * The camera a poster is rendered at: the pins fitted into the 390 × 307 window the half sheet
- * leaves under the header, then the centre dropped by half the header so the frame is the window,
- * not the poster. Deterministic on the fixtures, so the page and the driver agree without a file.
+ * The camera a poster is rendered at: the pins fitted into the 390 × 251 window between the
+ * header and the foot row the half sheet leaves, then the centre shifted so the frame is that
+ * window, not the poster. Deterministic on the fixtures, so the page and the driver agree without a file.
  */
 export function posterCamera(pins: readonly LngLat[], ceiling?: number): MapView | null {
-  const view = fitPins(pins, 390, MAP_AT_HALF, 0, 0, undefined, ceiling);
+  const view = fitPins(pins, 390, MAP_AT_HALF - FOOT, 0, 0, undefined, ceiling);
   if (view === null) return null;
   const perPixel = degreesPerPixel(view.zoom, view.center.lat);
+  // The pins' window sits HEADER_H below the poster's top and FOOT above its bottom: the centre moves up by half the difference.
   return {
-    center: { lng: view.center.lng, lat: view.center.lat + (HEADER_H / 2) * perPixel },
+    center: { lng: view.center.lng, lat: view.center.lat + ((HEADER_H - FOOT) / 2) * perPixel },
     zoom: view.zoom,
   };
 }

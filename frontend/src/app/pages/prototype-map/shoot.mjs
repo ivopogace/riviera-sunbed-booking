@@ -37,6 +37,10 @@ const LAPTOP = { width: 1440, height: 900 };
 const DESK = { width: 1920, height: 1080 };
 
 const HERE_DHERMI = '19.641,40.147';
+/** Tirana: inside the fence, 27 km inland of Golem — a position the region's poster cannot frame. */
+const HERE_TIRANA = '19.82,41.33';
+/** Rome: outside the fence — the pre-trip case, a tourist planning from home. */
+const HERE_ROME = '12.5,41.9';
 
 const NARROW = { width: 1024, height: 768 };
 /** The tablet band the sheet runs in with no tab bar under it: sm (640) to lg (1024). */
@@ -88,6 +92,23 @@ const SHOTS = [
     v: PHONE,
     url: `variant=Q&here=${HERE_DHERMI}&now=10:30`,
     pin: 0,
+  },
+  // round 14: the located state's three arms — on the beach (above), inland of the frame, off the fence
+  { name: 'Q-shore-phone-tirana', v: PHONE, url: `variant=Q&here=${HERE_TIRANA}&now=10:30` },
+  { name: 'Q-shore-phone-far', v: PHONE, url: `variant=Q&here=${HERE_ROME}&now=10:30` },
+  { name: 'Q-shore-1440-far', v: LAPTOP, url: `variant=Q&here=${HERE_ROME}&now=10:30` },
+  // round 14: a chip pressed at peek raises the sheet; the list's end clears the Map pill
+  {
+    name: 'Q-shore-phone-peek-day',
+    v: PHONE,
+    url: 'variant=Q&sheet=peek&now=10:30',
+    click: '[data-ctl="day"]',
+  },
+  {
+    name: 'Q-shore-phone-full-end',
+    v: PHONE,
+    url: 'variant=Q&sheet=full&now=10:30',
+    scroll: 100000,
   },
   { name: 'Q-shore-phone-sarande', v: PHONE, url: 'variant=Q&region=SARANDE&now=10:30' },
   { name: 'Q-shore-phone-himare', v: PHONE, url: 'variant=Q&region=HIMARE&now=10:30' },
@@ -274,6 +295,11 @@ const GEOMETRY = `(() => {
   const all = (sel) => [...document.querySelectorAll(sel)].filter((e) => e.getBoundingClientRect().width > 0);
   const bbox = (els) => { if (!els.length) return null; let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9; for (const e of els) { const b=e.getBoundingClientRect(); x1=Math.min(x1,b.left); y1=Math.min(y1,b.top); x2=Math.max(x2,b.right); y2=Math.max(y2,b.bottom);} return { x: Math.round(x1), y: Math.round(y1), w: Math.round(x2-x1), h: Math.round(y2-y1), n: els.length }; };
   const canvases = all('canvas').map(r);
+  // Pills on the page's chrome or on the tourist's dot: round 14's fault-8 measure, a pair per intersection.
+  const chrome = all('[data-ctl="near-me"], [data-testid="map-attribution"], [data-testid="map-zoom-in"], [data-testid="map-zoom-out"], [data-here-dot]').map((e) => ({ t: e.dataset.ctl ?? e.dataset.testid ?? 'here-dot', ...r(e) }));
+  const painted = all('[data-pin]').filter((e) => getComputedStyle(e).opacity !== '0' && getComputedStyle(e).visibility !== 'hidden');
+  const collisions = [];
+  for (const p of painted) { const a = r(p); for (const c of chrome) { const w = Math.min(a.x + a.w, c.x + c.w) - Math.max(a.x, c.x); const h = Math.min(a.y + a.h, c.y + c.h) - Math.max(a.y, c.y); if (w > 0 && h > 0) collisions.push({ pin: p.textContent.trim().replace(/\s+/g, ' ').slice(0, 24), on: c.t, w, h }); } }
   return {
     page: Math.round(document.documentElement.scrollHeight),
     scrollY: Math.round(window.scrollY),
@@ -296,6 +322,9 @@ const GEOMETRY = `(() => {
     gutter: all('[data-gutter] button').map((e) => ({ t: e.textContent.trim().replace(/\\s+/g, ' ').slice(0, 24), ...r(e) })),
     pane: r(document.querySelector('app-riviera-map')?.parentElement ?? null),
     listScroll: document.querySelector('[data-body]')?.scrollTop ?? null,
+    lastRow: r([...document.querySelectorAll('[data-row]')].at(-1) ?? null),
+    hereDot: r(document.querySelector('[data-here-dot]')),
+    collisions,
     webgl: window.__glContexts ?? null,
   };
 })()`;
@@ -485,7 +514,10 @@ for (const shot of SHOTS) {
         (g.pane && g.pins
           ? ` fill ${Math.round((100 * g.pins.w) / g.pane.w)}%×${Math.round((100 * g.pins.h) / g.pane.h)}%`
           : '') +
-        (g.sheet ? ` sheet ${g.sheet.y}` : ''),
+        (g.sheet ? ` sheet ${g.sheet.y}` : '') +
+        (g.collisions.length
+          ? ` COLLISIONS ${g.collisions.map((c) => `${c.pin}⟂${c.on} ${c.w}×${c.h}`).join(', ')}`
+          : ' collisions 0'),
     );
   } catch (e) {
     console.log(`FAILED ${e.message.split('\n')[0]}`);

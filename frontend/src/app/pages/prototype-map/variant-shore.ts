@@ -59,6 +59,7 @@ import {
   inject,
   input,
   output,
+  linkedSignal,
   signal,
   viewChild,
 } from '@angular/core';
@@ -102,6 +103,7 @@ import {
 import {
   HEADER_H,
   BEACH_MAX_ZOOM,
+  FOOT,
   POSTER_H,
   POSTER_W,
   PosterHandle,
@@ -114,6 +116,10 @@ import { PrototypeVenueCard } from './prototype-venue-card';
 import { PrototypeVenueRow } from './prototype-venue-row';
 
 const PHONE_DEFAULT_REGION = 'HIMARE';
+/** Nearer than this to the nearest beach, the tourist is on it and it is the title. */
+const ON_BEACH_KM = 3;
+/** `shared/riviera-map.ts`'s own words for a position outside its fence; verbatim, so the two agree. */
+const OFF_MAP_NOTE = 'You don’t seem to be on the Albanian riviera — the map hasn’t moved.';
 /** Tailwind's `lg`. */
 const WIDE_PX = 1024;
 /** Two row columns in the sheet from here: 600 px of sheet is two rows inside round 7's 300–400. */
@@ -166,9 +172,9 @@ const MERGED_FROM =
 const MERGED_COUNT =
   MERGED_FACE +
   ' after:text-[12.5px] after:leading-none after:font-bold after:text-riv-solid-btn-fill';
-/** A compact disc rescued by the vertical anchor, and how far it hangs off its point. */
+/** A compact disc rescued by the vertical anchor, and how far it hangs off its point: a 10 px gap (12 left `3 beaches` on the dot at Dhërmi by 1 px). */
 const HUNG_FACE = 'flex flex-col whitespace-nowrap text-left';
-const HUNG_PX = 34;
+const HUNG_PX = 32;
 
 type Detent = 'peek' | 'half' | 'full';
 
@@ -241,7 +247,7 @@ const GUTTER_PILL =
           [attr.aria-expanded]="pickerOpen()"
           (click)="pickerOpen.set(!pickerOpen())"
         >
-          @if (state().here !== null) {
+          @if (here() !== null) {
             <span class="text-[19px] leading-none text-riv-accent-ink" aria-hidden="true">◎</span>
           }
           <span class="flex min-w-0 flex-col">
@@ -283,7 +289,7 @@ const GUTTER_PILL =
           data-ctl="day"
           class="inline-flex shrink-0 items-center gap-1 rounded-full border border-riv-field-border bg-riv-field-fill px-3 text-[14px] font-semibold text-riv-card-ink"
           [attr.aria-expanded]="dayOpen()"
-          (click)="dayOpen.set(!dayOpen()); beachesOpen.set(false)"
+          (click)="toggleDay()"
         >
           {{ dayWord() }}
           <span class="text-[11px] text-riv-card-ink-faint" aria-hidden="true">▾</span>
@@ -303,6 +309,26 @@ const GUTTER_PILL =
                 {{ day.isToday ? 'Today' : day.weekday + ' ' + day.label }}
               </button>
             }
+          </div>
+        } @else if (nearMeNote(); as note) {
+          <!-- The answer to Near me when it is not a position: the shipped map's own words, in the rail's slot, off the map. -->
+          <div
+            [class]="RAIL + ' items-center'"
+            [animate.leave]="RAIL_LEAVE"
+            data-ctl="near-me-note"
+          >
+            <p role="alert" class="min-w-0 flex-1 text-[13px] leading-[1.4] text-riv-ink-soft">
+              {{ note }}
+            </p>
+            <button
+              type="button"
+              appTouchTarget
+              aria-label="Dismiss message"
+              class="inline-flex shrink-0 items-center justify-center rounded-full text-[19px] leading-none text-riv-ink-soft"
+              (click)="noteDismissed.set(true)"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
           </div>
         } @else if (beachesOpen()) {
           <div [class]="RAIL" [animate.leave]="RAIL_LEAVE" role="group" aria-label="Beach">
@@ -420,8 +446,9 @@ const GUTTER_PILL =
       @if (live() || wide()) {
         <div
           class="absolute inset-0 [&>app-riviera-map]:rounded-none"
-          [class]="wide() ? '' : PHONE_CHROME"
+          [class]="wide() ? '' : PHONE_CHROME + ' ' + creditSide()"
           [class.opacity-0]="!wide() && !liveReady()"
+          [style.--foot.px]="wide() ? null : footBottom()"
         >
           <app-riviera-map class="size-full" [nearMe]="false" (mapClick)="selected.set(null)" />
         </div>
@@ -485,11 +512,13 @@ const GUTTER_PILL =
           (narrowed)="filtered.emit({ beach: $event })"
         />
       }
+      <!-- The tourist's own dot paints over the pins (z-[5] to the layer's 4), as Google's blue dot does: the pass keeps pills off it, and where none can move this is the fallback. -->
       @if (hereDot(); as dot) {
         <span
-          class="pointer-events-none absolute z-[3] block size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-riv-solid-btn-fill bg-riv-solid-btn-ink shadow-[0_0_0_6px_rgba(10,79,94,0.18),0_4px_12px_rgba(7,42,58,0.35)]"
+          class="pointer-events-none absolute z-[5] block size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-riv-solid-btn-fill bg-riv-solid-btn-ink shadow-[0_0_0_6px_rgba(10,79,94,0.18),0_4px_12px_rgba(7,42,58,0.35)]"
           role="img"
           aria-label="You are here"
+          data-here-dot
           [style.left.px]="dot.x"
           [style.top.px]="dot.y"
         ></span>
@@ -501,22 +530,21 @@ const GUTTER_PILL =
           appTouchTarget
           data-ctl="near-me"
           class="absolute z-[8]"
-          [class.left-3]="wide()"
-          [class.right-3]="!wide()"
+          [class.left-3]="wide() || nearMeLeft()"
+          [class.right-3]="!wide() && !nearMeLeft()"
           [class]="
             MAP_BUTTON +
             ' ' +
-            (state().here !== null
+            (here() !== null
               ? 'border-riv-solid-btn-fill bg-riv-solid-btn-ink text-riv-solid-btn-fill'
               : 'border-riv-solid-btn-border bg-riv-solid-btn-fill text-riv-solid-btn-ink')
           "
-          [style.top.px]="wide() ? null : nearMeTop()"
-          [style.bottom.px]="wide() ? 12 : null"
-          [attr.aria-pressed]="state().here !== null"
+          [style.bottom.px]="wide() ? 12 : footBottom()"
+          [attr.aria-pressed]="here() !== null"
           (click)="locate()"
         >
           <span aria-hidden="true">◎</span>
-          {{ state().here !== null ? 'You are here' : 'Near me' }}
+          {{ here() !== null ? 'You are here' : 'Near me' }}
         </button>
       }
     </ng-template>
@@ -545,7 +573,7 @@ const GUTTER_PILL =
               <app-prototype-coast-picker
                 [region]="state().region"
                 [beach]="state().beach"
-                [located]="state().here !== null"
+                [located]="here() !== null"
                 (picked)="filtered.emit($event)"
                 (nearMe)="locate()"
                 (closed)="pickerOpen.set(false)"
@@ -622,7 +650,7 @@ const GUTTER_PILL =
           <div
             #body
             data-body
-            class="min-h-0 flex-1 px-3 pb-6 scrollbar-none"
+            class="min-h-0 flex-1 px-3 pb-[68px] scrollbar-none"
             [class]="
               (detent() === 'full' ? 'overflow-y-auto' : 'overflow-clip') +
               (seam() === 'opaque' ? ' bg-riv-tabbar-glass' : '')
@@ -656,7 +684,7 @@ const GUTTER_PILL =
         <app-prototype-coast-picker
           [region]="state().region"
           [beach]="state().beach"
-          [located]="state().here !== null"
+          [located]="here() !== null"
           (picked)="filtered.emit($event)"
           (nearMe)="locate()"
           (closed)="pickerOpen.set(false)"
@@ -686,7 +714,11 @@ export class VariantShore {
   protected readonly maxZoom = RIVIERA_MAP_OPTIONS.maxZoom;
   /** No zoom column below `lg` (a pinch zooms); the credit in the top-right, under the header. */
   protected readonly PHONE_CHROME =
-    '[&_app-riviera-map>div.top-3]:hidden [&_app-riviera-map>p]:top-[76px] [&_app-riviera-map>p]:bottom-auto [&_app-riviera-map>p]:text-[11px]';
+    '[&_app-riviera-map>div.top-3]:hidden [&_app-riviera-map>p]:bottom-(--foot) [&_app-riviera-map>p]:max-w-[200px] [&_app-riviera-map>p]:text-[11px]';
+  /** The credit's side of the foot: the one no lone pin sits under. */
+  protected readonly creditSide = computed(() =>
+    this.nearMeLeft() ? '' : '[&_app-riviera-map>p]:left-3 [&_app-riviera-map>p]:right-auto',
+  );
 
   private readonly map = viewChild(RivieraMap);
   private readonly pane = viewChild<ElementRef<HTMLElement>>('pane');
@@ -784,6 +816,33 @@ export class VariantShore {
     return day ? `${day.weekday} ${day.label}` : this.state().dateLabel;
   });
 
+  /**
+   * Where the tourist is, when that is somewhere on the riviera. Outside the shipped map's own
+   * fence (`RIVIERA_MAP_OPTIONS.maxBounds`, the rule `shared/riviera-map.ts` already applies to
+   * its Near me) a position is not a place to open on: located from Rome, round 13's page
+   * collapsed the coast to `Velipojë · 571 km`, one venue, the dot 56,000 px off the map.
+   */
+  protected readonly here = computed<LngLat | null>(() => {
+    const here = this.state().here;
+    return here !== null && withinFence(here) ? here : null;
+  });
+  private readonly offMap = computed(() => this.state().here !== null && this.here() === null);
+  /** Dismissed until the next position: the source is the position, the value resets with it. */
+  protected readonly noteDismissed = linkedSignal({
+    source: () => this.state().here,
+    computation: () => false,
+  });
+  /** The shipped map's own words for a position off the riviera, in the head's rail slot. */
+  protected readonly nearMeNote = computed(() =>
+    this.offMap() && !this.noteDismissed() ? OFF_MAP_NOTE : null,
+  );
+  /** The frame includes the tourist: the fit is to the pins AND the dot, so `27 km` is on the map. */
+  private readonly fitTargets = computed<readonly LngLat[]>(() => {
+    const here = this.here();
+    const pins = this.pins().map((p) => p.at);
+    return here === null ? pins : [...pins, here];
+  });
+
   /** A region, never the coast, on every screen: the tourist's own when located, Himarë otherwise. */
   protected readonly focus = computed<Focus>(() => {
     const s = this.state();
@@ -791,7 +850,8 @@ export class VariantShore {
       return { cards: s.cards, region: beachEntry(s.beach)?.region ?? '', beach: s.beach };
     }
     if (s.region !== '') return { cards: s.cards, region: s.region, beach: '' };
-    const region = s.here !== null ? nearestRegion(s.here, s.cards) : PHONE_DEFAULT_REGION;
+    const here = this.here();
+    const region = here !== null ? nearestRegion(here, s.cards) : PHONE_DEFAULT_REGION;
     if (region === '') return { cards: s.cards, region: '', beach: '' };
     return {
       cards: s.cards.filter((c) => beachEntry(c.beach)?.region === region),
@@ -816,7 +876,7 @@ export class VariantShore {
     this.focus().cards.map((card) => ({ id: String(card.id), at: locationOf(card), card })),
   );
   protected readonly groups = computed<readonly BeachGroup[]>(() =>
-    groupByBeach(this.focus().cards, this.state().here),
+    groupByBeach(this.focus().cards, this.here()),
   );
   protected readonly duskIds = computed<ReadonlySet<string>>(() => {
     if (!this.isToday()) return new Set();
@@ -839,8 +899,12 @@ export class VariantShore {
   protected readonly title = computed(() => {
     const { region, beach } = this.focus();
     if (beach !== '') return this.groups()[0]?.label ?? '';
-    if (this.state().here !== null && this.state().region === '') {
-      return this.groups()[0]?.label ?? 'Near you';
+    if (this.here() !== null && this.state().region === '') {
+      // On the beach (within 3 km) the beach is the place; further off, the region is (Tirana → Durrës).
+      const nearest = this.groups()[0];
+      if (nearest !== undefined && nearest.km !== null && nearest.km < ON_BEACH_KM)
+        return nearest.label;
+      return region === '' ? 'Near you' : regionLabel(region);
     }
     return region === '' ? 'The whole coast' : regionLabel(region);
   });
@@ -886,6 +950,18 @@ export class VariantShore {
    * pane either side of it). Shipped, the renderer would cut a poster per width bucket too.
    */
   protected readonly posterCovers = computed(() => this.viewport().w <= POSTER_W);
+  /**
+   * A poster is rendered for the pins alone, so it can carry the located state only while the
+   * dot lands inside the map it shows; from Tirana (27 km inland of Golem) the live map opens on
+   * the frame that holds both.
+   */
+  private readonly posterFramesHere = computed(() => {
+    const here = this.here();
+    const handle = this.posterHandle();
+    if (here === null || handle === null) return true;
+    const at = handle.project(here);
+    return at.x >= 0 && at.x <= this.viewport().w && at.y >= HEADER_H && at.y <= POSTER_H;
+  });
   protected readonly posterSrc = computed(() =>
     posterUrl(posterKey(this.focus().region, this.focus().beach)),
   );
@@ -899,12 +975,24 @@ export class VariantShore {
   private readonly moved = signal(0);
   protected readonly hereDot = computed(() => {
     this.moved();
-    const here = this.state().here;
+    const here = this.here();
     const handle = this.handle();
     if (here === null || handle === undefined) return null;
     return handle.project(here);
   });
-  protected readonly nearMeTop = computed(() => Math.max(HEADER_H + 8, this.sheetTop() - 56));
+  /**
+   * All the phone's map chrome on ONE row at the map's foot, as Google Maps keeps its own: the
+   * credit wrapped to 200 px on one side (the shipped pill is built to wrap), Near me on the
+   * other. Round 13 had the credit top-right under the header, where the live fit left `€21`
+   * under it from Tirana; a second row at the foot boxed `Borsh` in between the two (measured:
+   * every spot failed, the pill stayed under Near me). The pair swaps sides together when a lone
+   * pin sits under either.
+   */
+  protected readonly footBottom = computed(() =>
+    Math.min(this.viewport().h - HEADER_H - 8 - 44, this.viewport().h - this.sheetTop() + 12),
+  );
+  /** Near me on the phone's left and the credit on its right, while a lone pin sits under the usual spots. */
+  protected readonly nearMeLeft = signal(false);
 
   // ── the dots and the gutter (desktop, a narrow pane) ─────────────────────────────────────
   protected readonly dotsMode = computed(() => this.wide() && this.mapWidth() < PILLS_FROM_PX);
@@ -1038,10 +1126,18 @@ export class VariantShore {
       ?.scrollIntoView({ inline: 'center', block: 'nearest' });
   }
 
+  /** At peek there is no rail to open into: the press raises the sheet to half first (round 14). */
   protected openBeaches(): void {
     this.beachesOpen.set(true);
     this.dayOpen.set(false);
+    if (!this.wide() && this.detent() === 'peek') this.go('half');
     setTimeout(() => this.revealCurrentChip());
+  }
+
+  protected toggleDay(): void {
+    this.dayOpen.set(!this.dayOpen());
+    this.beachesOpen.set(false);
+    if (!this.wide() && this.detent() === 'peek') this.go('half');
   }
 
   protected pickBeach(code: string): void {
@@ -1058,6 +1154,8 @@ export class VariantShore {
     const outcome = await this.geolocation.locate();
     if (outcome.kind === 'located') {
       this.filtered.emit({ here: outcome.at, region: '', beach: '' });
+      // The answer lives in the head's rail slot, which peek does not show.
+      if (!withinFence(outcome.at) && !this.wide() && this.detent() === 'peek') this.go('half');
     }
   }
 
@@ -1074,8 +1172,24 @@ export class VariantShore {
     ];
     unplacePills(pills);
     mergeCollidingPills(pills);
-    if (layer !== null) placePills(pills, host, layer.getBoundingClientRect());
+    if (layer !== null) {
+      const box = layer.getBoundingClientRect();
+      placePills(pills, host, box, this.window(box), noGo(host));
+      if (!this.wide()) this.nearMeLeft.set(footSwapped(host, this.nearMeLeft()));
+    }
     this.watcher?.takeRecords();
+  }
+
+  /**
+   * Where a pill may sit: on the phone, the map the header and the sheet leave (a pill under the
+   * glass of either is a smudge); on the desktop, the layer's own box. At full nothing re-fits and
+   * the pills are under the sheet anyway, so the box stays the layer's.
+   */
+  private window(box: DOMRect): DOMRect {
+    if (this.wide() || this.detent() === 'full') return box;
+    const top = Math.max(box.top, HEADER_H);
+    const bottom = Math.min(box.bottom, this.tops()[this.detent()]);
+    return new DOMRect(box.left, top, box.width, bottom - top);
   }
 
   /**
@@ -1084,7 +1198,8 @@ export class VariantShore {
    */
   protected wake(view: MapView | null): void {
     if (view !== null) {
-      const visible = this.tops()[this.detent() === 'full' ? 'half' : this.detent()] - HEADER_H;
+      const visible =
+        this.tops()[this.detent() === 'full' ? 'half' : this.detent()] - FOOT - HEADER_H;
       const shift = this.viewport().h / 2 - (HEADER_H + visible / 2);
       const perPixel = (360 / (512 * 2 ** view.zoom)) * Math.cos((view.center.lat * Math.PI) / 180);
       this.pending = {
@@ -1138,7 +1253,7 @@ export class VariantShore {
   }
 
   protected rowKm(card: VenueCard): string | null {
-    const here = this.state().here;
+    const here = this.here();
     return here === null ? null : distanceLabel(distanceKm(here, locationOf(card)));
   }
 
@@ -1148,7 +1263,7 @@ export class VariantShore {
       this.wide.set(window.innerWidth >= WIDE_PX);
       const bar = this.document.querySelector('.riv-tab-bar');
       this.tabBar.set(bar === null ? 0 : Math.round(bar.getBoundingClientRect().height));
-      if (!this.posterCovers()) this.live.set(true);
+      if (!this.posterCovers() || !this.posterFramesHere()) this.live.set(true);
     });
     // Rest again when the measured geometry moves the target: a tablet is a whole tab bar taller.
     let restedAt = -1;
@@ -1198,7 +1313,7 @@ export class VariantShore {
     afterRenderEffect(() => {
       const handle = this.liveHandle();
       const pane = this.pane()?.nativeElement;
-      const pins = this.pins().map((p) => p.at);
+      const pins = this.fitTargets();
       const detent = this.detent();
       const poster = this.poster();
       this.paneHeight();
@@ -1248,6 +1363,8 @@ export class VariantShore {
       this.pins();
       this.handle();
       this.moved();
+      this.detent();
+      this.hereDot();
       duskPins(this.element.nativeElement, dusk);
       this.repaintPins();
     });
@@ -1391,28 +1508,75 @@ function mergeCollidingPills(pills: readonly HTMLElement[]): void {
  * <p>Lone pins are never moved, exactly as the shipped rule has it; a pill that finds nowhere keeps
  * its disc.
  */
-function placePills(pills: readonly HTMLElement[], host: HTMLElement, box: DOMRect): void {
-  const taken = [...host.querySelectorAll<HTMLElement>('[data-testid="map-venue-pin"]')].map(
-    (pin) => pin.getBoundingClientRect(),
-  );
+function placePills(
+  pills: readonly HTMLElement[],
+  host: HTMLElement,
+  layer: DOMRect,
+  box: DOMRect,
+  avoid: readonly DOMRect[],
+): void {
+  const taken = [
+    ...avoid,
+    ...[...host.querySelectorAll<HTMLElement>('[data-testid="map-venue-pin"]')].map((pin) =>
+      pin.getBoundingClientRect(),
+    ),
+  ];
   for (const pill of pills) {
     if (pill.classList.contains(MERGED_HIDE)) continue;
     const gaveFace = pill.clientWidth <= PIN_HEIGHT_PX && giveFaceBack(pill);
-    let spot = findSpot(pill, box, taken);
+    let spot = findSpot(pill, layer, box, taken);
     if (spot === null && gaveFace) {
       stripFace(pill);
-      spot = findSpot(pill, box, taken);
+      spot = findSpot(pill, layer, box, taken);
     }
-    pill.dataset['placed'] = '';
-    pill.style.translate = `calc(-50% + ${Math.round(spot?.dx ?? 0)}px) calc(-50% + ${spot?.dy ?? 0}px)`;
+    // Nowhere fits: the layer's own placement stands (round 13 recentred it, off the box's edge).
+    if (spot !== null) {
+      pill.dataset['layerTranslate'] ??= pill.style.translate;
+      pill.style.translate = `calc(-50% + ${Math.round(spot.dx)}px) calc(-50% + ${spot.dy}px)`;
+      pill.dataset['placed'] = pill.style.translate;
+    }
     taken.push(pill.getBoundingClientRect());
   }
 }
 
+/**
+ * The chrome a pill must never sit under (round 11's fault 8: `Near me` on `Borsh` in every
+ * phone shot), and the tourist's own dot, which the `3 beaches` pill hid at Dhërmi — the layer's
+ * box has to exclude the page's chrome, and shipped it takes these as an input.
+ */
+const NO_GO =
+  '[data-ctl="near-me"], [data-testid="map-attribution"], ' +
+  '[data-testid="map-zoom-in"], [data-testid="map-zoom-out"]';
+/** The dot's ring is its own margin; a pill may come this close to it. */
+const DOT_MARGIN = 2;
+
+function noGo(host: HTMLElement): DOMRect[] {
+  const rects = [...host.querySelectorAll<HTMLElement>(NO_GO)]
+    .map((el) => el.getBoundingClientRect())
+    .filter((r) => r.width > 0);
+  const dot = host.querySelector<HTMLElement>('[data-here-dot]')?.getBoundingClientRect();
+  if (dot !== undefined && dot.width > 0) {
+    rects.push(
+      new DOMRect(
+        dot.left - DOT_MARGIN,
+        dot.top - DOT_MARGIN,
+        dot.width + 2 * DOT_MARGIN,
+        dot.height + 2 * DOT_MARGIN,
+      ),
+    );
+  }
+  return rects;
+}
+
 /** Centred, hung the two shipped ways, then above and below and the four diagonals. */
-function findSpot(pill: HTMLElement, box: DOMRect, taken: readonly DOMRect[]): Spot | null {
+function findSpot(
+  pill: HTMLElement,
+  layer: DOMRect,
+  box: DOMRect,
+  taken: readonly DOMRect[],
+): Spot | null {
   const width = pill.getBoundingClientRect().width;
-  const point = pointOf(pill, box);
+  const point = pointOf(pill, layer);
   const hang = width / 2 - HANG_PX;
   const spots: Spot[] = [
     { dx: 0, dy: 0 },
@@ -1483,14 +1647,46 @@ function stripFace(pill: HTMLElement): void {
   pill.classList.add('pl-[6px]');
 }
 
-/** Put every pill back the way the layer drew it, so the pass can run again from scratch. */
+/**
+ * Put every pill back the way the layer drew it, so the pass can run again from scratch. The
+ * layer's own translate is kept from the first placement; when the layer has written since (its
+ * value is not the pass's), that newer value is the layer's and is kept instead.
+ */
 function unplacePills(pills: readonly HTMLElement[]): void {
   for (const pill of pills) {
     if (pill.querySelector('[data-hung-face]') !== null) stripFace(pill);
-    if (pill.dataset['placed'] === undefined) continue;
+    const placed = pill.dataset['placed'];
+    if (placed === undefined) continue;
     delete pill.dataset['placed'];
-    pill.style.removeProperty('translate');
+    if (pill.style.translate === placed) {
+      pill.style.translate = pill.dataset['layerTranslate'] ?? '';
+    }
+    delete pill.dataset['layerTranslate'];
   }
+}
+
+/**
+ * A lone pin is never moved (the shipped rule), so when one sits under the foot's chrome it is
+ * the chrome that moves: Near me and the credit swap sides, unless a lone pin waits under the
+ * swapped spots too. Decided from the rendered boxes, so it cannot oscillate — lone pins hold
+ * still.
+ */
+function footSwapped(host: HTMLElement, swapped: boolean): boolean {
+  const pieces = [
+    ...host.querySelectorAll<HTMLElement>('[data-ctl="near-me"], [data-testid="map-attribution"]'),
+  ];
+  const pane = pieces[0]?.offsetParent;
+  if (pane === undefined || pane === null) return swapped;
+  const frame = pane.getBoundingClientRect();
+  const lone = [...host.querySelectorAll<HTMLElement>('[data-testid="map-venue-pin"]')].map((pin) =>
+    pin.getBoundingClientRect(),
+  );
+  const under = (rect: DOMRect) => lone.some((pin) => overlaps(rect, pin));
+  const rects = pieces.map((piece) => piece.getBoundingClientRect());
+  const mirrored = rects.map(
+    (at) => new DOMRect(frame.left + frame.right - at.right, at.top, at.width, at.height),
+  );
+  return rects.some(under) && !mirrored.some(under) ? !swapped : swapped;
 }
 
 function overlaps(
@@ -1509,9 +1705,9 @@ function posterPins(key: string): LngLat[] {
 }
 
 /**
- * Fit into the map visible between the header and `sheetTop`, then centre on that window: the
- * pane is the whole viewport, so the camera looks as far south of the pins as the pane's centre
- * sits below the window's, and the pins land in the window.
+ * Fit into the map visible between the header and the foot row above `sheetTop`, then centre on
+ * that window: the pane is the whole viewport, so the camera looks as far south of the pins as the
+ * pane's centre sits below the window's, and the pins land in the window.
  */
 function fitUnderHeader(
   pins: readonly LngLat[],
@@ -1519,7 +1715,7 @@ function fitUnderHeader(
   sheetTop: number,
   ceiling?: number,
 ): MapView | null {
-  const visible = sheetTop - HEADER_H;
+  const visible = sheetTop - FOOT - HEADER_H;
   const view = fitPins(pins, width, visible, 0, 0, undefined, ceiling);
   if (view === null) return null;
   const perPixel = (360 / (512 * 2 ** view.zoom)) * Math.cos((view.center.lat * Math.PI) / 180);
@@ -1528,6 +1724,17 @@ function fitUnderHeader(
     center: { lng: view.center.lng, lat: view.center.lat - shift * perPixel },
     zoom: view.zoom,
   };
+}
+
+/** The shipped map's rule, unexported there: inside the ADR-0022 fence or not a place to open on. */
+function withinFence(at: LngLat): boolean {
+  const [southWest, northEast] = RIVIERA_MAP_OPTIONS.maxBounds;
+  return (
+    at.lng >= southWest.lng &&
+    at.lng <= northEast.lng &&
+    at.lat >= southWest.lat &&
+    at.lat <= northEast.lat
+  );
 }
 
 function tiraneMinutes(): number {

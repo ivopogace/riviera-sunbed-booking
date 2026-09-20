@@ -15,8 +15,10 @@ desktop taken to code (a list instead of cards, the panel clamped to the row's w
 round 11 (§ _Round 11_) measures the shipped chrome instead of assuming it — the tab bar that is
 not there from `sm`, the header that is 73 px and not 68 — gives the header the page's edges on
 this route, and closes three of the open faults, round 12 (§ _Round 12_) settles what a desktop
-row says and what the selected one says, and round 13 (§ _Round 13_) settles the map's own edges.
-The verdict and the first slices are at the end.
+row says and what the selected one says, round 13 (§ _Round 13_) settles the map's own edges, and round 14 (§ _Round 14_) takes the
+located state seriously — the pins keep off the chrome and off the tourist's own dot, a position
+off the riviera or inland of the frame gets an honest answer — and closes the sheet defects the
+driver found. The verdict and the first slices are at the end.
 
 ```
 npm start           # from frontend/
@@ -32,7 +34,9 @@ for the cost row), `?head=subtitle` (round 7's other head), `?pane=free` (round 
 pane), `?dense=30` (round 8's density question: Himarë padded to 30 venues), and round 11's
 `?hdr=shell|wide|wide,lower|wide,noeyebrow|wide,menu` (the header treatment; `shell` is the
 shipped header untouched), `?seam=glass|opaque|tone` (what the sheet's glass sits on),
-`?cap=15` (one beach fitted at zoom 15) and `?rows=flat` (the phone's rows as the desktop's list). Venues come from `prototype-venues.ts` (26 fixtures on the real shoreline — snapped there in
+`?cap=15` (one beach fitted at zoom 15) and `?rows=flat` (the phone's rows as the desktop's list);
+round 14 adds no flag — `?here=19.82,41.33` (Tirana) and `?here=12.5,41.9` (Rome) are the located
+state's other two arms. Venues come from `prototype-venues.ts` (26 fixtures on the real shoreline — snapped there in
 round 7), so no backend is needed; the map is the real `app-riviera-map` against the real
 `platform/map` tiles, which `./gradlew bootRun` serves at `/map/**` (the driver serves them from
 disk).
@@ -233,9 +237,12 @@ snap-mandatory`, `snap-start`, `snap-always`): the OUTER holds a transparent spa
   150 px ribbon down a sheet's left edge with the coast index beside it as 44 px rows, each beach
   tied to its dot by a leader — the one phone screen on which all sixteen beaches are legible,
   and a second WebGL context paid only on demand.
-- **Near me sits at the map's foot at half** (y 324, right — the coast and its pins run down
-  the left) — mid-screen, the thumb's natural zone, not the bottom edge Hoober measures at
-  12 mm. It hides at full.
+- **All the phone's map chrome is one row at the map's foot** — Near me on the right (y 324 at
+  half: mid-screen, the thumb's natural zone, not the bottom edge Hoober measures at 12 mm) and
+  the credit, wrapped to 200 px, on the left; the pair swaps sides when a lone pin sits under
+  either. The pins are fitted into the window above that row (307 − 56 = 251 px at half), and the
+  pills are placed clear of the chrome and of the tourist's own dot (round 14). Near me hides at
+  full.
 - **Tablet (640 to 1023)**: the sheet layout with no tab bar under it, the ground live (the
   poster cannot cover it) and the list in two row columns — 371 px a row at 768, 397 at 820,
   inside round 7's happy 300–400 (round 11).
@@ -253,17 +260,20 @@ snap-mandatory`, `snap-start`, `snap-always`): the OUTER holds a transparent spa
 
 Phone, 390 × 844, by `shoot.mjs` (photos are SVG stand-ins — judge mass, not pictures):
 
-| State                  | Map on it                                          | First row                                   | Map requests / bytes               | Tiles / bytes | Contexts |
-| ---------------------- | -------------------------------------------------- | ------------------------------------------- | ---------------------------------- | ------------- | -------- |
-| **half** (first paint) | 73–380 (307 px); Himarë's three pills at y 129–342 | **y 493**, two whole rows + a third's title | **0 / 0 + one poster JPEG, 38 kB** | **0 / 0**     | **0**    |
-| full                   | 73–117, a 44 px sliver                             | y 230, rows at 230 · 328 · 468 · 608        | 0 / 0                              | 0 / 0         | 0        |
-| peek                   | 73–705 (632 px), live                              | y 818, under the head                       | 6 / 333 kB                         | 6 / 108 kB    | 1        |
-| lone pin press at half | the pin inverted                                   | the lit row at y 685 (Sarandë, fault 3)     | 0 / 0                              | 0 / 0         | 0        |
-| crowd press at half    | separated inside the window                        | —                                           | 5 / 262 kB                         | 4 / 38 kB     | 1        |
-| the picker open        | poster + the ribbon                                | —                                           | 6 / 336 kB                         | 6 / 124 kB    | 1        |
-| `live=1` (the control) | 73–380 live, pins where the poster's are           | y 493                                       | 6 / 333 kB                         | 6 / 108 kB    | 1        |
-| the shipped page       | none                                               | none                                        | 0 / 0                              | 0 / 0         | 0        |
-| Airbnb (measured)      | 134–441 (307 px)                                   | y 515, one card                             | 195 requests, 14.8 MB (map 1.9 MB) | —             | —        |
+| State                  | Map on it                                                                   | First row                                   | Map requests / bytes               | Tiles / bytes | Contexts |
+| ---------------------- | --------------------------------------------------------------------------- | ------------------------------------------- | ---------------------------------- | ------------- | -------- |
+| **half** (first paint) | 73–380 (307 px); Himarë's three pills at y 106–308, the foot row at 324–368 | **y 493**, two whole rows + a third's title | **0 / 0 + one poster JPEG, 38 kB** | **0 / 0**     | **0**    |
+| full                   | 73–117, a 44 px sliver                                                      | y 230, rows at 230 · 328 · 468 · 608        | 0 / 0                              | 0 / 0         | 0        |
+| peek                   | 73–705 (632 px), live                                                       | y 818, under the head                       | 6 / 333 kB                         | 6 / 108 kB    | 1        |
+| lone pin press at half | the pin inverted                                                            | the lit row at y 685 (Sarandë, fault 3)     | 0 / 0                              | 0 / 0         | 0        |
+| crowd press at half    | separated inside the window                                                 | —                                           | 5 / 262 kB                         | 4 / 38 kB     | 1        |
+| the picker open        | poster + the ribbon                                                         | —                                           | 6 / 336 kB                         | 6 / 124 kB    | 1        |
+| `live=1` (the control) | 73–380 live, pins where the poster's are                                    | y 493                                       | 6 / 333 kB                         | 6 / 108 kB    | 1        |
+| located at Dhërmi      | the poster, the dot at (95, 131) over the pills                             | y 493, `Dhërmi 0.6 km` first                | 0 / 0                              | 0 / 0         | 0        |
+| located at Tirana      | the poster still frames the dot (x 375), 27 km east                         | y 493, `Golem 27 km` first, title `Durrës`  | 0 / 0                              | 0 / 0         | 0        |
+| located at Rome        | the poster, Himarë, nothing moved; the note in the head                     | y 549, under the note                       | 0 / 0                              | 0 / 0         | 0        |
+| the shipped page       | none                                                                        | none                                        | 0 / 0                              | 0 / 0         | 0        |
+| Airbnb (measured)      | 134–441 (307 px)                                                            | y 515, one card                             | 195 requests, 14.8 MB (map 1.9 MB) | —             | —        |
 
 Tablet, by the same driver (round 11). The tab bar is `sm:hidden`, so the sheet reserves nothing
 for it and the `Map` pill sits 12 px off the bottom edge; the 440 px poster cannot cover the
@@ -288,7 +298,8 @@ the same 876 px of bay. Rounds 7 to 11 for how the desktop got here.
 ## Q's faults, the honest list
 
 Round 6 listed six; round 7 closed five of them (§ _Round 7_ says how) and found three more;
-round 11 closed 6 and 7 and turned 4 from a broken demonstration into a working one.
+round 11 closed 6 and 7 and turned 4 from a broken demonstration into a working one; round 14
+closed 8, found and closed 9 to 12, rewrote 5 from its measurements, and left 13 open.
 
 1. **The poster is a real backend cost.** A shipped version renders one image per region and
    beach server-side from the same extract (ADR-0022 keeps the map first-party), at 2× and 3×,
@@ -308,10 +319,14 @@ round 11 closed 6 and 7 and turned 4 from a broken demonstration into a working 
    the demonstration is honest now_: round 11 made the repainted pill grow to its new name
    (`text-[0px]!` on the old face, so the flex row measures the `::after`, not an absolute overlay)
    and re-place itself, since the layer sized it before the repaint.
-5. **A hard fling from full closes to peek, not half.** Mandatory snapping with `snap-always` on
-   the half target holds an upward fling from peek at half but lets a downward fling from full
-   pass it (measured; Chromium). A slow drag rests at half. Airbnb behaves the same way; noted,
-   not fixed.
+5. **A fast enough fling passes the half stop — in both directions.** Round 7 wrote this as an
+   asymmetry (an upward fling held at half, a downward one not) and named the flick-down shot as
+   its evidence; that shot has shown the sheet at half since it was taken (first row y 493), and
+   round 14 measured eight flings (§ _Round 14_ § 3): every 150 ms flick — 2.3 to 2.7 px/ms, up
+   or down, from the list or from the head — rests at the next stop; a 500 px flick in 80 ms
+   (6.3 px/ms) from full passes half to peek, and a 480 px flick in 120 ms (4 px/ms) up from peek
+   passes half to full. `snap-always` on a zero-height target holds the driver's flicks and not
+   a hard one; Airbnb behaves the same way. Noted, not fixed; slice 1's e2e asserts at 150 ms.
 6. ~~**A crowd's dusk follows its face member.**~~ **Closed, round 11.** Dusk is decided per
    CROWD — the buttons sharing one `left`/`top` are the crowd, so the DOM names the membership —
    and a pill greys only when every member's sales have closed. At 16:30 `3 beaches · from €22`
@@ -326,13 +341,35 @@ round 11 closed 6 and 7 and turned 4 from a broken demonstration into a working 
    JPEG (`?seam=tone`, the default now), leaves **ΔRGB 0.3**: there is nothing to step to, and the
    glass stays glass. Shipped, the poster is rendered at the pane's height and neither is needed.
 
-8. **On the phone, `Near me` can sit on a pin.** It rests at the map's foot on the right
-   (y 324 at half) because the coast runs down the left; at Himarë the `Borsh` pill lands at
-   y 300–345 and the two overlap (`Q-shore-phone.png`, `-1630`). Round 10 fixed the desktop twin
-   of this by moving the control (it was under the map's credit), but no place on a 390 px map is
-   always free. The real fix is the one `layoutPills` already has for the zoom column: the layer's
-   box has to exclude the page's chrome, so a pill is never placed under it. _Open — found in
-   round 11, not fixed._
+8. ~~**On the phone, `Near me` can sit on a pin.**~~ **Closed, round 14.** It was on `Borsh` in
+   every phone first paint (111 × 18 px at 390, 102 × 18 at 430) and on `Golem & Qerret` from
+   Tirana. Three things, each measured (§ _Round 14_ § 1): the fit keeps the pins above the foot
+   row (the window is 251 px, not 307); the placement pass takes the chrome and the tourist's dot
+   as no-go boxes and the window the sheet leaves as its box; and a lone pin — which the shipped
+   rule never moves — moves the chrome instead (Near me and the credit swap sides). The driver
+   now logs every pill-on-chrome intersection per shot: **0 in all 74**.
+9. ~~**The tourist's own dot was hidden under a pill.**~~ **Closed, round 14.** Located at Dhërmi,
+   the dot sat entirely under `3 beaches · 6` on the phone and half under `Dhërmi · 3` at 1440:
+   a press on Near me changed the button's label and the list's order and showed nothing on the
+   map. The dot is a no-go box for the pass (a 2 px margin) and paints above the pins, as Google's
+   blue dot does, for the case no pill can move.
+10. ~~**Near me from far away collapsed the page.**~~ **Closed, round 14.** Located from Rome —
+    the pre-trip case, most sessions — the coast became `Velipojë · 571 km`, one venue, the dot
+    56,000 px off the map. The shipped map's own rule decides now: a position outside the
+    ADR-0022 fence is not a place to open on, and its own words (`You don't seem to be on the
+Albanian riviera — the map hasn't moved.`) stand in the head's rail slot until dismissed.
+11. ~~**A chip pressed at peek did nothing.**~~ **Closed, round 14.** The rails hide at peek, so
+    `Today ▾` and `⛱ 6` flipped `aria-expanded` and showed nothing. A press raises the sheet to
+    half and opens its rail (`Q-shore-phone-peek-day.png`).
+12. ~~**The `Map` pill covered the list's last row.**~~ **Closed, round 14.** At full, scrolled to
+    the end, the pill (y 727–771) sat on `Borsh Kilometre`'s last 23 px with no way to scroll
+    them out. The list's bottom padding clears it (`Q-shore-phone-full-end.png`).
+13. **The placement pass is a demonstration.** It re-places the layer's rendered pills from the
+    DOM, as the merge and dusk classes do. Shipped, the layer takes the chrome's boxes and the
+    window as inputs to `layoutPills` (fault 8's own diagnosis in round 11), the dot joins its
+    lone-pin set, and the fit's inset is a parameter. On the desktop no lone pin has landed under
+    the zoom column, Near me or the credit in any shot, and nothing keeps one from doing so after
+    a pan. _Open — a slice-3 item._
 
 ## What to ship, and why
 
@@ -341,9 +378,10 @@ map, one screen — and it is a phone first screen with a map, a venue and a row
 price of one image. Its port cost is small and named: a two-scroller scroll-snap sheet with three
 heights (CSS, no library, no pointer arithmetic — and one translate for the preview below full),
 a `MapHandle` over a still image (`project` only), a fit that aims at the window the sheet leaves
-(`fitUnderHeader`, and the same aim on a crowd press), a poster renderer on the backend, the
-desktop pane rule with the dots-and-gutter form under 560 px, and two one-line changes to the
-pin layer (a `dusk` input; the crowd test against the crowd's mean). The shipped tab bar,
+above the foot row (`fitUnderHeader`, and the same aim on a crowd press), a poster renderer on
+the backend, the desktop pane rule with the dots-and-gutter form under 560 px, the located state's
+three arms (round 14), and three changes to the pin layer (a `dusk` input; the crowd test against
+the crowd's mean; the chrome and the dot as no-go boxes). The shipped tab bar,
 card tokens and picker are used as they are — and the header takes one route flag
 (`data-wide:max-w-none`) plus two decisions of its own (round 11). Without the poster Q's first screen costs what any
 live map does (341 kB + tiles + a context), and a list-first page would be the cheaper first
@@ -909,6 +947,140 @@ Not tried: sending the pane UP under the glass header, as the phone's ground run
 most consistent version of all, and the one that would need the zoom column moved off the
 header's 73 px.
 
+## Round 14 — the located state, and what the driver found that nobody wrote down
+
+Round 13 left the shape settled and the faults list at one open item. Round 14 started from the
+shots and a diagnostic probe rather than from the list, and found that the design had never been
+taken through its own second control: **Near me**. Everything below is `shoot.mjs` (which now
+logs every pill-on-chrome intersection per shot) and a scratch probe on the same wiring, at 390,
+430, 768, 820, 1024, 1440 and 1920.
+
+Considered and rejected before building: named lone pins on the desktop (Airbnb's price-only pins
+are the pattern, and the row beside them is named); a taller row with a bigger photo (round 12
+held it for evidence and none arrived); `★ 4.6 (143)` for the facts line (needs the raw count the
+view model does not expose — a slice question); container queries in place of the viewport
+signals (tidies code, moves no pixel); a "see tomorrow" nudge in the head after 16:00 (no fixture
+region ever reaches 0 selling); moving Near me to the shipped map's top-right (Hoober's 11 mm;
+round 7's placement was right, its chrome was simply never excluded from the fit); sending the
+desktop pane under the header (round 13's not-tried; the edge is decided).
+
+### 1. The pins keep off the chrome and off the tourist's own dot (faults 8 and 9)
+
+Measured before anything was built, with the probe's intersection test on the round-13 branch:
+
+| State (390 × 844)       | Pill on chrome                                     | The dot                                     |
+| ----------------------- | -------------------------------------------------- | ------------------------------------------- |
+| first paint             | `Borsh · 2` under `Near me`, **111 × 18 px**       | —                                           |
+| 430 × 932               | the same, 102 × 18                                 | —                                           |
+| located at Dhërmi       | `Borsh` under `You are here`, 111 × 18             | **entirely under `3 beaches · 6`**, 20 × 20 |
+| located at Tirana       | `Golem & Qerret · 4` under `You are here`, 74 × 22 | off the frame, x 422 on a 390 px map        |
+| 1440, located at Dhërmi | none                                               | half under `Dhërmi · 3` (round 13's shot)   |
+
+Round 11 had diagnosed fault 8 correctly — the layer's box has to exclude the page's chrome — and
+it turned out to be three things, each needed:
+
+- **The fit keeps the pins above the foot row.** `fitUnderHeader` and `posterCamera` frame the
+  pins in the window between the header and the chrome's row above the sheet: 307 − 56 = **251
+  px** at half. A lone pin can never be placed under Near me or the credit by the fit, and a pill
+  is never boxed in between the chrome and the sheet (measured on the way here: with the chrome
+  in two rows over the foot, `Borsh` failed every one of the nine spots and stayed under Near me).
+  The 22 posters were re-rendered; Himarë's set is 351 × 202 px on the poster now against
+  370 × 213 — **5 % smaller**, the price of the row.
+- **The placement pass takes no-go boxes.** Round 11's re-placement of the rendered pills
+  (`placePills`) now starts its `taken` list with Near me, the credit and the zoom column, and the
+  tourist's dot with a 2 px margin, and confines the spots to the window the sheet leaves (the
+  header's 73 to the sheet's rest position) instead of the layer's whole box. A pill that finds
+  nowhere keeps the layer's own placement — round 13's pass recentred it, which is how `Borsh`
+  first came to stick out of the box at x 406. The vertical hang is 32 px (a 10 px gap) instead
+  of 34: at 12 the one free spot above the dot at Dhërmi missed the window by 1 px.
+- **A lone pin moves the chrome.** The shipped rule never moves a lone pin, so when one sits
+  under Near me or the credit the two swap sides — unless a lone pin waits under the swapped
+  spots too, in which case nothing moves; decided from the rendered boxes, so it cannot
+  oscillate. `?dense=30&beach=DHERMI&live=1` is the case: `€20` under the right foot, Near me on
+  the left. And the dot paints above the pins (Google's blue dot does), the fallback for the case
+  no pill can move — with the pass, no shot needs it.
+
+And one thing the fit change exposed: the credit. Round 13 had it top-right under the header, and
+the live fit from Tirana put `€21` under it (43 × 13). A 278 px credit has no free side in a
+390 px top band, so it joined Near me at the foot — first as a second row, which boxed `Borsh` in,
+then on the same row wrapped to 200 px (the shipped pill is built to wrap: "still rounded when it
+wraps"), the credit left, Near me right, as Google Maps keeps every control at the bottom.
+
+After: **0 intersections in all 74 shots**, the driver's own count on every line of its log. The
+first paint is unchanged in cost — 0 map requests, 0 tiles, 0 WebGL contexts, one 38 kB poster —
+and the first row is still at y 493. `Q-shore-phone.png`, `-here`, `-1440-here`, `-dense-beach`.
+
+### 2. Near me has three arms, not one (fault 10)
+
+`?here=` at Dhërmi was the only located state ever shot. Two more, measured on the round-13
+branch first:
+
+| Located at                         | Round 13                                                                                          | Round 14                                                                                             |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Rome** (12.5, 41.9) — pre-trip   | title `◎ Velipojë`, **one venue**, `Velipojë 571 km`, the dot at **x −56,684**; the coast gone    | Himarë as if never located; the shipped map's `off-map` words in the head's rail slot, dismissable   |
+| **Tirana** (19.82, 41.33) — inland | `◎ Golem` as if standing on it; the dot off the frame at x 422; `Golem & Qerret` under the button | title `◎ Durrës`, `Golem 27 km` first; the dot on the frame's edge at x 375; the poster still covers |
+| **Dhërmi** — on the beach          | `◎ Dhërmi`, `0.6 km`; the dot hidden                                                              | the same, the dot visible over the pills                                                             |
+
+- **Off the fence.** `shared/riviera-map.ts` already answers this for its own Near me: outside
+  `maxBounds` (the ADR-0022 fence, 19.0–21.2 × 39.5–42.8) is `off-map`, "You don't seem to be on
+  the Albanian riviera — the map hasn't moved." The prototype had ignored the rule and re-sorted
+  the coast from wherever the tourist stood. It applies the same test now and shows the same words
+  — in the sheet's head, in the rail slot the day and beach chips use, because a note on the map
+  covered a pill in every placement tried (beside the button: 3 lines over `Borsh`; standing in
+  for the button: 111 × 44 on `Borsh` with every spot above blocked) and the rail slot covers
+  nothing. It costs 56 px of list while it stands, as a rail does (`Q-shore-phone-far.png`,
+  `Q-shore-1440-far.png`).
+- **Inside the fence, off the beach.** The fit includes the dot, so the frame holds the tourist
+  and the venues both — `27 km` is a distance a tourist can see. The poster carries the located
+  state while it frames the dot (Tirana lands at x 375 on the Durrës poster, so this arm still
+  costs **0 / 0 / 0**); the live map takes over only when the dot falls outside it. The title
+  names the beach only within 3 km of it; further off it names the region, with the beach and
+  its distance as the first group head (`Q-shore-phone-tirana.png`).
+- **On the beach.** As round 7 built it, with the dot now visible.
+
+### 3. Three sheet defects the driver found
+
+- **A chip pressed at peek did nothing** (fault 11): the rails hide at peek, so the press flipped
+  `aria-expanded` and nothing appeared. Now it raises the sheet to half and opens the rail: the
+  first row lands at y 549 under the open day rail (`Q-shore-phone-peek-day.png`).
+- **The `Map` pill sat on the list's last row** (fault 12): at full scrolled to the end, `Borsh
+Kilometre` ended at y 750 under a pill at 727–771, its bar and count covered with no way to
+  scroll them out. The list's bottom padding is 68 px now (the pill's 44, its 12 px lift, 12 px
+  of air); the last row ends at y 706, 21 px above the pill (`Q-shore-phone-full-end.png`).
+- **Fault 5 does not reproduce as written.** Eight flings, CDP touch, 10 steps each:
+
+  | Fling                        | Distance, time | Speed     | Rests at |
+  | ---------------------------- | -------------- | --------- | -------- |
+  | down from full, on the list  | 350 px, 150 ms | 2.3 px/ms | **half** |
+  | down from full, on the head  | 350 px, 150 ms | 2.3 px/ms | half     |
+  | down from full, slow, either | 350 px, 600 ms | 0.6 px/ms | half     |
+  | down from full, short        | 200 px, 100 ms | 2 px/ms   | half     |
+  | down from full, hard         | 500 px, 80 ms  | 6.3 px/ms | **peek** |
+  | up from peek, hard           | 480 px, 120 ms | 4 px/ms   | **full** |
+  | up from half                 | 400 px, 150 ms | 2.7 px/ms | full     |
+
+  The driver's own flick-down (the first row) rests at half — and `Q-shore-phone-flick-down.png`
+  has shown the first row at y 493 since round 7 took it, while its caption said peek. What is
+  true is symmetric and about speed: `snap-always` on a zero-height target holds a flick up to
+  about 3 px/ms in either direction and lets a hard one through in either. Rewritten in the faults
+  list; the shots table's caption corrected.
+
+### What round 14 keeps, and where it disagrees with rounds 7–13
+
+Keep: the fit above the foot row, the no-go boxes and the window in the pass, the lone-pin swap,
+the dot above the pins, the credit at the foot with Near me, the three arms of Near me with the
+shipped fence rule and words in the rail slot, the poster carrying a located state it frames, the
+region as the title beyond 3 km, the chip lift at peek, the list's padding.
+
+Disagree: (1) round 7's fault 5 was an asymmetry that its own shot contradicted; the truth is a
+speed threshold, both ways. (2) Rounds 7 and 11 placed Near me on the thumb's evidence and were
+right, but "the layer's box has to exclude the page's chrome" (round 11) was only a third of the
+fix: the fit and the lone-pin case needed answering too. (3) Round 13's "the shape did not move"
+was true of the sheet and false of the product: Near me — one of the three controls on the first
+screen — had one designed arm out of three, and the pre-trip case, the majority of sessions,
+broke the page. (4) The credit's top-right spot, carried from the shipped map through eight
+rounds, was the one piece of chrome the pins could never avoid at 390.
+
 ## Screenshots
 
 `shots/` holds the set these notes are written from, captured by `shoot.mjs`: `playwright-core`
@@ -919,88 +1091,104 @@ driver logs each shot's first-screen cost (map style/sprite/glyph requests, tile
 contexts) and the geometry the notes argue from; `--json` keeps the raw numbers. Phone shots are
 390 × 844 at 1×.
 
-| File                                                                                                                                                   | What                                                                                                                                                          |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ref-airbnb-phone.png` · `ref-airbnb-phone-list.png` · `ref-airbnb-phone-pin.png`                                                                      | the reference: Airbnb's mobile search at Himarë — the sheet on the map; pulled up; a pin                                                                      |
-| `ref-spiagge-phone.png`                                                                                                                                | spiagge.it's first screen: where, when, Cerca — no map                                                                                                        |
-| `Q-shore-phone.png` · `Q-shore-phone-himare.png`                                                                                                       | the first paint: the Himarë poster, the sheet at half, the one-row head (the default, and asked for by region)                                                |
-| `Q-shore-phone-subtitle.png`                                                                                                                           | round 7's other head: the beach in the subtitle, no chip (`?head=subtitle`)                                                                                   |
-| `Q-shore-phone-riviera.png` · `Q-shore-phone-dark.png`                                                                                                 | the same first paint in the `riviera` and `dark` themes (glare)                                                                                               |
-| `Q-shore-phone-flick-up.png` · `Q-shore-phone-flick-down.png`                                                                                          | a real touch flick: 400 px up from half rests at full; 350 px down from full rests at peek                                                                    |
-| `Q-shore-phone-full.png` · `Q-shore-phone-full-scrolled.png`                                                                                           | the sheet at full: the 44 px sliver, the Map pill, no seam where the poster ends; and the list scrolled 700 px inside                                         |
-| `Q-shore-phone-flat.png` · `Q-shore-phone-flat-full.png`                                                                                               | round 11's comparison: the phone's rows as the desktop's flat list (`?rows=flat`), at half and at full                                                        |
-| `Q-shore-phone-peek.png` · `Q-shore-phone-peek-pin.png`                                                                                                | the sheet at peek: the live map fills the window; a crowd press at peek                                                                                       |
-| `Q-shore-phone-pin.png` · `Q-shore-phone-pin-lone.png`                                                                                                 | a crowd press at half (the north end separates inside the window); a lone pin press lifts its row, lit                                                        |
-| `Q-shore-phone-here.png` · `Q-shore-phone-here-pin.png`                                                                                                | located at Dhërmi: nearest first, `You are here`; a crowd press while located                                                                                 |
-| `Q-shore-phone-sarande.png` · `Q-shore-phone-beach.png`                                                                                                | a tall region north up on the poster; one beach (Dhërmi) at the zoom cap — on the shoreline now                                                               |
-| `Q-shore-phone-1630.png` · `Q-shore-phone-day.png` · `Q-shore-phone-picker.png`                                                                        | dusk at 16:30 (legible now); the day chips; the coast picker without `Whole coast`                                                                            |
-| `Q-shore-phone-beaches.png` · `Q-shore-phone-beach-chosen.png`                                                                                         | the beach chip opened into its rail; the same with Dhërmi chosen, its chip lit and in view                                                                    |
-| `Q-shore-phone-live.png`                                                                                                                               | the control: the live map from the first paint, pins where the poster's were                                                                                  |
-| `Q-shore-tall.png` · `Q-shore-tall-peek.png`                                                                                                           | 430 × 932, half and peek                                                                                                                                      |
-| `Q-shore-768.png` · `-768-peek` · `-768-full` · `Q-shore-820.png` · `-820-peek` · `-820-full`                                                          | round 11's tablet band (768 × 1024, 820 × 1180): no tab bar to reserve, the ground live, two row columns                                                      |
-| `Q-shore-1024.png` · `Q-shore-1200.png`                                                                                                                | the narrowest windows: Himarë in a 40–60 % pane, one venue a row (the merge classes fire at 1024)                                                             |
-| `Q-shore-1440.png` · `Q-shore-1440-here.png` · `Q-shore-1920.png`                                                                                      | the desktop: Himarë, the opening region, at 1440; located; 1920 — with round 11's header                                                                      |
-| `Q-shore-1440-hdr-shell.png` · `Q-shore-1920-hdr-shell.png`                                                                                            | the before: the shipped header's 1,080 px clamp over a page that runs to the window's edges                                                                   |
-| `Q-shore-1440-hdr-wide.png` · `-hdr-lower` · `-hdr-noeyebrow`                                                                                          | the header treatments one at a time: the page's edges; the 12.5 px lowercase eyebrow; the eyebrow gone                                                        |
-| `Q-shore-1440-menu.png` · `Q-shore-1440-menu-shell.png`                                                                                                | the theme swatch as a labelled menu row, and the shipped menu beside it                                                                                       |
-| `Q-shore-1440-free.png` · `Q-shore-1440-pin.png` · `Q-shore-1920-pin.png`                                                                              | Himarë's 864 px pane at the set's own height (`?pane=free`); a lone pin press lights and centres its row, and the lit row expands (round 12)                  |
-| `Q-shore-1440-edge-half.png` · `-edge-round` · `-edge-bleed` · `Q-shore-1920-edge-*.png`                                                               | round 13's three: the half-bleed of rounds 8–12, the rounded card that was chosen, the full bleed that was not                                                |
-| `Q-shore-1440-sarande-pin.png`                                                                                                                         | round 12's clearest case: `Pasqyra Blue` lit, `Request to Book · Snorkelling · Quiet bay` under its facts                                                     |
-| `Q-shore-1440-sarande.png` · `Q-shore-1440-beach.png` · `Q-shore-1440-picker.png`                                                                      | a narrow region on the 40 % floor; Dhërmi chosen; the coast picker, the desktop's chooser                                                                     |
-| `Q-shore-phone-dense.png` · `Q-shore-phone-dense-pin.png` · `Q-shore-phone-dense-full.png` · `Q-shore-1440-dense.png` · `Q-shore-1440-dense-beach.png` | round 8's density question: Himarë padded to 30 (`?dense=30`) at half, after a crowd press, at full; the desktop at 1440 and its Dhërmi beach at the zoom cap |
-| `Q-shore-phone-dense-full-scrolled.png` · `Q-shore-1440-dense-scrolled.png`                                                                            | round 11's sticky beach heads: the list scrolled 900 px, the current beach pinned at the top of the phone's sheet and of the desktop panel                    |
-| `Q-shore-phone-beach-live.png` · `Q-shore-phone-beach-cap15.png`                                                                                       | one beach at the fit's own ceiling of 14 and at 15 (`?cap=15`), both live — the rejected cap                                                                  |
-| `Q-shore-phone-dense-beach.png` · `Q-shore-phone-dense-beach-cap15.png`                                                                                | the nine-venue beach at 14 and at 15: identical, because the pane's fit binds first                                                                           |
+| File                                                                                                                                                   | What                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ref-airbnb-phone.png` · `ref-airbnb-phone-list.png` · `ref-airbnb-phone-pin.png`                                                                      | the reference: Airbnb's mobile search at Himarë — the sheet on the map; pulled up; a pin                                                                                  |
+| `ref-spiagge-phone.png`                                                                                                                                | spiagge.it's first screen: where, when, Cerca — no map                                                                                                                    |
+| `Q-shore-phone.png` · `Q-shore-phone-himare.png`                                                                                                       | the first paint: the Himarë poster, the sheet at half, the one-row head (the default, and asked for by region)                                                            |
+| `Q-shore-phone-subtitle.png`                                                                                                                           | round 7's other head: the beach in the subtitle, no chip (`?head=subtitle`)                                                                                               |
+| `Q-shore-phone-riviera.png` · `Q-shore-phone-dark.png`                                                                                                 | the same first paint in the `riviera` and `dark` themes (glare)                                                                                                           |
+| `Q-shore-phone-flick-up.png` · `Q-shore-phone-flick-down.png`                                                                                          | a real touch flick: 400 px up from half rests at full; 350 px down from full rests at **half** (round 14: the caption said peek; the image never did)                     |
+| `Q-shore-phone-full.png` · `Q-shore-phone-full-scrolled.png`                                                                                           | the sheet at full: the 44 px sliver, the Map pill, no seam where the poster ends; and the list scrolled 700 px inside                                                     |
+| `Q-shore-phone-flat.png` · `Q-shore-phone-flat-full.png`                                                                                               | round 11's comparison: the phone's rows as the desktop's flat list (`?rows=flat`), at half and at full                                                                    |
+| `Q-shore-phone-peek.png` · `Q-shore-phone-peek-pin.png`                                                                                                | the sheet at peek: the live map fills the window, the credit and Near me on one foot row; a crowd press at peek                                                           |
+| `Q-shore-phone-pin.png` · `Q-shore-phone-pin-lone.png`                                                                                                 | a crowd press at half (the north end separates inside the window); a lone pin press lifts its row, lit                                                                    |
+| `Q-shore-phone-here.png` · `Q-shore-phone-here-pin.png`                                                                                                | located at Dhërmi: nearest first, `You are here`, the dot visible over the pills (round 14); a crowd press while located                                                  |
+| `Q-shore-phone-tirana.png` · `Q-shore-phone-far.png` · `Q-shore-1440-far.png`                                                                          | round 14's other two arms: inland at Tirana (the dot on the frame's edge, `Durrës`, `Golem 27 km`); off the fence at Rome, the shipped words in the head, at 390 and 1440 |
+| `Q-shore-phone-peek-day.png` · `Q-shore-phone-full-end.png`                                                                                            | round 14: a chip pressed at peek raises the sheet and opens its rail; the list's end at full clears the `Map` pill                                                        |
+| `Q-shore-phone-sarande.png` · `Q-shore-phone-beach.png`                                                                                                | a tall region north up on the poster; one beach (Dhërmi) at the zoom cap — on the shoreline now                                                                           |
+| `Q-shore-phone-1630.png` · `Q-shore-phone-day.png` · `Q-shore-phone-picker.png`                                                                        | dusk at 16:30 (legible now); the day chips; the coast picker without `Whole coast`                                                                                        |
+| `Q-shore-phone-beaches.png` · `Q-shore-phone-beach-chosen.png`                                                                                         | the beach chip opened into its rail; the same with Dhërmi chosen, its chip lit and in view                                                                                |
+| `Q-shore-phone-live.png`                                                                                                                               | the control: the live map from the first paint, pins where the poster's were                                                                                              |
+| `Q-shore-tall.png` · `Q-shore-tall-peek.png`                                                                                                           | 430 × 932, half and peek                                                                                                                                                  |
+| `Q-shore-768.png` · `-768-peek` · `-768-full` · `Q-shore-820.png` · `-820-peek` · `-820-full`                                                          | round 11's tablet band (768 × 1024, 820 × 1180): no tab bar to reserve, the ground live, two row columns                                                                  |
+| `Q-shore-1024.png` · `Q-shore-1200.png`                                                                                                                | the narrowest windows: Himarë in a 40–60 % pane, one venue a row (the merge classes fire at 1024)                                                                         |
+| `Q-shore-1440.png` · `Q-shore-1440-here.png` · `Q-shore-1920.png`                                                                                      | the desktop: Himarë, the opening region, at 1440; located, the dot clear of `Dhërmi · 3` (round 14); 1920 — with round 11's header                                        |
+| `Q-shore-1440-hdr-shell.png` · `Q-shore-1920-hdr-shell.png`                                                                                            | the before: the shipped header's 1,080 px clamp over a page that runs to the window's edges                                                                               |
+| `Q-shore-1440-hdr-wide.png` · `-hdr-lower` · `-hdr-noeyebrow`                                                                                          | the header treatments one at a time: the page's edges; the 12.5 px lowercase eyebrow; the eyebrow gone                                                                    |
+| `Q-shore-1440-menu.png` · `Q-shore-1440-menu-shell.png`                                                                                                | the theme swatch as a labelled menu row, and the shipped menu beside it                                                                                                   |
+| `Q-shore-1440-free.png` · `Q-shore-1440-pin.png` · `Q-shore-1920-pin.png`                                                                              | Himarë's 864 px pane at the set's own height (`?pane=free`); a lone pin press lights and centres its row, and the lit row expands (round 12)                              |
+| `Q-shore-1440-edge-half.png` · `-edge-round` · `-edge-bleed` · `Q-shore-1920-edge-*.png`                                                               | round 13's three: the half-bleed of rounds 8–12, the rounded card that was chosen, the full bleed that was not                                                            |
+| `Q-shore-1440-sarande-pin.png`                                                                                                                         | round 12's clearest case: `Pasqyra Blue` lit, `Request to Book · Snorkelling · Quiet bay` under its facts                                                                 |
+| `Q-shore-1440-sarande.png` · `Q-shore-1440-beach.png` · `Q-shore-1440-picker.png`                                                                      | a narrow region on the 40 % floor; Dhërmi chosen; the coast picker, the desktop's chooser                                                                                 |
+| `Q-shore-phone-dense.png` · `Q-shore-phone-dense-pin.png` · `Q-shore-phone-dense-full.png` · `Q-shore-1440-dense.png` · `Q-shore-1440-dense-beach.png` | round 8's density question: Himarë padded to 30 (`?dense=30`) at half, after a crowd press, at full; the desktop at 1440 and its Dhërmi beach at the zoom cap             |
+| `Q-shore-phone-dense-full-scrolled.png` · `Q-shore-1440-dense-scrolled.png`                                                                            | round 11's sticky beach heads: the list scrolled 900 px, the current beach pinned at the top of the phone's sheet and of the desktop panel                                |
+| `Q-shore-phone-beach-live.png` · `Q-shore-phone-beach-cap15.png`                                                                                       | one beach at the fit's own ceiling of 14 and at 15 (`?cap=15`), both live — the rejected cap                                                                              |
+| `Q-shore-phone-dense-beach.png` · `Q-shore-phone-dense-beach-cap15.png`                                                                                | the nine-venue beach at 14 and at 15: identical, because the pane's fit binds first; Near me on the left, since `€20` sits under its right spot (round 14)                |
 
 ## Files
 
-| File                                                 | What                                                                                                                                                                                                                                     |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `prototype-map-page.ts`                              | the host: fixture data, the filters and the tourist's position from the URL                                                                                                                                                              |
-| `variant-shore.ts`                                   | Q: the ground, the two-scroller sheet, the poster/live swap, the dusk and merged-crowd classes, the desktop panel rule, the dots and the gutter                                                                                          |
-| `prototype-poster.ts`                                | the still poster: its box, its camera, and the `MapHandle` over an image the pin layer draws through                                                                                                                                     |
-| `prototype-coast-picker.ts`                          | the coast as a chooser: the ribbon + the index as a sheet (a popover from `lg`) — the desktop's only way to another region                                                                                                               |
-| `prototype-header.ts`                                | round 11's page-scoped treatment of the SHELL's header (`?hdr=`): the page's edges, the eyebrow, the theme swatch as a menu row — never an `app.html` edit                                                                               |
-| `prototype-venue-row.ts` · `prototype-venue-card.ts` | the row (the pin's preview): a card on the phone's sheet, a flat list entry on the desktop panel that carries the review count and expands when it is the selected one (round 12); and the card grid, no longer reachable on the desktop |
-| `prototype-place.ts`                                 | the tourist's position, distances, the beach grouping                                                                                                                                                                                    |
-| `prototype-aspect.ts`                                | the result set's own aspect ratio — the number the desktop pane is sized from                                                                                                                                                            |
-| `prototype-camera.ts`                                | fit the camera to the pane and the pins                                                                                                                                                                                                  |
-| `prototype-days.ts`                                  | the fixture's time: each venue's sales close, and the seven days the day chips offer                                                                                                                                                     |
-| `prototype-coast.ts`                                 | the coast as an index: regions, beaches, counts, from-prices                                                                                                                                                                             |
-| `prototype-venues.ts`                                | 26 fixture venues, on the shoreline: round 7 snapped each to the map's own water edge (§ _Round 7_ § 1)                                                                                                                                  |
-| `shoot.mjs`                                          | the screenshot + cost/geometry driver (themes, CDP touch flicks, the pane's pin fill), and the poster renderer (`--posters`)                                                                                                             |
-| `research/`                                          | the two raw research reports: the measured references (bytes by host, geometry) and the web research                                                                                                                                     |
-| `../../../../public/prototype-posters/*.jpg`         | the 22 still posters, one per region and beach with venues — rendered, not drawn                                                                                                                                                         |
+| File                                                 | What                                                                                                                                                                                                                                      |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prototype-map-page.ts`                              | the host: fixture data, the filters and the tourist's position from the URL                                                                                                                                                               |
+| `variant-shore.ts`                                   | Q: the ground, the two-scroller sheet, the poster/live swap, the dusk and merged-crowd classes, the pill pass with its no-go boxes and the lone-pin swap, the located state's three arms, the desktop panel rule, the dots and the gutter |
+| `prototype-poster.ts`                                | the still poster: its box, its camera (fitted above the foot row since round 14), and the `MapHandle` over an image the pin layer draws through                                                                                           |
+| `prototype-coast-picker.ts`                          | the coast as a chooser: the ribbon + the index as a sheet (a popover from `lg`) — the desktop's only way to another region                                                                                                                |
+| `prototype-header.ts`                                | round 11's page-scoped treatment of the SHELL's header (`?hdr=`): the page's edges, the eyebrow, the theme swatch as a menu row — never an `app.html` edit                                                                                |
+| `prototype-venue-row.ts` · `prototype-venue-card.ts` | the row (the pin's preview): a card on the phone's sheet, a flat list entry on the desktop panel that carries the review count and expands when it is the selected one (round 12); and the card grid, no longer reachable on the desktop  |
+| `prototype-place.ts`                                 | the tourist's position, distances, the beach grouping                                                                                                                                                                                     |
+| `prototype-aspect.ts`                                | the result set's own aspect ratio — the number the desktop pane is sized from                                                                                                                                                             |
+| `prototype-camera.ts`                                | fit the camera to the pane and the pins                                                                                                                                                                                                   |
+| `prototype-days.ts`                                  | the fixture's time: each venue's sales close, and the seven days the day chips offer                                                                                                                                                      |
+| `prototype-coast.ts`                                 | the coast as an index: regions, beaches, counts, from-prices                                                                                                                                                                              |
+| `prototype-venues.ts`                                | 26 fixture venues, on the shoreline: round 7 snapped each to the map's own water edge (§ _Round 7_ § 1)                                                                                                                                   |
+| `shoot.mjs`                                          | the screenshot + cost/geometry driver (themes, CDP touch flicks, the pane's pin fill, every pill-on-chrome intersection per shot), and the poster renderer (`--posters`)                                                                  |
+| `research/`                                          | the two raw research reports: the measured references (bytes by host, geometry) and the web research                                                                                                                                      |
+| `../../../../public/prototype-posters/*.jpg`         | the 22 still posters, one per region and beach with venues — rendered, not drawn                                                                                                                                                          |
 
 ## Recommendation
 
-**Implement Q as rounds 7 to 11 leave it** — not as round 6 left it, and not another round. The
-two open questions that would have justified more prototyping were answered by measurement rounds
-ago (a sheet over a poster is a first paint for **0 map requests, 0 WebGL contexts and one 38 kB
-JPEG**; a real CDP flick rests where it should), and round 11 spent itself on defects and
-finishes rather than on the shape: the shape did not move. What is left is engineering with named
-seams, and the one genuinely open design question — whether a beach with nine venues needs
-anything beyond the list — has an answer now (no: the zoom cap that was proposed does not bind,
-and 50 m is 27 px even at 15). The first three slices, each a tracer bullet through the shipped
-Discover page behind a flag, test-first:
+**Implement Q with round 14's changes — and no further round.** The shape has not moved since
+round 7 (a sheet over a poster: **0 map requests, 0 WebGL contexts and one 38 kB JPEG** on the
+first paint; a 150 ms CDP flick rests where it should); rounds 8 to 13 settled the desktop and
+the chrome; and round 14 found the last thing a tourist would have hit on day one — Near me from
+home breaking the page — and that the pins could sit under the chrome, both closed and both now
+counted by the driver (0 pill-on-chrome intersections in 74 shots). What is left is engineering
+with named seams. The changes round 14 adds to the earlier slices are three: the fit's window
+excludes the foot row and the chrome's boxes are inputs to pill placement (slice 3), the located
+state has three arms decided by the shipped fence rule (slice 1), and the sheet's rail slot
+carries the answer to Near me (slice 1). The first three slices, each a tracer bullet through the
+shipped Discover page behind a flag, test-first:
 
-1. **The sheet, on measured chrome.** The two-scroller scroll-snap sheet with its three heights,
-   the 78 px head, the grabber, the `Map` pill and highlight-and-scroll — with the tab bar's and
-   header's heights **measured at runtime, never constants** (round 11: the bar is `sm:hidden`, so
-   the tablet band reserves nothing, and the header is 73 px, not 68). A Playwright e2e flicks
-   through CDP and asserts the rest positions at 390, 430, **768 and 820**, where the first row
-   lands at y 493 in all four.
+1. **The sheet, on measured chrome, with Near me's three arms.** The two-scroller scroll-snap
+   sheet with its three heights, the 78 px head, the grabber, the `Map` pill (the list padded 68
+   px under it) and highlight-and-scroll — with the tab bar's and header's heights **measured at
+   runtime, never constants** (round 11: the bar is `sm:hidden`, so the tablet band reserves
+   nothing, and the header is 73 px, not 68); a chip pressed at peek raises the sheet before it
+   opens its rail; and Near me decided by the shipped fence rule (`shared/riviera-map.ts`'s
+   `withinBounds`, to be exported): off the fence, the shipped `off-map` words in the head's rail
+   slot and nothing moves; on the fence, the fit includes the dot and the title names the beach
+   only within 3 km. A Playwright e2e flicks through CDP at 150 ms and asserts the rest positions
+   at 390, 430, **768 and 820**, where the first row lands at y 493 in all four, and records the
+   hard-fling pass-through (round 14 § 3) rather than asserting against it.
 2. **The poster.** A backend renderer for one still per region and beach from the map extract, at
    2× and 3× **and per width bucket** — above 440 px the 440 px still cannot cover the window, and
-   the fallback (the live map from the first paint) is what the tablet pays today. The
-   `MapHandle` over an image, `fitUnderHeader`, the live map's swap-in at the poster's camera, the
-   first-paint cost asserted (0 map requests, 0 contexts), and the pane rendered at the sheet's
-   full height so the seam round 11 measured at ΔRGB 15.3 cannot exist.
+   the fallback (the live map from the first paint) is what the tablet pays today — with the
+   pins fitted into the window above the foot row (307 − 56 = 251 px at half, round 14) and the
+   credit the licence needs painted into it. The `MapHandle` over an image, `fitUnderHeader`, the
+   live map's swap-in at the poster's camera, a located state kept on the poster while it frames
+   the dot (Tirana costs 0 / 0 / 0), the first-paint cost asserted (0 map requests, 0 contexts),
+   and the pane rendered at the sheet's full height so the seam round 11 measured at ΔRGB 15.3
+   cannot exist.
 3. **The pin layer and the desktop.** A `dusk` input on the layer, decided **per crowd** (all
    members closed) and not per face member; the one-line crowd-mean rule in `crowdPins`; a
    **vertical anchor** in `layoutPills` (above and below, then the diagonals) before it collapses
-   a pill to a bare count, which is what named the last nameless disc at `?dense=30`; and the
-   desktop as rounds 8 to 11 left it — region-first with the picker as the chooser, the panel
+   a pill to a bare count, which is what named the last nameless disc at `?dense=30`; **no-go
+   boxes and a window as inputs to `layoutPills`** — the chrome and the tourist's dot are `taken`
+   before any pill is placed, a pill that finds nowhere keeps the layer's placement, and a lone
+   pin under a piece of chrome swaps that chrome's side (round 14: 0 intersections in 74 shots);
+   the phone's map chrome on one foot row (the credit wrapped to 200 px, Near me beside it); and
+   the desktop as rounds 8 to 11 left it — region-first with the picker as the chooser, the panel
    clamped to the row's width (38 %, 420–540) with the map taking the rest, the rows a flat list
    with the beach as a running head, sticky past 15 venues, the gutter for a region's crowds under
    560 px of pane, no whole-coast state anywhere, and the map inset 12 px with all four corners at
