@@ -235,9 +235,9 @@ flag.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `implement (phase 6)`
 
-**Next action:** Light a pin from its row on hover, and centre a pressed pin's row in the panel.
+**Next action:** Extend `discover-map.e2e.ts` with the pill-on-chrome intersection count.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -245,8 +245,8 @@ flag.
 | 1 — The layer takes the placement inputs and hangs vertically | ✅ | `7817a2b2` |
 | 2 — Dusk per crowd | ✅ | `07783031` |
 | 3 — The host hands the chrome in; the lone-pin foot swap | ✅ | `797f524b` |
-| 4 — The desktop panel: frame, head, rows, sticky heads, the selected row | ⏳ | |
-| 5 — The desktop's pin↔row lighting and the picker popover | | |
+| 4 — The desktop panel: frame, head, rows, sticky heads, the selected row | ✅ | `4d8c566a` |
+| 5 — The desktop's pin↔row lighting and the picker popover | ⏳ | |
 | 6 — The mocked e2e: intersections, the panel's geometry, the popover | | |
 | 7 — a11y, contrast, touch targets, close-out | | |
 

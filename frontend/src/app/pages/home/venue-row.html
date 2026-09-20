@@ -10,6 +10,10 @@
     [queryParams]="{ date: date() }"
     [attr.aria-label]="card().ariaLabel"
     [attr.aria-current]="selected() ? 'true' : null"
+    (mouseenter)="pointed.emit(true)"
+    (mouseleave)="pointed.emit(false)"
+    (focus)="pointed.emit(true)"
+    (blur)="pointed.emit(false)"
   >
     <!-- The anchor carries every fact as its accessible name, so its visible content is decorative. -->
     <span

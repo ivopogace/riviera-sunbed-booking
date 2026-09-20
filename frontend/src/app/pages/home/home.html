@@ -493,6 +493,7 @@
                     [card]="card"
                     [date]="selectedDate()"
                     [selected]="isSelected(card)"
+                    (pointed)="onRowPointed(card, $event)"
                   />
                 }
               </ul>
@@ -527,6 +528,7 @@
         [selected]="selectedVenue()"
         [maxZoom]="mapMaxZoom"
         [noGo]="mapChrome()"
+        [highlighted]="pointedVenue()"
         (chosen)="onPinSelected($event)"
         (narrowed)="onBeachNarrowed($event)"
       />

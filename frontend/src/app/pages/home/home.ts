@@ -497,6 +497,8 @@ export class Home {
     return problem === null || this.noteDismissed() ? null : NEAR_ME_MESSAGES[problem];
   });
   protected readonly pickerOpen = signal(false);
+  /** The venue whose row the pointer or the keyboard is on, for the map to light its pin. */
+  protected readonly pointedVenue = signal<string | null>(null);
   /**
    * The boxes no pill may sit on, in viewport coordinates: the page's own chrome, the tourist's
    * dot with its margin, and whatever the map component draws for itself. Measured, because their
@@ -1128,6 +1130,12 @@ export class Home {
       },
       { injector: this.injector },
     );
+  }
+
+  /** The list answering the map: a row under the pointer lights its venue's pin, and only its own. */
+  protected onRowPointed(card: VenueCard, on: boolean): void {
+    const id = String(card.id);
+    this.pointedVenue.update((lit) => (on ? id : lit === id ? null : lit));
   }
 
   protected isSelected(card: VenueCard): boolean {

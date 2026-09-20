@@ -2377,6 +2377,24 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
       expect(rows().filter((row) => row.hasAttribute('aria-current'))).toHaveLength(1);
     });
 
+    it('lights a venue’s pin while the pointer is on its row, and only its own', async () => {
+      const fixture = await panelPage();
+      const rows = [...el(fixture).querySelectorAll<HTMLElement>('[data-testid="venue-row"]')];
+      const lit = (): string[] =>
+        [...el(fixture).querySelectorAll<HTMLElement>('[data-hover]')].map(
+          (pin) => pin.dataset['pin'] ?? '',
+        );
+      expect(lit()).toEqual([]);
+
+      rows[0].dispatchEvent(new MouseEvent('mouseenter'));
+      await settle(fixture);
+      expect(lit()).toHaveLength(1);
+
+      rows[0].dispatchEvent(new MouseEvent('mouseleave'));
+      await settle(fixture);
+      expect(lit()).toEqual([]);
+    });
+
     it('hangs the coast picker off the place button, which is the desktop’s only chooser', async () => {
       const fixture = await panelPage();
       expect(byTestId(fixture, 'coast-picker')).toBeNull();

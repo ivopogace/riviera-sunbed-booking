@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { AmenityChip } from '../../shared/amenity-chip';
@@ -36,6 +36,12 @@ export class VenueRow {
   readonly selected = input(false);
   /** The date the panel is showing, carried into the beach map the row links to. */
   readonly date = input('');
+  /**
+   * The pointer, or the keyboard, has come to this row or left it — the map answers by lighting
+   * the venue's pin. Focus is in it for parity: a keyboard walking the list lights the same pins
+   * a pointer would.
+   */
+  readonly pointed = output<boolean>();
 
   protected readonly cover = computed(() => this.card().photos[0] ?? null);
   protected readonly srcset = computed(() => {

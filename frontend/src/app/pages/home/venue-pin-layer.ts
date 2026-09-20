@@ -120,6 +120,9 @@ const PLACE_CLASSES =
   'motion-safe:[transition:background-color_0.15s_ease,color_0.15s_ease] ' +
   'data-here:border-riv-solid-btn-fill data-here:bg-riv-solid-btn-ink data-here:text-riv-solid-btn-fill';
 
+/** The list answering the map: the same fill a pointer over the pin itself would give it. */
+const HOVER_CLASSES = 'data-hover:bg-riv-solid-btn-hover';
+
 /**
  * The rest of a crowd: real 44 px buttons at the crowd's spot, invisible until focused, when each
  * paints as an inverted disc numbering its venue. Pointer presses go to the pill; these exist for
@@ -166,6 +169,12 @@ export class VenuePinLayer {
   readonly map = input<MapHandle | undefined>(undefined);
   /** Which venue is currently showing its preview, or `null` for none. */
   readonly selected = input<string | null>(null);
+  /**
+   * The venue whose row the pointer (or the keyboard) is on, so the map answers the list: the
+   * pin lights exactly as a pointer over the pin itself lights it. A crowd's pill lights for any
+   * of its members, since the pill is the only thing drawn for them.
+   */
+  readonly highlighted = input<string | null>(null);
   /** The map's own zoom ceiling: a crowd that needs more than this is one the camera cannot separate. */
   readonly maxZoom = input.required<number>();
   /**
@@ -341,9 +350,9 @@ export class VenuePinLayer {
   protected slotClass(slot: Slot): string {
     switch (slot.kind) {
       case 'lone':
-        return `${LONE_CLASSES} ${DUSK_CLASSES} ${slot.member.pin.card.priceLabel ? LONE_BADGE_CLASSES : LONE_DOT_CLASSES}`;
+        return `${LONE_CLASSES} ${DUSK_CLASSES} ${HOVER_CLASSES} ${slot.member.pin.card.priceLabel ? LONE_BADGE_CLASSES : LONE_DOT_CLASSES}`;
       case 'place':
-        return `${PLACE_CLASSES} ${DUSK_CLASSES} ${slot.place.placement.compact ? 'pl-[6px]' : 'pl-[13px]'}`;
+        return `${PLACE_CLASSES} ${DUSK_CLASSES} ${HOVER_CLASSES} ${slot.place.placement.compact ? 'pl-[6px]' : 'pl-[13px]'}`;
       default:
         return MEMBER_CLASSES;
     }
@@ -356,6 +365,14 @@ export class VenuePinLayer {
    */
   protected dusk({ kind, place, member }: Slot): boolean {
     return kind === 'lone' ? member.pin.card.salesClosed : kind === 'place' && place.dusk;
+  }
+
+  /** The face drawn for the highlighted venue: its own pin, or the pill its crowd is drawn as. */
+  protected lit({ kind, place }: Slot): boolean {
+    const id = this.highlighted();
+    return (
+      id !== null && kind !== 'member' && place.crowd.members.some((member) => member.pin.id === id)
+    );
   }
 
   /** The pill hangs off its point when it cannot sit centred; every other face sits centred. */

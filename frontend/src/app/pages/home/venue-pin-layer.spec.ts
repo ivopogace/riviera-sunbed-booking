@@ -412,6 +412,39 @@ describe('VenuePinLayer', () => {
     });
   });
 
+  describe('the row the pointer is on', () => {
+    function light(id: string | null): void {
+      fixture.componentRef.setInput('highlighted', id);
+      fixture.detectChanges();
+    }
+
+    it('lights the lone pin of the venue whose row is under the pointer', async () => {
+      await render([AURORA]);
+      expect(buttons('map-venue-pin')[0].hasAttribute('data-hover')).toBe(false);
+
+      light('3');
+
+      expect(buttons('map-venue-pin')[0].hasAttribute('data-hover')).toBe(true);
+    });
+
+    it('lights a crowd’s pill for any one of its members, since the pill is what is drawn', async () => {
+      await render([MIRAMAR, LORI]);
+
+      light('2');
+
+      expect(buttons('map-place-pill')[0].hasAttribute('data-hover')).toBe(true);
+    });
+
+    it('lights nothing once the pointer has left the list', async () => {
+      await render([AURORA]);
+      light('3');
+
+      light(null);
+
+      expect(buttons('map-venue-pin')[0].hasAttribute('data-hover')).toBe(false);
+    });
+  });
+
   describe('the placement inputs the host hands in', () => {
     /** The trio sits on the camera's centre, which in jsdom is the layer's own corner. */
     async function renderDhermi(): Promise<void> {

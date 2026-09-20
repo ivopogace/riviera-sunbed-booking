@@ -10,6 +10,7 @@
     [attr.data-pin]="slot.member.pin.id"
     [attr.data-here]="slot.kind === 'place' && slot.place.here ? '' : null"
     [attr.data-dusk]="dusk(slot) ? '' : null"
+    [attr.data-hover]="lit(slot) ? '' : null"
     [attr.aria-label]="label(slot)"
     [attr.aria-expanded]="expanded(slot)"
     (click)="press(slot)"

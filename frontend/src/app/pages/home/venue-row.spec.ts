@@ -130,6 +130,20 @@ describe('VenueRow', () => {
     expect(render(PALASA).querySelector('[aria-current]')).toBeNull();
   });
 
+  it('reports the pointer arriving and leaving, and the keyboard doing the same', () => {
+    const host = render(PALASA);
+    const pointed: boolean[] = [];
+    fixture.componentInstance.pointed.subscribe((on) => pointed.push(on));
+    const row = byTestId(host, 'venue-row')!;
+
+    row.dispatchEvent(new MouseEvent('mouseenter'));
+    row.dispatchEvent(new MouseEvent('mouseleave'));
+    row.dispatchEvent(new FocusEvent('focus'));
+    row.dispatchEvent(new FocusEvent('blur'));
+
+    expect(pointed).toEqual([true, false, true, false]);
+  });
+
   it('draws the venue’s cover photo, and the gradient placeholder without one', () => {
     expect(byTestId(render(PALASA), 'row-photo-empty')).not.toBeNull();
 
