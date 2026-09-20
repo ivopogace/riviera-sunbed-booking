@@ -743,6 +743,8 @@ test.describe('Discover sheet — the poster', () => {
 
       await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
       await expect(page.getByTestId('sheet-poster')).toHaveCount(0);
+      // The press focused the poster's button; the map that took its place holds focus now (WCAG 2.4.3).
+      await expect(page.getByTestId('sheet-map')).toBeFocused();
       await settle(page);
       const after = await pinBoxes(page);
       expect(after).toHaveLength(before.length);

@@ -269,6 +269,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-1 | review gate (overlay RV-FE-9, CLAUDE.md auditor) | a mouse press focuses the poster's ground button, which leaves once the live map loads, stranding focus on `<body>` | fixed — focus is handed to the live map's region (`sheet-map`, "Map of the riviera") at the swap; pinned in `home.spec.ts` › "a finger on the ground …" and the e2e › "a drag on the ground …" (`toBeFocused`) |
 
 ---
 

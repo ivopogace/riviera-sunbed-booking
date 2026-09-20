@@ -2048,7 +2048,10 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
       const fixture = await sheetPage();
       const before = pinBoxes(fixture);
 
-      byTestId(fixture, 'sheet-poster')!.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+      // A mouse press focuses the button it lands on, so the poster holds focus as it leaves.
+      const poster = byTestId(fixture, 'sheet-poster')!;
+      poster.focus();
+      poster.dispatchEvent(new Event('pointerdown', { bubbles: true }));
       const handle = await loaded(fixture);
 
       expect(engine.created).toHaveLength(1);
@@ -2056,6 +2059,9 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
       expect(handle.view()).toEqual(himareStill().liveView(PHONE));
       expect(byTestId(fixture, 'sheet-poster')).toBeNull();
       expect(byTestId(fixture, 'riviera-map-fake')).not.toBeNull();
+      // Focus is handed to the live map's region rather than stranded on <body> (WCAG 2.4.3).
+      expect(document.activeElement).toBe(byTestId(fixture, 'sheet-map'));
+      expect(byTestId(fixture, 'sheet-map')?.getAttribute('aria-label')).toBe('Map of the riviera');
       const after = pinBoxes(fixture);
       expect(after).toHaveLength(before.length);
       for (const [index, [x, y]] of after.entries()) {

@@ -621,6 +621,11 @@ export class Home {
     });
   }
 
+  private posterHoldsFocus(): boolean {
+    const poster = this.host.nativeElement.querySelector('[data-testid="sheet-poster"]');
+    return poster?.contains(this.document.activeElement) ?? false;
+  }
+
   private previewHoldsFocus(): boolean {
     const preview = this.host.nativeElement.querySelector('[data-testid="venue-preview"]');
     return preview?.contains(this.document.activeElement) ?? false;
@@ -650,6 +655,12 @@ export class Home {
       const handle = this.groundHandle();
       if (handle !== undefined) {
         onCleanup(handle.onMove(() => this.moved.update((n) => n + 1)));
+      }
+    });
+    // The poster leaves under a finger that focused it: focus goes to the map that took its place (WCAG 2.4.3).
+    effect(() => {
+      if (!this.posterShown() && this.posterHoldsFocus()) {
+        this.focusAfterRender('sheet-map', 'sheet-grabber');
       }
     });
     // The sheet pulled down from half uncovers the ground: that is the live map's, not the still's.
