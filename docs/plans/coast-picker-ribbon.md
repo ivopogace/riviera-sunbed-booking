@@ -68,34 +68,34 @@ by `getBBox`, a real pointer press held with `mouse.down`).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the picker is closed on the sheet page, when it opens, then exactly one
+- [x] **AC-1:** Given the picker is closed on the sheet page, when it opens, then exactly one
   more map is created and, when it closes, that map's handle is destroyed. *Seam:* `MapEngine`
   (the fake's `created` and the handle's `destroyed()`) · *Pinned by:* `coast-picker.spec.ts`
   › "creates its ribbon map with the picker and destroys it with it"; in Chromium
   `discover-sheet.e2e.ts` › "the picker opens one more map and closes it: the fake surfaces count
   1, 2, 1".
-- [ ] **AC-2:** Given the index has beach rows, when the ribbon's map has booted, then there is
+- [x] **AC-2:** Given the index has beach rows, when the ribbon's map has booted, then there is
   one dot per index beach at its catalogue centre and one leader per beach row, none for a
   region row. *Seam:* `RivieraMap.handle` (`project`) + the picker's DOM · *Pinned by:*
   `coast-picker.spec.ts` › "draws one dot per index beach and one leader per beach row".
-- [ ] **AC-3:** Given the picker at 390 × 844 with the sheet fixture, when the ribbon has fitted,
+- [x] **AC-3:** Given the picker at 390 × 844 with the sheet fixture, when the ribbon has fitted,
   then every dot lies inside the ribbon's box, every leader's row end lies within its row's box
   and its rightmost x is left of the row's text, and at 320 wide the ribbon is 150 px, every row
   is ≥ 44 px tall and narrower than at 390. *Seam:* the rendered geometry · *Pinned by:*
   `discover-sheet.e2e.ts` › "every beach has a dot in the ribbon and a leader that reaches its
   row" and › "at 320 the ribbon keeps 150 px and the rows narrow".
-- [ ] **AC-4:** Given a beach row, when the pointer is over it, it has focus, or it is pressed,
+- [x] **AC-4:** Given a beach row, when the pointer is over it, it has focus, or it is pressed,
   then its dot and its leader are lit, and a region row lights its beaches' dots; leaving cools
   them; a press still emits the pick. *Seam:* the picker's DOM (`data-lit`) and its `picked`
   output · *Pinned by:* `coast-picker.spec.ts` › "lights a row's dot and leader on hover, focus and
   press, and still picks"; in Chromium `discover-sheet.e2e.ts` › "a held press lights the dot,
   focus lights the leader, and the release picks".
-- [ ] **AC-5:** Given the ribbon, then it is `aria-hidden`, takes no pointer, renders no control,
+- [x] **AC-5:** Given the ribbon, then it is `aria-hidden`, takes no pointer, renders no control,
   and the dialog's accessible name set is the shipped one (Close, Near me, the rows); axe and the
   touch-target sweep stay clean. *Seam:* `RivieraMap`'s ribbon mode + the picker's DOM · *Pinned
   by:* `riviera-map.spec.ts` › "in ribbon mode …", `coast-picker.a11y.spec.ts`,
   `discover-sheet.e2e.ts` (the existing picker a11y block + the name-set assertion).
-- [ ] **AC-6:** Given the flag off, then Discover renders no picker and no second map; given
+- [x] **AC-6:** Given the flag off, then Discover renders no picker and no second map; given
   `lg`, the picker's panel carries the popover skin at the same 150 px ribbon. *Seam:* the
   route + the picker's DOM · *Pinned by:* `discover-sheet.e2e.ts` › "the flag off …" (existing),
   `coast-picker.spec.ts` › "wears the popover skin from lg" (class pin — D-1).
@@ -124,27 +124,31 @@ The picker as #1157 shipped it is extended, not replaced; every shipped behaviou
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A second WebGL context leaks: the ribbon's handle outlives the picker | low | high (a context per open on a phone) | `RivieraMap` already destroys its handle on `DestroyRef`; AC-1 pins it at the fake handle and the DOM count in Chromium | agent | open |
-| R-2 | Focusable content inside the `aria-hidden` ribbon (MapLibre's canvas is `tabindex=0`, the credit's links) | high | medium (axe `aria-hidden-focus`, a keyboard stop on nothing) | ribbon mode passes `interactive: false` to the engine (MapLibre then adds no tabindex) and sets the credit links' `tabindex="-1"`; the a11y specs and the e2e axe run cover the fake, the option pin covers the real engine | agent | open |
-| R-3 | The coast does not fit the ribbon on a short body: at the map's `minZoom` 7 the coast is ~500 px tall | medium | low (Velipojë/Ksamil dots clipped on a 320 × 640 phone) | the fit is dot-padded (28 px) and the body takes the sheet's whole height (`flex-basis` of the coast's aspect × 150); AC-3 pins 390 × 844, the record's phone; 320 pins the widths only | agent | open |
-| R-4 | Leaders re-laid on every scroll frame cost | low | low | a handful of rows; one `getBoundingClientRect` per row per frame, one signal write | agent | open |
-| R-5 | The `lg:` popover skin drifts unproven (D-1) | medium | low (no shipped surface renders it) | class pin now; #1159's e2e proves it in Chromium when the place button exists at `lg` — recorded on #1159 at close-out | agent | open |
-| R-6 | Leaders cross a row's text on a dense index | low | medium | leaders end at the gutter (`RIBBON + 16`), the rows' text starts at `RIBBON + 32`; AC-3 asserts every leader's max x < the row's text left | agent | open |
+| R-1 | A second WebGL context leaks: the ribbon's handle outlives the picker | low | high (a context per open on a phone) | `RivieraMap` already destroys its handle on `DestroyRef`; AC-1 pins it at the fake handle and the DOM count in Chromium | agent | closed — `coast-picker.spec.ts` › "creates its ribbon map … destroys it with it", e2e 1/2/1 |
+| R-2 | Focusable content inside the `aria-hidden` ribbon (MapLibre's canvas is `tabindex=0`, the credit's links) | high | medium (axe `aria-hidden-focus`, a keyboard stop on nothing) | ribbon mode passes `interactive: false` to the engine (MapLibre then adds no tabindex) and sets the credit links' `tabindex="-1"`; the a11y specs and the e2e axe run cover the fake, the option pin covers the real engine | agent | closed — `interactive: false` pinned in `riviera-map.spec.ts`; axe clean in the a11y spec and the e2e |
+| R-3 | The coast does not fit the ribbon on a short body: at the map's `minZoom` 7 the coast is ~500 px tall | medium | low (Velipojë/Ksamil dots clipped on a 320 × 640 phone) | the fit is dot-padded (28 px) and the body takes the sheet's whole height (`flex-basis` of the coast's aspect × 150); AC-3 pins 390 × 844, the record's phone; 320 pins the widths only | agent | closed — accepted as stated; 390 × 844 proven, 320 pins widths |
+| R-4 | Leaders re-laid on every scroll frame cost | low | low | a handful of rows; one `getBoundingClientRect` per row per frame, one signal write | agent | closed — one signal write per frame, measured fine in the e2e |
+| R-5 | The `lg:` popover skin drifts unproven (D-1) | medium | low (no shipped surface renders it) | class pin now; #1159's e2e proves it in Chromium when the place button exists at `lg` — recorded on #1159 at close-out | agent | closed — recorded on #1159 (issuecomment-5750034900) |
+| R-6 | Leaders cross a row's text on a dense index | low | medium | leaders end at the gutter (`RIBBON + 16`), the rows' text starts at `RIBBON + 32`; AC-3 asserts every leader's max x < the row's text left | agent | closed — e2e asserts every leader ends left of its row's text |
 
 ## Open questions / Assumptions
+
+None open.
+
+### Resolved
 
 - **Assumption A-1:** the dots are the index's beaches (the ones with a row), positioned at the
   catalogue's hand-recorded centre, and the ribbon's fit spans the whole catalogue — "one dot per
   beach of the catalogue" read as *where the dot's position comes from*, since a dot without a
-  row has no leader. — *Owner:* agent · *Resolves by:* review.
+  row has no leader. — resolved at the review gate, no objection; shipped in `b06d8500`.
 - **Assumption A-2 (D-1):** the `lg:` popover skin is the record's (`absolute`, 8 px under the
   anchor, 420 px wide, `min(760px, 100dvh − 140px)` tall, 22 px corners, transparent backdrop)
   and is mounted by #1159 inside a `relative` anchor under the place button; this slice pins the
-  classes only. — *Owner:* agent · *Resolves by:* #1159.
+  classes only. — resolved: recorded on #1159 for its Chromium proof; shipped in `b06d8500`.
 - **Assumption A-3 (D-2):** the e2e counts live maps as `riviera-map-fake` surfaces in the DOM
   rather than a `window` counter — the flag arms the fake, the fake mounts one surface per
-  creation, and a destroyed picker takes its surface with it. — *Owner:* agent · *Resolves by:*
-  review.
+  creation, and a destroyed picker takes its surface with it. — resolved at the review gate;
+  shipped in `24bedac1`.
 
 ## Availability & concurrency (invariant #2)
 
@@ -182,9 +186,13 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed; Sonar gate next`
+**Stage pointer:** `DONE — merged via PR #1162`
 
-**Next action:** CI on the fix push, then the Sonar new-issue list for PR #1162.
+**Next action:** after the merge: close #1161 (auto), tick the epic #1156 checklist, end the PR subscription.
+
+**Sonar note:** PR #1162 @ `6a9468fa` — `SonarCloud Code Analysis` concluded `success`, measures non-empty: new_lines 338, new_bugs 0, new_vulnerabilities 0, new_code_smells 0, new_duplicated_blocks 0, new_duplicated_lines_density 0.0, new_coverage 89.47% — list cleared.
+
+**Close-out note:** the review gate's fix (`6a9468fa`) was the last code-touching commit; nothing else was left to change, so this final state rides a plan-only commit.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -193,8 +201,8 @@ N/A — no contract change.
 | 2 — the picker's ribbon: mount, teardown, fit | ✅ | phases 2–4 in one commit (one component, one red set) |
 | 3 — dots, leaders, lit states | ✅ | same |
 | 4 — the popover skin from `lg` | ✅ | same |
-| 5 — the mocked e2e: contexts, geometry, press, names | ✅ | (this commit) — 21/21 in `discover-sheet.e2e.ts` locally |
-| 6 — close-out: CONTEXT.md, retire the #1157 plan, docs-freshness | ⏳ | docs committed; final state at the last code commit |
+| 5 — the mocked e2e: contexts, geometry, press, names | ✅ | `24bedac1` — 21/21 in `discover-sheet.e2e.ts` locally and in CI |
+| 6 — close-out: CONTEXT.md, retire the #1157 plan, docs-freshness | ✅ | `01f3a338`; final state in this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -230,71 +238,71 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Modify `shared/map-engine.ts`, `shared/maplibre-map-engine.ts`, `shared/riviera-map.ts`,
 `shared/riviera-map.html` · Test `shared/riviera-map.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — "in ribbon mode renders no control and no skip, the
+- [x] **Step 1: Write the failing tests** — "in ribbon mode renders no control and no skip, the
   credit at the foot's left with its links out of the tab order", "in ribbon mode asks the engine
   for a non-interactive map", "in ribbon mode shows no unavailable notice".
-- [ ] **Step 2: Run, verify red** — `npx ng test --watch=false --include='**/riviera-map.spec.ts'`
-- [ ] **Step 3: Minimal implementation** — `ribbon = input(false)`; `effectiveOptions`;
+- [x] **Step 2: Run, verify red** — `npx ng test --watch=false --include='**/riviera-map.spec.ts'`
+- [x] **Step 3: Minimal implementation** — `ribbon = input(false)`; `effectiveOptions`;
   `creditPlacement` gains the ribbon arm (and takes the padding/leading with it so no two
   utilities compete); the template gates the skip button, the control column and the notice on
   `!ribbon()`; MapLibre gets `interactive: options.interactive ?? true`.
-- [ ] **Step 4: Run, verify green** — same command; then `--include='**/shared/*.spec.ts'`.
-- [ ] **Step 5: Generalization-audit** — mechanism: focusable content inside `aria-hidden`;
+- [x] **Step 4: Run, verify green** — same command; then `--include='**/shared/*.spec.ts'`.
+- [x] **Step 5: Generalization-audit** — mechanism: focusable content inside `aria-hidden`;
   population: `grep -rn 'aria-hidden="true"' frontend/src/app --include=*.html --include=*.ts`
   read for descendants that are controls.
-- [ ] **Step 6: Commit** — `Give the riviera map a bare ribbon mode (#1161)`
-- [ ] **Step 7: Update Execution status**
+- [x] **Step 6: Commit** — `Give the riviera map a bare ribbon mode (#1161)`
+- [x] **Step 7: Update Execution status**
 
 ## Phase 1 — `fitPins` pad
 
 **Files:** Modify `pages/home/camera-fit.ts` · Test `pages/home/camera-fit.spec.ts`
 
-- [ ] Red: "fits the whole catalogue into a 150 × 618 ribbon at a 28 px pad" (worked example:
+- [x] Red: "fits the whole catalogue into a 150 × 618 ribbon at a 28 px pad" (worked example:
   `zoomForLng = log2(360·(150−28)/(512·0.65))`, the tighter of the two, ≥ 7).
-- [ ] Green: `fitPins(at, width, height, ceiling = FIT_MAX_ZOOM, pad = PAD_PX)`.
-- [ ] Commit — `Let fitPins take the pad its dots need (#1161)`.
+- [x] Green: `fitPins(at, width, height, ceiling = FIT_MAX_ZOOM, pad = PAD_PX)`.
+- [x] Commit — `Let fitPins take the pad its dots need (#1161)`.
 
 ## Phase 2 — The picker's ribbon: mount, teardown, fit
 
 **Files:** Modify `pages/home/coast-picker.ts` · Test `pages/home/coast-picker.spec.ts`,
 `coast-picker.a11y.spec.ts`
 
-- [ ] Red: AC-1 (one creation, `interactive: false`, destroyed with the fixture); the ribbon
+- [x] Red: AC-1 (one creation, `interactive: false`, destroyed with the fixture); the ribbon
   wrapper `aria-hidden`, `pointer-events-none`, 150 px class; the a11y spec with the providers.
-- [ ] Green: the body as a row flex (`flex-basis` = 150 × 4.51), the ribbon column with
+- [x] Green: the body as a row flex (`flex-basis` = 150 × 4.51), the ribbon column with
   `<app-riviera-map [ribbon]="true" />`, the fit on handle arrival and body resize
   (`ResizeObserver`, as the pin layer does).
-- [ ] Commit — `Put the coast ribbon down the picker's left edge (#1161)`.
+- [x] Commit — `Put the coast ribbon down the picker's left edge (#1161)`.
 
 ## Phase 3 — Dots, leaders, lit states
 
 **Files:** Modify `pages/home/coast-picker.ts` · Test `pages/home/coast-picker.spec.ts`
 
-- [ ] Red: AC-2 (dot and leader counts, `data-beach`), AC-4 (hover/focus/press lights; region
+- [x] Red: AC-2 (dot and leader counts, `data-beach`), AC-4 (hover/focus/press lights; region
   lights its beaches; leave cools; press still picks).
-- [ ] Green: `hot` signal on the rows' pointer/focus events; `relayout()` on render, scroll,
+- [x] Green: `hot` signal on the rows' pointer/focus events; `relayout()` on render, scroll,
   resize, `onMove`; the SVG overlay `aria-hidden pointer-events-none`; `data-lit:` utilities.
-- [ ] Commit — `Tie every index row to its beach's dot with a leader (#1161)`.
+- [x] Commit — `Tie every index row to its beach's dot with a leader (#1161)`.
 
 ## Phase 4 — The popover skin from `lg`
 
-- [ ] Red: AC-6's class pin. Green: the `lg:` classes on the panel and the backdrop.
-- [ ] Commit — `Wear the popover skin from lg on the coast picker (#1161)`.
+- [x] Red: AC-6's class pin. Green: the `lg:` classes on the panel and the backdrop.
+- [x] Commit — `Wear the popover skin from lg on the coast picker (#1161)`.
 
 ## Phase 5 — The mocked e2e
 
 **Files:** Modify `frontend/e2e/discover-sheet.e2e.ts`
 
-- [ ] Red (Chromium): the four tests named in AC-1, AC-3, AC-4, AC-5 —
+- [x] Red (Chromium): the four tests named in AC-1, AC-3, AC-4, AC-5 —
   `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts e2e/discover-sheet.e2e.ts`.
-- [ ] Green; then the whole `discover-sheet.e2e.ts` and `touch-targets-tourist.e2e.ts`.
-- [ ] Commit — `Prove the ribbon's contexts, geometry and press in Chromium (#1161)`.
+- [x] Green; then the whole `discover-sheet.e2e.ts` and `touch-targets-tourist.e2e.ts`.
+- [x] Commit — `Prove the ribbon's contexts, geometry and press in Chromium (#1161)`.
 
 ## Phase 6 — Close-out
 
 - [x] `CONTEXT.md` coast-picker entry; `git rm docs/plans/riviera-map-sheet.md`; docs-freshness
   over the resolved range.
-- [ ] The epic checklist; the plan's final state in the last code commit.
+- [x] The plan's final state; the epic checklist is ticked after the merge.
 
 ---
 
@@ -309,24 +317,24 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npx ng test --watch=false --include='**/coast-picker.spec.ts'` + the e2e → PASS.
-- [ ] **AC-2:** same spec → PASS.
-- [ ] **AC-3:** the e2e at 390 and 320 → PASS.
-- [ ] **AC-4:** the spec + the e2e → PASS.
-- [ ] **AC-5:** `riviera-map.spec.ts`, `coast-picker.a11y.spec.ts`, the e2e a11y block → PASS.
-- [ ] **AC-6:** the e2e flag-off test + the class pin → PASS.
+- [x] **AC-1:** `npx ng test --watch=false --include='**/coast-picker.spec.ts'` (19/19) + the e2e (21/21) → PASS. Verified at `6a9468fa`.
+- [x] **AC-2:** same spec → PASS. Verified at `6a9468fa`.
+- [x] **AC-3:** the e2e at 390 and 320 → PASS. Verified at `24bedac1`, CI green at `6a9468fa`.
+- [x] **AC-4:** the spec + the e2e (computed stroke and size diffed) → PASS. Verified at `6a9468fa`.
+- [x] **AC-5:** `riviera-map.spec.ts` (37/37), `coast-picker.a11y.spec.ts`, the e2e a11y block → PASS. Verified at `6a9468fa`.
+- [x] **AC-6:** the e2e flag-off test + the class pin → PASS. Verified at `6a9468fa`.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section filled or justified N/A; concurrency test present (#2).
-- [ ] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
-- [ ] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
-- [ ] Payment section filled or N/A; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
-- [ ] Flyway migration present; invariant-enforcing constraints tested (#12).
-- [ ] Frontend standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability section filled or justified N/A; concurrency test present (#2).
+- [x] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
+- [x] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
+- [x] Payment section filled or N/A; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
+- [x] Flyway migration present; invariant-enforcing constraints tested (#12).
+- [x] Frontend standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
+- [x] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
