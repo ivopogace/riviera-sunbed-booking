@@ -8,7 +8,7 @@ import { VenueRow } from './venue-row';
 
 /**
  * The desktop panel's row — the pin's preview on that surface, as the card is on the sheet. What
- * it says at rest, and what the one selected row says extra. The 92 → 118 px it measures is a
+ * it says at rest, and what the one selected row says extra. The 92 → 121 px it measures is a
  * browser fact, pinned in `discover-map.e2e.ts`; here it is the content rule.
  */
 describe('VenueRow', () => {
