@@ -363,6 +363,8 @@ export class Home {
   private readonly liveLoaded = computed(() => this.map()?.loaded() ?? false);
   /** The poster is on screen: it covers, and no live map has loaded under it yet. */
   protected readonly posterShown = computed(() => this.posterCovers() && !this.liveLoaded());
+  /** The poster's own credit: until the map component stands, which brings the same pill at the same spot. */
+  protected readonly posterCredit = computed(() => this.posterShown() && this.map() === undefined);
   /** What the pins and the dot project through: the still while it shows, the live map after. */
   protected readonly groundHandle = computed<MapHandle | undefined>(() =>
     this.posterShown() ? this.posterHandle() : this.mapHandle(),

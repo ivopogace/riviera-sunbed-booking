@@ -34,7 +34,7 @@ export class PosterHandle implements MapHandle {
 
   constructor(
     private readonly camera: MapView,
-    private paneWidth: number,
+    private readonly paneWidth: number,
     private readonly posterHeight: number,
     private readonly onWanted: (view: MapView) => void,
   ) {}
@@ -49,15 +49,6 @@ export class PosterHandle implements MapHandle {
       center: this.unproject({ x: pane.width / 2, y: pane.height / 2 }),
       zoom: this.camera.zoom,
     };
-  }
-
-  /** The pane's width changed, so every projection moved with the poster's centre. */
-  resize(paneWidth: number): void {
-    if (this.destroyed) {
-      return;
-    }
-    this.paneWidth = paneWidth;
-    this.moveHandlers.forEach((handler) => handler());
   }
 
   markers(): ReadonlyMap<string, MapMarker> {

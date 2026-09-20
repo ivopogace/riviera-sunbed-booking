@@ -72,20 +72,6 @@ describe('PosterHandle', () => {
     expect(still.view()).toEqual(camera);
   });
 
-  it('re-projects on a pane resize and tells its movers', () => {
-    const still = new PosterHandle(camera, PANE.width, POSTER_H, vi.fn());
-    const moved = vi.fn();
-    const off = still.onMove(moved);
-
-    still.resize(430);
-
-    expect(moved).toHaveBeenCalledTimes(1);
-    expect(still.project(camera.center).x).toBe(215);
-    off();
-    still.resize(390);
-    expect(moved).toHaveBeenCalledTimes(1);
-  });
-
   it('is loaded as soon as anyone asks, and holds markers without drawing them', async () => {
     const still = new PosterHandle(camera, PANE.width, POSTER_H, vi.fn());
     const loaded = vi.fn();
@@ -104,17 +90,17 @@ describe('PosterHandle', () => {
     expect(still.markers().size).toBe(0);
   });
 
-  it('subscribes clicks and drags as the seam asks, fires neither, and lets go on destroy', () => {
+  it('subscribes moves, clicks and drags as the seam asks, fires none of them, and lets go on destroy', () => {
     const still = new PosterHandle(camera, PANE.width, POSTER_H, vi.fn());
     const clicked = vi.fn();
     const dragged = vi.fn();
     const moved = vi.fn();
+    const offMove = still.onMove(moved);
     still.onMapClick(clicked);
     still.onMarkerDragEnd(dragged);
-    still.onMove(moved);
 
+    offMove();
     still.destroy();
-    still.resize(430);
 
     expect(clicked).not.toHaveBeenCalled();
     expect(dragged).not.toHaveBeenCalled();

@@ -269,6 +269,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-2 | review gate (code-comment reviewer) | between the live map's mount and its load both credits stood in the DOM at the same spot — four licence links for a keyboard user | fixed — the poster's credit yields the moment the map component exists (`posterCredit`); pinned in `home.spec.ts` › "shows one credit while the live map is on its way …" (a held boot) and the e2e's drag test (`map-attribution` count 1) |
+| F-3 | review gate (bug scan + code-comment reviewer) | `PosterHandle.resize()` was dead: the page rebuilds the handle on a viewport change | fixed — removed with its spec; the pane width is a constructor argument |
 | F-1 | review gate (overlay RV-FE-9, CLAUDE.md auditor) | a mouse press focuses the poster's ground button, which leaves once the live map loads, stranding focus on `<body>` | fixed — focus is handed to the live map's region (`sheet-map`, "Map of the riviera") at the swap; pinned in `home.spec.ts` › "a finger on the ground …" and the e2e › "a drag on the ground …" (`toBeFocused`) |
 
 ---
@@ -288,7 +290,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/web-mercator.ts` — the one Web Mercator the fake engine, the fit and the still handle share
 - `frontend/src/app/shared/riviera-map.ts|.html|.spec.ts` — imports the options; `loaded`; the credit component
 - `frontend/src/app/shared/map-credit.ts` — the credit pill
-- `frontend/src/app/shared/poster-handle.ts|.spec.ts` — the still-image `MapHandle`
+- `frontend/src/app/shared/poster-handle.ts|.spec.ts` — the still-image `MapHandle` (no `resize`: the page rebuilds it per viewport)
 - `frontend/src/app/shared/fake-map-engine.ts` — projects through `web-mercator.ts`
 - `frontend/src/app/pages/home/camera-fit.ts|.spec.ts` — imports the options
 - `frontend/src/app/pages/home/map-poster.ts|.spec.ts` — the poster catalogue

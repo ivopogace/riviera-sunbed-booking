@@ -2070,6 +2070,43 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
       }
     });
 
+    it('shows one credit while the live map is on its way: the poster’s yields to the map’s', async () => {
+      // An engine whose boot waits: the map component is mounted (with its own credit) but not loaded.
+      let release: () => void = () => undefined;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      class HeldFakeMapEngine extends BoxedFakeMapEngine {
+        override async create(
+          host: HTMLElement,
+          options: MapEngineOptions,
+        ): Promise<FakeMapHandle> {
+          await held;
+          return super.create(host, options);
+        }
+      }
+      makeEngine = () => new HeldFakeMapEngine();
+      const fixture = await sheetPage();
+      expect(el(fixture).querySelectorAll('[data-testid="map-attribution"]')).toHaveLength(1);
+
+      byTestId(fixture, 'sheet-poster')!.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+      // Not `settle`: the held boot is a pending task, so the fixture never reports stable.
+      for (let pass = 0; pass < 5; pass += 1) {
+        fixture.detectChanges();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+
+      expect(fixture.debugElement.query(By.directive(RivieraMap))).not.toBeNull();
+      expect(byTestId(fixture, 'sheet-poster')).not.toBeNull();
+      expect(el(fixture).querySelectorAll('[data-testid="map-attribution"]')).toHaveLength(1);
+      expect(el(fixture).querySelectorAll('[data-testid="map-attribution"] a')).toHaveLength(2);
+
+      release();
+      await loaded(fixture);
+      expect(byTestId(fixture, 'sheet-poster')).toBeNull();
+      expect(el(fixture).querySelectorAll('[data-testid="map-attribution"]')).toHaveLength(1);
+    });
+
     it('a crowd press wakes the live map at the poster’s camera and replays the press', async () => {
       const fixture = await sheetPage();
       const still = himareStill();

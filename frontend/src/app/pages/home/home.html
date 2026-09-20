@@ -219,7 +219,9 @@
             decoding="async"
           />
         </button>
-        <!-- The tiles' credit stands on the foot row over the poster as it does over the live map. -->
+      }
+      @if (posterCredit()) {
+        <!-- The tiles' credit stands on the foot row over the poster until the live map, which carries its own, is mounted. -->
         <app-map-credit [placement]="FOOT_CREDIT_PLACEMENT" [bottom]="footBottom()" />
       }
     }
