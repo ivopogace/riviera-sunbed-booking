@@ -19,6 +19,7 @@ function card(
     regionLabel,
     photos: [],
     modeLabel: 'Instant Book',
+    instantBook: true,
     isRated: false,
     rating: '0',
     reviewsLabel: 'no reviews yet',

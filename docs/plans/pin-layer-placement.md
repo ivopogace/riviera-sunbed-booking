@@ -235,17 +235,17 @@ flag.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** Write the failing `crowdPins` mean-rule spec in `pin-crowding.spec.ts`.
+**Next action:** Light a pin from its row on hover, and centre a pressed pin's row in the panel.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `pin-crowding.ts`: the crowd mean, the nine spots, the window and the no-go boxes | | |
-| 1 — The layer takes the placement inputs and hangs vertically | | |
-| 2 — Dusk per crowd | | |
-| 3 — The host hands the chrome in; the lone-pin foot swap | | |
-| 4 — The desktop panel: frame, head, rows, sticky heads, the selected row | | |
+| 0 — `pin-crowding.ts`: the crowd mean, the nine spots, the window and the no-go boxes | ✅ | `7817a2b2` |
+| 1 — The layer takes the placement inputs and hangs vertically | ✅ | `7817a2b2` |
+| 2 — Dusk per crowd | ✅ | `07783031` |
+| 3 — The host hands the chrome in; the lone-pin foot swap | ✅ | `797f524b` |
+| 4 — The desktop panel: frame, head, rows, sticky heads, the selected row | ⏳ | |
 | 5 — The desktop's pin↔row lighting and the picker popover | | |
 | 6 — The mocked e2e: intersections, the panel's geometry, the popover | | |
 | 7 — a11y, contrast, touch targets, close-out | | |
@@ -277,6 +277,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/pages/home/home.a11y.spec.ts` — the panel's axe pass
 - `frontend/src/app/pages/home/home.contrast.spec.ts` — the panel's inks in three themes
 - `frontend/src/app/pages/home/discover-head.ts|.spec.ts` — the place button's popover anchor
+- `frontend/src/app/pages/home/discover-sheet.ts` — the header selector, exported so the panel
+  measures the shell by the same name the sheet does
+- `frontend/src/app/pages/home/venue-card.ts` — `instantBook`, so the row names the mode only when
+  it is the exception
+- `frontend/src/app/pages/home/place-groups.spec.ts` — the new card field in its fixture
+- `frontend/src/testing/venue-cards.ts` — the same, in the shared fixture
+- `frontend/src/app/shared/map-credit.ts` — the foot credit's swapped placement
 - `frontend/src/app/shared/riviera-map.ts|.spec.ts` — `chromeBoxes()`
 - `frontend/e2e/discover-map.e2e.ts` — the intersection count, the panel's geometry, the popover
 

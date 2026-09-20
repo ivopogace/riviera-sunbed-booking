@@ -67,11 +67,11 @@ import { defaultBookingDate, formatDayMonth, isIsoDate } from '../../shared/book
 import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
-import { fitInWindow } from './camera-fit';
+import { fitInWindow, fitPins } from './camera-fit';
 import { footSwap, Rect } from './pin-crowding';
 import { CoastPicker, coastIndex, PickedPlace } from './coast-picker';
 import { BeachOption, DiscoverHead } from './discover-head';
-import { DiscoverSheet } from './discover-sheet';
+import { DiscoverSheet, HEADER_SELECTOR } from './discover-sheet';
 import { Poster, posterFor, posterFrames } from './map-poster';
 import { VenuePin } from './pin-crowding';
 import {
@@ -84,6 +84,7 @@ import {
 import { FOOT_ROW_PX } from './sheet-geometry';
 import { VenueCard } from './venue-card';
 import { VenuePinLayer } from './venue-pin-layer';
+import { VenueRow } from './venue-row';
 import { VenuePreviewCard } from './venue-preview-card';
 
 /**
@@ -110,6 +111,25 @@ const POSTER_CREDIT = '[data-testid="map-attribution"]';
 const FOOT_ROW = '[data-testid="sheet-near-me"], [data-testid="map-attribution"]';
 /** The dot's own ring is its margin; a pill may come this close to it and no closer. */
 const DOT_MARGIN_PX = 2;
+/**
+ * The desktop panel is clamped to the ROW's own natural width — a row is happy between about 300
+ * and 400 px of text beside a 72 px thumbnail — and the map takes everything else. Sizing the map
+ * from the result set's aspect instead stretched a four-venue region's rows to 814 px beside a
+ * 576 px bay, which is the wrong invariant: the row is the thing with a natural width.
+ */
+const PANEL_SHARE = 0.38;
+const PANEL_MIN_PX = 420;
+const PANEL_MAX_PX = 540;
+/** From this much panel the beach chip spells itself out, as the tablet's sheet does. */
+const PANEL_SPELLED_PX = 480;
+/** The gutter around and between the panel and the map; their corners match it at 22 px. */
+const FRAME_GAP_PX = 12;
+/**
+ * Past this many venues a region is longer than the panel, so its beach heads stick — and only
+ * then do they carry a count, because a count is only worth saying where the group cannot be seen
+ * whole. The phone's sheet, which shows two rows, always says it.
+ */
+const STICKY_HEADS_AFTER = 15;
 
 /** The sheet's query: the region and beach the list is narrowed to, and their cards. */
 interface Focus {
@@ -191,12 +211,14 @@ function closedStateText(
     RivieraMap,
     VenuePinLayer,
     VenuePreviewCard,
+    VenueRow,
     ...FAILURE_DIRECTIVES,
   ],
   host: {
     class: 'block text-riv-card-ink',
     // On the page host, not the map panel: a preview is closable wherever Escape is pressed,
     '(keydown.escape)': 'onEscape()',
+    '(window:resize)': 'remeasureShell()',
   },
   templateUrl: './home.html',
 })
@@ -270,6 +292,25 @@ export class Home {
   /** The route carries `?map=sheet`; the layout follows it only below `lg`. */
   private readonly mapFlag = signal(false);
   protected readonly sheetMode = computed(() => this.mapFlag() && !this.wide());
+  /** From `lg` the same flag lays the list out as a pinned left panel beside an inset map. */
+  protected readonly panelMode = computed(() => this.mapFlag() && this.wide());
+  /** The window and the shell header, which the desktop frame is measured from; the sheet owns its own. */
+  protected readonly shell = signal({ viewportW: 0, viewportH: 0, header: 0 });
+  /** 38 % of the window, never narrower than a row is happy nor wider than a row needs. */
+  protected readonly panelWidth = computed(() =>
+    Math.min(
+      PANEL_MAX_PX,
+      Math.max(PANEL_MIN_PX, Math.round(this.shell().viewportW * PANEL_SHARE)),
+    ),
+  );
+  /** What the map is left, once the frame's three gutters are taken out of the window. */
+  protected readonly paneSize = computed(() => ({
+    width: Math.max(0, this.shell().viewportW - this.panelWidth() - 3 * FRAME_GAP_PX),
+    height: Math.max(0, this.shell().viewportH - this.shell().header - 2 * FRAME_GAP_PX),
+  }));
+  /** The region is longer than the panel: its heads stick, and only then do they count. */
+  protected readonly stickyHeads = computed(() => this.focus().cards.length > STICKY_HEADS_AFTER);
+  protected readonly panelSpelled = computed(() => this.panelWidth() >= PANEL_SPELLED_PX);
 
   /** The skeleton grid renders this many placeholder cards while a request is in flight. */
   protected readonly skeletons = [0, 1, 2, 3, 4, 5] as const;
@@ -315,8 +356,9 @@ export class Home {
    * date change re-feeds these from the one list response it was going to fetch anyway, and the
    * two surfaces cannot disagree. A pin's id is its venue's id as a string.
    */
+  /** Behind the flag the map holds ONE region on every surface — there is no whole-coast state. */
   protected readonly pins = computed<readonly VenuePin[]>(() =>
-    (this.sheetMode() ? this.focus().cards : this.shownCards()).flatMap((card) =>
+    (this.mapFlag() ? this.focus().cards : this.shownCards()).flatMap((card) =>
       card.location
         ? [
             {
@@ -630,6 +672,7 @@ export class Home {
     this.selectedDate.set(this.routeDate(this.route.snapshot.queryParamMap));
     this.mapFlag.set(this.route.snapshot.queryParamMap.get('map') === SHEET_FLAG);
     this.followSheet();
+    this.followPanel();
     this.followMapChrome();
     this.loadInitial();
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
@@ -812,6 +855,38 @@ export class Home {
     });
   }
 
+  /** The desktop frame is the window's, so a resize re-measures it — and the chrome standing on it. */
+  protected remeasureShell(): void {
+    this.chromeTick.update((tick) => tick + 1);
+  }
+
+  /**
+   * The desktop opens on a region, as the phone does: the pins (and the dot, when located) fitted
+   * into the pane the panel leaves. There is no whole-coast state — 26 venues over 300 km are an
+   * index, not a choice, and no pane frames them — so the coast picker is the only way to another
+   * region, and this is the only thing that aims the camera.
+   */
+  private followPanel(): void {
+    afterRenderEffect(() => {
+      const live = this.mapHandle();
+      const { width, height } = this.paneSize();
+      const targets = this.fitTargets();
+      if (!this.panelMode() || live === undefined) {
+        return;
+      }
+      const spots = targets.map((at) => `${at.lng},${at.lat}`).join(';');
+      const key = `panel|${width}x${height}|${spots}`;
+      if (this.framed?.handle === live && this.framed.key === key) {
+        return;
+      }
+      this.framed = { handle: live, key };
+      const view = fitPins(targets, width, height);
+      if (view !== null) {
+        live.easeTo(view);
+      }
+    });
+  }
+
   private remeasureChrome(): void {
     const host = this.host.nativeElement;
     const map = this.map();
@@ -823,6 +898,7 @@ export class Home {
     ].map((element) => element.getBoundingClientRect());
     const dot = host.querySelector<HTMLElement>(HERE_DOT)?.getBoundingClientRect();
 
+    this.shell.set(this.measureShell());
     this.mapChrome.set([
       ...laidOut([...pageDrawn, ...(map?.chromeBoxes() ?? [])]),
       ...laidOut(dot ? [dot] : []).map((box) => inflate(box, DOT_MARGIN_PX)),
@@ -833,6 +909,16 @@ export class Home {
       ),
     );
     this.swapFootForLonePins();
+  }
+
+  private measureShell(): { viewportW: number; viewportH: number; header: number } {
+    const view = this.document.defaultView;
+    const header = this.document.querySelector(HEADER_SELECTOR);
+    return {
+      viewportW: view?.innerWidth ?? 0,
+      viewportH: view?.innerHeight ?? 0,
+      header: Math.round(header?.getBoundingClientRect().height ?? 0),
+    };
   }
 
   /** The foot moves for a lone pin, never the other way round: the shipped rule never moves a pin. */
@@ -1035,7 +1121,8 @@ export class Home {
           if (sheet !== undefined) {
             sheet.reveal(card);
           } else {
-            card.scrollIntoView?.({ block: 'nearest' });
+            // The panel spends its height on the chosen venue: its row comes to the middle.
+            card.scrollIntoView?.({ block: this.panelMode() ? 'center' : 'nearest' });
           }
         },
       },
@@ -1213,6 +1300,7 @@ export class Home {
       regionLabel: regionLabel(venue.region),
       photos,
       modeLabel: venue.bookingMode === 'INSTANT' ? 'Instant Book' : 'Request to Book',
+      instantBook: venue.bookingMode === 'INSTANT',
       isRated: rated,
       rating,
       reviewsLabel: reviewsLabel(venue.reviewsCount),

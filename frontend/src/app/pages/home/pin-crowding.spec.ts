@@ -24,6 +24,7 @@ function card(overrides: Partial<VenueCard> & Pick<VenueCard, 'id' | 'name'>): V
     regionLabel: 'Sarandë',
     photos: [],
     modeLabel: 'Instant Book',
+    instantBook: true,
     isRated: true,
     rating: '4.8',
     reviewsLabel: '326 reviews',

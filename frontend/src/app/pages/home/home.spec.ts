@@ -1688,13 +1688,19 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
     expect(byTestId(fixture, 'view-switch')).not.toBeNull();
   });
 
-  it('keeps the shipped layout from lg up even with the flag', async () => {
+  it('with the flag from lg up, the list is a pinned panel beside the map: no sheet, no filter bar', async () => {
     const fixture = render({ map: 'sheet' }, true);
     httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`).flush(venues());
     await settle(fixture);
 
+    expect(byTestId(fixture, 'desk-panel')).not.toBeNull();
+    expect(byTestId(fixture, 'desk-pane')).not.toBeNull();
     expect(byTestId(fixture, 'sheet-scroller')).toBeNull();
-    expect(byTestId(fixture, 'filter-beach')).not.toBeNull();
+    expect(byTestId(fixture, 'filter-beach')).toBeNull();
+    expect(byTestId(fixture, 'view-switch')).toBeNull();
+    // The same head as the phone's, carrying the same query.
+    expect(byTestId(fixture, 'head-place')).not.toBeNull();
+    expect(byTestId(fixture, 'head-day')).not.toBeNull();
   });
 
   it('with the flag below lg, the map is the ground and the list is the sheet; the filter bar, the switch and the preview card are gone', async () => {
@@ -2266,6 +2272,121 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
       expect(nearMe.classList.contains('right-3')).toBe(true);
       expect(nearMe.classList.contains('left-3')).toBe(false);
       expect(byTestId(fixture, 'map-attribution')!.classList.contains('left-3')).toBe(true);
+    });
+  });
+
+  /**
+   * The desktop panel: the sheet's own content, pinned open beside the map. The frame's pixels are
+   * a browser fact (`discover-map.e2e.ts`); what a jsdom spec holds is the arithmetic and the two
+   * rules that depend on how long the region is.
+   */
+  describe('from lg: the panel', () => {
+    /** A Himarë long enough to outrun the panel, for the rule that turns on past fifteen. */
+    function denseVenues(count: number): VenueSummary[] {
+      const [miramar] = venues();
+      return Array.from({ length: count }, (_unused, index) => ({
+        ...miramar,
+        id: 100 + index,
+        name: `Himarë Venue ${index + 1}`,
+        beach: index % 2 === 0 ? 'DHERMI' : 'JALE',
+        region: 'HIMARE',
+        location: { latitude: 40.15 + index / 1000, longitude: 19.64 },
+      }));
+    }
+
+    async function panelPage(
+      body: VenueSummary[] = sheetVenues(),
+      width = 1440,
+    ): Promise<ComponentFixture<Home>> {
+      window.innerWidth = width;
+      window.innerHeight = 900;
+      const fixture = render({ map: 'sheet' }, true);
+      httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`).flush(body);
+      await settle(fixture);
+      return fixture;
+    }
+
+    const originalSize = { width: window.innerWidth, height: window.innerHeight };
+    afterEach(() => {
+      window.innerWidth = originalSize.width;
+      window.innerHeight = originalSize.height;
+    });
+
+    function heads(fixture: ComponentFixture<Home>): HTMLElement[] {
+      return [...el(fixture).querySelectorAll<HTMLElement>('[data-testid="desk-group"]')];
+    }
+
+    it('clamps the panel to the row’s own width: 38 % of the window between 420 and 540', async () => {
+      // The map takes what is left, which only a browser lays out (`discover-map.e2e.ts`).
+      expect(byTestId(await panelPage(sheetVenues(), 1920), 'desk-panel')!.style.width).toBe(
+        '540px',
+      );
+      expect(byTestId(await panelPage(sheetVenues(), 1300), 'desk-panel')!.style.width).toBe(
+        '494px',
+      );
+      expect(byTestId(await panelPage(sheetVenues(), 1024), 'desk-panel')!.style.width).toBe(
+        '420px',
+      );
+    });
+
+    it('spells the beach chip out from a 480 px panel, and keeps the short form under it', async () => {
+      expect(text(byTestId(await panelPage(sheetVenues(), 1440), 'head-beaches'))).toContain(
+        'All beaches',
+      );
+      expect(text(byTestId(await panelPage(sheetVenues(), 1024), 'head-beaches'))).not.toContain(
+        'All beaches',
+      );
+    });
+
+    it('runs the beaches as heads with a rule and no count, while the region fits the panel', async () => {
+      const fixture = await panelPage();
+
+      expect(heads(fixture).length).toBeGreaterThan(0);
+      for (const head of heads(fixture)) {
+        expect(head.classList.contains('border-b')).toBe(true);
+        expect(head.classList.contains('sticky')).toBe(false);
+        expect(text(head)).not.toContain('venue');
+      }
+    });
+
+    it('sticks the heads past fifteen venues, and only then gives them their counts', async () => {
+      const fixture = await panelPage(denseVenues(16));
+
+      expect(heads(fixture).length).toBeGreaterThan(0);
+      for (const head of heads(fixture)) {
+        expect(head.classList.contains('sticky')).toBe(true);
+        expect(text(head)).toContain('venues');
+      }
+    });
+
+    it('draws a row per venue and marks only the selected one current', async () => {
+      const fixture = await panelPage();
+      const rows = (): HTMLElement[] => [
+        ...el(fixture).querySelectorAll<HTMLElement>('[data-testid="venue-row"]'),
+      ];
+      // Himarë's own: the two Palasë/Dhërmi venues the sheet fixture puts in the opening region.
+      expect(rows().map((row) => row.getAttribute('aria-label')?.split(',')[0])).toEqual([
+        'Palasa Sands',
+        'Aurora Bay',
+      ]);
+      expect(rows().filter((row) => row.hasAttribute('aria-current'))).toEqual([]);
+
+      byTestId(fixture, 'map-venue-pin')!.click();
+      await settle(fixture);
+
+      expect(rows().filter((row) => row.hasAttribute('aria-current'))).toHaveLength(1);
+    });
+
+    it('hangs the coast picker off the place button, which is the desktop’s only chooser', async () => {
+      const fixture = await panelPage();
+      expect(byTestId(fixture, 'coast-picker')).toBeNull();
+
+      byTestId(fixture, 'head-place')!.click();
+      await settle(fixture);
+
+      const anchor = byTestId(fixture, 'head-place')!.parentElement!;
+      expect(anchor.classList.contains('relative')).toBe(true);
+      expect(anchor.querySelector('app-coast-picker')).not.toBeNull();
     });
   });
 });

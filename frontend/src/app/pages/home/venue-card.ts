@@ -23,6 +23,8 @@ export interface VenueCard {
   /** The slideshow's photo URLs in slot order (cover first); empty → the gradient placeholder. */
   readonly photos: readonly PhotoView[];
   readonly modeLabel: string;
+  /** The venue books the platform's default way, so {@link modeLabel} is not worth naming again. */
+  readonly instantBook: boolean;
   readonly isRated: boolean;
   readonly rating: string;
   /** The count with its noun already agreed — "1 review", "2 reviews" (shared/rating.ts). */

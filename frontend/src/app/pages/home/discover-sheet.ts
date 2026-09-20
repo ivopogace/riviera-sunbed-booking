@@ -23,7 +23,7 @@ import {
 } from './sheet-geometry';
 
 /** The shell's chrome the sheet measures: its class names are `app.html`'s, pinned by `app.spec.ts`. */
-const HEADER_SELECTOR = 'header.riv-header';
+export const HEADER_SELECTOR = 'header.riv-header';
 const TAB_BAR_SELECTOR = '.riv-tab-bar';
 /** A revealed row lands this far under the list's top edge. */
 const REVEAL_LEAD_PX = 8;
