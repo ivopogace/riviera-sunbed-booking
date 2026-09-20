@@ -148,6 +148,13 @@ export class RivieraMap {
    * the consumer's own control at the right. `null` is the shipped column.
    */
   readonly foot = input<number | null>(null);
+  /**
+   * A bare ribbon: the map as a picture, for a consumer that draws its own marks over it and
+   * hides the whole thing from assistive technology — no skip control, no control column, no
+   * unavailable notice (the consumer's own structure stands beside it), the credit at the foot
+   * at 10 px with its links out of the tab order, and the engine non-interactive.
+   */
+  readonly ribbon = input(false);
 
   readonly mapClick = output<LngLat>();
   readonly pinMoved = output<LngLat>();
@@ -165,16 +172,25 @@ export class RivieraMap {
   });
 
   protected readonly footChrome = computed(() => this.foot() !== null);
-  /**
-   * The credit's place: the shipped bottom-right corner, or the foot's left, wrapped to 200 px —
-   * less on the narrowest phone, where it leaves the consumer's control at the right its 150 px
-   * (`You are here`), the two insets and a 10 px gap.
-   */
-  protected readonly creditPlacement = computed(() =>
-    this.footChrome()
-      ? 'left-3 max-w-[min(200px,calc(100%-184px))] text-[11px]'
-      : 'right-3 bottom-3 max-w-[calc(100%-24px)] text-[12px]',
+  /** The engine's options: the consumer's, with a ribbon's input switched off. */
+  private readonly engineOptions = computed<MapEngineOptions>(() =>
+    this.ribbon() ? { ...this.options(), interactive: false } : this.options(),
   );
+  /**
+   * The credit's place, padding and leading together (two utilities for one property would
+   * resolve by stylesheet order): the shipped bottom-right corner; the foot's left, wrapped to
+   * 200 px — less on the narrowest phone, where it leaves the consumer's control at the right its
+   * 150 px (`You are here`), the two insets and a 10 px gap; or a ribbon's foot, at 10 px so it
+   * wraps to three lines in 150 px.
+   */
+  protected readonly creditPlacement = computed(() => {
+    if (this.ribbon()) {
+      return 'left-2 bottom-2 max-w-[calc(100%-16px)] px-[6px] py-[2px] text-[10px] leading-[14px]';
+    }
+    return this.footChrome()
+      ? 'left-3 max-w-[min(200px,calc(100%-184px))] px-[10px] py-[4px] text-[11px] leading-[16px]'
+      : 'right-3 bottom-3 max-w-[calc(100%-24px)] px-[10px] py-[4px] text-[12px] leading-[16px]';
+  });
 
   private readonly live = signal<MapHandle | undefined>(undefined);
   /**
@@ -348,7 +364,7 @@ export class RivieraMap {
   private async boot(): Promise<void> {
     let handle: MapHandle;
     try {
-      handle = await this.engine.create(this.canvasHost().nativeElement, this.options());
+      handle = await this.engine.create(this.canvasHost().nativeElement, this.engineOptions());
     } catch {
       this.status.set('unavailable');
       return;

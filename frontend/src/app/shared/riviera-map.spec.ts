@@ -592,6 +592,75 @@ describe('RivieraMap phone chrome (foot)', () => {
   });
 });
 
+describe('RivieraMap ribbon mode', () => {
+  let fake: FakeMapEngine;
+
+  async function render(engine: MapEngine = fake): Promise<ComponentFixture<RivieraMap>> {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [RivieraMap],
+      providers: [
+        { provide: MapEngine, useValue: engine },
+        { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
+      ],
+    });
+    const fixture = TestBed.createComponent(RivieraMap);
+    fixture.componentRef.setInput('ribbon', true);
+    fixture.componentRef.setInput('nearMe', true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function byTestId(fixture: ComponentFixture<RivieraMap>, id: string): HTMLElement | null {
+    return (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      `[data-testid="${id}"]`,
+    );
+  }
+
+  beforeEach(() => {
+    fake = new FakeMapEngine();
+  });
+
+  it('renders no control and no skip, and the credit at its foot with the links out of the tab order', async () => {
+    const fixture = await render();
+
+    expect(byTestId(fixture, 'map-skip')).toBeNull();
+    expect(byTestId(fixture, 'map-zoom-in')).toBeNull();
+    expect(byTestId(fixture, 'map-zoom-out')).toBeNull();
+    expect(byTestId(fixture, 'map-near-me')).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).querySelector('button')).toBeNull();
+    const credit = byTestId(fixture, 'map-attribution')!;
+    expect(credit.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      '© OpenMapTiles © OpenStreetMap contributors',
+    );
+    expect(credit.classList.contains('left-2')).toBe(true);
+    expect(credit.classList.contains('bottom-2')).toBe(true);
+    expect(credit.classList.contains('text-[10px]')).toBe(true);
+    expect(credit.classList.contains('right-3')).toBe(false);
+    const links = [...credit.querySelectorAll('a')];
+    expect(links).toHaveLength(2);
+    for (const link of links) {
+      expect(link.getAttribute('tabindex')).toBe('-1');
+    }
+  });
+
+  it('asks the engine for a non-interactive map at the riviera view', async () => {
+    await render();
+
+    expect(fake.created).toHaveLength(1);
+    expect(fake.created[0].options).toEqual({ ...RIVIERA_MAP_OPTIONS, interactive: false });
+  });
+
+  it('shows no unavailable notice: the index beside it is the structure', async () => {
+    const fixture = await render(new NoWebGlEngine());
+
+    expect((fixture.nativeElement as HTMLElement).dataset['status']).toBe('unavailable');
+    expect(byTestId(fixture, 'map-unavailable')).toBeNull();
+  });
+});
+
 describe('the fence rule', () => {
   const bounds = RIVIERA_MAP_OPTIONS.maxBounds;
 
