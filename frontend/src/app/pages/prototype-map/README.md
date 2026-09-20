@@ -868,6 +868,42 @@ decorative — it is the row's whole fact set — but a tighter form (`★ 4.6 (
 convention) would need the raw count, and the shipped view model deliberately exposes only the
 agreed-noun label.
 
+## Round 13 — what the map's own edges do (open)
+
+Noticed from the shots, not from the code: the desktop pane is rounded on its LEFT corners only.
+That was deliberate — `p-3 pr-0` puts a 12 px gutter left, top and bottom and none on the right,
+so the map bleeds off the window's right edge and a radius there would show a wedge of page
+background. But it is only half done: the top-right and bottom-right corners are square while
+sitting 12 px inside the window, which reads as a card with two corners filed off rather than as a
+bleed. `?edge=half|round|bleed` builds the three answers; all three shot at 1440 and 1920.
+
+| `?edge=`             | The frame                                        | Pane at 1440 | Map area at 1440         | What it says                                  |
+| -------------------- | ------------------------------------------------ | ------------ | ------------------------ | --------------------------------------------- |
+| `half` (rounds 8–12) | gutter left/top/bottom, flush right              | 876 × 803    | 703,428 px²              | a card with two corners filed off             |
+| `round`              | gutter all four sides, all corners 22 px         | 864 × 803    | 693,792 px² (**−1.4 %**) | the map is a card beside the panel            |
+| `bleed`              | gutter left only; the panel keeps its own `my-3` | 876 × 827    | **724,452 px² (+3.0 %)** | the map is the ground; the panel floats on it |
+
+The mechanical objection to `round` does not hold, and was checked before arguing from it: at 1440
+the map's own chrome is already inset 12 px from the right (the zoom column 1384–1428 × 97–193,
+the credit 1115–1428 × 850–876), and a 22 px corner only bites the outer ~10 px of the curve, so
+neither is clipped. It is a taste call, not a collision.
+
+**The recommendation is `bleed`, and the shots are why.** `round` is tidier than what is there now
+— two matching rounded surfaces instead of one and a half — but it turns the map into a card, and
+the page then has a frame around everything, which is the dashboard look rounds 8–11 kept removing.
+`bleed` is the only one that agrees with the rest of the design: the map reaches the window's edges
+as it does on the phone (where the ground is `fixed inset-0` under the glass header), the panel
+floats ON it with its own shadow rather than sitting beside it in a frame, the single rounded edge
+is the one that faces the panel and therefore means something, and it is the only option that GAINS
+map (+21,024 px² at 1440, +32,544 at 1920) rather than spending it on a frame. At 1920 the case is
+clearer still: the panel's bottom ends at 1068 with the map continuing beneath it to 1080, so the
+panel is visibly on the ground rather than in a grid with it.
+
+Still `half` by default until the call is made; `Q-shore-1440-edge-*.png` and
+`Q-shore-1920-edge-*.png` are the three, at both widths. Not tried: sending the pane UP under the
+glass header too, as the phone's ground runs under it — the most consistent version of all, and
+the one that would need the zoom column moved off the header's 73 px.
+
 ## Screenshots
 
 `shots/` holds the set these notes are written from, captured by `shoot.mjs`: `playwright-core`
@@ -903,6 +939,7 @@ contexts) and the geometry the notes argue from; `--json` keeps the raw numbers.
 | `Q-shore-1440-hdr-wide.png` · `-hdr-lower` · `-hdr-noeyebrow`                                                                                          | the header treatments one at a time: the page's edges; the 12.5 px lowercase eyebrow; the eyebrow gone                                                        |
 | `Q-shore-1440-menu.png` · `Q-shore-1440-menu-shell.png`                                                                                                | the theme swatch as a labelled menu row, and the shipped menu beside it                                                                                       |
 | `Q-shore-1440-free.png` · `Q-shore-1440-pin.png` · `Q-shore-1920-pin.png`                                                                              | Himarë's 864 px pane at the set's own height (`?pane=free`); a lone pin press lights and centres its row, and the lit row expands (round 12)                  |
+| `Q-shore-1440-edge-half.png` · `-edge-round` · `-edge-bleed` · `Q-shore-1920-edge-*.png`                                                               | round 13's open question: the map's own edges — the half-bleed of rounds 8–12, a rounded card, a full bleed                                                   |
 | `Q-shore-1440-sarande-pin.png`                                                                                                                         | round 12's clearest case: `Pasqyra Blue` lit, `Request to Book · Snorkelling · Quiet bay` under its facts                                                     |
 | `Q-shore-1440-sarande.png` · `Q-shore-1440-beach.png` · `Q-shore-1440-picker.png`                                                                      | a narrow region on the 40 % floor; Dhërmi chosen; the coast picker, the desktop's chooser                                                                     |
 | `Q-shore-phone-dense.png` · `Q-shore-phone-dense-pin.png` · `Q-shore-phone-dense-full.png` · `Q-shore-1440-dense.png` · `Q-shore-1440-dense-beach.png` | round 8's density question: Himarë padded to 30 (`?dense=30`) at half, after a crowd press, at full; the desktop at 1440 and its Dhërmi beach at the zoom cap |

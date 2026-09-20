@@ -146,6 +146,13 @@ const SHOTS = [
   },
   { name: 'Q-shore-1920', v: DESK, url: 'variant=Q&now=10:30' },
   { name: 'Q-shore-1920-pin', v: DESK, url: 'variant=Q&now=10:30', pin: 'lone' },
+  // round 13: what the map's own edges do — the half-bleed of rounds 8-12, a rounded card, a full bleed
+  { name: 'Q-shore-1440-edge-half', v: LAPTOP, url: 'variant=Q&edge=half&now=10:30' },
+  { name: 'Q-shore-1440-edge-round', v: LAPTOP, url: 'variant=Q&edge=round&now=10:30' },
+  { name: 'Q-shore-1440-edge-bleed', v: LAPTOP, url: 'variant=Q&edge=bleed&now=10:30' },
+  { name: 'Q-shore-1920-edge-half', v: DESK, url: 'variant=Q&edge=half&now=10:30' },
+  { name: 'Q-shore-1920-edge-round', v: DESK, url: 'variant=Q&edge=round&now=10:30' },
+  { name: 'Q-shore-1920-edge-bleed', v: DESK, url: 'variant=Q&edge=bleed&now=10:30' },
   // round 11: the phone's cards as the desktop's flat list, for the comparison at half and full
   { name: 'Q-shore-phone-flat', v: PHONE, url: 'variant=Q&rows=flat&now=10:30' },
   { name: 'Q-shore-phone-flat-full', v: PHONE, url: 'variant=Q&rows=flat&sheet=full&now=10:30' },

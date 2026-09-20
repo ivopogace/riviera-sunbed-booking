@@ -532,10 +532,11 @@ const GUTTER_PILL =
       </div>
     } @else if (wide()) {
       <!-- ── Desktop: the sheet is the left panel, pinned open; the map is the rest. ── -->
-      <div class="flex h-[calc(100dvh-73px)] gap-3 p-3 pr-0">
+      <div class="flex h-[calc(100dvh-73px)] gap-3" [class]="frameEdge()">
         <aside
           appPanelGlass
           class="flex shrink-0 flex-col overflow-hidden rounded-[22px] shadow-[0_10px_32px_rgba(7,42,58,0.16)]"
+          [class]="panelEdge()"
           [style.width.px]="panelWidth()"
         >
           <div class="relative shrink-0 border-b border-riv-header-border pt-3 pb-2">
@@ -557,7 +558,8 @@ const GUTTER_PILL =
         </aside>
         <div
           #pane
-          class="relative min-w-0 flex-1 overflow-hidden rounded-l-[22px] bg-riv-solid-btn-fill"
+          class="relative min-w-0 flex-1 overflow-hidden bg-riv-solid-btn-fill"
+          [class]="paneEdge()"
           [class.self-start]="paneHeight() !== null"
           [style.height.px]="paneHeight()"
         >
@@ -704,6 +706,23 @@ export class VariantShore {
   protected readonly subtitleHead = computed(() => this.params().get('head') === 'subtitle');
   /** `?pane=free`: the desktop pane's height follows the set as its width does. */
   private readonly freePane = computed(() => this.params().get('pane') === 'free');
+  /**
+   * `?edge=`: what the map's own edges do on the desktop (round 12's open question).
+   * `half` is what rounds 8–12 shipped — a 12 px gutter left, top and bottom, flush right, so the
+   * pane is rounded on its left corners only; `round` insets it on all four sides and rounds them
+   * all, making the map a card beside the panel; `bleed` sends it to the right, top and bottom
+   * edges, leaving the one rounded edge that faces the panel.
+   */
+  protected readonly paneEdgeMode = computed(() => this.params().get('edge') ?? 'half');
+  protected readonly frameEdge = computed(() => {
+    const mode = this.paneEdgeMode();
+    return mode === 'round' ? 'p-3' : mode === 'bleed' ? 'pl-3' : 'p-3 pr-0';
+  });
+  /** Bleeding the pane takes the frame's padding away, so the panel keeps its own inset. */
+  protected readonly panelEdge = computed(() => (this.paneEdgeMode() === 'bleed' ? 'my-3' : ''));
+  protected readonly paneEdge = computed(() =>
+    this.paneEdgeMode() === 'round' ? 'rounded-[22px]' : 'rounded-l-[22px]',
+  );
   /** `?hdr=`: the page-scoped header treatment (`shell` = the shipped header, untouched). */
   private readonly header = headerTreatment(this.params().get('hdr'));
   /**
