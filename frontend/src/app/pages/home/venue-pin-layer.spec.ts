@@ -380,6 +380,60 @@ describe('VenuePinLayer', () => {
     });
   });
 
+  describe('the placement inputs the host hands in', () => {
+    /** The trio sits on the camera's centre, which in jsdom is the layer's own corner. */
+    async function renderDhermi(): Promise<void> {
+      await render([HAVANA, FOLIE, SUN_CLUB]);
+      handle.setView({ center: DHERMI, zoom: RIVIERA_MAP_OPTIONS.maxZoom });
+      fixture.detectChanges();
+    }
+
+    function place(input: 'noGo' | 'window', value: unknown): HTMLButtonElement {
+      fixture.componentRef.setInput(input, value);
+      fixture.detectChanges();
+      return buttons('map-place-pill')[0];
+    }
+
+    it('sits a pill on its point when the host hands nothing', async () => {
+      await renderDhermi();
+      const [pill] = buttons('map-place-pill');
+
+      expect(pill.style.translate).toBe('-50% -50%');
+      expect(pill.style.top).toBe('0px');
+    });
+
+    it('hangs a pill clear of a no-go box', async () => {
+      await renderDhermi();
+      // Over the pill's own line and the one above it, leaving the line below free.
+      const chrome = { left: -100, top: -60, right: 100, bottom: -10 };
+
+      expect(place('noGo', [chrome]).style.top).toBe('32px');
+    });
+
+    it('confines a pill to the window', async () => {
+      await renderDhermi();
+      const underHeader = { left: -200, top: -10, right: 200, bottom: 100 };
+
+      expect(place('window', underHeader).style.top).toBe('32px');
+    });
+
+    it('leaves the crowd’s own members on its point while the pill hangs', async () => {
+      await renderDhermi();
+      place('window', { left: -200, top: -10, right: 200, bottom: 100 });
+
+      expect(buttons('map-crowd-member').map((member) => member.style.top)).toEqual(['0px', '0px']);
+    });
+
+    it('collapses a pill the window leaves no room for at all', async () => {
+      await renderDhermi();
+      const sliver = { left: -200, top: -10, right: 200, bottom: 0 };
+      const pill = place('window', sliver);
+
+      expect(pill.style.top).toBe('0px');
+      expect(text(pill)).toBe('3');
+    });
+  });
+
   describe('focus', () => {
     it("focuses a venue's button on request, whichever face it wears", async () => {
       await render([MIRAMAR, LORI, AURORA]);

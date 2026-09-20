@@ -4,7 +4,7 @@
     appTouchTarget
     [class]="slotClass(slot)"
     [style.left.px]="slot.place.crowd.x"
-    [style.top.px]="slot.place.crowd.y"
+    [style.top.px]="top(slot)"
     [style.translate]="translate(slot)"
     [attr.data-testid]="testId(slot)"
     [attr.data-pin]="slot.member.pin.id"

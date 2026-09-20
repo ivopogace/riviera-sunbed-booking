@@ -26,8 +26,11 @@ import {
   PIN_HEIGHT_PX,
   PinCrowd,
   PillPlacement,
+  PillSpace,
   PlacedPin,
   placeName,
+  Rect,
+  riseOffset,
   separationZoom,
   textWidth,
   VenuePin,
@@ -152,6 +155,16 @@ export class VenuePinLayer {
   readonly selected = input<string | null>(null);
   /** The map's own zoom ceiling: a crowd that needs more than this is one the camera cannot separate. */
   readonly maxZoom = input.required<number>();
+  /**
+   * Boxes no pill may sit on — the page's chrome over the map and the tourist's own dot, the dot
+   * already carrying its margin — in VIEWPORT coordinates, as the host measured them.
+   */
+  readonly noGo = input<readonly Rect[]>([]);
+  /**
+   * Where a pill may sit, in VIEWPORT coordinates: on the phone the map the glass header and the
+   * sheet leave. `null` is the layer's own box, which is every pixel it draws on.
+   */
+  readonly window = input<Rect | null>(null);
 
   /** A venue to open the preview of: a lone pin, a crowd member, or the walk's next venue. */
   readonly chosen = output<string>();
@@ -160,8 +173,34 @@ export class VenuePinLayer {
 
   /** Bumped whenever the projection could have changed; the only thing the geometry recomputes on. */
   private readonly tick = signal(0);
+  /** The layer's own box in the viewport once measured; `null` in a document that lays nothing out. */
+  private readonly frame = signal<Rect | null>(null);
   /** The map box's size once measured; `null` in a document that lays nothing out. */
-  private readonly box = signal<MapBox | null>(null);
+  private readonly box = computed<MapBox | null>(() => {
+    const frame = this.frame();
+    return frame && { width: frame.right - frame.left, height: frame.bottom - frame.top };
+  });
+
+  /**
+   * The room the pills have, in the layer's own coordinates: the host measures the chrome and the
+   * window where it draws them — the viewport — and the layer's own origin is what turns the two
+   * spaces into one. On the phone the layer IS the viewport and the shift is zero; on the desktop
+   * it is the pane, inset from both.
+   */
+  private readonly space = computed<PillSpace>(() => {
+    const frame = this.frame();
+    const shift = (rect: Rect): Rect => ({
+      left: rect.left - (frame?.left ?? 0),
+      top: rect.top - (frame?.top ?? 0),
+      right: rect.right - (frame?.left ?? 0),
+      bottom: rect.bottom - (frame?.top ?? 0),
+    });
+    const asked = this.window();
+    return {
+      window: asked ? shift(asked) : frame && shift(frame),
+      noGo: this.noGo().map(shift),
+    };
+  });
 
   private readonly crowds = computed(() => {
     const map = this.map();
@@ -185,7 +224,7 @@ export class VenuePinLayer {
     const placements = layoutPills(
       this.crowds(),
       (crowd) => pillWidth(drafts.get(crowd.key)!),
-      box,
+      this.space(),
     );
     return this.crowds().map((crowd) => ({
       ...drafts.get(crowd.key)!,
@@ -288,6 +327,15 @@ export class VenuePinLayer {
     return `${anchorLeft(0, place.placement.width, place.placement.anchor)}px -50%`;
   }
 
+  /**
+   * Down the screen: the crowd's own point, and for a pill hung clear of it, that point moved. The
+   * rise rides the button's `top` rather than a `calc()` inside its translate, so the hang is a
+   * number both a spec and a screenshot can read off the element.
+   */
+  protected top({ kind, place }: Slot): number {
+    return place.crowd.y + (kind === 'place' ? riseOffset(place.placement.rise) : 0);
+  }
+
   protected expanded(slot: Slot): boolean {
     return slot.kind === 'place'
       ? slot.place.current !== null
@@ -348,8 +396,9 @@ export class VenuePinLayer {
     if (typeof ResizeObserver !== 'function') {
       return;
     }
-    const observer = new ResizeObserver(([entry]) => {
-      this.box.set({ width: entry.contentRect.width, height: entry.contentRect.height });
+    const observer = new ResizeObserver(() => {
+      const { left, top, right, bottom } = this.host.nativeElement.getBoundingClientRect();
+      this.frame.set({ left, top, right, bottom });
       this.bump();
     });
     observer.observe(this.host.nativeElement);
