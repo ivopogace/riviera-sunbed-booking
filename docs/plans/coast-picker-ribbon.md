@@ -178,18 +178,18 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan approved — implement (phase 0)`
+**Stage pointer:** `implement (phase 5 — the mocked e2e)`
 
-**Next action:** phase 0 red in `riviera-map.spec.ts`.
+**Next action:** phase 5 red in Chromium, then the draft PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the map's ribbon mode + `interactive` | ⏳ | |
-| 1 — `fitPins` pad | | |
-| 2 — the picker's ribbon: mount, teardown, fit | | |
-| 3 — dots, leaders, lit states | | |
-| 4 — the popover skin from `lg` | | |
-| 5 — the mocked e2e: contexts, geometry, press, names | | |
+| 0 — the map's ribbon mode + `interactive` | ✅ | `30239420` |
+| 1 — `fitPins` pad | ✅ | `b0dcea8b` |
+| 2 — the picker's ribbon: mount, teardown, fit | ✅ | phases 2–4 in one commit (one component, one red set) |
+| 3 — dots, leaders, lit states | ✅ | same |
+| 4 — the popover skin from `lg` | ✅ | same |
+| 5 — the mocked e2e: contexts, geometry, press, names | ⏳ | |
 | 6 — close-out: CONTEXT.md, retire the #1157 plan, docs-freshness | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -295,6 +295,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-20 | phase 0: focusable content inside an `aria-hidden` box (the ribbon's canvas and credit links) | every `aria-hidden="true"` element in the frontend templates read for a control among its descendants | `grep -rn -A3 'aria-hidden="true"' frontend/src/app --include=*.html --include=*.ts \| grep -E '<button\|<a \|tabindex="0"\|routerLink'` | 4 hits, all icon spans beside a control, none a wrapper | none beyond the ribbon (`interactive: false`, `tabindex="-1"`) |
+| 2026-09-20 | phase 3: a signal-write layout read from the DOM after render | overlays projected through `RivieraMap.handle` | `grep -rln 'handle()' frontend/src/app/pages/home` | `venue-pin-layer.ts` (a `computed` over `project`, no DOM read), `coast-picker.ts` | the pin layer needs no DOM read, so its `computed` stands; the picker's row boxes force a `relayout()` after render |
 
 ---
 

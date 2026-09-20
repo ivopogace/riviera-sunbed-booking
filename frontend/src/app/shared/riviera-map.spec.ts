@@ -568,8 +568,9 @@ describe('RivieraMap phone chrome (foot)', () => {
     );
   }
 
-  it('keeps the zoom column and the bottom-right credit by default', () => {
+  it('keeps the zoom column, its own corners and the bottom-right credit by default', () => {
     const fixture = render(null);
+    expect((fixture.nativeElement as HTMLElement).classList.contains('rounded-[26px]')).toBe(true);
     expect(byTestId(fixture, 'map-zoom-in')).not.toBeNull();
     const credit = byTestId(fixture, 'map-attribution')!;
     expect(credit.classList.contains('right-3')).toBe(true);
@@ -626,6 +627,7 @@ describe('RivieraMap ribbon mode', () => {
   it('renders no control and no skip, and the credit at its foot with the links out of the tab order', async () => {
     const fixture = await render();
 
+    expect((fixture.nativeElement as HTMLElement).classList.contains('rounded-[26px]')).toBe(false);
     expect(byTestId(fixture, 'map-skip')).toBeNull();
     expect(byTestId(fixture, 'map-zoom-in')).toBeNull();
     expect(byTestId(fixture, 'map-zoom-out')).toBeNull();

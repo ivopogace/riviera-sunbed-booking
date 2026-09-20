@@ -114,7 +114,9 @@ const HERE_CLASSES =
   selector: 'app-riviera-map',
   imports: [BusyAction, TouchTarget],
   host: {
-    class: 'relative block overflow-hidden rounded-[26px] bg-riv-solid-btn-fill',
+    class: 'relative block overflow-hidden bg-riv-solid-btn-fill',
+    // A ribbon's corners are its consumer's: the map's own would round the imagery inside them.
+    '[class]': 'ribbon() ? "" : "rounded-[26px]"',
     role: 'region',
     'aria-label': 'Map of the riviera',
     '[attr.data-status]': 'status()',
