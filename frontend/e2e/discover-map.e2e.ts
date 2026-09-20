@@ -1137,6 +1137,26 @@ test.describe('Discover map — the desktop panel', () => {
     expect(await visible()).toBe(seen);
   });
 
+  test('a row under the pointer lights its venue’s face, and lets go when the pointer leaves', async ({
+    page,
+  }) => {
+    await openFlagged(page, { width: 1440, height: 900 });
+    // The crowd's pill, not the lone Borsh pin: dusk already paints that one the hover fill.
+    const pill = page.getByTestId('map-place-pill');
+    const fill = async (): Promise<string> =>
+      pill.evaluate((face) => getComputedStyle(face).backgroundColor);
+    const resting = await fill();
+
+    await page.getByTestId('venue-row').filter({ hasText: 'Aurora Bay' }).hover();
+    await expect(pill).toHaveAttribute('data-hover', '');
+    // The fill is a 0.15s transition, so poll it rather than catching it mid-flight.
+    await expect.poll(fill).not.toBe(resting);
+
+    await page.getByTestId('desk-map').hover({ position: { x: 5, y: 5 } });
+    await expect(pill).not.toHaveAttribute('data-hover', '');
+    await expect.poll(fill).toBe(resting);
+  });
+
   test('the shore’s chain groups into one pill, which the first-member rule would have split', async ({
     page,
   }) => {
@@ -1171,13 +1191,15 @@ test.describe('Discover map — the desktop panel', () => {
     await openFlagged(page, { width: 1440, height: 900 });
     await settleAnimations(page.getByTestId('desk-panel'));
     await expectNoSeriousAxeViolations(page);
-    await expectTouchTargets(page);
+    await expectTouchTargets(page, 'the desktop panel');
+
+    await expectTouchManipulation(page, '[data-testid="desk-near-me"]', 'the panel’s Near me');
 
     await page.getByTestId('head-place').click();
     await expect(page.getByTestId('coast-picker')).toBeVisible();
     await settleAnimations(page.getByTestId('coast-picker'));
     await expectNoSeriousAxeViolations(page);
-    await expectTouchTargets(page);
+    await expectTouchTargets(page, 'the desktop panel with its coast picker');
   });
 
   test('the flag off leaves today’s Discover at the same width', async ({ page }) => {

@@ -279,7 +279,7 @@
         />
       </svg>
     }
-    <!-- Near me on the map's foot row at the right — mid-screen at half, the thumb's zone — in the fixed solid pair, inverted once placed; hidden at full, where the map is a sliver. -->
+    <!-- Near me on the map's foot row, mid-screen at half — the thumb's zone — in the fixed solid pair, inverted once placed; it and the credit change ends for a lone pin. Hidden at full, where the map is a sliver. -->
     @if (nearMeShown && detent() !== 'full') {
       <button
         type="button"
@@ -467,10 +467,10 @@
             </p>
           } @else {
             @for (group of groups(); track group.code) {
-              <!-- A 13 px running head with a rule: on an opaque panel the rule is the whole separation the list needs. -->
+              <!-- A 13 px running head with a rule, which on a panel the rows do not card is the whole separation the list needs. -->
               <h2
                 data-testid="desk-group"
-                class="mt-4 mb-1 flex items-baseline gap-2 border-b border-riv-card-track px-2 pb-1 text-[13px] leading-[18px] font-semibold text-riv-ink-soft first:mt-0"
+                class="mt-4 mb-1 flex items-baseline gap-2 border-b border-riv-ink-faint/20 px-2 pb-1 text-[13px] leading-[18px] font-semibold text-riv-ink-soft first:mt-0"
                 [class]="
                   stickyHeads() ? 'sticky top-0 z-[1] bg-riv-header-glass backdrop-blur-[22px]' : ''
                 "
@@ -491,7 +491,7 @@
                 @for (card of group.cards; track card.id) {
                   <!-- The list item is the page's, as the sheet's card's is: `display: contents` on the row would leave this <li> outside its <ul> for assistive technology. -->
                   <li
-                    class="group/row relative rounded-[14px] [&[data-selected]]:outline-[2px] [&[data-selected]]:outline-offset-[-2px] [&[data-selected]]:outline-riv-accent-ink"
+                    class="group/row relative rounded-[14px] [&[data-selected]]:outline-[2px] [&[data-selected]]:outline-offset-[-2px] [&[data-selected]]:outline-riv-ink"
                     [attr.data-venue-pin]="card.id"
                     [attr.data-selected]="isSelected(card) ? '' : null"
                   >

@@ -59,7 +59,10 @@ export interface MapBox {
   readonly height: number;
 }
 
-/** A box in the map box's own coordinates — the shape `getBoundingClientRect()` hands back. */
+/**
+ * A box, in whatever coordinate space its holder works in — the shape `getBoundingClientRect()`
+ * hands back. Every rect in one call belongs to one space; naming it is the caller's job.
+ */
 export interface Rect {
   readonly left: number;
   readonly top: number;
@@ -124,9 +127,10 @@ export function pinWidth(badge: string | null): number {
 }
 
 /**
- * Whether two placed pins bury each other: their pills overlap — closer than half their widths
- * together across, and closer than a pin's height down. Any overlap counts: the buried pin loses
- * part of its face, and the tourist cannot tell which part is the honest one.
+ * Whether two boxes on the map bury each other: their pills overlap — closer than half their
+ * widths together across, and closer than a pin's height down. Any overlap counts: the buried pin
+ * loses part of its face, and the tourist cannot tell which part is the honest one. Either side
+ * may be a crowd's running anchor rather than a pin, which is what {@link crowdPins} tests.
  */
 export function crowds(a: PinBox, b: PinBox): boolean {
   return Math.abs(a.x - b.x) < (a.width + b.width) / 2 && Math.abs(a.y - b.y) < PIN_HEIGHT_PX;
@@ -154,7 +158,7 @@ export function crowdPins(
       home.members.push(placed);
       home.anchor = anchorOf(home.members);
     } else {
-      groups.push({ anchor: placed, members: [placed] });
+      groups.push({ anchor: anchorOf([placed]), members: [placed] });
     }
   }
   return groups.map(({ anchor, members }) => ({
@@ -253,9 +257,12 @@ export function lowestFromPrice(cards: readonly VenueCard[]): string | null {
 /**
  * Where each crowd's pill sits, largest crowd first: the nine spots in {@link SPOTS} order —
  * centred on its place, hung off its point right then left, then clear of it below and above, then
- * the four diagonals — taking the first that stays inside the box (when known) and clear of every
- * lone pin and every pill already placed. Where the full pill fits nowhere the nine are tried
- * again as a bare count disc, and where that fits nowhere either the pill keeps its layer
+ * the four diagonals — taking the first that stays inside `space.window` (when it is known) and
+ * clear of `space.noGo`, of every lone pin, and of every pill already placed.
+ *
+ * <p>Where the full pill fits nowhere the spots are tried again as a bare count disc, which at
+ * 44 px is exactly twice {@link HANG_PX}: the three anchors collapse onto one box, so that second
+ * pass is really the three rises. Where that fits nowhere either the pill keeps its layer
  * placement, centred and collapsed, rather than being moved somewhere it fits no better. A lone
  * pin is never moved; it occupies its centred box before any pill is placed.
  */
@@ -344,9 +351,10 @@ export function anchorLeft(x: number, width: number, anchor: PillAnchor): number
  * one sits under Near me or the credit it is the chrome that moves, both pieces together.
  *
  * <p>It swaps only when the pieces' CURRENT boxes are covered and their mirrored ones are not, so
- * a pin waiting on the far side holds everything still and the decision cannot oscillate: the
- * answer is a function of where the pins are, not of how it was reached. The two pieces differ in
- * box, so the mirror is a real second chance rather than the same cover flipped over.
+ * a pin waiting on the far side holds everything still and one move always ends it: after a swap
+ * the pieces stand where they were found free, so the next answer is `swapped` unchanged. The two
+ * pieces differ in box, so the mirror is a real second chance rather than the same cover flipped
+ * over.
  *
  * @param pieces the foot row's rendered boxes, in the pane's own coordinates
  * @param lonePins every lone pin's box, the ones that will not move

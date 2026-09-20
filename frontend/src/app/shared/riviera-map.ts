@@ -51,7 +51,8 @@ export const HERE_MARKER = 'you-are-here';
  */
 const CHROME_SELECTOR =
   '[data-testid="map-near-me"], [data-testid="map-attribution"], ' +
-  '[data-testid="map-zoom-in"], [data-testid="map-zoom-out"]';
+  '[data-testid="map-zoom-in"], [data-testid="map-zoom-out"], ' +
+  '[data-testid="map-near-me-message"], [data-testid="map-unavailable"]';
 
 /**
  * Town scale: near enough to tell which beach the visitor is on, wide enough to still show the
@@ -140,8 +141,8 @@ export class RivieraMap {
   readonly nearMe = input(false);
   /**
    * The phone chrome: the map's controls on one row at its foot, this many px up from the map's
-   * bottom edge — the credit at the left, wrapped to 200 px, no zoom column (a pinch zooms), and
-   * the consumer's own control at the right. `null` is the shipped column.
+   * bottom edge — the credit at one end, wrapped to 200 px, no zoom column (a pinch zooms), and
+   * the consumer's own control at the other. `null` is the shipped column.
    */
   readonly foot = input<number | null>(null);
   /** The foot row has changed sides for a lone pin under it: the credit goes right (`footSwap`). */

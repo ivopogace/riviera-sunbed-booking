@@ -69,7 +69,7 @@ const COUNT =
   host: { class: 'block' },
   template: `
     <div class="flex h-11 items-center gap-2 px-3">
-      <!-- The anchor the coast picker's lg popover is positioned against; it holds no layout of its own. -->
+      <!-- Holds the place's share of the row, and is what the coast picker's lg popover hangs off. -->
       <div class="relative flex min-w-0 flex-1">
         <button
           type="button"

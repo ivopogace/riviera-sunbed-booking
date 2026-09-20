@@ -12,8 +12,9 @@ import { VenueCard } from './venue-card';
  * sheet renders a card. Same record, same job (the row IS the pin's preview), different form: a
  * 72 px thumbnail, the name and price on one line, one facts line, a 72 px availability bar beside
  * its own number, and a hairline under it. No card edge, no shadow: three nested rounded surfaces
- * on an opaque panel was the design's templated tell, and on an opaque panel a hairline reads,
- * which is why the phone keeps its cards over tinted glass.
+ * — page, panel, card — was the design's templated tell. The hairline and the track follow the
+ * page ink rather than the card family, which riviera does not redeclare and which would leave a
+ * dark line on its dark panel.
  *
  * <p>The facts line carries the **review count**, which only this surface has room for: a 4.6 from
  * 3 reviews is not a 4.6 from 300, and the phone's card fills that space with the distance chip.

@@ -68,7 +68,7 @@ import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
 import { fitInWindow, fitPins } from './camera-fit';
-import { footSwap, Rect } from './pin-crowding';
+import { footSwap, PIN_HEIGHT_PX, Rect } from './pin-crowding';
 import { CoastPicker, coastIndex, PickedPlace } from './coast-picker';
 import { BeachOption, DiscoverHead } from './discover-head';
 import { DiscoverSheet, HEADER_SELECTOR } from './discover-sheet';
@@ -125,12 +125,17 @@ const PANEL_SPELLED_PX = 480;
 /** The gutter around and between the panel and the map; their corners match it at 22 px. */
 const FRAME_GAP_PX = 12;
 /**
- * What the desktop fit keeps clear on every side, so no pin is FITTED onto the map's own chrome in
- * the first place: a control is a 44 px box 12 px off an edge, and 12 px of air past it. A lone pin
- * is never moved by the placement pass, so for it the fit is the only defence; a crowd's pill has
- * the pass as well.
+ * What the desktop fit keeps clear on every side. `fitPins` takes this off the whole axis and
+ * measures it to a pin's POINT, so half of it has to cover the control band (a 44 px box 12 px off
+ * an edge), the 12 px of air past it AND the pin's own half-height — which is why it replaces
+ * rather than extends the default 76 that only reserved the box.
+ *
+ * <p>It is a guarantee on the down axis only. Across, `You are here` is 150 px where a pin's half
+ * is 30, and a pad wide enough for that would leave a 1024 px window nothing to fit into. A crowd's
+ * pill is kept off those boxes by the placement pass, which takes them as no-go; a lone pin, which
+ * never moves, is drawn under the chrome's own z-order rather than over it.
  */
-const PANE_CHROME_PAD_PX = 2 * (FRAME_GAP_PX + 44 + FRAME_GAP_PX);
+const PANE_CHROME_PAD_PX = 2 * (FRAME_GAP_PX + 44 + FRAME_GAP_PX + PIN_HEIGHT_PX / 2);
 /**
  * Past this many venues a region is longer than the panel, so its beach heads stick — and only
  * then do they carry a count, because a count is only worth saying where the group cannot be seen
@@ -362,8 +367,10 @@ export class Home {
    * location, in list order. The map therefore issues no query of its own: a beach, region or
    * date change re-feeds these from the one list response it was going to fetch anyway, and the
    * two surfaces cannot disagree. A pin's id is its venue's id as a string.
+   *
+   * <p>Behind the flag the map holds ONE region on every surface: there is no whole-coast state,
+   * so the pins are the focused region's cards and not the whole coast's.
    */
-  /** Behind the flag the map holds ONE region on every surface — there is no whole-coast state. */
   protected readonly pins = computed<readonly VenuePin[]>(() =>
     (this.mapFlag() ? this.focus().cards : this.shownCards()).flatMap((card) =>
       card.location
@@ -531,8 +538,9 @@ export class Home {
   );
   /**
    * The foot row's height above the map's bottom edge: 12 px over the sheet's top, following a
-   * drag, and never up into the header at peek. Near me sits on it at the right, the credit at
-   * the left — all the phone's map chrome on one row.
+   * drag, and never up into the header at peek. All the phone's map chrome rides it — Near me at
+   * one end and the credit at the other, the two changing sides together for a lone pin
+   * ({@link footSwap}).
    */
   protected readonly footBottom = computed(() => {
     const sheet = this.sheet();
@@ -1050,7 +1058,7 @@ export class Home {
 
   protected onEscape(): void {
     this.closePreview();
-    if (this.sheetMode()) {
+    if (this.mapFlag()) {
       this.head()?.closeRails();
       this.closePicker();
     }
@@ -1063,14 +1071,13 @@ export class Home {
   /**
    * Open a venue's preview: from a pin (or a pill's press-again), which moves focus into the
    * dialog, or from the open preview's own stepper, which leaves focus where it is — the dialog
-   * stays mounted across a step, so the pressed chevron keeps it. In sheet mode the row is the
-   * preview: it lights and goes to the list's top, and a sheet at peek rises to half.
-   */
-  /**
-   * Behind the flag the ROW is the preview, so a press destroys nothing and focus stays on the pin
-   * that took it. Only the unflagged page opens a preview card, and only there is focus moved into
-   * it — `focusMover` lands on the page host when its target is absent, which on the panel would
-   * take focus off the pressed pin for nothing (WCAG 2.4.3).
+   * stays mounted across a step, so the pressed chevron keeps it.
+   *
+   * <p>Behind the flag the ROW is the preview on both surfaces: it lights and comes into view, a
+   * sheet at peek rises to half, and a press destroys nothing, so focus stays on the pin that took
+   * it. Only the unflagged page opens a card, and only there is focus moved into it — `focusMover`
+   * lands on the page host when its target is absent, which here would take focus off the pressed
+   * pin for nothing (WCAG 2.4.3).
    */
   protected onPinSelected(id: string): void {
     this.selectedVenue.set(id);
@@ -1084,11 +1091,13 @@ export class Home {
 
   /**
    * A place on the map was pressed and it is one beach: the list narrows to it, so the cards
-   * beside the map — the List tab on a phone — are the venues the camera went to. On the sheet
-   * the narrowing is the head's beach, client-side, with no request.
+   * beside the map — the List tab on a phone — are the venues the camera went to. Behind the flag,
+   * on either surface, the narrowing is the head's beach and client-side, with no request: the
+   * flagged page holds one whole-coast response and narrows inside it, and neither the filter bar
+   * nor the crumb that undoes a filter-bar narrowing is drawn there.
    */
   protected onBeachNarrowed(beach: string): void {
-    if (this.sheetMode()) {
+    if (this.mapFlag()) {
       this.focusBeach.set(beach);
     } else if (beach !== this.beach()) {
       this.beach.set(beach);
@@ -1341,7 +1350,6 @@ export class Home {
   }
 }
 
-/** Himarë when it has a venue, else the northernmost region that has one, else nothing (the coast). */
 /** Only what the browser has actually laid out: jsdom gives every element a box of nothing. */
 function laidOut(boxes: readonly DOMRect[]): Rect[] {
   return boxes
@@ -1358,6 +1366,7 @@ function inflate(box: Rect, margin: number): Rect {
   };
 }
 
+/** Himarë when it has a venue, else the northernmost region that has one, else nothing (the coast). */
 function defaultRegion(cards: readonly VenueCard[]): string {
   const present = presentRegions(cards.map((card) => card.beach));
   return present.some((region) => region.code === DEFAULT_REGION)

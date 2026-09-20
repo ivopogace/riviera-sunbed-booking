@@ -2432,6 +2432,31 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
       expect(document.activeElement).toBe(pin);
     });
 
+    it('narrows to a pressed place in the head, client-side, exactly as the sheet does', async () => {
+      // Two venues on ONE beach at one spot: a pressed place that names a beach to narrow to.
+      const onDhermi = denseVenues(2).map((venue) => ({ ...venue, beach: 'DHERMI' as const }));
+      const fixture = await panelPage(onDhermi);
+      byTestId(fixture, 'map-place-pill')!.click();
+      await settle(fixture);
+
+      expect(text(byTestId(fixture, 'head-beaches'))).toContain('Dhërmi');
+      // The panel draws no filter bar and no crumb, so a request here would have no way back.
+      httpMock.expectNone((r) => r.url === `${environment.apiBaseUrl}/api/venues`);
+    });
+
+    it('closes the head’s rails on Escape, as the sheet does', async () => {
+      const fixture = await panelPage();
+      const rail = (): Element | null => el(fixture).querySelector('[aria-label="Beach"]');
+      byTestId(fixture, 'head-beaches')!.click();
+      await settle(fixture);
+      expect(rail()).not.toBeNull();
+
+      el(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settle(fixture);
+
+      expect(rail()).toBeNull();
+    });
+
     it('lights a venue’s pin while the pointer is on its row, and only its own', async () => {
       const fixture = await panelPage();
       const rows = [...el(fixture).querySelectorAll<HTMLElement>('[data-testid="venue-row"]')];

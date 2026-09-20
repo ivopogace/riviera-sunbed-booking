@@ -1,6 +1,6 @@
 <a
   data-testid="venue-row"
-  class="row flex items-center gap-3 border-b border-riv-card-track px-2 py-[10px] no-underline last:border-b-0 group-last/row:border-b-0 motion-safe:[transition:background_0.12s_ease] hover:bg-riv-wash-hover focus-visible:outline-offset-[-2px]"
+  class="row flex items-center gap-3 border-b border-riv-ink-faint/20 px-2 py-[10px] no-underline last:border-b-0 group-last/row:border-b-0 motion-safe:[transition:background_0.12s_ease] hover:bg-riv-wash-hover focus-visible:outline-offset-[-2px]"
   [routerLink]="['/venues', card().id]"
   [queryParams]="{ date: date() }"
   [attr.aria-label]="card().ariaLabel"
@@ -16,10 +16,13 @@
     aria-hidden="true"
   >
     @if (cover(); as photo) {
+      <!-- Not NgOptimizedImage: it rejects a pixel `sizes`, and without one a 72 px box pulls the 576 px candidate. -->
       <img
         data-testid="row-photo"
         class="size-full object-cover"
         alt=""
+        width="72"
+        height="72"
         decoding="async"
         loading="lazy"
         [src]="photo.url"
@@ -81,7 +84,7 @@
       /></span>
       <span
         data-testid="row-avail-track"
-        class="avail-track block h-1.5 w-[72px] shrink-0 overflow-hidden rounded-full bg-riv-card-track"
+        class="avail-track block h-1.5 w-[72px] shrink-0 overflow-hidden rounded-full bg-riv-ink-faint/15"
       >
         <span
           data-testid="row-avail-fill"

@@ -1,9 +1,9 @@
 import { Component, input } from '@angular/core';
 
 /**
- * The credit on the phone's foot row: the map's left, wrapped to 200 px — less on the narrowest
- * phone, where it leaves the consumer's control at the right its 150 px (`You are here`), the two
- * insets and a 10 px gap.
+ * The credit on the phone's foot row, whichever side it is on: wrapped to 200 px — less on the
+ * narrowest phone, where it leaves the consumer's control at the other end its 150 px
+ * (`You are here`), the two insets and a 10 px gap. Symmetric, so the mirror needs no second sum.
  */
 const FOOT_CREDIT_BOX =
   'max-w-[min(200px,calc(100%-184px))] px-[10px] py-[4px] text-[11px] leading-[16px]';
