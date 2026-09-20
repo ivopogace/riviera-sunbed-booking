@@ -40,7 +40,8 @@ picker as shipped by #1157) · `tdd` (each phase red first at the named seam: th
 state in `riviera-map.spec.ts`, the pad by a worked example in `camera-fit.spec.ts`, the
 picker's ribbon, dots, lit states and teardown by DOM state and the fake handle in
 `coast-picker.spec.ts`, the geometry in Chromium by the e2e) · `riviera-review-overlay` (review
-gate — due at ready-for-review) · `riviera-docs-freshness` (**ran** over `565d83cb..HEAD`: step
+gate **ran** at ready-for-review over `565d83cb..01f3a338` via `code-review:code-review` +
+the overlay's frontend items: F-1, F-2) · `riviera-docs-freshness` (**ran** over `565d83cb..HEAD`: step
 2a found no present-tense contradiction — the glossary's riviera-map entry and ADR-0022's credit
 decision hold, the ribbon's credit keeps its links; step 2b's counting sweep found no "the two
 maps / contexts" claim; `CONTEXT.md`'s coast-picker entry gains the ribbon and the leader via
@@ -181,9 +182,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft open, CI gate`
+**Stage pointer:** `review gate — findings fixed; Sonar gate next`
 
-**Next action:** check CI on the push, merge `origin/main` in, mark ready for review, run the review gate.
+**Next action:** CI on the fix push, then the Sonar new-issue list for PR #1162.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -201,6 +202,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-1 | review gate (overlay RV-FE-7, prior-PR reviewer; scored 75) | the lit dot and leader wore the themed accent over map imagery; the map's marks wear the fixed solid-button pair and invert it when lit | fixed — the dot inverts the pair, the leader lights to the full fixed ink; proven by `riviera-map.contrast.spec.ts` › "the inverted pair clears AA", pinned in `coast-picker.spec.ts` |
+| F-2 | review gate (code-comment reviewer; scored 50) | `RivieraMap`'s class doc listed the skip control and zoom buttons unconditionally | fixed — the doc names the ribbon's exception |
 
 ---
 

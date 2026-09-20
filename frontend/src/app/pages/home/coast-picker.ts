@@ -208,12 +208,13 @@ export function coastIndex(cards: readonly VenueCard[]): readonly PickerRegion[]
           class="pointer-events-none relative w-[150px] shrink-0 self-stretch overflow-hidden rounded-r-[14px] bg-riv-solid-btn-fill"
         >
           <app-riviera-map class="size-full" [ribbon]="true" />
+          <!-- The dot is the you-are-here dot's fixed pair and lights by INVERTING it, as a selected pin does: it sits on imagery, which never themes, so the accent would drift (riviera-map.contrast.spec proves both faces). -->
           @for (dot of dots(); track dot.code) {
             <span
               data-testid="ribbon-dot"
               [attr.data-beach]="dot.code"
               [attr.data-lit]="dot.lit ? '' : null"
-              class="absolute z-[4] size-[9px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-riv-solid-btn-fill bg-riv-solid-btn-ink shadow-[0_2px_6px_rgba(7,42,58,0.45)] motion-safe:[transition:width_0.12s_ease,height_0.12s_ease] data-lit:size-[13px] data-lit:bg-riv-accent-ink"
+              class="absolute z-[4] size-[9px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-riv-solid-btn-fill bg-riv-solid-btn-ink shadow-[0_2px_6px_rgba(7,42,58,0.45)] motion-safe:[transition:width_0.12s_ease,height_0.12s_ease] data-lit:size-[13px] data-lit:border-riv-solid-btn-ink data-lit:bg-riv-solid-btn-fill"
               [style.left.px]="dot.x"
               [style.top.px]="dot.y"
             ></span>
@@ -280,7 +281,7 @@ export function coastIndex(cards: readonly VenueCard[]): readonly PickerRegion[]
               [attr.data-beach]="leader.code"
               [attr.data-lit]="leader.lit ? '' : null"
               [attr.d]="leader.d"
-              class="fill-none stroke-riv-solid-btn-ink/40 stroke-[1.5] data-lit:stroke-riv-accent-ink data-lit:stroke-2"
+              class="fill-none stroke-riv-solid-btn-ink/40 stroke-[1.5] data-lit:stroke-riv-solid-btn-ink data-lit:stroke-2"
             />
           }
         </svg>

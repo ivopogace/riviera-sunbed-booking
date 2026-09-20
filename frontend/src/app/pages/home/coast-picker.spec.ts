@@ -342,6 +342,13 @@ describe('CoastPicker', () => {
 
       fire('pointerdown');
       expect(lit('ribbon-dot')).toEqual(['DHERMI']);
+      // Lit by inverting the map's fixed pair, never the themed accent: the dot sits on imagery.
+      const dot = allByTestId('ribbon-dot')[3];
+      const leader = allByTestId('ribbon-leader')[3];
+      expect([...dot.classList, ...leader.classList].some((c) => c.includes('accent'))).toBe(false);
+      expect(dot.classList.contains('data-lit:bg-riv-solid-btn-fill')).toBe(true);
+      expect(dot.classList.contains('data-lit:border-riv-solid-btn-ink')).toBe(true);
+      expect(leader.classList.contains('data-lit:stroke-riv-solid-btn-ink')).toBe(true);
       dhermi.click();
       expect(picked).toHaveBeenCalledWith({ region: 'HIMARE', beach: 'DHERMI' });
     });
