@@ -104,20 +104,20 @@ mounted map would show up in both counts; CDP touch for the drag and the peek pu
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the sheet flag at 390 × 844 and a venue list on Himarë, when Discover first
+- [x] **AC-1:** Given the sheet flag at 390 × 844 and a venue list on Himarë, when Discover first
   paints, then the page makes 0 requests under `/map/**`, creates 0 WebGL contexts and loads
   exactly one image under `/posters/`, and the pin layer draws the region's pins over it.
   *Seam:* the route (`/?map=sheet`) + the network + `HTMLCanvasElement.getContext` · *Pinned
   by:* `discover-sheet.e2e.ts` › "the first paint is a poster: 0 map requests, 0 WebGL contexts,
   one image" (real adapter, `mockMapResources`); `home.spec.ts` › "opens on the poster: no
   engine created, the pins drawn through the still handle".
-- [ ] **AC-2:** Given the poster on screen, when the live map takes over at the poster's camera,
+- [x] **AC-2:** Given the poster on screen, when the live map takes over at the poster's camera,
   then every pin's bounding box on the live map equals its box on the poster within 1 px.
   *Seam:* `MapHandle.project` (the still handle against the fake engine's Mercator) ·
   *Pinned by:* `poster-handle.spec.ts` › "projects where the fake engine projects for the live
   view it hands over"; `discover-sheet.e2e.ts` › "a drag on the ground swaps the live map in
   with the pins where they were".
-- [ ] **AC-3:** Given the poster, when a crowd pill is pressed, a finger goes down on the ground,
+- [x] **AC-3:** Given the poster, when a crowd pill is pressed, a finger goes down on the ground,
   or the sheet is pulled below half, then the live map is created with the poster's camera as
   its view, the poster leaves once the map has loaded, and afterwards the crowd's move is
   replayed / nothing moves / the fit for the window the sheet leaves eases in respectively.
@@ -127,25 +127,25 @@ mounted map would show up in both counts; CDP touch for the drag and the peek pu
   sheet pulled below half wakes the live map and fits the window it leaves";
   `discover-sheet.e2e.ts` › "a crowd press, a drag and a peek pull each swap the live map in
   at the poster's camera".
-- [ ] **AC-4:** Given the catalogue, then a poster file exists for every region and every beach
+- [x] **AC-4:** Given the catalogue, then a poster file exists for every region and every beach
   at both buckets and both densities (172 files), and the set weighs under its budget.
   *Seam:* `POSTER_SET` (the catalogue → file names) + the file system · *Pinned by:*
   `map-poster-set.spec.ts` › "every catalogue entry has its posters" and › "the set stays under
   budget".
-- [ ] **AC-5:** Given a viewport wider than the widest bucket (835–1023) or taller than its
+- [x] **AC-5:** Given a viewport wider than the widest bucket (835–1023) or taller than its
   bucket, then no poster is shown and the live map is the ground from the first paint; given a
   narrower one, the poster is centred with no pane fill either side. *Seam:* `posterFor()` +
   the route · *Pinned by:* `map-poster.spec.ts` › "picks the narrowest bucket that covers the
   viewport, none above the widest"; `home.spec.ts` › "above the widest bucket the live map is
   the ground from the first paint"; `discover-sheet.e2e.ts` › "at 900 wide the ground is live
   from the first paint" and the 320/430/768/820 first-paint block (poster present, no fill).
-- [ ] **AC-6:** Given located at Dhërmi or at Tirana, then the poster stays (Himarë's / Durrës's)
+- [x] **AC-6:** Given located at Dhërmi or at Tirana, then the poster stays (Himarë's / Durrës's)
   and the dot is drawn on it through the still handle; given located inside the fence where the
   nearest region's poster does not frame the dot, then the live map opens at the fit that
   includes the dot. *Seam:* `MapHandle.project` + `MapEngine.create` · *Pinned by:*
   `home.spec.ts` › "located at Tirana keeps the Durrës poster and draws the dot on it", › "located
   off the poster opens the live map at the fit that holds the dot".
-- [ ] **AC-7:** Given the poster, then the OpenMapTiles and OpenStreetMap credit stands on the
+- [x] **AC-7:** Given the poster, then the OpenMapTiles and OpenStreetMap credit stands on the
   foot row with both links. *Seam:* the ground's DOM (`map-attribution`) · *Pinned by:*
   `home.spec.ts` › "carries the tiles' credit over the poster"; the e2e first-paint block's
   foot-row assertions (unchanged).
@@ -180,7 +180,7 @@ and tablet by the poster until the first camera move; every shipped behaviour is
 |---|---|---|---|---|---|---|
 | R-1 | The pins jump at the swap: the live map's camera differs from the poster's | medium | high (the whole point of the poster) | the live view is `PosterHandle.liveView(pane)` — the geography at the pane's centre — and the camera effect skips a fit whose key (detent, targets, viewport) the poster already framed; AC-2/AC-3 pin it at the fake engine and in Chromium | agent | closed — `home.spec.ts` › "a finger on the ground …" and the e2e › "a drag on the ground …": every pin within 1 px |
 | R-2 | A poster with pane fill either side (the round-11 tablet defect) | low | medium | buckets cover 320–834; `posterFor` returns none above; AC-5 | agent | closed — the first-paint block asserts the poster's box spans the pane at 320/390/430/768/820; 900 is live |
-| R-3 | The poster set's weight in the repository (172 JPEGs per regeneration) | medium | medium (history grows per regeneration, like the archive) | measured before committing; a budget in `map-poster-set.spec.ts`; the runbook counts regenerations with the archive's; ADR-0022 amendment records the size and the levers (tablet 3× first) | agent | measured: 21.6 MB at quality 80, budget 40 MB in the spec; the amendment and runbook are phase 6 |
+| R-3 | The poster set's weight in the repository (172 JPEGs per regeneration) | medium | medium (history grows per regeneration, like the archive) | measured before committing; a budget in `map-poster-set.spec.ts`; the runbook counts regenerations with the archive's; ADR-0022 amendment records the size and the levers (tablet 3× first) | agent | closed — 21.6 MB at quality 80 under a 40 MB budget; the ADR amendment and the runbook § *Posters* record the levers (`825dd8bb`) |
 | R-4 | The renderer drifts from the page (a different camera, tile size or window) | low | high | one module (`map-poster.ts`) computes the camera for both; the renderer bundles it with esbuild rather than re-implementing it; `map-poster.spec.ts` pins the worked example | agent | closed — the renderer imports the esbuild bundle of `map-poster.ts`; no second camera exists |
 | R-5 | The `/map/**` count is asserted with the fake engine, which never requests anything | medium | high (a wrong green) | the cost test runs the REAL adapter under `mockMapResources`, and proves the counter by waking the map and seeing both counts rise | agent | closed — `discover-sheet.e2e.ts` › "the first paint is a poster …": 0/0 before the wake, >0 and 1 after |
 | R-6 | `animate.leave` in jsdom: no transition events, the poster never leaves | low | low | TestBed disables animations by default (docs), so the element is removed at once in specs; Chromium proves the fade | agent | closed — the specs see the poster gone after the load; the e2e sees it leave after the fade |
@@ -188,21 +188,22 @@ and tablet by the poster until the first camera move; every shipped behaviour is
 
 ## Open questions / Assumptions
 
+None open.
+
+### Resolved
+
 - **Assumption A-1:** the poster's camera is the catalogue's fit (a region's beach centres; a
-  beach's centre at the lone-pin town scale of 12.5), not the runtime venues' — the only camera a
-  build-time renderer and the page can both compute. A region whose venues sit at three of its
+  beach's centre, each point with a kilometre of reach), not the runtime venues' — the only camera
+  a build-time renderer and the page can both compute. A region whose venues sit at three of its
   fourteen beaches is shown at the region's scale, wider than slice 1's live fit of the three.
-  — *Owner:* agent · *Resolves by:* the review gate (no objection → stands).
+  — resolved at the review gate, no objection; shipped in `139ec8cd` (the reach in `35623cab`).
 - **Assumption A-2:** "rendered at the sheet's full height" means the poster covers the viewport's
   whole height under the sheet at half and at full: 960 px for the phone bucket, 1210 for the
   tablet bucket, top-anchored, with the live camera derived from the pane's centre by
-  `unproject`. — *Owner:* agent · *Resolves by:* the review gate.
+  `unproject`. — resolved at the review gate; shipped in `35623cab` / `5363c519`.
 - **Assumption A-3:** the ground swaps to the live map as soon as the sheet moves below its half
-  rest (the first pixel of a pull toward peek), not only once the detent reads peek: the under-
-  sheet band is then revealed live rather than as a still. — *Owner:* agent · *Resolves by:* the
-  review gate.
-
-Resolved entries move under `### Resolved` with outcome + SHA.
+  rest (the first pixel of a pull toward peek, once the opening rest has landed), not only once
+  the detent reads peek. — resolved at the review gate; shipped in `139ec8cd`.
 
 ## Availability & concurrency (invariant #2)
 
@@ -249,9 +250,13 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — running`
+**Stage pointer:** `DONE — merged via PR #1163`
 
-**Next action:** the review gate over the resolved range, then the Sonar gate.
+**Next action:** after the merge: close #1158 (auto), tick the epic #1156 checklist, end the PR subscription.
+
+**Sonar note:** PR #1163 @ `9e1b90cd` — `SonarCloud Code Analysis` concluded `success`, measures non-empty: new_coverage 97.0%, new_duplicated_lines_density 0.0, new_bugs 0, new_vulnerabilities 0, new_code_smells 1 (`typescript:S4624`, a nested template literal in the camera effect's key — F-4, fixed in `bb9eebae`); the list is cleared by that push.
+
+**Close-out note:** the Sonar fix (`bb9eebae`) was the last code-touching commit; this final state rides a plan-only commit.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -269,6 +274,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-4 | Sonar (`typescript:S4624`, MAJOR code smell) | a nested template literal in the camera effect's frame key | fixed in `bb9eebae` — the targets' string is built first |
 | F-2 | review gate (code-comment reviewer) | between the live map's mount and its load both credits stood in the DOM at the same spot — four licence links for a keyboard user | fixed — the poster's credit yields the moment the map component exists (`posterCredit`); pinned in `home.spec.ts` › "shows one credit while the live map is on its way …" (a held boot) and the e2e's drag test (`map-attribution` count 1) |
 | F-3 | review gate (bug scan + code-comment reviewer) | `PosterHandle.resize()` was dead: the page rebuilds the handle on a viewport change | fixed — removed with its spec; the pane width is a constructor argument |
 | F-1 | review gate (overlay RV-FE-9, CLAUDE.md auditor) | a mouse press focuses the poster's ground button, which leaves once the live map loads, stranding focus on `<body>` | fixed — focus is handed to the live map's region (`sheet-map`, "Map of the riviera") at the swap; pinned in `home.spec.ts` › "a finger on the ground …" and the e2e › "a drag on the ground …" (`toBeFocused`) |
@@ -387,7 +393,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - [x] Runbook § *Posters*; ADR-0022 amendment; `CONTEXT.md`; `RESPONSIBILITIES.md`;
   `git rm docs/plans/coast-picker-ribbon.md`; docs-freshness over the resolved range (one runbook path patched).
-- [ ] The plan's final state; the epic checklist is ticked after the merge.
+- [x] The plan's final state (this commit); the epic checklist is ticked after the merge.
 
 ---
 
@@ -403,19 +409,25 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `<command>` → `<expected>`. Verified at commit `<sha>`.
+- [x] **AC-1:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts e2e/discover-sheet.e2e.ts` (26/26; the real-adapter cost test counts 0 `/map/**` requests, 0 WebGL contexts, 1 poster before the wake and >0 / 1 after) + `npx ng test --watch=false --include='**/home.spec.ts'` (95/95) → PASS. Verified at `9e1b90cd`; CI green there.
+- [x] **AC-2:** `--include='**/poster-handle.spec.ts'` (5/5) + the e2e › "a drag on the ground …" → PASS. Verified at `9e1b90cd`.
+- [x] **AC-3:** `home.spec.ts` › the crowd press, the finger, the peek pull + the e2e's three swap tests → PASS. Verified at `9e1b90cd`.
+- [x] **AC-4:** `--include='**/map-poster-set.spec.ts'` (3/3 over the 172 committed files, 21.6 MB) → PASS. Verified at `5363c519`, CI at `9e1b90cd`.
+- [x] **AC-5:** `--include='**/map-poster.spec.ts'` (7/7), `home.spec.ts` › "above the widest bucket …", the e2e first-paint block (5 viewports) and › "at 900 wide …" → PASS. Verified at `9e1b90cd`.
+- [x] **AC-6:** `home.spec.ts` › "located at Tirana …", › "located off the poster …"; the e2e's Near me block → PASS. Verified at `9e1b90cd`.
+- [x] **AC-7:** `home.spec.ts` › "opens on the poster …", › "shows one credit …"; the e2e cost test's credit assertions → PASS. Verified at `9e1b90cd`.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section filled or justified N/A; concurrency test present (#2).
-- [ ] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
-- [ ] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
-- [ ] Payment section filled or N/A; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
-- [ ] Flyway migration present; invariant-enforcing constraints tested (#12).
-- [ ] Frontend standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability section filled or justified N/A; concurrency test present (#2).
+- [x] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
+- [x] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
+- [x] Payment section filled or N/A; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
+- [x] Flyway migration present; invariant-enforcing constraints tested (#12).
+- [x] Frontend standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
+- [x] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
