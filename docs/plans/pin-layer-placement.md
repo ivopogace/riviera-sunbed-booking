@@ -46,7 +46,10 @@ vertical anchor) § 5 (sticky heads) § 6 (the count only where the group cannot
 `riviera-plan-doc` (forced the ACs to name seams, which moved the foot swap and the gutter
 geometry out of `home.ts` into pure functions) · `tdd` (each phase red-first at
 `pin-crowding.spec.ts` / `venue-pin-layer.spec.ts` / `home.spec.ts`) · `riviera-review-overlay`
-(run at ready-for-review) · `riviera-docs-freshness` (close-out, over `origin/main..HEAD`) ·
+(run at ready-for-review) · `riviera-docs-freshness` (**ran** over `bb0e0785..HEAD`, 3 findings,
+all in `CONTEXT.md` and all patched: the venue sheet's "the desktop keeps its panel", the sheet
+head's "filter bar (that is the desktop's)", and the coast picker's "not a state on any phone
+screen"; `map-poster.md` retired, nothing outside `docs/plans/` cited it) ·
 `riviera-local-debug` (the clone was shallow — unshallowed before every history claim here;
 scoped Vitest runs, `PW_CHROMIUM_EXECUTABLE` for the mocked e2e) · `riviera-frontend` (the desktop
 row is a flat file in `pages/home/`, not a `components/` subfolder; the e2e extension goes in the
@@ -267,6 +270,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - `docs/plans/pin-layer-placement.md` — this plan
 - `docs/plans/map-poster.md` — deleted at close-out (#1158 merged via PR #1163; D-5)
+- `CONTEXT.md` — the venue panel, and the three sentences the desktop surface falsified
 - `frontend/src/app/pages/home/pin-crowding.ts|.spec.ts` — the crowd mean rule, the nine spots,
   `PillSpace` (window + no-go), `footSwap`
 - `frontend/src/app/pages/home/venue-pin-layer.ts|.html|.spec.ts` — the placement inputs, the

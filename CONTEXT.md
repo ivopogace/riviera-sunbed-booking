@@ -94,15 +94,19 @@ model in `docs/architecture/domain-model.md`.
   below), **peek** (the sheet's head alone above the tab bar, the map filling the rest) and
   **full** (the list, a sliver of map kept under the header, a `Map` pill as the way back). A
   finger moves it as it scrolls a page; the grabber's tap cycles half and full, and peek is a
-  drag's only. Behind the map flag on Discover; the desktop keeps its panel. _Avoid_: drawer,
-  bottom sheet (as a term), modal.
+  drag's only. Behind the map flag on Discover; from `lg` the same flag pins the same list open as
+  the **venue panel** down the window's left, beside a map inset from the other three edges.
+  _Avoid_: drawer, bottom sheet (as a term), modal.
 - **Sheet head** — the venue sheet's one row carrying the query: the **place** (a press opens the
   **coast picker**) over the selling line (`8 of 11 selling today`, each venue's sales close for
   today), the region's beaches gathered into one chip, and the day. A press on a chip opens its
   rail of chips under the row; at peek the sheet rises to half first. The answer to Near me when
   it is not a position stands in the same slot. On the venue sheet the **row is the pin's
-  preview**: a pin press lights the venue's row and brings it to the list's top, and no pin
-  preview card opens. _Avoid_: toolbar, filter bar (that is the desktop's).
+  preview**: a pin press lights the venue's row and brings it to the list's top — to the panel's
+  middle on the venue panel — and no pin preview card opens. The panel's rows are flat, carry the
+  review count the phone's card has no room for, and the selected one expands to its amenities and
+  its booking mode when that is not the default. _Avoid_: toolbar, filter bar (that is the
+  unflagged desktop's).
 - **Foot row** — the phone's map chrome on one row at the map's foot, over the venue sheet at
   rest: Near me on one side, the tile credit on the other; no zoom column (a pinch zooms). The
   pins are fitted into the map above it. _Avoid_: bottom bar.
@@ -119,7 +123,8 @@ model in `docs/architecture/domain-model.md`.
   the whole coast as a narrow map with a dot for every beach in the index, each beach's row tied
   to its dot by a **leader**; the ribbon is a picture beside the index, never a control, and lives
   only while the picker is open. There is no whole-coast choice, because the coast is not a state
-  on any phone screen. _Avoid_: region filter, dropdown, minimap.
+  on any screen the flag lays out — a region, never the coast, on the phone and on the desktop
+  alike. _Avoid_: region filter, dropdown, minimap.
 - **Near me (Discover)** — the tourist's own position as an input to the venue sheet, decided by
   the riviera map's fence: off the fence, nothing moves and the map's own words stand in the sheet
   head; inside it, the list is sorted nearest first with distances, the map frames the tourist's
