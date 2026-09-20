@@ -249,15 +249,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** phase 2 red: `RivieraMap.loaded` in `riviera-map.spec.ts`.
+**Next action:** phase 3 red: the poster describe in `home.spec.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `RIVIERA_MAP_OPTIONS` to its own module; `PosterHandle` | ✅ | this commit |
 | 1 — the poster catalogue: buckets, cameras, keys, URLs, the frame test | ✅ | this commit |
-| 2 — the credit as a shared pill; `RivieraMap.loaded` | | |
+| 2 — the credit as a shared pill; `RivieraMap.loaded` | ✅ | this commit |
 | 3 — the page: the poster ground, the pins through the still handle, the swap | | |
 | 4 — the renderer, the poster set, the completeness spec | | |
 | 5 — the mocked e2e: cost, parity, swaps, buckets | | |
@@ -339,11 +339,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Create `shared/map-credit.ts` · Modify `shared/riviera-map.ts|.html` · Test
 `shared/riviera-map.spec.ts`
 
-- [ ] Red: "exposes loaded once the style has loaded"; the existing credit expectations stand
+- [x] Red: "exposes loaded once the style has loaded"; the existing credit expectations stand
   (`expectCredit`) as the pin for the extraction.
-- [ ] Green: `app-map-credit` with the placement class, the bottom offset and the ribbon's
+- [x] Green: `app-map-credit` with the placement class, the bottom offset and the ribbon's
   `tabindex="-1"`; `RivieraMap.loaded`.
-- [ ] Commit — `Lift the tiles' credit into a shared pill (#1158)`.
+- [x] Commit — `Lift the tiles' credit into a shared pill (#1158)`.
 
 ## Phase 3 — The page: the poster ground and the swap
 

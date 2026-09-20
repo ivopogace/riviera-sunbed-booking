@@ -17,6 +17,7 @@ import {
 import { BusyAction } from './busy-action';
 import { focusMover } from './focus-after-render';
 import { GeolocationFailure, GeolocationGateway, GeolocationOutcome } from './geolocation';
+import { MapCredit } from './map-credit';
 import { LngLat, MapEngine, MapEngineOptions, MapHandle } from './map-engine';
 import { RIVIERA_MAP_OPTIONS } from './riviera-map-options';
 import { TouchTarget } from './touch-target';
@@ -79,9 +80,8 @@ const HERE_CLASSES =
  * Renders whatever engine is provided (`MapEngine`) into its canvas host and owns the chrome
  * around it: a skip control for keyboard and screen-reader users (the map canvas is a focusable
  * pan-and-zoom surface, and the venue list stays the fully accessible path), labelled zoom
- * buttons at the touch-target floor, and the permanent "© OpenMapTiles © OpenStreetMap
- * contributors" credit the tiles' licences require (CC-BY, ODbL) — or, as a `ribbon`, none of
- * that chrome but the credit. Wears the theme-invariant solid-button skin: the imagery under it
+ * buttons at the touch-target floor, and the permanent credit the tiles' licences require
+ * (`MapCredit`) — or, as a `ribbon`, none of that chrome but the credit. Wears the theme-invariant solid-button skin: the imagery under it
  * never themes.
  *
  * <p>The host reports its state as `data-status` (`booting` → `ready` once the style has loaded,
@@ -96,7 +96,7 @@ const HERE_CLASSES =
  */
 @Component({
   selector: 'app-riviera-map',
-  imports: [BusyAction, TouchTarget],
+  imports: [BusyAction, MapCredit, TouchTarget],
   host: {
     class: 'relative block overflow-hidden bg-riv-solid-btn-fill',
     // A ribbon's corners are its consumer's: the map's own would round the imagery inside them.
@@ -146,6 +146,8 @@ export class RivieraMap {
   readonly pinMoved = output<LngLat>();
 
   protected readonly status = signal<MapStatus>('booting');
+  /** The style and its first tiles are on screen — what a consumer holding a still over the map waits for. */
+  readonly loaded = computed(() => this.status() === 'ready');
 
   /** Asked once: a browser does not grow the API mid-session. */
   private readonly canLocate = this.geolocation.supported();

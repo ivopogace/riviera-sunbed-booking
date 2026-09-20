@@ -100,6 +100,16 @@ describe('RivieraMap', () => {
     expect(host(fixture).dataset['status']).toBe('ready');
   });
 
+  it('says it is loaded only once the style has loaded, so a consumer can hold a still until then', async () => {
+    const fixture = mount(fake);
+    expect(fixture.componentInstance.loaded()).toBe(false);
+
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.loaded()).toBe(true);
+  });
+
   it('asks for a same-origin style and a view that covers the riviera', () => {
     const options: MapEngineOptions = RIVIERA_MAP_OPTIONS;
     expect(options.styleUrl).toBe('/map/style.json');
