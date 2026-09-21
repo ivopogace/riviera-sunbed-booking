@@ -1,6 +1,7 @@
 import { Component, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
+import { whenSheetOpened } from '../../../testing/sheet-opened';
 import { DiscoverSheet } from './discover-sheet';
 import { offsetFor } from './sheet-geometry';
 
@@ -49,6 +50,7 @@ describe('DiscoverSheet', () => {
     await TestBed.configureTestingModule({ imports: [Host] }).compileComponents();
     fixture = TestBed.createComponent(Host);
     await settle();
+    await whenSheetOpened(fixture);
   });
 
   afterEach(() => {
@@ -114,6 +116,28 @@ describe('DiscoverSheet', () => {
     await settle();
     expect(asked.at(-1)).toBe(tops.peek - tops.half);
     expect(sheet().detent()).toBe('half');
+  });
+
+  it('reports opened before a spec drives it, and retakes no rest under the tap that follows', async () => {
+    expect(sheet().opened()).toBe(true);
+    const view = el().ownerDocument.defaultView!;
+    const realFrame = view.requestAnimationFrame.bind(view);
+    const held: FrameRequestCallback[] = [];
+    view.requestAnimationFrame = (callback: FrameRequestCallback) => held.push(callback);
+
+    try {
+      byTestId('sheet-grabber')!.click();
+      await settle();
+      expect(sheet().detent()).toBe('full');
+
+      held.splice(0).forEach((callback) => callback(0));
+      await settle();
+    } finally {
+      view.requestAnimationFrame = realFrame;
+    }
+
+    expect(sheet().detent()).toBe('full');
+    expect(byTestId('sheet-map-pill')).not.toBeNull();
   });
 
   it('names the grabber for every reader and exempts it from the touch floor with its reason', () => {

@@ -11,6 +11,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { expectNoAxeViolations } from '../../../testing/axe';
+import { whenSheetOpened } from '../../../testing/sheet-opened';
 import { FakeMapEngine } from '../../shared/fake-map-engine';
 import { FakeGeolocationGateway } from '../../../testing/fake-geolocation';
 import { GeolocationGateway } from '../../shared/geolocation';
@@ -327,13 +328,19 @@ describe('Home accessibility (the riviera map sheet — what `/` renders)', () =
     fixture.detectChanges();
   }
 
-  async function openSheet(): Promise<void> {
+  /** Flushes the venues and settles. From `lg` the rows land in the desk panel, not in a sheet. */
+  async function openPage(): Promise<void> {
     fixture.detectChanges();
     const [miramar, aurora] = pinnedVenues();
     httpMock
       .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
       .flush([miramar, { ...aurora, salesOpen: false }]);
     await settle();
+  }
+
+  async function openSheet(): Promise<void> {
+    await openPage();
+    await whenSheetOpened(fixture);
   }
 
   it('has no violations at half with the head, the rows and the foot’s Near me', async () => {
@@ -392,7 +399,7 @@ describe('Home accessibility (the riviera map sheet — what `/` renders)', () =
     });
 
     it('has no violations with the panel’s rows, its head and Near me beside the map', async () => {
-      await openSheet();
+      await openPage();
 
       expect(host().querySelector('[data-testid="desk-panel"]')).not.toBeNull();
       expect(host().querySelectorAll('[data-testid="venue-row"]').length).toBe(1);
@@ -401,7 +408,7 @@ describe('Home accessibility (the riviera map sheet — what `/` renders)', () =
     });
 
     it('has no violations with a row selected and expanded by its pin', async () => {
-      await openSheet();
+      await openPage();
       host().querySelector<HTMLButtonElement>('[data-testid="map-venue-pin"]')!.click();
       await settle();
 
@@ -410,7 +417,7 @@ describe('Home accessibility (the riviera map sheet — what `/` renders)', () =
     });
 
     it('has no violations with the coast picker hanging off the place button', async () => {
-      await openSheet();
+      await openPage();
       host().querySelector<HTMLButtonElement>('[data-testid="head-place"]')!.click();
       await settle();
 

@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { expectNoAxeViolations } from '../../../testing/axe';
+import { whenSheetOpened } from '../../../testing/sheet-opened';
 import { DiscoverSheet } from './discover-sheet';
 
 /**
@@ -30,6 +31,7 @@ describe('DiscoverSheet accessibility', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
+    await whenSheetOpened(fixture);
     return fixture;
   }
 

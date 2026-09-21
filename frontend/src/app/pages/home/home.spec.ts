@@ -11,6 +11,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { photoView, photoViews } from '../../../testing/photo-views';
+import { whenSheetOpened } from '../../../testing/sheet-opened';
 import { defaultBookingDate } from '../../shared/booking-date';
 import { FakeMapEngine, FakeMapHandle } from '../../shared/fake-map-engine';
 import { PosterHandle } from '../../shared/poster-handle';
@@ -1653,6 +1654,7 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
       .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
       .flush(sheetVenues());
     await settle(fixture);
+    await whenSheetOpened(fixture);
     return fixture;
   }
 
@@ -2193,7 +2195,6 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
 
     it('the sheet pulled below half wakes the live map and fits the window it leaves', async () => {
       const fixture = await sheetPage();
-      await new Promise((resolve) => setTimeout(resolve, 40));
       const scroller = byTestId(fixture, 'sheet-scroller')!;
       const tops = sheet(fixture).tops();
       expect(engine.created).toHaveLength(0);
