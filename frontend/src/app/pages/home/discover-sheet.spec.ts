@@ -157,6 +157,37 @@ describe('DiscoverSheet', () => {
     expect(byTestId('sheet-map-pill')).toBeNull();
   });
 
+  it('abandons a rest a re-measure has superseded, instead of pulling the sheet back', async () => {
+    const realFrame = globalThis.requestAnimationFrame.bind(globalThis);
+    const held: FrameRequestCallback[] = [];
+    globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => held.push(callback);
+    const view = el().ownerDocument.defaultView!;
+    const innerHeight = view.innerHeight;
+
+    try {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({ imports: [Host] }).compileComponents();
+      fixture = TestBed.createComponent(Host);
+      await settle();
+
+      // The viewport moves while the first rest is still unconfirmed, so a second rest supersedes it.
+      Object.defineProperty(view, 'innerHeight', { value: innerHeight - 60, configurable: true });
+      view.dispatchEvent(new Event('resize'));
+      await settle();
+      expect(scroller().scrollTop).toBe(offsetFor(sheet().tops(), 'half'));
+      asked.length = 0;
+
+      held.splice(0).forEach((callback) => callback(0));
+      await settle();
+
+      expect(asked, 'a superseded rest scrolled the sheet').toEqual([]);
+      expect(scroller().scrollTop).toBe(offsetFor(sheet().tops(), 'half'));
+    } finally {
+      globalThis.requestAnimationFrame = realFrame;
+      Object.defineProperty(view, 'innerHeight', { value: innerHeight, configurable: true });
+    }
+  });
+
   it('names the grabber for every reader and exempts it from the touch floor with its reason', () => {
     const grabber = byTestId('sheet-grabber')!;
     expect(grabber.getAttribute('aria-label')).toBe('Resize the list');

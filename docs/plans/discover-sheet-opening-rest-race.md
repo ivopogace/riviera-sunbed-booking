@@ -6,14 +6,17 @@
 **Goal:** Every spec that drives `DiscoverSheet` waits until it has stopped retaking its opening
 rest before it taps, so the sheet's own retake can no longer undo the tap and drop the Map pill.
 
-**Architecture:** The defect is a race between the spec and the sheet's opening rest, not an
-accessibility regression: `rest()` confirms its rest on a `requestAnimationFrame` of its own and
+**Architecture:** The reported defect is a race between the spec and the sheet's opening rest, not
+an accessibility regression: `rest()` confirms its rest on a `requestAnimationFrame` of its own and
 retakes it while `scrollTop` differs from the offset it wants. A tap that lands inside that
 window is read as the browser's snapping and reverted to half. One shared helper,
 `src/testing/sheet-opened.ts`, pumps frames until the sheet's own `opened()` signal says the
 window has shut — it is set both when a rest confirms and when the sheet gives up, and neither
 leaves a retry pending, which is the property the wait actually needs. All four spec sites that
-drive the sheet call it. Nothing under `src/app/` moves.
+drive the sheet call it. The slice then grew one production change, on the user's instruction: a
+rest the viewport has superseded retires rather than fighting the rest that replaced it (AC-5,
+closes #1181), which is the same race one layer down — the wait could not have closed it, because
+it reopens *after* `opened()`.
 
 **Persistence:** JDBC only (invariant #1). N/A — no table, migration or query is touched.
 
@@ -70,13 +73,22 @@ stays)
   `await nextFrame(window)` before `go('full')` was the same wait and is now dead, so it is gone.
   The one that remains in that file waits for the rest a *later* `go()` takes, which is not the
   opening rest this helper covers.
+- [x] **AC-5:** Given a sheet whose opening rest is still unconfirmed, when the viewport changes so
+  a second rest supersedes the first, then the frame the first left in flight retires instead of
+  scrolling the sheet back to the offset the re-measure replaced. *Seam:* `DiscoverSheet`'s outer
+  scroller, through every `scrollTo` it asks for · *Pinned by:* `discover-sheet.spec.ts` ›
+  *abandons a rest a re-measure has superseded, instead of pulling the sheet back* — red before
+  the guard with `expected [ 383, 323 ] to deeply equal []`, the stale offset and the correction
+  chasing each other.
 
 ## Non-goals
 
-- **Changing `DiscoverSheet` itself.** The retake is deliberate — the opening rest exists to beat
-  the browser's own snapping, which is exactly what a tourist's early flick is indistinguishable
-  from. Teaching it to stand down on a user gesture is a behaviour change the sheet's e2e, not a
-  flake fix, would have to justify.
+- **Teaching the sheet to stand down on a tourist's gesture.** The retake is deliberate — the
+  opening rest exists to beat the browser's own snapping, which a tourist's early flick is
+  indistinguishable from. That stays.
+- ~~Changing `DiscoverSheet` itself.~~ **Reversed on the user's instruction** after the review
+  found a second defect in `rest()` (below, AC-5). The retake still stands; what changed is that a
+  rest the viewport has *superseded* now retires instead of fighting the rest that replaced it.
 - Skipping, quarantining or retrying the case. The issue is explicit: the flake is the bug.
 - Retiring `home.spec.ts`'s other timing waits. Only the one that waits on this race is touched.
 
@@ -91,7 +103,7 @@ N/A — replaces nothing; no surface is retired.
 | R-1 | Waiting for the pill rather than for the rest would mask a real failure to render it | Medium | High — the case stops guarding what it claims | The helper waits on `opened()`, a precondition asserted *before* the tap; the pill stays a bare assertion. Negative control recorded under AC-2 | this slice | closed — control run, `33c1c62f` |
 | R-2 | `whenSheetOpened` hangs a spec if `opened()` never flips | Low | Medium — a timeout instead of a legible failure | Bounded at 12 frames (the sheet gives up at 8 of its own) and closed by an `expect` naming the condition | this slice | closed — `33c1c62f` |
 | R-3 | A later change to `rest()` reopens the window after `opened()` | Low | High — the flake returns silently | AC-1's second test drives the window itself, so a `rest()` that stops retaking goes red there rather than silently making the wait pointless | this slice | closed — this commit |
-| R-5 | Two rest chains can overlap if `tops()` changes while the opening chain is pending (a resize before `opened()`): the second can set `opened()` true while the first's frame is still queued, and that stale callback re-scrolls to the old offset — the same race, behind the wait | Low | Medium | Not reachable from any spec today: every mid-suite resize happens after `opened()`, where `want === restedAt` short-circuits. Recorded rather than guarded, because closing it means changing `DiscoverSheet`, which this slice's Non-goals rule out | follow-up | deferred → issue #1181 |
+| R-5 | Two rest chains can overlap if `tops()` changes while the opening chain is pending (a resize before `opened()`): the second can set `opened()` true while the first's frame is still queued, and that stale callback re-scrolls to the old offset — the same race, behind the wait | Low | Medium | **Fixed here** on the user's instruction, after first being deferred: `rest()` records the offset the sheet is resting at, and a queued confirmation for any other offset retires. Pinned by AC-5, red before the guard | this slice | closed — this commit, closes #1181 |
 | R-6 | AC-1's second test holds `requestAnimationFrame`, and Angular's zoneless scheduler races rAF against `setTimeout`. Full fake timers in that file — which `frontend/.claude/CLAUDE.md` explicitly allows — would kill both legs and hang `whenStable()` | Low | Medium — a hang, not a failure | No spec in the file fakes timers, and the suite fakes `Date` only (`freeze-clock.ts`). Recorded so the next person to reach for `vi.useFakeTimers()` here knows what it costs | follow-up | accepted — no spec in the file fakes timers; recorded for whoever reaches for them |
 | R-4 | `src/testing/` importing a page component inverts the folder taxonomy | Low | Low | `src/testing/` is spec support, outside `riviera-frontend`'s `src/app/` taxonomy; `venue-cards.ts` already imports a page **component** (`app/pages/home/venue-card`) | this slice | closed — precedent verified, `33c1c62f` |
 
@@ -158,11 +170,15 @@ N/A — no contract change.
 
 **Next action:** None — merge.
 
+> Re-entered at Implement after close-out: the user asked for #1181 to be fixed here rather than
+> deferred. Phase 3 below carries it; the gates were re-run on the new head.
+
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The wait and its guard | ✅ | `33c1c62f`, `f1c308b2` |
 | 1 — Verification (negative control + before/after runs) | ✅ | negative control + 19 full-suite runs, recorded under the ACs |
-| 2 — Review-gate findings | ✅ | `c767dc8f`, `7974ce01`, this commit |
+| 2 — Review-gate findings | ✅ | `c767dc8f`, `7974ce01`, `e0dbc92e` |
+| 3 — The superseded rest retires (#1181, user-directed) | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -190,6 +206,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `docs/plans/discover-sheet-opening-rest-race.md` — this plan
 - `frontend/src/testing/sheet-opened.ts` — the shared wait: pumps frames until the sheet's
   opening rest is confirmed
+- `frontend/src/app/pages/home/discover-sheet.ts` — `rest()` retires a superseded rest (AC-5)
 - `frontend/src/app/pages/home/discover-sheet.a11y.spec.ts` — the reported case; waits before it taps
 - `frontend/src/app/pages/home/discover-sheet.spec.ts` — waits in `beforeEach`; carries AC-1's guard
 - `frontend/src/app/pages/home/home.a11y.spec.ts` — same tap-then-assert-pill pattern; `openSheet()`
@@ -212,6 +229,26 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Step 6: Commit** — `git commit -m "Wait for the sheet's opening rest before a spec drives it (#1171)"`
 - [x] **Step 7: Update Execution status** in the same commit window.
 
+## Phase 3 — The superseded rest retires (#1181)
+
+Added after close-out, on the user's instruction, reversing this plan's own non-goal.
+
+- [x] **Step 1: Write the failing test** — `discover-sheet.spec.ts` › *abandons a rest a re-measure
+  has superseded, instead of pulling the sheet back*: hold the frames, render, move `innerHeight`
+  so a second rest supersedes the first, flush, and assert the sheet was asked for no scroll.
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --include="src/app/pages/home/discover-sheet.spec.ts"` → FAIL, `a superseded rest scrolled the sheet: expected [ 383, 323 ] to deeply equal []`
+- [x] **Step 3: Minimal implementation** — `rest()` records `restingAt` and a queued confirmation
+  for any other offset returns. The closure's `restedAt` becomes that field, so the effect's
+  "already resting there" guard reads the same number.
+- [x] **Step 4: Run it, verify it passes** — the home folder: 24 files / 399 tests green; the
+  sheet's real-browser suite `e2e/discover-sheet.e2e.ts` 27/27, which is what proves the retake
+  still beats the browser's snapping where jsdom cannot.
+- [x] **Step 5: Generalization-audit pass** — logged below.
+- [x] **Step 6: Commit.**
+- [x] **Step 7: Update Execution status** in the same commit window.
+
+---
+
 ## Phase 1 — Verification
 
 - [x] **Step 1: Negative control** — force `atFull()` false so the Map pill never renders; both
@@ -226,6 +263,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-21 | The #1181 fix (AC-5) | A queued `requestAnimationFrame` callback that acts on state captured before a re-measure | `grep -n "requestAnimationFrame" frontend/src/app/pages/home/*.ts frontend/src/app/shared/*.ts` | One: `DiscoverSheet.rest`. `riviera-map.ts` and `map-poster.ts` schedule no frames; the only other `requestAnimationFrame` under `src/` is the spec harness and `src/testing/sheet-opened.ts`, neither of which captures state | Fixed at the single site; no population to sweep |
 | 2026-09-21 | The #1171 fix | A spec that drives `DiscoverSheet` (taps the grabber, calls `go()`, or scrolls the outer scroller) before the sheet has stopped retaking its opening rest | `grep -rln "DiscoverSheet\|sheet-grabber\|sheet-map-pill\|sheet-scroller" src e2e --include="*.ts"` (run from `frontend/`) | 8 paths. In population: the 4 specs — `discover-sheet.a11y.spec.ts`, `discover-sheet.spec.ts`, `home.a11y.spec.ts`, `home.spec.ts`. Out: `discover-sheet.ts` and `home.ts` (the subject, not drivers), `src/testing/sheet-opened.ts` (the helper itself), `e2e/discover-sheet.e2e.ts` (a real browser, where the sheet rests against a real layout) | All four wait via the shared helper. Re-run per **site** after a review finding: `home.spec.ts`'s 40 ms sleep and `discover-sheet.spec.ts`'s pre-`go('full')` frame wait both stood in for this condition and are gone; the frame wait *after* `go('full')` stays, waiting on a later rest |
 
 ---

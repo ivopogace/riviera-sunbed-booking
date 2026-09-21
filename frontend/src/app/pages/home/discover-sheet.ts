@@ -170,6 +170,8 @@ export class DiscoverSheet {
   readonly sheetTop = computed(() => sheetTop(this.tops(), this.scrolled()));
   /** How far the list is lifted inside the sheet below full; the list's `scrollTop` at full. */
   readonly lift = signal(0);
+  /** The offset the sheet is resting at, so a rest for any other has been superseded. */
+  private restingAt = -1;
 
   constructor() {
     afterRenderEffect({
@@ -186,7 +188,6 @@ export class DiscoverSheet {
         });
       },
     });
-    let restedAt = -1;
     afterRenderEffect({
       write: () => {
         const scroller = this.scroller()?.nativeElement;
@@ -194,10 +195,9 @@ export class DiscoverSheet {
           this.tops(),
           untracked(this.opened) ? untracked(this.detent) : 'half',
         );
-        if (scroller === undefined || want === restedAt) {
+        if (scroller === undefined || want === this.restingAt) {
           return;
         }
-        restedAt = want;
         this.rest(scroller, want, 0);
       },
     });
@@ -222,8 +222,13 @@ export class DiscoverSheet {
    * Rest at an offset, cut, and confirm on the next frame that the rest held: a rest taken before
    * the scroller's geometry has settled is carried elsewhere by the browser's own snapping, so it
    * is retaken, a few frames at most.
+   *
+   * <p>A re-measure part-way through starts a rest for a new offset, and the frame the old one
+   * left in flight would otherwise read the new rest as that same snapping and undo it. Only the
+   * offset the sheet is currently resting at is still worth confirming; a superseded rest retires.
    */
   private rest(scroller: HTMLElement, want: number, attempt: number): void {
+    this.restingAt = want;
     scrollScroller(scroller, want, 'instant');
     this.scrolled.set(scroller.scrollTop);
     if (attempt >= REST_ATTEMPTS) {
@@ -231,6 +236,9 @@ export class DiscoverSheet {
       return;
     }
     this.document.defaultView?.requestAnimationFrame(() => {
+      if (want !== this.restingAt) {
+        return;
+      }
       if (scroller.scrollTop === want) {
         this.opened.set(true);
       } else {
