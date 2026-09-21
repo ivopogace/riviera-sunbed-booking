@@ -65,8 +65,7 @@ const surfaceRoutes = () => [
   { path: 'pay', component: BlankPage, data: { section: 'bookings', tabBar: false } },
   // Discover's real shape since the riviera map: a full-window surface, so no shell footer.
   { path: 'map-route', component: BlankPage, data: { section: 'beaches', footer: false } },
-  // A wide route that DOES render the footer: no shipped route is both, and the footer's own
-  // opt-in needs a surface to be observed on (AC-7).
+  // A wide route that DOES render the footer; no shipped route is both.
   { path: 'wide-route', component: BlankPage, data: { section: 'beaches', wide: true } },
   // The pay page's real shape: lazily loaded, so a sheet can be opened while its chunk is in flight.
   {
@@ -684,8 +683,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
   it('the header wrapper opts into full-bleed on a data.wide route and not elsewhere (#1169)', async () => {
     const { fixture, el } = shell();
     const router = TestBed.inject(Router);
-    // The attribute is the seam a unit spec can see: Tailwind's stylesheet is not loaded under
-    // jsdom, so `data-wide:max-w-none` winning over the 1080px cap is e2e's to measure.
+    // The attribute is all a unit spec can see: jsdom loads no stylesheet, so the cap is e2e's.
     const wrapper = () => el.querySelector('.riv-header > div')!;
 
     await router.navigate(['/my-bookings']);
