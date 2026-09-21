@@ -256,6 +256,9 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     // At 390px the desktop nav is hidden; the sheet is the only route to these controls.
     await openShellOverlay(page, 'menu-toggle');
     await expect(page.getByTestId('find-open-mobile')).toBeVisible();
+    // Named so the sweep cannot go vacuous: it is the only measurement of the legal rows' boxes.
+    await expect(page.getByTestId('legal-privacy-row')).toBeVisible();
+    await expect(page.getByTestId('legal-terms-row')).toBeVisible();
     await expectTouchTargets(page, 'tourist tab-bar sheet');
 
     await openShellOverlay(page, 'find-open-mobile');

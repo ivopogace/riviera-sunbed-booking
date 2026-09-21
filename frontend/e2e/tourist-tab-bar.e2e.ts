@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
+import { hitTestId } from './support/hit-test';
 import { awaitRoutedPage, openShellOverlay } from './support/shell';
 
 /**
@@ -187,14 +188,8 @@ test.describe('phone', () => {
     await openShellOverlay(page, 'theme-toggle');
     await expect(page.getByTestId('theme-option-riviera')).toBeVisible();
 
-    const hit = await page.evaluate(() => {
-      const tab = document.querySelector('[data-testid="tab-beaches"]')!.getBoundingClientRect();
-      return document
-        .elementFromPoint(tab.left + tab.width / 2, tab.top + tab.height / 2)
-        ?.getAttribute('data-testid');
-    });
     // The bar is an EARLIER z-20 sibling of the header, so the header's backdrop paints over it.
-    expect(hit).toBe('theme-backdrop');
+    expect(await hitTestId(page, 'tab-beaches')).toBe('theme-backdrop');
   });
 
   for (const { theme, background } of [
