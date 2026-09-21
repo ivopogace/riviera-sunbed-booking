@@ -97,6 +97,10 @@ const WIDE_VIEWPORT = '(min-width: 1024px)';
  * map soaks on the deployed site. Every other value is the map, the `?map=sheet` a bookmark from
  * the flagged releases still carries included, so no link that once worked breaks. Both the
  * parameter and the page it reaches are a one-release fallback and go together.
+ *
+ * <p>Not quite the page as it was: the route's `footer: false` is static, so `?map=off` renders
+ * without the shared footer the old page carried. The legal links are reachable from every other
+ * route, and both this parameter and that gap end with the pre-Q page.
  */
 const OFF_FLAG = 'off';
 /** The region the sheet opens on when the tourist is not placed: the coast's middle stretch. */

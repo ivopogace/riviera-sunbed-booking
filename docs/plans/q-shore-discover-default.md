@@ -208,26 +208,27 @@ one, which is sheet mode's existing behaviour from #1157, not a new shape.
 
 ## Execution status
 
-**Stage pointer:** `review gate`
+**Stage pointer:** `DONE — merged via PR #1172`
 
-**Next action:** Mark ready for review, run the review gate on the resolved range, then Sonar.
+**Next action:** None. Slice complete.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Move the pre-Q coverage onto `?map=off` | ✅ | |
-| 1 — Invert the flag; strip it from Q's setups | ✅ | |
-| 1a — The covered footer: a `footer: false` route flag | ✅ | |
-| 2 — The default route's e2e (AC-7, AC-9) | ✅ | |
-| 3 — Docs freshness + close-out | ⏳ | |
+| 0 — Move the pre-Q coverage onto `?map=off` | ✅ | merged via PR #1172 |
+| 1 — Invert the flag; strip it from Q's setups | ✅ | merged via PR #1172 |
+| 1a — The covered footer: a `footer: false` route flag | ✅ | merged via PR #1172 |
+| 2 — The default route's e2e (AC-7, AC-9) | ✅ | merged via PR #1172 |
+| 3 — Docs freshness + close-out | ✅ | merged via PR #1172 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
-**Sonar note.** On the plan-only commit the gate reported 0 new issues, 0 duplication and
-**0.0 % coverage on new code** — the third false zero in `riviera-sdlc` `references/pr-gates.md`
-§2: the only changed path was `docs/plans/`, which is outside `sonar.sources`, so `new_lines` was
-absent. Record as *gate did not apply (paths)*, never "passed". It applies for real from the
-first `frontend/src` commit; `frontend/e2e/` is outside `sonar.sources` too, so a phase whose
-diff is only e2e will report the same false zero.
+**Sonar note.** On the final head the gate **applies and passes**: `new_lines` 65 (present, so
+none of `riviera-sdlc` `references/pr-gates.md` §2's three false zeros is in play), `new_coverage`
+**100.0 %** against the 80 % bar, `new_duplicated_lines_density` 0.0, `new_duplicated_blocks` 0,
+`new_bugs`/`new_vulnerabilities`/`new_code_smells` 0, and the issue list empty — with the
+`SonarCloud Code Analysis` check-run concluded `success`. The earlier reading on the plan-only
+commit was the paths false zero (`docs/plans/` is outside `sonar.sources`) and was recorded as
+"gate did not apply", never as a pass.
 
 **Findings register** — one row per review, Sonar or CI finding; each fix re-enters at Implement.
 
@@ -238,7 +239,10 @@ diff is only e2e will report the same false zero.
 | F-3 | Review gate — comment-consistency agent | Same drift in identifiers: `FLAGGED`, `flagged()`, `FLAG_VIEWPORTS`, `openFlagged()` in `discover-map.e2e.ts`, where `openFlagged` navigates to a bare `/` | fixed → `MAP_VENUES`, `mapVenue()`, `PIN_VIEWPORTS`, `openMap()`; the file now contains no "flag" |
 | F-4 | Review gate — CLAUDE.md agent | The AC-7 test's TSDoc read "…now that `/` is the route that renders it" — narrating the flip and dating itself to this diff, which a fresh session gains nothing from | fixed |
 | F-5 | Review gate — prior-PR agent (RV-PROC-1/2) | Prior reviews warn that a plan doc must not assert coverage the tree does not bear out. Audited every AC pin against the shipped names: **four were wrong** — the describe had been renamed to `Home (the riviera map sheet — what \`/\` renders)`, AC-2 named a nested `from lg: the panel` test that does not exist, AC-3 said "is the pre-Q Discover page" for a test named "is today's Discover", and AC-4/AC-5 were stale likewise | fixed — every pin now quotes the shipped name |
-| F-6 | Review gate — bug-scan agent | None. Independently re-walked the inversion's truth table, every mid-test `routeParams.next(...)` for a dropped flag, the `footer` root→leaf walk against `tabBar`'s, and the population for vacuous assertions | no action — it confirmed R-10's one real case was already fixed |
+| F-6 | Review gate — git-history agent | **No route-table fence for `footer: false`.** `#1003` added `tabBar: false` *and* pinned it in `app.routes.spec.ts` to exactly `['booking/pay']`; the new flag copied the mechanism but not the fence, and `app.spec.ts` exercises a synthetic route table, so nothing pinned the real one | fixed — `app.routes.spec.ts` now pins `footer: false` to exactly `['']`, proven to go red when the flag is removed |
+| F-7 | Review gate — git-history agent | `OFF_FLAG`'s TSDoc called `?map=off` "the way back to the pre-Q Discover page", which now overclaims: the static route flag takes that page's footer too | fixed — the doc says so plainly |
+| F-8 | Review gate — git-history agent | `desk-frame`'s stacking (`fixed … z-[1]`, no `pointer-events-none`) is **worked around, not fixed**; the next footer-like row on this route meets it again | deferred → **#1173**, with the root cause and a hit-testability AC added to the issue |
+| F-9 | Review gate — bug-scan agent | None. Independently re-walked the inversion's truth table, every mid-test `routeParams.next(...)` for a dropped flag, the `footer` root→leaf walk against `tabBar`'s, and the population for vacuous assertions | no action — it confirmed R-10's one real case was already fixed |
 
 ---
 
@@ -274,6 +278,7 @@ first group, named sites in the rest):
 - `frontend/src/app/app.html` — the shared footer behind `@if (footer())`
 - `frontend/src/app/app.routes.ts` — Discover declares `footer: false`
 - `frontend/src/app/app.spec.ts` — the flag's own spec
+- `frontend/src/app/app.routes.spec.ts` — pins `footer: false` to the real route table, as `#1003` did for `tabBar: false`
 - `frontend/e2e/legal-pages.e2e.ts` — the footer test moves to `/my-bookings`; a new test pins that Discover withholds it
 
 *(The rest of the e2e population is listed in phase 0, from the measured run.)*
@@ -500,4 +505,4 @@ unrelated. No doc states a count of chrome flags, and none claims the footer is 
 - [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
 - [x] Risk register has no `open` rows. Open Questions: the footer fork is under **Resolved**; its remainder is **#1173**.
 - [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
+- [x] The review gate ran in full: rung 1 of the ladder (`code-review:code-review`) over the verified range `95341fd7..0a7973c4`, with `riviera-review-overlay` layered on. Nine findings, all resolved or deferred to #1173.
