@@ -215,9 +215,11 @@ N/A — no contract change. `/legal/privacy` and `/legal/terms` are existing Ang
 
 ## Execution status
 
-**Stage pointer:** `CI gate — awaiting the run on the phase-4 push`
+**Stage pointer:** `CI gate — all five phases pushed, PR #1174 ready for review`
 
-**Next action:** Check CI on the push, then mark the PR ready and run the review + Sonar gates.
+**Next action:** Check the CI run on this push, then run the review gate (ladder rung 1 + the
+overlay) and clear the Sonar new-issue list. `origin/main` has not moved since the branch point
+(`a133f878`), so there is nothing to integrate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -225,7 +227,7 @@ N/A — no contract change. `/legal/privacy` and `/legal/terms` are existing Ang
 | 1 — Mounted at the three chrome call sites | ✅ | `069e75df` |
 | 2 — The `hitTestId` seam and the reachability e2e | ✅ | `ca3c62fc` |
 | 3 — `desk-frame`'s pointer-events interface | ✅ | `a6378692` |
-| 4 — The two handovers: scroll-away route, route-table fence | ✅ | `49b1febf` |
+| 4 — The two handovers: scroll-away route, route-table fence | ✅ | `6ae45d88` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
