@@ -320,6 +320,7 @@
                   >
                     Sign out
                   </button>
+                  <div class="mt-1"><app-legal-menu-rows variant="popover" /></div>
                 </div>
               }
             </div>
@@ -381,6 +382,7 @@
                   >
                     Find a booking
                   </button>
+                  <div class="mt-1"><app-legal-menu-rows variant="popover" /></div>
                 </div>
               }
             </div>
@@ -468,6 +470,10 @@
             Sign out
           </button>
         }
+        <!-- Last, and grouped by space rather than a rule: see legal-menu-rows.ts for both. -->
+        <div class="mt-1">
+          <app-legal-menu-rows variant="sheet" />
+        </div>
       </nav>
     }
   }

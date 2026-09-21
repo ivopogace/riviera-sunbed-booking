@@ -2,15 +2,16 @@ import { expect, test } from '@playwright/test';
 
 import { mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
-import { openShellOverlay } from './support/shell';
+import { hitTestId } from './support/hit-test';
+import { openHeaderMenu, openShellOverlay } from './support/shell';
 import { settle } from './support/booking-dialog';
 
 /**
  * Real-render e2e for the legal surfaces: the two draft documents at
  * `/legal/*` (privacy axe-audited in both themes; terms shares the identical surface recipe,
- * audited once), the checkout agreement links on the booking dialog's Review step, and the
- * standing footer links — every legal link opens a new tab so checkout/console state survives
- * the read. The API is mocked (`page.route`), so the spec is CI-safe.
+ * audited once), the checkout agreement links on the booking dialog's Review step, the menu rows
+ * that carry the documents where the riviera map withholds the footer, and the standing footer
+ * links — every legal link opens a new tab so checkout/console state survives the read. The API is mocked (`page.route`), so the spec is CI-safe.
  */
 
 const VENUE = {
@@ -138,6 +139,46 @@ test('footer carries the standing legal links, opening in a new tab', async ({ p
   await expect(popup.getByRole('heading', { name: 'Privacy Policy' })).toBeVisible();
   // The originating page never navigated — footer links must not tear down app state.
   await expect(page).toHaveURL(/\/my-bookings$/);
+});
+
+test('the phone menu sheet carries the legal rows on the riviera map', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: VENUES }));
+
+  await page.goto('/');
+  // The sheet's card, not the panel's row: below lg the page is in sheet mode.
+  await expect(page.getByTestId('venue-card').first()).toBeVisible();
+  await openShellOverlay(page, 'menu-toggle');
+
+  // Visible AND reachable: the covered footer link was visible, enabled, stable and unclickable.
+  await expect(page.getByTestId('legal-privacy-row')).toBeVisible();
+  expect(await hitTestId(page, 'legal-privacy-row')).toBe('legal-privacy-row');
+
+  const popupPromise = page.waitForEvent('popup');
+  await page.getByTestId('legal-privacy-row').click();
+  const popup = await popupPromise;
+  await expect(popup).toHaveURL(/\/legal\/privacy$/);
+  await expect(popup.getByRole('heading', { name: 'Privacy Policy' })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test('the desktop header menu carries the legal rows on the riviera map', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: VENUES }));
+
+  await page.goto('/');
+  await expect(page.getByTestId('venue-row').first()).toBeVisible();
+  await openHeaderMenu(page);
+
+  await expect(page.getByTestId('legal-terms-row')).toBeVisible();
+  expect(await hitTestId(page, 'legal-terms-row')).toBe('legal-terms-row');
+
+  const popupPromise = page.waitForEvent('popup');
+  await page.getByTestId('legal-terms-row').click();
+  const popup = await popupPromise;
+  await expect(popup).toHaveURL(/\/legal\/terms$/);
+  await expect(popup.getByRole('heading', { name: 'Terms of Service' })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test('Discover withholds the shared footer: the riviera map paints to every edge', async ({

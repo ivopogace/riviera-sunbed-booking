@@ -155,7 +155,7 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
 
   it('light popover text meets AA over the darkest riviera stop (worst case for white glass)', () => {
     const popover = composite(POP_SURFACE.color, POP_SURFACE.alpha, hexToRgb('0a4f6e'));
-    // menu links / theme names (--riv-pop-ink), the 10.5px label (pop-ink-soft), the check (pop-accent)
+    // menu links / theme names / the legal rows (--riv-pop-ink), the 10.5px label (pop-ink-soft), the check (pop-accent)
     expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
     const label = composite(POP_INK_SOFT.color, POP_INK_SOFT.alpha, popover);
     expect(contrastRatio(rgbToHex(label), rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);

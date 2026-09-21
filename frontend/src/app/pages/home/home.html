@@ -408,15 +408,16 @@
   }
 } @else if (panelMode()) {
   <!-- ── From lg: the sheet's list as a pinned left panel, the map inset beside it. Same head, same rows, same preview. ── -->
+  <!-- The panel and the pane paint to every window edge between them, so no control may live in document flow under this arm. -->
   <div
-    class="fixed inset-x-0 bottom-0 z-[1] flex gap-3 p-3"
+    class="pointer-events-none fixed inset-x-0 bottom-0 z-[1] flex gap-3 p-3"
     data-testid="desk-frame"
     [style.top.px]="shell().header"
   >
     <aside
       appPanelGlass
       data-testid="desk-panel"
-      class="flex min-h-0 shrink-0 flex-col rounded-[22px]"
+      class="pointer-events-auto flex min-h-0 shrink-0 flex-col rounded-[22px]"
       [style.width.px]="panelWidth()"
       aria-label="Venues"
     >
@@ -517,7 +518,7 @@
     </aside>
 
     <!-- The map takes the rest: 12 px off every edge, 22 px corners matching the panel's. -->
-    <div class="relative min-w-0 flex-1" data-testid="desk-pane">
+    <div class="pointer-events-auto relative min-w-0 flex-1" data-testid="desk-pane">
       @defer (when mapDefer()) {
         <app-riviera-map
           class="size-full rounded-[22px]!"

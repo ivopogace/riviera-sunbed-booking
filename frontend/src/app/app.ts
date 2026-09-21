@@ -1,5 +1,6 @@
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { LegalFooter } from './shared/legal-footer';
+import { LegalMenuRows } from './shared/legal-menu-rows';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   NavigationEnd,
@@ -22,12 +23,11 @@ import { idParam } from './shared/parent-venue-id';
 import {
   AVATAR,
   CHIP,
-  CURRENT_POP_ROW,
   EXACT_PATH,
+  MOBILE_ITEM,
   POP_BACKDROP,
   POP_BUTTON,
   POP_ITEM,
-  POP_ROW_RING,
   POP_SKIN,
   handleOf,
   initialOf,
@@ -36,7 +36,6 @@ import { EDGE_SLOT_RING } from './shared/tab-rail';
 import { TouchTarget } from './shared/touch-target';
 
 const POP = `absolute ${POP_SKIN}`;
-const MOBILE_ITEM = `block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover ${CURRENT_POP_ROW} ${POP_ROW_RING}`;
 
 /** The shell's root box, with and without the phone tab bar's clearance: the bar is 61px tall
  *  (60px tabs + the top border) and pads itself by the home-indicator inset, so the page pads by
@@ -104,6 +103,10 @@ export type TouristSection = 'beaches' | 'bookings' | 'account';
  * search-first header candidate. `footer: false` is for a route that paints to every edge of the
  * window, where the shared footer would be covered rather than read; Discover's riviera map is
  * the first. Read off the same root→leaf walk as the operator flags.
+ *
+ * <p>The two are not independent: below `sm` a `footer: false` route's only reach to Privacy and
+ * Terms is the tab bar's menu sheet (`shared/legal-menu-rows.ts`), so such a route needs the
+ * tourist chrome and must not also carry `tabBar: false`.
  */
 export interface TouristRouteData {
   section?: TouristSection;
@@ -155,6 +158,7 @@ function consoleOf(data: unknown): ConsoleSection | null {
   selector: 'app-root',
   imports: [
     LegalFooter,
+    LegalMenuRows,
     RouterOutlet,
     RouterLink,
     RouterLinkActive,

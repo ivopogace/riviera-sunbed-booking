@@ -189,6 +189,9 @@ test.describe('44px touch targets on the desktop bar, which the phone sweeps nev
 
     await openHeaderMenu(page);
     await expect(page.getByTestId('nav-register')).toBeVisible();
+    // Named so the sweep cannot go vacuous: the only measurement of the popover rows' boxes.
+    await expect(page.getByTestId('legal-privacy-row')).toBeVisible();
+    await expect(page.getByTestId('legal-terms-row')).toBeVisible();
     await expectTouchTargets(page, 'desktop menu popover');
   });
 
@@ -200,6 +203,7 @@ test.describe('44px touch targets on the desktop bar, which the phone sweeps nev
 
     await openHeaderMenu(page);
     await expect(page.getByTestId('nav-signout')).toBeVisible();
+    await expect(page.getByTestId('legal-privacy-row')).toBeVisible();
     await expectTouchTargets(page, 'desktop account popover');
   });
 

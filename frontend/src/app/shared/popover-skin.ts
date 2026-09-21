@@ -3,7 +3,8 @@ import { IsActiveMatchOptions } from '@angular/router';
 /**
  * The header disclosure recipes the tourist shell (`app.ts`), the operator account chip
  * (`operator/operator-account-chip.ts`), the venue switcher (`operator/operator-venue-switch.ts`),
- * the console shell's More sheet (`console-shell.ts`) and the ⌘K palette (`console-palette.ts`)
+ * the console shell's More sheet (`console-shell.ts`), the ⌘K palette (`console-palette.ts`) and
+ * the legal rows (`shared/legal-menu-rows.ts`, which picks a skin by variant rather than composing)
  * paint from one place, so the popovers cannot drift (`riviera-tailwind`, no visual drift). Class strings, not a directive: each consumer
  * composes them with its own position and width, the `cls` idiom.
  */
@@ -36,6 +37,10 @@ export const POP_ROW_RING =
 export const POP_ITEM = `block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-riv-pop-ink [transition:background_0.12s_ease] hover:bg-riv-pop-hover ${CURRENT_POP_ROW} ${POP_ROW_RING}`;
 
 export const POP_BUTTON = `${POP_ITEM} cursor-pointer text-left`;
+
+/** The phone sheet's row — {@link POP_ITEM}'s twin at the sheet's larger type and padding. Beside
+ *  it, so a component serving both menus can pick either skin from one import. */
+export const MOBILE_ITEM = `block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover ${CURRENT_POP_ROW} ${POP_ROW_RING}`;
 
 /** A navigation row with a glyph, a label and a hint line — the More sheet's and the palette's:
  *  `flex`, so the 44px floor is live on the `<a>`; the current row is the popover's own recipe. */

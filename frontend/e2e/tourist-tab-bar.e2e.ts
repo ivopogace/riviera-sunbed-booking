@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
+import { hitTestId } from './support/hit-test';
 import { awaitRoutedPage, openShellOverlay } from './support/shell';
 
 /**
@@ -43,7 +44,7 @@ const VENUE = {
   })),
 };
 
-/** Enough venue cards that the home page scrolls at 390×844, so the top bar can scroll away. */
+/** The `/api/venues` payload every test here shares; the count is not load-bearing for any of them. */
 const VENUES = Array.from({ length: 8 }, (_, i) => ({
   ...VENUE,
   id: i + 1,
@@ -116,17 +117,18 @@ test.describe('phone', () => {
   test('the top bar is relative and scrolls away; the bar is the only sticky chrome below sm', async ({
     page,
   }) => {
-    // Needs a document that scrolls, and the riviera map is fixed to the viewport.
-    await page.goto('/?map=off');
-    await awaitRoutedPage(page);
-    const header = page.locator('header');
+    // A shell guarantee on any scrolling tourist route: the riviera map is fixed to the viewport.
+    await page.goto('/venues/1');
+    await expect(page.getByRole('button', { name: /Select to book/ }).first()).toBeVisible();
+    // `.riv-header`, not `header`: the venue page carries headers of its own, and the shell's is the subject.
+    const header = page.locator('.riv-header');
     const bar = page.getByTestId('tab-bar');
     await expect(header).toHaveCSS('position', 'relative');
     await expect(bar).toBeVisible();
 
     await page.evaluate(() => window.scrollTo(0, 600));
     const chrome = await page.evaluate(() => {
-      const header = document.querySelector('header')!.getBoundingClientRect();
+      const header = document.querySelector('.riv-header')!.getBoundingClientRect();
       const bar = document.querySelector('[data-testid="tab-bar"]')!.getBoundingClientRect();
       return { headerBottom: header.bottom, barTop: bar.top, barBottom: bar.bottom };
     });
@@ -187,14 +189,8 @@ test.describe('phone', () => {
     await openShellOverlay(page, 'theme-toggle');
     await expect(page.getByTestId('theme-option-riviera')).toBeVisible();
 
-    const hit = await page.evaluate(() => {
-      const tab = document.querySelector('[data-testid="tab-beaches"]')!.getBoundingClientRect();
-      return document
-        .elementFromPoint(tab.left + tab.width / 2, tab.top + tab.height / 2)
-        ?.getAttribute('data-testid');
-    });
     // The bar is an EARLIER z-20 sibling of the header, so the header's backdrop paints over it.
-    expect(hit).toBe('theme-backdrop');
+    expect(await hitTestId(page, 'tab-beaches')).toBe('theme-backdrop');
   });
 
   for (const { theme, background } of [

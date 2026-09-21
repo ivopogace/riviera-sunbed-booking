@@ -169,6 +169,7 @@ describe('app.routes — the phone tab bar reads its section and checkout flag o
     expect(chromeless).toEqual(['booking/pay']);
   });
 
+  // Adding to this list owes the constraint in `app.ts`'s TouristRouteData: chrome, not just paint.
   it('withholds the shared footer on Discover and nowhere else', () => {
     const footerless = routes.filter((r) => r.data?.['footer'] === false).map((r) => r.path);
     expect(footerless).toEqual(['']);

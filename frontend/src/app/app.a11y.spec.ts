@@ -22,11 +22,13 @@ const customerAuth = {
 
 /**
  * Automated axe-core structural audit of the Liquid Glass shell: header,
- * nav, theme picker, the account/menu popover, the phone tab bar and its sheet — in BOTH themes, closed and
- * open. Colour contrast is verified deterministically in `app.contrast.spec.ts` (axe can't
+ * nav, theme picker, the account/menu popover, the phone tab bar and its sheet — in all three
+ * themes, closed and open. Colour contrast is verified deterministically in `app.contrast.spec.ts` (axe can't
  * measure it under jsdom); the real-browser sweep runs in `e2e/theme-shell.e2e.ts`.
  */
 describe('App shell accessibility (axe, issue #134)', () => {
+  const THEMES = ['riviera', 'porcelain', 'dark'] as const;
+
   beforeEach(async () => {
     document.documentElement.removeAttribute('data-riv-theme');
     customerAuth.signedIn.set(false);
@@ -40,22 +42,24 @@ describe('App shell accessibility (axe, issue #134)', () => {
     }).compileComponents();
   });
 
+  // `isolate` is false: this file's theme attribute would follow it into the next spec file.
+  afterEach(() => {
+    document.documentElement.removeAttribute('data-riv-theme');
+  });
+
   function shell(): { fixture: ComponentFixture<App>; el: HTMLElement } {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
-  it.each(['riviera', 'porcelain', 'dark'] as const)(
-    'shell with menus closed has no violations (%s)',
-    async (theme) => {
-      const { fixture, el } = shell();
-      TestBed.inject(ThemeService).select(theme);
-      fixture.detectChanges();
+  it.each(THEMES)('shell with menus closed has no violations (%s)', async (theme) => {
+    const { fixture, el } = shell();
+    TestBed.inject(ThemeService).select(theme);
+    fixture.detectChanges();
 
-      await expectNoAxeViolations(el);
-    },
-  );
+    await expectNoAxeViolations(el);
+  });
 
   it('shell with the theme picker open has no violations', async () => {
     const { fixture, el } = shell();
@@ -65,34 +69,43 @@ describe('App shell accessibility (axe, issue #134)', () => {
     await expectNoAxeViolations(el);
   });
 
-  it.each([false, true])(
-    'shell with the tab-bar sheet open has no violations (signed in: %s) (#1003)',
-    async (signedIn) => {
-      customerAuth.signedIn.set(signedIn);
-      customerAuth.email.set(signedIn ? 'ana@example.com' : undefined);
-      const { fixture, el } = shell();
-      el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
-      fixture.detectChanges();
+  /** The three menus that carry the legal rows, audited per theme: the rows are a menu's only
+   *  non-destination content, so an open menu is the state worth crossing with the theme axis. */
+  async function auditOpenMenu(
+    theme: (typeof THEMES)[number],
+    signedIn: boolean,
+    opener: string,
+  ): Promise<void> {
+    customerAuth.signedIn.set(signedIn);
+    customerAuth.email.set(signedIn ? 'ana@example.com' : undefined);
+    const { fixture, el } = shell();
+    TestBed.inject(ThemeService).select(theme);
+    fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>(`[data-testid="${opener}"]`)!.click();
+    fixture.detectChanges();
 
-      await expectNoAxeViolations(el);
+    expect(el.querySelector('[data-testid="legal-privacy-row"]')).not.toBeNull();
+    await expectNoAxeViolations(el);
+  }
+
+  it.each(THEMES.flatMap((theme) => [false, true].map((signedIn) => ({ theme, signedIn }))))(
+    'shell with the tab-bar sheet open has no violations ($theme, signed in: $signedIn) (#1003)',
+    async ({ theme, signedIn }) => {
+      await auditOpenMenu(theme, signedIn, 'menu-toggle');
     },
   );
 
-  it('shell with the signed-out menu popover open has no violations (#1002)', async () => {
-    const { fixture, el } = shell();
-    el.querySelector<HTMLButtonElement>('[data-testid="nav-menu"]')!.click();
-    fixture.detectChanges();
+  it.each(THEMES)(
+    'shell with the signed-out menu popover open has no violations (%s) (#1002)',
+    async (theme) => {
+      await auditOpenMenu(theme, false, 'nav-menu');
+    },
+  );
 
-    await expectNoAxeViolations(el);
-  });
-
-  it('shell with the signed-in account menu open has no violations (#1002)', async () => {
-    customerAuth.signedIn.set(true);
-    customerAuth.email.set('ana@example.com');
-    const { fixture, el } = shell();
-    el.querySelector<HTMLButtonElement>('[data-testid="nav-user"]')!.click();
-    fixture.detectChanges();
-
-    await expectNoAxeViolations(el);
-  });
+  it.each(THEMES)(
+    'shell with the signed-in account menu open has no violations (%s) (#1002)',
+    async (theme) => {
+      await auditOpenMenu(theme, true, 'nav-user');
+    },
+  );
 });

@@ -518,7 +518,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
   });
 
   it.each([false, true])(
-    'the third tab opens the sheet with the auth rows, Find a booking and Sign out in order (signed in: %s) (#1003)',
+    'the third tab opens the sheet with the auth rows, Find a booking, Sign out and the legal rows in order (signed in: %s) (#1003)',
     (signedIn) => {
       customerAuth.signedIn.set(signedIn);
       customerAuth.email.set(signedIn ? 'ana@example.com' : undefined);
@@ -531,10 +531,23 @@ describe('App (Liquid Glass shell, issue #134)', () => {
       const rows = [...sheet.querySelectorAll('a, button')].map((row) =>
         row.getAttribute('data-testid'),
       );
+      // Legal rows last: toggleMenu hard-codes the first row it focuses when the sheet opens.
       expect(rows).toEqual(
         signedIn
-          ? ['nav-account-link-mobile', 'find-open-mobile', 'nav-signout-mobile']
-          : ['nav-signin-mobile', 'nav-register-mobile', 'find-open-mobile'],
+          ? [
+              'nav-account-link-mobile',
+              'find-open-mobile',
+              'nav-signout-mobile',
+              'legal-privacy-row',
+              'legal-terms-row',
+            ]
+          : [
+              'nav-signin-mobile',
+              'nav-register-mobile',
+              'find-open-mobile',
+              'legal-privacy-row',
+              'legal-terms-row',
+            ],
       );
       if (signedIn) {
         expect(sheet.querySelector('[data-testid="nav-user-mobile"]')?.textContent).toContain(
@@ -1100,6 +1113,37 @@ describe('App (Liquid Glass shell, issue #134)', () => {
       expect(link?.getAttribute('rel')).toContain('noopener');
     }
   });
+
+  it.each([false, true])(
+    'carries the legal rows in the phone sheet and in both desktop popover branches (signed in: %s)',
+    (signedIn) => {
+      customerAuth.signedIn.set(signedIn);
+      customerAuth.email.set(signedIn ? 'ana@example.com' : undefined);
+      const { fixture, el } = shell();
+
+      // Two template copies on the desktop, and only one of them renders per auth state.
+      for (const opener of ['menu-toggle', signedIn ? 'nav-user' : 'nav-menu']) {
+        el.querySelector<HTMLButtonElement>(`[data-testid="${opener}"]`)!.click();
+        fixture.detectChanges();
+
+        const rows = [
+          el.querySelector<HTMLAnchorElement>('[data-testid="legal-privacy-row"]'),
+          el.querySelector<HTMLAnchorElement>('[data-testid="legal-terms-row"]'),
+        ];
+        expect(
+          rows.map((row) => [row?.textContent?.trim(), row?.getAttribute('href')]),
+          opener,
+        ).toEqual([
+          ['Privacy policy', '/legal/privacy'],
+          ['Terms of service', '/legal/terms'],
+        ]);
+        for (const row of rows) {
+          expect(row?.getAttribute('target'), opener).toBe('_blank');
+          expect(row?.getAttribute('rel'), opener).toContain('noopener');
+        }
+      }
+    },
+  );
 
   it('renders the console shell instead of the tourist header on the venue console route (#1011)', async () => {
     const { fixture, el } = shell();

@@ -206,7 +206,10 @@ test.describe('mobile viewport', () => {
     // Containing-block pin: the dim backdrop must cover the viewport, not just
     // the header strip (backdrop-filter on the header itself once shrank it to the header).
     const centerHit = await page.evaluate(() => {
-      const hit = document.elementFromPoint(window.innerWidth / 2, window.innerHeight * 0.7);
+      // Past the strip the regression shrank it to, and clear of the sheet at any row count.
+      const header = document.querySelector('.riv-header')!.getBoundingClientRect();
+      const sheet = document.querySelector('[data-testid="mobile-menu"]')!.getBoundingClientRect();
+      const hit = document.elementFromPoint(window.innerWidth / 2, (header.bottom + sheet.top) / 2);
       return hit?.getAttribute('data-testid') ?? hit?.className ?? null;
     });
     expect(centerHit).toBe('menu-backdrop');
