@@ -146,15 +146,15 @@ written; the slice changes two CSS custom properties and four class attributes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Repaint the four panel-glass sites the audit settled.
+**Next action:** The computed-style e2e — the only proof that can see a template.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Tokens + contrast proof | ✅ | |
-| 1 — Repaint the three sites + the row hover | ⏳ | |
-| 2 — Computed-style e2e | | |
+| 1 — Repaint the three sites + the row hover | ✅ | |
+| 2 — Computed-style e2e | ⏳ | |
 | 3 — Generalization audit + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -174,6 +174,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/testing/glass-tokens.ts` — test-side mirrors of both tokens
 - `frontend/src/app/pages/home/home.contrast.spec.ts` — AC-1/2/3; the negative case retired
 - `frontend/src/app/pages/home/home.html` — sheet and desk group-head distance
+- `frontend/src/app/pages/home/discover-head.ts` — the ◎ located glyph, found by the audit
 - `frontend/src/app/pages/home/venue-row.html` — row price ink + row hover wash
 - `frontend/e2e/panel-glass-inks.e2e.ts` — AC-4, the computed-style proof
 

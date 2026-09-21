@@ -1,6 +1,6 @@
 <a
   data-testid="venue-row"
-  class="row flex items-center gap-3 border-b border-riv-ink-faint/20 px-2 py-[10px] no-underline last:border-b-0 group-last/row:border-b-0 motion-safe:[transition:background_0.12s_ease] hover:bg-riv-wash-hover focus-visible:outline-offset-[-2px]"
+  class="row flex items-center gap-3 border-b border-riv-ink-faint/20 px-2 py-[10px] no-underline last:border-b-0 group-last/row:border-b-0 motion-safe:[transition:background_0.12s_ease] hover:bg-riv-panel-wash-hover focus-visible:outline-offset-[-2px]"
   [routerLink]="['/venues', card().id]"
   [queryParams]="{ date: date() }"
   [attr.aria-label]="card().ariaLabel"
@@ -50,7 +50,7 @@
       @if (card().priceLabel; as price) {
         <span
           data-testid="row-price"
-          class="row-price shrink-0 text-[16px] font-extrabold text-riv-ink"
+          class="row-price shrink-0 text-[16px] font-extrabold text-riv-panel-accent-ink"
           >{{ price }}</span
         >
       } @else {
