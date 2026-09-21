@@ -65,6 +65,9 @@ const surfaceRoutes = () => [
   { path: 'pay', component: BlankPage, data: { section: 'bookings', tabBar: false } },
   // Discover's real shape since the riviera map: a full-window surface, so no shell footer.
   { path: 'map-route', component: BlankPage, data: { section: 'beaches', footer: false } },
+  // A wide route that DOES render the footer: no shipped route is both, and the footer's own
+  // opt-in needs a surface to be observed on (AC-7).
+  { path: 'wide-route', component: BlankPage, data: { section: 'beaches', wide: true } },
   // The pay page's real shape: lazily loaded, so a sheet can be opened while its chunk is in flight.
   {
     path: 'pay-lazy',
@@ -631,6 +634,41 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     await router.navigate(['/my-bookings']);
     fixture.detectChanges();
     expect(el.querySelector('.riv-footer')).not.toBeNull();
+  });
+
+  it('the header wrapper opts into full-bleed on a data.wide route and not elsewhere (#1169)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+    // The attribute is the seam a unit spec can see: Tailwind's stylesheet is not loaded under
+    // jsdom, so `data-wide:max-w-none` winning over the 1080px cap is e2e's to measure.
+    const wrapper = () => el.querySelector('.riv-header > div')!;
+
+    await router.navigate(['/my-bookings']);
+    fixture.detectChanges();
+    expect(wrapper().hasAttribute('data-wide')).toBe(false);
+
+    await router.navigate(['/wide-route']);
+    fixture.detectChanges();
+    expect(wrapper().hasAttribute('data-wide')).toBe(true);
+
+    // Leaving the route puts the cap back: the flag is the route's, not a latch.
+    await router.navigate(['/my-bookings']);
+    fixture.detectChanges();
+    expect(wrapper().hasAttribute('data-wide')).toBe(false);
+  });
+
+  it('the footer follows the header on a wide route (#1169)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+    const footerInner = () => el.querySelector('.riv-footer-inner')!;
+
+    await router.navigate(['/my-bookings']);
+    fixture.detectChanges();
+    expect(footerInner().hasAttribute('data-wide')).toBe(false);
+
+    await router.navigate(['/wide-route']);
+    fixture.detectChanges();
+    expect(footerInner().hasAttribute('data-wide')).toBe(true);
   });
 
   it('hides the bar and drops the padding on a route carrying tabBar: false (#1003)', async () => {

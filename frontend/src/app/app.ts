@@ -107,11 +107,23 @@ export type TouristSection = 'beaches' | 'bookings' | 'account';
  * <p>The two are not independent: below `sm` a `footer: false` route's only reach to Privacy and
  * Terms is the tab bar's menu sheet (`shared/legal-menu-rows.ts`), so such a route needs the
  * tourist chrome and must not also carry `tabBar: false`.
+ *
+ * <p>`wide: true` takes the 1080px cap off the header's inner wrapper and the footer's inner,
+ * for a route that paints to the window's edges: the map's own panel starts at x 12, so a capped
+ * header floats the brand 180px inside it at 1440 and 420px at 1920, reading as chrome for a
+ * narrower page than the one under it. The cap is removed by Tailwind's bare boolean
+ * `data-wide:` variant, which compiles to `&[data-wide]` — the attribute must therefore sit on
+ * the SAME element as the utility, which is why the header wrapper and the footer inner each
+ * bind it rather than inheriting one attribute from the shell root. (The ancestor form,
+ * `in-data-wide:`, compiles under `:where()` and so only TIES `max-w-[1080px]` on specificity,
+ * leaving stylesheet order to decide it.) Unlike `tabBar`/`footer`, where the restrictive value
+ * wins, this is an opt-in: any route on the chain carrying it makes the shell wide.
  */
 export interface TouristRouteData {
   section?: TouristSection;
   tabBar?: false;
   footer?: false;
+  wide?: true;
 }
 
 /** The active route's chrome flags — see {@link App.routeChrome}. */
@@ -126,6 +138,8 @@ interface RouteChrome {
   tabBar: boolean;
   /** `false` when any route on the chain carries `data.footer: false`. */
   footer: boolean;
+  /** `true` when any route on the chain carries `data.wide: true`. */
+  wide: boolean;
 }
 
 /** The chrome before the first navigation completes: the tourist header, footer and tab bar,
@@ -136,6 +150,7 @@ const PRE_NAVIGATION_CHROME: RouteChrome = {
   section: null,
   tabBar: true,
   footer: true,
+  wide: false,
 };
 
 /** Narrows an untyped `data.section` to a {@link TouristSection}; anything else is no section. */
@@ -264,6 +279,7 @@ export class App {
     let section = sectionOf(route.data['section']);
     let tabBar = route.data['tabBar'] !== false;
     let footer = route.data['footer'] !== false;
+    let wide = route.data['wide'] === true;
     while (route.firstChild) {
       route = route.firstChild;
       console = consoleOf(route.data['console']) ?? console;
@@ -271,8 +287,9 @@ export class App {
       section = sectionOf(route.data['section']) ?? section;
       tabBar &&= route.data['tabBar'] !== false;
       footer &&= route.data['footer'] !== false;
+      wide ||= route.data['wide'] === true;
     }
-    return { console, venueId, section, tabBar, footer };
+    return { console, venueId, section, tabBar, footer, wide };
   });
 
   /** The console section the active route belongs to, `plain` when it carries none — read only
@@ -291,6 +308,10 @@ export class App {
 
   /** Whether the shared footer renders: every route but one flagged `footer: false`. */
   protected readonly footer = computed(() => this.routeChrome().footer);
+
+  /** Whether the shell's chrome runs to the window's edges: a route flagged `data.wide`. Bound
+   *  as a bare `data-wide` attribute on each element whose cap it lifts. */
+  protected readonly wide = computed(() => this.routeChrome().wide);
 
   /** Whether the auth card is the current page, by path alone — the same test `routerLinkActive`
    *  runs for the plain-path links, as a signal. */

@@ -146,7 +146,8 @@
       class="riv-header sticky top-0 z-20 max-sm:relative border-b border-riv-header-border shadow-[0_8px_30px_rgba(6,38,52,0.14)] before:absolute before:inset-0 before:z-[-1] before:bg-riv-header-glass before:backdrop-blur-[22px] before:backdrop-saturate-[1.7] before:content-['']"
     >
       <div
-        class="relative mx-auto flex w-full max-w-[1080px] items-center gap-4 px-4 py-3.5 sm:px-6"
+        class="relative mx-auto flex w-full max-w-[1080px] items-center gap-4 px-4 py-3.5 data-wide:max-w-none sm:px-6"
+        [attr.data-wide]="wide() ? '' : null"
       >
         <a
           appTouchTarget
@@ -491,7 +492,8 @@
     >
       <div
         appLegalFooter
-        class="riv-footer-inner mx-auto max-w-[1080px] px-6 py-4 text-[13px] text-riv-ink-soft"
+        class="riv-footer-inner mx-auto max-w-[1080px] px-6 py-4 text-[13px] text-riv-ink-soft data-wide:max-w-none"
+        [attr.data-wide]="wide() ? '' : null"
       ></div>
     </footer>
   }

@@ -217,7 +217,9 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/home/home').then((m) => m.Home),
     title: 'Riviera — Sunbed Booking',
     // The riviera map fills the window; `?map=off` gives its footer up with it (static data).
-    data: { section: 'beaches', footer: false } satisfies TouristRouteData,
+    // `wide` is the route's, so `?map=off`'s capped column keeps the full-bleed header for the
+    // one release it survives — the shell reading a page's query param is the coupling #1169 rejects.
+    data: { section: 'beaches', footer: false, wide: true } satisfies TouristRouteData,
   },
   {
     // Device-local guest bookings list.

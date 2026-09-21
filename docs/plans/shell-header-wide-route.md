@@ -46,11 +46,13 @@ the row renders, see FE-3) · `playwright-cli` (the wide-header measurement e2e)
 ## Acceptance criteria (testable)
 
 - [ ] **AC-1:** Given a route whose `data` carries `wide: true`, when the shell renders it,
-      then the header's inner wrapper carries the `data-wide` attribute and computes
-      `max-width: none`; given a route without the flag, the attribute is absent and the
-      wrapper computes `max-width: 1080px`. *Seam:* `TouristRouteData` route flag observed
-      through the rendered header wrapper · *Pinned by:*
-      `app.spec.ts` › "the header wrapper goes full-bleed on a data.wide route and stays capped elsewhere"
+      then the header's inner wrapper carries the `data-wide` attribute; given a route without
+      the flag, the attribute is absent. The *rendered* `max-width` is AC-2's job: Tailwind's
+      stylesheet is not loaded under jsdom (`vitest-base.config.ts` imports no CSS, and no unit
+      spec in the tree asserts a computed value), so a unit spec can only pin the plumbing.
+      *Seam:* `TouristRouteData` route flag observed through the rendered header wrapper ·
+      *Pinned by:*
+      `app.spec.ts` › "the header wrapper opts into full-bleed on a data.wide route and not elsewhere"
 - [ ] **AC-2:** Given Discover (`/`), when it is opened at 1440 and at 1920, then the header
       wrapper's rendered box spans the full viewport width and the brand's left edge sits at
       the panel's own left edge (x ≈ 24 at both), not 180/420 px inside it. *Seam:* the
@@ -83,9 +85,15 @@ the row renders, see FE-3) · `playwright-cli` (the wide-header measurement e2e)
       `app.contrast.spec.ts` › "the theme row's circle is decorative under rule 2a: $theme",
       and `theme-shell.e2e.ts` › "the header and its menu are axe-clean on a capped and a wide route"
 - [ ] **AC-7:** Given a wide route that renders the shared footer, when it renders, then the
-      footer's inner carries `data-wide` and computes `max-width: none`, mirroring the header.
-      *Seam:* the rendered footer inner · *Pinned by:*
-      `app.spec.ts` › "the footer follows the header on a wide route"
+      footer's inner carries `data-wide`, mirroring the header; and given a capped route that
+      renders it, the attribute is absent and the inner computes `max-width: 1080px` in a real
+      browser. No shipped route is both wide and footer-rendering (Discover is `footer: false`),
+      so the positive leg is pinned on a synthetic test route at the attribute, and the rendered
+      proof rests on AC-2: the footer inner carries the *same* `data-wide:max-w-none` utility on
+      the same element, so AC-2 proving that utility compiles and outranks the cap proves it
+      here too. *Seam:* the rendered footer inner · *Pinned by:*
+      `app.spec.ts` › "the footer follows the header on a wide route" and
+      `shell-header-wide.e2e.ts` › "a capped route's footer keeps its 1080px cap"
 - [ ] **AC-8:** Given the full mocked e2e suite, when it runs, then `tourist-header.e2e.ts`,
       `theme-shell.e2e.ts` and `current-page-marker.e2e.ts` pass — every route keeps its
       header, its account controls and its current-page marker. *Seam:* the mocked suite ·
@@ -128,7 +136,7 @@ the row renders, see FE-3) · `playwright-cli` (the wide-header measurement e2e)
 | R-4 | Reaching for `@angular/aria`'s Menu to get roving-tabindex/arrow-key correctness "for free", against a locked stack | Low | Medium | Ruled out on the docs' own scope: `@angular/aria` § Menu is "for actions, commands, and context menus (**not for form selection**)" and § Listbox is for "visible selection lists (**not dropdowns**)". A theme setting inside a popover is excluded by both; the package is not installed and CLAUDE.md locks the stack, so adding it needs its own ADR. Angular Aria's *styling* guidance is itself "target `[aria-expanded]`", which is the disclosure this slice builds | plan | resolved at plan time |
 | R-5 | The nested disclosure destroys the focused element when the options collapse or the menu closes, stranding focus on `<body>` | Medium | Medium | `frontend/.claude/CLAUDE.md`: a transition that destroys the focused element moves focus via `shared/focus-after-render.ts`'s `focusMover()` on all three legs. The row is the return target when the options collapse; `closeMenus()` already returns focus to the menu trigger. `scripts/check-focus-posture.mjs` runs as a hook | phase 2 | open |
 | R-6 | 11 e2e files and 3 unit specs reference `theme-toggle`; a missed one fails CI late, and `e2e/support/shell.ts` documents `theme-toggle` as an example overlay trigger | High | Low | Enumerate by mechanism before editing (generalization log): `grep -rn "theme-toggle\|theme-backdrop\|riv-theme-pop" src/ e2e/`. Migrate every site to `openThemePicker`, then re-run the grep to zero (excluding the helper itself) | phase 2 | open |
-| R-7 | The wide header at 1920 is asserted with hard-coded pixel expectations that drift with unrelated padding changes | Low | Low | Assert the *relationship* the issue states (wrapper spans the viewport; brand's left edge within a small tolerance of the page's own left gutter) rather than transcribing 24/1416 as magic numbers; keep the measured values in a comment as provenance | phase 0 | open |
+| R-7 | The wide header at 1920 is asserted with hard-coded pixel expectations that drift with unrelated padding changes | Low | Low | Assert the *relationship* the issue states (wrapper spans the viewport; brand's left edge within a small tolerance of the page's own left gutter) rather than transcribing 24/1416 as magic numbers; keep the measured values in a comment as provenance | phase 0 | resolved in phase 0 — `shell-header-wide.e2e.ts` asserts span-equals-viewport and a ≤40px gutter, with round 11's numbers in the file's TSDoc as provenance |
 
 ## Open questions / Assumptions
 
@@ -192,15 +200,15 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `plan — awaiting approval of this doc (tdd confirm-seams)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** On approval, commit the plan, open the draft PR, then start phase 0 with the
-failing `app.spec.ts` case for AC-1.
+**Next action:** Drop the eyebrow's `uppercase` and take it to 12.5 px, pinned by a new case in
+`shell-header-wide.e2e.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the `data.wide` route flag, header + footer full-bleed | | |
-| 1 — the eyebrow at 12.5 px in its own case | | |
+| 0 — the `data.wide` route flag, header + footer full-bleed | ✅ | `<phase-0-sha>` |
+| 1 — the eyebrow at 12.5 px in its own case | ⏳ | |
 | 2 — the swatch becomes a labelled menu row | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -320,6 +328,7 @@ files listed in File structure
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-21 | plan-time blast-radius map for the retiring swatch | every reference to the header theme control's testids and popover class | `grep -rn "theme-toggle\|theme-backdrop\|riv-theme-pop" frontend/src frontend/e2e` | 11 e2e files + `app.spec.ts`, `app.a11y.spec.ts`, `app.html`, `app.ts` | recorded as R-6; migration is phase 2 step 5 |
+| 2026-09-21 | phase 0: a second element needed the same cap lifted | every element in the tree carrying the shell's 1080px cap | `grep -rn "max-w-\[1080px\]" frontend/src` | 3 (header wrapper, footer inner, `home.html`'s `.discover` column) | header wrapper + footer inner take `data-wide:max-w-none`; the Discover column is page content, not shell chrome, and stays capped — it is what `?map=off` renders under the wide header (R-3) |
 
 ---
 
