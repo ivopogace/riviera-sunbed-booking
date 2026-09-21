@@ -114,5 +114,12 @@ export default defineConfig({
     url: 'http://localhost:4200',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // Works around a V8 "Lazy deopt after a fast API call" abort that has crashed the dev server.
+    env: {
+      ...process.env,
+      NODE_OPTIONS: [process.env.NODE_OPTIONS, '--require ./scripts/disable-turbo-fast-api-calls.cjs']
+        .filter(Boolean)
+        .join(' '),
+    },
   },
 });
