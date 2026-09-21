@@ -531,8 +531,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
       const rows = [...sheet.querySelectorAll('a, button')].map((row) =>
         row.getAttribute('data-testid'),
       );
-      // The legal rows are last: toggleMenu hard-codes the first row it focuses on open, so the
-      // destinations keep the head of the list.
+      // Legal rows last: toggleMenu hard-codes the first row it focuses when the sheet opens.
       expect(rows).toEqual(
         signedIn
           ? [
@@ -1122,8 +1121,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
       customerAuth.email.set(signedIn ? 'ana@example.com' : undefined);
       const { fixture, el } = shell();
 
-      // Discover withholds the footer, so on that route these rows are the only route to either
-      // document. The desktop popover is two template copies, and only one renders per auth state.
+      // Two template copies on the desktop, and only one of them renders per auth state.
       for (const opener of ['menu-toggle', signedIn ? 'nav-user' : 'nav-menu']) {
         el.querySelector<HTMLButtonElement>(`[data-testid="${opener}"]`)!.click();
         fixture.detectChanges();
