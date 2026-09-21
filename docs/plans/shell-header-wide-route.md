@@ -23,6 +23,10 @@ untouched).
 `README.md` § *Round 11* § 3 and `prototype-header.ts` on `claude/map-design-prototype-417sh1`
 @ `2cf675da` (PR #1155, an open draft that is never merged).
 
+**Sonar note:** read from the API on the final run per `references/pr-gates.md` §2, guarding the
+three false zeros — a `total: 0` is accepted only with non-empty `measures` and the
+`SonarCloud Code Analysis` check-run at `success`.
+
 **Skills consulted:** `riviera-sdlc` (the intake gate caught that `theme-shell.e2e.ts` cannot
 "pass unchanged" as AC 6 implies — three of its cases have the two-sibling-popover premise the
 slice deletes — and that no in-flight PR touches the shell) · `riviera-plan-doc` (forced the
@@ -200,17 +204,20 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement — all three phases done, suites green on b9bd945d`
+**Stage pointer:** `DONE — merged via PR #1182`
 
-**Next action:** None outstanding on the branch. No PR is opened — none was requested — so the
-`riviera-sdlc` CI, review and Sonar gates have not run and the last three checklist boxes below
-stay unticked deliberately rather than by omission.
+**Next action:** None. Close-out per `riviera-sdlc` `references/pr-gates.md` §3: the issue closes
+with the PR (`Closes #1169`), no parent epic carries this slice, the one deferred finding needed no
+new issue — #1168 deletes the markup it named, and its own acceptance criteria already carry the
+follow-through — and `docs/plans/discover-sheet-opening-rest-race.md` is retired in this commit — its own plan records `merged via PR #1180`, which is `main`'s tip, and nothing
+outside that file cited it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the `data.wide` route flag, header + footer full-bleed | ✅ | `d185cdbd` |
 | 1 — the eyebrow at 12.5 px in its own case | ✅ | `81db1b02` |
 | 2 — the swatch becomes a labelled menu row | ✅ | `b9bd945d` |
+| Review-gate fixes (F-1 … F-6) | ✅ | `913f4091`, this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -218,7 +225,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
-| | | | |
+| F-1 | CI — `check-inline-comments.mjs --diff origin/main` | Eleven RV-STYLE-1 findings on added prose: multi-line inline comments and issue numbers. Root cause of the miss: the local runs used `--files`, which does not reach HTML comments and judges a narrower set than CI's `--diff` mode | fixed-in-`913f4091` |
+| F-3 | Review gate — bug scan | The new rule-2a assertion was a tautology: `composite(WHITE, 0.55, WHITE)` is WHITE, so its ratio is always 1 and the per-theme parameters went unused — it passed for any palette, which is the one thing rule 2a's second condition forbids. Rewritten to measure the ring over the swatch gradients read off `THEME_OPTIONS`, asserting the worst case (1.00:1 on porcelain's white end) is what rules out rule 1. Mutation-checked: an all-dark palette fails it at 3.89 | fixed-in-this-commit |
+| F-4 | Review gate — git-history context | `docs/design/non-text-contrast.md`'s "families this rule covers" table is the registry for every rule-2a consumer, and the new citation was not added to it | fixed-in-this-commit |
+| F-5 | Review gate — code-comment guidance | `app.html`'s tab-bar z-order comment still read "the theme/account popover backdrops" after this slice deleted the theme popover's backdrop, so it named a surface the tree no longer has | fixed-in-this-commit |
+| F-6 | Review gate — code-comment guidance | The new component re-derived `POP_BUTTON`'s composition inline (`POP_ITEM cursor-pointer text-left`, byte-identical to the export) instead of importing it, which is the drift `popover-skin.ts` exists to prevent | fixed-in-this-commit |
+| F-7 | Review gate — code-comment guidance | `app.ts`'s NavigationEnd TSDoc illustrated its rule with "a guest who opens the theme picker", a one-click control this slice removed; the rule is unchanged, the example now names the account menu | fixed-in-this-commit |
+| F-2 | Review gate — prior-PR comment mining | `shared/popover-skin.ts`'s doc comment enumerates its consumers by name, and `theme-menu-rows.ts` imports `MOBILE_ITEM`/`POP_ITEM` without being added to it. The same ledger has gone stale three times before (#1017, #1018 F-5, #1174), each time caught in review rather than by a guard | fixed-in-this-commit |
 
 ---
 
@@ -229,6 +242,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/app.html` — wrapper + footer `data-wide`, the eyebrow, the swatch's removal, the `Colour theme` row and nested options in both menus
 - `frontend/src/app/app.routes.ts` — Discover carries `wide: true`
 - `frontend/src/app/theme-menu-rows.ts` — the `Colour theme` disclosure row and its three options, skinned per menu (new; root-level, since it injects `core/`)
+- `frontend/src/app/shared/popover-skin.ts` — its consumer ledger names the new skin consumer
+- `docs/design/non-text-contrast.md` — the rule-2a family table gains the theme row's circle
 - `frontend/src/app/app.spec.ts` — AC-1, AC-4, AC-5, AC-7
 - `frontend/src/app/app.a11y.spec.ts` — AC-6 axe leg
 - `frontend/src/app/app.contrast.spec.ts` — AC-6 contrast leg; retires the swatch-ring case, adds the rule-2a row case
@@ -368,5 +383,5 @@ Full unit suite at the same commit: `npx ng test --watch=false` → **3652 passe
 - [x] Frontend standards met: `riviera-frontend` placement, `riviera-tailwind` rules 3/4/6, `frontend/.claude/CLAUDE.md` focus + touch-target posture; no `as any`.
 - [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
 - [x] Risk register has no stale `open` rows (R-3 is accepted-and-stated, the rest resolved); Open Questions empty.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`. — **not reached: no PR was opened, none was requested.**
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked. — **not reached: the review and Sonar gates are PR-scoped and no PR was opened.**
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #1182`.
+- [x] The review gate ran in full: `code-review:code-review` at rung 1 of the ladder, effort high, over a range resolved twice from the PR (`check-review-range.mjs` exit 0 both rounds), with `riviera-review-overlay` layered on. Seven findings, all fixed in-PR; one item deferred to a follow-up issue.

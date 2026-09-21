@@ -49,7 +49,7 @@
   }
 
   @if (shellChrome() === 'tourist') {
-    <!-- The phone tab bar, BEFORE the header: an earlier z-20 sibling paints under the header's stacking context, so the theme/account popover backdrops cover it (a later one would let a tab tap navigate under an open popover). Below sm the bar is therefore first in tab order. -->
+    <!-- The phone tab bar, BEFORE the header: an earlier z-20 sibling paints under the header's stacking context, so the account popover's backdrop covers it (a later one would let a tab tap navigate under an open popover). Below sm the bar is therefore first in tab order. -->
     @if (tabBar()) {
       <nav [class]="cls.tabBar" aria-label="Primary (phone)" data-testid="tab-bar">
         <a

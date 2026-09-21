@@ -1,7 +1,7 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 
 import { ThemeId, ThemeService } from './core/theme';
-import { MOBILE_ITEM, POP_ITEM } from './shared/popover-skin';
+import { MOBILE_ITEM, POP_BUTTON } from './shared/popover-skin';
 import { TouchTarget } from './shared/touch-target';
 
 /** Which menu the rows are wearing: the phone sheet's rows, or the desktop popover's. */
@@ -9,7 +9,7 @@ export type ThemeMenuVariant = 'sheet' | 'popover';
 
 const SKINS: Record<ThemeMenuVariant, string> = {
   sheet: `${MOBILE_ITEM} cursor-pointer`,
-  popover: `${POP_ITEM} cursor-pointer text-left`,
+  popover: POP_BUTTON,
 };
 
 /** The row is a disclosure trigger — toggled open and shut in quick succession — so it drops the

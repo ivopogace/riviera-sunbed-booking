@@ -349,7 +349,7 @@ export class App {
    * (`provideRouter`'s default `enabledNonBlocking` initial navigation), so the `NavigationEnd`
    * closing that window is not something the user did and must not shut a menu they just opened.
    * That reasoning is about a navigation being ALREADY UNDER WAY, not about it being the first or
-   * about where it lands: a guest who opens the theme picker while a nav link they clicked is still
+   * about where it lands: a guest who opens the account menu while a nav link they clicked is still
    * loading keeps it open onto the destination too, deliberately.
    * Identity is the navigation id, not the url: a url comparison would also swallow a navigation
    * the guest DID start from inside the overlay onto the page they deep-linked to, which supersedes

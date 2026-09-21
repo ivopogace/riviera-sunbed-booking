@@ -1,3 +1,4 @@
+import { THEME_OPTIONS } from './core/theme';
 import {
   AA_LARGE,
   AA_NORMAL,
@@ -49,6 +50,9 @@ import {
  * Decorative, text-free elements (sun disc, blobs, swatches, menu bars, caret) are exempt
  * (WCAG 1.4.3 incidental/decoration).
  */
+
+/** The swatch circle's inset hairline, as `theme-menu-rows.ts` paints it. */
+const SWATCH_RING_ALPHA = 0.55;
 
 interface GlassPair {
   readonly usage: string;
@@ -182,20 +186,9 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
    * The theme control's swatch circle, as the account menu's row paints it. The row says
    * `Colour theme` and names the active theme beside it, so the circle carries no information of
    * its own: it is an `aria-hidden` ornament whose meaning a labelled sibling carries — **rule 2a**
-   * of
-   * `docs/design/non-text-contrast.md`, not rule 2, which is about a *control* identified by its
+   * of `docs/design/non-text-contrast.md`, not rule 2, which is about a *control* identified by its
    * own content. Rule 2a's second condition still binds, so the number is measured here rather
-   * than waved off:
-   *
-   * <ol>
-   *   <li>the identity is carried as text — the label (`--riv-pop-ink`) and the value
-   *       (`--riv-pop-ink-soft`) on the popover surface, both at AA below;
-   *   <li>the circle's own boundary is computed and bounded, so a later slice that worsens it has
-   *       to come through this test.
-   * </ol>
-   *
-   * <p>The circle's white inset ring is `rgba(255,255,255,0.55)`, the same hairline the option
-   * circles have always worn on this surface — one family, one measurement.
+   * than waved off: the identity carriers below, and the ring's own worst case in the case after.
    */
   it.each([
     {
@@ -213,22 +206,36 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
       stop: DARK_STOPS[DARK_STOPS.length - 1],
     },
   ])(
-    "the theme row's circle is decorative under rule 2a; its label and value carry the identity: $theme (#1169)",
+    "the theme row's label and value carry its identity at AA on the popover: $theme",
     ({ surface, ink, inkSoft, stop }) => {
       const popover = composite(surface.color, surface.alpha, stop);
 
-      // 1. The identity is text, at AA on the surface the row sits on.
       expect(contrastRatio(rgbToHex(ink), rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
       const value = composite(inkSoft.color, inkSoft.alpha, popover);
       expect(contrastRatio(rgbToHex(value), rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
-
-      // 2. The ornament's boundary is measured against both adjacencies: swatch fill, then popover.
-      const ring = composite(WHITE, 0.55, WHITE);
-      const ringOnSwatch = contrastRatio(rgbToHex(ring), rgbToHex(WHITE));
-      expect(ringOnSwatch).toBeLessThan(AA_LARGE);
-      expect(contrastRatio(rgbToHex(ring), rgbToHex(popover))).toBeGreaterThan(1);
     },
   );
+
+  /**
+   * Why rule 2a and not rule 1: the circle's white inset hairline is not a dependable boundary.
+   * Measured over the switcher's own swatch gradients it clears 3:1 on the darker stops and
+   * vanishes on the palest — so nothing about the boundary identifies the control, and the label
+   * beside it has to. Read off {@link THEME_OPTIONS} rather than restated, so a palette change
+   * moves these numbers and lands here; were the palest stop ever to darken past 3:1, the citation
+   * itself would be up for re-deciding and this test is what would say so.
+   */
+  it("the theme row's circle is decoration: its ring vanishes on the palest swatch stop (rule 2a)", () => {
+    const stops = THEME_OPTIONS.flatMap((option) =>
+      [...option.swatch.matchAll(/#[0-9a-f]{6}/gi)].map((match) => hexToRgb(match[0])),
+    );
+    expect(stops.length).toBeGreaterThanOrEqual(6);
+
+    const ratios = stops.map((stop) =>
+      contrastRatio(rgbToHex(composite(WHITE, SWATCH_RING_ALPHA, stop)), rgbToHex(stop)),
+    );
+
+    expect(Math.min(...ratios)).toBeLessThan(AA_LARGE);
+  });
 
   /**
    * The phone tab bar paints its own near-opaque token (`--riv-tabbar-glass`), not the header

@@ -103,6 +103,7 @@ number-bearing surface, not two.
 | `--riv-amenity-tag-border`, `--riv-amenity-water-border` | `app/shared/fixed-fill-token-skins.contrast.spec.ts` (`amenities.contrast.spec.ts` is the same family's ink/fill text pairs, not these borders) |
 | `--riv-warn-edge/50` on `daily-view-tab`'s close-sales trigger — the button's own label carries the identity | `app/operator/daily-view-tab.contrast.spec.ts` |
 | `--riv-solid-fill-brand` as the operator account chip's avatar disc — the chip's non-text anchor on the header glass, measured at ≥ 3:1 over every porcelain stop; the chip's `--riv-chip-border` hairline is the tourist header's token and decoration under rule 2 (the label carries the identity) | `app/operator/operator-account-chip.contrast.spec.ts` |
+| the theme row's swatch circle in the account menu and phone sheet (**rule 2a** — an `aria-hidden` ornament; the row's `Colour theme` label and its value carry the meaning). Its white inset hairline clears 3:1 over the darker swatch stops and vanishes over the palest, which is why rule 1 cannot carry it | `app/app.contrast.spec.ts` |
 
 `--riv-console-card-border`'s one remaining consumer is not a control at all: it is the edge of the
 console's "Venue not found" card, a `<div>`. The card's edge is outside 1.4.11 rather than exempt
