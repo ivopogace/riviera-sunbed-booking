@@ -91,10 +91,10 @@ the reason at the base declaration; the no-drift rule → the computed-style e2e
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A token declared without its `@theme inline` row generates no utility: the class stays in the markup and the paint silently does not change | Medium | High — a green unit suite over a surface that never repainted | The e2e asserts Tailwind *generated* the utility, the way `accent-token-inks.e2e.ts` does, not just that the property resolves | this slice | open |
-| R-2 | Lightening the riviera panel on hover looks like the obvious wash and fails: at *every* usable alpha the light-cyan accent drops under AA (white 0.06 → 4.23:1) | High | High — would ship the same class of bug the slice is fixing | The wash darkens in riviera (a second coat of its own header tint); AC-3 pins both inks over the hover surface in all three themes | this slice | open |
-| R-3 | Riviera's margin is the thinnest in the slice (4.94:1 at the `#ffe2b0` stop, 0.44 over AA), so any later retune of a riviera gradient stop or of the header glass alpha can push it under | Medium | Medium | AC-2 loops every stop rather than a worst-case constant, so a stop retune fails the spec rather than shipping | this slice | open |
-| R-4 | Repainting the group heads could drift the *rest* of the panel (position, weight) rather than only colour | Low | Medium | Only the colour utility on the distance `<span>` changes; the no-drift rule is discharged by the computed-style e2e | this slice | open |
+| R-1 | A token declared without its `@theme inline` row generates no utility: the class stays in the markup and the paint silently does not change | Medium | High — a green unit suite over a surface that never repainted | The e2e asserts Tailwind *generated* the utility, the way `accent-token-inks.e2e.ts` does, not just that the property resolves | this slice | **closed** — negative control run: with both `@theme inline` rows deleted, 5 of the 6 e2e cases go red while the whole unit suite stays green, which is the trap exactly |
+| R-2 | Lightening the riviera panel on hover looks like the obvious wash and fails: at *every* usable alpha the light-cyan accent drops under AA (white 0.06 → 4.23:1) | High | High — would ship the same class of bug the slice is fixing | The wash darkens in riviera (a second coat of its own header tint); AC-3 pins both inks over the hover surface in all three themes | this slice | **closed** — measured before choosing: white 0.06/0.08/0.10/0.12/0.16 give the accent 4.23/4.05/3.86/3.70/3.34:1, all under AA |
+| R-3 | Riviera's margin is the thinnest in the slice (4.94:1 at the `#ffe2b0` stop, 0.44 over AA), so any later retune of a riviera gradient stop or of the header glass alpha can push it under | Medium | Medium | AC-2 loops every stop rather than a worst-case constant, so a stop retune fails the spec rather than shipping | this slice | **accepted** — 4.94:1 is the chosen margin (over `#a3e3f0`'s 4.72 and `#93e6f2`'s 4.73); the looping guard is the mitigation |
+| R-4 | Repainting the group heads could drift the *rest* of the panel (position, weight) rather than only colour | Low | Medium | Only the colour utility on the distance `<span>` changes; the no-drift rule is discharged by the computed-style e2e | this slice | **closed** — the e2e's last case pins the card accent unmoved in the same theme |
 
 ## Open questions / Assumptions
 
@@ -146,16 +146,16 @@ written; the slice changes two CSS custom properties and four class attributes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3) — CI gate next`
 
-**Next action:** The computed-style e2e — the only proof that can see a template.
+**Next action:** Push, open the draft PR so CI fires, then the docs-freshness sweep.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Tokens + contrast proof | ✅ | |
 | 1 — Repaint the three sites + the row hover | ✅ | |
-| 2 — Computed-style e2e | ⏳ | |
-| 3 — Generalization audit + close-out | | |
+| 2 — Computed-style e2e | ✅ | |
+| 3 — Generalization audit + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
