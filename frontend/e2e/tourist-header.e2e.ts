@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
-import { awaitRoutedPage, openHeaderMenu } from './support/shell';
+import { awaitRoutedPage, openHeaderMenu, openThemePicker } from './support/shell';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
@@ -128,46 +128,49 @@ test.describe('no header control wears the CTA gradient on the pay page', () => 
   });
 });
 
-test.describe('the theme swatch', () => {
+test.describe('the theme control, since it left the header (#1169)', () => {
   test.beforeEach(async ({ page }) => {
     await mockTourist(page, false);
   });
 
-  /** The ring lives on the swatch pseudo-element, as a box-shadow `--riv-ink-soft` wide 1.5px. */
-  async function swatchRing(page: Page): Promise<string> {
+  /**
+   * The bare swatch's 1.5px `--riv-ink-soft` ring used to live here, because a label-less control
+   * has no other WCAG 1.4.11 boundary. The control is a named row in the menu now — the label and
+   * its value carry the identity — so the ring is gone with the swatch and the circle beside the
+   * label is decoration under `docs/design/non-text-contrast.md` rule 2a, measured in
+   * `app.contrast.spec.ts`. What is left to prove here is that the header carries no theme
+   * control at all, and that the menu's row is reachable and named on both surfaces.
+   */
+  test('the header carries no theme control; the menu row does', async ({ page }) => {
+    await page.goto('/');
     await awaitRoutedPage(page);
-    return page
-      .getByTestId('theme-toggle')
-      .evaluate((el) => getComputedStyle(el, '::before').boxShadow);
-  }
 
-  test('carries a 1.5px ink-soft ring in the porcelain theme', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
-    expect(await swatchRing(page)).toContain('rgba(12, 42, 51, 0.7) 0px 0px 0px 1.5px');
-  });
+    await expect(page.locator('header').getByTestId('theme-toggle')).toHaveCount(0);
+    await expect(page.locator('header').getByTestId('theme-row')).toHaveCount(0);
 
-  test('carries a 1.5px ink-soft ring in the riviera theme', async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem('riviera-theme', 'riviera'));
-    await page.goto('/');
-    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
-    expect(await swatchRing(page)).toContain('rgba(255, 255, 255, 0.86) 0px 0px 0px 1.5px');
+    await openHeaderMenu(page);
+    const row = page.getByTestId('theme-row');
+    await expect(row).toBeVisible();
+    // Named by its own content, so the value is announced without an aria-label override.
+    await expect(row).toHaveAccessibleName(/Colour theme/);
+    await expect(row).toHaveAccessibleName(/Porcelain/);
+    await expect(row).toHaveAttribute('aria-expanded', 'false');
   });
 
   test.describe('phone', () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
-    test('stays in the top bar, one tap from any page; the menu has gone to the tab bar (#1003)', async ({
+    test('the brand is the top bar; the theme row is in the sheet the tab bar opens (#1003, #1169)', async ({
       page,
     }) => {
       await page.goto('/');
       await awaitRoutedPage(page);
-      await expect(page.locator('header').getByTestId('theme-toggle')).toBeVisible();
+      await expect(page.locator('header').getByTestId('brand-home')).toBeVisible();
+      await expect(page.locator('header').getByTestId('theme-toggle')).toHaveCount(0);
       await expect(page.locator('header').getByTestId('menu-toggle')).toHaveCount(0);
       await expect(page.getByTestId('tab-bar').getByTestId('menu-toggle')).toBeVisible();
-      await expect(page.getByTestId('theme-toggle')).toHaveAccessibleName(/^Color theme: /);
 
-      await page.getByTestId('theme-toggle').click();
+      await openThemePicker(page);
       await page.getByTestId('theme-option-dark').click();
       await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
     });
@@ -207,12 +210,12 @@ test.describe('44px touch targets on the desktop bar, which the phone sweeps nev
     await expectTouchTargets(page, 'desktop account popover');
   });
 
-  test('the theme picker open', async ({ page }) => {
+  test('the theme options expanded in the menu', async ({ page }) => {
     await mockTourist(page, false);
     await page.goto('/');
-    await awaitRoutedPage(page);
-    await page.getByTestId('theme-toggle').click();
+    await openThemePicker(page);
     await expect(page.getByTestId('theme-option-riviera')).toBeVisible();
-    await expectTouchTargets(page, 'desktop theme picker');
+    // Sweeps the row and its three options together: all four are in the popover at once.
+    await expectTouchTargets(page, 'desktop theme options');
   });
 });

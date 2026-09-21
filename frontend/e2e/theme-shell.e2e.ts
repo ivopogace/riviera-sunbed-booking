@@ -11,6 +11,7 @@ import {
   openAccountMenu as openMenu,
   openOperatorAccountMenu,
   openShellOverlay,
+  openThemePicker,
 } from './support/shell';
 
 /**
@@ -48,7 +49,7 @@ test.describe('theme persistence', () => {
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
 
     // Riviera is switcher-only now (never an OS resolution), so picking it proves persistence.
-    await openShellOverlay(page, 'theme-toggle');
+    await openThemePicker(page);
     await page.getByTestId('theme-option-riviera').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
 
@@ -70,7 +71,7 @@ test.describe('hero scrim token', () => {
 
     expect(await heroBg()).toBe('none');
 
-    await openShellOverlay(page, 'theme-toggle');
+    await openThemePicker(page);
     await page.getByTestId('theme-option-riviera').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
     const rivieraBg = await heroBg();
@@ -78,7 +79,7 @@ test.describe('hero scrim token', () => {
     expect(rivieraBg).toContain('rgba(8, 38, 52, 0.72) 34px');
     expect(rivieraBg).toContain('calc(100% - 40px)');
 
-    await openShellOverlay(page, 'theme-toggle');
+    await openThemePicker(page);
     await page.getByTestId('theme-option-porcelain').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
     expect(await heroBg()).toBe('none');
@@ -100,12 +101,12 @@ test.describe('per-theme color-scheme (#675)', () => {
     await expect(page.getByTestId('filter-date')).toHaveCSS('color-scheme', 'dark');
 
     // Riviera keeps LIGHT fields under its dark document — the per-field token opts them out.
-    await openShellOverlay(page, 'theme-toggle');
+    await openThemePicker(page);
     await page.getByTestId('theme-option-riviera').click();
     await expect(page.locator('html')).toHaveCSS('color-scheme', 'dark');
     await expect(page.getByTestId('filter-date')).toHaveCSS('color-scheme', 'light');
 
-    await openShellOverlay(page, 'theme-toggle');
+    await openThemePicker(page);
     await page.getByTestId('theme-option-porcelain').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
     await expect(page.locator('html')).toHaveCSS('color-scheme', 'light');
@@ -167,19 +168,19 @@ test.describe('axe sweeps', () => {
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
     await expectNoSeriousAxeViolations(page, 'dark shell');
 
-    await openShellOverlay(page, 'theme-toggle');
+    await openThemePicker(page);
     // Let the pop-in animation finish — axe samples computed colours, and mid-fade opacity
     // reads as washed-out text (a false contrast failure).
     await page
-      .locator('.riv-theme-pop')
+      .getByTestId('nav-account-menu')
       .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
-    await expectNoSeriousAxeViolations(page, 'dark shell, theme picker open');
+    await expectNoSeriousAxeViolations(page, 'dark shell, theme options expanded');
 
     await page.getByTestId('theme-option-riviera').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
     await expectNoSeriousAxeViolations(page, 'riviera shell');
 
-    await openShellOverlay(page, 'theme-toggle');
+    await openThemePicker(page);
     await page.getByTestId('theme-option-porcelain').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
     await expectNoSeriousAxeViolations(page, 'porcelain shell');
@@ -221,12 +222,12 @@ test.describe('mobile viewport', () => {
     await openShellOverlay(page, 'menu-toggle');
     await expectNoSeriousAxeViolations(page, 'tab-bar sheet open');
 
-    // The swatch stays in the bar at phone width; picking a theme closes the open sheet too.
-    await page.getByTestId('theme-toggle').press('Enter');
-    await expect(page.getByTestId('mobile-menu')).toBeHidden();
+    // Expanding keeps the sheet up; picking closes the sheet the theme was picked from.
+    await page.getByTestId('theme-row').press('Enter');
+    await expect(page.getByTestId('mobile-menu')).toBeVisible();
     await page.getByTestId('theme-option-porcelain').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
-    await expect(page.getByTestId('theme-option-porcelain')).toBeHidden(); // selection closes the picker
+    await expect(page.getByTestId('mobile-menu')).toBeHidden();
   });
 });
 
@@ -279,13 +280,12 @@ test.describe('account menu', () => {
   });
 
   /**
-   * Only one header popover is open at a time. Reached by KEYBOARD on purpose: an open popover
-   * lays a full-viewport backdrop whose job is to swallow the next pointer click and close the
-   * menu, so a mouse user can never activate the sibling trigger directly — they close, then
-   * click. A keyboard user tabs straight to it and can, which is the path that would strand two
-   * popovers open if the toggles stopped clearing each other.
+   * Only one header popover is open at a time, structurally: the theme options are a disclosure
+   * row INSIDE the account menu, so there is no sibling popover to strand open. Reached by
+   * KEYBOARD, which is the path that can reach a header control under an open menu at all — the
+   * menu lays a full-viewport backdrop that swallows a pointer click before it lands.
    */
-  test('activating the theme picker from the open account menu closes it (#351)', async ({
+  test('expanding the theme row keeps the account menu it sits in open (#351, #1169)', async ({
     page,
   }) => {
     await page.goto('/');
@@ -293,23 +293,25 @@ test.describe('account menu', () => {
     await openAccountMenu(page);
     await expect(page.getByTestId('nav-account-menu')).toBeVisible();
 
-    await page.getByTestId('theme-toggle').press('Enter');
-    await expect(page.getByTestId('nav-account-menu')).toBeHidden();
+    await page.getByTestId('theme-row').press('Enter');
+    await expect(page.getByTestId('nav-account-menu')).toBeVisible();
     await expect(page.getByTestId('theme-option-porcelain')).toBeVisible();
 
-    await page.getByTestId('nav-user').press('Enter');
+    // Collapsing leaves the menu up and focus on the row, which was never destroyed.
+    await page.getByTestId('theme-row').press('Enter');
     await expect(page.getByTestId('theme-option-porcelain')).toBeHidden();
     await expect(page.getByTestId('nav-account-menu')).toBeVisible();
+    await expect(page.getByTestId('theme-row')).toBeFocused();
   });
 
   test('the backdrop swallows the click that closes the account menu (#351)', async ({ page }) => {
     await page.goto('/');
     await openAccountMenu(page);
 
-    // The click lands on the backdrop, not the toggle under it — so the picker stays shut.
-    await page.getByTestId('theme-toggle').click({ force: true });
+    // The click lands on the backdrop, not the header link under it: it closes, never navigates.
+    await page.getByRole('link', { name: 'My bookings' }).click({ force: true });
     await expect(page.getByTestId('nav-account-menu')).toBeHidden();
-    await expect(page.getByTestId('theme-option-porcelain')).toBeHidden();
+    await expect(page).toHaveURL(/\/$/);
   });
 
   test('the account menu reaches the account page and closes on navigation (#351)', async ({

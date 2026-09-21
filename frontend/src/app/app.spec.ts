@@ -141,21 +141,55 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(el.querySelector('router-outlet')).not.toBeNull();
   });
 
-  it('theme pill opens the picker listing all three themes; picking one switches the document theme', () => {
+  it('the theme control is a labelled menu row, not a header swatch (#1169)', () => {
     const { fixture, el } = shell();
 
-    el.querySelector<HTMLButtonElement>('[data-testid="theme-toggle"]')!.click();
+    // An unlabelled 22px circle between `My bookings` and `Sign in` reads as decoration.
+    expect(el.querySelector('header [data-testid="theme-toggle"]')).toBeNull();
+
+    el.querySelector<HTMLButtonElement>('[data-testid="nav-menu"]')!.click();
     fixture.detectChanges();
 
-    const options = el.querySelectorAll('[data-testid^="theme-option-"]');
-    expect(options).toHaveLength(3);
+    const row = el.querySelector<HTMLButtonElement>('[data-testid="theme-row"]')!;
+    expect(row).not.toBeNull();
+    expect(row.getAttribute('aria-expanded')).toBe('false');
+    // Named, and showing its value: the row's own content is its accessible name.
+    expect(row.textContent).toContain('Colour theme');
+    expect(row.textContent).toContain('Porcelain');
+  });
 
-    el.querySelector<HTMLButtonElement>('[data-testid="theme-option-porcelain"]')!.click();
+  it('the theme row is in the phone sheet too, the only menu below sm (#1169)', () => {
+    const { fixture, el } = shell();
+
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
     fixture.detectChanges();
 
-    expect(document.documentElement.getAttribute('data-riv-theme')).toBe('porcelain');
-    // picker closed after selection
-    expect(el.querySelector('[data-testid="theme-option-porcelain"]')).toBeNull();
+    const sheet = el.querySelector<HTMLElement>('[data-testid="mobile-menu"]')!;
+    expect(sheet.querySelector('[data-testid="theme-row"]')).not.toBeNull();
+  });
+
+  it('choosing a theme from the menu row selects and persists it (#1169)', () => {
+    const { fixture, el } = shell();
+    const themes = TestBed.inject(ThemeService);
+
+    el.querySelector<HTMLButtonElement>('[data-testid="nav-menu"]')!.click();
+    fixture.detectChanges();
+    const row = () => el.querySelector<HTMLButtonElement>('[data-testid="theme-row"]')!;
+
+    // Expands in place: the options join the menu the row is in, rather than a second popover.
+    row().click();
+    fixture.detectChanges();
+    expect(row().getAttribute('aria-expanded')).toBe('true');
+    expect(el.querySelectorAll('[data-testid^="theme-option-"]')).toHaveLength(3);
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).not.toBeNull();
+
+    el.querySelector<HTMLButtonElement>('[data-testid="theme-option-riviera"]')!.click();
+    fixture.detectChanges();
+
+    expect(themes.theme()).toBe('riviera');
+    expect(document.documentElement.getAttribute('data-riv-theme')).toBe('riviera');
+    // Picking closes the menu it was picked from, as every other row does.
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
   });
 
   it('renders exactly two primary destinations, Beaches and My bookings (#1002)', () => {
@@ -395,7 +429,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
-  it('closes the account menu when the theme picker opens, and vice versa (#351)', () => {
+  it('the theme options expand inside the account menu, which stays open (#351, #1169)', () => {
     customerAuth.signedIn.set(true);
     customerAuth.email.set('ana@example.com');
     const { fixture, el } = shell();
@@ -404,15 +438,23 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     fixture.detectChanges();
     expect(el.querySelector('[data-testid="nav-account-menu"]')).not.toBeNull();
 
-    el.querySelector<HTMLButtonElement>('[data-testid="theme-toggle"]')!.click();
+    // The options live INSIDE the menu, so one-popover-at-a-time holds by construction.
+    el.querySelector<HTMLButtonElement>('[data-testid="theme-row"]')!.click();
     fixture.detectChanges();
-    expect(el.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).not.toBeNull();
     expect(el.querySelector('[data-testid="theme-option-porcelain"]')).not.toBeNull();
 
+    // What still has to mind the other is the pair that remains: the popover and the phone sheet.
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
+    expect(el.querySelector('[data-testid="mobile-menu"]')).not.toBeNull();
+    // Reopening starts collapsed: the row's state dies with the menu that held it.
     el.querySelector<HTMLButtonElement>('[data-testid="nav-user"]')!.click();
     fixture.detectChanges();
-    expect(el.querySelector('[data-testid="theme-option-porcelain"]')).toBeNull();
-    expect(el.querySelector('[data-testid="nav-account-menu"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="theme-row"]')!.getAttribute('aria-expanded')).toBe(
+      'false',
+    );
   });
 
   it('closes the account menu on Escape and hands focus back to the trigger (#351)', () => {
@@ -514,9 +556,9 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     // jsdom loads no stylesheet: the declaration is pinned here, the computed position in the e2e.
     expect(header.classList.contains('sticky')).toBe(true);
     expect(header.classList.contains('max-sm:relative')).toBe(true);
-    // Brand and swatch are the phone top bar's whole control set.
+    // The brand is the phone top bar's whole control set since the swatch moved into the sheet.
     expect(header.querySelector('[data-testid="brand-home"]')).not.toBeNull();
-    expect(header.querySelector('[data-testid="theme-toggle"]')).not.toBeNull();
+    expect(header.querySelector('[data-testid="theme-toggle"]')).toBeNull();
     expect(header.querySelector('[data-testid="mobile-menu"]')).toBeNull();
   });
 
@@ -535,12 +577,14 @@ describe('App (Liquid Glass shell, issue #134)', () => {
         row.getAttribute('data-testid'),
       );
       // Legal rows last: toggleMenu hard-codes the first row it focuses when the sheet opens.
+      // The theme row heads the same foot group — a setting, not a destination.
       expect(rows).toEqual(
         signedIn
           ? [
               'nav-account-link-mobile',
               'find-open-mobile',
               'nav-signout-mobile',
+              'theme-row',
               'legal-privacy-row',
               'legal-terms-row',
             ]
@@ -548,6 +592,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
               'nav-signin-mobile',
               'nav-register-mobile',
               'find-open-mobile',
+              'theme-row',
               'legal-privacy-row',
               'legal-terms-row',
             ],
@@ -963,15 +1008,15 @@ describe('App (Liquid Glass shell, issue #134)', () => {
 
     // Deliberately wider than the initial-navigation case — see the plan's declared behaviour change.
     const pending = router.navigate(['/elsewhere']);
-    el.querySelector<HTMLButtonElement>('[data-testid="theme-toggle"]')!.click();
+    el.querySelector<HTMLButtonElement>('[data-testid="nav-menu"]')!.click();
     fixture.detectChanges();
-    expect(el.querySelector('[data-testid^="theme-option-"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).not.toBeNull();
 
     landLazyChunk();
     await pending;
     fixture.detectChanges();
 
-    expect(el.querySelector('[data-testid^="theme-option-"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).not.toBeNull();
   });
 
   it('closes an overlay when a navigation raised from inside it supersedes the pending one (#892)', async () => {
@@ -1047,25 +1092,6 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     // focus is stranded on document.body while the popover unmounts around it (WCAG 2.4.3).
     expect(document.activeElement).not.toBe(document.body);
     expect(customerAuth.signOut).toHaveBeenCalledTimes(1);
-  });
-
-  it('the theme control is a swatch-only button named for the active theme (#1002)', () => {
-    const { fixture, el } = shell();
-    const themes = TestBed.inject(ThemeService);
-    const swatch = el.querySelector<HTMLButtonElement>('[data-testid="theme-toggle"]')!;
-
-    themes.select('riviera');
-    fixture.detectChanges();
-    expect(swatch.getAttribute('aria-label')).toBe('Color theme: Riviera');
-    // No label, no caret: the swatch is the whole control, painted from the active option.
-    expect(swatch.textContent?.trim()).toBe('');
-    expect(swatch.style.getPropertyValue('--riv-swatch')).toBe(
-      themes.options.find((o) => o.id === 'riviera')?.swatch,
-    );
-
-    themes.select('dark');
-    fixture.detectChanges();
-    expect(swatch.getAttribute('aria-label')).toBe('Color theme: Dark');
   });
 
   /** Every `<a>` in the top bar, the popovers, the tab bar and the sheet: `check-touch-target.mjs`

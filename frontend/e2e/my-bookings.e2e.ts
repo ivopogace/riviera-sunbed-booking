@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
-import { openShellOverlay } from './support/shell';
+import { openThemePicker } from './support/shell';
 import { completeDialog, settle } from './support/booking-dialog';
 
 /**
@@ -136,7 +136,7 @@ test('a booking made here appears in My bookings, and a cancellation reflects th
   await expectNoSeriousAxeViolations(page, 'my bookings list (porcelain)');
 
   // Second ink family: switch to riviera (white-ink theme) and re-audit the list.
-  await openShellOverlay(page, 'theme-toggle');
+  await openThemePicker(page);
   await page.getByTestId('theme-option-riviera').click();
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'my bookings list (riviera)');

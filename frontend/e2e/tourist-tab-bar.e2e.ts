@@ -3,7 +3,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
 import { hitTestId } from './support/hit-test';
-import { awaitRoutedPage, openShellOverlay } from './support/shell';
+import { awaitRoutedPage, openShellOverlay, openThemePicker } from './support/shell';
 
 /**
  * The phone bottom tab bar's rendered-only rules: below `sm` the top bar scrolls away and
@@ -184,13 +184,13 @@ test.describe('phone', () => {
     await expect(page.getByTestId('pay-button')).toBeInViewport({ ratio: 1 });
   });
 
-  test("the theme popover's backdrop covers the tab bar", async ({ page }) => {
+  test("the open menu's backdrop covers the tab bar", async ({ page }) => {
     await page.goto('/');
-    await openShellOverlay(page, 'theme-toggle');
+    await openThemePicker(page);
     await expect(page.getByTestId('theme-option-riviera')).toBeVisible();
 
-    // The bar is an EARLIER z-20 sibling of the header, so the header's backdrop paints over it.
-    expect(await hitTestId(page, 'tab-beaches')).toBe('theme-backdrop');
+    // The bar is an EARLIER z-20 sibling of the header, so a z-30 backdrop paints over it.
+    expect(await hitTestId(page, 'tab-beaches')).toBe('menu-backdrop');
   });
 
   for (const { theme, background } of [

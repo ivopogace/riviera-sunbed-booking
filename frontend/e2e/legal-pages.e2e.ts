@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { hitTestId } from './support/hit-test';
-import { openHeaderMenu, openShellOverlay } from './support/shell';
+import { openHeaderMenu, openShellOverlay, openThemePicker } from './support/shell';
 import { settle } from './support/booking-dialog';
 
 /**
@@ -69,13 +69,13 @@ test.describe('legal documents', () => {
     await settle(page);
     await expectNoSeriousAxeViolations(page, 'privacy page (dark)');
 
-    await openShellOverlay(page, 'theme-toggle');
+    await openThemePicker(page);
     await page.getByTestId('theme-option-riviera').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
     await settle(page);
     await expectNoSeriousAxeViolations(page, 'privacy page (riviera)');
 
-    await openShellOverlay(page, 'theme-toggle');
+    await openThemePicker(page);
     await page.getByTestId('theme-option-porcelain').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
     await settle(page);

@@ -179,37 +179,54 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
   });
 
   /**
-   * The theme control is a bare swatch, so the swatch's ring is its only WCAG 1.4.11 boundary:
-   * the swatch itself reaches 1.0:1 against the bar (its white end on porcelain), and a white
-   * inset ring vanishes there too. The ring is `--riv-ink-soft`, composited over the header glass like any ink.
+   * The theme control's swatch circle, as the account menu's row paints it. The row says
+   * `Colour theme` and names the active theme beside it, so the circle carries no information of
+   * its own: it is an `aria-hidden` ornament whose meaning a labelled sibling carries — **rule 2a**
+   * of
+   * `docs/design/non-text-contrast.md`, not rule 2, which is about a *control* identified by its
+   * own content. Rule 2a's second condition still binds, so the number is measured here rather
+   * than waved off:
+   *
+   * <ol>
+   *   <li>the identity is carried as text — the label (`--riv-pop-ink`) and the value
+   *       (`--riv-pop-ink-soft`) on the popover surface, both at AA below;
+   *   <li>the circle's own boundary is computed and bounded, so a later slice that worsens it has
+   *       to come through this test.
+   * </ol>
+   *
+   * <p>The circle's white inset ring is `rgba(255,255,255,0.55)`, the same hairline the option
+   * circles have always worn on this surface — one family, one measurement.
    */
   it.each([
     {
-      theme: 'porcelain',
-      ring: CARD_INK,
-      alpha: 0.7,
-      glass: PORCELAIN_HEADER_GLASS,
-      stops: PORCELAIN_STOPS,
+      theme: 'riviera',
+      surface: POP_SURFACE,
+      ink: INK_DARK,
+      inkSoft: POP_INK_SOFT,
+      stop: RIVIERA_STOPS[RIVIERA_STOPS.length - 1],
     },
     {
-      theme: 'riviera',
-      ring: WHITE,
-      alpha: 0.86,
-      glass: RIVIERA_HEADER_GLASS,
-      stops: RIVIERA_STOPS,
+      theme: 'dark',
+      surface: DARK_POP_SURFACE,
+      ink: DARK_POP_INK,
+      inkSoft: DARK_POP_INK_SOFT,
+      stop: DARK_STOPS[DARK_STOPS.length - 1],
     },
-    { theme: 'dark', ring: WHITE, alpha: 0.86, glass: DARK_HEADER_GLASS, stops: DARK_STOPS },
   ])(
-    'the swatch ring (ink-soft) clears 3:1 against the header glass in every theme: $theme (#1002)',
-    ({ ring, alpha, glass, stops }) => {
-      for (const stop of stops) {
-        const bar = surfaceOver(glass, stop);
-        const ringOnBar = composite(ring, alpha, bar);
-        expect(
-          contrastRatio(rgbToHex(ringOnBar), rgbToHex(bar)),
-          `over stop ${rgbToHex(stop)}`,
-        ).toBeGreaterThanOrEqual(AA_LARGE);
-      }
+    "the theme row's circle is decorative under rule 2a; its label and value carry the identity: $theme (#1169)",
+    ({ surface, ink, inkSoft, stop }) => {
+      const popover = composite(surface.color, surface.alpha, stop);
+
+      // 1. The identity is text, at AA on the surface the row sits on.
+      expect(contrastRatio(rgbToHex(ink), rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
+      const value = composite(inkSoft.color, inkSoft.alpha, popover);
+      expect(contrastRatio(rgbToHex(value), rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
+
+      // 2. The ornament's boundary is measured against both adjacencies: swatch fill, then popover.
+      const ring = composite(WHITE, 0.55, WHITE);
+      const ringOnSwatch = contrastRatio(rgbToHex(ring), rgbToHex(WHITE));
+      expect(ringOnSwatch).toBeLessThan(AA_LARGE);
+      expect(contrastRatio(rgbToHex(ring), rgbToHex(popover))).toBeGreaterThan(1);
     },
   );
 

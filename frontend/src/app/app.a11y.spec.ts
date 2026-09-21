@@ -61,9 +61,11 @@ describe('App shell accessibility (axe, issue #134)', () => {
     await expectNoAxeViolations(el);
   });
 
-  it('shell with the theme picker open has no violations', async () => {
+  it('shell with the theme options expanded in the account menu has no violations', async () => {
     const { fixture, el } = shell();
-    el.querySelector<HTMLButtonElement>('[data-testid="theme-toggle"]')!.click();
+    el.querySelector<HTMLButtonElement>('[data-testid="nav-menu"]')!.click();
+    fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>('[data-testid="theme-row"]')!.click();
     fixture.detectChanges();
 
     await expectNoAxeViolations(el);

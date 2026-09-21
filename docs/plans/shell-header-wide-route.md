@@ -134,8 +134,8 @@ the row renders, see FE-3) · `playwright-cli` (the wide-header measurement e2e)
 | R-2 | The ancestor form `in-data-wide:` compiles to `:where([data-wide]) .in-…`; `:where()` contributes zero specificity, so it **ties** `max-w-[1080px]` at (0,1,0) and is decided by emission order alone | Medium | High | Do not use it. Header wrapper and footer inner each get their own same-element `[attr.data-wide]` binding, so both carry the (0,2,0) form. Recorded because one attribute on the shell root is the obvious-looking simplification a later reviewer or slice will reach for | plan | resolved at plan time |
 | R-3 | Discover's `?map=off` fallback renders `<section class="discover mx-auto max-w-[1080px]">` — a capped column — so a static route flag gives it a full-bleed header over a capped page | High (certain while `?map=off` lives) | Low | Accepted and stated in the PR. The mismatch is the mild direction (header wider than content, not narrower), `?map=off` is a one-release comparison lever that `home.ts` documents as going away with the parameter, and the alternative — the shell reading a page's query param — is the coupling #1169 explicitly rejects | plan | accepted; stated in PR |
 | R-4 | Reaching for `@angular/aria`'s Menu to get roving-tabindex/arrow-key correctness "for free", against a locked stack | Low | Medium | Ruled out on the docs' own scope: `@angular/aria` § Menu is "for actions, commands, and context menus (**not for form selection**)" and § Listbox is for "visible selection lists (**not dropdowns**)". A theme setting inside a popover is excluded by both; the package is not installed and CLAUDE.md locks the stack, so adding it needs its own ADR. Angular Aria's *styling* guidance is itself "target `[aria-expanded]`", which is the disclosure this slice builds | plan | resolved at plan time |
-| R-5 | The nested disclosure destroys the focused element when the options collapse or the menu closes, stranding focus on `<body>` | Medium | Medium | `frontend/.claude/CLAUDE.md`: a transition that destroys the focused element moves focus via `shared/focus-after-render.ts`'s `focusMover()` on all three legs. The row is the return target when the options collapse; `closeMenus()` already returns focus to the menu trigger. `scripts/check-focus-posture.mjs` runs as a hook | phase 2 | open |
-| R-6 | 11 e2e files and 3 unit specs reference `theme-toggle`; a missed one fails CI late, and `e2e/support/shell.ts` documents `theme-toggle` as an example overlay trigger | High | Low | Enumerate by mechanism before editing (generalization log): `grep -rn "theme-toggle\|theme-backdrop\|riv-theme-pop" src/ e2e/`. Migrate every site to `openThemePicker`, then re-run the grep to zero (excluding the helper itself) | phase 2 | open |
+| R-5 | The nested disclosure destroys the focused element when the options collapse or the menu closes, stranding focus on `<body>` | Medium | Medium | Resolved by construction, so no `focusMover()` was needed: collapsing leaves focus on the row, which is never destroyed (pinned by `theme-shell.e2e.ts` › "expanding the theme row keeps the account menu it sits in open"), and choosing an option raises `selected`, whose call site is `closeMenus()` — already the path that hands focus back to the menu's trigger | phase 2 | resolved in phase 2 |
+| R-6 | 11 e2e files and 3 unit specs reference `theme-toggle`; a missed one fails CI late, and `e2e/support/shell.ts` documents `theme-toggle` as an example overlay trigger | High | Low | Enumerated and migrated; the grep is down to four hits, all of them *negative* assertions that the header no longer carries the control. The helper's own doc line was corrected too | phase 2 | resolved in phase 2 |
 | R-7 | The wide header at 1920 is asserted with hard-coded pixel expectations that drift with unrelated padding changes | Low | Low | Assert the *relationship* the issue states (wrapper spans the viewport; brand's left edge within a small tolerance of the page's own left gutter) rather than transcribing 24/1416 as magic numbers; keep the measured values in a comment as provenance | phase 0 | resolved in phase 0 — `shell-header-wide.e2e.ts` asserts span-equals-viewport and a ≤40px gutter, with round 11's numbers in the file's TSDoc as provenance |
 
 ## Open questions / Assumptions
@@ -189,8 +189,8 @@ touches.
 | FE-1 | `app.ts` route-chrome walk | existing | shell component | `TouristRouteData.wide` → `RouteChrome.wide` on the single root→leaf walk; `wide()` computed off `routeChrome()`; `||=` (any route on the chain opts in), mirroring how `tabBar`/`footer` let the restrictive value win | none |
 | FE-2 | `app.html` header inner wrapper + footer inner | existing | template | `[attr.data-wide]="wide() ? '' : null"` on each, beside `max-w-[1080px] data-wide:max-w-none` on the same element | none |
 | FE-3 | `app.html` brand eyebrow | existing | template | static classes: `text-[12.5px] tracking-wide`, `uppercase` dropped, source text unchanged | none |
-| FE-4 | `Colour theme` menu row + nested options, desktop popover | existing surface, new rows | template + `cls` recipes | new `themeRowOpen` signal; row `[attr.aria-expanded]`; options reuse today's `aria-pressed` buttons and `theme-option-<id>` testids | none |
-| FE-5 | `Colour theme` menu row + nested options, phone sheet | existing surface, new rows | template + `cls` recipes | same signal, `MOBILE_ITEM` skin; the sheet is the only menu below `sm`, so this is where phone theming lives | none |
+| FE-4 | `Colour theme` menu row + nested options, desktop popover | new component `theme-menu-rows.ts`, existing surface | component + `cls` recipes | the disclosure signal lives in the component, not `App`: each menu renders it under an `@if`, so closing the menu destroys it and the next open starts collapsed with no reset code | none |
+| FE-5 | `Colour theme` menu row + nested options, phone sheet | same component, `sheet` variant | component | `MOBILE_ITEM` skin; the sheet is the only menu below `sm`, so this is where phone theming lives | none |
 | FE-6 | `app.routes.ts` Discover route | existing | route data | `data: { section: 'beaches', footer: false, wide: true } satisfies TouristRouteData` | none |
 | FE-7 | `e2e/support/shell.ts` | existing | e2e helper | new `openThemePicker(page)`: opens the viewport's menu, expands the row, proves `aria-expanded="true"` | none |
 
@@ -200,16 +200,15 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement — phases complete, verifying`
 
-**Next action:** Move the theme swatch out of the header into a `Colour theme` disclosure row in
-both account menus, then migrate the e2e population named in R-6.
+**Next action:** Push the branch. No PR is opened: none was requested.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the `data.wide` route flag, header + footer full-bleed | ✅ | `d185cdbd` |
-| 1 — the eyebrow at 12.5 px in its own case | ✅ | `<phase-1-sha>` |
-| 2 — the swatch becomes a labelled menu row | ⏳ | |
+| 1 — the eyebrow at 12.5 px in its own case | ✅ | `81db1b02` |
+| 2 — the swatch becomes a labelled menu row | ✅ | `<phase-2-sha>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -227,6 +226,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/app.ts` — `TouristRouteData.wide`, `RouteChrome.wide`, the walk, `wide()`, the theme-row disclosure state, `cls` recipes; retires `cls.themePop`
 - `frontend/src/app/app.html` — wrapper + footer `data-wide`, the eyebrow, the swatch's removal, the `Colour theme` row and nested options in both menus
 - `frontend/src/app/app.routes.ts` — Discover carries `wide: true`
+- `frontend/src/app/theme-menu-rows.ts` — the `Colour theme` disclosure row and its three options, skinned per menu (new; root-level, since it injects `core/`)
 - `frontend/src/app/app.spec.ts` — AC-1, AC-4, AC-5, AC-7
 - `frontend/src/app/app.a11y.spec.ts` — AC-6 axe leg
 - `frontend/src/app/app.contrast.spec.ts` — AC-6 contrast leg; retires the swatch-ring case, adds the rule-2a row case
@@ -328,6 +328,8 @@ files listed in File structure
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-21 | plan-time blast-radius map for the retiring swatch | every reference to the header theme control's testids and popover class | `grep -rn "theme-toggle\|theme-backdrop\|riv-theme-pop" frontend/src frontend/e2e` | 11 e2e files + `app.spec.ts`, `app.a11y.spec.ts`, `app.html`, `app.ts` | recorded as R-6; migration is phase 2 step 5 |
+| 2026-09-21 | phase 2: the retired header swatch | every reference to the header theme control's testids, popover class and skin recipe | `grep -rn "theme-toggle\|theme-backdrop\|riv-theme-pop\|themePop\|swatchBtn" frontend/src frontend/e2e` | 18 positive references across 11 e2e files, `app.spec.ts`, `app.a11y.spec.ts`, `app.html`, `app.ts` | all migrated; the grep now returns only four negative assertions (the header must NOT carry it). 10 call sites collapsed onto one `openThemePicker` helper; 7 cases whose premise died were rewritten, not deleted |
+| 2026-09-21 | phase 2: a test asked whether the new row keeps the double-tap | every header disclosure trigger, which `app.ts` says drops `touch-manipulation` because it is toggled open and shut in quick succession | `grep -rn "touch-manipulation" frontend/src/app` | 4 (`accountChip`, `menuBtn`, the retired `swatchBtn`, the tab) | the theme row joins them — it is a disclosure trigger by the same definition. Its options do not: they are tapped once and close the menu |
 | 2026-09-21 | phase 1: the eyebrow's all-caps treatment | every all-caps label in the app's templates | `grep -rn "uppercase" frontend/src/app --include=*.html` | 20 beyond the eyebrow (operator console labels, `home.html`'s hero chip + section labels) | none changed: #1169 scopes the shell brand only, and the rest is page/console content, not shared chrome. `home.html:603`'s `tracking-[0.16em] uppercase` hero chip is the same tell on Discover's own page and is a fair follow-up, deliberately not widened into here |
 | 2026-09-21 | phase 0: a second element needed the same cap lifted | every element in the tree carrying the shell's 1080px cap | `grep -rn "max-w-\[1080px\]" frontend/src` | 3 (header wrapper, footer inner, `home.html`'s `.discover` column) | header wrapper + footer inner take `data-wide:max-w-none`; the Discover column is page content, not shell chrome, and stays capped — it is what `?map=off` renders under the wide header (R-3) |
 

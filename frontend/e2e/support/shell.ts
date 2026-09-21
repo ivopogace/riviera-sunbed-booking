@@ -19,7 +19,7 @@ export async function awaitRoutedPage(page: Page): Promise<void> {
   await expect(page.locator('main > router-outlet + *')).toBeAttached();
 }
 
-/** Clicks a shell overlay trigger (`theme-toggle`, `menu-toggle`, `nav-user`, …) once the route has settled. */
+/** Clicks a shell overlay trigger (`menu-toggle`, `nav-user`, …) once the route has settled. */
 export async function openShellOverlay(page: Page, testId: string): Promise<void> {
   await awaitRoutedPage(page);
   await page.getByTestId(testId).click();
@@ -29,6 +29,22 @@ export async function openShellOverlay(page: Page, testId: string): Promise<void
 export async function openAccountMenu(page: Page): Promise<void> {
   await openShellOverlay(page, 'nav-user');
   await expect(page.getByTestId('nav-user')).toHaveAttribute('aria-expanded', 'true');
+}
+
+/**
+ * Opens the theme options: the control is a `Colour theme` disclosure row inside the menu — the
+ * phone sheet below `sm`, the desktop popover from `sm` up. Two steps, one helper, so a spec that
+ * only wants a theme switched does not carry the menu's shape.
+ */
+export async function openThemePicker(page: Page): Promise<void> {
+  await awaitRoutedPage(page);
+  const width = page.viewportSize()?.width ?? 0;
+  const trigger = width < 640 ? page.getByTestId('menu-toggle') : headerMenuTrigger(page);
+  await trigger.click();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  const row = page.getByTestId('theme-row');
+  await row.click();
+  await expect(row).toHaveAttribute('aria-expanded', 'true');
 }
 
 /** The desktop popover's trigger: the account chip signed in, the round menu button signed out. */
