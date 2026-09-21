@@ -127,12 +127,12 @@ exemption) · `riviera-local-debug` (clone deepened; `npm ci` done; `ng test --i
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The desktop popover is auth-branched into two template copies that cannot share a template ref (`app.html:247`), so rows land in one branch only and a signed-in tourist on desktop keeps no legal route | Medium | High | One component symbol, mounted in both branches; AC-4 asserts all three call sites, and the spec drives `customerAuth.signedIn()` both ways | me | open |
+| R-1 | The desktop popover is auth-branched into two template copies that cannot share a template ref (`app.html:247`), so rows land in one branch only and a signed-in tourist on desktop keeps no legal route | Medium | High | One component symbol, mounted in both branches; AC-4 asserts all three call sites, and the spec drives `customerAuth.signedIn()` both ways | me | **closed in phase 1** — AC-4's `it.each([false, true])` proved red on both branches before the mount |
 | R-2 | `pointer-events-none` on `desk-frame` breaks pointer interaction on the panel or the map if a child misses `pointer-events-auto` | Medium | High | Both children (`desk-panel`, `desk-pane`) take `pointer-events-auto`; the ~20 existing `WIDE` interaction cases in `discover-map.e2e.ts` (row press, near-me, pin press, picker) must stay green, and AC-7 adds the gutter proof | me | open |
 | R-3 | Two more rows grow the phone sheet; at 344 × 882 (the `fold` project) the signed-in sheet is identity + 5 rows and could overflow the viewport top | Low | Medium | Measured: ≈ 320 px of sheet above a 76 px bottom offset leaves ≈ 486 px of air at 844, ≈ 524 px at 882. `support/shell.ts`'s `expectPhoneRailFits` is the existing helper — use it rather than a fresh assertion | me | open |
-| R-4 | `toggleMenu` hard-codes the sheet's first focus target (`app.ts:435-438`: `nav-account-link-mobile` / `nav-signin-mobile`, fallback `find-open-mobile`), so rows inserted above it would silently take focus on open | Low | Medium | Rows go at the **foot**, below Find a booking and Sign out; `app.spec.ts`'s existing focus-on-open assertion stays green unmodified and is the fence | me | open |
+| R-4 | `toggleMenu` hard-codes the sheet's first focus target (`app.ts:435-438`: `nav-account-link-mobile` / `nav-signin-mobile`, fallback `find-open-mobile`), so rows inserted above it would silently take focus on open | Low | Medium | Rows go at the **foot**, below Find a booking and Sign out; `app.spec.ts`'s existing focus-on-open assertion stays green unmodified and is the fence | me | **closed in phase 1** — the sheet's order spec now pins the legal rows last, and the focus-on-open assertion passed unmodified |
 | R-5 | A row that opens a new tab while closing the menu would destroy the focused element, which `frontend/.claude/CLAUDE.md` requires be handled by `focusMover()` on all three legs | Medium | Medium | The rows do **not** call `closeMenus()`. A `target="_blank"` link does not navigate the originating document, so there is no NavigationSkipped problem to solve (that is why the other rows close), and the menu is where the tourist left it on return. No focus machinery is owed | me | open |
-| R-6 | A group hairline (`border-t border-riv-pop-border`) would be a new non-text surface; `--riv-pop-border` is measured nowhere and named in neither `docs/design/` doc, so under the non-text-contrast rule 2a it would owe a measured ratio plus a ledger row | Medium | Low | Separate the group with **space** (`mt-1`), not a line: the same grouping information, no new non-text pair, no `docs/design/` change. Recorded as a decision, not an omission | me | open |
+| R-6 | A group hairline (`border-t border-riv-pop-border`) would be a new non-text surface; `--riv-pop-border` is measured nowhere and named in neither `docs/design/` doc, so under the non-text-contrast rule 2a it would owe a measured ratio plus a ledger row | Medium | Low | Separate the group with **space** (`mt-1`), not a line: the same grouping information, no new non-text pair, no `docs/design/` change. Recorded as a decision, not an omission | me | **closed in phase 1** — `mt-1` shipped; the reason is in `legal-menu-rows.ts`'s TSDoc so a future session does not add the line back |
 | R-7 | The e2e clicks a `target="_blank"` row, so the assertion must use the popup pattern; a naive `click()` + `toHaveURL` would pass vacuously against the unchanged Discover URL | Low | Medium | Reuse `legal-pages.e2e.ts:129-141`'s established shape — `page.waitForEvent('popup')` before the click, then assert the popup's URL *and* that the opener is still on `/` | me | open |
 | R-8 | Extracting `hitTestId` and rewriting the two same-shape call sites could quietly weaken an existing assertion (`tourist-tab-bar.e2e.ts:190` expects `'theme-backdrop'`, `theme-shell.e2e.ts:208` expects `'menu-backdrop'`) | Low | Medium | Migrate only the two sites whose shape is identical (testid at a rect centre); leave `booking-flow.e2e.ts:170` (containment question) and the two `waitForFunction` predicates alone, with the enumeration logged. Both migrated expectations keep their exact values | me | open |
 
@@ -214,14 +214,14 @@ N/A — no contract change. `/legal/privacy` and `/legal/terms` are existing Ang
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Mount `<app-legal-menu-rows>` at the three `app.html` call sites, red-first on AC-4.
+**Next action:** Extract `e2e/support/hit-test.ts` and write the two reachability e2e tests, red first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `LegalMenuRows`, the shape module | ✅ | `916cd267` |
-| 1 — Mounted at the three chrome call sites | | |
+| 0 — `LegalMenuRows`, the shape module | ✅ | `99c78d5d` |
+| 1 — Mounted at the three chrome call sites | ✅ | `<phase-1-sha>` |
 | 2 — The `hitTestId` seam and the reachability e2e | | |
 | 3 — `desk-frame`'s pointer-events interface | | |
 | 4 — The two handovers: scroll-away route, route-table fence | | |
@@ -588,6 +588,8 @@ it('never withholds the footer and the tab bar on the same route', () => {
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-21 | Phase 0 added a third template holding a legal document path | A hard-coded legal document path in a template | `grep -rn "/legal/privacy\|/legal/terms" frontend/src --include=*.ts --include=*.html \| grep -v spec` | 3 (`legal-footer.ts:15-16`, `legal-consent.ts:25,34`, `legal-menu-rows.ts`) + the two route declarations | No extraction. Both sides are literal-pinned (`app.routes.spec.ts:48-53` vs the three component specs), so a rename fails loudly; a module whose implementation is two string constants is maximally shallow. Reasoning under Open questions § Resolved |
+| 2026-09-21 | Phase 1's mount reddened two unrelated specs | An `app.spec.ts` assertion pinning a menu's exact row list, which any added row breaks | `grep -n "find-open-mobile'\|nav-signout'" frontend/src/app/app.spec.ts` | 1 spec (`it.each` over both auth states) | Extended to pin the legal rows **last**, and its title renamed. The desktop popovers have no equivalent order spec, so nothing else moved |
+| 2026-09-21 | AC-5 needed three themes on an open menu | An `app.a11y.spec.ts` open-state case auditing the default theme only | `grep -n "detectChanges();" frontend/src/app/app.a11y.spec.ts` | 4 open-state cases; 3 are menus carrying the legal rows | The three menu cases crossed with the theme axis via one `auditOpenMenu` helper (8 cases → 16). The theme-picker case was left alone: it carries no legal row. The file's header doc said "BOTH themes" and now says all three |
 | 2026-09-21 | Phase 0 needed the phone sheet's row skin outside `app.ts` | A menu-row skin the popover family owns but a call site keeps private | `grep -rn "MOBILE_ITEM" frontend/src` | 1 (`app.ts:39`, consumed twice at `:78-79`) | Promoted to `shared/popover-skin.ts` beside `POP_ITEM` — `riviera-tailwind` rule 1's one place so the popovers cannot drift. `CURRENT_POP_ROW` and `POP_ROW_RING` became unused in `app.ts` and were dropped from its import |
 
 ---

@@ -28,6 +28,11 @@ const SKINS: Record<LegalMenuVariant, string> = {
  * <p>Rows rather than `legal-footer.ts`'s sentence: a menu has room for the names the routes
  * carry, its copyright notice is footer furniture, and a `block` row carries the 44 px floor where
  * the footer's inline links needed the WCAG 2.5.5 exemption.
+ *
+ * <p>Each call site puts the rows last, under a `mt-1` group: `toggleMenu` hard-codes the first row
+ * it focuses on open, so the destinations keep the head of the list. The group is separated by space
+ * and not a hairline because `--riv-pop-border` carries no measured ratio, and a separator would owe
+ * one under `docs/design/non-text-contrast.md` rule 2a.
  */
 @Component({
   selector: 'app-legal-menu-rows',

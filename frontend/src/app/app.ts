@@ -1,5 +1,6 @@
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { LegalFooter } from './shared/legal-footer';
+import { LegalMenuRows } from './shared/legal-menu-rows';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   NavigationEnd,
@@ -153,6 +154,7 @@ function consoleOf(data: unknown): ConsoleSection | null {
   selector: 'app-root',
   imports: [
     LegalFooter,
+    LegalMenuRows,
     RouterOutlet,
     RouterLink,
     RouterLinkActive,
