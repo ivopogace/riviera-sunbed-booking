@@ -36,33 +36,33 @@ the reason at the base declaration; the no-drift rule → the computed-style e2e
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the three theme blocks in `tailwind.css`, when `--riv-panel-accent-ink`
+- [x] **AC-1:** Given the three theme blocks in `tailwind.css`, when `--riv-panel-accent-ink`
   is resolved, then it is declared exactly once per theme (`#085a6e` base, `#a8e8f2` riviera,
   `#7cd7e8` dark) and carries an `@theme inline` row.
   *Seam:* the `tailwind.css` source text, read the way the sibling token specs read it ·
   *Pinned by:* `home.contrast.spec.ts` › `declares --riv-panel-accent-ink once per theme block`
 
-- [ ] **AC-2:** Given each theme's page-gradient stops, when `--riv-panel-accent-ink` is
+- [x] **AC-2:** Given each theme's page-gradient stops, when `--riv-panel-accent-ink` is
   composited over the header glass, then it meets AA (≥ 4.5:1) over every stop, in all three
   themes — and the negative case "the accent ink would not clear AA on the header glass" is
   gone, replaced by this positive one.
   *Seam:* `expectAaOverStops(panelAccent, 1, headerGlass, stops)` ·
   *Pinned by:* `home.contrast.spec.ts` › `panel accent ink (group-head distance, row price) meets AA on the header glass`
 
-- [ ] **AC-3:** Given a hovered desktop panel row, when `--riv-panel-wash-hover` coats the
+- [x] **AC-3:** Given a hovered desktop panel row, when `--riv-panel-wash-hover` coats the
   panel glass, then both the page ink and `--riv-panel-accent-ink` still meet AA over every
   stop, in all three themes.
   *Seam:* the same `expectAaOverStops` loop, over the hover surface ·
   *Pinned by:* `home.contrast.spec.ts` › `the row hover wash keeps both inks at AA on the panel glass`
 
-- [ ] **AC-4:** Given the riviera theme in a real Chromium, when the Discover sheet's
+- [x] **AC-4:** Given the riviera theme in a real Chromium, when the Discover sheet's
   beach-group head, the desktop panel's group head and the panel row's price are rendered,
   then each computes to `rgb(168, 232, 242)` and the hovered row computes to the riviera wash
   — not the class list, the resolved value.
   *Seam:* the rendered page via `toHaveCSS` (`test:e2e:a11y`) ·
   *Pinned by:* `frontend/e2e/panel-glass-inks.e2e.ts`
 
-- [ ] **AC-5:** Given the whole tree, when every element inside an `appPanelGlass` subtree is
+- [x] **AC-5:** Given the whole tree, when every element inside an `appPanelGlass` subtree is
   enumerated, then none paints `--riv-accent-ink` as an ink or a ring.
   *Seam:* the generalization-audit command below, recorded in the audit log ·
   *Pinned by:* the audit log row + `home.contrast.spec.ts`'s surviving card-glass cases
@@ -149,16 +149,16 @@ written; the slice changes two CSS custom properties and four class attributes.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, re-verifying`
+**Stage pointer:** `DONE — merged via PR #1166`
 
-**Next action:** Push the finding fixes, then the Sonar gate.
+**Next action:** None. Slice complete.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Tokens + contrast proof | ✅ | |
-| 1 — Repaint the three sites + the row hover | ✅ | |
-| 2 — Computed-style e2e | ✅ | |
-| 3 — Generalization audit + close-out | ✅ | |
+| 0 — Tokens + contrast proof | ✅ | merged via PR #1166 |
+| 1 — Repaint the three sites + the row hover | ✅ | merged via PR #1166 |
+| 2 — Computed-style e2e | ✅ | merged via PR #1166 |
+| 3 — Generalization audit + close-out | ✅ | merged via PR #1166 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -193,13 +193,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/tailwind.css` · `frontend/src/testing/glass-tokens.ts` · Test `frontend/src/app/pages/home/home.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — AC-1/2/3 cases in `home.contrast.spec.ts`.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- home.contrast` → FAIL (token undeclared).
-- [ ] **Step 3: Minimal implementation** — declare both tokens in the base, `riviera` and `dark` blocks with the reason at the base declaration; add both `@theme inline` rows; mirror in `glass-tokens.ts`.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- home.contrast` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — see the log; population = inks on an `appPanelGlass` subtree.
-- [ ] **Step 6: Commit** — `git commit -m "Give the accent ink and row hover a panel-glass value (#1165)"`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 1: Write the failing test** — AC-1/2/3 cases in `home.contrast.spec.ts`.
+- [x] **Step 2: Run it, verify it fails** — `npm test -- home.contrast` → FAIL (token undeclared).
+- [x] **Step 3: Minimal implementation** — declare both tokens in the base, `riviera` and `dark` blocks with the reason at the base declaration; add both `@theme inline` rows; mirror in `glass-tokens.ts`.
+- [x] **Step 4: Run it, verify it passes** — `npm test -- home.contrast` → PASS.
+- [x] **Step 5: Generalization-audit pass** — see the log; population = inks on an `appPanelGlass` subtree.
+- [x] **Step 6: Commit** — `git commit -m "Give the accent ink and row hover a panel-glass value (#1165)"`
+- [x] **Step 7: Update Execution status.**
 
 ---
 
@@ -207,8 +207,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/app/pages/home/home.html` · `frontend/src/app/pages/home/venue-row.html`
 
-- [ ] **Step 1–4:** The existing `home.spec.ts` / `venue-row.spec.ts` stay green; the repaint's proof is Phase 2's computed-style e2e (contrast specs are pure maths and cannot see a template).
-- [ ] **Step 5–7:** Audit, commit, status.
+- [x] **Step 1–4:** The existing `home.spec.ts` / `venue-row.spec.ts` stay green; the repaint's proof is Phase 2's computed-style e2e (contrast specs are pure maths and cannot see a template).
+- [x] **Step 5–7:** Audit, commit, status.
 
 ---
 
@@ -216,17 +216,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `frontend/e2e/panel-glass-inks.e2e.ts`
 
-- [ ] **Step 1:** Assert Tailwind generated `text-riv-panel-accent-ink` and `bg-riv-panel-wash-hover` (R-1), then `toHaveCSS` on the sheet head, desk head, desk row price and hovered row under `riviera`.
-- [ ] **Step 2–4:** `npm run test:e2e:a11y -- panel-glass-inks` red → green.
-- [ ] **Step 5–7:** Audit, commit, status.
+- [x] **Step 1:** Assert Tailwind generated `text-riv-panel-accent-ink` and `bg-riv-panel-wash-hover` (R-1), then `toHaveCSS` on the sheet head, desk head, desk row price and hovered row under `riviera`.
+- [x] **Step 2–4:** `npm run test:e2e:a11y -- panel-glass-inks` red → green.
+- [x] **Step 5–7:** Audit, commit, status.
 
 ---
 
 ## Phase 3 — Generalization audit + close-out
 
-- [ ] Run the audit command, record the population and every verdict.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] `riviera-docs-freshness` over the branch range; act on the two candidate findings.
+- [x] Run the audit command, record the population and every verdict.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` → exit 0.
+- [x] `riviera-docs-freshness` over `66c2954..HEAD` — 1 finding + 1 plan retirement, both actioned.
 
 ---
 
@@ -261,21 +261,21 @@ Range `66c2954..HEAD` (the slice's own diff, merge base fetched). One finding, o
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/2/3:** `npm test -- home.contrast` → PASS.
-- [ ] **AC-4:** `npm run test:e2e:a11y -- panel-glass-inks` → PASS.
-- [ ] **AC-5:** audit log row, every candidate judged.
+- [x] **AC-1/2/3:** `npx ng test --watch=false --include="src/app/pages/home/home.contrast.spec.ts"` → 53 passed.
+- [x] **AC-4:** `npm run test:e2e:a11y -- panel-glass-inks` → PASS.
+- [x] **AC-5:** audit log row, every candidate judged.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability N/A justified.
-- [ ] Money untouched (#5); no cutoff, zone or code logic in scope (#4, #6, #7).
-- [ ] Modulith N/A — frontend-only (#11).
-- [ ] Payment N/A (#8, #9, #10).
-- [ ] No Flyway migration owed (#12).
-- [ ] Frontend standards met: token per theme + `@theme inline` row, reason at the base declaration, no `@apply`, no `dark:` variant, no theme named in a component.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability N/A justified.
+- [x] Money untouched (#5); no cutoff, zone or code logic in scope (#4, #6, #7).
+- [x] Modulith N/A — frontend-only (#11).
+- [x] Payment N/A (#8, #9, #10).
+- [x] No Flyway migration owed (#12).
+- [x] Frontend standards met: token per theme + `@theme inline` row, reason at the base declaration, no `@apply`, no `dark:` variant, no theme named in a component.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #1166`.
+- [x] The review gate ran in full — 5 agents over `66c29540..dc7d6a59`, range verified by `check-review-range.mjs`; 5 findings, all dispositioned below.
