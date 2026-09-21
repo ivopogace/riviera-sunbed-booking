@@ -1765,7 +1765,7 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
     expect(byTestId(fixture, 'head-day')).not.toBeNull();
   });
 
-  it('with the flag below lg, the map is the ground and the list is the sheet; the filter bar, the switch and the preview card are gone', async () => {
+  it('below lg the map is the ground and the list is the sheet; the filter bar, the switch and the preview card are gone', async () => {
     const fixture = await sheetPage();
 
     expect(byTestId(fixture, 'sheet-scroller')).not.toBeNull();

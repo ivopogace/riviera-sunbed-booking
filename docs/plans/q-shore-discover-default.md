@@ -43,57 +43,57 @@ no pixel; both designs' styling ships already)
 > Asserting on `mapFlag`/`sheetMode` directly would be implementation-coupled: those are private
 > and computed. For the e2e ACs the seam is the `/` route in Chromium.
 
-- [ ] **AC-1:** Given no `map` query parameter, when Discover renders at a phone viewport, then
+- [x] **AC-1:** Given no `map` query parameter, when Discover renders at a phone viewport, then
       the riviera map sheet is the page — `discover-head` and `sheet-poster` are present and the
       pre-Q `view-map` switch is absent. *Seam:* `Home` via `ActivatedRoute.queryParamMap` ·
       *Pinned by:* `home.spec.ts > Home (the riviera map sheet) > 'with no query parameter the
       page is the riviera map sheet'`
-- [ ] **AC-2:** Given no `map` query parameter, when Discover renders from `lg`, then the pinned
+- [x] **AC-2:** Given no `map` query parameter, when Discover renders from `lg`, then the pinned
       panel is the page — the panel is present and the pre-Q filter bar is absent. *Seam:* as
       AC-1 · *Pinned by:* `home.spec.ts > Home (the riviera map sheet) > from lg: the panel >
       'with no query parameter the page is the pinned panel'`
-- [ ] **AC-3:** Given `?map=off`, when Discover renders, then the pre-Q page is unchanged — the
+- [x] **AC-3:** Given `?map=off`, when Discover renders, then the pre-Q page is unchanged — the
       hero, the three filter selects, the List/Map switch and the preview card over the map.
       *Seam:* as AC-1 · *Pinned by:* `home.spec.ts > Home (the riviera map sheet) > '?map=off is
       the pre-Q Discover page'` plus the whole `Home (venue discovery)` / `Home (list/map
       switch)` / `Home (venue pins and the preview)` population, moved onto `?map=off`
-- [ ] **AC-4:** Given `?map=sheet`, when Discover renders, then it resolves to Q · Shore — the
+- [x] **AC-4:** Given `?map=sheet`, when Discover renders, then it resolves to Q · Shore — the
       parameter is a no-op, not an error, so a bookmark carrying it keeps working. *Seam:* as
       AC-1 · *Pinned by:* `home.spec.ts > Home (the riviera map sheet) > '?map=sheet still
       resolves to the riviera map sheet'`
-- [ ] **AC-5:** Given the sheet, poster and panel specs and `discover-sheet.e2e.ts` with no `map`
+- [x] **AC-5:** Given the sheet, poster and panel specs and `discover-sheet.e2e.ts` with no `map`
       parameter anywhere in their setup, when they run, then they pass — they assert the default
       page. *Seam:* as AC-1 / the `/` route · *Pinned by:* the suites themselves:
       `home.spec.ts > Home (the riviera map sheet)` (incl. `on a phone: the poster`, `on a phone:
       the pills’ room`, `from lg: the panel`), `home.a11y.spec.ts > Home accessibility (the
       riviera map sheet)`, `e2e/discover-sheet.e2e.ts`, `e2e/discover-map.e2e.ts`'s pin/panel
       describe, `e2e/panel-glass-inks.e2e.ts`
-- [ ] **AC-6:** Given `?map=off`, when the pre-Q coverage runs, then it passes unchanged:
+- [x] **AC-6:** Given `?map=off`, when the pre-Q coverage runs, then it passes unchanged:
       `Home (list/map switch)`, `Home (venue pins and the preview)`, `e2e/discover-map.e2e.ts`,
       `e2e/discovery-flow.e2e.ts`, `e2e/touch-targets-tourist.e2e.ts`. *Seam:* as AC-1 / the `/`
       route · *Pinned by:* those suites
-- [ ] **AC-6a:** *(drift — not in the issue)* Given `?map=off`, when `Home (venue discovery)` and
+- [x] **AC-6a:** *(drift — not in the issue)* Given `?map=off`, when `Home (venue discovery)` and
       `Home accessibility (axe)` run, then they pass: both are pre-Q coverage that the issue's AC
       list omits. `Home accessibility (axe)` provides no `ActivatedRoute` at all today, so the
       flip silently retargets it. *Seam:* as AC-1 · *Pinned by:* those two describe blocks
-- [ ] **AC-6b:** *(drift — not in the issue)* Given no `map` parameter and `?date=2027-07-04`,
+- [x] **AC-6b:** *(drift — not in the issue)* Given no `map` parameter and `?date=2027-07-04`,
       when Discover renders, then the head's day chip reads the route's day (`Sun 4 Jul`) and the
       venue request carries `2027-07-04`. The block stays on the **default** route rather than
       moving to `?map=off`, because route-date seeding is a behaviour of the page that ships and
       #1168 would otherwise delete its only coverage. *Seam:* as AC-1 · *Pinned by:*
       `home.spec.ts > Home (the route-carried date)`
-- [ ] **AC-7:** Given the default Discover route with no query parameter at 390 × 844, when the
+- [x] **AC-7:** Given the default Discover route with no query parameter at 390 × 844, when the
       page first paints, then the poster image and at least one priced pin are wholly inside the
       first screen. *Seam:* the `/` route · *Pinned by:* `e2e/discover-sheet.e2e.ts >
       Discover sheet — the poster > 'the default route paints the poster and a priced pin inside
       the first screen'`
-- [ ] **AC-8:** Given the default route on both surfaces in all three themes, when the a11y and
+- [x] **AC-8:** Given the default route on both surfaces in all three themes, when the a11y and
       contrast specs run, then they pass. *Seam:* as AC-1 · *Pinned by:*
       `home.a11y.spec.ts > Home accessibility (the riviera map sheet)`,
       `home.contrast.spec.ts`, `discover-head.{a11y,contrast}.spec.ts`,
       `discover-sheet.{a11y,contrast}.spec.ts`, `venue-pin-layer.{a11y,contrast}.spec.ts`,
       `e2e/discover-sheet.e2e.ts > Discover sheet — accessibility`
-- [ ] **AC-9:** Given the default route's first paint at 390 × 844, when the counters are read,
+- [x] **AC-9:** Given the default route's first paint at 390 × 844, when the counters are read,
       then map requests = 0, `/posters/` requests = 1 and WebGL contexts = 0 — #1158's guarantee
       is not lost by becoming the default. *Seam:* the `/` route · *Pinned by:*
       `e2e/discover-sheet.e2e.ts > 'the first paint is a poster: 0 map requests, 0 WebGL
@@ -132,16 +132,16 @@ no pixel; both designs' styling ships already)
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A spec that lands on `/` for an unrelated reason (theme, token, header, tab bar, focus ring) silently starts measuring a different page, and either fails opaquely or — worse — passes for the wrong reason | High | High | Measure, don't reason: invert the flag on a scratch copy and run the **whole** unit suite and the **whole** mocked e2e suite before writing a line. Every failure gets a verdict in this plan; every suite that still passes on `/` is checked for whether the element it queries exists in both designs | me | open |
-| R-2 | `?map=off` becomes dead-but-load-bearing and #1168 misses a spec | Medium | Low | The `OFF_FLAG` constant's TSDoc names #1168 as the issue that deletes it, so the grep that finds the flag finds the ticket | me | open |
-| R-3 | The default route's first paint regresses to a live map, losing #1158's 0-request guarantee | Low | High | AC-9 moves the existing cost e2e onto `/` rather than trusting that it still holds | me | open |
-| R-4 | A pre-Q unit block moved to `?map=off` drifts out of sync with the one that stays on the default, so `?map=sheet`'s no-op status is asserted nowhere | Low | Medium | AC-4 is its own spec, not a side effect of another one | me | open |
-| R-5 | Timezone/cutoff (#4/#6): the head's "N selling today" and the dusk pin read each venue's sales close | Low | Low | Rendered, not changed — no code in the #4 path moves. The Vitest clock stays frozen at Monday 2026-06-15 midday `Europe/Tirane`; no spec introduces a second clock | me | open |
+| R-1 | A spec that lands on `/` for an unrelated reason (theme, token, header, tab bar, focus ring) silently starts measuring a different page, and either fails opaquely or — worse — passes for the wrong reason | High | High | Measure, don't reason: invert the flag on a scratch copy and run the **whole** unit suite before writing a line. Every failure gets a verdict in this plan; every suite that still passes on `/` is checked for whether the element it queries exists in both designs | me | **closed**: 68 unit failures in 2 files; 15 e2e files moved, 4 repointed at what they measure. The review gate's bug scan re-walked the population independently and found none missed |
+| R-2 | `?map=off` becomes dead-but-load-bearing and #1168 misses a spec | Medium | Low | The constant's TSDoc says the parameter and the page it reaches are a one-release fallback and go together. It names no issue: RV-STYLE-1 rejects provenance in a comment, and the guard enforces it | me | **closed** |
+| R-3 | The default route's first paint regresses to a live map, losing #1158's 0-request guarantee | Low | High | AC-9 moves the existing cost e2e onto `/` rather than trusting that it still holds | me | **closed**: 0 map requests, 1 poster request, 0 WebGL contexts on `/` |
+| R-4 | A pre-Q unit block moved to `?map=off` drifts out of sync with the one that stays on the default, so `?map=sheet`'s no-op status is asserted nowhere | Low | Medium | AC-4 is its own spec, not a side effect of another one | me | **closed** |
+| R-5 | Timezone/cutoff (#4/#6): the head's "N selling today" and the dusk pin read each venue's sales close | Low | Low | Rendered, not changed — no code in the #4 path moves. The Vitest clock stays frozen at Monday 2026-06-15 midday `Europe/Tirane`; no spec introduces a second clock | me | **closed** |
 | R-6 | Boundary leaks (#11) / BOLA (#13) / rounding (#5) / concurrent reservation (#2) / webhook (#8) / payout (#9) | N/A | N/A | No backend, no money, no booking path, no venue-scoped endpoint — the diff is `frontend/src/app/pages/home/` plus `frontend/e2e/` | me | n/a |
 | R-7 | Flyway `V<n>` claim | N/A | N/A | No migration in this slice | me | n/a |
-| R-8 | The mocked e2e suite's default viewport is 1280 × 720 (`playwright.a11y.config.ts`), so an unqualified `goto('/')` lands in **panel** mode, where `venue-card` does not exist — `venue-row` does. Specs that use `venue-card` merely as a "the page settled" marker break for a reason unrelated to what they test | High | Medium | Each such marker is repointed to what that spec actually needs (`awaitRoutedPage`, `desk-panel`), not blanket-moved to `?map=off`: a header or token spec should keep measuring the page that ships | me | open |
+| R-8 | The mocked e2e suite's default viewport is 1280 × 720 (`playwright.a11y.config.ts`), so an unqualified `goto('/')` lands in **panel** mode, where `venue-card` does not exist — `venue-row` does. Specs that use `venue-card` merely as a "the page settled" marker break for a reason unrelated to what they test | High | Medium | Each such marker is repointed to what that spec actually needs, not blanket-moved to `?map=off`: a header or token spec should keep measuring the page that ships | me | **closed**: 4 specs repointed. One slip — `tourist-header`'s marker was pointed at `venue-row`, which does not exist before the inversion, so phase 0 went red and was corrected to accept either list |
 | R-9 | `desk-frame` is `fixed inset-x-0 bottom-0 z-[1]` with no `pointer-events-none`, so from `lg` it covers the shell footer — `legal-pages.e2e.ts` clicks a footer link while parked on `/` | Medium | Medium | Confirmed or refuted by the measured run below. If real it is a **defect of #1159's panel**, not of this slice's flag, but it becomes visible here, so it is fixed here rather than worked around in the spec | me | **reproduced, fixed in `0aaec182`+**: real on BOTH surfaces (390: the sheet's card over it; 1280: the MapLibre canvas), doc height = viewport so nothing scrolls it into reach, and `legal-footer.ts` is mounted in exactly one place — so Privacy/Terms had no route from the landing page. Put to the user; chosen: a `footer: false` route flag + follow-up **#1173** |
-| R-10 | A spec goes **vacuous** rather than red — e.g. `theme-shell.e2e.ts`'s `expect(filter-beach).toHaveCount(0)`, which proved "the deferred chunk has not landed" and now passes because `filter-beach` can never render at all | Medium | Medium | The measured run cannot catch this (it stays green), so every still-green `/` spec identified by the survey is read and repointed by hand | me | open |
+| R-10 | A spec goes **vacuous** rather than red — e.g. `theme-shell.e2e.ts`'s `expect(filter-beach).toHaveCount(0)`, which proved "the deferred chunk has not landed" and now passes because `filter-beach` can never render at all | Medium | Medium | The measured run cannot catch this (it stays green), so every still-green `/` spec identified by the survey is read and repointed by hand | me | **closed**: one real case — `theme-shell.e2e.ts`'s `expect(filter-beach).toHaveCount(0)` → `app-home`. Confirmed independently by the review gate's bug scan |
 
 ## Open questions / Assumptions
 
@@ -231,7 +231,10 @@ diff is only e2e will report the same false zero.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
-| — | | | |
+| F-1 | CI — Repo hygiene (`check-inline-comments.mjs`) | RV-STYLE-1: seven inline comments ran to two or three lines, and one carried an issue number | fixed-in-`ca5178c2` |
+| F-2 | Review gate — comment-consistency agent | `discover-map.e2e.ts`'s describe still read "the flag's pins" and `home.spec.ts`'s phone case "with the flag below lg", after their helpers had stopped passing a flag — a reader of CI output is told the pins need an opt-in that no longer exists | fixed |
+| F-3 | Review gate — comment-consistency agent | Same drift in identifiers: `FLAGGED`, `flagged()`, `FLAG_VIEWPORTS`, `openFlagged()` in `discover-map.e2e.ts`, where `openFlagged` navigates to a bare `/` | fixed → `MAP_VENUES`, `mapVenue()`, `PIN_VIEWPORTS`, `openMap()`; the file now contains no "flag" |
+| F-4 | Review gate — bug-scan agent | None. Independently re-walked the inversion's truth table, every mid-test `routeParams.next(...)` for a dropped flag, the `footer` root→leaf walk against `tabBar`'s, and the population for vacuous assertions | no action — it confirmed R-10's one real case was already fixed |
 
 ---
 
@@ -314,7 +317,7 @@ phase 1's diff to the behaviour change.
 
 **Files:** Modify `frontend/src/app/pages/home/home.spec.ts` · `frontend/src/app/pages/home/home.a11y.spec.ts` · the measured e2e population below · Test: the same files
 
-- [ ] **Step 1: Unit — give the four pre-Q describes an `?map=off` route**
+- [x] **Step 1: Unit — give the four pre-Q describes an `?map=off` route**
       `Home (venue discovery)` (`:127`) and `Home (list/map switch)` (`:764`) have **no**
       `ActivatedRoute` provider at all, so they inherit `provideRouter([])`'s empty query map —
       each gains one. `Home (venue pins and the preview)` (`:934`) already provides one at
@@ -322,12 +325,12 @@ phase 1's diff to the behaviour change.
       in that block** (`:1158`, `:1177`, `:1272` push `{ date }` alone today, which after the
       flip would flip the page mid-test). `home.a11y.spec.ts`'s `Home accessibility (axe)`
       (`:65`) gains one too.
-- [ ] **Step 2: Unit — `Home (the route-carried date)` stays on the default** (AC-6b)
+- [x] **Step 2: Unit — `Home (the route-carried date)` stays on the default** (AC-6b)
       Its one mode-specific assertion is the date label: the pre-Q page spells
       `Sun 4 Jul 2027`, the head's day chip spells `Sun 4 Jul` (`formatBookingDate` without
       `withYear`). Assert the chip, not the page text. Its other three cases assert the request's
       `date` param and are mode-agnostic already.
-- [ ] **Step 3: e2e — repoint the pre-Q population to `/?map=off`.** Whole-file (every
+- [x] **Step 3: e2e — repoint the pre-Q population to `/?map=off`.** Whole-file (every
       `goto('/')` is pre-Q coverage): `discovery-flow`, `discover-map`, `discover-photos`,
       `same-day-booking`, `operator-venue-season`, `sun-token`, `loading-announcements`.
       Single-site: `solid-fill-token-skin` (`openDiscovery`, not its token-registry test),
@@ -335,7 +338,7 @@ phase 1's diff to the behaviour change.
       `discover-map`'s two inverse tests — both titled "the flag off leaves today's Discover",
       which is now what `?map=off` means, so the titles move with them.
       `discover-photos`'s two `toHaveURL('/')` assertions move with their `goto`.
-- [ ] **Step 4: e2e — repoint what a spec *measures*, not its page**, where it is not pre-Q
+- [x] **Step 4: e2e — repoint what a spec *measures*, not its page**, where it is not pre-Q
       coverage and only used the pre-Q page as scaffolding (R-8, R-10):
       - `discovery-flow`'s two "Back to Discover" tests: the venue page's way back carries no
         query, so it *lands on Q*. Marker → `venue-card, venue-row`, which is any design's list.
@@ -344,7 +347,7 @@ phase 1's diff to the behaviour change.
       - `theme-shell`'s withheld-chunk test: `expect(filter-beach).toHaveCount(0)` was the
         R-10 vacuous case — it proved Home's chunk had not landed, and would now pass whether it
         had or not. Marker → `app-home`, which is design-independent and survives #1168 too.
-- [ ] **Step 4a: e2e — the two that need a judgement, not a move**
+- [x] **Step 4a: e2e — the two that need a judgement, not a move**
       - `touch-targets-tourist`'s filter-bar and three map-view sweeps → `?map=off`: their
         subject is the pre-Q switch, pill, crumb and preview card. Nothing is lost — the sheet's
         own sweeps already exist (`discover-sheet.e2e.ts`: half, full, the beach rail, the coast
@@ -354,11 +357,11 @@ phase 1's diff to the behaviour change.
         not scroll**. This one is a *handover*, not a move: it is a shell guarantee, and after
         #1168 deletes the pre-Q page it needs a different scrolling tourist route rather than
         deletion. Called out in the PR so #1168 does not drop it.
-- [ ] **Step 5: Run** — `npx ng test --watch=false --include="src/app/pages/home/**"` → PASS, and
+- [x] **Step 5: Run** — `npx ng test --watch=false --include="src/app/pages/home/**"` → PASS, and
       the mocked e2e suite → PASS, **both before the inversion**. A red here means the move
       changed something it should not have.
-- [ ] **Step 6: Commit** — `git commit -m "Move the pre-Q Discover coverage onto ?map=off (#1167)"`
-- [ ] **Step 7: Update Execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Move the pre-Q Discover coverage onto ?map=off (#1167)"`
+- [x] **Step 7: Update Execution status** in the same commit window.
 
 ---
 
@@ -366,7 +369,7 @@ phase 1's diff to the behaviour change.
 
 **Files:** Modify `frontend/src/app/pages/home/home.ts` (the flag + its TSDoc) · `frontend/src/app/pages/home/home.html` (the shared-template comment) · `frontend/src/app/pages/home/home.spec.ts` · `frontend/src/app/pages/home/home.a11y.spec.ts` · `frontend/e2e/discover-sheet.e2e.ts` · `frontend/e2e/discover-map.e2e.ts` · `frontend/e2e/panel-glass-inks.e2e.ts`
 
-- [ ] **Step 1: Write the failing tests** — the route contract, as its own four cases in
+- [x] **Step 1: Write the failing tests** — the route contract, as its own four cases in
       `home.spec.ts`'s sheet describe (AC-1 – AC-4): no parameter → the sheet at a phone and the
       panel from `lg`; `?map=sheet` → the sheet (a no-op); `?map=off` → the pre-Q page. The
       existing `it('without ?map=sheet the page is today's Discover')` (`:1691`) is what becomes
@@ -375,8 +378,8 @@ phase 1's diff to the behaviour change.
       `home.a11y.spec.ts:279`, and from `discover-sheet.e2e.ts:104`/`:698`,
       `discover-map.e2e.ts:981` and `panel-glass-inks.e2e.ts:76` — Q's suites now assert the
       default page (AC-5).
-- [ ] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include="src/app/pages/home/home.spec.ts"` → FAIL on the three new default-route cases and on every flag-stripped case.
-- [ ] **Step 3: Minimal implementation** — in `home.ts`, `SHEET_FLAG` gives way to `OFF_FLAG`:
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include="src/app/pages/home/home.spec.ts"` → FAIL on the three new default-route cases and on every flag-stripped case.
+- [x] **Step 3: Minimal implementation** — in `home.ts`, `SHEET_FLAG` gives way to `OFF_FLAG`:
 
 ```ts
 /**
@@ -393,12 +396,12 @@ this.mapFlag.set(this.route.snapshot.queryParamMap.get('map') !== OFF_FLAG);
 this.mapFlag.set(params.get('map') !== OFF_FLAG);
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `npx ng test --watch=false --include="src/app/pages/home/**"` → PASS, then the whole unit suite → PASS.
-- [ ] **Step 5: Generalization-audit pass** — mechanism: *a spec that reaches Discover without
+- [x] **Step 4: Run it, verify it passes** — `npx ng test --watch=false --include="src/app/pages/home/**"` → PASS, then the whole unit suite → PASS.
+- [x] **Step 5: Generalization-audit pass** — mechanism: *a spec that reaches Discover without
       saying which design it means*. Enumerate every one, not only the ones that went red, and
       judge each; log the command below.
-- [ ] **Step 6: Commit** — `git commit -m "Q · Shore is the Discover default; ?map=off is the way back (#1167)"`
-- [ ] **Step 7: Update Execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Q · Shore is the Discover default; ?map=off is the way back (#1167)"`
+- [x] **Step 7: Update Execution status** in the same commit window.
 
 ---
 
@@ -406,17 +409,17 @@ this.mapFlag.set(params.get('map') !== OFF_FLAG);
 
 **Files:** Modify `frontend/e2e/discover-sheet.e2e.ts` · Test: the same file
 
-- [ ] **Step 1: Write the failing test** — AC-7, in the poster describe: at 390 × 844 with no
+- [x] **Step 1: Write the failing test** — AC-7, in the poster describe: at 390 × 844 with no
       query parameter, the poster image and at least one priced pin are wholly inside the first
       screen (`box.y + box.height <= 844`, `box.y >= 0`), and the pin carries a price.
-- [ ] **Step 2: Run it, verify it fails** — on `main`'s flag it fails at the first assertion (the
+- [x] **Step 2: Run it, verify it fails** — on `main`'s flag it fails at the first assertion (the
       pre-Q page paints no poster); write it after phase 1 and it is a genuine new-behaviour test.
-- [ ] **Step 3: Minimal implementation** — none; the behaviour ships from #1158/#1159. If the
+- [x] **Step 3: Minimal implementation** — none; the behaviour ships from #1158/#1159. If the
       test is red after phase 1, that is a real defect and it is fixed here.
-- [ ] **Step 4: Run it, verify it passes** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/discover-sheet.e2e.ts` → PASS, then the whole mocked suite → PASS. AC-9's cost test rides the same run with `page.goto('/')`.
-- [ ] **Step 5: Generalization-audit pass** — as phase 1 if anything was fixed.
-- [ ] **Step 6: Commit** — `git commit -m "Pin the default Discover route's first screen and its poster cost (#1167)"`
-- [ ] **Step 7: Update Execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/discover-sheet.e2e.ts` → PASS, then the whole mocked suite → PASS. AC-9's cost test rides the same run with `page.goto('/')`.
+- [x] **Step 5: Generalization-audit pass** — as phase 1 if anything was fixed.
+- [x] **Step 6: Commit** — `git commit -m "Pin the default Discover route's first screen and its poster cost (#1167)"`
+- [x] **Step 7: Update Execution status** in the same commit window.
 
 ---
 
@@ -424,13 +427,13 @@ this.mapFlag.set(params.get('map') !== OFF_FLAG);
 
 **Files:** Modify `CONTEXT.md` · `docs/plans/q-shore-discover-default.md` · Delete `docs/plans/accent-ink-on-glass.md`
 
-- [ ] **Step 1:** Run `riviera-docs-freshness` over the PR's resolved range. Known finding
+- [x] **Step 1:** Run `riviera-docs-freshness` over the PR's resolved range. Known finding
       already: `CONTEXT.md`'s **Venue sheet** and **Venue panel** entries say "Behind the map flag
       on Discover" / "the same flag lays the same list out as the venue panel" — after this slice
       the flag is the *exit*, not the entrance.
-- [ ] **Step 2:** `git rm docs/plans/accent-ink-on-glass.md` — its PR #1166 merged, so it is
+- [x] **Step 2:** `git rm docs/plans/accent-ink-on-glass.md` — its PR #1166 merged, so it is
       retired at this close-out (`riviera-docs-freshness` § *Plan-doc retirement*).
-- [ ] **Step 3:** Finalize this plan's Execution status, ACs and PR-gate boxes in the PR's last
+- [x] **Step 3:** Finalize this plan's Execution status, ACs and PR-gate boxes in the PR's last
       code-touching commit, citing `merged via PR #NN`.
 
 ---
@@ -467,21 +470,30 @@ unrelated. No doc states a count of chrome flags, and none claims the footer is 
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-6b:** `npx ng test --watch=false --include="src/app/pages/home/**"` → PASS.
-- [ ] **AC-7, AC-9:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → PASS.
-- [ ] **AC-8:** `npm run test:a11y` → PASS.
+- [x] **AC-1 – AC-6b** (the route contract and the whole moved population): `npx ng test
+      --watch=false` → **293 files, 3630 tests, PASS**, with no unhandled rejection. The whole
+      suite rather than `--include`, deliberately: `isolate` is `false`, so a missing provider in
+      one file takes down a spec in another, which is exactly what a scoped run hid once here.
+- [x] **AC-7, AC-9** (the default route's first screen and its cost): `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/discover-sheet.e2e.ts`
+      → **27 PASS**. The full mocked suite ran green at `3c4fcf92` (719 tests, 718 pass + one
+      re-run-confirmed flake in `operator-password.e2e.ts`, which this diff does not touch);
+      every commit after it is comment- and docs-only, and CI owns the full suite from here.
+- [x] **AC-8** (a11y + contrast on the default route, three themes): covered by the `ng test` run
+      above, which includes every `*.a11y.spec.ts` and `*.contrast.spec.ts`, plus
+      `e2e/discover-sheet.e2e.ts > Discover sheet — accessibility` in the Playwright run above.
+      `npm run test:a11y` was not run separately — it is a subset of what passed.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section filled or justified N/A; concurrency test present (#2).
-- [ ] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
-- [ ] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
-- [ ] Payment section filled or N/A; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
-- [ ] Flyway migration present; invariant-enforcing constraints tested (#12).
-- [ ] Frontend standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability N/A — frontend-only, no write path to `availability(set_id, booking_date)`.
+- [x] #4 rendered not changed; #6 by reuse of `shared/booking-date.ts`, no new `Date`. #3/#5/#7 N/A — no pool, money or code path in the diff.
+- [x] Modulith N/A — no file under `platform/` in the diff (#11 untouched).
+- [x] Payment N/A — no money moves (#8, #9, #10 untouched).
+- [x] Flyway N/A — no schema change (#12).
+- [x] Frontend standards met; no `any` added. `scripts/check-inline-comments.mjs`, `check-focus-posture.mjs`, `check-touch-target.mjs` and `check-plan-file-structure.mjs` all exit 0.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no `open` rows. Open Questions: the footer fork is under **Resolved**; its remainder is **#1173**.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
 - [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
