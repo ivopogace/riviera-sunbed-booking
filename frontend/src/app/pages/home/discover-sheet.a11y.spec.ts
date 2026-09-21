@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { expectNoAxeViolations } from '../../../testing/axe';
 import { DiscoverSheet } from './discover-sheet';
@@ -24,25 +24,30 @@ import { DiscoverSheet } from './discover-sheet';
 class Host {}
 
 describe('DiscoverSheet accessibility', () => {
-  async function render(): Promise<HTMLElement> {
+  async function render(): Promise<ComponentFixture<Host>> {
     await TestBed.configureTestingModule({ imports: [Host] }).compileComponents();
     const fixture = TestBed.createComponent(Host);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    return fixture.nativeElement as HTMLElement;
+    return fixture;
   }
 
   it('has no serious violations at half', async () => {
-    const host = await render();
+    const fixture = await render();
+    const host = fixture.nativeElement as HTMLElement;
     expect(host.querySelector('[data-testid="sheet-grabber"]')).not.toBeNull();
     await expectNoAxeViolations(host);
   });
 
   it('has no serious violations at full, with the Map pill', async () => {
-    const host = await render();
+    const fixture = await render();
+    const host = fixture.nativeElement as HTMLElement;
     host.querySelector<HTMLButtonElement>('[data-testid="sheet-grabber"]')!.click();
-    await new Promise((resolve) => setTimeout(resolve));
+    // The click's signal writes render on the zoneless scheduler's own turn, not the click's.
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
     expect(host.querySelector('[data-testid="sheet-map-pill"]')).not.toBeNull();
     await expectNoAxeViolations(host);
   });
