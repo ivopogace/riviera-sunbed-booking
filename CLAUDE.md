@@ -114,35 +114,22 @@ third-party map host.
 
 Cited by number — **never renumber**. Long form: `RESPONSIBILITIES.md` § *Invariants, long form*.
 
-1. **JDBC only.** No JPA/Hibernate on the classpath, no `@Entity`. Hand-written `JdbcClient`
-   SQL; no `CrudRepository`/`@Table`/`@Id` in the tree (an aggregate mapping owes a stated
-   reason, `riviera-java-conventions` §1a).
-2. **Availability is the single source of truth per `(set, date)`.** One row, unique
-   constraint AND `FOR UPDATE` / `INSERT … ON CONFLICT DO NOTHING` in the reservation
-   transaction. Never double-sell.
-3. **Online and walk-in pools are separate.** Online bookings target online-pool sets only.
-4. **Sales close is venue-controlled, on the day.** D sells until the venue's `sales_close`
-   on D (`00:01`, `16:00` default, `23:59`; `Europe/Tirane`). The pay path fences on the pay
-   deadline; the confirm path does not.
-5. **Money is integer minor units** + ISO currency; rounding written down at any division.
-   Collection currency EUR.
-6. **Store UTC `Instant`, reason in `Europe/Tirane`.** Never the JVM default zone.
-7. **Booking codes are bearer credentials.** ≥ 8 random base32 chars, secret in logs.
-8. **Stripe webhooks are the source of truth**, never the client redirect; idempotency keys on
-   charge/refund; no Connect.
-9. **The payout ledger is auditable and idempotent.** Accrue once, refund reverses, a
-   venue-caused refund also charges a fee; payout = Σ amounts − commission (per-venue,
-   effective-dated, forward-only) − fees. Direction is the entry type, never the amount's sign.
-10. **Refund policy is server-side.** Free until the #4 cutoff, then non-refundable; window
-    closes at service-day open (ADR-0005). Outside the tier: the admin weather refund and a
-    moved booking's free exit (full amount until its deadline, capped at service-day open).
-11. **Modulith boundaries are hexagonal and id-based** (ADR-0007): cross-module access only via
-    `api/` ports or events; payloads carry ids and values, never a foreign aggregate
-    (`BookingConfirmed` carries `amountMinor` so `payout` never calls back). Machine-locked.
-12. **Schema changes go through Flyway.** Forward migrations only; every invariant-enforcing
-    constraint is created and tested by one.
-13. **Venue-scoped operations verify ownership** in the application service via `operator`'s
-    port, `403` on mismatch; `/api/admin/**` is role-gated and exempt. RV-BE-9.
+1. **JDBC only** (ADR-0001) — no JPA; `JdbcOnlyArchitectureTests` fails the build on it.
+2. **One availability row per `(set, date)`**, claimed with `FOR UPDATE` / `ON CONFLICT DO
+   NOTHING` — never double-sell.
+3. **Online bookings target online-pool sets only.**
+4. **D sells until the venue's `sales_close` on D** (`Europe/Tirane`); the confirm path is not
+   fenced.
+5. **Money is integer minor units** + ISO currency.
+6. **Store UTC `Instant`, reason in `Europe/Tirane`** — never the JVM default zone.
+7. **Booking codes are bearer credentials** — never logged in clear.
+8. **Stripe webhooks are the source of truth**, never the client redirect.
+9. **The payout ledger is auditable and idempotent**; direction is the entry type, never the
+   amount's sign.
+10. **Refund policy is server-side** (ADR-0005).
+11. **Cross-module access only via `api/` ports or id-based events** (ADR-0007).
+12. **Schema changes only via forward Flyway migrations.**
+13. **Venue-scoped operations verify ownership in the application service** → `403`.
 
 **Provisional:** venue payout currency EUR vs ALL per venue, converted outside the app.
 
