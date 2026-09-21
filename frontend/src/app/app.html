@@ -478,8 +478,7 @@
     <router-outlet />
   </main>
 
-  <!-- Shared by the tourist chrome and the console shell (tokens re-scope under the porcelain pin).
-       Withheld on a route flagged `footer: false`, which paints to every edge and would cover it. -->
+  <!-- Shared by the tourist chrome and the console shell (tokens re-scope under the porcelain pin). -->
   @if (footer()) {
     <footer
       class="riv-footer border-t border-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7]"

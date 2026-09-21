@@ -741,8 +741,7 @@ test.describe('Discover sheet — the poster', () => {
     const ground = await page.getByTestId('sheet-ground').boundingBox();
     expect(ground).toEqual({ x: 0, y: 0, width: PHONE.width, height: PHONE.height });
 
-    // The still covers that ground edge to edge: it is centre-cropped, never letterboxed, so it
-    // overhangs on purpose and a box inside the viewport would mean a gap the map cannot fill.
+    // Centre-cropped, so it overhangs: a box INSIDE the viewport would mean a gap.
     await expect(page.getByTestId('poster-image')).toBeVisible();
     const poster = await page.getByTestId('poster-image').boundingBox();
     expect(poster!.y).toBeLessThanOrEqual(0);
@@ -758,8 +757,7 @@ test.describe('Discover sheet — the poster', () => {
     expect(pin!.y).toBeGreaterThanOrEqual(0);
     expect(pin!.y + pin!.height).toBeLessThanOrEqual(PHONE.height);
 
-    // Laid out on screen is not seen: the sheet rests over the same ground, so ask the document
-    // what is actually painted at the pin's middle — the check that caught the covered footer.
+    // Laid out is not seen: the sheet rests over the same ground, so ask what is painted there.
     const painted = await page.evaluate(
       ([x, y]) => document.elementFromPoint(x, y)?.closest('[data-pin]') !== null,
       [pin!.x + pin!.width / 2, pin!.y + pin!.height / 2],

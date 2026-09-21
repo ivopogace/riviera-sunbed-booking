@@ -610,8 +610,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
 
     await router.navigate(['/map-route']);
     fixture.detectChanges();
-    // A full-window route paints to every edge, so a footer under it would be covered, not read:
-    // rendering it anyway leaves a dead row in the DOM that AT and a pointer both still reach.
+    // Rendering it anyway leaves a covered row that AT and a pointer both still reach.
     expect(el.querySelector('.riv-footer')).toBeNull();
     // Only the footer goes: the header and the bar are the route's own business.
     expect(el.querySelector('.riv-header')).not.toBeNull();

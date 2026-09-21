@@ -124,8 +124,7 @@ describe('Home (the route-carried date)', () => {
 
     expect(dateOfNextRequest()).toBe('2027-07-04');
     fixture.detectChanges();
-    // The head's day chip, whose label carries no year. Parts, not the whole string: ICU
-    // punctuation varies, as booking-date-label.spec.ts records.
+    // The head's day chip carries no year; parts, not the string, since ICU punctuation varies.
     const day = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="head-day"]');
     expect(day?.textContent).toContain('Sun');
     expect(day?.textContent).toContain('4 Jul');
