@@ -22,9 +22,13 @@ PR #1176 — see *Resolved* below)
 on `main`, which forced the re-diagnosis below) · `riviera-plan-doc` (forced the generalization
 pass that found two further sites the issue never named) · `tdd` (the deterministic
 frame-deferred repro is the red; the committed guard test keeps it red-able) ·
-`riviera-review-overlay` (at ready-for-review) · `riviera-docs-freshness` (at close-out) ·
+`riviera-review-overlay` (at ready-for-review) · `riviera-docs-freshness` (**ran** over `2af102f..HEAD`, 0 findings: the substrate's only
+`src/testing/` claims are `frontend/.claude/CLAUDE.md`'s "Shared helpers: `src/testing/`" — which
+this slice obeys rather than changes — and ADR-0014's `freeze-clock` citations, untouched; no
+substrate doc states a test count or names these specs) ·
 `riviera-local-debug` (scoped `--include` runs; unshallowed the clone before every history claim)
-· `riviera-frontend` (shared spec helpers belong in `src/testing/`, not the feature folder) ·
+· `riviera-frontend` (folder taxonomy; the `src/testing/` home for a shared spec helper is
+`frontend/.claude/CLAUDE.md` § *Unit tests*, "Shared helpers: `src/testing/`") ·
 `angular-developer` + angular-cli MCP (`search_documentation` v22: the zoneless TestBed guide's
 "avoid `fixture.detectChanges()` when possible" dropped the manual bracketing from the new
 helper; it also says converting *existing* suites is not worth it, so the specs' own `settle()`
@@ -40,8 +44,8 @@ stays)
 - [ ] **AC-1:** Given a sheet whose `opened()` reports its opening rest landed, when the tourist
   taps to `full` and every frame the sheet could still hold is flushed, then the sheet is still at
   `full` and asked for no further rest. *Seam:* `DiscoverSheet.opened` / `.detent()` (the
-  component's public signals) · *Pinned by:* `discover-sheet.spec.ts` › *a tap once the sheet has
-  opened is never retaken by the opening rest*
+  component's public signals) · *Pinned by:* `discover-sheet.spec.ts` › *reports opened before a
+  spec drives it, and retakes no rest under the tap that follows*
 - [ ] **AC-2:** Given the reported case, when the grabber is tapped, then the Map pill is in the
   DOM and axe finds no serious violation — and the case still fails when the pill genuinely stops
   rendering at `full`. *Seam:* the rendered sheet DOM (`[data-testid="sheet-map-pill"]`) ·
@@ -51,10 +55,14 @@ stays)
   20 consecutive times 4-way parallel, then all 20 are green — and the frame-deferred repro that
   fails deterministically on `main` passes. *Seam:* the suite as CI runs it · *Pinned by:* the run
   log in *Acceptance-criteria verification*
-- [ ] **AC-4:** Given the mechanism "a spec drives `DiscoverSheet` before its opening rest is
-  confirmed", when every member of that population is enumerated, then each one waits on the same
-  condition and none waits on a duration. *Seam:* the population, enumerated by the command in the
-  generalization-audit log · *Pinned by:* the log's row
+- [x] **AC-4:** Given the mechanism "a spec drives `DiscoverSheet` before its opening rest is
+  confirmed", when every member of that population is enumerated, then each one waits on that
+  condition and no site waits on a duration for it. *Seam:* the population, enumerated by the
+  command in the generalization-audit log · *Pinned by:* the log's row. The sweep was re-run per
+  **site**, not per file, after a review finding: `discover-sheet.spec.ts`'s own
+  `await nextFrame(window)` before `go('full')` was the same wait and is now dead, so it is gone.
+  The one that remains in that file waits for the rest a *later* `go()` takes, which is not the
+  opening rest this helper covers.
 
 ## Non-goals
 
@@ -73,10 +81,10 @@ N/A — replaces nothing; no surface is retired.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Waiting for the pill rather than for the rest would mask a real failure to render it | Medium | High — the case stops guarding what it claims | The helper waits on `opened()`, a precondition asserted *before* the tap; the pill stays a bare assertion. Negative control recorded under AC-2 | this slice | open |
-| R-2 | `whenSheetOpened` hangs a spec if `opened()` never flips | Low | Medium — a timeout instead of a legible failure | Bounded at 12 frames (the sheet gives up at 8 of its own) and closed by an `expect` naming the condition | this slice | open |
-| R-3 | A later change to `rest()` reopens the window after `opened()` | Low | High — the flake returns silently | AC-1 pins the contract the helper leans on, deterministically | this slice | open |
-| R-4 | `src/testing/` importing a page component inverts the folder taxonomy | Low | Low | `riviera-frontend`: `src/testing/` is spec support, outside the app graph; `fake-geolocation.ts` and `venue-cards.ts` already import app types | this slice | open |
+| R-1 | Waiting for the pill rather than for the rest would mask a real failure to render it | Medium | High — the case stops guarding what it claims | The helper waits on `opened()`, a precondition asserted *before* the tap; the pill stays a bare assertion. Negative control recorded under AC-2 | this slice | closed — control run, `33c1c62f` |
+| R-2 | `whenSheetOpened` hangs a spec if `opened()` never flips | Low | Medium — a timeout instead of a legible failure | Bounded at 12 frames (the sheet gives up at 8 of its own) and closed by an `expect` naming the condition | this slice | closed — `33c1c62f` |
+| R-3 | A later change to `rest()` reopens the window after `opened()` | Low | High — the flake returns silently | AC-1's guard test pins it; its flush assertion now also pins that no further rest is asked | this slice | closed — this commit |
+| R-4 | `src/testing/` importing a page component inverts the folder taxonomy | Low | Low | `src/testing/` is spec support, outside `riviera-frontend`'s `src/app/` taxonomy; `venue-cards.ts` already imports a page **component** (`app/pages/home/venue-card`) | this slice | closed — precedent verified, `33c1c62f` |
 
 ## Open questions / Assumptions
 
@@ -90,7 +98,7 @@ N/A — replaces nothing; no surface is retired.
   asynchronous activity and `TestBed.tick()` "executes any pending work required to synchronize
   model to the UI"; neither reaches a raw `requestAnimationFrame` a component schedules for
   itself, which is what `rest()` uses. Measured, not assumed: after the specs' existing settle,
-  two frames are still queued and `opened()` is false. What the docs did change: the zoneless
+  two frame callbacks are still queued (one frame flushes both) and `opened()` is false. What the docs did change: the zoneless
   TestBed guide's "avoid using `fixture.detectChanges()` when possible" — the helper ends on
   `await fixture.whenStable()` alone. *Evidence:* angular.dev `guide/zoneless`,
   `api/core/testing/TestBed`, `api/core/testing/ComponentFixture` (v22), read via the angular-cli
@@ -134,14 +142,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1 — verification)`
+**Stage pointer:** `review gate — findings folded in`
 
-**Next action:** The stressed before/after full-suite comparison, then the review gate.
+**Next action:** Sonar gate on the new head, then close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The wait and its guard | ✅ | this commit |
-| 1 — Verification (negative control + stressed before/after) | ⏳ | negative control ✅ |
+| 0 — The wait and its guard | ✅ | `33c1c62f`, `f1c308b2` |
+| 1 — Verification (negative control + before/after runs) | ✅ | negative control + 19 full-suite runs, recorded under the ACs |
+| 2 — Review-gate findings | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -149,7 +158,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
-| | | | |
+| F-1 | Review gate | AC-1's *Pinned by* named a test title the tree does not carry | fixed in this commit |
+| F-2 | Review gate | Execution status, risk rows and AC verification lines stale against the tree | fixed in this commit |
+| F-3 | Review gate | The guard test asserted the detent but not AC-1's "asked for no further rest" clause, though the spec already records every rest in `asked` | fixed in this commit |
+| F-4 | Review gate | `whenSheetOpened`'s TSDoc restated `rest()`'s own Javadoc and argued the diagnosis (RV-STYLE-1, prose that narrates history) | fixed in this commit — trimmed to the contract plus a pointer |
+| F-5 | Review gate | The generalization sweep enumerated files, not sites: `discover-sheet.spec.ts`'s own pre-`go('full')` frame wait was the same wait and went dead | fixed in this commit — removed; the later-rest one stays, AC-4 reworded |
+| F-6 | Review gate | *Skills consulted* and R-4 attributed the `src/testing/` rule to `riviera-frontend`; it is `frontend/.claude/CLAUDE.md`'s | fixed in this commit |
+| F-7 | Review gate | The helper's headline said it waits for the rest to be *confirmed*; `opened()` is set on a confirmed rest **and** on a given-up one (`attempt >= REST_ATTEMPTS`). Neither leaves a retry pending, so the guarantee held, but the wording and the failure message named the wrong fact | fixed in this commit |
+| F-8 | Review gate | "Two frames are still queued" was two frame *callbacks*, which one frame flushes — `rest()` schedules its next rAF only from inside the previous callback | fixed in this commit, and in the PR body |
+| F-9 | Review gate | The audit row's own command returns 8 paths, not the 4 it accounted for | fixed in this commit — all 8 carry a verdict |
+| F-10 | Review gate | The helper's TSDoc opened its second paragraph bare; six of seven `src/testing/` siblings use `<p>` | fixed in this commit |
 
 ---
 
@@ -170,23 +188,23 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `frontend/src/testing/sheet-opened.ts` · Modify the four specs above
 
-- [ ] **Step 1: Write the failing test** — `discover-sheet.spec.ts` › *a tap once the sheet has
+- [x] **Step 1: Write the failing test** — `discover-sheet.spec.ts` › *a tap once the sheet has
   opened is never retaken by the opening rest*: assert `opened()` at test entry (which only the
   `beforeEach` wait can supply), tap to `full`, flush every queued frame, assert the sheet stayed.
-- [ ] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include="src/app/pages/home/discover-sheet.spec.ts"` → FAIL (`opened()` is false at entry)
-- [ ] **Step 3: Minimal implementation** — `whenSheetOpened(fixture)`; call it from the four sites.
-- [ ] **Step 4: Run it, verify it passes** — the home-folder specs: `--include="src/app/pages/home/*.spec.ts"` → PASS
-- [ ] **Step 5: Generalization-audit pass** — log the enumerating command and every site's verdict.
-- [ ] **Step 6: Commit** — `git commit -m "Wait for the sheet's opening rest before driving it (#1171)"`
-- [ ] **Step 7: Update Execution status** in the same commit window.
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include="src/app/pages/home/discover-sheet.spec.ts"` → FAIL (`opened()` is false at entry)
+- [x] **Step 3: Minimal implementation** — `whenSheetOpened(fixture)`; call it from the four sites.
+- [x] **Step 4: Run it, verify it passes** — the home-folder specs: `--include="src/app/pages/home/*.spec.ts"` → PASS
+- [x] **Step 5: Generalization-audit pass** — log the enumerating command and every site's verdict.
+- [x] **Step 6: Commit** — `git commit -m "Wait for the sheet's opening rest before a spec drives it (#1171)"`
+- [x] **Step 7: Update Execution status** in the same commit window.
 
 ## Phase 1 — Verification
 
-- [ ] **Step 1: Negative control** — force `atFull()` false so the Map pill never renders; both
+- [x] **Step 1: Negative control** — force `atFull()` false so the Map pill never renders; both
   Map-pill cases must fail. Restore; record the result under AC-2.
-- [ ] **Step 2: 20 consecutive two-file runs**, 4-way parallel, per #1175's bar → all green.
-- [ ] **Step 3: Full frontend suite** + `lint`, `format:check`, `test:eslint-rules`, the guards.
-- [ ] **Step 4: Update Execution status.**
+- [x] **Step 2: 20 consecutive two-file runs**, 4-way parallel, per #1175's bar → all green.
+- [x] **Step 3: Full frontend suite** + `lint`, `format:check`, `test:eslint-rules`, the guards.
+- [x] **Step 4: Update Execution status.**
 
 ---
 
@@ -194,18 +212,27 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-09-21 | The #1171 fix | A spec that drives `DiscoverSheet` (taps the grabber, calls `go()`, or scrolls the outer scroller) before the sheet's opening rest is confirmed | `grep -rln "DiscoverSheet\|sheet-grabber\|sheet-map-pill\|sheet-scroller" src e2e --include="*.ts"` | 4 spec files (`discover-sheet.a11y.spec.ts`, `discover-sheet.spec.ts`, `home.a11y.spec.ts`, `home.spec.ts`); `e2e/discover-sheet.e2e.ts` is a real browser, out of population | All four wait via the shared helper; `home.spec.ts`'s 40 ms sleep — a duration standing in for this condition — is replaced by it |
+| 2026-09-21 | The #1171 fix | A spec that drives `DiscoverSheet` (taps the grabber, calls `go()`, or scrolls the outer scroller) before the sheet has stopped retaking its opening rest | `grep -rln "DiscoverSheet\|sheet-grabber\|sheet-map-pill\|sheet-scroller" src e2e --include="*.ts"` (run from `frontend/`) | 8 paths. In population: the 4 specs — `discover-sheet.a11y.spec.ts`, `discover-sheet.spec.ts`, `home.a11y.spec.ts`, `home.spec.ts`. Out: `discover-sheet.ts` and `home.ts` (the subject, not drivers), `src/testing/sheet-opened.ts` (the helper itself), `e2e/discover-sheet.e2e.ts` (a real browser, where the sheet rests against a real layout) | All four wait via the shared helper. Re-run per **site** after a review finding: `home.spec.ts`'s 40 ms sleep and `discover-sheet.spec.ts`'s pre-`go('full')` frame wait both stood in for this condition and are gone; the frame wait *after* `go('full')` stays, waiting on a later rest |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run the home-folder specs → PASS. Verified at commit `<sha>`.
+- [x] **AC-1:** `npx ng test --include="src/app/pages/home/*.spec.ts"` → 146 passed across the
+  four files. The guard test goes red without the `beforeEach` wait (`expected false to be true`,
+  run before the fix landed); its flush assertion additionally pins that no later rest retakes the
+  sheet. Verified at this commit.
 - [x] **AC-2:** Negative control recorded — with the Map pill's `@if` forced false, exactly the
   two Map-pill cases fail (2 failed / 20 passed across the two a11y files) and nothing else; the
   component was restored byte-identical. The wait did not turn the assertion into a tautology.
-- [ ] **AC-3:** 20/20 green. Verified at commit `<sha>`.
-- [ ] **AC-4:** Audit-log row complete. Verified at commit `<sha>`.
+- [x] **AC-3:** Green, and reported for what it is. Branch: 6 full-suite runs (3 plain, 3 under
+  4-way CPU contention), 3647 tests, 0 failures. Pristine `main`: 13 runs (8 plain, 5 stressed),
+  **0 reproductions** — so these runs prove no regression, they are *not* a before/after rate
+  comparison, and the issue's "1 in 3" does not hold in this sandbox once #1176 is in. The
+  mechanism proof is the deterministic frame-held repro in the PR body, not a rate. #1175's
+  two-file command is 20/20 green. Verified at this commit.
+- [x] **AC-4:** Audit-log row complete and re-run per site after the review finding. Verified at
+  this commit.
 
 ## Self-review checklist
 

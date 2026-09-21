@@ -8,14 +8,13 @@ import { DiscoverSheet } from '../app/pages/home/discover-sheet';
 const MAX_FRAMES = 12;
 
 /**
- * Waits for the discover sheet in `fixture` to confirm its opening rest, before a spec drives it.
+ * Waits until the discover sheet in `fixture` has stopped retaking its opening rest, before a spec
+ * drives it.
  *
- * The sheet takes that rest and then retakes it on the frames that follow, because a rest taken
- * at a layout that has not settled is carried elsewhere by the browser's own snapping. A tap that
- * lands inside that window is read as exactly that and undone: the sheet drops back to half and
- * the Map pill with it, a frame after the assertion that expected it — which is a spec racing its
- * own setup, not an accessibility or detent defect. `opened()` is the sheet's own word that the
- * window has closed, so a spec waits for that rather than for a duration.
+ * <p>Until it has, `DiscoverSheet.rest` reads a tap landing inside that window as the snapping it
+ * exists to beat and undoes it a frame later, which reaches the spec as a Map pill missing from an
+ * assertion that ran later still. `opened()` is the sheet's own word for the window being shut:
+ * set on a confirmed rest and on a given-up one, neither of which leaves a retry pending.
  */
 export async function whenSheetOpened(fixture: ComponentFixture<unknown>): Promise<void> {
   const found = fixture.debugElement.query(By.directive(DiscoverSheet));
@@ -28,6 +27,9 @@ export async function whenSheetOpened(fixture: ComponentFixture<unknown>): Promi
   for (let frame = 0; frame < MAX_FRAMES && !sheet.opened(); frame += 1) {
     await new Promise<void>((resolve) => view.requestAnimationFrame(() => resolve()));
   }
-  expect(sheet.opened(), `the sheet took no opening rest within ${MAX_FRAMES} frames`).toBe(true);
+  expect(
+    sheet.opened(),
+    `the sheet never stopped retaking its opening rest within ${MAX_FRAMES} frames`,
+  ).toBe(true);
   await fixture.whenStable();
 }

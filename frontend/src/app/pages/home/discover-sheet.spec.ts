@@ -123,15 +123,18 @@ describe('DiscoverSheet', () => {
     const view = el().ownerDocument.defaultView!;
     const realFrame = view.requestAnimationFrame.bind(view);
     const held: FrameRequestCallback[] = [];
+    // Frames are held rather than dropped, so the flush below is a retake's one chance to happen.
     view.requestAnimationFrame = (callback: FrameRequestCallback) => held.push(callback);
 
     try {
       byTestId('sheet-grabber')!.click();
       await settle();
       expect(sheet().detent()).toBe('full');
+      const rests = asked.length;
 
       held.splice(0).forEach((callback) => callback(0));
       await settle();
+      expect(asked.length, 'a frame after the tap asked for another rest').toBe(rests);
     } finally {
       view.requestAnimationFrame = realFrame;
     }
@@ -230,7 +233,6 @@ describe('DiscoverSheet', () => {
 
   it('keeps the detent across a re-measure once opened, resting at its new offset', async () => {
     const window = el().ownerDocument.defaultView!;
-    await nextFrame(window);
     sheet().go('full');
     await settle();
     await nextFrame(window);
