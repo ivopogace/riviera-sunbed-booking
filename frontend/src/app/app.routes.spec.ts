@@ -173,4 +173,12 @@ describe('app.routes — the phone tab bar reads its section and checkout flag o
     const footerless = routes.filter((r) => r.data?.['footer'] === false).map((r) => r.path);
     expect(footerless).toEqual(['']);
   });
+
+  it('never withholds the footer and the tab bar on the same route', () => {
+    // Below sm a footerless route's only reach to Privacy and Terms is the tab bar's menu sheet.
+    const stranded = routes
+      .filter((r) => r.data?.['footer'] === false && r.data?.['tabBar'] === false)
+      .map((r) => r.path);
+    expect(stranded).toEqual([]);
+  });
 });

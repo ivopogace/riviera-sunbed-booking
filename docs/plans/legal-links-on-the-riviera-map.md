@@ -121,7 +121,8 @@ exemption) · `riviera-local-debug` (clone deepened; `npm ci` done; `ng test --i
 | Tab bar pinned to the bottom edge, `barBottom === 844`, `barTop === 844 - 61` | preserved | Unchanged assertions; the bar is `fixed inset-x-0 bottom-0` on every tourist route |
 | Shell padding-bottom `61px` | preserved | `SHELL_WITH_TAB_BAR` applies on any `tabBar` route |
 | The document that scrolls is the pre-Q Discover page | changed | Now the venue detail page. The guarantee was never about Discover; `?map=off` was chosen only because it was the nearest scrolling document |
-| `VENUES` padded to 8 copies so `/` scrolls at 390 × 844 (`tourist-tab-bar.e2e.ts:46-51`) | dropped | Only the scroll-away test needed it; the fixture's comment goes with it. Verify no other test in the file depends on 8 venues before removing |
+| `VENUES` padded to 8 copies so `/` scrolls at 390 × 844 (`tourist-tab-bar.e2e.ts:46-51`) | preserved | **Verdict corrected on inspection:** the fixture is the `/api/venues` payload the file's local `mockTourist` serves to *every* test, not just the scroll-away one, so it stays. Only its comment was dropped — the count is no longer load-bearing for anything |
+| The subject read off a single `header` element | changed | `/venues/1` renders a venue card that carries its own `<header>`, so the bare selector is a strict-mode violation there. Both the locator and the in-page `querySelector` now pin `.riv-header`, which is the shell's and route-independent |
 
 ## Risk register
 
@@ -214,17 +215,17 @@ N/A — no contract change. `/legal/privacy` and `/legal/terms` are existing Ang
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `CI gate — awaiting the run on the phase-4 push`
 
-**Next action:** The route-table fence (proven red first), then the scroll-away spec onto `/venues/1`.
+**Next action:** Check CI on the push, then mark the PR ready and run the review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `LegalMenuRows`, the shape module | ✅ | `99c78d5d` |
 | 1 — Mounted at the three chrome call sites | ✅ | `069e75df` |
 | 2 — The `hitTestId` seam and the reachability e2e | ✅ | `ca3c62fc` |
-| 3 — `desk-frame`'s pointer-events interface | ✅ | `<phase-3-sha>` |
-| 4 — The two handovers: scroll-away route, route-table fence | | |
+| 3 — `desk-frame`'s pointer-events interface | ✅ | `a6378692` |
+| 4 — The two handovers: scroll-away route, route-table fence | ✅ | `49b1febf` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -232,6 +233,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-9 | Local full-suite run, phase 4 | `discover-sheet.a11y.spec.ts` › "has no serious violations at full, with the Map pill" failed once in ~6 full runs (`expected null not to be null`). **Not this slice's**: reproduces on `origin/main` with `npx ng test --include="src/app/app.a11y.spec.ts" --include="src/app/pages/home/discover-sheet.a11y.spec.ts"` (1 in ~6). Hypothesis, not a diagnosis — the spec waits a single `setTimeout(0)` tick for a detent change driven by a scroll event, which is racy by construction; 12 targeted probe runs did not catch it in the act, and the probe found no leftover `header.riv-header`, `.riv-tab-bar` or `app-root`, so it is **not** a shared-jsdom DOM leak | deferred → follow-up issue. Not blind-fixed: the file is outside this slice and a speculative wait change could mask a real defect in the sheet's detent logic. This slice's own contribution — `app.a11y.spec.ts` leaving `data-riv-theme` on `documentElement` — is fixed with an `afterEach`, per the `isolate: false` convention |
 | F-8 | #1172 review gate, deferred here | `desk-frame`'s stacking is worked around, not fixed; the next footer-like row on this route meets the same fixed, opaque-to-pointers overlay | **fixed in phase 3** (`pointer-events-none` + both children `pointer-events-auto`, red-first) and in phase 2 (the `hitTestId` seam), with the scope correction recorded under Open questions § Resolved |
 
 ---
@@ -588,6 +590,7 @@ it('never withholds the footer and the tab bar on the same route', () => {
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-21 | Phase 0 added a third template holding a legal document path | A hard-coded legal document path in a template | `grep -rn "/legal/privacy\|/legal/terms" frontend/src --include=*.ts --include=*.html \| grep -v spec` | 3 (`legal-footer.ts:15-16`, `legal-consent.ts:25,34`, `legal-menu-rows.ts`) + the two route declarations | No extraction. Both sides are literal-pinned (`app.routes.spec.ts:48-53` vs the three component specs), so a rename fails loudly; a module whose implementation is two string constants is maximally shallow. Reasoning under Open questions § Resolved |
+| 2026-09-21 | Phase 4 moved a guarantee off the dying map flag | A spec parked on `?map=off` | `grep -rn "map=off\|map: 'off'" frontend/e2e frontend/src` | ~60 sites across 16 e2e files plus `home.spec.ts`/`home.a11y.spec.ts` | **1 moved.** Every other site's *subject* is the pre-Q **page** — the hero, the filter bar's selects, the List/Map switch, the preview card, the card token sweeps — which #1168's own ACs already claim. The scroll-away test was the only one whose subject was the **shell**, so #1168 inherits a population with no shell guarantees hidden in it |
 | 2026-09-21 | Phase 3 fixed one fixed layer's pointer-events | A `fixed` full-window layer with no `pointer-events-none` whose children do the painting | `grep -rn "fixed inset" frontend/src/app/pages/home frontend/src/app/app.ts frontend/src/app/app.html` | 9 layers | **1 acted on** (`desk-frame`). The rest are not the same defect and were left: `sheet-ground` and the coast picker's backdrop and dialog genuinely paint across their box; the tab bar and menu sheet are opaque surfaces; `riv-bg` is at `z-[-1]` with nothing behind it to block; `discover-sheet.ts:73,133` already carry the property and were the precedent copied |
 | 2026-09-21 | Phase 2 extracted the `hitTestId` seam | An inlined `elementFromPoint` occlusion check | `grep -rn "elementFromPoint" frontend/e2e` | 7 sites in 6 files | **1 migrated** (`tourist-tab-bar.e2e.ts:190`, the only testid-box-centre shape), expectation unchanged. Not migrated, with reasons: `theme-shell.e2e.ts:209` (arbitrary viewport point, not an element's box — the plan wrongly predicted this one), `booking-flow.e2e.ts:174` (asks containment, not identity), `discover-photos.e2e.ts:228,389` and `discover-sheet.e2e.ts:761` (`waitForFunction` predicates), `operator-venue-location.e2e.ts:329` (returns the element, not an id) |
 | 2026-09-21 | Phase 2 nearly shipped a duplicate sweep | A tourist touch-target sweep of the open menu sheet | `grep -n "menu-toggle" frontend/e2e/touch-targets-tourist.e2e.ts` | 2 (the sign-out notice case, which closes the sheet before sweeping; and `:267`, which sweeps it open) | The new case I added was a **duplicate of `:267`** and its justifying comment was false — deleted. `:267` strengthened instead with two visibility assertions, so the sweep cannot pass vacuously on the rows it is now the only measurement of |

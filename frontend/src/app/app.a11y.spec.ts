@@ -42,6 +42,11 @@ describe('App shell accessibility (axe, issue #134)', () => {
     }).compileComponents();
   });
 
+  // `isolate` is false: this file's theme attribute would follow it into the next spec file.
+  afterEach(() => {
+    document.documentElement.removeAttribute('data-riv-theme');
+  });
+
   function shell(): { fixture: ComponentFixture<App>; el: HTMLElement } {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
