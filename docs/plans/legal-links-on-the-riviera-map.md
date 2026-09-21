@@ -214,13 +214,13 @@ N/A — no contract change. `/legal/privacy` and `/legal/terms` are existing Ang
 
 ## Execution status
 
-**Stage pointer:** `plan — awaiting approval of this doc (tdd's confirm-seams step)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** On approval, create phase 0's spec for `LegalMenuRows` and watch it fail.
+**Next action:** Mount `<app-legal-menu-rows>` at the three `app.html` call sites, red-first on AC-4.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `LegalMenuRows`, the shape module | | |
+| 0 — `LegalMenuRows`, the shape module | ✅ | `916cd267` |
 | 1 — Mounted at the three chrome call sites | | |
 | 2 — The `hitTestId` seam and the reachability e2e | | |
 | 3 — `desk-frame`'s pointer-events interface | | |
@@ -241,6 +241,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `docs/plans/legal-links-on-the-riviera-map.md` — this plan (guard-exempt)
 - `frontend/src/app/shared/legal-menu-rows.ts` — the two document rows as a menu shape; owns the hrefs, the labels and the skin table
 - `frontend/src/app/shared/legal-menu-rows.spec.ts` — its own spec: hrefs in order, `target`/`rel`, the 44 px declaration, both variants' skins
+- `frontend/src/app/shared/popover-skin.ts` — `MOBILE_ITEM` promoted out of `app.ts` to sit beside `POP_ITEM`, so both menus paint from one place
 - `frontend/src/app/app.ts` — imports `LegalMenuRows` into the shell's `imports`
 - `frontend/src/app/app.html` — mounts it at the three chrome call sites
 - `frontend/src/app/app.spec.ts` — AC-4: all three call sites, both auth branches
@@ -586,6 +587,8 @@ it('never withholds the footer and the tab bar on the same route', () => {
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-21 | Phase 0 added a third template holding a legal document path | A hard-coded legal document path in a template | `grep -rn "/legal/privacy\|/legal/terms" frontend/src --include=*.ts --include=*.html \| grep -v spec` | 3 (`legal-footer.ts:15-16`, `legal-consent.ts:25,34`, `legal-menu-rows.ts`) + the two route declarations | No extraction. Both sides are literal-pinned (`app.routes.spec.ts:48-53` vs the three component specs), so a rename fails loudly; a module whose implementation is two string constants is maximally shallow. Reasoning under Open questions § Resolved |
+| 2026-09-21 | Phase 0 needed the phone sheet's row skin outside `app.ts` | A menu-row skin the popover family owns but a call site keeps private | `grep -rn "MOBILE_ITEM" frontend/src` | 1 (`app.ts:39`, consumed twice at `:78-79`) | Promoted to `shared/popover-skin.ts` beside `POP_ITEM` — `riviera-tailwind` rule 1's one place so the popovers cannot drift. `CURRENT_POP_ROW` and `POP_ROW_RING` became unused in `app.ts` and were dropped from its import |
 
 ---
 
