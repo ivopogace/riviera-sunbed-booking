@@ -161,7 +161,11 @@
           ></span>
           <span class="flex flex-col leading-none">
             <span class="text-[21px] font-bold tracking-[-0.01em]">Riviera</span>
-            <span class="mt-1 text-[10px] tracking-[0.24em] uppercase text-riv-ink-faint"
+            <!-- Its own case at `tracking-wide`, not 10px tracked to 0.24em: that is 2.4x
+                 Tailwind's own `tracking-widest`, and a tracked-out all-caps eyebrow is the
+                 templated tell. Kept rather than deleted (measured quieter, #1169) — it is the
+                 one line saying where this is, and the brand must not differ between routes. -->
+            <span class="riv-eyebrow mt-1 text-[12.5px] tracking-wide text-riv-ink-faint"
               >Albanian Coast</span
             >
           </span>

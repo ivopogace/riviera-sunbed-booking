@@ -60,6 +60,24 @@ test.describe('the shell header on a wide route', () => {
     });
   }
 
+  test('the eyebrow is 12.5px in its own case on every route', async ({ page }) => {
+    // Route-independent, unlike the width: the brand block should be one thing on every page,
+    // which is also why the eyebrow is quietened rather than deleted (#1169 rejects removal).
+    for (const path of ['/', '/my-bookings']) {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto(path);
+      await awaitRoutedPage(page);
+
+      const eyebrow = page.locator('.riv-eyebrow');
+      await expect(eyebrow).toHaveText('Albanian Coast');
+      await expect(eyebrow).toHaveCSS('font-size', '12.5px');
+      // `ALBANIAN COAST` tracked to 0.24em is 2.4x Tailwind's own `tracking-widest` (0.1em) --
+      // the tracked-out all-caps eyebrow is the templated tell. Its own case, at `tracking-wide`.
+      await expect(eyebrow).toHaveCSS('text-transform', 'none');
+      await expect(eyebrow).toHaveCSS('letter-spacing', '0.3125px');
+    }
+  });
+
   test('every other route keeps the 1080px cap, header and footer alike', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/my-bookings');

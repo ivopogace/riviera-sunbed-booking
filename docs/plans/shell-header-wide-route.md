@@ -200,16 +200,16 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Drop the eyebrow's `uppercase` and take it to 12.5 px, pinned by a new case in
-`shell-header-wide.e2e.ts`.
+**Next action:** Move the theme swatch out of the header into a `Colour theme` disclosure row in
+both account menus, then migrate the e2e population named in R-6.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the `data.wide` route flag, header + footer full-bleed | ✅ | `<phase-0-sha>` |
-| 1 — the eyebrow at 12.5 px in its own case | ⏳ | |
-| 2 — the swatch becomes a labelled menu row | | |
+| 0 — the `data.wide` route flag, header + footer full-bleed | ✅ | `d185cdbd` |
+| 1 — the eyebrow at 12.5 px in its own case | ✅ | `<phase-1-sha>` |
+| 2 — the swatch becomes a labelled menu row | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -328,6 +328,7 @@ files listed in File structure
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-21 | plan-time blast-radius map for the retiring swatch | every reference to the header theme control's testids and popover class | `grep -rn "theme-toggle\|theme-backdrop\|riv-theme-pop" frontend/src frontend/e2e` | 11 e2e files + `app.spec.ts`, `app.a11y.spec.ts`, `app.html`, `app.ts` | recorded as R-6; migration is phase 2 step 5 |
+| 2026-09-21 | phase 1: the eyebrow's all-caps treatment | every all-caps label in the app's templates | `grep -rn "uppercase" frontend/src/app --include=*.html` | 20 beyond the eyebrow (operator console labels, `home.html`'s hero chip + section labels) | none changed: #1169 scopes the shell brand only, and the rest is page/console content, not shared chrome. `home.html:603`'s `tracking-[0.16em] uppercase` hero chip is the same tell on Discover's own page and is a fair follow-up, deliberately not widened into here |
 | 2026-09-21 | phase 0: a second element needed the same cap lifted | every element in the tree carrying the shell's 1080px cap | `grep -rn "max-w-\[1080px\]" frontend/src` | 3 (header wrapper, footer inner, `home.html`'s `.discover` column) | header wrapper + footer inner take `data-wide:max-w-none`; the Discover column is page content, not shell chrome, and stays capped — it is what `?map=off` renders under the wide header (R-3) |
 
 ---
