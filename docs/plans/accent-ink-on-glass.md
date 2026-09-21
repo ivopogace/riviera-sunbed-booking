@@ -25,8 +25,8 @@ token — `--riv-wash-hover` — has the identical defect one line away in the s
 `riviera-plan-doc` (forced the generalization-audit population below: *every* ink on an
 `appPanelGlass` subtree, not just the three sites the issue names) · `tdd` (contrast spec red
 first against the unchanged `tailwind.css`, then the declarations) · `riviera-review-overlay`
-(at the review gate) · `riviera-docs-freshness` (close-out; two candidate findings already
-logged under Open questions) · `riviera-tailwind` (token per theme + `@theme inline` row +
+(at the review gate) · `riviera-docs-freshness` (**ran** over `66c2954..HEAD`, 1 finding + 1
+plan retirement, both fixed here) · `riviera-tailwind` (token per theme + `@theme inline` row +
 the reason at the base declaration; the no-drift rule → the computed-style e2e) ·
 `riviera-frontend` (the e2e belongs in the CI-safe mocked suite `frontend/e2e/`)
 
@@ -98,12 +98,15 @@ the reason at the base declaration; the no-drift rule → the computed-style e2e
 
 ## Open questions / Assumptions
 
-- **Assumption:** No ledger row is owed in `docs/design/colour-literal-token-audit.md` — that
-  file tracks hex *literals in `frontend/src` wanting tokens*, and this slice migrates no
-  literal; it adds two token declarations in the registry itself. — *Owner:* this slice ·
-  *Resolves by:* the `riviera-docs-freshness` sweep at close-out.
+_None open._
 
 ### Resolved
+
+- **Assumption:** No ledger row is owed in `docs/design/colour-literal-token-audit.md`. —
+  *Confirmed by the sweep:* that file tracks hex *literals in `frontend/src` wanting tokens*,
+  row by row; this slice migrates no literal, it adds two declarations in the registry itself.
+  Every `--riv-accent-ink` / `--riv-wash-hover` mention there is historical narrative about a
+  past migration, and none states a present-tense fact this slice falsifies.
 
 - **Open question:** The issue proposes riviera `#7cd7e8`, which measures 4.07:1 on the
   riviera header glass at the `#ffe2b0` stop — under AA, so the issue's own AC-2 cannot pass
@@ -177,6 +180,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/pages/home/discover-head.ts` — the ◎ located glyph, found by the audit
 - `frontend/src/app/pages/home/venue-row.html` — row price ink + row hover wash
 - `frontend/e2e/panel-glass-inks.e2e.ts` — AC-4, the computed-style proof
+- `.claude/skills/riviera-frontend/SKILL.md` — docs-freshness finding D-1
+- `docs/plans/pin-layer-placement.md` — retired; its PR #1164 is merged
 
 ---
 
@@ -229,6 +234,26 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | 2026-09-21 | The `◎` glyph is `aria-hidden`, which `home.contrast.spec.ts` excludes from AA as decoration | Whether the audit's fourth site is genuinely in the population | read of the spec's stated exclusion policy | 1 | **Repainted anyway.** The exclusion decides what owes a *ratio*, not what may wear a card token on a panel — AC-5 is about the token, and at 1.09:1 the glyph is invisible rather than decorative, which is a defect in a "you are located" affordance even where WCAG asks nothing. |
 
 ---
+
+## Docs-freshness sweep
+
+Range `66c2954..HEAD` (the slice's own diff, merge base fetched). One finding, one retirement.
+
+- **D-1** `.claude/skills/riviera-frontend/SKILL.md:90` — states *"the token registry is two
+  places only: a CSS block in `tailwind.css` + a row in `core/theme.ts`"*. Contradicted by this
+  slice: two tokens were added and `core/theme.ts` needed no change, because it carries
+  `THEME_OPTIONS` (id, name, swatch, light) — the **theme** switcher's rows, not token rows.
+  The sentence is true of a theme and false of a token, and it misled #1165, which repeats
+  "a row in `core/theme.ts`" in its own fix sketch. **Action:** split the two registries in
+  place. Not a decision change, so patched rather than flagged.
+- **Plan retirement** — `docs/plans/pin-layer-placement.md` (#1159, PR #1164) merged and was
+  never deleted; a merged plan cannot be removed in its own PR, so this close-out does it.
+  No citation of the path or the bare slug exists outside `docs/plans/`, so nothing to repoint,
+  and nothing in it is rationale a later slice needs that is not already in the shipped code.
+- **Counting sweep (2b):** triggered — the slice makes a second member of two token families.
+  Every `\b(the|both|only) (two|three)\b` hit across the substrate docs, `docs/design/` and
+  the skills is historical narrative about a past migration; none counts accent or wash tokens.
+  Zero findings.
 
 ## Acceptance-criteria verification (final)
 
