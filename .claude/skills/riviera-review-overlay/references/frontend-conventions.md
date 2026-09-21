@@ -10,12 +10,11 @@ new `<img>`, no `standalone: true`, no `changeDetection: OnPush`, `class`/`style
 returns nothing for new code. Deviations documented in the plan.
 
 ### RV-FE-7. Styling is Tailwind, shared via directives, no drift (`riviera-tailwind`) — Minor; Major for a restyle with no drift check or an `@apply`/new-`.scss` pattern
-No new `.scss` without a stated why; **migrate-on-touch** (a touched component with legacy
-SCSS is migrated, a justified holdout, or a maintainer-approved defer with a follow-up issue —
-never self-granted); reuse via directive/component, not `@apply`/`@utility`; a class a spec
-queries is retained as an inert marker; a restyle proves no drift with a computed-style diff
-(contrast specs are pure maths); interactive controls meet 44 × 44 px. `check-touch-target.mjs`
-proves only a declaration and ignores `<a>`; `frontend/e2e/touch-targets*.e2e.ts` measures.
+No new `.scss` without a stated why; reuse via directive/component, not `@apply`/`@utility`; a
+class a spec queries is retained as an inert marker; a restyle proves no drift with a
+computed-style diff (contrast specs are pure maths); interactive controls meet 44 × 44 px.
+`check-touch-target.mjs` proves only a declaration and ignores `<a>`;
+`frontend/e2e/touch-targets*.e2e.ts` measures.
 Surface directives carry no `border-radius`. A `border-width` of `"1px"` for a `1.5px` border
 is Chromium snapping, not a regression.
 

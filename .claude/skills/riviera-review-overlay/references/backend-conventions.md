@@ -26,8 +26,9 @@ go to query-vs-event (sync answer → `api/` port; state change → event) and R
 Others *call* it → `api/`; another module *implements* it → `spi/` (`@NamedInterface("spi")`),
 granted only to the implementor; the module's own adapter implements it → internal in
 `application/` (Minor if published). Example: `venue.spi.SetAvailabilityLookup` implemented by
-`availability` (granted `venue::api` + `venue::spi`); `booking` gets `venue::api` only. Both
-misfilings are `verify()`-legal — review is the only catch.
+`availability` (granted `venue::api` + `venue::vocabulary` + `venue::spi`); `payout`, which only
+calls venue, gets `venue::api` + `::vocabulary`. Both misfilings are `verify()`-legal — review is
+the only catch.
 
 ### RV-BE-3c. Published-surface placement — Major
 Ids/value records → `vocabulary/`, events → `events/`, ports only in `api/`/`spi/`

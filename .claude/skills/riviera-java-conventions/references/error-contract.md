@@ -1,7 +1,8 @@
 # Request validation & the error contract
 
 Every API error is an RFC-7807 `ProblemDetail` (`application/problem+json`) with a stable
-`code` extension, built in exactly two places.
+`code` extension, built in exactly two places; the filter chain's rejections mirror it by hand
+(below).
 
 ## `ApiProblem` (`ai.riviera.platform.shared`)
 
@@ -20,7 +21,7 @@ occupies this grid cell."*), never a consequence, a remedy or UI navigation.
 - **No call site is exempt**, mapper or not (`RATE_LIMITED`, `CANNOT_SUSPEND_SELF` have none).
   Enumerate by mechanism: `grep -rn "ApiProblem\." platform/src/main` unrolled through each
   controller's local `problem(...)`/`error(...)` helper, plus the hand-built JSON in
-  `RateLimitFilter` — a phrase grep misses all of those.
+  `RateLimitFilter` and `SecurityProblemResponses` — a phrase grep misses all of those.
 - **One code, one string.** `MISSING_CURRENT_PASSWORD` (operator + customer),
   `REQUEST_NOT_PENDING` (accept, decline, withdraw — may not say "already been decided"),
   `STALE_WRITE` (reprice, rename, batch apply, replace share one `venue.set_version` token —
@@ -39,7 +40,8 @@ The single `@RestControllerAdvice`, extending `ResponseEntityExceptionHandler`:
 the framework's logged 500. A controller feeding request input into IAE-throwing guards
 (`toCommand()`, `PeriodKey.of`, enum parses) translates at the conversion boundary via
 `InvalidApiRequestException.parsing(...)`. `ErrorContractArchitectureTests` forbids
-per-controller `@ExceptionHandler`s. `RateLimitFilter` mirrors the shape by hand (rejects before
+per-controller `@ExceptionHandler`s. `RateLimitFilter` and `SecurityProblemResponses`
+(security-chain 401/403, proof-of-work refusals) mirror the shape by hand (they reject before
 MVC dispatch).
 
 - Validation: presence/shape/format at the edge (`toCommand()`); domain invariants in the value

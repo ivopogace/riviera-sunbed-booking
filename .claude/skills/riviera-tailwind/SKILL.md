@@ -2,15 +2,16 @@
 name: riviera-tailwind
 description: >-
   How to write Tailwind v4 in frontend/: directive sharing (no @apply), test-hook classes,
-  the touch-target floor, tokens across the three themes, no-drift proofs,
-  migrate-on-touch. Load BEFORE styling anything under frontend/src — Tailwind is the
-  default and SCSS needs a stated justification.
+  the touch-target floor, tokens across the three themes, no-drift proofs. Load BEFORE
+  styling anything under frontend/src — Tailwind is the default and SCSS needs a stated
+  justification.
 ---
 
 # Riviera Tailwind conventions
 
 Worked examples: `shared/*-glass`, `amenity-chip`, `status-chip`, `failure-panel`,
-`retry-button`. Read the nearest one before styling.
+`retry-button`. Read the nearest one before styling. Rule numbers are cited from source —
+never renumber.
 
 ## Rules
 
@@ -42,7 +43,7 @@ Worked examples: `shared/*-glass`, `amenity-chip`, `status-chip`, `failure-panel
    else is a layout to fix. `scripts/check-touch-target.mjs` (hook + CI; `--files`/`--all`)
    gates the declaration only and ignores `<a>`.
 5. **Idioms:** `text-[14px]` not `text-sm` (named sizes bundle line-height); arbitrary variants
-   (`[&.premium]:bg-[#…]`), no plugins; first-party `scrollbar-none|thin|auto`,
+   (`[&.active]:bg-riv-accent-chip-fill`), no plugins; first-party `scrollbar-none|thin|auto`,
    `scrollbar-thumb-*`, `scrollbar-gutter-*` (Safari paints its own bar before 18.2);
    `[transition:background_0.15s_ease,transform_0.12s_ease]` for per-property durations;
    `hover:` is already under `@media (hover:hover)`; `motion-reduce:` for reduced motion;
@@ -92,8 +93,10 @@ pinning) is `riviera-frontend`'s.
    - Console-only tokens (`--riv-console-*`, `--riv-select-*`, `--riv-alert-tint`, …) declare in
      the base block AND `dark`, never `riviera`; a guard holds them to those two. A one-theme
      treatment takes a treatment-off token (`--riv-console-avatar-ring`: `transparent` in
-     porcelain). The console paints no `white`/`black` utilities; inset fills are
-     `bg-riv-console-inset/α` (`operator/console-literal-sweep.spec.ts`).
+     porcelain). The console paints no `white`/`black` utilities beyond the sweep's
+     fixed-surface residue (`text-white`/`outline-white` on a fixed fill, the camera's
+     `bg-black/80`); inset fills are `bg-riv-console-inset/α`
+     (`operator/console-literal-sweep.spec.ts`).
    - Tokenise a skin whole: a fixed fill pins every ink and border on it
      (`--riv-form-error-fill`/`-ink`, the `--riv-solid-btn-*` set); take a per-state class
      ternary whole. Group a family by form, not value.
@@ -112,26 +115,6 @@ SCSS only for what Tailwind can't express, with the why stated.
 
 Prove a restyle with a `getComputedStyle` diff in Playwright (`test:e2e:a11y`), not the class
 list — contrast specs are pure maths. Chromium snaps `1.5px` borders to `"1px"`; assert the
-snapped value.
-
-## Migrate on touch
-
-There is no SCSS under `frontend/src`. A slice touching a component that still carries legacy
-SCSS migrates it in the same slice (narrow scope is fine). Deferral only via `AskUserQuestion`
-to the maintainer, recorded as a follow-up issue. RV-FE-7 checks. Checklist:
-`references/scss-migration.md`.
-
-## Red flags
-
-| Thought | Reality |
-|---|---|
-| `@apply` the shared styles | Extract a directive/component. |
-| Drop `.set-tile`, it's just styling | A spec queries it — keep the marker. |
-| Bundle `rounded-[26px]` into the glass directive | Stylesheet-order coin-flip — unbundle. |
-| `text-sm` ≈ 14px | Bundles line-height → drift. `text-[14px]`. |
-| Branch on `data-riv-theme` for a colour | Tokens switch; `:host-context` only for whole treatments. |
-| Classes look right, ship it | Diff computed styles. |
-| `min-h-11` on an `<a>` fixes the target | Not on `display: inline` — add `inline-flex items-center`; let the sweep measure. |
-| This control can't be 44 px | The layout is the bug; the 24 px class is the maintainer's call. |
-| `check-touch-target` is green | It never measures a box and never looks at `<a>`. |
-| `outline-none`, custom focus state | The guard fails it; change colour/offset with `focus-visible:` instead. |
+snapped value. A new shared primitive gets a `.spec.ts`; a composited or tinted surface gets a
+`*.contrast.spec.ts` proving AA over its worst-case gradient stops with the
+`testing/glass-tokens.ts` helpers.

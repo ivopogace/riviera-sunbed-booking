@@ -27,8 +27,8 @@ Closes #<!-- issue --> · Plan: `docs/plans/<slug>.md`
 - [ ] **#2 Availability single source of truth** — `(set,date)` writes go through the
   `availability` module; unique constraint + atomic claim; a concurrency test proves
   two simultaneous claims can't both win. *(or N/A — no availability/booking/map change)*
-- [ ] **#3/#4 Pool + cutoff** — online claims target ONLINE-pool sets; same-day booking
-  closed at the evening-before cutoff. *(or N/A)*
+- [ ] **#3/#4 Pool + cutoff** — online claims target ONLINE-pool sets; online sales for day D
+  close at the venue's `sales_close` on D (`Europe/Tirane`). *(or N/A)*
 - [ ] **#5 Money** — integer minor units + ISO currency; no floating point. *(or N/A)*
 - [ ] **#6 Time** — store UTC `Instant`; reason/cut off in `Europe/Tirane`; `TIMESTAMPTZ`,
   `booking_date` as `DATE`. *(or N/A)*
@@ -47,9 +47,9 @@ Closes #<!-- issue --> · Plan: `docs/plans/<slug>.md`
 - [ ] CI is green (build + tests + scans).
 - [ ] Tests run for real (Testcontainers ITs **not** skipped — `skipped=0`).
 - [ ] **SDLC review gate run** — per the invocation ladder in riviera-sdlc
-  `references/pr-gates.md` §1 (the plugin's review workflow actually executed, or
-  `/review <PR>` as a declared degraded fallback), with `riviera-review-overlay` layered on
-  top; findings resolved or deferred with a follow-up issue.
+  `references/pr-gates.md` §1 (the plugin's review workflow actually executed, or the
+  built-in `Skill("code-review")` as a declared degraded fallback), with `riviera-review-overlay`
+  layered on top; findings resolved or deferred with a follow-up issue.
   <!-- The overlay alone is NOT the review — it adds bank items to an active one, so running it
        by itself leaves the generic FE/BE/contract banks unrun. If tooling blocked the review
        (e.g. the session cannot spawn the review subagents), LEAVE THIS UNTICKED and say so in

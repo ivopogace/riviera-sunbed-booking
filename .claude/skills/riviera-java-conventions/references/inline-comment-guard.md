@@ -9,8 +9,8 @@ Three rules:
   comment, or anywhere in a touched doc comment. `issue N` / `PR N` always count; a bare `#NNN`
   only in a citing position (after `(`, a comma, `NNN/`, a citing word from `CITING` in the
   guard, or opening the comment). `: #123` (a colour) and `the #404 error` are left to review.
-  A colour as sentence subject (`// #123 is the emphasis colour`) is the one false positive —
-  rewrite as `the #123 colour`.
+  A colour in a citing position (`// #123 is the emphasis colour`, `(#333)`, `in #333`) is a
+  false positive — rewrite as `the #333 colour`.
 - **`history`** (advises only) — `no longer`, `previously`, `used to be`, `this change`.
 
 Scope:
