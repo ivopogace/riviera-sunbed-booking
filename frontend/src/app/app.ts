@@ -101,11 +101,14 @@ export type TouristSection = 'beaches' | 'bookings' | 'account';
  * The route data a tourist route may carry for the shell's phone chrome (`app.routes.ts`):
  * `section` places the route under a bottom tab; `tabBar: false` hides the bar altogether — the
  * payment page, where a thumb-reach exit under `Pay €45` was the objection that removed the
- * search-first header candidate. Read off the same root→leaf walk as the operator flags.
+ * search-first header candidate. `footer: false` is for a route that paints to every edge of the
+ * window, where the shared footer would be covered rather than read; Discover's riviera map is
+ * the first. Read off the same root→leaf walk as the operator flags.
  */
 export interface TouristRouteData {
   section?: TouristSection;
   tabBar?: false;
+  footer?: false;
 }
 
 /** The active route's chrome flags — see {@link App.routeChrome}. */
@@ -118,6 +121,8 @@ interface RouteChrome {
   section: TouristSection | null;
   /** `false` when any route on the chain carries `data.tabBar: false`. */
   tabBar: boolean;
+  /** `false` when any route on the chain carries `data.footer: false`. */
+  footer: boolean;
 }
 
 /** The chrome before the first navigation completes: the tourist header, footer and tab bar,
@@ -127,6 +132,7 @@ const PRE_NAVIGATION_CHROME: RouteChrome = {
   venueId: undefined,
   section: null,
   tabBar: true,
+  footer: true,
 };
 
 /** Narrows an untyped `data.section` to a {@link TouristSection}; anything else is no section. */
@@ -253,14 +259,16 @@ export class App {
     let venueId = idParam(route.paramMap, 'venueId');
     let section = sectionOf(route.data['section']);
     let tabBar = route.data['tabBar'] !== false;
+    let footer = route.data['footer'] !== false;
     while (route.firstChild) {
       route = route.firstChild;
       console = consoleOf(route.data['console']) ?? console;
       venueId = idParam(route.paramMap, 'venueId') ?? venueId;
       section = sectionOf(route.data['section']) ?? section;
       tabBar &&= route.data['tabBar'] !== false;
+      footer &&= route.data['footer'] !== false;
     }
-    return { console, venueId, section, tabBar };
+    return { console, venueId, section, tabBar, footer };
   });
 
   /** The console section the active route belongs to, `plain` when it carries none — read only
@@ -276,6 +284,9 @@ export class App {
   protected readonly tabBar = computed(
     () => this.shellChrome() === 'tourist' && this.routeChrome().tabBar,
   );
+
+  /** Whether the shared footer renders: every route but one flagged `footer: false`. */
+  protected readonly footer = computed(() => this.routeChrome().footer);
 
   /** Whether the auth card is the current page, by path alone — the same test `routerLinkActive`
    *  runs for the plain-path links, as a signal. */

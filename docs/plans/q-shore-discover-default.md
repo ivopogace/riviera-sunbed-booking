@@ -126,6 +126,7 @@ no pixel; both designs' styling ships already)
 | Card link to the beach map carrying the date | preserved | Same `venue-card` template on the sheet; from `lg` the **panel** renders `app-venue-row` instead, which carries the same link. A `venue-card` selector is therefore not a viewport-independent "the page loaded" marker any more — see R-8. |
 | `?map=off` surviving in-page interaction | preserved | Discover never calls `router.navigate`: the date and the filters are signals, so the parameter lives for the page's lifetime and browser-back restores it. |
 | `?map=off` surviving a press on the header/tab-bar **Discover** link | dropped, by design | Those link to `/` with no parameters, so the opt-out resets to Q. The issue calls `?map=off` "the comparison lever while the new design soaks" — a per-URL lever, not a sticky preference, so nothing persists it. |
+| The shell footer, with the only links to Privacy and Terms | dropped on **both**, with a follow-up | The riviera map fills the window, so the footer was rendered and wholly covered — measured, not assumed. The route now declares `footer: false` and the shell withholds it. Route data is static, so `?map=off` gives its footer up too although it scrolls; harmless while nothing links to it, and it dies with #1168. Placement in Q: **#1173**. |
 
 ## Risk register
 
@@ -139,7 +140,7 @@ no pixel; both designs' styling ships already)
 | R-6 | Boundary leaks (#11) / BOLA (#13) / rounding (#5) / concurrent reservation (#2) / webhook (#8) / payout (#9) | N/A | N/A | No backend, no money, no booking path, no venue-scoped endpoint — the diff is `frontend/src/app/pages/home/` plus `frontend/e2e/` | me | n/a |
 | R-7 | Flyway `V<n>` claim | N/A | N/A | No migration in this slice | me | n/a |
 | R-8 | The mocked e2e suite's default viewport is 1280 × 720 (`playwright.a11y.config.ts`), so an unqualified `goto('/')` lands in **panel** mode, where `venue-card` does not exist — `venue-row` does. Specs that use `venue-card` merely as a "the page settled" marker break for a reason unrelated to what they test | High | Medium | Each such marker is repointed to what that spec actually needs (`awaitRoutedPage`, `desk-panel`), not blanket-moved to `?map=off`: a header or token spec should keep measuring the page that ships | me | open |
-| R-9 | `desk-frame` is `fixed inset-x-0 bottom-0 z-[1]` with no `pointer-events-none`, so from `lg` it covers the shell footer — `legal-pages.e2e.ts` clicks a footer link while parked on `/` | Medium | Medium | Confirmed or refuted by the measured run below. If real it is a **defect of #1159's panel**, not of this slice's flag, but it becomes visible here, so it is fixed here (the frame stops at the footer, or takes `pointer-events-none` with its children re-enabling) rather than worked around in the spec | me | open |
+| R-9 | `desk-frame` is `fixed inset-x-0 bottom-0 z-[1]` with no `pointer-events-none`, so from `lg` it covers the shell footer — `legal-pages.e2e.ts` clicks a footer link while parked on `/` | Medium | Medium | Confirmed or refuted by the measured run below. If real it is a **defect of #1159's panel**, not of this slice's flag, but it becomes visible here, so it is fixed here rather than worked around in the spec | me | **reproduced, fixed in `0aaec182`+**: real on BOTH surfaces (390: the sheet's card over it; 1280: the MapLibre canvas), doc height = viewport so nothing scrolls it into reach, and `legal-footer.ts` is mounted in exactly one place — so Privacy/Terms had no route from the landing page. Put to the user; chosen: a `footer: false` route flag + follow-up **#1173** |
 | R-10 | A spec goes **vacuous** rather than red — e.g. `theme-shell.e2e.ts`'s `expect(filter-beach).toHaveCount(0)`, which proved "the deferred chunk has not landed" and now passes because `filter-beach` can never render at all | Medium | Medium | The measured run cannot catch this (it stays green), so every still-green `/` spec identified by the survey is read and repointed by hand | me | open |
 
 ## Open questions / Assumptions
@@ -150,6 +151,18 @@ no pixel; both designs' styling ships already)
 - **Assumption:** the pre-Q page keeps its coverage rather than gaining new coverage; this slice
   adds tests only for the new default and for the route contract itself. — *Owner:* me ·
   *Resolves by:* #1168 deletes that coverage with the page.
+
+### Resolved
+
+- **Open question (raised by R-9, put to the user):** the riviera map covers the shell footer on
+  both surfaces, and `shared/legal-footer.ts` is mounted in exactly one place, so making Q the
+  default leaves Privacy and Terms unreachable from the landing page. Four options were costed:
+  hide the footer here and follow up; place the links inside Q now; shrink the fixed surface above
+  the footer (costs #1159's measured panes 568/864/1,344); or ship the regression. **Outcome:**
+  hide it here — a `footer: false` route-data flag mirroring the shell's existing `tabBar: false`,
+  which changes nothing a tourist sees (the footer was already invisible) but stops a dead row
+  that a pointer and AT still reach; where the legal links belong in Q's design is **#1173**.
+  Landed in the phase-1 commit.
 
 ## Availability & concurrency (invariant #2)
 
@@ -193,16 +206,16 @@ one, which is sheet mode's existing behaviour from #1157, not a new shape.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2) — awaiting the full mocked e2e run`
 
-**Next action:** Write the four route-contract specs red, strip the flag from Q's setups, then
-invert `mapFlag`.
+**Next action:** Confirm the full mocked suite, then phase 3 — docs freshness and close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Move the pre-Q coverage onto `?map=off` | ✅ | |
-| 1 — Invert the flag; strip it from Q's setups | ⏳ | |
-| 2 — The default route's e2e (AC-7, AC-9) | | |
+| 1 — Invert the flag; strip it from Q's setups | ✅ | |
+| 1a — The covered footer: a `footer: false` route flag | ✅ | |
+| 2 — The default route's e2e (AC-7, AC-9) | ⏳ | |
 | 3 — Docs freshness + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -228,10 +241,32 @@ diff is only e2e will report the same false zero.
 - `frontend/src/app/pages/home/home.ts` — the route's `map` contract inverts
 - `frontend/src/app/pages/home/home.spec.ts` — the route-contract describe; the pre-Q blocks onto `?map=off`; Q's blocks lose the flag
 - `frontend/src/app/pages/home/home.a11y.spec.ts` — `Home accessibility (axe)` onto `?map=off`; the sheet describe loses the flag
+- `frontend/src/app/pages/home/home.html` — the flag-era comment on the shared card template
 - `frontend/e2e/discover-sheet.e2e.ts` — flag out of the setup; the AC-7 first-screen test
 - `frontend/e2e/discover-map.e2e.ts` — the pre-Q blocks onto `?map=off`; the pin/panel describe loses the flag
 - `frontend/e2e/panel-glass-inks.e2e.ts` — the sheet/panel helper loses the flag; the card-price test onto `?map=off`
+
+**The pre-Q e2e population moved onto `?map=off`** (phase 0 steps 3–4a; every `goto('/')` in the
+first group, named sites in the rest):
+
+- `frontend/e2e/discovery-flow.e2e.ts` — plus the two "Back to Discover" markers, which land on Q
+- `frontend/e2e/discover-photos.e2e.ts` — plus its two `toHaveURL('/')` assertions
+- `frontend/e2e/same-day-booking.e2e.ts`
+- `frontend/e2e/operator-venue-season.e2e.ts`
+- `frontend/e2e/sun-token.e2e.ts`
+- `frontend/e2e/loading-announcements.e2e.ts`
+- `frontend/e2e/solid-fill-token-skin.e2e.ts` — `openDiscovery` only; its token-registry test stays on `/`
+- `frontend/e2e/touch-targets-tourist.e2e.ts` — the filter-bar and three map-view sweeps
+- `frontend/e2e/mobile-zoom-tourist.e2e.ts` — the `SURFACES` row and the switch's double-tap test
+- `frontend/e2e/theme-shell.e2e.ts` — the hero scrim and native-field-scheme tests; the withheld-chunk marker → `app-home`
+- `frontend/e2e/tourist-header.e2e.ts` — settle marker only; the bar keeps measuring the page that ships
+- `frontend/e2e/tourist-tab-bar.e2e.ts` — the scroll-away test, a handover to #1173
 - `CONTEXT.md` — the **Venue sheet** and **Venue panel** entries say "Behind the map flag on Discover"; after this slice the sheet and the panel *are* Discover, and `?map=off` is the exit. (`riviera-docs-freshness`, phase 3.)
+- `frontend/src/app/app.ts` — `TouristRouteData.footer?: false`, carried on the same root→leaf walk as `tabBar`
+- `frontend/src/app/app.html` — the shared footer behind `@if (footer())`
+- `frontend/src/app/app.routes.ts` — Discover declares `footer: false`
+- `frontend/src/app/app.spec.ts` — the flag's own spec
+- `frontend/e2e/legal-pages.e2e.ts` — the footer test moves to `/my-bookings`; a new test pins that Discover withholds it
 
 *(The rest of the e2e population is listed in phase 0, from the measured run.)*
 

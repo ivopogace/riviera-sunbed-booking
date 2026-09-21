@@ -129,12 +129,23 @@ test('checkout Review step links open the terms in a new tab, keeping the dialog
 test('footer carries the standing legal links, opening in a new tab', async ({ page }) => {
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: VENUES }));
 
-  await page.goto('/');
+  // Not Discover: the riviera map fills the window, so that route withholds the shared footer.
+  await page.goto('/my-bookings');
   const popupPromise = page.waitForEvent('popup');
   await page.locator('.riv-footer').getByRole('link', { name: 'Privacy' }).click();
   const popup = await popupPromise;
   await expect(popup).toHaveURL(/\/legal\/privacy$/);
   await expect(popup.getByRole('heading', { name: 'Privacy Policy' })).toBeVisible();
   // The originating page never navigated — footer links must not tear down app state.
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/my-bookings$/);
+});
+
+test('Discover withholds the shared footer: the riviera map paints to every edge', async ({
+  page,
+}) => {
+  await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: VENUES }));
+
+  await page.goto('/');
+  await expect(page.getByTestId('venue-row').first()).toBeVisible();
+  await expect(page.locator('.riv-footer')).toHaveCount(0);
 });

@@ -63,6 +63,8 @@ const surfaceRoutes = () => [
   { path: 'venues/:id', component: BlankPage, data: { section: 'beaches' } },
   { path: 'booking/:code', component: BlankPage, data: { section: 'bookings' } },
   { path: 'pay', component: BlankPage, data: { section: 'bookings', tabBar: false } },
+  // Discover's real shape since the riviera map: a full-window surface, so no shell footer.
+  { path: 'map-route', component: BlankPage, data: { section: 'beaches', footer: false } },
   // The pay page's real shape: lazily loaded, so a sheet can be opened while its chunk is in flight.
   {
     path: 'pay-lazy',
@@ -600,6 +602,23 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     customerAuth.email.set('ana@example.com');
     fixture.detectChanges();
     expect(currentTab(el)).toBe('menu-toggle');
+  });
+
+  it('hides the shared footer on a route carrying footer: false, and restores it after', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+
+    await router.navigate(['/map-route']);
+    fixture.detectChanges();
+    // A full-window route paints to every edge, so a footer under it would be covered, not read:
+    // rendering it anyway leaves a dead row in the DOM that AT and a pointer both still reach.
+    expect(el.querySelector('.riv-footer')).toBeNull();
+    // Only the footer goes: the header and the bar are the route's own business.
+    expect(el.querySelector('.riv-header')).not.toBeNull();
+
+    await router.navigate(['/my-bookings']);
+    fixture.detectChanges();
+    expect(el.querySelector('.riv-footer')).not.toBeNull();
   });
 
   it('hides the bar and drops the padding on a route carrying tabBar: false (#1003)', async () => {

@@ -723,6 +723,50 @@ test.describe('Discover sheet — the poster', () => {
     await page.mouse.up();
   });
 
+  /**
+   * The epic's first user story, as geometry: a tourist opening Discover sees the region's map
+   * with priced pins on the first screen. The counts above prove the poster is drawn and cheap;
+   * this proves it is drawn WHERE a tourist can see it, with no scroll and no gesture, now that
+   * `/` is the route that renders it.
+   */
+  test('the default route paints the poster and a priced pin inside the first screen', async ({
+    page,
+  }) => {
+    await mockMapResources(page);
+    await page.setViewportSize({ width: PHONE.width, height: PHONE.height });
+    await page.goto('/');
+    await expect(page.getByTestId('venue-card')).toHaveCount(4);
+
+    // The ground IS the first screen — not a pane below a hero, which is what the epic filed.
+    const ground = await page.getByTestId('sheet-ground').boundingBox();
+    expect(ground).toEqual({ x: 0, y: 0, width: PHONE.width, height: PHONE.height });
+
+    // The still covers that ground edge to edge: it is centre-cropped, never letterboxed, so it
+    // overhangs on purpose and a box inside the viewport would mean a gap the map cannot fill.
+    await expect(page.getByTestId('poster-image')).toBeVisible();
+    const poster = await page.getByTestId('poster-image').boundingBox();
+    expect(poster!.y).toBeLessThanOrEqual(0);
+    expect(poster!.x).toBeLessThanOrEqual(0);
+    expect(poster!.y + poster!.height).toBeGreaterThanOrEqual(PHONE.height);
+    expect(poster!.x + poster!.width).toBeGreaterThanOrEqual(PHONE.width);
+
+    // A pin carrying a price, not a bare dot: the story is "priced pins", not "pins".
+    const priced = page.locator('[data-pin] .pin-price').first();
+    await expect(priced).toBeVisible();
+    await expect(priced).toHaveText(/€/);
+    const pin = await priced.boundingBox();
+    expect(pin!.y).toBeGreaterThanOrEqual(0);
+    expect(pin!.y + pin!.height).toBeLessThanOrEqual(PHONE.height);
+
+    // Laid out on screen is not seen: the sheet rests over the same ground, so ask the document
+    // what is actually painted at the pin's middle — the check that caught the covered footer.
+    const painted = await page.evaluate(
+      ([x, y]) => document.elementFromPoint(x, y)?.closest('[data-pin]') !== null,
+      [pin!.x + pin!.width / 2, pin!.y + pin!.height / 2],
+    );
+    expect(painted, 'the priced pin is the thing at its own centre, not the sheet').toBe(true);
+  });
+
   test.describe('fake engine', () => {
     test.beforeEach(async ({ page }) => {
       await page.addInitScript(() => {

@@ -216,7 +216,10 @@ export const routes: Routes = [
     path: '',
     loadComponent: () => import('./pages/home/home').then((m) => m.Home),
     title: 'Riviera — Sunbed Booking',
-    data: { section: 'beaches' } satisfies TouristRouteData,
+    // The riviera map fills the window, so the shared footer would be covered rather than read.
+    // Route data is static, so `?map=off`'s scrolling page gives its footer up too, for the one
+    // release it exists; where the legal links live on the map is its own issue.
+    data: { section: 'beaches', footer: false } satisfies TouristRouteData,
   },
   {
     // Device-local guest bookings list.
