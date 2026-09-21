@@ -18,7 +18,7 @@ import { expect, Page, test } from '@playwright/test';
  * compute the card accent.
  */
 
-/** riviera `--riv-panel-accent-ink`. Not the dark theme's #7cd7e8: that reads 4.07:1 on this glass. */
+/** riviera `--riv-panel-accent-ink` (rationale for the value: its declaration in `tailwind.css`). */
 const PANEL_ACCENT = 'rgb(168, 232, 242)';
 /** riviera `--riv-panel-wash-hover` — a second coat of its own header tint, not a lightening wash. */
 const PANEL_WASH_HOVER = 'rgba(10, 44, 63, 0.45)';

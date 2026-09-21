@@ -210,21 +210,12 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
     expectAaOverStops(theme.heroInk, theme.heroInkSoftAlpha, theme.headerGlass, theme.stops);
   });
 
-  /**
-   * The panel surface has its own accent. `--riv-accent-ink` is a CARD ink: riviera keeps the
-   * light themes' card palette on a dark page chrome, so it stays dark teal there and reads
-   * 1.09:1 on this glass — which is why the group-head distance and the row price wear
-   * `--riv-panel-accent-ink` instead, and why nothing on a panel wears the card accent.
-   */
+  // The panel's own accent; the card accent is a different token (rationale: `tailwind.css`).
   it('panel accent ink (group-head distance, row price) meets AA on the header glass', () => {
     expectAaOverStops(theme.panelAccent, 1, theme.headerGlass, theme.stops);
-    expectAaOverStops(theme.heroInk, 1, theme.headerGlass, theme.stops);
   });
 
-  /**
-   * The REASON the token above exists: if riviera's card accent ever cleared AA on this glass, the
-   * second token would be dead weight, and this case says so by failing.
-   */
+  // Were the card accent ever to clear AA here, the panel token would be dead weight — so this fails.
   it('the card accent ink is the one that could not clear AA here, in riviera', () => {
     const worst = Math.min(
       ...theme.stops.map((stop) =>
@@ -234,11 +225,7 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
     expect(worst < AA_NORMAL).toBe(theme.name === 'riviera');
   });
 
-  /**
-   * A hovered desktop row is the wash composited over the panel glass, over each stop. The wash
-   * must move the surface AWAY from the ink — porcelain and dark lighten, riviera deepens its own
-   * header tint, because a lightening wash there costs the panel accent its AA at any alpha.
-   */
+  // A hovered desk row: the wash over the panel glass, over each stop (rationale: `tailwind.css`).
   it('the row hover wash keeps both inks at AA on the panel glass', () => {
     for (const stop of theme.stops) {
       const panel = surfaceOver(theme.headerGlass, stop);
@@ -373,12 +360,10 @@ describe.each(THEMES)('Discover dusk row contrast — $name theme', (theme) => {
  * in `testing/glass-tokens.ts`, so a value that drifts in `tailwind.css` — or a fourth declaration
  * added later — would leave every one of them passing. Only the source text can see that.
  *
- * <p>Both tokens declare in all THREE blocks. That is the decision, not an omission: each is the
- * panel-surface counterpart of a card token (`--riv-accent-ink`, `--riv-wash-hover`) whose riviera
- * value is deliberately the light-theme one, so the panel pair cannot inherit and must say all
- * three values itself — including the two that repeat their card counterpart's.
+ * <p>Three blocks each, including the two values that repeat a card token's, is the decision
+ * rather than an omission — why, at the declarations in `tailwind.css`.
  */
-describe('the panel-surface token pair is declared once per theme (#1165)', () => {
+describe('the panel-surface token pair is declared once per theme', () => {
   it.each([
     ['--riv-panel-accent-ink', '#085a6e', '#a8e8f2', '#7cd7e8'],
     [

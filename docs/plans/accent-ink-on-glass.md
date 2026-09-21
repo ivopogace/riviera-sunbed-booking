@@ -149,16 +149,16 @@ written; the slice changes two CSS custom properties and four class attributes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3) — CI gate next`
+**Stage pointer:** `review gate — findings fixed, re-verifying`
 
-**Next action:** Push, open the draft PR so CI fires, then the docs-freshness sweep.
+**Next action:** Push the finding fixes, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Tokens + contrast proof | ✅ | |
 | 1 — Repaint the three sites + the row hover | ✅ | |
 | 2 — Computed-style e2e | ✅ | |
-| 3 — Generalization audit + close-out | ⏳ | |
+| 3 — Generalization audit + close-out | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -166,7 +166,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
-| — | | | |
+| F-1 | Review gate (prior-PR agent) | The token's derivation was written out in full in four files (`tailwind.css`, `glass-tokens.ts`, `home.contrast.spec.ts`, the e2e). Reviewers trimmed this same class on #862, #871, #875, #878, #883, #885 and #886: full derivation in ONE place, a pointer elsewhere. Canonical home per `docs/design/README.md` is the token's comment in `tailwind.css`. | fixed — trimmed the other three to contract + `Rationale:` pointer |
+| F-2 | Review gate (prior-PR agent) | Two ADDED lines carried provenance `#1165` (a `glass-tokens.ts` TSDoc, and the guard's `describe` title). RV-STYLE-1 gates added lines; `check-inline-comments.mjs` misses both by construction — a bare `#NNN` outside a citing position, and a `describe()` string is not a parsed comment. | fixed — both removed |
+| F-3 | Review gate (bug-scan agent) | The new AC-2 test also re-asserted `heroInk` over the header glass, which its name does not mention and the pre-existing state-panel test already covers — inherited from the deleted test it replaces. | fixed — assertion dropped; coverage unchanged |
+| F-4 | Review gate (history agent) | `--riv-header-glass` and the riviera stops were tuned once, for **white ink** only. A future retune for a white-ink reason could silently drop the panel accent (4.94:1, the set's thinnest margin) under AA. | accepted, guarded — this is R-3; AC-2 loops every stop, so such a retune fails the spec rather than shipping |
+| F-5 | Review gate (own full-suite run) | `discover-sheet.a11y.spec.ts` › *has no serious violations at full, with the Map pill* fails intermittently (~1 run in 3, `expected null not to be null`). **Not this slice's:** reproduced on base `66c2954` with this branch's changes stashed out, and the diff touches neither that spec nor its subject. | out of scope → follow-up issue |
 
 ---
 

@@ -57,31 +57,14 @@ export const ACCENT_INK: Rgb = hexToRgb('085a6e');
 export const ON_ACCENT_INK: Rgb = WHITE;
 export const DARK_ON_ACCENT_INK: Rgb = hexToRgb('0a2a33');
 
-/**
- * `--riv-panel-accent-ink` — the accent as it paints on a GLASS PANEL (`appPanelGlass`, i.e.
- * `--riv-header-glass`), which is not the same colour as the accent on a card. Riviera keeps the
- * light themes' card palette on a dark page chrome, so `--riv-accent-ink` stays dark teal there and
- * reads 1.09:1 on the panel — the gap #1165 found. The two light-theme members below repeat their
- * `--riv-accent-ink` value because those panels need no divergence; riviera's is its own.
- *
- * <p>Riviera is NOT `DARK_ACCENT_INK`: `#7cd7e8` measures 4.07:1 over the panel at the `#ffe2b0`
- * stop, under AA. `#a8e8f2` is the same family two steps lighter, at 4.94:1 — the thinnest margin
- * in the token set, which is why the guard loops every stop instead of pinning a worst case.
- */
+/** `--riv-panel-accent-ink` — the accent on a GLASS PANEL (`appPanelGlass`), not on a card.
+ *  Rationale: the token's own declaration in `tailwind.css`. */
 export const PANEL_ACCENT_INK: Rgb = hexToRgb('085a6e');
 export const RIVIERA_PANEL_ACCENT_INK: Rgb = hexToRgb('a8e8f2');
 export const DARK_PANEL_ACCENT_INK: Rgb = hexToRgb('7cd7e8');
 
-/**
- * `--riv-panel-wash-hover` — a list row's hover wash ON a glass panel, which the card family's
- * `--riv-wash-hover` cannot serve: riviera inherits that token's white 0.75 and washes its dark
- * panel to near-white under white ink (~1.45:1). The wash has to move the surface AWAY from the
- * ink, so riviera deepens its own header tint instead of lightening — at every usable alpha a
- * lightening wash there puts `RIVIERA_PANEL_ACCENT_INK` under AA (white 0.06 → 4.23:1).
- *
- * <p>Porcelain and dark repeat their `--riv-wash-hover` values exactly: both already move away
- * from their ink, so neither theme's paint changes.
- */
+/** `--riv-panel-wash-hover` — a list row's hover wash on a glass panel, which the card family's
+ *  `--riv-wash-hover` cannot serve. Rationale: the token's own declaration in `tailwind.css`. */
 export const PORCELAIN_PANEL_WASH_HOVER: Glass = { color: WHITE, alpha: 0.75 };
 export const RIVIERA_PANEL_WASH_HOVER: Glass = { color: hexToRgb('0a2c3f'), alpha: 0.45 };
 export const DARK_PANEL_WASH_HOVER: Glass = { color: WHITE, alpha: 0.16 };
