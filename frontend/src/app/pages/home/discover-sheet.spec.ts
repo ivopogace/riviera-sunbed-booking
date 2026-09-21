@@ -118,29 +118,43 @@ describe('DiscoverSheet', () => {
     expect(sheet().detent()).toBe('half');
   });
 
-  it('reports opened before a spec drives it, and retakes no rest under the tap that follows', async () => {
+  it('reports opened before a spec drives it, so the tap that follows stands', async () => {
     expect(sheet().opened()).toBe(true);
+
+    byTestId('sheet-grabber')!.click();
+    await settle();
+
+    expect(sheet().detent()).toBe('full');
+    expect(byTestId('sheet-map-pill')).not.toBeNull();
+  });
+
+  it('retakes the opening rest over a tap that lands before it, which is why a spec waits', async () => {
     const view = el().ownerDocument.defaultView!;
     const realFrame = view.requestAnimationFrame.bind(view);
     const held: FrameRequestCallback[] = [];
-    // Frames are held rather than dropped, so the flush below is a retake's one chance to happen.
+    // Held, not dropped: the opening rest's confirmation is the frame the tap below has to beat.
     view.requestAnimationFrame = (callback: FrameRequestCallback) => held.push(callback);
 
     try {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({ imports: [Host] }).compileComponents();
+      fixture = TestBed.createComponent(Host);
+      await settle();
+      expect(sheet().opened()).toBe(false);
+
       byTestId('sheet-grabber')!.click();
       await settle();
       expect(sheet().detent()).toBe('full');
-      const rests = asked.length;
+      expect(byTestId('sheet-map-pill')).not.toBeNull();
 
       held.splice(0).forEach((callback) => callback(0));
       await settle();
-      expect(asked.length, 'a frame after the tap asked for another rest').toBe(rests);
     } finally {
       view.requestAnimationFrame = realFrame;
     }
 
-    expect(sheet().detent()).toBe('full');
-    expect(byTestId('sheet-map-pill')).not.toBeNull();
+    expect(sheet().detent()).toBe('half');
+    expect(byTestId('sheet-map-pill')).toBeNull();
   });
 
   it('names the grabber for every reader and exempts it from the touch floor with its reason', () => {

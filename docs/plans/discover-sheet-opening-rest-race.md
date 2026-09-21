@@ -41,11 +41,14 @@ stays)
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a sheet whose `opened()` reports its opening rest landed, when the tourist
-  taps to `full` and every frame the sheet could still hold is flushed, then the sheet is still at
-  `full` and asked for no further rest. *Seam:* `DiscoverSheet.opened` / `.detent()` (the
-  component's public signals) · *Pinned by:* `discover-sheet.spec.ts` › *reports opened before a
-  spec drives it, and retakes no rest under the tap that follows*
+- [x] **AC-1:** Given a sheet whose `opened()` reports the opening rest done, when the tourist taps
+  to `full`, then the sheet stands at `full` with the Map pill — and given one whose rest is still
+  pending, when the same tap lands and the held frame is flushed, then the sheet is retaken to
+  `half` and the pill goes, which is the window the wait exists to close. *Seam:*
+  `DiscoverSheet.opened` / `.detent()` (the component's public signals) · *Pinned by:*
+  `discover-sheet.spec.ts` › *reports opened before a spec drives it, so the tap that follows
+  stands* and › *retakes the opening rest over a tap that lands before it, which is why a spec
+  waits*
 - [ ] **AC-2:** Given the reported case, when the grabber is tapped, then the Map pill is in the
   DOM and axe finds no serious violation — and the case still fails when the pill genuinely stops
   rendering at `full`. *Seam:* the rendered sheet DOM (`[data-testid="sheet-map-pill"]`) ·
@@ -83,7 +86,8 @@ N/A — replaces nothing; no surface is retired.
 |---|---|---|---|---|---|---|
 | R-1 | Waiting for the pill rather than for the rest would mask a real failure to render it | Medium | High — the case stops guarding what it claims | The helper waits on `opened()`, a precondition asserted *before* the tap; the pill stays a bare assertion. Negative control recorded under AC-2 | this slice | closed — control run, `33c1c62f` |
 | R-2 | `whenSheetOpened` hangs a spec if `opened()` never flips | Low | Medium — a timeout instead of a legible failure | Bounded at 12 frames (the sheet gives up at 8 of its own) and closed by an `expect` naming the condition | this slice | closed — `33c1c62f` |
-| R-3 | A later change to `rest()` reopens the window after `opened()` | Low | High — the flake returns silently | AC-1's guard test pins it; its flush assertion now also pins that no further rest is asked | this slice | closed — this commit |
+| R-3 | A later change to `rest()` reopens the window after `opened()` | Low | High — the flake returns silently | AC-1's second test drives the window itself, so a `rest()` that stops retaking goes red there rather than silently making the wait pointless | this slice | closed — this commit |
+| R-5 | Two rest chains can overlap if `tops()` changes while the opening chain is pending (a resize before `opened()`): the second can set `opened()` true while the first's frame is still queued, and that stale callback re-scrolls to the old offset — the same race, behind the wait | Low | Medium | Not reachable from any spec today: every mid-suite resize happens after `opened()`, where `want === restedAt` short-circuits. Recorded rather than guarded, because closing it means changing `DiscoverSheet`, which this slice's Non-goals rule out | follow-up | open — stated in the PR; no issue filed, it is not reachable |
 | R-4 | `src/testing/` importing a page component inverts the folder taxonomy | Low | Low | `src/testing/` is spec support, outside `riviera-frontend`'s `src/app/` taxonomy; `venue-cards.ts` already imports a page **component** (`app/pages/home/venue-card`) | this slice | closed — precedent verified, `33c1c62f` |
 
 ## Open questions / Assumptions
@@ -168,6 +172,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-8 | Review gate | "Two frames are still queued" was two frame *callbacks*, which one frame flushes — `rest()` schedules its next rAF only from inside the previous callback | fixed in this commit, and in the PR body |
 | F-9 | Review gate | The audit row's own command returns 8 paths, not the 4 it accounted for | fixed in this commit — all 8 carry a verdict |
 | F-10 | Review gate | The helper's TSDoc opened its second paragraph bare; six of seven `src/testing/` siblings use `<p>` | fixed in this commit |
+| F-11 | Review gate | The guard test's stub-and-flush half **could not fail**: once the wait has closed the chain the sheet queues no frame at all, because the rest effect's reactive deps (`tops()`, `scroller()`) do not change on a tap and `detent` is read `untracked`. AC-1's "asks for no further rest" clause was therefore unpinnable and the F-2 assertion inert — the `tdd` skill's tautology anti-pattern | fixed in this commit — the inert half is gone; a second test drives the window itself, holding the frame, tapping, flushing, and proving the sheet is retaken to `half`. AC-1 reworded to what the two tests pin |
+| F-12 | Review gate | The wait is a no-op at most `home.spec.ts` / `home.a11y.spec.ts` call sites in this environment (`opened()` already true on entry at 28 of 36 sites); it bites only under load | Recorded, not fixed — that is what the wait is for. It does mean those files' green runs cannot be *attributed* to the wait, which AC-3 now says outright |
 
 ---
 
@@ -229,8 +235,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   4-way CPU contention), 3647 tests, 0 failures. Pristine `main`: 13 runs (8 plain, 5 stressed),
   **0 reproductions** — so these runs prove no regression, they are *not* a before/after rate
   comparison, and the issue's "1 in 3" does not hold in this sandbox once #1176 is in. The
-  mechanism proof is the deterministic frame-held repro in the PR body, not a rate. #1175's
-  two-file command is 20/20 green. Verified at this commit.
+  mechanism proof is the deterministic frame-held repro, now committed as AC-1's second test, not
+  a rate. #1175's two-file command is 20/20 green. One honesty note (F-12): at 28 of 36
+  `home.spec.ts` / `home.a11y.spec.ts` call sites the wait is a no-op in this environment, so
+  those files' green runs are not evidence *for* it — the wait is insurance for the loaded case.
+  Verified at this commit.
 - [x] **AC-4:** Audit-log row complete and re-run per site after the review finding. Verified at
   this commit.
 
