@@ -367,8 +367,10 @@
                 group.label
               }}</span>
               @if (group.km !== null) {
-                <!-- The page ink, not the accent: `--riv-accent-ink` is not redeclared for riviera and reads 1.1:1 on this glass. -->
-                &ngsp;<span class="font-semibold text-riv-ink">{{ kmLabel(group.km) }}</span>
+                <!-- The panel accent, not the card one: `--riv-accent-ink` is a card ink and reads 1.1:1 on this glass. -->
+                &ngsp;<span class="font-semibold text-riv-panel-accent-ink">{{
+                  kmLabel(group.km)
+                }}</span>
               }
               <span class="ml-auto shrink-0"
                 >&ngsp;{{ group.cards.length }}
@@ -477,7 +479,9 @@
               >
                 <span>{{ group.label }}</span>
                 @if (group.km !== null) {
-                  &ngsp;<span class="font-semibold text-riv-ink">{{ kmLabel(group.km) }}</span>
+                  &ngsp;<span class="font-semibold text-riv-panel-accent-ink">{{
+                    kmLabel(group.km)
+                  }}</span>
                 }
                 @if (stickyHeads()) {
                   <!-- Only where the group cannot be seen whole is its count worth the second thing to read. -->

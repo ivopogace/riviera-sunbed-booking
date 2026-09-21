@@ -87,8 +87,10 @@ but a plain `useClass` and no flag. Unit specs override the token directly.
   wears the console theme (porcelain or dark, never `riviera`) via `app.ts`'s host binding
   reading `core/console-theme.ts` (`ConsoleTheme`, storage key `riviera-console-theme`, no OS
   follow); it never touches `ThemeService`.
-- The token registry is two places only: a CSS block in `tailwind.css` + a row in
-  `core/theme.ts`. A new token also gets a `@theme inline` mapping (→ `bg-riv-…`/`text-riv-…`).
+- The **theme** registry is two places only: a CSS block in `tailwind.css` + a row in
+  `core/theme.ts` (`THEME_OPTIONS` — id, name, swatch, light; the switcher's, not a token's).
+  A **token** is `tailwind.css` alone: a declaration per theme block plus a `@theme inline`
+  mapping (→ `bg-riv-…`/`text-riv-…`), and nothing in `core/theme.ts`.
 - Consuming tokens is `riviera-tailwind`'s call. Reduced-motion guards live in the same
   stylesheet as the animation.
 

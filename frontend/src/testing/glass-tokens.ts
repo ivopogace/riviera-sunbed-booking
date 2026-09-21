@@ -57,6 +57,18 @@ export const ACCENT_INK: Rgb = hexToRgb('085a6e');
 export const ON_ACCENT_INK: Rgb = WHITE;
 export const DARK_ON_ACCENT_INK: Rgb = hexToRgb('0a2a33');
 
+/** `--riv-panel-accent-ink` — the accent on a GLASS PANEL (`appPanelGlass`), not on a card.
+ *  Rationale: the token's own declaration in `tailwind.css`. */
+export const PANEL_ACCENT_INK: Rgb = hexToRgb('085a6e');
+export const RIVIERA_PANEL_ACCENT_INK: Rgb = hexToRgb('a8e8f2');
+export const DARK_PANEL_ACCENT_INK: Rgb = hexToRgb('7cd7e8');
+
+/** `--riv-panel-wash-hover` — a list row's hover wash on a glass panel, which the card family's
+ *  `--riv-wash-hover` cannot serve. Rationale: the token's own declaration in `tailwind.css`. */
+export const PORCELAIN_PANEL_WASH_HOVER: Glass = { color: WHITE, alpha: 0.75 };
+export const RIVIERA_PANEL_WASH_HOVER: Glass = { color: hexToRgb('0a2c3f'), alpha: 0.45 };
+export const DARK_PANEL_WASH_HOVER: Glass = { color: WHITE, alpha: 0.16 };
+
 /** Dark `--riv-field-fill` / `--riv-field-border` (light themes: the FIELD_*_ALPHA constants). */
 export const DARK_FIELD_FILL: Glass = { color: hexToRgb('020a16'), alpha: 0.45 };
 export const DARK_FIELD_BORDER: Glass = { color: WHITE, alpha: 0.5 };

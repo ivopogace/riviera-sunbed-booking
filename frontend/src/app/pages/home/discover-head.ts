@@ -82,7 +82,7 @@ const COUNT =
           @if (located()) {
             <span
               data-testid="head-located"
-              class="text-[19px] leading-none text-riv-accent-ink"
+              class="text-[19px] leading-none text-riv-panel-accent-ink"
               aria-hidden="true"
               >◎</span
             >
