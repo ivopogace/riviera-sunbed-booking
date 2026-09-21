@@ -3,9 +3,9 @@ import { IsActiveMatchOptions } from '@angular/router';
 /**
  * The header disclosure recipes the tourist shell (`app.ts`), the operator account chip
  * (`operator/operator-account-chip.ts`), the venue switcher (`operator/operator-venue-switch.ts`),
- * the console shell's More sheet (`console-shell.ts`), the ⌘K palette (`console-palette.ts`) and
- * the legal rows (`shared/legal-menu-rows.ts`, which picks a skin by variant rather than composing)
- * paint from one place, so the popovers cannot drift (`riviera-tailwind`, no visual drift). Class strings, not a directive: each consumer
+ * the console shell's More sheet (`console-shell.ts`), the ⌘K palette (`console-palette.ts`), and
+ * the legal and theme rows (`shared/legal-menu-rows.ts` and `theme-menu-rows.ts`, which pick a
+ * skin by variant rather than composing) paint from one place, so the popovers cannot drift (`riviera-tailwind`, no visual drift). Class strings, not a directive: each consumer
  * composes them with its own position and width, the `cls` idiom.
  */
 

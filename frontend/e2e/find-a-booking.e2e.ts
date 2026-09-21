@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
-import { openFindBooking, openShellOverlay } from './support/shell';
+import { openFindBooking, openShellOverlay, openThemePicker } from './support/shell';
 import { settle } from './support/booking-dialog';
 
 /**
@@ -64,7 +64,7 @@ test('finds a booking by code and opens its detail view (+ axe, riviera)', async
 
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
-  await openShellOverlay(page, 'theme-toggle');
+  await openThemePicker(page);
   await page.getByTestId('theme-option-riviera').click();
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
 
@@ -119,7 +119,7 @@ test('a CLOSED-born booking shows the last-minute state and no cancel section (#
 
 test('audits the open find modal in the porcelain theme', async ({ page }) => {
   await page.goto('/');
-  await openShellOverlay(page, 'theme-toggle');
+  await openThemePicker(page);
   await page.getByTestId('theme-option-porcelain').click();
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
 

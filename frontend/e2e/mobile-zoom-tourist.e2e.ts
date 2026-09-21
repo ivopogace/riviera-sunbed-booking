@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { mockChallengeFence } from './support/auth-mocks';
 import { expectNoFocusZoom, expectTouchManipulation } from './support/mobile-zoom';
-import { openFindBooking } from './support/shell';
+import { openFindBooking, openShellOverlay } from './support/shell';
 import { TOURIST_BOOKING, mockTourist } from './support/tourist.mocks';
 
 /**
@@ -152,11 +152,7 @@ test.describe('tourist UI — mobile zoom', () => {
     // The round menu button signed out, the account chip signed in — never both at once.
     await page.goto('/');
     await expect(page.getByTestId('nav-menu')).toBeVisible();
-    await expectTouchManipulation(
-      page,
-      '[data-testid="nav-menu"], [data-testid="theme-toggle"]',
-      'the header menu button and theme swatch',
-    );
+    await expectTouchManipulation(page, '[data-testid="nav-menu"]', 'the header menu button');
 
     await page.route(/\/api\/auth\/me$/, (route) => route.fulfill({ json: SIGNED_IN_CUSTOMER }));
     await page.reload();
@@ -184,12 +180,13 @@ test.describe('tourist UI — mobile zoom', () => {
     );
   });
 
-  test('the theme swatch keeps its double-tap at a phone width too', async ({ page }) => {
-    // The only header trigger below `sm`, so a desktop-width assertion would never reach it.
+  test('the theme row keeps its double-tap in the sheet at a phone width', async ({ page }) => {
+    // Below `sm` the sheet is the only menu carrying the row; the popover's copy is swept apart.
     await page.setViewportSize(PHONE);
     await page.goto('/');
-    await expect(page.getByTestId('theme-toggle')).toBeVisible();
+    await openShellOverlay(page, 'menu-toggle');
+    await expect(page.getByTestId('theme-row')).toBeVisible();
 
-    await expectTouchManipulation(page, '[data-testid="theme-toggle"]', 'the theme swatch');
+    await expectTouchManipulation(page, '[data-testid="theme-row"]', 'the theme row');
   });
 });

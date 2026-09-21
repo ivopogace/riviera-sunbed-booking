@@ -14,10 +14,10 @@ import { filter } from 'rxjs';
 
 import { FindBooking } from './booking/find-booking';
 import { ConsoleSection, ConsoleShell } from './console-shell';
+import { ThemeMenuRows } from './theme-menu-rows';
 import { CustomerAuth } from './core/customer-auth';
 import { SignOutNotice } from './core/sign-out-notice';
 import { ConsoleTheme } from './core/console-theme';
-import { ThemeId, ThemeService } from './core/theme';
 import { focusMover } from './shared/focus-after-render';
 import { idParam } from './shared/parent-venue-id';
 import {
@@ -64,7 +64,6 @@ const TAB = `group relative flex h-[60px] cursor-pointer touch-manipulation flex
 const CLS = {
   backdrop: POP_BACKDROP,
   accountPop: `riv-account-pop top-[calc(100%+10px)] right-0 w-[236px] p-[7px] ${POP}`,
-  themePop: `riv-theme-pop top-[calc(100%+10px)] right-0 w-[214px] p-[7px] ${POP}`,
   // Above the bar, clearing the same inset the bar pads by; a 34px home indicator otherwise puts the last row under the bar.
   mobileMenu: `fixed inset-x-2.5 bottom-[calc(76px+env(safe-area-inset-bottom))] p-2 ${POP_SKIN}`,
   // Its own near-opaque token, not a second coat of the header glass: page prose stops bleeding through. z-20 like the header, rendered BEFORE it so the header's popover backdrops cover the bar.
@@ -85,9 +84,6 @@ const CLS = {
   accountChip: `inline-flex touch-manipulation items-center gap-2 py-1 pr-3 pl-1.5 font-semibold text-riv-ink ${CHIP}`,
   menuBtn: `inline-flex h-11 w-11 touch-manipulation flex-col items-center justify-center gap-[4.5px] ${CHIP}`,
   menuBar: 'block h-0.5 w-[17px] rounded-[2px] bg-riv-ink',
-  // The 1.5px ink-soft ring is the swatch's WCAG 1.4.11 boundary (5.4 / 5.5 / 11.6:1 on the three bars): the swatch alone reaches 1.0:1 against the bar (its white end on porcelain), and a white inset ring vanishes there too.
-  swatchBtn:
-    'grid h-11 w-11 shrink-0 cursor-pointer touch-manipulation place-items-center rounded-full before:h-[22px] before:w-[22px] before:rounded-full before:bg-(image:--riv-swatch) before:shadow-[0_1px_3px_rgba(6,30,40,0.35)] before:ring-[1.5px] before:ring-riv-ink-soft before:[transition:scale_0.12s_ease] hover:before:scale-[1.12] motion-reduce:before:transition-none motion-reduce:hover:before:scale-100',
   avatar: AVATAR,
 } as const;
 
@@ -107,11 +103,23 @@ export type TouristSection = 'beaches' | 'bookings' | 'account';
  * <p>The two are not independent: below `sm` a `footer: false` route's only reach to Privacy and
  * Terms is the tab bar's menu sheet (`shared/legal-menu-rows.ts`), so such a route needs the
  * tourist chrome and must not also carry `tabBar: false`.
+ *
+ * <p>`wide: true` takes the 1080px cap off the header's inner wrapper and the footer's inner,
+ * for a route that paints to the window's edges: the map's own panel starts at x 12, so a capped
+ * header floats the brand 180px inside it at 1440 and 420px at 1920, reading as chrome for a
+ * narrower page than the one under it. The cap is removed by Tailwind's bare boolean
+ * `data-wide:` variant, which compiles to `&[data-wide]` — the attribute must therefore sit on
+ * the SAME element as the utility, which is why the header wrapper and the footer inner each
+ * bind it rather than inheriting one attribute from the shell root. (The ancestor form,
+ * `in-data-wide:`, compiles under `:where()` and so only TIES `max-w-[1080px]` on specificity,
+ * leaving stylesheet order to decide it.) Unlike `tabBar`/`footer`, where the restrictive value
+ * wins, this is an opt-in: any route on the chain carrying it makes the shell wide.
  */
 export interface TouristRouteData {
   section?: TouristSection;
   tabBar?: false;
   footer?: false;
+  wide?: true;
 }
 
 /** The active route's chrome flags — see {@link App.routeChrome}. */
@@ -126,6 +134,8 @@ interface RouteChrome {
   tabBar: boolean;
   /** `false` when any route on the chain carries `data.footer: false`. */
   footer: boolean;
+  /** `true` when any route on the chain carries `data.wide: true`. */
+  wide: boolean;
 }
 
 /** The chrome before the first navigation completes: the tourist header, footer and tab bar,
@@ -136,6 +146,7 @@ const PRE_NAVIGATION_CHROME: RouteChrome = {
   section: null,
   tabBar: true,
   footer: true,
+  wide: false,
 };
 
 /** Narrows an untyped `data.section` to a {@link TouristSection}; anything else is no section. */
@@ -164,6 +175,7 @@ function consoleOf(data: unknown): ConsoleSection | null {
     RouterLinkActive,
     FindBooking,
     ConsoleShell,
+    ThemeMenuRows,
     TouchTarget,
   ],
   templateUrl: './app.html',
@@ -177,7 +189,6 @@ export class App {
   protected readonly cls = CLS;
   protected readonly exactPath = EXACT_PATH;
 
-  protected readonly themes = inject(ThemeService);
   /** The console's own porcelain-or-dark choice, pinned on this host under the console shell. */
   protected readonly consoleTheme = inject(ConsoleTheme);
   /** Customer session state for the header: sign-in/register links ↔ signed-in + sign-out. */
@@ -199,7 +210,6 @@ export class App {
   private overlayNavId = 0;
 
   protected readonly menuOpen = signal(false);
-  protected readonly themeOpen = signal(false);
   /**
    * The header popover: the account menu signed in (the tourist's entry point to
    * `/account/password`), the menu of Create an account + Find a booking signed out.
@@ -218,7 +228,6 @@ export class App {
   /** Moves focus onto the sheet's first row once it has rendered — the open leg; `closeMenus()`
    *  hands it back to the tab, and a navigation that tears the sheet down lands `<main>` (WCAG 2.4.3). */
   private readonly focusAfterRender = focusMover();
-  private readonly themeButton = viewChild<ElementRef<HTMLButtonElement>>('themeButton');
   /** The account popover's trigger: the account chip signed in, the round menu button signed out. */
   private readonly accountButton = viewChild<ElementRef<HTMLButtonElement>>('accountButton');
   private readonly menuTrigger = viewChild<ElementRef<HTMLButtonElement>>('menuTrigger');
@@ -227,11 +236,6 @@ export class App {
    *  the popover or sheet whose row opened it, named by that row — the row itself is gone by then. */
   private findReturn: HTMLElement | null = null;
 
-  protected readonly activeTheme = computed(
-    () =>
-      this.themes.options.find((option) => option.id === this.themes.theme()) ??
-      this.themes.options[0],
-  );
   /** The signed-in address; read only by the account chip and the sheet's identity block, which
    *  render signed in, when the principal name is defined. */
   private readonly address = computed(() => this.customerAuth.email() ?? '');
@@ -264,6 +268,7 @@ export class App {
     let section = sectionOf(route.data['section']);
     let tabBar = route.data['tabBar'] !== false;
     let footer = route.data['footer'] !== false;
+    let wide = route.data['wide'] === true;
     while (route.firstChild) {
       route = route.firstChild;
       console = consoleOf(route.data['console']) ?? console;
@@ -271,8 +276,9 @@ export class App {
       section = sectionOf(route.data['section']) ?? section;
       tabBar &&= route.data['tabBar'] !== false;
       footer &&= route.data['footer'] !== false;
+      wide ||= route.data['wide'] === true;
     }
-    return { console, venueId, section, tabBar, footer };
+    return { console, venueId, section, tabBar, footer, wide };
   });
 
   /** The console section the active route belongs to, `plain` when it carries none — read only
@@ -291,6 +297,10 @@ export class App {
 
   /** Whether the shared footer renders: every route but one flagged `footer: false`. */
   protected readonly footer = computed(() => this.routeChrome().footer);
+
+  /** Whether the shell's chrome runs to the window's edges: a route flagged `data.wide`. Bound
+   *  as a bare `data-wide` attribute on each element whose cap it lifts. */
+  protected readonly wide = computed(() => this.routeChrome().wide);
 
   /** Whether the auth card is the current page, by path alone — the same test `routerLinkActive`
    *  runs for the plain-path links, as a signal. */
@@ -339,7 +349,7 @@ export class App {
    * (`provideRouter`'s default `enabledNonBlocking` initial navigation), so the `NavigationEnd`
    * closing that window is not something the user did and must not shut a menu they just opened.
    * That reasoning is about a navigation being ALREADY UNDER WAY, not about it being the first or
-   * about where it lands: a guest who opens the theme picker while a nav link they clicked is still
+   * about where it lands: a guest who opens the account menu while a nav link they clicked is still
    * loading keeps it open onto the destination too, deliberately.
    * Identity is the navigation id, not the url: a url comparison would also swallow a navigation
    * the guest DID start from inside the overlay onto the page they deep-linked to, which supersedes
@@ -381,7 +391,6 @@ export class App {
         const overlayHeldFocus = this.findOpen() || this.accountOpen() || this.menuOpen();
         this.findOpen.set(false);
         this.menuOpen.set(false);
-        this.themeOpen.set(false);
         this.accountOpen.set(false);
         // Land the keyboard/AT guest on the new page, not document.body (WCAG 2.4.3).
         if (overlayHeldFocus) {
@@ -408,7 +417,6 @@ export class App {
     this.notePendingNavigation();
     this.findReturn = trigger;
     this.menuOpen.set(false);
-    this.themeOpen.set(false);
     this.accountOpen.set(false);
     this.findOpen.set(true);
   }
@@ -432,7 +440,6 @@ export class App {
    *  booking` while the restore still hides the auth group. */
   protected toggleMenu(): void {
     this.notePendingNavigation();
-    this.themeOpen.set(false);
     this.accountOpen.set(false);
     this.menuOpen.update((open) => !open);
     if (this.menuOpen()) {
@@ -443,24 +450,11 @@ export class App {
     }
   }
 
-  protected toggleThemePicker(): void {
-    this.notePendingNavigation();
-    this.menuOpen.set(false);
-    this.accountOpen.set(false);
-    this.themeOpen.update((open) => !open);
-  }
-
   /** Toggle the account/menu popover; only one header popover is open at a time. */
   protected toggleAccountMenu(): void {
     this.notePendingNavigation();
     this.menuOpen.set(false);
-    this.themeOpen.set(false);
     this.accountOpen.update((open) => !open);
-  }
-
-  protected selectTheme(id: ThemeId): void {
-    this.themes.select(id);
-    this.closeMenus();
   }
 
   /** Sign the customer out — clears the session server-side; closes the menus first. */
@@ -487,10 +481,6 @@ export class App {
     if (this.menuOpen()) {
       this.menuOpen.set(false);
       this.menuButton()?.nativeElement.focus();
-    }
-    if (this.themeOpen()) {
-      this.themeOpen.set(false);
-      this.themeButton()?.nativeElement.focus();
     }
     if (this.accountOpen()) {
       this.accountOpen.set(false);
