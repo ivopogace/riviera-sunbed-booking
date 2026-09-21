@@ -29,7 +29,7 @@ close-out is complete, so `docs/plans/q-shore-discover-default.md` is this close
 seam name on every AC) · `tdd` (spec-first per phase; the component's spec before its template,
 the e2e before the `pointer-events` change) · `riviera-review-overlay` (review gate at
 ready-for-review) · `riviera-docs-freshness` (owed at close-out over this slice's range;
-`docs/design/` in scope because a hairline was considered and rejected) · `grilling`
+**ran** over `a133f878..HEAD`, 1 finding, patched — see the Docs-freshness note below) · `grilling`
 (issue-intake gate — caught that `pointer-events-none` would not have saved the footer, and that
 `legal-pages.e2e.ts:143-151` and `app.spec.ts:607-621` both stay green because this placement is
 additive) · `frontend-design` (placement as an information-class question: a legal link is *about
@@ -52,27 +52,27 @@ exemption) · `riviera-local-debug` (clone deepened; `npm ci` done; `ng test --i
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the Discover default route at 390 × 844 with the API mocked, when a tourist
+- [x] **AC-1:** Given the Discover default route at 390 × 844 with the API mocked, when a tourist
       taps the Menu tab and then the **Privacy policy** row, then `/legal/privacy` opens in a new
       tab showing the `Privacy Policy` heading and the Discover route has not navigated.
       *Seam:* the `/` route in the mocked Playwright suite · *Pinned by:*
       `legal-pages.e2e.ts` › `the phone menu sheet carries the legal rows on the riviera map`
-- [ ] **AC-2:** Given the Discover default route at 1280 × 720 signed out, when a tourist opens the
+- [x] **AC-2:** Given the Discover default route at 1280 × 720 signed out, when a tourist opens the
       header menu and clicks **Terms of service**, then `/legal/terms` opens in a new tab showing
       the `Terms of Service` heading and Discover has not navigated.
       *Seam:* the `/` route in the mocked Playwright suite · *Pinned by:*
       `legal-pages.e2e.ts` › `the desktop header menu carries the legal rows on the riviera map`
-- [ ] **AC-3:** Given each legal row rendered on the Discover route, when `elementFromPoint` is
+- [x] **AC-3:** Given each legal row rendered on the Discover route, when `elementFromPoint` is
       read at the row's centre, then it resolves to that row — the check that caught this, where
       `toBeVisible()` reported the dead footer link as "visible, enabled and stable". Asserted at
       both 390 × 844 and 1280 × 720. *Seam:* `e2e/support/hit-test.ts`'s `hitTestId(page, testId)`
       · *Pinned by:* `legal-pages.e2e.ts` › the two tests above
-- [ ] **AC-4:** Given the tourist shell, when the phone menu sheet is open and when each auth
+- [x] **AC-4:** Given the tourist shell, when the phone menu sheet is open and when each auth
       branch of the desktop popover is open, then all three carry both documents as rows whose
       `href` is `/legal/privacy` and `/legal/terms`, each with `target="_blank"` and
       `rel="noopener"`. *Seam:* `app-root`'s rendered shell · *Pinned by:*
       `app.spec.ts` › `carries the legal rows in the phone sheet and in both desktop popover branches`
-- [ ] **AC-5:** Given the shell with the legal rows present, when axe audits the open menu sheet
+- [x] **AC-5:** Given the shell with the legal rows present, when axe audits the open menu sheet
       and the open account popover in each of `porcelain`, `riviera` and `dark`, then there are no
       critical or serious violations. *Seam:* `app-root`'s rendered shell ·
       *Pinned by:* `app.a11y.spec.ts` › the theme-looped open-state cases
@@ -86,7 +86,7 @@ exemption) · `riviera-local-debug` (clone deepened; `npm ci` done; `ng test --i
       nothing in the diff can turn it red; a duplicate measurement of an already-proven pair would
       be the vacuous alternative. A hairline *would* have owed a new measurement, which is why
       R-6 chose space over a line.
-- [ ] **AC-7:** Given the desktop Discover panel at 1280 × 900, when `elementFromPoint` is read
+- [x] **AC-7:** Given the desktop Discover panel at 1280 × 900, when `elementFromPoint` is read
       inside `desk-frame`'s 12 px gutter, then it does **not** resolve to `desk-frame` — the frame
       takes no pointer events where it paints nothing — while the panel's rows and the map pane
       stay clickable. *Seam:* the `/` route in the mocked Playwright suite · *Pinned by:*
@@ -101,7 +101,7 @@ exemption) · `riviera-local-debug` (clone deepened; `npm ci` done; `ng test --i
       chrome would strand a phone user and the filter would not flag it. The constraint now lives
       in `app.ts`'s `TouristRouteData` TSDoc, where a route author reads it before writing the
       flag, with a pointer on the exact-list test. *Seam:* the route-data interface
-- [ ] **AC-9:** Given the shell below `sm`, when the document is scrolled on a route that survives
+- [x] **AC-9:** Given the shell below `sm`, when the document is scrolled on a route that survives
       #1168, then the top bar has scrolled away and the tab bar is still pinned 61 px tall at the
       bottom edge — the guarantee no longer rests on `?map=off`. *Seam:* the `/venues/1` route in
       the mocked Playwright suite · *Pinned by:* `tourist-tab-bar.e2e.ts` › `the top bar is
@@ -153,11 +153,16 @@ are not in scope. No JPA or Stripe Connect temptation — no backend code at all
 
 ## Open questions / Assumptions
 
-- **Assumption:** `discover-map.e2e.ts`'s `WIDE` (1280 × 900) cases already drive the desktop panel,
-  so AC-7 needs no new fixture — only a new test in that file. — *Owner:* me · *Resolves by:*
-  phase 3, by reading the file's existing `WIDE` block before writing the test.
-- **Assumption:** removing the 8-copy `VENUES` padding from `tourist-tab-bar.e2e.ts` breaks no
-  other test in that file. — *Owner:* me · *Resolves by:* phase 4, by running the whole file.
+None open.
+
+### Resolved assumptions
+
+- **`discover-map.e2e.ts`'s `WIDE` cases already drive the desktop panel**, so AC-7 needed no new
+  fixture — confirmed in phase 3 (`WIDE = { width: 1280, height: 900 }`, ~20 cases use it); the new
+  test joined that block and all 44 cases stay green.
+- **Removing the 8-copy `VENUES` padding breaks no other test** — **refuted, and the change was not
+  made.** The fixture is the `/api/venues` payload the file's local `mockTourist` serves to *every*
+  test, not just the scroll-away one. Only its now-false comment was dropped. See the parity ledger.
 
 ### Resolved
 
@@ -226,11 +231,11 @@ N/A — no contract change. `/legal/privacy` and `/legal/terms` are existing Ang
 
 ## Execution status
 
-**Stage pointer:** `CI gate — all five phases pushed, PR #1174 ready for review`
+**Stage pointer:** `DONE — merged via PR #1174`
 
-**Next action:** Check the CI run on this push, then run the review gate (ladder rung 1 + the
-overlay) and clear the Sonar new-issue list. `origin/main` has not moved since the branch point
-(`a133f878`), so there is nothing to integrate.
+**Next action:** None. Close-out complete: issue closed by the PR, epic #1156 untouched (#1173 is
+its out-of-scope follow-up, not a sub-issue), F-9 deferred to #1175, docs-freshness run and
+recorded, `q-shore-discover-default.md` retired in this commit.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -239,6 +244,8 @@ overlay) and clear the Sonar new-issue list. `origin/main` has not moved since t
 | 2 — The `hitTestId` seam and the reachability e2e | ✅ | `ca3c62fc` |
 | 3 — `desk-frame`'s pointer-events interface | ✅ | `a6378692` |
 | 4 — The two handovers: scroll-away route, route-table fence | ✅ | `6ae45d88` |
+| CI + review gate rounds | ✅ | `32fe8b9c`, `0d070928`, `2222ed5b`, `3f279073` |
+| Close-out | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -258,7 +265,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-12 | Review gate — rule-compliance agent | Four RV-STYLE-1 / readability items: `popover-skin.ts`'s new TSDoc narrated the move out of `app.ts`; `hit-test.ts`'s TSDoc carried "for a whole release" (history); `const THEMES` inserted between the audit's file-header doc and its `describe` silently made that doc `THEMES`'s; `legal-menu-rows.spec.ts`'s case name claimed "never a wrapper" while all three call sites add an `mt-1` group | all four fixed. The wrapper stays — it is the call site's own layout, which is the `cls` idiom — and the case is renamed to what it actually asserts: the host contributes no layout box |
 | F-11 | CI `Repo hygiene (diff-scoped)` on `069e75df` and `4d8229b5` | Two multi-line inline comments in `app.spec.ts` (RV-STYLE-1). I had run `check-inline-comments.mjs --files` over a hand-picked list; CI runs `--diff origin/main` over everything the branch touched, which is the only run that counts | fixed in `32fe8b9c`; all five guards now run locally as `--diff origin/main` |
 | F-10 | CI `Frontend (lint + test + build)` on `069e75df` | **`theme-shell.e2e.ts:212` broken by this slice**, deterministically (failed on the retry too): the test hit-tested `(innerWidth / 2, innerHeight * 0.7)` expecting `menu-backdrop`, and the two new rows made the sheet tall enough to reach that point, so the hit landed on `nav-register-mobile`. The guarantee is the backdrop's *extent*, and the sheet legitimately covers more of the screen now | fixed: the probe point is derived at runtime from the header's bottom and the bottom-anchored sheet's top, so it is past the strip the original regression shrank the backdrop to and clear of the sheet at any row count. Still fails on the regression it guards, so it is not vacuous |
-| F-9 | Local full-suite run, phase 4 | `discover-sheet.a11y.spec.ts` › "has no serious violations at full, with the Map pill" failed once in ~6 full runs (`expected null not to be null`). **Not this slice's**: reproduces on `origin/main` with `npx ng test --include="src/app/app.a11y.spec.ts" --include="src/app/pages/home/discover-sheet.a11y.spec.ts"` (1 in ~6). Hypothesis, not a diagnosis — the spec waits a single `setTimeout(0)` tick for a detent change driven by a scroll event, which is racy by construction; 12 targeted probe runs did not catch it in the act, and the probe found no leftover `header.riv-header`, `.riv-tab-bar` or `app-root`, so it is **not** a shared-jsdom DOM leak | deferred → follow-up issue. Not blind-fixed: the file is outside this slice and a speculative wait change could mask a real defect in the sheet's detent logic. This slice's own contribution — `app.a11y.spec.ts` leaving `data-riv-theme` on `documentElement` — is fixed with an `afterEach`, per the `isolate: false` convention |
+| F-9 | Local full-suite run, phase 4 | `discover-sheet.a11y.spec.ts` › "has no serious violations at full, with the Map pill" failed once in ~6 full runs (`expected null not to be null`). **Not this slice's**: reproduces on `origin/main` with `npx ng test --include="src/app/app.a11y.spec.ts" --include="src/app/pages/home/discover-sheet.a11y.spec.ts"` (1 in ~6). Hypothesis, not a diagnosis — the spec waits a single `setTimeout(0)` tick for a detent change driven by a scroll event, which is racy by construction; 12 targeted probe runs did not catch it in the act, and the probe found no leftover `header.riv-header`, `.riv-tab-bar` or `app-root`, so it is **not** a shared-jsdom DOM leak | deferred → **#1175**, with the reproduction command, the ruled-out DOM-leak theory and the hypothesis written up. Not blind-fixed: the file is outside this slice and a speculative wait change could mask a real defect in the sheet's detent logic. This slice's own contribution — `app.a11y.spec.ts` leaving `data-riv-theme` on `documentElement` — is fixed with an `afterEach`, per the `isolate: false` convention |
 | F-8 | #1172 review gate, deferred here | `desk-frame`'s stacking is worked around, not fixed; the next footer-like row on this route meets the same fixed, opaque-to-pointers overlay | **fixed in phase 3** (`pointer-events-none` + both children `pointer-events-auto`, red-first) and in phase 2 (the `hitTestId` seam), with the scope correction recorded under Open questions § Resolved |
 
 ---
@@ -283,7 +290,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/tourist-tab-bar.e2e.ts` — AC-9, and the first `hitTestId` call site
 - `frontend/e2e/theme-shell.e2e.ts` — the backdrop-extent probe, re-derived from the sheet's top edge now that the sheet is taller
 - `frontend/e2e/tourist-header.e2e.ts` — names the popover rows so the desktop sweep is the measurement of their boxes, not a vacuous pass
-- `frontend/e2e/touch-targets-tourist.e2e.ts` — the menu sheet's own 44 px sweep, which no resting-surface sweep reaches today
+- `frontend/e2e/touch-targets-tourist.e2e.ts` — names the sheet rows so the existing sweep cannot pass vacuously on them
+- `.claude/skills/riviera-tailwind/SKILL.md` — rule 1's `contents`-host enumeration gains its third member (docs-freshness step 2a)
 
 ---
 
@@ -296,7 +304,7 @@ Depth check (the deletion test): delete this component and two rows plus a skin 
 three `app.html` call sites, two of them inside `@if` branches that cannot share a template ref. It
 earns its keep. Its interface is one element selector and one `variant` input.
 
-- [ ] **Step 1: Write the failing test** — the host-component pattern `legal-footer.spec.ts:6-10`
+- [x] **Step 1: Write the failing test** — the host-component pattern `legal-footer.spec.ts:6-10`
       uses, driven over both variants.
 
 ```ts
@@ -333,9 +341,9 @@ describe('LegalMenuRows', () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npx ng test --watch=false
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false
       --include="src/app/shared/legal-menu-rows.spec.ts"` → FAIL, cannot resolve `./legal-menu-rows`
-- [ ] **Step 3: Minimal implementation** — the `ManageBookingLink` idiom: `class: 'contents'` host
+- [x] **Step 3: Minimal implementation** — the `ManageBookingLink` idiom: `class: 'contents'` host
       so the `<a>`s are what the menu lays out, a required `variant` input, and the skin table
       inside the component rather than at the call site.
 
@@ -403,14 +411,14 @@ export class LegalMenuRows {
 > "one place so the popovers cannot drift") and have `app.ts` import it. If promotion turns out to
 > pull anything else along, fall back to a `sheet`/`popover` pair of local constants and say so.
 
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS; then
+- [x] **Step 4: Run it, verify it passes** — same command → PASS; then
       `npx ng test --watch=false --include="src/app/shared/*.spec.ts"`
-- [ ] **Step 5: Generalization-audit pass** — mechanism: *a hard-coded legal document path in a
+- [x] **Step 5: Generalization-audit pass** — mechanism: *a hard-coded legal document path in a
       template*. Enumerate `grep -rn "/legal/privacy\|/legal/terms" frontend/src --include=*.ts
       --include=*.html | grep -v spec`. Expect four sites (footer ×2 lines, consent ×2 lines) plus
       this one. Decision is already taken and recorded: declined, both sides are literal-pinned.
-- [ ] **Step 6: Commit** — `git commit -m "Privacy and Terms as menu rows for the always-present chrome (#1173)"`
-- [ ] **Step 7: Update Execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Privacy and Terms as menu rows for the always-present chrome (#1173)"`
+- [x] **Step 7: Update Execution status** in the same commit window.
 
 ---
 
@@ -423,7 +431,7 @@ export class LegalMenuRows {
 Rows go at the **foot** of each menu, in a `mt-1` group — space, not a hairline (R-6). Below Find a
 booking and Sign out, which leaves `app.ts:435-438`'s hard-coded first-focus target untouched (R-4).
 
-- [ ] **Step 1: Write the failing test** — AC-4, both auth branches and the sheet.
+- [x] **Step 1: Write the failing test** — AC-4, both auth branches and the sheet.
 
 ```ts
 it('carries the legal rows in the phone sheet and in both desktop popover branches', () => {
@@ -446,23 +454,23 @@ it('carries the legal rows in the phone sheet and in both desktop popover branch
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npx ng test --watch=false
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false
       --include="src/app/app.spec.ts"` → FAIL, `privacy` is `null`
-- [ ] **Step 3: Minimal implementation** — `<div class="mt-1"><app-legal-menu-rows variant="sheet" /></div>`
+- [x] **Step 3: Minimal implementation** — `<div class="mt-1"><app-legal-menu-rows variant="sheet" /></div>`
       at the sheet's foot and `variant="popover"` at both popover feet; `LegalMenuRows` into
       `app.ts`'s `imports`.
-- [ ] **Step 4: Run it, verify it passes** — `npx ng test --watch=false
+- [x] **Step 4: Run it, verify it passes** — `npx ng test --watch=false
       --include="src/app/app.spec.ts" --include="src/app/app.a11y.spec.ts"
       --include="src/app/app.contrast.spec.ts"` → PASS
-- [ ] **Step 5:** Extend `app.a11y.spec.ts`'s open-state cases (`:62`, `:74`, `:83`, `:93`) to
+- [x] **Step 5:** Extend `app.a11y.spec.ts`'s open-state cases (`:62`, `:74`, `:83`, `:93`) to
       `it.each(['riviera', 'porcelain', 'dark'] as const)` — today only the menus-closed case is
       theme-looped, so AC-5's "in all three themes" is not yet met for any open menu. Then extend
       `app.contrast.spec.ts:158`'s usage comment to name the legal rows, and confirm by reading
       `:156-175` that `--riv-pop-ink` on `--riv-pop-surface` is already measured in all three
       themes, so no new assertion is owed. Generalization pass: mechanism *an open-state a11y case
       that audits one theme only*; enumerate `grep -n "detectChanges()" frontend/src/app/app.a11y.spec.ts`.
-- [ ] **Step 6: Commit** — `git commit -m "Mount the legal rows in the tourist menu chrome (#1173)"`
-- [ ] **Step 7: Update Execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Mount the legal rows in the tourist menu chrome (#1173)"`
+- [x] **Step 7: Update Execution status** in the same commit window.
 
 ---
 
@@ -474,7 +482,7 @@ Modify `frontend/e2e/tourist-tab-bar.e2e.ts:190`, `frontend/e2e/theme-shell.e2e.
 
 Five specs inline `elementFromPoint` today. Two adapters make a real seam; five make it overdue.
 
-- [ ] **Step 1: Write the failing test** — AC-1/AC-2/AC-3, on the popup pattern (R-7).
+- [x] **Step 1: Write the failing test** — AC-1/AC-2/AC-3, on the popup pattern (R-7).
 
 ```ts
 import { hitTestId } from './support/hit-test';
@@ -500,10 +508,10 @@ test('the phone menu sheet carries the legal rows on the riviera map', async ({ 
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx
+- [x] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx
       playwright test --config playwright.a11y.config.ts legal-pages` → FAIL on the missing
       `support/hit-test` module, then on the missing row
-- [ ] **Step 3: Minimal implementation** — `hitTestId`, then the desktop twin of the test at
+- [x] **Step 3: Minimal implementation** — `hitTestId`, then the desktop twin of the test at
       1280 × 720 through `openHeaderMenu`.
 
 ```ts
@@ -525,16 +533,16 @@ export async function hitTestId(page: Page, testId: string): Promise<string | nu
 }
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS; then the same run for
+- [x] **Step 4: Run it, verify it passes** — same command → PASS; then the same run for
       `tourist-tab-bar`, `theme-shell` and `touch-targets-tourist`
-- [ ] **Step 5: Generalization-audit pass** — mechanism: *an inlined `elementFromPoint` occlusion
+- [x] **Step 5: Generalization-audit pass** — mechanism: *an inlined `elementFromPoint` occlusion
       check*. Enumerate `grep -rn "elementFromPoint" frontend/e2e`. Migrate only the two
       same-shape sites and keep their exact expectations (R-8); log why the other three stay
       (a containment question, and two `waitForFunction` predicates). Add the menu sheet's own
       44 px sweep, which today's resting-surface sweeps never reach — `touch-targets-tourist.e2e.ts:40-45`
       opens the sheet but then clicks Sign out, which closes it before `expectTouchTargets` runs.
-- [ ] **Step 6: Commit** — `git commit -m "Pin the legal rows as hit-testable, not merely visible (#1173)"`
-- [ ] **Step 7: Update Execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Pin the legal rows as hit-testable, not merely visible (#1173)"`
+- [x] **Step 7: Update Execution status** in the same commit window.
 
 ---
 
@@ -543,7 +551,7 @@ export async function hitTestId(page: Page, testId: string): Promise<string | nu
 **Files:** Modify `frontend/src/app/pages/home/home.html:411-415`, `:416`, `:520` · Test
 `frontend/e2e/discover-map.e2e.ts`
 
-- [ ] **Step 1: Write the failing test** — AC-7, in the file's existing `WIDE` block.
+- [x] **Step 1: Write the failing test** — AC-7, in the file's existing `WIDE` block.
 
 ```ts
 test('the desk frame takes no pointer events where it paints nothing', async ({ page }) => {
@@ -559,21 +567,21 @@ test('the desk frame takes no pointer events where it paints nothing', async ({ 
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx
+- [x] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx
       playwright test --config playwright.a11y.config.ts discover-map` → FAIL with `'desk-frame'`
-- [ ] **Step 3: Minimal implementation** — `pointer-events-none` on `desk-frame`'s class,
+- [x] **Step 3: Minimal implementation** — `pointer-events-none` on `desk-frame`'s class,
       `pointer-events-auto` on `desk-panel` and on `desk-pane`, with the comment stating the
       invariant this slice is really buying: *this route paints to every edge, so no control may
       live in document flow here; the frame paints nothing and takes nothing.*
-- [ ] **Step 4: Run it, verify it passes** — the whole `discover-map` file, so all ~20 existing
+- [x] **Step 4: Run it, verify it passes** — the whole `discover-map` file, so all ~20 existing
       `WIDE` interaction cases re-run against the change (R-2)
-- [ ] **Step 5: Generalization-audit pass** — mechanism: *a `fixed` full-window layer with no
+- [x] **Step 5: Generalization-audit pass** — mechanism: *a `fixed` full-window layer with no
       `pointer-events-none` whose children do the painting*. Enumerate
       `grep -rn "fixed inset" frontend/src/app/pages/home frontend/src/app/app.ts`; judge
       `sheet-ground` (`home.html:194`) and the sheet's own scroller (already
       `pointer-events-none` at `discover-sheet.ts:73`, the precedent this copies).
-- [ ] **Step 6: Commit** — `git commit -m "The desk frame paints nothing and takes nothing (#1173)"`
-- [ ] **Step 7: Update Execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "The desk frame paints nothing and takes nothing (#1173)"`
+- [x] **Step 7: Update Execution status** in the same commit window.
 
 ---
 
@@ -582,7 +590,7 @@ test('the desk frame takes no pointer events where it paints nothing', async ({ 
 **Files:** Modify `frontend/e2e/tourist-tab-bar.e2e.ts:116-138` and `:46-51` · Test
 `frontend/src/app/app.routes.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — AC-8, beside the two existing chrome fences at
+- [x] **Step 1: Write the failing test** — AC-8, beside the two existing chrome fences at
       `app.routes.spec.ts:167-175`.
 
 ```ts
@@ -595,22 +603,45 @@ it('never withholds the footer and the tab bar on the same route', () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — prove it goes red by temporarily adding `tabBar: false`
+- [x] **Step 2: Run it, verify it fails** — prove it goes red by temporarily adding `tabBar: false`
       to Discover's route data, exactly as #1167's F-6 proved its own fence. `npx ng test
       --watch=false --include="src/app/app.routes.spec.ts"`
-- [ ] **Step 3: Minimal implementation** — revert the temporary flag (the fence passes on the real
+- [x] **Step 3: Minimal implementation** — revert the temporary flag (the fence passes on the real
       table), then repoint AC-9's spec at `/venues/1` and drop the 8-copy `VENUES` padding with its
       comment once the file proves nothing else needs it.
-- [ ] **Step 4: Run it, verify it passes** — `npx ng test --watch=false
+- [x] **Step 4: Run it, verify it passes** — `npx ng test --watch=false
       --include="src/app/app.routes.spec.ts"`, then the whole `tourist-tab-bar` e2e file
-- [ ] **Step 5: Generalization-audit pass** — mechanism: *a shell guarantee parked on `?map=off`*.
+- [x] **Step 5: Generalization-audit pass** — mechanism: *a shell guarantee parked on `?map=off`*.
       Enumerate `grep -rn "map=off" frontend/e2e frontend/src`. Everything else in that population
       measures the pre-Q **page** and is #1168's by its own ACs; only this one measured the
       **shell**. Log the split so #1168 inherits a clean list.
-- [ ] **Step 6: Commit** — `git commit -m "Move the scroll-away guarantee off the dying map flag (#1173)"`
-- [ ] **Step 7: Update Execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Move the scroll-away guarantee off the dying map flag (#1173)"`
+- [x] **Step 7: Update Execution status** in the same commit window.
 
 ---
+
+## Docs-freshness note (close-out step 5)
+
+Range `a133f878..HEAD`. **One finding, patched in place:**
+
+- `.claude/skills/riviera-tailwind/SKILL.md:26` — stated that the element-selector,
+  `class: 'contents'` host form is used by `app-manage-booking-link` and `app-booking-mode-field`
+  — contradicted by `shared/legal-menu-rows.ts`, a third member of exactly that class (an `<a>`
+  renderer that cannot take the attribute form) — **action:** added to the enumeration.
+
+Checked and clean: no substrate doc cites `MOBILE_ITEM`, `popover-skin.ts`'s recipe list or the
+legal document paths as present-tense facts (`riviera-tailwind:58` cites `POP_ROW_RING`, which is
+unmoved); `riviera-frontend`'s frozen cross-feature edge table is unchanged (the RV-FE-8 grep
+returns only its four existing rows); `riviera-frontend:5`'s "two-suite e2e split" still holds.
+
+**Counting sweep (step 2b):** the slice made `footer: false` no more common (still exactly one
+route) and added no chrome flag, so the phrasing sweep over `the two` / `both` / `only two` near
+menu, chrome, flag, footer, popover and suite vocabulary turned up nothing about what grew. The
+one enumeration it did grow is the finding above. `docs/design/`'s hits are historical token-family
+narrative, untouched by this slice.
+
+**Plan-doc retirement:** `docs/plans/q-shore-discover-default.md` is #1167's plan and #1172 merged
+it, so this close-out deletes it — see the close-out step in the checklist.
 
 ## Generalization-audit log
 
@@ -630,30 +661,30 @@ it('never withholds the footer and the tab bar on the same route', () => {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts legal-pages` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Same run → the desktop test PASSES. Verified at commit `<sha>`.
-- [ ] **AC-3:** Same run; both tests assert `hitTestId` before clicking. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `npx ng test --watch=false --include="src/app/app.spec.ts"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `npm run test:a11y` → PASS, the open-state cases theme-looped. Verified at commit `<sha>`.
-- [ ] **AC-6:** Same run; `app.contrast.spec.ts:156-175` green and its usage comment names the rows. Verified at commit `<sha>`.
-- [ ] **AC-7:** Run `… playwright test --config playwright.a11y.config.ts discover-map` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-8:** Run `npx ng test --watch=false --include="src/app/app.routes.spec.ts"` → PASS, proven red first. Verified at commit `<sha>`.
-- [ ] **AC-9:** Run `… playwright test --config playwright.a11y.config.ts tourist-tab-bar` → PASS on `/venues/1`. Verified at commit `<sha>`.
+- [x] **AC-1:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts legal-pages` → PASS. Verified at `3f279073`.
+- [x] **AC-2:** Same run → the desktop test PASSES. Verified at `3f279073`.
+- [x] **AC-3:** Same run; both tests assert `hitTestId` before clicking. Verified at `3f279073`.
+- [x] **AC-4:** Run `npx ng test --watch=false --include="src/app/app.spec.ts"` → PASS. Verified at `3f279073`.
+- [x] **AC-5:** Run `npm run test:a11y` → PASS, the open-state cases theme-looped. Verified at `3f279073`.
+- [x] **AC-6:** Same run; `app.contrast.spec.ts:156-175` green and its usage comment names the rows. Verified at `3f279073`.
+- [x] **AC-7:** Run `… playwright test --config playwright.a11y.config.ts discover-map` → PASS. Verified at `3f279073`.
+- [x] **AC-8:** Run `npx ng test --watch=false --include="src/app/app.routes.spec.ts"` → PASS, proven red first. Verified at `3f279073`.
+- [x] **AC-9:** Run `… playwright test --config playwright.a11y.config.ts tourist-tab-bar` → PASS on `/venues/1`. Verified at `3f279073`.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section justified N/A — frontend-only, no `set_availability` write.
-- [ ] Pool + cutoff untouched (#3, #4). No money (#5). No clock (#6). No codes (#7).
-- [ ] Modulith section justified N/A — no Java in the diff, so the structural net is not owed.
-- [ ] Payment section justified N/A; the new-tab decision's payment reason recorded there.
-- [ ] No Flyway migration in scope (#12); no `V<n>` claimed, so nothing to renumber.
-- [ ] Frontend standards met: `shared/` placement, element selector + `class: 'contents'` host for an `<a>`-renderer, `appTouchTarget` on every row, tokens never theme-named, no `@apply`.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` clean with the plan committed.
-- [ ] The three hook-run `scripts/check-*.mjs` guards pass, plus `check-comment-only.mjs` and `check-review-range.mjs` by hand.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] `docs/plans/q-shore-discover-default.md` retired at close-out per the plan-doc retirement rule, checked against `riviera-docs-freshness` rather than from memory.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability section justified N/A — frontend-only, no `set_availability` write.
+- [x] Pool + cutoff untouched (#3, #4). No money (#5). No clock (#6). No codes (#7).
+- [x] Modulith section justified N/A — no Java in the diff, so the structural net is not owed.
+- [x] Payment section justified N/A; the new-tab decision's payment reason recorded there.
+- [x] No Flyway migration in scope (#12); no `V<n>` claimed, so nothing to renumber.
+- [x] Frontend standards met: `shared/` placement, element selector + `class: 'contents'` host for an `<a>`-renderer, `appTouchTarget` on every row, tokens never theme-named, no `@apply`.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` clean with the plan committed.
+- [x] The four `--diff origin/main` guards pass (`check-inline-comments`, `check-plan-file-structure`, `check-focus-posture`, `check-touch-target`) — run that way, not `--files`, which is how F-11 slipped past locally. By hand: `check-review-range.mjs` exit 0 on the PR's own counts, and `check-comment-only.mjs a133f878` reports the diff is not comment-only (informational).
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] `docs/plans/q-shore-discover-default.md` retired at close-out per the plan-doc retirement rule, checked against `riviera-docs-freshness` rather than from memory.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
+- [x] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.

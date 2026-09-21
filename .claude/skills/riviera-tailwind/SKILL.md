@@ -23,7 +23,7 @@ Worked examples: `shared/*-glass`, `amenity-chip`, `status-chip`, `failure-panel
    take the attribute form; `<a>`/`<label>` do not (an empty call site trips
    `elements-content`/`label-has-associated-control`) — those take an element selector with a
    `class: 'contents'` host and render the native element themselves
-   (`app-manage-booking-link`, `app-booking-mode-field`).
+   (`app-manage-booking-link`, `app-booking-mode-field`, `app-legal-menu-rows`).
 2. **Keep a class a spec queries as an inert marker** (`.set-tile.premium`, `.amenity-chip`,
    `.failure-title`) beside the utilities.
 3. **Surface directives carry no `border-radius` or padding.** Two competing utilities resolve
