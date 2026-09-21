@@ -268,10 +268,10 @@ describe('Home accessibility (axe)', () => {
 });
 
 /**
- * The riviera map sheet (`?map=sheet`, below `lg`): the head, the rails, the rows on the sheet,
+ * The riviera map sheet (what `/` renders, below `lg`): the head, the rails, the rows on the sheet,
  * the coast picker and the foot's Near me, each audited in the state the page reaches.
  */
-describe('Home accessibility (the riviera map sheet)', () => {
+describe('Home accessibility (the riviera map sheet — what `/` renders)', () => {
   let fixture: ComponentFixture<Home>;
   let httpMock: HttpTestingController;
   const originalMatchMedia = globalThis.matchMedia;
@@ -290,7 +290,7 @@ describe('Home accessibility (the riviera map sheet)', () => {
       this.scrollTop = options.top ?? 0;
       this.dispatchEvent(new Event('scroll'));
     };
-    const params = new BehaviorSubject<ParamMap>(convertToParamMap({ map: 'sheet' }));
+    const params = new BehaviorSubject<ParamMap>(convertToParamMap({}));
     await TestBed.configureTestingModule({
       imports: [Home],
       providers: [

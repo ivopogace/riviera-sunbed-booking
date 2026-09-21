@@ -7,7 +7,7 @@ import { expectTouchManipulation } from './support/mobile-zoom';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
- * The riviera map sheet on Discover behind `?map=sheet`: the map as the ground under the
+ * The riviera map sheet — what Discover renders: the map as the ground under the
  * glass header, the cards as a sheet with three resting heights, the head one row carrying the
  * query, the row the pin's preview, Near me's three arms. The ground opens as the **map
  * poster** — a still under the pins, no engine — and the fake engine takes over when something
@@ -101,7 +101,7 @@ function ground(page: Page): Locator {
 
 async function openSheet(page: Page, viewport = PHONE): Promise<void> {
   await page.setViewportSize({ width: viewport.width, height: viewport.height });
-  await page.goto('/?map=sheet');
+  await page.goto('/');
   await expect(page.getByTestId('venue-card')).toHaveCount(4);
   await expect(ground(page)).toBeVisible();
   await expectDetent(page, 'half');
@@ -695,7 +695,7 @@ test.describe('Discover sheet — the poster', () => {
       if (pathname.startsWith('/posters/')) posterRequests += 1;
     });
     await page.setViewportSize({ width: PHONE.width, height: PHONE.height });
-    await page.goto('/?map=sheet');
+    await page.goto('/');
     await expect(page.getByTestId('venue-card')).toHaveCount(4);
     await expectDetent(page, 'half');
     const image = page.getByTestId('poster-image');

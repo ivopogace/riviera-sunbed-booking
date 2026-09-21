@@ -73,7 +73,7 @@ async function openInRiviera(
   );
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: VENUES }));
   await page.setViewportSize(viewport);
-  await page.goto('/?map=sheet');
+  await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
 }
 

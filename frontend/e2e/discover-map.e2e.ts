@@ -978,13 +978,13 @@ async function chromeHits(
 
 async function openFlagged(page: Page, viewport: { width: number; height: number }): Promise<void> {
   await page.setViewportSize(viewport);
-  await page.goto('/?map=sheet');
+  await page.goto('/');
   await expect(page.locator(DRAWN_FACES).first()).toBeVisible();
   await settle(page);
 }
 
 /**
- * The pins behind `?map=sheet` and the desktop panel from `lg`. The pin layer places its
+ * The riviera map's pins and the desktop panel from `lg`. The pin layer places its
  * pills from values the page measures — the chrome's boxes and the window the sheet leaves — so
  * what is proven here is the thing only a browser can answer: that after the fit and the placement
  * pass, nothing a tourist can see is covered, at every width the design record measured.

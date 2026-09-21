@@ -99,6 +99,8 @@ describe('Home (the route-carried date)', () => {
           provide: ActivatedRoute,
           useValue: { queryParamMap: params, snapshot: { queryParamMap: params.value } },
         },
+        // jsdom measures no viewport, so no poster fits and the ground is live from the start.
+        { provide: MapEngine, useValue: new FakeMapEngine() },
         { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
       ],
     });
@@ -122,7 +124,12 @@ describe('Home (the route-carried date)', () => {
 
     expect(dateOfNextRequest()).toBe('2027-07-04');
     fixture.detectChanges();
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Sun 4 Jul 2027');
+    // The head's day chip, whose label carries no year. Parts, not the whole string: ICU
+    // punctuation varies, as booking-date-label.spec.ts records.
+    const day = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="head-day"]');
+    expect(day?.textContent).toContain('Sun');
+    expect(day?.textContent).toContain('4 Jul');
+    expect(day?.textContent).not.toContain('2027');
   });
 
   it.each([['2001-01-01'], ['not-a-date'], [null]])(
@@ -1531,12 +1538,12 @@ describe('Home (venue pins and the preview)', () => {
 });
 
 /**
- * The riviera map sheet behind `?map=sheet`: below `lg` the map is the
+ * The riviera map sheet, which is what `/` renders: below `lg` the map is the
  * ground, the list a sheet over it, the head one row carrying the query, the row the pin's
  * preview, and Near me three arms decided by the map's own fence rule. What jsdom cannot lay out
  * — the rest points, the flicks, the first row's y — is `discover-sheet.e2e.ts`'s.
  */
-describe('Home (the riviera map sheet, ?map=sheet)', () => {
+describe('Home (the riviera map sheet — what `/` renders)', () => {
   let httpMock: HttpTestingController;
   let geolocation: FakeGeolocationGateway;
   let engine: FakeMapEngine;
@@ -1642,7 +1649,7 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
   }
 
   async function sheetPage(): Promise<ComponentFixture<Home>> {
-    const fixture = render({ map: 'sheet' });
+    const fixture = render({});
     httpMock
       .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
       .flush(sheetVenues());
@@ -1710,8 +1717,32 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
     httpMock.verify();
   });
 
-  it('without ?map=sheet the page is today’s Discover', async () => {
-    const fixture = render({});
+  /**
+   * The route's whole `map` contract, as a tourist's URL crosses it. The riviera map is what `/`
+   * renders; `?map=off` is the one way back to the pre-Q page while it soaks, and every other
+   * value — the `?map=sheet` a bookmark from the flagged releases still carries among them — is
+   * the map, so no link that used to work breaks.
+   */
+  it('with no query parameter the page is the riviera map sheet', async () => {
+    const fixture = await sheetPage();
+
+    expect(byTestId(fixture, 'sheet-scroller')).not.toBeNull();
+    expect(byTestId(fixture, 'head-day')).not.toBeNull();
+    expect(byTestId(fixture, 'filter-beach')).toBeNull();
+    expect(byTestId(fixture, 'view-switch')).toBeNull();
+  });
+
+  it('?map=sheet still resolves to the riviera map sheet — a no-op, not an error', async () => {
+    const fixture = render({ map: 'sheet' });
+    httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`).flush(venues());
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'sheet-scroller')).not.toBeNull();
+    expect(byTestId(fixture, 'filter-beach')).toBeNull();
+  });
+
+  it('?map=off is today’s Discover', async () => {
+    const fixture = render(PRE_Q);
     httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`).flush(venues());
     await settle(fixture);
 
@@ -1720,8 +1751,8 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
     expect(byTestId(fixture, 'view-switch')).not.toBeNull();
   });
 
-  it('with the flag from lg up, the list is a pinned panel beside the map: no sheet, no filter bar', async () => {
-    const fixture = render({ map: 'sheet' }, true);
+  it('with no query parameter from lg up, the list is a pinned panel beside the map: no sheet, no filter bar', async () => {
+    const fixture = render({}, true);
     httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`).flush(venues());
     await settle(fixture);
 
@@ -2351,7 +2382,7 @@ describe('Home (the riviera map sheet, ?map=sheet)', () => {
     ): Promise<ComponentFixture<Home>> {
       window.innerWidth = width;
       window.innerHeight = 900;
-      const fixture = render({ map: 'sheet' }, true);
+      const fixture = render({}, true);
       httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`).flush(body);
       await settle(fixture);
       return fixture;
