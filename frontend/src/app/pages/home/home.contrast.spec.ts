@@ -36,9 +36,16 @@ import {
   RIVIERA_STOPS,
   WHITE,
   WORST_PHOTOS,
+  PANEL_ACCENT_INK,
+  RIVIERA_PANEL_ACCENT_INK,
+  DARK_PANEL_ACCENT_INK,
+  PORCELAIN_PANEL_WASH_HOVER,
+  RIVIERA_PANEL_WASH_HOVER,
+  DARK_PANEL_WASH_HOVER,
   expectAaOverStops,
   surfaceOver,
 } from '../../../testing/glass-tokens';
+import { baseBlock, declarationsOf, themeBlock } from '../../../testing/stylesheet-tokens';
 
 /**
  * WCAG-AA contrast guard for the Liquid Glass Discover page.
@@ -86,6 +93,8 @@ interface Theme {
   readonly cardInk: Rgb; // --riv-card-ink (solid)
   readonly cardInkBase: Rgb; // base of the muted rgba ink family
   readonly accent: Rgb; // --riv-accent-ink
+  readonly panelAccent: Rgb; // --riv-panel-accent-ink
+  readonly panelWashHover: Glass; // --riv-panel-wash-hover, composited over the header glass
   readonly fieldFill: Glass; // --riv-field-fill, composited over the card glass
   readonly fieldBorder: Glass; // --riv-field-border, composited over the field fill
   readonly heroInk: Rgb;
@@ -108,6 +117,8 @@ const THEMES: readonly Theme[] = [
     cardInk: INK_DARK,
     cardInkBase: CARD_INK,
     accent: hexToRgb(ACCENT.slice(1)),
+    panelAccent: RIVIERA_PANEL_ACCENT_INK,
+    panelWashHover: RIVIERA_PANEL_WASH_HOVER,
     fieldFill: LIGHT_FIELD_FILL,
     fieldBorder: LIGHT_FIELD_BORDER,
     heroInk: WHITE,
@@ -124,6 +135,8 @@ const THEMES: readonly Theme[] = [
     cardInk: INK_DARK,
     cardInkBase: CARD_INK,
     accent: hexToRgb(ACCENT.slice(1)),
+    panelAccent: PANEL_ACCENT_INK,
+    panelWashHover: PORCELAIN_PANEL_WASH_HOVER,
     fieldFill: LIGHT_FIELD_FILL,
     fieldBorder: LIGHT_FIELD_BORDER,
     heroInk: INK_DARK,
@@ -139,6 +152,8 @@ const THEMES: readonly Theme[] = [
     cardInk: DARK_CARD_INK,
     cardInkBase: DARK_CARD_INK,
     accent: DARK_ACCENT_INK,
+    panelAccent: DARK_PANEL_ACCENT_INK,
+    panelWashHover: DARK_PANEL_WASH_HOVER,
     fieldFill: DARK_FIELD_FILL,
     fieldBorder: DARK_FIELD_BORDER,
     heroInk: WHITE,
@@ -195,12 +210,43 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
     expectAaOverStops(theme.heroInk, theme.heroInkSoftAlpha, theme.headerGlass, theme.stops);
   });
 
-  // `--riv-accent-ink` is redeclared for the dark theme but not riviera, whose glass is as dark.
-  it('the accent ink would not clear AA on the header glass, which is why nothing there wears it', () => {
-    const surface = surfaceOver(theme.headerGlass, theme.stops[0]);
-    const accentFails = contrastRatio(rgbToHex(theme.accent), rgbToHex(surface)) < AA_NORMAL;
-    expect(accentFails).toBe(theme.name === 'riviera');
+  // The panel surface has its own accent (#1165). `--riv-accent-ink` is a CARD ink: riviera keeps
+  // the light themes' card palette on a dark page chrome, so it stays dark teal there and reads
+  // 1.09:1 on this glass — which is why the group-head distance and the row price wear
+  // `--riv-panel-accent-ink` instead, and why nothing on a panel wears the card accent.
+  it('panel accent ink (group-head distance, row price) meets AA on the header glass', () => {
+    expectAaOverStops(theme.panelAccent, 1, theme.headerGlass, theme.stops);
     expectAaOverStops(theme.heroInk, 1, theme.headerGlass, theme.stops);
+  });
+
+  it('the card accent ink is the one that could not clear AA here, in riviera', () => {
+    // Kept as the REASON the token above exists: if riviera's card accent ever cleared AA on this
+    // glass, the second token would be dead weight and this case says so by failing.
+    const worst = Math.min(
+      ...theme.stops.map((stop) =>
+        contrastRatio(rgbToHex(theme.accent), rgbToHex(surfaceOver(theme.headerGlass, stop))),
+      ),
+    );
+    expect(worst < AA_NORMAL).toBe(theme.name === 'riviera');
+  });
+
+  it('the row hover wash keeps both inks at AA on the panel glass', () => {
+    // A hovered desktop row is the wash composited over the panel glass, over each stop. The wash
+    // must move the surface AWAY from the ink — porcelain and dark lighten, riviera deepens its own
+    // header tint, because a lightening wash there costs the panel accent its AA at any alpha.
+    for (const stop of theme.stops) {
+      const panel = surfaceOver(theme.headerGlass, stop);
+      const hovered = composite(theme.panelWashHover.color, theme.panelWashHover.alpha, panel);
+      for (const [label, ink] of [
+        ['page ink', theme.heroInk],
+        ['panel accent ink', theme.panelAccent],
+      ] as const) {
+        expect(
+          contrastRatio(rgbToHex(ink), rgbToHex(hovered)),
+          `${label} over stop ${rgbToHex(stop)}`,
+        ).toBeGreaterThanOrEqual(AA_NORMAL);
+      }
+    }
   });
 
   it('card ink (names, ratings, free count) meets AA on the card glass', () => {
@@ -314,4 +360,39 @@ describe.each(THEMES)('Discover dusk row contrast — $name theme', (theme) => {
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });
+});
+
+/**
+ * The stylesheet pin (`testing/stylesheet-tokens`): the ratios above are computed from the mirrors
+ * in `testing/glass-tokens.ts`, so a value that drifts in `tailwind.css` — or a fourth declaration
+ * added later — would leave every one of them passing. Only the source text can see that.
+ *
+ * <p>Both tokens declare in all THREE blocks. That is the decision, not an omission: each is the
+ * panel-surface counterpart of a card token (`--riv-accent-ink`, `--riv-wash-hover`) whose riviera
+ * value is deliberately the light-theme one, so the panel pair cannot inherit and must say all
+ * three values itself — including the two that repeat their card counterpart's.
+ */
+describe('the panel-surface token pair is declared once per theme (#1165)', () => {
+  it.each([
+    ['--riv-panel-accent-ink', '#085a6e', '#a8e8f2', '#7cd7e8'],
+    [
+      '--riv-panel-wash-hover',
+      'rgba(255, 255, 255, 0.75)',
+      'rgba(10, 44, 63, 0.45)',
+      'rgba(255, 255, 255, 0.16)',
+    ],
+  ])('%s declares exactly the base, riviera and dark values', (token, base, riviera, dark) => {
+    expect(declarationsOf(token)).toEqual([base, riviera, dark]);
+    expect(baseBlock()).toContain(`${token}: ${base}`);
+    expect(themeBlock('riviera')).toContain(`${token}: ${riviera}`);
+    expect(themeBlock('dark')).toContain(`${token}: ${dark}`);
+  });
+
+  it.each(['--riv-panel-accent-ink', '--riv-panel-wash-hover'])(
+    '%s is mapped in @theme inline, without which its utility is never generated',
+    (token) => {
+      const utility = token.replace('--riv-', '--color-riv-');
+      expect(declarationsOf(utility)).toEqual([`var(${token})`]);
+    },
+  );
 });

@@ -50,6 +50,7 @@
   --color-riv-card-ink-faint: var(--riv-card-ink-faint);
   --color-riv-on-accent-ink: var(--riv-on-accent-ink);
   --color-riv-accent-ink: var(--riv-accent-ink);
+  --color-riv-panel-accent-ink: var(--riv-panel-accent-ink);
   --color-riv-field-border: var(--riv-field-border);
   --color-riv-field-fill: var(--riv-field-fill);
   --color-riv-field-solid: var(--riv-field-solid);
@@ -126,6 +127,7 @@
   --color-riv-wash-fill: var(--riv-wash-fill);
   --color-riv-wash-border: var(--riv-wash-border);
   --color-riv-wash-hover: var(--riv-wash-hover);
+  --color-riv-panel-wash-hover: var(--riv-panel-wash-hover);
   --color-riv-wash-hover-border: var(--riv-wash-hover-border);
   --color-riv-inset-fill: var(--riv-inset-fill);
   --color-riv-dialog-glass: var(--riv-dialog-glass);
@@ -269,6 +271,17 @@
   --riv-accent-ink: #085a6e;
   /* ink painted ON an --riv-accent-ink fill (the proof-of-work check glyph); moves with the accent */
   --riv-on-accent-ink: #ffffff;
+  /** The accent as it paints on a GLASS PANEL (appPanelGlass, i.e. --riv-header-glass) rather
+      than on a card — the Discover sheet's and desktop panel's beach-group distance, and the
+      panel row's price. A second token and NOT a riviera value on --riv-accent-ink above,
+      because that token is correct as this dark teal on riviera's own card glass (white at
+      0.78) and every card consumer would move with it. Declared in all three blocks: riviera
+      keeps the light themes' card palette on a dark page chrome, so a panel token cannot
+      inherit and must say all three values, including the two that repeat the card accent's.
+      Riviera is NOT the dark theme's #7cd7e8 — that measures 4.07:1 over this panel at the
+      #ffe2b0 stop, under AA. Proof: home.contrast.spec.ts, which loops every stop rather than
+      pinning a worst case; riviera's 4.94:1 is the thinnest margin in the set — issue #1165. */
+  --riv-panel-accent-ink: #085a6e;
   /* dark tint (design: white border): input boundary needs 3:1 (WCAG 1.4.11) */
   --riv-field-border: rgba(12, 42, 51, 0.55);
   --riv-field-fill: rgba(255, 255, 255, 0.55);
@@ -758,6 +771,17 @@
   --riv-wash-border: rgba(255, 255, 255, 0.7);
   --riv-wash-hover: rgba(255, 255, 255, 0.75);
   --riv-wash-hover-border: rgba(10, 79, 94, 0.6);
+  /** A list row's hover wash ON a glass panel (the desktop Discover panel's rows), which the
+      --riv-wash-hover above cannot serve: it is a wash over a LIGHT surface, and riviera
+      inherits its white 0.75 onto a dark panel, washing it to near-white under white ink
+      (~1.45:1 for every row fact). Redeclaring it for riviera instead would break the two
+      consumers that pair it with dark inks on a light --riv-wash-fill (the dialog Back button,
+      find-booking's close chip). The wash must move the surface AWAY from the ink, so riviera
+      deepens its own header tint rather than lightening — at every usable alpha a lightening
+      wash there puts --riv-panel-accent-ink under AA (white at 0.06 gives 4.23:1). Porcelain
+      and dark repeat their --riv-wash-hover values exactly, so neither theme's paint moves.
+      Proof: home.contrast.spec.ts's "row hover wash keeps both inks at AA" — issue #1165. */
+  --riv-panel-wash-hover: rgba(255, 255, 255, 0.75);
   --riv-inset-fill: rgba(255, 255, 255, 0.4);
   --riv-dialog-glass: rgba(255, 255, 255, 0.82);
   --riv-back-ink: #0a4f5e;
@@ -899,6 +923,9 @@
   --riv-header-glass: rgba(10, 44, 63, 0.72);
   --riv-header-border: rgba(255, 255, 255, 0.22);
   --riv-tabbar-glass: rgba(10, 44, 63, 0.92);
+  /* The two panel-surface tokens this theme is the reason for (see the base block) */
+  --riv-panel-accent-ink: #a8e8f2;
+  --riv-panel-wash-hover: rgba(10, 44, 63, 0.45);
 
   /** 0.78 (design: 0.55): the darkest riviera stop needs the extra opacity for the dark
       card inks to reach AA — see home.contrast.spec.ts. */
@@ -953,6 +980,7 @@
   --riv-card-ink-faint: rgba(242, 247, 250, 0.72);
   --riv-accent-ink: #7cd7e8;
   --riv-on-accent-ink: #0a2a33;
+  --riv-panel-accent-ink: #7cd7e8;
   --riv-field-border: rgba(255, 255, 255, 0.5);
   --riv-field-fill: rgba(2, 10, 22, 0.45);
   --riv-field-scheme: dark;
@@ -993,6 +1021,7 @@
   --riv-wash-fill: rgba(255, 255, 255, 0.08);
   --riv-wash-border: rgba(255, 255, 255, 0.28);
   --riv-wash-hover: rgba(255, 255, 255, 0.16);
+  --riv-panel-wash-hover: rgba(255, 255, 255, 0.16);
   /* This theme's own --riv-back-ink (#b7dfe9), tuned to clear 3:1 here — issue #839. */
   --riv-wash-hover-border: rgba(183, 223, 233, 0.55);
   --riv-inset-fill: rgba(255, 255, 255, 0.08);
