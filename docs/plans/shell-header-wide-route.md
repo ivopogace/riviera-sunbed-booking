@@ -200,15 +200,17 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement — phases complete, verifying`
+**Stage pointer:** `implement — all three phases done, suites green on b9bd945d`
 
-**Next action:** Push the branch. No PR is opened: none was requested.
+**Next action:** None outstanding on the branch. No PR is opened — none was requested — so the
+`riviera-sdlc` CI, review and Sonar gates have not run and the last three checklist boxes below
+stay unticked deliberately rather than by omission.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the `data.wide` route flag, header + footer full-bleed | ✅ | `d185cdbd` |
 | 1 — the eyebrow at 12.5 px in its own case | ✅ | `81db1b02` |
-| 2 — the swatch becomes a labelled menu row | ✅ | `<phase-2-sha>` |
+| 2 — the swatch becomes a labelled menu row | ✅ | `b9bd945d` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -337,26 +339,34 @@ files listed in File structure
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `npx vitest run src/app/app.spec.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/shell-header-wide.e2e.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** Same command as AC-2 → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `npx vitest run src/app/app.spec.ts` and `npx playwright test --config playwright.a11y.config.ts e2e/tourist-header.e2e.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `npx vitest run src/app/app.spec.ts` and `… e2e/theme-shell.e2e.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `npm run test:a11y` and `… e2e/theme-shell.e2e.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** Run `npx vitest run src/app/app.spec.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-8:** Run `npm run test:e2e:a11y` → PASS. Verified at commit `<sha>`.
+> Commands are the project's own runners: `npx ng test --watch=false` (a bare `npx vitest` misses
+> the Angular builder's config and fails to compile), and the a11y Playwright config with
+> `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` per `riviera-local-debug`.
+
+- [x] **AC-1:** `npx ng test --watch=false --include="src/app/app.spec.ts"` → PASS (71). Verified at `b9bd945d`.
+- [x] **AC-2:** `… playwright test --config playwright.a11y.config.ts e2e/shell-header-wide.e2e.ts` → PASS (5), asserting `max-width: none` at 1440 and 1920 against the capped route's `1080px`. Verified at `b9bd945d`.
+- [x] **AC-3:** Same command as AC-2 → PASS: `font-size: 12.5px`, `text-transform: none`, `letter-spacing: 0.3125px` on both a wide and a capped route. Verified at `b9bd945d`.
+- [x] **AC-4:** `npx ng test --watch=false --include="src/app/app.spec.ts"` and `… e2e/tourist-header.e2e.ts` → PASS. Verified at `b9bd945d`.
+- [x] **AC-5:** `npx ng test --watch=false --include="src/app/app.spec.ts"` and `… e2e/theme-shell.e2e.ts` → PASS, all three themes from both menus. Verified at `b9bd945d`.
+- [x] **AC-6:** `npm run test:a11y` → PASS (1104 across 110 files), and the theme-shell axe legs in the e2e run. Verified at `b9bd945d`.
+- [x] **AC-7:** `npx ng test --watch=false --include="src/app/app.spec.ts"` → PASS; the capped leg's rendered `1080px` in AC-2's e2e. Verified at `b9bd945d`.
+- [x] **AC-8:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → PASS (**726**), `tourist-header`, `theme-shell` and `current-page-marker` included. Verified at `b9bd945d`.
+
+Full unit suite at the same commit: `npx ng test --watch=false` → **3652 passed** across 294 files.
+`npx ng lint` and `npm run format:check` clean; `check-touch-target`, `check-focus-posture`,
+`check-inline-comments` and `check-plan-file-structure --diff origin/main` all exit 0.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section justified N/A (frontend-only; no availability path).
-- [ ] Pool + cutoff not in scope (#3, #4). No money rendered (#5). No time reasoning (#6). No booking codes (#7).
-- [ ] Modulith section justified N/A (frontend-only); no cross-module concern (#11).
-- [ ] Payment section justified N/A (#8, #9, #10 not in scope).
-- [ ] No Flyway migration in scope (#12).
-- [ ] Frontend standards met: `riviera-frontend` placement, `riviera-tailwind` rules 3/4/6, `frontend/.claude/CLAUDE.md` focus + touch-target posture; no `as any`.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability section justified N/A (frontend-only; no availability path).
+- [x] Pool + cutoff not in scope (#3, #4). No money rendered (#5). No time reasoning (#6). No booking codes (#7).
+- [x] Modulith section justified N/A (frontend-only); no cross-module concern (#11).
+- [x] Payment section justified N/A (#8, #9, #10 not in scope).
+- [x] No Flyway migration in scope (#12).
+- [x] Frontend standards met: `riviera-frontend` placement, `riviera-tailwind` rules 3/4/6, `frontend/.claude/CLAUDE.md` focus + touch-target posture; no `as any`.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows (R-3 is accepted-and-stated, the rest resolved); Open Questions empty.
+- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`. — **not reached: no PR was opened, none was requested.**
+- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked. — **not reached: the review and Sonar gates are PR-scoped and no PR was opened.**
