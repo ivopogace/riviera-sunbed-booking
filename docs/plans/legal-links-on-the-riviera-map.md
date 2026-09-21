@@ -128,7 +128,7 @@ exemption) · `riviera-local-debug` (clone deepened; `npm ci` done; `ng test --i
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | The desktop popover is auth-branched into two template copies that cannot share a template ref (`app.html:247`), so rows land in one branch only and a signed-in tourist on desktop keeps no legal route | Medium | High | One component symbol, mounted in both branches; AC-4 asserts all three call sites, and the spec drives `customerAuth.signedIn()` both ways | me | **closed in phase 1** — AC-4's `it.each([false, true])` proved red on both branches before the mount |
-| R-2 | `pointer-events-none` on `desk-frame` breaks pointer interaction on the panel or the map if a child misses `pointer-events-auto` | Medium | High | Both children (`desk-panel`, `desk-pane`) take `pointer-events-auto`; the ~20 existing `WIDE` interaction cases in `discover-map.e2e.ts` (row press, near-me, pin press, picker) must stay green, and AC-7 adds the gutter proof | me | open |
+| R-2 | `pointer-events-none` on `desk-frame` breaks pointer interaction on the panel or the map if a child misses `pointer-events-auto` | Medium | High | Both children (`desk-panel`, `desk-pane`) take `pointer-events-auto`; the ~20 existing `WIDE` interaction cases in `discover-map.e2e.ts` (row press, near-me, pin press, picker) must stay green, and AC-7 adds the gutter proof | me | **closed in phase 3** — all 44 `discover-map.e2e.ts` cases green, and AC-7 was proven red (the gutter returned `desk-frame`) before the fix |
 | R-3 | Two more rows grow the phone sheet; at 344 × 882 (the `fold` project) the signed-in sheet is identity + 5 rows and could overflow the viewport top | Low | Medium | Measured: ≈ 320 px of sheet above a 76 px bottom offset leaves ≈ 486 px of air at 844, ≈ 524 px at 882. `support/shell.ts`'s `expectPhoneRailFits` is the existing helper — use it rather than a fresh assertion | me | open |
 | R-4 | `toggleMenu` hard-codes the sheet's first focus target (`app.ts:435-438`: `nav-account-link-mobile` / `nav-signin-mobile`, fallback `find-open-mobile`), so rows inserted above it would silently take focus on open | Low | Medium | Rows go at the **foot**, below Find a booking and Sign out; `app.spec.ts`'s existing focus-on-open assertion stays green unmodified and is the fence | me | **closed in phase 1** — the sheet's order spec now pins the legal rows last, and the focus-on-open assertion passed unmodified |
 | R-5 | A row that opens a new tab while closing the menu would destroy the focused element, which `frontend/.claude/CLAUDE.md` requires be handled by `focusMover()` on all three legs | Medium | Medium | The rows do **not** call `closeMenus()`. A `target="_blank"` link does not navigate the originating document, so there is no NavigationSkipped problem to solve (that is why the other rows close), and the menu is where the tourist left it on return. No focus machinery is owed | me | open |
@@ -214,16 +214,16 @@ N/A — no contract change. `/legal/privacy` and `/legal/terms` are existing Ang
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** `pointer-events-none` on `desk-frame`, red-first on AC-7 in `discover-map.e2e.ts`.
+**Next action:** The route-table fence (proven red first), then the scroll-away spec onto `/venues/1`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `LegalMenuRows`, the shape module | ✅ | `99c78d5d` |
 | 1 — Mounted at the three chrome call sites | ✅ | `069e75df` |
-| 2 — The `hitTestId` seam and the reachability e2e | ✅ | `<phase-2-sha>` |
-| 3 — `desk-frame`'s pointer-events interface | | |
+| 2 — The `hitTestId` seam and the reachability e2e | ✅ | `ca3c62fc` |
+| 3 — `desk-frame`'s pointer-events interface | ✅ | `<phase-3-sha>` |
 | 4 — The two handovers: scroll-away route, route-table fence | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -232,7 +232,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
-| F-8 | #1172 review gate, deferred here | `desk-frame`'s stacking is worked around, not fixed; the next footer-like row on this route meets the same fixed, opaque-to-pointers overlay | addressed by phase 3 + AC-7, with the scope correction recorded under Open questions § Resolved |
+| F-8 | #1172 review gate, deferred here | `desk-frame`'s stacking is worked around, not fixed; the next footer-like row on this route meets the same fixed, opaque-to-pointers overlay | **fixed in phase 3** (`pointer-events-none` + both children `pointer-events-auto`, red-first) and in phase 2 (the `hitTestId` seam), with the scope correction recorded under Open questions § Resolved |
 
 ---
 
@@ -588,6 +588,7 @@ it('never withholds the footer and the tab bar on the same route', () => {
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-21 | Phase 0 added a third template holding a legal document path | A hard-coded legal document path in a template | `grep -rn "/legal/privacy\|/legal/terms" frontend/src --include=*.ts --include=*.html \| grep -v spec` | 3 (`legal-footer.ts:15-16`, `legal-consent.ts:25,34`, `legal-menu-rows.ts`) + the two route declarations | No extraction. Both sides are literal-pinned (`app.routes.spec.ts:48-53` vs the three component specs), so a rename fails loudly; a module whose implementation is two string constants is maximally shallow. Reasoning under Open questions § Resolved |
+| 2026-09-21 | Phase 3 fixed one fixed layer's pointer-events | A `fixed` full-window layer with no `pointer-events-none` whose children do the painting | `grep -rn "fixed inset" frontend/src/app/pages/home frontend/src/app/app.ts frontend/src/app/app.html` | 9 layers | **1 acted on** (`desk-frame`). The rest are not the same defect and were left: `sheet-ground` and the coast picker's backdrop and dialog genuinely paint across their box; the tab bar and menu sheet are opaque surfaces; `riv-bg` is at `z-[-1]` with nothing behind it to block; `discover-sheet.ts:73,133` already carry the property and were the precedent copied |
 | 2026-09-21 | Phase 2 extracted the `hitTestId` seam | An inlined `elementFromPoint` occlusion check | `grep -rn "elementFromPoint" frontend/e2e` | 7 sites in 6 files | **1 migrated** (`tourist-tab-bar.e2e.ts:190`, the only testid-box-centre shape), expectation unchanged. Not migrated, with reasons: `theme-shell.e2e.ts:209` (arbitrary viewport point, not an element's box — the plan wrongly predicted this one), `booking-flow.e2e.ts:174` (asks containment, not identity), `discover-photos.e2e.ts:228,389` and `discover-sheet.e2e.ts:761` (`waitForFunction` predicates), `operator-venue-location.e2e.ts:329` (returns the element, not an id) |
 | 2026-09-21 | Phase 2 nearly shipped a duplicate sweep | A tourist touch-target sweep of the open menu sheet | `grep -n "menu-toggle" frontend/e2e/touch-targets-tourist.e2e.ts` | 2 (the sign-out notice case, which closes the sheet before sweeping; and `:267`, which sweeps it open) | The new case I added was a **duplicate of `:267`** and its justifying comment was false — deleted. `:267` strengthened instead with two visibility assertions, so the sweep cannot pass vacuously on the rows it is now the only measurement of |
 | 2026-09-21 | Phase 1's mount reddened two unrelated specs | An `app.spec.ts` assertion pinning a menu's exact row list, which any added row breaks | `grep -n "find-open-mobile'\|nav-signout'" frontend/src/app/app.spec.ts` | 1 spec (`it.each` over both auth states) | Extended to pin the legal rows **last**, and its title renamed. The desktop popovers have no equivalent order spec, so nothing else moved |

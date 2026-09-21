@@ -2,6 +2,7 @@ import { expect, Locator, Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import { hitTestId } from './support/hit-test';
 import { mockMapResources } from './support/map-resources';
 import { expectTouchManipulation } from './support/mobile-zoom';
 import { expectTouchTargets } from './support/touch-targets';
@@ -1057,6 +1058,24 @@ test.describe('Discover map — the desktop panel', () => {
   async function box(locator: Locator): Promise<DOMRect> {
     return locator.evaluate((el) => el.getBoundingClientRect().toJSON() as DOMRect);
   }
+
+  test('the desk frame takes no pointer events where it paints nothing', async ({ page }) => {
+    await openMap(page, { width: 1280, height: 900 });
+
+    // 6px in: inside the frame's own 12px padding, outside both children.
+    const gutter = await page.getByTestId('desk-frame').evaluate((frame) => {
+      const box = frame.getBoundingClientRect();
+      return document
+        .elementFromPoint(box.left + 6, box.top + 6)
+        ?.closest('[data-testid]')
+        ?.getAttribute('data-testid');
+    });
+    expect(gutter).not.toBe('desk-frame');
+
+    // And the children it does paint stay reachable.
+    expect(await hitTestId(page, 'desk-panel')).not.toBeNull();
+    await expect(page.getByTestId('venue-row').first()).toBeVisible();
+  });
 
   for (const [width, panelPx, panePx] of [
     [1024, 420, 568],
