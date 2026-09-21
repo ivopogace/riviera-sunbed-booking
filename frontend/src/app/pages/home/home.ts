@@ -99,8 +99,9 @@ const WIDE_VIEWPORT = '(min-width: 1024px)';
  * parameter and the page it reaches are a one-release fallback and go together.
  *
  * <p>Not quite the page as it was: the route's `footer: false` is static, so `?map=off` renders
- * without the shared footer the old page carried. The legal links are reachable from every other
- * route, and both this parameter and that gap end with the pre-Q page.
+ * without the shared footer the old page carried. Privacy and Terms are still reachable here —
+ * they are menu rows now (`shared/legal-menu-rows.ts`), which no route flag can withhold — so what
+ * is missing is the row, not the reach.
  */
 const OFF_FLAG = 'off';
 /** The region the sheet opens on when the tourist is not placed: the coast's middle stretch. */

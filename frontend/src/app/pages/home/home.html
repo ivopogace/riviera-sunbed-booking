@@ -408,7 +408,7 @@
   }
 } @else if (panelMode()) {
   <!-- ── From lg: the sheet's list as a pinned left panel, the map inset beside it. Same head, same rows, same preview. ── -->
-  <!-- This arm paints to every window edge, so no control may live in document flow under it; the frame itself paints nothing and takes nothing. -->
+  <!-- The panel and the pane paint to every window edge between them, so no control may live in document flow under this arm. -->
   <div
     class="pointer-events-none fixed inset-x-0 bottom-0 z-[1] flex gap-3 p-3"
     data-testid="desk-frame"

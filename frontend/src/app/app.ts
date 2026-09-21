@@ -103,6 +103,10 @@ export type TouristSection = 'beaches' | 'bookings' | 'account';
  * search-first header candidate. `footer: false` is for a route that paints to every edge of the
  * window, where the shared footer would be covered rather than read; Discover's riviera map is
  * the first. Read off the same root→leaf walk as the operator flags.
+ *
+ * <p>The two are not independent: below `sm` a `footer: false` route's only reach to Privacy and
+ * Terms is the tab bar's menu sheet (`shared/legal-menu-rows.ts`), so such a route needs the
+ * tourist chrome and must not also carry `tabBar: false`.
  */
 export interface TouristRouteData {
   section?: TouristSection;

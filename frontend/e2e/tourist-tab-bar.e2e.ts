@@ -120,7 +120,7 @@ test.describe('phone', () => {
     // A shell guarantee on any scrolling tourist route: the riviera map is fixed to the viewport.
     await page.goto('/venues/1');
     await expect(page.getByRole('button', { name: /Select to book/ }).first()).toBeVisible();
-    // `.riv-header`, not `header`: a venue card carries one of its own, and the shell's is the subject.
+    // `.riv-header`, not `header`: the venue page carries headers of its own, and the shell's is the subject.
     const header = page.locator('.riv-header');
     const bar = page.getByTestId('tab-bar');
     await expect(header).toHaveCSS('position', 'relative');

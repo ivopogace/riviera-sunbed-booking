@@ -1070,11 +1070,11 @@ test.describe('Discover map — the desktop panel', () => {
         ?.closest('[data-testid]')
         ?.getAttribute('data-testid');
     });
-    expect(gutter).not.toBe('desk-frame');
+    // Nothing marked sits behind the frame there, so the answer is exact, not merely not-frame.
+    expect(gutter).toBeUndefined();
 
-    // And the children it does paint stay reachable.
-    expect(await hitTestId(page, 'desk-panel')).not.toBeNull();
-    await expect(page.getByTestId('venue-row').first()).toBeVisible();
+    // And a leaf the frame's children do paint stays reachable; the rows, this file's WIDE cases.
+    expect(await hitTestId(page, 'desk-near-me')).toBe('desk-near-me');
   });
 
   for (const [width, panelPx, panePx] of [

@@ -169,16 +169,9 @@ describe('app.routes — the phone tab bar reads its section and checkout flag o
     expect(chromeless).toEqual(['booking/pay']);
   });
 
+  // Adding to this list owes the constraint in `app.ts`'s TouristRouteData: chrome, not just paint.
   it('withholds the shared footer on Discover and nowhere else', () => {
     const footerless = routes.filter((r) => r.data?.['footer'] === false).map((r) => r.path);
     expect(footerless).toEqual(['']);
-  });
-
-  it('never withholds the footer and the tab bar on the same route', () => {
-    // Below sm a footerless route's only reach to Privacy and Terms is the tab bar's menu sheet.
-    const stranded = routes
-      .filter((r) => r.data?.['footer'] === false && r.data?.['tabBar'] === false)
-      .map((r) => r.path);
-    expect(stranded).toEqual([]);
   });
 });

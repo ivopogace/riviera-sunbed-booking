@@ -76,20 +76,31 @@ exemption) · `riviera-local-debug` (clone deepened; `npm ci` done; `ng test --i
       and the open account popover in each of `porcelain`, `riviera` and `dark`, then there are no
       critical or serious violations. *Seam:* `app-root`'s rendered shell ·
       *Pinned by:* `app.a11y.spec.ts` › the theme-looped open-state cases
-- [ ] **AC-6:** Given the legal rows wear `POP_ITEM`/`MOBILE_ITEM`, when the popover ink/surface
-      pair is measured in all three themes, then it clears AA over every gradient stop — and the
-      rows introduce **no new ink, surface or edge pair**, so the existing measurements are the
-      coverage. *Seam:* the token mirror in `src/testing/glass-tokens.ts` · *Pinned by:*
-      `app.contrast.spec.ts:156-175` (extended to name the legal rows in the usage comment)
+- [x] **AC-6:** Given the legal rows wear `POP_ITEM`/`MOBILE_ITEM`, then they introduce **no new
+      ink, surface or edge pair** — `--riv-pop-ink` on `--riv-pop-surface` is already measured in
+      all three themes. *Seam:* the token mirror in `src/testing/glass-tokens.ts` · *Pinned by:*
+      `app.contrast.spec.ts` › `light popover text meets AA over the darkest riviera stop (worst
+      case for white glass)` (porcelain + riviera) and › `dark popover text meets AA over every
+      dark-theme stop`. **Stated honestly: this AC is satisfied by existing coverage, not by a new
+      test.** The slice's only change to that file names the legal rows in the usage comment, so
+      nothing in the diff can turn it red; a duplicate measurement of an already-proven pair would
+      be the vacuous alternative. A hairline *would* have owed a new measurement, which is why
+      R-6 chose space over a line.
 - [ ] **AC-7:** Given the desktop Discover panel at 1280 × 900, when `elementFromPoint` is read
       inside `desk-frame`'s 12 px gutter, then it does **not** resolve to `desk-frame` — the frame
       takes no pointer events where it paints nothing — while the panel's rows and the map pane
       stay clickable. *Seam:* the `/` route in the mocked Playwright suite · *Pinned by:*
       `discover-map.e2e.ts` › `the desk frame takes no pointer events where it paints nothing`
-- [ ] **AC-8:** Given the route table, when a route carries `footer: false`, then it does not also
-      carry `tabBar: false` — on a footerless route the phone's only legal surface is the tab bar's
-      menu sheet. *Seam:* the exported `routes` array · *Pinned by:*
-      `app.routes.spec.ts` › `never withholds the footer and the tab bar on the same route`
+- [x] **AC-8: withdrawn, not delivered.** The intended fence ("no route withholds the footer *and*
+      the tab bar") is **unfalsifiable** beside its two neighbours: `app.routes.spec.ts` already
+      pins `tabBar: false` to exactly `['booking/pay']` and `footer: false` to exactly `['']`, so
+      any route acquiring the second flag breaks one of those exact lists first. Proven, not
+      assumed: breaking only the intersection (`footer: false` added to `booking/pay`) reddened the
+      exact-list test too, so the new assertion could never be the sole failure. It also
+      implemented one clause of a two-clause rule — a `footer: false` route under the **console**
+      chrome would strand a phone user and the filter would not flag it. The constraint now lives
+      in `app.ts`'s `TouristRouteData` TSDoc, where a route author reads it before writing the
+      flag, with a pointer on the exact-list test. *Seam:* the route-data interface
 - [ ] **AC-9:** Given the shell below `sm`, when the document is scrolled on a route that survives
       #1168, then the top bar has scrolled away and the tab bar is still pinned 61 px tall at the
       bottom edge — the guarantee no longer rests on `?map=off`. *Seam:* the `/venues/1` route in
@@ -235,6 +246,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-17 | Review gate — comment-compliance agent | **The slice's stated layering premise was false.** `legal-menu-rows.ts` and this plan both claimed Discover's fixed layers "top out at `z-[11]`"; the coast picker is `fixed inset-0 z-[30]` with its dialog at `z-[31]` on this very route, in the root stacking context (`<main>` is deliberately unpositioned so page modals beat the header), and elsewhere a lightbox is `z-50` and a booking dialog `z-60` | fixed. The **conclusion holds** — the phone sheet's `z-40` is above every Discover layer, and the desktop popover's `z-20` context is above `desk-frame`'s `z-[1]`, which is the layer that swallowed the footer — but "by construction, above everything" was wrong. The TSDoc now names the picker and the dialog and says plainly that a page modal outranks the chrome and is dismissed before chrome is used |
+| F-16 | Review gate — comment + history agents | `legal-menu-rows.ts` claimed the chrome is "present on every tourist route": `booking/pay` carries `tabBar: false`, so below `sm` it has no menu at all (it keeps the footer instead) | fixed — the TSDoc states the real invariant: every route carries one of the footer or this menu, never neither |
+| F-15 | Review gate — comment agent | The footer/tab-bar joint constraint lived only in a spec — and after F-13 withdrew that spec, nowhere at all | fixed — it is now in `app.ts`'s `TouristRouteData` TSDoc, which is what a route author reads before writing `footer: false`, with a one-line pointer on the exact-list test |
+| F-14 | Review gate — comment + prior-PR agents | `popover-skin.ts`'s consumer ledger did not list the new consumer, and F-12's reword removed the only pointer to it. **Third recorded occurrence** of this file's list going stale (#1017, #1018 F-5) | fixed — `shared/legal-menu-rows.ts` added to the enumeration, noting it picks a skin by variant rather than composing one |
+| F-13 | Review gate — bug-scan, history and prior-PR agents (three, independently) | **Two assertions could not fail.** `expect(await hitTestId(page, 'desk-panel')).not.toBeNull()` — `hitTestId`'s optional-chain returns `undefined`, never `null`, so it passed for every outcome including a dead panel; and the new route fence was unfalsifiable beside its two exact-list neighbours (see AC-8, withdrawn). The helper's declared `Promise<string \| null \| undefined>` and its TSDoc advertised the impossible `null`, which is what licensed the bad assertion | fixed: the type and doc drop `null`; the panel line becomes `hitTestId(page, 'desk-near-me')` → `'desk-near-me'`, a leaf with no marked descendants (the panel's rows are exercised by this file's other WIDE cases, which press them); the gutter probe becomes `toBeUndefined()`, exact rather than "merely not-frame"; the fence is withdrawn |
+| F-18 | Review gate — history agent | `home.ts`'s `OFF_FLAG` TSDoc still said "The legal links are reachable from every other route" — a sentence #1172 wrote for this exact gap, which this slice closes | fixed — it now says `?map=off` loses the footer's row, not the reach, and points at the menu rows |
+| F-19 | Review gate — history agent | The rows wear `CURRENT_POP_ROW` (inside both skins) but carry no `routerLinkActive`, so on `/legal/*` they do not mark themselves current while every other destination row does | **no action, decision recorded in the TSDoc.** A document read in another tab is not this tab's current page, and it is `legal-footer.ts`'s and `legal-consent.ts`'s position on the same two routes; #985's own non-goals allow a row wearing the recipe without triggering it. Stated in the component so nobody "fixes" it into a `routerLink` and loses the Payment-Element reason |
+| F-20 | Review gate — comment + prior-PR agents | `touch-targets-tourist.e2e.ts`'s new comment claimed to be "the only measurement of the legal rows' boxes": the sweeps in that file are phone-width only and both popover branches are `sm:flex`, so the popover rows had **no rendered-box measurement anywhere** | fixed — the comment is narrowed to the sheet variant, and `tourist-header.e2e.ts`'s two desktop popover cases now name the rows, so the sweep that does lay them out cannot pass vacuously either |
+| F-21 | Review gate — comment + history agents | Three stale or misleading comments: `legal-pages.e2e.ts`'s header doc enumerated three legal surfaces where there are now four; `home.html`'s frame comment asserted a prohibition and its own removal in one breath; `tourist-tab-bar.e2e.ts` blamed the second `<header>` on "a venue card" when it is the venue page's identity card and the availability calendar | all three fixed |
 | F-12 | Review gate — rule-compliance agent | Four RV-STYLE-1 / readability items: `popover-skin.ts`'s new TSDoc narrated the move out of `app.ts`; `hit-test.ts`'s TSDoc carried "for a whole release" (history); `const THEMES` inserted between the audit's file-header doc and its `describe` silently made that doc `THEMES`'s; `legal-menu-rows.spec.ts`'s case name claimed "never a wrapper" while all three call sites add an `mt-1` group | all four fixed. The wrapper stays — it is the call site's own layout, which is the `cls` idiom — and the case is renamed to what it actually asserts: the host contributes no layout box |
 | F-11 | CI `Repo hygiene (diff-scoped)` on `069e75df` and `4d8229b5` | Two multi-line inline comments in `app.spec.ts` (RV-STYLE-1). I had run `check-inline-comments.mjs --files` over a hand-picked list; CI runs `--diff origin/main` over everything the branch touched, which is the only run that counts | fixed in `32fe8b9c`; all five guards now run locally as `--diff origin/main` |
 | F-10 | CI `Frontend (lint + test + build)` on `069e75df` | **`theme-shell.e2e.ts:212` broken by this slice**, deterministically (failed on the retry too): the test hit-tested `(innerWidth / 2, innerHeight * 0.7)` expecting `menu-backdrop`, and the two new rows made the sheet tall enough to reach that point, so the hit landed on `nav-register-mobile`. The guarantee is the backdrop's *extent*, and the sheet legitimately covers more of the screen now | fixed: the probe point is derived at runtime from the header's bottom and the bottom-anchored sheet's top, so it is past the strip the original regression shrank the backdrop to and clear of the sheet at any row count. Still fails on the regression it guards, so it is not vacuous |
@@ -256,11 +276,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/app.contrast.spec.ts` — AC-6: the usage comment at `:158` names the legal rows (no new pair to measure)
 - `frontend/src/app/app.routes.spec.ts` — AC-8: the `footer: false` + `tabBar: false` fence
 - `frontend/src/app/pages/home/home.html` — `pointer-events-none` on `desk-frame`, `pointer-events-auto` on `desk-panel` and `desk-pane`
+- `frontend/src/app/pages/home/home.ts` — `OFF_FLAG`'s TSDoc: `?map=off` loses the footer's row, not the reach
 - `frontend/e2e/support/hit-test.ts` — `hitTestId(page, testId)`: the `elementFromPoint`-at-centre check, as one interface
 - `frontend/e2e/legal-pages.e2e.ts` — AC-1, AC-2, AC-3
 - `frontend/e2e/discover-map.e2e.ts` — AC-7
 - `frontend/e2e/tourist-tab-bar.e2e.ts` — AC-9, and the first `hitTestId` call site
-- `frontend/e2e/theme-shell.e2e.ts` — the second `hitTestId` call site
+- `frontend/e2e/theme-shell.e2e.ts` — the backdrop-extent probe, re-derived from the sheet's top edge now that the sheet is taller
+- `frontend/e2e/tourist-header.e2e.ts` — names the popover rows so the desktop sweep is the measurement of their boxes, not a vacuous pass
 - `frontend/e2e/touch-targets-tourist.e2e.ts` — the menu sheet's own 44 px sweep, which no resting-surface sweep reaches today
 
 ---

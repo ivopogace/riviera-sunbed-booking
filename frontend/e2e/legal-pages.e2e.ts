@@ -9,9 +9,9 @@ import { settle } from './support/booking-dialog';
 /**
  * Real-render e2e for the legal surfaces: the two draft documents at
  * `/legal/*` (privacy axe-audited in both themes; terms shares the identical surface recipe,
- * audited once), the checkout agreement links on the booking dialog's Review step, and the
- * standing footer links — every legal link opens a new tab so checkout/console state survives
- * the read. The API is mocked (`page.route`), so the spec is CI-safe.
+ * audited once), the checkout agreement links on the booking dialog's Review step, the menu rows
+ * that carry the documents where the riviera map withholds the footer, and the standing footer
+ * links — every legal link opens a new tab so checkout/console state survives the read. The API is mocked (`page.route`), so the spec is CI-safe.
  */
 
 const VENUE = {

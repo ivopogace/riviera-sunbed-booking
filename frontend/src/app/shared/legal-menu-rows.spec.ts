@@ -42,7 +42,7 @@ describe('LegalMenuRows', () => {
     }
   });
 
-  it('wears the sheet rows the phone menu paints, at the 44px floor', () => {
+  it('wears the sheet rows the phone menu paints, declaring the floor', () => {
     for (const row of rowsOf(SheetHost)) {
       expect(row.className).toContain('text-[15.5px]');
       // `block` + the directive's min-h-11: the rendered box is e2e's to measure, not this spec's.
@@ -51,7 +51,7 @@ describe('LegalMenuRows', () => {
     }
   });
 
-  it('wears the popover rows the header menu paints, at the 44px floor', () => {
+  it('wears the popover rows the header menu paints, declaring the floor', () => {
     for (const row of rowsOf(PopoverHost)) {
       expect(row.className).toContain('text-[14px]');
       expect(row.className).toContain('min-h-11');
