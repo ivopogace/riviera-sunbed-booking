@@ -3,15 +3,17 @@
 > Implement with `tdd` at the named seams. Checkbox steps track progress. The Availability,
 > Modulith and Payment sections are spec, not documentation. Invariant numbers: `CLAUDE.md`.
 
-**Goal:** Every spec that drives `DiscoverSheet` waits for its opening rest to be confirmed
-before it taps, so the sheet's own retake can no longer undo the tap and drop the Map pill.
+**Goal:** Every spec that drives `DiscoverSheet` waits until it has stopped retaking its opening
+rest before it taps, so the sheet's own retake can no longer undo the tap and drop the Map pill.
 
 **Architecture:** The defect is a race between the spec and the sheet's opening rest, not an
 accessibility regression: `rest()` confirms its rest on a `requestAnimationFrame` of its own and
 retakes it while `scrollTop` differs from the offset it wants. A tap that lands inside that
 window is read as the browser's snapping and reverted to half. One shared helper,
-`src/testing/sheet-opened.ts`, pumps frames until the sheet's own `opened()` signal reports the
-window closed; all four spec sites that drive the sheet call it. Nothing under `src/app/` moves.
+`src/testing/sheet-opened.ts`, pumps frames until the sheet's own `opened()` signal says the
+window has shut — it is set both when a rest confirms and when the sheet gives up, and neither
+leaves a retry pending, which is the property the wait actually needs. All four spec sites that
+drive the sheet call it. Nothing under `src/app/` moves.
 
 **Persistence:** JDBC only (invariant #1). N/A — no table, migration or query is touched.
 
@@ -20,8 +22,9 @@ PR #1176 — see *Resolved* below)
 
 **Skills consulted:** `riviera-sdlc` (intake gate found #1171's duplicate #1175/PR #1176 already
 on `main`, which forced the re-diagnosis below) · `riviera-plan-doc` (forced the generalization
-pass that found two further sites the issue never named) · `tdd` (the deterministic
-frame-deferred repro is the red; the committed guard test keeps it red-able) ·
+pass that found two further sites the issue never named) · `tdd` (the red was the
+frame-held repro; a review round then turned the inert half of the first guard test into a second
+test that drives the window, so the repro now lives in the suite) ·
 `riviera-review-overlay` (at ready-for-review) · `riviera-docs-freshness` (**ran** over `2af102f..HEAD`, 0 findings: the substrate's only
 `src/testing/` claims are `frontend/.claude/CLAUDE.md`'s "Shared helpers: `src/testing/`" — which
 this slice obeys rather than changes — and ADR-0014's `freeze-clock` citations, untouched; no
@@ -49,15 +52,16 @@ stays)
   `discover-sheet.spec.ts` › *reports opened before a spec drives it, so the tap that follows
   stands* and › *retakes the opening rest over a tap that lands before it, which is why a spec
   waits*
-- [ ] **AC-2:** Given the reported case, when the grabber is tapped, then the Map pill is in the
+- [x] **AC-2:** Given the reported case, when the grabber is tapped, then the Map pill is in the
   DOM and axe finds no serious violation — and the case still fails when the pill genuinely stops
   rendering at `full`. *Seam:* the rendered sheet DOM (`[data-testid="sheet-map-pill"]`) ·
   *Pinned by:* `discover-sheet.a11y.spec.ts` › *has no serious violations at full, with the Map
   pill*, plus the recorded negative control
-- [ ] **AC-3:** Given the load that reproduces it, when the two-file repro command from #1175 runs
-  20 consecutive times 4-way parallel, then all 20 are green — and the frame-deferred repro that
-  fails deterministically on `main` passes. *Seam:* the suite as CI runs it · *Pinned by:* the run
-  log in *Acceptance-criteria verification*
+- [x] **AC-3:** Given the load that reproduces it, when the suite runs repeatedly before and
+  after, then it is green, and the frame-held repro that fails deterministically on `main` passes.
+  *Seam:* the suite as CI runs it · *Pinned by:* the run log in *Acceptance-criteria
+  verification*. Reworded from "20 consecutive two-file runs": that command is #1175's and is
+  already green on `main`, so it could not have been the bar for #1171.
 - [x] **AC-4:** Given the mechanism "a spec drives `DiscoverSheet` before its opening rest is
   confirmed", when every member of that population is enumerated, then each one waits on that
   condition and no site waits on a duration for it. *Seam:* the population, enumerated by the
@@ -87,15 +91,19 @@ N/A — replaces nothing; no surface is retired.
 | R-1 | Waiting for the pill rather than for the rest would mask a real failure to render it | Medium | High — the case stops guarding what it claims | The helper waits on `opened()`, a precondition asserted *before* the tap; the pill stays a bare assertion. Negative control recorded under AC-2 | this slice | closed — control run, `33c1c62f` |
 | R-2 | `whenSheetOpened` hangs a spec if `opened()` never flips | Low | Medium — a timeout instead of a legible failure | Bounded at 12 frames (the sheet gives up at 8 of its own) and closed by an `expect` naming the condition | this slice | closed — `33c1c62f` |
 | R-3 | A later change to `rest()` reopens the window after `opened()` | Low | High — the flake returns silently | AC-1's second test drives the window itself, so a `rest()` that stops retaking goes red there rather than silently making the wait pointless | this slice | closed — this commit |
-| R-5 | Two rest chains can overlap if `tops()` changes while the opening chain is pending (a resize before `opened()`): the second can set `opened()` true while the first's frame is still queued, and that stale callback re-scrolls to the old offset — the same race, behind the wait | Low | Medium | Not reachable from any spec today: every mid-suite resize happens after `opened()`, where `want === restedAt` short-circuits. Recorded rather than guarded, because closing it means changing `DiscoverSheet`, which this slice's Non-goals rule out | follow-up | open — stated in the PR; no issue filed, it is not reachable |
+| R-5 | Two rest chains can overlap if `tops()` changes while the opening chain is pending (a resize before `opened()`): the second can set `opened()` true while the first's frame is still queued, and that stale callback re-scrolls to the old offset — the same race, behind the wait | Low | Medium | Not reachable from any spec today: every mid-suite resize happens after `opened()`, where `want === restedAt` short-circuits. Recorded rather than guarded, because closing it means changing `DiscoverSheet`, which this slice's Non-goals rule out | follow-up | deferred → issue #1181 |
+| R-6 | AC-1's second test holds `requestAnimationFrame`, and Angular's zoneless scheduler races rAF against `setTimeout`. Full fake timers in that file — which `frontend/.claude/CLAUDE.md` explicitly allows — would kill both legs and hang `whenStable()` | Low | Medium — a hang, not a failure | No spec in the file fakes timers, and the suite fakes `Date` only (`freeze-clock.ts`). Recorded so the next person to reach for `vi.useFakeTimers()` here knows what it costs | follow-up | accepted — no spec in the file fakes timers; recorded for whoever reaches for them |
 | R-4 | `src/testing/` importing a page component inverts the folder taxonomy | Low | Low | `src/testing/` is spec support, outside `riviera-frontend`'s `src/app/` taxonomy; `venue-cards.ts` already imports a page **component** (`app/pages/home/venue-card`) | this slice | closed — precedent verified, `33c1c62f` |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the jsdom-only race is the same one CI hits — CI runs this suite in jsdom, and
-  the reported repro is a jsdom full-suite run. *Owner:* this slice · *Resolves by:* AC-3.
-
 ### Resolved
+
+- **Assumption:** the jsdom-only race is the same one CI hits. — **Held as far as it can be
+  shown.** CI runs this suite in jsdom and the reported repro is a jsdom full-suite run, so the
+  mechanism is the same; the *rate* could not be measured here at all — 0 reproductions in 13
+  full-suite runs on `main`, plain and stressed. The mechanism is pinned deterministically by
+  AC-1's second test instead, which is worth more than a rate would have been.
 
 - **Open question:** does Angular 22 offer a first-class wait that already covers this, making the
   frame pump unnecessary? — **No.** `fixture.whenStable()` resolves on the fixture's own
@@ -146,15 +154,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings folded in`
+**Stage pointer:** `DONE — merged via PR #1180`
 
-**Next action:** Sonar gate on the new head, then close-out.
+**Next action:** None — merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The wait and its guard | ✅ | `33c1c62f`, `f1c308b2` |
 | 1 — Verification (negative control + before/after runs) | ✅ | negative control + 19 full-suite runs, recorded under the ACs |
-| 2 — Review-gate findings | ✅ | this commit |
+| 2 — Review-gate findings | ✅ | `c767dc8f`, `7974ce01`, this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -245,14 +253,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section justified N/A; no concurrency in scope (#2).
-- [ ] Invariants #3–#7 N/A: no pool, cutoff, money, time or booking-code logic is touched.
-- [ ] Modulith section justified N/A; no backend file in the diff (#11).
-- [ ] Payment section N/A (#8, #9, #10). No migration, so #12 is not engaged.
-- [ ] Frontend standards met: helper in `src/testing/`, no `as any`, no duration-based wait left.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability section justified N/A; no concurrency in scope (#2).
+- [x] Invariants #3–#7 N/A: no pool, cutoff, money, time or booking-code logic is touched.
+- [x] Modulith section justified N/A; no backend file in the diff (#11).
+- [x] Payment section N/A (#8, #9, #10). No migration, so #12 is not engaged.
+- [x] Frontend standards met: helper in `src/testing/`, no `as any`, no duration-based wait left.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #1180`.
+- [x] The merged plan `docs/plans/legal-links-on-the-riviera-map.md` (#1173, PR #1174, merged
+  2026-09-21) is retired in this commit; nothing cited its path.
+- [x] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay).

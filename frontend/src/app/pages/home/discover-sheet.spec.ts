@@ -129,11 +129,11 @@ describe('DiscoverSheet', () => {
   });
 
   it('retakes the opening rest over a tap that lands before it, which is why a spec waits', async () => {
-    const view = el().ownerDocument.defaultView!;
-    const realFrame = view.requestAnimationFrame.bind(view);
+    // Characterises the window, never requires it: a `rest()` that stopped retaking fails here.
+    const realFrame = globalThis.requestAnimationFrame.bind(globalThis);
     const held: FrameRequestCallback[] = [];
-    // Held, not dropped: the opening rest's confirmation is the frame the tap below has to beat.
-    view.requestAnimationFrame = (callback: FrameRequestCallback) => held.push(callback);
+    // Angular's scheduler holds frames on this global too; re-running its legs is a no-op for it.
+    globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => held.push(callback);
 
     try {
       TestBed.resetTestingModule();
@@ -150,7 +150,7 @@ describe('DiscoverSheet', () => {
       held.splice(0).forEach((callback) => callback(0));
       await settle();
     } finally {
-      view.requestAnimationFrame = realFrame;
+      globalThis.requestAnimationFrame = realFrame;
     }
 
     expect(sheet().detent()).toBe('half');
