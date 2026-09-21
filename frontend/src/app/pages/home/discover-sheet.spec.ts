@@ -1,6 +1,7 @@
 import { Component, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
+import { whenSheetOpened } from '../../../testing/sheet-opened';
 import { DiscoverSheet } from './discover-sheet';
 import { offsetFor } from './sheet-geometry';
 
@@ -49,6 +50,7 @@ describe('DiscoverSheet', () => {
     await TestBed.configureTestingModule({ imports: [Host] }).compileComponents();
     fixture = TestBed.createComponent(Host);
     await settle();
+    await whenSheetOpened(fixture);
   });
 
   afterEach(() => {
@@ -114,6 +116,98 @@ describe('DiscoverSheet', () => {
     await settle();
     expect(asked.at(-1)).toBe(tops.peek - tops.half);
     expect(sheet().detent()).toBe('half');
+  });
+
+  it('reports opened before a spec drives it, so the tap that follows stands', async () => {
+    expect(sheet().opened()).toBe(true);
+
+    byTestId('sheet-grabber')!.click();
+    await settle();
+
+    expect(sheet().detent()).toBe('full');
+    expect(byTestId('sheet-map-pill')).not.toBeNull();
+  });
+
+  it('retakes the opening rest over a tap that lands before it, which is why a spec waits', async () => {
+    // Characterises the window, never requires it: a `rest()` that stopped retaking fails here.
+    const realFrame = globalThis.requestAnimationFrame.bind(globalThis);
+    const held: FrameRequestCallback[] = [];
+    // Angular's scheduler holds frames on this global too; re-running its legs is a no-op for it.
+    globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => held.push(callback);
+
+    try {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({ imports: [Host] }).compileComponents();
+      fixture = TestBed.createComponent(Host);
+      await settle();
+      expect(sheet().opened()).toBe(false);
+
+      byTestId('sheet-grabber')!.click();
+      await settle();
+      expect(sheet().detent()).toBe('full');
+      expect(byTestId('sheet-map-pill')).not.toBeNull();
+
+      held.splice(0).forEach((callback) => callback(0));
+      await settle();
+    } finally {
+      globalThis.requestAnimationFrame = realFrame;
+    }
+
+    expect(sheet().detent()).toBe('half');
+    expect(byTestId('sheet-map-pill')).toBeNull();
+  });
+
+  it('abandons a rest a re-measure has superseded, instead of pulling the sheet back', async () => {
+    const realFrame = globalThis.requestAnimationFrame.bind(globalThis);
+    const held: FrameRequestCallback[] = [];
+    globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => held.push(callback);
+    const view = el().ownerDocument.defaultView!;
+    const innerHeight = view.innerHeight;
+
+    try {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({ imports: [Host] }).compileComponents();
+      fixture = TestBed.createComponent(Host);
+      await settle();
+
+      // The viewport moves while the first rest is still unconfirmed, so a second rest supersedes it.
+      Object.defineProperty(view, 'innerHeight', { value: innerHeight - 60, configurable: true });
+      view.dispatchEvent(new Event('resize'));
+      await settle();
+      expect(scroller().scrollTop).toBe(offsetFor(sheet().tops(), 'half'));
+      asked.length = 0;
+
+      held.splice(0).forEach((callback) => callback(0));
+      await settle();
+
+      expect(asked, 'a superseded rest scrolled the sheet').toEqual([]);
+      expect(scroller().scrollTop).toBe(offsetFor(sheet().tops(), 'half'));
+    } finally {
+      globalThis.requestAnimationFrame = realFrame;
+      Object.defineProperty(view, 'innerHeight', { value: innerHeight, configurable: true });
+    }
+  });
+
+  it('rests at the offset that collides with the not-yet-rested sentinel', async () => {
+    const view = el().ownerDocument.defaultView!;
+    const innerHeight = view.innerHeight;
+    // 384 − HEAD_PX − HALF_MAP_BAND_PX is −1 with no shell around the Host: the sentinel's value.
+    Object.defineProperty(view, 'innerHeight', { value: 384, configurable: true });
+
+    try {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({ imports: [Host] }).compileComponents();
+      fixture = TestBed.createComponent(Host);
+      await settle();
+      await whenSheetOpened(fixture);
+
+      // The half rest sits a pixel below peek here, so what matters is that it rests at all.
+      expect(offsetFor(sheet().tops(), 'half')).toBe(-1);
+      expect(asked).toContain(-1);
+      expect(scroller().scrollTop).toBe(-1);
+    } finally {
+      Object.defineProperty(view, 'innerHeight', { value: innerHeight, configurable: true });
+    }
   });
 
   it('names the grabber for every reader and exempts it from the touch floor with its reason', () => {
@@ -206,7 +300,6 @@ describe('DiscoverSheet', () => {
 
   it('keeps the detent across a re-measure once opened, resting at its new offset', async () => {
     const window = el().ownerDocument.defaultView!;
-    await nextFrame(window);
     sheet().go('full');
     await settle();
     await nextFrame(window);
