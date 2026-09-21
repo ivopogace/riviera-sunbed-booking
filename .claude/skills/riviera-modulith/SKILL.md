@@ -9,16 +9,14 @@ description: >-
 
 # Riviera Spring Modulith
 
-Base package `ai.riviera.platform`; nine domain modules (venue, availability, booking,
-payment, payout, customer, operator, notification, review) + `shared` (OPEN kernel) +
-`challenge` and `audit` (closed, `allowedDependencies = {}`). Spring Boot 4, Modulith 2.1,
-Java 25, `JdbcClient` only.
+Module census and collaboration inventory: `CLAUDE.md`.
 
 **The root package is the composition root; nothing depends on it.** It holds
 `PlatformApplication`, app-wide config (`SecurityConfig`, `WebCorsConfig`, `TimeConfig`) and
 the platform's own adapters (controllers, the SSO/auth edge; no module listeners — pinned by
 `CompositionRootDisciplineTests`). A type modules need goes in `shared`, never at the root.
-Keep `shared` tiny: no business logic, no module-owned state.
+Keep `shared` tiny: no business logic, no module-owned state. Moving a bean between the root
+and a module can break every `@ApplicationModuleTest` (`riviera-local-debug` § *Blast radius*).
 
 **`ApplicationModules.of(PlatformApplication.class).verify()` defines correct structure**
 (`ModularityTests`). On failure, read the message literally and fix the structure, not the test.
@@ -28,10 +26,7 @@ Hands off: Java idioms → `riviera-java-conventions`; seams → `codebase-desig
 
 ## Hard constraints
 
-- **No JPA** (#1): `JdbcClient` + text-block SQL (`references/persistence-jdbc.md`);
-  `JdbcOnlyArchitectureTests`.
-- **Cross-module references by typed id** (#11): a `Booking` holds a `SetId`, never a `Set`;
-  ids live in the owner's `vocabulary/`.
+- **Typed ids across modules** (#11), living in the owner's `vocabulary/`.
 - **Cross-module use only via `@NamedInterface` packages** (`api`/`vocabulary`/`events`/`spi`),
   never `application.*`/`adapter.*`/`domain`; `ModularityTests`.
 - **Package shape is machine-locked**: `PackageShapeArchitectureTests` +
@@ -51,9 +46,10 @@ Hands off: Java idioms → `riviera-java-conventions`; seams → `codebase-desig
 ## Module layout (ADR-0007)
 
 **THIN iff no application service** (the `api/` port is implemented directly by a JDBC
-adapter); otherwise FULL. All nine domain modules and `challenge` are full; `audit` is thin.
-`challenge` is full minus `domain/`. `shared` is neither: `@ApplicationModule(type = OPEN)`,
-flat classes at the module root, no published surface, no layers.
+adapter); otherwise FULL. All nine domain modules and `challenge` are full; `audit` is thin
+plus a driving `adapter/in` (its admin controller). `challenge` is full minus `domain/`.
+`shared` is neither: `@ApplicationModule(type = OPEN)`, flat classes at the module root, no
+published surface, no layers.
 
 Thin:
 ```
@@ -131,19 +127,6 @@ because any new JDBC adapter can break it. Target-naming fitness functions
 `ResponsibilitiesArchitectureTests`, `*AuthPlacementTests`, `VenueApiRoleSplitTests`) are not
 members; work on what they name puts them due. ADR-0017's "structural nets" and the three-test
 command in `docs/agents/gradle-proxy-trust.md` are not this net.
-
-## Checklist for a backend structural change
-
-- [ ] Class in the right package; published type in the surface for its kind.
-- [ ] No import of another module's `application.*`/`adapter.*`/`domain`.
-- [ ] A cross-module driven port in `spi/`, granted only to the implementor.
-- [ ] Cross-module references and event payloads by typed id.
-- [ ] `allowedDependencies` narrowed to the named interfaces actually used.
-- [ ] Moved/renamed published event → Flyway `event_type` rewrite
-      (`V18__event_publication_event_type_moves.sql`).
-- [ ] Bean moved between root and a module → each `@ApplicationModuleTest` still builds
-      (`riviera-local-debug` § *blast radius*).
-- [ ] Structural net green.
 
 References: `references/boundaries.md` (grants, api vs spi worked example),
 `references/persistence-jdbc.md`, `references/events.md`, `references/testing.md`.

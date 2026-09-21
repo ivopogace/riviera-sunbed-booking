@@ -38,7 +38,7 @@ get CI green, re-review the changed surface. Size is not an exemption.
 
 `wayfinder` (a `wayfinder:map` issue of decision tickets, one resolved per session) →
 `to-spec` (one epic issue: Problem / Solution / User Stories / Implementation Decisions /
-Testing Seams / Out of scope; no slice ACs) → `to-issues`. Once a slice executes, the plan
+Testing Decisions / Out of scope; no slice ACs) → `to-issues`. Once a slice executes, the plan
 doc's Execution status is the state store, not the map.
 
 ## Skill-routing gate (mandatory — load *before* you write)
@@ -52,7 +52,6 @@ doc's Execution status is the state store, not the map.
 | `payment`/`payout`, Stripe, charge/refund/commission/payout | `riviera-stripe-payments` (+ `postgres` if a ledger table changes) |
 | The Angular frontend | `riviera-frontend` + `angular-developer` + angular-cli MCP; `riviera-tailwind` for any styling |
 | A user-facing frontend flow or anything under `frontend/e2e/` | `playwright-cli` — every frontend slice ships e2e coverage (suite: RV-FE-E2E) |
-| Scaffolding a new app | `angular-new-app` |
 | The session's first `./gradlew`/`npm test`, or a local build failure | `riviera-local-debug` |
 | Always | `riviera-plan-doc` (plan) · `tdd` (build) · `riviera-review-overlay` (review) · `riviera-docs-freshness` (close-out) |
 
@@ -100,8 +99,8 @@ deny the server yourself.
 
 ## Substrate
 
-`CLAUDE.md` (invariants), `CONTEXT.md` (glossary; `domain-modeling` edits it), `docs/adr/`
-(ADR-0018 for every backend slice), `docs/agents/`, `docs/architecture/domain-model.md`.
+Beyond `CLAUDE.md`'s pointers: ADR-0018 for every backend slice;
+`docs/architecture/domain-model.md`. `domain-modeling` edits `CONTEXT.md`.
 
 Human-only skills (`disable-model-invocation`): `implement`, `grill-me`,
 `improve-codebase-architecture`. Don't route to or re-enact them. Spikes skip the ceremony.

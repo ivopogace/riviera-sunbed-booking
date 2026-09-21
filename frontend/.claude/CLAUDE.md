@@ -42,7 +42,7 @@ Angular 22 idioms for `frontend/`. Structure is `riviera-frontend`'s; styling `r
 
 ## Styling
 
-Tailwind v4; SCSS only with a stated justification. Migrate on touch (`riviera-tailwind`).
+Tailwind v4; SCSS only with a stated justification (`riviera-tailwind`).
 
 ## Comments
 

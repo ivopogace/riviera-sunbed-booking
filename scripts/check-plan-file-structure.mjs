@@ -1,13 +1,13 @@
 /**
- * Diff-scoped guard for the plan doc's **File structure** section (issue #533, sibling of #529's
- * RV-STYLE-1 guard): every path a slice changes should be listed there, because that section is
- * what a resuming session reads to know what the slice touches.
+ * Diff-scoped guard for the plan doc's **File structure** section (sibling of
+ * `check-inline-comments.mjs`, the RV-STYLE-1 guard): every path a slice changes should be listed
+ * there, because that section is what a resuming session reads to know what the slice touches.
  *
  * Reports one direction only — **in the diff, absent from the section**. The reverse (a path the
  * plan listed and the work turned out not to need) is legitimate drift and is never reported; a
  * plan is written before the work.
  *
- * A slice with no plan doc passes cleanly: `riviera-sdlc` rule 6 lets a one-line fix skip the plan
+ * A slice with no plan doc passes cleanly: `riviera-sdlc` rule 4 lets a one-line fix skip the plan
  * doc entirely, and a guard must not invent a requirement the SDLC does not make.
  */
 
@@ -335,7 +335,7 @@ export function report(omissions) {
  * is the whole of it, since the floor that counts occurrences is measured against `changed`, where
  * such a path appears exactly once either way.
  *
- * <p>The tree walk happens only once a plan doc is in the diff. Every slice `riviera-sdlc` rule 6
+ * <p>The tree walk happens only once a plan doc is in the diff. Every slice `riviera-sdlc` rule 4
  * lets skip the plan doc returns at `docs.length === 0`, and walking the working tree to build a
  * list that is then discarded is work the common path should not pay for.
  *

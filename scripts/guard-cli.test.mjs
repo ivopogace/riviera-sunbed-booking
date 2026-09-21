@@ -596,7 +596,7 @@ test('check-plan-file-structure --diff ignores an untracked plan doc outside the
 /**
  * The same scoping seen from the other side, and the contract this file's header states outright:
  * *a slice with no plan doc passes cleanly*. An untracked draft in the tree must not switch the
- * guard on for a one-line fix that `riviera-sdlc` rule 6 lets skip the plan doc entirely.
+ * guard on for a one-line fix that `riviera-sdlc` rule 4 lets skip the plan doc entirely.
  *
  * <p>Mutation: hand `planDocsIn` the union and this exits 1.
  */
