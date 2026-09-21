@@ -1,7 +1,7 @@
 import { expect, Page, test } from '@playwright/test';
 
 /**
- * The panel-surface token pair (#1165), asserted against a real render in the theme that is the
+ * The panel-surface token pair, asserted against a real render in the theme that is the
  * reason it exists.
  *
  * <p>`home.contrast.spec.ts` computes its ratios from the mirrors in `testing/glass-tokens.ts` and
@@ -22,7 +22,7 @@ import { expect, Page, test } from '@playwright/test';
 const PANEL_ACCENT = 'rgb(168, 232, 242)';
 /** riviera `--riv-panel-wash-hover` — a second coat of its own header tint, not a lightening wash. */
 const PANEL_WASH_HOVER = 'rgba(10, 44, 63, 0.45)';
-/** riviera `--riv-accent-ink`, the CARD accent, which this slice must leave exactly where it was. */
+/** riviera `--riv-accent-ink`, the CARD accent, which the panel pair must leave where it is. */
 const CARD_ACCENT = 'rgb(8, 90, 110)';
 
 /** A tourist standing on Dhërmi, so the beach groups carry a distance at all. */
@@ -103,9 +103,11 @@ test.describe('the panel-surface tokens paint the Discover sheet (riviera)', () 
     expect(declared.accent).toBe('#a8e8f2');
     expect(declared.wash).toBe('rgba(10, 44, 63, 0.45)');
 
-    // A token without its `@theme inline` row emits no rule at all — the class would survive every
-    // other check in the slice. The wash is only ever consumed under `hover:`, so its rule carries
-    // a variant selector rather than the bare class; both are matched by substring for that reason.
+    /**
+     * A token without its `@theme inline` row emits no rule at all — the class would survive every
+     * other check here. The wash is only ever consumed under `hover:`, so its rule carries a
+     * variant selector rather than the bare class; both are matched by substring for that reason.
+     */
     const generated = await page.evaluate(
       (classes) => {
         const selectors: string[] = [];

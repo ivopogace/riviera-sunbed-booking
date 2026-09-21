@@ -280,7 +280,7 @@
       inherit and must say all three values, including the two that repeat the card accent's.
       Riviera is NOT the dark theme's #7cd7e8 — that measures 4.07:1 over this panel at the
       #ffe2b0 stop, under AA. Proof: home.contrast.spec.ts, which loops every stop rather than
-      pinning a worst case; riviera's 4.94:1 is the thinnest margin in the set — issue #1165. */
+      pinning a worst case; riviera's 4.94:1 is the thinnest margin in the set. */
   --riv-panel-accent-ink: #085a6e;
   /* dark tint (design: white border): input boundary needs 3:1 (WCAG 1.4.11) */
   --riv-field-border: rgba(12, 42, 51, 0.55);
@@ -780,7 +780,7 @@
       deepens its own header tint rather than lightening — at every usable alpha a lightening
       wash there puts --riv-panel-accent-ink under AA (white at 0.06 gives 4.23:1). Porcelain
       and dark repeat their --riv-wash-hover values exactly, so neither theme's paint moves.
-      Proof: home.contrast.spec.ts's "row hover wash keeps both inks at AA" — issue #1165. */
+      Proof: home.contrast.spec.ts's "row hover wash keeps both inks at AA". */
   --riv-panel-wash-hover: rgba(255, 255, 255, 0.75);
   --riv-inset-fill: rgba(255, 255, 255, 0.4);
   --riv-dialog-glass: rgba(255, 255, 255, 0.82);

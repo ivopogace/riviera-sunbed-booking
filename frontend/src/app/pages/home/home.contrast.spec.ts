@@ -210,18 +210,22 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
     expectAaOverStops(theme.heroInk, theme.heroInkSoftAlpha, theme.headerGlass, theme.stops);
   });
 
-  // The panel surface has its own accent (#1165). `--riv-accent-ink` is a CARD ink: riviera keeps
-  // the light themes' card palette on a dark page chrome, so it stays dark teal there and reads
-  // 1.09:1 on this glass — which is why the group-head distance and the row price wear
-  // `--riv-panel-accent-ink` instead, and why nothing on a panel wears the card accent.
+  /**
+   * The panel surface has its own accent. `--riv-accent-ink` is a CARD ink: riviera keeps the
+   * light themes' card palette on a dark page chrome, so it stays dark teal there and reads
+   * 1.09:1 on this glass — which is why the group-head distance and the row price wear
+   * `--riv-panel-accent-ink` instead, and why nothing on a panel wears the card accent.
+   */
   it('panel accent ink (group-head distance, row price) meets AA on the header glass', () => {
     expectAaOverStops(theme.panelAccent, 1, theme.headerGlass, theme.stops);
     expectAaOverStops(theme.heroInk, 1, theme.headerGlass, theme.stops);
   });
 
+  /**
+   * The REASON the token above exists: if riviera's card accent ever cleared AA on this glass, the
+   * second token would be dead weight, and this case says so by failing.
+   */
   it('the card accent ink is the one that could not clear AA here, in riviera', () => {
-    // Kept as the REASON the token above exists: if riviera's card accent ever cleared AA on this
-    // glass, the second token would be dead weight and this case says so by failing.
     const worst = Math.min(
       ...theme.stops.map((stop) =>
         contrastRatio(rgbToHex(theme.accent), rgbToHex(surfaceOver(theme.headerGlass, stop))),
@@ -230,10 +234,12 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
     expect(worst < AA_NORMAL).toBe(theme.name === 'riviera');
   });
 
+  /**
+   * A hovered desktop row is the wash composited over the panel glass, over each stop. The wash
+   * must move the surface AWAY from the ink — porcelain and dark lighten, riviera deepens its own
+   * header tint, because a lightening wash there costs the panel accent its AA at any alpha.
+   */
   it('the row hover wash keeps both inks at AA on the panel glass', () => {
-    // A hovered desktop row is the wash composited over the panel glass, over each stop. The wash
-    // must move the surface AWAY from the ink — porcelain and dark lighten, riviera deepens its own
-    // header tint, because a lightening wash there costs the panel accent its AA at any alpha.
     for (const stop of theme.stops) {
       const panel = surfaceOver(theme.headerGlass, stop);
       const hovered = composite(theme.panelWashHover.color, theme.panelWashHover.alpha, panel);
