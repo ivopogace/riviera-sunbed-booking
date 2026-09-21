@@ -726,8 +726,7 @@ test.describe('Discover sheet — the poster', () => {
   /**
    * The epic's first user story, as geometry: a tourist opening Discover sees the region's map
    * with priced pins on the first screen. The counts above prove the poster is drawn and cheap;
-   * this proves it is drawn WHERE a tourist can see it, with no scroll and no gesture, now that
-   * `/` is the route that renders it.
+   * this proves it is drawn WHERE a tourist can see it, with no scroll and no gesture.
    */
   test('the default route paints the poster and a priced pin inside the first screen', async ({
     page,

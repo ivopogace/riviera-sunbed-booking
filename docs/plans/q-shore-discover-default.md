@@ -46,28 +46,30 @@ no pixel; both designs' styling ships already)
 - [x] **AC-1:** Given no `map` query parameter, when Discover renders at a phone viewport, then
       the riviera map sheet is the page — `discover-head` and `sheet-poster` are present and the
       pre-Q `view-map` switch is absent. *Seam:* `Home` via `ActivatedRoute.queryParamMap` ·
-      *Pinned by:* `home.spec.ts > Home (the riviera map sheet) > 'with no query parameter the
-      page is the riviera map sheet'`
+      *Pinned by:* `home.spec.ts > Home (the riviera map sheet — what \`/\` renders) > 'with no
+      query parameter the page is the riviera map sheet'`
 - [x] **AC-2:** Given no `map` query parameter, when Discover renders from `lg`, then the pinned
       panel is the page — the panel is present and the pre-Q filter bar is absent. *Seam:* as
-      AC-1 · *Pinned by:* `home.spec.ts > Home (the riviera map sheet) > from lg: the panel >
-      'with no query parameter the page is the pinned panel'`
+      AC-1 · *Pinned by:* `home.spec.ts > Home (the riviera map sheet — what \`/\` renders) > 'with no
+      query parameter from lg up, the list is a pinned panel beside the map: no sheet, no filter
+      bar'`
 - [x] **AC-3:** Given `?map=off`, when Discover renders, then the pre-Q page is unchanged — the
       hero, the three filter selects, the List/Map switch and the preview card over the map.
-      *Seam:* as AC-1 · *Pinned by:* `home.spec.ts > Home (the riviera map sheet) > '?map=off is
-      the pre-Q Discover page'` plus the whole `Home (venue discovery)` / `Home (list/map
+      *Seam:* as AC-1 · *Pinned by:* `home.spec.ts > Home (the riviera map sheet — what \`/\` renders) > '?map=off is
+      today's Discover'` plus the whole `Home (venue discovery)` / `Home (list/map
       switch)` / `Home (venue pins and the preview)` population, moved onto `?map=off`
 - [x] **AC-4:** Given `?map=sheet`, when Discover renders, then it resolves to Q · Shore — the
       parameter is a no-op, not an error, so a bookmark carrying it keeps working. *Seam:* as
-      AC-1 · *Pinned by:* `home.spec.ts > Home (the riviera map sheet) > '?map=sheet still
-      resolves to the riviera map sheet'`
+      AC-1 · *Pinned by:* `home.spec.ts > Home (the riviera map sheet — what \`/\` renders) > '?map=sheet
+      still resolves to the riviera map sheet — a no-op, not an error'`
 - [x] **AC-5:** Given the sheet, poster and panel specs and `discover-sheet.e2e.ts` with no `map`
       parameter anywhere in their setup, when they run, then they pass — they assert the default
       page. *Seam:* as AC-1 / the `/` route · *Pinned by:* the suites themselves:
-      `home.spec.ts > Home (the riviera map sheet)` (incl. `on a phone: the poster`, `on a phone:
-      the pills’ room`, `from lg: the panel`), `home.a11y.spec.ts > Home accessibility (the
-      riviera map sheet)`, `e2e/discover-sheet.e2e.ts`, `e2e/discover-map.e2e.ts`'s pin/panel
-      describe, `e2e/panel-glass-inks.e2e.ts`
+      `home.spec.ts > Home (the riviera map sheet — what \`/\` renders)` (incl. `on a phone: the
+      poster`, `on a phone: the pills’ room`, `from lg: the panel`), `home.a11y.spec.ts > Home
+      accessibility (the riviera map sheet — what \`/\` renders)`, `e2e/discover-sheet.e2e.ts`,
+      `e2e/discover-map.e2e.ts > Discover map — the riviera map’s pins keep off the chrome`,
+      `e2e/panel-glass-inks.e2e.ts`
 - [x] **AC-6:** Given `?map=off`, when the pre-Q coverage runs, then it passes unchanged:
       `Home (list/map switch)`, `Home (venue pins and the preview)`, `e2e/discover-map.e2e.ts`,
       `e2e/discovery-flow.e2e.ts`, `e2e/touch-targets-tourist.e2e.ts`. *Seam:* as AC-1 / the `/`
@@ -234,7 +236,9 @@ diff is only e2e will report the same false zero.
 | F-1 | CI — Repo hygiene (`check-inline-comments.mjs`) | RV-STYLE-1: seven inline comments ran to two or three lines, and one carried an issue number | fixed-in-`ca5178c2` |
 | F-2 | Review gate — comment-consistency agent | `discover-map.e2e.ts`'s describe still read "the flag's pins" and `home.spec.ts`'s phone case "with the flag below lg", after their helpers had stopped passing a flag — a reader of CI output is told the pins need an opt-in that no longer exists | fixed |
 | F-3 | Review gate — comment-consistency agent | Same drift in identifiers: `FLAGGED`, `flagged()`, `FLAG_VIEWPORTS`, `openFlagged()` in `discover-map.e2e.ts`, where `openFlagged` navigates to a bare `/` | fixed → `MAP_VENUES`, `mapVenue()`, `PIN_VIEWPORTS`, `openMap()`; the file now contains no "flag" |
-| F-4 | Review gate — bug-scan agent | None. Independently re-walked the inversion's truth table, every mid-test `routeParams.next(...)` for a dropped flag, the `footer` root→leaf walk against `tabBar`'s, and the population for vacuous assertions | no action — it confirmed R-10's one real case was already fixed |
+| F-4 | Review gate — CLAUDE.md agent | The AC-7 test's TSDoc read "…now that `/` is the route that renders it" — narrating the flip and dating itself to this diff, which a fresh session gains nothing from | fixed |
+| F-5 | Review gate — prior-PR agent (RV-PROC-1/2) | Prior reviews warn that a plan doc must not assert coverage the tree does not bear out. Audited every AC pin against the shipped names: **four were wrong** — the describe had been renamed to `Home (the riviera map sheet — what \`/\` renders)`, AC-2 named a nested `from lg: the panel` test that does not exist, AC-3 said "is the pre-Q Discover page" for a test named "is today's Discover", and AC-4/AC-5 were stale likewise | fixed — every pin now quotes the shipped name |
+| F-6 | Review gate — bug-scan agent | None. Independently re-walked the inversion's truth table, every mid-test `routeParams.next(...)` for a dropped flag, the `footer` root→leaf walk against `tabBar`'s, and the population for vacuous assertions | no action — it confirmed R-10's one real case was already fixed |
 
 ---
 
