@@ -24,7 +24,11 @@ pass that found two further sites the issue never named) · `tdd` (the determini
 frame-deferred repro is the red; the committed guard test keeps it red-able) ·
 `riviera-review-overlay` (at ready-for-review) · `riviera-docs-freshness` (at close-out) ·
 `riviera-local-debug` (scoped `--include` runs; unshallowed the clone before every history claim)
-· `riviera-frontend` (shared spec helpers belong in `src/testing/`, not the feature folder)
+· `riviera-frontend` (shared spec helpers belong in `src/testing/`, not the feature folder) ·
+`angular-developer` + angular-cli MCP (`search_documentation` v22: the zoneless TestBed guide's
+"avoid `fixture.detectChanges()` when possible" dropped the manual bracketing from the new
+helper; it also says converting *existing* suites is not worth it, so the specs' own `settle()`
+stays)
 
 **Branch:** `claude/sdlc-1171-6fia9w` (the cloud session's designated branch, standing in for
 `bugfix/discover-sheet-opening-rest-race`)
@@ -81,6 +85,16 @@ N/A — replaces nothing; no surface is retired.
 
 ### Resolved
 
+- **Open question:** does Angular 22 offer a first-class wait that already covers this, making the
+  frame pump unnecessary? — **No.** `fixture.whenStable()` resolves on the fixture's own
+  asynchronous activity and `TestBed.tick()` "executes any pending work required to synchronize
+  model to the UI"; neither reaches a raw `requestAnimationFrame` a component schedules for
+  itself, which is what `rest()` uses. Measured, not assumed: after the specs' existing settle,
+  two frames are still queued and `opened()` is false. What the docs did change: the zoneless
+  TestBed guide's "avoid using `fixture.detectChanges()` when possible" — the helper ends on
+  `await fixture.whenStable()` alone. *Evidence:* angular.dev `guide/zoneless`,
+  `api/core/testing/TestBed`, `api/core/testing/ComponentFixture` (v22), read via the angular-cli
+  MCP this session.
 - **Open question:** is #1171 already fixed by PR #1176 (its duplicate #1175, merged six hours
   before this session)? — **No.** #1176 swapped one insufficient wait (`setTimeout(0)`) for a
   better one (`whenStable()`) *after* the tap; it never touched the pending opening-rest frame
@@ -122,12 +136,12 @@ N/A — no contract change.
 
 **Stage pointer:** `implement (phase 1 — verification)`
 
-**Next action:** Negative control, then the stressed before/after full-suite comparison.
+**Next action:** The stressed before/after full-suite comparison, then the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The wait and its guard | ✅ | this commit |
-| 1 — Verification (negative control + stressed before/after) | ⏳ | |
+| 1 — Verification (negative control + stressed before/after) | ⏳ | negative control ✅ |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -187,7 +201,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ## Acceptance-criteria verification (final)
 
 - [ ] **AC-1:** Run the home-folder specs → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Negative control recorded. Verified at commit `<sha>`.
+- [x] **AC-2:** Negative control recorded — with the Map pill's `@if` forced false, exactly the
+  two Map-pill cases fail (2 failed / 20 passed across the two a11y files) and nothing else; the
+  component was restored byte-identical. The wait did not turn the assertion into a tautology.
 - [ ] **AC-3:** 20/20 green. Verified at commit `<sha>`.
 - [ ] **AC-4:** Audit-log row complete. Verified at commit `<sha>`.
 

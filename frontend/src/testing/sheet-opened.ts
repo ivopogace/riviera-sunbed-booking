@@ -23,14 +23,11 @@ export async function whenSheetOpened(fixture: ComponentFixture<unknown>): Promi
     throw new Error('whenSheetOpened: this fixture renders no DiscoverSheet (yet)');
   }
   const sheet = found.componentInstance as DiscoverSheet;
-  const view = (fixture.nativeElement as HTMLElement).ownerDocument.defaultView as Window;
+  const view = (fixture.nativeElement as HTMLElement).ownerDocument.defaultView!;
 
   for (let frame = 0; frame < MAX_FRAMES && !sheet.opened(); frame += 1) {
     await new Promise<void>((resolve) => view.requestAnimationFrame(() => resolve()));
   }
   expect(sheet.opened(), `the sheet took no opening rest within ${MAX_FRAMES} frames`).toBe(true);
-
-  fixture.detectChanges();
   await fixture.whenStable();
-  fixture.detectChanges();
 }
