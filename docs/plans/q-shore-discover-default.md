@@ -25,7 +25,7 @@ blocks that the flip breaks — `Home (the route-carried date)` and `Home access
 folded in as AC-6a/AC-6b) · `riviera-plan-doc` (forced the behaviour-parity ledger, which is
 what turned "invert a flag" into a measured population) · `tdd` (route-contract spec red before
 the flip; the pre-Q coverage moved to `?map=off` in a phase that is green on both sides of it) ·
-`riviera-review-overlay` (review gate, phase 3) · `riviera-docs-freshness` (close-out, phase 3)
+`riviera-review-overlay` (review gate, phase 3) · `riviera-docs-freshness` (**ran** over `95341fd7..HEAD`, 4 findings, all patched — see below)
 · `riviera-local-debug` (unshallowed the clone; scoped `ng test --include`; `PW_CHROMIUM_EXECUTABLE`
 for the mocked e2e) · `riviera-frontend` (placement: no new file outside `pages/home/` and
 `e2e/`; the e2e split — every changed spec is the CI-safe mocked suite) · `playwright-cli`
@@ -206,17 +206,17 @@ one, which is sheet mode's existing behaviour from #1157, not a new shape.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2) — awaiting the full mocked e2e run`
+**Stage pointer:** `review gate`
 
-**Next action:** Confirm the full mocked suite, then phase 3 — docs freshness and close-out.
+**Next action:** Mark ready for review, run the review gate on the resolved range, then Sonar.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Move the pre-Q coverage onto `?map=off` | ✅ | |
 | 1 — Invert the flag; strip it from Q's setups | ✅ | |
 | 1a — The covered footer: a `footer: false` route flag | ✅ | |
-| 2 — The default route's e2e (AC-7, AC-9) | ⏳ | |
-| 3 — Docs freshness + close-out | | |
+| 2 — The default route's e2e (AC-7, AC-9) | ✅ | |
+| 3 — Docs freshness + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -261,7 +261,8 @@ first group, named sites in the rest):
 - `frontend/e2e/theme-shell.e2e.ts` — the hero scrim and native-field-scheme tests; the withheld-chunk marker → `app-home`
 - `frontend/e2e/tourist-header.e2e.ts` — settle marker only; the bar keeps measuring the page that ships
 - `frontend/e2e/tourist-tab-bar.e2e.ts` — the scroll-away test, a handover to #1173
-- `CONTEXT.md` — the **Venue sheet** and **Venue panel** entries say "Behind the map flag on Discover"; after this slice the sheet and the panel *are* Discover, and `?map=off` is the exit. (`riviera-docs-freshness`, phase 3.)
+- `CONTEXT.md` — four entries whose present-tense facts the slice falsifies (below)
+- `docs/plans/accent-ink-on-glass.md` — **deleted**: its PR #1166 merged, so it retires at this close-out
 - `frontend/src/app/app.ts` — `TouristRouteData.footer?: false`, carried on the same root→leaf walk as `tabBar`
 - `frontend/src/app/app.html` — the shared footer behind `@if (footer())`
 - `frontend/src/app/app.routes.ts` — Discover declares `footer: false`
@@ -434,10 +435,33 @@ this.mapFlag.set(params.get('map') !== OFF_FLAG);
 
 ---
 
+## Docs-freshness report
+
+Range `95341fd76f293354b5fb6144b191b287a957ec5e..HEAD`. Fact changes: `?map=sheet` was the way
+**in** to the riviera map → `?map=off` is the way **out**; `/` renders the map; `SHEET_FLAG` →
+`OFF_FLAG`; `TouristRouteData` gains `footer`. Four findings, all present-tense facts that were
+true only while the flag defaulted off, all patched in place:
+
+| Doc:line | Stated fact | Contradicted by | Action |
+|---|---|---|---|
+| `CONTEXT.md` **Venue sheet** | "Behind the map flag on Discover, below `lg`; from `lg` the same flag lays the same list out as the venue panel" | the sheet and the panel *are* what Discover renders | rewritten; `?map=off` named as the way back |
+| `CONTEXT.md` **Coast picker** | "the coast is not a state on any screen the flag lays out" | there is no flag laying screens out any more | clause dropped; the claim itself still holds |
+| `CONTEXT.md` **Pin preview** | "the compact card a tourist opens from a venue's pin on the Discover riviera map" | no card opens on the page that ships — the row is the preview | scoped to `?map=off`'s map, with the row named |
+| `CONTEXT.md` **Pin crowd** | a crowd press "narrows the Beach filter (undone by the crumb on the map)" | the sheet and the panel have neither filter bar nor crumb | split: the head's beach chip there, the filter + crumb on `?map=off` |
+
+Counting sweep (§2b): the slice made `footer: false` the **second** `TouristRouteData` chrome
+flag beside `tabBar: false`. Swept `CONTEXT.md`, `RESPONSIBILITIES.md`, both `CLAUDE.md`s,
+`docs/adr`, `docs/agents`, `.claude/skills` and `frontend/src/app/app.ts` for `the/both/only two`
+near flag/chrome/route-data/tab-bar/footer/shell wording: the one hit is ADR-0003's two **pools**,
+unrelated. No doc states a count of chrome flags, and none claims the footer is on every route.
+
+`platform/` and the backend docs are untouched by this slice, so nothing there was swept.
+
 ## Generalization-audit log
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-21 | phase 0 | *A spec that reaches Discover without saying which design it means* — every navigation to `/` in the mocked suite and every unit describe that renders `Home` | `grep -rn "page.goto('/'" e2e/*.e2e.ts e2e/support/*.ts` + `grep -rln "from './home'" src` | 31 e2e files, 6 unit describes | 15 e2e files and 4 describes moved to `?map=off`; 4 repointed at what they measure rather than their page; the rest left on `/` deliberately |
 
 ---
 
