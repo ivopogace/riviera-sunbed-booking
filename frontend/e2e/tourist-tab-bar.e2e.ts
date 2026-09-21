@@ -116,7 +116,8 @@ test.describe('phone', () => {
   test('the top bar is relative and scrolls away; the bar is the only sticky chrome below sm', async ({
     page,
   }) => {
-    await page.goto('/');
+    // Needs a document that scrolls, and the riviera map is fixed to the viewport.
+    await page.goto('/?map=off');
     await awaitRoutedPage(page);
     const header = page.locator('header');
     const bar = page.getByTestId('tab-bar');

@@ -74,8 +74,9 @@ model in `docs/architecture/domain-model.md`.
   venues are, never a venue's sunbeds. On Discover it carries one pin per venue in the current
   result set that has a venue location, so it and the card list always show the same venues.
   _Avoid_: venue map.
-- **Pin preview** — the compact card a tourist opens from a venue's pin on the Discover riviera
-  map, showing what that venue's card shows — its sets free (`18 of 24 free`) and its
+- **Pin preview** — the compact card a tourist opens from a venue's pin on `?map=off`'s Discover
+  map (on the venue sheet and the venue panel the **row** is the preview and no card opens),
+  showing what that venue's card shows — its sets free (`18 of 24 free`) and its
   sales-closed or closed-for-season badge included — and leading to its beach map. Opened from a
   **pin crowd** the camera cannot separate, it also carries the **crowd stepper**: `‹` dots `›`,
   walking that crowd's previews in the list's order, wrapping, exactly as the place pill's
@@ -84,8 +85,8 @@ model in `docs/architecture/domain-model.md`.
   current camera: their pills overlap on screen, which is a property of the camera, not of the
   coordinates. A crowd is drawn as one **place pill** — the beach (or beaches), the crowd's
   lowest from-price and the count — whose press eases the camera to the zoom that separates the
-  venues and, when they share one beach, narrows the Beach filter (undone by the crumb on the
-  map). Where no zoom the map offers separates them the pill inverts and its presses walk the
+  venues and, when they share one beach, narrows the list to it: the head's beach chip on the
+  sheet and the panel, the Beach filter undone by the crumb on `?map=off`'s map. Where no zoom the map offers separates them the pill inverts and its presses walk the
   crowd's previews one by one, and the open **pin preview**'s crowd stepper walks the same crowd
   the same way. A crowd stays one real button per venue, in the list's order, so a keyboard walks
   exactly what it walks for lone pins. _Avoid_: cluster, marker cluster, spider.
@@ -94,8 +95,9 @@ model in `docs/architecture/domain-model.md`.
   below), **peek** (the sheet's head alone above the tab bar, the map filling the rest) and
   **full** (the list, a sliver of map kept under the header, a `Map` pill as the way back). A
   finger moves it as it scrolls a page; the grabber's tap cycles half and full, and peek is a
-  drag's only. Behind the map flag on Discover, below `lg`; from `lg` the same flag lays the same
-  list out as the **venue panel**. _Avoid_: drawer, bottom sheet (as a term), modal.
+  drag's only. It is what Discover renders below `lg`; from `lg` the same list is the **venue
+  panel**. `?map=off` is the one way back to the pre-Q page, for the release it soaks.
+  _Avoid_: drawer, bottom sheet (as a term), modal.
 - **Sheet head** — the venue sheet's one row carrying the query: the **place** (a press opens the
   **coast picker**) over the selling line (`8 of 11 selling today`, each venue's sales close for
   today), the region's beaches gathered into one chip, and the day. A press on a chip opens its
@@ -123,8 +125,8 @@ model in `docs/architecture/domain-model.md`.
   the whole coast as a narrow map with a dot for every beach in the index, each beach's row tied
   to its dot by a **leader**; the ribbon is a picture beside the index, never a control, and lives
   only while the picker is open. There is no whole-coast choice, because the coast is not a state
-  on any screen the flag lays out — a region, never the coast, on the phone and on the desktop
-  alike. _Avoid_: region filter, dropdown, minimap.
+  on any screen — a region, never the coast, on the phone and on the desktop alike.
+  _Avoid_: region filter, dropdown, minimap.
 - **Near me (Discover)** — the tourist's own position as an input to the venue sheet, decided by
   the riviera map's fence: off the fence, nothing moves and the map's own words stand in the sheet
   head; inside it, the list is sorted nearest first with distances, the map frames the tourist's

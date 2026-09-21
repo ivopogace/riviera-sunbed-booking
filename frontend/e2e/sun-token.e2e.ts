@@ -91,7 +91,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('all three suns resolve one computed background-image', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?map=off');
   await expect(page.getByTestId('venue-card')).toHaveCount(1);
 
   const brand = await backgroundImage(page, BRAND_SUN);
@@ -107,7 +107,7 @@ test('all three suns resolve one computed background-image', async ({ page }) =>
 });
 
 test('the card sun is opaque, so it cannot composite against the sea', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?map=off');
   const sun = page.locator('.photo-sun');
   await expect(sun).toBeVisible();
 

@@ -216,7 +216,8 @@ export const routes: Routes = [
     path: '',
     loadComponent: () => import('./pages/home/home').then((m) => m.Home),
     title: 'Riviera — Sunbed Booking',
-    data: { section: 'beaches' } satisfies TouristRouteData,
+    // The riviera map fills the window; `?map=off` gives its footer up with it (static data).
+    data: { section: 'beaches', footer: false } satisfies TouristRouteData,
   },
   {
     // Device-local guest bookings list.

@@ -103,7 +103,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('discovery → filter → venue map is accessible end-to-end', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?map=off');
   await expect(page.getByRole('heading', { name: 'Find your spot on the Riviera' })).toBeVisible();
 
   // All venues are listed as cards; the live count sits inside the filter bar.
@@ -169,7 +169,7 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
 });
 
 test('the date chosen on discovery carries into the venue map (#294)', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?map=off');
   await expect(page.getByRole('heading', { name: 'Find your spot on the Riviera' })).toBeVisible();
 
   // Pick a date a month past the picker floor — clearly NOT the map's own default (today), so
@@ -200,7 +200,7 @@ test('hero panel fills the content width, matching the search bar (#153)', async
   // filter bar directly below it share one content width. Pin the viewport so the measurement is
   // deterministic regardless of the project's default.
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('/');
+  await page.goto('/?map=off');
   await expect(page.getByRole('heading', { name: 'Find your spot on the Riviera' })).toBeVisible();
 
   const hero = await page.locator('.hero').boundingBox();
@@ -234,7 +234,7 @@ test('discovery load-failure panel recovers when Retry is pressed (#149)', async
       : route.fulfill({ json: VENUES });
   });
 
-  await page.goto('/');
+  await page.goto('/?map=off');
 
   // The designed failure panel appears with alert semantics (announced to AT).
   const panel = page.getByTestId('error');
@@ -276,7 +276,7 @@ test('an unrated venue shows a "New" state (no ★ 0.0) on the card and map, acc
   );
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [unrated] }));
 
-  await page.goto('/');
+  await page.goto('/?map=off');
   const card = page.getByTestId('venue-card').first();
   await expect(card.getByTestId('new-chip')).toHaveText('New');
   await expect(card).not.toContainText('0.0');
@@ -318,7 +318,7 @@ test('an unrated venue shows a "New" state (no ★ 0.0) on the card and map, acc
 test('discovery shows an accessible empty state when no venues match', async ({ page }) => {
   // Override the list route to return nothing for this run.
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [] }));
-  await page.goto('/');
+  await page.goto('/?map=off');
   await expect(page.getByTestId('empty')).toBeVisible();
   await expect(page.getByTestId('venue-card')).toHaveCount(0);
   // The in-bar count stays visible in the empty state: "0 venues · <date>".
@@ -343,7 +343,10 @@ test('a hidden venue answers a not-available state with a way back, not a retry 
 
   await panel.getByTestId('map-back-home').click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByTestId('venue-card').first()).toBeVisible();
+  // The way back carries no query, so it lands on the riviera map, not the page this spec left.
+  await expect(
+    page.locator('[data-testid="venue-card"], [data-testid="venue-row"]').first(),
+  ).toBeVisible();
 });
 
 test('a venue with no published map explains itself and points back to Discover (#717)', async ({
@@ -374,5 +377,8 @@ test('a venue with no published map explains itself and points back to Discover 
 
   await empty.getByRole('button', { name: 'Back to Discover' }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByTestId('venue-card').first()).toBeVisible();
+  // The way back carries no query, so it lands on the riviera map, not the page this spec left.
+  await expect(
+    page.locator('[data-testid="venue-card"], [data-testid="venue-row"]').first(),
+  ).toBeVisible();
 });

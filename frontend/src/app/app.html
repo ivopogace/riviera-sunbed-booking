@@ -479,14 +479,16 @@
   </main>
 
   <!-- Shared by the tourist chrome and the console shell (tokens re-scope under the porcelain pin). -->
-  <footer
-    class="riv-footer border-t border-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7]"
-  >
-    <div
-      appLegalFooter
-      class="riv-footer-inner mx-auto max-w-[1080px] px-6 py-4 text-[13px] text-riv-ink-soft"
-    ></div>
-  </footer>
+  @if (footer()) {
+    <footer
+      class="riv-footer border-t border-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7]"
+    >
+      <div
+        appLegalFooter
+        class="riv-footer-inner mx-auto max-w-[1080px] px-6 py-4 text-[13px] text-riv-ink-soft"
+      ></div>
+    </footer>
+  }
 
   <!-- Find-a-booking glass modal: a shell-level, nav-triggered overlay. -->
   @if (findOpen()) {

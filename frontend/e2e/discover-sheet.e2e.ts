@@ -7,7 +7,7 @@ import { expectTouchManipulation } from './support/mobile-zoom';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
- * The riviera map sheet on Discover behind `?map=sheet`: the map as the ground under the
+ * The riviera map sheet — what Discover renders: the map as the ground under the
  * glass header, the cards as a sheet with three resting heights, the head one row carrying the
  * query, the row the pin's preview, Near me's three arms. The ground opens as the **map
  * poster** — a still under the pins, no engine — and the fake engine takes over when something
@@ -101,7 +101,7 @@ function ground(page: Page): Locator {
 
 async function openSheet(page: Page, viewport = PHONE): Promise<void> {
   await page.setViewportSize({ width: viewport.width, height: viewport.height });
-  await page.goto('/?map=sheet');
+  await page.goto('/');
   await expect(page.getByTestId('venue-card')).toHaveCount(4);
   await expect(ground(page)).toBeVisible();
   await expectDetent(page, 'half');
@@ -260,11 +260,11 @@ test.describe('Discover sheet — rests on measured chrome', () => {
     });
   }
 
-  test('the flag off leaves today’s Discover: the filter bar and the switch, no sheet', async ({
+  test('?map=off leaves today’s Discover: the filter bar and the switch, no sheet', async ({
     page,
   }) => {
     await page.setViewportSize({ width: PHONE.width, height: PHONE.height });
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('venue-card')).toHaveCount(7);
     await expect(page.getByTestId('filter-beach')).toBeVisible();
     await expect(page.getByTestId('view-switch')).toBeVisible();
@@ -695,7 +695,7 @@ test.describe('Discover sheet — the poster', () => {
       if (pathname.startsWith('/posters/')) posterRequests += 1;
     });
     await page.setViewportSize({ width: PHONE.width, height: PHONE.height });
-    await page.goto('/?map=sheet');
+    await page.goto('/');
     await expect(page.getByTestId('venue-card')).toHaveCount(4);
     await expectDetent(page, 'half');
     const image = page.getByTestId('poster-image');
@@ -721,6 +721,47 @@ test.describe('Discover sheet — the poster', () => {
     await expect.poll(() => mapRequests).toBeGreaterThan(0);
     await expect.poll(() => webGlContexts(page)).toBe(1);
     await page.mouse.up();
+  });
+
+  /**
+   * The epic's first user story, as geometry: a tourist opening Discover sees the region's map
+   * with priced pins on the first screen. The counts above prove the poster is drawn and cheap;
+   * this proves it is drawn WHERE a tourist can see it, with no scroll and no gesture.
+   */
+  test('the default route paints the poster and a priced pin inside the first screen', async ({
+    page,
+  }) => {
+    await mockMapResources(page);
+    await page.setViewportSize({ width: PHONE.width, height: PHONE.height });
+    await page.goto('/');
+    await expect(page.getByTestId('venue-card')).toHaveCount(4);
+
+    // The ground IS the first screen — not a pane below a hero, which is what the epic filed.
+    const ground = await page.getByTestId('sheet-ground').boundingBox();
+    expect(ground).toEqual({ x: 0, y: 0, width: PHONE.width, height: PHONE.height });
+
+    // Centre-cropped, so it overhangs: a box INSIDE the viewport would mean a gap.
+    await expect(page.getByTestId('poster-image')).toBeVisible();
+    const poster = await page.getByTestId('poster-image').boundingBox();
+    expect(poster!.y).toBeLessThanOrEqual(0);
+    expect(poster!.x).toBeLessThanOrEqual(0);
+    expect(poster!.y + poster!.height).toBeGreaterThanOrEqual(PHONE.height);
+    expect(poster!.x + poster!.width).toBeGreaterThanOrEqual(PHONE.width);
+
+    // A pin carrying a price, not a bare dot: the story is "priced pins", not "pins".
+    const priced = page.locator('[data-pin] .pin-price').first();
+    await expect(priced).toBeVisible();
+    await expect(priced).toHaveText(/€/);
+    const pin = await priced.boundingBox();
+    expect(pin!.y).toBeGreaterThanOrEqual(0);
+    expect(pin!.y + pin!.height).toBeLessThanOrEqual(PHONE.height);
+
+    // Laid out is not seen: the sheet rests over the same ground, so ask what is painted there.
+    const painted = await page.evaluate(
+      ([x, y]) => document.elementFromPoint(x, y)?.closest('[data-pin]') !== null,
+      [pin!.x + pin!.width / 2, pin!.y + pin!.height / 2],
+    );
+    expect(painted, 'the priced pin is the thing at its own centre, not the sheet').toBe(true);
   });
 
   test.describe('fake engine', () => {

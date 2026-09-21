@@ -117,7 +117,7 @@ test.beforeEach(async ({ page }) => {
 test('the Discover card shows the cover photo (scrim kept), the photo-less card keeps the gradient, and the map banner shows the cover — no "coming soon" anywhere (+ axe)', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/?map=off');
   const cards = page.getByTestId('venue-card');
   await expect(cards).toHaveCount(2);
 
@@ -150,7 +150,7 @@ test('the Discover card shows the cover photo (scrim kept), the photo-less card 
 test('each tourist photo surface offers the candidates its own list carries (+ axe)', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/?map=off');
   const card = page.getByTestId('venue-card').first().getByTestId('card-photo-img');
   // Both candidates on the wire, as w-descriptors — the browser, not the server, picks.
   await expect(card).toHaveAttribute('srcset', /photos\/aa01 576w, .*photos\/aa01@1152 1152w$/);
@@ -271,7 +271,7 @@ test('the photo scrim computes one identical recipe on the Discover card and the
       };
     });
 
-  await page.goto('/');
+  await page.goto('/?map=off');
   const cardScrim = page.getByTestId('venue-card').first().locator('.photo-scrim');
   await expect(cardScrim).toBeAttached();
   const card = await recipeOf(cardScrim);
@@ -329,7 +329,7 @@ test('the slideshow chrome carries its own backing over the photo, in both theme
 test('the Discover card slideshow crossfades through all three slots via the step controls (dots track, wrap both ways, + axe)', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/?map=off');
   const item = page.getByTestId('venue-card').first().locator('..');
   const slides = item.locator(
     '[data-testid="card-photo-img"], [data-testid="card-photo-slide-img"]',
@@ -366,7 +366,7 @@ test('the Discover card slideshow crossfades through all three slots via the ste
   await expect(position).toHaveText('Photo 3 of 3');
 
   // Stepping the slideshow must not navigate — the controls sit outside the card link.
-  await expect(page).toHaveURL('/');
+  await expect(page).toHaveURL('/?map=off');
 
   // The toHaveCSS('opacity', '1') above already proved the crossfade settled (no mid-fade axe read).
   await expect(shown).toHaveCSS('opacity', '1');
@@ -376,7 +376,7 @@ test('the Discover card slideshow crossfades through all three slots via the ste
 test('a horizontal swipe steps the Discover card without following the card link', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/?map=off');
   const item = page.getByTestId('venue-card').first().locator('..');
   const band = item.locator('app-photo-slideshow');
   const position = item.getByTestId('card-photo-position');
@@ -403,7 +403,7 @@ test('a horizontal swipe steps the Discover card without following the card link
   // The band IS the card's <a>, so the click the swipe synthesises must not reach the router.
   await swipe(-80);
   await expect(position).toHaveText('Photo 2 of 3');
-  await expect(page).toHaveURL('/');
+  await expect(page).toHaveURL('/?map=off');
 
   await swipe(80);
   await expect(position).toHaveText('Photo 1 of 3');

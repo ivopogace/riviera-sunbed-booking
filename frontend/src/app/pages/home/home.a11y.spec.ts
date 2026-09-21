@@ -65,6 +65,12 @@ function pinnedVenues(): VenueSummary[] {
 describe('Home accessibility (axe)', () => {
   let fixture: ComponentFixture<Home>;
   let httpMock: HttpTestingController;
+  /**
+   * The pre-Q Discover page — the hero, the three selects, the List/Map switch, the preview card.
+   * `?map=off` is the one way to it now, and both the parameter and the page are a one-release
+   * fallback; the riviera map's own audit is the describe below.
+   */
+  const preQParams = new BehaviorSubject<ParamMap>(convertToParamMap({ map: 'off' }));
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -73,6 +79,14 @@ describe('Home accessibility (axe)', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        // `/` is the riviera map; this block audits the pre-Q page, so it asks for it by name.
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            queryParamMap: preQParams,
+            snapshot: { queryParamMap: preQParams.value },
+          },
+        },
         { provide: MapEngine, useValue: new FakeMapEngine() },
         { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
       ],
@@ -254,10 +268,10 @@ describe('Home accessibility (axe)', () => {
 });
 
 /**
- * The riviera map sheet (`?map=sheet`, below `lg`): the head, the rails, the rows on the sheet,
+ * The riviera map sheet (what `/` renders, below `lg`): the head, the rails, the rows on the sheet,
  * the coast picker and the foot's Near me, each audited in the state the page reaches.
  */
-describe('Home accessibility (the riviera map sheet)', () => {
+describe('Home accessibility (the riviera map sheet — what `/` renders)', () => {
   let fixture: ComponentFixture<Home>;
   let httpMock: HttpTestingController;
   const originalMatchMedia = globalThis.matchMedia;
@@ -276,7 +290,7 @@ describe('Home accessibility (the riviera map sheet)', () => {
       this.scrollTop = options.top ?? 0;
       this.dispatchEvent(new Event('scroll'));
     };
-    const params = new BehaviorSubject<ParamMap>(convertToParamMap({ map: 'sheet' }));
+    const params = new BehaviorSubject<ParamMap>(convertToParamMap({}));
     await TestBed.configureTestingModule({
       imports: [Home],
       providers: [

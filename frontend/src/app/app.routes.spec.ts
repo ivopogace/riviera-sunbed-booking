@@ -168,4 +168,9 @@ describe('app.routes — the phone tab bar reads its section and checkout flag o
     const chromeless = routes.filter((r) => r.data?.['tabBar'] === false).map((r) => r.path);
     expect(chromeless).toEqual(['booking/pay']);
   });
+
+  it('withholds the shared footer on Discover and nowhere else', () => {
+    const footerless = routes.filter((r) => r.data?.['footer'] === false).map((r) => r.path);
+    expect(footerless).toEqual(['']);
+  });
 });

@@ -188,7 +188,7 @@ test.describe('Discover map — fake engine', () => {
     page,
   }) => {
     await page.setViewportSize(PHONE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('venue-card')).toHaveCount(3);
     await expect(page.getByTestId('view-list')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('map-panel')).toBeHidden();
@@ -223,7 +223,7 @@ test.describe('Discover map — fake engine', () => {
     page,
   }) => {
     await page.setViewportSize(NARROWEST_PHONE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await page.getByTestId('view-map').click();
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
 
@@ -239,7 +239,7 @@ test.describe('Discover map — fake engine', () => {
     await context.grantPermissions(['geolocation']);
     await context.setGeolocation(VISITOR);
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
 
     await page.getByRole('button', { name: 'Near me' }).click();
@@ -257,7 +257,7 @@ test.describe('Discover map — fake engine', () => {
   }) => {
     await context.clearPermissions();
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
 
     await page.getByRole('button', { name: 'Near me' }).click();
@@ -279,7 +279,7 @@ test.describe('Discover map — fake engine', () => {
   }) => {
     await context.clearPermissions();
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
 
     await page.getByRole('button', { name: 'Near me' }).click();
@@ -300,7 +300,7 @@ test.describe('Discover map — fake engine', () => {
     page,
   }) => {
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
 
     await expect(page.getByTestId('venue-card')).toHaveCount(3);
@@ -322,7 +322,7 @@ test.describe('Discover map — fake engine', () => {
     page,
   }) => {
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
     const date = await page.getByTestId('filter-date').inputValue();
 
@@ -351,7 +351,7 @@ test.describe('Discover map — fake engine', () => {
     page,
   }) => {
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
     const pins = page.getByTestId('map-venue-pin');
 
@@ -372,7 +372,7 @@ test.describe('Discover map — fake engine', () => {
 
   test('closes the preview when the map itself is tapped', async ({ page }) => {
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
 
     await page.getByTestId('map-venue-pin').first().click();
@@ -385,7 +385,7 @@ test.describe('Discover map — fake engine', () => {
 
   test('marks the selected venue’s card in the list beside the map', async ({ page }) => {
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
 
     await page.getByTestId('map-venue-pin').nth(1).click();
@@ -401,7 +401,7 @@ test.describe('Discover map — fake engine', () => {
   }) => {
     const venueRequests = countVenueRequests(page);
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
     await expect(page.getByTestId('map-venue-pin')).toHaveCount(2);
 
@@ -424,7 +424,7 @@ test.describe('Discover map — fake engine', () => {
     page,
   }) => {
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
     const miramar = page.getByRole('button', { name: 'Miramar Beach Club, from €25' });
     await expect(miramar).toHaveCount(1);
@@ -452,7 +452,7 @@ test.describe('Discover map — fake engine', () => {
     page,
   }) => {
     await page.setViewportSize(PHONE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await page.getByTestId('view-map').click();
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
 
@@ -463,7 +463,7 @@ test.describe('Discover map — fake engine', () => {
     page,
   }) => {
     await page.setViewportSize(NARROWEST_PHONE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await page.getByTestId('view-map').click();
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
 
@@ -486,7 +486,7 @@ test.describe('Discover map — fake engine', () => {
     page,
   }) => {
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('venue-card')).toHaveCount(3);
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
     await expect(page.getByTestId('view-switch')).toBeHidden();
@@ -526,7 +526,7 @@ test.describe('Discover map — crowded pins, fake engine', () => {
     page,
   }) => {
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
     await expect(page.getByTestId('venue-card')).toHaveCount(6);
 
@@ -555,7 +555,7 @@ test.describe('Discover map — crowded pins, fake engine', () => {
     page,
   }) => {
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
     const ksamil = page.getByTestId('map-place-pill').filter({ hasText: 'Ksamil' });
 
@@ -592,7 +592,7 @@ test.describe('Discover map — crowded pins, fake engine', () => {
     page,
   }) => {
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
     const pill = page.getByTestId('map-place-pill').filter({ hasText: 'Dhërmi' });
 
@@ -673,7 +673,7 @@ test.describe('Discover map — crowded pins, fake engine', () => {
 
   test('a keyboard still reaches every venue in a crowd, in feed order', async ({ page }) => {
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
 
     await page.getByTestId('map-place-pill').filter({ hasText: 'Ksamil' }).focus();
@@ -707,7 +707,7 @@ test.describe('Discover map — real engine', () => {
   test('the map fills its panel under the engine’s own stylesheet', async ({ page }) => {
     await mockVenues(page);
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.locator('app-riviera-map')).toHaveAttribute('data-status', 'ready', {
       timeout: 20_000,
     });
@@ -737,7 +737,7 @@ test.describe('Discover map — real engine', () => {
     });
 
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('venue-card')).toHaveCount(3);
     expect(venuesAnsweredAt).toBeDefined();
     expect(firstMapRequestAt === undefined || firstMapRequestAt >= venuesAnsweredAt!).toBe(true);
@@ -758,7 +758,7 @@ test.describe('Discover map — real engine', () => {
       },
     );
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
 
     // The style the engine actually loaded, not a copy read beside it.
     const style = (await (await styleResponse).json()) as {
@@ -789,7 +789,7 @@ test.describe('Discover map — real engine', () => {
     });
 
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     const map = page.locator('app-riviera-map');
     await expect(map).toHaveAttribute('data-status', 'ready', { timeout: 20_000 });
 
@@ -860,7 +860,7 @@ test.describe('Discover map — real engine', () => {
     page.on('console', (message) => console_.push(message.text()));
 
     await page.setViewportSize(WIDE);
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.locator('app-riviera-map')).toHaveAttribute('data-status', 'ready', {
       timeout: 20_000,
     });
@@ -893,16 +893,16 @@ test.describe('Discover map — real engine', () => {
  * one. Borsh sits alone 20 km south-east, closed for the day — the dusk case beside a crowd whose
  * own closed member must not grey it.
  */
-const FLAGGED = [
-  flagged(21, 'Palasa Sands', 'PALASE', 'HIMARE', 40.18, 19.58, 2000, false),
-  flagged(22, 'Palasa Pine', 'PALASE', 'HIMARE', 40.178, 19.583, 2200),
-  flagged(23, 'Aurora Bay', 'DHERMI', 'HIMARE', 40.176, 19.586, 3000),
-  flagged(24, 'Folie Marine', 'DHERMI', 'HIMARE', 40.174, 19.589, 3900),
-  flagged(25, 'Borsh Kilometre', 'BORSH', 'HIMARE', 40.06, 19.86, 1500, false),
-  flagged(26, 'Miramar Beach Club', 'KSAMIL', 'SARANDE', 39.7712, 20.0021, 2500),
+const MAP_VENUES = [
+  mapVenue(21, 'Palasa Sands', 'PALASE', 'HIMARE', 40.18, 19.58, 2000, false),
+  mapVenue(22, 'Palasa Pine', 'PALASE', 'HIMARE', 40.178, 19.583, 2200),
+  mapVenue(23, 'Aurora Bay', 'DHERMI', 'HIMARE', 40.176, 19.586, 3000),
+  mapVenue(24, 'Folie Marine', 'DHERMI', 'HIMARE', 40.174, 19.589, 3900),
+  mapVenue(25, 'Borsh Kilometre', 'BORSH', 'HIMARE', 40.06, 19.86, 1500, false),
+  mapVenue(26, 'Miramar Beach Club', 'KSAMIL', 'SARANDE', 39.7712, 20.0021, 2500),
 ];
 
-function flagged(
+function mapVenue(
   id: number,
   name: string,
   beach: string,
@@ -929,7 +929,7 @@ function flagged(
 }
 
 /** Every width the design record measured the pins at, phone through desktop. */
-const FLAG_VIEWPORTS = [
+const PIN_VIEWPORTS = [
   { width: 390, height: 844 },
   { width: 430, height: 932 },
   { width: 768, height: 1024 },
@@ -976,33 +976,33 @@ async function chromeHits(
   );
 }
 
-async function openFlagged(page: Page, viewport: { width: number; height: number }): Promise<void> {
+async function openMap(page: Page, viewport: { width: number; height: number }): Promise<void> {
   await page.setViewportSize(viewport);
-  await page.goto('/?map=sheet');
+  await page.goto('/');
   await expect(page.locator(DRAWN_FACES).first()).toBeVisible();
   await settle(page);
 }
 
 /**
- * The pins behind `?map=sheet` and the desktop panel from `lg`. The pin layer places its
+ * The riviera map's pins and the desktop panel from `lg`. The pin layer places its
  * pills from values the page measures — the chrome's boxes and the window the sheet leaves — so
  * what is proven here is the thing only a browser can answer: that after the fit and the placement
  * pass, nothing a tourist can see is covered, at every width the design record measured.
  */
-test.describe('Discover map — the flag’s pins keep off the chrome', () => {
+test.describe('Discover map — the riviera map’s pins keep off the chrome', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
     });
-    await mockVenues(page, 0, FLAGGED);
+    await mockVenues(page, 0, MAP_VENUES);
   });
 
-  for (const viewport of FLAG_VIEWPORTS) {
+  for (const viewport of PIN_VIEWPORTS) {
     test(`no pin face sits on the map chrome at ${viewport.width} × ${viewport.height}, placed or not`, async ({
       page,
       context,
     }) => {
-      await openFlagged(page, viewport);
+      await openMap(page, viewport);
       expect(await chromeHits(page)).toEqual([]);
 
       await context.grantPermissions(['geolocation']);
@@ -1021,7 +1021,7 @@ test.describe('Discover map — the flag’s pins keep off the chrome', () => {
   }) => {
     await context.grantPermissions(['geolocation']);
     await context.setGeolocation(ON_DHERMI);
-    await openFlagged(page, FLAG_VIEWPORTS[0]);
+    await openMap(page, PIN_VIEWPORTS[0]);
     await page.getByTestId('sheet-near-me').click();
     await expect(page.getByTestId('here-dot')).toBeVisible();
     await settle(page);
@@ -1037,7 +1037,7 @@ test.describe('Discover map — the flag’s pins keep off the chrome', () => {
   test('a crowd keeps its colour while one member still sells, and a closed lone pin greys', async ({
     page,
   }) => {
-    await openFlagged(page, FLAG_VIEWPORTS[4]);
+    await openMap(page, PIN_VIEWPORTS[4]);
 
     // Palasa Sands has closed inside the crowd of four; Borsh has closed on its own.
     await expect(page.getByTestId('map-place-pill')).not.toHaveAttribute('data-dusk', '');
@@ -1051,7 +1051,7 @@ test.describe('Discover map — the desktop panel', () => {
     await page.addInitScript(() => {
       (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
     });
-    await mockVenues(page, 0, FLAGGED);
+    await mockVenues(page, 0, MAP_VENUES);
   });
 
   async function box(locator: Locator): Promise<DOMRect> {
@@ -1066,7 +1066,7 @@ test.describe('Discover map — the desktop panel', () => {
     test(`at ${width} the panel is ${panelPx} and the map takes the remaining ${panePx}`, async ({
       page,
     }) => {
-      await openFlagged(page, { width, height: 900 });
+      await openMap(page, { width, height: 900 });
 
       const panel = await box(page.getByTestId('desk-panel'));
       const map = await box(page.getByTestId('desk-map'));
@@ -1084,7 +1084,7 @@ test.describe('Discover map — the desktop panel', () => {
   test('the panel opens on its head with the first row where the phone’s sheet puts it', async ({
     page,
   }) => {
-    await openFlagged(page, { width: 1440, height: 900 });
+    await openMap(page, { width: 1440, height: 900 });
 
     // 73 header + 12 gutter + 1 panel border + 78 head + 27 running head and its rule.
     const first = await box(page.getByTestId('venue-row').first());
@@ -1093,7 +1093,7 @@ test.describe('Discover map — the desktop panel', () => {
   });
 
   test('the map’s corners match the panel’s at 22 px, on all four', async ({ page }) => {
-    await openFlagged(page, { width: 1440, height: 900 });
+    await openMap(page, { width: 1440, height: 900 });
 
     for (const testId of ['desk-panel', 'desk-map']) {
       const radii = await page
@@ -1109,7 +1109,7 @@ test.describe('Discover map — the desktop panel', () => {
   });
 
   test('the selected row expands, and no other row moves or leaves the panel', async ({ page }) => {
-    await openFlagged(page, { width: 1440, height: 900 });
+    await openMap(page, { width: 1440, height: 900 });
     const rows = page.getByTestId('venue-row');
     /** Whole rows inside the panel's own scroller, which is what "visible" means here. */
     const visible = async (): Promise<number> =>
@@ -1140,7 +1140,7 @@ test.describe('Discover map — the desktop panel', () => {
   test('a row under the pointer lights its venue’s face, and lets go when the pointer leaves', async ({
     page,
   }) => {
-    await openFlagged(page, { width: 1440, height: 900 });
+    await openMap(page, { width: 1440, height: 900 });
     // The crowd's pill, not the lone Borsh pin: dusk already paints that one the hover fill.
     const pill = page.getByTestId('map-place-pill');
     const fill = async (): Promise<string> =>
@@ -1161,7 +1161,7 @@ test.describe('Discover map — the desktop panel', () => {
   test('the shore’s chain groups into one pill, which the first-member rule would have split', async ({
     page,
   }) => {
-    await openFlagged(page, { width: 1024, height: 768 });
+    await openMap(page, { width: 1024, height: 768 });
 
     // Four venues up the shore, each clear of the first but not of the crowd's running mean.
     const pills = page.getByTestId('map-place-pill');
@@ -1173,7 +1173,7 @@ test.describe('Discover map — the desktop panel', () => {
   test('the coast picker opens as a popover under the place button, with its ribbon', async ({
     page,
   }) => {
-    await openFlagged(page, { width: 1440, height: 900 });
+    await openMap(page, { width: 1440, height: 900 });
     await page.getByTestId('head-place').click();
 
     const panel = page.getByTestId('coast-picker');
@@ -1189,7 +1189,7 @@ test.describe('Discover map — the desktop panel', () => {
   test('is axe clean with every control at the touch floor, listing and with the picker open', async ({
     page,
   }) => {
-    await openFlagged(page, { width: 1440, height: 900 });
+    await openMap(page, { width: 1440, height: 900 });
     await settleAnimations(page.getByTestId('desk-panel'));
     await expectNoSeriousAxeViolations(page);
     await expectTouchTargets(page, 'the desktop panel');
@@ -1203,9 +1203,9 @@ test.describe('Discover map — the desktop panel', () => {
     await expectTouchTargets(page, 'the desktop panel with its coast picker');
   });
 
-  test('the flag off leaves today’s Discover at the same width', async ({ page }) => {
+  test('?map=off leaves today’s Discover at the same width', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('venue-card').first()).toBeVisible();
 
     await expect(page.getByTestId('desk-panel')).toHaveCount(0);

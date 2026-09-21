@@ -50,7 +50,7 @@ test.describe('tourist UI — mobile zoom', () => {
 
   // `fields` is the FLOOR a surface must sweep at rest — counted from the source, not guessed.
   const SURFACES = [
-    { path: '/', marker: 'venue-card', label: 'tourist home (the filter bar)', fields: 3 },
+    { path: '/?map=off', marker: 'venue-card', label: 'tourist home (the filter bar)', fields: 3 },
     { path: '/account/sign-in', marker: 'auth-identifier', label: 'the sign-in card', fields: 2 },
     {
       path: '/account/sign-in?mode=register',
@@ -171,7 +171,8 @@ test.describe('tourist UI — mobile zoom', () => {
       (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
     });
     await page.setViewportSize(PHONE);
-    await page.goto('/');
+    // `?map=off`: the switch IS the subject, and the riviera map has none — it is one surface.
+    await page.goto('/?map=off');
     await expect(page.getByTestId('venue-card').first()).toBeVisible();
     await page.getByTestId('view-map').click();
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();

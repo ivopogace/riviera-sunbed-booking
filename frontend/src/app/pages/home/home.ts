@@ -92,8 +92,17 @@ import { VenuePreviewCard } from './venue-preview-card';
  */
 const WIDE_VIEWPORT = '(min-width: 1024px)';
 
-/** `?map=sheet` puts the riviera map under the list as a sheet below `lg`; off, nothing moves. */
-const SHEET_FLAG = 'sheet';
+/**
+ * `?map=off` is the way back to the pre-Q Discover page — the comparison lever while the riviera
+ * map soaks on the deployed site. Every other value is the map, the `?map=sheet` a bookmark from
+ * the flagged releases still carries included, so no link that once worked breaks. Both the
+ * parameter and the page it reaches are a one-release fallback and go together.
+ *
+ * <p>Not quite the page as it was: the route's `footer: false` is static, so `?map=off` renders
+ * without the shared footer the old page carried. The legal links are reachable from every other
+ * route, and both this parameter and that gap end with the pre-Q page.
+ */
+const OFF_FLAG = 'off';
 /** The region the sheet opens on when the tourist is not placed: the coast's middle stretch. */
 const DEFAULT_REGION = 'HIMARE';
 /** From this much sheet width the rows are two columns and the beach chip spells itself out. */
@@ -164,29 +173,29 @@ function closedStateText(
 
 /**
  * Tourist venue discovery — the app's landing page (`/`).
- * Hero + one glass filter bar (beach/region/date with the live result count inside) + glass venue
- * cards (a crossfading slideshow of the venue's uploaded photos when any exist — stepped by
- * controls layered OUTSIDE the card link, never nested in it — else the gradient placeholder;
- * mode chip, rating, availability bar), each a link to the beach map at `/venues/:id`. The date
- * drives the per-venue availability count (invariant #2). Money is rendered from integer minor
- * units (invariant #5); every card fact is conveyed as text, not colour alone (WCAG AA). Loading
- * (a pulsing skeleton grid), empty, and error states are distinct.
  *
- * <p>Beside the list sits the **riviera map** (ADR-0022): below `lg` a List/Map switch shows one
- * panel at a time, from `lg` up both show side by side. The map component is a deferred chunk that
- * loads only once the venue request has settled, so the list is never slower for it; once loaded
- * it stays mounted and the switch only hides it. The list remains the fully accessible path.
+ * <p>The page is the **riviera map** (ADR-0022). Below `lg` the map is the ground under the glass
+ * header and the cards are a sheet over it with three resting heights (`DiscoverSheet`); from
+ * `lg` the same list is a pinned left panel beside an inset map. Either way the head is one row
+ * carrying the query (`DiscoverHead`), the row is the pin's preview, and Near me has three arms
+ * decided by the map's own fence rule. One whole-coast request per date is narrowed to a region
+ * client-side, so the chips and the coast picker can count every beach.
  *
  * <p>The venue pins over the map are the page's own overlay (`VenuePinLayer`), fed the very cards
- * the list renders. Pins that bury each other form a place pill: pressing it goes there, and when
- * the place is one beach the Beach filter follows, with a crumb on the map as the way back.
+ * the list renders, so the two surfaces cannot disagree. Pins that bury each other form a place
+ * pill: pressing it goes there, and when the place is one beach the list narrows to it.
  *
- * <p>Behind `?map=sheet`, below `lg`, the page is the **riviera map sheet**: the map is the
- * ground under the glass header, the cards are a sheet over it with three resting heights
- * (`DiscoverSheet`), the head is one row carrying the query (`DiscoverHead`), the row is the pin's
- * preview, and Near me has three arms decided by the map's own fence rule. Sheet mode keeps the
- * one whole-coast request per date and narrows to a region client-side, so the chips and the
- * coast picker can count every beach. The flag off, the page is the one described above.
+ * <p>`?map=off` is the way back to the **pre-Q page** for the release the map soaks (`OFF_FLAG`):
+ * hero + one glass filter bar (beach/region/date with the live result count inside) + glass venue
+ * cards in a grid, with a List/Map switch below `lg` and both panels side by side from `lg`, and
+ * a preview card over the map instead of a lit row. Its map component is a deferred chunk that
+ * loads only once the venue request has settled; once loaded it stays mounted and the switch only
+ * hides it.
+ *
+ * <p>Common to both: a card is a link to the beach map at `/venues/:id`, carrying the selected
+ * date; the date drives the per-venue availability count (invariant #2); money is rendered from
+ * integer minor units (invariant #5); every card fact is conveyed as text, not colour alone
+ * (WCAG AA); and the loading (a pulsing skeleton grid), empty and error states are distinct.
  *
  * <p>On a phone or tablet the sheet opens on the **map poster** (`map-poster.ts`): a still of the
  * region under the pins, which are projected through a still-image handle, so the first paint
@@ -300,10 +309,10 @@ export class Home {
     () => (this.sheetMode() ? this.groundLive() : this.mapOpen()) && this.listSettled(),
   );
 
-  /** The route carries `?map=sheet`; the layout follows it only below `lg`. */
-  private readonly mapFlag = signal(false);
+  /** The route does not opt out with `?map=off`; which surface the map wears is `wide()`'s call. */
+  private readonly mapFlag = signal(true);
   protected readonly sheetMode = computed(() => this.mapFlag() && !this.wide());
-  /** From `lg` the same flag lays the list out as a pinned left panel beside an inset map. */
+  /** From `lg` the same page lays the list out as a pinned left panel beside an inset map. */
   protected readonly panelMode = computed(() => this.mapFlag() && this.wide());
   /** The window and the shell header, which the desktop frame is measured from; the sheet owns its own. */
   protected readonly shell = signal({ viewportW: 0, viewportH: 0, header: 0 });
@@ -367,8 +376,9 @@ export class Home {
    * date change re-feeds these from the one list response it was going to fetch anyway, and the
    * two surfaces cannot disagree. A pin's id is its venue's id as a string.
    *
-   * <p>Behind the flag the map holds ONE region on every surface: there is no whole-coast state,
-   * so the pins are the focused region's cards and not the whole coast's.
+   * <p>The riviera map holds ONE region on every surface: there is no whole-coast state, so the
+   * pins are the focused region's cards and not the whole coast's. `?map=off`'s map draws them
+   * all, since its filter bar is what narrows there.
    */
   protected readonly pins = computed<readonly VenuePin[]>(() =>
     (this.mapFlag() ? this.focus().cards : this.shownCards()).flatMap((card) =>
@@ -686,13 +696,13 @@ export class Home {
     this.rescueFocusFromClosingPreview();
     this.followViewport();
     this.selectedDate.set(this.routeDate(this.route.snapshot.queryParamMap));
-    this.mapFlag.set(this.route.snapshot.queryParamMap.get('map') === SHEET_FLAG);
+    this.mapFlag.set(this.route.snapshot.queryParamMap.get('map') !== OFF_FLAG);
     this.followSheet();
     this.followPanel();
     this.followMapChrome();
     this.loadInitial();
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      this.mapFlag.set(params.get('map') === SHEET_FLAG);
+      this.mapFlag.set(params.get('map') !== OFF_FLAG);
       const date = this.routeDate(params);
       if (date !== this.selectedDate()) {
         this.selectedDate.set(date);
@@ -1072,11 +1082,11 @@ export class Home {
    * dialog, or from the open preview's own stepper, which leaves focus where it is — the dialog
    * stays mounted across a step, so the pressed chevron keeps it.
    *
-   * <p>Behind the flag the ROW is the preview on both surfaces: it lights and comes into view, a
-   * sheet at peek rises to half, and a press destroys nothing, so focus stays on the pin that took
-   * it. Only the unflagged page opens a card, and only there is focus moved into it — `focusMover`
-   * lands on the page host when its target is absent, which here would take focus off the pressed
-   * pin for nothing (WCAG 2.4.3).
+   * <p>On the riviera map the ROW is the preview, on both surfaces: it lights and comes into
+   * view, a sheet at peek rises to half, and a press destroys nothing, so focus stays on the pin
+   * that took it. Only `?map=off`'s page opens a card, and only there is focus moved into it —
+   * `focusMover` lands on the page host when its target is absent, which here would take focus
+   * off the pressed pin for nothing (WCAG 2.4.3).
    */
   protected onPinSelected(id: string): void {
     this.selectedVenue.set(id);
@@ -1090,10 +1100,10 @@ export class Home {
 
   /**
    * A place on the map was pressed and it is one beach: the list narrows to it, so the cards
-   * beside the map — the List tab on a phone — are the venues the camera went to. Behind the flag,
-   * on either surface, the narrowing is the head's beach and client-side, with no request: the
-   * flagged page holds one whole-coast response and narrows inside it, and neither the filter bar
-   * nor the crumb that undoes a filter-bar narrowing is drawn there.
+   * beside the map — the List tab on a phone — are the venues the camera went to. On the riviera
+   * map, on either surface, the narrowing is the head's beach and client-side, with no request:
+   * the page holds one whole-coast response and narrows inside it, and neither the filter bar nor
+   * the crumb that undoes a filter-bar narrowing is drawn there.
    */
   protected onBeachNarrowed(beach: string): void {
     if (this.mapFlag()) {
