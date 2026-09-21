@@ -59,7 +59,7 @@ describe('LegalMenuRows', () => {
     }
   });
 
-  it('lays the rows out where the menu puts them, never a wrapper', () => {
+  it('contributes no layout box of its own, so the menu lays the rows out', () => {
     const host = menu(SheetHost).querySelector('app-legal-menu-rows');
 
     expect(host?.classList.contains('contents')).toBe(true);

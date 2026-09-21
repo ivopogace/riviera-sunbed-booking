@@ -37,8 +37,8 @@ export const POP_ITEM = `block w-full rounded-xl px-2.5 py-[9px] text-[14px] fon
 
 export const POP_BUTTON = `${POP_ITEM} cursor-pointer text-left`;
 
-/** The phone sheet's row — {@link POP_ITEM}'s twin at the sheet's larger type and padding. Here
- *  rather than in `app.ts` because `shared/legal-menu-rows.ts` paints both menus from one place. */
+/** The phone sheet's row — {@link POP_ITEM}'s twin at the sheet's larger type and padding. Beside
+ *  it, so a component serving both menus can pick either skin from one import. */
 export const MOBILE_ITEM = `block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover ${CURRENT_POP_ROW} ${POP_ROW_RING}`;
 
 /** A navigation row with a glyph, a label and a hint line — the More sheet's and the palette's:

@@ -4,7 +4,7 @@ import { Page } from '@playwright/test';
  * The `data-testid` of whatever actually receives a pointer at the centre of `testId`'s box — the
  * occlusion question `toBeVisible()` cannot answer. A control painted under a fixed overlay is
  * reported visible, enabled and stable, and every click on it times out; Discover's riviera map
- * swallowed the shared footer that way for a whole release.
+ * swallowed the shared footer exactly that way.
  *
  * <p>Returns the nearest ancestor's id when the hit lands on an unmarked child (a label inside a
  * row), `null` when nothing in the tree carries one, and `undefined` when the point is outside the

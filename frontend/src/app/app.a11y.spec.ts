@@ -26,9 +26,9 @@ const customerAuth = {
  * themes, closed and open. Colour contrast is verified deterministically in `app.contrast.spec.ts` (axe can't
  * measure it under jsdom); the real-browser sweep runs in `e2e/theme-shell.e2e.ts`.
  */
-const THEMES = ['riviera', 'porcelain', 'dark'] as const;
-
 describe('App shell accessibility (axe, issue #134)', () => {
+  const THEMES = ['riviera', 'porcelain', 'dark'] as const;
+
   beforeEach(async () => {
     document.documentElement.removeAttribute('data-riv-theme');
     customerAuth.signedIn.set(false);
