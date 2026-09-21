@@ -193,19 +193,26 @@ one, which is sheet mode's existing behaviour from #1157, not a new shape.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Move the four pre-Q unit describes onto `?map=off` and repoint the surveyed e2e
-population, then run both suites **before** the inversion — they must be green on `main`'s flag.
+**Next action:** Write the four route-contract specs red, strip the flag from Q's setups, then
+invert `mapFlag`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Move the pre-Q coverage onto `?map=off` | ⏳ | |
-| 1 — Invert the flag; strip it from Q's setups | | |
+| 0 — Move the pre-Q coverage onto `?map=off` | ✅ | |
+| 1 — Invert the flag; strip it from Q's setups | ⏳ | |
 | 2 — The default route's e2e (AC-7, AC-9) | | |
 | 3 — Docs freshness + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Sonar note.** On the plan-only commit the gate reported 0 new issues, 0 duplication and
+**0.0 % coverage on new code** — the third false zero in `riviera-sdlc` `references/pr-gates.md`
+§2: the only changed path was `docs/plans/`, which is outside `sonar.sources`, so `new_lines` was
+absent. Record as *gate did not apply (paths)*, never "passed". It applies for real from the
+first `frontend/src` commit; `frontend/e2e/` is outside `sonar.sources` too, so a phase whose
+diff is only e2e will report the same false zero.
 
 **Findings register** — one row per review, Sonar or CI finding; each fix re-enters at Implement.
 
@@ -284,13 +291,33 @@ phase 1's diff to the behaviour change.
       `Sun 4 Jul 2027`, the head's day chip spells `Sun 4 Jul` (`formatBookingDate` without
       `withYear`). Assert the chip, not the page text. Its other three cases assert the request's
       `date` param and are mode-agnostic already.
-- [ ] **Step 3: e2e — repoint the measured pre-Q population to `/?map=off`**, and repoint the
-      two explicit inverse tests' titles with it (`discover-sheet.e2e.ts:263`,
-      `discover-map.e2e.ts:1206` — both read "the flag off leaves today's Discover", which is now
-      what `?map=off` means).
-- [ ] **Step 4: e2e — repoint settle markers rather than pages** where a spec is not pre-Q
-      coverage at all and only used `venue-card` to wait (R-8): `tourist-header.e2e.ts:183`
-      and any sibling the run names. A header spec must keep measuring the page that ships.
+- [ ] **Step 3: e2e — repoint the pre-Q population to `/?map=off`.** Whole-file (every
+      `goto('/')` is pre-Q coverage): `discovery-flow`, `discover-map`, `discover-photos`,
+      `same-day-booking`, `operator-venue-season`, `sun-token`, `loading-announcements`.
+      Single-site: `solid-fill-token-skin` (`openDiscovery`, not its token-registry test),
+      `panel-glass-inks` (the card-price test, not the sheet helper), `discover-sheet` and
+      `discover-map`'s two inverse tests — both titled "the flag off leaves today's Discover",
+      which is now what `?map=off` means, so the titles move with them.
+      `discover-photos`'s two `toHaveURL('/')` assertions move with their `goto`.
+- [ ] **Step 4: e2e — repoint what a spec *measures*, not its page**, where it is not pre-Q
+      coverage and only used the pre-Q page as scaffolding (R-8, R-10):
+      - `discovery-flow`'s two "Back to Discover" tests: the venue page's way back carries no
+        query, so it *lands on Q*. Marker → `venue-card, venue-row`, which is any design's list.
+      - `tourist-header`'s desktop-bar sweep: the bar is the subject, so it stays on the page
+        that ships; marker → `venue-row` (at 1280 the default is the panel).
+      - `theme-shell`'s withheld-chunk test: `expect(filter-beach).toHaveCount(0)` was the
+        R-10 vacuous case — it proved Home's chunk had not landed, and would now pass whether it
+        had or not. Marker → `app-home`, which is design-independent and survives #1168 too.
+- [ ] **Step 4a: e2e — the two that need a judgement, not a move**
+      - `touch-targets-tourist`'s filter-bar and three map-view sweeps → `?map=off`: their
+        subject is the pre-Q switch, pill, crumb and preview card. Nothing is lost — the sheet's
+        own sweeps already exist (`discover-sheet.e2e.ts`: half, full, the beach rail, the coast
+        picker) and the panel's do too (`discover-map.e2e.ts`).
+      - `tourist-tab-bar`'s "the top bar scrolls away below sm" → `?map=off`, because it
+        `window.scrollTo`s and **the riviera map is fixed to the viewport, so the document does
+        not scroll**. This one is a *handover*, not a move: it is a shell guarantee, and after
+        #1168 deletes the pre-Q page it needs a different scrolling tourist route rather than
+        deletion. Called out in the PR so #1168 does not drop it.
 - [ ] **Step 5: Run** — `npx ng test --watch=false --include="src/app/pages/home/**"` → PASS, and
       the mocked e2e suite → PASS, **both before the inversion**. A red here means the move
       changed something it should not have.

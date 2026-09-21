@@ -173,7 +173,7 @@ test.describe('the card family the pair forks from does not move', () => {
   test('the card price still wears --riv-accent-ink in riviera', async ({ page }) => {
     await openInRiviera(page, WIDE);
     // The plain list, where the cards live: the same page, the same theme, the card surface.
-    await page.goto('/');
+    await page.goto('/?map=off');
 
     await expect(page.getByTestId('venue-card').first()).toBeVisible();
     await expect(page.locator('strong.text-riv-accent-ink').first()).toHaveCSS(

@@ -218,7 +218,7 @@ test('close for the season → the Discover badge and the map notice → reopen 
   await expectNoSeriousAxeViolations(page, 'venue tab closed for season');
 
   // Discover: the closed venue is badged with its reopen day and listed after the open one.
-  await page.goto('/');
+  await page.goto('/?map=off');
   const cards = page.getByTestId('venue-card');
   await expect(cards).toHaveCount(2);
   await expect(cards.nth(0)).toContainText('Aurora Bay');
@@ -248,7 +248,7 @@ test('close for the season → the Discover badge and the map notice → reopen 
   expect(writes).toHaveLength(2);
   expect(writes[1].method()).toBe('DELETE');
 
-  await page.goto('/');
+  await page.goto('/?map=off');
   await expect(page.getByTestId('venue-card').nth(0)).toContainText('Miramar Beach Club');
   await expect(page.locator('.closed-for-season-chip')).toHaveCount(0);
 });

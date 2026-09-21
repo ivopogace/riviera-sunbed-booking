@@ -129,7 +129,7 @@ test('today journey: homepage → map → dialog → pay → confirmed', async (
     }),
   );
 
-  await page.goto('/');
+  await page.goto('/?map=off');
   await expect(page.getByRole('heading', { name: 'Find your spot on the Riviera' })).toBeVisible();
 
   // The homepage picker offers today (#791) — its floor and default selection are both TODAY.
@@ -205,7 +205,7 @@ test("browse today after a venue's close shows the badge and the closed-map path
     route.fulfill({ json: { ...VENUE_MAP, salesOpen: false } }),
   );
 
-  await page.goto('/');
+  await page.goto('/?map=off');
   const cards = page.getByTestId('venue-card');
   await expect(cards).toHaveCount(2);
 

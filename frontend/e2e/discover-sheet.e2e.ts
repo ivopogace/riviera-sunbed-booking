@@ -260,11 +260,11 @@ test.describe('Discover sheet — rests on measured chrome', () => {
     });
   }
 
-  test('the flag off leaves today’s Discover: the filter bar and the switch, no sheet', async ({
+  test('?map=off leaves today’s Discover: the filter bar and the switch, no sheet', async ({
     page,
   }) => {
     await page.setViewportSize({ width: PHONE.width, height: PHONE.height });
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('venue-card')).toHaveCount(7);
     await expect(page.getByTestId('filter-beach')).toBeVisible();
     await expect(page.getByTestId('view-switch')).toBeVisible();

@@ -71,7 +71,8 @@ const VENUES = [
 
 async function openDiscovery(page: Page): Promise<void> {
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: VENUES }));
-  await page.goto('/');
+  // `?map=off`: the cards this sweep measures are the pre-Q list's, not the riviera map's rows.
+  await page.goto('/?map=off');
   await expect(page.getByTestId('venue-card').first()).toBeVisible();
 }
 

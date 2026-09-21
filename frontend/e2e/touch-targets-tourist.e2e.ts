@@ -48,7 +48,8 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
   test('home — discovery with its filter bar, and the tab bar every phone surface lays out', async ({
     page,
   }) => {
-    await page.goto('/');
+    // `?map=off`: the filter bar is the subject. The riviera map's own sweeps are in discover-sheet.e2e.ts.
+    await page.goto('/?map=off');
     await expect(page.getByTestId('venue-card').first()).toBeVisible();
     // Below sm the bar renders on every tourist page, so every sweep in this file measures its tabs.
     await expect(page.getByTestId('tab-bar')).toBeVisible();
@@ -61,7 +62,7 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await page.addInitScript(() => {
       (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
     });
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('venue-card').first()).toBeVisible();
     await page.getByTestId('view-map').click();
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
@@ -82,7 +83,7 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     const pinned = { ...TOURIST_VENUE, location: { latitude: 39.7712, longitude: 20.0021 } };
     const twin = { ...pinned, id: 2, name: 'Lori Beach' };
     await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [pinned, twin] }));
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('venue-card').first()).toBeVisible();
     await page.getByTestId('view-map').click();
     const pill = page.getByTestId('map-place-pill');
@@ -110,7 +111,7 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await page.addInitScript(() => {
       (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
     });
-    await page.goto('/');
+    await page.goto('/?map=off');
     await expect(page.getByTestId('venue-card').first()).toBeVisible();
     await page.getByTestId('view-map').click();
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();

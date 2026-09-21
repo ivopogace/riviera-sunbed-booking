@@ -180,7 +180,11 @@ test.describe('44px touch targets on the desktop bar, which the phone sweeps nev
   test('signed out — the bar, then the menu popover', async ({ page }) => {
     await mockTourist(page, false);
     await page.goto('/');
-    await expect(page.getByTestId('venue-card').first()).toBeVisible();
+    // The bar is the subject, so this stays on the page that ships, whichever design that is.
+    await awaitRoutedPage(page);
+    await expect(
+      page.locator('[data-testid="venue-card"], [data-testid="venue-row"]').first(),
+    ).toBeVisible();
     await expectTouchTargets(page, 'desktop bar, signed out');
 
     await openHeaderMenu(page);

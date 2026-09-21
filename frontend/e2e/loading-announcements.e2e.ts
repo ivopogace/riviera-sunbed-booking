@@ -40,7 +40,7 @@ test('Discover announces through a region that outlives the load (#741)', async 
     await route.fulfill({ json: VENUES });
   });
 
-  await page.goto('/');
+  await page.goto('/?map=off');
 
   const announcer = page.getByTestId('load-announcer');
   await expect(announcer).toHaveText('Loading venues…');
@@ -270,7 +270,7 @@ test('row pricing announces every row through one region that outlives them (#10
 test('Discover leaves the empty outcome to its count region (#1078)', async ({ page }) => {
   await page.route('**/api/venues*', (route) => route.fulfill({ json: [] }));
 
-  await page.goto('/');
+  await page.goto('/?map=off');
 
   // Born holding its text, it never announced — and the count region already speaks the outcome.
   const empty = page.getByTestId('empty');

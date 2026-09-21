@@ -62,7 +62,8 @@ test.describe('hero scrim token', () => {
 
   // The real-browser half of home.contrast.spec.ts's scrim maths (--riv-hero-scrim, tailwind.css).
   test('paints the hero in riviera only, none in porcelain and dark', async ({ page }) => {
-    await page.goto('/');
+    // `?map=off`: the hero is the pre-Q page's; the riviera map's first screen is the map.
+    await page.goto('/?map=off');
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
     const heroBg = () =>
       page.locator('.hero').evaluate((hero) => getComputedStyle(hero).backgroundImage);
@@ -91,7 +92,8 @@ test.describe('per-theme color-scheme (#675)', () => {
   test('native-UI scheme follows the theme; the field scheme follows the field tokens (AC-1, AC-2)', async ({
     page,
   }) => {
-    await page.goto('/');
+    // `?map=off`: the field tokens need a native field, and the riviera map renders none.
+    await page.goto('/?map=off');
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
     await expect(page.locator('html')).toHaveCSS('color-scheme', 'dark');
     // Dark theme fields are dark-styled, so their native chrome is dark too (--riv-field-scheme).
@@ -146,7 +148,7 @@ test.describe('pre-navigation shell paint (#992)', () => {
 
     // Exactly one chunk withheld: the window below is held open, not merely unpainted yet.
     await expect.poll(() => withheld).toBe(1);
-    await expect(page.getByTestId('filter-beach')).toHaveCount(0);
+    await expect(page.locator('app-home')).toHaveCount(0);
     // jsdom cannot show a paint, so the shell's own background is only assertable here.
     await expect(page.locator('main')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await expect(page.locator('.riv-bg')).toBeAttached();

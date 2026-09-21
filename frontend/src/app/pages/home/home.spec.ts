@@ -25,6 +25,26 @@ import { Home } from './home';
 import { posterFor } from './map-poster';
 import { VenuePinLayer } from './venue-pin-layer';
 
+/**
+ * The query that reaches the pre-Q Discover page — the hero, the three selects, the List/Map
+ * switch, the preview card over the map. `/` is the riviera map now, so every describe below
+ * that covers the old page has to ask for it; a describe that omits it is asserting the page
+ * that ships. Both the parameter and the page it reaches are a one-release fallback.
+ */
+const PRE_Q = { map: 'off' } as const;
+
+/** What `ActivatedRoute` is stubbed as: a live query map, plus the snapshot the page seeds from. */
+interface RouteDouble {
+  queryParamMap: BehaviorSubject<ParamMap>;
+  snapshot: { queryParamMap: ParamMap };
+}
+
+/** A route double over `query`, for the blocks that never push a second navigation. */
+function routeOf(query: Record<string, string>): RouteDouble {
+  const params = new BehaviorSubject<ParamMap>(convertToParamMap(query));
+  return { queryParamMap: params, snapshot: { queryParamMap: params.value } };
+}
+
 /** Two venues across two beaches/regions, mirroring the discovery summary shape. */
 function venues(): VenueSummary[] {
   return [
@@ -135,6 +155,7 @@ describe('Home (venue discovery)', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        { provide: ActivatedRoute, useValue: routeOf(PRE_Q) },
         { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
       ],
     }).compileComponents();
@@ -788,6 +809,7 @@ describe('Home (list/map switch)', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        { provide: ActivatedRoute, useValue: routeOf(PRE_Q) },
         { provide: MapEngine, useValue: new FakeMapEngine() },
         { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
       ],
@@ -973,7 +995,7 @@ describe('Home (venue pins and the preview)', () => {
   function render(): ComponentFixture<Home> {
     stubViewport(true);
     TestBed.resetTestingModule();
-    routeParams = new BehaviorSubject<ParamMap>(convertToParamMap({}));
+    routeParams = new BehaviorSubject<ParamMap>(convertToParamMap(PRE_Q));
     TestBed.configureTestingModule({
       imports: [Home],
       providers: [
@@ -1155,7 +1177,7 @@ describe('Home (venue pins and the preview)', () => {
     pins(fixture)[0].click();
     await settle(fixture);
 
-    routeParams.next(convertToParamMap({ date: '2099-08-14' }));
+    routeParams.next(convertToParamMap({ ...PRE_Q, date: '2099-08-14' }));
     httpMock
       .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
       .flush(pinnedVenues());
@@ -1174,7 +1196,7 @@ describe('Home (venue pins and the preview)', () => {
     expect(document.activeElement).toBe(preview(fixture));
 
     // Nobody closed it: the day changed under the open card and the venue left the result set.
-    routeParams.next(convertToParamMap({ date: '2099-08-14' }));
+    routeParams.next(convertToParamMap({ ...PRE_Q, date: '2099-08-14' }));
     httpMock
       .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
       .flush(pinnedVenues().slice(1));
@@ -1269,7 +1291,7 @@ describe('Home (venue pins and the preview)', () => {
     await settle(fixture);
     const [before] = pins(fixture);
 
-    routeParams.next(convertToParamMap({ date: '2099-08-14' }));
+    routeParams.next(convertToParamMap({ ...PRE_Q, date: '2099-08-14' }));
     await settle(fixture);
 
     expect(el(fixture).querySelector('[data-testid="loading"]')).not.toBeNull();
