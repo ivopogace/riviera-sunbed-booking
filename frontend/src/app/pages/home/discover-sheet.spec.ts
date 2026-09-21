@@ -188,6 +188,28 @@ describe('DiscoverSheet', () => {
     }
   });
 
+  it('rests at the offset that collides with the not-yet-rested sentinel', async () => {
+    const view = el().ownerDocument.defaultView!;
+    const innerHeight = view.innerHeight;
+    // 384 − HEAD_PX − HALF_MAP_BAND_PX is −1 with no shell around the Host: the sentinel's value.
+    Object.defineProperty(view, 'innerHeight', { value: 384, configurable: true });
+
+    try {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({ imports: [Host] }).compileComponents();
+      fixture = TestBed.createComponent(Host);
+      await settle();
+      await whenSheetOpened(fixture);
+
+      // The half rest sits a pixel below peek here, so what matters is that it rests at all.
+      expect(offsetFor(sheet().tops(), 'half')).toBe(-1);
+      expect(asked).toContain(-1);
+      expect(scroller().scrollTop).toBe(-1);
+    } finally {
+      Object.defineProperty(view, 'innerHeight', { value: innerHeight, configurable: true });
+    }
+  });
+
   it('names the grabber for every reader and exempts it from the touch floor with its reason', () => {
     const grabber = byTestId('sheet-grabber')!;
     expect(grabber.getAttribute('aria-label')).toBe('Resize the list');

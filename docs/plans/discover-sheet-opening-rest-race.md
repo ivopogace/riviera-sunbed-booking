@@ -80,6 +80,13 @@ stays)
   *abandons a rest a re-measure has superseded, instead of pulling the sheet back* — red before
   the guard with `expected [ 383, 323 ] to deeply equal []`, the stale offset and the correction
   chasing each other.
+- [x] **AC-6:** Given a viewport whose half rest lands on the value the not-yet-rested sentinel
+  used (`viewportH − tabBar − header − 385 === −1`, i.e. 457 on a desktop window with no tab bar,
+  518 on a phone), when the sheet first renders, then it rests rather than reading the sentinel as
+  a rest already taken. *Seam:* every `scrollTo` the outer scroller is asked for · *Pinned by:*
+  `discover-sheet.spec.ts` › *rests at the offset that collides with the not-yet-rested sentinel*
+  — red before the fix with *the sheet never stopped retaking its opening rest within 12 frames*,
+  because `rest()` was never called at all.
 
 ## Non-goals
 
@@ -101,7 +108,7 @@ N/A — replaces nothing; no surface is retired.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Waiting for the pill rather than for the rest would mask a real failure to render it | Medium | High — the case stops guarding what it claims | The helper waits on `opened()`, a precondition asserted *before* the tap; the pill stays a bare assertion. Negative control recorded under AC-2 | this slice | closed — control run, `33c1c62f` |
-| R-2 | `whenSheetOpened` hangs a spec if `opened()` never flips | Low | Medium — a timeout instead of a legible failure | Bounded at 12 frames (the sheet gives up at 8 of its own) and closed by an `expect` naming the condition | this slice | closed — `33c1c62f` |
+| R-2 | `whenSheetOpened` hangs a spec if `opened()` never flips | Low | Medium — a timeout instead of a legible failure | Bounded at 12 frames — the sheet gives up after 8 of its own, and AC-5's guard means a re-measure inside the wait restarts that ladder, so 12 is slack rather than a proof — and closed by an `expect` naming the condition | this slice | closed — `33c1c62f` |
 | R-3 | A later change to `rest()` reopens the window after `opened()` | Low | High — the flake returns silently | AC-1's second test drives the window itself, so a `rest()` that stops retaking goes red there rather than silently making the wait pointless | this slice | closed — this commit |
 | R-5 | Two rest chains can overlap if `tops()` changes while the opening chain is pending (a resize before `opened()`): the second can set `opened()` true while the first's frame is still queued, and that stale callback re-scrolls to the old offset — the same race, behind the wait | Low | Medium | **Fixed here** on the user's instruction, after first being deferred: `rest()` records the offset the sheet is resting at, and a queued confirmation for any other offset retires. Pinned by AC-5, red before the guard | this slice | closed — this commit, closes #1181 |
 | R-6 | AC-1's second test holds `requestAnimationFrame`, and Angular's zoneless scheduler races rAF against `setTimeout`. Full fake timers in that file — which `frontend/.claude/CLAUDE.md` explicitly allows — would kill both legs and hang `whenStable()` | Low | Medium — a hang, not a failure | No spec in the file fakes timers, and the suite fakes `Date` only (`freeze-clock.ts`). Recorded so the next person to reach for `vi.useFakeTimers()` here knows what it costs | follow-up | accepted — no spec in the file fakes timers; recorded for whoever reaches for them |
@@ -178,7 +185,8 @@ N/A — no contract change.
 | 0 — The wait and its guard | ✅ | `33c1c62f`, `f1c308b2` |
 | 1 — Verification (negative control + before/after runs) | ✅ | negative control + 19 full-suite runs, recorded under the ACs |
 | 2 — Review-gate findings | ✅ | `c767dc8f`, `7974ce01`, `e0dbc92e` |
-| 3 — The superseded rest retires (#1181, user-directed) | ✅ | this commit |
+| 3 — The superseded rest retires (#1181, user-directed) | ✅ | `284a3e3b` |
+| 4 — Round-3 review findings on the production change | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -197,6 +205,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-9 | Review gate | The audit row's own command returns 8 paths, not the 4 it accounted for | fixed in this commit — all 8 carry a verdict |
 | F-10 | Review gate | The helper's TSDoc opened its second paragraph bare; six of seven `src/testing/` siblings use `<p>` | fixed in this commit |
 | F-11 | Review gate | The guard test's stub-and-flush half **could not fail**: once the wait has closed the chain the sheet queues no frame at all, because the rest effect's reactive deps (`tops()`, `scroller()`) do not change on a tap and `detent` is read `untracked`. AC-1's "asks for no further rest" clause was therefore unpinnable and the F-2 assertion inert — the `tdd` skill's tautology anti-pattern | fixed in this commit — the inert half is gone; a second test drives the window itself, holding the frame, tapping, flushing, and proving the sheet is retaken to `half`. AC-1 reworded to what the two tests pin |
+| F-13 | Review gate (round 3) | The `-1` sentinel that means "not yet rested" is a **reachable offset**: `offsetFor(tops,'half')` is exactly `-1` at viewportH 457 (no tab bar) or 518 (phone). There the effect's guard matches on the first pass, `rest()` is never called, the sheet sits at peek and `opened()` never flips — so `home.ts`'s poster-wake never fires and every spec waiting on the sheet times out. **Pre-existing**, but this slice promoted the sentinel to a field with a second reader | Fixed in this commit — the sentinel is `undefined`, which no offset can equal. Pinned by AC-6. The review's own figures (458/519) were each one out; recomputed from `sheet-geometry.ts` |
+| F-14 | Review gate (round 3) | `restingAt`'s name and doc said "the offset the sheet **is resting at**"; it is the offset the sheet is *trying* to rest for — the whole point of the ladder is that `scrollTop` may not equal it | Fixed — renamed `restTarget`, doc corrected |
+| F-15 | Review gate (round 3) | The added TSDoc narrated what the code would do *without* the guard (counterfactual narration, RV-STYLE-1) | Fixed — collapsed to the contract sentence |
+| F-16 | Review gate (round 3) | AC-5's guard means a re-measure inside the wait restarts the 8-frame ladder, so `sheet-opened.ts`'s "12 frames is slack over 8" is no longer a proof | Fixed — the helper's comment and risk R-2 now say so |
 | F-12 | Review gate | The wait is a no-op at most `home.spec.ts` / `home.a11y.spec.ts` call sites in this environment (`opened()` already true on entry at 28 of 36 sites); it bites only under load | Recorded, not fixed — that is what the wait is for. It does mean those files' green runs cannot be *attributed* to the wait, which AC-3 now says outright |
 
 ---
@@ -206,7 +218,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `docs/plans/discover-sheet-opening-rest-race.md` — this plan
 - `frontend/src/testing/sheet-opened.ts` — the shared wait: pumps frames until the sheet's
   opening rest is confirmed
-- `frontend/src/app/pages/home/discover-sheet.ts` — `rest()` retires a superseded rest (AC-5)
+- `frontend/src/app/pages/home/discover-sheet.ts` — `rest()` retires a superseded rest (AC-5) and
+  its "not yet rested" sentinel stops colliding with a real offset (AC-6)
 - `frontend/src/app/pages/home/discover-sheet.a11y.spec.ts` — the reported case; waits before it taps
 - `frontend/src/app/pages/home/discover-sheet.spec.ts` — waits in `beforeEach`; carries AC-1's guard
 - `frontend/src/app/pages/home/home.a11y.spec.ts` — same tap-then-assert-pill pattern; `openSheet()`

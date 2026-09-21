@@ -4,7 +4,7 @@ import { expect } from 'vitest';
 
 import { DiscoverSheet } from '../app/pages/home/discover-sheet';
 
-/** The sheet gives up retaking its rest after 8 frames of its own; the rest is slack. */
+/** The sheet gives up after 8 frames of its own, and a re-measure restarts that; hence slack. */
 const MAX_FRAMES = 12;
 
 /**
