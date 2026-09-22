@@ -52,7 +52,7 @@ const STALE_TOUCH_MS = 6_000;
 /**
  * The Discover venue sheet: the list as a sheet over the riviera map with three resting heights
  * — half (opens here), peek (the head alone above the tab bar) and full (the list, a 44 px sliver
- * of map kept under the header, a `Show map` pill at the foot as the way back).
+ * of map kept under the header, a `Show map` pill at the foot that drops the sheet to peek).
  *
  * <p>It is **two CSS scroll-snap scrollers, not a pointer drag**. The OUTER holds a transparent
  * spacer over the map with the peek and half rests as zero-height `snap-always` targets, then
@@ -377,17 +377,26 @@ export class DiscoverSheet {
     // A glide is in flight from here: a re-measure landing on top of it must not cut it short.
     this.keepRolling();
     this.gliding.set(true);
-    scrollScroller(scroller, offsetFor(this.tops(), detent));
+    const want = offsetFor(this.tops(), detent);
+    // Once opened, a press supersedes a rest still confirming itself, which would retake its old
+    // offset; before, the opening rest still owns the sheet and retakes over it.
+    if (this.opened()) {
+      this.restTarget = want;
+    }
+    scrollScroller(scroller, want);
     this.onScroll();
   }
 
-  /** The pill's own tap destroys it, so focus lands on the grabber rather than `<body>` (RV-FE-9). */
+  /**
+   * Show map means the map: the sheet drops to peek, the head alone left above the tab bar. The
+   * pill's own tap destroys it, so focus lands on the grabber rather than `<body>` (RV-FE-9).
+   */
   protected showMap(): void {
-    this.go('half');
+    this.go('peek');
     this.moveFocus('sheet-grabber');
   }
 
-  /** The grabber's tap cycles half and full only; peek is a drag's, never a tap's. */
+  /** The grabber's tap cycles half and full only; peek is a drag's or the Show map pill's. */
   protected cycle(): void {
     this.go(this.detent() === 'half' ? 'full' : 'half');
   }

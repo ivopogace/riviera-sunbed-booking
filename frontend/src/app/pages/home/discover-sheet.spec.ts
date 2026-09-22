@@ -196,6 +196,39 @@ describe('DiscoverSheet', () => {
     }
   });
 
+  it('lets a Show map press supersede a re-measure rest still confirming itself', async () => {
+    sheet().go('full');
+    await settle();
+    await whenSheetSettled(fixture);
+    const realFrame = globalThis.requestAnimationFrame.bind(globalThis);
+    const held: FrameRequestCallback[] = [];
+    globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => held.push(callback);
+    const view = el().ownerDocument.defaultView!;
+    const innerHeight = view.innerHeight;
+
+    try {
+      // The phone's URL bar moves at full: the sheet re-rests there, its confirmation a frame away.
+      Object.defineProperty(view, 'innerHeight', { value: innerHeight - 60, configurable: true });
+      view.dispatchEvent(new Event('resize'));
+      await whenSheetSettled(fixture);
+      expect(sheet().detent()).toBe('full');
+
+      byTestId('sheet-map-pill')!.click();
+      await settle();
+      expect(sheet().detent()).toBe('peek');
+      asked.length = 0;
+
+      held.splice(0).forEach((callback) => callback(0));
+      await settle();
+
+      expect(asked, 'the superseded rest pulled the sheet back to full').toEqual([]);
+      expect(sheet().detent()).toBe('peek');
+    } finally {
+      globalThis.requestAnimationFrame = realFrame;
+      Object.defineProperty(view, 'innerHeight', { value: innerHeight, configurable: true });
+    }
+  });
+
   it('rests at the offset that collides with the not-yet-rested sentinel', async () => {
     const view = el().ownerDocument.defaultView!;
     const innerHeight = view.innerHeight;
@@ -224,7 +257,7 @@ describe('DiscoverSheet', () => {
     expect(grabber.dataset['touchExempt']).toContain('drag surface');
   });
 
-  it('shows the Map pill at full only, 12 px above the measured tab bar, and returns to half from it', async () => {
+  it('shows the Map pill at full only, 12 px above the measured tab bar, and drops to peek from it', async () => {
     expect(byTestId('sheet-map-pill')).toBeNull();
     sheet().go('full');
     await settle();
@@ -234,7 +267,7 @@ describe('DiscoverSheet', () => {
 
     pill.click();
     await settle();
-    expect(sheet().detent()).toBe('half');
+    expect(sheet().detent()).toBe('peek');
     expect(byTestId('sheet-map-pill')).toBeNull();
   });
 
@@ -251,7 +284,7 @@ describe('DiscoverSheet', () => {
 
     await whenSheetSettled(fixture);
     expect(scroller().style.scrollSnapType).toBe('');
-    expect(sheet().detent()).toBe('half');
+    expect(sheet().detent()).toBe('peek');
   });
 
   it('gives snapping back the moment a finger takes over a glide', async () => {
