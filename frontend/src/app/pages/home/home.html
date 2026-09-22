@@ -191,7 +191,11 @@
 
 @if (sheetMode()) {
   <!-- ── The ground: the poster, then the live riviera map under the glass header, the whole viewport. ── -->
-  <div class="fixed inset-0 z-[1] overflow-hidden bg-riv-solid-btn-fill" data-testid="sheet-ground">
+  <!-- riv-owns-viewport: an inert marker, read by tailwind.css's root rule — this page is pinned over the whole window, so the document behind it cannot scroll. -->
+  <div
+    class="riv-owns-viewport fixed inset-0 z-[1] overflow-hidden bg-riv-solid-btn-fill"
+    data-testid="sheet-ground"
+  >
     @if (poster(); as poster) {
       @if (posterShown()) {
         <!-- The still, centred and cropped to the pane, anchored to the top where its pins are fitted; a finger on it is a pan, which is the live map's. It fades out under the loaded map. -->

@@ -388,26 +388,38 @@ test.describe('Discover sheet — the browser’s own latching', () => {
   });
 
   /**
-   * Discover is a fixed map under a fixed sheet, so the document cannot scroll: every downward
-   * drag that misses the sheet — the header, the tab bar, a pin, Near me — chains all the way to
-   * the viewport, where Chrome Android reads it as pull-to-refresh and reloads the page out from
-   * under a tourist mid-query. The root element's containment is what stops that chain, and
-   * `tailwind.css` declares it; both halves are asserted, since containment on a document that
-   * scrolls after all would prove nothing.
+   * Discover in sheet mode is pinned over the whole window, so the document cannot scroll: every
+   * downward drag that misses the sheet — the header, the tab bar, a pin, Near me — chains all
+   * the way to the viewport, where Chrome Android reads it as pull-to-refresh and reloads the
+   * page out from under a tourist mid-query.
+   *
+   * <p>The containment is deliberately NOT app-wide: on a page that really scrolls, pull to
+   * refresh means "get me fresh data" and is left alone. So both halves are asserted — contained
+   * where the ground owns the viewport, untouched at a width where it does not. It must also sit
+   * on the ROOT element, the only one `overscroll-behavior` propagates to the viewport from.
    */
-  test('the document never pull-to-refreshes under the sheet', async ({ page }) => {
+  test('pull-to-refresh is off where the ground owns the viewport, and only there', async ({
+    page,
+  }) => {
     await openSheet(page);
 
-    const root = await page.evaluate(
-      () => getComputedStyle(document.documentElement).overscrollBehaviorY,
+    const rootOverscroll = () =>
+      page.evaluate(() => getComputedStyle(document.documentElement).overscrollBehaviorY);
+    const documentScrolls = () =>
+      page.evaluate(
+        () => document.documentElement.scrollHeight > document.documentElement.clientHeight,
+      );
+
+    await expect(page.getByTestId('sheet-ground')).toHaveClass(/riv-owns-viewport/);
+    expect(await rootOverscroll()).toBe('contain');
+    expect(await documentScrolls(), 'the document scrolls, so this is not the trapped case').toBe(
+      false,
     );
-    expect(root).toBe('contain');
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollHeight <= document.documentElement.clientHeight,
-      ),
-      'the document scrolls after all, so this page is not the pull-to-refresh case',
-    ).toBe(true);
+
+    // Past the wide breakpoint the ground is gone, and the gesture comes back with it.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await expect(page.getByTestId('sheet-ground')).toHaveCount(0);
+    expect(await rootOverscroll()).toBe('auto');
   });
 
   test('the grabber cycles half and full; the Map pill returns to half and never covers the last row', async ({

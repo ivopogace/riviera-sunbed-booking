@@ -1094,15 +1094,19 @@ body {
   min-height: 100%;
 }
 
-/** Pull-to-refresh is off for the whole app, on the root element, which propagates it to the
-    viewport. Discover is a fixed map under a fixed sheet, so the document itself never scrolls:
-    every downward drag that misses the sheet — the header, the tab bar, a venue pin, Near me,
-    the tile credit — chains all the way to the viewport, where Chrome Android reads it as
-    pull-to-refresh and reloads the page out from under a tourist mid-query. Nothing here asks
-    the browser to reload; a refresh is only ever a loss. `contain` and not `none` because the
-    page's own overscroll (the sheet's, the list's) is the affordance that stays.
-    Render proof: e2e/discover-sheet.e2e.ts. */
-html {
+/** Pull-to-refresh, off ONLY where the gesture can do nothing but harm — never app-wide. A page
+    wearing `.riv-owns-viewport` is pinned over the whole window with nothing behind it to
+    scroll (Discover: the map is the ground, the list scrolls inside the sheet). There a
+    downward drag that misses the sheet — the header, the tab bar, a venue pin, Near me, the
+    tile credit — chains to the viewport, where Chrome Android reads it as pull-to-refresh and
+    reloads the page out from under a tourist mid-query, losing the camera, the beach and the
+    day. Everywhere else the platform gesture is left alone: on a page that really scrolls it
+    means "get me fresh data", which is what an operator watching for requests reaches for.
+
+    On the ROOT element, the only one `overscroll-behavior` propagates to the viewport from — on
+    `body` it is ignored, unlike `overflow`. `contain` and not `none` keeps the page's own
+    overscroll. Render proof: e2e/discover-sheet.e2e.ts. */
+html:has(.riv-owns-viewport) {
   overscroll-behavior-y: contain;
 }
 
