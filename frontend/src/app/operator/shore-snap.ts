@@ -37,14 +37,14 @@ export type WaterSampler = (point: ScreenPoint) => boolean | undefined;
 
 /**
  * Where a pin dropped off the shoreline should go: the nearest shore pixel, then
- * {@link SHORE_STEP_PX} onto the sand — the rule the map-design prototype established on its 26
- * fixtures (PR #1155, round 7), here as a pure function over a sampled raster so a spec drives it
- * with a stub sampler and no DOM, the seam `layoutPills` established for the pin pills.
+ * {@link SHORE_STEP_PX} onto the sand — the rule the map-design prototype established over its
+ * 26 fixtures, here as a pure function over a sampled raster so a spec drives it with a stub
+ * sampler and no DOM, the seam `layoutPills` established for the pin pills.
  *
  * <p>`null` is the honest answer in four cases, and the placer proposes nothing in all of them: a
- * pin already within {@link SHORE_BAND_PX} of the water, a frame holding no water at all (as
- * Palasë's and Borsh's beach frames did), a frame holding no land, and a point the sampler cannot
- * see. A pin in the water is never one of them — it goes to the nearest LAND, stepped the same 4
+ * pin already within {@link SHORE_BAND_PX} of the water, a frame holding no water at all (as the
+ * prototype's Palasë and Borsh frames had none), a frame holding no land, and a point the sampler
+ * cannot see. A pin in the water is never one of them — it goes to the nearest LAND, stepped the same 4
  * px inland, rather than to the water's edge it is already at.
  */
 export function snapToShore(at: ScreenPoint, isWater: WaterSampler): ScreenPoint | null {

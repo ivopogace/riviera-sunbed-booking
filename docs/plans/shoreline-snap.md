@@ -202,15 +202,15 @@ differ, at the same six-decimal scale it already carried.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Phase 2 — the placer offers the shoreline, accepts and declines.
+**Next action:** Phase 3 — a11y, contrast, touch targets and the two e2e legs.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The snap rule and the raster sampler | ✅ | phase-0 commit |
 | 1 — The imagery seam on `MapHandle` (real + fake) | ✅ | phase-1 commit |
-| 2 — The placer offers, accepts and declines | | |
+| 2 — The placer offers, accepts and declines | ✅ | phase-2 commit |
 | 3 — a11y, contrast, touch targets and the two e2e legs | | |
 | 4 — Close-out (docs freshness, execution status) | | |
 
