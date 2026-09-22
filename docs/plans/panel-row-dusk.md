@@ -111,7 +111,7 @@ as an inert marker) · `playwright-cli` (the rendered dusk + the unchanged 92 px
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The chip's line box grows the name line past the price's, pushing the text column over `min-h-[72px]` and breaking the panel's 92 px row — `discover-map.e2e.ts`'s geometry and "selected row expands" tests both assert it | Low | High (two existing e2e tests red) | The column's three lines total ~56 px against a 72 px floor, so several px of slack exist; AC-7 measures the rendered height in Chromium rather than trusting the arithmetic | me | **materialised, inverted** — the chip's box is SHORTER (20.5 px) than the price's (24 px), not taller, so resting rows stayed 92 while the SELECTED closed row came out 118 against the pinned 121 and turned "the selected row expands" red. Measured in Chromium, then fixed at the cause: the name line holds `min-h-[24px]`, so dusk costs no height in either state and the panel does not jitter as the selection moves between a closed venue and a selling one. AC-7 now pins both 92 and 121. Closed in `1b5479ad`'s successor. |
+| R-1 | The chip's line box grows the name line past the price's, pushing the text column over `min-h-[72px]` and breaking the panel's 92 px row — `discover-map.e2e.ts`'s geometry and "selected row expands" tests both assert it | Low | High (two existing e2e tests red) | The column's three lines total ~56 px against a 72 px floor, so several px of slack exist; AC-7 measures the rendered height in Chromium rather than trusting the arithmetic | me | **materialised, inverted** — the chip's box is SHORTER (20.5 px) than the price's (24 px), not taller, so resting rows stayed 92 while the SELECTED closed row came out 118 against the pinned 121 and turned "the selected row expands" red. Measured in Chromium, then fixed at the cause: the name line holds `min-h-[24px]`, so dusk costs no height in either state and the panel does not jitter as the selection moves between a closed venue and a selling one. AC-7 now pins both 92 and 121. Closed in `223280e9`. |
 | R-2 | `filter` on the row anchor creates a containing block and a stacking context, capturing the absolutely-positioned `row-photo-empty` sun or re-ordering the panel's paint | Low | Medium | The sun's containing block is already the `relative` photo span inside the anchor, so nothing moves; the `data-selected` outline lives on the `<li>` **outside** the anchor and so is neither desaturated nor clipped | me | closed — the whole `discover-map.e2e.ts` panel describe (41 tests, pin placement, hit-testing and axe included) is green against the dusked panel |
 | R-3 | Desaturating the row drops an ink or the chip under WCAG AA in one of the three themes | Low | High (a11y regression on the surface the issue is about) | AC-5 and AC-6 compute it from the token mirrors over each theme's worst stops, the pattern `home.contrast.spec.ts`'s existing dusk-card describe already uses | me | closed in `1b5479ad` — worst case 5.63:1 (riviera soft ink), chip 6.91:1, against the 4.5 floor |
 | R-4 | A third hand-copy of the `saturate(0)` matrix (one in `home.contrast.spec.ts`, one in `venue-pin-layer.contrast.spec.ts`) drifts from the other two | Medium | Low | Promote `desaturate` to `testing/contrast.ts` and point all three at it — the generalization-audit pass, logged below | me | closed in `1b5479ad` |
@@ -181,7 +181,8 @@ N/A — no contract change. `salesOpen`, `closedForSeason` and `reopensOn` are a
 | 1 — The row wears dusk (AC-1, AC-2, AC-3) | ✅ | `19ed6afe` |
 | 2 — The panel arm pairs the sheet's proof (AC-4) | ✅ | `37f25213` |
 | 3 — Contrast under the filter (AC-5, AC-6) + the shared matrix | ✅ | `1b5479ad` |
-| 4 — The rendered proof (AC-7) | ✅ | `50f7f9d0` |
+| 4 — The rendered proof (AC-7) | ✅ | `223280e9` |
+| 5 — Docs freshness + plan retirement | ✅ | `3ac9e1e9` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -306,24 +307,34 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 / AC-2 / AC-3:** `npx vitest run src/app/pages/home/venue-row.spec.ts` → PASS.
-- [ ] **AC-4:** `npx vitest run src/app/pages/home/home.spec.ts` → PASS.
-- [ ] **AC-5 / AC-6:** `npx vitest run src/app/pages/home/home.contrast.spec.ts src/app/shared/semantic-chip.contrast.spec.ts` → PASS.
-- [ ] **AC-7:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/discover-map.e2e.ts` → PASS.
+> Commands are the repo's own (`ng test` via `npm test`); a bare `npx vitest` misses the Angular
+> builder's globals and fails to collect.
+
+- [x] **AC-1 / AC-2 / AC-3:** `npm test -- --watch=false --include="src/app/pages/home/venue-row.spec.ts"`
+  → 15 passed. Verified at `19ed6afe`; each was red first.
+- [x] **AC-4:** `npm test -- --watch=false --include="src/app/pages/home/home.spec.ts"` → 79 passed.
+  Verified red at `5fb2194b`'s tree (the pre-fix row) before being kept, green at `37f25213`.
+- [x] **AC-5 / AC-6:** `npm run test:a11y` → 108 files, 1073 passed. Non-vacuity checked by raising
+  the threshold to 21: all 7 new cases failed with real ratios, worst 5.63:1, chip 6.91:1.
+  Verified at `1b5479ad`.
+- [x] **AC-7:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config
+  playwright.a11y.config.ts e2e/discover-map.e2e.ts` → 41 passed, including the panel's
+  pre-existing geometry and axe tests. Verified red against the pre-fix row first. Verified at
+  `223280e9`.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1) — frontend-only. Availability section justified N/A (#4 is rendered, not enforced).
-- [ ] Money untouched (#5): the from-price stays minor units on the card and in the accessible name.
-- [ ] Modulith section justified N/A — no backend file in the diff.
-- [ ] Payment section N/A.
-- [ ] No Flyway migration in scope (#12).
-- [ ] Frontend standards met: no `@apply`, the shared directive carries the family and the call site
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1) — frontend-only. Availability section justified N/A (#4 is rendered, not enforced).
+- [x] Money untouched (#5): the from-price stays minor units on the card and in the accessible name.
+- [x] Modulith section justified N/A — no backend file in the diff.
+- [x] Payment section N/A.
+- [x] No Flyway migration in scope (#12).
+- [x] Frontend standards met: no `@apply`, the shared directive carries the family and the call site
       its own box (`riviera-tailwind` rule 1), `.row-closed` kept as an inert marker (rule 2), no
       `opacity-*` fade (the reason dusk is desaturation), no `as any`.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
 - [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
 - [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay).
