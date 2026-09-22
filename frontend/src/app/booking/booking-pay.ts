@@ -176,7 +176,7 @@ const CLS = {
         <a routerLink="/" [class]="cls.cardLink">Back to the beach</a>
       </section>
     } @else {
-      <!-- riv-holds-progress: an inert marker, read by tailwind.css's root rule. Only the checkout wears it — a reload here lands on "No payment in progress" with the card half-entered or the confirming poll dropped; the done panel survives one. -->
+      <!-- riv-holds-progress: an inert marker, read by tailwind.css's root rule. Only the checkout wears it — a reload here drops a half-entered card or the confirming poll; once the booking is settled there is nothing left in flight to lose. -->
       <section
         class="pay-checkout riv-holds-progress relative mx-auto max-w-[920px] px-6 pt-6 pb-[72px]"
         aria-labelledby="pay-title"

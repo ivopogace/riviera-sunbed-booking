@@ -321,6 +321,9 @@ describe('DiscoverSheet', () => {
    * A phone fires `resize` mid-gesture every time its URL bar or on-screen keyboard moves.
    * Resting on that scrolls the sheet out from under the finger, which is the drag that fights
    * back; the rest is owed all the same, so it is taken once the finger lifts.
+   *
+   * <p>Touch events, because the sheet listens for touch: the browser fires `pointercancel` a
+   * frame or two into its own scrolling, so a pointer-shaped guard would already be off here.
    */
   it('leaves a re-measure taken under a finger alone, and rests once the finger lifts', async () => {
     const window = el().ownerDocument.defaultView!;
@@ -332,7 +335,7 @@ describe('DiscoverSheet', () => {
     asked.length = 0;
 
     try {
-      byTestId('sheet')!.dispatchEvent(new Event('pointerdown'));
+      byTestId('sheet')!.dispatchEvent(new Event('touchstart'));
       Object.defineProperty(window, 'innerHeight', {
         value: innerHeight - 60,
         configurable: true,
@@ -343,7 +346,7 @@ describe('DiscoverSheet', () => {
       expect(asked, 'a re-measure scrolled the sheet under the finger').toEqual([]);
       expect(scroller().scrollTop).toBe(restedAt);
 
-      byTestId('sheet')!.dispatchEvent(new Event('pointerup'));
+      byTestId('sheet')!.dispatchEvent(new Event('touchend'));
       await whenSheetSettled(fixture);
     } finally {
       Object.defineProperty(window, 'innerHeight', { value: innerHeight, configurable: true });

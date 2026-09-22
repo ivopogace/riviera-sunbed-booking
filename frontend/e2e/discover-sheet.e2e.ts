@@ -20,7 +20,8 @@ import { expectTouchTargets } from './support/touch-targets';
  * position nearest the fling's natural end, whatever its speed. So a 200 px flick down from full
  * rests at half (the target is 263 px away), a slow 350 px drag rests at half (no fling: the
  * nearest rest wins from 87 px past it), and a 350 px flick down from full rests at peek. A
- * mid-gesture layout change is the one thing that cuts a fling short, and this sheet makes none.
+ * mid-gesture layout change is the one thing that cuts a fling short. A phone makes one whenever
+ * its URL bar moves, so the sheet re-measures under a gesture but never scrolls itself under one.
  * Recorded, not asserted: the hard fling.
  */
 
@@ -374,7 +375,12 @@ test.describe('Discover sheet — the browser’s own latching', () => {
       }
       await page.waitForTimeout(25);
     }
-    // Nothing the sheet scrolled for itself while the finger was down, and the flick still lands.
+    // Held still past the quiet window: `pointercancel` has long since fired, so only touch holds.
+    const parked = await scrollTop(scroller(page));
+    await page.waitForTimeout(450);
+    expect(await scrollTop(scroller(page)), 'the sheet moved under a finger held still').toBe(
+      parked,
+    );
     expect(await rests(), 'a re-measure scrolled the sheet under the finger').toEqual([]);
     await touch('touchEnd', from - 220);
     await expectDetent(page, 'full');
@@ -385,6 +391,42 @@ test.describe('Discover sheet — the browser’s own latching', () => {
     await page.setViewportSize({ width: PHONE.width, height: PHONE.height });
     await expectDetent(page, 'half');
     await expect(page.getByTestId('sheet-map-pill')).toHaveCount(0);
+    // The recorder's positive leg, so the empty-array assertion above is one that can fail.
+    expect(await rests(), 'the scrollTo recorder never recorded, so it proves nothing').not.toEqual(
+      [],
+    );
+    // The pill's tap destroys the pill, so focus lands on the grabber, never on <body> (RV-FE-9).
+    await expect(page.getByTestId('sheet-grabber')).toBeFocused();
+  });
+
+  /**
+   * ICON-4: the glyphs size themselves with presentation attributes, which every call-site class
+   * outranks — so only the rendered box is evidence, and jsdom cannot see it. The head's located
+   * mark is the one that takes an override.
+   */
+  test('the map and locate glyphs render at their pinned sizes', async ({ page, context }) => {
+    await context.grantPermissions(['geolocation']);
+    await context.setGeolocation(ON_DHERMI);
+    await openSheet(page);
+
+    const pillGlyph = page.getByTestId('sheet-map-pill').locator('svg');
+    await page.getByTestId('sheet-grabber').click();
+    await expectDetent(page, 'full');
+    await expect(pillGlyph).toHaveCSS('width', '16px');
+    await expect(pillGlyph).toHaveCSS('height', '16px');
+
+    await page.getByTestId('sheet-map-pill').click();
+    await expectDetent(page, 'half');
+    const nearMeGlyph = page.getByTestId('sheet-near-me').locator('svg');
+    await expect(nearMeGlyph).toHaveCSS('width', '13px');
+    await expect(nearMeGlyph).toHaveCSS('height', '13px');
+
+    // The head's located mark overrides the default with [&_svg]:size-[17px].
+    await page.getByTestId('sheet-near-me').click();
+    await expect(page.getByTestId('sheet-near-me')).toHaveText(/You are here/);
+    const headGlyph = page.getByTestId('head-located').locator('svg');
+    await expect(headGlyph).toHaveCSS('width', '17px');
+    await expect(headGlyph).toHaveCSS('height', '17px');
   });
 
   /**
