@@ -30,7 +30,9 @@ since the desktop panel shipped its own three; the same phrase was echoed at
 contradicting itself; the review gate caught the other two (F-1). **The sweep's own miss**, caught by the review gate (F-5): it ran step 2's greps over the substrate
 docs and skipped step 3 — walking the map for a stated sentence the diff falsifies where no
 identifier matches. The two badge components' TSDocs name the surfaces their claims appear on, and
-the row now makes both claims outside either component. **Plan-doc retirement:** `docs/plans/discover-pre-q-removal.md`
+the row now makes both claims outside either component. **Re-run after the fix round** (the skill asks for it, and the fix round touched the very
+enumeration that was stale): clean. The only chip-family count left in the tree is the four-box
+enumeration this slice wrote, and it is accurate. **Plan-doc retirement:** `docs/plans/discover-pre-q-removal.md`
 (#1168, merged via PR #1184) deleted here — nothing outside `docs/plans/` cited it.
 
 **Skills consulted:** `riviera-sdlc` (intake gate: the issue's open decision was already settled by
@@ -54,35 +56,35 @@ as an inert marker) · `playwright-cli` (the rendered dusk + the unchanged 92 px
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a `VenueCard` whose `salesClosed` is true, when the panel row renders it, then
+- [x] **AC-1:** Given a `VenueCard` whose `salesClosed` is true, when the panel row renders it, then
   the row anchor carries `saturate-0` and no `opacity-*` class, and the price slot holds a
   `semantic-chip` reading `Closed today` instead of the price.
   *Seam:* `app-venue-row`'s `[card]` input · *Pinned by:* `venue-row.spec.ts` › `wears dusk when
   sales for today have closed, the price giving way to the fact that outranks it`
-- [ ] **AC-2:** Given a `VenueCard` whose `closedForSeason` is true, when the panel row renders it,
+- [x] **AC-2:** Given a `VenueCard` whose `closedForSeason` is true, when the panel row renders it,
   then the chip reads `Closed for season` — the season claim outranking today's sales close, as it
   does on the sheet card.
   *Seam:* `app-venue-row`'s `[card]` input · *Pinned by:* `venue-row.spec.ts` › `says closed for
   season instead, the badge that outranks today's close`
-- [ ] **AC-3:** Given a venue still selling, when the panel row renders it, then the row wears no
+- [x] **AC-3:** Given a venue still selling, when the panel row renders it, then the row wears no
   `saturate-0` and shows its price, with no closed chip anywhere in the row.
   *Seam:* `app-venue-row`'s `[card]` input · *Pinned by:* `venue-row.spec.ts` › `leaves a selling
   row its price and its colour`
-- [ ] **AC-4:** Given the Discover page on the panel arm (`lg`+) with a region holding one closed
+- [x] **AC-4:** Given the Discover page on the panel arm (`lg`+) with a region holding one closed
   venue and one open one, when the page renders, then only the closed venue's row is dusked and
   badged — the panel arm's pairing of the sheet's existing proof.
   *Seam:* the `/` route rendered at 1440 · *Pinned by:* `home.spec.ts` › `from lg: the panel` ›
   `wears dusk on the panel row whose sales for today have closed, as the sheet's card does`
-- [ ] **AC-5:** Given the three themes and each theme's worst background stops, when a dusk panel
+- [x] **AC-5:** Given the three themes and each theme's worst background stops, when a dusk panel
   row is desaturated, then the row ink and the soft ink still meet WCAG AA over the desaturated
   panel surface. *Seam:* the `--riv-*` token mirrors in `testing/glass-tokens.ts` ·
   *Pinned by:* `home.contrast.spec.ts` › `Discover dusk panel row contrast — $name theme`
-- [ ] **AC-6:** Given the semantic-chip recipe, when a dusk surface desaturates both its ink and its
+- [x] **AC-6:** Given the semantic-chip recipe, when a dusk surface desaturates both its ink and its
   fill, then the pair still meets WCAG AA — the proof the sheet card's own closed chip has been
   riding without. *Seam:* `testing/chip-fills.ts`'s `SEMANTIC_CHIP` ·
   *Pinned by:* `semantic-chip.contrast.spec.ts` › `the ink still meets AA once a dusk surface has
   desaturated both`
-- [ ] **AC-7:** Given the mocked e2e at 1440 × 900, when the panel lists a closed venue beside a
+- [x] **AC-7:** Given the mocked e2e at 1440 × 900, when the panel lists a closed venue beside a
   selling one, then the closed row computes `filter: saturate(0)` and contains `Closed today`, the
   selling row computes `filter: none` and does not, and **both rows are still 92 px tall** — dusk
   costs no height, so the panel-geometry tests above it keep measuring what they claim to.
@@ -185,11 +187,16 @@ N/A — no contract change. `salesOpen`, `closedForSeason` and `reopensOn` are a
 
 ## Execution status
 
-**Stage pointer:** `review gate run in full, F-1..F-6 resolved — CI on the current head, then the Sonar gate`
+**Stage pointer:** `DONE — merged via PR #1186`
 
-**Next action:** Confirm CI green on the head, then pull SonarCloud's new-issue + duplication
-lists for PR #1186 and clear every entry (`riviera-sdlc` `references/pr-gates.md` §2, watching for
-the three false zeros).
+**Next action:** None. Issue #1185 closed by the merge; epic #1156's out-of-scope entry ticked
+with the PR number; the PR-activity subscription ended.
+
+**Sonar gate (`references/pr-gates.md` §2):** cleared from the API lists, not the badge.
+`issues/search` → `total: 0`. `measures` → `new_lines: 72` (so the gate **applied**; not false
+zero (c)), `new_coverage 100.0`, `new_duplicated_lines_density 0.0`, `new_duplicated_blocks 0`,
+`new_bugs`/`new_vulnerabilities`/`new_code_smells` all 0. Both `SonarCloud Code Analysis` and
+`SonarCloud scan` concluded `success`, ruling out false zeros (a) and (b).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -200,6 +207,7 @@ the three false zeros).
 | 4 — The rendered proof (AC-7) | ✅ | `223280e9` |
 | 5 — Docs freshness + plan retirement | ✅ | `3ac9e1e9`, `b6d57fa7` |
 | 6 — Review-gate findings (F-1..F-6) | ✅ | `e9ff73c8`, `f1d7b739`, `320081c6` |
+| 7 — Close-out (Sonar gate, plan final state) | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -243,7 +251,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - [x] **Step 1:** ACs, risks and the parity ledger written before any source change.
 - [x] **Step 2:** Branch `claude/sdlc-1185-a789xu` exists at `origin/main`.
-- [ ] **Step 3: Commit** — `git commit -m "Plan the desktop panel row's dusk (#1185)"`
+- [x] **Step 3: Commit** — `git commit -m "Plan the desktop panel row's dusk (#1185)"`
 
 ---
 
@@ -251,18 +259,18 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/app/pages/home/venue-row.html`, `venue-row.ts` · Test `venue-row.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — a closed card, a season-closed card and a selling card
+- [x] **Step 1: Write the failing tests** — a closed card, a season-closed card and a selling card
   through `render(...)`, asserting the anchor's filter class, the absence of any `opacity-*`, and
   the price slot's content.
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/pages/home/venue-row.spec.ts`
+- [x] **Step 2: Run it, verify it fails** — `npm test -- --watch=false --include="src/app/pages/home/venue-row.spec.ts"`
   → FAIL (`row-closed` is null; the anchor has no `saturate-0`).
-- [ ] **Step 3: Minimal implementation** — `[class.saturate-0]="card().salesClosed"` on the anchor;
+- [x] **Step 3: Minimal implementation** — `[class.saturate-0]="card().salesClosed"` on the anchor;
   a `closedLabel` computed (`closedForSeason` → `Closed for season`, else `salesClosed` →
   `Closed today`, else `null`) rendered as an `appSemanticChip` span ahead of the price arms.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — logged below.
-- [ ] **Step 6: Commit** — `git commit -m "The desktop panel row wears dusk, the price giving way to the closed chip (#1185)"`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 5: Generalization-audit pass** — logged below.
+- [x] **Step 6: Commit** — `git commit -m "The desktop panel row wears dusk, the price giving way to the closed chip (#1185)"`
+- [x] **Step 7: Update Execution status.**
 
 ---
 
@@ -270,15 +278,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Test `frontend/src/app/pages/home/home.spec.ts` (`from lg: the panel`)
 
-- [ ] **Step 1: Write the failing test** — `panelPage()` at 1440 over `sheetVenues()` (Palasa Sands
+- [x] **Step 1: Write the failing test** — `panelPage()` at 1440 over `sheetVenues()` (Palasa Sands
   carries `salesOpen: false`); assert its row is dusked and badged and the neighbouring row is not.
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/pages/home/home.spec.ts -t "panel row"`
+- [x] **Step 2: Run it, verify it fails** — `npm test -- --watch=false --include="src/app/pages/home/home.spec.ts"`
   → FAIL before phase 1's implementation is in; asserted as a guard against a vacuous test.
-- [ ] **Step 3: Minimal implementation** — none needed; phase 1 satisfies it. The test exists to pin
+- [x] **Step 3: Minimal implementation** — none needed; phase 1 satisfies it. The test exists to pin
   that the **page** feeds the panel arm the closed card, which is the defect the issue reported.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 6: Commit** — `git commit -m "Pair the sheet's dusk proof on the panel arm (#1185)"`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 6: Commit** — `git commit -m "Pair the sheet's dusk proof on the panel arm (#1185)"`
+- [x] **Step 7: Update Execution status.**
 
 ---
 
@@ -287,18 +295,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Modify `frontend/src/testing/contrast.ts`, `home.contrast.spec.ts`,
 `venue-pin-layer.contrast.spec.ts`, `shared/semantic-chip.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — a `Discover dusk panel row contrast` describe over the
+- [x] **Step 1: Write the failing tests** — a `Discover dusk panel row contrast` describe over the
   three themes (row ink and soft ink, desaturated, over the desaturated panel surface at each
   worst stop) and one semantic-chip case (ink and fill both desaturated).
-- [ ] **Step 2: Run it, verify it fails** — the new describes reference `desaturate` from
+- [x] **Step 2: Run it, verify it fails** — the new describes reference `desaturate` from
   `testing/contrast`, which does not exist → FAIL to resolve.
-- [ ] **Step 3: Minimal implementation** — promote `desaturate` into `testing/contrast.ts` with the
+- [x] **Step 3: Minimal implementation** — promote `desaturate` into `testing/contrast.ts` with the
   Filter Effects matrix and its provenance comment; repoint the two specs that had their own copy.
-- [ ] **Step 4: Run it, verify it passes** — `npx vitest run src/app/pages/home/home.contrast.spec.ts
-  src/app/pages/home/venue-pin-layer.contrast.spec.ts src/app/shared/semantic-chip.contrast.spec.ts` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — logged below.
-- [ ] **Step 6: Commit** — `git commit -m "Prove the dusk row and its chip hold AA under the filter (#1185)"`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 4: Run it, verify it passes** — `npm run test:a11y` → PASS (108 files, 1073 tests).
+- [x] **Step 5: Generalization-audit pass** — logged below.
+- [x] **Step 6: Commit** — `git commit -m "Prove the dusk row and its chip hold AA under the filter (#1185)"`
+- [x] **Step 7: Update Execution status.**
 
 ---
 
@@ -306,16 +313,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/e2e/discover-map.e2e.ts` (`Discover map — the desktop panel`)
 
-- [ ] **Step 1: Write the failing test** — at 1440 × 900 over `MAP_VENUES` (Borsh Kilometre carries
+- [x] **Step 1: Write the failing test** — at 1440 × 900 over `MAP_VENUES` (Borsh Kilometre carries
   `salesOpen: false`): the closed row's computed `filter`, its chip text, the selling row's
   absence of both, and both rows still 92 px.
-- [ ] **Step 2: Run it, verify it fails** — with the implementation reverted → FAIL.
-- [ ] **Step 3: Minimal implementation** — none needed; phases 1–3 satisfy it.
-- [ ] **Step 4: Run it, verify it passes** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium
+- [x] **Step 2: Run it, verify it fails** — with the implementation reverted → FAIL.
+- [x] **Step 3: Minimal implementation** — none needed; phases 1–3 satisfy it.
+- [x] **Step 4: Run it, verify it passes** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium
   npx playwright test --config playwright.a11y.config.ts e2e/discover-map.e2e.ts` → PASS, with the
   panel describe's pre-existing geometry tests still green.
-- [ ] **Step 6: Commit** — `git commit -m "Pin the panel row's dusk in the browser, height unchanged (#1185)"`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Pin the panel row's dusk in the browser, height unchanged (#1185)"`
+- [x] **Step 7: Update Execution status.**
 
 ---
 
@@ -360,5 +367,5 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
       `opacity-*` fade (the reason dusk is desaturation), no `as any`.
 - [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
 - [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay).
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
+- [x] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay).
