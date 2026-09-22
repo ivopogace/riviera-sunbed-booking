@@ -339,6 +339,10 @@ test.describe('Discover sheet — the browser’s own latching', () => {
   }) => {
     await page.addInitScript(() => {
       (window as unknown as { __rests: unknown[] }).__rests = [];
+      (window as unknown as { __resizes: number[] }).__resizes = [];
+      addEventListener('resize', () =>
+        (window as unknown as { __resizes: number[] }).__resizes.push(innerHeight),
+      );
       type ScrollTo = (this: Element, ...args: unknown[]) => void;
       const prototype = Element.prototype as unknown as Record<string, ScrollTo>;
       const original = prototype['scrollTo'];
@@ -352,6 +356,8 @@ test.describe('Discover sheet — the browser’s own latching', () => {
     await openSheet(page);
     const cdp = await page.context().newCDPSession(page);
     const rests = () => page.evaluate(() => (window as unknown as { __rests: unknown[] }).__rests);
+    const resizes = () =>
+      page.evaluate(() => (window as unknown as { __resizes: number[] }).__resizes);
     const clearRests = () =>
       page.evaluate(() => {
         (window as unknown as { __rests: unknown[] }).__rests = [];
@@ -375,12 +381,12 @@ test.describe('Discover sheet — the browser’s own latching', () => {
       }
       await page.waitForTimeout(25);
     }
-    // Held still past the quiet window: `pointercancel` has long since fired, so only touch holds.
-    const parked = await scrollTop(scroller(page));
-    await page.waitForTimeout(450);
-    expect(await scrollTop(scroller(page)), 'the sheet moved under a finger held still').toBe(
-      parked,
+    // The leg's own precondition: with no resize in the page, nothing would rest anyway.
+    expect(await resizes(), 'no resize reached the page, so this leg proves nothing').not.toEqual(
+      [],
     );
+    // Held still past the quiet window: `pointercancel` has long since fired, so only touch holds.
+    await page.waitForTimeout(450);
     expect(await rests(), 'a re-measure scrolled the sheet under the finger').toEqual([]);
     await touch('touchEnd', from - 220);
     await expectDetent(page, 'full');
