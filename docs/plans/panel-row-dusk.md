@@ -185,9 +185,11 @@ N/A — no contract change. `salesOpen`, `closedForSeason` and `reopensOn` are a
 
 ## Execution status
 
-**Stage pointer:** `review gate — fixing findings (F-1, F-2, F-3 fixed; reviewers still reporting)`
+**Stage pointer:** `review gate run in full, F-1..F-6 resolved — CI on the current head, then the Sonar gate`
 
-**Next action:** Finish collecting the review gate's findings, then the Sonar gate.
+**Next action:** Confirm CI green on the head, then pull SonarCloud's new-issue + duplication
+lists for PR #1186 and clear every entry (`riviera-sdlc` `references/pr-gates.md` §2, watching for
+the three false zeros).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -197,7 +199,7 @@ N/A — no contract change. `salesOpen`, `closedForSeason` and `reopensOn` are a
 | 3 — Contrast under the filter (AC-5, AC-6) + the shared matrix | ✅ | `1b5479ad` |
 | 4 — The rendered proof (AC-7) | ✅ | `223280e9` |
 | 5 — Docs freshness + plan retirement | ✅ | `3ac9e1e9`, `b6d57fa7` |
-| 6 — Review-gate findings (F-1, F-2, F-3) | ⏳ | |
+| 6 — Review-gate findings (F-1..F-6) | ✅ | `e9ff73c8`, `f1d7b739`, `320081c6` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
