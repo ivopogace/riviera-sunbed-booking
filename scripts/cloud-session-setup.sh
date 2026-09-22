@@ -13,7 +13,7 @@
 # verbatim in docs/agents/cloud-environment.md (#659). Read that before assuming
 # anything about what has already run when this hook starts.
 #
-# Six idempotent, cloud-only steps:
+# Six idempotent, cloud-only steps (step 1 runs in the background alongside 2-6):
 #   1. Frontend deps — `npm ci` so the Angular CLI MCP build/test targets
 #      (@angular/build:application, @angular/build:unit-test via run_target)
 #      resolve their builder packages. This hook runs AFTER Claude Code launches,
@@ -45,11 +45,19 @@ curl_https() {
 }
 
 # ── 1. Frontend deps (idempotent: skip when node_modules already present) ──
+# Backgrounded: no later step reads frontend/, and on a fresh container npm ci is ~11s
+# the other steps would otherwise wait behind. Joined by the `wait` before `exit 0`.
+# stdout goes to stderr: a SessionStart hook's stdout is injected into the session's
+# context, and npm's install summary is noise there.
 FRONTEND_DIR="$PROJECT_DIR/frontend"
+NPM_CI_PID=
 if [ ! -d "$FRONTEND_DIR/node_modules" ] && [ -f "$FRONTEND_DIR/package-lock.json" ]; then
   echo "cloud-session-setup: installing frontend deps (npm ci) in $FRONTEND_DIR ..." >&2
-  npm --prefix "$FRONTEND_DIR" ci \
-    || echo "cloud-session-setup: npm ci failed (run_target build/test may need a manual npm ci)" >&2
+  {
+    npm --prefix "$FRONTEND_DIR" ci >&2 \
+      || echo "cloud-session-setup: npm ci failed (run_target build/test may need a manual npm ci)" >&2
+  } &
+  NPM_CI_PID=$!
 fi
 
 # ── 2. Backend JDK 25 (idempotent: skip when /opt/jdk-25 is already 25) ──
@@ -185,4 +193,5 @@ if ! command -v gh >/dev/null 2>&1; then
   rm -rf "$tmp"
 fi
 
+[[ -n "$NPM_CI_PID" ]] && wait "$NPM_CI_PID"
 exit 0
