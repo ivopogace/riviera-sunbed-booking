@@ -58,34 +58,6 @@ test.describe('theme persistence', () => {
   });
 });
 
-test.describe('hero scrim token', () => {
-  test.use({ colorScheme: 'dark' });
-
-  // The real-browser half of home.contrast.spec.ts's scrim maths (--riv-hero-scrim, tailwind.css).
-  test('paints the hero in riviera only, none in porcelain and dark', async ({ page }) => {
-    // `?map=off`: the hero is the pre-Q page's; the riviera map's first screen is the map.
-    await page.goto('/?map=off');
-    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
-    const heroBg = () =>
-      page.locator('.hero').evaluate((hero) => getComputedStyle(hero).backgroundImage);
-
-    expect(await heroBg()).toBe('none');
-
-    await openThemePicker(page);
-    await page.getByTestId('theme-option-riviera').click();
-    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
-    const rivieraBg = await heroBg();
-    expect(rivieraBg).toContain('linear-gradient');
-    expect(rivieraBg).toContain('rgba(8, 38, 52, 0.72) 34px');
-    expect(rivieraBg).toContain('calc(100% - 40px)');
-
-    await openThemePicker(page);
-    await page.getByTestId('theme-option-porcelain').click();
-    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
-    expect(await heroBg()).toBe('none');
-  });
-});
-
 test.describe('per-theme color-scheme (#675)', () => {
   // Pin the OS scheme to dark so the boot theme is the dark theme (headless defaults to light).
   test.use({ colorScheme: 'dark' });
@@ -93,18 +65,18 @@ test.describe('per-theme color-scheme (#675)', () => {
   test('native-UI scheme follows the theme; the field scheme follows the field tokens (AC-1, AC-2)', async ({
     page,
   }) => {
-    // `?map=off`: the field tokens need a native field, and the riviera map renders none.
-    await page.goto('/?map=off');
+    // The sign-in card: the only tourist-themed surface left with a native field to measure.
+    await page.goto('/account/sign-in');
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
     await expect(page.locator('html')).toHaveCSS('color-scheme', 'dark');
     // Dark theme fields are dark-styled, so their native chrome is dark too (--riv-field-scheme).
-    await expect(page.getByTestId('filter-date')).toHaveCSS('color-scheme', 'dark');
+    await expect(page.getByTestId('auth-identifier')).toHaveCSS('color-scheme', 'dark');
 
     // Riviera keeps LIGHT fields under its dark document — the per-field token opts them out.
     await openThemePicker(page);
     await page.getByTestId('theme-option-riviera').click();
     await expect(page.locator('html')).toHaveCSS('color-scheme', 'dark');
-    await expect(page.getByTestId('filter-date')).toHaveCSS('color-scheme', 'light');
+    await expect(page.getByTestId('auth-identifier')).toHaveCSS('color-scheme', 'light');
 
     await openThemePicker(page);
     await page.getByTestId('theme-option-porcelain').click();

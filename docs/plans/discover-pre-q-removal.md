@@ -237,13 +237,13 @@ exactly what they requested before.
 
 ## Execution status
 
-**Stage pointer:** `plan` — doc written, awaiting phase 0.
+**Stage pointer:** `implement (phase 1)` — phase 0 landed green.
 
-**Next action:** Phase 0 — re-point the ten collateral e2e files off `?map=off`.
+**Next action:** Phase 1 — rewrite `discovery-flow` and `touch-targets-tourist` onto the sheet's head.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Collateral e2e re-pointed off the flag | | |
+| 0 — Collateral e2e re-pointed off the flag | ✅ | phase-0 commit |
 | 1 — `discovery-flow` + `touch-targets-tourist` onto the shipped design | | |
 | 2 — `discover-map.e2e.ts` rewritten onto `/` | | |
 | 3 — RED: the parameter is inert; two arms by width | | |
