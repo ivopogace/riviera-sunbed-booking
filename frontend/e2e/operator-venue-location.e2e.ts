@@ -421,10 +421,11 @@ test('saves the operator’s own point when the shoreline offer is declined', as
   expect(savedLocation(patches)).toEqual(own);
 });
 
+/** A coast 0.005° west of the map's centre — about 3 px, inside the shore band a drop is left in. */
+const SHORE_UNDER_THE_CENTRE_LNG = 19.745;
+
 test('says nothing about a pin dropped on the shore itself', async ({ page }) => {
-  // Water everywhere east of the map's centre: the drop lands in it, so it is never "off" the shore
-  // by more than the band — the offer's own negative case, against a real render.
-  await mockVenue(page, null, { coastLng: 90 });
+  await mockVenue(page, null, { coastLng: SHORE_UNDER_THE_CENTRE_LNG });
   await page.goto('/operator/1');
   await signInAndOpenVenue(page);
 
