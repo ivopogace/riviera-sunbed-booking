@@ -20,6 +20,14 @@ panel-geometry proofs, unchanged.
 **Source of intent:** GitHub issue #1185 (opened from epic #1156 slice 5, #1168). Design record:
 `frontend/src/app/pages/prototype-map/prototype-venue-row.ts` @ `2cf675da`.
 
+**Docs-freshness:** run over this slice's diff (`origin/main..HEAD`). **Zero findings in the
+substrate docs** — no `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, ADR, design-doc or skill
+sentence is falsified by it (the counting sweep over chip/surface vocabulary came back empty).
+**Two findings in source prose**, both fixed here: `semantic-chip.ts`'s "five call sites"
+enumeration, stale since the desktop panel shipped its own three in #1159, and the same phrase
+echoed at `semantic-chip.spec.ts:64`. **Plan-doc retirement:** `docs/plans/discover-pre-q-removal.md`
+(#1168, merged via PR #1184) deleted here — nothing outside `docs/plans/` cited it.
+
 **Skills consulted:** `riviera-sdlc` (intake gate: the issue's open decision was already settled by
 the design record and by the epic's own "dusk pin/row" wording; no in-flight PR or branch touches
 `pages/home/`; no Flyway number to claim; slice 5's close-out left `docs/plans/discover-pre-q-removal.md`
@@ -107,7 +115,7 @@ as an inert marker) · `playwright-cli` (the rendered dusk + the unchanged 92 px
 | R-2 | `filter` on the row anchor creates a containing block and a stacking context, capturing the absolutely-positioned `row-photo-empty` sun or re-ordering the panel's paint | Low | Medium | The sun's containing block is already the `relative` photo span inside the anchor, so nothing moves; the `data-selected` outline lives on the `<li>` **outside** the anchor and so is neither desaturated nor clipped | me | closed — the whole `discover-map.e2e.ts` panel describe (41 tests, pin placement, hit-testing and axe included) is green against the dusked panel |
 | R-3 | Desaturating the row drops an ink or the chip under WCAG AA in one of the three themes | Low | High (a11y regression on the surface the issue is about) | AC-5 and AC-6 compute it from the token mirrors over each theme's worst stops, the pattern `home.contrast.spec.ts`'s existing dusk-card describe already uses | me | closed in `1b5479ad` — worst case 5.63:1 (riviera soft ink), chip 6.91:1, against the 4.5 floor |
 | R-4 | A third hand-copy of the `saturate(0)` matrix (one in `home.contrast.spec.ts`, one in `venue-pin-layer.contrast.spec.ts`) drifts from the other two | Medium | Low | Promote `desaturate` to `testing/contrast.ts` and point all three at it — the generalization-audit pass, logged below | me | closed in `1b5479ad` |
-| R-5 | `semantic-chip.ts`'s TSDoc counts its call-site boxes ("five call sites", enumerated); a sixth box makes a substrate claim stale | High | Low | Counted and corrected in the same slice, and re-checked by the close-out sweep (`riviera-docs-freshness`) | me | open |
+| R-5 | `semantic-chip.ts`'s TSDoc counts its call-site boxes ("five call sites", enumerated); a sixth box makes a substrate claim stale | High | Low | Counted and corrected in the same slice, and re-checked by the close-out sweep (`riviera-docs-freshness`) | me | closed — and the count was **already** wrong before this slice: nine `appSemanticChip` sites in four boxes, the panel row's own three uncounted since #1159. Replaced with the four box families and no count, plus the same stale phrase echoed in `semantic-chip.spec.ts:64` |
 
 ## Open questions / Assumptions
 
@@ -163,7 +171,7 @@ N/A — no contract change. `salesOpen`, `closedForSeason` and `reopensOn` are a
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4 done) — PR ready for review next`
+**Stage pointer:** `implement (phases 0–4 done, docs-freshness run) — PR ready for review next`
 
 **Next action:** Mark PR #1186 ready for review, then the review gate and the Sonar gate.
 
@@ -173,7 +181,7 @@ N/A — no contract change. `salesOpen`, `closedForSeason` and `reopensOn` are a
 | 1 — The row wears dusk (AC-1, AC-2, AC-3) | ✅ | `19ed6afe` |
 | 2 — The panel arm pairs the sheet's proof (AC-4) | ✅ | `37f25213` |
 | 3 — Contrast under the filter (AC-5, AC-6) + the shared matrix | ✅ | `1b5479ad` |
-| 4 — The rendered proof (AC-7) | ⏳ | |
+| 4 — The rendered proof (AC-7) | ✅ | `50f7f9d0` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -198,6 +206,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/pages/home/venue-pin-layer.contrast.spec.ts` — the third copy of the matrix retired
 - `frontend/src/app/shared/semantic-chip.contrast.spec.ts` — AC-6
 - `frontend/src/app/shared/semantic-chip.ts` — the call-site enumeration in its TSDoc, corrected
+- `frontend/src/app/shared/semantic-chip.spec.ts` — the same stale count, echoed in a comment
 - `frontend/src/testing/contrast.ts` — `desaturate`, promoted out of the two specs that had it
 - `frontend/e2e/discover-map.e2e.ts` — AC-7
 
