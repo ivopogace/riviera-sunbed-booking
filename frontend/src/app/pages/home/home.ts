@@ -264,8 +264,8 @@ export class Home {
   /** The venue request has answered or failed: the list is drawn, so the map may load. */
   protected readonly listSettled = computed(() => this.venues() !== undefined || this.failed());
   /**
-   * The map chunk's one-way trigger: the ground, in sheet mode once the poster no longer stands
-   * in for it — the panel's map has no poster to wait on — after the list settled.
+   * The map chunk's one-way trigger, after the list settled: in sheet mode the ground going live
+   * behind the poster; on the panel, which has no poster, the list settling is the whole of it.
    */
   protected readonly mapDefer = computed(
     () => (this.sheetMode() ? this.groundLive() : true) && this.listSettled(),

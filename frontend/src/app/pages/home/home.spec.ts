@@ -823,9 +823,9 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
   });
 
   /**
-   * The route's whole `map` contract, as a tourist's URL crosses it: there is no longer one. No
-   * value selects a layout, so a bookmark carrying `?map=off` or `?map=sheet` from the flagged
-   * releases neither throws nor changes the page — the width alone decides which arm renders.
+   * The route's whole `map` contract, as a tourist's URL crosses it: no value selects a layout.
+   * A bookmark carrying `?map=off` or `?map=sheet` from the flagged releases neither throws nor
+   * changes the page — the width alone decides which arm renders.
    */
   it('with no query parameter the page is the riviera map sheet', async () => {
     const fixture = await sheetPage();

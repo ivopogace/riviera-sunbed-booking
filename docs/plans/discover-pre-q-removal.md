@@ -237,9 +237,9 @@ exactly what they requested before.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)` — phases 0–4 landed green.
+**Stage pointer:** `implement (phase 6)` — phases 0–5 landed green.
 
-**Next action:** Phase 5 — retire `--riv-hero-scrim` and the citations it strands.
+**Next action:** Phase 6 — full gates, PR ready-for-review, review gate, Sonar, close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -248,7 +248,7 @@ exactly what they requested before.
 | 2 — `discover-map.e2e.ts` rewritten onto `/` | ✅ | phase-2 commit |
 | 3 — RED: the parameter is inert; two arms by width | ✅ | phase-3/4 commit |
 | 4 — GREEN: delete the flag, the arm and `VenuePreviewCard` | ✅ | phase-3/4 commit |
-| 5 — Retire `--riv-hero-scrim`, the hero classes and the stranded citations | | |
+| 5 — Retire `--riv-hero-scrim`, the hero classes and the stranded citations | ✅ | phase-5 commit |
 | 6 — Gates, close-out, epic docs-freshness | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -301,6 +301,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-22 | intake gate | Every site reading the map flag, by mechanism "names the query parameter or its constant" | `grep -rn "map=off\|map=sheet\|map: 'off'\|map: 'sheet'\|OFF_FLAG\|mapParam" frontend/src frontend/e2e` | 95 lines / 22 files (3 false positives: `beach-map`, `off-map`) | Classified by subject; 13 e2e files + 4 source files are in scope. Phases 0–4. |
+| 2026-09-22 | phase 5 | Every token the retired arm might have been the last user of, by mechanism "a `--riv-*` custom property the hero or the filter bar consumed" | `grep -rn "riv-hero-scrim\|riv-hero-shadow\|text-shadow-riv-hero" frontend/src docs .claude` | `--riv-hero-scrim`: 1 consumer, the hero — dead. `--riv-hero-shadow`: 2 consumers, one of them `venue/venue-map.html:82` — alive | Retired the scrim from all three theme blocks and repointed the three citations it stranded; kept the shadow. |
+| 2026-09-22 | phase 5 | Every marker class the retired arm might have been the last user of, by mechanism "an inert class a spec queries" | `for c in hero hero-chip … venue-grid map-panel; do grep -rn "\b$c\b" src; done` | 12 orphaned; `venue-grid` was the one still in the tree, on the shared skeleton, with no consumer left | Removed it; `field-label` kept (`booking-dialog.ts` still wears it). |
+| 2026-09-22 | phase 5 | The counting sweep over `--riv-sun-grad`, whose ledger entry claims "three" | `grep -rn "riv-sun-grad" frontend/src --include=*.html --include=*.ts` | 4 live consumers after the deletion, 5 before — the ledger's three predates `venue-row` (#1159) | Corrected `colour-literal-token-audit.md` with the recount and the unchanged role split. |
 
 ---
 

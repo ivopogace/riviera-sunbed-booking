@@ -151,7 +151,7 @@
 <ng-template #skeletonTpl>
   <!-- Skeletons mirror the grid so the layout doesn't jump; the announcer owns the words. -->
   <div data-testid="loading" aria-hidden="true">
-    <ul class="venue-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5">
+    <ul class="mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5">
       @for (slot of skeletons; track slot) {
         <li>
           <span

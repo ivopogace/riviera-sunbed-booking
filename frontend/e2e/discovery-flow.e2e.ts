@@ -133,8 +133,7 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expect(cardChips).not.toContainText('WiFi');
   await expectNoSeriousAxeViolations(page, 'discovery sheet');
 
-  // The day rail is floored at the earliest bookable day: it leads with today and offers nothing
-  // earlier, so a past day cannot be picked at all.
+  // The rail is floored at today: it leads with it and offers nothing earlier, so no past day.
   await expect(page.getByTestId('head-day')).toHaveText(/Today/);
   await page.getByTestId('head-day').click();
   const days = page.locator('[role="group"][aria-label="Day"] button');
@@ -142,8 +141,7 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expect(days.first()).toHaveAttribute('aria-current', 'true');
   await page.getByTestId('head-day').click();
 
-  // Narrow to one beach → the list follows, and so does the count. The region's cards are already
-  // loaded, so this narrows in place rather than refetching, and the chip marks itself current.
+  // Narrow to one beach: the region's cards are loaded, so this narrows in place, with no refetch.
   await page.getByTestId('head-beaches').click();
   await page.locator('[role="group"][aria-label="Beach"] button', { hasText: 'Dhërmi' }).click();
   await expect(cards).toHaveCount(1);
@@ -191,8 +189,7 @@ test('the date chosen on discovery carries into the venue map (#294)', async ({ 
     ).searchParams.get('date')!;
   const today = await linkDate();
 
-  // The rail's last day — clearly NOT the map's own default (today), so seeing it on the map proves
-  // the carry rather than the map's fallback.
+  // The rail's last day: never today, so seeing it on the map proves the carry, not a fallback.
   await page.getByTestId('head-day').click();
   await page.locator('[role="group"][aria-label="Day"] button').last().click();
   await expect(page.getByTestId('head-day')).not.toHaveText(/Today/);

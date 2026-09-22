@@ -421,8 +421,7 @@ test.describe('Discover map — the sheet, fake engine', () => {
     const pins = page.getByTestId('map-venue-pin');
     await expect(pins).toHaveCount(1);
     await expect(pins.first()).toHaveAttribute('aria-label', 'Aurora Bay, from €30');
-    // The page holds one whole-coast response and narrows inside it: no request at all, where the
-    // retired filter bar's select cost exactly one.
+    // One whole-coast response, narrowed inside: no request, where the old select cost exactly one.
     expect(venueRequests()).toBe(before);
   });
 

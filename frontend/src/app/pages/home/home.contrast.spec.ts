@@ -1,5 +1,4 @@
 import {
-  AA_LARGE,
   AA_NORMAL,
   Rgb,
   composite,
@@ -11,10 +10,7 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
-  ACCENT_INK,
   DARK_ACCENT_INK,
-  DARK_ON_ACCENT_INK,
-  ON_ACCENT_INK,
   DARK_CARD_GLASS,
   DARK_CARD_INK,
   DARK_CHIP,
@@ -54,11 +50,11 @@ import { baseBlock, declarationsOf, themeBlock } from '../../../testing/styleshe
  * alpha inks composited over that result (the `app.contrast.spec.ts` pattern).
  * Shared token mirrors + the AA-over-stops loop live in `testing/glass-tokens.ts`.
  *
- * This table mirrors every text-bearing colour in `tailwind.css` + `home.html`'s utilities
- * (the hero scrim is the `--riv-hero-scrim` token there); an edit there must re-pass here. Deviations from the drawn values, on purpose (the same
- * class as the shell header's): the list-state panels (and, in the riviera theme, the hero) sit on
- * the AA-proven header glass instead of the bare gradient — the porcelain hero keeps the
- * drawn bare dark ink; the riviera card glass is 0.78 (drawn 0.55); the muted
+ * This table mirrors every text-bearing colour in `tailwind.css` + `home.html`'s utilities; an
+ * edit there must re-pass here. Deviations from the drawn values, on purpose (the same
+ * class as the shell header's): the list-state panels sit on
+ * the AA-proven header glass instead of the bare gradient; the riviera card glass is 0.78
+ * (drawn 0.55); the muted
  * card inks are 0.78/0.72 (drawn 0.7/0.55); the teal accent is #085a6e (drawn #0a6e85);
  * the field border is a dark tint (drawn white) for the 1.4.11 component boundary; the
  * CTA-button gradient is darkened for white-text AA (see CTA_STOPS below).
@@ -97,11 +93,8 @@ interface Theme {
   readonly panelWashHover: Glass; // --riv-panel-wash-hover, composited over the header glass
   readonly fieldFill: Glass; // --riv-field-fill, composited over the card glass
   readonly fieldBorder: Glass; // --riv-field-border, composited over the field fill
-  readonly heroInk: Rgb;
-  readonly heroInkSoftAlpha: number; // --riv-ink-soft
-  /** Riviera backs the hero with a soft dark SCRIM (white ink AA over the gradient's light top
-   *  stops); porcelain's hero is bare dark ink on the gradient, as drawn. null = bare. */
-  readonly heroScrim: Glass | null;
+  readonly pageInk: Rgb;
+  readonly pageInkSoftAlpha: number; // --riv-ink-soft
 }
 
 const LIGHT_FIELD_FILL: Glass = { color: WHITE, alpha: FIELD_FILL_ALPHA };
@@ -121,10 +114,8 @@ const THEMES: readonly Theme[] = [
     panelWashHover: RIVIERA_PANEL_WASH_HOVER,
     fieldFill: LIGHT_FIELD_FILL,
     fieldBorder: LIGHT_FIELD_BORDER,
-    heroInk: WHITE,
-    heroInkSoftAlpha: 0.86,
-    // Riviera hero scrim (--riv-hero-scrim, tailwind.css): rgba(8,38,52,0.72) = #082634 @ 0.72.
-    heroScrim: { color: hexToRgb('082634'), alpha: 0.72 },
+    pageInk: WHITE,
+    pageInkSoftAlpha: 0.86,
   },
   {
     name: 'porcelain',
@@ -139,9 +130,8 @@ const THEMES: readonly Theme[] = [
     panelWashHover: PORCELAIN_PANEL_WASH_HOVER,
     fieldFill: LIGHT_FIELD_FILL,
     fieldBorder: LIGHT_FIELD_BORDER,
-    heroInk: INK_DARK,
-    heroInkSoftAlpha: 0.7,
-    heroScrim: null, // bare gradient
+    pageInk: INK_DARK,
+    pageInkSoftAlpha: 0.7,
   },
   {
     name: 'dark',
@@ -156,58 +146,16 @@ const THEMES: readonly Theme[] = [
     panelWashHover: DARK_PANEL_WASH_HOVER,
     fieldFill: DARK_FIELD_FILL,
     fieldBorder: DARK_FIELD_BORDER,
-    heroInk: WHITE,
-    heroInkSoftAlpha: 0.86,
+    pageInk: WHITE,
+    pageInkSoftAlpha: 0.86,
     // Bare gradient: every slate stop is dark enough for white ink AA — the scrim stays riviera-only.
-    heroScrim: null,
   },
 ];
 
 describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #135)', (theme) => {
-  // The hero backdrop is theme-conditional: a soft dark SCRIM in riviera (white ink needs a dark
-  // backing to clear AA over the gradient's light top stops), the BARE gradient in porcelain, where
-  // the hero keeps the drawn treatment (dark ink, no backing). The px-anchored fade (--riv-hero-scrim) keeps the
-  // text on the solid scrim core, so the worst case is the full-strength scrim over each stop. The
-  // loading/empty .state panels keep the header glass in BOTH themes (asserted separately below).
-  const heroBackdrop = (stop: Rgb): Rgb =>
-    theme.heroScrim ? surfaceOver(theme.heroScrim, stop) : stop;
-
-  it('hero headline (ink) meets AA on the hero backdrop', () => {
-    for (const stop of theme.stops) {
-      expect(
-        contrastRatio(rgbToHex(theme.heroInk), rgbToHex(heroBackdrop(stop))),
-        `over stop ${rgbToHex(stop)}`,
-      ).toBeGreaterThanOrEqual(AA_NORMAL);
-    }
-  });
-
-  it('hero intro (ink-soft) meets AA on the hero backdrop', () => {
-    for (const stop of theme.stops) {
-      const bg = heroBackdrop(stop);
-      const soft = composite(theme.heroInk, theme.heroInkSoftAlpha, bg);
-      expect(
-        contrastRatio(rgbToHex(soft), rgbToHex(bg)),
-        `over stop ${rgbToHex(stop)}`,
-      ).toBeGreaterThanOrEqual(AA_NORMAL);
-    }
-  });
-
-  it('hero chip text meets AA on the chip tint over the hero backdrop', () => {
-    // The thinnest pair on the page (riviera worst case ~4.53:1 over #ffe2b0) — pinned
-    // here as well as in app.contrast.spec.ts because the hero relies on it directly.
-    for (const stop of theme.stops) {
-      const chip = composite(theme.chip.color, theme.chip.alpha, heroBackdrop(stop));
-      expect(
-        contrastRatio(rgbToHex(theme.heroInk), rgbToHex(chip)),
-        `over stop ${rgbToHex(stop)}`,
-      ).toBeGreaterThanOrEqual(AA_NORMAL);
-    }
-  });
-
   it('loading/empty state panel text (ink + ink-soft) meets AA on the header glass', () => {
-    // The .state panels keep the header glass in both themes (only the hero goes bare in porcelain).
-    expectAaOverStops(theme.heroInk, 1, theme.headerGlass, theme.stops);
-    expectAaOverStops(theme.heroInk, theme.heroInkSoftAlpha, theme.headerGlass, theme.stops);
+    expectAaOverStops(theme.pageInk, 1, theme.headerGlass, theme.stops);
+    expectAaOverStops(theme.pageInk, theme.pageInkSoftAlpha, theme.headerGlass, theme.stops);
   });
 
   // The panel's own accent; the card accent is a different token (rationale: `tailwind.css`).
@@ -231,7 +179,7 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
       const panel = surfaceOver(theme.headerGlass, stop);
       const hovered = composite(theme.panelWashHover.color, theme.panelWashHover.alpha, panel);
       for (const [label, ink] of [
-        ['page ink', theme.heroInk],
+        ['page ink', theme.pageInk],
         ['panel accent ink', theme.panelAccent],
       ] as const) {
         expect(
@@ -254,28 +202,8 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
     expectAaOverStops(theme.cardInkBase, CARD_INK_FAINT_ALPHA, theme.cardGlass, theme.stops);
   });
 
-  it('accent ink (result count, from-price) meets AA on the card glass', () => {
-    // Also discharges the filter-control focus ring's weaker 3:1 (WCAG 1.4.11): same pair, card glass below `.hero`, never the scrim.
+  it('accent ink (the head counts, the row price) meets AA on the card glass', () => {
     expectAaOverStops(theme.accent, 1, theme.cardGlass, theme.stops);
-  });
-
-  it('select/date text meets AA on the field fill over the card glass', () => {
-    for (const stop of theme.stops) {
-      const card = surfaceOver(theme.cardGlass, stop);
-      const field = composite(theme.fieldFill.color, theme.fieldFill.alpha, card);
-      expect(contrastRatio(rgbToHex(theme.cardInk), rgbToHex(field))).toBeGreaterThanOrEqual(
-        AA_NORMAL,
-      );
-    }
-  });
-
-  it('field border marks the input boundary at 3:1 against its fill (WCAG 1.4.11)', () => {
-    for (const stop of theme.stops) {
-      const card = surfaceOver(theme.cardGlass, stop);
-      const field = composite(theme.fieldFill.color, theme.fieldFill.alpha, card);
-      const border = composite(theme.fieldBorder.color, theme.fieldBorder.alpha, field);
-      expect(contrastRatio(rgbToHex(border), rgbToHex(field))).toBeGreaterThanOrEqual(AA_LARGE);
-    }
   });
 });
 
@@ -312,15 +240,6 @@ describe('Discover photo-area contrast (theme-independent, issue #135; real phot
  * The rest of that card sits on the card glass with the card inks, already covered above — it is
  * fed the very record a list card renders.
  */
-describe('Discover list/map switch contrast', () => {
-  it.each([
-    ['light', ON_ACCENT_INK, ACCENT_INK],
-    ['dark', DARK_ON_ACCENT_INK, DARK_ACCENT_INK],
-  ])('pressed pill label meets AA on the accent fill (%s themes)', (_theme, ink, fill) => {
-    expect(contrastRatio(rgbToHex(ink), rgbToHex(fill))).toBeGreaterThanOrEqual(AA_NORMAL);
-  });
-});
-
 /**
  * A dusk row is `saturate(0)` over the whole card — the Filter Effects `saturate` matrix, applied
  * to the ink and to the card glass alike (over each theme's stops), which keeps luminance and so

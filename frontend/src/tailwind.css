@@ -206,14 +206,6 @@
   --riv-chip-bg: rgba(12, 42, 51, 0.05);
   --riv-chip-border: rgba(12, 42, 51, 0.14);
   --riv-hero-shadow: none;
-  /** The riviera-only hero wash (Discover) — `none` here and in dark: their stops carry the
-      hero ink AA bare, so only riviera's block sets the gradient (the #679 SCSS holdout,
-      retired to this token). Its fades are PX-anchored (34px top / 40px bottom) to the hero's
-      theme-shared padding in home.html, so the text always rests on the solid ~0.72 core at
-      any content height; AA over the gradient's light top stops is pinned in
-      home.contrast.spec.ts. Deliberately the hero ONLY — every other dark riviera surface
-      keeps the frosted panel; don't spread the scrim by reflex. */
-  --riv-hero-scrim: none;
   --riv-track-bg: rgba(12, 42, 51, 0.12);
 
   --riv-header-glass: rgba(255, 255, 255, 0.6);
@@ -488,8 +480,8 @@
   /** The account chip's avatar disc is the chip's non-text boundary, held to 3:1 on the header
       glass (WCAG 1.4.11). The solid brand fill clears that on the porcelain glass by itself and
       reads 2.6:1 on the dark one, so the dark console draws a ring round the disc and porcelain
-      draws none — a treatment-off value here, as --riv-hero-scrim holds `none` off the riviera
-      hero. The tourist chrome shares the disc recipe but not this ring: its disc is decorative.
+      draws none — a treatment-off value here, the same shape as --riv-hero-shadow's `none` off
+      riviera. The tourist chrome shares the disc recipe but not this ring: its disc is decorative.
       Proof: operator/operator-account-chip.contrast.spec.ts. */
   --riv-console-avatar-ring: transparent;
   /** The backdrop behind the console's modals — the payout statement and the set-editor's phone
@@ -909,14 +901,6 @@
   --riv-chip-bg: rgba(255, 255, 255, 0.16);
   --riv-chip-border: rgba(255, 255, 255, 0.3);
   --riv-hero-shadow: 0 2px 36px rgba(6, 40, 55, 0.32);
-  /* A borderless soft dark wash — no card / rim / blur / shadow (see the base block's note) */
-  --riv-hero-scrim: linear-gradient(
-    to bottom,
-    rgba(8, 38, 52, 0) 0,
-    rgba(8, 38, 52, 0.72) 34px,
-    rgba(8, 38, 52, 0.72) calc(100% - 40px),
-    rgba(8, 38, 52, 0) 100%
-  );
   --riv-track-bg: rgba(255, 255, 255, 0.25);
 
   /* dark glass (see header note above): #0a2c3f at 72% over the lightest bg stop still ≥ AA vs white ink */
@@ -942,7 +926,7 @@
 
   /** Neutral slate — no drawn counterpart: derived from riviera's token structure with the
       teal gradient swapped for slate stops; every stop is dark enough that the white ink set
-      clears AA bare (no hero scrim needed — --riv-hero-scrim stays the base block's none). AA proof:
+      clears AA bare (no title shadow needed — --riv-hero-shadow carries that one). AA proof:
       the DARK_* rows in testing/glass-tokens.ts + the per-page contrast specs. */
   --riv-bg:
     radial-gradient(110% 70% at 8% 2%, #3b4a5f 0%, rgba(59, 74, 95, 0) 52%),
