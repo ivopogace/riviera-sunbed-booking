@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { clampLift, detentAt, offsetFor, sheetTop, sheetTops } from './sheet-geometry';
+import {
+  clampLift,
+  detentAt,
+  offsetFor,
+  restAfterDrag,
+  sheetTop,
+  sheetTops,
+} from './sheet-geometry';
 
 /**
  * The sheet's rest points, from the chrome as measured at runtime: a 44 px sliver of map at
@@ -33,6 +40,25 @@ describe('sheet geometry', () => {
     expect(detentAt(457, phone)).toBe('full');
     expect(detentAt(588, phone)).toBe('full');
     expect(detentAt(900, phone)).toBe('full');
+  });
+
+  it('rests a slow release at the nearest rest', () => {
+    expect(restAfterDrag(100, 0.3, phone)).toBe('peek');
+    expect(restAfterDrag(200, -0.3, phone)).toBe('half');
+    expect(restAfterDrag(470, 0, phone)).toBe('full');
+  });
+
+  it('carries a fling to the next rest in its direction, never past it', () => {
+    // Down from full, released above half: half holds it, as snap-stop holds a native fling.
+    expect(restAfterDrag(400, -2, phone)).toBe('half');
+    // Down from half, however little it moved: peek.
+    expect(restAfterDrag(310, -2, phone)).toBe('peek');
+    // Up from peek stops at half; up past half goes on to full.
+    expect(restAfterDrag(20, 2, phone)).toBe('half');
+    expect(restAfterDrag(340, 2, phone)).toBe('full');
+    // Already at an end, it stays there.
+    expect(restAfterDrag(588, 2, phone)).toBe('full');
+    expect(restAfterDrag(0, -2, phone)).toBe('peek');
   });
 
   it('places the sheet top at peek less the scroll, never above full', () => {

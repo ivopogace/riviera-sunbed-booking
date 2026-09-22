@@ -66,6 +66,25 @@ export function detentAt(scrollTop: number, tops: SheetTops): Detent {
   return scrollTop < (half + full) / 2 ? 'half' : 'full';
 }
 
+/** A release faster than this, in px/ms, is a fling: it carries on to the next rest. */
+export const FLING_PX_PER_MS = 0.5;
+
+/**
+ * Where a drag the sheet owns comes to rest on release. A fling carries to the next rest in its
+ * direction and no further, as `scroll-snap-stop: always` holds a native one; anything slower
+ * rests at the nearest. `velocity` is in scroll px/ms, positive when the finger pushes up.
+ */
+export function restAfterDrag(scrollTop: number, velocity: number, tops: SheetTops): Detent {
+  const order: readonly Detent[] = ['peek', 'half', 'full'];
+  if (velocity > FLING_PX_PER_MS) {
+    return order.find((detent) => offsetFor(tops, detent) >= scrollTop) ?? 'full';
+  }
+  if (velocity < -FLING_PX_PER_MS) {
+    return [...order].reverse().find((detent) => offsetFor(tops, detent) <= scrollTop) ?? 'peek';
+  }
+  return detentAt(scrollTop, tops);
+}
+
 /** Where the sheet's top is for a scroll position, in viewport px. */
 export function sheetTop(tops: SheetTops, scrollTop: number): number {
   return Math.max(tops.full, tops.peek - scrollTop);

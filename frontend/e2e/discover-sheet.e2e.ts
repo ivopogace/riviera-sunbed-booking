@@ -330,6 +330,35 @@ test.describe('Discover sheet — the browser’s own latching', () => {
   });
 
   /**
+   * iOS Safari will not touch-scroll the outer scroller, which is `pointer-events: none` so the
+   * map under it keeps its gestures: a drag it was left went to the page, and Safari read a pull
+   * down as pull-to-refresh. So the sheet drags itself, and keeps the browser out of every move.
+   */
+  test('a slow drag on the grabber takes the sheet to peek, the browser kept out of every move', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __moves: boolean[] }).__moves = [];
+      addEventListener('touchmove', (event) =>
+        (window as unknown as { __moves: boolean[] }).__moves.push(event.defaultPrevented),
+      );
+    });
+    await openSheet(page);
+    const cdp = await page.context().newCDPSession(page);
+    const grabber = (await page.getByTestId('sheet-grabber').boundingBox())!;
+    const fromY = Math.round(grabber.y + grabber.height / 2);
+
+    await flick(cdp, page, 200, fromY, PHONE.height - PHONE.tabBar - 40, 1_200);
+
+    await expectDetent(page, 'peek');
+    const moves = await page.evaluate(() => (window as unknown as { __moves: boolean[] }).__moves);
+    expect(moves.length).toBeGreaterThan(0);
+    expect(moves.every(Boolean), 'a move reached the browser: iOS scrolls or refreshes on it').toBe(
+      true,
+    );
+  });
+
+  /**
    * A phone fires `resize` in the middle of a gesture every time its URL bar or on-screen
    * keyboard moves, and the sheet re-measures its chrome on it. Resting on that scrolled the
    * sheet out from under the finger, and pulled the Map pill's own glide straight back into
@@ -494,7 +523,7 @@ test.describe('Discover sheet — the browser’s own latching', () => {
       );
 
     await expect(page.getByTestId('sheet-ground')).toHaveClass(/riv-owns-viewport/);
-    expect(await rootOverscroll()).toBe('contain');
+    expect(await rootOverscroll()).toBe('none');
     expect(await documentScrolls(), 'the document scrolls, so this is not the trapped case').toBe(
       false,
     );

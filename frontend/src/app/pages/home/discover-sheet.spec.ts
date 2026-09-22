@@ -192,7 +192,11 @@ describe('DiscoverSheet', () => {
       expect(scroller().scrollTop).toBe(offsetFor(sheet().tops(), 'half'));
     } finally {
       globalThis.requestAnimationFrame = realFrame;
-      Object.defineProperty(view, 'innerHeight', { value: innerHeight, configurable: true });
+      Object.defineProperty(view, 'innerHeight', {
+        value: innerHeight,
+        configurable: true,
+        writable: true,
+      });
     }
   });
 
@@ -225,7 +229,11 @@ describe('DiscoverSheet', () => {
       expect(sheet().detent()).toBe('peek');
     } finally {
       globalThis.requestAnimationFrame = realFrame;
-      Object.defineProperty(view, 'innerHeight', { value: innerHeight, configurable: true });
+      Object.defineProperty(view, 'innerHeight', {
+        value: innerHeight,
+        configurable: true,
+        writable: true,
+      });
     }
   });
 
@@ -247,7 +255,11 @@ describe('DiscoverSheet', () => {
       expect(asked).toContain(-1);
       expect(scroller().scrollTop).toBe(-1);
     } finally {
-      Object.defineProperty(view, 'innerHeight', { value: innerHeight, configurable: true });
+      Object.defineProperty(view, 'innerHeight', {
+        value: innerHeight,
+        configurable: true,
+        writable: true,
+      });
     }
   });
 
@@ -287,15 +299,105 @@ describe('DiscoverSheet', () => {
     expect(sheet().detent()).toBe('peek');
   });
 
-  it('gives snapping back the moment a finger takes over a glide', async () => {
+  /** One finger at `y` (and `x`), at `t` ms, as the sheet's drag reads it. */
+  function finger(
+    type: 'touchstart' | 'touchmove' | 'touchend',
+    y: number,
+    t: number,
+    x = 200,
+  ): Event {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    const touches = type === 'touchend' ? [] : [{ clientX: x, clientY: y }];
+    Object.defineProperty(event, 'touches', { value: touches });
+    Object.defineProperty(event, 'timeStamp', { value: t });
+    return event;
+  }
+
+  /** A finger from `fromY` to `toY` over `ms`, in ten moves, on `target`. */
+  async function dragOn(
+    target: HTMLElement,
+    fromY: number,
+    toY: number,
+    ms: number,
+  ): Promise<Event[]> {
+    const moves: Event[] = [];
+    target.dispatchEvent(finger('touchstart', fromY, 0));
+    for (let step = 1; step <= 10; step += 1) {
+      const move = finger('touchmove', fromY + ((toY - fromY) * step) / 10, (ms * step) / 10);
+      moves.push(move);
+      target.dispatchEvent(move);
+    }
+    target.dispatchEvent(finger('touchend', toY, ms));
+    await settle();
+    return moves;
+  }
+
+  it("drags the sheet from half down to peek, which the grabber's tap never reaches", async () => {
+    const moves = await dragOn(byTestId('sheet-grabber')!, 400, 600, 600);
+    // The browser's own scroll is kept out, or iOS Safari hands the drag to pull-to-refresh.
+    expect(moves.every((move) => move.defaultPrevented)).toBe(true);
+    await whenSheetSettled(fixture);
+    expect(sheet().detent()).toBe('peek');
+    expect(scroller().scrollTop).toBe(0);
+  });
+
+  it('carries a fling from full down to half and no further', async () => {
     sheet().go('full');
     await settle();
-    expect(scroller().style.scrollSnapType).toBe('none');
+    await dragOn(byTestId('sheet-head')!, 200, 300, 50);
+    await whenSheetSettled(fixture);
+    expect(sheet().detent()).toBe('half');
+  });
 
-    byTestId('sheet')!.dispatchEvent(touch('touchstart', 1));
+  it("takes a drag down from the list's top at full, and leaves the list its own scroll", async () => {
+    sheet().go('full');
     await settle();
+    await whenSheetSettled(fixture);
+    const list = byTestId('sheet-list')!;
+
+    const up = await dragOn(list, 500, 300, 400);
+    expect(up.some((move) => move.defaultPrevented)).toBe(false);
+    expect(sheet().detent()).toBe('full');
+
+    list.scrollTop = 40;
+    const scrolledDown = await dragOn(list, 300, 500, 400);
+    expect(scrolledDown.some((move) => move.defaultPrevented)).toBe(false);
+    expect(sheet().detent()).toBe('full');
+
+    list.scrollTop = 0;
+    const pulled = await dragOn(list, 300, 520, 600);
+    expect(pulled.every((move) => move.defaultPrevented)).toBe(true);
+    await whenSheetSettled(fixture);
+    expect(sheet().detent()).toBe('half');
+  });
+
+  it('leaves a sideways touch to the browser: a rail or a photo', async () => {
+    const head = byTestId('sheet-head')!;
+    const from = scroller().scrollTop;
+    head.dispatchEvent(finger('touchstart', 400, 0, 100));
+    const sideways = finger('touchmove', 405, 20, 160);
+    head.dispatchEvent(sideways);
+    head.dispatchEvent(finger('touchmove', 440, 40, 220));
+    head.dispatchEvent(finger('touchend', 440, 60, 220));
+    await settle();
+    expect(sideways.defaultPrevented).toBe(false);
+    expect(scroller().scrollTop).toBe(from);
+  });
+
+  it('keeps snapping off under the finger for as long as the drag holds, however still', async () => {
+    const head = byTestId('sheet-head')!;
+    head.dispatchEvent(finger('touchstart', 400, 0));
+    head.dispatchEvent(finger('touchmove', 450, 20));
+    await settle();
+    expect(scroller().style.scrollSnapType).toBe('none');
+    // Outlast the quiet window with the finger held: a snap here would yank the sheet from it.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await settle();
+    expect(scroller().style.scrollSnapType).toBe('none');
+    head.dispatchEvent(finger('touchend', 450, 400));
+    await settle();
+    await whenSheetSettled(fixture);
     expect(scroller().style.scrollSnapType).toBe('');
-    byTestId('sheet')!.dispatchEvent(touch('touchend', 0));
   });
 
   it('keeps the guard while a second finger is still on the glass', async () => {
@@ -321,7 +423,11 @@ describe('DiscoverSheet', () => {
       byTestId('sheet')!.dispatchEvent(touch('touchend', 0));
       await whenSheetSettled(fixture);
     } finally {
-      Object.defineProperty(window, 'innerHeight', { value: innerHeight, configurable: true });
+      Object.defineProperty(window, 'innerHeight', {
+        value: innerHeight,
+        configurable: true,
+        writable: true,
+      });
     }
 
     expect(scroller().scrollTop).toBe(offsetFor(sheet().tops(), 'half'));
@@ -442,7 +548,11 @@ describe('DiscoverSheet', () => {
       byTestId('sheet')!.dispatchEvent(touch('touchend', 0));
       await whenSheetSettled(fixture);
     } finally {
-      Object.defineProperty(window, 'innerHeight', { value: innerHeight, configurable: true });
+      Object.defineProperty(window, 'innerHeight', {
+        value: innerHeight,
+        configurable: true,
+        writable: true,
+      });
     }
 
     // The rest the re-measure asked for is not lost, only held: it lands at the new geometry.
