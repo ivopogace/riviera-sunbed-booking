@@ -290,7 +290,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/loading-announcements.e2e.ts` — re-pointed at `/`, `results` → `sheet-outcome`.
 - `frontend/e2e/solid-fill-token-skin.e2e.ts` — re-pointed at `/` at a phone viewport.
 - `frontend/e2e/panel-glass-inks.e2e.ts` — re-pointed at `/` at a phone viewport.
-- `docs/design/colour-literal-token-audit.md` — the hero family's row closed with this PR.
+- `CONTEXT.md` — the **Pin preview** term retired; **Pin crowd**, **Venue sheet** and **Sheet head** corrected off the flag.
+- `docs/design/colour-literal-token-audit.md` — the sun family recounted at this slice.
 - `.claude/skills/riviera-tailwind/SKILL.md` — rule 2's stranded `--riv-hero-scrim` example replaced.
 - `docs/plans/shell-header-wide-route.md` — deleted at close-out (PR #1182 merged).
 
