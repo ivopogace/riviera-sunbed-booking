@@ -103,10 +103,10 @@ as an inert marker) · `playwright-cli` (the rendered dusk + the unchanged 92 px
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The chip's line box grows the name line past the price's, pushing the text column over `min-h-[72px]` and breaking the panel's 92 px row — `discover-map.e2e.ts`'s geometry and "selected row expands" tests both assert it | Low | High (two existing e2e tests red) | The column's three lines total ~56 px against a 72 px floor, so several px of slack exist; AC-7 measures the rendered height in Chromium rather than trusting the arithmetic | me | open |
-| R-2 | `filter` on the row anchor creates a containing block and a stacking context, capturing the absolutely-positioned `row-photo-empty` sun or re-ordering the panel's paint | Low | Medium | The sun's containing block is already the `relative` photo span inside the anchor, so nothing moves; the `data-selected` outline lives on the `<li>` **outside** the anchor and so is neither desaturated nor clipped | me | open |
-| R-3 | Desaturating the row drops an ink or the chip under WCAG AA in one of the three themes | Low | High (a11y regression on the surface the issue is about) | AC-5 and AC-6 compute it from the token mirrors over each theme's worst stops, the pattern `home.contrast.spec.ts`'s existing dusk-card describe already uses | me | open |
-| R-4 | A third hand-copy of the `saturate(0)` matrix (one in `home.contrast.spec.ts`, one in `venue-pin-layer.contrast.spec.ts`) drifts from the other two | Medium | Low | Promote `desaturate` to `testing/contrast.ts` and point all three at it — the generalization-audit pass, logged below | me | open |
+| R-1 | The chip's line box grows the name line past the price's, pushing the text column over `min-h-[72px]` and breaking the panel's 92 px row — `discover-map.e2e.ts`'s geometry and "selected row expands" tests both assert it | Low | High (two existing e2e tests red) | The column's three lines total ~56 px against a 72 px floor, so several px of slack exist; AC-7 measures the rendered height in Chromium rather than trusting the arithmetic | me | **materialised, inverted** — the chip's box is SHORTER (20.5 px) than the price's (24 px), not taller, so resting rows stayed 92 while the SELECTED closed row came out 118 against the pinned 121 and turned "the selected row expands" red. Measured in Chromium, then fixed at the cause: the name line holds `min-h-[24px]`, so dusk costs no height in either state and the panel does not jitter as the selection moves between a closed venue and a selling one. AC-7 now pins both 92 and 121. Closed in `1b5479ad`'s successor. |
+| R-2 | `filter` on the row anchor creates a containing block and a stacking context, capturing the absolutely-positioned `row-photo-empty` sun or re-ordering the panel's paint | Low | Medium | The sun's containing block is already the `relative` photo span inside the anchor, so nothing moves; the `data-selected` outline lives on the `<li>` **outside** the anchor and so is neither desaturated nor clipped | me | closed — the whole `discover-map.e2e.ts` panel describe (41 tests, pin placement, hit-testing and axe included) is green against the dusked panel |
+| R-3 | Desaturating the row drops an ink or the chip under WCAG AA in one of the three themes | Low | High (a11y regression on the surface the issue is about) | AC-5 and AC-6 compute it from the token mirrors over each theme's worst stops, the pattern `home.contrast.spec.ts`'s existing dusk-card describe already uses | me | closed in `1b5479ad` — worst case 5.63:1 (riviera soft ink), chip 6.91:1, against the 4.5 floor |
+| R-4 | A third hand-copy of the `saturate(0)` matrix (one in `home.contrast.spec.ts`, one in `venue-pin-layer.contrast.spec.ts`) drifts from the other two | Medium | Low | Promote `desaturate` to `testing/contrast.ts` and point all three at it — the generalization-audit pass, logged below | me | closed in `1b5479ad` |
 | R-5 | `semantic-chip.ts`'s TSDoc counts its call-site boxes ("five call sites", enumerated); a sixth box makes a substrate claim stale | High | Low | Counted and corrected in the same slice, and re-checked by the close-out sweep (`riviera-docs-freshness`) | me | open |
 
 ## Open questions / Assumptions
@@ -163,17 +163,17 @@ N/A — no contract change. `salesOpen`, `closedForSeason` and `reopensOn` are a
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3 done, phase 4 next)`
+**Stage pointer:** `implement (phase 4 done) — PR ready for review next`
 
-**Next action:** Phase 4 — the rendered e2e proof that dusk shows and costs no row height.
+**Next action:** Mark PR #1186 ready for review, then the review gate and the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan + branch | ✅ | `5fb2194b` |
 | 1 — The row wears dusk (AC-1, AC-2, AC-3) | ✅ | `19ed6afe` |
 | 2 — The panel arm pairs the sheet's proof (AC-4) | ✅ | `37f25213` |
-| 3 — Contrast under the filter (AC-5, AC-6) + the shared matrix | ⏳ | |
-| 4 — The rendered proof (AC-7) | | |
+| 3 — Contrast under the filter (AC-5, AC-6) + the shared matrix | ✅ | `1b5479ad` |
+| 4 — The rendered proof (AC-7) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -289,6 +289,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-22 | Phase 4: R-1 materialised — a slot whose two arms have different line boxes, inside a row whose height is pinned | Mechanism: every `@if/@else` slot in `venue-row.html` whose arms are not the same height | Read of the template's three conditional slots, then measured in Chromium with a probe on the rendered panel | 3 (the price/closed slot, the facts line's rating-vs-`New` arms, the selected-only chips band) | Price/closed slot: fixed here (`min-h-[24px]`). Facts line: **pre-existing**, measured at 23.5 px for an unrated row against 19.5 px for a rated one — invisible at rest (the 72 px photo floor absorbs it) but it would make a selected unrated row taller. Not introduced by this slice and outside #1185's scope, so reported in the PR rather than fixed here. Chips band: renders only when selected and only then adds height, which is its whole purpose — correct as is. |
 | 2026-09-22 | Phase 3: a third hand-copy of the Filter Effects `saturate` matrix | Mechanism: specs reimplementing the matrix instead of importing it | `grep -rn "0\.213 \*" frontend/src --include=*.spec.ts` | 2 (`home.contrast.spec.ts`, `venue-pin-layer.contrast.spec.ts`) | Both promoted onto `testing/contrast`'s `desaturate`; the new chip proof is its third consumer rather than a third copy. The two surviving one-line wrappers keep each spec's own return shape. |
 | 2026-09-22 | Phase 1: a tourist surface dropping a venue's closed state | Mechanism: every non-spec source that names `salesClosed`/`closedForSeason` — a wider population than "renders a `VenueCard`", which would have missed the beach map entirely | `grep -rln "salesClosed\|closedForSeason" frontend/src/app --include=*.ts --include=*.html \| grep -v spec.ts` | 11 | `home.html` (sheet card) ✅ dusks + chips; `venue-pin-layer.ts` ✅ dusks per crowd; `venue/venue-map.html` ✅ carries both claims already (lines 76, 223–236); `shared/venue-views.ts`, `home.ts`, `venue-card.ts` are the wire/record mappers, not surfaces; `operator/venue-tab.ts` + `operator-console.model.ts` are the operator's own console, a different audience from the tourist's dusk; `coast-picker.ts`, `place-groups.ts`, `pin-crowding.ts` take `VenueCard` for counting and geometry and render no closed state. `venue-row` was the sole gap — fixed here. No follow-up issue owed. |
 

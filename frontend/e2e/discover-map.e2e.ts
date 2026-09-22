@@ -1061,6 +1061,34 @@ test.describe('Discover map — the desktop panel', () => {
     expect(await visible()).toBe(seen);
   });
 
+  test('a closed row wears dusk beside a selling one, and neither row changes height', async ({
+    page,
+  }) => {
+    await openMap(page, { width: 1440, height: 900 });
+    const rows = page.getByTestId('venue-row');
+    const closed = rows.filter({ hasText: 'Borsh' });
+    const selling = rows.filter({ hasText: 'Aurora Bay' });
+
+    await expect(closed).toHaveCSS('filter', 'saturate(0)');
+    await expect(closed).toContainText('Closed today');
+    await expect(selling).toHaveCSS('filter', 'none');
+    await expect(selling).not.toContainText('Closed today');
+
+    // Dusk takes the PRICE's slot, not a line of its own, so it costs the row no height — which is
+    // what keeps the 92 px the geometry tests above this one measure true of EVERY row, and the
+    // 121 px of the one selected. The chip's box is shorter than the price's, so the name line
+    // holds its own; without that the panel jittered as the selection moved between the two.
+    const heights = async (): Promise<number[]> =>
+      rows.evaluateAll((all) => all.map((row) => Math.round(row.getBoundingClientRect().height)));
+    expect(new Set(await heights())).toEqual(new Set([92]));
+
+    await page.getByTestId('map-venue-pin').click();
+    await expect(closed).toHaveAttribute('aria-current', 'true');
+    await settle(page);
+
+    expect((await heights()).filter((height) => height !== 92)).toEqual([121]);
+  });
+
   test('a row under the pointer lights its venue’s face, and lets go when the pointer leaves', async ({
     page,
   }) => {
