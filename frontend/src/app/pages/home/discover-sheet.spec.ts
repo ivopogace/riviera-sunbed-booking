@@ -1,6 +1,8 @@
 import { Component, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 
+import { freezeClock } from '../../../testing/freeze-clock';
 import { whenSheetOpened } from '../../../testing/sheet-opened';
 import { whenSheetSettled } from '../../../testing/sheet-settled';
 import { DiscoverSheet } from './discover-sheet';
@@ -382,6 +384,67 @@ describe('DiscoverSheet', () => {
     await settle();
     expect(sideways.defaultPrevented).toBe(false);
     expect(scroller().scrollTop).toBe(from);
+  });
+
+  it('leaves a tap its own jitter: a few px is not a drag, and the grabber still cycles', async () => {
+    const grabber = byTestId('sheet-grabber')!;
+    const from = scroller().scrollTop;
+    grabber.dispatchEvent(finger('touchstart', 400, 0));
+    const jitter = finger('touchmove', 403, 30, 201);
+    grabber.dispatchEvent(jitter);
+    grabber.dispatchEvent(finger('touchend', 403, 60, 201));
+    await settle();
+    // A prevented move can cost the tap its click, so a jitter is never prevented.
+    expect(jitter.defaultPrevented).toBe(false);
+    expect(scroller().scrollTop).toBe(from);
+    expect(scroller().style.scrollSnapType).toBe('');
+
+    grabber.click();
+    await settle();
+    expect(sheet().detent()).toBe('full');
+  });
+
+  it('keeps the browser out of a pull from the list top at full before it is a drag', async () => {
+    sheet().go('full');
+    await settle();
+    await whenSheetSettled(fixture);
+    const list = byTestId('sheet-list')!;
+    list.scrollTop = 0;
+
+    list.dispatchEvent(finger('touchstart', 300, 0));
+    const pull = finger('touchmove', 303, 20);
+    list.dispatchEvent(pull);
+    list.dispatchEvent(finger('touchend', 303, 40));
+    await settle();
+
+    // iOS would start the list's own overscroll on it, and the claim at the slop would come too late.
+    expect(pull.defaultPrevented).toBe(true);
+    expect(sheet().detent()).toBe('full');
+
+    list.scrollTop = 40;
+    list.dispatchEvent(finger('touchstart', 300, 100));
+    const scrollBack = finger('touchmove', 303, 120);
+    list.dispatchEvent(scrollBack);
+    list.dispatchEvent(finger('touchend', 303, 140));
+    await settle();
+    expect(scrollBack.defaultPrevented, "the list scrolled inside is the list's own").toBe(false);
+  });
+
+  it('settles a drag whose touchend never came, once the finger has gone stale', async () => {
+    vi.useFakeTimers();
+    try {
+      const head = byTestId('sheet-head')!;
+      head.dispatchEvent(finger('touchstart', 400, 0));
+      head.dispatchEvent(finger('touchmove', 520, 20));
+      expect(scroller().style.scrollSnapType).toBe('none');
+      // The section went off the tree mid-drag, taking its touchend with it: none is dispatched.
+      vi.advanceTimersByTime(6_500);
+    } finally {
+      freezeClock();
+    }
+    await settle();
+    expect(scroller().style.scrollSnapType).toBe('');
+    expect(scroller().scrollTop).toBe(offsetFor(sheet().tops(), sheet().detent()));
   });
 
   it('keeps snapping off under the finger for as long as the drag holds, however still', async () => {

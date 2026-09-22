@@ -284,7 +284,7 @@ test.describe('Discover sheet — rests on measured chrome', () => {
   });
 });
 
-test.describe('Discover sheet — the browser’s own latching', () => {
+test.describe('Discover sheet — the sheet’s own drag and the list’s own scroll', () => {
   test.use({ hasTouch: true });
 
   test.beforeEach(async ({ page }) => {

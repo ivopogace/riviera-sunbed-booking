@@ -33,6 +33,8 @@ const TAB_BAR_SELECTOR = '.riv-tab-bar';
 const REVEAL_LEAD_PX = 8;
 /** The Map pill floats this far above the tab bar (or the window's bottom where there is none). */
 const MAP_PILL_LIFT_PX = 12;
+/** A touch moves this far before it is a drag: a tap's own jitter stays a tap. */
+const DRAG_SLOP_PX = 8;
 /** A drag's release speed is read over this last stretch of it. */
 const VELOCITY_WINDOW_MS = 100;
 /** How many frames the opening rest is retaken while the browser's snapping carries it elsewhere. */
@@ -60,20 +62,13 @@ const STALE_TOUCH_MS = 6_000;
  * <p>It is **two CSS scroll-snap scrollers**. The OUTER holds a transparent spacer over the map
  * with the peek and half rests as zero-height `snap-always` targets, then the sheet itself,
  * exactly one snapport tall, snapping at full. The INNER is the list: a scroller at full,
- * `overflow: clip` below it.
+ * `overflow: clip` below it. **A finger moves the sheet by its own drag** (`onDragMove`), because
+ * iOS Safari will not touch-scroll the outer scroller, which is `pointer-events: none` so the map
+ * keeps its gestures.
  *
- * <p>**A finger moves the sheet by the sheet's own drag, not the browser's scroll.** The outer
- * scroller is `pointer-events: none` so the map under the spacer takes its own gestures, and iOS
- * Safari will not touch-scroll a scroller that is: a drag on the sheet went past it to the page,
- * where Safari read it as pull-to-refresh. So a vertical touch on the head, on the list below
- * full, or down from the list's top at full is claimed on its first move (`touch-pan-x` and
- * `preventDefault` keep the browser out), follows the finger as the outer `scrollTop`, and on
- * release glides to `restAfterDrag`'s rest. A horizontal touch (a rail, a photo) and the list's
- * own scroll at full are left to the browser.
- *
- * <p>Below full the list cannot scroll, so a revealed row's lift is a translate, clamped as a scroller clamps, and
- * handed to the list's real `scrollTop` on arrival at full (and back on the way down), so the
- * rows never jump.
+ * <p>Below full the list cannot scroll, so a revealed row's lift is a translate, clamped as a
+ * scroller clamps, and handed to the list's real `scrollTop` on arrival at full (and back on the
+ * way down), so the rows never jump.
  *
  * <p>The shipped chrome is **measured at runtime, never a constant**: the tab bar's rendered
  * height (61 on a phone, 0 from `sm` where it is hidden) and the header's (73). The scrollers
@@ -103,7 +98,6 @@ const STALE_TOUCH_MS = 6_000;
         [style.top.px]="tops().full"
         [style.bottom.px]="chrome().tabBar"
         [attr.data-detent]="detent()"
-        [style.scroll-snap-type]="snapOff() ? 'none' : null"
         (scroll)="onScroll()"
       >
         <!-- overflow-anchor none: the spacer's height lands a pass after the first rest, and Chrome's scroll anchoring would carry the sheet to full with it. -->
@@ -211,15 +205,6 @@ export class DiscoverSheet {
   private readonly touched = signal(false);
   /** The scroll is still moving — a fling, a snap, or a `go` glide — until it goes quiet. */
   private readonly rolling = signal(false);
-  /**
-   * The sheet's drag or a `go` glide is moving it, and snapping is off under it until the scroll
-   * goes quiet. A mandatory snap container re-snaps every `scrollTop` a drag writes, and WebKit
-   * re-snaps to the target it last rested on whenever its layout changes — which the sheet's does
-   * on the way down (the list stops scrolling, the pill leaves), so on iOS the pill's glide was
-   * pulled straight back to full. With nothing to snap to, the sheet goes where it is sent;
-   * snapping returns there, on a rest point.
-   */
-  protected readonly snapOff = signal(false);
   /** The finger on the sheet: where it went down, and once it has moved, whether the drag is the sheet's. */
   private drag:
     | {
@@ -357,6 +342,8 @@ export class DiscoverSheet {
     this.staleTouchTimer = window?.setTimeout(() => {
       this.staleTouchTimer = undefined;
       this.touched.set(false);
+      // The same lost `touchend` strands a drag: settle it, or snapping stays off.
+      this.onDragEnd();
     }, STALE_TOUCH_MS);
   }
 
@@ -374,7 +361,7 @@ export class DiscoverSheet {
       this.quietTimer = undefined;
       this.rolling.set(false);
       if (this.drag?.owned !== true) {
-        this.snapOff.set(false);
+        this.snap(true);
       }
     }, SETTLE_QUIET_MS);
   }
@@ -410,6 +397,11 @@ export class DiscoverSheet {
     };
   }
 
+  /**
+   * A vertical touch the sheet `claims` follows the finger as the outer `scrollTop`, with the
+   * browser kept out (`touch-pan-x`, `preventDefault`) or iOS hands it to pull-to-refresh. A
+   * sideways touch (a rail, a photo) and the list's own scroll at full stay the browser's.
+   */
   protected onDragMove(event: TouchEvent): void {
     const drag = this.drag;
     const scroller = this.scroller()?.nativeElement;
@@ -420,14 +412,16 @@ export class DiscoverSheet {
     const dy = finger.clientY - drag.y;
     if (drag.owned === undefined) {
       const dx = finger.clientX - drag.x;
-      if (dx === 0 && dy === 0) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < DRAG_SLOP_PX) {
+        // Only the list at full scrolls natively; a pull down from its top must not start there.
+        if (this.atFull() && drag.inList && event.cancelable && this.claims(true, dy)) {
+          event.preventDefault();
+        }
         return;
       }
       drag.owned = Math.abs(dy) >= Math.abs(dx) && this.claims(drag.inList, dy);
       if (drag.owned) {
-        this.snapOff.set(true);
-        // Now, not at the next render: a move written before then is snapped, and glided, back.
-        scroller.style.scrollSnapType = 'none';
+        this.snap(false);
         scroller.style.scrollBehavior = 'auto';
       }
     }
@@ -457,7 +451,7 @@ export class DiscoverSheet {
     // The release glides; the drag's moves did not.
     scroller.style.scrollBehavior = '';
     const first = drag.samples[0];
-    const last = drag.samples[drag.samples.length - 1];
+    const last = drag.samples.at(-1) ?? first;
     const span = last.t - first.t;
     // Finger up is scroll down the spacer: the sign flips from screen y to scroll offset.
     const velocity = span > 0 ? (first.y - last.y) / span : 0;
@@ -475,7 +469,23 @@ export class DiscoverSheet {
     return dy > 0 && (this.list()?.nativeElement.scrollTop ?? 0) <= 0;
   }
 
-  /** Rest the sheet at a height; the scroller's own `scroll-behavior` decides whether it glides. */
+  /**
+   * Snapping is off while a drag or a glide moves the sheet, on again once it is quiet on a rest:
+   * a snap container re-snaps every `scrollTop` a drag writes, and WebKit re-snaps to its last
+   * rest on any layout change (the pill leaving mid-glide). Written now, not at the next render.
+   */
+  private snap(on: boolean): void {
+    const scroller = this.scroller()?.nativeElement;
+    if (scroller !== undefined) {
+      scroller.style.scrollSnapType = on ? '' : 'none';
+    }
+  }
+
+  /**
+   * Rest the sheet at a height; the scroller's own `scroll-behavior` decides whether it glides.
+   * Once opened, a call (a press or a drag's release) supersedes a rest still confirming itself;
+   * before that the opening rest owns the sheet.
+   */
   go(detent: Detent): void {
     const scroller = this.scroller()?.nativeElement;
     if (scroller === undefined) {
@@ -483,10 +493,8 @@ export class DiscoverSheet {
     }
     // A glide is in flight from here: a re-measure landing on top of it must not cut it short.
     this.keepRolling();
-    this.snapOff.set(true);
+    this.snap(false);
     const want = offsetFor(this.tops(), detent);
-    // Once opened, a press supersedes a rest still confirming itself, which would retake its old
-    // offset; before, the opening rest still owns the sheet and retakes over it.
     if (this.opened()) {
       this.restTarget = want;
     }
