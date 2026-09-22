@@ -1125,14 +1125,4 @@ test.describe('Discover map — the desktop panel', () => {
     await expectNoSeriousAxeViolations(page);
     await expectTouchTargets(page, 'the desktop panel with its coast picker');
   });
-
-  test('?map=off leaves today’s Discover at the same width', async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/?map=off');
-    await expect(page.getByTestId('venue-card').first()).toBeVisible();
-
-    await expect(page.getByTestId('desk-panel')).toHaveCount(0);
-    await expect(page.getByTestId('filter-beach')).toBeVisible();
-    await expect(page.getByTestId('map-panel')).toBeVisible();
-  });
 });

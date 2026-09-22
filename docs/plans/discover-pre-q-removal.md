@@ -237,17 +237,17 @@ exactly what they requested before.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)` — phases 0–2 landed green.
+**Stage pointer:** `implement (phase 5)` — phases 0–4 landed green.
 
-**Next action:** Phase 3 — the red specs: the parameter is inert, two arms by width.
+**Next action:** Phase 5 — retire `--riv-hero-scrim` and the citations it strands.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Collateral e2e re-pointed off the flag | ✅ | phase-0 commit |
 | 1 — `discovery-flow` + `touch-targets-tourist` onto the shipped design | ✅ | phase-1 commit |
 | 2 — `discover-map.e2e.ts` rewritten onto `/` | ✅ | phase-2 commit |
-| 3 — RED: the parameter is inert; two arms by width | | |
-| 4 — GREEN: delete the flag, the arm and `VenuePreviewCard` | | |
+| 3 — RED: the parameter is inert; two arms by width | ✅ | phase-3/4 commit |
+| 4 — GREEN: delete the flag, the arm and `VenuePreviewCard` | ✅ | phase-3/4 commit |
 | 5 — Retire `--riv-hero-scrim`, the hero classes and the stranded citations | | |
 | 6 — Gates, close-out, epic docs-freshness | | |
 

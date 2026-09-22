@@ -260,15 +260,21 @@ test.describe('Discover sheet — rests on measured chrome', () => {
     });
   }
 
-  test('?map=off leaves today’s Discover: the filter bar and the switch, no sheet', async ({
+  test('no preview card is rendered on any Discover surface, and no parameter brings one back', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: PHONE.width, height: PHONE.height });
-    await page.goto('/?map=off');
-    await expect(page.getByTestId('venue-card')).toHaveCount(7);
-    await expect(page.getByTestId('filter-beach')).toBeVisible();
-    await expect(page.getByTestId('view-switch')).toBeVisible();
-    await expect(page.getByTestId('sheet-scroller')).toHaveCount(0);
+    for (const viewport of [PHONE, { width: 1440, height: 900 }]) {
+      for (const path of ['/', '/?map=off', '/?map=sheet']) {
+        await page.setViewportSize({ width: viewport.width, height: viewport.height });
+        await page.goto(path);
+        await expect(
+          page.getByTestId('sheet-rows').or(page.getByTestId('desk-rows')),
+        ).toBeVisible();
+        await expect(page.getByTestId('venue-preview')).toHaveCount(0);
+        await expect(page.getByTestId('filter-beach')).toHaveCount(0);
+        await expect(page.getByTestId('view-switch')).toHaveCount(0);
+      }
+    }
   });
 });
 
