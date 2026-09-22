@@ -211,8 +211,9 @@ export class DiscoverSheet {
         });
       },
     });
+    // mixedReadWrite, not write: `rest` scrolls and reads back where it landed (see its doc).
     afterRenderEffect({
-      write: () => {
+      mixedReadWrite: () => {
         const tops = this.tops();
         const scroller = this.scroller()?.nativeElement;
         // Read unconditionally, so a re-measure taken mid-gesture still re-runs this once it settles.
@@ -250,6 +251,10 @@ export class DiscoverSheet {
    *
    * <p>Only the offset the sheet is resting for is still worth confirming: a re-measure starts a
    * rest for a new one, and a rest it superseded retires rather than undo it.
+   *
+   * <p>It scrolls and then reads back where the scroller actually landed — the browser clamps a
+   * rest to the scrollable range — so its caller runs in `mixedReadWrite`, the phase for work
+   * whose read cannot be divided from its write, never in `write`.
    */
   private rest(scroller: HTMLElement, want: number, attempt: number): void {
     this.restTarget = want;

@@ -1103,10 +1103,15 @@ body {
     day. Everywhere else the platform gesture is left alone: on a page that really scrolls it
     means "get me fresh data", which is what an operator watching for requests reaches for.
 
+    The second marker is for the other way the gesture can only cost: `.riv-holds-progress` says a
+    reload would destroy work in flight. The payment checkout wears it — a cold load there has no
+    hand-off, so it lands on `No payment in progress` with the card half-entered or the confirming
+    poll dropped, against a booking already AWAITING_PAYMENT.
+
     On the ROOT element, the only one `overscroll-behavior` propagates to the viewport from — on
     `body` it is ignored, unlike `overflow`. `contain` and not `none` keeps the page's own
-    overscroll. Render proof: e2e/discover-sheet.e2e.ts. */
-html:has(.riv-owns-viewport) {
+    overscroll. Render proof: e2e/discover-sheet.e2e.ts, e2e/booking-flow.e2e.ts. */
+html:has(.riv-owns-viewport, .riv-holds-progress) {
   overscroll-behavior-y: contain;
 }
 
