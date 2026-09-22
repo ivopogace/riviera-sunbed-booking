@@ -92,6 +92,7 @@ const STALE_TOUCH_MS = 6_000;
         [style.top.px]="tops().full"
         [style.bottom.px]="chrome().tabBar"
         [attr.data-detent]="detent()"
+        [style.scroll-snap-type]="gliding() ? 'none' : null"
         (scroll)="onScroll()"
       >
         <!-- overflow-anchor none: the spacer's height lands a pass after the first rest, and Chrome's scroll anchoring would carry the sheet to full with it. -->
@@ -197,6 +198,14 @@ export class DiscoverSheet {
   private readonly touched = signal(false);
   /** The scroll is still moving — a fling, a snap, or a `go` glide — until it goes quiet. */
   private readonly rolling = signal(false);
+  /**
+   * A `go` glide is running, and snapping is off under it until the scroll goes quiet. WebKit
+   * re-snaps a snap container to the target it last rested on whenever its layout changes, and
+   * the sheet's layout changes half way down (the list stops scrolling, the pill leaves) — so on
+   * iOS the pill's glide to half was pulled straight back to full. With nothing to snap to, the
+   * glide lands where it was sent; snapping returns there, on a rest point.
+   */
+  protected readonly gliding = signal(false);
   private quietTimer: number | undefined;
   private staleTouchTimer: number | undefined;
   private readonly moveFocus = focusMover({ preventScroll: true });
@@ -307,6 +316,8 @@ export class DiscoverSheet {
   protected onTouch(down: boolean): void {
     this.touched.set(down);
     if (down) {
+      // A finger takes the sheet over: its drag snaps as always.
+      this.gliding.set(false);
       this.watchForStaleTouch();
     } else {
       // The fling outlives the finger, so the quiet window carries on from here.
@@ -339,6 +350,7 @@ export class DiscoverSheet {
     this.quietTimer = window?.setTimeout(() => {
       this.quietTimer = undefined;
       this.rolling.set(false);
+      this.gliding.set(false);
     }, SETTLE_QUIET_MS);
   }
 
@@ -364,6 +376,7 @@ export class DiscoverSheet {
     }
     // A glide is in flight from here: a re-measure landing on top of it must not cut it short.
     this.keepRolling();
+    this.gliding.set(true);
     scrollScroller(scroller, offsetFor(this.tops(), detent));
     this.onScroll();
   }

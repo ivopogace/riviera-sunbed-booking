@@ -238,6 +238,33 @@ describe('DiscoverSheet', () => {
     expect(byTestId('sheet-map-pill')).toBeNull();
   });
 
+  it("turns snapping off under a press's glide and back on once it goes quiet", async () => {
+    sheet().go('full');
+    await settle();
+    await whenSheetSettled(fixture);
+    expect(scroller().style.scrollSnapType).toBe('');
+
+    byTestId('sheet-map-pill')!.click();
+    await settle();
+    // WebKit re-snaps to the sheet's last rest (full) when the layout flips mid-glide; nothing to snap to, nothing to pull back.
+    expect(scroller().style.scrollSnapType).toBe('none');
+
+    await whenSheetSettled(fixture);
+    expect(scroller().style.scrollSnapType).toBe('');
+    expect(sheet().detent()).toBe('half');
+  });
+
+  it('gives snapping back the moment a finger takes over a glide', async () => {
+    sheet().go('full');
+    await settle();
+    expect(scroller().style.scrollSnapType).toBe('none');
+
+    byTestId('sheet')!.dispatchEvent(touch('touchstart', 1));
+    await settle();
+    expect(scroller().style.scrollSnapType).toBe('');
+    byTestId('sheet')!.dispatchEvent(touch('touchend', 0));
+  });
+
   it('keeps the guard while a second finger is still on the glass', async () => {
     const window = el().ownerDocument.defaultView!;
     const innerHeight = window.innerHeight;
