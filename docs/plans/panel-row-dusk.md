@@ -163,15 +163,15 @@ N/A — no contract change. `salesOpen`, `closedForSeason` and `reopensOn` are a
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1 done, phase 2 next)`
+**Stage pointer:** `implement (phase 2 done, phase 3 next)`
 
-**Next action:** Phase 2 — the panel arm's pairing of the sheet's dusk proof in `home.spec.ts`.
+**Next action:** Phase 3 — the contrast proofs under the filter, on a shared `desaturate`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan + branch | ✅ | `5fb2194b` |
-| 1 — The row wears dusk (AC-1, AC-2, AC-3) | ⏳ | |
-| 2 — The panel arm pairs the sheet's proof (AC-4) | | |
+| 1 — The row wears dusk (AC-1, AC-2, AC-3) | ✅ | `19ed6afe` |
+| 2 — The panel arm pairs the sheet's proof (AC-4) | ⏳ | |
 | 3 — Contrast under the filter (AC-5, AC-6) + the shared matrix | | |
 | 4 — The rendered proof (AC-7) | | |
 
