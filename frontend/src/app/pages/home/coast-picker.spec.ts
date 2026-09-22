@@ -245,7 +245,7 @@ describe('CoastPicker', () => {
       );
       expect(names).toEqual([
         'Close',
-        '◎ Near me',
+        'Near me',
         'Durrës 3 venues from €20',
         'Golem 2 venues from €20',
         'Qerret 1 venue from €22',

@@ -222,7 +222,7 @@ describe('DiscoverSheet', () => {
     sheet().go('full');
     await settle();
     const pill = byTestId('sheet-map-pill')!;
-    expect(pill.textContent?.trim()).toContain('Map');
+    expect(pill.textContent?.trim()).toBe('Show map');
     expect(pill.parentElement?.style.bottom).toBe(`${sheet().chrome().tabBar + 12}px`);
 
     pill.click();

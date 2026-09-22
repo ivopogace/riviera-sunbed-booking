@@ -10,6 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 
+import { MapIcon } from '../../shared/map-icon';
 import { PanelGlass } from '../../shared/panel-glass';
 import { TouchTarget } from '../../shared/touch-target';
 import {
@@ -67,7 +68,7 @@ const SETTLE_QUIET_MS = 160;
  */
 @Component({
   selector: 'app-discover-sheet',
-  imports: [PanelGlass, TouchTarget],
+  imports: [MapIcon, PanelGlass, TouchTarget],
   host: {
     class: 'contents',
     '(window:resize)': 'remeasure()',
@@ -151,7 +152,7 @@ const SETTLE_QUIET_MS = 160;
           class="pointer-events-auto inline-flex h-11 touch-manipulation items-center gap-2 rounded-full bg-riv-accent-ink px-5 text-[15px] font-bold text-riv-on-accent-ink shadow-[0_10px_28px_rgba(7,42,58,0.35)]"
           (click)="go('half')"
         >
-          <span aria-hidden="true">⌖</span> Map
+          <app-map-icon /> Show map
         </button>
       </div>
     }

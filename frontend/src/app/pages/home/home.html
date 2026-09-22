@@ -302,7 +302,7 @@
         [appBusy]="locating()"
         (click)="locate()"
       >
-        <span aria-hidden="true">◎</span>&ngsp;{{ here() !== null ? 'You are here' : 'Near me' }}
+        <app-locate-icon />{{ here() !== null ? 'You are here' : 'Near me' }}
       </button>
     }
   </div>
@@ -584,7 +584,7 @@
           [appBusy]="locating()"
           (click)="locate()"
         >
-          <span aria-hidden="true">◎</span>&ngsp;{{ here() !== null ? 'You are here' : 'Near me' }}
+          <app-locate-icon />{{ here() !== null ? 'You are here' : 'Near me' }}
         </button>
       }
     </div>
