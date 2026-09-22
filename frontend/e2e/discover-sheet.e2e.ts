@@ -157,21 +157,26 @@ async function scrollTop(locator: Locator): Promise<number> {
   return locator.evaluate((el) => el.scrollTop);
 }
 
-/** The sheet has come to rest: the detent names it and the scroll position has stopped moving. */
-async function expectDetent(page: Page, expected: string): Promise<void> {
-  await expect.poll(() => detent(page), { timeout: 5_000 }).toBe(expected);
+/** The scroller has stopped moving: two reads agree, however slowly the runner drains its touches. */
+async function whenScrollQuiet(page: Page): Promise<void> {
   let last = -1;
   await expect
     .poll(
       async () => {
         const now = await scrollTop(scroller(page));
-        const settled = now === last;
+        const quiet = now === last;
         last = now;
-        return settled;
+        return quiet;
       },
       { timeout: 5_000 },
     )
     .toBe(true);
+}
+
+/** The sheet has come to rest: the detent names it and the scroll position has stopped moving. */
+async function expectDetent(page: Page, expected: string): Promise<void> {
+  await expect.poll(() => detent(page), { timeout: 5_000 }).toBe(expected);
+  await whenScrollQuiet(page);
 }
 
 async function top(locator: Locator): Promise<number> {
@@ -361,6 +366,7 @@ test.describe('Discover sheet — the browser’s own latching', () => {
     const clearRests = () =>
       page.evaluate(() => {
         (window as unknown as { __rests: unknown[] }).__rests = [];
+        (window as unknown as { __resizes: number[] }).__resizes = [];
       });
 
     // A drag up from half, with the URL bar collapsing a third of the way through it.
@@ -382,10 +388,9 @@ test.describe('Discover sheet — the browser’s own latching', () => {
       await page.waitForTimeout(25);
     }
     // The leg's own precondition: with no resize in the page, nothing would rest anyway.
-    expect(await resizes(), 'no resize reached the page, so this leg proves nothing').not.toEqual(
-      [],
-    );
-    // Held still past the quiet window: `pointercancel` has long since fired, so only touch holds.
+    await expect.poll(resizes, { timeout: 5_000 }).not.toEqual([]);
+    // The quiet window runs from the last scroll PROCESSED, not the last touch dispatched.
+    await whenScrollQuiet(page);
     await page.waitForTimeout(450);
     expect(await rests(), 'a re-measure scrolled the sheet under the finger').toEqual([]);
     await touch('touchEnd', from - 220);
