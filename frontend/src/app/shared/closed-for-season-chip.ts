@@ -3,7 +3,7 @@ import { Component, computed, input } from '@angular/core';
 import { formatDayMonth } from './booking-date';
 import { SemanticChip } from './semantic-chip';
 
-/** The two boxes the chip is laid out in: the Discover card's photo band and the beach-map header. */
+/** The boxes the chip is laid out in: the Discover card's photo band and the beach-map header. */
 export type ClosedForSeasonChipVariant = 'card' | 'header';
 
 const BOX: Record<ClosedForSeasonChipVariant, string> = {
@@ -15,7 +15,9 @@ const BOX: Record<ClosedForSeasonChipVariant, string> = {
  * The "Closed for season" badge — a platform claim about how booking will go, so it wears the
  * semantic-chip skin beside the mode chip on the Discover card and the beach-map header. Names the
  * reopen day when one is set ("· reopens 15 May"). The host drops out of layout; the call site picks
- * the box through `variant`, because the two surfaces already size their chips differently.
+ * the box through `variant`, because the surfaces size their chips differently. A surface too narrow
+ * for any of them states the claim in its own words, reopen day and all left to the accessible name,
+ * rather than taking a `variant` it cannot lay out — `pages/home/venue-row.ts`.
  */
 @Component({
   selector: 'app-closed-for-season-chip',

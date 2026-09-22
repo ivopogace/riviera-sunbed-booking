@@ -27,7 +27,10 @@ sentence is falsified by it (the counting sweep over chip/surface vocabulary cam
 **three** places in one doc comment — the enumeration plus two more in a later paragraph — stale
 since the desktop panel shipped its own three; the same phrase was echoed at
 `semantic-chip.spec.ts:64`. The first pass corrected only the enumeration and left the doc comment
-contradicting itself; the review gate caught the other two (F-1). **Plan-doc retirement:** `docs/plans/discover-pre-q-removal.md`
+contradicting itself; the review gate caught the other two (F-1). **The sweep's own miss**, caught by the review gate (F-5): it ran step 2's greps over the substrate
+docs and skipped step 3 — walking the map for a stated sentence the diff falsifies where no
+identifier matches. The two badge components' TSDocs name the surfaces their claims appear on, and
+the row now makes both claims outside either component. **Plan-doc retirement:** `docs/plans/discover-pre-q-removal.md`
 (#1168, merged via PR #1184) deleted here — nothing outside `docs/plans/` cited it.
 
 **Skills consulted:** `riviera-sdlc` (intake gate: the issue's open decision was already settled by
@@ -201,6 +204,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | Review gate (CLAUDE.md-adherence and git-history reviewers, independently) | `semantic-chip.ts:41,44` still said "all five call sites" / "all five boxes" after the same doc comment's enumeration was de-counted two paragraphs above — the file was left contradicting itself, and the plan's own close-out note claimed the staleness was fully fixed | fixed |
 | F-2 | Review gate (CLAUDE.md-adherence reviewer) | `venue-row.spec.ts:73`'s added comment cited `(round 7)` — a design-round reference a fresh session cannot resolve, the same class of provenance the comment rule bars even though the mechanical guard's `#NNN` pattern does not match it | fixed |
 | F-3 | Maintainer, on the generalization audit's own report | The facts line's pre-existing arm mismatch (an unrated row's `New` chip at 23.5 px against a rated row's 19.5) — reported rather than fixed, and asked for | fixed |
+| F-5 | Review gate (code-comment reviewer) | `sales-closed-chip.ts` and `closed-for-season-chip.ts` name the surfaces their claims render on, and the row now makes both claims outside either component — so a fresh session would read them as exhaustive, and would read `variant` as the only way a new box is ever added. My own docs-freshness sweep missed it: I grepped the substrate docs for the vocabulary, and this is step 3's case, a stated sentence falsified with no identifier matching. One pointer line added to each | fixed |
 | F-4 | Review gate (prior-PR reviewer, citing PR #862's own review finding and §6d) | Two doc comments carried decision history rather than the contract: `venue-row.ts` narrated the 3 px regression found mid-slice, and `semantic-chip.ts` said a count was "deliberately not given" — the exact phrasing §6d names — around a historical count of its own. Both restated as the standing rule, which also generalised the row's paragraph from one slot to every slot on those lines | fixed |
 
 ---
@@ -219,6 +223,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/semantic-chip.contrast.spec.ts` — AC-6
 - `frontend/src/app/shared/semantic-chip.ts` — the call-site enumeration in its TSDoc, corrected
 - `frontend/src/app/shared/semantic-chip.spec.ts` — the same stale count, echoed in a comment
+- `frontend/src/app/shared/sales-closed-chip.ts` — a pointer to the surface that states the claim in its own words
+- `frontend/src/app/shared/closed-for-season-chip.ts` — the same, and `variant` no longer reads as the only way to add a box
 - `frontend/src/testing/contrast.ts` — `desaturate`, promoted out of the two specs that had it
 - `frontend/e2e/discover-map.e2e.ts` — AC-7, and AC-8's unrated row
 
