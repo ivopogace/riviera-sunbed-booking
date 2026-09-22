@@ -6,12 +6,12 @@
     [attr.data-venue-pin]="card.id"
     [attr.data-selected]="isSelected(card) ? '' : null"
   >
-    <!-- In sheet mode a venue whose sales for today have closed wears dusk: desaturated, never faded — a faded row put its name under 3:1. -->
+    <!-- A venue whose sales for today have closed wears dusk: desaturated, never faded — a faded row put its name under 3:1. -->
     <a
       class="card flex h-full flex-col overflow-hidden rounded-[28px] no-underline shadow-[0_12px_40px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7] motion-safe:[transition:transform_0.2s_ease,box-shadow_0.2s_ease,border-color_0.2s_ease] group-hover/card:border-riv-card-hover-border group-hover/card:shadow-riv-card-hover motion-safe:group-hover/card:[transform:translateY(-5px)] focus-visible:shadow-[0_0_0_7px_color-mix(in_srgb,var(--riv-accent-ink)_90%,transparent)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
       appCardGlass
       data-testid="venue-card"
-      [class.saturate-0]="sheetMode() && card.salesClosed"
+      [class.saturate-0]="card.salesClosed"
       [routerLink]="['/venues', card.id]"
       [queryParams]="{ date: selectedDate() }"
       [attr.aria-label]="card.ariaLabel"
