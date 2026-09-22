@@ -23,9 +23,11 @@ panel-geometry proofs, unchanged.
 **Docs-freshness:** run over this slice's diff (`origin/main..HEAD`). **Zero findings in the
 substrate docs** — no `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, ADR, design-doc or skill
 sentence is falsified by it (the counting sweep over chip/surface vocabulary came back empty).
-**Two findings in source prose**, both fixed here: `semantic-chip.ts`'s "five call sites"
-enumeration, stale since the desktop panel shipped its own three in #1159, and the same phrase
-echoed at `semantic-chip.spec.ts:64`. **Plan-doc retirement:** `docs/plans/discover-pre-q-removal.md`
+**Findings in source prose**, all fixed here: `semantic-chip.ts` claimed "five call sites" in
+**three** places in one doc comment — the enumeration plus two more in a later paragraph — stale
+since the desktop panel shipped its own three; the same phrase was echoed at
+`semantic-chip.spec.ts:64`. The first pass corrected only the enumeration and left the doc comment
+contradicting itself; the review gate caught the other two (F-1). **Plan-doc retirement:** `docs/plans/discover-pre-q-removal.md`
 (#1168, merged via PR #1184) deleted here — nothing outside `docs/plans/` cited it.
 
 **Skills consulted:** `riviera-sdlc` (intake gate: the issue's open decision was already settled by
@@ -83,6 +85,11 @@ as an inert marker) · `playwright-cli` (the rendered dusk + the unchanged 92 px
   costs no height, so the panel-geometry tests above it keep measuring what they claim to.
   *Seam:* the built app at `/` · *Pinned by:* `discover-map.e2e.ts` › `Discover map — the desktop
   panel` › `a closed row wears dusk beside a selling one, and neither row changes height`
+- [x] **AC-8:** Given a rated venue and an unrated one on the panel, when both rows render, then
+  their facts lines are the same height — the `New` chip is an arm of that slot, and an arm that
+  cost more would make a selected unrated row taller than its neighbours.
+  *Seam:* the built app at `/` · *Pinned by:* `discover-map.e2e.ts` › `an unrated row costs the
+  same as a rated one: the New chip does not grow its line`
 
 ## Non-goals
 
@@ -115,7 +122,7 @@ as an inert marker) · `playwright-cli` (the rendered dusk + the unchanged 92 px
 | R-2 | `filter` on the row anchor creates a containing block and a stacking context, capturing the absolutely-positioned `row-photo-empty` sun or re-ordering the panel's paint | Low | Medium | The sun's containing block is already the `relative` photo span inside the anchor, so nothing moves; the `data-selected` outline lives on the `<li>` **outside** the anchor and so is neither desaturated nor clipped | me | closed — the whole `discover-map.e2e.ts` panel describe (41 tests, pin placement, hit-testing and axe included) is green against the dusked panel |
 | R-3 | Desaturating the row drops an ink or the chip under WCAG AA in one of the three themes | Low | High (a11y regression on the surface the issue is about) | AC-5 and AC-6 compute it from the token mirrors over each theme's worst stops, the pattern `home.contrast.spec.ts`'s existing dusk-card describe already uses | me | closed in `1b5479ad` — worst case 5.63:1 (riviera soft ink), chip 6.91:1, against the 4.5 floor |
 | R-4 | A third hand-copy of the `saturate(0)` matrix (one in `home.contrast.spec.ts`, one in `venue-pin-layer.contrast.spec.ts`) drifts from the other two | Medium | Low | Promote `desaturate` to `testing/contrast.ts` and point all three at it — the generalization-audit pass, logged below | me | closed in `1b5479ad` |
-| R-5 | `semantic-chip.ts`'s TSDoc counts its call-site boxes ("five call sites", enumerated); a sixth box makes a substrate claim stale | High | Low | Counted and corrected in the same slice, and re-checked by the close-out sweep (`riviera-docs-freshness`) | me | closed — and the count was **already** wrong before this slice: nine `appSemanticChip` sites in four boxes, the panel row's own three uncounted since #1159. Replaced with the four box families and no count, plus the same stale phrase echoed in `semantic-chip.spec.ts:64` |
+| R-5 | `semantic-chip.ts`'s TSDoc counts its call-site boxes ("five call sites", enumerated); a sixth box makes a substrate claim stale | High | Low | Counted and corrected in the same slice, and re-checked by the close-out sweep (`riviera-docs-freshness`) | me | closed — and the count was **already** wrong before this slice: nine `appSemanticChip` sites in four boxes, the panel row's own three uncounted since the panel shipped. Replaced with the four box families and no count. The mitigation as written was not enough: a `grep -n five` would have caught all three in one pass, where reading the paragraph under edit caught one. Closed only after F-1 |
 
 ## Open questions / Assumptions
 
@@ -171,9 +178,9 @@ N/A — no contract change. `salesOpen`, `closedForSeason` and `reopensOn` are a
 
 ## Execution status
 
-**Stage pointer:** `implement (phases 0–4 done, docs-freshness run) — PR ready for review next`
+**Stage pointer:** `review gate — fixing findings (F-1, F-2, F-3 fixed; reviewers still reporting)`
 
-**Next action:** Mark PR #1186 ready for review, then the review gate and the Sonar gate.
+**Next action:** Finish collecting the review gate's findings, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -182,7 +189,8 @@ N/A — no contract change. `salesOpen`, `closedForSeason` and `reopensOn` are a
 | 2 — The panel arm pairs the sheet's proof (AC-4) | ✅ | `37f25213` |
 | 3 — Contrast under the filter (AC-5, AC-6) + the shared matrix | ✅ | `1b5479ad` |
 | 4 — The rendered proof (AC-7) | ✅ | `223280e9` |
-| 5 — Docs freshness + plan retirement | ✅ | `3ac9e1e9` |
+| 5 — Docs freshness + plan retirement | ✅ | `3ac9e1e9`, `b6d57fa7` |
+| 6 — Review-gate findings (F-1, F-2, F-3) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -190,7 +198,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
-| F-1 | — | none yet | — |
+| F-1 | Review gate (CLAUDE.md-adherence and git-history reviewers, independently) | `semantic-chip.ts:41,44` still said "all five call sites" / "all five boxes" after the same doc comment's enumeration was de-counted two paragraphs above — the file was left contradicting itself, and the plan's own close-out note claimed the staleness was fully fixed | fixed |
+| F-2 | Review gate (CLAUDE.md-adherence reviewer) | `venue-row.spec.ts:73`'s added comment cited `(round 7)` — a design-round reference a fresh session cannot resolve, the same class of provenance the comment rule bars even though the mechanical guard's `#NNN` pattern does not match it | fixed |
+| F-3 | Maintainer, on the generalization audit's own report | The facts line's pre-existing arm mismatch (an unrated row's `New` chip at 23.5 px against a rated row's 19.5) — reported rather than fixed, and asked for | fixed |
+| F-4 | Review gate (prior-PR reviewer, citing PR #862's own review finding and §6d) | Two doc comments carried decision history rather than the contract: `venue-row.ts` narrated the 3 px regression found mid-slice, and `semantic-chip.ts` said a count was "deliberately not given" — the exact phrasing §6d names — around a historical count of its own. Both restated as the standing rule, which also generalised the row's paragraph from one slot to every slot on those lines | fixed |
 
 ---
 
@@ -199,7 +210,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `docs/plans/panel-row-dusk.md` — this plan
 - `docs/plans/discover-pre-q-removal.md` — deleted: slice 5's plan, merged via PR #1184, retired at
   this close-out per `riviera-docs-freshness` § *Plan-doc retirement*
-- `frontend/src/app/pages/home/venue-row.html` — the dusk filter and the closed chip in the price slot
+- `frontend/src/app/pages/home/venue-row.html` — the dusk filter, the closed chip in the price slot, and the `New` chip's line box held to the text beside it
 - `frontend/src/app/pages/home/venue-row.ts` — the `closedLabel` computed and the TSDoc that says why
 - `frontend/src/app/pages/home/venue-row.spec.ts` — AC-1, AC-2, AC-3
 - `frontend/src/app/pages/home/home.spec.ts` — AC-4, in the `from lg: the panel` describe
@@ -209,7 +220,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/semantic-chip.ts` — the call-site enumeration in its TSDoc, corrected
 - `frontend/src/app/shared/semantic-chip.spec.ts` — the same stale count, echoed in a comment
 - `frontend/src/testing/contrast.ts` — `desaturate`, promoted out of the two specs that had it
-- `frontend/e2e/discover-map.e2e.ts` — AC-7
+- `frontend/e2e/discover-map.e2e.ts` — AC-7, and AC-8's unrated row
 
 ---
 
@@ -299,7 +310,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-09-22 | Phase 4: R-1 materialised — a slot whose two arms have different line boxes, inside a row whose height is pinned | Mechanism: every `@if/@else` slot in `venue-row.html` whose arms are not the same height | Read of the template's three conditional slots, then measured in Chromium with a probe on the rendered panel | 3 (the price/closed slot, the facts line's rating-vs-`New` arms, the selected-only chips band) | Price/closed slot: fixed here (`min-h-[24px]`). Facts line: **pre-existing**, measured at 23.5 px for an unrated row against 19.5 px for a rated one — invisible at rest (the 72 px photo floor absorbs it) but it would make a selected unrated row taller. Not introduced by this slice and outside #1185's scope, so reported in the PR rather than fixed here. Chips band: renders only when selected and only then adds height, which is its whole purpose — correct as is. |
+| 2026-09-22 | Phase 4: R-1 materialised — a slot whose two arms have different line boxes, inside a row whose height is pinned | Mechanism: every `@if/@else` slot in `venue-row.html` whose arms are not the same height | Read of the template's three conditional slots, then measured in Chromium with a probe on the rendered panel | 3 (the price/closed slot, the facts line's rating-vs-`New` arms, the selected-only chips band) | Price/closed slot: fixed here (`min-h-[24px]`). Facts line: **pre-existing**, measured at 23.5 px for an unrated row against 19.5 px for a rated one — invisible at rest (the 72 px photo floor absorbs it) but it would make a selected unrated row taller. Reported rather than fixed, then **fixed on the maintainer's call** (F-3): the `New` chip takes `leading-[15.5px]`, so its pill plus 1 px padding and 1 px border on each side costs exactly the 19.5 px the text beside it does. Shrinking the chip rather than raising the line is what keeps the pinned 121 px true; the line cannot simply grow, since `row-facts` truncates and would clip a taller pill. Chips band: renders only when selected and only then adds height, which is its whole purpose — correct as is. |
 | 2026-09-22 | Phase 3: a third hand-copy of the Filter Effects `saturate` matrix | Mechanism: specs reimplementing the matrix instead of importing it | `grep -rn "0\.213 \*" frontend/src --include=*.spec.ts` | 2 (`home.contrast.spec.ts`, `venue-pin-layer.contrast.spec.ts`) | Both promoted onto `testing/contrast`'s `desaturate`; the new chip proof is its third consumer rather than a third copy. The two surviving one-line wrappers keep each spec's own return shape. |
 | 2026-09-22 | Phase 1: a tourist surface dropping a venue's closed state | Mechanism: every non-spec source that names `salesClosed`/`closedForSeason` — a wider population than "renders a `VenueCard`", which would have missed the beach map entirely | `grep -rln "salesClosed\|closedForSeason" frontend/src/app --include=*.ts --include=*.html \| grep -v spec.ts` | 11 | `home.html` (sheet card) ✅ dusks + chips; `venue-pin-layer.ts` ✅ dusks per crowd; `venue/venue-map.html` ✅ carries both claims already (lines 76, 223–236); `shared/venue-views.ts`, `home.ts`, `venue-card.ts` are the wire/record mappers, not surfaces; `operator/venue-tab.ts` + `operator-console.model.ts` are the operator's own console, a different audience from the tourist's dusk; `coast-picker.ts`, `place-groups.ts`, `pin-crowding.ts` take `VenueCard` for counting and geometry and render no closed state. `venue-row` was the sole gap — fixed here. No follow-up issue owed. |
 

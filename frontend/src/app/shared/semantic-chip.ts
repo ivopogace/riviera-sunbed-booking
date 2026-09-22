@@ -31,17 +31,17 @@ import { Directive } from '@angular/core';
  * sales-closed and closed-for-season chips); the same caps at the panel row's tighter padding (its
  * mode chip, and the closed chip its price slot gives way to); `px-[9px] py-px` at whatever size
  * the line around it sets, which is 13.5px in the Discover card's rating row and 13px in the panel
- * row's facts line; and 0.78rem in the beach-map header, at two paddings. A count is deliberately
- * not given — this enumeration went stale once already when the desktop panel shipped its own
- * three. The family asks for no layout shift, so each site keeps its own box
+ * row's facts line; and 0.78rem in the beach-map header, at two paddings. Named by family and not
+ * counted, so a new call site joins one rather than falsifying the line. No layout shift is the
+ * standing constraint, so each site keeps its own box
  * and the directive supplies only what makes the family read as one. That is the opposite of the
  * `amenity-chip` / `status-chip` split, where the whole pill IS the recipe; the difference is
  * that those two own every one of their call sites' boxes and this one owns none.
  *
- * <p>`rounded-full` and `border` DO belong here: all five call sites already agreed on both, and
+ * <p>`rounded-full` and `border` DO belong here: every call site already agreed on both, and
  * leaving a radius at the call site beside one in a directive is the stylesheet-order coin-flip
  * `shared/panel-glass.ts` documents. The border's *width* is what must not move — every call
- * site had a 1px border before, so swapping only its colour keeps all five boxes identical.
+ * site had a 1px border before, so swapping only its colour keeps every box identical.
  *
  * <p>The literal marker class `semantic-chip` is retained as an inert hook in the sibling
  * directives' style, and here it is load-bearing: `home.spec.ts`, `venue-row.spec.ts` and

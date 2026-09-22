@@ -70,7 +70,7 @@ describe('VenueRow', () => {
     const row = byTestId(host, 'venue-row')!;
 
     expect(row.classList.contains('saturate-0')).toBe(true);
-    // Desaturated, never faded: a faded row put its name under 3:1 in every theme (round 7).
+    // Desaturated, never faded: a faded row puts its name under 3:1 in every theme.
     expect([...row.classList].some((cls) => cls.startsWith('opacity-'))).toBe(false);
     expect(byTestId(host, 'row-price')).toBeNull();
     expect(text(byTestId(host, 'row-closed'))).toBe('Closed today');

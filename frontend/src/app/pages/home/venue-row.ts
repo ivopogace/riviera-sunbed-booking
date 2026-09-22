@@ -21,13 +21,11 @@ import { VenueCard } from './venue-card';
  *
  * <p>A venue whose sales for the chosen day have closed (invariant #4) keeps its row but wears
  * **dusk**, as its card does on the sheet and its pin does on the map: desaturated, never faded —
- * a faded row put its name under 3:1 in every theme — and the **price gives way** to the fact that
- * outranks it. The price's own slot is what carries the chip, which is why dusk costs the row no
- * height and the panel's geometry proofs still measure 92 px at rest and 121 px selected. That
- * only holds because the name line HOLDS the price's 24 px box: the chip's own is 20.5 px, so
- * without the floor a selected closed row came out 3 px short and the panel jittered as the
- * selection moved between a closed venue and a selling one. Colour alone would leave the state
- * invisible to a tourist who cannot see it (WCAG 1.4.1), and text alone is what the panel had.
+ * a fade puts the name under 3:1 in every theme — and the **price gives way** to the chip, which
+ * carries the state where colour alone would not (WCAG 1.4.1). The chip takes the price's own
+ * slot, so the row costs 92 px closed or selling, 121 px selected. Every arm of a slot on those
+ * lines must cost what the others do, or the panel's rhythm tracks each venue's state: the name
+ * line holds a 24 px floor for the shorter chip, the `New` chip is held to the text beside it.
  *
  * <p>The **selected** row is the only one that expands, to its amenity chips and its booking mode,
  * and only when that mode is not the default — `Instant Book` on twenty rows of twenty-six is
