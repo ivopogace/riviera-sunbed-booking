@@ -259,6 +259,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | intake gate | The issue names 3 e2e files; the tree has 13 touching `?map=off`. Recorded on the issue. | open |
 | F-2 | intake gate | The epic's close-out note says retire `docs/plans/pin-layer-placement.md`; already retired at #1166. The plan this close-out must `git rm` is `shell-header-wide-route.md` (PR #1182, merged). | open |
+| F-3 | CI (Repo hygiene) | `check-inline-comments.mjs` failed on four multi-line inline comments and two "no longer" narrations the phase 0–4 commits introduced. | fixed in the phase-5 window |
+| F-4 | CI (Frontend) | `theme-shell.e2e.ts`'s pre-navigation paint test identified the Discover chunk by the `filter-beach` testid, which this slice deletes, so it withheld nothing and the assertion went vacuous-then-red. Re-pointed at `sheet-ground`. | fixed |
 
 ---
 

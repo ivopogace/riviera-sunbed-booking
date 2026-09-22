@@ -109,7 +109,7 @@ test.describe('pre-navigation shell paint (#992)', () => {
     await page.route(/chunk-[A-Z0-9]+\.js/i, async (route) => {
       const response = await route.fetch();
       const body = await response.text();
-      if (body.includes('filter-beach')) {
+      if (body.includes('sheet-ground')) {
         withheld++;
         return;
       }
