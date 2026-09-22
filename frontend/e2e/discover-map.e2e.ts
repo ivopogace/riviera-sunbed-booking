@@ -817,14 +817,15 @@ function mapVenue(
   longitude: number,
   minorUnits: number,
   salesOpen = true,
+  reviewsCount = 143,
 ): Record<string, unknown> {
   return {
     id,
     name,
     beach,
     region,
-    ratingTenths: 46,
-    reviewsCount: 143,
+    ratingTenths: reviewsCount === 0 ? 0 : 46,
+    reviewsCount,
     bookingMode: 'REQUEST',
     amenities: ['BEACH_BAR', 'SNORKELLING'],
     fromPrice: { minorUnits, currency: 'EUR' },
@@ -1059,6 +1060,59 @@ test.describe('Discover map — the desktop panel', () => {
     const after = await heights();
     expect(after.filter((height) => height !== 92)).toEqual([121]);
     expect(await visible()).toBe(seen);
+  });
+
+  test('a closed row wears dusk beside a selling one, and neither row changes height', async ({
+    page,
+  }) => {
+    await openMap(page, { width: 1440, height: 900 });
+    const rows = page.getByTestId('venue-row');
+    const closed = rows.filter({ hasText: 'Borsh' });
+    const selling = rows.filter({ hasText: 'Aurora Bay' });
+
+    await expect(closed).toHaveCSS('filter', 'saturate(0)');
+    await expect(closed).toContainText('Closed today');
+    await expect(selling).toHaveCSS('filter', 'none');
+    await expect(selling).not.toContainText('Closed today');
+
+    // The filter greys the anchor's own outline too, so the focus ring must not carry hue to lose.
+    const ring = await closed.evaluate((row: HTMLElement) => {
+      row.focus();
+      return getComputedStyle(row).outlineColor;
+    });
+    expect(ring).toMatch(/^rgba?\((\d+), \1, \1[,)]/);
+
+    // Dusk takes the price's slot, so both the 92 px above and the 121 px below stay true of it.
+    const heights = async (): Promise<number[]> =>
+      rows.evaluateAll((all) => all.map((row) => Math.round(row.getBoundingClientRect().height)));
+    expect(new Set(await heights())).toEqual(new Set([92]));
+
+    await page.getByTestId('map-venue-pin').click();
+    await expect(closed).toHaveAttribute('aria-current', 'true');
+    await settle(page);
+
+    expect((await heights()).filter((height) => height !== 92)).toEqual([121]);
+  });
+
+  test('an unrated row costs the same as a rated one: the New chip does not grow its line', async ({
+    page,
+  }) => {
+    // The `New` chip is the facts line's other arm, and a pill is taller than the text beside it.
+    await mockVenues(page, 0, [
+      mapVenue(40, 'Rated Venue', 'DHERMI', 'HIMARE', 40.176, 19.586, 2500),
+      mapVenue(41, 'Unrated Venue', 'DHERMI', 'HIMARE', 40.174, 19.589, 2500, true, 0),
+    ]);
+    await openMap(page, { width: 1440, height: 900 });
+    const rows = page.getByTestId('venue-row');
+    await expect(rows).toHaveCount(2);
+    await expect(rows.filter({ hasText: 'Unrated Venue' })).toContainText('New');
+
+    const facts = await rows.evaluateAll((all) =>
+      all.map((row) =>
+        Math.round(row.querySelector('[data-testid="row-facts"]')!.getBoundingClientRect().height),
+      ),
+    );
+    expect(new Set(facts)).toHaveProperty('size', 1);
   });
 
   test('a row under the pointer lights its venue’s face, and lets go when the pointer leaves', async ({

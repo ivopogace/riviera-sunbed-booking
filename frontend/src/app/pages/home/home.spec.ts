@@ -1587,6 +1587,19 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
       expect(rows().filter((row) => row.hasAttribute('aria-current'))).toHaveLength(1);
     });
 
+    it('wears dusk on the panel row whose sales for today have closed, as the sheet’s card does', async () => {
+      const fixture = await panelPage();
+      // Himarë's two: Palasa Sands has closed for the day, Aurora Bay is still selling.
+      const [closed, selling] = [
+        ...el(fixture).querySelectorAll<HTMLElement>('[data-testid="venue-row"]'),
+      ];
+
+      expect(closed.classList.contains('saturate-0')).toBe(true);
+      expect(text(closed.querySelector('[data-testid="row-closed"]'))).toBe('Closed today');
+      expect(selling.classList.contains('saturate-0')).toBe(false);
+      expect(selling.querySelector('[data-testid="row-closed"]')).toBeNull();
+    });
+
     it('hands the layer the panel’s own Near me, which the map component does not draw', async () => {
       const fixture = await panelPage();
       const nearMe = byTestId(fixture, 'desk-near-me')!;

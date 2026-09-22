@@ -72,3 +72,19 @@ export function composite(fg: Rgb, alpha: number, bg: Rgb): Rgb {
     Math.round(alpha * fg[2] + (1 - alpha) * bg[2]),
   ];
 }
+
+/**
+ * What `filter: saturate(0)` leaves — the paint of a DUSK surface, where a venue whose online sales
+ * for the day have closed is greyed rather than faded (a faded surface put its name under 3:1 in
+ * every theme). Filter Effects' saturate matrix at 0 collapses every channel to one
+ * luminance-weighted mix **in sRGB**, which is not the linearised relative luminance
+ * {@link contrastRatio} then takes — so a dusk pair has to be measured AFTER the matrix, never
+ * before it. The coefficients are the specification's.
+ *
+ * <p>What the filter can reach is the call site's question, not this function's: it greys the
+ * element it is on and everything inside, and nothing an ancestor painted behind it.
+ */
+export function desaturate([red, green, blue]: Rgb): Rgb {
+  const grey = Math.round(0.213 * red + 0.715 * green + 0.072 * blue);
+  return [grey, grey, grey];
+}

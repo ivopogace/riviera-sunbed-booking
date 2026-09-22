@@ -3,6 +3,7 @@ import {
   Rgb,
   composite,
   contrastRatio,
+  desaturate,
   hexToRgb,
   rgbToHex,
 } from '../../../testing/contrast';
@@ -225,15 +226,10 @@ describe('Discover photo-area contrast (theme-independent, issue #135; real phot
  * fed the very record a list card renders.
  */
 /**
- * A dusk row is `saturate(0)` over the whole card — the Filter Effects `saturate` matrix, applied
- * to the ink and to the card glass alike (over each theme's stops), which keeps luminance and so
- * keeps contrast; a faded row (opacity) would not. The matrix rows are the specification's.
+ * A dusk CARD is `saturate(0)` over the whole of it — the filter is on the card anchor, which owns
+ * the glass, so the ink and the surface under it are greyed together; a faded card (opacity) would
+ * not keep the pair. The matrix itself lives in `testing/contrast`.
  */
-function desaturate([r, g, b]: Rgb): Rgb {
-  const lum = 0.213 * r + 0.715 * g + 0.072 * b;
-  return [Math.round(lum), Math.round(lum), Math.round(lum)];
-}
-
 describe.each(THEMES)('Discover dusk row contrast — $name theme', (theme) => {
   it('card ink still meets AA on the card glass once both are desaturated', () => {
     for (const stop of theme.stops) {
@@ -252,6 +248,38 @@ describe.each(THEMES)('Discover dusk row contrast — $name theme', (theme) => {
       const accent = desaturate(theme.accent);
       expect(
         contrastRatio(rgbToHex(accent), rgbToHex(glass)),
+        `over ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+});
+
+/**
+ * A dusk PANEL row differs from the dusk card above in what the filter can reach. `saturate-0` sits
+ * on the ROW ANCHOR, which paints no background of its own at rest — the panel glass behind it
+ * belongs to an ancestor, outside the filter. So the greyed ink is read against an UNGREYED panel,
+ * where the card's ink is read against a card glass greyed with it. The closed chip the row's price
+ * slot gives way to carries its own fill inside the filter, and is proven with its recipe in
+ * `shared/semantic-chip.contrast.spec.ts`.
+ */
+describe.each(THEMES)('Discover dusk panel row contrast — $name theme', (theme) => {
+  it('the row ink still meets AA on the panel it is greyed against', () => {
+    for (const stop of theme.stops) {
+      const panel = surfaceOver(theme.headerGlass, stop);
+      expect(
+        contrastRatio(rgbToHex(desaturate(theme.pageInk)), rgbToHex(panel)),
+        `over ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  it('the row\u2019s soft ink \u2014 the facts line and the free count \u2014 still meets AA desaturated', () => {
+    for (const stop of theme.stops) {
+      // Alpha survives the matrix, so the soft ink is greyed and THEN composited over the panel.
+      const panel = surfaceOver(theme.headerGlass, stop);
+      const soft = composite(desaturate(theme.pageInk), theme.pageInkSoftAlpha, panel);
+      expect(
+        contrastRatio(rgbToHex(soft), rgbToHex(panel)),
         `over ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }

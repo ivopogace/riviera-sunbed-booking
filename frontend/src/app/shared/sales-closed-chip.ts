@@ -5,8 +5,9 @@ import { SemanticChip } from './semantic-chip';
 /**
  * The "Sales closed for today" badge — the platform's claim that online sales for the selected day
  * have closed at this venue, in the semantic-chip skin beside the mode chip on the Discover card's
- * photo band and on the pin preview. The closed-for-season badge outranks it: a call site shows one claim
- * at a time. The host drops out of layout; the box is the band's.
+ * photo band and on the pin preview. The closed-for-season badge outranks it: a call site shows one
+ * claim at a time. The host drops out of layout; the box is the band's. A surface with no room for
+ * that box states the claim in its own words rather than wearing this one — `pages/home/venue-row.ts`.
  */
 @Component({
   selector: 'app-sales-closed-chip',

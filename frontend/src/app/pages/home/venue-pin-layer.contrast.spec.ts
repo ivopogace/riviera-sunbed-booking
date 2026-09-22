@@ -1,15 +1,9 @@
-import { AA_NORMAL, contrastRatio, Rgb, rgbToHex } from '../../../testing/contrast';
+import { AA_NORMAL, contrastRatio, Rgb, desaturate, rgbToHex } from '../../../testing/contrast';
 import { SOLID_BTN_FILL, SOLID_BTN_HOVER, SOLID_BTN_INK } from '../../../testing/glass-tokens';
 
-/**
- * What `filter: saturate(0)` leaves — the dusk face's paint. Filter Effects' saturate matrix at 0
- * collapses every channel to one luminance-weighted mix, in sRGB, which is not the linearised
- * relative luminance the contrast formula then takes: the ratio has to be measured after the
- * filter, not before it.
- */
-function desaturated([red, green, blue]: Rgb): string {
-  const grey = Math.round(0.213 * red + 0.715 * green + 0.072 * blue);
-  return rgbToHex([grey, grey, grey]);
+/** The dusk face's paint: `testing/contrast`'s matrix, as the hex pair `contrastRatio` takes. */
+function desaturated(rgb: Rgb): string {
+  return rgbToHex(desaturate(rgb));
 }
 
 /**

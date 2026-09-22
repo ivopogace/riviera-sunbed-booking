@@ -2,8 +2,8 @@ import { Directive } from '@angular/core';
 
 /**
  * The tourist surfaces' SEMANTIC chip — the booking-mode chip ("Instant Book" / "Request to
- * Book") and the "New" (no reviews yet) chip, on the Discover cards and the beach-map header
- * (issue #705). Both make a claim the PLATFORM authors about how this booking will go; the
+ * Book") and the "New" (no reviews yet) chip, on the Discover cards, the desktop panel's rows and
+ * the beach-map header. Both make a claim the PLATFORM authors about how this booking will go; the
  * descriptive chips beside them (`shared/amenity-chip.ts` and its to-water variant) report what
  * the VENUE says about itself. Before this directive the two families wore the same pale pill,
  * so nothing in a card scan said that one of them changes what happens when you tap a set.
@@ -23,26 +23,30 @@ import { Directive } from '@angular/core';
  * in `shared/semantic-chip.contrast.spec.ts` now replaces two composited per-surface proofs.
  * The rim is a LIGHTER accent, inverting the descriptive chips' darker-than-fill border for the
  * same reason the fill inverts: on the dark map header a darker rim would have dissolved. It
- * separates from the fill at only 1.25:1 (#861 lightened the fill), which is decorative and not
+ * separates from the fill at only 1.25:1, once the fill was lightened, which is decorative and not
  * the boundary WCAG 1.4.11 asks about — the chip is identified against the CARD, at 5.39:1.
  *
- * <p>Deliberately carries NO geometry — no `display`, no padding, no `text-*`. The five call
- * sites differ (11px tracked caps over a photo — twice, the mode and sales-closed chips —
- * 13.5px inherited inside the Discover rating row,
- * 0.78rem twice in the map header), and #705 asks for no layout shift, so each keeps its own box
+ * <p>Deliberately carries NO geometry — no `display`, no padding, no `text-*`. The call sites
+ * differ, in four boxes rather than one: 11px tracked caps over a photo (the Discover card's mode,
+ * sales-closed and closed-for-season chips); the same caps at the panel row's tighter padding (its
+ * mode chip, and the closed chip its price slot gives way to); `px-[9px] py-px` at whatever size
+ * the line around it sets, which is 13.5px in the Discover card's rating row and 13px in the panel
+ * row's facts line; and 0.78rem in the beach-map header, at two paddings. Named by family and not
+ * counted, so a new call site joins one rather than falsifying the line. No layout shift is the
+ * standing constraint, so each site keeps its own box
  * and the directive supplies only what makes the family read as one. That is the opposite of the
  * `amenity-chip` / `status-chip` split, where the whole pill IS the recipe; the difference is
  * that those two own every one of their call sites' boxes and this one owns none.
  *
- * <p>`rounded-full` and `border` DO belong here: all five call sites already agreed on both, and
+ * <p>`rounded-full` and `border` DO belong here: every call site already agreed on both, and
  * leaving a radius at the call site beside one in a directive is the stylesheet-order coin-flip
  * `shared/panel-glass.ts` documents. The border's *width* is what must not move — every call
- * site had a 1px border before, so swapping only its colour keeps all five boxes identical.
+ * site had a 1px border before, so swapping only its colour keeps every box identical.
  *
  * <p>The literal marker class `semantic-chip` is retained as an inert hook in the sibling
- * directives' style, and here it is load-bearing: `home.spec.ts` and `venue-map.spec.ts` assert
- * the family membership of each chip through it, which is how "the same treatment on both
- * surfaces" is checked rather than claimed.
+ * directives' style, and here it is load-bearing: `home.spec.ts`, `venue-row.spec.ts` and
+ * `venue-map.spec.ts` assert the family membership of each chip through it, which is how "the same
+ * treatment on every surface" is checked rather than claimed.
  */
 @Directive({
   selector: '[appSemanticChip]',
