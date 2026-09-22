@@ -94,6 +94,29 @@ test.describe('44px touch targets at a phone width', () => {
     await expectTouchTargets(page, 'operator venue tab');
   });
 
+  /**
+   * The shoreline offer's two controls exist only after a pin lands off the shore, so the resting
+   * sweep above cannot see them. The fake engine is armed with a coast 28 px west of the map's
+   * centre, which is what makes a drop at its centre an inland one.
+   */
+  test('operator console — venue tab, the shoreline offer open', async ({ page }) => {
+    await page.addInitScript(() => {
+      const armed = window as unknown as {
+        __RIVIERA_FAKE_MAP__?: boolean;
+        __RIVIERA_FAKE_MAP_COAST__?: number;
+      };
+      armed.__RIVIERA_FAKE_MAP__ = true;
+      armed.__RIVIERA_FAKE_MAP_COAST__ = 19.7;
+    });
+    await openConsoleTab(page, 'venue');
+    await expect(page.getByTestId('venue-location-map')).toHaveAttribute('data-status', 'ready');
+
+    await page.getByTestId('venue-location-map').getByTestId('riviera-map-fake').click();
+    await expect(page.getByTestId('venue-location-proposal')).toBeVisible();
+
+    await expectTouchTargets(page, 'operator venue tab (shoreline offer open)');
+  });
+
   test('operator home — create-venue card', async ({ page }) => {
     await page.goto('/operator?create=1');
     await signInAsOperator(page);

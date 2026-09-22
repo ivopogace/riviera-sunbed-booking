@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { MapImagery } from '../shared/map-engine';
+import { MapImagery, ScreenPoint } from '../shared/map-engine';
 import {
   SHORE_STEP_PX,
   WATER_FILL,
@@ -21,8 +21,15 @@ const STYLE_PATH = join(process.cwd(), '../platform/map/style.json');
  * it, nothing outside the frame. Every expected point below is worked out from that geometry by
  * hand, not from the rule.
  */
-const COAST: WaterSampler = (point) =>
-  point.x < 0 || point.y < 0 || point.x >= 300 || point.y >= 200 ? undefined : point.x < 100;
+function inFrame(point: ScreenPoint): boolean {
+  return point.x >= 0 && point.y >= 0 && point.x < 300 && point.y < 200;
+}
+
+const COAST: WaterSampler = (point) => (inFrame(point) ? point.x < 100 : undefined);
+/** A frame the camera caught no sea in at all — the prototype's Palasë and Borsh. */
+const ALL_LAND: WaterSampler = (point) => (inFrame(point) ? false : undefined);
+/** The other end of the same honesty: a frame that is all sea. */
+const ALL_SEA: WaterSampler = (point) => (inFrame(point) ? true : undefined);
 
 /** The rule's own vocabulary, checked once so the worked examples below stay readable. */
 describe('the shore snap rule', () => {
@@ -41,11 +48,11 @@ describe('the shore snap rule', () => {
   });
 
   it('degrades honestly on a frame holding no water at all', () => {
-    expect(snapToShore({ x: 160, y: 50 }, () => false)).toBeNull();
+    expect(snapToShore({ x: 160, y: 50 }, ALL_LAND)).toBeNull();
   });
 
   it('degrades honestly on a frame holding no land at all', () => {
-    expect(snapToShore({ x: 160, y: 50 }, () => true)).toBeNull();
+    expect(snapToShore({ x: 160, y: 50 }, ALL_SEA)).toBeNull();
   });
 
   it('proposes nothing for a point the sampler cannot see', () => {
@@ -59,9 +66,7 @@ describe('the shore snap rule', () => {
    */
   it('finds the nearest shore, whichever way it lies', () => {
     const inlet: WaterSampler = (point) =>
-      point.x < 0 || point.y < 0 || point.x >= 300 || point.y >= 200
-        ? undefined
-        : point.x < 100 || point.y < 10;
+      inFrame(point) ? point.x < 100 || point.y < 10 : undefined;
 
     expect(snapToShore({ x: 150, y: 30 }, inlet)).toEqual({ x: 150, y: 9 + SHORE_STEP_PX });
   });

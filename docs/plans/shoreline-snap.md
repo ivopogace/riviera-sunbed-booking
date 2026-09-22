@@ -128,7 +128,8 @@ and focus APIs) · `playwright-cli` (the two mocked e2e legs and the touch-targe
 | R-5 | At the map's opening zoom (8.6, ~154 m/px) the shore band swallows almost every coastal pin, so the feature looks dead | Medium | Low | Deliberate and stated: the rule works in screen px, so its precision tracks the camera the operator chose — at a zoom too coarse to be precise, nothing is proposed rather than something imprecise. The placer's map opens at the riviera and the operator zooms to place | this slice | open |
 | R-6 | Antialiased shoreline pixels match neither water nor the land beside it, biasing the shore pixel outward | Medium | Low | The match is a per-channel tolerance around the flat fill, so a blended edge pixel reads as land; the 4 px step then lands clear of the blend. The step and the band are named constants with the reason at each | this slice | open |
 | R-7 | Scope creep into the `venue` module (a server-side ownership check for an endpoint that does not exist) | Low | Medium | The slice is frontend-only and says so (AC list, Modulith section); if an endpoint is ever added, invariant #13 applies then | this slice | open |
-| R-8 | `distanceKm` promoted out of `pages/home/place-groups.ts` breaks Discover's distance captions | Low | Medium | Pure move, no signature change; `place-groups.spec.ts`'s own case moves with it and Discover's caption specs stay green | this slice | open |
+| R-8 | `distanceKm` promoted out of `pages/home/place-groups.ts` breaks Discover's distance captions | Low | Medium | Pure move, no signature change; `place-groups.spec.ts`'s own case moves with it and Discover's caption specs stay green | this slice | closed — 3606 unit specs and 729 e2e green |
+| R-9 | A `WaterSampler` that never reports its own frame edge searches to the guard radius, hanging the UI on a drop | Medium | Medium | The contract is stated on the type; every stub in the tree is frame-bounded (generalization-audit log, 2026-09-22); the production sampler bounds by construction | this slice | closed — see the audit log |
 
 ## Open questions / Assumptions
 
@@ -202,16 +203,16 @@ differ, at the same six-decimal scale it already carried.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `PR — ready for review, then the review + Sonar gates`
 
-**Next action:** Phase 3 — a11y, contrast, touch targets and the two e2e legs.
+**Next action:** Mark PR #1187 ready for review, run the review gate and clear the Sonar list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The snap rule and the raster sampler | ✅ | phase-0 commit |
 | 1 — The imagery seam on `MapHandle` (real + fake) | ✅ | phase-1 commit |
 | 2 — The placer offers, accepts and declines | ✅ | phase-2 commit |
-| 3 — a11y, contrast, touch targets and the two e2e legs | | |
+| 3 — a11y, contrast, touch targets and the two e2e legs | ✅ | phase-3 commit |
 | 4 — Close-out (docs freshness, execution status) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -247,6 +248,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/pages/home/place-groups.spec.ts` — its `distanceKm` case moves out
 - `frontend/e2e/operator-venue-location.e2e.ts` — propose → accept and propose → decline
 - `frontend/e2e/touch-targets.e2e.ts` — the venue tab swept with the proposal open
+- `frontend/e2e/support/map-resources.ts` — read by the real-engine leg (unchanged, listed for the guard)
 
 ---
 
@@ -392,6 +394,7 @@ test('proposes the shoreline and saves the snapped point', async ({ page }) => {
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-22 | `shore-snap.spec.ts` › "degrades honestly on a frame holding no water" passed alone and timed out in the full run (6.1 s for the file) | A `WaterSampler` that never answers `undefined` breaks the type's contract, so the ring search runs to `MAX_SEARCH_PX` (≈67 M samples) instead of stopping at the frame. Every sampler in the tree, stub and real. | `grep -rn "WaterSampler\|snapToShore(" frontend/src --include=*.ts` | 6: `COAST`, the two bare `() => false` / `() => true` literals, `inlet`, `waterSamplerOf`, the placer's call | The two bare literals became frame-bounded `ALL_LAND` / `ALL_SEA`, `COAST` and `inlet` now share one `inFrame` helper; `waterSamplerOf` already bounded. The contract is now stated on `WaterSampler` itself, and `MAX_SEARCH_PX` re-described as the last-resort stop for a sampler that breaks it. File: 6.13 s → 0.03 s. |
 
 ---
 

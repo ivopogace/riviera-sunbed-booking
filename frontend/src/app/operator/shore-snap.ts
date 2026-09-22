@@ -25,13 +25,17 @@ export const SHORE_STEP_PX = 4;
  */
 const SHORE_BAND_PX = 8;
 
-/** A stop for a sampler that never reports leaving its frame; no map box comes near it. */
+/** The last-resort stop for a sampler that breaks its contract and never reports its own edge. */
 const MAX_SEARCH_PX = 4096;
 
 /**
  * Whether the map's imagery is water at a point on the map's own box, in CSS px from its
  * top-left corner — `undefined` where the sampler cannot see, which is how a frame's edge is
  * told from its land.
+ *
+ * <p>Reporting that edge is not optional: {@link snapToShore} searches outward until a whole ring
+ * of its points is unseen, so a sampler that answers everywhere is searched to
+ * {@link MAX_SEARCH_PX} instead of to its frame.
  */
 export type WaterSampler = (point: ScreenPoint) => boolean | undefined;
 
