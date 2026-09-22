@@ -1,5 +1,12 @@
 import { DESCRIPTIVE_CHIPS, SEMANTIC_CHIP } from '../../testing/chip-fills';
-import { AA_LARGE, AA_NORMAL, contrastRatio } from '../../testing/contrast';
+import {
+  AA_LARGE,
+  AA_NORMAL,
+  contrastRatio,
+  desaturate,
+  hexToRgb,
+  rgbToHex,
+} from '../../testing/contrast';
 
 /**
  * WCAG-AA contrast guard for the shared SEMANTIC chips — the booking-mode chip and the "New"
@@ -26,6 +33,22 @@ import { AA_LARGE, AA_NORMAL, contrastRatio } from '../../testing/contrast';
 describe('Semantic chips (solid fill, WCAG AA) — shared/semantic-chip.ts', () => {
   it('the semantic-chip ink meets AA on its solid fill', () => {
     expect(contrastRatio(SEMANTIC_CHIP.ink, SEMANTIC_CHIP.fill)).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+
+  /**
+   * The closed chips ride a DUSK surface — the Discover card's, and since #1185 the desktop panel
+   * row's — where `filter: saturate(0)` greys the fill and the ink together. Both sit inside the
+   * filter, so this stays a plain ink/fill pair; what changes is that it must be measured AFTER the
+   * matrix. The card has painted a desaturated chip since the sales-closed badge shipped, with this
+   * left unproven.
+   */
+  it('the ink still meets AA on its fill once a dusk surface has desaturated both', () => {
+    expect(
+      contrastRatio(
+        rgbToHex(desaturate(hexToRgb(SEMANTIC_CHIP.ink))),
+        rgbToHex(desaturate(hexToRgb(SEMANTIC_CHIP.fill))),
+      ),
+    ).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
   it.each(DESCRIPTIVE_CHIPS)(
