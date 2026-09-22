@@ -349,9 +349,13 @@ test.describe('Discover sheet — the browser’s own latching', () => {
         (window as unknown as { __resizes: number[] }).__resizes.push(innerHeight),
       );
       (window as unknown as { __lastScroll: number }).__lastScroll = performance.now();
+      (window as unknown as { __scrolls: number }).__scrolls = 0;
       addEventListener(
         'scroll',
-        () => ((window as unknown as { __lastScroll: number }).__lastScroll = performance.now()),
+        () => {
+          (window as unknown as { __lastScroll: number }).__lastScroll = performance.now();
+          (window as unknown as { __scrolls: number }).__scrolls += 1;
+        },
         true,
       );
       type ScrollTo = (this: Element, ...args: unknown[]) => void;
@@ -373,12 +377,16 @@ test.describe('Discover sheet — the browser’s own latching', () => {
       page.evaluate(() => {
         (window as unknown as { __rests: unknown[] }).__rests = [];
         (window as unknown as { __resizes: number[] }).__resizes = [];
+        (window as unknown as { __lastScroll: number }).__lastScroll = performance.now();
+        (window as unknown as { __scrolls: number }).__scrolls = 0;
       });
-    /** Silence measured in the page, at event resolution — a sampled position cannot prove it. */
+    /** Silence since the last scroll the page saw, at event resolution. */
     const quietFor = () =>
       page.evaluate(
         () => performance.now() - (window as unknown as { __lastScroll: number }).__lastScroll,
       );
+    const scrolls = () =>
+      page.evaluate(() => (window as unknown as { __scrolls: number }).__scrolls);
 
     // A drag up from half, with the URL bar collapsing a third of the way through it.
     await clearProbes();
@@ -397,20 +405,26 @@ test.describe('Discover sheet — the browser’s own latching', () => {
         await page.setViewportSize({ width: PHONE.width, height: PHONE.height + 56 });
         // The leg's premise: the resize reaches the page mid-drag, with eight touchmoves to come.
         await expect
-          .poll(resizes, { message: 'no resize reached the page mid-drag', timeout: 2_000 })
+          .poll(resizes, { message: 'no resize reached the page mid-drag', timeout: 5_000 })
           .not.toEqual([]);
       }
       await page.waitForTimeout(25);
     }
+    // A live timestamp cannot tell "never scrolled" from "scrolled long ago", so prove it moved.
+    expect(await scrolls(), 'the drag never scrolled the sheet').toBeGreaterThan(0);
     // Outlast SETTLE_QUIET_MS (160), so the finger is the only thing left holding a rest off.
     await expect
-      .poll(quietFor, { message: 'the scroller never went quiet', timeout: 2_000 })
+      .poll(quietFor, { message: 'the scroller never went quiet', timeout: 5_000 })
       .toBeGreaterThan(200);
     // Room for the effect and its rAF chain to run and be recorded, if the guard lets them.
     await page.waitForTimeout(450);
     expect(await rests(), 'a re-measure scrolled the sheet under the finger').toEqual([]);
     await touch('touchEnd', from - 220);
     await expectDetent(page, 'full');
+    // The differential: the rest WAS owed all along, so the empty array is the guard's doing.
+    expect(await rests(), 'no rest followed the finger lifting, so none was ever due').not.toEqual(
+      [],
+    );
 
     // The Map pill: its own glide is what moves the URL bar back, so the resize lands on top of it.
     await clearProbes();
