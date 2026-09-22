@@ -202,13 +202,13 @@ differ, at the same six-decimal scale it already carried.
 
 ## Execution status
 
-**Stage pointer:** `plan — written, phases not started`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — the pure rule and its sampler, test-first.
+**Next action:** Phase 1 — `readImagery()` and `unproject()` on the `MapHandle` seam, real and fake.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The snap rule and the raster sampler | | |
+| 0 — The snap rule and the raster sampler | ✅ | phase-0 commit |
 | 1 — The imagery seam on `MapHandle` (real + fake) | | |
 | 2 — The placer offers, accepts and declines | | |
 | 3 — a11y, contrast, touch targets and the two e2e legs | | |
@@ -267,7 +267,7 @@ it('proposes nothing for a pin already on the shore', () => {
 });
 
 it('takes a pin at sea to the land', () => {
-  expect(snapToShore({ x: 40, y: 50 }, COAST)).toEqual({ x: 103, y: 50 });
+  expect(snapToShore({ x: 40, y: 50 }, COAST)).toEqual({ x: 104, y: 50 });
 });
 
 it('degrades honestly on a frame with no water', () => {

@@ -45,6 +45,22 @@ export interface ScreenPoint {
 }
 
 /**
+ * A square of the map's own rendered imagery, read back for a consumer that has to reason about
+ * what the map is actually SHOWING — where the sea is, which no camera or coordinate can answer.
+ *
+ * <p>`pixels` is RGBA rows in DEVICE pixels, `width * scale` wide, while `width`/`height` are the
+ * map's box in CSS px: a consumer sampling it speaks CSS px and the scale does the rest.
+ */
+export interface MapImagery {
+  /** The map's box in CSS px. */
+  readonly width: number;
+  readonly height: number;
+  /** Device pixels per CSS px, as the map was rendered. */
+  readonly scale: number;
+  readonly pixels: Uint8ClampedArray;
+}
+
+/**
  * One live map. Everything the app needs from an engine, and nothing engine-specific: a
  * consumer that only uses this handle survives swapping MapLibre for another renderer.
  */
