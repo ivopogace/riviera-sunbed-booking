@@ -52,13 +52,18 @@ export function snapToShore(at: ScreenPoint, isWater: WaterSampler): ScreenPoint
 /**
  * How far the proposal would move the pin, for the operator to read: metres below a kilometre,
  * because the moves that matter at a beach are tens of metres and `0.1 km` says less than `90 m`.
+ *
+ * <p>Each branch is chosen on the ROUNDED value, not the raw one, so a distance that rounds up
+ * across a boundary is read out in the form it rounded into: 0.9996 km is `1.0 km`, never
+ * `1000 m`, and 9.96 km is `10 km`, never `10.0 km`.
  */
 export function shoreMoveLabel(km: number): string {
   const metres = Math.round(km * 1000);
   if (metres < 1000) {
     return `${metres} m`;
   }
-  return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
+  const whole = km.toFixed(1);
+  return Number(whole) < 10 ? `${whole} km` : `${Math.round(km)} km`;
 }
 
 /**

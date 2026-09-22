@@ -42,55 +42,55 @@ and focus APIs) · `playwright-cli` (the two mocked e2e legs and the touch-targe
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a sampler whose water lies west of a vertical shoreline and a pin 60 px
+- [x] **AC-1:** Given a sampler whose water lies west of a vertical shoreline and a pin 60 px
       inland of it, when the rule runs, then it returns a point 4 px inland of the nearest shore
       pixel — not the shore pixel itself. *Seam:* `snapToShore(at, isWater, frame)` ·
       *Pinned by:* `shore-snap.spec.ts` › "proposes a point four px onto the sand"
-- [ ] **AC-2:** Given the same sampler and a pin already within the shore band of the water, when
+- [x] **AC-2:** Given the same sampler and a pin already within the shore band of the water, when
       the rule runs, then it returns `null` — nothing is proposed. *Seam:* `snapToShore` ·
       *Pinned by:* `shore-snap.spec.ts` › "proposes nothing for a pin already on the shore"
-- [ ] **AC-3:** Given a pin **in the water**, when the rule runs, then the returned point is on
+- [x] **AC-3:** Given a pin **in the water**, when the rule runs, then the returned point is on
       land, 4 px inland of the nearest land pixel — never the nearest water edge. *Seam:*
       `snapToShore` · *Pinned by:* `shore-snap.spec.ts` › "takes a pin at sea to the land"
-- [ ] **AC-4:** Given a sampler that reports land everywhere (a frame holding no water at all, as
+- [x] **AC-4:** Given a sampler that reports land everywhere (a frame holding no water at all, as
       Palasë's and Borsh's did), when the rule runs, then it returns `null` rather than a wrong
       point. *Seam:* `snapToShore` · *Pinned by:* `shore-snap.spec.ts` › "degrades honestly on a
       frame with no water"
-- [ ] **AC-5:** Given an RGBA raster carrying the style's water fill, when `waterSamplerOf` reads a
+- [x] **AC-5:** Given an RGBA raster carrying the style's water fill, when `waterSamplerOf` reads a
       point, then interior water pixels answer `true`, land answers `false` and a point off the
       frame answers `undefined`; and the fill the sampler matches is the one
       `platform/map/style.json`'s `water` layer declares. *Seam:* `waterSamplerOf(imagery)` ·
       *Pinned by:* `shore-snap.spec.ts` › "reads the style's own water fill" + "matches the water
       fill the style declares"
-- [ ] **AC-6:** Given a booted `FakeMapHandle` with a coast meridian, when a consumer calls
+- [x] **AC-6:** Given a booted `FakeMapHandle` with a coast meridian, when a consumer calls
       `readImagery()`, then it gets an RGBA raster painted water west of that meridian and land
       east of it, and `unproject` inverts `project` for every point on it. *Seam:* `MapHandle` ·
       *Pinned by:* `fake-map-engine.spec.ts` › "paints a coast its consumers can sample"
-- [ ] **AC-7:** Given a pin dropped 60 px inland on the placer's map, when the drop is handled,
+- [x] **AC-7:** Given a pin dropped 60 px inland on the placer's map, when the drop is handled,
       then `location` holds the operator's own rounded point, a proposal is rendered naming the
       distance in metres or km, and pressing *Move to shoreline* sets `location` to the snapped
       point at six decimals. *Seam:* `VenueLocationField.location` (the `model()` the profile form
       binds) · *Pinned by:* `venue-location-field.spec.ts` › "offers the shoreline and stores it
       when accepted"
-- [ ] **AC-8:** Given the same proposal, when *Keep my point* is pressed, then `location` still
+- [x] **AC-8:** Given the same proposal, when *Keep my point* is pressed, then `location` still
       holds the operator's own point, the proposal is gone, and focus has moved to a control that
       survived the transition — never `<body>`. *Seam:* `VenueLocationField.location` + the
       rendered field · *Pinned by:* `venue-location-field.spec.ts` › "keeps the operator's point
       and never strands focus"
-- [ ] **AC-9:** Given a pin dropped on the shore, when the drop is handled, then no proposal is
+- [x] **AC-9:** Given a pin dropped on the shore, when the drop is handled, then no proposal is
       rendered. *Seam:* the rendered field · *Pinned by:* `venue-location-field.spec.ts` › "says
       nothing about a pin already on the shore"
-- [ ] **AC-10:** Given neither control is ever `disabled` and the drop was made with *Place pin at
+- [x] **AC-10:** Given neither control is ever `disabled` and the drop was made with *Place pin at
       map centre*, when a keyboard user tabs on, then both proposal controls are reachable and
       carry the 44 px floor. *Seam:* the rendered field · *Pinned by:*
       `venue-location-field.spec.ts` › "every proposal control is a real button at the floor" +
       `e2e/touch-targets.e2e.ts` › "operator console — venue tab, the shoreline proposal open"
-- [ ] **AC-11:** Given the mocked operator console with a fake coast armed, when the operator drops
+- [x] **AC-11:** Given the mocked operator console with a fake coast armed, when the operator drops
       a pin inland and accepts, then the saved profile carries the snapped coordinates; when a
       second operator declines, then it carries their own. *Seam:* the venue-profile PATCH body ·
       *Pinned by:* `e2e/operator-venue-location.e2e.ts` › "proposes the shoreline and saves the
       snapped point" + "…and saves the operator's own when declined"
-- [ ] **AC-12:** Given the field with the proposal open, when axe audits it, then there are no
+- [x] **AC-12:** Given the field with the proposal open, when axe audits it, then there are no
       violations; and the proposal's ink/fill pair clears AA in both themes the console wears.
       *Seam:* the rendered field · *Pinned by:* `venue-location-field.a11y.spec.ts` +
       `venue-tab.contrast.spec.ts` › the shoreline-proposal cases
@@ -123,35 +123,34 @@ and focus APIs) · `playwright-cli` (the two mocked e2e legs and the touch-targe
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `preserveDrawingBuffer` costs memory and a compositing step on every MapLibre map, and Discover's map is now the page | High if global | Medium | It is **opt-in per map**: `MapEngineOptions.readableImagery`, set only by the placer's own `PLACER_MAP_OPTIONS`. Discover and the venue map are untouched; a spec asserts the flag is off by default | this slice | open |
-| R-2 | The canvas is read before the tiles at the current camera have drawn, so the frame reads as "no water" | Medium | Low | The honest-degradation arm (AC-4) already covers it: nothing is proposed, nothing wrong is proposed. The read happens on a drop, when the operator is already looking at drawn tiles | this slice | open |
-| R-3 | A river or a lake reads as water, so a pin inland snaps to a riverbank | Low | Low | Accepted and stated: the snap is an **offer**, the operator's own point is one press away, and the style's rivers are drawn in the same fill because they are water. Noted in the component's TSDoc | this slice | open |
-| R-4 | The hard-coded water fill drifts from `platform/map/style.json` after a style change | Medium | High (silent no-op: nothing would ever be proposed) | A no-drift spec reads the style file and asserts the constant is the `water` layer's `fill-color` (AC-5), the `core/theme-boot.spec.ts` pattern | this slice | open |
-| R-5 | At the map's opening zoom (8.6, ~154 m/px) the shore band swallows almost every coastal pin, so the feature looks dead | Medium | Low | Deliberate and stated: the rule works in screen px, so its precision tracks the camera the operator chose — at a zoom too coarse to be precise, nothing is proposed rather than something imprecise. The placer's map opens at the riviera and the operator zooms to place | this slice | open |
-| R-6 | Antialiased shoreline pixels match neither water nor the land beside it, biasing the shore pixel outward | Medium | Low | The match is a per-channel tolerance around the flat fill, so a blended edge pixel reads as land; the 4 px step then lands clear of the blend. The step and the band are named constants with the reason at each | this slice | open |
-| R-7 | Scope creep into the `venue` module (a server-side ownership check for an endpoint that does not exist) | Low | Medium | The slice is frontend-only and says so (AC list, Modulith section); if an endpoint is ever added, invariant #13 applies then | this slice | open |
+| R-1 | `preserveDrawingBuffer` costs memory and a compositing step on every MapLibre map, and Discover's map is now the page | High if global | Medium | It is **opt-in per map**: `MapEngineOptions.readableImagery`, set only by the placer's own `PLACER_MAP_OPTIONS`. Discover and the venue map are untouched; a spec asserts the flag is off by default | this slice | closed — `mapConstructorOptions` sets the buffer only on `readableImagery`, pinned by `maplibre-map-engine.spec.ts`; the fake now refuses to read back without it too (F-4) |
+| R-2 | The canvas is read before the tiles at the current camera have drawn, so the frame reads as "no water" | Medium | Low | The honest-degradation arm (AC-4) already covers it: nothing is proposed, nothing wrong is proposed. The read happens on a drop, when the operator is already looking at drawn tiles | this slice | closed — the real-engine e2e leg retries the drop until the tiles have drawn, and proves the degradation arm is what happens until then |
+| R-3 | A river or a lake reads as water, so a pin inland snaps to a riverbank | Low | Low | Accepted and stated: the snap is an **offer**, the operator's own point is one press away, and the style's rivers are drawn in the same fill because they are water. Noted in the component's TSDoc | this slice | accepted, stated in the component TSDoc and the PR body — the offer is declinable |
+| R-4 | The hard-coded water fill drifts from `platform/map/style.json` after a style change | Medium | High (silent no-op: nothing would ever be proposed) | A no-drift spec reads the style file and asserts the constant is the `water` layer's `fill-color` (AC-5), the `core/theme-boot.spec.ts` pattern | this slice | closed — the drift guard lives in `shared/map-water.spec.ts` and reads `platform/map/style.json` |
+| R-5 | At the map's opening zoom (8.6, ~154 m/px) the shore band swallows almost every coastal pin, so the feature looks dead | Medium | Low | Deliberate and stated: the rule works in screen px, so its precision tracks the camera the operator chose — at a zoom too coarse to be precise, nothing is proposed rather than something imprecise. The placer's map opens at the riviera and the operator zooms to place | this slice | accepted and stated — precision tracks the camera; the PR body says so |
+| R-6 | Antialiased shoreline pixels match neither water nor the land beside it, biasing the shore pixel outward | Medium | Low | The match is a per-channel tolerance around the flat fill, so a blended edge pixel reads as land; the 4 px step then lands clear of the blend. The step and the band are named constants with the reason at each | this slice | closed — `map-water.spec.ts` › "reads a blended shoreline pixel as land" pins it |
+| R-7 | Scope creep into the `venue` module (a server-side ownership check for an endpoint that does not exist) | Low | Medium | The slice is frontend-only and says so (AC list, Modulith section); if an endpoint is ever added, invariant #13 applies then | this slice | closed — no backend file in the diff; frontend-only, as the issue allows |
 | R-8 | `distanceKm` promoted out of `pages/home/place-groups.ts` breaks Discover's distance captions | Low | Medium | Pure move, no signature change; `place-groups.spec.ts`'s own case moves with it and Discover's caption specs stay green | this slice | closed — 3606 unit specs and 729 e2e green |
 | R-9 | A `WaterSampler` that never reports its own frame edge searches to the guard radius, hanging the UI on a drop | Medium | Medium | The contract is stated on the type; every stub in the tree is frame-bounded (generalization-audit log, 2026-09-22); the production sampler bounds by construction | this slice | closed — see the audit log |
 
 ## Open questions / Assumptions
 
-- **OQ-1 (drift, reconciled here):** The issue asks for specs "in all three themes". The placer
-  lives in the operator console, and every operator route wears the console theme — porcelain or
-  dark, **never `riviera`** (`riviera-frontend` § Theming; `operator/console-accent-token.contrast.spec.ts`
-  calls a `riviera` declaration for a console token "a third theme the console never wears"). The
-  honest coverage is therefore the two themes the console wears, over
-  `venue-tab.contrast.spec.ts`'s existing `describe.each(CONSOLE_THEMES)`. — *Owner:* this slice ·
-  *Resolves by:* stated in the PR body so the AC's wording and the shipped coverage do not read as
-  a gap.
-- **Assumption:** The proposal needs no new colour token — it wears the field's existing pill skin
-  and the `--riv-card-ink` / `--riv-console-inset` pair `venue-tab.contrast.spec.ts` already proves
-  AA in both console themes. — *Owner:* this slice · *Resolves by:* the contrast cases added in
-  phase 3; a new token would need its own registry row and guard.
-- **Assumption:** The operator's own point is stored on every drop, before any proposal, so an
-  operator who ignores the offer and saves gets exactly what they placed. — *Owner:* this slice ·
-  *Resolves by:* AC-7/AC-8.
+None open.
 
 ### Resolved
+
+- **OQ-1 (drift, reconciled here) — the issue's "all three themes".** The placer lives in the
+  operator console, and every operator route wears the console theme — porcelain or dark, **never
+  `riviera`**. The shipped coverage is the two themes the console wears, over
+  `venue-tab.contrast.spec.ts`'s `describe.each(CONSOLE_THEMES)`, and the PR body states the
+  reconciliation so the AC's wording and the coverage do not read as a gap. *Outcome:* two themes,
+  deliberately. Landed in `b2196c8d`, extended with the rendered-paint proof (F-6) in `414d8d01`.
+- **Assumption (held):** the proposal needed no new colour token — it wears the field's existing
+  pill skin and the `--riv-card-ink` / `--riv-console-inset` pair. Proven as maths in
+  `venue-tab.contrast.spec.ts` and, after F-6, as paint in the themed e2e leg. `414d8d01`.
+- **Assumption (held):** the operator's own point is stored on every drop before any proposal, so
+  an operator who ignores the offer and saves gets exactly what they placed. Pinned by AC-7/AC-8
+  and by the decline e2e leg. `4880690e`.
 
 - **D-1 — the sample's source: the live canvas, not a re-render of the extract.** The issue leaves
   this to the slice. **Chosen: the live map's rendered canvas**, through `MapHandle.readImagery()`.
@@ -205,9 +204,9 @@ differ, at the same six-decimal scale it already carried.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, re-verifying`
+**Stage pointer:** `DONE — merged via PR #1187`
 
-**Next action:** Push F-1…F-6, re-run CI, then the Sonar gate.
+**Next action:** None. Merge close-out complete.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -228,6 +227,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | Review gate (comment-guidance agent) | `snapToShore`'s TSDoc claimed "a pin in the water is never one of them [the null cases]" — the spec's own all-sea case disproves it — and called four cases exhaustive when the stepped-point check is a fifth. | fixed — the doc now states the null cases as they are, and says the shore band alone is land-only. |
 | F-4 | Review gate (comment-guidance agent) | `FakeMapHandle.readImagery()` ignored `MapEngineOptions.readableImagery`, so a consumer forgetting the flag passed every spec and would go blank against real MapLibre. The fake claimed parity it did not have. | fixed — the fake now gates on the flag as well as its coast, with a spec for it; the specs that read imagery ask for it explicitly. |
 | F-5 | Review gate (bug-scan agent) | `shoreMoveLabel(0.9996)` read "1000 m" instead of "1.0 km" — the metres branch rounded up past its own boundary. | fixed — the branch is chosen on the rounded metres, with a case at the boundary. |
+| F-7 | Re-review of the fix round | `shoreMoveLabel(9.96)` read `10.0 km` while `10.0` read `10 km` — the same boundary defect as F-5, one branch up, in code this slice introduces. | fixed — both branches are chosen on the rounded value, with cases either side of both boundaries. |
 | F-6 | Angular/Tailwind doc check (user-requested) | No render proof that `bg-riv-console-inset/60` resolves: Tailwind's docs do not state that the slash modifier applies to a custom `@theme` colour, and riviera-tailwind's hard rule wants a `getComputedStyle` diff, not a class list. | fixed — the themed e2e leg now measures the offer panel's fill with `expectInsetFill(…, 60, theme)` in both console themes. |
 
 ---
@@ -265,7 +265,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `frontend/src/app/operator/shore-snap.ts` · Test `frontend/src/app/operator/shore-snap.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — the four rule cases (AC-1…AC-4), the sampler (AC-5) and the no-drift proof.
+- [x] **Step 1: Write the failing test** — the four rule cases (AC-1…AC-4), the sampler (AC-5) and the no-drift proof.
 
 ```ts
 /** Water west of x = 100, land east of it; the frame is 300 × 200. */
@@ -289,12 +289,12 @@ it('degrades honestly on a frame with no water', () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `cd frontend && npx vitest run src/app/operator/shore-snap.spec.ts` → FAIL, `snapToShore` is not exported.
-- [ ] **Step 3: Minimal implementation** — expanding Chebyshev rings from the pin, stopping one ring past the first hit so the nearest is Euclidean; then `STEP_PX` inland along the pin→shore axis.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — append to the log if a fix lands here.
-- [ ] **Step 6: Commit** — `git commit -m "Snap rule: the nearest shore, four px onto the sand (#1170)"`
-- [ ] **Step 7: Update Execution status** in the same commit window.
+- [x] **Step 2: Run it, verify it fails** — `cd frontend && npx vitest run src/app/operator/shore-snap.spec.ts` → FAIL, `snapToShore` is not exported.
+- [x] **Step 3: Minimal implementation** — expanding Chebyshev rings from the pin, stopping one ring past the first hit so the nearest is Euclidean; then `STEP_PX` inland along the pin→shore axis.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 5: Generalization-audit pass** — append to the log if a fix lands here.
+- [x] **Step 6: Commit** — `git commit -m "Snap rule: the nearest shore, four px onto the sand (#1170)"`
+- [x] **Step 7: Update Execution status** in the same commit window.
 
 ---
 
@@ -302,7 +302,7 @@ it('degrades honestly on a frame with no water', () => {
 
 **Files:** Modify `frontend/src/app/shared/map-engine.ts` · `maplibre-map-engine.ts` · `fake-map-engine.ts` · Test `maplibre-map-engine.spec.ts` · `fake-map-engine.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — the fake paints a coast and inverts its own projection (AC-6); the real adapter asks for `preserveDrawingBuffer` only when `readableImagery` is set (R-1).
+- [x] **Step 1: Write the failing test** — the fake paints a coast and inverts its own projection (AC-6); the real adapter asks for `preserveDrawingBuffer` only when `readableImagery` is set (R-1).
 
 ```ts
 it('paints a coast its consumers can sample', () => {
@@ -323,12 +323,12 @@ it('keeps the drawing buffer only for a map that is read back', async () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/shared/fake-map-engine.spec.ts src/app/shared/maplibre-map-engine.spec.ts` → FAIL, `readImagery` is not on the handle.
-- [ ] **Step 3: Minimal implementation** — `MapImagery` + `readImagery()` + `unproject()` on the seam; MapLibre draws its canvas into a 2D scratch canvas and reads it back; the fake unprojects each pixel and paints the water fill west of `coastLng`.
-- [ ] **Step 4: Run it, verify it passes** — same command, then `npx vitest run src/app/shared` → PASS.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "Map seam: read back the rendered imagery, and unproject (#1170)"`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 2: Run it, verify it fails** — `npx vitest run src/app/shared/fake-map-engine.spec.ts src/app/shared/maplibre-map-engine.spec.ts` → FAIL, `readImagery` is not on the handle.
+- [x] **Step 3: Minimal implementation** — `MapImagery` + `readImagery()` + `unproject()` on the seam; MapLibre draws its canvas into a 2D scratch canvas and reads it back; the fake unprojects each pixel and paints the water fill west of `coastLng`.
+- [x] **Step 4: Run it, verify it passes** — same command, then `npx vitest run src/app/shared` → PASS.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `git commit -m "Map seam: read back the rendered imagery, and unproject (#1170)"`
+- [x] **Step 7: Update Execution status.**
 
 ---
 
@@ -336,7 +336,7 @@ it('keeps the drawing buffer only for a map that is read back', async () => {
 
 **Files:** Modify `frontend/src/app/operator/venue-location-field.ts` · Create `frontend/src/app/shared/geo-distance.ts` + spec · Modify `pages/home/place-groups.ts` + spec · Test `venue-location-field.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — AC-7, AC-8, AC-9, AC-10 against the fake coast.
+- [x] **Step 1: Write the failing test** — AC-7, AC-8, AC-9, AC-10 against the fake coast.
 
 ```ts
 it('offers the shoreline and stores it when accepted', async () => {
@@ -353,12 +353,12 @@ it('offers the shoreline and stores it when accepted', async () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/operator/venue-location-field.spec.ts` → FAIL, no proposal is rendered.
-- [ ] **Step 3: Minimal implementation** — `place()` stores the operator's point, then samples and offers; `acceptSnap()`/`keepOwnPoint()` clear the offer and move focus to *Place pin at map centre*; `PLACER_MAP_OPTIONS` turns on `readableImagery`.
-- [ ] **Step 4: Run it, verify it passes** — `npx vitest run src/app/operator src/app/pages/home` → PASS.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "The placer offers the shoreline, never takes it (#1170)"`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 2: Run it, verify it fails** — `npx vitest run src/app/operator/venue-location-field.spec.ts` → FAIL, no proposal is rendered.
+- [x] **Step 3: Minimal implementation** — `place()` stores the operator's point, then samples and offers; `acceptSnap()`/`keepOwnPoint()` clear the offer and move focus to *Place pin at map centre*; `PLACER_MAP_OPTIONS` turns on `readableImagery`.
+- [x] **Step 4: Run it, verify it passes** — `npx vitest run src/app/operator src/app/pages/home` → PASS.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `git commit -m "The placer offers the shoreline, never takes it (#1170)"`
+- [x] **Step 7: Update Execution status.**
 
 ---
 
@@ -366,7 +366,7 @@ it('offers the shoreline and stores it when accepted', async () => {
 
 **Files:** Create `venue-location-field.a11y.spec.ts` · Modify `venue-tab.contrast.spec.ts` · `e2e/operator-venue-location.e2e.ts` · `e2e/touch-targets.e2e.ts`
 
-- [ ] **Step 1: Write the failing test** — AC-11 and AC-12.
+- [x] **Step 1: Write the failing test** — AC-11 and AC-12.
 
 ```ts
 test('proposes the shoreline and saves the snapped point', async ({ page }) => {
@@ -382,20 +382,20 @@ test('proposes the shoreline and saves the snapped point', async ({ page }) => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts operator-venue-location` → FAIL, no proposal.
-- [ ] **Step 3: Minimal implementation** — arm the fake coast from the e2e (`window.__RIVIERA_FAKE_MAP_COAST__`), add the two legs, the axe spec and the two contrast cases, and the touch-target sweep with the proposal open.
-- [ ] **Step 4: Run it, verify it passes** — the Playwright command above, plus `npx vitest run src/app/operator`, then `npm run lint && npm run format:check`.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "Prove the shoreline offer: axe, contrast, touch targets, two e2e legs (#1170)"`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts operator-venue-location` → FAIL, no proposal.
+- [x] **Step 3: Minimal implementation** — arm the fake coast from the e2e (`window.__RIVIERA_FAKE_MAP_COAST__`), add the two legs, the axe spec and the two contrast cases, and the touch-target sweep with the proposal open.
+- [x] **Step 4: Run it, verify it passes** — the Playwright command above, plus `npx vitest run src/app/operator`, then `npm run lint && npm run format:check`.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `git commit -m "Prove the shoreline offer: axe, contrast, touch targets, two e2e legs (#1170)"`
+- [x] **Step 7: Update Execution status.**
 
 ---
 
 ## Phase 4 — Close-out
 
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` reconciles this plan with the diff.
-- [ ] `riviera-docs-freshness` over the branch range; `RESPONSIBILITIES.md` / ADR updated if anything durable moved.
-- [ ] Execution status finalized in this PR's last code-touching commit, citing `merged via PR #NN`.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` reconciles this plan with the diff.
+- [x] `riviera-docs-freshness` over `68564cab..HEAD` — 0 substrate findings; ADR-0022 is silent on canvas read-back and nothing it states is contradicted. Retired the merged `panel-row-dusk` plan (PR #1186) per § *Plan-doc retirement*.
+- [x] Execution status finalized in this PR's last code-touching commit, citing `merged via PR #1187`.
 
 ---
 
@@ -403,29 +403,33 @@ test('proposes the shoreline and saves the snapped point', async ({ page }) => {
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-22 | F-5/F-7: `shoreMoveLabel` chose its branch on the raw value, so a distance that rounded up across a boundary printed in the form it had left (`1000 m`, `10.0 km`) | Every branch in this slice that formats a rounded number. Enumerated by reading the function and its siblings: `shoreMoveLabel` (two boundaries) and `place-groups.ts`'s `distanceLabel` (one). | `grep -rn "toFixed\|Math.round" frontend/src/app/operator/shore-snap.ts frontend/src/app/pages/home/place-groups.ts` | 3 boundaries over 2 functions | Both of `shoreMoveLabel`'s now choose on the rounded value, with a case either side of each. `distanceLabel` is pre-existing, unchanged by this slice and has the same shape at 10 km — left alone rather than widened into, and noted here so the next slice touching it knows. |
 | 2026-09-22 | `shore-snap.spec.ts` › "degrades honestly on a frame holding no water" passed alone and timed out in the full run (6.1 s for the file) | A `WaterSampler` that never answers `undefined` breaks the type's contract, so the ring search runs to `MAX_SEARCH_PX` (≈67 M samples) instead of stopping at the frame. Every sampler in the tree, stub and real. | `grep -rn "WaterSampler\|snapToShore(" frontend/src --include=*.ts` | 6: `COAST`, the two bare `() => false` / `() => true` literals, `inlet`, `waterSamplerOf`, the placer's call | The two bare literals became frame-bounded `ALL_LAND` / `ALL_SEA`, `COAST` and `inlet` now share one `inFrame` helper; `waterSamplerOf` already bounded. The contract is now stated on `WaterSampler` itself, and `MAX_SEARCH_PX` re-described as the last-resort stop for a sampler that breaks it. File: 6.13 s → 0.03 s. |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1…AC-5:** Run `cd frontend && npx vitest run src/app/operator/shore-snap.spec.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `npx vitest run src/app/shared/fake-map-engine.spec.ts src/app/shared/maplibre-map-engine.spec.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7…AC-10:** Run `npx vitest run src/app/operator/venue-location-field.spec.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-11:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts operator-venue-location` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-12:** Run `npx vitest run src/app/operator/venue-location-field.a11y.spec.ts src/app/operator/venue-tab.contrast.spec.ts` → PASS. Verified at commit `<sha>`.
+- [x] **AC-1…AC-4:** `cd frontend && npx vitest run src/app/operator/shore-snap.spec.ts` → 8 passed — the rule's `null` arms, the 4 px step and the move label's two boundaries.
+- [x] **AC-5:** `npx vitest run src/app/shared/map-water.spec.ts` → 4 passed, the drift guard against `platform/map/style.json` among them.
+- [x] **AC-6:** `npx vitest run src/app/shared/fake-map-engine.spec.ts src/app/shared/maplibre-map-engine.spec.ts src/app/app.config.spec.ts` → passed.
+- [x] **AC-7…AC-10:** `npx vitest run src/app/operator/venue-location-field.spec.ts` → 23 passed, including the live-region identity case.
+- [x] **AC-11:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts operator-venue-location` → 13 passed, the real-engine canvas leg among them.
+- [x] **AC-12:** `npx vitest run src/app/operator/venue-location-field.a11y.spec.ts src/app/operator/venue-tab.contrast.spec.ts` → passed; the rendered-paint half is the themed e2e leg.
+- [x] **Whole suite at the close-out commit:** 3,608 unit specs, 729 mocked e2e, lint, `format:check`, and all five `scripts/check-*.mjs` guards.
+
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section justified N/A.
-- [ ] Money/cutoff/pool/codes untouched (#3, #4, #5, #7) — no backend in the diff.
-- [ ] Modulith section justified N/A — frontend-only; #13 unaffected because no endpoint changes.
-- [ ] Payment section N/A; no money moves.
-- [ ] No Flyway migration needed (#12) — no schema change.
-- [ ] Frontend standards met: no `as any`, no `disabled` on a pressed control, 44 px declared, focus moved on every destroy-the-focused-element transition.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability section justified N/A.
+- [x] Money/cutoff/pool/codes untouched (#3, #4, #5, #7) — no backend in the diff.
+- [x] Modulith section justified N/A — frontend-only; #13 unaffected because no endpoint changes.
+- [x] Payment section N/A; no money moves.
+- [x] No Flyway migration needed (#12) — no schema change.
+- [x] Frontend standards met: no `as any`, no `disabled` on a pressed control, 44 px declared, focus moved on every destroy-the-focused-element transition.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
+- [x] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.

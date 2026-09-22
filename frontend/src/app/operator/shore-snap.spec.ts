@@ -65,8 +65,11 @@ describe('the move label', () => {
     expect(shoreMoveLabel(0.042)).toBe('42 m');
     expect(shoreMoveLabel(0.93)).toBe('930 m');
     expect(shoreMoveLabel(1.6)).toBe('1.6 km');
-    // A hair under a kilometre rounds UP to one, and must not be read out as "1000 m".
+    // Each branch is chosen on the rounded value, so neither boundary reads out in the wrong form.
+    expect(shoreMoveLabel(0.9994)).toBe('999 m');
     expect(shoreMoveLabel(0.9996)).toBe('1.0 km');
+    expect(shoreMoveLabel(9.94)).toBe('9.9 km');
+    expect(shoreMoveLabel(9.96)).toBe('10 km');
     expect(shoreMoveLabel(28.4)).toBe('28 km');
   });
 });
