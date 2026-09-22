@@ -383,6 +383,24 @@ describe('VenueLocationField shoreline offer', () => {
    * buttons carrying the touch-target floor, so the offer has the keyboard twin every gesture in
    * this field has (WCAG 2.1.1).
    */
+  /**
+   * The rule RV-FE-10 exists for: a live region is announced for text that mutates while it is
+   * already in the DOM, so a region that arrives holding its sentence reads as silence. Asserting
+   * the text would pass either way, so this asserts the ELEMENT is the same one before and after.
+   */
+  it('speaks the offer through one region that was already there', async () => {
+    const fixture = await renderOnACoast();
+    const before = byTestId(fixture, 'venue-location-proposal-status');
+
+    expect(before).not.toBeNull();
+    expect(before?.textContent?.trim()).toBe('');
+
+    pick(fixture, INLAND);
+
+    expect(byTestId(fixture, 'venue-location-proposal-status')).toBe(before);
+    expect(before?.textContent).toContain('inland');
+  });
+
   it('offers two real buttons, at the floor and never disabled', async () => {
     const fixture = await renderOnACoast();
 

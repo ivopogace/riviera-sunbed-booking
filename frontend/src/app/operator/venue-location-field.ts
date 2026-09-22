@@ -3,11 +3,12 @@ import { Component, computed, model, signal, viewChild } from '@angular/core';
 import { focusMover } from '../shared/focus-after-render';
 import { distanceKm } from '../shared/geo-distance';
 import { LngLat, MapEngineOptions } from '../shared/map-engine';
+import { waterSamplerOf } from '../shared/map-water';
 import { RivieraMap } from '../shared/riviera-map';
 import { RIVIERA_MAP_OPTIONS } from '../shared/riviera-map-options';
 import { TouchTarget } from '../shared/touch-target';
 import { VenueLocation } from '../shared/venue-views';
-import { shoreMoveLabel, snapToShore, waterSamplerOf } from './shore-snap';
+import { shoreMoveLabel, snapToShore } from './shore-snap';
 
 /** The scale the server stores (`NUMERIC(_,6)`), so what is shown is what a re-read returns. */
 const STORED_DECIMALS = 6;
@@ -103,17 +104,21 @@ interface ShoreOffer {
       >{{ readout() }}</output
     >
 
-    @if (offer(); as shore) {
+    <output aria-live="polite" data-testid="venue-location-proposal-status" class="sr-only">{{
+      offerSentence()
+    }}</output>
+
+    @if (offer()) {
       <div
         data-testid="venue-location-proposal"
         class="flex flex-wrap items-center gap-2 rounded-[18px] border border-riv-field-border bg-riv-console-inset/60 px-3 py-2"
       >
-        <output
-          aria-live="polite"
-          class="block min-w-[180px] flex-1 text-[12.5px] leading-[1.5] text-riv-card-ink"
-          >This pin is {{ label(shore) }} {{ shore.atSea ? 'out to sea' : 'inland' }}. Move it to
-          the shoreline?</output
+        <p
+          aria-hidden="true"
+          class="min-w-[180px] flex-1 text-[12.5px] leading-[1.5] text-riv-card-ink"
         >
+          {{ offerSentence() }}
+        </p>
         <button
           type="button"
           appTouchTarget
@@ -148,6 +153,25 @@ export class VenueLocationField {
   /** The shoreline on the table right now; cleared the moment the operator answers either way. */
   protected readonly offer = signal<ShoreOffer | null>(null);
 
+  /**
+   * The offer in words, empty when there is none — one sentence with one source: the persistent
+   * region above speaks it, the panel below shows it.
+   *
+   * <p>That region is mounted OUTSIDE the `@if` on purpose. A live region is announced for content
+   * that mutates while it is already in the DOM, so one that arrives holding its sentence reads as
+   * silence (RV-FE-10) — and nothing in jsdom or axe would say so, which is why
+   * `venue-location-field.spec.ts` asserts the element's identity across the transition rather
+   * than the presence of its text. The shown copy is `aria-hidden` so the sentence is not read twice.
+   */
+  protected readonly offerSentence = computed(() => {
+    const shore = this.offer();
+    if (shore === null) {
+      return '';
+    }
+    const where = shore.atSea ? 'out to sea' : 'inland';
+    return `This pin is ${shoreMoveLabel(shore.km)} ${where}. Move it to the shoreline?`;
+  });
+
   protected readonly pin = computed<LngLat | null>(() => {
     const at = this.location();
     return at === null ? null : { lng: at.longitude, lat: at.latitude };
@@ -164,10 +188,6 @@ export class VenueLocationField {
     const own = { latitude: rounded(at.lat), longitude: rounded(at.lng) };
     this.location.set(own);
     this.offer.set(this.shoreNear(own));
-  }
-
-  protected label(shore: ShoreOffer): string {
-    return shoreMoveLabel(shore.km);
   }
 
   protected acceptShore(): void {

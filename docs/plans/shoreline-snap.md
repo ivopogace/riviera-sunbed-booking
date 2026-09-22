@@ -20,7 +20,9 @@ and writes through the existing venue-profile PATCH unchanged.
 **Source of intent:** GitHub issue #1170 (follow-up named out of scope by #1156, fault 2 of the
 map-design prototype's honest faults list; technique from PR #1155's README @ `2cf675da`, round 7).
 
-**Skills consulted:** `riviera-sdlc` (intake gate: the issue's "all three themes" reconciled to the
+**Skills consulted:** `angular-developer` + angular-cli MCP (verified `@if (…; as …)`, the `[class]`
+string form, `afterNextRender`'s earlyRead→write order and `model()`'s `.set()` propagation against
+angular.dev for v22) · `riviera-sdlc` (intake gate: the issue's "all three themes" reconciled to the
 two the console wears — see OQ-1; no sibling close-out outstanding; no in-flight PR touches
 `map-engine.ts`, `riviera-map.ts` or `venue-location-field.ts`) · `riviera-plan-doc` (forced the
 route decision D-1 into the doc rather than the code, and the behaviour-parity ledger for the
@@ -203,9 +205,9 @@ differ, at the same six-decimal scale it already carried.
 
 ## Execution status
 
-**Stage pointer:** `PR — ready for review, then the review + Sonar gates`
+**Stage pointer:** `review gate — findings fixed, re-verifying`
 
-**Next action:** Mark PR #1187 ready for review, run the review gate and clear the Sonar list.
+**Next action:** Push F-1…F-6, re-run CI, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -221,15 +223,22 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
-| — | | | |
+| F-1 | Review gate (CLAUDE.md/convention agent) | **Blocker, RV-FE-8:** `shared/fake-map-engine.ts` imported `WATER_FILL` from `../operator/shore-snap` — the only `shared/` → feature edges in the tree, both mine. `shared/` may import nothing app-internal. | fixed — `WATER_FILL`, `WaterSampler` and `waterSamplerOf` moved to `shared/map-water.ts`; `snapToShore`/`shoreMoveLabel` stay in `operator/`. Re-checked: `grep -rnE "from '\.\./(operator\|booking\|venue\|auth\|admin\|pages)/" frontend/src/app/shared/` is empty. |
+| F-2 | Review gate (past-PR agent) | **RV-FE-10:** the offer's `<output aria-live>` mounted inside the `@if` holding its sentence, so a screen reader has no mutation to announce. The lesson of PR #1160; MDN says the same ("the most reliable way … is to include them in the initial markup"). | fixed — a persistent `sr-only` `<output>` outside the `@if`, the shown copy `aria-hidden`; spec asserts element identity across the transition, not text presence. |
+| F-3 | Review gate (comment-guidance agent) | `snapToShore`'s TSDoc claimed "a pin in the water is never one of them [the null cases]" — the spec's own all-sea case disproves it — and called four cases exhaustive when the stepped-point check is a fifth. | fixed — the doc now states the null cases as they are, and says the shore band alone is land-only. |
+| F-4 | Review gate (comment-guidance agent) | `FakeMapHandle.readImagery()` ignored `MapEngineOptions.readableImagery`, so a consumer forgetting the flag passed every spec and would go blank against real MapLibre. The fake claimed parity it did not have. | fixed — the fake now gates on the flag as well as its coast, with a spec for it; the specs that read imagery ask for it explicitly. |
+| F-5 | Review gate (bug-scan agent) | `shoreMoveLabel(0.9996)` read "1000 m" instead of "1.0 km" — the metres branch rounded up past its own boundary. | fixed — the branch is chosen on the rounded metres, with a case at the boundary. |
+| F-6 | Angular/Tailwind doc check (user-requested) | No render proof that `bg-riv-console-inset/60` resolves: Tailwind's docs do not state that the slash modifier applies to a custom `@theme` colour, and riviera-tailwind's hard rule wants a `getComputedStyle` diff, not a class list. | fixed — the themed e2e leg now measures the offer panel's fill with `expectInsetFill(…, 60, theme)` in both console themes. |
 
 ---
 
 ## File structure
 
 - `docs/plans/shoreline-snap.md` — this plan
-- `frontend/src/app/operator/shore-snap.ts` — the pure rule, the raster sampler, the move label
-- `frontend/src/app/operator/shore-snap.spec.ts` — the rule against a stub sampler; the sampler against a hand-built raster; the style no-drift proof
+- `frontend/src/app/operator/shore-snap.ts` — the pure shoreline rule and the move label
+- `frontend/src/app/operator/shore-snap.spec.ts` — the rule against a stub sampler, and the label
+- `frontend/src/app/shared/map-water.ts` — the water fill, the `WaterSampler` type and `waterSamplerOf`
+- `frontend/src/app/shared/map-water.spec.ts` — the sampler against a hand-built raster; the style no-drift proof
 - `frontend/src/app/operator/venue-location-field.ts` — the proposal: offer, accept, decline, focus
 - `frontend/src/app/operator/venue-location-field.spec.ts` — the placer's new behaviour
 - `frontend/src/app/operator/venue-location-field.a11y.spec.ts` — axe over the field, proposal open and closed

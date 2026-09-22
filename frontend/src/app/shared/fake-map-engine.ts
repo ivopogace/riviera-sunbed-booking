@@ -1,4 +1,3 @@
-import { WATER_FILL } from '../operator/shore-snap';
 import {
   LngLat,
   MapEngine,
@@ -10,6 +9,7 @@ import {
   MapView,
   ScreenPoint,
 } from './map-engine';
+import { WATER_FILL } from './map-water';
 import { projectAround, unprojectAround } from './web-mercator';
 
 /**
@@ -135,16 +135,20 @@ export class FakeMapHandle implements MapHandle {
 
   /**
    * The imagery a fake map "draws": water west of the coast meridian it was given, land east of
-   * it, painted in the style's own fills at the camera the fake is currently at. A fake given no
-   * coast draws nothing and says so with `null` — the same answer a real engine gives when it was
-   * never asked to keep its drawing buffer — so every spec that does not care about the sea is
+   * it, painted in the style's own fills at the camera the fake is currently at.
+   *
+   * <p>`null` on both of the real adapter's terms, not just the fixture's. A map built WITHOUT
+   * {@link MapEngineOptions.readableImagery} reads back nothing here exactly as MapLibre reads
+   * back nothing without its drawing buffer — so a consumer that forgets the flag fails under the
+   * fake too, instead of passing every spec and going blank against a real engine. A fake given no
+   * coast draws nothing either, which is what leaves every spec that does not care about the sea
    * untouched by this.
    *
    * <p>Straight, because a straight coast is enough to prove a rule that only ever asks "water or
    * land, at this pixel?" — and it is the same coast the e2e fixture archive carries.
    */
   readImagery(): MapImagery | null {
-    if (this.coastLng === undefined) {
+    if (this.coastLng === undefined || this.options.readableImagery !== true) {
       return null;
     }
     const { width, height } = this.frame();

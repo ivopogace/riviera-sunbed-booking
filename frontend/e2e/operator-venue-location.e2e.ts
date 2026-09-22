@@ -2,7 +2,12 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
-import { CARD_INK, consoleThemeOf, expectConsoleTheme } from './support/console-theme';
+import {
+  CARD_INK,
+  consoleThemeOf,
+  expectConsoleTheme,
+  expectInsetFill,
+} from './support/console-theme';
 import { mockMapResources } from './support/map-resources';
 
 /**
@@ -42,6 +47,12 @@ const INITIAL_PROFILE = {
 };
 
 test.use({ colorScheme: 'dark' });
+
+/**
+ * The shoreline offer. Water west of this meridian, land east of it: the map opens centred at
+ * (19.75, 40.05), so its own centre is about 28 px inland — past the shore band, and an offer.
+ */
+const COAST_LNG = 19.7;
 
 /**
  * The console reads this mock survives a reload, so "save, reload, the pin is still there" is a
@@ -252,7 +263,8 @@ test('paints the pin placer under porcelain and the dark console (#1099, + axe)'
   page,
 }, testInfo) => {
   const theme = consoleThemeOf(testInfo);
-  await mockVenue(page);
+  // A coast under the map's centre makes the drop below open the offer, so its panel paints here.
+  await mockVenue(page, null, { coastLng: COAST_LNG });
   await page.goto('/operator/1');
   await signInAndOpenVenue(page);
 
@@ -268,6 +280,15 @@ test('paints the pin placer under porcelain and the dark console (#1099, + axe)'
   await expect(page.getByTestId('map-pin')).toHaveCSS('background-color', 'rgb(244, 246, 247)');
   // Its label beside the map is console ink, and follows the console theme.
   await expect(page.getByTestId('venue-location-clear')).toHaveCSS('color', CARD_INK[theme]);
+
+  // `bg-riv-console-inset/60` compiles to a `color-mix` no class list can prove actually resolved.
+  const offer = page.getByTestId('venue-location-proposal');
+  await expect(offer).toBeVisible();
+  await expectInsetFill(page, offer, 60, theme);
+  await expect(offer.getByRole('button', { name: 'Move to shoreline' })).toHaveCSS(
+    'color',
+    CARD_INK[theme],
+  );
 
   await settle(page);
   await expectNoSeriousAxeViolations(page, `venue location placer (${theme})`);
@@ -345,12 +366,6 @@ test('keeps the venue pin on top when the you-are-here dot lands on it', async (
 
   expect(owner).toBe('map-pin');
 });
-
-/**
- * The shoreline offer. Water west of {@link COAST_LNG}, land east of it: the map opens centred at
- * (19.75, 40.05), so its own centre is about 28 px inland — past the shore band, and an offer.
- */
-const COAST_LNG = 19.7;
 
 /** `Latitude 40.050000, longitude 19.750000` → the two numbers, as the field stores them. */
 async function readout(page: Page): Promise<{ latitude: number; longitude: number }> {

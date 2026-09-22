@@ -81,9 +81,10 @@ describe('appConfig MapEngine factory', () => {
       delete armed.__RIVIERA_FAKE_MAP_COAST__;
       const without = factoryFor(MapEngine)() as FakeMapEngine;
 
+      const readable = { ...RIVIERA_MAP_OPTIONS, readableImagery: true };
       return Promise.all([
-        withCoast.create(host, RIVIERA_MAP_OPTIONS),
-        without.create(document.createElement('div'), RIVIERA_MAP_OPTIONS),
+        withCoast.create(host, readable),
+        without.create(document.createElement('div'), readable),
       ]).then(([drawn, blank]) => {
         expect(drawn.readImagery()).not.toBeNull();
         expect(blank.readImagery()).toBeNull();

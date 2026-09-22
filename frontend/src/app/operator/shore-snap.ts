@@ -1,18 +1,5 @@
-import { MapImagery, ScreenPoint } from '../shared/map-engine';
-
-/**
- * The map's own water fill, as `platform/map/style.json`'s `water` layer declares it. A constant
- * here and a declaration there, so `shore-snap.spec.ts` holds the two together: a restyled sea
- * would otherwise stop every proposal silently.
- */
-export const WATER_FILL = { r: 158, g: 189, b: 255 } as const;
-
-/**
- * How far a channel may stray from the fill and still be sea. Wide enough for a renderer's own
- * rounding, narrow enough that a shoreline pixel — the fill blended with the sand beside it —
- * reads as land, which is what keeps the proposal clear of the blend.
- */
-const WATER_TOLERANCE = 10;
+import { ScreenPoint } from '../shared/map-engine';
+import { WaterSampler } from '../shared/map-water';
 
 /** How far onto the sand a proposal steps from the shore pixel it found (the prototype's 4 px). */
 export const SHORE_STEP_PX = 4;
@@ -29,27 +16,20 @@ const SHORE_BAND_PX = 8;
 const MAX_SEARCH_PX = 4096;
 
 /**
- * Whether the map's imagery is water at a point on the map's own box, in CSS px from its
- * top-left corner — `undefined` where the sampler cannot see, which is how a frame's edge is
- * told from its land.
- *
- * <p>Reporting that edge is not optional: {@link snapToShore} searches outward until a whole ring
- * of its points is unseen, so a sampler that answers everywhere is searched to
- * {@link MAX_SEARCH_PX} instead of to its frame.
- */
-export type WaterSampler = (point: ScreenPoint) => boolean | undefined;
-
-/**
  * Where a pin dropped off the shoreline should go: the nearest shore pixel, then
  * {@link SHORE_STEP_PX} onto the sand — the rule the map-design prototype established over its
  * 26 fixtures, here as a pure function over a sampled raster so a spec drives it with a stub
  * sampler and no DOM, the seam `layoutPills` established for the pin pills.
  *
- * <p>`null` is the honest answer in four cases, and the placer proposes nothing in all of them: a
- * pin already within {@link SHORE_BAND_PX} of the water, a frame holding no water at all (as the
- * prototype's Palasë and Borsh frames had none), a frame holding no land, and a point the sampler
- * cannot see. A pin in the water is never one of them — it goes to the nearest LAND, stepped the same 4
- * px inland, rather than to the water's edge it is already at.
+ * <p>`null` is the honest answer wherever the imagery cannot settle it, and the placer proposes
+ * nothing in every such case: a pin on land already within {@link SHORE_BAND_PX} of the water, a
+ * frame holding no water at all (as the prototype's Palasë and Borsh frames had none), a frame
+ * holding no land, a point the sampler cannot see, and a stepped point that turns out not to be
+ * land after all — a spit too narrow to stand on, or a step off the frame.
+ *
+ * <p>The band is the one case that is about LAND only: a pin in the water is always off the
+ * shoreline, however close, so it is offered the nearest LAND, stepped the same 4 px inland,
+ * rather than the water's edge it is already at.
  */
 export function snapToShore(at: ScreenPoint, isWater: WaterSampler): ScreenPoint | null {
   const here = isWater({ x: Math.round(at.x), y: Math.round(at.y) });
@@ -70,35 +50,13 @@ export function snapToShore(at: ScreenPoint, isWater: WaterSampler): ScreenPoint
 }
 
 /**
- * Reads a raster the map engine handed back: the fill at a CSS-px point, matched against
- * {@link WATER_FILL} within {@link WATER_TOLERANCE}. The raster is in device pixels, so a 2× map
- * is sampled at 2× and the caller still speaks CSS px.
- */
-export function waterSamplerOf(imagery: MapImagery): WaterSampler {
-  const deviceWidth = Math.round(imagery.width * imagery.scale);
-  const deviceHeight = Math.round(imagery.height * imagery.scale);
-  return (point) => {
-    if (point.x < 0 || point.y < 0 || point.x >= imagery.width || point.y >= imagery.height) {
-      return undefined;
-    }
-    const x = Math.min(deviceWidth - 1, Math.floor(point.x * imagery.scale));
-    const y = Math.min(deviceHeight - 1, Math.floor(point.y * imagery.scale));
-    const at = (y * deviceWidth + x) * 4;
-    return (
-      Math.abs(imagery.pixels[at] - WATER_FILL.r) <= WATER_TOLERANCE &&
-      Math.abs(imagery.pixels[at + 1] - WATER_FILL.g) <= WATER_TOLERANCE &&
-      Math.abs(imagery.pixels[at + 2] - WATER_FILL.b) <= WATER_TOLERANCE
-    );
-  };
-}
-
-/**
  * How far the proposal would move the pin, for the operator to read: metres below a kilometre,
  * because the moves that matter at a beach are tens of metres and `0.1 km` says less than `90 m`.
  */
 export function shoreMoveLabel(km: number): string {
-  if (km < 1) {
-    return `${Math.round(km * 1000)} m`;
+  const metres = Math.round(km * 1000);
+  if (metres < 1000) {
+    return `${metres} m`;
   }
   return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
 }

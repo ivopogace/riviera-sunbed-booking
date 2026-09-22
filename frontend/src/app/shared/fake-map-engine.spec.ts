@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { waterSamplerOf } from '../operator/shore-snap';
 import { FakeMapEngine } from './fake-map-engine';
 import { LngLat, MapEngineOptions, MapImagery, ScreenPoint } from './map-engine';
+import { waterSamplerOf } from './map-water';
 
 const OPTIONS: MapEngineOptions = {
   styleUrl: '/map/style.json',
@@ -261,13 +261,28 @@ describe('FakeMapEngine', () => {
 describe('FakeMapEngine imagery', () => {
   /** Water west of this meridian, land east of it: the fixture archive's own straight coast. */
   const COAST_LNG = 19.8;
+  /** What the pin placer's map asks for; without it a map reads back nothing, as MapLibre does. */
+  const READABLE = { ...OPTIONS, readableImagery: true };
 
   function isWaterAt(imagery: MapImagery, point: ScreenPoint): boolean | undefined {
     return waterSamplerOf(imagery)(point);
   }
 
   it('has no imagery at all until a coast is set, so a map that draws nothing reports nothing', async () => {
-    const handle = await new FakeMapEngine().create(document.createElement('div'), OPTIONS);
+    const handle = await new FakeMapEngine().create(document.createElement('div'), READABLE);
+
+    expect(handle.readImagery()).toBeNull();
+  });
+
+  /**
+   * The fake holds the consumer to the same bargain the real adapter does: a map that never asked
+   * to be readable reads back nothing, so forgetting the flag fails here and not only in a browser.
+   */
+  it('reads back nothing for a map that never asked to be readable', async () => {
+    const handle = await new FakeMapEngine(COAST_LNG).create(
+      document.createElement('div'),
+      OPTIONS,
+    );
 
     expect(handle.readImagery()).toBeNull();
   });
@@ -275,7 +290,7 @@ describe('FakeMapEngine imagery', () => {
   it('paints the style’s water fill west of its coast and land east of it', async () => {
     const handle = await new FakeMapEngine(COAST_LNG).create(
       document.createElement('div'),
-      OPTIONS,
+      READABLE,
     );
     const imagery = handle.readImagery();
 
@@ -292,7 +307,7 @@ describe('FakeMapEngine imagery', () => {
   it('repaints after the camera moves, so the sample follows what the map now shows', async () => {
     const handle = await new FakeMapEngine(COAST_LNG).create(
       document.createElement('div'),
-      OPTIONS,
+      READABLE,
     );
     const atSea = { lng: COAST_LNG - 0.2, lat: 40.04 };
 
