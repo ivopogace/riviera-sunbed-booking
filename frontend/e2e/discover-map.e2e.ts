@@ -1075,6 +1075,13 @@ test.describe('Discover map — the desktop panel', () => {
     await expect(selling).toHaveCSS('filter', 'none');
     await expect(selling).not.toContainText('Closed today');
 
+    // The filter greys the anchor's own outline too, so the focus ring must not carry hue to lose.
+    const ring = await closed.evaluate((row: HTMLElement) => {
+      row.focus();
+      return getComputedStyle(row).outlineColor;
+    });
+    expect(ring).toMatch(/^rgba?\((\d+), \1, \1[,)]/);
+
     // Dusk takes the price's slot, so both the 92 px above and the 121 px below stay true of it.
     const heights = async (): Promise<number[]> =>
       rows.evaluateAll((all) => all.map((row) => Math.round(row.getBoundingClientRect().height)));
