@@ -2,6 +2,7 @@ import { Component, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { whenSheetOpened } from '../../../testing/sheet-opened';
+import { whenSheetSettled } from '../../../testing/sheet-settled';
 import { DiscoverSheet } from './discover-sheet';
 import { offsetFor } from './sheet-geometry';
 
@@ -73,6 +74,13 @@ describe('DiscoverSheet', () => {
 
   function scroller(): HTMLElement {
     return byTestId('sheet-scroller')!;
+  }
+
+  /** A touch event carrying the fingers still on the glass, which is what the sheet reads. */
+  function touch(type: 'touchstart' | 'touchend', remaining: number): Event {
+    const event = new Event(type);
+    Object.defineProperty(event, 'touches', { value: { length: remaining } });
+    return event;
   }
 
   function sheet(): DiscoverSheet {
@@ -173,7 +181,7 @@ describe('DiscoverSheet', () => {
       // The viewport moves while the first rest is still unconfirmed, so a second rest supersedes it.
       Object.defineProperty(view, 'innerHeight', { value: innerHeight - 60, configurable: true });
       view.dispatchEvent(new Event('resize'));
-      await settle();
+      await whenSheetSettled(fixture);
       expect(scroller().scrollTop).toBe(offsetFor(sheet().tops(), 'half'));
       asked.length = 0;
 
@@ -221,13 +229,42 @@ describe('DiscoverSheet', () => {
     sheet().go('full');
     await settle();
     const pill = byTestId('sheet-map-pill')!;
-    expect(pill.textContent?.trim()).toContain('Map');
+    expect(pill.textContent?.trim()).toBe('Show map');
     expect(pill.parentElement?.style.bottom).toBe(`${sheet().chrome().tabBar + 12}px`);
 
     pill.click();
     await settle();
     expect(sheet().detent()).toBe('half');
     expect(byTestId('sheet-map-pill')).toBeNull();
+  });
+
+  it('keeps the guard while a second finger is still on the glass', async () => {
+    const window = el().ownerDocument.defaultView!;
+    const innerHeight = window.innerHeight;
+    await whenSheetSettled(fixture);
+    asked.length = 0;
+
+    try {
+      byTestId('sheet')!.dispatchEvent(touch('touchstart', 1));
+      byTestId('sheet')!.dispatchEvent(touch('touchstart', 2));
+      // One finger lifts; `touchend` fires per changed touch, not when the last one leaves.
+      byTestId('sheet')!.dispatchEvent(touch('touchend', 1));
+      Object.defineProperty(window, 'innerHeight', {
+        value: innerHeight - 60,
+        configurable: true,
+      });
+      window.dispatchEvent(new Event('resize'));
+      await settle();
+
+      expect(asked, 'a re-measure rested under the remaining finger').toEqual([]);
+
+      byTestId('sheet')!.dispatchEvent(touch('touchend', 0));
+      await whenSheetSettled(fixture);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', { value: innerHeight, configurable: true });
+    }
+
+    expect(scroller().scrollTop).toBe(offsetFor(sheet().tops(), 'half'));
   });
 
   it('names the nearest rest while a drag is between two rests', () => {
@@ -310,8 +347,45 @@ describe('DiscoverSheet', () => {
       configurable: true,
     });
     window.dispatchEvent(new Event('resize'));
-    await settle();
+    await whenSheetSettled(fixture);
 
+    expect(sheet().detent()).toBe('full');
+    expect(scroller().scrollTop).toBe(offsetFor(sheet().tops(), 'full'));
+  });
+
+  /**
+   * A phone fires `resize` mid-gesture every time its URL bar or on-screen keyboard moves.
+   * Resting on that scrolls the sheet out from under the finger, which is the drag that fights
+   * back; the rest is owed all the same, so it is taken once the finger lifts.
+   */
+  it('leaves a re-measure taken under a finger alone, and rests once the finger lifts', async () => {
+    const window = el().ownerDocument.defaultView!;
+    const innerHeight = window.innerHeight;
+    sheet().go('full');
+    await settle();
+    await whenSheetSettled(fixture);
+    const restedAt = scroller().scrollTop;
+    asked.length = 0;
+
+    try {
+      byTestId('sheet')!.dispatchEvent(touch('touchstart', 1));
+      Object.defineProperty(window, 'innerHeight', {
+        value: innerHeight - 60,
+        configurable: true,
+      });
+      window.dispatchEvent(new Event('resize'));
+      await settle();
+
+      expect(asked, 'a re-measure scrolled the sheet under the finger').toEqual([]);
+      expect(scroller().scrollTop).toBe(restedAt);
+
+      byTestId('sheet')!.dispatchEvent(touch('touchend', 0));
+      await whenSheetSettled(fixture);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', { value: innerHeight, configurable: true });
+    }
+
+    // The rest the re-measure asked for is not lost, only held: it lands at the new geometry.
     expect(sheet().detent()).toBe('full');
     expect(scroller().scrollTop).toBe(offsetFor(sheet().tops(), 'full'));
   });

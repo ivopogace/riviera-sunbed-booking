@@ -351,12 +351,24 @@ test('stripe-profile payment flow is accessible end-to-end (Stripe mocked)', asy
   await expect(page.getByTestId('pay-button')).toBeVisible();
   await expectNoSeriousAxeViolations(page, 'payment page (ready)');
 
+  // Pull-to-refresh is off while the checkout is up: a cold load has no hand-off to land on.
+  await expect(page.locator('.pay-checkout')).toHaveClass(/riv-holds-progress/);
+  expect(
+    await page.evaluate(() => getComputedStyle(document.documentElement).overscrollBehaviorY),
+  ).toBe('contain');
+
   // Pay → the page polls the backend and only then shows confirmed (invariant #8).
   await page.getByTestId('pay-button').click();
   await expect(page.getByRole('heading', { name: /You.re booked/ })).toBeVisible();
   await expect(page).toHaveURL(/\/booking\/pay/); // confirmation is in-place, driven by the poll
   await expect(page.getByTestId('booking-code')).toContainText('WXYZ345678');
   await expectNoSeriousAxeViolations(page, 'payment page (confirmed)');
+
+  // The booking is settled, so a reload costs nothing and the platform gesture comes back.
+  await expect(page.locator('.riv-holds-progress')).toHaveCount(0);
+  expect(
+    await page.evaluate(() => getComputedStyle(document.documentElement).overscrollBehaviorY),
+  ).toBe('auto');
 });
 
 /**

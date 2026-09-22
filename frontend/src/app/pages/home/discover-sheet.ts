@@ -3,6 +3,7 @@ import {
   afterRenderEffect,
   Component,
   computed,
+  DestroyRef,
   ElementRef,
   inject,
   signal,
@@ -10,6 +11,8 @@ import {
   viewChild,
 } from '@angular/core';
 
+import { focusMover } from '../../shared/focus-after-render';
+import { MapIcon } from '../../shared/map-icon';
 import { PanelGlass } from '../../shared/panel-glass';
 import { TouchTarget } from '../../shared/touch-target';
 import {
@@ -33,11 +36,23 @@ const MAP_PILL_LIFT_PX = 12;
 const REST_ATTEMPTS = 8;
 /** The list's bottom padding: the Map pill's 44, its 12 px lift and 12 px of air, so the last row clears it. */
 const LIST_PAD_BOTTOM_PX = 68;
+/**
+ * How long after the last scroll event the sheet counts as settled. Long enough to bridge the
+ * frame gaps inside one snap animation or fling, short enough that a rotation re-rests at once.
+ */
+const SETTLE_QUIET_MS = 160;
+/**
+ * A touch keeps the element it started on, and an element destroyed mid-gesture takes its
+ * `touchend` with it — off the tree, so neither the sheet nor the document hears it and the
+ * finger flag sticks. Nothing having moved the sheet for this long means the gesture is over,
+ * whatever the DOM believes; generous, because a tourist reading a row is not a stale finger.
+ */
+const STALE_TOUCH_MS = 6_000;
 
 /**
  * The Discover venue sheet: the list as a sheet over the riviera map with three resting heights
  * — half (opens here), peek (the head alone above the tab bar) and full (the list, a 44 px sliver
- * of map kept under the header, a `Map` pill at the foot as the way back).
+ * of map kept under the header, a `Show map` pill at the foot as the way back).
  *
  * <p>It is **two CSS scroll-snap scrollers, not a pointer drag**. The OUTER holds a transparent
  * spacer over the map with the peek and half rests as zero-height `snap-always` targets, then
@@ -52,14 +67,17 @@ const LIST_PAD_BOTTOM_PX = 68;
  * <p>The shipped chrome is **measured at runtime, never a constant**: the tab bar's rendered
  * height (61 on a phone, 0 from `sm` where it is hidden) and the header's (73). The scrollers
  * render only once the chrome is measured, and the first rest is confirmed on the next frame,
- * because a rest taken at a layout with every rest at offset 0 is carried to full.
+ * because a rest taken at a layout with every rest at offset 0 is carried to full. A re-measure
+ * never re-rests while the sheet is moving, though — a phone fires `resize` mid-gesture every
+ * time its URL bar or on-screen keyboard moves, and the rest it asks for waits for `settled`
+ * rather than scrolling the sheet out from under the finger.
  *
  * <p>The head goes in through `[sheetHead]`, the rows through the default slot; the page keeps
  * every word and every row, this component keeps the physics.
  */
 @Component({
   selector: 'app-discover-sheet',
-  imports: [PanelGlass, TouchTarget],
+  imports: [MapIcon, PanelGlass, TouchTarget],
   host: {
     class: 'contents',
     '(window:resize)': 'remeasure()',
@@ -91,6 +109,9 @@ const LIST_PAD_BOTTOM_PX = 68;
           class="pointer-events-auto flex snap-start snap-always flex-col rounded-t-[26px] shadow-[0_-12px_40px_rgba(7,42,58,0.28)]"
           [style.height.px]="tops().sheetHeight"
           aria-label="Venues"
+          (touchstart)="onTouch(true)"
+          (touchend)="onTouch($event.touches.length > 0)"
+          (touchcancel)="onTouch($event.touches.length > 0)"
         >
           <div
             data-testid="sheet-head"
@@ -138,9 +159,9 @@ const LIST_PAD_BOTTOM_PX = 68;
           appTouchTarget
           data-testid="sheet-map-pill"
           class="pointer-events-auto inline-flex h-11 touch-manipulation items-center gap-2 rounded-full bg-riv-accent-ink px-5 text-[15px] font-bold text-riv-on-accent-ink shadow-[0_10px_28px_rgba(7,42,58,0.35)]"
-          (click)="go('half')"
+          (click)="showMap()"
         >
-          <span aria-hidden="true">⌖</span> Map
+          <app-map-icon /> Show map
         </button>
       </div>
     }
@@ -172,8 +193,28 @@ export class DiscoverSheet {
   readonly lift = signal(0);
   /** The offset the sheet is resting *for*; a rest for any other offset has been superseded. */
   private restTarget: number | undefined;
+  /** A finger is on the sheet. */
+  private readonly touched = signal(false);
+  /** The scroll is still moving — a fling, a snap, or a `go` glide — until it goes quiet. */
+  private readonly rolling = signal(false);
+  private quietTimer: number | undefined;
+  private staleTouchTimer: number | undefined;
+  private readonly moveFocus = focusMover({ preventScroll: true });
+  /**
+   * Nothing is moving the sheet: no finger on it, and no scroll still running under one. A
+   * mobile browser fires `resize` in the middle of both whenever its URL bar or the on-screen
+   * keyboard moves, and a rest taken then scrolls the sheet out from under the finger — or turns
+   * the Map pill's own glide straight back into full, which reads as a dead button. So the rest
+   * waits for this.
+   */
+  readonly settled = computed(() => !this.touched() && !this.rolling());
 
   constructor() {
+    // `isolate: false` shares one jsdom per worker, so a timer outliving its fixture leaks across specs.
+    inject(DestroyRef).onDestroy(() => {
+      this.document.defaultView?.clearTimeout(this.quietTimer);
+      this.document.defaultView?.clearTimeout(this.staleTouchTimer);
+    });
     afterRenderEffect({
       earlyRead: () => {
         this.measured();
@@ -188,14 +229,17 @@ export class DiscoverSheet {
         });
       },
     });
+    // mixedReadWrite, not write: `rest` scrolls and reads back where it landed (see its doc).
     afterRenderEffect({
-      write: () => {
+      mixedReadWrite: () => {
+        const tops = this.tops();
         const scroller = this.scroller()?.nativeElement;
-        const want = offsetFor(
-          this.tops(),
-          untracked(this.opened) ? untracked(this.detent) : 'half',
-        );
-        if (scroller === undefined || want === this.restTarget) {
+        // Read unconditionally, so a re-measure taken mid-gesture still re-runs this once it settles.
+        if (scroller === undefined || !this.settled()) {
+          return;
+        }
+        const want = offsetFor(tops, untracked(this.opened) ? untracked(this.detent) : 'half');
+        if (want === this.restTarget) {
           return;
         }
         this.rest(scroller, want, 0);
@@ -225,6 +269,10 @@ export class DiscoverSheet {
    *
    * <p>Only the offset the sheet is resting for is still worth confirming: a re-measure starts a
    * rest for a new one, and a rest it superseded retires rather than undo it.
+   *
+   * <p>It scrolls and then reads back where the scroller actually landed — the browser clamps a
+   * rest to the scrollable range — so its caller runs in `mixedReadWrite`, the phase for work
+   * whose read cannot be divided from its write, never in `write`.
    */
   private rest(scroller: HTMLElement, want: number, attempt: number): void {
     this.restTarget = want;
@@ -238,6 +286,12 @@ export class DiscoverSheet {
       if (want !== this.restTarget) {
         return;
       }
+      // `touched`, not `settled`: the rest's own scroll unsettles the sheet, so that would abandon every chain.
+      if (this.touched()) {
+        // Shut the opening window, or `restTarget` stays armed and no re-measure ever rests again.
+        this.opened.set(true);
+        return;
+      }
       if (scroller.scrollTop === want) {
         this.opened.set(true);
       } else {
@@ -246,12 +300,55 @@ export class DiscoverSheet {
     });
   }
 
+  /**
+   * Whether a finger is still on the sheet. Touch and not pointer, because the browser fires
+   * `pointercancel` a frame or two into taking the gesture over for its own scrolling.
+   */
+  protected onTouch(down: boolean): void {
+    this.touched.set(down);
+    if (down) {
+      this.watchForStaleTouch();
+    } else {
+      // The fling outlives the finger, so the quiet window carries on from here.
+      this.keepRolling();
+    }
+  }
+
+  /** Releases the finger flag once nothing has moved the sheet for {@link STALE_TOUCH_MS}. */
+  private watchForStaleTouch(): void {
+    const window = this.document.defaultView;
+    if (this.staleTouchTimer !== undefined) {
+      window?.clearTimeout(this.staleTouchTimer);
+    }
+    this.staleTouchTimer = window?.setTimeout(() => {
+      this.staleTouchTimer = undefined;
+      this.touched.set(false);
+    }, STALE_TOUCH_MS);
+  }
+
+  /** The scroll is moving, and stays that way until `SETTLE_QUIET_MS` passes with nothing moving it. */
+  private keepRolling(): void {
+    const window = this.document.defaultView;
+    this.rolling.set(true);
+    if (this.touched()) {
+      this.watchForStaleTouch();
+    }
+    if (this.quietTimer !== undefined) {
+      window?.clearTimeout(this.quietTimer);
+    }
+    this.quietTimer = window?.setTimeout(() => {
+      this.quietTimer = undefined;
+      this.rolling.set(false);
+    }, SETTLE_QUIET_MS);
+  }
+
   protected onScroll(): void {
     const scroller = this.scroller()?.nativeElement;
     const list = this.list()?.nativeElement;
     if (scroller === undefined || list === undefined) {
       return;
     }
+    this.keepRolling();
     const wasFull = this.atFull();
     this.scrolled.set(scroller.scrollTop);
     if (wasFull && !this.atFull()) {
@@ -265,8 +362,16 @@ export class DiscoverSheet {
     if (scroller === undefined) {
       return;
     }
+    // A glide is in flight from here: a re-measure landing on top of it must not cut it short.
+    this.keepRolling();
     scrollScroller(scroller, offsetFor(this.tops(), detent));
     this.onScroll();
+  }
+
+  /** The pill's own tap destroys it, so focus lands on the grabber rather than `<body>` (RV-FE-9). */
+  protected showMap(): void {
+    this.go('half');
+    this.moveFocus('sheet-grabber');
   }
 
   /** The grabber's tap cycles half and full only; peek is a drag's, never a tap's. */

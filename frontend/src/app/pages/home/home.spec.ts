@@ -1011,7 +1011,7 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
     const at = map.handle()!.project(TIRANA);
     expect(Number.parseFloat(dot.style.left)).toBeCloseTo(at.x, 3);
     expect(Number.parseFloat(dot.style.top)).toBeCloseTo(at.y, 3);
-    expect(text(byTestId(fixture, 'sheet-near-me'))).toBe('◎ You are here');
+    expect(text(byTestId(fixture, 'sheet-near-me'))).toBe('You are here');
   });
 
   it('Near me on the beach titles the beach', async () => {

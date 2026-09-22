@@ -1094,6 +1094,27 @@ body {
   min-height: 100%;
 }
 
+/** Pull-to-refresh, off ONLY where the gesture can do nothing but harm — never app-wide. A page
+    wearing `.riv-owns-viewport` is pinned over the whole window with nothing behind it to
+    scroll (Discover: the map is the ground, the list scrolls inside the sheet). There a
+    downward drag that misses the sheet — the header, the tab bar, a venue pin, Near me, the
+    tile credit — chains to the viewport, where Chrome Android reads it as pull-to-refresh and
+    reloads the page out from under a tourist mid-query, losing the camera, the beach and the
+    day. Everywhere else the platform gesture is left alone: on a page that really scrolls it
+    means "get me fresh data", which is what an operator watching for requests reaches for.
+
+    The second marker is for the other way the gesture can only cost: `.riv-holds-progress` says a
+    reload would destroy work in flight. The payment checkout wears it — a cold load there has no
+    hand-off, so it lands on `No payment in progress` with the card half-entered or the confirming
+    poll dropped, against a booking already AWAITING_PAYMENT.
+
+    On the ROOT element, the only one `overscroll-behavior` propagates to the viewport from — on
+    `body` it is ignored, unlike `overflow`. `contain` and not `none` keeps the page's own
+    overscroll. Render proof: e2e/discover-sheet.e2e.ts, e2e/booking-flow.e2e.ts. */
+html:has(.riv-owns-viewport, .riv-holds-progress) {
+  overscroll-behavior-y: contain;
+}
+
 body {
   font-family: var(--riv-font);
   color: var(--riv-ink);

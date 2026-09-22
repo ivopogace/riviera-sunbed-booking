@@ -16,6 +16,7 @@ import {
 } from '@angular/core';
 
 import { BEACH_CATALOGUE, beachEntry, REGION_CATALOGUE } from '../../shared/beaches';
+import { LocateIcon } from '../../shared/locate-icon';
 import { LngLat, MapHandle } from '../../shared/map-engine';
 import { PanelGlass } from '../../shared/panel-glass';
 import { RivieraMap } from '../../shared/riviera-map';
@@ -149,7 +150,7 @@ export function coastIndex(cards: readonly VenueCard[]): readonly PickerRegion[]
  */
 @Component({
   selector: 'app-coast-picker',
-  imports: [NgTemplateOutlet, PanelGlass, RivieraMap, TouchTarget],
+  imports: [LocateIcon, NgTemplateOutlet, PanelGlass, RivieraMap, TouchTarget],
   host: {
     class: 'contents',
     '(keydown.escape)': 'closed.emit()',
@@ -192,7 +193,7 @@ export function coastIndex(cards: readonly VenueCard[]): readonly PickerRegion[]
           [attr.aria-pressed]="located()"
           (click)="nearMe.emit()"
         >
-          <span aria-hidden="true">◎</span>&ngsp;Near me
+          <app-locate-icon />Near me
         </button>
       </div>
       <!-- The body asks for the coast's height (150 × 4.51); the sheet's cap shrinks it, never the ribbon's width. -->

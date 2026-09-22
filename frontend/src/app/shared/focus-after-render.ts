@@ -11,8 +11,13 @@ import { afterNextRender, ElementRef, inject, Injector } from '@angular/core';
  * <p>Focus always lands somewhere — primary, else `fallbackTestId`, else the component host — and
  * whatever it lands on is made focusable first, so a landmark missing its own `tabindex="-1"` cannot
  * silently swallow the move. Must be called from an injection context, like `parentVenueId(route)`.
+ *
+ * <p>`preventScroll` for a landing spot inside a scroller: focusing it would otherwise scroll it
+ * into view, undoing the transition that moved focus in the first place.
  */
-export function focusMover(): (testId: string, fallbackTestId?: string) => void {
+export function focusMover(options?: {
+  readonly preventScroll?: boolean;
+}): (testId: string, fallbackTestId?: string) => void {
   const host = inject<ElementRef<HTMLElement>>(ElementRef);
   const injector = inject(Injector);
   return (testId: string, fallbackTestId?: string) =>
@@ -24,7 +29,7 @@ export function focusMover(): (testId: string, fallbackTestId?: string) => void 
           if (target.tabIndex < 0 && !target.hasAttribute('tabindex')) {
             target.tabIndex = -1;
           }
-          target.focus();
+          target.focus({ preventScroll: options?.preventScroll ?? false });
         },
       },
       { injector },

@@ -30,6 +30,7 @@ import { BusyAction } from '../../shared/busy-action';
 import { CardGlass } from '../../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
 import { LoadAnnouncer } from '../../shared/load-announcer';
+import { LocateIcon } from '../../shared/locate-icon';
 import { focusMover } from '../../shared/focus-after-render';
 import { GeolocationGateway, GeolocationOutcome } from '../../shared/geolocation';
 import {
@@ -202,6 +203,7 @@ function closedStateText(
     SemanticChip,
     SetsFree,
     LoadAnnouncer,
+    LocateIcon,
     MapCredit,
     TouchTarget,
     RivieraMap,

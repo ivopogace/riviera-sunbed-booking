@@ -20,7 +20,8 @@ import { expectTouchTargets } from './support/touch-targets';
  * position nearest the fling's natural end, whatever its speed. So a 200 px flick down from full
  * rests at half (the target is 263 px away), a slow 350 px drag rests at half (no fling: the
  * nearest rest wins from 87 px past it), and a 350 px flick down from full rests at peek. A
- * mid-gesture layout change is the one thing that cuts a fling short, and this sheet makes none.
+ * mid-gesture layout change is the one thing that cuts a fling short. A phone makes one whenever
+ * its URL bar moves, so the sheet re-measures under a gesture but never scrolls itself under one.
  * Recorded, not asserted: the hard fling.
  */
 
@@ -156,21 +157,26 @@ async function scrollTop(locator: Locator): Promise<number> {
   return locator.evaluate((el) => el.scrollTop);
 }
 
-/** The sheet has come to rest: the detent names it and the scroll position has stopped moving. */
-async function expectDetent(page: Page, expected: string): Promise<void> {
-  await expect.poll(() => detent(page), { timeout: 5_000 }).toBe(expected);
+/** The scroller looks still: two reads ~100 ms apart agree, which is a sample, not a silence. */
+async function whenScrollQuiet(page: Page): Promise<void> {
   let last = -1;
   await expect
     .poll(
       async () => {
         const now = await scrollTop(scroller(page));
-        const settled = now === last;
+        const quiet = now === last;
         last = now;
-        return settled;
+        return quiet;
       },
       { timeout: 5_000 },
     )
     .toBe(true);
+}
+
+/** The sheet has come to rest: the detent names it and the scroll position has stopped moving. */
+async function expectDetent(page: Page, expected: string): Promise<void> {
+  await expect.poll(() => detent(page), { timeout: 5_000 }).toBe(expected);
+  await whenScrollQuiet(page);
 }
 
 async function top(locator: Locator): Promise<number> {
@@ -321,6 +327,182 @@ test.describe('Discover sheet — the browser’s own latching', () => {
     await flick(cdp, page, 200, 400, 500, 400);
     await expect.poll(() => scrollTop(list)).toBeLessThan(scrolled);
     expect(await detent(page)).toBe('full');
+  });
+
+  /**
+   * A phone fires `resize` in the middle of a gesture every time its URL bar or on-screen
+   * keyboard moves, and the sheet re-measures its chrome on it. Resting on that scrolled the
+   * sheet out from under the finger, and pulled the Map pill's own glide straight back into
+   * full — a drag that fights back, and a Map button that does nothing.
+   *
+   * <p>Neither is visible at a fixed desktop viewport, so the browser chrome is played by
+   * `setViewportSize` and the programmatic scrolls the sheet asks for are recorded: while the
+   * finger is down there must be none, and the pill's glide must still land at half.
+   */
+  test('a re-measure never cuts a gesture short: the phone chrome that moves mid-drag', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __rests: unknown[] }).__rests = [];
+      (window as unknown as { __resizes: number[] }).__resizes = [];
+      addEventListener('resize', () =>
+        (window as unknown as { __resizes: number[] }).__resizes.push(innerHeight),
+      );
+      (window as unknown as { __lastScroll: number }).__lastScroll = performance.now();
+      (window as unknown as { __scrolls: number }).__scrolls = 0;
+      addEventListener(
+        'scroll',
+        () => {
+          (window as unknown as { __lastScroll: number }).__lastScroll = performance.now();
+          (window as unknown as { __scrolls: number }).__scrolls += 1;
+        },
+        true,
+      );
+      type ScrollTo = (this: Element, ...args: unknown[]) => void;
+      const prototype = Element.prototype as unknown as Record<string, ScrollTo>;
+      const original = prototype['scrollTo'];
+      Element.prototype.scrollTo = function (this: HTMLElement, ...args: unknown[]) {
+        if (this.dataset?.['testid'] === 'sheet-scroller') {
+          (window as unknown as { __rests: unknown[] }).__rests.push(args[0]);
+        }
+        original.call(this, ...args);
+      };
+    });
+    await openSheet(page);
+    const cdp = await page.context().newCDPSession(page);
+    const rests = () => page.evaluate(() => (window as unknown as { __rests: unknown[] }).__rests);
+    const resizes = () =>
+      page.evaluate(() => (window as unknown as { __resizes: number[] }).__resizes);
+    const clearProbes = () =>
+      page.evaluate(() => {
+        (window as unknown as { __rests: unknown[] }).__rests = [];
+        (window as unknown as { __resizes: number[] }).__resizes = [];
+        (window as unknown as { __lastScroll: number }).__lastScroll = performance.now();
+        (window as unknown as { __scrolls: number }).__scrolls = 0;
+      });
+    /** Silence since the last scroll the page saw, at event resolution. */
+    const quietFor = () =>
+      page.evaluate(
+        () => performance.now() - (window as unknown as { __lastScroll: number }).__lastScroll,
+      );
+    const scrolls = () =>
+      page.evaluate(() => (window as unknown as { __scrolls: number }).__scrolls);
+
+    // A drag up from half, with the URL bar collapsing a third of the way through it.
+    await clearProbes();
+    const head = (await page.getByTestId('sheet-head').boundingBox())!;
+    const x = Math.round(PHONE.width / 2);
+    const from = Math.round(head.y + 30);
+    const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', y: number) =>
+      cdp.send('Input.dispatchTouchEvent', {
+        type,
+        touchPoints: type === 'touchEnd' ? [] : [{ x, y }],
+      });
+    await touch('touchStart', from);
+    for (let step = 1; step <= 12; step += 1) {
+      await touch('touchMove', from - (220 * step) / 12);
+      if (step === 4) {
+        await page.setViewportSize({ width: PHONE.width, height: PHONE.height + 56 });
+        // The leg's premise: the resize reaches the page mid-drag, with eight touchmoves to come.
+        await expect
+          .poll(resizes, { message: 'no resize reached the page mid-drag', timeout: 5_000 })
+          .not.toEqual([]);
+      }
+      await page.waitForTimeout(25);
+    }
+    // A live timestamp cannot tell "never scrolled" from "scrolled long ago", so prove it moved.
+    expect(await scrolls(), 'the drag never scrolled the sheet').toBeGreaterThan(0);
+    // Outlast SETTLE_QUIET_MS (160), so the finger is the only thing left holding a rest off.
+    await expect
+      .poll(quietFor, { message: 'the scroller never went quiet', timeout: 5_000 })
+      .toBeGreaterThan(200);
+    // Room for the effect and its rAF chain to run and be recorded, if the guard lets them.
+    await page.waitForTimeout(450);
+    expect(await rests(), 'a re-measure scrolled the sheet under the finger').toEqual([]);
+    await touch('touchEnd', from - 220);
+    await expectDetent(page, 'full');
+    // The differential: the rest WAS owed all along, so the empty array is the guard's doing.
+    expect(await rests(), 'no rest followed the finger lifting, so none was ever due').not.toEqual(
+      [],
+    );
+
+    // The Map pill: its own glide is what moves the URL bar back, so the resize lands on top of it.
+    await clearProbes();
+    await page.getByTestId('sheet-map-pill').click();
+    await page.setViewportSize({ width: PHONE.width, height: PHONE.height });
+    await expectDetent(page, 'half');
+    await expect(page.getByTestId('sheet-map-pill')).toHaveCount(0);
+    // The recorder's positive leg, so the empty-array assertion above is one that can fail.
+    expect(await rests(), 'the scrollTo recorder never recorded, so it proves nothing').not.toEqual(
+      [],
+    );
+    // The pill's tap destroys the pill, so focus lands on the grabber, never on <body> (RV-FE-9).
+    await expect(page.getByTestId('sheet-grabber')).toBeFocused();
+  });
+
+  /**
+   * ICON-4: the glyphs size themselves with presentation attributes, which every call-site class
+   * outranks — so only the rendered box is evidence, and jsdom cannot see it. The head's located
+   * mark is the one that takes an override.
+   */
+  test('the map and locate glyphs render at their pinned sizes', async ({ page, context }) => {
+    await context.grantPermissions(['geolocation']);
+    await context.setGeolocation(ON_DHERMI);
+    await openSheet(page);
+
+    const pillGlyph = page.getByTestId('sheet-map-pill').locator('svg');
+    await page.getByTestId('sheet-grabber').click();
+    await expectDetent(page, 'full');
+    await expect(pillGlyph).toHaveCSS('width', '16px');
+    await expect(pillGlyph).toHaveCSS('height', '16px');
+
+    await page.getByTestId('sheet-map-pill').click();
+    await expectDetent(page, 'half');
+    const nearMeGlyph = page.getByTestId('sheet-near-me').locator('svg');
+    await expect(nearMeGlyph).toHaveCSS('width', '13px');
+    await expect(nearMeGlyph).toHaveCSS('height', '13px');
+
+    // The head's located mark overrides the default with [&_svg]:size-[17px].
+    await page.getByTestId('sheet-near-me').click();
+    await expect(page.getByTestId('sheet-near-me')).toHaveText(/You are here/);
+    const headGlyph = page.getByTestId('head-located').locator('svg');
+    await expect(headGlyph).toHaveCSS('width', '17px');
+    await expect(headGlyph).toHaveCSS('height', '17px');
+  });
+
+  /**
+   * Discover in sheet mode is pinned over the whole window, so the document cannot scroll: every
+   * downward drag that misses the sheet — the header, the tab bar, a pin, Near me — chains all
+   * the way to the viewport, where Chrome Android reads it as pull-to-refresh and reloads the
+   * page out from under a tourist mid-query.
+   *
+   * <p>The containment is deliberately NOT app-wide: on a page that really scrolls, pull to
+   * refresh means "get me fresh data" and is left alone. So both halves are asserted — contained
+   * where the ground owns the viewport, untouched at a width where it does not. It must also sit
+   * on the ROOT element, the only one `overscroll-behavior` propagates to the viewport from.
+   */
+  test('pull-to-refresh is off where the ground owns the viewport, and only there', async ({
+    page,
+  }) => {
+    await openSheet(page);
+
+    const rootOverscroll = () =>
+      page.evaluate(() => getComputedStyle(document.documentElement).overscrollBehaviorY);
+    const documentScrolls = () =>
+      page.evaluate(
+        () => document.documentElement.scrollHeight > document.documentElement.clientHeight,
+      );
+
+    await expect(page.getByTestId('sheet-ground')).toHaveClass(/riv-owns-viewport/);
+    expect(await rootOverscroll()).toBe('contain');
+    expect(await documentScrolls(), 'the document scrolls, so this is not the trapped case').toBe(
+      false,
+    );
+
+    // Past the wide breakpoint the ground is gone, and the gesture comes back with it.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await expect(page.getByTestId('sheet-ground')).toHaveCount(0);
+    expect(await rootOverscroll()).toBe('auto');
   });
 
   test('the grabber cycles half and full; the Map pill returns to half and never covers the last row', async ({

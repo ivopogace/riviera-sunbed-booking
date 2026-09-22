@@ -13,6 +13,7 @@ import {
 import { addDays } from '../../shared/booking-date';
 import { formatBookingDate } from '../../shared/booking-date-label';
 import { focusMover } from '../../shared/focus-after-render';
+import { LocateIcon } from '../../shared/locate-icon';
 import { TouchTarget } from '../../shared/touch-target';
 
 /** One beach of the focused region, as the beach rail offers it. */
@@ -65,7 +66,7 @@ const COUNT =
  */
 @Component({
   selector: 'app-discover-head',
-  imports: [TouchTarget],
+  imports: [LocateIcon, TouchTarget],
   host: { class: 'block' },
   template: `
     <div class="flex h-11 items-center gap-2 px-3">
@@ -82,10 +83,11 @@ const COUNT =
           @if (located()) {
             <span
               data-testid="head-located"
-              class="text-[19px] leading-none text-riv-panel-accent-ink"
+              class="flex leading-none text-riv-panel-accent-ink [&_svg]:size-[17px]"
               aria-hidden="true"
-              >◎</span
             >
+              <app-locate-icon />
+            </span>
           }
           <span class="flex min-w-0 flex-col">
             <span
