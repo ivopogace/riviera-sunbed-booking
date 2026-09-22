@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { VenueCard } from './venue-card';
-import { distanceKm, distanceLabel, groupByBeach, nearestRegion, placeTitle } from './place-groups';
+import { distanceLabel, groupByBeach, nearestRegion, placeTitle } from './place-groups';
 
 /** The card facts the grouping reads; everything else is filler. */
 function card(
@@ -48,8 +48,8 @@ const ksamil = card(4, 'KSAMIL', 'Sarandë', 20.0021, 39.7712);
 const unpinned = card(5, 'BORSH', 'Himarë', null, null);
 
 describe('place groups (the located state)', () => {
-  it('measures great-circle km and captions them with one decimal under ten', () => {
-    expect(distanceKm(TIRANA, { lng: 19.51, lat: 41.24 })).toBeCloseTo(27.8, 0);
+  // The great-circle maths itself moved to `shared/geo-distance.spec.ts` with the function.
+  it('captions a distance with one decimal under ten and none above', () => {
     expect(distanceLabel(0.62)).toBe('0.6 km');
     expect(distanceLabel(27.8)).toBe('28 km');
   });

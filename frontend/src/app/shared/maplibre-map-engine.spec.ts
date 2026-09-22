@@ -1,7 +1,12 @@
 import type { StyleSpecification } from 'maplibre-gl';
 import { describe, expect, it } from 'vitest';
 
-import { absoluteMapStyle, absoluteMapUrl, ensureStylesheet } from './maplibre-map-engine';
+import {
+  absoluteMapStyle,
+  absoluteMapUrl,
+  ensureStylesheet,
+  mapConstructorOptions,
+} from './maplibre-map-engine';
 
 /**
  * The real adapter's jsdom-testable parts: the style rewrite that keeps every map resource on our
@@ -89,5 +94,47 @@ describe('ensureStylesheet', () => {
     const pending = ensureStylesheet(doc, '/vendor/missing.css');
     doc.head.querySelector('link')?.dispatchEvent(new Event('error'));
     await expect(pending).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * The WebGL drawing buffer is kept only for a map that will be read back — the pin placer's, to
+ * find the shore under a dropped pin. Every other map on the site, Discover's included, pays
+ * nothing for it.
+ */
+describe('mapConstructorOptions', () => {
+  const OPTIONS = {
+    styleUrl: '/map/style.json',
+    view: { center: { lng: 19.75, lat: 40.05 }, zoom: 9 },
+    minZoom: 7,
+    maxZoom: 16,
+    maxBounds: [
+      { lng: 19, lat: 39.3 },
+      { lng: 20.5, lat: 40.8 },
+    ] as const,
+  };
+
+  it('keeps the drawing buffer only when the map is to be read back', () => {
+    const host = document.createElement('div');
+
+    expect(
+      mapConstructorOptions(host, OPTIONS).canvasContextAttributes?.preserveDrawingBuffer,
+    ).toBe(false);
+    expect(
+      mapConstructorOptions(host, { ...OPTIONS, readableImagery: true }).canvasContextAttributes
+        ?.preserveDrawingBuffer,
+    ).toBe(true);
+  });
+
+  it('carries the camera and the fence across unchanged', () => {
+    const built = mapConstructorOptions(document.createElement('div'), OPTIONS);
+
+    expect(built.center).toEqual([19.75, 40.05]);
+    expect(built.zoom).toBe(9);
+    expect(built.maxBounds).toEqual([
+      [19, 39.3],
+      [20.5, 40.8],
+    ]);
+    expect(built.attributionControl).toBe(false);
   });
 });

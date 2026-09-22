@@ -24,6 +24,14 @@ export interface MapEngineOptions {
    * arrow keys would be a keyboard stop inside `aria-hidden` (WCAG 2.4.3).
    */
   readonly interactive?: boolean;
+  /**
+   * Whether the engine must keep what it drew readable through {@link MapHandle.readImagery}.
+   * Off by default and set by one map only — the operator's pin placer, which has to find the
+   * shore under a dropped pin. A renderer keeps its drawing buffer to honour it, which costs
+   * memory and a compositing step on every frame, so a map that never reads itself back says
+   * nothing and pays nothing.
+   */
+  readonly readableImagery?: boolean;
 }
 
 /** A DOM element pinned to a position; the caller owns the element and its accessibility. */
@@ -42,6 +50,22 @@ export type MapEventName = 'load' | 'error';
 export interface ScreenPoint {
   readonly x: number;
   readonly y: number;
+}
+
+/**
+ * A square of the map's own rendered imagery, read back for a consumer that has to reason about
+ * what the map is actually SHOWING — where the sea is, which no camera or coordinate can answer.
+ *
+ * <p>`pixels` is RGBA rows in DEVICE pixels, `width * scale` wide, while `width`/`height` are the
+ * map's box in CSS px: a consumer sampling it speaks CSS px and the scale does the rest.
+ */
+export interface MapImagery {
+  /** The map's box in CSS px. */
+  readonly width: number;
+  readonly height: number;
+  /** Device pixels per CSS px, as the map was rendered. */
+  readonly scale: number;
+  readonly pixels: Uint8ClampedArray;
 }
 
 /**
@@ -67,6 +91,17 @@ export interface MapHandle {
    * reasons about overlap reads this on every {@link MapHandle.onMove}.
    */
   project(at: LngLat): ScreenPoint;
+  /** The inverse of {@link MapHandle.project}: a spot on the map's own box back to a position. */
+  unproject(point: ScreenPoint): LngLat;
+  /**
+   * What the map is currently SHOWING, as pixels — the one question no camera or coordinate can
+   * answer, and what a consumer reasoning about the imagery itself (where the sea is) needs.
+   *
+   * <p>`null` whenever the engine cannot answer rather than a guess: a renderer that was not asked
+   * to keep its drawing buffer ({@link MapEngineOptions.readableImagery}), a map with no box yet,
+   * or a handle over a picture it does not own the pixels of.
+   */
+  readImagery(): MapImagery | null;
   /**
    * The camera moved — a pan, a zoom, a gesture, `setView` or `easeTo` — so every projection is
    * stale. Fires per frame during a gesture. Subscribe; the returned function unsubscribes.

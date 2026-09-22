@@ -146,5 +146,18 @@ describe.each(CONSOLE_THEMES)(
     it('the stale-write banner ink (card ink over --riv-warn-edge/15) meets AA', () => {
       expectAaOnSurfaces(theme, theme.ink, 1, (stop) => tintOver(theme, WARN_EDGE, 0.15, stop));
     });
+
+    /**
+     * The pin placer's shoreline offer: a `bg-riv-console-inset/60` panel inside the card, its
+     * sentence and its two pill buttons in `--riv-card-ink`. The second case is the one the
+     * fields above do not cover — a button hovered INSIDE the panel lays the same inset over
+     * itself, which is the darkest (porcelain: lightest) ground the offer's ink ever sits on.
+     */
+    it('the shoreline offer’s sentence and buttons meet AA, resting and hovered', () => {
+      const panel = (stop: Rgb) => insetOver(theme, 0.6, stop);
+
+      expectAaOnSurfaces(theme, theme.ink, 1, panel);
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => composite(theme.inset, 0.6, panel(stop)));
+    });
   },
 );

@@ -4,10 +4,23 @@ import { By } from '@angular/platform-browser';
 import { FakeMapEngine, FakeMapHandle } from '../shared/fake-map-engine';
 import { FakeGeolocationGateway } from '../../testing/fake-geolocation';
 import { GeolocationGateway } from '../shared/geolocation';
-import { MapEngine } from '../shared/map-engine';
+import { LngLat, MapEngine } from '../shared/map-engine';
 import { RivieraMap } from '../shared/riviera-map';
 import { VenueLocation } from '../shared/venue-views';
 import { VenueLocationField } from './venue-location-field';
+
+function host(fixture: ComponentFixture<VenueLocationField>): HTMLElement {
+  return fixture.nativeElement as HTMLElement;
+}
+
+function byTestId(fixture: ComponentFixture<VenueLocationField>, id: string): HTMLElement | null {
+  return host(fixture).querySelector<HTMLElement>(`[data-testid="${id}"]`);
+}
+
+function mapHandle(fixture: ComponentFixture<VenueLocationField>): FakeMapHandle {
+  const map = fixture.debugElement.query(By.directive(RivieraMap)).componentInstance as RivieraMap;
+  return map.handle() as FakeMapHandle;
+}
 
 /**
  * The operator's pin placer against the fake map engine: what it feeds the map, what it does with
@@ -35,20 +48,6 @@ describe('VenueLocationField', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     return fixture;
-  }
-
-  function host(fixture: ComponentFixture<VenueLocationField>): HTMLElement {
-    return fixture.nativeElement as HTMLElement;
-  }
-
-  function byTestId(fixture: ComponentFixture<VenueLocationField>, id: string): HTMLElement | null {
-    return host(fixture).querySelector<HTMLElement>(`[data-testid="${id}"]`);
-  }
-
-  function mapHandle(fixture: ComponentFixture<VenueLocationField>): FakeMapHandle {
-    const map = fixture.debugElement.query(By.directive(RivieraMap))
-      .componentInstance as RivieraMap;
-    return map.handle() as FakeMapHandle;
   }
 
   it('starts with no pin and says so', async () => {
@@ -237,5 +236,181 @@ describe('VenueLocationField', () => {
       latitude: 40.1468,
       longitude: 19.6482,
     });
+  });
+});
+
+/**
+ * The shoreline offer. The fake map draws a straight coast at {@link COAST_LNG} — water
+ * west of it, land east — and jsdom lays nothing out, so the map's box runs east and south FROM
+ * the camera's centre (19.75, 40.05 at zoom 8.6, about 552 px per degree of longitude). Every
+ * position below is chosen against that geometry: the shore sits about 28 px into the box.
+ */
+describe('VenueLocationField shoreline offer', () => {
+  const COAST_LNG = 19.8;
+  /** Well inland: about 83 px into the box, some 55 px from the shore. */
+  const INLAND = { lng: 19.9, lat: 40.04 };
+  /** At sea, about 6 px into the box — west of the coast, still on the map. */
+  const AT_SEA = { lng: 19.76, lat: 40.04 };
+  /** On the sand within the shore band: about 30 px in, 3 px from the water. */
+  const ON_THE_SHORE = { lng: 19.805, lat: 40.04 };
+
+  let geolocation: FakeGeolocationGateway;
+
+  async function renderOnACoast(
+    location: VenueLocation | null = null,
+    coastLng: number | null = COAST_LNG,
+  ): Promise<ComponentFixture<VenueLocationField>> {
+    geolocation = new FakeGeolocationGateway();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [VenueLocationField],
+      providers: [
+        { provide: MapEngine, useValue: new FakeMapEngine(coastLng ?? undefined) },
+        { provide: GeolocationGateway, useValue: geolocation },
+      ],
+    });
+    const fixture = TestBed.createComponent(VenueLocationField);
+    fixture.componentRef.setInput('location', location);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function pick(fixture: ComponentFixture<VenueLocationField>, at: LngLat): void {
+    const { x, y } = mapHandle(fixture).project(at);
+    host(fixture)
+      .querySelector<HTMLElement>('[data-testid="riviera-map-fake"]')!
+      .dispatchEvent(new MouseEvent('click', { clientX: x, clientY: y, bubbles: true }));
+    fixture.detectChanges();
+  }
+
+  async function press(
+    fixture: ComponentFixture<VenueLocationField>,
+    testId: string,
+  ): Promise<void> {
+    byTestId(fixture, testId)!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  function offer(fixture: ComponentFixture<VenueLocationField>): string {
+    return byTestId(fixture, 'venue-location-proposal')?.textContent?.trim() ?? '';
+  }
+
+  it('offers the shoreline for a pin dropped inland, and stores it when accepted', async () => {
+    const fixture = await renderOnACoast();
+
+    pick(fixture, INLAND);
+
+    // The operator's own point is stored first: the offer is an offer, not a redirection.
+    expect(fixture.componentInstance.location()).toEqual({ latitude: 40.04, longitude: 19.9 });
+    expect(offer(fixture)).toContain('inland');
+    expect(offer(fixture)).toMatch(/\d+(\.\d)? ?(m|km)\b/);
+
+    await press(fixture, 'venue-location-snap-accept');
+
+    const stored = fixture.componentInstance.location()!;
+    expect(stored.longitude).toBeGreaterThan(COAST_LNG);
+    expect(stored.longitude).toBeLessThan(COAST_LNG + 0.02);
+    expect(byTestId(fixture, 'venue-location-proposal')).toBeNull();
+  });
+
+  it('keeps the operator’s own point when the offer is declined, and never strands focus', async () => {
+    const fixture = await renderOnACoast();
+
+    pick(fixture, INLAND);
+    await press(fixture, 'venue-location-snap-keep');
+
+    expect(fixture.componentInstance.location()).toEqual({ latitude: 40.04, longitude: 19.9 });
+    expect(byTestId(fixture, 'venue-location-proposal')).toBeNull();
+    expect(document.activeElement).toBe(byTestId(fixture, 'venue-location-place'));
+  });
+
+  it('says nothing about a pin already on the shore', async () => {
+    const fixture = await renderOnACoast();
+
+    pick(fixture, ON_THE_SHORE);
+
+    expect(byTestId(fixture, 'venue-location-proposal')).toBeNull();
+  });
+
+  it('takes a pin dropped at sea onto the land, and says which way it went', async () => {
+    const fixture = await renderOnACoast();
+
+    pick(fixture, AT_SEA);
+    expect(offer(fixture)).toContain('out to sea');
+
+    await press(fixture, 'venue-location-snap-accept');
+
+    expect(fixture.componentInstance.location()!.longitude).toBeGreaterThan(COAST_LNG);
+  });
+
+  it('offers the shoreline for a dragged pin too, not only a tapped one', async () => {
+    const fixture = await renderOnACoast({ latitude: 40.04, longitude: 19.805 });
+
+    mapHandle(fixture).dragMarkerTo('venue-location-pin', INLAND);
+    fixture.detectChanges();
+
+    expect(offer(fixture)).toContain('inland');
+  });
+
+  it('offers nothing at all when the map draws no imagery it can read', async () => {
+    const fixture = await renderOnACoast(null, null);
+
+    pick(fixture, INLAND);
+
+    expect(fixture.componentInstance.location()).toEqual({ latitude: 40.04, longitude: 19.9 });
+    expect(byTestId(fixture, 'venue-location-proposal')).toBeNull();
+  });
+
+  it('drops an open offer when the pin it was about is cleared', async () => {
+    const fixture = await renderOnACoast();
+
+    pick(fixture, INLAND);
+    expect(byTestId(fixture, 'venue-location-proposal')).not.toBeNull();
+
+    await press(fixture, 'venue-location-clear');
+
+    expect(fixture.componentInstance.location()).toBeNull();
+    expect(byTestId(fixture, 'venue-location-proposal')).toBeNull();
+  });
+
+  /**
+   * Neither control may be `disabled`: the one just pressed destroys the block it sits in, and a
+   * disabled button cannot hold focus long enough to be moved off (WCAG 2.4.3). Both are real
+   * buttons carrying the touch-target floor, so the offer has the keyboard twin every gesture in
+   * this field has (WCAG 2.1.1).
+   */
+  /**
+   * The rule RV-FE-10 exists for: a live region is announced for text that mutates while it is
+   * already in the DOM, so a region that arrives holding its sentence reads as silence. Asserting
+   * the text would pass either way, so this asserts the ELEMENT is the same one before and after.
+   */
+  it('speaks the offer through one region that was already there', async () => {
+    const fixture = await renderOnACoast();
+    const before = byTestId(fixture, 'venue-location-proposal-status');
+
+    expect(before).not.toBeNull();
+    expect(before?.textContent?.trim()).toBe('');
+
+    pick(fixture, INLAND);
+
+    expect(byTestId(fixture, 'venue-location-proposal-status')).toBe(before);
+    expect(before?.textContent).toContain('inland');
+  });
+
+  it('offers two real buttons, at the floor and never disabled', async () => {
+    const fixture = await renderOnACoast();
+
+    pick(fixture, INLAND);
+
+    for (const testId of ['venue-location-snap-accept', 'venue-location-snap-keep']) {
+      const control = byTestId(fixture, testId)!;
+      expect(control.tagName).toBe('BUTTON');
+      expect(control.hasAttribute('disabled')).toBe(false);
+      expect(control.hasAttribute('appTouchTarget')).toBe(true);
+    }
   });
 });

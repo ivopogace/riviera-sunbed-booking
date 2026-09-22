@@ -53,9 +53,14 @@ function qrScannerFactory(): QrScanner {
  * the deterministic fake (no WebGL, no tiles) — the third instance of the Stripe swap above.
  */
 function mapEngineFactory(): MapEngine {
-  const useFake =
-    (globalThis as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ === true;
-  return useFake ? new FakeMapEngine() : new MapLibreMapEngine();
+  const armed = globalThis as unknown as {
+    __RIVIERA_FAKE_MAP__?: boolean;
+    __RIVIERA_FAKE_MAP_COAST__?: number;
+  };
+  // The coast meridian gives the fake a sea to "draw", for an e2e over a rule about the imagery.
+  return armed.__RIVIERA_FAKE_MAP__ === true
+    ? new FakeMapEngine(armed.__RIVIERA_FAKE_MAP_COAST__)
+    : new MapLibreMapEngine();
 }
 
 export const appConfig: ApplicationConfig = {

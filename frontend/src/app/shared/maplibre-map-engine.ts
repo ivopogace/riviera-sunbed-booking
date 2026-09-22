@@ -7,6 +7,7 @@ import {
   MapEngineOptions,
   MapEventName,
   MapHandle,
+  MapImagery,
   MapMarker,
   MapView,
   ScreenPoint,
@@ -113,6 +114,7 @@ class MapLibreHandle implements MapHandle {
   constructor(
     private readonly maplibre: MapLibre,
     private readonly map: import('maplibre-gl').Map,
+    private readonly readable = false,
   ) {}
 
   view(): MapView {
@@ -172,6 +174,44 @@ class MapLibreHandle implements MapHandle {
     return { x, y };
   }
 
+  unproject(point: ScreenPoint): LngLat {
+    const { lng, lat } = this.map.unproject([point.x, point.y]);
+    return { lng, lat };
+  }
+
+  /**
+   * The rendered imagery, read back through a 2D scratch canvas rather than `gl.readPixels`:
+   * `drawImage` hands back rows the right way up with alpha already un-premultiplied, which is
+   * what a sampler wants, and the WebGL flip and premultiplication are not this file's business.
+   *
+   * <p>`null` rather than a blank raster whenever the read cannot be trusted: a map built without
+   * {@link MapEngineOptions.readableImagery} has had its drawing buffer cleared by the compositor,
+   * and a map with no box yet has nothing to read.
+   */
+  readImagery(): MapImagery | null {
+    const canvas = this.map.getCanvas();
+    const width = Math.round(canvas.clientWidth);
+    const height = Math.round(canvas.clientHeight);
+    if (width <= 0 || height <= 0 || !this.readable) {
+      return null;
+    }
+    const scratch = canvas.ownerDocument.createElement('canvas');
+    scratch.width = canvas.width;
+    scratch.height = canvas.height;
+    const context = scratch.getContext('2d');
+    if (context === null) {
+      return null;
+    }
+    context.drawImage(canvas, 0, 0);
+    const scale = canvas.width / width;
+    return {
+      width,
+      height,
+      scale,
+      pixels: context.getImageData(0, 0, canvas.width, canvas.height).data,
+    };
+  }
+
   onMove(handler: () => void): () => void {
     const subscription = this.map.on('move', () => handler());
     return () => subscription.unsubscribe();
@@ -204,6 +244,34 @@ class MapLibreHandle implements MapHandle {
 }
 
 /**
+ * The constructor object MapLibre is built with, as a value so the one thing a jsdom spec can
+ * judge about a WebGL renderer — which options it is asked for — is judgeable: above all
+ * `canvasContextAttributes.preserveDrawingBuffer`, set for the pin placer's map alone. Keeping it
+ * costs memory and a compositing step on every frame of every map that has it, and only a map
+ * that reads its own pixels back needs it.
+ */
+export function mapConstructorOptions(
+  host: HTMLElement,
+  options: MapEngineOptions,
+): import('maplibre-gl').MapOptions {
+  const [southWest, northEast] = options.maxBounds;
+  return {
+    container: host,
+    center: [options.view.center.lng, options.view.center.lat],
+    zoom: options.view.zoom,
+    minZoom: options.minZoom,
+    maxZoom: options.maxZoom,
+    maxBounds: [
+      [southWest.lng, southWest.lat],
+      [northEast.lng, northEast.lat],
+    ],
+    attributionControl: false,
+    interactive: options.interactive ?? true,
+    canvasContextAttributes: { preserveDrawingBuffer: options.readableImagery === true },
+  };
+}
+
+/**
  * Real adapter: MapLibre GL (BSD, no telemetry, no token) with the PMTiles protocol, both loaded
  * on first use so neither enters the initial bundle. Attribution is the component's own — the
  * library's control is off — and every URL the style names is made absolute on the map origin
@@ -217,24 +285,11 @@ export class MapLibreMapEngine extends MapEngine {
     ]);
     await registerPmtiles(maplibre);
     const origin = mapOrigin(host.ownerDocument);
-    const [southWest, northEast] = options.maxBounds;
-    const map = new maplibre.Map({
-      container: host,
-      center: [options.view.center.lng, options.view.center.lat],
-      zoom: options.view.zoom,
-      minZoom: options.minZoom,
-      maxZoom: options.maxZoom,
-      maxBounds: [
-        [southWest.lng, southWest.lat],
-        [northEast.lng, northEast.lat],
-      ],
-      attributionControl: false,
-      interactive: options.interactive ?? true,
-    });
+    const map = new maplibre.Map(mapConstructorOptions(host, options));
     // The style hook is a setStyle option, not a constructor one — so the style is set here.
     map.setStyle(absoluteMapUrl(options.styleUrl, origin), {
       transformStyle: (_previous, next) => absoluteMapStyle(next, origin),
     });
-    return new MapLibreHandle(maplibre, map);
+    return new MapLibreHandle(maplibre, map, options.readableImagery === true);
   }
 }

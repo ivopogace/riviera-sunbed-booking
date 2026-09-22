@@ -2,7 +2,13 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
-import { CARD_INK, consoleThemeOf, expectConsoleTheme } from './support/console-theme';
+import {
+  CARD_INK,
+  consoleThemeOf,
+  expectConsoleTheme,
+  expectInsetFill,
+} from './support/console-theme';
+import { mockMapResources } from './support/map-resources';
 
 /**
  * Real-render CI-safe e2e for the venue-location pin placer. Drives sign-in → open the Venue tab →
@@ -43,6 +49,12 @@ const INITIAL_PROFILE = {
 test.use({ colorScheme: 'dark' });
 
 /**
+ * The shoreline offer. Water west of this meridian, land east of it: the map opens centred at
+ * (19.75, 40.05), so its own centre is about 28 px inland — past the shore band, and an offer.
+ */
+const COAST_LNG = 19.7;
+
+/**
  * The console reads this mock survives a reload, so "save, reload, the pin is still there" is a
  * genuine round-trip rather than a component that kept its own signal. `patches` collects the
  * profile writes; the PATCH enforces the version token exactly as the server does.
@@ -50,15 +62,27 @@ test.use({ colorScheme: 'dark' });
 async function mockVenue(
   page: Page,
   location: { latitude: number; longitude: number } | null = null,
+  map: { coastLng?: number; real?: boolean } = {},
 ): Promise<{ patches: Request[] }> {
   const patches: Request[] = [];
   let sessionLive = false;
   const profile = { ...INITIAL_PROFILE, location };
   let serverVersion = INITIAL_PROFILE.version;
 
-  await page.addInitScript(() => {
-    (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
-  });
+  if (map.real) {
+    await mockMapResources(page);
+  } else {
+    await page.addInitScript((coastLng: number | null) => {
+      const armed = window as unknown as {
+        __RIVIERA_FAKE_MAP__?: boolean;
+        __RIVIERA_FAKE_MAP_COAST__?: number;
+      };
+      armed.__RIVIERA_FAKE_MAP__ = true;
+      if (coastLng !== null) {
+        armed.__RIVIERA_FAKE_MAP_COAST__ = coastLng;
+      }
+    }, map.coastLng ?? null);
+  }
 
   await page.route(/\/api\/auth\/me$/, (route) =>
     sessionLive
@@ -239,7 +263,8 @@ test('paints the pin placer under porcelain and the dark console (#1099, + axe)'
   page,
 }, testInfo) => {
   const theme = consoleThemeOf(testInfo);
-  await mockVenue(page);
+  // A coast under the map's centre makes the drop below open the offer, so its panel paints here.
+  await mockVenue(page, null, { coastLng: COAST_LNG });
   await page.goto('/operator/1');
   await signInAndOpenVenue(page);
 
@@ -255,6 +280,15 @@ test('paints the pin placer under porcelain and the dark console (#1099, + axe)'
   await expect(page.getByTestId('map-pin')).toHaveCSS('background-color', 'rgb(244, 246, 247)');
   // Its label beside the map is console ink, and follows the console theme.
   await expect(page.getByTestId('venue-location-clear')).toHaveCSS('color', CARD_INK[theme]);
+
+  // `bg-riv-console-inset/60` compiles to a `color-mix` no class list can prove actually resolved.
+  const offer = page.getByTestId('venue-location-proposal');
+  await expect(offer).toBeVisible();
+  await expectInsetFill(page, offer, 60, theme);
+  await expect(offer.getByRole('button', { name: 'Move to shoreline' })).toHaveCSS(
+    'color',
+    CARD_INK[theme],
+  );
 
   await settle(page);
   await expectNoSeriousAxeViolations(page, `venue location placer (${theme})`);
@@ -331,4 +365,116 @@ test('keeps the venue pin on top when the you-are-here dot lands on it', async (
   });
 
   expect(owner).toBe('map-pin');
+});
+
+/** `Latitude 40.050000, longitude 19.750000` → the two numbers, as the field stores them. */
+async function readout(page: Page): Promise<{ latitude: number; longitude: number }> {
+  const text = (await page.getByTestId('venue-location-readout').textContent()) ?? '';
+  const found = /Latitude (-?\d+\.\d+), longitude (-?\d+\.\d+)/.exec(text);
+  expect(found, `no coordinates in "${text}"`).not.toBeNull();
+  return { latitude: Number(found![1]), longitude: Number(found![2]) };
+}
+
+function savedLocation(patches: Request[]): { latitude: number; longitude: number } {
+  const body = patches.at(-1)!.postDataJSON() as {
+    location: { latitude: number; longitude: number };
+  };
+  return body.location;
+}
+
+test('offers the shoreline for a pin dropped inland and saves the snapped point', async ({
+  page,
+}) => {
+  const { patches } = await mockVenue(page, null, { coastLng: COAST_LNG });
+  await page.goto('/operator/1');
+  await signInAndOpenVenue(page);
+
+  await dropPin(page);
+
+  // The operator's own point is stored the moment they drop it; the shore is only offered.
+  const own = await readout(page);
+  expect(own.longitude).toBeCloseTo(19.75, 4);
+  await expect(page.getByTestId('venue-location-proposal')).toContainText('inland');
+  await expect(page.getByTestId('venue-location-proposal')).toContainText(/\d+(\.\d)? ?(m|km)\b/);
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'venue tab with the shoreline offer open');
+
+  await page.getByTestId('venue-location-snap-accept').click();
+  await expect(page.getByTestId('venue-location-proposal')).toHaveCount(0);
+  // Accepting destroys the button just pressed, so focus is moved rather than stranded.
+  await expect(page.getByTestId('venue-location-place')).toBeFocused();
+
+  await page.getByTestId('venue-save').click();
+  await expect(page.getByTestId('venue-saved')).toBeVisible();
+
+  const saved = savedLocation(patches);
+  expect(saved.longitude).toBeLessThan(own.longitude);
+  expect(saved.longitude).toBeGreaterThan(COAST_LNG);
+  expect(saved.longitude).toBe(Number(saved.longitude.toFixed(6)));
+});
+
+test('saves the operator’s own point when the shoreline offer is declined', async ({ page }) => {
+  const { patches } = await mockVenue(page, null, { coastLng: COAST_LNG });
+  await page.goto('/operator/1');
+  await signInAndOpenVenue(page);
+
+  await dropPin(page);
+  const own = await readout(page);
+  await expect(page.getByTestId('venue-location-proposal')).toBeVisible();
+
+  // Reached and pressed from the keyboard alone: no gesture in this field is pointer-only.
+  await page.getByTestId('venue-location-snap-keep').focus();
+  await page.keyboard.press('Enter');
+
+  await expect(page.getByTestId('venue-location-proposal')).toHaveCount(0);
+  await expect(page.getByTestId('venue-location-place')).toBeFocused();
+  expect(await readout(page)).toEqual(own);
+
+  await page.getByTestId('venue-save').click();
+  await expect(page.getByTestId('venue-saved')).toBeVisible();
+  expect(savedLocation(patches)).toEqual(own);
+});
+
+/** A coast 0.005° west of the map's centre — about 3 px, inside the shore band a drop is left in. */
+const SHORE_UNDER_THE_CENTRE_LNG = 19.745;
+
+test('says nothing about a pin dropped on the shore itself', async ({ page }) => {
+  await mockVenue(page, null, { coastLng: SHORE_UNDER_THE_CENTRE_LNG });
+  await page.goto('/operator/1');
+  await signInAndOpenVenue(page);
+
+  await dropPin(page);
+
+  await expect(page.getByTestId('map-pin')).toBeVisible();
+  await expect(page.getByTestId('venue-location-proposal')).toHaveCount(0);
+});
+
+/**
+ * The one leg that proves the decision the slice made: the sample runs against the LIVE map's
+ * rendered canvas. Real MapLibre, the committed style, and the fixture archive's own straight
+ * coastline at 19.58 — with the fake, nothing is ever read back from WebGL and the route this
+ * feature rests on would go untested. Retried as a whole because a canvas has nothing in it until
+ * its tiles have drawn, and no engine event says when that is.
+ */
+test('finds the shore in the real map’s own rendered pixels', async ({ page }) => {
+  const FIXTURE_COAST_LNG = 19.58;
+  await mockVenue(page, null, { real: true });
+  await page.goto('/operator/1');
+  await signInAndOpenVenue(page);
+
+  await expect(async () => {
+    await page.getByTestId('venue-location-place').click();
+    await expect(page.getByTestId('venue-location-proposal')).toBeVisible({ timeout: 1500 });
+  }).toPass({ timeout: 30_000 });
+
+  const own = await readout(page);
+  await expect(page.getByTestId('venue-location-proposal')).toContainText('inland');
+
+  await page.getByTestId('venue-location-snap-accept').click();
+  await expect(page.getByTestId('venue-location-proposal')).toHaveCount(0);
+  const snapped = await readout(page);
+
+  expect(snapped.longitude).toBeLessThan(own.longitude);
+  expect(snapped.longitude).toBeGreaterThan(FIXTURE_COAST_LNG);
 });

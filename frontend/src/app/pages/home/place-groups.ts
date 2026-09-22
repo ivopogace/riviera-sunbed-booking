@@ -5,6 +5,7 @@ import {
   RegionCode,
   regionLabel,
 } from '../../shared/beaches';
+import { distanceKm } from '../../shared/geo-distance';
 import { LngLat } from '../../shared/map-engine';
 import { VenueCard } from './venue-card';
 
@@ -16,7 +17,6 @@ import { VenueCard } from './venue-card';
 
 /** Nearer than this to the nearest beach, the tourist is on it and it is the title. */
 const ON_BEACH_KM = 3;
-const EARTH_RADIUS_KM = 6371;
 
 /** One beach's slice of the list: its venues, and how far it is when the tourist is located. */
 export interface BeachGroup {
@@ -25,17 +25,6 @@ export interface BeachGroup {
   readonly cards: readonly VenueCard[];
   /** Distance from the position to the group's pinned venues' centre; `null` unlocated or unpinned. */
   readonly km: number | null;
-}
-
-/** Great-circle distance in km — a caption, so the spherical approximation is plenty. */
-export function distanceKm(a: LngLat, b: LngLat): number {
-  const rad = Math.PI / 180;
-  const dLat = (b.lat - a.lat) * rad;
-  const dLng = (b.lng - a.lng) * rad;
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
-  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
 }
 
 /** `0.6 km`, `1.8 km`, `28 km` — one decimal under ten, none above. */
