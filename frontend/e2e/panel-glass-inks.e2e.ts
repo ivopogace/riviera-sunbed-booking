@@ -171,9 +171,8 @@ test.describe('the panel-surface tokens paint the desktop panel (riviera)', () =
 
 test.describe('the card family the pair forks from does not move', () => {
   test('the card price still wears --riv-accent-ink in riviera', async ({ page }) => {
-    await openInRiviera(page, WIDE);
-    // The plain list, where the cards live: the same page, the same theme, the card surface.
-    await page.goto('/?map=off');
+    // The cards live in the sheet, which is the arm below `lg`; the panel lists rows instead.
+    await openInRiviera(page, PHONE);
 
     await expect(page.getByTestId('venue-card').first()).toBeVisible();
     await expect(page.locator('strong.text-riv-accent-ink').first()).toHaveCSS(

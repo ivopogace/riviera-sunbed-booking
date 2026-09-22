@@ -17,6 +17,8 @@ import { completeDialog, mockFencedBookingCreate, settle } from './support/booki
  */
 
 const TODAY = '2026-08-30';
+/** Discover's cards and its day control are the sheet's; the panel from `lg` lists rows instead. */
+const PHONE = { width: 390, height: 844 };
 /** 12:00 Europe/Tirane in August (CEST, UTC+2) — well before the venue's default 16:00 close. */
 const BEFORE_CLOSE = new Date(`${TODAY}T10:00:00Z`);
 /** 17:00 Europe/Tirane — after a 16:00 close, before a 23:59 one (#793). */
@@ -129,14 +131,18 @@ test('today journey: homepage → map → dialog → pay → confirmed', async (
     }),
   );
 
-  await page.goto('/?map=off');
-  await expect(page.getByRole('heading', { name: 'Find your spot on the Riviera' })).toBeVisible();
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
+  await expect(page.getByTestId('sheet-rows')).toBeVisible();
 
-  // The homepage picker offers today (#791) — its floor and default selection are both TODAY.
-  const dateInput = page.getByTestId('filter-date');
-  expect(await dateInput.evaluate((el: HTMLInputElement) => el.min)).toBe(TODAY);
-  expect(await dateInput.inputValue()).toBe(TODAY);
-  await expectNoSeriousAxeViolations(page, 'discovery list (today)');
+  // Today is both the floor and the selection: the rail leads with it and offers nothing earlier.
+  await expect(page.getByTestId('head-day')).toHaveText(/Today/);
+  await page.getByTestId('head-day').click();
+  const days = page.locator('[role="group"][aria-label="Day"] button');
+  await expect(days.first()).toHaveText('Today');
+  await expect(days.first()).toHaveAttribute('aria-current', 'true');
+  await page.getByTestId('head-day').click();
+  await expectNoSeriousAxeViolations(page, 'discovery sheet (today)');
 
   await page.getByTestId('venue-card').first().click();
   await expect(page).toHaveURL(/\/venues\/1/);
@@ -181,16 +187,16 @@ test("browse today after a venue's close shows the badge and the closed-map path
   page,
 }) => {
   await page.clock.setFixedTime(AFTER_CLOSE);
-  // One closed 16:00 REQUEST venue (widest chip pair — overlap pin below) beside an open 23:59 one.
+  // A closed 16:00 REQUEST venue (widest chip pair) beside an open 23:59 one, in the one region.
   await page.route(/\/api\/venues(\?.*)?$/, (route) =>
     route.fulfill({
       json: [
         { ...VENUES[0], bookingMode: 'REQUEST', salesOpen: false },
         {
           id: 3,
-          name: 'Luna Palasë',
-          beach: 'PALASE',
-          region: 'HIMARE',
+          name: 'Luna Pasqyra',
+          beach: 'PASQYRA',
+          region: 'SARANDE',
           ratingTenths: 44,
           reviewsCount: 102,
           bookingMode: 'INSTANT',
@@ -205,7 +211,8 @@ test("browse today after a venue's close shows the badge and the closed-map path
     route.fulfill({ json: { ...VENUE_MAP, salesOpen: false } }),
   );
 
-  await page.goto('/?map=off');
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
   const cards = page.getByTestId('venue-card');
   await expect(cards).toHaveCount(2);
 
@@ -216,7 +223,7 @@ test("browse today after a venue's close shows the badge and the closed-map path
   await expect(closedCard.locator('.sales-closed-chip')).toContainText('Sales closed for today');
   await expect(closedCard).toHaveAccessibleName(/online sales for today have closed/);
 
-  // At the grid's narrowest card (~270px track at this width) the two chips must not collide.
+  // At the sheet's narrowest card (its two-column track at this width) the two chips must not collide.
   await page.setViewportSize({ width: 608, height: 900 });
   const modeBox = (await closedCard.locator('.mode-chip').boundingBox())!;
   const closedBox = (await closedCard.locator('.sales-closed-chip').boundingBox())!;

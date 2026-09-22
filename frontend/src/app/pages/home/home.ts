@@ -19,20 +19,16 @@ import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
 
 import { amenityLabel, distanceToWaterLabel, orderedAmenities } from '../../shared/amenities';
 import {
-  BeachEntry,
-  RegionEntry,
   beachEntry,
   beachLabel,
   presentBeaches,
   presentRegions,
-  regionEntry,
   regionLabel,
 } from '../../shared/beaches';
 import { AmenityChip } from '../../shared/amenity-chip';
 import { BusyAction } from '../../shared/busy-action';
 import { CardGlass } from '../../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
-import { FieldGlass } from '../../shared/field-glass';
 import { LoadAnnouncer } from '../../shared/load-announcer';
 import { focusMover } from '../../shared/focus-after-render';
 import { GeolocationGateway, GeolocationOutcome } from '../../shared/geolocation';
@@ -84,7 +80,6 @@ import { FOOT_ROW_PX } from './sheet-geometry';
 import { VenueCard } from './venue-card';
 import { VenuePinLayer } from './venue-pin-layer';
 import { VenueRow } from './venue-row';
-import { VenuePreviewCard } from './venue-preview-card';
 
 /**
  * Tailwind's `lg` breakpoint — the twin of the `lg:` utilities in `home.html` that lay the map
@@ -92,18 +87,6 @@ import { VenuePreviewCard } from './venue-preview-card';
  */
 const WIDE_VIEWPORT = '(min-width: 1024px)';
 
-/**
- * `?map=off` is the way back to the pre-Q Discover page — the comparison lever while the riviera
- * map soaks on the deployed site. Every other value is the map, the `?map=sheet` a bookmark from
- * the flagged releases still carries included, so no link that once worked breaks. Both the
- * parameter and the page it reaches are a one-release fallback and go together.
- *
- * <p>Not quite the page as it was: the route's `footer: false` is static, so `?map=off` renders
- * without the shared footer the old page carried. Privacy and Terms are still reachable here —
- * they are menu rows now (`shared/legal-menu-rows.ts`), which no route flag can withhold — so what
- * is missing is the row, not the reach.
- */
-const OFF_FLAG = 'off';
 /** The region the sheet opens on when the tourist is not placed: the coast's middle stretch. */
 const DEFAULT_REGION = 'HIMARE';
 /** From this much sheet width the rows are two columns and the beach chip spells itself out. */
@@ -186,14 +169,7 @@ function closedStateText(
  * the list renders, so the two surfaces cannot disagree. Pins that bury each other form a place
  * pill: pressing it goes there, and when the place is one beach the list narrows to it.
  *
- * <p>`?map=off` is the way back to the **pre-Q page** for the release the map soaks (`OFF_FLAG`):
- * hero + one glass filter bar (beach/region/date with the live result count inside) + glass venue
- * cards in a grid, with a List/Map switch below `lg` and both panels side by side from `lg`, and
- * a preview card over the map instead of a lit row. Its map component is a deferred chunk that
- * loads only once the venue request has settled; once loaded it stays mounted and the switch only
- * hides it.
- *
- * <p>Common to both: a card is a link to the beach map at `/venues/:id`, carrying the selected
+ * <p>On both arms: a card is a link to the beach map at `/venues/:id`, carrying the selected
  * date; the date drives the per-venue availability count (invariant #2); money is rendered from
  * integer minor units (invariant #5); every card fact is conveyed as text, not colour alone
  * (WCAG AA); and the loading (a pulsing skeleton grid), empty and error states are distinct.
@@ -225,13 +201,11 @@ function closedStateText(
     SalesClosedChip,
     SemanticChip,
     SetsFree,
-    FieldGlass,
     LoadAnnouncer,
     MapCredit,
     TouchTarget,
     RivieraMap,
     VenuePinLayer,
-    VenuePreviewCard,
     VenueRow,
     ...FAILURE_DIRECTIVES,
   ],
@@ -265,9 +239,6 @@ export class Home {
    */
   protected readonly loading = computed(() => !this.failed() && this.venues() === undefined);
 
-  /** Current filter selection. Empty string = "all" (no constraint). */
-  protected readonly beach = signal('');
-  protected readonly region = signal('');
   /**
    * The earliest selectable booking date — today in Europe/Tirane. Backs the date input's
    * `min` and clamps a hand-typed date so a past date can't be presented as bookable (an
@@ -288,33 +259,22 @@ export class Home {
    */
   protected readonly selectedDate = signal(this.minDate);
 
-  /** The catalogue beaches/regions with a venue, for the filter selects, captured once from the unfiltered list. */
-  protected readonly beaches = signal<readonly BeachEntry[]>([]);
-  protected readonly regions = signal<readonly RegionEntry[]>([]);
-  /** The narrowed beach as the tourist reads it, for the crumb on the map. */
-  protected readonly narrowedLabel = computed(() => beachLabel(this.beach()));
-
-  /** Which panel the switch shows below `lg`; irrelevant from `lg` up, where both show. */
-  protected readonly view = signal<'list' | 'map'>('list');
   /** True from Tailwind's `lg` up, followed live so a rotated tablet re-lays out. */
   protected readonly wide = signal(false);
-  protected readonly listShown = computed(() => this.wide() || this.view() === 'list');
-  protected readonly mapOpen = computed(() => this.wide() || this.view() === 'map');
   /** The venue request has answered or failed: the list is drawn, so the map may load. */
   protected readonly listSettled = computed(() => this.venues() !== undefined || this.failed());
   /**
-   * The map chunk's one-way trigger: an open map (the ground, in sheet mode, once the poster no
-   * longer stands in for it), after the list settled.
+   * The map chunk's one-way trigger, after the list settled: in sheet mode the ground going live
+   * behind the poster; on the panel, which has no poster, the list settling is the whole of it.
    */
   protected readonly mapDefer = computed(
-    () => (this.sheetMode() ? this.groundLive() : this.mapOpen()) && this.listSettled(),
+    () => (this.sheetMode() ? this.groundLive() : true) && this.listSettled(),
   );
 
-  /** The route does not opt out with `?map=off`; which surface the map wears is `wide()`'s call. */
-  private readonly mapFlag = signal(true);
-  protected readonly sheetMode = computed(() => this.mapFlag() && !this.wide());
+  /** Below `lg` the map is the ground and the list a sheet over it; from `lg` a pinned panel. */
+  protected readonly sheetMode = computed(() => !this.wide());
   /** From `lg` the same page lays the list out as a pinned left panel beside an inset map. */
-  protected readonly panelMode = computed(() => this.mapFlag() && this.wide());
+  protected readonly panelMode = computed(() => this.wide());
   /** The window and the shell header, which the desktop frame is measured from; the sheet owns its own. */
   protected readonly shell = signal({ viewportW: 0, viewportH: 0, header: 0 });
   /** 38 % of the window, never narrower than a row is happy nor wider than a row needs. */
@@ -335,11 +295,6 @@ export class Home {
 
   /** The skeleton grid renders this many placeholder cards while a request is in flight. */
   protected readonly skeletons = [0, 1, 2, 3, 4, 5] as const;
-
-  /** True only once a response has arrived and it is empty (distinct from the loading state). */
-  protected readonly isEmpty = computed(() => {
-    return this.venues()?.length === 0;
-  });
 
   /**
    * The discovery cards, precomputed off `venues()` + the selected date: the template
@@ -378,11 +333,10 @@ export class Home {
    * two surfaces cannot disagree. A pin's id is its venue's id as a string.
    *
    * <p>The riviera map holds ONE region on every surface: there is no whole-coast state, so the
-   * pins are the focused region's cards and not the whole coast's. `?map=off`'s map draws them
-   * all, since its filter bar is what narrows there.
+   * pins are the focused region's cards and not the whole coast's.
    */
   protected readonly pins = computed<readonly VenuePin[]>(() =>
-    (this.mapFlag() ? this.focus().cards : this.shownCards()).flatMap((card) =>
+    this.focus().cards.flatMap((card) =>
       card.location
         ? [
             {
@@ -479,21 +433,6 @@ export class Home {
       return open !== null && pins.some((pin) => pin.id === open) ? open : null;
     },
   });
-
-  /** The card behind the open preview — the same record the list is rendering for that venue. */
-  protected readonly selectedCard = computed<VenueCard | null>(() => {
-    const open = this.selectedVenue();
-    if (open === null) {
-      return null;
-    }
-    return this.shownCards().find((card) => String(card.id) === open) ?? null;
-  });
-
-  /**
-   * The open venue's place in a crowd the camera cannot separate, from the layer that draws it,
-   * for the preview's stepper; `null` for a venue on its own, so the card draws no stepper.
-   */
-  protected readonly crowdStack = computed(() => this.pinLayer()?.stack() ?? null);
 
   // ── the sheet's query (sheet mode only) ─────────────────────────────────────────────────
   /** A region picked on the coast picker, `''` for the derived one (the tourist's, else Himarë). */
@@ -686,24 +625,21 @@ export class Home {
 
   /**
    * The fetch to repeat when Retry is pressed — the *failed* request, not a fixed one: an
-   * initial-load failure retries `loadInitial` (which re-seeds the filter selects), whereas a
-   * filter-change failure retries `reload` (which preserves the active beach/region filter).
+   * initial-load failure retries `loadInitial`, a day-change failure retries `reload`. Both ask
+   * for the whole coast on the current date; which one failed is the only difference.
    * Assigned by whichever load runs first; the constructor's `loadInitial()` sets it before any
    * Retry click is possible (definite assignment — no dead initial closure to leave uncovered).
    */
   private lastLoad!: () => void;
 
   constructor() {
-    this.rescueFocusFromClosingPreview();
     this.followViewport();
     this.selectedDate.set(this.routeDate(this.route.snapshot.queryParamMap));
-    this.mapFlag.set(this.route.snapshot.queryParamMap.get('map') !== OFF_FLAG);
     this.followSheet();
     this.followPanel();
     this.followMapChrome();
     this.loadInitial();
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      this.mapFlag.set(params.get('map') !== OFF_FLAG);
       const date = this.routeDate(params);
       if (date !== this.selectedDate()) {
         this.selectedDate.set(date);
@@ -721,48 +657,14 @@ export class Home {
     this.wide.set(query.matches);
     const onChange = (event: MediaQueryListEvent): void => {
       this.wide.set(event.matches);
-      if (!event.matches) {
-        this.rescueFocusFromHiddenPanel();
-      }
     };
     query.addEventListener('change', onChange);
     inject(DestroyRef).onDestroy(() => query.removeEventListener('change', onChange));
   }
 
-  /**
-   * The preview can also close without anyone closing it: the selected venue leaves the result
-   * set — a route-carried date change, a venue that stopped selling — and the linked selection
-   * drops with it. Focus inside the card would strand on `<body>` (WCAG 2.4.3), so it lands on
-   * the count block, the same place the narrowing rescue uses.
-   *
-   * <p>A user-driven close needs nothing here: {@link closePreview} moves focus to the pin
-   * before this runs, so the card it finds is not the one holding focus.
-   */
-  private rescueFocusFromClosingPreview(): void {
-    effect(() => {
-      // Read before the view is patched, so a card about to be removed is still mounted.
-      if (this.selectedCard() === null && this.previewHoldsFocus()) {
-        this.focusAfterRender('results');
-      }
-    });
-  }
-
   private posterHoldsFocus(): boolean {
     const poster = this.host.nativeElement.querySelector('[data-testid="sheet-poster"]');
     return poster?.contains(this.document.activeElement) ?? false;
-  }
-
-  private previewHoldsFocus(): boolean {
-    const preview = this.host.nativeElement.querySelector('[data-testid="venue-preview"]');
-    return preview?.contains(this.document.activeElement) ?? false;
-  }
-
-  /** Narrowing hides the panel the switch is not showing; focus stranded in it lands on the count block (WCAG 2.4.3). */
-  private rescueFocusFromHiddenPanel(): void {
-    const hidden = this.view() === 'list' ? 'map-panel' : 'list-panel';
-    if (this.document.activeElement?.closest(`[data-testid="${hidden}"]`)) {
-      this.focusAfterRender('results');
-    }
   }
 
   /**
@@ -1068,10 +970,8 @@ export class Home {
 
   protected onEscape(): void {
     this.closePreview();
-    if (this.mapFlag()) {
-      this.head()?.closeRails();
-      this.closePicker();
-    }
+    this.head()?.closeRails();
+    this.closePicker();
   }
 
   protected kmLabel(km: number): string {
@@ -1079,52 +979,27 @@ export class Home {
   }
 
   /**
-   * Open a venue's preview: from a pin (or a pill's press-again), which moves focus into the
-   * dialog, or from the open preview's own stepper, which leaves focus where it is — the dialog
-   * stays mounted across a step, so the pressed chevron keeps it.
+   * Select a venue: from a pin, from a pill's press-again, or from the stepper walking a crowd.
    *
-   * <p>On the riviera map the ROW is the preview, on both surfaces: it lights and comes into
-   * view, a sheet at peek rises to half, and a press destroys nothing, so focus stays on the pin
-   * that took it. Only `?map=off`'s page opens a card, and only there is focus moved into it —
-   * `focusMover` lands on the page host when its target is absent, which here would take focus
-   * off the pressed pin for nothing (WCAG 2.4.3).
+   * <p>The ROW is the preview, on both surfaces: it lights and comes into view, a sheet at peek
+   * rises to half, and a press destroys nothing, so focus stays on the pin that took it.
    */
   protected onPinSelected(id: string): void {
     this.selectedVenue.set(id);
     if (this.sheetMode()) {
       this.raiseFromPeek();
-    } else if (!this.panelMode() && !this.previewHoldsFocus()) {
-      this.focusAfterRender('venue-preview');
     }
     this.revealCard(id);
   }
 
   /**
-   * A place on the map was pressed and it is one beach: the list narrows to it, so the cards
-   * beside the map — the List tab on a phone — are the venues the camera went to. On the riviera
-   * map, on either surface, the narrowing is the head's beach and client-side, with no request:
-   * the page holds one whole-coast response and narrows inside it, and neither the filter bar nor
-   * the crumb that undoes a filter-bar narrowing is drawn there.
+   * A place on the map was pressed and it is one beach: the head narrows to it, so the rows
+   * beside the map are the venues the camera went to. The narrowing is client-side and costs no
+   * request — the page holds one whole-coast response and narrows inside it — and the head's
+   * beaches chip is the way back.
    */
   protected onBeachNarrowed(beach: string): void {
-    if (this.mapFlag()) {
-      this.focusBeach.set(beach);
-    } else if (beach !== this.beach()) {
-      this.beach.set(beach);
-      this.reload();
-    }
-  }
-
-  /**
-   * The map's own way back from a beach the list is narrowed to. The crumb takes itself down, so
-   * focus moves to the control beside it (WCAG 2.4.3): Near me, or Zoom in where no near-me is
-   * offered.
-   */
-  protected showAllBeaches(): void {
-    this.beach.set('');
-    this.followFilter();
-    this.reload();
-    this.focusAfterRender('map-near-me', 'map-zoom-in');
+    this.focusBeach.set(beach);
   }
 
   /**
@@ -1179,21 +1054,13 @@ export class Home {
     return this.selectedVenue() === String(card.id);
   }
 
-  protected showList(): void {
-    this.view.set('list');
-  }
-
-  protected showMap(): void {
-    this.view.set('map');
-  }
-
   /** The route-carried day: a well-formed `?date` on or after the floor, else the floor itself. */
   private routeDate(params: ParamMap): string {
     const raw = params.get('date') ?? '';
     return isIsoDate(raw) && raw >= this.minDate ? raw : this.minDate;
   }
 
-  /** First load: no filters. Seeds the filter selects from the full catalogue and shows all venues. */
+  /** First load: the whole coast for the current date, which the head then narrows inside. */
   private loadInitial(): void {
     this.lastLoad = () => this.loadInitial();
     const token = this.beginRequest();
@@ -1202,9 +1069,6 @@ export class Home {
         if (this.lastRequest !== token) {
           return;
         }
-        const codes = list.map((v) => v.beach);
-        this.beaches.set(presentBeaches(codes));
-        this.regions.set(presentRegions(codes));
         this.venues.set(list);
       },
       error: () => {
@@ -1215,85 +1079,41 @@ export class Home {
     });
   }
 
-  /** Re-fetch the list for the current filter + date. */
+  /** Re-fetch the whole coast for the current date; the head narrows inside the response. */
   private reload(): void {
     this.lastLoad = () => this.reload();
     const token = this.beginRequest();
-    this.venueService
-      .listVenues(
-        { beach: this.beach() || undefined, region: this.region() || undefined },
-        this.selectedDate(),
-      )
-      .subscribe({
-        next: (list) => {
-          if (this.lastRequest === token) {
-            this.venues.set(list);
-          }
-        },
-        error: () => {
-          if (this.lastRequest === token) {
-            this.failed.set(true);
-          }
-        },
-      });
+    this.venueService.listVenues({}, this.selectedDate()).subscribe({
+      next: (list) => {
+        if (this.lastRequest === token) {
+          this.venues.set(list);
+        }
+      },
+      error: () => {
+        if (this.lastRequest === token) {
+          this.failed.set(true);
+        }
+      },
+    });
   }
 
   /** Reset to the loading state and mint a token for this request. */
   private beginRequest(): string {
     this.venues.set(undefined);
     this.failed.set(false);
-    const token = `${this.beach()}|${this.region()}|${this.selectedDate()}`;
+    const token = this.selectedDate();
     this.lastRequest = token;
     return token;
   }
 
-  protected onBeachChange(event: Event): void {
-    this.beach.set((event.target as HTMLSelectElement).value);
-    this.followFilter();
-    this.reload();
-  }
-
-  protected onRegionChange(event: Event): void {
-    this.region.set((event.target as HTMLSelectElement).value);
-    this.followFilter();
-    this.reload();
-  }
-
-  /**
-   * The map goes where the filter points: the chosen beach at town scale, else the chosen region,
-   * else the whole riviera. The catalogue's recorded views are the only geography involved (ADR-0022).
-   */
-  private followFilter(): void {
-    const view =
-      beachEntry(this.beach())?.view ??
-      regionEntry(this.region())?.view ??
-      RIVIERA_MAP_OPTIONS.view;
-    this.map()?.handle()?.easeTo(view);
-  }
-
-  protected onDateChange(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (!input.value) {
-      return;
-    }
-    // Clamp a hand-typed past/today date up to the earliest day — typing bypasses the picker `min`.
-    const value = input.value < this.minDate ? this.minDate : input.value;
-    input.value = value; // reflect any clamp back into the field, even when the model is unchanged
-    if (value === this.selectedDate()) {
-      return;
-    }
-    this.selectedDate.set(value);
-    this.reload();
-  }
-
   /**
    * Retry the load that failed (the failure panel's "Try again" button). Retry destroys the panel
-   * holding the pressed button (WCAG 2.4.3), so focus moves to the count block — which survives
-   * every list state, outliving the loading → grid/error transitions too.
+   * holding the pressed button (WCAG 2.4.3), so focus moves to the head's place button — the one
+   * visible control both arms render in every list state, loading and failed included.
    */
   protected onRetryDiscover(): void {
     this.lastLoad();
-    this.focusAfterRender('results');
+    this.focusAfterRender('head-place');
   }
 
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */

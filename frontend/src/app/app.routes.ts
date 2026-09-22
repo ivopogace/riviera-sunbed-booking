@@ -216,8 +216,7 @@ export const routes: Routes = [
     path: '',
     loadComponent: () => import('./pages/home/home').then((m) => m.Home),
     title: 'Riviera — Sunbed Booking',
-    // The riviera map fills the window; `?map=off` gives its footer up with it (static data).
-    // `wide` is the route's: `?map=off`'s capped column wears the full-bleed header too.
+    // The riviera map fills the window, footer included; the legal links are menu rows instead.
     data: { section: 'beaches', footer: false, wide: true } satisfies TouristRouteData,
   },
   {

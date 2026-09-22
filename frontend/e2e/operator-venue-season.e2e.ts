@@ -79,6 +79,10 @@ function venueMap(closure: Closure) {
 
 test.use({ colorScheme: 'dark' });
 
+/** The Discover legs read the sheet's cards; the console legs stay at the suite's own width. */
+const PHONE = { width: 390, height: 844 };
+const CONSOLE = { width: 1280, height: 720 };
+
 /**
  * Session + shell + tab reads mocked. The closure is STATEFUL: the PUT/DELETE move it, and the
  * profile, list and map reads reflect it — the list sorts the closed venue last, as the server does.
@@ -217,8 +221,9 @@ test('close for the season → the Discover badge and the map notice → reopen 
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'venue tab closed for season');
 
-  // Discover: the closed venue is badged with its reopen day and listed after the open one.
-  await page.goto('/?map=off');
+  // Discover: the badge is the sheet card's, and the closed venue is listed after the open one.
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
   const cards = page.getByTestId('venue-card');
   await expect(cards).toHaveCount(2);
   await expect(cards.nth(0)).toContainText('Aurora Bay');
@@ -240,6 +245,7 @@ test('close for the season → the Discover badge and the map notice → reopen 
   await expect(page.getByRole('button', { name: /Select to book/ })).toHaveCount(0);
 
   // Reopen by hand: the DELETE clears the closure and the badge is gone.
+  await page.setViewportSize(CONSOLE);
   await page.goto('/operator/1/venue');
   await expect(page.getByTestId('venue-season-status')).toBeVisible();
   await page.getByTestId('venue-season-reopen').click();
@@ -248,7 +254,8 @@ test('close for the season → the Discover badge and the map notice → reopen 
   expect(writes).toHaveLength(2);
   expect(writes[1].method()).toBe('DELETE');
 
-  await page.goto('/?map=off');
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
   await expect(page.getByTestId('venue-card').nth(0)).toContainText('Miramar Beach Club');
   await expect(page.locator('.closed-for-season-chip')).toHaveCount(0);
 });

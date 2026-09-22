@@ -31,6 +31,9 @@ const VENUES = [
   },
 ];
 
+/** Discover's cards and their count region are the sheet's; the panel from `lg` lists rows. */
+const PHONE = { width: 390, height: 844 };
+
 test('Discover announces through a region that outlives the load (#741)', async ({ page }) => {
   // Hold the response open so the loading state is observable rather than raced past.
   let release!: () => void;
@@ -40,7 +43,8 @@ test('Discover announces through a region that outlives the load (#741)', async 
     await route.fulfill({ json: VENUES });
   });
 
-  await page.goto('/?map=off');
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
 
   const announcer = page.getByTestId('load-announcer');
   await expect(announcer).toHaveText('Loading venues…');
@@ -54,9 +58,9 @@ test('Discover announces through a region that outlives the load (#741)', async 
   await expect(page.getByTestId('venue-card')).toHaveCount(1);
 
   await expect(announcer).toHaveAttribute('data-identity-probe', 'same-node');
-  // Empty by design: the persistent results-count region already spoke the outcome.
+  // Empty by design: the sheet's persistent outcome region already spoke the outcome.
   await expect(announcer).toHaveText('');
-  await expect(page.getByTestId('results')).toContainText('1');
+  await expect(page.getByTestId('sheet-outcome')).toContainText('1');
 
   await expectNoSeriousAxeViolations(page, 'Discover, loaded');
 });
@@ -270,12 +274,13 @@ test('row pricing announces every row through one region that outlives them (#10
 test('Discover leaves the empty outcome to its count region (#1078)', async ({ page }) => {
   await page.route('**/api/venues*', (route) => route.fulfill({ json: [] }));
 
-  await page.goto('/?map=off');
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
 
   // Born holding its text, it never announced — and the count region already speaks the outcome.
   const empty = page.getByTestId('empty');
   await expect(empty).toBeVisible();
   expect(await empty.getAttribute('aria-live')).toBeNull();
   expect(await empty.getAttribute('role')).toBeNull();
-  await expect(page.getByTestId('results')).toContainText('0');
+  await expect(page.getByTestId('sheet-outcome')).toContainText('0');
 });

@@ -539,6 +539,14 @@ kept the very shape the assertion existed to forbid. **A rule enforced at one of
 consumers is not enforced.** The token is where such a rule can be stated once; the assertion has
 moved there, and now covers all three.
 
+**Recounted at #1168, because the family moved twice since.** `--riv-sun-grad` has **four**
+consumers in `frontend/src`, not three: the brand mark (`app.html`), the beach-map photo band
+(`venue-map.html`), the Discover card's empty state (`home.html`'s shared card template) and the
+desktop panel row's (`venue-row.html`), which arrived with the riviera map's panel in #1159. A
+fifth, the preview card over the old Discover map, was retired with that page in #1168. The split
+by role is unchanged and is what the count has to be read against: identity chrome once, the
+`photos.length === 0` empty state three times.
+
 **Which values won, and why that made the merge cheap.** The map's, because they were the only
 ones already tuned against the surface they sit on. A prototype rendered all three under each
 candidate (branch `spike/882-sun-merge`): at 32 px the brand mark is indistinguishable between the

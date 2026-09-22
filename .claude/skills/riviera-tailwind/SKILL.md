@@ -103,8 +103,9 @@ pinning) is `riviera-frontend`'s.
    - The `dark:` variant is NOT used: it names a theme and cannot express three.
 2. **`:host-context([data-riv-theme='riviera'])`** only when a whole *treatment* differs AND no
    single property can carry it as a token. Check first whether a treatment-off token works
-   (`--riv-hero-scrim`: a gradient in riviera, `none` elsewhere). No in-tree case needs the
-   hatch; the scrim stays the hero only.
+   (`--riv-hero-shadow`: a shadow in riviera and dark, `none` in porcelain;
+   `--riv-console-avatar-ring`: a ring in the dark console, `transparent` in porcelain). No
+   in-tree case needs the hatch.
 
 **Content position identical across themes:** shared padding/layout on the base rule, only the
 background theme-conditional; verify `getBoundingClientRect().top` in both.

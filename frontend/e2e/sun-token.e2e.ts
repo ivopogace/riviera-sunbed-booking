@@ -57,6 +57,9 @@ const VENUE_MAP = {
   ...NO_PHOTOS,
 };
 
+/** The Discover card lives in the sheet, which is the arm below `lg` — the panel lists rows instead. */
+const PHONE = { width: 390, height: 844 };
+
 /** The app shell's brand mark — the decorative disc beside the wordmark, on every route. */
 const BRAND_SUN = '[data-testid="brand-home"] span[aria-hidden="true"]';
 
@@ -91,7 +94,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('all three suns resolve one computed background-image', async ({ page }) => {
-  await page.goto('/?map=off');
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
   await expect(page.getByTestId('venue-card')).toHaveCount(1);
 
   const brand = await backgroundImage(page, BRAND_SUN);
@@ -107,7 +111,8 @@ test('all three suns resolve one computed background-image', async ({ page }) =>
 });
 
 test('the card sun is opaque, so it cannot composite against the sea', async ({ page }) => {
-  await page.goto('/?map=off');
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
   const sun = page.locator('.photo-sun');
   await expect(sun).toBeVisible();
 

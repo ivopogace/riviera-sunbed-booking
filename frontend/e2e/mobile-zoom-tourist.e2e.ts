@@ -50,7 +50,6 @@ test.describe('tourist UI — mobile zoom', () => {
 
   // `fields` is the FLOOR a surface must sweep at rest — counted from the source, not guessed.
   const SURFACES = [
-    { path: '/?map=off', marker: 'venue-card', label: 'tourist home (the filter bar)', fields: 3 },
     { path: '/account/sign-in', marker: 'auth-identifier', label: 'the sign-in card', fields: 2 },
     {
       path: '/account/sign-in?mode=register',
@@ -161,22 +160,19 @@ test.describe('tourist UI — mobile zoom', () => {
     await expectTouchManipulation(page, '[data-testid="nav-user"]', 'the account chip');
   });
 
-  test('the Discover switch and the map controls keep their double-tap', async ({ page }) => {
-    // A toggle tapped back and forth, and buttons on a map whose own gesture is double-tap-to-zoom.
+  test('the sheet head and Near me keep their double-tap', async ({ page }) => {
+    // No zoom pair here: the sheet's foot chrome drops the column, and `mobile-zoom` sweeps it.
     await page.addInitScript(() => {
       (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
     });
     await page.setViewportSize(PHONE);
-    // `?map=off`: the switch IS the subject, and the riviera map has none — it is one surface.
-    await page.goto('/?map=off');
+    await page.goto('/');
     await expect(page.getByTestId('venue-card').first()).toBeVisible();
-    await page.getByTestId('view-map').click();
-    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
 
     await expectTouchManipulation(
       page,
-      '[data-testid="view-list"], [data-testid="view-map"], [data-testid="map-zoom-in"], [data-testid="map-zoom-out"], [data-testid="map-near-me"]',
-      'the list/map switch and the map controls',
+      '[data-testid="head-place"], [data-testid="head-beaches"], [data-testid="head-day"], [data-testid="sheet-grabber"], [data-testid="sheet-near-me"]',
+      "the sheet's head, grabber and Near me",
     );
   });
 

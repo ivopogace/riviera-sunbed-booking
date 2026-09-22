@@ -45,37 +45,68 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await expectTouchTargets(page, 'sign-out failure notice');
   });
 
-  test('home — discovery with its filter bar, and the tab bar every phone surface lays out', async ({
+  test('home — the sheet at rest with its head, and the tab bar every phone surface lays out', async ({
     page,
   }) => {
-    // `?map=off`: the filter bar is the subject. The riviera map's own sweeps are in discover-sheet.e2e.ts.
-    await page.goto('/?map=off');
+    await page.goto('/');
     await expect(page.getByTestId('venue-card').first()).toBeVisible();
+    // The head's three controls carry the whole query, so the sweep names them.
+    await expect(page.getByTestId('head-place')).toBeVisible();
+    await expect(page.getByTestId('head-beaches')).toBeVisible();
+    await expect(page.getByTestId('head-day')).toBeVisible();
+    await expect(page.getByTestId('sheet-grabber')).toBeVisible();
     // Below sm the bar renders on every tourist page, so every sweep in this file measures its tabs.
     await expect(page.getByTestId('tab-bar')).toBeVisible();
 
-    await expectTouchTargets(page, 'tourist home');
+    await expectTouchTargets(page, 'tourist home, the sheet at rest');
   });
 
-  test('home — the map view, with its zoom controls and the skip stop', async ({ page }) => {
+  test('home — the head with each of its two rails open', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('venue-card').first()).toBeVisible();
+
+    await page.getByTestId('head-beaches').click();
+    await expect(page.locator('[role="group"][aria-label="Beach"] button').first()).toBeVisible();
+    await expectTouchTargets(page, 'tourist home, the beach rail open');
+
+    await page.getByTestId('head-day').click();
+    await expect(page.locator('[role="group"][aria-label="Day"] button').first()).toBeVisible();
+    await expectTouchTargets(page, 'tourist home, the day rail open');
+  });
+
+  test('home — the coast picker, the only coast chooser', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('venue-card').first()).toBeVisible();
+
+    await page.getByTestId('head-place').click();
+    await expect(page.getByTestId('coast-picker')).toBeVisible();
+    // Named so the sweep cannot quietly stop covering the picker's own controls.
+    await expect(page.getByTestId('picker-close')).toBeVisible();
+    await expect(page.getByTestId('picker-near-me')).toBeVisible();
+
+    await expectTouchTargets(page, 'tourist home, the coast picker open');
+  });
+
+  test('home — the live map under the sheet, with Near me and the skip stop', async ({ page }) => {
     // The fake engine renders no canvas; the chrome around it is what the sweep measures.
     await page.addInitScript(() => {
       (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
     });
-    await page.goto('/?map=off');
+    await page.goto('/');
     await expect(page.getByTestId('venue-card').first()).toBeVisible();
-    await page.getByTestId('view-map').click();
+    // The poster holds the first paint; the live map swaps in the moment the camera has to move.
+    await page.mouse.move(195, 200);
+    await page.mouse.down();
     await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+    await page.mouse.up();
     // Named so the sweep cannot quietly stop covering it; the skip stop only shows once focused.
-    await expect(page.getByTestId('map-near-me')).toBeVisible();
+    await expect(page.getByTestId('sheet-near-me')).toBeVisible();
     await page.getByTestId('map-skip').focus();
 
-    await expectTouchTargets(page, 'tourist home, map view');
+    await expectTouchTargets(page, 'tourist home, the live map under the sheet');
   });
 
-  test('home — the map view with a place pill, its pressed-through state and the beach crumb', async ({
-    page,
-  }) => {
+  test('home — a place pill, and the narrowed head a press leaves', async ({ page }) => {
     await page.addInitScript(() => {
       (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
     });
@@ -83,42 +114,32 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     const pinned = { ...TOURIST_VENUE, location: { latitude: 39.7712, longitude: 20.0021 } };
     const twin = { ...pinned, id: 2, name: 'Lori Beach' };
     await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [pinned, twin] }));
-    await page.goto('/?map=off');
+    await page.goto('/');
     await expect(page.getByTestId('venue-card').first()).toBeVisible();
-    await page.getByTestId('view-map').click();
     const pill = page.getByTestId('map-place-pill');
     await expect(pill).toBeVisible();
-    await expectTouchTargets(page, 'tourist home, map view, a place pill');
+    await expectTouchTargets(page, 'tourist home, a place pill');
 
     await pill.click();
     await expect(pill).toHaveAttribute('data-here', '');
-    await expect(page.getByTestId('map-beach-crumb')).toBeVisible();
-    await expectTouchTargets(page, 'tourist home, map view, an inverted pill and the crumb');
-
-    await pill.click();
-    await expect(page.getByTestId('venue-preview')).toBeVisible();
-    // Named so the sweep cannot quietly stop covering the card's two chevrons.
-    await expect(page.getByTestId('preview-stack-prev')).toBeVisible();
-    await expect(page.getByTestId('preview-stack-next')).toBeVisible();
-    await expectTouchTargets(page, 'tourist home, map view, pressed through a crowd');
+    // The head's beaches chip is the narrowing and the way back, in place of the old crumb.
+    await expect(page.getByTestId('head-beaches')).toHaveAttribute('aria-current', 'true');
+    await expectTouchTargets(page, 'tourist home, an inverted pill and the narrowed head');
   });
 
-  test('home — the map view, near-me failure message with its dismiss control', async ({
-    page,
-    context,
-  }) => {
+  test('home — the near-me failure answer with its dismiss control', async ({ page, context }) => {
     await context.clearPermissions();
     await page.addInitScript(() => {
       (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
     });
-    await page.goto('/?map=off');
+    await page.goto('/');
     await expect(page.getByTestId('venue-card').first()).toBeVisible();
-    await page.getByTestId('view-map').click();
-    await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
-    await page.getByRole('button', { name: 'Near me' }).click();
-    await expect(page.getByTestId('map-near-me-message')).toBeVisible();
+    await page.getByTestId('sheet-near-me').click();
+    // The answer lives in the head's rail slot, off the map, with its own dismiss.
+    await expect(page.getByTestId('head-note')).toBeVisible();
+    await expect(page.getByTestId('head-note-dismiss')).toBeVisible();
 
-    await expectTouchTargets(page, 'tourist home, map view, near-me message');
+    await expectTouchTargets(page, 'tourist home, the near-me answer in the head');
   });
 
   test('venue detail — the beach map', async ({ page }) => {
