@@ -41,6 +41,13 @@ const LIST_PAD_BOTTOM_PX = 68;
  * frame gaps inside one snap animation or fling, short enough that a rotation re-rests at once.
  */
 const SETTLE_QUIET_MS = 160;
+/**
+ * A touch keeps the element it started on, and an element destroyed mid-gesture takes its
+ * `touchend` with it — off the tree, so neither the sheet nor the document hears it and the
+ * finger flag sticks. Nothing having moved the sheet for this long means the gesture is over,
+ * whatever the DOM believes; generous, because a tourist reading a row is not a stale finger.
+ */
+const STALE_TOUCH_MS = 6_000;
 
 /**
  * The Discover venue sheet: the list as a sheet over the riviera map with three resting heights
@@ -103,8 +110,8 @@ const SETTLE_QUIET_MS = 160;
           [style.height.px]="tops().sheetHeight"
           aria-label="Venues"
           (touchstart)="onTouch(true)"
-          (touchend)="onTouch(false)"
-          (touchcancel)="onTouch(false)"
+          (touchend)="onTouch($event.touches.length > 0)"
+          (touchcancel)="onTouch($event.touches.length > 0)"
         >
           <div
             data-testid="sheet-head"
@@ -191,6 +198,7 @@ export class DiscoverSheet {
   /** The scroll is still moving — a fling, a snap, or a `go` glide — until it goes quiet. */
   private readonly rolling = signal(false);
   private quietTimer: number | undefined;
+  private staleTouchTimer: number | undefined;
   private readonly moveFocus = focusMover({ preventScroll: true });
   /**
    * Nothing is moving the sheet: no finger on it, and no scroll still running under one. A
@@ -203,7 +211,10 @@ export class DiscoverSheet {
 
   constructor() {
     // `isolate: false` shares one jsdom per worker, so a timer outliving its fixture leaks across specs.
-    inject(DestroyRef).onDestroy(() => this.document.defaultView?.clearTimeout(this.quietTimer));
+    inject(DestroyRef).onDestroy(() => {
+      this.document.defaultView?.clearTimeout(this.quietTimer);
+      this.document.defaultView?.clearTimeout(this.staleTouchTimer);
+    });
     afterRenderEffect({
       earlyRead: () => {
         this.measured();
@@ -272,8 +283,13 @@ export class DiscoverSheet {
       return;
     }
     this.document.defaultView?.requestAnimationFrame(() => {
+      if (want !== this.restTarget) {
+        return;
+      }
       // `touched`, not `settled`: the rest's own scroll unsettles the sheet, so that would abandon every chain.
-      if (want !== this.restTarget || this.touched()) {
+      if (this.touched()) {
+        // Shut the opening window, or `restTarget` stays armed and no re-measure ever rests again.
+        this.opened.set(true);
         return;
       }
       if (scroller.scrollTop === want) {
@@ -285,24 +301,38 @@ export class DiscoverSheet {
   }
 
   /**
-   * A finger landed on the sheet, or left it. **Touch, not pointer**: the browser fires
-   * `pointercancel` within a frame or two of taking the gesture over for its own scrolling, so a
-   * pointer-shaped flag is false for almost all of a drag and leaves a finger held still — to
-   * read a row — guarded by the quiet window alone, which expires under it. A touch sequence
-   * keeps the target it started on and outlives the browser's takeover.
+   * Whether a finger is still on the sheet. Touch and not pointer, because the browser fires
+   * `pointercancel` a frame or two into taking the gesture over for its own scrolling.
    */
   protected onTouch(down: boolean): void {
     this.touched.set(down);
-    if (!down) {
+    if (down) {
+      this.watchForStaleTouch();
+    } else {
       // The fling outlives the finger, so the quiet window carries on from here.
       this.keepRolling();
     }
+  }
+
+  /** Releases the finger flag once nothing has moved the sheet for {@link STALE_TOUCH_MS}. */
+  private watchForStaleTouch(): void {
+    const window = this.document.defaultView;
+    if (this.staleTouchTimer !== undefined) {
+      window?.clearTimeout(this.staleTouchTimer);
+    }
+    this.staleTouchTimer = window?.setTimeout(() => {
+      this.staleTouchTimer = undefined;
+      this.touched.set(false);
+    }, STALE_TOUCH_MS);
   }
 
   /** The scroll is moving, and stays that way until `SETTLE_QUIET_MS` passes with nothing moving it. */
   private keepRolling(): void {
     const window = this.document.defaultView;
     this.rolling.set(true);
+    if (this.touched()) {
+      this.watchForStaleTouch();
+    }
     if (this.quietTimer !== undefined) {
       window?.clearTimeout(this.quietTimer);
     }

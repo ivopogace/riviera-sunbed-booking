@@ -16,11 +16,10 @@ const POLL_MS = 20;
  * on a phone the browser fires `resize` in the middle of both; the rest a re-measure asks for is
  * therefore taken once `settled()` turns true, not when `resize` is dispatched.
  *
- * <p>It waits on the signal, with `TIMEOUT_MS` only as the bound that fails the spec — the shape
- * `sheet-opened.ts` uses, one poll primitive over. **Not `requestAnimationFrame`**, which the
- * sibling can use and this cannot: `discover-sheet.spec.ts` stubs the global to collect frames
- * without running them, so a frame-paced wait never resolves and, under `isolate: false`, hangs
- * every spec after it. The sheet's window is a `setTimeout`, so polling on one matches it.
+ * <p>It waits on the signal; `TIMEOUT_MS` is only the bound that fails the spec. **Not
+ * `requestAnimationFrame`**: `discover-sheet.spec.ts` stubs the global to collect frames without
+ * running them, so a frame-paced wait never resolves and, under `isolate: false`, hangs every
+ * spec after it.
  */
 export async function whenSheetSettled(fixture: ComponentFixture<unknown>): Promise<void> {
   const found = fixture.debugElement.query(By.directive(DiscoverSheet));
