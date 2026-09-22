@@ -1094,6 +1094,18 @@ body {
   min-height: 100%;
 }
 
+/** Pull-to-refresh is off for the whole app, on the root element, which propagates it to the
+    viewport. Discover is a fixed map under a fixed sheet, so the document itself never scrolls:
+    every downward drag that misses the sheet — the header, the tab bar, a venue pin, Near me,
+    the tile credit — chains all the way to the viewport, where Chrome Android reads it as
+    pull-to-refresh and reloads the page out from under a tourist mid-query. Nothing here asks
+    the browser to reload; a refresh is only ever a loss. `contain` and not `none` because the
+    page's own overscroll (the sheet's, the list's) is the affordance that stays.
+    Render proof: e2e/discover-sheet.e2e.ts. */
+html {
+  overscroll-behavior-y: contain;
+}
+
 body {
   font-family: var(--riv-font);
   color: var(--riv-ink);

@@ -33,6 +33,11 @@ const MAP_PILL_LIFT_PX = 12;
 const REST_ATTEMPTS = 8;
 /** The list's bottom padding: the Map pill's 44, its 12 px lift and 12 px of air, so the last row clears it. */
 const LIST_PAD_BOTTOM_PX = 68;
+/**
+ * How long after the last scroll event the sheet counts as settled. Long enough to bridge the
+ * frame gaps inside one snap animation or fling, short enough that a rotation re-rests at once.
+ */
+const SETTLE_QUIET_MS = 160;
 
 /**
  * The Discover venue sheet: the list as a sheet over the riviera map with three resting heights
@@ -52,7 +57,10 @@ const LIST_PAD_BOTTOM_PX = 68;
  * <p>The shipped chrome is **measured at runtime, never a constant**: the tab bar's rendered
  * height (61 on a phone, 0 from `sm` where it is hidden) and the header's (73). The scrollers
  * render only once the chrome is measured, and the first rest is confirmed on the next frame,
- * because a rest taken at a layout with every rest at offset 0 is carried to full.
+ * because a rest taken at a layout with every rest at offset 0 is carried to full. A re-measure
+ * never re-rests while the sheet is moving, though — a phone fires `resize` mid-gesture every
+ * time its URL bar or on-screen keyboard moves, and the rest it asks for waits for `settled`
+ * rather than scrolling the sheet out from under the finger.
  *
  * <p>The head goes in through `[sheetHead]`, the rows through the default slot; the page keeps
  * every word and every row, this component keeps the physics.
@@ -91,6 +99,9 @@ const LIST_PAD_BOTTOM_PX = 68;
           class="pointer-events-auto flex snap-start snap-always flex-col rounded-t-[26px] shadow-[0_-12px_40px_rgba(7,42,58,0.28)]"
           [style.height.px]="tops().sheetHeight"
           aria-label="Venues"
+          (pointerdown)="onPointer(true)"
+          (pointerup)="onPointer(false)"
+          (pointercancel)="onPointer(false)"
         >
           <div
             data-testid="sheet-head"
@@ -172,6 +183,18 @@ export class DiscoverSheet {
   readonly lift = signal(0);
   /** The offset the sheet is resting *for*; a rest for any other offset has been superseded. */
   private restTarget: number | undefined;
+  /** A pointer is down on the sheet. */
+  private readonly touched = signal(false);
+  /** The scroll is still moving — a fling, a snap, or a `go` glide — until it goes quiet. */
+  private readonly rolling = signal(false);
+  private quietTimer: number | undefined;
+  /**
+   * The scroll belongs to the tourist (or to a glide already asked for). A mobile browser fires
+   * `resize` in the middle of one whenever its URL bar or the on-screen keyboard moves, and the
+   * re-rest that follows scrolls the sheet out from under the finger — or turns the Map pill's
+   * own glide straight back into full, which reads as a dead button.
+   */
+  readonly settled = computed(() => !this.touched() && !this.rolling());
 
   constructor() {
     afterRenderEffect({
@@ -190,12 +213,14 @@ export class DiscoverSheet {
     });
     afterRenderEffect({
       write: () => {
+        const tops = this.tops();
         const scroller = this.scroller()?.nativeElement;
-        const want = offsetFor(
-          this.tops(),
-          untracked(this.opened) ? untracked(this.detent) : 'half',
-        );
-        if (scroller === undefined || want === this.restTarget) {
+        // Read unconditionally, so a re-measure taken mid-gesture still re-runs this once it settles.
+        if (scroller === undefined || !this.settled()) {
+          return;
+        }
+        const want = offsetFor(tops, untracked(this.opened) ? untracked(this.detent) : 'half');
+        if (want === this.restTarget) {
           return;
         }
         this.rest(scroller, want, 0);
@@ -246,12 +271,35 @@ export class DiscoverSheet {
     });
   }
 
+  /** A pointer landed on the sheet, or left it: while one is down the browser owns the scroll. */
+  protected onPointer(down: boolean): void {
+    this.touched.set(down);
+    if (!down) {
+      // The fling outlives the finger, so the quiet window carries on from here.
+      this.keepRolling();
+    }
+  }
+
+  /** The scroll is moving, and stays that way until `SETTLE_QUIET_MS` passes with nothing moving it. */
+  private keepRolling(): void {
+    const window = this.document.defaultView;
+    this.rolling.set(true);
+    if (this.quietTimer !== undefined) {
+      window?.clearTimeout(this.quietTimer);
+    }
+    this.quietTimer = window?.setTimeout(() => {
+      this.quietTimer = undefined;
+      this.rolling.set(false);
+    }, SETTLE_QUIET_MS);
+  }
+
   protected onScroll(): void {
     const scroller = this.scroller()?.nativeElement;
     const list = this.list()?.nativeElement;
     if (scroller === undefined || list === undefined) {
       return;
     }
+    this.keepRolling();
     const wasFull = this.atFull();
     this.scrolled.set(scroller.scrollTop);
     if (wasFull && !this.atFull()) {
@@ -265,6 +313,8 @@ export class DiscoverSheet {
     if (scroller === undefined) {
       return;
     }
+    // A glide is in flight from here: a re-measure landing on top of it must not cut it short.
+    this.keepRolling();
     scrollScroller(scroller, offsetFor(this.tops(), detent));
     this.onScroll();
   }

@@ -323,6 +323,93 @@ test.describe('Discover sheet — the browser’s own latching', () => {
     expect(await detent(page)).toBe('full');
   });
 
+  /**
+   * A phone fires `resize` in the middle of a gesture every time its URL bar or on-screen
+   * keyboard moves, and the sheet re-measures its chrome on it. Resting on that scrolled the
+   * sheet out from under the finger, and pulled the Map pill's own glide straight back into
+   * full — a drag that fights back, and a Map button that does nothing.
+   *
+   * <p>Neither is visible at a fixed desktop viewport, so the browser chrome is played by
+   * `setViewportSize` and the programmatic scrolls the sheet asks for are recorded: while the
+   * finger is down there must be none, and the pill's glide must still land at half.
+   */
+  test('a re-measure never cuts a gesture short: the phone chrome that moves mid-drag', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __rests: unknown[] }).__rests = [];
+      type ScrollTo = (this: Element, ...args: unknown[]) => void;
+      const prototype = Element.prototype as unknown as Record<string, ScrollTo>;
+      const original = prototype['scrollTo'];
+      Element.prototype.scrollTo = function (this: HTMLElement, ...args: unknown[]) {
+        if (this.dataset?.['testid'] === 'sheet-scroller') {
+          (window as unknown as { __rests: unknown[] }).__rests.push(args[0]);
+        }
+        original.call(this, ...args);
+      };
+    });
+    await openSheet(page);
+    const cdp = await page.context().newCDPSession(page);
+    const rests = () => page.evaluate(() => (window as unknown as { __rests: unknown[] }).__rests);
+    const clearRests = () =>
+      page.evaluate(() => {
+        (window as unknown as { __rests: unknown[] }).__rests = [];
+      });
+
+    // A drag up from half, with the URL bar collapsing a third of the way through it.
+    await clearRests();
+    const head = (await page.getByTestId('sheet-head').boundingBox())!;
+    const x = Math.round(PHONE.width / 2);
+    const from = Math.round(head.y + 30);
+    const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', y: number) =>
+      cdp.send('Input.dispatchTouchEvent', {
+        type,
+        touchPoints: type === 'touchEnd' ? [] : [{ x, y }],
+      });
+    await touch('touchStart', from);
+    for (let step = 1; step <= 12; step += 1) {
+      await touch('touchMove', from - (220 * step) / 12);
+      if (step === 4) {
+        await page.setViewportSize({ width: PHONE.width, height: PHONE.height + 56 });
+      }
+      await page.waitForTimeout(25);
+    }
+    // Nothing the sheet scrolled for itself while the finger was down, and the flick still lands.
+    expect(await rests(), 'a re-measure scrolled the sheet under the finger').toEqual([]);
+    await touch('touchEnd', from - 220);
+    await expectDetent(page, 'full');
+
+    // The Map pill: its own glide is what moves the URL bar back, so the resize lands on top of it.
+    await clearRests();
+    await page.getByTestId('sheet-map-pill').click();
+    await page.setViewportSize({ width: PHONE.width, height: PHONE.height });
+    await expectDetent(page, 'half');
+    await expect(page.getByTestId('sheet-map-pill')).toHaveCount(0);
+  });
+
+  /**
+   * Discover is a fixed map under a fixed sheet, so the document cannot scroll: every downward
+   * drag that misses the sheet — the header, the tab bar, a pin, Near me — chains all the way to
+   * the viewport, where Chrome Android reads it as pull-to-refresh and reloads the page out from
+   * under a tourist mid-query. The root element's containment is what stops that chain, and
+   * `tailwind.css` declares it; both halves are asserted, since containment on a document that
+   * scrolls after all would prove nothing.
+   */
+  test('the document never pull-to-refreshes under the sheet', async ({ page }) => {
+    await openSheet(page);
+
+    const root = await page.evaluate(
+      () => getComputedStyle(document.documentElement).overscrollBehaviorY,
+    );
+    expect(root).toBe('contain');
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollHeight <= document.documentElement.clientHeight,
+      ),
+      'the document scrolls after all, so this page is not the pull-to-refresh case',
+    ).toBe(true);
+  });
+
   test('the grabber cycles half and full; the Map pill returns to half and never covers the last row', async ({
     page,
   }) => {
