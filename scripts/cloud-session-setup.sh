@@ -193,5 +193,5 @@ if ! command -v gh >/dev/null 2>&1; then
   rm -rf "$tmp"
 fi
 
-[ -n "$NPM_CI_PID" ] && wait "$NPM_CI_PID"
+[[ -n "$NPM_CI_PID" ]] && wait "$NPM_CI_PID"
 exit 0
