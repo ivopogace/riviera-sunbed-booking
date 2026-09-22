@@ -319,6 +319,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [ ] **AC-9:** `grep -rn "riv-hero-scrim" frontend docs .claude` → no hits; `grep -rn "text-shadow-riv-hero\|riv-hero-shadow" frontend/src` → still present with `venue-map.html` among the consumers.
 - [ ] **AC-10:** the PR's CI run green on the head commit.
 
+**Sonar note (gate applied, not skipped).** On head `b38782be`: `new_lines` 31, so the gate
+reached this diff rather than falling outside `sonar.sources`; `new_coverage` 100.0 %,
+`new_duplicated_blocks` 0, `new_duplicated_lines_density` 0.0 %, `new_bugs` /
+`new_vulnerabilities` / `new_code_smells` all 0, and the issues API returns `total: 0`. The
+`SonarCloud Code Analysis` check run concluded `success`, so none of the three false zeros
+applies.
+
 ## Self-review checklist
 
 - [ ] Every AC has an implementing task and a verifying test.
