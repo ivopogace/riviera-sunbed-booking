@@ -24,6 +24,14 @@ export interface MapEngineOptions {
    * arrow keys would be a keyboard stop inside `aria-hidden` (WCAG 2.4.3).
    */
   readonly interactive?: boolean;
+  /**
+   * Whether the engine must keep what it drew readable through {@link MapHandle.readImagery}.
+   * Off by default and set by one map only — the operator's pin placer, which has to find the
+   * shore under a dropped pin. A renderer keeps its drawing buffer to honour it, which costs
+   * memory and a compositing step on every frame, so a map that never reads itself back says
+   * nothing and pays nothing.
+   */
+  readonly readableImagery?: boolean;
 }
 
 /** A DOM element pinned to a position; the caller owns the element and its accessibility. */
@@ -83,6 +91,17 @@ export interface MapHandle {
    * reasons about overlap reads this on every {@link MapHandle.onMove}.
    */
   project(at: LngLat): ScreenPoint;
+  /** The inverse of {@link MapHandle.project}: a spot on the map's own box back to a position. */
+  unproject(point: ScreenPoint): LngLat;
+  /**
+   * What the map is currently SHOWING, as pixels — the one question no camera or coordinate can
+   * answer, and what a consumer reasoning about the imagery itself (where the sea is) needs.
+   *
+   * <p>`null` whenever the engine cannot answer rather than a guess: a renderer that was not asked
+   * to keep its drawing buffer ({@link MapEngineOptions.readableImagery}), a map with no box yet,
+   * or a handle over a picture it does not own the pixels of.
+   */
+  readImagery(): MapImagery | null;
   /**
    * The camera moved — a pan, a zoom, a gesture, `setView` or `easeTo` — so every projection is
    * stale. Fires per frame during a gesture. Subscribe; the returned function unsubscribes.

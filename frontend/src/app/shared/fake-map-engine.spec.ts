@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { waterSamplerOf } from '../operator/shore-snap';
 import { FakeMapEngine } from './fake-map-engine';
-import { LngLat, MapEngineOptions } from './map-engine';
+import { LngLat, MapEngineOptions, MapImagery, ScreenPoint } from './map-engine';
 
 const OPTIONS: MapEngineOptions = {
   styleUrl: '/map/style.json',
@@ -250,5 +251,68 @@ describe('FakeMapEngine', () => {
 
     expect(clicks).toHaveLength(0);
     expect(dragged).toHaveLength(0);
+  });
+});
+
+/**
+ * The fake's imagery: what lets the shoreline snap — a rule over what the map is SHOWING — be
+ * driven in jsdom and in the mocked e2e, where there is no WebGL and no tile to draw.
+ */
+describe('FakeMapEngine imagery', () => {
+  /** Water west of this meridian, land east of it: the fixture archive's own straight coast. */
+  const COAST_LNG = 19.8;
+
+  function isWaterAt(imagery: MapImagery, point: ScreenPoint): boolean | undefined {
+    return waterSamplerOf(imagery)(point);
+  }
+
+  it('has no imagery at all until a coast is set, so a map that draws nothing reports nothing', async () => {
+    const handle = await new FakeMapEngine().create(document.createElement('div'), OPTIONS);
+
+    expect(handle.readImagery()).toBeNull();
+  });
+
+  it('paints the style’s water fill west of its coast and land east of it', async () => {
+    const handle = await new FakeMapEngine(COAST_LNG).create(
+      document.createElement('div'),
+      OPTIONS,
+    );
+    const imagery = handle.readImagery();
+
+    expect(imagery).not.toBeNull();
+    expect(isWaterAt(imagery!, handle.project({ lng: COAST_LNG - 0.02, lat: 40.04 }))).toBe(true);
+    expect(isWaterAt(imagery!, handle.project({ lng: COAST_LNG + 0.02, lat: 40.04 }))).toBe(false);
+  });
+
+  /**
+   * Also the one case that shows what "unseen" means: jsdom lays nothing out, so the fake's box
+   * runs east and south FROM the camera's centre rather than around it, and a position west of
+   * the centre is genuinely off the frame until the camera moves to take it in.
+   */
+  it('repaints after the camera moves, so the sample follows what the map now shows', async () => {
+    const handle = await new FakeMapEngine(COAST_LNG).create(
+      document.createElement('div'),
+      OPTIONS,
+    );
+    const atSea = { lng: COAST_LNG - 0.2, lat: 40.04 };
+
+    expect(isWaterAt(handle.readImagery()!, handle.project(atSea))).toBeUndefined();
+
+    handle.setView({ center: { lng: atSea.lng - 0.05, lat: atSea.lat }, zoom: OPTIONS.view.zoom });
+
+    expect(isWaterAt(handle.readImagery()!, handle.project(atSea))).toBe(true);
+    expect(
+      isWaterAt(handle.readImagery()!, handle.project({ lng: COAST_LNG + 0.02, lat: 40.04 })),
+    ).toBe(false);
+  });
+
+  it('unprojects a point on its own box back to the position that projects there', async () => {
+    const handle = await new FakeMapEngine().create(document.createElement('div'), OPTIONS);
+    const there = { lng: 19.92, lat: 39.97 };
+
+    const back = handle.unproject(handle.project(there));
+
+    expect(back.lng).toBeCloseTo(there.lng, 9);
+    expect(back.lat).toBeCloseTo(there.lat, 9);
   });
 });

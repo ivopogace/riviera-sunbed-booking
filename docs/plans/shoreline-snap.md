@@ -202,14 +202,14 @@ differ, at the same six-decimal scale it already carried.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — `readImagery()` and `unproject()` on the `MapHandle` seam, real and fake.
+**Next action:** Phase 2 — the placer offers the shoreline, accepts and declines.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The snap rule and the raster sampler | ✅ | phase-0 commit |
-| 1 — The imagery seam on `MapHandle` (real + fake) | | |
+| 1 — The imagery seam on `MapHandle` (real + fake) | ✅ | phase-1 commit |
 | 2 — The placer offers, accepts and declines | | |
 | 3 — a11y, contrast, touch targets and the two e2e legs | | |
 | 4 — Close-out (docs freshness, execution status) | | |
@@ -238,6 +238,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/maplibre-map-engine.spec.ts` — the read-back and the opt-in flag
 - `frontend/src/app/shared/fake-map-engine.ts` — the synthesised coast and its read-back
 - `frontend/src/app/shared/fake-map-engine.spec.ts` — the coast raster and `unproject`
+- `frontend/src/app/shared/poster-handle.ts` — answers the two new seam methods (a still owns no pixels)
+- `frontend/src/app/app.config.ts` — hands the fake the coast an e2e arms
+- `frontend/src/app/app.config.spec.ts` — the coast flag reaches the fake
 - `frontend/src/app/shared/geo-distance.ts` — `distanceKm`, promoted so two features may use it
 - `frontend/src/app/shared/geo-distance.spec.ts` — its case, moved from `place-groups.spec.ts`
 - `frontend/src/app/pages/home/place-groups.ts` — imports `distanceKm` instead of declaring it

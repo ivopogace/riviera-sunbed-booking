@@ -1,14 +1,26 @@
+import { WATER_FILL } from '../operator/shore-snap';
 import {
   LngLat,
   MapEngine,
   MapEngineOptions,
   MapEventName,
   MapHandle,
+  MapImagery,
   MapMarker,
   MapView,
   ScreenPoint,
 } from './map-engine';
 import { projectAround, unprojectAround } from './web-mercator';
+
+/**
+ * The box the fake reports imagery over where the browser has laid nothing out — every jsdom
+ * spec. A fake that answered `0 × 0` there could prove nothing about a rule over pixels, and the
+ * accommodation is the one `project` already makes by treating the box's centre as its corner.
+ */
+const JSDOM_FRAME = { width: 300, height: 200 };
+
+/** The sand beside the water: anything that is not the water fill, so one plausible colour does. */
+const LAND_FILL = { r: 236, g: 238, b: 204 } as const;
 
 /**
  * A fake map: an in-memory camera and marker set, inspectable by the spec that drove it. It also owns
@@ -32,6 +44,7 @@ export class FakeMapHandle implements MapHandle {
   constructor(
     private readonly options: MapEngineOptions,
     private readonly surface?: HTMLElement,
+    private readonly coastLng?: number,
   ) {
     this.current = options.view;
     surface?.addEventListener('click', (event) => this.reportClick(event));
@@ -120,6 +133,31 @@ export class FakeMapHandle implements MapHandle {
     return () => this.dragEndHandlers.delete(handler);
   }
 
+  /**
+   * The imagery a fake map "draws": water west of the coast meridian it was given, land east of
+   * it, painted in the style's own fills at the camera the fake is currently at. A fake given no
+   * coast draws nothing and says so with `null` — the same answer a real engine gives when it was
+   * never asked to keep its drawing buffer — so every spec that does not care about the sea is
+   * untouched by this.
+   *
+   * <p>Straight, because a straight coast is enough to prove a rule that only ever asks "water or
+   * land, at this pixel?" — and it is the same coast the e2e fixture archive carries.
+   */
+  readImagery(): MapImagery | null {
+    if (this.coastLng === undefined) {
+      return null;
+    }
+    const { width, height } = this.frame();
+    const pixels = new Uint8ClampedArray(width * height * 4);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const fill = this.unproject({ x, y }).lng < this.coastLng ? WATER_FILL : LAND_FILL;
+        pixels.set([fill.r, fill.g, fill.b, 255], (y * width + x) * 4);
+      }
+    }
+    return { width, height, scale: 1, pixels };
+  }
+
   /** Drive a drag the way a pointer would, for a spec or a mocked e2e. */
   dragMarkerTo(id: string, lngLat: LngLat): void {
     if (this.isDestroyed || !this.markerSet.has(id)) {
@@ -154,8 +192,16 @@ export class FakeMapHandle implements MapHandle {
     return { x: (rect?.width ?? 0) / 2, y: (rect?.height ?? 0) / 2 };
   }
 
+  /** The box the imagery covers: the surface's where a browser laid one out, else {@link JSDOM_FRAME}. */
+  private frame(): { width: number; height: number } {
+    const rect = this.surface?.getBoundingClientRect();
+    return rect && rect.width > 0 && rect.height > 0
+      ? { width: Math.round(rect.width), height: Math.round(rect.height) }
+      : JSDOM_FRAME;
+  }
+
   /** The inverse of {@link FakeMapHandle.project}: a spot on the surface back to a position. */
-  private unproject(point: ScreenPoint): LngLat {
+  unproject(point: ScreenPoint): LngLat {
     return unprojectAround(this.current, this.origin(), point);
   }
 
@@ -199,12 +245,21 @@ export class FakeMapHandle implements MapHandle {
 export class FakeMapEngine extends MapEngine {
   readonly created: { host: HTMLElement; options: MapEngineOptions }[] = [];
 
+  /**
+   * `coastLng` gives every map this engine makes a straight coast to "draw", so a consumer
+   * reasoning about the sea can be driven with no WebGL. Absent — the default, and what every
+   * spec that does not care about the sea passes — the maps draw nothing readable.
+   */
+  constructor(private readonly coastLng?: number) {
+    super();
+  }
+
   override create(host: HTMLElement, options: MapEngineOptions): Promise<FakeMapHandle> {
     this.created.push({ host, options });
     const surface = host.ownerDocument.createElement('div');
     surface.dataset['testid'] = 'riviera-map-fake';
     surface.className = 'absolute inset-0';
     host.appendChild(surface);
-    return Promise.resolve(new FakeMapHandle(options, surface));
+    return Promise.resolve(new FakeMapHandle(options, surface, this.coastLng));
   }
 }

@@ -2,6 +2,7 @@ import type {
   LngLat,
   MapEventName,
   MapHandle,
+  MapImagery,
   MapMarker,
   MapView,
   ScreenPoint,
@@ -128,11 +129,21 @@ export class PosterHandle implements MapHandle {
     this.markerSet.clear();
   }
 
+  /**
+   * A still is a picture the page holds, not pixels this handle owns: it never asked a renderer
+   * for a readable buffer and cannot read a cross-origin-safe `<img>` back without one. The live
+   * map that takes over is what answers.
+   */
+  readImagery(): MapImagery | null {
+    return null;
+  }
+
   private origin(): ScreenPoint {
     return { x: this.paneWidth / 2, y: this.posterHeight / 2 };
   }
 
-  private unproject(point: ScreenPoint): LngLat {
+  /** The inverse of {@link PosterHandle.project}: a spot on the poster back to a position. */
+  unproject(point: ScreenPoint): LngLat {
     return unprojectAround(this.camera, this.origin(), point);
   }
 }
