@@ -163,14 +163,14 @@ N/A — no contract change. `salesOpen`, `closedForSeason` and `reopensOn` are a
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0 — plan committed, phase 1 next)`
+**Stage pointer:** `implement (phase 1 done, phase 2 next)`
 
-**Next action:** Phase 1 — the failing `venue-row.spec.ts` cases for AC-1, AC-2 and AC-3.
+**Next action:** Phase 2 — the panel arm's pairing of the sheet's dusk proof in `home.spec.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan + branch | ⏳ | |
-| 1 — The row wears dusk (AC-1, AC-2, AC-3) | | |
+| 0 — Plan + branch | ✅ | `5fb2194b` |
+| 1 — The row wears dusk (AC-1, AC-2, AC-3) | ⏳ | |
 | 2 — The panel arm pairs the sheet's proof (AC-4) | | |
 | 3 — Contrast under the filter (AC-5, AC-6) + the shared matrix | | |
 | 4 — The rendered proof (AC-7) | | |
@@ -289,6 +289,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-22 | Phase 1: a tourist surface dropping a venue's closed state | Mechanism: every non-spec source that names `salesClosed`/`closedForSeason` — a wider population than "renders a `VenueCard`", which would have missed the beach map entirely | `grep -rln "salesClosed\|closedForSeason" frontend/src/app --include=*.ts --include=*.html \| grep -v spec.ts` | 11 | `home.html` (sheet card) ✅ dusks + chips; `venue-pin-layer.ts` ✅ dusks per crowd; `venue/venue-map.html` ✅ carries both claims already (lines 76, 223–236); `shared/venue-views.ts`, `home.ts`, `venue-card.ts` are the wire/record mappers, not surfaces; `operator/venue-tab.ts` + `operator-console.model.ts` are the operator's own console, a different audience from the tourist's dusk; `coast-picker.ts`, `place-groups.ts`, `pin-crowding.ts` take `VenueCard` for counting and geometry and render no closed state. `venue-row` was the sole gap — fixed here. No follow-up issue owed. |
 
 ---
 

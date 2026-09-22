@@ -65,6 +65,36 @@ describe('VenueRow', () => {
     expect(parts(byTestId(host, 'row-facts'))).toBe('★ 4.6 · 143 reviews · 20 m to water');
   });
 
+  it('wears dusk when sales for today have closed, the price giving way to the fact that outranks it', () => {
+    const host = render(venueCard({ ...PALASA, salesClosed: true }));
+    const row = byTestId(host, 'venue-row')!;
+
+    expect(row.classList.contains('saturate-0')).toBe(true);
+    // Desaturated, never faded: a faded row put its name under 3:1 in every theme (round 7).
+    expect([...row.classList].some((cls) => cls.startsWith('opacity-'))).toBe(false);
+    expect(byTestId(host, 'row-price')).toBeNull();
+    expect(text(byTestId(host, 'row-closed'))).toBe('Closed today');
+    expect(byTestId(host, 'row-closed')!.classList.contains('semantic-chip')).toBe(true);
+  });
+
+  it('says closed for season instead, the badge that outranks today’s close', () => {
+    const host = render(
+      venueCard({ ...PALASA, salesClosed: true, closedForSeason: true, reopensOn: '2026-05-15' }),
+    );
+
+    // The reopen day rides the accessible name; the price slot has no room for it.
+    expect(text(byTestId(host, 'row-closed'))).toBe('Closed for season');
+    expect(byTestId(host, 'row-price')).toBeNull();
+  });
+
+  it('leaves a selling row its price and its colour', () => {
+    const host = render(PALASA);
+
+    expect(byTestId(host, 'venue-row')!.classList.contains('saturate-0')).toBe(false);
+    expect(text(byTestId(host, 'row-price'))).toBe('€26');
+    expect(byTestId(host, 'row-closed')).toBeNull();
+  });
+
   it('leaves the water off the facts line when the venue has no distance', () => {
     expect(parts(byTestId(render(venueCard({ id: 1, name: 'Aurora' })), 'row-facts'))).toBe(
       '★ 4.8 · 326 reviews',
