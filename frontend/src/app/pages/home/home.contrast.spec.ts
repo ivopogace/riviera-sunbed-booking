@@ -14,12 +14,8 @@ import {
   DARK_CARD_GLASS,
   DARK_CARD_INK,
   DARK_CHIP,
-  DARK_FIELD_BORDER,
-  DARK_FIELD_FILL,
   DARK_HEADER_GLASS,
   DARK_STOPS,
-  FIELD_BORDER_ALPHA,
-  FIELD_FILL_ALPHA,
   Glass,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
@@ -56,7 +52,6 @@ import { baseBlock, declarationsOf, themeBlock } from '../../../testing/styleshe
  * the AA-proven header glass instead of the bare gradient; the riviera card glass is 0.78
  * (drawn 0.55); the muted
  * card inks are 0.78/0.72 (drawn 0.7/0.55); the teal accent is #085a6e (drawn #0a6e85);
- * the field border is a dark tint (drawn white) for the 1.4.11 component boundary; the
  * CTA-button gradient is darkened for white-text AA (see CTA_STOPS below).
  *
  * The failure-panel additions reuse already-pinned tokens: the failure panel sits on the same
@@ -91,14 +86,9 @@ interface Theme {
   readonly accent: Rgb; // --riv-accent-ink
   readonly panelAccent: Rgb; // --riv-panel-accent-ink
   readonly panelWashHover: Glass; // --riv-panel-wash-hover, composited over the header glass
-  readonly fieldFill: Glass; // --riv-field-fill, composited over the card glass
-  readonly fieldBorder: Glass; // --riv-field-border, composited over the field fill
   readonly pageInk: Rgb;
   readonly pageInkSoftAlpha: number; // --riv-ink-soft
 }
-
-const LIGHT_FIELD_FILL: Glass = { color: WHITE, alpha: FIELD_FILL_ALPHA };
-const LIGHT_FIELD_BORDER: Glass = { color: CARD_INK, alpha: FIELD_BORDER_ALPHA };
 
 const THEMES: readonly Theme[] = [
   {
@@ -112,8 +102,6 @@ const THEMES: readonly Theme[] = [
     accent: hexToRgb(ACCENT.slice(1)),
     panelAccent: RIVIERA_PANEL_ACCENT_INK,
     panelWashHover: RIVIERA_PANEL_WASH_HOVER,
-    fieldFill: LIGHT_FIELD_FILL,
-    fieldBorder: LIGHT_FIELD_BORDER,
     pageInk: WHITE,
     pageInkSoftAlpha: 0.86,
   },
@@ -128,8 +116,6 @@ const THEMES: readonly Theme[] = [
     accent: hexToRgb(ACCENT.slice(1)),
     panelAccent: PANEL_ACCENT_INK,
     panelWashHover: PORCELAIN_PANEL_WASH_HOVER,
-    fieldFill: LIGHT_FIELD_FILL,
-    fieldBorder: LIGHT_FIELD_BORDER,
     pageInk: INK_DARK,
     pageInkSoftAlpha: 0.7,
   },
@@ -144,8 +130,6 @@ const THEMES: readonly Theme[] = [
     accent: DARK_ACCENT_INK,
     panelAccent: DARK_PANEL_ACCENT_INK,
     panelWashHover: DARK_PANEL_WASH_HOVER,
-    fieldFill: DARK_FIELD_FILL,
-    fieldBorder: DARK_FIELD_BORDER,
     pageInk: WHITE,
     pageInkSoftAlpha: 0.86,
     // Bare gradient: every slate stop is dark enough for white ink AA — the scrim stays riviera-only.

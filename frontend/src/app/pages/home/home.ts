@@ -296,11 +296,6 @@ export class Home {
   /** The skeleton grid renders this many placeholder cards while a request is in flight. */
   protected readonly skeletons = [0, 1, 2, 3, 4, 5] as const;
 
-  /** True only once a response has arrived and it is empty (distinct from the loading state). */
-  protected readonly isEmpty = computed(() => {
-    return this.venues()?.length === 0;
-  });
-
   /**
    * The discovery cards, precomputed off `venues()` + the selected date: the template
    * iterates these ready-made fields instead of calling parameterized pure methods per item per CD
@@ -438,21 +433,6 @@ export class Home {
       return open !== null && pins.some((pin) => pin.id === open) ? open : null;
     },
   });
-
-  /** The card behind the open preview — the same record the list is rendering for that venue. */
-  protected readonly selectedCard = computed<VenueCard | null>(() => {
-    const open = this.selectedVenue();
-    if (open === null) {
-      return null;
-    }
-    return this.shownCards().find((card) => String(card.id) === open) ?? null;
-  });
-
-  /**
-   * The open venue's place in a crowd the camera cannot separate, from the layer that draws it,
-   * for the preview's stepper; `null` for a venue on its own, so the card draws no stepper.
-   */
-  protected readonly crowdStack = computed(() => this.pinLayer()?.stack() ?? null);
 
   // ── the sheet's query (sheet mode only) ─────────────────────────────────────────────────
   /** A region picked on the coast picker, `''` for the derived one (the tourist's, else Himarë). */
@@ -645,8 +625,8 @@ export class Home {
 
   /**
    * The fetch to repeat when Retry is pressed — the *failed* request, not a fixed one: an
-   * initial-load failure retries `loadInitial` (which re-seeds the filter selects), whereas a
-   * filter-change failure retries `reload` (which preserves the active beach/region filter).
+   * initial-load failure retries `loadInitial`, a day-change failure retries `reload`. Both ask
+   * for the whole coast on the current date; which one failed is the only difference.
    * Assigned by whichever load runs first; the constructor's `loadInitial()` sets it before any
    * Retry click is possible (definite assignment — no dead initial closure to leave uncovered).
    */

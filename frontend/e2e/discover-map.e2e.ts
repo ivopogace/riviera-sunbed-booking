@@ -209,7 +209,7 @@ function rows(page: Page, viewport: { width: number }): Locator {
   return page.getByTestId(viewport.width >= 1024 ? 'venue-row' : 'venue-card');
 }
 
-/** The one row the page has lit: the riviera map's preview, on either arm. */
+/** The panel's lit row — the riviera map's preview, which is why no card opens over the map. */
 function litRow(page: Page): Locator {
   return page.locator('[data-testid="venue-row"][aria-current="true"]');
 }
@@ -384,7 +384,9 @@ test.describe('Discover map — the sheet, fake engine', () => {
 
     await expect(all.filter({ hasText: 'Aurora Bay' })).toHaveAttribute('aria-current', 'true');
     await expect(all).toHaveCount(3);
-    await expect(all.filter({ has: page.locator('[aria-current="true"]') })).toHaveCount(0);
+    // One lit row, and it is the pressed pin's: the count is what makes "one at a time" checkable.
+    await expect(litRow(page)).toHaveCount(1);
+    await expect(litRow(page)).toContainText('Aurora Bay');
     await expect(pins.nth(1)).toHaveAttribute('aria-expanded', 'true');
     await expect(pins.nth(0)).toHaveAttribute('aria-expanded', 'false');
 
@@ -421,7 +423,7 @@ test.describe('Discover map — the sheet, fake engine', () => {
     const pins = page.getByTestId('map-venue-pin');
     await expect(pins).toHaveCount(1);
     await expect(pins.first()).toHaveAttribute('aria-label', 'Aurora Bay, from €30');
-    // One whole-coast response, narrowed inside: no request, where the old select cost exactly one.
+    // The page holds one whole-coast response and narrows inside it, so this costs no request.
     expect(venueRequests()).toBe(before);
   });
 

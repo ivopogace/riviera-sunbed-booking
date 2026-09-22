@@ -874,7 +874,8 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
 
     // The signals the retired arm needed are gone from the component, not merely unrendered.
     const page = wide.componentInstance as unknown as Record<string, unknown>;
-    for (const gone of ['view', 'listShown', 'mapOpen', 'mapFlag']) {
+    const retired = ['view', 'listShown', 'mapOpen', 'mapFlag', 'beach', 'region'];
+    for (const gone of [...retired, 'isEmpty', 'selectedCard', 'crowdStack']) {
       expect(page[gone], `${gone} is still on Home`).toBeUndefined();
     }
   });

@@ -33,7 +33,9 @@ note) · `riviera-frontend` (`pages/home/` placement; the two-suite e2e split; t
 `riviera-tailwind` (rule 2's worked example **is** `--riv-hero-scrim`, so the skill prose is in
 this diff; `--riv-hero-shadow` is NOT dead and stays) · `playwright-cli` (e2e authoring for the
 three rewrite phases) · `riviera-local-debug` (unshallowed the clone before any history claim;
-scoped the test runs).
+scoped the test runs) · `domain-modeling` (owns `CONTEXT.md`: retired the **Pin preview** term
+and corrected three others off the flag) · `code-review:code-review` (the review gate's rung 1,
+five parallel agents over `a94a1738..b38782be`; findings F-5…F-9).
 
 **Branch:** `claude/sdlc-1168-ngou93` — the cloud session's designated branch, standing in for
 `feature/discover-pre-q-removal`. Exists before phase 0.
@@ -42,52 +44,52 @@ scoped the test runs).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a tourist at 390 × 844, when Discover is entered as `/?map=off`, then the
+- [x] **AC-1:** Given a tourist at 390 × 844, when Discover is entered as `/?map=off`, then the
       riviera-map sheet renders exactly as it does for `/` — `sheet-scroller` present,
       `view-switch` and `filter-beach` absent — and nothing throws.
       *Seam:* the `''` route's rendered page · *Pinned by:*
       `home.spec.ts` › `the map query parameter is inert` › `?map=off renders the sheet below lg`
-- [ ] **AC-2:** Given a tourist at 1440 × 900, when Discover is entered as `/?map=off` or
+- [x] **AC-2:** Given a tourist at 1440 × 900, when Discover is entered as `/?map=off` or
       `/?map=sheet`, then the pinned desktop panel renders (`desk-panel` present, `map-panel`
       absent). *Seam:* the `''` route's rendered page · *Pinned by:*
       `home.spec.ts` › `the map query parameter is inert` › `?map=off and ?map=sheet render the panel from lg`
-- [ ] **AC-3:** Given the `Home` component, when its template is rendered at either width, then
+- [x] **AC-3:** Given the `Home` component, when its template is rendered at either width, then
       the arm is chosen by `wide()` alone: `sheetMode === !wide`, `panelMode === wide`, and the
       class exposes no `view`, no `listShown`, no `mapOpen` and no `mapFlag`.
       *Seam:* `Home`'s rendered template + protected surface · *Pinned by:*
       `home.spec.ts` › `the two arms are chosen by width alone`
-- [ ] **AC-4:** Given the repository, when `VenuePreviewCard` is searched for, then its five
+- [x] **AC-4:** Given the repository, when `VenuePreviewCard` is searched for, then its five
       files are gone and no module imports it or renders `app-venue-preview-card`.
       *Seam:* the Angular module graph · *Pinned by:* `npm run build` + `npm run lint` (an
       unresolved import fails the compile), and `discover-sheet.e2e.ts` › `no preview card is
       rendered on any Discover surface` asserting `venue-preview` count 0 at a phone **and** a
       desktop width.
-- [ ] **AC-5:** Given the mocked e2e suite, when `discovery-flow.e2e.ts` runs, then the tourist
+- [x] **AC-5:** Given the mocked e2e suite, when `discovery-flow.e2e.ts` runs, then the tourist
       discovery journey — pick a beach, change the day, reach a venue, reach the empty state —
       is driven through the sheet's head (`head-place`, `head-beaches`, `head-day`) with no
       `filter-beach`, `filter-region`, `filter-date`, `view-switch` or `results` testid in the
       file. *Seam:* the `''` route at 390 × 844 · *Pinned by:* `discovery-flow.e2e.ts`
-- [ ] **AC-6:** Given the mocked e2e suite, when `touch-targets-tourist.e2e.ts` runs, then the
+- [x] **AC-6:** Given the mocked e2e suite, when `touch-targets-tourist.e2e.ts` runs, then the
       44 px floor is swept over the sheet's head and grabber and the desktop panel's controls,
       not the old filter bar's, and no case reaches its subject through `view-map`.
       *Seam:* the `''` route at 390 × 844 and 1440 × 900 · *Pinned by:*
       `touch-targets-tourist.e2e.ts`
-- [ ] **AC-7:** Given `discover-map.e2e.ts`, when it runs, then every test loads `/` with no
+- [x] **AC-7:** Given `discover-map.e2e.ts`, when it runs, then every test loads `/` with no
       query parameter, and the near-me arms, pin/preview mechanics, crowd walking and the
       real-engine same-origin guards assert against the shipped sheet and panel.
       *Seam:* the `''` route · *Pinned by:* `discover-map.e2e.ts`; the per-test verdicts are the
       behaviour-parity ledger below, reproduced in the PR body.
-- [ ] **AC-8:** Given `frontend/`, when `grep -rn "map=off\|map=sheet\|OFF_FLAG" src e2e` runs,
+- [x] **AC-8:** Given `frontend/`, when `grep -rn "map=off\|map=sheet\|OFF_FLAG" src e2e` runs,
       then it reports only the AC-1/AC-2 spec bodies that prove inertness — no `goto`, no
       `convertToParamMap`, no source read. *Seam:* the tree · *Pinned by:* the phase-4
       verification command, recorded in the generalization-audit log.
-- [ ] **AC-9:** Given the three themes, when `--riv-hero-scrim` is searched for, then it is gone
+- [x] **AC-9:** Given the three themes, when `--riv-hero-scrim` is searched for, then it is gone
       from `tailwind.css`'s base, `riviera` and `dark` blocks, from the two comments that cite
       it for other tokens, and from `riviera-tailwind` rule 2 — while `--riv-hero-shadow` /
       `--text-shadow-riv-hero` remain, because `venue/venue-map.html:82` still wears them.
       *Seam:* `src/tailwind.css` + the skill prose · *Pinned by:* `npm run test:a11y` (the
       contrast specs compile without the `heroScrim` model) and the AC-9 grep in the audit log.
-- [ ] **AC-10:** Given a full local gate run, when `npm run lint`, `npm run format:check`,
+- [x] **AC-10:** Given a full local gate run, when `npm run lint`, `npm run format:check`,
       `npm test`, `npm run test:a11y`, `npm run test:eslint-rules`, `npm run test:e2e:a11y` and
       `npm run build` are run, then all pass, and the five `scripts/check-*.mjs` guards exit 0
       against `origin/main`. *Seam:* the CI job set · *Pinned by:* the PR's green CI run.
@@ -172,16 +174,16 @@ scoped the test runs).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Coverage evaporates: an assertion only the old arm carried is deleted with it, and the suite is green because nothing asserts it any more. | High | High | Phases 0–2 land the rewritten e2e **before** phase 4 deletes anything. Every retired `test()` has a ledger row above; the PR body reproduces the `discover-map.e2e.ts` table. | this slice | open |
-| R-2 | The token sweep over-reaches and silently restyles a live surface. Concrete near-miss: `--riv-hero-shadow` looks hero-only but `venue/venue-map.html:82` wears it. | Medium | High | Enumerate each candidate's consumers by command before deleting; log the command in the generalization-audit table. AC-9 names the keep explicitly. | this slice | open |
-| R-3 | The sweep under-reaches: a token or class the old arm was the last user of survives as a dead ledger entry. | Medium | Low | Re-run the enumeration after the deletions expecting zero consumers; reconcile `docs/design/colour-literal-token-audit.md`. | this slice | open |
-| R-4 | A bookmark carrying `?map=off` throws or 404s instead of being ignored. | Medium | Medium | AC-1/AC-2 pin both spellings as inert at both widths, asserted on the rendered page rather than on the absence of a signal. | this slice | open |
-| R-5 | A spec parked on `?map=off` because it needed *some* page, not the pre-Q page, is deleted as collateral — the failure the #1173 handover caught once for `tourist-tab-bar.e2e.ts`. | Medium | High | Re-sweep the population on **this** tree (the handover is a snapshot at #1174) and classify every site by subject before touching it. Phase 0 exists for exactly this. | this slice | open |
-| R-6 | `riviera-tailwind` rule 2 cites `--riv-hero-scrim` as its only in-tree treatment-off example; deleting the token strands the rule. Two `tailwind.css` comments cite it for *other* tokens. | High | Low | AC-9 puts the skill prose and both comments in this diff, re-worded rather than deleted. | this slice | open |
-| R-7 | #1175 (pre-existing `discover-sheet.a11y.spec.ts` flake, reproduces on `main`) is read as a regression this slice caused, or masks one. | Medium | Low | Confirm against `main` before diagnosing; never "fix" it here — it has its own issue. | #1175 | open |
-| R-8 | Phase 4 is meant to be pure subtraction, but an edit to a shared template (`#venueCardTpl`, `#skeletonTpl`, `#failureTpl` — all used by the surviving arms) restyles the shipped design. | Medium | High | Those three templates are not edited, only their pre-Q call sites. Proven by the sheet/poster/panel specs and `discover-sheet.e2e.ts` passing untouched across phase 4. | this slice | open |
-| R-9 | The e2e default viewport is 1280 (`Desktop Chrome`), above `WIDE_VIEWPORT` (1024). On `/` that is the **panel** arm, which renders `venue-row` and no `venue-card` — so a collateral spec that merely drops `?map=off` goes green-to-red for a reason unrelated to its subject. | High | Medium | Phase 0 sets an explicit phone viewport on the card-measuring specs rather than re-selecting onto `venue-row`, so the assertion measures the same shared `#venueCardTpl` it always did. | this slice | open |
-| R-10 | jsdom has no `matchMedia`, so `wide()` stays `false` and every unit spec sees the sheet arm. AC-2/AC-3's desktop cases are untestable unless `matchMedia` is stubbed. | High | Medium | Reuse the stub the existing sheet/panel specs already use in `home.spec.ts`; AC-3 asserts the predicates, not only the DOM. | this slice | open |
+| R-1 | Coverage evaporates: an assertion only the old arm carried is deleted with it, and the suite is green because nothing asserts it any more. | High | High | Phases 0–2 land the rewritten e2e **before** phase 4 deletes anything. Every retired `test()` has a ledger row above; the PR body reproduces the `discover-map.e2e.ts` table. | this slice | closed — merged via PR #1184 |
+| R-2 | The token sweep over-reaches and silently restyles a live surface. Concrete near-miss: `--riv-hero-shadow` looks hero-only but `venue/venue-map.html:82` wears it. | Medium | High | Enumerate each candidate's consumers by command before deleting; log the command in the generalization-audit table. AC-9 names the keep explicitly. | this slice | closed — merged via PR #1184 |
+| R-3 | The sweep under-reaches: a token or class the old arm was the last user of survives as a dead ledger entry. | Medium | Low | Re-run the enumeration after the deletions expecting zero consumers; reconcile `docs/design/colour-literal-token-audit.md`. | this slice | closed — merged via PR #1184 |
+| R-4 | A bookmark carrying `?map=off` throws or 404s instead of being ignored. | Medium | Medium | AC-1/AC-2 pin both spellings as inert at both widths, asserted on the rendered page rather than on the absence of a signal. | this slice | closed — merged via PR #1184 |
+| R-5 | A spec parked on `?map=off` because it needed *some* page, not the pre-Q page, is deleted as collateral — the failure the #1173 handover caught once for `tourist-tab-bar.e2e.ts`. | Medium | High | Re-sweep the population on **this** tree (the handover is a snapshot at #1174) and classify every site by subject before touching it. Phase 0 exists for exactly this. | this slice | closed — merged via PR #1184 |
+| R-6 | `riviera-tailwind` rule 2 cites `--riv-hero-scrim` as its only in-tree treatment-off example; deleting the token strands the rule. Two `tailwind.css` comments cite it for *other* tokens. | High | Low | AC-9 puts the skill prose and both comments in this diff, re-worded rather than deleted. | this slice | closed — merged via PR #1184 |
+| R-7 | #1175 (pre-existing `discover-sheet.a11y.spec.ts` flake, reproduces on `main`) is read as a regression this slice caused, or masks one. | Medium | Low | Confirm against `main` before diagnosing; never "fix" it here — it has its own issue. | #1175 | closed — not this slice's; reproduces on `main` |
+| R-8 | Phase 4 is meant to be pure subtraction, but an edit to a shared template (`#venueCardTpl`, `#skeletonTpl`, `#failureTpl` — all used by the surviving arms) restyles the shipped design. | Medium | High | Those three templates are not edited, only their pre-Q call sites. Proven by the sheet/poster/panel specs and `discover-sheet.e2e.ts` passing untouched across phase 4. | this slice | closed — merged via PR #1184 |
+| R-9 | The e2e default viewport is 1280 (`Desktop Chrome`), above `WIDE_VIEWPORT` (1024). On `/` that is the **panel** arm, which renders `venue-row` and no `venue-card` — so a collateral spec that merely drops `?map=off` goes green-to-red for a reason unrelated to its subject. | High | Medium | Phase 0 sets an explicit phone viewport on the card-measuring specs rather than re-selecting onto `venue-row`, so the assertion measures the same shared `#venueCardTpl` it always did. | this slice | closed — merged via PR #1184 |
+| R-10 | jsdom has no `matchMedia`, so `wide()` stays `false` and every unit spec sees the sheet arm. AC-2/AC-3's desktop cases are untestable unless `matchMedia` is stubbed. | High | Medium | Reuse the stub the existing sheet/panel specs already use in `home.spec.ts`; AC-3 asserts the predicates, not only the DOM. | this slice | closed — merged via PR #1184 |
 
 ## Open questions / Assumptions
 
@@ -199,7 +201,13 @@ scoped the test runs).
 
 ### Resolved
 
-*(none yet)*
+- **`discover-map.e2e.ts` rewritten, not retired** — outcome: describes A/B/C moved onto `/`;
+  D and E already ran there. Stated in the PR body with the per-test ledger. Closed at the
+  phase-2 commit.
+- **`theme-shell.e2e.ts`'s field-scheme test rehomed to `/account/sign-in`** — outcome: the
+  riviera map renders no native field and console routes never wear `riviera`, so
+  `auth-identifier` is the only surface that can still show all three themes' field chrome.
+  Closed at the phase-0 commit.
 
 ## Availability & concurrency (invariant #2)
 
@@ -237,9 +245,9 @@ exactly what they requested before.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 6)` — phases 0–5 landed green.
+**Stage pointer:** DONE — merged via PR #1184.
 
-**Next action:** Phase 6 — full gates, PR ready-for-review, review gate, Sonar, close-out.
+**Next action:** none; the slice is closed out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -249,7 +257,7 @@ exactly what they requested before.
 | 3 — RED: the parameter is inert; two arms by width | ✅ | phase-3/4 commit |
 | 4 — GREEN: delete the flag, the arm and `VenuePreviewCard` | ✅ | phase-3/4 commit |
 | 5 — Retire `--riv-hero-scrim`, the hero classes and the stranded citations | ✅ | phase-5 commit |
-| 6 — Gates, close-out, epic docs-freshness | | |
+| 6 — Gates, close-out, epic docs-freshness | ✅ | merged via PR #1184 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -257,10 +265,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
-| F-1 | intake gate | The issue names 3 e2e files; the tree has 13 touching `?map=off`. Recorded on the issue. | open |
-| F-2 | intake gate | The epic's close-out note says retire `docs/plans/pin-layer-placement.md`; already retired at #1166. The plan this close-out must `git rm` is `shell-header-wide-route.md` (PR #1182, merged). | open |
+| F-1 | intake gate | The issue names 3 e2e files; the tree has 13 touching `?map=off`. Recorded on the issue. | fixed — all 13 moved |
+| F-2 | intake gate | The epic's close-out note says retire `docs/plans/pin-layer-placement.md`; already retired at #1166. The plan this close-out must `git rm` is `shell-header-wide-route.md` (PR #1182, merged). | done — retired in this commit |
 | F-3 | CI (Repo hygiene) | `check-inline-comments.mjs` failed on four multi-line inline comments and two "no longer" narrations the phase 0–4 commits introduced. | fixed in the phase-5 window |
 | F-4 | CI (Frontend) | `theme-shell.e2e.ts`'s pre-navigation paint test identified the Discover chunk by the `filter-beach` testid, which this slice deletes, so it withheld nothing and the assertion went vacuous-then-red. Re-pointed at `sheet-ground`. | fixed |
+| F-5 | review gate | `discover-map.e2e.ts`'s "one row at a time" check used `filter({ has: … })`, which matches a *descendant*; `aria-current` is on the row's own root, so the locator was always empty and the assertion could never fail. Replaced with the file's own `litRow()` helper. | fixed |
+| F-6 | review gate | Three computeds outlived the arm that read them — `isEmpty`, `selectedCard`, `crowdStack`, the last with TSDoc still describing the preview card's stepper. Deleted, and added to the spec that pins the retired members' absence. | fixed |
+| F-7 | review gate | `lastLoad`'s TSDoc still claimed `loadInitial` re-seeds the filter selects and `reload` preserves the beach/region filter; neither exists. Rewritten. | fixed |
+| F-8 | review gate | `home.contrast.spec.ts` kept `fieldFill`/`fieldBorder` on every theme and a doc clause promising a field-border deviation, with no assertion left reading either. Both removed. | fixed |
+| F-9 | review gate | Two comments referred to things a fresh session cannot resolve — `litRow`'s "on either arm" (the selector is the panel's only) and "where the old select cost exactly one". Both restated as the current contract. | fixed |
 
 ---
 
@@ -295,7 +308,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `CONTEXT.md` — the **Pin preview** term retired; **Pin crowd**, **Venue sheet** and **Sheet head** corrected off the flag.
 - `docs/design/colour-literal-token-audit.md` — the sun family recounted at this slice.
 - `.claude/skills/riviera-tailwind/SKILL.md` — rule 2's stranded `--riv-hero-scrim` example replaced.
-- `docs/plans/shell-header-wide-route.md` — deleted at close-out (PR #1182 merged).
+- `docs/plans/shell-header-wide-route.md` — deleted at close-out (PR #1182 merged); nothing outside `docs/plans/` cited it.
 
 ---
 
@@ -312,12 +325,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 / AC-2 / AC-3:** `npm test -- --watch=false --include="src/app/pages/home/home.spec.ts"` → PASS.
-- [ ] **AC-4:** `npm run build` → PASS; `grep -rn "VenuePreviewCard\|venue-preview-card\|app-venue-preview-card" frontend/src` → no hits.
-- [ ] **AC-5 / AC-6 / AC-7:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → PASS.
-- [ ] **AC-8:** `grep -rn "map=off\|map=sheet\|OFF_FLAG" frontend/src frontend/e2e` → only the inertness specs.
-- [ ] **AC-9:** `grep -rn "riv-hero-scrim" frontend docs .claude` → no hits; `grep -rn "text-shadow-riv-hero\|riv-hero-shadow" frontend/src` → still present with `venue-map.html` among the consumers.
-- [ ] **AC-10:** the PR's CI run green on the head commit.
+- [x] **AC-1 / AC-2 / AC-3:** `npm test -- --watch=false --include="src/app/pages/home/home.spec.ts"` → PASS.
+- [x] **AC-4:** `npm run build` → PASS; `grep -rn "VenuePreviewCard\|venue-preview-card\|app-venue-preview-card" frontend/src` → no hits.
+- [x] **AC-5 / AC-6 / AC-7:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → PASS.
+- [x] **AC-8:** `grep -rn "map=off\|map=sheet\|OFF_FLAG" frontend/src frontend/e2e` → only the inertness specs.
+- [x] **AC-9:** `grep -rn "riv-hero-scrim" frontend docs .claude` → no hits; `grep -rn "text-shadow-riv-hero\|riv-hero-shadow" frontend/src` → still present with `venue-map.html` among the consumers.
+- [x] **AC-10:** the PR's CI run green on the head commit.
 
 **Sonar note (gate applied, not skipped).** On head `b38782be`: `new_lines` 31, so the gate
 reached this diff rather than falling outside `sonar.sources`; `new_coverage` 100.0 %,
@@ -328,16 +341,16 @@ applies.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section justified N/A; no concurrency path touched (#2).
-- [ ] Pool + cutoff untouched (#3, #4). No money (#5). No clock change (#6). No codes (#7).
-- [ ] Modulith section justified N/A — frontend-only (#11).
-- [ ] Payment section justified N/A (#8, #9, #10).
-- [ ] No Flyway migration in scope (#12).
-- [ ] Frontend standards met; no `as any`; the two-suite e2e split respected.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] `shell-header-wide-route.md` retired in the same commit.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability section justified N/A; no concurrency path touched (#2).
+- [x] Pool + cutoff untouched (#3, #4). No money (#5). No clock change (#6). No codes (#7).
+- [x] Modulith section justified N/A — frontend-only (#11).
+- [x] Payment section justified N/A (#8, #9, #10).
+- [x] No Flyway migration in scope (#12).
+- [x] Frontend standards met; no `as any`; the two-suite e2e split respected.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
+- [x] `shell-header-wide-route.md` retired in the same commit.
+- [x] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay).
