@@ -36,8 +36,8 @@ describe('Semantic chips (solid fill, WCAG AA) — shared/semantic-chip.ts', () 
   });
 
   /**
-   * The closed chips ride a DUSK surface — the Discover card's, and since #1185 the desktop panel
-   * row's — where `filter: saturate(0)` greys the fill and the ink together. Both sit inside the
+   * The closed chips ride a DUSK surface — the Discover card's and the desktop panel row's — where
+   * `filter: saturate(0)` greys the fill and the ink together. Both sit inside the
    * filter, so this stays a plain ink/fill pair; what changes is that it must be measured AFTER the
    * matrix. The card has painted a desaturated chip since the sales-closed badge shipped, with this
    * left unproven.

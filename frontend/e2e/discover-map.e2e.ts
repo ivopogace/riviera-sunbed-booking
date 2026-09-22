@@ -1074,10 +1074,7 @@ test.describe('Discover map — the desktop panel', () => {
     await expect(selling).toHaveCSS('filter', 'none');
     await expect(selling).not.toContainText('Closed today');
 
-    // Dusk takes the PRICE's slot, not a line of its own, so it costs the row no height — which is
-    // what keeps the 92 px the geometry tests above this one measure true of EVERY row, and the
-    // 121 px of the one selected. The chip's box is shorter than the price's, so the name line
-    // holds its own; without that the panel jittered as the selection moved between the two.
+    // Dusk takes the price's slot, so both the 92 px above and the 121 px below stay true of it.
     const heights = async (): Promise<number[]> =>
       rows.evaluateAll((all) => all.map((row) => Math.round(row.getBoundingClientRect().height)));
     expect(new Set(await heights())).toEqual(new Set([92]));

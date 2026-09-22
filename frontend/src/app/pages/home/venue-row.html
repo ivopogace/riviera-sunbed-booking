@@ -42,9 +42,7 @@
     class="flex min-h-[72px] min-w-0 flex-1 flex-col justify-center gap-[3px]"
     aria-hidden="true"
   >
-    <!-- 24 px is the price's own box; the closed chip's is 20.5, and the line holds it so that dusk
-         costs the row no height in either state — a panel whose rhythm changed with a venue's
-         sales state would jitter as the selection moved between them. -->
+    <!-- 24px is the price's own box, held so the shorter closed chip cannot shrink the line. -->
     <span class="flex min-h-[24px] items-baseline gap-2">
       <span
         data-testid="row-name"

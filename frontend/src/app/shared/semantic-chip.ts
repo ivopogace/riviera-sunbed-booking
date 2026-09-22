@@ -2,8 +2,8 @@ import { Directive } from '@angular/core';
 
 /**
  * The tourist surfaces' SEMANTIC chip — the booking-mode chip ("Instant Book" / "Request to
- * Book") and the "New" (no reviews yet) chip, on the Discover cards and the beach-map header
- * (issue #705). Both make a claim the PLATFORM authors about how this booking will go; the
+ * Book") and the "New" (no reviews yet) chip, on the Discover cards, the desktop panel's rows and
+ * the beach-map header. Both make a claim the PLATFORM authors about how this booking will go; the
  * descriptive chips beside them (`shared/amenity-chip.ts` and its to-water variant) report what
  * the VENUE says about itself. Before this directive the two families wore the same pale pill,
  * so nothing in a card scan said that one of them changes what happens when you tap a set.
@@ -23,7 +23,7 @@ import { Directive } from '@angular/core';
  * in `shared/semantic-chip.contrast.spec.ts` now replaces two composited per-surface proofs.
  * The rim is a LIGHTER accent, inverting the descriptive chips' darker-than-fill border for the
  * same reason the fill inverts: on the dark map header a darker rim would have dissolved. It
- * separates from the fill at only 1.25:1 (#861 lightened the fill), which is decorative and not
+ * separates from the fill at only 1.25:1, once the fill was lightened, which is decorative and not
  * the boundary WCAG 1.4.11 asks about — the chip is identified against the CARD, at 5.39:1.
  *
  * <p>Deliberately carries NO geometry — no `display`, no padding, no `text-*`. The call sites
@@ -33,7 +33,7 @@ import { Directive } from '@angular/core';
  * the line around it sets, which is 13.5px in the Discover card's rating row and 13px in the panel
  * row's facts line; and 0.78rem in the beach-map header, at two paddings. A count is deliberately
  * not given — this enumeration went stale once already when the desktop panel shipped its own
- * three. #705 asks for no layout shift, so each site keeps its own box
+ * three. The family asks for no layout shift, so each site keeps its own box
  * and the directive supplies only what makes the family read as one. That is the opposite of the
  * `amenity-chip` / `status-chip` split, where the whole pill IS the recipe; the difference is
  * that those two own every one of their call sites' boxes and this one owns none.
