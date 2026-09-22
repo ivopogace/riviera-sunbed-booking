@@ -284,7 +284,7 @@ test.describe('Discover sheet — rests on measured chrome', () => {
   });
 });
 
-test.describe('Discover sheet — the browser’s own latching', () => {
+test.describe('Discover sheet — the sheet’s own drag and the list’s own scroll', () => {
   test.use({ hasTouch: true });
 
   test.beforeEach(async ({ page }) => {
@@ -327,6 +327,35 @@ test.describe('Discover sheet — the browser’s own latching', () => {
     await flick(cdp, page, 200, 400, 500, 400);
     await expect.poll(() => scrollTop(list)).toBeLessThan(scrolled);
     expect(await detent(page)).toBe('full');
+  });
+
+  /**
+   * iOS Safari will not touch-scroll the outer scroller, which is `pointer-events: none` so the
+   * map under it keeps its gestures: a drag it was left went to the page, and Safari read a pull
+   * down as pull-to-refresh. So the sheet drags itself, and keeps the browser out of every move.
+   */
+  test('a slow drag on the grabber takes the sheet to peek, the browser kept out of every move', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __moves: boolean[] }).__moves = [];
+      addEventListener('touchmove', (event) =>
+        (window as unknown as { __moves: boolean[] }).__moves.push(event.defaultPrevented),
+      );
+    });
+    await openSheet(page);
+    const cdp = await page.context().newCDPSession(page);
+    const grabber = (await page.getByTestId('sheet-grabber').boundingBox())!;
+    const fromY = Math.round(grabber.y + grabber.height / 2);
+
+    await flick(cdp, page, 200, fromY, PHONE.height - PHONE.tabBar - 40, 1_200);
+
+    await expectDetent(page, 'peek');
+    const moves = await page.evaluate(() => (window as unknown as { __moves: boolean[] }).__moves);
+    expect(moves.length).toBeGreaterThan(0);
+    expect(moves.every(Boolean), 'a move reached the browser: iOS scrolls or refreshes on it').toBe(
+      true,
+    );
   });
 
   /**
@@ -430,7 +459,7 @@ test.describe('Discover sheet — the browser’s own latching', () => {
     await clearProbes();
     await page.getByTestId('sheet-map-pill').click();
     await page.setViewportSize({ width: PHONE.width, height: PHONE.height });
-    await expectDetent(page, 'half');
+    await expectDetent(page, 'peek');
     await expect(page.getByTestId('sheet-map-pill')).toHaveCount(0);
     // The recorder's positive leg, so the empty-array assertion above is one that can fail.
     expect(await rests(), 'the scrollTo recorder never recorded, so it proves nothing').not.toEqual(
@@ -457,7 +486,7 @@ test.describe('Discover sheet — the browser’s own latching', () => {
     await expect(pillGlyph).toHaveCSS('height', '16px');
 
     await page.getByTestId('sheet-map-pill').click();
-    await expectDetent(page, 'half');
+    await expectDetent(page, 'peek');
     const nearMeGlyph = page.getByTestId('sheet-near-me').locator('svg');
     await expect(nearMeGlyph).toHaveCSS('width', '13px');
     await expect(nearMeGlyph).toHaveCSS('height', '13px');
@@ -494,7 +523,7 @@ test.describe('Discover sheet — the browser’s own latching', () => {
       );
 
     await expect(page.getByTestId('sheet-ground')).toHaveClass(/riv-owns-viewport/);
-    expect(await rootOverscroll()).toBe('contain');
+    expect(await rootOverscroll()).toBe('none');
     expect(await documentScrolls(), 'the document scrolls, so this is not the trapped case').toBe(
       false,
     );
@@ -505,7 +534,7 @@ test.describe('Discover sheet — the browser’s own latching', () => {
     expect(await rootOverscroll()).toBe('auto');
   });
 
-  test('the grabber cycles half and full; the Map pill returns to half and never covers the last row', async ({
+  test('the grabber cycles half and full; the Map pill drops to peek and never covers the last row', async ({
     page,
   }) => {
     await openSheet(page);
@@ -526,13 +555,14 @@ test.describe('Discover sheet — the browser’s own latching', () => {
     expect(last.y + last.height).toBeLessThanOrEqual(pillBox.y);
 
     await pill.click();
-    await expectDetent(page, 'half');
+    await expectDetent(page, 'peek');
     await expect(pill).toHaveCount(0);
 
-    await page.getByTestId('sheet-grabber').click();
-    await expectDetent(page, 'full');
+    // From peek the grabber's tap raises to half, then cycles as ever.
     await page.getByTestId('sheet-grabber').click();
     await expectDetent(page, 'half');
+    await page.getByTestId('sheet-grabber').click();
+    await expectDetent(page, 'full');
   });
 
   test('a pin press lights its row and brings it to the top at half and at full, without a jump', async ({
@@ -557,7 +587,7 @@ test.describe('Discover sheet — the browser’s own latching', () => {
     expect(await scrollTop(list)).toBeGreaterThan(0);
 
     // And back to half, the scroll becomes the lift again.
-    await page.getByTestId('sheet-map-pill').click();
+    await page.getByTestId('sheet-grabber').click();
     await expectDetent(page, 'half');
     await expect.poll(async () => (await top(row)) - (await top(list))).toBe(8);
   });

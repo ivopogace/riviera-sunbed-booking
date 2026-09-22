@@ -1109,10 +1109,17 @@ body {
     poll dropped, against a booking already AWAITING_PAYMENT.
 
     On the ROOT element, the only one `overscroll-behavior` propagates to the viewport from — on
-    `body` it is ignored, unlike `overflow`. `contain` and not `none` keeps the page's own
-    overscroll. Render proof: e2e/discover-sheet.e2e.ts, e2e/booking-flow.e2e.ts. */
-html:has(.riv-owns-viewport, .riv-holds-progress) {
+    `body` it is ignored, unlike `overflow`. The checkout's page scrolls, so `contain` keeps its
+    own overscroll. Discover's does not scroll at all, so it takes `none`: iOS Safari's
+    pull-to-refresh rides the root's own bounce, which `contain` leaves in place, and there is no
+    scroll there for the bounce to belong to. Render proof: e2e/discover-sheet.e2e.ts,
+    e2e/booking-flow.e2e.ts. */
+html:has(.riv-holds-progress) {
   overscroll-behavior-y: contain;
+}
+
+html:has(.riv-owns-viewport) {
+  overscroll-behavior-y: none;
 }
 
 body {

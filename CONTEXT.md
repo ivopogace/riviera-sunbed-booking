@@ -86,10 +86,10 @@ model in `docs/architecture/domain-model.md`.
 - **Venue sheet** — on a phone or tablet, the Discover list as a sheet over the riviera map with
   three **rest heights**: **half** (opens here: a band of map under the header, the first rows
   below), **peek** (the sheet's head alone above the tab bar, the map filling the rest) and
-  **full** (the list, a sliver of map kept under the header, a `Map` pill as the way back). A
-  finger moves it as it scrolls a page; the grabber's tap cycles half and full, and peek is a
-  drag's only. It is what Discover renders below `lg`; from `lg` the same list is the **venue
-  panel**. No query parameter selects either: the width alone decides.
+  **full** (the list, a sliver of map kept under the header, a `Show map` pill that drops it to
+  peek). A finger drags it between the rests; the grabber's tap cycles half and full, and peek is
+  a drag's or the pill's. It is what Discover renders below `lg`; from `lg` the same list is the
+  **venue panel**. No query parameter selects either: the width alone decides.
   _Avoid_: drawer, bottom sheet (as a term), modal.
 - **Sheet head** — the venue sheet's one row carrying the query: the **place** (a press opens the
   **coast picker**) over the selling line (`8 of 11 selling today`, each venue's sales close for

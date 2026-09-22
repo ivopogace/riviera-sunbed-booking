@@ -1,6 +1,8 @@
 import { Component, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 
+import { freezeClock } from '../../../testing/freeze-clock';
 import { whenSheetOpened } from '../../../testing/sheet-opened';
 import { whenSheetSettled } from '../../../testing/sheet-settled';
 import { DiscoverSheet } from './discover-sheet';
@@ -192,7 +194,48 @@ describe('DiscoverSheet', () => {
       expect(scroller().scrollTop).toBe(offsetFor(sheet().tops(), 'half'));
     } finally {
       globalThis.requestAnimationFrame = realFrame;
-      Object.defineProperty(view, 'innerHeight', { value: innerHeight, configurable: true });
+      Object.defineProperty(view, 'innerHeight', {
+        value: innerHeight,
+        configurable: true,
+        writable: true,
+      });
+    }
+  });
+
+  it('lets a Show map press supersede a re-measure rest still confirming itself', async () => {
+    sheet().go('full');
+    await settle();
+    await whenSheetSettled(fixture);
+    const realFrame = globalThis.requestAnimationFrame.bind(globalThis);
+    const held: FrameRequestCallback[] = [];
+    globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => held.push(callback);
+    const view = el().ownerDocument.defaultView!;
+    const innerHeight = view.innerHeight;
+
+    try {
+      // The phone's URL bar moves at full: the sheet re-rests there, its confirmation a frame away.
+      Object.defineProperty(view, 'innerHeight', { value: innerHeight - 60, configurable: true });
+      view.dispatchEvent(new Event('resize'));
+      await whenSheetSettled(fixture);
+      expect(sheet().detent()).toBe('full');
+
+      byTestId('sheet-map-pill')!.click();
+      await settle();
+      expect(sheet().detent()).toBe('peek');
+      asked.length = 0;
+
+      held.splice(0).forEach((callback) => callback(0));
+      await settle();
+
+      expect(asked, 'the superseded rest pulled the sheet back to full').toEqual([]);
+      expect(sheet().detent()).toBe('peek');
+    } finally {
+      globalThis.requestAnimationFrame = realFrame;
+      Object.defineProperty(view, 'innerHeight', {
+        value: innerHeight,
+        configurable: true,
+        writable: true,
+      });
     }
   });
 
@@ -214,7 +257,11 @@ describe('DiscoverSheet', () => {
       expect(asked).toContain(-1);
       expect(scroller().scrollTop).toBe(-1);
     } finally {
-      Object.defineProperty(view, 'innerHeight', { value: innerHeight, configurable: true });
+      Object.defineProperty(view, 'innerHeight', {
+        value: innerHeight,
+        configurable: true,
+        writable: true,
+      });
     }
   });
 
@@ -224,7 +271,7 @@ describe('DiscoverSheet', () => {
     expect(grabber.dataset['touchExempt']).toContain('drag surface');
   });
 
-  it('shows the Map pill at full only, 12 px above the measured tab bar, and returns to half from it', async () => {
+  it('shows the Map pill at full only, 12 px above the measured tab bar, and drops to peek from it', async () => {
     expect(byTestId('sheet-map-pill')).toBeNull();
     sheet().go('full');
     await settle();
@@ -234,8 +281,186 @@ describe('DiscoverSheet', () => {
 
     pill.click();
     await settle();
-    expect(sheet().detent()).toBe('half');
+    expect(sheet().detent()).toBe('peek');
     expect(byTestId('sheet-map-pill')).toBeNull();
+  });
+
+  it("turns snapping off under a press's glide and back on once it goes quiet", async () => {
+    sheet().go('full');
+    await settle();
+    await whenSheetSettled(fixture);
+    expect(scroller().style.scrollSnapType).toBe('');
+
+    byTestId('sheet-map-pill')!.click();
+    await settle();
+    // WebKit re-snaps to the sheet's last rest (full) when the layout flips mid-glide; nothing to snap to, nothing to pull back.
+    expect(scroller().style.scrollSnapType).toBe('none');
+
+    await whenSheetSettled(fixture);
+    expect(scroller().style.scrollSnapType).toBe('');
+    expect(sheet().detent()).toBe('peek');
+  });
+
+  /** One finger at `y` (and `x`), at `t` ms, as the sheet's drag reads it. */
+  function finger(
+    type: 'touchstart' | 'touchmove' | 'touchend',
+    y: number,
+    t: number,
+    x = 200,
+  ): Event {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    const touches = type === 'touchend' ? [] : [{ clientX: x, clientY: y }];
+    Object.defineProperty(event, 'touches', { value: touches });
+    Object.defineProperty(event, 'timeStamp', { value: t });
+    return event;
+  }
+
+  /** A finger from `fromY` to `toY` over `ms`, in ten moves, on `target`. */
+  async function dragOn(
+    target: HTMLElement,
+    fromY: number,
+    toY: number,
+    ms: number,
+  ): Promise<Event[]> {
+    const moves: Event[] = [];
+    target.dispatchEvent(finger('touchstart', fromY, 0));
+    for (let step = 1; step <= 10; step += 1) {
+      const move = finger('touchmove', fromY + ((toY - fromY) * step) / 10, (ms * step) / 10);
+      moves.push(move);
+      target.dispatchEvent(move);
+    }
+    target.dispatchEvent(finger('touchend', toY, ms));
+    await settle();
+    return moves;
+  }
+
+  it("drags the sheet from half down to peek, which the grabber's tap never reaches", async () => {
+    const moves = await dragOn(byTestId('sheet-grabber')!, 400, 600, 600);
+    // The browser's own scroll is kept out, or iOS Safari hands the drag to pull-to-refresh.
+    expect(moves.every((move) => move.defaultPrevented)).toBe(true);
+    await whenSheetSettled(fixture);
+    expect(sheet().detent()).toBe('peek');
+    expect(scroller().scrollTop).toBe(0);
+  });
+
+  it('carries a fling from full down to half and no further', async () => {
+    sheet().go('full');
+    await settle();
+    await dragOn(byTestId('sheet-head')!, 200, 300, 50);
+    await whenSheetSettled(fixture);
+    expect(sheet().detent()).toBe('half');
+  });
+
+  it("takes a drag down from the list's top at full, and leaves the list its own scroll", async () => {
+    sheet().go('full');
+    await settle();
+    await whenSheetSettled(fixture);
+    const list = byTestId('sheet-list')!;
+
+    const up = await dragOn(list, 500, 300, 400);
+    expect(up.some((move) => move.defaultPrevented)).toBe(false);
+    expect(sheet().detent()).toBe('full');
+
+    list.scrollTop = 40;
+    const scrolledDown = await dragOn(list, 300, 500, 400);
+    expect(scrolledDown.some((move) => move.defaultPrevented)).toBe(false);
+    expect(sheet().detent()).toBe('full');
+
+    list.scrollTop = 0;
+    const pulled = await dragOn(list, 300, 520, 600);
+    expect(pulled.every((move) => move.defaultPrevented)).toBe(true);
+    await whenSheetSettled(fixture);
+    expect(sheet().detent()).toBe('half');
+  });
+
+  it('leaves a sideways touch to the browser: a rail or a photo', async () => {
+    const head = byTestId('sheet-head')!;
+    const from = scroller().scrollTop;
+    head.dispatchEvent(finger('touchstart', 400, 0, 100));
+    const sideways = finger('touchmove', 405, 20, 160);
+    head.dispatchEvent(sideways);
+    head.dispatchEvent(finger('touchmove', 440, 40, 220));
+    head.dispatchEvent(finger('touchend', 440, 60, 220));
+    await settle();
+    expect(sideways.defaultPrevented).toBe(false);
+    expect(scroller().scrollTop).toBe(from);
+  });
+
+  it('leaves a tap its own jitter: a few px is not a drag, and the grabber still cycles', async () => {
+    const grabber = byTestId('sheet-grabber')!;
+    const from = scroller().scrollTop;
+    grabber.dispatchEvent(finger('touchstart', 400, 0));
+    const jitter = finger('touchmove', 403, 30, 201);
+    grabber.dispatchEvent(jitter);
+    grabber.dispatchEvent(finger('touchend', 403, 60, 201));
+    await settle();
+    // A prevented move can cost the tap its click, so a jitter is never prevented.
+    expect(jitter.defaultPrevented).toBe(false);
+    expect(scroller().scrollTop).toBe(from);
+    expect(scroller().style.scrollSnapType).toBe('');
+
+    grabber.click();
+    await settle();
+    expect(sheet().detent()).toBe('full');
+  });
+
+  it('keeps the browser out of a pull from the list top at full before it is a drag', async () => {
+    sheet().go('full');
+    await settle();
+    await whenSheetSettled(fixture);
+    const list = byTestId('sheet-list')!;
+    list.scrollTop = 0;
+
+    list.dispatchEvent(finger('touchstart', 300, 0));
+    const pull = finger('touchmove', 303, 20);
+    list.dispatchEvent(pull);
+    list.dispatchEvent(finger('touchend', 303, 40));
+    await settle();
+
+    // iOS would start the list's own overscroll on it, and the claim at the slop would come too late.
+    expect(pull.defaultPrevented).toBe(true);
+    expect(sheet().detent()).toBe('full');
+
+    list.scrollTop = 40;
+    list.dispatchEvent(finger('touchstart', 300, 100));
+    const scrollBack = finger('touchmove', 303, 120);
+    list.dispatchEvent(scrollBack);
+    list.dispatchEvent(finger('touchend', 303, 140));
+    await settle();
+    expect(scrollBack.defaultPrevented, "the list scrolled inside is the list's own").toBe(false);
+  });
+
+  it('settles a drag whose touchend never came, once the finger has gone stale', async () => {
+    vi.useFakeTimers();
+    try {
+      const head = byTestId('sheet-head')!;
+      head.dispatchEvent(finger('touchstart', 400, 0));
+      head.dispatchEvent(finger('touchmove', 520, 20));
+      expect(scroller().style.scrollSnapType).toBe('none');
+      // The section went off the tree mid-drag, taking its touchend with it: none is dispatched.
+      vi.advanceTimersByTime(6_500);
+    } finally {
+      freezeClock();
+    }
+    await settle();
+    expect(scroller().style.scrollSnapType).toBe('');
+    expect(scroller().scrollTop).toBe(offsetFor(sheet().tops(), sheet().detent()));
+  });
+
+  it('keeps snapping off under the finger for as long as the drag holds, however still', async () => {
+    const head = byTestId('sheet-head')!;
+    head.dispatchEvent(finger('touchstart', 400, 0));
+    head.dispatchEvent(finger('touchmove', 450, 20));
+    await settle();
+    expect(scroller().style.scrollSnapType).toBe('none');
+    // Outlast the quiet window with the finger held: a snap here would yank the sheet from it.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await settle();
+    expect(scroller().style.scrollSnapType).toBe('none');
+    head.dispatchEvent(finger('touchend', 450, 400));
+    await settle();
+    await whenSheetSettled(fixture);
+    expect(scroller().style.scrollSnapType).toBe('');
   });
 
   it('keeps the guard while a second finger is still on the glass', async () => {
@@ -261,7 +486,11 @@ describe('DiscoverSheet', () => {
       byTestId('sheet')!.dispatchEvent(touch('touchend', 0));
       await whenSheetSettled(fixture);
     } finally {
-      Object.defineProperty(window, 'innerHeight', { value: innerHeight, configurable: true });
+      Object.defineProperty(window, 'innerHeight', {
+        value: innerHeight,
+        configurable: true,
+        writable: true,
+      });
     }
 
     expect(scroller().scrollTop).toBe(offsetFor(sheet().tops(), 'half'));
@@ -382,7 +611,11 @@ describe('DiscoverSheet', () => {
       byTestId('sheet')!.dispatchEvent(touch('touchend', 0));
       await whenSheetSettled(fixture);
     } finally {
-      Object.defineProperty(window, 'innerHeight', { value: innerHeight, configurable: true });
+      Object.defineProperty(window, 'innerHeight', {
+        value: innerHeight,
+        configurable: true,
+        writable: true,
+      });
     }
 
     // The rest the re-measure asked for is not lost, only held: it lands at the new geometry.
