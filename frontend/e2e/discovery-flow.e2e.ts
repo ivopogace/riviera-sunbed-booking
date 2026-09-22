@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { settle } from './support/booking-dialog';
 import { openThemePicker } from './support/shell';
 
 /**
@@ -17,6 +18,9 @@ import { openThemePicker } from './support/shell';
  * a value that drifted here would still be caught, by this suite going red against the real page.
  * Change both together — `#0a6e85` / `#ffffff` there are these two triples.
  */
+/** The sheet is the arm below `lg`; the panel from `lg` lists rows and renders no card. */
+const PHONE = { width: 390, height: 844 };
+
 const SEMANTIC_FILL = 'rgb(10, 110, 133)';
 const SEMANTIC_INK = 'rgb(255, 255, 255)';
 
@@ -24,8 +28,8 @@ const VENUES = [
   {
     id: 1,
     name: 'Miramar Beach Club',
-    beach: 'KSAMIL',
-    region: 'SARANDE',
+    beach: 'PALASE',
+    region: 'HIMARE',
     ratingTenths: 48,
     reviewsCount: 326,
     bookingMode: 'INSTANT',
@@ -54,9 +58,9 @@ const VENUES = [
 const VENUE_MAP = {
   id: 1,
   name: 'Miramar Beach Club',
-  beach: 'KSAMIL',
-  region: 'SARANDE',
-  description: 'Premium loungers on the Ksamil shoreline.',
+  beach: 'PALASE',
+  region: 'HIMARE',
+  description: 'Premium loungers on the Palasë shoreline.',
   ratingTenths: 48,
   reviewsCount: 326,
   bookingMode: 'INSTANT',
@@ -103,10 +107,11 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('discovery → filter → venue map is accessible end-to-end', async ({ page }) => {
-  await page.goto('/?map=off');
-  await expect(page.getByRole('heading', { name: 'Find your spot on the Riviera' })).toBeVisible();
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
+  await expect(page.getByTestId('sheet-rows')).toBeVisible();
 
-  // All venues are listed as cards; the live count sits inside the filter bar.
+  // The region's venues are listed as cards; the live count sits in the head's own outcome region.
   const cards = page.getByTestId('venue-card');
   await expect(cards).toHaveCount(2);
   await expect(cards.first()).toContainText('Miramar Beach Club');
@@ -115,9 +120,8 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   // The generic lead-time note is retired (#804): Discover carries no cutoff explainer.
   await expect(page.getByTestId('cutoff-note')).toHaveCount(0);
   await expect(page.getByTestId('sales-close-note')).toHaveCount(0);
-  // One combined assertion: bare toContainText('2') would be vacuously satisfied by the
-  // year digits in the date label (review finding).
-  await expect(page.getByTestId('results')).toContainText('2 venues');
+  // Invariant #4 as the head's light: the server's per-date verdict, not a local clock read.
+  await expect(page.getByTestId('sheet-outcome')).toContainText('2 of 2 selling today');
 
   // The card shows the to-water chip + the first 3 amenities (catalogue order); the
   // fourth (WiFi) is capped off on the card — but appears on the map header below.
@@ -127,25 +131,31 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expect(cardChips).toContainText('Beach bar');
   await expect(cardChips).toContainText('Showers');
   await expect(cardChips).not.toContainText('WiFi');
-  await expectNoSeriousAxeViolations(page, 'discovery list');
+  await expectNoSeriousAxeViolations(page, 'discovery sheet');
 
-  // The date picker is floored at the earliest bookable day, so past/today can't be picked.
-  // Clock-free assertion (no timezone math to flake): a non-empty ISO `min` equal to the default.
-  const dateInput = page.getByTestId('filter-date');
-  const dateMin = await dateInput.evaluate((el: HTMLInputElement) => el.min);
-  expect(dateMin).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-  expect(await dateInput.inputValue()).toBe(dateMin);
+  // The day rail is floored at the earliest bookable day: it leads with today and offers nothing
+  // earlier, so a past day cannot be picked at all.
+  await expect(page.getByTestId('head-day')).toHaveText(/Today/);
+  await page.getByTestId('head-day').click();
+  const days = page.locator('[role="group"][aria-label="Day"] button');
+  await expect(days.first()).toHaveText('Today');
+  await expect(days.first()).toHaveAttribute('aria-current', 'true');
+  await page.getByTestId('head-day').click();
 
-  // Filter by beach → the list narrows to the matching venue (server-side filter, mocked);
-  // the in-bar count follows, with the singular noun.
-  await page.getByTestId('filter-beach').selectOption('Dhërmi');
+  // Narrow to one beach → the list follows, and so does the count. The region's cards are already
+  // loaded, so this narrows in place rather than refetching, and the chip marks itself current.
+  await page.getByTestId('head-beaches').click();
+  await page.locator('[role="group"][aria-label="Beach"] button', { hasText: 'Dhërmi' }).click();
   await expect(cards).toHaveCount(1);
   await expect(cards.first()).toContainText('Aurora Bay');
-  await expect(page.getByTestId('results')).toContainText('1 venue');
-  await expectNoSeriousAxeViolations(page, 'discovery list (filtered)');
+  await expect(page.getByTestId('sheet-outcome')).toContainText('1 of 1 selling today');
+  await expect(page.getByTestId('head-beaches')).toHaveAttribute('aria-current', 'true');
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'discovery sheet (narrowed to one beach)');
 
-  // Open the venue → the beach map for that venue.
-  await page.getByTestId('filter-beach').selectOption('');
+  // The chip is the way back too: All restores the region.
+  await page.getByTestId('head-beaches').click();
+  await page.locator('[role="group"][aria-label="Beach"] button', { hasText: 'All' }).click();
   await expect(cards).toHaveCount(2);
   await cards.first().click();
   await expect(page).toHaveURL(/\/venues\/1/);
@@ -169,18 +179,25 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
 });
 
 test('the date chosen on discovery carries into the venue map (#294)', async ({ page }) => {
-  await page.goto('/?map=off');
-  await expect(page.getByRole('heading', { name: 'Find your spot on the Riviera' })).toBeVisible();
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
+  await expect(page.getByTestId('sheet-rows')).toBeVisible();
 
-  // Pick a date a month past the picker floor — clearly NOT the map's own default (today), so
-  // seeing it on the map proves the carry rather than the map's fallback. Clock-free (derived in-page).
-  const dateInput = page.getByTestId('filter-date');
-  const chosen = await dateInput.evaluate((el: HTMLInputElement) => {
-    const d = new Date(`${el.min}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + 30);
-    return d.toISOString().slice(0, 10);
-  });
-  await dateInput.fill(chosen);
+  // The card's own link carries the selected day, so it is the clock-free source for both reads.
+  const linkDate = async () =>
+    new URL(
+      (await page.getByTestId('venue-card').first().getAttribute('href'))!,
+      page.url(),
+    ).searchParams.get('date')!;
+  const today = await linkDate();
+
+  // The rail's last day — clearly NOT the map's own default (today), so seeing it on the map proves
+  // the carry rather than the map's fallback.
+  await page.getByTestId('head-day').click();
+  await page.locator('[role="group"][aria-label="Day"] button').last().click();
+  await expect(page.getByTestId('head-day')).not.toHaveText(/Today/);
+  const chosen = await linkDate();
+  expect(chosen).not.toBe(today);
 
   // A future date is open at every venue (#793): the refetched list carries no closed badge.
   await expect(page.getByTestId('venue-card')).toHaveCount(2);
@@ -195,35 +212,6 @@ test('the date chosen on discovery carries into the venue map (#294)', async ({ 
   await expectNoSeriousAxeViolations(page, 'venue map (date carried from discovery)');
 });
 
-test('hero panel fills the content width, matching the search bar (#153)', async ({ page }) => {
-  // The AC is about desktop: at >= 1080px the .discover column is at its max, so the hero and the
-  // filter bar directly below it share one content width. Pin the viewport so the measurement is
-  // deterministic regardless of the project's default.
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('/?map=off');
-  await expect(page.getByRole('heading', { name: 'Find your spot on the Riviera' })).toBeVisible();
-
-  const hero = await page.locator('.hero').boundingBox();
-  const searchBar = await page.locator('.filter-bar').boundingBox();
-  if (!hero || !searchBar) throw new Error('hero / filter-bar not laid out');
-
-  // Same width and same left edge as the search bar below it. Before the fix the hero was capped at
-  // max-width: 680px (~63% of the 1080px column) and left-aligned — so the left-edge check already
-  // passed while the width check failed; this width assertion is what the fix turns green.
-  expect(Math.abs(hero.width - searchBar.width)).toBeLessThanOrEqual(1);
-  expect(Math.abs(hero.x - searchBar.x)).toBeLessThanOrEqual(1);
-  // ...and genuinely wider than the removed 680px cap — guards against it being re-introduced.
-  expect(hero.width).toBeGreaterThan(680);
-
-  // Widening the panel introduced no horizontal overflow.
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(overflow).toBeLessThanOrEqual(1);
-
-  await expectNoSeriousAxeViolations(page, 'discovery hero (full-width)');
-});
-
 test('discovery load-failure panel recovers when Retry is pressed (#149)', async ({ page }) => {
   // First list fetch fails, the next succeeds — proving Retry refetches and recovers.
   let listCalls = 0;
@@ -234,7 +222,8 @@ test('discovery load-failure panel recovers when Retry is pressed (#149)', async
       : route.fulfill({ json: VENUES });
   });
 
-  await page.goto('/?map=off');
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
 
   // The designed failure panel appears with alert semantics (announced to AT).
   const panel = page.getByTestId('error');
@@ -276,7 +265,8 @@ test('an unrated venue shows a "New" state (no ★ 0.0) on the card and map, acc
   );
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [unrated] }));
 
-  await page.goto('/?map=off');
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
   const card = page.getByTestId('venue-card').first();
   await expect(card.getByTestId('new-chip')).toHaveText('New');
   await expect(card).not.toContainText('0.0');
@@ -318,11 +308,12 @@ test('an unrated venue shows a "New" state (no ★ 0.0) on the card and map, acc
 test('discovery shows an accessible empty state when no venues match', async ({ page }) => {
   // Override the list route to return nothing for this run.
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [] }));
-  await page.goto('/?map=off');
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
   await expect(page.getByTestId('empty')).toBeVisible();
   await expect(page.getByTestId('venue-card')).toHaveCount(0);
-  // The in-bar count stays visible in the empty state: "0 venues · <date>".
-  await expect(page.getByTestId('results')).toContainText('0 venues');
+  // The outcome region still speaks the count in the empty state, as it does for a landed list.
+  await expect(page.getByTestId('sheet-outcome')).toContainText('0 of 0 selling today');
   await expectNoSeriousAxeViolations(page, 'discovery empty state');
 });
 

@@ -237,14 +237,14 @@ exactly what they requested before.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)` — phase 0 landed green.
+**Stage pointer:** `implement (phase 2)` — phases 0–1 landed green.
 
-**Next action:** Phase 1 — rewrite `discovery-flow` and `touch-targets-tourist` onto the sheet's head.
+**Next action:** Phase 2 — rewrite `discover-map.e2e.ts` describes A/B/C onto `/`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Collateral e2e re-pointed off the flag | ✅ | phase-0 commit |
-| 1 — `discovery-flow` + `touch-targets-tourist` onto the shipped design | | |
+| 1 — `discovery-flow` + `touch-targets-tourist` onto the shipped design | ✅ | phase-1 commit |
 | 2 — `discover-map.e2e.ts` rewritten onto `/` | | |
 | 3 — RED: the parameter is inert; two arms by width | | |
 | 4 — GREEN: delete the flag, the arm and `VenuePreviewCard` | | |
