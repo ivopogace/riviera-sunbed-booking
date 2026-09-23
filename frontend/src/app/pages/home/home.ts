@@ -628,6 +628,8 @@ export class Home {
   private lastRequest = '';
 
   private readonly focusAfterRender = focusMover();
+  /** The poster's hand-off: its fallback, the grabber, sits in the sheet's scroller, which a scrolling focus would carry to full. */
+  private readonly handOffFocus = focusMover({ preventScroll: true });
 
   /**
    * The fetch to repeat when Retry is pressed — the *failed* request, not a fixed one: an
@@ -694,7 +696,7 @@ export class Home {
     // The poster leaves under a finger that focused it: focus goes to the map that took its place (WCAG 2.4.3).
     effect(() => {
       if (!this.posterShown() && this.posterHoldsFocus()) {
-        this.focusAfterRender('sheet-map', 'sheet-grabber');
+        this.handOffFocus('sheet-map', 'sheet-grabber');
       }
     });
     // The sheet pulled down from half uncovers the ground: that is the live map's, not the still's.
