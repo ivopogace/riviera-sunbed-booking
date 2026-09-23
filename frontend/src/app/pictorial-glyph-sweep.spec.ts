@@ -9,8 +9,8 @@ import { join } from 'node:path';
  * line and the codepoint, so a glyph cannot come back unnoticed.
  *
  * <p>A character doing typographic work in running text stays a character, and is not in
- * {@link RETIRED}: `·`, `€`, `⌘K`, `→`, the map zoom pair `+`/`−`. The {@link RESIDUE} is where a
- * retired codepoint is text, not a mark.
+ * {@link RETIRED}: `·`, `€`, `⌘K`, `→`, the map zoom pair `+`/`−`. The {@link RESIDUE} is each place
+ * a retired codepoint may still appear, with the reason beside it.
  */
 
 const APP = join(process.cwd(), 'src/app');
@@ -38,11 +38,11 @@ const RETIRED: Readonly<Record<string, string>> = {
   '🔒': 'app-lock-icon',
 };
 
-/** A retired codepoint that is text, matched on its trimmed source line. */
+/** A retired codepoint allowed where it stands, matched on its trimmed source line. */
 const RESIDUE: readonly { file: string; line: RegExp }[] = [
   // The grid-size sign in a sentence ("Generated a 2×3 grid") — the multiplication sign, not a cross.
   { file: 'operator/layout-editor.ts', line: /Generated a \$\{rows\}×\$\{cols\} grid/ },
-  // A price pin's label when the venue has no price: text the pin-crowding maths measures as text.
+  // The no-price map pin's face: a pictorial mark still owed its own drawing, not typography.
   { file: 'pages/home/venue-pin-layer.html', line: /priceLabel \?\? '●'/ },
 ];
 

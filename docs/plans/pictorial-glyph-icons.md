@@ -42,7 +42,7 @@ string glyph) · `playwright-cli` (mocked-suite pins for rendered size and star 
   `shared/<name>-icon.spec.ts`, each through `testing/icon-contract.ts`'s `iconContract()`.
 - [x] **AC-2:** Given the app's non-spec sources, when the sweep reads them with comments
   stripped, then none of `✕ × ⚠ ⏰ ★ ☆ ⏳ ▲ ▼ ▾ ⛱ ✉ ← 🌧 🎉 🏖 🔒 ✓ ●` appears, except the
-  recorded typographic residue (the `R×C` grid-size string in `layout-editor.ts`, the price-pin
+  recorded residue (the `R×C` grid-size string in `layout-editor.ts`, the deferred price-pin
   fallback `●` in `venue-pin-layer.html`). *Seam:* the source tree as text. *Pinned by:*
   `pictorial-glyph-sweep.spec.ts`.
 - [x] **AC-3:** Given any close/dismiss control (booking dialog, find booking, lightbox, coast
@@ -76,9 +76,9 @@ string glyph) · `playwright-cli` (mocked-suite pins for rendered size and star 
 
 - The map zoom pair `+`/`−` (settled in the issue).
 - Typographic characters: `·`, `€`, `⌘K`, `→` inside running strings, the `R×C` dimension sign.
-- The price-pin fallback `●` in `venue-pin-layer.html`: it is the pin's *label text* when a
-  venue has no price, measured by the pin-crowding maths as text; converting it moves pin
-  geometry. Out of this slice; reported to the maintainer.
+- The price-pin fallback `●` in `venue-pin-layer.html` (a no-price venue's pin face): deferred to
+  #1195. Kept out of this slice's scope, not because it is text — `pinWidth(null)` is the fixed
+  44 px, so converting it moves no pin geometry.
 - Migrating the four pre-existing icons' specs onto `iconContract()`.
 
 ## Behavior-parity ledger (retirement / replacement slices only)
@@ -168,6 +168,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-4 | self-review, filing #1195 | the pin `●` residue was justified as "measured as text by the crowding maths"; `pinWidth(null)` is a fixed 44 px, so that was false | fixed in the close-out: comment + plan reworded, conversion deferred to #1195 |
 | F-3 | review gate (`code-review:code-review` + overlay, ICON-4) | 28 of 34 call-site `[&_svg]:size-*` overrides had no rendered-size pin in the mocked e2e | fixed in the close-out commit: `e2e/icon-sizes.e2e.ts` + one pin in each spec already reaching a surface |
 | F-2 | `check-inline-comments`, phase 4 | a touched doc comment in `failure-panel.ts` kept a `#858` provenance ref (guard judges a touched comment whole) | fixed in phase 5 |
 | F-1 | self-review, phase 2 | set-editor's two close buttons are not flex, so preflight's block svg sat top-left in the 44 px box | fixed in phase 2 (`inline-flex items-center justify-center`) |
@@ -230,7 +231,7 @@ Each phase: per icon, write `<name>-icon.spec.ts` (red: module missing) → the 
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-09-23 | intake | pictorial codepoints in non-comment template/TS lines | python sweep over `src/app` for U+2190–21FF, 2300–23FF, 25A0–27BF, 2B00–2BFF, 2100–214F, U+1F000–1FAFF, U+00D7, U+2212 | 24 listed + 15 unlisted + typographic residue | unlisted put to the maintainer; all folded in except the pin `●` (non-goal) |
+| 2026-09-23 | intake | pictorial codepoints in non-comment template/TS lines | python sweep over `src/app` for U+2190–21FF, 2300–23FF, 25A0–27BF, 2B00–2BFF, 2100–214F, U+1F000–1FAFF, U+00D7, U+2212 | 24 listed + 15 unlisted + typographic residue | unlisted put to the maintainer; all folded in except the pin `●` (deferred to #1195) |
 
 ---
 
