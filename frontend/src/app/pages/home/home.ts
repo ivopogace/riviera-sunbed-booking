@@ -81,6 +81,7 @@ import { FOOT_ROW_PX } from './sheet-geometry';
 import { VenueCard } from './venue-card';
 import { VenuePinLayer } from './venue-pin-layer';
 import { VenueRow } from './venue-row';
+import { StarIcon } from '../../shared/star-icon';
 
 /**
  * Tailwind's `lg` breakpoint — the twin of the `lg:` utilities in `home.html` that lay the map
@@ -210,6 +211,7 @@ function closedStateText(
     VenuePinLayer,
     VenueRow,
     ...FAILURE_DIRECTIVES,
+    StarIcon,
   ],
   host: {
     class: 'block text-riv-card-ink',

@@ -87,7 +87,7 @@
 
             <p class="flex items-center flex-wrap gap-[7px] text-[14px] text-riv-ink-soft">
               @if (v.isRated) {
-                <span class="text-[#ffd16b]" aria-hidden="true">★</span>
+                <app-star-icon class="text-[#ffd16b] [&_svg]:fill-current" />
                 <span class="font-bold text-riv-ink" aria-label="Rated {{ v.rating }} out of 5">{{
                   v.rating
                 }}</span>

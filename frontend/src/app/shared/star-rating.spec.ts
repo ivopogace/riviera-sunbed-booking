@@ -4,6 +4,7 @@ import { FormField, form, required } from '@angular/forms/signals';
 
 import { expectNoAxeViolations } from '../../testing/axe';
 import { StarRating } from './star-rating';
+import { STAR_FILL } from './star-icon';
 
 @Component({
   selector: 'app-star-rating-host',
@@ -158,11 +159,20 @@ describe('StarRating', () => {
     expect(host.model().stars).toBe(3);
   });
 
-  it('conveys selection with a filled glyph, never colour alone', async () => {
+  it('conveys selection by fill on one star geometry, never colour alone (WCAG 1.4.1)', async () => {
     await click(2);
 
-    const glyphs = stars().map((s) => s.querySelector('[aria-hidden="true"]')!.textContent.trim());
-    expect(glyphs).toEqual(['★', '★', '★', '☆', '☆']);
+    const icons = stars().map((s) => s.querySelector('app-star-icon')!);
+    expect(icons.map((icon) => icon.classList.contains(STAR_FILL))).toEqual([
+      true,
+      true,
+      true,
+      false,
+      false,
+    ]);
+    const geometry = new Set(icons.map((icon) => icon.querySelector('path')!.getAttribute('d')));
+    expect(geometry.size).toBe(1);
+    expect(stars().map((s) => s.textContent.trim())).toEqual(['', '', '', '', '']);
   });
 
   it('has no axe violations', async () => {

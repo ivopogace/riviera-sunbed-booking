@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
 import { VenueReviewEntry, VenueReviewsPage } from '../shared/venue-views';
+import { STAR_FILL } from '../shared/star-icon';
 import { VenueReviews } from './venue-reviews';
 
 /**
@@ -113,7 +114,11 @@ describe('VenueReviews', () => {
     const stars = first.querySelector('[data-testid="review-stars"]')!;
     expect(stars.getAttribute('role')).toBe('img');
     expect(stars.getAttribute('aria-label')).toBe('4 out of 5 stars');
-    expect(stars.textContent?.trim()).toBe('★★★★☆');
+    expect(
+      Array.from(stars.querySelectorAll('app-star-icon')).map((s) =>
+        s.classList.contains(STAR_FILL),
+      ),
+    ).toEqual([true, true, true, true, false]);
     expect(first.querySelector('[data-testid="review-name"]')?.textContent?.trim()).toBe('Ana');
     expect(first.querySelector('[data-testid="review-stay"]')?.textContent).toContain('July 2026');
     expect(first.querySelector('[data-testid="review-stay"]')?.textContent).not.toContain(

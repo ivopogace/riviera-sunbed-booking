@@ -19,6 +19,8 @@ const APP = join(process.cwd(), 'src/app');
 const RETIRED: Readonly<Record<string, string>> = {
   '✕': 'app-cross-icon',
   '×': 'app-cross-icon',
+  '★': 'app-star-icon',
+  '☆': 'app-star-icon',
 };
 
 /** A retired codepoint that is text, matched on its trimmed source line. */

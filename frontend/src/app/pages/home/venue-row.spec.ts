@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 
 import { venueCard } from '../../../testing/venue-cards';
 import { photoViews } from '../../../testing/photo-views';
+import { STAR_FILL } from '../../shared/star-icon';
 import { VenueCard } from './venue-card';
 import { VenueRow } from './venue-row';
 
@@ -62,7 +63,15 @@ describe('VenueRow', () => {
 
     expect(text(byTestId(host, 'row-name'))).toBe('Palasa Sands');
     expect(text(byTestId(host, 'row-price'))).toBe('€26');
-    expect(parts(byTestId(host, 'row-facts'))).toBe('★ 4.6 · 143 reviews · 20 m to water');
+    expect(parts(byTestId(host, 'row-facts'))).toBe('4.6 · 143 reviews · 20 m to water');
+  });
+
+  it('leads the facts line with a filled star drawn, not a star character', () => {
+    const facts = byTestId(render(PALASA), 'row-facts')!;
+    const star = facts.firstElementChild!;
+
+    expect(star.tagName).toBe('APP-STAR-ICON');
+    expect(star.classList.contains(STAR_FILL)).toBe(true);
   });
 
   it('wears dusk when sales for today have closed, the price giving way to the fact that outranks it', () => {
@@ -97,7 +106,7 @@ describe('VenueRow', () => {
 
   it('leaves the water off the facts line when the venue has no distance', () => {
     expect(parts(byTestId(render(venueCard({ id: 1, name: 'Aurora' })), 'row-facts'))).toBe(
-      '★ 4.8 · 326 reviews',
+      '4.8 · 326 reviews',
     );
   });
 

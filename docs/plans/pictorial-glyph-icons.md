@@ -151,15 +151,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Phase 2 — `StarIcon` red.
+**Next action:** Phase 3 — `CheckIcon` red.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan + draft PR | ✅ | 5fd49962 |
-| 1 — `CrossIcon`: close controls + failure medallion | ✅ | this commit |
-| 2 — `StarIcon` + `StarRow`: rating marks | | |
+| 1 — `CrossIcon`: close controls + failure medallion | ✅ | 785784e9 |
+| 2 — `StarIcon` + `StarRow`: rating marks | ✅ | this commit |
 | 3 — `CheckIcon`/`HourglassIcon`/`MailIcon`: medallions + waiting | | |
 | 4 — `AlertIcon`/`UmbrellaIcon`/`ClockIcon`: failures, alerts, beach | | |
 | 5 — `ChevronDownIcon`/`TriangleIcon`/`ArrowLeftIcon`: wayfinding | | |
@@ -172,6 +172,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-1 | self-review, phase 2 | set-editor's two close buttons are not flex, so preflight's block svg sat top-left in the 44 px box | fixed in phase 2 (`inline-flex items-center justify-center`) |
 
 ---
 
@@ -187,9 +188,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/booking/{booking-dialog,find-booking,booking-pay,booking-confirmation,request-confirmation,booking-view,my-bookings,review-panel}.ts|.html|.spec.ts` — call sites, specs
 - `frontend/src/app/venue/{venue-map,venue-reviews}.ts|.html|.spec.ts` — call sites, specs
 - `frontend/src/app/operator/{set-editor,requests-tab,pending-approval-banner,payouts-tab,daily-view-tab}.ts|.html|.spec.ts` — call sites, specs
-- `frontend/src/app/admin/admin-reviews.*` — call site, spec
+- `frontend/src/app/admin/admin-reviews.ts|.spec.ts` — call site, spec
 - `frontend/src/app/pages/home/{home,venue-row,discover-head,coast-picker}.ts|.html|.spec.ts` — call sites, specs
 - `frontend/e2e/*.e2e.ts` — size pins, star fill, glyph-text assertions re-targeted
+- `frontend/src/app/pages/home/venue-row.html` — static star
 
 ---
 

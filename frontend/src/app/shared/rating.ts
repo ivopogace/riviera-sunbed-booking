@@ -31,12 +31,7 @@ export function reviewsLabel(reviewsCount: number): string {
   return plural(reviewsCount, 'review');
 }
 
-/** The five star glyphs — `★★★★☆` for 4 — for a read-only echo of a stored rating. */
-export function starGlyphs(stars: number): string {
-  return '★'.repeat(stars) + '☆'.repeat(5 - stars);
-}
-
-/** The accessible name beside those glyphs ("4 out of 5 stars"), shared by every star row. */
+/** The accessible name of a read-only star row ("4 out of 5 stars"), shared by every one. */
 export function starsOutOfFive(stars: number): string {
   return `${stars} out of 5 stars`;
 }

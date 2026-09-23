@@ -3,6 +3,7 @@ import { FormValueControl, ValidationError, WithOptionalFieldTree } from '@angul
 
 import { FieldErrorFor } from './field-error-for';
 import { TouchTarget } from './touch-target';
+import { STAR_FILL, StarIcon } from './star-icon';
 
 /** The rating scale — 1..5 stars, the range the backend's `review_stars_check` also bounds. */
 const STARS = [1, 2, 3, 4, 5] as const;
@@ -21,8 +22,8 @@ const STARS = [1, 2, 3, 4, 5] as const;
  * and `Home`/`End` jump to the extremes. Any other key is left to the browser, so `Tab` still
  * leaves the group.
  *
- * Selection is conveyed by a filled ★ against an outline ☆, never by colour alone (WCAG 1.4.1), and
- * each star carries its own accessible name ("4 stars"), so a screen-reader user hears what they are
+ * Selection is conveyed by a filled star against the same star outlined — one {@link StarIcon}
+ * geometry, filled by {@link STAR_FILL} — never by colour alone (WCAG 1.4.1), and each star carries its own accessible name ("4 stars"), so a screen-reader user hears what they are
  * choosing rather than a position. Styling is token-first Tailwind on the host of each star.
  *
  * The optional `invalid`/`errors` inputs are part of the `FormValueControl` contract — the
@@ -32,7 +33,7 @@ const STARS = [1, 2, 3, 4, 5] as const;
  * error shows only once a submit has been tried, never on first render of an empty group.
  */
 @Component({
-  imports: [FieldErrorFor, TouchTarget],
+  imports: [FieldErrorFor, TouchTarget, StarIcon],
   selector: 'app-star-rating',
   template: `
     <div class="flex flex-col gap-1.5">
@@ -51,7 +52,7 @@ const STARS = [1, 2, 3, 4, 5] as const;
             (click)="select(row.stars)"
             (keydown)="onKeydown($event)"
           >
-            <span aria-hidden="true">{{ row.selected ? '★' : '☆' }}</span>
+            <app-star-icon [class]="row.selected ? STAR_FILL : null" />
           </button>
         }
       </div>
@@ -90,7 +91,9 @@ export class StarRating implements FormValueControl<number | null> {
    * are deliberately absent: the glyph carries selection, so the skin never has to.
    */
   protected readonly starClasses =
-    'star cursor-pointer touch-manipulation border-0 bg-transparent px-1 font-[inherit] text-[30px] leading-none text-riv-accent-ink [transition:transform_0.12s_ease] hover:scale-110 motion-reduce:transition-none motion-reduce:hover:scale-100 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink';
+    'star cursor-pointer touch-manipulation inline-flex items-center justify-center border-0 bg-transparent px-1 text-riv-accent-ink [&_svg]:size-[26px] [transition:transform_0.12s_ease] hover:scale-110 motion-reduce:transition-none motion-reduce:hover:scale-100 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink';
+
+  protected readonly STAR_FILL = STAR_FILL;
 
   protected readonly rows = computed(() => {
     const selected = this.value();

@@ -10,7 +10,7 @@ import { FieldGlass } from '../shared/field-glass';
 import { focusMover } from '../shared/focus-after-render';
 import { StarRating } from '../shared/star-rating';
 import { TouchTarget } from '../shared/touch-target';
-import { starGlyphs, starsOutOfFive } from '../shared/rating';
+import { starsOutOfFive } from '../shared/rating';
 import {
   OwnReviewView,
   REVIEW_COMMENT_MAX,
@@ -18,6 +18,7 @@ import {
   ReviewPanel as ReviewPanelState,
   SubmitReviewRequest,
 } from './booking.model';
+import { StarRow } from '../shared/star-row';
 
 /** The required rule's message, stated on the schema and rendered by `app-star-rating`'s own inline error. */
 const REVIEW_REQUIRED = 'Pick a star rating.';
@@ -50,7 +51,7 @@ const CLS = {
   btnOutline: `${BTN_OUTLINE} border-riv-solid-btn-border text-riv-solid-btn-ink`,
   btnOutlineDanger: `${BTN_OUTLINE} border-riv-solid-btn-danger-border text-riv-solid-btn-danger-ink`,
   ownCard: 'rounded-[16px] border border-riv-card-track bg-riv-wash-fill px-[15px] py-3',
-  ownStars: 'm-0 text-[17px] leading-none tracking-[0.14em] text-riv-accent-ink',
+  ownStars: 'm-0 flex text-riv-accent-ink [&_svg]:size-[15px]',
   ownName: 'mx-0 mt-2 mb-0 text-[13px] font-bold text-riv-card-ink',
   ownComment: 'mx-0 mt-1.5 mb-0 text-[14px] leading-[1.5] text-riv-card-ink',
   confirmQ: 'mx-0 mt-3.5 mb-3 text-[14px] font-semibold text-riv-card-ink',
@@ -106,6 +107,7 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
     NgTemplateOutlet,
     StarRating,
     TouchTarget,
+    StarRow,
   ],
   selector: 'app-review-panel',
   template: `
@@ -230,7 +232,7 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
           [attr.aria-label]="ownStarsLabel()"
           data-testid="own-review-stars"
         >
-          <span aria-hidden="true">{{ ownStars() }}</span>
+          <app-star-row [stars]="own()?.stars ?? 0" />
         </p>
         @if (own()?.displayName; as name) {
           <p [class]="cls.ownName" data-testid="own-review-name">{{ name }}</p>
@@ -366,8 +368,6 @@ export class ReviewPanel {
       ? panel.review
       : undefined;
   });
-
-  protected readonly ownStars = computed(() => starGlyphs(this.own()?.stars ?? 0));
 
   protected readonly ownStarsLabel = computed(() => starsOutOfFive(this.own()?.stars ?? 0));
 

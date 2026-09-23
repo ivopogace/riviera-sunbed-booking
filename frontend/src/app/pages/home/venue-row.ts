@@ -6,6 +6,7 @@ import { photoSrcset } from '../../shared/photo-url';
 import { SemanticChip } from '../../shared/semantic-chip';
 import { SetsFree } from '../../shared/sets-free';
 import { VenueCard } from './venue-card';
+import { StarIcon } from '../../shared/star-icon';
 
 /**
  * One venue on the **desktop panel** — the flat list entry the panel renders where the phone's
@@ -35,7 +36,7 @@ import { VenueCard } from './venue-card';
  */
 @Component({
   selector: 'app-venue-row',
-  imports: [AmenityChip, RouterLink, SemanticChip, SetsFree],
+  imports: [AmenityChip, RouterLink, SemanticChip, SetsFree, StarIcon],
   host: { class: 'contents' },
   templateUrl: './venue-row.html',
 })

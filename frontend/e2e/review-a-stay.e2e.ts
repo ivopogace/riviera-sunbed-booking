@@ -129,6 +129,11 @@ test.describe('rating a delivered stay', () => {
     }
     await expect(stars.nth(3)).toHaveAttribute('aria-checked', 'true');
     await expect(stars.nth(4)).toHaveAttribute('aria-checked', 'false');
+    // WCAG 1.4.1: selection is shape (fill vs outline), read off the render, not the class.
+    const ink = await stars.nth(3).evaluate((star) => getComputedStyle(star).color);
+    await expect(stars.nth(3).locator('svg')).toHaveCSS('fill', ink);
+    await expect(stars.nth(4).locator('svg')).toHaveCSS('fill', 'none');
+    await expect(stars.nth(3).locator('svg')).toHaveCSS('width', '26px');
 
     // The display name arrives prefilled from the server's suggestion; the comment is the guest's.
     await expect(panel.getByTestId('review-display-name')).toHaveValue('Ana');
@@ -142,6 +147,11 @@ test.describe('rating a delivered stay', () => {
     await expect(page.getByTestId('review-result')).toBeFocused();
     await expect(page.getByTestId('submit-review')).toHaveCount(0);
     await expect(page.getByTestId('own-review-comment')).toContainText('Great sunbeds');
+    const ownStars = page.getByTestId('own-review-stars').locator('svg');
+    await expect(ownStars).toHaveCount(5);
+    await expect(ownStars.nth(3)).not.toHaveCSS('fill', 'none');
+    await expect(ownStars.nth(4)).toHaveCSS('fill', 'none');
+    await expect(ownStars.first()).toHaveCSS('width', '15px');
     expect(submitted).toEqual([
       { stars: 4, comment: 'Great sunbeds, shade all afternoon.', displayName: 'Ana' },
     ]);
