@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { BeachGridFrame } from './beach-grid-frame';
 
 /**
- * The shared sea-facing beach-grid frame. Verifies it renders the ▲/▼ orientation banners
+ * The shared sea-facing beach-grid frame. Verifies it renders the sea and promenade orientation banners
  * and projects the consumer's grid body between them — the chrome both the layout editor and the
  * Daily view tab consume.
  */
@@ -42,12 +42,15 @@ describe('BeachGridFrame (#175)', () => {
     ).toBeTruthy();
   });
 
-  it('hides the directional glyphs from assistive tech (text carries the meaning)', () => {
+  it('points a drawn triangle up to the sea and down to the promenade, hidden from assistive tech', () => {
     const host = render();
-    const hidden = Array.from(host.querySelectorAll('[aria-hidden="true"]')).map(
-      (e) => e.textContent,
-    );
-    expect(hidden).toContain('▲');
-    expect(hidden).toContain('▼');
+    const sea = host.querySelector('.sea-banner app-triangle-icon')!;
+    const promenade = host.querySelector('.promenade app-triangle-icon')!;
+
+    expect(sea.getAttribute('aria-hidden')).toBe('true');
+    expect(promenade.getAttribute('aria-hidden')).toBe('true');
+    expect(sea.classList.contains('[&_svg]:rotate-180')).toBe(false);
+    expect(promenade.classList.contains('[&_svg]:rotate-180')).toBe(true);
+    expect(host.querySelector('.sea-banner')!.textContent?.trim()).toBe('Facing the sea');
   });
 });

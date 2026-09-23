@@ -151,9 +151,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `implement (phase 6)`
 
-**Next action:** Phase 5 — `TriangleIcon` red.
+**Next action:** Phase 6 — `RainIcon` red.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -161,8 +161,8 @@ N/A — no contract change.
 | 1 — `CrossIcon`: close controls + failure medallion | ✅ | 785784e9 |
 | 2 — `StarIcon` + `StarRow`: rating marks | ✅ | a4be93c0 |
 | 3 — `CheckIcon`/`HourglassIcon`/`MailIcon` (+ `DotIcon`, daily-view ✓/● pulled forward): medallions + waiting | ✅ | cdf94bc4 |
-| 4 — `AlertIcon`/`UmbrellaIcon`/`ClockIcon` (+ `ChevronDownIcon`, discover-head ▾ pulled forward — its specs assert ⛱ and ▾ in one string): failures, alerts, beach | ✅ | this commit |
-| 5 — `TriangleIcon`/`ArrowLeftIcon`: wayfinding | | |
+| 4 — `AlertIcon`/`UmbrellaIcon`/`ClockIcon` (+ `ChevronDownIcon`, discover-head ▾ pulled forward — its specs assert ⛱ and ▾ in one string): failures, alerts, beach | ✅ | 09358e66 |
+| 5 — `TriangleIcon`/`ArrowLeftIcon`: wayfinding | ✅ | this commit |
 | 6 — `RainIcon`/`PartyIcon`/`LockIcon`: emoji | | |
 | 7 — sweep, e2e size pins, full gates | | |
 
@@ -172,6 +172,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-2 | `check-inline-comments`, phase 4 | a touched doc comment in `failure-panel.ts` kept a `#858` provenance ref (guard judges a touched comment whole) | fixed in phase 5 |
 | F-1 | self-review, phase 2 | set-editor's two close buttons are not flex, so preflight's block svg sat top-left in the 44 px box | fixed in phase 2 (`inline-flex items-center justify-center`) |
 
 ---

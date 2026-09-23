@@ -1,10 +1,11 @@
 import { Component, input } from '@angular/core';
 
 import { CardGlass } from './card-glass';
+import { TriangleIcon } from './triangle-icon';
 
 /**
- * The sea-facing beach-grid frame — the glass card with the "▲ Facing the sea"
- * and "▼ Promenade · Entrance" orientation banners that make a grid of tiles read as a beach map.
+ * The sea-facing beach-grid frame — the glass card with the "Facing the sea" and "Promenade ·
+ * Entrance" orientation banners that make a grid of tiles read as a beach map.
  *
  * <p>The shared chrome of every beach-map surface — the tourist map, the operator layout
  * editor, the Daily view and the per-set editor, all via {@link BeachMapCanvas}.
@@ -13,12 +14,12 @@ import { CardGlass } from './card-glass';
  * consumer owns its own tile rendering and interaction, projected via {@code <ng-content>}.
  * Theme-agnostic glass via {@link CardGlass}, elevated with the restyle's blur + drop shadow so
  * the card reads as a card on the bare page gradient (not only on the console shell); the banner
- * gradient is the restyle's sea teal. The ▲/▼ glyphs are {@code aria-hidden} — the banner text
- * carries the meaning.
+ * gradient is the restyle's sea teal. The banners' triangles ({@link TriangleIcon}, turned for the
+ * promenade) are {@code aria-hidden} — the banner text carries the meaning.
  */
 @Component({
   selector: 'app-beach-grid-frame',
-  imports: [CardGlass],
+  imports: [CardGlass, TriangleIcon],
   template: `
     <section
       appCardGlass
@@ -27,17 +28,17 @@ import { CardGlass } from './card-glass';
       [attr.aria-label]="label() || null"
     >
       <p
-        class="sea-banner -mx-[18px] mb-3.5 bg-(image:--riv-sea-grad) px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-white"
+        class="sea-banner -mx-[18px] mb-3.5 flex items-center justify-center gap-2 bg-(image:--riv-sea-grad) px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-white"
       >
-        <span aria-hidden="true">▲</span>&nbsp;&nbsp;Facing the sea
+        <app-triangle-icon class="[&_svg]:size-[9px]" />Facing the sea
       </p>
 
       <ng-content />
 
       <p
-        class="promenade -mx-[18px] mt-3 border-t border-dashed border-riv-map-frame-border px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-riv-card-ink"
+        class="promenade -mx-[18px] mt-3 flex items-center justify-center gap-2 border-t border-dashed border-riv-map-frame-border px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-riv-card-ink"
       >
-        <span aria-hidden="true">▼</span>&nbsp;&nbsp;Promenade · Entrance
+        <app-triangle-icon class="[&_svg]:size-[9px] [&_svg]:rotate-180" />Promenade · Entrance
       </p>
     </section>
   `,

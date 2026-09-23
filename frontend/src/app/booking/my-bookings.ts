@@ -31,6 +31,7 @@ import { BookingDetail, MyBookingSummary } from './booking.model';
 import { BookingService } from './booking.service';
 
 import { TouchTarget } from '../shared/touch-target';
+import { ArrowLeftIcon } from '../shared/arrow-left-icon';
 
 /**
  * What a row is built from: the account list's summary, or the per-code detail a device-local row
@@ -232,13 +233,14 @@ const CLS = {
     StatusChip,
     BookingQr,
     TouchTarget,
+    ArrowLeftIcon,
   ],
   template: `
     <section class="mx-auto w-full max-w-[560px] px-5 pt-6 pb-20" aria-labelledby="mb-title">
       <a
         routerLink="/"
-        class="mb-3.5 inline-flex min-h-11 items-center text-[14px] font-semibold text-riv-accent-ink hover:underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
-        >← All beaches</a
+        class="mb-3.5 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold text-riv-accent-ink hover:underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
+        ><app-arrow-left-icon class="[&_svg]:size-[14px]" />All beaches</a
       >
       <h1
         class="mb-[18px] text-[clamp(28px,4vw,34px)] font-bold tracking-[-0.02em]"
