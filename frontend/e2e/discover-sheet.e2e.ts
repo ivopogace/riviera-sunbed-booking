@@ -1015,6 +1015,27 @@ test.describe('Discover sheet — the poster', () => {
       await page.mouse.up();
     });
 
+    /**
+     * The hand-off's fallback leg: a resize past the widest bucket retires the poster before the
+     * live map's deferred block has rendered, so `sheet-map` is absent and focus falls to the
+     * grabber — inside the sheet's scroller, where a scrolling focus would carry it to full.
+     */
+    test('the poster retired before the map has rendered hands focus to the grabber and leaves the sheet at half', async ({
+      page,
+    }) => {
+      await openSheet(page);
+      await expect(page.getByTestId('riviera-map-fake')).toHaveCount(0);
+      await page.getByTestId('sheet-poster').focus();
+
+      await page.setViewportSize({ width: 900, height: 1100 });
+
+      await expect(page.getByTestId('sheet-grabber')).toBeFocused();
+      await expect(page.getByTestId('riviera-map-fake')).toBeVisible();
+      await expectDetent(page, 'half');
+      // Focus without a scroll is still focus on screen (WCAG 2.4.7): the head stands at every detent.
+      await expect(page.getByTestId('sheet-grabber')).toBeInViewport();
+    });
+
     test('a crowd press swaps the live map in and separates the crowd', async ({ page }) => {
       await openSheet(page);
       // Palasë, Dhërmi and Jalë crowd on the pair's own mean, where their pill is drawn; Borsh alone.

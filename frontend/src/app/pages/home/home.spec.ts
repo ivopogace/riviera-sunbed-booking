@@ -1268,6 +1268,23 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
       }
     });
 
+    it('the poster retired before the map renders hands focus to the grabber without scrolling the sheet', async () => {
+      const fixture = await sheetPage();
+      const poster = byTestId(fixture, 'sheet-poster')!;
+      poster.focus();
+      const grabber = byTestId(fixture, 'sheet-grabber')!;
+      const focus = vi.spyOn(grabber, 'focus');
+
+      // Wider than every bucket: the poster cannot cover, so it retires with no live map rendered yet.
+      useViewport({ width: 900, height: 1100 });
+      window.dispatchEvent(new Event('resize'));
+      await settle(fixture);
+
+      expect(byTestId(fixture, 'sheet-poster')).toBeNull();
+      expect(focus).toHaveBeenCalledExactlyOnceWith({ preventScroll: true });
+      expect(document.activeElement).toBe(grabber);
+    });
+
     it('shows one credit while the live map is on its way: the poster’s yields to the map’s', async () => {
       // An engine whose boot waits: the map component is mounted (with its own credit) but not loaded.
       let release: () => void = () => undefined;
