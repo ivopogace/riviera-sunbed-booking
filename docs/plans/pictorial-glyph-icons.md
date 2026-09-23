@@ -168,6 +168,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-5 | Sonar (`typescript:S7721`, Major) | `testing/icon-contract.ts`'s `svgOf` captured nothing yet lived inside `iconContract()` | fixed in the close-out: moved to module scope; Sonar list re-read empty before merge |
 | F-4 | self-review, filing #1195 | the pin `●` residue was justified as "measured as text by the crowding maths"; `pinWidth(null)` is a fixed 44 px, so that was false | fixed in the close-out: comment + plan reworded, conversion deferred to #1195 |
 | F-3 | review gate (`code-review:code-review` + overlay, ICON-4) | 28 of 34 call-site `[&_svg]:size-*` overrides had no rendered-size pin in the mocked e2e | fixed in the close-out commit: `e2e/icon-sizes.e2e.ts` + one pin in each spec already reaching a surface |
 | F-2 | `check-inline-comments`, phase 4 | a touched doc comment in `failure-panel.ts` kept a `#858` provenance ref (guard judges a touched comment whole) | fixed in phase 5 |

@@ -4,6 +4,10 @@ import { describe, expect, it } from 'vitest';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
+function svgOf(host: HTMLElement): SVGSVGElement {
+  return host.querySelector<SVGSVGElement>('svg')!;
+}
+
 /**
  * The `riviera-tailwind` ICON-1..6 contract every `shared/*-icon.ts` keeps, as one set of specs an
  * icon's own `*.spec.ts` runs with its default size. A glyph-specific claim (a fill that sets a
@@ -14,10 +18,6 @@ export function iconContract(icon: Type<unknown>, defaultSize: number): void {
     const fixture = TestBed.createComponent(icon);
     fixture.detectChanges();
     return fixture.nativeElement as HTMLElement;
-  }
-
-  function svgOf(host: HTMLElement): SVGSVGElement {
-    return host.querySelector<SVGSVGElement>('svg')!;
   }
 
   describe('the ICON-1..6 contract', () => {
