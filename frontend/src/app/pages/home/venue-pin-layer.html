@@ -18,9 +18,11 @@
     @switch (slot.kind) {
       @case ('lone') {
         <!-- The label carries the price's meaning; the face alone would announce a bare `€25` or a dot. -->
-        <span aria-hidden="true" [class.pin-price]="slot.member.pin.card.priceLabel !== null">{{
-          slot.member.pin.card.priceLabel ?? '●'
-        }}</span>
+        @if (slot.member.pin.card.priceLabel; as price) {
+          <span class="pin-price" aria-hidden="true">{{ price }}</span>
+        } @else {
+          <app-dot-icon />
+        }
       }
       @case ('place') {
         @if (!slot.place.placement.compact) {

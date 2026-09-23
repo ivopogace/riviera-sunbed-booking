@@ -42,8 +42,6 @@ const RETIRED: Readonly<Record<string, string>> = {
 const RESIDUE: readonly { file: string; line: RegExp }[] = [
   // The grid-size sign in a sentence ("Generated a 2×3 grid") — the multiplication sign, not a cross.
   { file: 'operator/layout-editor.ts', line: /Generated a \$\{rows\}×\$\{cols\} grid/ },
-  // The no-price map pin's face: a pictorial mark still owed its own drawing, not typography.
-  { file: 'pages/home/venue-pin-layer.html', line: /priceLabel \?\? '●'/ },
 ];
 
 function sources(): readonly string[] {

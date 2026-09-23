@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 
 import { beachLabel } from '../../shared/beaches';
+import { DotIcon } from '../../shared/dot-icon';
 import { MapHandle } from '../../shared/map-engine';
 import { TouchTarget } from '../../shared/touch-target';
 import {
@@ -88,8 +89,11 @@ const LONE_CLASSES =
   'leading-none text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] ' +
   'aria-expanded:bg-riv-solid-btn-ink aria-expanded:text-riv-solid-btn-fill';
 
-/** The dot a pin with no price shows: the placement pin's glyph, at its size. */
-const LONE_DOT_CLASSES = 'text-[20px]';
+/**
+ * The dot a pin with no price shows: `DotIcon`'s disc is two thirds of its box, so a 21 px box
+ * draws the 14 px disc the old `●` glyph drew at 20 px in the UI font.
+ */
+const LONE_DOT_CLASSES = '[&_svg]:size-[21px]';
 
 /**
  * Dusk: this venue, or every venue in this crowd, has stopped selling for the chosen day
@@ -152,7 +156,7 @@ const MEMBER_CLASSES =
  */
 @Component({
   selector: 'app-venue-pin-layer',
-  imports: [TouchTarget],
+  imports: [DotIcon, TouchTarget],
   host: {
     class: 'pointer-events-none absolute inset-0 z-[4] block overflow-hidden rounded-[26px]',
     'data-touch-pans': 'the map pans: a pin cut by its edge is reached whole by panning',
