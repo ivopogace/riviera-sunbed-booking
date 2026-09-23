@@ -151,11 +151,11 @@
           <button
             type="button"
             appTouchTarget
-            class="rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-4 py-[9px] text-[13.5px] font-semibold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-riv-console-inset motion-reduce:transition-none"
+            class="inline-flex items-center gap-1.5 rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-4 py-[9px] text-[13.5px] font-semibold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-riv-console-inset motion-reduce:transition-none [&_svg]:size-[15px]"
             data-testid="weather-trigger"
             (click)="onWeatherRefund()"
           >
-            <span aria-hidden="true">🌧</span> Weather refund
+            <app-rain-icon /> Weather refund
           </button>
         }
       </div>

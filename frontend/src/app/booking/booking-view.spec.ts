@@ -1208,8 +1208,8 @@ describe('BookingView', () => {
     );
     const host = fixture.nativeElement as HTMLElement;
 
-    const hidden = host.querySelector('[data-testid="request-accepted"] [aria-hidden="true"]');
-    expect(hidden?.textContent).toContain('🎉');
+    const mark = host.querySelector('[data-testid="request-accepted"] app-party-icon');
+    expect(mark?.getAttribute('aria-hidden')).toBe('true');
     expect(host.querySelector('[data-testid="request-accepted"]')?.textContent).toContain(
       'Request accepted',
     );

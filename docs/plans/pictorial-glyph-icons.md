@@ -151,9 +151,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 6)`
+**Stage pointer:** `implement (phase 7)`
 
-**Next action:** Phase 6 — `RainIcon` red.
+**Next action:** Phase 7 — glyph mentions in spec prose, full gates, screenshots.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -162,8 +162,8 @@ N/A — no contract change.
 | 2 — `StarIcon` + `StarRow`: rating marks | ✅ | a4be93c0 |
 | 3 — `CheckIcon`/`HourglassIcon`/`MailIcon` (+ `DotIcon`, daily-view ✓/● pulled forward): medallions + waiting | ✅ | cdf94bc4 |
 | 4 — `AlertIcon`/`UmbrellaIcon`/`ClockIcon` (+ `ChevronDownIcon`, discover-head ▾ pulled forward — its specs assert ⛱ and ▾ in one string): failures, alerts, beach | ✅ | 09358e66 |
-| 5 — `TriangleIcon`/`ArrowLeftIcon`: wayfinding | ✅ | this commit |
-| 6 — `RainIcon`/`PartyIcon`/`LockIcon`: emoji | | |
+| 5 — `TriangleIcon`/`ArrowLeftIcon`: wayfinding | ✅ | 9058cb1b |
+| 6 — `RainIcon`/`PartyIcon`/`LockIcon`: emoji | ✅ | this commit |
 | 7 — sweep, e2e size pins, full gates | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -196,6 +196,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/pages/home/venue-row.html` — static star
 - `frontend/src/app/pages/home/home.html` — failure mark, static star
 - `frontend/src/app/operator/requests-tab.html` — alert, clock, check
+- `frontend/src/app/operator/payouts-tab.html` — rain
 
 ---
 

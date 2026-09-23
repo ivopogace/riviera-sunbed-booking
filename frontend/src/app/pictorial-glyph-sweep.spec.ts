@@ -33,6 +33,9 @@ const RETIRED: Readonly<Record<string, string>> = {
   '▲': 'app-triangle-icon',
   '▼': 'app-triangle-icon',
   '←': 'app-arrow-left-icon',
+  '🌧': 'app-rain-icon',
+  '🎉': 'app-party-icon',
+  '🔒': 'app-lock-icon',
 };
 
 /** A retired codepoint that is text, matched on its trimmed source line. */

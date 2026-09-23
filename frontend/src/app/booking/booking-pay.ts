@@ -28,6 +28,7 @@ import { TouchTarget } from '../shared/touch-target';
 import { CrossIcon } from '../shared/cross-icon';
 import { CheckIcon } from '../shared/check-icon';
 import { HourglassIcon } from '../shared/hourglass-icon';
+import { LockIcon } from '../shared/lock-icon';
 
 /** Poll cadence and budget for awaiting the webhook-driven CONFIRMED transition. */
 const POLL_MS = 1500;
@@ -96,6 +97,7 @@ const CLS = {
     CrossIcon,
     CheckIcon,
     HourglassIcon,
+    LockIcon,
   ],
   template: `
     <!-- One persistent live region announces every state change. A live region only announces
@@ -253,7 +255,8 @@ const CLS = {
 
             @if (showElement()) {
               <p class="mt-3 flex items-center gap-1.5 text-[11.5px] text-riv-card-ink-faint">
-                <span aria-hidden="true">🔒</span> Encrypted &amp; PCI-compliant · powered by Stripe
+                <app-lock-icon class="[&_svg]:size-[12px]" /> Encrypted &amp; PCI-compliant ·
+                powered by Stripe
               </p>
             }
 
