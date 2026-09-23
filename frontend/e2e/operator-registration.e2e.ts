@@ -44,6 +44,10 @@ test('a registering operator lands straight in the console and works it while PE
   await expect(page.getByRole('heading', { name: 'Venue details' })).toBeVisible();
   await expect(page.getByTestId('pending-approval-banner')).toBeVisible();
   await expect(page.getByTestId('pending-approval-banner')).toContainText('hidden from tourists');
+  await expect(page.getByTestId('pending-approval-banner').locator('svg')).toHaveCSS(
+    'width',
+    '18px',
+  );
   await expectNoSeriousAxeViolations(page, 'pending operator home with create card');
 
   // 2. Still PENDING, the operator creates its venue and lands in that console — notice included.

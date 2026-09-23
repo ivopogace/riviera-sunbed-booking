@@ -21,7 +21,7 @@ whose fill the call site sets, so the distinction is structural rather than font
 listed ones; the maintainer folded them all in) · `riviera-plan-doc` (forced the sweep AC and
 the parity ledger for the star rows' retired `starGlyphs()`) · `tdd` (each icon red via its spec
 before the file exists; each call-site swap red via the spec that asserted the glyph) ·
-`riviera-review-overlay` (at ready-for-review) · `riviera-docs-freshness` (at close-out) ·
+`riviera-review-overlay` (ran with `code-review:code-review` over `d55fb4df..a7a38cea`; 1 finding, F-3) · `riviera-docs-freshness` (**ran** over `d55fb4df..HEAD`, 0 findings; retired the merged `shoreline-snap.md` plan) ·
 `riviera-frontend` (every icon in `shared/`, no new cross-feature edge) · `riviera-tailwind`
 (ICON-1..6; `[&_svg]:size-*` at call sites; toHaveCSS size pins in the mocked e2e) ·
 `angular-developer` (signal inputs on `StarRow`; `@switch` over a state kind instead of a
@@ -35,40 +35,40 @@ string glyph) · `playwright-cli` (mocked-suite pins for rendered size and star 
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given any new icon component, when it renders, then the host and the inner svg
+- [x] **AC-1:** Given any new icon component, when it renders, then the host and the inner svg
   are `aria-hidden`, the host is `display: contents`, the stroke is `currentColor` with no
   colour of its own, size is a presentation attribute (13 by default), and every child is in
   the SVG namespace. *Seam:* the component's rendered DOM (TestBed). *Pinned by:*
   `shared/<name>-icon.spec.ts`, each through `testing/icon-contract.ts`'s `iconContract()`.
-- [ ] **AC-2:** Given the app's non-spec sources, when the sweep reads them with comments
+- [x] **AC-2:** Given the app's non-spec sources, when the sweep reads them with comments
   stripped, then none of `✕ × ⚠ ⏰ ★ ☆ ⏳ ▲ ▼ ▾ ⛱ ✉ ← 🌧 🎉 🏖 🔒 ✓ ●` appears, except the
   recorded typographic residue (the `R×C` grid-size string in `layout-editor.ts`, the price-pin
   fallback `●` in `venue-pin-layer.html`). *Seam:* the source tree as text. *Pinned by:*
   `pictorial-glyph-sweep.spec.ts`.
-- [ ] **AC-3:** Given any close/dismiss control (booking dialog, find booking, lightbox, coast
+- [x] **AC-3:** Given any close/dismiss control (booking dialog, find booking, lightbox, coast
   picker, head note, map note, set editor ×2), when it renders, then its mark is
   `app-cross-icon` and its accessible name is unchanged. *Seam:* each component's DOM.
   *Pinned by:* the sweep (AC-2) + `cross-icon.spec.ts`; existing `aria-label` specs unchanged.
-- [ ] **AC-4:** Given the star-rating radiogroup with 3 chosen, when it renders, then stars 1–3
+- [x] **AC-4:** Given the star-rating radiogroup with 3 chosen, when it renders, then stars 1–3
   wear the filled treatment and 4–5 the outline one, all five sharing one path geometry, so
   selection survives without colour (WCAG 1.4.1). *Seam:* `StarRating`'s DOM + rendered CSS.
   *Pinned by:* `star-rating.spec.ts` ("conveys selection by fill, not colour") +
   `review-a-stay.e2e.ts` (computed `fill` of a chosen vs unchosen star).
-- [ ] **AC-5:** Given a stored rating of 4, when a read-only star row renders (venue reviews,
+- [x] **AC-5:** Given a stored rating of 4, when a read-only star row renders (venue reviews,
   admin reviews, own review), then four filled and one outline `app-star-icon` render under an
   unchanged accessible name ("4 out of 5 stars"). *Seam:* `StarRow`'s DOM. *Pinned by:*
   `star-row.spec.ts` + `venue-reviews.spec.ts`.
-- [ ] **AC-6:** Given a failure panel, when it renders, then `appFailureIcon` is still a
+- [x] **AC-6:** Given a failure panel, when it renders, then `appFailureIcon` is still a
   directive and the svg inside it is 26 px. *Seam:* rendered CSS. *Pinned by:*
-  `failure-panel.spec.ts` (class) + `discovery-flow`/`venue-map` mocked e2e `toHaveCSS('width','26px')`.
-- [ ] **AC-7:** Given the daily view, when a set is staff-marked / booked online, then its tile
+  `failure-panel.spec.ts` (class) + `fixed-fill-state-skins.e2e.ts` `toHaveCSS('width','26px')`.
+- [x] **AC-7:** Given the daily view, when a set is staff-marked / booked online, then its tile
   shows `app-check-icon` / `app-dot-icon` beside the number (glyph + fill, never colour alone).
   *Seam:* `DailyViewTab` DOM. *Pinned by:* `daily-view-tab.spec.ts` + `operator-daily.e2e.ts`.
-- [ ] **AC-8:** `clock-icon.ts`'s "and stay" paragraph states the decision #1188 records.
+- [x] **AC-8:** `clock-icon.ts`'s "and stay" paragraph states the decision #1188 records.
   *Pinned by:* review.
-- [ ] **AC-9:** Out-of-scope marks untouched: `+`/`−` zoom, `·`, `€`, `⌘K`, `→` in running
+- [x] **AC-9:** Out-of-scope marks untouched: `+`/`−` zoom, `·`, `€`, `⌘K`, `→` in running
   strings, the price-pin `●`. *Pinned by:* AC-2's residue list + diff review.
-- [ ] **AC-10:** `npm run lint`, `format:check`, `test`, `test:a11y`, `test:e2e:a11y` green; the
+- [x] **AC-10:** `npm run lint`, `format:check`, `test`, `test:a11y`, `test:e2e:a11y` green; the
   three `scripts/check-*.mjs` guards clean; touch targets and `discover-sheet.e2e.ts` at 320 px
   green.
 
@@ -95,25 +95,21 @@ string glyph) · `playwright-cli` (mocked-suite pins for rendered size and star 
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | An svg box is wider than its glyph; a crowded row (discover head at 320 px) overflows | M | M | 13 px default; run `discover-sheet.e2e.ts` + `touch-targets*.e2e.ts` | agent | open |
-| R-2 | Tailwind preflight makes `svg` `display:block`, so an icon inside running text (requests ⚠, 🎉 heading, 🌧 button, sea banner) breaks the line | H | M | those call sites become `inline-flex items-center gap-*` or give the svg `inline` + an alignment | agent | open |
-| R-3 | Specs/e2e that assert glyph text (`'⛱ 3'`, `'Today ▾'`, `hasText: '✓'`) fail | H | L | enumerated at intake; each updated with its swap | agent | open |
-| R-4 | Star fill class loses to the svg's `fill="none"` attribute | L | H | CSS beats presentation attributes; pinned by computed `fill` in e2e (AC-4) | agent | open |
-| R-5 | Medallion ink relationship (fixed fill + fixed ink) drifts | L | M | icons take `currentColor`; the medallion keeps its ink class; `fixed-fill-state-skins.e2e.ts` re-targets the medallion by its icon | agent | open |
+| R-1 | An svg box is wider than its glyph; a crowded row (discover head at 320 px) overflows | M | M | 13 px default; run `discover-sheet.e2e.ts` + `touch-targets*.e2e.ts` | agent | closed — `discover-sheet`/`touch-targets*` green at 320 px; screenshot at 320 px |
+| R-2 | Tailwind preflight makes `svg` `display:block`, so an icon inside running text (requests ⚠, 🎉 heading, 🌧 button, sea banner) breaks the line | H | M | those call sites become `inline-flex items-center gap-*` or give the svg `inline` + an alignment | agent | closed — inline-flex rows or `[&_svg]:inline` + align (ICON-8) |
+| R-3 | Specs/e2e that assert glyph text (`'⛱ 3'`, `'Today ▾'`, `hasText: '✓'`) fail | H | L | enumerated at intake; each updated with its swap | agent | closed — every glyph-text assertion re-targeted to the icon |
+| R-4 | Star fill class loses to the svg's `fill="none"` attribute | L | H | CSS beats presentation attributes; pinned by computed `fill` in e2e (AC-4) | agent | closed — `review-a-stay.e2e.ts` reads the rendered fill |
+| R-5 | Medallion ink relationship (fixed fill + fixed ink) drifts | L | M | icons take `currentColor`; the medallion keeps its ink class; `fixed-fill-state-skins.e2e.ts` re-targets the medallion by its icon | agent | closed — medallion ink + svg size pinned in `fixed-fill-state-skins.e2e.ts` |
 
 ## Open questions / Assumptions
 
-- **Assumption:** A call-site svg box matches the glyph's *drawn* extent, not its font-size: `×`
-  draws at ~0.6 em and `✕` at ~0.8 em, so a box equal to the font-size would nearly double the
-  `×` marks. Where the issue named a size (`appFailureIcon` 26 px) it is kept. The now-dead
-  `text-[Npx] leading-none` sizing on each converted control goes with the glyph. — *Owner:*
-  agent · *Resolves by:* e2e + screenshots
-- **Assumption:** `ClockIcon` serves the requests-tab ⏰ and `LockIcon` serves the pay-page 🔒 —
-  one drawing per meaning rather than a near-duplicate. — *Owner:* agent · *Resolves by:* review
-- **Assumption:** the close ✕ and the failed-payment medallion's ✕ share one `CrossIcon` (named
-  for the drawing); they never appear on one screen. — *Owner:* agent · *Resolves by:* review
+None open.
 
 ### Resolved
+
+- **Sizing by drawn extent** (assumption) — held: every call-site box is pinned in the mocked e2e (`icon-sizes.e2e.ts` and the specs it names); screenshots at 320/390/1280 px.
+- **`ClockIcon` for ⏰, `LockIcon` for 🔒** (assumption) — held through the review gate; both docs name their two jobs.
+- **One `CrossIcon` for close and the failed-payment medallion** (assumption) — held through the review gate.
 
 - **Scope beyond the listed 24** — maintainer (intake, 2026-09-23): include the same-job sites
   (set-editor ✕ ×2, discover-head ▾ ×2, static ★ ×2 on home/venue-row, my-bookings ←, the
@@ -151,9 +147,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 7)`
+**Stage pointer:** DONE — merged via PR #1194
 
-**Next action:** Phase 7 — glyph mentions in spec prose, full gates, screenshots.
+**Next action:** none — merge close-out steps 2–3 and 6–7 are post-merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -163,8 +159,8 @@ N/A — no contract change.
 | 3 — `CheckIcon`/`HourglassIcon`/`MailIcon` (+ `DotIcon`, daily-view ✓/● pulled forward): medallions + waiting | ✅ | cdf94bc4 |
 | 4 — `AlertIcon`/`UmbrellaIcon`/`ClockIcon` (+ `ChevronDownIcon`, discover-head ▾ pulled forward — its specs assert ⛱ and ▾ in one string): failures, alerts, beach | ✅ | 09358e66 |
 | 5 — `TriangleIcon`/`ArrowLeftIcon`: wayfinding | ✅ | 9058cb1b |
-| 6 — `RainIcon`/`PartyIcon`/`LockIcon`: emoji | ✅ | this commit |
-| 7 — sweep, e2e size pins, full gates | | |
+| 6 — `RainIcon`/`PartyIcon`/`LockIcon`: emoji | ✅ | 62a2f3c8 |
+| 7 — sweep, prose freshness, e2e size pins, full gates | ✅ | a7a38cea, the close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -172,6 +168,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-3 | review gate (`code-review:code-review` + overlay, ICON-4) | 28 of 34 call-site `[&_svg]:size-*` overrides had no rendered-size pin in the mocked e2e | fixed in the close-out commit: `e2e/icon-sizes.e2e.ts` + one pin in each spec already reaching a surface |
 | F-2 | `check-inline-comments`, phase 4 | a touched doc comment in `failure-panel.ts` kept a `#858` provenance ref (guard judges a touched comment whole) | fixed in phase 5 |
 | F-1 | self-review, phase 2 | set-editor's two close buttons are not flex, so preflight's block svg sat top-left in the 44 px box | fixed in phase 2 (`inline-flex items-center justify-center`) |
 
@@ -192,7 +189,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/{set-editor,requests-tab,pending-approval-banner,payouts-tab,daily-view-tab}.ts|.html|.spec.ts` — call sites, specs
 - `frontend/src/app/admin/admin-reviews.ts|.spec.ts` — call site, spec
 - `frontend/src/app/pages/home/{home,venue-row,discover-head,coast-picker}.ts|.html|.spec.ts` — call sites, specs
-- `frontend/e2e/*.e2e.ts` — size pins, star fill, glyph-text assertions re-targeted
+- `frontend/e2e/*.e2e.ts` — size pins (`icon-sizes.e2e.ts` new), star fill, glyph-text assertions re-targeted
 - `frontend/src/app/**/*.contrast.spec.ts`, `frontend/src/app/**/*.a11y.spec.ts` — prose that named a retired glyph
 - `frontend/src/{tailwind.css,testing/glass-tokens.ts,app/shared/deadline.ts,app/operator/requests-tab.ts}` — prose that named a retired glyph
 - `.claude/skills/riviera-tailwind/SKILL.md` — ICON-7 (no pictorial character; the sweep) and ICON-8 (fill-by-call-site; inline svg in text)
@@ -239,14 +236,15 @@ Each phase: per icon, write `<name>-icon.spec.ts` (red: module missing) → the 
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-10:** verified at the phase-7 commit.
+- [x] **AC-1..AC-9:** `npx ng test --watch=false` → 312 files / 3724 tests green; `npm run test:a11y` → 109 / 1077 green (at `a7a38cea`).
+- [x] **AC-10:** `npm run lint`, `format:check` clean; full `test:e2e:a11y` → 733 passed at `a7a38cea`; the F-3 pins' 51 tests green; the four `scripts/check-*.mjs` guards clean.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] Frontend standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] Frontend standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
+- [x] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.

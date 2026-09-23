@@ -292,6 +292,7 @@ for (const theme of ['porcelain', 'dark'] as const) {
       const glyph = card.locator('[data-riv-outcome-glyph]');
       await expect(glyph).toHaveCSS('background-color', RGB.positiveFill);
       await expect(glyph).toHaveCSS('color', RGB.positiveInk);
+      await expect(glyph.locator('svg')).toHaveCSS('width', '28px');
     });
 
     test('the submitted-for-approval outcome card paints the registered waiting state', async ({
