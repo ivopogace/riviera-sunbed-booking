@@ -347,14 +347,14 @@ export function expectAaOverStops(
   }
 }
 
-/** The `--riv-medallion-*` family (#858, class F-3): the round, centred, `aria-hidden` outcome
- *  glyph in its three states — `booking-confirmation`'s ✓, `booking-pay`'s ✓/⏳/✕,
- *  `request-confirmation`'s ✉, `appFailureIcon`'s ⚠ or 🏖, and since #869 `outcome-card`'s ✓/⏳
- *  (the glyph is per site and carries no meaning; every one is `aria-hidden`).
+/** The `--riv-medallion-*` family (class F-3): the round, centred, `aria-hidden` outcome mark in
+ *  its three states — `booking-confirmation`'s check, `booking-pay`'s check, hourglass or cross,
+ *  `request-confirmation`'s envelope, `appFailureIcon`'s alert or umbrella, and `outcome-card`'s
+ *  check or hourglass (the mark is per site and carries no meaning; every one is `aria-hidden`).
  *
  *  Grouped by FORM rather than value, the `--riv-solid-fill-*` precedent: these sites carry
  *  three different pairs, and two of the three values coincide with families that are NOT this one
- *  — `#0a5f74` also paints three `bg-` fills (#854/#861) and a `--riv-cta-grad` stop, `#a3372a` is
+ *  — `#0a5f74` also paints three `bg-` fills and a `--riv-cta-grad` stop, `#a3372a` is
  *  also `SOLID_BTN_DANGER_INK` and `CONSOLE_NEGATIVE_INK`, and `#fcf0d9`/`#8a5410` is also the
  *  amber NOTICE BANNER's pair, a different form with accessible text.
  *

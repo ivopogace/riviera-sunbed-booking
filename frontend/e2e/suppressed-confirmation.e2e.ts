@@ -175,6 +175,7 @@ test('the notice reaches the stripe-profile payment surface once the booking con
   await page.getByTestId('pay-button').click();
 
   await expect(page.getByRole('heading', { name: 'You’re booked.' })).toBeVisible();
+  await expect(page.locator('app-check-icon svg')).toHaveCSS('width', '28px');
   await expect(page.getByTestId('email-withheld')).toContainText('We couldn’t email you.');
   // The page's ONE persistent live region announces it — a region created together with the done
   // panel would never announce its initial text.

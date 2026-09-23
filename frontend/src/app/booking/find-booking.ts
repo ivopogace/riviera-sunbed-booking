@@ -17,13 +17,14 @@ import { normalizeCode } from '../shared/booking-code';
 import { BookingService } from './booking.service';
 
 import { TouchTarget } from '../shared/touch-target';
+import { CrossIcon } from '../shared/cross-icon';
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
   panel:
     'relative w-full max-w-[390px] rounded-[30px] border border-riv-card-border bg-riv-dialog-glass px-6.5 pt-7 pb-6 text-riv-card-ink shadow-[0_40px_90px_rgba(6,30,40,0.5),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-[34px] backdrop-saturate-[1.8] [animation:riv-pop_0.26s_cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:[animation:none]',
   close:
-    'absolute top-4 right-4 flex size-[30px] cursor-pointer items-center justify-center rounded-full border border-riv-card-border bg-riv-wash-fill text-[14px] leading-none text-riv-card-ink-soft motion-safe:[transition:background_0.15s_ease] hover:bg-riv-wash-hover focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
+    'absolute top-4 right-4 flex size-[30px] cursor-pointer items-center justify-center rounded-full border border-riv-card-border bg-riv-wash-fill text-riv-card-ink-soft motion-safe:[transition:background_0.15s_ease] hover:bg-riv-wash-hover focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
   title: 'm-0 mb-1.25 text-[23px] font-bold tracking-[-0.02em] text-riv-card-ink',
   intro: 'm-0 mb-4.5 text-[13.5px] leading-[1.5] text-riv-card-ink-soft',
   field: 'flex flex-col gap-1.5',
@@ -50,7 +51,7 @@ const CLS = {
  */
 @Component({
   selector: 'app-find-booking',
-  imports: [FormField, BusyAction, TouchTarget],
+  imports: [FormField, BusyAction, TouchTarget, CrossIcon],
   host: {
     class:
       'fixed inset-0 z-60 flex items-center justify-center bg-[rgba(6,30,40,0.45)] p-5 backdrop-blur-[6px]',
@@ -76,7 +77,7 @@ const CLS = {
         aria-label="Close"
         (click)="requestClose()"
       >
-        <span aria-hidden="true">✕</span>
+        <app-cross-icon />
       </button>
 
       <h2 id="find-title" [class]="cls.title">Find your booking</h2>

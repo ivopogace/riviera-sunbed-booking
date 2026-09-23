@@ -22,6 +22,7 @@ import {
 import { OperatorConsoleService, payoutErrorOf } from './operator-console.service';
 import { TouchTarget } from '../shared/touch-target';
 import { PayoutStatement } from './payout-statement';
+import { RainIcon } from '../shared/rain-icon';
 
 /**
  * The Payouts tab — the operator console's payout ledger. Renders the
@@ -41,7 +42,15 @@ import { PayoutStatement } from './payout-statement';
  */
 @Component({
   selector: 'app-payouts-tab',
-  imports: [CardGlass, LoadAnnouncer, SkeletonBlock, PayoutStatement, TouchTarget, ConfirmPanel],
+  imports: [
+    CardGlass,
+    LoadAnnouncer,
+    SkeletonBlock,
+    PayoutStatement,
+    TouchTarget,
+    ConfirmPanel,
+    RainIcon,
+  ],
   templateUrl: './payouts-tab.html',
 })
 export class PayoutsTab {

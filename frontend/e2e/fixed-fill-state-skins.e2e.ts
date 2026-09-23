@@ -240,9 +240,13 @@ for (const theme of ['porcelain', 'dark'] as const) {
       await completeDialog(page.getByRole('dialog'), 'Continue to payment');
 
       await expect(page).toHaveURL(/\/booking\/confirmation/);
-      const medallion = page.locator('[aria-hidden="true"]').filter({ hasText: '✓' }).first();
+      const medallion = page
+        .locator('[aria-hidden="true"]')
+        .filter({ has: page.locator('app-check-icon') })
+        .first();
       await expect(medallion).toHaveCSS('background-color', RGB.positiveFill);
       await expect(medallion).toHaveCSS('color', RGB.positiveInk);
+      await expect(medallion.locator('svg')).toHaveCSS('width', '28px');
     });
 
     test('the request medallion paints the registered waiting state', async ({ page }) => {
@@ -264,10 +268,14 @@ for (const theme of ['porcelain', 'dark'] as const) {
       await completeDialog(page.getByRole('dialog'), 'Send request');
 
       await expect(page).toHaveURL(/\/booking\/requested/);
-      // `hasText: '⏳'` would match the info box's hourglass; the badge's own glyph is the envelope.
-      const medallion = page.locator('[aria-hidden="true"]').filter({ hasText: '✉' }).first();
+      // The info box carries an hourglass too; the badge's own mark is the envelope.
+      const medallion = page
+        .locator('[aria-hidden="true"]')
+        .filter({ has: page.locator('app-mail-icon') })
+        .first();
       await expect(medallion).toHaveCSS('background-color', RGB.waitingFill);
       await expect(medallion).toHaveCSS('color', RGB.waitingInk);
+      await expect(medallion.locator('svg')).toHaveCSS('width', '28px');
     });
 
     test('the signed-in outcome card paints the registered positive state', async ({ page }) => {
@@ -284,6 +292,7 @@ for (const theme of ['porcelain', 'dark'] as const) {
       const glyph = card.locator('[data-riv-outcome-glyph]');
       await expect(glyph).toHaveCSS('background-color', RGB.positiveFill);
       await expect(glyph).toHaveCSS('color', RGB.positiveInk);
+      await expect(glyph.locator('svg')).toHaveCSS('width', '28px');
     });
 
     test('the submitted-for-approval outcome card paints the registered waiting state', async ({
@@ -329,6 +338,8 @@ for (const theme of ['porcelain', 'dark'] as const) {
       await expect(icon).toHaveCSS('background-color', RGB.negativeFill);
       await expect(icon).toHaveCSS('color', RGB.negativeInk);
       await expect(icon).toHaveCSS('border-color', RGB.negativeBorder);
+      await expect(icon.locator('svg')).toHaveCSS('width', '26px');
+      await expect(icon.locator('svg')).toHaveCSS('stroke', RGB.negativeInk);
     });
   });
 }

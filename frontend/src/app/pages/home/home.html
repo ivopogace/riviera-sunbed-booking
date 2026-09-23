@@ -72,7 +72,7 @@
         <span class="card-meta flex items-center gap-[7px] text-[13.5px] text-riv-card-ink-soft">
           @if (card.isRated) {
             <!-- The star is decorative; the numeric rating carries the value. -->
-            <span class="star text-[#f4a939]">★</span>
+            <app-star-icon class="star text-[#f4a939] [&_svg]:fill-current" />
             <span class="rating font-bold text-riv-card-ink">{{ card.rating }}</span>
             <span class="dot text-riv-card-ink opacity-30">·</span>
             {{ card.reviewsLabel }}
@@ -179,7 +179,7 @@
 <ng-template #failureTpl>
   <!-- Designed load-failure panel: the alert role and error test id preserve accessible semantics so assistive tech announces it; the warning glyph is decorative — the heading carries the meaning. -->
   <div appFailurePanel role="alert" data-testid="error">
-    <span appFailureIcon aria-hidden="true">⚠</span>
+    <span appFailureIcon aria-hidden="true"><app-alert-icon /></span>
     <h2 appFailureTitle>We couldn’t load the beaches</h2>
     <p appFailureText>
       Something went wrong reaching Riviera. Check your connection and try again — your bookings are

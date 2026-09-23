@@ -3,17 +3,18 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { focusMover } from '../shared/focus-after-render';
-import { reviewsLabel, starGlyphs, starsOutOfFive } from '../shared/rating';
+import { reviewsLabel, starsOutOfFive } from '../shared/rating';
 import { RetryButton } from '../shared/retry-button';
 import { formatStayMonth } from '../shared/stay-month';
 import { TouchTarget } from '../shared/touch-target';
 import { VenueReviewEntry } from '../shared/venue-views';
 import { VenueService } from './venue.service';
+import { StarRow } from '../shared/star-row';
 
-/** One listed review, ready to render: glyphs and their name, the attribution, the stay month. */
+/** One listed review, ready to render: stars and their name, the attribution, the stay month. */
 interface ReviewEntryView {
   readonly id: number;
-  readonly glyphs: string;
+  readonly stars: number;
   readonly starsLabel: string;
   readonly name: string;
   readonly stayed: string;
@@ -38,7 +39,7 @@ const CLS = {
   note: 'mx-0 my-0 text-[14px] leading-[1.5] text-riv-card-ink-soft',
   list: 'm-0 flex list-none flex-col gap-3 p-0',
   card: 'rounded-[16px] border border-riv-card-track bg-riv-wash-fill px-[15px] py-3 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
-  stars: 'm-0 text-[17px] leading-none tracking-[0.14em] text-riv-accent-ink',
+  stars: 'm-0 flex text-riv-accent-ink [&_svg]:size-[15px]',
   meta: 'mx-0 mt-2 mb-0 text-[13px] text-riv-card-ink-soft',
   name: 'font-bold text-riv-card-ink',
   comment: 'mx-0 mt-1.5 mb-0 text-[14px] leading-[1.5] text-riv-card-ink',
@@ -59,7 +60,7 @@ const CLS = {
  */
 @Component({
   selector: 'app-venue-reviews',
-  imports: [BusyAction, CardGlass, RetryButton, TouchTarget],
+  imports: [BusyAction, CardGlass, RetryButton, TouchTarget, StarRow],
   host: { class: 'block' },
   template: `
     <section
@@ -88,7 +89,7 @@ const CLS = {
                 [attr.aria-label]="entry.starsLabel"
                 data-testid="review-stars"
               >
-                <span aria-hidden="true">{{ entry.glyphs }}</span>
+                <app-star-row [stars]="entry.stars" />
               </p>
               <p [class]="cls.meta">
                 <span [class]="cls.name" data-testid="review-name">{{ entry.name }}</span>
@@ -233,7 +234,7 @@ export class VenueReviews {
 function toView(entry: VenueReviewEntry): ReviewEntryView {
   return {
     id: entry.id,
-    glyphs: starGlyphs(entry.stars),
+    stars: entry.stars,
     starsLabel: starsOutOfFive(entry.stars),
     name: entry.displayName ?? ANONYMOUS,
     stayed: formatStayMonth(entry.stayedIn),

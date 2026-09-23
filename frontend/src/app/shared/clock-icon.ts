@@ -1,11 +1,14 @@
 import { Component } from '@angular/core';
 
 /**
- * The sales-close note's clock glyph, rendered in the beach-map header (`venue/venue-map.html`).
- * An inline SVG on `currentColor`, chosen over the ⏰ emoji the note used to carry: at this size,
- * on this glass, the emoji rendered platform-dependently and read as an error mark. That is a
- * judgement about this note, not a rule against emoji glyphs — the app's remaining ones
- * (`appFailureIcon`'s ⚠, the requests-tab ⏰) are unrelated and stay.
+ * The clock: a time that is running out — the sales-close note in the beach-map header
+ * (`venue/venue-map.html`) and the urgent time-left chip on the operator's request queue.
+ *
+ * <p>No pictorial mark in this app is an emoji or symbol-font character. One arrives at a weight,
+ * size and colour the UI font never chose, and differs per platform (here, at this size on this
+ * glass, the ⏰ emoji read as an error mark). Each is an inline-SVG component in `shared/` on this
+ * file's contract; `pictorial-glyph-sweep.spec.ts` fails the build on a retired codepoint.
+ * Characters doing typographic work in running text (`·`, `€`, `→`, the map zoom's `+`/`−`) stay.
  *
  * <p>A component rather than a directive — deliberately breaking the neighbouring `shared/` glyph
  * precedent (`appFailureIcon`, `appAmenityChip`). A directive can only add classes and attributes

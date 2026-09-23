@@ -29,6 +29,9 @@ import { ConsoleVenueMap } from './console-venue-map';
 import { PendingRequestItem, RequestErrorCode } from './operator-console.model';
 import { OperatorConsoleService, requestErrorOf } from './operator-console.service';
 import { PendingRequestsStore } from './pending-requests-store';
+import { CheckIcon } from '../shared/check-icon';
+import { AlertIcon } from '../shared/alert-icon';
+import { ClockIcon } from '../shared/clock-icon';
 
 /** One pending-request card's static display fields; the transient accept/decline/expired state is per-id. */
 interface RequestRow {
@@ -46,7 +49,7 @@ interface RequestRow {
 /**
  * The Requests tab — the operator console's restyle of the
  * Request-to-Book pending queue. One card per open request (guest, set + tier, date, price, "Respond
- * by", and an amber ⏰ time-left chip when urgent), a one-click **Accept — send to payment**, a
+ * by", and an amber clock time-left chip when urgent), a one-click **Accept — send to payment**, a
  * confirm-gated **Decline**, a dismissible **expired-race** notice when the sweep wins the race, and
  * an **all-caught-up** empty state.
  *
@@ -68,7 +71,16 @@ interface RequestRow {
  */
 @Component({
   selector: 'app-requests-tab',
-  imports: [CardGlass, LoadAnnouncer, SkeletonBlock, BusyAction, TouchTarget],
+  imports: [
+    CardGlass,
+    LoadAnnouncer,
+    SkeletonBlock,
+    BusyAction,
+    TouchTarget,
+    CheckIcon,
+    AlertIcon,
+    ClockIcon,
+  ],
   templateUrl: './requests-tab.html',
 })
 export class RequestsTab {

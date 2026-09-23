@@ -62,7 +62,7 @@ import { baseBlock, declarationsOf, themeBlock } from '../../../testing/styleshe
  *
  * Deliberately excluded (WCAG 1.4.3 incidental / 1.4.11 redundant decoration): the
  * availability bar track+fill (`N of M free` text carries the fact), the sun disc, the
- * ★ glyph and · separators (aria-hidden; the numeric rating carries the value), and the
+ * star mark and · separators (aria-hidden; the numeric rating carries the value), and the
  * decorative card border.
  */
 

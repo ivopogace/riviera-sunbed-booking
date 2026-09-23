@@ -5,7 +5,7 @@ import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmWithReason } from '../shared/confirm-with-reason';
 import { focusMover } from '../shared/focus-after-render';
-import { starGlyphs, starsOutOfFive } from '../shared/rating';
+import { starsOutOfFive } from '../shared/rating';
 import { formatStayMonth } from '../shared/stay-month';
 import { TouchTarget } from '../shared/touch-target';
 import { formatMoment } from './admin-moment';
@@ -13,6 +13,7 @@ import { AdminReviewsService } from './admin-reviews.service';
 import { ModerationVenue } from './admin-venues.service';
 import { AdminReviewEntryView } from './admin.model';
 import { moderationVenuePicker } from './moderation-venue-picker';
+import { StarRow } from '../shared/star-row';
 
 const BTN =
   'rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60';
@@ -36,7 +37,7 @@ const BTN =
  */
 @Component({
   selector: 'app-admin-reviews',
-  imports: [CardGlass, ConfirmWithReason, BusyAction, TouchTarget],
+  imports: [CardGlass, ConfirmWithReason, BusyAction, TouchTarget, StarRow],
   template: `
     <p class="mt-5 max-w-[62ch] text-[15px] text-riv-ink-soft">
       Hiding a review takes it off the venue page and out of the venue's score until you un-hide it.
@@ -97,9 +98,9 @@ const BTN =
                   role="img"
                   [attr.aria-label]="starsLabel(entry)"
                   [attr.data-testid]="'admin-review-stars-' + entry.id"
-                  class="text-[17px] leading-none tracking-[0.14em] text-riv-accent-ink"
-                  ><span aria-hidden="true">{{ glyphs(entry) }}</span></span
-                >
+                  class="inline-flex text-riv-accent-ink [&_svg]:size-[15px]"
+                  ><app-star-row [stars]="entry.stars"
+                /></span>
                 <span
                   class="text-[13px] font-bold text-riv-card-ink"
                   [attr.data-testid]="'admin-review-name-' + entry.id"
@@ -216,10 +217,6 @@ export class AdminReviews {
   protected readonly reason = signal('');
   protected readonly busy = signal(false);
   protected readonly notice = signal('');
-
-  protected glyphs(entry: AdminReviewEntryView): string {
-    return starGlyphs(entry.stars);
-  }
 
   protected starsLabel(entry: AdminReviewEntryView): string {
     return starsOutOfFive(entry.stars);

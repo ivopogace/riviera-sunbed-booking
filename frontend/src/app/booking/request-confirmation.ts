@@ -6,19 +6,21 @@ import { formatBookingDate } from '../shared/booking-date-label';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
+import { MailIcon } from '../shared/mail-icon';
+import { HourglassIcon } from '../shared/hourglass-icon';
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
   card: 'mx-auto my-8 max-w-[410px] rounded-[30px] px-7.5 pt-8.5 pb-7 text-center shadow-[0_18px_50px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[30px] backdrop-saturate-[1.8]',
   // The only badge rendered here is the amber "waiting" variant; the plain badge is unused.
   badge:
-    'mx-auto mb-4.5 flex size-16 items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] bg-riv-medallion-waiting-fill text-[29px] text-riv-medallion-waiting-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]',
+    'mx-auto mb-4.5 flex size-16 items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] bg-riv-medallion-waiting-fill text-riv-medallion-waiting-ink [&_svg]:size-[28px] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]',
   h1: 'm-0 mb-2 text-[27px] font-bold tracking-[-0.02em] text-riv-card-ink',
   lead: 'm-0 mb-4.5 text-[14.5px] leading-[1.5] text-riv-card-ink-soft',
   strong: 'text-riv-card-ink',
   infoBox:
     'mb-3.5 flex items-start gap-2.5 rounded-[18px] border border-riv-accent-border bg-riv-accent-fill px-4 py-3.5 text-left',
-  infoIcon: 'text-[16px] leading-[1.3]',
+  infoIcon: 'mt-0.5 shrink-0 [&_svg]:size-[16px]',
   infoText: 'm-0 text-[13px] leading-[1.5] text-riv-card-ink-soft',
   codeCard:
     'mb-4 rounded-[18px] border border-dashed border-riv-field-border bg-riv-inset-fill p-3.5',
@@ -40,11 +42,11 @@ const CLS = {
  */
 @Component({
   selector: 'app-request-confirmation',
-  imports: [RouterLink, CardGlass],
+  imports: [RouterLink, CardGlass, MailIcon, HourglassIcon],
   template: `
     @if (requested(); as r) {
       <section [class]="cls.card" appCardGlass aria-labelledby="request-title">
-        <div [class]="cls.badge" aria-hidden="true">✉</div>
+        <div [class]="cls.badge" aria-hidden="true"><app-mail-icon /></div>
         <h1 id="request-title" [class]="cls.h1">Request sent</h1>
         <p [class]="cls.lead">
           {{ r.rowLabel }} · spot {{ r.positionNo }} at {{ r.venueName }} on {{ dateLabel() }} is a
@@ -53,7 +55,7 @@ const CLS = {
         </p>
 
         <div [class]="cls.infoBox">
-          <span [class]="cls.infoIcon" aria-hidden="true">⏳</span>
+          <span [class]="cls.infoIcon" aria-hidden="true"><app-hourglass-icon /></span>
           <p [class]="cls.infoText">
             We’ll notify you by email as soon as the venue responds — expected by
             <strong [class]="cls.strong" data-testid="request-deadline">{{

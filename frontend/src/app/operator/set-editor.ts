@@ -50,6 +50,7 @@ import {
 } from './operator-console.service';
 
 import { TouchTarget } from '../shared/touch-target';
+import { CrossIcon } from '../shared/cross-icon';
 
 /** One editor row on the shared canvas's row contract, plus the cells the panel selects from. */
 interface SetRow extends BeachMapCanvasRow {
@@ -167,6 +168,7 @@ function draftForNewCell(gridY: number): SetDraft {
     LoadAnnouncer,
     TouchTarget,
     LockIcon,
+    CrossIcon,
   ],
   templateUrl: './set-editor.html',
   host: {

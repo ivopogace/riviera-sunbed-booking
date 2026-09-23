@@ -74,7 +74,7 @@
       class="row-facts flex items-center gap-[6px] truncate text-[13px] text-riv-ink-soft"
     >
       @if (card().isRated) {
-        <span class="star text-[#f4a939]">★</span>
+        <app-star-icon class="star text-[#f4a939] [&_svg]:fill-current" />
         <span class="rating font-bold text-riv-ink">{{ card().rating }}</span>
         <span class="dot text-riv-ink opacity-30">·</span>
         {{ card().reviewsLabel }}

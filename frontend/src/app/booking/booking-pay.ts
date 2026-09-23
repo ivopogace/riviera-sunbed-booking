@@ -25,6 +25,10 @@ import { CancellationTermsNote } from './cancellation-terms-note';
 import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
 
 import { TouchTarget } from '../shared/touch-target';
+import { CrossIcon } from '../shared/cross-icon';
+import { CheckIcon } from '../shared/check-icon';
+import { HourglassIcon } from '../shared/hourglass-icon';
+import { LockIcon } from '../shared/lock-icon';
 
 /** Poll cadence and budget for awaiting the webhook-driven CONFIRMED transition. */
 const POLL_MS = 1500;
@@ -90,6 +94,10 @@ const CLS = {
     BusyAction,
     TouchTarget,
     CancellationTermsNote,
+    CrossIcon,
+    CheckIcon,
+    HourglassIcon,
+    LockIcon,
   ],
   template: `
     <!-- One persistent live region announces every state change. A live region only announces
@@ -109,7 +117,7 @@ const CLS = {
     } @else if (state() === 'confirmed' || state() === 'awaiting') {
       <section class="pay-done" [class]="cls.standalone" appCardGlass aria-labelledby="pay-title">
         <div
-          class="mx-auto mb-[18px] flex h-16 w-16 items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] text-[30px] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+          class="mx-auto mb-[18px] flex h-16 w-16 items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] [&_svg]:size-[28px]"
           [class]="
             state() === 'awaiting'
               ? 'bg-riv-medallion-waiting-fill text-riv-medallion-waiting-ink'
@@ -117,7 +125,11 @@ const CLS = {
           "
           aria-hidden="true"
         >
-          {{ state() === 'confirmed' ? '✓' : '⏳' }}
+          @if (state() === 'confirmed') {
+            <app-check-icon />
+          } @else {
+            <app-hourglass-icon />
+          }
         </div>
         @if (state() === 'confirmed') {
           <h1 [class]="cls.h1" id="pay-title">You’re booked.</h1>
@@ -210,10 +222,10 @@ const CLS = {
               @case ('error') {
                 @if (terminalError()) {
                   <div
-                    class="mx-auto mt-1.5 mb-4 flex h-[60px] w-[60px] items-center justify-center rounded-full border border-riv-medallion-negative-border bg-riv-medallion-negative-fill text-[28px] text-riv-medallion-negative-ink"
+                    class="mx-auto mt-1.5 mb-4 flex h-[60px] w-[60px] items-center justify-center rounded-full border border-riv-medallion-negative-border bg-riv-medallion-negative-fill text-riv-medallion-negative-ink [&_svg]:size-[24px]"
                     aria-hidden="true"
                   >
-                    ✕
+                    <app-cross-icon />
                   </div>
                   <h1 [class]="cls.h1" id="pay-title">Payment couldn’t be completed</h1>
                 } @else {
@@ -243,7 +255,8 @@ const CLS = {
 
             @if (showElement()) {
               <p class="mt-3 flex items-center gap-1.5 text-[11.5px] text-riv-card-ink-faint">
-                <span aria-hidden="true">🔒</span> Encrypted &amp; PCI-compliant · powered by Stripe
+                <app-lock-icon class="[&_svg]:size-[12px]" /> Encrypted &amp; PCI-compliant ·
+                powered by Stripe
               </p>
             }
 

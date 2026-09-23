@@ -1098,7 +1098,7 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
     request.flush(sheetVenues());
     await settle(fixture);
     expect(text(byTestId(fixture, 'head-subtitle'))).toBe('2 venues');
-    expect(text(byTestId(fixture, 'head-day'))).toBe('Tomorrow ▾');
+    expect(text(byTestId(fixture, 'head-day'))).toBe('Tomorrow');
     expect(text(byTestId(fixture, 'head-title'))).toBe('Himarë');
   });
 

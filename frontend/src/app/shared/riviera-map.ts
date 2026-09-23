@@ -21,6 +21,7 @@ import { FOOT_CREDIT_PLACEMENT, FOOT_CREDIT_PLACEMENT_SWAPPED, MapCredit } from 
 import { LngLat, MapEngine, MapEngineOptions, MapHandle } from './map-engine';
 import { RIVIERA_MAP_OPTIONS } from './riviera-map-options';
 import { TouchTarget } from './touch-target';
+import { CrossIcon } from './cross-icon';
 
 type MapStatus = 'booting' | 'ready' | 'unavailable';
 
@@ -106,7 +107,7 @@ const HERE_CLASSES =
  */
 @Component({
   selector: 'app-riviera-map',
-  imports: [BusyAction, MapCredit, TouchTarget],
+  imports: [BusyAction, MapCredit, TouchTarget, CrossIcon],
   host: {
     class: 'relative block overflow-hidden bg-riv-solid-btn-fill',
     // A ribbon's corners are its consumer's: the map's own would round the imagery inside them.

@@ -15,6 +15,9 @@ import { formatBookingDate } from '../../shared/booking-date-label';
 import { focusMover } from '../../shared/focus-after-render';
 import { LocateIcon } from '../../shared/locate-icon';
 import { TouchTarget } from '../../shared/touch-target';
+import { CrossIcon } from '../../shared/cross-icon';
+import { UmbrellaIcon } from '../../shared/umbrella-icon';
+import { ChevronDownIcon } from '../../shared/chevron-down-icon';
 
 /** One beach of the focused region, as the beach rail offers it. */
 export interface BeachOption {
@@ -52,8 +55,9 @@ const COUNT =
 /**
  * The venue sheet's head: **one 44 px row carrying the query** — the place (a press opens the
  * coast picker) over the selling line (`8 of 11 selling today`, invariant #4 as the map's light),
- * the region's beaches gathered into one chip (`⛱ 6`, spelled out `⛱ All beaches 6 ▾` where the
- * sheet is wide, lit with the beach's own count when one is chosen), and the day (`Today ▾`).
+ * the region's beaches gathered into one chip (the umbrella and `6`, spelled out `All beaches 6`
+ * with a chevron where the sheet is wide, lit with the beach's own count when one is chosen), and
+ * the day (`Today` and a chevron).
  *
  * <p>A press on either chip opens its rail of chips under the row, with the lit chip scrolled
  * into view, and a pick closes it. The rails are hidden at peek — the head is the one row there —
@@ -66,7 +70,7 @@ const COUNT =
  */
 @Component({
   selector: 'app-discover-head',
-  imports: [LocateIcon, TouchTarget],
+  imports: [LocateIcon, TouchTarget, CrossIcon, UmbrellaIcon, ChevronDownIcon],
   host: { class: 'block' },
   template: `
     <div class="flex h-11 items-center gap-2 px-3">
@@ -93,10 +97,11 @@ const COUNT =
             <span
               class="truncate text-[19px] leading-[1.1] font-bold tracking-[-0.01em] text-riv-ink"
               ><span data-testid="head-title">{{ title() }}</span
-              >&ngsp;<span class="text-[13px] font-normal text-riv-ink-faint" aria-hidden="true"
-                >▾</span
-              ></span
-            >
+              >&ngsp;<span
+                class="text-riv-ink-faint [&_svg]:inline [&_svg]:size-[12px] [&_svg]:align-[1px]"
+                aria-hidden="true"
+                ><app-chevron-down-icon /></span
+            ></span>
             <span
               data-testid="head-subtitle"
               class="truncate text-[12.5px] leading-[1.25] text-riv-ink-soft"
@@ -116,13 +121,15 @@ const COUNT =
         [attr.aria-label]="beachChipLabel()"
         (click)="toggleBeaches()"
       >
-        <span aria-hidden="true">⛱</span>&ngsp;
+        <app-umbrella-icon class="[&_svg]:size-[15px]" />
         @if (spelled()) {
           {{ chipWord() }}&ngsp;
         }
         <span [class]="COUNT">{{ chipCount() }}</span>
         @if (spelled()) {
-          &ngsp;<span class="text-[11px] opacity-70" aria-hidden="true">▾</span>
+          <span class="opacity-70 [&_svg]:size-[11px]" aria-hidden="true"
+            ><app-chevron-down-icon
+          /></span>
         }
       </button>
       <button
@@ -133,9 +140,10 @@ const COUNT =
         [attr.aria-expanded]="dayOpen()"
         (click)="toggleDay()"
       >
-        {{ dayWord() }}&ngsp;<span class="text-[11px] text-riv-card-ink-faint" aria-hidden="true"
-          >▾</span
-        >
+        {{ dayWord()
+        }}<span class="text-riv-card-ink-faint [&_svg]:size-[11px]" aria-hidden="true"
+          ><app-chevron-down-icon
+        /></span>
       </button>
     </div>
     @if (railsShown()) {
@@ -191,10 +199,10 @@ const COUNT =
             appTouchTarget
             data-testid="head-note-dismiss"
             aria-label="Dismiss message"
-            class="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-full text-[19px] leading-none text-riv-ink-soft"
+            class="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-full text-riv-ink-soft"
             (click)="noteDismissed.emit()"
           >
-            <span aria-hidden="true">×</span>
+            <app-cross-icon />
           </button>
         </div>
       }
@@ -221,7 +229,7 @@ export class DiscoverHead {
   readonly beaches = input.required<readonly BeachOption[]>();
   /** The chosen beach's code, `''` for the whole region. */
   readonly beach = input('');
-  /** Spell the beach chip out (`⛱ All beaches 6 ▾`): the sheet is wide enough for the words. */
+  /** Spell the beach chip out (`All beaches 6`): the sheet is wide enough for the words. */
   readonly spelled = input(false);
   /** Today in Europe/Tirane, ISO — the page's clock, never this component's. */
   readonly today = input.required<string>();

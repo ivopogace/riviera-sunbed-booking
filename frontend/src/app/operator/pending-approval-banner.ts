@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { HourglassIcon } from '../shared/hourglass-icon';
 
 /**
  * The pending-approval notice for a signed-in PENDING operator: the whole console
@@ -11,6 +12,7 @@ import { OperatorAuth } from '../core/operator-auth';
  */
 @Component({
   selector: 'app-pending-approval-banner',
+  imports: [HourglassIcon],
   template: `
     @if (operator.pendingApproval()) {
       <!-- Not an output element: this reports standing account state, not the result of an action. -->
@@ -20,7 +22,9 @@ import { OperatorAuth } from '../core/operator-auth';
         data-testid="pending-approval-banner"
         class="mb-4 flex items-start gap-3 rounded-[16px] border border-riv-warn-edge/55 bg-riv-warn-edge/15 px-4 py-3"
       >
-        <span aria-hidden="true" class="text-[18px] leading-[1.4]">⏳</span>
+        <span aria-hidden="true" class="mt-px shrink-0 [&_svg]:size-[18px]"
+          ><app-hourglass-icon
+        /></span>
         <p class="m-0 text-[13.5px] leading-[1.5] text-riv-card-ink">
           <strong class="font-semibold">Your account is awaiting approval.</strong>
           You can set everything up now — your venues stay hidden from tourists until a platform

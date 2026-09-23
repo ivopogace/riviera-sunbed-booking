@@ -131,6 +131,8 @@ test('request-to-book: request dialog → 202 PENDING_REQUEST → request-sent �
   await expect(page.getByTestId('booking-code')).toContainText(CODE);
   await expect(page.getByTestId('request-deadline')).not.toBeEmpty();
   await expect(page.getByText(/haven.t been charged/)).toBeVisible();
+  await expect(page.locator('app-mail-icon svg')).toHaveCSS('width', '28px');
+  await expect(page.locator('app-hourglass-icon svg')).toHaveCSS('width', '16px');
   await expectNoSeriousAxeViolations(page, 'request-sent screen');
 
   // Check status by code: still pending — waiting copy + deadline (booking-view, unchanged).
@@ -185,6 +187,7 @@ test('same-day request: today is offered at a Request venue and the accepted boo
   // After the accept, the same-day booking offers Pay now — the pay window runs to its deadline.
   await page.goto(`/booking/${CODE}`);
   await expect(page.getByTestId('request-accepted')).toContainText('Request accepted');
+  await expect(page.getByTestId('request-accepted').locator('svg')).toHaveCSS('width', '13px');
   await expect(page.getByTestId('pay-now')).toBeVisible();
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'booking view (same-day accepted request)');
@@ -267,6 +270,7 @@ test('pay window closed mid-page: Pay now fails → honest terminal state + link
   await page.getByTestId('pay-now').click();
   await expect(page).toHaveURL(/\/booking\/pay/);
   await expect(page.getByTestId('pay-button')).toBeVisible();
+  await expect(page.locator('app-lock-icon svg')).toHaveCSS('width', '12px');
 
   // The pay-window sweep cancels the booking while the guest sits on the page.
   phase = 'cancelled';
@@ -274,6 +278,7 @@ test('pay window closed mid-page: Pay now fails → honest terminal state + link
 
   // The failure re-checks server truth and goes terminal — no retry loop on a dead intent.
   await expect(page.getByRole('heading', { name: /couldn.t be completed/ })).toBeVisible();
+  await expect(page.locator('app-cross-icon svg')).toHaveCSS('width', '24px');
   await expect(page.getByTestId('pay-button')).toHaveCount(0);
   await expectNoSeriousAxeViolations(page, 'payment page (terminal, dead intent)');
 

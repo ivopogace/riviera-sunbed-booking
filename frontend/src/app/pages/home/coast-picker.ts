@@ -24,6 +24,7 @@ import { TouchTarget } from '../../shared/touch-target';
 import { fitPins } from './camera-fit';
 import { lowestFromPrice } from './pin-crowding';
 import { VenueCard } from './venue-card';
+import { CrossIcon } from '../../shared/cross-icon';
 
 /** A row of the coast index: a place with its venue count and its lowest from-price. */
 export interface PickerPlace {
@@ -150,7 +151,7 @@ export function coastIndex(cards: readonly VenueCard[]): readonly PickerRegion[]
  */
 @Component({
   selector: 'app-coast-picker',
-  imports: [LocateIcon, NgTemplateOutlet, PanelGlass, RivieraMap, TouchTarget],
+  imports: [LocateIcon, NgTemplateOutlet, PanelGlass, RivieraMap, TouchTarget, CrossIcon],
   host: {
     class: 'contents',
     '(keydown.escape)': 'closed.emit()',
@@ -177,11 +178,11 @@ export function coastIndex(cards: readonly VenueCard[]): readonly PickerRegion[]
           type="button"
           appTouchTarget
           data-testid="picker-close"
-          class="ml-auto -mr-2 inline-flex touch-manipulation items-center justify-center rounded-full text-[22px] leading-none text-riv-ink-soft hover:text-riv-ink"
+          class="ml-auto -mr-2 inline-flex touch-manipulation items-center justify-center rounded-full text-riv-ink-soft [&_svg]:size-[14px] hover:text-riv-ink"
           aria-label="Close"
           (click)="closed.emit()"
         >
-          <span aria-hidden="true">×</span>
+          <app-cross-icon />
         </button>
       </div>
       <div class="flex shrink-0 px-3 pb-2">

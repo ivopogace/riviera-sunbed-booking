@@ -20,15 +20,17 @@ export class FailurePanel {}
 
 /**
  * Decorative danger badge — `aria-hidden`, supplied by every call site; the heading carries the
- * meaning. Wears the `--riv-medallion-negative-*` state of the outcome-medallion skin (#858): a
- * solid, theme-invariant light-peach fill, so the ink clears contrast unambiguously (css:S7924)
- * and cannot drift when this directive is mounted by hosts of differing themes.
+ * meaning. A surface, so a directive; the mark inside it is an icon component
+ * (`<app-alert-icon />`, `<app-umbrella-icon />`), which the badge sizes to 26 px. Wears the
+ * `--riv-medallion-negative-*` state of the outcome-medallion skin: a solid, theme-invariant
+ * light-peach fill, so the ink clears contrast unambiguously (css:S7924) and cannot drift when
+ * this directive is mounted by hosts of differing themes.
  */
 @Directive({
   selector: '[appFailureIcon]',
   host: {
     class:
-      'failure-icon flex items-center justify-center w-14 h-14 mx-auto mb-4 rounded-full bg-riv-medallion-negative-fill border border-riv-medallion-negative-border text-riv-medallion-negative-ink text-[26px]',
+      'failure-icon flex items-center justify-center w-14 h-14 mx-auto mb-4 rounded-full bg-riv-medallion-negative-fill border border-riv-medallion-negative-border text-riv-medallion-negative-ink [&_svg]:size-[26px]',
   },
 })
 export class FailureIcon {}

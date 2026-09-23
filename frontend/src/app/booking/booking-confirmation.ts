@@ -8,6 +8,7 @@ import { WithheldEmailNotice } from './withheld-email-notice';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
+import { CheckIcon } from '../shared/check-icon';
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
@@ -33,15 +34,15 @@ const CLS = {
  */
 @Component({
   selector: 'app-booking-confirmation',
-  imports: [ManageBookingLink, RouterLink, CardGlass, BookingQr, WithheldEmailNotice],
+  imports: [ManageBookingLink, RouterLink, CardGlass, BookingQr, WithheldEmailNotice, CheckIcon],
   template: `
     @if (confirmation(); as c) {
       <section [class]="cls.card" appCardGlass aria-labelledby="confirmation-title">
         <div
-          class="mx-auto mb-[18px] flex h-16 w-16 items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] bg-riv-medallion-positive-fill text-[30px] text-riv-medallion-positive-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+          class="mx-auto mb-[18px] flex h-16 w-16 items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] bg-riv-medallion-positive-fill text-riv-medallion-positive-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] [&_svg]:size-[28px]"
           aria-hidden="true"
         >
-          ✓
+          <app-check-icon />
         </div>
         <h1 [class]="cls.h1" id="confirmation-title">You’re booked.</h1>
         <p [class]="cls.lead">

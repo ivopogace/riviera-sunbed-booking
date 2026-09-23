@@ -38,6 +38,10 @@ import { VenueReviews } from './venue-reviews';
 import { VenueService } from './venue.service';
 
 import { TouchTarget } from '../shared/touch-target';
+import { StarIcon } from '../shared/star-icon';
+import { AlertIcon } from '../shared/alert-icon';
+import { UmbrellaIcon } from '../shared/umbrella-icon';
+import { ArrowLeftIcon } from '../shared/arrow-left-icon';
 
 /**
  * One rendered set on the map: the raw {@link SetView}, whether it is bookable
@@ -137,6 +141,10 @@ interface VenueHeader {
     MapTile,
     AvailabilityCalendar,
     ...FAILURE_DIRECTIVES,
+    StarIcon,
+    AlertIcon,
+    UmbrellaIcon,
+    ArrowLeftIcon,
   ],
   templateUrl: './venue-map.html',
   // --riv-tile (tile size + rail-cell heights) now lives on the shared canvas's host.

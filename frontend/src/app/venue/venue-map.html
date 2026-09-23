@@ -6,7 +6,7 @@
     appPanelGlass
     (click)="onBack()"
   >
-    <span aria-hidden="true">←</span> All beaches
+    <app-arrow-left-icon class="[&_svg]:size-[14px]" /> All beaches
   </button>
 
   @if (venueView(); as v) {
@@ -87,7 +87,7 @@
 
             <p class="flex items-center flex-wrap gap-[7px] text-[14px] text-riv-ink-soft">
               @if (v.isRated) {
-                <span class="text-[#ffd16b]" aria-hidden="true">★</span>
+                <app-star-icon class="text-[#ffd16b] [&_svg]:fill-current" />
                 <span class="font-bold text-riv-ink" aria-label="Rated {{ v.rating }} out of 5">{{
                   v.rating
                 }}</span>
@@ -371,7 +371,7 @@
     }
   } @else if (notFound()) {
     <div appFailurePanel role="alert" data-testid="map-not-found">
-      <span appFailureIcon aria-hidden="true">🏖</span>
+      <span appFailureIcon aria-hidden="true"><app-umbrella-icon /></span>
       <h2 appFailureTitle>This venue isn’t available</h2>
       <p appFailureText>
         It may have been removed or paused by its owner. A booking you already hold is unaffected —
@@ -381,7 +381,7 @@
     </div>
   } @else if (failed()) {
     <div appFailurePanel role="alert" data-testid="map-error">
-      <span appFailureIcon aria-hidden="true">⚠</span>
+      <span appFailureIcon aria-hidden="true"><app-alert-icon /></span>
       <h2 appFailureTitle>We couldn’t load this beach map</h2>
       <p appFailureText>
         The live availability didn’t come through. Give it another go — no set is booked until you

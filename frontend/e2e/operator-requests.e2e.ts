@@ -62,7 +62,7 @@ function seedQueue() {
       guestName: 'Ana Guest',
       amount: { minorUnits: 4500, currency: 'EUR' },
       requestedAt: '2026-07-01T09:00:00Z',
-      requestExpiresAt: inHours(3), // urgent → the ⏰ chip renders
+      requestExpiresAt: inHours(3), // urgent → the clock chip renders
     },
     {
       bookingId: 12,
@@ -198,6 +198,7 @@ test('lists the queue, accepts (badge decrements), and declines to empty — no 
   await page.getByRole('button', { name: 'Confirm decline' }).click();
   await expect(page.getByTestId('requests-empty')).toBeVisible();
   await expect(page.getByTestId('requests-empty')).toContainText('All caught up');
+  await expect(page.getByTestId('requests-empty').locator('svg')).toHaveCSS('width', '22px');
   await expect(page.getByTestId('oc-requests-badge')).toHaveCount(0); // 0 → the badge disappears
   await expect(page.getByTestId('requests-notice')).toContainText('declined');
   await expectNoSeriousAxeViolations(page, 'all caught up');
@@ -328,6 +329,7 @@ test('the lost sweep race and its dismiss both land focus (WCAG 2.4.3, #1082)', 
   // The card stays, flipped to the expired copy — focus lands on the copy that explains why.
   await page.getByRole('button', { name: /Accept.*from Ana Guest/ }).click();
   await expect(page.getByTestId('expired-race-11')).toBeFocused();
+  await expect(page.getByTestId('expired-race-11').locator('svg')).toHaveCSS('width', '14px');
 
   // Dismiss removes the card, and the queue still holds Bora's — so focus lands on that row.
   await page.getByTestId('dismiss-expired').click();

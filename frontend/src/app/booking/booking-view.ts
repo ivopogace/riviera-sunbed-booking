@@ -21,6 +21,7 @@ import { BookingService } from './booking.service';
 import { ReviewPanel } from './review-panel';
 
 import { TouchTarget } from '../shared/touch-target';
+import { PartyIcon } from '../shared/party-icon';
 
 /** The card-glass EXTRAS `appCardGlass` deliberately doesn't carry (radius stays with the consumer). */
 const CARD_SURFACE =
@@ -143,7 +144,16 @@ const CLS = {
  */
 @Component({
   selector: 'app-booking-view',
-  imports: [RouterLink, CardGlass, StatusChip, BookingQr, BusyAction, TouchTarget, ReviewPanel],
+  imports: [
+    RouterLink,
+    CardGlass,
+    StatusChip,
+    BookingQr,
+    BusyAction,
+    TouchTarget,
+    ReviewPanel,
+    PartyIcon,
+  ],
   template: `
     @if (notFound()) {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title">
@@ -184,7 +194,9 @@ const CLS = {
               >
                 @if (b.requestExpiresAt) {
                   <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowAwaiting }}">
-                    Request accepted&ngsp;<span aria-hidden="true">🎉</span>
+                    Request accepted&ngsp;<app-party-icon
+                      class="[&_svg]:inline [&_svg]:size-[13px] [&_svg]:align-[-2px]"
+                    />
                   </h2>
                   <p [class]="cls.bannerBody">
                     {{ b.venueName }} accepted your booking request. Pay now to confirm your spot.

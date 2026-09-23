@@ -61,8 +61,17 @@ describe('DiscoverHead', () => {
     expect(text(byTestId('head-title'))).toBe('Himarë');
     expect(text(byTestId('head-subtitle'))).toBe('8 of 11 selling today');
     expect(byTestId('head-located')).toBeNull();
-    expect(text(byTestId('head-beaches'))).toBe('⛱ 3');
-    expect(text(byTestId('head-day'))).toBe('Today ▾');
+    expect(text(byTestId('head-beaches'))).toBe('3');
+    expect(text(byTestId('head-day'))).toBe('Today');
+  });
+
+  it('draws its marks: the umbrella leads the beach chip, a chevron opens the title and the day', () => {
+    render();
+
+    expect(byTestId('head-beaches')!.firstElementChild!.tagName).toBe('APP-UMBRELLA-ICON');
+    expect(byTestId('head-beaches')!.querySelector('app-chevron-down-icon')).toBeNull();
+    expect(byTestId('head-day')!.querySelector('app-chevron-down-icon')).not.toBeNull();
+    expect(byTestId('head-place')!.querySelector('app-chevron-down-icon')).not.toBeNull();
   });
 
   it('wears the located glyph beside the title once the tourist is placed', () => {
@@ -94,7 +103,8 @@ describe('DiscoverHead', () => {
 
     fixture.componentRef.setInput('spelled', true);
     fixture.detectChanges();
-    expect(text(chip)).toBe('⛱ All beaches 3 ▾');
+    expect(text(chip)).toBe('All beaches 3');
+    expect(chip.querySelector('app-chevron-down-icon')).not.toBeNull();
   });
 
   it('lights the chip with the beach’s own count when one is chosen', () => {
@@ -103,20 +113,20 @@ describe('DiscoverHead', () => {
 
     expect(chip.getAttribute('aria-current')).toBe('true');
     expect(chip.getAttribute('aria-label')).toBe('Dhërmi: change the beach');
-    expect(text(chip)).toBe('⛱ Dhërmi 3 ▾');
+    expect(text(chip)).toBe('Dhërmi 3');
   });
 
   it('names the day as a tourist says it: Today, Tomorrow, then the weekday', () => {
     render({ date: '2026-06-16' });
-    expect(text(byTestId('head-day'))).toBe('Tomorrow ▾');
+    expect(text(byTestId('head-day'))).toBe('Tomorrow');
 
     fixture.componentRef.setInput('date', '2026-06-19');
     fixture.detectChanges();
-    expect(text(byTestId('head-day'))).toBe('Fri, 19 Jun ▾');
+    expect(text(byTestId('head-day'))).toBe('Fri, 19 Jun');
 
     fixture.componentRef.setInput('date', '2026-08-01');
     fixture.detectChanges();
-    expect(text(byTestId('head-day'))).toBe('Sat, 1 Aug ▾');
+    expect(text(byTestId('head-day'))).toBe('Sat, 1 Aug');
   });
 
   it('opens the day rail with the week ahead, today current, and closes it on a pick', () => {

@@ -40,6 +40,7 @@ import { BookingService, bookingErrorOf } from './booking.service';
 import { CancellationTermsNote } from './cancellation-terms-note';
 
 import { TouchTarget } from '../shared/touch-target';
+import { CrossIcon } from '../shared/cross-icon';
 
 /** What a set includes — the product's fixed unit (CLAUDE.md: 2 loungers + umbrella, full day). */
 const SET_INCLUDES = '2 loungers + umbrella · full day';
@@ -79,6 +80,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
     FieldGlass,
     TouchTarget,
     CancellationTermsNote,
+    CrossIcon,
   ],
   host: {
     // The fixed, scrim-backed backdrop must paint ABOVE the sticky glass header (z-60) — the app shell relies on this.
@@ -105,12 +107,12 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
         <button
           appTouchTarget
           type="button"
-          class="dialog-close absolute top-[14px] right-[14px] flex size-[30px] cursor-pointer items-center justify-center rounded-full border border-riv-cta-border bg-[#31798a] text-[15px] leading-none text-white motion-safe:[transition:filter_0.15s_ease] hover:brightness-[1.12] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
+          class="dialog-close absolute top-[14px] right-[14px] flex size-[30px] cursor-pointer items-center justify-center rounded-full border border-riv-cta-border bg-[#31798a] text-white [&_svg]:size-[14px] motion-safe:[transition:filter_0.15s_ease] hover:brightness-[1.12] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
           data-testid="dialog-close"
           aria-label="Close"
           (click)="requestClose()"
         >
-          <span aria-hidden="true">✕</span>
+          <app-cross-icon />
         </button>
         <span
           id="booking-dialog-venue"

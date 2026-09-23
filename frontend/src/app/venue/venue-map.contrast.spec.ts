@@ -67,7 +67,7 @@ import {
  * content, not a disabled control.
  *
  * Deliberately excluded (WCAG 1.4.3 incidental / 1.4.11 redundant decoration): the availability
- * bar track+fill (`N of M free` carries the fact), the ★ / · glyphs and the sun disc
+ * bar track+fill (`N of M free` carries the fact), the star / · marks and the sun disc
  * (aria-hidden; the numeric rating carries the value), the failure badge (aria-hidden; the
  * heading carries the meaning), and the decorative live-tile/card borders.
  *
