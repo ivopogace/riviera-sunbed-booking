@@ -1,5 +1,5 @@
 <title>Riviera Stay Prototype</title>
-<meta name="description" content="Throwaway prototype for epic #1096: multi-day stays and stitched itineraries on the beach map.">
+<meta name="description" content="Throwaway prototype for epic #1096: multi-day stays on the home page and the venue beach map.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&display=swap">
 <style>
@@ -12,6 +12,16 @@
   --glass: rgba(255,255,255,0.62);
   --glass-strong: rgba(255,255,255,0.9);
   --sheet: #f6fafb;
+  --sea-map: linear-gradient(160deg, #9bdbe8, #5fbfd2);
+  --land: #f3ead3;
+  --shore: #e0cfa2;
+  --land-ink: rgba(95,77,42,0.75);
+  --sea-ink: rgba(8,90,110,0.6);
+  --fit-same: #0f7d8c;
+  --fit-same-ink: #085a6e;
+  --fit-moves: #b0680c;
+  --fit-moves-ink: #7a4a08;
+  --fit-no: #8a9a95;
   --glass-edge: rgba(255,255,255,0.85);
   --shadow: 0 14px 44px rgba(7,42,58,0.16);
   --accent: #0e8aa8;
@@ -75,6 +85,7 @@
     --t-pa-badge: #bfe9f0; --t-pa-badge-ink: #0b2a31;
     --seg-1: #3fb8c8; --seg-2: #e19a3c; --seg-3: #a08bf0; --seg-4: #ee6f95; --seg-ink: #0b1418;
     --chrome: #070d10; --chrome-2: #122229; --device: #000000;
+    --sea-map: linear-gradient(160deg, #123f52, #0b2b3a); --land: #26324a; --shore: #3b4a64; --land-ink: rgba(229,211,168,0.7); --sea-ink: rgba(124,215,232,0.55); --fit-same: #3fb8c8; --fit-same-ink: #8fd6e2; --fit-moves: #e19a3c; --fit-moves-ink: #ecc07e; --fit-no: #7d8f89;
   }
 }
 :root[data-theme="dark"] {
@@ -96,6 +107,7 @@
   --t-pa-badge: #bfe9f0; --t-pa-badge-ink: #0b2a31;
   --seg-1: #3fb8c8; --seg-2: #e19a3c; --seg-3: #a08bf0; --seg-4: #ee6f95; --seg-ink: #0b1418;
   --chrome: #070d10; --chrome-2: #122229; --device: #000000;
+    --sea-map: linear-gradient(160deg, #123f52, #0b2b3a); --land: #26324a; --shore: #3b4a64; --land-ink: rgba(229,211,168,0.7); --sea-ink: rgba(124,215,232,0.55); --fit-same: #3fb8c8; --fit-same-ink: #8fd6e2; --fit-moves: #e19a3c; --fit-moves-ink: #ecc07e; --fit-no: #7d8f89;
 }
 
 * { box-sizing: border-box; }
@@ -222,7 +234,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
 
 .sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 20; max-height: 64%; overflow-y: auto; border-radius: 26px 26px 0 0; padding: 8px 16px 26px; background: var(--sheet); box-shadow: 0 -12px 40px rgba(7,42,58,0.25); border-top: 1px solid var(--glass-edge); }
 .sheet.full { top: 0; max-height: none; border-radius: 0; }
-.sheet .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--ink-faint); margin: 2px auto 10px; opacity: 0.5; }
+.hsheet .grab, .sheet .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--ink-faint); margin: 2px auto 10px; opacity: 0.5; }
 .sheet .panel { padding: 4px 2px; background: none; border: 0; box-shadow: none; backdrop-filter: none; }
 .sheet-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .x-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--glass-edge); background: var(--glass); cursor: pointer; font-size: 18px; line-height: 1; }
@@ -280,11 +292,64 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
 .hm td.w { background: var(--t-wi-fill); }
 .hm td.p { background: var(--segc); }
 .hm td.id { width: 28px; text-align: right; padding-right: 4px; color: var(--ink-soft); }
+.hwrap { position: absolute; inset: 0; overflow-y: auto; }
+.hhead { position: absolute; top: 0; left: 0; right: 0; z-index: 6; display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--glass); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-bottom: 1px solid var(--glass-edge); font-size: 14px; }
+.hhead b { font-size: 17px; letter-spacing: -0.01em; }
+.hhead .sun { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle, #ffe1a1, #ffc769); margin-right: 7px; vertical-align: -2px; }
+.coast { position: relative; overflow: hidden; background: var(--sea-map); }
+.coast svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.coast .land { fill: var(--land); }
+.coast .shore { fill: none; stroke: var(--shore); stroke-width: 0.9; }
+.coast .lbl { position: absolute; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--land-ink); transform: translate(-50%, -50%); pointer-events: none; }
+.coast .sea-lbl { position: absolute; font-size: 12px; font-style: italic; color: var(--sea-ink); transform: translate(-50%, -50%) rotate(-70deg); pointer-events: none; letter-spacing: 0.2em; }
+.pin { position: absolute; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px 4px 6px; border-radius: 999px; border: 1.5px solid var(--glass-edge); background: var(--sheet); color: var(--ink); font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(7,42,58,0.25); font-variant-numeric: tabular-nums; z-index: 2; white-space: nowrap; }
+.pin.t-no { opacity: 0.7; }
+.pin.hl, .pin:hover { transform: translate(-50%, -50%) scale(1.14); z-index: 4; }
+.g { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex: none; border: 2px solid; box-sizing: border-box; }
+.g-same { background: var(--fit-same); border-color: var(--fit-same); }
+.g-moves { border-color: var(--fit-moves); background: linear-gradient(90deg, var(--fit-moves) 0 50%, transparent 50% 100%); }
+.g-no { border-color: var(--fit-no); background: transparent; }
+.g-day { border-color: var(--accent-ink); background: var(--accent-ink); }
+.hsheet { position: relative; z-index: 3; margin-top: -22px; border-radius: 24px 24px 0 0; background: var(--sheet); padding: 8px 12px 30px; min-height: 60%; box-shadow: 0 -10px 30px rgba(7,42,58,0.18); }
+.hq { display: flex; gap: 6px; align-items: center; }
+.qchip { height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 999px; border: 1.5px solid var(--t-tk-border); background: var(--glass-strong); font-size: 13.5px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+.qchip.place { flex: 1; min-width: 0; border: 0; background: transparent; padding-left: 4px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; height: auto; }
+.qchip.place b { font-size: 15px; }
+.qchip.place small { text-align: left; font-size: 12px; color: var(--ink-soft); font-weight: 500; white-space: normal; }
+.qchip.on { background: var(--accent-ink); border-color: var(--accent-ink); color: var(--glass-strong); }
+.qchip .cnt { min-width: 20px; height: 20px; border-radius: 10px; background: var(--accent-ink); color: var(--glass-strong); font-size: 11px; display: inline-grid; place-items: center; padding: 0 5px; }
+.rail { display: flex; gap: 6px; overflow-x: auto; padding: 10px 0 4px; scrollbar-width: none; }
+.rail .qchip { height: 38px; }
+.grp { margin: 16px 2px 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); display: flex; justify-content: space-between; }
+.vcard { display: flex; gap: 12px; width: 100%; text-align: left; padding: 10px; border-radius: 18px; border: 1px solid var(--glass-edge); background: var(--glass-strong); cursor: pointer; margin-top: 8px; align-items: stretch; }
+.vcard.hl, .vcard:hover { border-color: var(--accent); }
+.vcard.faded { opacity: 0.62; }
+.vph { width: 84px; flex: none; border-radius: 13px; background: var(--sea); position: relative; overflow: hidden; min-height: 84px; }
+.vph::after { content: ""; position: absolute; left: 50%; top: 40%; width: 20px; height: 20px; margin: -10px; border-radius: 50%; background: radial-gradient(circle, #ffe1a1, #ffc769); }
+.vph::before { content: ""; position: absolute; inset: auto 0 0 0; height: 38%; background: rgba(239,224,189,0.6); }
+.vtx { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; font-size: 13px; color: var(--ink-soft); }
+.vtx b { color: var(--ink); font-size: 15px; display: flex; justify-content: space-between; gap: 8px; }
+.vtx b em { font-style: normal; font-size: 14px; white-space: nowrap; }
+.fit { display: inline-flex; align-items: center; gap: 7px; font-weight: 650; font-size: 13.5px; }
+.fit.t-same { color: var(--fit-same-ink); }
+.fit.t-moves { color: var(--fit-moves-ink); }
+.fit.t-no { color: var(--ink-soft); }
+.bar1 { display: flex; align-items: center; gap: 8px; }
+.bar1 i { display: block; width: 72px; height: 6px; border-radius: 3px; background: var(--t-tk-fill); outline: 1px solid var(--t-tk-border); overflow: hidden; position: relative; }
+.bar1 i s { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
+.dh { display: grid; grid-template-columns: 400px 1fr; gap: 18px; height: 780px; padding: 18px; }
+.dh .dpanel { border-radius: 22px; overflow-y: auto; padding: 14px 14px 20px; background: var(--sheet); position: relative; }
+.dh .coast { border-radius: 22px; }
+.dh .vcard { border-radius: 0; border: 0; border-bottom: 1px solid var(--glass-edge); background: transparent; margin: 0; padding: 12px 6px; }
+.dh .vcard.hl, .dh .vcard:hover { background: var(--accent-fill); }
+.dh .vph { width: 72px; min-height: 72px; }
+.dh .pop { left: 0; right: auto; top: 118px; }
+.dh-top { position: sticky; top: -14px; background: var(--sheet); padding: 4px 0 8px; z-index: 5; }
 @media (prefers-reduced-motion: reduce) { .tile { transition: none; } .tile:hover, .tile.hl { transform: none; } }
 </style>
 
 <div class="bar" id="bar">
-  <div class="tag"><b>PROTOTYPE · EPIC #1096</b><span>throwaway · fake beach · nothing is booked</span></div>
+  <div class="tag"><b>PROTOTYPE · EPIC #1096</b><span>throwaway · fake coast · nothing is booked</span></div>
   <fieldset class="ctl"><legend>Frame</legend><div class="seg">
     <label><input type="radio" name="frame" value="phone" id="f-phone"><span>Phone</span></label>
     <label><input type="radio" name="frame" value="desk" id="f-desk"><span>Desktop</span></label>
@@ -295,25 +360,25 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
     <label><input type="radio" name="budget" value="2" id="b-2" checked><span>2</span></label>
     <label><input type="radio" name="budget" value="3" id="b-3"><span>3</span></label>
   </div></fieldset>
-  <fieldset class="ctl"><legend>Beach occupancy</legend><div class="seg">
+  <fieldset class="ctl"><legend>Coast occupancy</legend><div class="seg">
     <label><input type="radio" name="occ" value="0.4" id="o-40"><span>40%</span></label>
     <label><input type="radio" name="occ" value="0.6" id="o-60" checked><span>60%</span></label>
     <label><input type="radio" name="occ" value="0.7" id="o-70"><span>70%</span></label>
     <label><input type="radio" name="occ" value="0.85" id="o-85"><span>85%</span></label>
+  </div></fieldset>
+  <fieldset class="ctl"><legend>Existing bookings</legend><div class="seg">
+    <label><input type="radio" name="model" value="runs" id="g-runs" checked><span>Mixed stays</span></label>
+    <label><input type="radio" name="model" value="indep" id="g-indep"><span>Single days</span></label>
   </div></fieldset>
   <fieldset class="ctl"><legend>Partly-free tile</legend><div class="seg">
     <label><input type="radio" name="tstyle" value="split" id="t-split" checked><span>Split + count</span></label>
     <label><input type="radio" name="tstyle" value="badge" id="t-badge"><span>Count badge</span></label>
     <label><input type="radio" name="tstyle" value="bar" id="t-bar"><span>Day bar</span></label>
   </div></fieldset>
-  <fieldset class="ctl"><legend>Venue mode</legend><div class="seg">
-    <label><input type="radio" name="mode" value="INSTANT" id="m-i" checked><span>Instant</span></label>
-    <label><input type="radio" name="mode" value="REQUEST" id="m-r"><span>Request</span></label>
-  </div></fieldset>
-  <button class="btn" type="button" id="reshuffle">Reshuffle beach ↻</button>
+  <button class="btn" type="button" id="reshuffle">Reshuffle coast ↻</button>
 </div>
 
-<p class="hint">Pretend today is 20 Jun 2027. Every set's daily availability is random and independent (the epic's pessimistic model), 60 sets, 4 walk-in only. Suggested path: keep 12–25 Jul, open the plan from the banner, tap a partly-free set and plan around it, then try budget 1 and 85% occupancy.</p>
+<p class="hint">Pretend today is Sat 10 Jul 2027. Ten venues, 60 sets each, availability random per venue around the coast occupancy. "Mixed stays" fills each set with runs of bookings (blockier, as the epic expects once stays exist); "Single days" is the epic's pessimistic independent model. Try: open the date chip and pick Today, then Several days…; tap a faded venue to see its dead end; open a ◐ venue to see its plan.</p>
 
 <main id="stage"></main>
 
@@ -326,16 +391,29 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   var SEASON = Date.UTC(2027, 6, 1);
   var SEASON_DAYS = 62;
   var DAY = 86400000;
+  var TODAY = 9;
   var CAP = 15;
   var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var ROW_NAME = ['Front row', 'Row B', 'Row C', 'Row D', 'Row E', 'Row F'];
 
+  var VENUES = [
+    { name: 'Dhërmi Beach Club', beach: 'Dhërmi', x: 44, y: 11, adj: 0, base: 1600, mode: 'INSTANT', rating: '4.6', reviews: 128 },
+    { name: 'Drymades Lido', beach: 'Dhërmi', x: 37, y: 19, adj: -0.3, base: 1400, mode: 'INSTANT', rating: '4.4', reviews: 61 },
+    { name: 'Aquarium Bay', beach: 'Dhërmi', x: 51, y: 24, adj: 0.2, base: 2200, mode: 'REQUEST', rating: '4.8', reviews: 203 },
+    { name: 'Kalaja Sunbeds', beach: 'Dhërmi', x: 42, y: 31, adj: -0.15, base: 1500, mode: 'INSTANT', rating: '4.2', reviews: 37 },
+    { name: 'Blue Lagoon Club', beach: 'Dhërmi', x: 55, y: 6, adj: 0.1, base: 1800, mode: 'INSTANT', rating: '4.5', reviews: 92 },
+    { name: 'Gjipe Beach Club', beach: 'Gjipe', x: 42, y: 50, adj: -0.35, base: 2200, mode: 'REQUEST', rating: '4.9', reviews: 76 },
+    { name: 'Gjipe Canyon Sands', beach: 'Gjipe', x: 50, y: 57, adj: 0.15, base: 1700, mode: 'INSTANT', rating: '4.4', reviews: 40 },
+    { name: 'Jalë Bay Lido', beach: 'Jalë', x: 46, y: 73, adj: -0.25, base: 1800, mode: 'INSTANT', rating: '4.7', reviews: 144 },
+    { name: 'Jalë Pine Beach', beach: 'Jalë', x: 55, y: 81, adj: 0.25, base: 1600, mode: 'REQUEST', rating: '4.1', reviews: 29 },
+    { name: 'Livadh Shore', beach: 'Jalë', x: 50, y: 90, adj: -0.05, base: 1500, mode: 'INSTANT', rating: '4.3', reviews: 55 }
+  ];
+  var BEACHES = ['Dhërmi', 'Gjipe', 'Jalë'];
+
   var sets = [];
   ROWS.forEach(function (r, ri) {
-    for (var c = 1; c <= COLS; c++) {
-      sets.push({ id: r + c, row: ri, pos: c, online: !(ri === 5 && c >= 7), rate: ri === 0 ? 2400 : ri === 1 ? 2000 : 1600 });
-    }
+    for (var c = 1; c <= COLS; c++) sets.push({ id: r + c, row: ri, pos: c, online: !(ri === 5 && c >= 7) });
   });
   var online = sets.filter(function (s) { return s.online; });
   var byId = {};
@@ -343,12 +421,14 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
 
   var S = {
     frame: window.innerWidth >= 1300 ? 'both' : 'phone',
-    budget: 2, extra: false, occ: 0.6, seed: 11, tstyle: 'split', mode: 'INSTANT',
+    budget: 2, extra: false, occ: 0.6, seed: 11, tstyle: 'split', model: 'runs',
+    screen: 'home', venue: 0, rail: false,
     start: 11, end: 24, cal: false, dStart: null, dEnd: null,
     sel: null, view: 'home', anchor: null, sheet: false, review: false, done: false,
     inspector: false
   };
   var taken = [];
+  var CV = 0;
 
   function rng(seed) {
     return function () {
@@ -358,13 +438,28 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
       return ((t ^ t >>> 14) >>> 0) / 4294967296;
     };
   }
+  function venueOcc(v) { return Math.min(0.95, Math.max(0.05, S.occ + VENUES[v].adj)); }
   function regen() {
-    var r = rng(S.seed * 7919 + Math.round(S.occ * 100));
-    taken = sets.map(function () {
-      var a = []; for (var d = 0; d < SEASON_DAYS; d++) a.push(r() < S.occ); return a;
+    var r = rng(S.seed * 7919 + Math.round(S.occ * 100) + (S.model === 'runs' ? 1 : 0));
+    taken = VENUES.map(function (V, vi) {
+      var p = venueOcc(vi);
+      return sets.map(function () {
+        var a = [];
+        if (S.model === 'indep') { for (var d = 0; d < SEASON_DAYS; d++) a.push(r() < p); return a; }
+        var mt = 3, mf = Math.max(1, mt * (1 - p) / p), st = r() < p;
+        while (a.length < SEASON_DAYS) {
+          var len = Math.max(1, Math.round(-Math.log(1 - r()) * (st ? mt : mf)));
+          for (var k = 0; k < len && a.length < SEASON_DAYS; k++) a.push(st);
+          st = !st;
+        }
+        return a;
+      });
     });
   }
-  function free(s, d) { return s.online && !taken[s.idx][d]; }
+  function rate(s, v) { var b = VENUES[v === undefined ? CV : v].base; return s.row === 0 ? b + 800 : s.row === 1 ? b + 400 : b; }
+  function free(s, d) { return s.online && !taken[CV][s.idx][d]; }
+  function V() { return VENUES[S.venue]; }
+  function isReq() { return V().mode === 'REQUEST'; }
 
   function date(i) { return new Date(SEASON + i * DAY); }
   function fd(i) { var x = date(i); return x.getUTCDate() + ' ' + MON[x.getUTCMonth()]; }
@@ -377,6 +472,8 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   function nd(n) { return n + (n === 1 ? ' day' : ' days'); }
   function eur(m) { return '€' + (m % 100 ? (m / 100).toFixed(2) : String(m / 100)); }
   function days() { var a = []; for (var d = S.start; d <= S.end; d++) a.push(d); return a; }
+  function isStay() { return S.end > S.start; }
+  function dayWord(d) { return d === TODAY ? 'Today' : d === TODAY + 1 ? 'Tomorrow' : fdw(d); }
 
   function dist(a, b) { return Math.abs(a.pos - b.pos) + 4 * Math.abs(a.row - b.row); }
   function moveText(a, b) {
@@ -428,7 +525,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
       if (last && last.set === s) last.to = ds[i];
       else segs.push({ set: s, from: ds[i], to: ds[i] });
     });
-    segs.forEach(function (g) { g.n = g.to - g.from + 1; g.cost = g.n * g.set.rate; });
+    segs.forEach(function (g) { g.n = g.to - g.from + 1; g.cost = g.n * rate(g.set); });
     return { moves: best.m, dist: best.d, segs: segs, total: segs.reduce(function (x, g) { return x + g.cost; }, 0) };
   }
 
@@ -448,24 +545,45 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
     return null;
   }
 
+  function runOf(s, ds) {
+    var best = null, st = null;
+    ds.forEach(function (d) {
+      if (free(s, d)) { if (st === null) st = d; if (!best || d - st + 1 > best.n) best = { set: s, from: st, to: d, n: d - st + 1 }; }
+      else st = null;
+    });
+    return best;
+  }
   function longestRun(ds, prefer) {
     var best = null;
     online.forEach(function (s) {
-      var runStart = null;
-      ds.forEach(function (d, i) {
-        if (free(s, d)) {
-          if (runStart === null) runStart = d;
-          var len = d - runStart + 1;
-          if (!best || len > best.n || (len === best.n && s.id === prefer)) best = { set: s, from: runStart, to: d, n: len };
-        } else runStart = null;
-      });
+      var r = runOf(s, ds);
+      if (r && (!best || r.n > best.n || (r.n === best.n && s.id === prefer))) best = r;
     });
     return best;
   }
 
   function effBudget() { return Math.min(3, S.budget + (S.extra ? 1 : 0)); }
 
+  function verdict(vi) {
+    var keep = CV; CV = vi;
+    var ds = days(), N = ds.length, full = 0, fullMin = null;
+    online.forEach(function (s) {
+      if (ds.every(function (d) { return free(s, d); })) { full++; var r = rate(s); if (fullMin === null || r < fullMin) fullMin = r; }
+    });
+    var out = { vi: vi, N: N, full: full, total: online.length, fullMin: fullMin };
+    if (N > 1) {
+      var p = full > 0 ? null : solve(ds, null, null);
+      out.moves = full > 0 ? 0 : p ? p.moves : null;
+      out.tier = full > 0 ? 'same' : (p && p.moves <= S.budget) ? 'moves' : 'no';
+      out.longest = full > 0 ? null : longestRun(ds, null);
+    } else out.tier = full > 0 ? 'day' : 'no';
+    CV = keep;
+    return out;
+  }
+  function verdicts() { return VENUES.map(function (_, i) { return verdict(i); }); }
+
   function derive() {
+    CV = S.venue;
     var ds = days(), N = ds.length;
     var info = {};
     var full = 0, part = 0, none = 0;
@@ -477,7 +595,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
     });
     var budget = effBudget();
     var plan = null, planOver = null;
-    var planActive = S.view === 'plan' || (S.view === 'home' && full === 0);
+    var planActive = N > 1 && (S.view === 'plan' || (S.view === 'home' && full === 0));
     if (planActive) {
       plan = S.anchor ? anchoredPlan(ds, S.anchor, budget) : (function () { var p = solve(ds, null, null); return p && p.moves <= budget ? p : null; })();
       if (!plan && budget < 3) {
@@ -485,7 +603,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
         if (p3 && p3.moves <= 3) planOver = p3;
       }
     }
-    var dflt = solve(ds, null, null);
+    var dflt = N > 1 ? solve(ds, null, null) : null;
     return { planActive: planActive, ds: ds, N: N, info: info, full: full, part: part, none: none, plan: plan, planOver: planOver, dflt: dflt, budget: budget, longest: longestRun(ds, S.anchor || S.sel) };
   }
 
@@ -495,6 +613,82 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
     return m;
   }
   function segc(i) { return '--segc: var(--seg-' + (((i - 1) % 4) + 1) + ')'; }
+
+  function fitHTML(v, long) {
+    if (v.tier === 'day') return '<span class="fit t-same"><i class="g g-day"></i>' + v.full + ' of ' + v.total + ' sets free</span>';
+    if (v.N === 1) return '<span class="fit t-no"><i class="g g-no"></i>Full on ' + fd(S.start) + '</span>';
+    if (v.tier === 'same') return '<span class="fit t-same"><i class="g g-same"></i>Same spot all ' + nd(v.N) + (long ? ' · ' + v.full + (v.full === 1 ? ' spot' : ' spots') : '') + '</span>';
+    if (v.tier === 'moves') return '<span class="fit t-moves"><i class="g g-moves"></i>Fits with ' + v.moves + (v.moves === 1 ? ' move' : ' moves') + '</span>';
+    return '<span class="fit t-no"><i class="g g-no"></i>Can\'t host ' + nd(v.N) + (v.longest ? ' · up to ' + nd(v.longest.n) + ' here' : '') + '</span>';
+  }
+
+  function coastHTML(vs, h, pad) {
+    pad = pad || 0;
+    function yy(y) { return pad + y * (100 - pad) / 100; }
+    var html = '<div class="coast" style="height:' + h + '"><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="land" d="M40 0 C31 14 47 26 38 40 C31 52 52 62 43 76 C38 86 54 92 50 100 L100 100 L100 0 Z"/><path class="shore" d="M40 0 C31 14 47 26 38 40 C31 52 52 62 43 76 C38 86 54 92 50 100"/></svg>';
+    html += '<span class="sea-lbl" style="left:16%;top:52%">Ionian Sea</span>';
+    html += '<span class="lbl" style="left:72%;top:' + yy(18) + '%">Dhërmi</span><span class="lbl" style="left:70%;top:' + yy(53) + '%">Gjipe</span><span class="lbl" style="left:74%;top:' + yy(82) + '%">Jalë</span>';
+    vs.forEach(function (v) {
+      var P = VENUES[v.vi];
+      var g = v.tier === 'day' ? 'g-day' : v.tier === 'same' ? 'g-same' : v.tier === 'moves' ? 'g-moves' : 'g-no';
+      html += '<button type="button" class="pin t-' + v.tier + '" style="left:' + P.x + '%;top:' + yy(P.y) + '%" data-act="openv" data-v="' + v.vi + '" data-vh="' + v.vi + '" aria-label="' + P.name + '"><i class="g ' + g + '"></i>' + eur(P.base) + '</button>';
+    });
+    return html + '</div>';
+  }
+
+  function tierRank(t) { return { same: 0, day: 0, moves: 1, no: 2 }[t]; }
+
+  function listHTML(vs, mob) {
+    var h = '';
+    BEACHES.forEach(function (b) {
+      var group = vs.filter(function (v) { return VENUES[v.vi].beach === b; });
+      group.sort(function (a, c) { return tierRank(a.tier) - tierRank(c.tier) || a.vi - c.vi; });
+      var ok = group.filter(function (v) { return v.tier !== 'no'; }).length;
+      h += '<div class="grp"><span>' + b + '</span><span>' + ok + ' of ' + group.length + '</span></div>';
+      group.forEach(function (v) {
+        var P = VENUES[v.vi];
+        var sub = v.N === 1
+          ? '<span class="bar1"><i><s style="width:' + Math.round(100 * v.full / v.total) + '%"></s></i></span>'
+          : '';
+        h += '<button type="button" class="vcard' + (v.tier === 'no' ? ' faded' : '') + '" data-act="openv" data-v="' + v.vi + '" data-vh="' + v.vi + '"><span class="vph"></span><span class="vtx"><b>' + P.name + '<em>' + eur(P.base) + '/day</em></b><span>★ ' + P.rating + ' (' + P.reviews + ') · ' + (P.mode === 'INSTANT' ? 'Instant' : 'Request to book') + '</span>' + fitHTML(v, true) + sub + '</span></button>';
+      });
+    });
+    return h;
+  }
+
+  function railHTML() {
+    var h = '<div class="rail">';
+    for (var d = TODAY; d < TODAY + 7; d++) {
+      var on = !isStay() && S.start === d;
+      h += '<button type="button" class="qchip' + (on ? ' on' : '') + '" data-act="day" data-d="' + d + '">' + (d === TODAY ? 'Today' : d === TODAY + 1 ? 'Tomorrow' : fdw(d).slice(0, 6)) + '</button>';
+    }
+    h += '<button type="button" class="qchip' + (isStay() ? ' on' : '') + '" data-act="opencal">' + (isStay() ? fr(S.start, S.end) + ' · ' + nd(S.end - S.start + 1) : 'Several days…') + '</button>';
+    return h + '</div>';
+  }
+
+  function homeHeadHTML(vs) {
+    var ok = vs.filter(function (v) { return v.tier !== 'no'; }).length;
+    var sub = isStay() ? ok + ' of ' + vs.length + ' can host your ' + nd(S.end - S.start + 1) : ok + ' of ' + vs.length + ' have sets free ' + (S.start === TODAY ? 'today' : 'on ' + fd(S.start));
+    var dl = isStay() ? fr(S.start, S.end) : dayWord(S.start);
+    return '<div class="hq"><button type="button" class="qchip place" data-act="noop"><b>Himarë coast ▾</b><small>' + sub + '</small></button><button type="button" class="qchip" data-act="noop">☂ <span class="cnt">3</span></button><button type="button" class="qchip' + (S.rail ? ' on' : '') + '" data-act="rail">' + dl + ' ▾</button></div>' + (S.rail ? railHTML() : '');
+  }
+
+  function homePhone(vs) {
+    var h = '<div><div class="frame-label">Phone · 390px · Home</div><div class="phone"><div class="hwrap">';
+    h += '<div class="hhead"><b><span class="sun"></span>Riviera</b><span>My bookings</span></div>';
+    h += coastHTML(vs, '330px', 18);
+    h += '<div class="hsheet"><div class="grab"></div>' + homeHeadHTML(vs) + listHTML(vs, true) + '</div>';
+    h += '</div>';
+    if (S.cal) h += '<div class="sheet full"><div class="sheet-top"><b>Your stay</b><button type="button" class="x-btn" data-act="closecal" aria-label="Close">×</button></div>' + calHTML(true) + '</div>';
+    return h + '</div></div>';
+  }
+
+  function homeDesk(vs, zoom) {
+    var h = '<div class="desk-wrap"><div class="frame-label">Desktop · 1100px · Home' + (zoom < 1 ? ' (shown at ' + Math.round(zoom * 100) + '%)' : '') + '</div><div class="desk" style="zoom:' + zoom + '"><div class="chrome-top"><i></i><i></i><i></i><em>riviera.al</em></div>';
+    h += '<div class="dh"><div class="dpanel"><div class="dh-top">' + homeHeadHTML(vs) + '</div>' + listHTML(vs, false) + '</div>' + coastHTML(vs, '100%') + '</div>';
+    if (S.cal) h += '<div class="pop" style="left:18px;right:auto;top:' + (S.rail ? 150 : 100) + 'px">' + calHTML(false) + '</div>';
+    return h + '</div></div>';
+  }
 
   function tileHTML(s, D, pm, mob) {
     var inf = D.info[s.id];
@@ -523,9 +717,9 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
     });
     h += '</div><div class="prom">Promenade</div></div>';
     h += '<div class="legend">';
-    h += '<span><i class="sw s-available"></i>Free all days</span>';
+    h += '<span><i class="sw s-available"></i>' + (D.N > 1 ? 'Free all days' : 'Free') + '</span>';
     h += '<span><i class="sw s-premium"></i>Front row</span>';
-    h += '<span class="v-' + S.tstyle + '"><i class="sw s-partial"></i>Partly free</span>';
+    if (D.N > 1) h += '<span class="v-' + S.tstyle + '"><i class="sw s-partial"></i>Partly free</span>';
     h += '<span><i class="sw s-walkin"></i>Walk-in only</span>';
     h += '<span><i class="sw s-taken"></i>Taken</span>';
     h += '</div></section>';
@@ -533,10 +727,11 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   }
 
   function headHTML(D, mob) {
-    var h = '<button type="button" class="pill" data-act="noop">← All beaches</button>';
-    var id = '<span class="chip">' + (S.mode === 'INSTANT' ? 'Instant booking' : 'Request to book') + '</span>' +
-      '<h1 class="vname">Dhërmi Beach Club</h1><p class="meta">★ 4.6 · 128 reviews · Dhërmi, Vlorë · from €16/day</p>';
-    var df = '<button type="button" class="datef" data-act="opencal"><span class="cal-ico" aria-hidden="true"></span><span><small>Your stay</small><strong>' + fd(S.start) + ' → ' + fd(S.end) + '</strong></span><span class="days">' + nd(D.N) + '</span></button>';
+    var P = V();
+    var h = '<button type="button" class="pill" data-act="home">← All beaches</button>';
+    var id = '<span class="chip">' + (P.mode === 'INSTANT' ? 'Instant booking' : 'Request to book') + '</span>' +
+      '<h1 class="vname">' + P.name + '</h1><p class="meta">★ ' + P.rating + ' · ' + P.reviews + ' reviews · ' + P.beach + ', Vlorë · from ' + eur(P.base) + '/day</p>';
+    var df = '<button type="button" class="datef" data-act="opencal"><span class="cal-ico" aria-hidden="true"></span><span><small>' + (D.N > 1 ? 'Your stay' : 'Your day') + '</small><strong>' + (D.N > 1 ? fd(S.start) + ' → ' + fd(S.end) : fdw(S.start)) + '</strong></span><span class="days">' + nd(D.N) + '</span></button>';
     if (mob) {
       h += '<header class="head glass"><div class="band"></div>' + id + df + '</header>';
     } else {
@@ -546,6 +741,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   }
 
   function bannerHTML(D) {
+    if (D.N === 1) return D.full > 0 ? '<div class="banner ok"><span class="dot"></span><span><b>' + D.full + ' sets free</b> on ' + fdw(S.start) + '.</span></div>' : '<div class="banner warn"><span class="dot"></span><span>Fully booked on ' + fdw(S.start) + '.</span></div>';
     if (D.full > 0) return '<div class="banner ok"><span class="dot"></span><span><b>' + D.full + (D.full === 1 ? ' spot is' : ' spots are') + ' free for all ' + nd(D.N) + '.</b> ' + D.part + ' more are free for part of your stay.</span></div>';
     if (D.dflt && D.dflt.moves <= effBudget()) return '<button type="button" class="banner warn" data-act="plan"><span class="dot"></span><span>No single spot is free for all ' + nd(D.N) + '. <b>See a ' + D.dflt.moves + '-move plan</b></span></button>';
     return '<button type="button" class="banner warn" data-act="plan"><span class="dot"></span><span>This beach can\'t fit all ' + nd(D.N) + ' without too many moves. <b>See your options</b></span></button>';
@@ -566,20 +762,27 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
     }).join('') + '</div>';
   }
 
+  function othersHTML() {
+    var vs = verdicts().filter(function (v) { return v.vi !== S.venue && (v.tier === 'same' || v.tier === 'moves'); });
+    vs.sort(function (a, b) { return tierRank(a.tier) - tierRank(b.tier) || VENUES[a.vi].base - VENUES[b.vi].base; });
+    var h = '<h3>Other beaches for ' + fr(S.start, S.end) + '</h3>';
+    if (!vs.length) return h + '<p>No other venue on this coast can host these dates either. Try fewer days.</p>';
+    vs.slice(0, 3).forEach(function (v) {
+      var P = VENUES[v.vi];
+      h += '<button type="button" class="alt" style="width:100%;text-align:left;cursor:pointer" data-act="openv" data-v="' + v.vi + '"><span><b>' + P.name + '</b><small>' + fitHTML(v, false) + ' · ' + P.beach + '</small></span><span>' + eur(P.base) + '/day</span></button>';
+    });
+    return h;
+  }
+
   function planHTML(D) {
     var p = D.plan, h = '';
     var who = S.anchor ? byId[S.anchor] : null;
     if (!p) {
-      h += '<div class="kicker">Can\'t host your whole stay</div><h2>Dhërmi Beach Club can\'t fit all ' + nd(D.N) + '</h2>';
+      h += '<div class="kicker">Can\'t host your whole stay</div><h2>' + V().name + ' can\'t fit all ' + nd(D.N) + '</h2>';
       h += '<p>Every way of covering ' + fr(S.start, S.end) + ' here needs more than ' + D.budget + (D.budget === 1 ? ' move' : ' moves') + '.</p>';
-      if (D.planOver && !S.extra) {
-        h += '<button type="button" class="cta2" data-act="extra">Show a ' + D.planOver.moves + '-move plan anyway</button>';
-      }
+      if (D.planOver && !S.extra) h += '<button type="button" class="cta2" data-act="extra">Show a ' + D.planOver.moves + '-move plan anyway</button>';
       h += longestHTML(D);
-      h += '<h3>Other beaches free ' + fr(S.start, S.end) + '<span class="eg">EXAMPLE</span></h3>';
-      h += '<div class="alt"><span><b>Jalë Bay Lido</b><small>Same spot all ' + nd(D.N) + ' · 12 km</small></span><span>€18/day</span></div>';
-      h += '<div class="alt"><span><b>Gjipe Beach Club</b><small>Same spot all ' + nd(D.N) + ' · 6 km</small></span><span>€22/day</span></div>';
-      h += '<div class="alt"><span><b>Palasë Shore</b><small>1 move · 9 km</small></span><span>€15/day</span></div>';
+      h += othersHTML();
       return h;
     }
     var nSpots = p.segs.length;
@@ -596,11 +799,11 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
     h += '<ol class="tl">';
     p.segs.forEach(function (g, i) {
       if (i > 0) h += '<div class="move">Move on <b>' + fdw(g.from) + '</b>: ' + moveText(p.segs[i - 1].set, g.set) + '</div>';
-      h += '<li style="' + segc(i + 1) + '"><span class="num">' + (i + 1) + '</span><div class="stop" data-seg="' + (i + 1) + '"><span><b>' + g.set.id + '</b> <small>' + ROW_NAME[g.set.row] + '</small><br><small>' + fr(g.from, g.to) + ' · ' + nd(g.n) + '</small></span><em>' + eur(g.set.rate) + '/day</em></div></li>';
+      h += '<li style="' + segc(i + 1) + '"><span class="num">' + (i + 1) + '</span><div class="stop" data-seg="' + (i + 1) + '"><span><b>' + g.set.id + '</b> <small>' + ROW_NAME[g.set.row] + '</small><br><small>' + fr(g.from, g.to) + ' · ' + nd(g.n) + '</small></span><em>' + eur(rate(g.set)) + '/day</em></div></li>';
     });
     h += '</ol>';
     h += '<div class="price"><span>' + eur(avg) + '/day avg · ' + nd(D.N) + '</span><strong>' + eur(p.total) + '</strong></div>';
-    h += '<button type="button" class="cta" data-act="review">' + (S.mode === 'INSTANT' ? 'Review & pay' : 'Review request') + '</button>';
+    h += '<button type="button" class="cta" data-act="review">' + (isReq() ? 'Review request' : 'Review & pay') + '</button>';
     if (p.moves > 0) h += longestHTML(D);
     if (S.view !== 'home') h += '<p style="margin-top:12px;font-size:13px"><button type="button" class="link" data-act="back">Back to the map</button></p>';
     return h;
@@ -614,27 +817,28 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
 
   function setHTML(D) {
     var s = byId[S.sel], inf = D.info[s.id], h = '';
-    h += '<div class="kicker">' + ROW_NAME[s.row] + ' · ' + eur(s.rate) + '/day</div>';
+    h += '<div class="kicker">' + ROW_NAME[s.row] + ' · ' + eur(rate(s)) + '/day</div>';
     if (inf.st === 'available' || inf.st === 'premium') {
-      h += '<h2>' + s.id + ' is free for all ' + nd(D.N) + '</h2><p>' + fr(S.start, S.end) + ' · 2 loungers + umbrella, every day.</p>';
-      h += stripCov(s, D);
-      h += '<div class="price"><span>' + eur(s.rate) + ' × ' + nd(D.N) + '</span><strong>' + eur(s.rate * D.N) + '</strong></div>';
-      h += '<button type="button" class="cta" data-act="bookone">' + (S.mode === 'INSTANT' ? 'Book ' + s.id : 'Request ' + s.id) + '</button>';
+      h += '<h2>' + s.id + ' is free ' + (D.N > 1 ? 'for all ' + nd(D.N) : 'on ' + fdw(S.start)) + '</h2><p>' + fr(S.start, S.end) + ' · 2 loungers + umbrella' + (D.N > 1 ? ', every day.' : ', full day.') + '</p>';
+      if (D.N > 1) h += stripCov(s, D);
+      h += '<div class="price"><span>' + eur(rate(s)) + ' × ' + nd(D.N) + '</span><strong>' + eur(rate(s) * D.N) + '</strong></div>';
+      h += '<button type="button" class="cta" data-act="bookone">' + (isReq() ? 'Request ' : 'Book ') + s.id + '</button>';
     } else if (inf.st === 'partial') {
       h += '<h2>' + s.id + ' is free ' + inf.c + ' of your ' + nd(D.N) + '</h2><p>It\'s taken on the dashed days.</p>';
       h += stripCov(s, D);
       h += '<button type="button" class="cta" data-act="planaround">Plan my stay around ' + s.id + '</button>';
-      var own = (function () { var best = null, st = null; D.ds.forEach(function (d) { if (free(s, d)) { if (st === null) st = d; if (!best || d - st + 1 > best.n) best = { set: s, from: st, to: d, n: d - st + 1 }; } else st = null; }); return best; })();
+      var own = runOf(s, D.ds);
       if (own) h += '<button type="button" class="cta2" data-act="shortenown">Shorten my stay to ' + fr(own.from, own.to) + ' (' + nd(own.n) + ')</button>';
     } else {
-      h += '<h2>' + s.id + ' is taken all your days</h2><p>Pick a highlighted spot, or let us plan your stay.</p>';
-      h += '<button type="button" class="cta2" data-act="plan">Plan my stay</button>';
+      h += '<h2>' + s.id + ' is taken ' + (D.N > 1 ? 'all your days' : 'on ' + fdw(S.start)) + '</h2><p>Pick a highlighted spot' + (D.N > 1 ? ', or let us plan your stay.' : '.') + '</p>';
+      if (D.N > 1) h += '<button type="button" class="cta2" data-act="plan">Plan my stay</button>';
     }
     h += '<p style="margin-top:12px;font-size:13px"><button type="button" class="link" data-act="back">Back to the map</button></p>';
     return h;
   }
 
-  function homeHTML(D) {
+  function venueHomeHTML(D) {
+    if (D.N === 1) return '<div class="kicker">Your day</div><h2>Pick your spot</h2><p>' + D.full + ' sets free on ' + fdw(S.start) + '. Tap one to book it.</p>';
     if (D.full > 0) return '<div class="kicker">Your stay</div><h2>Pick your spot</h2><p>' + D.full + ' spots are free for all ' + nd(D.N) + ', ' + fr(S.start, S.end) + '. Tap a partly-free spot to see which of your days it covers.</p>';
     return planHTML(D);
   }
@@ -642,7 +846,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   function panelBody(D) {
     if (S.view === 'set' && S.sel) return setHTML(D);
     if (S.view === 'plan') return planHTML(D);
-    return homeHTML(D);
+    return venueHomeHTML(D);
   }
 
   function currentPlan(D) {
@@ -651,7 +855,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
       var inf = D.info[S.sel];
       if (inf.st === 'available' || inf.st === 'premium') {
         var s = byId[S.sel];
-        return { moves: 0, dist: 0, segs: [{ set: s, from: S.start, to: S.end, n: D.N, cost: D.N * s.rate }], total: D.N * s.rate };
+        return { moves: 0, dist: 0, segs: [{ set: s, from: S.start, to: S.end, n: D.N, cost: D.N * rate(s) }], total: D.N * rate(s) };
       }
     }
     return null;
@@ -660,7 +864,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   function calHTML(mob) {
     var ds = S.dStart, de = S.dEnd;
     var h = '<div class="cal">';
-    h += '<div class="cap">Stays of up to ' + CAP + ' days at this venue. Tap your first day, then your last.</div><div class="months">';
+    h += '<div class="cap">Tap your first day, then your last. Stays of up to ' + CAP + ' days' + (S.screen === 'venue' ? ' at this venue' : '') + '.</div><div class="months">';
     [6, 7].forEach(function (mo) {
       var first = Date.UTC(2027, mo, 1), n = new Date(Date.UTC(2027, mo + 1, 0)).getUTCDate();
       var lead = (new Date(first).getUTCDay() + 6) % 7;
@@ -669,7 +873,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
       for (var i = 0; i < lead; i++) h += '<span></span>';
       for (var dd = 1; dd <= n; dd++) {
         var idx = Math.round((Date.UTC(2027, mo, dd) - SEASON) / DAY);
-        var dis = ds !== null && de === null && (idx > ds + CAP - 1);
+        var dis = idx < TODAY || (ds !== null && de === null && idx > ds + CAP - 1);
         var c = 'd';
         var lo = ds, hi = de === null ? ds : de;
         if (lo !== null && idx >= lo && idx <= hi) c += (idx === lo || idx === hi) ? ' end' : ' in';
@@ -679,32 +883,33 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
     });
     h += '</div><div class="foot">';
     if (ds === null) h += '<div>Pick your first day</div>';
-    else if (de === null) h += '<div><b>' + fd(ds) + '</b> → pick your last day</div>';
+    else if (de === null) h += '<div><b>' + fd(ds) + '</b> → pick your last day<br><span style="color:var(--ink-soft);font-size:13px">or keep just this one day</span></div>';
     else h += '<div><b>' + nd(de - ds + 1) + '</b><br><span style="color:var(--ink-soft);font-size:13px">' + fr(ds, de) + '</span></div>';
-    h += '<button type="button" class="cta" data-act="applycal"' + (ds === null ? ' disabled' : '') + '>Show beach</button></div></div>';
+    h += '<button type="button" class="cta" data-act="applycal"' + (ds === null ? ' disabled' : '') + '>' + (S.screen === 'home' ? 'Show beaches' : 'Show beach') + '</button></div></div>';
     return h;
   }
 
   function reviewHTML(D) {
     var p = currentPlan(D);
+    var req = isReq();
     if (S.done) {
-      return '<div class="done"><div class="kicker">' + (S.mode === 'INSTANT' ? 'Paid · confirmed' : 'Request sent') + '</div><h2>' + (S.mode === 'INSTANT' ? 'Your stay is booked' : 'Dhërmi Beach Club will answer within 24 hours') + '</h2><p>One code for every morning of your stay.</p><div class="code">RVB-7K2Q</div><p>' + fr(S.start, S.end) + ' · ' + p.segs.map(function (g) { return g.set.id; }).join(' → ') + '</p><p style="font-family:var(--mono);font-size:12px">The prototype ends here. The booking page ("your spot today") is not built yet.</p><button type="button" class="cta2" data-act="restart">Start over</button></div>';
+      return '<div class="done"><div class="kicker">' + (req ? 'Request sent' : 'Paid · confirmed') + '</div><h2>' + (req ? V().name + ' will answer within 24 hours' : 'Your ' + (D.N > 1 ? 'stay' : 'day') + ' is booked') + '</h2><p>One code for every morning' + (D.N > 1 ? ' of your stay' : '') + '.</p><div class="code">RVB-7K2Q</div><p>' + fr(S.start, S.end) + ' · ' + p.segs.map(function (g) { return g.set.id; }).join(' → ') + '</p><p style="font-family:var(--mono);font-size:12px">The prototype ends here. The booking page ("your spot today") is not built yet.</p><button type="button" class="cta2" data-act="restart">Start over</button></div>';
     }
-    var h = '<div class="kicker">' + (S.mode === 'INSTANT' ? 'Step 2 of 2 · Review' : 'Review your request') + '</div><h2>Dhërmi Beach Club</h2>';
-    h += '<p>' + fdw(S.start) + ' – ' + fdw(S.end) + ' 2027 · <b>' + nd(D.N) + '</b><br>2 loungers + umbrella, full day, every day.</p>';
+    var h = '<div class="kicker">' + (req ? 'Review your request' : 'Step 2 of 2 · Review') + '</div><h2>' + V().name + '</h2>';
+    h += '<p>' + (D.N > 1 ? fdw(S.start) + ' – ' + fdw(S.end) + ' 2027 · <b>' + nd(D.N) + '</b><br>2 loungers + umbrella, full day, every day.' : fdw(S.start) + ' 2027<br>2 loungers + umbrella, full day.') + '</p>';
     h += '<ul class="rows">';
     p.segs.forEach(function (g, i) {
-      h += '<li style="' + segc(i + 1) + '"><span><span class="n">' + (i + 1) + '</span>' + g.set.id + ' · ' + fr(g.from, g.to) + '</span><span>' + nd(g.n) + ' × ' + eur(g.set.rate) + ' = ' + eur(g.cost) + '</span></li>';
+      h += '<li style="' + segc(i + 1) + '"><span><span class="n">' + (i + 1) + '</span>' + g.set.id + ' · ' + fr(g.from, g.to) + '</span><span>' + nd(g.n) + ' × ' + eur(rate(g.set)) + ' = ' + eur(g.cost) + '</span></li>';
     });
     h += '</ul>';
     if (p.moves > 0) {
       h += '<p style="margin-top:10px;font-size:13px">You move ' + (p.moves === 1 ? 'once' : p.moves + ' times') + ': ' + p.segs.slice(1).map(function (g, i) { return fd(g.from) + ' to ' + g.set.id + ' (' + moveText(p.segs[i].set, g.set) + ')'; }).join('; ') + '. We\'ll remind you the evening before each move.</p>';
     }
-    h += '<div class="price"><span>' + eur(Math.round(p.total / D.N)) + '/day avg</span><strong>' + eur(p.total) + '</strong></div>';
-    h += '<ul class="promise"><li>One booking code for every morning</li><li>' + (S.mode === 'INSTANT' ? 'One payment for the whole stay' : 'The venue accepts or declines your whole stay, never part of it. Nothing is charged until they accept.') + '</li><li>Cancel the whole stay in one step · free until 48h before ' + fd(S.start) + '</li></ul>';
+    h += '<div class="price"><span>' + (D.N > 1 ? eur(Math.round(p.total / D.N)) + '/day avg' : 'Total') + '</span><strong>' + eur(p.total) + '</strong></div>';
+    h += '<ul class="promise"><li>One booking code for every morning</li><li>' + (req ? 'The venue accepts or declines your whole stay, never part of it. Nothing is charged until they accept.' : 'One payment for the whole stay') + '</li><li>Cancel the whole stay in one step · free until 48h before ' + fd(S.start) + '</li></ul>';
     h += '<label class="field" for="rv-name"><span>Name</span><input id="rv-name" value="Elena Hoxha"></label>';
     h += '<label class="field" for="rv-mail"><span>Email</span><input id="rv-mail" value="elena@example.com"></label>';
-    h += '<button type="button" class="cta" data-act="pay">' + (S.mode === 'INSTANT' ? 'Pay ' + eur(p.total) : 'Send request') + '</button>';
+    h += '<button type="button" class="cta" data-act="pay">' + (req ? 'Send request' : 'Pay ' + eur(p.total)) + '</button>';
     h += '<p style="margin-top:10px;font-size:13px"><button type="button" class="link" data-act="closereview">Back</button></p>';
     return h;
   }
@@ -717,7 +922,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   }
 
   function phoneHTML(D, pm) {
-    var h = '<div><div class="frame-label">Phone · 390px</div><div class="phone"><div class="screen">';
+    var h = '<div><div class="frame-label">Phone · 390px · Venue</div><div class="phone"><div class="screen">';
     h += headHTML(D, true) + bannerHTML(D) + mapHTML(D, pm, true);
     h += '</div>';
     if (S.review) h += '<div class="sheet full"><div class="sheet-top"><span></span><button type="button" class="x-btn" data-act="closereview" aria-label="Close">×</button></div><div class="panel">' + reviewHTML(D) + '</div></div>';
@@ -729,7 +934,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   }
 
   function deskHTML(D, pm, zoom) {
-    var h = '<div class="desk-wrap"><div class="frame-label">Desktop · 1100px' + (zoom < 1 ? ' (shown at ' + Math.round(zoom * 100) + '%)' : '') + '</div><div class="desk" style="zoom:' + zoom + '"><div class="chrome-top"><i></i><i></i><i></i><em>riviera.al/venues/dhermi-beach-club</em></div><div class="screen">';
+    var h = '<div class="desk-wrap"><div class="frame-label">Desktop · 1100px · Venue' + (zoom < 1 ? ' (shown at ' + Math.round(zoom * 100) + '%)' : '') + '</div><div class="desk" style="zoom:' + zoom + '"><div class="chrome-top"><i></i><i></i><i></i><em>riviera.al/venues/' + V().name.toLowerCase().replace(/ë/g, 'e').replace(/\s+/g, '-') + '</em></div><div class="screen">';
     h += headHTML(D, false) + '<div class="d-body"><div>' + bannerHTML(D) + '<div style="margin-top:12px">' + mapHTML(D, pm, false) + '</div></div><aside class="panel glass" aria-label="Your stay">' + panelBody(D) + '</aside></div>';
     h += '</div>';
     if (S.review) h += '<div class="modal-scrim"><div class="modal" role="dialog" aria-label="Review">' + reviewHTML(D) + '</div></div>';
@@ -737,11 +942,18 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
     return h;
   }
 
-  function inspectorHTML(D) {
+  function inspectorHTML(D, vs) {
+    var h = '<details' + (S.inspector ? ' open' : '') + ' id="insp"><summary>State: ' + (S.screen === 'home' ? 'per-venue verdicts' : 'availability grid') + ' for ' + fr(S.start, S.end) + '</summary>';
+    if (S.screen === 'home') {
+      h += '<div class="hm-wrap"><table class="hm" style="border-spacing:10px 3px"><tr><th style="text-align:left;width:auto">venue</th><th style="width:auto">occupancy</th><th style="width:auto">same-spot sets</th><th style="width:auto">min moves</th><th style="width:auto">longest run</th><th style="width:auto">tier</th></tr>';
+      vs.forEach(function (v) {
+        h += '<tr><td style="text-align:left;width:auto">' + VENUES[v.vi].name + '</td><td style="width:auto">' + Math.round(venueOcc(v.vi) * 100) + '%</td><td style="width:auto">' + v.full + '</td><td style="width:auto">' + (v.moves === undefined ? '–' : v.moves === null ? 'none' : v.moves) + '</td><td style="width:auto">' + (v.longest ? v.longest.n : '–') + '</td><td style="width:auto">' + v.tier + '</td></tr>';
+      });
+      return h + '</table></div></details>';
+    }
     var p = currentPlan(D);
-    var h = '<details' + (S.inspector ? ' open' : '') + ' id="insp"><summary>State: availability grid for ' + fr(S.start, S.end) + '</summary>';
     h += '<div class="stats"><span>free all days <b>' + D.full + '</b></span><span>partly free <b>' + D.part + '</b></span><span>taken all days <b>' + D.none + '</b></span><span>walk-in <b>4</b></span>';
-    h += '<span>best plan (no budget) <b>' + (D.dflt ? D.dflt.moves + ' moves, distance ' + D.dflt.dist : 'none') + '</b></span><span>budget in force <b>' + D.budget + '</b></span><span>view <b>' + S.view + (S.anchor ? ' @' + S.anchor : '') + '</b></span></div>';
+    h += '<span>best plan (no budget) <b>' + (D.dflt ? D.dflt.moves + ' moves, distance ' + D.dflt.dist : '–') + '</b></span><span>budget in force <b>' + D.budget + '</b></span><span>view <b>' + S.view + (S.anchor ? ' @' + S.anchor : '') + '</b></span></div>';
     var pd = {};
     if (p) p.segs.forEach(function (g, i) { for (var d = g.from; d <= g.to; d++) pd[g.set.id + ':' + d] = i + 1; });
     h += '<div class="hm-wrap"><table class="hm"><tr><th></th>' + D.ds.map(function (d) { return '<th>' + date(d).getUTCDate() + '</th>'; }).join('') + '</tr>';
@@ -757,30 +969,45 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   }
 
   function render() {
-    var D = derive();
-    var pm = segIndex(currentPlan(D));
     var stage = document.getElementById('stage');
     var avail = stage.clientWidth || window.innerWidth - 32;
-    var h = '';
-    if (S.frame === 'phone' || S.frame === 'both') h += phoneHTML(D, pm);
+    var h = '', D = null, vs = null;
+    var zoom = 1;
     if (S.frame === 'desk' || S.frame === 'both') {
       var room = S.frame === 'both' ? avail - 390 - 28 : avail;
-      var zoom = Math.max(0.5, Math.min(1, room / 1102));
+      zoom = Math.max(0.5, Math.min(1, room / 1102));
       if (S.frame === 'both' && room < 560) zoom = Math.min(1, avail / 1102);
-      h += deskHTML(D, pm, zoom);
+    }
+    if (S.screen === 'home') {
+      vs = verdicts();
+      if (S.frame !== 'desk') h += homePhone(vs);
+      if (S.frame !== 'phone') h += homeDesk(vs, zoom);
+    } else {
+      D = derive();
+      var pm = segIndex(currentPlan(D));
+      if (S.frame !== 'desk') h += phoneHTML(D, pm);
+      if (S.frame !== 'phone') h += deskHTML(D, pm, zoom);
     }
     stage.innerHTML = h;
-    document.getElementById('inspector').innerHTML = inspectorHTML(D);
+    document.getElementById('inspector').innerHTML = inspectorHTML(D, vs);
   }
 
   function resetSel() { S.sel = null; S.view = 'home'; S.anchor = null; S.sheet = false; S.extra = false; S.review = false; S.done = false; }
 
   document.addEventListener('click', function (e) {
     var el = e.target.closest('[data-act]');
-    if (!el) return;
+    if (!el || !document.getElementById('stage').contains(el)) return;
     var a = el.getAttribute('data-act');
     var D;
     switch (a) {
+      case 'openv':
+        S.venue = +el.getAttribute('data-v'); S.screen = 'venue'; S.cal = false; S.rail = false; resetSel(); break;
+      case 'home':
+        S.screen = 'home'; S.cal = false; resetSel(); break;
+      case 'rail':
+        S.rail = !S.rail; break;
+      case 'day':
+        S.start = S.end = +el.getAttribute('data-d'); S.rail = false; resetSel(); break;
       case 'tile':
         S.sel = el.getAttribute('data-id'); S.view = 'set'; S.sheet = true; S.anchor = null; S.extra = false; break;
       case 'plan':
@@ -795,7 +1022,8 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
         D = derive(); if (D.longest) { S.start = D.longest.from; S.end = D.longest.to; S.sel = D.longest.set.id; S.view = 'set'; S.anchor = null; S.sheet = true; S.extra = false; } break;
       case 'shortenown':
         D = derive();
-        (function () { var s = byId[S.sel], best = null, st = null; D.ds.forEach(function (d) { if (free(s, d)) { if (st === null) st = d; if (!best || d - st + 1 > best.n) best = { from: st, to: d, n: d - st + 1 }; } else st = null; }); if (best) { S.start = best.from; S.end = best.to; S.view = 'set'; } })();
+        var own = runOf(byId[S.sel], D.ds);
+        if (own) { S.start = own.from; S.end = own.to; S.view = 'set'; }
         break;
       case 'bookone': case 'review':
         S.review = true; S.done = false; break;
@@ -804,13 +1032,13 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
       case 'pay':
         S.done = true; break;
       case 'restart':
-        S.start = 11; S.end = 24; resetSel(); break;
+        S.start = 11; S.end = 24; S.screen = 'home'; resetSel(); break;
       case 'hidesheet':
         S.sheet = false; break;
       case 'opensheet':
         S.sheet = true; break;
       case 'opencal':
-        S.cal = true; S.dStart = S.start; S.dEnd = S.end; break;
+        S.cal = true; S.dStart = S.start; S.dEnd = isStay() ? S.end : null; break;
       case 'closecal':
         S.cal = false; break;
       case 'calday':
@@ -819,7 +1047,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
         else S.dEnd = d;
         break;
       case 'applycal':
-        if (S.dStart !== null) { S.start = S.dStart; S.end = S.dEnd === null ? S.dStart : S.dEnd; S.cal = false; resetSel(); }
+        if (S.dStart !== null) { S.start = S.dStart; S.end = S.dEnd === null ? S.dStart : S.dEnd; S.cal = false; S.rail = false; resetSel(); }
         break;
       default: return;
     }
@@ -827,10 +1055,11 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   });
 
   document.addEventListener('mouseover', function (e) {
-    var el = e.target.closest('[data-seg]');
-    var n = el ? el.getAttribute('data-seg') : null;
-    document.querySelectorAll('.hl').forEach(function (x) { if (!n || x.getAttribute('data-seg') !== n) x.classList.remove('hl'); });
-    if (n) document.querySelectorAll('.tile[data-seg="' + n + '"], .stop[data-seg="' + n + '"]').forEach(function (x) { x.classList.add('hl'); });
+    var el = e.target.closest('[data-seg],[data-vh]');
+    var key = el ? (el.hasAttribute('data-seg') ? 'data-seg' : 'data-vh') : null;
+    var n = el ? el.getAttribute(key) : null;
+    document.querySelectorAll('.hl').forEach(function (x) { if (!n || x.getAttribute(key) !== n) x.classList.remove('hl'); });
+    if (n) document.querySelectorAll('[' + key + '="' + n + '"]').forEach(function (x) { if (!x.classList.contains('strip')) x.classList.add('hl'); });
   });
 
   document.addEventListener('toggle', function (e) { if (e.target.id === 'insp') S.inspector = e.target.open; }, true);
@@ -840,8 +1069,8 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
     if (t.name === 'frame') S.frame = t.value;
     if (t.name === 'budget') { S.budget = +t.value; S.extra = false; }
     if (t.name === 'occ') { S.occ = +t.value; regen(); resetSel(); }
+    if (t.name === 'model') { S.model = t.value; regen(); resetSel(); }
     if (t.name === 'tstyle') S.tstyle = t.value;
-    if (t.name === 'mode') S.mode = t.value;
     render();
   });
   document.getElementById('reshuffle').addEventListener('click', function () { S.seed++; regen(); resetSel(); render(); });
@@ -851,9 +1080,10 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(render, 120); });
 
   regen();
-  for (var tries = 0; tries < 200; tries++) {
-    var p0 = solve(days(), null, null);
-    if (p0 && p0.moves === 2) break;
+  for (var tries = 0; tries < 300; tries++) {
+    var vs0 = verdicts();
+    var tiers = vs0.map(function (v) { return v.tier; });
+    if (tiers.indexOf('same') >= 0 && tiers.indexOf('moves') >= 0 && tiers.indexOf('no') >= 0 && vs0[0].tier === 'moves') break;
     S.seed++; regen();
   }
   render();
