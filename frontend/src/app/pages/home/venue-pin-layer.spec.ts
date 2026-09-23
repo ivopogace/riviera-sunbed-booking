@@ -134,7 +134,9 @@ describe('VenuePinLayer', () => {
       await render([{ ...AURORA, card: { ...AURORA.card, priceLabel: null, fromPrice: null } }]);
 
       const [pin] = buttons('map-venue-pin');
-      expect(text(pin)).toBe('●');
+      expect(pin.querySelector('app-dot-icon svg')).not.toBeNull();
+      expect(text(pin)).toBe('');
+      expect(pin.querySelector('.pin-price')).toBeNull();
       expect(pin.getAttribute('aria-label')).toBe('Aurora Bay');
     });
 

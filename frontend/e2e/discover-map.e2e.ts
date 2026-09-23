@@ -1115,6 +1115,32 @@ test.describe('Discover map — the desktop panel', () => {
     expect(new Set(facts)).toHaveProperty('size', 1);
   });
 
+  test('a pin with no price draws its dot, centred at 14 px, open or closed', async ({ page }) => {
+    const unpriced = (venue: Record<string, unknown>) => ({ ...venue, fromPrice: null });
+    await mockVenues(page, 0, [
+      unpriced(mapVenue(42, 'Unpriced Venue', 'DHERMI', 'HIMARE', 40.176, 19.586, 0)),
+      unpriced(mapVenue(43, 'Closed Unpriced', 'BORSH', 'HIMARE', 40.06, 19.86, 0, false)),
+    ]);
+    await openMap(page, { width: 1440, height: 900 });
+    const pins = page.getByTestId('map-venue-pin');
+    await expect(pins).toHaveCount(2);
+
+    for (const [pin, name] of [
+      [page.locator('[data-testid="map-venue-pin"]:not([data-dusk])'), 'Unpriced Venue'],
+      [page.locator('[data-testid="map-venue-pin"][data-dusk]'), 'Closed Unpriced'],
+    ] as const) {
+      await expect(pin).toHaveAttribute('aria-label', name);
+      await expect(pin).toHaveText('');
+      // The 21 px box holds DotIcon's r=8-of-24 disc: 14 px across, whatever the font.
+      const dot = pin.locator('app-dot-icon svg');
+      await expect(dot).toHaveCSS('width', '21px');
+      await expect(dot).toHaveCSS('height', '21px');
+      const [face, mark] = [(await pin.boundingBox())!, (await dot.boundingBox())!];
+      expect(Math.abs(face.x + face.width / 2 - (mark.x + mark.width / 2))).toBeLessThan(1);
+      expect(Math.abs(face.y + face.height / 2 - (mark.y + mark.height / 2))).toBeLessThan(1);
+    }
+  });
+
   test('a row under the pointer lights its venue’s face, and lets go when the pointer leaves', async ({
     page,
   }) => {
