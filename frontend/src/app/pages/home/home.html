@@ -179,7 +179,7 @@
 <ng-template #failureTpl>
   <!-- Designed load-failure panel: the alert role and error test id preserve accessible semantics so assistive tech announces it; the warning glyph is decorative — the heading carries the meaning. -->
   <div appFailurePanel role="alert" data-testid="error">
-    <span appFailureIcon aria-hidden="true">⚠</span>
+    <span appFailureIcon aria-hidden="true"><app-alert-icon /></span>
     <h2 appFailureTitle>We couldn’t load the beaches</h2>
     <p appFailureText>
       Something went wrong reaching Riviera. Check your connection and try again — your bookings are

@@ -337,6 +337,8 @@ for (const theme of ['porcelain', 'dark'] as const) {
       await expect(icon).toHaveCSS('background-color', RGB.negativeFill);
       await expect(icon).toHaveCSS('color', RGB.negativeInk);
       await expect(icon).toHaveCSS('border-color', RGB.negativeBorder);
+      await expect(icon.locator('svg')).toHaveCSS('width', '26px');
+      await expect(icon.locator('svg')).toHaveCSS('stroke', RGB.negativeInk);
     });
   });
 }

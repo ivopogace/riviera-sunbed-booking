@@ -151,18 +151,18 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** Phase 4 — `AlertIcon` red.
+**Next action:** Phase 5 — `TriangleIcon` red.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan + draft PR | ✅ | 5fd49962 |
 | 1 — `CrossIcon`: close controls + failure medallion | ✅ | 785784e9 |
 | 2 — `StarIcon` + `StarRow`: rating marks | ✅ | a4be93c0 |
-| 3 — `CheckIcon`/`HourglassIcon`/`MailIcon` (+ `DotIcon`, daily-view ✓/● pulled forward): medallions + waiting | ✅ | this commit |
-| 4 — `AlertIcon`/`UmbrellaIcon`/`ClockIcon`: failures, alerts, beach | | |
-| 5 — `ChevronDownIcon`/`TriangleIcon`/`ArrowLeftIcon`: wayfinding | | |
+| 3 — `CheckIcon`/`HourglassIcon`/`MailIcon` (+ `DotIcon`, daily-view ✓/● pulled forward): medallions + waiting | ✅ | cdf94bc4 |
+| 4 — `AlertIcon`/`UmbrellaIcon`/`ClockIcon` (+ `ChevronDownIcon`, discover-head ▾ pulled forward — its specs assert ⛱ and ▾ in one string): failures, alerts, beach | ✅ | this commit |
+| 5 — `TriangleIcon`/`ArrowLeftIcon`: wayfinding | | |
 | 6 — `RainIcon`/`PartyIcon`/`LockIcon`: emoji | | |
 | 7 — sweep, e2e size pins, full gates | | |
 
@@ -193,6 +193,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/pages/home/{home,venue-row,discover-head,coast-picker}.ts|.html|.spec.ts` — call sites, specs
 - `frontend/e2e/*.e2e.ts` — size pins, star fill, glyph-text assertions re-targeted
 - `frontend/src/app/pages/home/venue-row.html` — static star
+- `frontend/src/app/pages/home/home.html` — failure mark, static star
+- `frontend/src/app/operator/requests-tab.html` — alert, clock, check
 
 ---
 

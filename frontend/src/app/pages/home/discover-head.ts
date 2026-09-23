@@ -16,6 +16,8 @@ import { focusMover } from '../../shared/focus-after-render';
 import { LocateIcon } from '../../shared/locate-icon';
 import { TouchTarget } from '../../shared/touch-target';
 import { CrossIcon } from '../../shared/cross-icon';
+import { UmbrellaIcon } from '../../shared/umbrella-icon';
+import { ChevronDownIcon } from '../../shared/chevron-down-icon';
 
 /** One beach of the focused region, as the beach rail offers it. */
 export interface BeachOption {
@@ -67,7 +69,7 @@ const COUNT =
  */
 @Component({
   selector: 'app-discover-head',
-  imports: [LocateIcon, TouchTarget, CrossIcon],
+  imports: [LocateIcon, TouchTarget, CrossIcon, UmbrellaIcon, ChevronDownIcon],
   host: { class: 'block' },
   template: `
     <div class="flex h-11 items-center gap-2 px-3">
@@ -94,10 +96,11 @@ const COUNT =
             <span
               class="truncate text-[19px] leading-[1.1] font-bold tracking-[-0.01em] text-riv-ink"
               ><span data-testid="head-title">{{ title() }}</span
-              >&ngsp;<span class="text-[13px] font-normal text-riv-ink-faint" aria-hidden="true"
-                >▾</span
-              ></span
-            >
+              >&ngsp;<span
+                class="text-riv-ink-faint [&_svg]:inline [&_svg]:size-[12px] [&_svg]:align-[1px]"
+                aria-hidden="true"
+                ><app-chevron-down-icon /></span
+            ></span>
             <span
               data-testid="head-subtitle"
               class="truncate text-[12.5px] leading-[1.25] text-riv-ink-soft"
@@ -117,13 +120,15 @@ const COUNT =
         [attr.aria-label]="beachChipLabel()"
         (click)="toggleBeaches()"
       >
-        <span aria-hidden="true">⛱</span>&ngsp;
+        <app-umbrella-icon class="[&_svg]:size-[15px]" />
         @if (spelled()) {
           {{ chipWord() }}&ngsp;
         }
         <span [class]="COUNT">{{ chipCount() }}</span>
         @if (spelled()) {
-          &ngsp;<span class="text-[11px] opacity-70" aria-hidden="true">▾</span>
+          <span class="opacity-70 [&_svg]:size-[11px]" aria-hidden="true"
+            ><app-chevron-down-icon
+          /></span>
         }
       </button>
       <button
@@ -134,9 +139,10 @@ const COUNT =
         [attr.aria-expanded]="dayOpen()"
         (click)="toggleDay()"
       >
-        {{ dayWord() }}&ngsp;<span class="text-[11px] text-riv-card-ink-faint" aria-hidden="true"
-          >▾</span
-        >
+        {{ dayWord()
+        }}<span class="text-riv-card-ink-faint [&_svg]:size-[11px]" aria-hidden="true"
+          ><app-chevron-down-icon
+        /></span>
       </button>
     </div>
     @if (railsShown()) {

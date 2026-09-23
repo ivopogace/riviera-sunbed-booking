@@ -25,6 +25,11 @@ const RETIRED: Readonly<Record<string, string>> = {
   '⏳': 'app-hourglass-icon',
   '✉': 'app-mail-icon',
   '●': 'app-dot-icon',
+  '⚠': 'app-alert-icon',
+  '⏰': 'app-clock-icon',
+  '⛱': 'app-umbrella-icon',
+  '🏖': 'app-umbrella-icon',
+  '▾': 'app-chevron-down-icon',
 };
 
 /** A retired codepoint that is text, matched on its trimmed source line. */

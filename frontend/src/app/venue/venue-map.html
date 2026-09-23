@@ -371,7 +371,7 @@
     }
   } @else if (notFound()) {
     <div appFailurePanel role="alert" data-testid="map-not-found">
-      <span appFailureIcon aria-hidden="true">🏖</span>
+      <span appFailureIcon aria-hidden="true"><app-umbrella-icon /></span>
       <h2 appFailureTitle>This venue isn’t available</h2>
       <p appFailureText>
         It may have been removed or paused by its owner. A booking you already hold is unaffected —
@@ -381,7 +381,7 @@
     </div>
   } @else if (failed()) {
     <div appFailurePanel role="alert" data-testid="map-error">
-      <span appFailureIcon aria-hidden="true">⚠</span>
+      <span appFailureIcon aria-hidden="true"><app-alert-icon /></span>
       <h2 appFailureTitle>We couldn’t load this beach map</h2>
       <p appFailureText>
         The live availability didn’t come through. Give it another go — no set is booked until you

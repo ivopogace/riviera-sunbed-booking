@@ -1,13 +1,14 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
+import { AlertIcon } from './alert-icon';
 import { FAILURE_DIRECTIVES } from './failure-panel';
 
 @Component({
-  imports: [FAILURE_DIRECTIVES],
+  imports: [FAILURE_DIRECTIVES, AlertIcon],
   template: `
     <div appFailurePanel data-testid="panel">
-      <span appFailureIcon data-testid="icon">⚠</span>
+      <span appFailureIcon data-testid="icon"><app-alert-icon /></span>
       <h2 appFailureTitle data-testid="title">Nope</h2>
       <p appFailureText data-testid="text">Try again</p>
     </div>
@@ -30,6 +31,12 @@ describe('failure-panel directives', () => {
       true,
     );
     expect(el.querySelector('[data-testid="text"]')!.classList.contains('failure-text')).toBe(true);
+  });
+
+  it('sizes the drawing it holds, not a character', () => {
+    const icon = root().querySelector('[data-testid="icon"]')!;
+    expect(icon.classList.contains('[&_svg]:size-[26px]')).toBe(true);
+    expect([...icon.classList].some((cls) => cls.startsWith('text-['))).toBe(false);
   });
 
   it('composes the card-glass surface into the panel', () => {
