@@ -1,0 +1,861 @@
+<title>Riviera Stay Prototype</title>
+<meta name="description" content="Throwaway prototype for epic #1096: multi-day stays and stitched itineraries on the beach map.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --page: #e4eef1;
+  --riv-bg: radial-gradient(110% 70% at 8% 2%, #ffffff 0%, rgba(255,255,255,0) 54%), radial-gradient(130% 120% at 80% 106%, #cfeaf2 0%, rgba(207,234,242,0) 60%), linear-gradient(165deg, #fbfdfe 0%, #eef5f7 50%, #dfeef2 100%);
+  --ink: #0a2a33;
+  --ink-soft: rgba(12,42,51,0.72);
+  --ink-faint: rgba(12,42,51,0.55);
+  --glass: rgba(255,255,255,0.62);
+  --glass-strong: rgba(255,255,255,0.9);
+  --sheet: #f6fafb;
+  --glass-edge: rgba(255,255,255,0.85);
+  --shadow: 0 14px 44px rgba(7,42,58,0.16);
+  --accent: #0e8aa8;
+  --accent-ink: #085a6e;
+  --accent-fill: rgba(43,184,212,0.12);
+  --on-accent: #ffffff;
+  --warn-fill: rgba(230,196,131,0.28);
+  --warn-ink: #6d4608;
+  --sea: linear-gradient(180deg, #2bb8d4, #0e7a89);
+  --sand: linear-gradient(180deg, rgba(239,224,189,0.55), rgba(239,224,189,0.2));
+  --t-av-fill: rgba(255,255,255,0.8);
+  --t-av-border: #9fd3cd;
+  --t-av-ink: #0f7d8c;
+  --t-pr-fill: rgba(251,241,217,0.92);
+  --t-pr-border: #e0b96d;
+  --t-pr-ink: #875911;
+  --t-wi-fill: rgba(239,224,189,0.6);
+  --t-wi-hatch: rgba(95,77,42,0.16);
+  --t-wi-border: #c8ab62;
+  --t-wi-ink: #5f4d2a;
+  --t-tk-fill: rgba(255,255,255,0.2);
+  --t-tk-border: #8a9a95;
+  --t-tk-ink: #566560;
+  --t-pa-fill: rgba(255,255,255,0.8);
+  --t-pa-ghost: rgba(107,125,119,0.18);
+  --t-pa-border: #4f9aa6;
+  --t-pa-ink: #1f5d67;
+  --t-pa-badge: #1f5d67;
+  --t-pa-badge-ink: #ffffff;
+  --seg-1: #0f7d8c;
+  --seg-2: #b0680c;
+  --seg-3: #6a4fc2;
+  --seg-4: #b8325a;
+  --seg-ink: #ffffff;
+  --chrome: #10252c;
+  --chrome-2: #1a3640;
+  --chrome-ink: #e3f1f4;
+  --chrome-soft: #9dbac2;
+  --chrome-on: #7fd8e6;
+  --device: #0b1418;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --riv-font: -apple-system, 'SF Pro Text', 'Helvetica Neue', system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0c1320;
+    --riv-bg: radial-gradient(110% 70% at 8% 2%, #3b4a5f 0%, rgba(59,74,95,0) 52%), radial-gradient(130% 120% at 80% 106%, #0b1120 0%, rgba(11,17,32,0) 58%), linear-gradient(165deg, #33415a 0%, #1e293b 46%, #0f172a 100%);
+    --ink: #ffffff; --ink-soft: rgba(255,255,255,0.84); --ink-faint: rgba(255,255,255,0.66);
+    --glass: rgba(15,23,42,0.5); --glass-strong: rgba(22,32,52,0.96); --sheet: #172238; --glass-edge: rgba(255,255,255,0.14);
+    --shadow: 0 14px 44px rgba(0,0,0,0.4);
+    --accent: #3cc2da; --accent-ink: #7cd7e8; --accent-fill: rgba(124,215,232,0.12); --on-accent: #06222b;
+    --warn-fill: rgba(230,196,131,0.16); --warn-ink: #ecd09a;
+    --sea: linear-gradient(180deg, #11697a, #0a3f4b);
+    --sand: linear-gradient(180deg, rgba(229,211,168,0.14), rgba(229,211,168,0.04));
+    --t-av-fill: rgba(255,255,255,0.1); --t-av-border: rgba(143,214,226,0.55); --t-av-ink: #8fd6e2;
+    --t-pr-fill: rgba(230,196,131,0.18); --t-pr-border: #c8ab62; --t-pr-ink: #ecd09a;
+    --t-wi-fill: rgba(239,224,189,0.12); --t-wi-hatch: rgba(229,211,168,0.16); --t-wi-border: #a08a50; --t-wi-ink: #e5d3a8;
+    --t-tk-fill: rgba(255,255,255,0.04); --t-tk-border: #6f817b; --t-tk-ink: #a7b5b0;
+    --t-pa-fill: rgba(255,255,255,0.1); --t-pa-ghost: rgba(0,0,0,0.25); --t-pa-border: #6fc0cc; --t-pa-ink: #bfe9f0;
+    --t-pa-badge: #bfe9f0; --t-pa-badge-ink: #0b2a31;
+    --seg-1: #3fb8c8; --seg-2: #e19a3c; --seg-3: #a08bf0; --seg-4: #ee6f95; --seg-ink: #0b1418;
+    --chrome: #070d10; --chrome-2: #122229; --device: #000000;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0c1320;
+  --riv-bg: radial-gradient(110% 70% at 8% 2%, #3b4a5f 0%, rgba(59,74,95,0) 52%), radial-gradient(130% 120% at 80% 106%, #0b1120 0%, rgba(11,17,32,0) 58%), linear-gradient(165deg, #33415a 0%, #1e293b 46%, #0f172a 100%);
+  --ink: #ffffff; --ink-soft: rgba(255,255,255,0.84); --ink-faint: rgba(255,255,255,0.66);
+  --glass: rgba(15,23,42,0.5); --glass-strong: rgba(22,32,52,0.96); --sheet: #172238; --glass-edge: rgba(255,255,255,0.14);
+  --shadow: 0 14px 44px rgba(0,0,0,0.4);
+  --accent: #3cc2da; --accent-ink: #7cd7e8; --accent-fill: rgba(124,215,232,0.12); --on-accent: #06222b;
+  --warn-fill: rgba(230,196,131,0.16); --warn-ink: #ecd09a;
+  --sea: linear-gradient(180deg, #11697a, #0a3f4b);
+  --sand: linear-gradient(180deg, rgba(229,211,168,0.14), rgba(229,211,168,0.04));
+  --t-av-fill: rgba(255,255,255,0.1); --t-av-border: rgba(143,214,226,0.55); --t-av-ink: #8fd6e2;
+  --t-pr-fill: rgba(230,196,131,0.18); --t-pr-border: #c8ab62; --t-pr-ink: #ecd09a;
+  --t-wi-fill: rgba(239,224,189,0.12); --t-wi-hatch: rgba(229,211,168,0.16); --t-wi-border: #a08a50; --t-wi-ink: #e5d3a8;
+  --t-tk-fill: rgba(255,255,255,0.04); --t-tk-border: #6f817b; --t-tk-ink: #a7b5b0;
+  --t-pa-fill: rgba(255,255,255,0.1); --t-pa-ghost: rgba(0,0,0,0.25); --t-pa-border: #6fc0cc; --t-pa-ink: #bfe9f0;
+  --t-pa-badge: #bfe9f0; --t-pa-badge-ink: #0b2a31;
+  --seg-1: #3fb8c8; --seg-2: #e19a3c; --seg-3: #a08bf0; --seg-4: #ee6f95; --seg-ink: #0b1418;
+  --chrome: #070d10; --chrome-2: #122229; --device: #000000;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--riv-font); padding-inline: 16px; padding-block: 0 48px; }
+button { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 50; margin-inline: -16px; background: var(--chrome); color: var(--chrome-ink); font-family: var(--mono); font-size: 12px; padding: 10px 16px 12px; display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: flex-end; }
+.bar .tag { display: flex; flex-direction: column; gap: 3px; margin-right: 6px; }
+.bar .tag b { letter-spacing: 0.14em; font-size: 11px; color: var(--chrome-on); }
+.bar .tag span { color: var(--chrome-soft); font-size: 11px; }
+.ctl { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ctl legend { color: var(--chrome-soft); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; padding: 0; margin-bottom: 4px; }
+.seg { display: inline-flex; background: var(--chrome-2); border-radius: 8px; padding: 2px; flex-wrap: wrap; }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span { display: block; padding: 5px 9px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.seg input:checked + span { background: var(--chrome-on); color: var(--chrome); font-weight: 600; }
+.seg input:focus-visible + span { outline: 2px solid var(--chrome-on); outline-offset: 1px; }
+.bar .btn { background: var(--chrome-2); border: 1px solid #2c4b56; color: var(--chrome-ink); border-radius: 8px; padding: 5px 10px; cursor: pointer; font-family: var(--mono); font-size: 12px; }
+.hint { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); max-width: 900px; margin: 14px auto 0; line-height: 1.5; }
+
+#stage { display: flex; gap: 28px; justify-content: center; align-items: flex-start; margin-top: 18px; flex-wrap: wrap; }
+.frame-label { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+.phone { width: 390px; max-width: 100%; height: 820px; border: 10px solid var(--device); border-radius: 48px; background: var(--riv-bg); position: relative; overflow: hidden; box-shadow: 0 30px 60px rgba(7,42,58,0.25); }
+.phone .screen { position: absolute; inset: 0; overflow-y: auto; padding: 14px 12px 110px; }
+.desk-wrap { max-width: 100%; overflow-x: auto; }
+.desk { width: 1100px; background: var(--riv-bg); border-radius: 14px; border: 1px solid var(--glass-edge); box-shadow: 0 30px 60px rgba(7,42,58,0.2); position: relative; overflow: hidden; }
+.desk .chrome-top { height: 30px; background: var(--device); display: flex; align-items: center; gap: 6px; padding-inline: 12px; }
+.desk .chrome-top i { width: 10px; height: 10px; border-radius: 50%; background: #3a4a50; display: block; }
+.desk .chrome-top em { margin-left: 14px; font-family: var(--mono); font-style: normal; font-size: 11px; color: #9dbac2; }
+.desk .screen { padding: 22px 28px 36px; min-height: 760px; }
+
+.glass { background: var(--glass); border: 1px solid var(--glass-edge); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: var(--shadow); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; padding: 7px 13px; border-radius: 999px; border: 1px solid var(--glass-edge); background: var(--glass); cursor: pointer; }
+.head { border-radius: 24px; padding: 16px 16px 16px; margin-top: 12px; position: relative; z-index: 5; }
+.band { margin: -16px -16px 14px; height: 120px; background: var(--sea); position: relative; border-radius: 23px 23px 0 0; overflow: hidden; }
+.band::after { content: ""; position: absolute; left: 50%; top: 42%; width: 54px; height: 54px; margin: -27px; border-radius: 50%; background: radial-gradient(circle, #ffe1a1, #ffc769); box-shadow: 0 0 40px 12px rgba(255,199,105,0.35); }
+.band::before { content: ""; position: absolute; inset: auto 0 0 0; height: 40%; background: linear-gradient(180deg, transparent, rgba(239,224,189,0.55)); }
+.chip { display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 999px; background: var(--accent-ink); color: var(--glass-strong); }
+h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wrap: balance; }
+.meta { font-size: 13px; color: var(--ink-soft); margin: 0; }
+.datef { width: 100%; margin-top: 14px; text-align: left; display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 14px; border: 1.5px solid var(--accent); background: var(--glass-strong); cursor: pointer; }
+.datef .cal-ico { width: 22px; height: 22px; border-radius: 5px; border: 2px solid var(--accent-ink); position: relative; flex: none; }
+.datef .cal-ico::before { content: ""; position: absolute; left: 0; right: 0; top: 4px; border-top: 2px solid var(--accent-ink); }
+.datef small { display: block; font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+.datef strong { font-size: 15px; }
+.datef .days { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--accent-ink); background: var(--accent-fill); padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+
+.banner { margin-top: 12px; border-radius: 16px; padding: 11px 14px; display: flex; align-items: center; gap: 10px; font-size: 14px; line-height: 1.35; width: 100%; text-align: left; border: 1px solid var(--glass-edge); }
+.banner.ok { background: var(--accent-fill); color: var(--accent-ink); }
+.banner.warn { background: var(--warn-fill); color: var(--warn-ink); cursor: pointer; }
+.banner.warn b::after { content: " ›"; }
+.banner .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+
+.mapcard { margin-top: 12px; border-radius: 22px; overflow: hidden; }
+.sea { background: var(--sea); color: #eafcff; text-align: center; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; padding: 9px 0; }
+.sandbox { background: var(--sand); padding: 12px 10px 8px; overflow-x: auto; }
+.grid { display: grid; gap: var(--gap); justify-content: center; }
+.rowl { font-size: 11px; font-weight: 700; color: var(--ink-faint); display: grid; place-items: center; }
+.prom { text-align: center; font-size: 11px; color: var(--ink-faint); letter-spacing: 0.16em; text-transform: uppercase; padding: 6px 0 2px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 10px 14px 13px; font-size: 12px; color: var(--ink-soft); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .sw { width: 16px; height: 16px; border-radius: 5px; border-width: 1.5px; border-style: solid; position: relative; }
+
+.tile { width: var(--t); height: var(--t); border-radius: 8px; border: 1.5px solid; font-size: var(--tf); font-weight: 650; display: grid; place-items: center; position: relative; cursor: pointer; padding: 0; transition: transform .12s ease; font-variant-numeric: tabular-nums; }
+.tile:hover { transform: translateY(-1px); }
+.s-available { background: var(--t-av-fill); border-color: var(--t-av-border); color: var(--t-av-ink); }
+.s-premium { background: var(--t-pr-fill); border-color: var(--t-pr-border); color: var(--t-pr-ink); }
+.s-walkin { background-color: var(--t-wi-fill); background-image: repeating-linear-gradient(135deg, var(--t-wi-hatch) 0 3px, transparent 3px 8px); border-color: var(--t-wi-border); color: var(--t-wi-ink); cursor: default; }
+.s-taken { background: var(--t-tk-fill); border-color: var(--t-tk-border); border-style: dashed; color: var(--t-tk-ink); }
+.s-partial { background: var(--t-pa-fill); border-color: var(--t-pa-border); color: var(--t-pa-ink); border-style: solid; }
+.v-split .s-partial { background: linear-gradient(135deg, var(--t-pa-fill) 0 50%, var(--t-pa-ghost) 50% 100%); }
+.v-badge .s-partial { border-style: dotted; border-width: 2px; }
+.cov { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 15px; padding: 0 3px; border-radius: 8px; background: var(--t-pa-badge); color: var(--t-pa-badge-ink); font-size: 9px; font-weight: 700; display: grid; place-items: center; line-height: 1; z-index: 2; }
+.v-bar .cov { display: none; }
+.covbar { display: none; position: absolute; left: 3px; right: 3px; bottom: 3px; height: 4px; gap: 1px; }
+.v-bar .covbar { display: flex; }
+.covbar i { flex: 1; border-radius: 1px; background: var(--t-pa-border); display: block; }
+.covbar i.x { background: var(--t-pa-ghost); }
+.v-bar .s-partial .lbl { transform: translateY(-2px); }
+.tile.sel { box-shadow: 0 0 0 2.5px var(--page), 0 0 0 5px var(--accent); }
+.tile.inplan { box-shadow: 0 0 0 2px var(--page), 0 0 0 4.5px var(--segc); }
+.tile.hl { transform: scale(1.12); z-index: 3; }
+.pnum { position: absolute; bottom: -7px; left: -7px; width: 17px; height: 17px; border-radius: 50%; background: var(--segc); color: var(--seg-ink); font-size: 10px; font-weight: 800; display: grid; place-items: center; z-index: 2; }
+
+.panel { border-radius: 22px; padding: 18px; }
+.panel h2 { font-size: 18px; margin: 0 0 4px; letter-spacing: -0.01em; text-wrap: balance; }
+.panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--ink-faint); margin: 16px 0 8px; }
+.panel p { margin: 0 0 8px; font-size: 14px; line-height: 1.45; color: var(--ink-soft); }
+.panel .kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-ink); margin-bottom: 6px; }
+.cta { display: block; width: 100%; border: 0; border-radius: 14px; background: var(--accent-ink); color: var(--glass-strong); font-weight: 700; font-size: 15px; padding: 13px 16px; cursor: pointer; margin-top: 12px; }
+.cta2 { display: block; width: 100%; border: 1.5px solid var(--accent); border-radius: 14px; background: transparent; color: var(--accent-ink); font-weight: 650; font-size: 14px; padding: 11px 14px; cursor: pointer; margin-top: 8px; text-align: center; }
+.link { background: none; border: 0; padding: 0; color: var(--accent-ink); font-weight: 650; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 14px; }
+.price { display: flex; justify-content: space-between; align-items: baseline; font-variant-numeric: tabular-nums; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--glass-edge); }
+.price strong { font-size: 22px; }
+.price span { font-size: 13px; color: var(--ink-soft); }
+
+.strip { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 2px; margin: 10px 0 4px; }
+.strip div { height: 30px; border-radius: 5px; display: grid; place-items: center; font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums; position: relative; }
+.strip .f { background: var(--t-av-border); color: var(--ink); }
+.strip .x { background: transparent; border: 1.5px dashed var(--t-tk-border); color: var(--t-tk-ink); }
+.strip .sg { background: var(--segc); color: var(--seg-ink); }
+.strip .mv::before { content: ""; position: absolute; left: -3px; top: 4px; bottom: 4px; width: 2px; border-radius: 2px; background: var(--ink); }
+.strip-ax { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 2px; font-size: 9.5px; color: var(--ink-faint); text-align: center; }
+.keyline { display: flex; gap: 12px; font-size: 12px; color: var(--ink-soft); margin-top: 6px; flex-wrap: wrap; }
+.keyline span { display: inline-flex; gap: 5px; align-items: center; }
+.keyline i { width: 12px; height: 12px; border-radius: 3px; display: block; }
+
+.tl { list-style: none; margin: 8px 0 0; padding: 0; }
+.tl li { position: relative; padding: 0 0 0 30px; }
+.tl .stop { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; padding: 8px 10px; border-radius: 12px; font-variant-numeric: tabular-nums; }
+.tl .stop:hover, .tl .stop.hl { background: var(--accent-fill); }
+.tl .stop b { font-size: 15px; }
+.tl .stop small { color: var(--ink-soft); font-size: 13px; }
+.tl .stop em { font-style: normal; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
+.tl .num { position: absolute; left: 0; top: 7px; width: 22px; height: 22px; border-radius: 50%; background: var(--segc); color: var(--seg-ink); font-size: 12px; font-weight: 800; display: grid; place-items: center; }
+.tl .move { margin: 0 0 0 -19px; padding: 4px 0 4px 26px; border-left: 2px dashed var(--ink-faint); font-size: 12.5px; color: var(--ink-soft); }
+.tl .move b { color: var(--ink); }
+
+.alt { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--glass-strong); border: 1px solid var(--glass-edge); margin-top: 8px; font-size: 14px; }
+.alt small { display: block; color: var(--ink-soft); font-size: 12.5px; }
+.eg { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); border: 1px solid var(--ink-faint); border-radius: 4px; padding: 0 4px; margin-left: 6px; }
+
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 20; max-height: 64%; overflow-y: auto; border-radius: 26px 26px 0 0; padding: 8px 16px 26px; background: var(--sheet); box-shadow: 0 -12px 40px rgba(7,42,58,0.25); border-top: 1px solid var(--glass-edge); }
+.sheet.full { top: 0; max-height: none; border-radius: 0; }
+.sheet .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--ink-faint); margin: 2px auto 10px; opacity: 0.5; }
+.sheet .panel { padding: 4px 2px; background: none; border: 0; box-shadow: none; backdrop-filter: none; }
+.sheet-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.x-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--glass-edge); background: var(--glass); cursor: pointer; font-size: 18px; line-height: 1; }
+.dock { position: absolute; left: 10px; right: 10px; bottom: 14px; z-index: 15; border-radius: 20px; padding: 10px 10px 10px 16px; display: flex; align-items: center; gap: 10px; }
+.dock div { flex: 1; font-size: 13px; line-height: 1.3; color: var(--ink-soft); }
+.dock div b { color: var(--ink); font-size: 15px; display: block; }
+.dock .cta { width: auto; margin: 0; padding: 11px 16px; }
+
+.cal { user-select: none; }
+.cal .months { display: grid; gap: 18px; }
+.desk .cal .months { grid-template-columns: 1fr 1fr; }
+.cal .mh { font-weight: 700; font-size: 15px; margin: 0 0 8px; }
+.cal .wk { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal .wd { font-size: 11px; color: var(--ink-faint); text-align: center; padding: 4px 0; font-weight: 600; }
+.cal .d { aspect-ratio: 1 / 1; max-width: 100%; border: 0; background: transparent; border-radius: 10px; font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.cal .d:hover:not(:disabled) { background: var(--accent-fill); }
+.cal .d:disabled { color: var(--ink-faint); opacity: 0.45; cursor: not-allowed; text-decoration: line-through; }
+.cal .d.in { background: var(--accent-fill); border-radius: 0; color: var(--accent-ink); font-weight: 600; }
+.cal .d.end { background: var(--accent-ink); color: var(--glass-strong); font-weight: 700; }
+.cal .foot { position: sticky; bottom: -26px; background: var(--sheet); padding: 12px 0 4px; margin-top: 12px; border-top: 1px solid var(--glass-edge); display: flex; align-items: center; gap: 12px; }
+.cal .foot div { flex: 1; font-size: 14px; }
+.cal .foot .cta { width: auto; margin: 0; }
+.cap { font-size: 12.5px; color: var(--ink-soft); background: var(--accent-fill); padding: 7px 10px; border-radius: 10px; margin-bottom: 12px; }
+
+.d-head { display: grid; grid-template-columns: 1fr 300px; gap: 36px; align-items: start; }
+.d-head .band { height: 200px; }
+.d-body { display: grid; grid-template-columns: 1fr 340px; gap: 22px; align-items: start; margin-top: 18px; }
+.d-body .mapcard { margin-top: 0; }
+.d-body .panel { position: sticky; top: 16px; }
+.pop { position: absolute; z-index: 30; right: 0; top: calc(100% + 10px); width: 640px; border-radius: 22px; padding: 18px 20px; background: var(--sheet); box-shadow: 0 24px 60px rgba(7,42,58,0.3); border: 1px solid var(--glass-edge); }
+.pop .foot { position: static; }
+.modal-scrim { position: absolute; inset: 0; z-index: 40; background: rgba(7,30,40,0.45); display: grid; place-items: start center; padding-top: 60px; }
+.modal { width: 520px; border-radius: 24px; padding: 22px 24px; background: var(--sheet); box-shadow: 0 30px 80px rgba(0,0,0,0.35); max-height: 92%; overflow-y: auto; }
+.field { display: block; margin-top: 10px; }
+.field span { font-size: 12px; font-weight: 600; color: var(--ink-soft); display: block; margin-bottom: 4px; }
+.field input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--t-tk-border); background: var(--glass); color: var(--ink); font: inherit; font-size: 14px; }
+.rows { margin: 8px 0 0; padding: 0; list-style: none; font-size: 14px; font-variant-numeric: tabular-nums; }
+.rows li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--glass-edge); }
+.rows li span:first-child { display: inline-flex; gap: 8px; align-items: center; }
+.rows .n { width: 18px; height: 18px; border-radius: 50%; background: var(--segc); color: var(--seg-ink); font-size: 10.5px; font-weight: 800; display: inline-grid; place-items: center; }
+.promise { margin: 12px 0 0; padding: 10px 12px; list-style: none; background: var(--accent-fill); border-radius: 12px; font-size: 13px; color: var(--accent-ink); line-height: 1.6; }
+.done { text-align: center; padding: 20px 6px; }
+.done .code { font-family: var(--mono); font-size: 22px; letter-spacing: 0.15em; margin: 12px 0; font-weight: 600; }
+
+#inspector { max-width: 1100px; margin: 26px auto 0; font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
+#inspector summary { cursor: pointer; font-weight: 600; color: var(--ink); padding: 6px 0; }
+.stats { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 6px 0 10px; }
+.stats b { color: var(--ink); }
+.hm-wrap { overflow-x: auto; }
+.hm { border-collapse: separate; border-spacing: 2px; }
+.hm td, .hm th { width: 18px; height: 12px; padding: 0; font-weight: 400; font-size: 9.5px; text-align: center; }
+.hm th { color: var(--ink-faint); }
+.hm td.f { background: var(--t-av-border); }
+.hm td.x { background: var(--t-tk-fill); outline: 1px dashed var(--t-tk-border); outline-offset: -1px; }
+.hm td.w { background: var(--t-wi-fill); }
+.hm td.p { background: var(--segc); }
+.hm td.id { width: 28px; text-align: right; padding-right: 4px; color: var(--ink-soft); }
+@media (prefers-reduced-motion: reduce) { .tile { transition: none; } .tile:hover, .tile.hl { transform: none; } }
+</style>
+
+<div class="bar" id="bar">
+  <div class="tag"><b>PROTOTYPE · EPIC #1096</b><span>throwaway · fake beach · nothing is booked</span></div>
+  <fieldset class="ctl"><legend>Frame</legend><div class="seg">
+    <label><input type="radio" name="frame" value="phone" id="f-phone"><span>Phone</span></label>
+    <label><input type="radio" name="frame" value="desk" id="f-desk"><span>Desktop</span></label>
+    <label><input type="radio" name="frame" value="both" id="f-both"><span>Both</span></label>
+  </div></fieldset>
+  <fieldset class="ctl"><legend>Move budget</legend><div class="seg">
+    <label><input type="radio" name="budget" value="1" id="b-1"><span>1</span></label>
+    <label><input type="radio" name="budget" value="2" id="b-2" checked><span>2</span></label>
+    <label><input type="radio" name="budget" value="3" id="b-3"><span>3</span></label>
+  </div></fieldset>
+  <fieldset class="ctl"><legend>Beach occupancy</legend><div class="seg">
+    <label><input type="radio" name="occ" value="0.4" id="o-40"><span>40%</span></label>
+    <label><input type="radio" name="occ" value="0.6" id="o-60" checked><span>60%</span></label>
+    <label><input type="radio" name="occ" value="0.7" id="o-70"><span>70%</span></label>
+    <label><input type="radio" name="occ" value="0.85" id="o-85"><span>85%</span></label>
+  </div></fieldset>
+  <fieldset class="ctl"><legend>Partly-free tile</legend><div class="seg">
+    <label><input type="radio" name="tstyle" value="split" id="t-split" checked><span>Split + count</span></label>
+    <label><input type="radio" name="tstyle" value="badge" id="t-badge"><span>Count badge</span></label>
+    <label><input type="radio" name="tstyle" value="bar" id="t-bar"><span>Day bar</span></label>
+  </div></fieldset>
+  <fieldset class="ctl"><legend>Venue mode</legend><div class="seg">
+    <label><input type="radio" name="mode" value="INSTANT" id="m-i" checked><span>Instant</span></label>
+    <label><input type="radio" name="mode" value="REQUEST" id="m-r"><span>Request</span></label>
+  </div></fieldset>
+  <button class="btn" type="button" id="reshuffle">Reshuffle beach ↻</button>
+</div>
+
+<p class="hint">Pretend today is 20 Jun 2027. Every set's daily availability is random and independent (the epic's pessimistic model), 60 sets, 4 walk-in only. Suggested path: keep 12–25 Jul, open the plan from the banner, tap a partly-free set and plan around it, then try budget 1 and 85% occupancy.</p>
+
+<main id="stage"></main>
+
+<section id="inspector"></section>
+
+<script>
+(function () {
+  var ROWS = ['A', 'B', 'C', 'D', 'E', 'F'];
+  var COLS = 10;
+  var SEASON = Date.UTC(2027, 6, 1);
+  var SEASON_DAYS = 62;
+  var DAY = 86400000;
+  var CAP = 15;
+  var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var ROW_NAME = ['Front row', 'Row B', 'Row C', 'Row D', 'Row E', 'Row F'];
+
+  var sets = [];
+  ROWS.forEach(function (r, ri) {
+    for (var c = 1; c <= COLS; c++) {
+      sets.push({ id: r + c, row: ri, pos: c, online: !(ri === 5 && c >= 7), rate: ri === 0 ? 2400 : ri === 1 ? 2000 : 1600 });
+    }
+  });
+  var online = sets.filter(function (s) { return s.online; });
+  var byId = {};
+  sets.forEach(function (s, i) { s.idx = i; byId[s.id] = s; });
+
+  var S = {
+    frame: window.innerWidth >= 1300 ? 'both' : 'phone',
+    budget: 2, extra: false, occ: 0.6, seed: 11, tstyle: 'split', mode: 'INSTANT',
+    start: 11, end: 24, cal: false, dStart: null, dEnd: null,
+    sel: null, view: 'home', anchor: null, sheet: false, review: false, done: false,
+    inspector: false
+  };
+  var taken = [];
+
+  function rng(seed) {
+    return function () {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function regen() {
+    var r = rng(S.seed * 7919 + Math.round(S.occ * 100));
+    taken = sets.map(function () {
+      var a = []; for (var d = 0; d < SEASON_DAYS; d++) a.push(r() < S.occ); return a;
+    });
+  }
+  function free(s, d) { return s.online && !taken[s.idx][d]; }
+
+  function date(i) { return new Date(SEASON + i * DAY); }
+  function fd(i) { var x = date(i); return x.getUTCDate() + ' ' + MON[x.getUTCMonth()]; }
+  function fdw(i) { var x = date(i); return WD[x.getUTCDay()] + ' ' + fd(i); }
+  function fr(a, b) {
+    if (a === b) return fd(a);
+    var x = date(a), y = date(b);
+    return x.getUTCMonth() === y.getUTCMonth() ? x.getUTCDate() + '–' + fd(b) : fd(a) + ' – ' + fd(b);
+  }
+  function nd(n) { return n + (n === 1 ? ' day' : ' days'); }
+  function eur(m) { return '€' + (m % 100 ? (m / 100).toFixed(2) : String(m / 100)); }
+  function days() { var a = []; for (var d = S.start; d <= S.end; d++) a.push(d); return a; }
+
+  function dist(a, b) { return Math.abs(a.pos - b.pos) + 4 * Math.abs(a.row - b.row); }
+  function moveText(a, b) {
+    var dr = b.row - a.row, dp = Math.abs(b.pos - a.pos), p = [];
+    if (dr) p.push(Math.abs(dr) + (Math.abs(dr) > 1 ? ' rows ' : ' row ') + (dr > 0 ? 'back' : 'closer to the sea'));
+    if (dp) p.push(dp + (dp > 1 ? ' spots' : ' spot') + ' along');
+    return p.join(', ');
+  }
+
+  function solve(ds, anchorId, mode) {
+    var n = online.length, N = ds.length;
+    var a = anchorId ? online.indexOf(byId[anchorId]) : -1;
+    var cur = [];
+    for (var k = 0; k < n; k++) {
+      if (!free(online[k], ds[0])) continue;
+      if (mode === 'start' && k !== a) continue;
+      var f = k === a ? 1 : 0;
+      cur[k * 2 + f] = { m: 0, d: 0, prev: null, k: k, f: f };
+    }
+    for (var t = 1; t < N; t++) {
+      var nxt = [];
+      for (var k2 = 0; k2 < n; k2++) {
+        if (!free(online[k2], ds[t])) continue;
+        for (var j = 0; j < n * 2; j++) {
+          var p = cur[j]; if (!p) continue;
+          var same = p.k === k2;
+          var m = p.m + (same ? 0 : 1);
+          var dd = p.d + (same ? 0 : dist(online[p.k], online[k2]));
+          var f2 = (p.f || k2 === a) ? 1 : 0;
+          var ix = k2 * 2 + f2, c = nxt[ix];
+          if (!c || m < c.m || (m === c.m && dd < c.d)) nxt[ix] = { m: m, d: dd, prev: p, k: k2, f: f2 };
+        }
+      }
+      cur = nxt;
+    }
+    var best = null;
+    cur.forEach(function (c) {
+      if (!c) return;
+      if (mode === 'end' && c.k !== a) return;
+      if (mode === 'any' && !c.f) return;
+      if (!best || c.m < best.m || (c.m === best.m && c.d < best.d)) best = c;
+    });
+    if (!best) return null;
+    var seq = [];
+    for (var c2 = best; c2; c2 = c2.prev) seq.unshift(online[c2.k]);
+    var segs = [];
+    seq.forEach(function (s, i) {
+      var last = segs[segs.length - 1];
+      if (last && last.set === s) last.to = ds[i];
+      else segs.push({ set: s, from: ds[i], to: ds[i] });
+    });
+    segs.forEach(function (g) { g.n = g.to - g.from + 1; g.cost = g.n * g.set.rate; });
+    return { moves: best.m, dist: best.d, segs: segs, total: segs.reduce(function (x, g) { return x + g.cost; }, 0) };
+  }
+
+  function better(a, b) { return !b || a.moves < b.moves || (a.moves === b.moves && a.dist < b.dist); }
+
+  function anchoredPlan(ds, anchorId, budget) {
+    var st = solve(ds, anchorId, 'start'), en = solve(ds, anchorId, 'end');
+    var pick = null;
+    [st && st.moves <= budget ? Object.assign(st, { how: 'starts' }) : null,
+     en && en.moves <= budget ? Object.assign(en, { how: 'ends' }) : null]
+      .forEach(function (p) { if (p && better(p, pick)) pick = p; });
+    if (pick) return pick;
+    var any = solve(ds, anchorId, 'any');
+    if (any && any.moves <= budget) return Object.assign(any, { how: 'includes' });
+    var free0 = solve(ds, null, null);
+    if (free0 && free0.moves <= budget) return Object.assign(free0, { how: 'without' });
+    return null;
+  }
+
+  function longestRun(ds, prefer) {
+    var best = null;
+    online.forEach(function (s) {
+      var runStart = null;
+      ds.forEach(function (d, i) {
+        if (free(s, d)) {
+          if (runStart === null) runStart = d;
+          var len = d - runStart + 1;
+          if (!best || len > best.n || (len === best.n && s.id === prefer)) best = { set: s, from: runStart, to: d, n: len };
+        } else runStart = null;
+      });
+    });
+    return best;
+  }
+
+  function effBudget() { return Math.min(3, S.budget + (S.extra ? 1 : 0)); }
+
+  function derive() {
+    var ds = days(), N = ds.length;
+    var info = {};
+    var full = 0, part = 0, none = 0;
+    sets.forEach(function (s) {
+      var c = ds.filter(function (d) { return free(s, d); }).length;
+      var st = !s.online ? 'walkin' : c === N ? (s.row === 0 ? 'premium' : 'available') : c === 0 ? 'taken' : 'partial';
+      if (s.online) { if (c === N) full++; else if (c === 0) none++; else part++; }
+      info[s.id] = { c: c, st: st };
+    });
+    var budget = effBudget();
+    var plan = null, planOver = null;
+    var planActive = S.view === 'plan' || (S.view === 'home' && full === 0);
+    if (planActive) {
+      plan = S.anchor ? anchoredPlan(ds, S.anchor, budget) : (function () { var p = solve(ds, null, null); return p && p.moves <= budget ? p : null; })();
+      if (!plan && budget < 3) {
+        var p3 = S.anchor ? anchoredPlan(ds, S.anchor, 3) : solve(ds, null, null);
+        if (p3 && p3.moves <= 3) planOver = p3;
+      }
+    }
+    var dflt = solve(ds, null, null);
+    return { planActive: planActive, ds: ds, N: N, info: info, full: full, part: part, none: none, plan: plan, planOver: planOver, dflt: dflt, budget: budget, longest: longestRun(ds, S.anchor || S.sel) };
+  }
+
+  function segIndex(plan) {
+    var m = {};
+    if (plan) plan.segs.forEach(function (g, i) { if (!(g.set.id in m)) m[g.set.id] = i + 1; });
+    return m;
+  }
+  function segc(i) { return '--segc: var(--seg-' + (((i - 1) % 4) + 1) + ')'; }
+
+  function tileHTML(s, D, pm, mob) {
+    var inf = D.info[s.id];
+    var cls = 'tile s-' + inf.st;
+    var style = '';
+    var extra = '';
+    if (S.sel === s.id) cls += ' sel';
+    if (pm[s.id]) { cls += ' inplan'; style = segc(pm[s.id]); extra += '<span class="pnum">' + pm[s.id] + '</span>'; }
+    if (inf.st === 'partial') {
+      extra += '<span class="cov">' + (mob ? inf.c : inf.c + '/' + D.N) + '</span>';
+      extra += '<span class="covbar">' + D.ds.map(function (d) { return '<i' + (free(s, d) ? '' : ' class="x"') + '></i>'; }).join('') + '</span>';
+    }
+    var what = { available: 'free all ' + nd(D.N), premium: 'front row, free all ' + nd(D.N), partial: 'free ' + inf.c + ' of ' + nd(D.N), taken: 'taken all your days', walkin: 'walk-in only, book at the venue' }[inf.st];
+    var act = inf.st === 'walkin' ? '' : ' data-act="tile" data-id="' + s.id + '"';
+    var seg = pm[s.id] ? ' data-seg="' + pm[s.id] + '"' : '';
+    return '<button type="button" class="' + cls + '" style="' + style + '"' + act + seg + ' aria-label="Set ' + s.id + ', ' + what + '"><span class="lbl">' + s.pos + '</span>' + extra + '</button>';
+  }
+
+  function mapHTML(D, pm, mob) {
+    var t = mob ? 28 : 50, gap = mob ? 4 : 8;
+    var h = '<section class="mapcard glass v-' + S.tstyle + '" aria-label="Beach map">';
+    h += '<div class="sea">Facing the sea</div><div class="sandbox"><div class="grid" style="--t:' + t + 'px;--gap:' + gap + 'px;--tf:' + (mob ? 10 : 13) + 'px;grid-template-columns: 14px repeat(' + COLS + ', ' + t + 'px)">';
+    ROWS.forEach(function (r, ri) {
+      h += '<span class="rowl">' + r + '</span>';
+      sets.filter(function (s) { return s.row === ri; }).forEach(function (s) { h += tileHTML(s, D, pm, mob); });
+    });
+    h += '</div><div class="prom">Promenade</div></div>';
+    h += '<div class="legend">';
+    h += '<span><i class="sw s-available"></i>Free all days</span>';
+    h += '<span><i class="sw s-premium"></i>Front row</span>';
+    h += '<span class="v-' + S.tstyle + '"><i class="sw s-partial"></i>Partly free</span>';
+    h += '<span><i class="sw s-walkin"></i>Walk-in only</span>';
+    h += '<span><i class="sw s-taken"></i>Taken</span>';
+    h += '</div></section>';
+    return h;
+  }
+
+  function headHTML(D, mob) {
+    var h = '<button type="button" class="pill" data-act="noop">← All beaches</button>';
+    var id = '<span class="chip">' + (S.mode === 'INSTANT' ? 'Instant booking' : 'Request to book') + '</span>' +
+      '<h1 class="vname">Dhërmi Beach Club</h1><p class="meta">★ 4.6 · 128 reviews · Dhërmi, Vlorë · from €16/day</p>';
+    var df = '<button type="button" class="datef" data-act="opencal"><span class="cal-ico" aria-hidden="true"></span><span><small>Your stay</small><strong>' + fd(S.start) + ' → ' + fd(S.end) + '</strong></span><span class="days">' + nd(D.N) + '</span></button>';
+    if (mob) {
+      h += '<header class="head glass"><div class="band"></div>' + id + df + '</header>';
+    } else {
+      h += '<header class="head glass"><div class="band"></div><div class="d-head"><div>' + id + '</div><div style="position:relative">' + df + '<p class="meta" style="margin-top:8px">Stays of up to ' + CAP + ' days at this venue.</p>' + (S.cal ? '<div class="pop">' + calHTML(false) + '</div>' : '') + '</div></div></header>';
+    }
+    return h;
+  }
+
+  function bannerHTML(D) {
+    if (D.full > 0) return '<div class="banner ok"><span class="dot"></span><span><b>' + D.full + (D.full === 1 ? ' spot is' : ' spots are') + ' free for all ' + nd(D.N) + '.</b> ' + D.part + ' more are free for part of your stay.</span></div>';
+    if (D.dflt && D.dflt.moves <= effBudget()) return '<button type="button" class="banner warn" data-act="plan"><span class="dot"></span><span>No single spot is free for all ' + nd(D.N) + '. <b>See a ' + D.dflt.moves + '-move plan</b></span></button>';
+    return '<button type="button" class="banner warn" data-act="plan"><span class="dot"></span><span>This beach can\'t fit all ' + nd(D.N) + ' without too many moves. <b>See your options</b></span></button>';
+  }
+
+  function stripCov(s, D) {
+    return '<div class="strip" style="--n:' + D.N + '">' + D.ds.map(function (d) {
+      var x = date(d).getUTCDate();
+      return free(s, d) ? '<div class="f" title="' + fdw(d) + ' free">' + x + '</div>' : '<div class="x" title="' + fdw(d) + ' taken">' + x + '</div>';
+    }).join('') + '</div><div class="keyline"><span><i style="background:var(--t-av-border)"></i>Free</span><span><i style="border:1.5px dashed var(--t-tk-border)"></i>Taken</span></div>';
+  }
+  function stripPlan(plan, D) {
+    var at = {};
+    plan.segs.forEach(function (g, i) { for (var d = g.from; d <= g.to; d++) at[d] = { i: i + 1, mv: i > 0 && d === g.from }; });
+    return '<div class="strip" style="--n:' + D.N + '">' + D.ds.map(function (d) {
+      var a = at[d];
+      return '<div class="sg' + (a.mv ? ' mv' : '') + '" style="' + segc(a.i) + '" data-seg="' + a.i + '" title="' + fdw(d) + ': ' + plan.segs[a.i - 1].set.id + '">' + date(d).getUTCDate() + '</div>';
+    }).join('') + '</div>';
+  }
+
+  function planHTML(D) {
+    var p = D.plan, h = '';
+    var who = S.anchor ? byId[S.anchor] : null;
+    if (!p) {
+      h += '<div class="kicker">Can\'t host your whole stay</div><h2>Dhërmi Beach Club can\'t fit all ' + nd(D.N) + '</h2>';
+      h += '<p>Every way of covering ' + fr(S.start, S.end) + ' here needs more than ' + D.budget + (D.budget === 1 ? ' move' : ' moves') + '.</p>';
+      if (D.planOver && !S.extra) {
+        h += '<button type="button" class="cta2" data-act="extra">Show a ' + D.planOver.moves + '-move plan anyway</button>';
+      }
+      h += longestHTML(D);
+      h += '<h3>Other beaches free ' + fr(S.start, S.end) + '<span class="eg">EXAMPLE</span></h3>';
+      h += '<div class="alt"><span><b>Jalë Bay Lido</b><small>Same spot all ' + nd(D.N) + ' · 12 km</small></span><span>€18/day</span></div>';
+      h += '<div class="alt"><span><b>Gjipe Beach Club</b><small>Same spot all ' + nd(D.N) + ' · 6 km</small></span><span>€22/day</span></div>';
+      h += '<div class="alt"><span><b>Palasë Shore</b><small>1 move · 9 km</small></span><span>€15/day</span></div>';
+      return h;
+    }
+    var nSpots = p.segs.length;
+    var avg = Math.round(p.total / D.N);
+    h += '<div class="kicker">' + (p.moves === 0 ? 'One spot, whole stay' : p.moves + (p.moves === 1 ? ' move' : ' moves') + ' · ' + nSpots + ' spots') + '</div>';
+    h += '<h2>' + (p.moves === 0 ? p.segs[0].set.id + ' for all ' + nd(D.N) : 'Your ' + nd(D.N) + ', planned') + '</h2>';
+    if (who) {
+      var note = { starts: 'Starts at ' + who.id + ', the spot you picked.', ends: 'Ends at ' + who.id + ', the spot you picked.', includes: 'Includes ' + who.id + ', the spot you picked.', without: who.id + ' couldn\'t fit in a plan with ' + D.budget + (D.budget === 1 ? ' move' : ' moves') + ', so this plan uses other spots.' }[p.how];
+      h += '<p>' + note + '</p>';
+    } else {
+      h += '<p>No single spot is free every day, so we chose the fewest moves, then the shortest ones.</p>';
+    }
+    h += stripPlan(p, D);
+    h += '<ol class="tl">';
+    p.segs.forEach(function (g, i) {
+      if (i > 0) h += '<div class="move">Move on <b>' + fdw(g.from) + '</b>: ' + moveText(p.segs[i - 1].set, g.set) + '</div>';
+      h += '<li style="' + segc(i + 1) + '"><span class="num">' + (i + 1) + '</span><div class="stop" data-seg="' + (i + 1) + '"><span><b>' + g.set.id + '</b> <small>' + ROW_NAME[g.set.row] + '</small><br><small>' + fr(g.from, g.to) + ' · ' + nd(g.n) + '</small></span><em>' + eur(g.set.rate) + '/day</em></div></li>';
+    });
+    h += '</ol>';
+    h += '<div class="price"><span>' + eur(avg) + '/day avg · ' + nd(D.N) + '</span><strong>' + eur(p.total) + '</strong></div>';
+    h += '<button type="button" class="cta" data-act="review">' + (S.mode === 'INSTANT' ? 'Review & pay' : 'Review request') + '</button>';
+    if (p.moves > 0) h += longestHTML(D);
+    if (S.view !== 'home') h += '<p style="margin-top:12px;font-size:13px"><button type="button" class="link" data-act="back">Back to the map</button></p>';
+    return h;
+  }
+
+  function longestHTML(D) {
+    var L = D.longest;
+    if (!L) return '';
+    return '<h3>Prefer not to move?</h3><div class="alt"><span><b>' + L.set.id + ' for ' + nd(L.n) + '</b><small>' + fr(L.from, L.to) + ' · the longest stay one spot can host</small></span><button type="button" class="link" data-act="shorten">Shorten to this</button></div>';
+  }
+
+  function setHTML(D) {
+    var s = byId[S.sel], inf = D.info[s.id], h = '';
+    h += '<div class="kicker">' + ROW_NAME[s.row] + ' · ' + eur(s.rate) + '/day</div>';
+    if (inf.st === 'available' || inf.st === 'premium') {
+      h += '<h2>' + s.id + ' is free for all ' + nd(D.N) + '</h2><p>' + fr(S.start, S.end) + ' · 2 loungers + umbrella, every day.</p>';
+      h += stripCov(s, D);
+      h += '<div class="price"><span>' + eur(s.rate) + ' × ' + nd(D.N) + '</span><strong>' + eur(s.rate * D.N) + '</strong></div>';
+      h += '<button type="button" class="cta" data-act="bookone">' + (S.mode === 'INSTANT' ? 'Book ' + s.id : 'Request ' + s.id) + '</button>';
+    } else if (inf.st === 'partial') {
+      h += '<h2>' + s.id + ' is free ' + inf.c + ' of your ' + nd(D.N) + '</h2><p>It\'s taken on the dashed days.</p>';
+      h += stripCov(s, D);
+      h += '<button type="button" class="cta" data-act="planaround">Plan my stay around ' + s.id + '</button>';
+      var own = (function () { var best = null, st = null; D.ds.forEach(function (d) { if (free(s, d)) { if (st === null) st = d; if (!best || d - st + 1 > best.n) best = { set: s, from: st, to: d, n: d - st + 1 }; } else st = null; }); return best; })();
+      if (own) h += '<button type="button" class="cta2" data-act="shortenown">Shorten my stay to ' + fr(own.from, own.to) + ' (' + nd(own.n) + ')</button>';
+    } else {
+      h += '<h2>' + s.id + ' is taken all your days</h2><p>Pick a highlighted spot, or let us plan your stay.</p>';
+      h += '<button type="button" class="cta2" data-act="plan">Plan my stay</button>';
+    }
+    h += '<p style="margin-top:12px;font-size:13px"><button type="button" class="link" data-act="back">Back to the map</button></p>';
+    return h;
+  }
+
+  function homeHTML(D) {
+    if (D.full > 0) return '<div class="kicker">Your stay</div><h2>Pick your spot</h2><p>' + D.full + ' spots are free for all ' + nd(D.N) + ', ' + fr(S.start, S.end) + '. Tap a partly-free spot to see which of your days it covers.</p>';
+    return planHTML(D);
+  }
+
+  function panelBody(D) {
+    if (S.view === 'set' && S.sel) return setHTML(D);
+    if (S.view === 'plan') return planHTML(D);
+    return homeHTML(D);
+  }
+
+  function currentPlan(D) {
+    if (D.planActive) return D.plan;
+    if (S.view === 'set' && S.sel) {
+      var inf = D.info[S.sel];
+      if (inf.st === 'available' || inf.st === 'premium') {
+        var s = byId[S.sel];
+        return { moves: 0, dist: 0, segs: [{ set: s, from: S.start, to: S.end, n: D.N, cost: D.N * s.rate }], total: D.N * s.rate };
+      }
+    }
+    return null;
+  }
+
+  function calHTML(mob) {
+    var ds = S.dStart, de = S.dEnd;
+    var h = '<div class="cal">';
+    h += '<div class="cap">Stays of up to ' + CAP + ' days at this venue. Tap your first day, then your last.</div><div class="months">';
+    [6, 7].forEach(function (mo) {
+      var first = Date.UTC(2027, mo, 1), n = new Date(Date.UTC(2027, mo + 1, 0)).getUTCDate();
+      var lead = (new Date(first).getUTCDay() + 6) % 7;
+      h += '<div><p class="mh">' + ['July', 'August'][mo - 6] + ' 2027</p><div class="wk">';
+      ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(function (w) { h += '<span class="wd">' + w + '</span>'; });
+      for (var i = 0; i < lead; i++) h += '<span></span>';
+      for (var dd = 1; dd <= n; dd++) {
+        var idx = Math.round((Date.UTC(2027, mo, dd) - SEASON) / DAY);
+        var dis = ds !== null && de === null && (idx > ds + CAP - 1);
+        var c = 'd';
+        var lo = ds, hi = de === null ? ds : de;
+        if (lo !== null && idx >= lo && idx <= hi) c += (idx === lo || idx === hi) ? ' end' : ' in';
+        h += '<button type="button" class="' + c + '" data-act="calday" data-d="' + idx + '"' + (dis ? ' disabled' : '') + ' aria-label="' + fdw(idx) + '">' + dd + '</button>';
+      }
+      h += '</div></div>';
+    });
+    h += '</div><div class="foot">';
+    if (ds === null) h += '<div>Pick your first day</div>';
+    else if (de === null) h += '<div><b>' + fd(ds) + '</b> → pick your last day</div>';
+    else h += '<div><b>' + nd(de - ds + 1) + '</b><br><span style="color:var(--ink-soft);font-size:13px">' + fr(ds, de) + '</span></div>';
+    h += '<button type="button" class="cta" data-act="applycal"' + (ds === null ? ' disabled' : '') + '>Show beach</button></div></div>';
+    return h;
+  }
+
+  function reviewHTML(D) {
+    var p = currentPlan(D);
+    if (S.done) {
+      return '<div class="done"><div class="kicker">' + (S.mode === 'INSTANT' ? 'Paid · confirmed' : 'Request sent') + '</div><h2>' + (S.mode === 'INSTANT' ? 'Your stay is booked' : 'Dhërmi Beach Club will answer within 24 hours') + '</h2><p>One code for every morning of your stay.</p><div class="code">RVB-7K2Q</div><p>' + fr(S.start, S.end) + ' · ' + p.segs.map(function (g) { return g.set.id; }).join(' → ') + '</p><p style="font-family:var(--mono);font-size:12px">The prototype ends here. The booking page ("your spot today") is not built yet.</p><button type="button" class="cta2" data-act="restart">Start over</button></div>';
+    }
+    var h = '<div class="kicker">' + (S.mode === 'INSTANT' ? 'Step 2 of 2 · Review' : 'Review your request') + '</div><h2>Dhërmi Beach Club</h2>';
+    h += '<p>' + fdw(S.start) + ' – ' + fdw(S.end) + ' 2027 · <b>' + nd(D.N) + '</b><br>2 loungers + umbrella, full day, every day.</p>';
+    h += '<ul class="rows">';
+    p.segs.forEach(function (g, i) {
+      h += '<li style="' + segc(i + 1) + '"><span><span class="n">' + (i + 1) + '</span>' + g.set.id + ' · ' + fr(g.from, g.to) + '</span><span>' + nd(g.n) + ' × ' + eur(g.set.rate) + ' = ' + eur(g.cost) + '</span></li>';
+    });
+    h += '</ul>';
+    if (p.moves > 0) {
+      h += '<p style="margin-top:10px;font-size:13px">You move ' + (p.moves === 1 ? 'once' : p.moves + ' times') + ': ' + p.segs.slice(1).map(function (g, i) { return fd(g.from) + ' to ' + g.set.id + ' (' + moveText(p.segs[i].set, g.set) + ')'; }).join('; ') + '. We\'ll remind you the evening before each move.</p>';
+    }
+    h += '<div class="price"><span>' + eur(Math.round(p.total / D.N)) + '/day avg</span><strong>' + eur(p.total) + '</strong></div>';
+    h += '<ul class="promise"><li>One booking code for every morning</li><li>' + (S.mode === 'INSTANT' ? 'One payment for the whole stay' : 'The venue accepts or declines your whole stay, never part of it. Nothing is charged until they accept.') + '</li><li>Cancel the whole stay in one step · free until 48h before ' + fd(S.start) + '</li></ul>';
+    h += '<label class="field" for="rv-name"><span>Name</span><input id="rv-name" value="Elena Hoxha"></label>';
+    h += '<label class="field" for="rv-mail"><span>Email</span><input id="rv-mail" value="elena@example.com"></label>';
+    h += '<button type="button" class="cta" data-act="pay">' + (S.mode === 'INSTANT' ? 'Pay ' + eur(p.total) : 'Send request') + '</button>';
+    h += '<p style="margin-top:10px;font-size:13px"><button type="button" class="link" data-act="closereview">Back</button></p>';
+    return h;
+  }
+
+  function dockHTML(D) {
+    var p = currentPlan(D);
+    if (p) return '<div class="dock glass"><div><b>' + eur(p.total) + ' · ' + nd(D.N) + '</b>' + (p.moves ? p.moves + (p.moves === 1 ? ' move' : ' moves') + ' · ' : '') + p.segs.map(function (g) { return g.set.id; }).join(' → ') + '</div><button type="button" class="cta" data-act="review">Review</button></div>';
+    if (S.view === 'plan' || S.view === 'set') return '<div class="dock glass"><div><b>' + (S.view === 'plan' ? 'Plan hidden' : byId[S.sel].id) + '</b>Tap to reopen</div><button type="button" class="cta" data-act="opensheet">Open</button></div>';
+    return '';
+  }
+
+  function phoneHTML(D, pm) {
+    var h = '<div><div class="frame-label">Phone · 390px</div><div class="phone"><div class="screen">';
+    h += headHTML(D, true) + bannerHTML(D) + mapHTML(D, pm, true);
+    h += '</div>';
+    if (S.review) h += '<div class="sheet full"><div class="sheet-top"><span></span><button type="button" class="x-btn" data-act="closereview" aria-label="Close">×</button></div><div class="panel">' + reviewHTML(D) + '</div></div>';
+    else if (S.cal) h += '<div class="sheet full"><div class="sheet-top"><b>Your stay</b><button type="button" class="x-btn" data-act="closecal" aria-label="Close">×</button></div>' + calHTML(true) + '</div>';
+    else if (S.sheet && S.view !== 'home') h += '<div class="sheet"><div class="grab"></div><div class="sheet-top"><span></span><button type="button" class="x-btn" data-act="hidesheet" aria-label="Hide">⌄</button></div><div class="panel">' + panelBody(D) + '</div></div>';
+    else h += dockHTML(D);
+    h += '</div></div>';
+    return h;
+  }
+
+  function deskHTML(D, pm, zoom) {
+    var h = '<div class="desk-wrap"><div class="frame-label">Desktop · 1100px' + (zoom < 1 ? ' (shown at ' + Math.round(zoom * 100) + '%)' : '') + '</div><div class="desk" style="zoom:' + zoom + '"><div class="chrome-top"><i></i><i></i><i></i><em>riviera.al/venues/dhermi-beach-club</em></div><div class="screen">';
+    h += headHTML(D, false) + '<div class="d-body"><div>' + bannerHTML(D) + '<div style="margin-top:12px">' + mapHTML(D, pm, false) + '</div></div><aside class="panel glass" aria-label="Your stay">' + panelBody(D) + '</aside></div>';
+    h += '</div>';
+    if (S.review) h += '<div class="modal-scrim"><div class="modal" role="dialog" aria-label="Review">' + reviewHTML(D) + '</div></div>';
+    h += '</div></div>';
+    return h;
+  }
+
+  function inspectorHTML(D) {
+    var p = currentPlan(D);
+    var h = '<details' + (S.inspector ? ' open' : '') + ' id="insp"><summary>State: availability grid for ' + fr(S.start, S.end) + '</summary>';
+    h += '<div class="stats"><span>free all days <b>' + D.full + '</b></span><span>partly free <b>' + D.part + '</b></span><span>taken all days <b>' + D.none + '</b></span><span>walk-in <b>4</b></span>';
+    h += '<span>best plan (no budget) <b>' + (D.dflt ? D.dflt.moves + ' moves, distance ' + D.dflt.dist : 'none') + '</b></span><span>budget in force <b>' + D.budget + '</b></span><span>view <b>' + S.view + (S.anchor ? ' @' + S.anchor : '') + '</b></span></div>';
+    var pd = {};
+    if (p) p.segs.forEach(function (g, i) { for (var d = g.from; d <= g.to; d++) pd[g.set.id + ':' + d] = i + 1; });
+    h += '<div class="hm-wrap"><table class="hm"><tr><th></th>' + D.ds.map(function (d) { return '<th>' + date(d).getUTCDate() + '</th>'; }).join('') + '</tr>';
+    sets.forEach(function (s) {
+      h += '<tr><td class="id">' + s.id + '</td>' + D.ds.map(function (d) {
+        var k = pd[s.id + ':' + d];
+        if (k) return '<td class="p" style="' + segc(k) + '"></td>';
+        return '<td class="' + (!s.online ? 'w' : free(s, d) ? 'f' : 'x') + '"></td>';
+      }).join('') + '</tr>';
+    });
+    h += '</table></div></details>';
+    return h;
+  }
+
+  function render() {
+    var D = derive();
+    var pm = segIndex(currentPlan(D));
+    var stage = document.getElementById('stage');
+    var avail = stage.clientWidth || window.innerWidth - 32;
+    var h = '';
+    if (S.frame === 'phone' || S.frame === 'both') h += phoneHTML(D, pm);
+    if (S.frame === 'desk' || S.frame === 'both') {
+      var room = S.frame === 'both' ? avail - 390 - 28 : avail;
+      var zoom = Math.max(0.5, Math.min(1, room / 1102));
+      if (S.frame === 'both' && room < 560) zoom = Math.min(1, avail / 1102);
+      h += deskHTML(D, pm, zoom);
+    }
+    stage.innerHTML = h;
+    document.getElementById('inspector').innerHTML = inspectorHTML(D);
+  }
+
+  function resetSel() { S.sel = null; S.view = 'home'; S.anchor = null; S.sheet = false; S.extra = false; S.review = false; S.done = false; }
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-act]');
+    if (!el) return;
+    var a = el.getAttribute('data-act');
+    var D;
+    switch (a) {
+      case 'tile':
+        S.sel = el.getAttribute('data-id'); S.view = 'set'; S.sheet = true; S.anchor = null; S.extra = false; break;
+      case 'plan':
+        S.view = 'plan'; S.anchor = null; S.sheet = true; S.sel = null; S.extra = false; break;
+      case 'planaround':
+        S.view = 'plan'; S.anchor = S.sel; S.sheet = true; S.extra = false; break;
+      case 'extra':
+        S.extra = true; break;
+      case 'back':
+        S.view = 'home'; S.sel = null; S.anchor = null; S.sheet = false; S.extra = false; break;
+      case 'shorten':
+        D = derive(); if (D.longest) { S.start = D.longest.from; S.end = D.longest.to; S.sel = D.longest.set.id; S.view = 'set'; S.anchor = null; S.sheet = true; S.extra = false; } break;
+      case 'shortenown':
+        D = derive();
+        (function () { var s = byId[S.sel], best = null, st = null; D.ds.forEach(function (d) { if (free(s, d)) { if (st === null) st = d; if (!best || d - st + 1 > best.n) best = { from: st, to: d, n: d - st + 1 }; } else st = null; }); if (best) { S.start = best.from; S.end = best.to; S.view = 'set'; } })();
+        break;
+      case 'bookone': case 'review':
+        S.review = true; S.done = false; break;
+      case 'closereview':
+        S.review = false; S.done = false; break;
+      case 'pay':
+        S.done = true; break;
+      case 'restart':
+        S.start = 11; S.end = 24; resetSel(); break;
+      case 'hidesheet':
+        S.sheet = false; break;
+      case 'opensheet':
+        S.sheet = true; break;
+      case 'opencal':
+        S.cal = true; S.dStart = S.start; S.dEnd = S.end; break;
+      case 'closecal':
+        S.cal = false; break;
+      case 'calday':
+        var d = +el.getAttribute('data-d');
+        if (S.dStart === null || S.dEnd !== null || d < S.dStart) { S.dStart = d; S.dEnd = null; }
+        else S.dEnd = d;
+        break;
+      case 'applycal':
+        if (S.dStart !== null) { S.start = S.dStart; S.end = S.dEnd === null ? S.dStart : S.dEnd; S.cal = false; resetSel(); }
+        break;
+      default: return;
+    }
+    render();
+  });
+
+  document.addEventListener('mouseover', function (e) {
+    var el = e.target.closest('[data-seg]');
+    var n = el ? el.getAttribute('data-seg') : null;
+    document.querySelectorAll('.hl').forEach(function (x) { if (!n || x.getAttribute('data-seg') !== n) x.classList.remove('hl'); });
+    if (n) document.querySelectorAll('.tile[data-seg="' + n + '"], .stop[data-seg="' + n + '"]').forEach(function (x) { x.classList.add('hl'); });
+  });
+
+  document.addEventListener('toggle', function (e) { if (e.target.id === 'insp') S.inspector = e.target.open; }, true);
+
+  document.getElementById('bar').addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.name === 'frame') S.frame = t.value;
+    if (t.name === 'budget') { S.budget = +t.value; S.extra = false; }
+    if (t.name === 'occ') { S.occ = +t.value; regen(); resetSel(); }
+    if (t.name === 'tstyle') S.tstyle = t.value;
+    if (t.name === 'mode') S.mode = t.value;
+    render();
+  });
+  document.getElementById('reshuffle').addEventListener('click', function () { S.seed++; regen(); resetSel(); render(); });
+  document.getElementById('f-' + S.frame).checked = true;
+
+  var rt;
+  window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(render, 120); });
+
+  regen();
+  for (var tries = 0; tries < 200; tries++) {
+    var p0 = solve(days(), null, null);
+    if (p0 && p0.moves === 2) break;
+    S.seed++; regen();
+  }
+  render();
+})();
+</script>
