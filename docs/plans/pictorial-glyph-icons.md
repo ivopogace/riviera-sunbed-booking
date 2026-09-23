@@ -103,8 +103,11 @@ string glyph) · `playwright-cli` (mocked-suite pins for rendered size and star 
 
 ## Open questions / Assumptions
 
-- **Assumption:** A call-site svg box equals the font-size of the glyph it replaces (the issue's
-  own `text-[26px]` → `size-[26px]` precedent). — *Owner:* agent · *Resolves by:* e2e + screenshots
+- **Assumption:** A call-site svg box matches the glyph's *drawn* extent, not its font-size: `×`
+  draws at ~0.6 em and `✕` at ~0.8 em, so a box equal to the font-size would nearly double the
+  `×` marks. Where the issue named a size (`appFailureIcon` 26 px) it is kept. The now-dead
+  `text-[Npx] leading-none` sizing on each converted control goes with the glyph. — *Owner:*
+  agent · *Resolves by:* e2e + screenshots
 - **Assumption:** `ClockIcon` serves the requests-tab ⏰ and `LockIcon` serves the pay-page 🔒 —
   one drawing per meaning rather than a near-duplicate. — *Owner:* agent · *Resolves by:* review
 - **Assumption:** the close ✕ and the failed-payment medallion's ✕ share one `CrossIcon` (named
@@ -148,14 +151,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — `CrossIcon` red.
+**Next action:** Phase 2 — `StarIcon` red.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan + draft PR | ⏳ | |
-| 1 — `CrossIcon`: close controls + failure medallion | | |
+| 0 — plan + draft PR | ✅ | 5fd49962 |
+| 1 — `CrossIcon`: close controls + failure medallion | ✅ | this commit |
 | 2 — `StarIcon` + `StarRow`: rating marks | | |
 | 3 — `CheckIcon`/`HourglassIcon`/`MailIcon`: medallions + waiting | | |
 | 4 — `AlertIcon`/`UmbrellaIcon`/`ClockIcon`: failures, alerts, beach | | |
@@ -180,12 +183,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/{cross,star,check,hourglass,mail,alert,umbrella,chevron-down,triangle,arrow-left,rain,party,dot}-icon.ts` — the icons
 - `frontend/src/app/shared/{cross,star,check,hourglass,mail,alert,umbrella,chevron-down,triangle,arrow-left,rain,party,dot}-icon.spec.ts` — their specs
 - `frontend/src/app/shared/star-row.ts|.spec.ts` — the read-only five-star row
-- `frontend/src/app/shared/{clock-icon,lock-icon,failure-panel,star-rating,rating,outcome-card,photo-lightbox,beach-grid-frame,riviera-map}.*` — reused icons' docs, call sites, specs
-- `frontend/src/app/booking/{booking-dialog,find-booking,booking-pay,booking-confirmation,request-confirmation,booking-view,my-bookings,review-panel}.*` — call sites, specs
-- `frontend/src/app/venue/{venue-map,venue-reviews}.*` — call sites, specs
-- `frontend/src/app/operator/{set-editor,requests-tab,pending-approval-banner,payouts-tab,daily-view-tab}.*` — call sites, specs
+- `frontend/src/app/shared/{clock-icon,lock-icon,failure-panel,star-rating,rating,outcome-card,photo-lightbox,beach-grid-frame,riviera-map}.ts|.html|.spec.ts` — reused icons' docs, call sites, specs
+- `frontend/src/app/booking/{booking-dialog,find-booking,booking-pay,booking-confirmation,request-confirmation,booking-view,my-bookings,review-panel}.ts|.html|.spec.ts` — call sites, specs
+- `frontend/src/app/venue/{venue-map,venue-reviews}.ts|.html|.spec.ts` — call sites, specs
+- `frontend/src/app/operator/{set-editor,requests-tab,pending-approval-banner,payouts-tab,daily-view-tab}.ts|.html|.spec.ts` — call sites, specs
 - `frontend/src/app/admin/admin-reviews.*` — call site, spec
-- `frontend/src/app/pages/home/{home,venue-row,discover-head,coast-picker}.*` — call sites, specs
+- `frontend/src/app/pages/home/{home,venue-row,discover-head,coast-picker}.ts|.html|.spec.ts` — call sites, specs
 - `frontend/e2e/*.e2e.ts` — size pins, star fill, glyph-text assertions re-targeted
 
 ---

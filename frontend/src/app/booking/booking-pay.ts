@@ -25,6 +25,7 @@ import { CancellationTermsNote } from './cancellation-terms-note';
 import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
 
 import { TouchTarget } from '../shared/touch-target';
+import { CrossIcon } from '../shared/cross-icon';
 
 /** Poll cadence and budget for awaiting the webhook-driven CONFIRMED transition. */
 const POLL_MS = 1500;
@@ -90,6 +91,7 @@ const CLS = {
     BusyAction,
     TouchTarget,
     CancellationTermsNote,
+    CrossIcon,
   ],
   template: `
     <!-- One persistent live region announces every state change. A live region only announces
@@ -210,10 +212,10 @@ const CLS = {
               @case ('error') {
                 @if (terminalError()) {
                   <div
-                    class="mx-auto mt-1.5 mb-4 flex h-[60px] w-[60px] items-center justify-center rounded-full border border-riv-medallion-negative-border bg-riv-medallion-negative-fill text-[28px] text-riv-medallion-negative-ink"
+                    class="mx-auto mt-1.5 mb-4 flex h-[60px] w-[60px] items-center justify-center rounded-full border border-riv-medallion-negative-border bg-riv-medallion-negative-fill text-riv-medallion-negative-ink [&_svg]:size-[24px]"
                     aria-hidden="true"
                   >
-                    ✕
+                    <app-cross-icon />
                   </div>
                   <h1 [class]="cls.h1" id="pay-title">Payment couldn’t be completed</h1>
                 } @else {

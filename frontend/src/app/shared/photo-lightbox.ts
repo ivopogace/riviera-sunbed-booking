@@ -13,6 +13,7 @@ import { trapFocusWithin } from './focus-trap';
 import { PhotoSlideshow } from './photo-slideshow';
 import { TouchTarget } from './touch-target';
 import { PhotoView } from './venue-views';
+import { CrossIcon } from './cross-icon';
 
 /**
  * A modal, larger-scale view of a venue's photos, opened by tapping a thumbnail in either the
@@ -34,7 +35,7 @@ import { PhotoView } from './venue-views';
  */
 @Component({
   selector: 'app-photo-lightbox',
-  imports: [PhotoSlideshow, TouchTarget],
+  imports: [PhotoSlideshow, TouchTarget, CrossIcon],
   host: {
     class:
       'fixed inset-0 z-50 flex items-center justify-center bg-[rgba(4,18,24,0.86)] p-4 backdrop-blur-[6px]',
@@ -71,7 +72,7 @@ import { PhotoView } from './venue-views';
         aria-label="Close photo viewer"
         (click)="dismissed.emit()"
       >
-        <span aria-hidden="true" class="text-[20px] leading-none text-white">✕</span>
+        <app-cross-icon class="text-white [&_svg]:size-[18px]" />
       </button>
     </div>
   `,

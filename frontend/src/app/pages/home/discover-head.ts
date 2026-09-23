@@ -15,6 +15,7 @@ import { formatBookingDate } from '../../shared/booking-date-label';
 import { focusMover } from '../../shared/focus-after-render';
 import { LocateIcon } from '../../shared/locate-icon';
 import { TouchTarget } from '../../shared/touch-target';
+import { CrossIcon } from '../../shared/cross-icon';
 
 /** One beach of the focused region, as the beach rail offers it. */
 export interface BeachOption {
@@ -66,7 +67,7 @@ const COUNT =
  */
 @Component({
   selector: 'app-discover-head',
-  imports: [LocateIcon, TouchTarget],
+  imports: [LocateIcon, TouchTarget, CrossIcon],
   host: { class: 'block' },
   template: `
     <div class="flex h-11 items-center gap-2 px-3">
@@ -191,10 +192,10 @@ const COUNT =
             appTouchTarget
             data-testid="head-note-dismiss"
             aria-label="Dismiss message"
-            class="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-full text-[19px] leading-none text-riv-ink-soft"
+            class="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-full text-riv-ink-soft"
             (click)="noteDismissed.emit()"
           >
-            <span aria-hidden="true">×</span>
+            <app-cross-icon />
           </button>
         </div>
       }
