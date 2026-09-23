@@ -54,6 +54,8 @@ import {
 } from './operator-console.service';
 import { QrScanner } from './qr-scanner';
 import { codeFromScan } from './scan-input';
+import { CheckIcon } from '../shared/check-icon';
+import { DotIcon } from '../shared/dot-icon';
 
 /**
  * One arrivals row: set label, display-only arrival code (invariant #7), and — for a booking that
@@ -145,6 +147,8 @@ interface CheckInNotice {
     TouchTarget,
     RouterLink,
     ConfirmPanel,
+    CheckIcon,
+    DotIcon,
   ],
   templateUrl: './daily-view-tab.html',
 })
@@ -582,19 +586,6 @@ export class DailyViewTab {
 
   protected money(amount: MoneyView): string {
     return formatMoney(amount);
-  }
-
-  /** The state glyph shown beside the position number: a check for a staff mark, a dot when
-   *  locked, none when free — state stays glyph + fill, never colour alone. */
-  protected stateGlyph(set: SetView): string | undefined {
-    switch (this.stateOf(set)) {
-      case 'STAFF_MARKED':
-        return '✓';
-      case 'BOOKED_ONLINE':
-        return '●';
-      default:
-        return undefined;
-    }
   }
 
   /** The Tailwind background/ink classes for a tile of the given state (test-hooks: `.set-tile` + data-state). */

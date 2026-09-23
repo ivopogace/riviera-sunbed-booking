@@ -29,6 +29,7 @@ import { ConsoleVenueMap } from './console-venue-map';
 import { PendingRequestItem, RequestErrorCode } from './operator-console.model';
 import { OperatorConsoleService, requestErrorOf } from './operator-console.service';
 import { PendingRequestsStore } from './pending-requests-store';
+import { CheckIcon } from '../shared/check-icon';
 
 /** One pending-request card's static display fields; the transient accept/decline/expired state is per-id. */
 interface RequestRow {
@@ -68,7 +69,7 @@ interface RequestRow {
  */
 @Component({
   selector: 'app-requests-tab',
-  imports: [CardGlass, LoadAnnouncer, SkeletonBlock, BusyAction, TouchTarget],
+  imports: [CardGlass, LoadAnnouncer, SkeletonBlock, BusyAction, TouchTarget, CheckIcon],
   templateUrl: './requests-tab.html',
 })
 export class RequestsTab {

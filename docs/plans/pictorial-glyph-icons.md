@@ -151,19 +151,19 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** Phase 3 — `CheckIcon` red.
+**Next action:** Phase 4 — `AlertIcon` red.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan + draft PR | ✅ | 5fd49962 |
 | 1 — `CrossIcon`: close controls + failure medallion | ✅ | 785784e9 |
-| 2 — `StarIcon` + `StarRow`: rating marks | ✅ | this commit |
-| 3 — `CheckIcon`/`HourglassIcon`/`MailIcon`: medallions + waiting | | |
+| 2 — `StarIcon` + `StarRow`: rating marks | ✅ | a4be93c0 |
+| 3 — `CheckIcon`/`HourglassIcon`/`MailIcon` (+ `DotIcon`, daily-view ✓/● pulled forward): medallions + waiting | ✅ | this commit |
 | 4 — `AlertIcon`/`UmbrellaIcon`/`ClockIcon`: failures, alerts, beach | | |
 | 5 — `ChevronDownIcon`/`TriangleIcon`/`ArrowLeftIcon`: wayfinding | | |
-| 6 — `RainIcon`/`PartyIcon`/`LockIcon`/`DotIcon`: emoji + daily-view state | | |
+| 6 — `RainIcon`/`PartyIcon`/`LockIcon`: emoji | | |
 | 7 — sweep, e2e size pins, full gates | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -183,6 +183,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/pictorial-glyph-sweep.spec.ts` — AC-2's source sweep
 - `frontend/src/app/shared/{cross,star,check,hourglass,mail,alert,umbrella,chevron-down,triangle,arrow-left,rain,party,dot}-icon.ts` — the icons
 - `frontend/src/app/shared/{cross,star,check,hourglass,mail,alert,umbrella,chevron-down,triangle,arrow-left,rain,party,dot}-icon.spec.ts` — their specs
+- `frontend/src/app/operator/daily-view-tab.html` — state marks
 - `frontend/src/app/shared/star-row.ts|.spec.ts` — the read-only five-star row
 - `frontend/src/app/shared/{clock-icon,lock-icon,failure-panel,star-rating,rating,outcome-card,photo-lightbox,beach-grid-frame,riviera-map}.ts|.html|.spec.ts` — reused icons' docs, call sites, specs
 - `frontend/src/app/booking/{booking-dialog,find-booking,booking-pay,booking-confirmation,request-confirmation,booking-view,my-bookings,review-panel}.ts|.html|.spec.ts` — call sites, specs

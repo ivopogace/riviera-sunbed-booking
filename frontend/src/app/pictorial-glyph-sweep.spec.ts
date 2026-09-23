@@ -21,12 +21,18 @@ const RETIRED: Readonly<Record<string, string>> = {
   '×': 'app-cross-icon',
   '★': 'app-star-icon',
   '☆': 'app-star-icon',
+  '✓': 'app-check-icon',
+  '⏳': 'app-hourglass-icon',
+  '✉': 'app-mail-icon',
+  '●': 'app-dot-icon',
 };
 
 /** A retired codepoint that is text, matched on its trimmed source line. */
 const RESIDUE: readonly { file: string; line: RegExp }[] = [
   // The grid-size sign in a sentence ("Generated a 2×3 grid") — the multiplication sign, not a cross.
   { file: 'operator/layout-editor.ts', line: /Generated a \$\{rows\}×\$\{cols\} grid/ },
+  // A price pin's label when the venue has no price: text the pin-crowding maths measures as text.
+  { file: 'pages/home/venue-pin-layer.html', line: /priceLabel \?\? '●'/ },
 ];
 
 function sources(): readonly string[] {

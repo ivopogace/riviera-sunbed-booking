@@ -217,11 +217,16 @@ test('shows tile states + arrival codes, and marks a walk-in that survives the r
 
   // Every tile shows its position number beside the state glyph — the walk-in affordance (#686).
   const visibleTileText = (setId: number) =>
-    page.locator(`[data-set-id="${setId}"] > [aria-hidden="true"]`);
+    page.locator(`[data-set-id="${setId}"] > span[aria-hidden="true"]`);
+  const stateMark = (setId: number, icon: string) =>
+    page.locator(`[data-set-id="${setId}"] > app-${icon}-icon svg`);
   await expect(visibleTileText(1)).toHaveText(['1']);
-  await expect(visibleTileText(2)).toHaveText(['●', '2']);
+  await expect(stateMark(1, 'check')).toHaveCount(0);
+  await expect(visibleTileText(2)).toHaveText(['2']);
+  await expect(stateMark(2, 'dot')).toBeVisible();
+  await expect(stateMark(2, 'dot')).toHaveCSS('width', '9px');
 
-  // The UNPAID hold (set 4, no confirmed booking) is locked — never a tappable walk-in ✓.
+  // The UNPAID hold (set 4, no confirmed booking) is locked — never a tappable walk-in check.
   await expect(page.locator('[data-set-id="4"]')).toHaveAttribute('data-state', 'BOOKED_ONLINE');
 
   // Only STAFF_MARKED states count — the old taken−confirmed remainder showed a phantom 1.
@@ -237,7 +242,8 @@ test('shows tile states + arrival codes, and marks a walk-in that survives the r
   // Tap the free set 1 → mark walk-in; after the reconcile it stays walk-in marked.
   await page.locator('[data-set-id="1"]').click();
   await expect(page.locator('[data-set-id="1"]')).toHaveAttribute('data-state', 'STAFF_MARKED');
-  await expect(visibleTileText(1)).toHaveText(['✓', '1']);
+  await expect(visibleTileText(1)).toHaveText(['1']);
+  await expect(stateMark(1, 'check')).toBeVisible();
 });
 
 test('paints the console theme: the date field, the sales-close control and the tiles under porcelain and dark console (#1010, + axe)', async ({

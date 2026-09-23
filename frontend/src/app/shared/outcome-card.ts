@@ -1,6 +1,8 @@
 import { Component, computed, input } from '@angular/core';
 
 import { CardGlass } from './card-glass';
+import { CheckIcon } from './check-icon';
+import { HourglassIcon } from './hourglass-icon';
 
 /** How a landed state reads: a finished action, or one parked awaiting someone else. */
 export type OutcomeTone = 'success' | 'pending';
@@ -24,7 +26,7 @@ let nextHeadingId = 0;
  */
 @Component({
   selector: 'app-outcome-card',
-  imports: [CardGlass],
+  imports: [CardGlass, CheckIcon, HourglassIcon],
   template: `
     <section
       appCardGlass
@@ -32,7 +34,13 @@ let nextHeadingId = 0;
       [attr.aria-labelledby]="headingId"
       [attr.data-testid]="testId() ?? null"
     >
-      <div data-riv-outcome-glyph aria-hidden="true" [class]="glyphClasses()">{{ glyph() }}</div>
+      <div data-riv-outcome-glyph aria-hidden="true" [class]="glyphClasses()">
+        @if (tone() === 'pending') {
+          <app-hourglass-icon />
+        } @else {
+          <app-check-icon />
+        }
+      </div>
       <h1
         [id]="headingId"
         class="m-0 mb-2 text-[27px] font-bold tracking-[-0.02em] text-riv-card-ink"
@@ -54,11 +62,9 @@ export class OutcomeCard {
   /** Unique so several cards on one page keep distinct `aria-labelledby` targets. */
   protected readonly headingId = `outcome-heading-${nextHeadingId++}`;
 
-  protected readonly glyph = computed(() => (this.tone() === 'pending' ? '⏳' : '✓'));
-
   /**
    * Both tones wear the `--riv-medallion-*` skin, so this glyph is the same paint as
-   * `booking-confirmation`'s ✓ and `request-confirmation`'s ✉. They do NOT theme, and must not: the
+   * `booking-confirmation`'s check and `request-confirmation`'s envelope. They do NOT theme, and must not: the
    * fills are fixed, and a themed ink over a fixed fill drifts (dark `--riv-accent-ink` over the
    * positive fill is 1.41:1). Decorative (`aria-hidden`), so exempt from the AA text minimum but
    * held to 3:1 in `auth/auth-page.contrast.spec.ts`. Take the ternary whole — one branch tokenised
@@ -66,7 +72,7 @@ export class OutcomeCard {
    */
   protected readonly glyphClasses = computed(
     () =>
-      'mx-auto mb-[18px] flex h-[66px] w-[66px] items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] text-[30px] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] ' +
+      'mx-auto mb-[18px] flex h-[66px] w-[66px] items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] [&_svg]:size-[28px] ' +
       (this.tone() === 'pending'
         ? 'bg-riv-medallion-waiting-fill text-riv-medallion-waiting-ink'
         : 'bg-riv-medallion-positive-fill text-riv-medallion-positive-ink'),

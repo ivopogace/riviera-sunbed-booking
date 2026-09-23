@@ -50,16 +50,17 @@ describe('OutcomeCard', () => {
     expect(glyph.getAttribute('aria-hidden')).toBe('true');
   });
 
-  it('swaps the glyph and its tint between the success and pending tones', async () => {
+  it('swaps the drawing and its tint between the success and pending tones', async () => {
     const successGlyph = card().querySelector('[data-riv-outcome-glyph]')!;
-    const successText = successGlyph.textContent?.trim();
+    expect(successGlyph.querySelector('app-check-icon')).not.toBeNull();
     const successClasses = successGlyph.className;
 
     host.tone.set('pending');
     await fixture.whenStable();
 
     const pendingGlyph = card().querySelector('[data-riv-outcome-glyph]')!;
-    expect(pendingGlyph.textContent?.trim()).not.toBe(successText);
+    expect(pendingGlyph.querySelector('app-hourglass-icon')).not.toBeNull();
+    expect(pendingGlyph.querySelector('app-check-icon')).toBeNull();
     expect(pendingGlyph.className).not.toBe(successClasses);
   });
 

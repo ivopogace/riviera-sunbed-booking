@@ -195,10 +195,16 @@ describe('DailyViewTab (#175)', () => {
     const visible = (setId: number): string =>
       [...tile(setId).querySelectorAll('[aria-hidden="true"]')]
         .map((s) => s.textContent?.trim())
+        .filter(Boolean)
         .join(' ');
+    const mark = (setId: number): string | undefined =>
+      tile(setId).querySelector('app-check-icon, app-dot-icon')?.tagName.toLowerCase();
     expect(visible(1)).toBe('1'); // FREE: the number alone — the zone rail carries the price
-    expect(visible(3)).toBe('✓ 3'); // STAFF_MARKED: state glyph + number
-    expect(visible(2)).toBe('● 2'); // BOOKED_ONLINE: state glyph + number
+    expect(mark(1)).toBeUndefined();
+    expect(visible(3)).toBe('3'); // STAFF_MARKED: state mark + number
+    expect(mark(3)).toBe('app-check-icon');
+    expect(visible(2)).toBe('2'); // BOOKED_ONLINE: state mark + number
+    expect(mark(2)).toBe('app-dot-icon');
     expect(visible(4)).toBe('1'); // B1 — the position number, never the set id
   });
 
