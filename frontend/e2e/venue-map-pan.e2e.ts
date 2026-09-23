@@ -330,7 +330,7 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
   expect(chip.bg).not.toBe('transparent');
   expect(chip.radius).toBeGreaterThan(0);
 
-  // Spatial order: the photo band (the sea view) sits ABOVE the "▲ Facing the sea"
+  // Spatial order: the photo band (the sea view) sits ABOVE the "Facing the sea"
   // banner, which labels the front-row edge of the grid — sea ↑ / promenade ↓.
   const photoY = (await page.locator('.photo-band').boundingBox())!.y;
   const bannerY = (await page.locator('.sea-banner').boundingBox())!.y;

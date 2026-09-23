@@ -72,6 +72,13 @@ No icon library or registry. Precedents: `shared/clock-icon.ts` (one glyph),
   with `toHaveCSS` — jsdom can't see it.
 - ICON-5 `class: 'contents'` on the host so the SVG, not the wrapper, is laid out.
 - ICON-6 `aria-hidden` on the host AND the inner `<svg>`.
+- ICON-7 no pictorial mark is a character (a symbol-font or emoji codepoint renders per
+  platform): `app/pictorial-glyph-sweep.spec.ts` fails on a retired one. Typographic characters
+  in running text (`·`, `€`, `→`, the zoom `+`/`−`) stay. A new icon's spec runs
+  `testing/icon-contract.ts`'s `iconContract()`.
+- ICON-8 a state carried by fill takes one geometry the call site fills (`star-icon.ts`'s
+  `STAR_FILL`), never two drawings — the shape difference is the WCAG 1.4.1 proof. Preflight
+  makes an svg `display: block`: inside running text add `[&_svg]:inline` + an `align-[…]`.
 
 Not the esbuild `with { loader: 'text' }` import (needs `innerHTML`, loses sizing control). A
 shared `<svg …>` attribute block interpolated into templates breaks angular-eslint's parser —

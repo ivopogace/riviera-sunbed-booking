@@ -45,7 +45,7 @@ import {
  * whites fail AA); the panel is white 0.82 (drawn 0.72) so dark inks clear AA over the darkest
  * stop; input borders are the dark `--riv-field-border` (a white border fails the 3:1 boundary).
  *
- * Deliberately excluded (1.4.11 redundant / decorative): the step-number circles and the ✕ close
+ * Deliberately excluded (1.4.11 redundant / decorative): the step-number circles and the cross close
  * chip (aria-hidden — the step label / "Close" name carries the meaning) and the decorative
  * panel/mode-note borders. Those chips now use SOLID composited teal fills (not translucent white)
  * so static CSS contrast analysis computes their real colour; white on that chip still clears AA.

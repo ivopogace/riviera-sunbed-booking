@@ -15,7 +15,7 @@ export function formatDeadline(iso: string): string {
   }).format(new Date(iso));
 }
 
-/** A request is "urgent" — the amber ⏰ chip shows — when its response deadline is under 8h away. */
+/** A request is "urgent" — the amber clock chip shows — when its response deadline is under 8h away. */
 const URGENT_WINDOW_MS = 8 * 60 * 60 * 1000;
 
 /**

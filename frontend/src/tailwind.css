@@ -598,10 +598,11 @@
     color-mix(in oklab, var(--riv-console-tint) 10%, transparent) 3px 6px
   );
 
-  /** The OUTCOME MEDALLION (class F-3) — the round, centred, `aria-hidden` glyph that a
-      landed booking state renders: booking-confirmation's ✓, booking-pay's ✓/⏳/✕,
-      request-confirmation's ✉, appFailureIcon's ⚠ or 🏖 and outcome-card's ✓/⏳. Three states, one
-      form. The glyph is per site and carries no meaning — every one is aria-hidden.
+  /** The OUTCOME MEDALLION (class F-3) — the round, centred, `aria-hidden` mark that a
+      landed booking state renders: booking-confirmation's check, booking-pay's check, hourglass
+      or cross, request-confirmation's envelope, appFailureIcon's alert or umbrella and
+      outcome-card's check or hourglass. Three states, one form. The mark is per site and carries
+      no meaning — every one is aria-hidden.
 
       Grouped by FORM, not by value — the --riv-solid-fill-* precedent, and here the alternative was
       actively wrong: the six inks the audit enumerated carry two values across three different forms

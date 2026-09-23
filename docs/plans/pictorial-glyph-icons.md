@@ -193,6 +193,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/admin/admin-reviews.ts|.spec.ts` — call site, spec
 - `frontend/src/app/pages/home/{home,venue-row,discover-head,coast-picker}.ts|.html|.spec.ts` — call sites, specs
 - `frontend/e2e/*.e2e.ts` — size pins, star fill, glyph-text assertions re-targeted
+- `frontend/src/app/**/*.contrast.spec.ts`, `frontend/src/app/**/*.a11y.spec.ts` — prose that named a retired glyph
+- `frontend/src/{tailwind.css,testing/glass-tokens.ts,app/shared/deadline.ts,app/operator/requests-tab.ts}` — prose that named a retired glyph
+- `.claude/skills/riviera-tailwind/SKILL.md` — ICON-7 (no pictorial character; the sweep) and ICON-8 (fill-by-call-site; inline svg in text)
+- `docs/plans/shoreline-snap.md` — retired at close-out (its PR #1187 merged)
 - `frontend/src/app/pages/home/venue-row.html` — static star
 - `frontend/src/app/pages/home/home.html` — failure mark, static star
 - `frontend/src/app/operator/requests-tab.html` — alert, clock, check

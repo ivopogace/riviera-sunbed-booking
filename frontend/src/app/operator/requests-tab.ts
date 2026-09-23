@@ -49,7 +49,7 @@ interface RequestRow {
 /**
  * The Requests tab — the operator console's restyle of the
  * Request-to-Book pending queue. One card per open request (guest, set + tier, date, price, "Respond
- * by", and an amber ⏰ time-left chip when urgent), a one-click **Accept — send to payment**, a
+ * by", and an amber clock time-left chip when urgent), a one-click **Accept — send to payment**, a
  * confirm-gated **Decline**, a dismissible **expired-race** notice when the sweep wins the race, and
  * an **all-caught-up** empty state.
  *

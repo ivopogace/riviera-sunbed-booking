@@ -55,8 +55,9 @@ const COUNT =
 /**
  * The venue sheet's head: **one 44 px row carrying the query** — the place (a press opens the
  * coast picker) over the selling line (`8 of 11 selling today`, invariant #4 as the map's light),
- * the region's beaches gathered into one chip (`⛱ 6`, spelled out `⛱ All beaches 6 ▾` where the
- * sheet is wide, lit with the beach's own count when one is chosen), and the day (`Today ▾`).
+ * the region's beaches gathered into one chip (the umbrella and `6`, spelled out `All beaches 6`
+ * with a chevron where the sheet is wide, lit with the beach's own count when one is chosen), and
+ * the day (`Today` and a chevron).
  *
  * <p>A press on either chip opens its rail of chips under the row, with the lit chip scrolled
  * into view, and a pick closes it. The rails are hidden at peek — the head is the one row there —
@@ -228,7 +229,7 @@ export class DiscoverHead {
   readonly beaches = input.required<readonly BeachOption[]>();
   /** The chosen beach's code, `''` for the whole region. */
   readonly beach = input('');
-  /** Spell the beach chip out (`⛱ All beaches 6 ▾`): the sheet is wide enough for the words. */
+  /** Spell the beach chip out (`All beaches 6`): the sheet is wide enough for the words. */
   readonly spelled = input(false);
   /** Today in Europe/Tirane, ISO — the page's clock, never this component's. */
   readonly today = input.required<string>();

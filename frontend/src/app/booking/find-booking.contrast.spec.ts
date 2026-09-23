@@ -39,7 +39,7 @@ import {
  * --riv-field-border (a white border fails the 3:1 boundary); the CTA is the AA-safe --riv-cta-grad
  * teal with SOLID white ink.
  *
- * Deliberately excluded (decorative / 1.4.11-exempt): the ✕ close glyph (aria-hidden — the "Close"
+ * Deliberately excluded (decorative / 1.4.11-exempt): the close cross (aria-hidden — the "Close"
  * button name carries the meaning) and the decorative panel/close borders.
  */
 

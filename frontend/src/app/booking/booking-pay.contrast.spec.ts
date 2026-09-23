@@ -29,7 +29,7 @@ import {
  * over that (the `venue-map.contrast.spec.ts` pattern). Mirrors every text token in `booking-pay.ts`.
  *
  * Deliberately excluded (1.4.11 decorative, aria-hidden — the heading/label carries the meaning):
- * the ✓ / ⏳ done badge, the spinner, and the ✕ fail badge. The done badges now use SOLID composited
+ * the check / hourglass done badge, the spinner, and the cross fail badge. The done badges now use SOLID composited
  * fills (not translucent tints) so static CSS contrast analysis computes their real colour.
  */
 

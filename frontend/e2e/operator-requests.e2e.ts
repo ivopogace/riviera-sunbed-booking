@@ -62,7 +62,7 @@ function seedQueue() {
       guestName: 'Ana Guest',
       amount: { minorUnits: 4500, currency: 'EUR' },
       requestedAt: '2026-07-01T09:00:00Z',
-      requestExpiresAt: inHours(3), // urgent → the ⏰ chip renders
+      requestExpiresAt: inHours(3), // urgent → the clock chip renders
     },
     {
       bookingId: 12,
