@@ -89,10 +89,7 @@ const LONE_CLASSES =
   'leading-none text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.35)] ' +
   'aria-expanded:bg-riv-solid-btn-ink aria-expanded:text-riv-solid-btn-fill';
 
-/**
- * The dot a pin with no price shows: `DotIcon`'s disc is two thirds of its box, so a 21 px box
- * draws the 14 px disc the old `●` glyph drew at 20 px in the UI font.
- */
+/** The dot a pin with no price shows: `DotIcon`'s disc is two thirds of its box, so 14 px across. */
 const LONE_DOT_CLASSES = '[&_svg]:size-[21px]';
 
 /**
