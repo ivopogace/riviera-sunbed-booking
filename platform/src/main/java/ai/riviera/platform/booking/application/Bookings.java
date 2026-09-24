@@ -175,20 +175,27 @@ public interface Bookings {
 			String code, VenueId venueId, LocalDate serviceDate, Instant completedAt);
 
 	/**
-	 * The no-show sweep's one call, two batched statements: mark up to {@code batchSize} nights
-	 * before {@code today} that a {@code CONFIRMED} booking neither attended nor missed as missed,
-	 * then resolve up to {@code batchSize} {@code CONFIRMED} bookings whose last night is before
-	 * {@code today} — {@code COMPLETED} if any night was attended, {@code NO_SHOW} otherwise —
-	 * returning how many bookings resolved. The {@code status = 'CONFIRMED'} guard serializes against
-	 * a concurrent check-in or cancel, so a lost race and a repeated run are alike 0-row no-ops.
+	 * The no-show sweep's first statement: mark up to {@code batchSize} nights before {@code today}
+	 * that a {@code CONFIRMED} booking neither attended nor missed as missed, returning how many
+	 * nights moved. The night row's lock serializes against a concurrent check-in of that night, so a
+	 * lost race and a repeated run are alike 0-row no-ops.
 	 *
-	 * <p>Batched because the statements run on the bounded scheduled client: one unbounded
+	 * <p>Batched because the statement runs on the bounded scheduled client: one unbounded
 	 * {@code UPDATE} over a large backlog would be cancelled by the timeout and roll back whole,
-	 * leaving the sweep unable to make progress on any run. Each statement commits on its own, so a
-	 * cancelled run keeps what it already did. Fewer than {@code batchSize} bookings resolved means
-	 * the backlog is drained; a backlog whose unresolved nights outnumber its due bookings by more
-	 * than a batch finishes its night marks on the next run, and the resolve statement marks a due
-	 * stay's remaining nights itself.
+	 * leaving the sweep unable to make progress on any run. A batch commits on its own, so a
+	 * cancelled run keeps what it already did. Fewer than {@code batchSize} rows means this backlog
+	 * is drained.
+	 */
+	int markPastNightsMissed(LocalDate today, int batchSize);
+
+	/**
+	 * The no-show sweep's second statement: resolve up to {@code batchSize} {@code CONFIRMED}
+	 * bookings whose last night is before {@code today} — {@code COMPLETED} if any night was
+	 * attended, {@code NO_SHOW} otherwise, a still-unresolved night of theirs marked missed in the
+	 * same statement — returning how many bookings resolved. The {@code status = 'CONFIRMED'} guard
+	 * serializes against a concurrent check-in or cancel, so a lost race and a repeated run are alike
+	 * 0-row no-ops. Batched and bounded exactly as {@link #markPastNightsMissed}; fewer than
+	 * {@code batchSize} rows means this backlog is drained.
 	 */
 	int markPastConfirmedAsNoShow(LocalDate today, int batchSize);
 

@@ -39,36 +39,60 @@ class NoShowSweepService implements MarkNoShows {
 	}
 
 	/**
-	 * Sweeps in batches until the backlog is drained or the per-run cap is hit, whichever comes
-	 * first. Each batch is its own statement and commits on its own, so a run cut short by the
-	 * bounded client's timeout — or by the cap — keeps every batch before it and the next tick
+	 * Two backlogs, each swept in batches until it is drained or the shared per-run cap is hit,
+	 * whichever comes first: the past nights of live stays still unmarked, then the stays whose last
+	 * night has passed. Each batch is its own statement and commits on its own, so a run cut short by
+	 * the bounded client's timeout — or by the cap — keeps every batch before it and the next tick
 	 * resumes from there. That is the whole reason this is not one unbounded {@code UPDATE}: an
 	 * all-or-nothing statement over a backlog bigger than the timeout would roll back every run and
 	 * never make progress.
 	 *
-	 * <p>"Fewer than a batch means drained" is only sound because the batch statement <em>waits</em>
+	 * <p>"Fewer than a batch means drained" is only sound because each batch statement <em>waits</em>
 	 * for a contended row rather than skipping it: a skipped row would shorten the batch and end the
-	 * loop early, leaving it unswept until some later run happened to find it uncontended.
+	 * loop early, leaving it unswept until some later run happened to find it uncontended. Each
+	 * backlog reads its own statement's count, so a night backlog larger than a batch never ends
+	 * the run on the stays' short batch, nor the other way round.
 	 */
 	@Override
 	public int sweep() {
 		LocalDate today = LocalDate.ofInstant(clock.instant(), TIRANE);
-		int marked = 0;
-		boolean drained = false;
+		Backlog nights = new Backlog(batch -> bookings.markPastNightsMissed(today, batch));
+		Backlog stays = new Backlog(batch -> bookings.markPastConfirmedAsNoShow(today, batch));
+		int batchesLeft = MAX_BATCHES_PER_RUN;
 		try {
-			for (int batch = 0; batch < MAX_BATCHES_PER_RUN; batch++) {
-				int inBatch = bookings.markPastConfirmedAsNoShow(today, BATCH_SIZE);
-				marked += inBatch;
+			batchesLeft = nights.drain(batchesLeft);
+			stays.drain(batchesLeft);
+		}
+		finally {
+			logOutcome(stays.swept, nights.drained && stays.drained);
+		}
+		return stays.swept;
+	}
+
+	/** One batched statement's backlog: how much it swept this run and whether it reached the end. */
+	private static final class Backlog {
+
+		private final java.util.function.IntUnaryOperator batchStatement;
+		private int swept;
+		private boolean drained;
+
+		Backlog(java.util.function.IntUnaryOperator batchStatement) {
+			this.batchStatement = batchStatement;
+		}
+
+		/** Runs batches while the cap allows; returns the cap left for the next backlog. */
+		int drain(int batchesLeft) {
+			while (batchesLeft > 0) {
+				batchesLeft--;
+				int inBatch = batchStatement.applyAsInt(BATCH_SIZE);
+				swept += inBatch;
 				if (inBatch < BATCH_SIZE) {
 					drained = true;
 					break;
 				}
 			}
+			return batchesLeft;
 		}
-		finally {
-			logOutcome(marked, drained);
-		}
-		return marked;
 	}
 
 	/**

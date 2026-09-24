@@ -119,7 +119,7 @@ window* re-defined; the glossary names no table — RV-PROC-1 caught the omissio
 | R-2 | Two sweep runners resolve the same stay twice | low | high | Statement 2 keys on `status = 'CONFIRMED' … FOR UPDATE` (no `SKIP LOCKED`), the existing discipline | slice | `NoShowSweepIT.concurrentSweepsYieldExactlyOneTransition` unchanged; open |
 | R-3 | Backfill of legacy `COMPLETED` rows with a null `completed_at` (pre-V40) | medium | low | `attended_at = COALESCE(completed_at, end of the service day in Europe/Tirane)`; `NO_SHOW` → `missed_at` = end of the service day | slice | open |
 | R-4 | The trigger is a hidden write a reader of `JdbcBookings#confirm` cannot see | medium | medium | Named in the migration header, `Bookings#confirm` Javadoc, `RESPONSIBILITIES.md` §booking; pinned by `BookingMigrationIT` | slice | open |
-| R-5 | Drain heuristic: nights marked hit the batch while bookings resolved do not → run stops early | low (nights == bookings until D3) | low | Documented on the port; the remainder is swept next tick (15 min), and the resolve statement sweeps a due stay's stragglers itself | slice | open |
+| R-5 | Drain heuristic: nights marked hit the batch while bookings resolved do not → run stops early | low (nights == bookings until D3) | low | Each statement is its own port call and its own batch loop under the shared per-run cap (`NoShowSweepService.Backlog`); the review gate raised it twice (F-2) | slice | closed — F-2 |
 | R-6 | Timezone: a night is a `Europe/Tirane` civil day; `today` derived from the injected `Clock` (#6) | low | high | Unchanged derivation in `CheckInService` / `NoShowSweepService` | slice | open |
 | R-7 | Flyway `V60` collision | low | low | Free on `main` (V59 is the tip) and unclaimed by the open PRs (all dependabot). This branch renumbers if another V60 lands first | slice | open |
 | R-8 | The sweep's first statement no longer touches `booking` alone — the bounded-client timeout proof | low | medium | Statement 1 joins `booking`, so an `ACCESS EXCLUSIVE` lock on it still blocks and cancels it | slice | `ScheduledQueryTimeoutIT` unchanged; open |
@@ -220,6 +220,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source | Finding | Status |
 |---|---|---|---|
 | F-1 | local IT run | `completed_at = CASE WHEN … THEN :at END` resolved the untyped parameter to text (`42804`) | fixed — `CAST(:at AS TIMESTAMPTZ)` |
+| F-2 | review gate (history + prior-PR reviewers) | the sweep returned only the resolve count, so a full night batch with no due stay read as "drained" | fixed — `markPastNightsMissed` is its own port call and batch loop |
+| F-3 | review gate (history reviewer) | the missed-night statement locks the night row, not the `booking` row its `status` predicate reads | no lock added: the booking lock would deadlock against check-in's resolve; the race is benign and now documented on the statement and in §booking |
+| F-4 | review gate (prior-PR reviewer) | `MultiNightAttendanceIT` steps the sweep on a far-past date, the pattern `JdbcBookingTransitionTableIT` already carries | accepted: the class drains first, asserts its own stay's rows, and deletes its fixtures |
+| F-5 | overlay RV-PROC-1 | `CONTEXT.md` edited without `domain-modeling` on the skills line; the *Night* entry named a table | fixed — skill loaded, entry re-worded |
 
 ---
 
@@ -238,6 +242,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/booking/domain/BookingStatus.java` — Javadoc: outcomes
 - `platform/src/main/java/ai/riviera/platform/booking/domain/BookingTransition.java` — Javadoc: CHECK_IN / SWEEP_NO_SHOW rows
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcCompletedStays.java` — Javadoc
+- `platform/src/main/java/ai/riviera/platform/booking/adapter/in/StaffBookingController.java` — Javadoc: the check-in stamps tonight
 - `platform/src/main/java/ai/riviera/platform/review/spi/CompletedStays.java` — Javadoc
 - `platform/src/main/java/ai/riviera/platform/review/vocabulary/CompletedStay.java` — Javadoc
 - `platform/src/main/java/ai/riviera/platform/review/domain/ReviewWindow.java` — Javadoc

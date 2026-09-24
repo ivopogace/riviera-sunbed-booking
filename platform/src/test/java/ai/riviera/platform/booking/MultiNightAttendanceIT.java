@@ -157,6 +157,12 @@ class MultiNightAttendanceIT {
 		return bookings.completeConfirmed(code, new VenueId(venueId), day, Instant.now());
 	}
 
+	/** The sweep's two statements as one run on a chosen day; answers the stays resolved. */
+	private int sweepOn(LocalDate today) {
+		bookings.markPastNightsMissed(today, 500);
+		return bookings.markPastConfirmedAsNoShow(today, 500);
+	}
+
 	@Test
 	void eachNightIsCheckedInOnItsOwnDayAndTheLastResolvesTheStay() {
 		String code = uniqueCode("STAY3");
@@ -224,19 +230,16 @@ class MultiNightAttendanceIT {
 		long stay = insertStay(code, FIRST_NIGHT, 3);
 		attend(stay, FIRST_NIGHT);
 
-		assertEquals(0, bookings.markPastConfirmedAsNoShow(FIRST_NIGHT.plusDays(2), 500),
-				"the last night is still ahead: nothing resolves");
+		assertEquals(0, sweepOn(FIRST_NIGHT.plusDays(2)), "the last night is still ahead: nothing resolves");
 		assertEquals(List.of(FIRST_NIGHT.plusDays(1)), missedNights(stay), "night 2 passed unattended");
 		assertEquals("CONFIRMED", statusOf(stay));
 		assertNull(completedAtOf(stay));
 
-		assertEquals(1, bookings.markPastConfirmedAsNoShow(FIRST_NIGHT.plusDays(3), 500),
-				"the last night has passed: the stay resolves");
+		assertEquals(1, sweepOn(FIRST_NIGHT.plusDays(3)), "the last night has passed: the stay resolves");
 		assertEquals(List.of(FIRST_NIGHT.plusDays(1), FIRST_NIGHT.plusDays(2)), missedNights(stay));
 		assertEquals("COMPLETED", statusOf(stay), "a stay with an attended night completed");
 		assertNotNull(completedAtOf(stay));
-		assertEquals(0, bookings.markPastConfirmedAsNoShow(FIRST_NIGHT.plusDays(3), 500),
-				"a resolved stay is never resolved again");
+		assertEquals(0, sweepOn(FIRST_NIGHT.plusDays(3)), "a resolved stay is never resolved again");
 	}
 
 	@Test

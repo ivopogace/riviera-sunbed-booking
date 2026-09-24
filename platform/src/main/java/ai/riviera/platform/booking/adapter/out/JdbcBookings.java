@@ -521,22 +521,31 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
-	 * Two statements in the caller's transaction: the guarded stamp on tonight's row, whose lock
-	 * leaves exactly one winner per code and night, then {@link #RESOLVE_STAY_SQL} for the stay when
-	 * no later night remains. The resolve is skipped on a miss, so a lost race never touches the
-	 * parent.
+	 * Two statements in the caller's transaction: the guarded stamp on tonight's row, then
+	 * {@link #RESOLVE_STAY_SQL} for the stay when no later night remains. The stamp takes the
+	 * booking row's lock first ({@code FOR UPDATE} on the stay, whose status it guards on), so a
+	 * concurrent cancel or weather refund and a scan still leave exactly one winner, as one
+	 * {@code UPDATE booking} did; the night row's lock then leaves one winner per night. Lock order
+	 * — booking, tonight's night, the stay's earlier nights — never crosses the sweep's, which takes
+	 * nights alone or a due stay (one with no night left) first. The resolve is skipped on a miss, so
+	 * a lost race never touches the parent.
 	 */
 	@Override
 	public Optional<CompletedCheckIn> completeConfirmed(String code, VenueId venueId,
 			LocalDate serviceDate, Instant completedAt) {
 		Optional<CompletedCheckIn> attended = jdbc.sql("""
+				WITH stay AS (
+				    SELECT id, set_id, booking_date
+				    FROM booking
+				    WHERE code = :code AND venue_id = :venue AND status = :confirmed
+				    FOR UPDATE
+				)
 				UPDATE booking_night n
 				SET attended_at = :at
-				FROM booking b
-				WHERE n.booking_id = b.id AND b.code = :code AND b.venue_id = :venue
-				  AND b.status = :confirmed AND n.night = :date
+				FROM stay
+				WHERE n.booking_id = stay.id AND n.night = :date
 				  AND n.attended_at IS NULL AND n.missed_at IS NULL
-				RETURNING b.id, b.set_id, b.booking_date
+				RETURNING stay.id, stay.set_id, stay.booking_date
 				""")
 				.param("at", java.sql.Timestamp.from(completedAt))
 				.param("code", code)
@@ -563,21 +572,24 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
-	 * On {@code sweepJdbc}, not {@code jdbc}: these statements open a scheduled run and are bounded.
-	 * Two statements, each its own batch and its own commit: the missed marks on past nights of live
-	 * stays, then {@link #RESOLVE_DUE_STAYS_SQL}. A run cut off by the bound keeps what it committed.
+	 * On {@code sweepJdbc}, not {@code jdbc}: this statement opens a scheduled run and is bounded.
+	 * Batched via a keyed CTE so a run cut off by that bound keeps the batches it committed.
 	 *
-	 * <p>{@code FOR UPDATE} <strong>without</strong> {@code SKIP LOCKED}, deliberately: skipping a
-	 * contended row would return a short batch, which the caller reads as "backlog drained" and
-	 * stops on — leaving that row unswept until a later run found it uncontended.
+	 * <p>{@code FOR UPDATE OF c} <strong>without</strong> {@code SKIP LOCKED}, deliberately: skipping
+	 * a contended row would return a short batch, which the caller reads as "backlog drained" and
+	 * stops on — leaving that row unswept until a later run found it uncontended. The night row's
+	 * lock is what makes the stamp exactly-once; {@code b.status} only scopes the work and is not
+	 * locked, because taking the booking row here would deadlock against a check-in resolving that
+	 * stay (which holds the booking row and then takes its past nights). The one consequence — a
+	 * night stamped missed on a stay cancelled in the same instant — is a true statement about the
+	 * night that nothing reads.
 	 *
-	 * <p>Ordered by the night and by {@code booking_date}, each partial index's own order, so a
-	 * batch walks its index instead of sorting the filtered set and drains the oldest backlog first.
+	 * <p>Ordered by the night, the partial index's own order, so the batch walks it instead of
+	 * sorting the filtered set and drains the oldest backlog first.
 	 */
 	@Override
-	public int markPastConfirmedAsNoShow(LocalDate today, int batchSize) {
-		java.sql.Timestamp now = java.sql.Timestamp.from(clock.instant());
-		sweepJdbc.sql("""
+	public int markPastNightsMissed(LocalDate today, int batchSize) {
+		return sweepJdbc.sql("""
 				WITH due AS (
 				    SELECT c.booking_id, c.night
 				    FROM booking_night c
@@ -596,15 +608,24 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.param("today", today)
 				.param("batch", batchSize)
-				.param("at", now)
+				.param("at", java.sql.Timestamp.from(clock.instant()))
 				.update();
+	}
+
+	/**
+	 * On {@code sweepJdbc}, like {@link #markPastNightsMissed}, and under the same {@code FOR UPDATE}
+	 * discipline — here on the booking row itself, whose status the resolve guards on. Ordered by
+	 * {@code booking_date}, the partial sweep index's own order.
+	 */
+	@Override
+	public int markPastConfirmedAsNoShow(LocalDate today, int batchSize) {
 		return sweepJdbc.sql(RESOLVE_DUE_STAYS_SQL)
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.param(PARAM_COMPLETED, BookingStatus.COMPLETED.name())
 				.param(PARAM_NO_SHOW, BookingStatus.NO_SHOW.name())
 				.param("today", today)
 				.param("batch", batchSize)
-				.param("at", now)
+				.param("at", java.sql.Timestamp.from(clock.instant()))
 				.update();
 	}
 
