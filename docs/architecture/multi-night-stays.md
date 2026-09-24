@@ -331,6 +331,61 @@ problem at one-day scale; with stays it is disabling. Per-claim settlement — s
 settled, keep the rest — should land before or with the range-bookings slice. It is worth doing on
 its own merits and is not strictly part of this epic.
 
+### D10 — Stay length is a venue setting; the platform sets no maximum
+
+Decided 2026-09-24, while prototyping the stay UI; it settles story 28's owner and default. There is
+**no platform-wide maximum**: a stay may run to the end of the venue's season. Each venue may set a
+maximum in days, owned by `venue` beside booking mode and sales-close, and unset means "any length
+this season". The reserve path rejects a range longer than the venue's maximum, read through
+`venue::api` the same way sales-close is.
+
+Nothing in the design needs a fixed limit. Invariant #2 is one claim per `(set, date)` at any length,
+and the itinerary search runs in microseconds at sixty nights. The concerns a cap would answer are
+answered elsewhere. Inventory held by an unanswered Request-to-Book stay is bounded by story 29's
+shorter expiry for longer requests. The layout freeze is bounded by segment length (D6), which the
+stitching keeps at two to five nights whatever the stay length.
+
+In the UI, the discovery page's calendar accepts any range up to the season's end. A venue whose
+maximum is shorter than the chosen stay reads as unable to host ("stays of up to N days here"),
+not as full. Its own calendar refuses end dates past its maximum, and its page offers new dates or
+the venues that can host, never a plan.
+
+### D11 — The discovery list carries a stay verdict per venue
+
+For a range, the discovery page answers "which venues can host my stay" before the tourist opens any
+of them. Each venue card and pin shows one of three states: same set for every day (with how many
+sets), fits within the switch budget (with the number of moves), or cannot host (with the longest
+single-set run, or D10's maximum when that is the reason). A single day keeps today's
+sets-free count unchanged.
+
+D7 specifies the itinerary search for **one** venue. The discovery list needs its verdict for every
+venue in the one whole-coast request the page already makes, so the D7 module also owns a list read
+beside its per-venue itinerary port. Each verdict is D7's pure ranking run once per venue, but a
+peak-season coast query is N venues × S sets × D days of `set_availability`. It must be measured
+before the range-bookings slice ships it, and it is scope the slicing has to count.
+
+### D12 — A partly-free set is a dotted tile with a free-day count
+
+Decided 2026-09-24 over two rejected alternatives: a diagonal split fill, and a strip of per-day
+cells. Story 3's third tile state is `border-dotted` (2px) on the available fill, plus a count
+badge ("9", or "9/14" where the tile is wide enough). The set's accessible name carries "free 9 of
+14 days". It enters `map-tile.ts` as one more `MAP_TILE_STATES` entry and one `MAP_TILE_CLASS`
+string, the same shape `taken`'s `border-dashed` already has.
+
+Three facts decide it. Forced-colors mode drops non-`url()` `background-image` and author
+background colours, but keeps border style. A split fill or a per-day strip would vanish under
+high contrast. The dotted border and the badge's text survive, as `taken`'s dash does. Next,
+the count is content that identifies the control at AA, so `docs/design/non-text-contrast.md`
+rule 2 covers the tile with one measured ratio per theme, where a split would need two. Last,
+the tile needs only a count per set, which D11's verdict already computes. A per-day strip would
+ship a per-set × per-day grid to the client, and at D10's unbounded lengths its cells shrink
+below a pixel.
+
+The badge is `aria-hidden` inside the existing tile button, so it adds no touch target. Dotted
+(partly free) and dashed (taken) sit close at hairline widths. The badge and the fill carry the
+difference, and the venue page's contrast spec measures the 2px dotted border in all three
+themes.
+
 ## Testing Decisions
 
 A good test here asserts **external behaviour at the highest available seam** — what a caller of a
