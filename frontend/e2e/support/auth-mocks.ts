@@ -171,9 +171,16 @@ export interface ChallengeFence extends ChallengeMock {
  * forgot-password and booking create), so a spec cannot meet a fence that behaves differently from
  * its siblings'.
  */
+/**
+ * `now` is the clock a challenge's `expiresAt` is minted against. A spec that freezes the page clock
+ * (`page.clock.setFixedTime`) passes that instant: the widget times the expiry as `expiresAt - Date.now()`
+ * on the frozen page clock, and once the gap to real time passes the ~24.8-day `setTimeout` ceiling
+ * the timer fires at once and the widget refetches in a loop, so no solve ever lands.
+ */
 export async function mockChallengeFence(
   page: Page,
   mode: 'on' | 'off' = 'on',
+  now: () => number = () => Date.now(),
 ): Promise<ChallengeFence> {
   const fenced = mode === 'on';
   let fetches = 0;
@@ -183,7 +190,7 @@ export async function mockChallengeFence(
   await page.route(/\/api\/auth\/challenge$/, (route) => {
     fetches += 1;
     return fenced
-      ? route.fulfill({ json: challengeJson(), headers: { 'cache-control': 'no-store' } })
+      ? route.fulfill({ json: challengeJson(now), headers: { 'cache-control': 'no-store' } })
       : route.fulfill({ status: 204 });
   });
 
@@ -232,7 +239,7 @@ function solvedCounter(payload: string | undefined): number | undefined {
  * A v2 challenge as the platform issues one, unsigned — the widget never checks the signature (the
  * edge does), and a `cost` of 10 keeps the browser's solve instant.
  */
-function challengeJson(): Record<string, unknown> {
+function challengeJson(now: () => number): Record<string, unknown> {
   const hex = (bytes: number) =>
     Array.from({ length: bytes }, () =>
       Math.floor(Math.random() * 256)
@@ -243,7 +250,7 @@ function challengeJson(): Record<string, unknown> {
     parameters: {
       algorithm: 'PBKDF2/SHA-256',
       cost: 10,
-      expiresAt: Math.floor(Date.now() / 1000) + 600,
+      expiresAt: Math.floor(now() / 1000) + 600,
       keyLength: 32,
       keyPrefix: '00',
       nonce: hex(16),

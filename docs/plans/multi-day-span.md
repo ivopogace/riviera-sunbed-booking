@@ -236,6 +236,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-5 | review gate (history reviewer) | the guest-cancel log line named the first day only | fixed — logs first and last day |
 | F-6 | review gate (history reviewer) | mid-stay guest cancellation not named as a non-goal | fixed — added to Non-goals |
 | F-7 | review gate (history reviewer) | first-day candidate selection on the remodel move (R-3) | accepted at intake; D9 owns span-aware search, due before the range-reserve slice |
+| F-8 | CI (frontend a11y e2e), red on `main` too | `same-day-booking.e2e.ts` freezes the page clock at 2026-08-30 while the challenge fence mints `expiresAt` from real time; from 2026-09-24 the gap passes the 32-bit `setTimeout` ceiling, the widget expires its challenge at once and loops, and every same-day case fails | fixed (ported, not this slice's): the fence takes the clock it mints against; the spec passes its frozen instant; 9/9 locally |
 
 ---
 
@@ -279,6 +280,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/payouts-tab.ts` — notice names the stays
 - `frontend/src/app/operator/payouts-tab.spec.ts` — the notice case
 - `frontend/e2e/operator-payouts.e2e.ts` — stub fields + the notice case
+- `frontend/e2e/support/auth-mocks.ts` — ported fix: the challenge fence mints `expiresAt` against the spec's clock
+- `frontend/e2e/same-day-booking.e2e.ts` — ported fix: passes its frozen instant to the fence
 - `RESPONSIBILITIES.md` — §booking: the span, every terminal transition releases every day, the weather refund names stays
 - `CONTEXT.md` — service day / stay entries name `last_date`
 - `docs/architecture/multi-day-stays.md` — status line: D3 + D5 landed

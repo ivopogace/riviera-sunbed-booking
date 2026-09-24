@@ -107,7 +107,7 @@ const CLOSED_TERMS = {
 let fence: ChallengeFence;
 
 test.beforeEach(async ({ page }) => {
-  fence = await mockChallengeFence(page, 'on');
+  fence = await mockChallengeFence(page, 'on', () => BEFORE_CLOSE.getTime());
   await page.clock.setFixedTime(BEFORE_CLOSE);
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE_MAP }));
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: VENUES }));
