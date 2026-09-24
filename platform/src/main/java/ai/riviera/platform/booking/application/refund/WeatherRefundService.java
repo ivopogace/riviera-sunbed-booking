@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,30 +84,38 @@ class WeatherRefundService implements RefundForWeather {
 		for (RefundableBooking candidate : candidates) {
 			if (candidate.spansSeveralDays()) {
 				manualRefunds.add(new BookingId(candidate.bookingId()));
-				continue;
+			} else {
+				Optional<CancelledBooking> cancelled = refundInFull(candidate);
+				if (cancelled.isPresent()) {
+					refundedCount++;
+					totalRefundedMinor += candidate.amountMinor();
+					currency = cancelled.get().currency();
+				}
 			}
-			// Full refund regardless of cutoff (invariant #10): the refund is the gross amount paid.
-			long refundMinor = candidate.amountMinor();
-			var transitioned = bookings.cancelForWeather(
-					candidate.bookingId(), clock.instant(), refundMinor);
-			if (transitioned.isEmpty()) {
-				// Lost a concurrent cancel race for this booking — already cancelled, nothing to do.
-				continue;
-			}
-			CancelledBooking cancelled = transitioned.get();
+		}
+
+		log.info("weather refund for venue {} on {}: cancelled {} booking(s), refunded {} {}, {} stay(s) left for a manual refund",
+				venueId.value(), date, refundedCount, totalRefundedMinor, currency, manualRefunds.size());
+		return new WeatherRefundOutcome(refundedCount, totalRefundedMinor, currency, manualRefunds);
+	}
+
+	/**
+	 * The one-day leg: the gross amount refunded regardless of the cutoff (invariant #10) through the
+	 * guarded transition, then every day of the span released and the fact published. Empty when a
+	 * concurrent cancel won the race — already cancelled, so nothing is released or published.
+	 */
+	private Optional<CancelledBooking> refundInFull(RefundableBooking candidate) {
+		long refundMinor = candidate.amountMinor();
+		Optional<CancelledBooking> transitioned = bookings.cancelForWeather(
+				candidate.bookingId(), clock.instant(), refundMinor);
+		transitioned.ifPresent(cancelled -> {
 			for (LocalDate day : ServiceDays.between(cancelled.bookingDate(), cancelled.lastDate())) {
 				availability.release(cancelled.setId(), day);
 			}
 			events.publishEvent(new BookingCancelled(new BookingId(cancelled.id()), cancelled.venueId(),
 					cancelled.setId(), cancelled.bookingDate(), refundMinor, cancelled.currency(),
 					RefundReason.WEATHER));
-			refundedCount++;
-			totalRefundedMinor += refundMinor;
-			currency = cancelled.currency();
-		}
-
-		log.info("weather refund for venue {} on {}: cancelled {} booking(s), refunded {} {}, {} stay(s) left for a manual refund",
-				venueId.value(), date, refundedCount, totalRefundedMinor, currency, manualRefunds.size());
-		return new WeatherRefundOutcome(refundedCount, totalRefundedMinor, currency, manualRefunds);
+		});
+		return transitioned;
 	}
 }

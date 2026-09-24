@@ -30,7 +30,8 @@ takings stay first-day, the remodel move goes span-wide, the console notice is e
 BEFORE INSERT trigger defaults `last_date`) · `riviera-plan-doc` (forced the module-ownership
 table, the availability section and the per-leg AC list) · `tdd` (each leg red-green at the
 driving port; the existing single-day ITs are the equivalence oracle) · `riviera-review-overlay`
-(<at ready-for-review>) · `riviera-docs-freshness` (<at close-out>) · `grilling` (the four
+(ran at ready-for-review with the code-review plugin; F-2..F-7) · `riviera-docs-freshness` (**ran** over
+`d385bc6c..e6224636`, 1 finding, patched) · `grilling` (the four
 decisions above) · `postgres` (three-step NOT NULL add, CHECK over ENUM-free columns, trigger as the
 one home of the default, no new index — the overlap predicates ride `booking_venue_id_idx`) ·
 `riviera-modulith` (no new published surface; `ServiceDays` is a pure `domain/` rule holder with
@@ -56,47 +57,47 @@ best-practices guide raises nothing)
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a database at V60 holding bookings in every status, when V61 runs, then every
+- [x] **AC-1:** Given a database at V60 holding bookings in every status, when V61 runs, then every
   row has `last_date = booking_date`, `last_date` is NOT NULL and `last_date < booking_date` is
   refused. *Seam:* Flyway + the `booking` table · *Pinned by:*
   `BookingLastDateBackfillIT.everyExistingRowIsBackfilledToItsFirstDay`,
   `BookingMigrationIT.lastDateDefaultsToTheFirstDay`, `BookingMigrationIT.lastDateBeforeTheFirstDayIsRefused`
-- [ ] **AC-2:** Given a `CONFIRMED` insert spanning three days, when it lands, then three
+- [x] **AC-2:** Given a `CONFIRMED` insert spanning three days, when it lands, then three
   `booking_day` rows exist. *Seam:* the `booking` table (V60 trigger) · *Pinned by:*
   `BookingMigrationIT.aConfirmedStayCarriesOneServiceDayPerDay`
-- [ ] **AC-3:** Given a `CONFIRMED` three-day stay holding all three `(set, date)` rows, when the
+- [x] **AC-3:** Given a `CONFIRMED` three-day stay holding all three `(set, date)` rows, when the
   guest cancels, then all three days re-claim as `CLAIMED`. *Seam:* `CancelBooking` ·
   *Pinned by:* `SpanReleaseIT.guestCancelReleasesEveryDay`
-- [ ] **AC-4:** Same for a `PENDING_REQUEST` stay declined, expired and withdrawn. *Seams:*
+- [x] **AC-4:** Same for a `PENDING_REQUEST` stay declined, expired and withdrawn. *Seams:*
   `RespondToRequest#decline`, `ExpireRequests#sweep`, `WithdrawRequest` · *Pinned by:*
   `SpanReleaseIT.declineReleasesEveryDay`, `.expiryReleasesEveryDay`, `.withdrawReleasesEveryDay`
-- [ ] **AC-5:** Same for an `AWAITING_PAYMENT` stay released by the abandoned-payment seam.
+- [x] **AC-5:** Same for an `AWAITING_PAYMENT` stay released by the abandoned-payment seam.
   *Seam:* `ReleaseAbandonedBooking` (shared by the sweep and the canceled webhook) · *Pinned by:*
   `SpanReleaseIT.abandonedReleaseReleasesEveryDay`
-- [ ] **AC-6:** Same for the remodel refund, release and decline legs; the move leg claims every
+- [x] **AC-6:** Same for the remodel refund, release and decline legs; the move leg claims every
   day on the target and frees every day on the old set. *Seam:* `RemodelClaims#commit` ·
   *Pinned by:* `SpanReleaseIT.remodelRefundReleasesEveryDay`, `.remodelReleaseReleasesEveryDay`,
   `.remodelDeclineReleasesEveryDay`, `.remodelMoveClaimsAndReleasesEveryDay`
-- [ ] **AC-7:** Given a one-day `CONFIRMED` booking and a three-day stay whose middle day is the
+- [x] **AC-7:** Given a one-day `CONFIRMED` booking and a three-day stay whose middle day is the
   storm date, when the weather refund runs for that date, then the one-day booking is cancelled
   with a full `WEATHER` refund exactly as today, the stay is still `CONFIRMED` with all its days
   held and no `BookingCancelled` for it, and the outcome lists the stay's id with count 1.
   *Seam:* `RefundForWeather` · *Pinned by:*
   `WeatherRefundServiceIT.aStayOverlappingTheDateIsNamedNotRefunded`
-- [ ] **AC-8:** Given a `CONFIRMED` stay covering a date, when the staff daily list is read for that
+- [x] **AC-8:** Given a `CONFIRMED` stay covering a date, when the staff daily list is read for that
   date, then the stay is listed. *Seam:* `GET /api/venues/{id}/bookings?date=` · *Pinned by:*
   `StaffBookingControllerIT.aStayCoveringTheDateIsListed`
-- [ ] **AC-9:** Given a live stay straddling `from`, when `liveBookingsFrom` is read, then the stay
+- [x] **AC-9:** Given a live stay straddling `from`, when `liveBookingsFrom` is read, then the stay
   counts; given a guest whose only stay ends after the retention cutoff, when history is asked,
   then the guest is retained. *Seams:* `venue.spi.BookingPresence`,
   `customer.spi.GuestBookingHistory` · *Pinned by:*
   `JdbcBookingPresenceIT.aStayStraddlingFromIsStillOwed`,
   `GuestContactRetentionIT.aStayEndingAfterTheCutoffIsARetentionBasis`
-- [ ] **AC-10:** Given the weather refund outcome carries two manual refunds, when the console
+- [x] **AC-10:** Given the weather refund outcome carries two manual refunds, when the console
   notice renders, then it names the count and the booking ids. *Seam:* `PayoutsTab` notice ·
   *Pinned by:* `payouts-tab.spec.ts` "names overlapping stays that need a manual refund";
   `operator-payouts.e2e.ts` "names the stays a weather refund could not reach"
-- [ ] **AC-11:** Every existing single-day test passes unchanged; the structural net passes.
+- [x] **AC-11:** Every existing single-day test passes unchanged; the structural net passes.
   *Pinned by:* CI; the six-test net command.
 
 ## Non-goals
@@ -119,15 +120,15 @@ N/A — replaces nothing.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A release site is missed and a stay strands a `(set, date)` row no sweep can reach (#2) | M | H | Population by mechanism: every `availability.release(` call in `booking`; one IT per leg re-claims the whole span | agent | open |
-| R-2 | The weather refund double-acts on a stay (refund + strand) | L | H | Candidates split by span before any transition; the stay never reaches `cancelForWeather`; IT asserts status, rows and events | agent | open |
-| R-3 | The remodel move claims the span but a later day is taken → 500 | M | M | Accepted (decided): throws under the lock, transaction rolls back, nothing moves; D9 owns candidate search | user | open |
-| R-4 | ~40 fixtures insert without `last_date` | H | H | BEFORE INSERT trigger defaults it; AC-11 | agent | open |
-| R-5 | `RemodelClaim` (published vocabulary) gains a field; edge views and `PreviewToken` | L | M | Token digests `(id, kind)` only; views map by accessor; only tests construct it | agent | open |
-| R-6 | Timezone (#6): `generate_series` over DATEs, no instants | L | L | Dates only; the trigger stays civil-day | agent | open |
-| R-7 | Flyway `V61` claimed by another branch | L | M | Free on `main`, no open non-dependabot PR; renumber falls to the branch merging second | agent | open |
-| R-8 | BOLA (#13): the weather refund's manual list leaks another venue's ids | L | H | The read is venue-scoped (`WHERE venue_id = :venue`) and `assertOwns` runs first, unchanged | agent | open |
-| R-9 | Frontend notice regresses focus/a11y | L | L | Copy only; no new control | agent | open |
+| R-1 | A release site is missed and a stay strands a `(set, date)` row no sweep can reach (#2) | M | H | Population by mechanism: every `availability.release(` call in `booking`; one IT per leg re-claims the whole span | agent | closed — `SpanReleaseIT`, 9 legs, `7a849b31` |
+| R-2 | The weather refund double-acts on a stay (refund + strand) | L | H | Candidates split by span before any transition; the stay never reaches `cancelForWeather`; IT asserts status, rows and events | agent | closed — `WeatherRefundServiceIT.aStayOverlappingTheDateIsNamedNotRefunded` |
+| R-3 | The remodel move claims the span but a later day is taken → 500 | M | M | Accepted (decided): throws under the lock, transaction rolls back, nothing moves; D9 owns candidate search | user | accepted — inert until the range-reserve slice; D9 due before it |
+| R-4 | ~40 fixtures insert without `last_date` | H | H | BEFORE INSERT trigger defaults it; AC-11 | agent | closed — CI green with every fixture unchanged; only `ServiceDayBackdate` (an UPDATE) needed the span (F-1) |
+| R-5 | `RemodelClaim` (published vocabulary) gains a field; edge views and `PreviewToken` | L | M | Token digests `(id, kind)` only; views map by accessor; only tests construct it | agent | closed — `RemodelCommitIT`, `RemodelPreviewIT`, `PreviewTokenTest` green |
+| R-6 | Timezone (#6): `generate_series` over DATEs, no instants | L | L | Dates only; the trigger stays civil-day | agent | closed — `BookingMigrationIT.aConfirmedStayCarriesOneServiceDayPerDay` |
+| R-7 | Flyway `V61` claimed by another branch | L | M | Free on `main`, no open non-dependabot PR; renumber falls to the branch merging second | agent | closed — still free at close-out |
+| R-8 | BOLA (#13): the weather refund's manual list leaks another venue's ids | L | H | The read is venue-scoped (`WHERE venue_id = :venue`) and `assertOwns` runs first, unchanged | agent | closed — `CrossVenueDenialIT` unchanged and green |
+| R-9 | Frontend notice regresses focus/a11y | L | L | Copy only; no new control | agent | closed — `operator-payouts.e2e.ts` axe + focus cases green |
 
 ## Open questions / Assumptions
 
@@ -208,20 +209,24 @@ first day).
 
 ## Execution status
 
-**Stage pointer:** PR #1213 (draft) — phases 0–4 green locally with real containers and in
-CI bar one fixture (F-1, fixed); next push's CI decides ready-for-review.
+**Stage pointer:** DONE — merged via PR #1213 (close-out written in the PR's last commit).
 
-**Next action:** CI green on the fix → mark ready for review → review gate (`references/pr-gates.md`
-§1) → Sonar gate → close-out.
+**Next action:** none for this slice; the epic's next slice is #1096's 4/12.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V61: `last_date`, default trigger, span-aware `booking_day` trigger | ✅ | `90ce0c1b` |
 | 1 — `ServiceDays` + every terminal leg and the move work on the span | ✅ | `7a849b31` |
-| 2 — Overlap reads: staff daily list, presence, guest history | ✅ | `7a849b31`, F-1 fix |
+| 2 — Overlap reads: staff daily list, presence, guest history | ✅ | `7a849b31`, `d8e7f630` (F-1) |
 | 3 — Weather refund: overlap selection, stays named on the outcome + view | ✅ | `7a849b31` |
 | 4 — Console notice names the stays | ✅ | `778b1b60` |
-| 5 — Docs freshness + close-out | ⏳ substrate docs written (`73ab5a48`); gates pending | |
+| 5 — Docs freshness + close-out | ✅ | `73ab5a48`, `8aecc12d`, `42af5804`, `b9a72f4c` (ported e2e fix), `e6224636`, this commit |
+
+**PR gates:** CI green on the final head (backend 2613+ tests with real containers, frontend
+lint/format/Vitest/a11y e2e/build, repo hygiene) ✅ · review gate run (code-review plugin +
+overlay over `d385bc6c..d8e7f630`, findings F-2..F-8 below) ✅ · Sonar gate on `e6224636`: 259 new lines, 100% new-code coverage, 0 duplicated blocks, 1 new
+code smell (F-9, fixed in this commit; re-checked on the final head) ✅ · docs freshness run over `d385bc6c..e6224636`: one finding
+(RESPONSIBILITIES §availability's "two ordinary writes" → per day of the span), patched ✅.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -236,6 +241,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-5 | review gate (history reviewer) | the guest-cancel log line named the first day only | fixed — logs first and last day |
 | F-6 | review gate (history reviewer) | mid-stay guest cancellation not named as a non-goal | fixed — added to Non-goals |
 | F-7 | review gate (history reviewer) | first-day candidate selection on the remodel move (R-3) | accepted at intake; D9 owns span-aware search, due before the range-reserve slice |
+| F-9 | Sonar (PR analysis on `e6224636`) | `java:S135` — the weather loop carried two `continue`s (the stay branch and the lost race) | fixed — the one-day leg is `refundInFull`, the loop branches with if/else |
 | F-8 | CI (frontend a11y e2e), red on `main` too | `same-day-booking.e2e.ts` freezes the page clock at 2026-08-30 while the challenge fence mints `expiresAt` from real time; from 2026-09-24 the gap passes the 32-bit `setTimeout` ceiling, the widget expires its challenge at once and loops, and every same-day case fails | fixed (ported, not this slice's): the fence takes the clock it mints against; the spec passes its frozen instant; 9/9 locally |
 
 ---
@@ -293,47 +299,47 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `V61__booking_last_date.sql` · Test `BookingMigrationIT`, `BookingLastDateBackfillIT`
 
-- [ ] Step 1: failing tests — `lastDateDefaultsToTheFirstDay`, `lastDateBeforeTheFirstDayIsRefused`,
+- [x] Step 1: failing tests — `lastDateDefaultsToTheFirstDay`, `lastDateBeforeTheFirstDayIsRefused`,
   `aConfirmedStayCarriesOneServiceDayPerDay`; `BookingLastDateBackfillIT` (context at
   `spring.flyway.target=60`, legacy inserts, programmatic migrate to latest, every row backfilled)
-- [ ] Step 2: `./gradlew test --tests "*BookingMigrationIT*"` → FAIL (column absent)
-- [ ] Step 3: the migration
-- [ ] Step 4: both classes PASS
-- [ ] Step 5: generalization — population: every fixture inserting `booking` rows; command below; the default trigger covers all
-- [ ] Step 6/7: commit + Execution status
+- [x] Step 2: `./gradlew test --tests "*BookingMigrationIT*"` → FAIL (column absent)
+- [x] Step 3: the migration
+- [x] Step 4: both classes PASS
+- [x] Step 5: generalization — population: every fixture inserting `booking` rows; command below; the default trigger covers all
+- [x] Step 6/7: commit + Execution status
 
 ## Phase 1 — every terminal leg and the move work on the span
 
 **Files:** Create `ServiceDays`, `SpanReleaseIT`, `ServiceDaysTest` · Modify the five services, the five records, `JdbcBookings`
 
-- [ ] Step 1: `ServiceDaysTest` (inclusive list; reversed span refused) + `SpanReleaseIT` legs
-- [ ] Step 2: `--tests "*SpanReleaseIT*"` → FAIL (only the first day re-claims)
-- [ ] Step 3: RETURNING `last_date`, records, loops; the move claims the span
-- [ ] Step 4: PASS; `--tests "*JdbcBookingTransitionTableIT*"` unchanged
-- [ ] Step 5: generalization — `grep -n "availability.release(\|availability.claim(" platform/src/main/java/ai/riviera/platform/booking -r`
-- [ ] Step 6/7: commit + Execution status
+- [x] Step 1: `ServiceDaysTest` (inclusive list; reversed span refused) + `SpanReleaseIT` legs
+- [x] Step 2: `--tests "*SpanReleaseIT*"` → FAIL (only the first day re-claims)
+- [x] Step 3: RETURNING `last_date`, records, loops; the move claims the span
+- [x] Step 4: PASS; `--tests "*JdbcBookingTransitionTableIT*"` unchanged
+- [x] Step 5: generalization — `grep -n "availability.release(\|availability.claim(" platform/src/main/java/ai/riviera/platform/booking -r`
+- [x] Step 6/7: commit + Execution status
 
 ## Phase 2 — overlap reads
 
-- [ ] Step 1: the three ITs' new cases
-- [ ] Step 2: FAIL · Step 3: overlap predicates (`booking_date <= :date AND last_date >= :date`; `last_date >= :from`) · Step 4: PASS
-- [ ] Step 5: generalization — `grep -rn "booking_date [<>=]" platform/src/main/java/ai/riviera/platform/booking` → each judged in the plan's assumptions
-- [ ] Step 6/7
+- [x] Step 1: the three ITs' new cases
+- [x] Step 2: FAIL · Step 3: overlap predicates (`booking_date <= :date AND last_date >= :date`; `last_date >= :from`) · Step 4: PASS
+- [x] Step 5: generalization — `grep -rn "booking_date [<>=]" platform/src/main/java/ai/riviera/platform/booking` → each judged in the plan's assumptions
+- [x] Step 6/7
 
 ## Phase 3 — the weather refund names the stays
 
-- [ ] Step 1: `WeatherRefundServiceIT.aStayOverlappingTheDateIsNamedNotRefunded`
-- [ ] Step 2: FAIL · Step 3: overlap read carrying the span, the split in the service, outcome + view · Step 4: PASS, existing cases unchanged
-- [ ] Step 6/7
+- [x] Step 1: `WeatherRefundServiceIT.aStayOverlappingTheDateIsNamedNotRefunded`
+- [x] Step 2: FAIL · Step 3: overlap read carrying the span, the split in the service, outcome + view · Step 4: PASS, existing cases unchanged
+- [x] Step 6/7
 
 ## Phase 4 — the console notice
 
-- [ ] Step 1: `payouts-tab.spec.ts` case + e2e case · Step 2: FAIL · Step 3: model + notice · Step 4: `npm test`, `npm run lint`, `npm run format:check`, mocked e2e spec
-- [ ] Step 6/7
+- [x] Step 1: `payouts-tab.spec.ts` case + e2e case · Step 2: FAIL · Step 3: model + notice · Step 4: `npm test`, `npm run lint`, `npm run format:check`, mocked e2e spec
+- [x] Step 6/7
 
 ## Phase 5 — docs + close-out
 
-- [ ] `RESPONSIBILITIES.md`, `CONTEXT.md`, design doc status; `riviera-docs-freshness` over the range; plan close-out in the last code-touching commit
+- [x] `RESPONSIBILITIES.md`, `CONTEXT.md`, design doc status; `riviera-docs-freshness` over the range; plan close-out in the last code-touching commit
 
 ---
 
@@ -349,19 +355,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] AC-1 … AC-11: see the pin names above; verified at the close-out commit.
+- [x] AC-1 … AC-11: every pin above passed locally against real containers (`skipped=0`) and in CI run 36061623357 on `e6224636`; AC-11 by that run's full backend suite and the six-test net.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section filled; concurrency unchanged and pinned (#2).
-- [ ] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable and never on the outcome (#7).
-- [ ] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
-- [ ] Payment section filled; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
-- [ ] Flyway migration present; invariant-enforcing constraints tested (#12).
-- [ ] Frontend standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability section filled; concurrency unchanged and pinned (#2).
+- [x] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable and never on the outcome (#7).
+- [x] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
+- [x] Payment section filled; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
+- [x] Flyway migration present; invariant-enforcing constraints tested (#12).
+- [x] Frontend standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
+- [x] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay).
