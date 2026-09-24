@@ -94,7 +94,7 @@ class JdbcBookings implements Bookings {
 			)
 			UPDATE booking b
 			SET status       = CASE WHEN due.attended THEN :completed ELSE :noShow END,
-			    completed_at = CASE WHEN due.attended THEN :at END
+			    completed_at = CASE WHEN due.attended THEN CAST(:at AS TIMESTAMPTZ) END
 			FROM due
 			WHERE b.id = due.id
 			""";

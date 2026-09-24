@@ -15,7 +15,6 @@ import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -171,10 +170,11 @@ class BookingMigrationIT {
 		insertBooking(venue, set, cust, "NIGHT000002", date, "AWAITING_PAYMENT");
 
 		assertEquals(List.of(date), nightsOf("NIGHT000001"));
-		assertNull(jdbc.sql("""
-				SELECT COALESCE(attended_at, missed_at) FROM booking_night
+		assertEquals(1L, jdbc.sql("""
+				SELECT COUNT(*) FROM booking_night
 				WHERE booking_id = (SELECT id FROM booking WHERE code = 'NIGHT000001')
-				""").query(java.time.Instant.class).single(), "a fresh night is unresolved");
+				  AND attended_at IS NULL AND missed_at IS NULL
+				""").query(Long.class).single(), "a fresh night is unresolved");
 		assertEquals(List.of(), nightsOf("NIGHT000002"), "no night before the booking confirms");
 
 		jdbc.sql("UPDATE booking SET status = 'CONFIRMED', confirmed_at = NOW() WHERE code = 'NIGHT000002'")

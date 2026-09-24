@@ -28,7 +28,7 @@ the equivalence oracle without touching a fixture.
 **Skills consulted:** `riviera-sdlc` (intake gate: no triggers in the tree, the transition-table
 IT deletes fixtures so the child FK cascades, V41 argued against sweep timestamps → `completed_at`
 is stamped on `COMPLETED` only) · `riviera-plan-doc` (forced the Module-ownership table and the
-assumption register below) · `tdd` (tests written before each implementation at the named seams; the local red/green runs of the ITs were blocked by Docker Hub's anonymous pull limit on `postgres:17`, so their first green is CI's — the Docker-free structural, sole-writer and unit tests ran red→green locally) ·
+assumption register below) · `tdd` (tests written before each implementation at the named seams; Docker Hub's pull limit on `postgres:17` delayed the local IT runs, so the multi-night tests' red was by construction and their first observed run caught the one defect — the untyped `:at` inside a `CASE` — before CI did) ·
 `riviera-review-overlay` (<review gate pending>) · `riviera-docs-freshness` (<pending>) ·
 `riviera-local-debug` (JDK at `/opt/jdk-25`, scoped test classes only, Docker present) ·
 `postgres` (composite PK as the uniqueness guard, partial index on unresolved nights, FK indexed by
@@ -200,9 +200,9 @@ and `DailyTakings` are unchanged (AC-8).
 
 ## Execution status
 
-**Stage pointer:** `CI gate — first push; local ITs blocked by Docker Hub's pull limit`
+**Stage pointer:** `CI gate — second push (local ITs green: the 12 oracle classes + the 2 new ones, skipped=0)`
 
-**Next action:** read the CI run of the first push; any red IT re-enters at Implement.
+**Next action:** CI green → merge `origin/main` → ready for review → review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -217,6 +217,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-1 | local IT run | `completed_at = CASE WHEN … THEN :at END` resolved the untyped parameter to text (`42804`) | fixed — `CAST(:at AS TIMESTAMPTZ)` |
 
 ---
 
@@ -266,7 +267,7 @@ its "the module itself writes the table" proof needs the adapter's SQL)
   (Docker Hub 429 on `postgres:17`), so the red is by construction (no `booking_night` relation),
   not observed. CI carries the first real run.
 - [x] **Step 3: Minimal implementation** — V60.
-- [ ] **Step 4: Run, verify green** — CI (local Docker pull blocked).
+- [x] **Step 4: Run, verify green** — `BookingMigrationIT` 11/11 locally once the image pulled.
 - [x] **Step 5: Generalization-audit pass** — every IT that deletes `booking` rows
   (`grep -rn "DELETE FROM booking\b" platform/src/test`) keeps working via the cascade;
   `deletingABookingTakesItsNights` pins it.
