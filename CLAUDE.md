@@ -82,7 +82,7 @@ aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles ar
 |---|---|---|
 | `venue` | profile, beach map (sets, pools, positions), pricing, booking mode, sales-close, season closure, map pin, photos + moderation, commission-rate schedule | `venue`, `set_position`, `venue_amenity`, `venue_photo(_variant)`, `venue_commission_rate` |
 | `availability` | the per-`(set, date)` source of truth | `set_availability` |
-| `booking` | bookings + codes, lifecycle + sweeps, request accept/decline, cancellation policy, driving refunds via `payment.api.RefundPort`, remodel claim classification + receipt | `booking`, `remodel_receipt(_move/_outcome)` |
+| `booking` | bookings + codes, lifecycle + sweeps, per-night attendance + stay outcome, request accept/decline, cancellation policy, driving refunds via `payment.api.RefundPort`, remodel claim classification + receipt | `booking`, `booking_night`, `remodel_receipt(_move/_outcome)` |
 | `payment` | Stripe collection, PaymentIntents, refunds, webhooks | `payment`, `stripe_webhook_event` |
 | `payout` | venue payout ledger, manual BKT batches, platform settings (venue-change fee) | `payout_ledger_entry`, `payout_batch`, `platform_setting` |
 | `customer` | guest contact, customer account (sign-in, SSO, verification, password), GDPR erasure + retention sweep, canonical email form | `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token` |

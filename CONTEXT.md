@@ -233,15 +233,23 @@ model in `docs/architecture/domain-model.md`.
   a refund decision: a withdrawn request was never charged, so there is nothing to refund.
   Distinct from **decline** (the venue's no) and **expire** (nobody's answer) only in who acted.
 - **Booking code** — the unguessable bearer credential staff verify on arrival.
+- **Night** — one day of a stay, held as its own attendance record (`booking_night`) from the
+  moment the booking confirms: unresolved until it is **attended** (staff checked the guest in
+  that day) or **missed** (the day passed with no check-in), never both. Today every booking
+  has exactly one night, its `booking_date`.
 - **Check-in** — staff recording, by scanning the booking's QR code or typing its
-  booking code on the service date, that the guest arrived; transitions a confirmed
-  booking to `COMPLETED`, exactly once.
-- **No-show** — a confirmed booking whose service day passed without a check-in
-  (`NO_SHOW`), written by the scheduled sweep, never by hand. Terminal: not cancellable and
-  not check-in-able. It is **not** a refund — the guest paid and the venue held the set, so
-  every money read that counts a delivered stay counts a no-show too. The one exception is
-  the admin **weather refund**, which reaches a no-show on purpose: on a washed-out day
-  those are the guests who stayed home because of the storm.
+  booking code, that the guest arrived **today**: stamps today's night as attended, exactly
+  once per night. On the stay's last night it also resolves the stay to `COMPLETED`.
+- **Stay outcome** — what a confirmed booking becomes once its last night has passed or been
+  checked in: `COMPLETED` if any night was attended, `NO_SHOW` if none was. Written once, by
+  the check-in (last night) or the scheduled sweep, never by hand.
+- **No-show** — a confirmed booking none of whose nights was attended once every night had
+  passed (`NO_SHOW`), written by the scheduled sweep; the same sweep marks each unattended
+  night of a still-live stay as missed. Terminal: not cancellable and not check-in-able. It is
+  **not** a refund — the guest paid and the venue held the set, so every money read that
+  counts a delivered stay counts a no-show too. The one exception is the admin **weather
+  refund**, which reaches a no-show on purpose: on a washed-out day those are the guests who
+  stayed home because of the storm.
 - **Sales close** — the moment a venue's online sales for a date close, on the date
   itself: a per-venue setting fixed at one of three wall-clock values (00:01 opts the
   venue out of same-day sales, 16:00 the default, or 23:59), `Europe/Tirane`. The point
@@ -365,13 +373,14 @@ model in `docs/architecture/domain-model.md`.
 - **Review** — a tourist's verdict on one delivered stay: a star rating of 1–5, an optional bounded
   comment, and the **display name** it is attributed to, recorded against the booking that stay was
   made under. **One per booking** — a stay carries at most one, enforced by the database. It is a
-  *verified-stay* review: only a booking the venue actually checked in can carry one, which is what
-  makes the aggregate resistant to gaming.
+  *verified-stay* review: only a stay the venue actually checked in, on at least one night, can
+  carry one, which is what makes the aggregate resistant to gaming.
 - **Display name** — the name a review is shown under, chosen by its author rather than read off
   their account. It is required on every review, defaults
   to the first name on the booking contact, and is the only identity a review ever carries — the
   `review` module never learns who the guest is.
-- **Review window** — how long a delivered stay stays reviewable. It opens at **check-in** and closes
+- **Review window** — how long a delivered stay stays reviewable. It opens when the stay
+  **completes** — its last night checked in, or passed after an attended one — and closes
   60 days later. Inside it the author may change or remove their own review; outside it a stay is
   refused a rating and an existing one is frozen. The refusal is the server's — the surfaces render
   from its answer, never from the booking's status.

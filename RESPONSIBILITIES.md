@@ -340,14 +340,34 @@ any other claim (invariant #2).
 ## `booking`
 **Job:** Own bookings, booking codes, and the lifecycle. The standing rules:
 
-- **Check-in** is the venue-scoped, service-date-only `CONFIRMED → COMPLETED` transition
-  off the scanned or typed booking code — single-use by the row lock (a second scan reads
-  "already checked in"), keyed on the code but authorized by venue ownership (invariants
-  #13 and #7). It publishes **no** event: nothing accrues, nothing refunds, no mail.
-- **The no-show sweep** marks every `CONFIRMED` booking dated before today
-  (`Europe/Tirane`) `NO_SHOW` in **batches** (500 rows, at most 20 a run, each committing
-  on its own, `FOR UPDATE` without `SKIP LOCKED`), so a run cut short resumes next tick.
-  It writes **no availability row**: freeing a past claim would make it re-claimable
+- **Attendance is a per-night record, and I am the sole writer of `booking_night`.** One row
+  per night of a stay, written by the schema the moment a `booking` row becomes `CONFIRMED`
+  (trigger `booking_night_on_confirm`, V60 — the one home of "written when the booking
+  confirms", so no confirm statement and no fixture can forget them; until a booking carries a
+  last night its range is its `booking_date`). A night is unresolved, attended
+  (`attended_at`) or missed (`missed_at`), never both (CHECK). `booking.status` stays the
+  contract state machine; `COMPLETED` / `NO_SHOW` are **stay outcomes** written once, when the
+  last night resolves: `COMPLETED` if any night was attended, else `NO_SHOW`. `completed_at`
+  is the instant the stay resolved `COMPLETED` — the review window's input — and a `NO_SHOW`
+  stamps nothing on `booking` (V41's stance: the night is the fact, the sweep's clock is not).
+  The outcome rule is one SQL statement shared by check-in and the sweep
+  (`JdbcBookings.RESOLVE_STAY_SQL`). The fitness function is
+  `ResponsibilitiesArchitectureTests` rule 9.
+- **Check-in** is the venue-scoped stamp on **tonight's** night row (`attended_at`, today in
+  `Europe/Tirane`) off the scanned or typed booking code — single-use per night by the row lock
+  and the `attended_at IS NULL AND missed_at IS NULL` guard (a second scan on the same day reads
+  "already checked in"; a `CONFIRMED` stay whose night today is attended answers the same as a
+  `COMPLETED` one), keyed on the code but authorized by venue ownership (invariants #13 and #7).
+  When no later night remains it resolves the stay in the same transaction. It publishes **no**
+  event: nothing accrues, nothing refunds, no mail.
+- **The no-show sweep** runs two batched statements on the bounded client (500 rows, at most
+  20 batches a run, each statement committing on its own, `FOR UPDATE` without `SKIP LOCKED`),
+  so a run cut short resumes next tick: it marks every night before today (`Europe/Tirane`)
+  that a `CONFIRMED` booking neither attended nor missed as missed, then resolves every
+  `CONFIRMED` booking whose last night has passed (oldest first, its stragglers marked in the
+  same statement). The count it reports is bookings resolved; a backlog whose unresolved
+  nights outnumber its due bookings by more than a batch finishes its night marks on the next
+  tick. It writes **no availability row**: freeing a past claim would make it re-claimable
   (invariant #2). Arrivals and daily takings count `COMPLETED` **and `NO_SHOW`** beside
   `CONFIRMED`. The guest-cancel guard is `CONFIRMED`-only; the admin **weather refund**
   admits `NO_SHOW` on its own `cancelForWeather` transition, because the storm is known
