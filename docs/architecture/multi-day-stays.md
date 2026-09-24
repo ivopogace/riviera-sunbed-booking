@@ -24,7 +24,7 @@ time, discovering gaps only as they hit them and losing spots to whoever booked 
 product is the worst available version of a stay: all of the moving about, none of the planning.
 
 For a venue in **Request-to-Book** mode it is incoherent rather than merely tedious. Fourteen
-nights arrive as fourteen independent requests, and a venue that accepts twelve and declines two
+days arrive as fourteen independent requests, and a venue that accepts twelve and declines two
 has sold a guest a holiday with a hole in the middle of it — an outcome no venue would ever choose
 deliberately, and one the current model lets them reach by accident. The Requests queue shows
 fourteen cards for what is, to everyone involved, one decision.
@@ -39,8 +39,8 @@ promise — pick your exact spot on the map — is unchanged.
 
 Where no single set covers the range, the platform offers a **stitched itinerary**: the stay
 covered by a small number of same-set runs, chosen to minimise the number of moves first and the
-distance moved second. The guest sees "nights 1–3 here, 4–8 two spots along, 9–13 one row back,
-night 14 back here" before they pay, not after they arrive. This is the connecting-flight model,
+distance moved second. The guest sees "days 1–3 here, 4–8 two spots along, 9–13 one row back,
+day 14 back here" before they pay, not after they arrive. This is the connecting-flight model,
 and it is deliberate: a move is a legible, priceable downgrade from a direct.
 
 The number of moves is **budgeted, not maximised**. Up to three moves, and never more (D13 raised
@@ -49,11 +49,11 @@ shown the longest run it *can* offer plus other venues — never a six-move itin
 
 ### Why a stitched stay is the feature and same-set alone is not
 
-Under independent per-day allocation, the chance that at least one set is free across every night
-of a stay is `1 − (1 − fᴺ)ˢ` — f the free fraction, N the nights, S the online sets. The exponent
+Under independent per-day allocation, the chance that at least one set is free across every day
+of a stay is `1 − (1 − fᴺ)ˢ` — f the free fraction, N the days, S the online sets. The exponent
 decides everything, and for a 60-set venue it gives:
 
-| Peak occupancy | 3 nights | 7 nights | 14 nights |
+| Peak occupancy | 3 days | 7 days | 14 days |
 |---|---|---|---|
 | 85% | ~18% | ~0.01% | ~0% |
 | 70% | ~78% | ~1.3% | ~0% |
@@ -63,8 +63,8 @@ Same-set-for-the-whole-stay cannot be scavenged from the gaps single-day allocat
 set count a beach can physically hold. It exists only if inventory is held back for it — a
 commercial ask of venues, and out of scope here.
 
-Stitching needs no such ask. A prototype DP (shortest path over `(night, set)`, cost = moves,
-tie-broken on distance; 60 sets, 14 nights, 20k trials, independent daily occupancy) gives:
+Stitching needs no such ask. A prototype DP (shortest path over `(day, set)`, cost = moves,
+tie-broken on distance; 60 sets, 14 days, 20k trials, independent daily occupancy) gives:
 
 | Occupancy | Coverable | 0 moves | ≤1 | ≤2 | ≤3 | Median |
 |---|---|---|---|---|---|---|
@@ -73,7 +73,7 @@ tie-broken on distance; 60 sets, 14 nights, 20k trials, independent daily occupa
 | 70% | 100% | — | 0.1% | 5% | **46%** | 4 |
 | 85% | 99.9% | — | — | — | 0.1% | 6 |
 
-**The cliff becomes a slope.** A 14-night stay at 50% occupancy goes from 0.2% (same-set) to 97%
+**The cliff becomes a slope.** A 14-day stay at 50% occupancy goes from 0.2% (same-set) to 97%
 (≤2 moves). Coverage stays near-total even at 85%; what degrades is the number of moves, smoothly,
 which is a property you can budget and explain. Median distance per move lands at three to five
 positions along a row, or roughly one row back — not the other end of the beach.
@@ -88,12 +88,12 @@ which lengthens runs. Weekend-aligned gaps could cut the other way; only real tr
 1. As a tourist, I want to enter an arrival and departure date, so that I search for my whole
    holiday at once instead of one day at a time.
 2. As a tourist, I want the beach map to tell me which sets are free for my **entire** stay, so
-   that I am not choosing a spot that silently fails on night four.
+   that I am not choosing a spot that silently fails on day four.
 3. As a tourist, I want a set that covers only part of my stay to be visibly different from one
    that covers none of it, so that a busy beach does not read as a full one.
-4. As a tourist, I want to tap a partly-free set and be told exactly which of my nights it covers,
+4. As a tourist, I want to tap a partly-free set and be told exactly which of my days it covers,
    so that I can decide whether to shorten my stay instead of abandoning the venue.
-5. As a tourist, I want the price quoted as a per-night rate and a total, so that I can compare
+5. As a tourist, I want the price quoted as a per-day rate and a total, so that I can compare
    venues on the number they advertise.
 6. As a tourist whose stay no single set covers, I want to be offered an itinerary of two or three
    spots, so that I can still book this venue.
@@ -101,7 +101,7 @@ which lengthens runs. Weekend-aligned gaps could cut the other way; only real tr
    there where possible — so that the place I chose is still part of my holiday.
 8. As a tourist, I want to see how far each move is, in rows and positions, so that I can judge
    whether it is a real inconvenience.
-9. As a tourist, I want to see the itinerary as a timeline of nights, so that I understand my stay
+9. As a tourist, I want to see the itinerary as a timeline of days, so that I understand my stay
    before I pay rather than after I arrive.
 10. As a tourist, I want to refuse an itinerary and see the longest single-set run instead, so that
     I can choose a shorter stay over a moving one.
@@ -115,7 +115,7 @@ which lengthens runs. Weekend-aligned gaps could cut the other way; only real tr
 13. As a tourist, I want one booking code for my whole stay, so that I present the same thing every
     morning.
 14. As a tourist, I want to pay once for the whole stay, so that I am not charged fourteen times.
-15. As a tourist, I want one confirmation mail naming every night and every spot, so that I have a
+15. As a tourist, I want one confirmation mail naming every day and every spot, so that I have a
     single record to travel with.
 16. As a tourist, I want one proof-of-work challenge for the stay, so that booking a fortnight is
     not fourteen times the friction of booking a day.
@@ -148,14 +148,14 @@ which lengthens runs. Weekend-aligned gaps could cut the other way; only real tr
 27. As a venue operator, I want to accept or decline a stay as a whole, so that I cannot
     accidentally sell a broken holiday.
 28. As a venue operator, I want to cap how long a stay may be at my venue, so that a fortnight-long
-    request cannot tie up inventory I would rather sell nightly.
+    request cannot tie up inventory I would rather sell daily.
 29. As a venue operator, I want long requests to expire faster than short ones, so that an
-    abandoned fifteen-night request does not hold fifteen nights of inventory with no money at risk.
+    abandoned fifteen-day request does not hold fifteen days of inventory with no money at risk.
 30. As a venue operator, I want my daily view to separate guests arriving today, staying today and
     leaving today, so that my staff know who to greet and which sets turn over.
 31. As a venue operator, I want to see who has not yet checked in **today**, so that "nobody turned
     up" is a question I can answer on any day of a stay, not only the first.
-32. As a venue operator, I want my daily takings to count the nights actually served on that date,
+32. As a venue operator, I want my daily takings to count the days actually served on that date,
     so that a fortnight's money does not land entirely on the arrival day.
 33. As a venue operator, I want the layout editor's lock to name the whole span a guest holds, so
     that I can plan a remodel around it instead of discovering the freeze at save time.
@@ -165,31 +165,31 @@ which lengthens runs. Weekend-aligned gaps could cut the other way; only real tr
 34. As venue staff, I want scanning a stay's code to check the guest in for today only, so that a
     second scan tomorrow still works.
 35. As venue staff, I want a second scan on the same day to say "already checked in today", so that
-    the behaviour matches what I already know from single-night bookings.
+    the behaviour matches what I already know from single-day bookings.
 36. As venue staff, I want a stay's set for today shown when I scan, so that I can point the guest
     at the right lounger on a move day.
 
 **Platform**
 
-37. As the platform, I want every night of a stay to hold its own `(set, date)` claim, so that
+37. As the platform, I want every day of a stay to hold its own `(set, date)` claim, so that
     invariant #2 is untouched and a set can still never be double-sold.
 38. As the platform, I want a stay's claim to be all-or-nothing, so that a guest is never left
-    holding a partial holiday because one night lost a race.
-39. As the platform, I want every terminal transition to release **every** night it held, so that
+    holding a partial holiday because one day lost a race.
+39. As the platform, I want every terminal transition to release **every** day it held, so that
     cancelling a stay never strands inventory nothing can reach.
 40. As the platform, I want a stay's payout to accrue once and reverse once per segment, so that
     invariant #9 holds unchanged.
 41. As a platform admin, I want a stay disturbed by a remodel to be settled per segment, so that one
-    frozen night cannot veto a venue's whole layout change.
+    frozen day cannot veto a venue's whole layout change.
 
 ## Implementation Decisions
 
 ### D1 — Three slices, in this order
 
 **Attendance → range bookings → stitching.** The order is load-bearing: attendance is the largest
-and riskiest piece and can be landed *before* any product change, against today's single-night
+and riskiest piece and can be landed *before* any product change, against today's single-day
 bookings, where it is provably equivalent to current behaviour. Range bookings then arrive on an
-attendance model that already works per night. Stitching arrives last because it is the only slice
+attendance model that already works per day. Stitching arrives last because it is the only slice
 that touches `payment`.
 
 ### D2 — Attendance becomes a per-day record; the status machine is left alone
@@ -309,7 +309,7 @@ read side grows more overlays. A stitched-itinerary search is exactly that overl
 
 It keeps the search out of `booking`, which is already past three of four **B3** clauses (4,801
 comment-stripped LOC against a ~4,000 threshold; the third scheduler on 2026-08-09; the refund seam
-deepening on 2026-09-10). The ranking itself is pure — a shortest path over `(night, set)`, cost =
+deepening on 2026-09-10). The ranking itself is pure — a shortest path over `(day, set)`, cost =
 moves, tie-broken on distance — so it lands framework-free in the new module's `domain/` under
 ADR-0018, beside a distance rule that mirrors `MoveRanking`'s (same row, then closest position,
 then closest row).
@@ -347,10 +347,10 @@ this season". The reserve path rejects a range longer than the venue's maximum, 
 `venue::api` the same way sales-close is.
 
 Nothing in the design needs a fixed limit. Invariant #2 is one claim per `(set, date)` at any length,
-and the itinerary search runs in microseconds at sixty nights. The concerns a cap would answer are
+and the itinerary search runs in microseconds at sixty days. The concerns a cap would answer are
 answered elsewhere. Inventory held by an unanswered Request-to-Book stay is bounded by story 29's
 shorter expiry for longer requests. The layout freeze is bounded by segment length (D6), which the
-stitching keeps at two to five nights whatever the stay length.
+stitching keeps at two to five days whatever the stay length.
 
 In the UI, the discovery page's calendar accepts any range up to the season's end. A venue whose
 maximum is shorter than the chosen stay reads as unable to host ("stays of up to N days here"),
@@ -421,15 +421,15 @@ are reused in preference to new ones; the epic adds exactly one new seam (D7's i
 **Seam 1 — `CheckInBooking` + `MarkNoShows` (existing driving ports).** The equivalence proof is
 the point of slicing attendance first: **the existing check-in and no-show integration tests stay
 unchanged** and become the oracle. If `JdbcBookingTransitionTableIT`, `BookingMigrationIT` and the
-check-in ITs pass untouched against the per-night implementation, single-night behaviour is
-identical by construction rather than by inspection. New tests cover only what is new: a multi-night
+check-in ITs pass untouched against the per-day implementation, single-day behaviour is
+identical by construction rather than by inspection. New tests cover only what is new: a multi-day
 booking checked in on successive days, a partially-attended stay resolving to its outcome, and a
 guest who stops turning up mid-stay.
 
 **Seam 2 — `CreateBooking` (existing port).** One new integration test carries invariant #2 for
-ranges: an N-night claim is all-or-nothing under contention, with a concurrent single-night booking
-on one of the nights forcing the whole stay to lose. Prior art for the row-lock discipline is
-`ConcurrentRequestTerminationIT`. A second test carries D5: every night is released on each of the
+ranges: an N-day claim is all-or-nothing under contention, with a concurrent single-day booking
+on one of the days forcing the whole stay to lose. Prior art for the row-lock discipline is
+`ConcurrentRequestTerminationIT`. A second test carries D5: every day is released on each of the
 seven terminal transitions, asserted by re-claiming the whole range afterwards.
 
 **Seam 3 — the itinerary port (new).** The ranking is pure and unit-tested exactly as `MoveRanking`
