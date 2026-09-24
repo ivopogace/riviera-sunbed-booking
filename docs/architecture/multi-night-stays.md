@@ -43,8 +43,8 @@ distance moved second. The guest sees "nights 1–3 here, 4–8 two spots along,
 night 14 back here" before they pay, not after they arrive. This is the connecting-flight model,
 and it is deliberate: a move is a legible, priceable downgrade from a direct.
 
-The number of moves is **budgeted, not maximised**. Two moves by default, three on request, never
-more. Past that the honest answer is that this venue cannot host the whole stay, and the guest is
+The number of moves is **budgeted, not maximised**. Up to three moves, and never more (D13 raised
+the default from two). Past that the honest answer is that this venue cannot host the whole stay, and the guest is
 shown the longest run it *can* offer plus other venues — never a six-move itinerary.
 
 ### Why a stitched stay is the feature and same-set alone is not
@@ -264,9 +264,16 @@ and the only operator-facing delete filters on `state = 'STAFF_MARKED'`. Recover
 database access.
 
 The weather refund is the same defect wearing a disguise: its `booking_date = :date` equality means
-that once ranges exist, a storm mid-stay selects **nothing** and silently refunds nobody. It must
-move to an overlap predicate *and* to a per-night amount in the same change, never one without the
-other.
+that once ranges exist, a storm mid-stay selects **nothing** and silently refunds nobody. It moves
+to an overlap predicate, and it never skips a stay silently. Decided 2026-09-24 (option A): a
+washed-out day refunds **that day's share** and the stay continues. That is a partial refund on a
+live booking, which the payout ledger's one-reversal-per-booking guard (invariant #9) and
+`payment`'s single refund cannot express. So it lands in its own slice, after the refund child
+table (D8). Until then the overlap selection refunds one-night bookings as today and **names**
+every overlapping stay for a manual refund, instead of refunding nobody. The refund is the day's actual
+rate (the set held that day), never the total divided by its days. A day the guest already
+checked into is **not** refunded, the same as today's single-day rule, which admits only
+`CONFIRMED|NO_SHOW`.
 
 ### D6 — A stay is a group of bookings, not one booking with segments
 
@@ -331,6 +338,80 @@ problem at one-day scale; with stays it is disabling. Per-claim settlement — s
 settled, keep the rest — should land before or with the range-bookings slice. It is worth doing on
 its own merits and is not strictly part of this epic.
 
+### D10 — Stay length is a venue setting; the platform sets no maximum
+
+Decided 2026-09-24, while prototyping the stay UI; it settles story 28's owner and default. There is
+**no platform-wide maximum**: a stay may run to the end of the venue's season. Each venue may set a
+maximum in days, owned by `venue` beside booking mode and sales-close, and unset means "any length
+this season". The reserve path rejects a range longer than the venue's maximum, read through
+`venue::api` the same way sales-close is.
+
+Nothing in the design needs a fixed limit. Invariant #2 is one claim per `(set, date)` at any length,
+and the itinerary search runs in microseconds at sixty nights. The concerns a cap would answer are
+answered elsewhere. Inventory held by an unanswered Request-to-Book stay is bounded by story 29's
+shorter expiry for longer requests. The layout freeze is bounded by segment length (D6), which the
+stitching keeps at two to five nights whatever the stay length.
+
+In the UI, the discovery page's calendar accepts any range up to the season's end. A venue whose
+maximum is shorter than the chosen stay reads as unable to host ("stays of up to N days here"),
+not as full. Its own calendar refuses end dates past its maximum, and its page offers new dates or
+the venues that can host, never a plan.
+
+### D11 — The discovery list carries a stay verdict per venue
+
+For a range, the discovery page answers "which venues can host my stay" before the tourist opens any
+of them. Each venue card and pin shows one of three states: same set for every day (with how many
+sets), fits within the switch budget (with the number of moves), or cannot host (with the longest
+single-set run, or D10's maximum when that is the reason). A single day keeps today's
+sets-free count unchanged.
+
+D7 specifies the itinerary search for **one** venue. The discovery list needs its verdict for every
+venue in the one whole-coast request the page already makes, so the D7 module also owns a list read
+beside its per-venue itinerary port. Each verdict is D7's pure ranking run once per venue, but a
+peak-season coast query is N venues × S sets × D days of `set_availability`. It must be measured
+before the range-bookings slice ships it, and it is scope the slicing has to count.
+
+### D12 — A partly-free set is a dotted tile with a free-day count
+
+Decided 2026-09-24 over two rejected alternatives: a diagonal split fill, and a strip of per-day
+cells. Story 3's third tile state is `border-dotted` (2px) on the available fill, plus a count
+badge ("9", or "9/14" where the tile is wide enough). The set's accessible name carries "free 9 of
+14 days". It enters `map-tile.ts` as one more `MAP_TILE_STATES` entry and one `MAP_TILE_CLASS`
+string, the same shape `taken`'s `border-dashed` already has.
+
+Three facts decide it. Forced-colors mode drops non-`url()` `background-image` and author
+background colours, but keeps border style. A split fill or a per-day strip would vanish under
+high contrast. The dotted border and the badge's text survive, as `taken`'s dash does. Next,
+the count is content that identifies the control at AA, so `docs/design/non-text-contrast.md`
+rule 2 covers the tile with one measured ratio per theme, where a split would need two. Last,
+the tile needs only a count per set, which D11's verdict already computes. A per-day strip would
+ship a per-set × per-day grid to the client, and at D10's unbounded lengths its cells shrink
+below a pixel.
+
+The badge is `aria-hidden` inside the existing tile button, so it adds no touch target. Dotted
+(partly free) and dashed (taken) sit close at hairline widths. The badge and the fill carry the
+difference, and the venue page's contrast spec measures the 2px dotted border in all three
+themes.
+
+### D13 — The move budget is three, because a move happens between days
+
+Decided 2026-09-24 by the owner, before the pilot test. The 'friction inside the holiday' worry in
+*Further Notes* assumed a family relocating mid-stay with its things. That is not how the beach
+works. A set is a full day, and guests arrive each morning and leave each evening with everything
+they brought. A move therefore costs no packing. It only means a different set number on a
+different morning, the way a different row does today when a tourist books day by day.
+
+So the switch budget (D7's `max-switches`) defaults to **three**, and there is no separate "on
+request" step. The hard ceiling stays at three: past it the guest gets the longest single-set run
+and other venues, as before. Distance keeps its role as the tie-break, because a familiar corner
+still matters to a family. It just no longer decides whether a plan is acceptable. At 70%
+occupancy the epic's coverage table goes from 5% (≤2 moves) to 46% (≤3). Story 22's evening
+reminder and story 23's "your spot today" carry the move, so a move day reads like any other
+morning.
+
+The pilot-venue call is still needed for the two missing numbers (peak-week occupancy, online set
+count), and a tourist session can still disprove D13. But the budget no longer waits on either.
+
 ## Testing Decisions
 
 A good test here asserts **external behaviour at the highest available seam** — what a caller of a
@@ -376,8 +457,8 @@ timeline; contrast specs for the new tile fill in all three themes; both Playwri
   commercial ask of venues and a separate decision; stitching deliberately needs no such ask.
 - **Consolidation offers** — moving a stitched guest onto a single set when one frees up mid-stay.
   Genuinely attractive and the group-of-bookings shape supports it, but it is a later slice.
-- **Per-day weather refunds.** D5 fixes the silent-no-selection defect; refunding *one night* of a
-  stay is a separate product decision.
+- **Per-day weather refunds** are no longer out of scope: D5 settles them as option A, refunding the
+  washed-out day and keeping the stay, delivered in its own slice after D8.
 - **Stays split across venues.** An itinerary is always within one venue.
 - **Dynamic or seasonal pricing**, half-day and hourly units — all still "later" in the product
   spec.
@@ -402,7 +483,8 @@ mechanism and breaks on the feeling: a connection is friction on the way to what
 sunbed move is friction inside it, and the unit being moved is a family with towels, a cooler and
 settled children. It is cheap to test with a mockup and should be tested **before** the DP is
 built, not after. If the real budget turns out to be one move, D7 is unaffected — only the
-configured value changes — but the coverage table above halves.
+configured value changes — but the coverage table above halves. D13 settles this: a move happens
+between days, never inside one, so the budget is three.
 
 **The strongest argument for the whole epic** is not that stays are a new capability. It is that
 tourists are *already* stitching their holidays together by hand, with no plan, no guarantee and no
