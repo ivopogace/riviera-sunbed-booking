@@ -324,10 +324,10 @@ be double-sold. Answer the read-side facts through `venue::spi` (`SetAvailabilit
 the state-agnostic taken-set overlay for the public map, the per-set **state tokens**
 (`statesOn`) behind the owner's daily read, and the **taken count per day** over a window
 (`takenCountsBetween`) behind the tourist calendar — how many are held, never how many
-exist. `venue` composes; I answer state. A remodel move is two of my ordinary writes inside
-`venue`'s commit transaction — the new `(set, date)` claimed before the old is released, never a
-swap of my own — so a reserve racing the move loses or wins the row exactly as it would against
-any other claim (invariant #2).
+exist. `venue` composes; I answer state. A remodel move is my ordinary writes inside
+`venue`'s commit transaction — every day of the span claimed on the new set before any day is
+released on the old, never a swap of my own — so a reserve racing the move loses or wins the row
+exactly as it would against any other claim (invariant #2).
 
 **Not My Job:**
 - The venue layout, which sets exist, or their positions → **`venue`**
