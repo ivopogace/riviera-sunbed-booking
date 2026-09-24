@@ -43,8 +43,8 @@ distance moved second. The guest sees "nights 1–3 here, 4–8 two spots along,
 night 14 back here" before they pay, not after they arrive. This is the connecting-flight model,
 and it is deliberate: a move is a legible, priceable downgrade from a direct.
 
-The number of moves is **budgeted, not maximised**. Two moves by default, three on request, never
-more. Past that the honest answer is that this venue cannot host the whole stay, and the guest is
+The number of moves is **budgeted, not maximised**. Up to three moves, and never more (D13 raised
+the default from two). Past that the honest answer is that this venue cannot host the whole stay, and the guest is
 shown the longest run it *can* offer plus other venues — never a six-move itinerary.
 
 ### Why a stitched stay is the feature and same-set alone is not
@@ -386,6 +386,25 @@ The badge is `aria-hidden` inside the existing tile button, so it adds no touch 
 difference, and the venue page's contrast spec measures the 2px dotted border in all three
 themes.
 
+### D13 — The move budget is three, because a move happens between days
+
+Decided 2026-09-24 by the owner, before the pilot test. The 'friction inside the holiday' worry in
+*Further Notes* assumed a family relocating mid-stay with its things. That is not how the beach
+works. A set is a full day, and guests arrive each morning and leave each evening with everything
+they brought. A move therefore costs no packing. It only means a different set number on a
+different morning, the way a different row does today when a tourist books day by day.
+
+So the switch budget (D7's `max-switches`) defaults to **three**, and there is no separate "on
+request" step. The hard ceiling stays at three: past it the guest gets the longest single-set run
+and other venues, as before. Distance keeps its role as the tie-break, because a familiar corner
+still matters to a family. It just no longer decides whether a plan is acceptable. At 70%
+occupancy the epic's coverage table goes from 5% (≤2 moves) to 46% (≤3). Story 22's evening
+reminder and story 23's "your spot today" carry the move, so a move day reads like any other
+morning.
+
+The pilot-venue call is still needed for the two missing numbers (peak-week occupancy, online set
+count), and a tourist session can still disprove D13. But the budget no longer waits on either.
+
 ## Testing Decisions
 
 A good test here asserts **external behaviour at the highest available seam** — what a caller of a
@@ -457,7 +476,8 @@ mechanism and breaks on the feeling: a connection is friction on the way to what
 sunbed move is friction inside it, and the unit being moved is a family with towels, a cooler and
 settled children. It is cheap to test with a mockup and should be tested **before** the DP is
 built, not after. If the real budget turns out to be one move, D7 is unaffected — only the
-configured value changes — but the coverage table above halves.
+configured value changes — but the coverage table above halves. D13 settles this: a move happens
+between days, never inside one, so the budget is three.
 
 **The strongest argument for the whole epic** is not that stays are a new capability. It is that
 tourists are *already* stitching their holidays together by hand, with no plan, no guarantee and no
