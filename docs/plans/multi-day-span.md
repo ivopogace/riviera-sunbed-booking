@@ -197,24 +197,20 @@ first day).
 
 ## Execution status
 
-**Stage pointer:** implement — phases 0–4 authored test-first; the backend ITs and the structural
-net have NOT yet run locally (Maven Central rate-limits dependency resolution through the cloud
-proxy; a retry loop is warming the cache). Frontend specs, lint and Prettier are green.
+**Stage pointer:** PR #1213 (draft) — phases 0–4 green locally with real containers and in
+CI bar one fixture (F-1, fixed); next push's CI decides ready-for-review.
 
-**PR:** draft #1213, subscribed.
-
-**Next action:** run `BookingMigrationIT`, `BookingLastDateBackfillIT`, `ServiceDaysTest`,
-`SpanReleaseIT`, `WeatherRefundServiceIT`, `StaffBookingControllerIT`, `JdbcBookingPresenceIT`,
-`GuestContactRetentionIT`, the touched unit tests and the six-test net; open the draft PR.
+**Next action:** CI green on the fix → mark ready for review → review gate (`references/pr-gates.md`
+§1) → Sonar gate → close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V61: `last_date`, default trigger, span-aware `booking_day` trigger | ⏳ authored, ITs pending | |
-| 1 — `ServiceDays` + every terminal leg and the move work on the span | ⏳ authored, ITs pending | |
-| 2 — Overlap reads: staff daily list, presence, guest history | ⏳ authored, ITs pending | |
-| 3 — Weather refund: overlap selection, stays named on the outcome + view | ⏳ authored, ITs pending | |
-| 4 — Console notice names the stays | ⏳ specs green, e2e pending | |
-| 5 — Docs freshness + close-out | ⏳ substrate docs written | |
+| 0 — V61: `last_date`, default trigger, span-aware `booking_day` trigger | ✅ | `90ce0c1b` |
+| 1 — `ServiceDays` + every terminal leg and the move work on the span | ✅ | `7a849b31` |
+| 2 — Overlap reads: staff daily list, presence, guest history | ✅ | `7a849b31`, F-1 fix |
+| 3 — Weather refund: overlap selection, stays named on the outcome + view | ✅ | `7a849b31` |
+| 4 — Console notice names the stays | ✅ | `778b1b60` |
+| 5 — Docs freshness + close-out | ⏳ substrate docs written (`73ab5a48`); gates pending | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -222,6 +218,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-1 | CI run 36056793325 | `StaffBookingControllerIT.dailyViewListsSweptNoShows` / `.sameDayConfirmedBookingAppearsInTodaysList`: a backdated fixture row read as a span covering today | fixed — `ServiceDayBackdate` moves `last_date` too |
 
 ---
 
@@ -323,6 +320,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-24 | CI: `StaffBookingControllerIT` today-relative counts off after the overlap read | a fixture that moves `booking_date` after insert leaves `last_date` behind, turning a one-day row into a span | `grep -rn "SET booking_date" platform/src --include=*.java` | 1 (`ServiceDayBackdate`; no production statement moves it) | the helper moves `last_date` with `booking_date` |
+| 2026-09-24 | phase 1 | every availability release/claim in `booking` | `grep -rn "availability.release(\|availability.claim(" platform/src/main/java/ai/riviera/platform/booking` | 8 release sites + the move's claim, all on `ServiceDays` | covered by `SpanReleaseIT` per leg |
+| 2026-09-24 | phase 2 | every `booking_date` comparison in `booking`'s SQL | `grep -rn "booking_date [<>=]" platform/src/main/java/ai/riviera/platform/booking` | daily list, weather (overlap); presence `liveBookingsFrom`, guest history (`last_date`); takings, abandoned sweep day-end arm, no-show sweep narrowing, `nearestLiveBookings` (first day, each judged in the plan) | done |
 
 ---
 
