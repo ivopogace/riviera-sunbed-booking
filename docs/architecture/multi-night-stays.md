@@ -264,9 +264,13 @@ and the only operator-facing delete filters on `state = 'STAFF_MARKED'`. Recover
 database access.
 
 The weather refund is the same defect wearing a disguise: its `booking_date = :date` equality means
-that once ranges exist, a storm mid-stay selects **nothing** and silently refunds nobody. It must
-move to an overlap predicate *and* to a per-night amount in the same change, never one without the
-other.
+that once ranges exist, a storm mid-stay selects **nothing** and silently refunds nobody. It moves
+to an overlap predicate, and it never skips a stay silently. Decided 2026-09-24 (option A): a
+washed-out day refunds **that day's share** and the stay continues. That is a partial refund on a
+live booking, which the payout ledger's one-reversal-per-booking guard (invariant #9) and
+`payment`'s single refund cannot express. So it lands in its own slice, after the refund child
+table (D8). Until then the overlap selection refunds one-night bookings as today and **names**
+every overlapping stay for a manual refund, instead of refunding nobody.
 
 ### D6 — A stay is a group of bookings, not one booking with segments
 
@@ -450,8 +454,8 @@ timeline; contrast specs for the new tile fill in all three themes; both Playwri
   commercial ask of venues and a separate decision; stitching deliberately needs no such ask.
 - **Consolidation offers** — moving a stitched guest onto a single set when one frees up mid-stay.
   Genuinely attractive and the group-of-bookings shape supports it, but it is a later slice.
-- **Per-day weather refunds.** D5 fixes the silent-no-selection defect; refunding *one night* of a
-  stay is a separate product decision.
+- **Per-day weather refunds** are no longer out of scope: D5 settles them as option A, refunding the
+  washed-out day and keeping the stay, delivered in its own slice after D8.
 - **Stays split across venues.** An itinerary is always within one venue.
 - **Dynamic or seasonal pricing**, half-day and hourly units — all still "later" in the product
   spec.
