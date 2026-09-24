@@ -371,8 +371,8 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
     <label><input type="radio" name="model" value="indep" id="g-indep"><span>Single days</span></label>
   </div></fieldset>
   <fieldset class="ctl"><legend>Partly-free tile</legend><div class="seg">
-    <label><input type="radio" name="tstyle" value="split" id="t-split" checked><span>Split + count</span></label>
-    <label><input type="radio" name="tstyle" value="badge" id="t-badge"><span>Count badge</span></label>
+    <label><input type="radio" name="tstyle" value="badge" id="t-badge" checked><span>Count badge</span></label>
+    <label><input type="radio" name="tstyle" value="split" id="t-split"><span>Split + count</span></label>
     <label><input type="radio" name="tstyle" value="bar" id="t-bar"><span>Day bar</span></label>
   </div></fieldset>
   <button class="btn" type="button" id="reshuffle">Reshuffle coast ↻</button>
@@ -420,7 +420,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
 
   var S = {
     frame: window.innerWidth >= 1300 ? 'both' : 'phone',
-    budget: 2, extra: false, occ: 0.6, seed: 11, tstyle: 'split', model: 'runs',
+    budget: 2, extra: false, occ: 0.6, seed: 11, tstyle: 'badge', model: 'runs',
     screen: 'home', venue: 0, rail: false,
     start: 11, end: 24, cal: false, dStart: null, dEnd: null,
     sel: null, view: 'home', anchor: null, sheet: false, review: false, done: false,

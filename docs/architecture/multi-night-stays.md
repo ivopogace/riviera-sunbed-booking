@@ -364,6 +364,28 @@ beside its per-venue itinerary port. Each verdict is D7's pure ranking run once 
 peak-season coast query is N venues × S sets × D days of `set_availability`. It must be measured
 before the range-bookings slice ships it, and it is scope the slicing has to count.
 
+### D12 — A partly-free set is a dotted tile with a free-day count
+
+Decided 2026-09-24 over two rejected alternatives: a diagonal split fill, and a strip of per-day
+cells. Story 3's third tile state is `border-dotted` (2px) on the available fill, plus a count
+badge ("9", or "9/14" where the tile is wide enough). The set's accessible name carries "free 9 of
+14 days". It enters `map-tile.ts` as one more `MAP_TILE_STATES` entry and one `MAP_TILE_CLASS`
+string, the same shape `taken`'s `border-dashed` already has.
+
+Three facts decide it. Forced-colors mode drops non-`url()` `background-image` and author
+background colours, but keeps border style. A split fill or a per-day strip would vanish under
+high contrast. The dotted border and the badge's text survive, as `taken`'s dash does. Next,
+the count is content that identifies the control at AA, so `docs/design/non-text-contrast.md`
+rule 2 covers the tile with one measured ratio per theme, where a split would need two. Last,
+the tile needs only a count per set, which D11's verdict already computes. A per-day strip would
+ship a per-set × per-day grid to the client, and at D10's unbounded lengths its cells shrink
+below a pixel.
+
+The badge is `aria-hidden` inside the existing tile button, so it adds no touch target. Dotted
+(partly free) and dashed (taken) sit close at hairline widths. The badge and the fill carry the
+difference, and the venue page's contrast spec measures the 2px dotted border in all three
+themes.
+
 ## Testing Decisions
 
 A good test here asserts **external behaviour at the highest available seam** — what a caller of a
