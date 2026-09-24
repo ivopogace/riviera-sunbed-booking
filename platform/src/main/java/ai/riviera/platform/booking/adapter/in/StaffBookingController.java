@@ -69,7 +69,7 @@ class StaffBookingController {
 	}
 
 	/**
-	 * The staff check-in: scan or type the booking code, stamp its guest as attended tonight
+	 * The staff check-in: scan or type the booking code, stamp its guest as attended today
 	 * exactly once. The code travels in the path (ADR-0006's standing
 	 * convention) and never comes back: the success view carries set + date, and every problem body
 	 * keeps the redacted/overridden {@code instance} plus a date-only detail (invariant #7).

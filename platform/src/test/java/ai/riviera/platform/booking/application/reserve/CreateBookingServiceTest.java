@@ -677,7 +677,7 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
-		public int markPastNightsMissed(java.time.LocalDate today, int batchSize) {
+		public int markPastServiceDaysMissed(java.time.LocalDate today, int batchSize) {
 			return 0;
 		}
 

@@ -18,10 +18,10 @@ import java.util.Set;
  * {@code NO_SHOW}. A plain successor map would flatten that difference away, and it is the one the
  * guest path must never lose.
  *
- * <p>This states the lifecycle; the guarded {@code UPDATE … WHERE status = …} statements enforce it,
- * and no SQL is generated from here. The two cancellation rows go further than stating: the shared
- * cancel statement binds its admitted statuses from {@link #CANCEL_BY_GUEST} and
- * {@link #WEATHER_REFUND}, so that one asymmetry cannot drift at all. Every other row is held to its
+ * <p>This states the lifecycle; the guarded {@code UPDATE … WHERE status = …} statements enforce
+ * it, and no SQL is generated from here. The two cancellation rows go further than stating: the
+ * shared cancel statement binds its admitted statuses from {@link #CANCEL_BY_GUEST} and {@link
+ * #WEATHER_REFUND}, so that one asymmetry cannot drift at all. Every other row is held to its
  * statement by {@code JdbcBookingTransitionTableIT}, which drives each transition against each
  * status, as {@code BookingMigrationIT.everyEnumStatusAccepted} holds {@link BookingStatus} to
  * {@code booking_status_check}.
@@ -52,10 +52,10 @@ public enum BookingTransition {
 	/** The guest cancels under the policy (invariant #10) — {@code CONFIRMED} only. */
 	CANCEL_BY_GUEST(BookingStatus.CONFIRMED, BookingStatus.CANCELLED),
 
-	/** Staff scan the code at the venue on the stay's last night (its only night, until ranges exist). */
+	/** Staff scan the code at the venue on the stay's last service day (its only service day, until ranges exist). */
 	CHECK_IN(BookingStatus.CONFIRMED, BookingStatus.COMPLETED),
 
-	/** Every night passed and none was attended; the no-show sweep resolves it. */
+	/** Every service day passed and none was attended; the no-show sweep resolves it. */
 	SWEEP_NO_SHOW(BookingStatus.CONFIRMED, BookingStatus.NO_SHOW),
 
 	/** The admin weather refund — the only transition that acts on a {@code NO_SHOW}. */
@@ -91,8 +91,8 @@ public enum BookingTransition {
 
 	/**
 	 * Every status a booking in {@code status} may next hold, across all actors. Empty for the five
-	 * statuses nothing leaves; {@code NO_SHOW} is not among them, because the weather refund reaches
-	 * it.
+	 * statuses nothing leaves; {@code NO_SHOW} is not among them, because the weather refund
+	 * reaches it.
 	 */
 	public static Set<BookingStatus> successorsOf(BookingStatus status) {
 		return SUCCESSORS.get(status);

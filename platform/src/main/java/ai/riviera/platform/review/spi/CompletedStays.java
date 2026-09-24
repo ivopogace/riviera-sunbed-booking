@@ -24,9 +24,9 @@ import ai.riviera.platform.review.vocabulary.CompletedStay;
 public interface CompletedStays {
 
 	/**
-	 * The completed-stay facts behind {@code bookingCode}, or empty unless a booking answers to that
-	 * code <strong>and</strong> its stay has completed — its last night checked in or passed after an
-	 * attended one.
+	 * The completed-stay facts behind {@code bookingCode}, or empty unless a booking answers to
+	 * that code <strong>and</strong> its stay has completed — its last service day checked in or
+	 * passed after an attended one.
 	 *
 	 * @param bookingCode the bearer credential the guest presents (invariant #7) — never logged
 	 */
@@ -35,10 +35,10 @@ public interface CompletedStays {
 	/**
 	 * Whether any booking answers to {@code bookingCode}, whatever its status.
 	 *
-	 * <p>Separate from {@link #byCode} because review must tell "no such booking" from "that stay has
-	 * not completed" — the two produce different answers on the code-gated surface (a 404 against a
-	 * 409), and neither can be read off an empty {@link #byCode}. Consulted only once {@link #byCode}
-	 * has come back empty.
+	 * <p>Separate from {@link #byCode} because review must tell "no such booking" from "that stay
+	 * has not completed" — the two produce different answers on the code-gated surface (a 404
+	 * against a 409), and neither can be read off an empty {@link #byCode}. Consulted only once
+	 * {@link #byCode} has come back empty.
 	 */
 	boolean existsByCode(String bookingCode);
 }

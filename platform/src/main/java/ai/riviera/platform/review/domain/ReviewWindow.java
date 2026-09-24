@@ -19,7 +19,8 @@ public final class ReviewWindow {
 
 	/**
 	 * Whether the window over a stay completed at {@code completedAt} is still open at {@code now}.
-	 * The boundary is inclusive: only a stay completed <em>more</em> than {@link #WINDOW} ago closes.
+	 * The boundary is inclusive: only a stay completed <em>more</em> than {@link #WINDOW} ago
+	 * closes.
 	 */
 	public static boolean isOpen(Instant completedAt, Instant now) {
 		return !now.isAfter(closesAt(completedAt));
