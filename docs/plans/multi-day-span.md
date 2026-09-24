@@ -201,6 +201,8 @@ first day).
 net have NOT yet run locally (Maven Central rate-limits dependency resolution through the cloud
 proxy; a retry loop is warming the cache). Frontend specs, lint and Prettier are green.
 
+**PR:** draft #1213, subscribed.
+
 **Next action:** run `BookingMigrationIT`, `BookingLastDateBackfillIT`, `ServiceDaysTest`,
 `SpanReleaseIT`, `WeatherRefundServiceIT`, `StaffBookingControllerIT`, `JdbcBookingPresenceIT`,
 `GuestContactRetentionIT`, the touched unit tests and the six-test net; open the draft PR.
