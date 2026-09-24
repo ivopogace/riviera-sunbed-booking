@@ -106,6 +106,10 @@ best-practices guide raises nothing)
 - Span-aware move candidate search (D9): the move claims the span and the commit throws when a
   later day of the candidate is taken under the venue lock, as the single-day path already does.
 - Any change to `set_availability` or `availability::api`.
+- A mid-stay guest cancellation of the remaining days: the guest fence still keys the window off
+  the first day (`CancellationPolicy` / `BookingCutoff`), so the span release is reached only by a
+  whole-stay cancel before arrival — user story 20 ("cancel my whole stay"); a partial cancel is a
+  product decision for a later slice.
 
 ## Behavior-parity ledger (retirement / replacement slices only)
 
@@ -229,6 +233,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-2 | review gate (code-comment reviewer) | port + adapter docs of decline / expire / cancel-awaiting / withdraw still said "the (set, date)" and "the soft-hold exactly once" while their records carry the span | fixed — six sites reworded to "set and span" / "every day's" |
 | F-3 | review gate (prior-PR reviewer) | five copies of the per-day release loop | no change — the rule (inclusive day list) has its holder in `ServiceDays`; the loop is procedure over another module's port, which `domain/` may not import, and one shared adapter would be a hypothetical seam |
 | F-4 | review gate (code-comment reviewer) | V60's header cites `multi-night-stays.md`, renamed in `d385bc6c` | not fixable here — V60 is applied and Flyway checksums its text (the rename commit says so); the live path is in V61 |
+| F-5 | review gate (history reviewer) | the guest-cancel log line named the first day only | fixed — logs first and last day |
+| F-6 | review gate (history reviewer) | mid-stay guest cancellation not named as a non-goal | fixed — added to Non-goals |
+| F-7 | review gate (history reviewer) | first-day candidate selection on the remodel move (R-3) | accepted at intake; D9 owns span-aware search, due before the range-reserve slice |
 
 ---
 

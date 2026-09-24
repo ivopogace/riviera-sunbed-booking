@@ -107,8 +107,8 @@ class CancelBookingService implements CancelBooking {
 		events.publishEvent(new BookingCancelled(new BookingId(cancelled.id()), cancelled.venueId(),
 				cancelled.setId(), cancelled.bookingDate(), refundMinor, cancelled.currency(),
 				quote.reason()));
-		log.info("cancelled booking {} and released set {} on {} (refund {} minor)", cancelled.id(),
-				cancelled.setId().value(), cancelled.bookingDate(), refundMinor);
+		log.info("cancelled booking {} and released set {} from {} to {} (refund {} minor)", cancelled.id(),
+				cancelled.setId().value(), cancelled.bookingDate(), cancelled.lastDate(), refundMinor);
 
 		CancelOutcome.Tier tier = tierFor(quote.window(), refundMinor, cancelled.amountMinor());
 		return new CancelOutcome.Cancelled(refundMinor, cancelled.currency(), tier);
