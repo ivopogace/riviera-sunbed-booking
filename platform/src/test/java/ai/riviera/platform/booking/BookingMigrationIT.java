@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,8 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -147,5 +150,90 @@ class BookingMigrationIT {
 		assertThrows(DataIntegrityViolationException.class,
 				() -> jdbc.sql("UPDATE booking SET refund_minor = 9999 WHERE code = 'CODE000011'").update(),
 				"booking_refund_check must reject a refund greater than the gross amount (V10).");
+	}
+
+	private List<LocalDate> nightsOf(String code) {
+		return jdbc.sql("""
+				SELECT night FROM booking_night
+				WHERE booking_id = (SELECT id FROM booking WHERE code = :code)
+				ORDER BY night
+				""").param("code", code).query(LocalDate.class).list();
+	}
+
+	@Test
+	void confirmedBookingCarriesOneNightRow() {
+		// V60: the night is written when a row becomes CONFIRMED, by insert or by a later transition.
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("night-row@example.com");
+		LocalDate date = LocalDate.of(2026, 9, 21);
+		insertBooking(venue, set, cust, "NIGHT000001", date, "CONFIRMED");
+		insertBooking(venue, set, cust, "NIGHT000002", date, "AWAITING_PAYMENT");
+
+		assertEquals(List.of(date), nightsOf("NIGHT000001"));
+		assertNull(jdbc.sql("""
+				SELECT COALESCE(attended_at, missed_at) FROM booking_night
+				WHERE booking_id = (SELECT id FROM booking WHERE code = 'NIGHT000001')
+				""").query(java.time.Instant.class).single(), "a fresh night is unresolved");
+		assertEquals(List.of(), nightsOf("NIGHT000002"), "no night before the booking confirms");
+
+		jdbc.sql("UPDATE booking SET status = 'CONFIRMED', confirmed_at = NOW() WHERE code = 'NIGHT000002'")
+				.update();
+		assertEquals(List.of(date), nightsOf("NIGHT000002"));
+	}
+
+	@Test
+	void nightIsUniquePerBooking() {
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("night-unique@example.com");
+		LocalDate date = LocalDate.of(2026, 9, 22);
+		insertBooking(venue, set, cust, "NIGHT000003", date, "CONFIRMED");
+
+		assertThrows(DataIntegrityViolationException.class, () -> insertNight("NIGHT000003", date),
+				"UNIQUE (booking_id, night): one attendance fact per night");
+		assertDoesNotThrow(() -> insertNight("NIGHT000003", date.plusDays(1)),
+				"a further night of the same booking is the multi-night shape");
+		assertEquals(List.of(date, date.plusDays(1)), nightsOf("NIGHT000003"));
+	}
+
+	@Test
+	void nightIsNeverBothAttendedAndMissed() {
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("night-outcome@example.com");
+		insertBooking(venue, set, cust, "NIGHT000004", LocalDate.of(2026, 9, 23), "CONFIRMED");
+
+		assertThrows(DataIntegrityViolationException.class, () -> stampNight("NIGHT000004", "NOW()", "NOW()"),
+				"a night is attended or missed, never both");
+		assertDoesNotThrow(() -> stampNight("NIGHT000004", "NOW()", "NULL"));
+	}
+
+	@Test
+	void deletingABookingTakesItsNights() {
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("night-cascade@example.com");
+		insertBooking(venue, set, cust, "NIGHT000005", LocalDate.of(2026, 9, 24), "CONFIRMED");
+		assertEquals(1, nightsOf("NIGHT000005").size());
+
+		jdbc.sql("DELETE FROM booking WHERE code = 'NIGHT000005'").update();
+
+		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM booking_night WHERE booking_id NOT IN (SELECT id FROM booking)")
+				.query(Long.class).single(), "a night never outlives its booking");
+	}
+
+	private void insertNight(String code, LocalDate night) {
+		jdbc.sql("""
+				INSERT INTO booking_night (booking_id, night)
+				SELECT id, :night FROM booking WHERE code = :code
+				""").param("code", code).param("night", night).update();
+	}
+
+	/** Column values are SQL literals from this file, never caller input. */
+	private void stampNight(String code, String attendedAt, String missedAt) {
+		jdbc.sql("UPDATE booking_night SET attended_at = " + attendedAt + ", missed_at = " + missedAt
+				+ " WHERE booking_id = (SELECT id FROM booking WHERE code = :code)")
+				.param("code", code).update();
 	}
 }
