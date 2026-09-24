@@ -1,11 +1,11 @@
-# Multi-night stays: range bookings, per-night attendance, stitched itineraries
+# Multi-day stays: range bookings, per-day attendance, stitched itineraries
 
-Status: **proposed design, not yet sliced.** Decisions below were made at the refine stage
-(2026-09-12/13) against `main` @ `5bceef00`, grounded in four verification passes over the reserve
-path, the sweeps, the money paths and the beach map. Each is a one-paragraph re-decision if reality
-disagrees. Nothing here is built. The per-module contracts these decisions would settle belong in
-`RESPONSIBILITIES.md` once a slice lands; the glossary terms belong in `CONTEXT.md` at the same
-moment, not before — that file describes what exists.
+Status: **sliced under epic #1096; D2 (per-day attendance) landed in PR #1211, the rest is not
+yet built.** Decisions below were made at the refine stage (2026-09-12/13) against `main` @
+`5bceef00`, grounded in four verification passes over the reserve path, the sweeps, the money paths
+and the beach map. Each is a one-paragraph re-decision if reality disagrees. The per-module
+contracts these decisions settle belong in `RESPONSIBILITIES.md` once a slice lands; the glossary
+terms belong in `CONTEXT.md` at the same moment, not before — that file describes what exists.
 
 Supersedes nothing. The product spec parked multi-day under *"Later (post-validation)"*
 (`docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md`), never under the adjacent
@@ -192,37 +192,37 @@ bookings, where it is provably equivalent to current behaviour. Range bookings t
 attendance model that already works per night. Stitching arrives last because it is the only slice
 that touches `payment`.
 
-### D2 — Attendance becomes a per-night record; the status machine is left alone
+### D2 — Attendance becomes a per-day record; the status machine is left alone
 
 `booking.status` is the **contract** state machine (pending → awaiting payment → confirmed →
 cancelled) and is already correct for a stay. What is wrong today is that the same column also
-carries **attendance**, which for a one-night booking is the same fact and for a stay is not.
+carries **attendance**, which for a one-service day booking is the same fact and for a stay is not.
 
-Attendance moves to a `booking`-owned child table, one row per night, written when the booking
+Attendance moves to a `booking`-owned child table, one row per service day, written when the booking
 confirms:
 
 ```
-booking_night (booking_id, night, attended_at, missed_at)
-  UNIQUE (booking_id, night)
+booking_day (booking_id, service_date, attended_at, missed_at)
+  UNIQUE (booking_id, service_date)
   CHECK (attended_at IS NULL OR missed_at IS NULL)
 ```
 
-- **Check-in** stamps tonight's row under a guarded `UPDATE … WHERE booking_id = ? AND night =
+- **Check-in** stamps today's row under a guarded `UPDATE … WHERE booking_id = ? AND service_date =
   :today AND attended_at IS NULL AND missed_at IS NULL`. A second scan moves zero rows and answers
   "already checked in today" — the identical one-shot property the current transition gets from
-  `status = 'CONFIRMED'`, scoped to a night.
-- **The no-show sweep** marks past unattended nights, then resolves the parent booking once its
-  last night has passed. Same batching shape, same guarded-update discipline, same scheduler — this
+  `status = 'CONFIRMED'`, scoped to a service day.
+- **The no-show sweep** marks past unattended service days, then resolves the parent booking once its
+  last service day has passed. Same batching shape, same guarded-update discipline, same scheduler — this
   deliberately does **not** add a fourth scheduler.
 - **`COMPLETED` / `NO_SHOW` stay in `booking.status`**, redefined as *stay outcomes* written once
-  when the last night resolves. This is what keeps the blast radius small: `DailyTakings` still
+  when the last service day resolves. This is what keeps the blast radius small: `DailyTakings` still
   sums `CONFIRMED/COMPLETED/NO_SHOW`, `BookingStatus#canStillBeHonoured` still means the stay is
   live, and the weather refund's `CONFIRMED|NO_SHOW` admission is unchanged.
 - `completed_at` changes meaning from "when the guest checked in" to "when the stay resolved". For
-  existing single-night rows the two instants coincide exactly, which is what makes the migration
+  existing single-service-day rows the two instants coincide exactly, which is what makes the migration
   safe and the equivalence provable.
 
-Rejected: per-night states inside `booking.status`, which explodes `BookingTransition`
+Rejected: per-day states inside `booking.status`, which explodes `BookingTransition`
 combinatorially and rewrites the tree's most carefully held fitness test. Rejected: attendance on
 `set_availability` — `availability` is machine-enforced sole writer of that table
 (`ResponsibilitiesArchitectureTests`) and attendance is a `booking` fact.
@@ -233,26 +233,26 @@ which is what `review`'s 60-day window was always measuring.
 
 ### D3 — A booking gains an end date; `set_availability` does not change
 
-`booking.last_date` sits beside `booking_date` (which keeps its meaning: the **first** night), and
+`booking.last_date` sits beside `booking_date` (which keeps its meaning: the **first** service day), and
 every existing row is backfilled `last_date = booking_date`. Every current query therefore stays
 literally true on day one, and the `booking_date = :date` equality predicates migrate to overlap
 predicates one at a time rather than in one sweep.
 
-**Invariant #2 is untouched.** A stay claims one `set_availability` row per night, through the
+**Invariant #2 is untouched.** A stay claims one `set_availability` row per service day, through the
 existing `AvailabilityClaim` port called N times inside the one reserve transaction, which is
 already all-or-nothing. No new concurrency primitive, no schema change to the source of truth, and
 the `UNIQUE (set_id, booking_date)` guard does exactly what it does today.
 
 ### D4 — Two reads split that are one read today
 
-"Arrivals today" and "guests on the beach today" are the same list under single-night bookings and
+"Arrivals today" and "guests on the beach today" are the same list under single-service day bookings and
 different lists under stays. The staff daily view must answer both, and daily takings must count
-**the nights served on that date**, not a stay's whole price on its arrival day. A stay spanning a
+**the service days served on that date**, not a stay's whole price on its arrival day. A stay spanning a
 commission-rate change gets one accrual at the live rate while `commissionBpsOn(serviceDate)`
 reports per service date — accepted, documented drift of the same shape ADR-0021 §7 accepted for
 the venue-change fee.
 
-### D5 — Every terminal transition releases every night
+### D5 — Every terminal transition releases every service day
 
 Each release site today frees exactly one date, taken from the single `booking_date` its
 `RETURNING` clause yields. There are seven: the guest cancel, the four remodel legs, the three
@@ -269,7 +269,7 @@ to an overlap predicate, and it never skips a stay silently. Decided 2026-09-24 
 washed-out day refunds **that day's share** and the stay continues. That is a partial refund on a
 live booking, which the payout ledger's one-reversal-per-booking guard (invariant #9) and
 `payment`'s single refund cannot express. So it lands in its own slice, after the refund child
-table (D8). Until then the overlap selection refunds one-night bookings as today and **names**
+table (D8). Until then the overlap selection refunds one-service day bookings as today and **names**
 every overlapping stay for a manual refund, instead of refunding nobody. The refund is the day's actual
 rate (the set held that day), never the total divided by its days. A day the guest already
 checked into is **not** refunded, the same as today's single-day rule, which admits only
@@ -290,16 +290,16 @@ three problems rather than managing them:
 - `booking.set_id` stays a single foreign key, so every read model, the remodel receipt's from/to
   pair and `BookingMoved` are unchanged.
 - The layout freeze shrinks. A live claim locks its set from creation until its status goes
-  terminal, with no date bound; a single 15-night claim would freeze a set — and, because a
+  terminal, with no date bound; a single 15-service day claim would freeze a set — and, because a
   disturbed set is any removal *or renumber*, the whole column geometry to its right — for a
-  fortnight. Segments are two to five nights, which keeps the freeze near today's scale.
+  fortnight. Segments are two to five service days, which keeps the freeze near today's scale.
 
 **An ADR is owed here** (hard to reverse once stay data exists; surprising to a future reader who
 will ask why a stay is not one booking; a genuine trade-off against the segments-in-one-booking
 alternative). Proposed as a new ADR (numbered when written), to be written with the stitching slice.
 
 The booking **code** becomes stay-level: one bearer credential for the guest (invariant #7
-unchanged), with check-in resolving code → tonight's segment.
+unchanged), with check-in resolving code → today's segment.
 
 ### D7 — The itinerary search is a new read-model module
 

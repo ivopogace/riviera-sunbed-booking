@@ -24,7 +24,7 @@ public final class ReviewGate {
 	 * Where the stay behind a booking code stands right now.
 	 *
 	 * @param bookingExists whether any booking answers to the code, whatever its status
-	 * @param completedAt   the check-in instant, or {@code null} when the stay was never checked in
+	 * @param completedAt   the instant the stay completed, or {@code null} while it has not
 	 * @param slot          what this stay's one review slot holds
 	 */
 	public static ReviewState stateOf(boolean bookingExists, Instant completedAt, ReviewSlot slot,

@@ -29,11 +29,12 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 public interface Bookings {
 
 	/**
-	 * Insert a new booking in {@code AWAITING_PAYMENT}, returning its generated id, or {@code empty} if
-	 * the {@code code} already exists (an atomic {@code INSERT … ON CONFLICT (code) DO NOTHING} against
-	 * invariant #7's {@code UNIQUE(code)}). Empty is the caller's signal to regenerate the code and
-	 * retry — a normal flow that does <strong>not</strong> abort the surrounding transaction, which a
-	 * thrown unique violation would. Other integrity failures (FK/CHECK) still throw.
+	 * Insert a new booking in {@code AWAITING_PAYMENT}, returning its generated id, or {@code
+	 * empty} if the {@code code} already exists (an atomic {@code INSERT … ON CONFLICT (code) DO
+	 * NOTHING} against invariant #7's {@code UNIQUE(code)}). Empty is the caller's signal to
+	 * regenerate the code and retry — a normal flow that does <strong>not</strong> abort the
+	 * surrounding transaction, which a thrown unique violation would. Other integrity failures
+	 * (FK/CHECK) still throw.
 	 */
 	OptionalLong insertAwaitingPayment(NewBooking booking);
 
@@ -46,9 +47,9 @@ public interface Bookings {
 
 	/**
 	 * Accept a pending request: the guarded {@code PENDING_REQUEST → AWAITING_PAYMENT} transition,
-	 * venue-scoped and deadline-guarded ({@code request_expires_at > now}), stamping
-	 * {@code accepted_at = now} — the guest pay-window clock. Returns the accepted facts via SQL
-	 * {@code RETURNING} iff a row actually transitioned; empty when the id is unknown at this venue, no
+	 * venue-scoped and deadline-guarded ({@code request_expires_at > now}), stamping {@code
+	 * accepted_at = now} — the guest pay-window clock. Returns the accepted facts via SQL {@code
+	 * RETURNING} iff a row actually transitioned; empty when the id is unknown at this venue, no
 	 * longer pending, or past its deadline — the caller classifies via {@link #requestSnapshot}.
 	 */
 	Optional<ai.riviera.platform.booking.application.request.AcceptedRequest> acceptPendingRequest(
@@ -56,63 +57,68 @@ public interface Bookings {
 
 	/**
 	 * Compensate a failed payment-request issuance: the guarded {@code AWAITING_PAYMENT →
-	 * PENDING_REQUEST} revert (clearing {@code accepted_at}), possible only because no PaymentIntent
-	 * exists to race it. True iff a row reverted.
+	 * PENDING_REQUEST} revert (clearing {@code accepted_at}), possible only because no
+	 * PaymentIntent exists to race it. True iff a row reverted.
 	 */
 	boolean revertAcceptToPending(long bookingId);
 
 	/**
-	 * Decline a pending request: the guarded venue-scoped {@code PENDING_REQUEST → DECLINED} transition,
-	 * returning the {@link ClaimRef} iff it transitioned so the caller releases the soft-hold exactly
-	 * once (invariant #2). Deliberately NOT deadline-guarded — an expired-but-unswept request may still
-	 * be declined: the same release, a different terminal label.
+	 * Decline a pending request: the guarded venue-scoped {@code PENDING_REQUEST → DECLINED}
+	 * transition, returning the {@link ClaimRef} iff it transitioned so the caller releases the
+	 * soft-hold exactly once (invariant #2). Deliberately NOT deadline-guarded — an
+	 * expired-but-unswept request may still be declined: the same release, a different terminal
+	 * label.
 	 */
 	Optional<ClaimRef> declinePending(long bookingId, VenueId venueId);
 
 	/**
-	 * The request-relevant state of a booking at this venue (status + deadline), or empty when the id is
-	 * unknown <em>or belongs to another venue</em> — the venue-scoped read that lets accept/decline
-	 * classify a missed transition without disclosing foreign bookings (invariant #13).
+	 * The request-relevant state of a booking at this venue (status + deadline), or empty when the
+	 * id is unknown <em>or belongs to another venue</em> — the venue-scoped read that lets
+	 * accept/decline classify a missed transition without disclosing foreign bookings (invariant
+	 * #13).
 	 */
 	Optional<ai.riviera.platform.booking.application.request.RequestSnapshot> requestSnapshot(
 			long bookingId, VenueId venueId);
 
 	/**
-	 * The venue's {@code PENDING_REQUEST} bookings ordered by response deadline, most urgent first — the
-	 * operator queue. Carries no booking code (invariant #7).
+	 * The venue's {@code PENDING_REQUEST} bookings ordered by response deadline, most urgent first
+	 * — the operator queue. Carries no booking code (invariant #7).
 	 */
 	List<ai.riviera.platform.booking.application.request.PendingRequestRow> findPendingRequestsForVenue(
 			VenueId venueId);
 
 	/**
-	 * Load a booking by its {@code code} (the bearer credential, invariant #7) for the view and cancel
-	 * use cases, or {@code empty} if no booking has that code. Read-only — carries the full row the
-	 * caller needs without exposing the aggregate.
+	 * Load a booking by its {@code code} (the bearer credential, invariant #7) for the view and
+	 * cancel use cases, or {@code empty} if no booking has that code. Read-only — carries the full
+	 * row the caller needs without exposing the aggregate.
 	 */
 	Optional<BookingRecord> findByCode(String code);
 
 	/**
 	 * The bookings linked to a customer ACCOUNT, newest first — the signed-in "my bookings" list.
-	 * Account-scoped by {@code account_id} (the session principal's id, never a request param — BOLA-safe,
-	 * invariant #13 posture); a guest booking (NULL {@code account_id}) is never returned. Carries the
-	 * raw rows the caller enriches with venue/set display via the {@code venue} api.
+	 * Account-scoped by {@code account_id} (the session principal's id, never a request param —
+	 * BOLA-safe, invariant #13 posture); a guest booking (NULL {@code account_id}) is never
+	 * returned. Carries the raw rows the caller enriches with venue/set display via the {@code
+	 * venue} api.
 	 */
 	List<BookingRecord> findByAccountId(CustomerAccountId accountId);
 
 	/**
 	 * Transition the booking to {@code CONFIRMED}, stamping {@code confirmed_at}, and return the
-	 * confirmed facts for the {@code BookingConfirmed} payload, built atomically with the transition via
-	 * SQL {@code RETURNING}. Strict: a non-{@code AWAITING_PAYMENT} row is an error — the synchronous
-	 * stub path, where exactly-once is guaranteed within the create transaction.
+	 * confirmed facts for the {@code BookingConfirmed} payload, built atomically with the
+	 * transition via SQL {@code RETURNING}. Strict: a non-{@code AWAITING_PAYMENT} row is an error
+	 * — the synchronous stub path, where exactly-once is guaranteed within the create transaction.
+	 * The stay's {@code booking_day} rows are written by the schema as the row becomes {@code
+	 * CONFIRMED} (trigger {@code booking_day_on_confirm}, V60), never by a statement here.
 	 */
 	ConfirmedBooking confirm(long bookingId, Instant confirmedAt);
 
 	/**
-	 * Confirm from a signature-verified Stripe webhook: transition {@code AWAITING_PAYMENT → CONFIRMED}
-	 * and return the confirmed facts. <strong>Idempotent</strong> — a 0-row update (already
-	 * confirmed/cancelled, or a re-delivered event) yields {@code empty}, never an error. A present
-	 * result means it actually transitioned, so the caller publishes exactly one
-	 * {@code BookingConfirmed}.
+	 * Confirm from a signature-verified Stripe webhook: transition {@code AWAITING_PAYMENT →
+	 * CONFIRMED} and return the confirmed facts. <strong>Idempotent</strong> — a 0-row update
+	 * (already confirmed/cancelled, or a re-delivered event) yields {@code empty}, never an error.
+	 * A present result means it actually transitioned, so the caller publishes exactly one {@code
+	 * BookingConfirmed}.
 	 */
 	Optional<ConfirmedBooking> confirmFromPayment(long bookingId, Instant confirmedAt);
 
@@ -129,8 +135,8 @@ public interface Bookings {
 	 * Cancel a confirmed booking on the guest path: transition {@code CONFIRMED → CANCELLED},
 	 * stamping {@code cancelled_at}, the server-computed {@code refundMinor} and the {@code reason}
 	 * the policy decided ({@code POLICY}, or {@code VENUE_CHANGE} for a moved booking's free exit),
-	 * returning the facts for the refund + {@code BookingCancelled} payload via SQL
-	 * {@code RETURNING}. The guarded {@code WHERE status = 'CONFIRMED'} makes a double-cancel a 0-row
+	 * returning the facts for the refund + {@code BookingCancelled} payload via SQL {@code
+	 * RETURNING}. The guarded {@code WHERE status = 'CONFIRMED'} makes a double-cancel a 0-row
 	 * {@code empty} no-op, so the release, refund and event fire exactly once — and keeps a swept
 	 * {@code NO_SHOW} out of the guest's reach.
 	 */
@@ -138,11 +144,11 @@ public interface Bookings {
 			long refundMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason);
 
 	/**
-	 * Re-seat a live booking on another set of the same venue: the guarded
-	 * {@code UPDATE … SET set_id = :to, moved_at = :movedAt WHERE id AND set_id = :from AND status IN
-	 * live}. True iff a row moved; false when the booking is no longer live or no longer on
-	 * {@code from} — the caller's transaction then rolls back, since a move it classified under lock
-	 * cannot legitimately vanish. Code, price and status are untouched (the guest's credential and deal
+	 * Re-seat a live booking on another set of the same venue: the guarded {@code UPDATE … SET
+	 * set_id = :to, moved_at = :movedAt WHERE id AND set_id = :from AND status IN live}. True iff a
+	 * row moved; false when the booking is no longer live or no longer on {@code from} — the
+	 * caller's transaction then rolls back, since a move it classified under lock cannot
+	 * legitimately vanish. Code, price and status are untouched (the guest's credential and deal
 	 * survive the move, invariant #7).
 	 */
 	boolean moveToSet(long bookingId, SetId from, SetId to, Instant movedAt);
@@ -160,38 +166,52 @@ public interface Bookings {
 			long refundMinor);
 
 	/**
-	 * Check a guest in: the guarded {@code CONFIRMED → COMPLETED} transition, keyed on the booking
-	 * {@code code} and scoped to {@code venueId} and the {@code serviceDate} (today in
-	 * {@code Europe/Tirane}, invariant #6), stamping {@code completed_at}. Returns the completed facts
-	 * via SQL {@code RETURNING} <strong>iff</strong> a row actually transitioned — the row lock, not
-	 * the predicate, makes concurrent scans yield exactly one winner; a 0-row {@code empty} is the
-	 * caller's signal to classify against {@link #findCheckInFacts committed state}.
+	 * Check a guest in for one service day: the guarded stamp of {@code attended_at} on the
+	 * {@code CONFIRMED} booking's {@code booking_day} row for {@code serviceDate} (today in
+	 * {@code Europe/Tirane}, invariant #6), keyed on the booking {@code code} and scoped to
+	 * {@code venueId}. When no later service day remains the stay resolves in the same call:
+	 * {@code COMPLETED}, {@code completed_at} stamped. Returns the facts via SQL {@code RETURNING}
+	 * <strong>iff</strong> a service day actually moved — the row lock, not the predicate, makes concurrent
+	 * scans yield exactly one winner; a 0-row {@code empty} is the caller's signal to classify
+	 * against {@link #findCheckInFacts committed state}.
 	 */
 	Optional<ai.riviera.platform.booking.application.checkin.CompletedCheckIn> completeConfirmed(
 			String code, VenueId venueId, LocalDate serviceDate, Instant completedAt);
 
 	/**
-	 * Mark up to {@code batchSize} {@code CONFIRMED} bookings dated before {@code today} as
-	 * {@code NO_SHOW}, returning how many transitioned. The {@code status = 'CONFIRMED'} guard
-	 * serializes against a concurrent check-in or cancel, so a lost race and a repeated run are
-	 * alike 0-row no-ops.
+	 * The no-show sweep's first statement: for up to {@code batchSize} {@code CONFIRMED} bookings
+	 * with a service day before {@code today} neither attended nor missed, mark every such service
+	 * day missed, returning how many service days moved. The booking row's lock serializes against
+	 * a concurrent check-in or cancel of that stay, so a lost race and a repeated run are alike
+	 * 0-row no-ops.
 	 *
 	 * <p>Batched because the statement runs on the bounded scheduled client: one unbounded
 	 * {@code UPDATE} over a large backlog would be cancelled by the timeout and roll back whole,
 	 * leaving the sweep unable to make progress on any run. A batch commits on its own, so a
-	 * cancelled run keeps what it already did. Fewer than {@code batchSize} rows means the backlog
+	 * cancelled run keeps what it already did. Fewer than {@code batchSize} rows means this backlog
 	 * is drained.
+	 */
+	int markPastServiceDaysMissed(LocalDate today, int batchSize);
+
+	/**
+	 * The no-show sweep's second statement: resolve up to {@code batchSize} {@code CONFIRMED}
+	 * bookings whose last service day is before {@code today} — {@code COMPLETED} if any service
+	 * day was attended, {@code NO_SHOW} otherwise, a still-unresolved service day of theirs marked
+	 * missed in the same statement — returning how many bookings resolved. The {@code status =
+	 * 'CONFIRMED'} guard serializes against a concurrent check-in or cancel, so a lost race and a
+	 * repeated run are alike 0-row no-ops. Batched and bounded exactly as {@link
+	 * #markPastServiceDaysMissed}; fewer than {@code batchSize} rows means this backlog is drained.
 	 */
 	int markPastConfirmedAsNoShow(LocalDate today, int batchSize);
 
 	/**
-	 * The status + service date behind a code at one venue, for classifying a check-in whose guarded
-	 * transition matched 0 rows. Venue-scoped: a foreign venue's code reads as {@code empty},
-	 * indistinguishable from an unknown one (non-enumerating; the code never travels further,
-	 * invariant #7).
+	 * The status, first service day and whether {@code today}'s service day is attended behind a
+	 * code at one venue, for classifying a check-in whose guarded stamp matched 0 rows.
+	 * Venue-scoped: a foreign venue's code reads as {@code empty}, indistinguishable from an
+	 * unknown one (non-enumerating; the code never travels further, invariant #7).
 	 */
 	Optional<ai.riviera.platform.booking.application.checkin.CheckInFacts> findCheckInFacts(
-			String code, VenueId venueId);
+			String code, VenueId venueId, LocalDate today);
 
 	/**
 	 * The {@code CONFIRMED}, {@code COMPLETED} and {@code NO_SHOW} bookings for {@code venueId} on
@@ -204,11 +224,11 @@ public interface Bookings {
 
 	/**
 	 * The {@code CONFIRMED} and {@code NO_SHOW} bookings for {@code venueId} on {@code date} as
-	 * {@code (id, amountMinor)} rows — the candidate set for the admin weather refund, which reaches
-	 * a swept no-show because a washed-out day is where those rows come from. Excludes
-	 * awaiting-payment and already-cancelled bookings. The caller force-cancels each via the guarded
-	 * {@link #cancelForWeather}, whose admitted statuses match this read; a concurrent cancel makes
-	 * the matching row a no-op. Ordered by id for stable iteration.
+	 * {@code (id, amountMinor)} rows — the candidate set for the admin weather refund, which
+	 * reaches a swept no-show because a washed-out day is where those rows come from. Excludes
+	 * awaiting-payment and already-cancelled bookings. The caller force-cancels each via the
+	 * guarded {@link #cancelForWeather}, whose admitted statuses match this read; a concurrent
+	 * cancel makes the matching row a no-op. Ordered by id for stable iteration.
 	 */
 	List<RefundableBooking> findRefundableForWeather(VenueId venueId, LocalDate date);
 
@@ -228,9 +248,10 @@ public interface Bookings {
 			LocalDate serviceDayEndedOnOrBefore);
 
 	/**
-	 * The ids of {@code PENDING_REQUEST} bookings past their stored deadline — the request-expiry sweep's
-	 * candidate set. The sweep then expires each via the guarded {@link #expirePendingRequest} in its own
-	 * transaction, for per-row failure isolation like the abandoned-payment sweep.
+	 * The ids of {@code PENDING_REQUEST} bookings past their stored deadline — the request-expiry
+	 * sweep's candidate set. The sweep then expires each via the guarded {@link
+	 * #expirePendingRequest} in its own transaction, for per-row failure isolation like the
+	 * abandoned-payment sweep.
 	 */
 	List<BookingId> findOverduePendingRequests(Instant now);
 
@@ -238,29 +259,29 @@ public interface Bookings {
 	 * Expire one overdue pending request: the guarded {@code PENDING_REQUEST → EXPIRED} transition
 	 * ({@code … AND request_expires_at <= now}), {@code RETURNING} its {@code (set, date)} iff it
 	 * transitioned so the caller releases the soft-hold exactly once (invariant #2). The guard is
-	 * disjoint from accept's ({@code <= now} vs {@code > now}) and from decline's (status), so no race
-	 * can double-act; a candidate accepted or declined since the read is a clean empty no-op.
+	 * disjoint from accept's ({@code <= now} vs {@code > now}) and from decline's (status), so no
+	 * race can double-act; a candidate accepted or declined since the read is a clean empty no-op.
 	 */
 	Optional<ClaimRef> expirePendingRequest(long bookingId, Instant now);
 
 	/**
-	 * Withdraw a pending request at the guest's own request: the guarded
-	 * {@code PENDING_REQUEST → WITHDRAWN} transition, keyed on the booking {@code code} — the bearer
-	 * credential (invariant #7), so knowing it authorizes the act and no venue scope applies.
-	 * {@code RETURNING}s the booking id and its {@code (set, date)} iff a row actually transitioned, so
-	 * the caller releases the soft-hold exactly once (invariant #2); a lost race against a concurrent
-	 * decline, accept or expiry sweep is a 0-row {@code empty} no-op.
+	 * Withdraw a pending request at the guest's own request: the guarded {@code PENDING_REQUEST →
+	 * WITHDRAWN} transition, keyed on the booking {@code code} — the bearer credential (invariant
+	 * #7), so knowing it authorizes the act and no venue scope applies. {@code RETURNING}s the
+	 * booking id and its {@code (set, date)} iff a row actually transitioned, so the caller
+	 * releases the soft-hold exactly once (invariant #2); a lost race against a concurrent decline,
+	 * accept or expiry sweep is a 0-row {@code empty} no-op.
 	 *
-	 * <p>Like {@link #declinePending} and unlike {@link #expirePendingRequest} it is deliberately NOT
-	 * deadline-guarded: an overdue-but-unswept request may still be withdrawn.
+	 * <p>Like {@link #declinePending} and unlike {@link #expirePendingRequest} it is deliberately
+	 * NOT deadline-guarded: an overdue-but-unswept request may still be withdrawn.
 	 */
 	Optional<ai.riviera.platform.booking.application.request.WithdrawnRequest> withdrawPendingRequest(
 			String code);
 
 	/**
 	 * Every booking a guest may still turn up on (the {@code BookingStatus#canStillBeHonoured}
-	 * statuses) holding any of the given sets, on any date — the remodel preview's claims. Ordered by
-	 * service date then id. An empty input answers empty without a round-trip.
+	 * statuses) holding any of the given sets, on any date — the remodel preview's claims. Ordered
+	 * by service date then id. An empty input answers empty without a round-trip.
 	 */
 	List<LiveClaim> findLiveOnSets(Collection<SetId> setIds);
 }

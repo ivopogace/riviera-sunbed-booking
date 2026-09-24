@@ -74,6 +74,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *       writer". The value that table holds is what the ledger deducts from a venue, so a second
  *       writer is a second opinion on what a venue is charged. Same whole-word constant-pool scan
  *       as rule 1.</li>
+ *   <li><strong>Sole-writer, per-day attendance:</strong> no class outside the {@code booking}
+ *       module touches {@code booking_day} — the mechanical form of §{@code booking}'s "I am
+ *       the sole writer of {@code booking_day}". A day stamped anywhere else is a second opinion
+ *       on whether a guest turned up, which is the one thing the table exists to settle; the
+ *       stay outcome on {@code booking.status} is derived from it. Same whole-word constant-pool
+ *       scan as rule 1, and the bare token is safe because the module's package name is
+ *       {@code booking}, not {@code booking_day}.</li>
  * </ol>
  *
  * <p><strong>Necessary, not sufficient.</strong> These rules encode only the <em>structural</em>
@@ -138,6 +145,12 @@ class ResponsibilitiesArchitectureTests {
 
 	/** The platform's own settings, owned by {@code payout} (ADR-0021). */
 	private static final String PLATFORM_SETTING_TABLE = "platform_setting";
+
+	/** The per-day attendance record owned by {@code booking} (multi-day stays, D2). */
+	private static final String BOOKING_DAY_TABLE = "booking_day";
+
+	/** The one module that may reference {@link #BOOKING_DAY_TABLE}. */
+	private static final String BOOKING_MODULE = "booking";
 
 	/** The one module that may reference {@link #PLATFORM_SETTING_TABLE}. */
 	private static final String PAYOUT_MODULE = "payout";
@@ -467,6 +480,44 @@ class ResponsibilitiesArchitectureTests {
 				"The fixture payout module's own SQL must not be flagged, but got: " + violations);
 	}
 
+	// ---- rule 9: booking is the sole toucher of the per-day attendance table -------------
+
+	@Test
+	void bookingDayTableIsTouchedOnlyInsideTheBookingModule() {
+		List<String> violations = bookingDayTableViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
+		assertNoViolations(
+				"RESPONSIBILITIES.md fitness-function violations (booking sole-writer of booking_day)",
+				violations);
+	}
+
+	/** Guards against a vacuously-green scan: the module's own adapter DOES carry the table's SQL. */
+	@Test
+	void theBookingModuleItselfWritesTheDayTable() {
+		boolean bookingReferencesTable = false;
+		for (JavaClass type : PRODUCTION_CLASSES) {
+			if (BOOKING_MODULE.equals(moduleOf(type, PRODUCTION_BASE))
+					&& referencesBookingDayTable(type)) {
+				bookingReferencesTable = true;
+				break;
+			}
+		}
+		assertTrue(bookingReferencesTable,
+				"expected at least one booking class to reference '" + BOOKING_DAY_TABLE
+						+ "' — otherwise the sole-writer scan proves nothing");
+	}
+
+	/** The negative proof (red run): an outside writer is rejected — and the fixture module's
+	 * own writer is NOT (the exclusion path works). */
+	@Test
+	void bookingDayTableTouchedOutsideTheBookingModuleIsRejected() {
+		List<String> violations = bookingDayTableViolations(FIXTURE_CLASSES, FIXTURE_BASE);
+		assertTrue(violations.stream().anyMatch(v -> v.contains("RogueBookingDayWriter")),
+				"Expected the booking sole-writer scan to reject the fixture outside writer, but got: "
+						+ violations);
+		assertFalse(violations.stream().anyMatch(v -> v.contains("FixtureJdbcBookingDays")),
+				"The fixture booking module's own SQL must not be flagged, but got: " + violations);
+	}
+
 	// ---- violation collectors (parameterized so fixtures prove the red case) ---------------
 
 	private static List<String> availabilityTableViolations(JavaClasses classes, String base) {
@@ -510,6 +561,28 @@ class ResponsibilitiesArchitectureTests {
 	private static boolean referencesChallengeRegistryTable(JavaClass type) {
 		return compiledBytecodeOf(type)
 				.map(bytecode -> containsWholeWord(bytecode, CHALLENGE_REGISTRY_TABLE))
+				.orElse(false);
+	}
+
+	private static List<String> bookingDayTableViolations(JavaClasses classes, String base) {
+		List<String> violations = new ArrayList<>();
+		for (JavaClass type : classes) {
+			if (BOOKING_MODULE.equals(moduleOf(type, base))) {
+				continue;
+			}
+			if (referencesBookingDayTable(type)) {
+				violations.add(type.getName() + " references the '" + BOOKING_DAY_TABLE
+						+ "' table — the booking module is its only writer AND reader "
+						+ "(RESPONSIBILITIES.md §booking); attendance is asked of booking's ports, "
+						+ "never read off the table");
+			}
+		}
+		return violations;
+	}
+
+	private static boolean referencesBookingDayTable(JavaClass type) {
+		return compiledBytecodeOf(type)
+				.map(bytecode -> containsWholeWord(bytecode, BOOKING_DAY_TABLE))
 				.orElse(false);
 	}
 

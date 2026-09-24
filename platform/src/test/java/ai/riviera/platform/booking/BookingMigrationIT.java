@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -147,5 +149,91 @@ class BookingMigrationIT {
 		assertThrows(DataIntegrityViolationException.class,
 				() -> jdbc.sql("UPDATE booking SET refund_minor = 9999 WHERE code = 'CODE000011'").update(),
 				"booking_refund_check must reject a refund greater than the gross amount (V10).");
+	}
+
+	private List<LocalDate> serviceDaysOf(String code) {
+		return jdbc.sql("""
+				SELECT service_date FROM booking_day
+				WHERE booking_id = (SELECT id FROM booking WHERE code = :code)
+				ORDER BY service_date
+				""").param("code", code).query(LocalDate.class).list();
+	}
+
+	@Test
+	void confirmedBookingCarriesOneServiceDayRow() {
+		// V60: the service day is written when a row becomes CONFIRMED, by insert or by a later transition.
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("service day-row@example.com");
+		LocalDate date = LocalDate.of(2026, 9, 21);
+		insertBooking(venue, set, cust, "SDAY000001", date, "CONFIRMED");
+		insertBooking(venue, set, cust, "SDAY000002", date, "AWAITING_PAYMENT");
+
+		assertEquals(List.of(date), serviceDaysOf("SDAY000001"));
+		assertEquals(1L, jdbc.sql("""
+				SELECT COUNT(*) FROM booking_day
+				WHERE booking_id = (SELECT id FROM booking WHERE code = 'SDAY000001')
+				  AND attended_at IS NULL AND missed_at IS NULL
+				""").query(Long.class).single(), "a fresh service day is unresolved");
+		assertEquals(List.of(), serviceDaysOf("SDAY000002"), "no service day before the booking confirms");
+
+		jdbc.sql("UPDATE booking SET status = 'CONFIRMED', confirmed_at = NOW() WHERE code = 'SDAY000002'")
+				.update();
+		assertEquals(List.of(date), serviceDaysOf("SDAY000002"));
+	}
+
+	@Test
+	void serviceDayIsUniquePerBooking() {
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("service day-unique@example.com");
+		LocalDate date = LocalDate.of(2026, 9, 22);
+		insertBooking(venue, set, cust, "SDAY000003", date, "CONFIRMED");
+
+		assertThrows(DataIntegrityViolationException.class, () -> insertServiceDay("SDAY000003", date),
+				"UNIQUE (booking_id, service_date): one attendance fact per service day");
+		assertDoesNotThrow(() -> insertServiceDay("SDAY000003", date.plusDays(1)),
+				"a further service day of the same booking is the multi-day shape");
+		assertEquals(List.of(date, date.plusDays(1)), serviceDaysOf("SDAY000003"));
+	}
+
+	@Test
+	void serviceDayIsNeverBothAttendedAndMissed() {
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("service day-outcome@example.com");
+		insertBooking(venue, set, cust, "SDAY000004", LocalDate.of(2026, 9, 23), "CONFIRMED");
+
+		assertThrows(DataIntegrityViolationException.class, () -> stampServiceDay("SDAY000004", "NOW()", "NOW()"),
+				"a service day is attended or missed, never both");
+		assertDoesNotThrow(() -> stampServiceDay("SDAY000004", "NOW()", "NULL"));
+	}
+
+	@Test
+	void deletingABookingTakesItsServiceDays() {
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("service day-cascade@example.com");
+		insertBooking(venue, set, cust, "SDAY000005", LocalDate.of(2026, 9, 24), "CONFIRMED");
+		assertEquals(1, serviceDaysOf("SDAY000005").size());
+
+		jdbc.sql("DELETE FROM booking WHERE code = 'SDAY000005'").update();
+
+		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM booking_day WHERE booking_id NOT IN (SELECT id FROM booking)")
+				.query(Long.class).single(), "a service day never outlives its booking");
+	}
+
+	private void insertServiceDay(String code, LocalDate serviceDate) {
+		jdbc.sql("""
+				INSERT INTO booking_day (booking_id, service_date)
+				SELECT id, :serviceDate FROM booking WHERE code = :code
+				""").param("code", code).param("serviceDate", serviceDate).update();
+	}
+
+	/** Column values are SQL literals from this file, never caller input. */
+	private void stampServiceDay(String code, String attendedAt, String missedAt) {
+		jdbc.sql("UPDATE booking_day SET attended_at = " + attendedAt + ", missed_at = " + missedAt
+				+ " WHERE booking_id = (SELECT id FROM booking WHERE code = :code)")
+				.param("code", code).update();
 	}
 }

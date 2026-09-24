@@ -672,8 +672,13 @@ class CreateBookingServiceTest {
 
 		@Override
 		public Optional<ai.riviera.platform.booking.application.checkin.CheckInFacts> findCheckInFacts(
-				String code, ai.riviera.platform.venue.vocabulary.VenueId venueId) {
+				String code, ai.riviera.platform.venue.vocabulary.VenueId venueId, java.time.LocalDate today) {
 			return Optional.empty();
+		}
+
+		@Override
+		public int markPastServiceDaysMissed(java.time.LocalDate today, int batchSize) {
+			return 0;
 		}
 
 		@Override

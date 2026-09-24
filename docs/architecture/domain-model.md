@@ -336,6 +336,14 @@ classDiagram
         UNIQUE (code)
         CHECK status IN (the nine below)
     }
+    class booking_day {
+        <<table>>
+        booking_id, service day
+        attended_at, missed_at
+        PK (booking_id, service_date)
+        CHECK not both attended and missed
+    }
+    booking "1" --> "1..*" booking_day : one row per service day, written on CONFIRMED
     class BookingStatus {
         <<enum>>
         PENDING_REQUEST
@@ -901,8 +909,8 @@ stateDiagram-v2
     PENDING_REQUEST --> EXPIRED: response deadline passed (sweep)
     PENDING_REQUEST --> WITHDRAWN: guest retracts the request
     CONFIRMED --> CANCELLED: tourist cancel (policy) / admin weather refund
-    CONFIRMED --> COMPLETED: day passed, guest arrived
-    CONFIRMED --> NO_SHOW: day passed, no arrival
+    CONFIRMED --> COMPLETED: last service day resolved, some service day attended
+    CONFIRMED --> NO_SHOW: every service day passed, none attended
     NO_SHOW --> CANCELLED: admin weather refund only
     DECLINED --> [*]
     EXPIRED --> [*]
@@ -918,6 +926,12 @@ stateDiagram-v2
 > retracted the request themselves — one terminal state per party who can end a pending
 > request. The soft-hold is the same `BOOKED_ONLINE` availability row as any online booking
 > (availability records *that* a set is held, never *why*); all three terminal legs release it.
+>
+> **`COMPLETED` and `NO_SHOW` are stay outcomes, not attendance.** Attendance is the per-day
+> `booking_day` record — one row per service day from the moment the booking confirms, stamped
+> attended by the check-in or missed by the sweep. The outcome is written once, when the last
+> service day resolves; `completed_at` is that instant for a `COMPLETED` stay and the review window's
+> input. Every booking has one service day today, so the two coincide until range bookings arrive.
 >
 > **`NO_SHOW` is terminal for the guest, not terminal.** The admin weather refund is the one
 > transition that reaches it — the sweep gets to a washed-out day before the operator does, so

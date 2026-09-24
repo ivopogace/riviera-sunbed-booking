@@ -5,9 +5,11 @@ import java.time.LocalDate;
 import ai.riviera.platform.booking.domain.BookingStatus;
 
 /**
- * The committed state a losing check-in scan is classified against: the booking's current status
- * and service date, read after the guarded {@code UPDATE} matched 0 rows. Venue-scoped by the
- * query, so foreign-venue codes read as absent (non-enumerating, D-8 posture).
+ * The committed state a losing check-in scan is classified against, read after the guarded {@code
+ * UPDATE} matched 0 rows: the booking's status, its first service day, and whether today's service
+ * day is already attended — what tells a second scan on one service day of a live stay from a scan
+ * on a day the stay does not cover. Venue-scoped by the query, so foreign-venue codes read as
+ * absent (non-enumerating, D-8 posture).
  */
-public record CheckInFacts(BookingStatus status, LocalDate bookingDate) {
+public record CheckInFacts(BookingStatus status, LocalDate bookingDate, boolean attendedToday) {
 }
