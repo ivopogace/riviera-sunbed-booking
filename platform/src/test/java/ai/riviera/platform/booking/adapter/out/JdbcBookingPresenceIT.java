@@ -173,6 +173,20 @@ class JdbcBookingPresenceIT {
 				"nothing is owed past the last live date");
 	}
 
+	@Test
+	void aStayStraddlingFromIsStillOwed() {
+		long venueId = insertVenue("Straddle Venue");
+		long set = insertSet(venueId, 1);
+		LocalDate from = LocalDate.of(2027, 10, 1);
+		insertBooking("STR00001", venueId, set, "CONFIRMED", from.minusDays(2));
+		jdbc.sql("UPDATE booking SET last_date = :last WHERE code = 'STR00001'").param("last", from).update();
+		insertBooking("STR00002", venueId, set, "CONFIRMED", from.minusDays(5));
+		jdbc.sql("UPDATE booking SET last_date = :last WHERE code = 'STR00002'").param("last", from.minusDays(3)).update();
+
+		assertEquals(new LiveBookingCounts(1, 0), presence.liveBookingsFrom(new VenueId(venueId), from),
+				"a stay that began before the closure and ends on its first day is still owed; one that ended is not");
+	}
+
 	private long insertVenue(String name) {
 		return jdbc.sql("""
 				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)

@@ -7,11 +7,13 @@ import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
 import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.booking.domain.ServiceDays;
 
 /**
- * The one place an unpaid booking is cancelled and its set freed (issue #51), implementing
- * {@link ReleaseAbandonedBooking}. Both the {@code payment_intent.canceled} webhook listener and
- * the abandoned-payment TTL sweep delegate here, so there is a single guarded transition + release
+ * The one place an unpaid booking is cancelled and its set freed, implementing
+ * {@link ReleaseAbandonedBooking} — every day of its span. Both the {@code payment_intent.canceled}
+ * webhook listener and the abandoned-payment TTL sweep delegate here, so there is a single guarded
+ * transition + release
  * — no forked copy that could drift or double-act.
  *
  * <p>{@code @Transactional}: the guarded {@code cancelAwaitingPayment} ({@code UPDATE … RETURNING})
@@ -37,7 +39,9 @@ class ClaimReleaseService implements ReleaseAbandonedBooking {
 	public boolean release(BookingId bookingId) {
 		return bookings.cancelAwaitingPayment(bookingId.value())
 				.map(claim -> {
-					availability.release(claim.setId(), claim.bookingDate());
+					for (var day : ServiceDays.between(claim.bookingDate(), claim.lastDate())) {
+						availability.release(claim.setId(), day);
+					}
 					return true;
 				})
 				.orElse(false);

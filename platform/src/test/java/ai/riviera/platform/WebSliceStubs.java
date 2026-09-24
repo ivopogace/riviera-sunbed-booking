@@ -691,7 +691,7 @@ class WebSliceStubs {
 
 	@Bean
 	RefundForWeather refundForWeather() {
-		return (_, _, _) -> new WeatherRefundOutcome(0, 0, "EUR");
+		return (_, _, _) -> new WeatherRefundOutcome(0, 0, "EUR", java.util.List.of());
 	}
 
 	@Bean

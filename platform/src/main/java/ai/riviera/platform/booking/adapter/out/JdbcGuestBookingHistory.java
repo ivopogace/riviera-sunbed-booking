@@ -27,8 +27,8 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
  * adapter depends only on {@link JdbcClient}, so the Spring bean graph is acyclic too.
  *
  * <p>Any booking row — any status, incl. terminal — counts as a retention basis, so the query filters on
- * {@code customer_id} and {@code booking_date} only. The predicate is served by the existing
- * {@code booking_customer_id_idx} (V5); no new index and no migration are needed.
+ * {@code customer_id} and the span's last day only: a stay that ends on or after the cutoff keeps its
+ * guest. The predicate is served by the existing {@code booking_customer_id_idx} (V5); no new index.
  */
 @Repository
 class JdbcGuestBookingHistory implements GuestBookingHistory {
@@ -74,7 +74,7 @@ class JdbcGuestBookingHistory implements GuestBookingHistory {
 		}
 		return Set.copyOf(jdbc.sql("""
 				SELECT DISTINCT customer_id FROM booking
-				WHERE customer_id IN (:guests) AND booking_date >= :cutoff
+				WHERE customer_id IN (:guests) AND last_date >= :cutoff
 				""")
 				.param(GUESTS, guests.stream().map(CustomerId::value).toList())
 				.param(CUTOFF, cutoff)

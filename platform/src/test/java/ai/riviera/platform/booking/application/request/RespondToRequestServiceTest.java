@@ -295,7 +295,7 @@ class RespondToRequestServiceTest {
 		SetId set = new SetId(11);
 		var date = LocalDate.of(2026, 8, 1);
 		when(bookings.declinePending(BOOKING.value(), VENUE))
-				.thenReturn(Optional.of(new ClaimRef(set, date)));
+				.thenReturn(Optional.of(new ClaimRef(set, date, date)));
 
 		DeclineOutcome outcome = service().decline(OPERATOR, VENUE, BOOKING);
 
@@ -329,9 +329,9 @@ class RespondToRequestServiceTest {
 		when(bookings.findOverduePendingRequests(NOW))
 				.thenReturn(List.of(new BookingId(11), new BookingId(12)));
 		when(bookings.expirePendingRequest(11, NOW))
-				.thenReturn(Optional.of(new ClaimRef(new SetId(1), date)));
+				.thenReturn(Optional.of(new ClaimRef(new SetId(1), date, date)));
 		when(bookings.expirePendingRequest(12, NOW))
-				.thenReturn(Optional.of(new ClaimRef(new SetId(2), date)));
+				.thenReturn(Optional.of(new ClaimRef(new SetId(2), date, date)));
 
 		int expired = new ExpireRequestsService(bookings,
 				new RequestReleaseService(bookings, availability, publisher), clock).sweep();
@@ -350,7 +350,7 @@ class RespondToRequestServiceTest {
 		when(bookings.expirePendingRequest(11, NOW))
 				.thenThrow(new org.springframework.dao.QueryTimeoutException("release blocked"));
 		when(bookings.expirePendingRequest(12, NOW))
-				.thenReturn(Optional.of(new ClaimRef(new SetId(2), date)));
+				.thenReturn(Optional.of(new ClaimRef(new SetId(2), date, date)));
 
 		int expired = new ExpireRequestsService(bookings,
 				new RequestReleaseService(bookings, availability, publisher), clock).sweep();

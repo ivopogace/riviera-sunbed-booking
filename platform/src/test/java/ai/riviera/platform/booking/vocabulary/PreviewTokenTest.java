@@ -25,7 +25,7 @@ class PreviewTokenTest {
 	private static final SpotRef A3 = new SpotRef(new SetId(3), "A", 3);
 
 	private static RemodelClaim claim(long bookingId, RemodelOutcome outcome) {
-		return new RemodelClaim(new BookingId(bookingId), A1, DAY, 2000, "EUR", outcome);
+		return new RemodelClaim(new BookingId(bookingId), A1, DAY, DAY, 2000, "EUR", outcome);
 	}
 
 	@Test

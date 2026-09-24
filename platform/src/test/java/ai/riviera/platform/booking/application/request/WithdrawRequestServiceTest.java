@@ -49,7 +49,7 @@ class WithdrawRequestServiceTest {
 	@Test
 	void withdrawsAndReleasesTheHold() {
 		when(bookings.withdrawPendingRequest(CODE))
-				.thenReturn(Optional.of(new WithdrawnRequest(BOOKING_ID, SET, BOOKING_DATE)));
+				.thenReturn(Optional.of(new WithdrawnRequest(BOOKING_ID, SET, BOOKING_DATE, BOOKING_DATE)));
 
 		WithdrawOutcome outcome = service().withdraw(CODE);
 
@@ -60,7 +60,7 @@ class WithdrawRequestServiceTest {
 	@Test
 	void doesNotReadTheBookingWhenTheTransitionSucceeded() {
 		when(bookings.withdrawPendingRequest(CODE))
-				.thenReturn(Optional.of(new WithdrawnRequest(BOOKING_ID, SET, BOOKING_DATE)));
+				.thenReturn(Optional.of(new WithdrawnRequest(BOOKING_ID, SET, BOOKING_DATE, BOOKING_DATE)));
 
 		service().withdraw(CODE);
 

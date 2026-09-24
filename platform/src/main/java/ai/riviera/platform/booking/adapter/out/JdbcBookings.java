@@ -65,6 +65,7 @@ class JdbcBookings implements Bookings {
 	private static final String COL_VENUE_ID = "venue_id";
 	private static final String COL_SET_ID = "set_id";
 	private static final String COL_BOOKING_DATE = "booking_date";
+	private static final String COL_LAST_DATE = "last_date";
 	private static final String COL_AMOUNT_MINOR = "amount_minor";
 	private static final String COL_AMOUNT_CURRENCY = "amount_currency";
 	private static final String COL_REQUEST_EXPIRES_AT = "request_expires_at";
@@ -191,13 +192,14 @@ class JdbcBookings implements Bookings {
 	 * caller's regenerate-and-retry works WITHOUT aborting the surrounding transaction (a thrown
 	 * violation would poison it). FK/CHECK failures still throw, as they should. RETURNING yields
 	 * the id only on a real insert. {@code request_expires_at} binds NULL on the instant path —
-	 * only a pending request stores a deadline.
+	 * only a pending request stores a deadline. {@code last_date} is bound to the same day: a reserve
+	 * is still one service day.
 	 */
 	private OptionalLong insert(NewBooking b, BookingStatus status, Instant requestExpiresAt) {
 		return jdbc.sql("""
-				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date,
+				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date, last_date,
 				                     amount_minor, amount_currency, status, request_expires_at)
-				VALUES (:code, :venue, :set, :customer, :account, :date, :amount, :currency, :status, :expires)
+				VALUES (:code, :venue, :set, :customer, :account, :date, :date, :amount, :currency, :status, :expires)
 				ON CONFLICT (code) DO NOTHING
 				RETURNING id
 				""")
@@ -269,14 +271,13 @@ class JdbcBookings implements Bookings {
 				UPDATE booking
 				SET status = :declined
 				WHERE id = :id AND venue_id = :venue AND status = :pending
-				RETURNING set_id, booking_date
+				RETURNING set_id, booking_date, last_date
 				""")
 				.param("declined", BookingStatus.DECLINED.name())
 				.param("id", bookingId)
 				.param(PARAM_VENUE, venueId.value())
 				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
-				.query((rs, rowNum) -> new ClaimRef(new SetId(rs.getLong(COL_SET_ID)),
-						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
+				.query(JdbcBookings::mapClaimRef)
 				.optional();
 	}
 
@@ -288,14 +289,14 @@ class JdbcBookings implements Bookings {
 				UPDATE booking
 				SET status = :withdrawn
 				WHERE code = :code AND status = :pending
-				RETURNING id, set_id, booking_date
+				RETURNING id, set_id, booking_date, last_date
 				""")
 				.param("withdrawn", BookingStatus.WITHDRAWN.name())
 				.param("code", code)
 				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
 				.query((rs, rowNum) -> new ai.riviera.platform.booking.application.request.WithdrawnRequest(
 						rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
-						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class)))
 				.optional();
 	}
 
@@ -510,7 +511,7 @@ class JdbcBookings implements Bookings {
 				UPDATE booking
 				SET status = :cancelled, cancelled_at = :at, refund_minor = :refund, cancel_reason = :reason
 				WHERE id = :id AND status = ANY (:admitted)
-				RETURNING id, venue_id, set_id, booking_date, amount_minor, amount_currency
+				RETURNING id, venue_id, set_id, booking_date, last_date, amount_minor, amount_currency
 				""")
 				.param("cancelled", BookingStatus.CANCELLED.name())
 				.param("at", java.sql.Timestamp.from(cancelledAt))
@@ -521,6 +522,7 @@ class JdbcBookings implements Bookings {
 				.query((rs, rowNum) -> new CancelledBooking(
 						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
 						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						rs.getObject(COL_LAST_DATE, LocalDate.class),
 						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
 				.optional();
 	}
@@ -656,18 +658,18 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
-	 * Staff daily view (U8): a venue's settled bookings for one day, ordered by set — {@code
-	 * COMPLETED} and {@code NO_SHOW} ride along with {@code CONFIRMED}, so a past day lists who was
-	 * booked instead of nothing. Served by {@code booking_venue_id_idx} (V5); the {@code
-	 * (booking_date, status)} filter narrows the venue's rows. The code is selected for staff
-	 * verification (invariant #7) — returned to the operator-gated caller, never logged here.
+	 * Staff daily view (U8): a venue's settled bookings whose span covers one day, ordered by set —
+	 * {@code COMPLETED} and {@code NO_SHOW} ride along with {@code CONFIRMED}, so a past day lists who
+	 * was booked instead of nothing. Served by {@code booking_venue_id_idx} (V5); the overlap and
+	 * status predicates narrow the venue's rows. The code is selected for staff verification
+	 * (invariant #7) — returned to the operator-gated caller, never logged here.
 	 */
 	@Override
 	public List<DailyBooking> findSettledForVenueOn(VenueId venueId, LocalDate date) {
 		return jdbc.sql("""
 				SELECT set_id, code, status
 				FROM booking
-				WHERE venue_id = :venue AND booking_date = :date
+				WHERE venue_id = :venue AND booking_date <= :date AND last_date >= :date
 				  AND status IN (:confirmed, :completed, :noShow)
 				ORDER BY set_id
 				""")
@@ -683,17 +685,18 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
-	 * Weather refund (U9): {@code CONFIRMED} plus the {@code NO_SHOW}s the sweep made of guests who
-	 * stayed home. Served by {@code booking_venue_id_idx} (V5); the {@code (booking_date, status)}
-	 * filter narrows the venue's rows. The amount is the FULL refund the caller stamps via the
-	 * guarded {@link #cancelForWeather}.
+	 * Weather refund (U9): every {@code CONFIRMED} booking, plus the {@code NO_SHOW}s the sweep made of
+	 * guests who stayed home, whose span covers the date — a stay mid-storm selects too, carrying its
+	 * span so the caller can tell it from a one-day booking. Served by {@code booking_venue_id_idx}
+	 * (V5); the overlap and status predicates narrow the venue's rows. The amount is the FULL refund
+	 * the caller stamps on a one-day booking via the guarded {@link #cancelForWeather}.
 	 */
 	@Override
 	public List<RefundableBooking> findRefundableForWeather(VenueId venueId, LocalDate date) {
 		return jdbc.sql("""
-				SELECT id, amount_minor
+				SELECT id, amount_minor, booking_date, last_date
 				FROM booking
-				WHERE venue_id = :venue AND booking_date = :date
+				WHERE venue_id = :venue AND booking_date <= :date AND last_date >= :date
 				  AND status IN (:confirmed, :noShow)
 				ORDER BY id
 				""")
@@ -702,7 +705,8 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.param(PARAM_NO_SHOW, BookingStatus.NO_SHOW.name())
 				.query((rs, rowNum) -> new RefundableBooking(
-						rs.getLong("id"), rs.getLong(COL_AMOUNT_MINOR)))
+						rs.getLong("id"), rs.getLong(COL_AMOUNT_MINOR),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class)))
 				.list();
 	}
 
@@ -759,14 +763,13 @@ class JdbcBookings implements Bookings {
 				UPDATE booking
 				SET status = :expired
 				WHERE id = :id AND status = :pending AND request_expires_at <= :now
-				RETURNING set_id, booking_date
+				RETURNING set_id, booking_date, last_date
 				""")
 				.param("expired", BookingStatus.EXPIRED.name())
 				.param("id", bookingId)
 				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
 				.param("now", java.sql.Timestamp.from(now))
-				.query((rs, rowNum) -> new ClaimRef(new SetId(rs.getLong(COL_SET_ID)),
-						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
+				.query(JdbcBookings::mapClaimRef)
 				.optional();
 	}
 
@@ -779,14 +782,19 @@ class JdbcBookings implements Bookings {
 				UPDATE booking
 				SET status = :cancelled
 				WHERE id = :id AND status = :awaiting
-				RETURNING set_id, booking_date
+				RETURNING set_id, booking_date, last_date
 				""")
 				.param("cancelled", BookingStatus.CANCELLED.name())
 				.param("id", bookingId)
 				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
-				.query((rs, rowNum) -> new ClaimRef(new SetId(rs.getLong(COL_SET_ID)),
-						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
+				.query(JdbcBookings::mapClaimRef)
 				.optional();
+	}
+
+	/** The set and span every releasing transition {@code RETURNING}s: one row to free per day. */
+	private static ClaimRef mapClaimRef(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+		return new ClaimRef(new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+				rs.getObject(COL_LAST_DATE, LocalDate.class));
 	}
 
 	/** The same live filter as {@code JdbcBookingPresence}; {@code booking_set_date_idx} serves the set list. */
@@ -796,7 +804,7 @@ class JdbcBookings implements Bookings {
 			return List.of();
 		}
 		return jdbc.sql("""
-				SELECT id, set_id, booking_date, status, amount_minor, amount_currency
+				SELECT id, set_id, booking_date, last_date, status, amount_minor, amount_currency
 				FROM booking
 				WHERE set_id IN (:ids) AND status IN (:live)
 				ORDER BY booking_date, id
@@ -804,7 +812,7 @@ class JdbcBookings implements Bookings {
 				.param("ids", setIds.stream().map(SetId::value).toList())
 				.param("live", JdbcBookingPresence.LIVE_STATUSES)
 				.query((rs, rowNum) -> new LiveClaim(rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
-						rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
 						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
 						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
 				.list();

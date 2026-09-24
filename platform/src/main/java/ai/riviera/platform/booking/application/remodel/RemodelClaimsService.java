@@ -28,6 +28,7 @@ import ai.riviera.platform.booking.application.reserve.ClaimRef;
 import ai.riviera.platform.booking.domain.FreeSpot;
 import ai.riviera.platform.booking.domain.MoveRanking;
 import ai.riviera.platform.booking.domain.RemodelZone;
+import ai.riviera.platform.booking.domain.ServiceDays;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.events.BookingMoved;
 import ai.riviera.platform.booking.events.BookingRequestDeclined;
@@ -59,9 +60,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * distinct date and only when a claim needs it. {@link #classify} is read-only and unlocked, advisory
  * by contract; {@link #commit} runs the same classification inside the caller's transaction — the
  * edge calls it from inside the layout write, under {@code venue}'s set locks — and applies every
- * claim: a move claims the candidate's row and re-seats the booking, a refund, release or decline
- * runs the module's own guarded transition for that status. Each leg frees the {@code (set, date)}
- * row it held and publishes the fact the rest of the platform already reacts to, so no refund,
+ * claim: a move claims the candidate's rows and re-seats the booking, a refund, release or decline
+ * runs the module's own guarded transition for that status. Each leg frees every {@code (set, date)}
+ * row of the span it held and publishes the fact the rest of the platform already reacts to, so no refund,
  * reversal or mail is driven from here. Rationale: RESPONSIBILITIES.md §booking.
  */
 @Service
@@ -162,7 +163,7 @@ class RemodelClaimsService implements RemodelClaims {
 		CancelledBooking cancelled = bookings
 				.cancelConfirmed(claim.bookingId().value(), cancelledAt, claim.amountMinor(), RefundReason.VENUE_CHANGE)
 				.orElseThrow(() -> lostUnderLock(claim, "confirmed"));
-		availability.release(cancelled.setId(), cancelled.bookingDate());
+		releaseSpan(cancelled.setId(), cancelled.bookingDate(), cancelled.lastDate());
 		events.publishEvent(new BookingCancelled(claim.bookingId(), venueId, cancelled.setId(),
 				cancelled.bookingDate(), claim.amountMinor(), claim.currency(), RefundReason.VENUE_CHANGE));
 		return outcomeOf(claim, ReceiptOutcomeKind.REFUND, feeMinor);
@@ -180,7 +181,7 @@ class RemodelClaimsService implements RemodelClaims {
 	private ReceiptOutcome applyRelease(VenueId venueId, RemodelClaim claim) {
 		ClaimRef released = bookings.cancelAwaitingPayment(claim.bookingId().value())
 				.orElseThrow(() -> lostUnderLock(claim, "awaiting payment"));
-		availability.release(released.setId(), released.bookingDate());
+		releaseSpan(released.setId(), released.bookingDate(), released.lastDate());
 		events.publishEvent(new BookingCancelled(claim.bookingId(), venueId, released.setId(),
 				released.bookingDate(), 0, claim.currency(), RefundReason.VENUE_CHANGE));
 		return outcomeOf(claim, ReceiptOutcomeKind.RELEASE, 0L);
@@ -190,7 +191,7 @@ class RemodelClaimsService implements RemodelClaims {
 	private ReceiptOutcome applyDecline(VenueId venueId, RemodelClaim claim) {
 		ClaimRef declined = bookings.declinePending(claim.bookingId().value(), venueId)
 				.orElseThrow(() -> lostUnderLock(claim, "pending"));
-		availability.release(declined.setId(), declined.bookingDate());
+		releaseSpan(declined.setId(), declined.bookingDate(), declined.lastDate());
 		events.publishEvent(new BookingRequestDeclined(claim.bookingId(), declined.setId(), declined.bookingDate()));
 		return outcomeOf(claim, ReceiptOutcomeKind.DECLINE, 0L);
 	}
@@ -205,14 +206,20 @@ class RemodelClaimsService implements RemodelClaims {
 				"booking " + claim.bookingId().value() + " was no longer " + was + " under the venue lock");
 	}
 
-	/** Claim the candidate before releasing the old row (invariant #2), then re-seat the booking. */
+	/**
+	 * Claim every day of the span on the candidate before releasing the old rows (invariant #2), then
+	 * re-seat the booking. The candidate was picked on the first day; a later day of it taken under the
+	 * venue lock throws, and the commit's transaction moves nothing.
+	 */
 	private ReceiptMove applyMove(VenueId venueId, RemodelClaim claim, RemodelOutcome.Move move, Instant movedAt) {
-		ClaimOutcome claimed = availability.claim(move.to().setId(), claim.bookingDate());
-		if (claimed != ClaimOutcome.CLAIMED) {
-			throw new IllegalStateException("move candidate " + move.to().setId().value() + " on "
-					+ claim.bookingDate() + " was not free under the venue lock: " + claimed);
+		for (LocalDate day : ServiceDays.between(claim.bookingDate(), claim.lastDate())) {
+			ClaimOutcome claimed = availability.claim(move.to().setId(), day);
+			if (claimed != ClaimOutcome.CLAIMED) {
+				throw new IllegalStateException("move candidate " + move.to().setId().value() + " on "
+						+ day + " was not free under the venue lock: " + claimed);
+			}
 		}
-		availability.release(claim.from().setId(), claim.bookingDate());
+		releaseSpan(claim.from().setId(), claim.bookingDate(), claim.lastDate());
 		if (!bookings.moveToSet(claim.bookingId().value(), claim.from().setId(), move.to().setId(), movedAt)) {
 			throw new IllegalStateException("booking " + claim.bookingId().value() + " left set "
 					+ claim.from().setId().value() + " under the venue lock");
@@ -247,7 +254,7 @@ class RemodelClaimsService implements RemodelClaims {
 			RemodelOutcome outcome = outcomeOf(claim, from, zones.zoneOf(claim.bookingDate(), now),
 					() -> pools.computeIfAbsent(claim.bookingDate(), date -> freePoolOn(venueId, date, disturbed)));
 			result.add(new RemodelClaim(new BookingId(claim.bookingId()), refOf(from), claim.bookingDate(),
-					claim.amountMinor(), claim.currency(), outcome));
+					claim.lastDate(), claim.amountMinor(), claim.currency(), outcome));
 		}
 		return List.copyOf(result);
 	}
@@ -280,6 +287,13 @@ class RemodelClaimsService implements RemodelClaims {
 			case CANCELLED, COMPLETED, NO_SHOW, DECLINED, EXPIRED, WITHDRAWN ->
 				throw new IllegalStateException("a settled booking is not a live claim: " + claim.status());
 		};
+	}
+
+	/** Every day of the span, one {@code (set, date)} row each (invariant #2). */
+	private void releaseSpan(SetId setId, LocalDate firstDay, LocalDate lastDay) {
+		for (LocalDate day : ServiceDays.between(firstDay, lastDay)) {
+			availability.release(setId, day);
+		}
 	}
 
 	private static SpotRef refOf(SetSpot spot) {

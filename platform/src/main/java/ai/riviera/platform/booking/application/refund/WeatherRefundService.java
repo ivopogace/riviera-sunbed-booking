@@ -2,6 +2,7 @@ package ai.riviera.platform.booking.application.refund;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -16,18 +17,22 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancelledBooking;
+import ai.riviera.platform.booking.domain.ServiceDays;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The admin weather-refund use case (U9, issue #12). In one transaction it loads every
- * refundable booking for {@code (venue, date)} — {@code CONFIRMED}, plus the {@code NO_SHOW}s the
- * sweep made of guests who stayed home — and, per booking, transitions it to {@code CANCELLED} with
- * a <strong>full</strong> refund (the gross amount, ignoring the cutoff — invariant #10) and reason
- * {@code WEATHER}, frees the {@code (set, date)} via
- * {@link AvailabilityClaim#release} (invariant #2), and publishes {@link BookingCancelled}. It reuses
+ * The admin weather-refund use case (U9). In one transaction it loads every booking whose span
+ * covers {@code (venue, date)} — {@code CONFIRMED}, plus the {@code NO_SHOW}s the sweep made of
+ * guests who stayed home — and, per one-day booking, transitions it to {@code CANCELLED} with a
+ * <strong>full</strong> refund (the gross amount, ignoring the cutoff — invariant #10) and reason
+ * {@code WEATHER}, frees the {@code (set, date)} via {@link AvailabilityClaim#release} (invariant
+ * #2), and publishes {@link BookingCancelled}. A booking spanning several days is <em>named</em> on
+ * the outcome instead: the storm is one day of a live stay, and a partial refund of a live booking
+ * is what neither the single reversal per booking (invariant #9) nor {@code payment}'s one refund
+ * can express, so the operator settles it by hand rather than the run skipping it silently. It reuses
  * the U6 spine exactly (ADR-0005): after commit, {@code BookingRefundListener} issues the
  * idempotency-keyed refund (invariant #8) and the {@code payout} listener posts a full {@code REVERSAL}
  * carrying the weather reason (invariant #9).
@@ -74,7 +79,12 @@ class WeatherRefundService implements RefundForWeather {
 		int refundedCount = 0;
 		long totalRefundedMinor = 0;
 		String currency = "EUR"; // v1 collection currency (invariant #5); overwritten per cancelled row
+		List<BookingId> manualRefunds = new ArrayList<>();
 		for (RefundableBooking candidate : candidates) {
+			if (candidate.spansSeveralDays()) {
+				manualRefunds.add(new BookingId(candidate.bookingId()));
+				continue;
+			}
 			// Full refund regardless of cutoff (invariant #10): the refund is the gross amount paid.
 			long refundMinor = candidate.amountMinor();
 			var transitioned = bookings.cancelForWeather(
@@ -84,7 +94,9 @@ class WeatherRefundService implements RefundForWeather {
 				continue;
 			}
 			CancelledBooking cancelled = transitioned.get();
-			availability.release(cancelled.setId(), cancelled.bookingDate());
+			for (LocalDate day : ServiceDays.between(cancelled.bookingDate(), cancelled.lastDate())) {
+				availability.release(cancelled.setId(), day);
+			}
 			events.publishEvent(new BookingCancelled(new BookingId(cancelled.id()), cancelled.venueId(),
 					cancelled.setId(), cancelled.bookingDate(), refundMinor, cancelled.currency(),
 					RefundReason.WEATHER));
@@ -93,8 +105,8 @@ class WeatherRefundService implements RefundForWeather {
 			currency = cancelled.currency();
 		}
 
-		log.info("weather refund for venue {} on {}: cancelled {} booking(s), refunded {} {}",
-				venueId.value(), date, refundedCount, totalRefundedMinor, currency);
-		return new WeatherRefundOutcome(refundedCount, totalRefundedMinor, currency);
+		log.info("weather refund for venue {} on {}: cancelled {} booking(s), refunded {} {}, {} stay(s) left for a manual refund",
+				venueId.value(), date, refundedCount, totalRefundedMinor, currency, manualRefunds.size());
+		return new WeatherRefundOutcome(refundedCount, totalRefundedMinor, currency, manualRefunds);
 	}
 }

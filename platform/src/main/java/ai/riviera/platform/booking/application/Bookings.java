@@ -124,9 +124,9 @@ public interface Bookings {
 
 	/**
 	 * Cancel from a verified {@code payment_intent.canceled} webhook: transition
-	 * {@code AWAITING_PAYMENT → CANCELLED}. Returns the {@link ClaimRef} of the booking's
-	 * {@code (set, date)} <strong>iff</strong> it actually transitioned, so the caller releases the
-	 * availability claim exactly once (invariant #2); empty when it was no longer
+	 * {@code AWAITING_PAYMENT → CANCELLED}. Returns the {@link ClaimRef} of the booking's set and
+	 * span <strong>iff</strong> it actually transitioned, so the caller releases every day's
+	 * availability claim exactly once (invariant #2); empty for a row not
 	 * {@code AWAITING_PAYMENT}, and then nothing is released.
 	 */
 	Optional<ClaimRef> cancelAwaitingPayment(long bookingId);
@@ -223,12 +223,13 @@ public interface Bookings {
 	List<DailyBooking> findSettledForVenueOn(VenueId venueId, LocalDate date);
 
 	/**
-	 * The {@code CONFIRMED} and {@code NO_SHOW} bookings for {@code venueId} on {@code date} as
-	 * {@code (id, amountMinor)} rows — the candidate set for the admin weather refund, which
-	 * reaches a swept no-show because a washed-out day is where those rows come from. Excludes
-	 * awaiting-payment and already-cancelled bookings. The caller force-cancels each via the
-	 * guarded {@link #cancelForWeather}, whose admitted statuses match this read; a concurrent
-	 * cancel makes the matching row a no-op. Ordered by id for stable iteration.
+	 * The {@code CONFIRMED} and {@code NO_SHOW} bookings for {@code venueId} whose span covers
+	 * {@code date}, with their amount and span — the candidate set for the admin weather refund,
+	 * which reaches a swept no-show because a washed-out day is where those rows come from. Excludes
+	 * awaiting-payment and already-cancelled bookings. The caller force-cancels each one-day booking
+	 * via the guarded {@link #cancelForWeather}, whose admitted statuses match this read, and only
+	 * names a stay; a concurrent cancel makes the matching row a no-op. Ordered by id for stable
+	 * iteration.
 	 */
 	List<RefundableBooking> findRefundableForWeather(VenueId venueId, LocalDate date);
 
