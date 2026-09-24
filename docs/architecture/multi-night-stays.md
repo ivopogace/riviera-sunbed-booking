@@ -1,11 +1,11 @@
 # Multi-night stays: range bookings, per-night attendance, stitched itineraries
 
-Status: **proposed design, not yet sliced.** Decisions below were made at the refine stage
-(2026-09-12/13) against `main` @ `5bceef00`, grounded in four verification passes over the reserve
-path, the sweeps, the money paths and the beach map. Each is a one-paragraph re-decision if reality
-disagrees. Nothing here is built. The per-module contracts these decisions would settle belong in
-`RESPONSIBILITIES.md` once a slice lands; the glossary terms belong in `CONTEXT.md` at the same
-moment, not before — that file describes what exists.
+Status: **sliced under epic #1096; D2 (per-night attendance) landed in PR #1211, the rest is not
+yet built.** Decisions below were made at the refine stage (2026-09-12/13) against `main` @
+`5bceef00`, grounded in four verification passes over the reserve path, the sweeps, the money paths
+and the beach map. Each is a one-paragraph re-decision if reality disagrees. The per-module
+contracts these decisions settle belong in `RESPONSIBILITIES.md` once a slice lands; the glossary
+terms belong in `CONTEXT.md` at the same moment, not before — that file describes what exists.
 
 Supersedes nothing. The product spec parked multi-day under *"Later (post-validation)"*
 (`docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md`), never under the adjacent

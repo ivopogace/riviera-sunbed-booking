@@ -29,7 +29,10 @@ the equivalence oracle without touching a fixture.
 IT deletes fixtures so the child FK cascades, V41 argued against sweep timestamps → `completed_at`
 is stamped on `COMPLETED` only) · `riviera-plan-doc` (forced the Module-ownership table and the
 assumption register below) · `tdd` (tests written before each implementation at the named seams; Docker Hub's pull limit on `postgres:17` delayed the local IT runs, so the multi-night tests' red was by construction and their first observed run caught the one defect — the untyped `:at` inside a `CASE` — before CI did) ·
-`riviera-review-overlay` (<review gate pending>) · `riviera-docs-freshness` (<pending>) ·
+`riviera-review-overlay` (<review gate pending>) · `riviera-docs-freshness` (**ran** over `cf5e84bb..51ae8be3`: 2 findings — the flow's step 8 in
+`RESPONSIBILITIES.md` and the design doc's "nothing here is built" status, both patched; ADR-0015's
+"check-in fact" wording is a dated decision's rationale, left; the observability runbook's "the two
+sweeps" predates this slice) ·
 `riviera-local-debug` (JDK at `/opt/jdk-25`, scoped test classes only, Docker present) ·
 `postgres` (composite PK as the uniqueness guard, partial index on unresolved nights, FK indexed by
 the PK, `ON DELETE CASCADE` with the V28 child-record rationale) · `riviera-modulith` (no new

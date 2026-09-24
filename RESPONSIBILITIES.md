@@ -38,7 +38,8 @@ review-only.
    (idempotently) and **`notification`** mails the confirmation. `availability` needs no
    listener — the set was claimed at step 3. No listener reaches back into `booking`.
 8. On arrival, venue staff check the guest in — scanning the booking's QR (or typing its
-   code) flips the booking `CONFIRMED → COMPLETED`, exactly once. Staff can also
+   code) stamps tonight's night as attended, exactly once per night; on the stay's last
+   night that resolves the booking `COMPLETED`. Staff can also
    tap-to-mark a walk-in, which **`availability`** records against the **walk-in** pool.
 9. If the tourist cancels, **`booking`** applies the cancellation policy, frees the set
    **synchronously** via `availability`'s `release` port, and publishes
