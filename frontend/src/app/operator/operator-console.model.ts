@@ -416,13 +416,17 @@ export interface PayoutLedgerView {
 
 /**
  * The outcome of an admin weather refund (`POST /api/venues/{id}/weather-refund?date=`, invariant #10):
- * how many CONFIRMED bookings were cancelled + fully refunded for the venue and date, and the total in
- * integer minor units (invariant #5). A {@link refundedCount} of 0 is a valid **no-op**, not an error.
+ * how many one-day CONFIRMED bookings were cancelled + fully refunded for the venue and date, the total
+ * in integer minor units (invariant #5), and the stays covering the date the server left for a manual
+ * refund — a count and their booking ids, never codes (invariant #7). A {@link refundedCount} of 0 with
+ * no manual refunds is a valid **no-op**, not an error.
  */
 export interface WeatherRefundResult {
   readonly refundedCount: number;
   readonly totalRefundedMinor: number;
   readonly currency: string;
+  readonly manualRefundCount: number;
+  readonly manualRefundBookingIds: readonly number[];
 }
 
 /**

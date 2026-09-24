@@ -12,6 +12,8 @@ import ai.riviera.platform.booking.events.BookingRequestDeclined;
 import ai.riviera.platform.booking.events.BookingRequestExpired;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.booking.application.reserve.ClaimRef;
+import ai.riviera.platform.booking.domain.ServiceDays;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
@@ -19,8 +21,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * sibling of {@code ClaimReleaseService}, with the three terminal legs side by side so they cannot
  * drift: <strong>decline</strong> (venue said no), <strong>expire</strong> (venue never answered)
  * and <strong>withdraw</strong> (the guest retracted it). Each is a guarded
- * {@code UPDATE … RETURNING} transition plus the
- * {@code availability.release}, committing together — a booking is never left
+ * {@code UPDATE … RETURNING} transition plus the {@code availability.release} of every day of the
+ * span, committing together — a booking is never left
  * {@code DECLINED}/{@code EXPIRED}/{@code WITHDRAWN} with its set still claimed (invariant #2), and
  * the {@code RETURNING} makes a lost race (concurrent decline, withdraw, accept, or sweep) a 0-row
  * no-op, so the set is released exactly once.
@@ -61,7 +63,7 @@ class RequestReleaseService {
 	public boolean decline(BookingId bookingId, VenueId venueId) {
 		return bookings.declinePending(bookingId.value(), venueId)
 				.map(claim -> {
-					availability.release(claim.setId(), claim.bookingDate());
+					releaseSpan(claim);
 					events.publishEvent(new BookingRequestDeclined(bookingId, claim.setId(),
 							claim.bookingDate()));
 					return true;
@@ -73,7 +75,7 @@ class RequestReleaseService {
 	public boolean expire(BookingId bookingId, Instant now) {
 		return bookings.expirePendingRequest(bookingId.value(), now)
 				.map(claim -> {
-					availability.release(claim.setId(), claim.bookingDate());
+					releaseSpan(claim);
 					events.publishEvent(new BookingRequestExpired(bookingId, claim.setId(),
 							claim.bookingDate()));
 					return true;
@@ -100,8 +102,15 @@ class RequestReleaseService {
 	public Optional<BookingId> withdraw(String code) {
 		return bookings.withdrawPendingRequest(code)
 				.map(withdrawn -> {
-					availability.release(withdrawn.setId(), withdrawn.bookingDate());
+					releaseSpan(new ClaimRef(withdrawn.setId(), withdrawn.bookingDate(), withdrawn.lastDate()));
 					return new BookingId(withdrawn.bookingId());
 				});
+	}
+
+	/** Every day of the span, one {@code (set, date)} row each (invariant #2). */
+	private void releaseSpan(ClaimRef claim) {
+		for (var day : ServiceDays.between(claim.bookingDate(), claim.lastDate())) {
+			availability.release(claim.setId(), day);
+		}
 	}
 }

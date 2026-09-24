@@ -15,6 +15,7 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingCancelled;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.application.refund.RefundForWeather;
 import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
@@ -23,6 +24,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * AC-4 (issue #12): the admin weather refund fully refunds <strong>every</strong> {@code CONFIRMED}
@@ -77,21 +79,29 @@ class WeatherRefundServiceIT {
 
 	/** Insert a CONFIRMED booking on {@code date} with a held (set, date) row and an accrual. */
 	private Seeded confirmedBooking(long venueId, long setId, LocalDate date, String code, long amountMinor) {
+		return confirmedStay(venueId, setId, date, 1, code, amountMinor);
+	}
+
+	/** Insert a CONFIRMED stay of {@code days} from {@code first}, every day held, with an accrual. */
+	private Seeded confirmedStay(long venueId, long setId, LocalDate first, int days, String code, long amountMinor) {
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();
 		long bookingId = jdbc.sql("""
-				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
-				VALUES (:code, :venue, :set, :cust, :date, :amount, 'EUR', 'CONFIRMED', NOW())
+				VALUES (:code, :venue, :set, :cust, :first, :last, :amount, 'EUR', 'CONFIRMED', NOW())
 				RETURNING id
 				""")
 				.param("code", code).param("venue", venueId).param("set", setId)
-				.param("cust", customer).param("date", date).param("amount", amountMinor)
+				.param("cust", customer).param("first", first).param("last", first.plusDays(days - 1))
+				.param("amount", amountMinor)
 				.query(Long.class).single();
-		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
-						+ "VALUES (:set, :date, 'BOOKED_ONLINE')")
-				.param("set", setId).param("date", date).update();
+		for (int i = 0; i < days; i++) {
+			jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
+							+ "VALUES (:set, :date, 'BOOKED_ONLINE')")
+					.param("set", setId).param("date", first.plusDays(i)).update();
+		}
 		jdbc.sql("""
 				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor,
 				                                 commission_minor, net_minor, currency)
@@ -176,6 +186,42 @@ class WeatherRefundServiceIT {
 		assertEquals(2, events.stream(BookingCancelled.class)
 				.filter(e -> e.bookingDate().equals(day)).count(),
 				"one BookingCancelled per booking, so payout reverses exactly once (invariant #9)");
+	}
+
+	/**
+	 * A stay mid-storm selects by overlap and is named, never refunded: the day's share of a live
+	 * booking is #1210's, and until then a silent skip would refund nobody and tell nobody.
+	 */
+	@Test
+	void aStayOverlappingTheDateIsNamedNotRefunded() {
+		LocalDate storm = LocalDate.of(2020, 7, 15);
+		long venueId = venueWithOnlineSets();
+		List<Long> sets = onlineSets(venueId, 2);
+		Seeded oneDay = confirmedBooking(venueId, sets.get(0), storm, "WX00000015", 4500L);
+		Seeded stay = confirmedStay(venueId, sets.get(1), storm.minusDays(1), 3, "WX00000016", 12000L);
+
+		WeatherRefundOutcome outcome = refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId), storm);
+
+		assertEquals(1, outcome.refundedCount(), "the one-day booking refunds exactly as before");
+		assertEquals(4500L, outcome.totalRefundedMinor());
+		assertEquals(List.of(new BookingId(stay.bookingId())), outcome.manualRefunds(),
+				"the stay is named for a manual refund, by id");
+		assertEquals("CANCELLED", status(oneDay.bookingId()));
+		assertEquals("CONFIRMED", status(stay.bookingId()), "the stay is not cancelled");
+		assertNull(jdbc.sql("SELECT refund_minor FROM booking WHERE id = :id").param("id", stay.bookingId())
+				.query(Long.class).optional().orElse(null), "and not refunded");
+		for (int i = 0; i < 3; i++) {
+			assertEquals(1, availabilityRows(stay.setId(), storm.minusDays(1).plusDays(i)),
+					"every day of the stay stays held");
+		}
+		assertEquals(0, availabilityRows(oneDay.setId(), storm), "the one-day set is freed (invariant #2)");
+		assertEquals(List.of(new BookingId(oneDay.bookingId())), events.stream(BookingCancelled.class)
+				.filter(e -> e.bookingDate().equals(storm)).map(BookingCancelled::bookingId).toList(),
+				"one BookingCancelled, for the one-day booking only");
+
+		assertEquals(List.of(new BookingId(stay.bookingId())),
+				refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId), storm).manualRefunds(),
+				"a re-run names the stay again");
 	}
 
 	@Test

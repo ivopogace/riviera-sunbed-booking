@@ -123,11 +123,15 @@ function ledgerAfterWeather() {
 /**
  * Mock the console shell + payout endpoints with a stateful session and a stateful ledger. The weather
  * refund flips the ledger to include the WEATHER reversal (as the AFTER_COMMIT payout listener would),
- * so the re-read shows it. Pass `weatherError` to make the refund fail (the owner-assert / failure path).
+ * so the re-read shows it. Pass `weatherError` to make the refund fail (the owner-assert / failure path),
+ * `manualRefunds` for the stays the server names instead of refunding.
  */
 async function mockPayouts(
   page: Page,
-  { weatherError }: { weatherError?: { status: number; code: string } } = {},
+  {
+    weatherError,
+    manualRefunds = [],
+  }: { weatherError?: { status: number; code: string }; manualRefunds?: number[] } = {},
 ): Promise<void> {
   let sessionLive = false;
   let ledger = seedLedger();
@@ -159,7 +163,15 @@ async function mockPayouts(
       });
     }
     ledger = ledgerAfterWeather();
-    return route.fulfill({ json: { refundedCount: 1, totalRefundedMinor: 4500, currency: 'EUR' } });
+    return route.fulfill({
+      json: {
+        refundedCount: 1,
+        totalRefundedMinor: 4500,
+        currency: 'EUR',
+        manualRefundCount: manualRefunds.length,
+        manualRefundBookingIds: manualRefunds,
+      },
+    });
   });
 
   // The shell's own reads on mount (stats strip + requests badge + venue header).
@@ -235,6 +247,25 @@ test('renders the ledger + owed, opens the statement, and issues a per-date weat
   await expect(page.getByTestId('ledger-reason')).toHaveCount(3); // the new WEATHER reversal joined
   await expect(page.getByTestId('payout-owed')).toContainText('€23.25');
   await expectNoSeriousAxeViolations(page, 'after weather refund');
+});
+
+test('a weather refund names the stays it could not reach, by booking id (#7)', async ({
+  page,
+}) => {
+  await mockPayouts(page, { manualRefunds: [21, 34] });
+  await signInAndOpenPayouts(page);
+
+  await page.getByTestId('weather-trigger').click();
+  await page.getByTestId('weather-confirm-btn').click();
+
+  const notice = page.getByTestId('payouts-notice');
+  await expect(notice).toContainText('refund issued');
+  await expect(notice).toContainText(
+    '2 stays overlap this date and need a manual refund (#21, #34)',
+  );
+  await expect(notice.locator('code')).toHaveCount(0); // ids, never a bearer code
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'weather refund naming stays');
 });
 
 test('a cross-venue weather refund shows the owner-assert copy and posts no reversal (#13)', async ({

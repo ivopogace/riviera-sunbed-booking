@@ -38,7 +38,11 @@ final class ServiceDayBackdate {
 		this.jdbc = jdbc;
 	}
 
-	/** Backdate the booking with {@code code} to {@code past}, carrying its held set and its service day with it. */
+	/**
+	 * Backdate the one-day booking with {@code code} to {@code past}, carrying its held set and its
+	 * service day with it; the span moves whole, or the row would read as a stay from {@code past} to
+	 * the day it was made for and cover every day between.
+	 */
 	void moveToPast(String code, LocalDate past) {
 		long setId = jdbc.sql("SELECT set_id FROM booking WHERE code = :c")
 				.param("c", code).query(Long.class).single();
@@ -55,7 +59,7 @@ final class ServiceDayBackdate {
 				""")
 				.param("past", past).param("set", setId).param("c", code).update();
 		Instant createdAt = past.atStartOfDay(TIRANE).toInstant().minus(Duration.ofDays(1));
-		jdbc.sql("UPDATE booking SET booking_date = :past, created_at = :createdAt WHERE code = :c")
+		jdbc.sql("UPDATE booking SET booking_date = :past, last_date = :past, created_at = :createdAt WHERE code = :c")
 				.param("past", past).param("createdAt", Timestamp.from(createdAt)).param("c", code).update();
 	}
 

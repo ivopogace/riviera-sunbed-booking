@@ -324,10 +324,10 @@ be double-sold. Answer the read-side facts through `venue::spi` (`SetAvailabilit
 the state-agnostic taken-set overlay for the public map, the per-set **state tokens**
 (`statesOn`) behind the owner's daily read, and the **taken count per day** over a window
 (`takenCountsBetween`) behind the tourist calendar — how many are held, never how many
-exist. `venue` composes; I answer state. A remodel move is two of my ordinary writes inside
-`venue`'s commit transaction — the new `(set, date)` claimed before the old is released, never a
-swap of my own — so a reserve racing the move loses or wins the row exactly as it would against
-any other claim (invariant #2).
+exist. `venue` composes; I answer state. A remodel move is my ordinary writes inside
+`venue`'s commit transaction — every day of the span claimed on the new set before any day is
+released on the old, never a swap of my own — so a reserve racing the move loses or wins the row
+exactly as it would against any other claim (invariant #2).
 
 **Not My Job:**
 - The venue layout, which sets exist, or their positions → **`venue`**
@@ -341,11 +341,26 @@ any other claim (invariant #2).
 ## `booking`
 **Job:** Own bookings, booking codes, and the lifecycle. The standing rules:
 
+- **A booking is a span of service days: `booking_date` is the first, `last_date` the last,
+  inclusive.** Every existing row is a one-day booking (`last_date = booking_date`, V61), and so is
+  every insert that names no last day (trigger `booking_last_date_on_insert` — the one home of that
+  default, so a fixture or a hand insert stays one-day without saying so); `booking_span_check`
+  refuses a last day before the first, and `domain/ServiceDays` is its Java twin. **Every terminal
+  transition releases every day of the span** — the guest cancel, the four remodel legs, the three
+  request-termination legs, the abandoned-payment release the sweep and the canceled webhook share —
+  and the remodel move claims every day on the candidate before freeing every day on the old set.
+  Each guarded `UPDATE … RETURNING` yields the span with the set, and the winner walks it through
+  `availability`'s one-day `release`; `set_availability` carries no link to a booking, so a day a leg
+  forgot would be unrecoverable (invariant #2). `SpanReleaseIT` re-claims the whole span after each
+  leg. Reads that ask "who is booked on D" select by overlap (the staff daily list, the weather
+  refund); "still owed from D on" and the retention basis read `last_date`; daily takings still
+  land a stay's whole price on its first day, by decision, until the per-day share exists
+  (`docs/architecture/multi-day-stays.md` D4). A reserve is still one day.
 - **Attendance is a per-day record, and I am the sole writer of `booking_day`.** One row per
   service day of a stay, written by the schema the moment a `booking` row becomes `CONFIRMED`
-  (trigger `booking_day_on_confirm`, V60 — the one home of "written when the booking confirms", so
-  no confirm statement and no fixture can forget them; until a booking carries a last service day
-  its range is its `booking_date`). A service day is unresolved, attended (`attended_at`) or
+  (trigger `booking_day_on_confirm`, V60; V61 widened it to every day from `booking_date` to
+  `last_date` — the one home of "written when the booking confirms", so no confirm statement and
+  no fixture can forget them). A service day is unresolved, attended (`attended_at`) or
   missed (`missed_at`), never both (CHECK). `booking.status` stays the contract state machine;
   `COMPLETED` / `NO_SHOW` are **stay outcomes** written once, when the last service day resolves:
   `COMPLETED` if any service day was attended, else `NO_SHOW`. `completed_at` is the instant the
@@ -374,7 +389,11 @@ any other claim (invariant #2).
   `CONFIRMED`-only; the admin **weather refund** admits `NO_SHOW` on its own `cancelForWeather`
   transition, because the storm is known afterwards — the two share no port method, and each takes
   its admitted statuses from its own row in `BookingTransition`, so that asymmetry cannot be
-  tidied away. The guest guard's two advisory readers — the code-gated view's `cancellable` and
+  tidied away. The weather refund selects every booking whose span covers the date and refunds
+  the one-day ones in full as ever; a booking spanning several days is **never cancelled or
+  refunded there** — a partial refund of a live booking is what one reversal per booking
+  (invariant #9) cannot express — and is **named on the outcome** (count plus booking ids, never
+  codes, invariant #7) so the operator settles it by hand; the day's share is #1210's. The guest guard's two advisory readers — the code-gated view's `cancellable` and
   the cancel service's `NotCancellable` refusal — read the same `CANCEL_BY_GUEST` row rather than
   restating it (`ViewBookingServiceTest` and `CancelBookingServiceTest` hold each answer, status
   by status, to the literal `BookingTransitionTest` holds the row to); the `{NO_SHOW, COMPLETED} →

@@ -64,8 +64,8 @@ public interface Bookings {
 
 	/**
 	 * Decline a pending request: the guarded venue-scoped {@code PENDING_REQUEST → DECLINED}
-	 * transition, returning the {@link ClaimRef} iff it transitioned so the caller releases the
-	 * soft-hold exactly once (invariant #2). Deliberately NOT deadline-guarded — an
+	 * transition, returning the {@link ClaimRef} (set and span) iff it transitioned so the caller
+	 * releases every day's soft-hold exactly once (invariant #2). Deliberately NOT deadline-guarded — an
 	 * expired-but-unswept request may still be declined: the same release, a different terminal
 	 * label.
 	 */
@@ -124,9 +124,9 @@ public interface Bookings {
 
 	/**
 	 * Cancel from a verified {@code payment_intent.canceled} webhook: transition
-	 * {@code AWAITING_PAYMENT → CANCELLED}. Returns the {@link ClaimRef} of the booking's
-	 * {@code (set, date)} <strong>iff</strong> it actually transitioned, so the caller releases the
-	 * availability claim exactly once (invariant #2); empty when it was no longer
+	 * {@code AWAITING_PAYMENT → CANCELLED}. Returns the {@link ClaimRef} of the booking's set and
+	 * span <strong>iff</strong> it actually transitioned, so the caller releases every day's
+	 * availability claim exactly once (invariant #2); empty for a row not
 	 * {@code AWAITING_PAYMENT}, and then nothing is released.
 	 */
 	Optional<ClaimRef> cancelAwaitingPayment(long bookingId);
@@ -223,12 +223,13 @@ public interface Bookings {
 	List<DailyBooking> findSettledForVenueOn(VenueId venueId, LocalDate date);
 
 	/**
-	 * The {@code CONFIRMED} and {@code NO_SHOW} bookings for {@code venueId} on {@code date} as
-	 * {@code (id, amountMinor)} rows — the candidate set for the admin weather refund, which
-	 * reaches a swept no-show because a washed-out day is where those rows come from. Excludes
-	 * awaiting-payment and already-cancelled bookings. The caller force-cancels each via the
-	 * guarded {@link #cancelForWeather}, whose admitted statuses match this read; a concurrent
-	 * cancel makes the matching row a no-op. Ordered by id for stable iteration.
+	 * The {@code CONFIRMED} and {@code NO_SHOW} bookings for {@code venueId} whose span covers
+	 * {@code date}, with their amount and span — the candidate set for the admin weather refund,
+	 * which reaches a swept no-show because a washed-out day is where those rows come from. Excludes
+	 * awaiting-payment and already-cancelled bookings. The caller force-cancels each one-day booking
+	 * via the guarded {@link #cancelForWeather}, whose admitted statuses match this read, and only
+	 * names a stay; a concurrent cancel makes the matching row a no-op. Ordered by id for stable
+	 * iteration.
 	 */
 	List<RefundableBooking> findRefundableForWeather(VenueId venueId, LocalDate date);
 
@@ -257,8 +258,8 @@ public interface Bookings {
 
 	/**
 	 * Expire one overdue pending request: the guarded {@code PENDING_REQUEST → EXPIRED} transition
-	 * ({@code … AND request_expires_at <= now}), {@code RETURNING} its {@code (set, date)} iff it
-	 * transitioned so the caller releases the soft-hold exactly once (invariant #2). The guard is
+	 * ({@code … AND request_expires_at <= now}), {@code RETURNING} its set and span iff it
+	 * transitioned so the caller releases every day's soft-hold exactly once (invariant #2). The guard is
 	 * disjoint from accept's ({@code <= now} vs {@code > now}) and from decline's (status), so no
 	 * race can double-act; a candidate accepted or declined since the read is a clean empty no-op.
 	 */
@@ -268,8 +269,8 @@ public interface Bookings {
 	 * Withdraw a pending request at the guest's own request: the guarded {@code PENDING_REQUEST →
 	 * WITHDRAWN} transition, keyed on the booking {@code code} — the bearer credential (invariant
 	 * #7), so knowing it authorizes the act and no venue scope applies. {@code RETURNING}s the
-	 * booking id and its {@code (set, date)} iff a row actually transitioned, so the caller
-	 * releases the soft-hold exactly once (invariant #2); a lost race against a concurrent decline,
+	 * booking id and its set and span iff a row actually transitioned, so the caller releases
+	 * every day's soft-hold exactly once (invariant #2); a lost race against a concurrent decline,
 	 * accept or expiry sweep is a 0-row {@code empty} no-op.
 	 *
 	 * <p>Like {@link #declinePending} and unlike {@link #expirePendingRequest} it is deliberately

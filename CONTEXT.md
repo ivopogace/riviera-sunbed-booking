@@ -233,10 +233,13 @@ model in `docs/architecture/domain-model.md`.
   a refund decision: a withdrawn request was never charged, so there is nothing to refund.
   Distinct from **decline** (the venue's no) and **expire** (nobody's answer) only in who acted.
 - **Booking code** — the unguessable bearer credential staff verify on arrival.
+- **Span** — the service days a booking covers, `booking_date` (the first) to `last_date` (the
+  last), inclusive; every booking today is a one-day span, and every day of it is its own
+  `(set, date)` claim, so ending a booking frees every day. The remodel move re-seats every day.
 - **Service day** — one day of a stay, held as its own attendance record from the moment the
   booking confirms: unresolved until it is **attended** (staff checked the guest in
-  that day) or **missed** (the day passed with no check-in), never both. Today every booking
-  has exactly one service day, its `booking_date`.
+  that day) or **missed** (the day passed with no check-in), never both — one per day of the
+  span. Today every booking has exactly one service day, its `booking_date`.
 - **Check-in** — staff recording, by scanning the booking's QR code or typing its
   booking code, that the guest arrived **today**: stamps today's service day as attended, exactly
   once per service day. On the stay's last service day it also resolves the stay to `COMPLETED`.

@@ -273,8 +273,15 @@ describe('OperatorConsoleService — payout ledger + weather refund (#173)', () 
       (r) => r.url === `${BASE}/api/venues/1/weather-refund` && r.method === 'POST',
     );
     expect(req.request.params.get('date')).toBe('2026-07-05');
-    req.flush({ refundedCount: 2, totalRefundedMinor: 7000, currency: 'EUR' });
-    expect(actual).toEqual({ refundedCount: 2, totalRefundedMinor: 7000, currency: 'EUR' });
+    const outcome = {
+      refundedCount: 2,
+      totalRefundedMinor: 7000,
+      currency: 'EUR',
+      manualRefundCount: 1,
+      manualRefundBookingIds: [21],
+    };
+    req.flush(outcome);
+    expect(actual).toEqual(outcome);
   });
 });
 

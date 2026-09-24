@@ -5,9 +5,10 @@ import java.time.LocalDate;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * The {@code (set, date)} a cancelled booking was holding — returned by
- * {@link Bookings#cancelAwaitingPayment} so the caller can release the availability claim
- * (invariant #2). Carries typed ids / value only (invariant #11). Internal to {@code booking}.
+ * The set and span a terminated booking was holding — returned by the guarded transitions
+ * ({@link Bookings#cancelAwaitingPayment}, {@code declinePending}, {@code expirePendingRequest}) so
+ * the caller releases one {@code (set, date)} row per day, {@code bookingDate} to {@code lastDate}
+ * inclusive (invariant #2). Carries typed ids / values only (invariant #11). Internal to {@code booking}.
  */
-public record ClaimRef(SetId setId, LocalDate bookingDate) {
+public record ClaimRef(SetId setId, LocalDate bookingDate, LocalDate lastDate) {
 }

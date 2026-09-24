@@ -223,6 +223,63 @@ class BookingMigrationIT {
 				.query(Long.class).single(), "a service day never outlives its booking");
 	}
 
+	@Test
+	void lastDateDefaultsToTheFirstDay() {
+		// V61: a legacy-shaped insert (no last_date) is a one-day booking, the backfill's own rule.
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("last-date-default@example.com");
+		LocalDate date = LocalDate.of(2026, 9, 25);
+		insertBooking(venue, set, cust, "SPAN000001", date, "AWAITING_PAYMENT");
+
+		assertEquals(date, lastDateOf("SPAN000001"), "last_date defaults to booking_date");
+	}
+
+	@Test
+	void lastDateBeforeTheFirstDayIsRefused() {
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("last-date-order@example.com");
+		LocalDate date = LocalDate.of(2026, 9, 26);
+		insertBooking(venue, set, cust, "SPAN000002", date, "AWAITING_PAYMENT");
+
+		assertThrows(DataIntegrityViolationException.class,
+				() -> setLastDate("SPAN000002", date.minusDays(1)),
+				"booking_span_check: the last day is never before the first");
+		assertDoesNotThrow(() -> setLastDate("SPAN000002", date.plusDays(2)));
+	}
+
+	@Test
+	void aConfirmedStayCarriesOneServiceDayPerDay() {
+		// V61 widens V60's confirm trigger to the span: three days, three service days, all unresolved.
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("stay-service-days@example.com");
+		LocalDate first = LocalDate.of(2026, 9, 27);
+		insertBooking(venue, set, cust, "SPAN000003", first, "AWAITING_PAYMENT");
+		setLastDate("SPAN000003", first.plusDays(2));
+
+		jdbc.sql("UPDATE booking SET status = 'CONFIRMED', confirmed_at = NOW() WHERE code = 'SPAN000003'")
+				.update();
+
+		assertEquals(List.of(first, first.plusDays(1), first.plusDays(2)), serviceDaysOf("SPAN000003"));
+		assertEquals(3L, jdbc.sql("""
+				SELECT COUNT(*) FROM booking_day
+				WHERE booking_id = (SELECT id FROM booking WHERE code = 'SPAN000003')
+				  AND attended_at IS NULL AND missed_at IS NULL
+				""").query(Long.class).single(), "every service day of a fresh stay is unresolved");
+	}
+
+	private LocalDate lastDateOf(String code) {
+		return jdbc.sql("SELECT last_date FROM booking WHERE code = :code").param("code", code)
+				.query(LocalDate.class).single();
+	}
+
+	private void setLastDate(String code, LocalDate lastDate) {
+		jdbc.sql("UPDATE booking SET last_date = :last WHERE code = :code")
+				.param("last", lastDate).param("code", code).update();
+	}
+
 	private void insertServiceDay(String code, LocalDate serviceDate) {
 		jdbc.sql("""
 				INSERT INTO booking_day (booking_id, service_date)

@@ -34,7 +34,8 @@ import ai.riviera.platform.venue.spi.BookingPresence;
  * — that is the retire-or-delete decision of every removal. {@code hasLiveBookings} and its batch
  * twin {@code nearestLiveBookings} count only bookings that can still be honoured — the edit, remove
  * and bulk-save guards, where finished history strands nobody. {@code liveBookingsFrom} counts what
- * a venue's guests are still owed from a day on — the close-for-season response. Indexes:
+ * a venue's guests are still owed from a day on — the close-for-season response; a stay that began
+ * earlier and is still running on that day is owed its remaining days. Indexes:
  * {@code booking_venue_id_idx} serves the venue-scoped probe and {@code booking_set_date_idx}'s
  * leftmost prefix the set-scoped ones (both V5); no new index.
  */
@@ -109,7 +110,7 @@ class JdbcBookingPresence implements BookingPresence {
 				SELECT COUNT(*) FILTER (WHERE status <> :pending) AS future_bookings,
 				       COUNT(*) FILTER (WHERE status = :pending) AS pending_requests
 				FROM booking
-				WHERE venue_id = :venue AND booking_date >= :from AND status IN (:live)
+				WHERE venue_id = :venue AND last_date >= :from AND status IN (:live)
 				""")
 				.param("venue", venueId.value())
 				.param("from", from)

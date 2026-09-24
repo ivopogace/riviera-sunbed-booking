@@ -351,16 +351,24 @@ function refundReasonLabel(reason: RefundReasonCode | null): string {
   }
 }
 
-/** The operator-facing notice for a successful weather refund — count + total, or a no-op for 0. */
+/**
+ * The operator-facing notice for a successful weather refund — count + total, or a no-op for 0 — plus
+ * the stays the server could not refund (a storm is one day of a live stay), named by booking id so
+ * the operator settles them by hand rather than never learning of them.
+ */
 function weatherSuccessNotice(result: WeatherRefundResult, dateLabel: string): string {
-  if (result.refundedCount === 0) {
-    return `No confirmed bookings for ${dateLabel} — nothing to refund.`;
+  const refunded =
+    result.refundedCount === 0
+      ? `No one-day bookings for ${dateLabel} — nothing refunded.`
+      : `Weather refund issued for ${dateLabel} — ${plural(result.refundedCount, 'booking')},` +
+        ` ${money(result.totalRefundedMinor, result.currency)} returned to guests.`;
+  if (result.manualRefundCount === 0) {
+    return refunded;
   }
-  const total = money(result.totalRefundedMinor, result.currency);
-  return (
-    `Weather refund issued for ${dateLabel} — ${plural(result.refundedCount, 'booking')},` +
-    ` ${total} returned to guests.`
-  );
+  const ids = result.manualRefundBookingIds.map((id) => `#${id}`).join(', ');
+  const verbs =
+    result.manualRefundCount === 1 ? 'overlaps this date and needs' : 'overlap this date and need';
+  return `${refunded} ${plural(result.manualRefundCount, 'stay')} ${verbs} a manual refund (${ids}).`;
 }
 
 /** Map a weather-refund failure to its operator-facing notice (no nested ternaries). */

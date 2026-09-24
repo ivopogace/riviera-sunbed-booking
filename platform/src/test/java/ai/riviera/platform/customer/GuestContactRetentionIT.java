@@ -61,6 +61,17 @@ class GuestContactRetentionIT {
 	}
 
 	@Test
+	void aStayEndingAfterTheCutoffIsARetentionBasis() {
+		CustomerId straddling = insertGuestWithBooking("retention-it-straddle@example.com", LocalDate.of(2025, 12, 30));
+		jdbc.update("UPDATE booking SET last_date = DATE '2026-01-02' WHERE code = ?",
+				bookingCode("retention-it-straddle@example.com"));
+
+		Set<CustomerId> live = history.withBookingOnOrAfter(List.of(straddling), LocalDate.of(2026, 1, 1));
+
+		assertThat(live).as("the span's last day, not its first, decides").containsExactly(straddling);
+	}
+
+	@Test
 	void scrubsExpiredGuestContactAndLeavesBookingPaymentAndPayoutUntouched() {
 		long customerId = insertAgedGuest("retention-it-expired@example.com");
 		long venueId = seededVenueId();

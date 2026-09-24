@@ -141,6 +141,27 @@ class StaffBookingControllerIT {
 	}
 
 	@Test
+	void aStayCoveringTheDateIsListed() throws Exception {
+		// A stay's span, not its first day, is what puts it on a day's list (multi-day D3).
+		LocalDate middle = LocalDate.of(2031, 8, 12);
+		List<Long> sets = venueSets(1);
+		long customer = newCustomer("stay-" + middle + "@e.com");
+		seedBookingOn("U8STAY0001", sets.get(0), customer, "CONFIRMED", middle.minusDays(1));
+		jdbc.sql("UPDATE booking SET last_date = :last WHERE code = 'U8STAY0001'")
+				.param("last", middle.plusDays(1)).update();
+
+		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+						.param("date", middle.toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].code").value("U8STAY0001"));
+		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+						.param("date", middle.plusDays(2).toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(0));
+	}
+
+	@Test
 	void bookingsListRequiresOperator() throws Exception {
 		// AC-9: no operator credential → 401, never a public read of booking codes (invariant #7).
 		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).param("date", DAY.toString()))

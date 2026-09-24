@@ -17,13 +17,14 @@ import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.BookingTransition;
+import ai.riviera.platform.booking.domain.ServiceDays;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 
 /**
  * The cancel-a-booking use case (U6). In one transaction it loads the booking by code,
  * computes the refund <strong>server-side</strong> via the shared {@link CancellationPolicy}
- * (invariant #10), transitions {@code CONFIRMED → CANCELLED} (guarded), frees the {@code (set, date)}
- * via {@link AvailabilityClaim#release} (invariant #2), and publishes {@link BookingCancelled}.
+ * (invariant #10), transitions {@code CONFIRMED → CANCELLED} (guarded), frees every {@code (set, date)}
+ * of the span via {@link AvailabilityClaim#release} (invariant #2), and publishes {@link BookingCancelled}.
  *
  * <p>Which statuses the guest may cancel from is read from
  * {@link BookingTransition#CANCEL_BY_GUEST}, the row the guarded write binds, so the fence here and
@@ -96,16 +97,18 @@ class CancelBookingService implements CancelBooking {
 		}
 		CancelledBooking cancelled = transitioned.get();
 
-		// Free the set (invariant #2) — synchronous, the existing booking -> availability direction.
-		availability.release(cancelled.setId(), cancelled.bookingDate());
+		// Free every day of the span (invariant #2) — synchronous, the existing booking -> availability direction.
+		for (var day : ServiceDays.between(cancelled.bookingDate(), cancelled.lastDate())) {
+			availability.release(cancelled.setId(), day);
+		}
 
 		// Announce the cancellation. After commit: BookingRefundListener issues the refund (booking
 		// module) and the payout listener reverses the accrual proportionally (invariant #9).
 		events.publishEvent(new BookingCancelled(new BookingId(cancelled.id()), cancelled.venueId(),
 				cancelled.setId(), cancelled.bookingDate(), refundMinor, cancelled.currency(),
 				quote.reason()));
-		log.info("cancelled booking {} and released set {} on {} (refund {} minor)", cancelled.id(),
-				cancelled.setId().value(), cancelled.bookingDate(), refundMinor);
+		log.info("cancelled booking {} and released set {} from {} to {} (refund {} minor)", cancelled.id(),
+				cancelled.setId().value(), cancelled.bookingDate(), cancelled.lastDate(), refundMinor);
 
 		CancelOutcome.Tier tier = tierFor(quote.window(), refundMinor, cancelled.amountMinor());
 		return new CancelOutcome.Cancelled(refundMinor, cancelled.currency(), tier);

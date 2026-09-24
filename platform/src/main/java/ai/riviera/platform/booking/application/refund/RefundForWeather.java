@@ -17,9 +17,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 public interface RefundForWeather {
 
 	/**
-	 * Cancel and fully refund every {@code CONFIRMED} or {@code NO_SHOW} booking for {@code venueId} on {@code date};
-	 * returns the {@link WeatherRefundOutcome} (count + total). Idempotent at the booking level — a
-	 * re-run refunds nothing already cancelled (the guarded transition is a no-op).
+	 * Cancel and fully refund every one-day {@code CONFIRMED} or {@code NO_SHOW} booking for
+	 * {@code venueId} on {@code date}; a stay covering the date is left untouched and named on the
+	 * {@link WeatherRefundOutcome} beside the count and total. Idempotent at the booking level — a
+	 * re-run refunds nothing already cancelled (the guarded transition is a no-op) and names the same
+	 * stays again.
 	 *
 	 * <p>Moves real money, so it is venue-scoped: the implementation asserts {@code operator} owns
 	 * {@code venueId} first (invariant #13) and returns {@code 403} on a mismatch, before any refund.

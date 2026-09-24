@@ -104,7 +104,7 @@ class RemodelClaimsServiceTest {
 	}
 
 	private static LiveClaim claim(long bookingId, SetSpot on, LocalDate date, BookingStatus status) {
-		return new LiveClaim(bookingId, on.setId(), date, status, 4500, "EUR");
+		return new LiveClaim(bookingId, on.setId(), date, date, status, 4500, "EUR");
 	}
 
 	private static SpotRef ref(SetSpot spot) {
@@ -148,7 +148,7 @@ class RemodelClaimsServiceTest {
 
 		List<RemodelClaim> claims = service.classify(OWNER, VENUE, List.of(A1.setId()));
 
-		assertEquals(List.of(new RemodelClaim(new BookingId(100), ref(A1), TOMORROW, 4500, "EUR",
+		assertEquals(List.of(new RemodelClaim(new BookingId(100), ref(A1), TOMORROW, TOMORROW, 4500, "EUR",
 				new RemodelOutcome.Blocked(BlockReason.FROZEN))), claims);
 		verify(facts, never()).freeOnlineSetsOn(any(), any());
 	}
@@ -221,7 +221,7 @@ class RemodelClaimsServiceTest {
 		when(bookings.findLiveOnSets(Set.of(A1.setId())))
 				.thenReturn(List.of(claim(200, A1, IN_TEN_DAYS, BookingStatus.CONFIRMED)));
 		givenMap(List.of(A1, A2, A3), IN_TEN_DAYS, List.of(A2));
-		RemodelClaim previewedElsewhere = new RemodelClaim(new BookingId(201), ref(A1), IN_TEN_DAYS, 4500, "EUR",
+		RemodelClaim previewedElsewhere = new RemodelClaim(new BookingId(201), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR",
 				new RemodelOutcome.Move(ref(A2), 0, 1));
 
 		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(previewedElsewhere), RefundConfirmation.NONE);
@@ -236,7 +236,7 @@ class RemodelClaimsServiceTest {
 
 	@Test
 	void blockedAndHeldPicturesAreStillRefusedWhateverTheConfirmation() {
-		RemodelClaim frozen = new RemodelClaim(new BookingId(202), ref(A1), TOMORROW, 4500, "EUR",
+		RemodelClaim frozen = new RemodelClaim(new BookingId(202), ref(A1), TOMORROW, TOMORROW, 4500, "EUR",
 				new RemodelOutcome.Blocked(BlockReason.FROZEN));
 		when(bookings.findLiveOnSets(Set.of(A1.setId())))
 				.thenReturn(List.of(claim(202, A1, TOMORROW, BookingStatus.CONFIRMED)));
@@ -253,13 +253,13 @@ class RemodelClaimsServiceTest {
 
 	@Test
 	void refundsAConfirmedClaimWithVenueChange() {
-		RemodelClaim refund = new RemodelClaim(new BookingId(210), ref(A1), IN_TEN_DAYS, 4500, "EUR",
+		RemodelClaim refund = new RemodelClaim(new BookingId(210), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR",
 				RemodelOutcome.Refund.REFUND);
 		when(bookings.findLiveOnSets(Set.of(A1.setId())))
 				.thenReturn(List.of(claim(210, A1, IN_TEN_DAYS, BookingStatus.CONFIRMED)));
 		givenMap(List.of(A1), IN_TEN_DAYS, List.of());
 		when(bookings.cancelConfirmed(210, CLOCK.instant(), 4500, RefundReason.VENUE_CHANGE))
-				.thenReturn(java.util.Optional.of(new CancelledBooking(210, VENUE, A1.setId(), IN_TEN_DAYS, 4500, "EUR")));
+				.thenReturn(java.util.Optional.of(new CancelledBooking(210, VENUE, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR")));
 		when(receipts.store(any())).thenReturn(RECEIPT);
 
 		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(refund), CONFIRMED_ONE);
@@ -280,18 +280,18 @@ class RemodelClaimsServiceTest {
 
 	@Test
 	void releasesUnpaidAndDeclinesPendingWithoutMoney() {
-		RemodelClaim release = new RemodelClaim(new BookingId(211), ref(A1), IN_TEN_DAYS, 4500, "EUR",
+		RemodelClaim release = new RemodelClaim(new BookingId(211), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR",
 				RemodelOutcome.Release.RELEASE);
-		RemodelClaim decline = new RemodelClaim(new BookingId(212), ref(A1), IN_TEN_DAYS, 4500, "EUR",
+		RemodelClaim decline = new RemodelClaim(new BookingId(212), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR",
 				RemodelOutcome.Decline.DECLINE);
 		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(
 				claim(211, A1, IN_TEN_DAYS, BookingStatus.AWAITING_PAYMENT),
 				claim(212, A1, IN_TEN_DAYS, BookingStatus.PENDING_REQUEST)));
 		givenMap(List.of(A1), IN_TEN_DAYS, List.of());
 		when(bookings.cancelAwaitingPayment(211))
-				.thenReturn(java.util.Optional.of(new ClaimRef(A1.setId(), IN_TEN_DAYS)));
+				.thenReturn(java.util.Optional.of(new ClaimRef(A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS)));
 		when(bookings.declinePending(212, VENUE))
-				.thenReturn(java.util.Optional.of(new ClaimRef(A1.setId(), IN_TEN_DAYS)));
+				.thenReturn(java.util.Optional.of(new ClaimRef(A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS)));
 		when(receipts.store(any())).thenReturn(RECEIPT);
 
 		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(release, decline),
@@ -311,9 +311,9 @@ class RemodelClaimsServiceTest {
 
 	@Test
 	void refusesACommitWhoseRefundCountOrReasonDoesNotMatch() {
-		RemodelClaim first = new RemodelClaim(new BookingId(213), ref(A1), IN_TEN_DAYS, 4500, "EUR",
+		RemodelClaim first = new RemodelClaim(new BookingId(213), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR",
 				RemodelOutcome.Refund.REFUND);
-		RemodelClaim second = new RemodelClaim(new BookingId(214), ref(A1), IN_TEN_DAYS.plusDays(1), 4500, "EUR",
+		RemodelClaim second = new RemodelClaim(new BookingId(214), ref(A1), IN_TEN_DAYS.plusDays(1), IN_TEN_DAYS.plusDays(1), 4500, "EUR",
 				RemodelOutcome.Refund.REFUND);
 		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(
 				claim(213, A1, IN_TEN_DAYS, BookingStatus.CONFIRMED),
@@ -321,10 +321,10 @@ class RemodelClaimsServiceTest {
 		givenMap(List.of(A1), IN_TEN_DAYS, List.of());
 		when(facts.freeOnlineSetsOn(VENUE, IN_TEN_DAYS.plusDays(1))).thenReturn(List.of());
 		when(bookings.cancelConfirmed(eq(213L), any(), eq(4500L), eq(RefundReason.VENUE_CHANGE)))
-				.thenReturn(java.util.Optional.of(new CancelledBooking(213, VENUE, A1.setId(), IN_TEN_DAYS, 4500, "EUR")));
+				.thenReturn(java.util.Optional.of(new CancelledBooking(213, VENUE, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR")));
 		when(bookings.cancelConfirmed(eq(214L), any(), eq(4500L), eq(RefundReason.VENUE_CHANGE)))
 				.thenReturn(java.util.Optional.of(
-						new CancelledBooking(214, VENUE, A1.setId(), IN_TEN_DAYS.plusDays(1), 4500, "EUR")));
+						new CancelledBooking(214, VENUE, A1.setId(), IN_TEN_DAYS.plusDays(1), IN_TEN_DAYS.plusDays(1), 4500, "EUR")));
 		when(receipts.store(any())).thenReturn(RECEIPT);
 		PreviewToken previewed = previewOf(first, second);
 
@@ -346,9 +346,9 @@ class RemodelClaimsServiceTest {
 		when(availability.claim(any(), any())).thenReturn(ClaimOutcome.CLAIMED);
 		when(bookings.moveToSet(any(Long.class), any(), any(), any())).thenReturn(true);
 		when(receipts.store(any())).thenReturn(RECEIPT);
-		RemodelClaim first = new RemodelClaim(new BookingId(203), ref(A1), IN_TEN_DAYS, 4500, "EUR",
+		RemodelClaim first = new RemodelClaim(new BookingId(203), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR",
 				new RemodelOutcome.Move(ref(A2), 0, 1));
-		RemodelClaim second = new RemodelClaim(new BookingId(204), ref(A1), IN_TEN_DAYS.plusDays(1), 4500, "EUR",
+		RemodelClaim second = new RemodelClaim(new BookingId(204), ref(A1), IN_TEN_DAYS.plusDays(1), IN_TEN_DAYS.plusDays(1), 4500, "EUR",
 				new RemodelOutcome.Move(ref(A3), 0, 2));
 
 		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(first, second), RefundConfirmation.NONE);
@@ -377,8 +377,8 @@ class RemodelClaimsServiceTest {
 		when(bookings.moveToSet(any(Long.class), any(), any(), any())).thenReturn(true);
 		when(receipts.store(any())).thenReturn(RECEIPT);
 		PreviewToken previewed = previewOf(
-				new RemodelClaim(new BookingId(205), ref(A1), IN_TEN_DAYS, 4500, "EUR", new RemodelOutcome.Move(ref(A2), 0, 1)),
-				new RemodelClaim(new BookingId(206), ref(A1), IN_TEN_DAYS, 4500, "EUR", new RemodelOutcome.Move(ref(A3), 0, 2)));
+				new RemodelClaim(new BookingId(205), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR", new RemodelOutcome.Move(ref(A2), 0, 1)),
+				new RemodelClaim(new BookingId(206), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR", new RemodelOutcome.Move(ref(A3), 0, 2)));
 
 		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewed, RefundConfirmation.NONE);
 
@@ -393,7 +393,7 @@ class RemodelClaimsServiceTest {
 				.thenReturn(List.of(claim(207, A1, IN_TEN_DAYS, BookingStatus.CONFIRMED)));
 		givenMap(List.of(A1, A2), IN_TEN_DAYS, List.of(A2));
 		when(availability.claim(A2.setId(), IN_TEN_DAYS)).thenReturn(ClaimOutcome.ALREADY_TAKEN);
-		PreviewToken previewed = previewOf(new RemodelClaim(new BookingId(207), ref(A1), IN_TEN_DAYS, 4500, "EUR",
+		PreviewToken previewed = previewOf(new RemodelClaim(new BookingId(207), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR",
 				new RemodelOutcome.Move(ref(A2), 0, 1)));
 
 		assertThrows(IllegalStateException.class, () -> service.commit(OWNER, VENUE, List.of(A1.setId()), previewed, RefundConfirmation.NONE));

@@ -33,8 +33,10 @@ class JdbcDailyTakings implements DailyTakings {
 	 * Sums every status in which the venue kept the money — {@code CONFIRMED}, {@code COMPLETED} and
 	 * {@code NO_SHOW} alike, so neither a check-in nor the no-show sweep shrinks the venue's day (a
 	 * paid no-show is not refunded: the cancellation window closed at 00:00 on the service date,
-	 * invariant #10). Aggregated in SQL for one service date ({@code booking_date} in
-	 * {@code Europe/Tirane}, invariant #6), served by {@code booking_venue_id_idx}. "Online" is the
+	 * invariant #10). Aggregated in SQL for the bookings whose <em>first</em> service day is the date
+	 * ({@code booking_date} in {@code Europe/Tirane}, invariant #6), served by {@code booking_venue_id_idx}:
+	 * a stay's whole price lands on its arrival day, never once per day it covers, until the per-day
+	 * share exists (docs/architecture/multi-day-stays.md D4). "Online" is the
 	 * booking row itself — walk-ins are staff-marked availability rows, never bookings — so no pool
 	 * filter applies either way: a booking on a set since switched to the walk-in pool is still money
 	 * the venue kept. {@code COALESCE} keeps an empty day a {@code (0, 'EUR')} result (invariant #5).
