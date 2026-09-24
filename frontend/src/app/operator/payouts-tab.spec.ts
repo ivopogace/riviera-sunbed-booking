@@ -368,7 +368,13 @@ describe('PayoutsTab (#173) — ledger', () => {
 
     const req = expectWeatherPost();
     expect(req.request.params.get('date')).toBe(date);
-    req.flush({ refundedCount: 1, totalRefundedMinor: 4500, currency: 'EUR' });
+    req.flush({
+      refundedCount: 1,
+      totalRefundedMinor: 4500,
+      currency: 'EUR',
+      manualRefundCount: 0,
+      manualRefundBookingIds: [],
+    });
     fixture.detectChanges();
 
     // Success re-reads the ledger — the reversal (posted by the AFTER_COMMIT payout listener) now shows.
@@ -400,10 +406,56 @@ describe('PayoutsTab (#173) — ledger', () => {
     fixture.detectChanges();
     byId('weather-confirm-btn')!.click();
     fixture.detectChanges();
-    expectWeatherPost().flush({ refundedCount: 0, totalRefundedMinor: 0, currency: 'EUR' });
+    expectWeatherPost().flush({
+      refundedCount: 0,
+      totalRefundedMinor: 0,
+      currency: 'EUR',
+      manualRefundCount: 0,
+      manualRefundBookingIds: [],
+    });
     fixture.detectChanges();
     flushLedger(ledger());
-    expect(byId('payouts-notice')?.textContent?.toLowerCase()).toContain('no confirmed bookings');
+    expect(byId('payouts-notice')?.textContent?.toLowerCase()).toContain('nothing refunded');
+  });
+
+  it('names overlapping stays that need a manual refund, by booking id (never a code)', () => {
+    render(ledger());
+    byId('weather-trigger')!.click();
+    fixture.detectChanges();
+    byId('weather-confirm-btn')!.click();
+    fixture.detectChanges();
+    expectWeatherPost().flush({
+      refundedCount: 1,
+      totalRefundedMinor: 4500,
+      currency: 'EUR',
+      manualRefundCount: 2,
+      manualRefundBookingIds: [21, 34],
+    });
+    fixture.detectChanges();
+    flushLedger(ledger());
+    const notice = byId('payouts-notice')?.textContent ?? '';
+    expect(notice).toContain('refund issued');
+    expect(notice).toContain('2 stays overlap this date and need a manual refund (#21, #34)');
+  });
+
+  it('names a single overlapping stay in the singular', () => {
+    render(ledger());
+    byId('weather-trigger')!.click();
+    fixture.detectChanges();
+    byId('weather-confirm-btn')!.click();
+    fixture.detectChanges();
+    expectWeatherPost().flush({
+      refundedCount: 0,
+      totalRefundedMinor: 0,
+      currency: 'EUR',
+      manualRefundCount: 1,
+      manualRefundBookingIds: [21],
+    });
+    fixture.detectChanges();
+    flushLedger(ledger());
+    expect(byId('payouts-notice')?.textContent).toContain(
+      '1 stay overlaps this date and needs a manual refund (#21)',
+    );
   });
 
   it('shows the not-owner copy when the weather refund is 403 (invariant #13), keeping the view', () => {
@@ -527,7 +579,13 @@ describe('PayoutsTab (#173) — ledger', () => {
     await openWeatherConfirm();
     byId('weather-confirm-btn')!.click();
     await settle();
-    expectWeatherPost().flush({ refundedCount: 1, totalRefundedMinor: 4500, currency: 'EUR' });
+    expectWeatherPost().flush({
+      refundedCount: 1,
+      totalRefundedMinor: 4500,
+      currency: 'EUR',
+      manualRefundCount: 0,
+      manualRefundBookingIds: [],
+    });
     await settle();
 
     expect(byId('weather-confirm')).toBeNull();
@@ -568,7 +626,13 @@ describe('PayoutsTab (#173) — ledger', () => {
     const elsewhere = byId('statement-open')!;
     elsewhere.focus();
 
-    inFlight.flush({ refundedCount: 1, totalRefundedMinor: 4500, currency: 'EUR' });
+    inFlight.flush({
+      refundedCount: 1,
+      totalRefundedMinor: 4500,
+      currency: 'EUR',
+      manualRefundCount: 0,
+      manualRefundBookingIds: [],
+    });
     await settle();
 
     expect(byId('payouts-notice')).toBeNull();
