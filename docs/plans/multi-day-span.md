@@ -40,7 +40,14 @@ carries the contract, not the issue) · `riviera-stripe-payments` (a multi-day s
 here: partial refund of a live booking is unexpressible under one reversal per booking, invariant
 #9; the manual list is the honest outcome) · `riviera-frontend` (`operator/` only: model + notice
 + spec; no new cross-feature edge) · `playwright-cli` (mocked suite stub carries the two new
-fields; one e2e case asserts the manual-refund sentence)
+fields; one e2e case asserts the manual-refund sentence) · `codebase-design` (at the review
+gate: `ServiceDays` passes the deletion test — five release sites would each regrow the
+inclusive-day loop; no `SpanRelease` seam, since one adapter would make it hypothetical) ·
+`domain-modeling` (at the review gate: the glossary gains **Span** and the service-day entry
+reads "one per day of the span"; no ADR — the span is neither hard to reverse nor surprising) ·
+`angular-developer` + angular-cli MCP (at the review gate: the change is a plain notice
+function and two interface fields; no component, signal or template touched, so the v22
+best-practices guide raises nothing)
 
 **Branch:** `claude/sdlc-1201-a3pjw0` (cloud session's designated branch, stands in for
 `feature/multi-day-span`)
@@ -253,6 +260,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcBookingPresenceIT.java` — straddling stay
 - `platform/src/test/java/ai/riviera/platform/customer/GuestContactRetentionIT.java` — stay ending after the cutoff
 - `platform/src/test/java/ai/riviera/platform/booking/domain/ServiceDaysTest.java` — pure rule
+- `platform/src/test/java/ai/riviera/platform/booking/ServiceDayBackdate.java` — the backdate fixture moves the whole span
 - `platform/src/test/java/ai/riviera/platform/booking/application/{cancel/CancelBookingServiceTest,request/RespondToRequestServiceTest,request/WithdrawRequestServiceTest,remodel/RemodelClaimsServiceTest,reserve/CreateBookingServiceTest}.java` — record constructors gain the last day
 - `platform/src/test/java/ai/riviera/platform/booking/vocabulary/PreviewTokenTest.java` — record constructor
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — outcome constructor
