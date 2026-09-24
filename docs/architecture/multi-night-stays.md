@@ -270,7 +270,10 @@ washed-out day refunds **that day's share** and the stay continues. That is a pa
 live booking, which the payout ledger's one-reversal-per-booking guard (invariant #9) and
 `payment`'s single refund cannot express. So it lands in its own slice, after the refund child
 table (D8). Until then the overlap selection refunds one-night bookings as today and **names**
-every overlapping stay for a manual refund, instead of refunding nobody.
+every overlapping stay for a manual refund, instead of refunding nobody. The refund is the day's actual
+rate (the set held that day), never the total divided by its days. A day the guest already
+checked into is **not** refunded, the same as today's single-day rule, which admits only
+`CONFIRMED|NO_SHOW`.
 
 ### D6 — A stay is a group of bookings, not one booking with segments
 
