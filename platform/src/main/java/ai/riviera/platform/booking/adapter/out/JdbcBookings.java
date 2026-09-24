@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking.adapter.out;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collection;
@@ -70,6 +71,52 @@ class JdbcBookings implements Bookings {
 	private static final String COL_CANCEL_REASON = "cancel_reason";
 	private static final String COL_CREATED_AT = "created_at";
 
+	/**
+	 * The one resolve statement, shared by check-in and the sweep so the outcome rule is written
+	 * once: a due stay's still-unresolved nights are marked missed, then its status becomes
+	 * {@code COMPLETED} if any night was attended and {@code NO_SHOW} otherwise, {@code completed_at}
+	 * stamped only with {@code COMPLETED}. {@code %s} is the caller's due-set predicate over
+	 * {@code booking b}; the {@code FOR UPDATE} makes a concurrent resolve wait and then match nothing.
+	 */
+	private static final String RESOLVE_STAY_SQL = """
+			WITH due AS (
+			    SELECT b.id,
+			           EXISTS (SELECT 1 FROM booking_night a
+			                   WHERE a.booking_id = b.id AND a.attended_at IS NOT NULL) AS attended
+			    FROM booking b
+			    WHERE b.status = :confirmed AND %s
+			    FOR UPDATE
+			), swept AS (
+			    UPDATE booking_night n
+			    SET missed_at = :at
+			    FROM due
+			    WHERE n.booking_id = due.id AND n.attended_at IS NULL AND n.missed_at IS NULL
+			)
+			UPDATE booking b
+			SET status       = CASE WHEN due.attended THEN :completed ELSE :noShow END,
+			    completed_at = CASE WHEN due.attended THEN :at END
+			FROM due
+			WHERE b.id = due.id
+			""";
+
+	/** Check-in's arm of {@link #RESOLVE_STAY_SQL}: this stay, once no night after tonight remains. */
+	private static final String RESOLVE_AFTER_CHECK_IN_SQL = RESOLVE_STAY_SQL.formatted("""
+			b.id = :id
+			      AND NOT EXISTS (SELECT 1 FROM booking_night r
+			                      WHERE r.booking_id = b.id AND r.night > :date)""");
+
+	/**
+	 * The sweep's arm of {@link #RESOLVE_STAY_SQL}: every stay whose last night has passed, oldest
+	 * first, {@code booking_date < :today} letting the partial index narrow the candidates before
+	 * the anti-join on the nights.
+	 */
+	private static final String RESOLVE_DUE_STAYS_SQL = RESOLVE_STAY_SQL.formatted("""
+			b.booking_date < :today
+			      AND NOT EXISTS (SELECT 1 FROM booking_night r
+			                      WHERE r.booking_id = b.id AND r.night >= :today)
+			    ORDER BY b.booking_date
+			    LIMIT :batch""");
+
 	private final JdbcClient jdbc;
 
 	/**
@@ -78,9 +125,13 @@ class JdbcBookings implements Bookings {
 	 */
 	private final JdbcClient sweepJdbc;
 
-	JdbcBookings(JdbcClient jdbc, DataSource dataSource,
+	/** Stamps the sweep's missed marks: the sweep has no instant of its own to pass down. */
+	private final Clock clock;
+
+	JdbcBookings(JdbcClient jdbc, DataSource dataSource, Clock clock,
 			@Value("${riviera.scheduled.query-timeout-seconds}") int scheduledQueryTimeoutSeconds) {
 		this.jdbc = jdbc;
+		this.clock = clock;
 		this.sweepJdbc = boundedClient(dataSource, scheduledQueryTimeoutSeconds);
 	}
 
@@ -469,17 +520,24 @@ class JdbcBookings implements Bookings {
 				.optional();
 	}
 
+	/**
+	 * Two statements in the caller's transaction: the guarded stamp on tonight's row, whose lock
+	 * leaves exactly one winner per code and night, then {@link #RESOLVE_STAY_SQL} for the stay when
+	 * no later night remains. The resolve is skipped on a miss, so a lost race never touches the
+	 * parent.
+	 */
 	@Override
 	public Optional<CompletedCheckIn> completeConfirmed(String code, VenueId venueId,
 			LocalDate serviceDate, Instant completedAt) {
-		// Guarded CONFIRMED -> COMPLETED (#583): the row lock leaves exactly one winner per code.
-		return jdbc.sql("""
-				UPDATE booking
-				SET status = :completed, completed_at = :at
-				WHERE code = :code AND venue_id = :venue AND status = :confirmed AND booking_date = :date
-				RETURNING id, set_id, booking_date
+		Optional<CompletedCheckIn> attended = jdbc.sql("""
+				UPDATE booking_night n
+				SET attended_at = :at
+				FROM booking b
+				WHERE n.booking_id = b.id AND b.code = :code AND b.venue_id = :venue
+				  AND b.status = :confirmed AND n.night = :date
+				  AND n.attended_at IS NULL AND n.missed_at IS NULL
+				RETURNING b.id, b.set_id, b.booking_date
 				""")
-				.param(PARAM_COMPLETED, BookingStatus.COMPLETED.name())
 				.param("at", java.sql.Timestamp.from(completedAt))
 				.param("code", code)
 				.param(PARAM_VENUE, venueId.value())
@@ -489,52 +547,83 @@ class JdbcBookings implements Bookings {
 						rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
 				.optional();
+		attended.ifPresent(done -> resolveStayOf(done.bookingId(), serviceDate, completedAt));
+		return attended;
+	}
+
+	private void resolveStayOf(long bookingId, LocalDate tonight, Instant resolvedAt) {
+		jdbc.sql(RESOLVE_AFTER_CHECK_IN_SQL)
+				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.param(PARAM_COMPLETED, BookingStatus.COMPLETED.name())
+				.param(PARAM_NO_SHOW, BookingStatus.NO_SHOW.name())
+				.param("id", bookingId)
+				.param("date", tonight)
+				.param("at", java.sql.Timestamp.from(resolvedAt))
+				.update();
 	}
 
 	/**
-	 * On {@code sweepJdbc}, not {@code jdbc}: this statement opens a scheduled run and is bounded.
-	 * Batched via a keyed subquery so a run cut off by that bound keeps the batches it committed.
+	 * On {@code sweepJdbc}, not {@code jdbc}: these statements open a scheduled run and are bounded.
+	 * Two statements, each its own batch and its own commit: the missed marks on past nights of live
+	 * stays, then {@link #RESOLVE_DUE_STAYS_SQL}. A run cut off by the bound keeps what it committed.
 	 *
 	 * <p>{@code FOR UPDATE} <strong>without</strong> {@code SKIP LOCKED}, deliberately: skipping a
 	 * contended row would return a short batch, which the caller reads as "backlog drained" and
 	 * stops on — leaving that row unswept until a later run found it uncontended.
 	 *
-	 * <p>Ordered by {@code booking_date}, the partial sweep index's own order, so the batch walks it
-	 * instead of sorting the filtered set. Any deterministic order batches correctly; this one is
-	 * free, and it drains the oldest backlog first.
+	 * <p>Ordered by the night and by {@code booking_date}, each partial index's own order, so a
+	 * batch walks its index instead of sorting the filtered set and drains the oldest backlog first.
 	 */
 	@Override
 	public int markPastConfirmedAsNoShow(LocalDate today, int batchSize) {
-		return sweepJdbc.sql("""
-				UPDATE booking
-				SET status = :noShow
-				WHERE id IN (SELECT id
-				             FROM booking
-				             WHERE status = :confirmed AND booking_date < :today
-				             ORDER BY booking_date
-				             LIMIT :batch
-				             FOR UPDATE)
+		java.sql.Timestamp now = java.sql.Timestamp.from(clock.instant());
+		sweepJdbc.sql("""
+				WITH due AS (
+				    SELECT c.booking_id, c.night
+				    FROM booking_night c
+				    JOIN booking b ON b.id = c.booking_id
+				    WHERE b.status = :confirmed AND c.night < :today
+				      AND c.attended_at IS NULL AND c.missed_at IS NULL
+				    ORDER BY c.night
+				    LIMIT :batch
+				    FOR UPDATE OF c
+				)
+				UPDATE booking_night n
+				SET missed_at = :at
+				FROM due
+				WHERE n.booking_id = due.booking_id AND n.night = due.night
 				""")
-				.param(PARAM_NO_SHOW, BookingStatus.NO_SHOW.name())
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.param("today", today)
 				.param("batch", batchSize)
+				.param("at", now)
+				.update();
+		return sweepJdbc.sql(RESOLVE_DUE_STAYS_SQL)
+				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.param(PARAM_COMPLETED, BookingStatus.COMPLETED.name())
+				.param(PARAM_NO_SHOW, BookingStatus.NO_SHOW.name())
+				.param("today", today)
+				.param("batch", batchSize)
+				.param("at", now)
 				.update();
 	}
 
 	@Override
-	public Optional<CheckInFacts> findCheckInFacts(String code, VenueId venueId) {
+	public Optional<CheckInFacts> findCheckInFacts(String code, VenueId venueId, LocalDate today) {
 		// Venue-scoped on purpose: a foreign venue's code reads as empty, same as an unknown one.
 		return jdbc.sql("""
-				SELECT status, booking_date
-				FROM booking
-				WHERE code = :code AND venue_id = :venue
+				SELECT b.status, b.booking_date, n.attended_at IS NOT NULL AS attended_today
+				FROM booking b
+				LEFT JOIN booking_night n ON n.booking_id = b.id AND n.night = :today
+				WHERE b.code = :code AND b.venue_id = :venue
 				""")
 				.param("code", code)
 				.param(PARAM_VENUE, venueId.value())
+				.param("today", today)
 				.query((rs, rowNum) -> new CheckInFacts(
 						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
-						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						rs.getBoolean("attended_today")))
 				.optional();
 	}
 

@@ -6,9 +6,9 @@ import ai.riviera.platform.review.vocabulary.CompletedStay;
 
 /**
  * The facts the {@code review} module lacks when deciding whether a stay may be rated: whether a
- * booking answers to a code at all, and — if it was checked in — which venue it was at and when.
- * Consulted at submit and at view time, so a guest who was just checked in can review immediately;
- * review keeps no projection of booking state.
+ * booking answers to a code at all, and — if the stay completed — which venue it was at and when.
+ * Consulted at submit and at view time, so a guest whose stay just completed can review
+ * immediately; review keeps no projection of booking state.
  *
  * <p><strong>Driven (SPI) port, dependency-inverted (invariant #11).</strong> Declared here, in the
  * <em>consumer</em>'s {@code spi} named interface, and <em>implemented by the {@code booking}
@@ -25,7 +25,8 @@ public interface CompletedStays {
 
 	/**
 	 * The completed-stay facts behind {@code bookingCode}, or empty unless a booking answers to that
-	 * code <strong>and</strong> has been checked in.
+	 * code <strong>and</strong> its stay has completed — its last night checked in or passed after an
+	 * attended one.
 	 *
 	 * @param bookingCode the bearer credential the guest presents (invariant #7) — never logged
 	 */
@@ -34,8 +35,8 @@ public interface CompletedStays {
 	/**
 	 * Whether any booking answers to {@code bookingCode}, whatever its status.
 	 *
-	 * <p>Separate from {@link #byCode} because review must tell "no such booking" from "that stay was
-	 * never checked in" — the two produce different answers on the code-gated surface (a 404 against a
+	 * <p>Separate from {@link #byCode} because review must tell "no such booking" from "that stay has
+	 * not completed" — the two produce different answers on the code-gated surface (a 404 against a
 	 * 409), and neither can be read off an empty {@link #byCode}. Consulted only once {@link #byCode}
 	 * has come back empty.
 	 */

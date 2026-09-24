@@ -52,10 +52,10 @@ public enum BookingTransition {
 	/** The guest cancels under the policy (invariant #10) — {@code CONFIRMED} only. */
 	CANCEL_BY_GUEST(BookingStatus.CONFIRMED, BookingStatus.CANCELLED),
 
-	/** Staff scan the code at the venue on the service date. */
+	/** Staff scan the code at the venue on the stay's last night (its only night, until ranges exist). */
 	CHECK_IN(BookingStatus.CONFIRMED, BookingStatus.COMPLETED),
 
-	/** The service day passed with no check-in; the no-show sweep marks it. */
+	/** Every night passed and none was attended; the no-show sweep resolves it. */
 	SWEEP_NO_SHOW(BookingStatus.CONFIRMED, BookingStatus.NO_SHOW),
 
 	/** The admin weather refund — the only transition that acts on a {@code NO_SHOW}. */

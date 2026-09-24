@@ -11,15 +11,15 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  */
 public sealed interface CheckInResult {
 
-	/** The scan won the guarded transition: the booking is now {@code COMPLETED}. */
+	/** The scan won tonight's guarded stamp; {@code bookingDate} is the stay's first night. */
 	record CheckedIn(SetId setId, LocalDate bookingDate) implements CheckInResult {
 	}
 
-	/** Already {@code COMPLETED} — the single-use answer a second scan of the same code gets. */
+	/** Tonight already attended, or the stay {@code COMPLETED} — what a second scan of the same code gets. */
 	record AlreadyCheckedIn(LocalDate bookingDate) implements CheckInResult {
 	}
 
-	/** Confirmed, but for {@code bookingDate}, not today — refused without transitioning. */
+	/** Live or swept, but today is not one of its unattended nights — refused without a write. */
 	record WrongServiceDate(LocalDate bookingDate) implements CheckInResult {
 	}
 

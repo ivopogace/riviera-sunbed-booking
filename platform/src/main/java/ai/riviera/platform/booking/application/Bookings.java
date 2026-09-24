@@ -103,7 +103,9 @@ public interface Bookings {
 	 * Transition the booking to {@code CONFIRMED}, stamping {@code confirmed_at}, and return the
 	 * confirmed facts for the {@code BookingConfirmed} payload, built atomically with the transition via
 	 * SQL {@code RETURNING}. Strict: a non-{@code AWAITING_PAYMENT} row is an error — the synchronous
-	 * stub path, where exactly-once is guaranteed within the create transaction.
+	 * stub path, where exactly-once is guaranteed within the create transaction. The stay's
+	 * {@code booking_night} rows are written by the schema as the row becomes {@code CONFIRMED}
+	 * (trigger {@code booking_night_on_confirm}, V60), never by a statement here.
 	 */
 	ConfirmedBooking confirm(long bookingId, Instant confirmedAt);
 
@@ -160,38 +162,44 @@ public interface Bookings {
 			long refundMinor);
 
 	/**
-	 * Check a guest in: the guarded {@code CONFIRMED → COMPLETED} transition, keyed on the booking
-	 * {@code code} and scoped to {@code venueId} and the {@code serviceDate} (today in
-	 * {@code Europe/Tirane}, invariant #6), stamping {@code completed_at}. Returns the completed facts
-	 * via SQL {@code RETURNING} <strong>iff</strong> a row actually transitioned — the row lock, not
-	 * the predicate, makes concurrent scans yield exactly one winner; a 0-row {@code empty} is the
-	 * caller's signal to classify against {@link #findCheckInFacts committed state}.
+	 * Check a guest in for one night: the guarded stamp of {@code attended_at} on the
+	 * {@code CONFIRMED} booking's {@code booking_night} row for {@code serviceDate} (today in
+	 * {@code Europe/Tirane}, invariant #6), keyed on the booking {@code code} and scoped to
+	 * {@code venueId}. When no later night remains the stay resolves in the same call:
+	 * {@code COMPLETED}, {@code completed_at} stamped. Returns the facts via SQL {@code RETURNING}
+	 * <strong>iff</strong> a night actually moved — the row lock, not the predicate, makes concurrent
+	 * scans yield exactly one winner; a 0-row {@code empty} is the caller's signal to classify
+	 * against {@link #findCheckInFacts committed state}.
 	 */
 	Optional<ai.riviera.platform.booking.application.checkin.CompletedCheckIn> completeConfirmed(
 			String code, VenueId venueId, LocalDate serviceDate, Instant completedAt);
 
 	/**
-	 * Mark up to {@code batchSize} {@code CONFIRMED} bookings dated before {@code today} as
-	 * {@code NO_SHOW}, returning how many transitioned. The {@code status = 'CONFIRMED'} guard
-	 * serializes against a concurrent check-in or cancel, so a lost race and a repeated run are
-	 * alike 0-row no-ops.
+	 * The no-show sweep's one call, two batched statements: mark up to {@code batchSize} nights
+	 * before {@code today} that a {@code CONFIRMED} booking neither attended nor missed as missed,
+	 * then resolve up to {@code batchSize} {@code CONFIRMED} bookings whose last night is before
+	 * {@code today} — {@code COMPLETED} if any night was attended, {@code NO_SHOW} otherwise —
+	 * returning how many bookings resolved. The {@code status = 'CONFIRMED'} guard serializes against
+	 * a concurrent check-in or cancel, so a lost race and a repeated run are alike 0-row no-ops.
 	 *
-	 * <p>Batched because the statement runs on the bounded scheduled client: one unbounded
+	 * <p>Batched because the statements run on the bounded scheduled client: one unbounded
 	 * {@code UPDATE} over a large backlog would be cancelled by the timeout and roll back whole,
-	 * leaving the sweep unable to make progress on any run. A batch commits on its own, so a
-	 * cancelled run keeps what it already did. Fewer than {@code batchSize} rows means the backlog
-	 * is drained.
+	 * leaving the sweep unable to make progress on any run. Each statement commits on its own, so a
+	 * cancelled run keeps what it already did. Fewer than {@code batchSize} bookings resolved means
+	 * the backlog is drained; a backlog whose unresolved nights outnumber its due bookings by more
+	 * than a batch finishes its night marks on the next run, and the resolve statement marks a due
+	 * stay's remaining nights itself.
 	 */
 	int markPastConfirmedAsNoShow(LocalDate today, int batchSize);
 
 	/**
-	 * The status + service date behind a code at one venue, for classifying a check-in whose guarded
-	 * transition matched 0 rows. Venue-scoped: a foreign venue's code reads as {@code empty},
-	 * indistinguishable from an unknown one (non-enumerating; the code never travels further,
-	 * invariant #7).
+	 * The status, first night and whether {@code today}'s night is attended behind a code at one
+	 * venue, for classifying a check-in whose guarded stamp matched 0 rows. Venue-scoped: a foreign
+	 * venue's code reads as {@code empty}, indistinguishable from an unknown one (non-enumerating;
+	 * the code never travels further, invariant #7).
 	 */
 	Optional<ai.riviera.platform.booking.application.checkin.CheckInFacts> findCheckInFacts(
-			String code, VenueId venueId);
+			String code, VenueId venueId, LocalDate today);
 
 	/**
 	 * The {@code CONFIRMED}, {@code COMPLETED} and {@code NO_SHOW} bookings for {@code venueId} on

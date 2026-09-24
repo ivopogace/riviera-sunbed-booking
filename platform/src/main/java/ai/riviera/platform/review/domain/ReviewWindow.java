@@ -17,14 +17,14 @@ public final class ReviewWindow {
 	}
 
 	/**
-	 * Whether the window over a stay checked in at {@code completedAt} is still open at {@code now}.
+	 * Whether the window over a stay completed at {@code completedAt} is still open at {@code now}.
 	 * The boundary is inclusive: only a stay checked in <em>more</em> than {@link #WINDOW} ago closes.
 	 */
 	public static boolean isOpen(Instant completedAt, Instant now) {
 		return !now.isAfter(closesAt(completedAt));
 	}
 
-	/** The last instant a stay checked in at {@code completedAt} may still be rated or amended. */
+	/** The last instant a stay completed at {@code completedAt} may still be rated or amended. */
 	public static Instant closesAt(Instant completedAt) {
 		return completedAt.plus(WINDOW);
 	}

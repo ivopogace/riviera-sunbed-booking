@@ -14,9 +14,10 @@ import ai.riviera.platform.review.vocabulary.VenueRef;
 
 /**
  * JDBC adapter answering {@link CompletedStays} from the {@code booking} table — the {@code booking}
- * module owns that table, so the "was this stay checked in, and when?" probe lives here while the
- * review window and the eligibility verdict stay in {@code review}. Invariant #1: explicit SQL via
- * {@link JdbcClient}, no JPA.
+ * module owns that table, so the "did this stay complete, and when?" probe lives here while the
+ * review window and the eligibility verdict stay in {@code review}. {@code completed_at} is the
+ * instant the stay resolved {@code COMPLETED}: its last night checked in or passed after an
+ * attended one. Invariant #1: explicit SQL via {@link JdbcClient}, no JPA.
  *
  * <p>This is the implementing side of a dependency-inverted <strong>driven (SPI) port</strong>
  * (declared in {@code review.spi}). The legal {@code booking → review} edge is what keeps

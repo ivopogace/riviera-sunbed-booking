@@ -17,15 +17,17 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 /**
  * The check-in use case. Per-venue authorization first (invariant #13):
  * {@link VenueOwnership#assertOwns} on the acting operator, before any code lookup, so denial
- * discloses nothing. Then the guarded {@code CONFIRMED → COMPLETED} transition, scoped to today in
- * {@code Europe/Tirane} (invariant #6); a 0-row miss is classified against committed state — after
- * the {@code UPDATE}, so a lost race reads the winner's {@code COMPLETED} and answers
- * {@link CheckInResult.AlreadyCheckedIn}, never a double transition. Publishes no event: nothing
- * accrues and nothing refunds (the withdraw precedent).
+ * discloses nothing. Then the guarded stamp on tonight's night row, today in {@code Europe/Tirane}
+ * (invariant #6), which resolves the stay {@code COMPLETED} when it was the last night; a 0-row
+ * miss is classified against committed state — after the {@code UPDATE}, so a lost race reads the
+ * winner's stamp and answers {@link CheckInResult.AlreadyCheckedIn}, never a double transition.
+ * Publishes no event: nothing accrues and nothing refunds (the withdraw precedent).
  *
- * <p>A swept {@code NO_SHOW} answers {@link CheckInResult.WrongServiceDate} beside {@code CONFIRMED}
- * rather than falling through to {@code NotFound}: the booking exists and is this venue's, so
- * "no booking with that code here" would be false — its day has simply passed.
+ * <p>A {@code CONFIRMED} stay whose night today is attended is "already checked in" exactly as a
+ * {@code COMPLETED} single-night booking is; one with no attended night today is a scan on a day
+ * the stay does not cover. A swept {@code NO_SHOW} answers {@link CheckInResult.WrongServiceDate}
+ * rather than falling through to {@code NotFound}: the booking exists and is this venue's, so "no
+ * booking with that code here" would be false — its days have simply passed.
  */
 @Service
 class CheckInService implements CheckInBooking {
@@ -50,14 +52,17 @@ class CheckInService implements CheckInBooking {
 		LocalDate today = LocalDate.ofInstant(now, TIRANE);
 		return bookings.completeConfirmed(code, venueId, today, now)
 				.<CheckInResult>map(done -> new CheckInResult.CheckedIn(done.setId(), done.bookingDate()))
-				.orElseGet(() -> classify(code, venueId));
+				.orElseGet(() -> classify(code, venueId, today));
 	}
 
-	private CheckInResult classify(String code, VenueId venueId) {
-		return bookings.findCheckInFacts(code, venueId)
+	private CheckInResult classify(String code, VenueId venueId, LocalDate today) {
+		return bookings.findCheckInFacts(code, venueId, today)
 				.<CheckInResult>map(facts -> switch (facts.status()) {
 					case COMPLETED -> new CheckInResult.AlreadyCheckedIn(facts.bookingDate());
-					case CONFIRMED, NO_SHOW -> new CheckInResult.WrongServiceDate(facts.bookingDate());
+					case CONFIRMED -> facts.attendedToday()
+							? new CheckInResult.AlreadyCheckedIn(facts.bookingDate())
+							: new CheckInResult.WrongServiceDate(facts.bookingDate());
+					case NO_SHOW -> new CheckInResult.WrongServiceDate(facts.bookingDate());
 					default -> new CheckInResult.NotFound();
 				})
 				.orElseGet(CheckInResult.NotFound::new);

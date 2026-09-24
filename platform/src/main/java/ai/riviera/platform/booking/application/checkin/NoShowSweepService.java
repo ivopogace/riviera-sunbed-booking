@@ -12,11 +12,11 @@ import ai.riviera.platform.booking.application.Bookings;
 
 /**
  * The no-show sweep: guarded bulk {@code UPDATE}s in batches, not the read-ids-then-per-row loop
- * the abandoned-payment and request-expiry sweeps use — a no-show releases no {@code (set, date)}
- * claim and publishes no event, so there is no second write per row to isolate. It deliberately
- * writes no availability row at all: the set really was sold and held for a date now past, and
- * freeing that claim would rewrite history and make it re-claimable (invariant #2).
- * Rationale: {@code RESPONSIBILITIES.md} §{@code booking}.
+ * the abandoned-payment and request-expiry sweeps use — a missed night releases no {@code (set,
+ * date)} claim and a resolved stay publishes no event, so there is no second write per row to
+ * isolate. It deliberately writes no availability row at all: the set really was sold and held for
+ * a date now past, and freeing that claim would rewrite history and make it re-claimable
+ * (invariant #2). Rationale: {@code RESPONSIBILITIES.md} §{@code booking}.
  */
 @Service
 class NoShowSweepService implements MarkNoShows {
@@ -81,11 +81,11 @@ class NoShowSweepService implements MarkNoShows {
 			return;
 		}
 		if (drained) {
-			log.info("no-show sweep marked {} past-day booking(s) as NO_SHOW", marked);
+			log.info("no-show sweep resolved {} stay(s) whose last night had passed", marked);
 		}
 		else {
-			log.info("no-show sweep marked {} past-day booking(s) as NO_SHOW without draining the"
-					+ " backlog — the remainder is swept on the next run", marked);
+			log.info("no-show sweep resolved {} stay(s) whose last night had passed without draining"
+					+ " the backlog — the remainder is swept on the next run", marked);
 		}
 	}
 }
