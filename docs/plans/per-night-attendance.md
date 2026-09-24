@@ -262,6 +262,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `CONTEXT.md` — Check-in, No-show, Night, Review window
 - `CLAUDE.md` — module table: `booking_night`
 - `docs/architecture/domain-model.md` — schema listing + state notes
+- `docs/architecture/multi-night-stays.md` — status line: D2 landed
 - `docs/plans/per-night-attendance.md` — this plan
 
 ---
