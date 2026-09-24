@@ -35,7 +35,9 @@ assumption register below) · `tdd` (tests written before each implementation at
 the PK, `ON DELETE CASCADE` with the V28 child-record rationale) · `riviera-modulith` (no new
 port or surface; `Bookings` stays internal; the structural net + `ResponsibilitiesArchitectureTests`
 due) · `riviera-java-conventions` (outcomes as values, Javadoc as contract, named literals) ·
-`grilling` (the issue's ACs cross-checked against the code — see *Open questions*).
+`grilling` (the issue's ACs cross-checked against the code — see *Open questions*) ·
+`domain-modeling` (CONTEXT.md gains *Night* and *Stay outcome*; *Check-in*, *No-show* and *Review
+window* re-defined; the glossary names no table — RV-PROC-1 caught the omission at the review gate).
 
 **Branch:** `claude/sdlc-1200-4r14la` (the cloud session's designated branch; stands in for
 `feature/per-night-attendance`)

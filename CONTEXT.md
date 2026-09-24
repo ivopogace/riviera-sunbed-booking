@@ -233,8 +233,8 @@ model in `docs/architecture/domain-model.md`.
   a refund decision: a withdrawn request was never charged, so there is nothing to refund.
   Distinct from **decline** (the venue's no) and **expire** (nobody's answer) only in who acted.
 - **Booking code** — the unguessable bearer credential staff verify on arrival.
-- **Night** — one day of a stay, held as its own attendance record (`booking_night`) from the
-  moment the booking confirms: unresolved until it is **attended** (staff checked the guest in
+- **Night** — one day of a stay, held as its own attendance record from the moment the
+  booking confirms: unresolved until it is **attended** (staff checked the guest in
   that day) or **missed** (the day passed with no check-in), never both. Today every booking
   has exactly one night, its `booking_date`.
 - **Check-in** — staff recording, by scanning the booking's QR code or typing its
