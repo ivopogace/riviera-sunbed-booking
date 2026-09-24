@@ -226,6 +226,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source | Finding | Status |
 |---|---|---|---|
 | F-1 | CI run 36056793325 | `StaffBookingControllerIT.dailyViewListsSweptNoShows` / `.sameDayConfirmedBookingAppearsInTodaysList`: a backdated fixture row read as a span covering today | fixed — `ServiceDayBackdate` moves `last_date` too |
+| F-2 | review gate (code-comment reviewer) | port + adapter docs of decline / expire / cancel-awaiting / withdraw still said "the (set, date)" and "the soft-hold exactly once" while their records carry the span | fixed — six sites reworded to "set and span" / "every day's" |
+| F-3 | review gate (prior-PR reviewer) | five copies of the per-day release loop | no change — the rule (inclusive day list) has its holder in `ServiceDays`; the loop is procedure over another module's port, which `domain/` may not import, and one shared adapter would be a hypothetical seam |
+| F-4 | review gate (code-comment reviewer) | V60's header cites `multi-night-stays.md`, renamed in `d385bc6c` | not fixable here — V60 is applied and Flyway checksums its text (the rename commit says so); the live path is in V61 |
 
 ---
 

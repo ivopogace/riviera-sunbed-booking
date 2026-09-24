@@ -64,8 +64,8 @@ public interface Bookings {
 
 	/**
 	 * Decline a pending request: the guarded venue-scoped {@code PENDING_REQUEST → DECLINED}
-	 * transition, returning the {@link ClaimRef} iff it transitioned so the caller releases the
-	 * soft-hold exactly once (invariant #2). Deliberately NOT deadline-guarded — an
+	 * transition, returning the {@link ClaimRef} (set and span) iff it transitioned so the caller
+	 * releases every day's soft-hold exactly once (invariant #2). Deliberately NOT deadline-guarded — an
 	 * expired-but-unswept request may still be declined: the same release, a different terminal
 	 * label.
 	 */
@@ -258,8 +258,8 @@ public interface Bookings {
 
 	/**
 	 * Expire one overdue pending request: the guarded {@code PENDING_REQUEST → EXPIRED} transition
-	 * ({@code … AND request_expires_at <= now}), {@code RETURNING} its {@code (set, date)} iff it
-	 * transitioned so the caller releases the soft-hold exactly once (invariant #2). The guard is
+	 * ({@code … AND request_expires_at <= now}), {@code RETURNING} its set and span iff it
+	 * transitioned so the caller releases every day's soft-hold exactly once (invariant #2). The guard is
 	 * disjoint from accept's ({@code <= now} vs {@code > now}) and from decline's (status), so no
 	 * race can double-act; a candidate accepted or declined since the read is a clean empty no-op.
 	 */
@@ -269,8 +269,8 @@ public interface Bookings {
 	 * Withdraw a pending request at the guest's own request: the guarded {@code PENDING_REQUEST →
 	 * WITHDRAWN} transition, keyed on the booking {@code code} — the bearer credential (invariant
 	 * #7), so knowing it authorizes the act and no venue scope applies. {@code RETURNING}s the
-	 * booking id and its {@code (set, date)} iff a row actually transitioned, so the caller
-	 * releases the soft-hold exactly once (invariant #2); a lost race against a concurrent decline,
+	 * booking id and its set and span iff a row actually transitioned, so the caller releases
+	 * every day's soft-hold exactly once (invariant #2); a lost race against a concurrent decline,
 	 * accept or expiry sweep is a 0-row {@code empty} no-op.
 	 *
 	 * <p>Like {@link #declinePending} and unlike {@link #expirePendingRequest} it is deliberately

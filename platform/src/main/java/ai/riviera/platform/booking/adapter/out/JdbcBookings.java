@@ -265,8 +265,7 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public Optional<ClaimRef> declinePending(long bookingId, VenueId venueId) {
-		// Guarded venue-scoped decline: RETURNING the (set, date) iff it transitioned, so the
-		// caller releases the soft-hold exactly once (invariant #2). No deadline guard — see port.
+		// Venue-scoped and guarded; RETURNING the set and span iff it transitioned (contract: the port).
 		return jdbc.sql("""
 				UPDATE booking
 				SET status = :declined
@@ -756,9 +755,7 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public Optional<ClaimRef> expirePendingRequest(long bookingId, Instant now) {
-		// Guarded per-row expiry: RETURNING yields the (set, date) exactly when THIS statement
-		// transitioned the row, so the hold is released exactly once (invariant #2); a candidate
-		// accepted or declined since the candidate read is a 0-row empty no-op.
+		// Guarded per row; RETURNING the set and span iff THIS statement transitioned it (contract: the port).
 		return jdbc.sql("""
 				UPDATE booking
 				SET status = :expired
@@ -775,9 +772,7 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public Optional<ClaimRef> cancelAwaitingPayment(long bookingId) {
-		// UPDATE ... RETURNING yields the (set, date) only when a row actually transitioned, so the
-		// caller releases the availability claim exactly once (invariant #2). A booking no longer
-		// AWAITING_PAYMENT returns empty — nothing to release.
+		// Guarded; RETURNING the set and span iff a row transitioned, else empty and nothing to release.
 		return jdbc.sql("""
 				UPDATE booking
 				SET status = :cancelled
