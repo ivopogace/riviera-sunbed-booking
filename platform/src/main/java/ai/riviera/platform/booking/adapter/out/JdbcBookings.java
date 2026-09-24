@@ -59,6 +59,7 @@ class JdbcBookings implements Bookings {
 	private static final String PARAM_NO_SHOW = "noShow";
 	private static final String PARAM_VENUE = "venue";
 	private static final String PARAM_ACCOUNT = "account";
+	private static final String PARAM_TODAY = "today";
 
 	// Result-column names reused across the row mappers (keep in lockstep with the SELECT/RETURNING).
 	private static final String COL_VENUE_ID = "venue_id";
@@ -609,7 +610,7 @@ class JdbcBookings implements Bookings {
 				  AND n.attended_at IS NULL AND n.missed_at IS NULL
 				""")
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
-				.param("today", today)
+				.param(PARAM_TODAY, today)
 				.param("batch", batchSize)
 				.param("at", java.sql.Timestamp.from(clock.instant()))
 				.update();
@@ -625,7 +626,7 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.param(PARAM_COMPLETED, BookingStatus.COMPLETED.name())
 				.param(PARAM_NO_SHOW, BookingStatus.NO_SHOW.name())
-				.param("today", today)
+				.param(PARAM_TODAY, today)
 				.param("batch", batchSize)
 				.param("at", java.sql.Timestamp.from(clock.instant()))
 				.update();
@@ -642,7 +643,7 @@ class JdbcBookings implements Bookings {
 				""")
 				.param("code", code)
 				.param(PARAM_VENUE, venueId.value())
-				.param("today", today)
+				.param(PARAM_TODAY, today)
 				.query((rs, rowNum) -> new CheckInFacts(
 						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class),

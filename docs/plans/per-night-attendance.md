@@ -29,7 +29,8 @@ the equivalence oracle without touching a fixture.
 IT deletes fixtures so the child FK cascades, V41 argued against sweep timestamps → `completed_at`
 is stamped on `COMPLETED` only) · `riviera-plan-doc` (forced the Module-ownership table and the
 assumption register below) · `tdd` (tests written before each implementation at the named seams; Docker Hub's pull limit on `postgres:17` delayed the local IT runs, so the multi-night tests' red was by construction and their first observed run caught the one defect — the untyped `:at` inside a `CASE` — before CI did) ·
-`riviera-review-overlay` (<review gate pending>) · `riviera-docs-freshness` (**ran** over `cf5e84bb..51ae8be3`: 2 findings — the flow's step 8 in
+`riviera-review-overlay` (ran with `code-review:code-review` over `cf5e84bb..5e9c5b4b`; RV-PROC-1 caught the
+`domain-modeling` omission, RV-PROC-2's sweeps found no stale citation; findings F-2..F-5) · `riviera-docs-freshness` (**ran** over `cf5e84bb..51ae8be3`: 2 findings — the flow's step 8 in
 `RESPONSIBILITIES.md` and the design doc's "nothing here is built" status, both patched; ADR-0015's
 "check-in fact" wording is a dated decision's rationale, left; the observability runbook's "the two
 sweeps" predates this slice) ·
@@ -49,42 +50,42 @@ window* re-defined; the glossary names no table — RV-PROC-1 caught the omissio
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (equivalence):** Given the per-night implementation, when the existing check-in,
+- [x] **AC-1 (equivalence):** Given the per-night implementation, when the existing check-in,
   no-show and transition-table suites run **unmodified**, then they pass. *Seam:* `CheckInBooking`,
   `MarkNoShows`, `Bookings#completeConfirmed` / `#markPastConfirmedAsNoShow` · *Pinned by:*
   `CheckInFlowIT`, `CheckInConcurrencyIT`, `NoShowSweepIT`, `JdbcBookingTransitionTableIT`,
   `StaffBookingControllerIT`, `WeatherRefundServiceIT`, `JdbcCompletedStaysIT`,
   `ScheduledQueryTimeoutIT`, `BookingMigrationIT` (existing methods) — all unchanged in the diff.
-- [ ] **AC-2:** Given a `CONFIRMED` booking with nights D, D+1, D+2 (rows inserted directly), when
+- [x] **AC-2:** Given a `CONFIRMED` booking with nights D, D+1, D+2 (rows inserted directly), when
   it is checked in on D, then on D+1, then on D+2, then each scan is `CheckedIn`, the booking stays
   `CONFIRMED` after D and D+1 and becomes `COMPLETED` with `completed_at` stamped after D+2.
   *Seam:* `Bookings#completeConfirmed` (the date is a parameter) · *Pinned by:*
   `MultiNightAttendanceIT.eachNightIsCheckedInOnItsOwnDayAndTheLastResolvesTheStay`
-- [ ] **AC-3:** Given a `CONFIRMED` stay spanning yesterday..tomorrow whose yesterday is attended,
+- [x] **AC-3:** Given a `CONFIRMED` stay spanning yesterday..tomorrow whose yesterday is attended,
   when staff scan it today twice, then the first answers `CheckedIn` and the second
   `AlreadyCheckedIn`, and the booking stays `CONFIRMED`. *Seam:* `CheckInBooking#checkIn` ·
   *Pinned by:* `MultiNightAttendanceIT.secondScanOnTheSameDayAnswersAlreadyCheckedIn`
-- [ ] **AC-4:** Given a stay with nights D..D+2 whose D is attended, when the sweep runs with today
+- [x] **AC-4:** Given a stay with nights D..D+2 whose D is attended, when the sweep runs with today
   = D+2, then D+1 is missed and the booking is still `CONFIRMED`; when it runs with today = D+3,
   then D+2 is missed and the booking is `COMPLETED`. *Seam:* `Bookings#markPastConfirmedAsNoShow`
   · *Pinned by:* `MultiNightAttendanceIT.partlyAttendedStayResolvesOnlyAfterItsLastNight`
-- [ ] **AC-5:** Given a stay whose first night is attended and whose remaining nights are all in
+- [x] **AC-5:** Given a stay whose first night is attended and whose remaining nights are all in
   the past, when `MarkNoShows#sweep` runs, then every unattended night is missed and the outcome is
   `COMPLETED`; given a stay with no attended night, all past, then the outcome is `NO_SHOW` and
   `completed_at` stays null. *Seam:* `MarkNoShows#sweep` · *Pinned by:*
   `MultiNightAttendanceIT.guestWhoStopsTurningUpGetsMissedNightsAndCompletes`,
   `MultiNightAttendanceIT.stayNobodyAttendedResolvesToNoShow`
-- [ ] **AC-6:** Given V60, when a `CONFIRMED` booking is inserted (or an `AWAITING_PAYMENT` one
+- [x] **AC-6:** Given V60, when a `CONFIRMED` booking is inserted (or an `AWAITING_PAYMENT` one
   confirmed), then exactly one `booking_night` row for `booking_date` exists; a second row for the
   same `(booking_id, night)` is refused; a row both attended and missed is refused; a non-confirmed
   insert yields no night. *Seam:* the schema · *Pinned by:*
   `BookingMigrationIT.confirmedBookingCarriesOneNightRow`,
   `BookingMigrationIT.nightIsUniquePerBooking`, `BookingMigrationIT.nightIsNeverBothAttendedAndMissed`
-- [ ] **AC-7:** Given the sole-writer rule for `booking_night`, when the production classes are
+- [x] **AC-7:** Given the sole-writer rule for `booking_night`, when the production classes are
   scanned, then only `booking` references the table and the rogue fixture is rejected; the
   structural net passes. *Seam:* `ResponsibilitiesArchitectureTests` · *Pinned by:*
   `ResponsibilitiesArchitectureTests.bookingNightTableIsTouchedOnlyInsideTheBookingModule`
-- [ ] **AC-8:** Daily takings, `BookingStatus#canStillBeHonoured` and the weather refund's
+- [x] **AC-8:** Daily takings, `BookingStatus#canStillBeHonoured` and the weather refund's
   admitted statuses are byte-for-byte unchanged. *Seam:* `DailyTakings`, `BookingStatus`,
   `BookingTransition.WEATHER_REFUND` · *Pinned by:*
   `CheckInFlowIT.arrivalsAndTakingsCountCheckedInBookings`,
@@ -118,33 +119,37 @@ window* re-defined; the glossary names no table — RV-PROC-1 caught the omissio
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Two concurrent scans both stamp tonight's row | low | high | Row lock on `booking_night`; the loser re-evaluates `attended_at IS NULL` after the lock and matches 0 rows | slice | `CheckInConcurrencyIT` unchanged; open |
-| R-2 | Two sweep runners resolve the same stay twice | low | high | Statement 2 keys on `status = 'CONFIRMED' … FOR UPDATE` (no `SKIP LOCKED`), the existing discipline | slice | `NoShowSweepIT.concurrentSweepsYieldExactlyOneTransition` unchanged; open |
-| R-3 | Backfill of legacy `COMPLETED` rows with a null `completed_at` (pre-V40) | medium | low | `attended_at = COALESCE(completed_at, end of the service day in Europe/Tirane)`; `NO_SHOW` → `missed_at` = end of the service day | slice | open |
-| R-4 | The trigger is a hidden write a reader of `JdbcBookings#confirm` cannot see | medium | medium | Named in the migration header, `Bookings#confirm` Javadoc, `RESPONSIBILITIES.md` §booking; pinned by `BookingMigrationIT` | slice | open |
+| R-1 | Two concurrent scans both stamp tonight's row | low | high | Row lock on `booking_night`; the loser re-evaluates `attended_at IS NULL` after the lock and matches 0 rows | slice | closed — `CheckInConcurrencyIT` unchanged, green |
+| R-2 | Two sweep runners resolve the same stay twice | low | high | Statement 2 keys on `status = 'CONFIRMED' … FOR UPDATE` (no `SKIP LOCKED`), the existing discipline | slice | closed — unchanged, green |
+| R-3 | Backfill of legacy `COMPLETED` rows with a null `completed_at` (pre-V40) | medium | low | `attended_at = COALESCE(completed_at, end of the service day in Europe/Tirane)`; `NO_SHOW` → `missed_at` = end of the service day | slice | closed — V60 |
+| R-4 | The trigger is a hidden write a reader of `JdbcBookings#confirm` cannot see | medium | medium | Named in the migration header, `Bookings#confirm` Javadoc, `RESPONSIBILITIES.md` §booking; pinned by `BookingMigrationIT` | slice | closed — flagged in the PR body for the owner |
 | R-5 | Drain heuristic: nights marked hit the batch while bookings resolved do not → run stops early | low (nights == bookings until D3) | low | Each statement is its own port call and its own batch loop under the shared per-run cap (`NoShowSweepService.Backlog`); the review gate raised it twice (F-2) | slice | closed — F-2 |
-| R-6 | Timezone: a night is a `Europe/Tirane` civil day; `today` derived from the injected `Clock` (#6) | low | high | Unchanged derivation in `CheckInService` / `NoShowSweepService` | slice | open |
-| R-7 | Flyway `V60` collision | low | low | Free on `main` (V59 is the tip) and unclaimed by the open PRs (all dependabot). This branch renumbers if another V60 lands first | slice | open |
-| R-8 | The sweep's first statement no longer touches `booking` alone — the bounded-client timeout proof | low | medium | Statement 1 joins `booking`, so an `ACCESS EXCLUSIVE` lock on it still blocks and cancels it | slice | `ScheduledQueryTimeoutIT` unchanged; open |
-| R-9 | BOLA on check-in (#13) | low | high | `VenueOwnership#assertOwns` before any lookup, untouched; the guarded update still keys on `venue_id` | slice | `CheckInFlowIT.foreignVenueCodeReadsAsNotFound` unchanged |
-| R-10 | `ON DELETE CASCADE` deletes attendance history | low | low | No production path deletes a `booking` row (grep: none); only IT fixtures do | slice | open |
+| R-6 | Timezone: a night is a `Europe/Tirane` civil day; `today` derived from the injected `Clock` (#6) | low | high | Unchanged derivation in `CheckInService` / `NoShowSweepService` | slice | closed |
+| R-7 | Flyway `V60` collision | low | low | Free on `main` (V59 is the tip) and unclaimed by the open PRs (all dependabot). No V60 landed elsewhere | slice | closed |
+| R-8 | The sweep's first statement no longer touches `booking` alone — the bounded-client timeout proof | low | medium | Both statements lock `booking`, so an `ACCESS EXCLUSIVE` lock on it still blocks and cancels them | slice | closed — `ScheduledQueryTimeoutIT` unchanged, green |
+| R-9 | BOLA on check-in (#13) | low | high | `VenueOwnership#assertOwns` before any lookup, untouched; the guarded update still keys on `venue_id` | slice | closed — `CheckInFlowIT.foreignVenueCodeReadsAsNotFound` unchanged, green |
+| R-10 | `ON DELETE CASCADE` deletes attendance history | low | low | No production path deletes a `booking` row (grep: none); only IT fixtures do | slice | closed |
 
 ## Open questions / Assumptions
+
+None open.
+
+### Resolved
 
 - **Assumption:** the night rows are materialised by a trigger on `booking` rather than by an
   explicit `INSERT` after each confirm statement. Rationale: AC-1 demands the existing fixtures
   (direct `INSERT … 'CONFIRMED'`) stay the oracle; the trigger is the schema-level form of "written
   when the booking confirms", and D3 will only change its `generate_series`. The tree has no other
-  trigger, so this is flagged for the owner in the PR. — *Owner:* slice · *Resolves by:* PR review
+  trigger, so this is flagged for the owner in the PR. — decided in-slice, flagged in the PR body for the owner; merged via PR #1211
 - **Assumption:** the stay outcome is `COMPLETED` iff at least one night was attended, else
-  `NO_SHOW`. — *Owner:* slice · *Resolves by:* PR review
+  `NO_SHOW`. — decided in-slice, flagged in the PR body for the owner; merged via PR #1211
 - **Assumption:** `completed_at` is stamped only when the outcome is `COMPLETED` (the review
   window's input); a `NO_SHOW` resolution stamps the night's `missed_at` and nothing on `booking`,
   keeping today's rows byte-identical and V41's "no sweep timestamp on `booking`" stance. — *Owner:*
   slice · *Resolves by:* PR review
 - **Assumption:** the backfill covers every booking that ever confirmed
   (`confirmed_at IS NOT NULL OR status IN ('CONFIRMED','COMPLETED','NO_SHOW')`), so the trigger's
-  rule and the backfill agree. — *Owner:* slice · *Resolves by:* PR review
+  rule and the backfill agree. — decided in-slice, flagged in the PR body for the owner; merged via PR #1211
 
 ## Availability & concurrency (invariant #2)
 
@@ -205,16 +210,16 @@ and `DailyTakings` are unchanged (AC-8).
 
 ## Execution status
 
-**Stage pointer:** `CI gate — second push (local ITs green: the 12 oracle classes + the 2 new ones, skipped=0)`
+**Stage pointer:** `DONE — merged via PR #1211`
 
-**Next action:** CI green → merge `origin/main` → ready for review → review gate.
+**Next action:** none; the epic's checklist tick for D2 and the plan's retirement happen at the next close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Schema: `booking_night`, trigger, backfill | ✅ (code) | see PR |
-| 1 — Check-in stamps the night, resolves on the last; sole-writer rule 9 | ✅ (code) | see PR |
-| 2 — Sweep marks nights, resolves due stays | ✅ (code) | see PR |
-| 3 — Docs + close-out | ⏳ | |
+| 0 — Schema: `booking_night`, trigger, backfill | ✅ | PR #1211 |
+| 1 — Check-in stamps the night, resolves on the last; sole-writer rule 9 | ✅ | PR #1211 |
+| 2 — Sweep marks nights, resolves due stays | ✅ | PR #1211 |
+| 3 — Docs + close-out | ✅ | PR #1211 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -227,6 +232,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | review gate (history reviewer) | the missed-night statement locked the night row, not the `booking` row its `status` predicate reads | fixed — the statement locks the live stays first (`FOR UPDATE` on `booking`), then marks their past nights: the booking-then-nights order every writer now shares |
 | F-4 | review gate (prior-PR reviewer) | `MultiNightAttendanceIT` steps the sweep on a far-past date, the pattern `JdbcBookingTransitionTableIT` already carries | accepted: the class drains first, asserts its own stay's rows, and deletes its fixtures |
 | F-6 | CI (`CancelBookingIT.noShowAnswersWindowClosedLikeAnUnsweptSpentDay`) | `ServiceDayBackdate` moved `booking_date` but not the night the trigger wrote, so the sweep saw a night still ahead | fixed — the helper moves the night with the day |
+| F-7 | Sonar (`java:S1192`) | the `"today"` parameter name repeated three times in `JdbcBookings` | fixed — `PARAM_TODAY` |
 | F-5 | overlay RV-PROC-1 | `CONTEXT.md` edited without `domain-modeling` on the skills line; the *Night* entry named a table | fixed — skill loaded, entry re-worded |
 
 ---
@@ -292,37 +298,37 @@ its "the module itself writes the table" proof needs the adapter's SQL)
 **Files:** Modify `JdbcBookings` (`completeConfirmed`, `findCheckInFacts`), `Bookings`,
 `CheckInFacts`, `CheckInService` · Test `MultiNightAttendanceIT` (AC-2, AC-3)
 
-- [ ] **Step 1: Failing tests** — AC-2 at `Bookings#completeConfirmed` stepping the date; AC-3 at
+- [x] **Step 1: Failing tests** — AC-2 at `Bookings#completeConfirmed` stepping the date; AC-3 at
   `CheckInBooking#checkIn` with a stay spanning yesterday..tomorrow.
-- [ ] **Step 2: Red** — `./gradlew test --tests "*MultiNightAttendanceIT*"`.
-- [ ] **Step 3: Implementation** — night update `RETURNING b.id, b.set_id, b.booking_date`, then
+- [x] **Step 2: Red** — `./gradlew test --tests "*MultiNightAttendanceIT*"`.
+- [x] **Step 3: Implementation** — night update `RETURNING b.id, b.set_id, b.booking_date`, then
   the resolve statement when no later night exists; `findCheckInFacts(code, venue, today)` with a
   `LEFT JOIN` on today's night; classification `COMPLETED → AlreadyCheckedIn`, `CONFIRMED →
   attendedToday ? AlreadyCheckedIn : WrongServiceDate`, `NO_SHOW → WrongServiceDate`.
-- [ ] **Step 4: Green** — `MultiNightAttendanceIT`, `CheckInFlowIT`, `CheckInConcurrencyIT`,
+- [x] **Step 4: Green** — `MultiNightAttendanceIT`, `CheckInFlowIT`, `CheckInConcurrencyIT`,
   `JdbcBookingTransitionTableIT`, `StaffBookingControllerIT`.
-- [ ] **Step 6: Commit** — `Check-in stamps tonight's row and resolves the stay on its last night (#1200)`
+- [x] **Step 6: Commit** — `Check-in stamps tonight's row and resolves the stay on its last night (#1200)`
 
 ## Phase 2 — Sweep marks nights, resolves due stays
 
 **Files:** Modify `JdbcBookings#markPastConfirmedAsNoShow`, `Bookings`, `MarkNoShows`,
 `NoShowSweepService` · Test `MultiNightAttendanceIT` (AC-4, AC-5)
 
-- [ ] **Step 1: Failing tests** — AC-4 at `Bookings#markPastConfirmedAsNoShow` with explicit
+- [x] **Step 1: Failing tests** — AC-4 at `Bookings#markPastConfirmedAsNoShow` with explicit
   `today`; AC-5 at `MarkNoShows#sweep` with nights relative to today.
-- [ ] **Step 2: Red.**
-- [ ] **Step 3: Implementation** — statement 1 marks past unresolved nights of `CONFIRMED`
+- [x] **Step 2: Red.**
+- [x] **Step 3: Implementation** — statement 1 marks past unresolved nights of `CONFIRMED`
   bookings (keyed subquery, `LIMIT :batch FOR UPDATE OF n`); statement 2 resolves due bookings
   (`status = 'CONFIRMED' AND booking_date < today AND NOT EXISTS night >= today`, `LIMIT :batch FOR
   UPDATE`) via a data-modifying CTE that also marks their stragglers missed, outcome by
   `EXISTS attended`. Returns bookings resolved.
-- [ ] **Step 4: Green** — `MultiNightAttendanceIT`, `NoShowSweepIT`, `JdbcBookingTransitionTableIT`,
+- [x] **Step 4: Green** — `MultiNightAttendanceIT`, `NoShowSweepIT`, `JdbcBookingTransitionTableIT`,
   `CheckInFlowIT`, `ScheduledQueryTimeoutIT`.
-- [ ] **Step 6: Commit** — `The no-show sweep marks missed nights and resolves stays whose last night passed (#1200)`
+- [x] **Step 6: Commit** — `The no-show sweep marks missed nights and resolves stays whose last night passed (#1200)`
 
 ## Phase 3 — Docs + close-out
 
-- [ ] `RESPONSIBILITIES.md` §booking, `CONTEXT.md`, `CLAUDE.md`, `domain-model.md`, review Javadoc;
+- [x] `RESPONSIBILITIES.md` §booking, `CONTEXT.md`, `CLAUDE.md`, `domain-model.md`, review Javadoc;
   Execution status finalised in the PR's last code-touching commit.
 
 ---
@@ -340,19 +346,19 @@ its "the module itself writes the table" proof needs the adapter's SQL)
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-8:** listed test classes green in CI on the merged head.
+- [x] **AC-1..AC-8:** listed test classes green in CI on `024ef640` (backend job success, Testcontainers ITs `skipped=0`), Sonar 0 issues after F-7, 91.5% new-code coverage, 0 duplicated blocks.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section filled or justified N/A; concurrency test present (#2).
-- [ ] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
-- [ ] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
-- [ ] Payment section filled or N/A; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
-- [ ] Flyway migration present; invariant-enforcing constraints tested (#12).
-- [ ] Frontend standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability section filled or justified N/A; concurrency test present (#2).
+- [x] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
+- [x] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
+- [x] Payment section filled or N/A; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
+- [x] Flyway migration present; invariant-enforcing constraints tested (#12).
+- [x] Frontend standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
+- [x] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
