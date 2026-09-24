@@ -392,7 +392,6 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   var SEASON_DAYS = 62;
   var DAY = 86400000;
   var TODAY = 9;
-  var CAP = 15;
   var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var ROW_NAME = ['Front row', 'Row B', 'Row C', 'Row D', 'Row E', 'Row F'];
@@ -400,13 +399,13 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   var VENUES = [
     { name: 'Dhërmi Beach Club', beach: 'Dhërmi', x: 44, y: 11, adj: 0, base: 1600, mode: 'INSTANT', rating: '4.6', reviews: 128 },
     { name: 'Drymades Lido', beach: 'Dhërmi', x: 37, y: 19, adj: -0.3, base: 1400, mode: 'INSTANT', rating: '4.4', reviews: 61 },
-    { name: 'Aquarium Bay', beach: 'Dhërmi', x: 51, y: 24, adj: 0.2, base: 2200, mode: 'REQUEST', rating: '4.8', reviews: 203 },
+    { name: 'Aquarium Bay', beach: 'Dhërmi', x: 51, y: 24, adj: 0.2, base: 2200, mode: 'REQUEST', rating: '4.8', reviews: 203, maxStay: 7 },
     { name: 'Kalaja Sunbeds', beach: 'Dhërmi', x: 42, y: 31, adj: -0.15, base: 1500, mode: 'INSTANT', rating: '4.2', reviews: 37 },
     { name: 'Blue Lagoon Club', beach: 'Dhërmi', x: 55, y: 6, adj: 0.1, base: 1800, mode: 'INSTANT', rating: '4.5', reviews: 92 },
-    { name: 'Gjipe Beach Club', beach: 'Gjipe', x: 42, y: 50, adj: -0.35, base: 2200, mode: 'REQUEST', rating: '4.9', reviews: 76 },
+    { name: 'Gjipe Beach Club', beach: 'Gjipe', x: 42, y: 50, adj: -0.35, base: 2200, mode: 'REQUEST', rating: '4.9', reviews: 76, maxStay: 21 },
     { name: 'Gjipe Canyon Sands', beach: 'Gjipe', x: 50, y: 57, adj: 0.15, base: 1700, mode: 'INSTANT', rating: '4.4', reviews: 40 },
     { name: 'Jalë Bay Lido', beach: 'Jalë', x: 46, y: 73, adj: -0.25, base: 1800, mode: 'INSTANT', rating: '4.7', reviews: 144 },
-    { name: 'Jalë Pine Beach', beach: 'Jalë', x: 55, y: 81, adj: 0.25, base: 1600, mode: 'REQUEST', rating: '4.1', reviews: 29 },
+    { name: 'Jalë Pine Beach', beach: 'Jalë', x: 55, y: 81, adj: 0.25, base: 1600, mode: 'REQUEST', rating: '4.1', reviews: 29, maxStay: 10 },
     { name: 'Livadh Shore', beach: 'Jalë', x: 50, y: 90, adj: -0.05, base: 1500, mode: 'INSTANT', rating: '4.3', reviews: 55 }
   ];
   var BEACHES = ['Dhërmi', 'Gjipe', 'Jalë'];
@@ -459,6 +458,8 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   function rate(s, v) { var b = VENUES[v === undefined ? CV : v].base; return s.row === 0 ? b + 800 : s.row === 1 ? b + 400 : b; }
   function free(s, d) { return s.online && !taken[CV][s.idx][d]; }
   function V() { return VENUES[S.venue]; }
+  function capOf(vi) { return VENUES[vi].maxStay || SEASON_DAYS; }
+  function capLine(vi) { var m = VENUES[vi].maxStay; return m ? 'Stays of up to ' + m + ' days at this venue.' : 'Stays of any length this season.'; }
   function isReq() { return V().mode === 'REQUEST'; }
 
   function date(i) { return new Date(SEASON + i * DAY); }
@@ -577,6 +578,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
       out.tier = full > 0 ? 'same' : (p && p.moves <= S.budget) ? 'moves' : 'no';
       out.longest = full > 0 ? null : longestRun(ds, null);
     } else out.tier = full > 0 ? 'day' : 'no';
+    if (N > capOf(vi)) { out.tier = 'no'; out.capped = capOf(vi); }
     CV = keep;
     return out;
   }
@@ -595,7 +597,8 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
     });
     var budget = effBudget();
     var plan = null, planOver = null;
-    var planActive = N > 1 && (S.view === 'plan' || (S.view === 'home' && full === 0));
+    var overCap = N > capOf(S.venue);
+    var planActive = !overCap && N > 1 && (S.view === 'plan' || (S.view === 'home' && full === 0));
     if (planActive) {
       plan = S.anchor ? anchoredPlan(ds, S.anchor, budget) : (function () { var p = solve(ds, null, null); return p && p.moves <= budget ? p : null; })();
       if (!plan && budget < 3) {
@@ -604,7 +607,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
       }
     }
     var dflt = N > 1 ? solve(ds, null, null) : null;
-    return { planActive: planActive, ds: ds, N: N, info: info, full: full, part: part, none: none, plan: plan, planOver: planOver, dflt: dflt, budget: budget, longest: longestRun(ds, S.anchor || S.sel) };
+    return { overCap: overCap, planActive: planActive, ds: ds, N: N, info: info, full: full, part: part, none: none, plan: plan, planOver: planOver, dflt: dflt, budget: budget, longest: longestRun(ds, S.anchor || S.sel) };
   }
 
   function segIndex(plan) {
@@ -615,6 +618,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   function segc(i) { return '--segc: var(--seg-' + (((i - 1) % 4) + 1) + ')'; }
 
   function fitHTML(v, long) {
+    if (v.capped) return '<span class="fit t-no"><i class="g g-no"></i>Stays of up to ' + v.capped + ' days here</span>';
     if (v.tier === 'day') return '<span class="fit t-same"><i class="g g-day"></i>' + v.full + ' of ' + v.total + ' sets free</span>';
     if (v.N === 1) return '<span class="fit t-no"><i class="g g-no"></i>Full on ' + fd(S.start) + '</span>';
     if (v.tier === 'same') return '<span class="fit t-same"><i class="g g-same"></i>Same spot all ' + nd(v.N) + (long ? ' · ' + v.full + (v.full === 1 ? ' spot' : ' spots') : '') + '</span>';
@@ -735,12 +739,13 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
     if (mob) {
       h += '<header class="head glass"><div class="band"></div>' + id + df + '</header>';
     } else {
-      h += '<header class="head glass"><div class="band"></div><div class="d-head"><div>' + id + '</div><div style="position:relative">' + df + '<p class="meta" style="margin-top:8px">Stays of up to ' + CAP + ' days at this venue.</p>' + (S.cal ? '<div class="pop">' + calHTML(false) + '</div>' : '') + '</div></div></header>';
+      h += '<header class="head glass"><div class="band"></div><div class="d-head"><div>' + id + '</div><div style="position:relative">' + df + '<p class="meta" style="margin-top:8px">' + capLine(S.venue) + '</p>' + (S.cal ? '<div class="pop">' + calHTML(false) + '</div>' : '') + '</div></div></header>';
     }
     return h;
   }
 
   function bannerHTML(D) {
+    if (D.overCap) return '<button type="button" class="banner warn" data-act="opencal"><span class="dot"></span><span>' + V().name + ' takes stays of up to ' + V().maxStay + ' days. <b>Change dates</b></span></button>';
     if (D.N === 1) return D.full > 0 ? '<div class="banner ok"><span class="dot"></span><span><b>' + D.full + ' sets free</b> on ' + fdw(S.start) + '.</span></div>' : '<div class="banner warn"><span class="dot"></span><span>Fully booked on ' + fdw(S.start) + '.</span></div>';
     if (D.full > 0) return '<div class="banner ok"><span class="dot"></span><span><b>' + D.full + (D.full === 1 ? ' spot is' : ' spots are') + ' free for all ' + nd(D.N) + '.</b> ' + D.part + ' more are free for part of your stay.</span></div>';
     if (D.dflt && D.dflt.moves <= effBudget()) return '<button type="button" class="banner warn" data-act="plan"><span class="dot"></span><span>No single spot is free for all ' + nd(D.N) + '. <b>See a ' + D.dflt.moves + '-move plan</b></span></button>';
@@ -844,12 +849,14 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   }
 
   function panelBody(D) {
+    if (D.overCap) return '<div class="kicker">Stay too long for this venue</div><h2>' + V().name + ' takes stays of up to ' + V().maxStay + ' days</h2><p>Your stay is ' + nd(D.N) + '. Shorten it, or pick a venue that takes longer stays.</p><button type="button" class="cta" data-act="opencal">Change dates</button>' + othersHTML();
     if (S.view === 'set' && S.sel) return setHTML(D);
     if (S.view === 'plan') return planHTML(D);
     return venueHomeHTML(D);
   }
 
   function currentPlan(D) {
+    if (D.overCap) return null;
     if (D.planActive) return D.plan;
     if (S.view === 'set' && S.sel) {
       var inf = D.info[S.sel];
@@ -864,7 +871,8 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
   function calHTML(mob) {
     var ds = S.dStart, de = S.dEnd;
     var h = '<div class="cal">';
-    h += '<div class="cap">Tap your first day, then your last. Stays of up to ' + CAP + ' days' + (S.screen === 'venue' ? ' at this venue' : '') + '.</div><div class="months">';
+    var capN = S.screen === 'venue' ? capOf(S.venue) : SEASON_DAYS;
+    h += '<div class="cap">Tap your first day, then your last. ' + (S.screen === 'venue' ? capLine(S.venue) : 'Any length, up to the end of the season on 31 Aug.') + '</div><div class="months">';
     [6, 7].forEach(function (mo) {
       var first = Date.UTC(2027, mo, 1), n = new Date(Date.UTC(2027, mo + 1, 0)).getUTCDate();
       var lead = (new Date(first).getUTCDay() + 6) % 7;
@@ -873,7 +881,7 @@ h1.vname { font-size: 24px; margin: 10px 0 2px; letter-spacing: -0.01em; text-wr
       for (var i = 0; i < lead; i++) h += '<span></span>';
       for (var dd = 1; dd <= n; dd++) {
         var idx = Math.round((Date.UTC(2027, mo, dd) - SEASON) / DAY);
-        var dis = idx < TODAY || (ds !== null && de === null && idx > ds + CAP - 1);
+        var dis = idx < TODAY || (ds !== null && de === null && idx > ds + capN - 1);
         var c = 'd';
         var lo = ds, hi = de === null ? ds : de;
         if (lo !== null && idx >= lo && idx <= hi) c += (idx === lo || idx === hi) ? ' end' : ' in';
