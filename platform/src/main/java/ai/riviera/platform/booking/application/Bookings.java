@@ -175,10 +175,10 @@ public interface Bookings {
 			String code, VenueId venueId, LocalDate serviceDate, Instant completedAt);
 
 	/**
-	 * The no-show sweep's first statement: mark up to {@code batchSize} nights before {@code today}
-	 * that a {@code CONFIRMED} booking neither attended nor missed as missed, returning how many
-	 * nights moved. The night row's lock serializes against a concurrent check-in of that night, so a
-	 * lost race and a repeated run are alike 0-row no-ops.
+	 * The no-show sweep's first statement: for up to {@code batchSize} {@code CONFIRMED} bookings
+	 * with a night before {@code today} neither attended nor missed, mark every such night missed,
+	 * returning how many nights moved. The booking row's lock serializes against a concurrent
+	 * check-in or cancel of that stay, so a lost race and a repeated run are alike 0-row no-ops.
 	 *
 	 * <p>Batched because the statement runs on the bounded scheduled client: one unbounded
 	 * {@code UPDATE} over a large backlog would be cancelled by the timeout and roll back whole,

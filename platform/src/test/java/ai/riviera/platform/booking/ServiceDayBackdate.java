@@ -23,7 +23,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
  * first.
  *
  * <p>{@code created_at} moves with {@code booking_date}: a real advance booking is
- * created before the date it's for, so an honest fixture backdates both. The mechanism now also
+ * created before the date it's for, so an honest fixture backdates both. The night row the schema
+ * wrote at confirm moves too, or the sweep would still see a night ahead. The mechanism now also
  * serves the abandoned sweep's day-end arm
  * ({@link ai.riviera.platform.booking.application.BookingCutoff#lastEndedServiceDay}).
  */
@@ -37,11 +38,17 @@ final class ServiceDayBackdate {
 		this.jdbc = jdbc;
 	}
 
-	/** Backdate the booking with {@code code} to {@code past}, carrying its held set with it. */
+	/** Backdate the booking with {@code code} to {@code past}, carrying its held set and its night with it. */
 	void moveToPast(String code, LocalDate past) {
 		long setId = jdbc.sql("SELECT set_id FROM booking WHERE code = :c")
 				.param("c", code).query(Long.class).single();
 		clearResidueAt(setId, past);
+		jdbc.sql("""
+				UPDATE booking_night SET night = :past
+				WHERE booking_id = (SELECT id FROM booking WHERE code = :c)
+				  AND night = (SELECT booking_date FROM booking WHERE code = :c)
+				""")
+				.param("past", past).param("c", code).update();
 		jdbc.sql("""
 				UPDATE set_availability SET booking_date = :past
 				WHERE set_id = :set AND booking_date = (SELECT booking_date FROM booking WHERE code = :c)

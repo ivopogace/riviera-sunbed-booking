@@ -365,10 +365,10 @@ any other claim (invariant #2).
   without `SKIP LOCKED`, each backlog ending on its own short batch), so a run cut short resumes
   next tick: it marks every night before today (`Europe/Tirane`) that a `CONFIRMED` booking
   neither attended nor missed as missed, then resolves every `CONFIRMED` booking whose last
-  night has passed (oldest first, its stragglers marked in the same statement). The night
-  statement locks the night row, never the booking — locking the booking there would deadlock
-  against a check-in resolving that stay — so a night can be stamped missed on a stay cancelled
-  in the same instant, a true fact nothing reads. The count it reports is bookings resolved. It
+  night has passed (oldest first, its stragglers marked in the same statement). Both statements,
+  like the check-in, lock the **booking row first** and its night rows after, so a scan, a
+  cancel and the sweep serialize on the stay and none can stamp a night of a stay another has
+  just ended. The count it reports is bookings resolved. It
   writes **no availability row**: freeing a past claim would make it re-claimable
   (invariant #2). Arrivals and daily takings count `COMPLETED` **and `NO_SHOW`** beside
   `CONFIRMED`. The guest-cancel guard is `CONFIRMED`-only; the admin **weather refund**

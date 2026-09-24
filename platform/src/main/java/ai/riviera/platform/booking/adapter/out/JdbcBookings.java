@@ -573,37 +573,40 @@ class JdbcBookings implements Bookings {
 
 	/**
 	 * On {@code sweepJdbc}, not {@code jdbc}: this statement opens a scheduled run and is bounded.
-	 * Batched via a keyed CTE so a run cut off by that bound keeps the batches it committed.
+	 * Batched via a keyed CTE so a run cut off by that bound keeps the batches it committed: a batch
+	 * is {@code batchSize} live stays with a past night still unresolved, and every such night of
+	 * theirs is marked, so the count is at least the stays and "fewer than a batch" still means
+	 * drained.
 	 *
-	 * <p>{@code FOR UPDATE OF c} <strong>without</strong> {@code SKIP LOCKED}, deliberately: skipping
-	 * a contended row would return a short batch, which the caller reads as "backlog drained" and
-	 * stops on — leaving that row unswept until a later run found it uncontended. The night row's
-	 * lock is what makes the stamp exactly-once; {@code b.status} only scopes the work and is not
-	 * locked, because taking the booking row here would deadlock against a check-in resolving that
-	 * stay (which holds the booking row and then takes its past nights). The one consequence — a
-	 * night stamped missed on a stay cancelled in the same instant — is a true statement about the
-	 * night that nothing reads.
+	 * <p>{@code FOR UPDATE} <strong>without</strong> {@code SKIP LOCKED}, deliberately: skipping a
+	 * contended row would return a short batch, which the caller reads as "backlog drained" and
+	 * stops on — leaving that row unswept until a later run found it uncontended. The lock is the
+	 * stay's booking row, whose status the statement guards on, taken before its night rows: the
+	 * same order check-in and the resolve take, so a scan, a cancel and the sweep serialize on the
+	 * stay and none can stamp a night of a stay another has just ended.
 	 *
-	 * <p>Ordered by the night, the partial index's own order, so the batch walks it instead of
-	 * sorting the filtered set and drains the oldest backlog first.
+	 * <p>Ordered by {@code booking_date}, the partial sweep index's own order, so the batch walks it
+	 * instead of sorting the filtered set and drains the oldest backlog first.
 	 */
 	@Override
 	public int markPastNightsMissed(LocalDate today, int batchSize) {
 		return sweepJdbc.sql("""
 				WITH due AS (
-				    SELECT c.booking_id, c.night
-				    FROM booking_night c
-				    JOIN booking b ON b.id = c.booking_id
-				    WHERE b.status = :confirmed AND c.night < :today
-				      AND c.attended_at IS NULL AND c.missed_at IS NULL
-				    ORDER BY c.night
+				    SELECT b.id
+				    FROM booking b
+				    WHERE b.status = :confirmed AND b.booking_date < :today
+				      AND EXISTS (SELECT 1 FROM booking_night u
+				                  WHERE u.booking_id = b.id AND u.night < :today
+				                    AND u.attended_at IS NULL AND u.missed_at IS NULL)
+				    ORDER BY b.booking_date
 				    LIMIT :batch
-				    FOR UPDATE OF c
+				    FOR UPDATE
 				)
 				UPDATE booking_night n
 				SET missed_at = :at
 				FROM due
-				WHERE n.booking_id = due.booking_id AND n.night = due.night
+				WHERE n.booking_id = due.id AND n.night < :today
+				  AND n.attended_at IS NULL AND n.missed_at IS NULL
 				""")
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.param("today", today)
@@ -613,9 +616,8 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
-	 * On {@code sweepJdbc}, like {@link #markPastNightsMissed}, and under the same {@code FOR UPDATE}
-	 * discipline — here on the booking row itself, whose status the resolve guards on. Ordered by
-	 * {@code booking_date}, the partial sweep index's own order.
+	 * On {@code sweepJdbc}, like {@link #markPastNightsMissed}, under the same {@code FOR UPDATE}
+	 * discipline and the same order. The resolve is {@link #RESOLVE_DUE_STAYS_SQL}.
 	 */
 	@Override
 	public int markPastConfirmedAsNoShow(LocalDate today, int batchSize) {

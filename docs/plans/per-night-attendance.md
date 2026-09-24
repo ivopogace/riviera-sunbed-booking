@@ -221,8 +221,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | local IT run | `completed_at = CASE WHEN … THEN :at END` resolved the untyped parameter to text (`42804`) | fixed — `CAST(:at AS TIMESTAMPTZ)` |
 | F-2 | review gate (history + prior-PR reviewers) | the sweep returned only the resolve count, so a full night batch with no due stay read as "drained" | fixed — `markPastNightsMissed` is its own port call and batch loop |
-| F-3 | review gate (history reviewer) | the missed-night statement locks the night row, not the `booking` row its `status` predicate reads | no lock added: the booking lock would deadlock against check-in's resolve; the race is benign and now documented on the statement and in §booking |
+| F-3 | review gate (history reviewer) | the missed-night statement locked the night row, not the `booking` row its `status` predicate reads | fixed — the statement locks the live stays first (`FOR UPDATE` on `booking`), then marks their past nights: the booking-then-nights order every writer now shares |
 | F-4 | review gate (prior-PR reviewer) | `MultiNightAttendanceIT` steps the sweep on a far-past date, the pattern `JdbcBookingTransitionTableIT` already carries | accepted: the class drains first, asserts its own stay's rows, and deletes its fixtures |
+| F-6 | CI (`CancelBookingIT.noShowAnswersWindowClosedLikeAnUnsweptSpentDay`) | `ServiceDayBackdate` moved `booking_date` but not the night the trigger wrote, so the sweep saw a night still ahead | fixed — the helper moves the night with the day |
 | F-5 | overlay RV-PROC-1 | `CONTEXT.md` edited without `domain-modeling` on the skills line; the *Night* entry named a table | fixed — skill loaded, entry re-worded |
 
 ---
@@ -249,6 +250,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/review/domain/ReviewGate.java` — Javadoc
 - `platform/src/test/java/ai/riviera/platform/booking/BookingMigrationIT.java` — V60 shape tests
 - `platform/src/test/java/ai/riviera/platform/booking/MultiNightAttendanceIT.java` — AC-2..AC-5
+- `platform/src/test/java/ai/riviera/platform/booking/ServiceDayBackdate.java` — the backdate helper carries the night row with the service day
 - `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java` — fake `Bookings` signature
 - `platform/src/test/java/ai/riviera/platform/ResponsibilitiesArchitectureTests.java` — rule 9
 - `platform/src/test/java/ai/riviera/responsibilityfixture/booking/adapter/out/FixtureJdbcBookingNights.java` — the module's own SQL
@@ -327,6 +329,7 @@ its "the module itself writes the table" proof needs the adapter's SQL)
 |---|---|---|---|---|---|
 | 2026-09-24 | FK from `booking_night` to `booking` | ITs that delete booking rows | `grep -rn "DELETE FROM booking\b" platform/src/test` | 7 | `ON DELETE CASCADE`; pinned by `BookingMigrationIT.deletingABookingTakesItsNights` |
 | 2026-09-24 | `findCheckInFacts` gains a parameter | implementers of `Bookings` | `grep -rln "implements Bookings" platform/src` | 2 (`JdbcBookings`, the fake in `CreateBookingServiceTest`) | both updated |
+| 2026-09-24 | a fixture rewrites `booking_date` after confirm | tests updating `booking.booking_date` (production never does: `grep -rn "SET.*booking_date" platform/src/main` is empty) | `grep -rn "SET booking_date" platform/src/test` | 1 (`ServiceDayBackdate`) | the helper moves the night row too |
 | 2026-09-24 | `completed_at` re-read as "stay resolved" | readers of `completed_at` | `grep -rn completed_at platform/src/main` | `JdbcCompletedStays`, `JdbcBookings` | Javadoc re-worded; SQL unchanged |
 
 ---
