@@ -106,7 +106,7 @@ class CancelBookingService implements CancelBooking {
 		// module) and the payout listener reverses the accrual proportionally (invariant #9).
 		events.publishEvent(new BookingCancelled(new BookingId(cancelled.id()), cancelled.venueId(),
 				cancelled.setId(), cancelled.bookingDate(), refundMinor, cancelled.currency(),
-				quote.reason()));
+				quote.reason(), cancelled.lastDate()));
 		log.info("cancelled booking {} and released set {} from {} to {} (refund {} minor)", cancelled.id(),
 				cancelled.setId().value(), cancelled.bookingDate(), cancelled.lastDate(), refundMinor);
 

@@ -11,7 +11,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * A booking row loaded by {@link Bookings#findByCode} — the persisted facts the view and cancel use
- * cases (U6) need: identity + lifecycle {@code status}, the {@code (venue, set, date)} ids, the gross
+ * cases (U6) need: identity + lifecycle {@code status}, the {@code (venue, set)} ids, the span
+ * ({@code bookingDate} the first service day, {@code lastDate} the last), the gross
  * {@code amountMinor} paid (integer minor units + ISO currency, invariant #5), and the cancellation
  * audit ({@code cancelledAt} / {@code refundMinor} / {@code cancelReason}). A flat read DTO, not the
  * aggregate.
@@ -37,7 +38,16 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * the free-exit override reads its deadline off it; where the booking came from is the receipt's.
  */
 public record BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
-		CustomerId customerId, LocalDate bookingDate, long amountMinor, String currency,
+		CustomerId customerId, LocalDate bookingDate, LocalDate lastDate, long amountMinor, String currency,
 		Instant cancelledAt, Long refundMinor, Instant requestExpiresAt, RefundReason cancelReason,
 		Instant createdAt, Instant acceptedAt, Instant movedAt) {
+
+	/** A one-day booking: its last day is its first. */
+	public BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
+			CustomerId customerId, LocalDate bookingDate, long amountMinor, String currency,
+			Instant cancelledAt, Long refundMinor, Instant requestExpiresAt, RefundReason cancelReason,
+			Instant createdAt, Instant acceptedAt, Instant movedAt) {
+		this(id, code, status, venueId, setId, customerId, bookingDate, bookingDate, amountMinor, currency,
+				cancelledAt, refundMinor, requestExpiresAt, cancelReason, createdAt, acceptedAt, movedAt);
+	}
 }

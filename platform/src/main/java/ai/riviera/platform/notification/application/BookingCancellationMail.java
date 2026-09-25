@@ -46,5 +46,11 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
  * {@code adapter} packages.
  */
 public record BookingCancellationMail(String bookingCode, String venueName, LocalDate bookingDate,
-		long refundMinor, String currency, RefundReason reason, URI rebookLink) {
+		LocalDate lastDate, long refundMinor, String currency, RefundReason reason, URI rebookLink) {
+
+	/** A one-day booking: its last day is its first. */
+	public BookingCancellationMail(String bookingCode, String venueName, LocalDate bookingDate,
+			long refundMinor, String currency, RefundReason reason, URI rebookLink) {
+		this(bookingCode, venueName, bookingDate, bookingDate, refundMinor, currency, reason, rebookLink);
+	}
 }

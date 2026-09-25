@@ -116,7 +116,7 @@ class ViewBookingService implements ViewBooking {
 								new ai.riviera.platform.payment.vocabulary.BookingRef(b.id())).orElse(null)
 						: null;
 		return new BookingDetail(b.code(), b.status(), b.venueId(), set.venueName(), set.rowLabel(),
-				set.positionNo(), b.bookingDate(), new MoneyView(b.amountMinor(), b.currency()),
+				set.positionNo(), b.bookingDate(), b.lastDate(), new MoneyView(b.amountMinor(), b.currency()),
 				cancellable, withdrawable, quote.beforeCutoff(),
 				new MoneyView(quote.refundMinor(), b.currency()),
 				refunded, refundOutstanding, b.requestExpiresAt(), payment, emailWithheld,

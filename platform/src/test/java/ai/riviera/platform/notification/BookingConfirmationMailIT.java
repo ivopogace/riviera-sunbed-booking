@@ -190,6 +190,32 @@ class BookingConfirmationMailIT {
 				CancellationWindow.FREE, 0));
 	}
 
+	@Test
+	void aStayNamesItsDays() throws Exception {
+		SetRef set = onlineSet();
+		LocalDate first = LocalDate.now().plusYears(1).plusDays(70);
+		String email = "stay-" + GUEST_EMAIL;
+
+		String response = mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"setId": %d, "bookingDate": "%s", "lastDate": "%s",
+								 "contact": {"email": "%s", "fullName": "Holiday Guest", "phone": "+355699"}}
+								""".formatted(set.setId(), first, first.plusDays(2), email)))
+				.andExpect(status().isCreated())
+				.andReturn().getResponse().getContentAsString();
+		String code = JsonPath.read(response, "$.code");
+		long amountMinor = ((Number) JsonPath.read(response, "$.amount.minorUnits")).longValue();
+
+		Awaitility.await().atMost(WAIT).until(() -> countTo(email) == 1L);
+
+		SentEmail sent = mailer.lastTo(email).orElseThrow();
+		assertThat(sent.confirmation()).isEqualTo(new BookingConfirmationMail(
+				code, set.venueName(), first, first.plusDays(2), set.rowLabel(), set.positionNo(),
+				amountMinor, "EUR", CancellationWindow.FREE, 0));
+	}
+
 	/**
 	 * #795 AC-5: a booking born on its own service day is disclosed as non-refundable in its
 	 * confirmation mail. The CLOSED-stamped event is published directly (a real same-day checkout

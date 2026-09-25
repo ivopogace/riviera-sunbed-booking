@@ -87,7 +87,7 @@ class BookingCancellationMailListener {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
 			case BookingMailFacts.Resolved booking -> mails.sendBookingCancellation(booking.toEmail(),
 					new BookingCancellationMail(booking.bookingCode(), booking.venueName(),
-							event.bookingDate(), event.refundMinor(), event.currency(), event.reason(),
+							event.bookingDate(), event.lastDay(), event.refundMinor(), event.currency(), event.reason(),
 							rebookLinkFor(event)));
 		}
 	}

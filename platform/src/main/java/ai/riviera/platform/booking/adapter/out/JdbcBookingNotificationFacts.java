@@ -73,7 +73,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 	public Optional<BookingConfirmationFacts> confirmationFacts(BookingId bookingId) {
 		// confirmed_at, not status — see BookingConfirmationFacts#everConfirmed for why.
 		return jdbc.sql("""
-				SELECT set_id, booking_date, amount_minor, amount_currency, code, customer_id,
+				SELECT set_id, booking_date, last_date, amount_minor, amount_currency, code, customer_id,
 				       confirmed_at IS NOT NULL AS ever_confirmed, created_at
 				FROM booking WHERE id = :id
 				""")
@@ -95,6 +95,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 		return new BookingConfirmationFacts(
 				setId,
 				bookingDate,
+				rs.getObject("last_date", LocalDate.class),
 				rs.getLong("amount_minor"),
 				rs.getString("amount_currency"),
 				rs.getString("code"),

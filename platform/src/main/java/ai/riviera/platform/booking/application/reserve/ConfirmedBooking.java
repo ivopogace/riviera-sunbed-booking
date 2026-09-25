@@ -15,5 +15,5 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * minor units + ISO currency (invariant #5).
  */
 public record ConfirmedBooking(long id, VenueId venueId, SetId setId, LocalDate bookingDate,
-		Instant createdAt, long amountMinor, String currency) {
+		LocalDate lastDate, Instant createdAt, long amountMinor, String currency) {
 }

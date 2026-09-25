@@ -308,16 +308,16 @@ pins it. Rows here cover the calendar, whose contract changes shape.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** phase 2, the events, mails and the booking view carry the span.
+**Next action:** phase 3, the range picker and the venue page's range state.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The map read answers a range | ✅ | `cc793e1` |
-| 1 — The reserve claims every day, all-or-nothing | ✅ | phase-1 commit |
-| 2 — Events, mails and the booking view carry the span | ⏳ | |
-| 3 — Range picker and the venue page's range state | | |
+| 1 — The reserve claims every day, all-or-nothing | ✅ | `c1d6894` |
+| 2 — Events, mails and the booking view carry the span | ✅ | phase-2 commit |
+| 3 — Range picker and the venue page's range state | ⏳ | |
 | 4 — The partly-free tile, the shorten flow, the no-cover banner | | |
 | 5 — Dialog, pay and confirmation for a stay; the mocked e2e | | |
 | 6 — Docs, close-out | | |

@@ -79,7 +79,7 @@ class BookingConfirmationResendService implements BookingConfirmationResend {
 		ConfirmationSendOutcome outcome;
 		try {
 			outcome = mails.sendBookingConfirmation(resolved.toEmail(), new BookingConfirmationMail(
-					resolved.bookingCode(), resolved.venueName(), booking.bookingDate(),
+					resolved.bookingCode(), resolved.venueName(), booking.bookingDate(), booking.lastDate(),
 					resolved.rowLabel(), resolved.positionNo(), booking.amountMinor(), booking.currency(),
 					booking.cancellationWindowAtBirth(), booking.lateCancelRefundBps()));
 		}

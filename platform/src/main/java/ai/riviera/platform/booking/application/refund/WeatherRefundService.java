@@ -114,7 +114,7 @@ class WeatherRefundService implements RefundForWeather {
 			}
 			events.publishEvent(new BookingCancelled(new BookingId(cancelled.id()), cancelled.venueId(),
 					cancelled.setId(), cancelled.bookingDate(), refundMinor, cancelled.currency(),
-					RefundReason.WEATHER));
+					RefundReason.WEATHER, cancelled.lastDate()));
 		});
 		return transitioned;
 	}

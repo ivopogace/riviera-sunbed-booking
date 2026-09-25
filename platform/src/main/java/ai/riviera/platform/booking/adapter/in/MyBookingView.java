@@ -16,12 +16,13 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
  * remodel re-seated the booking, so the row can say the spot changed.
  */
 record MyBookingView(String code, String status, long venueId, String venueName, String rowLabel,
-		int positionNo, String bookingDate, MoneyView amount, Instant requestExpiresAt,
+		int positionNo, String bookingDate, String lastDate, MoneyView amount, Instant requestExpiresAt,
 		MoneyView refundedAmount, Instant movedAt) {
 
 	static MyBookingView of(MyBookingSummary s) {
 		return new MyBookingView(s.code(), s.status().name(), s.venueId().value(), s.venueName(),
-				s.rowLabel(), s.positionNo(), s.bookingDate().toString(), s.amount(), s.requestExpiresAt(),
+				s.rowLabel(), s.positionNo(), s.bookingDate().toString(), s.lastDate().toString(), s.amount(),
+				s.requestExpiresAt(),
 				s.refundedAmount(), s.movedAt());
 	}
 }

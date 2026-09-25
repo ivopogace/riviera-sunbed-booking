@@ -105,7 +105,7 @@ class BookingConfirmationMailListener {
 		try {
 			outcome = mails.sendBookingConfirmation(booking.toEmail(),
 					new BookingConfirmationMail(booking.bookingCode(), booking.venueName(),
-							event.bookingDate(), booking.rowLabel(), booking.positionNo(),
+							event.bookingDate(), event.lastDay(), booking.rowLabel(), booking.positionNo(),
 							event.amountMinor(), event.currency(),
 							event.cancellationWindowAtBirth(), event.lateCancelRefundBps()));
 		}

@@ -23,6 +23,8 @@ import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.reserve.CreateBookingCommand;
+import ai.riviera.platform.booking.application.view.BookingDetail;
+import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
@@ -53,6 +55,9 @@ class RangeBookingIT {
 
 	@Autowired
 	AvailabilityClaim availability;
+
+	@Autowired
+	ViewBooking viewBooking;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -146,6 +151,20 @@ class RangeBookingIT {
 		assertEquals(0L, availabilityRows(set, first, first.plusDays(2)), "every day is released");
 		assertInstanceOf(BookingOutcome.Confirmed.class, createBooking.create(stay(set, first, 3)),
 				"the same range is bookable again");
+	}
+
+	@Test
+	void theCodeGatedViewCarriesTheSpan() {
+		SetId set = onlineSetOf("INSTANT");
+		LocalDate first = firstDay();
+		BookingOutcome.Confirmed booked = assertInstanceOf(BookingOutcome.Confirmed.class,
+				createBooking.create(stay(set, first, 4)));
+
+		BookingDetail detail = viewBooking.byCode(booked.confirmation().code()).orElseThrow();
+
+		assertEquals(first, detail.bookingDate());
+		assertEquals(first.plusDays(3), detail.lastDate());
+		assertEquals(4 * PRICE, detail.amount().minorUnits());
 	}
 
 	@Test

@@ -347,7 +347,7 @@ class JdbcBookings implements Bookings {
 	@Override
 	public Optional<BookingRecord> findByCode(String code) {
 		return jdbc.sql("""
-				SELECT id, code, status, venue_id, set_id, customer_id, booking_date,
+				SELECT id, code, status, venue_id, set_id, customer_id, booking_date, last_date,
 				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at,
 				       cancel_reason, created_at, accepted_at, moved_at
 				FROM booking
@@ -365,7 +365,7 @@ class JdbcBookings implements Bookings {
 		// partial on the non-NULL slice). Same row shape as findByCode so MyBookingsService enriches
 		// uniformly; a guest booking (NULL account_id) can never match.
 		return jdbc.sql("""
-				SELECT id, code, status, venue_id, set_id, customer_id, booking_date,
+				SELECT id, code, status, venue_id, set_id, customer_id, booking_date, last_date,
 				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at,
 				       cancel_reason, created_at, accepted_at, moved_at
 				FROM booking
@@ -390,7 +390,7 @@ class JdbcBookings implements Bookings {
 				BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
 				new VenueId(rs.getLong(COL_VENUE_ID)), new SetId(rs.getLong(COL_SET_ID)),
 				new ai.riviera.platform.customer.vocabulary.CustomerId(rs.getLong(COL_CUSTOMER_ID)),
-				rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+				rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
 				rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
 				cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor,
 				requestExpiresAt == null ? null : requestExpiresAt.toInstant(),
@@ -446,7 +446,7 @@ class JdbcBookings implements Bookings {
 				UPDATE booking
 				SET status = :status, confirmed_at = :at
 				WHERE id = :id AND status = :awaiting
-				RETURNING id, venue_id, set_id, booking_date, created_at, amount_minor, amount_currency
+				RETURNING id, venue_id, set_id, booking_date, last_date, created_at, amount_minor, amount_currency
 				""")
 				.param(PARAM_STATUS, BookingStatus.CONFIRMED.name())
 				.param("at", java.sql.Timestamp.from(confirmedAt))
@@ -455,6 +455,7 @@ class JdbcBookings implements Bookings {
 				.query((rs, rowNum) -> new ConfirmedBooking(
 						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
 						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						rs.getObject(COL_LAST_DATE, LocalDate.class),
 						rs.getTimestamp(COL_CREATED_AT).toInstant(),
 						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
 				.optional();
