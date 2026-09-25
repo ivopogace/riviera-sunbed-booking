@@ -55,10 +55,10 @@ export class VenueService {
   }
 
   /**
-   * The venue and its beach map for a given day. `date` is an ISO `YYYY-MM-DD` string; each set's
-   * availability reflects the authoritative `set_availability` state for that date.
+   * The venue and its beach map for the ISO day `date`, or for the stay `date` to `lastDate` (a
+   * one-day read sends no last day); each set's availability reflects the authoritative
+   * `set_availability` state for those days.
    */
-  /** The beach map for `date`, or for the stay `date` to `lastDate` (a one-day read sends no last day). */
   getVenueMap(venueId: number, date: string, lastDate: string = date): Observable<VenueMapView> {
     const params = new HttpParams().set('date', date);
     return this.http
