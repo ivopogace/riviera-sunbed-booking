@@ -166,6 +166,8 @@ class BookingController {
 						"The venue is closed for the season on this date.");
 				case NO_SUCH_SET -> error(HttpStatus.NOT_FOUND, "NO_SUCH_SET",
 						"No such set.");
+				case RANGE_NOT_OFFERED -> error(HttpStatus.UNPROCESSABLE_ENTITY, "RANGE_NOT_OFFERED",
+						"This venue takes one day at a time online.");
 			};
 		};
 	}

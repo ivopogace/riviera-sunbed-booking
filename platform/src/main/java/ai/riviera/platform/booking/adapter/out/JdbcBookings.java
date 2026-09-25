@@ -192,14 +192,13 @@ class JdbcBookings implements Bookings {
 	 * caller's regenerate-and-retry works WITHOUT aborting the surrounding transaction (a thrown
 	 * violation would poison it). FK/CHECK failures still throw, as they should. RETURNING yields
 	 * the id only on a real insert. {@code request_expires_at} binds NULL on the instant path —
-	 * only a pending request stores a deadline. {@code last_date} is bound to the same day: a reserve
-	 * is still one service day.
+	 * only a pending request stores a deadline.
 	 */
 	private OptionalLong insert(NewBooking b, BookingStatus status, Instant requestExpiresAt) {
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date, last_date,
 				                     amount_minor, amount_currency, status, request_expires_at)
-				VALUES (:code, :venue, :set, :customer, :account, :date, :date, :amount, :currency, :status, :expires)
+				VALUES (:code, :venue, :set, :customer, :account, :date, :last, :amount, :currency, :status, :expires)
 				ON CONFLICT (code) DO NOTHING
 				RETURNING id
 				""")
@@ -209,6 +208,7 @@ class JdbcBookings implements Bookings {
 				.param("customer", b.customerId().value())
 				.param(PARAM_ACCOUNT, accountParam(b))
 				.param("date", b.bookingDate())
+				.param("last", b.lastDate())
 				.param("amount", b.amountMinor())
 				.param("currency", b.amountCurrency())
 				.param(PARAM_STATUS, status.name())

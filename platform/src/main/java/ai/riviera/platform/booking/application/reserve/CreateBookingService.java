@@ -14,6 +14,7 @@ import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
  * The Instant-Book use case (issue #6), now <strong>two-phase</strong> to keep the Stripe network
@@ -89,7 +90,8 @@ class CreateBookingService implements CreateBooking {
 						pending.requestExpiresAt());
 				yield new BookingOutcome.Requested(
 						new BookingConfirmation(pending.code(), BookingStatus.PENDING_REQUEST,
-								pending.set(), command.bookingDate(), false),
+								pending.set(), command.bookingDate(), command.lastDate(),
+								new MoneyView(pending.amountMinor(), pending.set().price().currency()), false),
 						pending.requestExpiresAt());
 			}
 		};
@@ -102,10 +104,11 @@ class CreateBookingService implements CreateBooking {
 	 */
 	private BookingOutcome collect(ReserveOutcome.Reserved reserved, CreateBookingCommand command) {
 		SetBookingInfo set = reserved.set();
+		MoneyView amount = new MoneyView(reserved.amountMinor(), set.price().currency());
 		PaymentOutcome payment;
 		try {
 			payment = checkout.pay(new BookingRef(reserved.bookingId()),
-					new Money(set.price().minorUnits(), set.price().currency()));
+					new Money(reserved.amountMinor(), set.price().currency()));
 		}
 		catch (RuntimeException paymentBlewUp) {
 			// Not just the typed Failed — an unexpected throw (e.g. the payment-row insert failing
@@ -139,7 +142,7 @@ class CreateBookingService implements CreateBooking {
 						&& confirmationMail.isWithheld(reserved.customerId());
 				yield new BookingOutcome.Confirmed(new BookingConfirmation(
 						reserved.code(), BookingStatus.CONFIRMED, set, command.bookingDate(),
-						emailWithheld));
+						command.lastDate(), amount, emailWithheld));
 			}
 			case PaymentOutcome.Pending pending -> {
 				// Real Stripe: a PaymentIntent exists; the booking stays AWAITING_PAYMENT and is
@@ -148,7 +151,7 @@ class CreateBookingService implements CreateBooking {
 						set.setId().value(), command.bookingDate());
 				yield new BookingOutcome.AwaitingPayment(
 						new BookingConfirmation(reserved.code(), BookingStatus.AWAITING_PAYMENT, set,
-								command.bookingDate(), false),
+								command.bookingDate(), command.lastDate(), amount, false),
 						pending.clientSecret(), pending.paymentIntentId());
 			}
 			case PaymentOutcome.Failed failed -> {

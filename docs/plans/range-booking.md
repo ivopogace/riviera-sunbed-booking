@@ -91,7 +91,7 @@ target) · `playwright-cli` (the range journey and the tile geometry in the mock
   D1..D3, then `Rejected.VENUE_CLOSED`; given sales for D1 have closed, then
   `Rejected.BOOKING_CLOSED` (the first day's close is the fence, invariant #4). *Seam:*
   `CreateBooking.create` · *Pinned by:* `SeasonClosureReserveIT.aRangeNeedsEveryDayAdmitted`,
-  `RangeBookingIT.salesCloseIsJudgedOnTheFirstDay`
+  `BookingControllerIT.rangeSalesCloseIsJudgedOnTheFirstDay`
 - [ ] **AC-8:** Given `lastDate` before `bookingDate`, or a span over 62 days, when
   `POST /api/bookings` is called, then `400` with the typed problem and no claim. *Seam:*
   `POST /api/bookings` · *Pinned by:* `BookingControllerIT.rangeBoundsAre400`
@@ -308,15 +308,15 @@ pins it. Rows here cover the calendar, whose contract changes shape.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** phase 1, the reserve claims every day of a range, all or nothing.
+**Next action:** phase 2, the events, mails and the booking view carry the span.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The map read answers a range | ✅ | phase-0 commit |
-| 1 — The reserve claims every day, all-or-nothing | ⏳ | |
-| 2 — Events, mails and the booking view carry the span | | |
+| 0 — The map read answers a range | ✅ | `cc793e1` |
+| 1 — The reserve claims every day, all-or-nothing | ✅ | phase-1 commit |
+| 2 — Events, mails and the booking view carry the span | ⏳ | |
 | 3 — Range picker and the venue page's range state | | |
 | 4 — The partly-free tile, the shorten flow, the no-cover banner | | |
 | 5 — Dialog, pay and confirmation for a stay; the mocked e2e | | |

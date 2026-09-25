@@ -5,14 +5,15 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 
 /**
- * The booking summary every creation outcome shares (#126) — the {@code 201} confirmation and
- * both {@code 202} bodies carry these nine fields identically. Composed into the outcome views
- * and flattened onto the wire with {@code @JsonUnwrapped}, so the JSON stays the flat shape the
- * frontend models and e2e mocks pin ({@code BookingCreationViewsContractTest}). Money is integer
- * minor units (invariant #5); the date an ISO {@code LocalDate} string.
+ * The booking summary every creation outcome shares — the {@code 201} confirmation and both
+ * {@code 202} bodies carry these ten fields identically. Composed into the outcome views and
+ * flattened onto the wire with {@code @JsonUnwrapped}, so the JSON stays the flat shape the
+ * frontend models and e2e mocks pin ({@code BookingCreationViewsContractTest}). {@code amount} is
+ * the stay's total in integer minor units (invariant #5); {@code bookingDate} to {@code lastDate}
+ * are the days, ISO {@code LocalDate} strings.
  */
 record CreatedBookingView(String code, String status, long venueId, String venueName, long setId,
-		String rowLabel, int positionNo, String bookingDate, MoneyView amount) {
+		String rowLabel, int positionNo, String bookingDate, String lastDate, MoneyView amount) {
 
 	static CreatedBookingView of(BookingConfirmation confirmation) {
 		SetBookingInfo set = confirmation.set();
@@ -20,6 +21,7 @@ record CreatedBookingView(String code, String status, long venueId, String venue
 				confirmation.code(), confirmation.status().name(),
 				set.venueId().value(), set.venueName(), set.setId().value(),
 				set.rowLabel(), set.positionNo(),
-				confirmation.bookingDate().toString(), set.price());
+				confirmation.bookingDate().toString(), confirmation.lastDate().toString(),
+				confirmation.amount());
 	}
 }
