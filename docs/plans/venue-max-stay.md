@@ -209,9 +209,9 @@ N/A — no payment in scope (a refused stay creates no intent).
 
 ## Execution status
 
-**Stage pointer:** `implement — all phases built; backend ITs + mocked e2e running; draft PR next`
+**Stage pointer:** `CI gate — draft PR #1220 open; waiting on its first run`
 
-**Next action:** open the draft PR once the backend ITs and the two e2e files are green locally
+**Next action:** when CI is green on the draft, mark ready for review and run the review gate (`pr-gates.md` §1), then the Sonar gate (§2)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -219,7 +219,7 @@ N/A — no payment in scope (a refused stay creates no intent).
 | 1 — the reserve refusal + the map view | ✅ | |
 | 2 — operator console field | ✅ | |
 | 3 — tourist calendar rule + arrival state | ✅ | |
-| 4 — mocked e2e + docs | ⏳ | |
+| 4 — mocked e2e + docs | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
