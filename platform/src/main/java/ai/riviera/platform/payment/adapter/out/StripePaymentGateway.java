@@ -124,7 +124,7 @@ class StripePaymentGateway implements PaymentGateway {
 	 * routinely fire later than that. So the gateway is asked what it already holds against the
 	 * PaymentIntent, and a refund that already returned money is <em>adopted</em>: recorded locally
 	 * and reported as success, never created a second time. Reading the gateway rather than
-	 * {@code payment.refunded_minor} is invariant #8 applied to refunds — the local row is written
+	 * {@code payment_booking.refunded_minor} is invariant #8 applied to refunds — the local row is written
 	 * only after a call returns, so it is silent about exactly the lost-response case this guards.
 	 *
 	 * <p>One intent may collect for several bookings, so every refund this adapter creates is tagged

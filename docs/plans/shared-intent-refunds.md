@@ -259,6 +259,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | CI (backend, one JVM) | `payment_booking_refund_uniq` makes refund-id literals suite-wide keys: `re_full`/`re_part` (`PaymentMigrationIT` vs `JdbcPaymentsIT`) and `re_shared_a`/`re_shared_b` (`JdbcPaymentsIT` vs `StripeWebhookIT`) collided in the shared container; the scoped local runs each had a fresh one | fixed — ids made class-unique; reproduced by running every DB-backed payment class in one invocation |
 | F-2 | review gate (comment reviewer) | `payment/package-info.java` still said the state is one table with two refund columns | fixed — same push |
+| F-3 | review gate (history reviewer) | `StripePaymentGateway#refund` Javadoc still named `payment.refunded_minor` | fixed — 6c3c81c4's follow-up push |
 
 ---
 
