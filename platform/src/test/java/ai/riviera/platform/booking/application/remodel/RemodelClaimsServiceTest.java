@@ -382,6 +382,28 @@ class RemodelClaimsServiceTest {
 	}
 
 	@Test
+	void commitMovesAStayEveryDayAndPublishesItsLastDay() {
+		LocalDate last = IN_TEN_DAYS.plusDays(2);
+		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(
+				new LiveClaim(208, A1.setId(), IN_TEN_DAYS, last, BookingStatus.CONFIRMED, 13500, "EUR")));
+		givenMap(List.of(A1, A2), IN_TEN_DAYS, List.of(A2));
+		when(availability.claim(any(), any())).thenReturn(ClaimOutcome.CLAIMED);
+		when(bookings.moveToSet(any(Long.class), any(), any(), any())).thenReturn(true);
+		when(receipts.store(any())).thenReturn(RECEIPT);
+		RemodelClaim stay = new RemodelClaim(new BookingId(208), ref(A1), IN_TEN_DAYS, last, 13500, "EUR",
+				new RemodelOutcome.Move(ref(A2), 0, 1));
+
+		service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(stay), RefundConfirmation.NONE);
+
+		for (LocalDate day : List.of(IN_TEN_DAYS, IN_TEN_DAYS.plusDays(1), last)) {
+			verify(availability).claim(A2.setId(), day);
+			verify(availability).release(A1.setId(), day);
+		}
+		verify(events).publishEvent(new BookingMoved(new BookingId(208), VENUE, A1.setId(), A2.setId(), IN_TEN_DAYS,
+				last));
+	}
+
+	@Test
 	void commitStillMatchesATokenWhoseMoveWasReRankedAndTolerantOfAVanishedClaim() {
 		when(bookings.findLiveOnSets(Set.of(A1.setId())))
 				.thenReturn(List.of(claim(205, A1, IN_TEN_DAYS, BookingStatus.CONFIRMED)));
