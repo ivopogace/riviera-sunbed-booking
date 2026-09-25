@@ -240,12 +240,20 @@ model in `docs/architecture/domain-model.md`.
   Distinct from **decline** (the venue's no) and **expire** (nobody's answer) only in who acted.
 - **Booking code** — the unguessable bearer credential staff verify on arrival.
 - **Span** — the service days a booking covers, `booking_date` (the first) to `last_date` (the
-  last), inclusive; every booking today is a one-day span, and every day of it is its own
+  last), inclusive; a one-day booking is a one-day span, and every day of it is its own
   `(set, date)` claim, so ending a booking frees every day. The remodel move re-seats every day.
+- **Stay** — a booking of several consecutive days on one set, made once: one code, one payment
+  for the per-day price × the days, one confirmation naming the days, one cancellation. Offered
+  at Instant venues; at most 62 days. Its claim is all or nothing: a day that loses gives back the
+  days already won.
+- **Partly free** — a set free on some days of a stay but not all; the map shows how many, and a
+  tap names which. Never bookable for the stay as picked.
+- **Longest free run** — the most consecutive days of a stay one set is free for; offered as a
+  shorter stay on that spot, and, when no set is free for every day, the venue's longest offer.
 - **Service day** — one day of a stay, held as its own attendance record from the moment the
   booking confirms: unresolved until it is **attended** (staff checked the guest in
   that day) or **missed** (the day passed with no check-in), never both — one per day of the
-  span. Today every booking has exactly one service day, its `booking_date`.
+  span; a one-day booking has exactly one, its `booking_date`.
 - **Check-in** — staff recording, by scanning the booking's QR code or typing its
   booking code, that the guest arrived **today**: stamps today's service day as attended, exactly
   once per service day. On the stay's last service day it also resolves the stay to `COMPLETED`.

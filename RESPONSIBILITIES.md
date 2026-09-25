@@ -20,10 +20,12 @@ review-only.
 ## Main Use Case — Book and manage one sunbed reservation (Instant Book)
 
 1. A tourist browses venues and opens one; they see the beach map and which sets are
-   free for a chosen date. The map and set layout come from **`venue`**; which of those
-   sets are free on that date comes from **`availability`**.
-2. The tourist picks a set + date and gives guest-checkout contact. **`customer`** owns
-   that contact; **`booking`** opens a booking.
+   free for a chosen day, or for every day of a stay (a first and a last day, at most 62 days,
+   Instant venues only): free throughout, **partly free** (with the days it covers), or taken.
+   The map and set layout come from **`venue`**; which of those sets are free on which days
+   comes from **`availability`**.
+2. The tourist picks a set + the days and gives guest-checkout contact. **`customer`** owns
+   that contact; **`booking`** opens one booking for the whole stay.
 3. **`booking`** reserves the set: it asks **`availability`** to claim the `(set, date)`
    row **atomically** — so it can never be double-sold — and commits the booking as
    `AWAITING_PAYMENT`. The claim happens **before** any money moves.
@@ -265,7 +267,11 @@ over time. The standing rules:
   the edge): I own the set total and therefore `free = total − taken` and the gap fill;
   `availability` answers the taken count per day through my `spi`
   (`SetAvailabilityLookup#takenCountsBetween`). It does not reuse the operator-only
-  `/availability` segment. The counts are a snapshot, never a hold (invariant #2), and the
+  `/availability` segment. The map read takes the same optional `lastDate` and answers each set
+  for the stay — `FREE` on every day, `TAKEN` on every day, else `PARTLY_FREE` with its
+  `freeDays` and `takenDates` — off `takenDaysBetween`; a stay is bounded by
+  `venue.vocabulary.StaySpan#MAX_DAYS` (62, the calendar's window), a technical ceiling, not a
+  venue's stay cap, which is that venue's own setting. The counts are a snapshot, never a hold (invariant #2), and the
   read answers past days too — it reports availability, not bookability. Each day also carries
   the `salesOpen` verdict, the same projection as the list and map, display only.
 - **The public review list** (`GET /api/venues/{venueId}/reviews?cursor=`; public,
@@ -329,7 +335,8 @@ be double-sold. Answer the read-side facts through `venue::spi` (`SetAvailabilit
 the state-agnostic taken-set overlay for the public map, the per-set **state tokens**
 (`statesOn`) behind the owner's daily read, and the **taken count per day** over a window
 (`takenCountsBetween`) behind the tourist calendar — how many are held, never how many
-exist. `venue` composes; I answer state. A remodel move is my ordinary writes inside
+exist — and the **taken days per set** over a window (`takenDaysBetween`) behind the tourist
+map for a stay. `venue` composes; I answer state. A remodel move is my ordinary writes inside
 `venue`'s commit transaction — every day of the span claimed on the new set before any day is
 released on the old, never a swap of my own — so a reserve racing the move loses or wins the row
 exactly as it would against any other claim (invariant #2).
@@ -360,7 +367,16 @@ exactly as it would against any other claim (invariant #2).
   leg. Reads that ask "who is booked on D" select by overlap (the staff daily list, the weather
   refund); "still owed from D on" and the retention basis read `last_date`; daily takings still
   land a stay's whole price on its first day, by decision, until the per-day share exists
-  (`docs/architecture/multi-day-stays.md` D4). A reserve is still one day.
+  (`docs/architecture/multi-day-stays.md` D4). **A reserve claims every day of the stay, all or
+  nothing:** `CreateBookingCommand` carries a last day (a `StaySpan`, at most 62 days); the season
+  closure must admit every day, the sales close is judged on the first (invariant #4); a
+  Request-to-Book venue refuses a stay of several days (`RANGE_NOT_OFFERED`) until it can answer
+  one request whole; then the reserve transaction claims one `(set, date)` row per day through
+  `availability`'s one-day `claim`, and a day that loses gives back every day already won before
+  the `SET_TAKEN` answer, so a lost range holds nothing (`ConcurrentRangeReservationIT`). The
+  amount is the per-day price × the days, one PaymentIntent (invariant #5); the cancellation
+  window and the refund are the first day's on the whole amount, one decision (invariant #10);
+  `BookingConfirmed` and `BookingCancelled` carry `lastDate` so the mails name the days.
 - **Attendance is a per-day record, and I am the sole writer of `booking_day`.** One row per
   service day of a stay, written by the schema the moment a `booking` row becomes `CONFIRMED`
   (trigger `booking_day_on_confirm`, V60; V61 widened it to every day from `booking_date` to

@@ -78,7 +78,7 @@ target) · `playwright-cli` (the range journey and the tile geometry in the mock
 - [ ] **AC-4:** Given a confirmed range booking D1..D3, when `BookingConfirmed` is handled, then
   exactly one confirmation mail is sent and its body carries `Days: <D1> – <D3> (3 days)`; a
   one-day booking's mail still carries `Date: <D1>`. *Seam:* `BookingConfirmed` → `Mailer` ·
-  *Pinned by:* `BookingConfirmationMailIT.aStayNamesItsDays`, `SmtpMailerTest.rangeRendersDaysLine`
+  *Pinned by:* `BookingConfirmationMailIT.aStayNamesItsDays`, `SmtpMailerIT.rangeRendersDaysLine`
 - [ ] **AC-5:** Given a confirmed range booking D1..D3, when the guest cancels it, then every day
   is released: reserving the same set for D1..D3 again is `Confirmed`. *Seam:*
   `CancelBooking.cancel` + `CreateBooking.create` · *Pinned by:*
@@ -144,7 +144,7 @@ target) · `playwright-cli` (the range journey and the tile geometry in the mock
 - Request-to-Book stays (#1203): a REQUEST venue refuses a range (`RANGE_NOT_OFFERED`).
 - Per-day daily takings (D4, #1205) and the per-day weather refund (#1210).
 - Any change to `set_availability`, `AvailabilityClaim`'s signature or the claim primitive.
-- A remodel move's mail for a stay (`BookingMoved` still names the first day): follow-up.
+- A remodel move's mail for a stay (`BookingMoved` still names the first day): follow-up #1215.
 
 ## Behavior-parity ledger (retirement / replacement slices only)
 
@@ -308,9 +308,9 @@ pins it. Rows here cover the calendar, whose contract changes shape.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `PR — draft open, CI gate`
 
-**Next action:** phase 5, the dialog, pay and confirmation pages for a stay, and the mocked e2e.
+**Next action:** watch CI on the draft; then merge `origin/main`, mark ready for review, run the review and Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -318,9 +318,9 @@ pins it. Rows here cover the calendar, whose contract changes shape.
 | 1 — The reserve claims every day, all-or-nothing | ✅ | `c1d6894` |
 | 2 — Events, mails and the booking view carry the span | ✅ | `788ea3b` |
 | 3 — Range picker and the venue page's range state | ✅ | `ae908ba` |
-| 4 — The partly-free tile, the shorten flow, the no-cover banner | ✅ | phase-4 commit |
-| 5 — Dialog, pay and confirmation for a stay; the mocked e2e | ⏳ | |
-| 6 — Docs, close-out | | |
+| 4 — The partly-free tile, the shorten flow, the no-cover banner | ✅ | `cd53727` |
+| 5 — Dialog, pay and confirmation for a stay; the mocked e2e | ✅ | phase-5 commit |
+| 6 — Docs, close-out | ⏳ | docs commit; close-out at merge |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -338,7 +338,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/venue/api/VenueCatalog.java` — `findVenueMap(id, first, last)`
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenueCatalog.java` — range overlay
 - `platform/src/main/java/ai/riviera/platform/venue/vocabulary/SetView.java` — `freeDays`, `takenDates`
-- `platform/src/main/java/ai/riviera/platform/venue/vocabulary/StayBounds.java` — the 62-day bound, the one home of the ceiling
+- `platform/src/main/java/ai/riviera/platform/venue/vocabulary/StaySpan.java` — the span value and its 62-day bound, the one home of the ceiling
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueReadController.java` — `lastDate` param
 - `platform/src/main/java/ai/riviera/platform/venue/application/BeachMapReadService.java` — one-day caller of the catalogue
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/CreateBookingRequest.java` — `lastDate`
@@ -347,27 +347,31 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingDetailView.java` — `lastDate`
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcBookings.java` — insert binds `last_date`; confirm/cancel return it
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcBookingNotificationFacts.java` — facts carry `lastDate`
-- `platform/src/main/java/ai/riviera/platform/booking/application/reserve/{CreateBookingCommand,NewBooking,ReserveOutcome,ReserveSetService,CreateBookingService,BookingConfirmation,ConfirmedBooking,ConfirmBookingService}.java` — the range reserve
+- `platform/src/main/java/ai/riviera/platform/booking/application/reserve/{CreateBookingCommand,NewBooking,ReserveOutcome,ReserveSetService,CreateBookingService,BookingConfirmation,ConfirmedBooking,ConfirmBookingService,BookingOutcome}.java` — the range reserve and the new rejected constant
 - `platform/src/main/java/ai/riviera/platform/booking/application/cancel/CancelBookingService.java` — publishes `lastDate`
 - `platform/src/main/java/ai/riviera/platform/booking/application/remodel/RemodelClaimsService.java` — publishes `lastDate` on its cancels
 - `platform/src/main/java/ai/riviera/platform/booking/application/refund/WeatherRefundService.java` — publishes `lastDate`
-- `platform/src/main/java/ai/riviera/platform/booking/application/view/BookingDetail.java` — `lastDate`
-- `platform/src/main/java/ai/riviera/platform/booking/vocabulary/{BookingOutcome,BookingConfirmationFacts,BookingRecord}.java` — the new constant, the span
+- `platform/src/main/java/ai/riviera/platform/booking/application/view/{BookingDetail,BookingRecord,ViewBookingService,MyBookingSummary,MyBookingsService}.java` — `lastDate` on the read side
+- `platform/src/main/java/ai/riviera/platform/booking/adapter/in/MyBookingView.java` — `lastDate`
+- `platform/src/main/java/ai/riviera/platform/booking/vocabulary/BookingConfirmationFacts.java` — the span for a resend
 - `platform/src/main/java/ai/riviera/platform/booking/events/{BookingConfirmed,BookingCancelled}.java` — `lastDate`
 - `platform/src/main/java/ai/riviera/platform/shared/ApiProblem.java` — `RANGE_NOT_OFFERED`
 - `platform/src/main/java/ai/riviera/platform/notification/application/{BookingConfirmationMail,BookingCancellationMail,BookingConfirmationResendService}.java` — `lastDate`
 - `platform/src/main/java/ai/riviera/platform/notification/adapter/in/{BookingConfirmationMailListener,BookingCancellationMailListener}.java` — pass it
 - `platform/src/main/java/ai/riviera/platform/notification/adapter/out/SmtpMailer.java` — the days line
-- `platform/src/test/java/ai/riviera/platform/booking/{ConcurrentRangeReservationIT,RangeBookingIT,BookingControllerIT,SeasonClosureReserveIT}.java`
+- `platform/src/test/java/ai/riviera/platform/booking/{ConcurrentRangeReservationIT,RangeBookingIT,BookingControllerIT,SeasonClosureReserveIT,HiddenVenueSoldBookingRegressionIT}.java`
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcBookingsAccountLinkIT.java` — the widened `NewBooking`
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — the catalogue stub's new signature
 - `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java`
 - `platform/src/test/java/ai/riviera/platform/booking/adapter/in/BookingCreationViewsContractTest.java`
-- `platform/src/test/java/ai/riviera/platform/venue/{VenueRangeMapIT,VenueReadControllerIT}.java`
+- `platform/src/test/java/ai/riviera/platform/venue/{VenueRangeMapIT,VenueReadControllerIT,VenueAvailabilityCalendarIT,VenueCatalogVisibilityIT}.java`
+- `platform/src/test/java/ai/riviera/platform/venue/application/{LiveClaimsTest,VenueAdminServiceTest}.java` — the SPI fakes' new method
 - `platform/src/test/java/ai/riviera/platform/venue/application/BeachMapReadServiceTest.java`
 - `platform/src/test/java/ai/riviera/platform/availability/AvailabilityLookupIT.java`
 - `platform/src/test/java/ai/riviera/platform/notification/{BookingConfirmationMailIT,BookingCancellationMailIT,BookingMailFixtures}.java`
-- `platform/src/test/java/ai/riviera/platform/notification/adapter/out/SmtpMailerTest.java`
+- `platform/src/test/java/ai/riviera/platform/notification/adapter/out/SmtpMailerIT.java` — the days line, rendered over GreenMail
 - `platform/src/test/java/ai/riviera/platform/**/*Test.java|*IT.java` — every fixture that builds one of the widened records (enumerated in phase 1 step 5)
-- `frontend/src/app/shared/{venue-views,booking-date-label,booking-date-label.spec}.ts`
+- `frontend/src/app/shared/{venue-views,booking-date,booking-date.spec,booking-date-label,booking-date-label.spec}.ts`
 - `frontend/src/app/venue/{map-tile,map-tile.spec,stay-runs,stay-runs.spec,partly-free-sheet,partly-free-sheet.spec,venue-map,venue-map.spec,venue-map.contrast.spec,availability-calendar,availability-calendar.spec,venue.service,venue.service.spec}.ts`
 - `frontend/src/app/venue/{venue-map,availability-calendar}.html`
 - `frontend/src/app/booking/{booking.model,booking-dialog,booking-dialog.spec,booking-confirmation,booking-confirmation.spec,booking-pay,booking-pay.spec,request-confirmation,booking-view,my-bookings}.ts`
@@ -436,13 +440,13 @@ Test `AvailabilityLookupIT`, `VenueRangeMapIT`, `VenueReadControllerIT`, `BeachM
 `BookingConfirmationResendService`, the two mail listeners, `SmtpMailer` · Test
 `SmtpMailerTest`, `BookingConfirmationMailIT`, `BookingCancellationMailIT`, the listener tests
 
-- [ ] **Step 1:** `SmtpMailerTest.rangeRendersDaysLine` (AC-4's rendering) and
+- [ ] **Step 1:** `SmtpMailerIT.rangeRendersDaysLine` (AC-4's rendering) and
   `BookingConfirmationMailIT.aStayNamesItsDays`.
 - [ ] **Step 2:** run → FAIL.
 - [ ] **Step 3:** `lastDate` last on both events (nullable, `null` reads as one day); the confirm
   and cancel `RETURNING` clauses yield `last_date`; the mail DTOs and `SmtpMailer`'s `Days:` line
   (`d MMMM yyyy` on both ends, the count); `BookingDetail.lastDate` from `BookingRecord`.
-- [ ] **Step 4:** `./gradlew --console=plain test --tests "*SmtpMailerTest*" --tests
+- [ ] **Step 4:** `./gradlew --console=plain test --tests "*SmtpMailerIT*" --tests
   "*BookingConfirmationMailIT*" --tests "*BookingCancellationMailIT*" --tests
   "*BookingConfirmationMailListenerTest*" --tests "*BookingCancellationMailListenerTest*" --tests
   "*BookingViewIT*" --tests "*EventRegistryDurabilityIT*"` → PASS.
@@ -528,7 +532,7 @@ Test `map-tile.spec.ts`, `stay-runs.spec.ts`, `partly-free-sheet.spec.ts`, `venu
 - [ ] **AC-1..AC-10:** `./gradlew --console=plain test --tests "*ConcurrentRangeReservationIT*"
   --tests "*RangeBookingIT*" --tests "*BookingControllerIT*" --tests "*SeasonClosureReserveIT*"
   --tests "*VenueRangeMapIT*" --tests "*VenueReadControllerIT*" --tests "*AvailabilityLookupIT*"
-  --tests "*BookingConfirmationMailIT*" --tests "*SmtpMailerTest*" --tests
+  --tests "*BookingConfirmationMailIT*" --tests "*SmtpMailerIT*" --tests
   "*CreateBookingServiceTest*"` → PASS. Verified at commit `<sha>`.
 - [ ] **AC-11..AC-15:** `npm test` + `npm run test:a11y` → PASS. Verified at commit `<sha>`.
 - [ ] **AC-16:** `npm run test:e2e:a11y` → PASS. Verified at commit `<sha>`.
