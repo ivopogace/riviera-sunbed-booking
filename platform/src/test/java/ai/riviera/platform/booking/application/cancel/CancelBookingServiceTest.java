@@ -140,6 +140,6 @@ class CancelBookingServiceTest {
 	private static SetBookingInfo setInfo() {
 		return new SetBookingInfo(SET, VENUE, "Miramar", "Front row", 2, Pool.ONLINE,
 				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
-				BookingMode.INSTANT, SeasonClosure.open());
+				BookingMode.INSTANT, SeasonClosure.open(), null);
 	}
 }

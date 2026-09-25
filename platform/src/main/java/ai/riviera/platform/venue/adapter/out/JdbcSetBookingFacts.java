@@ -49,7 +49,8 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 	private static final String SET_BOOKING_INFO_SELECT = """
 			SELECT sp.id AS set_id, sp.venue_id, v.name AS venue_name, sp.row_label,
 			       sp.position_no, sp.pool, sp.price_minor, sp.price_currency, v.booking_cutoff,
-			       v.sales_close, v.booking_mode, v.closed_at, v.reopen_on, v.advance_sales
+			       v.sales_close, v.booking_mode, v.closed_at, v.reopen_on, v.advance_sales,
+			       v.max_stay_days
 			FROM set_position sp
 			JOIN venue v ON v.id = sp.venue_id
 			""";
@@ -133,7 +134,8 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 				rs.getObject("closed_at") == null
 						? SeasonClosure.open()
 						: SeasonClosure.closed(rs.getObject("reopen_on", LocalDate.class),
-								rs.getBoolean("advance_sales")));
+								rs.getBoolean("advance_sales")),
+				rs.getObject("max_stay_days", Integer.class));
 	}
 
 	@Override

@@ -59,7 +59,7 @@ class CancellationPolicyFreeExitTest {
 	private CancellationPolicy policyAt(Instant now) {
 		when(setFacts.setBookingInfo(SET)).thenReturn(Optional.of(new SetBookingInfo(SET, VENUE, "Miramar",
 				"A", 2, Pool.ONLINE, new MoneyView(4500L, "EUR"), LocalTime.of(10, 0), LocalTime.of(16, 0),
-				BookingMode.INSTANT, SeasonClosure.open())));
+				BookingMode.INSTANT, SeasonClosure.open(), null)));
 		when(rates.lateCancelRefundBps(VENUE)).thenReturn(OptionalInt.of(2500));
 		Clock clock = Clock.fixed(now, ZoneId.of("UTC"));
 		return new CancellationPolicy(setFacts, rates, new BookingCutoff(clock), clock);

@@ -152,7 +152,7 @@ class MailDeliveryLookupServiceTest {
 		when(sets.setBookingInfo(SET)).thenReturn(Optional.of(
 				new SetBookingInfo(SET, new VenueId(3L), venueName, "A", 3, Pool.ONLINE,
 						new MoneyView(4500, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
-						BookingMode.INSTANT, SeasonClosure.open())));
+						BookingMode.INSTANT, SeasonClosure.open(), null)));
 	}
 
 	private static CustomerBookingSummary booking(BookingId id, LocalDate date) {

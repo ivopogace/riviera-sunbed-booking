@@ -47,7 +47,7 @@ class BookingMailFactsServiceTest {
 			new BookingNotificationInfo("ABCD2345", CUSTOMER_ID);
 	private static final SetBookingInfo SET = new SetBookingInfo(SET_ID, new VenueId(3L), "Vala Beach",
 			"A", 3, Pool.ONLINE, new MoneyView(4500, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
-			BookingMode.INSTANT, SeasonClosure.open());
+			BookingMode.INSTANT, SeasonClosure.open(), null);
 	private static final GuestContact CONTACT =
 			new GuestContact("tourist@example.com", "Tourist", "+355691234567");
 

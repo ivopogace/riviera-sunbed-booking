@@ -13,10 +13,13 @@ import java.time.LocalTime;
  * <p>{@code bookingMode} tells the reserve flow whether the venue auto-confirms ({@code INSTANT})
  * or the booking starts as a pending request ({@code REQUEST}). {@code seasonClosure} is the venue's
  * closed-for-season state, the second arm of the sales fence — whether it admits the date is
- * {@code booking}'s rule. Returned via {@link SetBookingFacts#setBookingInfo} so booking never reads
- * venue's tables (invariant #11).
+ * {@code booking}'s rule. {@code maxStayDays} is the longest stay the venue takes, in days, or
+ * {@code null} for any length this season; the reserve refuses a longer span before any claim.
+ * Returned via {@link SetBookingFacts#setBookingInfo} so booking never reads venue's tables
+ * (invariant #11).
  */
 public record SetBookingInfo(SetId setId, VenueId venueId, String venueName, String rowLabel,
 		int positionNo, Pool pool, MoneyView price, LocalTime bookingCutoff,
-		LocalTime salesClose, BookingMode bookingMode, SeasonClosure seasonClosure) {
+		LocalTime salesClose, BookingMode bookingMode, SeasonClosure seasonClosure,
+		Integer maxStayDays) {
 }
