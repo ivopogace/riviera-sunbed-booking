@@ -61,80 +61,80 @@ target) · `playwright-cli` (the range journey and the tile geometry in the mock
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given set S is free on D1..D3 and a second client books S on D2 concurrently, when
+- [x] **AC-1:** Given set S is free on D1..D3 and a second client books S on D2 concurrently, when
   a client reserves S for D1..D3, then exactly one of the two is `Confirmed`, the other is
   `Rejected.SET_TAKEN`, and `set_availability` holds either three rows for S (range won) or one
   row on D2 (single day won), never two. *Seam:* `CreateBooking.create` · *Pinned by:*
   `ConcurrentRangeReservationIT.rangeAndSingleDayNeverBothWin`
-- [ ] **AC-2:** Given S is already held on D2, when a client reserves S for D1..D3, then the outcome
+- [x] **AC-2:** Given S is already held on D2, when a client reserves S for D1..D3, then the outcome
   is `Rejected.SET_TAKEN` and S holds no row on D1 or D3 afterwards. *Seam:*
   `CreateBooking.create` · *Pinned by:* `ConcurrentRangeReservationIT.aLostDayLeavesNoPartialClaim`
-- [ ] **AC-3:** Given an Instant venue whose set costs 4500 minor units, when a client reserves it
+- [x] **AC-3:** Given an Instant venue whose set costs 4500 minor units, when a client reserves it
   for D1..D3, then one booking row exists with `booking_date = D1`, `last_date = D3`,
   `amount_minor = 13500`, one code, and the checkout port is asked once for 13500. *Seam:*
   `CreateBooking.create` + `CheckoutPort.pay` · *Pinned by:*
   `RangeBookingIT.aRangeIsOneBookingAtTheTotal` and
   `CreateBookingServiceTest.paysTheStayTotalOnce`
-- [ ] **AC-4:** Given a confirmed range booking D1..D3, when `BookingConfirmed` is handled, then
+- [x] **AC-4:** Given a confirmed range booking D1..D3, when `BookingConfirmed` is handled, then
   exactly one confirmation mail is sent and its body carries `Days: <D1> – <D3> (3 days)`; a
   one-day booking's mail still carries `Date: <D1>`. *Seam:* `BookingConfirmed` → `Mailer` ·
   *Pinned by:* `BookingConfirmationMailIT.aStayNamesItsDays`, `SmtpMailerIT.rangeRendersDaysLine`
-- [ ] **AC-5:** Given a confirmed range booking D1..D3, when the guest cancels it, then every day
+- [x] **AC-5:** Given a confirmed range booking D1..D3, when the guest cancels it, then every day
   is released: reserving the same set for D1..D3 again is `Confirmed`. *Seam:*
   `CancelBooking.cancel` + `CreateBooking.create` · *Pinned by:*
   `RangeBookingIT.cancellingFreesTheWholeRangeForReclaim`
-- [ ] **AC-6:** Given a REQUEST venue, when a client reserves a set for D1..D2, then the outcome is
+- [x] **AC-6:** Given a REQUEST venue, when a client reserves a set for D1..D2, then the outcome is
   `Rejected.RANGE_NOT_OFFERED` and no claim is made; the edge answers `422` code
   `RANGE_NOT_OFFERED`. *Seam:* `CreateBooking.create`, `POST /api/bookings` · *Pinned by:*
   `RangeBookingIT.aRequestVenueRefusesARange`, `BookingControllerIT.rangeAtRequestVenueIs422`
-- [ ] **AC-7:** Given the venue's season closure admits D1 but not D3, when a client reserves
+- [x] **AC-7:** Given the venue's season closure admits D1 but not D3, when a client reserves
   D1..D3, then `Rejected.VENUE_CLOSED`; given sales for D1 have closed, then
   `Rejected.BOOKING_CLOSED` (the first day's close is the fence, invariant #4). *Seam:*
   `CreateBooking.create` · *Pinned by:* `SeasonClosureReserveIT.aRangeNeedsEveryDayAdmitted`,
   `BookingControllerIT.rangeSalesCloseIsJudgedOnTheFirstDay`
-- [ ] **AC-8:** Given `lastDate` before `bookingDate`, or a span over 62 days, when
+- [x] **AC-8:** Given `lastDate` before `bookingDate`, or a span over 62 days, when
   `POST /api/bookings` is called, then `400` with the typed problem and no claim. *Seam:*
   `POST /api/bookings` · *Pinned by:* `BookingControllerIT.rangeBoundsAre400`
-- [ ] **AC-9:** Given sets A (free all of D1..D3), B (held on D2), C (held every day), when the map
+- [x] **AC-9:** Given sets A (free all of D1..D3), B (held on D2), C (held every day), when the map
   is read for D1..D3, then A is `FREE` with `freeDays 3`, B is `PARTLY_FREE` with `freeDays 2`
   and `takenDates [D2]`, C is `TAKEN` with `freeDays 0`; read for D1 alone, every set is `FREE`
   or `TAKEN` with `freeDays` 1 or 0. *Seam:* `VenueCatalog.findVenueMap`,
   `GET /api/venues/{id}?date&lastDate` · *Pinned by:* `VenueRangeMapIT.rangeStatesPerSet`,
   `VenueReadControllerIT.lastDateBoundsAre400`
-- [ ] **AC-10:** Given the lookup asked for sets over D1..D3, then it answers the taken days per
+- [x] **AC-10:** Given the lookup asked for sets over D1..D3, then it answers the taken days per
   set, ascending, held sets only. *Seam:* `SetAvailabilityLookup.takenDaysBetween` · *Pinned by:*
   `AvailabilityLookupIT.takenDaysBetweenListsHeldDaysPerSet`
-- [ ] **AC-11:** Given a `SetView` with `availability PARTLY_FREE`, when the tile renders, then its
+- [x] **AC-11:** Given a `SetView` with `availability PARTLY_FREE`, when the tile renders, then its
   state is `partly`, its classes are exactly the pinned set (available fill and ink, dotted
   border token), the badge shows `freeDays` and is `aria-hidden`, and the tile's accessible name
   carries "free 2 of 3 days". *Seam:* `mapTileState` + `[appMapTile]` + the venue page's tile
   view · *Pinned by:* `map-tile.spec.ts` ("partly free"), `venue-map.spec.ts` ("a partly-free
   set…")
-- [ ] **AC-12:** Given the three themes, the partly border token is ≥ 3:1 against the available
+- [x] **AC-12:** Given the three themes, the partly border token is ≥ 3:1 against the available
   fill over every wash stop and the badge ink ≥ 4.5:1 on the badge fill. *Seam:* token maths
   (`testing/contrast.ts`) · *Pinned by:* `venue-map.contrast.spec.ts` ("partly-free dotted
   border", "free-day badge")
-- [ ] **AC-13:** Given the calendar in "Several days" mode, when the tourist taps D1 then D3, then
+- [x] **AC-13:** Given the calendar in "Several days" mode, when the tourist taps D1 then D3, then
   `chosen` emits `{ first: D1, last: D3 }` and the trigger reads the range with "3 days"; in
   "One day" mode a single tap emits `{ first: D1, last: D1 }` and closes, as today; a last day
   more than 61 days after the first is not selectable; a REQUEST venue offers no mode switch.
   *Seam:* `app-availability-calendar` inputs/outputs · *Pinned by:*
   `availability-calendar.spec.ts` ("range mode…"), `venue-map.spec.ts` ("REQUEST venue…")
-- [ ] **AC-14:** Given a partly-free set is tapped, then the page names the days it covers and
+- [x] **AC-14:** Given a partly-free set is tapped, then the page names the days it covers and
   offers "Shorten my stay to <run>"; accepting reloads the map for that run and opens the booking
   dialog on that set. Given no set is free for the whole range but some are partly free, the page
   names the longest single-set run with the same offer and a link to Discover carrying the first
   day. *Seam:* the venue page (`venue-map.ts`) and `longestFreeRun` · *Pinned by:*
   `stay-runs.spec.ts`, `venue-map.spec.ts` ("shorten…", "no set covers…")
-- [ ] **AC-15:** Given a range D1..D3 and a set at €45, when the dialog opens, then it shows
+- [x] **AC-15:** Given a range D1..D3 and a set at €45, when the dialog opens, then it shows
   "€45 per day × 3 days" and a total of €135, the POST body carries `lastDate: D3`, and the
   confirmation and pay pages show the range. *Seam:* `app-booking-dialog`, `BookingService` ·
   *Pinned by:* `booking-dialog.spec.ts` ("a stay…"), `booking-confirmation.spec.ts`
-- [ ] **AC-16:** The whole range journey — pick a range, read the tile states and the 2px dotted
+- [x] **AC-16:** The whole range journey — pick a range, read the tile states and the 2px dotted
   computed border in each theme, shorten from a partly-free set, book, land on the confirmation —
   runs in the mocked Playwright suite with no serious axe violation. *Seam:* the SPA over mocked
   routes · *Pinned by:* `e2e/range-booking.e2e.ts`
-- [ ] **AC-17:** Every existing single-day IT and spec passes untouched (the equivalence oracle:
+- [x] **AC-17:** Every existing single-day IT and spec passes untouched (the equivalence oracle:
   `ConcurrentReservationIT`, `BookingControllerIT`, `SpanReleaseIT`, `venue-map.spec.ts`,
   `booking-flow.e2e.ts`, `same-day-booking.e2e.ts`).
 
@@ -166,17 +166,17 @@ pins it. Rows here cover the calendar, whose contract changes shape.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A lost day mid-range commits the days already won (`Rejected` is a normal return; the claim joins the reserve transaction) — a partial claim nothing can identify (#2, D5) | high without care | high | The reserve loop releases every day it won before returning `SET_TAKEN`, inside the same transaction; AC-2 pins zero rows on the other days, AC-1 the race | booking | open |
-| R-2 | A race between a range and a single day double-sells a day | low | high | Unchanged primitive: `UNIQUE (set_id, booking_date)` + `ON CONFLICT DO NOTHING` per day; `ConcurrentRangeReservationIT` | availability | open |
-| R-3 | The season closure fence judged on the first day alone admits a stay running into a closure | medium | medium | `admitsDate` for every day (VENUE_CLOSED); sales close on the first day only (#4); AC-7 | booking | open |
-| R-4 | An unbounded range makes the map read ship a per-set taken-day list with no ceiling and the reserve loop unbounded | medium | medium | `MAX_STAY_DAYS = 62`, the calendar's window, on the map read (400) and the reserve (400); documented as a technical bound, not a product maximum (D10, #1204) | venue + booking | open |
-| R-5 | Total = price × days overflows or rounds | low | high | `Math.multiplyExact` on integer minor units (#5); ≤ 62 × a 64-bit price cannot overflow; no rounding exists | booking | open |
-| R-6 | Registry-persisted event payloads (`BookingConfirmed`, `BookingCancelled`) predate `lastDate` | certain | low | Field added last, nullable; every consumer treats `null` as `bookingDate` (one-day) | booking / notification / payout | open |
-| R-7 | The frontend's "shorten" reloads the map and opens the dialog on a set whose day may have been taken meanwhile | medium | low | The dialog opens only if the reloaded set is `FREE`; otherwise the page simply shows the new map (the server still decides, #2) | frontend | open |
-| R-8 | Dotted (partly) and dashed (taken) borders read alike at hairline widths; forced-colors drops fills | medium | medium | 2px dotted via `[&[data-state=partly]]:border-2` on the tile and swatch; the badge count and the fill carry the difference; the e2e asserts the computed `border-top-style: dotted` and `2px`; the contrast spec measures the border in all three themes | frontend | open |
-| R-9 | The badge adds a touch target or breaks the tile's `[appTouchTarget]` box | low | low | `aria-hidden` span positioned inside the existing button; `check-touch-target.mjs` and `touch-targets-tourist.e2e.ts` | frontend | open |
-| R-10 | Error contract: two new codes (`RANGE_NOT_OFFERED` 422; the 400 for bad bounds reuses the typed parsing 400) | certain | low | Built in `ApiProblem`'s switch only; `ErrorContractArchitectureTests` stays green; FE `BookingErrorCode` gains the code with copy | booking | open |
-| R-11 | Sonar: new-code coverage on the FE range code and the JDBC read | medium | low | Vitest units on every new pure function and component branch; `AvailabilityLookupIT` for the read | — | open |
+| R-1 | A lost day mid-range commits the days already won (`Rejected` is a normal return; the claim joins the reserve transaction) — a partial claim nothing can identify (#2, D5) | high without care | high | The reserve loop releases every day it won before returning `SET_TAKEN`, inside the same transaction; AC-2 pins zero rows on the other days, AC-1 the race | booking | closed — `ConcurrentRangeReservationIT`, `CreateBookingServiceTest.aLostDayReleasesTheDaysAlreadyWon` |
+| R-2 | A race between a range and a single day double-sells a day | low | high | Unchanged primitive: `UNIQUE (set_id, booking_date)` + `ON CONFLICT DO NOTHING` per day; `ConcurrentRangeReservationIT` | availability | closed — `ConcurrentRangeReservationIT` (5 repetitions green) |
+| R-3 | The season closure fence judged on the first day alone admits a stay running into a closure | medium | medium | `admitsDate` for every day (VENUE_CLOSED); sales close on the first day only (#4); AC-7 | booking | closed — `SeasonClosureReserveIT.aRangeNeedsEveryDayAdmitted` |
+| R-4 | An unbounded range makes the map read ship a per-set taken-day list with no ceiling and the reserve loop unbounded | medium | medium | `MAX_STAY_DAYS = 62`, the calendar's window, on the map read (400) and the reserve (400); documented as a technical bound, not a product maximum (D10, #1204) | venue + booking | closed — `StaySpan.MAX_DAYS`, `BookingControllerIT.rangeBoundsAre400`, `VenueReadControllerIT.lastDateBoundsAre400` |
+| R-5 | Total = price × days overflows or rounds | low | high | `Math.multiplyExact` on integer minor units (#5); ≤ 62 × a 64-bit price cannot overflow; no rounding exists | booking | closed — `Math.multiplyExact`, `RangeBookingIT.aRangeIsOneBookingAtTheTotal` |
+| R-6 | Registry-persisted event payloads (`BookingConfirmed`, `BookingCancelled`) predate `lastDate` | certain | low | Field added last, nullable; every consumer treats `null` as `bookingDate` (one-day) | booking / notification / payout | closed — one-day constructors + `lastDay()`; `EventRegistryDurabilityIT` green |
+| R-7 | The frontend's "shorten" reloads the map and opens the dialog on a set whose day may have been taken meanwhile | medium | low | The dialog opens only if the reloaded set is `FREE`; otherwise the page simply shows the new map (the server still decides, #2) | frontend | closed — `openPendingSelection` checks `bookable`; F-3 tightened the pending id's lifetime |
+| R-8 | Dotted (partly) and dashed (taken) borders read alike at hairline widths; forced-colors drops fills | medium | medium | 2px dotted via `[&[data-state=partly]]:border-2` on the tile and swatch; the badge count and the fill carry the difference; the e2e asserts the computed `border-top-style: dotted` and `2px`; the contrast spec measures the border in all three themes | frontend | closed — `range-booking.e2e.ts` measures dotted 2px in all three themes; the contrast spec the ratios |
+| R-9 | The badge adds a touch target or breaks the tile's `[appTouchTarget]` box | low | low | `aria-hidden` span positioned inside the existing button; `check-touch-target.mjs` and `touch-targets-tourist.e2e.ts` | frontend | closed — the badge is an aria-hidden span inside the button; `touch-targets-tourist.e2e.ts` green |
+| R-10 | Error contract: two new codes (`RANGE_NOT_OFFERED` 422; the 400 for bad bounds reuses the typed parsing 400) | certain | low | Built in `ApiProblem`'s switch only; `ErrorContractArchitectureTests` stays green; FE `BookingErrorCode` gains the code with copy | booking | closed — `ApiProblem`/controller switch, `ErrorContractArchitectureTests` green |
+| R-11 | Sonar: new-code coverage on the FE range code and the JDBC read | medium | low | Vitest units on every new pure function and component branch; `AvailabilityLookupIT` for the read | — | closed — Sonar gate: see the note below the checklist |
 | R-12 | The remodel move ranks its candidate on a stay's first day; a later day held under the lock throws and the commit rolls back to a 500 (pre-existing, accepted as inert by slice 3, made reachable by this slice) | medium | medium | Out of this PR's files; a span-aware candidate search is its own change → follow-up #1217 | booking | deferred → issue #1217 |
 
 ## Open questions / Assumptions
@@ -311,9 +311,9 @@ pins it. Rows here cover the calendar, whose contract changes shape.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft open, CI gate`
+**Stage pointer:** `DONE — merged via PR #1216`
 
-**Next action:** watch CI on the draft; then merge `origin/main`, mark ready for review, run the review and Sonar gates.
+**Next action:** none — close-out done; follow-ups #1215 (moved mail names the days) and #1217 (span-aware remodel candidate).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -322,8 +322,8 @@ pins it. Rows here cover the calendar, whose contract changes shape.
 | 2 — Events, mails and the booking view carry the span | ✅ | `788ea3b` |
 | 3 — Range picker and the venue page's range state | ✅ | `ae908ba` |
 | 4 — The partly-free tile, the shorten flow, the no-cover banner | ✅ | `cd53727` |
-| 5 — Dialog, pay and confirmation for a stay; the mocked e2e | ✅ | phase-5 commit |
-| 6 — Docs, close-out | ⏳ | docs commit; close-out at merge |
+| 5 — Dialog, pay and confirmation for a stay; the mocked e2e | ✅ | `d98b0913` |
+| 6 — Docs, close-out | ✅ | `07910773`, the review-gate fixes, the close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -331,6 +331,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (repo hygiene) | a two-line inline comment in `venue-map-pan.e2e.ts` (RV-STYLE-1) | fixed-in-`2320d0c9` |
+| F-2 | CI (frontend) | `×` in the dialog's price row is a retired pictorial codepoint | fixed-in-`8ec8cab9` |
+| F-3 | review gate (bug scan) | a stale `pendingSelectSetId` could open the dialog after a failed or superseded shorten | fixed-in-`1186fb10` (spec added) |
+| F-4 | review gate (overlay, RV-FE-9) | `shortenTo` destroyed the sheet holding focus with no synchronous landing | fixed-in-`244702e1` (spec added) |
+| F-5 | review gate (comments) | two stacked doc comments on `VenueService.getVenueMap` | fixed-in-`f3fa37c3` |
+| F-6 | review gate (history) | the controller's class Javadoc omitted `RANGE_NOT_OFFERED` | fixed-in-`89b0c0bd` |
+| F-7 | review gate (prior PRs) | the remodel move ranks its candidate on the first day; a later day held rolls the commit back (pre-existing, made reachable) | deferred → issue #1217 |
+| F-8 | review gate (prior PRs) | `StaySpan` and `booking/domain/ServiceDays` both hold the inclusive-span rule | accepted: `venue` cannot import `booking/domain` (#11); each is the Java twin of a check it owns |
+| F-9 | docs-freshness | five present-tense facts left stale (glossary `Booking`/`Booking date`, the use-case summary, the map's token list, the venue page's TSDoc) | fixed-in-`1f612764` |
+| F-10 | docs-freshness | D12 in `docs/architecture/multi-day-stays.md` says the tile needs "one measured ratio per theme"; the shipped spec measures the border (3:1) and the badge (4.5:1) separately | flagged to the owner — a re-decision note on the epic doc, not this slice's |
 
 ---
 
@@ -392,19 +402,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `JdbcVenueCatalog`, `SetView`, `VenueReadController`, `BeachMapReadService` · Create `StayBounds` ·
 Test `AvailabilityLookupIT`, `VenueRangeMapIT`, `VenueReadControllerIT`, `BeachMapReadServiceTest`
 
-- [ ] **Step 1:** `AvailabilityLookupIT.takenDaysBetweenListsHeldDaysPerSet` — seed A free, B held D2,
+- [x] **Step 1:** `AvailabilityLookupIT.takenDaysBetweenListsHeldDaysPerSet` — seed A free, B held D2,
   C held D1..D3; expect `{B: [D2], C: [D1, D2, D3]}`; an empty id list answers empty without SQL.
-- [ ] **Step 2:** run → FAIL (no such method).
-- [ ] **Step 3:** the SPI method + the JDBC read (`WHERE set_id IN (:ids) AND booking_date BETWEEN
+- [x] **Step 2:** run → FAIL (no such method).
+- [x] **Step 3:** the SPI method + the JDBC read (`WHERE set_id IN (:ids) AND booking_date BETWEEN
   :from AND :to ORDER BY set_id, booking_date`).
-- [ ] **Step 4:** `VenueRangeMapIT.rangeStatesPerSet` (AC-9) → FAIL → `findVenueMap(id, first, last)`
+- [x] **Step 4:** `VenueRangeMapIT.rangeStatesPerSet` (AC-9) → FAIL → `findVenueMap(id, first, last)`
   composes `freeDays = days − taken.size()`, the token; `StayBounds.MAX_DAYS = 62` and the
   controller's `lastDate` param with the two 400s; `BeachMapReadService` passes `date, date`.
-- [ ] **Step 5:** `./gradlew --console=plain test --tests "*AvailabilityLookupIT*" --tests
+- [x] **Step 5:** `./gradlew --console=plain test --tests "*AvailabilityLookupIT*" --tests
   "*VenueRangeMapIT*" --tests "*VenueReadControllerIT*" --tests "*BeachMapReadServiceTest*"
   --tests "*VenueCatalogVisibilityIT*"` → PASS; the structural net → PASS.
-- [ ] **Step 6:** Commit `Multi-day stays 4/12: the map read answers a range per set (#1202)`.
-- [ ] **Step 7:** Execution status.
+- [x] **Step 6:** Commit `Multi-day stays 4/12: the map read answers a range per set (#1202)`.
+- [x] **Step 7:** Execution status.
 
 ## Phase 1 — The reserve claims every day, all-or-nothing
 
@@ -414,25 +424,25 @@ Test `AvailabilityLookupIT`, `VenueRangeMapIT`, `VenueReadControllerIT`, `BeachM
 `ConcurrentRangeReservationIT` (new), `RangeBookingIT` (new), `CreateBookingServiceTest`,
 `BookingControllerIT`, `SeasonClosureReserveIT`, `BookingCreationViewsContractTest`
 
-- [ ] **Step 1:** `RangeBookingIT.aRangeIsOneBookingAtTheTotal` (AC-3) at `CreateBooking.create`
+- [x] **Step 1:** `RangeBookingIT.aRangeIsOneBookingAtTheTotal` (AC-3) at `CreateBooking.create`
   with `new CreateBookingCommand(set, D1, D3, contact)`.
-- [ ] **Step 2:** run → FAIL (no such constructor).
-- [ ] **Step 3:** the command gains `lastDate` (three- and four-arg constructors stay one-day);
+- [x] **Step 2:** run → FAIL (no such constructor).
+- [x] **Step 3:** the command gains `lastDate` (three- and four-arg constructors stay one-day);
   `ReserveSetService`: every day admitted (VENUE_CLOSED), first day bookable (BOOKING_CLOSED),
   REQUEST + span > 1 → `RANGE_NOT_OFFERED`, the claim loop with the compensating release, the
   total via `Math.multiplyExact`; `NewBooking.lastDate`; `JdbcBookings.insert` binds `:last`;
   `ReserveOutcome.Reserved.amountMinor`; `CreateBookingService.collect` pays the total;
   `BookingConfirmation.lastDate` + `amount`.
-- [ ] **Step 4:** `ConcurrentRangeReservationIT` (AC-1, AC-2), `RangeBookingIT` (AC-5, AC-6,
+- [x] **Step 4:** `ConcurrentRangeReservationIT` (AC-1, AC-2), `RangeBookingIT` (AC-5, AC-6,
   AC-7's sales close), `SeasonClosureReserveIT.aRangeNeedsEveryDayAdmitted`,
   `BookingControllerIT` (AC-6's 422, AC-8's 400s), `BookingCreationViewsContractTest`
   (`lastDate` on the wire), `CreateBookingServiceTest.paysTheStayTotalOnce`.
-- [ ] **Step 5:** Generalization pass — population: every constructor of a widened record
+- [x] **Step 5:** Generalization pass — population: every constructor of a widened record
   (`grep -rln "new CreateBookingCommand(\|new NewBooking(\|new BookingConfirmation(\|new
   ReserveOutcome.Reserved(" platform/src`); every mail/view that prints a booking's date.
-- [ ] **Step 6:** Commit `Multi-day stays 4/12: the reserve claims every day of a range, all or
+- [x] **Step 6:** Commit `Multi-day stays 4/12: the reserve claims every day of a range, all or
   nothing (#1202)`.
-- [ ] **Step 7:** Execution status.
+- [x] **Step 7:** Execution status.
 
 ## Phase 2 — Events, mails and the booking view carry the span
 
@@ -443,38 +453,38 @@ Test `AvailabilityLookupIT`, `VenueRangeMapIT`, `VenueReadControllerIT`, `BeachM
 `BookingConfirmationResendService`, the two mail listeners, `SmtpMailer` · Test
 `SmtpMailerTest`, `BookingConfirmationMailIT`, `BookingCancellationMailIT`, the listener tests
 
-- [ ] **Step 1:** `SmtpMailerIT.rangeRendersDaysLine` (AC-4's rendering) and
+- [x] **Step 1:** `SmtpMailerIT.rangeRendersDaysLine` (AC-4's rendering) and
   `BookingConfirmationMailIT.aStayNamesItsDays`.
-- [ ] **Step 2:** run → FAIL.
-- [ ] **Step 3:** `lastDate` last on both events (nullable, `null` reads as one day); the confirm
+- [x] **Step 2:** run → FAIL.
+- [x] **Step 3:** `lastDate` last on both events (nullable, `null` reads as one day); the confirm
   and cancel `RETURNING` clauses yield `last_date`; the mail DTOs and `SmtpMailer`'s `Days:` line
   (`d MMMM yyyy` on both ends, the count); `BookingDetail.lastDate` from `BookingRecord`.
-- [ ] **Step 4:** `./gradlew --console=plain test --tests "*SmtpMailerIT*" --tests
+- [x] **Step 4:** `./gradlew --console=plain test --tests "*SmtpMailerIT*" --tests
   "*BookingConfirmationMailIT*" --tests "*BookingCancellationMailIT*" --tests
   "*BookingConfirmationMailListenerTest*" --tests "*BookingCancellationMailListenerTest*" --tests
   "*BookingViewIT*" --tests "*EventRegistryDurabilityIT*"` → PASS.
-- [ ] **Step 5:** Generalization pass — population: every `new BookingConfirmed(`/`new
+- [x] **Step 5:** Generalization pass — population: every `new BookingConfirmed(`/`new
   BookingCancelled(` in tests (`grep -rln` above).
-- [ ] **Step 6:** Commit `Multi-day stays 4/12: the confirmed and cancelled events, the mails and
+- [x] **Step 6:** Commit `Multi-day stays 4/12: the confirmed and cancelled events, the mails and
   the booking view name the stay's days (#1202)`.
-- [ ] **Step 7:** Execution status.
+- [x] **Step 7:** Execution status.
 
 ## Phase 3 — Range picker and the venue page's range state
 
 **Files:** Modify `shared/venue-views.ts`, `shared/booking-date-label.ts`, `venue/venue.service.ts`,
 `venue/availability-calendar.ts|.html`, `venue/venue-map.ts|.html` · Test the matching specs
 
-- [ ] **Step 1:** `booking-date-label.spec.ts` (`formatStay`), `availability-calendar.spec.ts`
+- [x] **Step 1:** `booking-date-label.spec.ts` (`formatStay`), `availability-calendar.spec.ts`
   "range mode: first tap then last tap emits the range" (AC-13), `venue-map.spec.ts` "?lastDate
   seeds a range and the trigger reads it", "a REQUEST venue offers no stay mode".
-- [ ] **Step 2:** `npm test -- --include src/app/venue/availability-calendar.spec.ts` → FAIL.
-- [ ] **Step 3:** `chosen` emits `{ first, last }`; the `rangeAllowed` input; the mode segmented
+- [x] **Step 2:** `npm test -- --include src/app/venue/availability-calendar.spec.ts` → FAIL.
+- [x] **Step 3:** `chosen` emits `{ first, last }`; the `rangeAllowed` input; the mode segmented
   control (`shared/segmented-control.ts`); `pendingFirst`; cells beyond `first + 61` not
   selectable in stay mode; the footer copy; `venue-map`: `selectedLastDate`, `routeKey` with
   `lastDate`, `load()` with both, the trigger and count copy, `getVenueMap(id, first, last)`.
-- [ ] **Step 4:** `npm test -- --include src/app/venue/**` and `npm run lint` → PASS.
-- [ ] **Step 5:** Commit `Multi-day stays 4/12: the venue page picks a first and a last day (#1202)`.
-- [ ] **Step 6:** Execution status.
+- [x] **Step 4:** `npm test -- --include src/app/venue/**` and `npm run lint` → PASS.
+- [x] **Step 5:** Commit `Multi-day stays 4/12: the venue page picks a first and a last day (#1202)`.
+- [x] **Step 6:** Execution status.
 
 ## Phase 4 — The partly-free tile, the shorten flow, the no-cover banner
 
@@ -482,18 +492,18 @@ Test `AvailabilityLookupIT`, `VenueRangeMapIT`, `VenueReadControllerIT`, `BeachM
 `venue/venue-map.contrast.spec.ts` · Create `venue/stay-runs.ts`, `venue/partly-free-sheet.ts` ·
 Test `map-tile.spec.ts`, `stay-runs.spec.ts`, `partly-free-sheet.spec.ts`, `venue-map.spec.ts`
 
-- [ ] **Step 1:** `map-tile.spec.ts` "partly free" (AC-11: state, pinned class string, legend
+- [x] **Step 1:** `map-tile.spec.ts` "partly free" (AC-11: state, pinned class string, legend
   row); `stay-runs.spec.ts` (runs from `takenDates`; longest run, ties by earliest start);
   `venue-map.contrast.spec.ts` (AC-12); `venue-map.spec.ts` "a partly-free set carries 'free k of
   N days' and opens the sheet", "shorten reloads and opens the dialog", "no set covers → longest
   run + Discover link".
-- [ ] **Step 2:** run → FAIL.
-- [ ] **Step 3:** the state + tokens + badge; the sheet; the banner; `pendingSelectSetId`.
-- [ ] **Step 4:** `npm test -- --include src/app/venue/**`, `npm run test:a11y`, `npm run lint`,
+- [x] **Step 2:** run → FAIL.
+- [x] **Step 3:** the state + tokens + badge; the sheet; the banner; `pendingSelectSetId`.
+- [x] **Step 4:** `npm test -- --include src/app/venue/**`, `npm run test:a11y`, `npm run lint`,
   `node scripts/check-touch-target.mjs --files …`, `node scripts/check-focus-posture.mjs` → PASS.
-- [ ] **Step 5:** Commit `Multi-day stays 4/12: a partly-free set is a dotted tile with a free-day
+- [x] **Step 5:** Commit `Multi-day stays 4/12: a partly-free set is a dotted tile with a free-day
   count (#1202)`.
-- [ ] **Step 6:** Execution status.
+- [x] **Step 6:** Execution status.
 
 ## Phase 5 — Dialog, pay and confirmation for a stay; the mocked e2e
 
@@ -501,24 +511,24 @@ Test `map-tile.spec.ts`, `stay-runs.spec.ts`, `partly-free-sheet.spec.ts`, `venu
 `booking-pay.ts`, `request-confirmation.ts`, `booking-view.ts`, `my-bookings.ts` · Create
 `e2e/range-booking.e2e.ts` · Test the matching specs, `e2e/venue-map-pan.e2e.ts` (legend row)
 
-- [ ] **Step 1:** `booking-dialog.spec.ts` "a stay shows the per-day price and the total and posts
+- [x] **Step 1:** `booking-dialog.spec.ts` "a stay shows the per-day price and the total and posts
   lastDate" (AC-15); `booking-confirmation.spec.ts` "a stay reads its range".
-- [ ] **Step 2:** run → FAIL.
-- [ ] **Step 3:** the `lastDate` input, `dayCount`/`total`; the pages render `formatStay`.
-- [ ] **Step 4:** `e2e/range-booking.e2e.ts` (AC-16) with
+- [x] **Step 2:** run → FAIL.
+- [x] **Step 3:** the `lastDate` input, `dayCount`/`total`; the pages render `formatStay`.
+- [x] **Step 4:** `e2e/range-booking.e2e.ts` (AC-16) with
   `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- range-booking` and
   the touched suites (`booking-flow`, `same-day-booking`, `venue-map-pan`, `touch-targets-tourist`).
-- [ ] **Step 5:** Commit `Multi-day stays 4/12: a stay is booked, paid and confirmed as one (#1202)`.
-- [ ] **Step 6:** Execution status.
+- [x] **Step 5:** Commit `Multi-day stays 4/12: a stay is booked, paid and confirmed as one (#1202)`.
+- [x] **Step 6:** Execution status.
 
 ## Phase 6 — Docs, close-out
 
-- [ ] `RESPONSIBILITIES.md` § booking ("a reserve is still one day" → the range rule), § availability
+- [x] `RESPONSIBILITIES.md` § booking ("a reserve is still one day" → the range rule), § availability
   (the per-set range read), § venue (the range map read); `CONTEXT.md` (*stay*, *partly free*,
   *longest free run*); `git rm docs/plans/remodel-per-claim.md`.
-- [ ] `riviera-docs-freshness` over the PR range; the counting sweep for `SetAvailabilityLookup`'s
+- [x] `riviera-docs-freshness` over the PR range; the counting sweep for `SetAvailabilityLookup`'s
   method count and `BookingOutcome.Rejected`'s constants.
-- [ ] Draft PR at the first phase commit → ready for review once built and `origin/main` merged;
+- [x] Draft PR at the first phase commit → ready for review once built and `origin/main` merged;
   review gate; Sonar gate; close-out per `pr-gates.md` §3.
 
 ---
@@ -532,14 +542,14 @@ Test `map-tile.spec.ts`, `stay-runs.spec.ts`, `partly-free-sheet.spec.ts`, `venu
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-10:** `./gradlew --console=plain test --tests "*ConcurrentRangeReservationIT*"
+- [x] **AC-1..AC-10:** `./gradlew --console=plain test --tests "*ConcurrentRangeReservationIT*"
   --tests "*RangeBookingIT*" --tests "*BookingControllerIT*" --tests "*SeasonClosureReserveIT*"
   --tests "*VenueRangeMapIT*" --tests "*VenueReadControllerIT*" --tests "*AvailabilityLookupIT*"
   --tests "*BookingConfirmationMailIT*" --tests "*SmtpMailerIT*" --tests
-  "*CreateBookingServiceTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-11..AC-15:** `npm test` + `npm run test:a11y` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-16:** `npm run test:e2e:a11y` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-17:** CI green on the PR head.
+  "*CreateBookingServiceTest*"` → PASS locally against the hook's dockerd (phases 0–2), and in CI.
+- [x] **AC-11..AC-15:** `npm test` + `npm run test:a11y` → PASS (1081 a11y/contrast specs; the venue and booking specs green after every fix).
+- [x] **AC-16:** `npm run test:e2e:a11y -- range-booking venue-map-pan booking-flow same-day-booking availability-calendar touch-targets-tourist` → PASS locally; CI's mocked suite on the PR head.
+- [x] **AC-17:** CI green on the PR head (the frontend and backend jobs run every existing test).
 
 ## Self-review checklist
 
