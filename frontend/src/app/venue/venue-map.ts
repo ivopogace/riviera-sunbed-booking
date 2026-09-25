@@ -114,11 +114,11 @@ interface VenueHeader {
 }
 
 /**
- * Read-only visual beach map for one venue on a chosen day. Renders the glass venue header
- * (with description + cutoff explainer), a per-date availability summary, and the positioned,
- * row-major set grid coloured by tier and availability. The map owns the selected date:
- * changing it re-fetches that date's availability and seeds the booking dialog's date, so
- * the two always agree. Reactive to in-place `:id`/`?date` route changes — the
+ * Read-only visual beach map for one venue on a chosen day or stay. Renders the glass venue
+ * header (with description + cutoff explainer), an availability summary for the days, and the
+ * positioned, row-major set grid coloured by tier and availability. The map owns the selected
+ * days: changing them re-fetches their availability and seeds the booking dialog's days, so
+ * the two always agree. Reactive to in-place `:id`/`?date`/`?lastDate` route changes — the
  * router reuses the instance, so a change resets per-venue state and re-loads like a fresh
  * mount. Money is rendered from integer minor units; tile state is conveyed
  * by an accessible name, not colour alone (WCAG AA). The grid chrome — wash, rails, zone

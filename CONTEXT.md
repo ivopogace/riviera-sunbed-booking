@@ -205,8 +205,8 @@ model in `docs/architecture/domain-model.md`.
 
 ## Booking & availability
 
-- **Booking date** — the single full day a set is booked for; a `LocalDate` in
-  `Europe/Tirane`.
+- **Booking date** — the first full day a set is booked for (the only day of a one-day booking;
+  see **Span**); a `LocalDate` in `Europe/Tirane`.
 - **Availability** — the live state of one set on one date: `FREE`,
   `BOOKED_ONLINE`, or `STAFF_MARKED` (walk-in). The single source of truth that the
   beach map renders. Keyed by `(set, date)`.
@@ -216,8 +216,8 @@ model in `docs/architecture/domain-model.md`.
   are worth choosing*, so a tourist picks a date already knowing the answer instead of
   learning it after the map redraws. **A snapshot, never a hold** — a day showing free
   capacity can be full by the time a set is claimed; only the claim decides.
-- **Booking** — a tourist's reservation of a specific set for a specific date, with
-  a status, a price paid, a booking code, and a cancellation deadline.
+- **Booking** — a tourist's reservation of a specific set for a span of one or more dates,
+  with a status, a price paid, a booking code, and a cancellation deadline.
 - **Booking status** — the lifecycle state of a booking. Canonical set (mirrored 1:1
   by the `booking.status` CHECK constraint, V19 — keep enum and SQL in lockstep):
   `PENDING_REQUEST`, `AWAITING_PAYMENT`, `CONFIRMED`, `CANCELLED`, `COMPLETED`,

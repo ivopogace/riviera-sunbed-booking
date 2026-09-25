@@ -26,9 +26,10 @@ review-only.
    comes from **`availability`**.
 2. The tourist picks a set + the days and gives guest-checkout contact. **`customer`** owns
    that contact; **`booking`** opens one booking for the whole stay.
-3. **`booking`** reserves the set: it asks **`availability`** to claim the `(set, date)`
-   row **atomically** — so it can never be double-sold — and commits the booking as
-   `AWAITING_PAYMENT`. The claim happens **before** any money moves.
+3. **`booking`** reserves the set: it asks **`availability`** to claim one `(set, date)`
+   row per day of the stay **atomically** — so it can never be double-sold — giving back
+   the days already won when a day loses, and commits the booking as `AWAITING_PAYMENT`.
+   The claim happens **before** any money moves.
 4. **`booking`** hands off to **`payment`**, which creates a Stripe PaymentIntent.
    `booking` never touches Stripe itself.
 5. Stripe confirms out-of-band. **`payment`** reconciles the result from the
@@ -303,7 +304,7 @@ over time. The standing rules:
   (`GET /api/venues/{venueId}/availability?date=`; owner-asserted, 403-before-existence):
   I own the set list and the map composition; `availability` answers the per-`(set, date)`
   state tokens through my `spi` (`SetAvailabilityLookup#statesOn`). The public tourist map
-  stays state-agnostic (`FREE`/`TAKEN`) — hold type never reaches the public surface.
+  stays state-agnostic (`FREE`/`PARTLY_FREE`/`TAKEN`) — hold type never reaches the public surface.
 - **The owner's beach-map read** (`GET /api/venues/{venueId}/beach-map`; owner-asserted,
   403-before-existence; the layout editor's seed): the map exactly as the tourist read composes
   it — fence included, so a hidden venue reads the same on both — plus a sparse `locks` list, one
