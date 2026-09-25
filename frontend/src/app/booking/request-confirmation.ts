@@ -2,7 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { CardGlass } from '../shared/card-glass';
-import { formatBookingDate } from '../shared/booking-date-label';
+import { formatStay } from '../shared/booking-date-label';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
@@ -105,7 +105,7 @@ export class RequestConfirmation {
   /** The booking date, formatted once per request (memoized like the dialog/pay siblings). */
   protected readonly dateLabel = computed(() => {
     const r = this.requested();
-    return r ? formatBookingDate(r.bookingDate) : '';
+    return r ? formatStay(r.bookingDate, r.lastDate ?? r.bookingDate) : '';
   });
 
   /** The venue's response deadline rendered in Europe/Tirane wall-clock time (invariant #6). */

@@ -18,6 +18,8 @@ export interface BookingContact {
 export interface CreateBookingRequest {
   readonly setId: number;
   readonly bookingDate: string; // ISO YYYY-MM-DD
+  /** The stay's last day, ISO; absent for one day. */
+  readonly lastDate?: string;
   readonly contact: BookingContact;
 }
 
@@ -30,6 +32,8 @@ export interface BookingConfirmation {
   readonly rowLabel: string;
   readonly positionNo: number;
   readonly bookingDate: string;
+  /** The stay's last day, ISO; absent on a payload from before stays, which is one day. */
+  readonly lastDate?: string;
   readonly amount: MoneyView;
   /** The confirmation email was suppressed, so this code is the guest's only record. */
   readonly emailWithheld: boolean;
@@ -61,6 +65,8 @@ export interface PaymentHandoff {
   readonly rowLabel: string;
   readonly positionNo: number;
   readonly bookingDate: string;
+  /** The stay's last day, ISO; absent on a payload from before stays, which is one day. */
+  readonly lastDate?: string;
   readonly amount: MoneyView;
   readonly clientSecret: string;
   readonly paymentIntentId: string;
@@ -87,6 +93,8 @@ export interface RequestedBooking {
   readonly rowLabel: string;
   readonly positionNo: number;
   readonly bookingDate: string;
+  /** The stay's last day, ISO; absent on a payload from before stays, which is one day. */
+  readonly lastDate?: string;
   readonly amount: MoneyView;
   readonly requestExpiresAt: string;
 }
@@ -117,6 +125,8 @@ export interface BookingDetail {
   readonly rowLabel: string;
   readonly positionNo: number;
   readonly bookingDate: string;
+  /** The stay's last day, ISO; absent on a payload from before stays, which is one day. */
+  readonly lastDate?: string;
   readonly amount: MoneyView;
   readonly cancellable: boolean;
   /** The guest may retract this still-open request — separate from `cancellable`. */
@@ -253,6 +263,8 @@ export interface MyBookingSummary {
   readonly rowLabel: string;
   readonly positionNo: number;
   readonly bookingDate: string;
+  /** The stay's last day, ISO; absent on a payload from before stays, which is one day. */
+  readonly lastDate?: string;
   readonly amount: MoneyView;
   readonly requestExpiresAt: string | null;
   /**
@@ -325,6 +337,7 @@ export type BookingErrorCode =
   | 'SET_NOT_BOOKABLE_ONLINE'
   | 'BOOKING_CLOSED'
   | 'VENUE_CLOSED'
+  | 'RANGE_NOT_OFFERED'
   | 'NO_SUCH_SET'
   | 'INVALID_REQUEST'
   | 'UNKNOWN';

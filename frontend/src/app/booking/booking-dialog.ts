@@ -16,7 +16,8 @@ import { firstValueFrom } from 'rxjs';
 
 import { ProofOfWork } from '../core/proof-of-work';
 import { todayBookingDate } from '../shared/booking-date';
-import { formatBookingDate } from '../shared/booking-date-label';
+import { daysBetween } from '../shared/booking-date';
+import { formatStay } from '../shared/booking-date-label';
 import { FieldErrorFor } from '../shared/field-error-for';
 import { FieldGlass } from '../shared/field-glass';
 import {
@@ -166,7 +167,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
             <div
               class="ro-row flex items-center justify-between border-b border-b-riv-card-track py-[9px] text-[14.5px] first:pt-0"
             >
-              <span class="ro-key text-riv-card-ink-soft">Date</span>
+              <span class="ro-key text-riv-card-ink-soft">{{ isStay() ? 'Days' : 'Date' }}</span>
               <strong class="ro-val text-riv-card-ink" data-testid="dialog-date">{{
                 dateLabel()
               }}</strong>
@@ -181,6 +182,18 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                 >{{ price() }}</strong
               >
             </div>
+            @if (isStay()) {
+              <div
+                class="ro-row flex items-center justify-between border-b border-b-riv-card-track py-[9px] text-[14.5px] first:pt-0"
+              >
+                <span class="ro-key text-riv-card-ink-soft">Total</span>
+                <strong
+                  class="ro-val accent text-[16px] text-riv-accent-ink"
+                  data-testid="dialog-total"
+                  >{{ total() }}</strong
+                >
+              </div>
+            }
 
             <div class="fields mt-3 flex flex-col gap-2.5">
               <label class="field flex flex-col gap-1.5">
@@ -278,7 +291,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               <div
                 class="sum-row flex items-center justify-between gap-3 border-b border-b-riv-card-track py-[11px] text-[14.5px] first:pt-0"
               >
-                <dt class="text-riv-card-ink-soft">Date</dt>
+                <dt class="text-riv-card-ink-soft">{{ isStay() ? 'Days' : 'Date' }}</dt>
                 <dd class="text-right font-bold text-riv-card-ink">{{ dateLabel() }}</dd>
               </div>
               <div
@@ -295,7 +308,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                   class="text-right text-[26px] font-bold tracking-[-0.02em] text-riv-accent-ink"
                   data-testid="review-total"
                 >
-                  {{ price() }}
+                  {{ total() }}
                 </dd>
               </div>
             </dl>
@@ -387,8 +400,10 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
 })
 export class BookingDialog implements OnInit {
   readonly set = input.required<SetView>();
-  /** The day the map is showing (ISO YYYY-MM-DD); seeds the POST body and the read-only date row. */
+  /** The first day the map is showing (ISO YYYY-MM-DD); seeds the POST body and the read-only date row. */
   readonly date = input.required<string>();
+  /** The last day of the stay; absent or equal to the first for one day. */
+  readonly lastDate = input<string | undefined>(undefined);
   /** The venue's booking mode: `REQUEST` swaps the CTA/copy to Request-to-Book. */
   readonly mode = input<BookingMode>('INSTANT');
   /** The venue name, shown in the gradient header (SetView carries none). */
@@ -436,7 +451,20 @@ export class BookingDialog implements OnInit {
 
   protected readonly isRequest = computed(() => this.mode() === 'REQUEST');
   protected readonly tierLabel = computed(() => touristTierLabel(this.set().tier));
-  protected readonly dateLabel = computed(() => formatBookingDate(this.date()));
+  /** The stay's last day, the first itself for one day. */
+  protected readonly lastDay = computed(() => this.lastDate() ?? this.date());
+  protected readonly dayCount = computed(() => daysBetween(this.date(), this.lastDay()));
+  protected readonly isStay = computed(() => this.dayCount() > 1);
+  protected readonly dateLabel = computed(() => formatStay(this.date(), this.lastDay()));
+  /** The set's per-day price. */
+  protected readonly perDay = computed(() => formatMoney(this.set().price));
+  /** The stay's total: the per-day price × the days (integer minor units, invariant #5). */
+  protected readonly total = computed(() =>
+    formatMoney({
+      minorUnits: this.set().price.minorUnits * this.dayCount(),
+      currency: this.set().price.currency,
+    }),
+  );
   protected readonly primaryLabel = computed(() => {
     if (this.step() === 1) {
       return 'Continue';
@@ -478,8 +506,9 @@ export class BookingDialog implements OnInit {
     this.model.update((m) => ({ ...m, date: this.date() }));
   }
 
+  /** The Price row: the per-day rate, spelled out as such for a stay. */
   protected price(): string {
-    return formatMoney(this.set().price);
+    return this.isStay() ? `${this.perDay()} per day × ${this.dayCount()} days` : this.perDay();
   }
 
   protected requestClose(): void {
@@ -532,6 +561,7 @@ export class BookingDialog implements OnInit {
             {
               setId: this.set().id,
               bookingDate: m.date,
+              ...(this.isStay() ? { lastDate: this.lastDay() } : {}),
               contact: { email: m.email, fullName: m.fullName, phone: m.phone },
             },
             this.terms.hasValue() ? this.terms.value() : undefined,
@@ -571,6 +601,8 @@ export class BookingDialog implements OnInit {
         return this.date() === todayBookingDate(new Date())
           ? 'Online sales for today have closed at this venue. Try another venue or tomorrow.'
           : 'Booking has closed for that date. Try a later day.';
+      case 'RANGE_NOT_OFFERED':
+        return 'This venue takes one day at a time online. Pick a single day to request it.';
       case 'VENUE_CLOSED':
         return 'This venue is closed for the season, so this date can’t be booked. Try another venue.';
       case 'NO_SUCH_SET':

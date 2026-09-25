@@ -57,6 +57,24 @@ describe('BookingConfirmation', () => {
     expect(host.querySelector('h1')?.textContent).toMatch(/You.re booked/); // confirmed card copy
   });
 
+  it('reads a stay as its range with the day count', () => {
+    const bookings = TestBed.inject(BookingService);
+    bookings.createBooking(REQUEST).subscribe();
+    httpMock.expectOne(CREATE_URL).flush(
+      {
+        ...SUMMARY,
+        status: 'CONFIRMED',
+        lastDate: '2026-12-03',
+        amount: { minorUnits: 13500, currency: 'EUR' },
+      },
+      { status: 201, statusText: 'Created' },
+    );
+    const { host } = render();
+
+    expect(host.textContent).toContain('3 days');
+    expect(host.textContent).toContain('€135');
+  });
+
   it('keeps the emailed-it copy when the confirmation mail was sent', () => {
     TestBed.inject(BookingService).createBooking(REQUEST).subscribe();
     httpMock

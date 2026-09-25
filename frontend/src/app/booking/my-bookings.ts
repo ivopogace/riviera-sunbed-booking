@@ -16,7 +16,7 @@ import { EMPTY, Observable, catchError, defer, finalize, from, mergeMap, tap } f
 
 import { CustomerAuth } from '../core/customer-auth';
 import { DeviceLocalBookings } from '../core/device-local-bookings';
-import { formatBookingDate } from '../shared/booking-date-label';
+import { formatStay } from '../shared/booking-date-label';
 import { amountLabelFor, metaFor } from '../shared/booking-status';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
@@ -95,7 +95,7 @@ function buildView(b: RowSource): RowView {
     code: b.code,
     venueName: b.venueName,
     setLabel: `${b.rowLabel} · spot ${b.positionNo}`,
-    dateLabel: formatBookingDate(b.bookingDate, { withYear: true }),
+    dateLabel: formatStay(b.bookingDate, b.lastDate ?? b.bookingDate, { withYear: true }),
     subLine: subLineOf(b),
     statusLabel: meta.label,
     chipClass: meta.chip,
