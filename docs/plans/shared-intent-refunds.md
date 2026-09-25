@@ -34,8 +34,10 @@ sibling #1204 merged via PR #1220 with its close-out comment posted, and its pla
 `docs/plans/venue-max-stay.md` retires in this PR's last code commit) · `riviera-plan-doc` (forced
 the data-move test onto a real pre-V64 schema and the "sibling's refund does not block mine"
 state into the ACs) · `tdd` (each AC red first at its seam) · `riviera-review-overlay` (runs at
-ready-for-review) · `riviera-docs-freshness` (runs at close-out; the runbooks and the domain model
-name the moved columns) · `grilling` (the intake questions were answered from the code and are
+ready-for-review) · `riviera-docs-freshness` (**ran** over `c5415f48..c853c996`, 2 findings, both patched in
+the close-out commit: the domain model's module-map node still listed only `payment` +
+`stripe_webhook_event`, and the observability runbook's adoption row lacked the shared-intent
+tag rule; counting sweep clean) · `grilling` (the intake questions were answered from the code and are
 recorded as Assumptions below) · `riviera-stripe-payments` (idempotency key unchanged per booking;
 webhooks stay the truth; refund metadata is a Stripe-edge concern and lives in the adapters only) ·
 `riviera-modulith` (no new port: `Payments` is module-internal; the published `api/` ports keep
@@ -261,7 +263,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | CI (backend, one JVM) | `payment_booking_refund_uniq` makes refund-id literals suite-wide keys: `re_full`/`re_part` (`PaymentMigrationIT` vs `JdbcPaymentsIT`) and `re_shared_a`/`re_shared_b` (`JdbcPaymentsIT` vs `StripeWebhookIT`) collided in the shared container; the scoped local runs each had a fresh one | fixed — ids made class-unique; reproduced by running every DB-backed payment class in one invocation |
 | F-2 | review gate (comment reviewer) | `payment/package-info.java` still said the state is one table with two refund columns | fixed — same push |
-| F-3 | review gate (history reviewer) | `StripePaymentGateway#refund` Javadoc still named `payment.refunded_minor` | fixed — 6c3c81c4's follow-up push |
+| F-3 | review gate (history reviewer) | `StripePaymentGateway#refund` Javadoc still named `payment.refunded_minor` | fixed — c853c996 |
+| F-4 | docs-freshness | `docs/architecture/domain-model.md` module map: `payment` node listed `payment` + `stripe_webhook_event` only | fixed — close-out commit |
+| F-5 | docs-freshness | `docs/runbooks/observability.md` adoption row stated the pre-tag rule only | fixed — close-out commit |
 
 ---
 

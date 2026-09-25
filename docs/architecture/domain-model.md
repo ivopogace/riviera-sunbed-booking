@@ -49,7 +49,7 @@ graph TB
         RCPT["remodel_receipt<br/>+ _move, _outcome"]
     end
     subgraph payment["payment"]
-        PAY["payment<br/>+ stripe_webhook_event"]
+        PAY["payment<br/>+ payment_booking, stripe_webhook_event"]
     end
     subgraph payout["payout"]
         LEDG["payout_ledger_entry"]
