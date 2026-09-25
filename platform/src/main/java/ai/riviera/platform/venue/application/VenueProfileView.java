@@ -12,7 +12,7 @@ import ai.riviera.platform.venue.vocabulary.VenueLocation;
  * The operator's own view of a venue's admin profile — everything the console's
  * Venue &amp; commodities tab needs to render its form: the editable core
  * (name, the beach as its catalogue code, description, booking mode, booking cutoff, sales close, amenities,
- * distance-to-water) plus
+ * distance-to-water, location, maximum stay) plus
  * the two <strong>read-only</strong> display fields, {@code commissionBps} (shown as a %; the
  * platform's cut, invariant #9) and {@code payoutCurrency} (standing provisional). Returned by the
  * {@link ViewVenueProfile} driving port after the owner check (invariant #13).

@@ -80,7 +80,7 @@ aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles ar
 
 | Module | Owns | Sole writer of |
 |---|---|---|
-| `venue` | profile, beach map (sets, pools, positions), pricing, booking mode, sales-close, season closure, map pin, photos + moderation, commission-rate schedule | `venue`, `set_position`, `venue_amenity`, `venue_photo(_variant)`, `venue_commission_rate` |
+| `venue` | profile, beach map (sets, pools, positions), pricing, booking mode, sales-close, maximum stay, season closure, map pin, photos + moderation, commission-rate schedule | `venue`, `set_position`, `venue_amenity`, `venue_photo(_variant)`, `venue_commission_rate` |
 | `availability` | the per-`(set, date)` source of truth | `set_availability` |
 | `booking` | bookings + codes, lifecycle + sweeps, per-day attendance + stay outcome, request accept/decline, cancellation policy, driving refunds via `payment.api.RefundPort`, remodel claim classification + receipt | `booking`, `booking_day`, `remodel_receipt(_move/_outcome)` |
 | `payment` | Stripe collection, PaymentIntents, refunds, webhooks | `payment`, `stripe_webhook_event` |

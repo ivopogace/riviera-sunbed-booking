@@ -33,6 +33,9 @@ import ai.riviera.platform.venue.vocabulary.VenueLocation;
  *
  * <p>{@code location} is the venue's riviera-map pin, {@code null} when it has none; the
  * {@code PATCH} takes the same shape back.
+ *
+ * <p>{@code maxStayDays} is the longest stay the venue takes, in days, {@code null} for any length
+ * this season; the {@code PATCH} takes the same shape back, and a null lifts the maximum.
  */
 record VenueProfileResponse(String name, String beach, String description,
 		String bookingMode, String bookingCutoff, String salesClose, int commissionBps,

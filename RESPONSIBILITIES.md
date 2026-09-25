@@ -381,7 +381,8 @@ exactly as it would against any other claim (invariant #2).
   closure must admit every day, the sales close is judged on the first (invariant #4); a
   Request-to-Book venue refuses a stay of several days (`RANGE_NOT_OFFERED`) until it can answer
   one request whole; a venue with a maximum stay refuses a longer span (`STAY_TOO_LONG`, read off
-  `SetBookingInfo#maxStayDays`, judged before any claim); then the reserve transaction claims one `(set, date)` row per day through
+  `SetBookingInfo#maxStayDays`, judged before any claim); then the reserve transaction claims one
+  `(set, date)` row per day through
   `availability`'s one-day `claim`, and a day that loses gives back every day already won before
   the `SET_TAKEN` answer, so a lost range holds nothing (`ConcurrentRangeReservationIT`). The
   amount is the per-day price × the days, one PaymentIntent (invariant #5); the cancellation
