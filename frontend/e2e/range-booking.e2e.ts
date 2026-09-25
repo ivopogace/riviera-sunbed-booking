@@ -12,9 +12,10 @@ import { completeDialog, mockFencedBookingCreate, settle } from './support/booki
  * axe runs at each step.
  */
 
-const FIRST = '2026-09-03';
-const MIDDLE = '2026-09-04';
-const LAST = '2026-09-05';
+/** Inside the month the fixed clock opens the calendar on. */
+const FIRST = '2026-08-13';
+const MIDDLE = '2026-08-14';
+const LAST = '2026-08-15';
 
 function set(
   id: number,
@@ -142,7 +143,7 @@ async function pickStay(page: Page): Promise<void> {
 let fence: ChallengeFence;
 
 test.beforeEach(async ({ page }) => {
-  await page.clock.setFixedTime(new Date('2026-08-30T10:00:00Z'));
+  await page.clock.setFixedTime(new Date('2026-08-10T10:00:00Z'));
   fence = await mockChallengeFence(page, 'on');
   await mockFencedBookingCreate(page, fence, (route) =>
     route.fulfill({ status: 201, json: CONFIRMATION }),
