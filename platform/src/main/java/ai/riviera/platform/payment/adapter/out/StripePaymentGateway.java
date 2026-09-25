@@ -65,7 +65,7 @@ class StripePaymentGateway implements PaymentGateway {
 	/** Far above any real count — a booking gets one refund, so page one is always decisive. */
 	private static final long REFUND_PAGE_LIMIT = 100L;
 
-	/** The gateway holds refunds for this booking that are not the one asked for; a human must settle it. */
+	/** The gateway holds a live refund that is not the one asked for, or one nobody can attribute; a human must settle it. */
 	private static final String REFUND_MISMATCH = "refund_mismatch";
 
 	/** The create replayed a dead refund under an unexpired key, so nothing new was issued. */
@@ -127,6 +127,9 @@ class StripePaymentGateway implements PaymentGateway {
 	 * {@code payment.refunded_minor} is invariant #8 applied to refunds — the local row is written
 	 * only after a call returns, so it is silent about exactly the lost-response case this guards.
 	 *
+	 * <p>One intent may collect for several bookings, so every refund this adapter creates is tagged
+	 * with its booking ({@link StripeRefundTag}) and the read attributes what it finds by that tag.
+	 *
 	 * <p>Fail-closed: if the read itself fails, the answer is {@link RefundResult.Failed} and no
 	 * refund is created, leaving the event publication outstanding to retry.
 	 *
@@ -143,11 +146,18 @@ class StripePaymentGateway implements PaymentGateway {
 			List<Refund> held = refundsOn(intentId.get());
 			List<Refund> live = held.stream().filter(StripePaymentGateway::isLive).toList();
 			if (!live.isEmpty()) {
-				return adoptOrRefuse(booking, live, amount);
+				Optional<List<Refund>> candidates = candidatesFor(booking, intentId.get(), live);
+				if (candidates.isEmpty()) {
+					return new RefundResult.Failed(REFUND_MISMATCH);
+				}
+				if (!candidates.get().isEmpty()) {
+					return adoptOrRefuse(booking, candidates.get(), amount);
+				}
 			}
 			RefundCreateParams params = RefundCreateParams.builder()
 					.setPaymentIntent(intentId.get())
 					.setAmount(amount.minor())                               // integer minor units (#5)
+					.putMetadata(StripeRefundTag.KEY, StripeRefundTag.of(booking))
 					.build();
 			RequestOptions options = RequestOptions.builder()
 					.setIdempotencyKey(refundIdempotencyKey(booking))        // derived from booking id (#8)
@@ -194,6 +204,26 @@ class StripePaymentGateway implements PaymentGateway {
 				.setLimit(REFUND_PAGE_LIMIT)
 				.build();
 		return stripe.v1().refunds().list(params).getData();
+	}
+
+	/**
+	 * The live refunds that may be this booking's. On an intent collecting for one booking, every live
+	 * refund is (the rule from before the tag existed, so an untagged manual refund of the right amount
+	 * is still adopted). On a shared intent only the ones tagged with this booking are; an untagged one
+	 * could as well be a sibling's of the same price, so the answer is empty — refuse, never guess.
+	 */
+	private Optional<List<Refund>> candidatesFor(BookingRef booking, String intentId, List<Refund> live) {
+		if (payments.findBookingRefsByIntent(intentId).size() <= 1) {
+			return Optional.of(live);
+		}
+		if (live.stream().anyMatch(refund -> StripeRefundTag.bookingOf(refund).isEmpty())) {
+			log.warn("booking {}'s PaymentIntent is shared and carries a live refund naming no booking — "
+					+ "refusing to act until a human attributes it", booking.value());
+			return Optional.empty();
+		}
+		return Optional.of(live.stream()
+				.filter(refund -> StripeRefundTag.bookingOf(refund).filter(booking::equals).isPresent())
+				.toList());
 	}
 
 	/**
