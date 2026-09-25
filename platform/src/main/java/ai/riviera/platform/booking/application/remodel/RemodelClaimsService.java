@@ -226,7 +226,7 @@ class RemodelClaimsService implements RemodelClaims {
 					+ claim.from().setId().value() + " under the venue lock");
 		}
 		events.publishEvent(new BookingMoved(claim.bookingId(), venueId, claim.from().setId(), move.to().setId(),
-				claim.bookingDate()));
+				claim.bookingDate(), claim.lastDate()));
 		return new ReceiptMove(claim.bookingId(), claim.bookingDate(), claim.from(), move.to(), move.rowsAway(),
 				move.positionsAway());
 	}

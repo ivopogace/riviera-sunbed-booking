@@ -59,9 +59,10 @@ class SmtpMailer implements Mailer {
 	private static final DateTimeFormatter DAY_MONTH_FORMAT =
 			DateTimeFormatter.ofPattern("d MMMM", Locale.ENGLISH);
 
-	/** The label column widths of the confirmation and cancellation bodies. */
+	/** The label column widths of the confirmation, cancellation and moved bodies. */
 	private static final int CONFIRMATION_LABEL_WIDTH = 15;
 	private static final int CANCELLATION_LABEL_WIDTH = 10;
+	private static final int MOVED_LABEL_WIDTH = 15;
 
 	/**
 	 * The zone every deadline in this mail is stated in (invariant #6). A pay-by instant is only
@@ -294,19 +295,22 @@ class SmtpMailer implements Mailer {
 	public void sendBookingMoved(String toEmail, BookingMovedMail moved) {
 		send(toEmail, BOOKING_MOVED_SUBJECT.formatted(headerSafe(moved.venueName())), """
 				%s re-laid its beach, so your booking has moved to a new spot: %s%d instead of %s%d, %s.
-				Your booking code, price and date are unchanged.
+				Your booking code, price and %s are unchanged.
 
 				  Booking code:  %s
 				  Venue:         %s
-				  Date:          %s
+				  %s
 				  Your spot:     Row %s, position %d
 
 				If the new spot does not suit you, you can cancel for a full refund until %s (Albania time):
 
 				%s"""
 				.formatted(moved.venueName(), moved.toRowLabel(), moved.toPositionNo(), moved.fromRowLabel(),
-						moved.fromPositionNo(), distance(moved), moved.bookingCode(), moved.venueName(),
-						DATE_FORMAT.format(moved.bookingDate()), moved.toRowLabel(), moved.toPositionNo(),
+						moved.fromPositionNo(), distance(moved),
+						moved.bookingDate().equals(moved.lastDate()) ? "date" : "days",
+						moved.bookingCode(), moved.venueName(),
+						daysLine(moved.bookingDate(), moved.lastDate(), MOVED_LABEL_WIDTH), moved.toRowLabel(),
+						moved.toPositionNo(),
 						DEADLINE_FORMAT.format(moved.freeExitUntil().atZone(TIRANE)), moved.bookingLink()));
 	}
 

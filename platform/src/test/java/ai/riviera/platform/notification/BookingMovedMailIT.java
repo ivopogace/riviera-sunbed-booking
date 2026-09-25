@@ -46,9 +46,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * {@code BookingMoved} → one "your spot changed" mail through the registry vehicle: the code, the
  * venue, both spots as the receipt snapshotted them, the distance, the free-exit deadline and the
- * code-gated link; a suppressed address is skipped with the publication complete; and the mock
- * outbox read answers the mail for a real-backend run without a code or a link. Dates are 2029-08-xx,
- * this class's own, so no other IT's claim collides (invariant #2).
+ * code-gated link; a moved stay's mail carries its last day; a suppressed address is skipped with the
+ * publication complete; and the mock outbox read answers the mail for a real-backend run without a
+ * code or a link. Dates are 2029-08-xx, this class's own, so no other IT's claim collides (invariant #2).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -133,6 +133,30 @@ class BookingMovedMailIT {
 						.string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("MOVED001"))));
 		mvc.perform(get("/api/mock-mail/booking-mails").param("to", guest))
 				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void aMovedStayIsMailedWithItsDays() {
+		BookingMailFixtures.SetRef from = fixtures.onlineSet();
+		long to = insertSet(from.venueId(), 89);
+		LocalDate first = LocalDate.of(2029, 8, 12);
+		LocalDate last = first.plusDays(2);
+		String guest = "moved-stay-" + System.nanoTime() + "@example.com";
+		long booking = fixtures.seedBooking(new BookingMailFixtures.SetRef(to, from.venueId()), "MOVED003", first,
+				guest, 13500L, "CONFIRMED");
+		Instant movedAt = Instant.parse("2029-08-01T13:00:00Z");
+		jdbc.sql("UPDATE booking SET last_date = :last, moved_at = :at WHERE id = :id").param("last", last)
+				.param("at", java.sql.Timestamp.from(movedAt)).param("id", booking).update();
+		receipts.store(new NewReceipt(new VenueId(from.venueId()), operatorId(), movedAt, List.of(new ReceiptMove(
+				new BookingId(booking), first, new SpotRef(new SetId(from.setId()), "A", 3),
+				new SpotRef(new SetId(to), "Z", 89), 0, 86)), List.of(), "", List.of()));
+
+		fixtures.publishInTransaction(fixtures.movedOf(from, to, booking, first, last));
+
+		Awaitility.await().atMost(WAIT).until(() -> countTo(guest) == 1L);
+		BookingMovedMail moved = mailer.lastTo(guest).orElseThrow().moved();
+		assertThat(moved.bookingDate()).isEqualTo(first);
+		assertThat(moved.lastDate()).isEqualTo(last);
 	}
 
 	@Test
