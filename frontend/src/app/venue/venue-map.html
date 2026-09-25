@@ -222,6 +222,45 @@
               ></span>
             </div>
           }
+          @if (noSetCovers()) {
+            <!-- No single spot covers the stay: the longest one-spot run, with the offer to shorten to it, and the way back to the other beaches. -->
+            <div
+              class="mt-3 rounded-[16px] border border-riv-field-border bg-riv-field-solid px-4 py-3 text-[14px] text-riv-card-ink"
+              data-testid="no-cover"
+            >
+              <p class="font-bold">No single spot is free for all {{ dayCount() }} days.</p>
+              @if (longestRun(); as best) {
+                <p class="mt-1 text-riv-card-ink-soft" data-testid="no-cover-run">
+                  The longest one spot can host is {{ best.set.rowLabel }} · spot
+                  {{ best.set.positionNo }}, {{ runLabel(best) }}.
+                </p>
+                <div class="mt-3 flex flex-wrap items-center gap-3">
+                  <app-retry-button
+                    testId="no-cover-shorten"
+                    [label]="'Shorten to ' + runLabel(best)"
+                    (retry)="shortenTo(best.set, { first: best.run.first, last: best.run.last })"
+                  />
+                  <a
+                    appTouchTarget
+                    class="inline-flex items-center font-bold text-riv-accent-ink underline-offset-2 hover:underline"
+                    data-testid="no-cover-others"
+                    [routerLink]="['/']"
+                    [queryParams]="{ date: selectedDate() }"
+                    >See other beaches</a
+                  >
+                </div>
+              } @else {
+                <a
+                  appTouchTarget
+                  class="mt-2 inline-flex items-center font-bold text-riv-accent-ink underline-offset-2 hover:underline"
+                  data-testid="no-cover-others"
+                  [routerLink]="['/']"
+                  [queryParams]="{ date: selectedDate() }"
+                  >See other beaches</a
+                >
+              }
+            </div>
+          }
         </div>
       </div>
 
@@ -274,7 +313,7 @@
               <span
                 appMapTile
                 [state]="entry.state"
-                class="h-[18px] w-[18px] rounded-[6px] border-[1.5px]"
+                class="h-[18px] w-[18px] rounded-[6px] border-[1.5px] data-[state=partly]:border-2"
                 aria-hidden="true"
               ></span>
               {{ entry.label }}
@@ -289,15 +328,36 @@
               <li
                 appMapTile
                 [state]="tile.state"
-                class="set-tile snap-start h-full min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] font-bold text-[12.5px] [&.bookable]:p-0"
+                class="set-tile relative snap-start h-full min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] font-bold text-[12.5px] [&.bookable]:p-0 [&.partly]:p-0 data-[state=partly]:border-2"
                 data-testid="set-tile"
                 [class.premium]="tile.state === 'premium'"
+                [class.partly]="tile.state === 'partly'"
                 [class.walkin]="tile.state === 'walkin'"
                 [class.taken]="tile.state === 'taken'"
                 [class.bookable]="tile.bookable"
-                [attr.aria-label]="tile.bookable ? null : tile.name"
+                [attr.aria-label]="tile.bookable || tile.partly ? null : tile.name"
               >
-                @if (tile.bookable) {
+                @if (tile.state === 'partly') {
+                  <!-- Inside the existing button's box, so the badge adds no touch target; aria-hidden because the name already says "free k of N days". -->
+                  <span
+                    class="pointer-events-none absolute top-[3px] right-[3px] z-[2] grid h-[15px] min-w-[16px] place-items-center rounded-full bg-riv-tile-badge-fill px-[3px] text-[9px] leading-none font-bold text-riv-tile-badge-ink"
+                    data-testid="free-days-badge"
+                    aria-hidden="true"
+                    >{{ tile.freeDays }}</span
+                  >
+                }
+                @if (tile.partly) {
+                  <button
+                    appTouchTarget
+                    type="button"
+                    class="set-button w-full h-full flex items-center justify-center border-0 rounded-[inherit] bg-transparent text-inherit cursor-pointer touch-manipulation [transition:background_0.15s_ease,translate_0.12s_ease] hover:bg-riv-tile-hover hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-[3px] focus-visible:outline-riv-tile-focus focus-visible:outline-offset-2"
+                    [attr.data-set-id]="tile.set.id"
+                    [attr.aria-label]="tile.partlyName"
+                    (click)="showDays(tile.set)"
+                  >
+                    <span aria-hidden="true">{{ tile.set.positionNo }}</span>
+                  </button>
+                } @else if (tile.bookable) {
                   <button
                     appTouchTarget
                     type="button"
@@ -363,6 +423,16 @@
         [startIndex]="lightboxIndex()!"
         [name]="v.name"
         (dismissed)="closeLightbox()"
+      />
+    }
+
+    @if (partlySet(); as set) {
+      <app-partly-free-sheet
+        [set]="set"
+        [first]="selectedDate()"
+        [last]="selectedLastDate()"
+        (shorten)="shortenTo(set, $event)"
+        (dismissed)="closeSheet()"
       />
     }
 

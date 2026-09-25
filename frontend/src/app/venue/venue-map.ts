@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { BookingDialog } from '../booking/booking-dialog';
 import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '../shared/amenities';
@@ -40,6 +40,8 @@ import { routeIdParam } from '../shared/parent-venue-id';
 import { spotLabel, tierSentenceLabel } from '../shared/set-label';
 import { PhotoView, SetView, VenueMapView } from '../shared/venue-views';
 import { AvailabilityCalendar, MAX_STAY_DAYS } from './availability-calendar';
+import { PartlyFreeSheet } from './partly-free-sheet';
+import { SetRun, freeDaysOf, longestRunAcross } from './stay-runs';
 import { VenueReviews } from './venue-reviews';
 import { VenueService } from './venue.service';
 
@@ -63,6 +65,12 @@ interface TileView {
   readonly name: string;
   /** Accessible name for the bookable button (adds the "Select to book" affordance). */
   readonly bookName: string;
+  /** Free on some of the stay's days: tappable to see which, never bookable as it stands. */
+  readonly partly: boolean;
+  /** How many of the stay's days the set is free on — the badge a partly-free tile wears. */
+  readonly freeDays: number;
+  /** Accessible name for the partly-free button (adds the "see which days" affordance). */
+  readonly partlyName: string;
 }
 
 /** One row of the map: the shared canvas's row contract plus this surface's tiles. */
@@ -151,6 +159,8 @@ interface VenueHeader {
     AlertIcon,
     UmbrellaIcon,
     ArrowLeftIcon,
+    PartlyFreeSheet,
+    RouterLink,
   ],
   templateUrl: './venue-map.html',
   // --riv-tile (tile size + rail-cell heights) now lives on the shared canvas's host.
@@ -219,6 +229,10 @@ export class VenueMap {
 
   /** The set whose booking dialog is open, or undefined when closed. */
   protected readonly selectedSet = signal<SetView | undefined>(undefined);
+  /** The partly-free set whose days are being shown, or undefined when the sheet is closed. */
+  protected readonly partlySet = signal<SetView | undefined>(undefined);
+  /** A set to open the dialog on once the map is re-read for a shortened stay. */
+  private pendingSelectSetId: number | undefined;
   /** Id of the tile that opened the dialog, so focus can return to it on close. */
   private lastTriggerId: number | undefined;
 
@@ -235,6 +249,18 @@ export class VenueMap {
     () => this.venue()?.sets.filter((s) => s.availability === 'PARTLY_FREE').length ?? 0,
   );
   protected readonly totalCount = computed(() => this.venue()?.sets.length ?? 0);
+
+  /** A stay no single set covers, though the beach is not full: the page offers the longest run. */
+  protected readonly noSetCovers = computed(
+    () => this.isStay() && this.totalCount() > 0 && this.freeCount() === 0 && !this.salesClosed(),
+  );
+  /** The online set that can host the most of the stay on one spot, when nothing covers it all. */
+  protected readonly longestRun = computed<SetRun | undefined>(() => {
+    const venue = this.venue();
+    return venue === undefined || !this.noSetCovers()
+      ? undefined
+      : longestRunAcross(venue.sets, this.selectedDate(), this.selectedLastDate());
+  });
 
   /**
    * True when the server's verdict says online sales for the selected date have closed
@@ -361,9 +387,12 @@ export class VenueMap {
     this.venue.set(undefined);
     this.selectedSet.set(undefined);
     // The reset takes any focus-trapped modal AND its trigger, so move focus deliberately (RV-FE-9).
-    const modalWasOpen = this.pickerOpen() || this.lightboxIndex() !== undefined;
+    const modalWasOpen =
+      this.pickerOpen() || this.lightboxIndex() !== undefined || this.partlySet() !== undefined;
     this.pickerOpen.set(false);
     this.lightboxIndex.set(undefined);
+    this.partlySet.set(undefined);
+    this.pendingSelectSetId = undefined;
     if (modalWasOpen) {
       this.moveFocus('map-loading');
     }
@@ -386,9 +415,23 @@ export class VenueMap {
     const state = mapTileState(set);
     // The sales gate (invariant #4): a closed date renders its grid, but nothing is selectable.
     const bookable = set.availability === 'FREE' && set.pool === 'ONLINE' && !this.salesClosed();
-    const announced = MAP_TILE_MEANING[state].announced;
+    const partly = state === 'partly' && !this.salesClosed();
+    const freeDays = freeDaysOf(set, this.dayCount());
+    const announced =
+      state === 'partly'
+        ? `${MAP_TILE_MEANING.partly.announced}, free ${freeDays} of ${this.dayCount()} days`
+        : MAP_TILE_MEANING[state].announced;
     const name = `${spotLabel(set.rowLabel, set.positionNo)}, ${tier}, ${this.money(set.price)}, ${announced}`;
-    return { set, bookable, state, name, bookName: `${name}. Select to book.` };
+    return {
+      set,
+      bookable,
+      state,
+      name,
+      bookName: `${name}. Select to book.`,
+      partly,
+      freeDays,
+      partlyName: `${name}. Select to see which days.`,
+    };
   }
 
   /** Fetch the map for the currently selected days. */
@@ -406,6 +449,7 @@ export class VenueMap {
       next: (venue) => {
         if (this.epoch === epoch) {
           this.venue.set(venue);
+          this.openPendingSelection(venue);
         }
       },
       error: (error: unknown) => {
@@ -444,12 +488,32 @@ export class VenueMap {
     await this.router.navigate(['/']);
   }
 
-  /** Re-fetch availability for newly chosen days (closing any open dialog first). */
+  /**
+   * After a shortened stay's map arrives: open the dialog on the set the offer was made for, if
+   * it is still free for those days — the server decides (invariant #2); otherwise the tile keeps
+   * focus and the new map speaks for itself.
+   */
+  private openPendingSelection(venue: VenueMapView): void {
+    const id = this.pendingSelectSetId;
+    if (id === undefined) {
+      return;
+    }
+    this.pendingSelectSetId = undefined;
+    const set = venue.sets.find((s) => s.id === id);
+    if (set !== undefined && this.toTile(set).bookable) {
+      this.select(set);
+    } else {
+      this.focusTile(id);
+    }
+  }
+
+  /** Re-fetch availability for newly chosen days (closing any open dialog or sheet first). */
   protected onDatesChange(days: DateRange): void {
     if (days.first === this.selectedDate() && days.last === this.selectedLastDate()) {
       return;
     }
     this.selectedSet.set(undefined);
+    this.partlySet.set(undefined);
     this.selectedDate.set(days.first);
     this.selectedLastDate.set(days.last);
     this.load();
@@ -496,6 +560,11 @@ export class VenueMap {
     return formatBookingDate(this.selectedDate(), { withYear: true });
   }
 
+  /** A run's days rendered for the no-cover offer ("Tue 30 Jun – Thu 2 Jul · 3 days"). */
+  protected runLabel(best: SetRun): string {
+    return formatStay(best.run.first, best.run.last);
+  }
+
   /** The stay's days rendered for display ("Tue 30 Jun – Sat 4 Jul 2026 · 5 days"). */
   protected stayLabel(): string {
     return formatStay(this.selectedDate(), this.selectedLastDate(), { withYear: true });
@@ -510,6 +579,37 @@ export class VenueMap {
   protected select(set: SetView): void {
     this.lastTriggerId = set.id;
     this.selectedSet.set(set);
+  }
+
+  /** Show which of the stay's days a partly-free set covers. */
+  protected showDays(set: SetView): void {
+    this.lastTriggerId = set.id;
+    this.partlySet.set(set);
+  }
+
+  /** Close the sheet and hand focus back to the tile that opened it (modal a11y, RV-FE-9). */
+  protected closeSheet(): void {
+    this.partlySet.set(undefined);
+    this.focusTile(this.lastTriggerId);
+  }
+
+  /**
+   * Take the shorter stay a partly-free set (the sheet's, or the no-cover offer's) can host: re-read
+   * the map for those days and, once it is here, open the dialog on that set.
+   */
+  protected shortenTo(set: SetView, days: DateRange): void {
+    this.partlySet.set(undefined);
+    this.pendingSelectSetId = set.id;
+    this.lastTriggerId = set.id;
+    this.onDatesChange(days);
+  }
+
+  private focusTile(setId: number | undefined): void {
+    if (setId !== undefined) {
+      queueMicrotask(() => {
+        document.querySelector<HTMLElement>(`[data-set-id="${setId}"]`)?.focus();
+      });
+    }
   }
 
   /** Open the lightbox on `index`, remembering `triggerTestId` so closing returns focus there. */
@@ -527,13 +627,7 @@ export class VenueMap {
   protected onDialogClose(): void {
     this.selectedSet.set(undefined);
     // Return focus to the tile that opened the dialog (modal a11y).
-    const trigger = this.lastTriggerId;
-    if (trigger !== undefined) {
-      queueMicrotask(() => {
-        const el = document.querySelector<HTMLElement>(`[data-set-id="${trigger}"]`);
-        el?.focus();
-      });
-    }
+    this.focusTile(this.lastTriggerId);
   }
 
   protected async onBooked(): Promise<void> {
