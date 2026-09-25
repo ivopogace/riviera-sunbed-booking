@@ -34,7 +34,8 @@ import static org.mockito.Mockito.when;
  * {@code create} mints a fresh refund id and appends it to what the account holds. That is the whole
  * point: it puts the adapter beyond the key's ~24h window, where only its own read of what the
  * gateway already holds can keep the guest from being refunded twice. An adapter that leaned on the
- * key alone fails here with two distinct ids.
+ * key alone fails here with two distinct ids. It does keep the create's metadata, as Stripe does,
+ * because that is the only thing that tells two bookings' refunds apart on one collection.
  *
  * <p>In the adapter's package so the package-private gateway is constructible.
  */
@@ -53,12 +54,17 @@ class StripeRefundContractTest extends PaymentGatewayRefundContract {
 
 	@Override
 	protected void gatewayCollected(BookingRef booking, Money amount) {
-		arrangeStripe(booking, amount);
+		arrangeStripe(List.of(booking));
+	}
+
+	@Override
+	protected void gatewayCollectedTogether(BookingRef first, BookingRef second, Money each) {
+		arrangeStripe(List.of(first, second));
 	}
 
 	@Override
 	protected void gatewayHoldsADeadRefund(BookingRef booking, Money amount, String refundId) {
-		arrangeStripe(booking, amount);
+		arrangeStripe(List.of(booking));
 		heldAtGateway.add(StripeRefunds.refund(refundId, "failed", amount.minor()));
 	}
 
@@ -67,24 +73,27 @@ class StripeRefundContractTest extends PaymentGatewayRefundContract {
 		return createdThroughThePort;
 	}
 
-	/** A Stripe account holding one collection for the booking, and whatever refunds the test seeds. */
-	private void arrangeStripe(BookingRef booking, Money amount) {
+	/** A Stripe account holding one collection for the bookings, and whatever refunds the test seeds. */
+	private void arrangeStripe(List<BookingRef> bookings) {
 		heldAtGateway.clear();
 		createdThroughThePort = 0L;
-		String intentId = "pi_contract_" + booking.value();
+		String intentId = "pi_contract_" + bookings.getFirst().value();
 		StripeClient stripe = mock(StripeClient.class);
 		V1Services v1 = mock(V1Services.class);
 		RefundService refunds = mock(RefundService.class);
 		Payments payments = mock(Payments.class);
 		when(stripe.v1()).thenReturn(v1);
 		when(v1.refunds()).thenReturn(refunds);
-		when(payments.findIntentByBookingRef(booking)).thenReturn(Optional.of(intentId));
+		for (BookingRef booking : bookings) {
+			when(payments.findIntentByBookingRef(booking)).thenReturn(Optional.of(intentId));
+		}
+		when(payments.findBookingRefsByIntent(intentId)).thenReturn(bookings);
 		// The record accepts; refusing it is the racing-failure case, which is not this contract's.
 		when(payments.markRefunded(any(), anyLong(), any())).thenReturn(true);
 		try {
 			when(refunds.list(any(RefundListParams.class))).thenAnswer(_ -> heldRefundPage());
 			when(refunds.create(any(RefundCreateParams.class), any(RequestOptions.class)))
-					.thenAnswer(_ -> mintRefund(amount.minor()));
+					.thenAnswer(call -> mintRefund(call.getArgument(0)));
 		}
 		catch (StripeException e) {
 			throw new IllegalStateException("stubbing a mock cannot call Stripe", e);
@@ -96,9 +105,11 @@ class StripeRefundContractTest extends PaymentGatewayRefundContract {
 		return StripeRefunds.page(heldAtGateway.toArray(new Refund[0]));
 	}
 
-	private Refund mintRefund(long amountMinor) {
+	/** Stripe keeps what the create sent — the amount and the metadata — and lists it back. */
+	private Refund mintRefund(RefundCreateParams params) {
 		createdThroughThePort++;
-		Refund minted = StripeRefunds.refund("re_contract_" + createdThroughThePort, "pending", amountMinor);
+		Refund minted = StripeRefunds.refund("re_contract_" + createdThroughThePort, "pending", params.getAmount());
+		minted.setMetadata(StripeRefunds.metadataOf(params));
 		heldAtGateway.add(minted);
 		return minted;
 	}

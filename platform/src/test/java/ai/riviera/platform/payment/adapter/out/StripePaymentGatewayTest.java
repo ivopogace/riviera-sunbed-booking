@@ -1,5 +1,6 @@
 package ai.riviera.platform.payment.adapter.out;
 
+import java.util.List;
 import java.util.Optional;
 
 import com.stripe.StripeClient;
@@ -54,6 +55,7 @@ import static org.mockito.Mockito.when;
 class StripePaymentGatewayTest {
 
 	private static final BookingRef BOOKING = new BookingRef(42L);
+	private static final BookingRef SIBLING = new BookingRef(43L);
 	private static final String INTENT = "pi_abc";
 	private static final String REFUND_SUCCEEDED = "succeeded";
 
@@ -77,10 +79,18 @@ class StripePaymentGatewayTest {
 		when(stripe.v1()).thenReturn(v1);
 		when(v1.refunds()).thenReturn(refunds);
 		when(payments.findIntentByBookingRef(BOOKING)).thenReturn(Optional.of(INTENT));
+		when(payments.findBookingRefsByIntent(INTENT)).thenReturn(List.of(BOOKING));
 		// A bare mock answers false, which is the "died before its record" branch, not the norm.
 		when(payments.markRefunded(any(), anyLong(), any())).thenReturn(true);
 		SimpleMeterRegistry meters = new SimpleMeterRegistry();
 		return new RefundFixture(new StripePaymentGateway(stripe, payments, meters), refunds, payments, meters);
+	}
+
+	/** The intent collects for the booking and a sibling — a stay paid once. */
+	private static RefundFixture sharedRefundFixture() {
+		RefundFixture fixture = refundFixture();
+		when(fixture.payments().findBookingRefsByIntent(INTENT)).thenReturn(List.of(BOOKING, SIBLING));
+		return fixture;
 	}
 
 	/** Stub what Stripe already holds against the intent — no arguments means "no refund yet". */
@@ -240,6 +250,68 @@ class StripePaymentGatewayTest {
 				"refund idempotency key is derived from the booking id (invariant #8/#10)");
 		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_xyz");
 		assertEquals(0.0, fixture.adoptedCount(), "a freshly created refund is not an adoption");
+	}
+
+	@Test
+	void tagsTheRefundWithItsBooking() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds());
+		when(fixture.refunds().create(any(RefundCreateParams.class), any(RequestOptions.class)))
+				.thenReturn(stripeRefund("re_tagged", REFUND_SUCCEEDED, 2250L));
+
+		fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		ArgumentCaptor<RefundCreateParams> params = ArgumentCaptor.forClass(RefundCreateParams.class);
+		verify(fixture.refunds()).create(params.capture(), any(RequestOptions.class));
+		assertEquals("42", StripeRefunds.metadataOf(params.getValue()).get("bookingRef"),
+				"the refund names its booking at the gateway — the one fact that survives a lost response "
+						+ "and tells two bookings' refunds apart on a shared intent");
+	}
+
+	@Test
+	void aSiblingsLiveRefundDoesNotBlockThisBookings() throws StripeException {
+		RefundFixture fixture = sharedRefundFixture();
+		stripeHolds(fixture.refunds(), StripeRefunds.taggedRefund("re_sibling", REFUND_SUCCEEDED, 2250L, SIBLING));
+		when(fixture.refunds().create(any(RefundCreateParams.class), any(RequestOptions.class)))
+				.thenReturn(stripeRefund("re_mine", REFUND_SUCCEEDED, 2250L));
+
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		RefundResult.Refunded refunded = assertInstanceOf(RefundResult.Refunded.class, result,
+				"the sibling's refund is the sibling's — this booking's guest is still owed theirs");
+		assertEquals("re_mine", refunded.refundId());
+		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_mine");
+		assertEquals(0.0, fixture.adoptedCount(), "nothing was adopted");
+	}
+
+	@Test
+	void adoptsItsOwnRefundOnASharedIntent() throws StripeException {
+		RefundFixture fixture = sharedRefundFixture();
+		stripeHolds(fixture.refunds(),
+				StripeRefunds.taggedRefund("re_sibling", REFUND_SUCCEEDED, 2250L, SIBLING),
+				StripeRefunds.taggedRefund("re_mine_lost", REFUND_SUCCEEDED, 2250L, BOOKING));
+
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		verify(fixture.refunds(), never()).create(any(RefundCreateParams.class), any(RequestOptions.class));
+		assertEquals("re_mine_lost", assertInstanceOf(RefundResult.Refunded.class, result).refundId(),
+				"two live refunds of the same amount, and the tag says which one is this booking's");
+		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_mine_lost");
+		assertEquals(1.0, fixture.adoptedCount());
+	}
+
+	@Test
+	void refusesAnUntaggedLiveRefundOnASharedIntent() throws StripeException {
+		RefundFixture fixture = sharedRefundFixture();
+		stripeHolds(fixture.refunds(), stripeRefund("re_by_hand", REFUND_SUCCEEDED, 2250L));
+
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		// It may be this booking's or the sibling's of the same price: adopting or creating both guess.
+		verify(fixture.refunds(), never()).create(any(RefundCreateParams.class), any(RequestOptions.class));
+		RefundResult.Failed failed = assertInstanceOf(RefundResult.Failed.class, result);
+		assertEquals("refund_mismatch", failed.reason());
+		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
 	}
 
 	@Test

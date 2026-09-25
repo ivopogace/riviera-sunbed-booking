@@ -91,7 +91,8 @@ curl -s "localhost:8080/api/bookings/$CODE" | jq '.status, .refundedAmount'   # 
 DB checks (psql into the compose Postgres — see `platform/compose.yaml` for creds):
 
 ```sql
-SELECT status, refunded_minor, refund_id FROM payment       WHERE booking_ref = <id>;  -- REFUNDED
+SELECT p.status, b.refunded_minor, b.refund_id
+FROM payment_booking b JOIN payment p ON p.id = b.payment_id WHERE b.booking_ref = <id>;  -- REFUNDED
 SELECT entry_type, net_minor          FROM payout_ledger_entry WHERE booking_id = <id>;  -- ACCRUAL + REVERSAL
 SELECT status, cancelled_at, refund_minor FROM booking      WHERE code = '<CODE>';      -- CANCELLED
 ```
@@ -107,8 +108,9 @@ PAYLOAD='{"id":"evt_local_refund_failed","object":"event","api_version":"2024-04
 ```
 
 ```sql
-SELECT status, refunded_minor, refund_id, failed_refund_id, refund_failed_at
-FROM payment WHERE booking_ref = <id>;  -- SUCCEEDED, 0, NULL, <$RE>, <a timestamp>
+SELECT p.status, b.refunded_minor, b.refund_id, b.failed_refund_id, b.refund_failed_at
+FROM payment_booking b JOIN payment p ON p.id = b.payment_id
+WHERE b.booking_ref = <id>;  -- SUCCEEDED, 0, NULL, <$RE>, <a timestamp>
 ```
 
 The booking view flips back to showing the refund as outstanding, and
@@ -125,7 +127,7 @@ recorded POST the same payload with a refund id the app has never seen (`re_forg
 booking's `$PI`.
 
 ```sql
-SELECT refund_attempted_at, refund_id, failed_refund_id FROM payment WHERE booking_ref = <id>;
+SELECT refund_attempted_at, refund_id, failed_refund_id FROM payment_booking WHERE booking_ref = <id>;
 -- NULL, NULL, 're_forged_race'   (the attempt is cleared once it concludes, however it concluded)
 ```
 

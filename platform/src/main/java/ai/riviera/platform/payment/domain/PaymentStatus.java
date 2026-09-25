@@ -7,9 +7,10 @@ package ai.riviera.platform.payment.domain;
  * <p>{@link #REQUIRES_PAYMENT} is the state at PaymentIntent creation; the signature-verified
  * webhook (invariant #8) moves it to {@link #SUCCEEDED} (booking confirms), {@link #FAILED} (a
  * non-terminal attempt failure — the PI may be retried), or {@link #CANCELED} (terminal — the
- * booking is cancelled and its availability claim released). A cancellation refund (U6) moves a
- * {@code SUCCEEDED} collection to {@link #REFUNDED} (full) or {@link #PARTIALLY_REFUNDED} (the
- * configurable after-cutoff share, invariant #10).
+ * booking is cancelled and its availability claim released). A recorded refund moves a
+ * {@code SUCCEEDED} collection to {@link #REFUNDED} (every share refunded in full) or
+ * {@link #PARTIALLY_REFUNDED} (anything less — a partial after-cutoff share, or one booking of a
+ * group refunded while its siblings stand; invariant #10).
  */
 public enum PaymentStatus {
 	REQUIRES_PAYMENT,
@@ -17,5 +18,13 @@ public enum PaymentStatus {
 	FAILED,
 	CANCELED,
 	REFUNDED,
-	PARTIALLY_REFUNDED
+	PARTIALLY_REFUNDED;
+
+	/**
+	 * Whether the gateway holds money it collected under this status — the states a refund can be
+	 * recorded against, and the ones in which a booking with nothing refunded is still owed.
+	 */
+	public boolean holdsCollectedMoney() {
+		return this == SUCCEEDED || this == REFUNDED || this == PARTIALLY_REFUNDED;
+	}
 }

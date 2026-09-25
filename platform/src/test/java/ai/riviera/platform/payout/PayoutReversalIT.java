@@ -162,4 +162,28 @@ class PayoutReversalIT {
 		Awaitility.await().during(Duration.ofSeconds(3)).atMost(WAIT)
 				.until(() -> reversalRows(b.bookingId()) == 0L);
 	}
+
+	/**
+	 * A stay is a group of bookings paid once; cancelling two of its three segments is two ordinary
+	 * whole-booking cancellations, so the ledger reverses each of them exactly once and leaves the
+	 * third accrual standing (story 40, invariant #9).
+	 */
+	@Test
+	void twoOfThreeSegmentsReverseExactlyTwice() {
+		Ref first = bookingWithAccrual("REVSTAY01");
+		Ref second = bookingWithAccrual("REVSTAY02");
+		Ref third = bookingWithAccrual("REVSTAY03");
+
+		publishInTransaction(cancelled(first, 4500L));
+		publishInTransaction(cancelled(second, 4500L));
+
+		Awaitility.await().atMost(WAIT).untilAsserted(() -> {
+			assertEquals(1L, reversalRows(first.bookingId()));
+			assertEquals(1L, reversalRows(second.bookingId()));
+		});
+		assertEquals(3825L, reversalNet(first.bookingId()), "each refunded segment nets out its own accrual");
+		assertEquals(3825L, reversalNet(second.bookingId()));
+		Awaitility.await().during(Duration.ofSeconds(2)).atMost(WAIT)
+				.until(() -> reversalRows(third.bookingId()) == 0L);
+	}
 }

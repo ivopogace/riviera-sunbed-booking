@@ -620,6 +620,16 @@ only. Publish the read side of the refund conversation (`payment.api.RefundStatu
 `NO_COLLECTION` / `OUTSTANDING` / `ACCEPTED`, answered from this module's own row, with
 "no row" meaning the wired gateway never collected, never that a refund failed.
 
+**One PaymentIntent may collect for several bookings.** A stay is a group of bookings paid
+once (design D6/D8), so `payment` holds the intent — id, secret, total, currency, lifecycle
+status — and `payment_booking` holds one row per booking it collects for: that booking's
+share and its refund state. Every refund read and write is keyed on the booking's row; the
+intent's `REFUNDED` / `PARTIALLY_REFUNDED` / `SUCCEEDED` is derived from what its shares hold
+refunded, in the same statement as the share write. A verified `succeeded` or `canceled`
+publishes its event **once per booking** on the intent, so `booking`'s listeners are
+unchanged. `RefundStatusLookup` answers from the booking's own share: a sibling's refund
+moves the intent to `PARTIALLY_REFUNDED` while this booking is still `OUTSTANDING`.
+
 **Webhook reconciliation.** Stripe promises neither ordering nor single delivery, and a
 transient failure rolls the whole transaction back so the same event returns later. Two
 rules keep it faithful:
@@ -656,10 +666,19 @@ are the slow ones (the restart republish, the admin re-drive). Hence:
   own `refunded_minor`: that column is written *after* a call returns, so it is silent
   about the lost-response case. The read **fails closed**: an unreadable list is `Failed`,
   never "no refund exists", so the publication stays outstanding and retries.
+- **Every refund this platform creates names its booking** in Stripe metadata
+  (`bookingRef`, `StripeRefundTag`). On a shared intent that tag is the only thing that
+  tells two bookings' refunds apart — their shares are routinely the same price — and it
+  is the only copy that survives a lost response, so the adapter reads it back when listing
+  and the webhook reads it when a failure names a refund never recorded.
 - **Adoption is narrow: exactly one live refund, for exactly the amount requested.**
-  Anything else (several live refunds, a different amount — a manual dashboard refund) is
-  `Failed("refund_mismatch")`: topping up a shortfall would be a refund **decision**, which
-  is `booking`'s. `Failed` keeps the publication outstanding and lights
+  On an intent collecting for one booking, every live refund is a candidate (so an untagged
+  manual refund of the right amount is still adopted); on a shared intent only the refunds
+  tagged with this booking are, and an **untagged live refund is `refund_mismatch`** — it
+  could as well be a sibling's, and guessing would strand one guest while refunding the
+  other twice. Anything else (several candidates, a different amount — a manual dashboard
+  refund) is `Failed("refund_mismatch")` likewise: topping up a shortfall would be a refund
+  **decision**, which is `booking`'s. `Failed` keeps the publication outstanding and lights
   `riviera.refunds.failed`, which never clears itself: a human settles it at the gateway.
 - **Adoption is visible** — `riviera.refunds.adopted`: an earlier attempt moved the money
   and lost the response.
@@ -668,7 +687,8 @@ are the slow ones (the restart republish, the admin re-drive). Hence:
 - **A refund the gateway later reports as dead is un-recorded.** A `pending` refund stays
   adoptable (it is where a refund normally starts), so the fix acts on the gateway's later
   word: a signature-verified refund-lifecycle event, branched on the **refund's status**,
-  clears `refunded_minor` and restores `SUCCEEDED`. All three event types are handled,
+  clears the booking's `refunded_minor` and re-derives the intent's status (`SUCCEEDED`
+  when no share is left refunded). All three event types are handled,
   because `canceled` has no failure-only event. `RefundStatusLookup` then answers
   `OUTSTANDING` again, `riviera.refunds.failed` lights, and the existence read sees a
   dead refund rather than adopting it.
@@ -679,9 +699,11 @@ are the slow ones (the restart republish, the admin re-drive). Hence:
   re-attempt once the key has expired — an issuer rejection is not a transient error. The
   un-record is guarded on the recorded `refund_id`: a re-delivery, a failure naming a
   refund we never issued, or a stale failure after a successful retry moves nothing.
-- **At-most-once is the port's contract, enforced.** `PaymentGatewayRefundContract`
+- **At-most-once is the port's contract, enforced — per booking.** `PaymentGatewayRefundContract`
   states it once against `PaymentGateway` on a fixture that never dedupes on the key, plus
-  the opposite guard (a refund that returned nothing must **not** be adopted). A coverage
+  the opposite guard (a refund that returned nothing must **not** be adopted) and the
+  shared-intent case (two bookings of the same share on one collection are two refunds,
+  each replayable to its own). A coverage
   rule makes it unskippable: every production `PaymentGateway` is either covered by a
   contract subclass or non-collecting (read from the `@Profile` that binds a gateway to
   its `CollectionGuarantee`), so a new gateway adapter (ADR-0009) arrives unclassified and
@@ -690,10 +712,13 @@ are the slow ones (the restart republish, the admin re-drive). Hence:
   and every refund write is a guarded statement that reports whether it moved:
   - A verified failure arriving **before the refund id is written** (the create's timeout
     replay leaves tens of seconds between Stripe minting the refund and the row write) is
-    matched by **PaymentIntent** instead of by an id that does not exist yet.
-  - The attempt is the **discriminator** that makes by-intent matching safe: a refund
+    matched by **booking** instead of by an id that does not exist yet: the booking the
+    refund's tag names, or, for an untagged refund, the only booking its PaymentIntent
+    collects for. An untagged failure on a shared intent is nobody's to pin on a guest and
+    moves nothing.
+  - The attempt is the **discriminator** that makes by-booking matching safe: a refund
     issued by hand at the gateway is money the platform never promised, and with no
-    attempt on record the by-intent arm moves nothing.
+    attempt on record the by-booking arm moves nothing.
   - The recorded death **blocks the record that lost the race**: `markRefunded` refuses a
     refund id already reported dead (`Failed("refund_died_before_record")`), so the
     publication stays outstanding and a re-drive past the key window creates a fresh
@@ -703,7 +728,7 @@ are the slow ones (the restart republish, the admin re-drive). Hence:
     one booking. The counter measures observations, `riviera.refunds.owed` measures debts.
   - **`markRefunded` moves only a collected payment.** Unguarded, it and
     `markRefundFailed` could fabricate a collected payment out of a
-    `REQUIRES_PAYMENT`/`FAILED`/`CANCELED` row. The guard is what makes the hard-coded
+    `REQUIRES_PAYMENT`/`FAILED`/`CANCELED` row. The guard is what makes the derived
     `SUCCEEDED` restore sound by construction.
   - **An owed refund is enumerable.** The dead id moves to `failed_refund_id`, `refund_id`
     stops claiming a live refund, and `refund_failed_at` marks the debt over a **partial
