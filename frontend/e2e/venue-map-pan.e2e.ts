@@ -722,8 +722,7 @@ test('every legend swatch declares exactly what the tile it stands for declares 
     }
     expect(await face(swatch), `the ${state} swatch`).toEqual(await face(tiles.first()));
   }
-  // The ghost swatch keeps the dashed outline that marks "taken" on the grid, the partly-free one
-  // the dotted outline that marks a set free on some of a stay's days.
+  // The ghost swatch keeps the dashed "taken" outline; the partly-free one keeps its dotted outline.
   expect(
     (await face(page.locator('[aria-label="Legend"] [data-state="taken"]'))).borderTopStyle,
   ).toBe('dashed');
