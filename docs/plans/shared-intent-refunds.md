@@ -239,9 +239,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft open, CI gate`
+**Stage pointer:** `review gate — running on c5415f48..65ed326a; F-1/F-2 fixed, re-pushed`
 
-**Next action:** check the draft's CI run; then merge `origin/main`, mark ready for review, run the review gate.
+**Next action:** collect the remaining reviewers, post the review comment, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -257,6 +257,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (backend, one JVM) | `payment_booking_refund_uniq` makes refund-id literals suite-wide keys: `re_full`/`re_part` (`PaymentMigrationIT` vs `JdbcPaymentsIT`) and `re_shared_a`/`re_shared_b` (`JdbcPaymentsIT` vs `StripeWebhookIT`) collided in the shared container; the scoped local runs each had a fresh one | fixed — ids made class-unique; reproduced by running every DB-backed payment class in one invocation |
+| F-2 | review gate (comment reviewer) | `payment/package-info.java` still said the state is one table with two refund columns | fixed — same push |
 
 ---
 
@@ -408,6 +410,7 @@ fixtures in R-4; Test `JdbcPaymentsIT`, `RefundServiceTest`, `RefundAttemptVisib
 | 2026-09-25 | V64 drops `payment.booking_ref` and the refund columns | every hand-written statement naming them, in tests and docs | `grep -rn -E 'refund_failed_at\|refund_attempted_at\|failed_refund_id\|refunded_minor\|refund_id\|booking_ref' platform/src docs` | 5 fixture classes, 2 runbooks, the domain model, RESPONSIBILITIES.md | all re-pointed; one site (`RequestAcceptPayIT`'s second `UPDATE … WHERE booking_ref`) surfaced only when the IT ran — the grep matched it but the first read missed it |
 | 2026-09-25 | `Payments` port shape change | every implementation or double | `grep -rln "implements Payments\|new Payments()\|extends ThrowingPayments" platform/src` | `JdbcPayments`, `WebSliceStubs`, `PaymentServiceTest`, `ThrowingPayments` | all updated |
 | 2026-09-25 | Two test classes sharing one container collided on booking ref 9901 | every `BookingRef(99xx)` literal in the suite | `grep -rn 'BookingRef(99[0-9][0-9]L)' platform/src/test` | `RefundAttemptVisibilityIT` (9901) | the shared-intent cases moved to 9951–9958 |
+| 2026-09-25 | CI: `UNIQUE (refund_id)` turned refund-id literals into suite-wide keys | every `re_…` literal used by more than one DB-backed test class | `grep -rhoE "'re_[a-z0-9_]+'\|\"re_[a-z0-9_]+\"" platform/src/test/java \| sort \| uniq -d`, then the files per id | `re_full`, `re_part`, `re_shared_a`, `re_shared_b` (the `re_dead`/`re_by_hand` pairs touch a mock-only unit test) | renamed per class; the full DB-backed payment set now runs green in one invocation |
 
 ---
 

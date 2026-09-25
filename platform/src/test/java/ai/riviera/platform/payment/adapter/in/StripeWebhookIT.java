@@ -575,9 +575,9 @@ class StripeWebhookIT {
 	@Test
 	void aFailedRefundOnASharedIntentUnrecordsOnlyItsBooking() throws Exception {
 		sharedCollection("pi_ref_shared_died", 7405L, 7406L);
-		payments.markRefunded(new BookingRef(7405L), 4500L, "re_shared_a");
-		payments.markRefunded(new BookingRef(7406L), 3000L, "re_shared_b");
-		String payload = refundEventJson("evt_ref_shared_died_1", "refund.failed", "re_shared_b", "failed",
+		payments.markRefunded(new BookingRef(7405L), 4500L, "re_hook_shared_a");
+		payments.markRefunded(new BookingRef(7406L), 3000L, "re_hook_shared_b");
+		String payload = refundEventJson("evt_ref_shared_died_1", "refund.failed", "re_hook_shared_b", "failed",
 				"pi_ref_shared_died");
 		double before = refundsFailedCount();
 

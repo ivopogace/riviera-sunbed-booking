@@ -136,12 +136,12 @@ class PaymentMigrationIT {
 		assertDoesNotThrow(() -> {
 			insertPayment(6001L, "pi_refunded", "SUCCEEDED");
 			jdbc.sql("""
-					UPDATE payment_booking SET refunded_minor = 4500, refund_id = 're_full' WHERE booking_ref = 6001
+					UPDATE payment_booking SET refunded_minor = 4500, refund_id = 're_mig_full' WHERE booking_ref = 6001
 					""").update();
 			jdbc.sql("UPDATE payment SET status = 'REFUNDED' WHERE payment_intent_id = 'pi_refunded'").update();
 			insertPayment(6002L, "pi_partial", "SUCCEEDED");
 			jdbc.sql("""
-					UPDATE payment_booking SET refunded_minor = 2250, refund_id = 're_part' WHERE booking_ref = 6002
+					UPDATE payment_booking SET refunded_minor = 2250, refund_id = 're_mig_part' WHERE booking_ref = 6002
 					""").update();
 			jdbc.sql("UPDATE payment SET status = 'PARTIALLY_REFUNDED' WHERE payment_intent_id = 'pi_partial'")
 					.update();
