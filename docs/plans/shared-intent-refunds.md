@@ -151,7 +151,7 @@ because the runbooks' SQL and the domain model name the old columns.
 | R-6 | Flyway `V64` collides with another branch | Low | Rename | Free on `main` @ `c5415f48`, unclaimed by any open PR; the branch merging second renumbers | this PR | closed — still free at ready-for-review |
 | R-7 | The webhook publishes per booking; a listener failure on one booking leaves the others confirmed | Low | Partial confirmation of a group | Each publication is registry-backed and re-driven independently; the same at-least-once posture as today per booking | payment | closed — b3755047 (`StripeWebhookIT.succeededOnASharedIntentConfirmsEveryBooking`) |
 | R-8 | Webhook duplicate / out-of-order on a shared intent (#8) | Medium | Double un-record or a late event contradicting a refund | Unchanged guards: event-id dedup; `markStatus` moves only open rows; the un-record is keyed on the recorded `refund_id`, unique per child | payment | closed — b3755047 (existing `StripeWebhookIT` cases unchanged) |
-| R-9 | Payout double-accrual or double-reversal (#9) | Low | Venue over/under-paid | Untouched: `UNIQUE (booking_id, entry_type)`; AC-8 pins two-of-three | payout | closed — phase 4 |
+| R-9 | Payout double-accrual or double-reversal (#9) | Low | Venue over/under-paid | Untouched: `UNIQUE (booking_id, entry_type)`; AC-8 pins two-of-three | payout | closed — 65ed326a |
 | R-10 | The refund attempt stamp must stay visible mid-call from another connection | Low | A racing failure misattributed | `RefundAttemptVisibilityIT` re-pointed at the child column; `RefundService` unchanged | payment | closed — b3755047 |
 
 ## Open questions / Assumptions
@@ -239,9 +239,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — running on c5415f48..65ed326a; F-1/F-2 fixed, re-pushed`
+**Stage pointer:** `DONE — merged via PR #1221`
 
-**Next action:** collect the remaining reviewers, post the review comment, then the Sonar gate.
+**Next action:** none; close-out steps 2–3 (epic tick, follow-ups) happen after the merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -249,9 +249,11 @@ N/A — no contract change.
 | 1 — `Payments` on the child: parity for one booking, then shared-intent state | ✅ | b3755047 |
 | 2 — Webhook: per-booking fan-out, refund attribution | ✅ | b3755047 |
 | 3 — Stripe adapter: refund tag, shared-intent adoption; contract extension | ✅ | f80c42aa |
-| 4 — Payout pin, docs, plan retirement, close-out | ⏳ | |
+| 4 — Payout pin, docs, plan retirement, close-out | ✅ | 65ed326a, c6fc2790, 6c3c81c4, c853c996, the close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**PR gates:** CI green on `c853c996` (backend, frontend, hygiene, CodeQL, Sonar scan). Review gate ran over `c5415f48..65ed326a` via `code-review:code-review` (high) + `riviera-review-overlay`, five reviewers, record on the PR; F-2/F-3 fixed on the head. Sonar gate on PR 1221: `SonarCloud Code Analysis` concluded success, measures non-empty — 0 new issues, 0 duplicated blocks, 95.3 % new-code coverage over 327 new lines; list empty.
 
 **Findings register** — one row per review, Sonar or CI finding; each fix re-enters at Implement.
 
@@ -311,12 +313,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Create `V64__payment_booking.sql` · Create `PaymentBookingBackfillIT.java` · Modify
 `PaymentMigrationIT.java`
 
-- [ ] **Step 1: Write the failing tests** — `PaymentBookingBackfillIT` (`spring.flyway.target=63`,
+- [x] **Step 1: Write the failing tests** — `PaymentBookingBackfillIT` (`spring.flyway.target=63`,
   the `BookingLastDateBackfillIT` shape): seed four `payment` rows (full refund, partial refund, owed
   after a failure, untouched), migrate to latest, assert one `payment_booking` row each with the same
   values and that `payment` has no `booking_ref` column. `PaymentMigrationIT`: AC-2's three cases.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*PaymentBookingBackfillIT*" --tests "*PaymentMigrationIT*"` → FAIL (no such table)
-- [ ] **Step 3: Minimal implementation** — the migration:
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*PaymentBookingBackfillIT*" --tests "*PaymentMigrationIT*"` → FAIL (no such table)
+- [x] **Step 3: Minimal implementation** — the migration:
 
 ```sql
 CREATE TABLE payment_booking (
@@ -349,59 +351,59 @@ ALTER TABLE payment
     DROP COLUMN refund_attempted_at, DROP COLUMN refund_failed_at, DROP COLUMN failed_refund_id;
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS. The rest of the suite is red until phase 1 (the adapter still names the dropped columns); phases 0 and 1 ship in one push.
-- [ ] **Step 5: Generalization-audit pass** — every hand-written `INSERT INTO payment` in the tree: `grep -rn "INSERT INTO payment\b" platform/src docs scripts` → the five fixtures in R-4 plus the two runbooks; all re-pointed in phases 1 and 4.
-- [ ] **Step 6: Commit** — `git commit -m "Move a booking's share and refund state to payment_booking (#1207)"`
-- [ ] **Step 7: Update Execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS. The rest of the suite is red until phase 1 (the adapter still names the dropped columns); phases 0 and 1 ship in one push.
+- [x] **Step 5: Generalization-audit pass** — every hand-written `INSERT INTO payment` in the tree: `grep -rn "INSERT INTO payment\b" platform/src docs scripts` → the five fixtures in R-4 plus the two runbooks; all re-pointed in phases 1 and 4.
+- [x] **Step 6: Commit** — `git commit -m "Move a booking's share and refund state to payment_booking (#1207)"`
+- [x] **Step 7: Update Execution status** in the same commit window.
 
 ## Phase 1 — `Payments` on the child
 
 **Files:** Modify `NewPayment`, `Payments`, `JdbcPayments`, `RefundService`; the doubles in R-5; the
 fixtures in R-4; Test `JdbcPaymentsIT`, `RefundServiceTest`, `RefundAttemptVisibilityIT`
 
-- [ ] **Step 1: Write the failing tests** — `JdbcPaymentsIT`: AC-3's two cases plus
+- [x] **Step 1: Write the failing tests** — `JdbcPaymentsIT`: AC-3's two cases plus
   `findBookingRefsByIntent` answering both bookings; `RefundServiceTest`: `PARTIALLY_REFUNDED` with a
   zero share is `OUTSTANDING`.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*JdbcPaymentsIT*" --tests "*RefundServiceTest*"` → FAIL
-- [ ] **Step 3: Minimal implementation** — `NewPayment(String paymentIntentId, String currency, String clientSecret, List<Share> shares)` with the five-argument constructor delegating to one share; `register` inserts the parent `RETURNING id` then one child per share; every read joins `payment_booking b ON b.payment_id = p.id`; `markRefunded`, `markRefundFailed`, `markUnrecordedRefundFailed` as data-modifying CTEs updating the child and then the parent's status from `(SELECT COALESCE(SUM(refunded_minor), 0) FROM payment_booking WHERE payment_id = … AND id <> moved.id) + :refunded` (R-2).
-- [ ] **Step 4: Run it, verify it passes** — the payment package: `./gradlew test --tests "ai.riviera.platform.payment.*"` → PASS; then the five R-4 fixtures' classes.
-- [ ] **Step 5: Generalization-audit pass** — every `Payments` implementation: `grep -rln "implements Payments\|new Payments()\|extends ThrowingPayments" platform/src` → judged; every reader of a moved column: `grep -rn "refund_failed_at\|refund_attempted_at\|failed_refund_id\|refunded_minor\|refund_id\|booking_ref" platform/src` → re-pointed.
-- [ ] **Step 6: Commit** — `git commit -m "Record and refund each booking's share of a shared PaymentIntent (#1207)"`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*JdbcPaymentsIT*" --tests "*RefundServiceTest*"` → FAIL
+- [x] **Step 3: Minimal implementation** — `NewPayment(String paymentIntentId, String currency, String clientSecret, List<Share> shares)` with the five-argument constructor delegating to one share; `register` inserts the parent `RETURNING id` then one child per share; every read joins `payment_booking b ON b.payment_id = p.id`; `markRefunded`, `markRefundFailed`, `markUnrecordedRefundFailed` as data-modifying CTEs updating the child and then the parent's status from `(SELECT COALESCE(SUM(refunded_minor), 0) FROM payment_booking WHERE payment_id = … AND id <> moved.id) + :refunded` (R-2).
+- [x] **Step 4: Run it, verify it passes** — the payment package: `./gradlew test --tests "ai.riviera.platform.payment.*"` → PASS; then the five R-4 fixtures' classes.
+- [x] **Step 5: Generalization-audit pass** — every `Payments` implementation: `grep -rln "implements Payments\|new Payments()\|extends ThrowingPayments" platform/src` → judged; every reader of a moved column: `grep -rn "refund_failed_at\|refund_attempted_at\|failed_refund_id\|refunded_minor\|refund_id\|booking_ref" platform/src` → re-pointed.
+- [x] **Step 6: Commit** — `git commit -m "Record and refund each booking's share of a shared PaymentIntent (#1207)"`
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 2 — Webhook: per-booking fan-out, refund attribution
 
 **Files:** Modify `StripeWebhookController`; Create `StripeRefundTag`; Test `StripeWebhookIT`
 
-- [ ] **Step 1: Write the failing tests** — AC-4 and AC-5's five cases.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*StripeWebhookIT*"` → FAIL
-- [ ] **Step 3: Minimal implementation** — `onSucceeded`/`onCanceled` publish for every booking `findBookingRefsByIntent` answers; `markOwedAgain` resolves the booking through `StripeRefundTag.bookingOf(refund)` (the `bookingRef` metadata), falling back to the intent's sole booking, and moves nothing when it cannot attribute.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — every reader of `findBookingRefByIntent`: `grep -rn "findBookingRefsByIntent" platform/src`.
-- [ ] **Step 6: Commit** — `git commit -m "Reconcile a shared PaymentIntent's webhooks per booking (#1207)"`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 1: Write the failing tests** — AC-4 and AC-5's five cases.
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*StripeWebhookIT*"` → FAIL
+- [x] **Step 3: Minimal implementation** — `onSucceeded`/`onCanceled` publish for every booking `findBookingRefsByIntent` answers; `markOwedAgain` resolves the booking through `StripeRefundTag.bookingOf(refund)` (the `bookingRef` metadata), falling back to the intent's sole booking, and moves nothing when it cannot attribute.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 5: Generalization-audit pass** — every reader of `findBookingRefByIntent`: `grep -rn "findBookingRefsByIntent" platform/src`.
+- [x] **Step 6: Commit** — `git commit -m "Reconcile a shared PaymentIntent's webhooks per booking (#1207)"`
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 3 — Stripe adapter: refund tag, shared-intent adoption; contract extension
 
 **Files:** Modify `StripePaymentGateway`; Test `StripePaymentGatewayTest`, `PaymentGatewayRefundContract`, `StripeRefundContractTest`, `StripeRefunds`
 
-- [ ] **Step 1: Write the failing tests** — AC-6's contract case (the fake mints refunds that keep the create's metadata); AC-7's three cases.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*StripePaymentGatewayTest*" --tests "*StripeRefundContractTest*"` → FAIL
-- [ ] **Step 3: Minimal implementation** — `RefundCreateParams.putMetadata(StripeRefundTag.KEY, id)`; candidates: on a single-booking intent every live refund (today's rule); on a shared intent the live refunds tagged with this booking, and any untagged live refund is `refund_mismatch`.
-- [ ] **Step 4: Run it, verify it passes** — the payment package → PASS; the coverage architecture test still green.
-- [ ] **Step 5: Generalization-audit pass** — every reader of `Refund#getMetadata`: `grep -rn "getMetadata" platform/src/main/java/ai/riviera/platform/payment` → all through `StripeRefundTag`.
-- [ ] **Step 6: Commit** — `git commit -m "Tag a Stripe refund with its booking and adopt only its own on a shared intent (#1207)"`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 1: Write the failing tests** — AC-6's contract case (the fake mints refunds that keep the create's metadata); AC-7's three cases.
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*StripePaymentGatewayTest*" --tests "*StripeRefundContractTest*"` → FAIL
+- [x] **Step 3: Minimal implementation** — `RefundCreateParams.putMetadata(StripeRefundTag.KEY, id)`; candidates: on a single-booking intent every live refund (today's rule); on a shared intent the live refunds tagged with this booking, and any untagged live refund is `refund_mismatch`.
+- [x] **Step 4: Run it, verify it passes** — the payment package → PASS; the coverage architecture test still green.
+- [x] **Step 5: Generalization-audit pass** — every reader of `Refund#getMetadata`: `grep -rn "getMetadata" platform/src/main/java/ai/riviera/platform/payment` → all through `StripeRefundTag`.
+- [x] **Step 6: Commit** — `git commit -m "Tag a Stripe refund with its booking and adopt only its own on a shared intent (#1207)"`
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 4 — Payout pin, docs, plan retirement, close-out
 
 **Files:** Test `PayoutReversalIT`; Modify `RESPONSIBILITIES.md`, `CLAUDE.md`, `docs/architecture/domain-model.md`, `docs/architecture/multi-day-stays.md`, the two runbooks; Delete `docs/plans/venue-max-stay.md`
 
-- [ ] **Step 1: Write the failing test** — AC-8 (fails only if the mechanism regresses; written as a pin).
-- [ ] **Step 2: Run it** — `./gradlew test --tests "*PayoutReversalIT*"` → PASS (a pin, not a red).
-- [ ] **Step 3: Docs** — every substrate line naming the moved columns re-pointed; the structural net run.
-- [ ] **Step 4: Commit** — `git commit -m "Pin one reversal per refunded booking and re-point the payment docs (#1207)"`
-- [ ] **Step 5: Update Execution status; retire the previous plan in the last code-touching commit.**
+- [x] **Step 1: Write the failing test** — AC-8 (fails only if the mechanism regresses; written as a pin).
+- [x] **Step 2: Run it** — `./gradlew test --tests "*PayoutReversalIT*"` → PASS (a pin, not a red).
+- [x] **Step 3: Docs** — every substrate line naming the moved columns re-pointed; the structural net run.
+- [x] **Step 4: Commit** — `git commit -m "Pin one reversal per refunded booking and re-point the payment docs (#1207)"`
+- [x] **Step 5: Update Execution status; retire the previous plan in the last code-touching commit.**
 
 ---
 
@@ -418,19 +420,19 @@ fixtures in R-4; Test `JdbcPaymentsIT`, `RefundServiceTest`, `RefundAttemptVisib
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-9:** Run the pinning classes named above → PASS. Verified at commit `<sha>`.
+- [x] **AC-1..AC-9:** the pinning classes above ran green locally in one JVM against one container (`./gradlew test --tests "ai.riviera.platform.payment.*" --tests "*RefundBulkheadIT*" --tests "*PaymentEventListenerIT*" --tests "*AbandonedBookingSweepIT*" --tests "*RequestAcceptPayIT*" --tests "*GuestContactRetentionIT*" --tests "*AccountErasureIT*" --tests "*PayoutReversalIT*"`, 24 classes) and in CI's full suite on `c853c996` (backend job green; the first run's `DuplicateKeyException` inside `JdbcPaymentsIT` is the proof the Testcontainers ITs execute there rather than skip). Verified at commit `c853c996`.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section filled or justified N/A; concurrency test present (#2).
-- [ ] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
-- [ ] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
-- [ ] Payment section filled or N/A; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
-- [ ] Flyway migration present; invariant-enforcing constraints tested (#12).
-- [ ] Frontend standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability section filled or justified N/A; concurrency test present (#2).
+- [x] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
+- [x] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
+- [x] Payment section filled or N/A; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
+- [x] Flyway migration present; invariant-enforcing constraints tested (#12).
+- [x] Frontend standards met or deviation documented; no `as any` on the contract. (N/A — backend-only)
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #1221`.
+- [x] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
