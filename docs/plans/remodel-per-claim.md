@@ -142,7 +142,7 @@ The commit's `Refused` answer is replaced, so every behaviour of the old refusal
 | R-5 | Published surface change: `RemodelGate` and `RemodelCommit` shapes; `WebSliceStubs`, `PayoutModuleTest`, `SpanReleaseIT`, `BeachMapEditService` compile against them | H | L | One `grep -rn "RemodelGate\|RemodelCommit\.\|proceed(" platform/src` sweep before phase 2 ends; structural net run | agent | closed — sweep in the audit log, net green at `e48259c` |
 | R-6 | BOLA (#13): no new venue-scoped surface; every port still asserts ownership first | L | H | Unchanged; `CrossVenueDenialIT` untouched | agent | closed — no new route |
 | R-7 | Frontend e2e mocks lacking `kept` crash the receipt panel | M | M | Every mocked receipt gains `kept: []`; TS type makes the fixtures fail to compile without it | agent | closed — `63ac8a8` |
-| R-8 | Flyway `V62` claimed by a racing PR | L | L | Free on `main` @ `cf808ac`, open PRs dependabot-only; the branch merging second renumbers | agent | open until merge |
+| R-8 | Flyway `V62` claimed by a racing PR | L | L | Free on `main` @ `cf808ac`, open PRs dependabot-only; the branch merging second renumbers | agent | closed — `main` still at `cf808ac` at close-out, no other V62 |
 
 ## Open questions / Assumptions
 
@@ -224,9 +224,9 @@ unchanged and keep their pinning tests (`RemodelCommitIT.commitsAMixedPictureAnd
 
 ## Execution status
 
-**Stage pointer:** `PR — ready for review; review gate due`
+**Stage pointer:** `merge close-out — CI + Sonar on the close-out push, then merge`
 
-**Next action:** run the review gate (`pr-gates.md` §1) over the resolved range; re-check Sonar after this push.
+**Next action:** CI green and the Sonar list empty on this head → merge → close-out steps 1–3, 6–7. Merged via PR #1214.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -235,7 +235,7 @@ unchanged and keep their pinning tests (`RemodelCommitIT.commitsAMixedPictureAnd
 | 2 — `venue` gate verdict + kept sets | ✅ | `e48259c` |
 | 3 — edge, wire, ITs, concurrency | ✅ | `8d8a86e` |
 | 4 — frontend | ✅ | `63ac8a8` |
-| 5 — docs, gates, close-out | ⏳ | docs in this commit |
+| 5 — docs, gates, close-out | ✅ | `a27dc2af` docs · `3f4fe9d5` Sonar · `a9d78169` freshness · `96d7cb71` review fixes · this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -253,6 +253,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-9 | review gate (comment reviewer) | `RemodelPreviewResponse`/`RemodelPreviewAssembler` still worded `keep` as "a blocked preview says to keep" | fixed — reworded |
 | F-10 | review gate (conventions reviewer, RV-BE-19) | `LayoutDiff#displaced` restates the label-uniqueness rule in Java | no change — the precedented pre-check for a typed answer (`LayoutCommand#duplicateWithin`); the index stays the backstop, now said in its Javadoc |
 | F-11 | review gate (conventions reviewer, §6d budget) | touched type Javadocs over ~6 lines | no change — pre-existing length, "~" guideline |
+| F-12 | CI (Repo hygiene on `96d7cb71`) | five review-fix paths missing from File structure | fixed — listed |
 | F-6 | docs-freshness 2a/3 | zero stale present-tense facts in `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, ADRs, skills, `docs/agents`; "five wire groups" and "the four remodel legs" still hold (a kept claim is a group, not a leg) | no action |
 
 ---
@@ -283,6 +284,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/remodel-preview-panel.{ts,html,spec.ts,fixtures.ts}` — copy + specs
 - `frontend/src/app/operator/remodel-receipt-panel.{ts,spec.ts,fixtures.ts}` — kept group + specs
 - `frontend/src/app/operator/operator-console.model.spec.ts` — the committable rule
+- `frontend/src/app/operator/layout-editor.{ts,html,spec.ts}` — `REMODEL_REFUSED` re-renders as a displaced kept set (`previewDisplaced`), Back takes focus
+- `platform/src/main/java/ai/riviera/platform/{RemodelPreviewResponse,RemodelPreviewAssembler}.java` — `keep` Javadoc: the sets that stay, kept by the save or by the operator
 - `frontend/e2e/layout-editor.e2e.ts` — mocks gain `kept`; one new case
 - `RESPONSIBILITIES.md`, `CONTEXT.md`, `docs/architecture/multi-day-stays.md` — the commit's rule, the glossary, D9 landed
 
@@ -292,46 +295,46 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `V62__remodel_receipt_kept.sql`, `ReceiptKept.java` · Modify `NewReceipt`, `RemodelReceipt`, `RemodelReceipts`, `JdbcRemodelReceipts` · Test `RemodelCommitMigrationIT`, `JdbcRemodelReceiptsIT`
 
-- [ ] Red: `RemodelCommitMigrationIT.theKeptTableHoldsItsShape` (unknown reason and orphan receipt refused) and `JdbcRemodelReceiptsIT.keptLinesReadBackAndNeverCountAsEnded` — `./gradlew --console=plain test --tests "*RemodelCommitMigrationIT*" --tests "*JdbcRemodelReceiptsIT*"` → FAIL (compile / relation missing)
-- [ ] Green: migration + records + adapter; same command → PASS
-- [ ] Commit `Remodel receipts gain kept lines (#1199)`; Execution status.
+- [x] Red: `RemodelCommitMigrationIT.theKeptTableHoldsItsShape` (unknown reason and orphan receipt refused) and `JdbcRemodelReceiptsIT.keptLinesReadBackAndNeverCountAsEnded` — `./gradlew --console=plain test --tests "*RemodelCommitMigrationIT*" --tests "*JdbcRemodelReceiptsIT*"` → FAIL (compile / relation missing)
+- [x] Green: migration + records + adapter; same command → PASS
+- [x] Commit `Remodel receipts gain kept lines (#1199)`; Execution status.
 
 ## Phase 1 — `booking` keeps instead of refusing
 
 **Files:** Modify `RemodelClaimsService`, `RemodelCommit`, `RemodelClaims` Javadoc · Test `RemodelClaimsServiceTest` (replace `blockedAndHeldPicturesAreStillRefusedWhateverTheConfirmation`)
 
-- [ ] Red: `aBlockedClaimIsKeptAndReceiptedWhileTheRestSettles` → FAIL
-- [ ] Green: `Blocked` → `kept.add(...)`; `Refused` removed from the sealed type; callers (edge) adjusted to compile — `./gradlew --console=plain test --tests "*RemodelClaimsServiceTest*"` → PASS
-- [ ] Commit; Execution status.
+- [x] Red: `aBlockedClaimIsKeptAndReceiptedWhileTheRestSettles` → FAIL
+- [x] Green: `Blocked` → `kept.add(...)`; `Refused` removed from the sealed type; callers (edge) adjusted to compile — `./gradlew --console=plain test --tests "*RemodelClaimsServiceTest*"` → PASS
+- [x] Commit; Execution status.
 
 ## Phase 2 — `venue` gate verdict + kept sets
 
 **Files:** Create `GateVerdict.java` · Modify `RemodelGate`, `BeachMapRemodel`, `LayoutWriter`, `LayoutWrite`, `LayoutDiff`, `LayoutCommitOutcome`, `BeachMapRemodelService`, `BeachMapEditService` · Test `LayoutDiffTest`, `LayoutWriterTest`, `BeachMapRemodelServiceTest`
 
-- [ ] Red: the three `LayoutWriterTest` cases + `LayoutDiffTest.keepingDropsTheKeptSets…` + `BeachMapRemodelServiceTest` displaced mapping → FAIL
-- [ ] Green — `./gradlew --console=plain test --tests "*LayoutWriterTest*" --tests "*LayoutDiffTest*" --tests "*BeachMapRemodelServiceTest*" --tests "*VenueAdminServiceTest*"` → PASS; structural net → PASS
-- [ ] Generalization pass (R-5 sweep). Commit; Execution status.
+- [x] Red: the three `LayoutWriterTest` cases + `LayoutDiffTest.keepingDropsTheKeptSets…` + `BeachMapRemodelServiceTest` displaced mapping → FAIL
+- [x] Green — `./gradlew --console=plain test --tests "*LayoutWriterTest*" --tests "*LayoutDiffTest*" --tests "*BeachMapRemodelServiceTest*" --tests "*VenueAdminServiceTest*"` → PASS; structural net → PASS
+- [x] Generalization pass (R-5 sweep). Commit; Execution status.
 
 ## Phase 3 — edge, wire, ITs, concurrency
 
 **Files:** Modify `RemodelCommitService`, `RemodelCommitOutcome`, `RemodelCommitResponse`, `RemodelCommitController`, `RemodelReceiptView`, `WebSliceStubs`, `SpanReleaseIT` · Test `RemodelCommitIT`, `RemodelReceiptIT`, `MoveVsReserveConcurrencyIT`
 
-- [ ] Red: AC-1, AC-2, AC-6, AC-7 ITs → FAIL
-- [ ] Green — one IT class at a time under the hook's dockerd → PASS
-- [ ] Commit; open the **draft PR**; Execution status.
+- [x] Red: AC-1, AC-2, AC-6, AC-7 ITs → FAIL
+- [x] Green — one IT class at a time under the hook's dockerd → PASS
+- [x] Commit; open the **draft PR**; Execution status.
 
 ## Phase 4 — frontend
 
 **Files:** Modify `operator-console.model.ts`, `remodel-preview-panel.{ts,html}`, `remodel-receipt-panel.ts`, fixtures, specs, `e2e/layout-editor.e2e.ts`
 
-- [ ] Red: the two panel specs + the model spec → `npm test -- remodel` FAIL
-- [ ] Green; `npm run lint`, `npm run format:check`, `npm test`, `npm run test:a11y`; e2e case with `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- layout-editor`
-- [ ] Commit; Execution status.
+- [x] Red: the two panel specs + the model spec → `npm test -- remodel` FAIL
+- [x] Green; `npm run lint`, `npm run format:check`, `npm test`, `npm run test:a11y`; e2e case with `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- layout-editor`
+- [x] Commit; Execution status.
 
 ## Phase 5 — docs, gates, close-out
 
-- [ ] RESPONSIBILITIES §booking / §venue / §Platform edge; CONTEXT.md; D9 marked landed (`riviera-docs-freshness`)
-- [ ] Merge `origin/main`; ready for review; review gate (`pr-gates.md` §1); Sonar (§2); close-out (§3)
+- [x] RESPONSIBILITIES §booking / §venue / §Platform edge; CONTEXT.md; D9 marked landed (`riviera-docs-freshness`)
+- [x] Merge `origin/main`; ready for review; review gate (`pr-gates.md` §1); Sonar (§2); close-out (§3)
 
 ---
 
@@ -352,15 +355,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section filled; concurrency test present (#2).
-- [ ] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
-- [ ] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
-- [ ] Payment N/A justified.
-- [ ] Flyway migration present; invariant-enforcing constraints tested (#12).
-- [ ] Frontend standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full; if blocked, stated in the PR with the box unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability section filled; concurrency test present (#2).
+- [x] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
+- [x] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
+- [x] Payment N/A justified.
+- [x] Flyway migration present; invariant-enforcing constraints tested (#12).
+- [x] Frontend standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #1214` (forced onto its own commit by the hygiene guard on `96d7cb71`).
+- [x] The review gate ran in full; if blocked, stated in the PR with the box unticked.
