@@ -4,6 +4,6 @@ import java.time.LocalDate;
 
 import ai.riviera.platform.venue.vocabulary.SetSpot;
 
-/** A spot with no availability row on {@code date} — a candidate the move rule may pick for that date only. */
+/** A spot with no availability row on any day of a span starting on {@code date} — a candidate the move rule may pick for that span only. */
 public record FreeSpot(SetSpot spot, LocalDate date) {
 }

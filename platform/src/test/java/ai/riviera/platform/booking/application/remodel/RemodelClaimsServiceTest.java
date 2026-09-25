@@ -65,11 +65,11 @@ import static org.mockito.ArgumentMatchers.anyLong;
 
 /**
  * The classification, keyed on the claim then split by status: a frozen claim blocks; a claim with
- * a candidate moves (one candidate serves one claim per date); a move-only claim with none blocks
- * naming the set to keep; beyond the floor {@code CONFIRMED} refunds, {@code AWAITING_PAYMENT}
- * releases, {@code PENDING_REQUEST} declines. The commit applies all four, keeps a blocked claim
- * where it is and receipts it, and a picture that refunds guests needs the operator's typed count
- * and reason.
+ * a candidate free on every day of its span moves (one candidate serves one claim per day); a
+ * move-only claim with none blocks naming the set to keep; beyond the floor {@code CONFIRMED}
+ * refunds, {@code AWAITING_PAYMENT} releases, {@code PENDING_REQUEST} declines. The commit applies
+ * all four, keeps a blocked claim where it is and receipts it, and a picture that refunds guests
+ * needs the operator's typed count and reason.
  * Ownership asserts before any read (invariant #13). The clock is fixed at 10:00 Tirane on 10 Sept
  * 2026 against the 24h / 96h windows.
  */
@@ -107,6 +107,10 @@ class RemodelClaimsServiceTest {
 
 	private static LiveClaim claim(long bookingId, SetSpot on, LocalDate date, BookingStatus status) {
 		return new LiveClaim(bookingId, on.setId(), date, date, status, 4500, "EUR");
+	}
+
+	private static LiveClaim stay(long bookingId, SetSpot on, LocalDate first, LocalDate last, BookingStatus status) {
+		return new LiveClaim(bookingId, on.setId(), first, last, status, 4500, "EUR");
 	}
 
 	private static SpotRef ref(SetSpot spot) {
@@ -199,6 +203,65 @@ class RemodelClaimsServiceTest {
 		assertEquals(new RemodelOutcome.Move(ref(A3), 0, 2), claims.get(0).outcome());
 		assertEquals(RemodelOutcome.Refund.REFUND, claims.get(1).outcome());
 		verify(facts).freeOnlineSetsOn(VENUE, IN_TEN_DAYS);
+	}
+
+	@Test
+	void aStayMovesOnlyToASetFreeOnEveryDayOfItsSpan() {
+		LocalDate second = IN_TEN_DAYS.plusDays(1);
+		LocalDate last = IN_TEN_DAYS.plusDays(2);
+		when(bookings.findLiveOnSets(Set.of(A1.setId())))
+				.thenReturn(List.of(stay(215, A1, IN_TEN_DAYS, last, BookingStatus.CONFIRMED)));
+		givenMap(List.of(A1, A2, A3), IN_TEN_DAYS, List.of(A2, A3));
+		when(facts.freeOnlineSetsOn(VENUE, second)).thenReturn(List.of(A3));
+		when(facts.freeOnlineSetsOn(VENUE, last)).thenReturn(List.of(A2, A3));
+
+		assertEquals(new RemodelOutcome.Move(ref(A3), 0, 2),
+				service.classify(OWNER, VENUE, List.of(A1.setId())).getFirst().outcome(),
+				"the nearer set is held on the stay's second day, so the farther one free all three days wins");
+	}
+
+	@Test
+	void aMoveOnlyStayWithNoWholeSpanCandidateIsKeptAndTheCommitAnswersNormally() {
+		LocalDate second = IN_THREE_DAYS.plusDays(1);
+		LocalDate last = IN_THREE_DAYS.plusDays(2);
+		when(bookings.findLiveOnSets(Set.of(A1.setId())))
+				.thenReturn(List.of(stay(216, A1, IN_THREE_DAYS, last, BookingStatus.CONFIRMED)));
+		givenMap(List.of(A1, A2), IN_THREE_DAYS, List.of(A2));
+		when(facts.freeOnlineSetsOn(VENUE, second)).thenReturn(List.of());
+		when(facts.freeOnlineSetsOn(VENUE, last)).thenReturn(List.of(A2));
+		when(receipts.store(any())).thenReturn(RECEIPT);
+		RemodelClaim kept = new RemodelClaim(new BookingId(216), ref(A1), IN_THREE_DAYS, last, 4500, "EUR",
+				new RemodelOutcome.Blocked(BlockReason.NO_MOVE_CANDIDATE));
+
+		assertEquals(List.of(kept), service.classify(OWNER, VENUE, List.of(A1.setId())));
+		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(kept), RefundConfirmation.NONE);
+
+		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(kept)), outcome);
+		verify(availability, never()).claim(any(), any());
+		verify(availability, never()).release(any(), any());
+		verify(bookings, never()).moveToSet(anyLong(), any(), any(), any());
+		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(), List.of(), "",
+				List.of(new ReceiptKept(new BookingId(216), IN_THREE_DAYS, ref(A1), BlockReason.NO_MOVE_CANDIDATE))));
+	}
+
+	@Test
+	void aSetPickedForAStayLeavesEveryDayOfItsSpan() {
+		LocalDate day1 = IN_TEN_DAYS.plusDays(1);
+		LocalDate day2 = IN_TEN_DAYS.plusDays(2);
+		LocalDate day3 = IN_TEN_DAYS.plusDays(3);
+		when(bookings.findLiveOnSets(Set.of(A1.setId(), A2.setId()))).thenReturn(List.of(
+				stay(218, A2, day1, day3, BookingStatus.CONFIRMED),
+				stay(217, A1, IN_TEN_DAYS, day2, BookingStatus.CONFIRMED)));
+		when(facts.activeSetsOf(VENUE)).thenReturn(List.of(A1, A2, A3));
+		when(facts.freeOnlineSetsOn(eq(VENUE), any())).thenReturn(List.of(A3));
+
+		List<RemodelClaim> claims = service.classify(OWNER, VENUE, List.of(A1.setId(), A2.setId()));
+
+		assertEquals(List.of(new BookingId(217), new BookingId(218)),
+				claims.stream().map(RemodelClaim::bookingId).toList());
+		assertEquals(new RemodelOutcome.Move(ref(A3), 0, 2), claims.get(0).outcome());
+		assertEquals(RemodelOutcome.Refund.REFUND, claims.get(1).outcome(),
+				"A3 went to the stay that also holds the second one's first two days");
 	}
 
 	private static final ReceiptId RECEIPT = new ReceiptId(42);
@@ -386,7 +449,8 @@ class RemodelClaimsServiceTest {
 		LocalDate last = IN_TEN_DAYS.plusDays(2);
 		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(
 				new LiveClaim(208, A1.setId(), IN_TEN_DAYS, last, BookingStatus.CONFIRMED, 13500, "EUR")));
-		givenMap(List.of(A1, A2), IN_TEN_DAYS, List.of(A2));
+		when(facts.activeSetsOf(VENUE)).thenReturn(List.of(A1, A2));
+		when(facts.freeOnlineSetsOn(eq(VENUE), any())).thenReturn(List.of(A2));
 		when(availability.claim(any(), any())).thenReturn(ClaimOutcome.CLAIMED);
 		when(bookings.moveToSet(any(Long.class), any(), any(), any())).thenReturn(true);
 		when(receipts.store(any())).thenReturn(RECEIPT);

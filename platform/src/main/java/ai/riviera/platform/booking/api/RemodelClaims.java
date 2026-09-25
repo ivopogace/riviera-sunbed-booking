@@ -30,7 +30,7 @@ public interface RemodelClaims {
 
 	/**
 	 * Every live booking on the given sets with its outcome, ordered by service date then booking
-	 * id — the order in which candidates were allocated, so one free set serves one claim per date.
+	 * id — the order in which candidates were allocated, so one free set serves one claim per day.
 	 * Owner-asserted: a non-owner is refused before any read (invariant #13). An empty set list
 	 * answers an empty list without touching the database.
 	 */

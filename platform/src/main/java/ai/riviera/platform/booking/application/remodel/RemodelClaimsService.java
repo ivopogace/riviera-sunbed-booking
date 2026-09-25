@@ -6,13 +6,13 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -55,16 +55,17 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 /**
  * Serves {@link RemodelClaims}: assert ownership, read the live bookings on the disturbed sets, and
  * classify each in {@code (service date, booking id)} order — the zone first ({@link RemodelZones}),
- * then a move candidate ({@link MoveRanking}) off that date's free online sets less the disturbed
- * ones and less what an earlier claim took, then the status split. The free pool is read once per
- * distinct date and only when a claim needs it. {@link #classify} is read-only and unlocked, advisory
- * by contract; {@link #commit} runs the same classification inside the caller's transaction — the
- * edge calls it from inside the layout write, under {@code venue}'s set locks — and settles every
- * claim: a move claims the candidate's rows and re-seats the booking, a refund, release or decline
- * runs the module's own guarded transition for that status, and a blocked claim is kept where it is
- * with a receipt line and nothing else. Each ending frees every {@code (set, date)} row of the span
- * it held, and each move or ending publishes the fact the rest of the platform already reacts to, so
- * no refund, reversal or mail is driven from here. Rationale: RESPONSIBILITIES.md §booking.
+ * then a move candidate ({@link MoveRanking}) off the online sets free on every day of the claim's
+ * span, less the disturbed ones and less what an earlier claim took on any of those days, then the
+ * status split. The free pool is read once per distinct date and only when a claim needs it.
+ * {@link #classify} is read-only and unlocked, advisory by contract; {@link #commit} runs the same
+ * classification inside the caller's transaction — the edge calls it from inside the layout write,
+ * under {@code venue}'s set locks — and settles every claim: a move claims the candidate's rows and
+ * re-seats the booking, a refund, release or decline runs the module's own guarded transition for
+ * that status, and a blocked claim is kept where it is with a receipt line and nothing else. Each
+ * ending frees every {@code (set, date)} row of the span it held, and each move or ending publishes
+ * the fact the rest of the platform already reacts to, so no refund, reversal or mail is driven
+ * from here. Rationale: RESPONSIBILITIES.md §booking.
  */
 @Service
 class RemodelClaimsService implements RemodelClaims {
@@ -209,8 +210,8 @@ class RemodelClaimsService implements RemodelClaims {
 
 	/**
 	 * Claim every day of the span on the candidate before releasing the old rows (invariant #2), then
-	 * re-seat the booking. The candidate was picked on the first day; a later day of it taken under the
-	 * venue lock throws, and the commit's transaction moves nothing.
+	 * re-seat the booking. A day not won under the venue lock throws, and the commit's transaction
+	 * moves nothing.
 	 */
 	private ReceiptMove applyMove(VenueId venueId, RemodelClaim claim, RemodelOutcome.Move move, Instant movedAt) {
 		for (LocalDate day : ServiceDays.between(claim.bookingDate(), claim.lastDate())) {
@@ -245,37 +246,28 @@ class RemodelClaimsService implements RemodelClaims {
 		Map<SetId, SetSpot> spots = facts.activeSetsOf(venueId).stream()
 				.collect(Collectors.toMap(SetSpot::setId, Function.identity()));
 		Instant now = clock.instant();
-		Map<LocalDate, List<FreeSpot>> pools = new HashMap<>();
+		FreePools pools = new FreePools(venueId, disturbed);
 		List<RemodelClaim> result = new ArrayList<>(claims.size());
 		for (LiveClaim claim : claims) {
 			SetSpot from = spots.get(claim.setId());
 			if (from == null) {
 				throw new IllegalStateException("live booking " + claim.bookingId() + " holds a set off the active map");
 			}
-			RemodelOutcome outcome = outcomeOf(claim, from, zones.zoneOf(claim.bookingDate(), now),
-					() -> pools.computeIfAbsent(claim.bookingDate(), date -> freePoolOn(venueId, date, disturbed)));
+			RemodelOutcome outcome = outcomeOf(claim, from, zones.zoneOf(claim.bookingDate(), now), pools);
 			result.add(new RemodelClaim(new BookingId(claim.bookingId()), refOf(from), claim.bookingDate(),
 					claim.lastDate(), claim.amountMinor(), claim.currency(), outcome));
 		}
 		return List.copyOf(result);
 	}
 
-	private List<FreeSpot> freePoolOn(VenueId venueId, LocalDate date, Set<SetId> disturbed) {
-		return facts.freeOnlineSetsOn(venueId, date).stream()
-				.filter(spot -> !disturbed.contains(spot.setId()))
-				.map(spot -> new FreeSpot(spot, date))
-				.collect(Collectors.toCollection(ArrayList::new));
-	}
-
-	private static RemodelOutcome outcomeOf(LiveClaim claim, SetSpot from, RemodelZone zone,
-			Supplier<List<FreeSpot>> freePool) {
+	private static RemodelOutcome outcomeOf(LiveClaim claim, SetSpot from, RemodelZone zone, FreePools pools) {
 		if (zone == RemodelZone.FROZEN) {
 			return new RemodelOutcome.Blocked(BlockReason.FROZEN);
 		}
-		List<FreeSpot> pool = freePool.get();
-		Optional<MoveRanking.Move> move = MoveRanking.pick(from, claim.bookingDate(), pool);
+		List<LocalDate> span = ServiceDays.between(claim.bookingDate(), claim.lastDate());
+		Optional<MoveRanking.Move> move = MoveRanking.pick(from, claim.bookingDate(), pools.freeThroughout(span));
 		if (move.isPresent()) {
-			pool.removeIf(candidate -> candidate.spot().setId().equals(move.get().to().setId()));
+			pools.take(move.get().to().setId(), span);
 			return new RemodelOutcome.Move(refOf(move.get().to()), move.get().rowsAway(), move.get().positionsAway());
 		}
 		if (zone == RemodelZone.MOVE_ONLY) {
@@ -299,5 +291,40 @@ class RemodelClaimsService implements RemodelClaims {
 
 	private static SpotRef refOf(SetSpot spot) {
 		return new SpotRef(spot.setId(), spot.placement().rowLabel(), spot.placement().positionNo());
+	}
+
+	/**
+	 * One classification's free online sets per date, less the disturbed ones, each date read once and
+	 * only when a claim's span reaches it; a set an earlier claim takes leaves every day of that span.
+	 */
+	private final class FreePools {
+
+		private final VenueId venueId;
+		private final Set<SetId> disturbed;
+		private final Map<LocalDate, Map<SetId, SetSpot>> byDate = new HashMap<>();
+
+		FreePools(VenueId venueId, Set<SetId> disturbed) {
+			this.venueId = venueId;
+			this.disturbed = disturbed;
+		}
+
+		/** The spots free on every day of {@code span}, dated on its first day. */
+		List<FreeSpot> freeThroughout(List<LocalDate> span) {
+			LocalDate first = span.getFirst();
+			return on(first).values().stream()
+					.filter(spot -> span.stream().allMatch(day -> on(day).containsKey(spot.setId())))
+					.map(spot -> new FreeSpot(spot, first))
+					.toList();
+		}
+
+		void take(SetId setId, List<LocalDate> span) {
+			span.forEach(day -> on(day).remove(setId));
+		}
+
+		private Map<SetId, SetSpot> on(LocalDate date) {
+			return byDate.computeIfAbsent(date, day -> facts.freeOnlineSetsOn(venueId, day).stream()
+					.filter(spot -> !disturbed.contains(spot.setId()))
+					.collect(Collectors.toMap(SetSpot::setId, Function.identity(), (a, b) -> a, LinkedHashMap::new)));
+		}
 	}
 }
