@@ -16,10 +16,12 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import {
+  DateRange,
   addDays,
   addMonths,
   endOfMonth,
   endOfWeek,
+  formatCivilDate,
   formatMonthLabel,
   monthWeeks,
   startOfMonth,
@@ -27,6 +29,7 @@ import {
 } from '../shared/booking-date';
 import { DailyAvailability } from '../shared/venue-views';
 import { LoadAnnouncer } from '../shared/load-announcer';
+import { SegmentedControl, SegmentedOption } from '../shared/segmented-control';
 import { TouchTarget } from '../shared/touch-target';
 import { trapFocusWithin } from '../shared/focus-trap';
 import {
@@ -53,6 +56,20 @@ export interface CalendarCell {
   /** Whether the capacity bar is drawn — see {@link AvailabilityCalendar.weeks}. */
   readonly showsBar: boolean;
 }
+
+/** One day at a time, or a stay of several days picked as a first and a last day. */
+export type StayMode = 'day' | 'stay';
+
+/**
+ * The widest stay the picker offers, the server's own ceiling on a map read and a reserve (`StaySpan`
+ * on the backend) — a technical bound, not a venue's stay cap.
+ */
+export const MAX_STAY_DAYS = 62;
+
+const MODE_OPTIONS: readonly SegmentedOption<StayMode>[] = [
+  { value: 'day', label: 'One day', testId: 'calendar-mode-day' },
+  { value: 'stay', label: 'Several days', testId: 'calendar-mode-stay' },
+];
 
 /** Monday-first column headers: the abbreviation shown, and the day it stands for. */
 const WEEKDAYS: readonly { readonly short: string; readonly long: string }[] = [
@@ -86,7 +103,7 @@ const WEEKDAYS: readonly { readonly short: string; readonly long: string }[] = [
  */
 @Component({
   selector: 'app-availability-calendar',
-  imports: [TouchTarget, LoadAnnouncer],
+  imports: [TouchTarget, LoadAnnouncer, SegmentedControl],
   templateUrl: './availability-calendar.html',
   host: {
     class:
@@ -98,16 +115,55 @@ const WEEKDAYS: readonly { readonly short: string; readonly long: string }[] = [
 export class AvailabilityCalendar {
   readonly venueId = input.required<number>();
 
-  /** The day the map is currently showing — rendered as selected, and where the picker opens. */
+  /** The first day the map is currently showing — rendered as selected, and where the picker opens. */
   readonly selectedDate = input.required<string>();
+
+  /** The last day the map is showing when it shows a stay; absent or equal to the first for one day. */
+  readonly selectedLastDate = input<string | undefined>(undefined);
 
   /** The earliest day that can be chosen — today in `Europe/Tirane`, sales close on the day itself. */
   readonly minDate = input.required<string>();
 
-  readonly chosen = output<string>();
+  /** Whether a stay of several days may be picked here — an Instant venue's page says yes. */
+  readonly rangeAllowed = input(false);
+
+  /** The chosen days; `first === last` for one day, which is every pick in day mode. */
+  readonly chosen = output<DateRange>();
   readonly dismissed = output<void>();
 
   protected readonly weekdays = WEEKDAYS;
+  protected readonly modeOptions = MODE_OPTIONS;
+
+  /**
+   * Day mode is the one-tap pick the picker always had; stay mode takes a first and a last tap. It
+   * opens in stay mode only when the map already shows a stay, and never where a range is not
+   * allowed.
+   */
+  protected readonly mode = linkedSignal<StayMode>(() =>
+    this.rangeAllowed() && this.showsStay() ? 'stay' : 'day',
+  );
+
+  /** In stay mode, the first day tapped while the last is still to come. */
+  protected readonly pendingFirst = signal<string | undefined>(undefined);
+
+  /** The last day the stay may run to once a first day is tapped — {@link MAX_STAY_DAYS} in all. */
+  private readonly lastDayCeiling = computed(() => {
+    const first = this.pendingFirst();
+    return first === undefined ? undefined : addDays(first, MAX_STAY_DAYS - 1);
+  });
+
+  /** What the stay mode asks for next. */
+  protected readonly stayHint = computed(() => {
+    const first = this.pendingFirst();
+    return first === undefined
+      ? 'Tap your first day, then your last.'
+      : `${formatCivilDate(first)} → tap your last day`;
+  });
+
+  private showsStay(): boolean {
+    const last = this.selectedLastDate();
+    return last !== undefined && last !== this.selectedDate();
+  }
 
   private readonly venues = inject(VenueService);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -152,9 +208,20 @@ export class AvailabilityCalendar {
     return iso >= this.minDate();
   }
 
+  /** The days drawn as selected: a pending first day alone, else the stay the map shows. */
+  private readonly highlightedRange = computed<DateRange>(() => {
+    const pending = this.pendingFirst();
+    if (pending !== undefined) {
+      return { first: pending, last: pending };
+    }
+    const first = this.selectedDate();
+    return { first, last: this.selectedLastDate() ?? first };
+  });
+
   protected readonly weeks = computed<readonly (CalendarCell | undefined)[][]>(() => {
     const counts = this.counts();
-    const selected = this.selectedDate();
+    const highlighted = this.highlightedRange();
+    const ceiling = this.lastDayCeiling();
     const focused = this.focusedDate();
     return monthWeeks(this.visibleMonth()).map((week) =>
       week.map((iso) => {
@@ -163,9 +230,12 @@ export class AvailabilityCalendar {
         }
         const day = counts.get(iso);
         // The server's verdict outranks the client floor: a day it marks unsellable is not bookable.
-        const selectable = this.isBookable(iso) && day?.salesOpen !== false;
+        const selectable =
+          this.isBookable(iso) &&
+          day?.salesOpen !== false &&
+          (ceiling === undefined || iso <= ceiling);
         const state = selectable ? dayAvailabilityState(day) : 'unknown';
-        const isSelected = iso === selected;
+        const isSelected = iso >= highlighted.first && iso <= highlighted.last;
         return {
           iso,
           dayOfMonth: Number(iso.slice(8)),
@@ -258,10 +328,40 @@ export class AvailabilityCalendar {
     this.focusRequest.update((request) => request + 1);
   }
 
-  /** Commit a day, ignoring one that cannot be booked — the aria-disabled cells still take clicks. */
+  /**
+   * Commit a day, ignoring one that cannot be booked — the aria-disabled cells still take clicks.
+   * In stay mode the first tap only remembers the first day; a tap on an earlier day restarts there;
+   * the tap on or after it commits the range.
+   */
   protected choose(cell: CalendarCell): void {
-    if (cell.selectable) {
-      this.chosen.emit(cell.iso);
+    if (!cell.selectable) {
+      return;
+    }
+    if (this.mode() === 'day') {
+      this.chosen.emit({ first: cell.iso, last: cell.iso });
+      return;
+    }
+    const first = this.pendingFirst();
+    if (first === undefined || cell.iso < first) {
+      this.pendingFirst.set(cell.iso);
+      return;
+    }
+    this.pendingFirst.set(undefined);
+    this.chosen.emit({ first, last: cell.iso });
+  }
+
+  /** Switching modes forgets a half-picked stay. */
+  protected onModeChange(mode: StayMode): void {
+    this.mode.set(mode);
+    this.pendingFirst.set(undefined);
+  }
+
+  /** Commit the pending first day as a one-day pick. */
+  protected justThisDay(): void {
+    const first = this.pendingFirst();
+    if (first !== undefined) {
+      this.pendingFirst.set(undefined);
+      this.chosen.emit({ first, last: first });
     }
   }
 

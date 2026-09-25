@@ -1410,6 +1410,42 @@ describe('VenueMap', () => {
     });
   });
 
+  it('re-fetches the map for a chosen stay and reads the range on the trigger', async () => {
+    flushVenue();
+    await settle();
+    fixture.detectChanges();
+    await openPicker();
+    const first = defaultBookingDate(new Date(Date.now() + 6 * 24 * 60 * 60 * 1000));
+    const last = defaultBookingDate(new Date(Date.now() + 8 * 24 * 60 * 60 * 1000));
+    el().querySelector<HTMLButtonElement>('[data-testid="calendar-mode-stay"]')!.click();
+    fixture.detectChanges();
+    pickDay(first);
+    pickDay(last);
+
+    const request = venueRequest();
+    expect(request.request.params.get('date')).toBe(first);
+    expect(request.request.params.get('lastDate')).toBe(last);
+    request.flush(miramar());
+    await settle();
+    fixture.detectChanges();
+
+    expect(dateTrigger().getAttribute('data-date')).toBe(first);
+    expect(dateTrigger().getAttribute('data-last-date')).toBe(last);
+    expect(dateTrigger().textContent).toContain('3 days');
+    expect(el().querySelector('[data-testid="availability"]')?.textContent).toContain(
+      'free for all 3 days',
+    );
+  });
+
+  it('offers no stay mode at a Request-to-Book venue', async () => {
+    flushRequestVenue();
+    await settle();
+    fixture.detectChanges();
+    await openPicker();
+
+    expect(el().querySelector('[data-testid="calendar-mode-stay"]')).toBeNull();
+  });
+
   it('navigates back to discovery when the back pill is pressed', async () => {
     flushVenue();
     await settle();
@@ -1705,6 +1741,32 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
     // The picker's trigger shows the carried date, not the default.
     expect(trigger.getAttribute('data-date')).toBe(chosen);
     expect(trigger.textContent).toContain(formatCivilDate(chosen));
+  });
+
+  it('seeds a stay from ?date= and ?lastDate=, requesting both', async () => {
+    const first = defaultBookingDate(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000));
+    const last = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+    await setup({ date: first, lastDate: last });
+
+    const req = venueReq();
+    expect(req.request.params.get('date')).toBe(first);
+    expect(req.request.params.get('lastDate')).toBe(last);
+    req.flush(miramar());
+    await settle();
+
+    const trigger = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      '[data-testid="map-date"]',
+    )!;
+    expect(trigger.getAttribute('data-last-date')).toBe(last);
+    expect(trigger.textContent).toContain('3 days');
+  });
+
+  it('ignores a ?lastDate= before the first day or over the 62-day window', async () => {
+    const first = defaultBookingDate(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000));
+    await setup({ date: first, lastDate: '2020-01-01' });
+    const req = venueReq();
+    expect(req.request.params.has('lastDate')).toBe(false);
+    req.flush(miramar());
   });
 
   it('clamps a past ?date= param up to the earliest bookable day (invariant #4)', async () => {

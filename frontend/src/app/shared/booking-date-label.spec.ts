@@ -1,4 +1,4 @@
-import { formatBookingDate } from './booking-date-label';
+import { formatBookingDate, formatStay } from './booking-date-label';
 
 describe('formatBookingDate', () => {
   it('renders an ISO LocalDate as a friendly weekday/day/month label', () => {
@@ -34,5 +34,23 @@ describe('formatBookingDate', () => {
     expect(formatBookingDate('')).toBe('');
     expect(formatBookingDate('not-a-date')).toBe('');
     expect(formatBookingDate('2026-13-40')).toBe('');
+  });
+});
+
+describe('formatStay', () => {
+  it('renders a one-day stay exactly as the single date', () => {
+    expect(formatStay('2026-06-30', '2026-06-30')).toBe(formatBookingDate('2026-06-30'));
+    expect(formatStay('2026-06-30', '2026-06-30', { withYear: true })).toBe(
+      formatBookingDate('2026-06-30', { withYear: true }),
+    );
+  });
+
+  it('renders a range as first – last with the day count, the year on the last day only', () => {
+    // ICU punctuation varies ("Tue, 30 Jun" vs "Tue 30 Jun"), so the ends are matched loosely.
+    expect(formatStay('2026-06-30', '2026-07-04')).toMatch(/^Tue,? 30 Jun – Sat,? 4 Jul · 5 days$/);
+    expect(formatStay('2026-06-30', '2026-07-04', { withYear: true })).toMatch(
+      /^Tue,? 30 Jun – Sat,? 4 Jul 2026 · 5 days$/,
+    );
+    expect(formatStay('2026-07-03', '2026-07-04')).toContain('· 2 days');
   });
 });

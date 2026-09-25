@@ -134,7 +134,7 @@
               <span
                 class="text-[11px] font-bold tracking-[0.1em] text-riv-ink-faint uppercase"
                 id="map-date-label"
-                >Date</span
+                >{{ isStay() ? 'Stay' : 'Date' }}</span
               >
               <button
                 appTouchTarget
@@ -146,6 +146,7 @@
                 aria-labelledby="map-date-label map-date"
                 [attr.aria-expanded]="pickerOpen()"
                 [attr.data-date]="selectedDate()"
+                [attr.data-last-date]="selectedLastDate()"
                 (click)="openPicker()"
               >
                 {{ triggerLabel() }}
@@ -194,7 +195,13 @@
             data-testid="availability"
             aria-live="polite"
           >
-            @if (totalCount()) {
+            @if (totalCount() && isStay()) {
+              <strong class="text-[19px] font-bold text-riv-accent-ink">{{ freeCount() }}</strong>
+              of {{ totalCount() }} sets free for all {{ dayCount() }} days, {{ stayLabel() }}
+              @if (partlyCount()) {
+                · {{ partlyCount() }} partly free
+              }
+            } @else if (totalCount()) {
               <strong class="text-[19px] font-bold text-riv-accent-ink">{{ freeCount() }}</strong>
               of {{ totalCount() }} sets free on {{ dateLabel() }}
             } @else {
@@ -342,7 +349,9 @@
       <app-availability-calendar
         [venueId]="v.id"
         [selectedDate]="selectedDate()"
+        [selectedLastDate]="selectedLastDate()"
         [minDate]="minDate()"
+        [rangeAllowed]="v.bookingMode === 'INSTANT'"
         (chosen)="onDateChosen($event)"
         (dismissed)="closePicker()"
       />

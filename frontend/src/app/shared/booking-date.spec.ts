@@ -14,6 +14,7 @@ import {
   startOfMonth,
   startOfWeek,
   todayBookingDate,
+  daysBetween,
 } from './booking-date';
 
 /**
@@ -245,5 +246,16 @@ describe('formatMonthLabel', () => {
   it('formatDayMonth renders the civil day and month only, for the reopen badge', () => {
     expect(formatDayMonth('2027-05-15')).toBe('15 May');
     expect(formatDayMonth('2027-10-01')).toBe('1 Oct');
+  });
+});
+
+describe('daysBetween', () => {
+  it('counts an inclusive span of civil days', () => {
+    expect(daysBetween('2026-07-03', '2026-07-03')).toBe(1);
+    expect(daysBetween('2026-07-03', '2026-07-07')).toBe(5);
+  });
+
+  it('crosses a month and a DST boundary by civil days, not hours', () => {
+    expect(daysBetween('2026-03-28', '2026-04-02')).toBe(6);
   });
 });

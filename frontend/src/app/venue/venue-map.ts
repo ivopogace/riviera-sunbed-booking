@@ -20,7 +20,7 @@ import { MAP_TILE_LEGEND, MAP_TILE_MEANING, MapTile, MapTileState, mapTileState 
 import { rowPriceLabel } from './row-price-label';
 import { formatMoney, MoneyView } from '../shared/money';
 import { focusMover } from '../shared/focus-after-render';
-import { formatBookingDate } from '../shared/booking-date-label';
+import { formatBookingDate, formatStay } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
 import { PhotoGalleryGrid } from '../shared/photo-gallery-grid';
 import { PhotoLightbox } from '../shared/photo-lightbox';
@@ -29,11 +29,17 @@ import { PhotoSlideshow } from '../shared/photo-slideshow';
 import { CONTAIN_SIZES, slideshowPhotos } from '../shared/photo-url';
 import { isRated, ratingScore, reviewsLabel } from '../shared/rating';
 import { RetryButton } from '../shared/retry-button';
-import { defaultBookingDate, formatCivilDate, isIsoDate } from '../shared/booking-date';
+import {
+  DateRange,
+  daysBetween,
+  defaultBookingDate,
+  formatCivilDate,
+  isIsoDate,
+} from '../shared/booking-date';
 import { routeIdParam } from '../shared/parent-venue-id';
 import { spotLabel, tierSentenceLabel } from '../shared/set-label';
 import { PhotoView, SetView, VenueMapView } from '../shared/venue-views';
-import { AvailabilityCalendar } from './availability-calendar';
+import { AvailabilityCalendar, MAX_STAY_DAYS } from './availability-calendar';
 import { VenueReviews } from './venue-reviews';
 import { VenueService } from './venue.service';
 
@@ -187,11 +193,18 @@ export class VenueMap {
     initialValue: this.route.snapshot.queryParamMap,
   });
   /**
-   * The day the map reflects (ISO YYYY-MM-DD). Seeded from {@link routeDate} on mount and on every
-   * in-place route change that alters the venue or the carried `?date` param; the date
-   * picker then writes it directly without touching the URL.
+   * The first day the map reflects (ISO YYYY-MM-DD). Seeded from {@link routeDates} on mount and on
+   * every in-place route change that alters the venue or the carried `?date`/`?lastDate` params;
+   * the date picker then writes it directly without touching the URL.
    */
   protected readonly selectedDate = signal(this.minDate());
+  /** The last day the map reflects — the first day itself for a one-day map. */
+  protected readonly selectedLastDate = signal(this.minDate());
+  /** How many days the map is showing; a stay is more than one. */
+  protected readonly dayCount = computed(() =>
+    daysBetween(this.selectedDate(), this.selectedLastDate()),
+  );
+  protected readonly isStay = computed(() => this.dayCount() > 1);
 
   /** The venue id from the `:id` param (undefined if invalid) — reactive to in-place changes,
    *  which reuse this instance. */
@@ -216,6 +229,10 @@ export class VenueMap {
 
   protected readonly freeCount = computed(
     () => this.venue()?.sets.filter((s) => s.availability === 'FREE').length ?? 0,
+  );
+  /** Sets free on some of the stay's days but not all — a one-day map never has any. */
+  protected readonly partlyCount = computed(
+    () => this.venue()?.sets.filter((s) => s.availability === 'PARTLY_FREE').length ?? 0,
   );
   protected readonly totalCount = computed(() => this.venue()?.sets.length ?? 0);
 
@@ -313,15 +330,28 @@ export class VenueMap {
     this.resetForVenue(this.venueId());
   }
 
-  /** The raw route context — `:id` plus the raw `?date` param — whose change triggers a reset. */
+  /** The raw route context — `:id` plus the raw `?date`/`?lastDate` params — whose change triggers a reset. */
   private routeKey(): string {
-    return `${this.venueId()}|${this.queryParams().get('date') ?? ''}`;
+    const params = this.queryParams();
+    return `${this.venueId()}|${params.get('date') ?? ''}|${params.get('lastDate') ?? ''}`;
   }
 
-  /** The route-carried map date: a well-formed `?date` on/after `floor`, else `floor`. */
-  private routeDate(floor: string): string {
-    const raw = this.queryParams().get('date');
-    return raw && isIsoDate(raw) && raw >= floor ? raw : floor;
+  /**
+   * The route-carried days: a well-formed `?date` on/after `floor`, else `floor`; a well-formed
+   * `?lastDate` on/after it within the stay ceiling, else the first day alone.
+   */
+  private routeDates(floor: string): DateRange {
+    const rawFirst = this.queryParams().get('date');
+    const first = rawFirst && isIsoDate(rawFirst) && rawFirst >= floor ? rawFirst : floor;
+    const rawLast = this.queryParams().get('lastDate');
+    const last =
+      rawLast &&
+      isIsoDate(rawLast) &&
+      rawLast >= first &&
+      daysBetween(first, rawLast) <= MAX_STAY_DAYS
+        ? rawLast
+        : first;
+    return { first, last };
   }
 
   /** Drop every venue-scoped state — map, dialog, pan gesture, the map date — and load fresh,
@@ -340,7 +370,9 @@ export class VenueMap {
     this.lastTriggerId = undefined;
     const floor = defaultBookingDate(new Date());
     this.minDate.set(floor);
-    this.selectedDate.set(this.routeDate(floor));
+    const days = this.routeDates(floor);
+    this.selectedDate.set(days.first);
+    this.selectedLastDate.set(days.last);
     if (id === undefined) {
       this.failed.set(true);
       return;
@@ -359,7 +391,7 @@ export class VenueMap {
     return { set, bookable, state, name, bookName: `${name}. Select to book.` };
   }
 
-  /** Fetch the map for the currently selected date. */
+  /** Fetch the map for the currently selected days. */
   private load(): void {
     const id = this.venueId();
     if (id === undefined) {
@@ -370,7 +402,7 @@ export class VenueMap {
     this.notFound.set(false);
     // The per-dispatch generation: any later dispatch or reset supersedes this response.
     const epoch = ++this.epoch;
-    this.venues.getVenueMap(id, this.selectedDate()).subscribe({
+    this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate()).subscribe({
       next: (venue) => {
         if (this.epoch === epoch) {
           this.venue.set(venue);
@@ -412,14 +444,22 @@ export class VenueMap {
     await this.router.navigate(['/']);
   }
 
-  /** Re-fetch availability for a newly chosen date (closing any open dialog first). */
-  protected onDateChange(value: string): void {
-    if (!value || value === this.selectedDate()) {
+  /** Re-fetch availability for newly chosen days (closing any open dialog first). */
+  protected onDatesChange(days: DateRange): void {
+    if (days.first === this.selectedDate() && days.last === this.selectedLastDate()) {
       return;
     }
     this.selectedSet.set(undefined);
-    this.selectedDate.set(value);
+    this.selectedDate.set(days.first);
+    this.selectedLastDate.set(days.last);
     this.load();
+  }
+
+  /** One day: the range setter's one-day form. */
+  protected onDateChange(value: string): void {
+    if (value) {
+      this.onDatesChange({ first: value, last: value });
+    }
   }
 
   protected openPicker(): void {
@@ -441,19 +481,24 @@ export class VenueMap {
    * Commit the calendar's chosen day. The date is written FIRST so the restore lands on a trigger
    * that already reads the new day — closing first announces the day the tourist just left.
    */
-  protected onDateChosen(value: string): void {
-    this.onDateChange(value);
+  protected onDateChosen(days: DateRange): void {
+    this.onDatesChange(days);
     this.closePicker();
   }
 
-  /** The selected date on the picker trigger (e.g. "Tue 30 Jun 2026"). */
+  /** The selected days on the picker trigger ("Tue 30 Jun 2026", or the range with its day count). */
   protected triggerLabel(): string {
-    return formatCivilDate(this.selectedDate());
+    return formatStay(this.selectedDate(), this.selectedLastDate(), { withYear: true });
   }
 
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */
   protected dateLabel(): string {
     return formatBookingDate(this.selectedDate(), { withYear: true });
+  }
+
+  /** The stay's days rendered for display ("Tue 30 Jun – Sat 4 Jul 2026 · 5 days"). */
+  protected stayLabel(): string {
+    return formatStay(this.selectedDate(), this.selectedLastDate(), { withYear: true });
   }
 
   /** Currency formatting for the template + accessible labels (shared helper, invariant #5). */
