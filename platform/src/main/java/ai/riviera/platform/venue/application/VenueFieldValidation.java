@@ -83,6 +83,13 @@ final class VenueFieldValidation {
 		}
 	}
 
+	/** A maximum stay is a whole number of days from one up, or {@code null} for any length. */
+	static void requirePositiveOrNullMaxStay(Integer maxStayDays) {
+		if (maxStayDays != null && maxStayDays < 1) {
+			throw new IllegalArgumentException("maxStayDays must be >= 1 when given");
+		}
+	}
+
 	static void requireCommissionBps(int commissionBps) {
 		if (commissionBps < 0 || commissionBps > MAX_BPS) {
 			throw new IllegalArgumentException("commissionBps must be between 0 and " + MAX_BPS);

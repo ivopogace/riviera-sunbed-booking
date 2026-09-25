@@ -251,6 +251,8 @@ export function bookingErrorOf(error: unknown): BookingErrorCode | ChallengeReje
       case 'SET_NOT_BOOKABLE_ONLINE':
       case 'BOOKING_CLOSED':
       case 'VENUE_CLOSED':
+      case 'RANGE_NOT_OFFERED':
+      case 'STAY_TOO_LONG':
       case 'NO_SUCH_SET':
         return code;
       case 'INVALID_REQUEST':

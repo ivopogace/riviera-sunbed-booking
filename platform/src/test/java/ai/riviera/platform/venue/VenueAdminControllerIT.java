@@ -111,6 +111,15 @@ class VenueAdminControllerIT {
 						expectedVersion);
 	}
 
+	/** The full-replace body with only the maximum stay varied; {@code null} lifts it. */
+	private static String maxStayBody(Integer maxStayDays, long expectedVersion) {
+		return """
+				{"name":"Max Stay Club","beach":"KSAMIL","description":"edited",
+				 "bookingMode":"INSTANT","bookingCutoff":"18:00","salesClose":"16:00","amenities":[],
+				 "distanceToWaterM":null,"location":null,"maxStayDays":%s,"expectedVersion":%d}
+				""".formatted(maxStayDays, expectedVersion);
+	}
+
 	/** A whole, in-range pin off Dhërmi, as the PATCH body carries it. */
 	private static final String DHERMI_JSON = "{\"latitude\":40.1468,\"longitude\":19.6482}";
 
@@ -167,6 +176,38 @@ class VenueAdminControllerIT {
 		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
 				.andExpect(jsonPath("$.salesClose").value("00:01"))
 				.andExpect(jsonPath("$.name").value("Still Mine"));
+	}
+
+	@Test
+	void patchSetsThenClearsTheMaximumStay() throws Exception {
+		long venue = createVenue("Max Stay Club");
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(maxStayBody(5, 0)))
+				.andExpect(status().isNoContent());
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(jsonPath("$.maxStayDays").value(5));
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(maxStayBody(null, currentVersion(venue))))
+				.andExpect(status().isNoContent());
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(jsonPath("$.maxStayDays").value(Matchers.nullValue()));
+	}
+
+	@Test
+	void nonPositiveMaxStayIs400() throws Exception {
+		long venue = createVenue("Max Stay Vocabulary Club");
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(maxStayBody(0, 0)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(jsonPath("$.maxStayDays").value(Matchers.nullValue()));
 	}
 
 	@Test

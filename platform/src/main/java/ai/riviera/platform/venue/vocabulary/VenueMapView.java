@@ -47,11 +47,15 @@ import java.util.List;
  * the value and never compare it with a clock; {@code salesOpen} stays the open/closed verdict.
  *
  * <p>{@code location} is the venue's riviera-map pin, or {@code null} when it has none.
+ *
+ * <p>{@code maxStayDays} is the longest stay the venue takes, in days, or {@code null} for any
+ * length this season — the calendar's last-day ceiling and the rule it states; the reserve path
+ * enforces it.
  */
 public record VenueMapView(long id, String name, String beach, String region,
 		String description, int ratingTenths, int reviewsCount, String bookingMode,
 		MoneyView fromPrice, List<Amenity> amenities, Integer distanceToWaterM,
 		List<SetView> sets, long setVersion, CoverPhotoView coverPhoto, List<PhotoView> photos,
 		List<PhotoView> lightboxPhotos, boolean salesOpen, String salesClose, boolean closedForSeason,
-		LocalDate reopensOn, VenueLocation location) {
+		LocalDate reopensOn, VenueLocation location, Integer maxStayDays) {
 }

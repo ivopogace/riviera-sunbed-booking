@@ -35,7 +35,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * {@code booking} module's {@link CreateBooking} port (invariant #11). Maps the sealed
  * {@link BookingOutcome} to HTTP via an exhaustive {@code switch}: {@code Confirmed}→201,
  * {@code SET_TAKEN}→409, {@code NOT_ONLINE_POOL}/{@code BOOKING_CLOSED}/{@code VENUE_CLOSED}/
- * {@code RANGE_NOT_OFFERED}→422,
+ * {@code RANGE_NOT_OFFERED}/{@code STAY_TOO_LONG}→422,
  * {@code NO_SUCH_SET}→404; malformed input→400 via {@code ApiErrorHandler}. Errors are
  * RFC-7807 {@link ProblemDetail} built by {@link ApiProblem}.
  */
@@ -169,6 +169,8 @@ class BookingController {
 						"No such set.");
 				case RANGE_NOT_OFFERED -> error(HttpStatus.UNPROCESSABLE_ENTITY, "RANGE_NOT_OFFERED",
 						"This venue takes one day at a time online.");
+				case STAY_TOO_LONG -> error(HttpStatus.UNPROCESSABLE_ENTITY, "STAY_TOO_LONG",
+						"The stay is longer than this venue's maximum stay length.");
 			};
 		};
 	}

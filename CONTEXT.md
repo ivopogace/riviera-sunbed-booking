@@ -271,6 +271,10 @@ model in `docs/architecture/domain-model.md`.
   itself: a per-venue setting fixed at one of three wall-clock values (00:01 opts the
   venue out of same-day sales, 16:00 the default, or 23:59), `Europe/Tirane`. The point
   past which a booking can no longer be created for that date (invariant #4).
+- **Maximum stay** — the longest stay a venue takes, in days: a per-venue setting, unset for
+  stays of any length this season. The platform sets no maximum of its own; the reserve refuses
+  a longer span (`STAY_TOO_LONG`) before any claim, and the venue's calendar refuses a later last
+  day and states the rule.
 - **Cutoff** — the evening-before wall-clock boundary (default 18:00, `Europe/Tirane`,
   per-venue configurable). Governs free cancellation only — it no longer gates whether
   a booking can be created; that is sales close's job.

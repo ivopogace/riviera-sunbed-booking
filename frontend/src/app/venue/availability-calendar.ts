@@ -40,6 +40,7 @@ import {
   dayAvailabilityState,
   freeFraction,
 } from './day-availability';
+import { stayRule } from './stay-rule';
 import { VenueService } from './venue.service';
 
 /** One rendered day, or `undefined` for a grid position outside the visible month. */
@@ -95,7 +96,9 @@ const WEEKDAYS: readonly { readonly short: string; readonly long: string }[] = [
  * authoritative for the real fence), and so does any day whose counts carry `salesOpen: false` —
  * today past the venue's sales close, or a day inside a season closure. The endpoint answers past
  * days because it reports availability, so the floor is this component's; the per-day verdict is the
- * server's.
+ * server's. In stay mode, once a first day is tapped, a last day past the stay ceiling — the venue's
+ * maximum where it has one, else {@link MAX_STAY_DAYS} — cannot be chosen either; the reserve path
+ * enforces that rule too.
  *
  * <p>Focus, not selection, drives the visible month: {@link focusedDate} is the roving-tabindex
  * position and the month is computed from it, so an arrow key that crosses a month boundary and a
@@ -127,6 +130,9 @@ export class AvailabilityCalendar {
   /** Whether a stay of several days may be picked here — an Instant venue's page says yes. */
   readonly rangeAllowed = input(false);
 
+  /** The venue's maximum stay in days; `null` or absent means any length this season. */
+  readonly maxStayDays = input<number | null | undefined>(undefined);
+
   /** The chosen days; `first === last` for one day, which is every pick in day mode. */
   readonly chosen = output<DateRange>();
   readonly dismissed = output<void>();
@@ -146,11 +152,20 @@ export class AvailabilityCalendar {
   /** In stay mode, the first day tapped while the last is still to come. */
   protected readonly pendingFirst = signal<string | undefined>(undefined);
 
-  /** The last day the stay may run to once a first day is tapped — {@link MAX_STAY_DAYS} in all. */
+  /** The most days a stay may run: the venue's maximum where it has one, else {@link MAX_STAY_DAYS}. */
+  private readonly ceilingDays = computed(() => {
+    const max = this.maxStayDays();
+    return max != null && max < MAX_STAY_DAYS ? max : MAX_STAY_DAYS;
+  });
+
+  /** The last day the stay may run to once a first day is tapped — {@link ceilingDays} in all. */
   private readonly lastDayCeiling = computed(() => {
     const first = this.pendingFirst();
-    return first === undefined ? undefined : addDays(first, MAX_STAY_DAYS - 1);
+    return first === undefined ? undefined : addDays(first, this.ceilingDays() - 1);
   });
+
+  /** The venue's stay rule, stated beside the stay-mode hint. */
+  protected readonly stayRule = computed(() => stayRule(this.maxStayDays()));
 
   /** What the stay mode asks for next. */
   protected readonly stayHint = computed(() => {
@@ -229,7 +244,7 @@ export class AvailabilityCalendar {
           return undefined;
         }
         const day = counts.get(iso);
-        // The server's verdict outranks the client floor: a day it marks unsellable is not bookable.
+        // The server's verdict outranks the client floor, and the stay ceiling caps a last day.
         const selectable =
           this.isBookable(iso) &&
           day?.salesOpen !== false &&

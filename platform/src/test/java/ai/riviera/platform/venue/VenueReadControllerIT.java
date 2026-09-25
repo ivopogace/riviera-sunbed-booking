@@ -243,6 +243,24 @@ class VenueReadControllerIT {
 		}
 	}
 
+	@Test
+	void mapCarriesTheMaximumStay() throws Exception {
+		mvc.perform(get("/api/venues/{id}", MIRAMAR))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.maxStayDays").value(org.hamcrest.Matchers.nullValue()));
+
+		long id = insertOptOutVenue();
+		try {
+			jdbc.sql("UPDATE venue SET max_stay_days = 5 WHERE id = :id").param("id", id).update();
+			mvc.perform(get("/api/venues/{id}", id))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.maxStayDays").value(5));
+		} finally {
+			jdbc.sql("DELETE FROM operator_venue WHERE venue_id = :id").param("id", id).update();
+			jdbc.sql("DELETE FROM venue WHERE id = :id").param("id", id).update();
+		}
+	}
+
 	/** A visible venue at the 00:01 sales-close opt-out — deterministically closed for today. */
 	private long insertOptOutVenue() {
 		long id = jdbc.sql("""

@@ -79,8 +79,8 @@ review-only.
 ## `venue`
 **Job:** Own venue profiles (incl. amenities + distance-to-water), the beach map / layout,
 set positions, the online-vs-walk-in pool assignment for each set, pricing, the booking
-mode (Instant / Request), venue photos, the sales-close setting, and the commission rate
-over time. The standing rules:
+mode (Instant / Request), venue photos, the sales-close setting, the maximum stay length, and
+the commission rate over time. The standing rules:
 
 - **The tourist catalogue reads are visibility-fenced.** All three `VenueCatalog` reads
   (list, map, availability calendar) consult `operator.api.VenueVisibility` inside the
@@ -246,6 +246,14 @@ over time. The standing rules:
   port returns the *verdict*, never a close instant — I store the time and display the
   answer, `booking` keeps the rule. The map read also projects the stored close value
   (`salesClose`, `HH:mm`) as a display-copy key; clients never compare it with a clock.
+- **The per-venue maximum stay** (`max_stay_days`, nullable, `venue_max_stay_days_check`
+  `>= 1`; design D10): the longest stay the venue takes, in days; `NULL` is any length this
+  season, and the platform sets no maximum of its own. Owner-editable through the profile
+  full-replace PATCH (`maxStayDays`, absent or null lifts it; `0` is a `400` at the edge, the
+  Java twin of the CHECK in `VenueFieldValidation`). `SetBookingInfo#maxStayDays` carries it to
+  `booking`'s reserve path, which refuses a longer span (`STAY_TOO_LONG`) before any claim; the
+  tourist map view carries it as the calendar's last-day ceiling and the rule the page states.
+  Whether a stay fits is `booking`'s verdict; I store the number.
 - **The season closure** (`closed_at`, `reopen_on`, `advance_sales`; glossary *Closed for
   season*): owner-asserted on its own state-transition endpoint
   (`PUT`/`DELETE /api/venues/{venueId}/season-closure`, the `CloseForSeason` port), never the
@@ -372,7 +380,9 @@ exactly as it would against any other claim (invariant #2).
   nothing:** `CreateBookingCommand` carries a last day (a `StaySpan`, at most 62 days); the season
   closure must admit every day, the sales close is judged on the first (invariant #4); a
   Request-to-Book venue refuses a stay of several days (`RANGE_NOT_OFFERED`) until it can answer
-  one request whole; then the reserve transaction claims one `(set, date)` row per day through
+  one request whole; a venue with a maximum stay refuses a longer span (`STAY_TOO_LONG`, read off
+  `SetBookingInfo#maxStayDays`, judged before any claim); then the reserve transaction claims one
+  `(set, date)` row per day through
   `availability`'s one-day `claim`, and a day that loses gives back every day already won before
   the `SET_TAKEN` answer, so a lost range holds nothing (`ConcurrentRangeReservationIT`). The
   amount is the per-day price × the days, one PaymentIntent (invariant #5); the cancellation

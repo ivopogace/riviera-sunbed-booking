@@ -33,11 +33,15 @@ import ai.riviera.platform.venue.vocabulary.VenueLocation;
  *
  * <p>{@code location} is the venue's riviera-map pin, {@code null} when it has none; the
  * {@code PATCH} takes the same shape back.
+ *
+ * <p>{@code maxStayDays} is the longest stay the venue takes, in days, {@code null} for any length
+ * this season; the {@code PATCH} takes the same shape back, and a null lifts the maximum.
  */
 record VenueProfileResponse(String name, String beach, String description,
 		String bookingMode, String bookingCutoff, String salesClose, int commissionBps,
 		String payoutCurrency, List<String> amenities, Integer distanceToWaterM, long version,
-		Map<String, SlotPhoto> photos, SeasonClosureView seasonClosure, VenueLocation location) {
+		Map<String, SlotPhoto> photos, SeasonClosureView seasonClosure, VenueLocation location,
+		Integer maxStayDays) {
 
 	record SlotPhoto(String previewUrl) {
 	}
@@ -52,6 +56,7 @@ record VenueProfileResponse(String name, String beach, String description,
 				v.salesClose().format(SalesClose.WIRE),
 				v.commissionBps(), v.payoutCurrency(), v.amenities().stream().map(Amenity::name).toList(),
 				v.distanceToWaterM(), v.version(), photos,
-				SeasonClosureView.of(v.seasonClosure(), v.closedForSeason()), v.location());
+				SeasonClosureView.of(v.seasonClosure(), v.closedForSeason()), v.location(),
+				v.maxStayDays());
 	}
 }

@@ -52,7 +52,7 @@ class CancellationPolicyTermsTest {
 	private void givenSet() {
 		when(setFacts.setBookingInfo(SET)).thenReturn(Optional.of(new SetBookingInfo(SET, VENUE,
 				"Blue Marlin", "A", 1, Pool.ONLINE, new MoneyView(4500, "EUR"), CUTOFF,
-				LocalTime.of(16, 0), BookingMode.INSTANT, SeasonClosure.open())));
+				LocalTime.of(16, 0), BookingMode.INSTANT, SeasonClosure.open(), null)));
 	}
 
 	@Test

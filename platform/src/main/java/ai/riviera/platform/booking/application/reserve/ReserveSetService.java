@@ -32,7 +32,8 @@ import ai.riviera.platform.venue.api.SetBookingFacts;
 
 /**
  * The committed <em>reserve</em> phase of Instant-Book: validate the set (online pool, invariant
- * #3; the venue's season closure, then its on-day sales close, invariant #4), claim the
+ * #3; the venue's season closure, then its on-day sales close, invariant #4; then the venue's
+ * maximum stay length, when it has one), claim the
  * {@code (set, date)} (the double-booking guard, invariant #2), resolve the guest, and insert the
  * {@code AWAITING_PAYMENT} booking — all in <strong>one transaction that commits before any payment
  * call</strong>, so the Stripe PaymentIntent is created <em>after</em> commit and the claim row lock is
@@ -107,6 +108,9 @@ class ReserveSetService {
 		}
 		if (set.bookingMode() == BookingMode.REQUEST && !stay.isOneDay()) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.RANGE_NOT_OFFERED);
+		}
+		if (set.maxStayDays() != null && stay.days() > set.maxStayDays()) {
+			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.STAY_TOO_LONG);
 		}
 
 		ClaimOutcome claim = claimEveryDay(command.setId(), stay);

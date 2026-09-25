@@ -12,7 +12,7 @@ import {
 import { BeachField } from './beach-field';
 import { BookingCutoffField } from './booking-cutoff-field';
 import { BookingModeField } from './booking-mode-field';
-import { form, required, submit, FormField } from '@angular/forms/signals';
+import { form, required, submit, validate, FormField } from '@angular/forms/signals';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
@@ -62,6 +62,8 @@ interface VenueDetailsModel {
   bookingMode: BookingMode;
   bookingCutoff: string; // "HH:mm" Europe/Tirane
   salesClose: SalesCloseTime;
+  /** The maximum stay in days as typed; blank means any length this season. */
+  maxStayDays: string;
 }
 
 const EMPTY_DETAILS: VenueDetailsModel = {
@@ -71,7 +73,17 @@ const EMPTY_DETAILS: VenueDetailsModel = {
   bookingMode: 'INSTANT',
   bookingCutoff: '18:00',
   salesClose: '16:00',
+  maxStayDays: '',
 };
+
+/** Blank, or a whole number of days from one up — the server's `max_stay_days` check, mirrored. */
+function isMaxStayInput(raw: string): boolean {
+  if (raw.trim() === '') {
+    return true;
+  }
+  const parsed = parseWholeNumber(raw);
+  return parsed !== undefined && parsed >= 1;
+}
 
 /** The three fixed sales-close choices (invariant #4) — the union type IS the validator, so the
  *  form needs none; every option is a legal write. */
@@ -214,6 +226,14 @@ export class VenueTab {
     required(path.name, { message: 'Venue name is required' });
     required(path.beach, { message: 'Beach is required' });
     required(path.bookingCutoff, { message: 'Free-cancellation deadline is required' });
+    validate(path.maxStayDays, ({ value }) =>
+      isMaxStayInput(value())
+        ? null
+        : {
+            kind: 'maxStayDays',
+            message: 'Enter a whole number of days from 1, or leave it blank.',
+          },
+    );
   });
 
   /** The three-choice sales-close options rendered by the segmented control. */
@@ -387,6 +407,7 @@ export class VenueTab {
         amenities: [...this.amenityDraft()],
         distanceToWaterM,
         location: this.locationDraft(),
+        maxStayDays: m.maxStayDays.trim() === '' ? null : parseWholeNumber(m.maxStayDays)!,
         expectedVersion,
       };
       const epoch = this.epoch;
@@ -463,6 +484,7 @@ export class VenueTab {
       bookingMode: profile.bookingMode,
       bookingCutoff: profile.bookingCutoff,
       salesClose: profile.salesClose,
+      maxStayDays: profile.maxStayDays == null ? '' : String(profile.maxStayDays),
     });
     this.amenityDraft.set(new Set(profile.amenities));
     this.distanceDraft.set(

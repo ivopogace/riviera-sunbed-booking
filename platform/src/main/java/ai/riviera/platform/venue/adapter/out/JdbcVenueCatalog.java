@@ -122,7 +122,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		Optional<VenueRow> venue = jdbc.sql("""
 				SELECT id, name, beach, description, rating_tenths, reviews_count, booking_mode,
 				       distance_to_water_m, set_version, sales_close, closed_at, reopen_on, advance_sales,
-				       latitude, longitude
+				       latitude, longitude, max_stay_days
 				FROM venue
 				WHERE id = :id
 				""")
@@ -134,7 +134,8 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 						rs.getString(COL_BOOKING_MODE),
 						rs.getObject(COL_DISTANCE_TO_WATER, Integer.class),
 						rs.getLong("set_version"),
-						rs.getObject(COL_SALES_CLOSE, LocalTime.class), seasonClosureOf(rs), locationOf(rs)))
+						rs.getObject(COL_SALES_CLOSE, LocalTime.class), seasonClosureOf(rs), locationOf(rs),
+						rs.getObject("max_stay_days", Integer.class)))
 				.optional();
 
 		if (venue.isEmpty()) {
@@ -198,7 +199,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 				photos, lightboxPhotos, salesWindow.isOpen(v.salesClose(), v.seasonClosure(), stay.firstDay(), now)
 						&& salesWindow.isOpen(v.salesClose(), v.seasonClosure(), stay.lastDay(), now),
 				SalesClose.WIRE.format(v.salesClose()), closedForSeason,
-				closedForSeason ? v.seasonClosure().reopenOn() : null, v.location()));
+				closedForSeason ? v.seasonClosure().reopenOn() : null, v.location(), v.maxStayDays()));
 	}
 
 	/** Free on every day, on none, or on some — the one-day read can only ever answer the first two. */
@@ -488,7 +489,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	private record VenueRow(long id, String name, String beach,
 			String description, int ratingTenths, int reviewsCount, String bookingMode,
 			Integer distanceToWaterM, long setVersion, LocalTime salesClose, SeasonClosure seasonClosure,
-			VenueLocation location) {
+			VenueLocation location, Integer maxStayDays) {
 	}
 
 	/** The static set-position layout, before availability is overlaid for the chosen date. */

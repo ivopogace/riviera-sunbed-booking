@@ -135,6 +135,11 @@ export interface VenueMapView {
   readonly closedForSeason?: boolean;
   /** The reopen day (ISO `YYYY-MM-DD`, Europe/Tirane) while closed with one set; else `null`/absent. */
   readonly reopensOn?: string | null;
+  /**
+   * The longest stay the venue takes, in days, or `null`/absent for any length this season — the
+   * calendar's last-day ceiling and the rule it states. Display only; the reserve path enforces it.
+   */
+  readonly maxStayDays?: number | null;
 }
 
 /**

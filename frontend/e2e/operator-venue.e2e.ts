@@ -228,6 +228,32 @@ test('pre-fills the form, saves the widened profile without commission/currency,
   await expect(page.getByText('Miramar Renamed').first()).toBeVisible();
 });
 
+test('sets and clears the maximum stay through the full-replace PATCH', async ({ page }) => {
+  const { patches } = await mockVenue(page);
+  await page.goto('/operator/1');
+  await signInAndOpenVenue(page);
+
+  await expect(page.getByTestId('venue-max-stay')).toHaveValue('');
+  await page.getByTestId('venue-max-stay').fill('4');
+  await page.getByTestId('venue-save').click();
+  await expect(page.getByTestId('venue-saved')).toBeVisible();
+  expect((patches[0].postDataJSON() as { maxStayDays?: number | null }).maxStayDays).toBe(4);
+
+  await page.getByTestId('venue-max-stay').fill('');
+  await page.getByTestId('venue-save').click();
+  await expect(page.getByTestId('venue-saved')).toBeVisible();
+  expect(patches).toHaveLength(2);
+  expect((patches[1].postDataJSON() as { maxStayDays?: number | null }).maxStayDays).toBeNull();
+
+  // A non-positive value is a field error; the validity-disabled save never reaches the wire.
+  await page.getByTestId('venue-max-stay').fill('0');
+  await page.getByTestId('venue-max-stay').blur();
+  await expect(page.getByTestId('venue-max-stay-error')).toBeVisible();
+  await expect(page.getByTestId('venue-save')).toBeDisabled();
+  expect(patches).toHaveLength(2);
+  await expectNoSeriousAxeViolations(page, 'venue tab with a maximum-stay error');
+});
+
 test('shows the not-owner message when the save is 403', async ({ page }) => {
   await mockVenue(page, true);
   await page.goto('/operator/1');

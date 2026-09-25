@@ -451,7 +451,7 @@ class VenueAdminServiceTest {
 	private static VenueProfileCommand profile(Set<Amenity> amenities, Integer distanceToWaterM,
 			VenueLocation location) {
 		return new VenueProfileCommand("Sunset", Beach.KSAMIL, "nice", "INSTANT",
-				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, amenities, distanceToWaterM, location);
+				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, amenities, distanceToWaterM, location, null);
 	}
 
 	@Test
@@ -1353,7 +1353,7 @@ class VenueAdminServiceTest {
 			return venues.contains(venueId.value())
 					? Optional.of(new VenueProfileView("Sunset", "KSAMIL", "nice",
 							BookingMode.INSTANT, LocalTime.of(18, 0), LocalTime.of(16, 0), 1500, "EUR",
-							List.of(Amenity.WIFI), 20, 0, List.of(), SeasonClosure.open(), false, storedLocation))
+							List.of(Amenity.WIFI), 20, 0, List.of(), SeasonClosure.open(), false, storedLocation, null))
 					: Optional.empty();
 		}
 

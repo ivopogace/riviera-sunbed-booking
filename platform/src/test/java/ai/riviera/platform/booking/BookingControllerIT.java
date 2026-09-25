@@ -325,6 +325,31 @@ class BookingControllerIT {
 	}
 
 	@Test
+	void rangeOverTheVenueMaximumIs422() throws Exception {
+		long venue = jdbc.sql("""
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency, max_stay_days)
+				VALUES ('Max Stay Club', 'KSAMIL', 'INSTANT', 1500, 'EUR', 2) RETURNING id
+				""").query(Long.class).single();
+		long operator = jdbc.sql("INSERT INTO operator (username, status) "
+						+ "VALUES ('max-stay-op-' || :v, 'ACTIVE') RETURNING id")
+				.param("v", venue).query(Long.class).single();
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
+				.param("v", venue).param("o", operator).update();
+		long set = boundaryOnlineSet(venue);
+		LocalDate first = bookable().plusDays(70);
+
+		reserve(rangeBody(set, first, first.plusDays(2)))
+				.andExpect(status().isUnprocessableEntity())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("STAY_TOO_LONG"));
+		Integer claims = jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :s")
+				.param("s", set).query(Integer.class).single();
+		org.junit.jupiter.api.Assertions.assertEquals(0, claims, "refused before any claim");
+		reserve(rangeBody(set, first, first.plusDays(1)))
+				.andExpect(status().isCreated());
+	}
+
+	@Test
 	void rangeSalesCloseIsJudgedOnTheFirstDay() throws Exception {
 		// An advance-only venue: today is closed, tomorrow is open (invariant #4 on the first day).
 		long set = onlineSetAtSalesClose("00:01");

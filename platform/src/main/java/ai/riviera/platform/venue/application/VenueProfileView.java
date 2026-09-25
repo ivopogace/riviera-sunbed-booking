@@ -12,7 +12,7 @@ import ai.riviera.platform.venue.vocabulary.VenueLocation;
  * The operator's own view of a venue's admin profile — everything the console's
  * Venue &amp; commodities tab needs to render its form: the editable core
  * (name, the beach as its catalogue code, description, booking mode, booking cutoff, sales close, amenities,
- * distance-to-water) plus
+ * distance-to-water, location, maximum stay) plus
  * the two <strong>read-only</strong> display fields, {@code commissionBps} (shown as a %; the
  * platform's cut, invariant #9) and {@code payoutCurrency} (standing provisional). Returned by the
  * {@link ViewVenueProfile} driving port after the owner check (invariant #13).
@@ -40,10 +40,14 @@ import ai.riviera.platform.venue.vocabulary.VenueLocation;
  *
  * <p>{@code location} is the venue's pin on the riviera map, {@code null} when it has none — set
  * and cleared through the profile {@code PATCH} like any other editable field.
+ *
+ * <p>{@code maxStayDays} is the longest stay the venue takes, in days, {@code null} for any length
+ * this season; owner-editable through the profile {@code PATCH}, and the bound the reserve path
+ * enforces.
  */
 public record VenueProfileView(String name, String beach, String description,
 		BookingMode bookingMode, LocalTime bookingCutoff, LocalTime salesClose, int commissionBps,
 		String payoutCurrency, List<Amenity> amenities, Integer distanceToWaterM, long version,
 		List<PhotoSlotView> photos, SeasonClosure seasonClosure, boolean closedForSeason,
-		VenueLocation location) {
+		VenueLocation location, Integer maxStayDays) {
 }

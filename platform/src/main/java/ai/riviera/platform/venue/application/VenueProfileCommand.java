@@ -17,9 +17,11 @@ import ai.riviera.platform.venue.vocabulary.VenueLocation;
  * {@code Europe/Tirane} wall-clock {@code LocalTime}, invariant #4/#6), {@code salesClose} (the
  * required three-value {@link SalesClose} choice) — plus the amenity set (an order-insensitive
  * subset of the fixed {@link Amenity} catalogue) and the optional distance-to-water in metres
- * ({@code null} = not stated) and the optional {@link VenueLocation} ({@code null} = no pin, so
- * the venue is absent from the riviera map and still in the list). The location's own bounds are
- * enforced by its type, not here.
+ * ({@code null} = not stated), the optional {@link VenueLocation} ({@code null} = no pin, so
+ * the venue is absent from the riviera map and still in the list) and the optional
+ * {@code maxStayDays} — the longest stay the venue takes, in days, {@code null} for any length this
+ * season (the platform sets no maximum). The location's own bounds are enforced by its type, not
+ * here.
  *
  * <p><strong>Commission and payout currency are intentionally NOT here.</strong> They are read-only
  * for operators (commission is the platform's cut — invariant #9; payout currency is a standing
@@ -33,7 +35,7 @@ import ai.riviera.platform.venue.vocabulary.VenueLocation;
  */
 public record VenueProfileCommand(String name, Beach beach, String description,
 		String bookingMode, LocalTime bookingCutoff, SalesClose salesClose, Set<Amenity> amenities,
-		Integer distanceToWaterM, VenueLocation location) {
+		Integer distanceToWaterM, VenueLocation location, Integer maxStayDays) {
 
 	public VenueProfileCommand {
 		VenueFieldValidation.requireText(name, "name");
@@ -42,6 +44,7 @@ public record VenueProfileCommand(String name, Beach beach, String description,
 		VenueFieldValidation.requireCutoff(bookingCutoff);
 		VenueFieldValidation.requireSalesClose(salesClose);
 		VenueFieldValidation.requirePositiveOrNullDistance(distanceToWaterM);
+		VenueFieldValidation.requirePositiveOrNullMaxStay(maxStayDays);
 		amenities = amenities == null ? Set.of() : Set.copyOf(amenities);
 	}
 }

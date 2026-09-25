@@ -89,7 +89,7 @@ class BookingCreationViewsContractTest {
 		return new BookingConfirmation("CODE234567", status,
 				new SetBookingInfo(new SetId(11), new VenueId(7), "Vala Beach", "A", 4, Pool.ONLINE,
 						new MoneyView(4500, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
-						BookingMode.REQUEST, SeasonClosure.open()),
+						BookingMode.REQUEST, SeasonClosure.open(), null),
 				LocalDate.of(2026, 8, 10), LocalDate.of(2026, 8, 12), new MoneyView(13500, "EUR"), false);
 	}
 }

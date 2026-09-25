@@ -72,8 +72,13 @@ class CreateBookingServiceTest {
 	}
 
 	private SetBookingInfo set(Pool pool, BookingMode mode, SeasonClosure closure) {
+		return set(pool, mode, closure, null);
+	}
+
+	private SetBookingInfo set(Pool pool, BookingMode mode, SeasonClosure closure, Integer maxStayDays) {
 		return new SetBookingInfo(SET, new VenueId(1), "Miramar", "Front row", 2, pool,
-				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0), mode, closure);
+				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0), mode, closure,
+				maxStayDays);
 	}
 
 	private static final RequestWindows WINDOWS =
@@ -449,6 +454,53 @@ class CreateBookingServiceTest {
 		assertSame(BookingOutcome.Rejected.RANGE_NOT_OFFERED, outcome);
 		assertTrue(claimed.isEmpty(), "refused before any claim");
 		assertTrue(bookings.pendingInserted.isEmpty());
+	}
+
+	@Test
+	void aStayLongerThanTheVenueMaximumIsRejectedBeforeAnyClaim() {
+		List<LocalDate> claimed = new ArrayList<>();
+		AvailabilityClaim recording = new AvailabilityClaim() {
+			@Override
+			public ClaimOutcome claim(SetId setId, LocalDate bookingDate) {
+				claimed.add(bookingDate);
+				return ClaimOutcome.CLAIMED;
+			}
+
+			@Override
+			public void release(SetId setId, LocalDate bookingDate) {
+			}
+		};
+		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.INSTANT, SeasonClosure.open(), 3),
+				recording, (_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, DATE, DATE.plusDays(3), GUEST, null));
+
+		assertSame(BookingOutcome.Rejected.STAY_TOO_LONG, outcome);
+		assertTrue(claimed.isEmpty(), "refused before any claim");
+		assertTrue(bookings.inserted.isEmpty());
+	}
+
+	@Test
+	void aStayOfExactlyTheMaximumIsReserved() {
+		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.INSTANT, SeasonClosure.open(), 3),
+				claiming(ClaimOutcome.CLAIMED), (_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, DATE, DATE.plusDays(2), GUEST, null));
+
+		assertInstanceOf(BookingOutcome.Confirmed.class, outcome);
+	}
+
+	@Test
+	void noMaximumAcceptsAnyStay() {
+		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.INSTANT, SeasonClosure.open(), null),
+				claiming(ClaimOutcome.CLAIMED), (_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, DATE, DATE.plusDays(9), GUEST, null));
+
+		assertInstanceOf(BookingOutcome.Confirmed.class, outcome);
 	}
 
 	@Test

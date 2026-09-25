@@ -24,6 +24,7 @@ const MIN_DATE = '2026-06-15';
       [selectedLastDate]="selectedLastDate()"
       [minDate]="minDate()"
       [rangeAllowed]="rangeAllowed()"
+      [maxStayDays]="maxStayDays()"
       (chosen)="chosen.push($event)"
       (dismissed)="dismissals = dismissals + 1"
     />
@@ -35,6 +36,7 @@ class Host {
   readonly selectedLastDate = signal<string | undefined>(undefined);
   readonly minDate = signal(MIN_DATE);
   readonly rangeAllowed = signal(false);
+  readonly maxStayDays = signal<number | null | undefined>(undefined);
   readonly chosen: DateRange[] = [];
   dismissals = 0;
 }
@@ -401,6 +403,44 @@ describe('AvailabilityCalendar', () => {
       expect(dayButton('2026-08-17')!.getAttribute('aria-disabled')).toBe('true');
       dayButton('2026-08-17')!.click();
       expect(host.chosen).toEqual([]);
+    });
+
+    it("refuses a last day past the venue's maximum stay", async () => {
+      host.rangeAllowed.set(true);
+      host.maxStayDays.set(3);
+      fixture.detectChanges();
+      await flushCalendar();
+      modeOption('calendar-mode-stay')!.click();
+      fixture.detectChanges();
+      dayButton('2026-06-20')!.click();
+      fixture.detectChanges();
+
+      expect(dayButton('2026-06-22')!.getAttribute('aria-disabled')).toBeNull();
+      expect(dayButton('2026-06-23')!.getAttribute('aria-disabled')).toBe('true');
+      dayButton('2026-06-23')!.click();
+      expect(host.chosen).toEqual([]);
+      dayButton('2026-06-22')!.click();
+      expect(host.chosen).toEqual([{ first: '2026-06-20', last: '2026-06-22' }]);
+    });
+
+    it("states the venue's stay rule in stay mode", async () => {
+      host.rangeAllowed.set(true);
+      host.maxStayDays.set(3);
+      fixture.detectChanges();
+      await flushCalendar();
+      modeOption('calendar-mode-stay')!.click();
+      fixture.detectChanges();
+
+      expect(dom().querySelector('[data-testid="calendar-stay-rule"]')!.textContent).toContain(
+        'Stays of up to 3 days at this venue.',
+      );
+
+      host.maxStayDays.set(null);
+      fixture.detectChanges();
+
+      expect(dom().querySelector('[data-testid="calendar-stay-rule"]')!.textContent).toContain(
+        'Stays of any length this season.',
+      );
     });
 
     it('opens in stay mode with the whole range selected when the map shows a stay', async () => {

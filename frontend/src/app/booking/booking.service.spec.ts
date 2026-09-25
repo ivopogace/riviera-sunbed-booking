@@ -376,6 +376,8 @@ describe('bookingErrorOf', () => {
       'SET_NOT_BOOKABLE_ONLINE',
     );
     expect(bookingErrorOf(httpError(404, 'NO_SUCH_SET'))).toBe('NO_SUCH_SET');
+    expect(bookingErrorOf(httpError(422, 'RANGE_NOT_OFFERED'))).toBe('RANGE_NOT_OFFERED');
+    expect(bookingErrorOf(httpError(422, 'STAY_TOO_LONG'))).toBe('STAY_TOO_LONG');
     expect(bookingErrorOf(httpError(400, 'INVALID_REQUEST'))).toBe('INVALID_REQUEST');
   });
 

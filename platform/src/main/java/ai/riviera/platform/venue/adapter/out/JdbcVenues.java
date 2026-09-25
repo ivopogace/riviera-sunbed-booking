@@ -494,7 +494,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				SET name = :name, beach = :beach, description = :description,
 				    booking_mode = :mode, booking_cutoff = :cutoff, sales_close = :salesClose,
 				    distance_to_water_m = :distance, latitude = :latitude, longitude = :longitude,
-				    version = version + 1
+				    max_stay_days = :maxStayDays, version = version + 1
 				WHERE id = :id AND version = :version
 				""")
 				.param(COL_NAME, command.name())
@@ -506,6 +506,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				.param("cutoff", command.bookingCutoff())
 				.param(P_SALES_CLOSE, command.salesClose().time())
 				.param("distance", command.distanceToWaterM())
+				.param("maxStayDays", command.maxStayDays())
 				.param("id", venueId.value())
 				.param("version", expectedVersion)
 				.update();
@@ -547,7 +548,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 		Optional<ProfileRow> venue = jdbc.sql("""
 				SELECT name, beach, description, booking_mode, booking_cutoff, sales_close,
 				       commission_bps, payout_currency, distance_to_water_m, version,
-				       closed_at, reopen_on, advance_sales, latitude, longitude
+				       closed_at, reopen_on, advance_sales, latitude, longitude, max_stay_days
 				FROM venue
 				WHERE id = :id
 				""")
@@ -565,7 +566,8 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 								? SeasonClosure.open()
 								: SeasonClosure.closed(rs.getObject("reopen_on", LocalDate.class),
 										rs.getBoolean("advance_sales")),
-						locationOf(rs.getBigDecimal(COL_LATITUDE), rs.getBigDecimal(COL_LONGITUDE))))
+						locationOf(rs.getBigDecimal(COL_LATITUDE), rs.getBigDecimal(COL_LONGITUDE)),
+						rs.getObject("max_stay_days", Integer.class)))
 				.optional();
 		if (venue.isEmpty()) {
 			return Optional.empty();
@@ -580,7 +582,8 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 		return Optional.of(new VenueProfileView(v.name(), v.beach(), v.description(),
 				v.bookingMode(), v.bookingCutoff(), v.salesClose(), v.commissionBps(), v.payoutCurrency(),
 				amenities, v.distanceToWaterM(), v.version(), slotPhotos(venueId), v.seasonClosure(),
-				salesWindow.closedForSeason(v.seasonClosure(), clock.instant()), v.location()));
+				salesWindow.closedForSeason(v.seasonClosure(), clock.instant()), v.location(),
+				v.maxStayDays()));
 	}
 
 	@Override
@@ -639,7 +642,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	private record ProfileRow(String name, String beach, String description,
 			BookingMode bookingMode, LocalTime bookingCutoff, LocalTime salesClose, int commissionBps,
 			String payoutCurrency, Integer distanceToWaterM, long version, SeasonClosure seasonClosure,
-			VenueLocation location) {
+			VenueLocation location, Integer maxStayDays) {
 	}
 
 	private static Map<String, Object> setParams(SetCommand c) {

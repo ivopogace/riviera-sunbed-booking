@@ -32,7 +32,7 @@ class VenueProfileCommandTest {
 
 	private static VenueProfileCommand valid() {
 		return new VenueProfileCommand("Sunset", Beach.KSAMIL, "nice", "INSTANT",
-				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(Amenity.WIFI), 20, DHERMI);
+				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(Amenity.WIFI), 20, DHERMI, null);
 	}
 
 	@Test
@@ -52,7 +52,7 @@ class VenueProfileCommandTest {
 	@Test
 	void aNullLocationIsAllowedAndMeansNoPin() {
 		assertDoesNotThrow(() -> new VenueProfileCommand("Sunset", Beach.KSAMIL, "nice",
-				"INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), 20, null));
+				"INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), 20, null, null));
 	}
 
 	@Test
@@ -67,52 +67,64 @@ class VenueProfileCommandTest {
 	@Test
 	void blankNameIsRejected() {
 		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("  ", Beach.KSAMIL,
-				 "nice", "INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null));
+				 "nice", "INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null, null));
 	}
 
 	@Test
 	void nullBeachIsRejected() {
 		// AC-1: the catalogue type makes an off-catalogue beach unrepresentable; absence is the one edge case left.
 		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", null,
-				"nice", "INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null));
+				"nice", "INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null, null));
 	}
 
 	@Test
 	void unknownBookingModeIsRejected() {
 		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", Beach.KSAMIL,
-				 "nice", "MAYBE", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null));
+				 "nice", "MAYBE", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null, null));
 	}
 
 	@Test
 	void nullCutoffIsRejected() {
 		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", Beach.KSAMIL,
-				 "nice", "INSTANT", null, SalesClose.MID_AFTERNOON, Set.of(), null, null));
+				 "nice", "INSTANT", null, SalesClose.MID_AFTERNOON, Set.of(), null, null, null));
 	}
 
 	@Test
 	void nullSalesCloseIsRejected() {
 		// AC-2 (#794): the full-replace edit must always state the choice — null never means "keep".
 		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", Beach.KSAMIL,
-				 "nice", "INSTANT", LocalTime.of(18, 0), null, Set.of(), null, null));
+				 "nice", "INSTANT", LocalTime.of(18, 0), null, Set.of(), null, null, null));
 	}
 
 	@Test
 	void nonPositiveDistanceIsRejected() {
 		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", Beach.KSAMIL,
-				 "nice", "INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), 0, null));
+				 "nice", "INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), 0, null, null));
+	}
+
+	@Test
+	void nonPositiveMaxStayIsRejected() {
+		assertThrows(IllegalArgumentException.class, () -> new VenueProfileCommand("Sunset", Beach.KSAMIL,
+				 "nice", "INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null, 0));
+	}
+
+	@Test
+	void aMaximumOfOneDayIsAllowed() {
+		assertDoesNotThrow(() -> new VenueProfileCommand("Sunset", Beach.KSAMIL, null,
+				"INSTANT", LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null, 1));
 	}
 
 	@Test
 	void nullDescriptionAndNullDistanceAreAllowed() {
 		assertDoesNotThrow(() -> new VenueProfileCommand("Sunset", Beach.KSAMIL, null,
-				"REQUEST", LocalTime.of(17, 30), SalesClose.DAY_END, Set.of(), null, null));
+				"REQUEST", LocalTime.of(17, 30), SalesClose.DAY_END, Set.of(), null, null, null));
 	}
 
 	@Test
 	void amenitiesAreDefensivelyCopiedAndOrderInsensitive() {
 		Set<Amenity> source = new HashSet<>(Set.of(Amenity.WIFI, Amenity.CAFE));
 		VenueProfileCommand c = new VenueProfileCommand("N", Beach.DHERMI, null, "INSTANT",
-				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, source, null, null);
+				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, source, null, null, null);
 		source.clear(); // must not affect the command's copy
 		assertEquals(Set.of(Amenity.WIFI, Amenity.CAFE), c.amenities());
 	}
