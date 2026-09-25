@@ -40,10 +40,14 @@ import ai.riviera.platform.venue.vocabulary.VenueLocation;
  *
  * <p>{@code location} is the venue's pin on the riviera map, {@code null} when it has none — set
  * and cleared through the profile {@code PATCH} like any other editable field.
+ *
+ * <p>{@code maxStayDays} is the longest stay the venue takes, in days, {@code null} for any length
+ * this season; owner-editable through the profile {@code PATCH}, and the bound the reserve path
+ * enforces.
  */
 public record VenueProfileView(String name, String beach, String description,
 		BookingMode bookingMode, LocalTime bookingCutoff, LocalTime salesClose, int commissionBps,
 		String payoutCurrency, List<Amenity> amenities, Integer distanceToWaterM, long version,
 		List<PhotoSlotView> photos, SeasonClosure seasonClosure, boolean closedForSeason,
-		VenueLocation location) {
+		VenueLocation location, Integer maxStayDays) {
 }

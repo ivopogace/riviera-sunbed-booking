@@ -20,9 +20,10 @@ import ai.riviera.platform.venue.application.VenueProfileCommand;
  * ({@code INSTANT}|{@code REQUEST}), {@code bookingCutoff} ({@code "HH:mm"} in {@code Europe/Tirane}),
  * {@code salesClose} (required; exactly {@code "00:01"}|{@code "16:00"}|{@code "23:59"}),
  * the full amenity set (codes from the fixed {@link Amenity} catalogue), the optional
- * distance-to-water in metres, and the optional {@code location} — the venue's riviera-map pin as
- * {@code {latitude, longitude}}, or {@code null} for no pin. <strong>Commission and payout currency are read-only and absent</strong>
- * — the write cannot touch them.
+ * distance-to-water in metres, the optional {@code location} — the venue's riviera-map pin as
+ * {@code {latitude, longitude}}, or {@code null} for no pin — and the optional {@code maxStayDays},
+ * the longest stay the venue takes ({@code null} = any length this season). <strong>Commission and
+ * payout currency are read-only and absent</strong> — the write cannot touch them.
  *
  * <p>{@link #toCommand()} parses the beach code ({@link BeachCode}), each amenity code to {@link Amenity}, the cutoff to a
  * {@link LocalTime}, and the sales close to a {@link SalesClose}; a bad/null amenity code, a
@@ -32,7 +33,8 @@ import ai.riviera.platform.venue.application.VenueProfileCommand;
  *
  * <p><strong>The edit REPLACES the profile</strong> (the form always re-sends every field), so a
  * null/absent {@code amenities} clears them, a null {@code distanceToWaterM} clears the distance,
- * and a null {@code location} unpins the venue from the riviera map.
+ * a null {@code location} unpins the venue from the riviera map, and a null {@code maxStayDays}
+ * lifts the maximum.
  *
  * <p>{@code expectedVersion} is the required optimistic-concurrency token — the {@code version}
  * the tab loaded with the profile. It is typed {@link Long} (not primitive) so an absent field is
@@ -41,7 +43,7 @@ import ai.riviera.platform.venue.application.VenueProfileCommand;
  */
 record UpdateVenueProfileRequest(String name, String beach, String description,
 		String bookingMode, String bookingCutoff, String salesClose, List<String> amenities,
-		Integer distanceToWaterM, LocationBody location, Long expectedVersion) {
+		Integer distanceToWaterM, LocationBody location, Long expectedVersion, Integer maxStayDays) {
 
 	/**
 	 * The raw coordinate pair off the wire. Unvalidated by design: {@link VenueLocation} owns the
@@ -56,7 +58,7 @@ record UpdateVenueProfileRequest(String name, String beach, String description,
 				.collect(Collectors.toUnmodifiableSet());
 		return new VenueProfileCommand(name, BeachCode.parse(beach), description, bookingMode,
 				parseCutoff(bookingCutoff), parseSalesClose(salesClose), parsed, distanceToWaterM,
-				parseLocation(location));
+				parseLocation(location), maxStayDays);
 	}
 
 	private static VenueLocation parseLocation(LocationBody body) {

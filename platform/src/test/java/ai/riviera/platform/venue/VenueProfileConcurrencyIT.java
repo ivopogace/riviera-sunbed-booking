@@ -104,7 +104,7 @@ class VenueProfileConcurrencyIT {
 
 	private static VenueProfileCommand command(String name) {
 		return new VenueProfileCommand(name, Beach.KSAMIL, "desc", "INSTANT",
-				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null);
+				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null, null, null);
 	}
 
 	private long insertVenue() {
