@@ -1,10 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { RemodelReceipt } from './operator-console.model';
-import { RECEIPT, RECEIPT_WITH_ENDINGS } from './remodel-receipt-panel.fixtures';
+import { RECEIPT, RECEIPT_WITH_ENDINGS, RECEIPT_WITH_KEPT } from './remodel-receipt-panel.fixtures';
 import { RemodelReceiptPanel } from './remodel-receipt-panel';
 
-describe('RemodelReceiptPanel (#1034)', () => {
+describe('RemodelReceiptPanel (#1034, #1199)', () => {
   let fixture: ComponentFixture<RemodelReceiptPanel>;
   let host: HTMLElement;
 
@@ -37,6 +37,22 @@ describe('RemodelReceiptPanel (#1034)', () => {
     expect(host.textContent).not.toMatch(/\bcode\b/i);
   });
 
+  it('lists the kept lines with their reason and counts them in the summary (#1199)', () => {
+    render(RECEIPT_WITH_KEPT);
+
+    expect(host.textContent).toMatch(/2 bookings moved, 2 kept in place/);
+    const kept = byId('layout-remodel-receipt-kept')!;
+    expect(kept.querySelectorAll('li')).toHaveLength(2);
+    expect(host.textContent).toMatch(/Kept in place \(2\)/);
+    expect(kept.textContent).toMatch(
+      /Row A · position 3 · Fri 11 Sept 2026 · arrives within the freeze window/,
+    );
+    expect(kept.textContent).toMatch(
+      /Row A · position 2 · Sun 13 Sept 2026 · no free set of the same or better tier that day/,
+    );
+    expect(host.textContent).not.toMatch(/\bcode\b/i);
+  });
+
   it('shows the fee charged per refunded booking and the total', () => {
     render(RECEIPT_WITH_ENDINGS);
 
@@ -52,6 +68,8 @@ describe('RemodelReceiptPanel (#1034)', () => {
     expect(byId('layout-remodel-receipt-releases')).toBeNull();
     expect(byId('layout-remodel-receipt-reason')).toBeNull();
     expect(byId('layout-remodel-receipt-fee')).toBeNull();
+    expect(byId('layout-remodel-receipt-kept')).toBeNull();
+    expect(host.textContent).not.toMatch(/kept/);
     expect(host.textContent).not.toMatch(/returned/);
     expect(host.textContent).not.toMatch(/fee/i);
   });

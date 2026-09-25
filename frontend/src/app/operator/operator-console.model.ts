@@ -262,13 +262,25 @@ export interface RemodelReceiptRelease extends RemodelReceiptClaim {
   readonly kind: 'RELEASE' | 'DECLINE';
 }
 
+/** Why a claim could not be moved or ended, so the save kept its set exactly as stored. */
+export type RemodelBlockReason = 'FROZEN' | 'NO_MOVE_CANDIDATE';
+
+/** One claim a receipt records as kept where it was: the spot it still holds and why it stayed. */
+export interface RemodelReceiptKept {
+  readonly bookingId: number;
+  readonly bookingDate: string;
+  readonly from: RemodelSpot;
+  readonly reason: RemodelBlockReason;
+}
+
 /**
  * A persisted remodel-commit receipt (`GET /api/venues/{id}/remodels/{receiptId}`), and the
- * `200` of the commit itself, whose moves also carry the amount: when it was committed, every
- * booking it moved, every claim it ended instead, the operator's reason for the refunds and what
- * they returned to guests. `refundedTotal` is null when it refunded nobody, so a zero is never
- * rendered as a refund, and `feeTotal` — what those refunds cost the venue, at the rate charged then
- * — is null with it. Bookings by id, never by code.
+ * `200` of the commit itself, whose moves and kept lines also carry the amount: when it was
+ * committed, every booking it moved, every claim it ended instead, every claim it kept where it
+ * was, the operator's reason for the refunds and what they returned to guests. `refundedTotal` is
+ * null when it refunded nobody, so a zero is never rendered as a refund, and `feeTotal` — what
+ * those refunds cost the venue, at the rate charged then — is null with it. Bookings by id, never
+ * by code.
  */
 export interface RemodelReceipt {
   readonly receiptId: number;
@@ -276,6 +288,7 @@ export interface RemodelReceipt {
   readonly moves: readonly RemodelReceiptMove[];
   readonly refunds: readonly RemodelReceiptClaim[];
   readonly releases: readonly RemodelReceiptRelease[];
+  readonly kept: readonly RemodelReceiptKept[];
   readonly refundReason: string;
   readonly refundedTotal: MoneyView | null;
   readonly feeTotal: MoneyView | null;
@@ -317,15 +330,16 @@ export interface RemodelStaffHold {
   readonly dates: readonly string[];
 }
 
-/** A claim that blocks the save: its set must stay on the map. */
+/** A claim the save keeps where it is: its set stays on the map exactly as stored. */
 export interface RemodelBlock extends RemodelClaim {
-  readonly reason: 'FROZEN' | 'NO_MOVE_CANDIDATE';
+  readonly reason: RemodelBlockReason;
 }
 
 /**
  * The remodel preview (`POST /api/venues/{id}/beach-map/preview`): what the bulk save's body would
  * do to every live claim on the sets it removes or renumbers, in five groups, plus `keep` — the sets
- * a blocked save must keep on the map. Nothing is written by the preview; the save re-decides.
+ * that stay on the map: the blocked claims' (the save keeps them itself) and the staff holds' (the
+ * operator must restore them). Nothing is written by the preview; the save re-decides.
  */
 export interface RemodelPreview {
   readonly moves: readonly RemodelMove[];
@@ -341,15 +355,18 @@ export interface RemodelPreview {
 }
 
 /**
- * True when every claim the preview names can be applied — moves, refunds, releases and declines.
- * A staff walk-in hold or a blocked claim pins its set, and the save refuses the lot.
+ * True when the save can settle every claim the preview names — moves, refunds, releases, declines,
+ * and blocked claims kept where they are. Only a staff walk-in hold refuses the save as painted.
  */
 export function remodelPreviewIsCommittable(preview: RemodelPreview): boolean {
-  return (
-    !remodelPreviewIsEmpty(preview) &&
-    preview.staffHolds.length === 0 &&
-    preview.blocks.length === 0
-  );
+  return !remodelPreviewIsEmpty(preview) && preview.staffHolds.length === 0;
+}
+
+/** Why a blocked claim stays put, as the preview and the receipt both word it. */
+export function remodelBlockReasonText(reason: RemodelBlockReason): string {
+  return reason === 'FROZEN'
+    ? 'arrives within the freeze window'
+    : 'no free set of the same or better tier that day';
 }
 
 /** True when the preview names no claim at all — the save can proceed without a confirmation. */

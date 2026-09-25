@@ -21,20 +21,19 @@
     }
     There is no undo.
   </p>
-} @else {
-  <p class="text-[12.5px] leading-[1.45] font-semibold">
-    <strong>Guests still hold sets this save removes, so it can’t be saved as painted.</strong>
-    A remodel of these sets would do the following.
-  </p>
-  @if (preview().keep.length > 0) {
+  @if (preview().blocks.length > 0) {
     <p class="mt-1 text-[12.5px] leading-[1.45] font-bold" data-testid="layout-remodel-keep">
-      {{ keepSentence() }}
-    </p>
-  } @else {
-    <p class="mt-1 text-[12.5px] leading-[1.45] font-bold" data-testid="layout-remodel-keep">
-      Keep the removed sets on the map to save, or wait until their bookings have passed.
+      {{ keptSentence() }} {{ keepSentence() }}
     </p>
   }
+} @else {
+  <p class="text-[12.5px] leading-[1.45] font-semibold">
+    <strong>Staff hold sets this save removes, so it can’t be saved as painted.</strong>
+    A remodel of these sets would do the following.
+  </p>
+  <p class="mt-1 text-[12.5px] leading-[1.45] font-bold" data-testid="layout-remodel-keep">
+    {{ keepSentence() }}
+  </p>
 }
 
 <div class="mt-2 grid gap-2 text-[12px] leading-[1.45]">
@@ -83,7 +82,7 @@
   }
   @if (preview().blocks.length > 0) {
     <section data-testid="layout-remodel-blocks">
-      <h3 class="font-bold">Blocks this save ({{ preview().blocks.length }})</h3>
+      <h3 class="font-bold">Will stay put ({{ preview().blocks.length }})</h3>
       <ul class="list-disc pl-4">
         @for (block of preview().blocks; track block.bookingId) {
           <li>{{ blockText(block) }}</li>

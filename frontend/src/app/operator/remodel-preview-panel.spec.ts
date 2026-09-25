@@ -4,13 +4,15 @@ import { provideRouter } from '@angular/router';
 import { formatMoney } from '../shared/money';
 import { RemodelPreview } from './operator-console.model';
 import {
+  BLOCKS_ONLY_PREVIEW,
   FULL_PREVIEW,
+  HELD_PREVIEW,
   MOVES_ONLY_PREVIEW,
   REFUNDING_PREVIEW,
 } from './remodel-preview-panel.fixtures';
 import { RemodelPreviewPanel } from './remodel-preview-panel';
 
-describe('RemodelPreviewPanel (#1033, #1034)', () => {
+describe('RemodelPreviewPanel (#1033, #1034, #1199)', () => {
   let fixture: ComponentFixture<RemodelPreviewPanel>;
   let host: HTMLElement;
 
@@ -132,18 +134,51 @@ describe('RemodelPreviewPanel (#1033, #1034)', () => {
     expect(fee).toMatch(/deducted from your payout/i);
   });
 
-  it('names the sets to keep, links the bookings tab, and offers Back only', () => {
-    render(FULL_PREVIEW);
+  it('a staff hold names the sets to keep, links the bookings tab, and offers Back only', () => {
+    render(HELD_PREVIEW);
     const cancelled = vi.fn();
     fixture.componentInstance.cancelled.subscribe(cancelled);
 
+    expect(host.textContent).toMatch(
+      /Staff hold sets this save removes, so it can’t be saved as painted/,
+    );
     expect(byId('layout-remodel-keep')!.textContent).toMatch(
-      /Keep Row A · position 3 and Row A · position 2 on the map to save/,
+      /Keep Row A · position 2 on the map to save/,
     );
     expect(byId('layout-remodel-bookings')!.getAttribute('href')).toBe('/operator/1/daily');
     expect(host.querySelectorAll('button')).toHaveLength(1);
     byId('layout-remodel-back')!.click();
     expect(cancelled).toHaveBeenCalledTimes(1);
+  });
+
+  it('a picture with blocks alone is committable and says the sets stay (#1199)', () => {
+    render(BLOCKS_ONLY_PREVIEW);
+    const committed = vi.fn();
+    fixture.componentInstance.committed.subscribe(committed);
+
+    expect(host.textContent).not.toMatch(/can’t be saved as painted/);
+    expect(host.textContent).toMatch(
+      /2 bookings can’t be moved or ended yet, so their sets stay on the map exactly as they are/,
+    );
+    expect(byId('layout-remodel-keep')!.textContent).toMatch(
+      /Row A · position 3 and Row A · position 2 stay on the map/,
+    );
+    expect(byId('layout-remodel-blocks')!.textContent).toMatch(/Will stay put \(2\)/);
+    expect(byId('layout-remodel-blocks')!.textContent).toMatch(/arrives within the freeze window/);
+    expect(byId('layout-remodel-confirm')).toBeNull();
+    expect(byId('layout-remodel-commit')!.textContent).toContain('Save and keep 2 bookings');
+    byId('layout-remodel-commit')!.click();
+    expect(committed).toHaveBeenCalledWith({ refundCount: 0, refundReason: '' });
+  });
+
+  it('a picture that moves and keeps counts both in the Save label and needs no confirmation', () => {
+    render({ ...BLOCKS_ONLY_PREVIEW, moves: FULL_PREVIEW.moves, blocks: [FULL_PREVIEW.blocks[0]] });
+
+    expect(host.textContent).toMatch(/1 booking can’t be moved or ended yet, so its set stays/);
+    expect(byId('layout-remodel-commit')!.textContent).toContain(
+      'Save and move 2, keep 1 bookings',
+    );
+    expect(byId('layout-remodel-confirm')).toBeNull();
   });
 
   it('a moves-only picture hides the empty groups and offers Save and move, which emits committed (#1034)', () => {

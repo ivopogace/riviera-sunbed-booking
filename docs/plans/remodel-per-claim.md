@@ -265,7 +265,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/operator-console.model.ts` — kept type, committable rule
 - `frontend/src/app/operator/remodel-preview-panel.{ts,html,spec.ts,fixtures.ts}` — copy + specs
 - `frontend/src/app/operator/remodel-receipt-panel.{ts,spec.ts,fixtures.ts}` — kept group + specs
-- `frontend/src/app/operator/{layout-editor.spec.ts,operator-console.service.spec.ts}` — fixtures gain `kept`
+- `frontend/src/app/operator/operator-console.model.spec.ts` — the committable rule
 - `frontend/e2e/layout-editor.e2e.ts` — mocks gain `kept`; one new case
 - `RESPONSIBILITIES.md`, `CONTEXT.md`, `docs/architecture/multi-day-stays.md` — the commit's rule, the glossary, D9 landed
 

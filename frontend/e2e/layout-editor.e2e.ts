@@ -445,9 +445,36 @@ const RECEIPT = {
   ],
   refunds: [],
   releases: [],
+  kept: [],
   refundReason: '',
   refundedTotal: null,
   feeTotal: null,
+};
+
+/** The same save when a frozen guest pins B1: the preview keeps B1 itself and the rest is saved as painted. */
+const KEPT_PREVIEW = {
+  ...BLOCKED_PREVIEW,
+  moves: [],
+  refunds: [],
+  releases: [],
+  staffHolds: [],
+  previewToken: 'v1.kept',
+  feeTotal: { minorUnits: 0, currency: 'EUR' },
+};
+
+/** The receipt of that commit: nothing moved, B1's guest kept where they are. */
+const KEPT_RECEIPT = {
+  ...RECEIPT,
+  receiptId: 44,
+  moves: [],
+  kept: [
+    {
+      bookingId: 10,
+      bookingDate: '2026-09-11',
+      from: { setId: 2, rowLabel: 'B', positionNo: 1 },
+      reason: 'FROZEN',
+    },
+  ],
 };
 
 /** The same save when a claim must be refunded too — the picture that needs the typed confirmation. */
@@ -953,6 +980,54 @@ test('a moves-only preview commits: Save and move POSTs the token, the receipt r
     'Remodel saved · receipt #41',
   );
   await expect(page.getByTestId('layout-remodel-receipt-title')).toBeFocused();
+});
+
+test('a blocked picture commits: the kept set stays on the map and the receipt lists it (#1199, + axe)', async ({
+  page,
+}) => {
+  const { puts } = await mockEditor(page, [], SEEDED_SETS, [], KEPT_PREVIEW);
+  const commits: Request[] = [];
+  await page.route(/\/api\/venues\/1\/beach-map\/commit$/, (route) => {
+    commits.push(route.request());
+    return route.fulfill({ json: KEPT_RECEIPT });
+  });
+  await page.goto('/operator/1/beach-map');
+  await signIn(page);
+  await page.getByTestId('layout-tool-gap').click();
+  await page.locator('[data-testid="layout-cell"][data-grid-row="1"][data-grid-col="0"]').click();
+  await page.getByTestId('layout-save').click();
+
+  // Committable although a guest cannot be moved: the dialog says the set stays and offers Save.
+  const dialog = page.getByTestId('layout-remodel-preview');
+  await expect(dialog).toBeVisible();
+  await expect(page.getByTestId('layout-remodel-keep')).toHaveText(
+    '1 booking can’t be moved or ended yet, so its set stays on the map exactly as it is. Row B · position 1 stays on the map; the rest of the layout is saved as painted.',
+  );
+  await expect(page.getByTestId('layout-remodel-blocks')).toContainText('Will stay put (1)');
+  await expect(dialog.getByRole('button')).toHaveCount(2);
+  const save = page.getByTestId('layout-remodel-commit');
+  await expect(save).toHaveText('Save and keep 1 booking');
+  await expect(save).toBeFocused();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'layout editor, remodel preview keeping a set');
+
+  await save.click();
+  await expect(page.getByTestId('layout-remodel-receipt')).toBeVisible();
+  expect(puts).toHaveLength(0);
+  expect(commits).toHaveLength(1);
+  expect((commits[0].postDataJSON() as { previewToken: string }).previewToken).toBe('v1.kept');
+  await expect(page.getByTestId('layout-remodel-receipt-title')).toHaveText(
+    'Remodel saved · receipt #44',
+  );
+  await expect(page.getByTestId('layout-remodel-receipt')).toContainText(
+    '0 bookings moved, 1 kept in place',
+  );
+  await expect(page.getByTestId('layout-remodel-receipt')).toContainText('Kept in place (1)');
+  await expect(page.getByTestId('layout-remodel-receipt-kept')).toHaveText(
+    'Row B · position 1 · Fri 11 Sept 2026 · arrives within the freeze window',
+  );
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'layout editor, remodel receipt with a kept line');
 });
 
 test('a picture with refunds commits once the count and reason are typed, and the receipt lists them (#1035, + axe)', async ({

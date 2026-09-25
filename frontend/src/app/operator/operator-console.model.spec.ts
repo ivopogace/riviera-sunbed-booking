@@ -1,4 +1,9 @@
-import { toProfileUpdate, VenueProfileView } from './operator-console.model';
+import {
+  remodelPreviewIsCommittable,
+  toProfileUpdate,
+  VenueProfileView,
+} from './operator-console.model';
+import { BLOCKS_ONLY_PREVIEW, HELD_PREVIEW } from './remodel-preview-panel.fixtures';
 
 const PINNED: VenueProfileView = {
   name: 'Miramar',
@@ -31,5 +36,15 @@ describe('toProfileUpdate', () => {
     expect(body.expectedVersion).toBe(7);
     expect('commissionBps' in body).toBe(false);
     expect('payoutCurrency' in body).toBe(false);
+  });
+});
+
+describe('remodelPreviewIsCommittable (#1199)', () => {
+  it('a blocked claim no longer pins the whole save: its set is kept and the rest commits', () => {
+    expect(remodelPreviewIsCommittable(BLOCKS_ONLY_PREVIEW)).toBe(true);
+  });
+
+  it('a staff walk-in hold still refuses the save as painted', () => {
+    expect(remodelPreviewIsCommittable(HELD_PREVIEW)).toBe(false);
   });
 });

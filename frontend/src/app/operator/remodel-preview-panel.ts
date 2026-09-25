@@ -26,16 +26,18 @@ import {
   RemodelRelease,
   RemodelSpot,
   RemodelStaffHold,
+  remodelBlockReasonText,
   remodelPreviewIsCommittable,
 } from './operator-console.model';
 
 /**
  * The remodel preview: the `alertdialog` the layout editor opens instead of a save that disturbs a
  * set guests still hold, listing every affected claim in five groups — will move (with the
- * distance), will be refunded, will be released or declined, held by staff for a walk-in, blocks
- * this save — and the sets to keep on the map. A picture free of staff holds and blocks is
- * committable: Save applies the layout, every move and every ending in one server transaction, and
- * each guest is mailed. Any other picture offers Back alone, since the save refuses it. A `stale`
+ * distance), will be refunded, will be released or declined, held by staff for a walk-in, will stay
+ * put — and the sets that stay on the map. A picture free of staff holds is committable: Save
+ * applies the layout, every move and every ending in one server transaction, keeps each blocked
+ * claim's set exactly as stored, and each moved or ended guest is mailed. A picture with a staff
+ * hold offers Back alone, since the save refuses it. A `stale`
  * picture is the server's fresh answer after a commit found the bookings had changed. A sibling of
  * `shared/confirm-panel.ts` rather than a variant of it, because this panel owns lists; it wears the
  * same amber warn skin.
@@ -73,7 +75,7 @@ export class RemodelPreviewPanel {
   readonly cancelled = output<void>();
   readonly committed = output<RemodelConfirmation>();
 
-  /** Every claim can be applied: no staff hold, no block. */
+  /** Every claim can be settled: no staff hold. */
   protected readonly committable = computed(() => remodelPreviewIsCommittable(this.preview()));
 
   /** How many guests get their money back — the number the operator must type out. */
@@ -125,7 +127,7 @@ export class RemodelPreviewPanel {
     });
   }
 
-  /** "Save and move 1, refund 1, release 2 bookings" */
+  /** "Save and move 1, refund 1, release 2, keep 1 bookings" */
   protected saveLabel(): string {
     if (this.committing()) {
       return 'Saving…';
@@ -141,16 +143,36 @@ export class RemodelPreviewPanel {
     if (preview.releases.length > 0) {
       parts.push(`release ${preview.releases.length}`);
     }
-    const total = preview.moves.length + preview.refunds.length + preview.releases.length;
+    if (preview.blocks.length > 0) {
+      parts.push(`keep ${preview.blocks.length}`);
+    }
+    const total =
+      preview.moves.length +
+      preview.refunds.length +
+      preview.releases.length +
+      preview.blocks.length;
     return `Save and ${parts.join(', ')} ${total === 1 ? 'booking' : 'bookings'}`;
   }
 
-  /** "Keep Row A · position 3 and Row A · position 2 on the map to save." */
+  /** "2 bookings can’t be moved or ended yet, so their sets stay on the map exactly as they are." */
+  protected keptSentence(): string {
+    const blocked = this.preview().blocks.length;
+    return blocked === 1
+      ? '1 booking can’t be moved or ended yet, so its set stays on the map exactly as it is.'
+      : `${blocked} bookings can’t be moved or ended yet, so their sets stay on the map exactly as they are.`;
+  }
+
+  /**
+   * Committable: "Row A · position 3 and Row A · position 2 stay on the map; the rest is saved as
+   * painted." Held: "Keep Row A · position 2 on the map to save."
+   */
   protected keepSentence(): string {
     const spots = this.preview().keep.map(spotLabel);
     const named =
       spots.length <= 1 ? spots.join('') : `${spots.slice(0, -1).join(', ')} and ${spots.at(-1)}`;
-    return `Keep ${named} on the map to save.`;
+    return this.committable()
+      ? `${named} ${spots.length === 1 ? 'stays' : 'stay'} on the map; the rest of the layout is saved as painted.`
+      : `Keep ${named} on the map to save.`;
   }
 
   protected moveText(move: RemodelMove): string {
@@ -180,11 +202,7 @@ export class RemodelPreviewPanel {
   }
 
   protected blockText(block: RemodelBlock): string {
-    const reason =
-      block.reason === 'FROZEN'
-        ? 'arrives within the freeze window'
-        : 'no free set of the same or better tier that day';
-    return `${spotLabel(block.from)} · ${when(block)} · ${reason}`;
+    return `${spotLabel(block.from)} · ${when(block)} · ${remodelBlockReasonText(block.reason)}`;
   }
 }
 
