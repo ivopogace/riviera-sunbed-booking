@@ -595,6 +595,12 @@ export interface VenueProfileView {
    * PATCH sets and clears it. Optional because test doubles and older payloads may omit it.
    */
   readonly location?: VenueLocation | null;
+  /**
+   * The longest stay the venue takes, in days, or `null`/absent for any length this season.
+   * Editable here: the profile PATCH sets and clears it. Optional because test doubles and older
+   * payloads may omit it.
+   */
+  readonly maxStayDays?: number | null;
 }
 
 /**
@@ -660,6 +666,8 @@ export interface VenueProfileUpdate {
   readonly distanceToWaterM: number | null;
   /** The venue's riviera-map pin; `null` unpins it, as a full replace does with any cleared field. */
   readonly location: VenueLocation | null;
+  /** The maximum stay in days; `null` lifts it, as a full replace does with any cleared field. */
+  readonly maxStayDays: number | null;
   readonly expectedVersion: number;
 }
 
@@ -681,6 +689,7 @@ export function toProfileUpdate(view: VenueProfileView): VenueProfileUpdate {
     amenities: view.amenities,
     distanceToWaterM: view.distanceToWaterM,
     location: view.location ?? null,
+    maxStayDays: view.maxStayDays ?? null,
     expectedVersion: view.version,
   };
 }

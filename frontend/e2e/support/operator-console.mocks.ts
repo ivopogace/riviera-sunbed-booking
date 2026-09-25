@@ -149,6 +149,7 @@ function profile() {
     payoutCurrency: 'EUR',
     amenities: ['WIFI'],
     distanceToWaterM: 20,
+    maxStayDays: null,
     version: 0,
     photos: {
       cover: { previewUrl: '/api/venues/1/photos/cc03' },

@@ -19,9 +19,15 @@ const PINNED: VenueProfileView = {
   version: 7,
   photos: { cover: { previewUrl: null }, sunbeds: { previewUrl: null }, bar: { previewUrl: null } },
   location: { latitude: 40.1468, longitude: 19.6482 },
+  maxStayDays: 5,
 };
 
 describe('toProfileUpdate', () => {
+  it('carries the maximum stay through the full-replace body, null when unset', () => {
+    expect(toProfileUpdate(PINNED).maxStayDays).toBe(5);
+    expect(toProfileUpdate({ ...PINNED, maxStayDays: undefined }).maxStayDays).toBeNull();
+  });
+
   it('carries the venue location through the full-replace body', () => {
     // A field missing here is written as null by "close online sales now"'s read-modify-write.
     expect(toProfileUpdate(PINNED).location).toEqual({ latitude: 40.1468, longitude: 19.6482 });

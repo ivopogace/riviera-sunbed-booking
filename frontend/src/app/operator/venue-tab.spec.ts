@@ -21,6 +21,7 @@ interface SentBody {
   bookingMode: string;
   salesClose: string;
   location: VenueLocation | null;
+  maxStayDays: number | null;
   expectedVersion: number;
   commissionBps?: number;
   payoutCurrency?: string;
@@ -166,6 +167,7 @@ describe('VenueTab (#177)', () => {
       amenities: ['WIFI', 'BEACH_BAR'],
       distanceToWaterM: 20,
       location: null, // an unpinned venue re-sends none; a full replace has no "absent means keep"
+      maxStayDays: null,
       expectedVersion: 7, // the loaded optimistic-concurrency token
     });
     // Read-only fields must not be on the wire.
@@ -206,6 +208,45 @@ describe('VenueTab (#177)', () => {
     expect(body(req).salesClose).toBe('00:01');
     expect(body(req).expectedVersion).toBe(7);
     req.flush(null);
+  });
+
+  it('sends the maximum stay with the full-replace PATCH', async () => {
+    render();
+
+    setValue('venue-max-stay', '4');
+    await save();
+
+    const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+    expect(body(req).maxStayDays).toBe(4);
+    req.flush(null);
+  });
+
+  it('seeds the maximum stay from the profile and clears it with null', async () => {
+    render({ ...PROFILE, maxStayDays: 7 });
+    expect((byId('venue-max-stay') as HTMLInputElement).value).toBe('7');
+
+    setValue('venue-max-stay', '');
+    await save();
+
+    const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+    expect(body(req).maxStayDays).toBeNull();
+    req.flush(null);
+  });
+
+  it('refuses a non-positive maximum stay at the field and sends no PATCH', async () => {
+    render();
+
+    setValue('venue-max-stay', '0');
+    await save();
+
+    http.expectNone((r) => r.method === 'PATCH');
+    expect(byId('venue-max-stay-error').textContent).toContain('whole number of days from 1');
+    expect(host.querySelector('[data-testid="venue-error"]')).toBeNull();
+
+    setValue('venue-max-stay', 'x');
+    await save();
+    http.expectNone((r) => r.method === 'PATCH');
+    expect(byId('venue-max-stay-error')).toBeTruthy();
   });
 
   it('seeds the sales-close control from the profile and reflects the checked option (#794)', () => {

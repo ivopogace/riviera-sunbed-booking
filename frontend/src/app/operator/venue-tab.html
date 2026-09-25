@@ -81,6 +81,32 @@
             >
           </div>
 
+          <label class="flex flex-col gap-1">
+            <span class="text-[12.5px] font-semibold text-riv-card-ink">Maximum stay (days)</span>
+            <input
+              type="text"
+              inputmode="numeric"
+              [formField]="detailsForm.maxStayDays"
+              data-testid="venue-max-stay"
+              appTouchTarget
+              class="w-[140px] rounded-[11px] border border-riv-card-border bg-riv-console-inset/60 px-3 py-2 text-[16px] text-riv-card-ink"
+              #maxStayControl
+            />
+            @if (detailsForm.maxStayDays().touched() && detailsForm.maxStayDays().errors().length) {
+              <span
+                [appFieldErrorFor]="maxStayControl"
+                class="text-[11.5px] font-semibold text-riv-error-ink"
+                role="alert"
+                data-testid="venue-max-stay-error"
+                >{{ detailsForm.maxStayDays().errors()[0].message }}</span
+              >
+            }
+            <span class="text-[11px] text-riv-card-ink-soft"
+              >The longest stay a tourist can book here. Leave blank for stays of any length this
+              season.</span
+            >
+          </label>
+
           <!-- Read-only display fields: commission (the platform's cut) + payout currency. -->
           <div class="grid grid-cols-2 gap-3">
             <div class="flex flex-col gap-1">
