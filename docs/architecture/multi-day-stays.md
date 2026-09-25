@@ -333,11 +333,12 @@ last slice so the first two never touch it.
 
 ### D9 — Prerequisite: per-claim remodel settlement
 
-A remodel today refuses its **entire** commit if any one claim is blocked, and a `FROZEN` claim
-short-circuits before the candidate search so it can only block, never move. That is already a live
+A remodel used to refuse its **entire** commit if any one claim was blocked, and a `FROZEN` claim
+short-circuits before the candidate search so it can only block, never move. That was already a live
 problem at one-day scale; with stays it is disabling. Per-claim settlement — settle what can be
-settled, keep the rest — should land before or with the range-bookings slice. It is worth doing on
-its own merits and is not strictly part of this epic.
+settled, keep the rest — landed as slice 1/12 (#1199): a blocked claim is **kept** where it is, its
+set is left as stored by the layout write, the rest commits, and the receipt names the kept claims.
+Story 41's per-segment settlement builds on it. A frozen claim is still never moved.
 
 ### D10 — Stay length is a venue setting; the platform sets no maximum
 

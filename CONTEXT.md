@@ -152,6 +152,12 @@ model in `docs/architecture/domain-model.md`.
   claim pins its set; **move-only** when it opens within the refund-notice floor — the booking may
   be moved to another set, never refunded by the venue's change; **move-or-refund** beyond it. The
   two bounds are settings, not dates, so the answer does not depend on the hour the operator clicks.
+- **Kept claim** — a live claim a saved remodel could not move or end — **frozen**, or move-only
+  with no **move candidate** — and so left exactly where it is: same set, same day, nothing sent to
+  the guest. Its set becomes a **kept set**: the save leaves that set position exactly as stored,
+  whatever the painted layout said of it, and writes the rest of the layout around it. A painted set
+  that wants a kept set's row and number refuses the whole save; the operator keeps the set
+  themselves. Every kept claim is named on the **commit receipt** with its reason.
 - **Move candidate** — a free set a disturbed booking could be seated on instead, on the same date:
   in the online pool, of the same or a better tier, preferring the same row, then the closest
   position, then the closest row. Never a worse tier, never a walk-in set, never another date. One
@@ -163,9 +169,9 @@ model in `docs/architecture/domain-model.md`.
   the token still **covers** — the same claims and outcomes, or fewer of them; a claim or an outcome
   the operator never saw makes the preview **stale**, and the save answers the fresh picture instead.
 - **Commit receipt** — the record of one saved remodel: when it was saved, by whom, every booking it
-  moved with the spot the guest was told before, the spot they hold now and the distance, and every
+  moved with the spot the guest was told before, the spot they hold now and the distance, every
   claim it ended instead — refunded, released or declined — with the amount, the operator's reason
-  and the total returned. Kept after the old set is retired, so the guest's page, their mail and the
+  and the total returned, and every **kept claim** with why it stayed. Kept after the old set is retired, so the guest's page, their mail and the
   console still name the spot they were told; readable from the console as **past remodels**. There
   is no undo — a move is reversed by another remodel.
 

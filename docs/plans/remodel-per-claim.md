@@ -53,7 +53,7 @@ classes) · `playwright-cli` (at phase 4: one mocked e2e case in `frontend/e2e/l
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a layout that removes sets A1 and A2, a `CONFIRMED` claim on A1 for tomorrow
+- [x] **AC-1:** Given a layout that removes sets A1 and A2, a `CONFIRMED` claim on A1 for tomorrow
   (frozen) and a `CONFIRMED` claim on A2 in ten days with A3 free, when the operator commits the
   previewed picture, then A2's booking is re-seated on A3 with `BookingMoved` published, A1's
   booking keeps A1 and its `(A1, tomorrow)` row, A1 stays on the active map at its label, A2 is
@@ -61,42 +61,42 @@ classes) · `playwright-cli` (at phase 4: one mocked e2e case in `frontend/e2e/l
   (`FROZEN`). *Seam:* `POST /api/venues/{id}/beach-map/commit` over `RemodelClaims#commit` +
   `BeachMapRemodel#commit` · *Pinned by:*
   `RemodelCommitIT.aBlockedClaimIsKeptWithItsSetWhileTheRestCommits`
-- [ ] **AC-2:** Given a blocked claim on A1 and a layout that removes A1 and paints a new set
+- [x] **AC-2:** Given a blocked claim on A1 and a layout that removes A1 and paints a new set
   labelled A1 elsewhere, when the operator commits, then the answer is `409 REMODEL_REFUSED` with
   the fresh picture whose `keep` names A1, and nothing is written: no move, no retire, no receipt,
   token unspent. *Seam:* the same route · *Pinned by:*
   `RemodelCommitIT.aLayoutThatDisplacesAKeptSetsLabelIsRefusedAndWritesNothing`
-- [ ] **AC-3:** Given a fresh picture with a `Blocked` claim covered by the token, when
+- [x] **AC-3:** Given a fresh picture with a `Blocked` claim covered by the token, when
   `RemodelClaims#commit` runs, then it answers `Applied` with the blocked claim among the settled
   claims, touches no availability row and publishes no event for it, and the receipt stored carries
   one kept line with the reason. *Seam:* `RemodelClaims#commit` · *Pinned by:*
   `RemodelClaimsServiceTest.aBlockedClaimIsKeptAndReceiptedWhileTheRestSettles`
-- [ ] **AC-4:** Given the gate answers `Proceed(kept = [A1])` on a layout that removes A1, when
+- [x] **AC-4:** Given the gate answers `Proceed(kept = [A1])` on a layout that removes A1, when
   the writer runs, then A1 is neither retired nor deleted nor probed, the rest of the diff is
   written and the token advanced; given the layout instead renumbers A1, A1's stored row is not
   updated. *Seam:* `LayoutWriter#write` (the `venue` module's one bulk write, behind
   `BeachMapRemodel#commit`) · *Pinned by:*
   `LayoutWriterTest.aKeptSetIsLeftAsStoredAndSkippedByTheProbe`,
   `LayoutWriterTest.aKeptRenumberedSetKeepsItsStoredRow`
-- [ ] **AC-5:** Given the gate answers `Proceed(kept = [A1])` and a submitted set wants A1's
+- [x] **AC-5:** Given the gate answers `Proceed(kept = [A1])` and a submitted set wants A1's
   stored `(row, position)`, when the writer runs, then it answers `KeptSetsDisplaced([A1])` and
   writes nothing. *Seam:* `LayoutWriter#write` · *Pinned by:*
   `LayoutWriterTest.aSubmittedSetOnAKeptSetsLabelRefusesTheWholeWrite`,
   `LayoutDiffTest.keepingDropsTheKeptSetsFromRemovalsAndUpdatesAndDisplacedNamesTheClashes`
-- [ ] **AC-6:** Given a partial settlement (a frozen claim on A1 kept, a far-out claim on A1 moving
+- [x] **AC-6:** Given a partial settlement (a frozen claim on A1 kept, a far-out claim on A1 moving
   to A2) racing an online reserve of `(A2, day)`, when both run, then exactly one online claim holds
   `(A2, day)`, the kept claim's `(A1, tomorrow)` row is intact and A1 is still active, in both
   orders. *Seam:* `RemodelCommitService#commit` vs `AvailabilityClaim#claim` · *Pinned by:*
   `MoveVsReserveConcurrencyIT.aPartialSettlementNeverDoubleClaimsAndKeepsTheKeptRow`
-- [ ] **AC-7:** Given a receipt with a kept line, when the owner reads it, then the kept line rides
+- [x] **AC-7:** Given a receipt with a kept line, when the owner reads it, then the kept line rides
   `kept[]` with booking id, day, spot and reason, and `endedByRemodel` is false for that booking.
   *Seam:* `GET /api/venues/{id}/remodels/{receiptId}` + `RemodelReceipts` · *Pinned by:*
   `RemodelReceiptIT.readsAKeptLineWithItsReason`,
   `JdbcRemodelReceiptsIT.keptLinesReadBackAndNeverCountAsEnded`
-- [ ] **AC-8:** Given V61 with receipts, when V62 runs, then `remodel_receipt_kept` refuses an
+- [x] **AC-8:** Given V61 with receipts, when V62 runs, then `remodel_receipt_kept` refuses an
   unknown reason and an orphan receipt. *Seam:* Flyway + the table · *Pinned by:*
   `RemodelCommitMigrationIT.theKeptTableHoldsItsShape`
-- [ ] **AC-9:** Given a preview with blocks and no staff holds, when the editor renders it, then
+- [x] **AC-9:** Given a preview with blocks and no staff holds, when the editor renders it, then
   Save is offered, the copy says the blocked sets stay on the map, the Save label counts the kept
   bookings; given staff holds, Back alone as today; given a commit `200` with kept lines, the
   receipt panel lists them under "Kept in place". *Seam:* `RemodelPreviewPanel` /
@@ -131,21 +131,21 @@ The commit's `Refused` answer is replaced, so every behaviour of the old refusal
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A kept set's label clashes with a submitted set → `set_position_cell_uniq` violation as a raw 500 | M | H | `LayoutDiff#displaced` checks every submitted command against every kept set's stored `(row, position)` before any write → `KeptSetsDisplaced`, transaction rolls back (AC-5) | agent | open |
-| R-2 | The probe (`LiveClaims#locksOn`) still sees the kept set's live claim → `SETS_IN_USE` after the gate | H | H | Probe runs on `disturbed − kept` (AC-4) | agent | open |
-| R-3 | Race (#2): a reserve on the move candidate during a partial settlement | L | H | Unchanged mechanism — candidate claim is `ON CONFLICT`, venue set rows `FOR UPDATE`; kept rows are never touched; pinned by AC-6 | agent | open |
-| R-4 | `endedByRemodel` counts a kept booking as venue-ended → the cancellation mail lies | M | M | Separate table (Q3); `endedByRemodel` reads `remodel_receipt_outcome` only; pinned by AC-7 | agent | open |
-| R-5 | Published surface change: `RemodelGate` and `RemodelCommit` shapes; `WebSliceStubs`, `PayoutModuleTest`, `SpanReleaseIT`, `BeachMapEditService` compile against them | H | L | One `grep -rn "RemodelGate\|RemodelCommit\.\|proceed(" platform/src` sweep before phase 2 ends; structural net run | agent | open |
+| R-1 | A kept set's label clashes with a submitted set → `set_position_cell_uniq` violation as a raw 500 | M | H | `LayoutDiff#displaced` checks every submitted command against every kept set's stored `(row, position)` before any write → `KeptSetsDisplaced`, transaction rolls back (AC-5) | agent | closed — `e48259c` |
+| R-2 | The probe (`LiveClaims#locksOn`) still sees the kept set's live claim → `SETS_IN_USE` after the gate | H | H | Probe runs on `disturbed − kept` (AC-4) | agent | closed — `e48259c` |
+| R-3 | Race (#2): a reserve on the move candidate during a partial settlement | L | H | Unchanged mechanism — candidate claim is `ON CONFLICT`, venue set rows `FOR UPDATE`; kept rows are never touched; pinned by AC-6 | agent | closed — `8d8a86e` |
+| R-4 | `endedByRemodel` counts a kept booking as venue-ended → the cancellation mail lies | M | M | Separate table (Q3); `endedByRemodel` reads `remodel_receipt_outcome` only; pinned by AC-7 | agent | closed — `e2a643a` |
+| R-5 | Published surface change: `RemodelGate` and `RemodelCommit` shapes; `WebSliceStubs`, `PayoutModuleTest`, `SpanReleaseIT`, `BeachMapEditService` compile against them | H | L | One `grep -rn "RemodelGate\|RemodelCommit\.\|proceed(" platform/src` sweep before phase 2 ends; structural net run | agent | closed — sweep in the audit log, net green at `e48259c` |
 | R-6 | BOLA (#13): no new venue-scoped surface; every port still asserts ownership first | L | H | Unchanged; `CrossVenueDenialIT` untouched | agent | closed — no new route |
-| R-7 | Frontend e2e mocks lacking `kept` crash the receipt panel | M | M | Every mocked receipt gains `kept: []`; TS type makes the fixtures fail to compile without it | agent | open |
-| R-8 | Flyway `V62` claimed by a racing PR | L | L | Free on `main` @ `cf808ac`, open PRs dependabot-only; the branch merging second renumbers | agent | open |
+| R-7 | Frontend e2e mocks lacking `kept` crash the receipt panel | M | M | Every mocked receipt gains `kept: []`; TS type makes the fixtures fail to compile without it | agent | closed — `63ac8a8` |
+| R-8 | Flyway `V62` claimed by a racing PR | L | L | Free on `main` @ `cf808ac`, open PRs dependabot-only; the branch merging second renumbers | agent | open until merge |
 
 ## Open questions / Assumptions
 
 - **Assumption:** a claim that can move off a kept set still moves (Non-goals, last bullet) — the
   operator painted the set away and confirmed the move on the preview; keeping it too would add a
-  second classification pass for no product ask. — *Owner:* agent · *Resolves by:* user's review of
-  this plan / the PR.
+  second classification pass for no product ask. — *Owner:* agent · *Resolves by:* the PR review;
+  stated in `RESPONSIBILITIES.md` §booking so a reviewer sees it.
 
 ### Resolved
 
@@ -220,18 +220,18 @@ unchanged and keep their pinning tests (`RemodelCommitIT.commitsAMixedPictureAnd
 
 ## Execution status
 
-**Stage pointer:** `plan committed — implement (phase 0) next`
+**Stage pointer:** `PR — draft open, CI gate`
 
-**Next action:** Phase 0: V62 + kept-line persistence, red-green at `RemodelReceipts`.
+**Next action:** CI green on the draft → merge `origin/main` in → ready for review → review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V62 + kept lines in the receipt | | |
-| 1 — `booking` keeps instead of refusing | | |
-| 2 — `venue` gate verdict + kept sets | | |
-| 3 — edge, wire, ITs, concurrency | | |
-| 4 — frontend | | |
-| 5 — docs, gates, close-out | | |
+| 0 — V62 + kept lines in the receipt | ✅ | `e2a643a` |
+| 1 — `booking` keeps instead of refusing | ✅ | `ce2b3fc` |
+| 2 — `venue` gate verdict + kept sets | ✅ | `e48259c` |
+| 3 — edge, wire, ITs, concurrency | ✅ | `8d8a86e` |
+| 4 — frontend | ✅ | `63ac8a8` |
+| 5 — docs, gates, close-out | ⏳ | docs in this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -257,7 +257,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/venue/application/{LayoutWriter,LayoutWrite,LayoutDiff,BeachMapRemodelService,BeachMapEditService}.java` — kept sets in the write
 - `platform/src/main/java/ai/riviera/platform/{RemodelCommitService,RemodelCommitOutcome,RemodelCommitResponse,RemodelCommitController}.java` — verdict hand-off, `kept[]`, refusal sentence
 - `platform/src/test/java/ai/riviera/platform/{RemodelCommitIT,RemodelReceiptIT,MoveVsReserveConcurrencyIT,WebSliceStubs}.java`
-- `platform/src/test/java/ai/riviera/platform/booking/{RemodelCommitMigrationIT,SpanReleaseIT}.java`
+- `platform/src/test/java/ai/riviera/platform/booking/{RemodelCommitMigrationIT,SpanReleaseIT,FreeExitCancelIT}.java`
+- `platform/src/test/java/ai/riviera/platform/notification/{BookingMovedMailIT,BookingCancellationMailIT}.java` — receipt constructors gain the kept list
 - `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcRemodelReceiptsIT.java`
 - `platform/src/test/java/ai/riviera/platform/booking/application/remodel/RemodelClaimsServiceTest.java`
 - `platform/src/test/java/ai/riviera/platform/venue/application/{LayoutWriterTest,LayoutDiffTest,BeachMapRemodelServiceTest}.java`
@@ -322,12 +323,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-25 | `RemodelGate` grows a verdict (R-5) | every gate lambda and every reader of `RemodelCommit`'s variants | `grep -rn "RemodelGate\|RemodelCommit\.\|-> true\|-> false" platform/src` + `compileTestJava` | `BeachMapEditService`, `LayoutWriterTest` ×4, `BeachMapRemodelServiceTest`, `WebSliceStubs` (`Refused` stub), `RemodelCommitService` | all moved to `GateVerdict`; the stub answers `Stale`; compiler confirms no fourth site |
+| 2026-09-25 | `NewReceipt`/`RemodelReceipt` gain a trailing list | every constructor call | `grep -rn "new NewReceipt(\|new RemodelReceipt(" platform/src` | 13 sites (service, adapter, 9 tests) | all gain the kept list |
+| 2026-09-25 | the FE `RemodelReceipt` gains `kept` | every receipt literal the panels render | `grep -rn "refundedTotal: null" frontend/src frontend/e2e` | 2 fixtures, 1 e2e mock | all gain `kept: []` |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] AC-1..AC-9: run the pinning tests named above → PASS. Verified at commit `<sha>`.
+- [x] AC-1..AC-8: `./gradlew test --tests "*RemodelCommitIT*" --tests "*RemodelReceiptIT*" --tests "*MoveVsReserveConcurrencyIT*" --tests "*RemodelClaimsServiceTest*" --tests "*LayoutWriterTest*" --tests "*LayoutDiffTest*" --tests "*BeachMapRemodelServiceTest*" --tests "*RemodelCommitMigrationIT*" --tests "*JdbcRemodelReceiptsIT*"` → PASS at `8d8a86e`.
+- [x] AC-9: `ng test --include` over the three operator specs (26 passed) and `playwright test --config playwright.a11y.config.ts e2e/layout-editor.e2e.ts -g remodel` (4 passed) at `63ac8a8`.
 
 ## Self-review checklist
 
