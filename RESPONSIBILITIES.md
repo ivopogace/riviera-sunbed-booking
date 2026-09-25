@@ -518,10 +518,11 @@ exactly as it would against any other claim (invariant #2).
   `refund-notice-floor` (96h) bounds, both inclusive on the nearer side; sales close plays no role)
   and `MoveRanking` (`domain/`, pure — free on every day of the claim's span, online pool, same or
   better tier; same row, then closest position, then closest row). A frozen claim blocks; a claim
-  with a candidate moves, and that candidate leaves the pool on every day of the span it took; a move-only claim with none
-  blocks; beyond the floor `CONFIRMED` refunds, `AWAITING_PAYMENT` releases, `PENDING_REQUEST`
-  declines. The answer carries outcome kinds, set references and amounts — never a status and never a
-  code (invariant #7). Advisory: read-only and unlocked, so the commit re-derives it.
+  with a candidate moves, and that candidate leaves the pool on every day of the span it took; a
+  move-only claim with none blocks; beyond the floor `CONFIRMED` refunds, `AWAITING_PAYMENT`
+  releases, `PENDING_REQUEST` declines. The answer carries outcome kinds, set references and
+  amounts — never a status and never a code (invariant #7). Advisory: read-only and unlocked, so the
+  commit re-derives it.
 - **The remodel commit settles every claim: moved, ended, or kept where it is.**
   `RemodelClaims#commit` (published, ADR-0020) runs inside `venue`'s commit transaction as its
   `RemodelGate`: it re-classifies the disturbed sets under the lock, checks the operator's

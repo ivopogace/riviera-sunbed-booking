@@ -22,7 +22,9 @@ beyond the floor — kept that split, AC-2; it also missed that the per-date poo
 stays pick the same set, AC-3; open PRs are all dependabot's; no Flyway; previous sibling #1215's
 plan is merged via PR #1218 and retires at this close-out) · `riviera-plan-doc` (forced the
 overlapping-claims case into the risk register) · `tdd` (AC-1..AC-3 red first at `RemodelClaims`; AC-4
-red at the HTTP seam against the old service — the preview proposed the move) · `riviera-review-overlay` (pending) · `riviera-docs-freshness` (pending) ·
+red at the HTTP seam against the old service — the preview proposed the move) · `riviera-review-overlay` (ran at ready-for-review with `code-review:code-review` over
+`d945acca..08a959a6`: five reviewers, 0 blocking; F-1..F-3 fixed) · `riviera-docs-freshness` (**ran** over
+`d945acca..HEAD`, 2 findings fixed — F-1, F-2; `CONTEXT.md` *Moved booking* "same date" still holds) ·
 `riviera-java-conventions` (Javadoc re-read whole on each touched type; no inline comments) ·
 `riviera-modulith` (no port or package change; the span read stays on `venue::api`'s
 `SetBookingFacts`, not the `venue.spi` `takenDaysBetween` the issue named, which `booking` may not
@@ -67,15 +69,21 @@ N/A — replaces nothing.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Two overlapping stays pick the same set because the pool is per first date; the second claim's commit loses its row and throws | High once stays exist | 500 on commit | A pick leaves every day's pool of its span (AC-3) | booking | phase 0 |
-| R-2 | One `freeOnlineSetsOn` read per day of each span multiplies queries | Low | Slower preview | Cached per distinct date across all claims; frozen claims read nothing | booking | phase 0 |
-| R-3 | A one-day claim's behaviour drifts | Low | Wrong moves | Existing `RemodelClaimsServiceTest`/ITs unchanged and green | booking | phase 0 |
+| R-1 | Two overlapping stays pick the same set because the pool is per first date; the second claim's commit loses its row and throws | High once stays exist | 500 on commit | A pick leaves every day's pool of its span (AC-3) | booking | closed — phase 0 |
+| R-2 | One `freeOnlineSetsOn` read per day of each span multiplies queries | Low | Slower preview | Cached per distinct date across all claims; frozen claims read nothing | booking | closed — phase 0 |
+| R-3 | A one-day claim's behaviour drifts | Low | Wrong moves | Existing `RemodelClaimsServiceTest`/ITs unchanged and green | booking | closed — phase 0 |
 
 ## Open questions / Assumptions
 
+None open.
+
+### Resolved
+
 - **Assumption:** a stay with no whole-span candidate follows the one-day no-candidate rule (kept in
   the move-only zone; refunded, released or declined beyond the floor), not always kept as the
-  issue's wording reads — *Owner:* booking · *Resolves by:* PR review ← confirm?
+  issue's wording reads. Outcome: kept — the zone rule (`CONTEXT.md` *Remodel zone*) is the
+  product decision and the issue asked only to stop the throw; making stays always-kept would be a
+  new refund rule. Pinned by AC-2 (move-only) and AC-3 (beyond the floor refunds). Merged via PR #1219.
 
 ## Availability & concurrency (invariant #2)
 
@@ -120,18 +128,22 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** PR (draft) → review gate
+**Stage pointer:** DONE — merged via PR #1219
 
-**Next action:** open the PR, confirm CI green, run the review gate.
+**Next action:** none (post-merge: tick epic #1096, end the PR subscription).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — span-aware candidate (AC-1..AC-4 red then green; structural net green) | ✅ | this commit |
+| 0 — span-aware candidate (AC-1..AC-4 red then green; structural net green) | ✅ | `08a959a6` |
+| 1 — review fixes + close-out | ✅ | merged via PR #1219 |
 
 **Findings register**
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-1 | review (comments) | `RemodelOutcome` Javadoc: a `Move` goes to a free set "on the same date" | fixed in phase 1 |
+| F-2 | review (comments) | `RemodelClaim` Javadoc: the outcome is "decided on the first day" | fixed in phase 1 |
+| F-3 | review (CLAUDE.md + comments) | four touched prose lines left unwrapped (RV-STYLE-1) | fixed in phase 1 |
 
 ---
 
@@ -140,7 +152,7 @@ N/A — no contract change.
 - `platform/src/main/java/ai/riviera/platform/booking/application/remodel/RemodelClaimsService.java` — the span-aware pool
 - `platform/src/main/java/ai/riviera/platform/booking/domain/{MoveRanking,FreeSpot}.java` — contract Javadoc
 - `platform/src/main/java/ai/riviera/platform/booking/api/RemodelClaims.java` — contract Javadoc
-- `platform/src/main/java/ai/riviera/platform/booking/vocabulary/BlockReason.java` — contract Javadoc
+- `platform/src/main/java/ai/riviera/platform/booking/vocabulary/{BlockReason,RemodelOutcome,RemodelClaim}.java` — contract Javadoc
 - `platform/src/test/java/ai/riviera/platform/booking/application/remodel/RemodelClaimsServiceTest.java` — AC-1..AC-3
 - `platform/src/test/java/ai/riviera/platform/booking/domain/MoveRankingTest.java` — contract Javadoc
 - `platform/src/test/java/ai/riviera/platform/RemodelCommitIT.java` — AC-4
@@ -159,13 +171,13 @@ N/A — no contract change.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-3:** `./gradlew test --tests "*RemodelClaimsServiceTest*"` → PASS.
-- [ ] **AC-4:** `./gradlew test --tests "*RemodelCommitIT*"` → PASS.
+- [x] **AC-1..AC-3:** `./gradlew test --tests "*RemodelClaimsServiceTest*"` → PASS (20/20).
+- [x] **AC-4:** `./gradlew test --tests "*RemodelCommitIT*"` → PASS (9/9, 0 skipped).
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No JPA (#1). Availability section filled (#2).
-- [ ] Modulith section filled; no cross-module `application.*`/`adapter.*` imports (#11).
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] The review gate ran in full.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No JPA (#1). Availability section filled (#2).
+- [x] Modulith section filled; no cross-module `application.*`/`adapter.*` imports (#11).
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] The review gate ran in full.

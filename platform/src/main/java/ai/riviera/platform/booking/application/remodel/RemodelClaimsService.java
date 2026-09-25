@@ -57,14 +57,15 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * classify each in {@code (service date, booking id)} order — the zone first ({@link RemodelZones}),
  * then a move candidate ({@link MoveRanking}) off the online sets free on every day of the claim's
  * span, less the disturbed ones and less what an earlier claim took on any of those days, then the
- * status split. The free pool is read once per distinct date and only when a claim needs it. {@link #classify} is read-only and unlocked, advisory
- * by contract; {@link #commit} runs the same classification inside the caller's transaction — the
- * edge calls it from inside the layout write, under {@code venue}'s set locks — and settles every
- * claim: a move claims the candidate's rows and re-seats the booking, a refund, release or decline
- * runs the module's own guarded transition for that status, and a blocked claim is kept where it is
- * with a receipt line and nothing else. Each ending frees every {@code (set, date)} row of the span
- * it held, and each move or ending publishes the fact the rest of the platform already reacts to, so
- * no refund, reversal or mail is driven from here. Rationale: RESPONSIBILITIES.md §booking.
+ * status split. The free pool is read once per distinct date and only when a claim needs it.
+ * {@link #classify} is read-only and unlocked, advisory by contract; {@link #commit} runs the same
+ * classification inside the caller's transaction — the edge calls it from inside the layout write,
+ * under {@code venue}'s set locks — and settles every claim: a move claims the candidate's rows and
+ * re-seats the booking, a refund, release or decline runs the module's own guarded transition for
+ * that status, and a blocked claim is kept where it is with a receipt line and nothing else. Each
+ * ending frees every {@code (set, date)} row of the span it held, and each move or ending publishes
+ * the fact the rest of the platform already reacts to, so no refund, reversal or mail is driven
+ * from here. Rationale: RESPONSIBILITIES.md §booking.
  */
 @Service
 class RemodelClaimsService implements RemodelClaims {

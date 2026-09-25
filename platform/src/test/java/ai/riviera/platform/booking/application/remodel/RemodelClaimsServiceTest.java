@@ -65,11 +65,11 @@ import static org.mockito.ArgumentMatchers.anyLong;
 
 /**
  * The classification, keyed on the claim then split by status: a frozen claim blocks; a claim with
- * a candidate free on every day of its span moves (one candidate serves one claim per day); a move-only claim with none blocks
- * naming the set to keep; beyond the floor {@code CONFIRMED} refunds, {@code AWAITING_PAYMENT}
- * releases, {@code PENDING_REQUEST} declines. The commit applies all four, keeps a blocked claim
- * where it is and receipts it, and a picture that refunds guests needs the operator's typed count
- * and reason.
+ * a candidate free on every day of its span moves (one candidate serves one claim per day); a
+ * move-only claim with none blocks naming the set to keep; beyond the floor {@code CONFIRMED}
+ * refunds, {@code AWAITING_PAYMENT} releases, {@code PENDING_REQUEST} declines. The commit applies
+ * all four, keeps a blocked claim where it is and receipts it, and a picture that refunds guests
+ * needs the operator's typed count and reason.
  * Ownership asserts before any read (invariant #13). The clock is fixed at 10:00 Tirane on 10 Sept
  * 2026 against the 24h / 96h windows.
  */

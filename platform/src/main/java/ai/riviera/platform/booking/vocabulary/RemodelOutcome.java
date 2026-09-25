@@ -2,11 +2,11 @@ package ai.riviera.platform.booking.vocabulary;
 
 /**
  * What a remodel would do to one live claim on a disturbed set, decided by {@code booking}: a
- * {@link Move} to a free set of the same or better tier on the same date, or — with no candidate
- * beyond the refund-notice floor — a {@link Refund} of a confirmed booking, a {@link Release} of an
- * unpaid one, a {@link Decline} of a pending request; a {@link Blocked} claim is kept where it is and
- * its set stays as stored. Sealed
- * so the edge's switch is exhaustive; the preview is advisory, the commit re-derives it.
+ * {@link Move} to a set of the same or better tier free on every day of the claim, or — with no
+ * candidate beyond the refund-notice floor — a {@link Refund} of a confirmed booking, a
+ * {@link Release} of an unpaid one, a {@link Decline} of a pending request; a {@link Blocked} claim
+ * is kept where it is and its set stays as stored. Sealed so the edge's switch is exhaustive; the
+ * preview is advisory, the commit re-derives it.
  */
 public sealed interface RemodelOutcome
 		permits RemodelOutcome.Move, RemodelOutcome.Refund, RemodelOutcome.Release, RemodelOutcome.Decline,
