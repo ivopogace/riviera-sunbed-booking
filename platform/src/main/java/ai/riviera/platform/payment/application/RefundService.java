@@ -6,7 +6,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Service;
 
 import ai.riviera.platform.shared.ObservabilityMetrics;
-import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.api.RefundPort;
@@ -65,11 +64,16 @@ class RefundService implements RefundPort, RefundStatusLookup {
 				.orElse(RefundProgress.NO_COLLECTION);
 	}
 
+	/**
+	 * The booking's own share decides acceptance; the collection's status decides whether money was
+	 * ever there — a sibling's refund may have moved the intent to {@code PARTIALLY_REFUNDED} while
+	 * this booking is still owed in full.
+	 */
 	private static RefundProgress progressFrom(RefundState state) {
 		if (state.refundedMinor() > 0) {
 			return RefundProgress.ACCEPTED;
 		}
-		return state.status() == PaymentStatus.SUCCEEDED
+		return state.status().holdsCollectedMoney()
 				? RefundProgress.OUTSTANDING
 				: RefundProgress.NO_COLLECTION;
 	}

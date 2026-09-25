@@ -1,5 +1,6 @@
 package ai.riviera.platform.payment.adapter.out;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -47,9 +48,8 @@ class JdbcPaymentsIT {
 
 		assertEquals("REQUIRES_PAYMENT", statusOf("pi_record_a"),
 				"a freshly recorded PaymentIntent awaits payment");
-		Optional<BookingRef> ref = payments.findBookingRefByIntent("pi_record_a");
-		assertTrue(ref.isPresent(), "the webhook must correlate the PaymentIntent back to its booking");
-		assertEquals(9001L, ref.get().value());
+		assertEquals(List.of(new BookingRef(9001L)), payments.findBookingRefsByIntent("pi_record_a"),
+				"the webhook must correlate the PaymentIntent back to its booking");
 	}
 
 	@Test
@@ -107,7 +107,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void findByUnknownIntentIsEmpty() {
-		assertTrue(payments.findBookingRefByIntent("pi_does_not_exist").isEmpty(),
+		assertTrue(payments.findBookingRefsByIntent("pi_does_not_exist").isEmpty(),
 				"an unknown PaymentIntent id yields no booking ref (webhook then ignores it)");
 	}
 
@@ -129,8 +129,8 @@ class JdbcPaymentsIT {
 		assertTrue(payments.markRefunded(new BookingRef(9201L), 4500L, "re_full"));
 
 		assertEquals("REFUNDED", statusOf("pi_refund_full"), "a full refund moves the payment to REFUNDED");
-		assertEquals(4500L, jdbc.sql("SELECT refunded_minor FROM payment WHERE payment_intent_id = :i")
-				.param("i", "pi_refund_full").query(Long.class).single());
+		assertEquals(4500L, jdbc.sql("SELECT refunded_minor FROM payment_booking WHERE booking_ref = 9201")
+				.query(Long.class).single());
 	}
 
 	@Test
@@ -260,8 +260,8 @@ class JdbcPaymentsIT {
 		assertTrue(payments.markRefundFailed("re_traced"));
 
 		assertEquals(1, jdbc.sql("""
-				SELECT COUNT(*) FROM payment
-				WHERE payment_intent_id = 'pi_traced' AND refund_failed_at IS NOT NULL
+				SELECT COUNT(*) FROM payment_booking
+				WHERE booking_ref = 9701 AND refund_failed_at IS NOT NULL
 				  AND failed_refund_id = 're_traced' AND refund_id IS NULL
 				""").query(Integer.class).single(),
 				"the un-record must be enumerable, not just a WARN line: the dead refund id moves to "
@@ -301,13 +301,13 @@ class JdbcPaymentsIT {
 
 		assertFalse(payments.markRefundFailed("re_racing"),
 				"the refund is not written down yet, so the id-matched un-record finds nothing");
-		assertTrue(payments.markUnrecordedRefundFailed("pi_racing", "re_racing"),
+		assertTrue(payments.markUnrecordedRefundFailed(new BookingRef(9801L), "re_racing"),
 				"but the attempt is on record, so the failure is this platform's and must not be lost");
 
 		assertEquals(1, jdbc.sql("""
-				SELECT COUNT(*) FROM payment
-				WHERE payment_intent_id = 'pi_racing' AND refund_failed_at IS NOT NULL
-				  AND failed_refund_id = 're_racing' AND status = 'SUCCEEDED' AND refunded_minor = 0
+				SELECT COUNT(*) FROM payment_booking b JOIN payment p ON p.id = b.payment_id
+				WHERE b.booking_ref = 9801 AND b.refund_failed_at IS NOT NULL
+				  AND b.failed_refund_id = 're_racing' AND p.status = 'SUCCEEDED' AND b.refunded_minor = 0
 				""").query(Integer.class).single(),
 				"the guest is owed again, and the booking is enumerable as owed");
 	}
@@ -317,7 +317,7 @@ class JdbcPaymentsIT {
 		payments.register(new NewPayment(new BookingRef(9802L), "pi_lost_race", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_lost_race", PaymentStatus.SUCCEEDED);
 		payments.markRefundAttempted(new BookingRef(9802L));
-		payments.markUnrecordedRefundFailed("pi_lost_race", "re_lost_race");
+		payments.markUnrecordedRefundFailed(new BookingRef(9802L), "re_lost_race");
 
 		assertFalse(payments.markRefunded(new BookingRef(9802L), 4500L, "re_lost_race"),
 				"the refund the gateway already killed must never be recorded as a live one");
@@ -333,9 +333,9 @@ class JdbcPaymentsIT {
 		payments.register(new NewPayment(new BookingRef(9803L), "pi_twice_raced", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_twice_raced", PaymentStatus.SUCCEEDED);
 		payments.markRefundAttempted(new BookingRef(9803L));
-		payments.markUnrecordedRefundFailed("pi_twice_raced", "re_twice_raced");
+		payments.markUnrecordedRefundFailed(new BookingRef(9803L), "re_twice_raced");
 
-		assertFalse(payments.markUnrecordedRefundFailed("pi_twice_raced", "re_twice_raced"),
+		assertFalse(payments.markUnrecordedRefundFailed(new BookingRef(9803L), "re_twice_raced"),
 				"Stripe re-delivers, and both refund types carry the same death — it must count once");
 	}
 
@@ -347,11 +347,11 @@ class JdbcPaymentsIT {
 		payments.markRefunded(new BookingRef(9808L), 4500L, "re_ours");
 		payments.markRefundFailed("re_ours");
 
-		assertFalse(payments.markUnrecordedRefundFailed("pi_stale_attempt", "re_by_hand"),
+		assertFalse(payments.markUnrecordedRefundFailed(new BookingRef(9808L), "re_by_hand"),
 				"our attempt is over — a later refund on this collection is not ours to own");
 
-		assertEquals("re_ours", jdbc.sql("SELECT failed_refund_id FROM payment "
-						+ "WHERE payment_intent_id = 'pi_stale_attempt'").query(String.class).single(),
+		assertEquals("re_ours", jdbc.sql("SELECT failed_refund_id FROM payment_booking "
+						+ "WHERE booking_ref = 9808").query(String.class).single(),
 				"and the trace still names the refund that actually died, which is what the runbook looks up");
 	}
 
@@ -360,14 +360,14 @@ class JdbcPaymentsIT {
 		payments.register(new NewPayment(new BookingRef(9809L), "pi_reattempt", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_reattempt", PaymentStatus.SUCCEEDED);
 		payments.markRefundAttempted(new BookingRef(9809L));
-		payments.markUnrecordedRefundFailed("pi_reattempt", "re_first_race");
+		payments.markUnrecordedRefundFailed(new BookingRef(9809L), "re_first_race");
 
 		payments.markRefundAttempted(new BookingRef(9809L));
 
-		assertTrue(payments.markUnrecordedRefundFailed("pi_reattempt", "re_second_race"),
+		assertTrue(payments.markUnrecordedRefundFailed(new BookingRef(9809L), "re_second_race"),
 				"the outbox re-drive is a new attempt, so its own racing failure must land too");
-		assertEquals("re_second_race", jdbc.sql("SELECT failed_refund_id FROM payment "
-						+ "WHERE payment_intent_id = 'pi_reattempt'").query(String.class).single());
+		assertEquals("re_second_race", jdbc.sql("SELECT failed_refund_id FROM payment_booking "
+						+ "WHERE booking_ref = 9809").query(String.class).single());
 		assertFalse(payments.markRefunded(new BookingRef(9809L), 4500L, "re_second_race"),
 				"and the second corpse is blocked from being recorded, exactly like the first");
 	}
@@ -377,10 +377,10 @@ class JdbcPaymentsIT {
 		payments.register(new NewPayment(new BookingRef(9804L), "pi_manual", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_manual", PaymentStatus.SUCCEEDED);
 
-		assertFalse(payments.markUnrecordedRefundFailed("pi_manual", "re_by_hand"),
+		assertFalse(payments.markUnrecordedRefundFailed(new BookingRef(9804L), "re_by_hand"),
 				"no attempt on record means this refund is not ours — the platform owes nothing");
 
-		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM payment WHERE payment_intent_id = 'pi_manual' "
+		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM payment_booking WHERE booking_ref = 9804 "
 						+ "AND refund_failed_at IS NOT NULL").query(Integer.class).single(),
 				"and it must not appear on the list of bookings owed a refund");
 	}
@@ -392,7 +392,7 @@ class JdbcPaymentsIT {
 		payments.markRefundAttempted(new BookingRef(9805L));
 		payments.markRefunded(new BookingRef(9805L), 4500L, "re_written");
 
-		assertFalse(payments.markUnrecordedRefundFailed("pi_written", "re_other"),
+		assertFalse(payments.markUnrecordedRefundFailed(new BookingRef(9805L), "re_other"),
 				"the by-intent arm covers the un-written window only; a recorded refund is matched by id");
 		assertEquals(4500L, payments.findRefundState(new BookingRef(9805L)).orElseThrow().refundedMinor());
 	}
@@ -408,10 +408,89 @@ class JdbcPaymentsIT {
 				"a fresh refund id is not the corpse, so the retry records normally");
 
 		assertEquals(1, jdbc.sql("""
-				SELECT COUNT(*) FROM payment
-				WHERE payment_intent_id = 'pi_retried' AND refund_failed_at IS NULL
+				SELECT COUNT(*) FROM payment_booking
+				WHERE booking_ref = 9702 AND refund_failed_at IS NULL
 				  AND failed_refund_id = 're_died_once'
 				""").query(Integer.class).single(),
 				"owed-now is cleared by the retry that worked, while the id of what died is kept");
+	}
+
+	/** One intent collecting for two bookings: A's share 4500, B's share 3000. */
+	private void sharedCollection(String intentId, long bookingA, long bookingB) {
+		payments.register(new NewPayment(intentId, "EUR", "cs_test_secret", List.of(
+				new NewPayment.Share(new BookingRef(bookingA), 4500L),
+				new NewPayment.Share(new BookingRef(bookingB), 3000L))));
+		payments.markStatus(intentId, PaymentStatus.SUCCEEDED);
+	}
+
+	@Test
+	void aSharedIntentIsFoundFromEveryBookingAndAnswersThemAll() {
+		sharedCollection("pi_shared_find", 9951L, 9952L);
+
+		assertEquals(Optional.of("pi_shared_find"), payments.findIntentByBookingRef(new BookingRef(9951L)));
+		assertEquals(Optional.of("pi_shared_find"), payments.findIntentByBookingRef(new BookingRef(9952L)),
+				"a sibling reaches the same intent — the refund and cancel paths start from the booking");
+		assertEquals(List.of(new BookingRef(9951L), new BookingRef(9952L)),
+				payments.findBookingRefsByIntent("pi_shared_find"),
+				"the webhook confirms every booking the intent collects for, in registration order");
+	}
+
+	@Test
+	void refundingOneBookingOnASharedIntentLeavesItsSiblingOutstanding() {
+		sharedCollection("pi_shared_refund", 9953L, 9954L);
+
+		assertTrue(payments.markRefunded(new BookingRef(9953L), 4500L, "re_shared_a"));
+
+		var a = payments.findRefundState(new BookingRef(9953L)).orElseThrow();
+		var b = payments.findRefundState(new BookingRef(9954L)).orElseThrow();
+		assertEquals(4500L, a.refundedMinor(), "A's share is refunded");
+		assertEquals(0L, b.refundedMinor(), "B's share is untouched — its guest is still owed it");
+		assertEquals(PaymentStatus.PARTIALLY_REFUNDED, b.status(),
+				"the intent is partly refunded: one of its two shares came back");
+		assertEquals("PARTIALLY_REFUNDED", statusOf("pi_shared_refund"));
+
+		assertTrue(payments.markRefunded(new BookingRef(9954L), 3000L, "re_shared_b"));
+
+		assertEquals("REFUNDED", statusOf("pi_shared_refund"),
+				"every share refunded in full is the whole intent refunded");
+		assertEquals(3000L, payments.findRefundState(new BookingRef(9954L)).orElseThrow().refundedMinor());
+	}
+
+	@Test
+	void unrecordingOneSiblingsRefundKeepsTheOthers() {
+		sharedCollection("pi_shared_died", 9955L, 9956L);
+		payments.markRefunded(new BookingRef(9955L), 4500L, "re_shared_died_a");
+		payments.markRefunded(new BookingRef(9956L), 3000L, "re_shared_died_b");
+
+		assertTrue(payments.markRefundFailed("re_shared_died_a"), "the failure moves the row it was recorded on");
+
+		assertEquals(0L, payments.findRefundState(new BookingRef(9955L)).orElseThrow().refundedMinor(),
+				"A is owed again");
+		assertEquals(3000L, payments.findRefundState(new BookingRef(9956L)).orElseThrow().refundedMinor(),
+				"B's refund stands — one sibling's failure is not the other's");
+		assertEquals("PARTIALLY_REFUNDED", statusOf("pi_shared_died"),
+				"the intent falls back to partly refunded, not to SUCCEEDED, while B's money is out");
+		assertEquals(1L, jdbc.sql("SELECT COUNT(*) FROM payment_booking WHERE refund_failed_at IS NOT NULL "
+						+ "AND booking_ref IN (9955, 9956)").query(Long.class).single(),
+				"exactly one booking of the pair is enumerable as owed");
+
+		assertTrue(payments.markRefundFailed("re_shared_died_b"));
+		assertEquals("SUCCEEDED", statusOf("pi_shared_died"),
+				"with nothing refunded on any share the collection stands in full again");
+	}
+
+	@Test
+	void anUnrecordedFailureOnASharedIntentIsKeyedToItsBooking() {
+		sharedCollection("pi_shared_race", 9957L, 9958L);
+		payments.markRefunded(new BookingRef(9957L), 4500L, "re_shared_race_a");
+		payments.markRefundAttempted(new BookingRef(9958L));
+
+		assertTrue(payments.markUnrecordedRefundFailed(new BookingRef(9958L), "re_shared_race_b"),
+				"B's attempt is on record and B has no refund written down, so the death is B's");
+		assertFalse(payments.markUnrecordedRefundFailed(new BookingRef(9957L), "re_shared_race_x"),
+				"A's refund is recorded, so a failure for A is matched by id or not at all");
+		assertEquals(4500L, payments.findRefundState(new BookingRef(9957L)).orElseThrow().refundedMinor(),
+				"A's recorded refund is untouched by B's racing failure");
+		assertEquals("PARTIALLY_REFUNDED", statusOf("pi_shared_race"), "the intent's status does not move");
 	}
 }

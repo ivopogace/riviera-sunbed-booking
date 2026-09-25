@@ -1,5 +1,6 @@
 package ai.riviera.platform.payment.application;
 
+import java.util.List;
 import java.util.Optional;
 
 import ai.riviera.platform.payment.domain.PaymentStatus;
@@ -24,7 +25,7 @@ interface ThrowingPayments extends Payments {
 	}
 
 	@Override
-	default Optional<BookingRef> findBookingRefByIntent(String paymentIntentId) {
+	default List<BookingRef> findBookingRefsByIntent(String paymentIntentId) {
 		throw new UnsupportedOperationException("not stubbed by this test");
 	}
 
@@ -59,7 +60,7 @@ interface ThrowingPayments extends Payments {
 	}
 
 	@Override
-	default boolean markUnrecordedRefundFailed(String paymentIntentId, String refundId) {
+	default boolean markUnrecordedRefundFailed(BookingRef booking, String refundId) {
 		throw new UnsupportedOperationException("not stubbed by this test");
 	}
 

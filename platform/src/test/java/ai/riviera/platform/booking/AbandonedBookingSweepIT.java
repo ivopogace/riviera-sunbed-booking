@@ -100,6 +100,8 @@ class AbandonedBookingSweepIT {
 		// Testcontainers DB persists across methods, and some methods deliberately leave a stale
 		// AWAITING_PAYMENT row behind). Scoped to this test's codes / intent ids / date range so it
 		// never touches another test class's data. Delete booking before customer (FK).
+		jdbc.sql("DELETE FROM payment_booking WHERE payment_id IN (SELECT id FROM payment "
+				+ "WHERE payment_intent_id LIKE 'pi_sweep%' OR payment_intent_id = 'pi_succeeded')").update();
 		jdbc.sql("DELETE FROM payment WHERE payment_intent_id LIKE 'pi_sweep%' "
 				+ "OR payment_intent_id = 'pi_succeeded'").update();
 		jdbc.sql("DELETE FROM set_availability WHERE booking_date BETWEEN '2027-08-01' AND '2027-08-31'")
@@ -163,9 +165,11 @@ class AbandonedBookingSweepIT {
 	}
 
 	private void insertPayment(long bookingId, String paymentIntentId) {
-		jdbc.sql("INSERT INTO payment (booking_ref, payment_intent_id, amount_minor, currency, status) "
-						+ "VALUES (:ref, :pi, 4500, 'EUR', 'REQUIRES_PAYMENT')")
-				.param("ref", bookingId).param("pi", paymentIntentId).update();
+		long payment = jdbc.sql("INSERT INTO payment (payment_intent_id, amount_minor, currency, status) "
+						+ "VALUES (:pi, 4500, 'EUR', 'REQUIRES_PAYMENT') RETURNING id")
+				.param("pi", paymentIntentId).query(Long.class).single();
+		jdbc.sql("INSERT INTO payment_booking (payment_id, booking_ref, amount_minor) VALUES (:payment, :ref, 4500)")
+				.param("payment", payment).param("ref", bookingId).update();
 	}
 
 	private void claim(SetRef set, LocalDate date) {

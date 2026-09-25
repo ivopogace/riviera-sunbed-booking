@@ -135,4 +135,13 @@ class RefundServiceTest {
 		assertEquals(RefundProgress.OUTSTANDING, service.progressOf(BOOKING),
 				"un-recording a failed refund puts the guest back to owed, never to already-paid");
 	}
+
+	@Test
+	void progressIsOutstandingWhenOnlyASiblingWasRefunded() {
+		RefundService service = serviceWithState(
+				Optional.of(new RefundState(PaymentStatus.PARTIALLY_REFUNDED, 0L)));
+
+		assertEquals(RefundProgress.OUTSTANDING, service.progressOf(BOOKING),
+				"a sibling's refund moved the shared intent, but this booking's share is still owed");
+	}
 }

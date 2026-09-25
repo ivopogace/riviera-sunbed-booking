@@ -100,7 +100,7 @@ class ConcurrentRequestClaimIT {
 				.param("id", requestModeSet.value()).param("date", date).query(String.class).single());
 		assertEquals(1, count("SELECT count(*) FROM set_availability WHERE set_id = :id AND booking_date = :date"),
 				"one availability row — the soft-hold IS the claim row");
-		assertEquals(0, count("SELECT count(*) FROM payment p JOIN booking b ON p.booking_ref = b.id "
+		assertEquals(0, count("SELECT count(*) FROM payment_booking p JOIN booking b ON p.booking_ref = b.id "
 						+ "WHERE b.set_id = :id AND b.booking_date = :date"),
 				"no PaymentIntent exists for a pending request (payment-request-on-accept)");
 	}

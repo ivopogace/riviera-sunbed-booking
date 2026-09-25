@@ -1,5 +1,6 @@
 package ai.riviera.platform.payment.application;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.function.BiFunction;
 
@@ -51,8 +52,8 @@ class PaymentServiceTest {
 			}
 
 			@Override
-			public Optional<BookingRef> findBookingRefByIntent(String paymentIntentId) {
-				return Optional.empty();
+			public List<BookingRef> findBookingRefsByIntent(String paymentIntentId) {
+				return List.of();
 			}
 
 			@Override
@@ -92,7 +93,7 @@ class PaymentServiceTest {
 			}
 
 			@Override
-			public boolean markUnrecordedRefundFailed(String paymentIntentId, String refundId) {
+			public boolean markUnrecordedRefundFailed(BookingRef booking, String refundId) {
 				return false;
 			}
 
