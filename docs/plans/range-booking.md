@@ -145,6 +145,8 @@ target) · `playwright-cli` (the range journey and the tile geometry in the mock
 - Per-day daily takings (D4, #1205) and the per-day weather refund (#1210).
 - Any change to `set_availability`, `AvailabilityClaim`'s signature or the claim primitive.
 - A remodel move's mail for a stay (`BookingMoved` still names the first day): follow-up #1215.
+- A span-aware remodel-move candidate (today the candidate is ranked on the first day; a later day held
+  under the lock rolls the commit back): follow-up #1217.
 
 ## Behavior-parity ledger (retirement / replacement slices only)
 
@@ -175,6 +177,7 @@ pins it. Rows here cover the calendar, whose contract changes shape.
 | R-9 | The badge adds a touch target or breaks the tile's `[appTouchTarget]` box | low | low | `aria-hidden` span positioned inside the existing button; `check-touch-target.mjs` and `touch-targets-tourist.e2e.ts` | frontend | open |
 | R-10 | Error contract: two new codes (`RANGE_NOT_OFFERED` 422; the 400 for bad bounds reuses the typed parsing 400) | certain | low | Built in `ApiProblem`'s switch only; `ErrorContractArchitectureTests` stays green; FE `BookingErrorCode` gains the code with copy | booking | open |
 | R-11 | Sonar: new-code coverage on the FE range code and the JDBC read | medium | low | Vitest units on every new pure function and component branch; `AvailabilityLookupIT` for the read | — | open |
+| R-12 | The remodel move ranks its candidate on a stay's first day; a later day held under the lock throws and the commit rolls back to a 500 (pre-existing, accepted as inert by slice 3, made reachable by this slice) | medium | medium | Out of this PR's files; a span-aware candidate search is its own change → follow-up #1217 | booking | deferred → issue #1217 |
 
 ## Open questions / Assumptions
 
