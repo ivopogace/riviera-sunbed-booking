@@ -171,8 +171,14 @@ public final class BookingMailFixtures {
 	/** The move fact an IT publishes to drive the mail; the booking must carry a receipt move and {@code moved_at}. */
 	public ai.riviera.platform.booking.events.BookingMoved movedOf(SetRef from, long toSetId, long bookingId,
 			LocalDate date) {
+		return movedOf(from, toSetId, bookingId, date, date);
+	}
+
+	/** A stay's move fact, first to last day. */
+	public ai.riviera.platform.booking.events.BookingMoved movedOf(SetRef from, long toSetId, long bookingId,
+			LocalDate first, LocalDate last) {
 		return new ai.riviera.platform.booking.events.BookingMoved(new BookingId(bookingId), new VenueId(from.venueId()),
-				new SetId(from.setId()), new SetId(toSetId), date);
+				new SetId(from.setId()), new SetId(toSetId), first, last);
 	}
 
 	/** The expiry fact an IT publishes to drive the mail; the date is the matching fragment. */

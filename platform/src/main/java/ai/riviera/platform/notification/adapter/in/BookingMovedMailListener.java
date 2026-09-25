@@ -20,14 +20,15 @@ import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 /**
- * Mails the tourist that a remodel moved their booking: both spots, the distance, the free-exit
- * deadline and the link where that cancel lives. The event carries ids only (invariant #7); the
- * contact, code and venue resolve through {@link BookingMailFactsService} on the set the booking now
- * holds, and the spots, distance and deadline through {@code booking}'s move facts — the receipt's
- * snapshot, since the old set may already be retired or renumbered. Asynchronous and after-commit on
- * the mail bulkhead, like every listener here ({@code MailListenerExecutorArchitectureTest}); the
- * move, the layout and the receipt committed before this runs, so no mail outcome can touch them.
- * Giving up is counted under {@link ObservabilityMetrics#MAIL_MOVE_ABANDONED}.
+ * Mails the tourist that a remodel moved their booking: its days, both spots, the distance, the
+ * free-exit deadline and the link where that cancel lives. The event carries ids and the days only
+ * (invariant #7); the contact, code and venue resolve through {@link BookingMailFactsService} on the
+ * set the booking now holds, and the spots, distance and deadline through {@code booking}'s move
+ * facts — the receipt's snapshot, since the old set may already be retired or renumbered.
+ * Asynchronous and after-commit on the mail bulkhead, like every listener here
+ * ({@code MailListenerExecutorArchitectureTest}); the move, the layout and the receipt committed
+ * before this runs, so no mail outcome can touch them. Giving up is counted under
+ * {@link ObservabilityMetrics#MAIL_MOVE_ABANDONED}.
  */
 @Component
 class BookingMovedMailListener {
@@ -55,13 +56,13 @@ class BookingMovedMailListener {
 		switch (facts.resolve(event.bookingId(), event.toSetId())) {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
 			case BookingMailFacts.Resolved booking -> bookings.moveFacts(event.bookingId()).ifPresentOrElse(
-					move -> mails.sendBookingMoved(booking.toEmail(), mailOf(booking, move)),
+					move -> mails.sendBookingMoved(booking.toEmail(), mailOf(event, booking, move)),
 					() -> abandon(MissingBookingFact.NO_BOOKING, event));
 		}
 	}
 
-	private BookingMovedMail mailOf(BookingMailFacts.Resolved booking, BookingMoveFacts move) {
-		return new BookingMovedMail(booking.bookingCode(), booking.venueName(), move.bookingDate(),
+	private BookingMovedMail mailOf(BookingMoved event, BookingMailFacts.Resolved booking, BookingMoveFacts move) {
+		return new BookingMovedMail(booking.bookingCode(), booking.venueName(), event.bookingDate(), event.lastDay(),
 				move.fromRowLabel(), move.fromPositionNo(), move.toRowLabel(), move.toPositionNo(), move.rowsAway(),
 				move.positionsAway(), move.freeExitUntil(), links.forBooking(booking.bookingCode()));
 	}

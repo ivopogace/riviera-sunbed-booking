@@ -72,6 +72,29 @@ class BookingMovedMailListenerTest {
 				0, 4, DEADLINE, URI.create("https://riviera.example/booking/" + CODE)));
 	}
 
+	@Test
+	void aMovedStayMailsItsDays() {
+		when(facts.resolve(BOOKING_ID, TO)).thenReturn(FACTS);
+		when(bookings.moveFacts(BOOKING_ID)).thenReturn(Optional.of(MOVE));
+
+		listener.on(new BookingMoved(BOOKING_ID, new VenueId(4L), FROM, TO, BOOKING_DATE, BOOKING_DATE.plusDays(2)));
+
+		verify(mails).sendBookingMoved(EMAIL, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE,
+				BOOKING_DATE.plusDays(2), "A", 3, "A", 7, 0, 4, DEADLINE,
+				URI.create("https://riviera.example/booking/" + CODE)));
+	}
+
+	@Test
+	void aPayloadWithoutALastDateMailsOneDay() {
+		when(facts.resolve(BOOKING_ID, TO)).thenReturn(FACTS);
+		when(bookings.moveFacts(BOOKING_ID)).thenReturn(Optional.of(MOVE));
+
+		listener.on(new BookingMoved(BOOKING_ID, new VenueId(4L), FROM, TO, BOOKING_DATE, null));
+
+		verify(mails).sendBookingMoved(EMAIL, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE, BOOKING_DATE,
+				"A", 3, "A", 7, 0, 4, DEADLINE, URI.create("https://riviera.example/booking/" + CODE)));
+	}
+
 	@ParameterizedTest(name = "{0}")
 	@EnumSource(MissingBookingFact.class)
 	void anyMissingFactIsCountedUnderItsOwnReasonAndAbandoned(MissingBookingFact fact) {

@@ -129,14 +129,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan`
+**Stage pointer:** `PR (draft) — CI gate`
 
-**Next action:** phase 0 — AC-1 red.
+**Next action:** open the draft PR, merge `origin/main`, mark ready, run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the event carries the stay's last day | | |
-| 1 — the moved mail names the days | | |
+| 0 — the event carries the stay's last day | ✅ | red `f3b04669`, green `40251ad2` |
+| 1 — the moved mail names the days | ✅ | the phase-1 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

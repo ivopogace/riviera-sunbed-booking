@@ -23,6 +23,7 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.application.BookingMovedMail;
 import ai.riviera.platform.notification.application.PaymentDueMail;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -123,6 +124,25 @@ class SmtpMailerIT {
 		String body = theOnlyReceivedMessage().getContent().toString();
 		assertThat(body).contains("Days:     15 August – 16 August 2026 (2 days)");
 		assertThat(body).doesNotContain("Date:");
+	}
+
+	@Test
+	void aMovedStayNamesItsDays() throws Exception {
+		mailer().sendBookingMoved(TO, movedMail(LocalDate.of(2026, 8, 17)));
+
+		String body = theOnlyReceivedMessage().getContent().toString();
+		assertThat(body).contains("Days:          15 August – 17 August 2026 (3 days)",
+				"Your booking code, price and days are unchanged.");
+		assertThat(body).doesNotContain("Date:");
+	}
+
+	@Test
+	void aMovedOneDayBookingKeepsItsDateLine() throws Exception {
+		mailer().sendBookingMoved(TO, movedMail(LocalDate.of(2026, 8, 15)));
+
+		String body = theOnlyReceivedMessage().getContent().toString();
+		assertThat(body).contains("Date:          15 August 2026", "Your booking code, price and date are unchanged.");
+		assertThat(body).doesNotContain("Days:");
 	}
 
 	/** The #795 disclosure branches, rendered — only CLOSED may claim the booking can't be cancelled. */
@@ -458,6 +478,11 @@ class SmtpMailerIT {
 		MimeMessage[] received = greenMail.getReceivedMessages();
 		assertThat(received).hasSize(1);
 		return received[0];
+	}
+
+	private static BookingMovedMail movedMail(LocalDate lastDate) {
+		return new BookingMovedMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), lastDate, "A", 3, "B",
+				5, 1, 2, DEADLINE, PAY_LINK);
 	}
 
 	private static void assertPlainTextWithLink(MimeMessage message) throws Exception {
