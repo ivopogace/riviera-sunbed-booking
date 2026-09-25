@@ -40,6 +40,7 @@ import {
   dayAvailabilityState,
   freeFraction,
 } from './day-availability';
+import { stayRule } from './stay-rule';
 import { VenueService } from './venue.service';
 
 /** One rendered day, or `undefined` for a grid position outside the visible month. */
@@ -127,6 +128,9 @@ export class AvailabilityCalendar {
   /** Whether a stay of several days may be picked here — an Instant venue's page says yes. */
   readonly rangeAllowed = input(false);
 
+  /** The venue's maximum stay in days; `null` or absent means any length this season. */
+  readonly maxStayDays = input<number | null | undefined>(undefined);
+
   /** The chosen days; `first === last` for one day, which is every pick in day mode. */
   readonly chosen = output<DateRange>();
   readonly dismissed = output<void>();
@@ -146,11 +150,20 @@ export class AvailabilityCalendar {
   /** In stay mode, the first day tapped while the last is still to come. */
   protected readonly pendingFirst = signal<string | undefined>(undefined);
 
-  /** The last day the stay may run to once a first day is tapped — {@link MAX_STAY_DAYS} in all. */
+  /** The most days a stay may run: the venue's maximum where it has one, else {@link MAX_STAY_DAYS}. */
+  private readonly ceilingDays = computed(() => {
+    const max = this.maxStayDays();
+    return max != null && max < MAX_STAY_DAYS ? max : MAX_STAY_DAYS;
+  });
+
+  /** The last day the stay may run to once a first day is tapped — {@link ceilingDays} in all. */
   private readonly lastDayCeiling = computed(() => {
     const first = this.pendingFirst();
-    return first === undefined ? undefined : addDays(first, MAX_STAY_DAYS - 1);
+    return first === undefined ? undefined : addDays(first, this.ceilingDays() - 1);
   });
+
+  /** The venue's stay rule, stated beside the stay-mode hint. */
+  protected readonly stayRule = computed(() => stayRule(this.maxStayDays()));
 
   /** What the stay mode asks for next. */
   protected readonly stayHint = computed(() => {

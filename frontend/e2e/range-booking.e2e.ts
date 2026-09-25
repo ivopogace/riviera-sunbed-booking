@@ -112,12 +112,17 @@ function calendarDays(from: string, to: string) {
 }
 
 /** Route the map read on its query: one day, the stay, or — when asked — a stay nothing covers. */
-async function mockMap(page: Page, stay: typeof STAY, shortened = SHORTENED): Promise<void> {
+async function mockMap(
+  page: Page,
+  stay: typeof STAY,
+  shortened = SHORTENED,
+  oneDay = ONE_DAY,
+): Promise<void> {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
     const url = new URL(route.request().url());
     const lastDate = url.searchParams.get('lastDate');
     if (lastDate === null) {
-      return route.fulfill({ json: ONE_DAY });
+      return route.fulfill({ json: oneDay });
     }
     return route.fulfill({ json: lastDate === LAST ? stay : shortened });
   });
@@ -234,6 +239,44 @@ test('offers the longest one-spot run when no set covers the stay, and shortenin
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByTestId('dialog-date')).toContainText('2 days');
   await expect(dialog.getByTestId('dialog-total')).toContainText('€90');
+});
+
+test("refuses a stay past the venue's maximum and offers new dates, never a plan", async ({
+  page,
+}) => {
+  const capped = { ...STAY, maxStayDays: 2 };
+  await mockMap(page, capped, SHORTENED, { ...ONE_DAY, maxStayDays: 2 });
+  await page.goto('/venues/1');
+
+  // The calendar states the rule and disables the day past the maximum.
+  await page.getByTestId('map-date').click();
+  const calendar = page.getByTestId('availability-calendar');
+  await calendar.getByTestId('calendar-mode-stay').click();
+  await expect(calendar.getByTestId('calendar-stay-rule')).toHaveText(
+    'Stays of up to 2 days at this venue.',
+  );
+  await calendar.locator(`button[data-date="${FIRST}"]`).click();
+  await expect(calendar.locator(`button[data-date="${MIDDLE}"]`)).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  await expect(calendar.locator(`button[data-date="${LAST}"]`)).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  await expectNoSeriousAxeViolations(page, 'calendar with a stay rule');
+
+  // Arriving with a longer range: the rule, Change dates, other beaches — no tile to book.
+  await page.goto(`/venues/1?date=${FIRST}&lastDate=${LAST}`);
+  const panel = page.getByTestId('stay-too-long');
+  await expect(panel).toContainText('Stays of up to 2 days at this venue.');
+  await expect(page.getByTestId('no-cover')).toHaveCount(0);
+  await expect(page.locator('.set-tile button')).toHaveCount(0);
+  await expect(page.getByTestId('stay-too-long-others')).toHaveAttribute('href', `/?date=${FIRST}`);
+  await expectNoSeriousAxeViolations(page, 'a stay longer than the venue takes');
+
+  await page.getByTestId('stay-too-long-change').click();
+  await expect(page.getByTestId('availability-calendar')).toBeVisible();
 });
 
 for (const theme of ['porcelain', 'riviera', 'dark'] as const) {

@@ -122,6 +122,12 @@
   </table>
 
   @if (mode() === 'stay') {
+    <p
+      class="mt-2 text-[11.5px] leading-[1.4] text-riv-pop-ink-soft"
+      data-testid="calendar-stay-rule"
+    >
+      {{ stayRule() }}
+    </p>
     <div class="mt-2 flex items-center justify-between gap-2">
       <p
         class="text-[13px] leading-[1.4] font-semibold text-riv-pop-ink"

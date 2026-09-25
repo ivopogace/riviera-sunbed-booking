@@ -338,6 +338,7 @@ export type BookingErrorCode =
   | 'BOOKING_CLOSED'
   | 'VENUE_CLOSED'
   | 'RANGE_NOT_OFFERED'
+  | 'STAY_TOO_LONG'
   | 'NO_SUCH_SET'
   | 'INVALID_REQUEST'
   | 'UNKNOWN';

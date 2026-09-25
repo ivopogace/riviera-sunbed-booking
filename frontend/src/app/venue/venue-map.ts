@@ -41,6 +41,7 @@ import { spotLabel, tierSentenceLabel } from '../shared/set-label';
 import { PhotoView, SetView, VenueMapView } from '../shared/venue-views';
 import { AvailabilityCalendar, MAX_STAY_DAYS } from './availability-calendar';
 import { PartlyFreeSheet } from './partly-free-sheet';
+import { stayRule } from './stay-rule';
 import { SetRun, freeDaysOf, longestRunAcross } from './stay-runs';
 import { VenueReviews } from './venue-reviews';
 import { VenueService } from './venue.service';
@@ -107,6 +108,8 @@ interface VenueHeader {
   readonly amenities: readonly { readonly code: Amenity; readonly label: string }[];
   /** The venue's sales-close value — the note's copy key only; `salesOpen` stays the verdict. */
   readonly salesClose: VenueMapView['salesClose'];
+  /** The venue's maximum stay, handed to the calendar as its last-day ceiling. */
+  readonly maxStayDays: VenueMapView['maxStayDays'];
   /** True when the venue is closed for the season right now — the header chip and the notice. */
   readonly closedForSeason: boolean;
   /** The reopen day while closed with one set; else `null`. */
@@ -250,9 +253,26 @@ export class VenueMap {
   );
   protected readonly totalCount = computed(() => this.venue()?.sets.length ?? 0);
 
+  /**
+   * A stay longer than the venue's maximum, carried in by the route: nothing is bookable and no run
+   * is offered — the page states the rule and offers new dates or other beaches, never a plan.
+   */
+  protected readonly stayTooLong = computed(() => {
+    const max = this.venue()?.maxStayDays;
+    return max != null && this.dayCount() > max;
+  });
+
+  /** The venue's stay rule as the too-long panel states it. */
+  protected readonly stayRuleLabel = computed(() => stayRule(this.venue()?.maxStayDays));
+
   /** A stay no single set covers, though the beach is not full: the page offers the longest run. */
   protected readonly noSetCovers = computed(
-    () => this.isStay() && this.totalCount() > 0 && this.freeCount() === 0 && !this.salesClosed(),
+    () =>
+      this.isStay() &&
+      this.totalCount() > 0 &&
+      this.freeCount() === 0 &&
+      !this.salesClosed() &&
+      !this.stayTooLong(),
   );
   /** The online set that can host the most of the stay on one spot, when nothing covers it all. */
   protected readonly longestRun = computed<SetRun | undefined>(() => {
@@ -314,6 +334,7 @@ export class VenueMap {
         label: amenityLabel(code),
       })),
       salesClose: v.salesClose,
+      maxStayDays: v.maxStayDays,
       closedForSeason: v.closedForSeason === true,
       reopensOn: v.closedForSeason === true ? (v.reopensOn ?? null) : null,
     };
@@ -413,9 +434,10 @@ export class VenueMap {
   private toTile(set: SetView): TileView {
     const tier = tierSentenceLabel(set.tier);
     const state = mapTileState(set);
-    // The sales gate (invariant #4): a closed date renders its grid, but nothing is selectable.
-    const bookable = set.availability === 'FREE' && set.pool === 'ONLINE' && !this.salesClosed();
-    const partly = state === 'partly' && !this.salesClosed();
+    // The sales gate (invariant #4) and the stay rule: a fenced stay renders its grid, but nothing is selectable.
+    const fenced = this.salesClosed() || this.stayTooLong();
+    const bookable = set.availability === 'FREE' && set.pool === 'ONLINE' && !fenced;
+    const partly = state === 'partly' && !fenced;
     const freeDays = freeDaysOf(set, this.dayCount());
     const announced =
       state === 'partly'

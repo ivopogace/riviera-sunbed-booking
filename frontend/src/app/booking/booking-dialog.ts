@@ -602,6 +602,8 @@ export class BookingDialog implements OnInit {
           : 'Booking has closed for that date. Try a later day.';
       case 'RANGE_NOT_OFFERED':
         return 'This venue takes one day at a time online. Pick a single day to request it.';
+      case 'STAY_TOO_LONG':
+        return 'These days are more than this venue takes in one stay. Pick fewer days to book here.';
       case 'VENUE_CLOSED':
         return 'This venue is closed for the season, so this date can’t be booked. Try another venue.';
       case 'NO_SUCH_SET':

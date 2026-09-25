@@ -1841,6 +1841,30 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
       );
     });
 
+    it("a stay longer than the venue's maximum offers new dates, never a plan", async () => {
+      await setup({ date: first, lastDate: last });
+      venueReq().flush({ ...stayMiramar(first, last), maxStayDays: 2 });
+      await settle();
+      fixture.detectChanges();
+
+      const panel = dom().querySelector<HTMLElement>('[data-testid="stay-too-long"]')!;
+      expect(panel.textContent).toContain('Stays of up to 2 days at this venue.');
+      expect(panel.textContent).toContain('Your 3 days are more than this venue takes');
+      expect(dom().querySelector('[data-testid="no-cover"]')).toBeNull();
+      expect(dom().querySelectorAll('.set-tile button')).toHaveLength(0);
+      expect(
+        dom()
+          .querySelector<HTMLAnchorElement>('[data-testid="stay-too-long-others"]')!
+          .getAttribute('href'),
+      ).toBe(`/?date=${first}`);
+
+      dom().querySelector<HTMLButtonElement>('[data-testid="stay-too-long-change"]')!.click();
+      fixture.detectChanges();
+
+      expect(dom().querySelector('[data-testid="availability-calendar"]')).not.toBeNull();
+      httpMock.match((req) => req.url.endsWith('/availability-calendar'));
+    });
+
     it('offers the longest one-spot run and the way to other beaches', async () => {
       await loadStay();
 

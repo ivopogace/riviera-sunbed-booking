@@ -222,6 +222,33 @@
               ></span>
             </div>
           }
+          @if (stayTooLong()) {
+            <!-- The route carried a stay longer than this venue takes: the rule, new dates, other beaches — never a plan. -->
+            <div
+              class="mt-3 rounded-[16px] border border-riv-field-border bg-riv-field-solid px-4 py-3 text-[14px] text-riv-card-ink"
+              data-testid="stay-too-long"
+            >
+              <p class="font-bold">{{ stayRuleLabel() }}</p>
+              <p class="mt-1 text-riv-card-ink-soft">
+                Your {{ dayCount() }} days are more than this venue takes in one stay.
+              </p>
+              <div class="mt-3 flex flex-wrap items-center gap-3">
+                <app-retry-button
+                  testId="stay-too-long-change"
+                  label="Change dates"
+                  (retry)="openPicker()"
+                />
+                <a
+                  appTouchTarget
+                  class="inline-flex items-center font-bold text-riv-accent-ink underline-offset-2 hover:underline"
+                  data-testid="stay-too-long-others"
+                  [routerLink]="['/']"
+                  [queryParams]="{ date: selectedDate() }"
+                  >See other beaches</a
+                >
+              </div>
+            </div>
+          }
           @if (noSetCovers()) {
             <!-- No single spot covers the stay: the longest one-spot run, with the offer to shorten to it, and the way back to the other beaches. -->
             <div
@@ -412,6 +439,7 @@
         [selectedLastDate]="selectedLastDate()"
         [minDate]="minDate()"
         [rangeAllowed]="v.bookingMode === 'INSTANT'"
+        [maxStayDays]="v.maxStayDays"
         (chosen)="onDateChosen($event)"
         (dismissed)="closePicker()"
       />
