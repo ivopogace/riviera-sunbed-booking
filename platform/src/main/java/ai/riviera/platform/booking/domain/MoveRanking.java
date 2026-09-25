@@ -9,12 +9,12 @@ import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetSpot;
 
 /**
- * The move rule: where a booking goes when a remodel takes its set. A candidate is a free spot on
- * the <em>same date</em>, in the {@link Pool#ONLINE} pool, of the same or a better tier; among
- * candidates the same row wins, then the closest position, then the closest row, the lowest id
- * breaking a tie so the answer is stable. Never a worse tier, never a walk-in set, never another
- * date. Pure, so it lives in {@code domain} (ADR-0018 §2); the caller hands in the free pool and
- * takes a picked spot out of it before ranking the next claim on that date.
+ * The move rule: where a booking goes when a remodel takes its set. A candidate is a spot free on
+ * <em>every day</em> of the booking's span, in the {@link Pool#ONLINE} pool, of the same or a better
+ * tier; among candidates the same row wins, then the closest position, then the closest row, the
+ * lowest id breaking a tie so the answer is stable. Never a worse tier, never a walk-in set, never
+ * other dates. Pure, so it lives in {@code domain} (ADR-0018 §2); the caller hands in the spots free
+ * for the whole span, dated on its first day, and takes a picked spot out of every day it covers.
  */
 public final class MoveRanking {
 

@@ -516,9 +516,9 @@ exactly as it would against any other claim (invariant #2).
   (`application/remodel`, clock-backed — the zone is the duration to
   `BookingCutoff#serviceDayOpensAt` against the `riviera.booking.remodel.freeze-window` (24h) and
   `refund-notice-floor` (96h) bounds, both inclusive on the nearer side; sales close plays no role)
-  and `MoveRanking` (`domain/`, pure — same date, online pool, same or better tier; same row, then
-  closest position, then closest row). A frozen claim blocks; a claim with a candidate moves, and
-  that candidate leaves the pool for the next claim on that date; a move-only claim with none
+  and `MoveRanking` (`domain/`, pure — free on every day of the claim's span, online pool, same or
+  better tier; same row, then closest position, then closest row). A frozen claim blocks; a claim
+  with a candidate moves, and that candidate leaves the pool on every day of the span it took; a move-only claim with none
   blocks; beyond the floor `CONFIRMED` refunds, `AWAITING_PAYMENT` releases, `PENDING_REQUEST`
   declines. The answer carries outcome kinds, set references and amounts — never a status and never a
   code (invariant #7). Advisory: read-only and unlocked, so the commit re-derives it.

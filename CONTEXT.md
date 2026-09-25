@@ -158,10 +158,10 @@ model in `docs/architecture/domain-model.md`.
   whatever the painted layout said of it, and writes the rest of the layout around it. A painted set
   that wants a kept set's row and number refuses the whole save; the operator keeps the set
   themselves. Every kept claim is named on the **commit receipt** with its reason.
-- **Move candidate** — a free set a disturbed booking could be seated on instead, on the same date:
-  in the online pool, of the same or a better tier, preferring the same row, then the closest
-  position, then the closest row. Never a worse tier, never a walk-in set, never another date. One
-  free set serves one booking per date.
+- **Move candidate** — a set a disturbed booking could be seated on instead, free on every day the
+  booking covers: in the online pool, of the same or a better tier, preferring the same row, then
+  the closest position, then the closest row. Never a worse tier, never a walk-in set, never other
+  dates. One free set serves one booking per day.
 - **Move distance** — how far a move candidate is from the booked set, in rows and positions
   ("A3 → A7, 4 positions along the row"; "1 row over"), so the operator and the guest can judge it.
 - **Preview token** — the operator's proof of what they saw: a digest of every claim in a remodel

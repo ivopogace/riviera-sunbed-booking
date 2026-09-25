@@ -46,7 +46,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * claim commits; a mixed picture moves, refunds, releases and declines in that one transaction and
  * receipts every line; a picture that refunds without the typed count and a reason is
  * {@code 409 REFUND_NOT_CONFIRMED}; a blocked claim is kept where it is with its set left as stored
- * while the rest commits; a layout that gives a kept set's label to another set is
+ * while the rest commits, and a stay whose only candidate is held on a later day of its span is kept
+ * rather than failing the commit; a layout that gives a kept set's label to another set is
  * {@code 409 REMODEL_REFUSED} and writes nothing; a staff hold is stale; a stale {@code set_version}
  * answers in the save's words; no booking code anywhere (invariant #7).
  * Dates are relative to today in {@code Europe/Tirane} so the zones fall where the default windows
@@ -314,6 +315,46 @@ class RemodelCommitIT {
 				.andExpect(jsonPath("$.kept.length()").value(1))
 				.andExpect(jsonPath("$.kept[0].bookingId").value(frozen))
 				.andExpect(jsonPath("$.kept[0].reason").value("FROZEN"));
+	}
+
+	@Test
+	void aStayWhoseFirstDayCandidateIsHeldLaterIsKeptAndTheCommitAnswersNormally() throws Exception {
+		long venue = createVenue("Stay Kept Club");
+		putLayout(venue, layout(0, cell("A", 1, 1), cell("A", 2, 2)));
+		List<Long> ids = setIds(venue);
+		long a1 = ids.get(0);
+		long a2 = ids.get(1);
+		LocalDate first = today.plusDays(3);
+		List<LocalDate> span = List.of(first, first.plusDays(1), first.plusDays(2));
+		long stay = seedBooking(venue, a1, "CMT-" + System.nanoTime(), "CONFIRMED", first);
+		jdbc.sql("UPDATE booking SET last_date = :last WHERE id = :id").param("last", span.getLast())
+				.param("id", stay).update();
+		span.forEach(day -> seedHold(a1, day, "BOOKED_ONLINE"));
+		seedHold(a2, span.get(1), "BOOKED_ONLINE");
+		long token = currentSetVersion(venue);
+		String body = layout(token, cell("A", 2, 2));
+
+		mvc.perform(post("/api/venues/{v}/beach-map/preview", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.moves.length()").value(0))
+				.andExpect(jsonPath("$.blocks.length()").value(1))
+				.andExpect(jsonPath("$.blocks[0].bookingId").value(stay))
+				.andExpect(jsonPath("$.blocks[0].reason").value("NO_MOVE_CANDIDATE"));
+		mvc.perform(commit(venue, body, previewToken(venue, body)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.moves.length()").value(0))
+				.andExpect(jsonPath("$.kept.length()").value(1))
+				.andExpect(jsonPath("$.kept[0].bookingId").value(stay))
+				.andExpect(jsonPath("$.kept[0].reason").value("NO_MOVE_CANDIDATE"));
+
+		assertEquals(a1, setOf(stay), "the stay is left on its set");
+		assertNull(movedAt(stay));
+		assertEquals("CONFIRMED", statusOf(stay));
+		span.forEach(day -> assertEquals(1, holds(a1, day), "the stay keeps its row on " + day));
+		assertEquals(0, holds(a2, span.getFirst()), "nothing was claimed on the set held later");
+		assertFalse(retired(a1), "the kept set stays on the active map");
+		assertEquals(token + 1, currentSetVersion(venue), "the save spent the token once");
 	}
 
 	@Test

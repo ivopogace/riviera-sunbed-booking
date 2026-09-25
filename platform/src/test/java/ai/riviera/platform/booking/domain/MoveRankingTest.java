@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The move rule: same date, online pool, same or better tier; prefer the same row, then the
+ * The move rule: free for the whole span, online pool, same or better tier; prefer the same row, then the
  * closest position, then the closest row; the distance is reported in rows and positions. Pure
  * unit test of the {@code domain} holder — the pool is handed in already free.
  */

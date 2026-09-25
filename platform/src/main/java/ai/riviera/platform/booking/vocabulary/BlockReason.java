@@ -4,6 +4,6 @@ package ai.riviera.platform.booking.vocabulary;
 public enum BlockReason {
 	/** The service day opens within the freeze window, or already opened. */
 	FROZEN,
-	/** Within the refund-notice floor with no free set of the same or better tier on that date. */
+	/** Within the refund-notice floor with no set of the same or better tier free on every day of the booking. */
 	NO_MOVE_CANDIDATE
 }
