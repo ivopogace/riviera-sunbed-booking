@@ -394,7 +394,7 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
 
     expect(host().querySelector('[data-testid="dialog-date"]')!.textContent).toContain('3 days');
     expect(host().querySelector('[data-testid="dialog-price"]')!.textContent).toContain(
-      '€45 per day × 3 days',
+      '€45 per day · 3 days',
     );
     expect(host().querySelector('[data-testid="dialog-total"]')!.textContent).toContain('€135');
 

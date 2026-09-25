@@ -508,7 +508,7 @@ export class BookingDialog implements OnInit {
 
   /** The Price row: the per-day rate, spelled out as such for a stay. */
   protected price(): string {
-    return this.isStay() ? `${this.perDay()} per day × ${this.dayCount()} days` : this.perDay();
+    return this.isStay() ? `${this.perDay()} per day · ${this.dayCount()} days` : this.perDay();
   }
 
   protected requestClose(): void {

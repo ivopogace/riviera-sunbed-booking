@@ -194,7 +194,7 @@ test('books one set for a stay: three tile states, the covered days, the total, 
     .click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByTestId('dialog-date')).toContainText('3 days');
-  await expect(dialog.getByTestId('dialog-price')).toContainText('€45 per day × 3 days');
+  await expect(dialog.getByTestId('dialog-price')).toContainText('€45 per day · 3 days');
   await expect(dialog.getByTestId('dialog-total')).toContainText('€135');
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'booking dialog for a stay');
