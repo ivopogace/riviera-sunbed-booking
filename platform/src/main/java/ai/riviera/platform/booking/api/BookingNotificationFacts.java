@@ -52,8 +52,8 @@ public interface BookingNotificationFacts {
 	/**
 	 * The latest remodel move of this booking — both spots as they were, the distance, when it moved
 	 * and the free-exit deadline — or empty when no remodel ever moved it. The "your spot changed"
-	 * mail's read: {@code BookingMoved} carries ids only, and the old label is a snapshot the live set
-	 * may no longer answer.
+	 * mail's read: {@code BookingMoved} carries ids and days only, and the old label is a snapshot the
+	 * live set may no longer answer.
 	 */
 	Optional<BookingMoveFacts> moveFacts(BookingId bookingId);
 

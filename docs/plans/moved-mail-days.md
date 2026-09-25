@@ -24,8 +24,11 @@ the line through its existing `daysLine`.
 plan is `DONE — merged via PR #1216` and retires at this close-out) · `riviera-plan-doc` (forced
 the old-payload read into the risk register and the listener's source of the days into an AC) ·
 `tdd` (each AC red first at its seam: the service's event publisher, the listener's mail port, the
-SMTP transport) · `riviera-review-overlay` (at ready-for-review) · `riviera-docs-freshness` (at
-close-out) · `riviera-java-conventions` (a one-day convenience constructor per record, as the
+SMTP transport) · `riviera-review-overlay` (ran at ready-for-review with `code-review:code-review` over
+`97a6b98d..4eb38b40`: five reviewers, 0 findings) · `riviera-docs-freshness` (**ran** over
+`97a6b98d..4eb38b40`, 2 findings fixed in the close-out: `RESPONSIBILITIES.md` § booking named two
+events carrying `lastDate`, now three; `BookingNotificationFacts#moveFacts` said `BookingMoved` carries
+ids only) · `riviera-java-conventions` (a one-day convenience constructor per record, as the
 siblings; Javadoc re-read whole on each touched record) · `riviera-modulith` (an added field on a
 published event record is not a move or rename, so no `event_type` rewrite; id-based payload
 kept, #11) · `riviera-local-debug` (JDK 25 at `/opt/jdk-25`, scoped test runs only)
@@ -37,23 +40,23 @@ kept, #11) · `riviera-local-debug` (JDK 25 at `/opt/jdk-25`, scoped test runs o
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a live `CONFIRMED` stay from D to D+2 on a disturbed set with a free
+- [x] **AC-1:** Given a live `CONFIRMED` stay from D to D+2 on a disturbed set with a free
   candidate, when the remodel commits, then every day is claimed on the candidate and released on
   the old set, and `BookingMoved` is published with `bookingDate` D and `lastDate` D+2. *Seam:*
   `RemodelClaims.commit` → `ApplicationEventPublisher` · *Pinned by:*
   `RemodelClaimsServiceTest.commitMovesAStayEveryDayAndPublishesItsLastDay`
-- [ ] **AC-2:** Given a `BookingMoved` for a stay D..D+2, when the listener runs, then the mail
+- [x] **AC-2:** Given a `BookingMoved` for a stay D..D+2, when the listener runs, then the mail
   it hands `TransactionalMailService` carries `bookingDate` D and `lastDate` D+2; a `BookingMoved`
   whose `lastDate` is `null` (an old payload) carries `lastDate` = D. *Seam:*
   `TransactionalMailService.sendBookingMoved` · *Pinned by:*
   `BookingMovedMailListenerTest.aMovedStayMailsItsDays`,
   `BookingMovedMailListenerTest.aPayloadWithoutALastDateMailsOneDay`
-- [ ] **AC-3:** Given a moved-stay mail 15–17 August 2026, when `SmtpMailer` sends it, then the
+- [x] **AC-3:** Given a moved-stay mail 15–17 August 2026, when `SmtpMailer` sends it, then the
   body reads `Days:          15 August – 17 August 2026 (3 days)`, says the days are unchanged, and
   has no `Date:` line; a one-day moved mail keeps `Date:          15 August 2026`. *Seam:* the
   `Mailer` port over SMTP (GreenMail) · *Pinned by:*
   `SmtpMailerIT.aMovedStayNamesItsDays`, `SmtpMailerIT.aMovedOneDayBookingKeepsItsDateLine`
-- [ ] **AC-4:** Given a stay D..D+2 seeded with a receipt move and `moved_at`, when its
+- [x] **AC-4:** Given a stay D..D+2 seeded with a receipt move and `moved_at`, when its
   `BookingMoved` is published through the registry, then the mail in the mock outbox carries the
   stay's last day. *Seam:* the event publication registry → `MockMailer` · *Pinned by:*
   `BookingMovedMailIT.aMovedStayIsMailedWithItsDays`
@@ -75,14 +78,19 @@ N/A — replaces nothing.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | An incomplete `BookingMoved` publication serialized before the field existed deserializes with `lastDate` null and the mail breaks | Low | Med | `lastDay()` reads null as one day; pinned by AC-2's old-payload case | implementer | open |
-| R-2 | The listener's first day comes from the event while it used to come from the receipt: the two could disagree | Low | Low | Both are the moved claim's `bookingDate`, written in the same transaction; AC-4 seeds the receipt and the event from one date | implementer | open |
-| R-3 | Boundary leak (#11) or code in the event (#7) | Low | High | The added field is a `LocalDate`; the payload stays ids + dates | implementer | open |
+| R-1 | An incomplete `BookingMoved` publication serialized before the field existed deserializes with `lastDate` null and the mail breaks | Low | Med | `lastDay()` reads null as one day; pinned by AC-2's old-payload case | implementer | closed — `aPayloadWithoutALastDateMailsOneDay` |
+| R-2 | The listener's first day comes from the event while it used to come from the receipt: the two could disagree | Low | Low | Both are the moved claim's `bookingDate`, written in the same transaction; AC-4 seeds the receipt and the event from one date | implementer | closed — one `claim` writes both in `applyMove` (review gate, history pass) |
+| R-3 | Boundary leak (#11) or code in the event (#7) | Low | High | The added field is a `LocalDate`; the payload stays ids + dates | implementer | closed — structural net green |
 
 ## Open questions / Assumptions
 
+None open.
+
+### Resolved
+
 - **Assumption:** the mail's copy for a stay reads "Your booking code, price and days are
-  unchanged." (the one-day copy keeps "date") — *Owner:* implementer · *Resolves by:* review.
+  unchanged." (the one-day copy keeps "date") — shipped as stated, pinned by
+  `SmtpMailerIT.aMovedStayNamesItsDays`; the review gate raised nothing on it. Merged via PR #1218.
 
 ## Availability & concurrency (invariant #2)
 
@@ -129,14 +137,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR (draft) — CI gate`
+**Stage pointer:** `DONE — merged via PR #1218`
 
-**Next action:** open the draft PR, merge `origin/main`, mark ready, run the review gate.
+**Next action:** none — close-out done in this commit; the next close-out deletes this plan.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the event carries the stay's last day | ✅ | red `f3b04669`, green `40251ad2` |
-| 1 — the moved mail names the days | ✅ | the phase-1 commit |
+| 1 — the moved mail names the days | ✅ | `4eb38b40` |
+| close-out | ✅ | this commit (docs-freshness fixes, `range-booking.md` retired) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -144,6 +153,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-1 | review gate (5 reviewers + overlay) | none | — |
+| F-2 | SonarCloud (PR #1218) | 0 issues, 0 duplicated blocks, 100% new-code coverage | — |
+| F-3 | docs-freshness | `RESPONSIBILITIES.md` § booking and `BookingNotificationFacts#moveFacts` stale on `BookingMoved`'s payload | fixed in the close-out commit |
 
 ---
 
@@ -159,7 +171,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/notification/adapter/out/SmtpMailerIT.java` — AC-3
 - `platform/src/test/java/ai/riviera/platform/notification/BookingMovedMailIT.java` — AC-4
 - `platform/src/test/java/ai/riviera/platform/notification/BookingMailFixtures.java` — a stay's move fact
-- `docs/plans/range-booking.md` — retired at close-out (merged via PR #1216)
+- `platform/src/main/java/ai/riviera/platform/booking/api/BookingNotificationFacts.java` — `moveFacts` Javadoc names the event's days
+- `RESPONSIBILITIES.md` — § booking: `BookingMoved` carries `lastDate` too
+- `docs/plans/range-booking.md` — retired (merged via PR #1216)
 
 ---
 
@@ -167,14 +181,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `BookingMoved.java`, `RemodelClaimsService.java` · Test `RemodelClaimsServiceTest.java`
 
-- [ ] **Step 1:** AC-1 test — a stay `LiveClaim` D..D+2, a candidate free on D; verify three claims,
+- [x] **Step 1:** AC-1 test — a stay `LiveClaim` D..D+2, a candidate free on D; verify three claims,
   three releases and `new BookingMoved(..., D, D+2)`.
-- [ ] **Step 2:** Red — `./gradlew --console=plain test --tests "*RemodelClaimsServiceTest*"` →
+- [x] **Step 2:** Red — `./gradlew --console=plain test --tests "*RemodelClaimsServiceTest*"` →
   compile failure (no six-arg `BookingMoved`).
-- [ ] **Step 3:** `BookingMoved` gains `lastDate`, `lastDay()` and a one-day constructor; the service
+- [x] **Step 3:** `BookingMoved` gains `lastDate`, `lastDay()` and a one-day constructor; the service
   publishes `claim.lastDate()`.
-- [ ] **Step 4:** Green — same command; then the structural net.
-- [ ] **Step 6:** Commit `Multi-day stays: BookingMoved carries the stay's last day (#1215)`.
+- [x] **Step 4:** Green — same command; then the structural net.
+- [x] **Step 6:** Commit `Multi-day stays: BookingMoved carries the stay's last day (#1215)`.
 
 ## Phase 1 — the moved mail names the days
 
@@ -182,14 +196,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `BookingMailFixtures.java` · Test `BookingMovedMailListenerTest.java`, `SmtpMailerIT.java`,
 `BookingMovedMailIT.java`
 
-- [ ] **Step 1:** AC-2 and AC-3 tests; AC-4 IT.
-- [ ] **Step 2:** Red — `./gradlew --console=plain test --tests "*BookingMovedMailListenerTest*"
+- [x] **Step 1:** AC-2 and AC-3 tests; AC-4 IT.
+- [x] **Step 2:** Red — `./gradlew --console=plain test --tests "*BookingMovedMailListenerTest*"
   --tests "*SmtpMailerIT*"` → compile failure / body lacks `Days:`.
-- [ ] **Step 3:** `BookingMovedMail` gains `lastDate`; the listener passes `event.bookingDate()`,
+- [x] **Step 3:** `BookingMovedMail` gains `lastDate`; the listener passes `event.bookingDate()`,
   `event.lastDay()`; `SmtpMailer#sendBookingMoved` renders `daysLine(..., MOVED_LABEL_WIDTH)` and
   "date"/"days" in the unchanged-sentence.
-- [ ] **Step 4:** Green — same command plus `--tests "*BookingMovedMailIT*"` (Docker).
-- [ ] **Step 6:** Commit `Multi-day stays: the moved mail names a stay's days (#1215)`.
+- [x] **Step 4:** Green — same command plus `--tests "*BookingMovedMailIT*"` (Docker).
+- [x] **Step 6:** Commit `Multi-day stays: the moved mail names a stay's days (#1215)`.
 
 ---
 
@@ -202,18 +216,18 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `./gradlew test --tests "*RemodelClaimsServiceTest*"` → PASS.
-- [ ] **AC-2:** `./gradlew test --tests "*BookingMovedMailListenerTest*"` → PASS.
-- [ ] **AC-3:** `./gradlew test --tests "*SmtpMailerIT*"` → PASS.
-- [ ] **AC-4:** `./gradlew test --tests "*BookingMovedMailIT*"` → PASS.
+- [x] **AC-1:** `./gradlew test --tests "*RemodelClaimsServiceTest*"` → PASS.
+- [x] **AC-2:** `./gradlew test --tests "*BookingMovedMailListenerTest*"` → PASS.
+- [x] **AC-3:** `./gradlew test --tests "*SmtpMailerIT*"` → PASS.
+- [x] **AC-4:** `./gradlew test --tests "*BookingMovedMailIT*"` → PASS.
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section justified N/A.
-- [ ] Modulith section filled; id-based payloads (#11); no code in the event (#7).
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability section justified N/A.
+- [x] Modulith section filled; id-based payloads (#11); no code in the event (#7).
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
+- [x] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.

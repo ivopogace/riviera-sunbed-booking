@@ -377,7 +377,8 @@ exactly as it would against any other claim (invariant #2).
   the `SET_TAKEN` answer, so a lost range holds nothing (`ConcurrentRangeReservationIT`). The
   amount is the per-day price × the days, one PaymentIntent (invariant #5); the cancellation
   window and the refund are the first day's on the whole amount, one decision (invariant #10);
-  `BookingConfirmed` and `BookingCancelled` carry `lastDate` so the mails name the days.
+  `BookingConfirmed`, `BookingCancelled` and `BookingMoved` carry `lastDate` so the mails name the
+  days.
 - **Attendance is a per-day record, and I am the sole writer of `booking_day`.** One row per
   service day of a stay, written by the schema the moment a `booking` row becomes `CONFIRMED`
   (trigger `booking_day_on_confirm`, V60; V61 widened it to every day from `booking_date` to
