@@ -308,14 +308,14 @@ pins it. Rows here cover the calendar, whose contract changes shape.
 
 ## Execution status
 
-**Stage pointer:** `plan approved — implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** phase 0, the availability read behind `venue::spi` and the range map read.
+**Next action:** phase 1, the reserve claims every day of a range, all or nothing.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The map read answers a range | | |
-| 1 — The reserve claims every day, all-or-nothing | | |
+| 0 — The map read answers a range | ✅ | phase-0 commit |
+| 1 — The reserve claims every day, all-or-nothing | ⏳ | |
 | 2 — Events, mails and the booking view carry the span | | |
 | 3 — Range picker and the venue page's range state | | |
 | 4 — The partly-free tile, the shorten flow, the no-cover banner | | |

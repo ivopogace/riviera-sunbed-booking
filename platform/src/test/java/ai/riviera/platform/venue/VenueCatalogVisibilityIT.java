@@ -21,6 +21,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.StaySpan;
 import ai.riviera.platform.venue.vocabulary.VenueLocation;
 import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 
@@ -120,11 +121,11 @@ class VenueCatalogVisibilityIT {
 		OperatorId owner = insertOperator("viscat-hidden", "PENDING");
 		VenueId venue = ownedVenue("viscat hidden venue", owner);
 
-		assertTrue(catalog.findVenueMap(venue, tomorrow()).isEmpty());
+		assertTrue(catalog.findVenueMap(venue, StaySpan.oneDay(tomorrow())).isEmpty());
 
 		lifecycle.approve(owner);
 
-		assertTrue(catalog.findVenueMap(venue, tomorrow()).isPresent());
+		assertTrue(catalog.findVenueMap(venue, StaySpan.oneDay(tomorrow())).isPresent());
 	}
 
 	@Test
@@ -133,15 +134,15 @@ class VenueCatalogVisibilityIT {
 		VenueId venue = ownedVenue("viscat season venue", owner);
 
 		assertTrue(isListed("viscat season venue"));
-		assertTrue(catalog.findVenueMap(venue, tomorrow()).isPresent());
+		assertTrue(catalog.findVenueMap(venue, StaySpan.oneDay(tomorrow())).isPresent());
 
 		lifecycle.suspend(owner);
 		assertFalse(isListed("viscat season venue"));
-		assertTrue(catalog.findVenueMap(venue, tomorrow()).isEmpty());
+		assertTrue(catalog.findVenueMap(venue, StaySpan.oneDay(tomorrow())).isEmpty());
 
 		lifecycle.reinstate(owner);
 		assertTrue(isListed("viscat season venue"));
-		assertTrue(catalog.findVenueMap(venue, tomorrow()).isPresent());
+		assertTrue(catalog.findVenueMap(venue, StaySpan.oneDay(tomorrow())).isPresent());
 	}
 
 	@Test
@@ -164,7 +165,7 @@ class VenueCatalogVisibilityIT {
 				""").query(Long.class).single();
 
 		assertFalse(isListed("viscat orphan venue"));
-		assertTrue(catalog.findVenueMap(new VenueId(id), tomorrow()).isEmpty());
+		assertTrue(catalog.findVenueMap(new VenueId(id), StaySpan.oneDay(tomorrow())).isEmpty());
 	}
 
 	@Test

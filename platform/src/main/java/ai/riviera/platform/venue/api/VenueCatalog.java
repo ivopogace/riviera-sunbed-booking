@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import ai.riviera.platform.venue.vocabulary.DailyAvailability;
+import ai.riviera.platform.venue.vocabulary.StaySpan;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueMapView;
@@ -26,16 +27,17 @@ import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 public interface VenueCatalog {
 
 	/**
-	 * The venue and its beach map for a given day, or empty if no venue has that id. Each set's
-	 * {@code availability} reflects the authoritative {@code set_availability} state for
-	 * {@code date} (invariant #2) — a set booked for that date renders {@code TAKEN}, otherwise
-	 * {@code FREE} (issue #44).
+	 * The venue and its beach map for the days of {@code stay}, or empty if no venue has that id.
+	 * Each set's {@code availability} reflects the authoritative {@code set_availability} state
+	 * (invariant #2): {@code FREE} on every day, {@code TAKEN} on every day, else
+	 * {@code PARTLY_FREE} with the taken days named. {@code salesOpen} is the first day's sales
+	 * verdict with every day admitted by the season closure (invariant #4).
 	 *
 	 * @param id   the venue
-	 * @param date the calendar day to render availability for, a {@code LocalDate} in
-	 *             {@code Europe/Tirane} (invariant #6)
+	 * @param stay the days to render availability for, civil days in {@code Europe/Tirane}
+	 *             (invariant #6)
 	 */
-	Optional<VenueMapView> findVenueMap(VenueId id, LocalDate date);
+	Optional<VenueMapView> findVenueMap(VenueId id, StaySpan stay);
 
 	/**
 	 * The venues matching {@code filter}, as discovery summaries, for the tourist browse screen

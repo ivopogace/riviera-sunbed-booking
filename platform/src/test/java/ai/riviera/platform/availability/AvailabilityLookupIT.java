@@ -78,6 +78,12 @@ class AvailabilityLookupIT {
 	}
 
 
+	/** A set trio no other test touches: {@code takenDaysBetween} answers over a window it did not seed alone. */
+	private List<SetId> rangeReadSets() {
+		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id OFFSET 11 LIMIT 3")
+				.query(Long.class).list().stream().map(SetId::new).toList();
+	}
+
 	/** A set pair no other test touches: {@code walkInHoldsFrom} also ranges over {@code booking_date >= :from}. */
 	private List<SetId> walkInHoldSets() {
 		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id OFFSET 9 LIMIT 2")
@@ -265,5 +271,28 @@ class AvailabilityLookupIT {
 		assertEquals(Map.of(marked, List.of(cutoff, cutoff.plusDays(9))), lookup.walkInHoldsFrom(sets, cutoff),
 				"only staff marks, only from the cutoff on, oldest first; a set with none is absent");
 		assertEquals(Map.of(), lookup.walkInHoldsFrom(List.of(), cutoff));
+	}
+
+	@Test
+	void takenDaysBetweenListsHeldDaysPerSet() {
+		List<SetId> sets = rangeReadSets();
+		SetId free = sets.get(0);
+		SetId partly = sets.get(1);
+		SetId held = sets.get(2);
+		LocalDate first = LocalDate.of(2027, 7, 3);
+		LocalDate last = first.plusDays(2);
+		mark(partly, first.plusDays(1), "BOOKED_ONLINE");
+		mark(held, last, "STAFF_MARKED");
+		mark(held, first, "BOOKED_ONLINE");
+		mark(held, first.plusDays(1), "BOOKED_ONLINE");
+		mark(held, last.plusDays(1), "BOOKED_ONLINE");
+		mark(free, first.minusDays(1), "BOOKED_ONLINE");
+
+		Map<SetId, List<LocalDate>> taken = lookup.takenDaysBetween(sets, first, last);
+
+		assertEquals(Map.of(partly, List.of(first.plusDays(1)),
+				held, List.of(first, first.plusDays(1), last)), taken,
+				"held days inside the window per set, ascending, whatever the state; a free set is absent");
+		assertEquals(Map.of(), lookup.takenDaysBetween(List.of(), first, last));
 	}
 }

@@ -13,6 +13,7 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetView;
+import ai.riviera.platform.venue.vocabulary.StaySpan;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
@@ -44,7 +45,7 @@ class BeachMapReadService implements ViewBeachMap {
 	public Optional<OperatorBeachMap> beachMapFor(OperatorId operator, VenueId venueId) {
 		// Ownership first — 403 outranks 404, so a non-owner never learns whether the venue exists.
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
-		return catalog.findVenueMap(venueId, claims.today()).map(map -> {
+		return catalog.findVenueMap(venueId, StaySpan.oneDay(claims.today())).map(map -> {
 			List<SetId> setIds = map.sets().stream().map(SetView::id).map(SetId::new).toList();
 			List<SetLock> locks = claims.locksOn(setIds).values().stream()
 					.sorted(Comparator.comparingLong(lock -> lock.setId().value()))

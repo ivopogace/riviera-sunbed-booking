@@ -16,6 +16,7 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetView;
+import ai.riviera.platform.venue.vocabulary.StaySpan;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueMapView;
 
@@ -46,7 +47,7 @@ class BeachMapReadServiceTest {
 	private final BeachMapReadService service = new BeachMapReadService(ownership, catalog, claims);
 
 	private static SetView set(long id, int position) {
-		return new SetView(id, "A", position, "STANDARD", Pool.ONLINE, PRICE, position, 1, "FREE");
+		return new SetView(id, "A", position, "STANDARD", Pool.ONLINE, PRICE, position, 1, "FREE", 1, List.of());
 	}
 
 	private static VenueMapView map(List<SetView> sets) {
@@ -59,7 +60,7 @@ class BeachMapReadServiceTest {
 	void answersTheMapAndItsLockedSetsOrderedBySetId() {
 		VenueMapView map = map(List.of(set(9L, 1), set(3L, 2), set(5L, 3)));
 		when(claims.today()).thenReturn(TODAY);
-		when(catalog.findVenueMap(VENUE, TODAY)).thenReturn(Optional.of(map));
+		when(catalog.findVenueMap(VENUE, StaySpan.oneDay(TODAY))).thenReturn(Optional.of(map));
 		SetLock nine = new SetLock(new SetId(9L), TODAY.plusDays(2), null);
 		SetLock three = new SetLock(new SetId(3L), null, TODAY);
 		when(claims.locksOn(List.of(new SetId(9L), new SetId(3L), new SetId(5L))))
@@ -85,7 +86,7 @@ class BeachMapReadServiceTest {
 	@Test
 	void aVenueTheMapReadAnswersNothingForIsEmptyAfterOwnershipPassed() {
 		when(claims.today()).thenReturn(TODAY);
-		when(catalog.findVenueMap(VENUE, TODAY)).thenReturn(Optional.empty());
+		when(catalog.findVenueMap(VENUE, StaySpan.oneDay(TODAY))).thenReturn(Optional.empty());
 
 		assertEquals(Optional.empty(), service.beachMapFor(OWNER, VENUE),
 				"owned-but-unanswered venue signals empty (the controller's 404), never a phantom map");

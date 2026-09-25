@@ -143,6 +143,7 @@ import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.StaySpan;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
 import ai.riviera.platform.review.api.ReviewEligibility;
 import ai.riviera.platform.review.application.ModerationPage;
@@ -744,7 +745,7 @@ class WebSliceStubs {
 	VenueCatalog venueCatalog() {
 		return new VenueCatalog() {
 			@Override
-			public Optional<VenueMapView> findVenueMap(VenueId id, LocalDate date) {
+			public Optional<VenueMapView> findVenueMap(VenueId id, StaySpan stay) {
 				return Optional.empty();
 			}
 

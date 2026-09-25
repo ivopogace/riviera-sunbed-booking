@@ -133,6 +133,36 @@ class VenueReadControllerIT {
 	}
 
 	@Test
+	void rangeReadCarriesPerSetDays() throws Exception {
+		long set = anyOnlineSet();
+		LocalDate first = LocalDate.of(2027, 8, 1);
+		book(set, first.plusDays(1));
+
+		mvc.perform(get("/api/venues/{id}", MIRAMAR)
+						.param("date", first.toString()).param("lastDate", first.plusDays(2).toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.sets[?(@.id == %d)].availability", set).value(contains("PARTLY_FREE")))
+				.andExpect(jsonPath("$.sets[?(@.id == %d)].freeDays", set).value(contains(2)))
+				.andExpect(jsonPath("$.sets[?(@.id == %d)].takenDates[0]", set)
+						.value(contains(first.plusDays(1).toString())));
+	}
+
+	@Test
+	void lastDateBoundsAre400() throws Exception {
+		LocalDate first = LocalDate.of(2027, 8, 10);
+
+		mvc.perform(get("/api/venues/{id}", MIRAMAR)
+						.param("date", first.toString()).param("lastDate", first.minusDays(1).toString()))
+				.andExpect(status().isBadRequest());
+		mvc.perform(get("/api/venues/{id}", MIRAMAR)
+						.param("date", first.toString()).param("lastDate", first.plusDays(62).toString()))
+				.andExpect(status().isBadRequest());
+		mvc.perform(get("/api/venues/{id}", MIRAMAR)
+						.param("date", first.toString()).param("lastDate", first.plusDays(61).toString()))
+				.andExpect(status().isOk());
+	}
+
+	@Test
 	void defaultsToTodayTirane() throws Exception {
 		// AC-3: no date param ⇒ today in Europe/Tirane. Book a set for that exact date and
 		// confirm the param-less read renders it TAKEN.

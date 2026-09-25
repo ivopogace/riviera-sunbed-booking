@@ -18,6 +18,7 @@ import ai.riviera.platform.review.vocabulary.ReviewCursor;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.application.ListVenueReviews;
+import ai.riviera.platform.venue.vocabulary.StaySpan;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueMapView;
@@ -83,11 +84,18 @@ class VenueReadController {
 		return catalog.listVenues(VenueFilter.of(beach, region), effectiveDate);
 	}
 
+	/**
+	 * The venue's beach map for one day ({@code date}, defaulting to today in {@code Europe/Tirane})
+	 * or for a stay ({@code date} to {@code lastDate}, inclusive). A last day before the first, or a
+	 * stay wider than {@link StaySpan#MAX_DAYS}, is rejected {@code 400} before the catalogue is asked.
+	 */
 	@GetMapping("/{venueId}")
 	ResponseEntity<VenueMapView> getVenue(@PathVariable long venueId,
-			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-		LocalDate effectiveDate = date != null ? date : todayInTirane();
-		return catalog.findVenueMap(new VenueId(venueId), effectiveDate)
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate lastDate) {
+		LocalDate firstDay = date != null ? date : todayInTirane();
+		StaySpan stay = InvalidApiRequestException.parsing(() -> StaySpan.of(firstDay, lastDate));
+		return catalog.findVenueMap(new VenueId(venueId), stay)
 				.map(ResponseEntity::ok)
 				.orElseGet(() -> ResponseEntity.notFound().build());
 	}

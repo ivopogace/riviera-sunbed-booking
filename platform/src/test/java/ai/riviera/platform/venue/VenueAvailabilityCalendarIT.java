@@ -17,6 +17,7 @@ import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.vocabulary.AvailabilitySummary;
 import ai.riviera.platform.venue.vocabulary.DailyAvailability;
 import ai.riviera.platform.venue.vocabulary.SetView;
+import ai.riviera.platform.venue.vocabulary.StaySpan;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -124,7 +125,7 @@ class VenueAvailabilityCalendarIT {
 				.orElseThrow();
 
 		for (DailyAvailability day : days) {
-			long freeOnTheMap = catalog.findVenueMap(venue, day.date()).orElseThrow().sets().stream()
+			long freeOnTheMap = catalog.findVenueMap(venue, StaySpan.oneDay(day.date())).orElseThrow().sets().stream()
 					.map(SetView::availability)
 					.filter("FREE"::equals)
 					.count();

@@ -149,6 +149,31 @@ class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 	}
 
 	@Override
+	public Map<SetId, List<LocalDate>> takenDaysBetween(Collection<SetId> setIds, LocalDate from, LocalDate to) {
+		if (setIds.isEmpty()) {
+			return Map.of(); // no IN-list — avoid an empty "IN ()" and a needless round-trip
+		}
+		List<Long> ids = setIds.stream().map(SetId::value).toList();
+		Map<SetId, List<LocalDate>> taken = new LinkedHashMap<>();
+		jdbc.sql("""
+				SELECT set_id, booking_date
+				FROM set_availability
+				WHERE set_id IN (:ids)
+				  AND booking_date BETWEEN :from AND :to
+				ORDER BY set_id, booking_date
+				""")
+				.param("ids", ids)
+				.param("from", from)
+				.param("to", to)
+				.query((rs, rowNum) -> Map.entry(
+						new SetId(rs.getLong(SET_ID)), rs.getObject("booking_date", LocalDate.class)))
+				.list()
+				.forEach(row -> taken.computeIfAbsent(row.getKey(), id -> new ArrayList<>()).add(row.getValue()));
+		taken.replaceAll((id, days) -> List.copyOf(days));
+		return Map.copyOf(taken);
+	}
+
+	@Override
 	public Map<SetId, List<LocalDate>> walkInHoldsFrom(Collection<SetId> setIds, LocalDate from) {
 		if (setIds.isEmpty()) {
 			return Map.of(); // no IN-list — avoid an empty "IN ()" and a needless round-trip
