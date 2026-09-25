@@ -15,6 +15,7 @@ import org.mockito.InOrder;
 import ai.riviera.platform.venue.spi.BookingPresence;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 import ai.riviera.platform.venue.vocabulary.DisturbedSet;
+import ai.riviera.platform.venue.vocabulary.GateVerdict;
 import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -25,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -35,7 +37,9 @@ import static org.mockito.Mockito.when;
  * The gate's place in the shared layout write: asked once, after the venue row and every set row are
  * locked and before anything is written, with the disturbed sets and their walk-in holds; a refusing
  * gate writes nothing and spends no token; a proceeding gate is still followed by the probe, so a
- * claim it left behind is refused and never written over. The save's own cases — the shape
+ * claim it left behind is refused and never written over; a set the gate keeps is left exactly as
+ * stored and skipped by the probe, and a submitted set that wants its label refuses the whole write.
+ * The save's own cases — the shape
  * rejections, the diff, the retire-or-delete choice — stay pinned through the PUT in
  * {@code VenueAdminServiceTest}.
  */
@@ -78,7 +82,7 @@ class LayoutWriterTest {
 		LayoutWrite outcome = writer.write(VENUE, 4, KEEP_A2_ONLY, disturbed -> {
 			order.add("gate");
 			seen.addAll(disturbed);
-			return false;
+			return GateVerdict.Decline.DECLINED;
 		});
 
 		assertEquals(LayoutWrite.Refused.REFUSED, outcome);
@@ -97,7 +101,7 @@ class LayoutWriterTest {
 		givenLockedMap();
 		when(bookings.nearestLiveBookings(List.of(A1))).thenReturn(Map.of(A1, TODAY_IN_TIRANE.plusDays(3)));
 
-		LayoutWrite outcome = writer.write(VENUE, 4, KEEP_A2_ONLY, disturbed -> true);
+		LayoutWrite outcome = writer.write(VENUE, 4, KEEP_A2_ONLY, disturbed -> GateVerdict.proceed());
 
 		assertEquals(new LayoutWrite.SetsInUse(List.of(new BlockedSet(new PlacedSet(A1, AT_A1),
 				new SetLock(A1, TODAY_IN_TIRANE.plusDays(3), null)))), outcome);
@@ -113,7 +117,7 @@ class LayoutWriterTest {
 
 		LayoutWrite outcome = writer.write(VENUE, 4, KEEP_A2_ONLY, disturbed -> {
 			seen.set(disturbed);
-			return true;
+			return GateVerdict.proceed();
 		});
 
 		assertEquals(LayoutWrite.Written.WRITTEN, outcome);
@@ -136,10 +140,56 @@ class LayoutWriterTest {
 
 		assertEquals(LayoutWrite.Written.WRITTEN, writer.write(VENUE, 4, repaint, disturbed -> {
 			seen.set(disturbed);
-			return true;
+			return GateVerdict.proceed();
 		}));
 		assertTrue(seen.get().isEmpty());
 		verify(availability, never()).walkInHoldsFrom(anyCollection(), any());
+	}
+
+	@Test
+	void aKeptSetIsLeftAsStoredAndSkippedByTheProbe() {
+		givenLockedMap();
+		when(bookings.nearestLiveBookings(List.of(A1))).thenReturn(Map.of(A1, TODAY_IN_TIRANE.plusDays(1)));
+
+		LayoutWrite outcome = writer.write(VENUE, 4, KEEP_A2_ONLY, disturbed -> new GateVerdict.Proceed(List.of(A1)));
+
+		assertEquals(LayoutWrite.Written.WRITTEN, outcome, "the live claim on A1 is the gate's kept one, not a set in use");
+		verify(venues, never()).retireSet(any(), any(), any());
+		verify(venues, never()).deleteSet(any(), any());
+		verify(venues, never()).updateSet(eq(VENUE), eq(A1), any());
+		InOrder order = inOrder(venues);
+		order.verify(venues).updateSet(VENUE, A2, KEEP_A2_ONLY.sets().getFirst());
+		order.verify(venues).incrementSetVersion(VENUE);
+	}
+
+	@Test
+	void aKeptRenumberedSetKeepsItsStoredRow() {
+		givenLockedMap();
+		SetCommand a1AsThree = new SetCommand("A", 3, "PREMIUM", Pool.WALK_IN, 9900, "EUR", 1, 1);
+		SetCommand a2Unchanged = new SetCommand("A", 2, "STANDARD", Pool.ONLINE, 2000, "EUR", 2, 1);
+
+		LayoutWrite outcome = writer.write(VENUE, 4, new LayoutCommand(List.of(a1AsThree, a2Unchanged)),
+				disturbed -> new GateVerdict.Proceed(List.of(A1)));
+
+		assertEquals(LayoutWrite.Written.WRITTEN, outcome);
+		verify(venues, never()).updateSet(eq(VENUE), eq(A1), any());
+		verify(venues).updateSet(VENUE, A2, a2Unchanged);
+		verify(venues).incrementSetVersion(VENUE);
+	}
+
+	@Test
+	void aSubmittedSetOnAKeptSetsLabelRefusesTheWholeWrite() {
+		givenLockedMap();
+		SetCommand a2RenumberedToOne = new SetCommand("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 2, 1);
+
+		LayoutWrite outcome = writer.write(VENUE, 4, new LayoutCommand(List.of(a2RenumberedToOne)),
+				disturbed -> new GateVerdict.Proceed(List.of(A1)));
+
+		assertEquals(new LayoutWrite.KeptSetsDisplaced(List.of(new PlacedSet(A1, AT_A1))), outcome);
+		verify(venues, never()).retireSet(any(), any(), any());
+		verify(venues, never()).updateSet(any(), any(), any());
+		verify(venues, never()).incrementSetVersion(any());
+		verify(bookings, never()).nearestLiveBookings(anyCollection());
 	}
 
 	@Test

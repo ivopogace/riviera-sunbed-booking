@@ -7,9 +7,12 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Component;
 
+import java.util.Set;
+
 import ai.riviera.platform.venue.api.RemodelGate;
 import ai.riviera.platform.venue.spi.BookingPresence;
 import ai.riviera.platform.venue.vocabulary.DisturbedSet;
+import ai.riviera.platform.venue.vocabulary.GateVerdict;
 import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
@@ -17,12 +20,14 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * The one bulk layout write, shared by the save and the remodel commit: the shape checks, the venue
  * row lock and token compare, the {@code FOR UPDATE} over every active set row, the cell-keyed
  * {@link LayoutDiff}, then the caller's {@link RemodelGate} — asked once, with the disturbed sets and
- * their walk-in holds, before anything is written — then the save's own live-claim probe, then the
- * write: removals (retire with history, delete without), parked labels, in-place updates, inserts,
- * the token. The save's gate always proceeds, so the probe alone decides; the commit's gate moves the
- * bookings first, and the probe then finds nothing unless the gate left a claim behind. Runs inside
- * the caller's transaction, after the caller asserted ownership (invariant #13). Rationale:
- * RESPONSIBILITIES.md §venue.
+ * their walk-in holds, before anything is written — then the sets the gate kept are taken out of the
+ * diff and a submitted set wanting one's label refuses the write, then the save's own live-claim
+ * probe over what is still disturbed, then the write: removals (retire with history, delete
+ * without), parked labels, in-place updates, inserts, the token. The save's gate always proceeds
+ * keeping nothing, so the probe alone decides; the commit's gate settles the bookings first and names
+ * the sets it kept for the ones it could not, and the probe then finds nothing unless the gate left a
+ * claim behind. Runs inside the caller's transaction, after the caller asserted ownership (invariant
+ * #13). Rationale: RESPONSIBILITIES.md §venue.
  */
 @Component
 class LayoutWriter {
@@ -62,11 +67,17 @@ class LayoutWriter {
 			return new LayoutWrite.Rejected(LayoutRejection.STALE_WRITE);
 		}
 		// Lock the set rows before the gate and the probe: a racing claim is either seen or blocks on its FK (invariant #2).
-		LayoutDiff diff = LayoutDiff.of(venues.lockSetsOfVenue(venueId), command);
-		List<PlacedSet> disturbed = diff.disturbed();
-		if (!gate.proceed(withHolds(disturbed))) {
+		LayoutDiff painted = LayoutDiff.of(venues.lockSetsOfVenue(venueId), command);
+		if (!(gate.proceed(withHolds(painted.disturbed())) instanceof GateVerdict.Proceed(var keptIds))) {
 			return LayoutWrite.Refused.REFUSED;
 		}
+		Set<SetId> keptSets = Set.copyOf(keptIds);
+		List<PlacedSet> displaced = painted.displaced(keptSets);
+		if (!displaced.isEmpty()) {
+			return new LayoutWrite.KeptSetsDisplaced(displaced);
+		}
+		LayoutDiff diff = painted.keeping(keptSets);
+		List<PlacedSet> disturbed = diff.disturbed();
 		Map<SetId, SetLock> locks = claims.locksOn(disturbed.stream().map(PlacedSet::id).toList());
 		if (!locks.isEmpty()) {
 			return new LayoutWrite.SetsInUse(disturbed.stream()

@@ -31,8 +31,10 @@ public interface BeachMapRemodel {
 	 * shape and {@code expectedVersion} checks, the venue row then every active set row locked
 	 * {@code FOR UPDATE}, the diff, then {@code gate} with the disturbed sets and their holds — whatever
 	 * the caller does inside it shares the transaction and the locks — then the save's own live-claim
-	 * probe, then the write. A refusing gate writes nothing and spends no token. The layout diff and
-	 * every move the gate made commit together or not at all (invariant #2).
+	 * probe over the disturbed sets the gate did not keep, then the write with the kept sets left as
+	 * stored. A declining gate writes nothing and spends no token; so does a save whose submitted sets
+	 * want a kept set's row and position ({@code KeptSetsDisplaced}). The layout diff and every move the
+	 * gate made commit together or not at all (invariant #2).
 	 */
 	LayoutCommitOutcome commit(OperatorId operator, VenueId venueId, long expectedVersion, List<LayoutCell> cells,
 			RemodelGate gate);

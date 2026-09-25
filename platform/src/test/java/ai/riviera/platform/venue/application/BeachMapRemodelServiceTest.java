@@ -19,6 +19,7 @@ import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 import ai.riviera.platform.venue.api.RemodelGate;
 import ai.riviera.platform.venue.vocabulary.DisturbedSet;
 import ai.riviera.platform.venue.vocabulary.LayoutCell;
+import ai.riviera.platform.venue.vocabulary.GateVerdict;
 import ai.riviera.platform.venue.vocabulary.LayoutCommitOutcome;
 import ai.riviera.platform.venue.vocabulary.LayoutPreview;
 import ai.riviera.platform.venue.vocabulary.LayoutRejection;
@@ -130,7 +131,7 @@ class BeachMapRemodelServiceTest {
 
 	private static final List<LayoutCell> CELLS = List.of(
 			new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 1));
-	private static final RemodelGate PROCEED = disturbed -> true;
+	private static final RemodelGate PROCEED = disturbed -> GateVerdict.proceed();
 
 	@Test
 	void commitRefusesANonOwnerBeforeTheWriter() {
@@ -162,5 +163,10 @@ class BeachMapRemodelServiceTest {
 				service.commit(OWNER, VENUE, 4, CELLS, PROCEED));
 		assertEquals(true, status.isRollbackOnly(),
 				"anything but a written layout rolls the unit back, so a move the gate made never survives");
+
+		when(writer.write(VENUE, 4, LayoutCommand.of(CELLS), PROCEED))
+				.thenReturn(new LayoutWrite.KeptSetsDisplaced(List.of(new PlacedSet(A2, at))));
+		assertEquals(new LayoutCommitOutcome.KeptSetsDisplaced(List.of(A2)), service.commit(OWNER, VENUE, 4, CELLS, PROCEED));
+		assertEquals(true, status.isRollbackOnly(), "a displaced kept set rolls the unit back too");
 	}
 }

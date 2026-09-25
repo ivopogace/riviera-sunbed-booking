@@ -13,6 +13,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.spi.BookingPresence;
+import ai.riviera.platform.venue.vocabulary.GateVerdict;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -177,12 +178,13 @@ class BeachMapEditService implements EditBeachMap {
 			LayoutCommand command) {
 		// Ownership first — fail closed before any read/write (invariant #13, BOLA).
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
-		// The save's gate always proceeds: the probe after it is what refuses a live claim (SetsInUse).
-		return switch (writer.write(venueId, expectedVersion, command, disturbed -> true)) {
+		// The save's gate always proceeds keeping nothing: the probe after it is what refuses a live claim (SetsInUse).
+		return switch (writer.write(venueId, expectedVersion, command, disturbed -> GateVerdict.proceed())) {
 			case LayoutWrite.Written ignored -> ReplaceLayoutOutcome.Replaced.REPLACED;
 			case LayoutWrite.SetsInUse(var sets) -> new ReplaceLayoutOutcome.SetsInUse(sets);
 			case LayoutWrite.Rejected(var reason) -> new ReplaceLayoutOutcome.Rejected(reason);
 			case LayoutWrite.Refused ignored -> throw new IllegalStateException("the save's gate never refuses");
+			case LayoutWrite.KeptSetsDisplaced ignored -> throw new IllegalStateException("the save's gate keeps nothing");
 		};
 	}
 
