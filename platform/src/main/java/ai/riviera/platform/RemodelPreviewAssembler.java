@@ -18,8 +18,9 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 /**
  * The remodel picture on the wire, assembled once for the preview and for the two commit refusals
  * that answer with a fresh picture: {@code venue}'s disturbed sets with their walk-in holds and
- * {@code booking}'s classified claims become the five groups, {@code keep} (the blocking claims' and
- * the held sets, by id) and the {@link PreviewToken} over the classification.
+ * {@code booking}'s classified claims become the five groups, {@code keep} (the sets that stay on the
+ * map: the blocked claims', which the save keeps itself, and the held sets, which the operator must
+ * keep, by id) and the {@link PreviewToken} over the classification.
  *
  * <p>The venue-change fee is quoted with the picture: {@code payout} decides the amount and it
  * reaches here through {@code booking}, which is what keeps this root class off {@code payout}

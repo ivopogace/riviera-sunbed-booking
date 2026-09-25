@@ -104,10 +104,10 @@ const REFUSALS_CARRYING_A_FRESH_PICTURE: ReadonlySet<string> = new Set([
  * the button that was pressed (WCAG 2.4.3, RV-FE-9). A committable picture that refunds arms Save
  * only once the count is retyped — and the count is exactly what changed — so the field the
  * operator must correct takes it; a picture with nothing to correct hands it to Save, and one that
- * lost its Save to Back.
+ * lost its Save to Back — a held picture, or a displaced kept set the operator must paint back.
  */
-function freshPictureLandingSpot(fresh: RemodelPreview): string {
-  if (!remodelPreviewIsCommittable(fresh)) {
+function freshPictureLandingSpot(fresh: RemodelPreview, displaced: boolean): string {
+  if (displaced || !remodelPreviewIsCommittable(fresh)) {
     return 'layout-remodel-back';
   }
   return fresh.refunds.length > 0 ? 'layout-remodel-refund-count' : 'layout-remodel-commit';
@@ -320,6 +320,8 @@ export class LayoutEditor {
   protected readonly remodelPreview = signal<RemodelPreview | null>(null);
   /** The picture on screen is the server's fresh answer after a commit found the bookings had changed. */
   protected readonly previewStale = signal(false);
+  /** The commit answered `REMODEL_REFUSED`: the paint gives a kept set's row and position to another set. */
+  protected readonly previewDisplaced = signal(false);
   /** True while the commit POST is in flight — the dialog's Save is busy. */
   protected readonly committing = signal(false);
   /** The receipt of the commit just made, or one opened from past remodels; null when none is shown. */
@@ -579,6 +581,7 @@ export class LayoutEditor {
     this.previewing.set(false);
     this.remodelPreview.set(null);
     this.previewStale.set(false);
+    this.previewDisplaced.set(false);
     this.committing.set(false);
     this.pendingRemodel = null;
     this.receipt.set(null);
@@ -1035,6 +1038,8 @@ export class LayoutEditor {
       }
       this.pendingRemodel = { sets, expectedVersion };
       this.previewStale.set(false);
+      this.previewDisplaced.set(false);
+      this.previewDisplaced.set(false);
       this.remodelPreview.set(preview);
     } catch (error) {
       if (this.epoch !== epoch) {
@@ -1049,6 +1054,7 @@ export class LayoutEditor {
   protected cancelRemodel(): void {
     this.remodelPreview.set(null);
     this.previewStale.set(false);
+    this.previewDisplaced.set(false);
     this.pendingRemodel = null;
     this.focusAfterRender('layout-save');
   }
@@ -1056,9 +1062,10 @@ export class LayoutEditor {
   /**
    * Save the previewed layout and settle its bookings: the body the dialog previewed, the token the
    * preview answered and — on a picture that refunds guests — the count and reason the operator
-   * typed. A `200` shows the receipt in the dialog's place; `STALE_PREVIEW`, `REMODEL_REFUSED` and
-   * `REFUND_NOT_CONFIRMED` re-render the dialog with the server's fresh picture and its token; every
-   * other failure is the save's own.
+   * typed. A `200` shows the receipt in the dialog's place; `STALE_PREVIEW` and
+   * `REFUND_NOT_CONFIRMED` re-render the dialog with the server's fresh picture and its token as
+   * stale, `REMODEL_REFUSED` as a displaced kept set the operator must paint back; every other
+   * failure is the save's own.
    */
   protected async commitRemodel(confirmation: RemodelConfirmation): Promise<void> {
     const venueId = this.venueId();
@@ -1084,6 +1091,8 @@ export class LayoutEditor {
       }
       this.remodelPreview.set(null);
       this.previewStale.set(false);
+      this.previewDisplaced.set(false);
+      this.previewDisplaced.set(false);
       this.pendingRemodel = null;
       this.afterSaved(pending.sets, pending.expectedVersion);
       this.receipts.set(null);
@@ -1098,13 +1107,17 @@ export class LayoutEditor {
         ? remodelPreviewOf(error)
         : null;
       if (fresh) {
-        this.previewStale.set(true);
+        const displaced = code === 'REMODEL_REFUSED';
+        this.previewStale.set(!displaced);
+        this.previewDisplaced.set(displaced);
         this.remodelPreview.set(fresh);
-        this.focusAfterRender(freshPictureLandingSpot(fresh));
+        this.focusAfterRender(freshPictureLandingSpot(fresh, displaced));
         return;
       }
       this.remodelPreview.set(null);
       this.previewStale.set(false);
+      this.previewDisplaced.set(false);
+      this.previewDisplaced.set(false);
       this.pendingRemodel = null;
       this.failSave(error);
       this.focusAfterRender('layout-save');

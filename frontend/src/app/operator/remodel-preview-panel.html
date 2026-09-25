@@ -6,6 +6,9 @@
   @if (stale()) {
     The bookings changed since you previewed — this is the fresh picture. Check it again before
     saving.
+  } @else if (displaced()) {
+    The layout gives the row and position of a set this remodel keeps to another set, so it can’t be
+    saved as painted.
   }
 </output>
 @if (committable()) {
@@ -28,7 +31,11 @@
   }
 } @else {
   <p class="text-[12.5px] leading-[1.45] font-semibold">
-    <strong>Staff hold sets this save removes, so it can’t be saved as painted.</strong>
+    @if (displaced()) {
+      <strong>A kept set must stay at its row and position; the paint gives them away.</strong>
+    } @else {
+      <strong>Staff hold sets this save removes, so it can’t be saved as painted.</strong>
+    }
     A remodel of these sets would do the following.
   </p>
   <p class="mt-1 text-[12.5px] leading-[1.45] font-bold" data-testid="layout-remodel-keep">

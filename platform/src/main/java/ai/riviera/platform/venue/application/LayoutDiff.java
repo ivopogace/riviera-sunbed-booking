@@ -104,7 +104,8 @@ record LayoutDiff(List<Update> updates, List<SetCommand> inserts, List<PlacedSet
 	/**
 	 * The {@code kept} disturbed sets whose stored row and position some other submitted set wants —
 	 * an update of another set or an insert. Written with the kept set in place, that command would
-	 * collide on the layout-uniqueness index, so the save refuses instead.
+	 * collide on the layout-uniqueness index, so the save refuses instead — a precise answer where
+	 * {@code set_position_cell_uniq} stays the race-safe backstop, as {@code LayoutCommand#duplicateWithin} does.
 	 */
 	List<PlacedSet> displaced(Set<SetId> kept) {
 		Map<String, SetId> wanted = new HashMap<>();

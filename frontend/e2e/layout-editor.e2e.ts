@@ -1030,6 +1030,35 @@ test('a blocked picture commits: the kept set stays on the map and the receipt l
   await expectNoSeriousAxeViolations(page, 'layout editor, remodel receipt with a kept line');
 });
 
+test('a commit refused for a displaced kept set re-renders the picture with Back alone and says which set to put back (#1199)', async ({
+  page,
+}) => {
+  await mockEditor(page, [], SEEDED_SETS, [], KEPT_PREVIEW);
+  await page.route(/\/api\/venues\/1\/beach-map\/commit$/, (route) =>
+    route.fulfill({
+      status: 409,
+      contentType: 'application/problem+json',
+      json: { code: 'REMODEL_REFUSED', detail: 'displaced', preview: KEPT_PREVIEW },
+    }),
+  );
+  await page.goto('/operator/1/beach-map');
+  await signIn(page);
+  await page.getByTestId('layout-tool-gap').click();
+  await page.locator('[data-testid="layout-cell"][data-grid-row="1"][data-grid-col="0"]').click();
+  await page.getByTestId('layout-save').click();
+  await page.getByTestId('layout-remodel-commit').click();
+
+  const note = page.getByTestId('layout-remodel-stale');
+  await expect(note).toContainText('gives the row and position of a set this remodel keeps');
+  await expect(note).not.toContainText('bookings changed');
+  await expect(page.getByTestId('layout-remodel-keep')).toHaveText(
+    'Keep Row B · position 1 at its row and position to save.',
+  );
+  await expect(page.getByTestId('layout-remodel-preview').getByRole('button')).toHaveCount(1);
+  await expect(page.getByTestId('layout-remodel-back')).toBeFocused();
+  await expect(page.getByTestId('layout-error')).toHaveCount(0);
+});
+
 test('a picture with refunds commits once the count and reason are typed, and the receipt lists them (#1035, + axe)', async ({
   page,
 }) => {

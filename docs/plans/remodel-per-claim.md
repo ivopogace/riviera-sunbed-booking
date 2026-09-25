@@ -248,6 +248,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | Sonar (typescript:S3358) | nested ternary in `keepSentence` | fixed — verb hoisted to a local |
 | F-4 | docs-freshness 2b over `cf808acd..3f4fe9d5` | `JdbcRemodelReceipts` Javadoc counted "the two line readers"; the kept reader is the third | fixed — count dropped |
 | F-5 | docs-freshness plan retirement | `docs/plans/multi-day-span.md` (merged via PR #1213) still in the tree; no citation outside `docs/plans/` | fixed — `git rm` in this PR |
+| F-7 | review gate (prior-PR reviewer, PR #1052's focus finding) | `REMODEL_REFUSED` now carries a committable picture, so the editor focused Save and would resubmit the same paint | fixed — the panel's `displaced` input: Back alone, the paint-back sentence; editor spec + e2e |
+| F-8 | review gate (prior-PR reviewer, PR #1051's copy finding) | the held branch's keep sentence named every `keep` set, blocked claims' included, though the save keeps those itself | fixed — names the held sets alone |
+| F-9 | review gate (comment reviewer) | `RemodelPreviewResponse`/`RemodelPreviewAssembler` still worded `keep` as "a blocked preview says to keep" | fixed — reworded |
+| F-10 | review gate (conventions reviewer, RV-BE-19) | `LayoutDiff#displaced` restates the label-uniqueness rule in Java | no change — the precedented pre-check for a typed answer (`LayoutCommand#duplicateWithin`); the index stays the backstop, now said in its Javadoc |
+| F-11 | review gate (conventions reviewer, §6d budget) | touched type Javadocs over ~6 lines | no change — pre-existing length, "~" guideline |
 | F-6 | docs-freshness 2a/3 | zero stale present-tense facts in `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, ADRs, skills, `docs/agents`; "five wire groups" and "the four remodel legs" still hold (a kept claim is a group, not a leg) | no action |
 
 ---

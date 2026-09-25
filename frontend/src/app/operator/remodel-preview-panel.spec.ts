@@ -18,7 +18,7 @@ describe('RemodelPreviewPanel (#1033, #1034, #1199)', () => {
 
   function render(
     preview: RemodelPreview,
-    inputs: { stale?: boolean; committing?: boolean } = {},
+    inputs: { stale?: boolean; committing?: boolean; displaced?: boolean } = {},
   ): void {
     TestBed.configureTestingModule({
       imports: [RemodelPreviewPanel],
@@ -29,6 +29,7 @@ describe('RemodelPreviewPanel (#1033, #1034, #1199)', () => {
     fixture.componentRef.setInput('venueId', 1);
     fixture.componentRef.setInput('stale', inputs.stale ?? false);
     fixture.componentRef.setInput('committing', inputs.committing ?? false);
+    fixture.componentRef.setInput('displaced', inputs.displaced ?? false);
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
   }
@@ -169,6 +170,31 @@ describe('RemodelPreviewPanel (#1033, #1034, #1199)', () => {
     expect(byId('layout-remodel-commit')!.textContent).toContain('Save and keep 2 bookings');
     byId('layout-remodel-commit')!.click();
     expect(committed).toHaveBeenCalledWith({ refundCount: 0, refundReason: '' });
+  });
+
+  it('a displaced kept set offers Back alone and says which set to put back (#1199)', () => {
+    render(BLOCKS_ONLY_PREVIEW, { displaced: true });
+
+    expect(byId('layout-remodel-stale')!.textContent).toMatch(
+      /gives the row and position of a set this remodel keeps to another set/,
+    );
+    expect(byId('layout-remodel-stale')!.textContent).not.toMatch(/bookings changed/);
+    expect(byId('layout-remodel-keep')!.textContent).toMatch(
+      /Keep Row A · position 3 and Row A · position 2 at their row and position to save/,
+    );
+    expect(host.textContent).not.toMatch(/Staff hold sets/);
+    expect(byId('layout-remodel-commit')).toBeNull();
+    expect(host.querySelectorAll('button')).toHaveLength(1);
+  });
+
+  it('a held picture names only the held sets to keep, never a kept claim’s set (#1199)', () => {
+    render({ ...HELD_PREVIEW, blocks: FULL_PREVIEW.blocks, keep: FULL_PREVIEW.keep });
+
+    expect(byId('layout-remodel-keep')!.textContent).toMatch(
+      /^\s*Keep Row A · position 2 on the map to save\.\s*$/,
+    );
+    expect(byId('layout-remodel-blocks')!.textContent).toMatch(/Will stay put \(2\)/);
+    expect(byId('layout-remodel-commit')).toBeNull();
   });
 
   it('a picture that moves and keeps counts both in the Save label and needs no confirmation', () => {

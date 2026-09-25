@@ -37,7 +37,8 @@ import {
  * put — and the sets that stay on the map. A picture free of staff holds is committable: Save
  * applies the layout, every move and every ending in one server transaction, keeps each blocked
  * claim's set exactly as stored, and each moved or ended guest is mailed. A picture with a staff
- * hold offers Back alone, since the save refuses it. A `stale`
+ * hold offers Back alone, since the save refuses it; so does a `displaced` one, the server's answer
+ * when the painted layout gave a kept set's row and position to another set. A `stale`
  * picture is the server's fresh answer after a commit found the bookings had changed. A sibling of
  * `shared/confirm-panel.ts` rather than a variant of it, because this panel owns lists; it wears the
  * same amber warn skin.
@@ -72,11 +73,15 @@ export class RemodelPreviewPanel {
   readonly stale = input(false);
   /** The commit is in flight — Save goes busy, never disabled by it (RV-FE-9). */
   readonly committing = input(false);
+  /** The commit refused: the painted layout gives a kept set's row and position to another set. */
+  readonly displaced = input(false);
   readonly cancelled = output<void>();
   readonly committed = output<RemodelConfirmation>();
 
-  /** Every claim can be settled: no staff hold. */
-  protected readonly committable = computed(() => remodelPreviewIsCommittable(this.preview()));
+  /** Every claim can be settled: no staff hold, and no kept set displaced by the paint. */
+  protected readonly committable = computed(
+    () => !this.displaced() && remodelPreviewIsCommittable(this.preview()),
+  );
 
   /** How many guests get their money back — the number the operator must type out. */
   protected readonly refundCount = computed(() => this.preview().refunds.length);
@@ -164,16 +169,21 @@ export class RemodelPreviewPanel {
 
   /**
    * Committable: "Row A · position 3 and Row A · position 2 stay on the map; the rest is saved as
-   * painted." Held: "Keep Row A · position 2 on the map to save."
+   * painted." Displaced: "Keep Row A · position 3 at its row and position to save." Held: "Keep
+   * Row A · position 2 on the map to save." — the held sets alone, since the save keeps a blocked
+   * claim's set itself.
    */
   protected keepSentence(): string {
-    const spots = this.preview().keep.map(spotLabel);
-    const named =
-      spots.length <= 1 ? spots.join('') : `${spots.slice(0, -1).join(', ')} and ${spots.at(-1)}`;
-    const stay = spots.length === 1 ? 'stays' : 'stay';
-    return this.committable()
-      ? `${named} ${stay} on the map; the rest of the layout is saved as painted.`
-      : `Keep ${named} on the map to save.`;
+    if (this.committable()) {
+      const kept = this.preview().keep.map(spotLabel);
+      return `${nameSpots(kept)} ${kept.length === 1 ? 'stays' : 'stay'} on the map; the rest of the layout is saved as painted.`;
+    }
+    if (this.displaced()) {
+      const kept = this.preview().keep.map(spotLabel);
+      return `Keep ${nameSpots(kept)} at ${kept.length === 1 ? 'its' : 'their'} row and position to save.`;
+    }
+    const held = this.preview().staffHolds.map((hold) => spotLabel(hold.set));
+    return `Keep ${nameSpots(held)} on the map to save.`;
   }
 
   protected moveText(move: RemodelMove): string {
@@ -209,6 +219,13 @@ export class RemodelPreviewPanel {
 
 function spotLabel(spot: RemodelSpot): string {
   return `Row ${spot.rowLabel} · position ${spot.positionNo}`;
+}
+
+/** "A, B and C" */
+function nameSpots(spots: readonly string[]): string {
+  return spots.length <= 1
+    ? spots.join('')
+    : `${spots.slice(0, -1).join(', ')} and ${spots.at(-1)}`;
 }
 
 function when(claim: RemodelClaim): string {

@@ -17,6 +17,7 @@ import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutEditor } from './layout-editor';
 import { RemodelPreview } from './operator-console.model';
 import {
+  BLOCKS_ONLY_PREVIEW,
   FULL_PREVIEW,
   MOVES_ONLY_PREVIEW,
   REFUNDING_PREVIEW,
@@ -2142,7 +2143,9 @@ describe('LayoutEditor (#172)', () => {
       expect(dialog.getAttribute('role')).toBe('alertdialog');
       expect(byId('layout-remodel-moves').textContent).toMatch(/4 positions along the row/);
       expect(byId('layout-remodel-blocks').textContent).toMatch(/arrives within the freeze window/);
-      expect(byId('layout-remodel-keep').textContent).toMatch(/Keep Row A · position 3/);
+      expect(byId('layout-remodel-keep').textContent).toMatch(
+        /Keep Row A · position 2 on the map to save/,
+      );
       expect(byId('layout-save').getAttribute('aria-disabled')).toBe('true');
       expect(byId('layout-remodel-preview').querySelectorAll('button')).toHaveLength(1);
 
@@ -2347,17 +2350,20 @@ describe('LayoutEditor (#172)', () => {
       expect(byId('layout-remodel-receipt')).toBeTruthy();
     });
 
-    it('REMODEL_REFUSED shows the fresh picture stale with Back alone, and Back returns to the editor with no error', async () => {
+    it('REMODEL_REFUSED shows the fresh picture as a displaced kept set with Back alone, and Back returns to the editor with no error', async () => {
       await openMovesOnlyDialog();
       byId('layout-remodel-commit').click();
       commitRequest().flush(
-        { code: 'REMODEL_REFUSED', detail: 'x', preview: FULL_PREVIEW },
+        { code: 'REMODEL_REFUSED', detail: 'x', preview: BLOCKS_ONLY_PREVIEW },
         { status: 409, statusText: 'Conflict' },
       );
       await fixture.whenStable();
       fixture.detectChanges();
 
-      expect(byId('layout-remodel-stale')).toBeTruthy();
+      expect(byId('layout-remodel-stale').textContent).toMatch(
+        /gives the row and position of a set this remodel keeps/,
+      );
+      expect(byId('layout-remodel-keep').textContent).toMatch(/at their row and position to save/);
       expect(byId('layout-remodel-blocks').textContent).toMatch(/arrives within the freeze window/);
       expect(host.querySelector('[data-testid="layout-remodel-commit"]')).toBeNull();
       expect(host.querySelector('[data-testid="layout-error"]')).toBeNull();
