@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { findViolations } from './check-inline-comments.mjs';
+import { findViolations, GATING, isBudgeted } from './check-inline-comments.mjs';
 
 const JAVA = 'platform/src/main/java/ai/riviera/platform/SecurityConfig.java';
 
@@ -577,4 +577,190 @@ test('an inline template whose backtick opens on the line after `template:` is s
     violations.map(({ line, endLine, rule }) => ({ line, endLine, rule })),
     [{ line: 4, endLine: 5, rule: 'multiline' }, { line: 5, endLine: 5, rule: 'provenance' }],
   );
+});
+
+const budget = (violations) =>
+  violations
+    .filter((v) => v.rule.startsWith('docbudget'))
+    .map(({ line, endLine, rule, text, excess }) => ({ line, endLine, rule, text, excess }));
+
+/** Every line added: the shape of a new file, or of a block the diff wrote whole. */
+const allAdded = (lines) => new Set(lines.map((_, i) => i + 1));
+
+const judgeBudget = (path, lines, added = allAdded(lines)) => budget(findViolations({ path, lines, added }));
+
+const JAVA_SERVICE = 'platform/src/main/java/ai/riviera/platform/booking/application/ProbeService.java';
+const TS_COMPONENT = 'frontend/src/app/booking/probe.ts';
+
+test('docbudget gates a new member doc over three lines and names the member', () => {
+  const lines = [
+    'class ProbeService {',
+    '\t/**',
+    '\t * Claims every day of the stay.',
+    '\t * A day not won ends the stay.',
+    '\t * The days already won are given back.',
+    '\t * A lost range holds nothing.',
+    '\t */',
+    '\tprivate ClaimOutcome claimEveryDay(SetId setId, StaySpan stay) {',
+    '\t}',
+    '}',
+  ];
+
+  assert.deepEqual(judgeBudget(JAVA_SERVICE, lines), [
+    {
+      line: 2,
+      endLine: 7,
+      rule: 'docbudget',
+      text: 'member doc is 4 lines, budget 3: private ClaimOutcome claimEveryDay(SetId setId, StaySpan stay) {',
+      excess: 1,
+    },
+  ]);
+});
+
+test('docbudget allows a type six lines and gates the seventh, past its annotations', () => {
+  const doc = (count) => ['/**', ...Array.from({ length: count }, (_, k) => ` * Contract line ${k + 1}.`), ' */'];
+  const type = (count) => [
+    'package ai.riviera.platform.booking;',
+    ...doc(count),
+    '@Service',
+    '@Transactional(readOnly = true, label = "a (quoted) paren")',
+    'public final class ProbeService {',
+    '}',
+  ];
+
+  assert.deepEqual(judgeBudget(JAVA_SERVICE, type(6)), []);
+  assert.deepEqual(
+    judgeBudget(JAVA_SERVICE, type(7)).map(({ rule, text }) => ({ rule, text })),
+    [{ rule: 'docbudget', text: 'type doc is 7 lines, budget 6: public final class ProbeService {' }],
+  );
+});
+
+test('docbudget reads an Angular component through its multi-line decorator as a type', () => {
+  const lines = [
+    "import { Component } from '@angular/core';",
+    '',
+    '/**',
+    ' * One.',
+    ' * Two.',
+    ' * Three.',
+    ' * Four.',
+    ' */',
+    '@Component({',
+    "  selector: 'app-probe',",
+    '  template: `<p (click)="open()">) unbalanced in text {</p>`,',
+    '})',
+    'export class Probe {}',
+  ];
+
+  assert.deepEqual(judgeBudget(TS_COMPONENT, lines), []);
+});
+
+test('docbudget treats a package-info doc and a detached doc as headers with the type budget', () => {
+  const packageInfo = [
+    '/**',
+    ...Array.from({ length: 6 }, (_, k) => ` * Module line ${k + 1}.`),
+    ' */',
+    '@org.springframework.modulith.ApplicationModule(',
+    '    displayName = "Booking",',
+    '    allowedDependencies = { "shared", "venue::api" })',
+    'package ai.riviera.platform.booking;',
+  ];
+  assert.deepEqual(
+    judgeBudget('platform/src/main/java/ai/riviera/platform/booking/package-info.java', packageInfo),
+    [],
+  );
+
+  const detached = [
+    "import { x } from './x';",
+    '/**',
+    ' * Renders a booking as a QR image.',
+    ' * Client-side only.',
+    ' * The white tile keeps the quiet zone.',
+    ' * The alt text names the booking.',
+    ' */',
+    '/** One shared options object. */',
+    "export const QR_OPTIONS = { type: 'svg' } as const;",
+  ];
+  assert.deepEqual(judgeBudget(TS_COMPONENT, detached), []);
+});
+
+test('docbudget counts text lines only: blank separators and lone delimiters are free', () => {
+  const lines = [
+    'export class Probe {',
+    '  /**',
+    '   * First paragraph.',
+    '   *',
+    '   * <p>Second paragraph.',
+    '   *',
+    '   * @param value the value',
+    '   */',
+    '  protected apply(value: string): void {}',
+    '  /** A one-line doc is one line. */',
+    '  protected readonly ready = signal(false);',
+    '}',
+  ];
+
+  assert.deepEqual(judgeBudget(TS_COMPONENT, lines), []);
+});
+
+test('docbudget does not mistake a field named type for a type declaration', () => {
+  const lines = [
+    'export interface Probe {',
+    '  /**',
+    '   * One.',
+    '   * Two.',
+    '   * Three.',
+    '   * Four.',
+    '   */',
+    '  type: string;',
+    '}',
+    '/**',
+    ' * One.',
+    ' * Two.',
+    ' * Three.',
+    ' * Four.',
+    ' */',
+    'export type ProbeKind = "a" | "b";',
+  ];
+
+  assert.deepEqual(
+    judgeBudget(TS_COMPONENT, lines).map(({ line, text }) => ({ line, kind: text.split(' ')[0] })),
+    [{ line: 2, kind: 'member' }],
+  );
+});
+
+test('docbudget judges a pre-existing block the diff edited whole, and gates it', () => {
+  const lines = [
+    'class ProbeService {',
+    '\t/**',
+    '\t * One.',
+    '\t * Two, reworded by this diff.',
+    '\t * Three.',
+    '\t * Four.',
+    '\t */',
+    '\tvoid apply() {',
+    '\t}',
+    '}',
+  ];
+
+  const touched = judgeBudget(JAVA_SERVICE, lines, new Set([4]));
+  assert.deepEqual(touched.map(({ rule }) => rule), ['docbudget-touched']);
+  assert.equal(GATING.has('docbudget-touched'), true);
+  assert.equal(GATING.has('docbudget'), true);
+  assert.deepEqual(judgeBudget(JAVA_SERVICE, lines, new Set([9])), []);
+});
+
+test('docbudget covers production source only', () => {
+  assert.equal(isBudgeted('platform/src/main/java/ai/riviera/platform/Probe.java'), true);
+  assert.equal(isBudgeted('frontend/src/app/booking/probe.ts'), true);
+  assert.equal(isBudgeted('frontend/src/app/booking/probe.spec.ts'), false);
+  assert.equal(isBudgeted('frontend/src/app/operator/remodel-preview-panel.fixtures.ts'), false);
+  assert.equal(isBudgeted('frontend/src/app/operator/operator-console.mocks.ts'), false);
+  assert.equal(isBudgeted('frontend/src/testing/freeze-clock.ts'), false);
+  assert.equal(isBudgeted('platform/src/test/java/ai/riviera/platform/ProbeTest.java'), false);
+  assert.equal(isBudgeted('scripts/check-inline-comments.mjs'), false);
+
+  const lines = ['/**', ' * One.', ' * Two.', ' * Three.', ' * Four.', ' */', 'function probe() {}'];
+  assert.deepEqual(judgeBudget('scripts/probe.mjs', lines), []);
+  assert.deepEqual(judgeBudget('frontend/src/app/booking/probe.spec.ts', lines), []);
 });

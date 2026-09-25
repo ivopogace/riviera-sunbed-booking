@@ -1882,3 +1882,102 @@ test('the harness can point origin at a real repository and at nowhere, in eithe
     assert.equal(repo.git(['rev-parse', 'origin/main']).trim(), realBase);
   });
 });
+
+const DOC_BUDGET = 'check-doc-budget.mjs';
+const BUDGETED_JAVA = 'platform/src/main/java/ai/riviera/platform/booking/Probe.java';
+
+/** A class whose one method carries a doc comment of `count` text lines; the member budget is three. */
+const probeClass = (count) =>
+  lines(
+    'class Probe {',
+    '\t/**',
+    ...Array.from({ length: count }, (_, k) => `\t * Line ${k + 1}.`),
+    '\t */',
+    '\tvoid run() {',
+    '\t}',
+    '}',
+  );
+
+/** Mutation proof: dropping `docbudget` from GATING turns this exit 0. */
+test('check-inline-comments --diff gates a doc comment the diff wrote over budget', () => {
+  withRepo((repo) => {
+    repo.write(BUDGETED_JAVA, lines('class Probe {', '}'));
+    const before = repo.commit('base');
+    repo.write(BUDGETED_JAVA, probeClass(5));
+    repo.commit('add an over-budget doc');
+
+    const result = repo.run(INLINE, ['--diff', before]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Probe\.java:2-8 {2}docbudget {2}member doc is 5 lines, budget 3: void run\(\) \{/);
+    assert.match(result.stderr, /§6d/);
+  });
+});
+
+/** Mutation proof: dropping `docbudget-touched` from GATING turns this exit 0. */
+test('check-inline-comments --diff gates an old over-budget doc the diff edited', () => {
+  withRepo((repo) => {
+    repo.write(BUDGETED_JAVA, probeClass(5));
+    const before = repo.commit('base');
+    repo.write(BUDGETED_JAVA, probeClass(5).replace('Line 2.', 'Line two, reworded.'));
+    repo.commit('reword one line');
+
+    const result = repo.run(INLINE, ['--diff', before]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Probe\.java:2-8 {2}docbudget-touched {2}member doc is 5 lines/);
+    assert.match(result.stderr, /check-doc-budget\.mjs --update/);
+    assert.equal(result.stdout, '');
+  });
+});
+
+test('check-doc-budget ratchets: missing, created, grew, refused, stale, locked in', () => {
+  withRepo((repo) => {
+    repo.write(BUDGETED_JAVA, probeClass(6));
+    repo.commit('base');
+
+    const missing = repo.run(DOC_BUDGET, []);
+    assert.equal(missing.status, 1);
+    assert.match(missing.stderr, /doc-budget-baseline\.json is missing/);
+
+    const created = repo.run(DOC_BUDGET, ['--update']);
+    assert.equal(created.status, 0, created.stderr);
+    assert.match(created.stdout, /3 lines over budget/);
+    assert.equal(repo.run(DOC_BUDGET, []).status, 0);
+    assert.equal(repo.run(DOC_BUDGET, ['--update']).stdout, 'Baseline already matches the tree.\n');
+
+    repo.write(BUDGETED_JAVA, probeClass(8));
+    const grew = repo.run(DOC_BUDGET, ['--check']);
+    assert.equal(grew.status, 1);
+    assert.match(grew.stderr, /grew from 3 to 5 lines/);
+    assert.match(grew.stderr, /platform\/booking: 3 → 5/);
+    assert.equal(repo.run(DOC_BUDGET, ['--update']).status, 1, '--update must never raise the baseline');
+
+    repo.write(BUDGETED_JAVA, probeClass(4));
+    const stale = repo.run(DOC_BUDGET, []);
+    assert.equal(stale.status, 1);
+    assert.match(stale.stderr, /stale/);
+
+    const locked = repo.run(DOC_BUDGET, ['--update']);
+    assert.equal(locked.status, 0);
+    assert.match(locked.stdout, /Locked in: 3 → 1 lines over budget/);
+    assert.equal(repo.run(DOC_BUDGET, []).status, 0);
+  });
+});
+
+test('check-doc-budget --report lists the heaviest files; an unknown mode exits 2', () => {
+  withRepo((repo) => {
+    repo.write(BUDGETED_JAVA, probeClass(7));
+    repo.commit('base');
+
+    const report = repo.run(DOC_BUDGET, ['--report']);
+    assert.equal(report.status, 0);
+    assert.match(report.stdout, /over the §6d budget: 4/);
+    assert.match(report.stdout, /4 {2}platform\/booking\n/);
+    assert.match(report.stdout, /4 {2}platform\/src\/main\/java\/ai\/riviera\/platform\/booking\/Probe\.java/);
+
+    const unknown = repo.run(DOC_BUDGET, ['--nonsense']);
+    assert.equal(unknown.status, 2);
+    assert.match(unknown.stderr, /usage: check-doc-budget\.mjs/);
+  });
+});

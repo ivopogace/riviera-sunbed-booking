@@ -47,7 +47,8 @@ Tailwind v4; SCSS only with a stated justification (`riviera-tailwind`).
 ## Comments
 
 Keep a comment, TSDoc or skill line only if a fresh session would act differently
-(`riviera-java-conventions` §6c/§6d; guard: `scripts/check-inline-comments.mjs`).
+(`riviera-java-conventions` §6c/§6d; guard: `scripts/check-inline-comments.mjs`). TSDoc keeps
+§6d's budget: 6 text lines for a type, 3 for a member.
 
 ## Unit tests
 

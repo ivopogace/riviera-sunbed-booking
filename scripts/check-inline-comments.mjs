@@ -9,7 +9,8 @@
  * any added line, and a file git has never seen (see `checkPaths`).
  *
  * Exempt from the one-line rule: doc comments, a block comment standing before any code as the
- * file's header, and `#`/SQL-`--` comment syntaxes. The scope's deliberate gaps are listed in
+ * file's header, and `#`/SQL-`--` comment syntaxes. A doc comment in production source keeps to
+ * §6d's line budget instead (`docbudget`). The scope's deliberate gaps are listed in
  * `riviera-java-conventions` `references/inline-comment-guard.md`.
  */
 
@@ -92,7 +93,23 @@ const TELLS = {
 };
 
 /** Every violation carries a `rule`; these fail a run, the rest are printed and let through. */
-export const GATING = new Set(['multiline', 'provenance']);
+export const GATING = new Set(['multiline', 'provenance', 'docbudget', 'docbudget-touched']);
+
+/** §6d's budget, in non-blank lines of doc-comment text; a file or package header counts as a type. */
+export const DOC_BUDGET = { type: 6, member: 3 };
+
+/** Production source only: tests, fixtures, mocks and the guards themselves keep their own prose. */
+export function isBudgeted(path) {
+  if (/^platform\/src\/main\/java\/.+\.java$/.test(path)) return true;
+  return (
+    /^frontend\/src\/.+\.ts$/.test(path) &&
+    !/\.(?:spec|fixtures|mocks)\.ts$/.test(path) &&
+    !path.startsWith('frontend/src/testing/')
+  );
+}
+
+const TYPE_DECLARATION =
+  /^(?:(?:export|default|declare|abstract|const|public|protected|private|static|final|sealed|non-sealed|strictfp)\s+)*(?:class|interface|enum|record|@interface|type|namespace)\s+[\w$]/;
 
 /**
  * Every finding in one file: the multi-line inline comments the diff wrote, and the tells in
@@ -113,6 +130,8 @@ export function findViolations({ path, lines, added }) {
 
   for (const region of regions) {
     violations.push(...tellViolations(path, lines, added, region));
+    const overBudget = budgetViolation(path, lines, added, region);
+    if (overBudget) violations.push(overBudget);
     if (region.kind === 'line') continue;
     if (region.endLine === region.startLine) continue;
     if (region.isDoc || region.isFileHeader) continue;
@@ -162,6 +181,84 @@ function tellViolations(path, lines, added, region) {
     }
   }
   return violations;
+}
+
+/**
+ * A touched doc comment longer than §6d's budget for what it documents, judged whole like the
+ * tells: `docbudget` for a block the diff wrote whole, `docbudget-touched` for an older block it
+ * edited. Both gate; they differ only in advice. `excess` is the lines over budget.
+ */
+function budgetViolation(path, lines, added, region) {
+  if (!region.isDoc || !isBudgeted(path)) return null;
+  const block = range(region.startLine, region.endLine);
+  if (!block.some((i) => added.has(i + 1))) return null;
+  const size = docTextLines(lines, region);
+  const declaration = declarationAfter(lines, region);
+  // A doc that another comment follows documents no declaration: it is a header, like a file's.
+  const header =
+    /^\/[*/]/.test(declaration) || (region.isFileHeader && /^(?:import|package)\b|^$/.test(declaration));
+  const kind = header || TYPE_DECLARATION.test(declaration) ? 'type' : 'member';
+  const budget = DOC_BUDGET[kind];
+  if (size <= budget) return null;
+  const subject = header ? 'file header' : declaration.slice(0, 80);
+  return {
+    path,
+    line: region.startLine + 1,
+    endLine: region.endLine + 1,
+    text: `${kind} doc is ${size} lines, budget ${budget}: ${subject}`,
+    rule: block.every((i) => added.has(i + 1)) ? 'docbudget' : 'docbudget-touched',
+    excess: size - budget,
+  };
+}
+
+/** The non-blank lines of a doc comment, not counting a delimiter that stands alone. */
+function docTextLines(lines, region) {
+  let count = 0;
+  for (let i = region.startLine; i <= region.endLine; i++) {
+    const from = i === region.startLine ? region.column + 3 : 0;
+    const to = i === region.endLine && region.endColumn !== undefined ? region.endColumn - 2 : undefined;
+    const text = lines[i].slice(from, to).replace(/^\s*\*?/, '').trim();
+    if (text !== '') count++;
+  }
+  return count;
+}
+
+/**
+ * The code a doc comment documents, with its annotations or decorators skipped — bracket-balanced
+ * and string-aware, since an Angular `@Component({…})` spans many lines.
+ */
+function declarationAfter(lines, region) {
+  if (region.endColumn === undefined) return '';
+  const rest =[lines[region.endLine].slice(region.endColumn), ...lines.slice(region.endLine + 1)].join('\n');
+  let c = 0;
+  for (;;) {
+    while (c < rest.length && /\s/.test(rest[c])) c++;
+    const annotation = /^@(?!interface\b)[\w.]+\s*/.exec(rest.slice(c));
+    if (!annotation) break;
+    c += annotation[0].length;
+    if (rest[c] === '(') c = balancedEnd(rest, c);
+  }
+  const end = rest.indexOf('\n', c);
+  return rest.slice(c, end === -1 ? undefined : end).trim();
+}
+
+/** The index just past the bracket that closes the one at `start`, skipping string literals. */
+function balancedEnd(text, start) {
+  let depth = 0;
+  let c = start;
+  while (c < text.length) {
+    const ch = text[c];
+    if (ch === '"' || ch === "'" || ch === '`') {
+      c++;
+      while (c < text.length && text[c] !== ch) c += text[c] === '\\' ? 2 : 1;
+    } else if ('([{'.includes(ch)) {
+      depth++;
+    } else if (')]}'.includes(ch) && --depth === 0) {
+      return c + 1;
+    }
+    c++;
+  }
+  return text.length;
 }
 
 function range(from, to) {
@@ -455,6 +552,16 @@ const ADVICE = {
     `RV-STYLE-1 (advisory): ${TEST} "no longer", "previously", "used to be" narrate a change ` +
     'the reader never saw: state the contract as it stands, or drop the line. See ' +
     'riviera-java-conventions §6c.',
+  docbudget:
+    `RV-STYLE-1 (§6d): a doc comment states the contract in at most ${DOC_BUDGET.type} lines for a ` +
+    `type or ${DOC_BUDGET.member} for a member. Cut what the code, a collaborator or an architecture ` +
+    'test already says, rejected alternatives and convention defences; move load-bearing rationale ' +
+    'to RESPONSIBILITIES.md or an ADR behind a one-line pointer, and the story of the change to the ' +
+    'PR description. See riviera-java-conventions §6d.',
+  'docbudget-touched':
+    'RV-STYLE-1 (§6d): this doc comment was over budget before the diff touched it, and a ' +
+    'touched doc comment is judged whole. Trim it to the contract, then run ' +
+    '`node scripts/check-doc-budget.mjs --update` and commit the lower baseline.',
 };
 
 function report(violations) {

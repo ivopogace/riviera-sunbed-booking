@@ -119,10 +119,13 @@ job in `ci.yml` without the matching ruleset edit makes every PR unmergeable (#4
 #539), which is why those job names carry DO-NOT-RENAME comments.
 
 **CI runs guards you can't guess from the framework docs.** Alongside the backend
-and frontend jobs, a `Repo hygiene (diff-scoped)` job hard-gates your diff with five of
+and frontend jobs, a `Repo hygiene (diff-scoped)` job hard-gates your diff with six of
 the [`scripts/check-*.mjs`](scripts/) guards: comments and skill prose earn their place — no
 multi-line inline comments, no issue numbers in an added comment, a touched doc comment or
-an added `riviera-*` skill line (RV-STYLE-1),
+an added `riviera-*` skill line, no touched doc comment over the line budget (an edit to an
+old long one means trimming it), and no growth in the tree's doc-comment lines over budget
+(RV-STYLE-1; a PR that trims them runs
+`node scripts/check-doc-budget.mjs --update` and commits the lower baseline),
 each plan doc lists the files its diff changed (#533), no stranded focus postures (#621),
 touch targets declared (#648), and the cloud setup script's Node pin still matching
 [`.nvmrc`](.nvmrc) (#659). Run any of them locally the way CI does —

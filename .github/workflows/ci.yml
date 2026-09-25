@@ -355,11 +355,18 @@ jobs:
         run: node --test "scripts/*.test.mjs"
 
       - name: Check the diff's comments and skill prose (RV-STYLE-1, hard gate)
-        # Three rules in one guard: a multi-line inline comment the diff added, and a provenance
-        # tell (an issue/PR number) in an added comment, a touched doc comment or an added skill
-        # line, fail the step; history phrasing is printed as advisory. The step NAME is free to
-        # change — only the job name above is a required context.
+        # Four rules in one guard: a multi-line inline comment the diff added, a provenance tell
+        # (an issue/PR number) in an added comment, a touched doc comment or an added skill line,
+        # and a touched doc comment over §6d's line budget, fail the step; history phrasing is
+        # printed as advisory. The step NAME is free to change — only the job name above is a
+        # required context.
         run: node scripts/check-inline-comments.mjs --diff origin/${{ github.event.pull_request.base.ref }}
+
+      - name: Check doc comments over budget did not grow (§6d ratchet, hard gate)
+        # Standing-tree: the total lines over budget may only fall, and a PR that lowers it commits
+        # the lower scripts/doc-budget-baseline.json (`--update`), so every trim stays trimmed.
+        if: ${{ !cancelled() }}
+        run: node scripts/check-doc-budget.mjs
 
       - name: Check each plan doc lists what the diff changed (#533, hard gate)
         # Runs even when the step above failed, so one push surfaces both rules rather than
