@@ -15,8 +15,7 @@ import { email, FormField, form, required, submit } from '@angular/forms/signals
 import { firstValueFrom } from 'rxjs';
 
 import { ProofOfWork } from '../core/proof-of-work';
-import { todayBookingDate } from '../shared/booking-date';
-import { daysBetween } from '../shared/booking-date';
+import { daysBetween, todayBookingDate } from '../shared/booking-date';
 import { formatStay } from '../shared/booking-date-label';
 import { FieldErrorFor } from '../shared/field-error-for';
 import { FieldGlass } from '../shared/field-glass';

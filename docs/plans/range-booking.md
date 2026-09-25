@@ -553,15 +553,21 @@ Test `map-tile.spec.ts`, `stay-runs.spec.ts`, `partly-free-sheet.spec.ts`, `venu
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section filled or justified N/A; concurrency test present (#2).
-- [ ] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
-- [ ] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
-- [ ] Payment section filled or N/A; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
-- [ ] Flyway migration present; invariant-enforcing constraints tested (#12). — none needed, V63 free.
-- [ ] Frontend standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability section filled or justified N/A; concurrency test present (#2).
+- [x] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
+- [x] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
+- [x] Payment section filled or N/A; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
+- [x] Flyway migration present; invariant-enforcing constraints tested (#12). — none needed, V63 free.
+- [x] Frontend standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
+- [x] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
+
+**Sonar gate** (PR #1216, head `2235da96`): quality gate OK — new-code coverage 95.1%, 0 duplicated
+blocks, 0 hotspots to review; the issue list carried five new code smells, all cleared in the last
+code-touching commit: the dialog imported `shared/booking-date` twice (S3863 ×2), `daysLine` built its
+format string by concatenation (S3457 ×2 — now a `padded` helper), and `JdbcSetAvailabilityLookup`
+repeated the `booking_date` column literal (S1192 — now a constant beside `SET_ID`).

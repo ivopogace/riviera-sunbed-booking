@@ -153,12 +153,16 @@ class SmtpMailer implements Mailer {
 	 */
 	private static String daysLine(LocalDate first, LocalDate last, int labelWidth) {
 		if (first.equals(last)) {
-			return String.format("%-" + labelWidth + "s%s", "Date:", DATE_FORMAT.format(first));
+			return padded("Date:", labelWidth) + DATE_FORMAT.format(first);
 		}
 		long days = ChronoUnit.DAYS.between(first, last) + 1;
 		String range = (first.getYear() == last.getYear() ? DAY_MONTH_FORMAT : DATE_FORMAT).format(first)
 				+ " – " + DATE_FORMAT.format(last);
-		return String.format("%-" + labelWidth + "s%s (%d days)", "Days:", range, days);
+		return padded("Days:", labelWidth) + range + " (" + days + " days)";
+	}
+
+	private static String padded(String label, int width) {
+		return label + " ".repeat(Math.max(0, width - label.length()));
 	}
 
 	/**
