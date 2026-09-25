@@ -108,8 +108,11 @@ export function isBudgeted(path) {
   );
 }
 
-const TYPE_DECLARATION =
-  /^(?:(?:export|default|declare|abstract|const|public|protected|private|static|final|sealed|non-sealed|strictfp)\s+)*(?:class|interface|enum|record|@interface|type|namespace)\s+[\w$]/;
+const MODIFIERS =
+  /^(?:(?:export|default|declare|abstract|const|public|protected|private|static|final|sealed|non-sealed|strictfp)\s+)*/;
+const TYPE_KEYWORD = /^(?:class|interface|enum|record|@interface|type|namespace)\s+[\w$]/;
+
+const isTypeDeclaration = (code) => TYPE_KEYWORD.test(code.replace(MODIFIERS, ''));
 
 /**
  * Every finding in one file: the multi-line inline comments the diff wrote, and the tells in
@@ -197,7 +200,7 @@ function budgetViolation(path, lines, added, region) {
   // A doc that another comment follows documents no declaration: it is a header, like a file's.
   const header =
     /^\/[*/]/.test(declaration) || (region.isFileHeader && /^(?:import|package)\b|^$/.test(declaration));
-  const kind = header || TYPE_DECLARATION.test(declaration) ? 'type' : 'member';
+  const kind = header || isTypeDeclaration(declaration) ? 'type' : 'member';
   const budget = DOC_BUDGET[kind];
   if (size <= budget) return null;
   const subject = header ? 'file header' : declaration.slice(0, 80);
@@ -239,7 +242,7 @@ function declarationAfter(lines, region) {
     if (rest[c] === '(') c = balancedEnd(rest, c);
   }
   const end = rest.indexOf('\n', c);
-  return rest.slice(c, end === -1 ? undefined : end).trim();
+  return rest.slice(c, end === -1 ? rest.length : end).trim();
 }
 
 /** The index just past the bracket that closes the one at `start`, skipping string literals. */

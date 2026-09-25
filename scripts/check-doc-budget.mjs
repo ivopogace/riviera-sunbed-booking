@@ -59,7 +59,9 @@ export const total = (areas) => Object.values(areas).reduce((sum, n) => sum + n,
  * not but an area differs, else `ok`. `moved` lists every area that differs, either way.
  */
 export function compare(current, baseline) {
-  const names = [...new Set([...Object.keys(current), ...Object.keys(baseline)])].sort();
+  const names = [...new Set([...Object.keys(current), ...Object.keys(baseline)])].sort((a, b) =>
+    a.localeCompare(b),
+  );
   const moved = names
     .map((area) => ({ area, from: baseline[area] ?? 0, to: current[area] ?? 0 }))
     .filter(({ from, to }) => from !== to);
@@ -101,18 +103,17 @@ function report(sources, out) {
     .filter(({ excess }) => excess > 0)
     .sort((a, b) => b.excess - a.excess);
   const areas = Object.entries(tally(sources)).sort(([, a], [, b]) => b - a);
+  const row = (n, name) => `  ${String(n).padStart(5)}  ${name}`;
+  const byArea = areas.map(([area, n]) => row(n, area)).join('\n');
+  const heaviest = files
+    .slice(0, 15)
+    .map((f) => row(f.excess, f.path))
+    .join('\n');
   out.write(
     `Doc-comment lines over the §6d budget: ${files.reduce((sum, f) => sum + f.excess, 0)}\n\n`,
   );
-  out.write(
-    `By area:\n${areas.map(([area, n]) => `  ${String(n).padStart(5)}  ${area}`).join('\n')}\n\n`,
-  );
-  out.write(
-    `Heaviest files:\n${files
-      .slice(0, 15)
-      .map((f) => `  ${String(f.excess).padStart(5)}  ${f.path}`)
-      .join('\n')}\n`,
-  );
+  out.write(`By area:\n${byArea}\n\n`);
+  out.write(`Heaviest files:\n${heaviest}\n`);
 }
 
 export function main(argv, out = process.stdout, err = process.stderr) {
