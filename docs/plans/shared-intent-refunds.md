@@ -270,6 +270,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/payment/application/RefundService.java` — progress reads the child's amount against the parent's collected status
 - `platform/src/main/java/ai/riviera/platform/payment/application/RefundState.java` — Javadoc: the share, not the row
 - `platform/src/main/java/ai/riviera/platform/payment/domain/PaymentStatus.java` — `holdsCollectedMoney()`, the one lifecycle rule two callers share
+- `platform/src/main/java/ai/riviera/platform/payment/package-info.java` — module Javadoc names both tables
 - `platform/src/main/java/ai/riviera/platform/payment/adapter/out/JdbcPayments.java` — every statement re-pointed; the parent status derived in the refund writes
 - `platform/src/main/java/ai/riviera/platform/payment/adapter/out/StripePaymentGateway.java` — refund tag; shared-intent candidate rule
 - `platform/src/main/java/ai/riviera/platform/payment/adapter/out/StripeRefundTag.java` — the metadata key and its read, shared by both adapters
