@@ -54,7 +54,7 @@ npm run build
 ```
 
 **CI** (`.github/workflows/ci.yml`): backend build/test, frontend lint/format/test/build +
-mocked e2e + eslint-rules suite, five `scripts/check-*.mjs` guards (three also run as a local
+mocked e2e + eslint-rules suite, six `scripts/check-*.mjs` guards (three also run as a local
 `PostToolUse` hook; `check-comment-only.mjs` and `check-review-range.mjs` are by-hand only),
 SonarCloud per PR. Sonar bar: **0 new issues, 0 duplicated blocks, ≥80% new-code coverage** —
 read the issue list, not the pass/fail. `deploy.yml` deploys the backend image (serves the SPA)

@@ -2,7 +2,7 @@
 
 Read when it fires or before touching its scope. Every gap below is deliberate — don't "fix" one.
 
-Three rules:
+Five rules:
 
 - **`multiline`** (gates) — an added inline comment spans more than one line.
 - **`provenance`** (gates) — an issue/PR number in an added skill line, an added inline
@@ -12,6 +12,17 @@ Three rules:
   A colour in a citing position (`// #123 is the emphasis colour`, `(#333)`, `in #333`) is a
   false positive — rewrite as `the #333 colour`.
 - **`history`** (advises only) — `no longer`, `previously`, `used to be`, `this change`.
+- **`docbudget`** (gates) — a doc comment the diff wrote whole is over §6d's budget: 6 non-blank
+  text lines for a type, 3 for a member. What it documents is the first code after it, past
+  annotations and decorators; a file or package header, or a doc another comment follows,
+  counts as a type. Production source only: `platform/src/main/java` and `frontend/src`, not
+  `*.spec.ts`, `*.fixtures.ts`, `*.mocks.ts` or `frontend/src/testing/`.
+- **`docbudget-touched`** (gates) — the same, for an older block the diff edited: a touched doc
+  comment is judged whole, so the edit carries the trim. Expect it on most feature PRs while the
+  backlog lasts — replayed over thirty merged PRs it fired on 144 edited blocks against 40 new
+  ones. `scripts/check-doc-budget.mjs` (standing-tree, CI) locks each trim in: the total lines
+  over budget may only fall, and `--update` commits a lower baseline (never a higher one).
+  `--report` lists the heaviest areas and files.
 
 Scope:
 

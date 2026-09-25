@@ -73,8 +73,12 @@ comment is re-read whole.** Guard: `scripts/check-inline-comments.mjs` (hook + C
 
 No issue numbers, no decision history ("it began…", "widened by…", "deliberately not…").
 Relocate load-bearing rationale (`Rationale: RESPONSIBILITIES.md §booking`); keep the one-line
-warning at the point of use; keep invariant references. Budget: ~6 lines per type, ~3 per
-member. The frontend twin: `frontend/.claude/CLAUDE.md`.
+warning at the point of use; keep invariant references. Budget: 6 text lines per type (a file
+or package header counts as one), 3 per member. Every doc comment the diff touches gates on it,
+judged whole — editing one line of an old long block means trimming the block.
+`scripts/check-doc-budget.mjs` locks the tree's total in — after a trim, `--update` and commit
+the baseline. Why the change was
+made goes in the PR description, not the Javadoc. The frontend twin: `frontend/.claude/CLAUDE.md`.
 
 ### 8. Concurrency
 
