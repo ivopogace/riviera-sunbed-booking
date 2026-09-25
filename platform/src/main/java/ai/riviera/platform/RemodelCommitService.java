@@ -66,10 +66,9 @@ class RemodelCommitService {
 			return new RemodelCommitOutcome.StalePreview(disturbed, claims.classify(operator, venue, setIds));
 		}
 		return switch (claims.commit(operator, venue, setIds, token, confirmation)) {
-			case RemodelCommit.Applied(var receipt, var committedAt, var applied) ->
-				new RemodelCommitOutcome.Committed(receipt, committedAt, applied);
+			case RemodelCommit.Applied(var receipt, var committedAt, var settled) ->
+				new RemodelCommitOutcome.Committed(receipt, committedAt, settled);
 			case RemodelCommit.Stale(var fresh) -> new RemodelCommitOutcome.StalePreview(disturbed, fresh);
-			case RemodelCommit.Refused(var fresh) -> new RemodelCommitOutcome.Refused(disturbed, fresh);
 			case RemodelCommit.Unconfirmed(var fresh) -> new RemodelCommitOutcome.NotConfirmed(disturbed, fresh);
 		};
 	}

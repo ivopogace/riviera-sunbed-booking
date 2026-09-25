@@ -4,7 +4,8 @@ package ai.riviera.platform.booking.vocabulary;
  * What a remodel would do to one live claim on a disturbed set, decided by {@code booking}: a
  * {@link Move} to a free set of the same or better tier on the same date, or — with no candidate
  * beyond the refund-notice floor — a {@link Refund} of a confirmed booking, a {@link Release} of an
- * unpaid one, a {@link Decline} of a pending request; a {@link Blocked} claim pins its set. Sealed
+ * unpaid one, a {@link Decline} of a pending request; a {@link Blocked} claim is kept where it is and
+ * its set stays as stored. Sealed
  * so the edge's switch is exhaustive; the preview is advisory, the commit re-derives it.
  */
 public sealed interface RemodelOutcome
@@ -24,7 +25,7 @@ public sealed interface RemodelOutcome
 	/** A pending request is declined; no money is involved. */
 	enum Decline implements RemodelOutcome { DECLINE }
 
-	/** The claim cannot be honoured elsewhere: the set must stay in the save. */
+	/** The claim cannot be honoured elsewhere: it is kept where it is, and its set stays as stored. */
 	record Blocked(BlockReason reason) implements RemodelOutcome {
 	}
 }

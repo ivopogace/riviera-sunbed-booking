@@ -42,13 +42,15 @@ public interface RemodelClaims {
 	 * its candidate's {@code (set, date)} row before releasing the old one (invariant #2) and re-seats
 	 * the booking with a moved-at stamp; a confirmed claim with nowhere to go is cancelled with reason
 	 * {@code VENUE_CHANGE} and its full amount as the refund; an unpaid one is released and a pending
-	 * request declined, neither involving money. Every leg frees its {@code (set, date)} row, writes a
-	 * receipt line and publishes the module's existing fact for it. Nothing here talks to Stripe: the
-	 * refunds drain after commit on the module's own listener. Owner-asserted first (invariant #13).
+	 * request declined, neither involving money; a blocked claim is kept where it is — nothing of it
+	 * changes, its rows stay claimed, and the caller must leave its set as stored. Every ending frees
+	 * its {@code (set, date)} row, every claim writes a receipt line, and every move or ending publishes
+	 * the module's existing fact for it. Nothing here talks to Stripe: the refunds drain after commit on
+	 * the module's own listener. Owner-asserted first (invariant #13).
 	 *
-	 * <p>A token that does not cover the fresh answer is {@code Stale}; a claim that pins its set is
-	 * {@code Refused}; a picture that refunds guests without a matching typed count and a reason is
-	 * {@code Unconfirmed}. None of the three writes anything. A candidate whose claim is not won, or a
+	 * <p>A token that does not cover the fresh answer is {@code Stale}; a picture that refunds guests
+	 * without a matching typed count and a reason is {@code Unconfirmed}. Neither writes anything. A
+	 * candidate whose claim is not won, or a
 	 * guarded transition that matches no row, throws so the caller's whole transaction rolls back. The
 	 * caller's locks are on the venue's <em>sets</em>, not on the booking rows, so a booking that
 	 * changes status inside the commit window — a payment webhook, a guest cancel, an expiry sweep —

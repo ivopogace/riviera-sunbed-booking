@@ -19,7 +19,7 @@ import ai.riviera.platform.venue.vocabulary.LockedSet;
  */
 sealed interface RemodelCommitOutcome {
 
-	record Committed(ReceiptId receiptId, java.time.Instant committedAt, List<RemodelClaim> applied)
+	record Committed(ReceiptId receiptId, java.time.Instant committedAt, List<RemodelClaim> settled)
 			implements RemodelCommitOutcome {
 	}
 

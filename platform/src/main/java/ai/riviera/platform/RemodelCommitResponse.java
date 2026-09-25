@@ -12,8 +12,9 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
  * A committed remodel on the wire: the receipt the console can open later and everything it did —
- * the bookings it moved, the confirmed ones it refunded in full, the unpaid ones it released and
- * the requests it declined, in the preview's own shapes, with the operator's reason and what the
+ * the bookings it moved, the confirmed ones it refunded in full, the unpaid ones it released, the
+ * requests it declined and the claims it kept where they are (their sets left as stored), in the
+ * preview's own shapes, with the operator's reason and what the
  * commit returned to guests. {@code refundedTotal} is {@code null} when it refunded nobody, so a
  * zero is never rendered as a refund; it sums the minor units and carries one currency code, which
  * is sound because collection is EUR-only (invariant #5) so every refund in a commit shares it.
@@ -23,7 +24,8 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
  */
 record RemodelCommitResponse(long receiptId, Instant committedAt, List<RemodelPreviewResponse.MoveView> moves,
 		List<RemodelPreviewResponse.ClaimView> refunds, List<RemodelPreviewResponse.ReleaseView> releases,
-		String refundReason, MoneyView refundedTotal, MoneyView feeTotal) {
+		List<RemodelPreviewResponse.BlockView> kept, String refundReason, MoneyView refundedTotal,
+		MoneyView feeTotal) {
 
 	static RemodelCommitResponse of(RemodelCommitOutcome.Committed committed, String refundReason,
 			VenueChangeFee fee) {
@@ -31,9 +33,10 @@ record RemodelCommitResponse(long receiptId, Instant committedAt, List<RemodelPr
 		List<RemodelPreviewResponse.MoveView> moves = new ArrayList<>();
 		List<RemodelPreviewResponse.ClaimView> refunds = new ArrayList<>();
 		List<RemodelPreviewResponse.ReleaseView> releases = new ArrayList<>();
+		List<RemodelPreviewResponse.BlockView> kept = new ArrayList<>();
 		long refundedMinor = 0;
 		String currency = null;
-		for (RemodelClaim claim : committed.applied()) {
+		for (RemodelClaim claim : committed.settled()) {
 			long id = claim.bookingId().value();
 			String date = claim.bookingDate().toString();
 			MoneyView amount = new MoneyView(claim.amountMinor(), claim.currency());
@@ -51,12 +54,12 @@ record RemodelCommitResponse(long receiptId, Instant committedAt, List<RemodelPr
 					releases.add(new RemodelPreviewResponse.ReleaseView(id, date, amount, from, release.name()));
 				case RemodelOutcome.Decline decline ->
 					releases.add(new RemodelPreviewResponse.ReleaseView(id, date, amount, from, decline.name()));
-				case RemodelOutcome.Blocked ignored ->
-					throw new IllegalStateException("a committed remodel applies no blocked claim");
+				case RemodelOutcome.Blocked(var reason) ->
+					kept.add(new RemodelPreviewResponse.BlockView(id, date, amount, from, reason.name()));
 			}
 		}
 		return new RemodelCommitResponse(committed.receiptId().value(), committed.committedAt(), moves, refunds,
-				releases, refundReason, currency == null ? null : new MoneyView(refundedMinor, currency),
+				releases, kept, refundReason, currency == null ? null : new MoneyView(refundedMinor, currency),
 				currency == null ? null : new MoneyView(fee.totalFor(refunds.size()), fee.currency()));
 	}
 

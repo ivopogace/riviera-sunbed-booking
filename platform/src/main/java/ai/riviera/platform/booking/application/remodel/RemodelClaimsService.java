@@ -59,11 +59,12 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * ones and less what an earlier claim took, then the status split. The free pool is read once per
  * distinct date and only when a claim needs it. {@link #classify} is read-only and unlocked, advisory
  * by contract; {@link #commit} runs the same classification inside the caller's transaction — the
- * edge calls it from inside the layout write, under {@code venue}'s set locks — and applies every
+ * edge calls it from inside the layout write, under {@code venue}'s set locks — and settles every
  * claim: a move claims the candidate's rows and re-seats the booking, a refund, release or decline
- * runs the module's own guarded transition for that status. Each leg frees every {@code (set, date)}
- * row of the span it held and publishes the fact the rest of the platform already reacts to, so no refund,
- * reversal or mail is driven from here. Rationale: RESPONSIBILITIES.md §booking.
+ * runs the module's own guarded transition for that status, and a blocked claim is kept where it is
+ * with a receipt line and nothing else. Each ending frees every {@code (set, date)} row of the span
+ * it held, and each move or ending publishes the fact the rest of the platform already reacts to, so
+ * no refund, reversal or mail is driven from here. Rationale: RESPONSIBILITIES.md §booking.
  */
 @Service
 class RemodelClaimsService implements RemodelClaims {
@@ -113,9 +114,6 @@ class RemodelClaimsService implements RemodelClaims {
 		if (!token.covers(fresh)) {
 			return new RemodelCommit.Stale(fresh);
 		}
-		if (fresh.stream().anyMatch(claim -> claim.outcome() instanceof RemodelOutcome.Blocked)) {
-			return new RemodelCommit.Refused(fresh);
-		}
 		int refunds = (int) fresh.stream().filter(claim -> claim.outcome() == RemodelOutcome.Refund.REFUND).count();
 		if (!authorises(confirmation, refunds)) {
 			return new RemodelCommit.Unconfirmed(fresh);
@@ -124,11 +122,12 @@ class RemodelClaimsService implements RemodelClaims {
 		long feeMinor = feeRate.perRefund().perRefundMinor();
 		List<ReceiptMove> moves = new ArrayList<>();
 		List<ReceiptOutcome> outcomes = new ArrayList<>();
+		List<ReceiptKept> kept = new ArrayList<>();
 		for (RemodelClaim claim : fresh) {
-			apply(venueId, claim, committedAt, feeMinor, moves, outcomes);
+			apply(venueId, claim, committedAt, feeMinor, moves, outcomes, kept);
 		}
 		ReceiptId receipt = receipts.store(new NewReceipt(venueId, operator, committedAt, moves, outcomes,
-				confirmation.reason(), List.of()));
+				confirmation.reason(), kept));
 		return new RemodelCommit.Applied(receipt, committedAt, fresh);
 	}
 
@@ -137,15 +136,16 @@ class RemodelClaimsService implements RemodelClaims {
 		return refunds == 0 || (confirmation.refundCount() == refunds && !confirmation.reason().isBlank());
 	}
 
+	/** A blocked claim is kept: its booking, its rows and its set are left exactly as they are, and the receipt says why. */
 	private void apply(VenueId venueId, RemodelClaim claim, Instant committedAt, long feeMinor,
-			List<ReceiptMove> moves, List<ReceiptOutcome> outcomes) {
+			List<ReceiptMove> moves, List<ReceiptOutcome> outcomes, List<ReceiptKept> kept) {
 		switch (claim.outcome()) {
 			case RemodelOutcome.Move move -> moves.add(applyMove(venueId, claim, move, committedAt));
 			case RemodelOutcome.Refund ignored -> outcomes.add(applyRefund(venueId, claim, committedAt, feeMinor));
 			case RemodelOutcome.Release ignored -> outcomes.add(applyRelease(venueId, claim));
 			case RemodelOutcome.Decline ignored -> outcomes.add(applyDecline(venueId, claim));
-			case RemodelOutcome.Blocked ignored ->
-				throw new IllegalStateException("a blocked claim is refused before anything is applied");
+			case RemodelOutcome.Blocked(var reason) ->
+				kept.add(new ReceiptKept(claim.bookingId(), claim.bookingDate(), claim.from(), reason));
 		}
 	}
 
