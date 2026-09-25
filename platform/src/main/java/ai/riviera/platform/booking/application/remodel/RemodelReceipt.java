@@ -9,17 +9,18 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * What one remodel commit did to the bookings on the sets it removed or renumbered, as the venue's
- * owner reads it afterwards: who committed it, when, every move, every claim it ended instead, and
- * the operator's reason for the refunds ({@code ""} when it refunded nothing). Written in the
- * moves' own transaction, so a receipt and its lines are one fact. Module-internal; public for the
- * module's own adapters.
+ * owner reads it afterwards: who committed it, when, every move, every claim it ended instead, the
+ * operator's reason for the refunds ({@code ""} when it refunded nothing), and every claim it kept
+ * where it was. Written in the moves' own transaction, so a receipt and its lines are one fact.
+ * Module-internal; public for the module's own adapters.
  */
 public record RemodelReceipt(ReceiptId id, VenueId venueId, OperatorId operatorId, Instant committedAt,
-		List<ReceiptMove> moves, List<ReceiptOutcome> outcomes, String refundReason) {
+		List<ReceiptMove> moves, List<ReceiptOutcome> outcomes, String refundReason, List<ReceiptKept> kept) {
 
 	public RemodelReceipt {
 		moves = List.copyOf(moves);
 		outcomes = List.copyOf(outcomes);
+		kept = List.copyOf(kept);
 	}
 
 	/** The refund lines, in receipt order — the ones the operator had to type a count for. */

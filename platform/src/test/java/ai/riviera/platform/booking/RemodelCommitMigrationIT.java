@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.vocabulary.BlockReason;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -24,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * V52: {@code booking.moved_at} is present and starts null; every {@link RefundReason} — the fourth,
  * {@code VENUE_CHANGE}, included — passes both reason CHECKs; the receipt tables refuse a negative
  * distance, a move onto the same set and an orphan receipt; and every FK column carries an index.
+ * V62: {@code remodel_receipt_kept} admits exactly the {@code BlockReason} tokens and refuses an
+ * orphan receipt.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -90,6 +93,43 @@ class RemodelCommitMigrationIT {
 		assertDoesNotThrow(() -> jdbc.sql("DELETE FROM operator WHERE id = :o").param("o", operator).update());
 		assertEquals(operator, jdbc.sql("SELECT operator_id FROM remodel_receipt WHERE id = :r")
 				.param("r", receipt).query(Long.class).single());
+	}
+
+	@Test
+	void theKeptTableHoldsItsShape() {
+		long venue = insertVenue("Kept Shape");
+		long set = insertSet(venue, 1);
+		long booking = insertBooking(venue, set, insertCustomer());
+		long operator = jdbc.sql("INSERT INTO operator (username, status) VALUES (:u, 'ACTIVE') RETURNING id")
+				.param("u", "kept-shape-" + System.nanoTime()).query(Long.class).single();
+		long receipt = jdbc.sql("""
+				INSERT INTO remodel_receipt (venue_id, operator_id, committed_at) VALUES (:v, :o, now()) RETURNING id
+				""").param("v", venue).param("o", operator).query(Long.class).single();
+
+		for (BlockReason reason : BlockReason.values()) {
+			assertDoesNotThrow(() -> insertKept(receipt, booking, set, reason.name()), reason + " is a kept reason");
+		}
+		assertThrows(DataIntegrityViolationException.class, () -> insertKept(receipt, booking, set, "WHIM"),
+				"an unknown reason is refused");
+		assertThrows(DataIntegrityViolationException.class, () -> insertKept(receipt + 100_000, booking, set, "FROZEN"),
+				"an orphan receipt is refused");
+		assertEquals(BlockReason.values().length,
+				jdbc.sql("SELECT COUNT(*) FROM remodel_receipt_kept WHERE receipt_id = :r").param("r", receipt)
+						.query(Integer.class).single());
+
+		List<String> indexed = jdbc.sql("SELECT indexdef FROM pg_indexes WHERE tablename = 'remodel_receipt_kept'")
+				.query(String.class).list();
+		for (String column : List.of("(receipt_id", "(booking_id")) {
+			assertTrue(indexed.stream().anyMatch(def -> def.contains(column)), column + " is indexed: " + indexed);
+		}
+	}
+
+	private void insertKept(long receipt, long booking, long set, String reason) {
+		jdbc.sql("""
+				INSERT INTO remodel_receipt_kept (receipt_id, booking_id, booking_date, set_id, row_label, position_no, reason)
+				VALUES (:r, :b, :d, :s, 'A', 1, :reason)
+				""").param("r", receipt).param("b", booking).param("d", LocalDate.of(2027, 7, 1))
+				.param("s", set).param("reason", reason).update();
 	}
 
 	private void insertMove(long receipt, long booking, long from, long to, int rowsAway, int positionsAway) {

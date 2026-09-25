@@ -128,7 +128,7 @@ class RemodelClaimsService implements RemodelClaims {
 			apply(venueId, claim, committedAt, feeMinor, moves, outcomes);
 		}
 		ReceiptId receipt = receipts.store(new NewReceipt(venueId, operator, committedAt, moves, outcomes,
-				confirmation.reason()));
+				confirmation.reason(), List.of()));
 		return new RemodelCommit.Applied(receipt, committedAt, fresh);
 	}
 
