@@ -456,6 +456,7 @@ export class VenueMap {
         if (this.epoch !== epoch) {
           return;
         }
+        this.pendingSelectSetId = undefined;
         // A stale map under a new date header misleads — the panel must win over the old view.
         const toreDownMap = this.venue() !== undefined;
         this.venue.set(undefined);
@@ -509,6 +510,7 @@ export class VenueMap {
 
   /** Re-fetch availability for newly chosen days (closing any open dialog or sheet first). */
   protected onDatesChange(days: DateRange): void {
+    this.pendingSelectSetId = undefined;
     if (days.first === this.selectedDate() && days.last === this.selectedLastDate()) {
       return;
     }
@@ -599,9 +601,10 @@ export class VenueMap {
    */
   protected shortenTo(set: SetView, days: DateRange): void {
     this.partlySet.set(undefined);
-    this.pendingSelectSetId = set.id;
     this.lastTriggerId = set.id;
     this.onDatesChange(days);
+    // Set after the dispatch: a date change clears it, so it can only fire for this load.
+    this.pendingSelectSetId = set.id;
   }
 
   private focusTile(setId: number | undefined): void {

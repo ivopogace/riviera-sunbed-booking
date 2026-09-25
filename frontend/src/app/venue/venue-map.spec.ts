@@ -1883,6 +1883,25 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
       ).toContain(formatBookingDate(first));
     });
 
+    it('forgets a shortened stay whose map failed, so an unrelated date pick opens no dialog', async () => {
+      await loadStay();
+      dom().querySelector<HTMLButtonElement>('button[data-set-id="2"]')!.click();
+      fixture.detectChanges();
+      dom().querySelector<HTMLButtonElement>('[data-testid="shorten-stay"]')!.click();
+      fixture.detectChanges();
+      venueReq().flush('boom', { status: 500, statusText: 'Server Error' });
+      await settle();
+      fixture.detectChanges();
+
+      const c = fixture.componentInstance as unknown as { onDateChange(value: string): void };
+      c.onDateChange(addDays(first, 20));
+      venueReq().flush(stayMiramarShortened(addDays(first, 20), addDays(first, 20)));
+      await settle();
+      fixture.detectChanges();
+
+      expect(dom().querySelector('app-booking-dialog')).toBeNull();
+    });
+
     it('returns focus to the tile when the sheet is dismissed', async () => {
       await loadStay();
       const button = dom().querySelector<HTMLButtonElement>('button[data-set-id="2"]')!;
