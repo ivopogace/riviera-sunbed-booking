@@ -26,9 +26,10 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * The remodel commit: the bulk beach-map save that also settles the claims its layout disturbs, at
  * the platform edge because it composes {@code venue}'s write with {@code booking}'s moves, refunds,
  * releases and declines (ADR-0020; {@link RemodelCommitService} is the gate). The outcome→HTTP map:
- * committed → {@code 200} with the receipt and every applied claim; a picture the preview no longer
- * describes → {@code 409 STALE_PREVIEW}; a picture holding a claim that pins its set →
- * {@code 409 REMODEL_REFUSED}; a picture that refunds guests without the typed count and a reason →
+ * committed → {@code 200} with the receipt and every settled claim, the kept ones included; a picture
+ * the preview no longer describes → {@code 409 STALE_PREVIEW}; a layout that gives a kept set's row
+ * and position to another set → {@code 409 REMODEL_REFUSED}; a picture that refunds guests without
+ * the typed count and a reason →
  * {@code 409 REFUND_NOT_CONFIRMED} — all three carrying the fresh {@code preview}, token included, so
  * the editor re-renders the dialog and the count it now owes is the picture's own; the save's own refusals
  * and rejections in the save's words and codes; a non-owner → {@code 403} via
@@ -70,7 +71,7 @@ class RemodelCommitController {
 					RemodelPreviewAssembler.assemble(disturbed, fresh, commits.venueChangeFee()));
 			case RemodelCommitOutcome.Refused(var disturbed, var fresh) -> withPreview(
 					ApiProblem.of(HttpStatus.CONFLICT, REMODEL_REFUSED_CODE,
-							"The remodel affects a booking that cannot be moved or ended."),
+							"The layout gives the row and position of a set this remodel keeps to another set."),
 					RemodelPreviewAssembler.assemble(disturbed, fresh, commits.venueChangeFee()));
 			case RemodelCommitOutcome.NotConfirmed(var disturbed, var fresh) -> withPreview(
 					ApiProblem.of(HttpStatus.CONFLICT, REFUND_NOT_CONFIRMED_CODE,

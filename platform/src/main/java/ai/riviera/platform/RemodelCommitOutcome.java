@@ -11,8 +11,9 @@ import ai.riviera.platform.venue.vocabulary.LockedSet;
 /**
  * What the edge's remodel commit answered, for the controller to map: the layout is saved and every
  * claim on it applied ({@link Committed}); the preview no longer describes the claims — a new one, a
- * changed kind, a staff hold — ({@link StalePreview}, with the fresh picture); the fresh picture
- * holds a claim that pins its set ({@link Refused}); it refunds guests and the operator's typed
+ * changed kind, a staff hold — ({@link StalePreview}, with the fresh picture); the layout gives a
+ * kept set's row and position to another set ({@link Refused}, with the fresh picture); it refunds
+ * guests and the operator's typed
  * count and reason do not authorise it ({@link NotConfirmed}); the save's own live-claim probe still
  * found a claim ({@link SetsInUse}); or the save's shape and token rejections ({@link Rejected}).
  * Only the first writes anything.

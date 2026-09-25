@@ -3,6 +3,7 @@ package ai.riviera.platform.booking.adapter.in;
 import java.time.Instant;
 import java.util.List;
 
+import ai.riviera.platform.booking.application.remodel.ReceiptKept;
 import ai.riviera.platform.booking.application.remodel.ReceiptMove;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcome;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcomeKind;
@@ -13,7 +14,8 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
 /**
  * A remodel-commit receipt on the wire of {@code GET /api/venues/{venueId}/remodels/{receiptId}}:
  * when it was committed, every move, every claim it ended instead — refunded, released or declined —
- * the operator's reason and what it returned to guests. The booking rides by id (never by code,
+ * every claim it kept where it was with the reason, the operator's reason for the refunds and what
+ * it returned to guests. The booking rides by id (never by code,
  * invariant #7), its day as ISO {@code YYYY-MM-DD}, both spots as they were. {@code refundedTotal}
  * is {@code null} when the commit refunded nobody, so a zero never reads as a refund; its one
  * currency code is sound because collection is EUR-only (invariant #5). {@code feeTotal} is what the
@@ -23,7 +25,8 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
  * {@link Summary} is the list row. Mirrors the FE {@code RemodelReceipt} type.
  */
 record RemodelReceiptView(long receiptId, Instant committedAt, List<MoveView> moves, List<ClaimView> refunds,
-		List<ReleaseView> releases, String refundReason, MoneyView refundedTotal, MoneyView feeTotal) {
+		List<ReleaseView> releases, List<KeptView> kept, String refundReason, MoneyView refundedTotal,
+		MoneyView feeTotal) {
 
 	static RemodelReceiptView of(RemodelReceipt receipt) {
 		List<ReceiptOutcome> refunds = receipt.refunds();
@@ -34,6 +37,7 @@ record RemodelReceiptView(long receiptId, Instant committedAt, List<MoveView> mo
 						.filter(outcome -> outcome.kind() != ReceiptOutcomeKind.REFUND)
 						.map(ReleaseView::of)
 						.toList(),
+				receipt.kept().stream().map(KeptView::of).toList(),
 				receipt.refundReason(),
 				refunds.isEmpty() ? null : new MoneyView(receipt.refundedMinor(), refunds.getFirst().currency()),
 				refunds.isEmpty() ? null : new MoneyView(receipt.feeTotalMinor(), refunds.getFirst().currency()));
@@ -72,6 +76,15 @@ record RemodelReceiptView(long receiptId, Instant committedAt, List<MoveView> mo
 			return new ReleaseView(outcome.bookingId().value(), outcome.bookingDate().toString(),
 					SpotView.of(outcome.spot()), new MoneyView(outcome.amountMinor(), outcome.currency()),
 					outcome.kind().name());
+		}
+	}
+
+	/** {@code reason} is {@code FROZEN} or {@code NO_MOVE_CANDIDATE}; the set stayed on the map as stored. */
+	record KeptView(long bookingId, String bookingDate, SpotView from, String reason) {
+
+		static KeptView of(ReceiptKept kept) {
+			return new KeptView(kept.bookingId().value(), kept.bookingDate().toString(), SpotView.of(kept.spot()),
+					kept.reason().name());
 		}
 	}
 
