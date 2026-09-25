@@ -121,14 +121,9 @@ type Row =
   | { readonly code: string; readonly state: 'failed' };
 
 /**
- * Display order: loaded rows by booking date, newest first — the same key and direction
- * as the backend account list (`booking_date DESC`) — with still-loading/failed rows (date not yet
- * known) last. Ties (same date, or both undated) fall back to `rankOf`, each code's first-seen
- * position (device-store order, then the account list's own order), so same-date rows keep a
- * DETERMINISTIC order instead of freezing whichever fetch happened to resolve first — sorting is
- * re-applied incrementally on every resolution, so a date-only comparator would bake the network's
- * completion order into the list. The render-first rule is untouched (rows still render
- * immediately, then sort). ISO `YYYY-MM-DD` compares correctly as a string.
+ * Display order: newest booking date first (as the backend's `booking_date DESC`), undated rows
+ * last. Ties fall back to `rankOf` (first-seen order), so re-sorting on each resolution never bakes
+ * the network's completion order into the list.
  */
 function inDisplayOrder(rows: readonly Row[], rankOf: ReadonlyMap<string, number>): readonly Row[] {
   const dateOf = (r: Row): string => (r.state === 'loaded' ? r.bookingDate : '');
@@ -156,40 +151,12 @@ function isNotFound(error: unknown): boolean {
 }
 
 /**
- * The tourist's "My bookings" list: a device-local code base, merged with the account's own
- * list when signed in.
- *
- * <p><strong>Signed out (guest):</strong> the only key to a booking is its unguessable code
- * (invariant #7) — {@link DeviceLocalBookings} holds the codes this browser created, and this screen
- * fetches each live from `GET /api/bookings/{code}` so every row shows the current server status;
- * there is deliberately no guest list endpoint.
- *
- * <p><strong>Signed in:</strong> the screen also loads the customer's account-linked
- * bookings from `GET /api/me/bookings` (a single, already-enriched call) and MERGES them with the
- * device-local codes, deduped by code — nothing the user could already see disappears, and
- * account-linked bookings show on any device they sign in on. Back-linking past guest bookings by
- * email is a permanent non-goal (design D-6), so a pre-sign-in guest booking made elsewhere is
- * never listed here. The merge is display-only — no booking codes are handed to the account.
- *
- * <p><strong>Fetch scheduling:</strong> the per-code lookups are queued through a bounded
- * {@link DEVICE_FETCH_CONCURRENCY} rather than all issued at once. That bound is also what makes
- * the account list able to answer for a device code: because the queue subscribes to each lookup
- * lazily, a code still waiting its turn when `GET /api/me/bookings` returns is served from that
- * response and never fetched. Crucially this is a dequeue-time skip, **not** a barrier — device
- * rows and their first requests go out immediately, so a slow or failed account list never delays
- * them. Because those first requests are therefore always in flight when the account
- * list lands, the account's answer is also treated as **authoritative once given**: a per-code
- * lookup that fails afterwards leaves the row alone rather than retracting a booking the account
- * just vouched for. The stored code list itself is deliberately uncapped and unpruned — see
- * {@link DeviceLocalBookings#forget}.
- *
- * <p>Each row loads independently into a precomputed {@link RowView}, and the list stays
- * chronologically sorted — newest booking date first, undated (still-loading/failed) rows last —
- * re-sorting as each async row resolves ({@link inDisplayOrder}). Rows link to the
- * `/booking/:code` detail view. Money renders from integer minor units via {@link formatMoney}
- * (invariant #5); the PENDING_REQUEST deadline via {@link formatDeadline} (Europe/Tirane, invariant
- * #6). On a `404` a device-local row is dropped from view but the code is kept (invariant #7 — a 404
- * can be transient); a transient/offline failure shows Retry. Codes are treated as secrets — never logged.
+ * The tourist's "My bookings": device-local codes (bearer credentials, invariant #7 — never logged)
+ * each fetched live, merged when signed in with `GET /api/me/bookings`, deduped by code; the merge
+ * is display-only — no code is ever handed to the account. Lookups queue lazily behind
+ * {@link DEVICE_FETCH_CONCURRENCY}: one the account list answers first is never fetched, yet the
+ * list is no barrier; once given its answer is authoritative (a later lookup failure never retracts
+ * a row). A 404 hides a device row but keeps its code, as it can be transient.
  */
 /** The card-glass row chrome (v4 translate utilities animate `translate`, so the transition lists it). */
 const ROW =
@@ -420,10 +387,8 @@ export class MyBookings {
 
   protected readonly rows = signal<readonly Row[]>([]);
   /**
-   * True until the initial list is decided (the session restore has settled AND the first rows are
-   * set). It is cleared as soon as the DEVICE rows render, so it cannot gate the empty card on its
-   * own; {@link showSkeleton} is what does, by keeping the skeleton up while a signed-in account
-   * fetch is still out and there is nothing else to draw.
+   * True until the initial list is decided (restore settled AND first rows set). The DEVICE rows
+   * clear it as they render, so it cannot gate the empty card alone — {@link showSkeleton} does.
    */
   private readonly loading = signal(true);
   /**
@@ -433,38 +398,25 @@ export class MyBookings {
   protected readonly accountError = signal(false);
 
   /**
-   * The account list is out. Distinct from {@link loading}, which the device rows clear the moment
-   * they render — so without this there is a window where nothing is "loading" and nothing has
-   * failed yet, and the announcer would call that loaded. Never true for a guest:
-   * {@link loadAccount} is the only writer. Read by {@link showSkeleton} and {@link announceReady},
-   * and by the template — it drives the `account-retry` button's `[appBusy]` state (RV-FE-9).
+   * The account list is out (never for a guest). Distinct from {@link loading}, which the device
+   * rows clear on render — else the announcer would call the gap before the account list loaded.
+   * Also drives the `account-retry` button's `[appBusy]` state (RV-FE-9).
    */
   protected readonly accountPending = signal(false);
 
   /**
-   * Nothing to draw yet, so the page-level skeleton stands in — and the same signal is the
-   * announcer's `loading`, so what is drawn and what is announced cannot disagree. Deliberately
-   * NOT just {@link loading}: that is cleared the moment the device rows render, which for a
-   * signed-in customer whose bookings all live on the server leaves zero rows and no skeleton
-   * for the whole account round trip.
-   *
-   * <p>Per-code rows resolving behind their own row skeletons are NOT this signal's business —
-   * the page has something to draw then. {@link announceReady} is what withholds the
-   * announcement until they settle.
+   * Nothing to draw yet: the page skeleton, and also the announcer's `loading`, so drawn and
+   * announced agree. Not just {@link loading}: a signed-in customer with only server bookings would
+   * otherwise see zero rows and no skeleton for the whole account round trip.
    */
   protected readonly showSkeleton = computed(
     () => this.loading() || (this.accountPending() && this.rows().length === 0),
   );
 
   /**
-   * Every page-level read has settled **and produced a booking, or none**. Rows must be `'loaded'`,
-   * not merely "not loading": a `'failed'` row renders a "Couldn't load this booking" retry card,
-   * and announcing success over it is the same lie the `ready` polarity exists to prevent.
-   *
-   * <p>That is also what keeps the announcement single. A per-row Retry leaves its row `'failed'`
-   * for the whole round trip ({@link retry} — the button only exists inside that case), so this
-   * stays false throughout; a failed row means the page never announced in the first place. So the
-   * sequence a guest hears is silence → "loaded", never "loaded" → silence → "loaded".
+   * Every page-level read settled with every row `'loaded'`: a `'failed'` row's retry card must
+   * never be announced as success. A per-row Retry keeps its row `'failed'` throughout, so a guest
+   * hears silence → "loaded" exactly once.
    */
   protected readonly announceReady = computed(
     () =>
@@ -474,19 +426,16 @@ export class MyBookings {
       this.rows().every((row) => row.state === 'loaded'),
   );
   /**
-   * At least one row failed a per-code lookup — the page-level `role="alert"` panel's gate. Kept
-   * separate from a per-row alert (reverted in PR #743: assertive, one interruption per failure,
-   * and `@for … track`'s detach+insert re-sort re-announces an unchanged one) so a failure is
-   * announced exactly once, by an element the row re-sort never touches.
+   * At least one row failed a per-code lookup — the page-level `role="alert"` panel's gate. Not a
+   * per-row alert: `@for … track`'s detach+insert re-sort would re-announce it; this element is
+   * never re-sorted, so a failure is announced exactly once.
    */
   protected readonly anyRowFailed = computed(() => this.rows().some((r) => r.state === 'failed'));
 
   /**
-   * Codes a manual {@link retry} currently has in flight — the `row-retry` button's `[appBusy]`
-   * gate (RV-FE-9). Kept separate from the row's own `'loading'` state so a manual retry can stay
-   * on the SAME `'failed'` DOM node for its whole round trip: `@switch (row.state)` never swaps the
-   * subtree, so the just-pressed button is never destroyed and never strands keyboard focus on
-   * `<body>` (WCAG 2.4.3) while the request is out.
+   * Codes a manual {@link retry} has in flight — the `row-retry` button's `[appBusy]` gate (RV-FE-9).
+   * Separate from `'loading'` so the row stays on the SAME `'failed'` node and the pressed button
+   * never strands focus on `<body>` (WCAG 2.4.3).
    */
   protected readonly retryingCodes = signal<ReadonlySet<string>>(new Set());
 
@@ -553,19 +502,9 @@ export class MyBookings {
   }
 
   /**
-   * Signed in: merge the account's server list ON TOP of the already-rendered device rows,
-   * deduped by code. A failed or slow list call leaves the device rows intact and surfaces a Retry
-   * rather than silently hiding the account bookings; a 401 (expired session) surfaces the
-   * same way, not as a false "these are all your bookings."
-   *
-   * <p>Each returned code is also recorded as account-resolved, so a device code still sitting
-   * in the fetch queue is answered from here instead of costing a second request for the same booking.
-   *
-   * <p>Deliberately does NOT clear {@link accountError} up front: a {@link retryAccount} call finds
-   * it already `true`, and clearing it here would tear the `account-error` card — and the focused
-   * `account-retry` button inside it — down before the request even lands (WCAG 2.4.3). It stays up,
-   * busy (`[appBusy]="accountPending()"`), for the whole round trip; only a genuine success clears
-   * it, and only then does focus move on, deliberately, to the page heading.
+   * Signed in: merge the account list over the device rows (codes marked account-resolved); a
+   * failure, 401 included, keeps them and shows Retry. Never clear {@link accountError} up front: it
+   * would destroy the focused `account-retry` button mid-request (WCAG 2.4.3).
    */
   private loadAccount(): void {
     const wasErrored = this.accountError();
@@ -598,11 +537,8 @@ export class MyBookings {
   }
 
   /**
-   * Merge server rows in: replace the row for a code already listed, append the rest, then re-sort
-   * chronologically ({@link inDisplayOrder}). Both branches earn their keep —
-   * <em>replace</em> answers a code still queued (its row is listed, loading), <em>append</em>
-   * restores one a transient 404 had removed from the list entirely. Either way the row comes from
-   * the same {@link buildView}, so it renders identically to a per-code fetch.
+   * Merge server rows in: replace a listed code's row (one still queued), append the rest (one a
+   * transient 404 removed), then re-sort ({@link inDisplayOrder}).
    */
   private merge(incoming: readonly Row[]): void {
     incoming
@@ -627,14 +563,9 @@ export class MyBookings {
   }
 
   /**
-   * A manual retry bypasses the queue — the user asked for this one now. Deliberately does NOT
-   * route through {@link fetch}: that flips the row straight to `'loading'`, which under
-   * `@switch (row.state)` destroys the just-pressed `row-retry` button and strands focus on
-   * `<body>` (WCAG 2.4.3, RV-FE-9). The row instead stays `'failed'` — same DOM node, so focus
-   * stays put on its own — for the whole round trip; only {@link retryingCodes} moves, driving the
-   * button's `[appBusy]` state. Settling destroys that node only on success (→ `'loaded'`) or a 404
-   * (row dropped), so only those two legs move focus deliberately, to whatever now occupies the row
-   * or, failing that, the page heading.
+   * A manual retry bypasses the queue, and never via {@link fetch}: `'loading'` would destroy the
+   * pressed button and strand focus (WCAG 2.4.3). The row stays `'failed'` while
+   * {@link retryingCodes} drives `[appBusy]`; only success or a 404 then moves focus.
    */
   protected retry(code: string): void {
     this.retryingCodes.update((codes) => new Set(codes).add(code));
@@ -688,10 +619,8 @@ export class MyBookings {
   }
 
   /**
-   * A manual retry's settled leg: the row it was on may now be `'loaded'` (destroying the pressed
-   * button), still `'failed'` (same node — nothing to move), or gone entirely (a 404). Lands on
-   * whatever now occupies the row, else the page heading — never nothing (WCAG 2.4.3). `code` is
-   * base32 (invariant #7), so interpolating it into the attribute selector is safe as-is.
+   * A manual retry's settled leg: focus whatever now occupies the row, else the page heading —
+   * never nothing (WCAG 2.4.3). `code` is base32 (invariant #7), so safe in the attribute selector.
    */
   private moveFocusAfterRetry(code: string): void {
     afterNextRender(

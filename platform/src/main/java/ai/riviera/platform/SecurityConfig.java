@@ -41,15 +41,11 @@ import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 
 /**
- * Application-level security. Public tourist reads are permitted; venue writes and the staff/admin
- * surfaces are gated behind a <strong>server-side session</strong> (Spring Session JDBC, so a restart
- * keeps operators signed in) with role {@code OPERATOR}. Credentials are per-operator and DB-backed:
- * {@link #operatorDetailsService} loads the stored hash via {@link OperatorAccounts} and
- * {@code DaoAuthenticationProvider} verifies it against {@link #passwordEncoder()} — no JWT, no custom
- * token filter.
- *
- * <p>Per-<em>venue</em> authorization (invariant #13) is object-level and lives in the application
- * services, never here. This class is only the role layer above it.
+ * Application-level security: public tourist reads are permitted; venue writes and the staff/admin
+ * surfaces need a <strong>server-side session</strong> (Spring Session JDBC) with a role. Operator
+ * credentials are DB-backed ({@link #operatorDetailsService} + {@link #passwordEncoder()}); no JWT, no
+ * custom token filter. Per-<em>venue</em> authorization (invariant #13) is object-level and lives in
+ * the application services, never here; this class is only the role layer above it.
  */
 @Configuration
 @EnableWebSecurity
@@ -62,11 +58,8 @@ class SecurityConfig {
 	/** The role gating the signed-in tourist's own-bookings surface. */
 	private static final String CUSTOMER_ROLE = "CUSTOMER";
 	/**
-	 * The platform-admin role gating <strong>every</strong> path in {@code /api/admin/**}, uniformly.
-	 * Machine-checked by {@code AdminSurfaceRoleGateTest}, which discovers the mapped admin endpoints
-	 * rather than reading a list — so a new admin endpoint added below with no matcher at all fails the
-	 * build instead of falling through to {@code anyRequest().authenticated()}. There is deliberately no
-	 * allow-list to opt out through.
+	 * Gates <strong>every</strong> path in {@code /api/admin/**}, with no opt-out allow-list;
+	 * {@code AdminSurfaceRoleGateTest} discovers the mapped admin endpoints, so one with no matcher fails.
 	 */
 	private static final String ADMIN_ROLE = "ADMIN";
 	/** A single laid-out set (PATCH/DELETE target); session + CSRF token required. */
@@ -76,13 +69,9 @@ class SecurityConfig {
 	/** A single venue item (PATCH profile edit — amenities + distance-to-water); session + CSRF. */
 	private static final String VENUE_ITEM_PATH = "/api/venues/*";
 	/**
-	 * The operator-only venue-write {@code PUT}s — bulk beach-map layout replace, row reprice, row rename.
-	 *
-	 * <p>Gated per-verb rather than by namespace, deliberately: unlike {@code /api/me/**} (where a
-	 * method-agnostic rule is right because every verb belongs to one principal type),
-	 * {@code /api/venues/**} mixes the <em>public</em> tourist {@code GET} with operator-only writes, so
-	 * a namespace rule would be wrong here. That shape's weakness — a newly mapped verb falling through
-	 * unnoticed — is covered by {@code EndpointRoleGateCoverageTest} instead.
+	 * The operator-only venue-write {@code PUT}s (layout replace, row reprice/rename), gated per-verb
+	 * because {@code /api/venues/**} also serves the public {@code GET};
+	 * {@code EndpointRoleGateCoverageTest} catches a newly mapped verb falling through.
 	 */
 	private static final String BEACH_MAP_PATH = "/api/venues/*/beach-map";
 	private static final String BEACH_MAP_PREVIEW_PATH = "/api/venues/*/beach-map/preview";
@@ -145,12 +134,9 @@ class SecurityConfig {
 	private static final String BOOKING_REQUEST_ACCEPT_PATH = "/api/venues/*/booking-requests/*/accept";
 	private static final String BOOKING_REQUEST_DECLINE_PATH = "/api/venues/*/booking-requests/*/decline";
 	/**
-	 * The platform-admin weekly BKT payout-batch report: generate (POST) / list (GET). Neither this nor
-	 * {@link #PAYOUT_BATCH_ITEM_PATH} is venue-scoped — the GET reports every venue's gross/commission/net
-	 * and the PATCH addresses a batch by id — so under an {@code OPERATOR} gate any approved operator
-	 * could read competitors' payout figures (OWASP API #1). Invariant #13 exempts {@code /api/admin/**}
-	 * from per-venue ownership, which is precisely why the role has to be the strict one: here the gate
-	 * is the whole authorization.
+	 * The admin BKT payout-batch report (POST generate / GET list). It and {@link #PAYOUT_BATCH_ITEM_PATH}
+	 * are not venue-scoped and exempt from invariant #13, so the ADMIN gate is the whole authorization:
+	 * an OPERATOR gate would let any operator read competitors' payout figures.
 	 */
 	private static final String PAYOUT_BATCHES_PATH = "/api/admin/payout-batches";
 	/** A single payout batch: status transition (PATCH). Session + CSRF token required. */
@@ -187,20 +173,15 @@ class SecurityConfig {
 	/** The venue-change fee an admin reads and writes: one platform-wide amount, no venue scope. */
 	private static final String ADMIN_VENUE_CHANGE_FEE_PATH = "/api/admin/venue-change-fee";
 	/**
-	 * The per-booking mail-delivery view and its resend — the support lever the outbox cannot be: that
-	 * re-drives what the registry still <em>owes</em>, this re-sends a confirmation whose publication
-	 * already completed (the common "never got the email" case).
-	 *
-	 * <p>The lookup is a {@code POST} although it reads: its key is an email address, and a query string
-	 * would deposit that address in access, proxy and browser-history logs.
+	 * The per-booking mail-delivery view and resend (for a confirmation whose publication completed).
+	 * The lookup is a {@code POST} although it reads: its key is an email address, which a query string
+	 * would leave in access, proxy and browser-history logs.
 	 */
 	private static final String ADMIN_MAIL_DELIVERY_LOOKUP_PATH = "/api/admin/mail-deliveries/lookup";
 	private static final String ADMIN_MAIL_DELIVERY_RESEND_PATH = "/api/admin/mail-deliveries/*/resend";
 	/**
-	 * Platform-admin venue-photo takedown. Unlike the other admin surfaces it is not platform-wide
-	 * state — it acts on one venue's data, and the invariant-#13 exemption is the whole point: the
-	 * venue-scoped DELETE answers a non-owner {@code 403 NOT_VENUE_OWNER}, which is exactly the case
-	 * moderation exists for. Two single-segment wildcards: venue id, then slot.
+	 * Admin venue-photo takedown on one venue's data, relying on the invariant-#13 exemption: the
+	 * venue-scoped DELETE answers a non-owner {@code 403 NOT_VENUE_OWNER}. Wildcards: venue id, slot.
 	 */
 	private static final String ADMIN_VENUE_PHOTO_PATH = "/api/admin/venues/*/photos/*";
 	/**
@@ -210,28 +191,23 @@ class SecurityConfig {
 	 */
 	private static final String ADMIN_VENUE_PHOTOS_PATH = "/api/admin/venues/*/photos";
 	/**
-	 * The platform-admin commission surface — the venues-with-commission list and the rate write. An
-	 * admin does not <em>own</em> a rate, so object-level authorization has nothing to check; the
-	 * venue-scoped alternative treats the rate as read-only on purpose (a venue does not set its own
-	 * commission). The list path is the bare namespace root and the write ends at a literal
-	 * {@code /commission} segment, so neither can shadow the photo patterns above.
+	 * The admin commission surface: the venues-with-commission list and the rate write (a venue never
+	 * sets its own). The list is the bare namespace root and the write ends at a literal
+	 * {@code /commission}, so neither can shadow the photo patterns above.
 	 */
 	private static final String ADMIN_VENUE_COMMISSIONS_PATH = "/api/admin/venues";
 	private static final String ADMIN_VENUE_COMMISSION_ITEM_PATH = "/api/admin/venues/*/commission";
 	/**
-	 * Platform-admin review moderation: the per-venue list that makes a takedown operable (it must
-	 * reach venues the public list hides), and the two takedown verbs by review id. The list ends at
-	 * a literal {@code /reviews} segment, so it cannot shadow the photo or commission patterns; the
-	 * verbs sit under {@code /api/admin/reviews}, a namespace of their own.
+	 * Admin review moderation: the per-venue list (reaching venues the public list hides) and the two
+	 * takedown verbs by review id. The list ends at a literal {@code /reviews}, so it shadows no pattern
+	 * above; the verbs have their own {@code /api/admin/reviews} namespace.
 	 */
 	private static final String ADMIN_VENUE_REVIEWS_PATH = "/api/admin/venues/*/reviews";
 	private static final String ADMIN_REVIEW_HIDE_PATH = "/api/admin/reviews/*/hide";
 	private static final String ADMIN_REVIEW_UNHIDE_PATH = "/api/admin/reviews/*/unhide";
 	/**
-	 * The platform-admin audit-trail read (required by ADR-0013) — the latest recorded mutating
-	 * {@code /api/admin/**} actions, newest first. The <em>writes</em> it reads are recorded by
-	 * {@link AdminAuditFilter}, registered after the authorization filter so only actions past the gate
-	 * leave a row.
+	 * The admin audit-trail read (ADR-0013), newest first. Rows are written by {@link AdminAuditFilter},
+	 * registered after the authorization filter so only actions past the gate leave one.
 	 */
 	private static final String ADMIN_AUDIT_PATH = "/api/admin/audit";
 	/** The namespace {@link AdminAuditFilter} audits — every mutating request under it leaves a row. */
@@ -245,10 +221,8 @@ class SecurityConfig {
 	 */
 	private static final String OPERATOR_REGISTER_PATH = "/api/auth/operator/register";
 	/**
-	 * The signed-in operator's own password change — unlike the two paths above it is
-	 * <strong>authenticated</strong>. It lives here rather than under {@code /api/me/**} precisely
-	 * because that namespace is CUSTOMER-only and method-agnostic (see {@link #ME_PATHS}); putting it
-	 * there would 403 every operator and quietly falsify that rule. On its own rate-limit budget so a
+	 * The signed-in operator's own password change, <strong>authenticated</strong>. Not under
+	 * {@code /api/me/**}, which is CUSTOMER-only (see {@link #ME_PATHS}). Own rate-limit budget, so a
 	 * change flood can never starve operator login.
 	 */
 	private static final String OPERATOR_PASSWORD_PATH = "/api/auth/operator/password";
@@ -256,55 +230,37 @@ class SecurityConfig {
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
 	/**
-	 * The proof-of-work challenge the widget fetches before a fenced write: anonymous by definition
-	 * (the solution, not a session, is what the fence checks), on its own rate-limit budget. The route
-	 * belongs to the {@code challenge} module, so the root names it by its own literal like every other
-	 * module-owned endpoint; {@code ChallengeEndpointTest} is what keeps the two in lockstep.
+	 * The proof-of-work challenge fetched before a fenced write: anonymous (the solution, not a session,
+	 * is what the fence checks), on its own rate-limit budget. {@code ChallengeEndpointTest} keeps this
+	 * literal in lockstep with the {@code challenge} module's route.
 	 */
 	private static final String CHALLENGE_PATH = "/api/auth/challenge";
 	/**
-	 * The signed-in tourist's own surface — my-bookings, set-password + verification-resend,
-	 * self-service erasure. {@code CUSTOMER}-only, and deliberately <strong>method-agnostic</strong>:
-	 * {@code /api/me/**} is by definition the session customer's own resources, so every verb belongs to
-	 * the same principal type. A namespace rule fails <em>closed</em> for any future verb, where a
-	 * {@code GET}-only matcher let each new {@code POST} fall through to
-	 * {@code anyRequest().authenticated()}. {@code CurrentCustomer.require} remains as defence-in-depth.
-	 * <strong>Adding a non-customer endpoint under this prefix would make the rule wrong</strong> — put
-	 * it elsewhere, as {@code GET /api/venues/mine} does for operators.
+	 * The signed-in tourist's own surface: {@code CUSTOMER}-only and <strong>method-agnostic</strong>, so
+	 * any future verb fails closed. <strong>Never add a non-customer endpoint under this prefix</strong>;
+	 * put it elsewhere, as {@code GET /api/venues/mine} does for operators.
 	 */
 	private static final String ME_PATHS = "/api/me/**";
 	/**
-	 * Public customer account-recovery POSTs: request a reset link, redeem a reset token, redeem a
-	 * verification token. Anonymous by definition — the emailed token is the bearer credential
-	 * (invariant #7); behind the recovery rate-limit budget. CSRF-protected like the customer login, so
-	 * deliberately NOT in the CSRF ignore list.
+	 * Public account-recovery POSTs (reset request/redeem, verification redeem): anonymous, as the emailed
+	 * token is the bearer credential (invariant #7); recovery rate-limit budget. CSRF-protected like the
+	 * customer login, so deliberately NOT in the CSRF ignore list.
 	 */
 	private static final String FORGOT_PASSWORD_PATH = "/api/auth/customer/forgot-password";
 	private static final String RESET_PASSWORD_PATH = "/api/auth/customer/reset-password";
 	private static final String VERIFY_EMAIL_PATH = "/api/auth/customer/verify-email";
 	/**
-	 * The SSO redirect/callback surface: the authorize + callback GETs and the mock IdP authorize GET.
-	 * Anonymous by definition — the callback completes the OIDC exchange and establishes the session
-	 * internally; GETs are never CSRF-challenged, and the {@code state} nonce is the callback's forgery
-	 * defence.
+	 * The SSO authorize, callback and mock-IdP GETs: anonymous, as the callback establishes the session
+	 * itself; GETs are never CSRF-challenged, so the {@code state} nonce is the callback's forgery defence.
 	 */
 	private static final String SSO_PATHS = "/api/auth/sso/**";
 	/** The session logout; handled by the framework {@code LogoutFilter}, not a controller. */
 	private static final String LOGOUT_PATH = "/api/auth/logout";
 
 	/**
-	 * The backend chain, scoped to {@code /api/**} + {@code /actuator/**} and ordered FIRST so the SPA
-	 * shell's permit-all chain below only catches what this one did not match.
-	 *
-	 * <p><strong>ORDERING RULE — first match wins.</strong> Every operator-only
-	 * {@code GET /api/venues/*&#47;…} rule below MUST precede the public {@code GET /api/venues/**}, or
-	 * its data leaks to anyone. Each such rule carries an "order-sensitive" note on its path constant.
-	 *
-	 * <p>{@code .spa()} is Spring Security 7's single-page-app CSRF posture: a JS-readable XSRF-TOKEN
-	 * cookie the SPA echoes as {@code X-XSRF-TOKEN}. The only exemptions are the genuinely token-less
-	 * surfaces — guest booking create/cancel/withdraw, authorized by the booking code alone
-	 * (invariant #7) and deliberately session-free, and the Stripe webhook, a server-to-server POST
-	 * authenticated by its signature header (invariant #8).
+	 * The {@code /api/**} + {@code /actuator/**} chain, ordered first. <strong>First match wins</strong>:
+	 * each operator-only {@code GET /api/venues/*&#47;…} MUST precede the public one, or its data leaks.
+	 * CSRF is {@code .spa()}, exempting only booking-code writes and the signed webhook (invariants #7, #8).
 	 */
 	@Bean
 	@Order(1)
@@ -444,13 +400,9 @@ class SecurityConfig {
 	}
 
 	/**
-	 * The public single-page-app shell: every non-API, non-actuator path — the Angular index, its hashed
-	 * assets, and the client-side deep-link routes served by {@link SpaWebConfig} — is anonymous.
-	 * Ordered LAST, so it only catches what the API chain's {@code securityMatcher} did not.
-	 *
-	 * <p>CSRF is left at its <strong>default (enabled)</strong>: this chain serves only safe static GETs,
-	 * which CSRF never challenges, so there is nothing to protect and nothing to disable. Explicitly
-	 * disabling it would trip {@code java/spring-disabled-csrf-protection} (CodeQL) for no benefit.
+	 * The public SPA shell: every non-API, non-actuator path is anonymous; ordered last. CSRF stays at
+	 * its default (enabled): only safe static GETs pass here, and disabling it would trip CodeQL's
+	 * {@code java/spring-disabled-csrf-protection} for nothing.
 	 */
 	@Bean
 	@Order(2)
@@ -470,12 +422,9 @@ class SecurityConfig {
 	}
 
 	/**
-	 * The CUSTOMER authentication manager: an explicit {@link ProviderManager} whose
-	 * {@link CustomerUserDetailsService} is built INLINE. Kept separate from the operator
-	 * {@link #authenticationManager} so a customer credential can never authenticate as an operator —
-	 * {@code AuthController} selects the manager per principal-typed endpoint. Deliberately NOT wired as
-	 * a second {@code UserDetailsService} bean: that would make {@link AuthenticationConfiguration}
-	 * ambiguous and break the operator manager's auto-wiring.
+	 * The CUSTOMER manager, separate from the operator one so a customer credential can never
+	 * authenticate as an operator. {@link CustomerUserDetailsService} is built inline: a second
+	 * {@code UserDetailsService} bean would make {@link AuthenticationConfiguration} ambiguous.
 	 */
 	@Bean
 	AuthenticationManager customerAuthenticationManager(CustomerAccounts customerAccounts,
@@ -497,14 +446,9 @@ class SecurityConfig {
 	}
 
 	/**
-	 * Logout success handler that answers {@code 204} <strong>and</strong> re-issues a fresh
-	 * {@code XSRF-TOKEN} cookie. The framework's {@code CsrfLogoutHandler} clears the CSRF cookie during
-	 * logout and {@code LogoutFilter} then short-circuits the chain, so {@code .spa()}'s deferred-token
-	 * machinery never runs on the logout response — leaving the SPA with no token, and its next
-	 * CSRF-protected POST answering {@code 403 INVALID_CSRF_TOKEN}. Generating a new token here restores
-	 * the invariant that every response leaves a usable token. The repository is stateless (the token
-	 * lives in the cookie, not the just-invalidated session), and one shared logout filter covers both
-	 * principal types.
+	 * Answers {@code 204} <strong>and</strong> re-issues an {@code XSRF-TOKEN} cookie: logout clears the
+	 * CSRF cookie and short-circuits before {@code .spa()} can mint one, so the SPA's next POST would
+	 * otherwise get {@code 403 INVALID_CSRF_TOKEN}.
 	 */
 	private static LogoutSuccessHandler csrfReissuingLogoutSuccessHandler(CsrfTokenRepository csrfTokenRepository) {
 		HttpStatusReturningLogoutSuccessHandler noContent =
@@ -528,13 +472,9 @@ class SecurityConfig {
 	}
 
 	/**
-	 * The session cookie's posture, owned in code: {@code HttpOnly}, {@code Secure} (browsers treat
-	 * {@code http://localhost} as trustworthy, so local dev still works), {@code SameSite=Lax} (CSRF
-	 * layer 1 — the cookie-to-header token is layer 2). A user-defined {@link CookieSerializer} bean
-	 * makes Boot's session auto-configuration back off, which keeps these flags deterministic in every
-	 * environment rather than depending on the {@code server.servlet.session.cookie.*} property mapping —
-	 * which did not reach the Spring Session cookie under a mock web environment. Pinned by
-	 * {@code AuthSessionIT}.
+	 * The session cookie's posture, owned in code as the {@code server.servlet.session.cookie.*} mapping
+	 * may not reach Spring Session: {@code HttpOnly}, {@code Secure} (localhost still works),
+	 * {@code SameSite=Lax} (CSRF layer 1). Pinned by {@code AuthSessionIT}.
 	 */
 	@Bean
 	CookieSerializer cookieSerializer() {
@@ -553,10 +493,8 @@ class SecurityConfig {
 	}
 
 	/**
-	 * The per-operator {@link UserDetailsService}: each login is resolved to a DB-backed operator account
-	 * via {@link OperatorAccounts} and verified against the stored hash. Defining it here replaces both
-	 * Boot's auto-generated default user and the old single shared in-memory operator — nothing is held
-	 * in memory.
+	 * The per-operator {@link UserDetailsService}: each login resolves to a DB-backed operator account via
+	 * {@link OperatorAccounts}; defining it replaces Boot's auto-generated default user.
 	 */
 	@Bean
 	UserDetailsService operatorDetailsService(OperatorAccounts accounts) {

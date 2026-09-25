@@ -107,10 +107,8 @@ const FOOT_ROW = '[data-testid="sheet-near-me"], [data-testid="map-attribution"]
 /** The dot's own ring is its margin; a pill may come this close to it and no closer. */
 const DOT_MARGIN_PX = 2;
 /**
- * The desktop panel is clamped to the ROW's own natural width — a row is happy between about 300
- * and 400 px of text beside a 72 px thumbnail — and the map takes everything else. Sizing the map
- * from the result set's aspect instead stretched a four-venue region's rows to 814 px beside a
- * 576 px bay, which is the wrong invariant: the row is the thing with a natural width.
+ * The desktop panel is clamped to the ROW's natural width (~300–400 px of text beside a 72 px
+ * thumbnail); the map takes everything else. Never size it from the result set's aspect.
  */
 const PANEL_SHARE = 0.38;
 const PANEL_MIN_PX = 420;
@@ -120,15 +118,9 @@ const PANEL_SPELLED_PX = 480;
 /** The gutter around and between the panel and the map; their corners match it at 22 px. */
 const FRAME_GAP_PX = 12;
 /**
- * What the desktop fit keeps clear on every side. `fitPins` takes this off the whole axis and
- * measures it to a pin's POINT, so half of it has to cover the control band (a 44 px box 12 px off
- * an edge), the 12 px of air past it AND the pin's own half-height — which is why it replaces
- * rather than extends the default 76 that only reserved the box.
- *
- * <p>It is a guarantee on the down axis only. Across, `You are here` is 150 px where a pin's half
- * is 30, and a pad wide enough for that would leave a 1024 px window nothing to fit into. A crowd's
- * pill is kept off those boxes by the placement pass, which takes them as no-go; a lone pin, which
- * never moves, is drawn under the chrome's own z-order rather than over it.
+ * What the desktop fit keeps clear on every side, measured to a pin's POINT: half covers the
+ * control band (a 44 px box 12 px off an edge), 12 px of air and the pin's half-height. A guarantee
+ * on the down axis only; across, the placement pass keeps crowd pills off the control boxes.
  */
 const PANE_CHROME_PAD_PX = 2 * (FRAME_GAP_PX + 44 + FRAME_GAP_PX + PIN_HEIGHT_PX / 2);
 /**
@@ -159,30 +151,12 @@ function closedStateText(
 }
 
 /**
- * Tourist venue discovery — the app's landing page (`/`).
- *
- * <p>The page is the **riviera map** (ADR-0022). Below `lg` the map is the ground under the glass
- * header and the cards are a sheet over it with three resting heights (`DiscoverSheet`); from
- * `lg` the same list is a pinned left panel beside an inset map. Either way the head is one row
- * carrying the query (`DiscoverHead`), the row is the pin's preview, and Near me has three arms
- * decided by the map's own fence rule. One whole-coast request per date is narrowed to a region
- * client-side, so the chips and the coast picker can count every beach.
- *
- * <p>The venue pins over the map are the page's own overlay (`VenuePinLayer`), fed the very cards
- * the list renders, so the two surfaces cannot disagree. Pins that bury each other form a place
- * pill: pressing it goes there, and when the place is one beach the list narrows to it.
- *
- * <p>On both arms: a card is a link to the beach map at `/venues/:id`, carrying the selected
- * date; the date drives the per-venue availability count (invariant #2); money is rendered from
- * integer minor units (invariant #5); every card fact is conveyed as text, not colour alone
- * (WCAG AA); and the loading (a pulsing skeleton grid), empty and error states are distinct.
- *
- * <p>On a phone or tablet the sheet opens on the **map poster** (`map-poster.ts`): a still of the
- * region under the pins, which are projected through a still-image handle, so the first paint
- * costs one image and no engine. The first thing that has to move the camera — a crowd press, a
- * finger on the ground, the sheet pulled below half, a located dot outside the picture — wakes the
- * live map at the poster's own camera; it fades in under the poster once loaded, the pins switch
- * to it where they stood, and the move wanted is replayed on it.
+ * Tourist venue discovery (`/`), the riviera map (ADR-0022): below `lg` a map under a three-detent
+ * card sheet (`DiscoverSheet`), from `lg` a pinned list panel beside an inset map. One whole-coast
+ * request per date is narrowed to a region client-side; the pins (`VenuePinLayer`) are fed the very
+ * cards the list renders, so the two cannot disagree. Every card fact is text, not colour alone.
+ * On phone/tablet the sheet opens on a still `map-poster.ts` (no engine); the first camera move
+ * wakes the live map at the poster's camera and replays the move on it.
  */
 @Component({
   selector: 'app-home',
@@ -246,22 +220,15 @@ export class Home {
   protected readonly loading = computed(() => !this.failed() && this.venues() === undefined);
 
   /**
-   * The earliest selectable booking date — today in Europe/Tirane. Backs the date input's
-   * `min` and clamps a hand-typed date so a past date can't be presented as bookable (an
-   * invariant #4 display guardrail; the server stays authoritative for the real cutoff).
-   *
-   * <p>Computed once at construction, not re-derived per interaction (unlike `venue-map`'s
-   * per-route-reset floor): a page left open across Tirane midnight can still offer yesterday
-   * client-side until the next navigation. Accepted residual — the server refuses `BOOKING_CLOSED`
-   * regardless.
+   * The earliest selectable booking date — today in Europe/Tirane: the date input's `min` and the
+   * clamp for a hand-typed date (a display guardrail; the server stays authoritative). Computed once,
+   * so a page left open past Tirane midnight may offer yesterday until the next navigation.
    */
   protected readonly minDate = defaultBookingDate(new Date());
   /**
-   * The day availability is counted for (ISO YYYY-MM-DD). Seeded from the route's `?date` — where
-   * the rebook link a venue-caused cancellation mails lands — clamped to the earliest bookable day,
-   * and defaulting to it. A later navigation that only changes that param reuses this component, so
-   * the constructor's subscription keeps the date and the counts in step rather than leaving a new
-   * label over an old list.
+   * The day availability is counted for (ISO YYYY-MM-DD), seeded from `?date` (where mailed rebook
+   * links land), clamped to {@link minDate}. A `?date`-only navigation reuses this component, so the
+   * constructor's subscription keeps date and counts in step.
    */
   protected readonly selectedDate = signal(this.minDate);
 
@@ -317,12 +284,9 @@ export class Home {
   });
 
   /**
-   * The cards the map draws and the preview reads: the list's own while it has one, else the last
-   * it had. A reload empties `venuesView` for its skeletons; if the map followed, every pin button
-   * would be destroyed under whatever focus it held and an open card would close for the request's
-   * duration — the very moment a place pill has just narrowed the list. So the map keeps the last
-   * list until the next one lands (the first load still draws nothing), and a filter or date
-   * change closes the preview iff its venue leaves the result set.
+   * The cards the map draws and the preview reads: the list's own, else the last it had — a reload's
+   * empty `venuesView` would destroy every pin button under its focus and close an open card. A
+   * filter or date change closes the preview iff its venue leaves the result set.
    */
   private readonly shownCards = linkedSignal<
     readonly VenueCard[] | undefined,
@@ -333,13 +297,9 @@ export class Home {
   });
 
   /**
-   * The map's pins, derived from the very cards the list renders — one per card with a venue
-   * location, in list order. The map therefore issues no query of its own: a beach, region or
-   * date change re-feeds these from the one list response it was going to fetch anyway, and the
-   * two surfaces cannot disagree. A pin's id is its venue's id as a string.
-   *
-   * <p>The riviera map holds ONE region on every surface: there is no whole-coast state, so the
-   * pins are the focused region's cards and not the whole coast's.
+   * The map's pins: one per located card of the focused region, in list order, so the map issues no
+   * query of its own and the two surfaces cannot disagree (there is no whole-coast state). A pin's
+   * id is its venue's id as a string.
    */
   protected readonly pins = computed<readonly VenuePin[]>(() =>
     this.focus().cards.flatMap((card) =>
@@ -492,10 +452,9 @@ export class Home {
     () => (this.sheet()?.chrome().viewportW ?? 0) >= TWO_COLUMN_PX,
   );
   /**
-   * The foot row's height above the map's bottom edge: 12 px over the sheet's top, following a
-   * drag, and never up into the header at peek. All the phone's map chrome rides it — Near me at
-   * one end and the credit at the other, the two changing sides together for a lone pin
-   * ({@link footSwap}).
+   * The foot row's height above the map's bottom: 12 px over the sheet's top, following a drag,
+   * never into the header at peek. Near me and the credit ride it, swapping sides together for a
+   * lone pin ({@link footSwap}).
    */
   protected readonly footBottom = computed(() => {
     const sheet = this.sheet();
@@ -632,11 +591,8 @@ export class Home {
   private readonly handOffFocus = focusMover({ preventScroll: true });
 
   /**
-   * The fetch to repeat when Retry is pressed — the *failed* request, not a fixed one: an
-   * initial-load failure retries `loadInitial`, a day-change failure retries `reload`. Both ask
-   * for the whole coast on the current date; which one failed is the only difference.
-   * Assigned by whichever load runs first; the constructor's `loadInitial()` sets it before any
-   * Retry click is possible (definite assignment — no dead initial closure to leave uncovered).
+   * The fetch Retry repeats — the *failed* one, `loadInitial` or `reload`. Assigned by whichever
+   * load runs first; the constructor's `loadInitial()` sets it before any Retry is possible.
    */
   private lastLoad!: () => void;
 
@@ -676,14 +632,9 @@ export class Home {
   }
 
   /**
-   * The camera is derived from the pane and the result set, never `RIVIERA_MAP_OPTIONS`' fixed
-   * zoom: the pins (and the dot, when located) are fitted into the window between the header and
-   * the foot row above the sheet's rest, capped at 14 so the sea stays in frame. Nothing re-fits
-   * at full, where the map is a sliver.
-   *
-   * <p>The poster is that fit at half, rendered: while it shows, the live map arriving under it
-   * is left at the poster's camera, and afterwards only a change the poster did not frame — a
-   * new detent, a new target, a new viewport — or a move the poster could not make re-aims it.
+   * Fits the camera to pins + dot between the header and the foot row (zoom cap 14), never
+   * `RIVIERA_MAP_OPTIONS`' fixed zoom; nothing re-fits at full. The poster is this fit at half: the
+   * live map keeps the poster's camera until a change the poster did not frame re-aims it.
    */
   private followSheet(): void {
     // The dot re-projects on every camera move; its own effect, so a re-fit never drops the subscription.
@@ -765,13 +716,9 @@ export class Home {
   }
 
   /**
-   * Keep the pin layer's no-go boxes and the foot row's side in step with the rendered chrome.
-   *
-   * <p>The measurement is an `earlyRead` off one tick, and the tick is bumped by the things that
-   * genuinely move chrome — the viewport, the sheet's rest, the located state, a camera move
-   * (which moves the dot) and the swap itself. Pills moving bumps nothing, so a re-layout cannot
-   * feed back into a re-measure; and the swap settles after one pass, because `footSwap` only ever
-   * moves the foot to a side it has found free.
+   * Keep the pin layer's no-go boxes and the foot row's side in step with the rendered chrome, via an
+   * `earlyRead` off one tick bumped only by what moves chrome. Pills moving must bump nothing, or a
+   * re-layout feeds back into a re-measure; `footSwap` only moves to a free side, so it settles.
    */
   private followMapChrome(): void {
     effect(() => {
@@ -798,10 +745,9 @@ export class Home {
   }
 
   /**
-   * The desktop opens on a region, as the phone does: the pins (and the dot, when located) fitted
-   * into the pane the panel leaves. There is no whole-coast state — 26 venues over 300 km are an
-   * index, not a choice, and no pane frames them — so the coast picker is the only way to another
-   * region, and this is the only thing that aims the camera.
+   * The desktop opens on a region, as the phone does: pins (and the dot) fitted into the pane the
+   * panel leaves. No whole-coast state: the coast picker is the only way to another region, and this
+   * is the only thing that aims the camera.
    */
   private followPanel(): void {
     afterRenderEffect(() => {
@@ -889,10 +835,9 @@ export class Home {
   }
 
   /**
-   * Near me, the page's own in sheet mode. Three arms, decided by the map's fence rule: off the
-   * fence nothing moves and the map's words stand in the head; inside it the tourist is placed,
-   * the region becomes theirs and the fit includes the dot; on a beach the beach is the title.
-   * A browser's refusal shows its own words. The position is used here and never sent or stored.
+   * Near me, three arms by the map's fence rule: off the fence nothing moves and the map's words
+   * stand in the head; inside, the tourist is placed and the region becomes theirs; on a beach it is
+   * the title. The position is used here and never sent or stored.
    */
   protected async locate(): Promise<void> {
     if (this.locating()) {
@@ -1001,10 +946,8 @@ export class Home {
   }
 
   /**
-   * A place on the map was pressed and it is one beach: the head narrows to it, so the rows
-   * beside the map are the venues the camera went to. The narrowing is client-side and costs no
-   * request — the page holds one whole-coast response and narrows inside it — and the head's
-   * beaches chip is the way back.
+   * A pressed map place is one beach: the head narrows to it client-side (no request), so the rows
+   * are the venues the camera went to; the head's beaches chip is the way back.
    */
   protected onBeachNarrowed(beach: string): void {
     this.focusBeach.set(beach);

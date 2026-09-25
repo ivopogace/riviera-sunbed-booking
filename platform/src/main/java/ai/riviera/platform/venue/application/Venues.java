@@ -31,50 +31,22 @@ public interface Venues {
 	boolean venueExists(VenueId venueId);
 
 	/**
-	 * Lock the venue row and read its current {@code set_version} optimistic-concurrency token —
-	 * {@code SELECT set_version FROM venue WHERE id = :id FOR UPDATE}. The token is the SEPARATE counter
-	 * for the operator set-position writes (bulk beach-map save, per-row reprice, per-row rename, batch apply), distinct from the
-	 * profile {@code version}. The caller (having pre-checked existence) compares the returned value
-	 * to the loaded {@code expectedVersion}: a mismatch means another writer advanced it since the load →
-	 * STALE_WRITE. This is the <strong>first</strong> lock every set-write takes — before
-	 * {@link #lockSetsOfVenue}'s / {@link #repriceRow}'s {@code set_position} locks — so both acquire the
-	 * venue row before its set rows (one consistent order → no deadlock, R-1). Crucially it does NOT
-	 * increment: the token is advanced by {@link #incrementSetVersion} <strong>only on the success path</strong>,
-	 * so a rejected write (a refused removal / NO_SUCH_ROW) never spuriously advances it and self-conflicts the
-	 * acting tab's own retry.
+	 * Lock the venue row {@code FOR UPDATE} and read its {@code set_version} token (not the profile
+	 * {@code version}). The first lock every set-write takes — venue row before set rows, so no
+	 * deadlock; it does NOT increment — {@link #incrementSetVersion} does, on success only.
 	 */
 	long lockAndReadSetVersion(VenueId venueId);
 
 	/**
-	 * Advance the venue's {@code set_version} by one — {@code UPDATE venue SET set_version =
-	 * set_version + 1 WHERE id = :id} — called ONLY after a set-write commits (the layout was saved,
-	 * the row repriced or renamed). The caller already holds the venue row lock from {@link #lockAndReadSetVersion},
-	 * so this is race-free; a concurrent writer blocked on that lock re-reads the advanced value and gets
-	 * STALE_WRITE.
+	 * Advance the venue's {@code set_version} by one, ONLY after a set-write succeeds; race-free because
+	 * the caller holds the venue row lock from {@link #lockAndReadSetVersion}.
 	 */
 	void incrementSetVersion(VenueId venueId);
 
 	/**
-	 * Lock one active set row and read its current {@link SetPlacement} — {@code SELECT … WHERE id =
-	 * :setId AND venue_id = :venue FOR UPDATE} on the active map — or empty when no such set belongs
-	 * to the venue, a retired one included. The
-	 * per-set counterpart of {@link #lockSetsOfVenue}: the {@code FOR UPDATE} is the invariant-#2
-	 * guard for {@code editSet}/{@code removeSet}, because a concurrent {@code set_availability} or
-	 * {@code booking} insert needs {@code FOR KEY SHARE} on this row for its FK check and therefore
-	 * blocks until the edit commits — closing the window in which a claim committed after the claim
-	 * probe would be CASCADE-swept by the delete, and making a racing claim's pool read
-	 * ({@code FOR KEY SHARE}) wait for a pool flip to commit, so the claim decides against the
-	 * committed pool (invariant #3 is a reserve-time rule). Empty doubles as the existence check, so
-	 * the caller needs no separate probe.
-	 *
-	 * <p><strong>Lock ordering.</strong> The per-set writes take this lock and <em>no other</em> —
-	 * in particular they never take the venue row, so they cannot form a cycle with the
-	 * venue→sets order {@link #lockAndReadSetVersion} establishes for the bulk replace and the row
-	 * reprice. That is a property of the current callers, not a guarantee of this method: if
-	 * {@code editSet}/{@code removeSet} ever grow a venue-row touch (an {@code incrementSetVersion}
-	 * so a per-set edit invalidates a stale console token, say), they must take
-	 * {@link #lockAndReadSetVersion} <em>first</em> or they will deadlock against a concurrent
-	 * replace holding the venue row and waiting on this one.
+	 * Lock one active set {@code FOR UPDATE} (invariant #2/#3 guard: a racing claim's FK or pool read
+	 * waits), or empty if absent or retired. Callers take no venue row lock; one that adds it must take
+	 * {@link #lockAndReadSetVersion} <em>first</em> or deadlock against a concurrent replace.
 	 */
 	Optional<SetPlacement> lockSet(VenueId venueId, SetId setId);
 
@@ -95,11 +67,9 @@ public interface Venues {
 	void updateSet(VenueId venueId, SetId setId, SetCommand command);
 
 	/**
-	 * Give each named active set a row label no submission can carry (a control character and the
-	 * set's own id), so the in-place updates of a save that swaps or rotates row names among kept
-	 * sets never collide on the layout-uniqueness index before the other set moves on. Only ever
-	 * followed, in the same transaction, by the updates that write the final labels; the caller
-	 * holds the rows from {@link #lockSetsOfVenue}. Never called with an empty collection.
+	 * Give each named active set a transient row label (control char + own id) so a save that swaps
+	 * or rotates row names never collides on the layout-uniqueness index; the final labels follow in
+	 * the same transaction. Never called with an empty collection.
 	 */
 	void parkRowLabels(VenueId venueId, Collection<SetId> setIds);
 
@@ -110,45 +80,33 @@ public interface Venues {
 	void deleteSet(VenueId venueId, SetId setId);
 
 	/**
-	 * Retire a set position that carries booking history: stamp {@code retired_at} with
-	 * {@code retiredAt} (a UTC instant, invariant #6) and leave the row for every booking that names
-	 * it (ADR-0019). From then on the set is absent from every read but {@code SetBookingFacts}, and
-	 * its row/position and grid cell are free for a new set. The caller holds the row lock from
-	 * {@link #lockSet}, which reads the active map, so a retired set is never retired twice.
+	 * Retire a set with booking history: stamp {@code retired_at} (UTC, invariant #6) and keep the row
+	 * (ADR-0019); it then drops from every read but {@code SetBookingFacts}. The caller holds
+	 * {@link #lockSet}, which reads the active map, so a set is never retired twice.
 	 */
 	void retireSet(VenueId venueId, SetId setId, Instant retiredAt);
 
 	/**
-	 * Reprice every set in a row of the venue in one non-destructive {@code UPDATE}:
-	 * overwrite {@code price_minor}/{@code price_currency} for every {@code set_position} carrying
-	 * {@code command.rowLabel()}. Touches no other column, so set identity, pool and any
-	 * {@code set_availability} hold survive. Returns the number of set rows changed — {@code 0} means the
-	 * venue has no set with that row label, so the caller returns {@code NO_SUCH_ROW}.
+	 * Overwrite {@code price_minor}/{@code price_currency} on every set in {@code command.rowLabel()},
+	 * touching no other column. Returns rows changed; {@code 0} means no such row ({@code NO_SUCH_ROW}).
 	 */
 	int repriceRow(VenueId venueId, RowPriceCommand command);
 
 	/**
-	 * Every distinct {@code row_label} on the venue's map. One read answers both questions a rename
-	 * asks — does the row being renamed exist, and does another row already carry the requested label —
-	 * so the two cannot disagree about the map, and the same-label carve-out stays in the service where
-	 * it is testable rather than folded into SQL. A venue has at most a couple of dozen rows.
+	 * Every distinct {@code row_label} on the venue's map — one read answers both of a rename's
+	 * questions (does the row exist, is the new label taken), so the two cannot disagree.
 	 */
 	Set<String> distinctRowLabels(VenueId venueId);
 
 	/**
-	 * Rename every set in a row of the venue in one non-destructive {@code UPDATE}: overwrite
-	 * {@code row_label} for every {@code set_position} carrying {@code command.rowLabel()}. Touches no
-	 * other column, so set identity, pool, coordinates, price and any {@code set_availability} hold
-	 * survive. Returns the number of set rows changed — {@code 0} means the venue has no set with that
-	 * row label, so the caller returns {@code NO_SUCH_ROW}.
+	 * Overwrite {@code row_label} on every set in {@code command.rowLabel()}, touching no other column.
+	 * Returns rows changed; {@code 0} means no such row ({@code NO_SUCH_ROW}).
 	 */
 	int renameRow(VenueId venueId, RowNameCommand command);
 
 	/**
-	 * The ids of every active set on the venue's map, <strong>without locking</strong> — the
-	 * plain read the owner's daily availability view composes with the per-day states.
-	 * Empty when the venue has no sets. For the bulk beach-map save use {@link #lockSetsOfVenue},
-	 * whose {@code FOR UPDATE} is that write's invariant-#2 guard; a read must never take it.
+	 * Ids of every active set, <strong>without locking</strong> (empty when none), for reads. The bulk
+	 * save uses {@link #lockSetsOfVenue}, whose {@code FOR UPDATE} a read must never take.
 	 */
 	List<SetId> setIdsOf(VenueId venueId);
 
@@ -166,33 +124,22 @@ public interface Venues {
 	List<PlacedSet> placedSetsOf(VenueId venueId);
 
 	/**
-	 * Every active set on the venue's map with its placement, in id order, <strong>locking those
-	 * rows</strong> ({@code SELECT … FOR UPDATE}) for the caller's transaction (empty when the venue
-	 * has no sets). The lock is the invariant-#2 guard for the bulk beach-map save: a concurrent
-	 * {@code set_availability}/{@code booking} insert takes a {@code FOR KEY SHARE} lock on the
-	 * referenced {@code set_position} row (its FK check), which conflicts with this {@code FOR UPDATE},
-	 * so it blocks until the save commits or rolls back. That closes the check-then-delete window in
-	 * which a hold committed after the claim probe would otherwise be silently
-	 * {@code ON DELETE CASCADE}-swept by {@link #deleteSet}. The placements are what the save diffs
-	 * the submitted layout against.
+	 * Every active set with its placement, in id order, locked {@code FOR UPDATE} — the bulk save's
+	 * invariant-#2 guard: a racing claim's FK {@code FOR KEY SHARE} blocks until commit, so no hold is
+	 * {@code ON DELETE CASCADE}-swept by {@link #deleteSet} after the claim probe.
 	 */
 	List<PlacedSet> lockSetsOfVenue(VenueId venueId);
 
 	/**
-	 * Lock the named set rows of the venue ({@code SELECT … WHERE venue_id = :venue AND id IN (:ids)
-	 * FOR UPDATE}) and return the ids actually found — fewer than asked means an id is not this
-	 * venue's, which the caller refuses before writing. The same {@code FOR UPDATE} as
-	 * {@link #lockSet}, for the same reason: a concurrent claim's {@code FOR KEY SHARE} pool read
-	 * blocks until this transaction ends. Taken after {@link #lockAndReadSetVersion} (venue row before
-	 * set rows). Never called with an empty collection.
+	 * Lock the named sets of the venue {@code FOR UPDATE} (as {@link #lockSet}) and return the ids found
+	 * — fewer means a foreign id. Take after {@link #lockAndReadSetVersion}; never called with an empty
+	 * collection.
 	 */
 	Set<SetId> lockSets(VenueId venueId, Collection<SetId> setIds);
 
 	/**
-	 * Overwrite only the columns {@code command} touches — tier, pool, price — on every named set of
-	 * the venue in one {@code UPDATE}; an untouched field keeps each row's own value. Set identity,
-	 * coordinates and any {@code set_availability} hold survive. Returns the number of rows changed.
-	 * The caller holds the rows from {@link #lockSets}, so every id is present.
+	 * Overwrite only the columns {@code command} touches (tier, pool, price) on every named set in one
+	 * {@code UPDATE}; returns rows changed. The caller holds the rows from {@link #lockSets}.
 	 */
 	int updateSetFields(VenueId venueId, SetBatchCommand command);
 
@@ -204,16 +151,9 @@ public interface Venues {
 	void insertSets(VenueId venueId, List<SetCommand> sets);
 
 	/**
-	 * Replace a venue's editable profile fields in one unit of work: name/beach/description,
-	 * booking mode, booking cutoff, the amenity set, and distance-to-water. Commission and payout
-	 * currency are read-only and never written. The
-	 * write is <strong>conditional on {@code expectedVersion}</strong> — the optimistic-concurrency
-	 * token the tab loaded — and bumps the row's {@code version} by one on success. Returns the
-	 * number of venue rows changed: {@code 0} means the loaded version no longer matches (another writer
-	 * bumped it since the load — the caller, having already verified existence, returns STALE_WRITE);
-	 * {@code 1} means the profile was replaced. The amenity set is fully replaced (delete-then-insert),
-	 * so it is order-insensitive and drops any amenity no longer selected — and is left untouched when
-	 * the version guard rejects the write.
+	 * Replace the editable profile fields and the amenity set, conditional on {@code expectedVersion}
+	 * (bumped on success); commission and payout currency are never written. Returns {@code 0} on a
+	 * version mismatch (STALE_WRITE, amenities untouched), else {@code 1}.
 	 */
 	int updateVenueProfile(VenueId venueId, long expectedVersion, VenueProfileCommand command);
 
@@ -228,20 +168,15 @@ public interface Venues {
 	void reopenForSeason(VenueId venueId);
 
 	/**
-	 * The venue's admin profile for the operator console — the editable core plus the
-	 * commission + payout currency the owner may read but not write — or empty if no venue has this id
-	 * (read-only for the operator; the platform admin changes the rate through
-	 * {@link CommissionRateStore}). Read-only; the
-	 * caller (application service) has already asserted ownership (invariant #13).
+	 * The venue's console profile (editable core plus read-only commission and payout currency), or
+	 * empty if unknown. The caller has asserted ownership (invariant #13); the platform admin writes
+	 * the rate through {@link CommissionRateStore}.
 	 */
 	Optional<VenueProfileView> findProfile(VenueId venueId);
 
 	/**
-	 * Picker summaries for the given venue ids, <strong>ordered by name</strong>. The caller
-	 * has already reduced {@code ids} to what the acting operator owns, so this is a plain PK-set
-	 * lookup with no authorization of its own — never call it with an unfiltered id set. Missing ids
-	 * are simply absent from the result (no exception, no placeholder row). Never called with an empty
-	 * collection: the caller short-circuits, so the adapter's {@code IN (:ids)} always has members.
+	 * Picker summaries for {@code ids}, ordered by name; missing ids are absent. No authorization of its
+	 * own — never call it with ids not already filtered to the operator's venues, nor with none.
 	 */
 	List<OwnedVenueView> findSummaries(Collection<VenueId> ids);
 

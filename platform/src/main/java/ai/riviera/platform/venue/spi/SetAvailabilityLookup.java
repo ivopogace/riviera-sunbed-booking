@@ -9,136 +9,60 @@ import java.util.Set;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * The one live fact the static beach map lacks: which of a set of positions are <em>taken</em> on a
- * given calendar day. Used by the {@code venue} read model to overlay per-{@code (set, date)}
- * availability (invariant #2) onto the layout it owns, so the map shows the authoritative state for a
- * chosen date rather than a date-less placeholder.
+ * The live fact the static beach map lacks: which sets are <em>taken</em> on which days
+ * (invariant #2). "Taken" means any {@code set_availability} row, {@code BOOKED_ONLINE} or
+ * {@code STAFF_MARKED}; a set with no row is free. Days are {@code Europe/Tirane} (invariant #6).
  *
- * <p><strong>Driven (SPI) port, dependency-inverted (invariant #11).</strong> Declared here, in the
- * <em>consumer</em>'s {@code spi} named interface, and <em>implemented by the {@code availability}
- * module</em> — the sole owner of {@code set_availability}. The natural call direction, {@code venue}
- * asking {@code availability}, would create a Modulith cycle, because {@code availability} already
- * depends on {@code venue::api} for the claim's pool check. Inverting it keeps the graph acyclic and
- * {@code venue} never imports {@code availability}; {@code ModularityTests} is the gate. It lives in
- * {@code spi} rather than {@code api} because it is an "implement-me" port, not a "call-me" one.
- *
- * <p>"Taken" means any existing {@code set_availability} row for the date — {@code BOOKED_ONLINE} or
- * {@code STAFF_MARKED} — mirroring the model where row-existence <em>is</em> the hold. A set with no
- * row is free.
+ * <p>Driven port implemented by {@code availability}, the sole owner of {@code set_availability};
+ * inverted because {@code availability} already depends on {@code venue::api} (invariant #11).
  */
 public interface SetAvailabilityLookup {
 
 	/**
-	 * The subset of {@code setIds} that are taken on {@code date}. Sets with no availability row
-	 * are simply absent from the result (they are free). Never returns {@code null}; an empty
-	 * input yields an empty result without touching the database.
-	 *
-	 * @param setIds the set positions to check (typically one venue's map)
-	 * @param date   the calendar day, a {@code LocalDate} in {@code Europe/Tirane} (invariant #6)
-	 * @return the ids of the taken sets, a (possibly empty) set
+	 * The subset of {@code setIds} taken on {@code date}; free sets are absent. Never {@code null};
+	 * an empty input yields an empty result without touching the database.
 	 */
 	Set<SetId> takenOn(Collection<SetId> setIds, LocalDate date);
 
 	/**
-	 * Whether any of {@code setIds} has an availability row dated {@code from} or later — the one
-	 * availability question asked by a per-set layout write that <em>disturbs</em> a set: repositioning
-	 * one or removing one. (Adding a set and repricing a row disturb nothing, so they never probe;
-	 * the bulk save asks {@link #nearestClaimsFrom} so it can name the sets.) Because {@code set_availability.set_id} is
-	 * {@code ON DELETE CASCADE}, a write that removes a held set would silently drop the hold
-	 * (invariant #2), so it is refused while this returns {@code true}. A hold whose day has already
-	 * passed can neither be stranded by moving the set nor meaningfully lost by deleting it, so it
-	 * does not block. Rationale: RESPONSIBILITIES.md §venue.
-	 *
-	 * @param setIds the set positions to probe (one set, or one venue's whole map)
-	 * @param from   the first day that still counts, a {@code LocalDate} in {@code Europe/Tirane}
-	 *               (invariant #6)
-	 * @return {@code true} if at least one has a row on or after {@code from}; an empty input
-	 *         yields {@code false} without touching the database
+	 * Whether any of {@code setIds} has a row dated {@code from} or later — the per-set layout-write
+	 * guard, since {@code ON DELETE CASCADE} would silently drop the hold (invariant #2). An empty
+	 * input yields {@code false} without a query. Rationale: RESPONSIBILITIES.md §venue.
 	 */
 	boolean anyClaimsFrom(Collection<SetId> setIds, LocalDate from);
 
 	/**
-	 * The per-set counterpart of {@link #anyClaimsFrom}: for each of {@code setIds} that has an
-	 * availability row dated {@code from} or later, the <em>earliest</em> such day, whatever the
-	 * row's state. Feeds the owner-asserted beach-map read, which pins a locked cell with the day
-	 * behind the lock, and the bulk save's refusal, which names the removed sets so pinned; the
-	 * predicate is the same one the per-set guards ask, so a set absent here is one
-	 * {@code anyClaimsFrom} would clear.
-	 *
-	 * @param setIds the set positions to probe (typically one venue's map)
-	 * @param from   the first day that still counts, a {@code LocalDate} in {@code Europe/Tirane}
-	 *               (invariant #6)
-	 * @return the earliest held day on or after {@code from}, keyed by set id, for the held sets only;
-	 *         never {@code null}; an empty input yields an empty result without touching the database
+	 * For each of {@code setIds} held on or after {@code from}, its earliest such day — the same
+	 * predicate as {@link #anyClaimsFrom}, so a set absent here is one it would clear. Never
+	 * {@code null}; an empty input yields an empty result without touching the database.
 	 */
 	Map<SetId, LocalDate> nearestClaimsFrom(Collection<SetId> setIds, LocalDate from);
 
 	/**
-	 * The per-set availability <em>state</em> of the held subset of {@code setIds} on {@code date} — the
-	 * state token ({@code BOOKED_ONLINE} or {@code STAFF_MARKED}) keyed by set id; a set with no
-	 * availability row is simply absent (it is free). Unlike {@link #takenOn} this is deliberately
-	 * state-aware: it feeds the <strong>owner-asserted operator</strong> daily read, which must
-	 * distinguish an online hold from a staff walk-in mark so an unpaid hold never renders as a walk-in.
-	 * The tourist map keeps the state-agnostic {@link #takenOn} — hold type never reaches the public
-	 * surface.
-	 *
-	 * @param setIds the set positions to check (typically one venue's map)
-	 * @param date   the calendar day, a {@code LocalDate} in {@code Europe/Tirane} (invariant #6)
-	 * @return state token by set id for the held sets only; never {@code null}; an empty input yields
-	 *         an empty result without touching the database
+	 * The state token ({@code BOOKED_ONLINE}/{@code STAFF_MARKED}) of each held set on {@code date};
+	 * free sets absent, never {@code null}, empty input → empty result. Owner-asserted reads only: the
+	 * public map uses {@link #takenOn}, so hold type never reaches a public surface.
 	 */
 	Map<SetId, String> statesOn(Collection<SetId> setIds, LocalDate date);
 
 	/**
-	 * How many of {@code setIds} are taken on each day in {@code [from, to]}, keyed by day. A day
-	 * with no hold is <strong>absent</strong> from the map rather than present at zero, so the
-	 * caller — which alone knows how many sets a venue has — fills the gaps while computing
-	 * {@code free = total − taken}. "Taken" means the same here as in {@link #takenOn}: any
-	 * availability row, whatever its state.
-	 *
-	 * <p>A snapshot, never a hold: a day reporting free capacity may be full by the time a claim
-	 * is attempted, and {@code AvailabilityClaim} remains the only thing that decides (invariant
-	 * #2). Both pools are counted, matching what a free/total count already means on the discovery
-	 * card; the online-pool restriction (invariant #3) applies later, at the map/claim.
-	 *
-	 * @param setIds the set positions to count (typically one venue's map)
-	 * @param from   the first day, inclusive, a {@code LocalDate} in {@code Europe/Tirane}
-	 *               (invariant #6)
-	 * @param to     the last day, inclusive
-	 * @return taken count by day for the days that have one; never {@code null}; an empty input
-	 *         yields an empty result without touching the database
+	 * Taken count per day in {@code [from, to]}, both pools; a day with none is <strong>absent</strong>,
+	 * not zero. A snapshot, never a hold — {@code AvailabilityClaim} alone decides (invariant #2).
+	 * Never {@code null}; an empty input yields an empty result without touching the database.
 	 */
 	Map<LocalDate, Integer> takenCountsBetween(Collection<SetId> setIds, LocalDate from, LocalDate to);
 
 	/**
-	 * The days in {@code [from, to]} on which each of {@code setIds} is taken, ascending, keyed by set;
-	 * a set free on every day of the window is absent. "Taken" means the same as in {@link #takenOn}:
-	 * any availability row, whatever its state. Behind the tourist map for a range of days, which
-	 * renders a set free for all of them, for some, or for none, and names the days a partly-free set
-	 * covers — so the client needs no second read per set.
-	 *
-	 * <p>A snapshot, never a hold (invariant #2): {@code AvailabilityClaim} alone decides.
-	 *
-	 * @param setIds the set positions to check (typically one venue's map)
-	 * @param from   the first day, inclusive, a {@code LocalDate} in {@code Europe/Tirane}
-	 *               (invariant #6)
-	 * @param to     the last day, inclusive
-	 * @return the taken days per held set; never {@code null}; an empty input yields an empty result
-	 *         without touching the database
+	 * The taken days in {@code [from, to]} per set, ascending; a set free on every day is absent. A
+	 * snapshot, never a hold — {@code AvailabilityClaim} alone decides (invariant #2). Never
+	 * {@code null}; an empty input yields an empty result without touching the database.
 	 */
 	Map<SetId, List<LocalDate>> takenDaysBetween(Collection<SetId> setIds, LocalDate from, LocalDate to);
 
 	/**
-	 * The days on or after {@code from} on which staff hold each of {@code setIds} for a walk-in
-	 * ({@code STAFF_MARKED} rows only — an online hold is a booking's, and {@code booking} answers for
-	 * those), oldest first, keyed by set; a set with none is absent. The remodel preview's staff-hold
-	 * group: nobody can be mailed about a walk-in, so such a hold blocks the save.
-	 *
-	 * @param setIds the set positions to list
-	 * @param from   the first day that counts, inclusive, a {@code LocalDate} in {@code Europe/Tirane}
-	 *               (invariant #6)
-	 * @return the held days by set id for the held sets only; never {@code null}; an empty input
-	 *         yields an empty result without touching the database
+	 * Per set, the days on or after {@code from} with a {@code STAFF_MARKED} hold, oldest first; a set
+	 * with none is absent, never {@code null}, empty input → empty result. For the remodel preview: a
+	 * walk-in can't be mailed, so its hold blocks the save.
 	 */
 	Map<SetId, List<LocalDate>> walkInHoldsFrom(Collection<SetId> setIds, LocalDate from);
 }
