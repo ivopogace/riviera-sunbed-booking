@@ -1,6 +1,7 @@
 package ai.riviera.platform.payment.adapter.in;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Optional;
 
 import com.stripe.exception.EventDataObjectDeserializationException;
@@ -38,6 +39,7 @@ import ai.riviera.platform.payment.application.StripeWebhookEvents;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.domain.RefundLifecycle;
 import ai.riviera.platform.payment.adapter.out.StripeProperties;
+import ai.riviera.platform.payment.adapter.out.StripeRefundTag;
 
 /**
  * Stripe webhook endpoint — the <strong>source of truth</strong> for payment state (invariant
@@ -51,10 +53,11 @@ import ai.riviera.platform.payment.adapter.out.StripeProperties;
  *   <li><strong>dedupes</strong> on the Stripe event id ({@link StripeWebhookEvents#firstSeen})
  *       — a re-delivered event is a {@code 200} no-op (idempotent);</li>
  *   <li>applies the outcome: {@code payment_intent.succeeded} → mark {@code SUCCEEDED} +
- *       publish {@link PaymentConfirmed}; {@code .canceled} → mark {@code CANCELED} + publish
- *       {@link PaymentCanceled}; {@code .payment_failed} → mark {@code FAILED} only (non-terminal
- *       in Stripe — the intent may be retried, so the claim is <em>not</em> released); a refund
- *       reported dead → un-record it, so the guest is owed again rather than recorded as paid.</li>
+ *       publish {@link PaymentConfirmed} for every booking the intent collects for; {@code .canceled}
+ *       → mark {@code CANCELED} + publish {@link PaymentCanceled} per booking likewise;
+ *       {@code .payment_failed} → mark {@code FAILED} only (non-terminal in Stripe — the intent may
+ *       be retried, so the claim is <em>not</em> released); a refund reported dead → un-record it on
+ *       the booking it was for, so that guest is owed again rather than recorded as paid.</li>
  * </ol>
  *
  * <p>Every outcome goes through a <strong>guarded</strong> transition, never a read-then-write, so a
@@ -153,16 +156,18 @@ class StripeWebhookController {
 		if (!applied(paymentIntentId, PaymentStatus.SUCCEEDED)) {
 			return;
 		}
-		bookingRef(paymentIntentId).ifPresent(
-				ref -> publisher.publishEvent(new PaymentConfirmed(ref, paymentIntentId)));
+		for (BookingRef ref : bookingRefs(paymentIntentId)) {
+			publisher.publishEvent(new PaymentConfirmed(ref, paymentIntentId));
+		}
 	}
 
 	private void onCanceled(String paymentIntentId) {
 		if (!applied(paymentIntentId, PaymentStatus.CANCELED)) {
 			return;
 		}
-		bookingRef(paymentIntentId).ifPresent(
-				ref -> publisher.publishEvent(new PaymentCanceled(ref)));
+		for (BookingRef ref : bookingRefs(paymentIntentId)) {
+			publisher.publishEvent(new PaymentCanceled(ref));
+		}
 	}
 
 	/**
@@ -179,35 +184,50 @@ class StripeWebhookController {
 		if (!RefundLifecycle.returnedNoMoney(refund.getStatus())) {
 			return;
 		}
-		if (!markOwedAgain(refund)) {
+		Optional<BookingRef> booking = bookingOf(refund);
+		if (!markOwedAgain(refund, booking)) {
 			// Already un-recorded by the sibling type's delivery, or a refund this app never issued.
 			log.debug("refund {} moved no row — nothing to un-record", refund.getId());
 			return;
 		}
 		failedRefunds.increment();
 		log.warn("refund {} for booking {} returned no money ({}) — the platform still owes it",
-				refund.getId(), bookingOf(refund).map(BookingRef::value).orElse(null), refund.getStatus());
+				refund.getId(), booking.map(BookingRef::value).orElse(null), refund.getStatus());
 	}
 
 	/**
 	 * Put the booking back to owed, whether or not its refund had been written down yet, and report
 	 * whether this delivery is the one that did it. The second arm covers the window before the
-	 * refund id is recorded, matching by PaymentIntent instead.
+	 * refund id is recorded, so the row is found through the booking the refund was for instead.
 	 *
 	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
 	 */
-	private boolean markOwedAgain(Refund refund) {
+	private boolean markOwedAgain(Refund refund, Optional<BookingRef> booking) {
 		if (payments.markRefundFailed(refund.getId())) {
 			return true;
 		}
-		String intentId = refund.getPaymentIntent();
-		return intentId != null && payments.markUnrecordedRefundFailed(intentId, refund.getId());
+		return booking
+				.map(ref -> payments.markUnrecordedRefundFailed(ref, refund.getId()))
+				.orElse(false);
 	}
 
-	/** The booking behind a refund, for the incident log line only — never to decide anything. */
+	/**
+	 * The booking a refund was for: the one its tag names, or — for a refund issued before the tag
+	 * existed — the only booking its PaymentIntent collects for. On a shared intent an untagged refund
+	 * is nobody's to pin on a guest, so it moves nothing.
+	 */
 	private Optional<BookingRef> bookingOf(Refund refund) {
-		return refund.getPaymentIntent() == null ? Optional.empty()
-				: payments.findBookingRefByIntent(refund.getPaymentIntent());
+		Optional<BookingRef> tagged = StripeRefundTag.bookingOf(refund);
+		if (tagged.isPresent() || refund.getPaymentIntent() == null) {
+			return tagged;
+		}
+		List<BookingRef> onIntent = payments.findBookingRefsByIntent(refund.getPaymentIntent());
+		if (onIntent.size() > 1) {
+			log.warn("refund {} names no booking and its PaymentIntent collects for {} — not attributing it",
+					refund.getId(), onIntent.size());
+			return Optional.empty();
+		}
+		return onIntent.stream().findFirst();
 	}
 
 	/**
@@ -225,13 +245,13 @@ class StripeWebhookController {
 		return applied;
 	}
 
-	private Optional<BookingRef> bookingRef(String paymentIntentId) {
-		Optional<BookingRef> ref = payments.findBookingRefByIntent(paymentIntentId);
-		if (ref.isEmpty()) {
+	private List<BookingRef> bookingRefs(String paymentIntentId) {
+		List<BookingRef> refs = payments.findBookingRefsByIntent(paymentIntentId);
+		if (refs.isEmpty()) {
 			// An event for a PaymentIntent this app didn't record — ignore (don't act on it).
 			log.warn("no booking for PaymentIntent {} — ignoring webhook", paymentIntentId);
 		}
-		return ref;
+		return refs;
 	}
 
 	/**

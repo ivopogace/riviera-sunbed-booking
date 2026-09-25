@@ -195,11 +195,13 @@ class RequestAcceptPayIT {
 		long bookingId = bookingIdOf(code);
 		jdbc.sql("UPDATE booking SET status = 'AWAITING_PAYMENT', accepted_at = NOW() WHERE id = :id")
 				.param("id", bookingId).update();
-		jdbc.sql("""
-				INSERT INTO payment (booking_ref, payment_intent_id, amount_minor, currency, status,
-				                     client_secret)
-				VALUES (:ref, 'pi_accept_it', 4500, 'EUR', 'REQUIRES_PAYMENT', 'cs_accept_it_secret')
-				""").param("ref", bookingId).update();
+		long payment = jdbc.sql("""
+				INSERT INTO payment (payment_intent_id, amount_minor, currency, status, client_secret)
+				VALUES ('pi_accept_it', 4500, 'EUR', 'REQUIRES_PAYMENT', 'cs_accept_it_secret')
+				RETURNING id
+				""").query(Long.class).single();
+		jdbc.sql("INSERT INTO payment_booking (payment_id, booking_ref, amount_minor) VALUES (:payment, :ref, 4500)")
+				.param("payment", payment).param("ref", bookingId).update();
 
 		mvc.perform(get("/api/bookings/{code}", code))
 				.andExpect(status().isOk())
@@ -209,14 +211,14 @@ class RequestAcceptPayIT {
 
 		// A once-declined card (payment_failed) is NOT terminal — the intent stays payable, so
 		// the credentials must survive a FAILED status (review finding: don't strand the guest).
-		jdbc.sql("UPDATE payment SET status = 'FAILED' WHERE booking_ref = :ref")
-				.param("ref", bookingId).update();
+		jdbc.sql("UPDATE payment SET status = 'FAILED' WHERE id = :payment")
+				.param("payment", payment).update();
 		mvc.perform(get("/api/bookings/{code}", code))
 				.andExpect(jsonPath("$.payment.clientSecret").value("cs_accept_it_secret"));
 
 		// Once no longer payable (succeeded), the credentials disappear from the view.
-		jdbc.sql("UPDATE payment SET status = 'SUCCEEDED' WHERE booking_ref = :ref")
-				.param("ref", bookingId).update();
+		jdbc.sql("UPDATE payment SET status = 'SUCCEEDED' WHERE id = :payment")
+				.param("payment", payment).update();
 		mvc.perform(get("/api/bookings/{code}", code))
 				.andExpect(jsonPath("$.payment").doesNotExist());
 	}

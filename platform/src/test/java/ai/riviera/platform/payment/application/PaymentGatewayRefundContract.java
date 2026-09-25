@@ -32,6 +32,9 @@ public abstract class PaymentGatewayRefundContract {
 
 	protected static final BookingRef BOOKING = new BookingRef(4242L);
 
+	/** A second booking paid with {@link #BOOKING} under one collection — a stay is a group of bookings. */
+	protected static final BookingRef SIBLING = new BookingRef(4243L);
+
 	protected static final Money AMOUNT = new Money(4500L, "EUR");
 
 	/** The adapter under test, wired to whatever the most recent {@code gateway…} arrangement set up. */
@@ -39,6 +42,12 @@ public abstract class PaymentGatewayRefundContract {
 
 	/** Arrange: the gateway holds a collection for {@code booking} and no refund against it. */
 	protected abstract void gatewayCollected(BookingRef booking, Money amount);
+
+	/**
+	 * Arrange: the gateway holds <em>one</em> collection for both bookings, each owing {@code each},
+	 * and no refund against it.
+	 */
+	protected abstract void gatewayCollectedTogether(BookingRef first, BookingRef second, Money each);
 
 	/**
 	 * Arrange: the gateway holds a collection <em>and</em> a refund against it that returned no money
@@ -77,5 +86,30 @@ public abstract class PaymentGatewayRefundContract {
 				"adopting a dead refund would report a guest as paid who never was");
 		assertEquals(1L, refundsCreatedThroughThePort(),
 				"so a fresh refund is created — at-most-once is not at-most-zero");
+	}
+
+	/**
+	 * Two bookings on one collection with the <em>same</em> share, so nothing but the refund's own
+	 * identity can tell whose it is: an adapter that adopted "the refund on this intent for this
+	 * amount" would report the sibling's refund as this booking's and refund one guest twice while the
+	 * other waits.
+	 */
+	@Test
+	void severalBookingsOnOneCollectionAreEachRefundedOnce() {
+		gatewayCollectedTogether(BOOKING, SIBLING, AMOUNT);
+		String first = refundIdOf(gateway().refund(BOOKING, AMOUNT));
+		String second = refundIdOf(gateway().refund(SIBLING, AMOUNT));
+		assertNotEquals(first, second, "two bookings are two refunds — one for each guest's share");
+
+		assertEquals(first, refundIdOf(gateway().refund(BOOKING, AMOUNT)),
+				"a replay reports this booking's own refund, never its sibling's of the same amount");
+		assertEquals(second, refundIdOf(gateway().refund(SIBLING, AMOUNT)));
+		assertEquals(2L, refundsCreatedThroughThePort(),
+				"each booking on the collection is refunded once, however often either call replays");
+	}
+
+	private static String refundIdOf(RefundResult result) {
+		return assertInstanceOf(RefundResult.Refunded.class, result,
+				"a collected booking's refund succeeds").refundId();
 	}
 }

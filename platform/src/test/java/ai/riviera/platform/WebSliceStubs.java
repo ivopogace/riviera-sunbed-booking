@@ -934,8 +934,8 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public Optional<BookingRef> findBookingRefByIntent(String paymentIntentId) {
-				return Optional.empty();
+			public List<BookingRef> findBookingRefsByIntent(String paymentIntentId) {
+				return List.of();
 			}
 
 			@Override
@@ -974,7 +974,7 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public boolean markUnrecordedRefundFailed(String paymentIntentId, String refundId) {
+			public boolean markUnrecordedRefundFailed(BookingRef booking, String refundId) {
 				return false;
 			}
 

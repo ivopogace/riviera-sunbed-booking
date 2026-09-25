@@ -5,6 +5,8 @@ import com.stripe.net.Webhook;
 
 import io.micrometer.core.instrument.MeterRegistry;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -86,6 +88,32 @@ class StripeWebhookIT {
 
 	private static final String REFUND_OBJECT = """
 			{"id":"%s","object":"refund","status":"%s","amount":4500,"payment_intent":"%s"}""";
+
+	/** A refund this platform issued after V64: it carries the booking it was for. */
+	private static final String TAGGED_REFUND_OBJECT = """
+			{"id":"%s","object":"refund","status":"%s","amount":4500,"payment_intent":"%s",\
+			"metadata":{"bookingRef":"%s"}}""";
+
+	/** One intent collecting for two bookings (shares 4500 and 3000), collected. */
+	private void sharedCollection(String intentId, long bookingA, long bookingB) {
+		payments.register(new NewPayment(intentId, "EUR", "cs_test_secret", List.of(
+				new NewPayment.Share(new BookingRef(bookingA), 4500L),
+				new NewPayment.Share(new BookingRef(bookingB), 3000L))));
+		payments.markStatus(intentId, PaymentStatus.SUCCEEDED);
+	}
+
+	private static String taggedRefundEventJson(String eventId, String type, String refundId, String status,
+			String intentId, long bookingRef) {
+		return eventJson(eventId, type, Stripe.API_VERSION,
+				TAGGED_REFUND_OBJECT.formatted(refundId, status, intentId, bookingRef));
+	}
+
+	private long owedRows(long... bookingRefs) {
+		return jdbc.sql("SELECT COUNT(*) FROM payment_booking WHERE refund_failed_at IS NOT NULL "
+						+ "AND booking_ref IN (:refs)")
+				.param("refs", java.util.Arrays.stream(bookingRefs).boxed().toList())
+				.query(Long.class).single();
+	}
 
 	/** A collected payment carrying a recorded refund — the state a refund failure has to undo. */
 	private void collectionRefundedWith(long bookingRef, String intentId, String refundId) {
@@ -463,7 +491,7 @@ class StripeWebhookIT {
 
 		assertEquals(before + 1, refundsFailedCount(),
 				"a refund the platform issued and the gateway killed is owed money, recorded or not");
-		assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM payment WHERE payment_intent_id = 'pi_ref_raced' "
+		assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM payment_booking WHERE booking_ref = 7312 "
 						+ "AND refund_failed_at IS NOT NULL").query(Integer.class).single(),
 				"and it is enumerable as owed, not reconstructable only from a WARN line");
 	}
@@ -492,7 +520,7 @@ class StripeWebhookIT {
 
 		assertEquals(before, refundsFailedCount(),
 				"the platform never promised this refund, so its failure is not money we owe");
-		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM payment WHERE payment_intent_id = 'pi_ref_by_hand' "
+		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM payment_booking WHERE booking_ref = 7314 "
 						+ "AND refund_failed_at IS NOT NULL").query(Integer.class).single(),
 				"and it must stay off the list of bookings owed a refund");
 	}
@@ -511,5 +539,90 @@ class StripeWebhookIT {
 		assertEquals(before, refundsFailedCount(), "and it is not our alert to raise");
 		assertEquals(1L, webhookEventRows("evt_ref_stranger_1"),
 				"the event is consumed — re-delivery could not help a refund this app never recorded");
+	}
+
+	@Test
+	void succeededOnASharedIntentConfirmsEveryBooking() throws Exception {
+		payments.register(new NewPayment("pi_hook_shared_ok", "EUR", "cs_test_secret", List.of(
+				new NewPayment.Share(new BookingRef(7401L), 4500L),
+				new NewPayment.Share(new BookingRef(7402L), 3000L))));
+		String payload = eventJson("evt_shared_ok_1", "payment_intent.succeeded", "pi_hook_shared_ok");
+
+		postSigned(payload, sign(payload), 200);
+
+		assertEquals("SUCCEEDED", statusOf("pi_hook_shared_ok"), "the one intent is collected once");
+		assertEquals(List.of(new BookingRef(7401L), new BookingRef(7402L)), events.stream(PaymentConfirmed.class)
+						.filter(e -> "pi_hook_shared_ok".equals(e.paymentIntentId()))
+						.map(PaymentConfirmed::bookingRef).toList(),
+				"every booking the intent collects for is confirmed — one payment, a whole stay (story 14)");
+	}
+
+	@Test
+	void canceledOnASharedIntentReleasesEveryBooking() throws Exception {
+		payments.register(new NewPayment("pi_hook_shared_cancel", "EUR", "cs_test_secret", List.of(
+				new NewPayment.Share(new BookingRef(7403L), 4500L),
+				new NewPayment.Share(new BookingRef(7404L), 3000L))));
+		String payload = eventJson("evt_shared_cancel_1", "payment_intent.canceled", "pi_hook_shared_cancel");
+
+		postSigned(payload, sign(payload), 200);
+
+		assertEquals("CANCELED", statusOf("pi_hook_shared_cancel"));
+		assertEquals(2, events.stream(PaymentCanceled.class)
+						.filter(e -> e.bookingRef().value() == 7403L || e.bookingRef().value() == 7404L).count(),
+				"an unpaid group is all-or-nothing: every booking's claim is released (story 38)");
+	}
+
+	@Test
+	void aFailedRefundOnASharedIntentUnrecordsOnlyItsBooking() throws Exception {
+		sharedCollection("pi_ref_shared_died", 7405L, 7406L);
+		payments.markRefunded(new BookingRef(7405L), 4500L, "re_hook_shared_a");
+		payments.markRefunded(new BookingRef(7406L), 3000L, "re_hook_shared_b");
+		String payload = refundEventJson("evt_ref_shared_died_1", "refund.failed", "re_hook_shared_b", "failed",
+				"pi_ref_shared_died");
+		double before = refundsFailedCount();
+
+		postSigned(payload, sign(payload), 200);
+
+		assertEquals(0L, payments.findRefundState(new BookingRef(7406L)).orElseThrow().refundedMinor(),
+				"B's refund returned nothing, so B is owed again");
+		assertEquals(4500L, payments.findRefundState(new BookingRef(7405L)).orElseThrow().refundedMinor(),
+				"A's refund is untouched by its sibling's failure");
+		assertEquals("PARTIALLY_REFUNDED", statusOf("pi_ref_shared_died"),
+				"the intent still holds A's refund, so it is partly refunded, not back to SUCCEEDED");
+		assertEquals(before + 1, refundsFailedCount(), "one booking is owed — one alert");
+	}
+
+	@Test
+	void anUnrecordedFailureIsAttributedByItsBookingTag() throws Exception {
+		sharedCollection("pi_ref_shared_race", 7407L, 7408L);
+		payments.markRefundAttempted(new BookingRef(7407L));
+		payments.markRefundAttempted(new BookingRef(7408L));
+		String payload = taggedRefundEventJson("evt_ref_shared_race_1", "refund.failed", "re_shared_race",
+				"failed", "pi_ref_shared_race", 7407L);
+		double before = refundsFailedCount();
+
+		postSigned(payload, sign(payload), 200);
+
+		assertEquals(1L, owedRows(7407L), "the tag names A, so A's attempt is the one that died");
+		assertEquals(0L, owedRows(7408L), "B's attempt is still in flight — its refund may yet land");
+		assertEquals(before + 1, refundsFailedCount());
+	}
+
+	@Test
+	void anUntaggedUnrecordedFailureOnASharedIntentMovesNothing() throws Exception {
+		sharedCollection("pi_ref_shared_untagged", 7409L, 7410L);
+		payments.markRefundAttempted(new BookingRef(7409L));
+		payments.markRefundAttempted(new BookingRef(7410L));
+		String payload = refundEventJson("evt_ref_shared_untagged_1", "refund.failed", "re_shared_untagged",
+				"failed", "pi_ref_shared_untagged");
+		double before = refundsFailedCount();
+
+		postSigned(payload, sign(payload), 200);
+
+		assertEquals(0L, owedRows(7409L, 7410L),
+				"a refund this platform issued always names its booking; one that does not cannot be "
+						+ "pinned on either sibling, and guessing would mark the wrong guest as owed");
+		assertEquals(before, refundsFailedCount(), "and it is not our alert to raise");
+		assertEquals(1L, webhookEventRows("evt_ref_shared_untagged_1"), "the event is consumed, not retried");
 	}
 }

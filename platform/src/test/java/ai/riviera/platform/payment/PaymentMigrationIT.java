@@ -15,12 +15,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Verifies the U4 migration (issue #8) creates {@code payment} and {@code stripe_webhook_event}
- * with the constraints that enforce the payment invariants (invariant #12): one PaymentIntent
- * per booking ({@code UNIQUE(booking_ref)}) and per Stripe id ({@code UNIQUE(payment_intent_id)}),
- * a closed {@code status} value set, non-negative money (invariant #5), and the webhook-id dedup
- * key ({@code stripe_webhook_event.event_id} PK — the idempotency guard, invariant #8). Real
- * Flyway on Testcontainers Postgres; skipped (not failed) where Docker is absent.
+ * Verifies the payment schema's invariant-enforcing constraints (invariant #12): one collection per
+ * Stripe id ({@code UNIQUE(payment_intent_id)}), one booking row per booking
+ * ({@code payment_booking_uniq}) while one intent may collect for several, a closed {@code status}
+ * value set, non-negative money and a share never refunded past itself (invariant #5), and the
+ * webhook-id dedup key ({@code stripe_webhook_event.event_id} PK — the idempotency guard, invariant
+ * #8). Real Flyway on Testcontainers Postgres; skipped (not failed) where Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -30,12 +30,28 @@ class PaymentMigrationIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	/** A collection for one booking whose share is the whole amount — the pre-V64 shape, on two tables. */
 	private void insertPayment(long bookingRef, String intentId, String status) {
-		jdbc.sql("""
-				INSERT INTO payment (booking_ref, payment_intent_id, amount_minor, currency, status)
-				VALUES (:ref, :intent, 4500, 'EUR', :status)
+		long payment = insertCollection(intentId, 4500L, status);
+		insertShare(payment, bookingRef, 4500L);
+	}
+
+	private long insertCollection(String intentId, long amountMinor, String status) {
+		return jdbc.sql("""
+				INSERT INTO payment (payment_intent_id, amount_minor, currency, status)
+				VALUES (:intent, :amount, 'EUR', :status)
+				RETURNING id
 				""")
-				.param("ref", bookingRef).param("intent", intentId).param("status", status)
+				.param("intent", intentId).param("amount", amountMinor).param("status", status)
+				.query(Long.class).single();
+	}
+
+	private void insertShare(long paymentId, long bookingRef, long amountMinor) {
+		jdbc.sql("""
+				INSERT INTO payment_booking (payment_id, booking_ref, amount_minor)
+				VALUES (:payment, :ref, :amount)
+				""")
+				.param("payment", paymentId).param("ref", bookingRef).param("amount", amountMinor)
 				.update();
 	}
 
@@ -54,11 +70,26 @@ class PaymentMigrationIT {
 	}
 
 	@Test
-	void duplicateBookingRefRejected() {
-		insertPayment(2001L, "pi_booking_a", "REQUIRES_PAYMENT");
-		assertThrows(DataIntegrityViolationException.class,
-				() -> insertPayment(2001L, "pi_booking_b", "REQUIRES_PAYMENT"),
-				"UNIQUE(booking_ref) must enforce one collection per booking (Instant Book).");
+	void oneBookingRowPerBooking() {
+		long first = insertCollection("pi_booking_a", 4500L, "REQUIRES_PAYMENT");
+		long second = insertCollection("pi_booking_b", 4500L, "REQUIRES_PAYMENT");
+		insertShare(first, 2001L, 4500L);
+
+		assertThrows(DataIntegrityViolationException.class, () -> insertShare(second, 2001L, 4500L),
+				"payment_booking_uniq must enforce one collection per booking.");
+	}
+
+	@Test
+	void oneIntentMayCollectForSeveralBookings() {
+		long payment = insertCollection("pi_shared", 7500L, "REQUIRES_PAYMENT");
+
+		assertDoesNotThrow(() -> {
+			insertShare(payment, 2101L, 4500L);
+			insertShare(payment, 2102L, 3000L);
+		}, "a stay is a group of bookings paid with one PaymentIntent (D6/D8).");
+
+		assertEquals(7500L, jdbc.sql("SELECT SUM(amount_minor) FROM payment_booking WHERE payment_id = :p")
+				.param("p", payment).query(Long.class).single(), "the shares make up the intent's total");
 	}
 
 	@Test
@@ -71,11 +102,15 @@ class PaymentMigrationIT {
 	@Test
 	void negativeAmountRejected() {
 		assertThrows(DataIntegrityViolationException.class,
-				() -> jdbc.sql("""
-						INSERT INTO payment (booking_ref, payment_intent_id, amount_minor, currency, status)
-						VALUES (4001, 'pi_negative', -1, 'EUR', 'REQUIRES_PAYMENT')
-						""").update(),
+				() -> insertCollection("pi_negative", -1L, "REQUIRES_PAYMENT"),
 				"amount_minor CHECK must reject a negative amount (invariant #5).");
+	}
+
+	@Test
+	void negativeShareRejected() {
+		long payment = insertCollection("pi_negative_share", 4500L, "REQUIRES_PAYMENT");
+		assertThrows(DataIntegrityViolationException.class, () -> insertShare(payment, 4002L, -1L),
+				"payment_booking_amount_check must reject a negative share (invariant #5).");
 	}
 
 	@Test
@@ -98,62 +133,74 @@ class PaymentMigrationIT {
 
 	@Test
 	void refundStatesAccepted() {
-		// U6 (V11): the refund terminal states + refund record columns.
 		assertDoesNotThrow(() -> {
 			insertPayment(6001L, "pi_refunded", "SUCCEEDED");
 			jdbc.sql("""
-					UPDATE payment SET status = 'REFUNDED', refunded_minor = 4500, refund_id = 're_full'
-					WHERE payment_intent_id = 'pi_refunded'
+					UPDATE payment_booking SET refunded_minor = 4500, refund_id = 're_mig_full' WHERE booking_ref = 6001
 					""").update();
+			jdbc.sql("UPDATE payment SET status = 'REFUNDED' WHERE payment_intent_id = 'pi_refunded'").update();
 			insertPayment(6002L, "pi_partial", "SUCCEEDED");
 			jdbc.sql("""
-					UPDATE payment SET status = 'PARTIALLY_REFUNDED', refunded_minor = 2250, refund_id = 're_part'
-					WHERE payment_intent_id = 'pi_partial'
+					UPDATE payment_booking SET refunded_minor = 2250, refund_id = 're_mig_part' WHERE booking_ref = 6002
 					""").update();
-		}, "REFUNDED / PARTIALLY_REFUNDED + refund columns must be accepted (V11).");
+			jdbc.sql("UPDATE payment SET status = 'PARTIALLY_REFUNDED' WHERE payment_intent_id = 'pi_partial'")
+					.update();
+		}, "REFUNDED / PARTIALLY_REFUNDED + the booking's refund columns must be accepted.");
 	}
 
 	@Test
-	void refundExceedingAmountRejected() {
-		insertPayment(7001L, "pi_over_refund", "SUCCEEDED"); // amount_minor = 4500
+	void aShareCannotBeOverRefunded() {
+		insertPayment(7001L, "pi_over_refund", "SUCCEEDED"); // share = 4500
 		assertThrows(DataIntegrityViolationException.class,
-				() -> jdbc.sql("UPDATE payment SET refunded_minor = 9999 "
-						+ "WHERE payment_intent_id = 'pi_over_refund'").update(),
-				"payment_refunded_check must reject a refund greater than the collected amount (V11).");
+				() -> jdbc.sql("UPDATE payment_booking SET refunded_minor = 9999 WHERE booking_ref = 7001")
+						.update(),
+				"payment_booking_refunded_check must reject a refund greater than the booking's share.");
+	}
+
+	@Test
+	void aRefundIdIsRecordedOnce() {
+		insertPayment(7101L, "pi_refund_id_a", "SUCCEEDED");
+		insertPayment(7102L, "pi_refund_id_b", "SUCCEEDED");
+		jdbc.sql("UPDATE payment_booking SET refund_id = 're_once' WHERE booking_ref = 7101").update();
+
+		assertThrows(DataIntegrityViolationException.class,
+				() -> jdbc.sql("UPDATE payment_booking SET refund_id = 're_once' WHERE booking_ref = 7102")
+						.update(),
+				"payment_booking_refund_uniq: a gateway refund belongs to one booking, so its failure finds one row.");
 	}
 
 	/**
-	 * V42's shape: a collected payment whose refund died is {@code SUCCEEDED} with nothing refunded
-	 * and no live refund id, carrying only the failure trace. That combination is what makes the
-	 * owed-refund list enumerable, so the migration must admit it rather than constrain it away.
+	 * The owed shape: a collected payment whose refund died is {@code SUCCEEDED} with nothing refunded
+	 * and no live refund id on the booking, carrying only the failure trace. That combination is what
+	 * makes the owed-refund list enumerable, so the schema must admit it rather than constrain it away.
 	 */
 	@Test
 	void refundFailureTraceColumnsAdmitAnOwedRefund() {
 		insertPayment(8001L, "pi_owed", "SUCCEEDED");
 
 		assertDoesNotThrow(() -> jdbc.sql("""
-				UPDATE payment
+				UPDATE payment_booking
 				SET refund_attempted_at = NOW(), refund_failed_at = NOW(), failed_refund_id = 're_dead',
 				    refunded_minor = 0, refund_id = NULL
-				WHERE payment_intent_id = 'pi_owed'
-				""").update(), "V42 must admit a collected payment whose refund returned no money.");
+				WHERE booking_ref = 8001
+				""").update(), "the booking row must admit a collected payment whose refund returned no money.");
 
 		assertEquals(1, jdbc.sql("""
-				SELECT COUNT(*) FROM payment
-				WHERE booking_ref = 8001 AND refund_failed_at IS NOT NULL AND status = 'SUCCEEDED'
+				SELECT COUNT(*) FROM payment_booking b JOIN payment p ON p.id = b.payment_id
+				WHERE b.booking_ref = 8001 AND b.refund_failed_at IS NOT NULL AND p.status = 'SUCCEEDED'
 				""").query(Integer.class).single(),
 				"the trace must be readable as the queryable list of bookings still owed a refund.");
 	}
 
 	@Test
-	void refundFailureTraceIsNullForEveryPreexistingRow() {
+	void refundFailureTraceIsNullForEveryFreshRow() {
 		insertPayment(8002L, "pi_untouched", "SUCCEEDED");
 
 		assertEquals(1, jdbc.sql("""
-				SELECT COUNT(*) FROM payment
+				SELECT COUNT(*) FROM payment_booking
 				WHERE booking_ref = 8002 AND refund_attempted_at IS NULL AND refund_failed_at IS NULL
-				  AND failed_refund_id IS NULL
+				  AND failed_refund_id IS NULL AND refunded_minor = 0
 				""").query(Integer.class).single(),
-				"V42 backfills nothing — no attempt recorded and no failure observed is the truth.");
+				"no attempt recorded and no failure observed is a fresh booking row's truth.");
 	}
 }

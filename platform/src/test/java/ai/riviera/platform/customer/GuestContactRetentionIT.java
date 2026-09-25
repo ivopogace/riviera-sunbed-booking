@@ -93,7 +93,8 @@ class GuestContactRetentionIT {
 		assertThat(string("SELECT status FROM booking WHERE id = ?", bookingId)).isEqualTo("CONFIRMED");
 		assertThat(count("SELECT count(*) FROM booking WHERE id = ? AND customer_id = ? AND amount_minor = 4500",
 				bookingId, customerId)).isEqualTo(1);
-		assertThat(string("SELECT status FROM payment WHERE booking_ref = ?", bookingId)).isEqualTo("SUCCEEDED");
+		assertThat(string("SELECT p.status FROM payment p JOIN payment_booking b ON b.payment_id = p.id "
+				+ "WHERE b.booking_ref = ?", bookingId)).isEqualTo("SUCCEEDED");
 		assertThat(count("SELECT count(*) FROM payout_ledger_entry WHERE booking_id = ? AND net_minor = 3825",
 				bookingId)).isEqualTo(1);
 	}
@@ -198,10 +199,12 @@ class GuestContactRetentionIT {
 	}
 
 	private void insertPayment(long bookingId, String intentId, long amountMinor) {
-		jdbc.update("""
-				INSERT INTO payment (booking_ref, payment_intent_id, amount_minor, currency, status)
-				VALUES (?, ?, ?, 'EUR', 'SUCCEEDED')
-				""", bookingId, intentId, amountMinor);
+		Long payment = jdbc.queryForObject("""
+				INSERT INTO payment (payment_intent_id, amount_minor, currency, status)
+				VALUES (?, ?, 'EUR', 'SUCCEEDED') RETURNING id
+				""", Long.class, intentId, amountMinor);
+		jdbc.update("INSERT INTO payment_booking (payment_id, booking_ref, amount_minor) VALUES (?, ?, ?)",
+				payment, bookingId, amountMinor);
 	}
 
 	private void insertPayout(long venueId, long bookingId, long gross, long commission) {
