@@ -170,8 +170,9 @@ export class RemodelPreviewPanel {
     const spots = this.preview().keep.map(spotLabel);
     const named =
       spots.length <= 1 ? spots.join('') : `${spots.slice(0, -1).join(', ')} and ${spots.at(-1)}`;
+    const stay = spots.length === 1 ? 'stays' : 'stay';
     return this.committable()
-      ? `${named} ${spots.length === 1 ? 'stays' : 'stay'} on the map; the rest of the layout is saved as painted.`
+      ? `${named} ${stay} on the map; the rest of the layout is saved as painted.`
       : `Keep ${named} on the map to save.`;
   }
 

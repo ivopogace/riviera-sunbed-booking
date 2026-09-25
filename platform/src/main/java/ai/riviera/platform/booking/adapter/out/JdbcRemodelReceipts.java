@@ -48,9 +48,10 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 	private static final String KEPT_COLUMNS = """
 			receipt_id, booking_id, booking_date, set_id, row_label, position_no, reason
 			""";
-	private static final String SELECT_MOVES = "SELECT " + MOVE_COLUMNS;
-	private static final String SELECT_OUTCOMES = "SELECT " + OUTCOME_COLUMNS;
-	private static final String SELECT_KEPT = "SELECT " + KEPT_COLUMNS;
+	private static final String SELECT = "SELECT ";
+	private static final String SELECT_MOVES = SELECT + MOVE_COLUMNS;
+	private static final String SELECT_OUTCOMES = SELECT + OUTCOME_COLUMNS;
+	private static final String SELECT_KEPT = SELECT + KEPT_COLUMNS;
 	private static final String P_VENUE = "venue";
 	private static final String P_RECEIPT = "receipt";
 	private static final String P_BOOKING = "booking";
@@ -244,7 +245,7 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 	private static ReceiptKept mapKept(ResultSet rs) throws SQLException {
 		return new ReceiptKept(new BookingId(rs.getLong(C_BOOKING)), rs.getObject(C_DATE, LocalDate.class),
 				new SpotRef(new SetId(rs.getLong("set_id")), rs.getString("row_label"), rs.getInt("position_no")),
-				BlockReason.valueOf(rs.getString("reason")));
+				BlockReason.valueOf(rs.getString(P_REASON)));
 	}
 
 	private static ReceiptOutcome mapOutcome(ResultSet rs) throws SQLException {

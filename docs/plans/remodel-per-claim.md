@@ -220,9 +220,9 @@ unchanged and keep their pinning tests (`RemodelCommitIT.commitsAMixedPictureAnd
 
 ## Execution status
 
-**Stage pointer:** `PR — draft open, CI gate`
+**Stage pointer:** `PR — ready for review; review gate due`
 
-**Next action:** CI green on the draft → merge `origin/main` in → ready for review → review gate.
+**Next action:** run the review gate (`pr-gates.md` §1) over the resolved range; re-check Sonar after this push.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -239,6 +239,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-1 | Sonar (java:S1192) | `"SELECT "` literal three times in `JdbcRemodelReceipts` | fixed — `SELECT` constant |
+| F-2 | Sonar (java:S1192) | `"reason"` column read duplicates `P_REASON` | fixed — reads the constant |
+| F-3 | Sonar (typescript:S3358) | nested ternary in `keepSentence` | fixed — verb hoisted to a local |
 
 ---
 
