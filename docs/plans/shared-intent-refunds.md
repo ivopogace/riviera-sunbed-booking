@@ -56,17 +56,17 @@ list; the move is one `INSERT … SELECT` before the columns drop) · `riviera-l
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a database at V63 holding a collected payment with a full refund, a partial
+- [x] **AC-1:** Given a database at V63 holding a collected payment with a full refund, a partial
   refund, an owed (failed) refund and an untouched row, when V64 runs, then `payment_booking` holds
   one row per payment with the same `booking_ref`, share, `refunded_minor`, `refund_id`, attempt and
   failure trace, and `payment` no longer carries them. *Seam:* the schema through Flyway · *Pinned by:*
   `PaymentBookingBackfillIT.everyExistingPaymentBecomesOneBookingRowWithItsRefundIntact`
-- [ ] **AC-2:** Given the schema at V64, when two `payment_booking` rows name the same booking, or
+- [x] **AC-2:** Given the schema at V64, when two `payment_booking` rows name the same booking, or
   a share's `refunded_minor` exceeds its `amount_minor`, then the insert is refused; a payment with
   two bookings on one intent is accepted. *Seam:* the `payment_booking` table · *Pinned by:*
   `PaymentMigrationIT.oneBookingRowPerBooking`, `PaymentMigrationIT.aShareCannotBeOverRefunded`,
   `PaymentMigrationIT.oneIntentMayCollectForSeveralBookings`
-- [ ] **AC-3:** Given one intent registered for bookings A (4500) and B (3000), when the refund of A
+- [x] **AC-3:** Given one intent registered for bookings A (4500) and B (3000), when the refund of A
   is recorded, then A's progress is `ACCEPTED`, B's is `OUTSTANDING`, and the payment reads
   `PARTIALLY_REFUNDED`; recording B's refund reads `REFUNDED`; un-recording A's refund puts A back to
   `OUTSTANDING`, leaves B `ACCEPTED`, and the payment reads `PARTIALLY_REFUNDED` again. *Seam:*
@@ -74,13 +74,13 @@ list; the move is one `INSERT … SELECT` before the columns drop) · `riviera-l
   `JdbcPaymentsIT.refundingOneBookingOnASharedIntentLeavesItsSiblingOutstanding`,
   `JdbcPaymentsIT.unrecordingOneSiblingsRefundKeepsTheOthers`,
   `RefundServiceTest.progressIsOutstandingWhenOnlyASiblingWasRefunded`
-- [ ] **AC-4:** Given one intent for bookings A and B, when a verified `payment_intent.succeeded`
+- [x] **AC-4:** Given one intent for bookings A and B, when a verified `payment_intent.succeeded`
   arrives, then the payment moves to `SUCCEEDED` once and `PaymentConfirmed` is published once for
   A and once for B; `payment_intent.canceled` likewise publishes `PaymentCanceled` per booking.
   *Seam:* `POST /api/payments/stripe/webhook` → `payment::events` · *Pinned by:*
   `StripeWebhookIT.succeededOnASharedIntentConfirmsEveryBooking`,
   `StripeWebhookIT.canceledOnASharedIntentReleasesEveryBooking`
-- [ ] **AC-5:** Given one intent for A and B with both refunds recorded, when a verified
+- [x] **AC-5:** Given one intent for A and B with both refunds recorded, when a verified
   `refund.failed` names B's refund id, then only B is un-recorded and owed; when a `refund.failed`
   names an unrecorded refund carrying `metadata.bookingRef = A` after A's attempt, then A is owed
   and B untouched; the same failure with no booking tag on a shared intent moves nothing. *Seam:*
@@ -88,13 +88,13 @@ list; the move is one `INSERT … SELECT` before the columns drop) · `riviera-l
   `StripeWebhookIT.aFailedRefundOnASharedIntentUnrecordsOnlyItsBooking`,
   `StripeWebhookIT.anUnrecordedFailureIsAttributedByItsBookingTag`,
   `StripeWebhookIT.anUntaggedUnrecordedFailureOnASharedIntentMovesNothing`
-- [ ] **AC-6:** Given a collecting gateway holding one intent for two bookings, when each is
+- [x] **AC-6:** Given a collecting gateway holding one intent for two bookings, when each is
   refunded and then each call is replayed beyond the key window, then each replay reports its own
   first refund id and exactly two refunds were minted. The coverage rule still fails the build for an
   unclassified collecting gateway. *Seam:* `PaymentGateway#refund` · *Pinned by:*
   `PaymentGatewayRefundContract.severalBookingsOnOneCollectionAreEachRefundedOnce` (bound by
   `StripeRefundContractTest`), `PaymentGatewayContractCoverageArchitectureTest` (unchanged)
-- [ ] **AC-7:** Given Stripe holds a live refund tagged with sibling B on A's intent, when A is
+- [x] **AC-7:** Given Stripe holds a live refund tagged with sibling B on A's intent, when A is
   refunded, then a fresh refund is created for A carrying `metadata.bookingRef = A` and the
   booking-derived key; given Stripe holds an untagged live refund on a shared intent, then A's
   refund is `Failed("refund_mismatch")` and nothing is created; on a single-booking intent an
@@ -103,11 +103,11 @@ list; the move is one `INSERT … SELECT` before the columns drop) · `riviera-l
   `StripePaymentGatewayTest.aSiblingsLiveRefundDoesNotBlockThisBookings`,
   `StripePaymentGatewayTest.refusesAnUntaggedLiveRefundOnASharedIntent`,
   `StripePaymentGatewayTest.adoptsAnExistingStripeRefundInsteadOfCreatingASecond` (existing)
-- [ ] **AC-8:** Given three confirmed bookings each with an accrual, when `BookingCancelled` with a
+- [x] **AC-8:** Given three confirmed bookings each with an accrual, when `BookingCancelled` with a
   full refund is published for two of them, then each of those two has exactly one `REVERSAL` and the
   third has none. *Seam:* `booking::events` → the payout ledger · *Pinned by:*
   `PayoutReversalIT.twoOfThreeSegmentsReverseExactlyTwice`
-- [ ] **AC-9:** Given the existing payment and refund suites, when run against V64, then every
+- [x] **AC-9:** Given the existing payment and refund suites, when run against V64, then every
   behaviour assertion passes unchanged; the only edits are fixtures that inserted a `payment` row by
   hand or read a moved column by name. *Seam:* the suites themselves · *Pinned by:* the test classes
   in the File structure marked "fixture only"
@@ -143,35 +143,39 @@ because the runbooks' SQL and the domain model name the old columns.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The V64 data move changes a refunded amount or drops a failure trace | Low | A guest shown refunded who was not, or an owed refund off the list (#10) | One `INSERT … SELECT` before the columns drop; `PaymentBookingBackfillIT` runs V64 on a real V63 schema seeded with every refund shape | payment | open |
-| R-2 | The parent's status is derived in the same statement as the child write; a data-modifying CTE sees the pre-statement snapshot, so a naive `SUM` misses the row just written | High | `PARTIALLY_REFUNDED` where `REFUNDED` is true | The sum is computed over the siblings plus the value being written, never re-read; AC-3 pins both directions | payment | open |
-| R-3 | An untagged live refund on a shared intent (a manual dashboard refund, or a pre-slice refund) cannot be attributed | Medium | Adopting it for the wrong booking would strand a guest owed money | Refuse with `refund_mismatch` — the posture that already means "a human settles this"; single-booking intents keep today's rule | payment | open |
-| R-4 | Cross-module test fixtures insert `payment` rows by hand and will not compile against V64 | Certain | Red CI | Enumerated: `AbandonedBookingSweepIT`, `RequestAcceptPayIT`, `ConcurrentRequestClaimIT`, `GuestContactRetentionIT`, `AccountErasureIT` — each inserts parent + child | this PR | open |
-| R-5 | `Payments` doubles outside the module break on the port change | Certain | Compile break | `WebSliceStubs`, `PaymentServiceTest#noPayments`, `ThrowingPayments` updated in phase 1 | this PR | open |
-| R-6 | Flyway `V64` collides with another branch | Low | Rename | Free on `main` @ `c5415f48`, unclaimed by any open PR; the branch merging second renumbers | this PR | open |
-| R-7 | The webhook publishes per booking; a listener failure on one booking leaves the others confirmed | Low | Partial confirmation of a group | Each publication is registry-backed and re-driven independently; the same at-least-once posture as today per booking | payment | open |
-| R-8 | Webhook duplicate / out-of-order on a shared intent (#8) | Medium | Double un-record or a late event contradicting a refund | Unchanged guards: event-id dedup; `markStatus` moves only open rows; the un-record is keyed on the recorded `refund_id`, unique per child | payment | open |
-| R-9 | Payout double-accrual or double-reversal (#9) | Low | Venue over/under-paid | Untouched: `UNIQUE (booking_id, entry_type)`; AC-8 pins two-of-three | payout | open |
-| R-10 | The refund attempt stamp must stay visible mid-call from another connection | Low | A racing failure misattributed | `RefundAttemptVisibilityIT` re-pointed at the child column; `RefundService` unchanged | payment | open |
+| R-1 | The V64 data move changes a refunded amount or drops a failure trace | Low | A guest shown refunded who was not, or an owed refund off the list (#10) | One `INSERT … SELECT` before the columns drop; `PaymentBookingBackfillIT` runs V64 on a real V63 schema seeded with every refund shape | payment | closed — b3755047 |
+| R-2 | The parent's status is derived in the same statement as the child write; a data-modifying CTE sees the pre-statement snapshot, so a naive `SUM` misses the row just written | High | `PARTIALLY_REFUNDED` where `REFUNDED` is true | The sum is computed over the siblings plus the value being written, never re-read; AC-3 pins both directions | payment | closed — b3755047 |
+| R-3 | An untagged live refund on a shared intent (a manual dashboard refund, or a pre-slice refund) cannot be attributed | Medium | Adopting it for the wrong booking would strand a guest owed money | Refuse with `refund_mismatch` — the posture that already means "a human settles this"; single-booking intents keep today's rule | payment | closed — f80c42aa |
+| R-4 | Cross-module test fixtures insert `payment` rows by hand and will not compile against V64 | Certain | Red CI | Enumerated: `AbandonedBookingSweepIT`, `RequestAcceptPayIT`, `ConcurrentRequestClaimIT`, `GuestContactRetentionIT`, `AccountErasureIT` — each inserts parent + child | this PR | closed — b3755047 (a second `booking_ref` update in `RequestAcceptPayIT` was found by the run, not the grep) |
+| R-5 | `Payments` doubles outside the module break on the port change | Certain | Compile break | `WebSliceStubs`, `PaymentServiceTest#noPayments`, `ThrowingPayments` updated in phase 1 | this PR | closed — b3755047 |
+| R-6 | Flyway `V64` collides with another branch | Low | Rename | Free on `main` @ `c5415f48`, unclaimed by any open PR; the branch merging second renumbers | this PR | closed — still free at ready-for-review |
+| R-7 | The webhook publishes per booking; a listener failure on one booking leaves the others confirmed | Low | Partial confirmation of a group | Each publication is registry-backed and re-driven independently; the same at-least-once posture as today per booking | payment | closed — b3755047 (`StripeWebhookIT.succeededOnASharedIntentConfirmsEveryBooking`) |
+| R-8 | Webhook duplicate / out-of-order on a shared intent (#8) | Medium | Double un-record or a late event contradicting a refund | Unchanged guards: event-id dedup; `markStatus` moves only open rows; the un-record is keyed on the recorded `refund_id`, unique per child | payment | closed — b3755047 (existing `StripeWebhookIT` cases unchanged) |
+| R-9 | Payout double-accrual or double-reversal (#9) | Low | Venue over/under-paid | Untouched: `UNIQUE (booking_id, entry_type)`; AC-8 pins two-of-three | payout | closed — phase 4 |
+| R-10 | The refund attempt stamp must stay visible mid-call from another connection | Low | A racing failure misattributed | `RefundAttemptVisibilityIT` re-pointed at the child column; `RefundService` unchanged | payment | closed — b3755047 |
 
 ## Open questions / Assumptions
 
+None open.
+
+### Resolved
+
 - **Assumption:** the child table is `payment_booking` — one row per booking the intent collects for,
-  created at `register` time, carrying the share and the refund state. The issue's "refund child
+  created at `register` time, carrying the share and the refund state; the issue's "refund child
   table keyed by booking" needs the mapping to exist before any refund does, so the two are one
-  table. — *Owner:* payment · *Resolves by:* phase 0 (kept unless the owner objects on the PR)
+  table. Outcome: kept (V64, b3755047).
 - **Assumption:** `payment.booking_ref`, `refunded_minor`, `refund_id`, `refund_attempted_at`,
   `refund_failed_at` and `failed_refund_id` move to the child rather than staying as a duplicated
-  "lead booking" view; the parent's status is derived from the children's sum. — *Owner:* payment ·
-  *Resolves by:* phase 0
+  "lead booking" view; the parent's status is derived from the children's sum. Outcome: kept
+  (b3755047; `JdbcPaymentsIT.unrecordingOneSiblingsRefundKeepsTheOthers` pins the derivation).
 - **Assumption:** the refund's owner travels as Stripe refund metadata `bookingRef`, set on create
   and read on list and on the failure webhook; an untagged live refund on a shared intent is refused
-  (`refund_mismatch`) rather than guessed at. — *Owner:* payment · *Resolves by:* phase 3
+  (`refund_mismatch`) rather than guessed at. Outcome: kept (f80c42aa, b3755047).
 - **Assumption:** `CheckoutPort`, `RefundPort`, `CancelPaymentPort`, `RefundStatusLookup` and the
   two events keep their shape; `payment` publishes one `PaymentConfirmed`/`PaymentCanceled` per
-  booking on the intent. — *Owner:* payment · *Resolves by:* phase 2
+  booking on the intent. Outcome: kept (b3755047).
 - **Assumption:** at most one refund per booking (`payment_booking_uniq`, key unchanged); #1210
-  owns the second. — *Owner:* payment · *Resolves by:* phase 0
+  owns the second. Outcome: kept (V64).
 
 ## Availability & concurrency (invariant #2)
 
@@ -235,17 +239,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan approved — implement (phase 0)`
+**Stage pointer:** `PR — draft open, CI gate`
 
-**Next action:** phase 0 — V64 + the backfill IT.
+**Next action:** check the draft's CI run; then merge `origin/main`, mark ready for review, run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V64 `payment_booking` + backfill IT | | |
-| 1 — `Payments` on the child: parity for one booking, then shared-intent state | | |
-| 2 — Webhook: per-booking fan-out, refund attribution | | |
-| 3 — Stripe adapter: refund tag, shared-intent adoption; contract extension | | |
-| 4 — Payout pin, docs, plan retirement, close-out | | |
+| 0 — V64 `payment_booking` + backfill IT | ✅ | b3755047 |
+| 1 — `Payments` on the child: parity for one booking, then shared-intent state | ✅ | b3755047 |
+| 2 — Webhook: per-booking fan-out, refund attribution | ✅ | b3755047 |
+| 3 — Stripe adapter: refund tag, shared-intent adoption; contract extension | ✅ | f80c42aa |
+| 4 — Payout pin, docs, plan retirement, close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -262,6 +266,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/payment/application/NewPayment.java` — one intent, one or more `Share(bookingRef, amountMinor)`; the single-booking constructor stays
 - `platform/src/main/java/ai/riviera/platform/payment/application/Payments.java` — `findBookingRefsByIntent`, `markUnrecordedRefundFailed(BookingRef, String)`; Javadoc re-read whole
 - `platform/src/main/java/ai/riviera/platform/payment/application/RefundService.java` — progress reads the child's amount against the parent's collected status
+- `platform/src/main/java/ai/riviera/platform/payment/application/RefundState.java` — Javadoc: the share, not the row
+- `platform/src/main/java/ai/riviera/platform/payment/domain/PaymentStatus.java` — `holdsCollectedMoney()`, the one lifecycle rule two callers share
 - `platform/src/main/java/ai/riviera/platform/payment/adapter/out/JdbcPayments.java` — every statement re-pointed; the parent status derived in the refund writes
 - `platform/src/main/java/ai/riviera/platform/payment/adapter/out/StripePaymentGateway.java` — refund tag; shared-intent candidate rule
 - `platform/src/main/java/ai/riviera/platform/payment/adapter/out/StripeRefundTag.java` — the metadata key and its read, shared by both adapters
@@ -399,6 +405,9 @@ fixtures in R-4; Test `JdbcPaymentsIT`, `RefundServiceTest`, `RefundAttemptVisib
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-25 | V64 drops `payment.booking_ref` and the refund columns | every hand-written statement naming them, in tests and docs | `grep -rn -E 'refund_failed_at\|refund_attempted_at\|failed_refund_id\|refunded_minor\|refund_id\|booking_ref' platform/src docs` | 5 fixture classes, 2 runbooks, the domain model, RESPONSIBILITIES.md | all re-pointed; one site (`RequestAcceptPayIT`'s second `UPDATE … WHERE booking_ref`) surfaced only when the IT ran — the grep matched it but the first read missed it |
+| 2026-09-25 | `Payments` port shape change | every implementation or double | `grep -rln "implements Payments\|new Payments()\|extends ThrowingPayments" platform/src` | `JdbcPayments`, `WebSliceStubs`, `PaymentServiceTest`, `ThrowingPayments` | all updated |
+| 2026-09-25 | Two test classes sharing one container collided on booking ref 9901 | every `BookingRef(99xx)` literal in the suite | `grep -rn 'BookingRef(99[0-9][0-9]L)' platform/src/test` | `RefundAttemptVisibilityIT` (9901) | the shared-intent cases moved to 9951–9958 |
 
 ---
 

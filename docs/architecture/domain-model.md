@@ -418,13 +418,18 @@ classDiagram
 classDiagram
     class payment {
         <<table>>
-        id, booking_ref
+        id
         payment_intent_id, client_secret
         amount_minor, currency
         status
-        refunded_minor, refund_id
+        UNIQUE (payment_intent_id)
+    }
+    class payment_booking {
+        <<table>>
+        id, payment_id, booking_ref
+        amount_minor, refunded_minor, refund_id
         refund_attempted_at, refund_failed_at, failed_refund_id
-        UNIQUE (payment_intent_id), UNIQUE (booking_ref)
+        UNIQUE (booking_ref), UNIQUE (refund_id)
     }
     class stripe_webhook_event {
         <<table>>
@@ -456,16 +461,19 @@ classDiagram
         returnedNoMoney(status)
     }
     payment ..> PaymentStatus : status, mirrors the CHECK
-    payment ..> BookingRef : booking_ref
+    payment "1" *-- "1..*" payment_booking : the bookings it collects for
+    payment_booking ..> BookingRef : booking_ref
     stripe_webhook_event ..> payment : event-id dedup guards the write
 ```
 
-> **At most one refund per payment, and no `Refund` entity.** V11 added two columns —
-> `refunded_minor` and `refund_id` — not a table, so the model is one refund per payment rather
-> than a collection; V42 added the failure trace behind the resubmission lever (§5). There is no
-> `PaymentId`, `RefundId` or `RefundStatus` type, and the **idempotency key is not stored** at all:
-> it is derived from the booking id at call time. `RefundReason` belongs to `booking` — why a
-> refund happened is `booking`'s word, not the gateway's.
+> **One intent, one row per booking, at most one refund per booking, and no `Refund` entity.**
+> A stay is a group of bookings paid once, so `payment` holds the intent and `payment_booking`
+> holds each booking's share with its refund state — `refunded_minor`, `refund_id` and the failure
+> trace behind the resubmission lever (§5). The intent's status is derived from its shares. There
+> is no `PaymentId`, `RefundId` or `RefundStatus` type, and the **idempotency key is not stored**
+> at all: it is derived from the booking id at call time; the refund's booking travels as Stripe
+> metadata (`StripeRefundTag`). `RefundReason` belongs to `booking` — why a refund happened is
+> `booking`'s word, not the gateway's.
 >
 > State is reconciled from **signature-verified Stripe webhooks**, never the client redirect
 > (invariant #8), with `stripe_webhook_event`'s event-id primary key as the replay guard.
@@ -870,7 +878,7 @@ sequenceDiagram
         P->>S: create Refund
         S-->>P: webhook refund updated (signed)
     else gateway refuses or is down
-        P->>P: stamp refund_attempted_at / refund_failed_at / failed_refund_id
+        P->>P: stamp the booking's refund_attempted_at / refund_failed_at / failed_refund_id
         Note over B,P: the publication stays outstanding — riviera.refunds.failed is the signal
         Adm->>B: admin presses re-submit (window-limited)
         B->>P: same BookingCancelled re-driven, same refund re-asked
@@ -883,8 +891,8 @@ sequenceDiagram
 > swept `NO_SHOW`.
 >
 > **The failure leg is not decoration.** A refund the gateway refuses leaves its `BookingCancelled`
-> publication outstanding in the Event Publication Registry, with the attempt traced on the payment
-> row (V42). `RefundOutbox` exposes exactly that backlog for the one refund listener and the lever
+> publication outstanding in the Event Publication Registry, with the attempt traced on the booking's
+> `payment_booking` row. `RefundOutbox` exposes exactly that backlog for the one refund listener and the lever
 > to re-drive it; `RefundResubmissionWindow` is how long the lever refuses after an accepted press,
 > so an outage cannot be re-swept once per click. Re-driving is safe because it re-issues the *same*
 > gateway call: a refund that already succeeded is returned, not repeated. It is a retry loop, not a
