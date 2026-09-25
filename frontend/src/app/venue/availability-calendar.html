@@ -7,7 +7,7 @@
   tabindex="-1"
   class="static m-0 w-full max-w-[352px] animate-[riv-pop_0.2s_ease] rounded-[22px] border border-riv-pop-border bg-riv-pop-surface p-4 text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none"
   aria-modal="true"
-  aria-label="Choose a booking date"
+  [attr.aria-label]="mode() === 'stay' ? 'Choose your days' : 'Choose a booking date'"
   data-testid="availability-calendar"
   (click)="$event.stopPropagation()"
   (keydown.tab)="trapFocus($event, false)"
@@ -45,6 +45,18 @@
       &#8250;
     </button>
   </header>
+
+  @if (rangeAllowed()) {
+    <div class="mt-2">
+      <app-segmented-control
+        variant="pill"
+        label="How long"
+        [options]="modeOptions"
+        [value]="mode()"
+        (valueChange)="onModeChange($event)"
+      />
+    </div>
+  }
 
   <table
     class="mt-2 w-full table-fixed border-collapse"
@@ -108,6 +120,29 @@
       }
     </tbody>
   </table>
+
+  @if (mode() === 'stay') {
+    <div class="mt-2 flex items-center justify-between gap-2">
+      <p
+        class="text-[13px] leading-[1.4] font-semibold text-riv-pop-ink"
+        data-testid="calendar-stay-hint"
+        aria-live="polite"
+      >
+        {{ stayHint() }}
+      </p>
+      @if (pendingFirst()) {
+        <button
+          appTouchTarget
+          type="button"
+          class="shrink-0 cursor-pointer rounded-[12px] px-3 text-[13px] font-bold text-riv-calendar-accent hover:bg-riv-pop-hover"
+          data-testid="calendar-just-this-day"
+          (click)="justThisDay()"
+        >
+          Just this day
+        </button>
+      }
+    </div>
+  }
 
   @if (countsFailed()) {
     <p

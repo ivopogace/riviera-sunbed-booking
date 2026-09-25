@@ -5,6 +5,9 @@ import ai.riviera.platform.booking.application.request.RequestWindows;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.function.Function;
@@ -23,6 +26,8 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.StaySpan;
+import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 
 /**
@@ -93,14 +98,18 @@ class ReserveSetService {
 		}
 		// One reading of the clock, so both fences and the request deadline classify the same instant.
 		Instant now = clock.instant();
-		if (!cutoff.admitsDate(set.seasonClosure(), command.bookingDate(), now)) {
+		StaySpan stay = command.stay();
+		if (!stay.eachDay().stream().allMatch(day -> cutoff.admitsDate(set.seasonClosure(), day, now))) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.VENUE_CLOSED);
 		}
-		if (!cutoff.isBookable(set.salesClose(), command.bookingDate(), now)) {
+		if (!cutoff.isBookable(set.salesClose(), stay.firstDay(), now)) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.BOOKING_CLOSED);
 		}
+		if (set.bookingMode() == BookingMode.REQUEST && !stay.isOneDay()) {
+			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.RANGE_NOT_OFFERED);
+		}
 
-		ClaimOutcome claim = availability.claim(command.setId(), command.bookingDate());
+		ClaimOutcome claim = claimEveryDay(command.setId(), stay);
 		switch (claim) {
 			case ALREADY_TAKEN -> { return new ReserveOutcome.Rejected(BookingOutcome.Rejected.SET_TAKEN); }
 			case NOT_ONLINE_POOL -> { return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NOT_ONLINE_POOL); }
@@ -108,6 +117,7 @@ class ReserveSetService {
 			case CLAIMED -> { /* won the claim — proceed */ }
 		}
 
+		long amountMinor = Math.multiplyExact(set.price().minorUnits(), (long) stay.days());
 		CustomerId customerId = customers.findOrCreate(command.contact());
 		// Request-to-Book (issue #98): a REQUEST venue's booking starts as a pending request that
 		// holds the claimed (set, date) row but triggers no payment — payment-request-on-accept.
@@ -115,13 +125,32 @@ class ReserveSetService {
 		if (set.bookingMode() == BookingMode.REQUEST) {
 			Instant expiresAt = min(now.plus(requestWindows.expiryWindow()),
 					cutoff.salesCloseAt(set.salesClose(), command.bookingDate()));
-			Inserted pending = insertWithUniqueCode(set, customerId, command,
+			Inserted pending = insertWithUniqueCode(set, customerId, command, amountMinor,
 					b -> bookings.insertPendingRequest(b, expiresAt));
-			return new ReserveOutcome.RequestPending(pending.id(), pending.code(), set, expiresAt);
+			return new ReserveOutcome.RequestPending(pending.id(), pending.code(), set, expiresAt, amountMinor);
 		}
-		Inserted inserted = insertWithUniqueCode(set, customerId, command,
+		Inserted inserted = insertWithUniqueCode(set, customerId, command, amountMinor,
 				bookings::insertAwaitingPayment);
-		return new ReserveOutcome.Reserved(inserted.id(), inserted.code(), set, customerId);
+		return new ReserveOutcome.Reserved(inserted.id(), inserted.code(), set, customerId, amountMinor);
+	}
+
+	/**
+	 * Claim every day of the stay, one {@code (set, date)} row each (invariant #2). A day that is not
+	 * won ends the stay: the days already won are given back before the answer, so a lost range holds
+	 * nothing — a {@code Rejected} return commits this transaction, and a claim left behind would be a
+	 * row nothing can identify (RESPONSIBILITIES.md §booking).
+	 */
+	private ClaimOutcome claimEveryDay(SetId setId, StaySpan stay) {
+		List<LocalDate> won = new ArrayList<>();
+		for (LocalDate day : stay.eachDay()) {
+			ClaimOutcome outcome = availability.claim(setId, day);
+			if (outcome != ClaimOutcome.CLAIMED) {
+				won.forEach(held -> availability.release(setId, held));
+				return outcome;
+			}
+			won.add(day);
+		}
+		return ClaimOutcome.CLAIMED;
 	}
 
 	private static Instant min(Instant a, Instant b) {
@@ -135,12 +164,12 @@ class ReserveSetService {
 	 * transaction. Bounded retries.
 	 */
 	private Inserted insertWithUniqueCode(SetBookingInfo set, CustomerId customerId,
-			CreateBookingCommand command, Function<NewBooking, OptionalLong> insert) {
+			CreateBookingCommand command, long amountMinor, Function<NewBooking, OptionalLong> insert) {
 		for (int attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
 			String code = codeGenerator.next();
 			OptionalLong id = insert.apply(new NewBooking(code, set.venueId(),
-					set.setId(), customerId, command.accountId(), command.bookingDate(),
-					set.price().minorUnits(), set.price().currency()));
+					set.setId(), customerId, command.accountId(), command.bookingDate(), command.lastDate(),
+					amountMinor, set.price().currency()));
 			if (id.isPresent()) {
 				return new Inserted(id.getAsLong(), code);
 			}

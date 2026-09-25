@@ -160,6 +160,9 @@
   --color-riv-tile-taken-fill: var(--riv-tile-taken-fill);
   --color-riv-tile-taken-border: var(--riv-tile-taken-border);
   --color-riv-tile-taken-ink: var(--riv-tile-taken-ink);
+  --color-riv-tile-partly-border: var(--riv-tile-partly-border);
+  --color-riv-tile-badge-fill: var(--riv-tile-badge-fill);
+  --color-riv-tile-badge-ink: var(--riv-tile-badge-ink);
   --color-riv-tile-hover: var(--riv-tile-hover);
   --color-riv-tile-focus: var(--riv-tile-focus);
   --color-riv-photo-ink: var(--riv-photo-ink);
@@ -816,6 +819,11 @@
   --riv-tile-taken-fill: rgba(255, 255, 255, 0.2);
   --riv-tile-taken-border: #6b7d77;
   --riv-tile-taken-ink: #566560;
+  /** The partly-free tile: the available fill under a 2px dotted border in the available ink, so it
+      keeps its state under forced colours; the free-day badge is a solid teal chip. */
+  --riv-tile-partly-border: #0f7d8c;
+  --riv-tile-badge-fill: #1f5d67;
+  --riv-tile-badge-ink: #ffffff;
   --riv-tile-hover: #e6f6f3;
   --riv-tile-focus: #0f7d8c;
   --riv-photo-grad: linear-gradient(162deg, #2bb8d4 0%, #0e8aa8 70%, #0e8aa8 100%);
@@ -1042,6 +1050,9 @@
   --riv-tile-taken-fill: rgba(255, 255, 255, 0.05);
   --riv-tile-taken-border: #7d8f89;
   --riv-tile-taken-ink: #a7b5b0;
+  --riv-tile-partly-border: #8fd6e2;
+  --riv-tile-badge-fill: #bfe9f0;
+  --riv-tile-badge-ink: #0b2a31;
   --riv-tile-hover: rgba(255, 255, 255, 0.14);
   --riv-tile-focus: #8fd6e2;
 

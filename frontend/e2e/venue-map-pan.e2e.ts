@@ -622,7 +622,7 @@ test('the pan affordances follow the viewport across the breakout breakpoint (#7
 });
 
 /** The tile states the legend explains, in render order (mirrors `venue/map-tile.ts`). */
-const TILE_STATES = ['available', 'premium', 'walkin', 'taken'] as const;
+const TILE_STATES = ['available', 'premium', 'partly', 'walkin', 'taken'] as const;
 
 /** What a tile or a swatch actually looks like — computed, never the class list (#701 AC-4). */
 async function face(locator: Locator) {
@@ -715,14 +715,20 @@ test('every legend swatch declares exactly what the tile it stands for declares 
   await expect(page.locator('[aria-label="Legend"] [data-state]')).toHaveCount(TILE_STATES.length);
   for (const state of TILE_STATES) {
     const swatch = page.locator(`[aria-label="Legend"] [data-state="${state}"]`);
-    const tile = page.locator(`.set-tile[data-state="${state}"]`).first();
+    const tiles = page.locator(`.set-tile[data-state="${state}"]`);
     await expect(swatch).toHaveCount(1);
-    expect(await face(swatch), `the ${state} swatch`).toEqual(await face(tile));
+    if ((await tiles.count()) === 0) {
+      continue; // a one-day map holds no partly-free tile; range-booking.e2e.ts measures that one
+    }
+    expect(await face(swatch), `the ${state} swatch`).toEqual(await face(tiles.first()));
   }
-  // The ghost swatch keeps the dashed outline that marks "taken" on the grid.
+  // The ghost swatch keeps the dashed "taken" outline; the partly-free one keeps its dotted outline.
   expect(
     (await face(page.locator('[aria-label="Legend"] [data-state="taken"]'))).borderTopStyle,
   ).toBe('dashed');
+  expect(
+    (await face(page.locator('[aria-label="Legend"] [data-state="partly"]'))).borderTopStyle,
+  ).toBe('dotted');
 });
 
 /** The row-name rail's first chip and the tile viewport, as the browser lays them out. */

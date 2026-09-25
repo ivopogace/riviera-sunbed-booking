@@ -11,6 +11,9 @@
  * @param opts.withYear include the year ("Tue 30 Jun 2026") — the map/Discover context; the
  *   checkout surfaces omit it ("Tue 1 Dec").
  */
+import { daysBetween } from './booking-date';
+import { plural } from './plural';
+
 const FMT = new Intl.DateTimeFormat('en-IE', {
   timeZone: 'UTC',
   weekday: 'short',
@@ -36,4 +39,16 @@ export function formatBookingDate(iso: string, opts: { withYear?: boolean } = {}
     return '';
   }
   return (opts.withYear ? FMT_WITH_YEAR : FMT).format(date);
+}
+
+/**
+ * Render a stay's days: one day exactly as {@link formatBookingDate} would, a range as
+ * `"Tue 30 Jun – Sat 4 Jul · 5 days"` — the year (when asked for) on the last day only. The one
+ * home of the range label, so the map trigger, the dialog and the confirmation agree.
+ */
+export function formatStay(first: string, last: string, opts: { withYear?: boolean } = {}): string {
+  if (first === last) {
+    return formatBookingDate(first, opts);
+  }
+  return `${formatBookingDate(first)} – ${formatBookingDate(last, opts)} · ${plural(daysBetween(first, last), 'day')}`;
 }

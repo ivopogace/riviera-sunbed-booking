@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { BookingDialog } from '../booking/booking-dialog';
 import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '../shared/amenities';
@@ -20,7 +20,7 @@ import { MAP_TILE_LEGEND, MAP_TILE_MEANING, MapTile, MapTileState, mapTileState 
 import { rowPriceLabel } from './row-price-label';
 import { formatMoney, MoneyView } from '../shared/money';
 import { focusMover } from '../shared/focus-after-render';
-import { formatBookingDate } from '../shared/booking-date-label';
+import { formatBookingDate, formatStay } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
 import { PhotoGalleryGrid } from '../shared/photo-gallery-grid';
 import { PhotoLightbox } from '../shared/photo-lightbox';
@@ -29,11 +29,19 @@ import { PhotoSlideshow } from '../shared/photo-slideshow';
 import { CONTAIN_SIZES, slideshowPhotos } from '../shared/photo-url';
 import { isRated, ratingScore, reviewsLabel } from '../shared/rating';
 import { RetryButton } from '../shared/retry-button';
-import { defaultBookingDate, formatCivilDate, isIsoDate } from '../shared/booking-date';
+import {
+  DateRange,
+  daysBetween,
+  defaultBookingDate,
+  formatCivilDate,
+  isIsoDate,
+} from '../shared/booking-date';
 import { routeIdParam } from '../shared/parent-venue-id';
 import { spotLabel, tierSentenceLabel } from '../shared/set-label';
 import { PhotoView, SetView, VenueMapView } from '../shared/venue-views';
-import { AvailabilityCalendar } from './availability-calendar';
+import { AvailabilityCalendar, MAX_STAY_DAYS } from './availability-calendar';
+import { PartlyFreeSheet } from './partly-free-sheet';
+import { SetRun, freeDaysOf, longestRunAcross } from './stay-runs';
 import { VenueReviews } from './venue-reviews';
 import { VenueService } from './venue.service';
 
@@ -57,6 +65,12 @@ interface TileView {
   readonly name: string;
   /** Accessible name for the bookable button (adds the "Select to book" affordance). */
   readonly bookName: string;
+  /** Free on some of the stay's days: tappable to see which, never bookable as it stands. */
+  readonly partly: boolean;
+  /** How many of the stay's days the set is free on — the badge a partly-free tile wears. */
+  readonly freeDays: number;
+  /** Accessible name for the partly-free button (adds the "see which days" affordance). */
+  readonly partlyName: string;
 }
 
 /** One row of the map: the shared canvas's row contract plus this surface's tiles. */
@@ -100,11 +114,11 @@ interface VenueHeader {
 }
 
 /**
- * Read-only visual beach map for one venue on a chosen day. Renders the glass venue header
- * (with description + cutoff explainer), a per-date availability summary, and the positioned,
- * row-major set grid coloured by tier and availability. The map owns the selected date:
- * changing it re-fetches that date's availability and seeds the booking dialog's date, so
- * the two always agree. Reactive to in-place `:id`/`?date` route changes — the
+ * Read-only visual beach map for one venue on a chosen day or stay. Renders the glass venue
+ * header (with description + cutoff explainer), an availability summary for the days, and the
+ * positioned, row-major set grid coloured by tier and availability. The map owns the selected
+ * days: changing them re-fetches their availability and seeds the booking dialog's days, so
+ * the two always agree. Reactive to in-place `:id`/`?date`/`?lastDate` route changes — the
  * router reuses the instance, so a change resets per-venue state and re-loads like a fresh
  * mount. Money is rendered from integer minor units; tile state is conveyed
  * by an accessible name, not colour alone (WCAG AA). The grid chrome — wash, rails, zone
@@ -145,6 +159,8 @@ interface VenueHeader {
     AlertIcon,
     UmbrellaIcon,
     ArrowLeftIcon,
+    PartlyFreeSheet,
+    RouterLink,
   ],
   templateUrl: './venue-map.html',
   // --riv-tile (tile size + rail-cell heights) now lives on the shared canvas's host.
@@ -187,11 +203,18 @@ export class VenueMap {
     initialValue: this.route.snapshot.queryParamMap,
   });
   /**
-   * The day the map reflects (ISO YYYY-MM-DD). Seeded from {@link routeDate} on mount and on every
-   * in-place route change that alters the venue or the carried `?date` param; the date
-   * picker then writes it directly without touching the URL.
+   * The first day the map reflects (ISO YYYY-MM-DD). Seeded from {@link routeDates} on mount and on
+   * every in-place route change that alters the venue or the carried `?date`/`?lastDate` params;
+   * the date picker then writes it directly without touching the URL.
    */
   protected readonly selectedDate = signal(this.minDate());
+  /** The last day the map reflects — the first day itself for a one-day map. */
+  protected readonly selectedLastDate = signal(this.minDate());
+  /** How many days the map is showing; a stay is more than one. */
+  protected readonly dayCount = computed(() =>
+    daysBetween(this.selectedDate(), this.selectedLastDate()),
+  );
+  protected readonly isStay = computed(() => this.dayCount() > 1);
 
   /** The venue id from the `:id` param (undefined if invalid) — reactive to in-place changes,
    *  which reuse this instance. */
@@ -206,6 +229,10 @@ export class VenueMap {
 
   /** The set whose booking dialog is open, or undefined when closed. */
   protected readonly selectedSet = signal<SetView | undefined>(undefined);
+  /** The partly-free set whose days are being shown, or undefined when the sheet is closed. */
+  protected readonly partlySet = signal<SetView | undefined>(undefined);
+  /** A set to open the dialog on once the map is re-read for a shortened stay. */
+  private pendingSelectSetId: number | undefined;
   /** Id of the tile that opened the dialog, so focus can return to it on close. */
   private lastTriggerId: number | undefined;
 
@@ -217,7 +244,23 @@ export class VenueMap {
   protected readonly freeCount = computed(
     () => this.venue()?.sets.filter((s) => s.availability === 'FREE').length ?? 0,
   );
+  /** Sets free on some of the stay's days but not all — a one-day map never has any. */
+  protected readonly partlyCount = computed(
+    () => this.venue()?.sets.filter((s) => s.availability === 'PARTLY_FREE').length ?? 0,
+  );
   protected readonly totalCount = computed(() => this.venue()?.sets.length ?? 0);
+
+  /** A stay no single set covers, though the beach is not full: the page offers the longest run. */
+  protected readonly noSetCovers = computed(
+    () => this.isStay() && this.totalCount() > 0 && this.freeCount() === 0 && !this.salesClosed(),
+  );
+  /** The online set that can host the most of the stay on one spot, when nothing covers it all. */
+  protected readonly longestRun = computed<SetRun | undefined>(() => {
+    const venue = this.venue();
+    return venue === undefined || !this.noSetCovers()
+      ? undefined
+      : longestRunAcross(venue.sets, this.selectedDate(), this.selectedLastDate());
+  });
 
   /**
    * True when the server's verdict says online sales for the selected date have closed
@@ -313,15 +356,28 @@ export class VenueMap {
     this.resetForVenue(this.venueId());
   }
 
-  /** The raw route context — `:id` plus the raw `?date` param — whose change triggers a reset. */
+  /** The raw route context — `:id` plus the raw `?date`/`?lastDate` params — whose change triggers a reset. */
   private routeKey(): string {
-    return `${this.venueId()}|${this.queryParams().get('date') ?? ''}`;
+    const params = this.queryParams();
+    return `${this.venueId()}|${params.get('date') ?? ''}|${params.get('lastDate') ?? ''}`;
   }
 
-  /** The route-carried map date: a well-formed `?date` on/after `floor`, else `floor`. */
-  private routeDate(floor: string): string {
-    const raw = this.queryParams().get('date');
-    return raw && isIsoDate(raw) && raw >= floor ? raw : floor;
+  /**
+   * The route-carried days: a well-formed `?date` on/after `floor`, else `floor`; a well-formed
+   * `?lastDate` on/after it within the stay ceiling, else the first day alone.
+   */
+  private routeDates(floor: string): DateRange {
+    const rawFirst = this.queryParams().get('date');
+    const first = rawFirst && isIsoDate(rawFirst) && rawFirst >= floor ? rawFirst : floor;
+    const rawLast = this.queryParams().get('lastDate');
+    const last =
+      rawLast &&
+      isIsoDate(rawLast) &&
+      rawLast >= first &&
+      daysBetween(first, rawLast) <= MAX_STAY_DAYS
+        ? rawLast
+        : first;
+    return { first, last };
   }
 
   /** Drop every venue-scoped state — map, dialog, pan gesture, the map date — and load fresh,
@@ -331,16 +387,21 @@ export class VenueMap {
     this.venue.set(undefined);
     this.selectedSet.set(undefined);
     // The reset takes any focus-trapped modal AND its trigger, so move focus deliberately (RV-FE-9).
-    const modalWasOpen = this.pickerOpen() || this.lightboxIndex() !== undefined;
+    const modalWasOpen =
+      this.pickerOpen() || this.lightboxIndex() !== undefined || this.partlySet() !== undefined;
     this.pickerOpen.set(false);
     this.lightboxIndex.set(undefined);
+    this.partlySet.set(undefined);
+    this.pendingSelectSetId = undefined;
     if (modalWasOpen) {
       this.moveFocus('map-loading');
     }
     this.lastTriggerId = undefined;
     const floor = defaultBookingDate(new Date());
     this.minDate.set(floor);
-    this.selectedDate.set(this.routeDate(floor));
+    const days = this.routeDates(floor);
+    this.selectedDate.set(days.first);
+    this.selectedLastDate.set(days.last);
     if (id === undefined) {
       this.failed.set(true);
       return;
@@ -354,12 +415,26 @@ export class VenueMap {
     const state = mapTileState(set);
     // The sales gate (invariant #4): a closed date renders its grid, but nothing is selectable.
     const bookable = set.availability === 'FREE' && set.pool === 'ONLINE' && !this.salesClosed();
-    const announced = MAP_TILE_MEANING[state].announced;
+    const partly = state === 'partly' && !this.salesClosed();
+    const freeDays = freeDaysOf(set, this.dayCount());
+    const announced =
+      state === 'partly'
+        ? `${MAP_TILE_MEANING.partly.announced}, free ${freeDays} of ${this.dayCount()} days`
+        : MAP_TILE_MEANING[state].announced;
     const name = `${spotLabel(set.rowLabel, set.positionNo)}, ${tier}, ${this.money(set.price)}, ${announced}`;
-    return { set, bookable, state, name, bookName: `${name}. Select to book.` };
+    return {
+      set,
+      bookable,
+      state,
+      name,
+      bookName: `${name}. Select to book.`,
+      partly,
+      freeDays,
+      partlyName: `${name}. Select to see which days.`,
+    };
   }
 
-  /** Fetch the map for the currently selected date. */
+  /** Fetch the map for the currently selected days. */
   private load(): void {
     const id = this.venueId();
     if (id === undefined) {
@@ -370,16 +445,18 @@ export class VenueMap {
     this.notFound.set(false);
     // The per-dispatch generation: any later dispatch or reset supersedes this response.
     const epoch = ++this.epoch;
-    this.venues.getVenueMap(id, this.selectedDate()).subscribe({
+    this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate()).subscribe({
       next: (venue) => {
         if (this.epoch === epoch) {
           this.venue.set(venue);
+          this.openPendingSelection(venue);
         }
       },
       error: (error: unknown) => {
         if (this.epoch !== epoch) {
           return;
         }
+        this.pendingSelectSetId = undefined;
         // A stale map under a new date header misleads — the panel must win over the old view.
         const toreDownMap = this.venue() !== undefined;
         this.venue.set(undefined);
@@ -412,14 +489,43 @@ export class VenueMap {
     await this.router.navigate(['/']);
   }
 
-  /** Re-fetch availability for a newly chosen date (closing any open dialog first). */
-  protected onDateChange(value: string): void {
-    if (!value || value === this.selectedDate()) {
+  /**
+   * After a shortened stay's map arrives: open the dialog on the set the offer was made for, if
+   * it is still free for those days — the server decides (invariant #2); otherwise the tile keeps
+   * focus and the new map speaks for itself.
+   */
+  private openPendingSelection(venue: VenueMapView): void {
+    const id = this.pendingSelectSetId;
+    if (id === undefined) {
+      return;
+    }
+    this.pendingSelectSetId = undefined;
+    const set = venue.sets.find((s) => s.id === id);
+    if (set !== undefined && this.toTile(set).bookable) {
+      this.select(set);
+    } else {
+      this.focusTile(id);
+    }
+  }
+
+  /** Re-fetch availability for newly chosen days (closing any open dialog or sheet first). */
+  protected onDatesChange(days: DateRange): void {
+    this.pendingSelectSetId = undefined;
+    if (days.first === this.selectedDate() && days.last === this.selectedLastDate()) {
       return;
     }
     this.selectedSet.set(undefined);
-    this.selectedDate.set(value);
+    this.partlySet.set(undefined);
+    this.selectedDate.set(days.first);
+    this.selectedLastDate.set(days.last);
     this.load();
+  }
+
+  /** One day: the range setter's one-day form. */
+  protected onDateChange(value: string): void {
+    if (value) {
+      this.onDatesChange({ first: value, last: value });
+    }
   }
 
   protected openPicker(): void {
@@ -441,19 +547,29 @@ export class VenueMap {
    * Commit the calendar's chosen day. The date is written FIRST so the restore lands on a trigger
    * that already reads the new day — closing first announces the day the tourist just left.
    */
-  protected onDateChosen(value: string): void {
-    this.onDateChange(value);
+  protected onDateChosen(days: DateRange): void {
+    this.onDatesChange(days);
     this.closePicker();
   }
 
-  /** The selected date on the picker trigger (e.g. "Tue 30 Jun 2026"). */
+  /** The selected days on the picker trigger ("Tue 30 Jun 2026", or the range with its day count). */
   protected triggerLabel(): string {
-    return formatCivilDate(this.selectedDate());
+    return formatStay(this.selectedDate(), this.selectedLastDate(), { withYear: true });
   }
 
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */
   protected dateLabel(): string {
     return formatBookingDate(this.selectedDate(), { withYear: true });
+  }
+
+  /** A run's days rendered for the no-cover offer ("Tue 30 Jun – Thu 2 Jul · 3 days"). */
+  protected runLabel(best: SetRun): string {
+    return formatStay(best.run.first, best.run.last);
+  }
+
+  /** The stay's days rendered for display ("Tue 30 Jun – Sat 4 Jul 2026 · 5 days"). */
+  protected stayLabel(): string {
+    return formatStay(this.selectedDate(), this.selectedLastDate(), { withYear: true });
   }
 
   /** Currency formatting for the template + accessible labels (shared helper, invariant #5). */
@@ -465,6 +581,40 @@ export class VenueMap {
   protected select(set: SetView): void {
     this.lastTriggerId = set.id;
     this.selectedSet.set(set);
+  }
+
+  /** Show which of the stay's days a partly-free set covers. */
+  protected showDays(set: SetView): void {
+    this.lastTriggerId = set.id;
+    this.partlySet.set(set);
+  }
+
+  /** Close the sheet and hand focus back to the tile that opened it (modal a11y, RV-FE-9). */
+  protected closeSheet(): void {
+    this.partlySet.set(undefined);
+    this.focusTile(this.lastTriggerId);
+  }
+
+  /**
+   * Take the shorter stay a partly-free set (the sheet's, or the no-cover offer's) can host: re-read
+   * the map for those days and, once it is here, open the dialog on that set.
+   */
+  protected shortenTo(set: SetView, days: DateRange): void {
+    this.partlySet.set(undefined);
+    this.lastTriggerId = set.id;
+    // The sheet held focus: land on its tile now (RV-FE-9); the dialog takes it once the map is here.
+    this.focusTile(set.id);
+    this.onDatesChange(days);
+    // Set after the dispatch: a date change clears it, so it can only fire for this load.
+    this.pendingSelectSetId = set.id;
+  }
+
+  private focusTile(setId: number | undefined): void {
+    if (setId !== undefined) {
+      queueMicrotask(() => {
+        document.querySelector<HTMLElement>(`[data-set-id="${setId}"]`)?.focus();
+      });
+    }
   }
 
   /** Open the lightbox on `index`, remembering `triggerTestId` so closing returns focus there. */
@@ -482,13 +632,7 @@ export class VenueMap {
   protected onDialogClose(): void {
     this.selectedSet.set(undefined);
     // Return focus to the tile that opened the dialog (modal a11y).
-    const trigger = this.lastTriggerId;
-    if (trigger !== undefined) {
-      queueMicrotask(() => {
-        const el = document.querySelector<HTMLElement>(`[data-set-id="${trigger}"]`);
-        el?.focus();
-      });
-    }
+    this.focusTile(this.lastTriggerId);
   }
 
   protected async onBooked(): Promise<void> {

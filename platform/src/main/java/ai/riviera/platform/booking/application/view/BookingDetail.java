@@ -62,7 +62,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * (the stub profile), where the refund decision reads as it always has.
  */
 public record BookingDetail(String code, BookingStatus status, VenueId venueId, String venueName,
-		String rowLabel, int positionNo, LocalDate bookingDate, MoneyView amount, boolean cancellable,
+		String rowLabel, int positionNo, LocalDate bookingDate, LocalDate lastDate, MoneyView amount,
+		boolean cancellable,
 		boolean withdrawable, boolean beforeCutoff, MoneyView refundIfCancelledNow,
 		MoneyView refundedAmount, boolean refundOutstanding,
 		java.time.Instant requestExpiresAt,

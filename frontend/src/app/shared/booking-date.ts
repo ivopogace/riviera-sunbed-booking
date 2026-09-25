@@ -88,6 +88,21 @@ export function formatDayMonth(isoDate: string): string {
   }).format(parseIsoDate(isoDate));
 }
 
+/** A stay's days, first to last inclusive, as ISO civil days; one day when `first === last`. */
+export interface DateRange {
+  readonly first: string;
+  readonly last: string;
+}
+
+/**
+ * How many civil days `first` to `last` covers, inclusive — 1 for one day. Counted on the
+ * UTC-anchored {@link parseIsoDate} instants, so DST cannot make a day count as 23 hours.
+ */
+export function daysBetween(first: string, last: string): number {
+  const ms = parseIsoDate(last).getTime() - parseIsoDate(first).getTime();
+  return Math.round(ms / 86_400_000) + 1;
+}
+
 /**
  * Shift an ISO `YYYY-MM-DD` civil day by `days` (negative moves back), returning the same format.
  * Arithmetic happens on the UTC-anchored {@link parseIsoDate} instant, so it is free of the

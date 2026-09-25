@@ -165,7 +165,8 @@ class RemodelClaimsService implements RemodelClaims {
 				.orElseThrow(() -> lostUnderLock(claim, "confirmed"));
 		releaseSpan(cancelled.setId(), cancelled.bookingDate(), cancelled.lastDate());
 		events.publishEvent(new BookingCancelled(claim.bookingId(), venueId, cancelled.setId(),
-				cancelled.bookingDate(), claim.amountMinor(), claim.currency(), RefundReason.VENUE_CHANGE));
+				cancelled.bookingDate(), claim.amountMinor(), claim.currency(), RefundReason.VENUE_CHANGE,
+				cancelled.lastDate()));
 		return outcomeOf(claim, ReceiptOutcomeKind.REFUND, feeMinor);
 	}
 
@@ -183,7 +184,7 @@ class RemodelClaimsService implements RemodelClaims {
 				.orElseThrow(() -> lostUnderLock(claim, "awaiting payment"));
 		releaseSpan(released.setId(), released.bookingDate(), released.lastDate());
 		events.publishEvent(new BookingCancelled(claim.bookingId(), venueId, released.setId(),
-				released.bookingDate(), 0, claim.currency(), RefundReason.VENUE_CHANGE));
+				released.bookingDate(), 0, claim.currency(), RefundReason.VENUE_CHANGE, released.lastDate()));
 		return outcomeOf(claim, ReceiptOutcomeKind.RELEASE, 0L);
 	}
 

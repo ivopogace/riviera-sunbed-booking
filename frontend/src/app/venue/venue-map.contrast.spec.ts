@@ -130,6 +130,10 @@ interface MapFamily {
   readonly walkinHatch: Glass;
   readonly ghostFill: Glass;
   readonly ghostBorder: string;
+  readonly availableFill: Glass; // --riv-tile-available-fill, the partly-free tile's ground
+  readonly partlyBorder: string; // --riv-tile-partly-border
+  readonly badgeFill: string; // --riv-tile-badge-fill
+  readonly badgeInk: string; // --riv-tile-badge-ink
 }
 const MAP_FAMILIES: readonly MapFamily[] = [
   {
@@ -142,6 +146,10 @@ const MAP_FAMILIES: readonly MapFamily[] = [
     walkinHatch: WALK_IN_HATCH,
     ghostFill: { color: WHITE, alpha: 0.2 },
     ghostBorder: '#6b7d77',
+    availableFill: { color: WHITE, alpha: 0.75 },
+    partlyBorder: '#0f7d8c',
+    badgeFill: '#1f5d67',
+    badgeInk: '#ffffff',
   },
   {
     name: 'night',
@@ -154,6 +162,10 @@ const MAP_FAMILIES: readonly MapFamily[] = [
     walkinHatch: { color: hexToRgb('e5d3a8'), alpha: 0.14 },
     ghostFill: { color: WHITE, alpha: 0.05 },
     ghostBorder: '#7d8f89',
+    availableFill: { color: WHITE, alpha: 0.1 },
+    partlyBorder: '#8fd6e2',
+    badgeFill: '#bfe9f0',
+    badgeInk: '#0b2a31',
   },
 ];
 
@@ -307,6 +319,20 @@ describe.each(MAP_FAMILIES)('Beach-map contrast — $name family (issue #136)', 
         `over stop ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_LARGE);
     }
+  });
+
+  it('the partly-free 2px dotted border marks the state at 3:1 against the available fill (WCAG 1.4.11)', () => {
+    for (const stop of family.washStops) {
+      const tile = composite(family.availableFill.color, family.availableFill.alpha, stop);
+      expect(
+        contrastRatio(family.partlyBorder, rgbToHex(tile)),
+        `over stop ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_LARGE);
+    }
+  });
+
+  it('the free-day badge ink meets AA on the badge fill, its own solid ground', () => {
+    expect(contrastRatio(family.badgeInk, family.badgeFill)).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });
 

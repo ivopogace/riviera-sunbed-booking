@@ -6,6 +6,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { environment } from '../../environments/environment';
 import { CALENDAR_TOKENS, fillUtility } from '../../testing/calendar-tints';
 import { uniformDays } from '../../testing/calendar-days';
+import { DateRange } from '../shared/booking-date';
 import { AvailabilityCalendar } from './availability-calendar';
 
 /**
@@ -20,7 +21,9 @@ const MIN_DATE = '2026-06-15';
     <app-availability-calendar
       [venueId]="venueId()"
       [selectedDate]="selectedDate()"
+      [selectedLastDate]="selectedLastDate()"
       [minDate]="minDate()"
+      [rangeAllowed]="rangeAllowed()"
       (chosen)="chosen.push($event)"
       (dismissed)="dismissals = dismissals + 1"
     />
@@ -29,8 +32,10 @@ const MIN_DATE = '2026-06-15';
 class Host {
   readonly venueId = signal(7);
   readonly selectedDate = signal('2026-06-20');
+  readonly selectedLastDate = signal<string | undefined>(undefined);
   readonly minDate = signal(MIN_DATE);
-  readonly chosen: string[] = [];
+  readonly rangeAllowed = signal(false);
+  readonly chosen: DateRange[] = [];
   dismissals = 0;
 }
 
@@ -299,7 +304,116 @@ describe('AvailabilityCalendar', () => {
 
       dayButton('2026-06-25')!.click();
 
-      expect(host.chosen).toEqual(['2026-06-25']);
+      expect(host.chosen).toEqual([{ first: '2026-06-25', last: '2026-06-25' }]);
+    });
+  });
+
+  describe('a stay of several days', () => {
+    function modeOption(testId: string): HTMLButtonElement | null {
+      return dom().querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`);
+    }
+
+    it('offers no stay mode unless the venue allows a range', async () => {
+      await flushCalendar();
+
+      expect(modeOption('calendar-mode-stay')).toBeNull();
+      expect(dom().querySelector('[data-testid="calendar-stay-hint"]')).toBeNull();
+    });
+
+    it('keeps the one-tap pick in day mode even when a range is allowed', async () => {
+      host.rangeAllowed.set(true);
+      fixture.detectChanges();
+      await flushCalendar();
+
+      expect(modeOption('calendar-mode-day')!.getAttribute('aria-checked')).toBe('true');
+      dayButton('2026-06-25')!.click();
+
+      expect(host.chosen).toEqual([{ first: '2026-06-25', last: '2026-06-25' }]);
+    });
+
+    it('emits the range after a first and a last tap in stay mode', async () => {
+      host.rangeAllowed.set(true);
+      fixture.detectChanges();
+      await flushCalendar();
+      modeOption('calendar-mode-stay')!.click();
+      fixture.detectChanges();
+
+      dayButton('2026-06-22')!.click();
+      fixture.detectChanges();
+
+      expect(host.chosen).toEqual([]);
+      expect(dom().querySelector('[data-testid="calendar-stay-hint"]')!.textContent).toContain(
+        'Mon 22 Jun 2026',
+      );
+      expect(dayButton('2026-06-22')!.closest('td')!.getAttribute('aria-selected')).toBe('true');
+
+      dayButton('2026-06-26')!.click();
+
+      expect(host.chosen).toEqual([{ first: '2026-06-22', last: '2026-06-26' }]);
+    });
+
+    it('restarts from an earlier day tapped after the first', async () => {
+      host.rangeAllowed.set(true);
+      fixture.detectChanges();
+      await flushCalendar();
+      modeOption('calendar-mode-stay')!.click();
+      fixture.detectChanges();
+
+      dayButton('2026-06-25')!.click();
+      fixture.detectChanges();
+      dayButton('2026-06-22')!.click();
+      fixture.detectChanges();
+      dayButton('2026-06-23')!.click();
+
+      expect(host.chosen).toEqual([{ first: '2026-06-22', last: '2026-06-23' }]);
+    });
+
+    it('lets "Just this day" commit the first day alone', async () => {
+      host.rangeAllowed.set(true);
+      fixture.detectChanges();
+      await flushCalendar();
+      modeOption('calendar-mode-stay')!.click();
+      fixture.detectChanges();
+      dayButton('2026-06-22')!.click();
+      fixture.detectChanges();
+
+      dom().querySelector<HTMLButtonElement>('[data-testid="calendar-just-this-day"]')!.click();
+
+      expect(host.chosen).toEqual([{ first: '2026-06-22', last: '2026-06-22' }]);
+    });
+
+    it('refuses a last day more than 61 days after the first', async () => {
+      host.rangeAllowed.set(true);
+      fixture.detectChanges();
+      await flushCalendar();
+      modeOption('calendar-mode-stay')!.click();
+      fixture.detectChanges();
+      dayButton('2026-06-16')!.click();
+      fixture.detectChanges();
+      control('calendar-next').click();
+      fixture.detectChanges();
+      await flushCalendar();
+      control('calendar-next').click();
+      fixture.detectChanges();
+      await flushCalendar();
+
+      expect(dayButton('2026-08-16')!.getAttribute('aria-disabled')).toBeNull();
+      expect(dayButton('2026-08-17')!.getAttribute('aria-disabled')).toBe('true');
+      dayButton('2026-08-17')!.click();
+      expect(host.chosen).toEqual([]);
+    });
+
+    it('opens in stay mode with the whole range selected when the map shows a stay', async () => {
+      host.rangeAllowed.set(true);
+      host.selectedLastDate.set('2026-06-24');
+      fixture.detectChanges();
+      await flushCalendar();
+
+      expect(modeOption('calendar-mode-stay')!.getAttribute('aria-checked')).toBe('true');
+      for (const iso of ['2026-06-20', '2026-06-22', '2026-06-24']) {
+        expect(dayButton(iso)!.closest('td')!.getAttribute('aria-selected')).toBe('true');
+      }
+      expect(dayButton('2026-06-25')!.closest('td')!.getAttribute('aria-selected')).toBe('false');
     });
   });
 
@@ -317,7 +431,7 @@ describe('AvailabilityCalendar', () => {
 
       dayButton('2026-06-25')!.click();
 
-      expect(host.chosen).toEqual(['2026-06-25']);
+      expect(host.chosen).toEqual([{ first: '2026-06-25', last: '2026-06-25' }]);
     });
   });
 
@@ -470,7 +584,7 @@ describe('AvailabilityCalendar', () => {
       );
       dayButton('2026-06-21')!.click();
 
-      expect(host.chosen).toEqual(['2026-06-21']);
+      expect(host.chosen).toEqual([{ first: '2026-06-21', last: '2026-06-21' }]);
     });
 
     it('refuses Enter and Space on a day that cannot be booked', async () => {

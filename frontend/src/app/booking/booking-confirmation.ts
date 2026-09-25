@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { CardGlass } from '../shared/card-glass';
 import { BookingQr } from './booking-qr';
 import { WithheldEmailNotice } from './withheld-email-notice';
-import { formatBookingDate } from '../shared/booking-date-label';
+import { formatStay } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
 import { CheckIcon } from '../shared/check-icon';
@@ -127,6 +127,6 @@ export class BookingConfirmation {
   /** The booking date, formatted once per confirmation (memoized like the dialog/pay siblings). */
   protected readonly dateLabel = computed(() => {
     const c = this.confirmation();
-    return c ? formatBookingDate(c.bookingDate) : '';
+    return c ? formatStay(c.bookingDate, c.lastDate ?? c.bookingDate) : '';
   });
 }

@@ -376,6 +376,82 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
+	void paysTheStayTotalOnce() {
+		List<ai.riviera.platform.payment.vocabulary.Money> charged = new ArrayList<>();
+		CheckoutPort capturing = (_, money) -> {
+			charged.add(money);
+			return new PaymentOutcome.Succeeded("ok");
+		};
+		CreateBookingService service = service(set(Pool.ONLINE), claiming(ClaimOutcome.CLAIMED),
+				capturing, () -> "STAY123456");
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, DATE, DATE.plusDays(2), GUEST, null));
+
+		BookingOutcome.Confirmed confirmed = assertInstanceOf(BookingOutcome.Confirmed.class, outcome);
+		assertEquals(13500L, confirmed.confirmation().amount().minorUnits(), "3 days × 4500");
+		assertEquals(DATE.plusDays(2), confirmed.confirmation().lastDate());
+		assertEquals(1, bookings.inserted.size(), "one booking row for the whole stay");
+		assertEquals(13500L, bookings.inserted.getFirst().amountMinor());
+		assertEquals(DATE.plusDays(2), bookings.inserted.getFirst().lastDate());
+		assertEquals(1, charged.size(), "one PaymentIntent for the stay");
+		assertEquals(13500L, charged.getFirst().minor());
+	}
+
+	@Test
+	void aLostDayReleasesTheDaysAlreadyWon() {
+		List<LocalDate> claimed = new ArrayList<>();
+		List<LocalDate> released = new ArrayList<>();
+		AvailabilityClaim losesTheSecondDay = new AvailabilityClaim() {
+			@Override
+			public ClaimOutcome claim(SetId setId, LocalDate bookingDate) {
+				claimed.add(bookingDate);
+				return bookingDate.equals(DATE.plusDays(1)) ? ClaimOutcome.ALREADY_TAKEN : ClaimOutcome.CLAIMED;
+			}
+
+			@Override
+			public void release(SetId setId, LocalDate bookingDate) {
+				released.add(bookingDate);
+			}
+		};
+		CreateBookingService service = service(set(Pool.ONLINE), losesTheSecondDay,
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, DATE, DATE.plusDays(2), GUEST, null));
+
+		assertSame(BookingOutcome.Rejected.SET_TAKEN, outcome);
+		assertEquals(List.of(DATE, DATE.plusDays(1)), claimed, "the loop stops at the lost day");
+		assertEquals(List.of(DATE), released, "every day already won is given back");
+		assertTrue(bookings.inserted.isEmpty(), "a lost range creates no booking row");
+	}
+
+	@Test
+	void aRequestVenueRefusesARange() {
+		List<LocalDate> claimed = new ArrayList<>();
+		AvailabilityClaim recording = new AvailabilityClaim() {
+			@Override
+			public ClaimOutcome claim(SetId setId, LocalDate bookingDate) {
+				claimed.add(bookingDate);
+				return ClaimOutcome.CLAIMED;
+			}
+
+			@Override
+			public void release(SetId setId, LocalDate bookingDate) {
+			}
+		};
+		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST), recording,
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, DATE, DATE.plusDays(1), GUEST, null));
+
+		assertSame(BookingOutcome.Rejected.RANGE_NOT_OFFERED, outcome);
+		assertTrue(claimed.isEmpty(), "refused before any claim");
+		assertTrue(bookings.pendingInserted.isEmpty());
+	}
+
+	@Test
 	void compensatesByReleasingWhenPaymentFails() {
 		// AC-3: the booking + claim are already committed when PI creation fails (the gateway returns
 		// Failed). The Failed branch must compensate — release the claim (the ReleaseAbandonedBooking

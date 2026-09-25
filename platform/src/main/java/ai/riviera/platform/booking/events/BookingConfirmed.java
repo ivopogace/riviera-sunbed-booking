@@ -16,12 +16,13 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
  *
  * <p>Id-based, immutable payload (invariant #11): technical ids ({@link BookingId}, {@link VenueId},
  * {@link SetId}) plus the booking facts fixed at confirmation — the {@code bookingDate} (a
- * {@code LocalDate} in {@code Europe/Tirane}, invariant #6) and the gross {@code amountMinor} in
- * integer minor units + ISO {@code currency} (invariant #5). No aggregates, no mutable config: the
+ * {@code LocalDate} in {@code Europe/Tirane}, invariant #6) and the gross {@code amountMinor} — the stay's total — in
+ * integer minor units + ISO {@code currency} (invariant #5), and {@code lastDate}, the last service
+ * day ({@code null} on payloads serialized before it existed: read it through {@link #lastDay()}). No aggregates, no mutable config: the
  * commission rate is deliberately <em>not</em> carried here — {@code payout} re-reads it from
  * {@code venue::api} because it is mutable venue configuration, not a fact of this booking.
  *
- * <p>{@code cancellationWindowAtBirth} + {@code lateCancelRefundBps} (#795) are likewise facts fixed
+ * <p>{@code cancellationWindowAtBirth} + {@code lateCancelRefundBps} are likewise facts fixed
  * at the moment, the {@code amountMinor} posture: the window the booking was <em>born</em> in and the
  * late share its disclosure promised — a sent mail's truth can't be rewritten by a later config edit,
  * which is why the bps here is not the mutable-rate exception above. {@code cancellationWindowAtBirth}
@@ -30,5 +31,18 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
  */
 public record BookingConfirmed(BookingId bookingId, VenueId venueId, SetId setId,
 		LocalDate bookingDate, long amountMinor, String currency,
-		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps) {
+		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps, LocalDate lastDate) {
+
+	/** A one-day booking: its last day is its first. */
+	public BookingConfirmed(BookingId bookingId, VenueId venueId, SetId setId, LocalDate bookingDate,
+			long amountMinor, String currency, CancellationWindow cancellationWindowAtBirth,
+			int lateCancelRefundBps) {
+		this(bookingId, venueId, setId, bookingDate, amountMinor, currency, cancellationWindowAtBirth,
+				lateCancelRefundBps, bookingDate);
+	}
+
+	/** The last service day; a payload serialized before {@code lastDate} existed is a one-day booking. */
+	public LocalDate lastDay() {
+		return lastDate != null ? lastDate : bookingDate;
+	}
 }

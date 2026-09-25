@@ -22,6 +22,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * the same meaning it carries on {@code BookingDetail}. A pure value out of the use case.
  */
 public record MyBookingSummary(String code, BookingStatus status, VenueId venueId, String venueName,
-		String rowLabel, int positionNo, LocalDate bookingDate, MoneyView amount, Instant requestExpiresAt,
+		String rowLabel, int positionNo, LocalDate bookingDate, LocalDate lastDate, MoneyView amount,
+		Instant requestExpiresAt,
 		MoneyView refundedAmount, Instant movedAt) {
 }

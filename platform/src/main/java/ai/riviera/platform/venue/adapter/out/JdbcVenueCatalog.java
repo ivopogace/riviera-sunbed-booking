@@ -44,6 +44,7 @@ import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetView;
+import ai.riviera.platform.venue.vocabulary.StaySpan;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -70,6 +71,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 
 	private static final String AVAILABILITY_FREE = "FREE";
 	private static final String AVAILABILITY_TAKEN = "TAKEN";
+	private static final String AVAILABILITY_PARTLY_FREE = "PARTLY_FREE";
 
 	// Column / bind-parameter names shared across the read queries below (named so the same SQL
 	// identifier is written once — invariant-style "name your literals", and silences Sonar S1192).
@@ -112,7 +114,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	}
 
 	@Override
-	public Optional<VenueMapView> findVenueMap(VenueId id, LocalDate date) {
+	public Optional<VenueMapView> findVenueMap(VenueId id, StaySpan stay) {
 		// The #693 fence: a venue without an ACTIVE owner is absent, not partially rendered.
 		if (!visibility.isVisible(new VenueRef(id.value()))) {
 			return Optional.empty();
@@ -157,12 +159,17 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 						rs.getInt("grid_x"), rs.getInt("grid_y")))
 				.list();
 
-		Set<SetId> taken = availability.takenOn(rows.stream().map(r -> new SetId(r.id())).toList(), date);
+		Map<SetId, List<LocalDate>> taken = availability.takenDaysBetween(
+				rows.stream().map(r -> new SetId(r.id())).toList(), stay.firstDay(), stay.lastDay());
 
 		List<SetView> sets = rows.stream()
-				.map(r -> new SetView(r.id(), r.rowLabel(), r.positionNo(), r.tier(), r.pool(),
-						r.price(), r.gridX(), r.gridY(),
-						taken.contains(new SetId(r.id())) ? AVAILABILITY_TAKEN : AVAILABILITY_FREE))
+				.map(r -> {
+					List<LocalDate> takenDates = taken.getOrDefault(new SetId(r.id()), List.of());
+					int freeDays = stay.days() - takenDates.size();
+					return new SetView(r.id(), r.rowLabel(), r.positionNo(), r.tier(), r.pool(),
+							r.price(), r.gridX(), r.gridY(), availabilityOf(freeDays, stay.days()),
+							freeDays, takenDates);
+				})
 				.toList();
 
 		MoneyView fromPrice = sets.stream()
@@ -188,9 +195,18 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		return Optional.of(new VenueMapView(v.id(), v.name(), v.beach(), regionOf(v.beach()),
 				v.description(), v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, amenities, v.distanceToWaterM(), sets, v.setVersion(), coverPhoto,
-				photos, lightboxPhotos, salesWindow.isOpen(v.salesClose(), v.seasonClosure(), date, now),
+				photos, lightboxPhotos, salesWindow.isOpen(v.salesClose(), v.seasonClosure(), stay.firstDay(), now)
+						&& salesWindow.isOpen(v.salesClose(), v.seasonClosure(), stay.lastDay(), now),
 				SalesClose.WIRE.format(v.salesClose()), closedForSeason,
 				closedForSeason ? v.seasonClosure().reopenOn() : null, v.location()));
+	}
+
+	/** Free on every day, on none, or on some — the one-day read can only ever answer the first two. */
+	private static String availabilityOf(int freeDays, int days) {
+		if (freeDays == days) {
+			return AVAILABILITY_FREE;
+		}
+		return freeDays == 0 ? AVAILABILITY_TAKEN : AVAILABILITY_PARTLY_FREE;
 	}
 
 	@Override

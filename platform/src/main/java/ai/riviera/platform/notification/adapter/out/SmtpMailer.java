@@ -3,8 +3,10 @@ package ai.riviera.platform.notification.adapter.out;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URI;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Currency;
 import java.util.Locale;
 
@@ -52,6 +54,14 @@ class SmtpMailer implements Mailer {
 	/** English-only in v1 (ADR-0011); the locale is explicit so the JVM default cannot change the copy. */
 	private static final DateTimeFormatter DATE_FORMAT =
 			DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH);
+
+	/** The first end of a days range, which shares the second's year. */
+	private static final DateTimeFormatter DAY_MONTH_FORMAT =
+			DateTimeFormatter.ofPattern("d MMMM", Locale.ENGLISH);
+
+	/** The label column widths of the confirmation and cancellation bodies. */
+	private static final int CONFIRMATION_LABEL_WIDTH = 15;
+	private static final int CANCELLATION_LABEL_WIDTH = 10;
 
 	/**
 	 * The zone every deadline in this mail is stated in (invariant #6). A pay-by instant is only
@@ -107,13 +117,14 @@ class SmtpMailer implements Mailer {
 
 				  Booking code:  %s
 				  Venue:         %s
-				  Date:          %s
+				  %s
 				  Spot:          %s, position %d
 				  Paid:          %s
 
 				Show the booking code at the venue on arrival.%s"""
 				.formatted(confirmation.bookingCode(), confirmation.venueName(),
-						DATE_FORMAT.format(confirmation.bookingDate()), confirmation.rowLabel(),
+						daysLine(confirmation.bookingDate(), confirmation.lastDate(), CONFIRMATION_LABEL_WIDTH),
+						confirmation.rowLabel(),
 						confirmation.positionNo(),
 						formatAmount(confirmation.amountMinor(), confirmation.currency()),
 						disclosureLine(confirmation.cancellationWindowAtBirth(),
@@ -127,11 +138,31 @@ class SmtpMailer implements Mailer {
 
 				  Booking:  %s
 				  Venue:    %s
-				  Date:     %s
+				  %s
 				%s%s"""
 				.formatted(opening(cancellation), cancellation.bookingCode(), cancellation.venueName(),
-						DATE_FORMAT.format(cancellation.bookingDate()), refundLine(cancellation),
+						daysLine(cancellation.bookingDate(), cancellation.lastDate(), CANCELLATION_LABEL_WIDTH),
+						refundLine(cancellation),
 						rebookLine(cancellation)));
+	}
+
+	/**
+	 * The booking's days as one line: {@code Date:  3 July 2027} for one day, or
+	 * {@code Days:  3 July – 7 July 2027 (5 days)} for a stay — every day named, without a list
+	 * as long as the stay.
+	 */
+	private static String daysLine(LocalDate first, LocalDate last, int labelWidth) {
+		if (first.equals(last)) {
+			return padded("Date:", labelWidth) + DATE_FORMAT.format(first);
+		}
+		long days = ChronoUnit.DAYS.between(first, last) + 1;
+		String range = (first.getYear() == last.getYear() ? DAY_MONTH_FORMAT : DATE_FORMAT).format(first)
+				+ " – " + DATE_FORMAT.format(last);
+		return padded("Days:", labelWidth) + range + " (" + days + " days)";
+	}
+
+	private static String padded(String label, int width) {
+		return label + " ".repeat(Math.max(0, width - label.length()));
 	}
 
 	/**

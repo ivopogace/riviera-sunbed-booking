@@ -26,7 +26,8 @@ import java.time.Instant;
  * {@code BookingDetail} type.
  */
 record BookingDetailView(String code, String status, long venueId, String venueName, String rowLabel,
-		int positionNo, String bookingDate, MoneyView amount, boolean cancellable, boolean withdrawable,
+		int positionNo, String bookingDate, String lastDate, MoneyView amount, boolean cancellable,
+		boolean withdrawable,
 		boolean beforeCutoff, MoneyView refundIfCancelledNow, MoneyView refundedAmount,
 		boolean refundOutstanding,
 		Instant requestExpiresAt, PaymentCredentialsView payment, boolean emailWithheld,
@@ -35,7 +36,8 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 
 	static BookingDetailView of(BookingDetail d) {
 		return new BookingDetailView(d.code(), d.status().name(), d.venueId().value(), d.venueName(),
-				d.rowLabel(), d.positionNo(), d.bookingDate().toString(), d.amount(), d.cancellable(),
+				d.rowLabel(), d.positionNo(), d.bookingDate().toString(), d.lastDate().toString(), d.amount(),
+				d.cancellable(),
 				d.withdrawable(), d.beforeCutoff(), d.refundIfCancelledNow(), d.refundedAmount(),
 				d.refundOutstanding(), d.requestExpiresAt(),
 				d.payment() == null ? null

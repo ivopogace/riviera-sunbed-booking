@@ -45,7 +45,8 @@ export interface CoverPhotoView {
 
 export type Tier = 'PREMIUM' | 'STANDARD';
 export type Pool = 'ONLINE' | 'WALK_IN';
-export type SeatAvailability = 'FREE' | 'TAKEN';
+/** Free on every day the map was read for, on none, or — a stay only — on some. */
+export type SeatAvailability = 'FREE' | 'PARTLY_FREE' | 'TAKEN';
 export type BookingMode = 'INSTANT' | 'REQUEST';
 
 export interface SetView {
@@ -58,6 +59,10 @@ export interface SetView {
   readonly gridX: number;
   readonly gridY: number;
   readonly availability: SeatAvailability;
+  /** Days of the stay the set is free on; absent on a payload from before stays existed. */
+  readonly freeDays?: number;
+  /** The days it is not free on, ISO, ascending; absent as above. */
+  readonly takenDates?: readonly string[];
 }
 
 /**

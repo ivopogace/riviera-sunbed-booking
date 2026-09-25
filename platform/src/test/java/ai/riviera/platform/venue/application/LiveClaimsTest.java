@@ -126,6 +126,11 @@ class LiveClaimsTest {
 		public Map<LocalDate, Integer> takenCountsBetween(Collection<SetId> setIds, LocalDate from, LocalDate to) {
 			return Map.of();
 		}
+
+		@Override
+		public Map<SetId, List<LocalDate>> takenDaysBetween(Collection<SetId> setIds, LocalDate from, LocalDate to) {
+			return Map.of();
+		}
 	}
 
 	/** Mirrors the SQL: a live booking is a day per set, whatever the day. */

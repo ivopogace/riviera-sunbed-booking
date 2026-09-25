@@ -6,7 +6,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 import { problemCodeOf } from '../shared/api-error';
-import { formatBookingDate } from '../shared/booking-date-label';
+import { formatStay } from '../shared/booking-date-label';
 import { amountLabelFor, metaFor } from '../shared/booking-status';
 import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
@@ -429,7 +429,7 @@ const CLS = {
           </div>
           <div [class]="cls.row">
             <dt [class]="cls.rowLabel">Date</dt>
-            <dd [class]="cls.rowValue">{{ dateLabel(b.bookingDate) }}</dd>
+            <dd [class]="cls.rowValue">{{ dateLabel(b.bookingDate, b.lastDate) }}</dd>
           </div>
           <div [class]="cls.row">
             <dt [class]="cls.rowLabel">{{ amountLabel(b) }}</dt>
@@ -860,9 +860,9 @@ export class BookingView {
     return refunded.minorUnits > 0 ? 'PARTIAL' : 'NONE';
   }
 
-  /** The booking date as a friendly civil-date label (UTC-parsed, invariant #6). */
-  protected dateLabel(iso: string): string {
-    return formatBookingDate(iso, { withYear: true });
+  /** The booking's days as a friendly civil-date label (UTC-parsed, invariant #6). */
+  protected dateLabel(first: string, last: string | undefined): string {
+    return formatStay(first, last ?? first, { withYear: true });
   }
 
   /** A response deadline rendered in Europe/Tirane wall-clock time (invariant #6). */
@@ -886,6 +886,7 @@ export class BookingView {
       rowLabel: b.rowLabel,
       positionNo: b.positionNo,
       bookingDate: b.bookingDate,
+      lastDate: b.lastDate,
       amount: b.amount,
       clientSecret: payment.clientSecret,
       paymentIntentId: payment.paymentIntentId,

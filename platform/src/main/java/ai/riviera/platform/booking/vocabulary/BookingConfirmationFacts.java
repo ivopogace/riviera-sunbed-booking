@@ -6,7 +6,7 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * Everything needed to rebuild one booking's confirmation mail from scratch (#380) — the read an
+ * Everything needed to rebuild one booking's confirmation mail from scratch — the read an
  * <strong>admin resend</strong> makes, where the automatic listener has a {@code BookingConfirmed}
  * payload to work from and this trigger has nothing.
  *
@@ -26,18 +26,27 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * never-confirmed and refuse a legitimate resend.
  *
  * @param setId the set, from which {@code venue} supplies the venue name and spot label
- * @param bookingDate the booked day, a {@code LocalDate} in {@code Europe/Tirane} (invariant #6)
+ * @param bookingDate the first service day, a {@code LocalDate} in {@code Europe/Tirane} (invariant #6)
+ * @param lastDate the last service day, inclusive
  * @param amountMinor the gross amount in integer minor units (invariant #5)
  * @param currency the ISO 4217 code that amount is in
  * @param code the arrival code the mail carries (invariant #7 — never logged, never in an event)
  * @param customerId the guest-contact link an address is resolved from via {@code customer::api}
  * @param everConfirmed whether this booking ever reached {@code CONFIRMED}
- * @param cancellationWindowAtBirth the window in force at the booking's creation (#795), re-derived
+ * @param cancellationWindowAtBirth the window in force at the booking's creation, re-derived
  *        from the venue's current cutoff — bounded, documented drift after a cutoff edit; null when
  *        it cannot be classified (unknown set), which renders no disclosure
  * @param lateCancelRefundBps the venue's late share the disclosure promises; 0 outside LATE
  */
-public record BookingConfirmationFacts(SetId setId, LocalDate bookingDate, long amountMinor,
-		String currency, String code, CustomerId customerId, boolean everConfirmed,
+public record BookingConfirmationFacts(SetId setId, LocalDate bookingDate, LocalDate lastDate,
+		long amountMinor, String currency, String code, CustomerId customerId, boolean everConfirmed,
 		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps) {
+
+	/** A one-day booking: its last day is its first. */
+	public BookingConfirmationFacts(SetId setId, LocalDate bookingDate, long amountMinor, String currency,
+			String code, CustomerId customerId, boolean everConfirmed,
+			CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps) {
+		this(setId, bookingDate, bookingDate, amountMinor, currency, code, customerId, everConfirmed,
+				cancellationWindowAtBirth, lateCancelRefundBps);
+	}
 }

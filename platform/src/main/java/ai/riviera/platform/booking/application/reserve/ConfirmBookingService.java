@@ -58,6 +58,6 @@ class ConfirmBookingService implements ConfirmBooking {
 		events.publishEvent(new BookingConfirmed(new BookingId(c.id()), c.venueId(), c.setId(),
 				c.bookingDate(), c.amountMinor(), c.currency(),
 				birth.map(CancellationPolicy.BirthTerms::window).orElse(null),
-				birth.map(CancellationPolicy.BirthTerms::lateCancelRefundBps).orElse(0)));
+				birth.map(CancellationPolicy.BirthTerms::lateCancelRefundBps).orElse(0), c.lastDate()));
 	}
 }

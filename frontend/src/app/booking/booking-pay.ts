@@ -15,7 +15,7 @@ import { RouterLink } from '@angular/router';
 import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
 
 import { CardGlass } from '../shared/card-glass';
-import { formatBookingDate } from '../shared/booking-date-label';
+import { formatStay } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
 import { PanelGlass } from '../shared/panel-glass';
 import { BusyAction } from '../shared/busy-action';
@@ -426,7 +426,9 @@ export class BookingPay {
   /** Exposed for the template (currency formatting helper). */
   protected readonly formatMoney = formatMoney;
   /** The booking date as a friendly label (fixed for the page lifetime). */
-  protected readonly dateLabel = this.booking ? formatBookingDate(this.booking.bookingDate) : '';
+  protected readonly dateLabel = this.booking
+    ? formatStay(this.booking.bookingDate, this.booking.lastDate ?? this.booking.bookingDate)
+    : '';
 
   protected get code(): string {
     return this.booking?.code ?? '';

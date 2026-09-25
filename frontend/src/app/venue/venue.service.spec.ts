@@ -63,6 +63,26 @@ describe('VenueService', () => {
     });
   });
 
+  describe('getVenueMap', () => {
+    it('asks for one day with only the date param', () => {
+      service.getVenueMap(7, '2026-07-03').subscribe();
+
+      const request = httpMock.expectOne((req) => req.url.endsWith('/api/venues/7'));
+      expect(request.request.params.get('date')).toBe('2026-07-03');
+      expect(request.request.params.has('lastDate')).toBe(false);
+      request.flush({ sets: [] });
+    });
+
+    it('carries the last day for a stay', () => {
+      service.getVenueMap(7, '2026-07-03', '2026-07-07').subscribe();
+
+      const request = httpMock.expectOne((req) => req.url.endsWith('/api/venues/7'));
+      expect(request.request.params.get('date')).toBe('2026-07-03');
+      expect(request.request.params.get('lastDate')).toBe('2026-07-07');
+      request.flush({ sets: [] });
+    });
+  });
+
   describe('availabilityCalendar', () => {
     it('asks the calendar path for the caller-chosen inclusive window', () => {
       service.availabilityCalendar(7, '2026-08-01', '2026-08-31').subscribe();

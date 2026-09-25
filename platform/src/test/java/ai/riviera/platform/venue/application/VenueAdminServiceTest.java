@@ -1537,6 +1537,12 @@ class VenueAdminServiceTest {
 				Collection<SetId> setIds, java.time.LocalDate from, java.time.LocalDate to) {
 			return java.util.Map.of();
 		}
+
+		@Override
+		public java.util.Map<SetId, java.util.List<java.time.LocalDate>> takenDaysBetween(
+				Collection<SetId> setIds, java.time.LocalDate from, java.time.LocalDate to) {
+			return java.util.Map.of();
+		}
 	}
 
 	/**

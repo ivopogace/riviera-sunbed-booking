@@ -111,6 +111,24 @@ public interface SetAvailabilityLookup {
 	Map<LocalDate, Integer> takenCountsBetween(Collection<SetId> setIds, LocalDate from, LocalDate to);
 
 	/**
+	 * The days in {@code [from, to]} on which each of {@code setIds} is taken, ascending, keyed by set;
+	 * a set free on every day of the window is absent. "Taken" means the same as in {@link #takenOn}:
+	 * any availability row, whatever its state. Behind the tourist map for a range of days, which
+	 * renders a set free for all of them, for some, or for none, and names the days a partly-free set
+	 * covers — so the client needs no second read per set.
+	 *
+	 * <p>A snapshot, never a hold (invariant #2): {@code AvailabilityClaim} alone decides.
+	 *
+	 * @param setIds the set positions to check (typically one venue's map)
+	 * @param from   the first day, inclusive, a {@code LocalDate} in {@code Europe/Tirane}
+	 *               (invariant #6)
+	 * @param to     the last day, inclusive
+	 * @return the taken days per held set; never {@code null}; an empty input yields an empty result
+	 *         without touching the database
+	 */
+	Map<SetId, List<LocalDate>> takenDaysBetween(Collection<SetId> setIds, LocalDate from, LocalDate to);
+
+	/**
 	 * The days on or after {@code from} on which staff hold each of {@code setIds} for a walk-in
 	 * ({@code STAFF_MARKED} rows only — an online hold is a booking's, and {@code booking} answers for
 	 * those), oldest first, keyed by set; a set with none is absent. The remodel preview's staff-hold

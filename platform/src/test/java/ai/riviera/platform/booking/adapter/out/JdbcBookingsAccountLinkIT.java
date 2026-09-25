@@ -75,7 +75,7 @@ class JdbcBookingsAccountLinkIT {
 		OptionalLong id = bookings.insertAwaitingPayment(new NewBooking(
 				"LINKACC0001", new VenueId(set.venueId()), new SetId(set.setId()),
 				new CustomerId(guestId), new CustomerAccountId(accountId),
-				LocalDate.of(2027, 8, 10), 4500L, "EUR"));
+				LocalDate.of(2027, 8, 10), LocalDate.of(2027, 8, 10), 4500L, "EUR"));
 
 		assertTrue(id.isPresent(), "the booking inserted");
 		assertEquals(accountId, accountIdOf(id.getAsLong()),
@@ -90,7 +90,7 @@ class JdbcBookingsAccountLinkIT {
 		OptionalLong id = bookings.insertAwaitingPayment(new NewBooking(
 				"LINKGUEST01", new VenueId(set.venueId()), new SetId(set.setId()),
 				new CustomerId(guestId), null,
-				LocalDate.of(2027, 8, 11), 4500L, "EUR"));
+				LocalDate.of(2027, 8, 11), LocalDate.of(2027, 8, 11), 4500L, "EUR"));
 
 		assertTrue(id.isPresent(), "the guest booking inserted");
 		assertNull(accountIdOf(id.getAsLong()), "a guest booking leaves account_id NULL (AC-2)");

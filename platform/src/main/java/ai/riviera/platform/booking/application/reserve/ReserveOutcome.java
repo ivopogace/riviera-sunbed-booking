@@ -19,10 +19,12 @@ sealed interface ReserveOutcome {
 	 * committed together. Carries the technical id + code and the {@link SetBookingInfo} the collect
 	 * phase needs to build the {@code Money} and the confirmation view, plus the {@code customerId}
 	 * the instant-confirm branch asks about the confirmation mail's deliverability — an id, so
-	 * this module still never handles the guest's address.
+	 * this module still never handles the guest's address — and the stay's total {@code amountMinor}
+	 * in the set's currency (invariant #5), which is what the collect phase charges.
 	 */
 	record Reserved(long bookingId, String code, SetBookingInfo set,
-			ai.riviera.platform.customer.vocabulary.CustomerId customerId) implements ReserveOutcome {
+			ai.riviera.platform.customer.vocabulary.CustomerId customerId, long amountMinor)
+			implements ReserveOutcome {
 	}
 
 	/**
@@ -32,7 +34,7 @@ sealed interface ReserveOutcome {
 	 * until the venue accepts (payment-request-on-accept, riviera-stripe-payments).
 	 */
 	record RequestPending(long bookingId, String code, SetBookingInfo set,
-			java.time.Instant requestExpiresAt) implements ReserveOutcome {
+			java.time.Instant requestExpiresAt, long amountMinor) implements ReserveOutcome {
 	}
 
 	/** Validation or the claim failed; nothing was persisted. Carries the create-level reason. */

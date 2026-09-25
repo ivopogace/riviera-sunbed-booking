@@ -27,6 +27,8 @@ const TILE_TOKEN_CLASS: Record<MapTileState, string> = {
   available:
     'border-riv-tile-available-border bg-riv-tile-available-fill text-riv-tile-available-ink',
   premium: 'bg-riv-tile-premium-fill border-riv-tile-premium-border text-riv-tile-premium-ink',
+  partly:
+    'bg-riv-tile-available-fill border-dotted border-riv-tile-partly-border text-riv-tile-available-ink',
   walkin: 'border-riv-tile-walkin-border text-riv-tile-walkin-ink',
   taken:
     'bg-riv-tile-taken-fill border-dashed border-riv-tile-taken-border text-riv-tile-taken-ink',
@@ -138,11 +140,20 @@ describe('MapTile appearance (#701)', () => {
     expect(mapTileState(set({ availability: 'TAKEN', tier: 'PREMIUM' }))).toBe('taken');
   });
 
+  it('renders a set free on some of a stay as partly free — under walk-in, over the tier', () => {
+    expect(mapTileState(set({ availability: 'PARTLY_FREE' }))).toBe('partly');
+    expect(mapTileState(set({ availability: 'PARTLY_FREE', tier: 'PREMIUM' }))).toBe('partly');
+    expect(mapTileState(set({ availability: 'PARTLY_FREE', pool: 'WALK_IN' }))).toBe('walkin');
+    // An availability token this build does not know still fails closed to the ghost.
+    expect(mapTileState(set({ availability: 'BLOCKED' as SetView['availability'] }))).toBe('taken');
+  });
+
   it('gives the legend one row per state, in state order, labelled from the meaning record', () => {
     expect(MAP_TILE_LEGEND.map((row) => row.state)).toEqual([...MAP_TILE_STATES]);
     expect(MAP_TILE_LEGEND.map((row) => row.label)).toEqual([
       'Available',
       'Front row',
+      'Partly free',
       'Walk-in only — book at the venue',
       'Taken',
     ]);

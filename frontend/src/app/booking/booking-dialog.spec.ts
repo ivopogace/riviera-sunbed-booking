@@ -387,6 +387,37 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     expect(host().querySelector('[data-testid="dialog-error"]')).toBeNull();
   });
 
+  it('a stay shows the per-day price and the total, and posts the last day', async () => {
+    fixture.componentRef.setInput('lastDate', '2026-12-03');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(host().querySelector('[data-testid="dialog-date"]')!.textContent).toContain('3 days');
+    expect(host().querySelector('[data-testid="dialog-price"]')!.textContent).toContain(
+      '€45 per day · 3 days',
+    );
+    expect(host().querySelector('[data-testid="dialog-total"]')!.textContent).toContain('€135');
+
+    await goToReview();
+    expect(host().querySelector('[data-testid="review-total"]')!.textContent).toContain('€135');
+    submitForm();
+    await fixture.whenStable();
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`);
+    expect(req.request.body).toEqual({
+      setId: 2,
+      bookingDate: '2026-12-01',
+      lastDate: '2026-12-03',
+      contact: { email: 'guest@example.com', fullName: 'Holiday Guest', phone: '+355699000' },
+    });
+    req.flush({
+      ...CONFIRMATION,
+      lastDate: '2026-12-03',
+      amount: { minorUnits: 13500, currency: 'EUR' },
+    });
+    await fixture.whenStable();
+  });
+
   it('emits awaiting (not booked) on a 202 AWAITING_PAYMENT (stripe profile, invariant #8)', async () => {
     await goToReview();
     let booked = false;

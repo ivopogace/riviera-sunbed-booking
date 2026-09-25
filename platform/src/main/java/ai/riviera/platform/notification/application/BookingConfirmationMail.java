@@ -5,7 +5,7 @@ import java.time.LocalDate;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 
 /**
- * Everything the booking-confirmation email renders (#371, epic #367 story 1) — structured, not
+ * Everything the booking-confirmation email renders — structured, not
  * pre-rendered, so each {@link Mailer} implementation decides its own presentation: {@code SmtpMailer}
  * formats a plain-text body, {@code MockMailer} records the fields verbatim for ITs to assert on.
  *
@@ -13,21 +13,29 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
  * logged, and it deliberately never enters an event payload (see
  * {@code booking.vocabulary.BookingNotificationInfo}). {@code amountMinor} + {@code currency} are
  * integer minor units + ISO 4217 (invariant #5) — formatting for display happens in the transport,
- * never by re-deriving a decimal amount anywhere else. {@code bookingDate} is the service date as a
- * {@code LocalDate} in {@code Europe/Tirane} (invariant #6), carried straight off
- * {@code BookingConfirmed}.
+ * never by re-deriving a decimal amount anywhere else. {@code bookingDate} to {@code lastDate} are the
+ * service days, inclusive, as {@code LocalDate}s in {@code Europe/Tirane} (invariant #6), carried
+ * straight off {@code BookingConfirmed}; {@code amountMinor} is the stay's total.
  *
  * <p>{@code rowLabel} + {@code positionNo} are the beach-map spot, sourced from
- * {@code venue.api.SetBookingFacts}. Unpublished module-internal value (#382) — public only for the
+ * {@code venue.api.SetBookingFacts}. Unpublished module-internal value — public only for the
  * module's own {@code adapter} packages (the listener assembles it, the transports render it).
  *
  * <p>{@code cancellationWindowAtBirth} + {@code lateCancelRefundBps} carry the born-past-free-
- * cancellation disclosure (#795), carried straight off the event: {@code CLOSED} renders the
+ * cancellation disclosure, carried straight off the event: {@code CLOSED} renders the
  * non-refundable last-minute line, {@code LATE} the past-free-cancellation line (the partial share
  * at bps &gt; 0, no-refund at 0 — a LATE-born booking stays cancellable, so only CLOSED may say it
  * can't be), and {@code FREE} or {@code null} (a pre-#795 payload — tolerated forever) nothing.
  */
 public record BookingConfirmationMail(String bookingCode, String venueName, LocalDate bookingDate,
-		String rowLabel, int positionNo, long amountMinor, String currency,
+		LocalDate lastDate, String rowLabel, int positionNo, long amountMinor, String currency,
 		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps) {
+
+	/** A one-day booking: its last day is its first. */
+	public BookingConfirmationMail(String bookingCode, String venueName, LocalDate bookingDate,
+			String rowLabel, int positionNo, long amountMinor, String currency,
+			CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps) {
+		this(bookingCode, venueName, bookingDate, bookingDate, rowLabel, positionNo, amountMinor, currency,
+				cancellationWindowAtBirth, lateCancelRefundBps);
+	}
 }

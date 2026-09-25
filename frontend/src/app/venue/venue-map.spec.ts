@@ -113,6 +113,39 @@ function requestMode(): VenueMapView {
 }
 
 /**
+ * Miramar read for a three-day stay `first`..`last` that no single set covers: every set taken
+ * throughout except set 2 (free until the last day), set 8 (free from the second day) and the
+ * walk-in set 19 (free from the second day, but walk-in still wins the tile).
+ */
+function stayMiramar(first: string, last: string): VenueMapView {
+  const middle = addDays(first, 1);
+  const base = miramar();
+  return {
+    ...base,
+    sets: base.sets.map((set) => {
+      if (set.id === 2) {
+        return { ...set, availability: 'PARTLY_FREE', freeDays: 2, takenDates: [last] };
+      }
+      if (set.id === 8 || set.id === 19) {
+        return { ...set, availability: 'PARTLY_FREE', freeDays: 2, takenDates: [first] };
+      }
+      return { ...set, availability: 'TAKEN', freeDays: 0, takenDates: [first, middle, last] };
+    }),
+  };
+}
+
+/** The same beach re-read for the two days set 2 can host: set 2 is free for both. */
+function stayMiramarShortened(first: string, last: string): VenueMapView {
+  const base = stayMiramar(first, last);
+  return {
+    ...base,
+    sets: base.sets.map((set) =>
+      set.id === 2 ? { ...set, availability: 'FREE', freeDays: 2, takenDates: [] } : set,
+    ),
+  };
+}
+
+/**
  * The map renders the booking dialog, which now injects {@link ProofOfWork} — a live probe of the
  * challenge endpoint. Faked off here so no unanswered request parks `whenStable`, and so these
  * specs keep testing the map rather than the fence (`booking-dialog.spec.ts` owns that).
@@ -248,7 +281,13 @@ describe('VenueMap', () => {
   /** The colour classes the directive gives a state, read off the legend swatch wearing it. */
   function appearanceClassesFor(state: string): string[] {
     const swatch = el().querySelector(`ul[aria-label="Legend"] [data-state="${state}"]`)!;
-    const geometry = new Set(['h-[18px]', 'w-[18px]', 'rounded-[6px]', 'border-[1.5px]']);
+    const geometry = new Set([
+      'h-[18px]',
+      'w-[18px]',
+      'rounded-[6px]',
+      'border-[1.5px]',
+      'data-[state=partly]:border-2',
+    ]);
     return [...swatch.classList].filter((token) => !geometry.has(token));
   }
 
@@ -634,7 +673,7 @@ describe('VenueMap', () => {
     flushVenue();
     await settle();
     // The unit host in `map-tile.spec.ts` cannot see this: it pins the directive against itself.
-    const paints = /^(bg-|text-riv-tile|border-riv-tile|border-dashed)/;
+    const paints = /^(bg-|text-riv-tile|border-riv-tile|border-dashed|border-dotted)/;
     for (const tile of el().querySelectorAll('.set-tile')) {
       const state = tile.getAttribute('data-state')!;
       const own = [...tile.classList].filter((token) => paints.test(token));
@@ -1002,7 +1041,7 @@ describe('VenueMap', () => {
     await settle();
     const legend = el().querySelector('ul[aria-label="Legend"]')!;
     expect(legend.textContent).toContain('Walk-in only');
-    expect(legend.querySelectorAll('li').length).toBe(4); // Available · Front row · Walk-in · Taken
+    expect(legend.querySelectorAll('li').length).toBe(5); // Available · Front row · Partly free · Walk-in · Taken
   });
 
   it('renders the legend inside the map card, above the tile grid (#701)', async () => {
@@ -1029,6 +1068,7 @@ describe('VenueMap', () => {
     expect(swatches.map((s) => s.getAttribute('data-state'))).toEqual([
       'available',
       'premium',
+      'partly',
       'walkin',
       'taken',
     ]);
@@ -1410,6 +1450,42 @@ describe('VenueMap', () => {
     });
   });
 
+  it('re-fetches the map for a chosen stay and reads the range on the trigger', async () => {
+    flushVenue();
+    await settle();
+    fixture.detectChanges();
+    await openPicker();
+    const first = defaultBookingDate(new Date(Date.now() + 6 * 24 * 60 * 60 * 1000));
+    const last = defaultBookingDate(new Date(Date.now() + 8 * 24 * 60 * 60 * 1000));
+    el().querySelector<HTMLButtonElement>('[data-testid="calendar-mode-stay"]')!.click();
+    fixture.detectChanges();
+    pickDay(first);
+    pickDay(last);
+
+    const request = venueRequest();
+    expect(request.request.params.get('date')).toBe(first);
+    expect(request.request.params.get('lastDate')).toBe(last);
+    request.flush(miramar());
+    await settle();
+    fixture.detectChanges();
+
+    expect(dateTrigger().getAttribute('data-date')).toBe(first);
+    expect(dateTrigger().getAttribute('data-last-date')).toBe(last);
+    expect(dateTrigger().textContent).toContain('3 days');
+    expect(el().querySelector('[data-testid="availability"]')?.textContent).toContain(
+      'free for all 3 days',
+    );
+  });
+
+  it('offers no stay mode at a Request-to-Book venue', async () => {
+    flushRequestVenue();
+    await settle();
+    fixture.detectChanges();
+    await openPicker();
+
+    expect(el().querySelector('[data-testid="calendar-mode-stay"]')).toBeNull();
+  });
+
   it('navigates back to discovery when the back pill is pressed', async () => {
     flushVenue();
     await settle();
@@ -1705,6 +1781,151 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
     // The picker's trigger shows the carried date, not the default.
     expect(trigger.getAttribute('data-date')).toBe(chosen);
     expect(trigger.textContent).toContain(formatCivilDate(chosen));
+  });
+
+  it('seeds a stay from ?date= and ?lastDate=, requesting both', async () => {
+    const first = defaultBookingDate(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000));
+    const last = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+    await setup({ date: first, lastDate: last });
+
+    const req = venueReq();
+    expect(req.request.params.get('date')).toBe(first);
+    expect(req.request.params.get('lastDate')).toBe(last);
+    req.flush(miramar());
+    await settle();
+
+    const trigger = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      '[data-testid="map-date"]',
+    )!;
+    expect(trigger.getAttribute('data-last-date')).toBe(last);
+    expect(trigger.textContent).toContain('3 days');
+  });
+
+  describe('a stay no single set covers', () => {
+    const first = defaultBookingDate(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000));
+    const last = addDays(first, 2);
+
+    function dom(): HTMLElement {
+      return fixture.nativeElement as HTMLElement;
+    }
+
+    async function loadStay(): Promise<void> {
+      await setup({ date: first, lastDate: last });
+      venueReq().flush(stayMiramar(first, last));
+      await settle();
+      fixture.detectChanges();
+    }
+
+    it('renders a partly-free set as a dotted tile with a free-day badge that names its days', async () => {
+      await loadStay();
+
+      const tile = dom().querySelector<HTMLElement>('.set-tile[data-state="partly"]')!;
+      expect(tile.classList.contains('partly')).toBe(true);
+      expect(tile.querySelector('[data-testid="free-days-badge"]')!.textContent.trim()).toBe('2');
+      expect(
+        tile.querySelector('[data-testid="free-days-badge"]')!.getAttribute('aria-hidden'),
+      ).toBe('true');
+      const button = tile.querySelector<HTMLButtonElement>('button[data-set-id="2"]')!;
+      expect(button.getAttribute('aria-label')).toContain('partly free, free 2 of 3 days');
+      expect(button.getAttribute('aria-label')).toContain('Select to see which days');
+      // The walk-in set free on some days keeps the walk-in treatment, not the dotted one.
+      expect(
+        dom().querySelector('.set-tile[data-state="partly"] button[data-set-id="19"]'),
+      ).toBeNull();
+      expect(dom().querySelector('ul[aria-label="Legend"]')!.textContent).toContain('Partly free');
+      expect(dom().querySelector('[data-testid="availability"]')!.textContent).toContain(
+        '0 of 24 sets free for all 3 days',
+      );
+      expect(dom().querySelector('[data-testid="availability"]')!.textContent).toContain(
+        '3 partly free',
+      );
+    });
+
+    it('offers the longest one-spot run and the way to other beaches', async () => {
+      await loadStay();
+
+      const banner = dom().querySelector<HTMLElement>('[data-testid="no-cover"]')!;
+      expect(banner.textContent).toContain('No single spot is free for all 3 days');
+      expect(dom().querySelector('[data-testid="no-cover-run"]')!.textContent).toContain(
+        'Front row · Sea view · spot 2',
+      );
+      expect(dom().querySelector('[data-testid="no-cover-run"]')!.textContent).toContain('2 days');
+      expect(
+        dom()
+          .querySelector<HTMLAnchorElement>('[data-testid="no-cover-others"]')!
+          .getAttribute('href'),
+      ).toBe(`/?date=${first}`);
+    });
+
+    it('opens the sheet from a partly-free tile, and shortening re-reads the map and opens the dialog on that set', async () => {
+      await loadStay();
+
+      dom().querySelector<HTMLButtonElement>('button[data-set-id="2"]')!.click();
+      fixture.detectChanges();
+      const sheet = dom().querySelector<HTMLElement>('[data-testid="partly-free-sheet"]')!;
+      expect(sheet).not.toBeNull();
+      expect(sheet.querySelectorAll('[data-testid="partly-free-days"] li')).toHaveLength(3);
+
+      sheet.querySelector<HTMLButtonElement>('[data-testid="shorten-stay"]')!.click();
+      fixture.detectChanges();
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+      expect(dom().querySelector('[data-testid="partly-free-sheet"]')).toBeNull();
+      // The sheet is gone before the map answers: focus lands on its tile meanwhile (RV-FE-9).
+      expect(document.activeElement).toBe(dom().querySelector('button[data-set-id="2"]'));
+      const request = venueReq();
+      expect(request.request.params.get('date')).toBe(first);
+      expect(request.request.params.get('lastDate')).toBe(addDays(first, 1));
+      request.flush(stayMiramarShortened(first, addDays(first, 1)));
+      await settle();
+      fixture.detectChanges();
+
+      expect(dom().querySelector('app-booking-dialog')).not.toBeNull();
+      expect(
+        dom().querySelector('app-booking-dialog [data-testid="dialog-date"]')!.textContent,
+      ).toContain(formatBookingDate(first));
+    });
+
+    it('forgets a shortened stay whose map failed, so an unrelated date pick opens no dialog', async () => {
+      await loadStay();
+      dom().querySelector<HTMLButtonElement>('button[data-set-id="2"]')!.click();
+      fixture.detectChanges();
+      dom().querySelector<HTMLButtonElement>('[data-testid="shorten-stay"]')!.click();
+      fixture.detectChanges();
+      venueReq().flush('boom', { status: 500, statusText: 'Server Error' });
+      await settle();
+      fixture.detectChanges();
+
+      const c = fixture.componentInstance as unknown as { onDateChange(value: string): void };
+      c.onDateChange(addDays(first, 20));
+      venueReq().flush(stayMiramarShortened(addDays(first, 20), addDays(first, 20)));
+      await settle();
+      fixture.detectChanges();
+
+      expect(dom().querySelector('app-booking-dialog')).toBeNull();
+    });
+
+    it('returns focus to the tile when the sheet is dismissed', async () => {
+      await loadStay();
+      const button = dom().querySelector<HTMLButtonElement>('button[data-set-id="2"]')!;
+      button.click();
+      fixture.detectChanges();
+
+      dom().querySelector<HTMLButtonElement>('[data-testid="keep-dates"]')!.click();
+      fixture.detectChanges();
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+      expect(dom().querySelector('[data-testid="partly-free-sheet"]')).toBeNull();
+      expect(document.activeElement).toBe(dom().querySelector('button[data-set-id="2"]'));
+    });
+  });
+
+  it('ignores a ?lastDate= before the first day or over the 62-day window', async () => {
+    const first = defaultBookingDate(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000));
+    await setup({ date: first, lastDate: '2020-01-01' });
+    const req = venueReq();
+    expect(req.request.params.has('lastDate')).toBe(false);
+    req.flush(miramar());
   });
 
   it('clamps a past ?date= param up to the earliest bookable day (invariant #4)', async () => {

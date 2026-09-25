@@ -25,6 +25,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.StaySpan;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -104,7 +105,7 @@ class HiddenVenueSoldBookingRegressionIT {
 		String code = confirmed.confirmation().code();
 
 		suspendOwner();
-		assertTrue(catalog.findVenueMap(new VenueId(venueId), future).isEmpty(),
+		assertTrue(catalog.findVenueMap(new VenueId(venueId), StaySpan.oneDay(future)).isEmpty(),
 				"sanity: the venue is hidden from tourists now");
 
 		assertTrue(viewBooking.byCode(code).isPresent(), "the code-gated view still resolves");

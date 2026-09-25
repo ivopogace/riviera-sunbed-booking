@@ -7,12 +7,13 @@ import { SetView } from '../shared/venue-views';
  * declared beside it, so a new state cannot be added without every state-driven loop — the legend,
  * the appearance record, the specs — seeing it.
  */
-export const MAP_TILE_STATES = ['available', 'premium', 'walkin', 'taken'] as const;
+export const MAP_TILE_STATES = ['available', 'premium', 'partly', 'walkin', 'taken'] as const;
 
 /**
  * How one tile on the tourist beach map looks. The order is a priority, not a list: `taken`
- * beats everything (the ghost wins), and `walkin` beats `premium` — "you cannot book this
- * online" is the fact a tourist must not miss, so it never loses to a tier tint.
+ * beats everything (the ghost wins), `walkin` beats `partly` and `premium` — "you cannot book this
+ * online" is the fact a tourist must not miss, so it never loses to a tier tint — and `partly`
+ * (free on some of a stay's days) beats the tier.
  */
 export type MapTileState = (typeof MAP_TILE_STATES)[number];
 
@@ -27,12 +28,17 @@ export type MapTileState = (typeof MAP_TILE_STATES)[number];
  * own border *width* — only the appearance is shared. The walk-in entry is the odd one out and
  * on purpose: a 135° hatch of the tile's own ink over a lightened sand, because at swatch size
  * front-row cream and walk-in sand differ by too little to carry a meaning this consequential.
- * Its ink stays AA on both bands of that hatch (`venue-map.contrast.spec.ts`).
+ * Its ink stays AA on both bands of that hatch (`venue-map.contrast.spec.ts`). The partly-free
+ * entry is the available fill under a dotted border: the consumer widens that border to 2px
+ * (`data-[state=partly]:border-2`) and adds the free-day badge, so it survives forced colours,
+ * where a fill would not.
  */
 const MAP_TILE_CLASS: Record<MapTileState, string> = {
   available:
     'border-riv-tile-available-border bg-riv-tile-available-fill text-riv-tile-available-ink',
   premium: 'bg-riv-tile-premium-fill border-riv-tile-premium-border text-riv-tile-premium-ink',
+  partly:
+    'bg-riv-tile-available-fill border-dotted border-riv-tile-partly-border text-riv-tile-available-ink',
   walkin:
     'bg-riv-tile-walkin-fill bg-[repeating-linear-gradient(135deg,var(--riv-tile-walkin-hatch)_0px,var(--riv-tile-walkin-hatch)_3px,transparent_3px,transparent_8px)] border-riv-tile-walkin-border text-riv-tile-walkin-ink',
   taken:
@@ -48,6 +54,7 @@ const MAP_TILE_CLASS: Record<MapTileState, string> = {
 export const MAP_TILE_MEANING: Record<MapTileState, { legend: string; announced: string }> = {
   available: { legend: 'Available', announced: 'available' },
   premium: { legend: 'Front row', announced: 'available' },
+  partly: { legend: 'Partly free', announced: 'partly free' },
   walkin: {
     legend: 'Walk-in only — book at the venue',
     announced: 'walk-in only — book at the venue',
@@ -67,11 +74,14 @@ export const MAP_TILE_LEGEND: readonly { readonly state: MapTileState; readonly 
  * rather than as a bookable-looking tile that announces the wrong thing.
  */
 export function mapTileState(set: SetView): MapTileState {
-  if (set.availability !== 'FREE') {
+  if (set.availability !== 'FREE' && set.availability !== 'PARTLY_FREE') {
     return 'taken';
   }
   if (set.pool === 'WALK_IN') {
     return 'walkin';
+  }
+  if (set.availability === 'PARTLY_FREE') {
+    return 'partly';
   }
   return set.tier === 'PREMIUM' ? 'premium' : 'available';
 }

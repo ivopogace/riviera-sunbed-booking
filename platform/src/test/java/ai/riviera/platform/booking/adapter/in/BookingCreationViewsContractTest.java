@@ -37,7 +37,7 @@ class BookingCreationViewsContractTest {
 	private static final ObjectMapper MAPPER = JsonMapper.builder().build();
 
 	private static final Set<String> SHARED_KEYS = Set.of("code", "status", "venueId", "venueName",
-			"setId", "rowLabel", "positionNo", "bookingDate", "amount");
+			"setId", "rowLabel", "positionNo", "bookingDate", "lastDate", "amount");
 
 	@Test
 	void confirmationBodyKeysAreFrozen() {
@@ -90,6 +90,6 @@ class BookingCreationViewsContractTest {
 				new SetBookingInfo(new SetId(11), new VenueId(7), "Vala Beach", "A", 4, Pool.ONLINE,
 						new MoneyView(4500, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
 						BookingMode.REQUEST, SeasonClosure.open()),
-				LocalDate.of(2026, 8, 10), false);
+				LocalDate.of(2026, 8, 10), LocalDate.of(2026, 8, 12), new MoneyView(13500, "EUR"), false);
 	}
 }

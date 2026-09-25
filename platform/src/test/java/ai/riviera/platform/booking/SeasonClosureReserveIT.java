@@ -124,6 +124,32 @@ class SeasonClosureReserveIT {
 				.andExpect(jsonPath("$.status").value("CONFIRMED"));
 	}
 
+	private org.springframework.test.web.servlet.ResultActions reserveRange(long setId, LocalDate first,
+			LocalDate last) throws Exception {
+		return mvc.perform(post("/api/bookings")
+				.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"setId": %d, "bookingDate": "%s", "lastDate": "%s",
+						 "contact": {"email": "season-range@example.com", "fullName": "Season Guest", "phone": "+355699"}}
+						""".formatted(setId, first, last)));
+	}
+
+	@Test
+	void aRangeNeedsEveryDayAdmitted() throws Exception {
+		long set = onlineSetOf(closedVenue("Season Reserve Range IT", "INSTANT", reopen(), true));
+
+		reserveRange(set, reopen().minusDays(1), reopen().plusDays(1))
+				.andExpect(status().isUnprocessableEntity())
+				.andExpect(jsonPath("$.code").value("VENUE_CLOSED"));
+		Integer claims = jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :s")
+				.param("s", set).query(Integer.class).single();
+		org.junit.jupiter.api.Assertions.assertEquals(0, claims, "the fence runs before any claim");
+		reserveRange(set, reopen(), reopen().plusDays(2))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.lastDate").value(reopen().plusDays(2).toString()));
+	}
+
 	@Test
 	void aHiddenClosedVenueStillReadsAsNoSuchSet() throws Exception {
 		long venue = closedVenue("Season Reserve Hidden IT", "INSTANT", null, false);

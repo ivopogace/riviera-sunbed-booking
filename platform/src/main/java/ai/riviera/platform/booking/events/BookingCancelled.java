@@ -28,5 +28,16 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
  * The original accrual is re-read by {@code payout}, not carried here.
  */
 public record BookingCancelled(BookingId bookingId, VenueId venueId, SetId setId,
-		LocalDate bookingDate, long refundMinor, String currency, RefundReason reason) {
+		LocalDate bookingDate, long refundMinor, String currency, RefundReason reason, LocalDate lastDate) {
+
+	/** A one-day booking: its last day is its first. */
+	public BookingCancelled(BookingId bookingId, VenueId venueId, SetId setId, LocalDate bookingDate,
+			long refundMinor, String currency, RefundReason reason) {
+		this(bookingId, venueId, setId, bookingDate, refundMinor, currency, reason, bookingDate);
+	}
+
+	/** The last service day; a payload serialized before {@code lastDate} existed is a one-day booking. */
+	public LocalDate lastDay() {
+		return lastDate != null ? lastDate : bookingDate;
+	}
 }

@@ -104,6 +104,27 @@ class SmtpMailerIT {
 				.doesNotContain("non-refundable", "past free cancellation");
 	}
 
+	@Test
+	void rangeRendersDaysLine() throws Exception {
+		mailer().sendBookingConfirmation(TO, new BookingConfirmationMail(BOOKING_CODE, "Miramar Beach",
+				LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 19), "Front row · Sea view", 3, 12500, "EUR",
+				CancellationWindow.FREE, 0));
+
+		String body = theOnlyReceivedMessage().getContent().toString();
+		assertThat(body).contains("Days:          15 August – 19 August 2026 (5 days)", "EUR 125.00");
+		assertThat(body).as("a stay names its days, not one date").doesNotContain("Date:");
+	}
+
+	@Test
+	void aStaysCancellationRendersDaysLineToo() throws Exception {
+		mailer().sendBookingCancellation(TO, new BookingCancellationMail(BOOKING_CODE, "Miramar Beach",
+				LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 16), 5000, "EUR", RefundReason.POLICY, null));
+
+		String body = theOnlyReceivedMessage().getContent().toString();
+		assertThat(body).contains("Days:     15 August – 16 August 2026 (2 days)");
+		assertThat(body).doesNotContain("Date:");
+	}
+
 	/** The #795 disclosure branches, rendered — only CLOSED may claim the booking can't be cancelled. */
 	@Test
 	void rendersTheBornPastFreeCancellationDisclosure() throws Exception {

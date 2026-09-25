@@ -38,6 +38,7 @@ import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 
 	private static final String SET_ID = "set_id";
+	private static final String BOOKING_DATE = "booking_date";
 
 	private final JdbcClient jdbc;
 
@@ -142,10 +143,35 @@ class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 				.param("from", from)
 				.param("to", to)
 				.query((rs, rowNum) -> Map.entry(
-						rs.getObject("booking_date", LocalDate.class), rs.getInt("taken")))
+						rs.getObject(BOOKING_DATE, LocalDate.class), rs.getInt("taken")))
 				.list()
 				.stream()
 				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
+	}
+
+	@Override
+	public Map<SetId, List<LocalDate>> takenDaysBetween(Collection<SetId> setIds, LocalDate from, LocalDate to) {
+		if (setIds.isEmpty()) {
+			return Map.of(); // no IN-list — avoid an empty "IN ()" and a needless round-trip
+		}
+		List<Long> ids = setIds.stream().map(SetId::value).toList();
+		Map<SetId, List<LocalDate>> taken = new LinkedHashMap<>();
+		jdbc.sql("""
+				SELECT set_id, booking_date
+				FROM set_availability
+				WHERE set_id IN (:ids)
+				  AND booking_date BETWEEN :from AND :to
+				ORDER BY set_id, booking_date
+				""")
+				.param("ids", ids)
+				.param("from", from)
+				.param("to", to)
+				.query((rs, rowNum) -> Map.entry(
+						new SetId(rs.getLong(SET_ID)), rs.getObject(BOOKING_DATE, LocalDate.class)))
+				.list()
+				.forEach(row -> taken.computeIfAbsent(row.getKey(), id -> new ArrayList<>()).add(row.getValue()));
+		taken.replaceAll((id, days) -> List.copyOf(days));
+		return Map.copyOf(taken);
 	}
 
 	@Override
@@ -166,7 +192,7 @@ class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 				.param("ids", ids)
 				.param("from", from)
 				.query((rs, rowNum) -> Map.entry(
-						new SetId(rs.getLong(SET_ID)), rs.getObject("booking_date", LocalDate.class)))
+						new SetId(rs.getLong(SET_ID)), rs.getObject(BOOKING_DATE, LocalDate.class)))
 				.list()
 				.forEach(row -> holds.computeIfAbsent(row.getKey(), id -> new ArrayList<>()).add(row.getValue()));
 		holds.replaceAll((id, days) -> List.copyOf(days));
