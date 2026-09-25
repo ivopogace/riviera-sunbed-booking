@@ -77,7 +77,7 @@ class FreeExitCancelIT {
 		jdbc.sql("UPDATE booking SET moved_at = :at WHERE id = :id").param("at", java.sql.Timestamp.from(movedAt))
 				.param("id", moved).update();
 		receipts.store(new NewReceipt(new VenueId(venue), bootstrapOperator(), movedAt, List.of(new ReceiptMove(
-				new BookingId(moved), tomorrow, new SpotRef(new SetId(a1), "A", 1), new SpotRef(new SetId(a2), "A", 2), 0, 1)), List.of(), ""));
+				new BookingId(moved), tomorrow, new SpotRef(new SetId(a1), "A", 1), new SpotRef(new SetId(a2), "A", 2), 0, 1)), List.of(), "", List.of()));
 		accrue(venue, moved);
 
 		mvc.perform(get("/api/bookings/{code}", movedCode))

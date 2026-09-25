@@ -1,6 +1,6 @@
 package ai.riviera.platform.booking.vocabulary;
 
-/** Why a claim blocks a remodel: its set must stay in the save either way. */
+/** Why a remodel keeps a claim where it is, leaving its set as stored either way. */
 public enum BlockReason {
 	/** The service day opens within the freeze window, or already opened. */
 	FROZEN,

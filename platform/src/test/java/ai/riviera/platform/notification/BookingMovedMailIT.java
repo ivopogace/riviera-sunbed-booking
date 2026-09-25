@@ -103,7 +103,7 @@ class BookingMovedMailIT {
 				.param("id", booking).update();
 		receipts.store(new NewReceipt(new VenueId(from.venueId()), operatorId(), movedAt, List.of(new ReceiptMove(
 				new BookingId(booking), date, new SpotRef(new SetId(from.setId()), "A", 3),
-				new SpotRef(new SetId(to), "Z", 87), 0, 84)), List.of(), ""));
+				new SpotRef(new SetId(to), "Z", 87), 0, 84)), List.of(), "", List.of()));
 		String venueName = jdbc.sql("SELECT name FROM venue WHERE id = :v").param("v", from.venueId())
 				.query(String.class).single();
 
@@ -149,7 +149,7 @@ class BookingMovedMailIT {
 				.param("id", booking).update();
 		receipts.store(new NewReceipt(new VenueId(from.venueId()), operatorId(), movedAt, List.of(new ReceiptMove(
 				new BookingId(booking), date, new SpotRef(new SetId(from.setId()), "A", 3),
-				new SpotRef(new SetId(to), "Z", 88), 0, 85)), List.of(), ""));
+				new SpotRef(new SetId(to), "Z", 88), 0, 85)), List.of(), "", List.of()));
 
 		fixtures.publishInTransaction(fixtures.movedOf(from, to, booking, date));
 

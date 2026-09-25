@@ -1,6 +1,7 @@
 package ai.riviera.platform.venue.application;
 
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -126,6 +127,26 @@ class LayoutDiffTest {
 
 		assertEquals(List.of(B1), diff.removed().stream().map(PlacedSet::id).toList());
 		assertTrue(diff.collidingUpdates().isEmpty(), "the removal runs first and frees the slot");
+	}
+
+	@Test
+	void keepingDropsTheKeptSetsFromRemovalsAndUpdatesAndDisplacedNamesTheClashes() {
+		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(A2, "A", 2, 2, 1), stored(B1, "B", 1, 1, 2));
+		// A1 removed, A2 renumbered to A5, B1 untouched; a new set at (3,1) takes A1's label.
+		LayoutDiff diff = LayoutDiff.of(stored,
+				new LayoutCommand(List.of(cell("A", 5, 2, 1), cell("B", 1, 1, 2), cell("A", 1, 3, 1))));
+		assertEquals(List.of(A1, A2), diff.disturbed().stream().map(PlacedSet::id).toList());
+
+		LayoutDiff kept = diff.keeping(Set.of(A1, A2));
+
+		assertTrue(kept.removed().isEmpty(), "a kept removed set stays as stored");
+		assertEquals(List.of(B1), kept.updates().stream().map(update -> update.stored().id()).toList(),
+				"a kept renumbered set is not updated at all");
+		assertEquals(diff.inserts(), kept.inserts());
+		assertTrue(kept.disturbed().isEmpty(), "nothing kept is disturbed any more");
+		assertEquals(List.of(A1), diff.displaced(Set.of(A1, A2)).stream().map(PlacedSet::id).toList(),
+				"the insert wants A1's label; nobody wants A2's");
+		assertTrue(diff.displaced(Set.of(A2)).isEmpty());
 	}
 
 	@Test

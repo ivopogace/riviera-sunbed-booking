@@ -24,9 +24,30 @@ export const RECEIPT: RemodelReceipt = {
   ],
   refunds: [],
   releases: [],
+  kept: [],
   refundReason: '',
   refundedTotal: null,
   feeTotal: null,
+};
+
+/** The receipt of a commit that kept a claim where it was — its set stayed on the map. */
+export const RECEIPT_WITH_KEPT: RemodelReceipt = {
+  ...RECEIPT,
+  receiptId: 43,
+  kept: [
+    {
+      bookingId: 12,
+      bookingDate: '2026-09-11',
+      from: { setId: 1, rowLabel: 'A', positionNo: 3 },
+      reason: 'FROZEN',
+    },
+    {
+      bookingId: 13,
+      bookingDate: '2026-09-13',
+      from: { setId: 2, rowLabel: 'A', positionNo: 2 },
+      reason: 'NO_MOVE_CANDIDATE',
+    },
+  ],
 };
 
 /** The receipt of a commit that also ended claims it could not move — refund, release, decline. */

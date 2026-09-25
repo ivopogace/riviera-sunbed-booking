@@ -31,6 +31,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,7 +44,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * first leaves the reserve {@code ALREADY_TAKEN}. Never both on one {@code (set, date)}, and the
  * preview token never refuses the re-ranked move — it binds outcome kinds, not candidates.
  * Modelled on {@code SetWriteVsClaimConcurrencyIT}: half the repetitions give each side a head
- * start so both orders are exercised every run.
+ * start so both orders are exercised every run. The second race adds a frozen claim on the old set,
+ * so the commit is a partial settlement: the kept claim's row is never touched and its set stays.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -54,6 +56,8 @@ class MoveVsReserveConcurrencyIT {
 	private static final LocalDate DAY = LocalDate.now(TIRANE).plusDays(30);
 	private static final long HEAD_START_MS = 150;
 	private static final Set<String> BRANCHES = ConcurrentHashMap.newKeySet();
+	private static final Set<String> KEPT_BRANCHES = ConcurrentHashMap.newKeySet();
+	private static final LocalDate TOMORROW = LocalDate.now(TIRANE).plusDays(1);
 
 	private enum Ordering { SIMULTANEOUS, RESERVE_FIRST, COMMIT_FIRST }
 
@@ -126,6 +130,70 @@ class MoveVsReserveConcurrencyIT {
 		BRANCHES.add(reserveWon ? "reserve" : "commit");
 		if (rep == info.getTotalRepetitions()) {
 			assertEquals(Set.of("reserve", "commit"), BRANCHES,
+					"the race never took both orders, so one guard went unproven");
+		}
+	}
+
+	@RepeatedTest(6)
+	void aPartialSettlementNeverDoubleClaimsAndKeepsTheKeptRow(RepetitionInfo info) throws Exception {
+		int rep = info.getCurrentRepetition();
+		VenueId venue = new VenueId(insertVenue("Kept Race Club " + rep));
+		long a1 = insertSet(venue, 1);
+		long a2 = insertSet(venue, 2);
+		long a3 = insertSet(venue, 3);
+		OperatorId owner = insertOperator("kept-race-owner-" + rep);
+		grant(owner, venue.value());
+		long booking = seedConfirmedBooking(venue, a1, DAY);
+		long frozen = seedConfirmedBooking(venue, a1, TOMORROW);
+		PreviewToken token = PreviewToken.of(claims.classify(owner, venue, List.of(new SetId(a1))));
+		List<LayoutCell> keepingA2AndA3 = List.of(cell(2), cell(3));
+
+		Ordering ordering = orderingFor(rep);
+		CountDownLatch gate = new CountDownLatch(1);
+		Callable<ClaimOutcome> reserve = () -> {
+			start(gate, ordering, Ordering.RESERVE_FIRST);
+			return availability.claim(new SetId(a2), DAY);
+		};
+		Callable<RemodelCommitOutcome> commit = () -> {
+			start(gate, ordering, Ordering.COMMIT_FIRST);
+			return commits.commit(owner, venue, 0L, keepingA2AndA3, token, RefundConfirmation.NONE);
+		};
+
+		ExecutorService pool = Executors.newFixedThreadPool(2);
+		ClaimOutcome claimed;
+		RemodelCommitOutcome committed;
+		try {
+			Future<ClaimOutcome> claimF = pool.submit(reserve);
+			Future<RemodelCommitOutcome> commitF = pool.submit(commit);
+			gate.countDown();
+			claimed = claimF.get(20, TimeUnit.SECONDS);
+			committed = commitF.get(20, TimeUnit.SECONDS);
+		}
+		finally {
+			pool.shutdownNow();
+		}
+
+		assertTrue(committed instanceof RemodelCommitOutcome.Committed,
+				() -> "a reserve on the candidate re-ranks the move, never refuses it, got " + committed);
+		long seatedOn = setOf(booking);
+		assertEquals(1, onlineHolds(a2), "exactly one online claim holds the candidate on that day");
+		assertEquals(0, onlineHolds(a1), "the old row is released");
+		assertEquals(1, onlineHolds(seatedOn), "the moved booking holds the row of the set it now names");
+		assertNotNull(movedAt(booking), "the move is stamped");
+		assertEquals(a1, setOf(frozen), "the frozen claim is kept where it is");
+		assertEquals(1, onlineHolds(a1, TOMORROW), "the kept claim keeps its row");
+		assertFalse(retired(a1), "the kept set stays on the map");
+		boolean reserveWon = claimed == ClaimOutcome.CLAIMED;
+		if (reserveWon) {
+			assertEquals(a3, seatedOn, "the reserve took A2 first, so the commit re-ranked the guest to A3");
+		}
+		else {
+			assertEquals(ClaimOutcome.ALREADY_TAKEN, claimed, "the commit seated the guest on A2 first");
+			assertEquals(a2, seatedOn);
+		}
+		KEPT_BRANCHES.add(reserveWon ? "reserve" : "commit");
+		if (rep == info.getTotalRepetitions()) {
+			assertEquals(Set.of("reserve", "commit"), KEPT_BRANCHES,
 					"the race never took both orders, so one guard went unproven");
 		}
 	}
@@ -205,8 +273,12 @@ class MoveVsReserveConcurrencyIT {
 	}
 
 	private int onlineHolds(long setId) {
+		return onlineHolds(setId, DAY);
+	}
+
+	private int onlineHolds(long setId, LocalDate day) {
 		return jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :s AND booking_date = :d AND state = 'BOOKED_ONLINE'")
-				.param("s", setId).param("d", DAY).query(Integer.class).single();
+				.param("s", setId).param("d", day).query(Integer.class).single();
 	}
 
 	private boolean retired(long setId) {

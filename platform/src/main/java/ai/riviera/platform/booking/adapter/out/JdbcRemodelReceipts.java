@@ -13,11 +13,13 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.booking.application.remodel.NewReceipt;
+import ai.riviera.platform.booking.application.remodel.ReceiptKept;
 import ai.riviera.platform.booking.application.remodel.ReceiptMove;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcome;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcomeKind;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipt;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
+import ai.riviera.platform.booking.vocabulary.BlockReason;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.ReceiptId;
 import ai.riviera.platform.booking.vocabulary.SpotRef;
@@ -26,8 +28,8 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * JDBC adapter for {@link RemodelReceipts} (invariant #1): one insert per receipt, per move and
- * per ended claim, the venue-scoped reads off {@code remodel_receipt_venue_idx}, and the two
+ * JDBC adapter for {@link RemodelReceipts} (invariant #1): one insert per receipt, per move, per
+ * ended claim and per kept claim, the venue-scoped reads off {@code remodel_receipt_venue_idx}, and the two
  * per-booking reads off {@code remodel_receipt_move_booking_idx} and
  * {@code remodel_receipt_outcome_booking_idx}. Names no set table: every spot is
  * the row's own snapshot. Package-private; only the port is referenced.
@@ -43,8 +45,13 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 			receipt_id, booking_id, booking_date, kind, set_id, row_label, position_no, amount_minor,
 			amount_currency, fee_minor
 			""";
-	private static final String SELECT_MOVES = "SELECT " + MOVE_COLUMNS;
-	private static final String SELECT_OUTCOMES = "SELECT " + OUTCOME_COLUMNS;
+	private static final String KEPT_COLUMNS = """
+			receipt_id, booking_id, booking_date, set_id, row_label, position_no, reason
+			""";
+	private static final String SELECT = "SELECT ";
+	private static final String SELECT_MOVES = SELECT + MOVE_COLUMNS;
+	private static final String SELECT_OUTCOMES = SELECT + OUTCOME_COLUMNS;
+	private static final String SELECT_KEPT = SELECT + KEPT_COLUMNS;
 	private static final String P_VENUE = "venue";
 	private static final String P_RECEIPT = "receipt";
 	private static final String P_BOOKING = "booking";
@@ -75,6 +82,7 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 				.single();
 		receipt.moves().forEach(move -> insertMove(id, move));
 		receipt.outcomes().forEach(outcome -> insertOutcome(id, outcome));
+		receipt.kept().forEach(kept -> insertKept(id, kept));
 		return new ReceiptId(id);
 	}
 
@@ -114,6 +122,20 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 				.update();
 	}
 
+	private void insertKept(long receiptId, ReceiptKept kept) {
+		jdbc.sql("INSERT INTO remodel_receipt_kept (" + KEPT_COLUMNS + """
+				) VALUES (:receipt, :booking, :date, :set, :row, :position, :reason)
+				""")
+				.param(P_RECEIPT, receiptId)
+				.param(P_BOOKING, kept.bookingId().value())
+				.param(P_DATE, kept.bookingDate())
+				.param("set", kept.spot().setId().value())
+				.param("row", kept.spot().rowLabel())
+				.param("position", kept.spot().positionNo())
+				.param(P_REASON, kept.reason().name())
+				.update();
+	}
+
 	@Override
 	public List<RemodelReceipt> receiptsOf(VenueId venueId) {
 		List<RemodelReceipt> heads = jdbc.sql("""
@@ -134,9 +156,13 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 		Map<Long, List<ReceiptOutcome>> outcomes = groupBy(SELECT_OUTCOMES
 				+ "FROM remodel_receipt_outcome WHERE receipt_id IN (:receipts) ORDER BY id",
 				ids, JdbcRemodelReceipts::mapOutcome);
+		Map<Long, List<ReceiptKept>> kept = groupBy(SELECT_KEPT
+				+ "FROM remodel_receipt_kept WHERE receipt_id IN (:receipts) ORDER BY id",
+				ids, JdbcRemodelReceipts::mapKept);
 		return heads.stream()
 				.map(head -> withLines(head, moves.getOrDefault(head.id().value(), List.of()),
-						outcomes.getOrDefault(head.id().value(), List.of())))
+						outcomes.getOrDefault(head.id().value(), List.of()),
+						kept.getOrDefault(head.id().value(), List.of())))
 				.toList();
 	}
 
@@ -155,7 +181,10 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 						JdbcRemodelReceipts::mapMove),
 						linesOf(receiptId, SELECT_OUTCOMES
 								+ "FROM remodel_receipt_outcome WHERE receipt_id = :receipt ORDER BY id",
-								JdbcRemodelReceipts::mapOutcome)));
+								JdbcRemodelReceipts::mapOutcome),
+						linesOf(receiptId, SELECT_KEPT
+								+ "FROM remodel_receipt_kept WHERE receipt_id = :receipt ORDER BY id",
+								JdbcRemodelReceipts::mapKept)));
 	}
 
 	private <T> Map<Long, List<T>> groupBy(String sql, List<Long> receiptIds, RowReader<T> reader) {
@@ -175,7 +204,7 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 				.list();
 	}
 
-	/** A row mapper that may throw, so the two line readers can be passed to the shared queries. */
+	/** A row mapper that may throw, so the line readers can be passed to the shared queries. */
 	@FunctionalInterface
 	private interface RowReader<T> {
 		T read(ResultSet rs) throws SQLException;
@@ -200,9 +229,9 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 	}
 
 	private static RemodelReceipt withLines(RemodelReceipt head, List<ReceiptMove> moves,
-			List<ReceiptOutcome> outcomes) {
+			List<ReceiptOutcome> outcomes, List<ReceiptKept> kept) {
 		return new RemodelReceipt(head.id(), head.venueId(), head.operatorId(), head.committedAt(), moves, outcomes,
-				head.refundReason());
+				head.refundReason(), kept);
 	}
 
 	/** A NULL reason reads as {@code ""} — the commit refunded nothing, so none was owed. */
@@ -210,7 +239,13 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 		String reason = rs.getString(C_REASON);
 		return new RemodelReceipt(new ReceiptId(rs.getLong("id")), new VenueId(rs.getLong("venue_id")),
 				new OperatorId(rs.getLong("operator_id")), rs.getTimestamp("committed_at").toInstant(), List.of(),
-				List.of(), reason == null ? "" : reason);
+				List.of(), reason == null ? "" : reason, List.of());
+	}
+
+	private static ReceiptKept mapKept(ResultSet rs) throws SQLException {
+		return new ReceiptKept(new BookingId(rs.getLong(C_BOOKING)), rs.getObject(C_DATE, LocalDate.class),
+				new SpotRef(new SetId(rs.getLong("set_id")), rs.getString("row_label"), rs.getInt("position_no")),
+				BlockReason.valueOf(rs.getString(P_REASON)));
 	}
 
 	private static ReceiptOutcome mapOutcome(ResultSet rs) throws SQLException {

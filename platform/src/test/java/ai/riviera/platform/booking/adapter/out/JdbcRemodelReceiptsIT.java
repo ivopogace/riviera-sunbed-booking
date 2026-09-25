@@ -15,11 +15,13 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.application.remodel.NewReceipt;
+import ai.riviera.platform.booking.application.remodel.ReceiptKept;
 import ai.riviera.platform.booking.application.remodel.ReceiptMove;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcome;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcomeKind;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipt;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
+import ai.riviera.platform.booking.vocabulary.BlockReason;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.ReceiptId;
 import ai.riviera.platform.booking.vocabulary.SpotRef;
@@ -28,11 +30,13 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The receipt round trip against a real Postgres: a receipt with two moves reads back whole, newest
  * first per venue, by id only for its own venue, and a booking's latest move is the last one written.
+ * A kept line reads back with its reason and never makes {@code endedByRemodel} true.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -63,10 +67,10 @@ class JdbcRemodelReceiptsIT {
 		SpotRef toA3 = new SpotRef(new SetId(a3), "A", 3);
 
 		ReceiptId earlier = receipts.store(new NewReceipt(new VenueId(venue), operator, first, List.of(
-				new ReceiptMove(new BookingId(booking), DAY, fromA1, toA2, 0, 1)), List.of(), ""));
+				new ReceiptMove(new BookingId(booking), DAY, fromA1, toA2, 0, 1)), List.of(), "", List.of()));
 		ReceiptId newest = receipts.store(new NewReceipt(new VenueId(venue), operator, first.plus(1, ChronoUnit.HOURS), List.of(
 				new ReceiptMove(new BookingId(booking), DAY, toA2, toA3, 0, 1),
-				new ReceiptMove(new BookingId(later), DAY.plusDays(1), fromA1, toA3, 0, 2)), List.of(), ""));
+				new ReceiptMove(new BookingId(later), DAY.plusDays(1), fromA1, toA3, 0, 2)), List.of(), "", List.of()));
 
 		List<RemodelReceipt> listed = receipts.receiptsOf(new VenueId(venue));
 		assertEquals(List.of(newest, earlier), listed.stream().map(RemodelReceipt::id).toList());
@@ -100,7 +104,7 @@ class JdbcRemodelReceiptsIT {
 				Instant.parse("2026-09-09T10:00:00Z"), List.of(), List.of(
 						new ReceiptOutcome(new BookingId(refunded), DAY, spot, ReceiptOutcomeKind.REFUND, 4500, "EUR", 500L),
 						new ReceiptOutcome(new BookingId(released), DAY, spot, ReceiptOutcomeKind.RELEASE, 2000, "EUR", 0L)),
-				"Re-laying row A for the season"));
+				"Re-laying row A for the season", List.of()));
 
 		RemodelReceipt read = receipts.find(new VenueId(venue), id).orElseThrow();
 		assertEquals(2, read.outcomes().size());
@@ -113,10 +117,27 @@ class JdbcRemodelReceiptsIT {
 	}
 
 	@Test
+	void keptLinesReadBackAndNeverCountAsEnded() {
+		long venue = insertVenue();
+		long a1 = insertSet(venue, 1);
+		long kept = insertBooking(venue, a1);
+		ReceiptKept line = new ReceiptKept(new BookingId(kept), DAY, new SpotRef(new SetId(a1), "A", 1),
+				BlockReason.FROZEN);
+
+		ReceiptId id = receipts.store(new NewReceipt(new VenueId(venue), new OperatorId(insertOperator()),
+				Instant.parse("2026-09-09T10:00:00Z"), List.of(), List.of(), "", List.of(line)));
+
+		RemodelReceipt read = receipts.find(new VenueId(venue), id).orElseThrow();
+		assertEquals(List.of(line), read.kept());
+		assertEquals(List.of(line), receipts.receiptsOf(new VenueId(venue)).getFirst().kept());
+		assertFalse(receipts.endedByRemodel(new BookingId(kept)), "a kept booking was not ended by the remodel");
+	}
+
+	@Test
 	void aCommitThatRefundedNobodyReadsAnEmptyReason() {
 		long venue = insertVenue();
 		ReceiptId id = receipts.store(new NewReceipt(new VenueId(venue), new OperatorId(insertOperator()),
-				Instant.parse("2026-09-09T10:00:00Z"), List.of(), List.of(), ""));
+				Instant.parse("2026-09-09T10:00:00Z"), List.of(), List.of(), "", List.of()));
 
 		RemodelReceipt read = receipts.find(new VenueId(venue), id).orElseThrow();
 		assertEquals("", read.refundReason());

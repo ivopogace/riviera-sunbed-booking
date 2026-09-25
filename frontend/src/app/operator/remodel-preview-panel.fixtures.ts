@@ -83,6 +83,25 @@ export const MOVES_ONLY_PREVIEW: RemodelPreview = {
   previewToken: 'v1.moves',
 };
 
+/** A picture the commit applies whose only claims are blocked — their sets stay on the map, nothing else changes for a guest. */
+export const BLOCKS_ONLY_PREVIEW: RemodelPreview = {
+  ...FULL_PREVIEW,
+  moves: [],
+  refunds: [],
+  releases: [],
+  staffHolds: [],
+  previewToken: 'v1.blocks',
+  feeTotal: { minorUnits: 0, currency: 'EUR' },
+};
+
+/** A picture the commit applies with staff holds alone in the way — the one shape that still offers Back only. */
+export const HELD_PREVIEW: RemodelPreview = {
+  ...FULL_PREVIEW,
+  blocks: [],
+  keep: [{ setId: 2, rowLabel: 'A', positionNo: 2 }],
+  previewToken: 'v1.held',
+};
+
 /** A picture the commit applies that also refunds a guest — so it needs the typed confirmation. */
 export const REFUNDING_PREVIEW: RemodelPreview = {
   ...FULL_PREVIEW,

@@ -6,8 +6,8 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
  * The remodel preview on the wire: the five groups the operator confirms against, {@code keep} — the
- * sets a blocked preview says to keep in this save (the blocking claims' and the staff holds' sets,
- * by id) — and {@code previewToken}, what the commit carries back to prove the operator confirmed
+ * sets that stay on the map, by id: the blocked claims' (the save keeps them itself) and the staff
+ * holds' (the operator must keep them) — and {@code previewToken}, what the commit carries back to prove the operator confirmed
  * this picture. {@code feeTotal} is what the refunds in this picture would cost the venue at the
  * current rate, and each refund line carries the fee per booking. Dates are ISO {@code YYYY-MM-DD}
  * (invariant #6), amounts integer minor units (invariant #5), bookings by id and never by code

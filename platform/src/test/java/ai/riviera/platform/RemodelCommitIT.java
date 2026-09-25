@@ -45,9 +45,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code 409 STALE_PREVIEW} with the fresh picture and writes nothing; a token covering a vanished
  * claim commits; a mixed picture moves, refunds, releases and declines in that one transaction and
  * receipts every line; a picture that refunds without the typed count and a reason is
- * {@code 409 REFUND_NOT_CONFIRMED}; a claim that pins its set is {@code 409 REMODEL_REFUSED}; a staff
- * hold is stale; a stale {@code set_version} answers in the save's words; no booking code anywhere
- * (invariant #7).
+ * {@code 409 REFUND_NOT_CONFIRMED}; a blocked claim is kept where it is with its set left as stored
+ * while the rest commits; a layout that gives a kept set's label to another set is
+ * {@code 409 REMODEL_REFUSED} and writes nothing; a staff hold is stale; a stale {@code set_version}
+ * answers in the save's words; no booking code anywhere (invariant #7).
  * Dates are relative to today in {@code Europe/Tirane} so the zones fall where the default windows
  * put them.
  */
@@ -263,25 +264,89 @@ class RemodelCommitIT {
 	}
 
 	@Test
-	void aBlockedClaimIsRefusedAndAStaffHoldIsStale() throws Exception {
-		long venue = createVenue("Refused Club");
-		putLayout(venue, layout(0, cell("A", 1, 1), cellWalkIn("A", 2, 2)));
+	void aBlockedClaimIsKeptWithItsSetWhileTheRestCommits() throws Exception {
+		long venue = createVenue("Kept Club");
+		putLayout(venue, layout(0, cell("A", 1, 1), cell("A", 2, 2), cell("A", 3, 3)));
 		List<Long> ids = setIds(venue);
 		long a1 = ids.get(0);
+		long a2 = ids.get(1);
+		long a3 = ids.get(2);
 		LocalDate tomorrow = today.plusDays(1);
+		LocalDate farOut = today.plusDays(10);
 		long frozen = claimOn(venue, a1, tomorrow, "CONFIRMED");
+		long moved = claimOn(venue, a2, farOut, "CONFIRMED");
 		long token = currentSetVersion(venue);
-		String body = layout(token, cellWalkIn("A", 2, 2));
+		String body = layout(token, cell("A", 3, 3));
 		String previewToken = previewToken(venue, body);
 
-		mvc.perform(commit(venue, body, previewToken, 1, "Re-laying"))
-				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("REMODEL_REFUSED"))
-				.andExpect(jsonPath("$.preview.blocks.length()").value(1))
-				.andExpect(jsonPath("$.preview.blocks[0].bookingId").value(frozen));
-		assertEquals("CONFIRMED", statusOf(frozen));
-		assertEquals(token, currentSetVersion(venue));
+		MvcResult result = mvc.perform(commit(venue, body, previewToken))
+				.andExpect(status().isOk())
+				.andExpect(content().string(not(containsString("\"code\""))))
+				.andExpect(jsonPath("$.moves.length()").value(1))
+				.andExpect(jsonPath("$.moves[0].bookingId").value(moved))
+				.andExpect(jsonPath("$.moves[0].to.setId").value(a3))
+				.andExpect(jsonPath("$.kept.length()").value(1))
+				.andExpect(jsonPath("$.kept[0].bookingId").value(frozen))
+				.andExpect(jsonPath("$.kept[0].from.setId").value(a1))
+				.andExpect(jsonPath("$.kept[0].from.positionNo").value(1))
+				.andExpect(jsonPath("$.kept[0].reason").value("FROZEN"))
+				.andReturn();
+		long receipt = ((Number) JsonPath.read(result.getResponse().getContentAsString(), "$.receiptId")).longValue();
 
+		assertEquals(a3, setOf(moved), "the movable claim is re-seated");
+		assertNotNull(movedAt(moved));
+		assertEquals(1, holds(a3, farOut));
+		assertEquals(0, holds(a2, farOut));
+		assertEquals(a1, setOf(frozen), "the kept claim is left where it is");
+		assertNull(movedAt(frozen), "a kept claim is not a moved one");
+		assertEquals("CONFIRMED", statusOf(frozen));
+		assertEquals(1, holds(a1, tomorrow), "the kept claim keeps its (set, date) row");
+		assertFalse(retired(a1), "the kept set stays on the active map");
+		assertTrue(retired(a2), "the set the moved guest left is retired");
+		assertEquals(List.of(a1, a3), setIds(venue), "the rest of the layout is written around the kept set");
+		assertEquals(1, jdbc.sql("SELECT position_no FROM set_position WHERE id = :id").param("id", a1)
+				.query(Integer.class).single(), "the kept set keeps its label");
+		assertEquals(token + 1, currentSetVersion(venue), "the save spent the token once");
+		assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM remodel_receipt_kept WHERE receipt_id = :r AND booking_id = :b AND reason = 'FROZEN'")
+				.param("r", receipt).param("b", frozen).query(Integer.class).single(), "the receipt names the kept claim");
+		mvc.perform(get("/api/venues/{v}/remodels/{r}", venue, receipt).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.kept.length()").value(1))
+				.andExpect(jsonPath("$.kept[0].bookingId").value(frozen))
+				.andExpect(jsonPath("$.kept[0].reason").value("FROZEN"));
+	}
+
+	@Test
+	void aLayoutThatDisplacesAKeptSetsLabelIsRefusedAndWritesNothing() throws Exception {
+		long venue = createVenue("Displaced Club");
+		putLayout(venue, layout(0, cell("A", 1, 1), cell("A", 2, 2)));
+		List<Long> ids = setIds(venue);
+		long a1 = ids.get(0);
+		long frozen = claimOn(venue, a1, today.plusDays(1), "CONFIRMED");
+		long token = currentSetVersion(venue);
+		// A1's cell is painted away and A2 takes the label A1 — the kept set's own row and position.
+		String body = layout(token, cell("A", 1, 2));
+		String previewToken = previewToken(venue, body);
+
+		mvc.perform(commit(venue, body, previewToken))
+				.andExpect(status().isConflict())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("REMODEL_REFUSED"))
+				.andExpect(jsonPath("$.detail")
+						.value("The layout gives the row and position of a set this remodel keeps to another set."))
+				.andExpect(jsonPath("$.preview.blocks.length()").value(1))
+				.andExpect(jsonPath("$.preview.blocks[0].bookingId").value(frozen))
+				.andExpect(jsonPath("$.preview.keep[0].setId").value(a1))
+				.andExpect(jsonPath("$.preview.previewToken", startsWith("v1.")));
+		assertEquals("CONFIRMED", statusOf(frozen));
+		assertEquals(a1, setOf(frozen));
+		assertEquals(token, currentSetVersion(venue), "a refusal spends no token");
+		assertEquals(ids, setIds(venue), "a refusal writes no layout");
+		assertEquals(0, receiptsOf(venue), "a refusal leaves no receipt");
+	}
+
+	@Test
+	void aStaffHoldIsStale() throws Exception {
 		long held = createVenue("Held Club");
 		putLayout(held, layout(0, cell("A", 1, 1), cell("A", 2, 2)));
 		long h1 = setIds(held).get(0);

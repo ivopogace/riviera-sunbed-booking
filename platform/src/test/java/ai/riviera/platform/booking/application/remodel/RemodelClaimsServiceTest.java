@@ -57,6 +57,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.eq;
@@ -66,8 +67,9 @@ import static org.mockito.ArgumentMatchers.anyLong;
  * The classification, keyed on the claim then split by status: a frozen claim blocks; a claim with
  * a candidate moves (one candidate serves one claim per date); a move-only claim with none blocks
  * naming the set to keep; beyond the floor {@code CONFIRMED} refunds, {@code AWAITING_PAYMENT}
- * releases, {@code PENDING_REQUEST} declines. The commit applies all four and refuses only a claim
- * that pins its set, and a picture that refunds guests needs the operator's typed count and reason.
+ * releases, {@code PENDING_REQUEST} declines. The commit applies all four, keeps a blocked claim
+ * where it is and receipts it, and a picture that refunds guests needs the operator's typed count
+ * and reason.
  * Ownership asserts before any read (invariant #13). The clock is fixed at 10:00 Tirane on 10 Sept
  * 2026 against the 24h / 96h windows.
  */
@@ -235,20 +237,31 @@ class RemodelClaimsServiceTest {
 	}
 
 	@Test
-	void blockedAndHeldPicturesAreStillRefusedWhateverTheConfirmation() {
+	void aBlockedClaimIsKeptAndReceiptedWhileTheRestSettles() {
 		RemodelClaim frozen = new RemodelClaim(new BookingId(202), ref(A1), TOMORROW, TOMORROW, 4500, "EUR",
 				new RemodelOutcome.Blocked(BlockReason.FROZEN));
-		when(bookings.findLiveOnSets(Set.of(A1.setId())))
-				.thenReturn(List.of(claim(202, A1, TOMORROW, BookingStatus.CONFIRMED)));
-		givenMap(List.of(A1), TOMORROW, List.of());
+		RemodelClaim move = new RemodelClaim(new BookingId(203), ref(A2), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR",
+				new RemodelOutcome.Move(ref(A3), 0, 1));
+		when(bookings.findLiveOnSets(Set.of(A1.setId(), A2.setId()))).thenReturn(List.of(
+				claim(203, A2, IN_TEN_DAYS, BookingStatus.CONFIRMED),
+				claim(202, A1, TOMORROW, BookingStatus.CONFIRMED)));
+		givenMap(List.of(A1, A2, A3), IN_TEN_DAYS, List.of(A3));
+		when(availability.claim(A3.setId(), IN_TEN_DAYS)).thenReturn(ClaimOutcome.CLAIMED);
+		when(bookings.moveToSet(203, A2.setId(), A3.setId(), CLOCK.instant())).thenReturn(true);
+		when(receipts.store(any())).thenReturn(RECEIPT);
 
-		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(frozen), CONFIRMED_ONE);
+		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId(), A2.setId()), previewOf(frozen, move),
+				RefundConfirmation.NONE);
 
-		assertEquals(new RemodelCommit.Refused(List.of(frozen)), outcome);
-		verify(availability, never()).claim(any(), any());
-		verify(availability, never()).release(any(), any());
-		verify(receipts, never()).store(any());
-		verify(events, never()).publishEvent(any());
+		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(frozen, move)), outcome);
+		verify(availability, never()).claim(eq(A1.setId()), any());
+		verify(availability, never()).release(eq(A1.setId()), any());
+		verify(bookings, never()).moveToSet(eq(202L), any(), any(), any());
+		verify(events).publishEvent(new BookingMoved(new BookingId(203), VENUE, A2.setId(), A3.setId(), IN_TEN_DAYS));
+		verifyNoMoreInteractions(events);
+		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(),
+				List.of(new ReceiptMove(new BookingId(203), IN_TEN_DAYS, ref(A2), ref(A3), 0, 1)), List.of(), "",
+				List.of(new ReceiptKept(new BookingId(202), TOMORROW, ref(A1), BlockReason.FROZEN))));
 	}
 
 	@Test
@@ -273,7 +286,7 @@ class RemodelClaimsServiceTest {
 		order.verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(),
 				List.of(new ReceiptOutcome(new BookingId(210), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.REFUND,
 						4500, "EUR", 500L)),
-				"Re-laying row A"));
+				"Re-laying row A", List.of()));
 		verify(availability, never()).claim(any(), any());
 		verify(bookings, never()).moveToSet(anyLong(), any(), any(), any());
 	}
@@ -306,7 +319,7 @@ class RemodelClaimsServiceTest {
 		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(), List.of(
 				new ReceiptOutcome(new BookingId(211), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.RELEASE, 4500, "EUR", 0L),
 				new ReceiptOutcome(new BookingId(212), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.DECLINE, 4500, "EUR", 0L)),
-				""));
+				"", List.of()));
 	}
 
 	@Test
@@ -365,7 +378,7 @@ class RemodelClaimsServiceTest {
 		order.verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(
 				new ReceiptMove(new BookingId(203), IN_TEN_DAYS, ref(A1), ref(A2), 0, 1),
 				new ReceiptMove(new BookingId(204), IN_TEN_DAYS.plusDays(1), ref(A1), ref(A3), 0, 2)),
-				List.of(), ""));
+				List.of(), "", List.of()));
 	}
 
 	@Test
@@ -383,7 +396,7 @@ class RemodelClaimsServiceTest {
 		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewed, RefundConfirmation.NONE);
 
 		RemodelCommit.Applied applied = (RemodelCommit.Applied) outcome;
-		assertEquals(new RemodelOutcome.Move(ref(A3), 0, 2), applied.applied().getFirst().outcome());
+		assertEquals(new RemodelOutcome.Move(ref(A3), 0, 2), applied.settled().getFirst().outcome());
 		verify(bookings).moveToSet(205, A1.setId(), A3.setId(), CLOCK.instant());
 	}
 

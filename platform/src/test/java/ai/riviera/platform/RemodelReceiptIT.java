@@ -20,10 +20,12 @@ import org.springframework.test.web.servlet.MvcResult;
 import com.jayway.jsonpath.JsonPath;
 
 import ai.riviera.platform.booking.application.remodel.NewReceipt;
+import ai.riviera.platform.booking.application.remodel.ReceiptKept;
 import ai.riviera.platform.booking.application.remodel.ReceiptMove;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcome;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcomeKind;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
+import ai.riviera.platform.booking.vocabulary.BlockReason;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.ReceiptId;
 import ai.riviera.platform.booking.vocabulary.SpotRef;
@@ -33,6 +35,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -77,10 +80,10 @@ class RemodelReceiptIT {
 		OperatorId operator = new OperatorId(jdbc.sql("SELECT id FROM operator WHERE username = 'operator'")
 				.query(Long.class).single());
 		LocalDate day = LocalDate.of(2027, 7, 12);
-		ReceiptId older = receipts.store(new NewReceipt(new VenueId(venue), operator, Instant.parse("2026-09-09T10:00:00Z"), List.of(), List.of(), ""));
+		ReceiptId older = receipts.store(new NewReceipt(new VenueId(venue), operator, Instant.parse("2026-09-09T10:00:00Z"), List.of(), List.of(), "", List.of()));
 		ReceiptId newer = receipts.store(new NewReceipt(new VenueId(venue), operator, Instant.parse("2026-09-09T11:00:00Z"), List.of(
 				new ReceiptMove(new BookingId(booking), day, new SpotRef(new SetId(a1), "A", 1),
-						new SpotRef(new SetId(a2), "A", 2), 0, 1)), List.of(), ""));
+						new SpotRef(new SetId(a2), "A", 2), 0, 1)), List.of(), "", List.of()));
 
 		mvc.perform(get("/api/venues/{v}/remodels", venue).cookie(operatorSession))
 				.andExpect(status().isOk())
@@ -124,7 +127,7 @@ class RemodelReceiptIT {
 				Instant.parse("2026-09-09T12:00:00Z"), List.of(), List.of(
 						new ReceiptOutcome(new BookingId(refunded), day, spot, ReceiptOutcomeKind.REFUND, 4500, "EUR", 500L),
 						new ReceiptOutcome(new BookingId(released), day, spot, ReceiptOutcomeKind.RELEASE, 2000, "EUR", 0L)),
-				"Re-laying row A for the season"));
+				"Re-laying row A for the season", List.of()));
 
 		mvc.perform(get("/api/venues/{v}/remodels/{r}", venue, id.value()).cookie(operatorSession))
 				.andExpect(status().isOk())
@@ -151,6 +154,32 @@ class RemodelReceiptIT {
 
 		mvc.perform(get("/api/venues/{v}/remodels/{r}", other(venue), id.value()).cookie(operatorSession))
 				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void readsAKeptLineWithItsReason() throws Exception {
+		long venue = createVenue("Kept Claims Club");
+		long a1 = insertSet(venue, 1);
+		long kept = seedBooking(venue, a1, "RCP-" + System.nanoTime());
+		OperatorId operator = new OperatorId(jdbc.sql("SELECT id FROM operator WHERE username = 'operator'")
+				.query(Long.class).single());
+		ReceiptId id = receipts.store(new NewReceipt(new VenueId(venue), operator,
+				Instant.parse("2026-09-09T12:00:00Z"), List.of(), List.of(), "", List.of(new ReceiptKept(
+						new BookingId(kept), LocalDate.of(2027, 7, 12), new SpotRef(new SetId(a1), "A", 1),
+						BlockReason.NO_MOVE_CANDIDATE))));
+
+		mvc.perform(get("/api/venues/{v}/remodels/{r}", venue, id.value()).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(content().string(not(containsString("\"code\""))))
+				.andExpect(jsonPath("$.moves.length()").value(0))
+				.andExpect(jsonPath("$.refunds.length()").value(0))
+				.andExpect(jsonPath("$.kept.length()").value(1))
+				.andExpect(jsonPath("$.kept[0].bookingId").value(kept))
+				.andExpect(jsonPath("$.kept[0].bookingDate").value("2027-07-12"))
+				.andExpect(jsonPath("$.kept[0].from.setId").value(a1))
+				.andExpect(jsonPath("$.kept[0].from.positionNo").value(1))
+				.andExpect(jsonPath("$.kept[0].reason").value("NO_MOVE_CANDIDATE"))
+				.andExpect(jsonPath("$.refundedTotal").value(nullValue()));
 	}
 
 	private long other(long venue) throws Exception {

@@ -86,6 +86,41 @@ record LayoutDiff(List<Update> updates, List<SetCommand> inserts, List<PlacedSet
 		return matched;
 	}
 
+	/**
+	 * This diff with the {@code kept} sets left exactly as stored: a kept removal is no removal, a kept
+	 * update is dropped whole. Inserts are untouched, so a clash on a kept set's label is
+	 * {@link #displaced}'s to name before this diff is written.
+	 */
+	LayoutDiff keeping(Set<SetId> kept) {
+		if (kept.isEmpty()) {
+			return this;
+		}
+		return new LayoutDiff(
+				updates.stream().filter(update -> !kept.contains(update.stored().id())).toList(),
+				inserts,
+				removed.stream().filter(set -> !kept.contains(set.id())).toList());
+	}
+
+	/**
+	 * The {@code kept} disturbed sets whose stored row and position some other submitted set wants —
+	 * an update of another set or an insert. Written with the kept set in place, that command would
+	 * collide on the layout-uniqueness index, so the save refuses instead — a precise answer where
+	 * {@code set_position_cell_uniq} stays the race-safe backstop, as {@code LayoutCommand#duplicateWithin} does.
+	 */
+	List<PlacedSet> displaced(Set<SetId> kept) {
+		Map<String, SetId> wanted = new HashMap<>();
+		updates.forEach(update -> wanted.put(
+				slotKey(update.command().rowLabel(), update.command().positionNo()), update.stored().id()));
+		inserts.forEach(insert -> wanted.putIfAbsent(slotKey(insert.rowLabel(), insert.positionNo()), null));
+		return disturbed().stream()
+				.filter(set -> kept.contains(set.id()))
+				.filter(set -> {
+					String slot = slotKey(set.placement().rowLabel(), set.placement().positionNo());
+					return wanted.containsKey(slot) && !set.id().equals(wanted.get(slot));
+				})
+				.toList();
+	}
+
 	/** The sets this save could strand a guest on — removed or repositioned — in stored order. */
 	List<PlacedSet> disturbed() {
 		List<PlacedSet> repositioned = updates.stream().filter(Update::repositions).map(Update::stored).toList();

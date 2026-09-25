@@ -6,8 +6,10 @@ import { setDistanceText } from '../shared/set-distance';
 import { TouchTarget } from '../shared/touch-target';
 import { formatMoney } from '../shared/money';
 import {
+  remodelBlockReasonText,
   RemodelReceipt,
   RemodelReceiptClaim,
+  RemodelReceiptKept,
   RemodelReceiptMove,
   RemodelReceiptRelease,
   RemodelSpot,
@@ -15,8 +17,9 @@ import {
 
 /**
  * A remodel-commit receipt: when the layout was saved, every booking it moved — each with the spot
- * the guest was told before, the spot they hold now and the distance — and every claim it ended
- * instead, with what was refunded and why. Shown right after a commit and again from the editor's
+ * the guest was told before, the spot they hold now and the distance — every claim it ended
+ * instead, with what was refunded and why, and every claim it kept where it was, with why its set
+ * stayed. Shown right after a commit and again from the editor's
  * past remodels, so an operator can answer a guest who phones about a changed spot or a refund.
  * Bookings by id, never by code (invariant #7). The `@if` stays outside; focus in and out is the
  * caller's (`focusMover()` on the heading's test id).
@@ -95,6 +98,17 @@ import {
         }
       </ul>
     }
+    @if (receipt().kept.length > 0) {
+      <h4 class="mt-2 text-[12.5px] font-bold">Kept in place ({{ receipt().kept.length }})</h4>
+      <ul
+        class="mt-1 list-disc pl-4 text-[12px] leading-[1.45]"
+        data-testid="layout-remodel-receipt-kept"
+      >
+        @for (kept of receipt().kept; track kept.bookingId) {
+          <li>{{ keptText(kept) }}</li>
+        }
+      </ul>
+    }
     <button
       appTouchTarget
       type="button"
@@ -110,7 +124,7 @@ export class RemodelReceiptPanel {
   readonly receipt = input.required<RemodelReceipt>();
   readonly closed = output<void>();
 
-  /** "Saved Tue 9 Sept, 15:00 · 2 bookings moved, 1 refunded, 2 ended" */
+  /** "Saved Tue 9 Sept, 15:00 · 2 bookings moved, 1 refunded, 2 ended, 1 kept in place" */
   protected committedText(): string {
     const receipt = this.receipt();
     const moved = receipt.moves.length;
@@ -120,6 +134,9 @@ export class RemodelReceiptPanel {
     }
     if (receipt.releases.length > 0) {
       parts.push(`${receipt.releases.length} ended`);
+    }
+    if (receipt.kept.length > 0) {
+      parts.push(`${receipt.kept.length} kept in place`);
     }
     return `Saved ${formatDeadline(receipt.committedAt)} · ${parts.join(', ')}`;
   }
@@ -150,6 +167,10 @@ export class RemodelReceiptPanel {
     const kind =
       release.kind === 'RELEASE' ? 'unpaid booking released' : 'pending request declined';
     return `${this.claimText(release)} · ${kind}`;
+  }
+
+  protected keptText(kept: RemodelReceiptKept): string {
+    return `${spotLabel(kept.from)} · ${formatCivilDate(kept.bookingDate)} · ${remodelBlockReasonText(kept.reason)}`;
   }
 
   protected moveText(move: RemodelReceiptMove): string {

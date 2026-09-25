@@ -185,11 +185,16 @@ over time. The standing rules:
   - *The remodel commit is the save with a gate in it:* `BeachMapRemodel#commit` runs the one bulk
     write (`LayoutWriter`, the same code the plain save runs) under the venue-wide set lock and,
     between the locks and the live-claim probe, hands the disturbed sets to the caller's
-    `venue.api.RemodelGate`; the gate proceeding means the caller has re-seated every claim inside
-    my transaction (`booking` joins it), so the probe finds no live claim and the layout writes. A
-    refusing gate, a probe that still refuses, or a shape rejection marks the transaction
-    rollback-only — the layout and the moves land together or not at all, whichever refused. The
-    plain save is the same writer with a gate that always refuses a disturbed set.
+    `venue.api.RemodelGate`. The gate answers a `GateVerdict`: `Proceed` names the **kept sets** —
+    the disturbed sets the caller could not settle around — and the write leaves each exactly as
+    stored (a removed one stays, a renumbered one keeps its row, number, tier, pool and price) and
+    skips it in the probe; every other disturbed set the caller has re-seated inside my transaction
+    (`booking` joins it), so the probe finds no live claim and the layout writes. A submitted set
+    that wants a kept set's `(row, position)` is `KeptSetsDisplaced` (`LayoutDiff#displaced`): the
+    operator must keep that set themselves. A declining gate, a displaced kept set, a probe that
+    still refuses, or a shape rejection marks the transaction rollback-only — the layout and the
+    moves land together or not at all, whichever refused. The plain save is the same writer with a
+    gate that always proceeds keeping nothing, so the probe alone decides.
   - A rename is refused only for `ROW_NAME_TAKEN` (another row already carries the label);
     renaming a row to its own label is a no-op. The bulk save enforces the same
     one-label-one-physical-row rule within its batch (`LayoutRejection.ROW_NAME_TAKEN`);
@@ -499,7 +504,7 @@ exactly as it would against any other claim (invariant #2).
   blocks; beyond the floor `CONFIRMED` refunds, `AWAITING_PAYMENT` releases, `PENDING_REQUEST`
   declines. The answer carries outcome kinds, set references and amounts — never a status and never a
   code (invariant #7). Advisory: read-only and unlocked, so the commit re-derives it.
-- **The remodel commit settles every claim it can, and refuses only a claim that pins its set.**
+- **The remodel commit settles every claim: moved, ended, or kept where it is.**
   `RemodelClaims#commit` (published, ADR-0020) runs inside `venue`'s commit transaction as its
   `RemodelGate`: it re-classifies the disturbed sets under the lock, checks the operator's
   `PreviewToken` still **covers** the fresh picture — the token is a sorted set of per-pair digests
@@ -515,18 +520,23 @@ exactly as it would against any other claim (invariant #2).
   for the third — so the refund, the payout reversal and the mails drain after commit and nothing here
   talks to Stripe. A released claim's `BookingCancelled` carries `refundMinor = 0`, which is what
   mails the guest without moving money: no refund is issued and no reversal is posted for a booking
-  that never collected. A `Blocked` claim refuses the whole commit (`Refused`).
+  that never collected. A `Blocked` claim is **kept**: nothing of it changes — no row, no status, no
+  event — it gets a `remodel_receipt_kept` line with its `BlockReason`, and the edge hands its set to
+  `venue` as a kept set so the layout leaves it as stored. A claim that can move off a kept set still
+  moves as previewed: the operator painted that set away, and the preview showed the move.
 - **A commit that refunds guests is a deliberate second act.** It carries a `RefundConfirmation` — how
   many refunds the operator read off the preview and why they are remodelling — and a count that does
   not match the picture re-derived under the lock, or a blank reason, is `Unconfirmed` with the number
   owed and writes nothing. Both land on the receipt beside the money.
-- **The receipt is mine.** `remodel_receipt` / `remodel_receipt_move` / `remodel_receipt_outcome`
-  snapshot the old and new labels, the distance, and one line per ended claim with its amount, plus
-  the operator's reason, so the moved mail, the guest's view and the console still name the spot the
-  guest was told after that set is retired. `BookingPresence#hasBookings` counts a receipt's from- and
+- **The receipt is mine.** `remodel_receipt` / `remodel_receipt_move` / `remodel_receipt_outcome` /
+  `remodel_receipt_kept` snapshot the old and new labels, the distance, one line per ended claim with
+  its amount, one line per kept claim with its reason, plus the operator's reason, so the moved
+  mail, the guest's view and the console still name the spot the guest was told after that set is
+  retired. `BookingPresence#hasBookings` counts a receipt's from- and
   to-sets so a set a moved booking left retires rather than deletes; an ended claim needs no such arm,
   because its booking keeps that `set_id` — which is why the outcome row records the set id without a
-  foreign key. `BookingNotificationFacts#endedByRemodel` reads those lines, and is the only thing that
+  foreign key. `BookingNotificationFacts#endedByRemodel` reads the outcome lines alone — a kept
+  booking was not ended — and is the only thing that
   tells a venue-caused cancellation from the guest's own free exit, since both are `VENUE_CHANGE`. The
   receipts read (`ViewRemodelReceipts`, `GET /api/venues/{venueId}/remodels[/{receiptId}]`,
   owner-asserted) is my own inbound adapter, not the root's. No undo: a move is reversed by another
@@ -1268,10 +1278,12 @@ the picture the operator saw. `RemodelCommitController` (`POST /api/venues/{venu
 operator-gated; the save body, `previewToken` and the operator's `refundCount`/`refundReason`)
 composes the same two ports the other way round: `RemodelCommitService` is the `venue.api.RemodelGate`
 `BeachMapRemodel#commit` calls between its locks and its probe, and inside it `RemodelClaims#commit`
-settles every claim — so the layout write, the moves, the availability rows, the status transitions
-and the receipt commit or roll back as one, and nothing that talks to Stripe is inside. Its answers:
-`200` with the receipt (id, committed-at, the moves, the refunds, the releases and declines, the
-reason and the total returned); `409 STALE_PREVIEW`, `409 REMODEL_REFUSED` or `409
+settles every claim and the gate answers `venue` the kept claims' sets — so the layout write, the
+moves, the availability rows, the status transitions and the receipt commit or roll back as one, and
+nothing that talks to Stripe is inside. Its answers:
+`200` with the receipt (id, committed-at, the moves, the refunds, the releases and declines, the kept
+claims with their reason, the refund reason and the total returned); `409 STALE_PREVIEW`,
+`409 REMODEL_REFUSED` (the layout gives a kept set's row and position to another set) or `409
 REFUND_NOT_CONFIRMED` — the last also naming the count owed — each carrying the fresh picture and its
 token in a `preview` extension, so the operator re-decides on what is true now; the save's own
 `SETS_IN_USE`, `STALE_WRITE` and shape rejections. `CompositionRootDisciplineTests` grants the root exactly those two modules'
