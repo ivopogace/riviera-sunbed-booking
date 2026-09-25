@@ -1868,8 +1868,11 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
 
       sheet.querySelector<HTMLButtonElement>('[data-testid="shorten-stay"]')!.click();
       fixture.detectChanges();
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
 
       expect(dom().querySelector('[data-testid="partly-free-sheet"]')).toBeNull();
+      // The sheet is gone before the map answers: focus lands on its tile meanwhile (RV-FE-9).
+      expect(document.activeElement).toBe(dom().querySelector('button[data-set-id="2"]'));
       const request = venueReq();
       expect(request.request.params.get('date')).toBe(first);
       expect(request.request.params.get('lastDate')).toBe(addDays(first, 1));

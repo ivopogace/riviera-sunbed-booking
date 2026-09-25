@@ -602,6 +602,8 @@ export class VenueMap {
   protected shortenTo(set: SetView, days: DateRange): void {
     this.partlySet.set(undefined);
     this.lastTriggerId = set.id;
+    // The sheet held focus: land on its tile now (RV-FE-9); the dialog takes it once the map is here.
+    this.focusTile(set.id);
     this.onDatesChange(days);
     // Set after the dispatch: a date change clears it, so it can only fire for this load.
     this.pendingSelectSetId = set.id;
