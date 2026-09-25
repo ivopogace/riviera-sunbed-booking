@@ -30,8 +30,12 @@ committable; V62 free on `main` and unclaimed by the open PRs, all dependabot's;
 #1201 closed and counted on the epic; six decisions put to the user, below) · `riviera-plan-doc`
 (forced the module-ownership table, the displaced-label refusal into the risk register and the
 seam list) · `tdd` (each phase red-green at the driving port; the existing remodel ITs are the
-equivalence oracle for every non-blocked picture) · `riviera-review-overlay` (due at
-ready-for-review) · `riviera-docs-freshness` (due at close-out) · `grilling` (Q1 venue keeps the
+equivalence oracle for every non-blocked picture) · `riviera-review-overlay` (ran at
+ready-for-review with the code-review plugin over `cf808acd..3f4fe9d5`; RV-PROC-1 added
+`riviera-local-debug` to this line, RV-PROC-2 sharpened the glossary's frozen zone) ·
+`riviera-docs-freshness` (**ran** at close-out, see the Findings register) ·
+`riviera-local-debug` (JDK 25 at `/opt/jdk-25`, scoped test runs, the hook's dockerd; the
+clone was unshallowed before the guards and the review range) · `grilling` (Q1 venue keeps the
 set · Q2 frontend in this slice · Q3 a `remodel_receipt_kept` table · Q4 staff holds stay
 `STALE_PREVIEW` · Q5 a displaced kept label refuses the save · Q6 a kept set is wholly untouched) ·
 `postgres` (identity PK, `TEXT` + `CHECK` for the reason, FK on `receipt_id` and `booking_id` each
@@ -242,12 +246,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | Sonar (java:S1192) | `"SELECT "` literal three times in `JdbcRemodelReceipts` | fixed — `SELECT` constant |
 | F-2 | Sonar (java:S1192) | `"reason"` column read duplicates `P_REASON` | fixed — reads the constant |
 | F-3 | Sonar (typescript:S3358) | nested ternary in `keepSentence` | fixed — verb hoisted to a local |
+| F-4 | docs-freshness 2b over `cf808acd..3f4fe9d5` | `JdbcRemodelReceipts` Javadoc counted "the two line readers"; the kept reader is the third | fixed — count dropped |
+| F-5 | docs-freshness plan retirement | `docs/plans/multi-day-span.md` (merged via PR #1213) still in the tree; no citation outside `docs/plans/` | fixed — `git rm` in this PR |
+| F-6 | docs-freshness 2a/3 | zero stale present-tense facts in `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, ADRs, skills, `docs/agents`; "five wire groups" and "the four remodel legs" still hold (a kept claim is a group, not a leg) | no action |
 
 ---
 
 ## File structure
 
 - `docs/plans/remodel-per-claim.md` — this plan
+- `docs/plans/multi-day-span.md` — retired (its PR #1213 merged)
 - `platform/src/main/resources/db/migration/V62__remodel_receipt_kept.sql` — the kept-line table
 - `platform/src/main/java/ai/riviera/platform/booking/application/remodel/ReceiptKept.java` — one kept line
 - `platform/src/main/java/ai/riviera/platform/booking/application/remodel/{NewReceipt,RemodelReceipt,RemodelReceipts,RemodelClaimsService}.java` — kept lines; commit keeps instead of refusing

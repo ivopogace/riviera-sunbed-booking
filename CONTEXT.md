@@ -149,7 +149,7 @@ model in `docs/architecture/domain-model.md`.
 - **Remodel zone** — how close a live claim's service day is when a layout change would take its
   set, measured as the time left until that day opens (midnight, `Europe/Tirane`), never as a count
   of calendar days: **frozen** when the day opens within the freeze window or has opened — the
-  claim pins its set; **move-only** when it opens within the refund-notice floor — the booking may
+  claim is a **kept claim** and its set stays; **move-only** when it opens within the refund-notice floor — the booking may
   be moved to another set, never refunded by the venue's change; **move-or-refund** beyond it. The
   two bounds are settings, not dates, so the answer does not depend on the hour the operator clicks.
 - **Kept claim** — a live claim a saved remodel could not move or end — **frozen**, or move-only

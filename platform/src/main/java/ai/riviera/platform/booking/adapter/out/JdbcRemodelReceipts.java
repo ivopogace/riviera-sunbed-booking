@@ -204,7 +204,7 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 				.list();
 	}
 
-	/** A row mapper that may throw, so the two line readers can be passed to the shared queries. */
+	/** A row mapper that may throw, so the line readers can be passed to the shared queries. */
 	@FunctionalInterface
 	private interface RowReader<T> {
 		T read(ResultSet rs) throws SQLException;
