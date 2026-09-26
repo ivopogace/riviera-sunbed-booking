@@ -12,6 +12,12 @@
   citation below is re-read against the tree at `b8ab723` (the notes audited `1f715c1` and
   `9f2411d`; where a count differs, this ADR states the re-read one and says so).
 
+*Module count amended 2026-09-26 (#1206 / PR #1250):* the platform has **thirteen** modules since
+the `itinerary` read model landed — the "twelve" below is the 2026-09-04 audit's count and stays as
+written. `itinerary` holds a pure domain rule (`itinerary/domain/StayFit`), so it joins the modules
+with a rule layer. The decision and § 5's verdict hold: the thirteen are modules, the platform is one
+bounded context.
+
 ## Context
 
 Nothing in the substrate wrote down what `domain/` is *for*. ADR-0007 lists it in the full template
