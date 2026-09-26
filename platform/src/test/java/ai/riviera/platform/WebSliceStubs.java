@@ -1070,6 +1070,11 @@ class WebSliceStubs {
 
 	/** The public review list behind {@code GET /api/venues/{id}/reviews} — inert: no venue is visible. */
 	@Bean
+	ai.riviera.platform.itinerary.application.StayVerdicts stayVerdicts() {
+		return (_, _) -> Map.of();
+	}
+
+	@Bean
 	ListVenueReviews listVenueReviews() {
 		return (_, _) -> Optional.empty();
 	}

@@ -19,18 +19,16 @@ import ai.riviera.platform.shared.InvalidApiRequestException;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.application.ListVenueReviews;
 import ai.riviera.platform.venue.vocabulary.StaySpan;
-import ai.riviera.platform.venue.vocabulary.VenueFilter;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueMapView;
-import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 
 /**
- * The public tourist venue reads, on this module's ports only (invariant #11): the discovery list,
- * a venue's beach map, its availability calendar and its reviews; a hidden venue reads as unknown.
- * A missing {@code date} or {@code from} is today in {@code Europe/Tirane} off the injected UTC
- * {@link Clock}, never the JVM zone (invariant #6); it is a display default, and sales close
- * (invariant #4) is enforced at booking. The calendar must not reuse the {@code /availability}
- * segment, which is the operator-only per-set state read.
+ * The public per-venue tourist reads, on this module's ports only (invariant #11): a venue's beach
+ * map, its availability calendar and its reviews; a hidden venue reads as unknown. The discovery
+ * list is the {@code itinerary} module's. A missing {@code date} or {@code from} is today in
+ * {@code Europe/Tirane} off the injected UTC {@link Clock}, never the JVM zone (invariant #6); a
+ * display default, sales close (invariant #4) is enforced at booking. The calendar must not reuse
+ * the {@code /availability} segment, which is the operator-only per-set state read.
  */
 @RestController
 @RequestMapping("/api/venues")
@@ -52,20 +50,6 @@ class VenueReadController {
 		this.catalog = catalog;
 		this.reviews = reviews;
 		this.clock = clock;
-	}
-
-	/**
-	 * The venues matching the optional {@code beach}/{@code region} filters, with free/total set
-	 * counts for {@code date} (default today in {@code Europe/Tirane}). Always 200: a filter hitting no
-	 * venue is an empty array, not a 404.
-	 */
-	@GetMapping
-	List<VenueSummaryView> listVenues(
-			@RequestParam(required = false) String beach,
-			@RequestParam(required = false) String region,
-			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-		LocalDate effectiveDate = date != null ? date : todayInTirane();
-		return catalog.listVenues(VenueFilter.of(beach, region), effectiveDate);
 	}
 
 	/**
