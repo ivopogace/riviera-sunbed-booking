@@ -7,11 +7,9 @@ import java.time.Instant;
  * The order the review fences apply in, as one pure function: unknown booking, then never checked
  * in, then hidden by an admin, then window closed, then already rated, then eligible.
  *
- * <p>The order is the point. Every path that asks whether a stay may be rated — submit, edit,
- * delete, and the code-gated read — asks here, so a stay that trips two fences at once is told the
- * same thing whichever surface asks: a rated stay past its window reads as frozen, never as already
- * reviewed. That agreement is a property of there being one statement of the order, not of four
- * services being kept in step.
+ * <p>Submit, edit, delete and the code-gated read all ask here, so a stay tripping two fences gets
+ * one answer on every surface (a rated stay past its window reads frozen, never already reviewed):
+ * keep the order here, never restated per service.
  *
  * @see ReviewWindow
  */
@@ -21,11 +19,9 @@ public final class ReviewGate {
 	}
 
 	/**
-	 * Where the stay behind a booking code stands right now.
-	 *
-	 * @param bookingExists whether any booking answers to the code, whatever its status
-	 * @param completedAt   the instant the stay completed, or {@code null} while it has not
-	 * @param slot          what this stay's one review slot holds
+	 * Where the stay behind a booking code stands at {@code now}: {@code bookingExists} is whether
+	 * any booking answers to the code, whatever its status; {@code completedAt} is {@code null}
+	 * while the stay has not completed; {@code slot} is what the stay's one review slot holds.
 	 */
 	public static ReviewState stateOf(boolean bookingExists, Instant completedAt, ReviewSlot slot,
 			Instant now) {

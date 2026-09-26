@@ -18,14 +18,9 @@ import ai.riviera.platform.review.vocabulary.VenueRef;
 public interface Reviews {
 
 	/**
-	 * Claim this stay's one review slot and record the verdict against it. Named for the
-	 * availability primitive it mirrors, not for the write: the row's creation <em>is</em> the claim.
-	 * The row keeps the stay's venue and service date from {@code stay}, so the public listing can
-	 * name the month without asking {@code booking}.
-	 *
-	 * @param submission the verdict; a {@code null} comment means a star-only review
-	 * @return {@code true} if this call recorded the review, {@code false} if the booking already had
-	 *         one — the claim is atomic, so a lost race is an ordinary {@code false}, not an exception
+	 * Claim this stay's one review slot (the row's creation <em>is</em> the claim), keeping the
+	 * stay's venue and service date; a {@code null} comment in {@code submission} is star-only.
+	 * @return {@code false} if the booking already had one — atomic: a lost race, not an exception
 	 */
 	boolean claim(CompletedStay stay, ReviewSubmission submission, Instant at);
 

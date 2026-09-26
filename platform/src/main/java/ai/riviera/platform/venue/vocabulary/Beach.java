@@ -5,15 +5,12 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * The fixed platform beach catalogue — every named beach on the Albanian coast, north to south,
- * each in its {@link Region}. A venue sits on exactly one entry; its region is derived from it
- * and never stored. The wire value is the enum name; display labels and the map's camera view
- * per entry are the frontend mirror's concern ({@code shared/beaches.ts}), exactly as
- * {@link Amenity} splits code from label.
+ * The fixed platform beach catalogue — every named beach on the Albanian coast, each in its
+ * {@link Region}; a venue sits on exactly one, its region derived, never stored. Wire value is the
+ * enum name; labels and camera views are the frontend mirror's ({@code shared/beaches.ts}).
  *
- * <p><strong>Declaration order IS the canonical display order</strong> (north to south, the
- * order a tourist reads the coast), and the name list is kept in lockstep with the
- * {@code venue_beach_catalogue_check} constraint: a beach added here is added there in the same
+ * <p><strong>Declaration order IS the canonical display order</strong> (north to south). Keep the
+ * names in lockstep with {@code venue_beach_catalogue_check}: add a beach there in the same
  * migration, or every read of a row carrying it fails.
  */
 public enum Beach {

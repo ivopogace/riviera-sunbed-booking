@@ -1,16 +1,12 @@
 package ai.riviera.platform.customer.vocabulary;
 
 /**
- * The external identity providers a customer can sign in with. Part of the
- * {@code customer} module's published vocabulary so an external SSO identity is expressed in the
- * module's own terms (subject/email keyed by provider) rather than as a stringly-typed value — the
- * account module owns the identity, the OIDC redirect/token-exchange machinery stays at the platform
- * edge (RV-BE-11).
+ * The external identity providers a customer can sign in with, in the {@code customer} module's
+ * published vocabulary so an SSO identity is keyed by a typed provider, not a string. The module
+ * owns the identity; the OIDC redirect/token-exchange machinery stays at the platform edge.
  *
- * <p>The constant names are the tokens persisted in {@code customer_sso_identity.provider} and listed
- * by that column's {@code CHECK} constraint (V27) — keep the enum and the SQL {@code CHECK} in lockstep
- * (invariant #6a). Real Google/Apple adapters are S5; until then the edge's mock adapter plays
- * both providers.
+ * <p>The constant names are the tokens persisted in {@code customer_sso_identity.provider}; keep
+ * them in lockstep with that column's SQL {@code CHECK} (V27; riviera-java-conventions §6a).
  */
 public enum SsoProvider {
 	GOOGLE,

@@ -1,16 +1,13 @@
 package ai.riviera.platform.payment.vocabulary;
 
 /**
- * The result of collecting a payment — a closed, caller-mappable set (invariant: typed
- * outcomes for expected flows, not exceptions). The {@code booking} module confirms only on
- * {@link Succeeded}. A sealed interface so callers {@code switch} exhaustively.
+ * The result of collecting a payment — a closed, caller-mappable set (typed outcomes for expected
+ * flows, not exceptions); sealed so callers {@code switch} exhaustively. The {@code booking}
+ * module confirms in the create transaction only on {@link Succeeded}.
  *
- * <p>The stub (default profile) returns {@link Succeeded} synchronously — collection is
- * in-process, so the booking confirms in the create transaction. The real Stripe gateway
- * (U4, {@code stripe} profile) returns {@link Pending}: a PaymentIntent has been created but
- * collection completes asynchronously, and the booking is confirmed only by a
- * <strong>signature-verified webhook</strong> (invariant #8), never the client. The
- * {@code booking} module switches on this outcome.
+ * <p>The stub (default profile) returns {@link Succeeded} synchronously; the Stripe gateway
+ * ({@code stripe} profile) returns {@link Pending}, and the booking is confirmed only by a
+ * signature-verified webhook (invariant #8), never the client.
  */
 public sealed interface PaymentOutcome
 		permits PaymentOutcome.Succeeded, PaymentOutcome.Pending, PaymentOutcome.Failed {
@@ -23,7 +20,7 @@ public sealed interface PaymentOutcome
 	 * Collection initiated and now awaits a signature-verified webhook (invariant #8). The
 	 * booking stays {@code AWAITING_PAYMENT}; the {@code clientSecret} lets the browser confirm
 	 * the card with Stripe.js, and {@code paymentIntentId} is the handle the webhook correlates
-	 * back to the booking. Real Stripe collection (U4).
+	 * back to the booking. Real Stripe collection.
 	 */
 	record Pending(String clientSecret, String paymentIntentId) implements PaymentOutcome {
 	}

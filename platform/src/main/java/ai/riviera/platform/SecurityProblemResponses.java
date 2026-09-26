@@ -11,15 +11,12 @@ import org.springframework.security.web.csrf.CsrfException;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Hand-mirrored RFC-7807 bodies for rejections that happen <em>inside the security filter
- * chain</em> — before MVC dispatch, where {@link ApiErrorHandler}/{@link ApiProblem} can never
- * run (the same constraint and pattern as {@code RateLimitFilter}'s {@code RATE_LIMITED} body).
- * Used by {@link SecurityConfig}'s authentication entry point (session missing/expired →
- * {@code 401 UNAUTHENTICATED}) and by {@link ChallengeVerificationFilter}'s three refusals. Kept in
- * lockstep with the contract by {@code AuthSessionIT} and {@code ChallengeVerificationFilterTest}.
- *
- * <p>{@code instance} is pinned to {@code about:blank} just like {@link ApiProblem} builds it —
- * these literals must never echo the request URI (invariant #7 posture).
+ * Hand-mirrored RFC-7807 bodies for rejections <em>inside the security filter chain</em>, before
+ * MVC dispatch, where {@link ApiErrorHandler}/{@link ApiProblem} never run (as with
+ * {@code RateLimitFilter}'s {@code RATE_LIMITED}): {@link SecurityConfig}'s entry point
+ * ({@code 401 UNAUTHENTICATED}) and {@link ChallengeVerificationFilter}'s three refusals, held to
+ * the contract by {@code AuthSessionIT} and {@code ChallengeVerificationFilterTest}.
+ * {@code instance} is pinned to {@code about:blank}: never echo the request URI (#7 posture).
  */
 final class SecurityProblemResponses {
 
@@ -56,16 +53,15 @@ final class SecurityProblemResponses {
 	private SecurityProblemResponses() {
 	}
 
-	/** The entry-point 401: no (or no longer valid) session on a protected endpoint. */
+	/** The entry-point 401: no session, or an expired one, on a protected endpoint. */
 	static void writeUnauthenticated(HttpServletResponse response) throws IOException {
 		write(response, HttpStatus.UNAUTHORIZED, UNAUTHENTICATED_BODY);
 	}
 
 	/**
-	 * Filter-chain 403s: a CSRF rejection ({@code CsrfFilter} handles its own denial — it sits
-	 * upstream of {@code ExceptionTranslationFilter}) gets the distinct {@code INVALID_CSRF_TOKEN}
-	 * code so the SPA can tell "refresh your token" from a genuine authorization denial; anything
-	 * else mirrors the advice's {@code ACCESS_DENIED}.
+	 * Filter-chain 403s: a CSRF rejection ({@code CsrfFilter}'s own, upstream of
+	 * {@code ExceptionTranslationFilter}) gets {@code INVALID_CSRF_TOKEN}, so the SPA can tell a
+	 * stale token from an authorization denial; the rest mirror the advice's {@code ACCESS_DENIED}.
 	 */
 	static void writeAccessDenied(HttpServletResponse response, AccessDeniedException exception)
 			throws IOException {

@@ -576,6 +576,12 @@ exactly as it would against any other claim (invariant #2).
   **exact-id allowlist** — the two listeners on the refund bulkhead — never the `booking` package
   prefix, which would sweep `PaymentEventListener`'s payment→confirm spine (`RefundOutboxScopeIT`
   for what it leaves alone, `RefundOutboxScopeTest` for the ids).
+- **The refund re-drive refuses for a cooldown window, not just while a press runs**
+  (`RefundResubmissionWindow`). A mutex answers only the truly simultaneous press. Money is safe
+  either way — the gateway call is keyed `booking-<id>-refund` and the registry's
+  `markResubmitted` claim skips an in-flight publication — but the gateway is not: in an outage
+  each re-driven refund fails fast and is outstanding again, so without the window every press
+  re-asks the gateway for every refund and reports a success that settled nothing.
 - **The withheld-mail flag on a confirmed booking's read model** is asked through
   `booking.spi.ConfirmationMailDelivery` by `CustomerId` — I never handle an address. The
   gate is two-part: the booking must be `CONFIRMED` **and** `payment.api.CollectionGuarantee`
@@ -893,6 +899,12 @@ does not own a payout run. That exemption is exactly why the role must be the st
 `OPERATOR`, any approved operator in this multi-tenant marketplace could read competitors' payout
 figures and mark their batches settled.
 
+**The venue-caused refunds report maintains itself, and is `ADMIN`-only.** It is read from the
+ledger rows the refund path always writes (the `VENUE_CHANGE` reversals and their `FEE`s), so
+resale abuse is visible without anyone keeping a list. It belongs to no venue, so invariant #13
+has nothing to check; the strict role in `SecurityConfig` is the whole authorization, and it is what
+keeps one operator from reading a competitor's refund record.
+
 **Not My Job:**
 - Actually moving money to venues → settled **manually via BKT**; I record what is owed
 - Collecting money from tourists → **`payment`**
@@ -1091,6 +1103,9 @@ invariant #7):
   retired from-set still has its label), the code resolved inside this module (invariant #7),
   abandoned under `MAIL_MOVE_ABANDONED` with the shared `reason` vocabulary. The withdraw leg
   mails nothing.
+- **The move mail carries the arrival code** (`BookingMovedMail`), unchanged by the move: it is
+  the reference a guest with several bookings knows the booking by. Mailed, never logged
+  (invariant #7).
 - **The payment-due mail carries the deadline and the amount, and names no spot.** The amount is
   the one fixed when the request was made; the accept never changes it. The guest chose the spot
   and already has it on screen and in the booking, and the one thing this mail is for is the
@@ -1239,7 +1254,7 @@ The standing rules:
   delete resolves as `NoSuchReview`. A delete frees the slot, so a stay whose window is
   still open becomes reviewable again.
 - **The fence order is stated once, as domain policy.** `domain/ReviewGate` is a pure
-  function — hidden, unknown stay, never checked in, window closed, already rated,
+  function — unknown stay, never checked in, hidden, window closed, already rated,
   eligible — and both the lifecycle service and the panel read consult it.
 - **The mean is integer and its rounding is written down where the division happens**
   (`AggregateRating`): `(10 × Σstars + count / 2) / count`, half-up, zero reviews
@@ -1290,6 +1305,14 @@ The standing rules:
   `/api/bookings/{code}/review` are `permitAll` and share one per-code rate-limit budget
   with the view / cancel / withdraw legs. The code is never logged and never reaches an
   error body: `instance` is pinned to the constant `/api/bookings`.
+- **My endpoints sit under `/api/bookings/{code}`, not a review path of their own.** The
+  resource is the guest's booking — its code is the credential (invariant #7) — while the use
+  case is mine, so `ReviewController` joins the code-gated family without touching
+  `BookingController`.
+- **An over-long review text is refused, never truncated.** `SubmitReviewRequest` strips both
+  texts, then holds them to `ReviewText`'s bounds (comment 1000, display name 60, in code points)
+  and answers `400 INVALID_REQUEST` over either; V46's CHECKs are backstops. Silently storing
+  half a sentence is worse than saying no.
 
 **Not My Job:**
 - Writing `venue.rating_tenths` / `reviews_count` → **`venue`** (I compute and announce)
@@ -1394,7 +1417,7 @@ becomes.
 
 **Not my job:** which requests are audited and when in the chain, the `X-Audit-Reason` header and its
 sanitizer, the ADMIN role gate — all the root's fence (§ *Platform edge*); deciding *whether* an admin
-action was justified, and retention (a named #507 Phase-1 non-goal — I keep rows indefinitely).
+action was justified, and retention (a named non-goal — I keep rows indefinitely).
 
 Only writer (and reader) of `admin_audit_record` (machine-checked). Publishes `api.AdminAuditLog` and
 `vocabulary.AdminAuditEntry`, nothing else; the root reaches `api` alone, because the fence appends

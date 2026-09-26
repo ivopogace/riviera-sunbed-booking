@@ -1,19 +1,12 @@
 package ai.riviera.platform.notification.application;
 
 /**
- * What the send chokepoint did with a booking-confirmation mail — exactly two answers, because
- * exactly two things can happen once the facts are in hand and the transport has not thrown.
+ * What the send chokepoint did with a booking-confirmation mail. The only place a withholding
+ * differs from a delivery: the Event Publication Registry completes the publication for both.
  *
- * <p>Until #380 this was discarded: {@code sendBookingConfirmation} returned {@code void}, so a
- * deliberate withholding was indistinguishable from a delivery at every call site. That mattered more
- * than it looked, because the Event Publication Registry cannot tell them apart either — it completes
- * the publication for both — which is why this return value, and not {@code completion_date}, is where
- * the difference lives.
- *
- * <p>Narrower than {@link MailAttemptOutcome} on purpose: the chokepoint can never answer
- * {@code TRANSPORT_FAILED} (it throws instead, so the registry retries) or
- * {@code ABANDONED_MISSING_FACTS} (the send is never reached). {@link #recorded()} widens it for the
- * log so neither caller has to spell the mapping twice.
+ * <p>Narrower than {@link MailAttemptOutcome}: the chokepoint throws on a transport failure (so
+ * the registry retries) and is never reached with missing facts. {@link #recorded()} widens it
+ * for the log.
  */
 public enum ConfirmationSendOutcome {
 

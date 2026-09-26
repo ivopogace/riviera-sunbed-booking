@@ -8,16 +8,12 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.StaySpan;
 
 /**
- * The intent to create an Instant booking: which set, for which days ({@code bookingDate} the first,
- * {@code lastDate} the last, inclusive — civil days in {@code Europe/Tirane}, invariant #6), the
- * guest's contact, and — when the tourist is signed in — the {@link CustomerAccountId} to link the
- * booking to. A transport-agnostic command — the web {@code CreateBookingRequest} maps onto it, so
- * the use case has no dependency on HTTP. The span is validated as a {@link StaySpan}: a last day
- * before the first or a stay over {@link StaySpan#MAX_DAYS} days is unrepresentable.
- *
- * <p>{@code accountId} is <strong>nullable</strong>: a guest / signed-out checkout carries no account
- * link. The guest contact is always present — a signed-in booking still needs the name/phone the
- * venue uses on arrival, so the account link is purely additive.
+ * The transport-agnostic intent to create an Instant booking: which set, for which days
+ * ({@code bookingDate} the first, {@code lastDate} the last, inclusive — civil days in
+ * {@code Europe/Tirane}, invariant #6), the guest's contact, and the optional account link. The
+ * span is validated as a {@link StaySpan}: a last day before the first or a stay over
+ * {@link StaySpan#MAX_DAYS} days is unrepresentable. {@code accountId} is <strong>nullable</strong>
+ * (guest checkout); the contact is always present, so the {@link CustomerAccountId} is additive.
  */
 public record CreateBookingCommand(SetId setId, LocalDate bookingDate, LocalDate lastDate,
 		GuestContact contact, CustomerAccountId accountId) {

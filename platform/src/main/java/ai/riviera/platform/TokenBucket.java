@@ -4,16 +4,12 @@ import java.time.Duration;
 import java.time.Instant;
 
 /**
- * A small in-memory token bucket for rate limiting: holds up to {@code capacity} tokens that refill
- * at a steady rate of {@code capacity} tokens per {@code refillPeriod}. {@link #tryAcquire(Instant)}
- * spends one token if one is available. Time is supplied by the caller (the filter passes the
- * injected {@link java.time.Clock}'s instant), so the class is pure and tests advance time
- * deterministically — no {@code Instant.now()} (invariant #6 posture).
- *
- * <p>Thread-safe per bucket: a single bucket may be hit by many request threads at once, so every
- * state read and mutation is {@code synchronized}, making each spend atomic with its refill. (The
- * filter's separate, best-effort map pruning is outside this lock, so a bucket evicted mid-use can in
- * a rare race admit one extra request — fail-open, never wrongly rejecting a legitimate caller.)
+ * An in-memory token bucket: up to {@code capacity} tokens, refilling at {@code capacity} per
+ * {@code refillPeriod}; {@link #tryAcquire(Instant)} spends one if available. The caller supplies
+ * time (the filter's injected {@link java.time.Clock}), never {@code Instant.now()} (invariant #6
+ * posture), so tests advance it deterministically. Thread-safe per bucket: all state access is
+ * {@code synchronized}, each spend atomic with its refill. The filter's map pruning is outside this
+ * lock: a bucket evicted mid-use may rarely admit one extra request (fail-open, never false-deny).
  */
 final class TokenBucket {
 
@@ -48,10 +44,9 @@ final class TokenBucket {
 	}
 
 	/**
-	 * Return one token (capped at capacity), refilling first for the elapsed time. The refund half of the
-	 * per-identity login gate's spend-then-refund (issue #292): the filter spends a token with
-	 * {@link #tryAcquire} before the request runs and, on any non-failed outcome, releases it here — so
-	 * only a failed authentication net-consumes a token and a successful login is refunded.
+	 * Return one token (capped at capacity), refilling first. The refund half of the login gate's
+	 * spend-then-refund: the filter spends via {@link #tryAcquire} before the request and releases
+	 * on any non-failed outcome, so only a failed authentication net-consumes a token.
 	 */
 	synchronized void release(Instant now) {
 		refill(now);

@@ -9,13 +9,12 @@ import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * The {@code POST /api/bookings} request body. A transport DTO using primitives/strings on
- * the wire (the dates are ISO {@code LocalDate} strings; {@code lastDate} is optional and defaults
- * to {@code bookingDate}, a one-day booking); {@link #toCommand} maps it onto the typed
- * {@link CreateBookingCommand}, validating presence, shape and the span's bounds. Any bad input
- * surfaces as {@link IllegalArgumentException}, which the controller's conversion wrap translates
- * to the typed 400 (the project has no {@code spring-boot-starter-validation}, so validation is
- * explicit here).
+ * The {@code POST /api/bookings} request body: primitives/strings on the wire (dates are ISO
+ * {@code LocalDate} strings; {@code lastDate} is optional and defaults to {@code bookingDate}, a
+ * one-day booking). {@link #toCommand} maps it onto the typed {@link CreateBookingCommand},
+ * validating presence, shape and the span's bounds. Bad input throws
+ * {@link IllegalArgumentException}, which the controller's conversion wrap makes the typed 400
+ * (no {@code spring-boot-starter-validation}, so validation is explicit here).
  */
 record CreateBookingRequest(Long setId, String bookingDate, String lastDate, Contact contact) {
 

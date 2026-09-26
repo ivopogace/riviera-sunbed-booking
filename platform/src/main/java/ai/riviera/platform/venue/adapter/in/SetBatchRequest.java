@@ -11,11 +11,10 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 /**
  * The request body of the set batch apply ({@code PATCH /api/venues/{id}/sets}): the swept set ids
  * plus only the fields the operator touched — an absent field is left absent, never defaulted, so
- * each set keeps its own value for it. {@code expectedVersion} is the required {@code setVersion}
- * token, typed {@link Long} so an absent field is {@code null} and a {@code 400}
- * ({@link ExpectedVersion#require(Long)}), never a silent {@code 0}. {@link #toCommand()} parses the
- * pool token and delegates the rest to {@link SetBatchCommand}; bad input →
- * {@link IllegalArgumentException} → {@code 400}.
+ * each set keeps its own value. {@code expectedVersion} is the required {@code setVersion} token, a
+ * {@link Long} so an absent field is a 400 ({@link ExpectedVersion#require(Long)}), never a
+ * silent 0. {@link #toCommand()} parses the pool token and delegates the rest to
+ * {@link SetBatchCommand}; bad input → {@link IllegalArgumentException} → {@code 400}.
  */
 record SetBatchRequest(List<Long> setIds, String tier, String pool, MoneyView price,
 		Long expectedVersion) {

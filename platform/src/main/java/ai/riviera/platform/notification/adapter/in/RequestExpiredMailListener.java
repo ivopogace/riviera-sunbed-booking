@@ -18,12 +18,11 @@ import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 /**
- * Mails the tourist a record that their Request-to-Book expired unanswered (#124) —
+ * Mails the tourist a record that their Request-to-Book expired unanswered —
  * {@link RequestDeclinedMailListener}'s mirror for the sweep's fact, and everything argued there
  * applies unchanged: warranted-upstream ({@code booking} publishes only from the winning expire
- * leg, one per expired row, so a clean sweep reaches this class zero times), the shared three-port
- * assembly, the send-time status link (invariant #7), the mail bulkhead, registry-whole
- * idempotency, and a per-loss {@code ERROR} under this flow's own counter,
+ * leg, one per expired row), the shared three-port assembly, the send-time status link (invariant
+ * #7), the mail bulkhead, registry-whole idempotency, and a per-loss {@code ERROR} under
  * {@link ObservabilityMetrics#MAIL_REQUEST_EXPIRED_ABANDONED}.
  */
 @Component

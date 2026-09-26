@@ -5,15 +5,13 @@ import java.util.List;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 
 /**
- * The result of an admin weather refund: how many one-day bookings were cancelled and fully
- * refunded for the venue+date, the total in integer minor units + ISO currency (invariant #5), and
- * the stays the run could not refund. A {@code refundedCount} of 0 with an empty list means there
- * was nothing on that day — a valid no-op, not an error.
+ * The result of an admin weather refund: how many one-day bookings for the venue+date were
+ * cancelled and fully refunded, the total in integer minor units + ISO currency (invariant #5), and
+ * the stays it could not refund. A {@code refundedCount} of 0 with an empty list is a valid no-op.
  *
- * <p>{@code manualRefunds} names every booking spanning more than one day that covers the date:
- * refunding only the stormy day is a partial refund of a live booking, which the single reversal per
- * booking (invariant #9) cannot express, so such a stay is left untouched and handed to the operator
- * by id — never by code (invariant #7) — rather than skipped silently.
+ * <p>{@code manualRefunds} names every multi-day booking covering the date, left untouched for the
+ * operator by id — never by code (invariant #7) — since one reversal per booking (invariant #9)
+ * cannot express a partial refund of a live booking. Rationale: RESPONSIBILITIES.md §booking.
  */
 public record WeatherRefundOutcome(int refundedCount, long totalRefundedMinor, String currency,
 		List<BookingId> manualRefunds) {

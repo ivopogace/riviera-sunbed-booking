@@ -10,18 +10,12 @@ import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.domain.ServiceDays;
 
 /**
- * The one place an unpaid booking is cancelled and its set freed, implementing
- * {@link ReleaseAbandonedBooking} — every day of its span. Both the {@code payment_intent.canceled}
- * webhook listener and the abandoned-payment TTL sweep delegate here, so there is a single guarded
- * transition + release
- * — no forked copy that could drift or double-act.
- *
- * <p>{@code @Transactional}: the guarded {@code cancelAwaitingPayment} ({@code UPDATE … RETURNING})
- * and the {@code availability.release} commit together, so a booking is never left
- * {@code CANCELLED} with its set still claimed (invariant #2). The {@code RETURNING} clause makes a
- * lost race / re-delivery a 0-row no-op, so {@code release} releases the set exactly once.
- * Package-private; only the {@code application.in} port is referenced by the driving adapters
- * (invariant #11).
+ * The one place an unpaid booking is cancelled and every day of its set freed, implementing
+ * {@link ReleaseAbandonedBooking} for both the {@code payment_intent.canceled} webhook listener and
+ * the abandoned-payment TTL sweep, so no forked copy can drift or double-act.
+ * {@code @Transactional}: the guarded {@code cancelAwaitingPayment} and the release commit
+ * together, so a booking is never left {@code CANCELLED} with its set still claimed (invariant #2);
+ * {@code RETURNING} makes a lost race or re-delivery a 0-row no-op. Package-private (#11).
  */
 @Service
 class ClaimReleaseService implements ReleaseAbandonedBooking {

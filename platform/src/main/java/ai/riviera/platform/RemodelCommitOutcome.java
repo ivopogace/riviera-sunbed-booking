@@ -9,14 +9,12 @@ import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.vocabulary.LockedSet;
 
 /**
- * What the edge's remodel commit answered, for the controller to map: the layout is saved and every
- * claim on it applied ({@link Committed}); the preview no longer describes the claims — a new one, a
- * changed kind, a staff hold — ({@link StalePreview}, with the fresh picture); the layout gives a
- * kept set's row and position to another set ({@link Refused}, with the fresh picture); it refunds
- * guests and the operator's typed
- * count and reason do not authorise it ({@link NotConfirmed}); the save's own live-claim probe still
- * found a claim ({@link SetsInUse}); or the save's shape and token rejections ({@link Rejected}).
- * Only the first writes anything.
+ * What the edge's remodel commit answered, for the controller to map; only {@link Committed}
+ * (layout saved, every claim applied) writes anything. With the fresh picture: {@link StalePreview}
+ * (the claims changed since the preview — a new one, a changed kind, a staff hold),
+ * {@link Refused} (the layout gives a kept set's row and position to another set), and
+ * {@link NotConfirmed} (it refunds guests; the typed count and reason do not authorise it).
+ * {@link SetsInUse}: the save's live-claim probe found a claim; {@link Rejected}: shape and token.
  */
 sealed interface RemodelCommitOutcome {
 

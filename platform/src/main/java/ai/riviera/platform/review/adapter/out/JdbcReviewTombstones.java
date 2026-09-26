@@ -9,15 +9,12 @@ import ai.riviera.platform.review.api.ReviewTombstones;
 import ai.riviera.platform.review.vocabulary.BookingRef;
 
 /**
- * JDBC adapter behind {@link ReviewTombstones} (invariant #1: explicit SQL via {@link JdbcClient}, no
- * JPA). Package-private; it implements the published port directly because the tombstone is one
- * statement with no policy in front of it — the {@code JdbcCustomerDirectory} shape.
+ * JDBC adapter behind {@link ReviewTombstones} (invariant #1, {@link JdbcClient}); it implements
+ * the published port directly, as the tombstone is one policy-free statement.
  *
- * <p>One conditional {@code UPDATE} by {@code booking_id} (served by the table's one-per-booking
- * unique index): only a row still carrying a name or a comment matches, so the rows-affected count
- * is the number of reviews that actually changed and a repeat is {@code 0}. No visibility predicate
- * — erasure must reach a hidden review too. {@code updated_at} is left alone: it records the
- * author's own edits, and this is not one.
+ * <p>One conditional {@code UPDATE} by {@code booking_id}: only a row still carrying a name or a
+ * comment matches, so rows-affected counts real changes and a repeat is {@code 0}. No visibility
+ * predicate — erasure must reach a hidden review too. {@code updated_at} stays: it is author edits.
  */
 @Repository
 class JdbcReviewTombstones implements ReviewTombstones {

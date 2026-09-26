@@ -9,13 +9,12 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The venue onboarding use case (U7), apart from {@code BeachMapEditService}: creation is its own
- * conversation — it has no path {@code venueId} to ownership-check against (invariant #13) and is
- * the one write that consults the platform's creation terms. Package-private; the public seam is
- * the {@link OnboardVenue} port. The commission rate is stamped here from
- * {@link VenueCreationProperties} — never taken from the command — so no driving adapter can
- * supply one. The creating operator is recorded as the new venue's owner in the same transaction
- * (creator-owns-on-create), so a create-then-edit flow works and no venue is ever left unowned.
+ * The venue onboarding use case (U7), its own conversation: it has no path {@code venueId} to
+ * ownership-check against (invariant #13) and is the one write that consults the platform's
+ * creation terms. Package-private behind {@link OnboardVenue}. The commission rate is stamped here
+ * from {@link VenueCreationProperties}, never taken from the command, so no driving adapter can
+ * supply one. The creator is recorded as owner in the same transaction (creator-owns-on-create), so
+ * a create-then-edit flow works and no venue is ever left unowned.
  */
 @Service
 class OnboardVenueService implements OnboardVenue {

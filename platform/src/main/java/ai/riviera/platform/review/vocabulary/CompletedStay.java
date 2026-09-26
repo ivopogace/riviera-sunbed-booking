@@ -4,18 +4,13 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 /**
- * The completed-stay facts {@link ai.riviera.platform.review.spi.CompletedStays} answers with:
- * which booking, at which venue, on which day, and when the stay completed. The presence of this
- * value
- * <em>is</em> the completed fact — the port yields nothing for a booking in any other status, so
- * {@code booking}'s {@code BookingStatus} enum stays internal to {@code booking}.
+ * The facts {@link ai.riviera.platform.review.spi.CompletedStays} answers with; the port yields
+ * nothing for any other booking status, so this value's presence <em>is</em> the completed fact.
  *
  * @param booking     the reviewed stay's booking
  * @param venue       the venue whose aggregate a review of this stay moves
- * @param stayedOn    the stay's first service day (a {@code Europe/Tirane} civil day, invariant #6) —
- *                    recorded on the review so its public listing can name the month
- * @param completedAt the instant the stay completed (UTC, invariant #6) — its last service day checked
- *                    in or passed after an attended one — which the 60-day review window runs from
+ * @param stayedOn    first service day ({@code Europe/Tirane}, #6); the public list names its month
+ * @param completedAt when booking resolved the stay completed (UTC, #6); starts the 60-day window
  */
 public record CompletedStay(BookingRef booking, VenueRef venue, LocalDate stayedOn,
 		Instant completedAt) {

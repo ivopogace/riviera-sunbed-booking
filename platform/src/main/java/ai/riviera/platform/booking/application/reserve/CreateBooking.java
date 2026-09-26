@@ -12,8 +12,7 @@ public interface CreateBooking {
 	/**
 	 * Attempt to create and confirm an Instant booking. Never throws on an expected rejection
 	 * (taken set, walk-in pool, unknown set, closed cutoff) — those are returned as a
-	 * {@link BookingOutcome}. The whole operation is one transaction: a failure after the
-	 * availability claim rolls the claim back too.
+	 * {@link BookingOutcome}.
 	 */
 	BookingOutcome create(CreateBookingCommand command);
 }

@@ -5,13 +5,12 @@ import java.util.List;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
- * The remodel preview on the wire: the five groups the operator confirms against, {@code keep} — the
- * sets that stay on the map, by id: the blocked claims' (the save keeps them itself) and the staff
- * holds' (the operator must keep them) — and {@code previewToken}, what the commit carries back to prove the operator confirmed
- * this picture. {@code feeTotal} is what the refunds in this picture would cost the venue at the
- * current rate, and each refund line carries the fee per booking. Dates are ISO {@code YYYY-MM-DD}
- * (invariant #6), amounts integer minor units (invariant #5), bookings by id and never by code
- * (invariant #7).
+ * The remodel preview on the wire: the five groups the operator confirms against, {@code keep}
+ * (the sets that stay, by id: the blocked claims', which the save keeps itself, and the staff
+ * holds', which the operator must keep) and {@code previewToken}, which the commit carries back to
+ * prove the operator confirmed this picture. {@code feeTotal} is the refunds' cost to the venue at
+ * the current rate. Dates ISO {@code YYYY-MM-DD} (invariant #6), minor units (#5), ids never codes
+ * (#7).
  */
 record RemodelPreviewResponse(List<MoveView> moves, List<ClaimView> refunds, List<ReleaseView> releases,
 		List<StaffHoldView> staffHolds, List<BlockView> blocks, List<SpotView> keep, String previewToken,

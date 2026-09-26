@@ -8,17 +8,12 @@ import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 
 /**
- * Edge glue that resolves the authenticated principal to its {@link OperatorId}. This
- * is a platform/edge concern (reading the Spring Security context is <em>not</em> {@code operator}
- * domain — {@code operator} only maps a username to an id via {@link OperatorDirectory}), so it
- * lives in the {@code shared} kernel module, not at the composition root: modules depend
- * on it, so hosting it at the root would cycle back through them. The
- * venue-scoped controllers call {@link #require} and pass the id to their application service,
- * which performs the actual ownership check (invariant #13).
- *
- * <p>An authenticated principal outside the may-operate set ({@code ACTIVE} or {@code PENDING})
- * owns nothing → {@link AccessDeniedException} (mapped to {@code 403} by the root
- * {@code ApiErrorHandler} advice).
+ * Edge glue that resolves the authenticated principal to its {@link OperatorId}; {@code operator}
+ * only maps a username to an id via {@link OperatorDirectory}. Venue-scoped controllers call
+ * {@link #require} and pass the id to their application service, which performs the ownership check
+ * (invariant #13). In {@code shared}, not the root, because modules depend on it (Rationale:
+ * {@code RESPONSIBILITIES.md} § {@code shared}). A principal outside the may-operate set
+ * ({@code ACTIVE} or {@code PENDING}) owns nothing → {@link AccessDeniedException} ({@code 403}).
  */
 @Component
 public class CurrentOperator {

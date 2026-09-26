@@ -4,14 +4,12 @@ import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 
 /**
  * One photo slot as a per-slot read model needs it: the PREVIEW variant's serving URL, or
- * {@code null} when the slot is empty — emptiness IS the null URL; a separate boolean would be
- * derivable lock-step state (review F-11). Every venue carries all three slots, occupied or not, so
- * a consumer renders a stable slot grid rather than reconciling a list against the slot vocabulary.
+ * {@code null} when the slot is empty (emptiness IS the null URL). Every venue carries all three
+ * slots, occupied or not, so a consumer renders a stable slot grid.
  *
- * <p>Two consumers, deliberately sharing one shape: the operator console's Venue tab via
- * {@link VenueProfileView} (venue-scoped, ownership-asserted), and the platform-admin moderation
- * read via {@link VenuePhotoModeration#slotsOf} (ownership-free). Only the authority differs;
- * the vocabulary should not.
+ * <p>One shape for two consumers: the operator console's Venue tab via {@link VenueProfileView}
+ * (ownership-asserted) and the platform-admin moderation read via
+ * {@link VenuePhotoModeration#slotsOf} (ownership-free).
  */
 public record PhotoSlotView(PhotoSlot slot, String previewUrl) {
 }

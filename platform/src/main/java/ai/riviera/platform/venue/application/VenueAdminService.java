@@ -13,16 +13,13 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The venue profile use cases: the owner's profile read and full-replace write (amenities,
+ * The venue profile use cases behind the {@link EditVenueProfile}, {@link ViewVenueProfile} and
+ * {@link ListOwnedVenues} ports (#11): the owner's profile read and full-replace write (amenities,
  * distance-to-water, booking mode, sales close) and the signed-in operator's own-venues read.
- * Package-private — the public seams are the {@link EditVenueProfile}, {@link ViewVenueProfile}
- * and {@link ListOwnedVenues} ports (invariant #11). The beach-map writes are
- * {@link BeachMapEditService}'s; venue creation is {@link OnboardVenueService}'s.
+ * Map writes are {@link BeachMapEditService}'s, venue creation {@link OnboardVenueService}'s.
  *
- * <p>Each venue-scoped call is guarded: its first act is {@link VenueOwnership#assertOwns} on the
- * acting {@link OperatorId}, so an operator cannot touch another operator's venue (invariant #13,
- * BOLA) — the check is here in the application service, not the controller, so no driving adapter
- * can bypass it.
+ * <p>Every venue-scoped call first runs {@link VenueOwnership#assertOwns} on the acting
+ * {@link OperatorId} (#13, BOLA) — here, not in the controller, so no adapter can bypass it.
  */
 @Service
 class VenueAdminService implements EditVenueProfile, ViewVenueProfile, ListOwnedVenues {

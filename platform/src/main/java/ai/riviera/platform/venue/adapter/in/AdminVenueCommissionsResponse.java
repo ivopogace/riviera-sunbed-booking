@@ -5,14 +5,13 @@ import java.util.List;
 import ai.riviera.platform.venue.application.VenueCommissionView;
 
 /**
- * The wire response for {@code GET /api/admin/venues} (A7, epic #348) — every venue with the
- * commission rate the platform takes from it.
+ * The wire response for {@code GET /api/admin/venues} (A7) — every venue with the commission rate
+ * the platform takes from it.
  *
- * <p>An object wrapping the array rather than a bare top-level array, so the list can gain a total or
- * a page window later without breaking its clients — the admin console's other list reads take the
- * same shape. {@code commissionBps} travels as the exact integer that is stored (1500 = 15.00%,
- * invariant #5): the percent a human edits is the console's rendering, never the contract's, so no
- * rounding can enter through the wire.
+ * <p>An object wrapping the array, not a bare array, so the list can gain a total or page window
+ * without breaking clients. {@code commissionBps} travels as the exact stored integer
+ * (1500 = 15.00%, invariant #5): the percent is the console's rendering, never the contract's, so
+ * no rounding enters through the wire.
  */
 record AdminVenueCommissionsResponse(List<VenueCommission> venues) {
 

@@ -12,9 +12,8 @@ import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
 /**
- * JDBC adapter for the {@code customer} module's {@link CustomerAccountStore} port (ADR-0007
- * {@code adapter/out}). Explicit SQL via {@link JdbcClient} in text blocks, named params,
- * package-private (invariant #1, mirroring {@code JdbcOperators} / {@code JdbcCustomerDirectory}).
+ * JDBC adapter for the {@code customer} module's {@link CustomerAccountStore} port. Explicit SQL
+ * via {@link JdbcClient} in text blocks, named params, package-private (invariant #1).
  *
  * <p>Registration is one atomic statement: {@code INSERT … ON CONFLICT (email) DO NOTHING RETURNING id}
  * against {@code customer_account_email_uniq}. A row comes back only when THIS statement created it, so
@@ -24,7 +23,7 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 @Repository
 class JdbcCustomerAccounts implements CustomerAccountStore {
 
-	/** SQL named-param / column keys, named not duplicated (invariant #6a). */
+	/** SQL named-param / column keys, named not duplicated (conventions §6a). */
 	private static final String EMAIL = "email";
 	private static final String PROVIDER = "provider";
 	private static final String SUBJECT = "subject";

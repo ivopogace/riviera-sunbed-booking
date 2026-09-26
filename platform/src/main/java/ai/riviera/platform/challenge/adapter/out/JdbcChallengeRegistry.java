@@ -16,11 +16,10 @@ import ai.riviera.platform.challenge.application.ChallengeRegistry;
 /**
  * {@link ChallengeRegistry} on the {@code challenge_registry} table (V49). The claim is one
  * {@code INSERT … ON CONFLICT DO NOTHING}, so two concurrent submissions of one solution race on the
- * primary key and exactly one inserts (the invariant-#2 idiom). The sweep's delete runs on a
- * {@link JdbcClient} of this adapter's own with a finite query timeout — the bound every scheduled
- * job's entry statement carries, read straight from {@code riviera.scheduled.query-timeout-seconds}
- * because a module may not depend on the composition root that validates it (the {@code JdbcBookings}
- * idiom); the claim stays on the shared client so a request-thread write is never cut short.
+ * primary key and exactly one inserts (the invariant-#2 idiom). The sweep's delete runs on this
+ * adapter's own {@link JdbcClient} bounded by {@code riviera.scheduled.query-timeout-seconds}, read
+ * directly since a module may not depend on the root (ADR-0017 Decision 4); the claim stays on
+ * the shared client so a request-thread write is never cut short.
  */
 @Component
 class JdbcChallengeRegistry implements ChallengeRegistry {

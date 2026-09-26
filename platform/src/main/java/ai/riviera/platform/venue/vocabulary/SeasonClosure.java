@@ -3,16 +3,12 @@ package ai.riviera.platform.venue.vocabulary;
 import java.time.LocalDate;
 
 /**
- * A venue's closed-for-season state: {@code closed} with an optional {@code reopenOn} (a civil day
- * in {@code Europe/Tirane}, invariant #6) and the {@code advanceSales} opt-in that lets dates on or
- * after the reopen day sell while the venue is still shut. A closed venue stays visible and
- * unsellable — distinct from venue visibility, which hides it. The Java mirror of
- * {@code venue_season_closure_check} (V51): an open value carries neither field, and the opt-in
- * needs a reopen day, so an off-shape value is unrepresentable.
- *
- * <p>Whether a closure is still in effect at an instant, and which dates it admits, is
- * {@code booking}'s rule ({@code BookingCutoff}), reached through {@code venue.spi.SalesWindow};
- * this value carries the stored facts only. Rationale: RESPONSIBILITIES.md §venue.
+ * A venue's closed-for-season state: {@code closed}, an optional {@code reopenOn} (a civil day in
+ * {@code Europe/Tirane}, #6) and the {@code advanceSales} opt-in letting dates from the reopen day
+ * sell while still shut. A closed venue stays visible but unsellable, unlike a hidden one. Mirrors
+ * {@code venue_season_closure_check} (V51): open carries neither field; the opt-in needs a reopen
+ * day. Whether a closure is in effect, and the dates it admits, is {@code booking}'s rule
+ * ({@code BookingCutoff}) via {@code venue.spi.SalesWindow}. Rationale: RESPONSIBILITIES.md §venue.
  */
 public record SeasonClosure(boolean closed, LocalDate reopenOn, boolean advanceSales) {
 

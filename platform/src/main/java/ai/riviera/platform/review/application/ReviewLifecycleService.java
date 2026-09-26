@@ -19,19 +19,13 @@ import ai.riviera.platform.review.domain.ReviewState;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 
 /**
- * The one service behind {@link ReviewLifecycle}: resolve the stay behind the code, ask
- * {@link ReviewGate} where it stands, act, and announce that the venue's aggregate moved.
- * Package-private behind the port (invariant #11).
+ * The one service behind {@link ReviewLifecycle} (package-private, invariant #11): resolve the stay
+ * behind the code, ask {@link ReviewGate} where it stands, act, announce the aggregate moved.
  *
- * <p>Every rejection a caller can provoke with a legitimate request is a typed outcome, not an
- * exception — including a lost uniqueness race, which is ordinary flow here. An out-of-range rating
- * is the exception to that: the driving adapter rejects it as a {@code 400} before this port is
- * reached, so one arriving here is a caller bug. The guard buys the failure's <em>location</em>,
- * not its status.
- *
- * <p>The claim's row count is the answer, so there is no read-then-write window for a second submit
- * to slip through; {@code ReviewUniquenessIT} proves it under real concurrency. The event is
- * published inside the transaction and delivered after commit by the Event Publication Registry.
+ * <p>Every rejection a legitimate request can provoke, a lost uniqueness race included, is a typed
+ * outcome; an out-of-range rating throws, as the adapter already {@code 400}s it (a caller bug).
+ * The claim's row count is the answer, so no second submit slips through; the event is published
+ * in the transaction and delivered after commit by the publication registry.
  */
 @Service
 class ReviewLifecycleService implements ReviewLifecycle {

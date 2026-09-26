@@ -36,10 +36,9 @@ public interface VenuePhotos {
 	Optional<StoredBytes> serve(VenueId venueId, ContentHash hash);
 
 	/**
-	 * Whether {@code hash} still names a servable variant of {@code venueId} — the public
-	 * conditional-GET question, answered without reading the bytes. No ownership check, like
-	 * {@link #serve}. Turns {@code false} the moment the photo is deleted or taken down, which is
-	 * what makes a removal reach a client that already holds the bytes and the {@code ETag}.
+	 * Whether {@code hash} still names a servable variant of {@code venueId} — the public,
+	 * ownership-free conditional-GET question, answered without the bytes. {@code false} once
+	 * the photo is deleted or taken down, so a removal reaches a client holding the {@code ETag}.
 	 */
 	boolean exists(VenueId venueId, ContentHash hash);
 }

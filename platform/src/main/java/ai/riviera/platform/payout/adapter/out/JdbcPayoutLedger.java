@@ -18,14 +18,12 @@ import ai.riviera.platform.payout.domain.PeriodKey;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * JDBC adapter for {@link PayoutLedger} — explicit SQL via {@link JdbcClient}, no JPA (invariant
- * #1). Package-private; only the port is referenced cross-layer.
+ * JDBC adapter for {@link PayoutLedger} — explicit SQL via {@link JdbcClient} (invariant #1).
  *
  * <p>The accrual is an atomic {@code INSERT … ON CONFLICT (booking_id, entry_type) DO NOTHING}: a
  * re-delivered {@code BookingConfirmed} (the registry is at-least-once) hits the
  * {@code UNIQUE(booking_id, entry_type)} guard and writes nothing — exactly-once accrual without a
- * read-modify-write race (invariant #9), the payout analogue of the availability claim's
- * conflict-free insert.
+ * read-modify-write race (invariant #9).
  */
 @Repository
 class JdbcPayoutLedger implements PayoutLedger {

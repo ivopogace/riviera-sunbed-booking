@@ -13,7 +13,7 @@ public sealed interface ApprovalOutcome
 		ApprovalOutcome.NoSuchOperator {
 
 	/**
-	 * The PENDING operator was transitioned to ACTIVE (approve) — it can now sign in.
+	 * The PENDING operator was transitioned to ACTIVE (approve): its venues are now tourist-visible.
 	 *
 	 * @param contactEmail the address it registered with, or {@code null} when the row carries none.
 	 *     Nullable because the column is (V29 — the env-managed bootstrap admin has no contact email);

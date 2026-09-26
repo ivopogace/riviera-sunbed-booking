@@ -19,15 +19,13 @@ import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.shared.ApiProblem;
 
 /**
- * The rate-a-stay endpoint. Driving adapter — depends only on this module's
- * {@link ReviewLifecycle} port (invariant #11). It joins the code-gated {@code /api/bookings/{code}} URL family without
- * touching {@code BookingController}: the resource is the guest's booking, the use case is
- * {@code review}'s. The code is the whole authorization (invariant #7); there is no session.
+ * The rate-a-stay endpoint: a driving adapter over this module's {@link ReviewLifecycle} port
+ * (invariant #11), in the code-gated {@code /api/bookings/{code}} family without touching
+ * {@code BookingController}. The code is the whole authorization (invariant #7); no session.
+ * Rationale: RESPONSIBILITIES.md §review.
  *
- * <p>All three verbs live on one path — the guest's one review — and each maps its sealed outcome
- * to HTTP through an exhaustive {@code switch}, so a future outcome cannot fall into an existing
- * arm. Success carries no body: the client re-reads the booking, which is where the review's new
- * state lives.
+ * <p>All three verbs share the guest's one-review path and map their sealed outcome to HTTP through
+ * an exhaustive {@code switch}. Success has no body: the client re-reads the booking.
  */
 @RestController
 @RequestMapping("/api/bookings")

@@ -6,14 +6,12 @@ import ai.riviera.platform.booking.application.view.MyBookingSummary;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
- * One item in the {@code 200} response of {@code GET /api/me/bookings} — the signed-in
- * "my bookings" list row the Angular app renders. Money travels as {@link MoneyView} (integer minor
- * units + ISO currency, invariant #5); the date as an ISO {@code LocalDate} string;
- * {@code requestExpiresAt} is {@code null} for instant bookings. A subset of the code-gated
- * {@code BookingDetailView} — the fields the list needs (the detail view carries the rest).
- * {@code refundedAmount} is {@code null} unless the booking was cancelled with a refund decision; the
- * list needs it to avoid labelling a never-charged cancellation as paid. {@code movedAt} is set when a
- * remodel re-seated the booking, so the row can say the spot changed.
+ * One row of {@code GET /api/me/bookings}, the signed-in "my bookings" list; a subset of the
+ * code-gated {@code BookingDetailView}. Money as {@link MoneyView} (integer minor units + ISO
+ * currency, invariant #5); dates as ISO {@code LocalDate} strings. {@code requestExpiresAt} is
+ * {@code null} for instant bookings; {@code refundedAmount} is {@code null} unless cancelled with a
+ * refund decision (so a never-charged cancellation never reads as paid); {@code movedAt} is set
+ * when a remodel re-seated the booking.
  */
 record MyBookingView(String code, String status, long venueId, String venueName, String rowLabel,
 		int positionNo, String bookingDate, String lastDate, MoneyView amount, Instant requestExpiresAt,

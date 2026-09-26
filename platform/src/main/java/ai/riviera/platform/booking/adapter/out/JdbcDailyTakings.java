@@ -11,8 +11,8 @@ import ai.riviera.platform.booking.vocabulary.OnlineTakings;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * JDBC adapter for {@link DailyTakings} — the per-{@code (venue, date)} gross confirmed-online
- * takings, summed in SQL via {@link JdbcClient} (invariant #1, no JPA). Package-private; only the
+ * JDBC adapter for {@link DailyTakings} — the per-{@code (venue, date)} gross online takings
+ * of settled bookings, summed in SQL via {@link JdbcClient} (invariant #1, no JPA). Package-private; only the
  * {@code api/} port is referenced cross-module (by {@code payout}, invariant #11). Read-only: it
  * sums {@code booking} amounts and mutates nothing — no availability write (invariant #2) and
  * never the payout ledger.

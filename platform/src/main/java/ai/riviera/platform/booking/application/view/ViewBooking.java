@@ -5,8 +5,8 @@ import java.util.Optional;
 /**
  * The view-a-booking use case — the inbound port the web adapter calls to render a
  * booking by its {@code code} (the bearer credential, invariant #7) together with the server-computed
- * cancellation/refund terms (invariant #10). Internal to {@code booking} ({@code application.in}),
- * not cross-module {@code api/} — the only caller is this module's REST adapter.
+ * cancellation/refund terms (invariant #10). Internal to {@code booking}, not cross-module
+ * {@code api/} — the only caller is this module's REST adapter.
  */
 public interface ViewBooking {
 

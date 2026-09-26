@@ -11,12 +11,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 /**
  * Where a guest whose booking the venue itself cancelled goes to book again: that venue's map for
  * the same day when it can still sell it, and the discovery list for that day when it cannot —
- * closed for season, or past its sales close for the date. The sellability answer is
+ * closed for season, past its sales close for the date, or vanished. The sellability answer is
  * {@code venue}'s own per-date projection, read rather than recomputed, so a mail can never offer a
  * date the reserve path would refuse.
- *
- * <p>A venue that has vanished degrades the same way a closed one does: the discovery list always
- * works.
  */
 @Service
 public class RebookLinks {

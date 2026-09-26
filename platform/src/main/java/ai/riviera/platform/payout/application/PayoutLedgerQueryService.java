@@ -12,16 +12,12 @@ import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The per-venue payout-ledger read use case (U9). Reads the venue's entries oldest-first
- * via {@link PayoutLedger#entriesForVenue} and folds the <strong>running net owed</strong> — only an
- * {@code ACCRUAL} adds its net; every other entry type, {@code REVERSAL} and {@code FEE}, deducts
- * (invariant #9, the ledger's sign convention) — so the final running value is the venue's current
- * net owed, which a venue that owes the platform may leave negative. Pure integer arithmetic
- * (invariant #5). Read-only, so no {@code @Transactional}. Package-private behind
- * {@link ViewPayoutLedger} (invariant #11).
+ * The per-venue payout-ledger read (U9), behind {@link ViewPayoutLedger} (invariant #11). Folds the
+ * entries of {@link PayoutLedger#entriesForVenue} oldest-first into a <strong>running net
+ * owed</strong>: only an {@code ACCRUAL} adds; every other type ({@code REVERSAL}, {@code FEE})
+ * deducts (invariant #9), so the result may be negative. Integer minor units (invariant #5).
  *
- * <p>Per-venue authorization (invariant #13): asserts {@code operator} owns {@code venueId} before
- * reading any financial data, so one venue's ledger never leaks to another operator.
+ * <p>Asserts {@code operator} owns {@code venueId} before reading anything (invariant #13).
  */
 @Service
 class PayoutLedgerQueryService implements ViewPayoutLedger {

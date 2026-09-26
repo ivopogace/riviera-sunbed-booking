@@ -17,13 +17,11 @@ import ai.riviera.platform.review.vocabulary.ReviewPanel;
 
 /**
  * Answers {@link ReviewEligibility} from the same {@link ReviewGate} the write path consults, so
- * the view can never offer a form the submit would refuse — the two agree because they ask one
- * question, not because they were written alike. Package-private behind the port (invariant #11);
- * read-only, so no {@code @Transactional}.
+ * the view can never offer a form the submit would refuse: both ask one question. Package-private
+ * behind the port (invariant #11); read-only, so no {@code @Transactional}.
  *
- * <p>The gate's verdict then picks the panel variant, and only the closed-window verdict needs the
- * stored review to choose: a frozen verdict is still worth reading back, a window nobody wrote in
- * has nothing to show.
+ * <p>The gate's verdict picks the panel variant; only a closed window needs the stored review to
+ * choose: a frozen verdict is read back, a window nobody wrote in has nothing to show.
  */
 @Service
 class ReviewEligibilityService implements ReviewEligibility {

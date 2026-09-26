@@ -12,15 +12,13 @@ import ai.riviera.platform.booking.application.view.MyBookings;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 
 /**
- * The signed-in tourist's "my bookings" endpoint. Driving adapter — depends only on the
- * {@code booking} module's {@link MyBookings} port (invariant #11) plus the edge {@link CurrentCustomer}
- * to resolve the principal.
+ * The signed-in tourist's "my bookings" endpoint, over the {@link MyBookings} port (invariant #11)
+ * plus the edge {@link CurrentCustomer} to resolve the principal.
  *
  * <p><strong>Authorization is the session principal, never a request parameter</strong> (BOLA-safe,
- * invariant #13 posture): {@code /api/me/**} is role-gated to {@code CUSTOMER} in {@code SecurityConfig}
- * (anonymous → 401, an operator session → 403), and {@link CurrentCustomer#require} resolves the
- * authenticated customer's own {@link CustomerAccountId} — there is no path/query id a caller could
- * substitute to read another customer's bookings. A {@code GET}, so it is CSRF-exempt by method.
+ * invariant #13 posture): {@code /api/me/**} is {@code CUSTOMER}-only in {@code SecurityConfig}
+ * (anonymous → 401, operator → 403); {@link CurrentCustomer#require} resolves the caller's own
+ * {@link CustomerAccountId}, with no path/query id to substitute. A {@code GET}: CSRF-exempt.
  */
 @RestController
 @RequestMapping("/api/me")

@@ -10,14 +10,12 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * Cross-origin policy for browser callers. The deployed sandbox is
- * <strong>same-origin</strong> (Spring Boot serves the SPA), so the default origin list is
- * empty — no cross-origin caller, so no CORS is needed there. The list is still configurable
- * ({@code app.web.cors.allowed-origins}, overridable via the {@code CORS_ALLOWED_ORIGINS} env
- * var, comma-separated) for environments that ARE cross-origin: local dev's Angular dev server
- * ({@code :4200 → :8080}) sets it via the {@code dev} profile.
- *
- * <p>Consumed by {@link SecurityConfig} via {@code http.cors(...)}.
+ * Cross-origin policy for browser callers. The deployed sandbox is <strong>same-origin</strong>
+ * (Spring Boot serves the SPA), so the default origin list is empty and no CORS is needed. It
+ * stays configurable ({@code app.web.cors.allowed-origins}, env {@code CORS_ALLOWED_ORIGINS},
+ * comma-separated) for cross-origin environments: the {@code dev} profile sets it for the Angular
+ * dev server ({@code :4200 → :8080}). Consumed by {@link SecurityConfig} via
+ * {@code http.cors(...)}.
  */
 @Configuration
 class WebCorsConfig {

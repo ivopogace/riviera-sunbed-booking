@@ -27,13 +27,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * Serves {@link BeachMapRemodel}. The preview: ownership first, then the token, then
- * {@link LayoutDiff} over the unlocked active map, then the walk-in holds on the disturbed sets
- * through {@link LiveClaims} — the save's own arms without the {@code FOR UPDATE}, which is why the
- * answer is advisory, and read-only so it can never queue a claim's FK lock. The commit: ownership
- * first, then {@link LayoutWriter#write} with the caller's gate, in a transaction this service opens
- * explicitly — the gate, and whatever the caller does inside it, shares that transaction and the
- * venue's set locks — and commits only when the layout was written: any other answer rolls the
- * whole unit back, so a move the gate made never survives a save that did not happen.
+ * {@link LayoutDiff} over the unlocked active map, then the disturbed sets' walk-in holds through
+ * {@link LiveClaims} — no {@code FOR UPDATE}, so advisory, and read-only so it never queues a
+ * claim's FK lock. The commit: ownership first, then {@link LayoutWriter#write} with the caller's
+ * gate in a transaction opened here (the gate shares it and the set locks), committed only when the
+ * layout was written: any other answer rolls it all back, so no gate move outlives a failed save.
  */
 @Service
 class BeachMapRemodelService implements BeachMapRemodel {

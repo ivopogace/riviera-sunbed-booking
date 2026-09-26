@@ -14,14 +14,12 @@ import ai.riviera.platform.customer.vocabulary.GuestContact;
 
 /**
  * JDBC adapter implementing {@link CustomerDirectory} directly (no intervening application
- * service — a single adapter is a hypothetical seam, mirroring {@code JdbcVenueCatalog}).
- * Explicit SQL via {@link JdbcClient}, no JPA (invariant #1).
+ * service). Explicit SQL via {@link JdbcClient}, no JPA (invariant #1).
  *
- * <p>Find-or-create is one atomic statement: {@code INSERT ... ON CONFLICT (email) DO UPDATE}
- * against {@code customer_email_uniq}, returning the id either way. {@code DO UPDATE} (rather
- * than {@code DO NOTHING}) refreshes name/phone to the latest values and guarantees the
- * {@code RETURNING} clause yields a row even on a repeat email. Email is normalised
- * (trimmed, lower-cased) so case/whitespace variants resolve to one guest.
+ * <p>Find-or-create is one atomic {@code INSERT ... ON CONFLICT (email) DO UPDATE} against
+ * {@code customer_email_uniq} on the normalised (trimmed, lower-cased) email, returning the id
+ * either way and refreshing name/phone; never {@code DO NOTHING}, whose {@code RETURNING} is
+ * empty on a repeat email.
  */
 @Repository
 class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.customer.api.CustomerLookup {

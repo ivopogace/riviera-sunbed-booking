@@ -2,15 +2,12 @@ package ai.riviera.platform.review.vocabulary;
 
 /**
  * What an amend to an existing review did — one outcome for both verbs, because editing and
- * deleting your own review are refused for exactly the same reasons. Every member is reachable for
- * both, so an exhaustive {@code switch} over it stays honest for either.
+ * deleting your own review are refused for exactly the same reasons; every member is reachable
+ * for both. Sealed, so the driving adapter's {@code switch} is exhaustive without a
+ * {@code default}.
  *
- * <p>Kept apart from {@link SubmitOutcome} rather than merged with it: submit's
- * {@code AlreadyReviewed} is a refusal only a first write can hit, and carrying it here would put a
- * dead arm in every amend's switch.
- *
- * <p>Sealed, so the driving adapter's {@code switch} is exhaustive without a {@code default} and a
- * future outcome cannot be silently dropped into an existing branch.
+ * <p>Keep it apart from {@link SubmitOutcome}: submit's {@code AlreadyReviewed} only a first write
+ * can hit, and would be a dead arm in every amend's switch.
  */
 public sealed interface AmendOutcome {
 

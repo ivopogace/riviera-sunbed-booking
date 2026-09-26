@@ -18,16 +18,12 @@ import ai.riviera.platform.payout.application.ViewDailyTakings;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Operator-gated read of a venue's "online takings today" (#171, O2): the gross of the online
- * bookings for a service date + the net after the venue commission ({@code payout} computes it,
- * invariant #9). Driving adapter depending on the payout module's {@link ViewDailyTakings} port
- * (invariant #11) plus the edge {@link CurrentOperator} resolver and the app {@link Clock}.
+ * Operator-gated read of a venue's "online takings today" (O2): the gross of the online bookings
+ * for a service date + the net after commission (invariant #9), via the {@link ViewDailyTakings}
+ * port (invariant #11). {@code date} defaults to today in {@code Europe/Tirane} (invariant #6).
  *
- * <p><strong>Operator-gated + per-venue scoped</strong> — takings are venue financial data, not
- * public. {@code SecurityConfig} matches the takings GET to role {@code OPERATOR} <em>before</em>
- * the public venue GET (unauthenticated → {@code 401}); the service then asserts the authenticated
- * operator owns {@code venueId} (invariant #13), a mismatch being {@code 403}. {@code date} defaults
- * to today in {@code Europe/Tirane} (invariant #6) — the day the strip shows — from the UTC clock.
+ * <p>{@code SecurityConfig} matches this GET to {@code OPERATOR} <em>before</em> the public venue
+ * GET (unauthenticated → {@code 401}); the service asserts ownership (invariant #13) → {@code 403}.
  */
 @RestController
 @RequestMapping("/api/venues")

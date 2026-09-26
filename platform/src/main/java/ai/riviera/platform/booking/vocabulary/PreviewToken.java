@@ -10,14 +10,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * What the operator confirmed on the remodel preview, as the commit re-checks it: one SHA-256 digest
- * per previewed claim over {@code bookingId:KIND} — the booking and the <em>kind</em> of outcome,
- * never the candidate set, so a move re-ranked by a racing claim still matches — sorted and joined
- * behind a version prefix. {@link #covers} is the match rule: every re-derived pair must have its
- * digest in the token; a previewed pair with no fresh twin (a guest cancelled in between) is fine, a
- * fresh pair with no digest (a new claim, or a changed kind) is stale. Opaque on the wire; carrying
- * no secret, it needs no signature — a forged token can only ever confirm what the commit would
- * decide anyway.
+ * What the operator confirmed on the remodel preview: one SHA-256 digest per previewed claim over
+ * {@code bookingId:KIND} (never the candidate set, so a move re-ranked by a racing claim still
+ * matches), sorted and joined behind a version prefix. {@link #covers} is the match rule: a fresh
+ * pair with no digest (new claim or changed kind) is stale; a previewed pair with no fresh twin is
+ * fine. Opaque on the wire and unsigned: it carries no secret, and a forged token can only confirm
+ * what the commit would decide anyway.
  */
 public record PreviewToken(String value) {
 

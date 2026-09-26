@@ -12,17 +12,12 @@ import ai.riviera.platform.booking.vocabulary.SpotRef;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
- * A remodel-commit receipt on the wire of {@code GET /api/venues/{venueId}/remodels/{receiptId}}:
- * when it was committed, every move, every claim it ended instead — refunded, released or declined —
- * every claim it kept where it was with the reason, the operator's reason for the refunds and what
- * it returned to guests. The booking rides by id (never by code,
- * invariant #7), its day as ISO {@code YYYY-MM-DD}, both spots as they were. {@code refundedTotal}
- * is {@code null} when the commit refunded nobody, so a zero never reads as a refund; its one
- * currency code is sound because collection is EUR-only (invariant #5). {@code feeTotal} is what the
- * commit cost the venue in venue-change fees, and each refund line carries the fee charged for it —
- * the amounts charged then, never today's rate; both are {@code null} on a commit that refunded
- * nobody, for the same reason {@code refundedTotal} is.
- * {@link Summary} is the list row. Mirrors the FE {@code RemodelReceipt} type.
+ * A remodel-commit receipt on {@code GET /api/venues/{venueId}/remodels/{receiptId}}: when, every
+ * move, every claim ended (refunded, released, declined), every claim kept with its reason, and the
+ * refund reason. Bookings ride by id, never code (invariant #7); days ISO; spots as they were.
+ * {@code refundedTotal}/{@code feeTotal} are {@code null} when nobody was refunded, so a zero never
+ * reads as a refund; one currency is sound as collection is EUR-only (invariant #5). Venue-change
+ * fees are as charged then, not today's rate. {@link Summary}: list row. Mirrors FE RemodelReceipt.
  */
 record RemodelReceiptView(long receiptId, Instant committedAt, List<MoveView> moves, List<ClaimView> refunds,
 		List<ReleaseView> releases, List<KeptView> kept, String refundReason, MoneyView refundedTotal,

@@ -22,16 +22,15 @@ public interface CustomerAccountTokens {
 	void issue(CustomerAccountId accountId, TokenPurpose purpose, String tokenHash, Instant expiresAt);
 
 	/**
-	 * Atomically claim a single, unexpired, not-yet-consumed token by {@code (purpose, tokenHash)},
-	 * returning its account id, or empty if none matches (unknown / expired / already used —
-	 * indistinguishable). The claim marks the row consumed in the same statement, so concurrent redeemers
-	 * cannot both succeed (single-use).
+	 * Atomically claim an unexpired, unconsumed token by {@code (purpose, tokenHash)}, marking it
+	 * consumed in the same statement so concurrent redeemers cannot both succeed; returns its
+	 * account id, or empty if none matches (unknown, expired and used are indistinguishable).
 	 */
 	Optional<CustomerAccountId> consume(TokenPurpose purpose, String tokenHash);
 
 	/**
 	 * The account a token belongs to while it is still claimable — {@link #consume}'s predicate as a pure
-	 * read, consuming nothing (#357). Kept next to {@code consume} so the two predicates cannot drift.
+	 * read, consuming nothing. Kept next to {@code consume} so the two predicates cannot drift.
 	 */
 	Optional<CustomerAccountId> accountFor(TokenPurpose purpose, String tokenHash);
 }

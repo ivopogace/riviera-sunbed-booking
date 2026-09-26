@@ -24,16 +24,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The remodel commit: the bulk beach-map save that also settles the claims its layout disturbs, at
- * the platform edge because it composes {@code venue}'s write with {@code booking}'s moves, refunds,
- * releases and declines (ADR-0020; {@link RemodelCommitService} is the gate). The outcome→HTTP map:
- * committed → {@code 200} with the receipt and every settled claim, the kept ones included; a picture
- * the preview no longer describes → {@code 409 STALE_PREVIEW}; a layout that gives a kept set's row
- * and position to another set → {@code 409 REMODEL_REFUSED}; a picture that refunds guests without
- * the typed count and a reason →
- * {@code 409 REFUND_NOT_CONFIRMED} — all three carrying the fresh {@code preview}, token included, so
- * the editor re-renders the dialog and the count it now owes is the picture's own; the save's own refusals
- * and rejections in the save's words and codes; a non-owner → {@code 403} via
- * {@code ApiErrorHandler}. Nothing is written on any answer but {@code 200}.
+ * the edge as it composes {@code venue}'s write with {@code booking}'s moves, refunds, releases and
+ * declines (ADR-0020; {@link RemodelCommitService} is the gate). Committed → {@code 200} with the
+ * receipt; {@code 409 STALE_PREVIEW}, {@code REMODEL_REFUSED} and {@code REFUND_NOT_CONFIRMED}
+ * carry the fresh {@code preview}, token included; a non-owner → {@code 403} via
+ * {@code ApiErrorHandler}. Only {@code 200} writes. Outcomes: RESPONSIBILITIES.md §Platform edge.
  */
 @RestController
 @RequestMapping("/api/venues")

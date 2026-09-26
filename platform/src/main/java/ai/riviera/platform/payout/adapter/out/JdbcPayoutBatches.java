@@ -15,15 +15,12 @@ import ai.riviera.platform.payout.domain.PeriodKey;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * JDBC adapter for {@link PayoutBatches} — explicit SQL via {@link JdbcClient}, no JPA (invariant #1).
- * Package-private; only the port is referenced cross-layer.
+ * JDBC adapter for {@link PayoutBatches} — explicit SQL via {@link JdbcClient} (invariant #1).
  *
- * <p>Both writes are guarded on {@code status} in the one statement, so neither can act on a stale
- * read (invariant #9). {@link #upsertDraft} is an idempotent
- * {@code INSERT … ON CONFLICT (venue_id, period_key) DO UPDATE} guarded by
- * {@code WHERE payout_batch.status = 'DRAFT'}: a re-generated period refreshes a still-draft batch's
- * total but never overwrites one already {@code REPORTED}/{@code SETTLED}. {@link #transition} pins
- * the expected prior status in its own {@code WHERE}, so a batch never moves backwards.
+ * <p>Both writes guard on {@code status} in the one statement, so neither acts on a stale read
+ * (invariant #9): {@link #upsertDraft}'s {@code ON CONFLICT … DO UPDATE} refreshes only a
+ * {@code DRAFT} batch, never a {@code REPORTED}/{@code SETTLED} one, and {@link #transition} pins
+ * the expected prior status in its {@code WHERE}, so a batch never moves backwards.
  */
 @Repository
 class JdbcPayoutBatches implements PayoutBatches {

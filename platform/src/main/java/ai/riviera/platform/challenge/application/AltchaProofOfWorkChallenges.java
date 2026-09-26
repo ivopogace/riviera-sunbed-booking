@@ -15,16 +15,12 @@ import ai.riviera.platform.challenge.api.ProofOfWorkChallenges;
 import ai.riviera.platform.challenge.vocabulary.ChallengeVerdict;
 
 /**
- * {@link ProofOfWorkChallenges} on the official ALTCHA v2 library: a challenge is a signed parameter
- * block the widget brute-forces in the browser; a solution is accepted when its signature is ours,
- * its answer is right, it has not expired, and the {@link ChallengeRegistry} claim for its nonce
- * wins — so each solution counts exactly once, across restarts and instances.
- *
- * <p>Expiry is minted from the injected {@link Clock} and checked by the library against the wall
- * clock — both the server's, so the client's clock never enters. The signing secret is
- * {@code riviera.altcha.hmac-secret}; blank means a random key for this process alone, which is
- * fine for a single dev instance and is logged at WARN. Rationale: {@code RESPONSIBILITIES.md}
- * § {@code challenge}.
+ * {@link ProofOfWorkChallenges} on the official ALTCHA v2 library: a solution is accepted when its
+ * signature is ours, its answer is right, it has not expired, and the {@link ChallengeRegistry}
+ * claim for its nonce wins — so each solution counts exactly once, across restarts and instances.
+ * Expiry: minted from the injected {@link Clock}, checked by the library on the server's clock,
+ * never the client's. Secret {@code riviera.altcha.hmac-secret}; blank = a random per-process key
+ * (one dev instance only; WARN). Rationale: {@code RESPONSIBILITIES.md} § {@code challenge}.
  */
 @Service
 class AltchaProofOfWorkChallenges implements ProofOfWorkChallenges {

@@ -15,16 +15,12 @@ import ai.riviera.platform.operator.api.VenueVisibility;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 
 /**
- * The {@code operator} module's application service (invariant #13): resolves a principal to an
- * {@link OperatorId} and answers the ownership and tourist-visibility questions. Package-private
- * behind the published {@link VenueOwnership} / {@link OperatorDirectory} / {@link VenueVisibility}
- * ports (invariant #11); constructor injection into a {@code final} {@link Operators} port.
- * Read-only — both decisions are pure queries; no {@code @Transactional} write path in this slice.
- *
- * <p>It performs no enforcement of its own beyond answering: each venue-scoped service calls
- * {@link #assertOwns} and maps the failure to {@code 403}. That keeps {@code operator} out of every
- * request path (RESPONSIBILITIES.md — it owns the mapping, not the check site). The one write is
- * {@link #assignOwner} (creator-owns-on-create), which joins the caller's transaction.
+ * Application service (invariant #13) resolving a principal to an {@link OperatorId} and answering
+ * the ownership and tourist-visibility questions, package-private behind {@link VenueOwnership} /
+ * {@link OperatorDirectory} / {@link VenueVisibility} (invariant #11). It enforces nothing itself:
+ * each venue-scoped service calls {@link #assertOwns} and maps the failure to {@code 403}, so
+ * {@code operator} owns the mapping, not the check site. Reads are pure queries; the one write,
+ * {@link #assignOwner} (creator-owns-on-create), joins the caller's transaction.
  */
 @Service
 class OperatorService implements VenueOwnership, OperatorDirectory, VenueVisibility {

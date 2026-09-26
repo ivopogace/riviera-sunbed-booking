@@ -10,16 +10,12 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Serves the riviera map's resources — the style, the PMTiles archive, the glyph ranges and the
- * sprites — same-origin under {@code /map/**} from the directory {@code riviera.map.dir}
- * ({@code map/} next to the jar: {@code platform/map/} under {@code bootRun}, {@code /app/map/} on
- * the image). Anonymous like the SPA shell; the archive is read by HTTP {@code Range}, which the
- * framework's resource handler answers with a {@code 206} slice.
- *
- * <p>A file-system directory rather than the classpath on purpose: a jar entry is deflated, so
- * seeking to a byte offset means inflating everything before it, on every tile request. An
- * app-wide web concern like {@link SpaWebConfig}, so it lives in the root package, not in a
- * module (invariant #11). Rationale: RESPONSIBILITIES.md § <em>Platform edge</em>, ADR-0022.
+ * Serves the riviera map's style, PMTiles archive, glyph ranges and sprites, anonymous and
+ * same-origin under {@code /map/**}, from the directory {@code riviera.map.dir} ({@code map/} next
+ * to the jar: {@code platform/map/} under {@code bootRun}, {@code /app/map/} on the image). The
+ * archive is read by HTTP {@code Range} (a {@code 206} slice), so a file-system directory, not the
+ * classpath: a jar entry cannot seek. App-wide like {@link SpaWebConfig}, so root package (#11).
+ * Rationale: RESPONSIBILITIES.md § <em>Platform edge</em>, ADR-0022.
  */
 @Component
 class MapResourcesConfig implements WebMvcConfigurer {

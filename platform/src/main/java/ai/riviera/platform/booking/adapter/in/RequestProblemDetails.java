@@ -11,9 +11,8 @@ final class RequestProblemDetails {
 
 	/**
 	 * {@code REQUEST_NOT_PENDING}, raised by the venue's accept and decline and by the guest's
-	 * withdraw. It names neither a request nor a route out of pending, because the withdraw leg
-	 * reaches it for <em>any</em> booking that is not {@code PENDING_REQUEST} — including an
-	 * Instant-mode booking that was never a request and never awaited a venue at all.
+	 * withdraw. Names no request and no route out of pending: withdraw reaches it for
+	 * <em>any</em> non-{@code PENDING_REQUEST} booking, even an Instant one that awaited no venue.
 	 */
 	static final String NOT_PENDING = "This booking is not awaiting a venue response.";
 

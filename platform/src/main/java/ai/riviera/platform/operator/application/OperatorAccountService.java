@@ -11,16 +11,11 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 
 /**
- * The {@code operator} module's credential application service: the read side of an
- * account's stored credential ({@link OperatorAccounts}) and the provisioning/rotation write side
- * ({@link OperatorProvisioning}). Package-private behind the published ports (invariant #11);
- * constructor injection into a {@code final} {@link Operators}. Kept separate from
- * {@link OperatorService} (the authorization/ownership reads) so credential concerns don't bloat the
- * ownership service.
- *
- * <p>It holds <strong>no</strong> Spring Security type: the stored {@code passwordHash} is an opaque
- * blob supplied already-encoded by the edge, and this service never encodes or verifies it. That
- * keeps the password-checking machinery at the platform edge (RV-BE-11, {@code RESPONSIBILITIES.md}).
+ * Credential application service: the read side of an account's stored credential
+ * ({@link OperatorAccounts}) and the provisioning/rotation write side
+ * ({@link OperatorProvisioning}), package-private behind those ports (invariant #11) and kept apart
+ * from {@link OperatorService}'s ownership reads. It holds no Spring Security type: the
+ * {@code passwordHash} arrives already encoded and is never encoded or verified here (RV-BE-11).
  * The writes are {@code @Transactional}; the read is a pure query.
  */
 @Service

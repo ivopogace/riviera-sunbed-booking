@@ -4,11 +4,10 @@ package ai.riviera.platform.notification.application;
  * What an admin's Resend press achieved — the answer the console shows, and the reason the
  * resend is a synchronous call rather than an event.
  *
- * <p>Every value is an ordinary answer an admin acts on, not an error
- * (`riviera-java-conventions` §6), which is why the endpoint returns {@code 200} for all of them. The
- * two refusals earn their own names instead of sharing one: "no such booking" means the admin has the
- * wrong id, while "never confirmed" means the booking exists and a confirmation was never owed — and
- * mailing "your booking is confirmed" for it would tell the tourist something untrue.
+ * <p>Every value is an ordinary answer an admin acts on, not an error (`riviera-java-conventions`
+ * §6), so the endpoint returns {@code 200} for all of them. The two refusals are distinct: "no
+ * such booking" means a wrong id; "never confirmed" means no confirmation was owed, and mailing
+ * one would tell the tourist something untrue.
  */
 public enum ResendOutcome {
 

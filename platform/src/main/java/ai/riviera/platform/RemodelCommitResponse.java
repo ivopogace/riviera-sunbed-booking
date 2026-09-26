@@ -11,16 +11,12 @@ import ai.riviera.platform.venue.vocabulary.LockedSet;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
- * A committed remodel on the wire: the receipt the console can open later and everything it did —
- * the bookings it moved, the confirmed ones it refunded in full, the unpaid ones it released, the
- * requests it declined and the claims it kept where they are (their sets left as stored), in the
- * preview's own shapes, with the operator's reason and what the
- * commit returned to guests. {@code refundedTotal} is {@code null} when it refunded nobody, so a
- * zero is never rendered as a refund; it sums the minor units and carries one currency code, which
- * is sound because collection is EUR-only (invariant #5) so every refund in a commit shares it.
- * {@code feeTotal} is what those refunds cost the venue, at the rate quoted with this commit;
- * {@code null} alongside {@code refundedTotal} when it refunded nobody.
- * Bookings by id, never by code (invariant #7).
+ * A committed remodel on the wire: the receipt id and everything the commit did — moves, full
+ * refunds of confirmed bookings, released unpaid ones, declined requests and claims kept in place
+ * (their sets left as stored) — in the preview's shapes, with the operator's refund reason.
+ * {@code refundedTotal} and {@code feeTotal} (the refunds' cost to the venue at the rate quoted
+ * with this commit) are {@code null} when nobody was refunded, so a zero never renders as a refund;
+ * one currency suffices as collection is EUR-only (invariant #5). Bookings by id, never code (#7).
  */
 record RemodelCommitResponse(long receiptId, Instant committedAt, List<RemodelPreviewResponse.MoveView> moves,
 		List<RemodelPreviewResponse.ClaimView> refunds, List<RemodelPreviewResponse.ReleaseView> releases,

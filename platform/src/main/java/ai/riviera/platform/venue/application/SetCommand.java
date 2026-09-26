@@ -9,13 +9,12 @@ import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.Tier;
 
 /**
- * The validated intent to place or re-place one set position on a venue's beach map (U7) —
- * used by both {@link EditBeachMap#addSet} and {@link EditBeachMap#editSet} (the editor is
- * incremental per-set CRUD). Its compact constructor enforces the same invariants the V2/V12/V43
- * CHECK constraints enforce in the database, so a malformed set is rejected at the boundary:
- * {@code tier} is the exact token the DB stores and {@code pool} the typed {@link Pool} (a set is in
- * exactly one pool — invariant #3), {@code priceMinor} is integer minor units + an ISO-4217 currency
- * (invariant #5), and grid coordinates / position number are 1-based (the V12 CHECKs).
+ * The validated intent to place or re-place one set position on a venue's beach map (U7), for
+ * both {@link EditBeachMap#addSet} and {@link EditBeachMap#editSet}. Its compact constructor
+ * enforces the V2/V12/V43 CHECKs at the boundary: {@code tier} is the exact token the DB stores,
+ * {@code pool} the typed {@link Pool} (a set is in exactly one pool — invariant #3),
+ * {@code priceMinor} integer minor units + an ISO-4217 currency (invariant #5), and grid
+ * coordinates / position number 1-based (the V12 CHECKs).
  */
 public record SetCommand(String rowLabel, int positionNo, String tier, Pool pool,
 		long priceMinor, String priceCurrency, int gridX, int gridY) {
@@ -54,11 +53,9 @@ public record SetCommand(String rowLabel, int positionNo, String tier, Pool pool
 	}
 
 	/**
-	 * Whether applying this command would move the set at {@code stored} — the only edit a hold or
-	 * booking can be harmed by, because a reposition silently re-seats a guest who was told this row
-	 * and number. Pool, price and tier are excluded on purpose: a booking's charge is snapshotted at
-	 * reserve time, and the pool decides only whether a <em>new</em> online booking may claim the set
-	 * (invariant #3 is a reserve-time rule). Rationale: RESPONSIBILITIES.md §venue.
+	 * Whether this command would move the set at {@code stored} — the only edit that harms a hold
+	 * or booking (it re-seats the guest). Pool, price and tier are excluded on purpose: the charge
+	 * is snapshotted at reserve, #3 is a reserve-time rule. Rationale: RESPONSIBILITIES.md §venue.
 	 */
 	public boolean disturbs(SetPlacement stored) {
 		return !stored.rowLabel().equals(rowLabel)

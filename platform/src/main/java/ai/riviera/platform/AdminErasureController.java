@@ -11,17 +11,12 @@ import org.springframework.web.bind.annotation.RestController;
 import ai.riviera.platform.customer.api.AccountErasure;
 
 /**
- * The platform-admin surface for actioning a data-subject erasure request by email — for a
- * guest with no account, or an account holder who cannot self-serve. Driving adapter depending only on the
- * {@code customer} module's {@link AccountErasure} port (invariant #11); the scrub lives in the customer
- * application service.
- *
- * <p><strong>Role-gated, not venue-scoped.</strong> Lives under {@code /api/admin/**}, gated to the
- * {@code ADMIN} role in {@link SecurityConfig} — a platform-wide admin action, exempt from the per-venue
- * authorization of invariant #13. A plain {@code OPERATOR} or {@code CUSTOMER} reaching it is {@code 403}.
- * A successful (or already-erased, or nothing-to-erase) request is {@code 204} — non-enumerating, so it
- * never reveals whether the email existed (design D-8); a blank email is a {@code 400 INVALID_REQUEST}
- * built by the one RFC-7807 {@link ApiProblem} factory.
+ * The platform-admin surface for actioning a data-subject erasure request by email — for a guest
+ * with no account, or an account holder who cannot self-serve. Drives only {@code customer}'s
+ * {@link AccountErasure} port (invariant #11); the scrub lives in the customer application service.
+ * Gated to {@code ADMIN} in {@link SecurityConfig}, not venue-scoped (exempt from #13); any other
+ * role is {@code 403}. Erased, already-erased and nothing-to-erase are all {@code 204}, never
+ * revealing whether the email existed (design D-8); a blank email is {@code 400 INVALID_REQUEST}.
  */
 @RestController
 @RequestMapping("/api/admin")

@@ -4,17 +4,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * Tunables for the money-path alert self-check — the thresholds the
- * {@link MoneyPathAlertCheck} compares each signal against, plus the webhook path whose 5xx responses
- * it watches. Schedule timings live on the {@code @Scheduled} placeholders (mirroring the sweeps), not
- * here. Defaults suit a low-volume single-instance soft launch; override per environment.
+ * Tunables for the money-path alert self-check: the thresholds {@link MoneyPathAlertCheck} compares
+ * each signal against and the webhook path whose 5xx it watches (schedule timings live on the
+ * {@code @Scheduled} placeholders). Defaults suit a low-volume single-instance launch.
  *
- * @param outboxBacklogThreshold alert when the incomplete-publication backlog exceeds this (a small
- *        transient backlog is normal; a sustained one means events are not draining)
- * @param webhookServerErrorThreshold alert when the number of webhook 5xx responses since the previous
- *        check exceeds this (0 = alert on any)
- * @param webhookUri the request {@code uri} tag whose 5xx {@code http.server.requests} samples are the
- *        webhook-error signal
+ * @param outboxBacklogThreshold alert above this backlog (brief: normal; sustained: not draining)
+ * @param webhookServerErrorThreshold alert above this many webhook 5xx per check (0 = any)
+ * @param webhookUri the {@code uri} tag whose 5xx {@code http.server.requests} samples count
  */
 @ConfigurationProperties("riviera.observability.alert")
 record MoneyPathAlertProperties(
