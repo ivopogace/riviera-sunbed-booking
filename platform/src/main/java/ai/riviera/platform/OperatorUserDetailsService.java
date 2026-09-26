@@ -16,10 +16,10 @@ import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 /**
  * The edge's {@link UserDetailsService} (login machinery stays out of {@code operator}, RV-BE-11):
  * hands {@code DaoAuthenticationProvider} the stored hash, read via {@link OperatorAccounts}. Every
- * operator gets {@code OPERATOR} (per-venue checks stay object-level, invariant #13); an
- * {@code is_admin} account adds {@code ADMIN} for {@code /api/admin/**} and keeps {@code OPERATOR}. A
- * status outside {@link #MAY_AUTHENTICATE} is built {@code disabled}, refused before the password is
- * examined (no existence/timing oracle); a null hash or unknown name: {@link UsernameNotFoundException}.
+ * operator gets {@code OPERATOR} (per-venue checks stay object-level, invariant #13); {@code is_admin}
+ * adds {@code ADMIN} for {@code /api/admin/**}. A status outside {@link #MAY_AUTHENTICATE} is built
+ * {@code disabled}: refused, but only after the password check still runs (Spring's default; keep it),
+ * so it costs one bcrypt like any failure. A null hash or unknown name: {@link UsernameNotFoundException}.
  */
 @NullMarked
 class OperatorUserDetailsService implements UserDetailsService {
