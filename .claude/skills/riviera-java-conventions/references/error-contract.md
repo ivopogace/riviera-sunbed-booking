@@ -26,8 +26,10 @@ occupies this grid cell."*), never a consequence, a remedy or UI navigation.
   `REQUEST_NOT_PENDING` (accept, decline, withdraw — may not say "already been decided").
   `STALE_WRITE` guards two tokens, two conditions, so it carries one string per token:
   `venue.version` (the profile write, `STALE_PROFILE_DETAIL`) and `venue.set_version` (reprice,
-  rename, batch apply, replace and remodel share `STALE_SETS_DETAIL` — may not claim *prices*
-  or *layout*). `CurrentPasswordDetailTwinTest` pins its pair live.
+  rename, batch apply, replace and remodel — may not claim *prices* or *layout*). The set string
+  is three literals, changed together: `VenueAdminController.STALE_SETS_DETAIL` (reprice, rename,
+  batch apply), `LayoutRejection.STALE_WRITE` (replace, remodel commit) and
+  `RemodelPreviewController.STALE_SETS_DETAIL`. `CurrentPasswordDetailTwinTest` pins its pair live.
 - **Not findings:** `UNSUPPORTED_FORMAT` (states what the server accepts),
   `BOOTSTRAP_CREDENTIAL_MANAGED`, `SET_NOT_BOOKABLE_ONLINE`, `RATE_LIMITED`'s *"Too many
   requests."* (any widening leaks which of four dimensions fired).
