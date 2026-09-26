@@ -20,6 +20,9 @@ reclaim money afterwards.
 **Cancellation is classified by a `CancellationWindow` with three values, computed in
 `Europe/Tirane` by `BookingCutoff` (invariants #4/#6):**
 
+> **Note (2026-09-26):** that cutoff is now cited as #10 (with #6 for `Europe/Tirane`); #4
+> means sales close only.
+
 - **`FREE`** — before the venue's evening-before cutoff. Full refund (100% of the gross).
 - **`LATE`** — from that cutoff until the service day opens. A **per-venue configurable** share:
   `venue.late_cancel_refund_bps` (basis points, `0..10000`, **default 0** = non-refundable);

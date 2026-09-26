@@ -1,7 +1,7 @@
 package ai.riviera.platform.venue.application;
 
 /**
- * Why a beach-map write was rejected (U7) — the closed set of expected, caller-handled
+ * Why a beach-map write was rejected — the closed set of expected, caller-handled
  * failures shared by {@link AddSetOutcome} and {@link ChangeOutcome}. A lost layout (a taken
  * cell, a duplicate position) is normal flow, returned as a value, not thrown
  * (riviera-java-conventions: typed outcomes). The REST adapter maps each to one HTTP status:
@@ -24,8 +24,8 @@ public enum SetRejection {
 	STALE_WRITE,
 	/**
 	 * Someone is still owed the set — a hold dated today or later, or a non-terminal booking — so a
-	 * remove, or an edit that would reposition it, is refused (invariant #2); price, tier and pool
-	 * never are. Finished bookings refuse neither; they make a removal retire the set (ADR-0019).
+	 * remove, or an edit that would reposition it, is refused; price, tier and pool never are.
+	 * Finished bookings refuse neither; they make a removal retire the set (ADR-0019).
 	 */
 	SET_IN_USE,
 	/** Another set already occupies the target {@code (grid_x, grid_y)} cell. */

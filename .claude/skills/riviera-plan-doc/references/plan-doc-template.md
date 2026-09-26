@@ -53,11 +53,12 @@ changed, e.g. `postgres` (BIGINT identity PKs)>
 ## Risk register
 
 > Fill before phase 0 (`grilling` if risks aren't visible). Standing categories: concurrent
-> reservation (#2), webhook duplicate/out-of-order (#8), payout double-accrual (#9),
-> timezone/cutoff (#4/#6), rounding (#5), boundary leaks (#11), BOLA on any venue-scoped
-> surface (#13 — say how ownership is verified in the service), JPA or Stripe Connect
-> temptation. New DTO/error → error-contract note (`riviera-java-conventions` §6b). Flyway →
-> claim `V<n>` per the intake gate (free on `main` AND unclaimed by open PRs; who renumbers).
+> reservation (#2), webhook duplicate/out-of-order (#8), payout double-accrual (#9), timezone,
+> sales close and cancellation cutoff (#4/#6/#10), rounding (#5), boundary leaks (#11), BOLA on
+> any venue-scoped surface (#13 — say how ownership is verified in the service), JPA or Stripe
+> Connect temptation. New DTO/error → error-contract note (`riviera-java-conventions` §6b).
+> Flyway → claim `V<n>` per the intake gate (free on `main` AND unclaimed by open PRs; who
+> renumbers).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
@@ -226,7 +227,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [ ] Every AC has an implementing task and a verifying test.
 - [ ] No placeholders / TODO / TBD in the doc.
 - [ ] No JPA (#1). Availability section filled or justified N/A; concurrency test present (#2).
-- [ ] Pool + cutoff honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
+- [ ] Pool + sales close honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
 - [ ] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
 - [ ] Payment section filled or N/A; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
 - [ ] Flyway migration present; invariant-enforcing constraints tested (#12).

@@ -110,51 +110,62 @@ below; every RULE is enumerated individually, since that is what the question tu
 
 Recurring patterns, none of them statements about the business:
 
-- **Compensating try/catch around a gateway call** — `CreateBookingService:112–117, 127–131,
-  156–160`; `RespondToRequestService:120–127, 136–142`. Each releases or reverts a committed
+- **Compensating try/catch around a gateway call** — `CreateBookingService#collect`;
+  `RespondToRequestService#collect`. Each releases or reverts a committed
   transition when Stripe throws, then rethrows.
 - **Sealed-outcome dispatch** — `switch (payment)` over `PaymentOutcome` (`CreateBookingService`,
   `RespondToRequestService`), `switch (outcome)` over `PaymentCancellation`
-  (`AbandonedBookingSweepService:92–111`). Sequencing, not rules.
-- **Per-row isolation in a sweep** — `ExpireRequestsService:45–52`,
-  `AbandonedBookingSweepService:71–85`: a `try/catch` inside the loop so one bad row cannot abort
+  (`AbandonedBookingSweepService#expire`). Sequencing, not rules.
+- **Per-row isolation in a sweep** — `ExpireRequestsService#sweep`,
+  `AbandonedBookingSweepService#sweep`: a `try/catch` inside the loop so one bad row cannot abort
   the batch.
-- **Batch draining** — `NoShowSweepService:59–66` (`inBatch < BATCH_SIZE` ⇒ drained), plus
-  `BATCH_SIZE`/`MAX_BATCHES_PER_RUN`. Throughput, not policy.
-- **Empty-input short circuits and log guards** — `PendingRequestsService:44`,
-  `ExpireRequestsService:57`, `NoShowSweepService:80–88`, `RefundResubmissionService:48`.
-- **Fail-loud on the impossible** — `MyBookingsService:56–59` throws when a booking's set does not
-  resolve, which the `ON DELETE RESTRICT` FK makes unreachable.
+- **Batch draining** — `NoShowSweepService.Backlog#drain` (`inBatch < BATCH_SIZE` ⇒ drained),
+  plus `BATCH_SIZE`/`MAX_BATCHES_PER_RUN`. Throughput, not policy.
+- **Empty-input short circuits and log guards** — `PendingRequestsService#forVenue`,
+  `ExpireRequestsService#sweep`, `NoShowSweepService#logOutcome`,
+  `RefundResubmissionService#resubmit`.
+- **Fail-loud on the impossible** — `MyBookingsService#enrich` throws when a booking's set does
+  not resolve, which the `ON DELETE RESTRICT` FK makes unreachable.
 
 ### DB-DELEGATED — the second-largest group
 
 Every one of these exists to react to a guarded `UPDATE … RETURNING` or an `ON CONFLICT`. The rule
 is the SQL predicate; the Java only reads the result.
 
-- `ClaimReleaseService:38–43` — `.map(…).orElse(false)` over `cancelAwaitingPayment`.
-- `RequestReleaseService:62–107` — three legs (decline / expire / withdraw), same shape.
-- `CancelBookingService:92` and `WeatherRefundService:82` — `transitioned.isEmpty()` ⇒ lost
-  race.
-- `ReserveSetService:100–106` — `switch (claim)` over `ClaimOutcome`, four arms.
-- `StaffAvailabilityService:86, 105` — `inserted == 1` / `deleted == 1`.
-- `CheckInService:51–53`, `RespondToRequestService:96–98`, `WithdrawRequestService:41–48` —
+- `ClaimReleaseService#release` — `.map(…).orElse(false)` over `cancelAwaitingPayment`.
+- `RequestReleaseService` — three legs (`#decline` / `#expire` / `#withdraw`), same shape.
+- `CancelBookingService#cancel` and `WeatherRefundService#refundInFull` — `transitioned.isEmpty()`
+  ⇒ lost race.
+- `ReserveSetService#reserve` — `switch (claim)` over `ClaimOutcome`, four arms.
+- `StaffAvailabilityService#mark` / `#release` — `inserted == 1` / `deleted == 1`.
+- `CheckInService#checkIn`, `RespondToRequestService#accept`, `WithdrawRequestService#withdraw` —
   `.orElseGet(this::classify)`: the transition missed, so read committed state to say why.
 
 The guarded predicates these react to are in `booking/adapter/out/JdbcBookings.java`:
 
 ```sql
--- :170  accept          WHERE id = :id AND venue_id = :venue AND status = :pending
---                         AND request_expires_at > :now
--- :198  revert accept   WHERE id = :id AND status = :awaiting
--- :213  decline         WHERE id = :id AND venue_id = :venue AND status = :pending
--- :232  withdraw        WHERE code = :code AND status = :pending
--- :388  confirm         WHERE id = :id AND status = :awaiting
--- :431  cancel          WHERE id = :id AND status = ANY (:admitted)
--- :454  check-in        WHERE code = :code AND venue_id = :venue AND status = :confirmed
---                         AND booking_date = :date
--- :488  no-show sweep   WHERE status = :confirmed AND booking_date < :today
--- :619  expire request  WHERE id = :id AND status = :pending AND request_expires_at <= :now
--- :639  release unpaid  WHERE id = :id AND status = :awaiting
+-- #acceptPendingRequest (accept)
+--     WHERE id = :id AND venue_id = :venue AND status = :pending
+--       AND request_expires_at > :now
+-- #revertAcceptToPending (revert accept)
+--     WHERE id = :id AND status = :awaiting
+-- #declinePending (decline)
+--     WHERE id = :id AND venue_id = :venue AND status = :pending
+-- #withdrawPendingRequest (withdraw)
+--     WHERE code = :code AND status = :pending
+-- #confirmReturningFacts (confirm)
+--     WHERE id = :id AND status = :awaiting
+-- #cancelReturningFacts (cancel)
+--     WHERE id = :id AND status = ANY (:admitted)
+-- #completeConfirmed (check-in)
+--     WHERE code = :code AND venue_id = :venue AND status = :confirmed
+--       AND booking_date = :date
+-- #markPastConfirmedAsNoShow (no-show sweep)
+--     WHERE status = :confirmed AND booking_date < :today
+-- #expirePendingRequest (expire request)
+--     WHERE id = :id AND status = :pending AND request_expires_at <= :now
+-- #cancelAwaitingPayment (release unpaid)
+--     WHERE id = :id AND status = :awaiting
 ```
 
 **This is where the booking state machine actually lives.** Eleven predicates in one adapter, plus
@@ -166,32 +177,32 @@ Nineteen sites. "Home?" asks whether a named rule-holder already states it.
 
 | # | Rule | Site | Home? |
 |---|---|---|---|
-| R1 | Only an ONLINE-pool set may be booked online (#3) | `ReserveSetService:92` — `if (!ONLINE_POOL.equals(set.pool()))` | **Partial** — restated in `JdbcAvailabilityClaim.claim`; see §E |
-| R2 | A date sells until the venue's sales close on the day (#4) | `ReserveSetService:97` — `if (!cutoff.isBookable(set.salesClose(), …, now))` | ✅ `BookingCutoff` |
-| R3 | A hidden venue's set books like one that does not exist | `ReserveSetService:89` — `if (!visibility.isVisible(…))` | ✅ `operator.api.VenueVisibility` |
-| R4 | A REQUEST-mode venue's booking starts as a pending request, not a payment | `ReserveSetService:113` — `if (set.bookingMode() == BookingMode.REQUEST)` | ❌ inline |
-| R5 | The accept deadline is capped at the venue's sales close | `ReserveSetService:114` — `min(now.plus(expiryWindow), cutoff.salesCloseAt(…))` | **Partial** — `RequestWindows` holds the pay-window cap, not this one |
-| R6 | A delivered or no-show booking is past cancelling | `CancelBookingService:77–79` — `if (status == NO_SHOW \|\| status == COMPLETED) return WindowClosed` | ❌ inline |
-| R7 | Only a CONFIRMED booking is cancellable by the guest | `CancelBookingService:80–82` — `if (status != CONFIRMED) return NotCancellable` | **Duplicated** — see §E |
-| R8 | Cancellation is refused once the service day opens (#10) | `CancelBookingService:85–87` — `if (!quote.cancellationOpen())` | ✅ `CancellationPolicy` / `BookingCutoff` |
-| R9 | Which refund tier a cancellation reports | `CancelBookingService:109, 119` — `tierFor(window, refundMinor)` switch | ❌ inline (the *amount* is `RefundPolicy`; the *label* is not) |
-| R10 | The venue's late share applies only inside the LATE window | `CancellationPolicy:51–53, 93` — `window == LATE ? bps : 0` | ✅ own class (two sites, one class) |
-| R11 | Which cancellation window an instant falls in (#4/#10) | `BookingCutoff:73–78` | ✅ own class |
-| R12 | Three-tier refund arithmetic (#10) | `RefundPolicy:35–39` | ✅ `domain/` |
-| R13 | What a booking code means at a venue that cannot be checked in | `CheckInService:58–62` — `COMPLETED → AlreadyCheckedIn`, `CONFIRMED, NO_SHOW → WrongServiceDate`, `default → NotFound` | ❌ inline |
-| R14 | A booking is cancellable iff CONFIRMED and the window is open | `ViewBookingService:93` | **Duplicated** with R7 |
-| R15 | A booking is withdrawable iff PENDING_REQUEST | `ViewBookingService:95` | ❌ inline |
-| R16 | Mail status may be disclosed only post-payment | `ViewBookingService:85–89` — `status == CONFIRMED && collection.provenBeforeConfirmation()` | ❌ inline |
-| R17 | A refund is outstanding iff cancelled, non-zero, and the gateway has not settled | `ViewBookingService:101–105` | ❌ inline |
-| R18 | The pay window is closed iff the service day ended or the raw window ran out | `ViewBookingService:107–110` | **Duplicated** with the sweep's SQL — see §E |
-| R19 | A set may not be staff-marked for a past date | `StaffAvailabilityService:75–77` — `if (date.isBefore(LocalDate.ofInstant(clock.instant(), TIRANE)))` | ❌ inline (module has no `domain/`) |
+| R1 | Only an ONLINE-pool set may be booked online (#3) | `ReserveSetService#reserve` — `if (!ONLINE_POOL.equals(set.pool()))` | **Partial** — restated in `JdbcAvailabilityClaim.claim`; see §E |
+| R2 | A date sells until the venue's sales close on the day (#4) | `ReserveSetService#reserve` — `if (!cutoff.isBookable(set.salesClose(), …, now))` | ✅ `BookingCutoff` |
+| R3 | A hidden venue's set books like one that does not exist | `ReserveSetService#reserve` — `if (!visibility.isVisible(…))` | ✅ `operator.api.VenueVisibility` |
+| R4 | A REQUEST-mode venue's booking starts as a pending request, not a payment | `ReserveSetService#reserve` — `if (set.bookingMode() == BookingMode.REQUEST)` | ❌ inline |
+| R5 | The accept deadline is capped at the venue's sales close | `ReserveSetService#reserve` — `min(now.plus(expiryWindow), cutoff.salesCloseAt(…))` | **Partial** — `RequestWindows` holds the pay-window cap, not this one |
+| R6 | A delivered or no-show booking is past cancelling | `CancelBookingService#cancel` — `if (status == NO_SHOW \|\| status == COMPLETED) return WindowClosed` | ❌ inline |
+| R7 | Only a CONFIRMED booking is cancellable by the guest | `CancelBookingService#cancel` — `if (status != CONFIRMED) return NotCancellable` | **Duplicated** — see §E |
+| R8 | Cancellation is refused once the service day opens (#10) | `CancelBookingService#cancel` — `if (!quote.cancellationOpen())` | ✅ `CancellationPolicy` / `BookingCutoff` |
+| R9 | Which refund tier a cancellation reports | `CancelBookingService#cancel` → `#tierFor` — `tierFor(window, refundMinor)` switch | ❌ inline (the *amount* is `RefundPolicy`; the *label* is not) |
+| R10 | The venue's late share applies only inside the LATE window | `CancellationPolicy#quote`, `#lateShare` — `window == LATE ? bps : 0` | ✅ own class (two sites, one class) |
+| R11 | Which cancellation window an instant falls in (#4/#10) | `BookingCutoff#cancellationWindow` | ✅ own class |
+| R12 | Three-tier refund arithmetic (#10) | `RefundPolicy.refundMinor` | ✅ `domain/` |
+| R13 | What a booking code means at a venue that cannot be checked in | `CheckInService#classify` — `COMPLETED → AlreadyCheckedIn`, `CONFIRMED, NO_SHOW → WrongServiceDate`, `default → NotFound` | ❌ inline |
+| R14 | A booking is cancellable iff CONFIRMED and the window is open | `ViewBookingService#toDetail` (`cancellable`) | **Duplicated** with R7 |
+| R15 | A booking is withdrawable iff PENDING_REQUEST | `ViewBookingService#toDetail` (`withdrawable`) | ❌ inline |
+| R16 | Mail status may be disclosed only post-payment | `ViewBookingService#mayDiscloseMailStatus` — `status == CONFIRMED && collection.provenBeforeConfirmation()` | ❌ inline |
+| R17 | A refund is outstanding iff cancelled, non-zero, and the gateway has not settled | `ViewBookingService#toDetail` (`refundOutstanding`) | ❌ inline |
+| R18 | The pay window is closed iff the service day ended or the raw window ran out | `ViewBookingService#toDetail` (`payWindowClosed`; the arms now live in `RequestWindows#payWindowClosed`) | **Duplicated** with the sweep's SQL — see §E |
+| R19 | A set may not be staff-marked for a past date | `StaffAvailabilityService#mark` — `if (date.isBefore(LocalDate.ofInstant(clock.instant(), TIRANE)))` | ❌ inline (module has no `domain/`) |
 
 Plus two rules that sit **outside** `application/` entirely and belong in this tally:
 
 | # | Rule | Site | Home? |
 |---|---|---|---|
-| R20 | A guest cancel may act only on CONFIRMED; the admin weather refund may also reach NO_SHOW | `JdbcBookings:404–416` — `List.of(CONFIRMED)` vs `List.of(CONFIRMED, NO_SHOW)` | ❌ **in the adapter**; *documented* in `BookingTransition.WEATHER_REFUND`'s Javadoc |
-| R21 | A stranded booking with no payment on record is releasable past its TTL | `AbandonedBookingSweepService:94` — the `NoCollection` arm | ❌ inline (reasoned at length in the Javadoc) |
+| R20 | A guest cancel may act only on CONFIRMED; the admin weather refund may also reach NO_SHOW | `JdbcBookings#cancelConfirmed` / `#cancelForWeather` — `List.of(CONFIRMED)` vs `List.of(CONFIRMED, NO_SHOW)` | ❌ **in the adapter**; *documented* in `BookingTransition.WEATHER_REFUND`'s Javadoc |
+| R21 | A stranded booking with no payment on record is releasable past its TTL | `AbandonedBookingSweepService#expire` — the `NoCollection` arm | ❌ inline (reasoned at length in the Javadoc) |
 
 **Score: 8 of 21 rules have a named home; 13 do not.** But the 13 are not uniform — see §4.
 
@@ -225,17 +236,17 @@ The retention policy is a `Period` and a batch size, held as a plain application
 (`RetentionWindow`, 22 lines) deliberately carrying no configuration type. The rule "a contact with
 a booking on or after the cutoff is retained" is a SQL predicate reached through
 `GuestBookingHistory.withBookingOnOrAfter`, not a Java condition; the service's
-`!stillInBasis.contains(candidate)` (`ExpireGuestContactsService:74`) reads that answer. The
+`!stillInBasis.contains(candidate)` (`ExpireGuestContactsService#sweep`) reads that answer. The
 canonical e-mail form lives in `customer/vocabulary/Emails`, a value type. Nothing is flattened.
 
 ### `operator` — absence is correct
 
-`OperatorService.assertOwns` (`:39–43`) is four lines: ask `Operators.ownsVenue`, throw if false.
+`OperatorService#assertOwns` is four lines: ask `Operators.ownsVenue`, throw if false.
 The membership relation is a row in `operator_venue`; the status lifecycle is the same guarded-UPDATE
 idiom as booking:
 
 ```sql
--- JdbcOperators.java:207–208, 246–247
+-- JdbcOperators#transitionFromPending, JdbcOperators#transition
 UPDATE operator SET status = :target WHERE id = :id AND status = :pending    RETURNING …
 UPDATE operator SET status = :target WHERE id = :id AND status = :expected   RETURNING …
 ```
@@ -258,12 +269,12 @@ port or a row.
 **(b) Two or more callers that must agree.** This is the clause the Javadoc keeps naming:
 
 ```java
-// ReviewGate.java:10–14
+// ReviewGate, class Javadoc (at the time of writing)
  * <p>The order is the point. Every path that asks whether a stay may be rated — submit, edit,
  * delete, and the code-gated read — asks here … That agreement is a property of there being one
  * statement of the order, not of four services being kept in step.
 
-// Stars.java:4–6
+// Stars, class Javadoc
  * The driving adapter validates incoming requests against it and the submit use case guards on
  * it, so widening the scale is one edit here rather than a hunt through both.
 ```
@@ -280,7 +291,7 @@ could not.
 so and calls the duplication deliberate:
 
 ```java
-// Stars.java:8–10
+// Stars, class Javadoc
  * The database's {@code review_stars_check} states the same bounds independently and stays the
  * backstop: it is the only one of the two that also holds for a row written by anything but this
  * application, so the duplication there is deliberate, not drift.
@@ -293,7 +304,7 @@ so and calls the duplication deliberate:
 | R12 `RefundPolicy` | ✅ | ✅ view + cancel | ✅ | n/a | **already in `domain/`** |
 | R11 `BookingCutoff.cancellationWindow` | ❌ needs `Clock` | ✅ 5 slices | ✅ | n/a | **`application/`, correctly** |
 | R10 `CancellationPolicy` | ❌ needs 3 ports | ✅ view + cancel + accept | ✅ | n/a | **`application/`, correctly** |
-| R5/R18 `RequestWindows` | ✅ | ✅ mail + sweep + view | ✅ | ✅ (`JdbcBookings:580`) | **`application/` as a record — passes all four** |
+| R5/R18 `RequestWindows` | ✅ | ✅ mail + sweep + view | ✅ | ✅ (`JdbcBookings#findExpirableAwaitingPayment`) | **`application/` as a record — passes all four** |
 | R1 pool check | ✅ | ✅ reserve + claim | ✅ | ❌ no constraint | passes; **not extracted** |
 | R7/R14/R20 "who may cancel" | ✅ | ✅ three sites | ✅ | ❌ | passes; **not extracted** |
 | R13 check-in classification | ✅ | ❌ one caller | ✅ | ❌ | fails (b) |
@@ -321,7 +332,7 @@ The codebase is explicit that this is a placement rule and not an accident. `Boo
 one static method with a Javadoc paragraph defending its staticness:
 
 ```java
-// BookingCutoff.java:105–108
+// BookingCutoff.lastEndedServiceDay, Javadoc (at the time of writing)
  * <p><strong>Static, and that is the contract:</strong> it is a pure projection of the caller's
  * own instant onto the Tirane civil day … An instance method here would read as clock-backed like
  * its neighbour and silently is not.
@@ -357,7 +368,7 @@ Five duplications, in descending order of risk.
 `RequestWindows.payDeadline` / `acceptedBefore` is the value object. The sweep restates it in SQL:
 
 ```sql
--- JdbcBookings.java:580–583
+-- JdbcBookings#findExpirableAwaitingPayment
 -- SQL mirror of RequestWindows#payDeadline; identity pinned by RequestWindowsTest
 AND (   booking_date <= :serviceDayEndedOnOrBefore
      OR (accepted_at IS NULL AND created_at < :createdBefore)
@@ -367,7 +378,7 @@ AND (   booking_date <= :serviceDayEndedOnOrBefore
 And `ViewBookingService` re-derives the same two arms a third time, in Java:
 
 ```java
-// ViewBookingService.java:107–110
+// ViewBookingService#toDetail (at the time of writing; now RequestWindows#payWindowClosed)
 // Sweep-arm parity by construction: day end inclusive, the promised raw-window instant payable.
 boolean payWindowClosed = awaitingPayment && (cutoff.serviceDayHasEnded(b.bookingDate())
         || (b.acceptedAt() != null
@@ -379,13 +390,18 @@ held by a comment and nothing else.** If the sweep's arms change, the view silen
 the symptom is a guest shown a pay button for a booking the sweep has already cancelled. This is the
 one duplication in the codebase that is load-bearing and unpinned.
 
+*Resolved, 2026-09-04 (#930).* The view no longer re-derives the arms: `ViewBookingService#toDetail`
+asks `RequestWindows#payWindowClosed`, and `RequestWindowsTest` pins that method against
+`payDeadline` from both sides. Two statements remain (the record and the sweep's SQL mirror), and
+the test holds them together.
+
 ### D2 · "Who may cancel" is stated three times, in three layers
 
 | Layer | Statement |
 |---|---|
-| View | `ViewBookingService:93` — `status == CONFIRMED && quote.cancellationOpen()` |
-| Service | `CancelBookingService:77–82` — `NO_SHOW \|\| COMPLETED → WindowClosed`; `!= CONFIRMED → NotCancellable` |
-| Adapter | `JdbcBookings:407` — `cancelConfirmed` admits `List.of(CONFIRMED)` |
+| View | `ViewBookingService#toDetail` — `status == CONFIRMED && quote.cancellationOpen()` |
+| Service | `CancelBookingService#cancel` — `NO_SHOW \|\| COMPLETED → WindowClosed`; `!= CONFIRMED → NotCancellable` |
+| Adapter | `JdbcBookings#cancelConfirmed` — `cancelConfirmed` admits `List.of(CONFIRMED)` |
 
 Three agreeing statements with no shared function. The adapter's is the enforcing one; the other two
 are advisory, so a drift shows as a button that 409s rather than as a wrong write. Lower risk than
@@ -411,7 +427,7 @@ the copy for a spent day, not who may cancel.
 It is implemented 350 lines away in the adapter, as a list literal:
 
 ```java
-// JdbcBookings.java:411–415
+// JdbcBookings#cancelForWeather (at the time of writing)
 // Admits NO_SHOW beside CONFIRMED: the sweep gets to a washed-out day before the operator does.
 return cancelReturningFacts(bookingId, cancelledAt, refundMinor, RefundReason.WEATHER,
         List.of(BookingStatus.CONFIRMED, BookingStatus.NO_SHOW));
@@ -419,9 +435,14 @@ return cancelReturningFacts(bookingId, cancelledAt, refundMinor, RefundReason.WE
 
 The enum documents a rule it does not hold. Nothing binds the two.
 
+*Resolved, 2026-09-04 (#930).* `BookingTransition.WEATHER_REFUND` now holds the rule as data
+(`admittedFrom` is `{CONFIRMED, NO_SHOW}`), and `JdbcBookings#cancelForWeather` binds the guarded
+cancel's `:admitted` from that row, as `#cancelConfirmed` does from `CANCEL_BY_GUEST`. The enum and
+the SQL guard can no longer disagree: there is one statement, and the adapter reads it.
+
 ### D4 · The ONLINE-pool check runs twice, in two modules
 
-`ReserveSetService:92` checks `!ONLINE_POOL.equals(set.pool())` against an unlocked read;
+`ReserveSetService#reserve` checks `!ONLINE_POOL.equals(set.pool())` against an unlocked read;
 `JdbcAvailabilityClaim.claim` re-checks it against a `FOR KEY SHARE` read inside the claim transaction.
 Each module declares its own `private static final String ONLINE_POOL = "ONLINE"`. The second is the
 authoritative one and the first is a fast path — a defensible arrangement — but the pool token is an
@@ -430,13 +451,19 @@ record to avoid passing a bare `long` (first note, §H-5).
 
 *Correction, 2026-09-04 (#929's `venue/application/` pass).* **The token is declared in three
 modules, not two.** The third is in the module that owns the concept:
-`venue/application/SetCommand:18` — `private static final Set<String> POOLS = Set.of("ONLINE",
-"WALK_IN")` — and `venue/api/SetBookingFacts:24` hands the token to `booking` as a bare `String`
-with the two legal values written out in prose. The sharpest form of the finding is now internal to
-`venue`: its sibling field went the other way, `VenueFieldValidation:23–26` deriving the
-booking-mode tokens from the typed `venue/vocabulary/BookingMode` enum *"so the validator, the enum,
-and the CHECK stay in one source of truth"*, while `pool` has no type at all. The rest of the entry
-stands; only the count and the ownership reading change.
+`venue/application/SetCommand` (at the time of writing) — `private static final Set<String> POOLS =
+Set.of("ONLINE", "WALK_IN")` — and `venue/api/SetBookingFacts#poolForClaim` hands the token to
+`booking` as a bare `String` with the two legal values written out in prose. The sharpest form of
+the finding is now internal to `venue`: its sibling field went the other way,
+`VenueFieldValidation.BOOKING_MODES` deriving the booking-mode tokens from the typed
+`venue/vocabulary/BookingMode` enum *"so the validator, the enum, and the CHECK stay in one source
+of truth"*, while `pool` has no type at all. The rest of the entry stands; only the count and the
+ownership reading change.
+
+*Resolved, 2026-09-05 (#973).* `venue` publishes a typed `venue.vocabulary.Pool`, and every site
+compares against it: `ReserveSetService#reserve` and `JdbcAvailabilityClaim#claim` test
+`Pool.ONLINE`, `SetCommand` takes a `Pool`, and `SetBookingFacts#poolForClaim` returns
+`Optional<Pool>`. No module declares an `"ONLINE"` string constant.
 
 ### D5 · The booking transition table is stated twice, in neither Java nor one place
 
@@ -447,6 +474,12 @@ narrates them in prose. There is no single artefact — Java or SQL — a reader
 `review/domain/ReviewGate`'s virtue ("one statement of the order") has no counterpart in `booking`,
 which has nine states to `review`'s six.
 
+*Resolved, 2026-09-04 (#930).* `booking/domain/BookingTransition` is the table: each transition
+names the statuses it admits and the one it writes, and `BookingTransition.successorsOf` answers
+"what may follow `AWAITING_PAYMENT`?". It generates no SQL; the guarded `UPDATE`s in `JdbcBookings`
+stay the enforcement, the two cancel statements bind their rows' `admittedFrom`, and
+`JdbcBookingTransitionTableIT` holds every other row to its guard.
+
 ### Deliberate duplications, correctly handled — not findings
 
 For contrast, four Java↔SQL duplications that *are* pinned and documented, and are the model D1–D3
@@ -456,14 +489,14 @@ depart from: `Stars` ↔ `review_stars_check`; `ReviewText` ↔ `review_comment_
 duplication deliberate.
 
 **Not duplicated (checked and clear):** the refund arithmetic does not exist in the frontend.
-`frontend/src/app/booking/cancellation-terms-note.ts:32–38` switches on the server-supplied
+`frontend/src/app/booking/cancellation-terms-note.ts` (`CancellationTermsNote.sentence`) switches on the server-supplied
 `CancellationWindow` to choose copy, and no TypeScript applies a bps figure to an amount — invariant
 #10 holds across the stack.
 
 *Extended, 2026-09-04 (#929).* The frontend sweep has a second answer, in `venue`: the layout maxima
 are stated in Java (`LayoutCommand.MAX_SETS = 26 * 40`) and again in TypeScript
-(`frontend/src/app/operator/beach-cell.ts:9–10`, `MAX_ROWS = 26` / `MAX_COLS = 40`), and the
-row-label bound a third time as `layout-editor.html:159`'s `maxlength="40"`. The frontend states the
+(`frontend/src/app/operator/beach-cell.ts`, `MAX_ROWS = 26` / `MAX_COLS = 40`), and the
+row-label bound a third time as `layout-editor.html`'s row-label `maxlength="40"`. The frontend states the
 relationship correctly — *"the layout maxima the server enforces, published once so no grid clamps
 differently"* — and nothing pins either figure against the backend's; the shapes even differ, the
 server's bound being the product. Unlike D1 this is a bound restated rather than a rule re-derived,
@@ -477,15 +510,15 @@ one. Rank is the strength of the case, not a recommendation — this note propos
 
 | Rank | Rule | Statements of it | Pinned? | Case |
 |---|---|---|---|---|
-| 1 | **R18** pay window closed | **3** — `RequestWindows.payDeadline/acceptedBefore`; the sweep's SQL (`JdbcBookings:580–583`); `ViewBookingService:107–110` | SQL↔record only (`RequestWindowsTest`) | **Strongest.** Three statements, two pinned, the third held by a comment. The only unpinned duplication in the codebase whose drift is user-visible. |
-| 2 | **R7 / R14 / R20** who may cancel | **4** — `CancelBookingService:80–82`; `ViewBookingService:93`; `JdbcBookings:407` (`List.of(CONFIRMED)`); `JdbcBookings:411–415` (weather admits `NO_SHOW`) | No | **Strong.** Spans three layers plus an admin variant. The enforcing statement is the adapter's; the other three are advisory, so drift 409s rather than mis-writes. |
-| 3 | **R1** ONLINE-pool check | **2**, in **two modules** — `ReserveSetService:92`; `JdbcAvailabilityClaim.claim`, each with its own `private static final String ONLINE_POOL = "ONLINE"` | No | **Strong.** The only duplicated rule that crosses a module boundary, on an untyped `String` token, in a codebase that publishes a typed record to avoid a bare `long`. |
-| 4 | **R5** accept-deadline cap | **1 + a doc** — computed at `ReserveSetService:114`; `RequestWindows` holds the *pay*-window cap and describes the accept cap without holding it | No | Medium. Not duplicated code, but a rule-holder that documents a sibling rule it does not own. |
-| 5 | **R9** refund tier | **1**, derived a second time from a value that has a home — `CancelBookingService:119` switches on the same `CancellationWindow` that `RefundPolicy:35–39` already switches on | No | Medium. The *amount* has a home; the *label* is a second switch over the same three-valued input. |
-| 6 | **R6** delivered/no-show past cancelling | **1**, with a **deliberately rejected** near-duplicate — `CancelBookingService:77–79` tests `{COMPLETED, NO_SHOW}`, a strict subset of `BookingStatus.canStillBeHonoured()`'s false-set | n/a | Low, and instructive. The codebase anticipated the merge and refused it: *"a general-sounding predicate would be a trap"* (`BookingStatus.canStillBeHonoured`). Evidence **against** extraction. |
+| 1 | **R18** pay window closed | **3** — `RequestWindows.payDeadline/acceptedBefore`; the sweep's SQL (`JdbcBookings#findExpirableAwaitingPayment`); `ViewBookingService#toDetail` (at the time of writing; now `RequestWindows#payWindowClosed`) | SQL↔record only (`RequestWindowsTest`) | **Strongest.** Three statements, two pinned, the third held by a comment. The only unpinned duplication in the codebase whose drift is user-visible. |
+| 2 | **R7 / R14 / R20** who may cancel | **4** — `CancelBookingService#cancel`; `ViewBookingService#toDetail`; `JdbcBookings#cancelConfirmed` (`List.of(CONFIRMED)`); `JdbcBookings#cancelForWeather` (weather admits `NO_SHOW`) | No | **Strong.** Spans three layers plus an admin variant. The enforcing statement is the adapter's; the other three are advisory, so drift 409s rather than mis-writes. |
+| 3 | **R1** ONLINE-pool check | **2**, in **two modules** — `ReserveSetService#reserve`; `JdbcAvailabilityClaim.claim`, each with its own `private static final String ONLINE_POOL = "ONLINE"` | No | **Strong.** The only duplicated rule that crosses a module boundary, on an untyped `String` token, in a codebase that publishes a typed record to avoid a bare `long`. |
+| 4 | **R5** accept-deadline cap | **1 + a doc** — computed in `ReserveSetService#reserve`; `RequestWindows` holds the *pay*-window cap and describes the accept cap without holding it | No | Medium. Not duplicated code, but a rule-holder that documents a sibling rule it does not own. |
+| 5 | **R9** refund tier | **1**, derived a second time from a value that has a home — `CancelBookingService#tierFor` switches on the same `CancellationWindow` that `RefundPolicy.refundMinor` already switches on | No | Medium. The *amount* has a home; the *label* is a second switch over the same three-valued input. |
+| 6 | **R6** delivered/no-show past cancelling | **1**, with a **deliberately rejected** near-duplicate — `CancelBookingService#cancel` tests `{COMPLETED, NO_SHOW}`, a strict subset of `BookingStatus.canStillBeHonoured()`'s false-set | n/a | Low, and instructive. The codebase anticipated the merge and refused it: *"a general-sounding predicate would be a trap"* (`BookingStatus.canStillBeHonoured`). Evidence **against** extraction. |
 | 7 | **R4** REQUEST-mode entry leg | 1 | n/a | Low — single caller, and the branch *is* the fork in the use case. |
 | 8 | **R13** check-in classification | 1 | n/a | Low — single caller; classifies a guarded-`UPDATE` miss. |
-| 9 | **R15** withdrawable | 1 | n/a | Low — one line, one caller. `ViewBookingService:94–95` notes it is deliberately not a reuse of `cancellable`. |
+| 9 | **R15** withdrawable | 1 | n/a | Low — one line, one caller. `ViewBookingService#toDetail` notes it is deliberately not a reuse of `cancellable`. |
 | 10 | **R16** mail-status disclosure | 1 | n/a | Low — single caller, five lines of Javadoc defending its narrowness. |
 | 11 | **R17** refund outstanding | 1 | n/a | Low — single caller. |
 | 12 | **R19** staff-mark past date | 1 | n/a | Low — single caller. Parallel to R2 (sales close) but a *different* rule: staff may mark today after online sales close. |
@@ -517,9 +550,9 @@ now has a second answer (the layout maxima).
 | `booking` | **Mixed** — legitimately thin in the main, displaced in five named places | Rules needing a `Clock` or a port are extracted into `BookingCutoff`, `CancellationPolicy`, `RequestWindows`, each separately unit-tested; the state machine is genuinely in SQL. Displaced: `ViewBookingService.toDetail`'s six inline predicates, `CheckInService.classify`, `JdbcBookings`' admitted-status lists, R18's third statement, and no single artefact stating the transition table. |
 | `availability` | **Legitimately thin** — absence is correct | The core rule is `set_availability_uniq` plus one `INSERT … ON CONFLICT DO NOTHING`. A `domain/` class could only restate the constraint less reliably. One displaced one-liner (R19). |
 | `customer` | **Legitimately thin** — absence is correct | Retention is a `Period` in `RetentionWindow` plus a SQL predicate reached through `GuestBookingHistory`; the canonical e-mail form is `vocabulary/Emails`. Nothing displaced. |
-| `operator` | **Legitimately thin** — absence is correct | `assertOwns` is four lines over a row; the lifecycle is guarded `UPDATE … WHERE status = :expected` (`JdbcOperators:207, 246`). `OperatorStatus`'s Javadoc states the placement decision: *"each status predicate lives with its owner."* |
-| `review` | **Legitimately thin — and the benchmark** | Seven `domain/` types, and the services **call** them rather than re-deriving: `ReviewGate.stateOf` is invoked from both `ReviewLifecycleService:121` and `ReviewEligibilityService:46`; `Stars.isValid` from `ReviewLifecycleService:55, 72`. This is the direct contrast with `booking`'s R7/R14/R20. |
-| `venue` | **Legitimately thin** (firm — classified branch-by-branch, #929) | One `domain/` file, but **six** named rule-holders in `application/`: `VenueFieldValidation` (used by both command records *"so the two enforce the same invariants from one place — no duplicated validation block"*, naming its DB counterparts), `LayoutCommand`, `SetPlacement`, `PhotoProcessor`, `VenueCreationProperties`, and the layout guards (`hasLiveHold`, `isLivelyClaimed`, `isLivelyClaimedOrEverBooked`) as named private predicates with rationale. **13 of 21 rules have a named home** against `booking`'s 8 of 21; `VenueAdminService`'s 28 branches are mostly concurrency control (the `set_version` token, lock-before-probe) reacting to statements, not rule. Exactly one homeless rule passes all four §D clauses — `priceMinor >= 0`, stated at `SetCommand:32` and `RowPriceCommand:20`, one of the two untested. One near-miss passes three of four (a row label names one row, `VenueAdminService:240` ↔ `LayoutCommand.splitsRowLabel`, kinship named, no DB twin possible). The other six fail clause (b). |
+| `operator` | **Legitimately thin** — absence is correct | `assertOwns` is four lines over a row; the lifecycle is guarded `UPDATE … WHERE status = :expected` (`JdbcOperators#transitionFromPending`, `#transition`). `OperatorStatus`'s Javadoc states the placement decision: *"each status predicate lives with its owner."* |
+| `review` | **Legitimately thin — and the benchmark** | Seven `domain/` types, and the services **call** them rather than re-deriving: `ReviewGate.stateOf` is invoked from both `ReviewLifecycleService#stateOf` and `ReviewEligibilityService#panelFor`; `Stars.isValid` from `ReviewLifecycleService#submit` and `#edit`. This is the direct contrast with `booking`'s R7/R14/R20. |
+| `venue` | **Legitimately thin** (firm — classified branch-by-branch, #929) | One `domain/` file, but **six** named rule-holders in `application/`: `VenueFieldValidation` (used by both command records *"so the two enforce the same invariants from one place — no duplicated validation block"*, naming its DB counterparts), `LayoutCommand`, `SetPlacement`, `PhotoProcessor`, `VenueCreationProperties`, and the layout guards (`hasLiveHold`, `isLivelyClaimed`, `isLivelyClaimedOrEverBooked`) as named private predicates with rationale. **13 of 21 rules have a named home** against `booking`'s 8 of 21; `VenueAdminService`'s 28 branches are mostly concurrency control (the `set_version` token, lock-before-probe) reacting to statements, not rule. Exactly one homeless rule passes all four §D clauses — `priceMinor >= 0`, stated in the `SetCommand` and `RowPriceCommand` compact constructors (at the time of writing; now `VenueFieldValidation.requireNonNegativeMinor`), one of the two untested. One near-miss passes three of four (a row label names one row, `BeachMapEditService#renameRow` (then in `VenueAdminService`) ↔ `LayoutCommand.splitsRowLabel`, kinship named, no DB twin possible). The other six fail clause (b). |
 | `payment` | **Legitimately thin** | `RefundService` carries 2 branches in 76 lines; `PaymentStatus` mirrors the CHECK and `RefundLifecycle` holds the one predicate that is a choice. The rest is Stripe protocol, which is not domain rule. |
 | `payout` | **Legitimately thin — the strongest domain layer after `review`** | 6 files, 202 lines, holding the commission formula once (`CommissionSplit`) for two callers, and the proportional-reversal arithmetic in `PayoutLedgerEntry`. `PayoutReportService` carries 4 branches in 112 lines. |
 | `notification` | **Legitimately thin** — no domain rule to hold | Its subject is transport, suppression and retry. The one policy value, `MailResubmissionWindow`, is a named record in `application/` — the same pattern as `RefundResubmissionWindow`. |
@@ -541,7 +574,7 @@ the transition table).
    rejected — the view needs a per-booking answer, the sweep a set-based one — is not written down.
 2. **Does R5's accept-deadline cap belong in `RequestWindows`?** `RequestWindows` holds the pay-window
    cap and documents that the *accept* cap "sits before the day's end", but the accept cap itself is
-   computed inline at `ReserveSetService:114`. The asymmetry may be deliberate; nothing says.
+   computed inline in `ReserveSetService#reserve`. The asymmetry may be deliberate; nothing says.
 3. **Why is `RefundLifecycle` in `payment/domain/` while `RefundResubmissionWindow` is in
    `booking/application/`?** Both are pure. The first is a `final class` of statics, the second a
    record with a validating constructor. The (a)-clause explains most placements but not this pair.

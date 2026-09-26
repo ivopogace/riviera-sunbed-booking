@@ -24,7 +24,7 @@ public interface CustomerAccountStore {
 	 */
 	Optional<CustomerAccountCredential> findByEmail(String normalizedEmail);
 
-	/** The account id for this normalized email, or empty if no account exists (S3 identity resolution). */
+	/** The account id for this normalized email, or empty if no account exists */
 	Optional<CustomerAccountId> findIdByEmail(String normalizedEmail);
 
 	/**
@@ -51,7 +51,7 @@ public interface CustomerAccountStore {
 	/**
 	 * Set the account's opaque password hash — an unconditional {@code UPDATE}. The edge has
 	 * already authorized the write (token-proven reset or authenticated set-password) and encoded the hash.
-	 * Also gives a password-less SSO-only account its first local password (closes S4 F-1).
+	 * Also gives a password-less SSO-only account its first local password.
 	 */
 	void updatePasswordHash(CustomerAccountId accountId, String passwordHash);
 

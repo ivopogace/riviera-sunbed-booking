@@ -49,8 +49,7 @@ function subLineOf(b: RowSource): string {
     case 'CONFIRMED':
       return movedAtOf(b) ? 'Spot changed by the venue · see details' : '';
     case 'AWAITING_PAYMENT':
-      // No server pay-by deadline exists (only requestExpiresAt, the venue response deadline) →
-      // fall back rather than invent a cutoff (invariants #4/#6; deliberately not a backend change).
+      // The pay deadline (#4) never reaches the list row, so show no time rather than invent one.
       return 'Payment needed';
     case 'PENDING_REQUEST':
       return b.requestExpiresAt

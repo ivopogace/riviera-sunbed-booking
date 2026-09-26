@@ -22,6 +22,11 @@ Combined with the evening-before cutoff (Layer 2, invariant #4), this means staf
 open each day with a fixed "today's reservations" sheet and never seat walk-ins in
 the online block — so there is no live race to lose.
 
+> **Note (2026-09-26):** #4 was redefined on 2026-08-28 (#797). Sales for D now close at the
+> venue's `sales_close` on D; only the `00:01` setting (no same-day sales) keeps Layer 2's
+> fixed sheet at the day's open.
+> The evening-before boundary survives as the free-cancellation cutoff (#10, #6).
+
 ## Consequences
 
 - Dramatically reduces dependence on real-time staff "tap-to-mark" accuracy for

@@ -1,7 +1,5 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentCustomer;
-import ai.riviera.platform.shared.CurrentOperator;
 import java.time.Clock;
 
 import tools.jackson.databind.ObjectMapper;
