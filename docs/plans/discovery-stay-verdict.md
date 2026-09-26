@@ -35,7 +35,8 @@ contrast rule, the venue page's `See other beaches` links carrying `date` only) 
 privilege, `venue::spi` stays granted to `availability` alone so the read gets a new
 `availability::api` port) · `riviera-java-conventions` (records, `Optional`, package-private
 adapters, Javadoc budget) · `codebase-design` (one batch venue port instead of N per-venue calls;
-the verdict rule is the module's deep interface) · `postgres` (the range read stays one
+the verdict rule is the module's deep interface) · `domain-modeling` (the *Stay verdict* glossary
+entry in `CONTEXT.md`, kept to the term and its two outcomes, no presentation detail) · `postgres` (the range read stays one
 `BETWEEN` on `set_availability_uniq`; the cost IT records `EXPLAIN (ANALYZE, BUFFERS)`) ·
 `riviera-frontend` (calendar promotion to `shared/` with a loader input instead of a new
 cross-feature edge; `pages/home → venue.service` is the one allowed edge) · `riviera-tailwind`

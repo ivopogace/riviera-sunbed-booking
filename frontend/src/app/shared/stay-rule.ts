@@ -1,4 +1,4 @@
-import { plural } from '../shared/plural';
+import { plural } from './plural';
 
 /**
  * The venue's stay rule as the tourist reads it: "Stays of up to 5 days at this venue." or, with no
