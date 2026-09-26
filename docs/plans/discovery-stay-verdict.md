@@ -293,6 +293,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source | Finding | Status |
 |---|---|---|---|
 | F-1 | CI, Repo hygiene (diff-scoped) on `ca771f7b` | `check-plan-file-structure` listed three doc paths the plan omitted, and three `.angular/cache` files a docs commit had picked up from the repo root | fixed: paths listed, cache untracked and ignored at the root |
+| F-2 | CI, Frontend on `0b4d13a4` | `discovery-flow.e2e.ts` clicked the day rail's last button, now the "Several days…" chip, so no day was picked | fixed: the locator skips `head-stay`; the spec runs green locally (7) |
+| F-3 | Review gate (history + prior-PR reviewers) | `formatStay`'s TSDoc was orphaned onto the new `formatStayChip`, leaving `formatStay` undocumented | fixed: each doc above its own function |
+| F-4 | Review gate (history + prior-PR reviewers) | `WebSliceStubs`' review-list Javadoc landed on the new `stayVerdicts` stub | fixed: the stub has its own line, the review-list doc is back on its bean |
+| F-5 | Review gate (prior-PR reviewer, RV-PROC-2 c) | `SetBookingFacts`' Javadoc named `booking` and `availability` as its consumers; `itinerary` is the third | fixed: the doc names all three |
 
 ### Cost measurement (AC-3)
 
@@ -357,6 +361,7 @@ The 150 ms switch threshold in R-1 is not approached, so the SQL-aggregate fallb
 - `frontend/src/app/pages/home/venue-pin-layer.{ts,html,spec.ts,contrast.spec.ts}` — hollow variant
 - `frontend/e2e/discovery-stay.e2e.ts` — new mocked spec
 - `frontend/e2e/range-booking.e2e.ts` — the other-beaches links now carry `lastDate`
+- `frontend/e2e/discovery-flow.e2e.ts` — its date-carry test picks the rail's last *day* chip, past the new stay chip
 - `CLAUDE.md` — module table row for `itinerary`
 - `RESPONSIBILITIES.md` — § `itinerary`; `availability` and `venue` port lists
 - `CONTEXT.md` — glossary: *Stay verdict*

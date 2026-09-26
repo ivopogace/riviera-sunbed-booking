@@ -39,11 +39,6 @@ export function formatBookingDate(iso: string, opts: { withYear?: boolean } = {}
 }
 
 /**
- * Render a stay's days: one day exactly as {@link formatBookingDate} would, a range as
- * `"Tue 30 Jun – Sat 4 Jul · 5 days"` — the year (when asked for) on the last day only. The one
- * home of the range label, so the map trigger, the dialog and the confirmation agree.
- */
-/**
  * A stay as a chip says it, weekdays dropped: `"19 – 22 Jun · 4 days"` inside one month,
  * `"29 Jun – 2 Jul · 4 days"` across two; one day exactly as {@link formatBookingDate} would.
  */
@@ -58,6 +53,11 @@ export function formatStayChip(first: string, last: string): string {
   return `${from} – ${formatDayMonth(last)} · ${plural(daysBetween(first, last), 'day')}`;
 }
 
+/**
+ * Render a stay's days: one day exactly as {@link formatBookingDate} would, a range as
+ * `"Tue 30 Jun – Sat 4 Jul · 5 days"` — the year (when asked for) on the last day only. The one
+ * home of the range label, so the map trigger, the dialog and the confirmation agree.
+ */
 export function formatStay(first: string, last: string, opts: { withYear?: boolean } = {}): string {
   if (first === last) {
     return formatBookingDate(first, opts);

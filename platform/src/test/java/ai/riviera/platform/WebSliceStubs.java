@@ -1068,12 +1068,13 @@ class WebSliceStubs {
 		return (_, _) -> Optional.empty();
 	}
 
-	/** The public review list behind {@code GET /api/venues/{id}/reviews} — inert: no venue is visible. */
+	/** The discovery list's stay verdicts behind {@code GET /api/venues?lastDate=} — inert: no venue answers. */
 	@Bean
 	ai.riviera.platform.itinerary.application.StayVerdicts stayVerdicts() {
 		return (_, _) -> Map.of();
 	}
 
+	/** The public review list behind {@code GET /api/venues/{id}/reviews} — inert: no venue is visible. */
 	@Bean
 	ListVenueReviews listVenueReviews() {
 		return (_, _) -> Optional.empty();

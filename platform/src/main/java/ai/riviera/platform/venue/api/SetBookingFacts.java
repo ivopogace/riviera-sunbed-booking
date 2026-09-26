@@ -14,10 +14,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueStayFacts;
 
 /**
- * The {@code venue} module's published set-facts port (invariant #11) for {@code booking} and
- * {@code availability}; {@link #sellsOnlineOn} lives here because {@code VenueCatalog} is tourist-only.
- * Deliberately <strong>not</strong> visibility-fenced, and the one port that still answers for a retired
- * set (ADR-0019): sold-booking paths must keep resolving them. The reserve path fences visibility itself;
+ * The {@code venue} module's published set-facts port (invariant #11) for {@code booking},
+ * {@code availability} and {@code itinerary}; {@link #sellsOnlineOn} lives here because
+ * {@code VenueCatalog} is tourist-only. Deliberately <strong>not</strong> visibility-fenced, and the one
+ * port that still answers for a retired set (ADR-0019): sold-booking paths must keep resolving them. The
+ * reserve path fences visibility itself;
  * {@link #poolForClaim} is the retired-set fence for both claim paths. Rationale: RESPONSIBILITIES.md §venue.
  */
 public interface SetBookingFacts {
