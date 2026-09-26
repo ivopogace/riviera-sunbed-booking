@@ -320,7 +320,7 @@ export class DiscoverSheet {
     }, STALE_TOUCH_MS);
   }
 
-  /** The scroll is moving, and stays that way until `SETTLE_QUIET_MS` passes with nothing moving it. */
+  /** The scroll is moving until `SETTLE_QUIET_MS` passes with nothing moving it and no {@link glideNotStarted}. */
   private keepRolling(): void {
     const window = this.document.defaultView;
     this.rolling.set(true);

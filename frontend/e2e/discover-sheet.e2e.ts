@@ -1182,7 +1182,7 @@ test.describe('Discover sheet — a stalled main thread', () => {
     await settle(page);
 
     await page.getByTestId('sheet-grabber').click();
-    // Busy past the 160 ms quiet window before the glide's first frame: it used to settle back at half.
+    // Busy past the 160 ms quiet window before the glide's first frame.
     await page.evaluate(() => {
       const end = performance.now() + 400;
       while (performance.now() < end) {
