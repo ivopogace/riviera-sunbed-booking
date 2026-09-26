@@ -27,6 +27,7 @@ import ai.riviera.platform.availability.application.StaffAvailability;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -46,6 +47,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 class StaffMarkVsOnlineClaimConcurrencyIT {
 
+	private static final VenueId MIRAMAR = new VenueId(1L);
+
 	@Autowired
 	StaffAvailability staff;
 
@@ -61,8 +64,9 @@ class StaffMarkVsOnlineClaimConcurrencyIT {
 	private SetId anyOnlineSet() {
 		// An ONLINE-pool set so the online claim is even possible (a WALK_IN set would 422 before the
 		// race). Staff marking is pool-agnostic, so it contends on this same set.
-		return new SetId(jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query(Long.class).single());
+		return new SetId(jdbc.sql("""
+				SELECT id FROM set_position WHERE venue_id = :v AND pool = 'ONLINE' ORDER BY id LIMIT 1
+				""").param("v", MIRAMAR.value()).query(Long.class).single());
 	}
 
 	private long rowCount(SetId set, LocalDate date) {
@@ -82,7 +86,7 @@ class StaffMarkVsOnlineClaimConcurrencyIT {
 		CountDownLatch startGate = new CountDownLatch(1);
 		Callable<Boolean> markAttempt = () -> {
 			startGate.await();
-			return staff.mark(operator, set, date) == MarkOutcome.MARKED;
+			return staff.mark(operator, MIRAMAR, set, date) == MarkOutcome.MARKED;
 		};
 		Callable<Boolean> claimAttempt = () -> {
 			startGate.await();

@@ -730,12 +730,12 @@ class WebSliceStubs {
 	StaffAvailability staffAvailability() {
 		return new StaffAvailability() {
 			@Override
-			public MarkOutcome mark(OperatorId operator, SetId setId, LocalDate date) {
+			public MarkOutcome mark(OperatorId operator, VenueId venue, SetId setId, LocalDate date) {
 				return MarkOutcome.NO_SUCH_SET;
 			}
 
 			@Override
-			public ReleaseOutcome release(OperatorId operator, SetId setId, LocalDate date) {
+			public ReleaseOutcome release(OperatorId operator, VenueId venue, SetId setId, LocalDate date) {
 				return ReleaseOutcome.NOT_MARKED;
 			}
 		};

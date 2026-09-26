@@ -20,14 +20,15 @@ import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.availability.application.StaffAvailability;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * Operator endpoints for staff tap-to-mark walk-ins, driving the module's own
  * {@link StaffAvailability} port; an authenticated {@code OPERATOR} surface resolved via
  * {@link CurrentOperator}. Mark: MARKED→200, ALREADY_TAKEN→409, NO_SUCH_SET→404, DATE_IN_PAST→422;
- * release: RELEASED→204, NOT_MARKED→409; errors are {@link ApiProblem} bodies. The {@code venueId}
- * segment is <strong>not</strong> the authorization key: the service derives the owning venue from
- * {@code setId} (invariant #13), a mismatch → {@code 403} via {@code ApiErrorHandler}.
+ * release: RELEASED→204, NOT_MARKED→409; errors are {@link ApiProblem} bodies. The service asserts
+ * ownership of the path {@code venueId} (invariant #13) before any set lookup ({@code 403} via
+ * {@code ApiErrorHandler}); a set not on that venue maps as a missing one.
  */
 @RestController
 @RequestMapping("/api/venues")
@@ -48,7 +49,7 @@ class StaffAvailabilityController {
 			return problem(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "A date is required.");
 		}
 		OperatorId operator = currentOperator.require(authentication);
-		return switch (staff.mark(operator, new SetId(setId), request.date())) {
+		return switch (staff.mark(operator, new VenueId(venueId), new SetId(setId), request.date())) {
 			case MARKED -> ResponseEntity.ok(Map.of("state", "STAFF_MARKED"));
 			case ALREADY_TAKEN -> problem(HttpStatus.CONFLICT, "ALREADY_TAKEN",
 					"The set is already taken for this date.");
@@ -63,7 +64,7 @@ class StaffAvailabilityController {
 			@PathVariable long venueId, @PathVariable long setId,
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 		OperatorId operator = currentOperator.require(authentication);
-		return switch (staff.release(operator, new SetId(setId), date)) {
+		return switch (staff.release(operator, new VenueId(venueId), new SetId(setId), date)) {
 			case RELEASED -> ResponseEntity.noContent().build();
 			case NOT_MARKED -> problem(HttpStatus.CONFLICT, "NOT_MARKED",
 					"Nothing is staff-marked for this set and date.");

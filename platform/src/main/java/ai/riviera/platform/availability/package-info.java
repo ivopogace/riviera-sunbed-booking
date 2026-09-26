@@ -8,8 +8,7 @@
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Availability",
-    // Depends on the operator module's api port so staff tap-to-mark verifies the
-    // operator owns the set's venue (invariant #13), resolving that venue from the set id.
+    // operator::api: staff tap-to-mark asserts the operator owns the path venue (invariant #13).
     allowedDependencies = { "venue::api", "venue::vocabulary", "venue::spi", "operator::api", "operator::vocabulary", "shared" }
 )
 package ai.riviera.platform.availability;

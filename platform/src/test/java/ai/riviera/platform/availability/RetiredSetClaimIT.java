@@ -19,6 +19,7 @@ import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -68,6 +69,11 @@ class RetiredSetClaimIT {
 		return new SetId(id);
 	}
 
+	private VenueId venueOf(SetId set) {
+		return new VenueId(jdbc.sql("SELECT venue_id FROM set_position WHERE id = :id")
+				.param("id", set.value()).query(Long.class).single());
+	}
+
 	private int holdsOn(SetId set) {
 		return jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :id")
 				.param("id", set.value()).query(Integer.class).single();
@@ -86,7 +92,7 @@ class RetiredSetClaimIT {
 		SetId retired = retiredSetOnANewVenue("Retired Walk-in Club");
 		OperatorId bootstrap = operators.operatorFor("operator").orElseThrow();
 
-		assertEquals(MarkOutcome.NO_SUCH_SET, staff.mark(bootstrap, retired, DAY));
+		assertEquals(MarkOutcome.NO_SUCH_SET, staff.mark(bootstrap, venueOf(retired), retired, DAY));
 		assertEquals(0, holdsOn(retired), "a refused mark writes no hold");
 	}
 }

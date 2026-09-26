@@ -53,8 +53,9 @@ class StaffAvailabilityControllerIT {
 	}
 
 	private long anyOnlineSet() {
-		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query(Long.class).single();
+		return jdbc.sql("""
+				SELECT id FROM set_position WHERE venue_id = :v AND pool = 'ONLINE' ORDER BY id LIMIT 1
+				""").param("v", MIRAMAR).query(Long.class).single();
 	}
 
 	private static String dateBody(String date) {

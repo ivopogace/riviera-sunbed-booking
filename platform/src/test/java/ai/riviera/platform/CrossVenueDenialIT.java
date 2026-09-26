@@ -4,6 +4,7 @@ import ai.riviera.platform.shared.CurrentOperator;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.List;
 
 import javax.imageio.ImageIO;
 
@@ -25,6 +26,7 @@ import com.jayway.jsonpath.JsonPath;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import jakarta.servlet.http.Cookie;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -51,9 +53,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * the real {@code operator} tables; only the edge {@link CurrentOperator} (principal → operator id)
  * is mocked, so each request is attributed to A or B independently of the
  * shared bootstrap login. The session cookie (from one real login) still satisfies the
- * role gate. The staff-availability case is the spoofing test: A uses <em>its own</em> venue in the
- * URL path but a Miramar {@code setId}, and is still denied because the service resolves the owning
- * venue from the set, never the path.
+ * role gate. The staff-availability cases pin the order: an unowned path venue is {@code 403} before
+ * any set lookup, and a set foreign to an owned path venue is answered exactly as a missing one, so
+ * neither leaks whether a set id exists.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -64,6 +66,7 @@ class CrossVenueDenialIT {
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
 	private static final long MIRAMAR = 1L; // seeded venue, backfilled to the bootstrap admin — A/B own neither
+	private static final long NO_SUCH_SET_ID = 999_999L;
 
 	@Autowired
 	MockMvc mvc;
@@ -78,8 +81,7 @@ class CrossVenueDenialIT {
 	private OperatorId operatorB;
 	private long venueOwnedByA;
 	private long venueOwnedByB;
-	private long bSetId; // an ONLINE set in venueOwnedByB, for the venue-resolved-from-set owner path
-	private long miramarSetId;
+	private long bSetId; // an ONLINE set in venueOwnedByB
 	private Cookie operatorSession;
 
 	@BeforeEach
@@ -100,8 +102,6 @@ class CrossVenueDenialIT {
 				                          price_currency, grid_x, grid_y)
 				VALUES (:v, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1) RETURNING id
 				""").param("v", venueOwnedByB).query(Long.class).single();
-		miramarSetId = jdbc.sql("SELECT id FROM set_position WHERE venue_id = :v ORDER BY id LIMIT 1")
-				.param("v", MIRAMAR).query(Long.class).single();
 	}
 
 	private long newVenue(String name) {
@@ -318,18 +318,45 @@ class CrossVenueDenialIT {
 	}
 
 	@Test
-	void staffAvailabilityMarkByNonOwnerIs403_evenWhenSpoofingThePathVenue() throws Exception {
-		// A owns venueOwnedByA and puts it in the PATH, but targets a Miramar setId. The check must
-		// resolve the venue from the set (Miramar → owned by B), not the path → 403 (invariant #13, R-2).
+	void staffAvailabilityOnAnUnownedVenueIs403BeforeAnySetLookup() throws Exception {
 		actingAs(operatorA);
-		mvc.perform(post("/api/venues/{v}/sets/{s}/availability", venueOwnedByA, miramarSetId)
-						.cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON).content("{\"date\":\"2035-07-01\"}"))
-				.andExpect(status().isForbidden());
+		for (long setId : new long[] { bSetId, NO_SUCH_SET_ID }) {
+			mvc.perform(post("/api/venues/{v}/sets/{s}/availability", venueOwnedByB, setId)
+							.cookie(operatorSession).with(csrf())
+							.contentType(MediaType.APPLICATION_JSON).content("{\"date\":\"2035-07-01\"}"))
+					.andExpect(status().isForbidden())
+					.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+			mvc.perform(delete("/api/venues/{v}/sets/{s}/availability", venueOwnedByB, setId)
+							.cookie(operatorSession).with(csrf()).param("date", "2035-07-01"))
+					.andExpect(status().isForbidden())
+					.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+		}
+	}
 
-		mvc.perform(delete("/api/venues/{v}/sets/{s}/availability", venueOwnedByA, miramarSetId)
-						.cookie(operatorSession).with(csrf()).param("date", "2035-07-01"))
-				.andExpect(status().isForbidden());
+	@Test
+	void staffAvailabilityOnAnOwnedVenueAnswersAForeignSetAsAMissingOne() throws Exception {
+		jdbc.sql("""
+				INSERT INTO set_availability (set_id, booking_date, state)
+				VALUES (:s, DATE '2035-07-02', 'STAFF_MARKED') ON CONFLICT DO NOTHING
+				""").param("s", bSetId).update();
+		actingAs(operatorA);
+		for (long setId : new long[] { bSetId, NO_SUCH_SET_ID }) {
+			mvc.perform(post("/api/venues/{v}/sets/{s}/availability", venueOwnedByA, setId)
+							.cookie(operatorSession).with(csrf())
+							.contentType(MediaType.APPLICATION_JSON).content("{\"date\":\"2035-07-01\"}"))
+					.andExpect(status().isNotFound())
+					.andExpect(jsonPath("$.code").value("NO_SUCH_SET"));
+			mvc.perform(delete("/api/venues/{v}/sets/{s}/availability", venueOwnedByA, setId)
+							.cookie(operatorSession).with(csrf()).param("date", "2035-07-02"))
+					.andExpect(status().isConflict())
+					.andExpect(jsonPath("$.code").value("NOT_MARKED"));
+		}
+		assertEquals(List.of("STAFF_MARKED"), jdbc.sql("""
+				SELECT state FROM set_availability WHERE set_id = :s AND booking_date = DATE '2035-07-02'
+				""").param("s", bSetId).query(String.class).list(), "B's mark must survive");
+		assertEquals(0, jdbc.sql("""
+				SELECT count(*) FROM set_availability WHERE set_id = :s AND booking_date = DATE '2035-07-01'
+				""").param("s", bSetId).query(Integer.class).single(), "no mark on B's set");
 	}
 
 	@Test
@@ -450,16 +477,15 @@ class CrossVenueDenialIT {
 	}
 
 	@Test
-	void ownerCanMarkItsOwnSet_venueResolvedFromTheSet() throws Exception {
-		// The positive counterpart to the spoof denial: B owns venueOwnedByB (explicit operator_venue
-		// mapping), so marking one of ITS sets — whose owning venue is resolved from the setId, not the
-		// path — succeeds. Proves the venue-from-set happy path lets the real owner through, so the
-		// spoof denial's 403 is genuinely from ownership, not an always-deny bug.
+	void ownerCanMarkAndReleaseItsOwnSet() throws Exception {
 		actingAs(operatorB);
 		mvc.perform(post("/api/venues/{v}/sets/{s}/availability", venueOwnedByB, bSetId)
 						.cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content("{\"date\":\"2036-03-03\"}"))
 				.andExpect(status().isOk());
+		mvc.perform(delete("/api/venues/{v}/sets/{s}/availability", venueOwnedByB, bSetId)
+						.cookie(operatorSession).with(csrf()).param("date", "2036-03-03"))
+				.andExpect(status().isNoContent());
 	}
 
 	@Test
