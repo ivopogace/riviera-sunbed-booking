@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * Proof-of-work tunables, {@code riviera.altcha.*}. Rationale: RESPONSIBILITIES.md §Platform edge.
+ * Proof-of-work tunables, {@code riviera.altcha.*}. Rationale: RESPONSIBILITIES.md §Platform edge, §challenge.
  * @param enabled    kill switch: off, fenced routes admit unsolved requests and the endpoint 204s
  * @param cost       PBKDF2 iterations per attempt, bounded by {@link #MIN_COST}..{@link #MAX_COST}
  * @param expiry     how long a challenge stays solvable and acceptable after it is issued

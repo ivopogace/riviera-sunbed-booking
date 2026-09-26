@@ -37,9 +37,9 @@ would re-decide the gateway; this model stays authoritative until that work star
 - **Request-to-Book:** no charge and no PaymentIntent at request time; the row is soft-held
   pending (released on decline, timeout, or guest withdraw). On accept → `AWAITING_PAYMENT`
   and a fresh PaymentIntent; identical to Instant Book from there.
-- Windows: accept deadline = `booking.request.expiry-window`, capped at the evening-before
-  cutoff; pay window = `booking.request.pay-window` from `accepted_at`, capped at service-day
-  open (#4, `RESPONSIBILITIES.md` §`booking`). `ExpireRequestsService` +
+- Windows: accept deadline = `booking.request.expiry-window`, capped at D's sales close; pay
+  window = `booking.request.pay-window` from `accepted_at`, capped at the end of the service day
+  (#4, `RESPONSIBILITIES.md` §`booking`). `ExpireRequestsService` +
   `RequestSweepScheduler` run lockless (guarded `UPDATE … RETURNING`); ShedLock only when
   scaling out.
 - Never model this as auth-and-capture; a doc implying manual capture/void is stale.
