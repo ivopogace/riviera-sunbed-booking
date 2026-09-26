@@ -79,8 +79,10 @@ Full:
 Published surfaces stay top-level (each `package-info.java` has `@NamedInterface`). The
 repository port is an interface in `application/`, implemented by `adapter/out`; it moves to
 `api/` only when another module calls it, to `spi/` only for a cross-module inversion. Name
-ports by purpose (`CheckoutPort`, not `StripePort`). Two to four ports per module; a fifth
-narrow one is probably the same conversation as an existing one.
+ports by purpose (`CheckoutPort`, not `StripePort`). Ports split by consumer role or
+conversation, not by count or table (`RESPONSIBILITIES.md` §`review`: one port per consumer
+role). A new port needs a new consumer conversation; a new family of methods for an existing
+conversation joins that conversation's port.
 
 ## Published surface by kind
 

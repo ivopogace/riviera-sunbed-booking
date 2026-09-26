@@ -95,8 +95,8 @@ stores the blob LF; only a wrong working-tree EOL is a finding.
 
 ## Output
 
-Pre-impl checklist: one top-level `### Riviera overlay (if loaded)` section after the FE↔BE
-contract section, one bullet per item, ✅/❓/⛔. Peer-review notes: `### Riviera overlay` under
-`## Convention checks`; `### Recommended riviera skills` on any hand-off. Done when every
+Findings join the host review's numbered list (the `code-review` plugin's one `### Code review`
+PR comment), each prefixed with its RV id and severity (`RV-BE-9 (Blocker): …`), cited and
+linked like the host's own and counted in its "Found N issues". Done when every
 scope-loaded item is checked; RV-BE-11 whenever behaviour is added/moved, RV-BE-12 on package
 moves, RV-BE-19 on any choice/calculation/lifecycle change, RV-PROC-2 whenever its trigger fires.

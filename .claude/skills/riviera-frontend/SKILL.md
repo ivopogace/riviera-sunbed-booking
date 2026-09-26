@@ -18,7 +18,7 @@ Owns the *where*. Technique: `angular-developer` + the angular-cli MCP (`get_bes
 |---|---|---|
 | `core/` | stateful cross-cutting singletons: auth state, interceptors, guards, current principal, theme (`operator-auth.ts`, `api-session.interceptor.ts`, `theme.ts`) | `shared/` only |
 | `shared/` | pure, stateless utilities and presentational primitives; no `HttpClient`, no app state; includes the API-view vocabulary mirrors (`venue-views.ts`, `money.ts`, `booking-date.ts`, `photo-url.ts`, `amenities.ts`, `booking-status.ts`) | nothing app-internal |
-| `pages/` | static/marketing routes | `core/`, `shared/` |
+| `pages/` | top-level routes no feature owns: the Discover home (`pages/home`) and the legal pages | `core/`, `shared/` |
 | feature folders (`booking/`, `venue/`, `operator/`, `auth/`, `admin/`, …) | one domain area: components, models, HTTP service | `core/`, `shared/` — never another feature |
 | `environments/` (sibling of `app/`) | `apiBaseUrl` + public config; any stratum may read it | — |
 
