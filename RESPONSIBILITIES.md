@@ -397,8 +397,8 @@ the intent, `payment_booking` each booking's share and refund state. Refund read
 the booking's row, the same statement deriving the intent's status from its shares; a verified
 `succeeded`/`canceled` publishes **once per booking**. `RefundStatusLookup` reads the booking's own
 share — a sibling's refund leaves the intent `PARTIALLY_REFUNDED` while this one is `OUTSTANDING`.
-`CancelPaymentPort.cancel(booking)` cancels the intent behind the booking, so an unpaid group is
-voided whole: every sibling's `canceled` publishes with it.
+`CancelPaymentPort.cancel(booking)` voids the intent behind the booking, so an unpaid group is
+cancelled all-or-nothing, never one booking of it.
 
 - **The payment state machine is one guarded SQL statement**, because Stripe promises neither
   ordering nor single delivery. `markStatus` moves only the open states (`REQUIRES_PAYMENT`, the
@@ -429,7 +429,7 @@ voided whole: every sibling's `canceled` publishes with it.
 - **At-most-once per booking is the gateway contract**: `PaymentGatewayRefundContract` pins it (its
   fixture never dedupes on the key); `PaymentGatewayContractCoverageArchitectureTest` fails the
   build on a collecting adapter (ADR-0009) with no contract subclass, or a gateway whose profile
-  has no `CollectionGuarantee`. The schema holds it too: `payment_booking_uniq` (one share row per
+  has no `CollectionGuarantee`. It is structural too: `payment_booking_uniq` (one share row per
   booking) and the key `booking-<id>-refund`; a second refund on one booking relaxes both.
 - **A refund later reported dead is un-recorded, and nothing re-drives it.** A `pending` refund
   stays adoptable, so a verified refund event (all three types — `canceled` has no failure-only

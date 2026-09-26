@@ -42,8 +42,8 @@ never renumber.
    drag surface, a close button (`discover-sheet.ts`'s grabber, `set-editor.html`'s swipe
    handle); a control the **maintainer** explicitly held to WCAG 2.5.8's 24 px (the ALTCHA
    checkbox) — never self-granted; first try holding the box at the floor and painting smaller
-   over it. Anything else is a layout to fix. `scripts/check-touch-target.mjs` (hook + CI; `--files`/`--all`)
-   gates the declaration only and ignores `<a>`.
+   over it. Anything else is a layout to fix. `scripts/check-touch-target.mjs` (hook + CI;
+   `--files`/`--all`) gates the declaration only and ignores `<a>`.
 5. **Idioms:** `text-[14px]` not `text-sm` (named sizes bundle line-height); arbitrary variants
    (`[&.active]:bg-riv-accent-chip-fill`), no plugins; first-party `scrollbar-none|thin|auto`,
    `scrollbar-thumb-*`, `scrollbar-gutter-*` (Safari paints its own bar before 18.2);
