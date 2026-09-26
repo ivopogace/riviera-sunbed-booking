@@ -96,7 +96,7 @@ class SsoController {
 		// Normalize the provider email to the SAME canonical form the account is stored/looked-up under
 		// (trim + lower-case, like AuthController's register), so a session established here and one from
 		// password login carry an identical principal name — /me never flips between two spellings (a real
-		// S5 provider may assert a mixed-case address; the S4 mock already returns a lower-cased one).
+		// provider may assert a mixed-case address; the mock already returns a lower-cased one).
 		String email = Emails.normalize(identity.email());
 		// Resolve-or-create the account (find-or-create by verified email, auto-link); the session is keyed
 		// by the account email (principal name), exactly like password login, so CurrentCustomer resolves it.

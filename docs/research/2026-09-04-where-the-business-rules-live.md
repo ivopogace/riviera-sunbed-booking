@@ -15,6 +15,13 @@ all 26 branch-carrying files of `booking/application/`, the guarded `UPDATE`s in
 `operator`. No code was run for this note; the first note's structural-test verification still
 stands and nothing here depends on it.
 
+**Since the audit (checked 2026-09-26).** §E's D1–D5 are all resolved; each entry carries its note.
+Citations name members, not line numbers. Other findings describe the code as it stood on
+2026-09-04 and are kept as the record: R13's check-in classification now splits `CONFIRMED` on
+`attendedToday()`; multi-day stays reshaped §B's `#completeConfirmed` and no-show predicates and
+added `#moveToSet`; R9's `tierFor` takes the amount; `WeatherRefundService#refundInFull` uses
+`ifPresent`; and §A's line counts are stale.
+
 **Scope note.** First drafted against a brief truncated at "STEP 5 — Duplication check"; the full
 brief arrived afterwards and confirmed §E's reading. §E and §F were then extended to what the
 complete brief asks for — the homeless rules **ranked by duplication evidence**, and a **per-module**

@@ -2,7 +2,7 @@ import { SetView } from '../shared/venue-views';
 import { rowPriceLabel } from './row-price-label';
 
 /**
- * The price chip's wording rule (#702, narrowed by #724). The rail chip beside it renders the
+ * The price chip's wording rule. The rail chip beside it renders the
  * stored `rowLabel` verbatim, so the price chip never repeats the venue's own words — it only
  * adds the two facts a label cannot state: the channel (invariant #3) and the tier.
  */

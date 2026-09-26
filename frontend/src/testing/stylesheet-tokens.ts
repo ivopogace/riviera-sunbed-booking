@@ -10,7 +10,7 @@ import { join } from 'node:path';
  * So the guards assert over the stylesheet source — the `core/theme-boot.spec.ts` drift-guard
  * pattern. The complementary proof, where the cascade itself decides, is always a mocked e2e.
  *
- * <p>Extracted at the sixth byte-identical copy (#858): `form-error-tokens`, `solid-btn-tokens`,
+ * <p>Extracted at the sixth byte-identical copy: `form-error-tokens`, `solid-btn-tokens`,
  * `solid-fill-tokens`, `console-accent-token` and `console-negative-token` each carried their own.
  */
 

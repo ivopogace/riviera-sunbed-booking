@@ -19,7 +19,7 @@ import {
  * Deterministic AA maths for the two draft legal pages' shared surface:
  * body/soft card inks on the card glass (constants from `glass-tokens.ts`, the one test-side
  * token mirror) over each theme's worst-case gradient stops, plus the solid amber draft banner —
- * the merged `--riv-warn-*` family (#879, which absorbed #868's `--riv-notice-banner-*`), whose own
+ * the merged `--riv-warn-*` family (which absorbed `--riv-notice-banner-*`), whose own
  * AA proof, themed-ink bound and declaration guards live at
  * `shared/warn-token-skin.contrast.spec.ts`, so this spec only reads the mirror rather than
  * restating the literal.

@@ -74,7 +74,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 
 	@Override
 	public List<LedgerEntryRow> entriesForVenue(VenueId venueId) {
-		// Per-venue ledger read (U9): all entries oldest-first; the caller folds the running net owed.
+		// Per-venue ledger read: all entries oldest-first; the caller folds the running net owed.
 		// Served by payout_ledger_venue_idx (V9). reason is NULL on ACCRUAL rows.
 		return jdbc.sql("""
 				SELECT entry_type, booking_id, gross_minor, commission_minor, net_minor, currency,

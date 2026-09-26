@@ -316,8 +316,8 @@ describe('check-in error mapping (#583)', () => {
 });
 
 /**
- * The per-set beach-map write client (#600) — the three U7 endpoints the console had never
- * called. `PATCH` sends the FULL set body (the server rejects a partial one `400`), and none of
+ * The per-set beach-map write client and its three endpoints.
+ * `PATCH` sends the FULL set body (the server rejects a partial one `400`), and none of
  * the three carries an `expectedVersion`: they do not participate in the `set_version` token.
  */
 describe('OperatorConsoleService — per-set beach-map writes (#600)', () => {
@@ -470,7 +470,7 @@ describe('setBatchErrorOf', () => {
 });
 
 /**
- * The per-row rename error mapper (#726). `ROW_NAME_TAKEN` is the one code the Row names panel
+ * The per-row rename error mapper. `ROW_NAME_TAKEN` is the one code the Row names panel
  * explains in its own words: it is the ordinary outcome of picking a name another row already has.
  */
 describe('rowNameErrorOf (#726)', () => {
@@ -503,8 +503,9 @@ describe('rowNameErrorOf (#726)', () => {
 });
 
 /**
- * The per-set write error mapper (#600). `SET_IN_USE` is the #567/#599 claim guard — the one code
- * the panel explains in its own words, because it is the ordinary outcome on a live venue, not a fault.
+ * The per-set write error mapper. `SET_IN_USE` is the claim guard (a hold or booking still owed
+ * the set) — the one code the panel explains in its own words, because it is the ordinary outcome
+ * on a live venue, not a fault.
  */
 describe('setWriteErrorOf (#600)', () => {
   function problem(status: number, code?: string): HttpErrorResponse {

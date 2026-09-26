@@ -1,5 +1,5 @@
 /**
- * Published <strong>events</strong> of the {@code payment} module (invariant #11, issue #95)
+ * Published <strong>events</strong> of the {@code payment} module (invariant #11)
  * — {@link PaymentConfirmed} and {@link PaymentCanceled}, the webhook-derived facts the
  * {@code booking} module listens for (id-based payloads; webhooks are the source of truth,
  * invariant #8). Event records only — ports live in {@code api}, value types in

@@ -8,7 +8,7 @@ import { SetView } from '../shared/venue-views';
 import { SetEditor } from './set-editor';
 
 /**
- * Structural a11y audit for the per-set beach-map editor (#600). Every grid cell is a labelled
+ * Structural a11y audit for the per-set beach-map editor. Every grid cell is a labelled
  * `<button>` naming its row, position and state, the tier/pool choices are `aria-pressed` toggles,
  * and the destructive confirm is an `alertdialog`. axe runs over the empty selection, the in-flight
  * skeleton, a selected set, the add panel, the armed move and the remove confirm. (Colour contrast is proven by

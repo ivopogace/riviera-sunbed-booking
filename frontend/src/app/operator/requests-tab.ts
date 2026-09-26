@@ -101,7 +101,7 @@ export class RequestsTab {
     computation: (): string | undefined => undefined,
   });
 
-  /** The in-flight skeleton's placeholder cards — a queue long enough to read as a list (#744). */
+  /** The in-flight skeleton's placeholder cards — a queue long enough to read as a list. */
   protected readonly skeletonCards = [1, 2, 3] as const;
 
   /** "Now" for the urgency window — refreshed at load, on every reconcile, and on the poll (never an

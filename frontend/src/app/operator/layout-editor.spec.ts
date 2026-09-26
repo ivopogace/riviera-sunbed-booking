@@ -132,8 +132,8 @@ describe('LayoutEditor (#172)', () => {
 
   /**
    * Arm the default brush, showing the bulk generate/paint surface. Needed wherever a test seeds a
-   * venue that already has sets: since #600 such a venue opens in per-set mode, because that is the
-   * only mode that keeps working once it is trading (AC-6). The bulk behaviours below are unchanged
+   * venue that already has sets: such a venue opens in per-set mode, because that is the
+   * only mode that keeps working once it is trading. The bulk behaviours below are unchanged
    * — only their default is.
    */
   function useBulkMode(): void {

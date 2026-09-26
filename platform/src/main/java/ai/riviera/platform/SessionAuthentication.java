@@ -11,7 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * The one edge session-establishment step, shared by every login path: the operator/customer form logins
- * and register auto-sign-in ({@code AuthController}, S1) and the SSO callback
+ * and register auto-sign-in ({@code AuthController}) and the SSO callback
  * ({@code SsoController}). It rotates the session id if one already exists (session-fixation
  * defence, design D-1), then persists the authenticated {@link SecurityContext} so subsequent requests
  * ride the {@code SESSION} cookie. Centralized so the fixation + save sequence has exactly one

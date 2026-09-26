@@ -16,17 +16,16 @@ import {
 import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
- * Guard for the `--riv-solid-btn-*` family (#851, class F-2 of the colour-literal audit) — the skin
+ * Guard for the `--riv-solid-btn-*` family (class F-2 of the colour-literal audit) — the skin
  * the outline buttons wear (`booking-view` and `review-panel`'s Cancel/Keep/Edit/Remove, and
  * `my-bookings`' row Retry).
  *
  * <p>The family is THEME-INVARIANT as a WHOLE, and that is the decision rather than an omission.
- * `--riv-solid-btn-ink` was the first half, tokenised at #835 over a fill that stayed a literal;
- * this completes it. The fills do not theme, so nothing painted over them may: the themed
+ * The fills do not theme, so nothing painted over them may — the ink included: the themed
  * `--riv-danger-ink` resolves `#ffa9a1` in the dark theme, landing at 1.69:1 on a fill that stays
  * `#f4f6f7` — light on light — and `--riv-accent-ink` at 1.52:1. The second test is those bounds,
- * kept in the tree so the reason survives the decision (the same shape #850 used for
- * `--riv-form-error-*`, which measured 1.54:1).
+ * kept in the tree so the reason survives the decision (the same shape
+ * `form-error-tokens.contrast.spec.ts` uses for `--riv-form-error-*`, which measured 1.54:1).
  *
  * <p>Which makes the invariance itself the thing to protect, and jsdom maths cannot see it: a dark
  * override added later would leave every ratio here passing. So the declaration tests read
@@ -42,8 +41,8 @@ function cssRgba({ color, alpha }: Glass): string {
 
 /**
  * The whole family, with the value `tailwind.css` is expected to declare for it. `--riv-solid-btn-ink`
- * is included although #835 shipped it: the invariance is a property of the family, and a dark
- * override on the ink breaks the skin exactly as one on the fill would.
+ * is included: the invariance is a property of the family, and a dark override on the ink breaks
+ * the skin exactly as one on the fill would.
  */
 const FAMILY = {
   '--riv-solid-btn-ink': rgbToHex(SOLID_BTN_INK),
@@ -75,18 +74,18 @@ function read(path: string): string {
 const GLOBAL_ROLES = [/#f4f6f7/i, /#e7ebec/i, /rgba\(200,\s*90,\s*60,\s*0\.5\)/i];
 
 /**
- * Roles this family owns only INSIDE its own three components — the discriminator #850's pair did
- * not need. Two literals here are shared with unrelated roles elsewhere and a tree-wide sweep would
- * wrongly demand those change too:
+ * Roles this family owns only INSIDE its own three components — the discriminator the
+ * `--riv-form-error-*` pair did not need. Two literals here are shared with unrelated roles
+ * elsewhere and a tree-wide sweep would wrongly demand those change too:
  *
  * <ul>
- *   <li>`#a3372a` has other homes — the over-claim #851 exists to avoid. **None of them is a
- *       literal any more**: #864 moved the console's three plain inks onto
- *       `--riv-console-negative-ink`, #858 moved the two class-F medallions
- *       (`shared/failure-panel`, `booking/booking-pay`) onto `--riv-medallion-negative-*`, and
- *       #852 moved `payouts-tab.html`'s `/opacity` tints onto the console ink. The value is still
- *       painted in all of them; only its notation moved, which is why the scope below stays the
- *       family's own three components rather than becoming a tree-wide value sweep;
+ *   <li>`#a3372a` has other homes — the over-claim this family's scope avoids. **None of them is
+ *       a literal**: the console's three plain inks wear `--riv-console-negative-ink`, the two
+ *       class-F medallions (`shared/failure-panel`, `booking/booking-pay`) wear
+ *       `--riv-medallion-negative-*`, and `payouts-tab.html`'s `/opacity` tints wear the console
+ *       ink. The value is still painted in all of them; only its notation moved, which is why
+ *       the scope below stays the family's own three components rather than becoming a tree-wide
+ *       value sweep;
  *   <li>`border-[rgba(255,255,255,0.7)]` also skins `auth/auth-page`'s back button (over a
  *       translucent fill, not this solid one) and `venue/availability-calendar`'s popover.
  * </ul>
@@ -104,20 +103,21 @@ const SCOPED_ROLES = [/#a3372a/i, /border-\[rgba\(255,\s*255,\s*255,\s*0\.7\)\]/
  * check the issue's AC calls for.
  *
  * <p>The list shrinks as the other tickets holding these positions land, and each removal is a
- * migration this guard is watching for, never a relaxation. #864 took `operator/payouts-tab.ts`
- * and `operator/daily-view-tab.html` off it by moving the console's PLAIN inks onto
- * `--riv-console-negative-ink`; #858 then took `shared/failure-panel.ts` and
- * `booking/booking-pay.ts` by moving their decorative outcome medallions onto
- * `--riv-medallion-negative-ink`. `payouts-tab.html` is the last entry and stays.
+ * migration this guard is watching for, never a relaxation. `operator/payouts-tab.ts` and
+ * `operator/daily-view-tab.html` left it when the console's PLAIN inks moved onto
+ * `--riv-console-negative-ink`; `shared/failure-panel.ts` and `booking/booking-pay.ts` left when
+ * their decorative outcome medallions moved onto `--riv-medallion-negative-ink`.
+ * `payouts-tab.html` is the last entry and stays.
  *
  * <p>It stays as a REWRITE rather than a deletion, which is the one case the "next removal is a
- * deletion" note above did not anticipate. #852 did not take that position away from this file's
- * concern — it moved the chip's `/opacity` tints onto `--riv-console-negative-ink`, the ink token
- * already on that same element. The paint is still there and #851 still did not reach it, so the
- * entry tracks the paint in its new notation. Deleting it would have emptied the list, and an
- * empty positive list passes vacuously — which is why the assertion below now checks for that too.
+ * deletion" note above did not anticipate. Class O did not take that position away from this
+ * file's concern — it moved the chip's `/opacity` tints onto `--riv-console-negative-ink`, the ink
+ * token already on that same element. The paint is still there and this family does not reach
+ * it, so the entry tracks the paint in its new notation. Deleting it would have emptied the list,
+ * and an empty positive list passes vacuously — which is why the assertion below now checks for
+ * that too.
  *
- * <p>Rewritten again by #879's alpha ladder (`/28`+`/12` -> `/30`+`/10`). Same rule, second
+ * <p>Rewritten again by class O's alpha ladder (`/28`+`/12` -> `/30`+`/10`). Same rule, second
  * application: the notation moved, the paint did not, so the row moves with it.
  */
 const OUT_OF_FAMILY = [

@@ -25,7 +25,7 @@ import { TouchTarget } from './touch-target';
  */
 export interface BeachMapCanvasRow {
   /** The rail chip's row identity, unique per map (used as track key) — each surface supplies
-   *  its own: the tourist map and the Daily view pass the stored `rowLabel` (#724; uniqueness
+   *  its own: the tourist map and the Daily view pass the stored `rowLabel` (uniqueness
    *  from grouping rows by it), the layout editor its grid letters (a grid being painted). */
   readonly code: string;
   /** The zone chip's text; `null` renders no chip even on a zone start. The rail caps the chip's
@@ -86,7 +86,7 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
 export class BeachMapCanvas {
   /** A drag that travels beyond this many pixels is a pan, not a tap. */
   private static readonly PAN_THRESHOLD_PX = 6;
-  /** The default (non-fit) tile size — unchanged for the tourist map and Daily view (#709). */
+  /** The default (non-fit) tile size — what the tourist map and Daily view render at. */
   private static readonly DEFAULT_TILE = 'clamp(47px, 11vw, 56px)';
   /** {@link fitWidth}'s floor: the touch-target minimum (invariant carried by `[appTouchTarget]`
    *  on every tile button), never crossed however tight the viewport gets. */
@@ -141,21 +141,21 @@ export class BeachMapCanvas {
   readonly rowRailFill = output<number>();
 
   /** The column-header strip's counterpart to {@link rowRailInteractive} — nothing
-   *  renders here at all unless a consumer opts in (#713); no existing surface has one. */
+   *  renders here at all unless a consumer opts in; only the layout editor does. */
   readonly colHeaderInteractive = input<boolean>(false);
   /** The accessible name for column {@code index}'s fill button. */
   readonly colHeaderLabel = input<((index: number) => string) | null>(null);
   /** Emitted on a column-header fill button's click, or swept the same way as {@link rowRailFill}. */
   readonly colHeaderFill = output<number>();
 
-  /** Shows the Fit/100% pill pair (#713) — off by default, so no other consumer renders it. */
+  /** Shows the Fit/100% pill pair — off by default, so no other consumer renders it. */
   readonly zoomControl = input<boolean>(false);
   /**
    * Top padding inside the pannable viewport (`overflow-y: hidden`) so a cell that lifts on select
    * (the per-set editor's `-translate-y-1`) is not clipped. 0 by default.
    */
   readonly cellLiftHeadroomPx = input<number>(0);
-  /** Fit is the existing measured-to-width sizing (#709, unchanged); 100% pins tiles to
+  /** Fit is the existing measured-to-width sizing; 100% pins tiles to
    *  {@link FIT_MAX_TILE_PX} — the ceiling Fit itself never exceeds — and lets the grid overflow
    *  instead of shrinking further. Internal: no consumer needs to read or drive this from outside. */
   protected readonly zoomMode = signal<'fit' | 'full'>('fit');
@@ -210,7 +210,7 @@ export class BeachMapCanvas {
     this.priceChips() === 'amounts' ? '' : 'min-w-[92px]',
   );
 
-  /** The #724 ellipsis, on the tourist rail only: two tiers, 48px of text and 96px from `sm`. */
+  /** The rail-code ellipsis, tourist rail only: two tiers, 48px of text and 96px from `sm`. */
   protected readonly railCodeTextClass = computed(() =>
     this.railCodes() === 'capped-labels' ? 'max-w-12 sm:max-w-[96px] truncate' : '',
   );
@@ -228,7 +228,7 @@ export class BeachMapCanvas {
   /** Uniform column count so every row's grid aligns with the rails. */
   protected readonly mapCols = computed(() => Math.max(1, ...this.rows().map((r) => r.tileCount)));
 
-  /** 0-based column indexes for the header strip (#713) — one fill button per {@link mapCols}. */
+  /** 0-based column indexes for the header strip — one fill button per {@link mapCols}. */
   protected readonly colIndexes = computed(() =>
     Array.from({ length: this.mapCols() }, (_, i) => i),
   );
@@ -257,7 +257,7 @@ export class BeachMapCanvas {
     return this.fitWidth() && fitted !== null ? `${fitted}px` : BeachMapCanvas.DEFAULT_TILE;
   });
 
-  /** Arms the Fit/100% pill pair (#713). */
+  /** Arms Fit or 100% from the pill pair. */
   protected setZoom(mode: 'fit' | 'full'): void {
     this.zoomMode.set(mode);
   }
@@ -277,12 +277,12 @@ export class BeachMapCanvas {
   private panStartY = 0;
   private panStartScroll = 0;
   private panStartScrollTop = 0;
-  /** The gesture's vertical scroll target — the wash scroller, only while it overflowed at mousedown (D-1). */
+  /** The gesture's vertical scroll target — the wash scroller, only while it overflowed at mousedown. */
   private panWash: HTMLElement | null = null;
   /** Set when the current gesture crossed the drag threshold; consumed by the next click. */
   private panned = false;
 
-  /** The D-1 gate: the vertical pan axis (and its hint) engages only on actual overflow. */
+  /** The vertical pan axis (and its hint) engages only on actual overflow. */
   private static overflowsVertically(el: HTMLElement | undefined): el is HTMLElement {
     return !!el && el.scrollHeight > el.clientHeight + 1;
   }
@@ -371,7 +371,7 @@ export class BeachMapCanvas {
 
   /** Whether a mouse-drag on the viewport may start a pan right now — the ordinary {@link dragPan}
    *  gate everywhere {@link zoomControl} is off, or the {@link panGestureActive} gate once a
-   *  consumer opts into 100% zoom (independent of {@link dragPan}, #713). */
+   *  consumer opts into 100% zoom (independent of {@link dragPan}). */
   private mouseDragPanAllowed(): boolean {
     return this.zoomControl() && this.zoomMode() === 'full'
       ? this.panGestureActive()

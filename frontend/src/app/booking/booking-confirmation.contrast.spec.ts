@@ -33,7 +33,7 @@ import {
  *
  * <p>One surface needs a SECOND layer and has its own describes at the foot of this file: the
  * summary `<dl>` sits on an inset fill over the card glass, and compositing its inks on the card
- * glass alone is what hid a dark-theme AA failure until #853.
+ * glass alone is what hid a dark-theme AA failure (`colour-literal-token-audit.md` § Class R).
  */
 
 const ACCENT = '#085a6e'; // --riv-accent-ink (Paid, big code, link)
@@ -93,8 +93,8 @@ describe.each(THEMES)(
 
 /**
  * The summary `<dl>` sits on an EXTRA layer the tests above do not model: an inset fill over the
- * card glass. It painted a `rgba(255,255,255,0.4)` literal in every theme until #853, and that is
- * where the layer mattered — a fixed pale fill under inks that DO theme is the #850 trap, and it
+ * card glass. Painted as a `rgba(255,255,255,0.4)` literal in every theme, that layer is where it
+ * mattered — a fixed pale fill under inks that DO theme is the class-F trap, and it
  * was live: in the dark theme the list's two inks measured 2.62–3.29:1, below AA, while every
  * assertion above (which composites the same inks on the card glass alone) stayed green.
  *

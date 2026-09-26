@@ -165,7 +165,7 @@ negative cases are proven against `ai.riviera.domainpurityfixture`.
 fires: one *set* in `venue`, `availability`, `booking` and `notification`; one *booking* in
 `booking`, `payment`, `payout` and `review`; money is EUR minor units everywhere. The three
 duplicated id records are `record X(long value)` converted by identity, each documented as existing
-to keep the Modulith graph acyclic (`operator/vocabulary/VenueRef.java:7–14`). The boundaries are
+to keep the Modulith graph acyclic (`operator/vocabulary/VenueRef`'s type doc). The boundaries are
 correct **module** boundaries — deep, well-named, one owner per table — and nothing here argues for
 removing or merging any of them.
 

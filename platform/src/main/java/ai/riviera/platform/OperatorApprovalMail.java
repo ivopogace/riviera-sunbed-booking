@@ -19,7 +19,7 @@ import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 @Component
 class OperatorApprovalMail {
 
-	/** The audience-aware sign-in page (S9); post-sign-in landing is driven by {@code /api/venues/mine}. */
+	/** The audience-aware sign-in page; post-sign-in landing is driven by {@code /api/venues/mine}. */
 	private static final String SIGN_IN_PATH = "/account/sign-in";
 
 	private final MailSender mails;

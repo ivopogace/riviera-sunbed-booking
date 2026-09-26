@@ -63,16 +63,17 @@ function cardSurface(stop: (typeof PORCELAIN_STOPS)[number]): string {
 /**
  * This token's literal, matched **by role rather than by value**. `#a3372a` is emphatically not
  * ours alone — it is `--riv-solid-btn-danger-ink`'s declared value, it paints two class-F
- * medallions (#858), and the audit's class O carries it as `/opacity` chrome on the very element
- * this token's reason-chip site sits in (#852, since migrated onto this same token). Only the
- * plain INK role in `operator/` belongs to this sweep, so that is what it matches: a bare value
- * match would fail on sites #864 must not touch, and would silently have done #852's work.
+ * medallions (`--riv-medallion-negative-*`), and the audit's class O carries it as `/opacity`
+ * chrome on the very element this token's reason-chip site sits in (now wearing this same token).
+ * Only the plain INK role in `operator/` belongs to this sweep, so that is what it matches: a bare
+ * value match would fail on sites this token must not touch, and would silently take class O's
+ * tints too.
  */
 const LITERAL_ROLE = /text-\[#a3372a\]/i;
 
 /**
- * The reason chip's `/opacity` positions, asserted PRESENT so an overreach fails. They were #852's
- * half and are now migrated, and the FORM they take is that slice's finding rather than a detail:
+ * The reason chip's `/opacity` positions, asserted PRESENT so an overreach fails. They are class
+ * O's half, migrated onto this token, and the FORM they take is class O's finding, not a detail:
  * a `/opacity` literal and the same colour named through a token compile to the same
  * `color-mix(in oklab, …, transparent)`, so the chip's tints could simply take this token — the
  * one place in class O where the value coincidence IS a role match, since the chip's border, fill
@@ -126,7 +127,7 @@ describe('Console negative-ink token (theme invariance + role distinctness, #864
 
   /**
    * Same colour, different role and different surface: this one is a console ink on card glass,
-   * that one the outline button's ink pinned to the button's own fixed `#f4f6f7` fill (#851).
+   * that one the outline button's ink pinned to the button's own fixed `#f4f6f7` fill (class F-2).
    * The audit's class R exists for exactly this, so the equality is asserted rather than left to
    * coincidence — and the two declarations are asserted to be two.
    */

@@ -6,7 +6,7 @@ import ai.riviera.platform.booking.application.cancel.CancellationTerms;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 
 /**
- * Wire shape of the pre-reserve terms read (#795): the window a booking created now would be born
+ * Wire shape of the pre-reserve terms read: the window a booking created now would be born
  * in, the free-cancellation deadline as a UTC instant (formatted client-side in
  * {@code Europe/Tirane}, invariant #6), and the venue's late share in basis points.
  */

@@ -6,18 +6,18 @@ import { SetView } from '../shared/venue-views';
 
 /**
  * The shared beach-map cell styling, extracted from the layout editor so the bulk grid and the
- * per-set grid cannot drift apart (#600). These strings are the NO-DRIFT PIN: each restates the
+ * per-set grid cannot drift apart. These strings are the NO-DRIFT PIN: each restates the
  * `CELL_CLASS` entry the layout editor carried before the move, so the extraction is verifiable
  * rather than eyeballed. Two deliberate departures since: the gap border darkened `/35` → `/55` so
- * the aisle boundary is 3:1 composited over the shared canvas wash (#672 slice 2, pinned in
- * `layout-editor.contrast.spec.ts`), and #852 tokenised the `#0c2a33` positions — the ones this map
+ * the aisle boundary is 3:1 composited over the shared canvas wash (pinned in
+ * `layout-editor.contrast.spec.ts`), and class O tokenised the `#0c2a33` positions — those this map
  * paints with an `/opacity` modifier AND the two raw stops inside the walk-in gradient, since a
  * per-state map may not mix a named utility with a literal of the same value in one branch. Then
- * #879 took the walk-in gradient whole: its two stops were 30%/12% here and 35%/12% at the layout
- * editor's "mirror" swatch, so the hatch became one `--riv-walkin-hatch` image token and this entry
- * names the token rather than the stops.
+ * class O's ladder took the walk-in gradient whole: its two stops were 30%/12% here and 35%/12%
+ * at the layout editor's "mirror" swatch, so the hatch became one `--riv-walkin-hatch` image
+ * token and this entry names the token rather than the stops.
  *
- * <p>So the pin is no longer byte-identical to the pre-move strings, and could not stay so without
+ * <p>So the pin is not byte-identical to the pre-move strings, and could not stay so without
  * pinning the migration out. What it still guarantees is what it was written for: that the two
  * grids render ONE map, and that no slice restyles a cell while claiming to move it. The paint is
  * unchanged either way — `border-riv-console-tint/15` compiles to the same
@@ -70,10 +70,10 @@ describe('BeachCell (#600)', () => {
   });
 
   /**
-   * The aisle boundary is the one class-O alpha that could not be normalised (#879). `/55` is not
+   * The aisle boundary is the one class-O alpha that could not be normalised. `/55` is not
    * what someone typed — it is 0.55 and not 0.35 because the gap cell's identity is its border
    * ALONE (no fill, `bg-transparent`), and only at 0.55 does that border clear 3:1 composited over
-   * the shared canvas wash, WCAG 1.4.11 (#672 slice 2; the ratio itself is measured in
+   * the shared canvas wash, WCAG 1.4.11 (the ratio itself is measured in
    * `layout-editor.contrast.spec.ts`, which is where it belongs — one number-bearing surface).
    *
    * <p>It needed no exemption from the multiple-of-five ladder, because 55 is already on it. That

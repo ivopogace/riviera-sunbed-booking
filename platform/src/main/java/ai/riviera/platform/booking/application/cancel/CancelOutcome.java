@@ -3,7 +3,7 @@ package ai.riviera.platform.booking.application.cancel;
 import ai.riviera.platform.booking.domain.BookingStatus;
 
 /**
- * The result of attempting a cancellation (U6) — a closed, caller-mappable set (typed outcomes for
+ * The result of attempting a cancellation — a closed, caller-mappable set (typed outcomes for
  * expected flows, not exceptions, invariant idiom). The web adapter {@code switch}es exhaustively:
  * {@link Cancelled} → 200, {@link NotFound} → 404, {@link NotCancellable} and {@link WindowClosed}
  * → 409 under distinct codes.

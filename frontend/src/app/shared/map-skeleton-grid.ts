@@ -6,7 +6,7 @@ import { SkeletonBlock } from './skeleton-block';
 
 /**
  * The in-flight tile grid every beach-map surface renders through {@link BeachMapCanvas} while
- * loading (#744) — same geometry, same canvas, different testids and tile radius per surface.
+ * loading — same geometry, same canvas, different testids and tile radius per surface.
  */
 @Component({
   selector: 'app-map-skeleton-grid',

@@ -12,7 +12,7 @@ import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The per-venue payout-ledger read (U9), behind {@link ViewPayoutLedger} (invariant #11). Folds the
+ * The per-venue payout-ledger read, behind {@link ViewPayoutLedger} (invariant #11). Folds the
  * entries of {@link PayoutLedger#entriesForVenue} oldest-first into a <strong>running net
  * owed</strong>: only an {@code ACCRUAL} adds; every other type ({@code REVERSAL}, {@code FEE})
  * deducts (invariant #9), so the result may be negative. Integer minor units (invariant #5).

@@ -6,7 +6,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Driving port for editing a venue's beach-map layout (U7), internal to {@code venue} (REST-only
+ * Driving port for editing a venue's beach-map layout, internal to {@code venue} (REST-only
  * caller). Each method returns a typed outcome the adapter maps to HTTP without exceptions.
  *
  * <p>Every method first verifies the {@link OperatorId} owns {@code venueId} (invariant #13),

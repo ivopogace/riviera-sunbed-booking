@@ -27,7 +27,7 @@ import { VenueMap } from './venue-map';
 import { ProofOfWork } from '../core/proof-of-work';
 
 /** A 24-set fixture mirroring the Miramar seed: 4 rows × 6, 6 taken (18 free), front row premium.
- *  Rows 2+3 share a price (€35) so the per-zone price rendering (#672) is observable. */
+ *  Rows 2+3 share a price (€35) so the per-zone price rendering is observable. */
 function miramar(): VenueMapView {
   const rows: readonly {
     label: string;
@@ -192,7 +192,7 @@ describe('VenueMap', () => {
   });
 
   /**
-   * Settle pending renders after flushing the booking dialog's pre-reserve terms quote (#795) —
+   * Settle pending renders after flushing the booking dialog's pre-reserve terms quote —
    * an unanswered httpResource request would park `whenStable` forever. A no-op while no dialog
    * is open (`match` returns nothing).
    */
@@ -236,7 +236,7 @@ describe('VenueMap', () => {
     return note.textContent.replace(/\s+/g, ' ').trim();
   }
 
-  /** The calendar popover's trigger — a button since #761, not the old native date input. */
+  /** The calendar popover's trigger — a button, not a native date input. */
   function dateTrigger(): HTMLButtonElement {
     return el().querySelector<HTMLButtonElement>('[data-testid="map-date"]')!;
   }
@@ -1309,7 +1309,7 @@ describe('VenueMap', () => {
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(24);
   });
 
-  /** #693: a 404 (venue gone or hidden) is a distinct dead end — no retry, a way back instead. */
+  /** A 404 (venue gone or hidden) is a distinct dead end — no retry, a way back instead. */
   it('shows the not-available state on a 404, with back-to-Discover instead of retry', async () => {
     venueRequest().flush('gone', { status: 404, statusText: 'Not Found' });
     await settle();
@@ -1333,7 +1333,7 @@ describe('VenueMap', () => {
     expect(el().querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
   });
 
-  /** #693 review F-1: a hidden-while-browsing venue must not keep serving the stale map. */
+  /** A hidden-while-browsing venue must not keep serving the stale map. */
   it('replaces a loaded map with the not-available panel when a date change 404s', async () => {
     flushVenue();
     await settle();

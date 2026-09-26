@@ -101,10 +101,10 @@ function rawLiteralOf(value: string): RegExp {
 }
 
 /**
- * The **ladder** (#879, option C of the audit's class O): every class-O `/opacity` alpha is a
+ * The **ladder** (option C of the audit's class O): every class-O `/opacity` alpha is a
  * multiple of five.
  *
- * <p>Rule B (#852) tokenised all 44 positions while preserving each site's alpha exactly — the
+ * <p>Rule B tokenised all 44 positions while preserving each site's alpha exactly — the
  * right default for a migration, and the wrong end state for a palette: it left
  * `--riv-console-tint` painted at ten alphas across seventeen sites. The ladder is what collapses
  * that, and it is deliberately expressed as a constraint on the alphas rather than as a new token
@@ -131,14 +131,14 @@ const LADDER_STEP = 5;
  * stating because the narrower version looked right: class O is defined by the `/α` modifier, and
  * two of its 44 positions deliberately reuse a token this array does not hold. `payouts-tab`'s
  * reason chip takes `--riv-console-negative-ink` — the ink token already on that element, because
- * there the value coincidence IS a role match (#864) — so an array-scoped sweep walked straight
+ * there the value coincidence IS a role match — so an array-scoped sweep walked straight
  * past its `/28` and `/12` while reporting the ladder complete. Enumerating by the mechanism the
  * rule is actually about is what found them.
  *
  * <p>A pure function of a string on purpose: the sweep below asserts an EMPTY list, so the only
  * thing that can tell a finished normalisation from a broken matcher is a test that drives this
  * directly with a known-bad input. That is the meta-test beside it — the pairing this file already
- * uses for its form sweep, and the trap #852 hit once with an emptied guard passing vacuously.
+ * uses for its form sweep, and the trap of an emptied guard passing vacuously.
  */
 function offLadderIn(source: string): readonly string[] {
   const position = new RegExp(`${COLOUR_UTILITIES}-riv-[a-z-]+/([0-9.]+)`, 'g');
@@ -187,7 +187,7 @@ describe('Class-O tint tokens (rule B: the modifier stays, the literal becomes a
   });
 
   /**
-   * The ladder's meta-test (#879). `offLadderIn` is driven with known-bad and known-good inputs
+   * The ladder's meta-test. `offLadderIn` is driven with known-bad and known-good inputs
    * because the sweep after it asserts `[]` and would pass just as happily on a matcher that
    * stopped matching. It also pins the two boundaries the ladder rests on: `/55` is ON the ladder
    * (so the aisle boundary needs no exemption), and a colour outside class O is not this sweep's
@@ -209,7 +209,7 @@ describe('Class-O tint tokens (rule B: the modifier stays, the literal becomes a
   });
 
   /**
-   * Class O's alphas, normalised (#879). The companion to the form sweep above: that one says a
+   * Class O's alphas, normalised. The companion to the form sweep above: that one says a
    * `/opacity` position must name a token, this one says the alpha it carries must sit on the
    * ladder. Together they are the whole boundary — a new position can be neither an untokenised
    * literal nor a freshly-invented alpha.
@@ -223,13 +223,13 @@ describe('Class-O tint tokens (rule B: the modifier stays, the literal becomes a
   });
 
   /**
-   * The walk-in hatch, as ONE declaration (#879). Three renderings called themselves the same
+   * The walk-in hatch, as ONE declaration. Three renderings called themselves the same
    * thing and were not: `beach-cell` painted 30%/12%, `layout-editor`'s tool swatch 35%/12% under a
    * comment claiming it mirrors the cell, and `daily-view-tab`'s tile + legend 28%/10%. Rule B had
    * no reason to notice — each was internally consistent, and the drift only reads as drift once
    * the three sit in one place.
    *
-   * <p>An image token for the same reason `--riv-premium-grad` is one (#852): a mirror stays a
+   * <p>An image token for the same reason `--riv-premium-grad` is one: a mirror stays a
    * mirror only while there is one declaration to mirror. The class-O ladder alone would not have
    * fixed this — snapping all three to ladder values still leaves three definitions free to drift
    * apart again on the next touch.
@@ -273,7 +273,7 @@ describe('Class-O tint tokens (rule B: the modifier stays, the literal becomes a
     });
 
     /**
-     * The generalized form of the take-the-skin-whole rule (#858), and the reason it is a test
+     * The generalized form of the take-the-skin-whole rule, and the reason it is a test
      * rather than a habit: a per-state map or ternary that names the token in one position and
      * writes the same colour raw in another is half-migrated, and reads as two colours to the next
      * person. Enumerating the mechanism — not the maps that resembled the first one found — is

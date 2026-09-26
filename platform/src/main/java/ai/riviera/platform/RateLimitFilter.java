@@ -63,7 +63,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	// Mirrors the SecurityConfig matchers for the eight public booking endpoints.
 	private static final String CREATE_PATH = "/api/bookings";
-	/** A literal sibling of the {@code {code}} routes (#795): it carries no code to key a bucket on. */
+	/** A literal sibling of the {@code {code}} routes: it carries no code to key a bucket on. */
 	private static final String TERMS_PATH = "/api/bookings/cancellation-terms";
 	private static final String VIEW_TEMPLATE = "/api/bookings/{code}";
 	private static final String CANCEL_TEMPLATE = "/api/bookings/{code}/cancel";

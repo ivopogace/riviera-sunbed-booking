@@ -104,7 +104,7 @@ class JdbcPayments implements Payments {
 	@Override
 	public Optional<PaymentCredentials> findPendingCredentials(
 			BookingRef booking) {
-		// Pay-on-accept read (issue #98): an intent is payable while OPEN — including after a
+		// Pay-on-accept read: an intent is payable while OPEN — including after a
 		// payment_intent.payment_failed, which is NOT terminal in Stripe (the guest can retry the
 		// same intent; hiding the credentials would strand an accepted guest whose card declined
 		// once). Succeeded/canceled rows (or secret-less stub/pre-V19 rows) yield empty.

@@ -18,6 +18,6 @@ class MockSsoProdGuard {
 	MockSsoProdGuard() {
 		throw new IllegalStateException(
 				"Mock SSO gateway must not run under the 'prod' profile — activate the 'sso' profile with real "
-						+ "credentials (S5, #116), or run a non-prod profile for the demo mock.");
+						+ "credentials, or run a non-prod profile for the demo mock.");
 	}
 }

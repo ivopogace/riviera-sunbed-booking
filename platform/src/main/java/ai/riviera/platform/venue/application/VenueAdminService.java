@@ -38,7 +38,7 @@ class VenueAdminService implements EditVenueProfile, ViewVenueProfile, ListOwned
 			long expectedVersion, VenueProfileCommand command) {
 		ownership.assertOwns(operator, new VenueRef(venueId.value())); // invariant #13, first & unchanged
 		// Existence is checked BEFORE the conditional write so that a 0-rows result is unambiguous: here
-		// it can only mean the loaded version no longer matches (stale tab), never no-such-venue (R-2).
+		// it can only mean the loaded version does not match (stale tab), never no-such-venue.
 		if (!venues.venueExists(venueId)) {
 			return ProfileUpdateOutcome.NO_SUCH_VENUE;
 		}

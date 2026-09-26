@@ -6,7 +6,7 @@ import { CancellationTerms } from './booking.model';
 import { CancellationTermsNote } from './cancellation-terms-note';
 
 /**
- * Structural axe audit of the async-loaded disclosure (#795, R-6): the note sits inside a polite
+ * Structural axe audit of the async-loaded disclosure: the note sits inside a polite
  * live region (`role="status"`), so a screen reader hears the terms when they resolve after the
  * dialog opened. Contrast is the call site's (the note carries no ink of its own); the real
  * render-in-a-browser proof is the mocked e2e.

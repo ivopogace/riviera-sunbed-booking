@@ -24,7 +24,7 @@ class WebCorsConfig {
 
 	WebCorsConfig(@Value("${app.web.cors.allowed-origins}") List<String> allowedOrigins) {
 		// A blank entry (an empty property binds to [""]) must never become an "allowed origin";
-		// filter blanks so an empty config means "no cross-origin caller" (R-6), not a malformed
+		// filter blanks so an empty config means "no cross-origin caller", not a malformed
 		// empty-string origin that could match an empty Origin header.
 		this.allowedOrigins = allowedOrigins.stream().filter(origin -> !origin.isBlank()).toList();
 	}
@@ -39,7 +39,7 @@ class WebCorsConfig {
 			// as http while the browser's Origin is https, so CorsUtils.isCorsRequest treats a
 			// SAME-origin POST as cross-origin. With a null config DefaultCorsProcessor lets an actual
 			// request continue (only a genuine cross-origin PREFLIGHT is rejected) — so same-origin
-			// writes work, instead of the deny-all 403 an empty allowlist would produce (R-6).
+			// writes work, instead of the deny-all 403 an empty allowlist would produce.
 			return source;
 		}
 		CorsConfiguration config = new CorsConfiguration();

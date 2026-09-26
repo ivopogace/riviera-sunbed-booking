@@ -28,7 +28,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 @Service
 class MailDeliveryLookupService implements MailDeliveryLookup {
 
-	/** Shown when a set no longer resolves — the row is still worth listing for its attempt history. */
+	/** Shown when a set does not resolve — the row is still worth listing for its attempt history. */
 	private static final String UNKNOWN_VENUE = "Unknown venue";
 
 	private final CustomerLookup customers;

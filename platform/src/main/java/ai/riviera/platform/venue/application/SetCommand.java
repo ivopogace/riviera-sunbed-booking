@@ -9,7 +9,7 @@ import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.Tier;
 
 /**
- * The validated intent to place or re-place one set position on a venue's beach map (U7), for
+ * The validated intent to place or re-place one set position on a venue's beach map, for
  * both {@link EditBeachMap#addSet} and {@link EditBeachMap#editSet}. Its compact constructor
  * enforces the V2/V12/V43 CHECKs at the boundary: {@code tier} is the exact token the DB stores,
  * {@code pool} the typed {@link Pool} (a set is in exactly one pool — invariant #3),

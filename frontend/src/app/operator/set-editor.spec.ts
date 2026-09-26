@@ -16,8 +16,8 @@ import { SetLock } from './operator-console.model';
 import { SetEditor } from './set-editor';
 
 /**
- * The per-set beach-map editor (#600) — the surface that makes a live venue's map editable at all.
- * Drives select → change → save against the U7 `PATCH`, and pins the two properties the slice turns
+ * The per-set beach-map editor — the surface that makes a live venue's map editable at all.
+ * Drives select → change → save against the per-set `PATCH`, and pins the two properties it turns
  * on: the write carries the WHOLE set body, and a `409 SET_IN_USE` leaves the map exactly as the
  * server still has it (no optimistic flip survives a refusal). Also pins the load gate: until the
  * parent says the map read has settled, the surface renders a decorative skeleton rather than

@@ -6,7 +6,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The admin weather-refund use case (U9): full refunds for a washed-out venue+date (invariant #10:
+ * The admin weather-refund use case: full refunds for a washed-out venue+date (invariant #10:
  * weather → full refund <strong>regardless of the cutoff</strong>, admin-triggered in v1). Every
  * refundable booking for the day is cancelled with reason {@code WEATHER}, freeing the set
  * (invariant #2); refund and payout reversal flow through the cancellation spine. The caller

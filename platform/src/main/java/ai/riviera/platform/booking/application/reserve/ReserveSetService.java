@@ -113,7 +113,7 @@ class ReserveSetService {
 
 		long amountMinor = Math.multiplyExact(set.price().minorUnits(), (long) stay.days());
 		CustomerId customerId = customers.findOrCreate(command.contact());
-		// Request-to-Book (issue #98): a REQUEST venue's booking starts as a pending request that
+		// Request-to-Book: a REQUEST venue's booking starts as a pending request that
 		// holds the claimed (set, date) row but triggers no payment — payment-request-on-accept.
 		// The accept deadline caps at D's sales close: past it the venue has shut its own window.
 		if (set.bookingMode() == BookingMode.REQUEST) {

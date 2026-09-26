@@ -6,7 +6,7 @@ import { DARK_ERROR_INK, FORM_ERROR_FILL, FORM_ERROR_INK } from '../../testing/g
 import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
- * Guard for the `--riv-form-error-*` pair (#850, class F-1 of the colour-literal audit) — the
+ * Guard for the `--riv-form-error-*` pair (class F-1 of the colour-literal audit) — the
  * skin the three tourist error banners wear (`booking-dialog`, `booking-pay`, `my-bookings`).
  *
  * <p>The pair is THEME-INVARIANT, and that is the whole point of it rather than an omission. The
@@ -31,10 +31,10 @@ const PAIR = {
 /**
  * This family's literals, matched **by role rather than by value**. `#f6e8e7` is the fill and
  * occurs nowhere else, so any form of it is ours. `#a3160e` is not ours alone: the audit's class R
- * paints it as a `bg-` fill under white ink (#854), and class O painted it as `/opacity` tints
- * until #852 moved those onto `--riv-alert-tint` — both deliberate Non-goals here, and the second
- * is now a token rather than a literal. Only the INK role belongs to this pair, so that is what
- * the sweep matches — a bare value match would fail on eight sites this slice must not touch.
+ * paints it as a `bg-` fill under white ink (`--riv-solid-fill-danger`), and class O's `/opacity`
+ * tints of it wear `--riv-alert-tint` — both deliberate Non-goals here, and the second a token
+ * rather than a literal. Only the INK role belongs to this pair, so that is what the sweep
+ * matches — a bare value match would fail on eight sites this pair must not touch.
  */
 const LITERAL_ROLES = [/#f6e8e7/i, /text-\[#a3160e\]/i];
 

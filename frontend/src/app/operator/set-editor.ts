@@ -429,7 +429,7 @@ export class SetEditor {
 
   /**
    * The grid extent: the sets' own bounding box plus whatever the operator has grown it by, at least
-   * one cell so an empty venue still renders, and never past the maxima the server enforces (R-4).
+   * one cell so an empty venue still renders, and never past the maxima the server enforces.
    */
   protected readonly rowCount = computed(() =>
     clampGrid(Math.max(1, ...this.sets().map((s) => s.gridY)) + this.extraRows(), 1, MAX_ROWS),

@@ -13,7 +13,7 @@ import {
 
 /**
  * The tourist beach-map tile's appearance, extracted out of `venue-map.html`'s `[&.premium]:`
- * arbitrary variants so the tile and its legend swatch cannot drift (#701) — the
+ * arbitrary variants so the tile and its legend swatch cannot drift — the
  * `operator/beach-cell.ts` shape, one step later.
  *
  * `TILE_TOKEN_CLASS` is the NO-DRIFT PIN: each string is the complete set of appearance classes

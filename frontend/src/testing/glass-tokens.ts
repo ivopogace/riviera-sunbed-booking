@@ -80,7 +80,7 @@ export const DARK_DIALOG_GLASS: Glass = { color: hexToRgb('101a2e'), alpha: 0.94
 export const DARK_WASH_FILL: Glass = { color: WHITE, alpha: 0.08 };
 /** `--riv-inset-fill` on the light themes — the translucent white inset panels inside the
  *  booking cards. Its dark counterpart is DARK_WASH_FILL above, and the gap between the two is
- *  the whole reason a BORDER of the same light value needs its own token (CTA_BORDER, #853). */
+ *  the whole reason a BORDER of the same light value needs its own token (CTA_BORDER). */
 export const INSET_FILL: Glass = { color: WHITE, alpha: 0.4 };
 
 /** The `--riv-danger-*` set — the erasure confirm panel's tinted danger treatment: a panel tint
@@ -88,7 +88,7 @@ export const INSET_FILL: Glass = { color: WHITE, alpha: 0.4 };
  *  counterparts are the DARK_DANGER_* mirrors below. The `*_BORDER` pair is non-text chrome
  *  (WCAG 1.4.11): `ACTION_BORDER` (the Erase button's affordance boundary) is asserted at 3:1
  *  against the panel fill; `DANGER_BORDER` (the panel's own edge) is decorative and is not —
- *  see the contrast spec's header (issue #834). */
+ *  see the contrast spec's header. */
 export const DANGER_INK: Rgb = hexToRgb('8f2c22');
 export const DANGER_FILL: Glass = { color: hexToRgb('b3362b'), alpha: 0.06 };
 export const DANGER_BORDER: Glass = { color: hexToRgb('b3362b'), alpha: 0.35 };
@@ -102,7 +102,7 @@ export const DARK_DANGER_FILL: Glass = { color: hexToRgb('ff8a7a'), alpha: 0.1 }
 export const DARK_DANGER_BORDER: Glass = { color: hexToRgb('ff8a7a'), alpha: 0.42 };
 export const DARK_DANGER_ACTION_FILL: Glass = { color: hexToRgb('ff8a7a'), alpha: 0.16 };
 export const DARK_DANGER_ACTION_BORDER: Glass = { color: hexToRgb('ff8a7a'), alpha: 0.66 };
-/** The `--riv-accent-*` tint family (#835) — the brand teal as the three POSITIVE-state tinted
+/** The `--riv-accent-*` tint family — the brand teal as the three POSITIVE-state tinted
  *  treatments: the info panel, the selected chip, and the pay spinner's track. No dark mirror
  *  exists on purpose; the tokens are declared once and paint the same value in every theme.
  *  The `*_BORDER` values are non-text chrome (WCAG 1.4.11) — see the spec header. */
@@ -116,8 +116,7 @@ export const ACCENT_STRONG: Rgb = hexToRgb('0e8aa8');
 /** The `--riv-solid-btn-*` family: the skin of the outline buttons (booking-view / review-panel
  *  Cancel-Keep-Edit-Remove, my-bookings Retry). Theme-invariant as a WHOLE, not just the ink — the
  *  fills do not theme, so nothing painted over them may either: the themed `--riv-danger-ink`
- *  resolves DARK_ERROR_INK over SOLID_BTN_FILL at 1.69:1, light on light. `--riv-solid-btn-ink`
- *  landed at #835; the rest of the family at #851. Guarded by
+ *  resolves DARK_ERROR_INK over SOLID_BTN_FILL at 1.69:1, light on light. Guarded by
  *  `booking/solid-btn-tokens.contrast.spec.ts`. */
 export const SOLID_BTN_INK: Rgb = hexToRgb('0a4f5e');
 export const SOLID_BTN_FILL: Rgb = hexToRgb('f4f6f7');
@@ -125,7 +124,7 @@ export const SOLID_BTN_HOVER: Rgb = hexToRgb('e7ebec');
 export const SOLID_BTN_DANGER_INK: Rgb = hexToRgb('a3372a');
 /** The two outline borders — non-text chrome (WCAG 1.4.11), and MEASURED rather than waved off:
  *  composited over the fill they reach 1.06:1 (neutral) and 1.90:1 (danger), so neither is the
- *  affordance boundary and neither clears 3:1. Unchanged values, carried across by #851 as-is; the
+ *  affordance boundary and neither clears 3:1. Unchanged values, carried across as-is; the
  *  fill's own 1.02:1 against the card glass says this is the glass aesthetic's boundary question,
  *  not this skin's — the same finding `--riv-accent-*` records at ~1.5:1. Decorative under
  *  docs/design/non-text-contrast.md rule 2; raising it would need a darker hue, not more alpha. Mirrored here for the declaration guard and the e2e's
@@ -133,12 +132,12 @@ export const SOLID_BTN_DANGER_INK: Rgb = hexToRgb('a3372a');
 export const SOLID_BTN_BORDER: Glass = { color: WHITE, alpha: 0.7 };
 export const SOLID_BTN_DANGER_BORDER: Glass = { color: hexToRgb('c85a3c'), alpha: 0.5 };
 
-/** The `--riv-solid-fill-*` family (#854): the ten solid button/badge fills carrying FIXED WHITE
+/** The `--riv-solid-fill-*` family: the ten solid button/badge fills carrying FIXED WHITE
  *  INK, grouped by FORM rather than value. Theme-invariant — the ink cannot theme, so the fills may
  *  not either; both coincidental tokens (`--riv-error-ink`, `--riv-pop-accent`) do theme, which is
  *  why neither is the answer. Full reasoning sits at the declaration in `tailwind.css`.
- *  Guarded by `shared/solid-fill-tokens.contrast.spec.ts`. One brand teal since #861; a fourth
- *  member, `-warn`, since #881 (the console confirm buttons' darkened amber). */
+ *  Guarded by `shared/solid-fill-tokens.contrast.spec.ts`. One brand teal; a fourth
+ *  member, `-warn`, is the console confirm buttons' darkened amber. */
 export const SOLID_FILL_BRAND: Rgb = hexToRgb('0a6e85');
 export const SOLID_FILL_BRAND_HOVER: Rgb = hexToRgb('0a5e72');
 export const SOLID_FILL_DANGER: Rgb = hexToRgb('a3160e');
@@ -223,7 +222,7 @@ export const DARK_PREMIUM_GRAD_STOPS: readonly Rgb[] = ['6b5324', '4a3916'].map(
  *  ink in every theme (the fixed-fill rule again); one image token so the two frames cannot drift. */
 export const SEA_GRAD_STOPS: readonly Rgb[] = ['0e7a89', '0c6675'].map(hexToRgb);
 
-/** `--riv-form-error-fill` / `--riv-form-error-ink` — the three tourist error banners' skin (#850).
+/** `--riv-form-error-fill` / `--riv-form-error-ink` — the three tourist error banners' skin.
  *  Theme-invariant as a PAIR: the fill is a solid composite that does not theme, so the themed
  *  `--riv-error-ink` over it would resolve DARK_ERROR_INK at 1.54:1. Guarded by
  *  `booking/form-error-tokens.contrast.spec.ts`. */
@@ -257,14 +256,14 @@ export const RIVIERA_CHIP = { color: WHITE, alpha: 0.16 };
 export const PORCELAIN_CHIP = { color: CARD_INK, alpha: 0.05 };
 export const DARK_CHIP = { color: WHITE, alpha: 0.16 };
 
-/** The shared beach-map canvas's sea→sand wash stops (`beach-map-canvas.html`, #672) — the
+/** The shared beach-map canvas's sea→sand wash stops (`beach-map-canvas.html`) — the
  *  daylight `--riv-map-sea/mid/sand` values (light themes + porcelain-pinned operator surfaces).
  *  The first is `--riv-map-sea`, which the tourist legend band also wears. */
 export const WASH_STOPS: readonly Rgb[] = ['cfeef6', 'e7f5f1', 'f6eedb'].map(hexToRgb);
 /** The night wash — the dark theme's `--riv-map-sea/mid/sand`. */
 export const DARK_WASH_STOPS: readonly Rgb[] = ['14303c', '1c2f33', '2b2a22'].map(hexToRgb);
 
-/** The `--riv-map-zoom-{selected,idle}-*` pair (#870, class F): the Fit/100% zoom toggle's two
+/** The `--riv-map-zoom-{selected,idle}-*` pair (class F): the Fit/100% zoom toggle's two
  *  states, on the same wash the rail/chip pairs above sit on. Unlike this file's usual class-F
  *  shape (a themed ink drifting over a fixed fill), both halves here were fixed literals and the
  *  WASH itself themes — so the fix is a per-theme pair, not a theme-invariant one. The idle ink
@@ -299,8 +298,8 @@ export const DARK_PHOTO_STOPS: readonly Rgb[] = ['3b4a5f', '24314a', '1a2438'].m
 
 /**
  * Every backdrop an overlay on a photo band must survive: both placeholder gradients' own stops
- * plus the two extremes a real uploaded photo can present — pure white and pure black. Since #142
- * the bands back real images, so "worst case" stopped meaning "the gradient's lightest stop".
+ * plus the two extremes a real uploaded photo can present — pure white and pure black. The bands
+ * back real images, so "worst case" does not mean "the gradient's lightest stop".
  */
 export const WORST_PHOTOS: readonly Rgb[] = [
   ...PHOTO_STOPS,
@@ -310,14 +309,14 @@ export const WORST_PHOTOS: readonly Rgb[] = [
 ];
 
 /** `--riv-mode-chip-glass` — the white glass under the step chips, on both slideshow hosts.
- *  Named for the Discover mode chip, which stopped wearing it at #705 (it took an opaque fill,
+ *  Named for the Discover mode chip, which does not wear it (it takes an opaque fill,
  *  which needs no backing); the step chips are now the token's whole population. */
 export const MODE_CHIP_GLASS: Glass = { color: WHITE, alpha: 0.85 };
 
-/** `--riv-photo-chrome` — the dot rail's dark backing over a photo (#704). */
+/** `--riv-photo-chrome` — the dot rail's dark backing over a photo. */
 export const PHOTO_CHROME: Glass = { color: hexToRgb('0d2828'), alpha: 0.7 };
 
-/** `--riv-photo-chrome-edge` alpha (a `CARD_INK` tint) — the step chip's 1.4.11 boundary (#704). */
+/** `--riv-photo-chrome-edge` alpha (a `CARD_INK` tint) — the step chip's 1.4.11 boundary. */
 export const PHOTO_CHROME_EDGE_ALPHA = 0.6;
 
 /** Effective surface of a glass layer over an opaque stop. */
@@ -360,8 +359,8 @@ export function expectAaOverStops(
  *
  *  Theme-invariant as three PAIRS: the fills are fixed and the hosts theme, so a themed ink drifts
  *  — DARK_ACCENT_INK over the positive fill is 1.41:1 and DARK_ERROR_INK over the negative fill is
- *  1.54:1, the same number #850 measured. Full reasoning sits at the declaration in `tailwind.css`.
- *  Guarded by `shared/fixed-fill-token-skins.contrast.spec.ts`. */
+ *  1.54:1, the same number the `--riv-form-error-*` pair measured. Full reasoning sits at the
+ *  declaration in `tailwind.css`. Guarded by `shared/fixed-fill-token-skins.contrast.spec.ts`. */
 export const MEDALLION_POSITIVE_FILL: Rgb = hexToRgb('d9f2f7');
 export const MEDALLION_POSITIVE_INK: Rgb = hexToRgb('0a5f74');
 export const MEDALLION_WAITING_FILL: Rgb = hexToRgb('fcf0d9');
@@ -374,22 +373,22 @@ export const MEDALLION_NEGATIVE_INK: Rgb = hexToRgb('a3372a');
  *  glyph rather than a control. Carried across unchanged.
  *  The positive and waiting states have no border token — theirs is `rgba(255,255,255,0.6)`, the
  *  light `--riv-card-border` value carried as a literal. A neighbouring family of `CTA_BORDER`
- *  below but not the same one (#853 is the 0.4 hairline), and not this slice's either; it has its
+ *  below but not the same one (that is the 0.4 hairline), nor this family's; it has its
  *  own row in the audit ledger. */
 export const MEDALLION_NEGATIVE_BORDER: Rgb = hexToRgb('eecdc4');
 
-/** The `--riv-amenity-*` family (#858, class F-3): `shared/amenity-chip.ts`'s two variants — the
+/** The `--riv-amenity-*` family (class F-3): `shared/amenity-chip.ts`'s two variants — the
  *  neutral amenity tag and the accent "Xm to water" tag — each an ink, an opaque fill and a border.
  *
- *  The **only** positions this slice migrates that carry accessible text, so the only ones that owe
+ *  The **only** class F-3 positions that carry accessible text, so the only ones that owe
  *  an AA assertion; the medallion sites and the dialog's step badge are all `aria-hidden`. The
  *  recipes themselves live in `testing/chip-fills.ts`, where `shared/amenities.contrast.spec.ts`
  *  proves them against the rendered chip; these constants are the declaration mirror.
  *
  *  Both variants or neither: they are the same three roles in the same `computed()` ternary, and
- *  migrating one would be the mis-cut #858 exists to undo. Named `--riv-amenity-*` rather than
- *  `--riv-chip-*` because that prefix is already the shell chip's (`--riv-chip-bg`,
- *  `--riv-chip-border`) — one hyphen apart is not a distinction, #864's own naming argument.
+ *  migrating one would be the half-ternary mis-cut class F-3 rules out. Named `--riv-amenity-*`
+ *  rather than `--riv-chip-*` because that prefix is already the shell chip's (`--riv-chip-bg`,
+ *  `--riv-chip-border`) — one hyphen apart is not a distinction (class R's naming argument).
  *
  *  Theme-invariant: the fills are fixed and `shared/` mounts this directive from the Discover card
  *  and the dark glass map header alike, so a themed ink drifts — DARK_ACCENT_INK over the water fill
@@ -407,7 +406,7 @@ export const AMENITY_WATER_INK: Rgb = hexToRgb('0a5f74');
 export const AMENITY_WATER_FILL: Rgb = hexToRgb('d7eef4');
 export const AMENITY_WATER_BORDER: Rgb = hexToRgb('b9e0ea');
 
-/** The `--riv-step-*` pair (#858, class F-3): `booking-dialog`'s step-number badge, the decorative
+/** The `--riv-step-*` pair (class F-3): `booking-dialog`'s step-number badge, the decorative
  *  `aria-hidden` numeral in the dialog's teal header. Two states, one `[class]` ternary.
  *
  *  Deliberately TWO tokens for two states rather than four, because each state already has one
@@ -427,13 +426,13 @@ export const STEP_IDLE_FILL: Rgb = hexToRgb('2c7789');
 export const STEP_ACTIVE_FILL: Rgb = WHITE;
 export const STEP_IDLE_INK: Rgb = WHITE;
 
-/** The merged amber WARN family `--riv-warn-{edge,fill,ink}` (#879) — one skin for every amber
+/** The merged amber WARN family `--riv-warn-{edge,fill,ink}` — one skin for every amber
  *  advisory surface: `shared/confirm-panel`'s `alertdialog`, the console's two hand-rolled confirm
  *  panels and the trigger button that opens one, the two legal pages' standing draft banner, and
  *  `booking/withheld-email-notice`'s "we couldn't email you" notice.
  *
  *  Absorbed three families — class O's `--riv-warn-edge`/`-tint` and `--riv-confirm-warn-*`, and
- *  class F-4's `--riv-notice-banner-*` (#868, `#fcf0d9`/`#8a5410`). These values are
+ *  class F-4's `--riv-notice-banner-*` (`#fcf0d9`/`#8a5410`). These values are
  *  `confirm-panel`'s, kept because they are the HIGHER-contrast pair: 6.86:1 against the notice
  *  banner's 5.54:1, so every surface the merge moved, moved the safe way.
  *
@@ -448,7 +447,7 @@ export const WARN_EDGE: Rgb = hexToRgb('e0a03a');
 export const WARN_FILL: Rgb = hexToRgb('fff4e0');
 export const WARN_INK: Rgb = hexToRgb('7a4a08');
 
-/** `--riv-cta-border` (#853, class R): the white hairline bevel on the primary CTA button — 16
+/** `--riv-cta-border` (class R): the white hairline bevel on the primary CTA button — 16
  *  positions across `auth/`, `booking/` and `shared/`, grouped by FORM: one bevel, one kind of
  *  fixed teal action surface (the `--riv-cta-grad` stops and `booking-dialog`'s close-button fill).
  *  Theme-invariant, so the mirror is one value rather than a per-theme pair; the alternatives it
@@ -506,8 +505,8 @@ export const CLASS_O_TINTS: readonly ClassOTint[] = [
   /** The console's selection chrome — the set-editor's selected tier and armed-move panel, the
    *  layout editor's active tool. Its own pair, NOT `--riv-accent-fill`/`--riv-accent-strong`,
    *  whose values these are: that family is the TOURIST accent tint (info panel, selected chip,
-   *  pay spinner track), this one is operator-console selection state. The same fork #848, #858
-   *  and #864 each resolved the same way — role before value. */
+   *  pay spinner track), this one is operator-console selection state. The same fork class R
+   *  resolves every time — role before value. */
   { token: '--riv-select-tint', value: '#2bb8d4', dark: '#7cd7e8' },
   { token: '--riv-select-edge', value: '#0e8aa8', dark: '#9adde8' },
   /** The request/urgency chrome's tint base — the Requests tab's urgency chip and decline edge,
@@ -515,7 +514,7 @@ export const CLASS_O_TINTS: readonly ClassOTint[] = [
    *  token: `--riv-solid-fill-danger` carries this value as a SOLID fill under fixed white ink,
    *  and `--riv-error-ink` carries it as an ink that themes to `#ffa9a1`. Neither is a tint. */
   { token: '--riv-alert-tint', value: '#a3160e', dark: '#ff8a7a' },
-  /** The merged amber WARN family (#879): one skin for every amber advisory surface — the two
+  /** The merged amber WARN family: one skin for every amber advisory surface — the two
    *  hand-rolled console confirm panels and the trigger button that opens one, `shared/confirm-panel`,
    *  the two legal pages' draft banner and `booking/withheld-email-notice`. Absorbed the class-O
    *  `--riv-warn-tint`/`--riv-confirm-warn-*` AND class F-4's `--riv-notice-banner-*`, so this

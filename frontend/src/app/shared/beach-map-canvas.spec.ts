@@ -88,8 +88,7 @@ class CanvasHost {
 /**
  * The operator shape: the same canvas with NO `canvasLegend` content, which is how the layout
  * editor, the Daily view and the per-set editor render it. The legend slot must emit nothing at
- * all here — the sea banner's `mb-3.5` and the wash's `-mt-3.5` still have to meet each other
- * (#701, R-4).
+ * all here — the sea banner's `mb-3.5` and the wash's `-mt-3.5` still have to meet each other.
  */
 @Component({
   imports: [BeachMapCanvas, BeachMapRowDef],

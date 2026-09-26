@@ -7,7 +7,7 @@ import ai.riviera.platform.customer.vocabulary.GuestContact;
  * The {@code customer} module's published port (invariant #11) — the one seam for turning a
  * {@link GuestContact} into a stable {@link CustomerId}. A deep module: this single method
  * hides email normalisation and the find-or-create upsert behind one call. Consumed by the
- * {@code booking} module (U3) when creating a booking.
+ * {@code booking} module when creating a booking.
  */
 public interface CustomerDirectory {
 

@@ -10,7 +10,7 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
  * {@code form_post} response mode — those are this seam's details, hidden from the callback flow.
  *
  * <p>The concrete adapters ({@code GoogleSsoGateway}, {@code AppleSsoGateway}) exist but throw
- * {@link UnsupportedOperationException} until client credentials ship (S5); {@code RealSsoGateway}
+ * {@link UnsupportedOperationException} until client credentials ship; {@code RealSsoGateway}
  * composes them into the {@link SsoGateway} the edge injects under {@code @Profile("sso")}.
  */
 interface SsoProviderClient {

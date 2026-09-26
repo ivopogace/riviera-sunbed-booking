@@ -84,8 +84,8 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 
 	/**
 	 * A resend has no event payload, so the window-at-birth is re-derived here from the venue's
-	 * current cutoff via {@code CancellationPolicy} — bounded, documented drift after a cutoff edit
-	 * (#795); the automatic listener's stamped event stays the record of what was first sent.
+	 * current cutoff via {@code CancellationPolicy} — bounded, documented drift after a cutoff edit;
+	 * the automatic listener's stamped event stays the record of what was first sent.
 	 */
 	private BookingConfirmationFacts factsOf(java.sql.ResultSet rs) throws java.sql.SQLException {
 		SetId setId = new SetId(rs.getLong("set_id"));

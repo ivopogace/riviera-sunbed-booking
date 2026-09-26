@@ -14,14 +14,14 @@ import {
 import { STYLESHEET, baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
- * Guard for the `--riv-solid-fill-*` family (#854) — the ten solid button/badge fills carrying
+ * Guard for the `--riv-solid-fill-*` family — the ten solid button/badge fills carrying
  * fixed white ink, across `operator/` and two `shared/` components.
  *
- * <p>Ten sites, three values since #881: seven wear `-brand`, two wear `-danger`, one wears
+ * <p>Ten sites, three values: seven wear `-brand`, two wear `-danger`, one wears
  * `-warn` — `shared/confirm-panel.ts`'s own tone map, the only place the class string is written;
  * its two consumers (the console's close-sales and weather-refund confirms) select it via the
  * `tone="warn"` input, never the class directly. The retired `-action` name is swept for below,
- * prose included — a class naming a token that no longer exists paints nothing, silently, which no
+ * prose included — a class naming a token that does not exist paints nothing, silently, which no
  * ratio here can see.
  *
  * <p>The sweep keys on the `bg-` form, not the bare value: all three literals — the merged-away
@@ -75,13 +75,12 @@ function read(path: string): string {
  * gradient stops, which are other classes of the audit and other slices' work.
  *
  * <p>The trailing `(?!\/)` is the second discriminator: `bg-[#a3160e]/10` was `requests-tab`'s
- * urgency-chip tint, class O and #852's, which had to survive this sweep untouched. It still must,
- * and the lookahead still earns its place — but not for the reason written here originally. That
- * read "tokenising it would change the computed value", and #852 measured otherwise: the literal
- * form ALREADY compiles to `color-mix()`, the token form compiles to the same expression, and the
- * two composite byte-identically. The real ground is the one this whole constant rests on — a
- * tint is not a FILL, so it belongs to a different token (`--riv-alert-tint`) whichever way it is
- * written.
+ * urgency-chip tint, a class-O position, which had to survive this sweep untouched. It still must,
+ * and the lookahead still earns its place — but not because tokenising a tint would change the
+ * computed value: the literal form ALREADY compiles to `color-mix()`, the token form compiles to
+ * the same expression, and the two composite byte-identically (the audit's class O). The real
+ * ground is the one this whole constant rests on — a tint is not a FILL, so it belongs to a
+ * different token (`--riv-alert-tint`) whichever way it is written.
  */
 const FILL_ROLES = [
   /bg-\[#0a6e85\](?!\/)/i,
@@ -95,23 +94,23 @@ const FILL_ROLES = [
  * The same three values in NON-fill roles, by file. Asserted POSITIVELY: the sweep proving the
  * family moved is only half the claim, and this is the half that proves it did not overreach — the
  * over-claim the issue was re-cut to avoid. Each entry is a file that must STILL paint that value
- * after this slice, in a role that is not a solid fill.
+ * after this family's migration, in a role that is not a solid fill.
  *
  * <p>`#0a6e85` had eight rows here — the `operator/` console inks this list was written to prove
- * #854 had not swept. #848 has since tokenised them onto `--riv-console-accent-ink`, so they are
+ * this family had not swept. They now wear `--riv-console-accent-ink`, so they are
  * gone as LITERALS, not as paint: the ink is still there, and `--riv-solid-fill-brand` is still a
- * separate declaration of the same value in a different role. Read the shrunk list as that slice
- * landing, never as #854 having over-reached after all; the ink's own guard is
+ * separate declaration of the same value in a different role. Read the shrunk list as that
+ * migration landing, never as this family having over-reached after all; the ink's own guard is
  * `operator/console-accent-token.contrast.spec.ts`.
  *
- * <p>`#0a5f74` shrinks the same way and for the same reason: #858 moved the two booking OUTCOME
- * MEDALLIONS onto `--riv-medallion-positive-ink` and the amenity chip's water variant onto
+ * <p>`#0a5f74` shrinks the same way and for the same reason: the two booking OUTCOME
+ * MEDALLIONS now wear `--riv-medallion-positive-ink` and the amenity chip's water variant
  * `--riv-amenity-water-ink`. `booking-dialog.ts` stays — its remaining `#0a5f74` is the header
  * gradient's stop, which is `--riv-cta-grad`'s own duplication and nobody's ink. Those tokens'
  * guard is `shared/fixed-fill-token-skins.contrast.spec.ts`.
  *
- * <p>`#a3160e` is the third, and now the list holds no rows at all for it: #852 moved its four
- * class-O tint files onto `--riv-alert-tint`. `--riv-solid-fill-danger` remains a separate
+ * <p>`#a3160e` is the third, and now the list holds no rows at all for it: class O moved its four
+ * tint files onto `--riv-alert-tint`. `--riv-solid-fill-danger` remains a separate
  * declaration of the same value in the fill role, which is what the `FILL_ROLES` sweep above
  * still proves; the tints' guard is `shared/class-o-tint-tokens.contrast.spec.ts`. An EMPTY list
  * is the one state this constant cannot distinguish from a vacuous pass, so the test below

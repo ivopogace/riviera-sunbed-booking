@@ -14,7 +14,7 @@ import ai.riviera.platform.booking.application.refund.ExpireAbandonedBookings;
  * {@link ExpireAbandonedBookings}. {@code @Profile("stripe")}: under the stub profile bookings
  * confirm synchronously, so there is nothing to sweep. {@code fixedDelay}, so a slow run never
  * overlaps itself; multi-instance needs no lock, as the guarded {@code UPDATE … WHERE
- * status='AWAITING_PAYMENT' … RETURNING} lets one runner transition a booking (invariant #2).
+ * status='AWAITING_PAYMENT' … RETURNING} lets one runner transition a booking (ADR-0018).
  * Interval and TTL from {@code booking.awaiting-payment.*}; the TTL is passed into the use case.
  */
 @Component

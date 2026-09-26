@@ -9,7 +9,7 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * Guard for the merged **amber warn family** `--riv-warn-{edge,fill,ink}` — one skin for
  * every amber advisory surface in the tree: `shared/confirm-panel`'s `alertdialog` (used by
  * `set-editor`/`layout-editor` from the start, and by the operator console's
- * Daily-view close-sales and Payouts weather-refund confirms too, which used to hand-roll their
+ * Daily-view close-sales and Payouts weather-refund confirms too, which once hand-rolled their
  * own copy of this same skin), the Daily-view trigger button that opens the first of those, the
  * console's two standing banners (pending approval, stale write) as a tint on the card glass, the
  * two legal pages' standing draft banner, and `booking/withheld-email-notice`.
@@ -32,9 +32,10 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * As a class-O token this family's single declaration rested on "every consumer is a child of
  * `operator-console`, whose routes the app shell pins porcelain, so a dark branch is unreachable". That ground is
  * now FALSE: the legal pages and the withheld-email notice are tourist surfaces that render under
- * all three document themes. What holds instead is #868's, and it is the stronger claim — the fill
- * is fixed, so a themed ink over it would drift (`DARK_ERROR_INK` `#ffa9a1` measures 1.63:1 on it,
- * asserted below). A fixed fill pins every ink on it, whichever theme the page is in.
+ * all three document themes. What holds instead is class F's ground, and it is the stronger
+ * claim — the fill is fixed, so a themed ink over it would drift (`DARK_ERROR_INK` `#ffa9a1`
+ * measures 1.63:1 on it, asserted below). A fixed fill pins every ink on it, whichever theme the
+ * page is in.
  *
  * <p>It lives in `shared/` rather than beside any one consumer because the population is tree-wide —
  * the same home, and the same reason, as `class-o-tint-tokens.contrast.spec.ts` and
@@ -61,8 +62,8 @@ const RETIRED = [
 /**
  * Every site the merged family paints — three families' worth, now one list.
  *
- * <p>`operator/payouts-tab.html` dropped out at #881: its weather-refund confirm now renders
- * entirely through `shared/confirm-panel.ts` (already listed), so it no longer paints the skin
+ * <p>`operator/payouts-tab.html` is not listed: its weather-refund confirm renders
+ * entirely through `shared/confirm-panel.ts` (already listed), so it does not paint the skin
  * itself. `operator/daily-view-tab.html` stays — its close-sales *trigger* button (not the confirm,
  * which adopted the same component) still carries its own `border-riv-warn-edge/50` hairline.
  */

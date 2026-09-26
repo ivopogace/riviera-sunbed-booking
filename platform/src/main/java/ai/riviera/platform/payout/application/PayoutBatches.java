@@ -8,7 +8,7 @@ import ai.riviera.platform.payout.domain.PayoutBatch;
 import ai.riviera.platform.payout.domain.PeriodKey;
 
 /**
- * The {@code payout} module's outbound persistence port for the BKT payout batches (U9).
+ * The {@code payout} module's outbound persistence port for the BKT payout batches.
  * Internal to the module — implemented by {@code JdbcPayoutBatches} (explicit SQL, invariant #1).
  */
 public interface PayoutBatches {

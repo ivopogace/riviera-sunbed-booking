@@ -131,8 +131,7 @@ const TOOL_LABEL: Record<CellState, string> = {
 };
 
 /** Per-tool swatch background classes (mirrors the cell variants, sized by the swatch element).
- *  The walk-in mirror is now literal rather than aspirational: this swatch painted 35%/12%
- *  against the cell's 30%/12% until #879 gave both one `--riv-walkin-hatch` declaration. */
+ *  The walk-in swatch and cell share one `--riv-walkin-hatch` declaration: an exact mirror. */
 const SWATCH_CLASS: Record<CellState, string> = {
   premium: 'bg-(image:--riv-premium-grad)',
   standard: 'bg-riv-console-inset/85',
@@ -182,7 +181,7 @@ export class LayoutEditor {
   private readonly console = inject(OperatorConsoleService);
   private readonly focusAfterRender = focusMover();
   protected readonly operator = inject(OperatorAuth);
-  /** The bulk grid's canvas — read only for {@link BeachMapCanvas.panGestureActive} (#713), so a
+  /** The bulk grid's canvas — read only for {@link BeachMapCanvas.panGestureActive}, so a
    *  Space-drag pan at 100% zoom never also paints the cell it starts on. */
   private readonly canvas = viewChild(BeachMapCanvas);
   /** The tool-rail chips, in rail order — scrolled into view on arm so the armed tool is visible
@@ -578,7 +577,7 @@ export class LayoutEditor {
   }
 
   /** The batch editor's bulk PUT lost the optimistic-concurrency race — reuse the same
-   *  reload-and-recover banner the bulk paint grid's own STALE_WRITE already drives (#714). */
+   *  reload-and-recover banner the bulk paint grid's own STALE_WRITE already drives. */
   protected onBatchStaleWrite(): void {
     this.errorCode.set('STALE_WRITE');
   }

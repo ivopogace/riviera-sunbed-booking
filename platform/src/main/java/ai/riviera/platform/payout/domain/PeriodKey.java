@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 /**
  * A settlement period — an ISO-8601 week in {@code Europe/Tirane} (invariant #6), rendered as
  * {@code IYYY-Www} (e.g. {@code 2026-W27}): the bucket a payout-ledger entry falls into (by its own
- * {@code created_at}) and the key a {@link PayoutBatch} is generated for (U9).
+ * {@code created_at}) and the key a {@link PayoutBatch} is generated for.
  *
  * <p>Must match the {@code period_key} column's {@code DEFAULT},
  * {@code to_char(... AT TIME ZONE 'Europe/Tirane', 'IYYY"-W"IW')}, so parsed and stored keys agree;
