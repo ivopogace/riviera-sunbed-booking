@@ -1,7 +1,8 @@
 /**
- * Standing-tree ratchet for §6d's doc-comment budget: the lines over budget may only fall.
+ * Standing-tree ratchet for §6d's budgets — doc comments and `RESPONSIBILITIES.md` blocks: the lines
+ * over budget may only fall.
  *
- * `check-inline-comments.mjs` gates every doc comment a diff touches; this locks each trim in and
+ * `check-inline-comments.mjs` gates every doc comment or block a diff touches; this locks each trim in and
  * covers what a diff never shows as added, such as a renamed file. The baseline is per area so its
  * diff shows where a PR trimmed; the gate is the total, so moving a file between areas is not growth.
  *
@@ -12,15 +13,23 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { findViolations, isBudgeted } from './check-inline-comments.mjs';
+import {
+  BUDGET_RULES,
+  findViolations,
+  isBudgeted,
+  isProseBudgeted,
+} from './check-inline-comments.mjs';
 import { changedPaths, git, readText, repoRoot } from './git-diff.mjs';
 
 export const BASELINE = 'scripts/doc-budget-baseline.json';
 
-const ROOTS = ['platform/src/main/java', 'frontend/src'];
+const ROOTS = ['platform/src/main/java', 'frontend/src', 'RESPONSIBILITIES.md'];
+
+const inScope = (path) => isBudgeted(path) || isProseBudgeted(path);
 
 /** The module or frontend folder a path's excess is booked to. */
 export function areaOf(path) {
+  if (isProseBudgeted(path)) return path;
   const backend = /^platform\/src\/main\/java\/ai\/riviera\/platform\/(?:([^/]+)\/)?/.exec(path);
   if (backend) return `platform/${backend[1] ?? '(root)'}`;
   const frontend = /^frontend\/src\/app\/(?:([^/]+)\/)?/.exec(path);
@@ -28,14 +37,12 @@ export function areaOf(path) {
   return path.startsWith('frontend/') ? 'frontend/(src)' : 'platform/(other)';
 }
 
-/** Each over-budget doc comment in one source, judged as if the whole file were new. */
+/** Each over-budget doc comment or block in one file, judged as if the whole file were new. */
 export function overBudget(path, text) {
-  if (!isBudgeted(path)) return [];
+  if (!inScope(path)) return [];
   const lines = text.split('\n');
   const everyLine = new Set(lines.map((_, i) => i + 1));
-  return findViolations({ path, lines, added: everyLine }).filter((v) =>
-    v.rule.startsWith('docbudget'),
-  );
+  return findViolations({ path, lines, added: everyLine }).filter((v) => BUDGET_RULES.has(v.rule));
 }
 
 /**
@@ -75,7 +82,7 @@ function workingTree() {
     git(['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', ...ROOTS]),
   );
   return listed
-    .filter(isBudgeted)
+    .filter(inScope)
     .map((path) => ({ path, text: readText(path) }))
     .filter(({ text }) => text !== null);
 }
@@ -110,7 +117,7 @@ function report(sources, out) {
     .map((f) => row(f.excess, f.path))
     .join('\n');
   out.write(
-    `Doc-comment lines over the §6d budget: ${files.reduce((sum, f) => sum + f.excess, 0)}\n\n`,
+    `Lines over the §6d budget: ${files.reduce((sum, f) => sum + f.excess, 0)}\n\n`,
   );
   out.write(`By area:\n${byArea}\n\n`);
   out.write(`Heaviest files:\n${heaviest}\n`);
@@ -145,8 +152,8 @@ export function main(argv, out = process.stdout, err = process.stderr) {
   const { verdict, moved } = compare(current, baseline);
   if (verdict === 'grew') {
     err.write(
-      `Doc comments over the §6d budget grew from ${total(baseline)} to ${total(current)} lines:\n` +
-        `${describe(moved)}\nTrim the doc comments this change lengthened (riviera-java-conventions §6d); ` +
+      `Lines over the §6d budget grew from ${total(baseline)} to ${total(current)}:\n` +
+        `${describe(moved)}\nTrim the doc comments or RESPONSIBILITIES.md blocks this change lengthened (riviera-java-conventions §6d); ` +
         '`--report` lists the heaviest files. The baseline never rises by --update.\n',
     );
     return 1;

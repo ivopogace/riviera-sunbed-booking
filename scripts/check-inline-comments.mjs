@@ -10,7 +10,8 @@
  *
  * Exempt from the one-line rule: doc comments, a block comment standing before any code as the
  * file's header, and `#`/SQL-`--` comment syntaxes. A doc comment in production source keeps to
- * §6d's line budget instead (`docbudget`). The scope's deliberate gaps are listed in
+ * §6d's line budget instead (`docbudget`), and so does each block of `RESPONSIBILITIES.md`
+ * (`respbudget`), where rationale relocated out of the code lands. The scope's deliberate gaps are listed in
  * `riviera-java-conventions` `references/inline-comment-guard.md`.
  */
 
@@ -59,9 +60,15 @@ const SYNTAX = {
  */
 const SKILL_MARKDOWN = /^\.claude\/skills\/[^/]+\/(?:SKILL\.md|references\/.+\.md)$/;
 
+/** The markdown whose every block keeps to {@link PROSE_BUDGET}: where the code's rationale is sent. */
+const PROSE_BUDGETED = new Set(['RESPONSIBILITIES.md']);
+
+export const isProseBudgeted = (path) => PROSE_BUDGETED.has(path);
+
 /** Returns the comment syntax for a path, or null when the file is out of scope. */
 export function syntaxFor(path) {
   if (SKILL_MARKDOWN.test(path)) return { markdown: true };
+  if (isProseBudgeted(path)) return { prose: true };
   const dot = path.lastIndexOf('.');
   if (dot === -1) return null;
   const extension = path.slice(dot).toLowerCase();
@@ -93,10 +100,23 @@ const TELLS = {
 };
 
 /** Every violation carries a `rule`; these fail a run, the rest are printed and let through. */
-export const GATING = new Set(['multiline', 'provenance', 'docbudget', 'docbudget-touched']);
+export const GATING = new Set([
+  'multiline',
+  'provenance',
+  'docbudget',
+  'docbudget-touched',
+  'respbudget',
+  'respbudget-touched',
+]);
+
+/** The rules the standing-tree ratchet sums: each carries an `excess` in lines over budget. */
+export const BUDGET_RULES = new Set(['docbudget', 'docbudget-touched', 'respbudget', 'respbudget-touched']);
 
 /** §6d's budget, in non-blank lines of doc-comment text; a file or package header counts as a type. */
 export const DOC_BUDGET = { type: 6, member: 3 };
+
+/** Non-blank lines per `RESPONSIBILITIES.md` block: one list item with its continuation, or one paragraph. */
+export const PROSE_BUDGET = 8;
 
 /** Production source only: tests, fixtures, mocks and the guards themselves keep their own prose. */
 export function isBudgeted(path) {
@@ -127,6 +147,7 @@ export function findViolations({ path, lines, added }) {
   const syntax = syntaxFor(path);
   if (!syntax) return [];
   if (syntax.markdown) return markdownViolations(path, lines, added);
+  if (syntax.prose) return proseBudgetViolations(path, lines, added);
 
   const regions = scan(lines, syntax);
   const violations = [];
@@ -290,6 +311,60 @@ function markdownViolations(path, lines, added) {
     }
   }
   return violations;
+}
+
+/**
+ * The touched `RESPONSIBILITIES.md` blocks over {@link PROSE_BUDGET}, judged whole like a doc comment:
+ * `respbudget` for a block the diff wrote whole, `respbudget-touched` for an older one it edited.
+ */
+function proseBudgetViolations(path, lines, added) {
+  const violations = [];
+  for (const block of proseBlocks(lines)) {
+    const size = block.endLine - block.startLine + 1;
+    if (size <= PROSE_BUDGET) continue;
+    const touched = range(block.startLine, block.endLine).filter((n) => added.has(n));
+    if (touched.length === 0) continue;
+    violations.push({
+      path,
+      line: block.startLine,
+      endLine: block.endLine,
+      text: `block is ${size} lines, budget ${PROSE_BUDGET}: ${lines[block.startLine - 1].trim().slice(0, 80)}`,
+      rule: touched.length === size ? 'respbudget' : 'respbudget-touched',
+      excess: size - PROSE_BUDGET,
+    });
+  }
+  return violations;
+}
+
+/**
+ * The prose blocks of a markdown file, 1-based and inclusive: a list item with every line up to the next
+ * item, or a paragraph. Blank lines, headings, table rows and fenced code end a block and belong to none.
+ */
+export function proseBlocks(lines) {
+  const blocks = [];
+  let current = null;
+  let fenced = false;
+  const close = () => {
+    if (current) blocks.push(current);
+    current = null;
+  };
+
+  lines.forEach((line, i) => {
+    if (/^\s*(?:```|~~~)/.test(line)) {
+      close();
+      fenced = !fenced;
+      return;
+    }
+    if (fenced || line.trim() === '' || /^#{1,6}\s/.test(line) || /^\s*\|/.test(line)) {
+      close();
+      return;
+    }
+    if (/^(?:[-*+]|\d+\.)\s/.test(line)) close();
+    if (current) current.endLine = i + 1;
+    else current = { startLine: i + 1, endLine: i + 1 };
+  });
+  close();
+  return blocks;
 }
 
 /**
@@ -564,6 +639,15 @@ const ADVICE = {
   'docbudget-touched':
     'RV-STYLE-1 (§6d): this doc comment was over budget before the diff touched it, and a ' +
     'touched doc comment is judged whole. Trim it to the contract, then run ' +
+    '`node scripts/check-doc-budget.mjs --update` and commit the lower baseline.',
+  respbudget:
+    `RV-STYLE-1 (§6d): a RESPONSIBILITIES.md block — one bullet or one paragraph — states a rule in at ` +
+    `most ${PROSE_BUDGET} lines. Keep the rule, its invariant and the trap; cut the mechanism the code ` +
+    'already shows, the history and the alternatives, or split one rule per bullet. The story of the ' +
+    'change goes in the PR description. See riviera-java-conventions §6d.',
+  'respbudget-touched':
+    'RV-STYLE-1 (§6d): this RESPONSIBILITIES.md block was over budget before the diff touched it, and ' +
+    'a touched block is judged whole. Trim it to the rule, then run ' +
     '`node scripts/check-doc-budget.mjs --update` and commit the lower baseline.',
 };
 

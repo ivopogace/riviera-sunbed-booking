@@ -27,6 +27,18 @@ test('areaOf books a path to its module or frontend folder', () => {
   assert.equal(areaOf('frontend/src/app/app.ts'), 'frontend/(app)');
   assert.equal(areaOf('frontend/src/main.ts'), 'frontend/(src)');
   assert.equal(areaOf('platform/src/main/java/org/elsewhere/Probe.java'), 'platform/(other)');
+  assert.equal(areaOf('RESPONSIBILITIES.md'), 'RESPONSIBILITIES.md');
+});
+
+test('overBudget and tally count a RESPONSIBILITIES.md block over its budget of eight', () => {
+  const text = ['## `booking`', '', '- **Rule.** One.', ...Array.from({ length: 10 }, (_, k) => `  ${k}.`)].join('\n');
+
+  assert.deepEqual(
+    overBudget('RESPONSIBILITIES.md', text).map(({ rule, excess }) => ({ rule, excess })),
+    [{ rule: 'respbudget', excess: 3 }],
+  );
+  assert.deepEqual(tally([{ path: 'RESPONSIBILITIES.md', text }]), { 'RESPONSIBILITIES.md': 3 });
+  assert.deepEqual(overBudget('CONTEXT.md', text), []);
 });
 
 test('overBudget judges the whole file, and ignores paths outside the budget', () => {

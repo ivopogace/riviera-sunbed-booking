@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { findViolations, GATING, isBudgeted } from './check-inline-comments.mjs';
+import { findViolations, GATING, isBudgeted, proseBlocks } from './check-inline-comments.mjs';
 
 const JAVA = 'platform/src/main/java/ai/riviera/platform/SecurityConfig.java';
 
@@ -581,7 +581,7 @@ test('an inline template whose backtick opens on the line after `template:` is s
 
 const budget = (violations) =>
   violations
-    .filter((v) => v.rule.startsWith('docbudget'))
+    .filter((v) => /^(?:doc|resp)budget/.test(v.rule))
     .map(({ line, endLine, rule, text, excess }) => ({ line, endLine, rule, text, excess }));
 
 /** Every line added: the shape of a new file, or of a block the diff wrote whole. */
@@ -763,4 +763,78 @@ test('docbudget covers production source only', () => {
   const lines = ['/**', ' * One.', ' * Two.', ' * Three.', ' * Four.', ' */', 'function probe() {}'];
   assert.deepEqual(judgeBudget('scripts/probe.mjs', lines), []);
   assert.deepEqual(judgeBudget('frontend/src/app/booking/probe.spec.ts', lines), []);
+});
+
+const RESP = 'RESPONSIBILITIES.md';
+
+/** A top-level bullet of `count` lines: the item line plus indented continuation. */
+const bullet = (count, label = 'rule') => [
+  `- **The ${label}.** Line 1.`,
+  ...Array.from({ length: count - 1 }, (_, k) => `  Line ${k + 2}.`),
+];
+
+const judgeProse = (lines, added = allAdded(lines)) => budget(findViolations({ path: RESP, lines, added }));
+
+test('respbudget allows a RESPONSIBILITIES.md block of eight lines and gates the ninth', () => {
+  assert.deepEqual(judgeProse(['## `booking`', '', ...bullet(8)]), []);
+  assert.deepEqual(judgeProse(['## `booking`', '', ...bullet(9)]), [
+    {
+      line: 3,
+      endLine: 11,
+      rule: 'respbudget',
+      text: 'block is 9 lines, budget 8: - **The rule.** Line 1.',
+      excess: 1,
+    },
+  ]);
+  assert.equal(GATING.has('respbudget'), true);
+});
+
+test('respbudget judges an older block the diff edited whole, and leaves untouched ones alone', () => {
+  const lines = ['## `venue`', '', ...bullet(10, 'long rule'), ...bullet(2, 'short rule')];
+
+  assert.deepEqual(
+    judgeProse(lines, new Set([5])).map(({ rule, excess }) => ({ rule, excess })),
+    [{ rule: 'respbudget-touched', excess: 2 }],
+  );
+  assert.deepEqual(judgeProse(lines, new Set([13])), []);
+  assert.equal(GATING.has('respbudget-touched'), true);
+});
+
+test('proseBlocks: an item runs to the next item; blanks, headings, tables and fences end a block', () => {
+  const lines = [
+    '# Title',
+    'Intro paragraph line one',
+    'and its lazy continuation.',
+    '',
+    '- First item',
+    '  indented continuation',
+    'lazy continuation',
+    '- Second item',
+    '1. Numbered item',
+    '   continuation',
+    '| a | b |',
+    '|---|---|',
+    'Paragraph after a table.',
+    '```',
+    'fenced code is no block',
+    '```',
+    '## Heading',
+    'Last paragraph.',
+  ];
+
+  assert.deepEqual(proseBlocks(lines), [
+    { startLine: 2, endLine: 3 },
+    { startLine: 5, endLine: 7 },
+    { startLine: 8, endLine: 8 },
+    { startLine: 9, endLine: 10 },
+    { startLine: 13, endLine: 13 },
+    { startLine: 18, endLine: 18 },
+  ]);
+});
+
+test('respbudget covers RESPONSIBILITIES.md only, not other markdown', () => {
+  const lines = bullet(12);
+  assert.equal(judgeProse(lines).length, 1);
+  assert.deepEqual(budget(findViolations({ path: 'docs/adr/ADR-0001-jdbc-only-no-jpa.md', lines, added: allAdded(lines) })), []);
+  assert.deepEqual(budget(findViolations({ path: 'CONTEXT.md', lines, added: allAdded(lines) })), []);
 });

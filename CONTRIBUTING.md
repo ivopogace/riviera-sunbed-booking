@@ -123,7 +123,8 @@ and frontend jobs, a `Repo hygiene (diff-scoped)` job hard-gates your diff with 
 the [`scripts/check-*.mjs`](scripts/) guards: comments and skill prose earn their place — no
 multi-line inline comments, no issue numbers in an added comment, a touched doc comment or
 an added `riviera-*` skill line, no touched doc comment over the line budget (an edit to an
-old long one means trimming it), and no growth in the tree's doc-comment lines over budget
+old long one means trimming it), no touched `RESPONSIBILITIES.md` bullet or paragraph over 8
+lines, and no growth in the tree's lines over either budget
 (RV-STYLE-1; a PR that trims them runs
 `node scripts/check-doc-budget.mjs --update` and commits the lower baseline),
 each plan doc lists the files its diff changed (#533), no stranded focus postures (#621),

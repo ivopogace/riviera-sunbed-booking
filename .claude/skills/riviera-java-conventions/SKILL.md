@@ -77,7 +77,8 @@ warning at the point of use; keep invariant references. Budget: 6 text lines per
 or package header counts as one), 3 per member. Every doc comment the diff touches gates on it,
 judged whole — editing one line of an old long block means trimming the block.
 `scripts/check-doc-budget.mjs` locks the tree's total in — after a trim, `--update` and commit
-the baseline. Why the change was
+the baseline. The rationale a pointer sends to `RESPONSIBILITIES.md` keeps a budget there too: 8
+lines per bullet or paragraph, gated and ratcheted the same way. Why the change was
 made goes in the PR description, not the Javadoc. The frontend twin: `frontend/.claude/CLAUDE.md`.
 
 ### 8. Concurrency

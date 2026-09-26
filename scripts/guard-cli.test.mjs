@@ -1949,7 +1949,7 @@ test('check-doc-budget ratchets: missing, created, grew, refused, stale, locked 
     repo.write(BUDGETED_JAVA, probeClass(8));
     const grew = repo.run(DOC_BUDGET, ['--check']);
     assert.equal(grew.status, 1);
-    assert.match(grew.stderr, /grew from 3 to 5 lines/);
+    assert.match(grew.stderr, /grew from 3 to 5:/);
     assert.match(grew.stderr, /platform\/booking: 3 → 5/);
     assert.equal(repo.run(DOC_BUDGET, ['--update']).status, 1, '--update must never raise the baseline');
 
@@ -1979,5 +1979,38 @@ test('check-doc-budget --report lists the heaviest files; an unknown mode exits 
     const unknown = repo.run(DOC_BUDGET, ['--nonsense']);
     assert.equal(unknown.status, 2);
     assert.match(unknown.stderr, /usage: check-doc-budget\.mjs/);
+  });
+});
+
+/** Mutation proof: dropping `respbudget-touched` from GATING turns this exit 0. */
+test('check-inline-comments --diff gates an old over-budget RESPONSIBILITIES.md block the diff edited', () => {
+  withRepo((repo) => {
+    const block = (edit) =>
+      lines('## `booking`', '', `- **Rule.** ${edit}`, ...Array.from({ length: 9 }, (_, k) => `  Line ${k + 2}.`));
+    repo.write('RESPONSIBILITIES.md', block('One.'));
+    const before = repo.commit('base');
+    repo.write('RESPONSIBILITIES.md', block('One, reworded.'));
+    repo.commit('reword one line');
+
+    const result = repo.run(INLINE, ['--diff', before]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /RESPONSIBILITIES\.md:3-12 {2}respbudget-touched {2}block is 10 lines, budget 8/);
+    assert.match(result.stderr, /check-doc-budget\.mjs --update/);
+  });
+});
+
+test('check-doc-budget ratchets RESPONSIBILITIES.md as its own area', () => {
+  withRepo((repo) => {
+    const doc = (count) =>
+      lines('## `venue`', '', '- **Rule.** One.', ...Array.from({ length: count - 1 }, (_, k) => `  ${k}.`));
+    repo.write('RESPONSIBILITIES.md', doc(11));
+    repo.commit('base');
+    assert.equal(repo.run(DOC_BUDGET, ['--update']).status, 0);
+
+    repo.write('RESPONSIBILITIES.md', doc(12));
+    const grew = repo.run(DOC_BUDGET, []);
+    assert.equal(grew.status, 1);
+    assert.match(grew.stderr, /RESPONSIBILITIES\.md: 3 → 4/);
   });
 });
