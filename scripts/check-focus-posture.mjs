@@ -39,6 +39,7 @@ import {
   readText,
   repoRoot,
 } from './git-diff.mjs';
+import { adviser, report } from './guard-report.mjs';
 import { typescriptRegions } from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
@@ -926,13 +927,7 @@ const ADVICE = {
     'only. See frontend/.claude/CLAUDE.md.',
 };
 
-function report(violations) {
-  return violations.map((v) => `  ${v.path}:${v.line}  [${v.rule}]  ${v.text}`).join('\n');
-}
-
-function advise(violations) {
-  return [...new Set(violations.map((v) => v.rule))].map((rule) => ADVICE[rule]).join('\n');
-}
+const advise = adviser(ADVICE);
 
 /**
  * Prints both kinds and fails only on the gating one.
