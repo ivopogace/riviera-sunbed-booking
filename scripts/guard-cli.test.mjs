@@ -16,12 +16,10 @@ import assert from 'node:assert/strict';
 import { hookPayload, withRepo } from './guard-cli-harness.mjs';
 
 const INLINE = 'check-inline-comments.mjs';
-const PLAN = 'check-plan-file-structure.mjs';
 const FOCUS = 'check-focus-posture.mjs';
 const COMMENT_ONLY = 'check-comment-only.mjs';
 const TOUCH = 'check-touch-target.mjs';
 const CLOUD_PIN = 'check-cloud-node-pin.mjs';
-const RANGE = 'check-review-range.mjs';
 
 const TS = 'frontend/src/app/venue/pricing-tab.ts';
 const HTML = 'frontend/src/app/venue/pricing-tab.html';
@@ -232,7 +230,7 @@ test('check-inline-comments --files judges an HTML comment inside an inline temp
       '@Component({',
       '  template: `',
       '    <!-- A two-line HTML comment inside an inline template,',
-      '         carrying provenance (#923) as well. -->',
+      '         which no longer fits on one. -->',
       '    <p>Pricing</p>',
       '  `,',
       '})',
@@ -243,7 +241,7 @@ test('check-inline-comments --files judges an HTML comment inside an inline temp
 
     assert.equal(result.status, 1);
     assert.match(result.stderr, /pricing-tab\.ts:3-4  multiline/);
-    assert.match(result.stderr, /pricing-tab\.ts:4-4  provenance/);
+    assert.match(result.stdout, /pricing-tab\.ts:4-4  history/);
   });
 });
 
@@ -368,7 +366,7 @@ test('check-inline-comments --hook answers a PostToolUse payload with advisory J
 });
 
 /** A TSDoc block whose third line cites a PR — the tell sits on a line the diff will not touch. */
-const TSDOC_WITH_PROVENANCE = [
+const TSDOC_WITH_ISSUE = [
   '/**',
   ' * Splices the rate write response back into the list this component holds.',
   ' * The PUT answers the same object shape as a list element (PR #521).',
@@ -376,20 +374,19 @@ const TSDOC_WITH_PROVENANCE = [
   'export function apply() {}',
 ];
 
-test('check-inline-comments --diff gates on provenance in a touched doc comment', () => {
+test('check-inline-comments --diff lets an issue number in a touched doc comment through', () => {
   withRepo((repo) => {
-    repo.write(TS, lines(...TSDOC_WITH_PROVENANCE));
+    repo.write(TS, lines(...TSDOC_WITH_ISSUE));
     const before = repo.commit('base');
-    const touched = [...TSDOC_WITH_PROVENANCE];
+    const touched = [...TSDOC_WITH_ISSUE];
     touched[1] = ' * Splices the rate write response back into the list.';
     repo.write(TS, lines(...touched));
     repo.commit('reword one line of the doc comment');
 
     const result = repo.run(INLINE, ['--diff', before]);
 
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /pricing-tab\.ts:3-3 {2}provenance/);
-    assert.match(result.stderr, /fresh session/);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stderr, '');
     assert.equal(result.stdout, '');
   });
 });
@@ -410,18 +407,30 @@ test('check-inline-comments --diff only advises on a history phrase', () => {
   });
 });
 
-test('check-inline-comments --hook reports a provenance tell with the keep/drop test', () => {
+test('check-inline-comments --hook reports a history tell with the keep/drop test', () => {
   withRepo((repo) => {
     repo.write('README.md', lines('# Riviera'));
     repo.commit('base');
-    repo.write(TS, lines(...TSDOC_WITH_PROVENANCE));
+    repo.write(TS, lines('/**', ' * Splices the rate write response back into the list.', ' * It no longer re-reads the list.', ' */', 'export function apply() {}'));
 
     const result = repo.run(INLINE, ['--hook'], { stdin: hookPayload(TS) });
 
     assert.equal(result.status, 0);
     const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
-    assert.match(context, /pricing-tab\.ts:3-3 {2}provenance/);
+    assert.match(context, /pricing-tab\.ts:3-3 {2}history/);
     assert.match(context, /fresh session/);
+  });
+});
+
+test('check-inline-comments --diff only advises on a two-line comment in a spec', () => {
+  withRepo((repo) => {
+    const before = violatingDiff(repo, 'frontend/src/app/venue/pricing-tab.spec.ts');
+    repo.commit('add the comment');
+
+    const result = repo.run(INLINE, ['--diff', before]);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /pricing-tab\.spec\.ts:2-3 {2}multiline-test/);
   });
 });
 
@@ -444,7 +453,6 @@ test('each guard exits 2 with usage when the mode is unknown or missing', () => 
 
     for (const [guard, usage] of [
       [INLINE, /--diff <base> \| --files/],
-      [PLAN, /--diff \[<base>\]/],
       [FOCUS, /--diff <base> \| --files/],
       [TOUCH, /--diff <base> \| --files/],
     ]) {
@@ -467,293 +475,6 @@ test('an unresolvable --diff base fails loudly rather than reporting clean', () 
 
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /no-such-branch/);
-  });
-});
-
-const PLAN_DOC = 'docs/plans/some-slice.md';
-
-const planDoc = (...listed) =>
-  lines(
-    '# Some slice',
-    '',
-    '## File structure',
-    '',
-    ...listed.map((path) => `- \`${path}\` — what it does`),
-    '',
-    '## Phase 0 — do the thing',
-  );
-
-test('check-plan-file-structure --diff fails on a changed path the plan doc omits', () => {
-  withRepo((repo) => {
-    repo.write('README.md', lines('# Riviera'));
-    const before = repo.commit('base');
-    repo.write(TS, lines('const base = 0;'));
-    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
-    repo.commit('the slice');
-
-    const result = repo.run(PLAN, ['--diff', before]);
-
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /pricing-tab\.ts {2}— not listed in the File structure section/);
-  });
-});
-
-test('check-plan-file-structure --diff passes once the section lists the path', () => {
-  withRepo((repo) => {
-    repo.write('README.md', lines('# Riviera'));
-    const before = repo.commit('base');
-    repo.write(TS, lines('const base = 0;'));
-    repo.write(PLAN_DOC, planDoc(TS));
-    repo.commit('the slice');
-
-    const result = repo.run(PLAN, ['--diff', before]);
-
-    assert.equal(result.status, 0, result.stderr);
-  });
-});
-
-test('check-plan-file-structure --diff ignores a slice with no plan doc', () => {
-  withRepo((repo) => {
-    repo.write('README.md', lines('# Riviera'));
-    const before = repo.commit('base');
-    repo.write(TS, lines('const base = 0;'));
-    repo.commit('a one-line fix, no plan doc');
-
-    const result = repo.run(PLAN, ['--diff', before]);
-
-    assert.equal(result.status, 0, result.stderr);
-  });
-});
-
-/**
- * The name-only front-end's half of false clean #4 (PR #538). Without `-z` the C-quoted literal
- * `"frontend/src/app/venue/caf\303\251-tab.ts"` is what the guard reports and what the author would
- * have to paste into the plan doc, which never matches — the guard becomes unsatisfiable.
- *
- * <p>Mutation: drop `-z` from `nameOnlyArgs` and the reported path gains its quoting and escapes.
- */
-test('check-plan-file-structure: a non-ASCII path is reported raw by the name-only front-end', () => {
-  withRepo((repo) => {
-    repo.write('README.md', lines('# Riviera'));
-    const before = repo.commit('base');
-    repo.write(ACCENTED, lines('const base = 0;'));
-    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
-    repo.commit('the slice');
-
-    const result = repo.run(PLAN, ['--diff', before]);
-
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /frontend\/src\/app\/venue\/café-tab\.ts/);
-    assert.doesNotMatch(result.stderr, /\\303/);
-  });
-});
-
-/**
- * False clean #6 (issue #654): `git diff` cannot see a file git has never been told about, so the
- * guard reported clean in the one case it exists for — a slice that **adds** a file and forgets to
- * list it. The omissions are never the interesting files, and a brand-new file is the likeliest
- * omission of all.
- *
- * <p>Mutation: drop `untrackedPaths()` from `check`'s union and this exits 0.
- */
-test('check-plan-file-structure --diff sees a file the slice adds but has not staged', () => {
-  withRepo((repo) => {
-    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
-    const before = repo.commit('base');
-    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts', 'README.md'));
-    repo.write(TS, lines('const base = 0;'));
-
-    const result = repo.run(PLAN, ['--diff', before]);
-
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /pricing-tab\.ts {2}— not listed in the File structure section/);
-  });
-});
-
-/**
- * False clean #7, which #654's own first fix opened (PR #662 review, finding 1). The union feeds
- * the paths to **judge**; it must not widen which docs are **authoritative**. An untracked draft
- * for a future slice is not this slice's plan, and real sections list directory tokens and globs,
- * so one draft could blanket-satisfy every omission in the committed doc.
- *
- * <p>Mutation: hand `planDocsIn` the union instead of the diff and this exits 0.
- */
-test('check-plan-file-structure --diff ignores an untracked plan doc outside the range', () => {
-  withRepo((repo) => {
-    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
-    const before = repo.commit('base');
-    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts', 'README.md'));
-    repo.write(TS, lines('const base = 0;'));
-    repo.write('docs/plans/next-epic.md', planDoc(TS));
-
-    const result = repo.run(PLAN, ['--diff', before]);
-
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /pricing-tab\.ts/);
-  });
-});
-
-/**
- * The same scoping seen from the other side, and the contract this file's header states outright:
- * *a slice with no plan doc passes cleanly*. An untracked draft in the tree must not switch the
- * guard on for a one-line fix that `riviera-sdlc` rule 4 lets skip the plan doc entirely.
- *
- * <p>Mutation: hand `planDocsIn` the union and this exits 1.
- */
-test('check-plan-file-structure --diff stays off when only an untracked plan doc exists', () => {
-  withRepo((repo) => {
-    repo.write('README.md', lines('# Riviera'));
-    repo.write(TS, lines('const base = 0;'));
-    const before = repo.commit('base');
-    repo.write(TS, lines('const base = 1;'));
-    repo.commit('a one-line fix, no plan doc');
-    repo.write('docs/plans/next-epic.md', planDoc('unrelated/thing.ts'));
-
-    const result = repo.run(PLAN, ['--diff', before]);
-
-    assert.equal(result.status, 0, result.stderr);
-  });
-});
-
-/**
- * `git rm --cached` leaves a path in the working tree and out of the index, so the diff reports it
- * deleted **and** `ls-files --others` reports it untracked — the one way the two lists overlap.
- * Reported once rather than twice.
- *
- * <p>Mutation: drop the dedupe filter and the path is reported twice.
- */
-test('check-plan-file-structure --diff reports a path in both lists exactly once', () => {
-  withRepo((repo) => {
-    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
-    repo.write('legacy.ts', lines('const base = 0;'));
-    const before = repo.commit('base');
-    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts', 'README.md'));
-    repo.git(['rm', '--cached', '--quiet', 'legacy.ts']);
-
-    const result = repo.run(PLAN, ['--diff', before]);
-
-    assert.equal(result.status, 1);
-    assert.equal(result.stderr.match(/legacy\.ts/g).length, 1);
-  });
-});
-
-/**
- * `usable`'s floor for a **changed** path is judged against the diff, not the union: an unstaged
- * scratch file must not invalidate a plan-doc entry the author wrote correctly. `SecurityConfig.java`
- * is the bare token `usable`'s own docstring blesses, and a second same-named file in the tree used
- * to drop it — reporting the *listed* path as missing.
- *
- * <p>The scratch file itself is reported, and should be: the section does not identify it, and the
- * sibling case above is where that direction is pinned. What this case protects is the narrower
- * contract — a correct entry survives whatever else is lying in the tree.
- *
- * <p>Mutation: pass the union as the changed floor's population and the listed path is named too.
- */
-test('check-plan-file-structure --diff keeps a bare token an untracked file would shadow', () => {
-  withRepo((repo) => {
-    const java = 'platform/src/main/java/ai/riviera/platform/shared/SecurityConfig.java';
-    repo.write(PLAN_DOC, planDoc('SecurityConfig.java'));
-    const before = repo.commit('base');
-    repo.write(PLAN_DOC, planDoc('SecurityConfig.java', 'README.md'));
-    repo.write(java, lines('class SecurityConfig {}'));
-    repo.commit('the slice');
-    repo.write('scratch/SecurityConfig.java', lines('class Other {}'));
-
-    const result = repo.run(PLAN, ['--diff', before]);
-
-    assert.doesNotMatch(result.stderr, /shared\/SecurityConfig\.java/);
-  });
-});
-
-/**
- * An untracked path is judged like any other — the union adds paths to check, not verdicts.
- *
- * <p>The plan doc is **staged**, not merely written: `planDocsIn` reads the diff, and `git add` is
- * the signal that says *this doc belongs to this change*. Written-but-unstaged it confers nothing,
- * and an earlier version of this case wrote it unstaged — which made the case vacuous, passing
- * against any implementation because `findOmissions` returned at `docs.length === 0` (PR #662
- * re-review). `git diff <commit>` sees staged adds, so staging is enough; committing is not needed.
- */
-test('check-plan-file-structure --diff passes when the section lists the unstaged path', () => {
-  withRepo((repo) => {
-    repo.write('README.md', lines('# Riviera'));
-    const before = repo.commit('base');
-    repo.write(PLAN_DOC, planDoc(TS));
-    repo.git(['add', PLAN_DOC]);
-    repo.write(TS, lines('const base = 0;'));
-
-    const result = repo.run(PLAN, ['--diff', before]);
-
-    assert.equal(result.status, 0, result.stderr);
-  });
-});
-
-/**
- * A draft plan doc for the **next** slice is untracked, so the union judges it — but a plan doc is
- * never content its own section must list. Exemption keys off plan-doc **shape**, not off which docs
- * happen to be authoritative, or the gate tells the author to list next slice's plan in this one's
- * section (PR #662 re-review). The same root cause fired for a plan doc the diff *deletes*.
- *
- * <p>Mutation: key `isExempt` off `docs` again and the draft is reported as an omission.
- */
-test('check-plan-file-structure --diff never reports a plan doc as its own omission', () => {
-  withRepo((repo) => {
-    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
-    const before = repo.commit('base');
-    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts', 'README.md'));
-    repo.write('docs/plans/next-epic.md', planDoc('unrelated/thing.ts'));
-
-    const result = repo.run(PLAN, ['--diff', before]);
-
-    assert.equal(result.status, 0, result.stderr);
-  });
-});
-
-/**
- * `usable`'s floor is measured against the diff (so a scratch file cannot invalidate a correct
- * entry — the R-3 fix), but `covers` is applied to the union, which left the mirror open: a bare
- * token the diff blesses would absorb a *new* file sharing its basename, and the guard false-cleaned
- * in the case #654 exists for. An untracked path needs a token unambiguous in the **union**.
- *
- * <p>Mutation: judge untracked coverage with `general` and this exits 0.
- */
-test('check-plan-file-structure --diff reports a new file a bare token would absorb', () => {
-  withRepo((repo) => {
-    const shared = 'platform/src/main/java/ai/riviera/platform/shared/SecurityConfig.java';
-    const booking = 'platform/src/main/java/ai/riviera/platform/booking/SecurityConfig.java';
-    repo.write(PLAN_DOC, planDoc('SecurityConfig.java'));
-    const before = repo.commit('base');
-    repo.write(PLAN_DOC, planDoc('SecurityConfig.java', 'README.md'));
-    repo.write(shared, lines('class SecurityConfig {}'));
-    repo.commit('the slice');
-    repo.write(booking, lines('class SecurityConfig {}'));
-
-    const result = repo.run(PLAN, ['--diff', before]);
-
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /booking\/SecurityConfig\.java/);
-    assert.doesNotMatch(result.stderr, /shared\/SecurityConfig\.java/);
-  });
-});
-
-/**
- * `--exclude-standard` is what keeps the union from becoming noise: a contributor's build output is
- * untracked too, and a gate that demands a plan doc account for `dist/` is one that gets switched
- * off (R-2).
- *
- * <p>Mutation: drop `--exclude-standard` and the ignored path is reported as an omission.
- */
-test('check-plan-file-structure --diff ignores an untracked path git is told to ignore', () => {
-  withRepo((repo) => {
-    repo.write('.gitignore', lines('build/'));
-    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
-    const before = repo.commit('base');
-    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts', 'README.md'));
-    repo.write('build/generated.ts', lines('const generated = 0;'));
-
-    const result = repo.run(PLAN, ['--diff', before]);
-
-    assert.equal(result.status, 0, result.stderr);
   });
 });
 
@@ -1248,339 +969,9 @@ test('check-cloud-node-pin exits 2 with usage when given an argument', () => {
 });
 
 /**
- * The #939 shape: `main` gains a seven-file commit, the PR branches off that tip and adds three
- * files of its own under `src/`. `origin/main` is left wherever a case points it, which is the one
- * variable — a fetch is the only thing that moves that ref, so not fetching is what these cases
- * reproduce.
- */
-function threeFilePullRequest(repo) {
-  repo.write('seed.txt', 'seed\n');
-  const staleBase = repo.commit('seed (#931)');
-
-  for (let i = 1; i <= 7; i++) repo.write(`merged-${i}.txt`, `merged ${i}\n`);
-  const realBase = repo.commit('a seven-file slice (#934)');
-
-  repo.git(['checkout', '--quiet', '-b', 'feature']);
-  for (let i = 1; i <= 3; i++) repo.write(`src/under-review-${i}.txt`, `under review ${i}\n`);
-  repo.commit('the three files actually under review (#939)');
-
-  return { staleBase, realBase };
-}
-
-/** Points `refs/remotes/origin/main` at `sha` — all a fetch does to the ref the gate reads. */
-function trackBase(repo, sha) {
-  repo.git(['update-ref', 'refs/remotes/origin/main', sha]);
-}
-
-const scope = (repo, baseSha, files, additions, deletions) => [
-  '--base-ref', 'main',
-  '--base-sha', baseSha,
-  '--head-sha', repo.git(['rev-parse', 'HEAD']).trim(),
-  '--files', String(files),
-  '--additions', String(additions),
-  '--deletions', String(deletions),
-];
-
-/** Print the ref name instead of the resolved SHA and this fails: the SHA is what AC-1 asks for. */
-test('check-review-range resolves the base from the fetched branch and prints the SHA', () => {
-  withRepo((repo) => {
-    const { realBase } = threeFilePullRequest(repo);
-    trackBase(repo, realBase);
-
-    const result = repo.run(RANGE, scope(repo, realBase, 3, 3, 0));
-
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, new RegExp(realBase));
-  });
-});
-
-/** Drop either side of the `compare` filter and this passes with the wrong scope. */
-test('check-review-range exits 1 on a count mismatch and names both sides', () => {
-  withRepo((repo) => {
-    const { realBase } = threeFilePullRequest(repo);
-    trackBase(repo, realBase);
-
-    const result = repo.run(RANGE, scope(repo, realBase, 2, 3, 0));
-
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /files: local 3, PR 2/);
-  });
-});
-
-/**
- * PR #939 itself: `origin/main` one commit behind the PR's real base, so the range picks up all
- * seven of #934's files on top of the three under review. Resolve from `origin/main` without the
- * fetch — the pre-#942 behaviour — and this reports clean over ten files.
- */
-test('check-review-range reproduces #939: a stale origin/main is caught, then self-corrects', () => {
-  withRepo((repo) => {
-    const { staleBase, realBase } = threeFilePullRequest(repo);
-    trackBase(repo, staleBase);
-
-    const stale = repo.run(RANGE, scope(repo, realBase, 3, 3, 0));
-
-    assert.equal(stale.status, 1, 'ten local files against three on the PR must abort');
-    assert.match(stale.stderr, /files: local 10, PR 3/);
-
-    trackBase(repo, realBase);
-    assert.equal(repo.run(RANGE, scope(repo, realBase, 3, 3, 0)).status, 0);
-  });
-});
-
-/** Move the shallow check below the resolution and this passes: the counts here would agree. */
-test('check-review-range refuses a shallow clone before resolving, naming the remedy', () => {
-  withRepo((repo) => {
-    const { realBase } = threeFilePullRequest(repo);
-    trackBase(repo, realBase);
-    repo.write('.git/shallow', `${realBase}\n`);
-
-    const result = repo.run(RANGE, scope(repo, realBase, 3, 3, 0));
-
-    assert.equal(result.status, 2);
-    assert.match(result.stderr, /shallow/i);
-    assert.match(result.stderr, /--unshallow/);
-  });
-});
-
-/** Fall back to HEAD, or to `main`, and this reports a range instead of refusing to guess. */
-test('check-review-range refuses an unfetched base ref rather than finding something diffable', () => {
-  withRepo((repo) => {
-    const { realBase } = threeFilePullRequest(repo);
-
-    const result = repo.run(RANGE, scope(repo, realBase, 3, 3, 0));
-
-    assert.equal(result.status, 2);
-    assert.match(result.stderr, /origin\/main/);
-  });
-});
-
-/** Default the counts to anything and this verifies a range nothing checked. */
-test('check-review-range refuses when the PR counts are absent', () => {
-  withRepo((repo) => {
-    const { realBase } = threeFilePullRequest(repo);
-    trackBase(repo, realBase);
-
-    const result = repo.run(RANGE, [
-      '--base-ref', 'main', '--base-sha', realBase,
-      '--head-sha', repo.git(['rev-parse', 'HEAD']).trim(),
-    ]);
-
-    assert.equal(result.status, 2);
-    assert.match(result.stderr, /--files/);
-  });
-});
-
-/**
- * The guard's own false clean. `Number('')` is `0`, so an unsubstituted `--files "$(…)"` against a
- * HEAD still on the base agrees on every dimension. Coerce with `Number()` instead of testing the
- * digit string and this prints "0 files … matches PR" and exits 0 — a ticked review box over an
- * empty range, which is the outcome #942 exists to make impossible.
- */
-test('check-review-range refuses empty counts rather than agreeing with an empty range', () => {
-  withRepo((repo) => {
-    repo.write('seed.txt', 'seed\n');
-    const base = repo.commit('seed');
-    trackBase(repo, base);
-
-    const result = repo.run(RANGE, ['--base-ref', 'main', '--base-sha', base, '--head-sha', repo.git(['rev-parse', 'HEAD']).trim(), '--files', '', '--additions', '', '--deletions', '']);
-
-    assert.equal(result.status, 2);
-    assert.match(result.stderr, /Not a count/);
-    assert.doesNotMatch(result.stdout, /verified/);
-  });
-});
-
-/** Drop the zero-file refusal and a HEAD still on the base verifies against a PR reporting 0. */
-test('check-review-range refuses a range with no files even when the counts agree', () => {
-  withRepo((repo) => {
-    repo.write('seed.txt', 'seed\n');
-    const base = repo.commit('seed');
-    trackBase(repo, base);
-
-    const result = repo.run(RANGE, scope(repo, base, 0, 0, 0));
-
-    assert.equal(result.status, 2);
-    assert.match(result.stderr, /Empty range/);
-  });
-});
-
-/**
- * `git()` throws on a non-zero exit, and an escaping throw exits Node with 1 — the code this
- * guard's contract assigns to "the scope disagrees", whose printed remedy is to re-fetch the base.
- * Remove the try/catch in `main` and this fails with 1 and a stack trace.
- */
-test('check-review-range reports a failed git call as a precondition, not a scope mismatch', () => {
-  withRepo((repo) => {
-    const { realBase } = threeFilePullRequest(repo);
-    repo.git(['checkout', '--quiet', '--orphan', 'unrelated']);
-    repo.git(['rm', '-rq', '--cached', '.']);
-    repo.write('orphan.txt', 'orphan\n');
-    const unrelated = repo.commit('an unrelated history');
-    repo.git(['checkout', '--quiet', 'feature']);
-    trackBase(repo, unrelated);
-
-    const result = repo.run(RANGE, scope(repo, realBase, 3, 3, 0));
-
-    assert.equal(result.status, 2);
-    assert.match(result.stderr, /git call failed/);
-  });
-});
-
-/** Keep `slice(2)` alone and this reports `--base-ref` missing, contradicting what was typed. */
-test('check-review-range rejects --flag=value with the form it should have used', () => {
-  withRepo((repo) => {
-    const { realBase } = threeFilePullRequest(repo);
-    trackBase(repo, realBase);
-
-    const result = repo.run(RANGE, ['--base-ref=main', '--files=3', '--additions=3', '--deletions=0']);
-
-    assert.equal(result.status, 2);
-    assert.match(result.stderr, /--base-ref <value>/);
-  });
-});
-
-/**
- * The contributor-config class `PIN` exists for, one setting further out: `diff.renames=false`
- * splits one renamed file into an add plus a delete, while GitHub always reports the rename as a
- * single file. Drop `--find-renames` from `numstatArgs` and this aborts over git config.
- */
-test('check-review-range: a contributor diff.renames cannot make it abort over a rename', () => {
-  withRepo((repo) => {
-    repo.write('before.txt', 'content\n');
-    const base = repo.commit('seed');
-    trackBase(repo, base);
-    repo.config('diff.renames', 'false');
-
-    repo.git(['checkout', '--quiet', '-b', 'feature']);
-    repo.git(['mv', 'before.txt', 'after.txt']);
-    repo.commit('rename it');
-
-    const result = repo.run(RANGE, scope(repo, base, 1, 0, 0));
-
-    assert.equal(result.status, 0, result.stderr);
-  });
-});
-
-/** Run from a subdirectory: drop `git-diff.mjs`'s repo-root pinning and the range resolves wrong. */
-test('check-review-range resolves its range from the repo root, not the cwd', () => {
-  withRepo((repo) => {
-    const { realBase } = threeFilePullRequest(repo);
-    trackBase(repo, realBase);
-
-    const result = repo.run(RANGE, scope(repo, realBase, 3, 3, 0), { cwd: 'src' });
-
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /3 files/);
-  });
-});
-
-/**
- * Counts prove the range's size, not its content: a branch one commit behind the pushed head can
- * agree on all three dimensions. Drop the head check and this verifies a diff the PR does not have.
- */
-test('check-review-range refuses when HEAD is not the PR head', () => {
-  withRepo((repo) => {
-    const { realBase } = threeFilePullRequest(repo);
-    trackBase(repo, realBase);
-    const args = scope(repo, realBase, 3, 3, 0);
-    repo.write('src/under-review-1.txt', 'edited after the PR head\n');
-    repo.commit('a commit the PR does not point at');
-
-    const result = repo.run(RANGE, args);
-
-    assert.equal(result.status, 2);
-    assert.match(result.stderr, /HEAD is .*but the PR's head is/s);
-  });
-});
-
-/**
- * The range is commit-to-commit; the dispatched reviewers read file content from the working tree.
- * Drop the `status --porcelain` read and a dirty tree is reviewed as if the range had certified it.
- */
-test('check-review-range warns when the working tree holds what the range cannot certify', () => {
-  withRepo((repo) => {
-    const { realBase } = threeFilePullRequest(repo);
-    trackBase(repo, realBase);
-    repo.write('src/under-review-1.txt', 'edited but never committed\n');
-    repo.write('src/brand-new.txt', 'untracked\n');
-
-    const result = repo.run(RANGE, scope(repo, realBase, 3, 3, 0));
-
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /WARNING: 2 uncommitted\/untracked path/);
-  });
-});
-
-/**
- * The counts got strict digit-string validation in the same round; this got none, so a truncated
- * or mis-substituted value still printed "matches the PR's head.sha" — the guard's proof of
- * content. Relax the length floor and the one-character case below passes.
- */
-test('check-review-range refuses a head-sha too short to prove anything', () => {
-  withRepo((repo) => {
-    const { realBase } = threeFilePullRequest(repo);
-    trackBase(repo, realBase);
-    const args = scope(repo, realBase, 3, 3, 0);
-    args[args.indexOf('--head-sha') + 1] = repo.git(['rev-parse', 'HEAD']).trim().slice(0, 1);
-
-    const result = repo.run(RANGE, args);
-
-    assert.equal(result.status, 2);
-    assert.match(result.stderr, /at least 7 hex/);
-  });
-});
-
-/** A SHA is case-insensitive. Compare the raw strings and a correct uppercase value aborts. */
-test('check-review-range accepts a correct head-sha in uppercase', () => {
-  withRepo((repo) => {
-    const { realBase } = threeFilePullRequest(repo);
-    trackBase(repo, realBase);
-    const args = scope(repo, realBase, 3, 3, 0);
-    const i = args.indexOf('--head-sha') + 1;
-    args[i] = args[i].toUpperCase();
-
-    assert.equal(repo.run(RANGE, args).status, 0);
-  });
-});
-
-/** Make --base-sha optional again and this passes, with nothing saying the check was skipped. */
-test('check-review-range refuses when base-sha is absent', () => {
-  withRepo((repo) => {
-    const { realBase } = threeFilePullRequest(repo);
-    trackBase(repo, realBase);
-    const args = scope(repo, realBase, 3, 3, 0);
-    args.splice(args.indexOf('--base-sha'), 2);
-
-    const result = repo.run(RANGE, args);
-
-    assert.equal(result.status, 2);
-    assert.match(result.stderr, /--base-sha/);
-  });
-});
-
-/**
- * `status.showUntrackedFiles=no` silences untracked paths, and a bare porcelain listing collapses
- * an untracked directory to one entry. Drop `--untracked-files=all` from `statusArgs` and this
- * reports no warning at all under that config, over five files the range never certified.
- */
-test('check-review-range: a contributor status config cannot silence the dirty-tree warning', () => {
-  withRepo((repo) => {
-    const { realBase } = threeFilePullRequest(repo);
-    trackBase(repo, realBase);
-    repo.config('status.showUntrackedFiles', 'no');
-    for (let i = 1; i <= 5; i++) repo.write(`newdir/extra-${i}.txt`, `extra ${i}\n`);
-
-    const result = repo.run(RANGE, scope(repo, realBase, 3, 3, 0));
-
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /WARNING: 5 uncommitted\/untracked path/);
-  });
-});
-
-/**
  * Base resolution — issue #952.
  *
- * The five base-resolving guards used to default to a **local** `origin/main` and diff against
+ * The base-resolving guards used to default to a **local** `origin/main` and diff against
  * whatever it happened to hold. In CI that cannot bite: the hygiene job checks out at
  * `fetch-depth: 0` and fetches the base branch before any guard runs. Locally it is the whole
  * exposure — a cloud session's clone is made once at container start and never refetched, so
@@ -1589,7 +980,7 @@ test('check-review-range: a contributor status config cannot silence the dirty-t
  * gate nor a registered hook, so a by-hand run is its only invocation.
  *
  * **A case per guard, not one for the family.** The defect is in the shared resolver, but what
- * proves it fixed is each guard's own report, and the five reach the base through argv shapes and
+ * proves it fixed is each guard's own report, and they reach the base through argv shapes and
  * fixture shapes that have nothing in common — a positional base here, `--diff` there; a file list
  * for one rule, a modified file's code for another. A single case over `check-inline-comments`
  * would leave the other four wired on faith. Hence the table: one row per guard, carrying the
@@ -1638,17 +1029,6 @@ const BASE_GUARDS = [
     mine: (repo) =>
       repo.write(HTML, lines('<p>Pricing</p>', '<button type="button" appTouchTarget (click)="onSave()">Save</button>')),
     outside: /theirs\.html/,
-  },
-  {
-    script: PLAN,
-    argv: (ref) => ['--diff', ref],
-    seed: (repo) => repo.write('README.md', lines('# Riviera')),
-    theirs: (repo) => repo.write(THEIRS_TS, lines('const theirs = 0;')),
-    mine: (repo) => {
-      repo.write(TS, lines('const base = 0;'));
-      repo.write(PLAN_DOC, planDoc(TS));
-    },
-    outside: /theirs\.ts/,
   },
   {
     script: COMMENT_ONLY,
@@ -1734,8 +1114,7 @@ test('every base-resolving guard refuses a base it could not fetch', () => {
 /**
  * A fetch does not fix a shallow clone: `merge-base` still answers from the truncated graph, and it
  * answers *wrongly and silently* rather than throwing, which is why the warning the old
- * `mergeBase()` printed never covered this. `check-review-range.mjs` already refuses here; so must
- * the guards.
+ * `mergeBase()` printed never covered this. The guards refuse here.
  *
  * <p>Mutation: move the shallow test below the fetch, or make it a warning. Each row then reports
  * on a base git cannot be trusted to have resolved.
@@ -1828,9 +1207,8 @@ test('unrelated histories are refused, not silently widened to the base tip', ()
  * is to go and fix the code. A precondition that could not even be established has to read as 2,
  * the same as every other refusal `resolveBase` returns.
  *
- * <p>This is PR #951's finding F-6, which `check-review-range.mjs` already guards against — its
- * `main` wraps `verify()` for exactly this reason — and which the five guards inherited unfixed
- * when they were pointed at the shared resolver.
+ * <p>This is PR #951's finding F-6, which the guards inherited unfixed when they were pointed at
+ * the shared resolver.
  *
  * <p>A bad `.git/config` is the portable way to make git refuse: *every* invocation then exits
  * 128, including the two calls that were unguarded — the shallow probe and the remote lookup —

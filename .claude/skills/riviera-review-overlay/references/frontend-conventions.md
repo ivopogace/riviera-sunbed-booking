@@ -1,6 +1,6 @@
 # Riviera frontend overlay items
 
-Gate → follow-up → default severity. Invariant numbers: `CLAUDE.md`.
+Default severity per item. Invariant numbers: `CLAUDE.md`.
 
 ### RV-FE-1. Angular standards — Minor (Major if a non-standard pattern spreads)
 Standalone, `inject()`, `@if`/`@for`/`@switch`, `input()`/`output()`, `NgOptimizedImage` for
@@ -42,27 +42,19 @@ Sets keyboard-focusable and activatable; taken vs available not by colour alone;
 an accessible name (row/position, price, status); no `<canvas>`/SVG without a semantic fallback.
 
 ### RV-FE-E2E. E2E coverage in the right suite — Major (Blocker if coverage is removed or CI goes green-but-blind)
-A user-facing change carries an e2e spec: role/label/test-id locators, web-first `expect`,
-no fixed sleeps, per-test unique data, asserts the read-back round-trip. Two suites, a spec
+A user-facing behaviour change carries an e2e spec: role/label/test-id locators, web-first
+`expect`, no fixed sleeps, per-test unique data, asserts the read-back round-trip. Two suites, a spec
 lives in exactly one: mocked-a11y (`frontend/e2e/`, `page.route`, `playwright.a11y.config.ts`,
 CI-run) for render/a11y/interaction; real-backend (`frontend/e2e/real-backend/`,
 `playwright.config.ts`, local-only) for wiring/DB constraints/round-trip. A backend-dependent
-spec is never parked where CI can't run it. Specs are `*.e2e.ts` (not `*.spec.ts`), pass
-`npm run lint`; `playwright-cli` appears in *Skills consulted*. Cloud: never `playwright install`
-(`riviera-local-debug`).
+spec is never parked where CI can't run it. Specs are `*.e2e.ts` (not `*.spec.ts`) and pass
+`npm run lint`. Cloud: never `playwright install` (`riviera-local-debug`).
 
 ### RV-FE-8. No new cross-feature import — Major; **Blocker** for `shared/ →` or `core/ → feature/`
-Feature folders are the direct children of `frontend/src/app` other than `core/`, `shared/`
-and `pages/`. Pre-existing edges are frozen in `riviera-frontend`'s table; a
-moved/consolidated edge is fine; a new one is argued in the plan, never slipped in on
-precedent. Verify:
-
-```
-grep -rn "from '\(\.\./\)\+\(admin\|auth\|booking\|operator\|pages\|venue\)/" \
-  --include=*.ts frontend/src/app | grep -v "\.spec\.ts"
-```
-
-Promote shared needs: pure → `shared/`, stateful/HTTP → `core/`. No ESLint rule enforces this.
+`npm run lint` enforces the folder taxonomy (`no-restricted-imports` blocks in
+`frontend/eslint.config.js`), with the frozen edges from `riviera-frontend`'s table as named
+exceptions. Review catches only a diff that widens that config: a new edge is argued in the plan,
+never slipped in on precedent. Promote shared needs: pure → `shared/`, stateful/HTTP → `core/`.
 
 ### RV-FE-9. A transition that destroys the focused element moves focus (WCAG 2.4.3) — Major; **Blocker** for a strand with no keyboard recovery; Minor for a rare path
 Via `shared/focus-after-render.ts`'s `focusMover()`. A confirm-before-destroy surface has all

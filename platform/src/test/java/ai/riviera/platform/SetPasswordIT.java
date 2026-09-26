@@ -45,7 +45,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class SetPasswordIT {
 
-	/** Shared with the operator twin; {@code CurrentPasswordDetailTwinTest} pins that they agree. */
 	private static final String NO_CURRENT_PASSWORD_DETAIL = "The request carries no current password.";
 
 	private static final String SET_PASSWORD_PATH = "/api/me/password";

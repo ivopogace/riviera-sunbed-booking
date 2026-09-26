@@ -25,12 +25,12 @@ if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unsha
 A history claim made on the shallow graph is not evidence: re-run the trace after deepening
 before you report a cause, name an introducing commit, or write one into an issue or PR.
 
-The diff-scoped guards (`--diff`), `check-comment-only.mjs` and `check-review-range.mjs` exit 2
-on a shallow clone; `--files`/`--all`/`--hook` runs do not check.
+The diff-scoped guards (`--diff`) and `check-comment-only.mjs` exit 2 on a shallow clone;
+`--files`/`--all`/`--hook` runs do not check.
 
 **Remote-tracking refs are frozen** at container start: `origin/main` does not follow `main`.
-Fetch what you diff against (`git fetch --no-tags origin <ref>`); for the review gate the
-range check in `riviera-sdlc` `references/pr-gates.md` §1 enforces it. The guards fetch their
+Fetch what you diff against (`git fetch --no-tags origin <ref>`); the review gate reads the diff
+from GitHub by PR number, so it has no local range. The guards fetch their
 `<remote>/<branch>` base themselves, so `--diff origin/main` is correct as typed; they refuse a
 bare `main`; a commit SHA works offline.
 

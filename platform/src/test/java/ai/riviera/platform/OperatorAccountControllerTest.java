@@ -68,10 +68,6 @@ class OperatorAccountControllerTest {
 	private static final String CURRENT_PASSWORD = "current-pass1";
 	private static final String NEW_PASSWORD = "rotated-pass2";
 
-	/**
-	 * Shared with the customer twin at {@code POST /api/me/password}; that the two stay equal is
-	 * {@code CurrentPasswordDetailTwinTest}'s job, not this literal's.
-	 */
 	private static final String NO_CURRENT_PASSWORD_DETAIL = "The request carries no current password.";
 
 	@Autowired

@@ -272,7 +272,7 @@ function namesACommitSha(ref) {
  * escaping throw would exit Node with 1 — the code every one of these guards assigns to *violations
  * found*, sending the reader to fix code over a repository that could not be read at all. So the
  * whole body is wrapped and a failed call comes back as an `error` like any other refusal: PR
- * #951's finding F-6, which `check-review-range.mjs` guards against the same way.
+ * #951's finding F-6.
  *
  * @param {string} ref the base as the caller spelled it
  * @returns {{ base: string } | { error: string }} the merge-base commit, or why there is none to trust

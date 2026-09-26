@@ -14,7 +14,7 @@ looked complete" never skips this.
      closed; fix a missed tick now.
    - **Which module owns each piece?** Check against `RESPONSIBILITIES.md` Job / Not-My-Job
      (a refund *decision* in `payment`, commission *math* in `venue`, login in `customer` are
-     wrong). Record in the plan's Module-ownership table (§4a).
+     wrong). Note it in the plan's Modulith section.
    - Answer factual questions yourself from the code and mark "← confirm?"; put intent and
      product decisions to the user via `AskUserQuestion`.
 2. Fold the outcome into the plan's Open questions and ACs. If the issue is materially

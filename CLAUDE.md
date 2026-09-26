@@ -54,11 +54,12 @@ npm run build
 ```
 
 **CI** (`.github/workflows/ci.yml`): backend build/test, frontend lint/format/test/build +
-mocked e2e + eslint-rules suite, six `scripts/check-*.mjs` guards (three also run as a local
-`PostToolUse` hook; `check-comment-only.mjs` and `check-review-range.mjs` are by-hand only),
-SonarCloud per PR. Sonar bar: **0 new issues, 0 duplicated blocks, ≥80% new-code coverage** —
-read the issue list, not the pass/fail. `deploy.yml` deploys the backend image (serves the SPA)
-to Render from `main`. Line endings pinned LF by `.gitattributes`.
+mocked e2e + eslint-rules suite, the `scripts/check-*.mjs` guards (`check-inline-comments`,
+`check-focus-posture` and `check-touch-target` also run as a local `PostToolUse` hook;
+`check-comment-only.mjs` is by-hand only), SonarCloud per PR. Sonar bar: **no new bug,
+vulnerability or unreviewed hotspot, ≥80% new-code coverage**; smells and duplication judged.
+`deploy.yml` deploys the backend image (serves the SPA) to Render from `main`. Line endings
+pinned LF by `.gitattributes`.
 
 ## Repo map
 
@@ -74,7 +75,7 @@ to Render from `main`. Line endings pinned LF by `.gitattributes`.
 ## Modules (Spring Modulith)
 
 Each at `ai.riviera.platform.<module>`, hexagonal layout (#11). **Read the module's § in
-`RESPONSIBILITIES.md` before changing it.** One bounded context, thirteen modules, no
+`RESPONSIBILITIES.md` before changing it.** One bounded context, the modules below, no
 aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles are guarded SQL
 (ADR-0018).
 
@@ -139,7 +140,7 @@ Cited by number — **never renumber**. Long form: `RESPONSIBILITIES.md` § *Inv
 `riviera-sdlc` routes all feature work — start there. `riviera-plan-doc` (plans),
 `riviera-review-overlay` (reviews), `riviera-modulith` + `riviera-java-conventions` (backend),
 `riviera-frontend` + `riviera-tailwind` (frontend), `riviera-stripe-payments`,
-`riviera-local-debug` (before the first build/test), `riviera-docs-freshness` (close-out),
+`riviera-local-debug` (before the first build/test), `riviera-docs-freshness` (epic close-out),
 `postgres` (migrations), `playwright-cli` (e2e).
 
 Tracker + labels: `docs/agents/`. Glossary: `CONTEXT.md`. Decisions: `docs/adr/`. Roadmap:
@@ -147,6 +148,7 @@ Tracker + labels: `docs/agents/`. Glossary: `CONTEXT.md`. Decisions: `docs/adr/`
 
 ## Searching the codebase
 
-`docs/plans/` holds in-flight work only; merged plans are deleted at the next close-out
-(`riviera-docs-freshness` § *Plan-doc retirement*). Nothing durable cites a plan path. Recover
-one with `git log --all --diff-filter=D -- 'docs/plans/<slug>.md'` after `git fetch --unshallow`.
+`docs/plans/` holds in-flight work only: a slice deletes its plan in its PR's last commit, so a
+merged slice's plan lives in that PR's commits. Nothing durable cites a plan path. Plans retired on
+`main` are found with `git log --all --diff-filter=D -- 'docs/plans/<slug>.md'` after
+`git fetch --unshallow`.

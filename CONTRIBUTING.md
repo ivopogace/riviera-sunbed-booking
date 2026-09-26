@@ -99,17 +99,15 @@ We build in thin **vertical slices** — one path through every layer
 | **Plan** | A plan doc in `docs/plans/<slug>.md` with testable acceptance criteria, a risk register, and — if booking/availability is touched — exactly how invariant #2 is upheld. | `riviera-plan-doc` |
 | **Slice** | Break the plan into independently-grabbable vertical slices. | `to-issues` |
 | **Build** | Test-first, red→green, one behavior at a time, at seams agreed before the first test. Refactoring belongs to Review, not the loop. | `tdd` |
-| **Review** | The 13 invariants become checkable gates; availability & payment-source are Blockers. The Sonar merge bar is stricter than the default gate: **0 new issues, 0 duplicated blocks, ≥80% new-code coverage** — read the issue list, not just pass/fail. | `riviera-review-overlay` |
+| **Review** | The 13 invariants become checkable gates; availability & payment-source are Blockers. The Sonar merge bar: **no new bug, vulnerability or unreviewed hotspot, ≥80% new-code coverage**; code smells and duplication are judged, and a false positive is marked in SonarCloud with a rationale. | `riviera-review-overlay` |
 
-Keep it right-sized: a one-line fix doesn't need a plan doc. A feature that touches
+Keep it right-sized: a small fix doesn't need a plan doc. A feature that touches
 booking, availability, or money does.
 
-A plan doc is working state, not a record. It is committed so the work can be followed as
-it lands, and deleted at the next close-out after its PR merges (any later slice's merge
-close-out or an epic close-out) with its citations repointed to the issue
-or PR (`riviera-docs-freshness` § *Plan-doc retirement*). Rationale worth keeping lives in
-`RESPONSIBILITIES.md` or an ADR, with a one-line pointer from the Javadoc/TSDoc it constrains
-(never an issue number there — `riviera-java-conventions` §6d), or on the issue.
+A plan doc is working state, not a record. It is committed on the slice's branch so the work
+can be followed as it lands, and deleted in the PR's last commit before merge, so it never
+reaches `main`. Rationale worth keeping moves first to `RESPONSIBILITIES.md` or an ADR, with a
+one-line pointer from the Javadoc/TSDoc it constrains, or to the issue.
 
 **Merging needs seven green required checks.** The `Riviera Rule Set` ruleset on `main`
 requires these status-check contexts by exact name: `Backend (build + test)`,
@@ -119,19 +117,16 @@ job in `ci.yml` without the matching ruleset edit makes every PR unmergeable (#4
 #539), which is why those job names carry DO-NOT-RENAME comments.
 
 **CI runs guards you can't guess from the framework docs.** Alongside the backend
-and frontend jobs, a `Repo hygiene (diff-scoped)` job hard-gates your diff with six of
-the [`scripts/check-*.mjs`](scripts/) guards: comments and skill prose earn their place — no
-multi-line inline comments, no issue numbers in an added comment, a touched doc comment or
-an added `riviera-*` skill line, no touched doc comment over the line budget (an edit to an
-old long one means trimming it), no touched `RESPONSIBILITIES.md` bullet or paragraph over 8
-lines, and no growth in the tree's lines over either budget
-(RV-STYLE-1; a PR that trims them runs
-`node scripts/check-doc-budget.mjs --update` and commits the lower baseline),
-each plan doc lists the files its diff changed (#533), no stranded focus postures (#621),
-touch targets declared (#648), and the cloud setup script's Node pin still matching
-[`.nvmrc`](.nvmrc) (#659). Run any of them locally the way CI does —
-`node scripts/check-inline-comments.mjs --diff origin/main` — and note the first
-four only judge *your diff*, so they stay quiet until you've committed something.
+and frontend jobs, a `Repo hygiene (diff-scoped)` job gates your diff with the
+[`scripts/check-*.mjs`](scripts/) guards: no multi-line inline comment added to production
+source (advisory in tests), no touched doc comment over the line budget (an edit to an old long
+one means trimming it), no touched `RESPONSIBILITIES.md` bullet or paragraph over 8 lines, and
+no growth in the tree's lines over either budget (RV-STYLE-1; a PR that trims them runs
+`node scripts/check-doc-budget.mjs --update` and commits the lower baseline); no stranded focus
+postures (#621); touch targets declared (#648); and the cloud setup script's Node pin still
+matching [`.nvmrc`](.nvmrc) (#659). Run any of them locally the way CI does —
+`node scripts/check-inline-comments.mjs --diff origin/main` — and note the `--diff` guards
+only judge *your diff*, so they stay quiet until you've committed something.
 A guard fetches that base before it uses it and refuses when it cannot, so the
 command above is correct as typed even in a clone whose `origin/main` has gone
 stale; it takes either `<remote>/<branch>` or a commit SHA (the offline form),
@@ -200,7 +195,7 @@ a vendored skill):
 - **`riviera-local-debug`** — the build/test recipes, including the cloud-session
   and single-test variants; load before the session's first `./gradlew` or `npm`.
 - **`riviera-docs-freshness`** — the staleness audit for these substrate docs; load
-  at merge close-out and at every epic close-out.
+  at every epic close-out.
 - **`angular-new-app` / `angular-developer`** — scaffolding and Angular standards.
 
 `CLAUDE.md` is the canonical, always-current list of project skills.
