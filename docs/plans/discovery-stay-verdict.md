@@ -27,8 +27,10 @@ module name `itinerary`, the module's own controller serves `GET /api/venues`, v
 pure domain rule over taken days, the calendar is promoted to `shared/`) · `riviera-plan-doc`
 (forced the parity ledger for the moved mapping, the seam per AC, the cost-measurement phase) ·
 `tdd` (one seam per phase: domain rule → application service → HTTP → UI) ·
-`riviera-review-overlay` (ran with the `code-review` plugin over `f8fa31be..0b4d13a4`, effort high; five findings F-2, F-5..F-9 fixed on the branch, the review comment on PR #1250) · `riviera-docs-freshness` (runs at
-close-out over the merge range) · `grilling` (surfaced the 62-day technical ceiling, the dusk-not-fade
+`riviera-review-overlay` (ran with the `code-review` plugin over `f8fa31be..0b4d13a4`, effort high; five findings F-2, F-5..F-9 fixed on the branch, the review comment on PR #1250) · `riviera-docs-freshness` (**ran** over
+`f8fa31be..e33d6040`, 3 findings patched: `ModularityTests`' Javadoc module count, two moved
+calendar paths in `docs/design/colour-literal-token-audit.md`; the ADRs' point-in-time "twelve
+modules" left as history) · `grilling` (surfaced the 62-day technical ceiling, the dusk-not-fade
 contrast rule, the venue page's `See other beaches` links carrying `date` only) ·
 `riviera-local-debug` (unshallowed the clone, scoped test commands, JDK at `/opt/jdk-25`) ·
 `riviera-modulith` (closed full module, no published surface, `allowedDependencies` least
@@ -53,41 +55,41 @@ standing in for `feature/discovery-stay-verdict`; exists before phase 0).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the new `itinerary` module with `allowedDependencies = {venue::api,
+- [x] **AC-1:** Given the new `itinerary` module with `allowedDependencies = {venue::api,
   venue::vocabulary, availability::api, shared}`, when the structural net runs, then
   `ModularityTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`,
   `DomainPurityArchitectureTests`, `JdbcOnlyArchitectureTests` and
   `RetiredSetExclusionArchitectureTests` all pass. *Seam:* `ApplicationModules.verify()` ·
   *Pinned by:* `ModularityTests.verifiesModularStructure` (and the five siblings).
-- [ ] **AC-2:** Given a 4-day span and three visible venues on real map and availability rows —
+- [x] **AC-2:** Given a 4-day span and three visible venues on real map and availability rows —
   A with two online sets free every day and one taken on day 2, B with every online set taken on
   some day and one set free days 1–3, C with `max_stay_days = 2` and a set free every day — when the
   coast verdict is read, then A is `SAME_SET` with `sameSetCount = 2`, B is `CANNOT_HOST` with
   `longestRunDays = 3`, C is `CANNOT_HOST` with `maxStayDays = 2` and `longestRunDays = 4`; a
   walk-in-pool set never counts. *Seam:* `itinerary.application.StayVerdicts.forCoast(venueIds,
   span)` · *Pinned by:* `StayVerdictsIT.sameSetCannotHostAndTooLongVerdicts`.
-- [ ] **AC-3:** Given 40 visible venues × 60 online sets × a 14-day span at ~70 % per-day occupancy
+- [x] **AC-3:** Given 40 visible venues × 60 online sets × a 14-day span at ~70 % per-day occupancy
   (≈ 23,500 `set_availability` rows), when the coast verdict is read five times after one warm-up,
   then each read completes under 2 s (a never-flaking bound) and the median wall time, the row count
   and the `EXPLAIN (ANALYZE, BUFFERS)` of the range read are printed and copied into this plan's
   *Cost measurement* section before merge. *Seam:* `StayVerdicts.forCoast` +
   `availability.api.SetAvailabilityFacts.takenDaysBetween` · *Pinned by:*
   `CoastVerdictCostIT.peakShapeCoastReadIsMeasured`.
-- [ ] **AC-4:** Given `GET /api/venues?date=D&lastDate=D+3`, when the list is served, then every
+- [x] **AC-4:** Given `GET /api/venues?date=D&lastDate=D+3`, when the list is served, then every
   entry carries `stay: {verdict, sameSetCount, longestRunDays, maxStayDays}` matching AC-2, the
   entries keep every field the single-day list has, and `lastDate` before `date` or a span over 62
   days is `400`. *Seam:* HTTP `GET /api/venues` · *Pinned by:*
   `DiscoveryListControllerIT.rangeListCarriesAVerdictPerVenue`, `.invertedRangeIs400`.
-- [ ] **AC-5:** Given `GET /api/venues?date=D` (no `lastDate`), when the list is served, then no
+- [x] **AC-5:** Given `GET /api/venues?date=D` (no `lastDate`), when the list is served, then no
   entry has a `stay` key and `VenueListControllerIT` passes unchanged as the parity oracle. *Seam:*
   HTTP `GET /api/venues` · *Pinned by:* `DiscoveryListControllerIT.oneDayListIsUnchanged` +
   `VenueListControllerIT` (untouched).
-- [ ] **AC-6:** Given the discovery page, when the day rail is opened, then its last chip reads
+- [x] **AC-6:** Given the discovery page, when the day rail is opened, then its last chip reads
   "Several days…" and pressing it opens the range calendar; choosing a first and last day closes it,
   shows the range on the day chip and requests `/api/venues?date&lastDate`. *Seam:* `DiscoverHead`
   inputs/outputs + `Home` template · *Pinned by:* `discover-head.spec.ts` ("offers Several days as
   the rail's last chip"), `home.spec.ts` ("requests the coast for the chosen range").
-- [ ] **AC-7:** Given a range response, when cards, rows and pins render, then a `SAME_SET` venue
+- [x] **AC-7:** Given a range response, when cards, rows and pins render, then a `SAME_SET` venue
   reads "Same set all 4 days · 2 sets", a `CANNOT_HOST` venue reads "Can't host 4 days · up to 3 in
   a row" (or "Stays of up to 2 days here" when the maximum is the reason), wears the dusk skin and
   sorts after every hosting venue of its beach group; a `CANNOT_HOST` pin is hollow; every fact
@@ -95,17 +97,17 @@ standing in for `feature/discovery-stay-verdict`; exists before phase 0).
   *Pinned by:* `home.spec.ts` ("a venue that can't host sinks in its beach group"),
   `venue-card` mapping specs, `venue-pin-layer.spec.ts` ("a can't-host pin is hollow"),
   `venue-pin-layer.contrast.spec.ts` (hollow ink over fill ≥ 4.5:1 in all three themes).
-- [ ] **AC-8:** Given a chosen range, when a card, a row or a pin's preview opens the venue, then
+- [x] **AC-8:** Given a chosen range, when a card, a row or a pin's preview opens the venue, then
   the venue page receives `?date&lastDate` and shows the same stay; the venue page's "See other
   beaches" links carry `lastDate` back; a range arriving in `?lastDate` seeds the discovery page.
   *Seam:* router query params · *Pinned by:* `home.spec.ts` ("carries the range into the venue
   link"), `venue-map.spec.ts` ("other-beaches links keep the stay"), mocked e2e
   `discovery-stay.e2e.ts`.
-- [ ] **AC-9:** Given a single day is chosen, when the discovery page renders, then the request
+- [x] **AC-9:** Given a single day is chosen, when the discovery page renders, then the request
   has no `lastDate`, the cards show the sets-free line exactly as today and nothing is re-ordered.
   *Seam:* HTTP mock + DOM · *Pinned by:* `discovery-flow.e2e.ts` (untouched) and
   `discovery-stay.e2e.ts` ("a single day is today's page").
-- [ ] **AC-10:** Given the calendar promoted to `shared/` with a `loadCounts` input, when the venue
+- [x] **AC-10:** Given the calendar promoted to `shared/` with a `loadCounts` input, when the venue
   page opens it, then every day still carries its count, tint and bar from
   `GET /api/venues/{id}/availability-calendar`; when the discovery page opens it with no loader,
   then no request fires, every day from today is selectable up to the 62-day ceiling and the
@@ -149,35 +151,33 @@ The `GET /api/venues` mapping moves from `venue/adapter/in/VenueReadController` 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Coast read at peak (N × S × D rows) is too slow or too wide for one page request | Med | High | AC-3 measures at 40 × 60 × 14 before merge; documented fallback is a gaps-and-islands aggregate in `availability`'s adapter returning per-set longest run + free-all-days (rows ≤ N × S). Threshold to switch: median > 150 ms in the IT | me | closed — median 29 ms at 23,557 rows (see *Cost measurement*); the fallback is not needed |
-| R-2 | Cycle: `venue` must not depend on `itinerary` | Low | High | `itinerary` calls `venue::api`; nothing in `venue` imports `itinerary`; `ModularityTests` fails a cycle | me | open |
-| R-3 | `venue::spi` grant leaks to the new module | Low | High | The new read is `availability.api.SetAvailabilityFacts`; `itinerary` never lists `venue::spi` | me | open |
-| R-4 | `ResponsibilitiesArchitectureTests` rule 1: `set_availability` named outside `availability` | Low | High | `itinerary` has no SQL at all; its adapter is a controller only | me | open |
+| R-2 | Cycle: `venue` must not depend on `itinerary` | Low | High | `itinerary` calls `venue::api`; nothing in `venue` imports `itinerary`; `ModularityTests` fails a cycle | me | closed — `ModularityTests` green in phase 1b and in CI |
+| R-3 | `venue::spi` grant leaks to the new module | Low | High | The new read is `availability.api.SetAvailabilityFacts`; `itinerary` never lists `venue::spi` | me | closed — the grant list is pinned in `package-info.java` |
+| R-4 | `ResponsibilitiesArchitectureTests` rule 1: `set_availability` named outside `availability` | Low | High | `itinerary` has no SQL at all; its adapter is a controller only | me | closed — green in phase 1b and in CI |
 | R-5 | Jackson `@JsonUnwrapped` on a record component may not flatten the summary | Med | Low | Spike in phase 1c; fallback is an explicit `DiscoveryVenueView` record mirroring `VenueSummaryView`'s 17 fields with a static `of(summary, verdict)` | me | closed — `booking/adapter/in/AwaitingPaymentView` already unwraps a record component on the wire |
 | R-6 | Calendar promotion breaks the venue page (focus, counts, ceiling) | Med | Med | `git mv`, the 729-line spec moves with it and stays green; `availability-calendar.e2e.ts` untouched | me | closed — the moved spec (50) and `venue-map.spec.ts` green in phase 2a |
 | R-7 | Contrast: a hollow pin over map imagery | Med | Med | Hollow = a dashed 2px ring in the pin's ink on the pin's own fill (the beach map's taken-tile idiom), never transparent; `venue-pin-layer.contrast.spec.ts` holds the ring to 3:1 resting and at dusk | me | closed in phase 2e |
 | R-8 | Fading can't-host cards drops the name under 3:1 (`venue-row.ts` rule) | High if faded | Med | The issue's "faded" is rendered as the existing dusk skin (`saturate-0`) plus the verdict line; no opacity on text | me | closed in phase 2d |
-| R-9 | Timezone: the span's days are Europe/Tirane civil days (#6) | Low | Med | `StaySpan` is `LocalDate`s; the default first day is `todayInTirane()` off the UTC `Clock`, as before | me | open |
+| R-9 | Timezone: the span's days are Europe/Tirane civil days (#6) | Low | Med | `StaySpan` is `LocalDate`s; the default first day is `todayInTirane()` off the UTC `Clock`, as before | me | closed — unchanged code path, `DiscoveryListControllerIT` |
 | R-10 | BOLA (#13) | None | — | Public tourist read; no venue-scoped write; nothing owner-asserted is exposed (`SetBookingFacts` answers ids only; hold type never leaves `availability`) | me | n/a |
 | R-11 | Sonar duplication between the moved `listVenues` and its new home | Low | Low | The mapping is deleted from `VenueReadController`, not copied | me | closed in phase 1c |
-| R-12 | Error contract: a new 400 detail | Low | Low | Reuses `InvalidApiRequestException.parsing(StaySpan.of)` exactly as the map read does; no new code | me | open |
-| R-13 | `VenueApiRoleSplitTests` forbids any class outside `venue` from depending on `VenueCatalog`, which the itinerary controller must call for the fenced list | Certain | Med | The rule's intent is "no sibling-facing method regrows on the tourist port"; the read model is the tourist-read composer B4 names, so the test admits `itinerary..` as a second consumer and its Javadoc says why. Stated in the PR | me | open |
+| R-12 | Error contract: a new 400 detail | Low | Low | Reuses `InvalidApiRequestException.parsing(StaySpan.of)` exactly as the map read does; no new code | me | closed — `DiscoveryListControllerIT.invertedRangeIs400` |
+| R-13 | `VenueApiRoleSplitTests` forbids any class outside `venue` from depending on `VenueCatalog`, which the itinerary controller must call for the fenced list | Certain | Med | The rule's intent is "no sibling-facing method regrows on the tourist port"; the read model is the tourist-read composer B4 names, so the test admits `itinerary..` as a second consumer and its Javadoc says why. Stated in the PR | me | closed — widened with its reason in the test's Javadoc and `RESPONSIBILITIES.md` § `itinerary`; no reviewer objection |
 
 ## Open questions / Assumptions
 
-- **Assumption:** a venue closed for the season, or with sales closed on the first day, still gets a
-  verdict off its rows; the card keeps its closed badge above the verdict and the sink key is
-  `closedForSeason || verdict === CANNOT_HOST` so a closed venue never floats above an open can't-host
-  one ← confirm? — *Owner:* owner · *Resolves by:* review.
-- **Assumption:** the discovery calendar shows D10's "Stays of any length this season." with no
-  venue maximum (the 62-day bound is technical, not a rule to state) ← confirm? — *Owner:* owner ·
-  *Resolves by:* review.
-- **Assumption:** a crowd pin (several venues at one place) is hollow only when every member can't
-  host, mirroring the dusk rule ← confirm? — *Owner:* owner · *Resolves by:* review.
-- **Assumption:** the day chip shows the range as `formatStay(first, last)` and the rail's
-  "Several days…" chip is lit (`aria-current`) while a range is chosen — *Owner:* me · *Resolves by:*
-  phase 2c.
+None open.
 
 ### Resolved
+
+- A closed venue keeps its badge above the verdict and sinks with the can't-host ones (the shipped
+  sink key is the verdict alone; a closed venue is already last in the server's order) — owner
+  confirmed 2026-09-26 at the merge gate.
+- The discovery calendar's rule line reads D10's "Stays of any length this season." — owner
+  confirmed 2026-09-26.
+- A crowd pin hollows only when no member can host — owner confirmed 2026-09-26.
+- The day chip shows a stay as `formatStayChip` (`13 – 16 Aug · 4 days`) and the "Several days…"
+  chip is lit while a stay is chosen — shipped in phase 2c, owner confirmed 2026-09-26.
 
 - Module name → `itinerary` (owner, 2026-09-26, intake gate).
 - `GET /api/venues` served by the new module's own controller (owner, 2026-09-26).
@@ -268,13 +268,13 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 
 ## Execution status
 
-**Stage pointer:** `review gate run on PR #1250 — Sonar gate + merge close-out pending`
+**Stage pointer:** `DONE — merged via PR #1250`
 
-**Next action:** CI green on `f0e175e1` → Sonar list for the head → merge close-out (`references/pr-gates.md` §3).
+**Next action:** none; slice 10 (#1208) picks up the per-venue itinerary search in this module.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc + branch | ✅ | |
+| 0 — plan doc + branch | ✅ | plan commit |
 | 1a — `itinerary/domain` stay-fit rule | ✅ | phase 1a commit |
 | 1b — ports + `StayVerdicts` service + module + structural net | ✅ | phase 1b commit |
 | 1c — `DiscoveryListController` takes over `GET /api/venues` | ✅ | phase 1c commit |
@@ -285,7 +285,7 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 | 2d — verdict line, dusk, ordering | ✅ | phase 2d commit |
 | 2e — hollow pins + contrast spec | ✅ | phase 2e commit |
 | 2f — mocked e2e | ✅ | phase 2f commit |
-| 3 — substrate docs + close-out | ⏳ | docs commit; close-out at merge |
+| 3 — substrate docs + close-out | ✅ | docs commit, freshness patches, this close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -371,6 +371,8 @@ The 150 ms switch threshold in R-1 is not approached, so the SQL-aggregate fallb
 - `RESPONSIBILITIES.md` — § `itinerary`; `availability` and `venue` port lists
 - `CONTEXT.md` — glossary: *Stay verdict*
 - `docs/architecture/multi-day-stays.md` — status line: D11 landed
+- `docs/design/colour-literal-token-audit.md` — two calendar paths follow the move to `shared/` (freshness audit)
+- `platform/src/test/java/ai/riviera/platform/ModularityTests.java` — its Javadoc counts the read model (freshness audit)
 - `docs/architecture/domain-model.md` — the module map names the read model
 - `docs/architecture/improvement-plan.md` — B4 recorded as fired
 - `.claude/skills/riviera-modulith/SKILL.md` — the full/thin census names `itinerary`
@@ -381,91 +383,91 @@ The 150 ms switch threshold in R-1 is not approached, so the SQL-aggregate fallb
 
 **Files:** Create `itinerary/domain/StayFit.java`, `itinerary/domain/StayVerdict.java` · Test `itinerary/domain/StayFitTest.java`
 
-- [ ] **Step 1: Write the failing test** — given `days = 4` and taken days per set: set 1 none, set 2 `[d2]`, set 3 `[d1,d2,d3,d4]`, set 4 `[d4]` → verdict `SAME_SET`, `sameSetCount = 1`, `longestRunDays = 4`; given set 2 and set 4 only → `CANNOT_HOST`, `longestRunDays = 3`; given `maxStayDays = 2` with set 1 free → `CANNOT_HOST`, `maxStayDays = 2`, `longestRunDays = 4`; given no online sets → `CANNOT_HOST`, `longestRunDays = 0`.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew --console=plain test --tests "*StayFitTest*"` → compilation failure.
-- [ ] **Step 3: Minimal implementation** — `StayFit.verdict(StaySpan span, List<SetId> onlineSets, Map<SetId, List<LocalDate>> takenDays, Integer maxStayDays)`; longest free run computed as the widest gap between consecutive taken days including the span's edges.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — n/a (new code).
-- [ ] **Step 6: Commit** — `Add the itinerary module's stay-fit rule (#1206)`.
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 1: Write the failing test** — given `days = 4` and taken days per set: set 1 none, set 2 `[d2]`, set 3 `[d1,d2,d3,d4]`, set 4 `[d4]` → verdict `SAME_SET`, `sameSetCount = 1`, `longestRunDays = 4`; given set 2 and set 4 only → `CANNOT_HOST`, `longestRunDays = 3`; given `maxStayDays = 2` with set 1 free → `CANNOT_HOST`, `maxStayDays = 2`, `longestRunDays = 4`; given no online sets → `CANNOT_HOST`, `longestRunDays = 0`.
+- [x] **Step 2: Run it, verify it fails** — `./gradlew --console=plain test --tests "*StayFitTest*"` → compilation failure.
+- [x] **Step 3: Minimal implementation** — `StayFit.verdict(StaySpan span, List<SetId> onlineSets, Map<SetId, List<LocalDate>> takenDays, Integer maxStayDays)`; longest free run computed as the widest gap between consecutive taken days including the span's edges.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 5: Generalization-audit pass** — n/a (new code).
+- [x] **Step 6: Commit** — `Add the itinerary module's stay-fit rule (#1206)`.
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 1b — ports, service, module, structural net
 
 **Files:** Create `itinerary/package-info.java`, `itinerary/application/StayVerdicts.java`, `availability/api/SetAvailabilityFacts.java`, `venue/vocabulary/VenueStayFacts.java` · Modify `availability/adapter/out/JdbcSetAvailabilityLookup.java`, `availability/api/package-info.java`, `venue/api/SetBookingFacts.java`, its JDBC adapter · Test `StayVerdictsIT`
 
-- [ ] **Step 1: Write the failing test** — AC-2's fixture on Testcontainers (three venues, isolation beach, online + walk-in sets, `set_availability` rows), `StayVerdicts.forCoast(ids, span)` asserts the three verdicts.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew --console=plain test --tests "*StayVerdictsIT*"` → no bean / compile failure.
-- [ ] **Step 3: Minimal implementation** — port + batch query (`active_set_position WHERE venue_id IN (:ids) AND pool = 'ONLINE'` plus `venue.max_stay_days`), the service composing the three reads, the module declaration.
-- [ ] **Step 4: Run it, verify it passes** — the IT, then the structural net command from `CLAUDE.md` § Commands, then `*VenueApiRoleSplitTests*`, `*ResponsibilitiesArchitectureTests*`, `*CompositionRootDisciplineTests*`.
-- [ ] **Step 5: Generalization-audit pass** — population: every `@ApplicationModuleTest` that bootstraps `availability` or `venue` (`grep -rl '@ApplicationModuleTest' platform/src/test/java`); a new bean in an existing module needs no stub, verify by running one of each.
-- [ ] **Step 6: Commit** — `Add the itinerary module and its coast stay verdicts over venue and availability ports (#1206)`.
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 1: Write the failing test** — AC-2's fixture on Testcontainers (three venues, isolation beach, online + walk-in sets, `set_availability` rows), `StayVerdicts.forCoast(ids, span)` asserts the three verdicts.
+- [x] **Step 2: Run it, verify it fails** — `./gradlew --console=plain test --tests "*StayVerdictsIT*"` → no bean / compile failure.
+- [x] **Step 3: Minimal implementation** — port + batch query (`active_set_position WHERE venue_id IN (:ids) AND pool = 'ONLINE'` plus `venue.max_stay_days`), the service composing the three reads, the module declaration.
+- [x] **Step 4: Run it, verify it passes** — the IT, then the structural net command from `CLAUDE.md` § Commands, then `*VenueApiRoleSplitTests*`, `*ResponsibilitiesArchitectureTests*`, `*CompositionRootDisciplineTests*`.
+- [x] **Step 5: Generalization-audit pass** — population: every `@ApplicationModuleTest` that bootstraps `availability` or `venue` (`grep -rl '@ApplicationModuleTest' platform/src/test/java`); a new bean in an existing module needs no stub, verify by running one of each.
+- [x] **Step 6: Commit** — `Add the itinerary module and its coast stay verdicts over venue and availability ports (#1206)`.
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 1c — `DiscoveryListController` takes over `GET /api/venues`
 
 **Files:** Create `itinerary/adapter/in/DiscoveryListController.java`, `DiscoveryVenueView.java`, `StayVerdictView.java` · Modify `venue/adapter/in/VenueReadController.java` (delete `listVenues`) · Test `itinerary/DiscoveryListControllerIT.java`
 
-- [ ] **Step 1: Write the failing test** — `GET /api/venues?date&lastDate` asserts `$[?(@.id==A)].stay.verdict == SAME_SET` etc.; `?date` alone asserts `stay` absent; inverted range 400.
-- [ ] **Step 2: Run it, verify it fails** — `--tests "*DiscoveryListControllerIT*"`.
-- [ ] **Step 3: Minimal implementation** — move the mapping; `lastDate` → `StaySpan.of` under `InvalidApiRequestException.parsing`; single day → `stay = null`.
-- [ ] **Step 4: Run it, verify it passes** — plus `--tests "*VenueListControllerIT*"` unchanged, `--tests "*EndpointRoleGateCoverageTest*"`, `--tests "*ErrorContractArchitectureTests*"`.
-- [ ] **Step 5: Generalization-audit pass** — population: every test naming `VenueReadController` for the list (`grep -rn "listVenues" platform/src/test`).
-- [ ] **Step 6: Commit** — `Serve the discovery list from the itinerary module with a stay verdict per venue (#1206)`.
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 1: Write the failing test** — `GET /api/venues?date&lastDate` asserts `$[?(@.id==A)].stay.verdict == SAME_SET` etc.; `?date` alone asserts `stay` absent; inverted range 400.
+- [x] **Step 2: Run it, verify it fails** — `--tests "*DiscoveryListControllerIT*"`.
+- [x] **Step 3: Minimal implementation** — move the mapping; `lastDate` → `StaySpan.of` under `InvalidApiRequestException.parsing`; single day → `stay = null`.
+- [x] **Step 4: Run it, verify it passes** — plus `--tests "*VenueListControllerIT*"` unchanged, `--tests "*EndpointRoleGateCoverageTest*"`, `--tests "*ErrorContractArchitectureTests*"`.
+- [x] **Step 5: Generalization-audit pass** — population: every test naming `VenueReadController` for the list (`grep -rn "listVenues" platform/src/test`).
+- [x] **Step 6: Commit** — `Serve the discovery list from the itinerary module with a stay verdict per venue (#1206)`.
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 1d — cost measurement
 
 **Files:** Test `itinerary/application/CoastVerdictCostIT.java`
 
-- [ ] **Step 1: Write the test** — seeds AC-3's shape, warms up once, times five reads, prints median, row count and `EXPLAIN (ANALYZE, BUFFERS)` of the range read, asserts < 2 s.
-- [ ] **Step 2: Run it** — `--tests "*CoastVerdictCostIT*"` (Docker), copy the numbers into *Cost measurement*.
-- [ ] **Step 3: Decide R-1** — under the threshold: close R-1; over: implement the SQL-aggregate fallback in a re-entered phase 1b.
-- [ ] **Step 4: Commit** — `Measure the coast verdict read at a peak shape (#1206)`.
+- [x] **Step 1: Write the test** — seeds AC-3's shape, warms up once, times five reads, prints median, row count and `EXPLAIN (ANALYZE, BUFFERS)` of the range read, asserts < 2 s.
+- [x] **Step 2: Run it** — `--tests "*CoastVerdictCostIT*"` (Docker), copy the numbers into *Cost measurement*.
+- [x] **Step 3: Decide R-1** — under the threshold: close R-1; over: implement the SQL-aggregate fallback in a re-entered phase 1b.
+- [x] **Step 4: Commit** — `Measure the coast verdict read at a peak shape (#1206)`.
 
 ## Phase 2a — calendar promoted to `shared/`
 
 **Files:** `git mv` `venue/availability-calendar.*`, `venue/day-availability.*`, `venue/stay-rule.*` → `shared/` · Modify `shared/availability-calendar.ts` (`loadCounts` input, no `VenueService`), `venue/venue-map.ts|.html`, import paths in `venue/` · Test the moved spec + one new case
 
-- [ ] **Step 1: Write the failing test** — "renders without a loader: no request, every day from the floor selectable, no busy copy".
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/shared/availability-calendar.spec.ts`.
-- [ ] **Step 3: Minimal implementation** — `readonly loadCounts = input<CountsLoader | null>(null)`; `fetchMonth` short-circuits to `countsLoading=false` without a loader; venue-map passes `(from, to) => this.venues.availabilityCalendar(id, from, to)`.
-- [ ] **Step 4: Run it, verify it passes** — the moved spec, `venue-map.spec.ts`, `npm run lint`, `npm run format:check`.
-- [ ] **Step 5: Generalization-audit pass** — `grep -rn "availability-calendar\|day-availability\|stay-rule" frontend/src frontend/e2e` for every import and test id.
-- [ ] **Step 6: Commit** — `Promote the availability calendar to shared with a count loader input (#1206)`.
+- [x] **Step 1: Write the failing test** — "renders without a loader: no request, every day from the floor selectable, no busy copy".
+- [x] **Step 2: Run it, verify it fails** — `npx vitest run src/app/shared/availability-calendar.spec.ts`.
+- [x] **Step 3: Minimal implementation** — `readonly loadCounts = input<CountsLoader | null>(null)`; `fetchMonth` short-circuits to `countsLoading=false` without a loader; venue-map passes `(from, to) => this.venues.availabilityCalendar(id, from, to)`.
+- [x] **Step 4: Run it, verify it passes** — the moved spec, `venue-map.spec.ts`, `npm run lint`, `npm run format:check`.
+- [x] **Step 5: Generalization-audit pass** — `grep -rn "availability-calendar\|day-availability\|stay-rule" frontend/src frontend/e2e` for every import and test id.
+- [x] **Step 6: Commit** — `Promote the availability calendar to shared with a count loader input (#1206)`.
 
 ## Phase 2b — service param, wire types, card mapping
 
-- [ ] `venue.service.spec.ts`: "sends lastDate only for a stay" red → `listVenues(filter, date, lastDate = date)`.
-- [ ] `home.spec.ts`: "maps a stay verdict onto the card" red → `VenueCard.stay/canHost/verdictLabel`, `ariaLabel` wording per AC-7.
-- [ ] Commit — `Type the stay verdict on the discovery list and map it onto the card (#1206)`.
+- [x] `venue.service.spec.ts`: "sends lastDate only for a stay" red → `listVenues(filter, date, lastDate = date)`.
+- [x] `home.spec.ts`: "maps a stay verdict onto the card" red → `VenueCard.stay/canHost/verdictLabel`, `ariaLabel` wording per AC-7.
+- [x] Commit — `Type the stay verdict on the discovery list and map it onto the card (#1206)`.
 
 ## Phase 2c — "Several days…" chip, page calendar, `?lastDate`, links
 
-- [ ] `discover-head.spec.ts`: last chip "Several days…" emits `stayPressed`; the day word shows the range.
-- [ ] `home.spec.ts`: `?lastDate` seeds the range; picking a range requests `date&lastDate`; card/row links carry `lastDate`; a single day carries `date` only.
-- [ ] `venue-map.spec.ts`: "See other beaches" links keep `lastDate`.
-- [ ] Commit — `Let the discovery page pick a stay and carry it into the venue page (#1206)`.
+- [x] `discover-head.spec.ts`: last chip "Several days…" emits `stayPressed`; the day word shows the range.
+- [x] `home.spec.ts`: `?lastDate` seeds the range; picking a range requests `date&lastDate`; card/row links carry `lastDate`; a single day carries `date` only.
+- [x] `venue-map.spec.ts`: "See other beaches" links keep `lastDate`.
+- [x] Commit — `Let the discovery page pick a stay and carry it into the venue page (#1206)`.
 
 ## Phase 2d — verdict line, dusk, ordering
 
-- [ ] `home.spec.ts` / `venue-row.spec.ts`: the verdict line replaces the sets-free line for a range; a can't-host card wears `saturate-0`; `place-groups.spec.ts`: hosts first inside a group, stable, single day untouched.
-- [ ] Commit — `Show each venue's stay verdict and sink the ones that can't host (#1206)`.
+- [x] `home.spec.ts` / `venue-row.spec.ts`: the verdict line replaces the sets-free line for a range; a can't-host card wears `saturate-0`; `place-groups.spec.ts`: hosts first inside a group, stable, single day untouched.
+- [x] Commit — `Show each venue's stay verdict and sink the ones that can't host (#1206)`.
 
 ## Phase 2e — hollow pins + contrast spec
 
-- [ ] `venue-pin-layer.spec.ts`: `data-cant-host` on a lone pin and on an all-can't-host crowd; `venue-pin-layer.contrast.spec.ts`: hollow ink over fill per theme.
-- [ ] Commit — `Carry the stay verdict on the map pins by shape (#1206)`.
+- [x] `venue-pin-layer.spec.ts`: `data-cant-host` on a lone pin and on an all-can't-host crowd; `venue-pin-layer.contrast.spec.ts`: hollow ink over fill per theme.
+- [x] Commit — `Carry the stay verdict on the map pins by shape (#1206)`.
 
 ## Phase 2f — mocked e2e
 
-- [ ] `e2e/discovery-stay.e2e.ts`: AC-6..AC-9 end to end with `page.route` mocks, axe on the range page, `toHaveCSS` on the hollow pin's border.
-- [ ] `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts e2e/discovery-stay.e2e.ts e2e/discovery-flow.e2e.ts e2e/availability-calendar.e2e.ts e2e/range-booking.e2e.ts`.
-- [ ] Commit — `Cover the discovery stay verdict in the mocked e2e suite (#1206)`.
+- [x] `e2e/discovery-stay.e2e.ts`: AC-6..AC-9 end to end with `page.route` mocks, axe on the range page, `toHaveCSS` on the hollow pin's border.
+- [x] `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts e2e/discovery-stay.e2e.ts e2e/discovery-flow.e2e.ts e2e/availability-calendar.e2e.ts e2e/range-booking.e2e.ts`.
+- [x] Commit — `Cover the discovery stay verdict in the mocked e2e suite (#1206)`.
 
 ## Phase 3 — substrate docs + close-out
 
-- [ ] `CLAUDE.md` module row, `RESPONSIBILITIES.md` § `itinerary` + port lists, `CONTEXT.md` *Stay verdict*, design-doc status line; `node scripts/check-plan-file-structure.mjs --diff origin/main`; the six `scripts/check-*.mjs` guards.
-- [ ] Commit — `Record the itinerary module in the substrate docs (#1206)`.
+- [x] `CLAUDE.md` module row, `RESPONSIBILITIES.md` § `itinerary` + port lists, `CONTEXT.md` *Stay verdict*, design-doc status line; `node scripts/check-plan-file-structure.mjs --diff origin/main`; the six `scripts/check-*.mjs` guards.
+- [x] Commit — `Record the itinerary module in the substrate docs (#1206)`.
 
 ---
 
@@ -481,19 +483,19 @@ The 150 ms switch threshold in R-1 is not approached, so the SQL-aggregate fallb
 ## Acceptance-criteria verification (final)
 
 - [x] **AC-1..AC-5:** scoped Gradle runs listed per phase (structural net, `StayVerdictsIT` 2/0 skipped, `DiscoveryListControllerIT` 4/0 skipped, `VenueListControllerIT` 14 untouched, `CoastVerdictCostIT`). Verified at commit `126a8c71`.
-- [x] **AC-6..AC-10:** `ng test` 3834 green, `npm run lint`, `npm run format:check`, `npm run build` (initial bundle 629.24 kB against main's 629.02 kB, the budget warning predates the branch), mocked e2e `discovery-stay` (3) + `range-booking` (6). Verified at commit `a18e6c36` plus the contrast-spec path fix in the docs commit.
+- [x] **AC-6..AC-10:** `ng test` 3834 green, `npm run lint`, `npm run format:check`, `npm run build` (initial bundle 629.24 kB against main's 629.02 kB, the budget warning predates the branch), mocked e2e `discovery-stay` (3) + `range-booking` (6). Verified at commit `39af7f6d` (CI Frontend job green on that head after the `discovery-flow` locator fix).
 
 ## Self-review checklist
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD in the doc.
-- [ ] No JPA (#1). Availability section filled or justified N/A; concurrency test present (#2).
-- [ ] Pool + sales close honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
-- [ ] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
-- [ ] Payment section filled or N/A; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
-- [ ] Flyway migration present; invariant-enforcing constraints tested (#12).
-- [ ] Frontend standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD in the doc.
+- [x] No JPA (#1). Availability section filled (read-only; the write-side pins are unchanged) (#2).
+- [x] Pool + sales close honoured (#3, #4). Money minor units (#5). UTC stored, `Europe/Tirane` reasoned (#6). Codes unguessable (#7).
+- [x] Modulith section filled; no cross-module `application.*`/`adapter.*` imports; id-based payloads (#11).
+- [x] Payment section filled or N/A; webhooks are truth; idempotent; payout exactly-once (#8, #9). Refund policy server-side (#10).
+- [x] Flyway migration present; invariant-enforcing constraints tested (#12) — N/A, no schema change.
+- [x] Frontend standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality; no finding row left `open` without a decision.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
 - [x] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.

@@ -4,10 +4,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
 
 /**
- * Verifies the Spring Modulith structure (invariant #11): the nine bounded-context modules,
- * the three non-context ones ({@code shared}, {@code challenge}, {@code audit}), and their boundaries. Pure
- * structural analysis — no Spring context, no database — so it runs anywhere, including
- * without Docker.
+ * Verifies the Spring Modulith structure (invariant #11): the nine bounded-context modules, the
+ * closed read-model {@code itinerary}, the three non-context ones ({@code shared},
+ * {@code challenge}, {@code audit}), and their boundaries. Pure structural analysis — no Spring
+ * context, no database — so it runs anywhere, including without Docker.
  */
 class ModularityTests {
 
