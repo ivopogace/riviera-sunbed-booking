@@ -8,17 +8,11 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * The validated intent to replace a venue's whole beach-map layout in one write —
- * the complete desired set of positions the operator generated + painted, sent as one bulk PUT. Each
- * element is a {@link SetCommand}, already range/token-validated by its own compact constructor (tier,
- * pool, integer minor-unit price, 1-based coordinates), so this record only adds the whole-layout
- * concerns the single-set path never had: it must be non-empty, bounded in size, and internally
- * consistent (no two cells claim the same grid cell or the same row+position, no row label spans two
- * grid rows).
- *
- * <p>Generate-time defaults (row A priced as front-row premium, later rows standard) are the
- * <em>frontend's</em> concern — the client builds the full grid and this command persists exactly what
- * it is given. The list is defensively copied and unmodifiable.
+ * The validated intent to replace a venue's whole beach-map layout in one bulk PUT. Each
+ * {@link SetCommand} validated itself; this adds the whole-layout rules: non-empty, at most
+ * {@link #MAX_SETS}, no two sets on one grid cell or row+position, no row label spanning two grid
+ * rows. It persists exactly what the client built; generate-time defaults (row A premium) are the
+ * frontend's. The list is defensively copied and unmodifiable.
  */
 public record LayoutCommand(List<SetCommand> sets) {
 
@@ -46,10 +40,8 @@ public record LayoutCommand(List<SetCommand> sets) {
 	}
 
 	/**
-	 * The first layout-uniqueness conflict <em>within</em> the submitted batch, if any — position clashes
-	 * take priority over cell clashes (mirroring {@code JdbcVenues.findConflict}). The DB UNIQUE
-	 * constraints (V2/V12) remain the race-safe backstop; this pre-check returns a precise rejection
-	 * instead of surfacing a raw constraint violation.
+	 * The first layout-uniqueness conflict within the batch, position clashes before cell clashes
+	 * (as {@code JdbcVenues.findConflict}): a precise rejection ahead of the DB UNIQUE backstop.
 	 */
 	Optional<Venues.Conflict> duplicateWithin() {
 		Set<String> positions = new HashSet<>();
@@ -68,10 +60,9 @@ public record LayoutCommand(List<SetCommand> sets) {
 	}
 
 	/**
-	 * Whether one {@code rowLabel} appears under two distinct {@code gridY} values — two physical rows
-	 * sharing a name, which every label-grouping surface would merge into one. The batch twin of the
-	 * rename path's {@code ROW_NAME_TAKEN} rule; not a {@link Venues.Conflict} because no DB constraint
-	 * can see it (gap-cell numbering keeps every {@code (row_label, position_no)} pair unique).
+	 * Whether one {@code rowLabel} spans two {@code gridY} rows, which label-grouping surfaces
+	 * would merge. The batch twin of {@code ROW_NAME_TAKEN}; not a {@link Venues.Conflict} as no DB
+	 * constraint sees it (gap-cell numbering keeps each {@code (row_label, position_no)} unique).
 	 */
 	boolean splitsRowLabel() {
 		Map<String, Integer> rowOf = new HashMap<>();

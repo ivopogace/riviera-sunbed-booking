@@ -19,16 +19,12 @@ import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.api.VenueRates;
 
 /**
- * The one place the server-side cancellation refund is computed (invariant #10) — shared by the view
- * (what you'd get if you cancelled now) and the cancel (what is actually refunded) use cases so the
- * rule can never drift between them. Resolves the set's cutoff/display from {@code venue::api},
- * applies the evening-before boundary ({@link BookingCutoff}, {@code Europe/Tirane}) and the venue's
- * late-cancel share via {@link RefundPolicy}; a booking a remodel moved gets the <strong>free-exit
- * override</strong> — a full refund until {@link BookingCutoff#freeExitEndsAt}, whatever the LATE
- * tier would answer, never reopening CLOSED (ADR-0005). Module-internal but {@code public} so the {@code view}
- * slice ({@code ViewBookingService}) can quote the same refund the {@code cancel} slice actions —
- * the rule lives in one place across use-case sub-packages. Not exported: {@code application} is not a
- * {@code @NamedInterface}, so it stays inside the {@code booking} module (invariant #11).
+ * The one place the server-side cancellation refund is computed (invariant #10), shared by the
+ * view's quote and the cancel so the rule cannot drift: the set's cutoff from {@code venue::api},
+ * the evening-before boundary ({@link BookingCutoff}) and the late share via {@link RefundPolicy}.
+ * A remodel-moved booking gets the <strong>free-exit override</strong>: a full refund until
+ * {@link BookingCutoff#freeExitEndsAt}, whatever LATE answers, never reopening CLOSED (ADR-0005).
+ * {@code public} for the {@code view} slice, not exported. Rationale: RESPONSIBILITIES.md §booking.
  */
 @Component
 public class CancellationPolicy implements QuoteCancellationTerms {
@@ -46,13 +42,9 @@ public class CancellationPolicy implements QuoteCancellationTerms {
 	}
 
 	/**
-	 * The refund quote for a booking: the set facts (for display), whether free cancellation is still
-	 * open, the server-computed refund in minor units and the reason a cancellation now would carry.
-	 * A moved booking whose free exit is still open ({@code freeExitUntil} ahead of now, window not
-	 * CLOSED) refunds in full with reason {@code VENUE_CHANGE} in FREE and LATE alike — the amount is
-	 * the override's in LATE only, the reason is the exit's whenever it is taken. Throws
-	 * if the set is unknown (a booking FK to a missing set is a real invariant breach, not an expected
-	 * flow).
+	 * The refund quote: set facts, window, server-computed refund (minor units) and reason. An open
+	 * free exit (moved booking, not CLOSED) refunds in full as {@code VENUE_CHANGE}, FREE and LATE
+	 * alike. Throws {@link IllegalStateException} on an unknown set (an FK breach, not a flow).
 	 */
 	public RefundQuote quote(BookingRecord booking) {
 		SetBookingInfo set = setFacts.setBookingInfo(booking.setId()).orElseThrow(() ->
@@ -80,10 +72,9 @@ public class CancellationPolicy implements QuoteCancellationTerms {
 	}
 
 	/**
-	 * The pre-reserve terms for booking this set on this date, quoted now (invariant #10) — the
-	 * window a booking created at this instant would be born in, the free-cancellation deadline,
-	 * and the venue's late share. Empty for an unknown set: a stale map in a tourist's hands is an
-	 * expected flow here, unlike {@link #quote}'s booking-FK breach.
+	 * The pre-reserve terms for this set and date, quoted now (invariant #10): the window a booking
+	 * made now would be born in, the free-cancellation deadline and the late share. Empty for an
+	 * unknown set: a stale map is an expected flow here, unlike {@link #quote}'s FK breach.
 	 */
 	@Override
 	public Optional<CancellationTerms> terms(SetId setId, LocalDate bookingDate) {
@@ -96,7 +87,7 @@ public class CancellationPolicy implements QuoteCancellationTerms {
 	}
 
 	/**
-	 * The window a booking was born in and the late share its disclosure promises (#795) — the same
+	 * The window a booking was born in and the late share its disclosure promises — the same
 	 * classification as {@link #terms}, read at the booking's {@code createdAt} instead of now. What
 	 * the event publication sites stamp; empty for an unknown set so a confirm never fails on it.
 	 */
@@ -108,7 +99,7 @@ public class CancellationPolicy implements QuoteCancellationTerms {
 		});
 	}
 
-	/** The at-birth classification the events and mails disclose (#795). */
+	/** The at-birth classification the events and mails disclose. */
 	public record BirthTerms(CancellationWindow window, int lateCancelRefundBps) {
 	}
 

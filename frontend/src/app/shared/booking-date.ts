@@ -1,11 +1,7 @@
 /**
- * The default booking date the beach map and booking dialog open on: **today in
- * Europe/Tirane** (invariant #6) — sales for a day now close on the day itself, server
- * authoritative (invariant #4); this is a display default only.
- *
- * Computed from the given `now` so it is pure and unit-testable (no ambient `new Date()` — the
- * caller injects the clock). Tirane's civil "today" is derived via `Intl` with an explicit time
- * zone — never via `toISOString()`, which is UTC and can roll the day for late-evening users.
+ * The default booking date the beach map and booking dialog open on: **today in Europe/Tirane**
+ * (invariant #6), from the injected `now`; a display default only, sales-close is server-side (#4).
+ * Via `Intl` with an explicit zone, never `toISOString()` (UTC, rolls the day late in the evening).
  */
 const TIRANE = 'Europe/Tirane';
 
@@ -59,11 +55,9 @@ export function isIsoDate(value: string): boolean {
 }
 
 /**
- * Render an ISO `YYYY-MM-DD` civil day (a Europe/Tirane booking date, invariant #6) as a human label
- * like `"Tue 30 Jun 2026"`. Formatted in **UTC** because {@link parseIsoDate} anchors the day at
- * midnight UTC — so the label is the civil day itself, free of the viewer's zone. Locale pinned like
- * `shared/money.ts` / `shared/deadline.ts` for deterministic output. Shared by the operator console's
- * Daily-view and Requests tabs so the one date format doesn't drift between them.
+ * Render an ISO civil day (a Europe/Tirane booking date, invariant #6) as `"Tue 30 Jun 2026"`,
+ * in **UTC** because {@link parseIsoDate} anchors it at midnight UTC — free of the viewer's zone.
+ * Locale pinned like `shared/money.ts` for deterministic output; the one shared civil-date format.
  */
 export function formatCivilDate(isoDate: string): string {
   return new Intl.DateTimeFormat('en-IE', {
@@ -115,11 +109,9 @@ export function addDays(isoDate: string, days: number): string {
 }
 
 /**
- * Shift an ISO `YYYY-MM-DD` civil day by whole calendar `months` (negative moves back).
- *
- * <p>The day of the month is **clamped** to the target month's length rather than allowed to
- * overflow: 31 January plus one month is 28 (or 29) February, never 3 March. Overflow is what a
- * naive `setUTCMonth` does, and in a month-navigating calendar it skips February entirely.
+ * Shift an ISO `YYYY-MM-DD` civil day by whole calendar `months` (negative moves back),
+ * **clamping** the day to the target month: 31 Jan + 1 month is 28/29 Feb, never 3 March — a naive
+ * `setUTCMonth` overflows, and a month-navigating calendar would skip February.
  */
 export function addMonths(isoDate: string, months: number): string {
   const source = parseIsoDate(isoDate);
@@ -156,12 +148,9 @@ export function endOfWeek(isoDate: string): string {
 }
 
 /**
- * The month containing `isoDate` laid out as calendar weeks — Monday-first rows of exactly seven
- * cells, where a cell is that day's ISO string or `undefined` for a position outside the month.
- *
- * <p>Days outside the month are **blank rather than borrowed from the neighbouring month**, which
- * is what keeps one grid answerable by one request: the calendar read is asked for this month's
- * own bounds, so it can never approach the server's 62-day window cap.
+ * The month containing `isoDate` as Monday-first weeks of seven cells: the day's ISO string, or
+ * `undefined` outside the month — **blank, not borrowed from neighbours**, so one request for this
+ * month's own bounds answers the grid and never nears the server's 62-day window cap.
  */
 export function monthWeeks(isoDate: string): readonly (string | undefined)[][] {
   const first = startOfMonth(isoDate);

@@ -4,8 +4,8 @@ import { OutboxStatusView, ResubmissionResultView } from './admin.model';
 
 /**
  * The client side of an admin outbox lever — a status read and a resubmit that resolves for every
- * typed outcome, refusals included. Implemented by {@link AdminMailOutboxService} and
- * {@link AdminRefundOutboxService}.
+ * typed outcome, refusals included. Implemented by `AdminMailOutboxService` and
+ * `AdminRefundOutboxService`.
  */
 export interface AdminOutboxPort {
   status(): Promise<OutboxStatusView>;
@@ -13,20 +13,12 @@ export interface AdminOutboxPort {
 }
 
 /**
- * The shared state machine behind both admin outbox tabs (Email and Refunds) — the frontend
- * mirror of the backend's `shared.ResubmissionThrottle`: the two levers
- * deliberately share one wire shape and one behaviour, so the behaviour lives once instead of being
- * mirrored into a duplicated block.
- *
- * <p>What it owns: the status/loading/loadError/busy/notice signals and the press semantics — a
- * refusal is an ordinary answer (`COOLING_DOWN` and `ALREADY_RUNNING` are `200`s the admin acts
- * on), only a rejected request is an error, and the post-press reconcile drops the count to
- * "unknown" rather than overwrite the outcome with an error banner. What stays in each component:
- * the auth self-gate, the template, and the tab-specific copy — the success phrase is the one line
- * that differs between the tabs, so it is a constructor argument.
- *
- * <p>A plain class, not a service: each tab constructs one over its own port, and `signal()` needs
- * no injection context.
+ * The shared state machine behind both admin outbox tabs (Email, Refunds), mirroring the backend's
+ * `shared.ResubmissionThrottle`. It owns the status/loading/loadError/busy/notice signals and the
+ * press semantics: a refusal (`COOLING_DOWN`, `ALREADY_RUNNING`, both `200`s) is an ordinary
+ * answer, only a rejected request is an error. Each tab keeps its auth self-gate, template and
+ * copy; the success phrase is a constructor argument. A plain class, not a service: each tab
+ * constructs one over its own port.
  */
 export class OutboxLever {
   readonly status = signal<OutboxStatusView | undefined>(undefined);

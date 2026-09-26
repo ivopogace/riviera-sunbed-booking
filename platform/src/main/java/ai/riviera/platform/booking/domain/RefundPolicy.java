@@ -3,15 +3,12 @@ package ai.riviera.platform.booking.domain;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 
 /**
- * The server-side cancellation refund policy (invariant #10). Pure integer arithmetic, no Spring —
- * the refund decision lives with the rule it encodes, unit-testable in isolation (mirrors the
- * commission math in {@code payout.domain.PayoutLedgerEntry}).
- *
- * <p>Three tiers, one per {@link CancellationWindow}: full before the evening-before cutoff, the
+ * The server-side cancellation refund policy (invariant #10): pure integer arithmetic, no Spring.
+ * Three tiers, one per {@link CancellationWindow}: full before the evening-before cutoff, the
  * venue's configurable basis-point share after it, and nothing once the service day has opened.
  * Money is integer minor units (invariant #5) and the share rounds <strong>down</strong>
- * ({@code floorDiv}) — the platform keeps the sub-cent, consistent with the commission rounding
- * direction.
+ * ({@code floorDiv}): the platform keeps the sub-cent, as with the commission in
+ * {@code payout.domain.PayoutLedgerEntry}.
  */
 public final class RefundPolicy {
 
@@ -21,15 +18,9 @@ public final class RefundPolicy {
 	}
 
 	/**
-	 * The refund due in minor units, one tier per {@link CancellationWindow}: {@code FREE} refunds
-	 * the full {@code grossMinor}; {@code LATE} refunds {@code floorDiv(grossMinor × lateCancelBps,
-	 * 10000)} (0 bps ⇒ non-refundable); {@code CLOSED} refunds nothing, because the cancellation
-	 * itself is refused. The amount is always computed here from server state — never supplied by
-	 * the caller (invariant #10).
-	 *
-	 * @param grossMinor    the amount the tourist paid, integer minor units
-	 * @param window        where the request falls relative to the service day (invariant #4/#6)
-	 * @param lateCancelBps the venue's after-cutoff refund share in basis points (0..10000)
+	 * The refund due in minor units, from server state, never caller-supplied (invariant #10): FREE
+	 * the full {@code grossMinor}; LATE {@code floorDiv(grossMinor × lateCancelBps, 10000)}, bps in
+	 * 0..10000 (0 ⇒ non-refundable); CLOSED nothing, because the cancellation itself is refused.
 	 */
 	public static long refundMinor(long grossMinor, CancellationWindow window, int lateCancelBps) {
 		return switch (window) {

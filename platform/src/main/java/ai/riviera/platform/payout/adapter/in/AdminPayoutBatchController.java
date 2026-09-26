@@ -22,21 +22,12 @@ import ai.riviera.platform.payout.domain.BatchStatus;
 import ai.riviera.platform.payout.domain.PeriodKey;
 
 /**
- * Admin endpoints for the weekly BKT payout report: generate/read the per-venue batches
- * for an ISO-week period and advance a batch's status. Driving adapter depending only on the payout
- * module's {@link PayoutReport} port (invariant #11).
- *
- * <p><strong>Platform-admin gated</strong> — {@code SecurityConfig} matches
- * {@code /api/admin/payout-batches} (and the item path) to role {@code ADMIN}, tightened from
- * {@code OPERATOR}. That gate is the <em>whole</em> authorization: nothing here is venue-scoped,
- * because nothing here belongs to one venue — the GET reports every venue's gross/commission/net for the
- * period and the PATCH addresses a batch by id. Invariant #13 exempts {@code /api/admin/**} from per-venue
- * ownership (an admin does not <em>own</em> a payout run), which is exactly why the role must be the
- * strict one: under {@code OPERATOR} any approved operator in this multi-tenant marketplace could read
- * competitors' payout figures and mark their batches settled. The POST/PATCH are session writes and
- * require a CSRF token like every other non-exempt write. A malformed {@code period} or {@code status} is
- * a {@code 400 INVALID_REQUEST} via {@code ApiErrorHandler}; errors are RFC-7807 {@link ProblemDetail}
- * built by {@link ApiProblem}.
+ * Admin endpoints for the weekly BKT payout report: generate/read an ISO-week period's per-venue
+ * batches and advance a batch's status, via the {@link PayoutReport} port (invariant #11). The
+ * {@code SecurityConfig} {@code ADMIN} gate is the whole authorization (invariant #13 exempts
+ * {@code /api/admin/**}) and must stay {@code ADMIN}. POST/PATCH need CSRF. A bad
+ * {@code period}/{@code status} is {@code 400 INVALID_REQUEST}; errors are RFC-7807
+ * {@link ProblemDetail} via {@link ApiProblem}. Rationale: RESPONSIBILITIES.md §payout.
  */
 @RestController
 @RequestMapping("/api/admin/payout-batches")

@@ -16,23 +16,12 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 
 /**
- * JDBC adapter answering {@link SetAvailabilityLookup} from the {@code set_availability} source
- * of truth (invariant #2) — the {@code availability} module owns that table, so the live-map
- * read lives here while the map assembly stays in {@code venue}. Invariant #1:
- * explicit SQL via {@link JdbcClient}, no JPA.
- *
- * <p>This is the implementing side of a dependency-inverted <strong>driven (SPI) port</strong>
- * (declared in {@code venue.spi}). The legal {@code availability → venue} edge (granted as
- * {@code venue::api} for {@link SetId} and {@code venue::spi} for {@link SetAvailabilityLookup})
- * lets us reference these here; {@code venue} never imports {@code availability}, so
- * {@code ModularityTests} stays cycle-free. The adapter depends only on {@link JdbcClient}, so
- * the Spring bean graph is acyclic too.
- *
- * <p>A row's mere existence means taken (its {@code state} — {@code BOOKED_ONLINE} or
- * {@code STAFF_MARKED} — is irrelevant to "is it free?"), so {@code takenOn} selects
- * {@code set_id} without filtering on {@code state}; {@code statesOn} additionally returns
- * the state token for the owner-asserted operator read. Every predicate is served by the existing
- * {@code UNIQUE(set_id, booking_date)} composite index; no new index is needed.
+ * JDBC adapter answering the {@code venue.spi} port {@link SetAvailabilityLookup} from the
+ * {@code set_availability} source of truth (invariant #2), which {@code availability} owns; map
+ * assembly stays in {@code venue}, which never imports {@code availability}. A row's existence
+ * means taken, whatever its {@code state}, so {@code takenOn} does not filter on it;
+ * {@code statesOn} adds the state token for the owner-asserted operator read. Every predicate rides
+ * the {@code UNIQUE(set_id, booking_date)} index. Rationale: RESPONSIBILITIES.md §availability.
  */
 @Repository
 class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {

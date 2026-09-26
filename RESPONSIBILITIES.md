@@ -116,6 +116,16 @@ the commission rate over time. The standing rules:
   whole answer through `review.api.VenueRatingSummary` and overwrites — a **full
   recompute**, never an increment, so at-least-once redelivery converges. Nothing but the
   venue id is taken off the event.
+- **Recomputes of one venue serialize on its row lock** (`VenueRatings#lockForRecompute`). A
+  recompute reads `review`'s totals, then writes my row, and a full re-read is order-independent
+  only when the two do not interleave: without the lock, a listener that read stale totals can
+  commit after one that read fresh ones and pin the venue to the older score until some later
+  review fires another event. So the lock is taken inside the transaction (outside one it is
+  released at once, so the adapter throws) and before the totals are read.
+- **One adapter, `JdbcVenues`, serves `Venues`, `CommissionRateStore` and `VenueRatings`**, because
+  all three write columns of the one `venue` row. The ports split by the conversation their callers
+  are having — an owner editing their venue, the platform setting a commercial term — not by table;
+  the stored rating aggregate is a third such conversation, the platform's on `review`'s behalf.
 - **A layout write that a live claim depends on is refused — and only that write.** Every
   layout write asks the set-scoped question under `SELECT … FOR UPDATE` on the active map:
   `editSet`/`removeSet` of the one set they touch (`SET_IN_USE`), the bulk save of exactly the
@@ -325,7 +335,10 @@ the commission rate over time. The standing rules:
   a `400` at the edge, so the CHECK stays the race-safe backstop rather than the first guard.
 - **The signed-in operator's own-venues read model** (`GET /api/venues/mine`): I ask
   `operator::api` for the ownership set and join the names — naming venues is my job and
-  `operator → venue` would cycle.
+  `operator → venue` would cycle. It is `MyVenuesController`, not a `VenueAdminController` mapping,
+  because it is not venue-scoped: every mapping there takes a path `venueId` whose ownership is
+  asserted, whereas this one *is* the ownership question. The literal `/mine` outranks
+  `VenueReadController`'s `/{venueId}` in Spring's pattern comparator, so it is never read as an id.
 - **The owner's per-set daily availability read**
   (`GET /api/venues/{venueId}/availability?date=`; owner-asserted, 403-before-existence):
   I own the set list and the map composition; `availability` answers the per-`(set, date)`
@@ -521,11 +534,20 @@ exactly as it would against any other claim (invariant #2).
   publishes **no** event: nothing accrued and nothing was collected, and a
   `refundMinor = 0` `BookingCancelled` would mail the guest a cancellation record for a
   request they retracted.
+- **`BookingRequestDeclined` is published inside the transaction that settles the decline** —
+  `RequestReleaseService#decline` and the remodel commit's decline leg alike — so its Event
+  Publication Registry row commits atomically with the transition. `BookingPaymentDue` cannot be:
+  the accept branch's outcome is decided only after its transaction, by the gateway's answer.
 - **Notification-facts reads:** the arrival code + contact id
   (`BookingNotificationFacts#notificationInfo`), the wider `#confirmationFacts` an admin
   resend rebuilds a mail from, and `CustomerBookings` (which bookings one contact has,
   a separate consumer role). Neither publishes the lifecycle enum: both answer
   `everConfirmed` (from `confirmed_at`), which keeps `BookingStatus` internal.
+- **`CustomerBookings` answers a contact's 20 newest booked dates, each row naming a set.** An
+  unbounded read on a support surface is a hazard, and newest-first is what makes the cap safe. A
+  set id rather than a venue id, because the view resolves the name through
+  `venue.api.SetBookingFacts` — the read the confirmation mail itself uses — so no new venue-side
+  port is needed for a name.
 - **The code-gated view reports an outstanding refund** — decided by me, not yet accepted
   by the gateway — asked lazily through `payment.api.RefundStatusLookup`, so the panel
   says "being processed" rather than "in transit" while the refund sits in the outbox.
@@ -674,7 +696,9 @@ only. Publish the read side of the refund conversation (`payment.api.RefundStatu
 nothing: it asks what `CONFIRMED` attests to in this deployment, a property of the wired gateway
 rather than a step of checkout. The answers live beside the gateways they describe, bound to the
 same profiles (`ProfiledCollectionGuarantee`), and `PaymentGatewayContractCoverageArchitectureTest`
-fails a gateway whose profile has no answer, so a new gateway cannot arrive unclassified.
+fails a gateway whose profile has no answer, so a new gateway cannot arrive unclassified. Nor is
+it a `PaymentGateway` method: test fakes implement that port (one as a `@FunctionalInterface`), and
+a deployment property no caller of `initiate`/`refund` needs would widen it — the wide-port smell.
 
 **One PaymentIntent may collect for several bookings.** A stay is a group of bookings paid
 once (design D6/D8), so `payment` holds the intent — id, secret, total, currency, lifecycle
@@ -862,6 +886,13 @@ accrual, from the live rate. The two agree closely but not exactly; what the rea
 that a past date's figure never changes (invariant #9). A rate change schedules from the current
 service date (§`venue`), so today's figure follows the live rate today's new accruals apply.
 
+**The BKT batch endpoints are `ADMIN`-only because nothing on them belongs to one venue.** The `GET`
+reports every venue's gross, commission and net for the period and the `PATCH` addresses a batch by
+id, so there is no venue to assert ownership of: invariant #13 exempts `/api/admin/**`, as an admin
+does not own a payout run. That exemption is exactly why the role must be the strict one: under
+`OPERATOR`, any approved operator in this multi-tenant marketplace could read competitors' payout
+figures and mark their batches settled.
+
 **Not My Job:**
 - Actually moving money to venues → settled **manually via BKT**; I record what is owed
 - Collecting money from tourists → **`payment`**
@@ -904,6 +935,13 @@ single-use hashed **email-verification** and **password-reset** tokens
 so the edge can revoke that principal's sessions before the reset writes. Email
 verification is **soft/non-blocking**: it gates no sign-in or booking. No Spring Security
 type lives inside the module (`CustomerAuthPlacementTests`).
+
+**Only the retention sweep's entry reads carry a query timeout.** Its candidate read and `booking`'s
+`GuestBookingHistory` probe run before anything is written, so a timeout there costs one tick. My
+scrubs, and `booking`'s `ReviewErasure` reads, stay on the shared, unbounded client: they run inside
+the erasure's one transaction, on the request path as well as the sweep's, where a timeout would
+fail the whole erasure (the transaction never commits half of one), and a slow erasure beats a
+failed one.
 
 **Not My Job:**
 - Bookings → **`booking`**; payment → **`payment`**
@@ -1081,6 +1119,11 @@ invariant #7):
   reads `email_key = ? AND reinstated_at IS NULL`), keeping `first_suppressed_at` and the
   prior `reason`; a later bounce clears the flag through the ordinary upsert. A hard
   `DELETE` on this table is a defect.
+- **A reinstate answers what the row was; nothing answers "is this address suppressed?".** Each
+  populated `ReinstateOutcome` carries the row's reason and timestamps, never the address or its
+  `domain`, so the one `POST` also answers the ops question "suppressed for what, since when?". A
+  standing lookup endpoint would be a new authenticated oracle for the suppression state — the
+  question the `emailWithheld` flag is gated never to answer before a collected payment.
 - The **mail-outbox re-drive**: ADMIN-gated `GET`/`POST /api/admin/mail-outbox` reports
   what the registry still owes this module and re-drives it on demand. It is **scoped by
   listener-id prefix to this module's own listeners, never by event type** —
@@ -1138,6 +1181,12 @@ invariant #7):
   booking rather than a 404, while `/booking/pay` resumes in-memory hand-off state and dead-ends
   from an inbox. `BookingLinks` builds the link in this module because the edge cannot: registry
   listeners raise these mails inside the hexagon, with no request in hand.
+- **The link origin reads the edge's variable under my own key.** `BookingLinkConfig` binds
+  `riviera.notification.booking-link.base-url` to `RIVIERA_RECOVERY_LINK_BASE_URL`: there is one
+  deployed origin (the backend serves the SPA same-origin), so a second variable could only ever be
+  set to the same value or, eventually, to a wrong one. The key is never `riviera.recovery.*`, which
+  belongs to the edge's recovery flows: reaching into another context's namespace is the coupling a
+  module-owned properties type exists to avoid.
 
 **Not My Job:**
 - Deciding **when** to send, minting/hashing recovery tokens, building the **tokenized**
@@ -1160,18 +1209,14 @@ invariant #7):
 - The provider bounce/complaint **feed** into the suppression list → a follow-up slice
   (needs provider setup); today nothing writes the list
 
-**The withheld-flag probe** (read before wiring the first writer of the suppression list). The
-`emailWithheld` flag on the code-gated booking read makes a populated list an expensive suppression
-oracle: an attacker books with a victim's address, pays, reads the flag, then cancels before the
-invariant-#4 cutoff for a full refund. Three facts bound it. Nothing writes the table today
-(reinstatement only lifts a row), so the probe returns zero bits until the bounce/complaint feed
-lands — that feed is the residual's trigger. A dedicated rate-limit budget would not bind: the
-attack's real limiter is one real gateway payment plus one claimed `(set, date)` per probe, and
-any capacity that leaves the pay page's legitimate poll alone (ADR-0006) sits orders of magnitude
-above that floor. And passing the flag only through the post-payment hand-off is no option under a
-collecting gateway: the code-gated read *is* the hand-off, and the prober is the payer, so one read
-is all a probe needs. The two-part gate (`CONFIRMED` **and** `payment.api.CollectionGuarantee`) is
-what keeps the flag inert wherever the gateway does not collect before confirming.
+**The withheld-flag probe** (read before wiring the suppression list's first writer). The
+`emailWithheld` flag makes a populated list a paid suppression oracle: book with a victim's address,
+pay, read the flag, cancel before the evening-before cutoff for a full refund. Three facts bound it:
+nothing writes the table yet (reinstatement only lifts a row), so zero bits until the bounce or
+complaint feed, the residual's trigger; no rate-limit budget binds, a probe's real limiter (a
+payment, a claimed `(set, date)`) being far below any capacity sparing the pay poll (ADR-0006); and
+the flag can't ride only the post-payment hand-off: the code-gated read *is* it, the prober the
+payer. `CONFIRMED` **and** `payment.api.CollectionGuarantee` keep it inert unless collected first.
 
 ## `review`
 **Job:** Own everything about a tourist's verdict on a delivered stay — the review record
@@ -1316,8 +1361,8 @@ answer is always ownership.
 ## `challenge` (not a bounded context)
 
 The **proof-of-work challenge** mechanism (ADR-0016, ADR-0017): a closed non-context module with the
-full template and no dependencies — Evans' *Cohesive Mechanism*, a separate lightweight framework
-behind an intention-revealing interface.
+full template minus `domain/` and no dependencies — Evans' *Cohesive Mechanism*, a separate
+lightweight framework behind an intention-revealing interface.
 
 **Job:** issue signed ALTCHA v2 challenges, verify a widget's solution, accept each solution exactly
 once via the `challenge_registry` claim (`INSERT … ON CONFLICT DO NOTHING`), sweep expired rows,
@@ -1428,6 +1473,10 @@ than its Details step: on Details it took the dialog past its above-the-fold bud
 laptop viewport, and on Review the solve still starts a step early, because advancing focuses the
 primary button inside the widget's form and the widget starts solving when its form already holds
 focus.
+
+**The fence runs after `RateLimitFilter` and `CsrfFilter`, and claims last.** The cheap checks go
+first, so a `429` wins when a request would fail both and a refused solution has already spent its
+rate-limit token; the registry claim, the fence's one write, is the last step before the controller.
 
 **Remodel orchestration (ADR-0020)** — the one domain composition the root holds. A layout remodel
 needs `venue` (what a save removes or renumbers, and the staff holds on it) and `booking` (what each
@@ -1547,6 +1596,20 @@ this section holds only the reasons a later edit could otherwise undo.
   promotes to `shared/` only when two features need a thing. It is one component, never the same
   markup twice, because the copy is the product decision: two copies drift, one surface quietly
   promising a mail that was never sent, while both duplicated tests stay green.
+- **The coast picker's ribbon is a picture.** It is `aria-hidden` and takes no pointer; the coast
+  index beside it is the accessible structure (`pages/home/coast-picker.ts`).
+- **A geolocated position never leaves the device** (`shared/geolocation.ts`): it reaches the map's
+  camera and Discover's list order and distance captions, never a request, a URL, storage or a log.
+  What a consumer then does with the camera is its own: the operator's pin placer publishes a venue
+  location the operator commits by hand, which is the venue's business data, not this position.
+- **A typed commission rate parses strictly** (`shared/commission-rate.ts`): `'15abc'` is rejected,
+  not read as 15. A rate is a commercial term, and silently keeping the readable prefix of a typo is
+  the wrong direction on a field that sets what the platform charges. Rounding to whole basis points
+  may happen, never unseen: the editor renders the integer, the wire carries only it (invariant #5).
+- **Focus is moved deliberately after a confirm-before-destroy** (`shared/focus-after-render.ts`).
+  Such a surface destroys the element just activated, stranding focus on `<body>` (WCAG 2.4.3). The
+  target rarely exists yet when the transition is decided, so the lookup runs in `earlyRead` and the
+  `focus()` in `write`.
 
 ## Invariants, long form
 
@@ -1610,8 +1673,8 @@ the mechanism and the edge cases. The numbering is `CLAUDE.md`'s and never chang
    type added later. A `FEE` has no gross and no commission and is the one type the net CHECK
    exempts (ADR-0021). Payouts settle manually via BKT; the ledger is the record. Every entry is
    order-independent and idempotent, keyed on `UNIQUE (booking_id, entry_type)`.
-10. **Cancellation/refund policy is enforced server-side.** Free cancellation until the #4
-    cutoff → full refund; after → non-refundable (or partial); the window closes entirely at
+10. **Cancellation/refund policy is enforced server-side.** Free cancellation until the venue's
+    evening-before cutoff (not #4's sales close) → full refund; after → none or partial; closes at
     service-day open (00:00 `Europe/Tirane`) — a guest cancel is then refused, not refunded
     (ADR-0005 as amended). Two refunds sit outside the tier, both deliberately. The weather
     exception is a manual admin-triggered full refund. A **moved booking's free exit** returns the

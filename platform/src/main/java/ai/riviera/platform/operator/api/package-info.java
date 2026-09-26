@@ -1,16 +1,10 @@
 /**
- * Published <strong>ports</strong> surface of the {@code operator} module (invariant #11) —
- * "call-me" interfaces only: the ownership and tourist-visibility query ports
- * ({@link VenueOwnership}, {@link VenueVisibility},
- * {@link OperatorDirectory}) and the credential read + provisioning ports that back
- * per-operator login ({@link OperatorAccounts}, {@link OperatorProvisioning}). The typed
- * ids and value types these ports speak in ({@code OperatorId}, {@code VenueRef},
- * {@code OperatorCredential}, {@code NotVenueOwnerException}) live in the sibling
- * {@code vocabulary} named interface. Exposed as a Spring Modulith named
- * interface so venue-scoped modules — and the platform edge's Spring Security config — can ask
- * these questions without reaching into this module's {@code application}/{@code adapter}
- * internals. Login itself (encoding/verifying) stays at the edge; this module only stores the
- * opaque credential hash.
+ * Published <strong>ports</strong> surface of the {@code operator} module (invariant #11):
+ * "call-me" interfaces only. Ownership and tourist-visibility queries ({@link VenueOwnership},
+ * {@link VenueVisibility}, {@link OperatorDirectory}) and the credential read + provisioning ports
+ * behind per-operator login ({@link OperatorAccounts}, {@link OperatorProvisioning}); their typed
+ * ids and value types live in the sibling {@code vocabulary} named interface. Login itself
+ * (encoding/verifying) stays at the edge; this module only stores the opaque credential hash.
  */
 @org.springframework.modulith.NamedInterface("api")
 package ai.riviera.platform.operator.api;

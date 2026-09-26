@@ -16,7 +16,7 @@ import ai.riviera.platform.payout.domain.PayoutBatch;
 import ai.riviera.platform.payout.domain.PeriodKey;
 
 /**
- * The weekly BKT payout-report use case (U9, issue #12). {@link #generate} folds the ledger into one
+ * The weekly BKT payout-report use case (U9). {@link #generate} folds the ledger into one
  * {@code DRAFT} batch per venue for the period (idempotent refresh, invariant #9); {@link #mark}
  * advances a batch through {@code DRAFT → REPORTED → SETTLED}, rejecting illegal moves with a typed
  * outcome rather than an exception. Money is integer minor units throughout (invariant #5).
@@ -50,10 +50,9 @@ class PayoutReportService implements PayoutReport {
 	}
 
 	/**
-	 * A batch already advanced past {@code DRAFT} is frozen — {@code upsertDraft} will not refresh it
-	 * (invariant #9). If later ledger activity has changed what the period nets, the operator gets no
-	 * signal from a no-op refresh, so warn explicitly: the reported/settled total now diverges from the
-	 * ledger and must be reconciled manually (plan R-5).
+	 * A batch past {@code DRAFT} is frozen ({@code upsertDraft} skips it, invariant #9), so a no-op
+	 * refresh gives no signal: warn when the ledger now nets differently, as the reported/settled
+	 * total then diverges and must be reconciled manually.
 	 */
 	private void warnIfFrozenAndStale(PayoutBatch existing, VenuePeriodTotal total, PeriodKey period) {
 		if (existing != null && existing.status() != BatchStatus.DRAFT
@@ -91,16 +90,9 @@ class PayoutReportService implements PayoutReport {
 	}
 
 	/**
-	 * The guarded write matched no row, so the batch moved between {@link #mark}'s read and its
-	 * write. Re-read to report where it actually is: {@code mark}'s local {@code batch} is known
-	 * stale here, and reporting its status would name a transition the caller could retry forever.
-	 * A batch that another actor already moved <em>to the requested target</em> is reported
-	 * {@link BatchStatusOutcome.Marked} — the caller asked for a state that now holds, and only the
-	 * actor that performed the write logs the transition.
-	 *
-	 * <p>Requires READ COMMITTED (the Postgres and Spring default): this re-read must observe the
-	 * winner's committed row, which a snapshot isolation level would hide behind {@code mark}'s
-	 * original snapshot — reporting the stale status as though the transition were still legal.
+	 * The guarded write lost a race: re-read and report the actual status (the stale one names a
+	 * retry-forever move); one already at {@code target} is {@link BatchStatusOutcome.Marked}.
+	 * Needs READ COMMITTED (the default) so the re-read sees the winner's commit, not a snapshot.
 	 */
 	private BatchStatusOutcome lostRace(long batchId, BatchStatus target) {
 		return batches.findById(batchId)

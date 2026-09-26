@@ -3,18 +3,11 @@ package ai.riviera.platform.venue.application;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * The platform's terms for a newly created venue — currently the default commission rate every
- * new venue is stamped with (exact-integer basis points, invariant #5). Held as server-side
- * configuration so the rate is never client input: {@code OnboardVenueService} stamps it at
- * insert and the operator-facing defaults read serves the same value, keeping the disclosed
- * figure and the stamped rate equal by construction. The admin adjusts a venue's rate afterwards
- * through {@link VenueCommissionAdministration}, forward-only.
- *
- * <p>Validated in the compact constructor rather than with {@code @Validated}: Boot validates
- * {@code @ConfigurationProperties} only with a JSR-303 implementation on the classpath, and there
- * is none here. The component is a boxed {@code Integer} so a missing or renamed property key
- * binds {@code null} and fails the boot loudly — a primitive would silently bind {@code 0}, an
- * accepted rate, and every new venue would earn the platform nothing.
+ * The platform's terms for a new venue: the default commission rate (basis points, invariant #5),
+ * server-side so it is never client input — {@code OnboardVenueService} stamps it and the defaults
+ * read serves the same value. Later changes go through {@link VenueCommissionAdministration}.
+ * Validated in the compact constructor (no JSR-303 on the classpath for {@code @Validated}); boxed
+ * so a missing key binds {@code null} and fails the boot; a primitive would bind an accepted 0.
  *
  * @param defaultCommissionBps the rate stamped on every new venue, 0–10000 basis points; required
  */

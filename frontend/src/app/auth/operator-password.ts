@@ -37,17 +37,12 @@ const CLS = {
 } as const;
 
 /**
- * The signed-in operator's password-change page. Deliberately a **separate** page from the
- * customer's `set-password`, not an audience toggle on it: that page is the customer *account* page and
- * only one of its five blocks concerns passwords — email verification, the SSO "leave blank" affordance
- * and right-to-erasure all fail to apply to an operator (an operator is a business counterparty with
- * payout records, not a data subject). Merging would have wrapped most of it in an audience conditional.
- * What is genuinely shared — `CardGlass`, the auth-card Tailwind recipe, the password-policy
- * constants — is shared.
- *
- * <p>No signed-out branch: `operatorSessionGuard` awaits the session restore and redirects
- * before this component renders. Both fields are always required — operators have no SSO, so there is no
- * password-less account that could set a first password here.
+ * The signed-in operator's password-change page — a separate page, not an audience toggle on the
+ * customer's `set-password`: most of that account page (email verification, SSO, erasure) doesn't
+ * apply to an operator, a business counterparty rather than a data subject. The shared parts
+ * (`CardGlass`, the auth-card recipe, the password-policy constants) are reused. No signed-out
+ * branch: `operatorSessionGuard` redirects first. Both fields are always required — operators have
+ * no SSO, so no password-less account can set a first password here.
  */
 @Component({
   selector: 'app-operator-password',
@@ -192,15 +187,9 @@ export class OperatorPassword {
   }
 
   /**
-   * Bring the outcome into view and focus it. The notice renders above the form while the error renders
-   * below it, so on a phone a success message lands off-screen and is indistinguishable from the form
-   * merely emptying itself — the one thing this page exists to communicate, silently missed.
-   *
-   * <p>Two ordered lookups, not one selector list: `querySelector` resolves a list in **document
-   * order**, not list order, so a list returns the notice — which sits above the form — even when the
-   * error is what just spoke. Neither arm needs an emptiness guard, and `:empty` could not provide
-   * one: this runs only from `fail()` or the success branch, so the region it finds has just been
-   * given its message, and an interpolation always leaves a text node.
+   * Scroll to and focus the outcome — on a phone the notice above the form lands off-screen, so a
+   * success reads as the form merely emptying. Two ordered lookups, error first: a selector list
+   * resolves in document order and would return the notice even when the error just spoke.
    */
   private revealOutcome(): void {
     // afterNextRender, not queueMicrotask: it is bound to this component's injector, so a pending

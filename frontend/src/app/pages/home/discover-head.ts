@@ -53,20 +53,12 @@ const COUNT =
   'bg-riv-accent-ink text-riv-on-accent-ink group-aria-[current]:bg-riv-on-accent-ink group-aria-[current]:text-riv-accent-ink';
 
 /**
- * The venue sheet's head: **one 44 px row carrying the query** — the place (a press opens the
- * coast picker) over the selling line (`8 of 11 selling today`, invariant #4 as the map's light),
- * the region's beaches gathered into one chip (the umbrella and `6`, spelled out `All beaches 6`
- * with a chevron where the sheet is wide, lit with the beach's own count when one is chosen), and
- * the day (`Today` and a chevron).
- *
- * <p>A press on either chip opens its rail of chips under the row, with the lit chip scrolled
- * into view, and a pick closes it. The rails are hidden at peek — the head is the one row there —
- * so a press then asks the page for the sheet first (`railOpened`) and the rail shows once the
- * rails are. The answer to Near me when it is not a position stands in the same rail slot, off
- * the map, until dismissed.
- *
- * <p>The words are the page's: title, subtitle and the beaches come in as inputs, and every
- * choice goes out as an output. The head keeps only which rail is open.
+ * The venue sheet's head: **one 44 px row carrying the query**: the place (a press opens the coast
+ * picker) over the selling line (invariant #4), one chip for the region's beaches, and the day. A
+ * press on either chip opens its rail under the row, a pick closes it; at peek the rails are
+ * hidden, so a press first asks the page for the sheet (`railOpened`). A Near me answer that is
+ * not a position stands in the rail slot until dismissed. The words are the page's (inputs in,
+ * choices out); the head keeps only which rail is open.
  */
 @Component({
   selector: 'app-discover-head',

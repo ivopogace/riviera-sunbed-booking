@@ -9,21 +9,12 @@ import { OutboxLever } from './admin-outbox-lever';
 import { TouchTarget } from '../shared/touch-target';
 
 /**
- * The admin console's Refunds tab: what the Event Publication Registry still owes the
- * cancellation-refund listener — refunds whose gateway call failed or was shed — and the lever
- * that re-drives them without waiting for a deploy. Until this tab, the money path's retry lever was
- * the one admin lever without a button (a cookie-jar `curl`, mid-incident, from a runbook).
- *
- * <p>The press semantics are the Email tab's, shared through {@link OutboxLever}: the count is shown
- * before the button is pressed, a refusal (`COOLING_DOWN` / `ALREADY_RUNNING`) is reported as a
- * refusal with the retry window rather than as a failure, and the button disables only for its own
- * round-trip. What this surface deliberately cannot show (invariant #7): a booking id, a
- * booking code, or any per-publication detail — the endpoint returns counts, an outcome token and
- * seconds, nothing else, and the client invents no columns for more.
- *
- * <p>Like every admin tab, the surrounding {@code AdminConsole} shell self-gates on
- * {@link OperatorAuth} for UX while the backend `/api/admin/**` role gate does the enforcing; this
- * component only ever renders once both have passed.
+ * The admin console's Refunds tab: the refunds the Event Publication Registry still owes the
+ * cancellation-refund listener (gateway call failed or shed), and the lever that re-drives them,
+ * with {@link OutboxLever}'s press semantics. It shows no booking id, code or per-publication
+ * detail (invariant #7): the endpoint returns counts, an outcome token and seconds, and the client
+ * invents no columns. The {@code AdminConsole} shell self-gates on {@link OperatorAuth} for UX; the
+ * backend `/api/admin/**` role gate enforces.
  */
 @Component({
   selector: 'app-admin-refund-outbox',

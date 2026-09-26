@@ -20,13 +20,10 @@ export interface PhotoSourceView {
 
 /**
  * A tourist-surfaced photo with every density the backend stored for it. `url` is the baseline
- * candidate — what `ngSrc` binds and what a client without `srcset` support fetches — and
- * `sources` lists every candidate ascending by width, always including `url`'s own.
- *
- * A photo uploaded before the retina tier existed has exactly one source and renders a
- * one-candidate `srcset`; it cannot be backfilled, since the full-res original is discarded at
- * upload. URLs are opaque and content-addressed: a replaced photo changes the URL, never the bytes
- * behind an old one.
+ * candidate (what `ngSrc` binds and a no-`srcset` client fetches); `sources` lists every candidate
+ * ascending by width, always including `url`'s own. A photo uploaded before the retina tier has one
+ * source and cannot be backfilled (the original is discarded at upload). URLs are opaque and
+ * content-addressed: a replaced photo changes the URL, never the bytes behind an old one.
  */
 export interface PhotoView {
   readonly url: string;
@@ -91,10 +88,9 @@ export interface VenueMapView {
   readonly distanceToWaterM?: number | null;
   readonly sets: readonly SetView[];
   /**
-   * The layout's optimistic-concurrency stamp: the venue's `set_version`, echoed back by the
-   * operator layout + pricing tabs on the next beach-map replace / per-row reprice so a stale write is
-   * rejected `409 STALE_WRITE` instead of clobbering. Tourists ignore it. Optional because test doubles
-   * and older payloads may omit it; the real API always sends it (a number ≥ 0).
+   * The layout's optimistic-concurrency stamp (`set_version`), echoed by the operator layout and
+   * pricing tabs so a stale write is rejected `409 STALE_WRITE`. Tourists ignore it. Optional for
+   * test doubles and older payloads; the real API always sends it (a number ≥ 0).
    */
   readonly setVersion?: number;
   /** The cover photo's serving URLs, or `null`/absent — the banner then keeps its gradient. */
@@ -106,18 +102,15 @@ export interface VenueMapView {
    */
   readonly photos?: readonly PhotoView[];
   /**
-   * The same slot order sized for the modal viewer's near-square box, which is why it is a
-   * separate list: its widest candidate must never be offered to the band or the gallery grid.
-   * A photo stored before that surface existed carries its banner view here instead and cannot
-   * gain one, since the full-res original is discarded at upload. Optional because test doubles
-   * and older payloads may omit it; the lightbox then shows what the band shows.
+   * The same slot order sized for the lightbox's near-square box — a separate list so its widest
+   * candidate never reaches the band or grid; a photo stored before it carries its banner view.
+   * Optional for test doubles and older payloads; the lightbox then shows what the band shows.
    */
   readonly lightboxPhotos?: readonly PhotoView[];
   /**
-   * Whether online sales for the selected date are open right now — the server's sales-window
-   * verdict (invariant #4), display only; the reserve path enforces the real fence. Optional
-   * because test doubles and older payloads may omit it; only an explicit `false` renders the
-   * closed state.
+   * Whether online sales for the selected date are open now — the server's verdict (invariant #4),
+   * display only; the reserve path enforces the fence. Optional for test doubles and older
+   * payloads; only an explicit `false` renders the closed state.
    */
   readonly salesOpen?: boolean;
   /**
@@ -127,10 +120,9 @@ export interface VenueMapView {
    */
   readonly salesClose?: SalesCloseTime;
   /**
-   * Whether the venue is closed for the season right now — the server's verdict, never a date the
-   * client compares. The page stays browsable; `salesOpen` says whether the selected date sells
-   * regardless (an opted-in date after the reopen day does). Optional because test doubles and
-   * older payloads may omit it; only an explicit `true` renders the closed state.
+   * Whether the venue is closed for the season now — the server's verdict, never a client date
+   * compare. The page stays browsable; `salesOpen` still rules the selected date (an opted-in date
+   * after the reopen day sells). Optional as above; only an explicit `true` renders it closed.
    */
   readonly closedForSeason?: boolean;
   /** The reopen day (ISO `YYYY-MM-DD`, Europe/Tirane) while closed with one set; else `null`/absent. */

@@ -12,23 +12,12 @@ import ai.riviera.platform.venue.application.ListOwnedVenues;
 import ai.riviera.platform.venue.application.OwnedVenueView;
 
 /**
- * The signed-in operator's own venues — {@code GET /api/venues/mine}, the read the
- * unified auth page uses to decide where an operator lands after sign-in (0 → venue onboarding,
- * 1 → straight into that console, N → the picker).
- *
- * <p><strong>BOLA-safe by construction</strong> (invariant #13, OWASP API #1): there is no venue id
- * in the path or query — the venue set is derived solely from the session principal via the edge
- * {@link CurrentOperator} resolver, so there is nothing for a caller to tamper with and no
- * {@code assertOwns} to forget. The role layer ({@code hasRole(OPERATOR)}) is configured in
- * {@code SecurityConfig} <strong>above</strong> the public {@code GET /api/venues/**} rule — first
- * match wins, so without that ordering this read would fall through to {@code permitAll} and leak
- * the ownership map. An anonymous call is {@code 401}, a customer session {@code 403}.
- *
- * <p>Separate from {@link VenueAdminController} because it is not venue-scoped: every mapping there
- * takes a path {@code venueId} and asserts ownership of it, whereas this one <em>is</em> the
- * ownership question. The literal {@code /mine} segment outranks {@link VenueReadController}'s
- * {@code /{venueId}} pattern in Spring's pattern comparator, so it never resolves as a venue id.
- * Empty ownership is {@code 200 []}, never {@code 404}.
+ * {@code GET /api/venues/mine}: the signed-in operator's venues, which pick the post-sign-in
+ * landing (0 → onboarding, 1 → that console, N → picker); none is {@code 200 []}, not {@code 404}.
+ * BOLA-safe (invariant #13): no venue id in the request; the session names the set. Its
+ * {@code hasRole(OPERATOR)} rule in {@code SecurityConfig} must stay above the public
+ * {@code GET /api/venues/**} {@code permitAll} (first match wins) or this leaks the ownership map;
+ * anonymous gets {@code 401}, a customer {@code 403}. Rationale: RESPONSIBILITIES.md §venue.
  */
 @RestController
 @RequestMapping("/api/venues")

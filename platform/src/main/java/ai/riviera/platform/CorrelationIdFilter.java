@@ -13,22 +13,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Stamps every request with a correlation id so all log lines emitted while handling one request share
- * a traceable key. The id is placed in the SLF4J {@link MDC} under
- * {@link #MDC_KEY} — the structured (JSON) console appender includes MDC fields, so it surfaces on
- * every line — and echoed back in the {@link #HEADER} response header for the caller/next hop.
- *
- * <p>An inbound {@link #HEADER} is <strong>reused only if it is safe</strong>: it must match a bounded
- * allowlist ({@link #VALID_ID} — id characters, 1..64 long). Anything else — an absent header, an
- * over-long value, or a forged value carrying {@code CRLF} (log-injection / forged log lines,
- * {@code riviera-java-conventions} §10) — is discarded and a fresh {@link UUID} is generated, so a
- * client can never inject newlines into a log line or a response header through this path.
- *
- * <p>Registered as a top-level servlet filter at {@code HIGHEST_PRECEDENCE}
- * ({@link ObservabilityConfig}), ahead of Spring Security and {@link RateLimitFilter}, so the id is in
- * scope for the earliest log line of the request; the MDC key is always removed in a {@code finally}
- * so no id ever leaks from a pooled thread into the next request. App-level web concern in the root
- * package (like {@link RateLimitFilter}/{@link WebCorsConfig}), not a Modulith module.
+ * Stamps every request with a correlation id, put in the SLF4J {@link MDC} under {@link #MDC_KEY}
+ * (the JSON appender renders it on every line) and echoed in the {@link #HEADER} response header.
+ * An inbound id is reused only if it matches {@link #VALID_ID}; anything else (absent, over-long,
+ * CRLF-forged) gets a fresh {@link UUID}, so no client injects newlines into a log line or header
+ * ({@code riviera-java-conventions} §10). Runs first ({@link ObservabilityConfig}) and removes the
+ * MDC key in a {@code finally} so no id leaks from a pooled thread into the next request.
  */
 final class CorrelationIdFilter extends OncePerRequestFilter {
 

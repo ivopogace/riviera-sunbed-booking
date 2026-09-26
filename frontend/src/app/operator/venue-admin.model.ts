@@ -20,7 +20,7 @@ export interface CreateVenueRequest {
   readonly description: string;
   readonly bookingMode: BookingMode;
   readonly payoutCurrency: string;
-  /** Evening-before cutoff, `HH:mm` Europe/Tirane (invariant #4/#6). */
+  /** Evening-before free-cancellation cutoff, `HH:mm` Europe/Tirane (invariants #6/#10). */
   readonly bookingCutoff: string;
 }
 

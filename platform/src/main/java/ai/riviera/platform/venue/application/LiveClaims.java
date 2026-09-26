@@ -16,19 +16,11 @@ import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * The one live-claim question a layout write and the owner's beach-map read both ask: is anyone
- * still owed this exact spot? Yes when a hold sits on a day that is today or later in
- * {@code Europe/Tirane} (invariant #6), or when a booking on the set can still be honoured —
- * which statuses those are is {@code booking}'s call, reached through {@link BookingPresence}.
- * The write guards ask it as a boolean before refusing a move or a removal; the read asks it per
- * set with the nearest dates, so the lock the canvas shows is the lock the server enforces.
- * Holding both answers here is what keeps them from drifting (ADR-0018: one rule, two callers).
- * The remodel preview asks a third, narrower thing through the same cutoff — which staff walk-in
- * holds sit on a set from today on — so "today" is read in one place.
- *
- * <p>A past hold freezes nothing: a past date is never claimable (reserve and staff mark both refuse
- * it), so the range the cutoff ignores is one nothing can be written into. Rationale:
- * RESPONSIBILITIES.md §venue. Callers on the write side must already hold the set row locks.
+ * The one live-claim question layout writes and the owner's beach-map read both ask: is anyone
+ * still owed this spot? Yes for a hold dated today or later in {@code Europe/Tirane} (invariant #6)
+ * or a booking {@link BookingPresence} says can still be honoured. One holder keeps the lock the
+ * canvas shows equal to the lock the server enforces (ADR-0018), and reads "today" in one place.
+ * Write-side callers must already hold the set row locks. Rationale: RESPONSIBILITIES.md §venue.
  */
 @Component
 class LiveClaims {

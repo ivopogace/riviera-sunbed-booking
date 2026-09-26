@@ -10,19 +10,12 @@ export type GeolocationOutcome =
   { readonly kind: 'located'; readonly at: LngLat } | { readonly kind: GeolocationFailure };
 
 /**
- * The geolocation seam — an external browser capability behind its own permission prompt, so it
- * sits behind a DI token with a real and a fake adapter, the shape of `MapEngine`, `QrScanner` and
- * `StripePaymentGateway`: {@link BrowserGeolocationGateway} in the browser (wired in
- * `app.config.ts`), `src/testing/fake-geolocation.ts` in specs, which override the token directly.
- * The mocked Playwright suite drives the REAL adapter through `context.grantPermissions` and
- * `setGeolocation` — a fake there would prove nothing about the browser's own prompt.
- *
- * <p>A position obtained through this seam reaches the map's camera — and, on Discover's sheet,
- * the list's order and its distance captions — and nothing else: never a request, a URL,
- * storage or a log. That is what the privacy policy's map section promises, and
- * what the mocked suite's `discover-map` network guard fails the build over. What a consumer then
- * does with the camera is its own: the operator's pin placer publishes a venue location the
- * operator commits by hand, which is the venue's business data rather than this position.
+ * The geolocation seam behind a DI token: {@link BrowserGeolocationGateway} in the browser (wired
+ * in `app.config.ts`), `src/testing/fake-geolocation.ts` in specs; the mocked Playwright suite
+ * drives the REAL adapter via `grantPermissions`/`setGeolocation` (a fake proves nothing there). A
+ * position reaches only the map's camera and Discover's list order and distance captions — never a
+ * request, URL, storage or log: the privacy policy's promise, which the mocked suite's
+ * `discover-map` network guard fails the build on. Rationale: RESPONSIBILITIES.md §Frontend.
  */
 export abstract class GeolocationGateway {
   /**

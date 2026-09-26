@@ -10,18 +10,11 @@ export type OutcomeTone = 'success' | 'pending';
 let nextHeadingId = 0;
 
 /**
- * The "landed" card the auth page swaps in once a flow finishes — a centred glass card
- * with a tone-coloured glyph, a heading, projected body copy and a projected CTA. Two tones today:
- * `success` (signed in) and `pending` (an operator registration awaiting admin approval).
- *
- * Reusable rather than inlined because the same shape serves three distinct landed states, and a
- * shared primitive keeps their a11y contract identical: the card is a labelled region, the glyph is
- * decorative (`aria-hidden` — the heading already carries the meaning), and the CTA is projected so
- * each caller supplies its own link or button without the card knowing about routing.
- *
- * Sits on {@link CardGlass} so it inherits the AA-proven `--riv-card-*` token set instead of a
- * private translucent fill; the composited maths lives in the consumer's `*.contrast.spec.ts`.
- * The tone glyph itself is the opposite — an opaque, theme-invariant skin; see
+ * The "landed" card the auth page swaps in once a flow finishes: tone glyph, heading, projected
+ * body and projected CTA (`[outcomeCta]`). Tones: `success` (signed in), `pending` (an operator
+ * registration awaiting admin approval). A labelled region; the glyph is `aria-hidden` decoration.
+ * Sits on {@link CardGlass} for the AA-proven `--riv-card-*` tokens (composited maths in the
+ * consumer's `*.contrast.spec.ts`); the glyph is instead an opaque, theme-invariant skin — see
  * {@link OutcomeCard.glyphClasses}.
  */
 @Component({
@@ -63,12 +56,9 @@ export class OutcomeCard {
   protected readonly headingId = `outcome-heading-${nextHeadingId++}`;
 
   /**
-   * Both tones wear the `--riv-medallion-*` skin, so this glyph is the same paint as
-   * `booking-confirmation`'s check and `request-confirmation`'s envelope. They do NOT theme, and must not: the
-   * fills are fixed, and a themed ink over a fixed fill drifts (dark `--riv-accent-ink` over the
-   * positive fill is 1.41:1). Decorative (`aria-hidden`), so exempt from the AA text minimum but
-   * held to 3:1 in `auth/auth-page.contrast.spec.ts`. Take the ternary whole — one branch tokenised
-   * leaves a named utility beside a hex literal in one expression.
+   * The fixed `--riv-medallion-*` skin; must not theme (a themed ink over a fixed fill drifts to
+   * 1.41:1). Decorative, but held to 3:1 in `auth/auth-page.contrast.spec.ts`. Change the ternary
+   * whole — tokenising one branch leaves a named utility beside a hex literal.
    */
   protected readonly glyphClasses = computed(
     () =>

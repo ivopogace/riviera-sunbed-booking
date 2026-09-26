@@ -11,23 +11,13 @@ import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 import ai.riviera.platform.venue.api.VenueRates;
 
 /**
- * The {@code payout} module's reaction to a confirmed booking (U5, issue #9) — a driving adapter
- * listening for the {@code BookingConfirmed} fact the {@code booking} module announces (invariant
- * #11: collaboration by published event, never a call into {@code booking}). It accrues the venue's
- * payout ledger entry: {@code net = gross − commission} (invariant #9).
+ * Accrues the venue's payout-ledger entry, {@code net = gross − commission} (invariant #9), on
+ * the {@code BookingConfirmed} event {@code booking} publishes (invariant #11). Runs after commit
+ * in its own transaction, so a payout failure never rolls back a confirmed booking.
  *
- * <p><strong>Asynchronous</strong> {@code @ApplicationModuleListener} (= {@code @Async} +
- * {@code @Transactional} + {@code @TransactionalEventListener(AFTER_COMMIT)}): the publication is
- * persisted by the Event Publication Registry when the producer's transaction commits, then this
- * listener runs after commit in its own transaction. A payout failure therefore never rolls back a
- * confirmed booking, and an incomplete publication is re-submitted (at-least-once). Because delivery
- * is at-least-once, accrual is <strong>idempotent</strong> — {@code PayoutLedger.accrue} is
- * {@code INSERT … ON CONFLICT DO NOTHING} on {@code UNIQUE(booking_id, entry_type)}, so a
- * re-delivered event accrues no second entry.
- *
- * <p>The commission rate is re-read from {@code venue::api} here rather than taken from the event:
- * it is mutable venue configuration, not a fixed fact of the booking (invariant #11). The gross
- * amount and currency are immutable facts carried on the event.
+ * <p>Delivery is at-least-once: the accrual must stay idempotent ({@code ON CONFLICT DO NOTHING}).
+ * Gross and currency come from the event; the commission rate is re-read live from {@code venue}
+ * at accrual. Rationale: RESPONSIBILITIES.md §payout.
  */
 @Component
 class BookingConfirmedPayoutListener {

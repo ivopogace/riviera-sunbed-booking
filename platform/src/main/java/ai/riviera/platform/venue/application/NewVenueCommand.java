@@ -6,18 +6,12 @@ import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.Beach;
 
 /**
- * The validated intent to onboard a venue (U7). A typed command at the application boundary —
- * the REST adapter maps wire strings onto this (the beach code parsed to the catalogue
- * {@link Beach}); its compact constructor enforces the domain
- * invariants so an invalid command can never reach persistence (the DB CHECK constraints in V2
- * are the backstop, not the only guard). {@code payoutCurrency} is an ISO-4217 code (per-venue,
- * default EUR decided at the slice); {@code bookingCutoff} is a {@code Europe/Tirane} local time
- * (invariant #6); {@code salesClose} is the optional three-value {@link SalesClose} choice —
- * {@code null} normalizes to {@link SalesClose#DEFAULT} (16:00, the epic decision). Rating/reviews
- * are not operator input — a new venue starts at zero, and the commission rate is deliberately
- * absent: it is the platform's term, stamped by the application service from
- * {@link VenueCreationProperties}, so no driving adapter can supply one. The edge validators are
- * shared with {@link VenueProfileCommand} via {@link VenueFieldValidation}.
+ * The validated intent to onboard a venue: the compact constructor enforces the domain rules
+ * (shared with {@link VenueProfileCommand} via {@link VenueFieldValidation}); the DB CHECKs are
+ * the backstop. {@code payoutCurrency} is ISO-4217; {@code bookingCutoff} a {@code Europe/Tirane}
+ * local time (invariant #6); a {@code null} {@code salesClose} becomes {@link SalesClose#DEFAULT}
+ * (16:00). No commission rate: it is the platform's term, stamped by the service from
+ * {@link VenueCreationProperties}, so no driving adapter can supply one.
  */
 public record NewVenueCommand(String name, Beach beach, String description,
 		String bookingMode, String payoutCurrency, LocalTime bookingCutoff, SalesClose salesClose) {

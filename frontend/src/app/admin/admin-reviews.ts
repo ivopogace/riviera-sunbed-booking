@@ -19,21 +19,12 @@ const BTN =
   'rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60';
 
 /**
- * The admin console's Reviews tab — the surface that makes the review takedown usable: every review
- * of any venue, hidden and star-only rows included, each with its one moderation action.
- *
- * <p><strong>Hide asks, un-hide does not.</strong> A hide takes a guest's words off the venue page
- * and out of its score, so it goes behind the inline confirmation that names the review and the
- * venue and collects optional grounds for the audit trail (the photo-takedown precedent). It is
- * reversible, so the prompt never says "cannot be undone". Un-hiding restores; one press.
- *
- * <p><strong>A row flips in place.</strong> The server answers a bare `204`, so the row shows the
- * new state from the moment of the press — the venue is not re-read, and the list never reflows
- * under the moderator. The "hidden since" moment is the press; a later read shows the server's,
- * seconds apart at most.
- *
- * <p>Like every admin tab, the surrounding {@code AdminConsole} shell self-gates on
- * {@link OperatorAuth} for UX while the backend `/api/admin/**` role gate does the enforcing.
+ * The admin console's Reviews tab: every review of any venue, hidden and star-only rows included,
+ * each with its one moderation action. Hide goes behind an inline confirmation naming the review
+ * and venue and collecting optional audit grounds, never saying "cannot be undone" (it reverses);
+ * un-hide is one press. The server answers a bare `204`, so a row flips in place from the press and
+ * the list never reflows. The {@code AdminConsole} shell self-gates on {@code OperatorAuth} for UX;
+ * the backend `/api/admin/**` role gate enforces.
  */
 @Component({
   selector: 'app-admin-reviews',
@@ -239,11 +230,9 @@ export class AdminReviews {
   }
 
   /**
-   * Open the confirmation, or close it, moving focus with the surface: each transition destroys the
-   * control that was just activated (WCAG 2.4.3). Focus INTO the confirmation is
-   * {@link ConfirmWithReason}'s own doing; keeping it returns focus to Hide; a settled action parks
-   * on the row card, a failed one on the notice carrying the reason — both only while this venue is
-   * still the one on screen.
+   * Open the confirmation. Each open/close destroys the control just activated, so focus moves with
+   * it (WCAG 2.4.3): {@link ConfirmWithReason} focuses itself, Keep returns to Hide, a settled
+   * action parks on the row card, a failure on the notice — only while this venue is on screen.
    */
   protected askToHide(entry: AdminReviewEntryView): void {
     this.confirming.set(entry.id);

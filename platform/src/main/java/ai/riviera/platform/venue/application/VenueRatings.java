@@ -5,24 +5,14 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 /**
  * The venue-side write of a venue's stored rating aggregate — {@code venue} remains the only writer
  * of its own table, so the numbers {@code review} computes land through here and nowhere else.
+ * Rationale: RESPONSIBILITIES.md §venue.
  */
 public interface VenueRatings {
 
 	/**
-	 * Take the venue row's write lock for the calling transaction, so two recomputes of the same
-	 * venue serialize instead of interleaving.
-	 *
-	 * <p>A recompute is a read (the review totals) followed by a write (this table), and a full
-	 * re-read is only order-independent when those two are not interleaved: without the lock, a
-	 * listener that read stale totals can commit after one that read fresh ones and pin the venue to
-	 * the older score until some later review happens to fire another event.
-	 *
-	 * <p>Two preconditions, both of which the adapter enforces rather than assumes: it must run
-	 * <strong>inside a transaction</strong> (outside one the lock is released as the statement
-	 * returns, silently restoring the race — so that case throws), and it must be called
-	 * <strong>before</strong> the totals are read, since locking afterwards leaves exactly the window
-	 * it exists to close. The lock taken is deliberately the weakest that self-conflicts, so it
-	 * serializes recomputes without blocking inserts that merely reference this venue.
+	 * Take the venue row's write lock so two recomputes of one venue serialize (else stale totals can
+	 * commit last and pin an old score). Call inside a transaction (the adapter throws otherwise) and
+	 * before reading the totals; the weakest self-conflicting lock, so FK inserts are not blocked.
 	 */
 	void lockForRecompute(VenueId venue);
 

@@ -20,20 +20,12 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 
 /**
- * The {@code customer} module's account application service: the read side of an
- * account's stored credential ({@link CustomerAccounts}) and the registration write side
- * ({@link CustomerAccountProvisioning}). This is the service that <strong>graduates</strong> the
- * previously-thin {@code customer} module to the full ADR-0007 template. Package-private behind the
- * published ports (invariant #11); constructor injection into a {@code final} {@link CustomerAccountStore}.
- *
- * <p>It holds <strong>no</strong> Spring Security type: the stored {@code passwordHash} is an opaque
- * blob supplied already-encoded by the edge, and this service never encodes or verifies it — the
- * password-checking machinery stays at the platform edge (RV-BE-11, {@code RESPONSIBILITIES.md}).
- * Likewise for S8 recovery ({@link CustomerAccountRecovery}): the edge generates + hashes the raw token
- * and encodes the new password; this service only stores the opaque digest, atomically claims it
- * single-use, and flips verification / password state. Email is normalized here (trimmed + lower-cased,
- * matching the guest {@code JdbcCustomerDirectory} key) so account and guest emails resolve identically.
- * Writes are {@code @Transactional}; reads are pure queries.
+ * The {@code customer} module's account application service (credential reads, registration, SSO,
+ * recovery), package-private behind the published ports (invariant #11). Holds <strong>no</strong>
+ * Spring Security type (RV-BE-11): the edge encodes passwords and generates + hashes recovery
+ * tokens ({@link CustomerAccountRecovery}); this service stores the opaque digests, claims a token
+ * single-use atomically, and flips verification / password state. Email is normalized here
+ * ({@link Emails}) so account and guest emails resolve identically.
  */
 @Service
 class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisioning,

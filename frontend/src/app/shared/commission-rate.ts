@@ -3,10 +3,9 @@
  * whole basis points so the split stays exact-integer arithmetic (invariant #5). A rate is not money,
  * so it lives beside `money.ts` rather than inside it: they share a divisor, not a concept.
  *
- * <p>Basis points are the contract everywhere — `venue_commission_bps_check`, `NewVenueCommand`, and
- * the admin rate write all speak bps, and 1500 means 15.00%. Percent is a **rendering**, and the one
- * place it travels the other way (an editor) must show the exact integer it will store, which is why
- * {@link commissionPercentToBps} returns that integer rather than writing it anywhere itself.
+ * <p>Basis points are the contract everywhere (`venue_commission_bps_check`, the admin rate write;
+ * 1500 = 15.00%). Percent is a **rendering**; an editor must show the exact integer it will store,
+ * hence {@link commissionPercentToBps} returns it rather than writing it anywhere.
  */
 
 /** The stored basis points as the percentage a human reads: 1500 → "15%", 1550 → "15.5%". */
@@ -20,17 +19,9 @@ export function commissionBpsToPercentInput(bps: number): string {
 }
 
 /**
- * Parse a typed percentage to the exact basis points that would be stored, or `null` when the input
- * is blank, not a number, or outside 0..100 — never a coerced `0`, which would read a cleared field
- * as "this venue is free".
- *
- * <p>Parsing is strict rather than prefix-tolerant (`'15abc'` is rejected, not read as 15): a rate is
- * a commercial term, and silently keeping the readable prefix of a typo is the wrong direction on a
- * field that sets what the platform charges.
- *
- * <p>The result is rounded to whole basis points, the storage grain — so a caller MUST render the
- * returned integer beside the field. That is the whole contract: rounding is allowed to happen, it is
- * not allowed to happen unseen, and the wire only ever carries the integer (invariant #5).
+ * Parse a typed percentage to the bps stored; `null` if blank, non-numeric or outside 0..100, never
+ * a coerced `0` (a cleared field read as free); strict: `'15abc'` is `null`. Rounded to whole bps,
+ * so a caller MUST render the result beside the field. Rationale: RESPONSIBILITIES.md §Frontend.
  */
 export function commissionPercentToBps(raw: string): number | null {
   const trimmed = raw.trim();

@@ -15,20 +15,12 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The check-in use case. Per-venue authorization first (invariant #13): {@link
- * VenueOwnership#assertOwns} on the acting operator, before any code lookup, so denial discloses
- * nothing. Then the guarded stamp on today's service-day row, today in {@code Europe/Tirane}
- * (invariant #6), which resolves the stay {@code COMPLETED} when it was the last service day; a
- * 0-row miss is classified against committed state — after the {@code UPDATE}, so a lost race reads
- * the winner's stamp and answers {@link CheckInResult.AlreadyCheckedIn}, never a double transition.
- * Publishes no event: nothing accrues and nothing refunds (the withdraw precedent).
- *
- * <p>A {@code CONFIRMED} stay whose service day today is attended is "already checked in" exactly
- * as a {@code COMPLETED} single-service day booking is; one with no attended service day today is a
- * scan on a day the stay does not cover. A swept {@code NO_SHOW} answers {@link
- * CheckInResult.WrongServiceDate} rather than falling through to {@code NotFound}: the booking
- * exists and is this venue's, so "no booking with that code here" would be false — its days have
- * simply passed.
+ * The check-in use case. {@link VenueOwnership#assertOwns} runs first (invariant #13), before any
+ * code lookup, so denial discloses nothing; then the guarded stamp on today's service-day row
+ * (today in {@code Europe/Tirane}, invariant #6), resolving the stay on its last day. A 0-row miss
+ * is read after the {@code UPDATE}, so a lost race is {@link CheckInResult.AlreadyCheckedIn}.
+ * A swept {@code NO_SHOW} answers {@link CheckInResult.WrongServiceDate}, not {@code NotFound}:
+ * the booking is this venue's, its days have passed. Rationale: RESPONSIBILITIES.md §booking.
  */
 @Service
 class CheckInService implements CheckInBooking {

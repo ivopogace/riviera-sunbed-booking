@@ -9,22 +9,12 @@ import org.springframework.context.annotation.Configuration;
 import ai.riviera.platform.notification.application.BookingLinks;
 
 /**
- * Binds the origin every booking mail's link is built on and hands it to the application layer as the
- * plain {@link BookingLinks} value — the {@code RequestProperties → RequestWindows} pattern,
- * keeping the configuration type at the adapter edge.
- *
- * <p><strong>The deployed value comes from {@code RIVIERA_RECOVERY_LINK_BASE_URL}</strong>
- * ({@code application.properties}), which follows the operator-approval notice's precedent: it reused
- * that variable rather than introducing a second origin knob. There is exactly one deployed origin —
- * the backend already serves the SPA same-origin — so a second environment variable could only
- * ever be set to the same value or, eventually, to a wrong one. The <em>property key</em> is this
- * module's own, because {@code riviera.recovery.*} belongs to the edge's recovery flows and a module
- * reaching into another context's namespace is the coupling this pattern exists to avoid.
- *
- * <p>Deliberately <strong>unconditional</strong> and not gated on the {@code mailer} profile, for
- * {@link MailTransportConfig}'s reason: the listener that needs it runs under every profile, the mock
- * transport included, so a profile-gated bean would leave it unconstructible everywhere except
- * production.
+ * Binds the origin every booking mail's link is built on and hands it to the application layer as
+ * the plain {@link BookingLinks} value (the {@code RequestProperties → RequestWindows} pattern).
+ * Deployed from {@code RIVIERA_RECOVERY_LINK_BASE_URL} under this module's own key, never the
+ * edge's {@code riviera.recovery.*}. <strong>Unconditional</strong>, not {@code mailer}-gated: its
+ * listener runs under every profile ({@link MailTransportConfig}'s reason). Rationale:
+ * RESPONSIBILITIES.md §notification.
  */
 @Configuration
 @EnableConfigurationProperties(BookingLinkConfig.BookingLinkProperties.class)

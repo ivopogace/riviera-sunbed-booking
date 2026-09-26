@@ -10,22 +10,13 @@ import ai.riviera.platform.payout.application.VenueChangeFeeSetting;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 
 /**
- * The platform-admin venue-change-fee surface: what the fee is now, and the write that changes it.
- * Driving adapter depending only on the module's {@link VenueChangeFeeSetting} port; hosted in the
- * module like the other module-owned admin surfaces.
+ * The platform-admin venue-change-fee surface: read the fee, and change it, via the
+ * {@link VenueChangeFeeSetting} port (which documents what a change reaches).
  *
- * <p><strong>Role-gated, not venue-scoped.</strong> The fee is one platform-wide commercial term, so
- * there is nothing for object-level authorization to check. Living under {@code /api/admin/**} takes
- * the invariant-#13 exemption, and the {@code ADMIN} gate in {@code SecurityConfig} is then the
- * <strong>whole</strong> authorization: a plain {@code OPERATOR} is {@code 403}, anonymous
- * {@code 401}.
- *
- * <p>What a change does and does not reach: {@link VenueChangeFeeSetting}.
- *
- * <p>Errors are the one RFC-7807 contract: a missing or out-of-range amount is
- * {@code 400 INVALID_REQUEST} via {@link InvalidApiRequestException#parsing} at the conversion
- * boundary. The audit record is written at the edge for every mutating {@code /api/admin/**} action,
- * so there is no instrumentation here.
+ * <p>One platform-wide term, so not venue-scoped: the {@code SecurityConfig} {@code ADMIN} gate is
+ * the whole authorization (#13 exempts {@code /api/admin/**}); {@code OPERATOR} gets {@code 403},
+ * anonymous {@code 401}. A missing or out-of-range amount is {@code 400 INVALID_REQUEST} via
+ * {@link InvalidApiRequestException#parsing}. The edge writes the audit record, not this class.
  */
 @RestController
 @RequestMapping("/api/admin/venue-change-fee")

@@ -3,20 +3,12 @@ package ai.riviera.platform.venue.vocabulary;
 import java.time.LocalTime;
 
 /**
- * The booking-relevant facts about a single set, resolved by id. Consumed by the {@code booking}
- * module to: enforce the online-pool rule on {@code pool} (invariant #3) before claiming, record
- * the booking amount from {@code price} (integer minor units, invariant #5), gate the sale on
- * {@code salesClose} and compute free-cancellation from {@code bookingCutoff} (both wall-clock
- * {@code LocalTime} in {@code Europe/Tirane}, invariant #4), and build the booking confirmation
- * summary (venue name + set label).
- *
- * <p>{@code bookingMode} tells the reserve flow whether the venue auto-confirms ({@code INSTANT})
- * or the booking starts as a pending request ({@code REQUEST}). {@code seasonClosure} is the venue's
- * closed-for-season state, the second arm of the sales fence — whether it admits the date is
- * {@code booking}'s rule. {@code maxStayDays} is the longest stay the venue takes, in days, or
- * {@code null} for any length this season; the reserve refuses a longer span before any claim.
- * Returned via {@link SetBookingFacts#setBookingInfo} so booking never reads venue's tables
- * (invariant #11).
+ * The booking-relevant facts about one set, for {@code booking} via
+ * {@code SetBookingFacts#setBookingInfo} so it never reads venue tables (invariant #11):
+ * {@code pool} for the online-pool rule (#3), {@code price} (minor units, #5), {@code salesClose}
+ * (the sale gate, #4) and {@code bookingCutoff} (free cancellation, #10), both wall-clock
+ * {@code Europe/Tirane}; {@code bookingMode}, {@code seasonClosure} and {@code maxStayDays}
+ * ({@code null}: any length) for the reserve fences; names for the summary.
  */
 public record SetBookingInfo(SetId setId, VenueId venueId, String venueName, String rowLabel,
 		int positionNo, Pool pool, MoneyView price, LocalTime bookingCutoff,

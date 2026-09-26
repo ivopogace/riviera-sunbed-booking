@@ -10,22 +10,13 @@ import org.springframework.stereotype.Service;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 
 /**
- * Writes one booking-confirmation mail attempt to the delivery log (#380), stamping the clock and
- * absorbing a failure of the write itself. Both writers go through here — the registry listener and
- * the admin resend — so the policy below is stated once rather than copied into two call sites.
+ * Writes one booking-confirmation mail attempt to the delivery log, stamping the clock and
+ * absorbing a failure of the write; both writers (registry listener, admin resend) use it.
  *
- * <p><strong>The write is best-effort relative to the send it describes, and that asymmetry is the
- * point.</strong> By the time this is called the mail has already been handed to the transport (or
- * deliberately withheld); the only thing left to lose is the evidence. Propagating a failed insert
- * from the automatic path would instead abort a listener that had already sent, leaving the
- * publication outstanding and duplicating the mail on the registry's next retry — trading a missing
- * history row for a second mail to the tourist. So a failed write costs a row and a {@code WARN},
- * and the admin view then reads "no attempts recorded", which is honest about what it knows.
- *
- * <p>Nothing branches on this log (see {@link ConfirmationMailAttempts}), so swallowing here cannot
- * change a delivery decision — the usual objection to a swallowed write does not reach it. The catch
- * is {@link DataAccessException}, not {@code RuntimeException}: a programming error in the mapping
- * above it is not something to absorb (`riviera-java-conventions` §6).
+ * <p><strong>Best-effort relative to the send it records:</strong> the mail is already sent or
+ * withheld, so a thrown insert would abort the listener and re-send the mail on the registry's
+ * retry; a failed write costs a row and a {@code WARN}. Nothing branches on the log
+ * ({@link ConfirmationMailAttempts}); only {@link DataAccessException} is absorbed, never a bug.
  */
 @Service
 public class ConfirmationAttemptRecorder {
@@ -41,8 +32,8 @@ public class ConfirmationAttemptRecorder {
 	}
 
 	/**
-	 * Record what became of one attempt. Never throws: see the class Javadoc for why the evidence is
-	 * the thing that gives way.
+	 * Record what became of one attempt. A failed write is logged, never thrown: see the class
+	 * Javadoc for why the evidence is the thing that gives way.
 	 */
 	public void recordAttempt(BookingId bookingId, MailAttemptSource source, MailAttemptOutcome outcome) {
 		try {

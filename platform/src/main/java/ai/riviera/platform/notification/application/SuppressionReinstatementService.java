@@ -7,21 +7,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * The reinstatement use case, package-private behind the {@link ReinstateSuppression} driving
- * port (invariant #11) with constructor injection into {@code final} fields.
- *
- * <p>It exists for the two things that must not live in a driving adapter: the lift instant comes
- * from the injected {@link Clock} rather than {@code Instant.now()} (invariant #6, and it makes the
- * stamp assertable), and the action leaves an audit record. No {@code @Transactional} — the adapter
- * does the whole lift in one statement, so a surrounding transaction would only look meaningful.
- *
- * <p><strong>The audit line carries technical data only</strong> — the outcome token and the
- * suppression reason, both closed sets — following the shipped structured logger exactly as
- * {@code AccountErasureService} does. Never the address, and deliberately never the {@code domain}
- * either: ADR-0012 calls a bare domain non-PII, which makes logging it look free, but V34's CHECK
- * bans only <em>edge</em> whitespace, so a junk address yields a domain that may contain a newline —
- * a log-forging vector ({@code riviera-java-conventions} §10). Two closed-set tokens have neither
- * problem.
+ * The reinstatement use case behind the {@link ReinstateSuppression} driving port, owning what must
+ * not live in a driving adapter: the lift instant from the injected {@link Clock} (invariant #6)
+ * and the audit record. No {@code @Transactional}: the adapter lifts in one statement. The audit
+ * line carries two closed-set tokens (outcome, reason) only, never the address or the
+ * {@code domain}: V34's CHECK bans only edge whitespace, so a junk domain can carry a newline, a
+ * log-forging vector ({@code riviera-java-conventions} §10).
  */
 @Service
 class SuppressionReinstatementService implements ReinstateSuppression {

@@ -8,24 +8,19 @@ import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
 /**
- * Driven (outbound) persistence port for customer <em>accounts</em> — internal to the module (not a
- * published named interface), implemented by {@code adapter/out}'s {@code JdbcCustomerAccounts}
- * (invariant #1 — JDBC only). Separate from the guest-contact {@code CustomerDirectory} (the account
- * identity is deliberately distinct from the guest row, design D-6). Emails reaching this port are
- * already normalized by {@link CustomerAccountService}.
- *
- * <p>A {@code public} interface (like {@code operator.application.Operators}) so the module's own
- * {@code adapter/out} can implement it across the sub-package boundary; it is <em>not</em> a published
- * {@code @NamedInterface}, so no other module can depend on it (invariant #11, enforced by
- * {@code ModularityTests}).
+ * Driven (outbound) persistence port for customer <em>accounts</em>, implemented by
+ * {@code JdbcCustomerAccounts} (invariant #1). Separate from the guest-contact
+ * {@code CustomerDirectory}: the account identity is deliberately distinct from the guest row.
+ * Emails arrive normalized by {@link CustomerAccountService}. {@code public} only so the module's
+ * own {@code adapter/out} can implement it; not a {@code @NamedInterface}, so no other module can
+ * depend on it (invariant #11, enforced by {@code ModularityTests}).
  */
 public interface CustomerAccountStore {
 
 	/**
-	 * The stored <em>password</em> credential for this normalized email, or empty if no account exists
-	 * <em>or the account has no local password</em> (an SSO-only account created by
-	 * {@link #resolveSsoAccount} — null hash). Filtering null-hash rows here keeps password
-	 * login a generic 401 for SSO-only accounts (non-enumeration, design D-8).
+	 * The stored <em>password</em> credential for this normalized email, or empty if no account
+	 * exists <em>or it has no local password</em> (SSO-only, null hash), so password login stays a
+	 * generic 401 for SSO-only accounts (non-enumeration).
 	 */
 	Optional<CustomerAccountCredential> findByEmail(String normalizedEmail);
 
@@ -33,21 +28,16 @@ public interface CustomerAccountStore {
 	Optional<CustomerAccountId> findIdByEmail(String normalizedEmail);
 
 	/**
-	 * Claim the email for a new account if it is free — an atomic {@code INSERT … ON CONFLICT DO
-	 * NOTHING}. Returns {@link RegistrationOutcome.Registered} with the new id when this call created
-	 * the row, or {@link RegistrationOutcome.AlreadyRegistered} when an account already held the email
-	 * (race-safe: a concurrent duplicate gets {@code AlreadyRegistered}, never a second row).
+	 * Claim the email for a new account if free (atomic {@code INSERT … ON CONFLICT DO NOTHING}):
+	 * {@link RegistrationOutcome.Registered} with the new id if this call created the row, else
+	 * {@link RegistrationOutcome.AlreadyRegistered}, race-safe against a concurrent duplicate.
 	 */
 	RegistrationOutcome insertIfAbsent(String normalizedEmail, String passwordHash);
 
 	/**
-	 * Resolve-or-create the account for an external {@code (provider, subject)} identity,
-	 * returning its {@link CustomerAccountId}. Idempotent on {@code (provider, subject)} and race-safe
-	 * via {@code INSERT … ON CONFLICT DO NOTHING} claims on both {@code customer_account.email} and
-	 * {@code customer_sso_identity (provider, subject)}: a returning subject reuses its linked account; a
-	 * first-seen subject links to an existing account when the (already-normalized, verified) email is
-	 * taken (auto-link), else creates a new password-less account. {@code email} is already normalized by
-	 * {@link CustomerAccountService}.
+	 * Resolve-or-create the account for an external {@code (provider, subject)}, idempotent and
+	 * race-safe ({@code ON CONFLICT DO NOTHING}). A returning subject reuses its account; a new one
+	 * auto-links to the account holding its verified email, else gets a new password-less account.
 	 */
 	CustomerAccountId resolveSsoAccount(SsoProvider provider, String subject, String normalizedEmail);
 
@@ -65,7 +55,7 @@ public interface CustomerAccountStore {
 	 */
 	void updatePasswordHash(CustomerAccountId accountId, String passwordHash);
 
-	/** Whether the email's account is verified (#256, was by-id S8 #113); empty if no account exists. */
+	/** Whether the email's account is verified; empty if no account exists. */
 	Optional<Boolean> emailVerifiedFor(String normalizedEmail);
 
 	/** The account's (normalized) email — its session principal name (for reset session revocation). */

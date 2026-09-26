@@ -13,20 +13,12 @@ import ai.riviera.platform.review.api.ReviewTombstones;
 import ai.riviera.platform.review.vocabulary.BookingRef;
 
 /**
- * Adapter answering {@link ReviewErasure} from the {@code booking} table — the {@code booking} module
- * owns that table, so "which bookings are this subject's?" is its fact — and handing the ids on to
- * {@code review}'s {@link ReviewTombstones}, which strips the texts from its own rows. Invariant #1:
- * explicit SQL via {@link JdbcClient}, no JPA.
- *
- * <p>The implementing side of a dependency-inverted <strong>driven (SPI) port</strong> declared in
- * {@code customer.spi}: the legal {@code booking → customer} and {@code booking → review} edges are
- * what let one adapter bridge the two leaves without either importing the other ({@code ModularityTests}).
- * The same shape as {@code JdbcGuestBookingHistory}, one call deeper.
- *
- * <p>Both reads sit on existing indexes ({@code booking_customer_id_idx}, the partial
- * {@code booking_account_id_idx}) and run on the shared, unbounded client: they are scrub steps
- * inside the erasure's own transaction, on the request path as well as the sweep's, so the
- * {@code JdbcAccountErasure} rule applies — a half-applied erasure is worth less than a slow one.
+ * Answers {@link ReviewErasure} from the {@code booking} table in explicit SQL (invariant #1) and
+ * hands the booking ids to {@code review}'s {@link ReviewTombstones}, which strips the texts: the
+ * legal {@code booking → customer} and {@code booking → review} edges bridge the two leaves. Both
+ * reads stay on the shared, unbounded client, like {@code JdbcAccountErasure}'s scrubs: they run
+ * inside the erasure's transaction, and a slow erasure beats a failed one. Rationale:
+ * RESPONSIBILITIES.md §booking, §customer.
  */
 @Repository
 class BookingReviewErasure implements ReviewErasure {

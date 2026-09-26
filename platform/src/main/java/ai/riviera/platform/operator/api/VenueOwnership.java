@@ -6,38 +6,31 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 
 /**
- * The {@code operator} module's published authorization port (invariant #13) — a synchronous
+ * The {@code operator} module's published authorization port (invariant #13), a synchronous
  * <em>inbound</em> ("call-me") query, so it lives in {@code api}, not {@code spi}. Every
- * venue-scoped application service calls {@link #assertOwns} as its first act to enforce that the
- * authenticated operator owns the venue it is acting on; a mismatch is a broken-object-level-
- * authorization attempt (OWASP API #1) and must be rejected with {@code 403}.
- *
- * <p>The check lives in the application service (not the controller alone) so no driving adapter
- * can bypass it. {@code operator} owns the mapping and answers the question; it does not sit in
- * the request path performing the enforcement (RESPONSIBILITIES.md).
+ * venue-scoped application service calls {@link #assertOwns} as its first act; a mismatch is a
+ * broken-object-level-authorization attempt (OWASP API #1), rejected with {@code 403}. Checked in
+ * the application service, not the controller alone, so no driving adapter can bypass it;
+ * {@code operator} answers, it does not enforce. Rationale: RESPONSIBILITIES.md §operator.
  */
 public interface VenueOwnership {
 
 	/**
 	 * Verify that {@code operator} owns {@code venue}; return normally if so, otherwise throw
-	 * {@link NotVenueOwnerException}.
+	 * {@code NotVenueOwnerException}.
 	 */
 	void assertOwns(OperatorId operator, VenueRef venue);
 
 	/**
-	 * The venues explicitly mapped to {@code operator}. With the owns-all bootstrap retired,
-	 * ownership is strictly this explicit mapping.
+	 * The venues explicitly mapped to {@code operator}; ownership is strictly this explicit
+	 * mapping.
 	 */
 	Set<VenueRef> ownedVenues(OperatorId operator);
 
 	/**
-	 * Record that {@code operator} owns {@code venue} — the write side of the ownership mapping,
-	 * used by <strong>creator-owns-on-create</strong>: the {@code venue} application service
-	 * calls this in the same transaction as the venue insert so a newly-created venue is owned by its
-	 * creator atomically (never a window where the creator is {@code 403}'d on its own venue). A
-	 * venue is owned by at most one operator ({@code operator_venue.venue_id} is the PK), so calling
-	 * this for an already-owned venue is a constraint violation — expected only for a freshly-created
-	 * venue with no prior owner.
+	 * Record that {@code operator} owns {@code venue} (creator-owns-on-create), called in the venue
+	 * insert's transaction so the creator is never {@code 403}'d on it. One owner per venue (PK
+	 * {@code operator_venue.venue_id}): assigning an already-owned venue is a constraint violation.
 	 */
 	void assignOwner(OperatorId operator, VenueRef venue);
 }

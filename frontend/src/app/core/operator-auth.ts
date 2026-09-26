@@ -61,11 +61,9 @@ export type OperatorPasswordChangeResult =
   | 'error';
 
 /**
- * Shown when the current-password field is left empty — from the client-side guard, and also from the
- * server, which names the case `MISSING_CURRENT_PASSWORD` (a code of its own, distinct from the
- * `INVALID_REQUEST` a policy violation uses — collapsed, this message would be the *only* thing standing
- * between the operator and "your new password is the wrong length"). Sourced from the customer constant like the
- * length message above: one wording for both principal types, no byte-for-byte copy to desync.
+ * Shown when the current password is left empty — client-side, or on the server's own
+ * `MISSING_CURRENT_PASSWORD` code (never folded into a policy violation's message). Aliases the
+ * customer constant, so both principal types share one wording with no copy to desync.
  */
 export const OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE = CURRENT_PASSWORD_REQUIRED_MESSAGE;
 
@@ -110,7 +108,7 @@ export class OperatorAuth extends SessionAuth {
 
   /**
    * True while the signed-in operator awaits admin approval (`operatorStatus === 'PENDING'`):
-   * the whole console works, but its venues stay hidden from tourists until approval (#694).
+   * the whole console works, but its venues stay hidden from tourists until approval.
    */
   readonly pendingApproval = computed(() => this.currentPrincipal()?.operatorStatus === 'PENDING');
 
@@ -147,15 +145,9 @@ export class OperatorAuth extends SessionAuth {
   }
 
   /**
-   * Self-register an operator account. The backend creates a PENDING account and does NOT
-   * sign in — a fresh and an already-taken username both return 202 with no session (non-enumeration,
-   * D-8) — so this establishes no principal and always resolves to `submitted` on a 2xx. The
-   * register surface follows up with a normal {@link signIn} using the same credentials: a PENDING
-   * account authenticates (#694), and a duplicate username surfaces as a plain failed sign-in.
-   *
-   * <p>`challenge` is the widget's solved proof-of-work payload, sent as the fence's header when
-   * present; the edge's three challenge codes come back as their own results so the page can restart
-   * the widget before the retry.
+   * Self-register a PENDING operator. Fresh and taken usernames both get 202, no session (D-8), so
+   * the caller then does {@link signIn}: a PENDING account authenticates, a taken name just fails.
+   * `challenge` (solved proof-of-work) goes as a header; its rejections return as own results.
    */
   async register(
     username: string,

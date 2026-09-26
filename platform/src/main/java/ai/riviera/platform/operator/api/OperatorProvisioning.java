@@ -3,22 +3,12 @@ package ai.riviera.platform.operator.api;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 
 /**
- * Published provisioning port for operator credentials (issue #74) — how a new operator gets an
- * account and how a password is rotated.
- *
- * <p><strong>Reachability has changed twice since #74's "no self-service HTTP endpoint" decision</strong>
- * (grill 2026-07-01), so that line no longer describes the system: <strong>#115</strong> made account
- * creation self-service via {@code POST /api/auth/operator/register} (into a {@code PENDING} account an
- * admin must approve), and <strong>#326</strong> made {@link #setPassword} self-service via
- * {@code POST /api/auth/operator/password} for an operator changing its <em>own</em> password after
- * proving the current one. What the original decision protected still holds and is worth stating
- * positively: no operator can provision or re-credential <em>another</em> account through this port, and
- * the bootstrap admin is excluded from the self-service path because its credential is env-managed
- * ({@code RIVIERA_OPERATOR_PASSWORD}, re-stamped every boot by the edge's credential initializer).
- *
- * <p>Both methods take an <strong>already-encoded</strong> credential hash: the edge encodes the raw
- * password with Spring Security's {@code PasswordEncoder} and passes the opaque result here, keeping
- * all crypto/Spring-Security out of the {@code operator} module (RV-BE-11). The module only stores it.
+ * Published provisioning port for operator credentials: direct account creation and password
+ * rotation. {@link #setPassword} is also self-service ({@code POST /api/auth/operator/password})
+ * for an operator's <em>own</em> password after proving the current one; no operator can provision
+ * or re-credential <em>another</em> account here, and the bootstrap admin (credential env-managed,
+ * {@code RIVIERA_OPERATOR_PASSWORD}) is excluded from self-service. Both methods take an
+ * already-encoded hash from the edge, keeping crypto out of this module (RV-BE-11).
  */
 public interface OperatorProvisioning {
 

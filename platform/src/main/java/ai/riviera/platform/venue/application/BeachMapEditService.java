@@ -19,21 +19,12 @@ import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The beach-map edit use cases (U7): place, re-place and remove a set, reprice and rename a row,
- * save the whole layout as a diff, and apply a batch of price/tier/pool changes. Package-private — the
- * public seam is the {@link EditBeachMap} port (invariant #11). The hard command validation lives
- * in the command records ({@link SetCommand}, {@link SetBatchCommand}); this service owns the
- * orchestration: existence checks, the row locks, the claim probes, conflict→{@link SetRejection}
- * mapping, and the transactional write through {@link Venues}. The bulk save is {@link LayoutWriter}'s
- * write with a gate that always proceeds — the remodel commit is the same write with the edge's gate. The DB UNIQUE constraints (V2/V12)
- * are the race-safe backstop behind the pre-checks. The profile and own-venues reads are
- * {@link VenueAdminService}'s; venue creation is {@link OnboardVenueService}'s.
- *
- * <p>Every write is guarded: its first act is {@link VenueOwnership#assertOwns} on the acting
- * {@link OperatorId}, so an operator cannot touch another operator's venue (invariant #13, BOLA) —
- * the check is here in the application service, not the controller, so no driving adapter can
- * bypass it. Which writes ask the claim question, and why the pool never does:
- * RESPONSIBILITIES.md §venue.
+ * The beach-map edits behind {@link EditBeachMap} (invariant #11): single-set edits, row
+ * reprice/rename, batch price/tier/pool, and the bulk save ({@link LayoutWriter}'s diff under an
+ * always-proceed gate; the remodel commit passes the edge's). Commands self-validate; this owns
+ * existence checks, row locks, claim probes, {@link SetRejection} mapping and the {@link Venues}
+ * write, DB UNIQUE constraints the backstop. {@link VenueOwnership#assertOwns} runs first on every
+ * write (invariant #13). Which writes ask the claim question, and why: RESPONSIBILITIES.md §venue.
  */
 @Service
 class BeachMapEditService implements EditBeachMap {
