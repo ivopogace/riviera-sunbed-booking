@@ -193,9 +193,9 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
 });
 
 describe('Discover photo-area contrast (theme-independent, issue #135; real photos since #142)', () => {
-  // `WORST_PHOTOS` (testing/glass-tokens.ts): the placeholder gradient's stops plus pure white and pure black — shared since #704 with the slideshow-chrome spec. Since #705 this file's only consumer is the location overlay, so the case that earns the set here is pure white (the dark scrim under white text); pure black earns its place in the specs that back light chrome on a photo.
+  // `WORST_PHOTOS` (testing/glass-tokens.ts): the placeholder gradient's stops plus pure white and pure black — shared with the slideshow-chrome spec. This file's only consumer is the location overlay, so the case that earns the set here is pure white (the dark scrim under white text); pure black earns its place in the specs that back light chrome on a photo.
 
-  // The mode-chip-on-glass assertion that stood here is GONE, not moved (#705). Its subject, the mode chip, now wears an opaque fill and is proven by shared/semantic-chip.contrast.spec.ts. Repointing it at the card's step chips was the wrong repair: those glyphs are aria-hidden decoration, which this file's own header excludes, and shared/photo-slideshow.contrast.spec.ts already proves the identical pair at the 3:1 bar WCAG 1.4.11 actually asks of them. Holding decoration to 4.5:1 here only invented a constraint the design never owed.
+  // The mode-chip-on-glass assertion that stood here is GONE, not moved. Its subject, the mode chip, now wears an opaque fill and is proven by shared/semantic-chip.contrast.spec.ts. Repointing it at the card's step chips was the wrong repair: those glyphs are aria-hidden decoration, which this file's own header excludes, and shared/photo-slideshow.contrast.spec.ts already proves the identical pair at the 3:1 bar WCAG 1.4.11 actually asks of them. Holding decoration to 4.5:1 here only invented a constraint the design never owed.
 
   it('the failure-panel "Try again" button (white) meets AA over both CTA-gradient stops', () => {
     for (const stop of CTA_STOPS) {
@@ -204,7 +204,7 @@ describe('Discover photo-area contrast (theme-independent, issue #135; real phot
   });
 
   it('location overlay (white) meets AA over the weakest scrim under the text band, over any photo', () => {
-    // Worst case (home.html's aspect-[3/2] band at the grid's 264px min width, 176px tall): the text clears the 0.68 stop with 16px margin, more than the old fixed-150px band's 9.5px (#135, #142).
+    // Worst case (home.html's aspect-[3/2] band at the grid's 264px min width, 176px tall): the text clears the 0.68 stop with 16px margin, more than the old fixed-150px band's 9.5px.
     const SCRIM = hexToRgb('0d2828');
     for (const stop of WORST_PHOTOS) {
       const backdrop = composite(SCRIM, 0.68, stop);

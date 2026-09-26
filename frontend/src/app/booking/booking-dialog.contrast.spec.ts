@@ -59,7 +59,7 @@ const BACK_INK = '#0a4f5e'; // --riv-back-ink (.btn-back text)
 const DARK_BACK_INK = '#b7dfe9';
 const BACK_HOVER_FILL: Glass = { color: WHITE, alpha: 0.75 }; // --riv-wash-hover (.btn-back:hover)
 const DARK_BACK_HOVER_FILL: Glass = { color: WHITE, alpha: 0.16 };
-// --riv-wash-hover-border: the button's own affordance boundary, tuned per theme to clear 3:1 (#839).
+// --riv-wash-hover-border: the button's own affordance boundary, tuned per theme to clear 3:1.
 const BACK_HOVER_BORDER: Glass = { color: hexToRgb(BACK_INK.slice(1)), alpha: 0.6 };
 const DARK_BACK_HOVER_BORDER: Glass = { color: hexToRgb(DARK_BACK_INK.slice(1)), alpha: 0.55 };
 

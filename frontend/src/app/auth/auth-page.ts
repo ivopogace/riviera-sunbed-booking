@@ -551,7 +551,7 @@ export class AuthPage {
       }
       return;
     }
-    // The 202 itself is session-less (D-8); a PENDING account signs in immediately (#694).
+    // The 202 itself is session-less (D-8); a PENDING account signs in immediately.
     const challenge = await this.challenge()?.solved();
     const result = await this.operatorAuth.register(identifier, password, contactEmail, challenge);
     if (result !== 'submitted') {

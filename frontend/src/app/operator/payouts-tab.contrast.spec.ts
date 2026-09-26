@@ -106,7 +106,7 @@ describe('PayoutsTab porcelain contrast (WCAG AA, #173)', () => {
   });
 
   it('the weather-confirm copy (--riv-warn-ink) meets AA over its own --riv-warn-fill (#881)', () => {
-    // Rendered via shared/confirm-panel since #881 — the same pairing #879 proved at 6.86:1.
+    // Rendered via shared/confirm-panel: the warn-token-skin spec proves this pair at 6.86:1.
     expect(contrastRatio(rgbToHex(WARN_INK), rgbToHex(WARN_FILL))).toBeGreaterThanOrEqual(
       AA_NORMAL,
     );

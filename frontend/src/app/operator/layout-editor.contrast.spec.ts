@@ -39,7 +39,7 @@ import { declarationsOf } from '../../testing/stylesheet-tokens';
 
 // --riv-cta-grad stops (the AA-safe darkened teal, shared with every tourist/operator CTA).
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
-// The "Facing the sea" banner: solid white on the restyle's sea teal (shared BeachGridFrame, #672).
+// The "Facing the sea" banner: solid white on the restyle's sea teal (shared BeachGridFrame).
 const SEA_BANNER_STOPS = ['#0e7a89', '#0c6675'];
 // beach-cell.ts: the gap cell's dashed border is a CARD_INK tint at this alpha.
 const GAP_BORDER_ALPHA = 0.55;

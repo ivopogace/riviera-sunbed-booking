@@ -40,7 +40,7 @@ class VenuePhotoService implements VenuePhotos, VenuePhotoModeration {
 
 	@Override
 	public PhotoUploadResult upload(OperatorId operator, VenueId venueId, PhotoSlot slot, byte[] image) {
-		// Deliberately NOT @Transactional (review finding #142 F-4): the CPU-heavy image pipeline
+		// Deliberately NOT @Transactional: the CPU-heavy image pipeline
 		// must run OUTSIDE any DB transaction — a service-level tx would pin a pool connection
 		// through a multi-second decode/resize of a 25MB upload and starve unrelated requests.
 		// Atomicity lives where it's needed: the adapter's replace() is itself @Transactional.
@@ -63,7 +63,7 @@ class VenuePhotoService implements VenuePhotos, VenuePhotoModeration {
 
 	@Override
 	public List<PhotoSlotView> slotsOf(VenueId venueId) {
-		// No ownership check by design (#511): the ADMIN role gate is this path's whole authorization.
+		// No ownership check by design: the ADMIN role gate is this path's whole authorization.
 		Map<PhotoSlot, String> previewBySlot = new EnumMap<>(PhotoSlot.class);
 		for (PhotoMetadata photo : storage.listMetadata(venueId)) {
 			photo.variants().stream()
@@ -80,7 +80,7 @@ class VenuePhotoService implements VenuePhotos, VenuePhotoModeration {
 
 	@Override
 	public boolean takedown(VenueId venueId, PhotoSlot slot) {
-		// No ownership check by design (#504): the ADMIN role gate is this path's whole authorization.
+		// No ownership check by design: the ADMIN role gate is this path's whole authorization.
 		return storage.delete(venueId, slot);
 	}
 

@@ -116,7 +116,7 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     fixture.componentRef.setInput('venueName', 'Miramar Beach Club');
     dialog = fixture.componentInstance;
     httpMock = TestBed.inject(HttpTestingController);
-    // Resolve the pre-reserve terms quote (#795): the pending httpResource would park whenStable.
+    // Resolve the pre-reserve terms quote: the pending httpResource would park whenStable.
     fixture.detectChanges();
     httpMock.expectOne(TERMS_URL).flush(FREE_TERMS);
     await fixture.whenStable();
@@ -432,7 +432,7 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
       .flush(AWAITING, { status: 202, statusText: 'Accepted' });
     await fixture.whenStable();
 
-    // The dialog stamps its resolved quote onto the hand-off so the pay page can repeat it (#795).
+    // The dialog stamps its resolved quote onto the hand-off so the pay page can repeat it.
     expect(awaiting).toEqual({ ...AWAITING, cancellationTerms: FREE_TERMS });
     expect(booked).toBe(false);
     expect(probe().submitting()).toBe(false);

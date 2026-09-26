@@ -270,7 +270,7 @@ describe('BeachMapCanvas (#672)', () => {
       component.railCodes.set(codes);
       component.loading.set(false);
       detect();
-      // A minimum, not the #724 cap: the cap-sized rail costs the desktop map its fits-whole margin.
+      // A minimum, not the full cap: the cap-sized rail costs the desktop map its fits-whole margin.
       const loaded = railColumn(host).className;
       expect(loaded, codes).toContain('min-w-[54px]');
 
@@ -491,7 +491,7 @@ describe('BeachMapCanvas (#672)', () => {
     const vp = viewport(host);
     expect(vp.getAttribute('tabindex')).toBe('0');
     expect(vp.getAttribute('aria-label')).toBe('Beach map');
-    // aria-label is prohibited on role=generic — a labelled viewport must be a named region (#674 F-4).
+    // aria-label is prohibited on role=generic — a labelled viewport must be a named region.
     expect(vp.getAttribute('role')).toBe('region');
   });
 
@@ -525,7 +525,7 @@ describe('BeachMapCanvas (#672)', () => {
 
     component.dragPan.set(false);
     detect();
-    // #674 F-3 suppressed this outright; the wording, not the hint, was what named the wrong gesture.
+    // Off drag-pan the hint stays: its wording, not the hint, is what could name the wrong gesture.
     expect(host.querySelector('[data-testid="scroll-hint"]')?.textContent?.trim()).toBe(
       'Scroll, or drag the scrollbar, to see the whole beach.',
     );
@@ -693,7 +693,7 @@ describe('BeachMapCanvas (#672)', () => {
     const children = frameChildren(host);
     const banner = bannerIndex(children);
     const band = children[banner + 1];
-    // The whole point of #701: decode the colours BEFORE reading the tiles.
+    // The legend band's whole point: decode the colours BEFORE reading the tiles.
     expect(band.querySelector('[data-testid="legend-note"]')).toBeTruthy();
     expect(children[banner + 2].matches('[data-riv-scroller]')).toBe(true);
 

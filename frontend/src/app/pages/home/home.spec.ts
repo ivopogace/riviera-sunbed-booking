@@ -601,7 +601,7 @@ describe('Home (venue discovery)', () => {
     await fixture.whenStable();
 
     const loading = el().querySelector('[data-testid="loading"]')!;
-    // Decoration only: it used to BE the live region, born holding its text (#741).
+    // Decoration only: a live region born holding its text is never announced.
     expect(loading.getAttribute('aria-live')).toBeNull();
     expect(loading.getAttribute('aria-hidden')).toBe('true');
     const skeletons = loading.querySelectorAll('[data-testid="skeleton-card"]');

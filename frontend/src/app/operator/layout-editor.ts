@@ -492,7 +492,7 @@ export class LayoutEditor {
       untracked(() => this.resetForVenue(id));
     });
 
-    // Scroll the armed chip into view on load/switch — the mobile rail scrolls, not wraps (#715).
+    // Scroll the armed chip into view on load/switch — the mobile rail scrolls, not wraps.
     effect(() => {
       const index = TOOL_ORDER.indexOf(this.resolvedTool());
       const chips = this.toolChips();
@@ -704,7 +704,7 @@ export class LayoutEditor {
     try {
       await firstValueFrom(this.console.renameRow(venueId, from, to, expectedVersion));
       if (this.epoch !== epoch) {
-        return; // a venue switch superseded this rename (#180)
+        return; // a venue switch superseded this rename
       }
       this.storedRowNames.update((names) => names.map((name, i) => (i === y ? to : name)));
       // A rename saves independently of the bulk save, so a later Discard mustn't revert it too.
@@ -719,7 +719,7 @@ export class LayoutEditor {
       this.venueMap.reset(); // this row's label just moved server-side — the shared snapshot is stale
     } catch (error) {
       if (this.epoch !== epoch) {
-        return; // a venue switch superseded this rename (#180)
+        return; // a venue switch superseded this rename
       }
       const code = rowNameErrorOf(error);
       if (code === 'STALE_WRITE') {
@@ -770,7 +770,7 @@ export class LayoutEditor {
   /** Paint one cell with the active brush — the keyboard/click path (Enter/Space fire the button click). */
   protected paintCell(r: number, c: number): void {
     if (this.canvas()?.panGestureActive()) {
-      return; // Space-drag pans at 100% zoom (#713); it never also paints
+      return; // Space-drag pans at 100% zoom; it never also paints
     }
     const tool = this.activeBrush();
     const lock = this.lockAt(r, c);
@@ -1143,7 +1143,7 @@ export class LayoutEditor {
     try {
       await firstValueFrom(this.console.replaceLayout(venueId, { sets, expectedVersion }));
       if (this.epoch !== epoch) {
-        return; // a venue switch superseded this save (#180); saving clears in finally
+        return; // a venue switch superseded this save; saving clears in finally
       }
       this.afterSaved(sets, expectedVersion);
     } catch (error) {
@@ -1247,11 +1247,11 @@ export class LayoutEditor {
     const epoch = this.epoch;
     this.reloading.set(true);
     this.reloadFailed.set(false);
-    this.venueMap.reset(); // the other tabs must not serve the pre-conflict layout either (#486)
+    this.venueMap.reset(); // the other tabs must not serve the pre-conflict layout either
     this.console.beachMap(venueId).subscribe({
       next: (view: OperatorBeachMap) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this reload (#180)
+          return; // a venue switch superseded this reload
         }
         const venue = view.map;
         // Success: NOW replace the in-progress grid with the server's latest layout + token, clear the banner.
@@ -1274,7 +1274,7 @@ export class LayoutEditor {
       },
       error: (error: unknown) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this reload (#180)
+          return; // a venue switch superseded this reload
         }
         // Failure: keep the painted grid, the stale token, and the banner; show a retry hint — no data loss.
         this.reloadFailed.set(true);
@@ -1323,7 +1323,7 @@ export class LayoutEditor {
     this.console.beachMap(venueId).subscribe({
       next: (view: OperatorBeachMap) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this load — never seed the new venue's editor (#180)
+          return; // a venue switch superseded this load — never seed the new venue's editor
         }
         const venue = view.map;
         this.reading.set(false);
@@ -1336,7 +1336,7 @@ export class LayoutEditor {
       },
       error: (error: unknown) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this load (#180)
+          return; // a venue switch superseded this load
         }
         this.reading.set(false);
         this.loadFailed.set(true);
@@ -1370,7 +1370,7 @@ export class LayoutEditor {
     for (const s of sets) {
       storedByRow.set(s.gridY - 1, s.rowLabel);
     }
-    // Preserve each row's loaded label for a lossless save (#723); an all-gap row takes its letter.
+    // Preserve each row's loaded label for a lossless save; an all-gap row takes its letter.
     const names = grid.map((_, y) => storedByRow.get(y) ?? gridRowLabel(y));
     this.rowNames.set(names);
     this.baselineRowNames.set(names);

@@ -269,7 +269,7 @@ describe('PricingTab (#174)', () => {
     // Genuinely locked, not merely announced — aria-disabled would leave the field typable.
     expect(input('B').readOnly).toBe(true);
     expect(input('B').hasAttribute('aria-disabled')).toBe(false);
-    // But NOT `disabled`: that drops the field from the tab order, which blurs it to `<body>` (#625).
+    // But NOT `disabled`: that drops the field from the tab order, which blurs it to `<body>`.
     expect(input('B').disabled).toBe(false);
 
     // A second edit (row B) while A is in flight is ignored — no concurrent PUT, B's input is restored.
@@ -541,6 +541,73 @@ describe('PricingTab (#174)', () => {
 
     expect(rows()).toHaveLength(1);
     expect(rows()[0].getAttribute('data-row')).toBe('C');
+  });
+
+  // ---- A venue-1 reprice or read that settles after an in-place switch to venue 2 ----
+
+  /** Switch in place to venue 2 and settle its read: `sets` at version 2. */
+  function switchToVenue2(sets: SetView[]): void {
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({ id: 2, name: 'W', sets, setVersion: 2 });
+    fixture.detectChanges();
+  }
+
+  const VENUE_2_SETS = [seat(9, 'C', 1, 'STANDARD', 'ONLINE', 1500, 1, 1)];
+
+  it('drops a superseded reprice success after a venue switch', async () => {
+    render(SEED, 7);
+    editRow('A', '40');
+    const put = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'),
+    );
+
+    switchToVenue2(VENUE_2_SETS);
+    put.flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('pricing-saved-announce').textContent?.trim()).toBe('');
+    // The proof the token wasn't stamped: venue 2's reprice echoes ITS version (2), not 7+1.
+    editRow('C', '20');
+    const venue2Put = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/2/rows/C/price'),
+    );
+    expect(body(venue2Put).expectedVersion).toBe(2);
+    venue2Put.flush(null);
+    await fixture.whenStable();
+  });
+
+  it('shows no stale banner on venue 2 for a superseded venue-1 reprice conflict', async () => {
+    render(SEED, 7);
+    editRow('A', '40');
+    const put = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'),
+    );
+
+    switchToVenue2(VENUE_2_SETS);
+    put.flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="pricing-stale-banner"]')).toBeNull();
+    expect(input('C').value).toBe('15');
+  });
+
+  it('never reports the old venue’s late read failure against venue 2', () => {
+    configure();
+    host = fixture.nativeElement as HTMLElement;
+    switchToVenue2([]);
+    // The superseded venue-1 read fails late — venue 2's empty state stays, never a load error.
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="pricing-load-error"]')).toBeNull();
+    expect(byId('pricing-empty')).toBeTruthy();
   });
 });
 

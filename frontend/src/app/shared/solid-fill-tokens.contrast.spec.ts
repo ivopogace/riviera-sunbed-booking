@@ -119,10 +119,10 @@ const FILL_ROLES = [
  * prompt to retire the list rather than let it quietly stop checking anything.
  */
 const SURVIVORS: readonly (readonly [string, string])[] = [
-  // `#0a6e85`'s eight console-ink rows left with #848 — see this list's header.
+  // `#0a6e85`: no rows, its console inks are `--riv-console-accent-ink` — see this list's header.
   // `#0a5f74` as the dialog head's gradient stop (the editors' selection rings moved onto the themed `--riv-accent-ink`).
   ['booking/booking-dialog.ts', '#0a5f74'],
-  // `#a3160e`'s four class-O rows left with #852 — see this list's header.
+  // `#a3160e`: no rows, its class-O tints are `--riv-alert-tint` — see this list's header.
 ];
 
 describe('Solid fill token family (WCAG AA + theme invariance, #854)', () => {
@@ -172,7 +172,7 @@ describe('Solid fill token family (WCAG AA + theme invariance, #854)', () => {
       [],
     );
 
-    // And the declaration comment now answers #861 rather than deferring to it.
+    // And the declaration comment answers the question itself rather than deferring it.
     expect(STYLESHEET).not.toContain('#861 settles whether');
   });
 

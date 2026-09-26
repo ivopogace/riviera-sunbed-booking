@@ -32,7 +32,7 @@ class OnboardVenueService implements OnboardVenue {
 	@Override
 	@Transactional
 	public VenueId onboard(OperatorId creator, NewVenueCommand command) {
-		// The platform's term, stamped here so no driving adapter can supply a rate (issue #692).
+		// The platform's term, stamped here so no driving adapter can supply a rate.
 		VenueId id = new VenueId(venues.insertVenue(command, creation.defaultCommissionBps()));
 		// Ownership is written atomically with the insert: if it fails the whole create rolls back.
 		ownership.assignOwner(creator, new VenueRef(id.value()));

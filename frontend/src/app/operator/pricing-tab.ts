@@ -187,7 +187,7 @@ export class PricingTab {
     try {
       await firstValueFrom(this.console.repriceRow(venueId, row.label, price, expectedVersion));
       if (this.epoch !== epoch) {
-        return; // a venue switch superseded this reprice — don't write its outcome over the new venue (#180)
+        return; // a venue switch superseded this reprice — don't write its outcome over the new venue
       }
       this.savedRow.set(row.label);
       // The conditional write bumped set_version by one; advance the token so the next row edit isn't stale.
@@ -196,7 +196,7 @@ export class PricingTab {
       this.venueMap.reset();
     } catch (error) {
       if (this.epoch !== epoch) {
-        return; // a venue switch superseded this reprice (#180); `saving` still clears in finally
+        return; // a venue switch superseded this reprice; `saving` still clears in finally
       }
       if (previous) {
         this.applyRowPrice(row.label, previous); // revert only this row, leaving concurrent edits intact
@@ -258,15 +258,15 @@ export class PricingTab {
     this.venueMap.load(venueId, todayBookingDate(new Date())).subscribe({
       next: (venue) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this load (#180)
+          return; // a venue switch superseded this load
         }
         this.sets.set([...venue.sets]);
-        this.loadedSetVersion.set(venue.setVersion ?? null); // #226: the token for the next reprice
+        this.loadedSetVersion.set(venue.setVersion ?? null); // the next reprice's stale-write token
         this.loaded.set(true);
       },
       error: (error: unknown) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this load (#180)
+          return; // a venue switch superseded this load
         }
         // A transient read failure must NOT read as "no sets yet" (a dead-end) — show an error.
         this.loadError.set(true);

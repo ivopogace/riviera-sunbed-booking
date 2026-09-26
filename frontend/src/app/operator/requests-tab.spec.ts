@@ -128,7 +128,7 @@ describe('RequestsTab (#176)', () => {
 
     const loading = el.querySelector('[data-testid="requests-loading"]')!;
     expect(loading.querySelectorAll('[data-testid="request-skeleton-card"]').length).toBe(3);
-    // The sentence the skeleton replaces; a mirrored shape says it without a reflow (#744).
+    // The sentence the skeleton replaces; a mirrored shape says it without a reflow.
     expect(loading.textContent).not.toContain('Loading requests');
 
     flushLoad([]);
@@ -757,6 +757,65 @@ describe('RequestsTab (#176)', () => {
 
     expect(cards()).toHaveLength(1);
     expect(store.count()).toBe(1);
+  });
+
+  /** Switch in place to venue 2 and settle both its reads, with `queue` as its pending requests. */
+  function switchToVenue2(queue: PendingRequest[]): void {
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/booking-requests'))
+      .flush(queue);
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/2') &&
+          !r.url.includes('/booking-requests'),
+      )
+      .flush({ id: 2, name: 'W', beach: 'DHERMI', region: 'HIMARE', sets: SEED_SETS });
+    fixture.detectChanges();
+  }
+
+  it('drops a superseded accept’s outcome after a venue switch', () => {
+    render([request({ bookingId: 11 })]);
+    button(/Accept/).click();
+    fixture.detectChanges();
+    const accept = http.expectOne(
+      (r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/booking-requests/11/accept'),
+    );
+
+    switchToVenue2([request({ bookingId: 21 }), request({ bookingId: 22, setId: 2 })]);
+    accept.flush({ bookingId: 11, status: 'AWAITING_PAYMENT' });
+    fixture.detectChanges();
+
+    // No venue-1 notice, no re-read, and venue 2's queue and badge stand as its own read left them.
+    expect(byId('requests-notice')?.textContent?.trim()).toBe('');
+    http.expectNone((r) => r.url.includes('/api/venues/2/booking-requests'));
+    expect(cards()).toHaveLength(2);
+    expect(store.count()).toBe(2);
+  });
+
+  it('never reports the old venue’s late queue failure against venue 2', () => {
+    configure();
+    host = fixture.nativeElement as HTMLElement;
+    switchToVenue2([request({ bookingId: 21 })]);
+    // The superseded venue-1 queue read fails late — venue 2's queue stays, never a load error.
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
+      .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/1') &&
+          !r.url.includes('/booking-requests'),
+      )
+      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED_SETS });
+    fixture.detectChanges();
+
+    expect(byId('requests-load-error')).toBeNull();
+    expect(cards()).toHaveLength(1);
   });
 });
 

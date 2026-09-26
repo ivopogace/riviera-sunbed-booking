@@ -66,7 +66,7 @@ describe('Photo-slideshow chrome contrast over any photo (WCAG 1.4.11, issue #70
   });
 
   it('the step chip glyph reads at 3:1 on the chip glass over any photo', () => {
-    // Already true before #704 (the 0.85 glass floors the chip at rgb(217) even over black), pinned so a glass retune cannot quietly take it away.
+    // Holds on the glass alone (the 0.85 glass floors the chip at rgb(217) even over black), pinned so a glass retune cannot quietly take it away.
     for (const photo of WORST_PHOTOS) {
       const chip = composite(MODE_CHIP_GLASS.color, MODE_CHIP_GLASS.alpha, photo);
       expect(

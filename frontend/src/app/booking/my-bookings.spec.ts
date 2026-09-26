@@ -404,7 +404,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
     const host = fixture.nativeElement as HTMLElement;
 
     const loading = host.querySelector('[data-testid="my-bookings-loading"]')!;
-    // Decoration now: it used to be the live region, born holding its text (#741).
+    // Decoration only: a live region born holding its text is never announced.
     expect(loading.getAttribute('aria-live')).toBeNull();
     expect(loading.getAttribute('aria-hidden')).toBe('true');
     expect(loading.querySelectorAll('.skeleton')).toHaveLength(6);
@@ -564,17 +564,17 @@ describe('MyBookings (device-local list, issue #139)', () => {
       const rows = host.querySelectorAll('[data-testid="booking-row"]');
       expect(rows).toHaveLength(1);
       expect(rows[0].textContent).toContain('DEVONLY1');
-      // …surfaced with a retry as an `alert`, not hidden — a `status` there announces nothing (#745).
+      // …surfaced with a retry as an `alert`, not hidden — a `status` there announces nothing.
       const accountError = host.querySelector('[data-testid="account-error"]')!;
       expect(accountError).not.toBeNull();
       expect(accountError.getAttribute('role')).toBe('alert');
       expect(host.querySelector('[data-testid="account-retry"]')).not.toBeNull();
-      // Silent: bookings made elsewhere may be missing, so "loaded" overstates it (#741 review).
+      // Silent: bookings made elsewhere may be missing, so "loaded" overstates it.
       expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
     });
 
     it('stays silent while the account read is still in flight (#741 re-review)', async () => {
-      // The device rows clear `loading` while the account list is still out (the gap #741's re-review found).
+      // The device rows clear `loading` while the account list is still out, the gap this test pins.
       seedCodes(['DEVONLY1']);
       const reads: Subject<MyBookingSummary[]>[] = [];
       const service = {
@@ -598,7 +598,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
       expect(announcer.textContent?.trim()).toBe('');
       expect(host.querySelector('[data-testid="account-error"]')).not.toBeNull();
 
-      // accountError stays true for the whole retry round trip (#746 RV-FE-9) — still silent.
+      // accountError stays true for the whole retry round trip — still silent.
       host.querySelector<HTMLButtonElement>('[data-testid="account-retry"]')!.click();
       await fixture.whenStable();
       fixture.detectChanges();
@@ -685,7 +685,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
-      // The row stays 'failed' — same button, same DOM node — for the whole round trip (#746 RV-FE-9).
+      // The row stays 'failed' — same button, same DOM node — for the whole round trip.
       expect(host.querySelector('[data-testid="booking-row-loading"]')).toBeNull();
       expect(host.querySelector('[data-testid="booking-row-failed"]')).not.toBeNull();
       expect(retryButton.getAttribute('aria-disabled')).toBe('true');
@@ -860,7 +860,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
     });
 
     it('retry re-loads the account list after a failure, staying busy and focused throughout (#746 RV-FE-9)', async () => {
-      // A device row already renders, so `showSkeleton()` never takes over (#746's exact repro).
+      // A device row already renders, so `showSkeleton()` never takes over: the retry shows busy.
       seedCodes(['DEVONLY1']);
       const second = new Subject<MyBookingSummary[]>();
       let calls = 0;

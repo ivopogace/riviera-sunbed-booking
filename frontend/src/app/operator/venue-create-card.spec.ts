@@ -41,7 +41,7 @@ describe('VenueCreateCard (#278)', () => {
     httpMock
       .expectOne(`${environment.apiBaseUrl}/api/auth/me`)
       .flush({ username: 'operator', principalType: 'OPERATOR' });
-    // The card discloses the platform commission from the server-served default (#692).
+    // The card discloses the platform commission from the server-served default.
     httpMock
       .expectOne(`${environment.apiBaseUrl}/api/venue-defaults`)
       .flush({ commissionBps: 500 });
@@ -99,7 +99,7 @@ describe('VenueCreateCard (#278)', () => {
     expect(
       host().querySelector<HTMLSelectElement>('[data-testid="venue-create-booking-mode"]')?.value,
     ).toBe('INSTANT');
-    // The commission input is gone (#692): the platform stamps the rate; nothing to type into.
+    // No commission input: the platform stamps the rate; nothing to type into.
     expect(host().querySelector('input[inputmode="numeric"]')).toBeNull();
     expect(host().querySelector('[data-testid="venue-create-commission"]')).toBeNull();
     expect(host().querySelector<HTMLInputElement>('input[type="time"]')?.value).toBe('18:00');
@@ -184,7 +184,7 @@ describe('VenueCreateCard (#278)', () => {
       payoutCurrency: 'EUR',
       bookingCutoff: '18:00',
     });
-    // The payload carries no rate at all — the server would reject one with a 400 (#692).
+    // The payload carries no rate at all — the server would reject one with a 400.
     expect(createReq.request.body).not.toHaveProperty('commissionBps');
     // Session model: the HttpOnly cookie is the credential — withCredentials, no header.
     expect(createReq.request.headers.has('Authorization')).toBe(false);

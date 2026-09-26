@@ -38,7 +38,7 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 
 	@Override
 	public Optional<CustomerAccountCredential> findByEmail(String normalizedEmail) {
-		// password_hash IS NOT NULL excludes SSO-only accounts (S4 #112): they have no local password, so
+		// password_hash IS NOT NULL excludes SSO-only accounts: they have no local password, so
 		// the edge sees "no credential" and password login returns the generic 401 (non-enumeration D-8).
 		return jdbc.sql("""
 				SELECT email, password_hash FROM customer_account

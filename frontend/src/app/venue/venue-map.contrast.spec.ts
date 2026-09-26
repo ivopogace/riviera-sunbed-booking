@@ -105,7 +105,7 @@ const TILE_SURFACES: readonly TileSurface[] = [
   { fg: '#0f7d8c', fill: WHITE, alpha: 0.75, usage: 'available tile' },
   { fg: '#875911', fill: hexToRgb('fbf1d9'), alpha: 0.85, usage: 'premium (front-row) tile' },
   { fg: '#566560', fill: WHITE, alpha: 0.2, usage: 'ghost taken tile' },
-  // css:S7924 stayed quiet on the translucent chips (PR #673); if it re-fires, solidify per failure-panel.
+  // css:S7924 stayed quiet on the translucent chips; if it re-fires, solidify per failure-panel.
   { fg: '#0a4f5e', fill: WHITE, alpha: 0.6, usage: 'row-code chip' },
   { fg: '#0a4f5e', fill: WHITE, alpha: 0.8, usage: 'zone price chip' },
 ];
@@ -242,7 +242,7 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
     expectAaOverStops(theme.headInk, theme.headInkFaintAlpha, theme.headerGlass, theme.stops);
   });
 
-  // The mode-pill / "New"-pill proof that stood here MOVED to shared/semantic-chip.contrast.spec.ts (#705). It composited --riv-chip-bg over this panel's glass over every background stop, once per theme; the pills now wear an opaque solid fill, so a single ink/fill pair proves them on every surface and in both themes at once. Moved rather than dropped — and the successor is the stronger claim, because it cannot be invalidated by a change to the panel beneath.
+  // The mode-pill / "New"-pill proof that stood here MOVED to shared/semantic-chip.contrast.spec.ts. It composited --riv-chip-bg over this panel's glass over every background stop, once per theme; the pills now wear an opaque solid fill, so a single ink/fill pair proves them on every surface and in both themes at once. Moved rather than dropped — and the successor is the stronger claim, because it cannot be invalidated by a change to the panel beneath.
 
   it('date field text (dark ink) meets AA on the near-opaque field over the header glass', () => {
     for (const stop of theme.stops) {

@@ -117,7 +117,7 @@ describe('AuthPage a11y (#277)', () => {
   });
 
   it('has no serious violations on the submitted fallback card', async () => {
-    // The card renders only when the post-register auto-sign-in cannot complete (#694).
+    // The card renders only when the post-register auto-sign-in cannot complete.
     const host = await render({ audience: 'operator', mode: 'register' });
     const operator = TestBed.inject(OperatorAuth) as unknown as ReturnType<typeof stubAuth>;
     operator.signIn.mockResolvedValue('error');

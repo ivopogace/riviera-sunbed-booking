@@ -57,7 +57,7 @@ describe('rowPriceLabel', () => {
   });
 
   it('names an all-premium row by its tier, whatever its label says', () => {
-    // The #701 legend labels every premium tile "Front row"; two at one price must read alike.
+    // The map legend labels every premium tile "Front row"; two at one price must read alike.
     expect(labelled('A', 'PREMIUM', 'ONLINE', 5000)).toBe('€50 · Front row');
     expect(labelled('Front row · Sea view', 'PREMIUM', 'ONLINE', 4500)).toBe('€45 · Front row');
     expect(labelled('Cabana', 'PREMIUM', 'ONLINE', 4500)).toBe('€45 · Front row');

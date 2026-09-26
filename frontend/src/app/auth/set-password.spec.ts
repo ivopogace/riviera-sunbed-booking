@@ -123,7 +123,7 @@ describe('SetPassword', () => {
   it('prompts to sign in when signed out', async () => {
     const fixture = await render(authStub({ signedIn: false }));
     expect(text(fixture, 'setpw-signed-out')).toContain('Sign in to manage your account');
-    // Not restoring is not signed in, so the announcer says nothing (#741 review).
+    // Not restoring is not signed in, so the announcer says nothing.
     const host = fixture.nativeElement as HTMLElement;
     expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
   });

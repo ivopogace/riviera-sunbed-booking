@@ -165,7 +165,7 @@ describe('LayoutEditor (#172)', () => {
     expect(host.querySelector('[data-testid="layout-cell"]')).toBeNull();
     expect(host.querySelector('[data-testid="layout-save-bar"]')).toBeNull();
 
-    // The sentence the skeleton replaces; a mirrored shape says it without a reflow (#744).
+    // The sentence the skeleton replaces; a mirrored shape says it without a reflow.
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
       .flush({ map: { id: 1, name: 'V', sets: [], setVersion: 0 }, locks: [] });
@@ -336,7 +336,7 @@ describe('LayoutEditor (#172)', () => {
     cells()[0].dispatchEvent(new MouseEvent('mousedown', { buttons: 1 }));
     cells()[1].dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
     cells()[2].dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
-    // Painting ends on release anywhere — the paint-end listener is document-level (#672 slice 2).
+    // Painting ends on release anywhere — the paint-end listener is document-level.
     document.dispatchEvent(new MouseEvent('mouseup'));
     fixture.detectChanges();
 
@@ -1446,7 +1446,7 @@ describe('LayoutEditor (#172)', () => {
 
   it('clears a rename error when a stale reload re-indexes the rows (#726 review F-11)', async () => {
     renderSaved();
-    // Not a LOCAL duplicate, so #723's guard lets the bulk save through; only the server refuses it.
+    // Not a LOCAL duplicate, so the duplicate-name guard passes the bulk save; the server refuses.
     setRowName(1, 'Front row');
     rowNameSaves()[1].click();
     http
@@ -1630,6 +1630,82 @@ describe('LayoutEditor (#172)', () => {
     expect(cells()[0].getAttribute('data-state')).toBe('walkin');
   });
 
+  /** Venue 1 saves into a 409 and the operator presses Reload; returns the in-flight reload GET. */
+  async function staleReloadInFlight(): Promise<TestRequest> {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)], 3);
+    useBulkMode();
+    byId('layout-tool-walkin').click();
+    fixture.detectChanges();
+    cells()[0].click();
+    fixture.detectChanges();
+    byId('layout-save').click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    byId('layout-stale-reload').click();
+    return http.expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'));
+  }
+
+  /** Switch in place to venue 2 and settle its read: one standard set at version 3. */
+  function switchToVenue2(): void {
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({
+        map: { id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 3 },
+        locks: [],
+      });
+    fixture.detectChanges();
+    useBulkMode(); // venue 2 has sets, so it opened in per-set mode
+  }
+
+  /** Venue 2 saves; returns the PUT so a caller can read its echoed token or answer it. */
+  function saveVenue2(): TestRequest {
+    byId('layout-save').click();
+    return http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/2/beach-map'));
+  }
+
+  it('never seeds venue 2 from a superseded venue-1 stale reload', async () => {
+    const reload = await staleReloadInFlight();
+
+    switchToVenue2();
+    reload.flush({
+      map: {
+        id: 1,
+        name: 'V',
+        sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1), seat(2, 'PREMIUM', 'ONLINE', 2, 1)],
+        setVersion: 8,
+      },
+      locks: [],
+    });
+    fixture.detectChanges();
+
+    expect(cells()).toHaveLength(1);
+    expect(cells()[0].getAttribute('data-state')).toBe('standard');
+    const venue2Put = saveVenue2();
+    expect(body(venue2Put).expectedVersion).toBe(3);
+    venue2Put.flush(null);
+    await fixture.whenStable();
+  });
+
+  it('never carries a superseded venue-1 reload failure into venue 2’s stale banner', async () => {
+    const reload = await staleReloadInFlight();
+
+    switchToVenue2();
+    reload.flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+
+    // Venue 2's own conflict opens a fresh banner: no retry hint from venue 1's failed reload.
+    saveVenue2().flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('layout-stale-banner')).toBeTruthy();
+    expect(host.querySelector('[data-testid="layout-reload-failed"]')).toBeNull();
+  });
+
   it('explains a failed map read on both surfaces instead of an empty per-set editor (#721)', () => {
     renderWithFailedLoad();
 
@@ -1644,7 +1720,7 @@ describe('LayoutEditor (#172)', () => {
     expect(host.querySelector('[data-testid="set-skeleton-tile"]')).toBeNull();
     // Nor a silent fall-back to the bulk surface under a pressed Select.
     expect(byId('layout-tool-select').getAttribute('aria-pressed')).toBe('true');
-    // Generate lives on the rail regardless of the armed tool (#711).
+    // Generate lives on the rail regardless of the armed tool.
     expect(byId('layout-generate')).toBeTruthy();
   });
 
@@ -1734,7 +1810,7 @@ describe('LayoutEditor (#172)', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    // The named set's cell wears the #1031 lock decoration; the kept cell does not.
+    // The named set's cell wears the lock decoration; the kept cell does not.
     const refused = cells()[1];
     expect(refused.getAttribute('data-locked')).toBe('true');
     expect(refused.getAttribute('data-state')).toBe('gap');
@@ -1842,6 +1918,29 @@ describe('LayoutEditor (#172)', () => {
     expect(cells()).toHaveLength(0);
   });
 
+  it('never reports the old venue’s late map failure against venue 2', () => {
+    configure();
+    // Venue 1's initial read is still in flight when the operator switches to venue 2.
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({
+        map: { id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 3 },
+        locks: [],
+      });
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+    useBulkMode();
+
+    expect(host.querySelector('[data-testid="layout-load-failed"]')).toBeNull();
+    expect(cells()).toHaveLength(1);
+    expect(cells()[0].getAttribute('data-state')).toBe('standard');
+  });
+
   it('ignores the first visit’s late response after switching away and back (#180, A→B→A)', () => {
     // A value check on venueId passes again after A→B→A — only an epoch/identity guard drops it.
     configure();
@@ -1905,7 +2004,7 @@ describe('LayoutEditor (#172)', () => {
 
     // A venue that already has sets opens armed on Select — the only tool that works once it is trading.
     expect(byId('set-editor')).toBeTruthy();
-    // Generate lives on the rail regardless of the armed tool (#711).
+    // Generate lives on the rail regardless of the armed tool.
     expect(byId('layout-generate')).toBeTruthy();
     expect(byId('layout-tool-select').getAttribute('aria-pressed')).toBe('true');
   });
@@ -1965,7 +2064,7 @@ describe('LayoutEditor (#172)', () => {
 
     const generate = byId('layout-generate') as HTMLButtonElement;
     expect(generateInert()).toBe(true);
-    // Inert via aria-disabled, NOT [disabled]: disabling a focused button blurs it to <body> (#616).
+    // Inert via aria-disabled, NOT [disabled]: disabling a focused button blurs it to <body>.
     expect(generate.disabled).toBe(false);
     generate.click();
     fixture.detectChanges();
