@@ -292,6 +292,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source | Finding | Status |
 |---|---|---|---|
+| F-1 | CI, Repo hygiene (diff-scoped) on `ca771f7b` | `check-plan-file-structure` listed three doc paths the plan omitted, and three `.angular/cache` files a docs commit had picked up from the repo root | fixed: paths listed, cache untracked and ignored at the root |
 
 ### Cost measurement (AC-3)
 
@@ -313,6 +314,7 @@ The 150 ms switch threshold in R-1 is not approached, so the SQL-aggregate fallb
 ## File structure
 
 - `docs/plans/discovery-stay-verdict.md` — this plan
+- `.gitignore` — the Angular build cache is ignored at the root too, wherever an Angular tool runs from
 - `platform/src/main/java/ai/riviera/platform/itinerary/package-info.java` — `@ApplicationModule`, least-privilege grants
 - `platform/src/main/java/ai/riviera/platform/itinerary/domain/StayFit.java` — pure rule: per-set fit and the venue verdict off taken days
 - `platform/src/main/java/ai/riviera/platform/itinerary/domain/StayVerdict.java` — the verdict value (`Fit`, counts)
@@ -359,6 +361,9 @@ The 150 ms switch threshold in R-1 is not approached, so the SQL-aggregate fallb
 - `RESPONSIBILITIES.md` — § `itinerary`; `availability` and `venue` port lists
 - `CONTEXT.md` — glossary: *Stay verdict*
 - `docs/architecture/multi-day-stays.md` — status line: D11 landed
+- `docs/architecture/domain-model.md` — the module map names the read model
+- `docs/architecture/improvement-plan.md` — B4 recorded as fired
+- `.claude/skills/riviera-modulith/SKILL.md` — the full/thin census names `itinerary`
 
 ---
 

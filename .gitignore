@@ -12,6 +12,9 @@ Thumbs.db
 /platform/.gradle/
 /frontend/dist/
 node_modules/
+# The Angular build cache, written under whichever directory an Angular tool runs from
+# (`frontend/.gitignore` covers the app's own; the guard suites' Angular-parsing tests write one here)
+.angular/cache/
 # The guard suites' coverage report, written by the `sonar` job (and by the same command run locally)
 /scripts/coverage/
 
