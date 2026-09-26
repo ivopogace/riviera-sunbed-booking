@@ -8,7 +8,7 @@ export function report(violations) {
   return violations.map((v) => `  ${v.path}:${v.line}  [${v.rule}]  ${v.text}`).join('\n');
 }
 
-/** An `advise(violations)` that prints each distinct rule's entry in `advice` once, first-seen order. */
+/** An `advise(violations)` returning each distinct rule's entry in `advice` once, first-seen order. */
 export function adviser(advice) {
   return (violations) =>
     [...new Set(violations.map((v) => v.rule))].map((rule) => advice[rule]).join('\n');
