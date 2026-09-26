@@ -147,7 +147,7 @@ The `GET /api/venues` mapping moves from `venue/adapter/in/VenueReadController` 
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Coast read at peak (N × S × D rows) is too slow or too wide for one page request | Med | High | AC-3 measures at 40 × 60 × 14 before merge; documented fallback is a gaps-and-islands aggregate in `availability`'s adapter returning per-set longest run + free-all-days (rows ≤ N × S). Threshold to switch: median > 150 ms in the IT | me | open |
+| R-1 | Coast read at peak (N × S × D rows) is too slow or too wide for one page request | Med | High | AC-3 measures at 40 × 60 × 14 before merge; documented fallback is a gaps-and-islands aggregate in `availability`'s adapter returning per-set longest run + free-all-days (rows ≤ N × S). Threshold to switch: median > 150 ms in the IT | me | closed — median 29 ms at 23,557 rows (see *Cost measurement*); the fallback is not needed |
 | R-2 | Cycle: `venue` must not depend on `itinerary` | Low | High | `itinerary` calls `venue::api`; nothing in `venue` imports `itinerary`; `ModularityTests` fails a cycle | me | open |
 | R-3 | `venue::spi` grant leaks to the new module | Low | High | The new read is `availability.api.SetAvailabilityFacts`; `itinerary` never lists `venue::spi` | me | open |
 | R-4 | `ResponsibilitiesArchitectureTests` rule 1: `set_availability` named outside `availability` | Low | High | `itinerary` has no SQL at all; its adapter is a controller only | me | open |
@@ -157,7 +157,7 @@ The `GET /api/venues` mapping moves from `venue/adapter/in/VenueReadController` 
 | R-8 | Fading can't-host cards drops the name under 3:1 (`venue-row.ts` rule) | High if faded | Med | The issue's "faded" is rendered as the existing dusk skin (`saturate-0`) plus the verdict line; no opacity on text | me | open |
 | R-9 | Timezone: the span's days are Europe/Tirane civil days (#6) | Low | Med | `StaySpan` is `LocalDate`s; the default first day is `todayInTirane()` off the UTC `Clock`, as before | me | open |
 | R-10 | BOLA (#13) | None | — | Public tourist read; no venue-scoped write; nothing owner-asserted is exposed (`SetBookingFacts` answers ids only; hold type never leaves `availability`) | me | n/a |
-| R-11 | Sonar duplication between the moved `listVenues` and its new home | Low | Low | The mapping is deleted from `VenueReadController`, not copied | me | open |
+| R-11 | Sonar duplication between the moved `listVenues` and its new home | Low | Low | The mapping is deleted from `VenueReadController`, not copied | me | closed in phase 1c |
 | R-12 | Error contract: a new 400 detail | Low | Low | Reuses `InvalidApiRequestException.parsing(StaySpan.of)` exactly as the map read does; no new code | me | open |
 | R-13 | `VenueApiRoleSplitTests` forbids any class outside `venue` from depending on `VenueCatalog`, which the itinerary controller must call for the fenced list | Certain | Med | The rule's intent is "no sibling-facing method regrows on the tourist port"; the read model is the tourist-read composer B4 names, so the test admits `itinerary..` as a second consumer and its Javadoc says why. Stated in the PR | me | open |
 
@@ -267,17 +267,17 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1c)`
+**Stage pointer:** `implement (phase 2a)`
 
-**Next action:** write `DiscoveryListControllerIT` red, then move the list mapping.
+**Next action:** promote the calendar to `shared/` with a `loadCounts` input (red: "renders without a loader").
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + branch | ✅ | |
 | 1a — `itinerary/domain` stay-fit rule | ✅ | phase 1a commit |
 | 1b — ports + `StayVerdicts` service + module + structural net | ✅ | phase 1b commit |
-| 1c — `DiscoveryListController` takes over `GET /api/venues` | | |
-| 1d — cost measurement | | |
+| 1c — `DiscoveryListController` takes over `GET /api/venues` | ✅ | phase 1c commit |
+| 1d — cost measurement | ✅ | phase 1d commit |
 | 2a — calendar promoted to `shared/` | | |
 | 2b — service param + wire types + card mapping | | |
 | 2c — "Several days…" chip, page calendar, `?lastDate`, links | | |
@@ -295,7 +295,18 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ### Cost measurement (AC-3)
 
-To be filled from `CoastVerdictCostIT`'s output before merge: shape, rows, median wall time, plan.
+`CoastVerdictCostIT.peakShapeCoastReadIsMeasured`, Testcontainers Postgres in the cloud sandbox,
+2026-09-26, through `StayVerdicts.forCoast` (both port reads plus the domain rule):
+
+| Shape | `set_availability` rows in the span | Wall time, 5 runs after a warm-up | Median |
+|---|---|---|---|
+| 40 venues × 60 online sets × 14 days at 70 % occupancy | 23,557 | 41, 37, 29, 25, 29 ms | **29 ms** |
+
+Range read plan (`EXPLAIN (ANALYZE, BUFFERS)`): `Index Only Scan using set_availability_uniq`,
+`Index Cond: set_id = ANY(…2,400 ids…) AND booking_date BETWEEN`, 23,557 rows, execution 5.0 ms,
+planning 2.2 ms. `Heap Fetches: 23557` only because the rows were inserted moments before and the
+visibility map was not yet set; in service they are `0` as for every other read on this index.
+The 150 ms switch threshold in R-1 is not approached, so the SQL-aggregate fallback stays unbuilt.
 
 ---
 
